@@ -496,6 +496,30 @@ class OsmMask(unittest.TestCase):
         self.assertLess(abs(float(row[20]) - 3.0), 0.5)  # beside the beach, near its
         self.assertTrue((np.diff(row[20:60]) <= 0.05).all())  # falling between, no step
 
+    def test_an_estimate_is_the_same_in_any_chunk(self):
+        # Two chunks' grids, each a core and a 512 px margin (2.9 km at
+        # 5.8 m), the second starting where the first's core ends: at that
+        # edge both see the same heights within their margins, and only
+        # each its own past them. They must estimate the water there alike.
+        rng = np.random.default_rng(1)
+        world = np.full((64, 2048), np.nan, np.float32)
+        world[:, :200] = rng.uniform(0.5, 1.5, (64, 200)).astype(np.float32)  # the first's only
+        world[:, 760:800] = np.linspace(2.0, -1.0, 40, dtype=np.float32)  # a beach, then open water
+        world[:, 1850:] = rng.uniform(-16.0, -12.0, (64, 198)).astype(np.float32)  # the second's only: deep
+        cfg = dict(CFG, estimateMetres=1500)
+
+        def run(a, b):
+            z = world[:, a:b]
+            out, _ = build.finish(z, np.zeros(z.shape, bool), np.full(z.shape, np.nan, np.float32),
+                                  np.zeros(z.shape, bool), np.zeros(z.shape, bool), 5.0, cfg, 5.8,
+                                  sea=np.ones(z.shape, bool), shore=np.zeros(z.shape, bool))
+            return out
+
+        first, second = run(0, 1536), run(512, 2048)
+        a, b = first[:, 1000:1050], second[:, 1000 - 512:1050 - 512]
+        self.assertTrue(build.is_estimate(a).all())
+        self.assertLess(float(np.abs(a - b).max()), 1 / 32 + 1e-6)
+
     def test_a_beach_draws_only_under_the_ceiling(self):
         z = np.tile(np.linspace(-2, 8, 40, dtype=np.float32), (10, 1))
         sea = np.zeros(z.shape, bool)
@@ -588,6 +612,26 @@ class Satellite(unittest.TestCase):
         self.assertTrue(np.isnan(m[:10, 20:30]).all())  # left to be estimated under that bound
         self.assertTrue((m[:, 75:] >= 4.84 - 0.25 - 1e-6).all())  # never wet: over the highest
         self.assertTrue((hints["bound"][:, 20:30] <= 0.57 + 1e-6).all())
+
+    def test_never_seen_wet_does_not_raise_the_open_sea(self):
+        with tempfile.TemporaryDirectory() as d:
+            z = np.full(SHAPE, np.nan, np.float32)
+            flag = np.zeros(SHAPE, np.uint8)
+            z[:, 40:50] = 2.5
+            flag[:, 40:50] = 1
+            flag[:, 50:] = 3  # "dry in every look" over the sea beside the shore, and past it
+            self.write(d, z, flag)
+            sonar = np.full(SHAPE, np.nan, np.float32)
+            sonar[:, 50:60] = 4.0  # a rock the looks never saw covered: raised to the top
+            sonar[:, 60:] = -12.0  # the sea, sounded: not dry sand
+            with rasterio_open_w(os.path.join(d, "b.tif"), sonar) as _:
+                pass
+            src = [{"name": "b", "kind": "bathy", "files": ["b.tif"]},
+                   {"name": "sat", "kind": "satellite", "files": ["satellite/*.tif"], "biasMetres": -0.25,
+                    "featherMetres": 0}]
+            m, wet, bathy, above, used, hints = build.merge_sources(src, dict(CFG, featherPixels=0), d, T, SHAPE, 0.0)
+        self.assertTrue((m[:, 52:58] >= 4.84 - 0.25 - 1e-6).all())
+        self.assertTrue((m[:, 62:] == -12.0).all())
 
     def test_a_sonar_well_under_the_satellite_stands(self):
         with tempfile.TemporaryDirectory() as d:

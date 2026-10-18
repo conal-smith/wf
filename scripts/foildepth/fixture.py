@@ -9,7 +9,10 @@ round Rusheen Bay, z7 to z12, whose bed is a flat 1.0 m above LAT within
 that at Galway's low water (under 1 m) the spot is dry and at high water
 (4.5 m) it has 3.5 m of water. The archive is the national build's own
 encoding: Terrarium in lossless WebP, deeper than 5 m under LAT written as
-the deep value, empty tiles left out.
+the deep value, the land beside the water padded over Galway's dry ceiling
+(6.1 m) as build.pad_land writes it for the map's linear sampling, empty
+tiles left out. The spec's index carries the set's `estimateBlue` and
+`padMetres`.
 """
 import json
 import math
@@ -26,6 +29,7 @@ from pmtiles.tile import zxy_to_tileid  # noqa: E402
 BOX = [-9.25, 53.2, -9.0, 53.3]
 SPOT = (-9.121, 53.251)  # Rusheen, public/spots.json
 CFG = {"floorMetres": -5, "deepMetres": -20, "landMetres": 50, "noSurveyMetres": 40}
+CEILING = 6.1  # Galway's dry ceiling (stations.json HAT + the margin), as the spec's index says
 
 
 def main():
@@ -47,7 +51,7 @@ def main():
     grid = np.where(inside, grid, CFG["landMetres"]).astype(np.float32)
     grid = (np.round(grid * 32) / 32).astype(np.float32)
     tiles = [(zxy_to_tileid(zz, tx, ty), build.encode(t))
-             for zz, tx, ty, t in build.pyramid(grid, (x0, y0, x1, y1), size, zmin, zmax, CFG)
+             for zz, tx, ty, t in build.pyramid(grid, (x0, y0, x1, y1), size, zmin, zmax, CFG, CEILING)
              if build.has_content(t, CFG)]
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     mb = build.write_pmtiles(out, tiles, zmin, zmax, BOX,

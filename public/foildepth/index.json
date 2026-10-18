@@ -1,13 +1,15 @@
 {
  "schemaVersion": 2,
  "kind": "foildepth",
- "generatedAt": "2026-10-12T00:43:12Z",
+ "generatedAt": "2026-10-18T00:35:24Z",
  "datum": "LAT",
  "encoding": "terrarium",
  "floorMetres": -5,
  "deepMetres": -20,
  "landMetres": 50,
  "noSurveyMetres": 40,
+ "estimateBlue": 4,
+ "padMetres": 10.0,
  "areas": [
   {
    "id": "malahide-lagoon",
@@ -45,6 +47,13 @@
      "licence": "CC BY 4.0"
     },
     {
+     "name": "INFOMAR 10 m",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR), under the surveys below",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    },
+    {
      "name": "INFOMAR",
      "role": "seabed, multibeam",
      "years": "2003\u20132021",
@@ -57,6 +66,13 @@
      "years": "2010\u201311",
      "resolution": "2 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ],
    "kind": "pilot"
@@ -92,6 +108,13 @@
      "licence": "CC BY 4.0"
     },
     {
+     "name": "INFOMAR 10 m",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR), under the surveys below",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    },
+    {
      "name": "INFOMAR",
      "role": "seabed, multibeam",
      "years": "2003\u20132021",
@@ -104,6 +127,13 @@
      "years": "2010\u201311",
      "resolution": "2 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ],
    "kind": "pilot"
@@ -139,6 +169,13 @@
      "licence": "CC BY 4.0"
     },
     {
+     "name": "INFOMAR 10 m",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR), under the surveys below",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    },
+    {
      "name": "INFOMAR",
      "role": "seabed, multibeam",
      "years": "2014\u201317",
@@ -168,10 +205,10 @@
    "name": "Coast on the Achill Island tide",
    "url": "tide-achill-island.pmtiles",
    "bounds": [
-    -10.4648,
-    53.7949,
-    -9.7942,
-    54.1539
+    -10.3537,
+    53.8702,
+    -9.7932,
+    54.1575
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -203,6 +240,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -212,10 +256,10 @@
    "name": "Coast on the Aranmore tide",
    "url": "tide-aranmore.pmtiles",
    "bounds": [
-    -8.5819,
-    54.8036,
-    -8.2314,
-    55.1106
+    -8.577,
+    54.8039,
+    -8.2072,
+    55.1308
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -247,6 +291,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -256,7 +307,7 @@
    "name": "Coast on the Arklow tide",
    "url": "tide-arklow.pmtiles",
    "bounds": [
-    -6.2302,
+    -6.2309,
     52.5269,
     -5.9213,
     53.0034
@@ -291,6 +342,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -303,7 +361,7 @@
     -8.1236,
     51.802,
     -7.7723,
-    52.0092
+    51.9824
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -335,6 +393,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -344,8 +409,8 @@
    "name": "Coast on the Ballyglass tide",
    "url": "tide-ballyglass.pmtiles",
    "bounds": [
-    -10.2074,
-    54.0666,
+    -10.221,
+    54.0658,
     -9.2217,
     54.3694
    ],
@@ -379,6 +444,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -388,7 +460,7 @@
    "name": "Coast on the Bray Harbour tide",
    "url": "tide-bray-harbour.pmtiles",
    "bounds": [
-    -6.1298,
+    -6.13,
     53.0012,
     -5.8509,
     53.3
@@ -425,6 +497,13 @@
      "licence": "CC BY 4.0"
     },
     {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    },
+    {
      "name": "Pilot areas",
      "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
      "years": "2003\u20132021",
@@ -439,9 +518,9 @@
    "name": "Coast on the Buncranna tide",
    "url": "tide-buncranna.pmtiles",
    "bounds": [
-    -7.862,
-    54.9463,
-    -6.9535,
+    -7.8624,
+    54.9419,
+    -6.9602,
     55.2822
    ],
    "minzoom": 6,
@@ -474,6 +553,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -484,9 +570,9 @@
    "url": "tide-castletownbere.pmtiles",
    "bounds": [
     -10.3578,
-    51.3144,
+    51.3872,
     -9.4833,
-    51.8863
+    51.8862
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -518,6 +604,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -527,8 +620,8 @@
    "name": "Coast on the Clare Island tide",
    "url": "tide-clare-island.pmtiles",
    "bounds": [
-    -10.1978,
-    53.711,
+    -10.1257,
+    53.7109,
     -9.6095,
     53.9605
    ],
@@ -562,6 +655,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -571,9 +671,9 @@
    "name": "Coast on the Crosshaven tide",
    "url": "tide-crosshaven.pmtiles",
    "bounds": [
-    -8.3418,
-    51.5094,
-    -7.9782,
+    -8.3403,
+    51.7214,
+    -8.1186,
     51.8474
    ],
    "minzoom": 6,
@@ -606,6 +706,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -617,8 +724,8 @@
    "bounds": [
     -10.6906,
     51.7675,
-    -9.9518,
-    52.2933
+    -9.9513,
+    52.2931
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -652,6 +759,13 @@
      "licence": "CC BY 4.0"
     },
     {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    },
+    {
      "name": "Pilot areas",
      "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
      "years": "2003\u20132021",
@@ -666,10 +780,10 @@
    "name": "Coast on the Dublin Port tide",
    "url": "tide-dublin-port.pmtiles",
    "bounds": [
-    -6.2511,
-    53.2915,
+    -6.2472,
+    53.2913,
     -6.1222,
-    53.3809
+    53.3808
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -703,6 +817,13 @@
      "licence": "CC BY 4.0"
     },
     {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    },
+    {
      "name": "Pilot areas",
      "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
      "years": "2003\u20132021",
@@ -717,10 +838,10 @@
    "name": "Coast on the Dungarvan tide",
    "url": "tide-dungarvan.pmtiles",
    "bounds": [
-    -7.863,
+    -7.7826,
     51.9364,
     -7.2823,
-    52.1416
+    52.1422
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -752,6 +873,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -761,10 +889,10 @@
    "name": "Coast on the Dunmore tide",
    "url": "tide-dunmore.pmtiles",
    "bounds": [
-    -7.351,
-    52.0678,
-    -6.6209,
-    52.3935
+    -7.2856,
+    52.085,
+    -6.6215,
+    52.2678
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -796,6 +924,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -806,8 +941,8 @@
    "url": "tide-fenit.pmtiles",
    "bounds": [
     -10.1122,
-    52.0648,
-    -9.7204,
+    52.0642,
+    -9.7011,
     52.4732
    ],
    "minzoom": 6,
@@ -842,6 +977,13 @@
      "licence": "CC BY 4.0"
     },
     {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    },
+    {
      "name": "Pilot areas",
      "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
      "years": "2003\u20132021",
@@ -858,8 +1000,8 @@
    "bounds": [
     -9.3057,
     53.1137,
-    -8.8767,
-    53.2814
+    -8.8725,
+    53.2817
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -891,6 +1033,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -900,7 +1049,7 @@
    "name": "Coast on the Howth tide",
    "url": "tide-howth.pmtiles",
    "bounds": [
-    -6.2067,
+    -6.2093,
     53.2979,
     -5.9369,
     53.496
@@ -937,6 +1086,13 @@
      "licence": "CC BY 4.0"
     },
     {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    },
+    {
      "name": "Pilot areas",
      "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
      "years": "2003\u20132021",
@@ -952,9 +1108,9 @@
    "url": "tide-killybegs.pmtiles",
    "bounds": [
     -8.8393,
-    54.4573,
-    -8.1038,
-    54.8086
+    54.4571,
+    -8.1042,
+    54.8088
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -986,6 +1142,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -996,9 +1159,9 @@
    "url": "tide-kilrush.pmtiles",
    "bounds": [
     -9.9406,
-    52.4322,
+    52.4696,
     -8.8372,
-    52.7803
+    52.78
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -1032,6 +1195,13 @@
      "licence": "CC BY 4.0"
     },
     {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    },
+    {
      "name": "Pilot areas",
      "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
      "years": "2003\u20132021",
@@ -1046,10 +1216,10 @@
    "name": "Coast on the Kinsale tide",
    "url": "tide-kinsale.pmtiles",
    "bounds": [
-    -8.7746,
+    -8.7751,
     51.5679,
     -8.3343,
-    51.726
+    51.7458
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -1081,6 +1251,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -1092,7 +1269,7 @@
    "bounds": [
     -9.6165,
     52.6796,
-    -8.8296,
+    -8.8283,
     53.1175
    ],
    "minzoom": 6,
@@ -1125,6 +1302,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -1134,10 +1318,10 @@
    "name": "Coast on the Letterfrack tide",
    "url": "tide-letterfrack.pmtiles",
    "bounds": [
-    -10.5504,
-    53.3152,
-    -9.6938,
-    53.7324
+    -10.3151,
+    53.3256,
+    -9.693,
+    53.7129
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -1169,6 +1353,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -1178,10 +1369,10 @@
    "name": "Coast on the Malin Head tide",
    "url": "tide-malin-head.pmtiles",
    "bounds": [
-    -7.5281,
-    55.1585,
+    -7.5283,
+    55.1641,
     -6.6918,
-    55.4541
+    55.4378
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -1213,6 +1404,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -1222,10 +1420,10 @@
    "name": "Coast on the Port Oriel tide",
    "url": "tide-port-oriel.pmtiles",
    "bounds": [
-    -6.4153,
-    53.675,
+    -6.4284,
+    53.6729,
     -5.8649,
-    54.1506
+    54.1585
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -1257,6 +1455,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -1266,10 +1471,10 @@
    "name": "Coast on the Ringaskiddy tide",
    "url": "tide-ringaskiddy.pmtiles",
    "bounds": [
-    -8.4645,
+    -8.4978,
     51.8003,
-    -8.1736,
-    51.9123
+    -8.166,
+    51.9124
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -1301,6 +1506,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -1310,10 +1522,10 @@
    "name": "Coast on the Roonagh tide",
    "url": "tide-roonagh.pmtiles",
    "bounds": [
-    -10.1214,
-    53.5985,
-    -9.5468,
-    53.9025
+    -10.1231,
+    53.5981,
+    -9.5427,
+    53.9052
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -1345,6 +1557,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -1357,7 +1576,7 @@
     -10.036,
     53.0635,
     -9.3038,
-    53.4199
+    53.42
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -1389,6 +1608,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -1400,7 +1626,7 @@
    "bounds": [
     -6.6295,
     52.0976,
-    -6.2043,
+    -6.2058,
     52.3447
    ],
    "minzoom": 6,
@@ -1433,6 +1659,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -1442,9 +1675,9 @@
    "name": "Coast on the Skerries tide",
    "url": "tide-skerries.pmtiles",
    "bounds": [
-    -6.247,
+    -6.2468,
     53.4865,
-    -5.9945,
+    -5.9949,
     53.6845
    ],
    "minzoom": 6,
@@ -1479,6 +1712,13 @@
      "licence": "CC BY 4.0"
     },
     {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    },
+    {
      "name": "Pilot areas",
      "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
      "years": "2003\u20132021",
@@ -1494,9 +1734,9 @@
    "url": "tide-sligo.pmtiles",
    "bounds": [
     -9.2312,
-    54.1615,
-    -8.412,
-    54.4694
+    54.1199,
+    -8.4115,
+    54.4696
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -1528,6 +1768,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -1537,8 +1784,8 @@
    "name": "Coast on the Tory Island tide",
    "url": "tide-tory-island.pmtiles",
    "bounds": [
-    -8.3197,
-    55.1076,
+    -8.3728,
+    55.1073,
     -7.7949,
     55.2787
    ],
@@ -1572,6 +1819,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -1584,7 +1838,7 @@
     -9.5519,
     51.4188,
     -8.7727,
-    51.7333
+    51.7374
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -1616,6 +1870,13 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   },
@@ -1625,10 +1886,10 @@
    "name": "Coast on the Wexford tide",
    "url": "tide-wexford.pmtiles",
    "bounds": [
-    -6.7023,
+    -6.7026,
     52.1789,
     -6.1556,
-    52.5452
+    52.5417
    ],
    "minzoom": 6,
    "maxzoom": 13,
@@ -1660,10 +1921,17 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
     }
    ]
   }
  ],
- "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute), GSI/OPW/TII LiDAR, EMODnet Bathymetry DTM and coastlines; all CC BY 4.0. INFOMAR (Geological Survey Ireland & Marine Institute), EMODnet Bathymetry DTM and satellite-derived coastlines, Marine Institute tidal predictions; all CC BY 4.0.",
- "base": "foildepth/vb2f7a0ca40ae/"
+ "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute), GSI/OPW/TII LiDAR, EMODnet Bathymetry DTM and coastlines; all CC BY 4.0. Contains modified Copernicus Sentinel data 2017\u20132026. Coastline and tidal water \u00a9 OpenStreetMap contributors (ODbL). INFOMAR (Geological Survey Ireland & Marine Institute), EMODnet Bathymetry DTM and satellite-derived coastlines, Marine Institute tidal predictions; all CC BY 4.0. Contains modified Copernicus Sentinel data 2017\u20132026. Coastline and tidal water \u00a9 OpenStreetMap contributors (ODbL).",
+ "base": "foildepth/vb597fbba2f1c/"
 }

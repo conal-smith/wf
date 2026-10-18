@@ -92,6 +92,8 @@ const index = {
   deepMetres: -20,
   landMetres: 50,
   noSurveyMetres: 40,
+  estimateBlue: 4,
+  padMetres: 10,
   areas: [
     region("tide-galway", "Galway", [-9.25, 53.2, -9.0, 53.3], [-9.048, 53.269]),
     region("tide-howth", "Howth", [-6.3, 53.3, -6.0, 53.5], [-6.068, 53.391]),

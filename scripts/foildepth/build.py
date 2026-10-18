@@ -538,7 +538,14 @@ def merge_sources(sources, cfg, data_dir, transform, shape, offset, levels=None,
                     # cells are coarse. The bed is estimated instead
                     # (finish_masked, from the basin's `bedEstimateLat`).
                     z[never_dry & mask] = np.nan
-                never_wet = (flag == 3) & np.isfinite(z)
+                # Never seen wet, likewise only beside what it saw flood and
+                # drain, and never where a source has the bed well under the
+                # lowest tide seen: the run writes "dry in every look" over
+                # stretches of open sea it could not read (whole blocks off
+                # the Aran Islands and Achill), and raising the sea's
+                # soundings to the top of the tide drew them as dry sand.
+                never_wet = (flag == 3) & np.isfinite(z) & (near <= src.get("neverWetMetres", 300))
+                never_wet &= ~(z < low - src.get("yieldOverMetres", 1.5))
                 z[never_wet] = np.fmax(z[never_wet], high[never_wet])
             # A rejected pixel among accepted ones (a misfit, a look too few)
             # is filled from the satellite's heights round it, not left to
@@ -646,6 +653,44 @@ def push_pull(z, known):
     return filled.astype(np.float32)
 
 
+def local_fill(z, known, sigma_metres, metres_per_px, block=8, truncate=4.5):
+    """A smooth surface from the known pixels nearby only: their Gaussian-
+    weighted mean (sigma `sigma_metres`, cut at `truncate` sigmas), worked
+    on blocks of `block` pixels and brought back up smoothly.
+
+    push_pull's surface is global: every known pixel in the grid moves it, so
+    two chunks of the national build, which see different stretches past
+    their margins, estimated the same water differently, and the estimates
+    stepped at a chunk's edge (a straight line in the sea off Raven Point,
+    where one side estimated 4 m and the other past the depth cut). This one
+    depends only on the heights within `truncate` sigmas (1.8 km at 400 m),
+    inside the chunks' 2.9 km margin, and its blocks lie on the global z13
+    grid as the chunks do, so every chunk computes the same value. NaN where
+    nothing known is within reach."""
+    h, w = z.shape
+    ph, pw = -(-h // block) * block, -(-w // block) * block
+    zp = np.zeros((ph, pw))
+    kp = np.zeros((ph, pw))
+    zp[:h, :w] = np.where(known, z, 0)
+    kp[:h, :w] = known
+    blocks = (ph // block, block, pw // block, block)
+    vs = zp.reshape(blocks).sum(axis=(1, 3))
+    ws = kp.reshape(blocks).sum(axis=(1, 3))
+    sigma = sigma_metres / metres_per_px / block
+    vs = ndimage.gaussian_filter(vs, sigma, truncate=truncate, mode="constant")
+    ws = ndimage.gaussian_filter(ws, sigma, truncate=truncate, mode="constant")
+    coarse = np.where(ws > 1e-9, vs / np.maximum(ws, 1e-12), np.nan)
+    # Back up to pixels, bilinear between block centres.
+    ys = (np.arange(h) + 0.5) / block - 0.5
+    xs = (np.arange(w) + 0.5) / block - 0.5
+    filled = np.where(np.isfinite(coarse), coarse, 0)
+    have = np.isfinite(coarse).astype(np.float64)
+    grid = np.meshgrid(ys, xs, indexing="ij")
+    num = ndimage.map_coordinates(filled * have, grid, order=1, mode="nearest")
+    den = ndimage.map_coordinates(have, grid, order=1, mode="nearest")
+    return np.where(den > 1e-6, num / np.maximum(den, 1e-12), np.nan).astype(np.float32)
+
+
 def relax(v, known, values, coarse=4, coarse_iters=120, fine_iters=40):
     """push_pull's surface made to meet the known heights: it is smooth but
     steps where it meets them (its coarse levels mix both sides of a gap), so
@@ -701,7 +746,7 @@ def finish_masked(z, wet_at_lat, sea, shore, ceiling, cfg, metres_per_px, hints=
       ceiling it is kept (deeper than the floor: the deep value). Where none
       has (the Malahide lagoon's western half, no survey at all), or only one
       over the ceiling (a coarse land cell at the shore), the bed is
-      estimated from the heights round it (push_pull), no higher than what
+      estimated from the heights round it (local_fill), no higher than what
       is known of it (`hints["bound"]`: never seen dry by the satellite,
       under the waterlines' LAT line), and written as an estimate
       (mark_estimate). Far from any height a basin's `pin` (its bed as a
@@ -709,8 +754,9 @@ def finish_masked(z, wet_at_lat, sea, shore, ceiling, cfg, metres_per_px, hints=
       from any height (a gap in the surveys out at sea, the middle of a
       harbour no survey has crossed) is drawn as nothing, written as the
       deep value flagged as an estimate, so a tap says it is unsurveyed
-      rather than deep. The estimate is push_pull's surface relaxed onto the
-      heights round it (relax), so it meets them without a step.
+      rather than deep. The estimate is the heights round it, a local
+      Gaussian-weighted mean (local_fill: the same in every chunk), relaxed
+      onto them (relax), so it meets them without a step.
 
     Returns the grid (heights from the floor to the ceiling, estimates among
     them, the deep and land values) and counts."""
@@ -755,7 +801,11 @@ def finish_masked(z, wet_at_lat, sea, shore, ceiling, cfg, metres_per_px, hints=
                 base[p] = pin[p]
                 anchor |= p
             if anchor.any():
-                v = relax(push_pull(np.nan_to_num(base), anchor), anchor, np.nan_to_num(base))
+                start = local_fill(np.nan_to_num(base), anchor, cfg.get("estimateSigmaMetres", 400), metres_per_px)
+                # Nothing known within reach (only past estimateMetres, so
+                # not drawn): the deep value's side of the floor.
+                start = np.where(np.isfinite(start), start, floor - 1).astype(np.float32)
+                v = relax(start, anchor, np.nan_to_num(base))
             else:
                 v = np.zeros(shape, dtype=np.float32)
             bound = np.full(shape, np.nan, dtype=np.float32) if hints is None else hints["bound"].copy()
