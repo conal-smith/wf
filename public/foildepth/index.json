@@ -1,7 +1,7 @@
 {
  "schemaVersion": 2,
  "kind": "foildepth",
- "generatedAt": "2026-10-18T08:35:32Z",
+ "generatedAt": "2026-10-18T09:59:51Z",
  "datum": "LAT",
  "encoding": "terrarium",
  "floorMetres": -5,
@@ -302,6 +302,57 @@
    ]
   },
   {
+   "id": "tide-ardglass",
+   "kind": "region",
+   "name": "Coast on the Ardglass tide",
+   "url": "tide-ardglass.pmtiles",
+   "bounds": [
+    -5.7221,
+    54.2227,
+    -5.5592,
+    54.2872
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Ardglass_MODELLED",
+   "stationLonLat": [
+    -5.607,
+    54.262
+   ],
+   "dryCeilingMetres": 6.6,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "OSNI LiDAR",
+     "role": "the foreshore above each flight's water, and the beaches over the satellite's highest tide: OSNI's river-basin LiDAR where it reaches the shore (Portrush to Portstewart, Bangor and Ballyholme, Newtownards and Strangford's north end, Newcastle), the sea's surface the flights saw taken out (fetch_national.py osni-lidar)",
+     "years": "2007\u20132010",
+     "resolution": "2 m (from 0.5\u20131 m)",
+     "licence": "OGL v3"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    }
+   ]
+  },
+  {
    "id": "tide-arklow",
    "kind": "region",
    "name": "Coast on the Arklow tide",
@@ -342,6 +393,64 @@
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    }
+   ]
+  },
+  {
+   "id": "tide-ballycastle",
+   "kind": "region",
+   "name": "Coast on the Ballycastle tide",
+   "url": "tide-ballycastle.pmtiles",
+   "bounds": [
+    -6.4489,
+    55.0497,
+    -5.5518,
+    55.5793
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Ballycastle_MODELLED",
+   "stationLonLat": [
+    -6.242,
+    55.206
+   ],
+   "dryCeilingMetres": 1.6,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR JIBS",
+     "role": "the north coast's seabed, Inishowen to Torr Head: the Joint Irish Bathymetric Survey (multibeam), whose Northern Ireland side the merged grid leaves out; under the merged grid where both are",
+     "years": "2007\u20132008",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0 (its Northern Ireland side is the Maritime and Coastguard Agency's survey HI1240, OGL v3)"
+    },
+    {
+     "name": "OSNI LiDAR",
+     "role": "the foreshore above each flight's water, and the beaches over the satellite's highest tide: OSNI's river-basin LiDAR where it reaches the shore (Portrush to Portstewart, Bangor and Ballyholme, Newtownards and Strangford's north end, Newcastle), the sea's surface the flights saw taken out (fetch_national.py osni-lidar)",
+     "years": "2007\u20132010",
+     "resolution": "2 m (from 0.5\u20131 m)",
+     "licence": "OGL v3"
     },
     {
      "name": "Sentinel-2 intertidal heights",
@@ -455,6 +564,57 @@
    ]
   },
   {
+   "id": "tide-bangor",
+   "kind": "region",
+   "name": "Coast on the Bangor tide",
+   "url": "tide-bangor.pmtiles",
+   "bounds": [
+    -5.9218,
+    54.5798,
+    -5.486,
+    54.7704
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Bangor",
+   "stationLonLat": [
+    -5.6705,
+    54.6652
+   ],
+   "dryCeilingMetres": 4.4,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "OSNI LiDAR",
+     "role": "the foreshore above each flight's water, and the beaches over the satellite's highest tide: OSNI's river-basin LiDAR where it reaches the shore (Portrush to Portstewart, Bangor and Ballyholme, Newtownards and Strangford's north end, Newcastle), the sea's surface the flights saw taken out (fetch_national.py osni-lidar)",
+     "years": "2007\u20132010",
+     "resolution": "2 m (from 0.5\u20131 m)",
+     "licence": "OGL v3"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    }
+   ]
+  },
+  {
    "id": "tide-bray-harbour",
    "kind": "region",
    "name": "Coast on the Bray Harbour tide",
@@ -520,7 +680,7 @@
    "bounds": [
     -7.8624,
     54.9419,
-    -6.9602,
+    -7.0293,
     55.2822
    ],
    "minzoom": 6,
@@ -548,11 +708,32 @@
      "licence": "CC BY 4.0"
     },
     {
+     "name": "INFOMAR JIBS",
+     "role": "the north coast's seabed, Inishowen to Torr Head: the Joint Irish Bathymetric Survey (multibeam), whose Northern Ireland side the merged grid leaves out; under the merged grid where both are",
+     "years": "2007\u20132008",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0 (its Northern Ireland side is the Maritime and Coastguard Agency's survey HI1240, OGL v3)"
+    },
+    {
      "name": "INFOMAR",
      "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR Lough Foyle LiDAR",
+     "role": "Lough Foyle's shallows and flats, airborne bathymetric LiDAR: the merged grid has it at 10 m (the same heights, median 0.00 m), this at 5 m over it",
+     "years": "2008",
+     "resolution": "5 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "OSNI LiDAR",
+     "role": "the foreshore above each flight's water, and the beaches over the satellite's highest tide: OSNI's river-basin LiDAR where it reaches the shore (Portrush to Portstewart, Bangor and Ballyholme, Newtownards and Strangford's north end, Newcastle), the sea's surface the flights saw taken out (fetch_national.py osni-lidar)",
+     "years": "2007\u20132010",
+     "resolution": "2 m (from 0.5\u20131 m)",
+     "licence": "OGL v3"
     },
     {
      "name": "Sentinel-2 intertidal heights",
@@ -833,6 +1014,64 @@
    ]
   },
   {
+   "id": "tide-dundrum-bay",
+   "kind": "region",
+   "name": "Coast on the Dundrum Bay tide",
+   "url": "tide-dundrum-bay.pmtiles",
+   "bounds": [
+    -6.3339,
+    54.0122,
+    -5.7167,
+    54.285
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Dundrum_Bay_MODELLED",
+   "stationLonLat": [
+    -5.83,
+    54.225
+   ],
+   "dryCeilingMetres": 6.6,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "OSNI LiDAR",
+     "role": "the foreshore above each flight's water, and the beaches over the satellite's highest tide: OSNI's river-basin LiDAR where it reaches the shore (Portrush to Portstewart, Bangor and Ballyholme, Newtownards and Strangford's north end, Newcastle), the sea's surface the flights saw taken out (fetch_national.py osni-lidar)",
+     "years": "2007\u20132010",
+     "resolution": "2 m (from 0.5\u20131 m)",
+     "licence": "OGL v3"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    }
+   ]
+  },
+  {
    "id": "tide-dungarvan",
    "kind": "region",
    "name": "Coast on the Dungarvan tide",
@@ -1102,6 +1341,57 @@
    ]
   },
   {
+   "id": "tide-killard",
+   "kind": "region",
+   "name": "Coast on the Killard Point tide",
+   "url": "tide-killard.pmtiles",
+   "bounds": [
+    -5.6019,
+    54.2843,
+    -5.4379,
+    54.3862
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Killard_MODELLED",
+   "stationLonLat": [
+    -5.525,
+    54.315
+   ],
+   "dryCeilingMetres": 6.5,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "OSNI LiDAR",
+     "role": "the foreshore above each flight's water, and the beaches over the satellite's highest tide: OSNI's river-basin LiDAR where it reaches the shore (Portrush to Portstewart, Bangor and Ballyholme, Newtownards and Strangford's north end, Newcastle), the sea's surface the flights saw taken out (fetch_national.py osni-lidar)",
+     "years": "2007\u20132010",
+     "resolution": "2 m (from 0.5\u20131 m)",
+     "licence": "OGL v3"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    }
+   ]
+  },
+  {
    "id": "tide-killybegs",
    "kind": "region",
    "name": "Coast on the Killybegs tide",
@@ -1313,6 +1603,64 @@
    ]
   },
   {
+   "id": "tide-larne",
+   "kind": "region",
+   "name": "Coast on the Larne tide",
+   "url": "tide-larne.pmtiles",
+   "bounds": [
+    -5.9937,
+    54.767,
+    -5.6802,
+    55.0532
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Larne_MODELLED",
+   "stationLonLat": [
+    -5.79,
+    54.853
+   ],
+   "dryCeilingMetres": 4.0,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR JIBS",
+     "role": "the north coast's seabed, Inishowen to Torr Head: the Joint Irish Bathymetric Survey (multibeam), whose Northern Ireland side the merged grid leaves out; under the merged grid where both are",
+     "years": "2007\u20132008",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0 (its Northern Ireland side is the Maritime and Coastguard Agency's survey HI1240, OGL v3)"
+    },
+    {
+     "name": "OSNI LiDAR",
+     "role": "the foreshore above each flight's water, and the beaches over the satellite's highest tide: OSNI's river-basin LiDAR where it reaches the shore (Portrush to Portstewart, Bangor and Ballyholme, Newtownards and Strangford's north end, Newcastle), the sea's surface the flights saw taken out (fetch_national.py osni-lidar)",
+     "years": "2007\u20132010",
+     "resolution": "2 m (from 0.5\u20131 m)",
+     "licence": "OGL v3"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    }
+   ]
+  },
+  {
    "id": "tide-letterfrack",
    "kind": "region",
    "name": "Coast on the Letterfrack tide",
@@ -1370,8 +1718,8 @@
    "url": "tide-malin-head.pmtiles",
    "bounds": [
     -7.5283,
-    55.1641,
-    -6.6918,
+    55.2592,
+    -7.0066,
     55.4378
    ],
    "minzoom": 6,
@@ -1383,6 +1731,78 @@
     55.37168
    ],
    "dryCeilingMetres": 4.5,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR JIBS",
+     "role": "the north coast's seabed, Inishowen to Torr Head: the Joint Irish Bathymetric Survey (multibeam), whose Northern Ireland side the merged grid leaves out; under the merged grid where both are",
+     "years": "2007\u20132008",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0 (its Northern Ireland side is the Maritime and Coastguard Agency's survey HI1240, OGL v3)"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR Lough Foyle LiDAR",
+     "role": "Lough Foyle's shallows and flats, airborne bathymetric LiDAR: the merged grid has it at 10 m (the same heights, median 0.00 m), this at 5 m over it",
+     "years": "2008",
+     "resolution": "5 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "OSNI LiDAR",
+     "role": "the foreshore above each flight's water, and the beaches over the satellite's highest tide: OSNI's river-basin LiDAR where it reaches the shore (Portrush to Portstewart, Bangor and Ballyholme, Newtownards and Strangford's north end, Newcastle), the sea's surface the flights saw taken out (fetch_national.py osni-lidar)",
+     "years": "2007\u20132010",
+     "resolution": "2 m (from 0.5\u20131 m)",
+     "licence": "OGL v3"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    }
+   ]
+  },
+  {
+   "id": "tide-port-oriel",
+   "kind": "region",
+   "name": "Coast on the Port Oriel tide",
+   "url": "tide-port-oriel.pmtiles",
+   "bounds": [
+    -6.4284,
+    53.6729,
+    -6.0292,
+    54.0839
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Port_Oriel",
+   "stationLonLat": [
+    -6.221713,
+    53.79899
+   ],
+   "dryCeilingMetres": 6.1,
    "sources": [
     {
      "name": "EMODnet",
@@ -1415,25 +1835,25 @@
    ]
   },
   {
-   "id": "tide-port-oriel",
+   "id": "tide-portavogie",
    "kind": "region",
-   "name": "Coast on the Port Oriel tide",
-   "url": "tide-port-oriel.pmtiles",
+   "name": "Coast on the Portavogie tide",
+   "url": "tide-portavogie.pmtiles",
    "bounds": [
-    -6.4284,
-    53.6729,
-    -5.8649,
-    54.1585
+    -5.5037,
+    54.3797,
+    -5.392,
+    54.5878
    ],
    "minzoom": 6,
    "maxzoom": 13,
    "tileSize": 512,
-   "station": "Port_Oriel",
+   "station": "Portavogie_MODELLED",
    "stationLonLat": [
-    -6.221713,
-    53.79899
+    -5.438,
+    54.458
    ],
-   "dryCeilingMetres": 6.1,
+   "dryCeilingMetres": 6.0,
    "sources": [
     {
      "name": "EMODnet",
@@ -1450,11 +1870,83 @@
      "licence": "CC BY 4.0"
     },
     {
+     "name": "OSNI LiDAR",
+     "role": "the foreshore above each flight's water, and the beaches over the satellite's highest tide: OSNI's river-basin LiDAR where it reaches the shore (Portrush to Portstewart, Bangor and Ballyholme, Newtownards and Strangford's north end, Newcastle), the sea's surface the flights saw taken out (fetch_national.py osni-lidar)",
+     "years": "2007\u20132010",
+     "resolution": "2 m (from 0.5\u20131 m)",
+     "licence": "OGL v3"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    }
+   ]
+  },
+  {
+   "id": "tide-portrush",
+   "kind": "region",
+   "name": "Coast on the Portrush tide",
+   "url": "tide-portrush.pmtiles",
+   "bounds": [
+    -7.0634,
+    55.0642,
+    -6.447,
+    55.2675
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Portrush",
+   "stationLonLat": [
+    -6.6512,
+    55.2011
+   ],
+   "dryCeilingMetres": 2.8,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR JIBS",
+     "role": "the north coast's seabed, Inishowen to Torr Head: the Joint Irish Bathymetric Survey (multibeam), whose Northern Ireland side the merged grid leaves out; under the merged grid where both are",
+     "years": "2007\u20132008",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0 (its Northern Ireland side is the Maritime and Coastguard Agency's survey HI1240, OGL v3)"
+    },
+    {
      "name": "INFOMAR",
      "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
      "years": "2002\u20132025",
      "resolution": "10 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR Lough Foyle LiDAR",
+     "role": "Lough Foyle's shallows and flats, airborne bathymetric LiDAR: the merged grid has it at 10 m (the same heights, median 0.00 m), this at 5 m over it",
+     "years": "2008",
+     "resolution": "5 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "OSNI LiDAR",
+     "role": "the foreshore above each flight's water, and the beaches over the satellite's highest tide: OSNI's river-basin LiDAR where it reaches the shore (Portrush to Portstewart, Bangor and Ballyholme, Newtownards and Strangford's north end, Newcastle), the sea's surface the flights saw taken out (fetch_national.py osni-lidar)",
+     "years": "2007\u20132010",
+     "resolution": "2 m (from 0.5\u20131 m)",
+     "licence": "OGL v3"
     },
     {
      "name": "Sentinel-2 intertidal heights",
@@ -1779,6 +2271,103 @@
    ]
   },
   {
+   "id": "tide-strangford",
+   "kind": "region",
+   "name": "Coast on the Strangford Lough tide",
+   "url": "tide-strangford.pmtiles",
+   "bounds": [
+    -5.7384,
+    54.3615,
+    -5.5277,
+    54.5847
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Strangford_MODELLED",
+   "stationLonLat": [
+    -5.62,
+    54.48
+   ],
+   "dryCeilingMetres": 6.5,
+   "polygon": [
+    [
+     -5.53,
+     54.385
+    ],
+    [
+     -5.5,
+     54.45
+    ],
+    [
+     -5.52,
+     54.55
+    ],
+    [
+     -5.62,
+     54.625
+    ],
+    [
+     -5.76,
+     54.6
+    ],
+    [
+     -5.77,
+     54.5
+    ],
+    [
+     -5.72,
+     54.385
+    ],
+    [
+     -5.69,
+     54.385
+    ],
+    [
+     -5.69,
+     54.35
+    ],
+    [
+     -5.605,
+     54.35
+    ],
+    [
+     -5.6,
+     54.385
+    ]
+   ],
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "OSNI LiDAR",
+     "role": "the foreshore above each flight's water, and the beaches over the satellite's highest tide: OSNI's river-basin LiDAR where it reaches the shore (Portrush to Portstewart, Bangor and Ballyholme, Newtownards and Strangford's north end, Newcastle), the sea's surface the flights saw taken out (fetch_national.py osni-lidar)",
+     "years": "2007\u20132010",
+     "resolution": "2 m (from 0.5\u20131 m)",
+     "licence": "OGL v3"
+    },
+    {
+     "name": "Sentinel-2 intertidal heights",
+     "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+     "years": "2017\u20132026",
+     "resolution": "10 m",
+     "licence": "Copernicus (free and open)"
+    }
+   ]
+  },
+  {
    "id": "tide-tory-island",
    "kind": "region",
    "name": "Coast on the Tory Island tide",
@@ -1812,6 +2401,13 @@
      "years": "",
      "resolution": "~10\u201330 m",
      "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR JIBS",
+     "role": "the north coast's seabed, Inishowen to Torr Head: the Joint Irish Bathymetric Survey (multibeam), whose Northern Ireland side the merged grid leaves out; under the merged grid where both are",
+     "years": "2007\u20132008",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0 (its Northern Ireland side is the Maritime and Coastguard Agency's survey HI1240, OGL v3)"
     },
     {
      "name": "INFOMAR",
@@ -1932,6 +2528,6 @@
    ]
   }
  ],
- "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute), GSI/OPW/TII LiDAR, EMODnet Bathymetry DTM and coastlines; all CC BY 4.0. Contains modified Copernicus Sentinel data 2017\u20132026. Coastline and tidal water \u00a9 OpenStreetMap contributors (ODbL). INFOMAR (Geological Survey Ireland & Marine Institute), EMODnet Bathymetry DTM and satellite-derived coastlines, Marine Institute tidal predictions; all CC BY 4.0. Contains modified Copernicus Sentinel data 2017\u20132026. Coastline and tidal water \u00a9 OpenStreetMap contributors (ODbL).",
- "base": "foildepth/vec09f9fbdb11/"
+ "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute), GSI/OPW/TII LiDAR, EMODnet Bathymetry DTM and coastlines; all CC BY 4.0. Contains modified Copernicus Sentinel data 2017\u20132026. Coastline and tidal water \u00a9 OpenStreetMap contributors (ODbL). INFOMAR (Geological Survey Ireland & Marine Institute, including the Joint Irish Bathymetric Survey), EMODnet Bathymetry DTM and satellite-derived coastlines, Marine Institute tidal predictions; all CC BY 4.0. Northern Ireland: OSNI River Basin LiDAR (Land & Property Services) and Maritime & Coastguard Agency survey data \u00a9 Crown copyright, Environment Agency tide gauge data, all Open Government Licence v3.0; EOT20 tide model (DGFI-TUM, CC BY 4.0). Contains modified Copernicus Sentinel data 2017\u20132026. Coastline and tidal water \u00a9 OpenStreetMap contributors (ODbL).",
+ "base": "foildepth/va75bf93693c2/"
 }

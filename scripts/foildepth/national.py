@@ -63,7 +63,24 @@ def load_stations(cfg, path=None):
             "id": sid, "name": s["name"], "lon": float(s["lon"]), "lat": float(s["lat"]),
             "msl": s["mslMetres"], "mhw": s["mhwMetres"], "hat": s["hatMetres"],
             "ceiling": round_up(s["hatMetres"] + cfg["ceilingMarginMetres"]),
+            "polygon": s.get("polygon"),
+            # LAT heights of the land datums, for a LiDAR in OD Malin or OD Belfast.
+            "odMalin": s.get("odMalinOffsetMetres"),
+            "odBelfast": s.get("odBelfastOffsetMetres", s.get("odMalinOffsetMetres")),
         })
+    return out
+
+
+def in_polygon(lon, lat, ring):
+    """Points in a lon/lat ring (even-odd rule), as scripts/satellite/common.py."""
+    lon, lat = np.broadcast_arrays(np.asarray(lon, dtype=np.float64), np.asarray(lat, dtype=np.float64))
+    out = np.zeros(lon.shape, bool)
+    for i in range(len(ring)):
+        x0, y0 = ring[i]
+        x1, y1 = ring[(i + 1) % len(ring)]
+        if y0 == y1:
+            continue
+        out ^= ((y0 > lat) != (y1 > lat)) & (lon < (x1 - x0) * (lat - y0) / (y1 - y0) + x0)
     return out
 
 
@@ -106,9 +123,26 @@ def partition(transform, shape, stations, block=4):
     lon, lat = pixel_lonlat(transform, shape)
     lon_b = lon.reshape(w // block, block).mean(axis=1)
     lat_b = lat.reshape(h // block, block).mean(axis=1)
-    idx, km = nearest_station(lon_b[None, :], lat_b[:, None], stations)
+    idx, km = station_cells(lon_b[None, :], lat_b[:, None], stations)
     return (np.repeat(np.repeat(idx, block, axis=0), block, axis=1),
             np.repeat(np.repeat(km, block, axis=0), block, axis=1))
+
+
+def station_cells(lon, lat, stations):
+    """Each point's station and its distance: the nearest of the stations
+    without a polygon, except that a station with one (a basin: Strangford
+    Lough inside the Narrows, its tide Killard Point's 100 minutes later) takes
+    every point inside it and none outside, at distance 0."""
+    plain = [k for k, s in enumerate(stations) if not s.get("polygon")]
+    idx, km = nearest_station(lon, lat, [stations[k] for k in plain])
+    idx = np.asarray(plain, dtype=np.int16)[idx]
+    lon, lat = np.broadcast_arrays(lon, lat)
+    for k, s in enumerate(stations):
+        if s.get("polygon"):
+            inside = in_polygon(lon, lat, s["polygon"])
+            idx = np.where(inside, k, idx).astype(np.int16)
+            km = np.where(inside, 0.0, km)
+    return idx, km
 
 
 def pilot_boxes(path=None):
@@ -161,8 +195,14 @@ def build_chunk(cx, cy, cfg, data_dir, work_dir, stations, boxes, method=6):
     levels = {"LAT": 0.0, "MSL": msl[idx], "MHW": mhw[idx]}
     ceiling = ceil[idx]
     print(f"chunk {cx},{cy}: {width}×{height} px")
+    drawn = np.where(km <= cfg["maxStationKm"], idx, -1).astype(np.int16)
+    # A LiDAR on a land datum is brought to each pixel's station's LAT (none: NaN, not taken).
+    offset = {k: np.array([np.nan if s[k] is None else s[k] for s in stations], dtype=np.float32)[idx]
+              for k in ("odMalin", "odBelfast")}
+    offset = {"MALIN": offset["odMalin"], "BELFAST": offset["odBelfast"]}
     z, wet_at_lat, bathy, above_mhw, used, hints = build.merge_sources(cfg["sources"], cfg, data_dir, transform, shape,
-                                                                       offset=0.0, levels=levels)
+                                                                       offset=offset, levels=levels,
+                                                                       regions=(drawn, [s["id"] for s in stations]))
     result = {"chunk": [cx, cy], "regions": {}}
     if used:
         lat_mid = build.grid_lonlat_bounds(transform, shape)
@@ -233,6 +273,31 @@ def build_chunk(cx, cy, cfg, data_dir, work_dir, stations, boxes, method=6):
     summary = {r: (len(v["tiles"]), v["pixels"]) for r, v in result["regions"].items()}
     print(f"chunk {cx},{cy}: {summary} in {time.time() - t0:.0f} s", flush=True)
     return cx, cy, summary
+
+
+def affected_chunks(cfg, data_dir, old_path, new_path=None, step=64):
+    """The chunks whose regions change between two stations files: where any
+    pixel of the chunk or its margin (sampled every `step` px at z`maxzoom`)
+    takes another station, or another station's levels, or comes into or out
+    of reach. Adding stations (Northern Ireland's) needs only these rebuilt."""
+    old, new = load_stations(cfg, old_path), load_stations(cfg, new_path)
+    key = {"old": [(s["id"], s["msl"], s["mhw"], s["ceiling"]) for s in old],
+           "new": [(s["id"], s["msl"], s["mhw"], s["ceiling"]) for s in new]}
+    size, zmax, zc, m = cfg["tileSize"], cfg["maxzoom"], cfg["chunkZoom"], cfg["marginTiles"]
+    k = 2 ** (zmax - zc)
+    out = []
+    for cx, cy in chunk_list(cfg, data_dir):
+        transform, width, height = build.tile_grid(cx * k - m, cx * k + k - 1 + m, cy * k - m, cy * k + k - 1 + m,
+                                                   zmax, size)
+        lon, lat = pixel_lonlat(transform, (height, width))
+        lon, lat = lon[step // 2::step], lat[step // 2::step]
+        got = {}
+        for name, sts in (("old", old), ("new", new)):
+            idx, km = station_cells(lon[None, :], lat[:, None], sts)
+            got[name] = [key[name][i] if d <= cfg["maxStationKm"] else None for i, d in zip(idx.ravel(), km.ravel())]
+        if got["old"] != got["new"]:
+            out.append((cx, cy))
+    return out
 
 
 def _worker(job):
@@ -370,6 +435,8 @@ def assemble(cfg, work_dir, out_dir, method=6, data_dir=None):
             "id": rid, "kind": "region", "name": f"Coast on the {st['name']} tide", "url": f"{rid}.pmtiles",
             "bounds": bbox, "minzoom": zmin, "maxzoom": cfg["maxzoom"], "tileSize": size,
             "station": sid, "stationLonLat": [st["lon"], st["lat"]], "dryCeilingMetres": st["ceiling"],
+            # A basin's outline: the client gives it every point inside, whichever station is nearer.
+            **({"polygon": st["polygon"]} if st.get("polygon") else {}),
             "sources": src_meta,
             "stats": {"tiles": len(tiles), "bytes": os.path.getsize(path), "pixels": g["pixels"],
                       "intertidalPixels": g["intertidal"], "unsurveyedPixels": g["unsurveyed"]},
@@ -423,18 +490,22 @@ def main():
     p.add_argument("--data", required=True)
     p.add_argument("--work", required=True)
     p.add_argument("--config")
-    p.add_argument("step", choices=["chunks", "assemble", "index", "list"])
+    p.add_argument("step", choices=["chunks", "assemble", "index", "list", "affected"])
     p.add_argument("--jobs", type=int, default=4)
     p.add_argument("--only", action="append", help="x,y of a chunk (z chunkZoom); repeatable")
     p.add_argument("--force", action="store_true", help="rebuild chunks already built")
     p.add_argument("--method", type=int, default=6, help="WebP effort, 0-6 (lossless either way)")
     p.add_argument("--out")
     p.add_argument("--pilots", help="build.py's --out (pilots.json and the pilot archives)")
+    p.add_argument("--was", help="affected: the stations.json before (git show <rev>:scripts/foildepth/stations.json)")
     a = p.parse_args()
     cfg = load_config(a.config)
     if a.step == "list":
         chunks = chunk_list(cfg, a.data)
         print(len(chunks), chunks)
+    elif a.step == "affected":
+        chunks = affected_chunks(cfg, a.data, a.was)
+        print(len(chunks), " ".join(f"--only {x},{y}" for x, y in chunks))
     elif a.step == "chunks":
         only = [tuple(int(v) for v in o.split(",")) for o in a.only] if a.only else None
         run_chunks(cfg, a.data, a.work, a.jobs, only, a.method, a.force)

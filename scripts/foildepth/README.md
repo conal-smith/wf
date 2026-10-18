@@ -23,12 +23,13 @@ elevation archives. The tide makes it dynamic in the browser:
 
 Two kinds of archive:
 
-- **33 national regions** (`national.py`, `national.json`): the whole coast,
-  cut into one region per tide station of `public/marine/tides.json` (the
-  station's Voronoi cell), z6–13, from EMODnet's DTM and satellite waterlines,
-  INFOMAR's merged 10 m inshore grid, and the Sentinel-2 intertidal heights
-  of the national satellite run along the whole coast (below). Each is drawn
-  with its own station's tide.
+- **42 national regions** (`national.py`, `national.json`): the whole coast,
+  Northern Ireland's included, cut into one region per tide station of
+  `public/marine/tides.json` (the station's Voronoi cell; Strangford Lough's
+  a polygon), z6–13, from EMODnet's DTM and satellite waterlines, INFOMAR's
+  merged 10 m inshore grid, the Sentinel-2 intertidal heights of the national
+  satellite run along the whole coast (below), and in the north the JIBS
+  survey and OSNI's LiDAR. Each is drawn with its own station's tide.
 - **3 pilot areas** (`build.py`, `areas.json`): Dublin north, its Malahide
   lagoon basin, and Brandon Bay, z10–14, with LiDAR and the individual
   INFOMAR surveys besides (Dublin: the Sentinel-2 heights). They win where
@@ -270,9 +271,9 @@ behind Kilrush, the Fergus behind Lahinch, Rogerstown behind Skerries, …).
 A basin's heights are its own lagged tide's levels, in its station's datum
 and amplitude, so they are bed heights like any other; the files sort before
 their parent's, which writes the basin as another region's water, so each
-pixel takes one. (Killard's and Strangford's regions, in Northern Ireland,
-are converted too; no foil region reaches them.) The map draws a basin with
-its station's tide, not the lagged one: see "What is missing".
+pixel takes one. The map draws a basin with its station's tide, not the
+lagged one: see "What is missing". Northern Ireland's six regions come from
+the set cut again on 18 October (below).
 
 The map draws the heights only as part of these archives. Until this build,
 a separate overlay drew the intertidal archives over the foil layer from
@@ -292,7 +293,14 @@ has the bed more than 1.5 m under the lowest tide seen, they are raised to
 it. (The national set writes "dry in every look" over whole blocks of open
 sea it could not read, off the Aran Islands, Achill and Inishbofin; raised to
 the top of the tide, their soundings drew those blocks as sand on the
-zoomed-out chart.) It **yields** to a sonar or
+zoomed-out chart.) The waterlines' interpolated surface is not a survey:
+wherever the satellite saw a pixel wet in every look, at any distance, and the
+waterlines put it over the lowest tide seen, their surface goes, and what was
+under it (EMODnet) stands if it is under that tide, else the bed is estimated
+under it from the heights round it. (Built so since the Northern Ireland
+regions of 18 October, and only in the chunks built since: EMODnet's lines
+off Islandmagee drew the sea at Browns Bay, 3–7 m deep, as a flat drying at
+half tide, then, held under the lowest tide seen, as barely covered.) It **yields** to a sonar or
 bathymetric LiDAR survey that has the bed more than 1.5 m under it (a 10 m
 pixel across a wall or a cliff's foot, as round Howth Head), or more than
 0.5 m under it at the bottom of the tides seen, where the method reads high.
@@ -324,14 +332,22 @@ pilot found (it said 0.7–1 m), and are gone wherever the satellite has a
 height.
 
 **Northern Ireland.** The national run also writes regions on Northern
-Ireland's own stations, where no Marine Institute station is within 45 km
-(the published set has Killard Point's and Strangford Lough's; its rebuild
-wrote none for Portrush, Ballycastle, Larne or Bangor). The foil layer does
-not draw them: it needs a tide curve per station in `public/marine/tides.json`
-(the ingest has none for them; the satellite run fitted EOT20 to the open
-Bangor and Portrush gauges and gives the fit in its index), and the regions
-there would need the foil build's other sources (INFOMAR does not reach
-them; EMODnet does). They are converted with the rest and sit unused.
+Ireland's own stations (`scripts/satellite/stations_ni.json`: Portrush,
+Ballycastle, Larne, Bangor, Killard Point and Strangford Lough). The 15
+October rebuild wrote no heights for the first four and only part of the
+last two: its station numbers were stale after the basin stations were added
+(`scripts/satellite/README.md`, "Published"). They were cut again on 18
+October from the same composed tiles (`intertidal/v293c9dd4de9c/`). The foil
+regions there are drawn on the site's own stations of the same names
+(`force5/ingest/tides_ni.py`), plus Portavogie, Ardglass and Dundrum Bay,
+whose cells take the satellite's Bangor and Killard heights moved to the
+same stage of their own tide (`read_satellite`'s `regions`, `to_station`).
+The satellite run's Bangor and Portrush levels were the UK gauges' chart
+datum; the site's stations' LAT is their constants' 18.6-year lowest, 0.142
+and 0.158 m over chart datum, so those heights come down by that much (the
+files' `DATUM` tag, stations.json `chartDatumAboveLatMetres`). Its other
+stations' datum was EOT20's own 19-year lowest at the same points as the
+site's stations, within a few millimetres of theirs.
 
 ## How the map uses it
 
@@ -357,7 +373,7 @@ them; EMODnet does). They are converted with the rest and sit unused.
 - `src/useFoilDepth.ts`: loads `index.json` (from the site) the first time
   the layer is on, and the tide curve (`tideForStation` in
   `force5/src/tides.ts`) of each station whose area comes into view, once,
-  never all 33 up front. `foilArchiveUrl` puts an archive under the index's
+  never all 42 up front. `foilArchiveUrl` puts an archive under the index's
   `base` on the data host (`forecastUrl`, `force5/src/urls.ts`).
 - `src/App.tsx`: the areas over the chart's view (`areasInView`), the water
   level at the dock's selected column (`tideAt`, and a basin's
@@ -396,14 +412,21 @@ them; EMODnet does). They are converted with the rest and sit unused.
 ## The national regions
 
 The coast is cut by tide station: every pixel belongs to its nearest station
-of `public/marine/tides.json` (the 33 the site already publishes curves for),
-decided per 4×4 pixels on the global z13 grid so a pixel gets the same answer
-in any chunk, and is left out if it is further than 45 km from all of them
-(`maxStationKm`). Each region is one archive, z6–13 (512 px tiles: ~5.8 m a
+of `public/marine/tides.json` (the Marine Institute's 33 and the site's own
+nine in Northern Ireland), decided per 4×4 pixels on the global z13 grid so a
+pixel gets the same answer in any chunk, and is left out if it is further than
+45 km from all of them (`maxStationKm`). A station with a polygon (Strangford
+Lough inside the Narrows) takes every pixel inside it and none outside
+(`station_cells`), and the index carries the polygon so a tap reads the same
+region. Each region is one archive, z6–13 (512 px tiles: ~5.8 m a
 pixel at z13, 53°N; z6–9 are overviews, the mean of the heights under each
 pixel, so the coast shows on the all-Ireland view), drawn on its own
 station's curve with its own ramp. A point is read from the region whose
 station is nearest (`stationLonLat` in the index), as the cells were cut.
+
+Northern Ireland's levels come from the site's own predictions over the same
+three years (`fetch_national.py tides-ni`, `force5/ingest/tides_ni.py
+levels`), in each station's own LAT.
 
 Each region's levels are its station's, from three years (2026–2028) of the
 Marine Institute's predictions, aggregated on ERDDAP by `fetch_national.py
@@ -420,59 +443,75 @@ years fall a few centimetres short of the 18.6-year nodal cycle's HAT).
 | --- | --- | --- | --- | --- | --- |
 | `tide-achill-island` | Achill Island | 2.43 / 3.77 / 4.69 | 5.0 | 131 | 2.11 MB |
 | `tide-aranmore` | Aranmore | 2.22 / 3.43 / 4.50 | 4.8 | 118 | 2.04 MB |
+| `tide-ardglass` | Ardglass | 3.17 / 4.90 / 6.21 | 6.6 | 26 | 0.20 MB |
 | `tide-arklow` | Arklow | 0.89 / 1.15 / 1.64 | 2.0 | 80 | 0.51 MB |
+| `tide-ballycastle` | Ballycastle | 0.61 / 0.89 / 1.27 | 1.6 | 115 | 0.74 MB |
 | `tide-ballycotton` | Ballycotton | 2.34 / 3.78 / 4.57 | 4.9 | 50 | 0.59 MB |
 | `tide-ballyglass` | Ballyglass | 2.17 / 3.33 / 4.36 | 4.7 | 171 | 2.45 MB |
+| `tide-bangor` | Bangor | 2.05 / 3.20 / 4.07 | 4.4 | 70 | 0.99 MB |
 | `tide-bray-harbour` | Bray Harbour | 2.19 / 3.45 / 4.27 | 4.6 | 60 | 0.27 MB |
-| `tide-buncranna` | Buncranna | 2.44 / 3.77 / 4.96 | 5.3 | 202 | 3.51 MB |
+| `tide-buncranna` | Buncranna | 2.44 / 3.77 / 4.96 | 5.3 | 187 | 3.25 MB |
 | `tide-castletownbere` | Castletownbere | 1.93 / 3.08 / 3.84 | 4.2 | 256 | 2.76 MB |
 | `tide-clare-island` | Clare Island | 2.51 / 3.90 / 4.83 | 5.2 | 66 | 0.84 MB |
 | `tide-crosshaven` | Crosshaven | 2.06 / 3.36 / 4.09 | 4.4 | 34 | 0.21 MB |
 | `tide-dingle` | Dingle | 2.28 / 3.55 / 4.47 | 4.8 | 163 | 1.55 MB |
 | `tide-dublin-port` | Dublin Port | 2.47 / 3.82 / 4.66 | 5.0 | 6 | 0.02 MB |
+| `tide-dundrum-bay` | Dundrum Bay | 3.17 / 4.89 / 6.21 | 6.6 | 82 | 0.96 MB |
 | `tide-dungarvan` | Dungarvan | 2.15 / 3.44 / 4.20 | 4.5 | 63 | 0.61 MB |
 | `tide-dunmore` | Dunmore | 2.38 / 3.77 / 4.59 | 4.9 | 74 | 0.98 MB |
 | `tide-fenit` | Fenit | 2.76 / 4.28 / 5.42 | 5.8 | 82 | 1.15 MB |
 | `tide-galway` | Galway | 3.00 / 4.61 / 5.79 | 6.1 | 77 | 1.64 MB |
 | `tide-howth` | Howth | 2.52 / 3.95 / 4.86 | 5.2 | 11 | 0.02 MB |
+| `tide-killard` | Killard Point | 3.15 / 4.88 / 6.18 | 6.5 | 29 | 0.38 MB |
 | `tide-killybegs` | Killybegs | 2.30 / 3.53 / 4.63 | 5.0 | 154 | 1.92 MB |
 | `tide-kilrush` | Kilrush | 2.96 / 4.56 / 5.67 | 6.0 | 176 | 2.56 MB |
 | `tide-kinsale` | Kinsale | 2.01 / 3.29 / 4.00 | 4.3 | 68 | 0.66 MB |
 | `tide-lahinch` | Lahinch | 2.68 / 4.20 / 5.17 | 5.5 | 106 | 1.25 MB |
+| `tide-larne` | Larne | 1.86 / 2.85 / 3.62 | 4.0 | 66 | 0.64 MB |
 | `tide-letterfrack` | Letterfrack | 2.51 / 3.90 / 4.83 | 5.2 | 164 | 2.70 MB |
-| `tide-malin-head` | Malin Head | 2.12 / 3.21 / 4.20 | 4.5 | 110 | 1.13 MB |
-| `tide-port-oriel` | Port Oriel | 2.95 / 4.65 / 5.72 | 6.1 | 139 | 2.11 MB |
+| `tide-malin-head` | Malin Head | 2.12 / 3.21 / 4.20 | 4.5 | 77 | 0.73 MB |
+| `tide-port-oriel` | Port Oriel | 2.95 / 4.65 / 5.72 | 6.1 | 104 | 1.54 MB |
+| `tide-portavogie` | Portavogie | 2.87 / 4.46 / 5.64 | 6.0 | 37 | 0.43 MB |
+| `tide-portrush` | Portrush | 1.24 / 1.81 / 2.43 | 2.8 | 80 | 0.99 MB |
 | `tide-ringaskiddy` | Ringaskiddy | 2.29 / 3.78 / 4.54 | 4.9 | 55 | 0.77 MB |
 | `tide-roonagh` | Roonagh | 2.48 / 3.81 / 4.83 | 5.2 | 82 | 1.72 MB |
 | `tide-rossaveel` | Rossaveel | 2.81 / 4.35 / 5.49 | 5.8 | 169 | 3.59 MB |
 | `tide-rosslare` | Rosslare | 1.13 / 1.73 / 2.26 | 2.6 | 65 | 0.54 MB |
 | `tide-skerries` | Skerries | 2.87 / 4.47 / 5.47 | 5.8 | 40 | 0.48 MB |
 | `tide-sligo` | Sligo | 2.30 / 3.56 / 4.67 | 5.0 | 145 | 2.22 MB |
-| `tide-tory-island` | Tory Island | 2.30 / 3.60 / 4.56 | 4.9 | 100 | 1.35 MB |
+| `tide-strangford` | Strangford Lough (Killard Point +100 min) | 3.15 / 4.88 / 6.18 | 6.5 | 68 | 1.48 MB |
+| `tide-tory-island` | Tory Island | 2.30 / 3.60 / 4.56 | 4.9 | 95 | 1.25 MB |
 | `tide-union-hall` | Union Hall | 1.93 / 3.21 / 3.93 | 4.3 | 119 | 1.54 MB |
 | `tide-wexford` | Wexford | 0.89 / 1.46 / 1.97 | 2.3 | 88 | 0.76 MB |
 
 Howth's and Dublin Port's regions are small because the Dublin pilot covers
-most of their cells from z10 up. The live set (`foildepth/vec09f9fbdb11/`,
-18 October 2026, `public/foildepth/index.json`) is 36 archives and its
-index: the regions 46.5 MB, the pilots 6.1 MB (dublin-north 2.45, brandon
-3.57, malahide-lagoon 0.06 MB), the index 48 kB; with the bathymetry
-(`bathy/v7a4f9286f579/`, 11.5 MB), 38 objects and 64 MB in the bucket. It
-is the 17 October set (`foildepth/vb597fbba2f1c/`) with the pilots rebuilt
-and the six regions whose chunks take the pilots' grids (Howth, Dublin Port,
-Skerries, Bray, Fenit, Dingle) built again; the other 27 regions are the same
-bytes. The sets before it (`vb597fbba2f1c/`, and `vb2f7a0ca40ae/`, 12
-October, three flat classes drawn pixel by pixel) stay in the bucket for any
-page still holding their index. A visitor fetches only the tiles in view,
+most of their cells from z10 up. Northern Ireland's levels are over each
+station's own LAT (its constants' 18.6-year lowest); Strangford Lough is
+Killard Point's curve 100 minutes later. The live set
+(`foildepth/va75bf93693c2/`, 18 October 2026, `public/foildepth/index.json`)
+is 45 archives and its index: the regions 52.0 MB, the pilots 6.1 MB, the
+index 68 kB. It is the pilots' set of the same day (`foildepth/vec09f9fbdb11/`:
+the pilots rebuilt, and Howth, Dublin Port, Skerries, Bray, Fenit and Dingle
+built again) with Northern Ireland's nine regions added and the four whose
+chunks the new stations or sources reach (Buncranna, Malin Head, Tory Island,
+Port Oriel) built again; the other 29 regions and the pilots are the same
+bytes. The sets before it (`vec09f9fbdb11/`, `vb597fbba2f1c/`, and
+`vb2f7a0ca40ae/`, 12 October, three flat classes drawn pixel by pixel) stay
+in the bucket for any page still holding their index. A visitor fetches only the tiles in view,
 from R2 by range.
 
-### National sources (all CC BY 4.0), in order of trust
+### National sources (CC BY 4.0, and in Northern Ireland OGL v3), in order of trust
 
 1. **EMODnet Bathymetry DTM 2024** (`emodnet:mean`, 1/16′ ≈ 115 m), fallback,
    fetched in 1° tiles; its intertidal 0 fill dropped, and the cells its
    source references (`emodnet:source_references`, release 2024) give to
    GEBCO dropped too (`gebco2024.json`, 230 polygons over Ireland, fetched with
-   a CQL filter).
+   a CQL filter), except where GEBCO has them deeper than 10 m
+   (`keepDeeperThan`, national.json's notes): deep water, drawn as nothing.
+   EMODnet's 2024 DTM fills most of Northern Ireland's inshore water from
+   GEBCO (in one chunk off Larne, 58% of the grid); with all of it dropped,
+   the sea a kilometre off the Antrim coast and round the Maidens, 20–90 m
+   deep, was estimated from the beaches as shallow, or as drying.
 2. **EMODnet satellite-derived waterlines** (`emodnet:coastlines`, LAT, MSL,
    MHW): fetched in 0.25° boxes over every box where the DTM shows the coast,
    quartered where the WFS's 1000-feature cap was hit (Strangford, Clew Bay),
@@ -489,12 +528,52 @@ from R2 by range.
    boxes, 875 MB. It merges multibeam and bathymetric LiDAR (2002–2025), so it
    has the shallows and lower beaches wherever INFOMAR has flown; behind the
    satellite MHW line its land returns are kept only up to MHW + 0.5 m.
-4. **The pilot areas' merged grids** (below), where they are.
+4. **INFOMAR's JIBS grid** (`fetch_national.py surveys`): the Joint Irish
+   Bathymetric Survey of 2007–08, multibeam, as GSI publishes it, a 10 m XYZ
+   of the north coast from Inishowen to Torr Head (14.9 million soundings,
+   LAT, positive up, gridded on its own 0.000099° spacing). Its Northern
+   Ireland side (the Maritime and Coastguard Agency's survey HI1240, OGL) is
+   in no merged grid; on the Irish side, where the merged grid has it too, they
+   agree (median 0.00 to 0.06 m). It goes under the merged grid. Its shallowest
+   sounding is −0.9 m: the seabed off Portstewart, Portrush, Whitepark Bay and
+   Ballycastle, not their beaches.
+5. **INFOMAR's 2008 bathymetric LiDAR of Lough Foyle**, 5 m, LAT: the merged
+   grid has it at 10 m (the same heights, median 0.00 m, interquartile
+   ±0.03 m), so this goes over it for the flats' detail.
+6. **OSNI's river-basin LiDAR** (`fetch_national.py osni-lidar`; OSNI Open
+   Data, Land & Property Services, OGL v3), 0.5–1 m DTMs of the flood-study
+   areas, 2007–2012, Irish Grid, heights above OD Belfast, made into 2 m
+   mosaics: the twelve areas that reach the shore (Coleraine–Portstewart–
+   Portrush, Ballycastle, Cushendall, Ballygalley, Larne, Carrickfergus, Bangor
+   and its 2012 extension, Newtownards, Killyleagh, Downpatrick, Newcastle). A
+   topographic LiDAR sees the sea's surface where the sea was: each 1 km
+   tile's level is read off its returns over EMODnet's always-wet cells (the
+   densest 10 cm of them, if it holds a quarter: Bangor's 2007 flight saw the
+   sea at −0.9 to −1.5 m OD, near low water; Portrush's at +0.1 to +0.2 m),
+   else the nearest tile's within 3 km, else +2.3 m OD (over mean high water
+   springs anywhere on this coast), and everything at or under it plus 0.1 m
+   is left out (`<flight>.json` records each tile's). Brought to each pixel's
+   station's LAT with its `odBelfastOffsetMetres` (national.json's
+   `landDatums`). It goes under the satellite, which leads in its band: the
+   LiDAR adds the upper beaches over the highest tide the satellite saw, and
+   the foreshore where it saw none. Against the satellite at Ballyholme
+   (27,412 pixels), the satellite reads 0.25 m over it at the median
+   (interquartile −0.06 to +0.56), about 0.3 m over it from 0 to 3 m LAT;
+   round Strangford's north end (83,814) +0.28 m (interquartile +0.19 to
+   +0.38). Round Dublin the satellite reads within 0.1 m of the OPW LiDAR, so
+   either the satellite's Northern Ireland tides (the gauges' fit, EOT20) or
+   the OSNI flights' datum is off by about 0.3 m; nothing open here says which.
+7. **The pilot areas' merged grids** (below), where they are.
 
 Attribution: "Contains Irish Public Sector Data (Geological Survey Ireland &
 Marine Institute) licensed under CC BY 4.0"; "EMODnet Bathymetry Consortium:
 EMODnet Digital Bathymetry (DTM 2024) and coastlines"; "Tidal predictions ©
-Marine Institute, CC BY 4.0".
+Marine Institute, CC BY 4.0"; in Northern Ireland "Contains public sector
+information licensed under the Open Government Licence v3.0 (OSNI Open Data,
+Land & Property Services: River Basin LiDAR)", "Contains Maritime &
+Coastguard Agency data © Crown copyright" (JIBS's HI1240), and the site's
+own tide predictions from the Environment Agency's gauges (OGL v3) and EOT20
+(DGFI-TUM, CC BY 4.0).
 
 ### Coverage
 
@@ -506,13 +585,23 @@ Marine Institute, CC BY 4.0".
   Harbours, Dundalk Bay and Carlingford Lough. INFOMAR's 10 m grid covers
   most bays (multibeam and LiDAR); the open coast between them and the
   smaller inlets have only EMODnet's DTM and the waterlines.
-- **Northern Ireland**: EMODnet's DTM and waterlines reach it, INFOMAR's grid
-  does not (only Lough Foyle and Carlingford, shared). But no station in
-  tides.json is near most of it, and the tide there is not like any nearby
-  one (a degenerate amphidrome off Antrim, Strangford's narrows), so only
-  Lough Foyle (Buncranna, Malin Head), Carlingford Lough and the Mourne coast
-  to about Annalong (Port Oriel) are drawn. Portrush round to Dundrum Bay,
-  Belfast Lough and Strangford Lough wait for a station.
+- **Northern Ireland**: the whole coast, Lough Foyle round to Carlingford
+  Lough, on the site's own nine stations (`force5/ingest/tides_ni.py`) and the
+  Marine Institute's Malin Head, Buncranna and Port Oriel: Portrush (Benone,
+  Portstewart, Portrush, Portballintrae), Ballycastle (the Giant's Causeway to
+  Torr Head and Rathlin), Larne (the Antrim coast, Larne Lough, Islandmagee
+  and Browns Bay, Carrickfergus), Bangor (Belfast Lough, Ballyholme,
+  Donaghadee, Millisle), Portavogie (the Ards coast to Kearney), Strangford
+  Lough inside the Narrows (a polygon: Newtownards, Comber, Killyleagh, the
+  Quoile), Killard Point (the Narrows, Killard, Ballyhornan), Ardglass
+  (Killough, St John's Point), Dundrum Bay (Tyrella, Dundrum, Newcastle,
+  Annalong, Kilkeel) and Port Oriel (Cranfield and Carlingford Lough). INFOMAR's merged grid
+  reaches only Lough Foyle; the north coast has JIBS's 10 m multibeam out
+  from about the 1 m line; elsewhere the seabed is EMODnet's (mostly GEBCO's
+  fill: deep water only, above), the foreshore the satellite's, and OSNI's
+  LiDAR where its twelve flood-study areas reach the shore. Lough Neagh and
+  the other lakes are fresh water: no tide, nothing drawn (OSM has them as
+  lakes, not tidal water).
 
 ## The pilot areas: sources (all CC BY 4.0)
 
@@ -729,8 +818,41 @@ Nationally:
   each flight needs its water level checked (`waterLevelLat`); left for
   later. It would add the upper foreshore and beaches that INFOMAR's grid
   leaves to the waterlines.
-- **Northern Ireland's east and north coasts** wait for a tide station
-  (above). EMODnet's data is there; the UK's own predictions are not open.
+- **Northern Ireland's surveys are not open enough.** The UK Hydrographic
+  Office holds 2 m multibeam of nearly the whole coast under the Open
+  Government Licence (the Civil Hydrography Programme's HI1811 of 2024–25,
+  Lough Foyle to Carlingford; HI1745, HI1747 Dundrum Bay, HI1377 and HI1353;
+  Belfast Lough's port surveys at 1 m), but its seabed mapping service
+  (seabed.admiralty.co.uk) gives the files only to a signed-in account
+  (`POST …/api/features` answers 401 without one; the index,
+  `GET …/api/featuremetadata`, is open). With an account they would replace
+  EMODnet's 115 m cells round the whole coast, Belfast Lough and Strangford
+  included: the next step. EMODnet's DTM there is mostly GEBCO's fill
+  (`keepDeeperThan` above), so between the beaches and the 10 m line the bed
+  is the satellite's and an estimate. DAERA's 2021 coastal survey (0.25 m
+  topographic LiDAR of the whole intertidal, satellite-derived bathymetry to
+  8–11 m, bathymetric LiDAR of Dundrum Bay, all OGL) is published only as
+  colour tile services and I3S point clouds, with no stated vertical datum;
+  the source grids would be worth asking DAERA for.
+- **Northern Ireland's tides are our own**: Portrush and Bangor fitted to a
+  month of the Environment Agency's gauges, the rest EOT20 at a point
+  (`scripts/tides`). EOT20's cells off the Down coast are 14 km across, so
+  Portavogie, Killard Point, Ardglass and Dundrum Bay are nearly one curve
+  (HAT 6.2 m, MSL 3.15 m over its own LAT at Killard, where the Admiralty's
+  secondary-port figures give MSL about 2.5 m over chart datum: the model's
+  range there looks too large). The satellite's heights were measured against
+  the same curve, so the foreshore's depths hold; EMODnet's soundings and the
+  LiDAR are brought in on the chart's or OD's own levels, so under the low
+  tides the Down coast's depths may be some tenths of a metre off.
+- **Strangford Lough** is drawn on Killard Point's tide 100 minutes later at
+  Killard's range: no open gauge inside the Narrows says how much smaller the
+  lough's range is. The satellite saw its flats dry no lower than 1.0 m over
+  that LAT, so the lough's lower flats and channels are the band under the
+  lowest tide seen (estimated, held under 0.75 m). Its basins (Killard_LAG1 in
+  inner Dundrum Bay, Killard_LAG2 at the Narrows' inner end, Strangford_LAG1)
+  are drawn on their region's tide, not their own lag.
+- **The satellite and OSNI's LiDAR disagree by about 0.3 m** in Northern
+  Ireland (above); which is off is not known.
 - **One tide per station cell**: the cells are straight-line Voronoi, so a
   bay can take the tide of a station across a peninsula (Bantry's head is on
   Union Hall's, not Castletownbere's), and a long estuary its mouth's
@@ -766,7 +888,13 @@ under `/Volumes/workdrive/foildepth-gradient/` (`data/`, `work/`, `out/`,
 `pilot-data/` there (1.8 GB: the downloads, 873 MB, and what is cut from
 them), with `manifest.json` naming every download's URL, size and SHA-256.
 The 18 October set was built from `data-rebuild/` (`data/` with the new
-pilot grids), `work-rebuild/`, `pilots-rebuild/` and `out-rebuild/`. Python 3 with
+pilot grids), `work-rebuild/`, `pilots-rebuild/` and `out-rebuild/`.
+Northern Ireland's (also 18 October) is under `/Volumes/workdrive/foildepth-ni/`:
+`data/` (links to the national data, with its own `satellite/` and
+`infomar-surveys/` and `osni-lidar/` from `data-dl/`), `work/` (the 17
+October chunks with the 46 round Northern Ireland built again), `out/`,
+`set/` (what was published), and `satellite/` (the satellite run's seven
+tiles restationed, and the intertidal set cut again). Python 3 with
 numpy, scipy, rasterio, pyproj, pillow and pmtiles, and boto3 to upload (a
 scratch venv is fine); run it isolated (`python -I`).
 
@@ -794,7 +922,10 @@ Both the pilots' and the regions' data directories need `osm/` and
 
 ```sh
 N=/Volumes/workdrive/foildepth-gradient
-python -I fetch_national.py --data $N/data --tides-json ../../public/marine/tides.json   # tides, emodnet, coastlines, infomar
+python -I fetch_national.py --data $N/data --tides-json ../../public/marine/tides.json   # tides, emodnet, coastlines, infomar, surveys, osni-lidar
+# tides-ni: Northern Ireland's stations alone (force5/ingest/tides_ni.py), the Marine Institute's kept
+# A change of stations needs only the chunks it touches rebuilt (and those under a new source's files):
+python -I national.py --data $N/data --work $N/work affected --was <the stations.json before>   # prints --only x,y ...
 python -I national.py --data $N/data --work $N/work chunks --jobs 3   # resumable; --only x,y --force for one
 python -I national.py --data $N/data --work $N/work assemble --out $N/out
 ```

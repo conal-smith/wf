@@ -26,8 +26,10 @@ The form: a GeoTIFF in any CRS, two bands,
    (under the lowest tide seen), 3 never seen wet (over the highest);
 
 and tags `STATION`, `LOWEST_TIDE_SEEN` and `HIGHEST_TIDE_SEEN` (the tides
-as they were, metres above LAT) and `BIAS_APPLIED` (what was added to the
-heights, which the build adds to the tides seen as well).
+as they were, metres above LAT), `BIAS_APPLIED` (what was added to the
+heights, which the build adds to the tides seen as well) and `DATUM` ("LAT",
+or "chart datum" where the station's levels were a UK gauge's: Bangor and
+Portrush, moved to the site's station's LAT by the build).
 
     python -I satellite.py from-archives --set <intertidal set> --out <data>/satellite
     python -I satellite.py from-rockspilot --heights <out>/dublin/dublin-heights.tif \\
@@ -62,10 +64,12 @@ def flags_from_rockspilot(intertidal, state, wet_frequency, n_valid, min_valid=3
     return flag
 
 
-def write(path, height, flag, profile, station, low, high, source, bias=0.0):
+def write(path, height, flag, profile, station, low, high, source, bias=0.0, datum="LAT"):
     """One file in the form the builds read: the heights with `bias` already
     added (the method's offset against LiDAR, negative), the flags, and the
-    tides seen as they were (the build adds BIAS_APPLIED to them too)."""
+    tides seen as they were (the build adds BIAS_APPLIED to them too). `datum`
+    is the station's levels' ("chart datum" for one fitted to a UK gauge's
+    levels, which the build moves to the station's LAT)."""
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     prof = dict(profile)
     prof.update(driver="GTiff", count=2, dtype="float32", nodata=None, compress="deflate",
@@ -74,7 +78,7 @@ def write(path, height, flag, profile, station, low, high, source, bias=0.0):
         dst.write(np.where(flag == HEIGHT, height, np.nan).astype(np.float32), 1)
         dst.write(flag.astype(np.float32), 2)
         dst.update_tags(STATION=station, LOWEST_TIDE_SEEN=f"{low:.3f}", HIGHEST_TIDE_SEEN=f"{high:.3f}",
-                        BIAS_APPLIED=f"{bias:.3f}", SOURCE=source)
+                        BIAS_APPLIED=f"{bias:.3f}", SOURCE=source, DATUM=datum)
         dst.set_band_description(1, "height_m_LAT")
         dst.set_band_description(2, "flag_0none_1height_2neverdry_3neverwet")
     counts = {k: int((flag == v).sum()) for k, v in (("height", HEIGHT), ("neverDry", NEVER_DRY), ("neverWet", NEVER_WET))}
@@ -150,8 +154,10 @@ def from_archives(a):
         profile = {"width": w, "height": h, "crs": "EPSG:3857",
                    "transform": from_origin(-earth / 2 + x0 * span, earth / 2 - y0 * span, span / size, span / size)}
         flag = flags_from_archive(v, index)
+        # Bangor's and Portrush's levels are the UK gauges' there, in chart datum.
+        datum = "chart datum" if "chart datum" in (area.get("tide") or {}).get("reference", "") else "LAT"
         write(os.path.join(a.out, area["id"] + ".tif"), v, flag, profile, area["station"],
-              area["lowestSeenMetres"], area["highestSeenMetres"], index.get("attribution", ""), bias)
+              area["lowestSeenMetres"], area["highestSeenMetres"], index.get("attribution", ""), bias, datum)
 
 
 def main():

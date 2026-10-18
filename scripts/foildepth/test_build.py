@@ -67,6 +67,23 @@ class GapFill(unittest.TestCase):
             self.assertFalse(build.gap_fill_mask({"file": "none.json", "release": "2024", "identifiers": ["GEBCO"]},
                                                  d, T, SHAPE).any())
 
+    def test_a_gap_fill_well_deeper_than_the_floor_is_kept(self):
+        dtm = np.full(SHAPE, -3.0, np.float32)
+        dtm[:, 50:] = -25.0
+        gap = np.zeros(SHAPE, bool)
+        gap[:, 40:] = True  # GEBCO's: a shallow strip and the deep water past it
+        with tempfile.TemporaryDirectory() as d:
+            with rasterio_open_w(os.path.join(d, "f.tif"), dtm) as _:
+                pass
+            src = {"name": "f", "kind": "fallback", "files": ["f.tif"],
+                   "gapFill": {"file": "x", "keepDeeperThan": -10}}
+            z = build.read_source(src, d, T, SHAPE[1], SHAPE[0], 0.0, gap)
+            self.assertTrue(np.isnan(z[5, 45]))  # shallow GEBCO: no sounding
+            self.assertEqual(float(z[5, 60]), -25.0)  # deep GEBCO: deep water
+            self.assertEqual(float(z[5, 10]), -3.0)
+            src["gapFill"] = {"file": "x"}
+            self.assertTrue(np.isnan(build.read_source(src, d, T, SHAPE[1], SHAPE[0], 0.0, gap)[5, 60]))
+
 
 class BasinSurface(unittest.TestCase):
     def test_lidar_at_or_under_a_basins_surface_is_water(self):
@@ -250,6 +267,16 @@ class Partition(unittest.TestCase):
         i1, _ = national.partition(t1, (h1, w1), self.STATIONS)
         i2, _ = national.partition(t2, (h2, w2), self.STATIONS)
         np.testing.assert_array_equal(i1[1024:, 1024:], i2[:1024, :1024])
+
+    def test_a_basin_takes_its_polygon_and_nothing_else(self):
+        import national
+        # P's point is nearest at (-6.05, 53.45), but that is outside its polygon;
+        # the polygon's corner near B is P's though B is nearer.
+        ring = [[-6.25, 53.55], [-6.1, 53.55], [-6.1, 53.65], [-6.25, 53.65]]
+        st = self.STATIONS + [{"id": "P", "lon": -6.05, "lat": 53.45, "polygon": ring}]
+        idx, km = national.station_cells(np.array([-6.05, -6.2, -6.11]), np.array([53.45, 53.6, 53.56]), st)
+        self.assertEqual(idx.tolist(), [0, 2, 2])
+        self.assertEqual(km[1:].tolist(), [0.0, 0.0])
 
     def test_region_ids_and_ceilings(self):
         import national
@@ -674,6 +701,36 @@ class Satellite(unittest.TestCase):
             # A lag basin's heights are in its station's terms (Rogerstown's,
             # Skerries_LAG1, reaches into the Dublin box).
             self.assertAlmostEqual(float(build.to_station(np.float32(sk[1]), "Skerries_LAG1", "Howth")), ho[1], places=3)
+
+    def test_each_pixel_is_moved_to_its_own_regions_station_and_a_gauge_to_lat(self):
+        import satellite
+        with tempfile.TemporaryDirectory() as d:
+            z = np.full(SHAPE, 2.75, np.float32)
+            flag = np.ones(SHAPE, np.uint8)
+            prof = {"width": SHAPE[1], "height": SHAPE[0], "crs": "EPSG:3857", "transform": T}
+            satellite.write(os.path.join(d, "satellite", "s.tif"), z - 0.25, flag, prof, "Skerries", 0.86, 5.46,
+                            "test", -0.25)
+            src = {"name": "sat", "kind": "satellite", "files": ["satellite/*.tif"], "featherMetres": 0}
+            idx = np.zeros(SHAPE, np.int16)
+            idx[:, 50:] = 1
+            got = build.read_satellite(src, d, T, SHAPE, regions=(idx, ["Skerries", "Howth"]))
+            self.assertAlmostEqual(float(got[0][50, 10]), 2.5, places=3)  # Skerries' own cell
+            want = build.to_station(np.float32(2.5), "Skerries", "Howth")
+            self.assertAlmostEqual(float(got[0][50, 60]), float(want), places=3)  # Howth's
+            self.assertAlmostEqual(float(got[2][50, 60]), float(build.to_station(np.float32(0.86), "Skerries",
+                                                                                    "Howth")) - 0.25, places=3)
+            # A gauge's chart datum, 0.142 m under the station's LAT.
+            saved = build._stations
+            try:
+                build._stations = {"Bangor": {"name": "Bangor", "mslMetres": 2.05, "mhwMetres": 3.2,
+                                              "chartDatumAboveLatMetres": -0.142}}
+                satellite.write(os.path.join(d, "satellite", "s.tif"), z - 0.25, flag, prof, "Bangor", 0.63, 4.17,
+                                "test", -0.25, "chart datum")
+                got = build.read_satellite(src, d, T, SHAPE)
+                self.assertAlmostEqual(float(got[0][50, 10]), 2.5 - 0.142, places=3)
+                self.assertAlmostEqual(float(got[2][50, 10]), 0.63 - 0.142 - 0.25, places=3)
+            finally:
+                build._stations = saved
 
     def test_a_basins_satellite_heights_are_in_its_own_level(self):
         level = {"floorLat": 3.06, "rangeFactor": 0.6, "lagHours": 1}

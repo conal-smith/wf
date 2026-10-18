@@ -232,13 +232,23 @@ def read_source(src, data_dir, transform, width, height, offset, gap=None):
             out[take] = dest[take]
             used += 1
     if gap is not None:
-        out[gap] = np.nan
+        # A gap-fill cell is no sounding, but where it says the water is
+        # well deeper than the layer's floor it is kept (`keepDeeperThan`):
+        # EMODnet fills most of Northern Ireland's inshore water from GEBCO,
+        # and with all of it dropped the water a kilometre off the Antrim coast
+        # (20-90 m deep) was estimated from the beaches beside it as shallow.
+        deep_enough = src.get("gapFill", {}).get("keepDeeperThan")
+        with np.errstate(invalid="ignore"):
+            drop = gap & ~(out < deep_enough) if deep_enough is not None else gap
+        out[drop] = np.nan
     z = out * float(src.get("scale", 1.0))
     if src.get("positive", "up") == "down":
         z = -z
     datum = src.get("datum", "LAT").upper()
-    if datum == "MALIN":
-        z = z + offset
+    if datum in ("MALIN", "BELFAST"):
+        # The station's LAT height of the land datum: one number for a pilot,
+        # per pixel (each pixel's region's station) for the national build.
+        z = z + (offset[datum] if isinstance(offset, dict) else offset)
     elif datum != "LAT":
         raise ValueError(f"{src['name']}: unknown datum {datum}")
     z += float(src.get("shiftMetres", 0.0))
@@ -340,19 +350,31 @@ def sea_mask(z, ceiling, seed_below, min_pixels):
 _stations = None
 
 
-def station_levels(station):
-    """A tide station's MSL and MHW above LAT (stations.json), by id or name.
-    A lag basin of the national satellite run (`Skerries_LAG1`) takes its
-    station's: its heights are its lagged tide's levels in that station's
-    datum and amplitude."""
+def _station(station):
+    """A station of stations.json, by id or name. A lag basin of the national
+    satellite run (`Skerries_LAG1`) is its station: its heights are its lagged
+    tide's levels in that station's datum and amplitude."""
     global _stations
     if _stations is None:
         with open(os.path.join(HERE, "stations.json")) as fh:
             _stations = json.load(fh)["stations"]
     if station:
         station = re.sub(r"_LAG\d+$", "", station)
-    s = _stations.get(station) or next((v for v in _stations.values() if v["name"] == station), None)
+    return _stations.get(station) or next((v for v in _stations.values() if v["name"] == station), None)
+
+
+def station_levels(station):
+    """A tide station's MSL and MHW above LAT (stations.json), by id or name."""
+    s = _station(station)
     return None if s is None else (s["mslMetres"], s["mhwMetres"])
+
+
+def chart_datum_above_lat(station):
+    """How far a gauge's chart datum is above the station's LAT (stations.json
+    `chartDatumAboveLatMetres`; Northern Ireland's gauges, whose LAT is their
+    constants' 18.6-year lowest): 0 where none is given."""
+    s = _station(station)
+    return float((s or {}).get("chartDatumAboveLatMetres", 0.0))
 
 
 def to_station(z, src_station, dst_station):
@@ -368,7 +390,7 @@ def to_station(z, src_station, dst_station):
     return b[0] + (z - a[0]) * (b[1] - b[0]) / (a[1] - a[0])
 
 
-def read_satellite(src, data_dir, transform, shape, station=None):
+def read_satellite(src, data_dir, transform, shape, station=None, regions=None):
     """Satellite intertidal heights on the grid (satellite.py's GeoTIFFs):
     the height at which each pixel covers and uncovers, metres above LAT in
     its tide station's terms with the method's bias taken off (the file's
@@ -377,9 +399,15 @@ def read_satellite(src, data_dir, transform, shape, station=None):
     seen), 3 never seen wet (over the highest); and per pixel the lowest and
     highest tides seen, with the same bias, so that "never seen dry" bounds
     the bed. With `station` (a pilot's), heights measured against another
-    station are moved to its terms (to_station). Returns (heights, flags,
-    lowest, highest) or None. Where files overlap, the first one with a
-    value wins."""
+    station are moved to its terms (to_station); with `regions` (the national
+    build's: each pixel's station index, -1 none, and the stations' ids), each
+    pixel's to its own region's station, so a height measured against one
+    station is drawn as the same stage of the tide at the station the pixel is
+    drawn with (Northern Ireland's: the satellite run's Killard Point heights
+    in the Dundrum Bay and Ardglass cells). A file whose DATUM tag is "chart
+    datum" (a UK gauge's) is first moved to its station's LAT
+    (chart_datum_above_lat). Returns (heights, flags, lowest, highest) or
+    None. Where files overlap, the first one with a value wins."""
     files = sorted({f for pattern in src["files"] for f in glob.glob(os.path.join(data_dir, pattern))})
     if not files:
         print(f"  {src['name']}: no files for {src['files']}, skipped", file=sys.stderr)
@@ -414,12 +442,27 @@ def read_satellite(src, data_dir, transform, shape, station=None):
             own = tags.get("STATION")
             lo = float(tags.get("LOWEST_TIDE_SEEN", "nan"))
             hi = float(tags.get("HIGHEST_TIDE_SEEN", "nan"))
-            dz = to_station(dz, own, station)
-            lo, hi = (float(to_station(np.float32(v), own, station)) for v in (lo, hi))
+            if tags.get("DATUM", "LAT").lower() == "chart datum":
+                shift = chart_datum_above_lat(own)
+                dz, lo, hi = dz + shift, lo + shift, hi + shift
             take = (df > 0) & (flag == 0)
+            lo_px = np.full(shape, lo, dtype=np.float32)
+            hi_px = np.full(shape, hi, dtype=np.float32)
+            if regions is not None:
+                idx, ids = regions
+                for r in np.unique(idx[take]):
+                    if r < 0:
+                        continue
+                    m = take & (idx == r)
+                    dz[m] = to_station(dz[m], own, ids[r])
+                    lo_px[m] = to_station(np.float32(lo), own, ids[r])
+                    hi_px[m] = to_station(np.float32(hi), own, ids[r])
+            else:
+                dz = to_station(dz, own, station)
+                lo_px[:], hi_px[:] = (float(to_station(np.float32(v), own, station)) for v in (lo, hi))
             flag[take] = df[take]
-            low[take] = lo + bias
-            high[take] = hi + bias
+            low[take] = lo_px[take] + bias
+            high[take] = hi_px[take] + bias
             # A height only where it is flagged as one (bilinear at a height's
             # edge mixes it with nothing: NaN, so the edge pixel goes).
             hz = take & (df == 1) & np.isfinite(dz)
@@ -458,7 +501,7 @@ def compare(name, a, b, mask):
 
 
 def merge_sources(sources, cfg, data_dir, transform, shape, offset, levels=None, surface=None, basins=(),
-                  station=None):
+                  station=None, regions=None):
     """Steps 1-3: every source on the grid, merged, in metres above LAT.
 
     `levels`, if given, are the waterlines' heights above LAT (scalars or
@@ -466,7 +509,8 @@ def merge_sources(sources, cfg, data_dir, transform, shape, offset, levels=None,
     `basins` are (mask, level) pairs: water held up behind a weir, whose
     satellite heights are in the basin's level, not the station's tide.
     `station` (a pilot's) is the tide the heights are drawn on, for the
-    satellite's heights measured against a neighbour's (read_satellite).
+    satellite's heights measured against a neighbour's (read_satellite);
+    `regions` (the national build's) the same per pixel.
     Returns the merge, the water under the satellite LAT line, the merge of
     the bathymetric surveys alone, the land above the MHW line, the sources
     that had data here, and hints for water no source gives a height: an
@@ -483,11 +527,13 @@ def merge_sources(sources, cfg, data_dir, transform, shape, offset, levels=None,
     # Cells a source only gap-filled: not a sounding, but not land either
     # (EMODnet fills land from a land model, never from GEBCO).
     gap_fill = np.zeros(shape, dtype=bool)
+    wl_taken = np.zeros(shape, dtype=bool)
+    z_before_wl = np.full(shape, np.nan, dtype=np.float32)
     _, lat0, _, lat1 = grid_lonlat_bounds(transform, shape)
     metres_per_px = transform.a * math.cos(math.radians((lat0 + lat1) / 2))
     for src in sources:
         if src.get("kind") == "satellite":
-            got = read_satellite(src, data_dir, transform, shape, station)
+            got = read_satellite(src, data_dir, transform, shape, station, regions)
             if got is None:
                 continue
             sat, flag, low, high = got
@@ -527,12 +573,29 @@ def merge_sources(sources, cfg, data_dir, transform, shape, offset, levels=None,
                 # further out "never dry" says only that it is the sea, and
                 # its window's edge would draw a straight line across it.
                 near = ndimage.distance_transform_edt(flag != 1) * metres_per_px
+                seen_wet = never_dry.copy()
                 never_dry &= near <= src.get("neverDryMetres", 300)
                 lid = low.copy()
                 for mask, level in basins:
                     # A basin never drains below its weir: never seen dry
                     # there is under the weir's crest.
                     lid[mask] = level["floorLat"] - 0.1
+                # The waterlines' surface is not let stand over what the
+                # satellite saw wet in every look: EMODnet's satellite-derived
+                # LAT and MSL lines placed a kilometre and more off a steep
+                # shore (Islandmagee's, round Browns Bay) drew the sea there as
+                # a flat drying at half tide, and held under the lowest tide
+                # seen, the bed a few metres down drew as barely covered. What
+                # was under the surface before (EMODnet's soundings) stands
+                # where it is under the lowest tide seen; else the bed is
+                # estimated under it, from the heights round it.
+                wl_over = seen_wet & wl_taken & (z > lid)
+                if wl_over.any():
+                    under = wl_over & np.isfinite(z_before_wl) & (z_before_wl < lid)
+                    z[under] = z_before_wl[under]
+                    z[wl_over & ~under] = np.nan
+                    hints["bound"][wl_over] = np.fmin(hints["bound"][wl_over], lid[wl_over])
+                hints["waterlinesOverNeverDry"] = int(wl_over.sum())
                 # (np.minimum: where no source has a height, it stays none,
                 # to be estimated under the bound, not taken as one.)
                 z[never_dry] = np.minimum(z[never_dry], lid[never_dry])
@@ -588,6 +651,9 @@ def merge_sources(sources, cfg, data_dir, transform, shape, offset, levels=None,
             layer, wet, land3, counts = waterline_surface(geo, levels if levels is not None else src["levels"],
                                                           transform, shape, z, coarsen=src.get("coarsen", 2),
                                                           sea_hint=gap_fill)
+            # What the waterlines lay their surface over (the satellite checks it, below).
+            z_before_wl = z.copy()
+            wl_taken |= np.isfinite(layer)
             print(f"  {src['name']}: {len(geo['features'])} lines, regions {counts}")
             # Under the LAT line is wet at every tide: an earlier source that
             # puts the bed above LAT there is wrong (EMODnet's fill), and goes.

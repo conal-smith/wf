@@ -192,9 +192,9 @@ describe("foilRamp", () => {
       expect(near(evalRamp(ramp, 3 - clearance - 0.001), colours.enough)).toBe(
         true,
       );
-      expect(
-        near(evalRamp(ramp, 3 - clearance + 0.021), colours.shallow),
-      ).toBe(true);
+      expect(near(evalRamp(ramp, 3 - clearance + 0.021), colours.shallow)).toBe(
+        true,
+      );
     }
     expect(foilClass(3 - 1, 3)).toBe("deep");
   });
@@ -479,14 +479,69 @@ describe("the national regions", () => {
 
   it("puts a point in the region whose station is nearest, where no pilot is", () => {
     // In both boxes, nearer Skerries.
-    expect(areasAt([howth, skerries], -6.15, 53.55).map((a) => a.id)).toEqual(
-      ["tide-skerries"],
-    );
+    expect(areasAt([howth, skerries], -6.15, 53.55).map((a) => a.id)).toEqual([
+      "tide-skerries",
+    ]);
     // In both boxes, nearer Howth.
     expect(areasAt([howth, skerries], -6.1, 53.46).map((a) => a.id)).toEqual([
       "tide-howth",
     ]);
     expect(areasAt([howth, skerries], -8, 53)).toEqual([]);
+  });
+
+  it("gives a basin region every point inside its outline and none outside", () => {
+    // Strangford Lough inside the Narrows, on Killard Point's tide 100 minutes late.
+    const killard = area({
+      id: "tide-killard",
+      kind: "region",
+      url: "tide-killard.pmtiles",
+      bounds: [-5.9, 54.1, -5.4, 54.5],
+      station: "Killard_MODELLED",
+      stationLonLat: [-5.525, 54.315],
+    });
+    const bangor = area({
+      id: "tide-bangor",
+      kind: "region",
+      url: "tide-bangor.pmtiles",
+      bounds: [-5.95, 54.45, -5.4, 54.8],
+      station: "Bangor",
+      stationLonLat: [-5.6705, 54.6652],
+    });
+    const lough = area({
+      id: "tide-strangford",
+      kind: "region",
+      url: "tide-strangford.pmtiles",
+      bounds: [-5.78, 54.34, -5.49, 54.63],
+      station: "Strangford_MODELLED",
+      stationLonLat: [-5.62, 54.48],
+      polygon: [
+        [-5.53, 54.385],
+        [-5.5, 54.45],
+        [-5.52, 54.55],
+        [-5.62, 54.625],
+        [-5.76, 54.6],
+        [-5.77, 54.5],
+        [-5.72, 54.385],
+      ],
+    });
+    const areas = [killard, bangor, lough];
+    // The lough's north end is nearer Bangor's station, but in the lough.
+    expect(areasAt(areas, -5.68, 54.58).map((a) => a.id)).toEqual([
+      "tide-strangford",
+    ]);
+    // The open coast at Killard is nearer the lough's station than Bangor's, but outside it.
+    expect(areasAt(areas, -5.53, 54.36).map((a) => a.id)).toEqual([
+      "tide-killard",
+    ]);
+    expect(validateFoilManifest({ ...national(), areas }).areas).toHaveLength(
+      3,
+    );
+    expect(() =>
+      validateFoilManifest({
+        ...national(),
+        areas: [{ ...lough, polygon: [[1, 2]] as [number, number][] }],
+      }),
+    ).toThrow();
   });
 
   it("lets a pilot win inside its box", () => {

@@ -24,7 +24,10 @@
   "notes": {
     "maxzoom": "z13 with 512 px tiles is about 5.8 m a pixel at 53 N; the national sources are 10 m (INFOMAR) and coarser.",
     "minzoom": "z6 shows the coast's band on the all-Ireland view (the map opens on it at about zoom 6.3); z6-z9 are overviews (mean of the heights under each pixel).",
-    "maxStationKm": "A pixel further than this from every tide station in public/marine/tides.json has no tide to colour it by, and is left out. It keeps Lough Foyle (Buncranna, Malin Head) and Carlingford Lough and the Mourne coast to about Annalong (Port Oriel), and leaves out Northern Ireland's coast from Portrush round to Dundrum Bay, whose tides (a degenerate amphidrome off Antrim, Strangford's narrows) no station here predicts.",
+    "maxStationKm": "A pixel further than this from every tide station in public/marine/tides.json has no tide to colour it by, and is left out. Northern Ireland's coast is on the site's own nine stations there (force5/ingest/tides_ni.py: Portrush and Bangor from the Environment Agency's gauges, Ballycastle, Larne, Portavogie, Killard Point, Ardglass and Dundrum Bay from EOT20), so nothing on the island's coast is that far now.",
+    "polygon": "A station with a polygon in stations.json (Strangford Lough inside the Narrows, Killard Point's tide 100 minutes later; fetch_national.BASIN_POLYGONS) takes every pixel inside it and none outside, whichever station is nearer (national.station_cells); the index carries the polygon, so a tap is read from the same region (areasAt in force5/src/foilDepth.ts).",
+    "keepDeeperThan": "EMODnet's cells that GEBCO fills are not soundings and are dropped (GEBCO drew Sandymount's drying flats 2-11 m deep), except where GEBCO has them deeper than this, twice the floor: those are deep water drawn as nothing, and the heights round them estimate the water between. EMODnet fills most of Northern Ireland's inshore water from GEBCO; with every such cell dropped, the sea a kilometre off the Antrim coast, 20-90 m deep, and round the Maidens was estimated from the beaches as shallow or drying.",
+    "landDatums": "A LiDAR in OD Malin or OD Belfast (`datum` MALIN or BELFAST) is brought to each pixel's own station's LAT with its stations.json odMalinOffsetMetres or odBelfastOffsetMetres. Northern Ireland's: at the Bangor and Portrush gauges, the Environment Agency's chart datum under OD (2.01 and 1.24 m, NTSLF's figures too) plus chart datum over the station's LAT; elsewhere the station's MSL less 0.166 m, MSL's height over OD Belfast at those two gauges.",
     "ceilingMarginMetres": "Each region's dry ceiling is its station's highest predicted level over 2026-2028 (stations.json) plus this: three years are short of the 18.6-year nodal cycle by a few centimetres, and the waterline surface is good to about half a metre.",
     "pilots": "The pilot areas of areas.json win where they are: their boxes are cut out of the regions at the pilots' min zoom and above, and left in below it, where the pilots draw nothing. Their merged grids (build.py --debug, which reach a little past the boxes) are the regions' most trusted source, so at a box's edge both archives hold the same heights.",
     "upperBeachMetres": "The sea reaches up through ground that floods at a spring tide (MHW + marshAboveMhwMetres); above that, up to the dry ceiling, only this much upper beach beside it is foreshore. Fields and streets at 3-5 m LAT joined to the shore through a chain of low ground (behind Sandymount, round the Malahide and Rogerstown estuaries) are land.",
@@ -32,7 +35,7 @@
     "estimateMetres": "Water no source gives a height (inside OSM's coastline) is estimated from the heights round it within this distance of one; further out it is drawn as nothing and a tap says it is unsurveyed. A distance under the chunks' margin (one z13 tile, 2.9 km), so every chunk judges a pixel alike.",
     "osm": "OpenStreetMap's coastline (osmdata.openstreetmap.de's land polygons) and its tidal water are a hard mask (osm.py): outside them nothing is drawn, whatever a source says; inside the coastline nothing is land. Beaches, sand and marsh joined to the sea are drawn where a height says the tide reaches them."
   },
-  "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute), EMODnet Bathymetry DTM and satellite-derived coastlines, Marine Institute tidal predictions; all CC BY 4.0. Contains modified Copernicus Sentinel data 2017–2026. Coastline and tidal water © OpenStreetMap contributors (ODbL).",
+  "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute, including the Joint Irish Bathymetric Survey), EMODnet Bathymetry DTM and satellite-derived coastlines, Marine Institute tidal predictions; all CC BY 4.0. Northern Ireland: OSNI River Basin LiDAR (Land & Property Services) and Maritime & Coastguard Agency survey data © Crown copyright, Environment Agency tide gauge data, all Open Government Licence v3.0; EOT20 tide model (DGFI-TUM, CC BY 4.0). Contains modified Copernicus Sentinel data 2017–2026. Coastline and tidal water © OpenStreetMap contributors (ODbL).",
   "sources": [
     {
       "name": "EMODnet",
@@ -45,7 +48,7 @@
       "datum": "LAT",
       "kind": "fallback",
       "invalid": [0],
-      "gapFill": { "file": "emodnet/gebco2024.json", "release": "2024", "identifiers": ["GEBCO"] }
+      "gapFill": { "file": "emodnet/gebco2024.json", "release": "2024", "identifiers": ["GEBCO"], "keepDeeperThan": -10 }
     },
     {
       "name": "EMODnet waterlines",
@@ -60,6 +63,18 @@
       "coarsen": 2
     },
     {
+      "name": "INFOMAR JIBS",
+      "role": "the north coast's seabed, Inishowen to Torr Head: the Joint Irish Bathymetric Survey (multibeam), whose Northern Ireland side the merged grid leaves out; under the merged grid where both are",
+      "years": "2007–2008",
+      "resolution": "10 m",
+      "licence": "CC BY 4.0 (its Northern Ireland side is the Maritime and Coastguard Agency's survey HI1240, OGL v3)",
+      "attribution": "Contains Irish Public Sector Data (Geological Survey Ireland & Marine Institute) licensed under CC BY 4.0; contains Maritime & Coastguard Agency data © Crown copyright (OGL v3)",
+      "files": ["infomar-surveys/jibs-*.tif"],
+      "datum": "LAT",
+      "kind": "bathy",
+      "validRange": [-400, 60]
+    },
+    {
       "name": "INFOMAR",
       "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
       "years": "2002–2025",
@@ -71,6 +86,30 @@
       "kind": "bathy",
       "nodata": -9999,
       "validRange": [-400, 60]
+    },
+    {
+      "name": "INFOMAR Lough Foyle LiDAR",
+      "role": "Lough Foyle's shallows and flats, airborne bathymetric LiDAR: the merged grid has it at 10 m (the same heights, median 0.00 m), this at 5 m over it",
+      "years": "2008",
+      "resolution": "5 m",
+      "licence": "CC BY 4.0",
+      "attribution": "Contains Irish Public Sector Data (Geological Survey Ireland & Marine Institute) licensed under CC BY 4.0",
+      "files": ["infomar-surveys/lidar-2008-lough-foyle-5m.tif"],
+      "datum": "LAT",
+      "kind": "bathy",
+      "validRange": [-100, 60]
+    },
+    {
+      "name": "OSNI LiDAR",
+      "role": "the foreshore above each flight's water, and the beaches over the satellite's highest tide: OSNI's river-basin LiDAR where it reaches the shore (Portrush to Portstewart, Bangor and Ballyholme, Newtownards and Strangford's north end, Newcastle), the sea's surface the flights saw taken out (fetch_national.py osni-lidar)",
+      "years": "2007–2010",
+      "resolution": "2 m (from 0.5–1 m)",
+      "licence": "OGL v3",
+      "attribution": "Contains public sector information licensed under the Open Government Licence v3.0 (OSNI Open Data, Land & Property Services: River Basin LiDAR)",
+      "files": ["osni-lidar/*.tif"],
+      "datum": "BELFAST",
+      "kind": "topo",
+      "validRange": [-5, 200]
     },
     {
       "name": "Sentinel-2 intertidal heights",

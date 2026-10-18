@@ -401,6 +401,178 @@
       "mlwMetres": 0.391,
       "hatMetres": 1.97,
       "lowestMetres": 0.0
+    },
+    "Ardglass_MODELLED": {
+      "name": "Ardglass",
+      "lat": 54.262,
+      "lon": -5.607,
+      "modelled": true,
+      "mslMetres": 3.165,
+      "mhwMetres": 4.896,
+      "mlwMetres": 1.388,
+      "hatMetres": 6.205,
+      "lowestMetres": 0.042,
+      "northernIreland": true,
+      "odBelfastOffsetMetres": 2.998
+    },
+    "Ballycastle_MODELLED": {
+      "name": "Ballycastle",
+      "lat": 55.206,
+      "lon": -6.242,
+      "modelled": true,
+      "mslMetres": 0.615,
+      "mhwMetres": 0.888,
+      "mlwMetres": 0.351,
+      "hatMetres": 1.274,
+      "lowestMetres": 0.025,
+      "northernIreland": true,
+      "odBelfastOffsetMetres": 0.449
+    },
+    "Bangor": {
+      "name": "Bangor",
+      "lat": 54.6652,
+      "lon": -5.6705,
+      "modelled": false,
+      "mslMetres": 2.047,
+      "mhwMetres": 3.204,
+      "mlwMetres": 0.86,
+      "hatMetres": 4.066,
+      "lowestMetres": 0.045,
+      "northernIreland": true,
+      "chartDatumAboveLatMetres": -0.142,
+      "odBelfastOffsetMetres": 1.868
+    },
+    "Dundrum_Bay_MODELLED": {
+      "name": "Dundrum Bay",
+      "lat": 54.225,
+      "lon": -5.83,
+      "modelled": true,
+      "mslMetres": 3.17,
+      "mhwMetres": 4.895,
+      "mlwMetres": 1.388,
+      "hatMetres": 6.207,
+      "lowestMetres": 0.044,
+      "northernIreland": true,
+      "odBelfastOffsetMetres": 3.003
+    },
+    "Killard_MODELLED": {
+      "name": "Killard Point",
+      "lat": 54.315,
+      "lon": -5.525,
+      "modelled": true,
+      "mslMetres": 3.154,
+      "mhwMetres": 4.882,
+      "mlwMetres": 1.387,
+      "hatMetres": 6.185,
+      "lowestMetres": 0.041,
+      "northernIreland": true,
+      "odBelfastOffsetMetres": 2.987
+    },
+    "Larne_MODELLED": {
+      "name": "Larne",
+      "lat": 54.853,
+      "lon": -5.79,
+      "modelled": true,
+      "mslMetres": 1.861,
+      "mhwMetres": 2.853,
+      "mlwMetres": 0.85,
+      "hatMetres": 3.621,
+      "lowestMetres": 0.04,
+      "northernIreland": true,
+      "odBelfastOffsetMetres": 1.695
+    },
+    "Portavogie_MODELLED": {
+      "name": "Portavogie",
+      "lat": 54.458,
+      "lon": -5.438,
+      "modelled": true,
+      "mslMetres": 2.872,
+      "mhwMetres": 4.458,
+      "mlwMetres": 1.273,
+      "hatMetres": 5.64,
+      "lowestMetres": 0.034,
+      "northernIreland": true,
+      "odBelfastOffsetMetres": 2.705
+    },
+    "Portrush": {
+      "name": "Portrush",
+      "lat": 55.2011,
+      "lon": -6.6512,
+      "modelled": false,
+      "mslMetres": 1.236,
+      "mhwMetres": 1.814,
+      "mlwMetres": 0.666,
+      "hatMetres": 2.434,
+      "lowestMetres": 0.001,
+      "northernIreland": true,
+      "chartDatumAboveLatMetres": -0.158,
+      "odBelfastOffsetMetres": 1.082
+    },
+    "Strangford_MODELLED": {
+      "name": "Strangford Lough",
+      "lat": 54.48,
+      "lon": -5.62,
+      "modelled": true,
+      "mslMetres": 3.154,
+      "mhwMetres": 4.882,
+      "mlwMetres": 1.387,
+      "hatMetres": 6.185,
+      "lowestMetres": 0.041,
+      "lagOf": "Killard_MODELLED",
+      "lagMinutes": 100,
+      "northernIreland": true,
+      "odBelfastOffsetMetres": 2.987,
+      "polygon": [
+        [
+          -5.53,
+          54.385
+        ],
+        [
+          -5.5,
+          54.45
+        ],
+        [
+          -5.52,
+          54.55
+        ],
+        [
+          -5.62,
+          54.625
+        ],
+        [
+          -5.76,
+          54.6
+        ],
+        [
+          -5.77,
+          54.5
+        ],
+        [
+          -5.72,
+          54.385
+        ],
+        [
+          -5.69,
+          54.385
+        ],
+        [
+          -5.69,
+          54.35
+        ],
+        [
+          -5.605,
+          54.35
+        ],
+        [
+          -5.6,
+          54.385
+        ]
+      ]
     }
+  },
+  "northernIreland": {
+    "source": "wingfoil.ie harmonic predictions (force5/ingest/tide_stations_ni.json): Environment Agency gauges (OGL v3) and EOT20 (DGFI-TUM, CC BY 4.0)",
+    "method": "Predicted every minute from the stations' harmonic constants: msl = mean; hat/lowest = max/min; mhw/mlw = mean of the predicted high/low waters. Metres above each station's LAT (its lowest level over 18.6 years).",
+    "mslOverOdBelfastMetres": 0.166
   }
 }

@@ -79,6 +79,12 @@ export interface FoilArea {
    */
   stationLonLat?: [number, number];
   /**
+   * A basin region's outline, lon/lat (Strangford Lough inside the Narrows,
+   * whose tide runs 100 minutes behind Killard Point's): it holds every point
+   * inside it and none outside, whichever station is nearer.
+   */
+  polygon?: [number, number][];
+  /**
    * Heights above this are not intertidal: land, drawn as nothing. Highest
    * Astronomical Tide at the station plus a margin.
    */
@@ -188,6 +194,12 @@ export function validateFoilManifest(m: FoilManifest): FoilManifest {
           (Array.isArray(a.stationLonLat) &&
             a.stationLonLat.length === 2 &&
             a.stationLonLat.every(finite))) &&
+        (a.polygon === undefined ||
+          (Array.isArray(a.polygon) &&
+            a.polygon.length >= 3 &&
+            a.polygon.every(
+              (p) => Array.isArray(p) && p.length === 2 && p.every(finite),
+            ))) &&
         Array.isArray(a.bounds) &&
         a.bounds.length === 4 &&
         a.bounds.every(finite) &&
@@ -489,23 +501,47 @@ export function distanceKm(
   return 2 * 6371.0088 * Math.asin(Math.sqrt(Math.min(1, a)));
 }
 
+/** Is a point inside a lon/lat ring (even-odd rule, as national.py's)? */
+export function inPolygon(
+  ring: readonly (readonly [number, number])[],
+  lon: number,
+  lat: number,
+) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [x0, y0] = ring[j];
+    const [x1, y1] = ring[i];
+    if (
+      y0 !== y1 &&
+      y0 > lat !== y1 > lat &&
+      lon < ((x1 - x0) * (lat - y0)) / (y1 - y0) + x0
+    )
+      inside = !inside;
+  }
+  return inside;
+}
+
 /**
  * The archives that may hold a point, in the order to read them. A pilot
  * wins where it is: if one's box holds the point, only the pilots' boxes are
  * tried, in the index's order (a basin's box lies inside its area's and comes
  * first; each archive has water only on its own side of the weir, so the
- * first one with water under the point is it). Else the one region whose
- * station is nearest, as the regions were cut (scripts/foildepth/national.py).
+ * first one with water under the point is it). Else a basin region whose
+ * outline holds it, else the one region without an outline whose station
+ * is nearest, as the regions were cut (scripts/foildepth/national.py).
  */
 export function areasAt<
-  T extends Pick<FoilArea, "bounds" | "kind" | "stationLonLat">,
+  T extends Pick<FoilArea, "bounds" | "kind" | "stationLonLat" | "polygon">,
 >(areas: readonly T[], lon: number, lat: number): T[] {
   const boxes = areas.filter((a) => inBounds(a.bounds, lon, lat));
   const pilots = boxes.filter((a) => a.kind !== "region");
   if (pilots.length) return pilots;
+  const basin = boxes.find((a) => a.polygon && inPolygon(a.polygon, lon, lat));
+  if (basin) return [basin];
   let best: T | null = null;
   let distance = Infinity;
   for (const a of boxes) {
+    if (a.polygon) continue;
     const at = a.stationLonLat;
     const d = at ? distanceKm(lon, lat, at[0], at[1]) : Infinity;
     if (!best || d < distance) {
