@@ -130,14 +130,13 @@ jobs:
             playwright-report
             test-results
 
-  # The Docker images are the artifacts that run in production: the worker is
-  # what fetches every forecast and decides where it goes. Each is built from
-  # this commit and checked as an image (scripts/release/*-smoke.sh), so a
-  # Dockerfile that has drifted from the tree, or a wheel that crashes on its way
-  # out, fails here and not on the machine that runs the jobs. No network fetch:
+  # The Docker images are the artifacts that run in production. The site and the
+  # marketplace API are built here. The forecast worker is the jobs below: it is
+  # built on the runner that matches each platform, smoked there, then merged
+  # into a manifest list that must name both. No network fetch of a forecast:
   # that is the release's acceptance step.
   images:
-    name: Images (build and smoke)
+    name: Images (site, marketplace)
     if: ${{ inputs.release_gate || github.event_name == 'workflow_dispatch' || github.event.repository.private == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -146,15 +145,6 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - uses: docker/setup-buildx-action@v3
-      - name: Build the forecast worker
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: force5/Dockerfile
-          tags: wingfoil-forecast:ci
-          load: true
-          cache-from: type=gha,scope=forecast
-          cache-to: type=gha,mode=max,scope=forecast
       - name: Build the site
         uses: docker/build-push-action@v6
         with:
@@ -173,12 +163,86 @@ jobs:
           load: true
           cache-from: type=gha,scope=market
           cache-to: type=gha,mode=max,scope=market
-      - name: Worker image smoke
-        run: scripts/release/worker-image-smoke.sh wingfoil-forecast:ci
       - name: Site image smoke
         run: scripts/release/web-image-smoke.sh wingfoil-web:ci
       - name: Marketplace API image boots
         run: scripts/release/market-image-smoke.sh wingfoil-market:ci
+
+  # Native runners, not QEMU. ubuntu-24.04-arm is a standard hosted runner.
+  # Provenance stays off so the saved image is one platform, which is what the
+  # manifest job merges.
+  forecast:
+    name: Forecast image (${{ matrix.platform }})
+    if: ${{ inputs.release_gate || github.event_name == 'workflow_dispatch' || github.event.repository.private == false }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+            pair: linux-amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            pair: linux-arm64
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the forecast worker
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: force5/Dockerfile
+          platforms: ${{ matrix.platform }}
+          tags: wingfoil-forecast:ci
+          load: true
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=forecast-ci-${{ matrix.pair }}
+          cache-to: type=gha,mode=max,scope=forecast-ci-${{ matrix.pair }}
+      - name: Worker image smoke
+        run: scripts/release/worker-image-smoke.sh wingfoil-forecast:ci
+      - name: Save the image for the manifest list
+        run: docker save wingfoil-forecast:ci -o "forecast-${{ matrix.pair }}.tar"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: forecast-image-${{ matrix.pair }}
+          path: forecast-${{ matrix.pair }}.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  forecast-manifest:
+    name: Forecast manifest list
+    needs: forecast
+    if: ${{ inputs.release_gate || github.event_name == 'workflow_dispatch' || github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: forecast-image-linux-amd64
+          path: forecast-images/amd64
+      - uses: actions/download-artifact@v8
+        with:
+          name: forecast-image-linux-arm64
+          path: forecast-images/arm64
+      # imagetools reads the local registry through BuildKit. host networking
+      # makes 127.0.0.1 the runner, and the registry speaks HTTP.
+      - uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+          buildkitd-config-inline: |
+            [registry."127.0.0.1:5000"]
+              http = true
+              insecure = true
+      - name: Both platforms are in one manifest list
+        run: scripts/release/local-manifest.sh forecast-images/amd64/forecast-linux-amd64.tar forecast-images/arm64/forecast-linux-arm64.tar
 
   # The app (mobile/, docs/MOBILE.md): its own gate, npm run ci (typecheck,
   # eslint, the token lint and its self-test, unit tests), then Metro bundling
