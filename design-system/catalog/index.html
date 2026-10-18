@@ -858,6 +858,8 @@ code {
 #ds-view-pattern-spot-popup:checked ~ .ds-catalog #pattern-spot-popup { display: block; }
 #ds-view-pattern-your-spots:checked ~ .ds-catalog #patterns { display: block; }
 #ds-view-pattern-your-spots:checked ~ .ds-catalog #pattern-your-spots { display: block; }
+#ds-view-pattern-your-stars:checked ~ .ds-catalog #patterns { display: block; }
+#ds-view-pattern-your-stars:checked ~ .ds-catalog #pattern-your-stars { display: block; }
 #ds-view-patterns:checked ~ .ds-catalog .catalog-nav label[for="ds-view-patterns"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
 #ds-view-patterns:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-patterns"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
 #ds-view-pattern-dock:checked ~ .ds-catalog .catalog-nav label[for="ds-view-pattern-dock"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
@@ -870,6 +872,8 @@ code {
 #ds-view-pattern-spot-popup:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-pattern-spot-popup"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
 #ds-view-pattern-your-spots:checked ~ .ds-catalog .catalog-nav label[for="ds-view-pattern-your-spots"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
 #ds-view-pattern-your-spots:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-pattern-your-spots"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
+#ds-view-pattern-your-stars:checked ~ .ds-catalog .catalog-nav label[for="ds-view-pattern-your-stars"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
+#ds-view-pattern-your-stars:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-pattern-your-stars"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
 </style>
 <style>
 /* components/avatar/component.css */
@@ -6931,6 +6935,579 @@ code {
         font-style: italic;
         font-weight: var(--sem-font-weight-semibold);
       }
+.ds-embed-pattern-your-stars {
+        margin: 0;
+        padding-bottom: var(--sem-space-x10);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+.ds-embed-pattern-your-stars .pt__label {
+        margin: var(--sem-space-x5) var(--sem-space-x3) var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+.ds-embed-pattern-your-stars .pt__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: var(--sem-space-x6);
+        padding: 0 var(--sem-space-x3);
+      }
+.ds-embed-pattern-your-stars .pt__col {
+        display: grid;
+        gap: var(--sem-space-x3);
+      }
+.ds-embed-pattern-your-stars .pt__units {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x2);
+        padding: 0 var(--sem-space-x3);
+      }
+.ds-embed-pattern-your-stars .ys.wf-dialog {
+        position: static;
+        width: calc(var(--sem-space-step) * 124);
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+.ds-embed-pattern-your-stars .ys--phone.wf-dialog {
+        width: calc(var(--sem-space-step) * 97.5);
+      }
+.ds-embed-pattern-your-stars .ys__block + .ys__block {
+        padding-top: var(--sem-space-x3);
+        border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+.ds-embed-pattern-your-stars .ys__presets {
+        margin-top: var(--sem-space-x1);
+      }
+.ds-embed-pattern-your-stars .curve {
+        display: block;
+        width: 100%;
+        height: auto;
+        margin-top: var(--sem-space-x1);
+        overflow: visible;
+      }
+.ds-embed-pattern-your-stars .curve__grid {
+        stroke: var(--sem-color-line);
+        stroke-width: 1;
+      }
+.ds-embed-pattern-your-stars .curve__base {
+        fill: none;
+        stroke: var(--sem-color-line-strong);
+        stroke-width: 1.25;
+        stroke-dasharray: 3 3;
+      }
+.ds-embed-pattern-your-stars .curve__yours {
+        fill: none;
+        stroke: var(--sem-color-ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+.ds-embed-pattern-your-stars .curve__under {
+        fill: var(--sem-color-sunken);
+      }
+.ds-embed-pattern-your-stars .curve__axis {
+        font-family: var(--sem-font-family-mono);
+        font-size: 10px; 
+        fill: var(--sem-color-ink-muted);
+      }
+.ds-embed-pattern-your-stars .legend {
+        display: flex;
+        gap: var(--sem-space-x4);
+        margin-top: var(--sem-space-x1);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+.ds-embed-pattern-your-stars .legend__key {
+        display: inline-block;
+        width: calc(var(--sem-space-step) * 5);
+        margin-right: var(--sem-space-x1);
+        vertical-align: middle;
+        border-top: 2px solid var(--sem-color-ink); 
+      }
+.ds-embed-pattern-your-stars .legend__key--base {
+        border-top: 1.25px dashed var(--sem-color-line-strong); 
+      }
+.ds-embed-pattern-your-stars .band {
+        position: relative;
+        height: var(--sem-size-touch);
+        margin-top: var(--sem-space-x1);
+      }
+.ds-embed-pattern-your-stars .band__scale {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: calc(var(--sem-space-step) * 1);
+        transform: translateY(-50%);
+        opacity: 0.35;
+      }
+.ds-embed-pattern-your-stars .band__scale--wind {
+        background: linear-gradient(
+          to right,
+          var(--sem-color-wind-k00) 0%,
+          var(--sem-color-wind-k05) 12.5%,
+          var(--sem-color-wind-k10) 25%,
+          var(--sem-color-wind-k15) 37.5%,
+          var(--sem-color-wind-k20) 50%,
+          var(--sem-color-wind-k25) 62.5%,
+          var(--sem-color-wind-k30) 75%,
+          var(--sem-color-wind-k35) 87.5%,
+          var(--sem-color-wind-k40) 100%
+        );
+      }
+.ds-embed-pattern-your-stars .band__scale--gust {
+        background: linear-gradient(
+          to right,
+          var(--sem-color-wind-k00) 0%,
+          var(--sem-color-wind-k10) 20%,
+          var(--sem-color-wind-k20) 40%,
+          var(--sem-color-wind-k30) 60%,
+          var(--sem-color-wind-k40) 80%,
+          var(--sem-color-wind-k45) 90%,
+          var(--sem-color-wind-k50) 100%
+        );
+      }
+.ds-embed-pattern-your-stars .band__fill, .ds-embed-pattern-your-stars .band__edge {
+        position: absolute;
+        top: 50%;
+        height: calc(var(--sem-space-step) * 1);
+        transform: translateY(-50%);
+        background: var(--sem-color-ink);
+      }
+.ds-embed-pattern-your-stars .band__edge {
+        opacity: 0.35;
+      }
+.ds-embed-pattern-your-stars .band input[type="range"] {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        background: none;
+        pointer-events: none;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+.ds-embed-pattern-your-stars .band input[type="range"]::-webkit-slider-runnable-track {
+        background: none;
+      }
+.ds-embed-pattern-your-stars .band input[type="range"]::-webkit-slider-thumb {
+        width: calc(var(--sem-space-step) * 2.5);
+        height: calc(var(--sem-space-step) * 5);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border-radius: var(--sem-radius-full);
+        background: var(--sem-color-card);
+        box-shadow: var(--sem-shadow-control);
+        cursor: ew-resize;
+        pointer-events: auto;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+.ds-embed-pattern-your-stars .band input[type="range"]::-moz-range-thumb {
+        width: calc(var(--sem-space-step) * 2.5);
+        height: calc(var(--sem-space-step) * 5);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border-radius: var(--sem-radius-full);
+        background: var(--sem-color-card);
+        box-shadow: var(--sem-shadow-control);
+        cursor: ew-resize;
+        pointer-events: auto;
+      }
+.ds-embed-pattern-your-stars .band input[type="range"]:focus-visible {
+        outline: none;
+      }
+.ds-embed-pattern-your-stars .band input[type="range"]:focus-visible::-webkit-slider-thumb {
+        outline: var(--sem-ring-width) solid var(--sem-color-focus);
+        outline-offset: var(--sem-ring-offset);
+      }
+.ds-embed-pattern-your-stars .band input[type="range"]:focus-visible::-moz-range-thumb {
+        outline: var(--sem-ring-width) solid var(--sem-color-focus);
+        outline-offset: var(--sem-ring-offset);
+      }
+.ds-embed-pattern-your-stars .figs {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--sem-space-x2);
+        margin-top: var(--sem-space-x1);
+      }
+.ds-embed-pattern-your-stars .figs--three {
+        grid-template-columns: repeat(3, 1fr);
+      }
+.ds-embed-pattern-your-stars .fig {
+        display: flex;
+        flex-direction: column;
+        gap: var(--sem-space-x0-5);
+      }
+.ds-embed-pattern-your-stars .fig__name {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+.ds-embed-pattern-your-stars .fig__value {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-figure);
+        line-height: var(--sem-font-line-figure);
+        font-weight: var(--sem-font-weight-figure);
+        font-variant-numeric: tabular-nums;
+      }
+.ds-embed-pattern-your-stars .fig__value small {
+        font-size: var(--sem-font-size-label);
+        color: var(--sem-color-ink-muted);
+      }
+.ds-embed-pattern-your-stars .fig .wf-segmented {
+        align-self: flex-start;
+      }
+.ds-embed-pattern-your-stars .shore {
+        display: block;
+        width: 100%;
+        max-width: calc(var(--sem-space-step) * 96);
+        height: auto;
+        margin: var(--sem-space-x1) auto 0;
+      }
+.ds-embed-pattern-your-stars .shore__land {
+        fill: var(--sem-color-land);
+        opacity: 0.7;
+        pointer-events: none;
+      }
+.ds-embed-pattern-your-stars .shore__sea {
+        fill: var(--sem-color-depth);
+        opacity: 0.22;
+        pointer-events: none;
+      }
+.ds-embed-pattern-your-stars .shore__line {
+        stroke: var(--sem-color-ink);
+        stroke-width: 2;
+      }
+.ds-embed-pattern-your-stars .shore__wedge {
+        fill: var(--sem-color-ink);
+        stroke: var(--sem-color-card);
+        stroke-width: 1;
+      }
+.ds-embed-pattern-your-stars .shore__ring {
+        fill: none;
+        stroke: var(--sem-color-ink);
+        stroke-width: 1;
+      }
+.ds-embed-pattern-your-stars .shore__word {
+        font-family: var(--sem-font-family-mono);
+        font-size: 9px; 
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        fill: var(--sem-color-ink);
+      }
+.ds-embed-pattern-your-stars .shore__word--on-dark {
+        fill: var(--sem-color-ink-inverse);
+      }
+.ds-embed-pattern-your-stars .web__spoke {
+        stroke: var(--sem-color-ink);
+        stroke-width: 0.5;
+        opacity: 0.12;
+        pointer-events: none;
+      }
+.ds-embed-pattern-your-stars .web__ringline {
+        fill: none;
+        stroke: var(--sem-color-ink);
+        stroke-width: 0.5;
+        opacity: 0.18;
+        pointer-events: none;
+      }
+.ds-embed-pattern-your-stars .web__shape {
+        fill: var(--sem-color-ink);
+        fill-opacity: 0.07;
+        stroke: var(--sem-color-ink);
+        stroke-width: 1.25;
+        stroke-linejoin: round;
+        pointer-events: none;
+      }
+.ds-embed-pattern-your-stars .web__slice {
+        fill: transparent;
+        cursor: pointer;
+      }
+.ds-embed-pattern-your-stars .web__slice--on {
+        fill: var(--sem-color-ink);
+        fill-opacity: 0.08;
+      }
+.ds-embed-pattern-your-stars .web__dot {
+        fill: var(--sem-color-card);
+        stroke: var(--sem-color-ink);
+        stroke-width: 1.5;
+        cursor: grab;
+      }
+.ds-embed-pattern-your-stars .web__dot--on {
+        fill: var(--sem-color-ink);
+      }
+.ds-embed-pattern-your-stars .web__dot:focus-visible {
+        outline: none;
+        stroke: var(--sem-color-focus);
+        stroke-width: 3;
+      }
+.ds-embed-pattern-your-stars .web__half {
+        font-family: var(--sem-font-family-mono);
+        font-size: 7.5px; 
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        fill: var(--sem-color-ink-muted);
+        pointer-events: none;
+      }
+.ds-embed-pattern-your-stars .web__name {
+        font-family: var(--sem-font-family-mono);
+        font-size: 8px; 
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        fill: var(--sem-color-ink-2);
+        pointer-events: none;
+      }
+.ds-embed-pattern-your-stars .web__ring-label {
+        font-family: var(--sem-font-family-mono);
+        font-size: 6.5px; 
+        fill: var(--sem-color-ink-muted);
+        pointer-events: none;
+      }
+.ds-embed-pattern-your-stars .web .shore__word {
+        pointer-events: none;
+      }
+.ds-embed-pattern-your-stars .web {
+        touch-action: none;
+        user-select: none;
+      }
+.ds-embed-pattern-your-stars .picked {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: var(--sem-space-x2);
+        margin-top: var(--sem-space-x1);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-label);
+      }
+.ds-embed-pattern-your-stars .picked__name {
+        text-transform: uppercase;
+        letter-spacing: var(--sem-font-tracking-label);
+      }
+.ds-embed-pattern-your-stars .picked__value {
+        min-width: calc(var(--sem-space-step) * 10);
+        font-size: var(--sem-font-size-figure);
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+      }
+.ds-embed-pattern-your-stars .together__for {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x2);
+        margin-top: var(--sem-space-x1);
+        font-size: var(--sem-font-size-body);
+      }
+.ds-embed-pattern-your-stars .grid {
+        display: block;
+        width: 100%;
+        height: auto;
+        margin-top: var(--sem-space-x1);
+        overflow: visible;
+        touch-action: none;
+        cursor: crosshair;
+      }
+.ds-embed-pattern-your-stars .grid__cell {
+        fill: var(--sem-color-ink);
+      }
+.ds-embed-pattern-your-stars .grid__none {
+        fill: var(--sem-color-sunken);
+      }
+.ds-embed-pattern-your-stars .grid__pick {
+        fill: none;
+        stroke: var(--sem-color-focus);
+        stroke-width: 2;
+      }
+.ds-embed-pattern-your-stars .grid__key {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x1);
+        margin-top: var(--sem-space-x1);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+.ds-embed-pattern-your-stars .grid__swatch {
+        display: inline-block;
+        width: calc(var(--sem-space-step) * 4);
+        height: calc(var(--sem-space-step) * 3);
+        background: var(--sem-color-ink);
+      }
+.ds-embed-pattern-your-stars .readout {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x2);
+        min-height: var(--sem-size-control-sm);
+        margin-top: var(--sem-space-x1);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-label);
+        font-variant-numeric: tabular-nums;
+      }
+.ds-embed-pattern-your-stars .readout__why {
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-caption);
+        color: var(--sem-color-ink-muted);
+      }
+.ds-embed-pattern-your-stars .rates {
+        width: 100%;
+        margin-top: var(--sem-space-x1);
+        border-collapse: collapse;
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-label);
+        font-variant-numeric: tabular-nums;
+      }
+.ds-embed-pattern-your-stars .rates th {
+        padding: var(--sem-space-x1) 0;
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        font-size: var(--sem-font-size-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+        text-align: left;
+      }
+.ds-embed-pattern-your-stars .rates td {
+        padding: var(--sem-space-x1) 0;
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+        white-space: nowrap;
+        vertical-align: middle;
+      }
+.ds-embed-pattern-your-stars .rates tr:last-child td {
+        border-bottom: 0;
+      }
+.ds-embed-pattern-your-stars .rates__w {
+        width: 34%;
+      }
+.ds-embed-pattern-your-stars .rates__s {
+        width: 30%;
+      }
+.ds-embed-pattern-your-stars .rates__moved {
+        font-weight: var(--sem-font-weight-semibold);
+      }
+.ds-embed-pattern-your-stars .settings {
+        width: calc(var(--sem-space-step) * 90);
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: var(--sem-space-x3) var(--sem-space-x4);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        box-shadow: var(--sem-shadow-frame);
+        background-color: var(--sem-color-card);
+        background-image: var(--sem-texture-grain);
+      }
+.ds-embed-pattern-your-stars .settings__row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: var(--sem-space-x1) var(--sem-space-x3);
+        padding: var(--sem-space-x2) 0;
+      }
+.ds-embed-pattern-your-stars .settings__row + .settings__row {
+        border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+.ds-embed-pattern-your-stars .settings__name {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+.ds-embed-pattern-your-stars .settings__value {
+        font-size: var(--sem-font-size-body);
+      }
+.ds-embed-pattern-your-stars .settings__actions {
+        display: flex;
+        gap: var(--sem-space-x3);
+        align-items: center;
+      }
+.ds-embed-pattern-your-stars .dockhead {
+        width: calc(var(--sem-space-step) * 150);
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: var(--sem-space-x2) var(--sem-space-x3);
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+        background-color: var(--sem-color-card);
+        box-shadow: var(--sem-shadow-dock);
+      }
+.ds-embed-pattern-your-stars .dockhead__top {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--sem-space-x2);
+      }
+.ds-embed-pattern-your-stars .dockhead__spot {
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+.ds-embed-pattern-your-stars .whose {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--sem-space-x1);
+        padding: 0 var(--sem-space-x2);
+        min-height: var(--sem-size-control-sm);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border-radius: var(--sem-radius-full);
+        background: var(--sem-color-card);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+.ds-embed-pattern-your-stars .whose:focus-visible {
+        outline: var(--sem-ring-width) solid var(--sem-color-focus);
+        outline-offset: var(--sem-ring-offset);
+      }
+.ds-embed-pattern-your-stars .hours {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        margin-top: var(--sem-space-x2);
+        border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+.ds-embed-pattern-your-stars .hour {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--sem-space-x0-5);
+        padding: var(--sem-space-x1) 0;
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-label);
+        font-variant-numeric: tabular-nums;
+      }
+.ds-embed-pattern-your-stars .hour + .hour {
+        border-left: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+.ds-embed-pattern-your-stars .hour__ist {
+        font-size: var(--sem-font-size-eyebrow);
+        color: var(--sem-color-ink-muted);
+      }
+.ds-embed-pattern-your-stars .hour .wf-star-glyphs {
+        width: calc(var(--sem-space-step) * 14);
+        height: auto;
+      }
 </style>
 </head>
 <body>
@@ -6985,6 +7562,7 @@ code {
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-pattern-spot-day" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-pattern-spot-popup" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-pattern-your-spots" />
+<input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-pattern-your-stars" />
 <div class="ds-catalog">
 <header class="catalog-header">
 <h1>wingfoil-chart</h1>
@@ -7044,6 +7622,7 @@ code {
 <label class="catalog-nav-item" for="ds-view-pattern-spot-day">Spot day — wingfoil-chart pattern</label>
 <label class="catalog-nav-item" for="ds-view-pattern-spot-popup">Spot popup — wingfoil-chart pattern</label>
 <label class="catalog-nav-item" for="ds-view-pattern-your-spots">Your spots — wingfoil-chart pattern</label>
+<label class="catalog-nav-item" for="ds-view-pattern-your-stars">Your star rating — wingfoil-chart pattern</label>
 </nav>
 <main class="catalog-main">
 <section id="foundations" class="catalog-group">
@@ -20410,6 +20989,1306 @@ code {
         &lt;/ul&gt;
       &lt;/aside&gt;
     &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</code></pre></details>
+</div>
+<div id="pattern-your-stars" class="catalog-view catalog-pattern">
+<h3>Your star rating — wingfoil-chart pattern</h3>
+<div class="catalog-stage ds-embed-pattern-your-stars">
+<p class="pt__label">Mockup only · the rider's unit setting, which every figure, axis and handle follows</p>
+    <div class="pt__units">
+      <div class="wf-segmented" role="group" aria-label="Wind units">
+        <button class="wf-segmented__item" type="button" data-unit="kn" aria-pressed="true">kn</button>
+        <button class="wf-segmented__item" type="button" data-unit="mph" aria-pressed="false">mph</button>
+        <button class="wf-segmented__item" type="button" data-unit="kmh" aria-pressed="false">km/h</button>
+        <button class="wf-segmented__item" type="button" data-unit="ms" aria-pressed="false">m/s</button>
+      </div>
+    </div>
+
+    <p class="pt__label">1 · Where it opens: the rider settings (Display ▸ You), before and after</p>
+    <div class="pt__row">
+      <div class="settings" aria-label="Rider settings, standard stars">
+        <div class="settings__row">
+          <span class="settings__name">Level</span>
+          <span class="settings__value">Riding</span>
+        </div>
+        <div class="settings__row">
+          <span class="settings__name">Star rating</span>
+          <span class="settings__actions"><span class="settings__value">Standard for Riding</span><a class="wf-link" href="#">Customise</a></span>
+        </div>
+      </div>
+      <div class="settings" aria-label="Rider settings, custom stars">
+        <div class="settings__row">
+          <span class="settings__name">Level</span>
+          <span class="settings__value">Riding</span>
+        </div>
+        <div class="settings__row">
+          <span class="settings__name">Star rating</span>
+          <span class="settings__actions"><span class="settings__value">Custom</span><a class="wf-link" href="#">Edit</a><a class="wf-link" href="#">Reset</a></span>
+        </div>
+      </div>
+    </div>
+
+    <p class="pt__label">2 · The dialog, desktop · a rider who wants about 20 knots, and no gusts much over 25</p>
+    <div class="pt__row">
+      <div data-ys data-start="intermediate" data-custom='{"min":15,"sweetLow":18,"sweetHigh":23,"max":27,"fine":24,"worst":30,"most":3,"dir":{"onshore":0.5,"crossOn":0,"cross":0,"crossOff":2.5,"offshore":4}}'></div>
+      <div class="pt__col">
+        <p class="pt__label" style="margin: 0">3 · The forecast, once saved: a chip says the stars are custom, and opens the dialog</p>
+        <div class="dockhead">
+          <div class="dockhead__top">
+            <span class="dockhead__spot">Dollymount Strand</span>
+            <button class="whose" type="button" aria-label="Custom star rating: edit">
+              <svg width="10" height="10" viewBox="-5 -5 10 10" aria-hidden="true"><path fill="currentColor" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" /></svg>
+              Custom stars
+            </button>
+          </div>
+          <div class="hours" data-hours></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="pt__label">4 · The dialog on a phone, 390 wide · opened from a Learning level, nothing changed yet</p>
+    <div class="pt__row">
+      <div data-ys data-start="beginner" data-phone></div>
+    </div>
+
+    <template id="ys">
+      <div class="wf-dialog wf-dialog--wide ys" role="dialog" aria-modal="true">
+        <div class="wf-dialog__head">
+          <h2 class="wf-dialog__title" data-title>Your star rating</h2>
+          <button class="wf-button wf-button--icon wf-button--sm" type="button" aria-label="Close">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <div class="wf-dialog__body">
+          <div class="ys__block">
+            <span class="wf-kicker">Start from</span>
+            <div class="wf-segmented ys__presets" role="group" aria-label="Start from">
+              <button class="wf-segmented__item" type="button" data-preset="beginner">Learning</button>
+              <button class="wf-segmented__item" type="button" data-preset="intermediate">Riding</button>
+              <button class="wf-segmented__item" type="button" data-preset="advanced">Advanced</button>
+            </div>
+          </div>
+
+          <div class="ys__block">
+            <span class="wf-kicker wf-kicker--ink">Wind speed: stars</span>
+            <svg class="curve" viewBox="0 0 400 92" role="img" data-curve="wind"></svg>
+            <div class="legend" aria-hidden="true">
+              <span><span class="legend__key"></span>Yours</span>
+              <span><span class="legend__key legend__key--base"></span><span data-base-name></span></span>
+            </div>
+            <div class="band">
+              <div class="band__scale band__scale--wind"></div>
+              <div class="band__edge" data-span="min-sweetLow"></div>
+              <div class="band__fill" data-span="sweetLow-sweetHigh"></div>
+              <div class="band__edge" data-span="sweetHigh-max"></div>
+              <input type="range" data-k="min" aria-label="Minimum wind speed" />
+              <input type="range" data-k="sweetLow" aria-label="Ideal wind speed from" />
+              <input type="range" data-k="sweetHigh" aria-label="Ideal wind speed to" />
+              <input type="range" data-k="max" aria-label="Maximum wind speed" />
+            </div>
+            <div class="figs">
+              <div class="fig"><span class="fig__name">Minimum</span><span class="fig__value" data-v="min"></span></div>
+              <div class="fig"><span class="fig__name">Ideal from</span><span class="fig__value" data-v="sweetLow"></span></div>
+              <div class="fig"><span class="fig__name">Ideal to</span><span class="fig__value" data-v="sweetHigh"></span></div>
+              <div class="fig"><span class="fig__name">Maximum</span><span class="fig__value" data-v="max"></span></div>
+            </div>
+          </div>
+
+          <div class="ys__block">
+            <span class="wf-kicker wf-kicker--ink">Gusts: stars taken off</span>
+            <svg class="curve" viewBox="0 0 400 92" role="img" data-curve="gust"></svg>
+            <div class="legend" aria-hidden="true">
+              <span><span class="legend__key"></span>Yours</span>
+              <span><span class="legend__key legend__key--base"></span><span data-base-name></span></span>
+            </div>
+            <div class="band">
+              <div class="band__scale band__scale--gust"></div>
+              <div class="band__fill" data-span="fine-worst" data-scale="gust"></div>
+              <input type="range" data-k="fine" aria-label="Gusts have no effect up to" />
+              <input type="range" data-k="worst" aria-label="Gusts take off the most from" />
+            </div>
+            <div class="figs figs--three">
+              <div class="fig"><span class="fig__name">No effect up to</span><span class="fig__value" data-v="fine"></span></div>
+              <div class="fig"><span class="fig__name">Most off from</span><span class="fig__value" data-v="worst"></span></div>
+              <div class="fig">
+                <span class="fig__name">Most off</span>
+                <div class="wf-segmented" role="group" aria-label="The most the gusts take off">
+                  <button class="wf-segmented__item" type="button" data-most="1">1★</button>
+                  <button class="wf-segmented__item" type="button" data-most="2">2★</button>
+                  <button class="wf-segmented__item" type="button" data-most="3">3★</button>
+                  <button class="wf-segmented__item" type="button" data-most="5">All</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ys__block">
+            <span class="wf-kicker wf-kicker--ink">Wind direction: stars taken off</span>
+            <svg class="shore web" viewBox="-180 -128 360 256" role="group" aria-label="Stars taken off for each wind direction" data-shore></svg>
+            <div class="picked" data-picked>
+              <span class="picked__name" data-picked-name></span>
+              <button class="wf-button wf-button--icon wf-button--sm" type="button" data-step="1" aria-label="Take off half a star more">−</button>
+              <span class="picked__value" data-picked-value></span>
+              <button class="wf-button wf-button--icon wf-button--sm" type="button" data-step="-1" aria-label="Take off half a star less">+</button>
+            </div>
+          </div>
+
+          <div class="ys__block">
+            <span class="wf-kicker wf-kicker--ink">Together: wind speed, gusts and direction</span>
+            <div class="together__for">
+              <span>For wind that is</span>
+              <div class="wf-control wf-control--select">
+                <select class="wf-control__input" aria-label="Show the stars for wind that is" data-for></select>
+                <svg class="wf-control__adornment" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+              </div>
+            </div>
+            <svg class="grid" viewBox="0 -18 400 278" role="img" data-grid></svg>
+            <div class="grid__key" aria-hidden="true">
+              <span>Blank: no stars ·</span><span>1★</span><span class="grid__swatch" style="opacity: 0.08"></span><span class="grid__swatch" style="opacity: 0.25"></span><span class="grid__swatch" style="opacity: 0.45"></span><span class="grid__swatch" style="opacity: 0.65"></span><span class="grid__swatch" style="opacity: 0.85"></span><span>5★</span>
+            </div>
+            <div class="readout" aria-live="polite" data-readout></div>
+          </div>
+
+          <div class="ys__block">
+            <span class="wf-kicker wf-kicker--ink">Examples</span>
+            <table class="rates">
+              <thead>
+                <tr><th scope="col" class="rates__w" data-forecast-head></th><th scope="col" class="rates__s" data-base-name></th><th scope="col">Yours</th></tr>
+              </thead>
+              <tbody data-rates></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="wf-dialog__actions">
+          <button class="wf-button wf-button--pill" type="button">Cancel</button>
+          <button class="wf-button wf-button--primary" type="button">Save</button>
+        </div>
+      </div>
+    </template>
+</div>
+<details class="catalog-source"><summary>patterns/your-stars.html</summary><pre><code>&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+  &lt;head&gt;
+    &lt;meta charset=&quot;utf-8&quot; /&gt;
+    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot; /&gt;
+    &lt;title&gt;Your star rating — wingfoil-chart pattern&lt;/title&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../foundations/tokens.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/button/component.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/dialog/component.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/segmented/component.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/kicker/component.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/link/component.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/star-glyphs/component.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/field/component.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/text-input/component.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/select/component.css&quot; /&gt;
+    &lt;style&gt;
+      /* The page: one sheet of paper with its grain; a mono label names each instance. */
+      body {
+        margin: 0;
+        padding-bottom: var(--sem-space-x10);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .pt__label {
+        margin: var(--sem-space-x5) var(--sem-space-x3) var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .pt__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: var(--sem-space-x6);
+        padding: 0 var(--sem-space-x3);
+      }
+      .pt__col {
+        display: grid;
+        gap: var(--sem-space-x3);
+      }
+      .pt__units {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x2);
+        padding: 0 var(--sem-space-x3);
+      }
+
+      /* ---- the dialog: the system's own, sized for the page and for a phone ---- */
+      .ys.wf-dialog {
+        position: static;
+        width: calc(var(--sem-space-step) * 124);
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      .ys--phone.wf-dialog {
+        width: calc(var(--sem-space-step) * 97.5);
+      }
+      .ys__block + .ys__block {
+        padding-top: var(--sem-space-x3);
+        border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+      .ys__presets {
+        margin-top: var(--sem-space-x1);
+      }
+
+      /* ---- the two curves: stars for the wind, stars off for the gusts ---- */
+      .curve {
+        display: block;
+        width: 100%;
+        height: auto;
+        margin-top: var(--sem-space-x1);
+        overflow: visible;
+      }
+      .curve__grid {
+        stroke: var(--sem-color-line);
+        stroke-width: 1;
+      }
+      .curve__base {
+        fill: none;
+        stroke: var(--sem-color-line-strong);
+        stroke-width: 1.25;
+        stroke-dasharray: 3 3;
+      }
+      .curve__yours {
+        fill: none;
+        stroke: var(--sem-color-ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .curve__under {
+        fill: var(--sem-color-sunken);
+      }
+      .curve__axis {
+        font-family: var(--sem-font-family-mono);
+        font-size: 10px; /* ds-lint-allow: SVG user units at the eyebrow's size */
+        fill: var(--sem-color-ink-muted);
+      }
+      .legend {
+        display: flex;
+        gap: var(--sem-space-x4);
+        margin-top: var(--sem-space-x1);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .legend__key {
+        display: inline-block;
+        width: calc(var(--sem-space-step) * 5);
+        margin-right: var(--sem-space-x1);
+        vertical-align: middle;
+        border-top: 2px solid var(--sem-color-ink); /* ds-lint-allow: the curve's own stroke width */
+      }
+      .legend__key--base {
+        border-top: 1.25px dashed var(--sem-color-line-strong); /* ds-lint-allow: the curve's own stroke */
+      }
+
+      /* ---- a scale of handles under each curve ---- */
+      .band {
+        position: relative;
+        height: var(--sem-size-touch);
+        margin-top: var(--sem-space-x1);
+      }
+      .band__scale {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: calc(var(--sem-space-step) * 1);
+        transform: translateY(-50%);
+        opacity: 0.35;
+      }
+      /* The wind's own colours along the knots, faint: 0 to 40 kn under the wind, 0 to 50 under the gusts. */
+      .band__scale--wind {
+        background: linear-gradient(
+          to right,
+          var(--sem-color-wind-k00) 0%,
+          var(--sem-color-wind-k05) 12.5%,
+          var(--sem-color-wind-k10) 25%,
+          var(--sem-color-wind-k15) 37.5%,
+          var(--sem-color-wind-k20) 50%,
+          var(--sem-color-wind-k25) 62.5%,
+          var(--sem-color-wind-k30) 75%,
+          var(--sem-color-wind-k35) 87.5%,
+          var(--sem-color-wind-k40) 100%
+        );
+      }
+      .band__scale--gust {
+        background: linear-gradient(
+          to right,
+          var(--sem-color-wind-k00) 0%,
+          var(--sem-color-wind-k10) 20%,
+          var(--sem-color-wind-k20) 40%,
+          var(--sem-color-wind-k30) 60%,
+          var(--sem-color-wind-k40) 80%,
+          var(--sem-color-wind-k45) 90%,
+          var(--sem-color-wind-k50) 100%
+        );
+      }
+      .band__fill,
+      .band__edge {
+        position: absolute;
+        top: 50%;
+        height: calc(var(--sem-space-step) * 1);
+        transform: translateY(-50%);
+        background: var(--sem-color-ink);
+      }
+      .band__edge {
+        opacity: 0.35;
+      }
+      .band input[type=&quot;range&quot;] {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        background: none;
+        pointer-events: none;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+      .band input[type=&quot;range&quot;]::-webkit-slider-runnable-track {
+        background: none;
+      }
+      .band input[type=&quot;range&quot;]::-webkit-slider-thumb {
+        width: calc(var(--sem-space-step) * 2.5);
+        height: calc(var(--sem-space-step) * 5);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border-radius: var(--sem-radius-full);
+        background: var(--sem-color-card);
+        box-shadow: var(--sem-shadow-control);
+        cursor: ew-resize;
+        pointer-events: auto;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+      .band input[type=&quot;range&quot;]::-moz-range-thumb {
+        width: calc(var(--sem-space-step) * 2.5);
+        height: calc(var(--sem-space-step) * 5);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border-radius: var(--sem-radius-full);
+        background: var(--sem-color-card);
+        box-shadow: var(--sem-shadow-control);
+        cursor: ew-resize;
+        pointer-events: auto;
+      }
+      .band input[type=&quot;range&quot;]:focus-visible {
+        outline: none;
+      }
+      .band input[type=&quot;range&quot;]:focus-visible::-webkit-slider-thumb {
+        outline: var(--sem-ring-width) solid var(--sem-color-focus);
+        outline-offset: var(--sem-ring-offset);
+      }
+      .band input[type=&quot;range&quot;]:focus-visible::-moz-range-thumb {
+        outline: var(--sem-ring-width) solid var(--sem-color-focus);
+        outline-offset: var(--sem-ring-offset);
+      }
+      .figs {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--sem-space-x2);
+        margin-top: var(--sem-space-x1);
+      }
+      .figs--three {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .fig {
+        display: flex;
+        flex-direction: column;
+        gap: var(--sem-space-x0-5);
+      }
+      .fig__name {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .fig__value {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-figure);
+        line-height: var(--sem-font-line-figure);
+        font-weight: var(--sem-font-weight-figure);
+        font-variant-numeric: tabular-nums;
+      }
+      .fig__value small {
+        font-size: var(--sem-font-size-label);
+        color: var(--sem-color-ink-muted);
+      }
+      .fig .wf-segmented {
+        align-self: flex-start;
+      }
+
+      /* ---- wind direction: the beach, and the stars each direction costs ---- */
+      .shore {
+        display: block;
+        width: 100%;
+        max-width: calc(var(--sem-space-step) * 96);
+        height: auto;
+        margin: var(--sem-space-x1) auto 0;
+      }
+      .shore__land {
+        fill: var(--sem-color-land);
+        opacity: 0.7;
+        pointer-events: none;
+      }
+      .shore__sea {
+        fill: var(--sem-color-depth);
+        opacity: 0.22;
+        pointer-events: none;
+      }
+      .shore__line {
+        stroke: var(--sem-color-ink);
+        stroke-width: 2;
+      }
+      .shore__wedge {
+        fill: var(--sem-color-ink);
+        stroke: var(--sem-color-card);
+        stroke-width: 1;
+      }
+      .shore__ring {
+        fill: none;
+        stroke: var(--sem-color-ink);
+        stroke-width: 1;
+      }
+      .shore__word {
+        font-family: var(--sem-font-family-mono);
+        font-size: 9px; /* ds-lint-allow: SVG user units, under the eyebrow */
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        fill: var(--sem-color-ink);
+      }
+      .shore__word--on-dark {
+        fill: var(--sem-color-ink-inverse);
+      }
+      .web__spoke {
+        stroke: var(--sem-color-ink);
+        stroke-width: 0.5;
+        opacity: 0.12;
+        pointer-events: none;
+      }
+      .web__ringline {
+        fill: none;
+        stroke: var(--sem-color-ink);
+        stroke-width: 0.5;
+        opacity: 0.18;
+        pointer-events: none;
+      }
+      .web__shape {
+        fill: var(--sem-color-ink);
+        fill-opacity: 0.07;
+        stroke: var(--sem-color-ink);
+        stroke-width: 1.25;
+        stroke-linejoin: round;
+        pointer-events: none;
+      }
+      .web__slice {
+        fill: transparent;
+        cursor: pointer;
+      }
+      .web__slice--on {
+        fill: var(--sem-color-ink);
+        fill-opacity: 0.08;
+      }
+      .web__dot {
+        fill: var(--sem-color-card);
+        stroke: var(--sem-color-ink);
+        stroke-width: 1.5;
+        cursor: grab;
+      }
+      .web__dot--on {
+        fill: var(--sem-color-ink);
+      }
+      .web__dot:focus-visible {
+        outline: none;
+        stroke: var(--sem-color-focus);
+        stroke-width: 3;
+      }
+      .web__half {
+        font-family: var(--sem-font-family-mono);
+        font-size: 7.5px; /* ds-lint-allow: SVG user units, under the eyebrow */
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        fill: var(--sem-color-ink-muted);
+        pointer-events: none;
+      }
+      .web__name {
+        font-family: var(--sem-font-family-mono);
+        font-size: 8px; /* ds-lint-allow: SVG user units, under the eyebrow */
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        fill: var(--sem-color-ink-2);
+        pointer-events: none;
+      }
+      .web__ring-label {
+        font-family: var(--sem-font-family-mono);
+        font-size: 6.5px; /* ds-lint-allow: SVG user units, the rings' small figures */
+        fill: var(--sem-color-ink-muted);
+        pointer-events: none;
+      }
+      .web .shore__word {
+        pointer-events: none;
+      }
+      .web {
+        touch-action: none;
+        user-select: none;
+      }
+      .picked {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: var(--sem-space-x2);
+        margin-top: var(--sem-space-x1);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-label);
+      }
+      .picked__name {
+        text-transform: uppercase;
+        letter-spacing: var(--sem-font-tracking-label);
+      }
+      .picked__value {
+        min-width: calc(var(--sem-space-step) * 10);
+        font-size: var(--sem-font-size-figure);
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+      }
+      .together__for {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x2);
+        margin-top: var(--sem-space-x1);
+        font-size: var(--sem-font-size-body);
+      }
+
+      /* ---- together: every wind and gust, rated ---- */
+      .grid {
+        display: block;
+        width: 100%;
+        height: auto;
+        margin-top: var(--sem-space-x1);
+        overflow: visible;
+        touch-action: none;
+        cursor: crosshair;
+      }
+      .grid__cell {
+        fill: var(--sem-color-ink);
+      }
+      .grid__none {
+        fill: var(--sem-color-sunken);
+      }
+      .grid__pick {
+        fill: none;
+        stroke: var(--sem-color-focus);
+        stroke-width: 2;
+      }
+      .grid__key {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x1);
+        margin-top: var(--sem-space-x1);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .grid__swatch {
+        display: inline-block;
+        width: calc(var(--sem-space-step) * 4);
+        height: calc(var(--sem-space-step) * 3);
+        background: var(--sem-color-ink);
+      }
+      .readout {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x2);
+        min-height: var(--sem-size-control-sm);
+        margin-top: var(--sem-space-x1);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-label);
+        font-variant-numeric: tabular-nums;
+      }
+      .readout__why {
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-caption);
+        color: var(--sem-color-ink-muted);
+      }
+
+      /* ---- examples: the level they started from, against theirs ---- */
+      .rates {
+        width: 100%;
+        margin-top: var(--sem-space-x1);
+        border-collapse: collapse;
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-label);
+        font-variant-numeric: tabular-nums;
+      }
+      .rates th {
+        padding: var(--sem-space-x1) 0;
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        font-size: var(--sem-font-size-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+        text-align: left;
+      }
+      .rates td {
+        padding: var(--sem-space-x1) 0;
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+        white-space: nowrap;
+        vertical-align: middle;
+      }
+      .rates tr:last-child td {
+        border-bottom: 0;
+      }
+      .rates__w {
+        width: 34%;
+      }
+      .rates__s {
+        width: 30%;
+      }
+      .rates__moved {
+        font-weight: var(--sem-font-weight-semibold);
+      }
+
+      /* ---- where it opens from: the rider settings' row ---- */
+      .settings {
+        width: calc(var(--sem-space-step) * 90);
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: var(--sem-space-x3) var(--sem-space-x4);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        box-shadow: var(--sem-shadow-frame);
+        background-color: var(--sem-color-card);
+        background-image: var(--sem-texture-grain);
+      }
+      .settings__row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: var(--sem-space-x1) var(--sem-space-x3);
+        padding: var(--sem-space-x2) 0;
+      }
+      .settings__row + .settings__row {
+        border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+      .settings__name {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .settings__value {
+        font-size: var(--sem-font-size-body);
+      }
+      .settings__actions {
+        display: flex;
+        gap: var(--sem-space-x3);
+        align-items: center;
+      }
+
+      /* ---- the dock's head, when the stars are the rider's own ---- */
+      .dockhead {
+        width: calc(var(--sem-space-step) * 150);
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: var(--sem-space-x2) var(--sem-space-x3);
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+        background-color: var(--sem-color-card);
+        box-shadow: var(--sem-shadow-dock);
+      }
+      .dockhead__top {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--sem-space-x2);
+      }
+      .dockhead__spot {
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .whose {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--sem-space-x1);
+        padding: 0 var(--sem-space-x2);
+        min-height: var(--sem-size-control-sm);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border-radius: var(--sem-radius-full);
+        background: var(--sem-color-card);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .whose:focus-visible {
+        outline: var(--sem-ring-width) solid var(--sem-color-focus);
+        outline-offset: var(--sem-ring-offset);
+      }
+      .hours {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        margin-top: var(--sem-space-x2);
+        border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+      .hour {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--sem-space-x0-5);
+        padding: var(--sem-space-x1) 0;
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-label);
+        font-variant-numeric: tabular-nums;
+      }
+      .hour + .hour {
+        border-left: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+      .hour__ist {
+        font-size: var(--sem-font-size-eyebrow);
+        color: var(--sem-color-ink-muted);
+      }
+      .hour .wf-star-glyphs {
+        width: calc(var(--sem-space-step) * 14);
+        height: auto;
+      }
+    &lt;/style&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;p class=&quot;pt__label&quot;&gt;Mockup only · the rider's unit setting, which every figure, axis and handle follows&lt;/p&gt;
+    &lt;div class=&quot;pt__units&quot;&gt;
+      &lt;div class=&quot;wf-segmented&quot; role=&quot;group&quot; aria-label=&quot;Wind units&quot;&gt;
+        &lt;button class=&quot;wf-segmented__item&quot; type=&quot;button&quot; data-unit=&quot;kn&quot; aria-pressed=&quot;true&quot;&gt;kn&lt;/button&gt;
+        &lt;button class=&quot;wf-segmented__item&quot; type=&quot;button&quot; data-unit=&quot;mph&quot; aria-pressed=&quot;false&quot;&gt;mph&lt;/button&gt;
+        &lt;button class=&quot;wf-segmented__item&quot; type=&quot;button&quot; data-unit=&quot;kmh&quot; aria-pressed=&quot;false&quot;&gt;km/h&lt;/button&gt;
+        &lt;button class=&quot;wf-segmented__item&quot; type=&quot;button&quot; data-unit=&quot;ms&quot; aria-pressed=&quot;false&quot;&gt;m/s&lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;p class=&quot;pt__label&quot;&gt;1 · Where it opens: the rider settings (Display ▸ You), before and after&lt;/p&gt;
+    &lt;div class=&quot;pt__row&quot;&gt;
+      &lt;div class=&quot;settings&quot; aria-label=&quot;Rider settings, standard stars&quot;&gt;
+        &lt;div class=&quot;settings__row&quot;&gt;
+          &lt;span class=&quot;settings__name&quot;&gt;Level&lt;/span&gt;
+          &lt;span class=&quot;settings__value&quot;&gt;Riding&lt;/span&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;settings__row&quot;&gt;
+          &lt;span class=&quot;settings__name&quot;&gt;Star rating&lt;/span&gt;
+          &lt;span class=&quot;settings__actions&quot;&gt;&lt;span class=&quot;settings__value&quot;&gt;Standard for Riding&lt;/span&gt;&lt;a class=&quot;wf-link&quot; href=&quot;#&quot;&gt;Customise&lt;/a&gt;&lt;/span&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;settings&quot; aria-label=&quot;Rider settings, custom stars&quot;&gt;
+        &lt;div class=&quot;settings__row&quot;&gt;
+          &lt;span class=&quot;settings__name&quot;&gt;Level&lt;/span&gt;
+          &lt;span class=&quot;settings__value&quot;&gt;Riding&lt;/span&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;settings__row&quot;&gt;
+          &lt;span class=&quot;settings__name&quot;&gt;Star rating&lt;/span&gt;
+          &lt;span class=&quot;settings__actions&quot;&gt;&lt;span class=&quot;settings__value&quot;&gt;Custom&lt;/span&gt;&lt;a class=&quot;wf-link&quot; href=&quot;#&quot;&gt;Edit&lt;/a&gt;&lt;a class=&quot;wf-link&quot; href=&quot;#&quot;&gt;Reset&lt;/a&gt;&lt;/span&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;p class=&quot;pt__label&quot;&gt;2 · The dialog, desktop · a rider who wants about 20 knots, and no gusts much over 25&lt;/p&gt;
+    &lt;div class=&quot;pt__row&quot;&gt;
+      &lt;div data-ys data-start=&quot;intermediate&quot; data-custom='{&quot;min&quot;:15,&quot;sweetLow&quot;:18,&quot;sweetHigh&quot;:23,&quot;max&quot;:27,&quot;fine&quot;:24,&quot;worst&quot;:30,&quot;most&quot;:3,&quot;dir&quot;:{&quot;onshore&quot;:0.5,&quot;crossOn&quot;:0,&quot;cross&quot;:0,&quot;crossOff&quot;:2.5,&quot;offshore&quot;:4}}'&gt;&lt;/div&gt;
+      &lt;div class=&quot;pt__col&quot;&gt;
+        &lt;p class=&quot;pt__label&quot; style=&quot;margin: 0&quot;&gt;3 · The forecast, once saved: a chip says the stars are custom, and opens the dialog&lt;/p&gt;
+        &lt;div class=&quot;dockhead&quot;&gt;
+          &lt;div class=&quot;dockhead__top&quot;&gt;
+            &lt;span class=&quot;dockhead__spot&quot;&gt;Dollymount Strand&lt;/span&gt;
+            &lt;button class=&quot;whose&quot; type=&quot;button&quot; aria-label=&quot;Custom star rating: edit&quot;&gt;
+              &lt;svg width=&quot;10&quot; height=&quot;10&quot; viewBox=&quot;-5 -5 10 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path fill=&quot;currentColor&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; /&gt;&lt;/svg&gt;
+              Custom stars
+            &lt;/button&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;hours&quot; data-hours&gt;&lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;p class=&quot;pt__label&quot;&gt;4 · The dialog on a phone, 390 wide · opened from a Learning level, nothing changed yet&lt;/p&gt;
+    &lt;div class=&quot;pt__row&quot;&gt;
+      &lt;div data-ys data-start=&quot;beginner&quot; data-phone&gt;&lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;template id=&quot;ys&quot;&gt;
+      &lt;div class=&quot;wf-dialog wf-dialog--wide ys&quot; role=&quot;dialog&quot; aria-modal=&quot;true&quot;&gt;
+        &lt;div class=&quot;wf-dialog__head&quot;&gt;
+          &lt;h2 class=&quot;wf-dialog__title&quot; data-title&gt;Your star rating&lt;/h2&gt;
+          &lt;button class=&quot;wf-button wf-button--icon wf-button--sm&quot; type=&quot;button&quot; aria-label=&quot;Close&quot;&gt;
+            &lt;svg width=&quot;15&quot; height=&quot;15&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M18 6 6 18&quot; /&gt;&lt;path d=&quot;m6 6 12 12&quot; /&gt;&lt;/svg&gt;
+          &lt;/button&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;wf-dialog__body&quot;&gt;
+          &lt;div class=&quot;ys__block&quot;&gt;
+            &lt;span class=&quot;wf-kicker&quot;&gt;Start from&lt;/span&gt;
+            &lt;div class=&quot;wf-segmented ys__presets&quot; role=&quot;group&quot; aria-label=&quot;Start from&quot;&gt;
+              &lt;button class=&quot;wf-segmented__item&quot; type=&quot;button&quot; data-preset=&quot;beginner&quot;&gt;Learning&lt;/button&gt;
+              &lt;button class=&quot;wf-segmented__item&quot; type=&quot;button&quot; data-preset=&quot;intermediate&quot;&gt;Riding&lt;/button&gt;
+              &lt;button class=&quot;wf-segmented__item&quot; type=&quot;button&quot; data-preset=&quot;advanced&quot;&gt;Advanced&lt;/button&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+
+          &lt;div class=&quot;ys__block&quot;&gt;
+            &lt;span class=&quot;wf-kicker wf-kicker--ink&quot;&gt;Wind speed: stars&lt;/span&gt;
+            &lt;svg class=&quot;curve&quot; viewBox=&quot;0 0 400 92&quot; role=&quot;img&quot; data-curve=&quot;wind&quot;&gt;&lt;/svg&gt;
+            &lt;div class=&quot;legend&quot; aria-hidden=&quot;true&quot;&gt;
+              &lt;span&gt;&lt;span class=&quot;legend__key&quot;&gt;&lt;/span&gt;Yours&lt;/span&gt;
+              &lt;span&gt;&lt;span class=&quot;legend__key legend__key--base&quot;&gt;&lt;/span&gt;&lt;span data-base-name&gt;&lt;/span&gt;&lt;/span&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;band&quot;&gt;
+              &lt;div class=&quot;band__scale band__scale--wind&quot;&gt;&lt;/div&gt;
+              &lt;div class=&quot;band__edge&quot; data-span=&quot;min-sweetLow&quot;&gt;&lt;/div&gt;
+              &lt;div class=&quot;band__fill&quot; data-span=&quot;sweetLow-sweetHigh&quot;&gt;&lt;/div&gt;
+              &lt;div class=&quot;band__edge&quot; data-span=&quot;sweetHigh-max&quot;&gt;&lt;/div&gt;
+              &lt;input type=&quot;range&quot; data-k=&quot;min&quot; aria-label=&quot;Minimum wind speed&quot; /&gt;
+              &lt;input type=&quot;range&quot; data-k=&quot;sweetLow&quot; aria-label=&quot;Ideal wind speed from&quot; /&gt;
+              &lt;input type=&quot;range&quot; data-k=&quot;sweetHigh&quot; aria-label=&quot;Ideal wind speed to&quot; /&gt;
+              &lt;input type=&quot;range&quot; data-k=&quot;max&quot; aria-label=&quot;Maximum wind speed&quot; /&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;figs&quot;&gt;
+              &lt;div class=&quot;fig&quot;&gt;&lt;span class=&quot;fig__name&quot;&gt;Minimum&lt;/span&gt;&lt;span class=&quot;fig__value&quot; data-v=&quot;min&quot;&gt;&lt;/span&gt;&lt;/div&gt;
+              &lt;div class=&quot;fig&quot;&gt;&lt;span class=&quot;fig__name&quot;&gt;Ideal from&lt;/span&gt;&lt;span class=&quot;fig__value&quot; data-v=&quot;sweetLow&quot;&gt;&lt;/span&gt;&lt;/div&gt;
+              &lt;div class=&quot;fig&quot;&gt;&lt;span class=&quot;fig__name&quot;&gt;Ideal to&lt;/span&gt;&lt;span class=&quot;fig__value&quot; data-v=&quot;sweetHigh&quot;&gt;&lt;/span&gt;&lt;/div&gt;
+              &lt;div class=&quot;fig&quot;&gt;&lt;span class=&quot;fig__name&quot;&gt;Maximum&lt;/span&gt;&lt;span class=&quot;fig__value&quot; data-v=&quot;max&quot;&gt;&lt;/span&gt;&lt;/div&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+
+          &lt;div class=&quot;ys__block&quot;&gt;
+            &lt;span class=&quot;wf-kicker wf-kicker--ink&quot;&gt;Gusts: stars taken off&lt;/span&gt;
+            &lt;svg class=&quot;curve&quot; viewBox=&quot;0 0 400 92&quot; role=&quot;img&quot; data-curve=&quot;gust&quot;&gt;&lt;/svg&gt;
+            &lt;div class=&quot;legend&quot; aria-hidden=&quot;true&quot;&gt;
+              &lt;span&gt;&lt;span class=&quot;legend__key&quot;&gt;&lt;/span&gt;Yours&lt;/span&gt;
+              &lt;span&gt;&lt;span class=&quot;legend__key legend__key--base&quot;&gt;&lt;/span&gt;&lt;span data-base-name&gt;&lt;/span&gt;&lt;/span&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;band&quot;&gt;
+              &lt;div class=&quot;band__scale band__scale--gust&quot;&gt;&lt;/div&gt;
+              &lt;div class=&quot;band__fill&quot; data-span=&quot;fine-worst&quot; data-scale=&quot;gust&quot;&gt;&lt;/div&gt;
+              &lt;input type=&quot;range&quot; data-k=&quot;fine&quot; aria-label=&quot;Gusts have no effect up to&quot; /&gt;
+              &lt;input type=&quot;range&quot; data-k=&quot;worst&quot; aria-label=&quot;Gusts take off the most from&quot; /&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;figs figs--three&quot;&gt;
+              &lt;div class=&quot;fig&quot;&gt;&lt;span class=&quot;fig__name&quot;&gt;No effect up to&lt;/span&gt;&lt;span class=&quot;fig__value&quot; data-v=&quot;fine&quot;&gt;&lt;/span&gt;&lt;/div&gt;
+              &lt;div class=&quot;fig&quot;&gt;&lt;span class=&quot;fig__name&quot;&gt;Most off from&lt;/span&gt;&lt;span class=&quot;fig__value&quot; data-v=&quot;worst&quot;&gt;&lt;/span&gt;&lt;/div&gt;
+              &lt;div class=&quot;fig&quot;&gt;
+                &lt;span class=&quot;fig__name&quot;&gt;Most off&lt;/span&gt;
+                &lt;div class=&quot;wf-segmented&quot; role=&quot;group&quot; aria-label=&quot;The most the gusts take off&quot;&gt;
+                  &lt;button class=&quot;wf-segmented__item&quot; type=&quot;button&quot; data-most=&quot;1&quot;&gt;1★&lt;/button&gt;
+                  &lt;button class=&quot;wf-segmented__item&quot; type=&quot;button&quot; data-most=&quot;2&quot;&gt;2★&lt;/button&gt;
+                  &lt;button class=&quot;wf-segmented__item&quot; type=&quot;button&quot; data-most=&quot;3&quot;&gt;3★&lt;/button&gt;
+                  &lt;button class=&quot;wf-segmented__item&quot; type=&quot;button&quot; data-most=&quot;5&quot;&gt;All&lt;/button&gt;
+                &lt;/div&gt;
+              &lt;/div&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+
+          &lt;div class=&quot;ys__block&quot;&gt;
+            &lt;span class=&quot;wf-kicker wf-kicker--ink&quot;&gt;Wind direction: stars taken off&lt;/span&gt;
+            &lt;svg class=&quot;shore web&quot; viewBox=&quot;-180 -128 360 256&quot; role=&quot;group&quot; aria-label=&quot;Stars taken off for each wind direction&quot; data-shore&gt;&lt;/svg&gt;
+            &lt;div class=&quot;picked&quot; data-picked&gt;
+              &lt;span class=&quot;picked__name&quot; data-picked-name&gt;&lt;/span&gt;
+              &lt;button class=&quot;wf-button wf-button--icon wf-button--sm&quot; type=&quot;button&quot; data-step=&quot;1&quot; aria-label=&quot;Take off half a star more&quot;&gt;−&lt;/button&gt;
+              &lt;span class=&quot;picked__value&quot; data-picked-value&gt;&lt;/span&gt;
+              &lt;button class=&quot;wf-button wf-button--icon wf-button--sm&quot; type=&quot;button&quot; data-step=&quot;-1&quot; aria-label=&quot;Take off half a star less&quot;&gt;+&lt;/button&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+
+          &lt;div class=&quot;ys__block&quot;&gt;
+            &lt;span class=&quot;wf-kicker wf-kicker--ink&quot;&gt;Together: wind speed, gusts and direction&lt;/span&gt;
+            &lt;div class=&quot;together__for&quot;&gt;
+              &lt;span&gt;For wind that is&lt;/span&gt;
+              &lt;div class=&quot;wf-control wf-control--select&quot;&gt;
+                &lt;select class=&quot;wf-control__input&quot; aria-label=&quot;Show the stars for wind that is&quot; data-for&gt;&lt;/select&gt;
+                &lt;svg class=&quot;wf-control__adornment&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;m6 9 6 6 6-6&quot; /&gt;&lt;/svg&gt;
+              &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;svg class=&quot;grid&quot; viewBox=&quot;0 -18 400 278&quot; role=&quot;img&quot; data-grid&gt;&lt;/svg&gt;
+            &lt;div class=&quot;grid__key&quot; aria-hidden=&quot;true&quot;&gt;
+              &lt;span&gt;Blank: no stars ·&lt;/span&gt;&lt;span&gt;1★&lt;/span&gt;&lt;span class=&quot;grid__swatch&quot; style=&quot;opacity: 0.08&quot;&gt;&lt;/span&gt;&lt;span class=&quot;grid__swatch&quot; style=&quot;opacity: 0.25&quot;&gt;&lt;/span&gt;&lt;span class=&quot;grid__swatch&quot; style=&quot;opacity: 0.45&quot;&gt;&lt;/span&gt;&lt;span class=&quot;grid__swatch&quot; style=&quot;opacity: 0.65&quot;&gt;&lt;/span&gt;&lt;span class=&quot;grid__swatch&quot; style=&quot;opacity: 0.85&quot;&gt;&lt;/span&gt;&lt;span&gt;5★&lt;/span&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;readout&quot; aria-live=&quot;polite&quot; data-readout&gt;&lt;/div&gt;
+          &lt;/div&gt;
+
+          &lt;div class=&quot;ys__block&quot;&gt;
+            &lt;span class=&quot;wf-kicker wf-kicker--ink&quot;&gt;Examples&lt;/span&gt;
+            &lt;table class=&quot;rates&quot;&gt;
+              &lt;thead&gt;
+                &lt;tr&gt;&lt;th scope=&quot;col&quot; class=&quot;rates__w&quot; data-forecast-head&gt;&lt;/th&gt;&lt;th scope=&quot;col&quot; class=&quot;rates__s&quot; data-base-name&gt;&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Yours&lt;/th&gt;&lt;/tr&gt;
+              &lt;/thead&gt;
+              &lt;tbody data-rates&gt;&lt;/tbody&gt;
+            &lt;/table&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;wf-dialog__actions&quot;&gt;
+          &lt;button class=&quot;wf-button wf-button--pill&quot; type=&quot;button&quot;&gt;Cancel&lt;/button&gt;
+          &lt;button class=&quot;wf-button wf-button--primary&quot; type=&quot;button&quot;&gt;Save&lt;/button&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/template&gt;
+
+    &lt;script&gt;
+      // The proposed rating (a change to force5/src/stars.ts): stars for the wind speed, less
+      // stars for how strong the gusts are, both curves set by the rider. Below the minimum a
+      // gust still lifts the wind towards it: a light day with gusts is a chance to get up.
+      const LEVELS = {
+        beginner: { name: &quot;Learning&quot;, min: 13, sweetLow: 15, sweetHigh: 20, max: 24, fine: 20, worst: 28, most: 3, share: 0.2,
+          dir: { onshore: 1, crossOn: 0, cross: 0.5, crossOff: 3, offshore: 5 } },
+        intermediate: { name: &quot;Riding&quot;, min: 11, sweetLow: 14, sweetHigh: 24, max: 30, fine: 28, worst: 40, most: 2, share: 0.3,
+          dir: { onshore: 1, crossOn: 0, cross: 0, crossOff: 1.5, offshore: 4 } },
+        advanced: { name: &quot;Advanced&quot;, min: 8, sweetLow: 13, sweetHigh: 28, max: 35, fine: 33, worst: 45, most: 2, share: 0.35,
+          dir: { onshore: 1, crossOn: 0, cross: 0, crossOff: 1, offshore: 4 } },
+      };
+      // How the wind meets the beach, as stars.ts's shoreAngle reads it, drawn the way the wind
+      // blows: offshore points out over the sea (up), onshore in over the land (down). `from`/`to`
+      // are degrees off straight out to sea; `at` is where its dot sits, on each side for the
+      // four that come from either side.
+      const DIRS = [
+        { key: &quot;offshore&quot;, name: &quot;Offshore&quot;, from: 0, to: 30, at: [0] },
+        { key: &quot;crossOff&quot;, name: &quot;Cross-offshore&quot;, from: 30, to: 70, at: [50, -50] },
+        { key: &quot;cross&quot;, name: &quot;Cross-shore&quot;, from: 70, to: 110, at: [90, -90] },
+        { key: &quot;crossOn&quot;, name: &quot;Cross-onshore&quot;, from: 110, to: 150, at: [130, -130] },
+        { key: &quot;onshore&quot;, name: &quot;Onshore&quot;, from: 150, to: 180, at: [180] },
+      ];
+      const half = (v) =&gt; (v ? `−${Math.floor(v) || &quot;&quot;}${v % 1 ? &quot;½&quot; : &quot;&quot;}` : &quot;0&quot;);
+      const DIR_WORD = { onshore: &quot;onshore&quot;, crossOn: &quot;cross-on&quot;, cross: &quot;cross&quot;, crossOff: &quot;cross-off&quot;, offshore: &quot;offshore&quot; };
+      const WIND_KEYS = [&quot;min&quot;, &quot;sweetLow&quot;, &quot;sweetHigh&quot;, &quot;max&quot;];
+      const GUST_KEYS = [&quot;fine&quot;, &quot;worst&quot;];
+      const WIND_TOP = 40, GUST_TOP = 50; // knots: the ends of the two scales
+      const clamp = (x, lo, hi) =&gt; Math.min(hi, Math.max(lo, x));
+      const ramp = (x, x0, x1, y0, y1) =&gt; y0 + ((clamp(x, x0, x1) - x0) / (x1 - x0)) * (y1 - y0);
+      function windScore(kn, b) {
+        if (kn &lt; b.min - 2) return 0;
+        if (kn &lt; b.min) return ramp(kn, b.min - 2, b.min, 0, 1);
+        if (kn &lt; b.sweetLow) return ramp(kn, b.min, b.sweetLow, 1, 4);
+        if (kn &lt;= b.sweetHigh) {
+          const q = (b.sweetHigh - b.sweetLow) / 4;
+          if (kn &lt; b.sweetLow + q) return ramp(kn, b.sweetLow, b.sweetLow + q, 4, 5);
+          if (kn &gt; b.sweetHigh - q) return ramp(kn, b.sweetHigh - q, b.sweetHigh, 5, 4);
+          return 5;
+        }
+        if (kn &lt;= b.max) return ramp(kn, b.sweetHigh, b.max, 4, 2);
+        return ramp(kn, b.max, b.max + 6, 2, 0);
+      }
+      const gustLoss = (kn, b) =&gt; (kn &lt;= b.fine ? 0 : ramp(kn, b.fine, b.worst, 0, b.most));
+      function rate(wind, gust, b, dir = &quot;crossOn&quot;) {
+        const ride = gust &gt; wind &amp;&amp; wind &lt; b.min ? Math.min(b.min, wind + b.share * Math.min(gust - wind, wind)) : wind;
+        const base = windScore(ride, b);
+        const potential = Math.round(base);
+        const loss = gustLoss(gust, b);
+        const off = b.dir[dir];
+        const stars = clamp(Math.round(base - loss - off), 0, potential);
+        return { stars, potential, base, loss, off };
+      }
+
+      // The beach from above, sea up and land down, and a dot for each way the wind can blow,
+      // drawn where it blows to: on the rim it takes nothing off, at the middle all five stars,
+      // in half stars. A line through the dots shows the directions the rider likes.
+      const R = 100;
+      const polar = (a, r) =&gt; [r * Math.sin((a * Math.PI) / 180), -r * Math.cos((a * Math.PI) / 180)];
+      const radius = (off) =&gt; R * (1 - off / 5);
+      function web(svg, b, picked) {
+        const f = (n) =&gt; n.toFixed(1);
+        const wedge = (a1, a2) =&gt; { const [x1, y1] = polar(a1, R), [x2, y2] = polar(a2, R); return `M0,0 L${f(x1)},${f(y1)} A${R},${R} 0 0 1 ${f(x2)},${f(y2)}Z`; };
+        const arcs = (d) =&gt; (d.from === 0 ? [[-30, 30]] : d.to === 180 ? [[150, 210]] : [[d.from, d.to], [-d.to, -d.from]]);
+        // Sea and land only inside the circle; paper round it.
+        let out = `&lt;path class=&quot;shore__sea&quot; d=&quot;M${-R},0 A${R},${R} 0 0 1 ${R},0Z&quot;/&gt;&lt;path class=&quot;shore__land&quot; d=&quot;M${R},0 A${R},${R} 0 0 1 ${-R},0Z&quot;/&gt;`;
+        DIRS.forEach((d) =&gt; arcs(d).forEach(([a1, a2]) =&gt; {
+          out += `&lt;path class=&quot;web__slice${d.key === picked ? &quot; web__slice--on&quot; : &quot;&quot;}&quot; d=&quot;${wedge(a1, a2)}&quot; data-slice=&quot;${d.key}&quot;&gt;&lt;title&gt;${d.name}&lt;/title&gt;&lt;/path&gt;`;
+        }));
+        for (let off = 1; off &lt;= 4; off++) out += `&lt;circle class=&quot;web__ringline&quot; r=&quot;${radius(off)}&quot;/&gt;`;
+        [30, 70, 110, 150].forEach((a) =&gt; [a, -a].forEach((aa) =&gt; { const [x, y] = polar(aa, R); out += `&lt;line class=&quot;web__spoke&quot; x1=&quot;0&quot; y1=&quot;0&quot; x2=&quot;${f(x)}&quot; y2=&quot;${f(y)}&quot;/&gt;`; }));
+        for (let off = 1; off &lt;= 4; off++) { const [x, y] = polar(-30, radius(off)); out += `&lt;text class=&quot;web__ring-label&quot; x=&quot;${f(x - 2)}&quot; y=&quot;${f(y - 2)}&quot; text-anchor=&quot;end&quot;&gt;−${off}&lt;/text&gt;`; }
+        out += `&lt;circle class=&quot;shore__ring&quot; r=&quot;${R}&quot;/&gt;&lt;line class=&quot;shore__line&quot; x1=&quot;${-R - 8}&quot; x2=&quot;${R + 8}&quot; y1=&quot;0&quot; y2=&quot;0&quot;/&gt;`;
+        out += `&lt;text class=&quot;web__half&quot; x=&quot;${-R + 14}&quot; y=&quot;-8&quot;&gt;sea&lt;/text&gt;&lt;text class=&quot;web__half&quot; x=&quot;${-R + 14}&quot; y=&quot;15&quot;&gt;land&lt;/text&gt;`;
+        const ring = [0, 50, 90, 130, 180, -130, -90, -50].map((a) =&gt; { const d = DIRS.find((x) =&gt; x.at.includes(a)); return polar(a, radius(b.dir[d.key])); });
+        out += `&lt;polygon class=&quot;web__shape&quot; points=&quot;${ring.map(([x, y]) =&gt; `${f(x)},${f(y)}`).join(&quot; &quot;)}&quot;/&gt;`;
+        // Names round the outside: once, on the right, for the four that come from either side.
+        DIRS.forEach((d) =&gt; {
+          const a = d.at[0], [x, y] = polar(a, R + 12);
+          if (a === 0) out += `&lt;text class=&quot;web__name&quot; x=&quot;0&quot; y=&quot;${f(y - 2)}&quot; text-anchor=&quot;middle&quot;&gt;${d.name}&lt;/text&gt;`;
+          else if (a === 180) out += `&lt;text class=&quot;web__name&quot; x=&quot;0&quot; y=&quot;${f(y + 9)}&quot; text-anchor=&quot;middle&quot;&gt;${d.name}&lt;/text&gt;`;
+          else out += `&lt;text class=&quot;web__name&quot; x=&quot;${f(x)}&quot; y=&quot;${f(a === 90 ? y - 5 : y + 3)}&quot;&gt;${d.name}&lt;/text&gt;`;
+        });
+        // The dots last, the picked direction's on top.
+        const order = [...DIRS].sort((x, y) =&gt; (x.key === picked) - (y.key === picked));
+        order.forEach((d) =&gt; d.at.forEach((a, n) =&gt; {
+          const [x, y] = polar(a, radius(b.dir[d.key]));
+          const on = d.key === picked;
+          out += `&lt;circle class=&quot;web__dot${on ? &quot; web__dot--on&quot; : &quot;&quot;}&quot; cx=&quot;${f(x)}&quot; cy=&quot;${f(y)}&quot; r=&quot;${on ? 5 : 4}&quot; data-dot=&quot;${d.key}&quot;` +
+            (n === 0 ? ` tabindex=&quot;0&quot; role=&quot;slider&quot; aria-label=&quot;${d.name}: stars taken off&quot; aria-valuemin=&quot;0&quot; aria-valuemax=&quot;5&quot; aria-valuenow=&quot;${b.dir[d.key]}&quot; aria-valuetext=&quot;${half(b.dir[d.key])} stars&quot;` : ` aria-hidden=&quot;true&quot;`) + `/&gt;`;
+        }));
+        svg.innerHTML = out;
+      }
+
+
+      // Units: everything is kept in knots and shown in the rider's unit.
+      const UNITS = {
+        kn: { label: &quot;kn&quot;, per: 1, step: 1, dp: 0 },
+        mph: { label: &quot;mph&quot;, per: 1.15078, step: 1, dp: 0 },
+        kmh: { label: &quot;km/h&quot;, per: 1.852, step: 1, dp: 0 },
+        ms: { label: &quot;m/s&quot;, per: 0.514444, step: 0.5, dp: 1 },
+      };
+      let unit = UNITS.kn;
+      const show = (kn) =&gt; (kn * unit.per).toFixed(unit.dp);
+      const toKn = (v) =&gt; v / unit.per;
+      const tick = () =&gt; ({ kn: 10, mph: 10, &quot;km/h&quot;: 20, &quot;m/s&quot;: 5 })[unit.label];
+
+      const STAR = &quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot;;
+      function glyphs({ stars, potential }) {
+        let parts = &quot;&quot;;
+        for (let i = 0; i &lt; 5; i++) {
+          const cx = 6 + i * 14;
+          if (i &lt; stars) parts += `&lt;path class=&quot;wf-star-glyphs__solid&quot; d=&quot;${STAR}&quot; transform=&quot;translate(${cx} 6.4) scale(1.1538)&quot;/&gt;`;
+          else if (i &lt; potential) parts += `&lt;path class=&quot;wf-star-glyphs__faded&quot; d=&quot;${STAR}&quot; stroke-width=&quot;0.8233&quot; transform=&quot;translate(${cx} 6.4) scale(1.1538)&quot;/&gt;`;
+          else parts += `&lt;circle class=&quot;wf-star-glyphs__dot&quot; cx=&quot;${cx}&quot; cy=&quot;6&quot; r=&quot;0.84&quot;/&gt;`;
+        }
+        const label = `${stars} of 5 stars${potential &gt; stars ? `, ${potential} on the wind alone` : &quot;&quot;}`;
+        return `&lt;svg class=&quot;wf-star-glyphs&quot; width=&quot;68&quot; height=&quot;12&quot; viewBox=&quot;0 0 68 12&quot; role=&quot;img&quot; aria-label=&quot;${label}&quot;&gt;${parts}&lt;/svg&gt;`;
+      }
+
+      // An axis along the bottom in the rider's unit, every `tick` of it.
+      function xAxis(topKn, y) {
+        let out = &quot;&quot;;
+        const topU = topKn * unit.per;
+        for (let v = 0; v &lt;= topU + 1e-6; v += tick()) {
+          const x = (v / topU) * 400;
+          const end = x &gt; 380;
+          out += `&lt;text class=&quot;curve__axis&quot; x=&quot;${end ? 400 : x}&quot; y=&quot;${y}&quot; text-anchor=&quot;${v ? (end ? &quot;end&quot; : &quot;middle&quot;) : &quot;start&quot;}&quot;&gt;${v}${end ? &quot; &quot; + unit.label : &quot;&quot;}&lt;/text&gt;`;
+        }
+        return out;
+      }
+
+      // Stars for each wind speed, 0 to 40 kn: theirs solid, the level they started from dashed.
+      function windCurve(svg, b, base) {
+        const X = (kn) =&gt; (kn / WIND_TOP) * 400, Y = (s) =&gt; 74 - (s / 5) * 64;
+        const line = (bb) =&gt; { const p = []; for (let kn = 0; kn &lt;= WIND_TOP; kn += 0.25) p.push(`${X(kn).toFixed(1)},${Y(windScore(kn, bb)).toFixed(1)}`); return p.join(&quot; &quot;); };
+        let grid = &quot;&quot;;
+        for (let s = 1; s &lt;= 5; s++) grid += `&lt;line class=&quot;curve__grid&quot; x1=&quot;0&quot; x2=&quot;400&quot; y1=&quot;${Y(s)}&quot; y2=&quot;${Y(s)}&quot;/&gt;&lt;text class=&quot;curve__axis&quot; x=&quot;404&quot; y=&quot;${Y(s) + 3}&quot;&gt;${s}★&lt;/text&gt;`;
+        const yours = line(b);
+        svg.innerHTML = grid + `&lt;polygon class=&quot;curve__under&quot; points=&quot;0,74 ${yours} 400,74&quot;/&gt;&lt;polyline class=&quot;curve__base&quot; points=&quot;${line(base)}&quot;/&gt;&lt;polyline class=&quot;curve__yours&quot; points=&quot;${yours}&quot;/&gt;` + xAxis(WIND_TOP, 90);
+        svg.setAttribute(&quot;aria-label&quot;, &quot;Stars for each wind speed, yours against the level you started from&quot;);
+      }
+
+      // Stars taken off for each gust speed, 0 to 50 kn, hanging down from the top line.
+      function gustCurve(svg, b, base) {
+        const X = (kn) =&gt; (kn / GUST_TOP) * 400, Y = (s) =&gt; 8 + (s / 5) * 64;
+        const line = (bb) =&gt; { const p = []; for (let kn = 0; kn &lt;= GUST_TOP; kn += 0.25) p.push(`${X(kn).toFixed(1)},${Y(gustLoss(kn, bb)).toFixed(1)}`); return p.join(&quot; &quot;); };
+        let grid = &quot;&quot;;
+        for (let s = 0; s &lt;= 5; s++) grid += `&lt;line class=&quot;curve__grid&quot; x1=&quot;0&quot; x2=&quot;400&quot; y1=&quot;${Y(s)}&quot; y2=&quot;${Y(s)}&quot;/&gt;&lt;text class=&quot;curve__axis&quot; x=&quot;404&quot; y=&quot;${Y(s) + 3}&quot;&gt;${s ? &quot;−&quot; + s + &quot;★&quot; : &quot;0&quot;}&lt;/text&gt;`;
+        const yours = line(b);
+        svg.innerHTML = grid + `&lt;polygon class=&quot;curve__under&quot; points=&quot;0,${Y(0)} ${yours} 400,${Y(0)}&quot;/&gt;&lt;polyline class=&quot;curve__base&quot; points=&quot;${line(base)}&quot;/&gt;&lt;polyline class=&quot;curve__yours&quot; points=&quot;${yours}&quot;/&gt;` + xAxis(GUST_TOP, 90);
+        svg.setAttribute(&quot;aria-label&quot;, &quot;Stars the gusts take off for each gust speed, yours against the level you started from&quot;);
+      }
+
+      // Every wind speed along the bottom and every gust up the side, shaded by the stars.
+      const STEP = 2; // knots a square
+      function grid(svg, b, dir) {
+        const left = 30, w = 360, h = 230;
+        const X = (kn) =&gt; left + (kn / WIND_TOP) * w, Y = (kn) =&gt; h - (kn / GUST_TOP) * h;
+        let cells = &quot;&quot;;
+        for (let wind = 0; wind &lt; WIND_TOP; wind += STEP) {
+          for (let gust = 0; gust &lt; GUST_TOP; gust += STEP) {
+            const x = X(wind), y = Y(gust + STEP), cw = X(wind + STEP) - x, ch = Y(gust) - y;
+            if (gust + STEP &lt;= wind) { cells += `&lt;rect class=&quot;grid__none&quot; x=&quot;${x}&quot; y=&quot;${y}&quot; width=&quot;${cw}&quot; height=&quot;${ch}&quot;/&gt;`; continue; }
+            const r = rate(wind + STEP / 2, Math.max(gust + STEP / 2, wind + STEP / 2), b, dir);
+            cells += `&lt;rect class=&quot;grid__cell&quot; x=&quot;${x}&quot; y=&quot;${y}&quot; width=&quot;${cw + 0.3}&quot; height=&quot;${ch + 0.3}&quot; opacity=&quot;${[0, 0.08, 0.25, 0.45, 0.65, 0.85][r.stars]}&quot;/&gt;`;
+          }
+        }
+        let axes = &quot;&quot;;
+        const topW = WIND_TOP * unit.per, topG = GUST_TOP * unit.per;
+        for (let v = 0; v &lt;= topW + 1e-6; v += tick()) axes += `&lt;text class=&quot;curve__axis&quot; x=&quot;${left + (v / topW) * w}&quot; y=&quot;${h + 14}&quot; text-anchor=&quot;middle&quot;&gt;${v}&lt;/text&gt;`;
+        for (let v = tick(); v &lt;= topG + 1e-6; v += tick()) axes += `&lt;text class=&quot;curve__axis&quot; x=&quot;${left - 4}&quot; y=&quot;${h - (v / topG) * h + 3}&quot; text-anchor=&quot;end&quot;&gt;${v}&lt;/text&gt;`;
+        axes += `&lt;text class=&quot;curve__axis&quot; x=&quot;${left + w}&quot; y=&quot;${h + 28}&quot; text-anchor=&quot;end&quot;&gt;wind speed, ${unit.label} →&lt;/text&gt;`;
+        axes += `&lt;text class=&quot;curve__axis&quot; x=&quot;0&quot; y=&quot;-8&quot; text-anchor=&quot;start&quot;&gt;gusts, ${unit.label} ↑&lt;/text&gt;`;
+        svg.innerHTML = cells + axes + `&lt;rect class=&quot;grid__pick&quot; data-pick width=&quot;0&quot; height=&quot;0&quot;/&gt;`;
+        svg.setAttribute(&quot;aria-label&quot;, &quot;Stars for every wind speed and gust: darker is more stars&quot;);
+        svg.dataset.geom = JSON.stringify({ left, w, h });
+      }
+
+      const EXAMPLES = [[10, 16], [12, 20], [15, 22], [18, 24], [18, 27], [22, 32], [25, 38], [18, 24, &quot;onshore&quot;], [18, 24, &quot;crossOff&quot;], [18, 24, &quot;offshore&quot;]];
+
+      const dialogs = [];
+      document.querySelectorAll(&quot;[data-ys]&quot;).forEach((host, n) =&gt; {
+        const node = document.getElementById(&quot;ys&quot;).content.firstElementChild.cloneNode(true);
+        const id = `ys-title-${n}`;
+        node.querySelector(&quot;[data-title]&quot;).id = id;
+        node.setAttribute(&quot;aria-labelledby&quot;, id);
+        if (host.hasAttribute(&quot;data-phone&quot;)) {
+          node.classList.add(&quot;ys--phone&quot;);
+          node.querySelectorAll(&quot;.figs&quot;).forEach((f) =&gt; (f.style.gridTemplateColumns = &quot;repeat(2, 1fr)&quot;));
+        }
+        host.replaceWith(node);
+        let start = host.dataset.start;
+        let b = { ...LEVELS[start], dir: { ...LEVELS[start].dir }, ...(host.dataset.custom ? JSON.parse(host.dataset.custom) : {}) };
+        const isDock = Boolean(host.dataset.custom);
+        let picked = &quot;crossOff&quot;;
+        let gridPick = [18, 27];
+        let showFor = &quot;crossOn&quot;;
+        node.querySelector(&quot;[data-for]&quot;).innerHTML = DIRS.map((d) =&gt; `&lt;option value=&quot;${d.key}&quot;${d.key === showFor ? &quot; selected&quot; : &quot;&quot;}&gt;${d.name.toLowerCase()}&lt;/option&gt;`).join(&quot;&quot;);
+
+        const setRange = (k, topKn) =&gt; {
+          const el = node.querySelector(`[data-k=&quot;${k}&quot;]`);
+          el.min = 0;
+          el.max = (topKn * unit.per).toFixed(unit.dp);
+          el.step = unit.step;
+          el.value = show(b[k]);
+        };
+        const readout = () =&gt; {
+          const [w, g] = gridPick;
+          const r = rate(w, g, b, showFor);
+          const off = (r.loss ? `, gusts −${Number(r.loss.toFixed(1))}` : &quot;&quot;) + (r.off ? `, direction ${half(r.off)}` : &quot;&quot;);
+          node.querySelector(&quot;[data-readout]&quot;).innerHTML =
+            `&lt;span&gt;${show(w)} gusting ${show(g)} ${unit.label}&lt;/span&gt;${glyphs(r)}&lt;span class=&quot;readout__why&quot;&gt;wind ${Number(r.base.toFixed(1))}★${off}&lt;/span&gt;`;
+          const { left, w: gw, h } = JSON.parse(node.querySelector(&quot;[data-grid]&quot;).dataset.geom);
+          const sx = left + (Math.floor(w / STEP) * STEP / WIND_TOP) * gw, sy = h - ((Math.floor(g / STEP) + 1) * STEP / GUST_TOP) * h;
+          const pick = node.querySelector(&quot;[data-pick]&quot;);
+          pick.setAttribute(&quot;x&quot;, sx); pick.setAttribute(&quot;y&quot;, sy);
+          pick.setAttribute(&quot;width&quot;, (STEP / WIND_TOP) * gw); pick.setAttribute(&quot;height&quot;, (STEP / GUST_TOP) * h);
+        };
+        const draw = () =&gt; {
+          const base = LEVELS[start];
+          node.querySelectorAll(&quot;[data-base-name]&quot;).forEach((el) =&gt; (el.textContent = base.name));
+          node.querySelectorAll(&quot;[data-preset]&quot;).forEach((el) =&gt; el.setAttribute(&quot;aria-pressed&quot;, String(el.dataset.preset === start)));
+          windCurve(node.querySelector('[data-curve=&quot;wind&quot;]'), b, base);
+          gustCurve(node.querySelector('[data-curve=&quot;gust&quot;]'), b, base);
+          grid(node.querySelector(&quot;[data-grid]&quot;), b, showFor);
+          web(node.querySelector(&quot;[data-shore]&quot;), b, picked);
+          node.querySelector(&quot;[data-picked-name]&quot;).textContent = DIRS.find((d) =&gt; d.key === picked).name;
+          node.querySelector(&quot;[data-picked-value]&quot;).textContent = `${half(b.dir[picked])}★`;
+
+          WIND_KEYS.forEach((k) =&gt; setRange(k, WIND_TOP));
+          GUST_KEYS.forEach((k) =&gt; setRange(k, GUST_TOP));
+          [...WIND_KEYS, ...GUST_KEYS].forEach((k) =&gt; (node.querySelector(`[data-v=&quot;${k}&quot;]`).innerHTML = `${show(b[k])}&lt;small&gt; ${unit.label}&lt;/small&gt;`));
+          node.querySelectorAll(&quot;[data-most]&quot;).forEach((el) =&gt; el.setAttribute(&quot;aria-pressed&quot;, String(Number(el.dataset.most) === b.most)));
+          node.querySelectorAll(&quot;[data-span]&quot;).forEach((el) =&gt; {
+            const [from, to] = el.dataset.span.split(&quot;-&quot;);
+            const top = el.dataset.scale === &quot;gust&quot; ? GUST_TOP : WIND_TOP;
+            el.style.left = `${(b[from] / top) * 100}%`;
+            el.style.width = `${((b[to] - b[from]) / top) * 100}%`;
+          });
+          node.querySelector(&quot;[data-forecast-head]&quot;).textContent = `Forecast, ${unit.label}`;
+          node.querySelector(&quot;[data-rates]&quot;).innerHTML = EXAMPLES.map(([wind, gust, dir = &quot;crossOn&quot;]) =&gt; {
+            const o = rate(wind, gust, base, dir), y = rate(wind, gust, b, dir);
+            return `&lt;tr&gt;&lt;td class=&quot;${o.stars !== y.stars ? &quot;rates__moved&quot; : &quot;&quot;}&quot;&gt;${show(wind)} gusting ${show(gust)}${dir === &quot;crossOn&quot; ? &quot;&quot; : &quot;, &quot; + DIR_WORD[dir]}&lt;/td&gt;&lt;td&gt;${glyphs(o)}&lt;/td&gt;&lt;td&gt;${glyphs(y)}&lt;/td&gt;&lt;/tr&gt;`;
+          }).join(&quot;&quot;);
+          readout();
+          if (isDock) drawDock(b);
+        };
+
+        // Handles keep their order, a knot apart: minimum &lt; ideal from &lt; ideal to &lt; maximum; no effect &lt; most off.
+        const order = (keys, i, kn) =&gt; {
+          if (keys[i - 1]) kn = Math.max(kn, b[keys[i - 1]] + 1);
+          if (keys[i + 1]) kn = Math.min(kn, b[keys[i + 1]] - 1);
+          return kn;
+        };
+        WIND_KEYS.forEach((k, i) =&gt; node.querySelector(`[data-k=&quot;${k}&quot;]`).addEventListener(&quot;input&quot;, (e) =&gt; { b[k] = clamp(order(WIND_KEYS, i, toKn(Number(e.target.value))), 2 + i, WIND_TOP - (3 - i)); draw(); }));
+        GUST_KEYS.forEach((k, i) =&gt; node.querySelector(`[data-k=&quot;${k}&quot;]`).addEventListener(&quot;input&quot;, (e) =&gt; { b[k] = clamp(order(GUST_KEYS, i, toKn(Number(e.target.value))), 1 + i, GUST_TOP - (1 - i)); draw(); }));
+        node.querySelectorAll(&quot;[data-most]&quot;).forEach((el) =&gt; el.addEventListener(&quot;click&quot;, () =&gt; { b.most = Number(el.dataset.most); draw(); }));
+        node.querySelectorAll(&quot;[data-preset]&quot;).forEach((el) =&gt; el.addEventListener(&quot;click&quot;, () =&gt; { start = el.dataset.preset; b = { ...LEVELS[start], dir: { ...LEVELS[start].dir } }; draw(); }));
+        const webEl = node.querySelector(&quot;[data-shore]&quot;);
+        const setOff = (key, off) =&gt; {
+          b.dir = { ...b.dir, [key]: clamp(Math.round(off * 2) / 2, 0, 5) };
+          draw();
+        };
+        const at = (e) =&gt; { const pt = webEl.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(webEl.getScreenCTM().inverse()); };
+        let dragging = null;
+        webEl.addEventListener(&quot;pointerdown&quot;, (e) =&gt; {
+          const p = at(e);
+          // A dot under the finger: the picked direction's first, since it is drawn on top.
+          const hits = DIRS.flatMap((d) =&gt; d.at.map((a) =&gt; { const [x, y] = polar(a, radius(b.dir[d.key])); return { key: d.key, dist: Math.hypot(p.x - x, p.y - y) }; }))
+            .filter((h) =&gt; h.dist &lt; 12)
+            .sort((x, y) =&gt; (y.key === picked) - (x.key === picked) || x.dist - y.dist);
+          if (hits.length) {
+            picked = hits[0].key;
+            dragging = picked;
+            webEl.setPointerCapture(e.pointerId);
+            draw();
+            return;
+          }
+          // Otherwise a slice: tapping it brings its dot to the top, and changes nothing.
+          const slice = e.target.closest(&quot;[data-slice]&quot;);
+          if (slice) { picked = slice.dataset.slice; draw(); }
+        });
+        webEl.addEventListener(&quot;pointermove&quot;, (e) =&gt; {
+          if (!dragging) return;
+          const p = at(e);
+          setOff(dragging, (1 - Math.min(Math.hypot(p.x, p.y), R) / R) * 5);
+        });
+        const stop = () =&gt; (dragging = null);
+        webEl.addEventListener(&quot;pointerup&quot;, stop);
+        webEl.addEventListener(&quot;pointercancel&quot;, stop);
+        webEl.addEventListener(&quot;keydown&quot;, (e) =&gt; {
+          const dot = e.target.closest(&quot;[data-dot]&quot;);
+          if (!dot) return;
+          const step = { ArrowDown: 0.5, ArrowLeft: 0.5, ArrowUp: -0.5, ArrowRight: -0.5 }[e.key];
+          if (step === undefined) return;
+          e.preventDefault();
+          picked = dot.dataset.dot;
+          setOff(picked, b.dir[picked] + step);
+          node.querySelector(`[data-dot=&quot;${picked}&quot;][tabindex]`).focus();
+        });
+        node.querySelectorAll(&quot;[data-step]&quot;).forEach((el) =&gt; el.addEventListener(&quot;click&quot;, () =&gt; setOff(picked, b.dir[picked] + Number(el.dataset.step) * 0.5)));
+        node.querySelector(&quot;[data-for]&quot;).addEventListener(&quot;change&quot;, (e) =&gt; {
+          showFor = e.target.value;
+          draw();
+        });
+        const gridEl = node.querySelector(&quot;[data-grid]&quot;);
+        const pickAt = (e) =&gt; {
+          const { left, w, h } = JSON.parse(gridEl.dataset.geom);
+          const pt = gridEl.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+          const p = pt.matrixTransform(gridEl.getScreenCTM().inverse());
+          const wind = clamp(((p.x - left) / w) * WIND_TOP, 0, WIND_TOP - 0.01), gust = clamp(((h - p.y) / h) * GUST_TOP, 0, GUST_TOP - 0.01);
+          gridPick = [Math.round(wind), Math.max(Math.round(gust), Math.round(wind))];
+          readout();
+        };
+        gridEl.addEventListener(&quot;pointermove&quot;, pickAt);
+        gridEl.addEventListener(&quot;pointerdown&quot;, pickAt);
+        dialogs.push(draw);
+        draw();
+      });
+
+      document.querySelectorAll(&quot;[data-unit]&quot;).forEach((el) =&gt;
+        el.addEventListener(&quot;click&quot;, () =&gt; {
+          unit = UNITS[el.dataset.unit];
+          document.querySelectorAll(&quot;[data-unit]&quot;).forEach((u) =&gt; u.setAttribute(&quot;aria-pressed&quot;, String(u === el)));
+          dialogs.forEach((draw) =&gt; draw());
+        }),
+      );
+
+      // A Saturday afternoon at Dollymount, rated with the custom stars in the first dialog.
+      function drawDock(b) {
+        const HOURS = [[11, 14, 19, &quot;cross&quot;], [12, 17, 23, &quot;crossOn&quot;], [13, 19, 24, &quot;crossOn&quot;], [14, 20, 25, &quot;crossOn&quot;], [15, 21, 28, &quot;onshore&quot;], [16, 22, 31, &quot;onshore&quot;], [17, 19, 27, &quot;cross&quot;], [18, 16, 22, &quot;crossOff&quot;]];
+        document.querySelector(&quot;[data-hours]&quot;).innerHTML = HOURS.map(([h, w, g, d]) =&gt;
+          `&lt;div class=&quot;hour&quot;&gt;&lt;span class=&quot;hour__ist&quot;&gt;${h}&lt;/span&gt;${glyphs(rate(w, g, b, d))}&lt;span&gt;${show(w)}g${show(g)}&lt;/span&gt;&lt;/div&gt;`,
+        ).join(&quot;&quot;);
+      }
+    &lt;/script&gt;
   &lt;/body&gt;
 &lt;/html&gt;
 </code></pre></details>
