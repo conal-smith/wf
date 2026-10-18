@@ -172,6 +172,14 @@ and `PUT /api/me` (`site/api/router.ts`): your `users` row, whichever section
 you are in. Every write route answers 403 `suspended` while the caller's
 `suspended_until` is in the future.
 
+It also serves `GET /api/me/rider` and `PUT /api/me/rider`
+(`site/api/riders.ts`): what the account keeps of the rider so it follows
+them across devices, for now their own star rating, `{ customStars,
+updatedAt }`, in the `rider_profiles` table (migration 0005). A `PUT` is kept
+only when its `updatedAt` is newer than the stored one, and none is taken as
+newer than the moment it arrives; the answer is what is kept after. These two
+are not behind a suspension: nobody else sees them.
+
 The same process also serves the app's star-condition alerts under
 `/api/alerts` when `FEATURE_ALERTS=1`, and evaluates them where
 `ALERTS_EVALUATE=1`: see [`alerts/README.md`](../alerts/README.md) for the

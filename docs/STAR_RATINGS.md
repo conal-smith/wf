@@ -242,6 +242,18 @@ Weight, level, wings and any custom rating live in the display preferences
 custom rating goes through `parseCustomRating`. Until a weight is given the
 stars assume 80 kg, and the row label says `~80 kg` so it is obvious.
 
+A rider's own rating is set and reset through `withCustomStars`, which stamps
+the moment (`starsUpdatedAt`). For a signed-in rider it is also kept with
+their account (`GET`/`PUT /api/me/rider`, `site/api/riders.ts`, the
+`rider_profiles` table), so it follows them across devices:
+`shared/web/riderSync.ts` compares the device's copy with the account's when
+the page knows who is signed in and after every change on the device, and the
+newer wins, a reset included. A copy last matched with another account on a
+shared device is never sent to the next one who signs in. The community and
+the marketplace run it inside their sign-in; the map and the spot pages load
+it on their own (`shared/web/AccountRider.tsx`), only on a device that has
+signed in before, so nobody else downloads the identity provider.
+
 ## In the dock
 
 - The **stars** are the dock's first row, over wind, direction, wing and tide,

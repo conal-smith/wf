@@ -113,6 +113,7 @@ const styles = tv({
     dot: "cursor-grab fill-card stroke-ink focus-visible:stroke-focus focus-visible:outline-hidden",
     dotOn:
       "cursor-grab fill-ink stroke-ink focus-visible:stroke-focus focus-visible:outline-hidden",
+    dotTop: "pointer-events-none fill-ink stroke-ink",
     webWord: "pointer-events-none fill-ink-muted font-mono uppercase",
     webName: "pointer-events-none fill-ink-2 font-mono uppercase",
     picked:
@@ -749,10 +750,9 @@ function DirectionWeb({
     const d = DIRS.find((x) => x.at.includes(a))!;
     return polar(a, radius(off[d.key]));
   });
-  // The dots last, the picked direction's on top.
-  const order = [...DIRS].sort(
-    (x, y) => Number(x.key === picked) - Number(y.key === picked),
-  );
+  // The dots keep one order, so the keyboard's focus is never moved; the
+  // picked direction's are drawn again over the others.
+  const picks = DIRS.find((d) => d.key === picked)!;
 
   const down = (event: PointerEvent<SVGSVGElement>) => {
     const p = at(event);
@@ -935,7 +935,7 @@ function DirectionWeb({
             </text>
           );
         })}
-        {order.flatMap((d) =>
+        {DIRS.flatMap((d) =>
           d.at.map((a, n) => {
             const [x, y] = polar(a, radius(off[d.key]));
             const on = d.key === picked;
@@ -972,6 +972,20 @@ function DirectionWeb({
             );
           }),
         )}
+        {picks.at.map((a) => {
+          const [x, y] = polar(a, radius(off[picked]));
+          return (
+            <circle
+              key={`top${a}`}
+              className={s.dotTop()}
+              cx={f(x)}
+              cy={f(y)}
+              r={5}
+              strokeWidth={1.5}
+              aria-hidden="true"
+            />
+          );
+        })}
       </svg>
       <div className={s.picked()} data-picked={picked}>
         <span className={s.pickedName()}>{DIRECTION_NAME[picked]}</span>

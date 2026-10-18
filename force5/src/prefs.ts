@@ -143,6 +143,9 @@ export function withCustomStars(
     ...prefs,
     rider: custom ? { ...rider, custom } : rider,
     starsUpdatedAt: now.toISOString(),
+    // Made on this device: it is whoever is signed in's to keep, and the
+    // sync marks it as theirs once their account has it.
+    starsAccount: null,
   };
 }
 

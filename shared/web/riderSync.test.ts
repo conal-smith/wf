@@ -154,4 +154,19 @@ describe("a round of sync", () => {
     await expect(syncRider(down, "a", f.storage)).rejects.toThrow();
     expect(JSON.parse(f.data.get(PREFS_KEY)!).rider.custom).toEqual(OWN);
   });
+  it("leaves one account's rating alone for another who signs in, until they change it", async () => {
+    const f = fakes(device(OWN, 12, "a"), kept(null, null));
+    await syncRider(f.api, "b", f.storage);
+    expect(f.sent).toEqual([]);
+    expect(loadPrefs(f.storage).starsAccount).toBe("a");
+    // Their own change on this device is theirs, and goes to their account.
+    savePrefs(
+      withCustomStars(loadPrefs(f.storage), OTHER, new Date(T(13))),
+      f.storage,
+    );
+    expect(loadPrefs(f.storage).starsAccount).toBeNull();
+    await syncRider(f.api, "b", f.storage);
+    expect(f.account().customStars).toEqual(OTHER);
+    expect(loadPrefs(f.storage).starsAccount).toBe("b");
+  });
 });

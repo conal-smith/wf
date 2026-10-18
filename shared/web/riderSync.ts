@@ -158,10 +158,16 @@ export async function syncRider(
   const profile = await api.get();
   const plan = reconcile(before, profile, account);
   if (plan.kind === "same") {
-    if (before.starsAccount === account || before.starsUpdatedAt === null)
-      return false;
-    // Agreed, but not yet marked as this account's.
-    savePrefs({ ...loadPrefs(storage), starsAccount: account }, storage);
+    // Agreed, but not yet marked as this account's. A copy that only stands
+    // because it is another account's is left as it is.
+    if (
+      before.starsAccount !== account &&
+      profile.updatedAt !== null &&
+      profile.updatedAt === before.starsUpdatedAt
+    ) {
+      savePrefs({ ...loadPrefs(storage), starsAccount: account }, storage);
+      announcePrefs("account");
+    }
     return false;
   }
   const kept = plan.kind === "adopt" ? plan.profile : await api.put(plan.input);
@@ -171,6 +177,8 @@ export async function syncRider(
   const next = adopt(now, kept, account);
   const changed = !sameCustomRating(next.rider.custom, now.rider.custom);
   savePrefs(next, storage);
-  if (changed) announcePrefs("account");
+  // Said even when the rating is the same: a page holding the preferences
+  // in its state must not write back the stamps this round replaced.
+  announcePrefs("account");
   return changed;
 }
