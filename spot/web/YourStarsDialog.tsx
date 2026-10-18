@@ -47,6 +47,9 @@ import {
   GRID_STEP,
   GUST_KEYS,
   GUST_TOP,
+  SHADE,
+  WEB_DIRS,
+  WEB_R,
   WIND_KEYS,
   WIND_TOP,
   breakdown,
@@ -55,12 +58,15 @@ import {
   knotsOf,
   moveGust,
   moveWind,
+  offAt,
   onLevel,
+  polar,
   rateExample,
   setDirection,
   shown,
   stepped,
   unitScale,
+  webRadius,
   withRating,
   type UnitScale,
 } from "./yourStars";
@@ -140,9 +146,6 @@ const styles = tv({
     moved: "font-semibold",
   },
 });
-
-/** Shade of a grid square for 0–5 stars, as the pattern's key draws them. */
-const SHADE = [0, 0.08, 0.25, 0.45, 0.65, 0.85];
 
 export interface YourStarsDialogProps {
   open: boolean;
@@ -687,25 +690,10 @@ function Handles<K extends string>({
   );
 }
 
-/**
- * How the wind meets the beach, as stars.ts's shoreAngle reads it, drawn the
- * way the wind blows: offshore points out over the sea (up), onshore in over
- * the land (down). `from`–`to` are degrees off straight out to sea; `at` is
- * where its dot sits, on each side for the four that come from either side.
- */
-const DIRS: { key: DirectionKey; from: number; to: number; at: number[] }[] = [
-  { key: "offshore", from: 0, to: 30, at: [0] },
-  { key: "crossOff", from: 30, to: 70, at: [50, -50] },
-  { key: "cross", from: 70, to: 110, at: [90, -90] },
-  { key: "crossOn", from: 110, to: 150, at: [130, -130] },
-  { key: "onshore", from: 150, to: 180, at: [180] },
-];
-const R = 100;
-const polar = (a: number, r: number): [number, number] => [
-  r * Math.sin((a * Math.PI) / 180),
-  -r * Math.cos((a * Math.PI) / 180),
-];
-const radius = (off: number) => R * (1 - off / 5);
+// The web's geometry is yourStars.ts's, shared with the app's.
+const DIRS = WEB_DIRS;
+const R = WEB_R;
+const radius = webRadius;
 const f = (n: number) => n.toFixed(1);
 
 /**
@@ -804,7 +792,7 @@ function DirectionWeb({
   const move = (event: PointerEvent<SVGSVGElement>) => {
     if (!dragging.current) return;
     const p = at(event);
-    onChange(dragging.current, (1 - Math.min(Math.hypot(p.x, p.y), R) / R) * 5);
+    onChange(dragging.current, offAt(p.x, p.y));
   };
   const stop = () => {
     dragging.current = null;

@@ -231,6 +231,51 @@ export const DIRECTION_WORD: Record<DirectionKey, string> = {
   offshore: "offshore",
 };
 
+/**
+ * The direction web: the beach from above, sea up and land down, as stars.ts's
+ * shoreAngle reads it and drawn the way the wind blows, offshore out over the
+ * sea and onshore in over the land. `from`–`to` are degrees off straight out
+ * to sea; `at` is where its dot sits, on each side for the four that come
+ * from either side. The web's own units: the rim is `WEB_R` from the beach.
+ */
+export const WEB_DIRS: readonly {
+  key: DirectionKey;
+  from: number;
+  to: number;
+  at: readonly number[];
+}[] = [
+  { key: "offshore", from: 0, to: 30, at: [0] },
+  { key: "crossOff", from: 30, to: 70, at: [50, -50] },
+  { key: "cross", from: 70, to: 110, at: [90, -90] },
+  { key: "crossOn", from: 110, to: 150, at: [130, -130] },
+  { key: "onshore", from: 150, to: 180, at: [180] },
+];
+export const WEB_R = 100;
+
+/** A point `r` out from the beach, `a` degrees round from straight out to sea. */
+export const polar = (a: number, r: number): [number, number] => [
+  r * Math.sin((a * Math.PI) / 180),
+  -r * Math.cos((a * Math.PI) / 180),
+];
+
+/** How far out a dot sits for its stars off: on the rim none, at the beach all five. */
+export const webRadius = (off: number) => WEB_R * (1 - off / 5);
+
+/** Stars off for a dot dragged to (x, y), unrounded: `setDirection` makes half stars of it. */
+export const offAt = (x: number, y: number) =>
+  (1 - Math.min(Math.hypot(x, y), WEB_R) / WEB_R) * 5;
+
+/** The direction whose slice of the web holds (x, y), or null outside the rim. */
+export function sliceAt(x: number, y: number): DirectionKey | null {
+  if (Math.hypot(x, y) > WEB_R) return null;
+  // Degrees off straight out to sea, either way round.
+  const off = Math.abs((Math.atan2(x, -y) * 180) / Math.PI);
+  return WEB_DIRS.find((d) => off <= d.to)?.key ?? "onshore";
+}
+
+/** Shade of a "Together" square for 0–5 stars, as the pattern's key draws them. */
+export const SHADE = [0, 0.08, 0.25, 0.45, 0.65, 0.85] as const;
+
 /** Knots a square of the "Together" grid. */
 export const GRID_STEP = 2;
 

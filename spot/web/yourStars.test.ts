@@ -19,7 +19,13 @@ import {
   knotsOf,
   moveGust,
   moveWind,
+  offAt,
   onLevel,
+  polar,
+  sliceAt,
+  WEB_DIRS,
+  WEB_R,
+  webRadius,
   rateExample,
   setDirection,
   shown,
@@ -155,5 +161,29 @@ describe("the grid", () => {
     // 18–20 kn gusting 24–26 kn is the mockup's four stars.
     expect(grid[9][12]).toBe(4);
     expect(grid[10][2]).toBeNull();
+  });
+});
+
+describe("the direction web", () => {
+  it("puts each direction's dot in its own slice, at its stars off", () => {
+    for (const d of WEB_DIRS)
+      for (const a of d.at)
+        for (const off of [0, 0.5, 2.5, 4.5]) {
+          const [x, y] = polar(a, webRadius(off));
+          expect(offAt(x, y)).toBeCloseTo(off, 9);
+          if (off < 4.5) expect(sliceAt(x * 0.99, y * 0.99)).toBe(d.key);
+        }
+  });
+  it("draws offshore up over the sea and onshore down over the land", () => {
+    expect(sliceAt(0, -50)).toBe("offshore");
+    expect(sliceAt(0, 50)).toBe("onshore");
+    expect(sliceAt(60, 0)).toBe("cross");
+    expect(sliceAt(-60, 0)).toBe("cross");
+    expect(sliceAt(0, -WEB_R - 1)).toBeNull();
+  });
+  it("takes nothing off on the rim or past it, and all five at the beach", () => {
+    expect(offAt(0, -WEB_R)).toBe(0);
+    expect(offAt(WEB_R * 2, 0)).toBe(0);
+    expect(offAt(0, 0)).toBe(5);
   });
 });
