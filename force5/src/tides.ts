@@ -14,10 +14,24 @@ export interface TideStation {
   lon: number;
   /** Vertical reference, e.g. "LAT" or "OD Malin"; never assume one. */
   datum?: string;
-  /** Height above LAT minus height above OD Malin, metres (fetch_tides.py). */
+  /**
+   * Height above LAT minus height above OD Malin, metres (fetch_tides.py). The
+   * Marine Institute's stations only: Northern Ireland's have none.
+   */
   odMalinOffsetMetres?: number;
   url?: string;
   sourceUrl?: string;
+  /** Who predicts this station: "Marine Institute", or "wingfoil.ie" in Northern Ireland. */
+  provider?: string;
+  /** The credit to show with this station's tides; the manifest's covers every station. */
+  attribution?: string;
+  licenseUrl?: string;
+  /** A model's point rather than a gauge. */
+  modelled?: boolean;
+  datumNote?: string;
+  /** A basin's station: another station's tide, this many minutes later. */
+  lagOf?: string;
+  lagMinutes?: number;
 }
 export interface TideSpotLink {
   /**
@@ -28,6 +42,8 @@ export interface TideSpotLink {
   station: string | null;
   distanceKm: number;
   reason?: string;
+  /** On water the sea does not reach (a freshwater lake): no tide at all. */
+  noTide?: boolean;
 }
 export interface TideManifest {
   schemaVersion: number;
@@ -178,6 +194,20 @@ export function tideSpotNote(
   return tideStation(manifest, link.station)
     ? null
     : "This spot's tide station is missing from the predictions.";
+}
+
+/**
+ * The credit for a station's tides: its own (the Marine Institute's, or in
+ * Northern Ireland wingfoil.ie's from the Environment Agency's gauges and
+ * EOT20), else the manifest's, which names every source.
+ */
+export function tideCredit(
+  manifest: TideManifest,
+  station: TideStation | string,
+): string | null {
+  const entry =
+    typeof station === "string" ? tideStation(manifest, station) : station;
+  return entry?.attribution ?? manifest.attribution ?? null;
 }
 
 /** Curve for the station nearest a spot, or null when no station is mapped. */

@@ -4,6 +4,7 @@ import {
   eventsBetween,
   loadTides,
   tideAt,
+  tideCredit,
   tideForSpot,
   tideForStation,
   tideSpotNote,
@@ -185,6 +186,49 @@ describe("station curve", () => {
     );
     expect(tideSpotNote(m, "rusheen")).toMatch(/close enough/);
     expect(tideSpotNote(m, "mizen")).toMatch(/not in the tide predictions/);
+  });
+  it("says a freshwater lake has no tide, not that a station is far", () => {
+    const m = validateTideManifest({
+      ...manifest(),
+      spots: {
+        ...manifest().spots,
+        "oxford-island": {
+          station: null,
+          distanceKm: 32.1,
+          noTide: true,
+          reason: "No tide: a freshwater lake.",
+        },
+      },
+    });
+    expect(tideSpotNote(m, "oxford-island")).toBe(
+      "No tide: a freshwater lake.",
+    );
+  });
+  it("credits each station's own source, the manifest's otherwise", () => {
+    const m = validateTideManifest({
+      ...manifest(),
+      stations: [
+        ...(manifest().stations as ReturnType<typeof tideStations>),
+        {
+          id: "Bangor",
+          name: "Bangor",
+          lat: 54.665,
+          lon: -5.67,
+          provider: "wingfoil.ie",
+          attribution:
+            "Tidal predictions by wingfoil.ie from Environment Agency tide gauge data (Open Government Licence v3.0)",
+        },
+      ],
+      spots: {
+        ...manifest().spots,
+        ballyholme: { station: "Bangor", distanceKm: 2.4 },
+      },
+    });
+    expect(tideCredit(m, "Bangor")).toMatch(/wingfoil.ie .*Environment Agency/);
+    expect(tideCredit(m, "Bangor")).not.toMatch(/Marine Institute/);
+    expect(tideCredit(m, tideStation(m, "fenit")!)).toBe(
+      "Marine Institute tide predictions, CC BY 4.0",
+    );
   });
   it("still refuses a spot pointing at a station that is not published", () => {
     expect(() =>

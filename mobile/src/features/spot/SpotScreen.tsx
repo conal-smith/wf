@@ -48,6 +48,7 @@ import { searchSpots, spotById } from "../../data/spots";
 import { colors, fonts, hitTarget, radius, space } from "../../theme/tokens";
 import { hourReading, moreCells, wingFor } from "../dock/dockLogic";
 import { useMarine, useSpotTide } from "../dock/useDockData";
+import { tideCredit } from "../../../../force5/src/tides";
 import { RiderLine } from "../settings/RiderFields";
 import { riderWords } from "../settings/settingsLogic";
 import { DayTide } from "./DayTide";
@@ -705,7 +706,10 @@ function Sources({
         <T variant="body" color="ink2">
           Tides: {tide.tide.station.name}, {tide.tide.distanceKm.toFixed(0)} km
           away, above {tide.tide.curve.datum}
-          {tide.manifest?.attribution ? ` · ${tide.manifest.attribution}` : ""}.
+          {tide.manifest && tideCredit(tide.manifest, tide.tide.station)
+            ? ` · ${tideCredit(tide.manifest, tide.tide.station)}`
+            : ""}
+          .
         </T>
       ) : null}
       {sea.observed ? (

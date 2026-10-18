@@ -281,6 +281,63 @@ describe("spotForecast", () => {
       attribution: "Marine Institute",
     });
   });
+
+  it("credits the spot's own station, not the manifest's first source", async () => {
+    const withTides = fixtureSource({
+      "marine/tides.json": {
+        schemaVersion: 1,
+        kind: "tide",
+        stations: {
+          Bangor: {
+            name: "Bangor",
+            lat: 54.665,
+            lon: -5.67,
+            provider: "wingfoil.ie",
+            attribution: "Tidal predictions by wingfoil.ie from Environment Agency tide gauge data",
+            url: "marine/tides-Bangor.json",
+          },
+        },
+        spots: { dollymount: { station: "Bangor", distanceKm: 3.1 } },
+        attribution: "Tidal predictions © Marine Institute, CC BY 4.0; Northern Ireland: wingfoil.ie",
+      },
+      "marine/tides-Bangor.json": {
+        stepMinutes: 10,
+        from: "2026-09-16T00:00:00Z",
+        to: "2026-09-18T00:00:00Z",
+        datum: "LAT",
+        curve: [1, 2],
+        events: [{ time: "2026-09-16T20:12:00Z", kind: "low", height: 0.61 }],
+      },
+    });
+    const spot = findSpot(await loadSpots(withTides), "dollymount").spot!;
+    const forecast = await spotForecast(
+      withTides,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 6 }),
+      { now: FIXTURE_NOW },
+    );
+    expect(forecast.tides && "attribution" in forecast.tides && forecast.tides.attribution).toBe(
+      "Tidal predictions by wingfoil.ie from Environment Agency tide gauge data",
+    );
+  });
+
+  it("says a lake has no tide", async () => {
+    const withTides = fixtureSource({
+      "marine/tides.json": {
+        schemaVersion: 1,
+        kind: "tide",
+        stations: [{ id: "DUB", name: "Dublin Port", lat: 53.3, lon: -6.2 }],
+        spots: {
+          dollymount: { station: null, distanceKm: 30, noTide: true, reason: "No tide: a freshwater lake." },
+        },
+      },
+    });
+    const spot = findSpot(await loadSpots(withTides), "dollymount").spot!;
+    const forecast = await spotForecast(withTides, spot, windowFor(FIXTURE_NOW, { hours: 6 }), {
+      now: FIXTURE_NOW,
+    });
+    expect(forecast.tides).toEqual({ note: "No tide: a freshwater lake." });
+  });
 });
 
 describe("hourWind", () => {

@@ -324,7 +324,7 @@ export const InfoSheet = memo(function InfoSheet(props: Props) {
         <T variant="body">Depths: EMODnet Bathymetry, metres below chart datum.</T>
         {props.foil.attribution ? (
           <T variant="body">
-            Foilable depth: {props.foil.attribution} Heights above LAT against Marine Institute tide predictions.
+            Foilable depth: {props.foil.attribution} Heights above LAT against the tide predictions below.
           </T>
         ) : null}
         <T variant="body">Coast and places: © OpenStreetMap contributors, OpenFreeMap.</T>
@@ -332,7 +332,11 @@ export const InfoSheet = memo(function InfoSheet(props: Props) {
           <Link label="OpenStreetMap" url="https://www.openstreetmap.org/copyright" />
           <Link label="OpenFreeMap" url="https://openfreemap.org/" />
         </View>
-        <T variant="body">Tides: Marine Institute predictions.</T>
+        <T variant="body">
+          Tides: Marine Institute predictions (CC BY 4.0); in Northern Ireland, wingfoil.ie&rsquo;s own from the
+          Environment Agency&rsquo;s tide gauges (Open Government Licence v3.0) and the EOT20 ocean tide model
+          (DGFI-TUM, CC BY 4.0).
+        </T>
         <T variant="body">Satellite imagery and intertidal heights: {props.satelliteAttribution ?? SATELLITE_ATTRIBUTION}</T>
         <T variant="body">
           Places: Fáilte Ireland (CC BY 4.0), OpenStreetMap (ODbL) and linked guides; not verified launches.

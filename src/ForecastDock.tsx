@@ -109,6 +109,8 @@ interface Props {
   starred: boolean;
   onToggleStar: () => void;
   tide: SpotTide | null;
+  /** Why the spot has no tide curve (a lake, no station near), when it has none. */
+  tideNote?: string | null;
   phone: boolean;
   view: DockView;
   onView: (view: DockView) => void;
@@ -216,6 +218,7 @@ const StripTable = memo(function StripTable({
   daylight,
   units,
   tide,
+  tideNote,
   g,
   now,
   blend,
@@ -234,6 +237,7 @@ const StripTable = memo(function StripTable({
   daylight: readonly boolean[];
   units: Units;
   tide: SpotTide | null;
+  tideNote: string | null;
   g: StripGeometry;
   now: number;
   blend: React.ReactNode | null;
@@ -386,6 +390,7 @@ const StripTable = memo(function StripTable({
             <td colSpan={columns.length} className="d0">
               <TideRow
                 tide={tide}
+                note={tideNote}
                 columns={columns}
                 days={days}
                 g={g}
@@ -639,12 +644,14 @@ function MoreRows({
  */
 function TideRow({
   tide,
+  note,
   columns,
   days,
   g,
   daylight,
 }: {
   tide: SpotTide | null;
+  note: string | null;
   columns: readonly StripColumn[];
   days: readonly StripDay[];
   g: StripGeometry;
@@ -686,15 +693,26 @@ function TideRow({
       ))}
     </g>
   );
-  if (!tide)
+  if (!tide) {
+    // The strip is a week wide and opens scrolled to the hour, so the reason
+    // is written all along it, not only at its start.
+    const text = note ?? "No tide station near";
+    const every = Math.max(360, text.length * 6.5 + 80);
+    const at = Array.from(
+      { length: Math.max(1, Math.ceil((width - 8) / every)) },
+      (_, i) => 8 + i * every,
+    );
     return (
       <svg width={width} height={H} className="tide-row" aria-hidden="true">
         {night}
-        <text className="tide-none" x="8" y="24">
-          No tide station near
-        </text>
+        {at.map((x) => (
+          <text key={x} className="tide-none" x={x} y="24">
+            {text}
+          </text>
+        ))}
       </svg>
     );
+  }
   const curve = tide.curve;
   const lo = Math.min(...curve.curve);
   const hi = Math.max(...curve.curve);
@@ -837,6 +855,7 @@ export default function ForecastDock(props: Props) {
     starred,
     onToggleStar,
     tide,
+    tideNote = null,
     phone,
     view,
     onView,
@@ -1321,6 +1340,7 @@ export default function ForecastDock(props: Props) {
               daylight={daylight}
               units={prefs.units}
               tide={tide}
+              tideNote={tideNote}
               g={g}
               now={now}
               blend={blendNode}

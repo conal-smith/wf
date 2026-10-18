@@ -1124,7 +1124,7 @@ export default function App() {
         {foilState.manifest && (
           <li>
             Foilable depth: {foilState.manifest.attribution}{" "}
-            Heights above LAT against Marine Institute tide predictions.
+            Heights above LAT against the tide predictions below.
           </li>
         )}
         <li>
@@ -1141,7 +1141,12 @@ export default function App() {
             OpenFreeMap
           </a>
         </li>
-        <li>Tides: Marine Institute predictions</li>
+        <li>
+          Tides: Marine Institute predictions (CC BY 4.0); in Northern Ireland,
+          wingfoil.ie&rsquo;s own from the Environment Agency&rsquo;s tide
+          gauges (Open Government Licence v3.0) and the EOT20 ocean tide model
+          (DGFI-TUM, CC BY 4.0)
+        </li>
         <li>
           Satellite imagery and intertidal heights:{" "}
           {satellite.attribution ?? SATELLITE_ATTRIBUTION}
@@ -1346,6 +1351,7 @@ export default function App() {
                   }
                   onToggleStar={() => dockSpot && fav.toggle(dockSpot.id)}
                   tide={picked ? null : tide.tide}
+                  tideNote={picked ? null : tide.error}
                   phone={phone}
                   view={view}
                   onView={setView}

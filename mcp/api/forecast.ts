@@ -979,7 +979,9 @@ async function spotTides(
     distance_km: finite(link.distanceKm) ? round(link.distanceKm) : 0,
     datum: text(curve.datum) ?? text(station.datum) ?? "station datum",
     events,
-    attribution: text(manifest.attribution),
+    // The station's own credit (the Marine Institute's, or in Northern Ireland
+    // wingfoil.ie's from the Environment Agency's gauges and EOT20).
+    attribution: text(station.attribution) ?? text(manifest.attribution),
   };
 }
 
