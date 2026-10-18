@@ -41,6 +41,16 @@ last week. (A fresh build on 10 October 2026 picked up eccodeslib 2.49.0.30,
 which crashes on exit beside pyproj and failed every HARMONIE, HARMONIE-EPS and
 GFS-Wave job. The lock and the image smoke test are why that cannot ship again.)
 
+It is published as one manifest list for **linux/amd64** and **linux/arm64**.
+The nightly builds each platform on a native runner (`ubuntu-24.04` and
+`ubuntu-24.04-arm`, no QEMU) and merges the digests with
+`docker buildx imagetools create`. The digest in `images.json` is that list.
+`:nightly`, `:staging`, `:production` and `:latest` are moved onto it with the
+same `imagetools create` as before, so a promote carries both platforms. The
+site and marketplace images stay linux/amd64. Pip installs wheels only
+(`--only-binary`), and the Dockerfile installs the esbuild binary named for
+`TARGETARCH`, then refuses a node or a native library for the other CPU.
+
 Each nightly also builds the static site once (`site.tar.gz` on its release).
 One build serves every environment: at deploy time
 `scripts/release/release.mjs configure-site` writes the environment's forecast
@@ -59,7 +69,8 @@ tag only ever moves to a digest that has passed everything before it.
 | `npm run build`, `npm test`, `npm run ui:lint`, API and Worker type checks | CI `web` | the site and its code |
 | Ingest unit tests on Python 3.12 under the lock, `deploy/schedules.py --check` | CI `ingest` | the importers, the timetables drifting apart |
 | Playwright, desktop and phone, on synthetic sample data | CI `e2e` | the map, dock, spot pages, marketplace, community |
-| `scripts/release/worker-image-smoke.sh` | CI `images`, nightly, staging | a module that cannot import or crashes on exit, the unit tests on the image's own Python, entry points, the blend bundle, the non-root user |
+| `scripts/release/worker-image-smoke.sh` | CI `forecast` (linux/amd64 and linux/arm64), nightly, staging | a module that cannot import or crashes on exit, the unit tests on the image's own Python, entry points, the blend bundle, the non-root user |
+| `scripts/release/manifest_platforms.py` | CI `forecast-manifest`, nightly merge | a forecast manifest list that is missing linux/amd64 or linux/arm64 |
 | `scripts/release/web-image-smoke.sh` | CI `images`, nightly, staging | health check, every client-side route, asset caching, data 404s |
 | `scripts/release/market-image-smoke.sh` | CI `images`, nightly, staging | the compiled API boots |
 | `scripts/release/acceptance.sh` | nightly, staging | the worker fetching **real** HARMONIE and GFS runs, `status.py` calling them fresh, publishing to an S3-compatible bucket with every referenced object present, and the site image drawing them in Chromium (`e2e/smoke`) |
@@ -169,9 +180,12 @@ deploy/home-compute/macmini.sh pull ghcr.io/sprintengine/wingfoil-forecast:2026.
 ```
 
 `pull` tags it as `wingfoil-forecast:local`, so Home Compute and the menu bar
-app need no change; the next job runs it. `macmini.sh image` still builds from
-the checkout when you are trying something out. The same image runs anywhere
-Docker does, so moving the jobs to Cloudflare Containers later means pointing
+app need no change; the next job runs it. Colima is linux/arm64, so the pull
+selects that platform from the manifest list. `:production` names the list only
+after a promote of a nightly that built it; merging the multi-arch workflow
+does not move the tag. `macmini.sh image` still builds from the checkout when
+you are trying something out. The same image runs anywhere Docker does, so
+moving the jobs to Cloudflare Containers later means pointing
 `deploy/cloudflare/wrangler.jsonc` at the released image, not a new build.
 
 ## The production monitor
@@ -266,5 +280,6 @@ a promote moves the image tags only.
    (`force5/deploy/r2-cors.example.json`), or the staging smoke test fails on
    CORS exactly as a visitor would.
 
-The workflows use GitHub-hosted runners only: a public repository must never run
+The workflows use GitHub-hosted runners only, including `ubuntu-24.04-arm` for
+the forecast image's arm64 build: a public repository must never run
 pull-request code on the self-hosted Mac.

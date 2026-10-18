@@ -31,6 +31,11 @@ name: Release
 # in a browser. Only then is anything published: a prerelease v<date>-nightly.<run>
 # carrying images.json (the digests) and the site, and the images' :nightly tag.
 #
+# The forecast image is a manifest list for linux/amd64 and linux/arm64. Each
+# platform is built on a native runner (no QEMU) and pushed by digest; imagetools
+# merges those digests into one list. images.json records that list's digest, so
+# :nightly, :staging, :production and :latest move onto both platforms together.
+#
 # Production today is the forecast worker, which the Mac mini runs by pulling
 # :production (deploy/home-compute/macmini.sh pull), and the site on Cloudflare
 # Pages once the repository variables in docs/RELEASES.md exist (skipped with a
@@ -162,10 +167,10 @@ jobs:
       packages: write
     strategy:
       fail-fast: true
+      # The forecast worker is the two jobs below: one build per architecture,
+      # merged into the single digest this matrix's web and market images use.
       matrix:
         include:
-          - name: forecast
-            file: force5/Dockerfile
           - name: web
             file: deploy/local/Dockerfile.web
           - name: market
@@ -214,6 +219,141 @@ jobs:
           path: digests/${{ matrix.name }}
           retention-days: 7
 
+  # linux/amd64 on ubuntu-24.04, linux/arm64 on ubuntu-24.04-arm. Each push is
+  # by digest only, so a failed platform never leaves a tagged half image.
+  # Provenance is off: an attestation is a second manifest, and the list Colima
+  # pulls should be the two images and nothing else.
+  forecast:
+    name: Image (forecast, ${{ matrix.platform }})
+    needs: resolve
+    if: needs.resolve.outputs.channel == 'nightly' && needs.resolve.outputs.should_build == 'true'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+            pair: linux-amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            pair: linux-arm64
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.resolve.outputs.ref }}
+      - id: hash
+        name: Source hash
+        run: echo "value=$(python3 -I deploy/home-compute/panel.py source-hash)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: force5/Dockerfile
+          platforms: ${{ matrix.platform }}
+          provenance: false
+          sbom: false
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.resolve.outputs.ref }}
+            org.opencontainers.image.version=${{ needs.resolve.outputs.version }}
+            org.opencontainers.image.licenses=AGPL-3.0-only
+            wingfoil.source-hash=${{ steps.hash.outputs.value }}
+          cache-from: type=gha,scope=forecast-${{ matrix.pair }}
+          cache-to: type=gha,mode=max,scope=forecast-${{ matrix.pair }}
+          outputs: type=image,name=${{ env.IMAGES }}-forecast,push-by-digest=true,name-canonical=true,push=true
+      - name: Export digest
+        run: |
+          digest="${{ steps.build.outputs.digest }}"
+          case "$digest" in
+            sha256:*) ;;
+            *) echo "build did not return a sha256 digest: '$digest'" >&2; exit 1 ;;
+          esac
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${digest#sha256:}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: forecast-platform-${{ matrix.pair }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # One manifest list, tagged the way the single-arch build used to tag the
+  # amd64 image. :nightly still moves in the publish job, after every gate.
+  forecast-manifest:
+    name: Image (forecast manifest)
+    needs: [resolve, forecast]
+    if: needs.resolve.outputs.channel == 'nightly' && needs.resolve.outputs.should_build == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    env:
+      VERSION: ${{ needs.resolve.outputs.version }}
+      REF: ${{ needs.resolve.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.resolve.outputs.ref }}
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: forecast-platform-*
+          merge-multiple: true
+          path: platform-digests
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Merge linux/amd64 and linux/arm64
+        run: |
+          shopt -s nullglob
+          sources=()
+          for path in platform-digests/*; do
+            name="$(basename "$path")"
+            if [[ "$name" =~ ^[0-9a-f]{64}$ ]]; then
+              sources+=("${IMAGES}-forecast@sha256:${name}")
+            fi
+          done
+          if [ "${#sources[@]}" -ne 2 ]; then
+            echo "expected 2 platform digests, found ${#sources[@]}" >&2
+            ls -la platform-digests >&2
+            exit 1
+          fi
+          docker buildx imagetools create \
+            -t "${IMAGES}-forecast:${VERSION}" \
+            -t "${IMAGES}-forecast:sha-${REF}" \
+            "${sources[@]}"
+      - name: The manifest list contains both platforms
+        run: |
+          docker buildx imagetools inspect "${IMAGES}-forecast:${VERSION}"
+          docker buildx imagetools inspect --format '{{json .Manifest}}' "${IMAGES}-forecast:${VERSION}" > manifest.json
+          python3 scripts/release/manifest_platforms.py check manifest.json linux/amd64 linux/arm64
+          digest="$(python3 scripts/release/manifest_platforms.py digest manifest.json)"
+          docker buildx imagetools inspect --format '{{json .Manifest}}' "${IMAGES}-forecast:sha-${REF}" \
+            | python3 scripts/release/manifest_platforms.py digest - > sha-digest.txt
+          test "$digest" = "$(cat sha-digest.txt)"
+          mkdir -p digests
+          printf '%s\n' "${IMAGES}-forecast@${digest}" > digests/forecast
+          cat digests/forecast
+      - uses: actions/upload-artifact@v7
+        with:
+          name: digest-forecast
+          path: digests/forecast
+          retention-days: 7
+
   # One static build for every environment: release.mjs configure-site points it
   # at an environment's forecast data at deploy time.
   site:
@@ -241,7 +381,7 @@ jobs:
 
   acceptance:
     name: Acceptance (images, real forecasts)
-    needs: [resolve, images]
+    needs: [resolve, images, forecast-manifest]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -419,6 +559,8 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
+      # One source that is already an index is copied whole, so the forecast
+      # tag keeps linux/amd64 and linux/arm64. Same for :staging and :production.
       - name: Move :nightly to these digests
         run: |
           for name in forecast web market; do
@@ -775,7 +917,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
       # :production is what the Mac mini pulls (macmini.sh pull): moving it is
-      # the forecast worker's deployment.
+      # the forecast worker's deployment. The forecast digest is the manifest
+      # list, so this retag is what puts linux/arm64 on :production.
       - name: Tag the digests :production, :latest and the release version
         run: |
           for name in forecast web market; do
