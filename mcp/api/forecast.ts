@@ -68,6 +68,7 @@ export const WIND_MODELS: readonly CatalogEntry[] = [
   { id: "harmonie", name: "HARMONIE", manifestUrl: "weather/harmonie.json" },
   { id: "icon-eu", name: "ICON-EU", manifestUrl: "weather/latest.json" },
   { id: "ecmwf", name: "ECMWF", manifestUrl: "weather/ecmwf.json" },
+  { id: "gfs", name: "GFS", manifestUrl: "weather/gfs.json" },
 ];
 /** Finest first, as WAVE_SOURCE_PREFERENCE in force5/src/waves.ts. */
 export const WAVE_MODELS: readonly CatalogEntry[] = [

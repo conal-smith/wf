@@ -200,7 +200,7 @@ at `PRODUCTION_FORECAST_BASE_URL` and changes nothing there.
 changes the monitor with it: every model of an enabled worker job in
 `deploy/local/jobs.toml`, plus any the site lists (`force5/src/catalog.ts`),
 minus every model the site calls `retired` or `planned`. Today that is HARMONIE,
-ICON-EU, ICON-EU weather, ECMWF, GFS-Wave, MI SWAN, tides, sea temperature,
+ICON-EU, ICON-EU weather, ECMWF, GFS, GFS-Wave, MI SWAN, tides, sea temperature,
 the blend, wind observations, the forecast archive and the verification scores.
 
 **What it checks**, per model:

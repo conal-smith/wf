@@ -797,7 +797,8 @@
  "blendModels": [
   "harmonie",
   "icon-eu",
-  "ecmwf"
+  "ecmwf",
+  "gfs"
  ],
  "expected": {
   "a": {

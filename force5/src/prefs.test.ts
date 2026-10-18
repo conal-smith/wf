@@ -93,7 +93,7 @@ describe("display preferences", () => {
       ...defaultPrefs(),
       units: "km/h",
       view: "candles",
-      blendModels: ["ecmwf", "icon-eu"],
+      blendModels: ["ecmwf", "gfs"],
       rows: { ...defaultPrefs().rows, gust: true, tide: false },
     };
     expect(savePrefs(prefs, storage)).toBe(true);
@@ -105,33 +105,33 @@ describe("display preferences", () => {
     const storage = fakeStorage({
       [PREFS_KEY]: JSON.stringify({
         blendModels: ["ecmwf"],
-        // Saved when every live model but ICON-EU existed, so ICON-EU is new.
-        blendKnown: live.filter((id) => id !== "icon-eu"),
+        // Saved when every live model but GFS existed, so GFS is new.
+        blendKnown: live.filter((id) => id !== "gfs"),
       }),
     });
     const loaded = loadPrefs(storage).blendModels;
-    expect(loaded).toEqual(["ecmwf", "icon-eu"]);
+    expect(loaded).toEqual(["ecmwf", "gfs"]);
     // Whatever else was there and left out stays out.
     expect(loaded).not.toContain("harmonie");
   });
   it("takes a blend list saved before models were recorded as it stands", () => {
     const storage = fakeStorage({
-      [PREFS_KEY]: JSON.stringify({ blendModels: ["ecmwf", "icon-eu"] }),
+      [PREFS_KEY]: JSON.stringify({ blendModels: ["ecmwf", "gfs"] }),
     });
-    expect(loadPrefs(storage).blendModels).toEqual(["ecmwf", "icon-eu"]);
+    expect(loadPrefs(storage).blendModels).toEqual(["ecmwf", "gfs"]);
   });
   it("drops a model retired since the blend list was saved", () => {
-    // Saved when GFS was live: it is no longer published, so not counted.
+    // Saved when AIFS was live: it is no longer published, so not counted.
     const storage = fakeStorage({
       [PREFS_KEY]: JSON.stringify({
-        blendModels: ["harmonie", "ecmwf", "gfs"],
-        blendKnown: ["harmonie", "icon-eu", "ecmwf", "gfs"],
+        blendModels: ["harmonie", "ecmwf", "aifs"],
+        blendKnown: [...windModels().map((model) => model.id), "aifs"],
       }),
     });
     expect(loadPrefs(storage).blendModels).toEqual(["harmonie", "ecmwf"]);
     // A list of nothing but retired models is no choice at all: the default.
     const only = fakeStorage({
-      [PREFS_KEY]: JSON.stringify({ blendModels: ["gfs", "aifs"] }),
+      [PREFS_KEY]: JSON.stringify({ blendModels: ["arome", "aifs"] }),
     });
     expect(loadPrefs(only).blendModels).toEqual(
       windModels().map((model) => model.id),
@@ -143,7 +143,7 @@ describe("display preferences", () => {
         rows: { gust: true, unknownRow: true, tide: "yes" },
         units: "beaufort",
         view: "ribbon",
-        blendModels: ["ecmwf", "ecmwf", "icon-eu"],
+        blendModels: ["ecmwf", "ecmwf", "gfs"],
       }),
     });
     const prefs = loadPrefs(storage);
@@ -153,7 +153,7 @@ describe("display preferences", () => {
     expect(prefs.rows).not.toHaveProperty("unknownRow");
     expect(prefs.units).toBe("kn");
     expect(prefs.view).toBe("blend");
-    expect(prefs.blendModels).toEqual(["ecmwf", "icon-eu"]);
+    expect(prefs.blendModels).toEqual(["ecmwf", "gfs"]);
   });
   it("falls back to the defaults for junk, empty and hostile storage", () => {
     expect(loadPrefs(fakeStorage({ [PREFS_KEY]: "not json" }))).toEqual(

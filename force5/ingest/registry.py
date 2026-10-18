@@ -69,8 +69,6 @@ MODELS = {
     "ecmwf-wave": {"script": "fetch_ecmwf_wave.py", "manifest": "weather/ecmwf-wave.json",
                    "kind": "wave", "maxAgeHours": 24, "cache": "ecmwf-wave",
                    "readsPublishedRun": True},
-    # Retired (18 October 2026): its job ships disabled and the site neither fetches
-    # nor lists it (force5/src/catalog.ts). The adapter stays, to be switched back on.
     "gfs": {"script": "fetch_gfs.py", "manifest": "weather/gfs.json",
             "kind": "wind", "maxAgeHours": 12, "cache": "gfs", "readsPublishedRun": True},
     # GEFS is 3-hourly at best and defaults to 6-hourly; it has no hourly product.

@@ -75,11 +75,6 @@ The shipped timetable takes the 00 UTC run once a day, `--ecmwf-cycle 00` at 08:
 UTC with a 10:20 retry, because open data publishes the whole run at about 07:35 UTC. See the
 [ECMWF specification](ECMWF_15_DAY_PLAN.md) for source, contract and acceptance tests.
 
-GFS is **retired** (18 October 2026), judged not useful: the job ships disabled
-and the site does not fetch it. GFS-Wave, NOAA's wave model, is a separate job and
-still runs. The adapter below is unchanged; see `deploy/local/README.md` to bring
-it back.
-
 GFS is supported the same way: `--models gfs` imports NOAA's public-domain 0.25°
 deterministic run. The worker's `--step` selects the horizon GFS actually
 publishes at that cadence: `--step 3` gives 0–240 h (81 frames) and `--step 1`

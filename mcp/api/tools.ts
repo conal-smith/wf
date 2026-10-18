@@ -51,7 +51,7 @@ export const INSTRUCTIONS = `wingfoil.ie forecasts wind, waves and tides for win
 
 - Start with list_spots or find_wind to learn spot ids; get_spot_forecast accepts an id, a name or part of one.
 - Speeds are knots, directions are degrees the wind comes FROM, times are UTC with a \`local\` Europe/Dublin label. Quote the local time to people.
-- The forecast is HARMONIE's own (Met Éireann's 2.5 km model, the most accurate here) while it reaches the hour, about the next 60 hours; past it, a weighted median of the other models (ICON-EU and ECMWF). \`lead\` says which an hour is. \`agreement\` says how closely all the models agree; say so when it is low, and use by_model to explain a disagreement.
+- The forecast is HARMONIE's own (Met Éireann's 2.5 km model, the most accurate here) while it reaches the hour, about the next 60 hours; past it, a weighted median of the other models (ICON-EU, ECMWF and GFS). \`lead\` says which an hour is. \`agreement\` says how closely all the models agree; say so when it is low, and use by_model to explain a disagreement.
 - ${METHOD}
 - ${CARE}
 - Credit the model providers named in \`sources\` when you share a forecast, and link people to https://wingfoil.ie for the map.`;

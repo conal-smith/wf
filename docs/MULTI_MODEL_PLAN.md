@@ -9,10 +9,6 @@ stream. Their code is intact and their jobs ship disabled; the site serves HARMO
 ICON-EU, ECMWF and GFS for wind, and MI SWAN and GFS-Wave for waves. See
 `deploy/local/README.md`.
 
-**Update, 18 October 2026:** GFS is retired too, judged not useful, the same way.
-The site serves HARMONIE, ICON-EU and ECMWF for wind; GFS-Wave, a separate job,
-still runs.
-
 ## Delivered so far (16 September 2026)
 
 - Ingest foundations: `force5/ingest/registry.py` (one line per model), manifest
