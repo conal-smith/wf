@@ -12,6 +12,53 @@ launchd ─┬─ dev.sprintengine.home-compute-vm  starts the jobs' Colima VM a
                                               API on 127.0.0.1:4786 for the menu bar app
 ```
 
+## Off since 18 October 2026: the hosted control plane schedules the jobs
+
+Since 18 October 2026 the jobs are scheduled by Home Compute's hosted control plane
+(`hc-core` and `hc-web` on Cloudflare). This Mac runs its pull agent
+(`dev.homecompute.agent`, log `~/Library/Logs/home-compute/agent.log`), one run at a
+time (`caps.maxRuns: 1` in `~/Library/Application Support/home-compute/config.json`,
+and the machine's capacity on the plane). The agent pulls the released forecast image,
+the `linux/arm64` entry of its manifest list, with the plane's `ghcr-read` vault
+secret. The three launch agents above are stopped and **disabled**. Their plists stay
+in `~/Library/LaunchAgents`, and `wingfoil-forecast:local` stays in their VM.
+
+What the plane runs:
+
+- Every job in `home-compute.json`, with the same slots, imported with the `wingfoil`
+  preset. The jobs pin the release's manifest-list digest, with `registryAuth:
+  vault:ghcr-read`.
+- `prune` and the big downloads (the HARMONIE, ICON-EU, ECMWF and GFS families) require
+  `site=home`, so only this Mac runs them.
+- The rest prefer `mac-mini` and fall back to the cloud worker after 300 s.
+
+A change to `deploy/local/jobs.toml` no longer takes effect by restarting a local
+scheduler. Regenerate `home-compute.json`, then import it into the plane:
+`home-compute cloud import deploy/home-compute/home-compute.json --preset wingfoil`
+from the home-compute checkout. Edits made on the dashboard are kept unless you pass
+`--force`.
+
+### Switching back to the local scheduler
+
+1. Pause the wingfoil jobs on the hosted plane, or at least `prune`. Never let `prune`
+   run on both. Pausing the plane does not stop this Mac's agent; it just gets nothing
+   to run.
+2. Re-enable the launch agents, then start them:
+
+   ```sh
+   for label in dev.sprintengine.home-compute-vm dev.sprintengine.bacalhau dev.sprintengine.home-compute; do
+     launchctl enable "gui/$(id -u)/$label"
+   done
+   deploy/home-compute/macmini.sh start    # the VM, Bacalhau, then the controller
+   deploy/home-compute/macmini.sh status
+   ```
+
+   `start` bootstraps the plists, and launchd refuses a disabled label, so step 2
+   needs the `enable` first. To use the released image instead of the local build,
+   run `macmini.sh pull` (`:production`, multi-arch since `v2026.10.18-nightly.38`).
+3. To return to the plane, reverse it: `macmini.sh stop`, `launchctl disable` the three
+   labels, then resume the jobs on the plane.
+
 ## Files
 
 | File | What it is |
