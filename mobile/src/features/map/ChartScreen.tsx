@@ -2,9 +2,10 @@
  * The chart (the site's map, src/App.tsx, for a phone): every riding place as
  * a light at the hour chosen, the wind three ways, the depths, the satellite
  * and the foilable depth at the tide, "Find a spot…", where am I, and the
- * dock in a sheet under it all. Opens on the whole of Ireland unless a spot
- * is open; a link (`?spot=<id>&t=<iso>`, a notification's) opens its spot
- * at its hour and flies there.
+ * dock in a sheet under it all once a spot is open. Opens on the whole of
+ * Ireland, the chart the full height, unless a spot is open; a link
+ * (`?spot=<id>&t=<iso>`, a notification's) opens its spot at its hour and
+ * flies there.
  */
 import type BottomSheet from "@gorhom/bottom-sheet";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
@@ -171,18 +172,20 @@ export default function ChartScreen() {
   }, [rest, setView]);
 
   const tabInset = Platform.OS === "ios" ? insets.bottom : 0;
-  const padding = useMemo(
-    () => ({ top: insets.top + HEAD + space.lg, bottom: PEEK + tabInset + space.lg, left: space.lg, right: hitTarget + space.xl }),
-    [insets.top, tabInset],
-  );
+  // The dock's peek covers the foot of the chart only once a spot opens it.
+  const dockInset = spot ? PEEK + tabInset : tabInset;
+  const edges = useMemo(() => ({ top: insets.top + HEAD + space.lg, left: space.lg, right: hitTarget + space.xl }), [insets.top]);
+  const padding = useMemo(() => ({ ...edges, bottom: dockInset + space.lg }), [edges, dockInset]);
+  // A spot is flown to above the peek its dock opens with, there or not yet.
+  const spotPadding = useMemo(() => ({ ...edges, bottom: PEEK + tabInset + space.lg }), [edges, tabInset]);
 
   const flyTo = useCallback(
-    (center: [number, number], zoom: number) => {
+    (center: [number, number], zoom: number, framed = padding) => {
       const from = camera ?? { center, zoom, width: size.width || 1, height: size.height || 1 };
       cameraRef.current?.flyTo({
         center,
         zoom,
-        padding,
+        padding: framed,
         duration: reducedMotion ? 0 : flightMs(from, { center, zoom }),
         easing: "fly",
       });
@@ -190,8 +193,8 @@ export default function ChartScreen() {
     [camera, size, padding, reducedMotion],
   );
   const flyToSpot = useCallback(
-    (s: Spot) => flyTo(seaward(s), Math.max(camera?.zoom ?? 0, SPOT_ZOOM)),
-    [flyTo, camera?.zoom],
+    (s: Spot) => flyTo(seaward(s), Math.max(camera?.zoom ?? 0, SPOT_ZOOM), spotPadding),
+    [flyTo, camera?.zoom, spotPadding],
   );
   const fitIreland = useCallback(() => {
     cameraRef.current?.fitBounds(IRELAND_BOUNDS, { padding, duration: reducedMotion ? 0 : 1200 });
@@ -475,7 +478,6 @@ export default function ChartScreen() {
     },
     [table, selected],
   );
-  const starredSpots = useMemo(() => starred.flatMap((id) => (spotById(id) ? [spotById(id)!] : [])), [starred]);
 
   const showOnChart = useCallback(() => {
     if (!spot) return;
@@ -600,21 +602,16 @@ export default function ChartScreen() {
         </InstrumentStack>
       </View>
 
-      <DockSheet
-        sheetRef={dockRef}
-        bottomInset={tabInset}
-        spot={spot}
-        starred={starredSpots}
-        detent={detent}
-        onDetent={setDetent}
-        onOpenSpotPage={(id) => router.push(`/spot/${id}` as never)}
-        onShowOnChart={showOnChart}
-        onFind={() => {
-          setSearchOpen(true);
-          searchRef.current?.focus();
-        }}
-        onPickStarred={(s) => selectSpot(s)}
-      />
+      {spot ? (
+        <DockSheet
+          sheetRef={dockRef}
+          bottomInset={tabInset}
+          detent={detent}
+          onDetent={setDetent}
+          onOpenSpotPage={(id) => router.push(`/spot/${id}` as never)}
+          onShowOnChart={showOnChart}
+        />
+      ) : null}
 
       <PointSheet
         sheetRef={pointRef}

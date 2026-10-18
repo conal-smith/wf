@@ -25,7 +25,9 @@ import {
   SKILLS,
   directionCosts,
   gustCurve,
+  rateOn,
   rideableWind,
+  savedCustom,
   starsText,
   windBand,
   windScore,
@@ -481,16 +483,17 @@ const standard = (rider: Rider, skill: Skill): Rider => ({
   ...rider,
   skill,
   custom: null,
+  keptCustom: null,
 });
 
-/** The levels as columns, and the rider's own after them when they have one. */
+/** The levels as columns, and the rider's own after them when they have one, rating or kept. */
 type Column = Skill | "yours";
 const columns = (rider: Rider): Column[] => [
   ...SKILLS,
-  ...(rider.custom ? (["yours"] as const) : []),
+  ...(savedCustom(rider) ? (["yours"] as const) : []),
 ];
 const columnRider = (rider: Rider, column: Column) =>
-  column === "yours" ? rider : standard(rider, column);
+  column === "yours" ? rateOn(rider, "custom") : standard(rider, column);
 const isYou = (rider: Rider, column: Column) =>
   column === (rider.custom ? "yours" : rider.skill);
 const columnName = (column: Column) =>

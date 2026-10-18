@@ -21,7 +21,10 @@ import {
   MIN_WEIGHT_KG,
   MIN_WING_M2,
   SKILL_LABEL,
+  SKILLS,
+  savedCustom,
   type Rider,
+  type StarsOn,
 } from "../../../../force5/src/stars";
 
 /** The site's names for the levels (force5/src/stars.ts). */
@@ -31,13 +34,22 @@ export { SKILL_LABEL };
 export const weightText = (rider: Rider) =>
   `${rider.weightKg === null ? "~" : ""}${rider.weightKg ?? ESTIMATE_WEIGHT_KG} kg`;
 
-/** "Riding · ~80 kg", or "Custom stars · ~80 kg": who the stars are for (spot/web/RiderSwitch.tsx). */
+/**
+ * "Riding · ~80 kg", or "Custom stars · ~80 kg" while the rider's own rating
+ * rates: who the stars are for (spot/web/RiderSwitch.tsx). A rating kept
+ * aside while a level rates is not who they are for.
+ */
 export const riderWords = (rider: Rider) =>
   `${rider.custom ? "Custom stars" : SKILL_LABEL[rider.skill]} · ${weightText(rider)}`;
 
-/** The rider settings' Star rating row: "Standard for Riding", or "Custom". */
-export const starRatingText = (rider: Rider) =>
-  rider.custom ? "Custom" : `Standard for ${SKILL_LABEL[rider.skill]}`;
+/** The level pill's choices: the levels, and Custom once the rider has a rating of their own. */
+export const starsOnSegments = (rider: Rider): { value: StarsOn; label: string }[] => [
+  ...SKILLS.map((skill) => ({ value: skill, label: SKILL_LABEL[skill] })),
+  ...(savedCustom(rider) ? [{ value: "custom" as const, label: "Custom" }] : []),
+];
+
+/** The way into "Your star rating" under the pill: a new rating from the level, or the rider's own. */
+export const customiseText = (rider: Rider) => (savedCustom(rider) ? "Edit custom" : "Customise");
 
 /** "Riding · ~80 kg · 4, 5.5 m²": the More tab's summary. */
 export const riderSummary = (rider: Rider) =>

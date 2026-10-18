@@ -10,9 +10,9 @@
  * reason for one.
  */
 import * as Notifications from "expo-notifications";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { AppState } from "react-native";
-import { DEFAULT_RIDER, type Rider } from "../../../../force5/src/stars";
+import { DEFAULT_RIDER, ratedRider, type Rider } from "../../../../force5/src/stars";
 import { usePrefs } from "../../data/prefs";
 import { deviceFingerprint } from "./alertsLogic";
 import {
@@ -139,7 +139,9 @@ export async function serverPreview() {
 /** Mounted once, in the root layout (through useNotificationRouting). */
 export function useAlertsSync(): void {
   const { prefs } = usePrefs();
-  const rider = prefs.rider;
+  // The rider as the alerts rate: a rating of their own kept aside while a
+  // level rates is not sent, and a change to it alone sends nothing.
+  const rider = useMemo(() => ratedRider(prefs.rider), [prefs.rider]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // First, so the sync the next effect starts has the rider.
@@ -174,7 +176,7 @@ export function useAlertsSync(): void {
     };
   }, []);
 
-  // A new weight, level or quiver: the stars change, so the API is told.
+  // A new weight, level, quiver or star rating in use: the stars change, so the API is told.
   const riderKey = JSON.stringify(rider);
   const first = useRef(true);
   useEffect(() => {

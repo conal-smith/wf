@@ -1,20 +1,17 @@
 /**
  * The dock, in the chart's own sheet: a peek a little over the tab bar with
  * the strip of hours and the open spot's line, and a pull up to most of the
- * screen for its week (features/dock/ForecastDock.tsx). With no spot open the
- * peek asks for one, and offers the rider's starred spots.
+ * screen for its week (features/dock/ForecastDock.tsx). There is no sheet
+ * until a spot is open, as on the site: the chart has the whole screen.
  *
  * App updates wait while the sheet is being dragged (features/updates/hold.ts).
  */
 import BottomSheet from "@gorhom/bottom-sheet";
 import { memo, useCallback, useState, type Ref } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import { useAnimatedReaction, useSharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
-import type { Spot } from "../../../../force5/src/weather";
-import { tick } from "../../components/haptics";
-import { T } from "../../components/Text";
-import { colors, hitTarget, radius, shadow, space } from "../../theme/tokens";
+import { colors, radius, shadow, space } from "../../theme/tokens";
 import { ForecastDock } from "../dock/ForecastDock";
 import { useUpdateHold } from "../updates/hold";
 
@@ -26,14 +23,10 @@ interface Props {
   sheetRef: Ref<BottomSheet>;
   /** The tab bar's height under the sheet. */
   bottomInset: number;
-  spot: Spot | null;
-  starred: readonly Spot[];
   onDetent: (detent: "peek" | "open") => void;
   detent: "peek" | "open";
   onOpenSpotPage: (id: string) => void;
   onShowOnChart: () => void;
-  onFind: () => void;
-  onPickStarred: (spot: Spot) => void;
 }
 
 export const DockSheet = memo(function DockSheet(props: Props) {
@@ -68,45 +61,6 @@ export const DockSheet = memo(function DockSheet(props: Props) {
       handleStyle={styles.handleBox}
       accessibilityLabel="Forecast dock"
     >
-      {!props.spot ? (
-        <View style={styles.prompt}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Find a spot"
-            accessibilityHint="Opens the search at the top of the chart"
-            onPress={() => {
-              tick();
-              props.onFind();
-            }}
-            style={styles.find}
-          >
-            <T variant="spot">Pick a spot on the chart,</T>
-            <T variant="body" color="muted">
-              or find one by name.
-            </T>
-          </Pressable>
-          {props.starred.length ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-              {props.starred.map((spot) => (
-                <Pressable
-                  key={spot.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open ${spot.name}`}
-                  onPress={() => {
-                    tick();
-                    props.onPickStarred(spot);
-                  }}
-                  style={({ pressed }) => [styles.chip, pressed && styles.chipDown]}
-                >
-                  <T variant="label" caps numberOfLines={1}>
-                    {spot.name}
-                  </T>
-                </Pressable>
-              ))}
-            </ScrollView>
-          ) : null}
-        </View>
-      ) : null}
       <ForecastDock detent={props.detent} onOpenSpotPage={props.onOpenSpotPage} onShowOnChart={props.onShowOnChart} />
     </BottomSheet>
   );
@@ -122,16 +76,4 @@ const styles = StyleSheet.create({
   },
   handleBox: { paddingVertical: space.sm },
   handle: { backgroundColor: colors.lineStrong, width: 36 },
-  prompt: { paddingHorizontal: space.lg, gap: space.sm, paddingBottom: space.sm },
-  find: { minHeight: hitTarget, justifyContent: "center" },
-  chips: { gap: space.sm },
-  chip: {
-    minHeight: hitTarget - 8,
-    paddingHorizontal: space.md,
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.ink,
-    borderRadius: radius.pill,
-  },
-  chipDown: { backgroundColor: colors.sunken },
 });

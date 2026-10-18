@@ -142,8 +142,9 @@ export interface RowLayout {
 
 /**
  * The dock's rows top to bottom. Peek shows the hours, the stars and the wind;
- * open shows the week as the site's dock does, the table's rows or the blend
- * chart, the tide, and the fold. No spot: the days and the hours alone.
+ * open shows the week as the site's dock does, the table's rows or the stars
+ * over the blend chart, the tide, and the fold. No spot: the days and the
+ * hours alone.
  */
 export function rowLayout(options: {
   detent: "peek" | "open";
@@ -161,8 +162,12 @@ export function rowLayout(options: {
       if (on("stars")) rows.push("stars");
       rows.push("wind");
     } else {
-      if (view === "blend") rows.push("blend");
-      else {
+      // The blend chart stands in for the table's wind rows, under the
+      // stars the table rates from the same hours (as the site's dock).
+      if (view === "blend") {
+        if (on("stars")) rows.push("stars");
+        rows.push("blend");
+      } else {
         for (const row of ["stars", "wind", "from", "wing"] as const)
           if (on(row)) rows.push(row);
       }

@@ -1,47 +1,71 @@
 /**
- * Who the stars are rated for: the level as three choices, the weight, and
- * the wings in the bag. The same rider as the site's (force5.prefs.v1, read
- * and written through `parseRider`), so a change here is the rider the chart,
- * the dock and the spot page rate for at once.
+ * Who the stars are rated for: the level pill (the three levels, and Custom
+ * once the rider has a rating of their own), the weight, and the wings in the
+ * bag. The same rider as the site's (force5.prefs.v1, read and written
+ * through `parseRider`), so a change here is the rider the chart, the dock
+ * and the spot page rate for at once.
  *
- * `compact` is the spot page's line (spot/web/RiderSwitch.tsx): the level,
- * or the rider's own stars, and the weight and wings behind a fold that
- * opens in place.
+ * `compact` is the spot page's line (spot/web/RiderSwitch.tsx): the pill, and
+ * the weight and wings behind a fold that opens in place.
  */
 import { useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
-import { ESTIMATE_WEIGHT_KG, SKILLS, type Rider, type Skill } from "../../../../force5/src/stars";
+import { ESTIMATE_WEIGHT_KG, starsOn, type Rider, type StarsOn } from "../../../../force5/src/stars";
 import { Chevron } from "../../components/Glyphs";
 import { tick } from "../../components/haptics";
 import { Segmented } from "../../components/Segmented";
 import { T } from "../../components/Text";
 import { usePrefs } from "../../data/prefs";
-import { CustomStarsChip } from "../stars/StarRating";
+import { openYourStars } from "../stars/StarRating";
 import { colors, fonts, hitTarget, radius, space, type as scale } from "../../theme/tokens";
 import {
-  SKILL_LABEL,
   WEIGHT_RANGE,
   WING_SIZES,
   changeRider,
+  customiseText,
   parseWeight,
+  starsOnSegments,
   toggleWing,
   weightText,
 } from "./settingsLogic";
 
-/** The rider, and a change of weight, level or wings (`saveRider`: the star rating stays). */
+/** The rider, and a change of weight or wings (`saveRider`: the star rating stays). */
 export function useRider(): [Rider, (change: Partial<Rider>) => void] {
   const { prefs, changeRider: save } = usePrefs();
   return [prefs.rider, (change) => save((rider) => changeRider(rider, change))];
 }
 
-export function LevelSwitch({ rider, onChange }: { rider: Rider; onChange: (change: Partial<Rider>) => void }) {
+/** The level pill: a level, or Custom, the rider's own rating kept whichever rates (`withStarsOn`). */
+export function LevelSwitch() {
+  const { prefs, setStarsOn } = usePrefs();
   return (
-    <Segmented<Skill>
-      value={rider.skill}
+    <Segmented<StarsOn>
+      value={starsOn(prefs.rider)}
       accessibilityLabel="Riding level"
-      segments={SKILLS.map((skill) => ({ value: skill, label: SKILL_LABEL[skill] }))}
-      onChange={(skill) => onChange({ skill })}
+      segments={starsOnSegments(prefs.rider)}
+      onChange={setStarsOn}
     />
+  );
+}
+
+/** Under the pill: "Customise" from the level picked, or "Edit custom", in use or kept. */
+export function CustomiseLink() {
+  const { prefs } = usePrefs();
+  const label = customiseText(prefs.rider);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={() => {
+        tick();
+        openYourStars();
+      }}
+      style={({ pressed }) => [styles.link, pressed && styles.linkDown]}
+    >
+      <T variant="prose" style={styles.underline}>
+        {label}
+      </T>
+    </Pressable>
   );
 }
 
@@ -160,8 +184,7 @@ export function RiderLine() {
         <T variant="eyebrow" caps color="muted">
           Rated for
         </T>
-        {/* A rider's own stars stand for the level: the chip says so, and changes them. */}
-        {rider.custom ? <CustomStarsChip /> : <LevelSwitch rider={rider} onChange={change} />}
+        <LevelSwitch />
       </View>
       <Pressable
         accessibilityRole="button"
@@ -246,6 +269,8 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   underline: { textDecorationLine: "underline", textDecorationColor: colors.lineStrong },
+  link: { minHeight: hitTarget, justifyContent: "center", alignSelf: "flex-start" },
+  linkDown: { opacity: 0.55 },
   panel: { gap: space.sm, paddingBottom: space.sm },
   note: { fontFamily: fonts.bodyItalic },
 });

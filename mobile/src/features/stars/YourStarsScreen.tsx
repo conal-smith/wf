@@ -6,10 +6,13 @@
  * up over the sea and onshore down over the land; and see it all together,
  * and against the level, before saving.
  *
- * A modal of its own: each opening starts again from what is saved, so Cancel
- * (or the back button) keeps nothing. Everything is kept in knots, as the
- * rating is, and drawn in the rider's unit. The arithmetic is the site's
- * (spot/web/yourStars.ts, force5/src/stars.ts); the touch is yourStarsLogic.ts.
+ * A modal of its own: each opening starts again from what is saved (the
+ * rider's own rating, whether it rates now or is kept while a level does, else
+ * the level picked), so Cancel (or the back button) keeps nothing. Save puts
+ * the rating in use; Delete, for one already saved, leaves the level.
+ * Everything is kept in knots, as the rating is, and drawn in the rider's
+ * unit. The arithmetic is the site's (spot/web/yourStars.ts,
+ * force5/src/stars.ts); the touch is yourStarsLogic.ts.
  *
  * Nothing here traps the page's scroll: a scale's handles move on a sideways
  * drag only, a dot only once a drag starts on it, and the grid reads a tap.
@@ -35,6 +38,7 @@ import {
   SKILLS,
   SKILL_LABEL,
   gustLoss,
+  savedCustom,
   standardRating,
   windScore,
   type CustomRating,
@@ -106,7 +110,7 @@ export function YourStarsScreen() {
   const unit = useMemo(() => unitScale(prefs.units), [prefs.units]);
   // The rider as they were when the screen opened: Cancel keeps nothing.
   const [rider] = useState<Rider>(prefs.rider);
-  const [draft, setDraft] = useState<CustomRating>(() => rider.custom ?? standardRating(rider));
+  const [draft, setDraft] = useState<CustomRating>(() => savedCustom(rider) ?? standardRating(rider));
   // The grid and the examples rate hundreds of hours: they follow a drag a
   // frame behind rather than holding it up.
   const later = useDeferredValue(draft);
@@ -221,6 +225,18 @@ export function YourStarsScreen() {
         </Block>
       </ScrollView>
       <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, space.md) }]}>
+        {savedCustom(rider) ? (
+          <Button
+            label="Delete"
+            kind="quiet"
+            size="sm"
+            style={styles.delete}
+            onPress={() => {
+              setCustomStars(null);
+              router.back();
+            }}
+          />
+        ) : null}
         <Button label="Cancel" kind="pill" onPress={() => router.back()} />
         <Button
           label="Save"
@@ -1026,4 +1042,5 @@ const styles = StyleSheet.create({
     borderTopColor: colors.ink,
     backgroundColor: colors.paper,
   },
+  delete: { marginRight: "auto", alignSelf: "center" },
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { RULE_DEFAULTS, type AlertMatch } from "../../../../alerts/shared/protocol";
-import { defaultPrefs, withCustomStars } from "../../../../force5/src/prefs";
-import { DEFAULT_RIDER, standardRating } from "../../../../force5/src/stars";
+import { defaultPrefs, withCustomStars, withStarsOn } from "../../../../force5/src/prefs";
+import { DEFAULT_RIDER, ratedRider, standardRating } from "../../../../force5/src/stars";
 import {
   deviceFingerprint,
   draftProblem,
@@ -164,5 +164,19 @@ describe("the lines on the screen", () => {
     expect(JSON.parse(deviceFingerprint(own))).toContainEqual(["rider", prefs.rider]);
     const reset = withCustomStars(prefs, null);
     expect(deviceFingerprint({ rider: reset.rider, quietHours: true })).toBe(deviceFingerprint(standard));
+  });
+
+  it("sends a level, not a rating of the rider's own kept aside while the level rates", () => {
+    // sync.ts sends `ratedRider`: the alerts rate as the phone does.
+    const own = withCustomStars(defaultPrefs(), standardRating(DEFAULT_RIDER, "beginner"));
+    const kept = withStarsOn(own, "intermediate");
+    expect(kept.rider.keptCustom).toBeTruthy();
+    const standard = { rider: DEFAULT_RIDER, quietHours: true };
+    expect(deviceFingerprint({ rider: ratedRider(kept.rider), quietHours: true })).toBe(deviceFingerprint(standard));
+    // Back on their own: sent again, as it was.
+    const back = withStarsOn(kept, "custom");
+    expect(deviceFingerprint({ rider: ratedRider(back.rider), quietHours: true })).toBe(
+      deviceFingerprint({ rider: ratedRider(own.rider), quietHours: true }),
+    );
   });
 });

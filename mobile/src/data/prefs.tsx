@@ -3,20 +3,24 @@
  * Prefs (force5/src/prefs.ts), stored under the site's key in the device's
  * localStorage (storage.ts). One provider, so every screen reads one value.
  *
- * The rider changes the site's two ways: weight, level and wings through
- * `saveRider`, which keeps the stored star rating; the rider's own star
- * rating only through `withCustomStars`, which stamps when it changed.
+ * The rider changes the site's ways: weight and wings through `saveRider`,
+ * which keeps the stored star rating; the level pill through `withStarsOn`,
+ * which keeps the rider's own rating as they go on or off it; and that rating
+ * itself only through `withCustomStars`. The last two stamp when what the
+ * account keeps has changed.
  */
 import { createContext, use, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
-import { loadPrefs, saveRider, savePrefs, withCustomStars, type Prefs } from "../../../force5/src/prefs";
-import type { CustomRating, Rider } from "../../../force5/src/stars";
+import { loadPrefs, saveRider, savePrefs, withCustomStars, withStarsOn, type Prefs } from "../../../force5/src/prefs";
+import type { CustomRating, Rider, StarsOn } from "../../../force5/src/stars";
 
 interface PrefsValue {
   prefs: Prefs;
   update: (change: (prefs: Prefs) => Prefs) => void;
-  /** A new weight, level or wings; the rider's own star rating stays as stored. */
+  /** A new weight or wings; the rider's own star rating stays as stored. */
   changeRider: (change: (rider: Rider) => Rider) => void;
-  /** The rider's own star rating set, or reset to the level's with null. */
+  /** The level pill: a level, or the rider's own rating, which is kept either way. */
+  setStarsOn: (on: StarsOn) => void;
+  /** The rider's own star rating saved and rating, or deleted with null. */
   setCustomStars: (custom: CustomRating | null) => void;
 }
 
@@ -43,13 +47,14 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     (change: (rider: Rider) => Rider) => take(saveRider(change(current.current.rider))),
     [take],
   );
+  const setStarsOn = useCallback((on: StarsOn) => update((p) => withStarsOn(p, on)), [update]);
   const setCustomStars = useCallback(
     (custom: CustomRating | null) => update((p) => withCustomStars(p, custom)),
     [update],
   );
   const value = useMemo(
-    () => ({ prefs, update, changeRider, setCustomStars }),
-    [prefs, update, changeRider, setCustomStars],
+    () => ({ prefs, update, changeRider, setStarsOn, setCustomStars }),
+    [prefs, update, changeRider, setStarsOn, setCustomStars],
   );
   return <PrefsContext value={value}>{children}</PrefsContext>;
 }

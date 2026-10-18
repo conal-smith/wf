@@ -521,16 +521,6 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
           />
         </View>
 
-        {!spot ? (
-          <View style={styles.none}>
-            <T variant="prose" color="ink2">
-              Tap a light on the chart for its week.
-            </T>
-            <T variant="caption" color="muted">
-              The hours above still move the chart through time.
-            </T>
-          </View>
-        ) : null}
         {open && spot ? <Rule style={styles.footRule} /> : null}
       </Scroll>
       <RatingTip explanation={explanation} onClose={() => setTip(null)} onHow={() => router.push("/stars" as never)} />
@@ -802,7 +792,6 @@ const styles = StyleSheet.create({
     borderRadius: 3.5,
     backgroundColor: colors.magenta,
   },
-  none: { paddingHorizontal: space.md, paddingTop: space.md, gap: space.xs },
   footRule: { marginTop: space.md },
   state: { padding: space.lg, gap: space.md },
   bone: { height: space.md, backgroundColor: colors.sunken, borderRadius: radius.control },

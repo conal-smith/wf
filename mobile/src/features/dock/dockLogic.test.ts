@@ -115,13 +115,15 @@ describe("rows", () => {
     expect(layout.slots.map((s) => s.row)).toEqual(["day", "hour", "stars", "wind"]);
   });
 
-  it("opens on the table, the tide and the fold, or the blend in its place", () => {
+  it("opens on the table, the tide and the fold, or the stars over the blend in its place", () => {
     const table = rowLayout({ detent: "open", view: "table", spot: true, more: true, on: () => true });
     expect(table.slots.map((s) => s.row)).toEqual([
       "day", "hour", "stars", "wind", "from", "wing", "tide", "waves", "sky", "air", "rain", "sea",
     ]);
     const blend = rowLayout({ detent: "open", view: "blend", spot: true, more: false, on: () => true });
-    expect(blend.slots.map((s) => s.row)).toEqual(["day", "hour", "blend", "tide"]);
+    expect(blend.slots.map((s) => s.row)).toEqual(["day", "hour", "stars", "blend", "tide"]);
+    const starless = rowLayout({ detent: "open", view: "blend", spot: true, more: false, on: (row) => row !== "stars" });
+    expect(starless.slots.map((s) => s.row)).toEqual(["day", "hour", "blend", "tide"]);
     expect(blend.height).toBe(blend.slots.reduce((h, s) => h + s.h, 0));
   });
 
