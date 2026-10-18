@@ -159,7 +159,7 @@ function sourceOf(url) {
   if (path.includes("/bathy/")) return "bathy";
   if (path.includes("/satellite/")) return "satellite";
   if (/openfreemap/.test(u.host)) return "basemap";
-  if (path.includes("/tides/")) return "tides";
+  if (path.includes("/tides/") || /\/marine\/tides/.test(path)) return "tides";
   if (u.host === siteHost) {
     if (/\.(js|mjs)$/.test(path)) return "app-js";
     if (/\.css$/.test(path)) return "app-css";
@@ -236,6 +236,7 @@ class Network {
       const e = this.live.get(key);
       if (!e) return;
       e.bytes = p.encodedDataLength ?? 0;
+      e.end = Date.now();
       e.done = true;
       this.live.delete(key);
     });
@@ -692,6 +693,13 @@ const SCENARIOS = {
     // Then until nothing more is asked for: a phone's first camera move can
     // land after the map's first idle and bring the foil's areas with it.
     const quietMs = await quiet(visit, profile.timeout);
+    // When the last of the foil's archive reads came in, from the start.
+    const foilReads = visit.network.entries.filter(
+      (e) => e.seen >= t && e.source === "foil-archives" && e.end,
+    );
+    const foilLoadedMs = foilReads.length
+      ? Math.max(...foilReads.map((e) => e.end)) - t
+      : null;
     // LCP and CLS settle a moment after.
     await page.waitForTimeout(2000);
     const vitals = await page.evaluate(() => {
@@ -711,6 +719,7 @@ const SCENARIOS = {
       mapIdleMs: Math.round(mapIdleMs),
       mapIdleReached: settled,
       quietMs: Math.round(quietMs),
+      foilLoadedMs,
       loadWallMs: Date.now() - t,
     };
   },

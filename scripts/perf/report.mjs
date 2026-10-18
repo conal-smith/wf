@@ -163,6 +163,7 @@ const OWN = {
     ["lights rated (ms)", (r) => r.mapReadyMs],
     ["map idle (ms)", (r) => r.mapIdleMs],
     ["network quiet (ms)", (r) => r.quietMs],
+    ["foil's last archive read (ms from start)", (r) => r.foilLoadedMs],
   ],
   idle: [
     ["map renders (n)", (r) => r.renders],
