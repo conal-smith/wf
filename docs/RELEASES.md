@@ -30,7 +30,7 @@ dispatch "promote" ──► production ──► v2026.10.11 (release)
 
 | Image | Built from | What runs it |
 | --- | --- | --- |
-| `ghcr.io/sprintengine/wingfoil-forecast` | `force5/Dockerfile` | Every ingest job: the Mac mini (Home Compute), the Compose stack, Cloudflare Containers |
+| `ghcr.io/sprintengine/wingfoil-forecast` | `force5/Dockerfile` | Every ingest job: the Mac mini or Cloudflare Containers (both through Home Compute), the Compose stack |
 | `ghcr.io/sprintengine/wingfoil-web` | `deploy/local/Dockerfile.web` | The self-hosted site (`deploy/local`) |
 | `ghcr.io/sprintengine/wingfoil-market` | `market/Dockerfile` | The marketplace/community/Gust API (Railway), off unless asked |
 
@@ -184,9 +184,11 @@ app need no change; the next job runs it. Colima is linux/arm64, so the pull
 selects that platform from the manifest list. `:production` names the list only
 after a promote of a nightly that built it; merging the multi-arch workflow
 does not move the tag. `macmini.sh image` still builds from the checkout when
-you are trying something out. The same image runs anywhere Docker does, so
-moving the jobs to Cloudflare Containers later means pointing
-`deploy/cloudflare/wrangler.jsonc` at the released image, not a new build.
+you are trying something out. The same image runs anywhere Docker does. Home
+Compute can also run a job on Cloudflare Containers: there the released image is
+pushed into Cloudflare's registry (linux/amd64) with Home Compute's
+`cloud/scripts/set-container-image.sh ghcr.io/sprintengine/wingfoil-forecast:production`
+and hc-core is deployed again; the job definitions do not change.
 
 ## The production monitor
 

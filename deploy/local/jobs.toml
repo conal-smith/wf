@@ -10,8 +10,8 @@
 # command = "worker" (default) runs force5/ingest/worker.py --models <models> <args>.
 # command = "prune" runs the retention script instead. Freshness is not scheduled:
 # `npm run deploy:status` prints it on demand, and the hosted control plane alerts on it.
-# `memory = "3Gb"` overrides a job's container ceiling for Home Compute and Cloudflare
-# (deploy/schedules.py, which also checks every minute is a multiple of 5); this
+# `memory = "3Gb"` overrides a job's container ceiling for Home Compute, on the Mac mini
+# and on Cloudflare (deploy/schedules.py, which also checks every minute is a multiple of 5); this
 # scheduler ignores it. Model ids are the ones in force5/ingest/registry.py. An id with no registry entry
 # disables only its own job; the rest keep running, so you can write entries for
 # harmonie-eps, gfs-wave or mi-swan now and enable them by adding the adapter.

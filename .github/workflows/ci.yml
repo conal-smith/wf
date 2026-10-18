@@ -61,9 +61,6 @@ jobs:
         run: npm run ui:lint
       - name: Marketplace API type check
         run: npx tsc -p market/api/tsconfig.json --noEmit
-      - name: Cloudflare Worker type check
-        working-directory: deploy/cloudflare
-        run: npm ci && npm run check
 
   # On the image's Python (force5/Dockerfile is python:3.12-slim), under the same
   # pins, so a test that passes here passes where the importers actually run.

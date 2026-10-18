@@ -65,7 +65,7 @@
         "resources": {
           "cpu": "1",
           "memory": "1Gb",
-          "disk": "12Gb"
+          "disk": "2Gb"
         },
         "network": {
           "type": "Full"
@@ -74,6 +74,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 7500
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "harmonie",
@@ -123,7 +127,7 @@
         "resources": {
           "cpu": "1",
           "memory": "1Gb",
-          "disk": "12Gb"
+          "disk": "2Gb"
         },
         "network": {
           "type": "Full"
@@ -132,6 +136,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 7500
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "icon-eu",
@@ -181,7 +189,7 @@
         "resources": {
           "cpu": "1",
           "memory": "512Mb",
-          "disk": "12Gb"
+          "disk": "2Gb"
         },
         "network": {
           "type": "Full"
@@ -190,6 +198,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 7500
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "icon-eu-weather"
@@ -238,7 +250,7 @@
         "resources": {
           "cpu": "1",
           "memory": "1Gb",
-          "disk": "12Gb"
+          "disk": "2Gb"
         },
         "network": {
           "type": "Full"
@@ -247,6 +259,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 7500
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "ecmwf",
@@ -303,6 +319,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 7500
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "harmonie-eps"
@@ -361,6 +381,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 7500
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "ecmwf-ens"
@@ -421,6 +445,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 7500
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "aifs",
@@ -474,7 +502,7 @@
         "resources": {
           "cpu": "1",
           "memory": "512Mb",
-          "disk": "12Gb"
+          "disk": "2Gb"
         },
         "network": {
           "type": "Full"
@@ -483,6 +511,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 6600
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "gfs",
@@ -545,6 +577,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 7500
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "gefs"
@@ -605,6 +641,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 7500
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "arpege",
@@ -671,6 +711,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 7500
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "arome",
@@ -724,7 +768,7 @@
         "resources": {
           "cpu": "1",
           "memory": "1Gb",
-          "disk": "6Gb"
+          "disk": "2Gb"
         },
         "network": {
           "type": "Full"
@@ -733,6 +777,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 6600
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "gfs-wave"
@@ -782,7 +830,7 @@
         "resources": {
           "cpu": "1",
           "memory": "512Mb",
-          "disk": "4Gb"
+          "disk": "2Gb"
         },
         "network": {
           "type": "Full"
@@ -791,6 +839,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 6000
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "mi-swan"
@@ -849,6 +901,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 7500
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "ecmwf-wave",
@@ -907,6 +963,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 6000
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "tides"
@@ -970,6 +1030,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 5100
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "sea-temperature"
@@ -1023,6 +1087,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 4800
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "blend"
@@ -1076,6 +1144,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 4800
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "wind-obs"
@@ -1129,6 +1201,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 6000
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "forecast-archive"
@@ -1185,6 +1261,10 @@
           "queueSeconds": 3600,
           "totalSeconds": 6000
         },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
         "parameters": [
           "--models",
           "verify"
