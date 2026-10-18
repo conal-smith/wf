@@ -174,8 +174,7 @@ export default function DisplayFilter({
         The stars, the lights and the wing are rated for this rider.{" "}
         {prefs.rider.weightKg === null
           ? `Until you give a weight they assume ${ESTIMATE_WEIGHT_KG} kg.`
-          : ""}{" "}
-        Saved on this device only.
+          : ""}
       </p>
       <h2>Models in the blend</h2>
       <div className="filter-models">
