@@ -20,6 +20,7 @@ import { ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { readForecastJson } from "../../../force5/src/manifests";
 import { loadPrefs } from "../../../force5/src/prefs";
+import { onPrefsChange } from "../../../shared/web/riderSync";
 import { shoreFacing } from "../../../force5/src/shoreFacing";
 import {
   rateHour,
@@ -416,8 +417,10 @@ export function useSpotCard(
     [knownId, series, now],
   );
 
-  // The rider the reader has set on the map, read once: the stars are theirs.
-  const rider = useMemo(() => loadPrefs().rider, []);
+  // The rider the reader has set on the map: the stars are theirs, their own
+  // star rating too, read again when it comes from the account.
+  const [rider, setRider] = useState(() => loadPrefs().rider);
+  useEffect(() => onPrefsChange(() => setRider(loadPrefs().rider)), []);
   const outlook = useMemo(
     () =>
       spot && series && reading ? spotOutlook(series, spot, now, rider) : null,

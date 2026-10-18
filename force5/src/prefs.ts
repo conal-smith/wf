@@ -10,6 +10,7 @@ import {
   MIN_WING_M2,
   SKILLS,
   parseCustomRating,
+  type CustomRating,
   type Rider,
 } from "./stars";
 
@@ -48,8 +49,16 @@ export interface Prefs {
   /** Models feeding the blend, separate from the single map model. */
   blendModels: string[];
   view: ForecastView;
-  /** Who the stars are rated for: weight, level and the wings they own. */
+  /** Who the stars are rated for: weight, level, the wings they own, and their own star rating. */
   rider: Rider;
+  /**
+   * When the rider last set or reset their own star rating on this device,
+   * ISO; null if never. A signed-in rider's device and account copies are
+   * compared on it, the newer winning (shared/web/riderSync.ts).
+   */
+  starsUpdatedAt: string | null;
+  /** The account this device's star rating was last matched with; null if none. */
+  starsAccount: string | null;
 }
 
 export const ROW_KEYS: readonly RowKey[] = [
@@ -115,7 +124,32 @@ export const defaultPrefs = (): Prefs => ({
   blendModels: windModels().map((model) => model.id),
   view: "blend",
   rider: DEFAULT_RIDER,
+  starsUpdatedAt: null,
+  starsAccount: null,
 });
+
+/**
+ * The rider's own star rating set, or reset with null, and stamped now: the
+ * one way a device changes it, so the stamp the account compares is always
+ * the moment of the change.
+ */
+export function withCustomStars(
+  prefs: Prefs,
+  custom: CustomRating | null,
+  now: Date = new Date(),
+): Prefs {
+  const { custom: _old, ...rider } = prefs.rider;
+  return {
+    ...prefs,
+    rider: custom ? { ...rider, custom } : rider,
+    starsUpdatedAt: now.toISOString(),
+  };
+}
+
+const isoOrNull = (value: unknown): string | null =>
+  typeof value === "string" && Number.isFinite(Date.parse(value))
+    ? new Date(value).toISOString()
+    : null;
 
 /**
  * Whether a row is shown. `available` is the default-by-availability answer for
@@ -245,6 +279,9 @@ export function loadPrefs(
           ? stored.view
           : defaults.view,
       rider: parseRider(stored.rider),
+      starsUpdatedAt: isoOrNull(stored.starsUpdatedAt),
+      starsAccount:
+        typeof stored.starsAccount === "string" ? stored.starsAccount : null,
     };
   } catch {
     return defaults;
@@ -268,4 +305,26 @@ export function savePrefs(
   } catch {
     return false;
   }
+}
+
+/**
+ * A change of weight, level or wings, saved over what is stored now, so a
+ * change made in another tab or adopted from the account is not undone. The
+ * rider's own star rating is the stored one: it changes only through
+ * `withCustomStars`.
+ */
+export function saveRider(
+  rider: Rider,
+  storage: PrefsStorage | null = browserStorage(),
+): Prefs {
+  const stored = loadPrefs(storage);
+  const { custom: _ignored, ...fields } = rider;
+  const next: Prefs = {
+    ...stored,
+    rider: stored.rider.custom
+      ? { ...fields, custom: stored.rider.custom }
+      : fields,
+  };
+  savePrefs(next, storage);
+  return next;
 }

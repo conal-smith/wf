@@ -10,7 +10,8 @@
  * can pass the one in view.
  */
 import { useEffect, useMemo, useState } from "react";
-import { loadPrefs, savePrefs } from "../../force5/src/prefs";
+import { loadPrefs, saveRider } from "../../force5/src/prefs";
+import { onPrefsChange } from "../../shared/web/riderSync";
 import { shoreFacing } from "../../force5/src/shoreFacing";
 import { mapSpotHref, spotHref } from "../../force5/src/siteNav";
 import {
@@ -96,10 +97,8 @@ export default function StarsPage() {
   const s = styles();
   const h = headlineStyles();
   const [rider, setRider] = useState<Rider>(() => loadPrefs().rider);
-  const changeRider = (next: Rider) => {
-    setRider(next);
-    savePrefs({ ...loadPrefs(), rider: next });
-  };
+  useEffect(() => onPrefsChange(() => setRider(loadPrefs().rider)), []);
+  const changeRider = (next: Rider) => setRider(saveRider(next).rider);
   const named = new URLSearchParams(window.location.search).get("spot");
   const spotId = named ?? DEFAULT_SPOT;
   const [chartRef, width] = useWidth<HTMLElement>(640);

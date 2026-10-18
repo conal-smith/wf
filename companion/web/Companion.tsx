@@ -3,7 +3,7 @@ import { CircleAlert, SquarePen, X } from "lucide-react";
 import { Button, Kicker, StarGlyphs } from "../../ui";
 import { AI_HREF } from "../../force5/src/siteNav";
 import { MONO_LABEL, RING } from "../../ui/tv";
-import { loadPrefs, parseRider, savePrefs } from "../../force5/src/prefs";
+import { loadPrefs, parseRider, saveRider } from "../../force5/src/prefs";
 import {
   COMPANION_NAME,
   type MapAction,
@@ -51,8 +51,7 @@ function openMapAt(action: MapAction) {
  * proposes a weight, level and wings; the rider's own star rating stays.
  */
 function saveToPrefs(rider: RiderContext) {
-  const prefs = loadPrefs();
-  savePrefs({ ...prefs, rider: parseRider({ ...prefs.rider, ...rider }) });
+  saveRider(parseRider({ ...loadPrefs().rider, ...rider }));
 }
 
 /**

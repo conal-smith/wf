@@ -7,10 +7,12 @@ import {
   rowOn,
   savePrefs,
   setRow,
+  withCustomStars,
   type Prefs,
   type PrefsStorage,
 } from "./prefs";
 import { windModels } from "./manifests";
+import { DEFAULT_RIDER, standardRating } from "./stars";
 
 const fakeStorage = (initial: Record<string, string> = {}) => {
   const data = new Map(Object.entries(initial));
@@ -181,5 +183,64 @@ describe("display preferences", () => {
   it("reports a failed write without throwing", () => {
     expect(savePrefs(defaultPrefs(), brokenStorage())).toBe(false);
     expect(savePrefs(defaultPrefs(), null)).toBe(false);
+  });
+
+  it("keeps the rider's own star rating, stamped, through storage", () => {
+    const storage = fakeStorage();
+    const own = standardRating(DEFAULT_RIDER, "advanced");
+    const at = new Date("2026-10-18T10:00:00Z");
+    const saved = withCustomStars(defaultPrefs(), own, at);
+    expect(saved.rider.custom).toEqual(own);
+    expect(saved.starsUpdatedAt).toBe("2026-10-18T10:00:00.000Z");
+    savePrefs(saved, storage);
+    const loaded = loadPrefs(storage);
+    expect(loaded.rider.custom).toEqual(own);
+    expect(loaded.starsUpdatedAt).toBe("2026-10-18T10:00:00.000Z");
+    // A reset is a change too, stamped, and leaves no custom field behind.
+    const reset = withCustomStars(
+      loaded,
+      null,
+      new Date("2026-10-18T11:00:00Z"),
+    );
+    expect("custom" in reset.rider).toBe(false);
+    expect(reset.starsUpdatedAt).toBe("2026-10-18T11:00:00.000Z");
+  });
+
+  it("reads preferences saved before custom stars as the standard rating", () => {
+    const storage = fakeStorage({
+      [PREFS_KEY]: JSON.stringify({
+        units: "mph",
+        rider: { weightKg: 90, skill: "beginner", wings: [5] },
+      }),
+    });
+    const loaded = loadPrefs(storage);
+    expect(loaded.rider).toEqual({
+      weightKg: 90,
+      skill: "beginner",
+      wings: [5],
+    });
+    expect(loaded.starsUpdatedAt).toBeNull();
+    expect(loaded.starsAccount).toBeNull();
+  });
+
+  it("drops a stored star rating it cannot read, or from another version, and clamps the rest", () => {
+    const own = standardRating(DEFAULT_RIDER);
+    const load = (custom: unknown) =>
+      loadPrefs(
+        fakeStorage({
+          [PREFS_KEY]: JSON.stringify({
+            rider: { ...DEFAULT_RIDER, custom },
+            starsUpdatedAt: "not a time",
+          }),
+        }),
+      );
+    expect(load({ ...own, version: 2 }).rider.custom).toBeUndefined();
+    expect(load({ ...own, wind: null }).rider.custom).toBeUndefined();
+    expect(load("custom").rider.custom).toBeUndefined();
+    expect(
+      load({ ...own, direction: { ...own.direction, offshore: 11 } }).rider
+        .custom!.direction.offshore,
+    ).toBe(5);
+    expect(load(own).starsUpdatedAt).toBeNull();
   });
 });

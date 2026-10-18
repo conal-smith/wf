@@ -5,6 +5,7 @@
  */
 import type { ReactNode } from "react";
 import { SiteAuthProvider } from "../../shared/web/auth";
+import { RiderSync } from "../../shared/web/useRiderSync";
 import { BASE } from "./router";
 
 export {
@@ -13,5 +14,10 @@ export {
 } from "../../shared/web/auth";
 
 export function MarketAuthProvider({ children }: { children: ReactNode }) {
-  return <SiteAuthProvider home={BASE}>{children}</SiteAuthProvider>;
+  return (
+    <SiteAuthProvider home={BASE}>
+      <RiderSync />
+      {children}
+    </SiteAuthProvider>
+  );
 }

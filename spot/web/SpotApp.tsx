@@ -11,8 +11,8 @@
  * work" (StarsPage.tsx), the bundle's other page.
  */
 import { MapPin, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { loadPrefs, savePrefs } from "../../force5/src/prefs";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { loadPrefs, saveRider } from "../../force5/src/prefs";
 import { shoreFacing } from "../../force5/src/shoreFacing";
 import {
   STARS_HREF,
@@ -33,6 +33,7 @@ import {
   type Unavailable,
 } from "../../mcp/api/forecast";
 import { favourites } from "../../shared/web/favourites";
+import { onPrefsChange, signedInHint } from "../../shared/web/riderSync";
 import { usePageTitle } from "../../shared/web/usePageTitle";
 import {
   Button,
@@ -99,10 +100,28 @@ const styles = tv({
   },
 });
 
+// The account's copy of the rider, on a device that has signed in before.
+const AccountRider = lazy(() => import("../../shared/web/AccountRider"));
+
 export default function SpotApp() {
   const path = window.location.pathname;
-  if (isStarsPath(path)) return <StarsPage />;
-  return <SpotRoute id={spotIdFromPath(path)} />;
+  const [syncAccount] = useState(
+    () => signedInHint() || Boolean(import.meta.env.VITE_MARKET_DEV_USER),
+  );
+  return (
+    <>
+      {isStarsPath(path) ? (
+        <StarsPage />
+      ) : (
+        <SpotRoute id={spotIdFromPath(path)} />
+      )}
+      {syncAccount && (
+        <Suspense fallback={null}>
+          <AccountRider />
+        </Suspense>
+      )}
+    </>
+  );
 }
 
 function SpotRoute({ id }: { id: string | null }) {
@@ -307,10 +326,12 @@ function SpotPage({
   const [rider, setRider] = useState<Rider>(() => loadPrefs().rider);
   const units = useMemo(() => loadPrefs().units, []);
   const unitText = unitLabel(units);
+  // A rating adopted from the account, or changed in another tab.
+  useEffect(() => onPrefsChange(() => setRider(loadPrefs().rider)), []);
   const changeRider = (next: Rider) => {
-    setRider(next);
-    // Read afresh, so a change made on the map in another tab is not undone.
-    savePrefs({ ...loadPrefs(), rider: next });
+    // Saved over what is stored now, so a change made on the map in another
+    // tab, or the rider's own stars, are not undone.
+    setRider(saveRider(next).rider);
   };
   const facing = shoreFacing(spot.id);
   const rows = useMemo(

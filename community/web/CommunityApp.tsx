@@ -13,6 +13,7 @@
 import { ChevronDown, Compass, List } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SiteAuthProvider } from "../../shared/web/auth";
+import { RiderSync } from "../../shared/web/useRiderSync";
 import { usePageTitle } from "../../shared/web/usePageTitle";
 import { Button, Empty } from "../../ui";
 import { tv } from "../../ui/tv";
@@ -79,6 +80,7 @@ const RAIL_ID = "community-channels";
 export default function CommunityApp() {
   return (
     <SiteAuthProvider home={BASE}>
+      <RiderSync />
       <Shell />
     </SiteAuthProvider>
   );
