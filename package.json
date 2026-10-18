@@ -21,6 +21,8 @@
     "shots:compare": "node scripts/shots-compare.mjs",
     "perf:serve": "node scripts/perf-serve.mjs",
     "perf:audit": "node scripts/perf-audit.mjs",
+    "perf": "node scripts/perf/run.mjs",
+    "perf:shots": "node scripts/perf/foil-shots.mjs",
     "preview:e2e": "node scripts/e2e-site.mjs && E2E_SITE=1 VITE_MARKET_DEV_SWITCH=1 VITE_FEATURE_GUST=1 VITE_FEATURE_MARKET=1 VITE_FEATURE_COMMUNITY=1 npm run build && E2E_SITE=1 npm run preview --",
     "format": "prettier --write src tests e2e scripts *.ts *.md index.html package.json",
     "ui:lint": "node scripts/lint-ui.mjs && node scripts/lint-ui.mjs --probe && node scripts/lint-design-tokens.mjs && node scripts/lint-design-tokens.mjs --probe && node scripts/lint-raw-primitives.mjs && node scripts/lint-raw-primitives.mjs --probe && node design-system/scripts/lint.mjs",

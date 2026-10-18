@@ -1,0 +1,47 @@
+{
+  "about": "Budgets for scripts/perf/run.mjs: each a scenario, a dot path into its result in report.json, and a max or a min, for the profiles and foil setting named (all, when absent). `gpu: true` marks a CPU or frame time, which a runner drawing WebGL in software cannot measure (--no-gpu-budgets leaves those out). Set from the 2026-10-18 run against wingfoil.ie on an Apple M4 with headroom over it; the numbers in `seen` are that run's, after the fixes of the same day.",
+  "budgets": [
+    { "id": "cold LCP", "scenario": "cold", "metric": "vitals.lcpMs", "profiles": ["desktop"], "max": 2500, "seen": 376 },
+    { "id": "cold LCP", "scenario": "cold", "metric": "vitals.lcpMs", "profiles": ["phone"], "max": 4000, "seen": 3128 },
+    { "id": "cold CLS", "scenario": "cold", "metric": "vitals.cls", "max": 0.1, "seen": 0.01 },
+    { "id": "cold lights rated", "scenario": "cold", "metric": "mapReadyMs", "profiles": ["desktop"], "max": 3000, "gpu": true, "seen": 1247 },
+    { "id": "cold lights rated", "scenario": "cold", "metric": "mapReadyMs", "profiles": ["phone"], "max": 15000, "gpu": true, "seen": 10735 },
+    { "id": "cold bytes", "scenario": "cold", "metric": "network.MB", "profiles": ["desktop"], "max": 4.5, "seen": 3.67 },
+    { "id": "cold bytes", "scenario": "cold", "metric": "network.MB", "profiles": ["phone"], "max": 3.0, "seen": 2.5 },
+    { "id": "cold requests", "scenario": "cold", "metric": "network.requests", "max": 260, "seen": 213 },
+    { "id": "cold foil archive bytes", "scenario": "cold", "metric": "network.bySource.foil-archives.MB", "foil": "on", "max": 1.0, "seen": 0.66 },
+    { "id": "cold duplicate fetches", "scenario": "cold", "metric": "network.duplicateFetches", "max": 2, "seen": 1 },
+    { "id": "cold foil DEM held", "scenario": "cold", "metric": "tiles.foil.rasterMB", "foil": "on", "max": 110, "seen": 95.5 },
+    { "id": "cold ArrayBuffers after GC", "scenario": "cold", "metric": "heap.afterGcAfterMB.buffers", "max": 70, "seen": 52 },
+    { "id": "cold blocking time", "scenario": "cold", "metric": "cpu.longTasks.blockingMs", "profiles": ["desktop"], "max": 150, "gpu": true, "seen": 0 },
+    { "id": "cold blocking time", "scenario": "cold", "metric": "cpu.longTasks.blockingMs", "profiles": ["phone"], "max": 300, "gpu": true, "seen": 14 },
+
+    { "id": "hour step: map frames for 24 steps", "scenario": "hours", "metric": "renders", "foil": "on", "max": 150, "seen": 63, "note": "411 to 444 before the foil layers stopped fading their opacity: a frame per hour is right, 17 is the regression" },
+    { "id": "hour step: requests", "scenario": "hours", "metric": "network.requests", "max": 60, "seen": 48 },
+    { "id": "hour step: to painted, p95", "scenario": "hours", "metric": "stepToPaintMs.p95", "profiles": ["desktop"], "max": 60, "gpu": true, "seen": 37 },
+    { "id": "hour step: to painted, p95", "scenario": "hours", "metric": "stepToPaintMs.p95", "profiles": ["phone"], "max": 100, "gpu": true, "seen": 60 },
+    { "id": "hour step: longest task", "scenario": "hours", "metric": "cpu.longTasks.maxMs", "profiles": ["desktop"], "max": 100, "gpu": true, "seen": 0 },
+    { "id": "hour step: longest task", "scenario": "hours", "metric": "cpu.longTasks.maxMs", "profiles": ["phone"], "max": 150, "gpu": true, "seen": 0 },
+    { "id": "hour step: worst interaction", "scenario": "hours", "metric": "observed.worstInteractionMs", "max": 200, "gpu": true, "seen": 32 },
+    { "id": "hour step: main thread", "scenario": "hours", "metric": "cpu.mainBusyMs", "profiles": ["desktop"], "max": 900, "gpu": true, "seen": 553 },
+    { "id": "hour step: main thread", "scenario": "hours", "metric": "cpu.mainBusyMs", "profiles": ["phone"], "max": 2500, "gpu": true, "seen": 1659 },
+
+    { "id": "pan: dropped frames", "scenario": "pan", "metric": "frames.droppedPct", "max": 5, "gpu": true, "seen": 2.1 },
+    { "id": "pan: longest task", "scenario": "pan", "metric": "cpu.longTasks.maxMs", "max": 150, "gpu": true, "seen": 0 },
+    { "id": "pan: duplicate fetches", "scenario": "pan", "metric": "network.duplicateFetches", "max": 5, "seen": 0 },
+    { "id": "zoom: dropped frames", "scenario": "zoom", "metric": "frames.droppedPct", "max": 5, "gpu": true, "seen": 1.4 },
+    { "id": "zoom: foil DEM held", "scenario": "zoom", "metric": "tiles.foil.rasterMB", "foil": "on", "max": 130, "seen": 97.5 },
+
+    { "id": "idle: main thread for a minute", "scenario": "idle", "metric": "cpu.mainBusyMs", "max": 6000, "gpu": true, "seen": 2941 },
+    { "id": "idle: map frames", "scenario": "idle", "metric": "renders", "max": 30, "seen": 0 },
+    { "id": "idle: requests", "scenario": "idle", "metric": "network.requests", "max": 5, "seen": 0 },
+    { "id": "taps: worst interaction (INP)", "scenario": "taps", "metric": "observed.worstInteractionMs", "max": 200, "gpu": true, "seen": 112 },
+
+    { "id": "soak: JS heap after GC", "scenario": "soak", "metric": "heapAfterGcMB.after", "max": 110, "seen": 79.8 },
+    { "id": "soak: JS heap growth", "scenario": "soak", "metric": "compared.totalDelta", "max": 15, "seen": 7.9 },
+    { "id": "soak: live WebGL textures", "scenario": "soak", "metric": "gpu.after.textures", "max": 800, "seen": 339 },
+
+    { "id": "Lighthouse desktop", "scenario": "lighthouse", "metric": "score", "profiles": ["desktop"], "min": 90, "seen": 99 },
+    { "id": "Lighthouse mobile", "scenario": "lighthouse", "metric": "score", "profiles": ["phone"], "min": 75, "seen": 85 }
+  ]
+}
