@@ -671,6 +671,9 @@ class Satellite(unittest.TestCase):
             want = ho[0] + (2.5 - sk[0]) * (ho[1] - ho[0]) / (sk[1] - sk[0])
             self.assertAlmostEqual(float(got[0][50, 60]), want, places=3)
             self.assertAlmostEqual(float(build.to_station(np.float32(sk[1]), "Skerries", "Howth")), ho[1], places=3)
+            # A lag basin's heights are in its station's terms (Rogerstown's,
+            # Skerries_LAG1, reaches into the Dublin box).
+            self.assertAlmostEqual(float(build.to_station(np.float32(sk[1]), "Skerries_LAG1", "Howth")), ho[1], places=3)
 
     def test_a_basins_satellite_heights_are_in_its_own_level(self):
         level = {"floorLat": 3.06, "rangeFactor": 0.6, "lagHours": 1}

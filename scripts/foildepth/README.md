@@ -32,8 +32,9 @@ Two kinds of archive:
 - **3 pilot areas** (`build.py`, `areas.json`): Dublin north, its Malahide
   lagoon basin, and Brandon Bay, z10–14, with LiDAR and the individual
   INFOMAR surveys besides (Dublin: the Sentinel-2 heights). They win where
-  they are. The live set carries the pilots as built on 12 October 2026 (see
-  "Rebuilding": their LiDAR and survey downloads are gone).
+  they are. The live set carries the pilots rebuilt on 18 October 2026 from
+  their inputs fetched again (`fetch_pilots.py`, see "Rebuilding"), with the
+  national run's satellite heights of 15 October.
 
 Each archive holds raster-dem tiles: Terrarium RGB (`m = R·256 + G + B/256 − 32768`)
 in **lossless** WebP (a lossy one would corrupt the heights), 512 px. Heights
@@ -220,9 +221,11 @@ margins, so they estimated the same water differently, and off Raven Point
 nothing, a straight north–south line at 6.33° W. `local_fill` depends only on
 the heights within 1.8 km, inside the 2.9 km margin, on blocks that lie on
 the global grid as the chunks do, so each chunk computes the same value
-(`test_an_estimate_is_the_same_in_any_chunk`). The pilots, built on 12
-October as single grids, still carry `push_pull`'s estimates; they have no
-chunk edges.
+(`test_an_estimate_is_the_same_in_any_chunk`). The pilots, rebuilt on 18
+October, take `local_fill`'s estimates too (they had `push_pull`'s until
+then): 13% of Dublin's estimated pixels and 7% of Brandon's moved by more
+than 0.5 m, nearly all of them down (by a metre or so where they were held
+under a tide), while the Malahide lagoon's estimate (1.27 m) stayed put.
 
 **Smooth edges.** The map samples the heights linearly now
 (`resampling: "linear"` in `force5/src/WindMap.tsx`), so the edges and the
@@ -296,16 +299,17 @@ pixel across a wall or a cliff's foot, as round Howth Head), or more than
 Behind the weir a pixel's flooding tide is turned into the basin's level
 (`basin_height`); in the Dublin pilot, drawn on Howth's tide, heights
 measured against Dublin Port's or Skerries' are moved to the same stage of
-Howth's (`to_station`).
+Howth's (`to_station`; a lag basin's, as Rogerstown's `Skerries_LAG1` along
+the box's north edge, are in its station's terms and move the same way).
 
 Against the other sources where both have a height (the Dublin pilot, z14,
-before the yield):
+before the yield; the 18 October rebuild, with the 15 October run):
 
 | Against | Pixels | Median | Interquartile | Off by more than 0.5 m |
 | --- | --- | --- | --- | --- |
-| OPW/TII LiDAR | 993,239 | −0.08 m | −0.30 to +0.06 m | 19.6% |
-| INFOMAR (the 10 m grid and the surveys) | 41,301 | +2.41 m | +1.29 to +3.99 m | 91% |
-| EMODnet and its waterline interpolation | 2,337,075 | +0.78 m | +0.41 to +1.12 m | 75% |
+| OPW/TII LiDAR | 1,041,584 | −0.09 m | −0.28 to +0.09 m | 18.8% |
+| INFOMAR (the 10 m grid and the surveys) | 43,503 | +2.56 m | +1.38 to +4.19 m | 92% |
+| EMODnet and its waterline interpolation | 2,349,693 | +0.80 m | +0.39 to +1.14 m | 74% |
 
 The satellite and the LiDAR agree. The disagreements over 0.5 m are where
 the method is weakest, mapped in `<debug>/dublin-north-sat-minus-lidar.tif`:
@@ -419,7 +423,7 @@ years fall a few centimetres short of the 18.6-year nodal cycle's HAT).
 | `tide-arklow` | Arklow | 0.89 / 1.15 / 1.64 | 2.0 | 80 | 0.51 MB |
 | `tide-ballycotton` | Ballycotton | 2.34 / 3.78 / 4.57 | 4.9 | 50 | 0.59 MB |
 | `tide-ballyglass` | Ballyglass | 2.17 / 3.33 / 4.36 | 4.7 | 171 | 2.45 MB |
-| `tide-bray-harbour` | Bray Harbour | 2.19 / 3.45 / 4.27 | 4.6 | 60 | 0.26 MB |
+| `tide-bray-harbour` | Bray Harbour | 2.19 / 3.45 / 4.27 | 4.6 | 60 | 0.27 MB |
 | `tide-buncranna` | Buncranna | 2.44 / 3.77 / 4.96 | 5.3 | 202 | 3.51 MB |
 | `tide-castletownbere` | Castletownbere | 1.93 / 3.08 / 3.84 | 4.2 | 256 | 2.76 MB |
 | `tide-clare-island` | Clare Island | 2.51 / 3.90 / 4.83 | 5.2 | 66 | 0.84 MB |
@@ -449,14 +453,18 @@ years fall a few centimetres short of the 18.6-year nodal cycle's HAT).
 | `tide-wexford` | Wexford | 0.89 / 1.46 / 1.97 | 2.3 | 88 | 0.76 MB |
 
 Howth's and Dublin Port's regions are small because the Dublin pilot covers
-most of their cells from z10 up. The live set (`foildepth/vb597fbba2f1c/`,
-17 October 2026, `public/foildepth/index.json`) is 36 archives and its
-index: the regions 46.5 MB, the pilots 6.1 MB (dublin-north 2.44, brandon
-3.57, malahide-lagoon 0.05 MB), the index 48 kB; with the bathymetry
-(`bathy/v7a4f9286f579/`, 11.5 MB), 38 objects and 64 MB in the bucket. The
-set before it (`foildepth/vb2f7a0ca40ae/`, 12 October, three flat classes
-drawn pixel by pixel) stays in the bucket for any page still holding its
-index. A visitor fetches only the tiles in view, from R2 by range.
+most of their cells from z10 up. The live set (`foildepth/vec09f9fbdb11/`,
+18 October 2026, `public/foildepth/index.json`) is 36 archives and its
+index: the regions 46.5 MB, the pilots 6.1 MB (dublin-north 2.45, brandon
+3.57, malahide-lagoon 0.06 MB), the index 48 kB; with the bathymetry
+(`bathy/v7a4f9286f579/`, 11.5 MB), 38 objects and 64 MB in the bucket. It
+is the 17 October set (`foildepth/vb597fbba2f1c/`) with the pilots rebuilt
+and the six regions whose chunks take the pilots' grids (Howth, Dublin Port,
+Skerries, Bray, Fenit, Dingle) built again; the other 27 regions are the same
+bytes. The sets before it (`vb597fbba2f1c/`, and `vb2f7a0ca40ae/`, 12
+October, three flat classes drawn pixel by pixel) stay in the bucket for any
+page still holding their index. A visitor fetches only the tiles in view,
+from R2 by range.
 
 ### National sources (all CC BY 4.0), in order of trust
 
@@ -654,18 +662,31 @@ Bathymetry Consortium: EMODnet Digital Bathymetry (DTM 2024) and coastlines".
   water would replace it. Its level is a model, calibrated on one rider's
   figures and a 2009 description of the weir; a tide gauge in the lagoon for
   a fortnight would settle the floor, the range and the lag.
-- **The pilots were not rebuilt** with the October 17 set: their LiDAR and
-  INFOMAR survey downloads were lost from `/tmp` (above), so the live set
-  carries the pilot archives built on 12 October with this code. Dublin
-  north's satellite heights are that day's run of the same imagery: against
-  the 15 October rebuild, over the Howth, Dublin Port, Skerries and Bray
-  regions, the median difference is 0.00 m, the middle half within ±0.06 m,
-  and 1–5% of pixels differ by more than 0.25 m (the Rogerstown basin, which
-  now runs 30 minutes behind Skerries, is mostly north of the box). Brandon
-  takes no satellite heights (`areas.json` has none for it): its foreshore is
-  the 2008 bathymetric LiDAR and the OPW LiDAR, which are better there, and
-  from z10 up its box draws the pilot. Rebuilding a pilot needs its LiDAR and
-  surveys fetched again (the tile lists and portals are below).
+- **The pilots were rebuilt on 18 October** (`foildepth/vec09f9fbdb11/`):
+  the 12 October build's LiDAR and INFOMAR survey downloads were lost from
+  `/tmp`, and `fetch_pilots.py` fetched the same 108 LiDAR tiles and 17
+  survey grids again from the same GSI portals (every file still there, the
+  survey zips byte for byte the size they were) and cut them as that build
+  did: the three LiDAR mosaics came out the same size, extent and range as
+  before. Brandon's merged grid is the 12 October one: 99.0% of its heights
+  identical, the rest estimates (above). Dublin's took the 15 October
+  satellite run: of the heights both builds measured, 65% are identical,
+  2.6% moved by more than 0.25 m and 1.0% by more than 0.5 m, most of it the
+  marsh tops round Bull Island's lagoon (about 0.6 m lower) and Rogerstown's
+  south shore; at the README's check points (Malahide's table, Sandymount's)
+  the heights moved by 0.12 m at most, and the mask checks hold. Where the
+  pilots' grids run on past their boxes the regions round them take them as
+  a source, so the chunks of Howth, Dublin Port, Skerries, Bray, Fenit and
+  Dingle were built again. Brandon takes no satellite heights (`areas.json`
+  has none for it): its foreshore is the 2008 bathymetric LiDAR and the OPW
+  LiDAR, which are better there.
+- **North of the Dublin box** (Rogerstown, drawn by the Skerries region),
+  the pilot's grid, which the region takes as its most trusted source, holds
+  heights in Howth's terms (`to_station`), not Skerries'. Up to 53.52° N,
+  where the grid ends, a bank there reads 0.2–0.5 m low on Skerries' tide
+  (more the higher it is); the 17 October set had the same. Cutting the
+  pilot grid to its box for the regions, or moving it back to each region's
+  station, would fix it.
 - **A basin is drawn on its station's tide, not its own.** The heights
   inside the 31 lag basins are right (each was read against its own lagged
   tide), but the map draws them with the region's station's curve, so in
@@ -741,7 +762,11 @@ Downloads go in a directory of their own, outside the repo, and **not under
 input of the 12 October build (the national downloads, and the pilots'
 LiDAR and INFOMAR surveys fetched by hand). The October 17 build kept its own
 under `/Volumes/workdrive/foildepth-gradient/` (`data/`, `work/`, `out/`,
-`pilots/`). Python 3 with
+`pilots/`), and the pilots' inputs, fetched again on 18 October, are in
+`pilot-data/` there (1.8 GB: the downloads, 873 MB, and what is cut from
+them), with `manifest.json` naming every download's URL, size and SHA-256.
+The 18 October set was built from `data-rebuild/` (`data/` with the new
+pilot grids), `work-rebuild/`, `pilots-rebuild/` and `out-rebuild/`. Python 3 with
 numpy, scipy, rasterio, pyproj, pillow and pmtiles, and boto3 to upload (a
 scratch venv is fine); run it isolated (`python -I`).
 
@@ -778,21 +803,20 @@ The pilots, then the index of both, then the bucket and the repo:
 
 ```sh
 D=$N/pilot-data
-sh fetch-emodnet.sh    $D/emodnet    dublin-north -6.30 53.27 -5.96 53.52
-sh fetch-emodnet.sh    $D/emodnet    brandon     -10.22 52.18 -9.78 52.38
-sh fetch-coastlines.sh $D/coastlines dublin-north -6.27 53.28 -5.99 53.50
-sh fetch-coastlines.sh $D/coastlines brandon     -10.18 52.22 -9.83 52.35
-# INFOMAR and the LiDAR by hand, from the portals below, cut to the areas'
-# boxes into $D/infomar/clipped/ and $D/lidar/{dub,mal,bran}/ (see areas.json
-# for the names it globs). The Dublin LiDAR mosaic reaches 53.285° N: OPW
-# 3235–3237, 3257–3259, 3282–3284, 3311–3312, 3335–3336, 3355–3356 and TII
-# 2472, 2493–2494, 2502–2503, 2509–2510, 2522 joined the first build's tiles.
-python -I build.py --data $D --out $N/pilots [--area dublin-north] [--debug /tmp/wf-foildepth/debug]
+python -I fetch_pilots.py --data $D        # ~10 minutes; resumable; writes $D/manifest.json
+ln -s $N/data/infomar10 $N/data/osm $N/data/satellite $D/
+python -I build.py --data $D --out $N/pilots [--area dublin-north] --debug $N/pilots-debug
+cp $N/pilots-debug/dublin-north.tif $N/pilots-debug/brandon.tif $N/data/pilots/
+# The regions' `pilots/*.tif` source is build.py's --debug grids of the same
+# pilots (only those: not the -sat-minus-lidar grid beside them). Rebuild the
+# chunks they reach (Howth, Dublin Port, Skerries, Bray: 493–495,331–332;
+# Fenit, Dingle, Kilrush: 482–484,336–337), then assemble and index.
+python -I national.py --data $N/data --work $N/work chunks --force --only 494,331 ...
+python -I national.py --data $N/data --work $N/work assemble --out $N/out
 python -I national.py --data $N/data --work $N/work index --out $N/out --pilots $N/pilots
-# The regions' `pilots/*.tif` source is build.py's --debug grids of the same pilots.
 python -I publish.py --set $N/out --bathy public-data/bathy/v…/ireland.pmtiles \
     --env /path/to/deploy/home-compute/.env --upload
-node shots.mjs http://127.0.0.1:5173 /tmp/wf-foildepth/shots kilcrea 2   # a look by eye, with the app running
+node shots.mjs http://127.0.0.1:5173 $N/shots kilcrea 2 2026-10-08T06:00:00Z   # a look by eye, with the app running
 ```
 
 `publish.py` names the set by its content (`foildepth/v<12 hex>/`), adds the
@@ -833,6 +857,14 @@ Where the data came from (2026-10):
   (TII) and `…/LiDAR/OPW_NASC/` and `…/lidar/OPW_*` (OPW). The GSI image
   services serve shaded relief only, not heights.
 - EMODnet: `ows.emodnet-bathymetry.eu` WCS and WFS, as in the two fetch scripts.
+
+`fetch_pilots.py` holds the pilots' lists: the LiDAR tiles (every OPW_NASC
+2011, OPW 2006–07 and TII 2010–11 tile the GSI coverage layers put in the
+first build's boxes, and those the Sandymount extension added), the 17 survey
+zips, the boxes each is cut to, and the order the mosaics take the tiles in.
+They were read back out of the 10 October build's own session. All of them
+were still on GSI's server on 18 October; the one zip packed with Deflate64
+(KRY17_01) is unpacked with `unzip`.
 
 To add a pilot area: a box, its station and offset (`public/marine/tides.json`), its
 dry ceiling and waterline levels, and its sources in `areas.json`; then build

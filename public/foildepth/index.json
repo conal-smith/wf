@@ -1,7 +1,7 @@
 {
  "schemaVersion": 2,
  "kind": "foildepth",
- "generatedAt": "2026-10-18T00:35:24Z",
+ "generatedAt": "2026-10-18T08:35:32Z",
  "datum": "LAT",
  "encoding": "terrarium",
  "floorMetres": -5,
@@ -1933,5 +1933,5 @@
   }
  ],
  "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute), GSI/OPW/TII LiDAR, EMODnet Bathymetry DTM and coastlines; all CC BY 4.0. Contains modified Copernicus Sentinel data 2017\u20132026. Coastline and tidal water \u00a9 OpenStreetMap contributors (ODbL). INFOMAR (Geological Survey Ireland & Marine Institute), EMODnet Bathymetry DTM and satellite-derived coastlines, Marine Institute tidal predictions; all CC BY 4.0. Contains modified Copernicus Sentinel data 2017\u20132026. Coastline and tidal water \u00a9 OpenStreetMap contributors (ODbL).",
- "base": "foildepth/vb597fbba2f1c/"
+ "base": "foildepth/vec09f9fbdb11/"
 }

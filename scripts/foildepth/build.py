@@ -39,6 +39,7 @@ import io
 import json
 import math
 import os
+import re
 import sys
 from datetime import datetime, timezone
 
@@ -340,11 +341,16 @@ _stations = None
 
 
 def station_levels(station):
-    """A tide station's MSL and MHW above LAT (stations.json), by id or name."""
+    """A tide station's MSL and MHW above LAT (stations.json), by id or name.
+    A lag basin of the national satellite run (`Skerries_LAG1`) takes its
+    station's: its heights are its lagged tide's levels in that station's
+    datum and amplitude."""
     global _stations
     if _stations is None:
         with open(os.path.join(HERE, "stations.json")) as fh:
             _stations = json.load(fh)["stations"]
+    if station:
+        station = re.sub(r"_LAG\d+$", "", station)
     s = _stations.get(station) or next((v for v in _stations.values() if v["name"] == station), None)
     return None if s is None else (s["mslMetres"], s["mhwMetres"])
 
