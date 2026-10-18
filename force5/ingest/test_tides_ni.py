@@ -146,6 +146,7 @@ class ConstantsTests(unittest.TestCase):
         self.assertEqual(doc["stations"]["Strangford_MODELLED"]["lagOf"], "Killard_MODELLED")
 
 
+@unittest.skipUnless(VALIDATION.exists(), "scripts/tides is not in the worker image")
 class ValidationTests(unittest.TestCase):
     """The numbers scripts/tides/validation.json was published with (scripts/tides/README.md)."""
 
