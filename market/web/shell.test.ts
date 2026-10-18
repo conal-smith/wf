@@ -463,7 +463,16 @@ describe("S5: what the card does, and what it does not", () => {
     expect(shortAge("2026-09-20T07:00:00.000Z", now)).toBe("2h");
     expect(shortAge("2026-09-17T09:00:00.000Z", now)).toBe("3d");
     expect(shortAge("2026-08-30T09:00:00.000Z", now)).toBe("3w");
-    expect(card("active")).toMatch(/class="sr-only">Listed \d+ days ago</);
+    // The card reads the clock itself: hold it three days after the listing.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(now);
+      const drawn = card("active");
+      expect(drawn).toMatch(/<span aria-hidden="true">3d<\/span>/);
+      expect(drawn).toMatch(/class="sr-only">Listed 3 days ago</);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
