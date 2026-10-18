@@ -436,6 +436,7 @@
     },
     {
       "id": "gfs",
+      "enabled": false,
       "description": "GFS (NOAA)",
       "schedule": {
         "at": {
@@ -446,8 +447,7 @@
             22
           ],
           "minutes": [
-            0,
-            45
+            0
           ]
         },
         "timezone": "UTC"

@@ -134,7 +134,7 @@
     },
     {
       "id": "gfs",
-      "enabled": true,
+      "enabled": false,
       "description": "GFS (NOAA)",
       "hours": [
         4,
@@ -143,8 +143,7 @@
         22
       ],
       "minutes": [
-        0,
-        45
+        0
       ],
       "size": "small",
       "timeoutSeconds": 2400,

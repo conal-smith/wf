@@ -73,7 +73,6 @@ describe("model registry", () => {
       "harmonie",
       "icon-eu",
       "ecmwf",
-      "gfs",
       "gfs-wave",
       "mi-swan",
       "icon-eu-weather",
@@ -90,16 +89,25 @@ describe("model registry", () => {
     expect(requireModel("icon-eu-weather").mapCapable).toBe(false);
     expect(requireModel("icon-eu-weather").planned).toBeUndefined();
     expect(requireModel("harmonie-eps").planned).toBe(true);
-    // Retired to save downloads: still known, never fetched nor listed, and
-    // distinct from a planned model, which the display options grey out.
-    for (const id of ["ecmwf-ens", "gefs", "arpege", "arome", "aifs", "ecmwf-wave"]) {
+    // Retired, to save downloads or as not useful: still known, never fetched
+    // nor listed, and distinct from a planned model, which the display options
+    // grey out. GFS-Wave is NOAA's wave model, a job of its own, and still live.
+    for (const id of [
+      "gfs",
+      "ecmwf-ens",
+      "gefs",
+      "arpege",
+      "arome",
+      "aifs",
+      "ecmwf-wave",
+    ]) {
       expect(requireModel(id).retired).toBe(true);
       expect(requireModel(id).planned).toBeUndefined();
     }
     expect(requireModel("ecmwf-ens").ensemble).toBe(true);
     expect(requireModel("gefs").ensemble).toBe(true);
     expect(requireModel("ecmwf-wave").kind).toBe("wave");
-    for (const id of ["harmonie", "icon-eu", "ecmwf", "gfs"])
+    for (const id of ["harmonie", "icon-eu", "ecmwf", "gfs-wave"])
       expect(requireModel(id).retired).toBeUndefined();
     expect(modelEntry("nope")).toBeUndefined();
     expect(() => requireModel("nope")).toThrow(/Unknown forecast model/);
@@ -111,7 +119,6 @@ describe("model registry", () => {
         ["harmonie", "HARMONIE", "2 km"],
         ["icon-eu", "ICON-EU", "6.5 km"],
         ["ecmwf", "ECMWF", "25 km · 15 days"],
-        ["gfs", "GFS", "25 km · 16 days"],
       ],
     );
   });
@@ -243,7 +250,7 @@ describe("availability sweep", () => {
         const id = url.includes("latest")
           ? "icon-eu"
           : url.replace(/^.*weather\//, "").replace(/\.json$/, "");
-        if (id === "gfs") return missing();
+        if (id === "icon-eu") return missing();
         return ok(pointer({ model: id }));
       }),
     );
@@ -255,10 +262,18 @@ describe("availability sweep", () => {
       availability.filter((model) => model.available).map((model) => model.id),
       // The wave ids answer with a wind bundle here, which is a fault, not a
       // conversion: the registry decides the contract, so they come back unavailable.
-    ).toEqual(["harmonie", "icon-eu", "ecmwf"]);
-    for (const id of ["gefs", "arpege", "arome", "aifs", "ecmwf-ens", "ecmwf-wave"])
+    ).toEqual(["harmonie", "ecmwf"]);
+    for (const id of [
+      "gfs",
+      "gefs",
+      "arpege",
+      "arome",
+      "aifs",
+      "ecmwf-ens",
+      "ecmwf-wave",
+    ])
       expect(urls.some((url) => url.endsWith(`/${id}.json`))).toBe(false);
-    const absent = availability.find((model) => model.id === "gfs")!;
+    const absent = availability.find((model) => model.id === "icon-eu")!;
     expect(absent.manifest).toBeNull();
     expect(absent.error).toContain("unavailable");
     expect(urls).toHaveLength(liveModels().length);
@@ -296,7 +311,7 @@ describe("availability sweep", () => {
       availability
         .filter((model) => model.wind && model.available)
         .map((model) => model.id),
-    ).toEqual(["harmonie", "icon-eu", "gfs"]);
+    ).toEqual(["harmonie", "icon-eu"]);
     // The lights' square loader leaves it alone rather than failing the rest.
     const loaded = await withSpots(availability, []);
     expect(loaded.find((model) => model.id === "ecmwf")).toBe(old);

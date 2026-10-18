@@ -78,12 +78,6 @@ const ecmwf = () =>
     hours: [...every(144, 3), ...every(360, 6).filter((h) => h > 144)],
     km: 28,
   });
-const gfs = () =>
-  model("gfs", {
-    runTime: "2026-09-13T18:00:00Z",
-    hours: every(240, 3),
-    km: 28,
-  });
 
 const owners = (columns: readonly { model: string }[]) =>
   columns.reduce<string[]>(
@@ -94,7 +88,7 @@ const owners = (columns: readonly { model: string }[]) =>
 
 describe("dockColumns", () => {
   it("wraps the finest run in the longest one, one seam at the end", () => {
-    const columns = dockColumns([harmonie(), iconEu(), ecmwf(), gfs()], NOW);
+    const columns = dockColumns([harmonie(), iconEu(), ecmwf()], NOW);
     expect(owners(columns)).toEqual(["harmonie", "ecmwf"]);
     // HARMONIE's run started six hours before NOW and already covers it, so
     // ECMWF's earlier hours are yesterday's news and no head is emitted.
@@ -166,17 +160,17 @@ describe("dockColumns", () => {
 
   it("keeps a run older than eighteen hours: stale is not expired", () => {
     // ECMWF at 00 UTC lands hours late and reads as stale twice a day. Gating
-    // on that would cut the dock from fifteen days to whatever GFS reaches.
+    // on that would cut the dock from fifteen days to whatever ICON-EU reaches.
     expect(freshness(ecmwf().manifest, NOW)).toBe("stale");
-    const columns = dockColumns([harmonie(), ecmwf(), gfs()], NOW);
+    const columns = dockColumns([harmonie(), ecmwf(), iconEu()], NOW);
     expect(owners(columns)).toContain("ecmwf");
     expect(columns.at(-1)!.validTime).toBe(at("2026-09-13T00:00:00Z", 360));
   });
 
   it("ignores which model the map is drawing", () => {
-    // GFS on the map owns no column: it is neither the finest nor the longest.
-    const columns = dockColumns([harmonie(), iconEu(), ecmwf(), gfs()], NOW);
-    expect(columns.some((column) => column.model === "gfs")).toBe(false);
+    // ICON-EU on the map owns no column: it is neither the finest nor the longest.
+    const columns = dockColumns([harmonie(), iconEu(), ecmwf()], NOW);
+    expect(columns.some((column) => column.model === "icon-eu")).toBe(false);
   });
 
   it("leaves out an ensemble mean, which is a summary not a timeline", () => {
@@ -195,11 +189,12 @@ describe("dockColumns", () => {
       "icon-eu",
       "ecmwf",
     ]);
-    // And to GFS for the long range when ECMWF is missing.
-    expect(owners(dockColumns([harmonie(), gfs()], NOW))).toEqual([
-      "harmonie",
-      "gfs",
-    ]);
+    // And, with GFS retired, to ICON-EU for the long range when ECMWF is
+    // missing: the next live run that reaches furthest, so the dock ends
+    // where ICON-EU's run ends rather than at a stale or absent GFS.
+    const withoutEcmwf = dockColumns([harmonie(), iconEu()], NOW);
+    expect(owners(withoutEcmwf)).toEqual(["harmonie", "icon-eu"]);
+    expect(withoutEcmwf.at(-1)!.validTime).toBe(at("2026-09-13T18:00:00Z", 72));
   });
 
   it("makes no seam when one run is both the finest and the longest", () => {

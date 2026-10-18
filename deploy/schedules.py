@@ -13,9 +13,7 @@ model's slots, arguments and timeout are only ever edited in one place.
 rewrites both files; the Home Compute Bar app's Timetable tab is built on it.
 
 Jobs are parsed with the local scheduler's own loader, so a job it would reject
-is rejected here too. The `status` job is left out of both: it prints a
-freshness line for the Compose log, and Home Compute's snapshot (and the menu
-bar app reading it) already says when each model last published.
+is rejected here too.
 """
 import argparse
 import contextlib
@@ -172,10 +170,8 @@ def describe(job):
 
 
 def scheduled(jobs):
-    """The jobs both targets run, in timetable order, without `status`."""
+    """The jobs both targets run, in timetable order."""
     for job in jobs:
-        if job["command"] == "status":
-            continue
         if job["command"] == "prune":
             # The bucket sweep is what deletes a superseded run directory once its
             # grace period is over: the publisher deletes nothing. Run once a day, it

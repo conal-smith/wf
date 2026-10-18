@@ -500,7 +500,7 @@ test("units, the rider and the blend's models are display options, kept on reloa
   await page.locator('[data-units="m/s"]').click();
   await page.locator('input[data-rider="weight"]').fill("100");
   await page.locator('[data-skill="beginner"]').click();
-  await page.locator('input[data-model-toggle="gfs"]').uncheck();
+  await page.locator('input[data-model-toggle="icon-eu"]').uncheck();
   await page.getByLabel("Close display options").click();
   await expect(page.locator(".dk-labs")).toContainText("m/s");
   // A heavier learner takes a bigger wing for the same wind, hour by hour.
@@ -533,7 +533,7 @@ test("units, the rider and the blend's models are display options, kept on reloa
     "true",
   );
   await expect(
-    page.locator('input[data-model-toggle="gfs"]'),
+    page.locator('input[data-model-toggle="icon-eu"]'),
   ).not.toBeChecked();
 });
 

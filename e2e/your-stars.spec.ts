@@ -22,10 +22,24 @@ const dialog = (page: Page) =>
 const levels = (page: Page) =>
   page.getByRole("group", { name: "Riding level" });
 const customise = (page: Page) => page.locator("[data-customise-stars]");
+/**
+ * Every rated cell's markup, with each element's attributes in name order: a
+ * cell React re-rendered to a different rating and back can come back with
+ * the same attributes written in another order, which is the same stars.
+ */
 const stars = (page: Page) =>
-  page
-    .locator(".dock tr.tt-stars td[data-i]")
-    .evaluateAll((cells) => cells.map((cell) => cell.innerHTML).join("|"));
+  page.locator(".dock tr.tt-stars td[data-i]").evaluateAll((cells) => {
+    const markup = (node: Element): string =>
+      `<${node.tagName} ${[...node.attributes]
+        .map((a) => `${a.name}="${a.value}"`)
+        .sort()
+        .join(" ")}>${
+        node.children.length
+          ? [...node.children].map(markup).join("")
+          : (node.textContent ?? "")
+      }</${node.tagName}>`;
+    return cells.map(markup).join("|");
+  });
 
 test("a rider sets their own stars, which the dock then rates with, keeps them while a level rates, and deletes them", async ({
   page,
