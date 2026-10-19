@@ -523,9 +523,12 @@ test("round the chosen spot: a loupe at a true distance, a range ring, or nothin
       .toBe(true);
     return last;
   };
+  // The flight climbs out before it comes in: wait for it to arrive.
+  await expect.poll(rim, { timeout: 15000 }).toBeGreaterThanOrEqual(300);
   const wide = await steady();
   expect(wide).toBeGreaterThanOrEqual(300);
   await page.getByRole("button", { name: "Zoom out", exact: true }).click();
+  await expect.poll(rim).toBeLessThan(wide * 0.6);
   const further = await steady();
   expect(further / wide).toBeGreaterThan(0.45);
   expect(further / wide).toBeLessThan(0.55);

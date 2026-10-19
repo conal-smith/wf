@@ -936,16 +936,17 @@ export default function WindMap(props: Props) {
       const foot = g?.querySelector(".map-loupe-foot");
       const loupe = latest.current.rose;
       if (!foot || !loupe) return;
-      const box = map.getContainer();
+      const el = map.getContainer();
       const p = latest.current;
-      const box2 = footBox(loupe.reading, loupe.relation, r, {
+      // In the glass's own coordinates: above the dock, as padding() keeps.
+      const at = footBox(loupe.reading, loupe.relation, r, {
         left: -q.x,
-        right: box.clientWidth - q.x,
-        bottom: box.clientHeight - p.bottomInset - (p.phone ? 64 : 24) - q.y,
+        right: el.clientWidth - q.x,
+        bottom: el.clientHeight - p.bottomInset - (p.phone ? 64 : 24) - q.y,
       });
       foot.setAttribute(
         "transform",
-        `translate(${box2.x.toFixed(1)} ${box2.y.toFixed(1)})`,
+        `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})`,
       );
     };
     let washedAt = -1;
