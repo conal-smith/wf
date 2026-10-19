@@ -118,6 +118,7 @@ import {
 import {
   dockColumns,
   frameForTime,
+  mapReach,
   type ColumnModel,
 } from "../force5/src/timeline";
 import { tideAt } from "../force5/src/tides";
@@ -625,6 +626,17 @@ export default function App() {
     return () => controller.abort();
   }, [manifest, requestedIndex, retry, pendingModel, !mapTime]);
 
+  /**
+   * Whether the map's run reaches the hour the map is at. Past it the map
+   * draws no wind, rather than the last frame it painted: the lights and the
+   * dock read the hour itself, and two hours shown as one moment is wrong.
+   * Nothing switches model by itself (docs/FORECAST_DATA_PLAN.md); the dock's
+   * chip offers the run that reaches the hour.
+   */
+  const mapDraws =
+    !manifest ||
+    !mapTime ||
+    frameForTime(manifest.frames, Date.parse(mapTime)) !== null;
   const activeIndex = paintedIndex >= 0 ? paintedIndex : requestedIndex;
   const loading = !frame || activeIndex !== requestedIndex;
   const forecast = manifest?.frames[activeIndex];
@@ -1115,10 +1127,14 @@ export default function App() {
         : null;
 
   /* ---- the run that reaches the hour, when the map's does not ---- */
-  const beyondMap =
-    !!manifest &&
-    !!column &&
-    frameForTime(manifest.frames, column.time) === null;
+  const reach =
+    manifest && column ? mapReach(manifest.frames, column.time) : null;
+  const beyondMap = !!reach && !reach.drawn;
+  /** Said where the map's model is named, and in the layers: why no wind. */
+  const reachNote =
+    manifest && reach && !reach.drawn
+      ? `${manifest.modelName} ${reach.side === "after" ? "ends" : "starts"} ${dayShort(Date.parse(reach.edge))} ${clock(Date.parse(reach.edge))}`
+      : null;
   const reachable =
     beyondMap && column
       ? (MODELS.find((m) => m.id === column.model) ?? null)
@@ -1278,13 +1294,18 @@ export default function App() {
               onFocusStyle={chooseFocusStyle}
               satelliteTides={satellite.station}
               model={manifest?.model}
+              modelNote={
+                reachNote && column
+                  ? `${reachNote}: no wind on the map at ${dayShort(column.time)} ${clock(column.time)}.${reachable && reachable.id !== manifest?.model ? ` ${reachable.name} reaches it.` : ""}`
+                  : null
+              }
               modelDisabled={!frame || !!pendingModel}
               onModel={(id) => void chooseModel(id)}
             />
             {/* After the boxes: the keys reach the menu, the search and the
                 controls before the lights. */}
             <WindMap
-              frame={frame}
+              frame={mapDraws ? frame : null}
               spots={spots}
               lights={lights}
               named={named}
@@ -1354,8 +1375,19 @@ export default function App() {
                 <InfoPop label="Sources and small print" wide>
                   {sources}
                 </InfoPop>
-                <span className="map-model" data-run-state={staleness}>
-                  {manifest?.modelName ?? ""}
+                <span
+                  className="map-model"
+                  data-run-state={staleness}
+                  data-reach={reachNote ? "beyond" : undefined}
+                >
+                  {reachNote ? (
+                    <>
+                      {reachNote}
+                      <span className="map-model-more"> · no wind drawn</span>
+                    </>
+                  ) : (
+                    (manifest?.modelName ?? "")
+                  )}
                   {staleness === "expired"
                     ? " · archived"
                     : staleness === "stale"
