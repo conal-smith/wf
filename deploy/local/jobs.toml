@@ -20,9 +20,13 @@
 id = "harmonie"
 models = ["harmonie"]
 args = ["--step", "1"]
-hours = [7, 12]             # Twice a day: 7 am and noon Irish winter time (from 25
-minutes = [0]               # October), 8 am and 1 pm in summer. Each run is ~785 MB of
-timeout_seconds = 3300      # whole files, so only when riders are planning a session.
+hours = [5, 8, 11, 16, 19, 23]  # Six a day, each fresh just before riders look (Irish
+minutes = [35]              # winter time; an hour later by the clock in summer): the
+timeout_seconds = 3300      # commute in, the desk, lunch, the commute home, the evening's
+                            # planning, and last thing. Met Éireann starts a run every
+                            # hour and lists it complete (+000 to +060, ~826 MB) about
+                            # 2 h 25 m later, so :35 takes the run from 2 h 35 m before;
+                            # on the hour it took the one from three hours before.
 
 [[jobs]]
 id = "icon-eu"
@@ -42,10 +46,11 @@ timeout_seconds = 3300
 [[jobs]]
 id = "ecmwf"
 models = ["ecmwf"]
-args = ["--ecmwf-cycle", "00"]
-hours = [8, 10]             # Once a day: the 00 UTC run, complete on open data at
-minutes = [20]              # ~07:35 UTC. 10:20 is a retry that downloads nothing once
-timeout_seconds = 3300      # 08:20 has published. ~250 MB a day; 40 h age limit.
+hours = [8, 10, 20, 22]     # Twice a day: the 00 and 12 UTC runs, the two that reach 15
+minutes = [20]              # days, complete on open data at ~07:35 and ~19:35 UTC. 10:20
+timeout_seconds = 3300      # and 22:20 are retries that download nothing once the slot
+                            # before has published. ~250 MB a run; 40 h age limit. The
+                            # 06/18 UTC runs reach only +90 h, inside HARMONIE's reach.
 
 [[jobs]]
 id = "harmonie-eps"
@@ -148,7 +153,14 @@ timeout_seconds = 900       # which the one-job-at-a-time loop serialises.
 id = "blend"
 models = ["blend"]
 minutes = [5]               # Hourly, from whatever the wind jobs have published by
-timeout_seconds = 600       # then: HARMONIE's :45 run is in 20 minutes later.
+timeout_seconds = 600       # then.
+
+[[jobs]]
+id = "blend-after-harmonie"
+models = ["blend"]
+hours = [5, 8, 11, 16, 19, 23]  # Ten minutes after each HARMONIE slot, so the map's stars
+minutes = [45]              # take the new run now rather than at the next :05.
+timeout_seconds = 600
 
 [[jobs]]
 id = "wind-obs"

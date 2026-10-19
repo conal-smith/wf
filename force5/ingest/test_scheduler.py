@@ -177,7 +177,8 @@ class ShippedScheduleTest(unittest.TestCase):
         self.assertEqual(identities, ["harmonie", "icon-eu", "icon-eu-weather", "ecmwf",
                                       "harmonie-eps", "ecmwf-ens", "aifs", "gfs", "gefs", "arpege",
                                       "arome", "gfs-wave", "mi-swan", "ecmwf-wave", "tides",
-                                      "sea-temperature", "blend", "wind-obs", "forecast-archive",
+                                      "sea-temperature", "blend", "blend-after-harmonie", "wind-obs",
+                                      "forecast-archive",
                                       "verify", "prune"])
         # The lagged HARMONIE ensemble ships disabled: it is heavy on Met Éireann's
         # bandwidth for a thin spread, so an operator enables it knowingly. The
@@ -194,8 +195,8 @@ class ShippedScheduleTest(unittest.TestCase):
         # The served run must stay within maxAgeHours until the slot after one that
         # failed has published, with an hour more for queueing behind another job in
         # Home Compute. HARMONIE's newest complete cycle is about three hours behind
-        # each slot; ECMWF takes the day's 00 UTC run, so one run must last from its
-        # first slot to the next day's retry.
+        # each slot. ECMWF takes the 00 and 12 UTC runs, so one run must last from
+        # its first slot past a whole failed cycle to the retry of the one after.
         with contextlib.redirect_stdout(io.StringIO()):
             jobs = {job["id"]: job for job in scheduler.load_jobs(JOBS_FILE)}
 
@@ -215,10 +216,14 @@ class ShippedScheduleTest(unittest.TestCase):
         self.assertLessEqual(3 + missed_one + 1, MODELS["harmonie"]["maxAgeHours"])
 
         ecmwf = slots("ecmwf")
-        first = ecmwf[0].hour + ecmwf[0].minute / 60  # The 00 UTC run's age then.
-        self.assertGreater(first, 7.6, "ECMWF's 00 UTC run is complete at about 07:35")
-        self.assertLessEqual(first + 24 + hours(ecmwf[0], ecmwf[-1]) + 1,
-                             MODELS["ecmwf"]["maxAgeHours"])
+        for cycle in (0, 12):
+            # A cycle's first slot, its retry, and the other cycle's.
+            own = [slot for slot in ecmwf if (slot.hour - cycle) % 24 < 12]
+            first = own[0].hour - cycle + own[0].minute / 60  # The run's age then.
+            self.assertGreater(first, 7.6, f"ECMWF's {cycle:02d} UTC run is complete "
+                               "about 7 h 35 m after its run time")
+            self.assertLessEqual(first + 24 + hours(own[0], own[-1]) + 1,
+                                 MODELS["ecmwf"]["maxAgeHours"])
 
     def test_every_registered_model_has_a_cadence(self):
         with contextlib.redirect_stdout(io.StringIO()):
