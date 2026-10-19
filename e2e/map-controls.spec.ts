@@ -1,4 +1,4 @@
-import { expect, rememberSpot, test } from "./fixtures";
+import { expect, test } from "./fixtures";
 
 test("the chart's controls: zoom and the layers by keyboard, with the credits behind the i", async ({
   page,
@@ -79,9 +79,8 @@ test("the map's information is one dialog over the dimmed chart: the i under Lay
       JSON.stringify({ foil: true }),
     ),
   );
-  // And Brandon Bay in the dock, chosen last: the stars' link names it.
-  await rememberSpot(page, "brandon");
-  await page.goto("/");
+  // And Brandon Bay in the dock, from the link: the stars' link names it.
+  await page.goto("/?spot=brandon");
   await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
@@ -184,7 +183,8 @@ for (const width of [390, 1440]) {
     await page.keyboard.press("Escape");
     await expect(panel).toHaveCount(0);
     await star.click();
-    await page.locator(".dock .dk-name").click();
+    // A star alone opens no dock: the tap away is on the small print.
+    await page.locator(".map-model").click();
     await expect(panel).toHaveCount(0);
     // One at a time: the layers close your spots, and the other way round.
     await star.click();

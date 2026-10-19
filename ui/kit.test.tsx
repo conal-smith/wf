@@ -22,7 +22,14 @@ import { noticeStyles } from "./Notice";
 import { pagerStyles } from "./Pager";
 import { paneStyles } from "./Pane";
 import { penNoteStyles, penStyles } from "./Pen";
-import { loopPath, strikePath, underlinePath } from "./penPaths";
+import {
+  arrowPath,
+  framePath,
+  loopPath,
+  stemPath,
+  strikePath,
+  underlinePath,
+} from "./penPaths";
 import { puffinStyles } from "./Puffin";
 import { ratingTipStyles } from "./RatingTip";
 import { searchFieldStyles } from "./SearchField";
@@ -1103,6 +1110,41 @@ describe("the chart's own primitives", () => {
     expect(d.split(" L")).toHaveLength(49);
     expect(underlinePath(0, 3, 100)).toBe("M0.0 3.0 q50.0 -4 100.0 1");
     expect(strikePath(100, 10)).toMatch(/^M4\.0 7\.2 L96\.0 3\.0$/);
+  });
+
+  it("the pen frames a box on its line, hiding nothing in it, and lifts over what it must not cross", () => {
+    const points = (d: string) =>
+      [...d.matchAll(/([\d.-]+) ([\d.-]+)/g)].map((m) => [+m[1], +m[2]]);
+    const d = framePath(10, 20, 60, 200, 6, 5);
+    expect(d).toBe(framePath(10, 20, 60, 200, 6, 5));
+    expect(d).not.toBe(framePath(10, 20, 60, 200, 6, 6));
+    // One stroke, round and on past its start.
+    expect(d.match(/M/g)).toHaveLength(1);
+    for (const [x, y] of points(d)) {
+      // Along the sides, on the box's line, never inside it beyond the
+      // pen's width, nor far out of it.
+      if (y > 28 && y < 212) {
+        expect(x > 10 + 1.5 && x < 70 - 1.5).toBe(false);
+        expect(Math.min(Math.abs(x - 10), Math.abs(x - 70))).toBeLessThan(4.5);
+      }
+      expect(x).toBeGreaterThan(10 - 5);
+      expect(x).toBeLessThan(70 + 5);
+    }
+    // A figure on the right-hand edge: the pen lifts over it.
+    const lifted = framePath(10, 20, 60, 200, 6, 5, [
+      { x: 65, y: 100, w: 10, h: 12 },
+    ]);
+    expect(lifted.match(/M/g)).toHaveLength(2);
+    for (const [x, y] of points(lifted))
+      expect(x >= 65 && x <= 75 && y >= 100 && y <= 112).toBe(false);
+    // The line at now, and its arrow, are as repeatable.
+    expect(stemPath(40, 0, 100, 2)).toBe(stemPath(40, 0, 100, 2));
+    for (const [x] of points(stemPath(40, 0, 100, 2)))
+      expect(Math.abs(x - 40)).toBeLessThan(2);
+    const arrow = arrowPath(40, 18, 1, 3);
+    expect(arrow.from.x).toBeGreaterThan(40);
+    expect(arrow.from.y).toBeLessThan(18);
+    expect(arrowPath(40, 18, -1, 3).from.x).toBeLessThan(40);
   });
 
   it("the pen's marks are decoration, drawn in once and held for less motion", () => {

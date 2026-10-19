@@ -251,8 +251,8 @@ export default function App() {
   const [point, setPoint] = useState<Spot | null>(null);
   /**
    * Whether the opening spot has been worked out (it waits for the places):
-   * until then the dock is not drawn, so a returning visitor's spot never
-   * comes in over a moment of "no spot".
+   * until then the dock is not drawn, so a linked spot never comes in over a
+   * moment of "no spot".
    */
   const [opened, setOpened] = useState(false);
   const [error, setError] = useState("");
@@ -401,14 +401,13 @@ export default function App() {
           setSelectedTime(
             validated.frames[nearestFrame(validated.frames)].validTime,
           );
-        // No default place: the spot in the link, else the one this visitor
-        // chose last, else their first star, else none (src/openingSpot.ts).
-        // Only a link focuses the chart on its spot; the others fill the dock
-        // and the chart still opens on the whole of Ireland.
-        const opening = openingSpot(location.search, places, fav.get());
-        setPoint(opening?.spot ?? null);
+        // No default place, and no dock until a spot is chosen: only a link
+        // opens on one, focused (src/openingSpot.ts). A remembered or starred
+        // spot waits for the reader to tap it.
+        const linked = openingSpot(location.search, places);
+        setPoint(linked);
         setOpened(true);
-        if (opening?.why === "link") setFocusId(opening.spot.id);
+        if (linked) setFocusId(linked.id);
       })
       .catch((e) => {
         if (!controller.signal.aborted)
@@ -1098,6 +1097,9 @@ export default function App() {
       }
     : point;
 
+  /** With no spot chosen there is no dock, and nothing at the chart's foot. */
+  const dockOpen = opened && !!dockSpot && strip.length > 0;
+
   const pointHours: PlaceHour[] | undefined = picked
     ? pickedHours
     : point
@@ -1343,7 +1345,7 @@ export default function App() {
               </div>
             )}
             <div
-              className={`map-footer${opened && dockSpot && strip.length ? "" : " is-bare"}`}
+              className={`map-footer${dockOpen ? "" : " is-bare"}`}
               ref={dock}
             >
               {/* The small print rides on the dock's top edge, in the dock's
@@ -1363,7 +1365,7 @@ export default function App() {
               </div>
               {/* With no spot chosen there is no dock: the chart has the
                   screen, at the hour the page opened on. */}
-              {opened && dockSpot && strip.length > 0 && (
+              {dockOpen && dockSpot && (
                 <ForecastDock
                   spot={dockSpot}
                   isPoint={!!picked}
@@ -1442,7 +1444,8 @@ export default function App() {
                 rider: parseRider({ ...prefs.rider, ...r }),
               })
             }
-            launcherBottom={dockHeight + 24}
+            // Over the spot's tools on the dock's edge, while there is a dock.
+            launcherBottom={dockHeight + (dockOpen ? 72 : 24)}
             panelBottom={dockHeight + 12}
           />
         </Suspense>

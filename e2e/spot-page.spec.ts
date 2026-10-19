@@ -1,4 +1,4 @@
-import { expect, rememberSpot, test, type Page } from "./fixtures";
+import { expect, test, type Page } from "./fixtures";
 import { SAMPLE_CLOCK } from "./columns";
 
 /**
@@ -183,6 +183,18 @@ test("a spot page is the week day by day: hours in figures, the tide and the lig
   expect(await turns.count()).toBe(
     await turns.filter({ hasText: /^(High|Low) tide\d\d:\d\d/ }).count(),
   );
+  // The curve stands on a scale of metres, the same every day, and each turn
+  // has its time and height written beside it.
+  await expect(tide.locator("[data-tide-metre]")).toHaveCount(3);
+  await expect(tide.locator('[data-tide-turn="high"]').first()).toHaveText(
+    /^\d\d:\d\d · 4\.1 m$/,
+  );
+  await expect(tide.locator('[data-tide-turn="low"]').first()).toHaveText(
+    /^\d\d:\d\d · 0\.8 m$/,
+  );
+  await expect(tide.locator("[data-tide-turn]")).toHaveCount(
+    await turns.count(),
+  );
 
   // Sources, the way to how the stars work, and the line every forecast
   // here ends on.
@@ -279,8 +291,7 @@ test("an unknown spot says so and offers what it may have meant", async ({
 test("the map's dock opens the spot page, for the spot it opens on and one chosen", async ({
   page,
 }) => {
-  await rememberSpot(page, "brandon");
-  await page.goto("/");
+  await page.goto("/?spot=brandon");
   await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
@@ -296,7 +307,7 @@ test("the map's dock opens the spot page, for the spot it opens on and one chose
   await page.locator(".spot-row").first().click();
   await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  const link = page.locator(".dock").getByRole("link", { name: "Spot page →" });
+  const link = page.locator(".dock").getByRole("link", { name: "Spot page" });
   await expect(link).toHaveAttribute("href", "/spot/dollymount");
   await link.click();
   await expect(page).toHaveURL(/\/spot\/dollymount$/);

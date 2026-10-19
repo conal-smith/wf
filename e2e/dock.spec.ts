@@ -1,4 +1,4 @@
-import { expect, rememberSpot, test, type Page } from "./fixtures";
+import { chooseSpot, expect, steadyFrames, test, type Page } from "./fixtures";
 import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleStrip, stripAt } from "./columns";
 import { buildPyramid } from "../scripts/f5tile.mjs";
@@ -7,9 +7,8 @@ import { spotSquare } from "../force5/src/squares";
 
 const harmonie = readSample("harmonie");
 
-// A spot's dock: Brandon Bay's, as a visitor who chose it last sees it. A
-// first visit opens on no spot (e2e/no-spot.spec.ts).
-test.beforeEach(({ page }) => rememberSpot(page, "brandon"));
+// A spot's dock: Brandon Bay's, chosen with a tap on its light or named in
+// the link. The map opens on no spot (e2e/no-spot.spec.ts).
 
 /**
  * A tide fixture, so the tide row is tested the same way whether or not
@@ -71,7 +70,7 @@ async function withTides(page: Page) {
   );
 }
 
-/** The chart and its dock, up, with the tide fixture. */
+/** The chart, up, and Brandon Bay's dock, chosen from it, with the tide fixture. */
 async function openDock(page: Page, width = 1440, height = 900) {
   await withTides(page);
   await page.setViewportSize({ width, height });
@@ -79,25 +78,44 @@ async function openDock(page: Page, width = 1440, height = 900) {
   await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
-  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
-    timeout: 30000,
-  });
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
     timeout: 30000,
   });
+  await chooseSpot(page, "brandon");
+  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
+    timeout: 30000,
+  });
+  // The tap flies the chart to the spot: let it land before the hours are
+  // timed against the frames.
+  await steadyFrames(page);
 }
 
 const slider = (page: Page) =>
   page.getByRole("slider", { name: "Forecast time" });
 
-/** Where the selected column sits against the cursor, in pixels. */
+/**
+ * How far, in pixels, the selected hour is from where the strip stands: the
+ * scroll against the one that brings that hour to the strip's middle (its
+ * snap mark), and the pen's frame against the hour's own column.
+ */
 async function offCursor(page: Page) {
   return page.evaluate(() => {
-    const cell = document.querySelector(".dock tr.tt-hour td.c-sel");
-    const cursor = document.querySelector(".dock .dk-cur");
-    if (!cell || !cursor) return Infinity;
+    const wrap = document.querySelector<HTMLElement>(".dock .tt-wrap");
+    const cell = document.querySelector<HTMLElement>(
+      ".dock tr.tt-hour td.c-sel",
+    );
+    const frame = document.querySelector(".dock .pen-frame");
+    if (!wrap || !cell || !frame) return Infinity;
+    const snap =
+      wrap.querySelectorAll<HTMLElement>(".tt-snaps i")[Number(cell.dataset.i)];
+    const max = wrap.scrollWidth - wrap.clientWidth;
+    const scroll = Math.abs(
+      wrap.scrollLeft - Math.min(max, parseFloat(snap.style.left)),
+    );
     const c = cell.getBoundingClientRect();
-    return Math.abs(c.left + c.width / 2 - cursor.getBoundingClientRect().left);
+    const f = frame.getBoundingClientRect();
+    const framed = Math.abs(c.left + c.width / 2 - (f.left + f.width / 2));
+    return Math.max(scroll, framed);
   });
 }
 
@@ -171,16 +189,18 @@ test("the week is one strip of hours round the clock, with no day slider over it
     page.locator(".dock tr.tt-from td .g-arrow").first(),
   ).toBeVisible();
   await expect(page.locator(".dock tr.tt-from")).not.toContainText(/[NSEW]/);
-  // The tide's turns are just their times on the curve; the turn and the
-  // height in full are in its title.
+  // The tide's turns are their times and heights on the curve; the turn and
+  // the height in full are in its title.
   const tide = page.locator(".dock .tide-row");
-  await expect(tide.locator(".tide-label").first()).toHaveText(/^\d\d:\d\d$/);
+  await expect(tide.locator(".tide-label").first()).toHaveText(
+    /^\d\d:\d\d \d+\.\dm$/,
+  );
   await expect(tide.locator("g > title").first()).toHaveText(
     /^(High|Low) tide \d\d:\d\d · \d+\.\d m$/,
   );
   await expect(tide).not.toContainText(/\b(HW|LW)\b/);
   // The time is a slider still, for the keys and a screen reader, named
-  // by its day and hour; on the screen it is the cursor over the hours.
+  // by its day and hour; on the screen it is the pen's frame round an hour.
   await expect(slider(page)).toHaveAttribute(
     "aria-valuetext",
     /^(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day \d\d:\d\d$/,
@@ -199,11 +219,11 @@ test("the strip and the slider move together, by swipe, wheel and key", async ({
 }) => {
   await openDock(page);
   const wrap = page.locator(".dock .tt-wrap");
-  // The time moving scrolls the strip: the hour sits under the cursor.
+  // The time moving scrolls the strip: the hour comes to its middle, framed.
   await slider(page).fill("12");
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   // The strip scrolling moves the time, and the slider with it: whatever
-  // comes to rest under the cursor is the hour.
+  // comes to rest in the middle is the hour.
   const cw = await page
     .locator(".dock tr.tt-hour td[data-i]")
     .first()
@@ -301,7 +321,7 @@ test("the strip and the slider move together, by swipe, wheel and key", async ({
   await slider(page).press("Home");
   await expect(slider(page)).toHaveValue("0");
   // At the start the table sits against the labels, with no blank paper
-  // before it, and the cursor comes out to the first hour instead.
+  // before it, and the frame comes out to the first hour instead.
   await expect.poll(() => wrap.evaluate((el) => el.scrollLeft)).toBe(0);
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   // The same hour the next day, not as many columns into it: the first day
@@ -326,7 +346,7 @@ test("a night hour is a column of its own: tapped, keyed and under the line", as
   await expect(slider(page)).toHaveValue(String(now));
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   // The small hours of Monday: a tap on one selects it, the slider says so,
-  // and the red line stands on that column, not on the morning's.
+  // and the pen's frame goes round that column, not the morning's.
   const small = sampleStrip.findIndex(
     (c) => c.date !== sampleStrip[0].date && c.hour === 3,
   );
@@ -386,22 +406,31 @@ test("the stars open nothing on hover, and their explanation is the map's i", as
   ).toHaveAttribute("href", "/stars?spot=brandon");
 });
 
-test("the head is the spot and its buttons, and no day is rated", async ({
+test("the spot's tools stand on the chart over the dock, and no day is rated", async ({
   page,
 }) => {
   await openDock(page);
   // No county, no compass, no line of the day's best, no small print, no
-  // play: the star, the name, the view, the page and the rows.
-  const head = page.locator(".dock .dk-head");
-  await expect(head).toHaveText(/^Brandon Bay\s*Table\s*Blend\s*Spot page →$/);
-  await expect(head.getByRole("img")).toHaveCount(0);
+  // play: the star, the name, the blend, the page and the fold, in a box on
+  // the chart at the dock's top edge. The dock under it is its rows.
+  const tools = page.getByRole("group", { name: "This spot" });
+  await expect(tools).toHaveText(/^Brandon Bay$/);
+  const box = (await tools.boundingBox())!;
+  const dock = (await page.locator(".dock").boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(dock.y);
+  const hours = (await page.locator(".dock tr.tt-day").boundingBox())!;
+  expect(hours.y - dock.y).toBeLessThan(10);
   await expect(
-    head.getByRole("button", { name: "About these figures" }),
+    tools.getByRole("button", { name: "About these figures" }),
   ).toHaveCount(0);
-  for (const name of ["Star Brandon Bay", "Show waves, sky and sea"])
-    await expect(head.getByRole("button", { name })).toBeVisible();
+  for (const name of ["Star Brandon Bay", "Blend", "Show waves, sky and sea"])
+    await expect(tools.getByRole("button", { name })).toBeVisible();
+  await expect(tools.getByRole("button", { name: "Blend" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
   await expect(
-    head.getByRole("button", { name: /Play forecast|Pause forecast/ }),
+    tools.getByRole("button", { name: /Play forecast|Pause forecast/ }),
   ).toHaveCount(0);
   // No day is rated: a day's heading is its name and date, with no stars
   // and no best stretch, and the pen loops no day's best. The hours carry
@@ -413,9 +442,10 @@ test("the head is the spot and its buttons, and no day is rated", async ({
     /star/,
   );
   await expect(page.locator(".dock .tt-pen .pen-loop")).toHaveCount(0);
-  await expect(
-    page.getByRole("link", { name: "Spot page →" }).first(),
-  ).toHaveAttribute("href", "/spot/brandon");
+  await expect(tools.getByRole("link", { name: "Spot page" })).toHaveAttribute(
+    "href",
+    "/spot/brandon",
+  );
 });
 
 test("a starred spot is kept on this device: the dock and your spots agree", async ({
@@ -517,7 +547,9 @@ test("units, the rider and the blend's models are display options, kept on reloa
       );
     })
     .toBe(true);
+  // Kept on reload; the spot, as on any visit, is chosen again.
   await page.reload();
+  await chooseSpot(page, "brandon");
   await expect(page.locator(".dk-labs")).toContainText("m/s", {
     timeout: 30000,
   });
@@ -602,28 +634,22 @@ test("the blend draws every model that covers the spot, on the strip's hours", a
   page,
 }) => {
   await openDock(page);
-  await page
-    .locator(".dock")
-    .getByRole("radio", { name: "Blend" })
-    .or(page.locator(".dock").getByRole("button", { name: "Blend" }))
-    .first()
-    .click();
+  await page.locator(".dock").getByRole("button", { name: "Blend" }).click();
   const chart = page.locator(".dock .blend-chart");
   await expect(chart).toBeVisible();
   expect(await chart.locator(".model-line").count()).toBeGreaterThan(3);
-  // The tide still runs under it, and the cursor over both. The chart's
+  // The tide still runs under it. The chart's
   // label column is its unit and its scale, without a name.
   await expect(page.locator(".dock .tide-row")).toBeVisible();
   const scale = page.locator(".dock .dk-lab-blend");
   await expect(scale).toContainText("kn");
   await expect(scale.locator("b").first()).toHaveText(/^\d+$/);
   await expect(page.locator(".dk-labs")).not.toContainText(/Blend|Tide/);
-  await page
-    .locator(".dock")
-    .getByRole("radio", { name: "Table" })
-    .or(page.locator(".dock").getByRole("button", { name: "Table" }))
-    .first()
-    .click();
+  // The same glyph, pressed again, is the table.
+  const blend = page.locator(".dock").getByRole("button", { name: "Blend" });
+  await expect(blend).toHaveAttribute("aria-pressed", "true");
+  await blend.click();
+  await expect(blend).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
 });
 
@@ -632,7 +658,7 @@ test("the head's chevron is the dock's one fold: the rows under the tide", async
 }) => {
   await openDock(page);
   const chevron = page
-    .locator(".dock .dk-head")
+    .locator(".dock .dk-tools")
     .getByRole("button", { name: "Show waves, sky and sea" });
   await expect(chevron).toHaveAttribute("aria-expanded", "false");
   // No folding the hours away, and no handle to do it with.
@@ -645,7 +671,7 @@ test("the head's chevron is the dock's one fold: the rows under the tide", async
   const before = await height();
   await chevron.click();
   const open = page
-    .locator(".dock .dk-head")
+    .locator(".dock .dk-tools")
     .getByRole("button", { name: "Hide waves, sky and sea" });
   await expect(open).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(1);
@@ -656,20 +682,53 @@ test("the head's chevron is the dock's one fold: the rows under the tide", async
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
 });
 
-test("on a phone the dock opens on the hours, with no handle to fold them", async ({
+test("on a phone the dock is its hours alone, its tools on the chart, under a sixth of the screen", async ({
   page,
 }) => {
   await withTides(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/?spot=brandon");
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
     timeout: 30000,
   });
   await expect(page.locator(".dock-grab")).toHaveCount(0);
-  // The head and the always-there rows, and still under a third of the screen.
+  // No name and no row of buttons over the hours: the dock is its rows.
+  const dock = (await page.locator(".dock").boundingBox())!;
+  expect(dock.height).toBeLessThan(844 / 6);
+  const hours = (await page.locator(".dock tr.tt-day").boundingBox())!;
+  expect(hours.y - dock.y).toBeLessThan(8);
+  // The name is there for a screen reader, and not on the screen: the
+  // chart's loop says which spot it is.
+  await expect(
+    page.getByRole("region", { name: "Forecast for Brandon Bay" }),
+  ).toBeVisible();
   expect(
-    (await page.locator(".map-footer").boundingBox())!.height,
-  ).toBeLessThan(844 / 3);
+    (await page.locator(".dock .dk-name").boundingBox())!.width,
+  ).toBeLessThanOrEqual(1);
+  // The tools stand on the chart just above the dock, glyphs alone, and
+  // all of them within the screen.
+  const tools = page.getByRole("group", { name: "This spot" });
+  const box = (await tools.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(dock.y);
+  expect(box.y + box.height).toBeGreaterThan(dock.y - 20);
+  expect(box.x + box.width).toBeLessThanOrEqual(390);
+  for (const name of [
+    "Star Brandon Bay",
+    "Blend",
+    "Spot page",
+    "Show waves, sky and sea",
+  ])
+    await expect(
+      tools.getByRole(name === "Spot page" ? "link" : "button", { name }),
+    ).toBeVisible();
+  // The blend's glyph switches the view, and back.
+  const blend = tools.getByRole("button", { name: "Blend" });
+  await blend.click();
+  await expect(blend).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".dock tr.tt-blend")).toBeVisible();
+  await blend.click();
+  await expect(blend).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator(".dock tr.tt-wind")).toBeVisible();
   await slider(page).fill("9");
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   expect(
@@ -814,7 +873,7 @@ test("an open tab moves to a newer run and keeps the time it was showing", async
     route.fulfill({ json: published }),
   );
   await page.clock.install({ time: SAMPLE_CLOCK });
-  await page.goto("/");
+  await page.goto("/?spot=brandon");
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
     timeout: 30000,
   });
@@ -862,7 +921,7 @@ test("a tab whose run's tiles have gone moves to the run its pointer names now",
   );
   await page.setViewportSize({ width: 390, height: 844 });
   await page.clock.install({ time: SAMPLE_CLOCK });
-  await page.goto("/");
+  await page.goto("/?spot=brandon");
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
     timeout: 30000,
   });
@@ -893,7 +952,7 @@ test("a tab coming back lands on now, unless the reader chose a later hour", asy
   // An afternoon, so the hour the reader leaves can be overtaken by the clock.
   const afternoon = Date.parse("2026-09-14T09:00:00Z");
   await page.clock.install({ time: new Date(afternoon) });
-  await page.goto("/");
+  await page.goto("/?spot=brandon");
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
     timeout: 30000,
   });
@@ -934,7 +993,7 @@ test("a failed background check leaves the forecast alone and says nothing", asy
       : route.fulfill({ json: harmonie }),
   );
   await page.clock.install({ time: SAMPLE_CLOCK });
-  await page.goto("/");
+  await page.goto("/?spot=brandon");
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
     timeout: 30000,
   });
@@ -1001,7 +1060,9 @@ test("waves, sky, air, rain and sea are one tap away, and stay open", async ({
   await expect(page.locator(".dock tr.tt-rain td[data-i]").first()).toHaveText(
     /^(–|·|\d+(\.\d)?)$/,
   );
+  // The rows stay open across a reload, for the next spot chosen.
   await page.reload();
+  await chooseSpot(page, "brandon");
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(1, {
     timeout: 30000,
   });

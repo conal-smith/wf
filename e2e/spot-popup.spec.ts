@@ -21,7 +21,7 @@ for (const width of [390, 1440]) {
     await expect(
       dock.getByRole("button", { name: "Star Kilcrea — Malahide Estuary" }),
     ).toHaveAttribute("aria-pressed", "false");
-    await expect(dock.getByRole("link", { name: "Spot page →" })).toHaveAttribute(
+    await expect(dock.getByRole("link", { name: "Spot page" })).toHaveAttribute(
       "href",
       "/spot/kilcrea",
     );

@@ -301,13 +301,13 @@ test("the map opens as a plain visit would for a spot it does not hold", async (
   });
   await expect(page.locator(".dock")).toHaveCount(0);
   await expect(page.locator(".spot-marker.active")).toHaveCount(0);
-  // A returning visitor: the spot they chose last, as on `/`, unfocused.
+  // A returning visitor: still nothing until a spot is chosen, as on `/`.
   await rememberSpot(page, "brandon");
   await page.evaluate(() => localStorage.clear());
   await page.goto("/?spot=atlantis");
-  await expect(page.locator('[data-spot-id="brandon"]')).toHaveClass(/active/, {
+  await expect(page.locator(".spot-marker").first()).toBeAttached({
     timeout: 30000,
   });
-  await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
+  await expect(page.locator(".dock")).toHaveCount(0);
   await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
 });

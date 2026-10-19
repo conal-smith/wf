@@ -136,7 +136,7 @@ exports its recipe (`buttonStyles`, …) for a link a router owns.
 | Component | What it is | Notes |
 | --- | --- | --- |
 | `Button` | Mono capitals. `primary` ink pill · `pill` ruled capsule · `quiet` · `raised` the square instrument over the map · `link` the underlined "← Chart" · `danger` | `pressed`, `icon` (needs `aria-label`), `size` sm/md/lg, `href` makes it a link. |
-| `Segmented` | The dock's TABLE \| RIBBON: a ruled capsule, the one that is on filled in ink | `stack` for a ruled column of choices. |
+| `Segmented` | A ruled capsule of choices, the one that is on filled in ink (the satellite's in Layers) | `stack` for a ruled column of choices. |
 | `Surface` | The chart's box over the map: opaque paper, grain, double rule | `rule="single"` inside another box. |
 | `Pane` | A box on a page | `kind` card (one ink rule) · sunken · ruled (a heavy rule above, the broadsheet's section); `double`; `standing`. |
 | `Dialog`, `ConfirmDialog` | The chart's box as a modal; title in the display face | Unchanged API. |
@@ -156,7 +156,7 @@ exports its recipe (`buttonStyles`, …) for a link a router owns.
 | `RatingTip` | An hour's stars as a button; hover, focus or tap opens the chart's box saying why | `label`, `detail`, `size` md (the spot page) / sm (the map's dock and card). The one explanation on the site. |
 | `PenLoop`, `PenUnderline`, `PenStrike` | The pen's marks round their children, drawn in once | Decoration (`aria-hidden`): say the same thing in words. `seed` picks the hand. |
 | `PenNote` | The pen's handwriting | `size` sm/md, `as`. |
-| `loopPath`, `underlinePath`, `strikePath` | The pen's geometry, for any SVG (the map's overlay, the dock's table) | Pure functions. |
+| `loopPath`, `underlinePath`, `strikePath`, `framePath`, `stemPath`, `arrowPath` | The pen's geometry, for any SVG (the map's overlay; the dock's frame round the chosen hour, its line at now and the arrow to it) | Pure functions, seeded: the same seed draws the same hand. |
 | `Puffin` | The Almanac's bird | `size`, `bob`, `title` (decorative without). |
 
 **The masthead.** Every page that is read starts with it; the brand link is
@@ -209,8 +209,10 @@ are new tokens for the chart-kit's bathymetry. The top-left is the mockup's
 head: the menu, the wordmark (`Wordmark size="sm"`), and "Find a spot…" as a
 `SearchField`. Spot lights are the mockup's `.lt`: a figure in a ring (ink at
 3–4 stars, magenta at 5, dashed at none, struck through in the pen when
-offshore). The dock's present-hour cursor is the pen's red in the latest
-mockup. `StarGlyphs` in `src/StarsRows.tsx` already draws through the kit;
+offshore). In the dock the pen goes twice round the chosen hour and rules a
+line at the time now, the time written over it in its hand; the dock's tools
+(the star, the blend, the spot's page, the fold) stand on the chart in a box
+like the map's controls. `StarGlyphs` in `src/StarsRows.tsx` already draws through the kit;
 it keeps the dock's narrow width with `slots="potential"`. Gust is still the
 ink blob with a magenta wing; whether he becomes the puffin is the owner's
 call. The Force5 logo in the top bar is the old brand. The map visual

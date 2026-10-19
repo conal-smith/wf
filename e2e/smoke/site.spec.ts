@@ -86,10 +86,21 @@ test("How the stars work draws", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-// The /ai page sends every assistant here (mcp/pages/worker.ts on Pages).
+// The /ai page sends every assistant here (mcp/pages/worker.ts). Only Pages
+// runs that worker: the release's acceptance smokes the site image's Caddy on
+// this machine, which serves the build's files alone, so a site on a loopback
+// address is checked only when SMOKE_MCP asks (e.g. under `wrangler pages dev`).
 test("the MCP endpoint answers an assistant and lists the spots", async ({
   request,
+  baseURL,
 }) => {
+  const local = ["127.0.0.1", "localhost", "[::1]"].includes(
+    new URL(baseURL!).hostname,
+  );
+  test.skip(
+    local && !process.env.SMOKE_MCP,
+    "a local site has no Pages worker",
+  );
   let id = 0;
   const rpc = async (method: string, params: unknown = {}) => {
     const response = await request.post("/api/mcp", {

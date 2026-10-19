@@ -1,11 +1,12 @@
 /*
- * The dock: the chosen spot's week as one strip of hours under a fixed
- * cursor, scrolled by hand or stepped from the keys. Paper with a double rule
- * along its top; figures in the mono face.
+ * The dock: the chosen spot's week as one strip of hours, scrolled by hand or
+ * stepped from the keys, the chosen hour framed by the red pen and the time
+ * now ruled down it. Paper with a double rule along its top; figures in the
+ * mono face.
  */
 .dock {
   position: relative;
-  padding: 6px 22px 8px;
+  padding: 4px 16px 2px;
   background: var(--color-ground);
   border: 0;
   border-top: 3px double var(--color-ink);
@@ -13,17 +14,32 @@
   color: var(--color-ink);
 }
 
-/* ---------- the head ---------- */
-.dk-head {
+/* ---------- the spot's tools, on the chart over the dock ---------- */
+/* The name, the star, the blend, the spot's page and the fold, in a box like
+   the map's controls (map.css `.zbox`), standing on the dock's top edge at
+   the right as the small print stands at the left: inside the dock's own
+   layout, so it moves with the dock's edge in the same frame. */
+.dk-tools {
+  position: absolute;
+  right: 12px;
+  bottom: calc(100% + 10px);
   display: flex;
+  align-items: stretch;
+  max-width: calc(100% - 24px);
+  padding: 2px;
+}
+.dk-id {
+  display: flex;
+  gap: 6px;
   align-items: center;
-  gap: 8px;
   min-width: 0;
+  padding: 0 10px 0 6px;
 }
 .dk-name {
   margin: 0;
+  max-width: 34vw;
   overflow: hidden;
-  font: 600 22px var(--font-display);
+  font: 600 17px var(--font-display);
   letter-spacing: -0.01em;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -34,37 +50,36 @@
   white-space: nowrap;
   color: var(--color-ink-muted);
 }
-.dk-acts {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex: none;
-  margin-left: auto;
-}
-.dk-view button {
-  height: 26px;
-  padding: 0 10px;
-}
-/* The head's round button, the kit's pill (ui/Button), at the size of the
-   switch beside it on a phone as well: a finger's 44px would make the head,
-   and so the whole dock, taller for the sake of one button. */
-.dk-acts .dk-chev {
-  min-width: 30px;
-  min-height: 30px;
-  width: 30px;
+/* Each tool a square of the box, ruled off from the one before, as the
+   map's zoom and layers are; the kit's quiet button squared off. */
+.dk-tools .dk-tool {
+  width: 32px;
+  min-width: 32px;
   height: 30px;
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--color-line);
+  border-radius: 0;
+  color: var(--color-ink);
+}
+.dk-tools .dk-tool[aria-pressed="true"] {
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+  box-shadow: none;
+}
+.dk-tools .dk-tool:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+.dk-tools .dk-custom {
+  width: auto;
+  gap: 4px;
+  padding: 0 8px;
+  font-size: 10px;
 }
 .dk-chev svg {
   stroke: currentColor;
-}
-/* "Custom stars": the kit's pill at the switch's height, like the chevron,
-   so a rider's own stars do not make the head taller. */
-.dk-head .dk-custom {
-  flex: none;
-  height: 26px;
-  min-height: 26px;
-  padding: 0 10px;
-  font-size: 10px;
 }
 .tt-wrap:focus-visible,
 .dock:has(.dk-time:focus-visible) .tt-wrap {
@@ -109,9 +124,6 @@
 }
 
 /* ---------- the strip of hours ---------- */
-.dk-body {
-  margin-top: 2px;
-}
 .dk-grid {
   position: relative;
   display: grid;
@@ -166,11 +178,15 @@
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
+  /* Room for the foot of the pen's frame, which overflow-y would clip. */
+  padding-bottom: 5px;
 }
 .tt-wrap::-webkit-scrollbar {
   display: none;
 }
 table.tt {
+  /* Over the line at now (.tt-under), so the figures it passes stay on top. */
+  position: relative;
   border-collapse: collapse;
   table-layout: fixed;
   font-family: var(--font-mono);
@@ -199,13 +215,17 @@ table.tt {
 }
 .tt tr.tt-day td > span {
   position: sticky;
-  left: 6px;
+  /* Flush with the strip's edge, so the paper behind the name covers all of
+     the time now as it scrolls out under it. */
+  left: 0;
   display: inline-flex;
   gap: 5px;
   align-items: center;
-  padding: 0 6px;
+  padding: 0 6px 0 12px;
   font: 500 10px var(--font-mono);
   color: var(--color-ink-muted);
+  /* The time now, written in the day row, slides under the day's name. */
+  background: var(--color-ground);
 }
 .tt tr.tt-day td b {
   font: 650 13px var(--font-display);
@@ -219,7 +239,7 @@ table.tt {
   display: none;
 }
 .tt tr.tt-day td.fit-day > span {
-  padding: 0 3px;
+  padding: 0 3px 0 9px;
 }
 .tt tr.tt-hour td {
   height: 18px;
@@ -267,12 +287,12 @@ table.tt {
 .tt td.past {
   opacity: 0.42;
 }
-.tt td.c-sel {
-  background-color: color-mix(in srgb, var(--color-ink) 7%, transparent);
-}
+/* The chosen hour, written in the pen's ink: the pen's frame (.pen-frame)
+   is the rest of the mark, and nothing is filled. */
 .tt tr.tt-hour td.c-sel {
-  background: var(--color-ink);
-  color: var(--color-ink-inverse);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-pen-ink);
 }
 .tt tr.tt-stars td .hour-stars {
   vertical-align: middle;
@@ -345,6 +365,11 @@ table.tt {
   stroke: var(--color-ground);
   stroke-width: 3px;
 }
+/* The turn's height beside its time, in a lighter ink: the time is what a
+   rider plans by. */
+.tide-height {
+  fill: var(--color-ink-muted);
+}
 .tide-none {
   font: italic 12.5px var(--font-body);
   fill: var(--color-ink-muted);
@@ -359,53 +384,106 @@ table.tt {
 .tide-dot {
   fill: var(--color-chart-magenta);
 }
-/* The cursor: the hour the map shows, in the middle of the strip through the
-   week and out at the ends (ForecastDock places it as the strip scrolls). */
-.dk-cur {
+/* The red pen on the hours (ui/penPaths.ts): twice round the chosen hour,
+   on its border, and a line down the hours at the time now, the time written
+   over it in the pen's hand. The frame is drawn in by ForecastDock, which
+   holds it for a reader who asks for less motion. */
+.pen-frame {
+  fill: none;
+  stroke: var(--color-pen);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  opacity: 0.88;
+}
+.pen-frame.is-second {
+  stroke-width: 1.4;
+  opacity: 0.62;
+}
+.tt-under {
   position: absolute;
-  bottom: 0;
-  width: 0;
-  border-left: 1.5px solid color-mix(in srgb, var(--color-pen) 85%, transparent);
+  left: 0;
+  top: 0;
+  overflow: visible;
   pointer-events: none;
-  z-index: 3;
+}
+.pen-now,
+.pen-now-arrow {
+  fill: none;
+  stroke: var(--color-pen);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+.pen-now-arrow {
+  stroke-width: 1.4;
+}
+.pen-now-time {
+  font: 13px var(--font-hand);
+  fill: var(--color-pen-ink);
 }
 
-/* ---------- a phone: a sheet along the foot of the screen ---------- */
+/* ---------- a phone: a strip along the foot of the screen ---------- */
 @media (max-width: 720px) {
   .dock {
-    max-height: 82vh;
-    overflow: auto;
-    padding: 6px 12px calc(6px + env(safe-area-inset-bottom));
+    padding: 2px 8px calc(1px + env(safe-area-inset-bottom));
   }
-  .dk-head {
-    flex-wrap: wrap;
-    gap: 4px 8px;
+  /* The glyphs alone: the chart's loop says which spot it is. */
+  .dk-id {
+    padding: 0 4px;
   }
-  .dk-name {
-    max-width: 58vw;
-    font-size: 20px;
+  .dk-tools .dk-name,
+  .dk-tools .dk-coords,
+  .dk-tools .dk-tool-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
-  .dk-acts {
-    width: 100%;
-    justify-content: space-between;
+  .dk-tools .dk-custom {
+    width: 32px;
+    padding: 0;
   }
   .dk-labs div {
     font-size: 8.5px;
     letter-spacing: 0.06em;
   }
-  /* The rows blank through the night, and the tide's band, drawn tighter
-     (ForecastDock's PHONE_ROWS). */
-  .tt tr.tt-stars td,
-  .tt tr.tt-wing td {
+  /* Every row as tight as its figures allow (ForecastDock's PHONE_ROWS). */
+  .tt tr.tt-day td {
     height: 16px;
   }
-  .tt tr.tt-tide td {
-    height: 30px;
+  .tt tr.tt-day td b {
+    font-size: 12px;
   }
-}
-@media (max-width: 720px) {
+  .tt tr.tt-hour td {
+    height: 16px;
+  }
+  .tt tr.tt-stars td {
+    height: 14px;
+  }
+  .tt tr.tt-wind td {
+    height: 17px;
+  }
+  .tt tr.tt-from td,
+  .tt tr.tt-wing td {
+    height: 15px;
+  }
+  /* A glyph's row no taller than the glyph: the line box round the stars and
+     the arrow would otherwise stand a pixel or two over the row's height,
+     and more or less of it by the hours drawn. */
+  .tt tr.tt-stars td,
+  .tt tr.tt-from td {
+    line-height: 0;
+  }
+  .tt tr.tt-tide td {
+    height: 22px;
+  }
   .map-reach {
-    bottom: calc(100% + 66px);
+    bottom: calc(100% + 52px);
   }
 }
 

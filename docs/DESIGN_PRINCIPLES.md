@@ -281,6 +281,23 @@ spot's rows would be, at their height, so choosing a spot moves nothing. A
 point tapped on the open map is read in the dock but not remembered: it is not
 a riding place.
 
+**2026-10-19 — No dock until a spot is chosen, and the dock is its hours.**
+A remembered spot or a star no longer opens the dock as the page loads: on a
+phone it took the foot of the screen before the reader had asked for anything.
+Only a link that names a spot (`?spot=`) opens on it; otherwise the chart has
+the whole screen until a spot, light or point is tapped (`src/openingSpot.ts`;
+the store still keeps the visits and stars for your spots). The dock lost its
+head: the star, the name, the Table/Blend switch (now one glyph, on while the
+blend is shown), the spot's page and the fold stand on the chart at the dock's
+top edge in a box like the map's controls, and a phone keeps the glyphs alone,
+the pen's loop on the chart saying which spot it is. A phone's rows are drawn
+tight, and a week with no hour worth rating leaves out the stars and the wing.
+The phone's dock went from 232 px to 128, the desktop's from 205 to 172. The
+chosen hour is the pen's (twice round its column, the hour in the pen's ink, no
+wash and no black cell), and the time now is a pen line with the time written
+over it (mockups in `wingfoil-mockups/table-selection`, option D, and
+`dock-compact`, option B).
+
 **2026-10-19 — One wind scale for every rider.** The map's wash and coloured
 arrows had a scale of their own (`--ride-*`), its stops at the rider's
 minimum, sweet spot and maximum, so Learning, Riding and Advanced each

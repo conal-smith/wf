@@ -1,4 +1,4 @@
-import { expect, rememberSpot, test, type Page } from "./fixtures";
+import { expect, test, type Page } from "./fixtures";
 
 /** Where the dock and the boxes over the chart stand, to a tenth of a pixel. */
 const geometry = (page: Page) =>
@@ -25,8 +25,7 @@ for (const width of [320, 390, 820, 1440]) {
     await page.clock.setFixedTime(new Date("2026-09-13T21:00:00Z"));
     await page.setViewportSize({ width, height: 900 });
     // A spot's dock: Brandon Bay, chosen last.
-    await rememberSpot(page, "brandon");
-    await page.goto("/");
+    await page.goto("/?spot=brandon");
     await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
       timeout: 30000,
     });

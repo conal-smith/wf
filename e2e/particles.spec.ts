@@ -1,4 +1,4 @@
-import { expect, rememberSpot, test, type Page } from "./fixtures";
+import { chooseSpot, expect, test, type Page } from "./fixtures";
 
 declare global {
   interface Window {
@@ -129,8 +129,6 @@ test("particle work stops when hidden or for reduced motion, and resumes", async
 test("dragging carries the arrows with the map and defers field rebuilds until it stops", async ({
   page,
 }) => {
-  // A returning visitor's spot: the dock's slider moves the time at the end.
-  await rememberSpot(page);
   await instrument(page);
   await page.mouse.move(700, 260);
   await page.mouse.down();
@@ -153,6 +151,8 @@ test("dragging carries the arrows with the map and defers field rebuilds until i
     .toBeGreaterThan(before.fields);
   await page.setViewportSize({ width: 820, height: 900 });
   await expectResumed(page);
+  // A spot chosen: the dock's slider moves the time.
+  await chooseSpot(page);
   await page.getByRole("slider", { name: "Forecast time" }).fill("4");
   await expectResumed(page);
 });
