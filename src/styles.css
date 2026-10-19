@@ -81,3 +81,10 @@ p {
 .stars-none {
   color: var(--color-ink-muted);
 }
+
+/* The map under a page opened over it (src/PagesOverMap.tsx): kept, at its
+   size, and not drawn. Its boxes are fixed, so the page scrolls the document
+   as it does alone. */
+.map-under-page {
+  visibility: hidden;
+}
