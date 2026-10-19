@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { rideRange, rideWedge } from "./rideWedge";
-import { DEFAULT_RIDER, windBand, type Rider } from "./stars";
+import { offshoreSpans, rideRange, rideRose, rideWedge } from "./rideWedge";
+import { DEFAULT_RIDER, shoreAngle, windBand, type Rider } from "./stars";
 
 const rider = (over: Partial<Rider> = {}): Rider => ({
   ...DEFAULT_RIDER,
@@ -37,6 +37,29 @@ describe("rideRange", () => {
     expect(top.range[1]).toBeLessThan(sweet.range[1]);
     expect(floor.power).toBeLessThan(sweet.power);
     expect(top.power).toBeLessThan(sweet.power);
+  });
+
+  it("points as schools and GPS tracks say, powered up: 90°, 60° and 45° off the wind", () => {
+    // docs/RIDE_ROSE.md: a learner holds a beam reach at best, a riding rider
+    // about 60°, an advanced rider about 45° (Duotone, AFS, Wing Daily).
+    const sweet = (skill: Rider["skill"]) => {
+      const band = windBand(rider({ skill }));
+      return rideRange(rider({ skill }), (band.sweetLow + band.sweetHigh) / 2)!
+        .range;
+    };
+    expect(sweet("beginner")).toEqual([90, 105]);
+    expect(sweet("intermediate")).toEqual([60, 105]);
+    expect(sweet("advanced")).toEqual([45, 110]);
+    // Just foiling, about 15° lower; at the top of the band, about 5°.
+    for (const skill of ["intermediate", "advanced"] as const) {
+      const band = windBand(rider({ skill }));
+      expect(rideRange(rider({ skill }), band.min)!.range[0]).toBe(
+        sweet(skill)[0] + 15,
+      );
+      expect(rideRange(rider({ skill }), band.max)!.range[0]).toBe(
+        sweet(skill)[0] + 5,
+      );
+    }
   });
 
   it("lets an advanced rider point higher than a beginner", () => {
@@ -98,5 +121,128 @@ describe("rideWedge", () => {
     const { min } = windBand(rider());
     expect(rideWedge(rider(), min - 1, null, 45, SE)).toBeNull();
     expect(rideWedge(rider(), min - 1, min + 8, 45, SE)).not.toBeNull();
+  });
+});
+
+// Dollymount: the beach looks out to the south-east.
+const DOLLY = 125;
+const hour = (
+  from: number | null,
+  over: Partial<{ windKn: number; gustKn: number; daylight: boolean }> = {},
+) => ({
+  windKn: 16,
+  gustKn: 22,
+  from,
+  daylight: true,
+  ...over,
+});
+
+describe("rideRose", () => {
+  it("draws Dollymount's cross-shore afternoon: out to the south-east, home to the north-west", () => {
+    const rose = rideRose(rider(), hour(225), DOLLY)!;
+    expect(rose.shore).toBe("cross");
+    // Within 60° of a south-westerly, for a riding rider.
+    expect(rose.nogo).toEqual({ from: 165, to: 285 });
+    expect(rose.reaches).toEqual([
+      { from: 285, to: 330, kind: "home" },
+      { from: 120, to: 165, kind: "out" },
+    ]);
+    expect(rose.drift).toBe(45);
+    expect(rose.driftOut).toBe(false);
+  });
+
+  it("follows the rider's level", () => {
+    const learner = rideRose(rider({ skill: "beginner" }), hour(225), DOLLY)!;
+    const advanced = rideRose(rider({ skill: "advanced" }), hour(225), DOLLY)!;
+    expect(learner.nogo).toEqual({ from: 135, to: 315 });
+    expect(advanced.nogo).toEqual({ from: 180, to: 270 });
+  });
+
+  it("rounds every bearing to 5°", () => {
+    for (let from = 0; from < 360; from += 7) {
+      const rose = rideRose(rider(), hour(from + 0.4), DOLLY);
+      if (!rose?.nogo) continue;
+      const all = [rose.nogo, ...rose.reaches].flatMap((s) => [s.from, s.to]);
+      for (const b of [...all, rose.drift!]) expect(b % 5).toBe(0);
+    }
+  });
+
+  it("drifts out to sea, in red, in an offshore or cross-offshore wind, with no out or home", () => {
+    const off = rideRose(rider(), hour(305), DOLLY)!;
+    expect(off.shore).toBe("offshore");
+    expect(off.driftOut).toBe(true);
+    expect(off.reaches.map((r) => r.kind)).toEqual(["reach", "reach"]);
+    const crossOff = rideRose(rider(), hour(265), DOLLY)!;
+    expect(crossOff.shore).toBe("cross-off");
+    expect(crossOff.driftOut).toBe(true);
+    expect(crossOff.reaches.map((r) => r.kind).sort()).toEqual(["home", "out"]);
+  });
+
+  it("names no out or home with no beach, and leaves both reaches whole", () => {
+    const rose = rideRose(rider(), hour(225), null)!;
+    expect(rose.shore).toBeNull();
+    expect(rose.driftOut).toBe(false);
+    expect(rose.reaches).toEqual([
+      { from: 285, to: 330, kind: "reach" },
+      { from: 120, to: 165, kind: "reach" },
+    ]);
+  });
+
+  it("keeps only the wind in the dark, below the floor, or where nothing heads out", () => {
+    const bare = (r: ReturnType<typeof rideRose>) =>
+      r !== null &&
+      r.nogo === null &&
+      r.reaches.length === 0 &&
+      r.drift === null;
+    expect(bare(rideRose(rider(), hour(225, { daylight: false }), DOLLY))).toBe(
+      true,
+    );
+    expect(
+      bare(rideRose(rider(), hour(225, { windKn: 6, gustKn: 7 }), DOLLY)),
+    ).toBe(true);
+    // A learner in an onshore wind: the light's wedge is empty too.
+    expect(
+      rideWedge(rider({ skill: "beginner" }), 18, 20, DOLLY, DOLLY),
+    ).toBeNull();
+    expect(
+      bare(
+        rideRose(
+          rider({ skill: "beginner" }),
+          hour(DOLLY, { windKn: 18, gustKn: 20 }),
+          DOLLY,
+        ),
+      ),
+    ).toBe(true);
+    // The wind is still there to show.
+    expect(
+      rideRose(rider(), hour(225, { daylight: false }), DOLLY)!.windFrom,
+    ).toBe(225);
+    expect(rideRose(rider(), hour(null), DOLLY)).toBeNull();
+  });
+
+  it("puts the tack out where the light's wedge is", () => {
+    for (let from = 0; from < 360; from += 10) {
+      const wedge = rideWedge(rider(), 16, 22, from, DOLLY);
+      const rose = rideRose(rider(), hour(from), DOLLY)!;
+      const outs = rose.reaches.filter((r) => r.kind === "out");
+      if (rose.shore === "offshore") continue;
+      expect(outs.length > 0).toBe(wedge !== null);
+    }
+  });
+});
+
+describe("offshoreSpans", () => {
+  it("hatches what shoreAngle calls offshore and cross-offshore", () => {
+    const { offshore, crossOff } = offshoreSpans(DOLLY);
+    expect(offshore).toEqual({ from: 275, to: 335 });
+    expect(crossOff).toEqual([
+      { from: 235, to: 275 },
+      { from: 335, to: 375 },
+    ]);
+    for (let b = offshore.from + 1; b < offshore.to; b++)
+      expect(shoreAngle(b, DOLLY)).toBe("offshore");
+    for (const s of crossOff)
+      for (let b = s.from + 1; b < s.to; b++)
+        expect(shoreAngle(b % 360, DOLLY)).toBe("cross-off");
   });
 });

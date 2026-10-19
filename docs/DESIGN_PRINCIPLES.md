@@ -323,6 +323,19 @@ changes model only when the reader asks (docs/FORECAST_DATA_PLAN.md: switching
 on a far click was ruled a trap); the dock's chip, "Show ECMWF on the map", is
 how they ask.
 
+**2026-10-19 — The loupe is a ride rose, at a true distance.** The glass
+round the chosen spot framed it and said nothing. Now it shows the headings
+this rider can hold at the dock's hour: the no-go hatched, the tack out washed
+in paper at about 45% with ink edges (so it reads over satellite), the tack
+home dashed, the drift downwind. The bezel carries the offshore winds in red,
+the wind's needle and a box at its foot ("SW 16 g22 · CROSS"). The wind's
+colour is on the needle alone, and the pen's red only marks danger: the
+offshore winds, and the drift when it heads out to sea. Its rim is a distance,
+half a nautical mile or a kilometre in the rider's units, so the fans measure
+the water before the rocks. Bearings are rounded to 5° and the key says
+"about": it is not a polar. The angles and their sources are in
+[RIDE_ROSE.md](RIDE_ROSE.md).
+
 ---
 
 ## Still open

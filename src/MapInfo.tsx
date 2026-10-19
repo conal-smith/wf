@@ -3,6 +3,7 @@ import { Dialog } from "../ui/Dialog";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { DEPTHS } from "../force5/src/chartStyle";
 import { STARS_HREF } from "../force5/src/siteNav";
+import { windColor } from "../force5/src/weather";
 import type { Rider } from "../force5/src/stars";
 import { KnotScale } from "./KnotScale";
 import type { InfoSection } from "./mapInfoContext";
@@ -150,9 +151,18 @@ function MapKey({
           <KeyLight stars={4} arrow wedge />
         </dt>
         <dd>
-          Wedge, on the spot you open: the headings you can hold out to sea at
-          your level in this wind. Longer the better powered; it pulses faster
-          with more stars.
+          Wedge, on the spot you open with the range ring or no mark: the
+          headings you can hold out to sea at your level in this wind. Longer
+          the better powered; it pulses faster with more stars.
+        </dd>
+        <dt>
+          <KeyRose />
+        </dt>
+        <dd>
+          Loupe, round the chosen spot: about the headings you can hold at your
+          level in this hour&rsquo;s wind, out to sea and home, the no-go upwind
+          hatched, the way you drift if you fall, and the offshore winds in red.
+          Its rim is half a nautical mile (or a kilometre) away.
         </dd>
         <dt>
           <KeyLight stars={5} />
@@ -217,6 +227,32 @@ function MapKey({
         </p>
       )}
     </div>
+  );
+}
+
+/** The loupe's rose as the key shows it: no-go, the tack out, the needle, the offshore red. */
+function KeyRose() {
+  return (
+    <svg
+      width="34"
+      height="34"
+      viewBox="-17 -17 34 34"
+      aria-hidden="true"
+      className="k-rose"
+    >
+      <path
+        className="k-rose-nogo"
+        d="M0 0L-10.4 -10.4A14.7 14.7 0 0 1 10.4 -10.4Z"
+      />
+      <path className="k-rose-out" d="M0 0L13.8 5A14.7 14.7 0 0 1 5 13.8Z" />
+      <path className="k-rose-off" d="M-11.3 11.3A16 16 0 0 1 -16 0" />
+      <circle className="k-rose-rim" r="14.7" />
+      <path
+        className="k-rose-needle"
+        style={{ fill: `rgb(${windColor(16).join(",")})` }}
+        d="M0 -8L-2 -16.5L0 -15L2 -16.5Z"
+      />
+    </svg>
   );
 }
 
