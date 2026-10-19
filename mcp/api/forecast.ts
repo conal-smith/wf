@@ -9,14 +9,14 @@
  * m/s and answered in knots; directions are degrees the wind or the sea comes
  * FROM, as everywhere on the site.
  *
- * The consensus is deliberately simple and says so: one line per model — an
- * ensemble's member mean counts once, like any other model. Its headline wind,
- * gust and direction are HARMONIE's own forecast while HARMONIE reaches the
- * hour (`LEAD_MODEL`, force5/src/weights.ts), and past it a weighted median of
- * the other models, each counted by how well it verified that far into its run
- * (`modelWeight`), with a weighted mean bearing. The range and the agreement
- * label, the same the dock's blend gives (force5/src/blend.ts), are read
- * across every model either way. It is not bias-corrected.
+ * The headline is deliberately simple and says so: one model's own forecast,
+ * never a blend of several (the ruling of 19 October 2026). Its wind, gust and
+ * direction are HARMONIE's own while HARMONIE reaches the hour, and past it
+ * ECMWF's, or the two models a caller names instead (force5/src/lead.ts, the
+ * rule every surface that rates shares). The range and the agreement label,
+ * the same the dock's blend gives (force5/src/blend.ts), are read across every
+ * model — an ensemble's member mean counting once — as context beside it. It
+ * is not bias-corrected.
  *
  * Beside it, where an ensemble reaches the spot, the spread of its members (ECMWF
  * ENS and GEFS, each member its own run). Both ensembles are retired for now
@@ -35,13 +35,15 @@ import { sunTimes } from "../../force5/src/sun.js";
 import { KNOTS } from "../../force5/src/units.js";
 import {
   AGREEMENT_SPREAD_KN,
-  LEAD_MODEL,
   agreementFrom,
   leadHours,
-  modelWeight,
-  weightedMedian,
   type Agreement,
 } from "../../force5/src/weights.js";
+import {
+  DEFAULT_STARS_FROM,
+  pickModel,
+  type StarsFrom,
+} from "../../force5/src/lead.js";
 import type { ForecastSource } from "./httpSource.js";
 
 const HOUR = 3600000;
@@ -581,21 +583,20 @@ export interface ModelWind {
 }
 export interface HourWind {
   /**
-   * The headline speed: the lead model's own (HARMONIE, `LEAD_MODEL`) while it
-   * reaches the hour; past it, the weighted median of the models that do.
+   * The headline speed: one model's own, the first of the two the stars come
+   * from that reaches the hour (`lead` says which; force5/src/lead.ts).
    */
   wind_kn: number;
   /** The lowest and highest of every model, the lead among them. */
   min_kn: number;
   max_kn: number;
   /**
-   * The headline gust: the lead model's while it gives one; otherwise the
-   * weighted median of the models that forecast a gust (`gust_lead` says
-   * which). `gust_max_kn` is the highest of every model's.
+   * The headline gust: the lead model's, null where it gives none (no other
+   * model fills it in). `gust_max_kn` is the highest of every model's.
    */
   gust_kn: number | null;
   gust_max_kn: number | null;
-  /** The headline bearing: the lead model's, or the models' weighted mean vector. */
+  /** The headline bearing: the lead model's. */
   direction_deg: number;
   direction: string;
   /**
@@ -605,16 +606,11 @@ export interface HourWind {
    */
   agreement: Agreement | null;
   models: number;
+  /** Which model the headline wind, gust and direction are, and so the stars. */
+  lead: string;
   /**
-   * Which model the headline wind and direction are: `"harmonie"` while
-   * HARMONIE reaches the hour, null where they are the blend of the models.
-   */
-  lead: string | null;
-  /**
-   * Which model the headline gust is: the lead's id when it gave a gust this
-   * hour, null where `gust_kn` is the blend's (or there is none). HARMONIE
-   * gives none at the first hour of its run, so `lead` can be set while this
-   * is null.
+   * The lead's id when it gave a gust this hour, else null. HARMONIE gives
+   * none at the first hour of its run.
    */
   gust_lead: string | null;
   by_model?: Record<string, ModelWind>;
@@ -651,57 +647,39 @@ export function spotWindLines(
   return { lines, outside };
 }
 
+/**
+ * One hour at a spot: the headline from the one model the stars come from
+ * (`from`: HARMONIE then ECMWF unless a caller names others), the range and
+ * agreement across every model. Null where neither of the two reaches the
+ * hour: the other models never stand in for them.
+ */
 export function hourWind(
   lines: SpotWindLines["lines"],
   time: number,
   perModel: boolean,
+  from: StarsFrom = DEFAULT_STARS_FROM,
 ): HourWind | null {
-  const samples = lines.flatMap(({ run, points, gap, resolutionKm }) => {
+  const samples = lines.flatMap(({ run, points, gap }) => {
     const at = windAt(points, time, gap);
     const runTime = Date.parse(run.run_time);
-    // The dock's weight for this model this far into its run (`modelWeight`).
-    const weight = modelWeight(run.id, leadHours(runTime, time), resolutionKm);
     return at
-      ? [{ id: run.id, weight, runTime, ...at, speed: Math.hypot(at.u, at.v) }]
+      ? [{ id: run.id, runTime, ...at, speed: Math.hypot(at.u, at.v) }]
       : [];
   });
-  if (!samples.length) return null;
+  const leadId = pickModel(from, (id) => samples.some((s) => s.id === id));
+  const lead = samples.find((s) => s.id === leadId);
+  if (!lead) return null;
   const speeds = samples.map((s) => s.speed * KNOTS).sort((a, b) => a - b);
-  const gusted = samples.filter((s) => s.gust !== null);
-  const gusts = gusted.map((s) => s.gust! * KNOTS).sort((a, b) => a - b);
-  // The headline is the lead model's own while it reaches the hour; the blend
-  // below is the headline only where it does not.
-  const lead = samples.find((s) => s.id === LEAD_MODEL) ?? null;
-  const weight = samples.reduce((sum, s) => sum + s.weight, 0);
-  const u = lead
-    ? lead.u
-    : samples.reduce((sum, s) => sum + s.u * s.weight, 0) / weight;
-  const v = lead
-    ? lead.v
-    : samples.reduce((sum, s) => sum + s.v * s.weight, 0) / weight;
-  const direction = bearing(u, v);
-  const gustLead = lead !== null && lead.gust !== null;
+  const gusts = samples
+    .filter((s) => s.gust !== null)
+    .map((s) => s.gust! * KNOTS)
+    .sort((a, b) => a - b);
+  const direction = bearing(lead.u, lead.v);
   const hour: HourWind = {
-    wind_kn: round(
-      lead
-        ? lead.speed * KNOTS
-        : weightedMedian(
-            samples.map((s) => s.speed * KNOTS),
-            samples.map((s) => s.weight),
-          ),
-    ),
+    wind_kn: round(lead.speed * KNOTS),
     min_kn: round(speeds[0]),
     max_kn: round(speeds[speeds.length - 1]),
-    gust_kn: gustLead
-      ? round(lead.gust! * KNOTS)
-      : gusted.length
-        ? round(
-            weightedMedian(
-              gusted.map((s) => s.gust! * KNOTS),
-              gusted.map((s) => s.weight),
-            ),
-          )
-        : null,
+    gust_kn: lead.gust === null ? null : round(lead.gust * KNOTS),
     gust_max_kn: gusts.length ? round(gusts[gusts.length - 1]) : null,
     direction_deg: direction,
     direction: compass(direction),
@@ -713,8 +691,8 @@ export function hourWind(
           )
         : null,
     models: samples.length,
-    lead: lead ? lead.id : null,
-    gust_lead: gustLead ? lead.id : null,
+    lead: lead.id,
+    gust_lead: lead.gust === null ? null : lead.id,
   };
   if (perModel)
     hour.by_model = Object.fromEntries(
@@ -1056,14 +1034,14 @@ export interface SpotForecast {
 }
 
 export const METHOD =
-  "Wind, gust and direction are HARMONIE's own forecast while it reaches the " +
-  'hour (about 60 hours ahead; `lead` is "harmonie"); past it, a weighted ' +
-  "median of the other models (`lead` is null), each weighted by how well it " +
-  "verified against Irish stations that far into its run, with a vector-mean " +
-  "direction (an ensemble's member mean counts as one model). Where HARMONIE " +
-  "gives no gust the gust is the models' weighted median (`gust_lead` null). " +
-  "The range (min_kn, max_kn, gust_max_kn) is across every model, and " +
-  "agreement comes from the standard deviation of every model's speed, tighter the further " +
+  "Wind, gust and direction are one model's own forecast, never a blend of " +
+  "several: HARMONIE's while it reaches the hour (about 60 hours ahead), and " +
+  "past it ECMWF's (`lead` names the model; `stars_from` and `then` choose " +
+  "others). Where that model gives no gust, `gust_kn` is null. An hour neither " +
+  "model reaches has no wind. The range (min_kn, max_kn, gust_max_kn) is " +
+  "across every model, as context, and agreement comes from the standard " +
+  "deviation of every model's speed (an ensemble's member mean counting once), " +
+  "tighter the further " +
   `ahead: high under ${AGREEMENT_SPREAD_KN[0][0]} kn today and under ` +
   `${AGREEMENT_SPREAD_KN[3][0]} kn from day 3, low from ` +
   `${AGREEMENT_SPREAD_KN[0][1]} kn today and ${AGREEMENT_SPREAD_KN[3][1]} kn ` +
@@ -1088,6 +1066,8 @@ export async function spotForecast(
   options: {
     perModel?: boolean;
     now: number;
+    /** The model the headline is, and the one past its run (default HARMONIE, then ECMWF). */
+    from?: StarsFrom;
   },
 ): Promise<SpotForecast> {
   // Only the one square that holds the spot is read, of each model.
@@ -1108,7 +1088,7 @@ export async function spotForecast(
       time: iso(time),
       local: localTime(time),
       daylight: daylight(spot, time),
-      wind: hourWind(lines, time, options.perModel ?? false),
+      wind: hourWind(lines, time, options.perModel ?? false, options.from),
     };
     if (waveSource) hour.waves = hourWaves(waveSource, time);
     if (weatherSource) hour.weather = hourWeather(weatherSource, time);
@@ -1181,13 +1161,16 @@ export interface FindOptions {
   county?: string;
   limit: number;
   now: number;
+  /** The model the headline is, and the one past its run (default HARMONIE, then ECMWF). */
+  from?: StarsFrom;
 }
 
 /**
- * Spots ranked by how many hours of the window the consensus sits inside the
- * asked wind range, grouped into sessions of consecutive hours. An hour the
- * models disagree about (agreement "low") does not count: a ranking that
- * recommends a spot on one model's outlier would be worse than none.
+ * Spots ranked by how many hours of the window the headline wind (one model's,
+ * as the stars have it) sits inside the asked wind range, grouped into
+ * sessions of consecutive hours. How far the other models agree is reported
+ * beside each session, as the site shows it beside the stars, and decides
+ * nothing (the ruling of 19 October 2026).
  */
 export async function findSessions(
   source: ForecastSource,
@@ -1219,12 +1202,11 @@ export async function findSessions(
       run = [];
     };
     for (const time of times) {
-      const hour = hourWind(lines, time, false);
+      const hour = hourWind(lines, time, false, options.from);
       const good =
         hour !== null &&
         hour.wind_kn >= options.minKnots &&
         hour.wind_kn <= options.maxKnots &&
-        hour.agreement !== "low" &&
         (!options.daylightOnly || daylight(spot, time));
       if (good) run.push({ time, hour: hour! });
       else close();

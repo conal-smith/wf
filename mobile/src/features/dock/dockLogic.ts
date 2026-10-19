@@ -7,6 +7,7 @@
  * (src/strip.ts, src/ratings.ts, force5/src/stars.ts): read here, never
  * restated.
  */
+import { handovers, modelName } from "../../../../force5/src/lead";
 import type { ForecastView, Prefs, RowKey } from "../../../../force5/src/prefs";
 import { rowOn } from "../../../../force5/src/prefs";
 import {
@@ -363,7 +364,50 @@ export function hourReading(
   }
   if (rating?.shore === "offshore" || rating?.shore === "cross-off")
     parts.push(SHORE_LABEL[rating.shore]);
+  // The one model the stars came from (the ruling of 19 October 2026).
+  if (rating && hour.model) parts.push(`stars from ${modelName(hour.model)}`);
   return parts.join(", ");
+}
+
+/** Where the model the stars come from changes along the strip, and the pen's words for it. */
+export interface DockHandover {
+  /** The first column the new model rates. */
+  at: number;
+  /** "ECMWF from Wed 22:00". */
+  text: string;
+}
+
+/**
+ * Each change of model along the open spot's hours (lead.ts `handovers`):
+ * where the chosen model's run ends and the one that takes over begins.
+ */
+export function dockHandovers(
+  hours: readonly (PlaceHour | null | undefined)[] | null,
+  strip: readonly Pick<StripColumn, "time">[],
+): DockHandover[] {
+  if (!hours) return [];
+  return handovers(hours.map((hour) => hour?.model ?? null)).flatMap(({ at, to }) => {
+    const column = strip[at];
+    return column
+      ? [{ at, text: `${modelName(to)} from ${dayShort(column.time)} ${clock(column.time)}` }]
+      : [];
+  });
+}
+
+/**
+ * Where a handover's words go in a day's heading: beside its stem, clear of
+ * the day's name, and on whichever side of the stem there is room.
+ */
+export function handoverLabel(
+  stem: number,
+  dayWidth: number,
+  nameEnd: number,
+  textWidth: number,
+): { x: number; anchor: "start" | "end" } {
+  const right = Math.max(stem + 4, nameEnd);
+  return right + textWidth <= dayWidth || stem - 4 - textWidth < nameEnd
+    ? { x: right, anchor: "start" }
+    : { x: stem - 4, anchor: "end" };
 }
 
 /** "14 g22 · WSW": the hour's wind as the readout prints it. */

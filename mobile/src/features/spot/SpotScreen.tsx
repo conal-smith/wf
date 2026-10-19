@@ -21,12 +21,15 @@ import {
   type ViewToken,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { spotOverride, starsFromAt, type StarsFrom } from "../../../../force5/src/lead";
 import { SHORE_LABEL } from "../../../../force5/src/stars";
 import { compass } from "../../../../force5/src/weather";
 import {
   HOUR,
   bandKnots,
   clock,
+  dayLeadText,
+  dayLeads,
   dayNames,
   dublinDate,
   foldText,
@@ -51,6 +54,7 @@ import { useMarine, useSpotTide } from "../dock/useDockData";
 import { tideCredit } from "../../../../force5/src/tides";
 import { RiderLine } from "../settings/RiderFields";
 import { riderWords } from "../settings/settingsLogic";
+import { SpotStarsLine } from "../settings/StarsFrom";
 import { DayTide } from "./DayTide";
 import {
   dayItems,
@@ -188,6 +192,8 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
   }, [landing, sections, goTo]);
 
   /* ---- why these stars ---- */
+  const starsFromKey = JSON.stringify(starsFromAt(forecast.rider.starsFrom, id));
+  const starsFrom = useMemo(() => JSON.parse(starsFromKey) as StarsFrom, [starsFromKey]);
   const [tip, setTip] = useState<PageRow | null>(null);
   const explanation = useMemo<HourExplanation | null>(
     () =>
@@ -203,9 +209,11 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
             riderText: riderWords(forecast.rider),
             sweet: { low: band.sweetLow, high: band.sweetHigh },
             facingKnown: facing !== null,
+            model: tip.place.model,
+            spotOwn: !!tip.place.model && tip.place.model === spotOverride(forecast.rider.starsFrom, id),
           }
         : null,
-    [tip, now, units, forecast.rider, band, facing],
+    [tip, now, units, forecast.rider, band, facing, id],
   );
 
   const share = useCallback(() => {
@@ -256,6 +264,7 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
         </T>
       </View>
       <RiderLine />
+      <SpotStarsLine spotId={id} />
       {days.length ? (
         <WeekStrip
           days={days}
@@ -398,6 +407,7 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
               entry={section.entry}
               now={now}
               unit={units}
+              from={starsFrom}
             />
           )}
           stickySectionHeadersEnabled
@@ -433,12 +443,17 @@ const DayHeader = memo(function DayHeader({
   entry,
   now,
   unit,
+  from,
 }: {
   entry: PageDay;
   now: number;
   unit: string;
+  /** The models the rider's stars come from here. */
+  from: StarsFrom;
 }) {
   const names = dayNames(entry.day.date, now);
+  // A day rated by another model than the rider's choice, or by two, says so.
+  const leads = dayLeads(entry.day.rows, from);
   return (
     <View style={styles.dayHead}>
       <View style={styles.dayLine}>
@@ -448,6 +463,11 @@ const DayHeader = memo(function DayHeader({
         {names.relative === "Today" || names.relative === "Tomorrow" ? (
           <T variant="eyebrow" caps color="muted">
             {names.relative}
+          </T>
+        ) : null}
+        {leads.length ? (
+          <T variant="pen" color="penInk">
+            {dayLeadText(leads)}
           </T>
         ) : null}
       </View>

@@ -1,10 +1,11 @@
 /**
  * One hour's stars worked through line by line, for "How the stars work": the
  * rideable wind, what it is worth on its own, and each thing the spot and the
- * forecast take off, down to the solid stars. It restates rateHour's
+ * wind take off, down to the solid stars. It restates rateHour's
  * arithmetic (force5/src/stars.ts) so every step can be shown with its
  * figures; ledger.test.ts holds the two to the same answer for every level,
- * shore, gust and agreement, so they cannot drift apart unnoticed.
+ * shore, gust and agreement, so they cannot drift apart unnoticed. The
+ * models' agreement is a line of its own, and takes nothing off.
  */
 import {
   SHORE_LABEL,
@@ -115,14 +116,17 @@ export function ledger(
       figure: "none",
     });
 
-  let agreement = 0;
-  if (hour.agreement === "low") {
-    agreement = 1;
-    lines.push({ what: "The forecast models disagree", figure: "−1" });
-  } else if (hour.agreement === "moderate") {
-    agreement = 0.25;
-    lines.push({ what: "The models differ a little", figure: "−0.25" });
-  }
+  // Context, not a cost: the stars are the one model's own.
+  if (hour.agreement === "low")
+    lines.push({
+      what: "The models disagree: shown, never counted",
+      figure: "none",
+    });
+  else if (hour.agreement === "moderate")
+    lines.push({
+      what: "The models differ a little: shown, never counted",
+      figure: "none",
+    });
 
   const quiver = rating.wing.fit === "fits" ? 0 : 1;
   if (quiver)
@@ -132,7 +136,7 @@ export function ledger(
     });
 
   // Taken off in rateHour's order, so the two round alike.
-  const score = base - direction - gusts - agreement - quiver;
+  const score = base - direction - gusts - quiver;
   const stars = Math.min(potential, Math.max(0, Math.round(score)));
   lines.push({
     what: "Rating",

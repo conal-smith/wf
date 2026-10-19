@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as install from "../../../../ai/web/install";
 import { windModels, type ModelAvailability } from "../../../../force5/src/manifests";
+import { withRiderStarsFrom } from "../../../../force5/src/prefs";
 import { DEFAULT_RIDER, rateOn, standardRating } from "../../../../force5/src/stars";
 import {
   changeRider,
@@ -13,6 +14,13 @@ import {
   mcpEndpoint,
   modelRows,
   parseWeight,
+  pickStarsModel,
+  spotOverrides,
+  spotStarsRows,
+  starsFromValue,
+  starsModelRows,
+  thenRows,
+  thenTitle,
   parseWings,
   riderSummary,
   riderWords,
@@ -100,6 +108,54 @@ describe("the models", () => {
     expect(rows[0]).toMatchObject({ on: true, answered: true, status: "Run Wed 07:00" });
     expect(rows[1]).toMatchObject({ on: false, answered: false, status: "Reading…" });
     expect(modelRows(windModels(), [], [], false)[0].status).toBe("");
+  });
+});
+
+describe("stars from", () => {
+  it("says HARMONIE, then ECMWF until the rider chooses", () => {
+    expect(starsFromValue(undefined)).toBe("HARMONIE, then ECMWF");
+    expect(starsFromValue({ model: "icon-eu", then: "gfs" })).toBe("ICON-EU, then GFS");
+    expect(thenTitle(undefined)).toBe("When HARMONIE ends");
+  });
+
+  it("lists every model to rate from, HARMONIE recommended, and the others to take over", () => {
+    const rows = starsModelRows(undefined);
+    expect(rows.map((r) => r.id)).toEqual(["harmonie", "icon-eu", "ecmwf", "gfs"]);
+    expect(rows.filter((r) => r.on).map((r) => r.id)).toEqual(["harmonie"]);
+    expect(rows[0].detail).toMatch(/recommended$/);
+    expect(rows[1].detail).not.toMatch(/recommended/);
+    const then = thenRows({ model: "icon-eu", then: "gfs" });
+    expect(then.map((r) => r.id)).toEqual(["harmonie", "ecmwf", "gfs"]);
+    expect(then.filter((r) => r.on).map((r) => r.id)).toEqual(["gfs"]);
+  });
+
+  it("keeps the model and the one that takes over two", () => {
+    const from = { model: "harmonie", then: "ecmwf" };
+    expect(pickStarsModel(from, "gfs")).toEqual({ model: "gfs" });
+    // ECMWF rating everywhere hands the takeover to HARMONIE, not to itself.
+    expect(pickStarsModel(from, "ecmwf")).toEqual({ model: "ecmwf", then: "harmonie" });
+    expect(pickStarsModel(from, "harmonie")).toEqual({ model: "harmonie" });
+  });
+
+  it("writes the rider through the site's prefs", () => {
+    const rider = withRiderStarsFrom(DEFAULT_RIDER, {
+      everywhere: pickStarsModel({ model: "harmonie", then: "ecmwf" }, "ecmwf"),
+    });
+    expect(rider.starsFrom).toEqual({ model: "ecmwf", then: "harmonie" });
+    // Back to the default, the rider is as they always were.
+    const back = withRiderStarsFrom(rider, { everywhere: { model: "harmonie", then: "ecmwf" } });
+    expect(back).toEqual(DEFAULT_RIDER);
+  });
+
+  it("offers a spot the same as everywhere, or a model of its own", () => {
+    const choice = { model: "harmonie", then: "ecmwf", spots: { portrane: "gfs" } };
+    const rows = spotStarsRows(choice, "portrane");
+    expect(rows.map((r) => r.value)).toEqual(["same", "icon-eu", "ecmwf", "gfs"]);
+    expect(rows[0].label).toBe("Same as everywhere (HARMONIE)");
+    expect(rows.find((r) => r.on)?.value).toBe("gfs");
+    expect(spotStarsRows(choice, "brandon").find((r) => r.on)?.value).toBe("same");
+    expect(spotOverrides(choice)).toEqual([{ id: "portrane", model: "gfs", name: "GFS" }]);
+    expect(spotOverrides(undefined)).toEqual([]);
   });
 });
 

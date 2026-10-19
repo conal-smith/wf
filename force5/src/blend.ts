@@ -12,7 +12,6 @@ export {
   agreementFrom,
   blendWeight,
   FINE_GRID_KM,
-  LEAD_MODEL,
   leadHours,
   modelWeight,
   REGIONAL_GRID_KM,
@@ -269,8 +268,9 @@ export interface HourStats {
   max: number | null;
   q25: number | null;
   /**
-   * The headline wind: the lead model's own while it reaches the hour, past it
-   * the median (weighted, with `weightOf`) of every line. `lead` says which.
+   * The headline wind: with a headline, the one model's own the stars come
+   * from (`lead` says which); without, the median (weighted, with
+   * `weightOf`) of every line.
    */
   median: number | null;
   q75: number | null;
@@ -280,7 +280,7 @@ export interface HourStats {
   spread: number | null;
   agreement: Agreement | null;
   gust: GustStats;
-  /** The model `median` is, or null where it is the lines' median. */
+  /** The model `median` is, or null where it is none or the lines' median. */
   lead: string | null;
 }
 
@@ -294,36 +294,32 @@ const EMPTY_GUST: GustStats = { n: 0, min: null, max: null, median: null };
  * spread against how far ahead the hour is (`agreementFrom`): `leadOf` gives
  * that in hours for each axis index, and without it every hour counts as day 0.
  *
- * With `leadModel` (`LEAD_MODEL`, HARMONIE), the headline — `median` and
- * `gust.median` — is that model's own deterministic line wherever it has the
- * hour, and the median of the lines only where it does not: the dock's chart,
- * its stars and the forecast server then give the same number for the hour.
+ * With `headline`, the deterministic lines of the model the stars come from
+ * and of the one that takes over where it ends, in that order
+ * (force5/src/lead.ts), the headline — `median` and `gust.median` — is the
+ * first of them that has the hour, its own wind and its own gust (none where
+ * it gives none), and nothing where neither has it: the dock's chart, its
+ * stars and the forecast server then give the same number for the hour. They
+ * need not be among `inputs`, whose spread stays every line's.
  */
 export function blendStats(
   inputs: readonly BlendInput[],
   axis: readonly string[],
   weightOf?: (model: string, at: number) => number,
   leadOf?: (at: number) => number,
-  leadModel?: string,
+  headline?: readonly BlendInput[],
 ): HourStats[] {
   const finite = (v: number | null): v is number =>
     typeof v === "number" && Number.isFinite(v);
-  const leadLine =
-    leadModel === undefined
-      ? undefined
-      : inputs.find(
-          (input) =>
-            input.model === leadModel && input.memberIndex === undefined,
-        );
   return axis.map((iso, i) => {
     const speedLines = inputs.filter((input) => finite(input.speed[i]));
     const gustLines = inputs.filter((input) => finite(input.gust[i]));
-    const leadSpeed =
-      leadLine && finite(leadLine.speed[i]) ? leadLine.speed[i]! : null;
+    const leadLine = headline?.find((line) => finite(line.speed[i]));
+    const leadSpeed = leadLine ? leadLine.speed[i]! : null;
     const leadGust =
-      leadSpeed !== null && finite(leadLine!.gust[i])
-        ? leadLine!.gust[i]!
-        : null;
+      leadLine && finite(leadLine.gust[i]) ? leadLine.gust[i]! : null;
+    // With a headline, the one model's figures or none: never the median.
+    const headed = headline !== undefined;
     const speeds = speedLines.map((input) => input.speed[i]!).sort((a, b) => a - b);
     const gusts = gustLines.map((input) => input.gust[i]!).sort((a, b) => a - b);
     const middle = (
@@ -342,8 +338,9 @@ export function blendStats(
           n: gusts.length,
           min: gusts[0],
           max: gusts[gusts.length - 1],
-          median:
-            leadGust ?? middle(gustLines, (input) => input.gust[i]!, gusts),
+          median: headed
+            ? leadGust
+            : middle(gustLines, (input) => input.gust[i]!, gusts),
         }
       : EMPTY_GUST;
     if (!speeds.length)
@@ -376,8 +373,9 @@ export function blendStats(
       min,
       max,
       q25: quantile(speeds, 0.25),
-      median:
-        leadSpeed ?? middle(speedLines, (input) => input.speed[i]!, speeds),
+      median: headed
+        ? leadSpeed
+        : middle(speedLines, (input) => input.speed[i]!, speeds),
       q75: quantile(speeds, 0.75),
       mean,
       spread,
@@ -386,7 +384,7 @@ export function blendStats(
         leadOf?.(i) ?? 0,
       ),
       gust,
-      lead: leadSpeed === null ? null : leadModel!,
+      lead: leadLine?.model ?? null,
     };
   });
 }

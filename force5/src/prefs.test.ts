@@ -10,6 +10,7 @@ import {
   setRow,
   saveRider,
   withCustomStars,
+  withRiderStarsFrom,
   withStarsOn,
   type Prefs,
   type PrefsStorage,
@@ -360,5 +361,56 @@ describe("display preferences", () => {
       }),
     );
     expect(v2.rider).toEqual({ ...DEFAULT_RIDER, custom: own });
+  });
+});
+
+describe("the model the stars come from", () => {
+  it("is the default for a rider who never chose, and stays out of what is stored", () => {
+    expect(loadPrefs(fakeStorage()).rider.starsFrom).toBeUndefined();
+    expect(
+      parseRider({
+        ...DEFAULT_RIDER,
+        starsFrom: { model: "harmonie", then: "ecmwf" },
+      }),
+    ).toEqual(DEFAULT_RIDER);
+  });
+
+  it("is kept with the rider, everywhere and at a spot of theirs, and survives a reload", () => {
+    const storage = fakeStorage();
+    const gfs = withRiderStarsFrom(DEFAULT_RIDER, {
+      everywhere: { model: "gfs" },
+    });
+    const portrane = withRiderStarsFrom(gfs, {
+      spot: "portrane",
+      model: "harmonie",
+    });
+    expect(portrane.starsFrom).toEqual({
+      model: "gfs",
+      then: "ecmwf",
+      spots: { portrane: "harmonie" },
+    });
+    savePrefs({ ...defaultPrefs(), rider: portrane }, storage);
+    expect(loadPrefs(storage).rider).toEqual(portrane);
+    // Back to the same as everywhere, then back to the default.
+    const back = withRiderStarsFrom(portrane, {
+      spot: "portrane",
+      model: null,
+    });
+    expect(back.starsFrom).toEqual({ model: "gfs", then: "ecmwf" });
+    expect(
+      withRiderStarsFrom(back, { everywhere: { model: "harmonie" } }),
+    ).toEqual(DEFAULT_RIDER);
+  });
+
+  it("drops a stored model that is no longer offered", () => {
+    expect(
+      parseRider({
+        ...DEFAULT_RIDER,
+        starsFrom: { model: "arpege", then: "gfs" },
+      }).starsFrom,
+    ).toEqual({
+      model: "harmonie",
+      then: "gfs",
+    });
   });
 });

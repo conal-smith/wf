@@ -609,6 +609,9 @@ BLEND_AGREEMENT = set("hml-")
 BLEND_SERIES = {"wind": (0, 2000), "gust": (0, 2000), "from": (0, 360)}
 
 
+BASE36 = "0123456789abcdefghijklmnopqrstuvwxyz"
+
+
 def validate_blend_bundle(files, model, manifest, run, now):
     """Every riding place's wind consensus (src/spotBlend.ts): a run of spot squares.
 
@@ -655,6 +658,18 @@ def validate_blend_bundle(files, model, manifest, run, now):
         if not isinstance(agreement, str) or len(agreement) != len(times) \
                 or not set(agreement) <= BLEND_AGREEMENT:
             raise ValueError(f"The blend's agreement for {spot} is malformed")
+        # Which model each time is, by its place in `sources` (base 36), or -
+        # for none: absent from a blend built before 19 October 2026.
+        lead = series.get("lead")
+        if lead is not None and (not isinstance(lead, str) or len(lead) != len(times)
+                                 or not all(c == "-" or (c in BASE36 and int(c, 36) < len(sources))
+                                            for c in lead)):
+            raise ValueError(f"The blend's lead for {spot} is malformed")
+    # The models every place's hours are, in order (src/spotBlend.ts `lead`).
+    rule = manifest.get("lead")
+    if rule is not None and (not isinstance(rule, dict) or not isinstance(rule.get("model"), str)
+                             or not isinstance(rule.get("then"), str)):
+        raise ValueError("The blend's lead is malformed")
 
 
 def validate_observation_bundle(public, model, manifest, run, now):

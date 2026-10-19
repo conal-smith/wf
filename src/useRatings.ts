@@ -3,22 +3,47 @@ import type { ModelAvailability } from "../force5/src/manifests";
 import { spotSquare } from "../force5/src/squares";
 import type { Rider } from "../force5/src/stars";
 import type { Manifest } from "../force5/src/weather";
+import { sameStarsFrom, starsFromAt } from "../force5/src/lead";
 import { placeHours, type PlaceHour, type RatedPlace } from "./ratings";
 import { spotBlendHours, type BlendRun } from "./spotBlend";
 
 /** Places worked out per slice of main-thread time, and how long a slice may run. */
 const SLICE_MS = 12;
 
+/** The published blend as the ratings read it. */
+export type PublishedHours = Pick<
+  BlendRun,
+  "times" | "spotBlend" | "sources" | "lead"
+>;
+
 /** What one place's row is worked out from. */
 export interface RatingSource {
   /** The published blend with the places of its squares read so far, or null. */
-  published: Pick<BlendRun, "times" | "spotBlend"> | null;
-  /** Without a published blend: the wind manifests, their squares merged in. */
+  published: PublishedHours | null;
+  /**
+   * The wind manifests, their squares merged in: every place without a
+   * published blend, and with one, any place whose stars come from other
+   * models than the blend's (a spot the rider rates from a model of its own).
+   */
   manifests: readonly Manifest[];
   blendModels: readonly string[];
-  /** The squares whose data is in hand; null for every square. */
+  /** The published blend's squares in hand; null for every square. */
   known: ReadonlySet<string> | null;
+  /** The models' squares in hand; null for every square. */
+  modelsKnown?: ReadonlySet<string> | null;
 }
+
+/**
+ * Whether a place's hours come from the published blend: there is one, and
+ * this rider's stars here come from the models it was built with.
+ */
+export const fromPublished = (
+  published: Pick<BlendRun, "lead"> | null,
+  place: Pick<RatedPlace, "id">,
+  rider: Rider,
+): boolean =>
+  !!published &&
+  sameStarsFrom(published.lead, starsFromAt(rider.starsFrom, place.id));
 
 /**
  * One place's row, or null where there is none to give: a place whose square
@@ -29,12 +54,19 @@ export function ratePlace(
   place: RatedPlace,
   axis: readonly string[],
   rider: Rider,
-  { published, manifests, blendModels, known }: RatingSource,
+  { published, manifests, blendModels, known, modelsKnown }: RatingSource,
 ): PlaceHour[] | null {
-  if (known && !known.has(spotSquare(place.lat, place.lon))) return null;
-  return published
-    ? spotBlendHours(published, place, axis, rider)
-    : placeHours(manifests, blendModels, place, axis, rider);
+  const square = spotSquare(place.lat, place.lon);
+  if (fromPublished(published, place, rider)) {
+    if (known && !known.has(square)) return null;
+    return spotBlendHours(published!, place, axis, rider);
+  }
+  // Worked out from the models: with a published blend in use, only the
+  // squares read for this purpose count, and none means none yet.
+  const have = published ? (modelsKnown ?? new Set<string>()) : known;
+  if (have && !have.has(square)) return null;
+  if (!manifests.length) return null;
+  return placeHours(manifests, blendModels, place, axis, rider);
 }
 
 /**
@@ -49,11 +81,14 @@ export function ratePlace(
  *
  * With `published`, the blend worked out when the forecast was published
  * (src/spotBlend.ts), each place is only rated, and the manifests are not read:
- * the caller passes it only while the reader's blend is the default one.
+ * the caller passes it only while the reader's blend and stars are the
+ * default. A spot the rider rates from a model of its own is the exception,
+ * worked out from `models` all the same (`ratePlace`).
  *
  * `loaded` names the spot squares whose data is in hand, from the published
- * blend or the models alike; null means every square. A place in any other
- * square gets no row, so its light stays pending: the map reads only the
+ * blend or, without one, the models; null means every square. `modelsLoaded`
+ * names the models' squares in hand beside a published blend. A place in any
+ * other square gets no row, so its light stays pending: the map reads only the
  * squares in view, and a place it has not read is unknown, not calm.
  */
 export function useRatings(
@@ -63,8 +98,9 @@ export function useRatings(
   axis: readonly string[],
   rider: Rider,
   first: readonly string[],
-  published: Pick<BlendRun, "times" | "spotBlend"> | null = null,
+  published: PublishedHours | null = null,
   loaded: readonly string[] | null = null,
+  modelsLoaded: readonly string[] | null = null,
 ): { hours: ReadonlyMap<string, PlaceHour[]>; version: number } {
   const manifests = useMemo<Manifest[]>(
     () =>
@@ -82,17 +118,44 @@ export function useRatings(
   const riderKey = JSON.stringify(rider);
   const blendKey = [...blendModels].sort().join(",");
   // What the hours are worked out from; a new one starts the table again.
+  // Beside a published blend the models count only for a spot the rider
+  // rates from a model of its own.
+  const own = !!rider.starsFrom?.spots;
   const source = published ?? manifests;
+  const second = published && own ? manifests : null;
   const loadedKey = loaded === null ? null : [...loaded].sort().join(",");
   const known = useMemo(
     () => (loadedKey === null ? null : new Set(loadedKey.split(","))),
     [loadedKey],
   );
+  const modelsKey =
+    modelsLoaded === null ? null : [...modelsLoaded].sort().join(",");
+  const modelsKnown = useMemo(
+    () => (modelsKey === null ? null : new Set(modelsKey.split(","))),
+    [modelsKey],
+  );
   const hoursFor = (place: RatedPlace) =>
-    ratePlace(place, axis, rider, { published, manifests, blendModels, known });
+    ratePlace(place, axis, rider, {
+      published,
+      manifests,
+      blendModels,
+      known,
+      modelsKnown,
+    });
 
   // What the table was last worked out for, apart from its source.
   const basis = useRef({ blendKey, places, axisKey, riderKey });
+
+  /** Whether the square a place's row was read from is still read. */
+  const stillKnown = (place: RatedPlace) => {
+    const square = spotSquare(place.lat, place.lon);
+    const have = fromPublished(published, place, rider)
+      ? known
+      : published
+        ? (modelsKnown ?? new Set<string>())
+        : known;
+    return !have || have.has(square);
+  };
 
   useEffect(() => {
     const done = new Map<string, PlaceHour[]>();
@@ -115,8 +178,7 @@ export function useRatings(
     if (same)
       for (const place of places) {
         const row = before.get(place.id);
-        if (row && (!known || known.has(spotSquare(place.lat, place.lon))))
-          done.set(place.id, row);
+        if (row && stillKnown(place)) done.set(place.id, row);
       }
     setVersion((v) => v + 1);
     const wanted = new Set(first);
@@ -148,7 +210,7 @@ export function useRatings(
       clearTimeout(handle);
     };
     // The keys stand in for the arrays, which are rebuilt every render.
-  }, [source, blendKey, places, axisKey, riderKey, loadedKey]);
+  }, [source, second, blendKey, places, axisKey, riderKey, loadedKey, modelsKey]);
 
   // A place asked for first after the run began is done at once.
   useEffect(() => {
@@ -164,7 +226,7 @@ export function useRatings(
       added = true;
     }
     if (added) setVersion((v) => v + 1);
-  }, [firstKey, source, axisKey, riderKey, blendKey, loadedKey]);
+  }, [firstKey, source, second, axisKey, riderKey, blendKey, loadedKey, modelsKey]);
 
   return { hours: table.current, version };
 }

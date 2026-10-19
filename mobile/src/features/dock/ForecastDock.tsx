@@ -6,7 +6,8 @@
  * while the finger moves and at once when it stops, so the chart is not
  * redrawn every frame. The cursor and its marks move on the UI thread.
  *
- * "peek" is the spot's name, the hour's stars and wind, and the strip; "open"
+ * "peek" is the spot's name, the hour's stars, wind and the model the stars
+ * came from, and the strip; "open"
  * is the week: the stars, the wind and its gusts in the wind's own colours,
  * where it goes, the wing, the tide, and under the fold the waves, the sky,
  * the air, the rain and the sea; or the models' blend in place of the table.
@@ -33,6 +34,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import Svg from "react-native-svg";
+import { modelName, spotOverride } from "../../../../force5/src/lead";
 import { modelEntry } from "../../../../force5/src/manifests";
 import { dayNights } from "../../../../force5/src/sun";
 import { tideAt } from "../../../../force5/src/tides";
@@ -64,6 +66,7 @@ import { useForecast, useSpotHours } from "../../data/forecast";
 import { usePrefs } from "../../data/prefs";
 import { colors, fonts, hitTarget, radius, space, withAlpha } from "../../theme/tokens";
 import { riderWords } from "../settings/settingsLogic";
+import { SpotStarsChip } from "../settings/StarsFrom";
 import { CustomStarsChip } from "../stars/StarRating";
 import { holdUpdates } from "../updates/hold";
 import { blendDrawing } from "./blendLogic";
@@ -74,6 +77,7 @@ import {
   columnWidths,
   commitDue,
   dayTide,
+  dockHandovers,
   dockRowOn,
   hourReading,
   moreCells,
@@ -316,6 +320,9 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
     [scrub, scrollToColumn, commit],
   );
 
+  // Where the model the stars come from changes: the pen marks it on the strip.
+  const changes = useMemo(() => dockHandovers(hours, strip), [hours, strip]);
+
   /* ---- why these stars ---- */
   const [tip, setTip] = useState<number | null>(null);
   const band = useMemo(() => bandKnots(forecast.rider), [forecast.rider]);
@@ -334,8 +341,10 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
       riderText: riderWords(forecast.rider),
       sweet: { low: band.sweetLow, high: band.sweetHigh },
       facingKnown: (spot?.facing ?? null) !== null,
+      model: hour.model,
+      spotOwn: !!hour.model && hour.model === spotOverride(forecast.rider.starsFrom, spot?.id),
     };
-  }, [tip, hours, strip, units, forecast.rider, band, spot?.facing]);
+  }, [tip, hours, strip, units, forecast.rider, band, spot?.facing, spot?.id]);
   const onStars = useCallback((column: number) => {
     tick();
     setTip(column);
@@ -363,9 +372,10 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
         scale={scale}
         onHour={choose}
         onStars={onStars}
+        handovers={changes}
       />
     ),
-    [strip, g, hours, daylight, layout, units, spot, nowHour, tides, tideNote, cells, drawing, view, blend.lines.length, scale, choose, onStars],
+    [strip, g, hours, daylight, layout, units, spot, nowHour, tides, tideNote, cells, drawing, view, blend.lines.length, scale, choose, onStars, changes],
   );
   const getItemLayout = useCallback(
     (_: ArrayLike<StripDay> | null | undefined, index: number) => ({
@@ -430,6 +440,7 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
             {spot ? spot.name : "All of Ireland"}
           </T>
           {spot ? <CustomStarsChip /> : null}
+          {spot ? <SpotStarsChip spotId={spot.id} /> : null}
           {spot && open ? (
             <Pressable
               accessibilityRole="button"
@@ -578,6 +589,11 @@ const Readout = memo(function Readout({
             <T variant="figureSm" tabular>
               {windFigures(hour, units)}
             </T>
+            {hour?.rating && hour.model ? (
+              <T variant="caption" color="muted" numberOfLines={1} style={styles.readoutModel}>
+                {modelName(hour.model)}
+              </T>
+            ) : null}
           </>
         ) : (
           <View style={[styles.bone, { width: space["4xl"] * 2 }]} />
@@ -727,6 +743,7 @@ const styles = StyleSheet.create({
   chev: { minWidth: hitTarget, minHeight: hitTarget, alignItems: "center", justifyContent: "center" },
   pressed: { opacity: 0.55 },
   pressedRow: { backgroundColor: colors.sunken },
+  readoutModel: { flexShrink: 1 },
   readout: {
     flexDirection: "row",
     alignItems: "center",

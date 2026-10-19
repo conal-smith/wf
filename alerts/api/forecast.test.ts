@@ -22,10 +22,13 @@ import {
   blendHours,
   daylight,
   parseBlendPointer,
+  modelHours,
   PLACES,
   ratingCache,
   readBlend,
+  ridesApart,
   staleBlend,
+  type ModelWind,
 } from "./forecast";
 import { blendFiles, blendSource } from "./testing";
 
@@ -94,13 +97,19 @@ describe("the blend, as the service reads it", () => {
   it("rates every hour as spotBlendHours does, for every rider", async () => {
     const blend = (await readBlend(blendSource(options)))!;
     const { times } = blendFiles(options);
-    const asMap = { times, spotBlend: checkBlendSpots({ times }, blend.spots) };
+    const asMap = {
+      times,
+      sources: blendFiles(options).pointer.sources,
+      spotBlend: checkBlendSpots({ times }, blend.spots),
+    };
     for (const id of ["brandon", "dollymount"]) {
       const place = PLACES.get(id)!;
       const rated: RatedPlace = { id, lat: place.lat, lon: place.lon, facing: place.facing };
       for (const rider of riders) {
         const ours = blendHours(blend, place, rider)!;
-        const map = spotBlendHours(asMap, rated, times, rider)!;
+        const map = spotBlendHours(asMap, rated, times, rider)!.map(
+          ({ model: _model, ...hour }) => hour,
+        );
         expect(ours).toEqual(map);
       }
     }
@@ -130,6 +139,56 @@ describe("the blend, as the service reads it", () => {
     expect(ratings({ ...own })("brandon")).toBe(ratings(own)("brandon"));
     expect(ratings(DEFAULT_RIDER)("keel")).toBeNull();
     expect(ratings(DEFAULT_RIDER)("nowhere")).toBeNull();
+  });
+
+  it("rates a rider whose stars come from other models from those models, and only them", async () => {
+    const blend = (await readBlend(blendSource(options)))!;
+    const gfs: Rider = { ...DEFAULT_RIDER, starsFrom: { model: "gfs", then: "ecmwf" } };
+    const ownSpot: Rider = {
+      ...DEFAULT_RIDER,
+      starsFrom: { model: "harmonie", then: "ecmwf", spots: { dollymount: "gfs" } },
+    };
+    expect(ridesApart(blend.pointer, DEFAULT_RIDER)).toBe(false);
+    expect(ridesApart(blend.pointer, gfs)).toBe(true);
+    expect(ridesApart(blend.pointer, ownSpot)).toBe(true);
+    // A blend from before the ruling serves nobody's stars.
+    const old = (await readBlend(blendSource({ ...options, ruleBefore: true })))!;
+    expect(ridesApart(old.pointer, DEFAULT_RIDER)).toBe(true);
+
+    // Without the models, a place rated apart is unknown rather than the blend's.
+    expect(ratingCache(blend)(gfs)("brandon")).toBeNull();
+    expect(ratingCache(blend)(ownSpot)("dollymount")).toBeNull();
+    expect(ratingCache(blend)(ownSpot)("brandon")).toEqual(
+      blendHours(blend, PLACES.get("brandon")!, ownSpot),
+    );
+
+    // With them: GFS's own wind, never HARMONIE's.
+    const at = Date.parse(options.start);
+    const run = (id: string) => ({
+      id,
+      name: id,
+      provider: "test",
+      run_time: options.start,
+      until: blend.pointer.times.at(-1)!,
+      stale: false,
+      attribution: "",
+      license_url: "",
+    });
+    const series = (u: number) =>
+      blend.pointer.times.map((validTime) => ({ validTime, u, v: 0, gust: u + 2 }));
+    const wind = {
+      loaded: [
+        { run: run("harmonie"), manifest: { spotForecasts: { brandon: series(-9), dollymount: series(-9) } } },
+        { run: run("gfs"), manifest: { spotForecasts: { brandon: series(-4), dollymount: series(-4) } } },
+      ],
+      unavailable: [],
+    } as unknown as ModelWind;
+    const hours = ratingCache(blend, wind)(gfs)("brandon")!;
+    const noon = blend.pointer.times.findIndex((t) => Date.parse(t) === at + 12 * 3_600_000);
+    expect(hours[noon].windKn).toBeCloseTo(4 * 1.94384449, 1);
+    expect(hours[noon].from).toBe(90);
+    expect(hours).toEqual(modelHours(wind, PLACES.get("brandon")!, blend.pointer.times, gfs));
+    expect(ratingCache(blend, wind)(ownSpot)("dollymount")![noon].windKn).toBeCloseTo(4 * 1.94384449, 1);
   });
 
   it("has no blend when none is published", async () => {

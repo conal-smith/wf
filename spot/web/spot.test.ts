@@ -6,6 +6,8 @@ import {
   clock,
   compass,
   darkRuns,
+  dayLeadText,
+  dayLeads,
   dayNames,
   daySun,
   foldText,
@@ -14,8 +16,11 @@ import {
   goodWindArcs,
   groupDays,
   gustJumps,
+  handoverWords,
+  leadChanges,
   meanBearing,
   nextMidnight,
+  placeChanges,
   rowHours,
   shadeBands,
   shoreSummary,
@@ -39,7 +44,7 @@ const wind = (knots: number, deg = 270, gust: number | null = null) =>
     direction: compass(deg),
     agreement: "high",
     models: 5,
-    lead: null,
+    lead: "harmonie",
     gust_lead: null,
   }) satisfies HourWind;
 
@@ -330,5 +335,87 @@ describe("gusts", () => {
     expect(gustJumps(20, 29)).toBe(false);
     expect(gustJumps(20, 30)).toBe(true);
     expect(gustJumps(12, null)).toBe(false);
+  });
+});
+
+describe("the one model the stars come from", () => {
+  const now = Date.parse("2026-10-21T06:00:00Z");
+  const from = { model: "harmonie", then: "ecmwf" };
+  // A Wednesday: HARMONIE's run ends at 21:00 UTC (22:00 Irish), ECMWF after.
+  const led = (
+    iso: string,
+    lead: string | null,
+    daylight = true,
+  ): ForecastHour => {
+    const h = hour(iso, lead === null ? null : 15, daylight);
+    return lead === null || !h.wind ? h : { ...h, wind: { ...h.wind, lead } };
+  };
+  const hours = [
+    led("2026-10-21T16:00:00Z", "harmonie"),
+    led("2026-10-21T17:00:00Z", "harmonie"),
+    led("2026-10-21T20:00:00Z", "harmonie", false),
+    led("2026-10-21T21:00:00Z", "ecmwf", false),
+    led("2026-10-21T22:00:00Z", null, false),
+    led("2026-10-21T23:00:00Z", "ecmwf", false),
+  ];
+  const rows = spotRows(hours, now, 270, DEFAULT_RIDER);
+
+  it("finds where the model rating the rows changes, a gap neither starting nor ending a run", () => {
+    expect(leadChanges(rows)).toEqual([
+      {
+        time: Date.parse("2026-10-21T21:00:00Z"),
+        from: "harmonie",
+        to: "ecmwf",
+      },
+    ]);
+    expect(leadChanges(rows.slice(0, 2))).toEqual([]);
+  });
+
+  it("says who takes over, when, and why, in the site's words", () => {
+    const [change] = leadChanges(rows);
+    expect(handoverWords(change, from)).toEqual({
+      kicker: "ECMWF from Wed 22:00",
+      text: "HARMONIE's run ends here. The stars from here are ECMWF's, the model you chose for when it ends.",
+    });
+    expect(
+      handoverWords({ ...change, from: "ecmwf", to: "harmonie" }, from).text,
+    ).toBe(
+      "HARMONIE reaches this far again, so the stars are its own once more.",
+    );
+  });
+
+  it("puts a handover before the first row drawn after it, or after the last when its rows are folded away", () => {
+    const [change] = leadChanges(rows);
+    const light = rows.slice(0, 2);
+    const placedLight = placeChanges(light, [change]);
+    expect(placedLight.before.size).toBe(0);
+    expect(placedLight.end).toEqual([change]);
+    const placedAll = placeChanges(rows, [change]);
+    expect(placedAll.before.get(change.time)).toEqual([change]);
+    expect(placedAll.end).toEqual([]);
+    expect(placeChanges([], [change]).end).toEqual([]);
+  });
+
+  it("names who rates a day in its header only when it is not just the model chosen", () => {
+    expect(dayLeads(rows, from)).toEqual([]);
+    const later = spotRows(
+      [
+        led("2026-10-22T10:00:00Z", "harmonie"),
+        led("2026-10-22T11:00:00Z", "ecmwf"),
+        led("2026-10-22T12:00:00Z", "ecmwf"),
+      ],
+      Date.parse("2026-10-22T06:00:00Z"),
+      270,
+      DEFAULT_RIDER,
+    );
+    expect(dayLeads(later, from)).toEqual(["harmonie", "ecmwf"]);
+    expect(dayLeadText(dayLeads(later, from))).toBe(
+      "stars from HARMONIE, then ECMWF",
+    );
+    expect(dayLeads(later.slice(1), from)).toEqual(["ecmwf"]);
+    // A rider who chose ECMWF needs no saying of it.
+    expect(dayLeads(later.slice(1), { model: "ecmwf", then: "gfs" })).toEqual(
+      [],
+    );
   });
 });

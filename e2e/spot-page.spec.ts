@@ -141,14 +141,17 @@ test("a spot page is the week day by day: hours in figures, the tide and the lig
   await expect(row).not.toHaveAttribute("aria-expanded");
   await expect(page.getByRole("tooltip")).toHaveCount(0);
 
-  // The frame opens the hour's wind, broken down: the headline (HARMONIE's own
-  // while it reaches the hour, else the blend), the models one by one, where it
-  // sits in the rider's range. No session, no advice.
+  // The frame opens the hour's wind, broken down: whose forecast the stars are
+  // (one model's: HARMONIE while it reaches the hour, then ECMWF), the models
+  // one by one, where it sits in the rider's range. No session, no advice.
   const frame = row.locator("[data-range-bar]");
   await frame.click();
   const card = page.locator("[data-range-detail]");
   await expect(card).toBeVisible();
-  await expect(card.locator("dt").first()).toHaveText(/^(HARMONIE|Blend)$/i);
+  await expect(card.locator("dt").first()).toHaveText(/^Stars from$/i);
+  await expect(card.locator("[data-stars-from]")).toHaveText(
+    /^(HARMONIE|ECMWF)$/,
+  );
   await expect(card.locator("[data-range-text]")).toContainText("your");
   await expect(
     card.locator("[data-range-models] tbody tr").first(),
@@ -337,7 +340,9 @@ test("on a phone the week and the first day are on the first screen, and far day
   // A phone has no room for the frame: the wind figure opens its card.
   const phoneRow = page.locator("tr[data-daylight]").first();
   await expect(phoneRow.locator("[data-range-bar]")).toBeHidden();
-  await phoneRow.getByRole("button", { name: /HARMONIE|blend/i }).click();
+  await phoneRow
+    .getByRole("button", { name: /HARMONIE|ICON-EU|ECMWF|GFS/ })
+    .click();
   await expect(page.locator("[data-range-detail]")).toBeVisible();
   await page.keyboard.press("Escape");
 

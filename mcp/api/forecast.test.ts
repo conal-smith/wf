@@ -167,7 +167,7 @@ describe("spotForecast", () => {
     );
   });
 
-  it("gives the weighted median, range and agreement of the models in knots where HARMONIE has ended", async () => {
+  it("gives ECMWF's own wind where HARMONIE has ended, with every model's range and agreement", async () => {
     const forecast = await dollymount();
     const first = forecast.hours[0];
     expect(first.time).toBe("2026-09-16T18:00:00.000Z");
@@ -196,8 +196,8 @@ describe("spotForecast", () => {
         )!;
         const lead = leadHours(m.runTime, valid);
         return {
+          model,
           speed: Math.hypot(row.u, row.v) * KNOTS,
-          weight: modelWeight(model, lead),
           lead,
         };
       }),
@@ -205,15 +205,12 @@ describe("spotForecast", () => {
     const speeds = rows.map((r) => r.speed).sort((a, b) => a - b);
     const wind = first.wind!;
     expect(wind.models).toBe(2);
+    // One model's own, never the two models' median.
     expect(wind.wind_kn).toBeCloseTo(
-      weightedMedian(
-        rows.map((r) => r.speed),
-        rows.map((r) => r.weight),
-      ),
+      rows.find((r) => r.model === "ecmwf")!.speed,
       1,
     );
-    expect(wind.lead).toBeNull();
-    expect(wind.gust_lead).toBeNull();
+    expect(wind.lead).toBe("ecmwf");
     expect(wind.min_kn).toBeCloseTo(speeds[0], 1);
     expect(wind.max_kn).toBeCloseTo(speeds[1], 1);
     expect(wind.agreement).toBe(
@@ -384,30 +381,41 @@ describe("hourWind", () => {
     expect(hour.models).toBe(5);
     expect(hour.agreement).toBe("low");
     expect(Object.keys(hour.by_model!)).toHaveLength(5);
-    // The weighted median the four would have outvoted it with.
-    const blend = hourWind(others, at, false)!;
-    expect(blend.lead).toBeNull();
-    expect(blend.wind_kn).toBeCloseTo(5 * KNOTS, 1);
-    expect(blend.direction_deg).toBe(180);
   });
 
-  it("keeps the blend's gust where HARMONIE gives none, and says so", () => {
+  it("gives no gust where the one model gives none", () => {
     const harmonie = line("harmonie", { u: 9, v: 0, gust: null });
     const hour = hourWind([harmonie, ...others], at, false)!;
     expect(hour.lead).toBe("harmonie");
     expect(hour.gust_lead).toBeNull();
     expect(hour.wind_kn).toBeCloseTo(9 * KNOTS, 1);
-    expect(hour.gust_kn).toBeCloseTo(7 * KNOTS, 1);
+    expect(hour.gust_kn).toBeNull();
+    expect(hour.gust_max_kn).toBeCloseTo(7 * KNOTS, 1);
   });
 
-  it("falls back to the blend past HARMONIE's run", () => {
+  it("hands over to ECMWF alone past HARMONIE's run, and to nobody past both", () => {
     const harmonie = line("harmonie", { u: 9, v: 0, gust: 12 });
+    const ecmwf = line("ecmwf", { u: -6, v: 0, gust: 8 }, [0, 1, 2, 3, 4, 5]);
     const later = at + 5 * HOUR;
-    const hour = hourWind([harmonie, ...others], later, false)!;
-    expect(hour).toEqual(hourWind(others, later, false));
-    expect(hour.lead).toBeNull();
+    const hour = hourWind([harmonie, ecmwf, ...others], later, false)!;
+    expect(hour.lead).toBe("ecmwf");
+    expect(hour.wind_kn).toBeCloseTo(6 * KNOTS, 1);
+    expect(hour.gust_kn).toBeCloseTo(8 * KNOTS, 1);
+    expect(hour.direction_deg).toBe(90);
+    expect(hour.models).toBe(5);
+    // The four others still reach +6 h, but they never stand in for the two.
+    expect(hourWind([harmonie, ecmwf, ...others], at + 6 * HOUR, false)).toBeNull();
+  });
+
+  it("takes the models a caller names", () => {
+    const harmonie = line("harmonie", { u: 9, v: 0, gust: 12 });
+    const hour = hourWind([harmonie, ...others], at, false, {
+      model: "gfs",
+      then: "ecmwf",
+    })!;
+    expect(hour.lead).toBe("gfs");
     expect(hour.wind_kn).toBeCloseTo(5 * KNOTS, 1);
-    expect(hour.models).toBe(4);
+    expect(hour.direction_deg).toBe(180);
   });
 });
 
@@ -492,10 +500,8 @@ describe("findSessions", () => {
       expect(result.rideable_hours).toBe(
         result.sessions.reduce((sum, s) => sum + s.hours, 0),
       );
-      for (const s of result.sessions) {
-        expect(s.agreement).not.toBe("low");
+      for (const s of result.sessions)
         expect(s.agreement === null).toBe(s.models === 1);
-      }
     }
     const hours = all.spots.map((s) => s.rideable_hours);
     expect(hours).toEqual([...hours].sort((a, b) => b - a));
@@ -587,7 +593,10 @@ describe("which spot squares are read", () => {
       windowFor(FIXTURE_NOW, { hours: 6, stepHours: 3 }),
       { now: FIXTURE_NOW },
     );
-    expect(without.hours[0].wind?.models).toBe(1);
+    // Without ECMWF, and HARMONIE ended, neither model the stars come from
+    // reaches the hour: GFS alone does not stand in for them.
+    expect(without.sources.wind.map((r) => r.id)).toEqual(["gfs"]);
+    expect(without.hours[0].wind).toBeNull();
   });
 
   it("forgets a cached read when asked", async () => {

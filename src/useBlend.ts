@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   blendInputs,
   blendStats,
-  LEAD_MODEL,
   leadHours,
   modelWeight,
   perModelLines,
@@ -22,6 +21,12 @@ import {
 import { onPageReturn, pageVisible } from "../force5/src/pageLife";
 import { shouldRevalidate } from "../force5/src/revalidate";
 import { spotSeries } from "../force5/src/series";
+import {
+  DEFAULT_STARS_FROM,
+  leadOrder,
+  pickModel,
+  type StarsFrom,
+} from "../force5/src/lead";
 import {
   loadSeaTemperature,
   seaTemperatureForSpot,
@@ -51,7 +56,8 @@ import {
   type WaveStep,
 } from "../force5/src/waves";
 import type { Manifest } from "../force5/src/weather";
-import { axisVectors, meanDirections } from "./chart";
+import { axisVectors } from "./chart";
+import { direction } from "../force5/src/weather";
 
 const runOf = (manifest: AnyManifest | null) => manifest?.runTime ?? null;
 /** Two sweeps that say the same thing, so the chart is not rebuilt for nothing. */
@@ -522,18 +528,19 @@ export interface Blend {
   /** One line per deterministic model and per ensemble member. */
   lines: BlendInput[];
   /**
-   * The chart's statistics over every line. Its headline (`median`) is
-   * HARMONIE's own line wherever it reaches the hour (`LEAD_MODEL`); the
-   * spread around it stays every line's.
+   * The chart's statistics over every line. Its headline (`median`) is the
+   * one model's own line the stars come from (force5/src/lead.ts: HARMONIE,
+   * then ECMWF, unless the rider chose others); the spread around it stays
+   * every line's.
    */
   stats: HourStats[];
   /**
    * The same statistics with each ensemble counted once, as its member mean,
-   * and each model at its weight: the consensus the stars rate, and the one
-   * the forecast server reports, HARMONIE's own while it reaches the hour.
+   * and each model at its weight, under the same headline: the hours the
+   * stars rate, as the forecast server reports them.
    */
   consensus: HourStats[];
-  /** The headline bearing per axis hour: HARMONIE's, else the models' mean. */
+  /** The headline bearing per axis hour: the same one model's. */
   directions: (number | null)[];
   /** Models that actually contributed a line, in registry order. */
   contributing: string[];
@@ -558,8 +565,19 @@ export function useBlend(
   selected: readonly string[],
   spotId: string | undefined,
   axis: readonly string[],
+  from: StarsFrom = DEFAULT_STARS_FROM,
 ): Blend {
   const selectedKey = [...selected].sort().join(",");
+  const fromKey = leadOrder(from).join(",");
+  // The models the headline is read from, whether or not they are in the blend.
+  const heads = useMemo(
+    () =>
+      leadOrder(from).flatMap((id) => {
+        const model = models.find((m) => m.id === id && m.wind !== null);
+        return model ? [model.wind!] : [];
+      }),
+    [models, fromKey],
+  );
   const axisKey = axis.length ? `${axis[0]}/${axis.at(-1)}/${axis.length}` : "";
   const manifests = useMemo(
     () =>
@@ -592,8 +610,23 @@ export function useBlend(
     const runs = new Map(
       usable.map((manifest) => [manifest.model, Date.parse(manifest.runTime)]),
     );
-    // HARMONIE's own line is the headline wherever it reaches the hour.
-    const lead = usable.findIndex((manifest) => manifest.model === LEAD_MODEL);
+    // The one model's own line is the headline wherever it reaches the hour,
+    // then the one that takes over's.
+    const headManifests = heads.filter(
+      (manifest) => spotSeries(manifest, spotId) !== null,
+    );
+    const headline = blendInputs(
+      headManifests,
+      spotId,
+      headManifests.map((manifest) => manifest.model),
+      axis,
+    ).filter((line) => line.memberIndex === undefined);
+    const headVectors = new Map(
+      headManifests.map((manifest) => [
+        manifest.model,
+        axisVectors(spotSeries(manifest, spotId)!, axis),
+      ]),
+    );
     const leadOf = (at: number) =>
       leadHours(
         Math.max(
@@ -605,25 +638,27 @@ export function useBlend(
       );
     return {
       lines,
-      stats: blendStats(lines, axis, undefined, leadOf, LEAD_MODEL),
+      stats: blendStats(lines, axis, undefined, leadOf, headline),
       consensus: blendStats(
         perModelLines(lines),
         axis,
         weightOf,
         leadOf,
-        LEAD_MODEL,
+        headline,
       ),
-      directions: meanDirections(
-        usable.map((manifest) =>
-          axisVectors(spotSeries(manifest, spotId)!, axis),
-        ),
-        axis.length,
-        (model, at) => weightAt(usable[model], at),
-        lead < 0 ? undefined : lead,
-      ),
+      directions: axis.map((_, at) => {
+        const model = pickModel(from, (id) => {
+          const line = headline.find((l) => l.model === id);
+          return Number.isFinite(line?.speed[at] ?? NaN);
+        });
+        const vector = model ? headVectors.get(model)?.[at] : null;
+        return vector && Math.hypot(vector.u, vector.v) >= 0.1
+          ? direction(vector.u, vector.v)
+          : null;
+      }),
       contributing: Array.from(new Set(lines.map((line) => line.model))),
       manifests: usable,
     };
     // axisKey stands in for the axis array, which is rebuilt every render.
-  }, [manifests, spotId, axisKey]);
+  }, [manifests, heads, spotId, axisKey]);
 }

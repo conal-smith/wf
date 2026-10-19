@@ -1,22 +1,23 @@
 /**
- * Every spot's hours, rated: the consensus the dock's stars rest on, computed
+ * Every spot's hours, rated: the one model's wind the dock's stars rest on
+ * (force5/src/lead.ts), and how far all the models agree beside it, computed
  * for a whole axis at once and fast enough to do for every light on the map.
  *
  * It is the same arithmetic as `blendInputs` → `perModelLines` → `blendStats`
- * and `meanDirections` (force5/src/blend.ts, src/chart.ts), and the tests hold
- * it to them value for value. What it does differently is never parse a time
+ * (force5/src/blend.ts) under the same headline the dock's chart draws
+ * (src/useBlend.ts), and the tests hold it to them value for value. What it does differently is never parse a time
  * twice: a model publishes every spot on the same steps, so where each axis
  * column falls between them is worked out once per model and reused for all
  * 148 places, rather than searched for with `Date.parse` in every series.
  */
+import { agreementFrom, leadHours, type Agreement } from "../force5/src/blend";
 import {
-  agreementFrom,
-  LEAD_MODEL,
-  leadHours,
-  modelWeight,
-  weightedMedian,
-  type Agreement,
-} from "../force5/src/blend";
+  DEFAULT_STARS_FROM,
+  leadOrder,
+  pickModel,
+  starsFromAt,
+  type StarsFrom,
+} from "../force5/src/lead";
 import { modelSeries, spotSeries } from "../force5/src/series";
 import { dayNights } from "../force5/src/sun";
 import { KNOTS } from "../force5/src/units";
@@ -41,9 +42,12 @@ export interface PlaceHour {
   windKn: number | null;
   gustKn: number | null;
   from: number | null;
+  /** How far all the models agree: context beside the stars, never a cost. */
   agreement: Agreement | null;
   daylight: boolean;
   rating: HourRating | null;
+  /** The one model the wind, the gust, the bearing and so the stars are; null where none is. */
+  model: string | null;
 }
 
 const HOUR = 3600000;
@@ -72,29 +76,6 @@ function medianStep(at: readonly number[]): number {
   if (!steps.length) return 0;
   steps.sort((a, b) => a - b);
   return steps[Math.floor((steps.length - 1) / 2)];
-}
-
-/** Each model's weight per axis column, worked out once per run and axis. */
-const weights = new Map<string, Float64Array>();
-function weightsFor(
-  manifest: Manifest,
-  run: number,
-  axis: readonly number[],
-  axisKey: string,
-) {
-  const key = `${manifest.model}|${run}|${axisKey}`;
-  const hit = weights.get(key);
-  if (hit) return hit;
-  const weight = new Float64Array(axis.length);
-  for (let c = 0; c < axis.length; c++)
-    weight[c] = modelWeight(
-      manifest.model,
-      leadHours(run, axis[c]),
-      manifest.resolutionKm,
-    );
-  if (weights.size > 64) weights.clear();
-  weights.set(key, weight);
-  return weight;
 }
 
 /**
@@ -146,8 +127,6 @@ function planFor(
 interface Line {
   model: string;
   member: boolean;
-  /** The model's weight at each axis column (`modelWeight`). */
-  weight: Float64Array;
   /** When its run started, in ms: how far ahead each column is. */
   run: number;
   speed: Float64Array;
@@ -184,84 +163,97 @@ function lineOn(
   return { speed, gust };
 }
 
+/** A model's own deterministic series on the axis: speed, gust, and u and v for its bearing. */
+interface Own {
+  speed: Float64Array;
+  gust: Float64Array;
+  u: Float64Array;
+  v: Float64Array;
+}
+
+/** The mean series' u and v on the axis, NaN outside its run. */
+function vectorOn(
+  points: readonly { u: number; v: number }[],
+  plan: Plan,
+): { u: Float64Array; v: Float64Array } {
+  const n = plan.index.length;
+  const u = new Float64Array(n).fill(NaN);
+  const v = new Float64Array(n).fill(NaN);
+  for (let c = 0; c < n; c++) {
+    const i = plan.index[c];
+    if (i < 0) continue;
+    const f = plan.fraction[c];
+    const a = points[i];
+    if (f === 0) {
+      u[c] = a.u;
+      v[c] = a.v;
+    } else {
+      const b = points[i + 1];
+      u[c] = a.u + (b.u - a.u) * f;
+      v[c] = a.v + (b.v - a.v) * f;
+    }
+  }
+  return { u, v };
+}
+
 /**
- * One place's consensus on the axis. Wherever HARMONIE (`LEAD_MODEL`) reaches
- * the hour, the wind, gust and bearing are its own, the gust falling back to
- * the blend's at an hour it gives none. Elsewhere they are the blend: each
- * model taken once (an ensemble as its member mean) at its weight for how far
- * into its run the hour is (`modelWeight`), the weighted median wind and gust
- * and the weighted mean bearing. How far the models agree (`agreementFrom`,
- * against the freshest run's lead) is read across every model either way.
- * Speeds come back in m/s, as the blend keeps them.
+ * One place's hours on the axis, as the stars rate them: each hour is one
+ * model's own wind, gust and bearing — the rider's model (`from.model`,
+ * HARMONIE by default) wherever it reaches the hour, else the model that takes
+ * over (`from.then`, ECMWF by default), else nothing (force5/src/lead.ts).
+ * `model` says which, hour by hour. The gust is that model's too, null where
+ * it gives none: no other model fills it in. Those two are read from
+ * `manifests` whether or not the reader has them in their blend.
+ *
+ * How far the models agree (`agreementFrom`, against the freshest run's lead)
+ * is read across every model in `blendIds`, an ensemble as its member mean.
+ * It is context only and never changes the stars. Speeds come back in m/s.
  */
 export function placeConsensus(
   manifests: readonly Manifest[],
   blendIds: readonly string[],
   id: string,
   axis: readonly string[],
+  from: StarsFrom = DEFAULT_STARS_FROM,
 ): {
   median: (number | null)[];
   gust: (number | null)[];
   agreement: (Agreement | null)[];
   from: (number | null)[];
+  /** The model each hour is, or null where neither reaches it. */
+  model: (string | null)[];
 } {
   const axisTimes = axis.map((iso) => Date.parse(iso));
   const axisKey = `${axis[0]}|${axis[axis.length - 1]}|${axis.length}`;
   const n = axis.length;
+  // The models that may rate an hour, each on its own deterministic series.
+  const own = new Map<string, Own>();
+  for (const model of leadOrder(from)) {
+    const manifest = manifests.find((m) => m.model === model);
+    const mean = manifest ? spotSeries(manifest, id) : null;
+    if (!mean) continue;
+    const plan = planFor(parsed(mean), axisTimes, axisKey);
+    own.set(model, { ...lineOn(mean, plan), ...vectorOn(mean, plan) });
+  }
   const lines: Line[] = [];
-  const vectors: { u: Float64Array; v: Float64Array; weight: Float64Array }[] =
-    [];
-  // The lead model's own line and bearing, where it is in the blend.
-  let leadLine: Line | undefined;
-  let leadVector: { u: Float64Array; v: Float64Array } | undefined;
   for (const blendId of blendIds) {
     const manifest = manifests.find((m) => m.model === blendId);
     if (!manifest) continue;
-    const mean = spotSeries(manifest, id);
-    // The blend only reads a model that publishes something for this place.
-    if (!mean) continue;
+    // The agreement only reads a model that publishes something for this place.
+    if (!spotSeries(manifest, id)) continue;
     const run = Date.parse(manifest.runTime);
-    const weight = weightsFor(manifest, run, axisTimes, axisKey);
     for (const line of modelSeries(manifest, id)) {
       const plan = planFor(parsed(line.points), axisTimes, axisKey);
-      const on: Line = {
+      lines.push({
         model: manifest.model,
         member: line.memberIndex !== undefined,
-        weight,
         run,
         ...lineOn(line.points, plan),
-      };
-      lines.push(on);
-      if (on.model === LEAD_MODEL && !on.member) leadLine = on;
+      });
     }
-    // The arrows read the mean series, as `meanDirections` does.
-    const plan = planFor(parsed(mean), axisTimes, axisKey);
-    const u = new Float64Array(n).fill(NaN);
-    const v = new Float64Array(n).fill(NaN);
-    for (let c = 0; c < n; c++) {
-      const i = plan.index[c];
-      if (i < 0) continue;
-      const f = plan.fraction[c];
-      const a = mean[i];
-      if (f === 0) {
-        u[c] = a.u;
-        v[c] = a.v;
-      } else {
-        const b = mean[i + 1];
-        u[c] = a.u + (b.u - a.u) * f;
-        v[c] = a.v + (b.v - a.v) * f;
-      }
-    }
-    vectors.push({ u, v, weight });
-    if (manifest.model === LEAD_MODEL) leadVector = { u, v };
   }
   // `perModelLines`: an ensemble's members collapse to their hourly mean.
-  const perModel: {
-    weight: Float64Array;
-    run: number;
-    speed: Float64Array;
-    gust: Float64Array;
-  }[] = [];
+  const perModel: { run: number; speed: Float64Array }[] = [];
   const groups = new Map<string, Line[]>();
   for (const line of lines) {
     if (!line.member) perModel.push(line);
@@ -273,95 +265,63 @@ export function placeConsensus(
       continue;
     }
     const speed = new Float64Array(n);
-    const gust = new Float64Array(n);
     for (let c = 0; c < n; c++) {
       let s = 0,
-        sn = 0,
-        g = 0,
-        gn = 0;
-      for (const line of group) {
+        sn = 0;
+      for (const line of group)
         if (Number.isFinite(line.speed[c])) {
           s += line.speed[c];
           sn++;
         }
-        if (Number.isFinite(line.gust[c])) {
-          g += line.gust[c];
-          gn++;
-        }
-      }
       speed[c] = sn ? s / sn : NaN;
-      gust[c] = gn ? g / gn : NaN;
     }
-    perModel.push({ weight: group[0].weight, run: group[0].run, speed, gust });
+    perModel.push({ run: group[0].run, speed });
   }
   const out = {
     median: [] as (number | null)[],
     gust: [] as (number | null)[],
     agreement: [] as (Agreement | null)[],
     from: [] as (number | null)[],
+    model: [] as (string | null)[],
   };
   for (let c = 0; c < n; c++) {
     const speeds: number[] = [];
-    const speedWeights: number[] = [];
-    const gusts: number[] = [];
-    const gustWeights: number[] = [];
     // How far ahead the hour is: from the newest run that has it.
     let freshest = -Infinity;
-    for (const line of perModel) {
+    for (const line of perModel)
       if (Number.isFinite(line.speed[c])) {
         if (line.run > freshest) freshest = line.run;
         speeds.push(line.speed[c]);
-        speedWeights.push(line.weight[c]);
       }
-      if (Number.isFinite(line.gust[c])) {
-        gusts.push(line.gust[c]);
-        gustWeights.push(line.weight[c]);
-      }
-    }
-    // The lead's own hour, where it has one: the headline.
-    const leadSpeed =
-      leadLine && Number.isFinite(leadLine.speed[c]) ? leadLine.speed[c] : null;
-    out.gust.push(
-      leadSpeed !== null && Number.isFinite(leadLine!.gust[c])
-        ? leadLine!.gust[c]
-        : gusts.length
-          ? weightedMedian(gusts, gustWeights)
-          : null,
+    out.agreement.push(
+      speeds.length
+        ? agreementFrom(
+            speeds.map((speed) => speed * KNOTS),
+            leadHours(freshest, axisTimes[c]),
+          )
+        : null,
     );
-    if (speeds.length) {
-      out.median.push(leadSpeed ?? weightedMedian(speeds, speedWeights));
-      out.agreement.push(
-        agreementFrom(
-          speeds.map((speed) => speed * KNOTS),
-          leadHours(freshest, axisTimes[c]),
-        ),
-      );
-    } else {
+    // The one model this hour is rated from.
+    const model = pickModel(from, (m) => {
+      const line = own.get(m);
+      return !!line && Number.isFinite(line.speed[c]);
+    });
+    out.model.push(model);
+    if (model === null) {
       out.median.push(null);
-      out.agreement.push(null);
-    }
-    if (
-      leadSpeed !== null &&
-      leadVector &&
-      Number.isFinite(leadVector.u[c]) &&
-      Number.isFinite(leadVector.v[c])
-    ) {
-      const lu = leadVector.u[c];
-      const lv = leadVector.v[c];
-      out.from.push(Math.hypot(lu, lv) >= 0.1 ? direction(lu, lv) : null);
+      out.gust.push(null);
+      out.from.push(null);
       continue;
     }
-    let u = 0,
-      v = 0,
-      k = 0;
-    for (const vector of vectors)
-      if (Number.isFinite(vector.u[c]) && Number.isFinite(vector.v[c])) {
-        u += vector.u[c] * vector.weight[c];
-        v += vector.v[c] * vector.weight[c];
-        k += vector.weight[c];
-      }
+    const line = own.get(model)!;
+    out.median.push(line.speed[c]);
+    out.gust.push(Number.isFinite(line.gust[c]) ? line.gust[c] : null);
+    const u = line.u[c];
+    const v = line.v[c];
     out.from.push(
-      k && Math.hypot(u / k, v / k) >= 0.1 ? direction(u / k, v / k) : null,
+      Number.isFinite(u) && Number.isFinite(v) && Math.hypot(u, v) >= 0.1
+        ? direction(u, v)
+        : null,
     );
   }
   return out;
@@ -387,7 +347,10 @@ export function daylightOn(
   });
 }
 
-/** One place's columns, rated for this rider. */
+/**
+ * One place's columns, rated for this rider, from the model they take this
+ * place's stars from (`starsFromAt`).
+ */
 export function placeHours(
   manifests: readonly Manifest[],
   blendIds: readonly string[],
@@ -395,7 +358,13 @@ export function placeHours(
   axis: readonly string[],
   rider: Rider,
 ): PlaceHour[] {
-  const c = placeConsensus(manifests, blendIds, place.id, axis);
+  const c = placeConsensus(
+    manifests,
+    blendIds,
+    place.id,
+    axis,
+    starsFromAt(rider.starsFrom, place.id),
+  );
   const light = daylightOn(place, axis);
   return axis.map((_, at) => {
     const windKn = c.median[at] === null ? null : c.median[at]! * KNOTS;
@@ -406,6 +375,7 @@ export function placeHours(
       from: c.from[at],
       agreement: c.agreement[at],
       daylight: light[at],
+      model: c.model[at],
       rating: rateHour(
         {
           windKn,
@@ -496,6 +466,7 @@ export function pointHours(
       daylight: light[c],
       // No beach to face, so nothing to rate against.
       rating: null,
+      model: null,
     };
   });
 }

@@ -10,7 +10,7 @@ const STAR =
 interface Props {
   /** Solid stars, 0–5: what the hour is. */
   stars: number;
-  /** Faded stars beyond them: what it could be if the models agreed (HourRating.potential). */
+  /** Faded stars beyond them: what the wind alone is worth to this rider (HourRating.potential). */
   potential?: number;
   size?: number;
   /** Five stars are chart magenta, the best of something. */

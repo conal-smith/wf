@@ -319,16 +319,21 @@ describe("per-hour statistics", () => {
     expect(later[0].agreement).toBe("high");
     expect(later[1].agreement).toBe("moderate");
   });
-  it("takes the lead model's own line as the headline where it has the hour", () => {
+  it("takes the one model's own line as the headline, then its fallback's, never a median", () => {
+    const harmonie = line("harmonie", [12, null], [16, null]);
+    const ecmwf = line("ecmwf", [6, 11], [8, 13]);
     const lines = [
-      line("harmonie", [12, null], [16, null]),
+      harmonie,
       line("gfs", [5, 9], [7, 11]),
-      line("ecmwf", [6, 11], [8, 13]),
+      ecmwf,
       line("icon-eu", [7, 10], [9, 12]),
       // A member of an ensemble that shares the lead's name is never the lead.
       { model: "harmonie", memberIndex: 0, speed: [1, 1], gust: [2, 2] },
     ];
-    const stats = blendStats(lines, axis, undefined, undefined, "harmonie");
+    const stats = blendStats(lines, axis, undefined, undefined, [
+      harmonie,
+      ecmwf,
+    ]);
     // HARMONIE's own hour, though the others would outvote it...
     expect(stats[0].median).toBe(12);
     expect(stats[0].gust.median).toBe(16);
@@ -336,29 +341,33 @@ describe("per-hour statistics", () => {
     // ...with the spread still every line's.
     expect(stats[0]).toMatchObject({ n: 5, min: 1, max: 12 });
     expect(stats[0].gust).toMatchObject({ n: 5, min: 2, max: 16 });
-    // Where it has no hour, the median of the lines that do.
-    expect(stats[1].median).toBe(9.5);
-    expect(stats[1].gust.median).toBe(11.5);
-    expect(stats[1].lead).toBeNull();
-    // Without a lead, the median as before.
+    // Where it has no hour, ECMWF's own, not the median of the others (9.5).
+    expect(stats[1].median).toBe(11);
+    expect(stats[1].gust.median).toBe(13);
+    expect(stats[1].lead).toBe("ecmwf");
+    // Neither reaches the hour: no headline at all.
+    const none = blendStats(lines, axis, undefined, undefined, [
+      line("gfs", [null, null], [null, null]),
+    ]);
+    expect(none[0].median).toBeNull();
+    expect(none[0].lead).toBeNull();
+    // Without a headline, the median as before.
     const plain = blendStats(lines, axis);
     expect(plain[0].median).toBe(6);
     expect(plain[0].lead).toBeNull();
   });
-  it("keeps the median gust where the lead gives none", () => {
+  it("gives no gust where the one model gives none", () => {
+    const harmonie = line("harmonie", [12, 12], [null, 15]);
     const stats = blendStats(
-      [
-        line("harmonie", [12, 12], [null, 15]),
-        line("gfs", [5, 5], [7, 7]),
-        line("ecmwf", [6, 6], [9, 9]),
-      ],
+      [harmonie, line("gfs", [5, 5], [7, 7]), line("ecmwf", [6, 6], [9, 9])],
       axis,
       undefined,
       undefined,
-      "harmonie",
+      [harmonie],
     );
     expect(stats[0].median).toBe(12);
-    expect(stats[0].gust.median).toBe(8);
+    expect(stats[0].gust.median).toBeNull();
+    expect(stats[0].gust.max).toBe(9);
     expect(stats[1].gust.median).toBe(15);
   });
   it("interpolates quantiles between order statistics", () => {

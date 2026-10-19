@@ -87,6 +87,14 @@ import {
 import { convert, type Units } from "../force5/src/units";
 import { compass, type Spot } from "../force5/src/weather";
 import { spotHref } from "../force5/src/siteNav";
+import {
+  handovers,
+  modelName,
+  spotOverride,
+  starsFromAt,
+  starsFromText,
+  type Handover,
+} from "../force5/src/lead";
 
 export type DockView = "table" | "blend";
 
@@ -136,6 +144,8 @@ interface Props {
   marine: readonly ModelAvailability[];
   /** Open "Your star rating", from the chip a rider's own stars put in the head. */
   onCustomStars?: () => void;
+  /** Open the display options, where the model the stars come from is chosen. */
+  onStarsFrom?: () => void;
 }
 
 const ROWS = {
@@ -392,7 +402,7 @@ const StripTable = memo(function StripTable({
                       : ["No stars", noStarsWhy(hour.rating)]
                           .filter(Boolean)
                           .join(", ")
-                  }`}
+                  }${hour.model ? `, from ${modelName(hour.model)}` : ""}`}
                 />
               ) : null,
             )}
@@ -499,6 +509,125 @@ function xOf(
 const HAND_CHAR = 6.4;
 
 /**
+ * Where words written at the top of a pen line down the hours go: to the
+ * right of the line, else to its left, wherever no day's name stands, and
+ * when the strip is scrolled so the day's sticky name stands over the line,
+ * after the name. `reach` is how far from the line they start.
+ */
+function useNotePlace(
+  mark: React.RefObject<SVGSVGElement | null>,
+  x: number | null,
+  width: number,
+  g: StripGeometry,
+  reach: number,
+): { side: 1 | -1; reach: number } {
+  const [place, setPlace] = useState<{ side: 1 | -1; reach: number }>({
+    side: 1,
+    reach,
+  });
+  // The scrolling strip, whose day names the words keep clear of: found from
+  // the mark itself, since a child's effects run before its parent's ref is set.
+  useLayoutEffect(() => {
+    const el = mark.current?.parentElement;
+    if (!el || x === null) return;
+    const lay = () => {
+      // The days' names where they stand now, in the strip's own pixels.
+      const origin = el.getBoundingClientRect().left - el.scrollLeft;
+      const names = [
+        ...el.querySelectorAll<HTMLElement>("tr.tt-day td > span"),
+      ].map((span) => {
+        const r = span.getBoundingClientRect();
+        return { left: r.left - origin, right: r.right - origin };
+      });
+      const hit = (a: number, b: number) =>
+        a < 0 ||
+        b > g.total ||
+        names.some((n) => a < n.right + 3 && b > n.left - 3);
+      const span = (side: 1 | -1, out: number) =>
+        side === 1
+          ? ([x + out, x + out + 3 + width] as const)
+          : ([x - out - 3 - width, x - out] as const);
+      let next: { side: 1 | -1; reach: number } = { side: 1, reach };
+      if (hit(...span(1, reach))) {
+        if (!hit(...span(-1, reach))) next = { side: -1, reach };
+        else {
+          // A name over the line or just after it: write after the name.
+          const over = names.filter(
+            (n) => n.right > x - width && n.left < x + reach + width,
+          );
+          const after = Math.max(...over.map((n) => n.right)) + 4;
+          next = { side: 1, reach: Math.max(reach, after - x) };
+        }
+      }
+      setPlace((old) =>
+        old.side === next.side && Math.abs(old.reach - next.reach) < 1
+          ? old
+          : next,
+      );
+    };
+    lay();
+    el.addEventListener("scroll", lay, { passive: true });
+    return () => el.removeEventListener("scroll", lay);
+  }, [x, width, g, reach]);
+  return place;
+}
+
+/**
+ * Where the stars hand over from one model to the next: a dashed pen line at
+ * the edge of the first hour the new model rates, down through the stars and
+ * the wind, and the model and the time written by hand in the day row
+ * ("ECMWF from Wed 22:00"), in ink rather than the red of now.
+ */
+function HandoverMark({
+  columns,
+  g,
+  handover,
+  top,
+  height,
+}: {
+  columns: readonly StripColumn[];
+  g: StripGeometry;
+  handover: Handover;
+  /** Where the hours start: the line runs from there to `height`. */
+  top: number;
+  height: number;
+}) {
+  const column = columns[handover.at];
+  const x = column ? g.x[handover.at] : null;
+  const text = column
+    ? `${modelName(handover.to)} from ${dayShort(column.time)} ${clock(column.time)}`
+    : "";
+  const width = text.length * HAND_CHAR;
+  const mark = useRef<SVGSVGElement>(null);
+  const place = useNotePlace(mark, x, width, g, 4);
+  if (x === null) return null;
+  const seed = Math.floor(column!.time / 3600000);
+  return (
+    <svg
+      ref={mark}
+      className="tt-under"
+      width={g.total}
+      height={height}
+      aria-hidden="true"
+      data-handover={handover.to}
+    >
+      <path
+        className="pen-handover"
+        d={stemPath(x, top - 12, height - 2, seed)}
+      />
+      <text
+        className="pen-handover-text"
+        x={x + place.side * place.reach}
+        y={11}
+        textAnchor={place.side === 1 ? "start" : "end"}
+      >
+        {text}
+      </text>
+    </svg>
+  );
+}
+
+/**
  * Now, as the red pen marks it: a line down the hours at the time, drawn
  * under the table so the figures it passes stay on top of it, and the time
  * written over it in the day row with an arrow down to the line. The time
@@ -533,56 +662,8 @@ function NowMark({
   );
   const text = clock(now);
   const width = text.length * HAND_CHAR;
-  // Which side, and how far from the line the time is written.
-  const [place, setPlace] = useState<{ side: 1 | -1; reach: number }>({
-    side: 1,
-    reach: 16,
-  });
-  // The scrolling strip, whose day names the time keeps clear of: found from
-  // the mark itself, since a child's effects run before its parent's ref is set.
   const mark = useRef<SVGSVGElement>(null);
-  useLayoutEffect(() => {
-    const el = mark.current?.parentElement;
-    if (!el || x === null) return;
-    const lay = () => {
-      // The days' names where they stand now, in the strip's own pixels.
-      const origin = el.getBoundingClientRect().left - el.scrollLeft;
-      const names = [
-        ...el.querySelectorAll<HTMLElement>("tr.tt-day td > span"),
-      ].map((span) => {
-        const r = span.getBoundingClientRect();
-        return { left: r.left - origin, right: r.right - origin };
-      });
-      const hit = (a: number, b: number) =>
-        a < 0 ||
-        b > g.total ||
-        names.some((n) => a < n.right + 3 && b > n.left - 3);
-      const span = (side: 1 | -1, reach: number) =>
-        side === 1
-          ? ([x + reach, x + reach + 3 + width] as const)
-          : ([x - reach - 3 - width, x - reach] as const);
-      let next: { side: 1 | -1; reach: number } = { side: 1, reach: 16 };
-      if (hit(...span(1, 16))) {
-        if (!hit(...span(-1, 16))) next = { side: -1, reach: 16 };
-        else {
-          // A name over the line or just after it: write after the name.
-          const over = names.filter(
-            (n) => n.right > x - width && n.left < x + 16 + width,
-          );
-          const after = Math.max(...over.map((n) => n.right)) + 4;
-          next = { side: 1, reach: Math.max(16, after - x) };
-        }
-      }
-      setPlace((old) =>
-        old.side === next.side && Math.abs(old.reach - next.reach) < 1
-          ? old
-          : next,
-      );
-    };
-    lay();
-    el.addEventListener("scroll", lay, { passive: true });
-    return () => el.removeEventListener("scroll", lay);
-  }, [x, width, g]);
+  const place = useNotePlace(mark, x, width, g, 16);
   if (x === null) return null;
   const seed = Math.floor(now / 60000);
   const arrow = arrowPath(x, top - 2, place.side, seed, place.reach);
@@ -1089,6 +1170,7 @@ export default function ForecastDock(props: Props) {
     onMore,
     marine,
     onCustomStars,
+    onStarsFrom,
   } = props;
   const cw = phone ? 52 : 62;
   const label = phone ? 28 : 32;
@@ -1136,6 +1218,7 @@ export default function ForecastDock(props: Props) {
     prefs.blendModels,
     named,
     axis,
+    starsFromAt(prefs.rider.starsFrom, isPoint ? null : spot.id),
   );
   /** Whose waves, weather and sea the rows show. */
   const lent = lender?.id;
@@ -1151,6 +1234,24 @@ export default function ForecastDock(props: Props) {
   // A week with no hour worth rating, a calm one or one still being rated
   // at night, leaves out the stars and the wing rather than draw them empty.
   const rated = !hours || hours.some((hour) => !!hour?.rating?.potential);
+  // The one model each hour's stars come from (force5/src/lead.ts): the one
+  // that rates the hour in hand, named in the head, and where the stars hand
+  // over from one model to the next, marked on the hours. A point has no stars.
+  const shifts = useMemo(
+    () =>
+      isPoint || !hours
+        ? []
+        : handovers(hours.map((hour) => hour?.model ?? null)),
+    [hours, isPoint],
+  );
+  const ownModel = isPoint
+    ? null
+    : spotOverride(prefs.rider.starsFrom, spot.id);
+  const starsFrom = starsFromAt(
+    prefs.rider.starsFrom,
+    isPoint ? null : spot.id,
+  );
+  const ratedBy = hours?.[selected]?.model ?? starsFrom.model;
   const waves = useSpotWaves(more ? marineModels : NO_MODELS, lent, axis);
   const weather = useSpotWeather(more ? marineModels : NO_MODELS, lent, axis);
   const sea = useSpotSeaTemperature(more ? lent : undefined);
@@ -1447,6 +1548,39 @@ export default function ForecastDock(props: Props) {
             <span className="dk-tool-word">Custom</span>
           </Button>
         )}
+        {/* Whose forecast the stars are, at the hour in hand: one model's,
+            the rider's choice, and magenta where this spot has its own. */}
+        {!isPoint && rated && (
+          <Button
+            variant="quiet"
+            size="sm"
+            className={`dk-tool dk-stars-from${ownModel ? " is-own" : ""}`}
+            aria-label={`Stars from ${modelName(ratedBy)}${ownModel ? ` at ${spot.name}` : ""}: change`}
+            title={`The stars here are ${modelName(ratedBy)}'s forecast${
+              column ? ` at ${dayShort(column.time)} ${clock(column.time)}` : ""
+            }. Stars from ${starsFromText(starsFrom)}${
+              ownModel ? ` at ${spot.name}` : ""
+            }; the other models are context and change no star. Change it in Display options.`}
+            onClick={onStarsFrom}
+            data-stars-from-chip={ratedBy}
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="-5 -5 10 10"
+              aria-hidden="true"
+            >
+              <path
+                fill="currentColor"
+                d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z"
+              />
+            </svg>
+            <span className="dk-from-word">
+              {ownModel ? "from " : ""}
+              {modelName(ratedBy)}
+            </span>
+          </Button>
+        )}
         {/* The table or every model's wind drawn as a chart: one glyph, on
             while the blend is shown. A point has no blend. */}
         {!isPoint && (
@@ -1639,6 +1773,20 @@ export default function ForecastDock(props: Props) {
               top={rows.day}
               height={tableHeight}
             />
+            {shifts.map((handover) => (
+              <HandoverMark
+                key={handover.at}
+                columns={columns}
+                g={g}
+                handover={handover}
+                top={rows.day}
+                height={
+                  rows.day +
+                  rows.hour +
+                  rowsAboveTide(rows, view, isPoint, rated)
+                }
+              />
+            ))}
             <StripTable
               spot={spot}
               columns={columns}

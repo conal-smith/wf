@@ -1,6 +1,7 @@
 /**
  * "How the stars work", at /stars: the rating in figures, for the rider the
- * page is set to. The wind you can ride, what it is worth against your band,
+ * page is set to. The one model the stars come from, the rider's choice, and
+ * the others as context only; the wind you can ride, what it is worth against your band,
  * the five ways the wind meets a beach and what each costs, solid and faded,
  * the dark, the wing, and one hour from the live forecast worked through line
  * by line. The arithmetic is force5/src/stars.ts, read here rather than
@@ -10,6 +11,11 @@
  * can pass the one in view.
  */
 import { useEffect, useMemo, useState } from "react";
+import {
+  starsFromAt,
+  starsFromText,
+  type StarsChoice,
+} from "../../force5/src/lead";
 import { loadPrefs, saveRider } from "../../force5/src/prefs";
 import { onPrefsChange } from "../../shared/web/riderSync";
 import { shoreFacing } from "../../force5/src/shoreFacing";
@@ -150,16 +156,43 @@ export default function StarsPage() {
           </li>
         </ul>
 
+        <section className={s.section()} aria-labelledby="forecast">
+          <SectionHeading id="forecast">
+            1. One forecast, <em className="font-normal">your choice</em>
+          </SectionHeading>
+          <p className={s.p()}>
+            Every hour is rated from one forecast model&rsquo;s own wind, gust
+            and direction, never from a mix of several. Unless you choose
+            otherwise that is HARMONIE, Met &Eacute;ireann&rsquo;s 2 km model,
+            for as far as its run reaches (about two and a half days), then
+            ECMWF, which runs fifteen days. Where one hands over to the other,
+            the spot page says so between the hours.
+          </p>
+          <p className={s.p()}>
+            Your stars now come from{" "}
+            <b className="font-semibold" data-stars-from-text>
+              {starsFromText(starsFromAt(rider.starsFrom))}
+            </b>
+            . Change it under &ldquo;Stars from&rdquo; above, for every spot, or
+            on a spot&rsquo;s own page for that spot alone.
+          </p>
+          <p className={s.p()}>
+            The other models are still shown: as faint ticks against your range
+            in each hour&rsquo;s card, and as how far the models agree. That is
+            context. It never changes the stars.
+          </p>
+        </section>
+
         <section className={s.section()} aria-labelledby="ride">
           <SectionHeading id="ride">
-            1. The steady wind, <em className="font-normal">not the gusts</em>
+            2. The steady wind, <em className="font-normal">not the gusts</em>
           </SectionHeading>
           <p className={s.p()}>
             The stars rate the steady wind, the average: it is what holds you up
             on the foil, and what decides whether a session is on. Below your
             minimum a gust is a chance to get up, so it can lift the hour to
             your minimum, worth a star, and no further. Above it, the gusts take
-            stars off only when they are strong (section 4).
+            stars off only when they are strong (section 5).
           </p>
           <p className={s.p()}>
             Learners get the smallest boost, because they still drop off the
@@ -170,7 +203,7 @@ export default function StarsPage() {
 
         <section className={s.section()} aria-labelledby="band">
           <SectionHeading id="band">
-            2. How much wind <em className="font-normal">suits you</em>
+            3. How much wind <em className="font-normal">suits you</em>
           </SectionHeading>
           <p className={s.p()}>
             Each level has its own range. Below the minimum you cannot stay up
@@ -183,7 +216,7 @@ export default function StarsPage() {
 
         <section className={s.section()} aria-labelledby="beach">
           <SectionHeading id="beach">
-            3. Wind <em className="font-normal">direction</em>
+            4. Wind <em className="font-normal">direction</em>
           </SectionHeading>
           <p className={s.p()}>
             What matters is the angle between the wind and the beach. Onshore
@@ -203,7 +236,7 @@ export default function StarsPage() {
 
         <section className={s.section()} aria-labelledby="off">
           <SectionHeading id="off">
-            4. What else <em className="font-normal">takes stars off</em>
+            5. What else <em className="font-normal">takes stars off</em>
           </SectionHeading>
           <p className={s.p()}>
             Strong gusts. It is how strong a gust is that counts, not how far it
@@ -220,7 +253,7 @@ export default function StarsPage() {
 
         <section className={s.section()} aria-labelledby="wing">
           <SectionHeading id="wing">
-            5. Which <em className="font-normal">wing</em>
+            6. Which <em className="font-normal">wing</em>
           </SectionHeading>
           <p className={s.p()}>
             We suggest a wing size for every hour. For an 80 kg rider that is
@@ -236,7 +269,7 @@ export default function StarsPage() {
 
         <section className={s.section()} aria-labelledby="example">
           <SectionHeading id="example">
-            6. An <em className="font-normal">example</em>
+            7. An <em className="font-normal">example</em>
           </SectionHeading>
           <p className={s.p()}>
             One hour from the live forecast, worked through step by step.
@@ -244,7 +277,7 @@ export default function StarsPage() {
           <WorkedExample spotId={spotId} rider={rider} />
         </section>
 
-        <p className={s.small()}>wingfoil.ie star rating, version 4.</p>
+        <p className={s.small()}>wingfoil.ie star rating, version 5.</p>
       </main>
     </SpotFrame>
   );
@@ -802,9 +835,8 @@ function GustTable({ rider }: { rider: Rider }) {
 function OtherTable() {
   const s = styles();
   const rows: [string, string][] = [
-    ["The forecast models disagree", "−1\u00a0star"],
-    ["The models differ a little", "−¼\u00a0star"],
     ["None of your wings suits the wind", "−1\u00a0star"],
+    ["The models disagree", "nothing"],
   ];
   return (
     <table className={s.table()} data-other-table>
@@ -834,8 +866,11 @@ type Example =
   | { kind: "ready"; spot: RidingSpot; forecast: SpotForecast };
 
 /** The forecast for the example's place, the next two days, hourly. */
-function useExample(spotId: string): Example {
+function useExample(spotId: string, choice: StarsChoice | undefined): Example {
   const [state, setState] = useState<Example>({ kind: "loading" });
+  // The choice by its value: the rider is read afresh on every change, and
+  // the example is read again only when the model changes.
+  const chosen = JSON.stringify(choice ?? null);
   useEffect(() => {
     let live = true;
     (async () => {
@@ -855,7 +890,7 @@ function useExample(spotId: string): Example {
         source,
         spot,
         { from, to: from + 48 * HOUR, stepHours: 1 },
-        { now },
+        { now, from: starsFromAt(choice, spot.id) },
       );
       return { kind: "ready", spot, forecast } as const;
     })().then(
@@ -870,7 +905,7 @@ function useExample(spotId: string): Example {
     return () => {
       live = false;
     };
-  }, [spotId]);
+  }, [spotId, chosen]);
   return state;
 }
 
@@ -906,7 +941,7 @@ function pickHour(forecast: SpotForecast, facing: number | null, rider: Rider) {
 
 function WorkedExample({ spotId, rider }: { spotId: string; rider: Rider }) {
   const s = styles();
-  const example = useExample(spotId);
+  const example = useExample(spotId, rider.starsFrom);
   const facing = example.kind === "ready" ? shoreFacing(example.spot.id) : null;
   const picked = useMemo(
     () =>

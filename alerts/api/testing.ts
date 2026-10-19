@@ -13,6 +13,8 @@ export interface HourWind {
   gust?: number | null;
   from?: number | null;
   agreement?: "h" | "m" | "l" | "-";
+  /** The model the hour is: HARMONIE unless said, null for none. */
+  model?: "harmonie" | "ecmwf" | null;
 }
 
 export interface BlendFixtureOptions {
@@ -25,7 +27,12 @@ export interface BlendFixtureOptions {
   run?: string;
   /** Each spot's wind at each time. */
   spots: Record<string, (time: number, index: number) => HourWind>;
+  /** Leave out the models the hours are, as a blend built before 19 October 2026 did. */
+  ruleBefore?: boolean;
 }
+
+/** The two models a test blend's hours are, in its sources' order. */
+const SOURCES = ["harmonie", "ecmwf"] as const;
 
 export function blendFiles(options: BlendFixtureOptions) {
   const step = (options.step ?? 1) * 3_600_000;
@@ -47,6 +54,16 @@ export function blendFiles(options: BlendFixtureOptions) {
       gust: series.map((h) => tenths(h.gust)),
       from: series.map((h) => h.from ?? null),
       agreement: series.map((h) => h.agreement ?? "h").join(""),
+      ...(options.ruleBefore
+        ? {}
+        : {
+            lead: series
+              .map((h) => {
+                const model = h.model === undefined ? "harmonie" : h.model;
+                return model === null ? "-" : String(SOURCES.indexOf(model));
+              })
+              .join(""),
+          }),
     };
     bySquare.set(square, spots);
   }
@@ -60,7 +77,17 @@ export function blendFiles(options: BlendFixtureOptions) {
     generatedAt: options.generatedAt ?? options.start,
     coverage: { from: times[0], to: times[times.length - 1] },
     times,
-    sources: [],
+    sources: SOURCES.map((id) => ({
+      id,
+      name: id.toUpperCase(),
+      run,
+      runTime: options.start,
+      resolutionKm: null,
+      ensemble: false,
+      weight: 1,
+      columns: [],
+    })),
+    ...(options.ruleBefore ? {} : { lead: { model: "harmonie", then: "ecmwf" } }),
     base,
     spots: { squareDegrees: 2, url: "spots/{square}.json", squares, keys: ["spotBlend"] },
   };

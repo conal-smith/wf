@@ -14,7 +14,7 @@ import { colors, controlHeight, hitTarget, radius, space } from "../../theme/tok
 
 export const openYourStars = () => router.push("/your-stars" as never);
 
-const STAR =
+export const STAR =
   "M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z";
 
 /** "★ Custom stars": said once, where the stars are read, and the way to change them. Only while the rider's own rating rates. */
