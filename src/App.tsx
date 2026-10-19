@@ -49,6 +49,7 @@ import { rideStops as rideStopsFor } from "../force5/src/chartStyle";
 import type { LightState } from "../force5/src/lights";
 import { rideWedge } from "../force5/src/rideWedge";
 import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
+import { isFocusStyle, type FocusStyle } from "../force5/src/focus";
 import ForecastDock, { type DockView } from "./ForecastDock";
 import MapControls, { type MapPanel } from "./MapControls";
 import MapHead from "./MapHead";
@@ -72,7 +73,6 @@ import { useViewBounds } from "./useViewBounds";
 import { squaresToRead } from "../force5/src/squares";
 import { usePointSeries } from "./usePointSeries";
 import {
-  hourNote,
   offshoreMark,
   pointHours as pointHoursFrom,
   type PlaceHour,
@@ -142,6 +142,7 @@ import {
 
 const WIND_KEY = "wingfoil.map.wind.v1";
 const LAYERS_KEY = "wingfoil.map.layers.v1";
+const FOCUS_KEY = "wingfoil.map.focus.v1";
 const MORE_KEY = "wingfoil.map.more.v1";
 /** The focus is on the point tapped on the map, not a riding place. */
 const AT_POINT = "@point";
@@ -293,6 +294,15 @@ export default function App() {
   const chooseWind = (style: WindStyle) => {
     setWindStyle(style);
     store.set(WIND_KEY, style);
+  };
+  /** The mark round the chosen spot: the loupe unless the rider chose otherwise. */
+  const [focusStyle, setFocusStyle] = useState<FocusStyle>(() => {
+    const saved = store.get(FOCUS_KEY);
+    return isFocusStyle(saved) ? saved : "loupe";
+  });
+  const chooseFocusStyle = (style: FocusStyle) => {
+    setFocusStyle(style);
+    store.set(FOCUS_KEY, style);
   };
   const chooseLayers = (next: MapLayers) => {
     setLayers(next);
@@ -1093,17 +1103,11 @@ export default function App() {
       }
     : point;
 
-  /* ---- what the pen writes beside the selected light ---- */
   const pointHours: PlaceHour[] | undefined = picked
     ? pickedHours
     : point
       ? hours.get(point.id)
       : undefined;
-  // The hour the map shows, at the selected place: never a day's best.
-  const penNote = useMemo(
-    () => (dockSpot && column ? hourNote(pointHours?.[selected], column.time) : ""),
-    [dockSpot?.id, picked, pointHours, selected, column?.time, version],
-  );
 
   const marine = useMarineModels(more && mapReady);
   const focusAt =
@@ -1273,6 +1277,8 @@ export default function App() {
               onLayersChange={(next) => chooseLayers({ ...layers, ...next })}
               satellite={layers.satellite}
               onSatellite={chooseSatellite}
+              focusStyle={focusStyle}
+              onFocusStyle={chooseFocusStyle}
               satelliteTides={satellite.station}
               rideStops={rideStops}
               rider={rider}
@@ -1290,6 +1296,7 @@ export default function App() {
               lightLabel={lightLabel}
               selectedId={picked ? null : (point?.id ?? null)}
               focus={focusAt ? { lon: focusAt.lon, lat: focusAt.lat } : null}
+              focusStyle={focusStyle}
               mark={focusAt ? { lon: focusAt.lon, lat: focusAt.lat } : null}
               picked={picked ? { lon: picked.lon, lat: picked.lat } : null}
               onPick={pickPoint}
@@ -1301,7 +1308,6 @@ export default function App() {
               reducedMotion={reducedMotion}
               bottomInset={dockHeight}
               phone={phone}
-              penNote={focusAt ? penNote : null}
               onSelect={(spot) => selectSpot(spot)}
               onReady={(c) => {
                 controls.current = c;
