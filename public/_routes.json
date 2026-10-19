@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "description": "Run _worker.js (mcp/pages/worker.ts) for the MCP endpoint only; every other path is a static file.",
+  "include": ["/api/mcp", "/api/mcp/"],
+  "exclude": []
+}

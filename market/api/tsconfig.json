@@ -22,6 +22,7 @@
     "../../community/api",
     "../../community/shared",
     "../../mcp/api",
+    "../../mcp/pages",
     "../../companion/api",
     "../../companion/shared",
     "../../alerts/api",

@@ -103,6 +103,9 @@ Two buttons, with you in between. Both are *Actions → Release → Run workflow
    - If Cloudflare is set up, the nightly's `site.tar.gz` goes to the Pages
      project's `staging` branch, pointed at `STAGING_FORECAST_BASE_URL`, and the
      smoke suite runs against `STAGING_SITE_URL`.
+     The build carries `_worker.js` (mcp/pages/worker.ts) and `_routes.json`,
+     so Pages itself answers the MCP endpoint at `/api/mcp`, reading the same
+     data as the map; every other path stays a static file.
    - Then, and only then, what passed is recorded as the prerelease
      `v<date>-rc.<run>` (the workflow run's number), tagged on the commit and
      carrying `images.json`, `site.tar.gz` and `staged.json`: the digests, the
