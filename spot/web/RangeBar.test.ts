@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { HourWind } from "../../mcp/api/forecast";
 import {
+  figurePlaces,
   headlineName,
+  otherWinds,
   rangeText,
   rangeWords,
   rangeZone,
@@ -38,25 +40,69 @@ describe("the wind against the rider's range", () => {
     direction: "WNW",
     agreement: "high",
     models: 4,
-    lead: null,
-    gust_lead: null,
+    lead: "harmonie",
+    gust_lead: "harmonie",
   } satisfies HourWind;
 
-  it("reads the frame aloud without the ensembles", () => {
+  it("reads the frame aloud, naming the model the stars come from", () => {
     expect(rangeWords(wind, band, "kn")).toBe(
-      "blend 10 gusting 26, 4 models 8–11, 2 under your minimum, 12",
+      "HARMONIE 10 gusting 26, 4 models 8–11, 2 under your minimum, 12",
     );
     expect(rangeWords({ ...wind, models: 1, gust_kn: null }, band, "kn")).toBe(
-      "blend 10, 2 under your minimum, 12",
+      "HARMONIE 10, 2 under your minimum, 12",
+    );
+    expect(rangeWords({ ...wind, lead: "ecmwf" }, band, "kn")).toBe(
+      "ECMWF 10 gusting 26, 4 models 8–11, 2 under your minimum, 12",
     );
   });
 
-  it("names HARMONIE as the headline while it leads the hour", () => {
-    const led = { ...wind, lead: "harmonie", gust_lead: "harmonie" };
-    expect(rangeWords(led, band, "kn")).toBe(
-      "HARMONIE 10 gusting 26, 4 models 8–11, 2 under your minimum, 12",
-    );
-    expect(headlineName(led)).toBe("HARMONIE");
-    expect(headlineName(wind)).toBe("Blend");
+  it("names any model as the headline, never a blend", () => {
+    expect(headlineName(wind)).toBe("HARMONIE");
+    expect(headlineName({ lead: "icon-eu" })).toBe("ICON-EU");
+    expect(headlineName({ lead: "ecmwf" })).toBe("ECMWF");
+    expect(headlineName({ lead: "gfs" })).toBe("GFS");
+  });
+
+  it("ticks every model but the one the stars come from", () => {
+    const byModel = (knots: number) => ({
+      wind_kn: knots,
+      gust_kn: null,
+      direction_deg: 290,
+    });
+    expect(
+      otherWinds({
+        ...wind,
+        by_model: {
+          harmonie: byModel(10),
+          "icon-eu": byModel(8),
+          gfs: byModel(11),
+        },
+      }),
+    ).toEqual([
+      { id: "icon-eu", knots: 8 },
+      { id: "gfs", knots: 11 },
+    ]);
+    expect(otherWinds(wind)).toEqual([]);
+  });
+
+  it("keeps the mean's and the gust's figures apart under the card's chart", () => {
+    expect(figurePlaces(100, 200, 284)).toEqual({
+      mean: { x: 100, anchor: "middle" },
+      gust: { x: 200, anchor: "middle" },
+    });
+    expect(figurePlaces(100, null, 284)).toEqual({
+      mean: { x: 100, anchor: "middle" },
+      gust: null,
+    });
+    // Too close to share: pushed either side of the point between them.
+    expect(figurePlaces(100, 110, 284)).toEqual({
+      mean: { x: 103, anchor: "end" },
+      gust: { x: 107, anchor: "start" },
+    });
+    // And never off the chart's edge.
+    expect(figurePlaces(280, 282, 284).gust).toEqual({
+      x: 260,
+      anchor: "start",
+    });
   });
 });

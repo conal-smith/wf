@@ -6,11 +6,13 @@
  *
  * The `blend` job (force5/blend/build.ts, run by force5/ingest/fetch_blend.py)
  * reads the published wind manifests, puts every model on the times the dock
- * can show, and keeps each place's consensus as `placeConsensus` computes it:
- * the wind, gust and bearing (HARMONIE's own while it reaches the hour, past
- * it the other models' weighted median and mean bearing) and how far the
- * models agree. It does not keep stars: those are the reader's own (weight, level,
- * wings), and rating an hour is arithmetic the browser does in microseconds.
+ * can show, and keeps each place's hours as `placeConsensus` computes them for
+ * the default choice of model (force5/src/lead.ts, named in the pointer as
+ * `lead`): HARMONIE's own wind, gust and bearing while it reaches the hour,
+ * ECMWF's past it, which of the two each hour is (`lead` in each place), and how
+ * far all the models agree, as context. It does not keep stars: those are the
+ * reader's own (weight, level, wings), and rating an hour is arithmetic the
+ * browser does in microseconds.
  *
  * It is published as a run, the way the models are (docs/TILING_DESIGN.md,
  * decision 6): the pointer `weather/blend.json` holds the times, the models it
@@ -19,9 +21,20 @@
  * reads only the squares in view, and the dock only its spot's
  * (`loadBlendSquares`, through the one spot loader, force5/src/spotData.ts).
  *
- * Only the default blend, every wind model, is published. A reader who picks
- * their own models gets the old path: the manifests, and the blend worked out
- * in the browser (src/useRatings.ts).
+ * Only the default is published: stars from HARMONIE then ECMWF, the agreement
+ * across every wind model. A reader who picks their own models, or takes their
+ * stars from another model, gets the hours worked out in the browser from the
+ * models' own spot squares (src/useRatings.ts); a spot of theirs rated from
+ * another model is worked out that way alone, and every other place still
+ * comes from here.
+ *
+ * Compatible both ways with the site before the ruling of 19 October 2026: the
+ * schema stays 2 and the new keys (`lead` in the pointer and in each place) are
+ * ones an older reader ignores, so the deployed site rates the new file as it
+ * rated the old. A file without `lead` was built by the old rule (HARMONIE,
+ * then a median of the others), so this site never rates from it
+ * (`trustedSpotBlend`) and works the hours out from the models until the job
+ * has run again.
  */
 import type { Agreement } from "../force5/src/blend";
 import {
@@ -38,6 +51,12 @@ import { modelTimes, type ColumnModel } from "../force5/src/timeline";
 import { KNOTS } from "../force5/src/units";
 import type { Manifest } from "../force5/src/weather";
 import { modelWeight } from "../force5/src/weights";
+import {
+  DEFAULT_STARS_FROM,
+  sameStarsFrom,
+  starsFromAt,
+  type StarsFrom,
+} from "../force5/src/lead";
 import {
   daylightOn,
   placeConsensus,
@@ -74,15 +93,46 @@ export const ownBlendModels = (
 
 /**
  * The published blend the map may rate from, or null for the browser to work
- * the blend out itself from the models: when there is none, when the reader
- * blends their own models, or once it is older than six hours.
+ * the hours out itself from the models: when there is none, when the reader
+ * blends their own models, once it is older than six hours, or when the
+ * reader's stars come from other models than the ones it was built with
+ * (`from`; a blend that names none was built by the rule before 19 October
+ * 2026 and fits nobody).
  */
-export const trustedSpotBlend = <B extends Pick<SpotBlend, "generatedAt">>(
+export const trustedSpotBlend = <
+  B extends Pick<SpotBlend, "generatedAt"> & { lead?: StarsFrom },
+>(
   blend: B | null,
   ownModels: boolean,
   now = Date.now(),
+  from: StarsFrom = DEFAULT_STARS_FROM,
 ): B | null =>
-  ownModels || !blend || staleSpotBlend(blend, now) ? null : blend;
+  ownModels ||
+  !blend ||
+  staleSpotBlend(blend, now) ||
+  !sameStarsFrom(blend.lead, from)
+    ? null
+    : blend;
+
+/**
+ * The places this rider rates from other models than a published blend's:
+ * their spots of their own (`StarsChoice.spots`), each worked out in the
+ * browser from those models while every other place is read from the blend.
+ * None without a published blend, when every place is worked out anyway.
+ */
+export function placesRatedApart<P extends { id: string }>(
+  places: readonly P[],
+  rider: Pick<Rider, "starsFrom">,
+  published: { lead?: StarsFrom } | null,
+): P[] {
+  const own = rider.starsFrom?.spots;
+  if (!published || !own) return [];
+  return places.filter(
+    (place) =>
+      place.id in own &&
+      !sameStarsFrom(published.lead, starsFromAt(rider.starsFrom, place.id)),
+  );
+}
 
 /** One model the blend read: enough of its run for the dock's columns. */
 export interface BlendSource {
@@ -98,13 +148,20 @@ export interface BlendSource {
   columns: number[];
 }
 
-/** One place's consensus on `times`. Knots in tenths; bearings in degrees. */
+/** One place's hours on `times`. Knots in tenths; bearings in degrees. */
 export interface BlendSpot {
+  /** The one model's wind, gust and bearing each hour is rated from. */
   wind: (number | null)[];
   gust: (number | null)[];
   from: (number | null)[];
   /** One letter a time: h(igh), m(oderate), l(ow), or - for no models. */
   agreement: string;
+  /**
+   * Which model each time is, one character a time: its place in `sources`
+   * in base 36, or - for none. Absent from a blend built before 19 October
+   * 2026, which is never rated from.
+   */
+  lead?: string;
 }
 
 /** Every place's consensus, by place id. */
@@ -126,6 +183,12 @@ interface BlendHead {
    */
   times: string[];
   sources: BlendSource[];
+  /**
+   * The models every place's hours are, in order (force5/src/lead.ts): the
+   * default, HARMONIE then ECMWF. Absent from a blend built before 19 October
+   * 2026, by the rule of the time.
+   */
+  lead?: StarsFrom;
 }
 
 /** The blend as the job works it out, every place in hand, before it is cut into squares. */
@@ -180,6 +243,7 @@ const isEnsemble = (manifest: Manifest) =>
 export function buildSpotBlend(
   manifests: readonly Manifest[],
   now = new Date(),
+  from: StarsFrom = DEFAULT_STARS_FROM,
 ): BlendRun {
   const runTimes = new Map(
     manifests.map((manifest) => [
@@ -199,9 +263,10 @@ export function buildSpotBlend(
       ),
     ),
   ].sort();
+  const code = new Map(ids.map((model, i) => [model, i.toString(36)]));
   const spots: BlendSpots = {};
   for (const id of places) {
-    const c = placeConsensus(manifests, ids, id, times);
+    const c = placeConsensus(manifests, ids, id, times, from);
     spots[id] = {
       wind: c.median.map(tenths),
       gust: c.gust.map(tenths),
@@ -209,6 +274,7 @@ export function buildSpotBlend(
       agreement: c.agreement
         .map((a) => (a === null ? "-" : AGREEMENT_CODE[a]))
         .join(""),
+      lead: c.model.map((m) => (m === null ? "-" : code.get(m)!)).join(""),
     };
   }
   const hour = new Date(Math.floor(now.getTime() / 3600000) * 3600000);
@@ -231,6 +297,7 @@ export function buildSpotBlend(
       weight: modelWeight(manifest.model, 0, manifest.resolutionKm),
       columns: runTimes.get(manifest.model)!.map((time) => index.get(time)!),
     })),
+    lead: { model: from.model, then: from.then },
     [BLEND_KEY]: spots,
   };
 }
@@ -280,6 +347,13 @@ export function parseSpotBlend(body: unknown): SpotBlend {
       )
     )
       throw new Error("A blend source is malformed.");
+  if (
+    "lead" in body &&
+    (!isObject(body.lead) ||
+      typeof body.lead.model !== "string" ||
+      typeof body.lead.then !== "string")
+  )
+    throw new Error("The blend's lead is malformed.");
   checkBase(body.base);
   const index = checkSpotIndex(body.spots);
   if (index.keys.length !== 1 || index.keys[0] !== BLEND_KEY)
@@ -302,6 +376,8 @@ export function checkBlendSpots(
       isObject(spot) &&
       typeof spot.agreement === "string" &&
       spot.agreement.length === n &&
+      (spot.lead === undefined ||
+        (typeof spot.lead === "string" && spot.lead.length === n)) &&
       [spot.wind, spot.gust, spot.from].every(
         (series) =>
           Array.isArray(series) &&
@@ -386,7 +462,7 @@ function columnsOf(times: readonly string[], axis: readonly string[]): number[] 
  * pending, as before it was rated.
  */
 export function spotBlendHours(
-  blend: Pick<BlendRun, "times" | "spotBlend">,
+  blend: Pick<BlendRun, "times" | "spotBlend" | "sources">,
   place: RatedPlace,
   axis: readonly string[],
   rider: Rider,
@@ -395,6 +471,10 @@ export function spotBlendHours(
   if (!spot) return null;
   const columns = columnsOf(blend.times, axis);
   const light = daylightOn(place, axis);
+  const modelAt = (i: number) => {
+    const at = i < 0 ? "-" : (spot.lead?.[i] ?? "-");
+    return at === "-" ? null : (blend.sources[parseInt(at, 36)]?.id ?? null);
+  };
   return columns.map((i, at) => {
     const wind = i < 0 ? null : spot.wind[i];
     const gust = i < 0 ? null : spot.gust[i];
@@ -407,6 +487,7 @@ export function spotBlendHours(
     };
     return {
       ...hour,
+      model: modelAt(i),
       rating: rateHour(hour, { facing: place.facing }, rider),
     };
   });

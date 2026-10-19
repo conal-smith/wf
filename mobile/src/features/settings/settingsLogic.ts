@@ -1,8 +1,8 @@
 /**
  * The More tab's arithmetic: who the stars are rated for, in the site's words
  * (spot/web/RiderSwitch.tsx) and through its validation (`parseRider`), the
- * models in the blend, and the lines a rider pastes into an AI assistant
- * (ai/web/install.ts's own).
+ * model the stars come from (force5/src/lead.ts), the models in the blend,
+ * and the lines a rider pastes into an AI assistant (ai/web/install.ts's own).
  */
 import {
   claudeCodeCommand,
@@ -12,7 +12,16 @@ import {
   geminiConfig,
   mcpUrl,
 } from "../../../../ai/web/install";
-import type { ModelAvailability, ModelEntry } from "../../../../force5/src/manifests";
+import {
+  DEFAULT_STARS_FROM,
+  modelName,
+  STARS_MODELS,
+  starsFromAt,
+  starsFromText,
+  type StarsChoice,
+  type StarsFrom,
+} from "../../../../force5/src/lead";
+import { modelEntry, type ModelAvailability, type ModelEntry } from "../../../../force5/src/manifests";
 import { parseRider } from "../../../../force5/src/prefs";
 import {
   ESTIMATE_WEIGHT_KG,
@@ -157,6 +166,91 @@ export function toggleBlendModel(
   if (!next.length) return [...blendModels];
   return order.filter((m) => next.includes(m)).concat(next.filter((m) => !order.includes(m)));
 }
+
+/* ------------------------------------------------------------ stars from */
+
+/** Under "Stars from", in the site's words: what follows it, and what the blend still does. */
+export const STARS_FROM_NOTE =
+  "The stars, the lights, the wing and your alerts follow Stars from. The blend's models still give the agreement.";
+
+/** "HARMONIE, then ECMWF": the More tab's value for "Stars from". */
+export const starsFromValue = (choice: StarsChoice | null | undefined) =>
+  starsFromText(starsFromAt(choice));
+
+export interface StarsModelRow {
+  id: string;
+  name: string;
+  /** "2 km · recommended". */
+  detail: string;
+  on: boolean;
+}
+
+const modelDetail = (id: string) =>
+  [modelEntry(id)?.detail, id === DEFAULT_STARS_FROM.model ? "recommended" : null]
+    .filter(Boolean)
+    .join(" · ");
+
+/** Every model the stars can come from, and whether they do. */
+export const starsModelRows = (choice: StarsChoice | null | undefined): StarsModelRow[] => {
+  const { model } = starsFromAt(choice);
+  return STARS_MODELS.map((id) => ({ id, name: modelName(id), detail: modelDetail(id), on: id === model }));
+};
+
+/**
+ * The models that can take over where the chosen one ends: every other. Where
+ * the two are one (a choice made elsewhere), none is ticked.
+ */
+export const thenRows = (choice: StarsChoice | null | undefined): StarsModelRow[] => {
+  const { model, then } = starsFromAt(choice);
+  return STARS_MODELS.filter((id) => id !== model).map((id) => ({
+    id,
+    name: modelName(id),
+    detail: modelEntry(id)?.detail ?? "",
+    on: id === then,
+  }));
+};
+
+/** "When HARMONIE ends". */
+export const thenTitle = (choice: StarsChoice | null | undefined) =>
+  `When ${modelName(starsFromAt(choice).model)} ends`;
+
+/**
+ * A new model for every spot. The one that took over becoming the model
+ * itself hands the takeover to the model it replaces, so the two stay two.
+ */
+export function pickStarsModel(from: StarsFrom, model: string): Partial<StarsFrom> {
+  return model === from.then && model !== from.model ? { model, then: from.model } : { model };
+}
+
+/** "same" for the rider's choice everywhere, or a model of the spot's own. */
+export type SpotStars = "same" | (string & {});
+
+export interface SpotStarsRow {
+  value: SpotStars;
+  label: string;
+  on: boolean;
+}
+
+/**
+ * The choices at one spot: the same as everywhere, or another model (its
+ * fallback stays the rider's). The model that rates everywhere is "same".
+ */
+export function spotStarsRows(choice: StarsChoice | null | undefined, spotId: string): SpotStarsRow[] {
+  const everywhere = starsFromAt(choice);
+  const own = choice?.spots?.[spotId] ?? null;
+  return [
+    { value: "same", label: `Same as everywhere (${modelName(everywhere.model)})`, on: !own },
+    ...STARS_MODELS.filter((id) => id !== everywhere.model).map((id) => ({
+      value: id,
+      label: modelName(id),
+      on: own === id,
+    })),
+  ];
+}
+
+/** The spots with a model of their own, by id, with that model's name. */
+export const spotOverrides = (choice: StarsChoice | null | undefined) =>
+  Object.entries(choice?.spots ?? {}).map(([id, model]) => ({ id, model, name: modelName(model) }));
 
 /* ------------------------------------------------------------------ AI */
 

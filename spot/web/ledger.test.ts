@@ -72,9 +72,10 @@ describe("the worked example's ledger", () => {
       what: "12.6 kn gusting 18.9 is rated as",
       figure: "12.6 kn",
     });
-    expect(worked.lines.map((line) => line.what)).toContain(
-      "The models differ a little",
-    );
+    expect(worked.lines).toContainEqual({
+      what: "The models differ a little: shown, never counted",
+      figure: "none",
+    });
     expect(worked.lines.find((line) => line.total)?.figure).toMatch(
       /, so \d solid$/,
     );

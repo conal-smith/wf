@@ -40,9 +40,10 @@ def blend(**changes):
         "sources": [{"id": "harmonie", "name": "HARMONIE", "run": "2026091323",
                      "runTime": "2026-09-13T23:00:00Z", "resolutionKm": 2,
                      "ensemble": False, "weight": 3, "columns": [0, 1, 2]}],
+        "lead": {"model": "harmonie", "then": "ecmwf"},
         "spotBlend": {
             "brandon": {"wind": [123, None, 87], "gust": [180, None, None],
-                        "from": [270, None, 255], "agreement": "h-m"},
+                        "from": [270, None, 255], "agreement": "h-m", "lead": "0-0"},
             "dollymount": {"wind": [90, 95, 100], "gust": [140, 150, 160],
                            "from": [200, 210, 220], "agreement": "hhl"},
             "rossnowlagh": {"wind": [None, None, None], "gust": [None, None, None],
@@ -107,16 +108,31 @@ class BlendRunTests(unittest.TestCase):
         too_fast = blend()
         too_fast["spotBlend"]["dollymount"]["gust"] = [140, 150, 2001]
         with_models = blend(spotForecasts={"brandon": [{"hour": 0}]})
+        bad_lead = blend()
+        bad_lead["spotBlend"]["brandon"]["lead"] = "0-1"
+        short_lead = blend()
+        short_lead["spotBlend"]["brandon"]["lead"] = "00"
+        bad_rule = blend(lead="harmonie")
         for name, manifest in {"a short series": short, "unordered times": unordered,
                                "a column past the end": bad_column,
                                "an unknown agreement": bad_letter,
                                "a gust past the limit": too_fast,
                                "a model's series beside the blend": with_models,
+                               "a lead past the sources": bad_lead,
+                               "a short lead": short_lead,
+                               "a malformed rule": bad_rule,
                                "no places": blend(spotBlend={}),
                                "an old blend": blend(run="2026091318",
                                                      runTime="2026-09-13T18:00:00Z")}.items():
             with self.subTest(name), self.assertRaises(ValueError):
                 self.check(manifest)
+
+    def test_takes_a_blend_from_before_the_lead_was_published(self):
+        old = blend()
+        del old["lead"]
+        del old["spotBlend"]["brandon"]["lead"]
+        manifest, _, _ = self.check(old)
+        self.assertNotIn("lead", manifest)
 
     def test_refuses_the_old_one_file_blend(self):
         old = blend(schemaVersion=1)

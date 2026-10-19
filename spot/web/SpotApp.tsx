@@ -12,7 +12,12 @@
  */
 import { MapPin, RefreshCw } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { loadPrefs, saveRider } from "../../force5/src/prefs";
+import { starsFromAt } from "../../force5/src/lead";
+import {
+  loadPrefs,
+  saveRider,
+  withRiderStarsFrom,
+} from "../../force5/src/prefs";
 import { shoreFacing } from "../../force5/src/shoreFacing";
 import {
   STARS_HREF,
@@ -48,6 +53,7 @@ import { MONO_LABEL, RING, tv } from "../../ui/tv";
 import { DaySection } from "./DaySection";
 import { SpotFrame } from "./Frame";
 import { FacingGlyph, KeepStar } from "./glyphs";
+import type { StarsWhere } from "./RangeBar";
 import { RiderSwitch, riderWords } from "./RiderSwitch";
 import { loadSpotPictures, type SpotPicture } from "./satellite";
 import {
@@ -55,8 +61,10 @@ import {
   bandKnots,
   compass,
   daySun,
+  dublinDate,
   goodWindArcs,
   groupDays,
+  leadChanges,
   spotRows,
   tideTurns,
 } from "./spot";
@@ -126,9 +134,25 @@ export default function SpotApp() {
   );
 }
 
+/**
+ * Who the stars are for, kept on the device (force5.prefs.v1) and changed
+ * from the rider line or an hour's card. Held above the page because the
+ * forecast itself is read for it: the stars come from the model it names.
+ */
+function useRider() {
+  const [rider, setRider] = useState<Rider>(() => loadPrefs().rider);
+  // A rating adopted from the account, or changed in another tab.
+  useEffect(() => onPrefsChange(() => setRider(loadPrefs().rider)), []);
+  // Saved over what is stored now, so a change made on the map in another
+  // tab, or the rider's own stars, are not undone.
+  const changeRider = (next: Rider) => setRider(saveRider(next).rider);
+  return [rider, changeRider] as const;
+}
+
 function SpotRoute({ id }: { id: string | null }) {
   const [attempt, setAttempt] = useState(0);
-  const state = useSpotForecast(id, attempt);
+  const [rider, changeRider] = useRider();
+  const state = useSpotForecast(id, attempt, starsFromAt(rider.starsFrom, id));
   const s = styles();
   const title =
     state.kind === "ready"
@@ -203,7 +227,12 @@ function SpotRoute({ id }: { id: string | null }) {
       )}
       {state.kind === "index" && <SpotIndex spots={state.spots} />}
       {state.kind === "ready" && (
-        <SpotPage spot={state.spot} forecast={state.forecast} />
+        <SpotPage
+          spot={state.spot}
+          forecast={state.forecast}
+          rider={rider}
+          onRider={changeRider}
+        />
       )}
     </SpotFrame>
   );
@@ -319,9 +348,13 @@ function scrollToId(id: string) {
 function SpotPage({
   spot,
   forecast,
+  rider,
+  onRider,
 }: {
   spot: RidingSpot;
   forecast: SpotForecast;
+  rider: Rider;
+  onRider: (rider: Rider) => void;
 }) {
   const s = styles();
   const [now, setNow] = useState(() => Date.now());
@@ -329,16 +362,20 @@ function SpotPage({
     const timer = window.setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(timer);
   }, []);
-  const [rider, setRider] = useState<Rider>(() => loadPrefs().rider);
   const units = useMemo(() => loadPrefs().units, []);
   const unitText = unitLabel(units);
-  // A rating adopted from the account, or changed in another tab.
-  useEffect(() => onPrefsChange(() => setRider(loadPrefs().rider)), []);
-  const changeRider = (next: Rider) => {
-    // Saved over what is stored now, so a change made on the map in another
-    // tab, or the rider's own stars, are not undone.
-    setRider(saveRider(next).rider);
-  };
+  const starsFrom = starsFromAt(rider.starsFrom, spot.id);
+  // A model picked in an hour's card: for every spot, which also brings this
+  // one back to it, or for this spot alone.
+  const changeStarsFrom = (model: string, where: StarsWhere) =>
+    onRider(
+      where === "spot"
+        ? withRiderStarsFrom(rider, { spot: spot.id, model })
+        : withRiderStarsFrom(
+            withRiderStarsFrom(rider, { everywhere: { model } }),
+            { spot: spot.id, model: null },
+          ),
+    );
   const facing = shoreFacing(spot.id);
   const rows = useMemo(
     () => spotRows(forecast.hours, now, facing, rider),
@@ -352,6 +389,7 @@ function SpotPage({
         .map((day) => ({ day, sun: daySun(spot.lat, spot.lon, day.date) })),
     [rows, spot.lat, spot.lon],
   );
+  const changes = useMemo(() => leadChanges(rows), [rows]);
   const band = useMemo(() => bandKnots(rider), [rider]);
   const turns = useMemo(() => tideTurns(forecast), [forecast]);
   const ceiling = Math.max(4.5, ...turns.map((t) => t.height)) + 0.3;
@@ -452,7 +490,11 @@ function SpotPage({
       {picture && (
         <SpotSatellite picture={picture} name={spot.name} facing={facing} />
       )}
-      <RiderSwitch rider={rider} onChange={changeRider} />
+      <RiderSwitch
+        rider={rider}
+        onChange={onRider}
+        spot={{ id: spot.id, name: spot.name }}
+      />
       <WeekStrip
         days={days.map(({ day }) => ({ date: day.date }))}
         current={shown}
@@ -478,6 +520,11 @@ function SpotPage({
             eager={index <= eagerTo}
             spotName={spot.name}
             models={forecast.sources.wind}
+            starsFrom={starsFrom}
+            changes={changes.filter(
+              (change) => dublinDate(change.time) === day.date,
+            )}
+            onStarsFrom={changeStarsFrom}
           />
         ))}
       </div>

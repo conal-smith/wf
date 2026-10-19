@@ -78,6 +78,24 @@
   padding: 0 8px;
   font-size: 10px;
 }
+.dk-tools .dk-stars-from {
+  width: auto;
+  gap: 4px;
+  padding: 0 8px;
+}
+.dk-from-word {
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* A spot rated from a model of its own: said in magenta, dashed, so two
+   spots that disagree say why. */
+.dk-tools .dk-stars-from.is-own {
+  color: var(--color-chart-magenta);
+  outline: 1px dashed var(--color-chart-magenta);
+  outline-offset: -4px;
+}
 .dk-chev svg {
   stroke: currentColor;
 }
@@ -423,6 +441,19 @@ table.tt {
 .pen-now-time {
   font: 13px var(--font-hand);
   fill: var(--color-pen-ink);
+}
+/* Where the stars hand over to the next model: ink, not the red of now. */
+.pen-handover {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+  stroke-linecap: round;
+  opacity: 0.7;
+}
+.pen-handover-text {
+  font: 13px var(--font-hand);
+  fill: var(--color-ink);
 }
 
 /* ---------- a phone: a strip along the foot of the screen ---------- */

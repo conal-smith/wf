@@ -34,6 +34,8 @@ import {
   placeName,
   ratingCache,
   readBlend,
+  readModelWind,
+  ridesApart,
   readBlendPointer,
   staleBlend,
 } from "./forecast.js";
@@ -238,7 +240,11 @@ async function evaluateRules(deps: EvaluatorDeps, now: number, report: Evaluatio
   if (devices.length) {
     const blend = await readBlend(deps.source, pointer);
     if (!blend) return;
-    const ratings = ratingCache(blend);
+    // The models themselves, only for a rider whose stars the blend does not carry.
+    const wind = devices.some((device) => ridesApart(blend.pointer, device.rider))
+      ? await readModelWind(deps.source, now)
+      : null;
+    const ratings = ratingCache(blend, wind);
     for (const device of devices) {
       const hoursOf = ratings(device.rider);
       const matches = device.rules.flatMap((rule) =>

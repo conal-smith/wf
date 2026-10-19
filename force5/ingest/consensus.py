@@ -1,19 +1,16 @@
-"""The site's wind blend, in Python, so the verification can score it.
+"""The hours the site rates its stars from, in Python, so the verification can score them.
 
-The blend riders see is worked out in TypeScript: `modelWeight` and
-`weightedMedian` (force5/src/weights.ts) and `placeConsensus` (src/ratings.ts).
-Verifying "the blend" means verifying *that* arithmetic, so this is a line-by-line
-replica of it and nothing more. Wherever HARMONIE (`LEAD_MODEL`) reaches the hour,
-the wind, gust and bearing are its own, the gust falling back to the blend's at an
-hour it gives none. Elsewhere they are the blend: each model taken once at its
-weight for how far into its run the hour is (`MODEL_WEIGHTS`, or by its grid for a
-model the backtest has not judged: 3 for 3 km or finer, 2 up to 8 km, else 1), an
-ensemble's members collapsed to their hourly mean speed, the weighted median of
-the speeds and of the gusts, and the weighted mean of the models' mean wind
-vectors for the bearing. Every
-model is put on the axis the TypeScript way too: linear in u and v between its
-own steps, never across a gap wider than twice its typical step, and never past
-either end of its run.
+The hours riders see are worked out in TypeScript: `placeConsensus` (src/ratings.ts)
+under the rule in force5/src/lead.ts. Verifying "the blend" means verifying *that*
+arithmetic, so this is a line-by-line replica of it and nothing more. Since the
+ruling of 19 October 2026 the stars come from one model, never a blend of several:
+each hour is the first of two models that reaches it, its own wind, gust and
+bearing — HARMONIE, then ECMWF where HARMONIE's run ends (`STARS_FROM`), or the two
+a rider chooses — and nothing where neither does. The gust is that model's too, and
+none where it gives none. Each model is put on the axis the TypeScript way: linear
+in u and v between its own steps, never across a gap wider than twice its typical
+step, and never past either end of its run. The models' agreement, which the site
+shows beside the stars as context, is not replicated: it is not scored.
 
 It even keeps JavaScript's coercions where they matter: a null u or v counts as
 zero, as `Math.hypot(null, v)` and a Float64Array store do, while a null gust is
@@ -22,88 +19,28 @@ cover the place, and is left out entirely, as `spotSeries` does.
 
 The two are held together by a fixture, force5/ingest/fixtures/blend-consensus.json:
 force5/src/consensusReplica.test.ts checks that the TypeScript produces its
-`expected` values, and test_consensus.py checks that this does. Change the
-TypeScript and the vitest test fails first; regenerate the fixture with
-`npx tsx force5/blend/consensus-fixture.ts` and this module's test then fails
-until the replica agrees again.
+`expected` values, for each choice of models it lists, and test_consensus.py checks
+that this does. Change the TypeScript and the vitest test fails first; regenerate
+the fixture with `npx tsx force5/blend/consensus-fixture.ts` and this module's test
+then fails until the replica agrees again.
 """
 from bisect import bisect_right
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 import math
 
-# force5/src/weights.ts
-FINE_GRID_KM = 3
-REGIONAL_GRID_KM = 8
-# weights.ts `LEAD_MODEL`: the model whose own forecast is the headline wherever
-# it reaches the hour.
-LEAD_MODEL = "harmonie"
+# force5/src/lead.ts `DEFAULT_STARS_FROM`: the model each hour's stars come from
+# wherever it reaches the hour, and the one that takes over where its run ends.
+STARS_FROM = ("harmonie", "ecmwf")
+# The rule's own name, for the verification's signature: changes when the rule does.
+RULE = "one-model-2026-10-19"
 # force5/src/manifests.ts `windModels()`: every wind model that is neither planned
 # nor retired, in catalogue order. The published blend reads every one the bucket
 # serves.
 BLEND_MODELS = ("harmonie", "icon-eu", "ecmwf", "gfs")
-# weights.ts `MODEL_WEIGHTS`: each judged model's weight on day 0, 1, 2 and 3 on.
-MODEL_WEIGHTS = {
-    "harmonie": (4, 4, 4, 4),
-    "arome": (2, 1, 1, 1),
-    "icon-eu": (2, 1, 1, 1),
-    "gfs": (2, 2, 1, 1),
-    "gefs": (1, 1, 1, 1),
-    "ecmwf-ens": (1, 1, 1.5, 1.5),
-    "aifs": (0.5, 1, 1.5, 1.5),
-    "ecmwf": (0.5, 0.5, 0.5, 0.5),
-    "arpege": (0.5, 0.5, 0.5, 0.5),
-}
 HOUR_MS = 3_600_000
 NAN = float("nan")
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
-
-
-def blend_weight(resolution_km):
-    """weights.ts `blendWeight`: 3 at 3 km or finer, 2 up to 8 km, else 1."""
-    if isinstance(resolution_km, bool) or not isinstance(resolution_km, (int, float)) \
-            or not math.isfinite(resolution_km):
-        return 1
-    if resolution_km <= FINE_GRID_KM:
-        return 3
-    if resolution_km <= REGIONAL_GRID_KM:
-        return 2
-    return 1
-
-
-def lead_day(lead_hours):
-    """weights.ts `leadDay`: 0 for the first 24 hours (and for an unknown lead), 3 from 72."""
-    if not lead_hours >= 24:
-        return 0
-    if lead_hours < 48:
-        return 1
-    if lead_hours < 72:
-        return 2
-    return 3
-
-
-def model_weight(model, lead_hours, resolution_km):
-    """weights.ts `modelWeight`: the judged model's weight that far in, else by grid."""
-    row = MODEL_WEIGHTS.get(model)
-    return row[lead_day(lead_hours)] if row else blend_weight(resolution_km)
-
-
-def weighted_median(values, weights):
-    """weights.ts `weightedMedian`: the value at half the total weight."""
-    order = sorted(({"value": value, "weight": weights[i] if i < len(weights) else 1}
-                    for i, value in enumerate(values)), key=lambda item: item["value"])
-    half = 0
-    for item in order:
-        half += item["weight"]
-    half /= 2
-    below = 0
-    for i, item in enumerate(order):
-        below += item["weight"]
-        if abs(below - half) < 1e-9 and i + 1 < len(order):
-            return (item["value"] + order[i + 1]["value"]) / 2
-        if below > half:
-            return item["value"]
-    return order[-1]["value"]
 
 
 def direction(u, v):
@@ -219,118 +156,49 @@ def spot_series(manifest, spot):
     return None
 
 
-def member_lines(manifest, spot):
-    """series.ts `memberSeries`, as point lists, or None for a deterministic model."""
-    frames = (manifest.get("spotMembers") or {}).get(spot)
-    ensemble = manifest.get("ensemble")
-    if not ensemble or not isinstance(frames, list) or not frames:
-        return None
-
-    def pick(values, member):
-        return values[member] if isinstance(values, list) and member < len(values) else NAN
-
-    return [[{"validTime": frame["validTime"], "u": pick(frame.get("u"), member),
-              "v": pick(frame.get("v"), member), "gust": pick(frame.get("gust"), member)}
-             for frame in frames] for member in range(ensemble["members"])]
+def lead_order(stars_from):
+    """lead.ts `leadOrder`: the chosen model, then its fallback, once each."""
+    model, then = stars_from
+    return [model] if then == model else [model, then]
 
 
-def place_consensus(manifests, blend_ids, spot, axis):
-    """ratings.ts `placeConsensus` without the agreement: wind, gust and bearing.
+def place_consensus(manifests, blend_ids, spot, axis, stars_from=STARS_FROM):
+    """ratings.ts `placeConsensus` without the agreement: wind, gust, bearing and model.
 
     `manifests` are dicts shaped like the published wind manifests with their
-    spot squares merged back in (squares.with_spot_data); only `model`,
-    `runTime`, `resolutionKm`, `spotForecasts`, and for an ensemble
-    `ensemble`/`spotMembers`, are read. verify.py builds them from the archive
-    instead. `axis` is a list of ISO times. Speeds come back in m/s, and None
-    where no model has a value.
+    spot squares merged back in (squares.with_spot_data); only `model` and
+    `spotForecasts` are read. verify.py builds them from the archive instead.
+    `axis` is a list of ISO times; `stars_from` the (model, then) pair. Speeds
+    come back in m/s, and None where neither model reaches the hour. `blend_ids`
+    are the models the site's agreement reads; the hours themselves never
+    depend on them.
     """
+    del blend_ids  # Only the agreement reads them, and it is not replicated.
     axis_times = [parse_ms(value) for value in axis]
-    count = len(axis_times)
-    lines, vectors = [], []
-    lead_line, lead_vector = None, None
-    for blend_id in blend_ids:
-        manifest = next((m for m in manifests if m.get("model") == blend_id), None)
-        if manifest is None:
-            continue
-        mean = spot_series(manifest, spot)
+    own = {}
+    for model in lead_order(stars_from):
+        manifest = next((m for m in manifests if m.get("model") == model), None)
+        mean = spot_series(manifest, spot) if manifest is not None else None
         if mean is None:
             continue
-        run = parse_ms(manifest["runTime"]) if isinstance(manifest.get("runTime"), str) else NAN
-        weight = [model_weight(manifest["model"], (time - run) / HOUR_MS,
-                               manifest.get("resolutionKm")) for time in axis_times]
-        members = member_lines(manifest, spot)
-        for points in (members if members is not None else [mean]):
-            plan = plan_for([parse_ms(point["validTime"]) for point in points], axis_times)
-            speed, gust = line_on(points, plan)
-            line = {"model": manifest["model"], "member": members is not None,
-                    "weight": weight, "speed": speed, "gust": gust}
-            lines.append(line)
-            if line["model"] == LEAD_MODEL and not line["member"]:
-                lead_line = line
         plan = plan_for([parse_ms(point["validTime"]) for point in mean], axis_times)
+        speed, gust = line_on(mean, plan)
         u, v = vector_on(mean, plan)
-        vectors.append({"u": u, "v": v, "weight": weight})
-        if manifest["model"] == LEAD_MODEL:
-            lead_vector = {"u": u, "v": v}
-    # `perModelLines`: an ensemble's members collapse to their hourly mean.
-    per_model, groups = [], {}
-    for line in lines:
-        if not line["member"]:
-            per_model.append(line)
-        else:
-            groups.setdefault(line["model"], []).append(line)
-    for group in groups.values():
-        if len(group) == 1:
-            per_model.append(group[0])
-            continue
-        speed, gust = [], []
-        for c in range(count):
-            speeds = [line["speed"][c] for line in group if math.isfinite(line["speed"][c])]
-            gusts = [line["gust"][c] for line in group if math.isfinite(line["gust"][c])]
-            speed.append(sum_js(speeds) / len(speeds) if speeds else NAN)
-            gust.append(sum_js(gusts) / len(gusts) if gusts else NAN)
-        per_model.append({"weight": group[0]["weight"], "speed": speed, "gust": gust})
-    out = {"median": [], "gust": [], "from": []}
-    for c in range(count):
-        speeds, speed_weights, gusts, gust_weights = [], [], [], []
-        for line in per_model:
-            if math.isfinite(line["speed"][c]):
-                speeds.append(line["speed"][c])
-                speed_weights.append(line["weight"][c])
-            if math.isfinite(line["gust"][c]):
-                gusts.append(line["gust"][c])
-                gust_weights.append(line["weight"][c])
-        # The lead's own hour, where it has one: the headline.
-        lead_speed = lead_line["speed"][c] \
-            if lead_line is not None and math.isfinite(lead_line["speed"][c]) else None
-        if lead_speed is not None and math.isfinite(lead_line["gust"][c]):
-            out["gust"].append(lead_line["gust"][c])
-        else:
-            out["gust"].append(weighted_median(gusts, gust_weights) if gusts else None)
-        if not speeds:
+        own[model] = {"speed": speed, "gust": gust, "u": u, "v": v}
+    out = {"median": [], "gust": [], "from": [], "model": []}
+    for c in range(len(axis_times)):
+        model = next((m for m in lead_order(stars_from)
+                      if m in own and math.isfinite(own[m]["speed"][c])), None)
+        out["model"].append(model)
+        if model is None:
             out["median"].append(None)
-        else:
-            out["median"].append(lead_speed if lead_speed is not None
-                                 else weighted_median(speeds, speed_weights))
-        if lead_speed is not None and lead_vector is not None \
-                and math.isfinite(lead_vector["u"][c]) and math.isfinite(lead_vector["v"][c]):
-            lu, lv = lead_vector["u"][c], lead_vector["v"][c]
-            out["from"].append(direction(lu, lv) if math.hypot(lu, lv) >= 0.1 else None)
+            out["gust"].append(None)
+            out["from"].append(None)
             continue
-        u = v = k = 0
-        for vector in vectors:
-            if math.isfinite(vector["u"][c]) and math.isfinite(vector["v"][c]):
-                u += vector["u"][c] * vector["weight"][c]
-                v += vector["v"][c] * vector["weight"][c]
-                k += vector["weight"][c]
-        out["from"].append(direction(u / k, v / k)
-                           if k and math.hypot(u / k, v / k) >= 0.1 else None)
+        line = own[model]
+        out["median"].append(line["speed"][c])
+        out["gust"].append(line["gust"][c] if math.isfinite(line["gust"][c]) else None)
+        u, v = line["u"][c], line["v"][c]
+        out["from"].append(direction(u, v) if math.isfinite(u) and math.isfinite(v)
+                           and math.hypot(u, v) >= 0.1 else None)
     return out
-
-
-def sum_js(values):
-    """Left-to-right addition from zero, as the TypeScript loop does it."""
-    total = 0
-    for value in values:
-        total += value
-    return total

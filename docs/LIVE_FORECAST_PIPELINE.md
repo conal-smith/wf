@@ -684,18 +684,28 @@ pointer `weather/blend.json` (about 1 kB compressed) and a run directory beside 
 (about 81 kB compressed between Ireland's ten, the largest, around Dublin, 22 kB):
 
 - **What it holds.** Each place's headline wind and gust (tenths of a knot) and
-  bearing (whole degrees) — HARMONIE's own while it reaches the hour, past it the
-  other models' weighted median and weighted mean bearing — and the agreement letter
-  across every model, on every time a deterministic
+  bearing (whole degrees) for the default choice of model the stars come from —
+  HARMONIE's own while it reaches the hour, ECMWF's past it, never a blend (the
+  ruling of 19 October 2026, docs/STAR_RATINGS.md) — which of the two each time is
+  (`lead`, one character a time: the model's place in `sources` in base 36, `-` for
+  none), and the agreement letter across every model, as context, on every time a
+  deterministic
   model publishes, plus a summary of each model's run so the dock can build its
   columns without the manifests. No stars: those depend on the reader's weight, level
   and wings, and the browser rates an hour in microseconds (`src/spotBlend.ts`).
-  The pointer (`schemaVersion` 2) holds the times, the models and the square index,
+  The pointer (`schemaVersion` 2) holds the times, the models, the choice it was built
+  for (`"lead": {"model": "harmonie", "then": "ecmwf"}`) and the square index,
   `"spots": {"squareDegrees": 2, "url": "spots/{square}.json", "squares": [...],
   "keys": ["spotBlend"]}`; each square holds its places under `spotBlend`, in the same
   envelope as a model's squares. Each place goes in the square the riding-place
   catalogue puts it in, the catalogue the models were split by; a place the catalogue
   no longer lists is left out and named in the job's log.
+- **Old and new readers.** `lead` arrived on 19 October 2026 inside schema 2, so a
+  site from before reads the new file as it read the old (it ignores the new keys);
+  this site never rates from a file without `lead`, built by the old rule, and works
+  the hours out from the models until the next hourly blend. A reader whose stars
+  come from other models is worked out from the models' own squares too, and so is a
+  spot of theirs with a model of its own (`placesRatedApart`).
 - **The weighting.** Each model counts by how well it verified against Irish stations
   that far into its run (`MODEL_WEIGHTS` in `force5/src/weights.ts`; the backtest is in
   docs/VERIFICATION.md, "Blend weights"): HARMONIE 4 for as long as it runs, AROME and
@@ -703,8 +713,8 @@ pointer `weather/blend.json` (about 1 kB compressed) and a run directory beside 
   to 1.5 from day 2, ECMWF IFS and ARPEGE 0.5 throughout. A model the backtest has not
   judged counts by its grid (3 km or finer three times, up to 8 km twice, coarser once).
   The agreement reads the standard deviation of every model's speed, more strictly the
-  further ahead the hour is. The dock's blend chart, Gust and the MCP server use the
-  same weights.
+  further ahead the hour is. Since 19 October 2026 the weights decide no headline: only
+  the dock's Blend chart weighs its lines by them.
 - **How it runs.** `force5/ingest/fetch_blend.py` reads every wind pointer the bucket
   serves into a scratch directory (never over a persistent work directory's own) and
   runs `force5/blend/build.ts`, the site's own TypeScript bundled into the image with

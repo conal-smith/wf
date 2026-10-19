@@ -10,8 +10,10 @@
  *    squares are read for the chart's view (setView, from the map) and for
  *    the open, starred and most-opened spots, wherever they are.
  *  - The models' manifests are fetched only when something needs them: a
- *    rider who has left a model out of the blend, a blend too old to trust,
- *    or a screen that lists the models (wantModels).
+ *    rider who has left a model out of the blend, a blend too old to trust or
+ *    built with other models than the rider's stars come from, a spot the
+ *    rider rates from a model of its own (read from that model's square beside
+ *    the blend), or a screen that lists the models (wantModels).
  */
 import {
   createContext,
@@ -25,6 +27,7 @@ import {
 import { AppState } from "react-native";
 import { windModels, type ModelAvailability } from "../../../force5/src/manifests";
 import { squaresToRead, type ViewBounds } from "../../../force5/src/squares";
+import { starsFromAt } from "../../../force5/src/lead";
 import { ratedRider, type Rider } from "../../../force5/src/stars";
 import { dockColumns, type ColumnModel } from "../../../force5/src/timeline";
 import type { Spot } from "../../../force5/src/weather";
@@ -32,6 +35,7 @@ import type { PlaceHour, RatedPlace } from "../../../src/ratings";
 import {
   blendColumnModels,
   ownBlendModels,
+  placesRatedApart,
   trustedSpotBlend,
   type LoadedBlend,
 } from "../../../src/spotBlend";
@@ -126,7 +130,13 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
     prefs.blendModels,
     windModels().map((model) => model.id),
   );
-  const pointer = trustedSpotBlend(spotBlend.blend, ownBlend, now);
+  // So is one whose stars come from other models than the published blend's.
+  const pointer = trustedSpotBlend(
+    spotBlend.blend,
+    ownBlend,
+    now,
+    starsFromAt(rider.starsFrom),
+  );
   const ownPlaces = useMemo(() => {
     const ids = new Set([...(spotId ? [spotId] : []), ...starred, ...frequent.map((v) => v.id)]);
     return spots.filter((s) => ids.has(s.id));
@@ -140,10 +150,19 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
     spotBlend.recheck,
   );
   const published = blendSquares.failed ? null : pointer;
+  // A spot the rider rates from a model of its own is worked out from that
+  // model's square, beside the published blend that rates every other.
+  const ratedApart = useMemo(
+    () => placesRatedApart(spots, rider, published),
+    [spots, rider, published],
+  );
   const { models, resolved: modelsResolved } = useModelAvailability(
     false,
     undefined,
-    modelsWanted || ownBlend || (spotBlend.resolved && !published),
+    modelsWanted ||
+      ownBlend ||
+      (spotBlend.resolved && !published) ||
+      ratedApart.length > 0,
   );
 
   /* ---- the week's columns, and the strip of them the dock shows ---- */
@@ -181,17 +200,11 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
     [spotId, starred, frequent],
   );
   const windOnly = useMemo(() => models.filter((model) => model.wind !== null), [models]);
-  const ownSquares = useMemo(
-    () =>
-      published
-        ? null
-        : squaresToRead(
-            view,
-            windOnly.flatMap((model) => model.wind!.spots.squares),
-            ownPlaces,
-          ),
-    [published, view, windOnly, ownPlaces],
-  );
+  const ownSquares = useMemo(() => {
+    const listed = windOnly.flatMap((model) => model.wind!.spots.squares);
+    if (!published) return squaresToRead(view, listed, ownPlaces);
+    return ratedApart.length ? squaresToRead(null, listed, ratedApart) : null;
+  }, [published, view, windOnly, ownPlaces, ratedApart]);
   const rated = useSpotSquaresState(windOnly, ownSquares, true);
   const { hours, version } = useRatings(
     rated.models,
@@ -206,6 +219,11 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
       : rated.squares === ALL_SQUARES
         ? null
         : (rated.squares ?? []),
+    published
+      ? rated.squares === ALL_SQUARES
+        ? null
+        : (rated.squares ?? [])
+      : null,
   );
 
   const openSpot = useCallback(

@@ -23,8 +23,19 @@ import {
   type RulesPayload,
 } from "./protocol.js";
 import { customRatingSchema } from "../../site/shared/rider.js";
+import { parseStarsChoice } from "../../force5/src/lead.js";
 
 const int = (min: number, max: number) => z.number().int().min(min).max(max);
+
+const starsModel = z.string().regex(/^[a-z0-9-]{1,24}$/, "Not a model id.");
+const starsChoiceSchema = z
+  .object({
+    model: starsModel,
+    then: starsModel,
+    spots: z.record(z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/), starsModel).optional(),
+  })
+  .refine((choice) => Object.keys(choice.spots ?? {}).length <= 200, "Too many spots.")
+  .transform((choice) => parseStarsChoice(choice));
 
 export const riderSchema = z.object({
   weightKg: z.number().min(MIN_WEIGHT_KG).max(MAX_WEIGHT_KG).nullable(),
@@ -32,6 +43,9 @@ export const riderSchema = z.object({
   wings: z.array(z.number().min(MIN_WING_M2).max(MAX_WING_M2)).max(12),
   // The rider's own star rating, which the server then rates with.
   custom: customRatingSchema.nullable().optional(),
+  // The models the rider's stars come from (force5/src/lead.ts), checked
+  // again by `parseStarsChoice` so a model no longer published is the default.
+  starsFrom: starsChoiceSchema.optional(),
 }) satisfies z.ZodType<Rider>;
 
 /** A place id as the catalogue writes them: `brandon`, `fi-inchydoney-east-beach`. */

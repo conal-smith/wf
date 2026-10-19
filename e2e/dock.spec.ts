@@ -1,4 +1,11 @@
-import { chooseSpot, expect, steadyFrames, test, type Page } from "./fixtures";
+import {
+  backToIreland,
+  chooseSpot,
+  expect,
+  steadyFrames,
+  test,
+  type Page,
+} from "./fixtures";
 import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleStrip, stripAt } from "./columns";
 import { buildPyramid } from "../scripts/f5tile.mjs";
@@ -411,10 +418,11 @@ test("the spot's tools stand on the chart over the dock, and no day is rated", a
 }) => {
   await openDock(page);
   // No county, no compass, no line of the day's best, no small print, no
-  // play: the star, the name, the blend, the page and the fold, in a box on
-  // the chart at the dock's top edge. The dock under it is its rows.
+  // play: the star, the name, whose forecast the stars are, the blend, the
+  // page and the fold, in a box on the chart at the dock's top edge. The
+  // dock under it is its rows.
   const tools = page.getByRole("group", { name: "This spot" });
-  await expect(tools).toHaveText(/^Brandon Bay$/);
+  await expect(tools).toHaveText(/^Brandon Bay(HARMONIE|ECMWF)$/);
   const box = (await tools.boundingBox())!;
   const dock = (await page.locator(".dock").boundingBox())!;
   expect(box.y + box.height).toBeLessThanOrEqual(dock.y);
@@ -567,6 +575,180 @@ test("units, the rider and the blend's models are display options, kept on reloa
   await expect(
     page.locator('input[data-model-toggle="gfs"]'),
   ).not.toBeChecked();
+});
+
+/** Each hour's stars in the dock, as a screen reader hears them. */
+const starLabels = (page: Page) =>
+  page
+    .locator(".dock tr.tt-stars .hour-stars")
+    .evaluateAll((all) => all.map((el) => el.getAttribute("aria-label") ?? ""));
+
+/** Every light's rating for the hour in hand. */
+const lightRatings = (page: Page) =>
+  page
+    .locator(".spot-marker")
+    .evaluateAll((all) =>
+      all.map(
+        (light) =>
+          `${light.getAttribute("data-spot-id")}:${[...light.classList].find((c) => /^s\d$/.test(c)) ?? "-"}:${light.querySelector(".lt-sub")?.textContent ?? ""}`,
+      ),
+    );
+
+/** Whether the dock's stars for the hour in hand are Brandon's light's. */
+const dockAndLightAgree = (page: Page) =>
+  page.evaluate(() => {
+    const at = document
+      .querySelector(".dock tr.tt-hour td.c-sel")
+      ?.getAttribute("data-i");
+    const label =
+      document
+        .querySelector(`.dock tr.tt-stars td[data-i="${at}"] .hour-stars`)
+        ?.getAttribute("aria-label") ?? "";
+    const light =
+      document
+        .querySelector('.spot-marker[data-spot-id="brandon"] .lt-n')
+        ?.textContent?.trim() ?? "";
+    return (/: (\d) of 5/.exec(label)?.[1] ?? "") === light;
+  });
+
+/** Select an hour, as a tap on it does. */
+const selectHour = (page: Page, at: string) =>
+  page
+    .locator(`.dock tr.tt-hour td[data-i="${at}"]`)
+    .evaluate((cell: HTMLElement) => cell.click());
+
+/** Select the first hour whose stars are `model`'s; gives back which. */
+async function selectFrom(page: Page, model: string): Promise<string> {
+  const at = await page
+    .locator(".dock tr.tt-stars td[data-i]")
+    .evaluateAll(
+      (cells, name) =>
+        cells
+          .find((cell) =>
+            cell
+              .querySelector(".hour-stars")
+              ?.getAttribute("aria-label")
+              ?.endsWith(`from ${name}`),
+          )
+          ?.getAttribute("data-i") ?? null,
+      model,
+    );
+  expect(at).not.toBeNull();
+  await selectHour(page, at!);
+  return at!;
+}
+
+/** Choose in Display options' Stars from: `group` names which row. */
+async function starsFrom(page: Page, group: string, model: string) {
+  await page
+    .getByRole("button", { name: "Display options", exact: true })
+    .click();
+  await page
+    .getByRole("group", { name: group, exact: true })
+    .getByRole("button", { name: model, exact: true })
+    .click();
+  await page.getByLabel("Close display options").click();
+}
+
+test("the stars come from one model, the rider's choice: the dock names it and the map follows", async ({
+  page,
+}) => {
+  await openDock(page);
+  // The whole of Ireland, with Brandon's dock open: every light rated.
+  await backToIreland(page);
+  const chip = page.locator(".dock [data-stars-from-chip]");
+
+  // By default HARMONIE rates the hours it reaches, and ECMWF alone takes
+  // over where its run ends, marked on the hours in the site's own hand.
+  await expect(chip).toHaveAttribute("data-stars-from-chip", "harmonie");
+  await expect(chip).toContainText("HARMONIE");
+  const before = await starLabels(page);
+  expect(before.some((label) => label.endsWith("from HARMONIE"))).toBe(true);
+  expect(before.some((label) => label.endsWith("from ECMWF"))).toBe(true);
+  expect(before.every((label) => /from (HARMONIE|ECMWF)$/.test(label))).toBe(
+    true,
+  );
+  await expect(page.locator('.dock [data-handover="ecmwf"]')).toHaveText(
+    /^ECMWF from \w{3} \d\d:\d\d$/,
+  );
+  // A daylight hour of HARMONIE's, where the lights have stars to show.
+  const hour = await selectFrom(page, "HARMONIE");
+  await expect.poll(() => dockAndLightAgree(page)).toBe(true);
+  const lightsBefore = await lightRatings(page);
+
+  // Stars from GFS, everywhere. The sample's GFS run starts days later, so
+  // that hour is ECMWF's now, the model that takes over: never HARMONIE's.
+  await starsFrom(page, "Stars from", "GFS");
+  await expect
+    .poll(async () => {
+      const labels = await starLabels(page);
+      return (
+        labels.some((label) => label.endsWith("from GFS")) &&
+        labels.every((label) => /from (GFS|ECMWF)$/.test(label))
+      );
+    })
+    .toBe(true);
+  await expect(chip).toHaveAttribute("data-stars-from-chip", "ecmwf");
+  await expect(page.locator('.dock [data-handover="gfs"]')).toHaveText(
+    /^GFS from \w{3} \d\d:\d\d$/,
+  );
+  await expect(page.locator('.dock [data-handover="ecmwf"]')).toHaveCount(1);
+
+  // The map follows at the same hour: every light rated again, from the
+  // models' own spot squares, and Brandon's light is the dock's hour.
+  await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
+    timeout: 30000,
+  });
+  await expect
+    .poll(() => lightRatings(page), { timeout: 30000 })
+    .not.toEqual(lightsBefore);
+  await expect
+    .poll(() => dockAndLightAgree(page), { timeout: 30000 })
+    .toBe(true);
+  // An hour GFS reaches is named GFS in the dock's head.
+  await selectFrom(page, "GFS");
+  await expect(chip).toHaveAttribute("data-stars-from-chip", "gfs");
+  await expect(chip).toContainText("GFS");
+  await expect
+    .poll(() => dockAndLightAgree(page), { timeout: 30000 })
+    .toBe(true);
+
+  // Kept on reload, and back to the default puts the published blend's
+  // lights back as they were.
+  await page.reload();
+  await chooseSpot(page, "brandon");
+  await expect(page.locator('.dock [data-handover="gfs"]')).toHaveCount(1, {
+    timeout: 30000,
+  });
+  await starsFrom(page, "Stars from", "HARMONIE");
+  await expect(page.locator('.dock [data-handover="gfs"]')).toHaveCount(0);
+  await backToIreland(page);
+  await selectHour(page, hour);
+  await expect(chip).toHaveAttribute("data-stars-from-chip", "harmonie");
+  await expect
+    .poll(() => lightRatings(page), { timeout: 30000 })
+    .toEqual(lightsBefore);
+});
+
+test("a spot can take its stars from a model of its own, and says so", async ({
+  page,
+}) => {
+  await openDock(page);
+  const chip = page.locator(".dock [data-stars-from-chip]");
+  await starsFrom(page, "Stars at Brandon Bay", "GFS");
+  await selectFrom(page, "GFS");
+  await expect(chip).toHaveAttribute("data-stars-from-chip", "gfs");
+  await expect(chip).toHaveClass(/is-own/);
+  await expect(chip).toContainText("from GFS");
+  // Every other place is still the published blend's, and still rated.
+  await backToIreland(page);
+  await expect
+    .poll(() => dockAndLightAgree(page), { timeout: 30000 })
+    .toBe(true);
+  await starsFrom(page, "Stars at Brandon Bay", "Same");
+  await expect(chip).not.toHaveClass(/is-own/);
+  // That hour, past HARMONIE's run, is ECMWF's again by default.
+  await expect(chip).toHaveAttribute("data-stars-from-chip", "ecmwf");
 });
 
 test("the display options open beside the map's controls, one panel at a time", async ({

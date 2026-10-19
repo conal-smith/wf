@@ -46,6 +46,7 @@ import {
   type Window,
 } from "../../mcp/api/forecast.js";
 import type { ForecastSource } from "../../mcp/api/source.js";
+import { parseStarsChoice, starsFromAt } from "../../force5/src/lead.js";
 import { squaresFor } from "../../force5/src/spotData.js";
 import {
   SKILL_LABEL,
@@ -98,6 +99,7 @@ export function riderFrom(context: RiderContext | null): Rider {
   if (!context) return DEFAULT_RIDER;
   const weight = context.weightKg;
   const custom = parseCustomRating(context.custom);
+  const starsFrom = parseStarsChoice(context.starsFrom);
   return {
     weightKg:
       typeof weight === "number" &&
@@ -112,6 +114,7 @@ export function riderFrom(context: RiderContext | null): Rider {
       ),
     ].sort((a, b) => a - b),
     ...(custom ? { custom } : {}),
+    ...(starsFrom ? { starsFrom } : {}),
   };
 }
 
@@ -457,7 +460,7 @@ const getSpotForecast = tool({
   definition: {
     name: "get_spot_forecast",
     description:
-      "The forecast for one spot, rated in stars (0-5) for the rider in the context: daylight hours with the headline wind, gusts and direction (HARMONIE's own while it reaches the hour, else the weighted median of the models), how well the models agree, the stars, the wing to take and how the wind meets the shore (onshore … offshore), plus the best window, waves, tides, sunrise/sunset and sea temperature. Call it for questions about one place: 'is X on this weekend?', 'what wing should I take?', 'when is best at X?'. The rider sees a card with the best window.",
+      "The forecast for one spot, rated in stars (0-5) for the rider in the context: daylight hours with the wind, gusts and direction from one model, the one the rider's stars come from (HARMONIE while it reaches the hour, then ECMWF, unless the rider chose others), how well all the models agree as context, the stars, the wing to take and how the wind meets the shore (onshore … offshore), plus the best window, waves, tides, sunrise/sunset and sea temperature. Call it for questions about one place: 'is X on this weekend?', 'what wing should I take?', 'when is best at X?'. The rider sees a card with the best window.",
     input_schema: {
       type: "object",
       properties: {
@@ -500,6 +503,7 @@ const getSpotForecast = tool({
     if (typeof window === "string") return failed(window);
     const forecast = await spotForecast(ctx.source, place, window, {
       now: ctx.now,
+      from: starsFromAt(ctx.rider.starsFrom, place.id),
     });
     if (!forecast.sources.wind.length)
       return failed(
@@ -641,7 +645,12 @@ const findSessions = tool({
       const { lines } = spotWindLines(wind.loaded, spot.id);
       if (!lines.length) return [];
       const hours = times.map((time): RatedHour => {
-        const w = hourWind(lines, time, false);
+        const w = hourWind(
+          lines,
+          time,
+          false,
+          starsFromAt(ctx.rider.starsFrom, spot.id),
+        );
         const isDay = daylight(spot, time);
         return {
           time,

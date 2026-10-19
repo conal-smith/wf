@@ -9,12 +9,17 @@
  * it opens the hour's wind broken down, model by model. A phone has no room for
  * the frame, so there the wind figure opens it.
  *
+ * The stars come from one model, the rider's choice: where its run ends and
+ * the one after it takes over, a ruled line between the rows says so, and the
+ * day's header names who rates it.
+ *
  * A day off the screen draws only its header and a space its height: the
  * rows and the curve arrive as it scrolls near, or all at once when
  * the page is printed.
  */
-import { useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { modelName, type StarsFrom } from "../../force5/src/lead";
 import {
   SHORE_LABEL,
   starsText,
@@ -31,17 +36,23 @@ import {
   RangeDetail,
   rangeWords,
   type Band,
+  type StarsWhere,
 } from "./RangeBar";
 import {
   HOUR,
   clock,
   compass,
   darkRuns,
+  dayLeadText,
+  dayLeads,
   dayNames,
   foldText,
   gustJumps,
+  handoverWords,
+  placeChanges,
   windIn,
   type DaySun,
+  type LeadChange,
   type SpotDay,
   type SpotRow,
   type TideTurn,
@@ -55,6 +66,14 @@ const styles = tv({
     headLine: "flex flex-wrap items-center gap-x-2.5 gap-y-0.5",
     title: "m-0 font-display text-lead text-ink",
     when: ["ml-2 align-middle text-ink-muted", MONO_LABEL],
+    dayFrom: ["ml-auto text-chart-magenta", MONO_LABEL],
+    // Where the model the stars come from changes: ruled off in dashed ink,
+    // as the mockup's handover (wingfoil-mockups/lead-model, section 2).
+    handover: [
+      "border-0 border-y border-dashed border-ink bg-chart-magenta/5 px-1 pt-2 pb-1.5",
+      "font-body text-body whitespace-normal text-ink-2",
+    ],
+    handoverKicker: ["mr-1.5 font-semibold text-chart-magenta", MONO_LABEL],
     table: "w-full border-collapse font-mono tabular-nums",
     th: [
       "border-0 border-b border-ink px-1 pt-1.5 pb-1 text-left align-bottom whitespace-nowrap text-ink-muted",
@@ -103,6 +122,8 @@ const styles = tv({
       "m-0 flex list-none flex-col gap-1 p-0 font-mono text-caption text-ink-2",
     tipItem: "flex items-center gap-1.5",
     tipReason: "font-body text-body text-pen-ink italic",
+    tipFrom: ["text-chart-magenta", MONO_LABEL],
+    tipContext: "font-body text-body text-ink-muted italic",
     tipFoot:
       "flex items-baseline justify-between gap-3 border-0 border-t border-line pt-1.5 font-mono text-caption text-ink-muted",
     tipLink:
@@ -129,6 +150,12 @@ export interface DaySectionProps {
   spotName: string;
   /** The live wind models, for the hour's card. */
   models: readonly { id: string; name: string }[];
+  /** The model the rider takes this spot's stars from, and the one after it. */
+  starsFrom: StarsFrom;
+  /** Where that model's run ends and the next takes over, on this day. */
+  changes: readonly LeadChange[];
+  /** Rate the stars from another model, picked in an hour's card. */
+  onStarsFrom?: (model: string, where: StarsWhere) => void;
 }
 
 /** The theme's `wide` breakpoint (ui/theme.css), where the rows get shorter. */
@@ -187,6 +214,7 @@ export function DaySection(props: DaySectionProps) {
 
   const dayOfMonth = names.date.split(" ")[0];
   const wide = globalThis.matchMedia?.(WIDE).matches ?? true;
+  const leads = dayLeads(day.rows, props.starsFrom);
 
   return (
     <section
@@ -204,6 +232,11 @@ export function DaySection(props: DaySectionProps) {
               <span className={s.when()}> {names.relative}</span>
             )}
           </h2>
+          {leads.length > 0 && (
+            <span className={s.dayFrom()} data-day-from>
+              {dayLeadText(leads)}
+            </span>
+          )}
         </div>
       </header>
       {shown ? (
@@ -234,6 +267,9 @@ function DayBody({
   width,
   spotName,
   models,
+  starsFrom,
+  changes,
+  onStarsFrom,
 }: DaySectionProps) {
   const s = styles();
   const names = dayNames(day.date, now);
@@ -275,6 +311,28 @@ function DayBody({
     ...(showNight ? after : []),
   ];
   const skyNote = drawn.find((row) => day.rows.indexOf(row) >= skyEnds)?.time;
+  const placed = placeChanges(drawn, changes);
+  const handoverRow = (change: LeadChange) => {
+    const words = handoverWords(change, starsFrom);
+    return (
+      <tr key={`handover-${change.time}`} data-handover={change.to}>
+        <td colSpan={9} className={s.handover()}>
+          <b className={s.handoverKicker()}>{words.kicker}</b>
+          {words.text}
+        </td>
+      </tr>
+    );
+  };
+  // An hour's row with the handovers that come before it, and after the
+  // last row drawn the ones that fall among rows folded away.
+  const lastDrawn = drawn.at(-1)?.time;
+  const rowWithChanges = (row: SpotRow) => (
+    <Fragment key={row.time}>
+      {placed.before.get(row.time)?.map(handoverRow)}
+      {hourRow(row)}
+      {row.time === lastDrawn && placed.end.map(handoverRow)}
+    </Fragment>
+  );
 
   const hourRow = (row: SpotRow) => {
     const { hour, rating } = row;
@@ -293,6 +351,9 @@ function DayBody({
         rainMm={hour.weather?.rain_mm}
         models={models}
         riderText={riderText}
+        starsFrom={starsFrom}
+        spotName={spotName}
+        onStarsFrom={onStarsFrom}
       />
     );
     const tipLabel = wind
@@ -337,6 +398,7 @@ function DayBody({
                 band={band}
                 facing={facing}
                 date={names.short}
+                starsFrom={starsFrom}
               />
             }
           >
@@ -519,10 +581,10 @@ function DayBody({
         )}
         <tbody>
           {fold(before, "before")}
-          {showNight && before.map(hourRow)}
-          {light.map(hourRow)}
+          {showNight && before.map(rowWithChanges)}
+          {light.map(rowWithChanges)}
           {fold(after, "after")}
-          {showNight && after.map(hourRow)}
+          {showNight && after.map(rowWithChanges)}
         </tbody>
       </table>
       <DayTide
@@ -546,6 +608,7 @@ function HourTip({
   band,
   facing,
   date,
+  starsFrom,
 }: {
   row: SpotRow;
   units: Units;
@@ -553,6 +616,7 @@ function HourTip({
   band: Band;
   facing: number | null;
   date: string;
+  starsFrom: StarsFrom;
 }) {
   const s = styles();
   const { hour, rating } = row;
@@ -570,6 +634,13 @@ function HourTip({
         />
       </div>
       <p className={s.tipVerdict()}>{verdict(rating, hour.daylight)}</p>
+      {wind && (
+        <span className={s.tipFrom()} data-tip-from>
+          Stars from <b className="font-semibold">{modelName(wind.lead)}</b>
+          {wind.lead !== starsFrom.model &&
+            ` · ${modelName(starsFrom.model)} does not reach this hour`}
+        </span>
+      )}
       {wind && (
         <ul className={s.tipList()}>
           <li className={s.tipItem()}>
@@ -595,6 +666,13 @@ function HourTip({
             rating.stars === rating.potential && (
               <li className={s.muted()}>Nothing taken off</li>
             )}
+          {wind.models > 1 && wind.agreement && (
+            <li className={s.tipContext()} data-tip-context>
+              All {wind.models} models {windIn(wind.min_kn, units)}–
+              {windIn(wind.max_kn, units)}, agree {wind.agreement}. Context, not
+              counted.
+            </li>
+          )}
         </ul>
       )}
       <p className={s.tipFoot()}>
