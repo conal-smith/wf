@@ -6,6 +6,7 @@ https://data.wingfoil.ie,
 
     satellite/v<12 hex>/index.json, high.pmtiles, low.pmtiles
     intertidal/v<12 hex>/index.json, tide-<station>.pmtiles ...
+    satellite/v<12 hex>/spots.json, <place>-high.webp, <place>-low.webp ...
 
 the version being the SHA-256 of the set's archives (name and bytes). Objects
 are only ever added: one already there with the same size is left alone, one
@@ -21,6 +22,11 @@ beside Ireland, and the app needs no change. Each imagery area carries its
 `cover`: the z8 tiles its archive has, as boxes, row by row, so a view of
 Dublin never opens Great Britain's archive, though Britain's box holds Dublin.
 
+`--spots DIR` (spots.py's --out: a picture of each riding place at each
+tide, cut from the published imagery) goes the same way, and its list is the
+site's public/satellite/spots.json with the set's `base`, read by the spot
+page; the set replaces the one before it whole.
+
 `--offline DIR` versions a small imagery set (tiles.py imagery --bbox) into
 public-data/satellite/v…/ with its own index, committed, so the dev server
 and the e2e site draw the imagery with no network (scripts/e2e-site.mjs
@@ -31,6 +37,7 @@ cut to the box, into public-data/intertidal/v…/.
 
     python -I publish.py --area ireland --imagery <root>/out/satellite [--intertidal <root>/out/intertidal] \\
         [--offline <root>/out/satellite-offline] [--env deploy/home-compute/.env --upload]
+    python -I publish.py --spots <root>/out/spots --env deploy/home-compute/.env --upload
     python -I publish.py --offline-intertidal <root>/out/intertidal --offline-bbox -6.24,53.36,-6.06,53.49 \\
         --offline-areas tide-howth
 
@@ -77,6 +84,24 @@ def imagery_set(set_dir):
     for p in files.values():
         if not os.path.exists(p):
             raise SystemExit(f"missing archive {p}")
+    return index, files
+
+
+def spots_set(set_dir):
+    """spots.py's pictures, and the list that names them."""
+    index = json.load(open(os.path.join(set_dir, "spots.json")))
+    if index.get("kind") != "satellite-spots" or not index.get("spots"):
+        raise SystemExit(f"{set_dir}/spots.json is no list of spot pictures")
+    files = {}
+    for spot in index["spots"]:
+        for tide in ("high", "low"):
+            name = spot[tide]
+            if "/" in name or not name.endswith(".webp"):
+                raise SystemExit(f"spots.json: {name} is not a picture beside the list")
+            files[name] = os.path.join(set_dir, name)
+    for p in files.values():
+        if not os.path.exists(p):
+            raise SystemExit(f"missing picture {p}")
     return index, files
 
 
@@ -209,12 +234,12 @@ def put_new(s3, bucket, key, body_path=None, body=None, content_type="applicatio
     return "put"
 
 
-def upload(s3, bucket, base, index, files):
+def upload(s3, bucket, base, index, files, index_name="index.json", content_type="application/octet-stream"):
     done = {"put": 0, "kept": 0}
     for name, path in sorted(files.items()):
-        done[put_new(s3, bucket, base + name, body_path=path)] += 1
+        done[put_new(s3, bucket, base + name, body_path=path, content_type=content_type)] += 1
     body = (json.dumps(dict(index, base=base), indent=1) + "\n").encode()
-    done[put_new(s3, bucket, base + "index.json", body=body, content_type="application/json")] += 1
+    done[put_new(s3, bucket, base + index_name, body=body, content_type="application/json")] += 1
     return done
 
 
@@ -265,12 +290,21 @@ def write_site_imagery(path, index, base, area, name, files):
                      area, [site_area(index, base, area, name, files)])
 
 
+def write_site_spots(path, index, base):
+    """The site's list of the spot pictures: the set's own, with its `base`."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as fh:
+        json.dump(dict(index, base=base), fh, indent=1)
+        fh.write("\n")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--area", default="ireland", help="the run's id in the site's indexes (great-britain, ...)")
     p.add_argument("--name", help="its name (default: from --area)")
     p.add_argument("--imagery", help="tiles.py imagery's --out (index.json, high.pmtiles, low.pmtiles)")
     p.add_argument("--intertidal", help="tiles.py intertidal's --out")
+    p.add_argument("--spots", help="spots.py's --out (spots.json and a picture per place and tide)")
     p.add_argument("--offline", help="a small imagery set for public-data/ (tiles.py imagery --bbox)")
     p.add_argument("--offline-intertidal", help="a national intertidal set to cut a small offline one from")
     p.add_argument("--offline-bbox", help="w,s,e,n: the offline intertidal set's box")
@@ -310,6 +344,16 @@ def main():
         merge_site_index(os.path.join(a.repo, "public", "intertidal", "index.json"), fresh, a.area,
                          intertidal_areas(index, base, a.area))
         print(f"repo: public/intertidal/index.json, {a.area} → {base}")
+
+    if a.spots:
+        index, files = spots_set(a.spots)
+        base = f"satellite/{version_of(files)}/"
+        total = sum(os.path.getsize(f) for f in files.values())
+        print(f"{base}: {len(index['spots'])} places' pictures + spots.json, {total / 1e6:.1f} MB")
+        if s3:
+            print(f"bucket: {upload(s3, bucket, base, index, files, 'spots.json', 'image/webp')}")
+        write_site_spots(os.path.join(a.repo, "public", "satellite", "spots.json"), index, base)
+        print(f"repo: public/satellite/spots.json → {base}")
 
     if a.offline:
         index, files = imagery_set(a.offline)
