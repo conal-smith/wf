@@ -49,6 +49,7 @@ import { DaySection } from "./DaySection";
 import { SpotFrame } from "./Frame";
 import { FacingGlyph, KeepStar } from "./glyphs";
 import { RiderSwitch, riderWords } from "./RiderSwitch";
+import { loadSpotPictures, type SpotPicture } from "./satellite";
 import {
   FORECAST_DAYS,
   bandKnots,
@@ -59,6 +60,7 @@ import {
   spotRows,
   tideTurns,
 } from "./spot";
+import { SpotSatellite, useSpotPicture } from "./SpotSatellite";
 import StarsPage from "./StarsPage";
 import { useSpotForecast } from "./useSpotForecast";
 import { useWidth } from "./useWidth";
@@ -137,6 +139,10 @@ function SpotRoute({ id }: { id: string | null }) {
           ? "Spot forecasts"
           : "Spot forecast";
   usePageTitle(title, "Wind map");
+  // The list of satellite pictures is read beside the forecast, not after it.
+  useEffect(() => {
+    if (id !== null) void loadSpotPictures();
+  }, [id]);
 
   return (
     <SpotFrame
@@ -395,6 +401,7 @@ function SpotPage({
   const arcs = facing === null ? [] : goodWindArcs(facing);
   const sea = forecast.sea_temperature;
   const riderText = riderWords(rider);
+  const picture = useSpotPicture(spot);
 
   return (
     <main className={s.main()} ref={mainRef}>
@@ -442,6 +449,9 @@ function SpotPage({
           </span>
         )}
       </p>
+      {picture && (
+        <SpotSatellite picture={picture} name={spot.name} facing={facing} />
+      )}
       <RiderSwitch rider={rider} onChange={changeRider} />
       <WeekStrip
         days={days.map(({ day }) => ({ date: day.date }))}
@@ -471,7 +481,7 @@ function SpotPage({
           />
         ))}
       </div>
-      <SourcesFooter forecast={forecast} />
+      <SourcesFooter forecast={forecast} picture={picture} />
     </main>
   );
 }
@@ -511,7 +521,13 @@ function Dot() {
   return <span aria-hidden="true">·</span>;
 }
 
-function SourcesFooter({ forecast }: { forecast: SpotForecast }) {
+function SourcesFooter({
+  forecast,
+  picture,
+}: {
+  forecast: SpotForecast;
+  picture: SpotPicture | null;
+}) {
   const s = styles();
   const { sources } = forecast;
   const tides =
@@ -548,6 +564,12 @@ function SourcesFooter({ forecast }: { forecast: SpotForecast }) {
           <li>
             Sea: {sea.station}, {sea.measured}
             {sea.attribution ? ` · ${sea.attribution}` : ""}.
+          </li>
+        )}
+        {picture && (
+          <li data-satellite-source>
+            Satellite picture: Sentinel-2 at high and low tide ·{" "}
+            {picture.attribution}
           </li>
         )}
         {sources.unavailable.length > 0 && (
