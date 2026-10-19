@@ -1,20 +1,25 @@
 /**
  * A point tapped on the open water (src/App.tsx `pickPoint`): its wind for
  * the day, read out of the map model's own frames a tile an hour
- * (usePointSeries), and with the foil layer on, the seabed under it at the
- * hour's tide. Not rated: stars are for a riding place, measured against its
- * beach, and a point has none. The pen rings the point on the chart.
+ * (usePointSeries); the day's tide at the nearest station; the hour's waves,
+ * weather and sea, borrowed from the nearest riding place on the same water
+ * and said whose (force5/src/pointSource.ts); and with the foil layer on, the
+ * seabed under it at the hour's tide. Not rated: stars are for a riding place,
+ * measured against its beach, and a point has none. The pen rings the point
+ * on the chart.
  */
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { memo, useMemo, type Ref } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { eventsBetween, tideStationLine, type SpotTide } from "../../../../force5/src/tides";
 import { compass } from "../../../../force5/src/weather";
 import type { PlaceHour } from "../../../../src/ratings";
-import { dayLong, hourLabel, type StripColumn, type StripDay } from "../../../../src/strip";
+import { clock, dayLong, hourLabel, type StripColumn, type StripDay } from "../../../../src/strip";
 import { WindArrow } from "../../components/Glyphs";
 import { tick } from "../../components/haptics";
 import { T } from "../../components/Text";
 import { colors, hitTarget, space } from "../../theme/tokens";
+import type { MoreCells, MoreRow } from "../dock/dockLogic";
 import { ChartSheet, SheetSection } from "./ChartSheet";
 
 export interface Picked {
@@ -24,6 +29,8 @@ export interface Picked {
   name: string;
   /** The coordinates, when the name is a town's. */
   coords: string;
+  /** On a lake in the basemap: water the sea does not reach, so no tide. */
+  lake: boolean;
 }
 
 interface Props {
@@ -39,11 +46,27 @@ interface Props {
   /** The foil readout at the hour, or null. */
   foil: string | null;
   foilOn: boolean;
+  /** The nearest station's tide, or why there is none ("" while it is read). */
+  tide: SpotTide | null;
+  tideNote: string | null;
+  /** Whose waves, weather and sea these are, or why there are none. */
+  lent: string | null;
+  /** The riding place's rows, on the strip's columns; null when none lends them. */
+  more: MoreCells | null;
   onClose: () => void;
   onDismiss: () => void;
 }
 
 const kn = (v: number | null) => (v === null ? "–" : String(Math.round(v)));
+
+const HALF_HOUR = 1800000;
+
+/** One row's reading at a column: its words, or the note across the row. */
+function reading<C>(row: MoreRow<C>, at: number, words: (cell: C) => string): string | null {
+  if (!row.cells) return row.note || null;
+  const cell = row.cells[at];
+  return cell === null || cell === undefined ? "–" : words(cell);
+}
 
 export const PointSheet = memo(function PointSheet(props: Props) {
   const { hours, strip, selected } = props;
@@ -53,6 +76,24 @@ export const PointSheet = memo(function PointSheet(props: Props) {
     () => (day ? strip.slice(day.start, day.start + day.count).map((c, i) => ({ c, at: day.start + i })) : []),
     [day, strip],
   );
+  const tide = props.tide;
+  const turns = useMemo(() => {
+    if (!tide || !day) return [];
+    const from = strip[day.start].time - HALF_HOUR;
+    const to = strip[day.start + day.count - 1].time + HALF_HOUR;
+    return eventsBetween(tide.curve, from, to);
+  }, [tide, day, strip]);
+  const more = props.more;
+  const lines: [string, string | null][] = more
+    ? [
+        ["Waves", reading(more.waves, selected, (c) => c.words)],
+        ["Sky", reading(more.sky, selected, (c) => c.words)],
+        ["Air", reading(more.air, selected, (c) => `${c}°`)],
+        ["Rain", reading(more.rain, selected, (c) => c.words)],
+        ["Sea", reading(more.sea, selected, (c) => `about ${c}°, the model's skin temperature`)],
+      ]
+    : [];
+  const marine = lines.filter((line): line is [string, string] => !!line[1]);
   const headline =
     hour && hour.windKn !== null
       ? `${kn(hour.windKn)}${hour.gustKn !== null ? ` g${kn(hour.gustKn)}` : ""} kn${hour.from !== null ? ` · ${compass(hour.from)}` : ""}`
@@ -118,6 +159,40 @@ export const PointSheet = memo(function PointSheet(props: Props) {
           </ScrollView>
         </SheetSection>
       ) : null}
+
+      <SheetSection title="Tide">
+        {tide ? (
+          <>
+            <T variant="body" tabular>
+              {turns.length
+                ? turns
+                    .map((e) => `${e.kind === "high" ? "High" : "Low"} ${clock(Date.parse(e.time))} · ${e.height.toFixed(1)} m`)
+                    .join("   ")
+                : "No high or low water this day"}
+            </T>
+            <T variant="caption" color="muted">
+              At {tideStationLine(tide)}, metres above chart datum
+            </T>
+          </>
+        ) : (
+          <T variant="body" color="muted">
+            {props.tideNote ?? "Reading the tide here…"}
+          </T>
+        )}
+      </SheetSection>
+
+      <SheetSection title="Waves and weather">
+        {props.lent ? (
+          <T variant="caption" color="muted">
+            {props.lent}
+          </T>
+        ) : null}
+        {marine.map(([label, words]) => (
+          <T key={label} variant="body">
+            {label}: {words}
+          </T>
+        ))}
+      </SheetSection>
 
       {props.foilOn ? (
         <SheetSection title="Foilable depth">

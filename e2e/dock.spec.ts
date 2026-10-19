@@ -1303,3 +1303,65 @@ test("a point tapped on Dublin Bay reads its nearest station's tide; one on Loug
   );
   expect(errors).toEqual([]);
 });
+
+test("a point tapped off Dublin Bay reads wind, waves, weather and tide, and every model's blend", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.route("**/marine/tides.json", (route) =>
+    route.fulfill({ json: coastTides }),
+  );
+  await page.route("**/marine/tides-*-test.json", (route) =>
+    route.fulfill({ json: tideCurve }),
+  );
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/?spot=dollymount");
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+    timeout: 30000,
+  });
+  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount", {
+    timeout: 30000,
+  });
+  await page.keyboard.press("Escape");
+  await tapAt(page, ["dollymount", "seapoint"], [53.33, -6.1]);
+  const dock = page.locator(".dock");
+  await expect(dock.locator(".dk-tools")).toContainText(
+    /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
+  );
+  // The wind, read from the map's frames at the point.
+  await expect
+    .poll(() => dock.locator("tr.tt-wind td .kn").count(), { timeout: 30000 })
+    .toBeGreaterThan(5);
+  // The tide, the nearest station's.
+  await expect(dock.locator(".tide-row .tide-label").first()).toHaveText(
+    /^\d\d:\d\d \d+\.\dm$/,
+    { timeout: 15000 },
+  );
+  // The waves and the weather, a riding place's on the bay, said whose.
+  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  await expect(dock.locator(".dk-lent")).toHaveText(
+    /^Waves, weather and sea from .+, \d+\.\d km$/,
+  );
+  await expect
+    .poll(() => dock.locator("tr.tt-waves .wave-cell b").count(), {
+      timeout: 20000,
+    })
+    .toBeGreaterThan(0);
+  await expect
+    .poll(() =>
+      dock.locator("tr.tt-air td").filter({ hasText: /\d+°/ }).count(),
+    )
+    .toBeGreaterThan(0);
+  await expect(dock.locator("tr.tt-waves")).not.toContainText(
+    "riding places only",
+  );
+  // Every model's wind, sampled at the point, drawn as the blend.
+  await dock.getByRole("button", { name: "Blend" }).click();
+  await expect
+    .poll(() => dock.locator(".blend-chart .model-line").count(), {
+      timeout: 45000,
+    })
+    .toBeGreaterThan(1);
+  expect(errors).toEqual([]);
+});

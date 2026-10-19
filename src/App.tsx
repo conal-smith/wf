@@ -126,7 +126,8 @@ import {
   mapReach,
   type ColumnModel,
 } from "../force5/src/timeline";
-import { tideAt } from "../force5/src/tides";
+import { freshwaterSpots, tideAt } from "../force5/src/tides";
+import { nearestSpotOnWater } from "../force5/src/pointSource";
 import { FEATURES } from "../shared/web/features";
 import { favourites } from "../shared/web/favourites";
 import {
@@ -989,6 +990,20 @@ export default function App() {
   // A tapped point takes its nearest station's tide, as a spot is linked to one.
   const pointTide = usePointTide(picked);
   const tide = picked ? pointTide : spotTide;
+  // The riding place a point borrows its waves, weather and sea from: the
+  // nearest on the same water (a lake's for a lake), within 15 km.
+  const pointSource = useMemo(
+    () =>
+      picked
+        ? nearestSpotOnWater(spots, picked.lat, picked.lon, {
+            lake: picked.lake,
+            freshwater: pointTide.manifest
+              ? freshwaterSpots(pointTide.manifest)
+              : null,
+          })
+        : null,
+    [picked, spots, pointTide.manifest],
+  );
   const selectSpot = (spot: Spot, fly = true) => {
     setPicked(null);
     setPoint(spot);
@@ -1414,6 +1429,7 @@ export default function App() {
                 <ForecastDock
                   spot={dockSpot}
                   isPoint={!!picked}
+                  pointSource={pointSource}
                   pointPending={!!picked && series.pending}
                   more={more}
                   onMore={chooseMore}

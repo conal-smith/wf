@@ -1,6 +1,13 @@
 // The bundled real manifests are read in tests/blend.test.ts.
 import { describe, expect, it } from "vitest";
-import { memberSeries, modelSeries, sampledSeries, spotSeries } from "./series";
+import {
+  POINT_SERIES_ID,
+  memberSeries,
+  modelSeries,
+  sampledSeries,
+  spotSeries,
+  withPointSeries,
+} from "./series";
 import type { Manifest } from "./weather";
 import { ensembleManifest, windManifest } from "./testing";
 
@@ -32,8 +39,31 @@ describe("precomputed spot series", () => {
     expect(spotSeries(uncovered, "brandon")).toBeNull();
     expect(modelSeries(uncovered, "brandon")).toEqual([]);
   });
-  it("never downloads frames for an arbitrary point", () => {
-    expect(sampledSeries(windManifest(), -10.024, 52.276)).toBeNull();
+  it("files a point's sampled frames as its series, leaving out what was not read", () => {
+    const manifest = ensembleManifest({
+      members: 3,
+      hours: [0, 3, 6, 9],
+      withFrames: true,
+    });
+    // Read: 0 and 6; 3 not yet; 9 outside the model's domain.
+    const series = sampledSeries(manifest.frames, [
+      { u: 3, v: 4, gust: 8 },
+      undefined,
+      { u: 0, v: 2, gust: null },
+      null,
+    ])!;
+    expect(series.map((point) => point.hour)).toEqual([0, 6]);
+    expect(series[0]).toMatchObject({ u: 3, v: 4, gust: 8 });
+    expect(sampledSeries(manifest.frames, [null, undefined])).toBeNull();
+    // One line for the point: the mean's, with no members to stand for it.
+    const point = withPointSeries(manifest, series);
+    expect(spotSeries(point, POINT_SERIES_ID)).toHaveLength(2);
+    expect(memberSeries(point, POINT_SERIES_ID)).toBeNull();
+    expect(modelSeries(point, POINT_SERIES_ID)).toHaveLength(1);
+    expect(spotSeries(point, "brandon")).toBeNull();
+    expect(
+      spotSeries(withPointSeries(manifest, null), POINT_SERIES_ID),
+    ).toBeNull();
   });
 });
 

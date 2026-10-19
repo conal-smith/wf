@@ -1,5 +1,6 @@
-// Per-spot time series taken straight from a manifest. The multi-model chart
-// must never download map frames, so everything here is precomputed-only.
+// Per-spot time series taken straight from a manifest, and a tapped point's
+// series sampled from the map frames into the same shape, so the blend reads
+// both alike.
 import type { Manifest, Wind } from "./weather";
 
 export interface SeriesPoint extends Wind {
@@ -55,16 +56,47 @@ export function memberSeries(
 }
 
 /**
- * Placeholder for sampling an arbitrary point out of map frames. It always
- * returns null: frame downloads stay in `ForecastSheet`, which already samples
- * progressively with retries, and the blend never triggers them.
+ * The id a tapped point's sampled series is filed under in a manifest's
+ * `spotForecasts` (`withPointSeries`). No riding place's id starts with "@".
+ */
+export const POINT_SERIES_ID = "@point";
+
+/**
+ * A bare point's series out of a run's map frames, sampled one file at a time
+ * (src/usePointModels.ts): the frames read so far with a value, in order, or
+ * null while there are none. An unread frame or one outside the model's domain
+ * is left out rather than written as calm; the blend bridges no gap wider than
+ * twice the run's step, so a line fills in as the reads land.
  */
 export function sampledSeries(
-  _manifest: Manifest,
-  _lon: number,
-  _lat: number,
+  frames: readonly Pick<SeriesPoint, "hour" | "validTime">[],
+  values: readonly (Wind | null | undefined)[],
 ): SeriesPoint[] | null {
-  return null;
+  const points: SeriesPoint[] = [];
+  frames.forEach((frame, at) => {
+    const wind = values[at];
+    if (wind && Number.isFinite(wind.u) && Number.isFinite(wind.v))
+      points.push({
+        hour: frame.hour,
+        validTime: frame.validTime,
+        u: wind.u,
+        v: wind.v,
+        gust: wind.gust ?? null,
+      });
+  });
+  return points.length ? points : null;
+}
+
+/** A manifest carrying a point's sampled series as its one spot's. */
+export function withPointSeries(
+  manifest: Manifest,
+  series: SeriesPoint[] | null,
+): Manifest {
+  return {
+    ...manifest,
+    spotForecasts: series ? { [POINT_SERIES_ID]: series } : {},
+    spotMembers: undefined,
+  };
 }
 
 /** Every line a model offers for one spot: members if any, else the mean. */
