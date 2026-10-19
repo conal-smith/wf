@@ -263,42 +263,6 @@ export function loadOrder(
     : [...first, ...outward.filter((index) => !onStride(index))];
 }
 
-/**
- * The reads for a bare point's every model at once (src/usePointModels.ts):
- * each run's frames inside the dock's hours, give or take a step either side
- * for the interpolation, in `loadOrder`'s order, and taken a model at a time
- * in turn, so every line starts filling in together rather than one model
- * finishing before the next begins. Frames already read are skipped.
- */
-export function pointReadQueue(
-  runs: readonly {
-    frames: readonly Pick<FrameInfo, "validTime">[];
-    done?: readonly boolean[];
-  }[],
-  from: number,
-  to: number,
-  now = Date.now(),
-  marginHours = 6,
-): [run: number, frame: number][] {
-  const orders = runs.map(({ frames, done }) =>
-    loadOrder(frames, now).filter((index) => {
-      const time = Date.parse(frames[index].validTime);
-      return (
-        !done?.[index] &&
-        time >= from - marginHours * HOUR &&
-        time <= to + marginHours * HOUR
-      );
-    }),
-  );
-  const queue: [number, number][] = [];
-  const longest = Math.max(0, ...orders.map((order) => order.length));
-  for (let step = 0; step < longest; step++)
-    orders.forEach((order, run) => {
-      if (step < order.length) queue.push([run, order[step]]);
-    });
-  return queue;
-}
-
 /** Where one column's cell values come from. */
 export interface ColumnSource {
   /** True when the map model's own run spans this column's time. */
