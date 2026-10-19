@@ -1,5 +1,6 @@
 import {
   expect,
+  backToIreland,
   chooseSpot,
   steadyFrames,
   test,
@@ -23,8 +24,7 @@ const harmonie = readSample("harmonie");
  * The chart, up: every light placed and rated, then `spot` chosen with a tap
  * on its light and its dock drawn; with null, nothing chosen and no dock.
  * The tap flies the chart to the spot, and these specs read every light on
- * the whole of Ireland, so the chart is let go of the spot and zoomed back
- * out until every light is on it, and rated again.
+ * the whole of Ireland, so the chart goes back to it (`backToIreland`).
  */
 export async function openChart(
   page: Page,
@@ -45,31 +45,7 @@ export async function openChart(
     return;
   }
   await chooseSpot(page, spot);
-  await page.keyboard.press("Escape");
-  await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
-  const zoomOut = page.getByRole("button", { name: "Zoom out", exact: true });
-  const allOnTheChart = () =>
-    page.evaluate(() => {
-      const chart = document
-        .querySelector(".maplibregl-canvas")!
-        .getBoundingClientRect();
-      return [...document.querySelectorAll(".spot-marker")].every((light) => {
-        const r = light.getBoundingClientRect();
-        return (
-          r.left >= chart.left &&
-          r.right <= chart.right &&
-          r.top >= chart.top &&
-          r.bottom <= chart.bottom
-        );
-      });
-    });
-  for (let i = 0; i < 8 && !(await allOnTheChart()); i++) {
-    await zoomOut.click();
-    await page.waitForTimeout(400);
-  }
-  await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
-    timeout: 30000,
-  });
+  await backToIreland(page);
 }
 
 /** Find a spot by name and take the first result. */

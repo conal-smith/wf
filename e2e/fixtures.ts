@@ -67,6 +67,40 @@ export async function chooseSpot(page: Page, id = "brandon") {
   });
 }
 
+/**
+ * Back to the whole of Ireland with the dock still open, as the map stood
+ * when a remembered spot opened it: the chart let go of the spot it flew to
+ * and zoomed back out until every light is on it, each rated again. For a
+ * spec that reads every light, or times the hours over the whole chart.
+ */
+export async function backToIreland(page: Page) {
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
+  const zoomOut = page.getByRole("button", { name: "Zoom out", exact: true });
+  const allOnTheChart = () =>
+    page.evaluate(() => {
+      const chart = document
+        .querySelector(".maplibregl-canvas")!
+        .getBoundingClientRect();
+      return [...document.querySelectorAll(".spot-marker")].every((light) => {
+        const r = light.getBoundingClientRect();
+        return (
+          r.left >= chart.left &&
+          r.right <= chart.right &&
+          r.top >= chart.top &&
+          r.bottom <= chart.bottom
+        );
+      });
+    });
+  for (let i = 0; i < 8 && !(await allOnTheChart()); i++) {
+    await zoomOut.click();
+    await page.waitForTimeout(400);
+  }
+  await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
+    timeout: 30000,
+  });
+}
+
 export { expect } from "@playwright/test";
 export type { Locator, Page } from "@playwright/test";
 

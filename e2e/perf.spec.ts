@@ -1,4 +1,4 @@
-import { chooseSpot, expect, test, type Page } from "./fixtures";
+import { backToIreland, chooseSpot, expect, test, type Page } from "./fixtures";
 
 // The map as a rider has it once they choose a spot: every light rated on the
 // whole of Ireland, then Brandon Bay's whole week in the dock, the most it
@@ -182,9 +182,18 @@ test("stepping through the forecast answers within an interaction budget", async
   });
   await page.goto("/");
   await mapReady(page);
+  // Over the whole chart, as this budget was set: the tap that opened the
+  // dock flew the chart in to the spot, and a step there redraws its
+  // closer, denser tiles, which a headless browser copies back out of WebGL
+  // frame by frame (its compositor is software).
+  await backToIreland(page);
   await page.waitForTimeout(1000);
   const slider = page.getByRole("slider", { name: "Forecast time" });
   await slider.focus();
+  // The steps' own: not the tap and the zoom that set the chart up.
+  await page.evaluate(
+    () => ((window as unknown as { __events: number[] }).__events.length = 0),
+  );
   for (let i = 0; i < 6; i++) {
     await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(150);
