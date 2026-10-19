@@ -7,11 +7,9 @@
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { memo, type Ref } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Switch, View } from "react-native";
-import type { RideStop } from "../../../../force5/src/chartStyle";
 import { MODELS, type ModelId } from "../../../../force5/src/models";
 import { approxMetres, SATELLITE_LABEL, SATELLITE_OPTIONS, type SatelliteOption } from "../../../../force5/src/satellite";
 import type { SatelliteStation } from "../../../../force5/src/satelliteIndex";
-import type { Rider } from "../../../../force5/src/stars";
 import { tick } from "../../components/haptics";
 import { Segmented } from "../../components/Segmented";
 import { T } from "../../components/Text";
@@ -30,8 +28,6 @@ interface Props {
   onLayers: (layers: MapLayers) => void;
   satelliteStation: SatelliteStation | null;
   satelliteError: string | null;
-  rideStops: readonly RideStop[];
-  rider: Rider;
   model: string | undefined;
   run: string | null;
   staleness: "fresh" | "stale" | "expired";
@@ -57,7 +53,7 @@ export const LayersSheet = memo(function LayersSheet(props: Props) {
           segments={WIND_STYLES.map((style) => ({ value: style, label: WIND_LABEL[style] }))}
           onChange={props.onWindStyle}
         />
-        <KnotScale stops={props.rideStops} rider={props.rider} faint={props.windStyle === "wash"} />
+        <KnotScale faint={props.windStyle === "wash"} />
         {props.reducedMotion && props.windStyle !== "arrows" ? (
           <T variant="caption" color="muted">
             Reduce Motion is on: the wind is drawn as still arrows in ink.

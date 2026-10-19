@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_RIDER } from "../../../../force5/src/stars";
 import { colors } from "../../theme/tokens";
 import {
   boundsOf,
@@ -19,7 +18,7 @@ import {
   viewFromBounds,
   type Camera,
 } from "./mapLogic";
-import { appChartColours, appChartStyle, appFoilColours, appRideStops, bathySource } from "./mapStyle";
+import { appChartColours, appChartStyle, appFoilColours, bathySource } from "./mapStyle";
 
 const ireland: Camera = { center: [-8.1, 53.4], zoom: 6, width: 390, height: 760 };
 
@@ -130,13 +129,10 @@ describe("the chart's style, from the app's tokens", () => {
     );
   });
 
-  it("reads the foil layer's and the rider's colours", () => {
+  it("reads the foil layer's colours", () => {
     const foil = appFoilColours();
     expect(
       [foil.edge, foil.shallow, foil.enough, foil.deep, foil.deeper, foil.line, foil.dry, foil.unsurveyed].every(Boolean),
     ).toBe(true);
-    const stops = appRideStops(DEFAULT_RIDER);
-    expect(stops).toHaveLength(9);
-    expect(stops.every((s) => s.rgb.join() !== "128,128,128")).toBe(true);
   });
 });

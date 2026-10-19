@@ -1,37 +1,31 @@
-import type { RideStop } from "../force5/src/chartStyle";
-import { windBand, type Rider } from "../force5/src/stars";
+import { PALETTE, windColor } from "../force5/src/weather";
+
+/** The bar runs from calm to this, in knots: the storm stops past it are rare. */
+const TOP = 60;
+const TICKS = [10, 20, 30, 40, 50];
 
 /**
- * The wind scale the wash and the coloured arrows are drawn on, for this
- * rider: a bar with the knots where it turns green, where the sweet spot
- * starts and ends, and where it becomes too much.
+ * The wind scale the wash and the coloured arrows are drawn on: the same for
+ * every rider, generated from PALETTE stop for stop, with its knots under it.
  */
-export function KnotScale({
-  stops,
-  rider,
-  faint = false,
-}: {
-  stops: readonly RideStop[];
-  rider: Rider;
-  faint?: boolean;
-}) {
-  if (!stops.length) return null;
-  const top = 40;
-  const b = windBand(rider);
-  const ticks = [b.min, b.sweetLow, b.sweetHigh, b.max].map(Math.round);
-  const gradient = `linear-gradient(90deg, ${stops
-    .filter((s) => s.kn <= top)
-    .map(
-      (s) =>
-        `rgb(${s.rgb.join(" ")}${faint ? " / 0.55" : ""}) ${((s.kn / top) * 100).toFixed(1)}%`,
-    )
-    .join(", ")}, rgb(${stops[stops.length - 1].rgb.join(" ")}${faint ? " / 0.55" : ""}) 100%)`;
+export function KnotScale({ faint = false }: { faint?: boolean }) {
+  const rgb = (kn: number) =>
+    `rgb(${windColor(kn).join(" ")}${faint ? " / 0.55" : ""})`;
+  const gradient = `linear-gradient(90deg, ${[
+    ...PALETTE.map(([kn]) => kn).filter((kn) => kn < TOP),
+    TOP,
+  ]
+    .map((kn) => `${rgb(kn)} ${((kn / TOP) * 100).toFixed(1)}%`)
+    .join(", ")})`;
   return (
-    <figure className="knot-scale" aria-label={`Wind scale: green from ${ticks[0]} kn, best ${ticks[1]}–${ticks[2]} kn, too much from ${ticks[3]} kn`}>
+    <figure
+      className="knot-scale"
+      aria-label="Wind scale: blue under 10 kn, green 10 to 20, yellow by 30, red by 40, purple from 50"
+    >
       <div className="ks-bar" style={{ background: gradient }} />
       <div className="ks-ticks" aria-hidden="true">
-        {ticks.map((kn, i) => (
-          <span key={i} style={{ left: `${(kn / top) * 100}%` }}>
+        {TICKS.map((kn) => (
+          <span key={kn} style={{ left: `${(kn / TOP) * 100}%` }}>
             {kn}
           </span>
         ))}

@@ -173,22 +173,24 @@
   --color-warn-ground: #efd8cd;
   --color-now: #b02a1f;
 
-  /* Wind speed, in knots. These mean wind and nothing else, and they do not
-     re-theme: a colour that means 35 knots means 35 knots on any paper. */
-  --color-wind-k00: #355897;
-  --color-wind-k05: #2a76b8;
-  --color-wind-k09: #2e97be;
-  --color-wind-k10: #209e78;
-  --color-wind-k15: #32a74f;
-  --color-wind-k20: #5bb437;
-  --color-wind-k25: #92c134;
-  --color-wind-k30: #bfcc3a;
-  --color-wind-k35: #e8be30;
-  --color-wind-k40: #ea862d;
-  --color-wind-k45: #dd4e38;
-  --color-wind-k50: #be334f;
-  --color-wind-k60: #923d98;
-  --color-wind-k65: #724297;
+  /* Wind speed, in knots: PALETTE in force5/src/weather.ts, which paints the
+     map's wash and arrows. These mean wind and nothing else, they are the same
+     for every rider, and they do not re-theme: a colour that means 35 knots
+     means 35 knots on any paper. */
+  --color-wind-k00: #aacbea;
+  --color-wind-k05: #80aee0;
+  --color-wind-k09: #4f80c8;
+  --color-wind-k10: #49a88a;
+  --color-wind-k15: #4cb35a;
+  --color-wind-k20: #6fbf3e;
+  --color-wind-k25: #b5cf3a;
+  --color-wind-k30: #ecd23a;
+  --color-wind-k35: #f2a03a;
+  --color-wind-k40: #e05a33;
+  --color-wind-k45: #c8304a;
+  --color-wind-k50: #9b2f86;
+  --color-wind-k60: #5a2368;
+  --color-wind-k65: #231628;
 
   /* Two marks that say what they are rather than which palette they came from,
      so the palette does not move them: the dashed line the map and the dock
@@ -529,7 +531,7 @@
    `getComputedStyle` (force5/src/chartStyle.ts) and from the map's CSS
    through var(), so the chart's colours are written here and nowhere else.
    Plain custom properties, not theme colours: no utility class should ever
-   paint with a depth tint or the rider's wind scale. */
+   paint with a depth tint. */
 :root {
   /* The depth tints, metre by metre: shallow water darkest, deep water nearly
      paper, as on an Admiralty chart. The four `sea-*` above are the key's. */
@@ -573,18 +575,4 @@
      them (Malahide's lagoon from a rider's 1.8 m at low water) and draw
      them by depth; a tap says they are estimates. */
   --map-foil-unsurveyed: rgba(96, 120, 140, 0.38);
-
-  /* The wind as a rider reads it: the wash and the coloured arrows. Blue is
-     too light, greens deepen through the sweet spot, yellow is the top of it,
-     orange to red too much. Muted, as inks on paper are, not screen neon.
-     The stops are the rider's own band (windBand in force5/src/stars.ts). */
-  --ride-calm: #6d8db4;
-  --ride-light: #8db3cf;
-  --ride-floor: #b5cf96;
-  --ride-good: #77b06e;
-  --ride-best: #3e8a55;
-  --ride-top: #d9c24f;
-  --ride-much: #e0913f;
-  --ride-over: #c8503a;
-  --ride-storm: #8c3a6c;
 }

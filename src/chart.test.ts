@@ -69,8 +69,8 @@ describe("value axis", () => {
     expect(stops.map((stop) => stop.offset)).toEqual([
       0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1,
     ]);
-    expect(stops[0].colour).toBe("rgb(53,88,151)");
-    expect(stops.at(-1)!.colour).toBe("rgb(234,134,45)");
+    expect(stops[0].colour).toBe("rgb(170,203,234)");
+    expect(stops.at(-1)!.colour).toBe("rgb(224,90,51)");
     expect(windGradientStops(0, "kn")).toEqual([]);
   });
 });

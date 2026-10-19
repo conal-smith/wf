@@ -63,7 +63,7 @@ import {
   type Camera,
   type MapLayers,
 } from "./mapLogic";
-import { appFoilColours, appRideStops } from "./mapStyle";
+import { appFoilColours } from "./mapStyle";
 import { PointSheet, type Picked } from "./PointSheet";
 import { foilArchiveUrl, useFoilIndex, useSatellite, useTides } from "./useChartLayers";
 import { useFoilProbe } from "./useFoilProbe";
@@ -364,7 +364,6 @@ export default function ChartScreen() {
 
   /* ---- the wind ---- */
   const model = useMapModel();
-  const stops = useMemo(() => appRideStops(rider), [rider]);
   const tiles = useFrameTiles(model.frame, camera, model.recover);
   const animate = focused && appActive && !reducedMotion;
   const linesWanted = animate && showsLines(windStyle);
@@ -373,14 +372,13 @@ export default function ChartScreen() {
     model.frame,
     camera,
     tiles,
-    stops,
     windStyle === "arrows" ? "colour" : reducedMotion && windStyle === "ink" ? "ink" : null,
   );
   const queryWater = useCallback(async () => {
     const found = (await mapRef.current?.queryRenderedFeatures({ layers: ["water"] })) ?? [];
     return found.map((f) => f.geometry).filter(Boolean);
   }, []);
-  const wash = useWash(model.frame, camera, tiles, stops, windStyle === "wash" && focused, queryWater);
+  const wash = useWash(model.frame, camera, tiles, windStyle === "wash" && focused, queryWater);
 
   /* ---- the satellite, and the foilable depth at the hour's tide ---- */
   const satellite = useSatellite(layers.satellite, chartView);
@@ -638,8 +636,6 @@ export default function ChartScreen() {
         onLayers={chooseLayers}
         satelliteStation={satellite.station}
         satelliteError={satellite.error}
-        rideStops={stops}
-        rider={rider}
         model={model.manifest?.model}
         run={model.run}
         staleness={model.staleness}
@@ -657,7 +653,6 @@ export default function ChartScreen() {
         sheetRef={infoRef}
         onClose={() => infoRef.current?.dismiss()}
         scale={scale}
-        rideStops={stops}
         rider={rider}
         spotId={openId}
         satellite={satellite.note}

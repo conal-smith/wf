@@ -43,8 +43,8 @@ fill, never a control, never a status, never emphasis.
 else. The warm red is not the pen's red.
 
 **Wind colours mean wind speed.** The fourteen `sem.color.wind.*` stops are
-speed bands and nothing else, and they do not re-theme: 35 knots is the same
-colour on any paper, night included.
+speed bands and nothing else, the same for every rider, and they do not
+re-theme: 35 knots is the same colour on any paper, night included.
 
 ## What structure is made of
 

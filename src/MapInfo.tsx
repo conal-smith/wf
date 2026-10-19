@@ -1,7 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { Dialog } from "../ui/Dialog";
 import { StarGlyphs } from "../ui/StarGlyphs";
-import type { RideStop } from "../force5/src/chartStyle";
 import { DEPTHS } from "../force5/src/chartStyle";
 import { STARS_HREF } from "../force5/src/siteNav";
 import type { Rider } from "../force5/src/stars";
@@ -27,7 +26,6 @@ export default function MapInfo({
   at,
   onClose,
   scale,
-  rideStops,
   rider,
   spotId,
   foil,
@@ -38,7 +36,6 @@ export default function MapInfo({
   at: InfoSection;
   onClose: () => void;
   scale: string;
-  rideStops: readonly RideStop[];
   rider: Rider;
   /** The open spot, for the stars page's worked example. */
   spotId: string | null;
@@ -81,8 +78,6 @@ export default function MapInfo({
         "Map key",
         <MapKey
           scale={scale}
-          rideStops={rideStops}
-          rider={rider}
           satellite={satellite}
           satelliteError={satelliteError}
         />,
@@ -134,14 +129,10 @@ export default function MapInfo({
 /** What the lights, the wind, the pen and the depths on the chart mean. */
 function MapKey({
   scale,
-  rideStops,
-  rider,
   satellite,
   satelliteError,
 }: {
   scale: string;
-  rideStops: readonly RideStop[];
-  rider: Rider;
   satellite: string | null;
   satelliteError: string | null;
 }) {
@@ -202,7 +193,7 @@ function MapKey({
         <dd>Wind, at the hour shown</dd>
       </dl>
       <h4>Wash and coloured arrows</h4>
-      <KnotScale stops={rideStops} rider={rider} />
+      <KnotScale />
       <div className="tints" aria-label="Depth tints">
         {[0, 1, 2, 5, 10, 20, 50].map((d) => (
           <span

@@ -164,72 +164,72 @@
       "wind": {
         "k00": {
           "$type": "color",
-          "$value": "#355897",
+          "$value": "#aacbea",
           "$description": "Wind speed stop at 0 kn (PALETTE in force5/src/weather.ts)."
         },
         "k05": {
           "$type": "color",
-          "$value": "#2a76b8",
+          "$value": "#80aee0",
           "$description": "Wind speed stop at 5 kn (PALETTE in force5/src/weather.ts)."
         },
         "k09": {
           "$type": "color",
-          "$value": "#2e97be",
+          "$value": "#4f80c8",
           "$description": "Wind speed stop at 9 kn (PALETTE in force5/src/weather.ts)."
         },
         "k10": {
           "$type": "color",
-          "$value": "#209e78",
+          "$value": "#49a88a",
           "$description": "Wind speed stop at 10 kn (PALETTE in force5/src/weather.ts)."
         },
         "k15": {
           "$type": "color",
-          "$value": "#32a74f",
+          "$value": "#4cb35a",
           "$description": "Wind speed stop at 15 kn (PALETTE in force5/src/weather.ts)."
         },
         "k20": {
           "$type": "color",
-          "$value": "#5bb437",
+          "$value": "#6fbf3e",
           "$description": "Wind speed stop at 20 kn (PALETTE in force5/src/weather.ts)."
         },
         "k25": {
           "$type": "color",
-          "$value": "#92c134",
+          "$value": "#b5cf3a",
           "$description": "Wind speed stop at 25 kn (PALETTE in force5/src/weather.ts)."
         },
         "k30": {
           "$type": "color",
-          "$value": "#bfcc3a",
+          "$value": "#ecd23a",
           "$description": "Wind speed stop at 30 kn (PALETTE in force5/src/weather.ts)."
         },
         "k35": {
           "$type": "color",
-          "$value": "#e8be30",
+          "$value": "#f2a03a",
           "$description": "Wind speed stop at 35 kn (PALETTE in force5/src/weather.ts)."
         },
         "k40": {
           "$type": "color",
-          "$value": "#ea862d",
+          "$value": "#e05a33",
           "$description": "Wind speed stop at 40 kn (PALETTE in force5/src/weather.ts)."
         },
         "k45": {
           "$type": "color",
-          "$value": "#dd4e38",
+          "$value": "#c8304a",
           "$description": "Wind speed stop at 45 kn (PALETTE in force5/src/weather.ts)."
         },
         "k50": {
           "$type": "color",
-          "$value": "#be334f",
+          "$value": "#9b2f86",
           "$description": "Wind speed stop at 50 kn (PALETTE in force5/src/weather.ts)."
         },
         "k60": {
           "$type": "color",
-          "$value": "#923d98",
+          "$value": "#5a2368",
           "$description": "Wind speed stop at 60 kn (PALETTE in force5/src/weather.ts)."
         },
         "k65": {
           "$type": "color",
-          "$value": "#724297",
+          "$value": "#231628",
           "$description": "Wind speed stop at 65 kn (PALETTE in force5/src/weather.ts)."
         }
       },

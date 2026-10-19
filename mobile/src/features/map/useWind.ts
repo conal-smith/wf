@@ -8,7 +8,6 @@
 import { File, Paths } from "expo-file-system";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FeatureCollection, Point } from "geojson";
-import type { RideStop } from "../../../../force5/src/chartStyle";
 import { setMapView } from "../../../../force5/src/tiledField";
 import type { Frame } from "../../../../force5/src/weather";
 import { colors } from "../../theme/tokens";
@@ -98,20 +97,19 @@ export function useParticleField(
   }, [wanted, frame, camera, version]);
 }
 
-/** The arrows over the view, coloured on the rider's scale or (`ink`) in ink. */
+/** The arrows over the view, coloured on the wind scale or (`ink`) in ink. */
 export function useArrows(
   frame: Frame | null,
   camera: Camera | null,
   version: number,
-  stops: readonly RideStop[],
   mode: "colour" | "ink" | null,
 ): FeatureCollection<Point, ArrowProps> | null {
   return useMemo(() => {
     if (!mode || !frame || !camera || !camera.width) return null;
     const ink = rgbOf(colors.ink);
-    return arrowGrid(camera, (lat, lon) => frame.field.sample(lat, lon), mode === "colour" ? stops : [], ink);
+    return arrowGrid(camera, (lat, lon) => frame.field.sample(lat, lon), mode === "colour", ink);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, frame, camera, version, stops]);
+  }, [mode, frame, camera, version]);
 }
 
 export interface Wash {
@@ -130,7 +128,6 @@ export function useWash(
   frame: Frame | null,
   camera: Camera | null,
   version: number,
-  stops: readonly RideStop[],
   on: boolean,
   water: () => Promise<readonly { type: string; coordinates?: unknown }[]>,
 ): Wash | null {
@@ -141,14 +138,14 @@ export function useWash(
     read.current = water;
   });
   useEffect(() => {
-    if (!on || !frame || !camera || !camera.width || !stops.length || camera.zoom >= DEPTHS_ZOOM) return;
+    if (!on || !frame || !camera || !camera.width || camera.zoom >= DEPTHS_ZOOM) return;
     let live = true;
     const timer = setTimeout(async () => {
       const box = washBox(camera);
       const geometries = await read.current().catch(() => []);
       if (!live) return;
       const sea = waterMask(geometries, box.width, box.height, box.toPixel);
-      const image = washImage(camera, (lat, lon) => frame.field.sample(lat, lon), stops, frame.grid, sea);
+      const image = washImage(camera, (lat, lon) => frame.field.sample(lat, lon), frame.grid, sea);
       try {
         const file = new File(Paths.cache, `wingfoil-wash-${++washes}.png`);
         file.write(encodePng(image.width, image.height, image.rgba));
@@ -166,7 +163,7 @@ export function useWash(
       live = false;
       clearTimeout(timer);
     };
-  }, [on, frame, camera, version, stops]);
+  }, [on, frame, camera, version]);
   useEffect(
     () => () => {
       const old = written.current;

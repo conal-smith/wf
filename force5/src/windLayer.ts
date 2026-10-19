@@ -2,8 +2,8 @@
  * The wind on the chart, three ways, and the moving arrows in all of them:
  *
  *   ink      the arrows in ink, light air thin and pale, a breeze bolder
- *   arrows   the same arrows tinted by speed, on the rider's own scale
- *   wash     the rider's scale as a wash over the sea, with the ink arrows on it
+ *   arrows   the same arrows tinted by speed, on the wind scale (PALETTE)
+ *   wash     the wind scale as a wash over the sea, with the ink arrows on it
  *
  * The arrows are particles drifting with the forecast on a canvas over the
  * map. Each keeps its last few positions and its trail is drawn fresh every
@@ -40,10 +40,9 @@
  * again. The next hour's tiles for the same box follow.
  */
 import type { ImageSource, LngLat, Map as MapLibreMap } from "maplibre-gl";
-import { rideColour, type RideStop } from "./chartStyle";
 import { setMapView, WASH_STEP, type MapView } from "./tiledField";
 import { KNOTS } from "./units";
-import type { Frame } from "./weather";
+import { windColor, type Frame } from "./weather";
 
 export type WindStyle = "ink" | "arrows" | "wash";
 export const WIND_STYLES: readonly WindStyle[] = ["ink", "arrows", "wash"];
@@ -66,7 +65,10 @@ const LIFE_SPAN = 180;
 /** Steps to fade in at birth and out at the end. */
 const FADE_IN = 12;
 const FADE_OUT = 16;
-const BINS = 12;
+/** Arrow colours, one per 3 kn up to 60, the last open-ended. */
+const BINS = 20;
+/** The wash's colours, one per half knot up to the scale's last stop. */
+const WASH_LUT = Array.from({ length: 131 }, (_, i) => windColor(i / 2));
 /**
  * The zoom where the depths take over. Zoomed right in, a rider is reading
  * how deep the water is, and the depth tints are at full strength from here
@@ -103,7 +105,6 @@ export interface WindLayerOptions {
 export interface WindLayer {
   setFrame(frame: Frame | null): void;
   setStyle(style: WindStyle): void;
-  setStops(stops: readonly RideStop[]): void;
   setPaused(paused: boolean): void;
   /** Particles drawn in the last frame, for tests and the perf probe. */
   readonly drawn: number;
@@ -166,7 +167,6 @@ export function createWindLayer(
   const density = options.density ?? 0.4;
   let frame: Frame | null = null;
   let style: WindStyle = "ink";
-  let stops: readonly RideStop[] = [];
   let paused = false;
   let destroyed = false;
   let width = 0,
@@ -180,24 +180,20 @@ export function createWindLayer(
     last = 0,
     drawn = 0;
 
-  /** Colours per speed bin (arrows) or strong/light pair (ink), per level. */
-  let colours: string[][] = [];
+  /** The ink's strong/light pair, per level. */
   const inks = [0.3, 0.5].map((a) =>
     Array.from({ length: LEVELS + 1 }, (_, l) => rgba(ink, (a * l) / LEVELS)),
   );
-  const paint = () => {
-    colours = Array.from({ length: BINS }, (_, b) => {
-      // Bins run 0–36 kn in 3 kn steps, the last one open-ended.
-      const kn = b * 3 + 1.5;
-      const rgb = stops.length ? rideColour(stops, kn) : ink;
-      // Darkened a touch toward the ink, so a pale green still reads on paper.
-      const toned = rgb.map((v, i) => Math.round(v * 0.8 + ink[i] * 0.2));
-      return Array.from({ length: LEVELS + 1 }, (_, l) =>
-        rgba(toned, (0.9 * l) / LEVELS),
-      );
-    });
-  };
-  paint();
+  /** The coloured arrows' colour per speed bin, per level. */
+  const colours = Array.from({ length: BINS }, (_, b) => {
+    // Bins run 0–60 kn in 3 kn steps, the last one open-ended.
+    const rgb = windColor(b * 3 + 1.5);
+    // Darkened a touch toward the ink, so a pale blue still reads on paper.
+    const toned = rgb.map((v, i) => Math.round(v * 0.8 + ink[i] * 0.2));
+    return Array.from({ length: LEVELS + 1 }, (_, l) =>
+      rgba(toned, (0.9 * l) / LEVELS),
+    );
+  });
 
   // The canvas is carried with the camera between draws by a CSS transform
   // about its own top-left corner (carry, below).
@@ -830,7 +826,7 @@ export function createWindLayer(
   const paintWash = () => {
     washTimer = 0;
     if (destroyed) return;
-    const on = style === "wash" && !!frame && !!stops.length;
+    const on = style === "wash" && !!frame;
     if (map.getLayer("wind-wash"))
       map.setLayoutProperty("wind-wash", "visibility", on ? "visible" : "none");
     if (!on || !frame) return;
@@ -840,7 +836,7 @@ export function createWindLayer(
     if (zoom >= DEPTHS_ZOOM) return;
     const centre = map.getCenter();
     // The field's version too: a tile arriving is a new picture of the same hour.
-    const key = `${frame.model}|${frame.validTime}|${frame.field.version}|${zoom.toFixed(3)}|${centre.lng.toFixed(4)}|${centre.lat.toFixed(4)}|${rect.width}x${rect.height}|${stops.map((s) => s.kn.toFixed(1)).join(",")}`;
+    const key = `${frame.model}|${frame.validTime}|${frame.field.version}|${zoom.toFixed(3)}|${centre.lng.toFixed(4)}|${centre.lat.toFixed(4)}|${rect.width}x${rect.height}`;
     if (key === washKey) return;
     // A margin a third of the view each way, so a pan shows wash, not paper.
     const mx = rect.width / 3,
@@ -863,7 +859,6 @@ export function createWindLayer(
     image.height = h;
     const c = image.getContext("2d")!;
     const data = c.createImageData(w, h);
-    const lut = Array.from({ length: 81 }, (_, i) => rideColour(stops, i / 2));
     // The model's own edge fades out rather than stopping in a straight line.
     const g = frame.grid;
     const feather = Math.max(g.dx, g.dy) * 6;
@@ -887,7 +882,10 @@ export function createWindLayer(
         const wind = frame.field.sample(lat, lng);
         if (!wind) continue;
         const kn = Math.hypot(wind.u, wind.v) * KNOTS;
-        const rgb = lut[Math.min(80, Math.max(0, Math.round(kn * 2)))];
+        const rgb =
+          WASH_LUT[
+            Math.min(WASH_LUT.length - 1, Math.max(0, Math.round(kn * 2)))
+          ];
         const i = (y * w + x) * 4;
         const alpha =
           (sea ? (sea[i + 3] > 127 ? WASH_SEA : WASH_LAND) : WASH_UNKNOWN) *
@@ -995,12 +993,6 @@ export function createWindLayer(
       style = next;
       // Every style draws the arrows: only their colour changes.
       restart();
-      washKey = "";
-      queueWash(0);
-    },
-    setStops(next) {
-      stops = next;
-      paint();
       washKey = "";
       queueWash(0);
     },

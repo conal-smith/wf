@@ -11,7 +11,6 @@ import {
   TILES_URL,
   chartColours,
   chartStyle,
-  type RideStop,
 } from "./chartStyle";
 import { archiveUrl, pmtilesTile } from "./archives";
 import { releaseReplacedColorRamps } from "./colorRelief";
@@ -123,7 +122,6 @@ type Props = {
   /** A point tapped on the open map, marked where it was tapped. */
   picked: { lon: number; lat: number } | null;
   windStyle: WindStyle;
-  rideStops: readonly RideStop[];
   layers: ChartLayers;
   /** The foilable-depth areas to draw, or null to draw none. */
   foil: readonly FoilView[] | null;
@@ -285,7 +283,6 @@ export default function WindMap(props: Props) {
     mark,
     picked,
     windStyle,
-    rideStops,
     layers,
     foil,
     satellite = null,
@@ -555,9 +552,6 @@ export default function WindMap(props: Props) {
       map.off("styledata", settle);
     };
   }, [ready, windStyle]);
-  useEffect(() => {
-    windRef.current?.setStops(rideStops);
-  }, [ready, rideStops]);
   useEffect(() => {
     windRef.current?.setPaused(reducedMotion);
   }, [ready, reducedMotion]);
