@@ -9,6 +9,8 @@ import {
   tideForStation,
   tideSpotNote,
   tideStation,
+  tideStationLine,
+  tideStationNear,
   tideStations,
   validateTideCurve,
   validateTideManifest,
@@ -247,6 +249,142 @@ describe("station curve", () => {
     });
     expect(await tideForSpot(m, "ballyholme")).toBeNull();
     expect(fetcher).not.toHaveBeenCalled();
+  });
+});
+
+describe("a point's station", () => {
+  // Real stations' places, from the published manifest.
+  const coast = (maxDistanceKm?: number): TideManifest => ({
+    ...manifest(),
+    maxDistanceKm,
+    stations: {
+      Dublin_Port: {
+        id: "Dublin_Port",
+        name: "Dublin Port",
+        lat: 53.34574,
+        lon: -6.22166,
+        provider: "Marine Institute",
+      },
+      Howth: {
+        id: "Howth",
+        name: "Howth",
+        lat: 53.39148,
+        lon: -6.0683,
+        provider: "Marine Institute",
+      },
+      Galway: {
+        id: "Galway",
+        name: "Galway",
+        lat: 53.26895,
+        lon: -9.04796,
+        provider: "Marine Institute",
+      },
+      Killard_MODELLED: {
+        id: "Killard_MODELLED",
+        name: "Killard Point",
+        lat: 54.315,
+        lon: -5.525,
+        provider: "wingfoil.ie",
+        modelled: true,
+      },
+      Strangford_MODELLED: {
+        id: "Strangford_MODELLED",
+        name: "Strangford Lough",
+        lat: 54.48,
+        lon: -5.62,
+        provider: "wingfoil.ie",
+        modelled: true,
+        lagOf: "Killard_MODELLED",
+        lagMinutes: 100,
+      },
+    },
+    spots: {},
+  });
+
+  it("is the nearest station, with its distance", () => {
+    // Off Dollymount, in Dublin Bay: Dublin Port is nearer than Howth.
+    const bay = tideStationNear(coast(), 53.355, -6.16);
+    expect(bay.station?.id).toBe("Dublin_Port");
+    expect(bay.distanceKm).toBe(4.2);
+    expect(bay.reason).toBeUndefined();
+    // Off the Baily, Howth.
+    expect(tideStationNear(coast(), 53.37, -6.05).station?.id).toBe("Howth");
+  });
+  it("takes a basin's or a modelled station as it is published", () => {
+    // Inside Strangford Lough, its own station: Killard's tide, 100 min late.
+    const lough = tideStationNear(coast(), 54.45, -5.6);
+    expect(lough.station?.id).toBe("Strangford_MODELLED");
+    expect(lough.station?.lagOf).toBe("Killard_MODELLED");
+    expect(lough.station?.lagMinutes).toBe(100);
+  });
+  it("says how far the nearest is beyond the publisher's limit", () => {
+    // The middle of Ireland: Galway is 76 km off.
+    const inland = tideStationNear(coast(), 53.52, -7.98);
+    expect(inland.station).toBeNull();
+    expect(inland.distanceKm).toBeCloseTo(76.1, 1);
+    expect(inland.reason).toBe(
+      "No tide station within 40 km: the nearest, Galway, is 76 km away.",
+    );
+    // The limit is the manifest's own where it states one.
+    expect(tideStationNear(coast(80), 53.52, -7.98).station?.id).toBe("Galway");
+    expect(tideStationNear(coast(20), 53.43, -9.25).reason).toBe(
+      "No tide station within 20 km: the nearest, Galway, is 22 km away.",
+    );
+  });
+  it("gives a freshwater lake no tide, however near a station is", () => {
+    // Lough Corrib, 6 km above Galway's docks.
+    const corrib = tideStationNear(coast(), 53.31, -9.1, true);
+    expect(corrib).toEqual({
+      station: null,
+      distanceKm: 5.7,
+      reason: "No tide: a freshwater lake.",
+    });
+  });
+  it("breaks an exact tie by id, whichever order the manifest lists them", () => {
+    const twins = (order: string[]): TideManifest => ({
+      ...manifest(),
+      stations: order.map((id) => ({
+        id,
+        name: id,
+        lat: 53,
+        lon: id === "b-east" ? -5.9 : -6.1,
+      })),
+      spots: {},
+    });
+    expect(
+      tideStationNear(twins(["b-east", "a-west"]), 53, -6).station?.id,
+    ).toBe("a-west");
+    expect(
+      tideStationNear(twins(["a-west", "b-east"]), 53, -6).station?.id,
+    ).toBe("a-west");
+  });
+  it("keeps a Marine Institute station that is at most 5 km farther, as the publisher does", () => {
+    const pair = (miLon: number): TideManifest => ({
+      ...manifest(),
+      stations: [
+        { id: "ni", name: "NI", lat: 54, lon: -6, provider: "wingfoil.ie" },
+        {
+          id: "mi",
+          name: "MI",
+          lat: 54,
+          lon: miLon,
+          provider: "Marine Institute",
+        },
+      ],
+      spots: {},
+    });
+    // From 54° N, 6.1° W: the NI station 6.5 km east, the MI one 8 or 16 km west.
+    expect(tideStationNear(pair(-6.22), 54, -6.1).station?.id).toBe("mi");
+    expect(tideStationNear(pair(-6.34), 54, -6.1).station?.id).toBe("ni");
+  });
+  it("names the station and how far it is", () => {
+    const station = { id: "Howth", name: "Howth", lat: 0, lon: 0 };
+    expect(tideStationLine({ station, distanceKm: 4.84 })).toBe(
+      "Howth, 4.8 km away",
+    );
+    expect(tideStationLine({ station, distanceKm: 23.6 })).toBe(
+      "Howth, 24 km away",
+    );
   });
 });
 

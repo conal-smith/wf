@@ -59,7 +59,12 @@ import useRunRefresh, {
   RunRecovery,
   type RunSwap,
 } from "./useRunRefresh";
-import { useMarineModels, useModelAvailability, useSpotTide } from "./useBlend";
+import {
+  useMarineModels,
+  useModelAvailability,
+  usePointTide,
+  useSpotTide,
+} from "./useBlend";
 import { useRatings } from "./useRatings";
 import { ALL_SQUARES, useSpotSquaresState } from "./useSpotSquares";
 import {
@@ -152,6 +157,8 @@ interface Picked {
   lat: number;
   name: string;
   coords: string;
+  /** On a lake in the basemap: water the sea does not reach, so no tide. */
+  lake: boolean;
 }
 const degrees = (lat: number, lon: number) =>
   `${Math.abs(lat).toFixed(2)}° ${lat < 0 ? "S" : "N"}, ${Math.abs(lon).toFixed(2)}° ${lon < 0 ? "W" : "E"}`;
@@ -966,7 +973,10 @@ export default function App() {
       : null;
 
   /* ---- choosing a spot ---- */
-  const tide = useSpotTide(picked ? undefined : point?.id);
+  const spotTide = useSpotTide(picked ? undefined : point?.id);
+  // A tapped point takes its nearest station's tide, as a spot is linked to one.
+  const pointTide = usePointTide(picked);
+  const tide = picked ? pointTide : spotTide;
   const selectSpot = (spot: Spot, fly = true) => {
     setPicked(null);
     setPoint(spot);
@@ -979,6 +989,7 @@ export default function App() {
     lon: number;
     lat: number;
     place: string | null;
+    lake: boolean;
   }) => {
     const coords = degrees(at.lat, at.lon);
     setPicked({
@@ -986,6 +997,7 @@ export default function App() {
       lat: at.lat,
       name: at.place ?? coords,
       coords: at.place ? coords : "",
+      lake: at.lake,
     });
     setFocusId(AT_POINT);
     probeFoil(at.lon, at.lat);
@@ -1387,8 +1399,8 @@ export default function App() {
                     !!dockSpot && !picked && starred.includes(dockSpot.id)
                   }
                   onToggleStar={() => dockSpot && fav.toggle(dockSpot.id)}
-                  tide={picked ? null : tide.tide}
-                  tideNote={picked ? null : tide.error}
+                  tide={tide.tide}
+                  tideNote={tide.error}
                   phone={phone}
                   view={view}
                   onView={setView}

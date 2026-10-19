@@ -1069,3 +1069,198 @@ test("waves, sky, air, rain and sea are one tap away, and stay open", async ({
   await page.getByRole("button", { name: "Hide waves, sky and sea" }).click();
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
 });
+
+/**
+ * The coast's stations as the tide manifest publishes them: two Marine
+ * Institute gauges on Dublin Bay, and Larne, 34 km from Lough Neagh's
+ * shore at Antrim, inside the publisher's 40 km limit.
+ */
+const coastTides = {
+  schemaVersion: 1,
+  kind: "tide",
+  maxDistanceKm: 40,
+  stations: {
+    Dublin_Port: {
+      name: "Dublin Port",
+      lat: 53.34574,
+      lon: -6.22166,
+      provider: "Marine Institute",
+      url: "marine/tides-Dublin_Port-test.json",
+    },
+    Howth: {
+      name: "Howth",
+      lat: 53.39148,
+      lon: -6.0683,
+      provider: "Marine Institute",
+      url: "marine/tides-Howth-test.json",
+    },
+    Larne_MODELLED: {
+      name: "Larne",
+      lat: 54.853,
+      lon: -5.79,
+      provider: "wingfoil.ie",
+      modelled: true,
+      url: "marine/tides-Larne-test.json",
+    },
+  },
+  spots: {},
+  attribution: "Tidal predictions © Marine Institute, CC BY 4.0",
+};
+
+/**
+ * Tap the chart at a place, from two riding places' lights round it: the
+ * chart zoomed out until both are on it, and the place put on the screen
+ * by Web Mercator from where their lights stand.
+ */
+async function tapAt(
+  page: Page,
+  [a, b]: [string, string],
+  [lat, lon]: [number, number],
+) {
+  const canvas = page.locator(".maplibregl-canvas");
+  const light = (id: string) =>
+    page.locator(`.spot-marker[data-spot-id="${id}"]`);
+  const onChart = () =>
+    page.evaluate(
+      ([a, b]) => {
+        const chart = document
+          .querySelector(".maplibregl-canvas")!
+          .getBoundingClientRect();
+        const foot = document.querySelector(".map-footer");
+        const bottom = foot
+          ? Math.min(chart.bottom, foot.getBoundingClientRect().top)
+          : chart.bottom;
+        return [a, b].every((id) => {
+          const r = document
+            .querySelector(`.spot-marker[data-spot-id="${id}"]`)!
+            .getBoundingClientRect();
+          return (
+            r.left >= chart.left + 40 &&
+            r.right <= chart.right - 40 &&
+            r.top >= chart.top + 40 &&
+            r.bottom <= bottom - 40
+          );
+        });
+      },
+      [a, b],
+    );
+  // The camera at rest: the light where it was, three looks running.
+  const still = async () => {
+    let last = "";
+    let same = 0;
+    await expect
+      .poll(
+        async () => {
+          const now = JSON.stringify(await light(a).boundingBox());
+          same = now === last ? same + 1 : 0;
+          last = now;
+          return same;
+        },
+        { intervals: [400], timeout: 20000 },
+      )
+      .toBeGreaterThanOrEqual(3);
+  };
+  const zoomOut = page.getByRole("button", { name: "Zoom out", exact: true });
+  for (let i = 0; i < 6; i++) {
+    await still();
+    if (await onChart()) break;
+    await zoomOut.click();
+  }
+  expect(await onChart()).toBe(true);
+  // The water under the tap drawn.
+  await steadyFrames(page);
+  await page.waitForTimeout(1000);
+  const merc = (lat: number) =>
+    Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+  const centre = async (id: string) => {
+    const r = (await light(id).boundingBox())!;
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  };
+  const [pa, pb] = [await centre(a), await centre(b)];
+  const at = { a: SPOT_AT[a], b: SPOT_AT[b] };
+  // Pixels per radian of longitude, which Mercator's y shares.
+  const dx = ((at.b[1] - at.a[1]) * Math.PI) / 180;
+  const dy = merc(at.b[0]) - merc(at.a[0]);
+  const k = Math.hypot(pb.x - pa.x, pb.y - pa.y) / Math.hypot(dx, dy);
+  const x = pa.x + k * (((lon - at.a[1]) * Math.PI) / 180);
+  const y = pa.y - k * (merc(lat) - merc(at.a[0]));
+  const box = (await canvas.boundingBox())!;
+  // Nothing but the chart under the finger.
+  expect(
+    await page.evaluate(
+      ([x, y]) => document.elementFromPoint(x, y)?.tagName,
+      [x, y],
+    ),
+  ).toBe("CANVAS");
+  await canvas.click({ position: { x: x - box.x, y: y - box.y } });
+}
+
+/** Where those riding places are (public/riding-locations.json). */
+const SPOT_AT: Record<string, [number, number]> = {
+  dollymount: [53.367583, -6.144748],
+  seapoint: [53.2973278, -6.1588509],
+  "lough-neagh-antrim": [54.7161331, -6.2408518],
+  "oxford-island": [54.489371, -6.3668812],
+};
+
+test("a point tapped on Dublin Bay reads its nearest station's tide; one on Lough Neagh has none", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.route("**/marine/tides.json", (route) =>
+    route.fulfill({ json: coastTides }),
+  );
+  await page.route("**/marine/tides-*-test.json", (route) =>
+    route.fulfill({ json: tideCurve }),
+  );
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/?spot=dollymount");
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+    timeout: 30000,
+  });
+  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount", {
+    timeout: 30000,
+  });
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
+
+  // Out on the bay, off Poolbeg: not a riding place, and no spot's tide link.
+  await tapAt(page, ["dollymount", "seapoint"], [53.33, -6.1]);
+  await expect(page.locator(".dock .dk-tools")).toContainText(
+    /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
+  );
+  const tide = page.locator(".dock .tide-row");
+  await expect(tide).toHaveAttribute(
+    "aria-label",
+    /^Tide at (Dublin Port|Howth), \d+\.\d km away, metres above chart datum$/,
+    { timeout: 15000 },
+  );
+  await expect(tide.locator(".tide-label").first()).toHaveText(
+    /^\d\d:\d\d \d+\.\dm$/,
+  );
+  await expect(tide.locator(":scope > title")).toHaveText(
+    /^Tide at (Dublin Port|Howth), \d+\.\d km away$/,
+  );
+  await expect(tide).not.toContainText("No tide station");
+
+  // Lough Neagh: Larne is within the limit, but the sea does not reach it.
+  await page.goto("/?spot=lough-neagh-antrim");
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+    timeout: 30000,
+  });
+  await expect(page.locator(".dock .dk-name")).toHaveText(
+    "Lough Neagh — Antrim",
+    { timeout: 30000 },
+  );
+  await page.keyboard.press("Escape");
+  await tapAt(page, ["lough-neagh-antrim", "oxford-island"], [54.6, -6.45]);
+  await expect(page.locator(".dock .dk-tools")).toContainText(
+    /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
+  );
+  await expect(page.locator(".dock .tide-row .tide-none").first()).toHaveText(
+    "No tide: a freshwater lake.",
+    { timeout: 15000 },
+  );
+  expect(errors).toEqual([]);
+});

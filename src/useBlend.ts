@@ -32,7 +32,9 @@ import {
 import {
   loadTides,
   tideForSpot,
+  tideForStation,
   tideSpotNote,
+  tideStationNear,
   type SpotTide,
   type TideManifest,
 } from "../force5/src/tides";
@@ -225,6 +227,41 @@ function spotTide(
   return abortable(curve, signal);
 }
 
+/** A station's curve, per manifest, for the points tapped near it. */
+const stationCurves = new WeakMap<
+  TideManifest,
+  Map<string, Promise<Awaited<ReturnType<typeof tideForStation>>>>
+>();
+/**
+ * The tide for a point that is not a spot: its nearest station's curve (a
+ * tap a little way along the same coast reads the same file), or why it has
+ * none.
+ */
+async function pointTide(
+  manifest: TideManifest,
+  at: TidePoint,
+  signal: AbortSignal,
+): Promise<{ tide: SpotTide | null; note: string | null }> {
+  const near = tideStationNear(manifest, at.lat, at.lon, at.lake);
+  const id = near.station?.id;
+  if (!id) return { tide: null, note: near.reason ?? null };
+  let curves = stationCurves.get(manifest);
+  if (!curves) stationCurves.set(manifest, (curves = new Map()));
+  let curve = curves.get(id);
+  if (!curve) {
+    const loading = tideForStation(manifest, id);
+    curves.set(id, (curve = loading));
+    loading.catch(() => curves!.delete(id));
+  }
+  const found = await abortable(curve, signal);
+  return found
+    ? { tide: { ...found, distanceKm: near.distanceKm }, note: null }
+    : {
+        tide: null,
+        note: "This point's tide station is missing from the predictions.",
+      };
+}
+
 export interface SeaTemperatureState {
   /** What the nearest reporting station measured, or null when none covers it. */
   observed: SpotSeaTemperature | null;
@@ -298,35 +335,66 @@ export interface TideState {
   loading: boolean;
 }
 
+/** A point tapped on the map, and whether the basemap has it on a lake. */
+export interface TidePoint {
+  lat: number;
+  lon: number;
+  lake: boolean;
+}
+
 /** The nearest tide station's curve for a named spot, or an explained absence. */
 export function useSpotTide(spotId: string | undefined): TideState {
+  return useTide(spotId, undefined);
+}
+
+/**
+ * A tapped point's tide: the nearest station's, within the limit the tide
+ * publisher links spots to stations by; beyond it, or on a lake, the reason.
+ */
+export function usePointTide(at: TidePoint | null | undefined): TideState {
+  return useTide(undefined, at ?? undefined);
+}
+
+function useTide(
+  spotId: string | undefined,
+  at: TidePoint | undefined,
+): TideState {
+  const lat = at?.lat;
+  const lon = at?.lon;
+  const lake = at?.lake ?? false;
   const [state, setState] = useState<TideState>({
     tide: null,
     manifest: null,
     error: null,
-    loading: !!spotId,
+    loading: !!spotId || !!at,
   });
   useEffect(() => {
-    if (!spotId) {
+    if (!spotId && (lat === undefined || lon === undefined)) {
       setState({ tide: null, manifest: null, error: null, loading: false });
       return;
     }
     const controller = new AbortController();
-    // Nor another spot's tide curve, station or credit.
+    // Nor another spot's (or point's) tide curve, station or credit.
     setState({ tide: null, manifest: null, error: null, loading: true });
     (async () => {
       const manifest = await tideManifest(controller.signal);
-      const tide = await spotTide(manifest, spotId, controller.signal);
-      return { manifest, tide };
-    })()
-      .then(({ manifest, tide }) => {
-        if (controller.signal.aborted) return;
-        setState({
-          tide,
+      if (spotId) {
+        const tide = await spotTide(manifest, spotId, controller.signal);
+        return {
           manifest,
-          error: tide ? null : tideSpotNote(manifest, spotId),
-          loading: false,
-        });
+          tide,
+          note: tide ? null : tideSpotNote(manifest, spotId),
+        };
+      }
+      const point = { lat: lat!, lon: lon!, lake };
+      return {
+        manifest,
+        ...(await pointTide(manifest, point, controller.signal)),
+      };
+    })()
+      .then(({ manifest, tide, note }) => {
+        if (controller.signal.aborted) return;
+        setState({ tide, manifest, error: note, loading: false });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -340,7 +408,7 @@ export function useSpotTide(spotId: string | undefined): TideState {
         });
       });
     return () => controller.abort();
-  }, [spotId]);
+  }, [spotId, lat, lon, lake]);
   return state;
 }
 
