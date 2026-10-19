@@ -413,8 +413,13 @@ to orchestrate it later).
 
 - The map model only decides which columns have a map frame: the map frame
   nearest the column's time, within that model's cadence.
-- Selecting a column the map model can't reach keeps the map on its last frame
-  and shows a chip: **"Show ECMWF on the map"**. Nothing switches implicitly.
+- Selecting a column the map model can't reach shows a chip: **"Show ECMWF on
+  the map"**. Nothing switches implicitly.
+  - Since 2026-10-19 the map draws **no wind** there, and the label where the
+    map names its model says why ("HARMONIE ends Wed 22:00 · no wind drawn").
+    It used to keep its last frame, which left another hour's streaks under
+    the lights' and the dock's reading of the selected hour (see the ruling in
+    `DESIGN_PRINCIPLES.md`).
   - The chip calls `chooseModel(id, targetTime)`; `chooseModel` gains the
     `targetTime` argument and stays one atomic commit.
 - **The selected time is stored as a time, not a column number.** Today

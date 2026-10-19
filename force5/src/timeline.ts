@@ -204,6 +204,33 @@ export function frameForTime(
 }
 
 /**
+ * What the map can draw for a time: the frame that stands for it, or, where
+ * the run does not reach it, which end of the run it lies past and that end's
+ * valid time. Past either end the map draws no wind at all: a frame from
+ * another hour, under the dock's and the lights' reading of this one, would
+ * be two moments shown as one.
+ */
+export type MapReach =
+  | { drawn: true; index: number }
+  | { drawn: false; side: "before" | "after"; edge: string };
+export function mapReach(
+  frames: readonly Pick<FrameInfo, "validTime">[],
+  time: number,
+): MapReach | null {
+  if (!frames.length || !Number.isFinite(time)) return null;
+  const index = frameForTime(frames, time);
+  if (index !== null) return { drawn: true, index };
+  const first = frames[0].validTime;
+  return time < Date.parse(first)
+    ? { drawn: false, side: "before", edge: first }
+    : {
+        drawn: false,
+        side: "after",
+        edge: frames[frames.length - 1].validTime,
+      };
+}
+
+/**
  * The order to read a run's frames in for a bare map point, which has no
  * precomputed series and has to be sampled out of the frames one file at a time.
  *

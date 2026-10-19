@@ -738,22 +738,56 @@ test("on a phone the dock is its hours alone, its tools on the chart, under a si
   ).toBe(true);
 });
 
+/** The particle canvas's pixels with anything drawn in them. */
+const inked = (page: Page) =>
+  page.locator(".particle-canvas").evaluate((canvas: HTMLCanvasElement) => {
+    const data = canvas
+      .getContext("2d")!
+      .getImageData(0, 0, canvas.width, canvas.height).data;
+    let count = 0;
+    for (let i = 3; i < data.length; i += 4) if (data[i] > 0) count++;
+    return count;
+  });
+
 test("an hour past the map's model offers the run that reaches it", async ({
   page,
 }) => {
   await openDock(page);
   const chip = page.getByRole("button", { name: /Show ECMWF on the map/ });
+  const canvas = page.locator(".particle-canvas");
+  const label = page.locator(".map-model");
   await expect(chip).toHaveCount(0);
+  await expect(label).toHaveText("HARMONIE");
+  await expect.poll(() => inked(page), { timeout: 20000 }).toBeGreaterThan(0);
   // The strip's last day: far past HARMONIE.
   const far = sampleStrip.length - 4;
   await slider(page).fill(String(far));
   await expect(chip).toBeVisible();
+  // The map draws no wind there: HARMONIE's last frame left standing under
+  // the lights' and the dock's reading of this hour was two moments shown as
+  // one. It says why, where it names its model.
+  await expect(canvas).toHaveClass(/is-blank/);
+  await expect(label).toHaveText(
+    /^HARMONIE ends \w{3} \d\d:\d\d · no wind drawn$/,
+  );
+  await expect.poll(() => inked(page), { timeout: 5000 }).toBe(0);
   await page.getByRole("button", { name: "Layers", exact: true }).click();
   await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
     "aria-pressed",
     "true",
   );
+  await expect(page.locator(".layers .models-note")).toHaveText(
+    /^HARMONIE ends \w{3} \d\d:\d\d: no wind on the map at \w{3} \d\d:\d\d\. ECMWF reaches it\.$/,
+  );
   await page.getByRole("button", { name: "Layers", exact: true }).click();
+  // Back to an hour HARMONIE reaches, and its wind is drawn again.
+  await slider(page).fill("2");
+  await expect(chip).toHaveCount(0);
+  await expect(canvas).not.toHaveClass(/is-blank/);
+  await expect(label).toHaveText("HARMONIE");
+  await expect.poll(() => inked(page), { timeout: 20000 }).toBeGreaterThan(0);
+  await slider(page).fill(String(far));
+  await expect(canvas).toHaveClass(/is-blank/);
   // Nothing switched by itself; the chip is the reader asking.
   await chip.click();
   await page.getByRole("button", { name: "Layers", exact: true }).click();
@@ -764,6 +798,11 @@ test("an hour past the map's model offers the run that reaches it", async ({
   );
   await expect(slider(page)).toHaveValue(String(far));
   await expect(chip).toHaveCount(0);
+  // ECMWF reaches the hour: its wind is drawn, and named.
+  await expect(canvas).not.toHaveClass(/is-blank/);
+  await expect(label).toHaveText(/^ECMWF/);
+  await expect(label).not.toContainText("no wind drawn");
+  await expect.poll(() => inked(page), { timeout: 20000 }).toBeGreaterThan(0);
 });
 
 /**

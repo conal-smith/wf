@@ -65,6 +65,7 @@ export default function MapControls({
   focusStyle,
   onFocusStyle,
   model,
+  modelNote,
   modelDisabled,
   onModel,
 }: {
@@ -91,6 +92,11 @@ export default function MapControls({
   focusStyle: FocusStyle;
   onFocusStyle: (style: FocusStyle) => void;
   model: string | undefined;
+  /**
+   * Why the map draws no wind at the hour shown: its model's run does not
+   * reach it. Null when it does.
+   */
+  modelNote?: string | null;
   modelDisabled: boolean;
   onModel: (id: ModelId) => void;
 }) {
@@ -274,6 +280,7 @@ export default function MapControls({
             onChange={onFocusStyle}
           />
           <h3>Model on the map</h3>
+          {modelNote && <p className="models-note">{modelNote}</p>}
           <div className="models" role="group" aria-label="Weather model">
             {MODELS.map((entry) => (
               <button

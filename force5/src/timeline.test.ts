@@ -5,6 +5,7 @@ import {
   frameForTime,
   framePosition,
   loadOrder,
+  mapReach,
   modelStretches,
   windTrackBackground,
   type ColumnModel,
@@ -250,6 +251,35 @@ describe("frameForTime", () => {
     const one = frames("2026-09-14T00:00:00Z", [0]);
     expect(frameForTime(one, Date.parse("2026-09-14T00:00:00Z"))).toBe(0);
     expect(frameForTime(one, Date.parse("2026-09-14T02:00:00Z"))).toBeNull();
+  });
+});
+
+describe("mapReach", () => {
+  const list = frames("2026-09-14T00:00:00Z", [0, 3, 6]);
+  it("names the frame for a time the run reaches", () => {
+    expect(mapReach(list, Date.parse("2026-09-14T04:00:00Z"))).toEqual({
+      drawn: true,
+      index: 1,
+    });
+  });
+  it("draws nothing past the run's end, and says where it ended", () => {
+    // Days past the run: never its last frame standing in for the hour.
+    expect(mapReach(list, Date.parse("2026-09-19T13:00:00Z"))).toEqual({
+      drawn: false,
+      side: "after",
+      edge: "2026-09-14T06:00:00.000Z",
+    });
+  });
+  it("draws nothing before the run's start, and says where it starts", () => {
+    expect(mapReach(list, Date.parse("2026-09-13T20:00:00Z"))).toEqual({
+      drawn: false,
+      side: "before",
+      edge: "2026-09-14T00:00:00.000Z",
+    });
+  });
+  it("has no answer without frames or a time", () => {
+    expect(mapReach([], NOW)).toBeNull();
+    expect(mapReach(list, NaN)).toBeNull();
   });
 });
 
