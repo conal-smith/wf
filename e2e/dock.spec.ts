@@ -1304,7 +1304,7 @@ test("a point tapped on Dublin Bay reads its nearest station's tide; one on Loug
   expect(errors).toEqual([]);
 });
 
-test("a point tapped off Dublin Bay reads wind, waves, weather and tide, and every model's blend", async ({
+test("a point tapped off Dublin Bay reads wind, waves, weather and tide, and no blend", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -1356,12 +1356,7 @@ test("a point tapped off Dublin Bay reads wind, waves, weather and tide, and eve
   await expect(dock.locator("tr.tt-waves")).not.toContainText(
     "riding places only",
   );
-  // Every model's wind, sampled at the point, drawn as the blend.
-  await dock.getByRole("button", { name: "Blend" }).click();
-  await expect
-    .poll(() => dock.locator(".blend-chart .model-line").count(), {
-      timeout: 45000,
-    })
-    .toBeGreaterThan(1);
+  // No blend: every model's frames sampled at a point is megabytes.
+  await expect(dock.getByRole("button", { name: "Blend" })).toHaveCount(0);
   expect(errors).toEqual([]);
 });

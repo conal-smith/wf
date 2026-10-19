@@ -1451,7 +1451,7 @@ export default function App() {
                   tide={tide.tide}
                   tideNote={tide.error}
                   phone={phone}
-                  view={view}
+                  view={picked ? "table" : view}
                   onView={setView}
                   reducedMotion={reducedMotion}
                   reachable={reachable}
