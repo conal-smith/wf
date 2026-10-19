@@ -17,6 +17,16 @@ import { archiveUrl, pmtilesTile } from "./archives";
 import { releaseReplacedColorRamps } from "./colorRelief";
 import { forecastUrl } from "./urls";
 import { createLights, type LightState, type Lights } from "./lights";
+import {
+  LOUPE_BAND,
+  bezelTicks,
+  metresPerPixel,
+  loupeRadius,
+  rangeLabel,
+  rangeRing,
+  washHoles,
+  type FocusStyle,
+} from "./focus";
 import { drawNeatline } from "./neatline";
 import { setMapView } from "./tiledField";
 import {
@@ -104,9 +114,11 @@ type Props = {
   named: ReadonlySet<string>;
   lightLabel: (spot: Spot, state: LightState | undefined) => string;
   selectedId: string | null;
-  /** Where everything else goes quiet around (a spot or a tapped point), or null. */
+  /** Where the loupe or the range ring is laid (a spot or a tapped point), or null. */
   focus: { lon: number; lat: number } | null;
-  /** Where the pen rings and writes: the chosen spot or point. */
+  /** The rider's choice of mark round the focus: a loupe, a range ring, or none. */
+  focusStyle: FocusStyle;
+  /** Where the pen rings: the chosen spot or point. */
   mark: { lon: number; lat: number } | null;
   /** A point tapped on the open map, marked where it was tapped. */
   picked: { lon: number; lat: number } | null;
@@ -121,8 +133,6 @@ type Props = {
   /** The dock's height: what a camera move keeps the spot above. */
   bottomInset: number;
   phone: boolean;
-  /** The pen's verdict beside the selected light, or null for none. */
-  penNote: string | null;
   onSelect: (spot: Spot) => void;
   /** A tap on the open map, not a light: the point, and the nearest place's name. */
   onPick: (point: { lon: number; lat: number; place: string | null }) => void;
@@ -138,6 +148,79 @@ const WORLD = [
   [-40, 72],
   [-40, 35],
 ];
+
+const SVG = "http://www.w3.org/2000/svg";
+
+/** An SVG element, its attributes set, added to a parent. */
+function svgEl(
+  parent: Element,
+  tag: string,
+  attrs: Record<string, string | number> = {},
+) {
+  const el = document.createElementNS(SVG, tag);
+  for (const [key, value] of Object.entries(attrs))
+    el.setAttribute(key, typeof value === "number" ? value.toFixed(1) : value);
+  parent.appendChild(el);
+  return el;
+}
+
+/**
+ * The loupe at the origin, `r` pixels to the inside of its rim: drawn as the
+ * chart draws a box, ink, a band of paper and ink, with a compass bezel's
+ * ticks in the paper and N at the top. No handle and no magnifying: the chart
+ * runs straight on through the glass.
+ */
+function drawLoupe(g: SVGGElement, r: number) {
+  g.replaceChildren();
+  const rim = svgEl(g, "g", { class: "map-loupe-rim" });
+  svgEl(rim, "circle", { class: "map-loupe-band", r: r + LOUPE_BAND / 2 });
+  svgEl(rim, "circle", { class: "map-loupe-edge is-inner", r });
+  svgEl(rim, "circle", { class: "map-loupe-edge", r: r + LOUPE_BAND });
+  for (const t of bezelTicks(r))
+    svgEl(g, "line", {
+      class: t.long ? "map-loupe-tick is-long" : "map-loupe-tick",
+      x1: t.x1,
+      y1: t.y1,
+      x2: t.x2,
+      y2: t.y2,
+    });
+  svgEl(g, "text", {
+    class: "map-loupe-north",
+    y: -r - 2.5,
+    "text-anchor": "middle",
+  }).textContent = "N";
+  // A glint on the glass, top left.
+  const g0 = r - 16;
+  svgEl(g, "path", {
+    class: "map-loupe-glint",
+    d: `M${(Math.cos(3.55) * g0).toFixed(1)} ${(Math.sin(3.55) * g0).toFixed(1)} A${g0} ${g0} 0 0 1 ${(Math.cos(4.25) * g0).toFixed(1)} ${(Math.sin(4.25) * g0).toFixed(1)}`,
+  });
+}
+
+/** The range ring at the origin, `r` pixels out, with its distance written up and to the right. */
+function drawRange(g: SVGGElement, r: number, label: string) {
+  g.replaceChildren();
+  svgEl(g, "circle", { class: "map-range-halo", r });
+  svgEl(g, "circle", { class: "map-range-line", r });
+  for (const [x, y] of [
+    [0, -1],
+    [1, 0],
+    [0, 1],
+    [-1, 0],
+  ])
+    svgEl(g, "line", {
+      class: "map-range-tick",
+      x1: x * (r - 6),
+      y1: y * (r - 6),
+      x2: x * (r + 6),
+      y2: y * (r + 6),
+    });
+  svgEl(g, "text", {
+    class: "map-range-label",
+    x: Math.cos(-0.95) * r + 8,
+    y: Math.sin(-0.95) * r - 6,
+  }).textContent = label;
+}
 
 function ring(lon: number, lat: number, metres: number, n = 56) {
   const out: number[][] = [];
@@ -198,6 +281,7 @@ export default function WindMap(props: Props) {
     named,
     selectedId,
     focus,
+    focusStyle,
     mark,
     picked,
     windStyle,
@@ -208,12 +292,12 @@ export default function WindMap(props: Props) {
     reducedMotion,
     bottomInset,
     phone,
-    penNote,
   } = props;
   const container = useRef<HTMLDivElement>(null);
   const particles = useRef<HTMLCanvasElement | null>(null);
   const neat = useRef<SVGSVGElement>(null);
   const pen = useRef<SVGSVGElement | null>(null);
+  const glass = useRef<SVGSVGElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const windRef = useRef<WindLayer | null>(null);
   const lightsRef = useRef<Lights | null>(null);
@@ -286,17 +370,22 @@ export default function WindMap(props: Props) {
     // What the map shows, before it has loaded: the first frame's tiles are
     // asked for while the basemap is still on its way.
     setMapView(viewOf(map));
-    // The wind's canvas and the pen's sheet go inside the map, over its canvas
-    // and, by z-index (src/map.css), under the lights and over them.
+    // The wind's canvas, the loupe's sheet and the pen's go inside the map,
+    // over its canvas and, by z-index (src/map.css), the first two under the
+    // lights and the pen over them.
     const canvasBox = map.getCanvasContainer();
     const canvas = document.createElement("canvas");
     canvas.className = "particle-canvas";
     canvas.setAttribute("aria-hidden", "true");
-    const sheet = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const lens = document.createElementNS(SVG, "svg");
+    lens.setAttribute("class", "map-focus");
+    lens.setAttribute("aria-hidden", "true");
+    const sheet = document.createElementNS(SVG, "svg");
     sheet.setAttribute("class", "map-pen");
     sheet.setAttribute("aria-hidden", "true");
-    canvasBox.after(canvas, sheet);
+    canvasBox.after(canvas, lens, sheet);
     particles.current = canvas;
+    glass.current = lens;
     pen.current = sheet;
     map.touchZoomRotate.disableRotation();
     map.keyboard.disableRotation();
@@ -332,8 +421,8 @@ export default function WindMap(props: Props) {
     });
     map.on("load", () => {
       clearTimeout(loadTimeout);
-      // The quiet round a focused spot: paper over the depths, the contours and
-      // the coast, under the wind and the lights.
+      // The light wash beyond the loupe or the range ring: paper over the
+      // depths, the contours and the coast, under the wind and the lights.
       map.addSource("focus", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
@@ -428,6 +517,10 @@ export default function WindMap(props: Props) {
       lightsRef.current = null;
       latest.current.onReady(null);
       setReady(false);
+      // Ours, not the map's: it leaves them in the container otherwise.
+      canvas.remove();
+      lens.remove();
+      sheet.remove();
       map.remove();
       mapRef.current = null;
     };
@@ -611,40 +704,61 @@ export default function WindMap(props: Props) {
     lightsRef.current?.update(lights, selectedId, named, props.lightLabel);
   }, [ready, spots, lights, selectedId, named]);
 
-  // Focus: everything away from the chosen spot goes quiet; the wind does not.
+  // Focus: a loupe laid on the chart round the chosen spot, or a range ring,
+  // with a light wash of paper beyond it; or, as the rider chooses, nothing.
+  // Neither shrinks as the rider zooms in, as the old spotlight did: the
+  // loupe is a size on the screen, and the ring a round distance on the
+  // chart, chosen again whenever the camera rests. The wind and the lights
+  // are never washed.
+  const remeasure = useRef(() => {});
   useEffect(() => {
     const map = mapRef.current;
-    if (!ready || !map) return;
+    const svg = glass.current;
+    if (!ready || !map || !svg) return;
     const spot = focus;
+    const style: FocusStyle = spot ? focusStyle : "off";
     map.getContainer().classList.toggle("is-focus", !!spot);
-    const radius = () => {
-      if (!spot) return 0;
-      const box = map.getContainer().getBoundingClientRect();
-      const visible = box.height - bottomInset - 70;
-      const px = Math.max(90, 0.3 * Math.min(box.width, visible));
-      return (
-        (px * 40075016.686 * Math.cos((spot.lat * Math.PI) / 180)) /
-        (512 * 2 ** map.getZoom())
-      );
-    };
-    const paint = () => {
+    svg.dataset.focus = style;
+    svg.replaceChildren();
+    const g =
+      spot && style !== "off"
+        ? (svgEl(svg, "g", {
+            class: style === "loupe" ? "map-loupe" : "map-range",
+          }) as SVGGElement)
+        : null;
+    /** The mark's radius on screen, and the ring's distance in nautical miles. */
+    let r = 0;
+    let nm = 0;
+    let washedAt = -1;
+    let raf = 0;
+    const mpp = () => (spot ? metresPerPixel(map.getZoom(), spot.lat) : 0);
+    /** The wash beyond the mark, in metres round the spot at this zoom. */
+    const wash = () => {
       const source = map.getSource("focus") as GeoJSONSource | undefined;
       if (!source) return;
-      const m = radius();
+      washedAt = map.getZoom();
+      const m = mpp();
       source.setData({
         type: "FeatureCollection",
         features: spot
-          ? [1, 1.4, 1.85].map((k) => ({
+          ? washHoles(style, r).holes.map((px) => ({
               type: "Feature" as const,
               properties: {},
               geometry: {
                 type: "Polygon" as const,
-                coordinates: [WORLD, ring(spot.lon, spot.lat, m * k).reverse()],
+                coordinates: [
+                  WORLD,
+                  ring(spot.lon, spot.lat, px * m).reverse(),
+                ],
               },
             }))
           : [],
       });
-      if (spot && map.getLayer("places-near"))
+    };
+    /** The places named at full strength: those the wash leaves clear. */
+    const names = () => {
+      const [clear] = washHoles(style, r).holes;
+      if (spot && clear && map.getLayer("places-near"))
         map.setFilter("places-near", [
           "all",
           PLACE_CLASSES,
@@ -652,126 +766,104 @@ export default function WindMap(props: Props) {
             "within",
             {
               type: "Polygon",
-              coordinates: [ring(spot.lon, spot.lat, m * 1.4)],
+              coordinates: [ring(spot.lon, spot.lat, clear * mpp())],
             },
           ],
         ]);
     };
-    paint();
+    /** Over the spot, wherever the camera has it; the ring at its distance. */
+    const place = () => {
+      raf = 0;
+      if (!spot || !g) return;
+      const q = map.project([spot.lon, spot.lat]);
+      g.setAttribute(
+        "transform",
+        `translate(${q.x.toFixed(1)} ${q.y.toFixed(1)})`,
+      );
+      if (style === "ring") {
+        const next = (nm * 1852) / mpp();
+        if (Math.abs(next - r) > 0.05) drawRange(g, (r = next), rangeLabel(nm));
+      } else if (map.getZoom() !== washedAt)
+        // A glass stays the same size through a zoom, so the hole in the
+        // wash under its rim is cut again on every frame of one.
+        wash();
+    };
+    /** Sized for the map: the glass to its shorter side, the ring's distance to the zoom too. */
+    const measure = () => {
+      if (!spot || !g) {
+        wash();
+        return;
+      }
+      const box = map.getContainer();
+      const width = box.clientWidth;
+      const visible = box.clientHeight - latest.current.bottomInset - 70;
+      if (style === "loupe") {
+        const next = loupeRadius(width, visible);
+        if (next !== r) drawLoupe(g, (r = next));
+      } else nm = rangeRing(mpp(), Math.min(width, visible)).nm;
+      place();
+      wash();
+      names();
+    };
+    const queue = () => {
+      if (!raf) raf = requestAnimationFrame(place);
+    };
+    measure();
+    remeasure.current = measure;
+    const { opacity } = washHoles(style, 0);
     let hide = 0;
-    if (spot) {
+    if (opacity) {
       map.setLayoutProperty("focus", "visibility", "visible");
-      map.setPaintProperty("focus", "fill-opacity", 0.26);
+      map.setPaintProperty("focus", "fill-opacity", opacity);
     } else {
       map.setPaintProperty("focus", "fill-opacity", 0);
-      // Drawn only while there is a focus: an empty layer still costs a pass.
+      // Drawn only while there is a wash: an empty layer still costs a pass.
       hide = window.setTimeout(() => {
         if (map.getLayer("focus"))
           map.setLayoutProperty("focus", "visibility", "none");
       }, 500);
     }
-    map.setPaintProperty("places", "text-opacity", spot ? 0.3 : 0.8);
-    map.setPaintProperty("water-names", "text-opacity", spot ? 0.35 : 1);
-    map.setLayoutProperty("places-near", "visibility", spot ? "visible" : "none");
-    map.on("zoomend", paint);
+    // The names away from the spot step back with the wash; with no mark,
+    // they stay as they are.
+    const quiet = style !== "off";
+    map.setPaintProperty("places", "text-opacity", quiet ? 0.3 : 0.8);
+    map.setPaintProperty("water-names", "text-opacity", quiet ? 0.35 : 1);
+    map.setLayoutProperty(
+      "places-near",
+      "visibility",
+      quiet ? "visible" : "none",
+    );
+    map.on("move", queue);
+    map.on("zoomend", measure);
+    map.on("resize", measure);
     return () => {
       clearTimeout(hide);
-      map.off("zoomend", paint);
+      cancelAnimationFrame(raf);
+      remeasure.current = () => {};
+      map.off("move", queue);
+      map.off("zoomend", measure);
+      map.off("resize", measure);
     };
-  }, [ready, focus?.lon, focus?.lat]);
+  }, [ready, focus?.lon, focus?.lat, focusStyle]);
+  // The dock's height is the map's visible height: the glass is sized to it.
+  useEffect(() => remeasure.current(), [bottomInset]);
 
-  // The neatline, and the pen's loop and note, follow the map as it moves.
+  // The neatline, and the pen's loop, follow the map as it moves.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
     const spot = mark;
     const svg = pen.current;
     let path: SVGPathElement | null = null;
-    let note: SVGTextElement | null = null;
     if (svg) {
-      svg.innerHTML = "";
-      if (spot && penNote !== null) {
-        path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("class", "map-pen-loop");
-        path.setAttribute("pathLength", "1");
-        svg.appendChild(path);
-        if (penNote) {
-          note = document.createElementNS("http://www.w3.org/2000/svg", "text");
-          note.setAttribute("class", "map-pen-note");
-          note.setAttribute("text-anchor", "middle");
-          note.textContent = penNote;
-          svg.appendChild(note);
-        }
-      }
+      svg.replaceChildren();
+      if (spot)
+        path = svgEl(svg, "path", {
+          class: "map-pen-loop",
+          pathLength: "1",
+        }) as SVGPathElement;
     }
     let raf = 0;
-    /**
-     * Where the note stands from its light. Under the loop by default; but a
-     * town's name is often just there (Castlegregory, under Brandon Bay), and
-     * the pen wrote over it. Once the camera rests, the first of a few places
-     * round the loop where neither a base-map name nor another light is in
-     * the way; while it moves, the note keeps the place it has.
-     */
-    const SPOTS: { dx: number; dy: number; anchor: string }[] = [
-      { dx: 0, dy: 44, anchor: "middle" },
-      { dx: 30, dy: 40, anchor: "start" },
-      { dx: -30, dy: 40, anchor: "end" },
-      { dx: 32, dy: 6, anchor: "start" },
-      { dx: -32, dy: 6, anchor: "end" },
-      { dx: 0, dy: 64, anchor: "middle" },
-    ];
-    let at = SPOTS[0];
-    const write = (q: { x: number; y: number }, to: (typeof SPOTS)[number]) => {
-      if (!note) return;
-      const x = (q.x + to.dx).toFixed(1);
-      const y = (q.y + to.dy).toFixed(1);
-      note.setAttribute("x", x);
-      note.setAttribute("y", y);
-      note.setAttribute("text-anchor", to.anchor);
-      note.setAttribute("transform", `rotate(-2 ${x} ${y})`);
-    };
-    const settle = () => {
-      if (!spot || !note) return;
-      const q = map.project([spot.lon, spot.lat]);
-      const frame = map.getContainer().getBoundingClientRect();
-      const layers = ["places", "places-near", "water-names"].filter((id) =>
-        map.getLayer(id),
-      );
-      const lights = Array.from(
-        map.getContainer().querySelectorAll<HTMLElement>(".lt:not(.sel)"),
-      ).map((el) => el.getBoundingClientRect());
-      at =
-        SPOTS.find((to) => {
-          write(q, to);
-          const b = note!.getBBox();
-          const box = {
-            left: b.x - 2,
-            top: b.y - 2,
-            right: b.x + b.width + 2,
-            bottom: b.y + b.height + 2,
-          };
-          if (box.left < 0 || box.right > frame.width) return false;
-          if (
-            layers.length &&
-            map.queryRenderedFeatures(
-              [
-                [box.left, box.top],
-                [box.right, box.bottom],
-              ],
-              { layers },
-            ).length
-          )
-            return false;
-          return !lights.some(
-            (r) =>
-              r.right - frame.left > box.left &&
-              r.left - frame.left < box.right &&
-              r.bottom - frame.top > box.top &&
-              r.top - frame.top < box.bottom,
-          );
-        }) ?? SPOTS[0];
-      write(q, at);
-    };
     const place = () => {
       raf = 0;
       if (neat.current)
@@ -789,24 +881,20 @@ export default function WindMap(props: Props) {
       if (spot && path) {
         const q = map.project([spot.lon, spot.lat]);
         path.setAttribute("d", loopPath(q.x, q.y, 24, 18, 7));
-        write(q, at);
       }
     };
     const queue = () => {
       if (!raf) raf = requestAnimationFrame(place);
     };
     place();
-    settle();
     map.on("move", queue);
     map.on("resize", queue);
-    map.on("moveend", settle);
     return () => {
       cancelAnimationFrame(raf);
       map.off("move", queue);
       map.off("resize", queue);
-      map.off("moveend", settle);
     };
-  }, [ready, mark?.lon, mark?.lat, penNote, bottomInset, phone]);
+  }, [ready, mark?.lon, mark?.lat, bottomInset, phone]);
 
   // The point tapped on the open map, marked where it was.
   useEffect(() => {

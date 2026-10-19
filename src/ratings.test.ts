@@ -14,7 +14,6 @@ import type { Manifest } from "../force5/src/weather";
 import { axisVectors, meanDirections } from "./chart";
 import {
   daylightOn,
-  hourNote,
   hourWind,
   offshoreMark,
   placeConsensus,
@@ -300,33 +299,11 @@ describe("pointHours", () => {
 });
 
 describe("an hour, in a line", () => {
-  // Saturday 17 October 2026, 15:00 in Ireland.
-  const time = Date.parse("2026-10-17T14:00:00Z");
-  const input = {
-    windKn: 17.6,
-    gustKn: 23.8,
-    from: 225,
-    agreement: "high" as const,
-    daylight: true,
-  };
-  const hour = {
-    ...input,
-    rating: rateHour(input, { facing: 270 }, DEFAULT_RIDER),
-  };
+  const hour = { windKn: 17.6, gustKn: 23.8, from: 225 };
 
   it("gives the wind as a list gives it", () => {
     expect(hourWind(hour)).toBe("SW 18g24");
     expect(hourWind({ ...hour, gustKn: null, from: null })).toBe("18");
     expect(hourWind({ ...hour, windKn: null })).toBe("");
-  });
-
-  it("writes the hour's stars, wind and wing, and nothing for an hour not rated", () => {
-    const stars = hour.rating!.stars;
-    const wing = hour.rating!.wing.own ?? hour.rating!.wing.recommended;
-    expect(hourNote(hour, time)).toBe(
-      `Sat 15:00 ${stars ? "★".repeat(stars) : "no stars"}, SW 18g24, ${wing} m²`,
-    );
-    expect(hourNote({ ...hour, daylight: false, rating: null }, time)).toBe("");
-    expect(hourNote(undefined, time)).toBe("");
   });
 });

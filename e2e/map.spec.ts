@@ -183,17 +183,19 @@ test("finding a spot flies there and focuses it, with no box over the map; Escap
         .evaluate((el) => Number(getComputedStyle(el).opacity)),
     )
     .toBe(1);
-  // The pen rings it and writes beside it the hour the map shows, rated:
-  // the hour's stars and wind, never a day's best (and nothing in the dark).
+  // The pen rings it and writes nothing beside it: the dock has the hour.
   await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(1);
-  const notes = await page.locator(".map-pen .map-pen-note").allTextContents();
-  for (const note of notes)
-    expect(note).toMatch(/^[A-Z][a-z]{2} \d\d:\d\d (★+|no stars)(, |$)/);
+  await expect(page.locator(".map-pen text")).toHaveCount(0);
+  // A glass is laid round it, by default, under the lights.
+  await expect(page.locator(".map-focus")).toHaveAttribute("data-focus", "loupe");
+  await expect(page.locator(".map-focus .map-loupe-north")).toHaveText("N");
   // The wind stays at full strength.
   await expect(page.locator(".particle-canvas")).toHaveCSS("opacity", "1");
 
   await page.keyboard.press("Escape");
   await expect(map).not.toHaveClass(/is-focus/);
+  await expect(page.locator(".map-focus")).toHaveAttribute("data-focus", "off");
+  await expect(page.locator(".map-focus > *")).toHaveCount(0);
 
   // Clearing the focus is not choosing another place: the dock keeps it.
   await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
@@ -485,6 +487,62 @@ test("an unavailable basemap says so, and the dock still reads the forecast", as
       page.locator(".dock tr.tt-wind td .kn").count(),
     )
     .toBeGreaterThan(10);
+});
+
+test("round the chosen spot: a loupe that holds its size, a range ring, or nothing, kept as chosen", async ({
+  page,
+}) => {
+  await openChart(page, 1440, 900, null);
+  await findSpot(page, "Dollymount");
+  const map = page.locator(".map-canvas");
+  const focus = page.locator(".map-focus");
+  await expect(map).toHaveClass(/is-focus/);
+  await expect(focus).toHaveAttribute("data-focus", "loupe");
+  // The glass is a size on the screen: zooming in does not shrink it.
+  const rim = () =>
+    page
+      .locator(".map-loupe-edge.is-inner")
+      .evaluate((el) => Math.round(el.getBoundingClientRect().width));
+  const wide = await rim();
+  expect(wide).toBeGreaterThanOrEqual(300);
+  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await expect.poll(rim).toBe(wide);
+
+  // The range ring, from the layers.
+  const layers = page.getByRole("button", { name: "Layers", exact: true });
+  await layers.click();
+  const panel = page.getByRole("group", { name: "Layers" });
+  const choice = panel.getByRole("group", { name: "Round the chosen spot" });
+  await expect(choice.getByRole("button", { name: "Loupe" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await choice.getByRole("button", { name: "Range ring" }).click();
+  await expect(focus).toHaveAttribute("data-focus", "ring");
+  await expect(focus.locator(".map-loupe-rim")).toHaveCount(0);
+  await expect(focus.locator(".map-range-label")).toHaveText(/^[\d.]+ NM$/);
+  // Nothing at all: the pen's ring alone marks the spot.
+  await choice.getByRole("button", { name: "Off" }).click();
+  await expect(focus).toHaveAttribute("data-focus", "off");
+  await expect(focus.locator("*")).toHaveCount(0);
+  await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(1);
+  await expect(map).toHaveClass(/is-focus/);
+
+  // Kept for the next visit.
+  await page.reload();
+  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount", {
+    timeout: 30000,
+  });
+  await layers.click();
+  await expect(choice.getByRole("button", { name: "Off" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.keyboard.press("Escape");
+  await findSpot(page, "Brandon");
+  await expect(map).toHaveClass(/is-focus/);
+  await expect(focus).toHaveAttribute("data-focus", "off");
+  await expect(focus.locator("*")).toHaveCount(0);
 });
 
 test("a link that names a spot opens the chart on it", async ({ page }) => {

@@ -10,6 +10,7 @@ import {
   type SatelliteOption,
 } from "../force5/src/satellite";
 import type { ChartLayers } from "../force5/src/WindMap";
+import { FOCUS_STYLES, type FocusStyle } from "../force5/src/focus";
 import type { WindStyle } from "../force5/src/windLayer";
 import { Segmented } from "../ui/Segmented";
 import { InfoButton } from "./InfoPop";
@@ -28,19 +29,24 @@ const CHART_LABEL: Record<keyof ChartLayers, string> = {
   names: "Spot names",
   foil: "Foilable depth at the tide",
 };
+const FOCUS_LABEL: Record<FocusStyle, string> = {
+  loupe: "Loupe",
+  ring: "Range ring",
+  off: "Off",
+};
 
 /** A panel that opens beside the controls: one at a time. */
 export type MapPanel = "layers" | "spots" | "options" | null;
 
 /**
- * Top right: zoom, the layers (the wind's style, the chart's
- * parts, the satellite image under it, and which model the map draws), and
- * under them your spots, the
- * display options (units, the rider, the blend's models) and the "i" that
- * opens the map's information: its key, the stars, the foil layer and the
- * sources. The layers, your spots and the options open beside the controls,
- * one at a time, and close on their button, on Escape or on a tap anywhere
- * else; a keyboard is handed back to the button it opened from.
+ * Top right: zoom, the layers (the wind's style, the chart's parts, the
+ * satellite image under it, what is drawn round the chosen spot, and which
+ * model the map draws), and under them your spots, the display options
+ * (units, the rider, the blend's models) and the "i" that opens the map's
+ * information: its key, the stars, the foil layer and the sources. The
+ * layers, your spots and the options open beside the controls, one at a time,
+ * and close on their button, on Escape or on a tap anywhere else; a keyboard
+ * is handed back to the button it opened from.
  */
 export default function MapControls({
   onZoomIn,
@@ -58,6 +64,8 @@ export default function MapControls({
   satellite,
   onSatellite,
   satelliteTides,
+  focusStyle,
+  onFocusStyle,
   rideStops,
   rider,
   model,
@@ -83,6 +91,9 @@ export default function MapControls({
   onSatellite: (option: SatelliteOption) => void;
   /** The images' tides at the station nearest the map's centre, once known. */
   satelliteTides: { name: string; high: number; low: number } | null;
+  /** What is drawn round the chosen spot: a loupe, a range ring, or nothing. */
+  focusStyle: FocusStyle;
+  onFocusStyle: (style: FocusStyle) => void;
   rideStops: readonly RideStop[];
   rider: Rider;
   model: string | undefined;
@@ -258,6 +269,16 @@ export default function MapControls({
               </small>
             )}
           </div>
+          <h3>Round the chosen spot</h3>
+          <Segmented
+            aria-label="Round the chosen spot"
+            options={FOCUS_STYLES.map((style) => ({
+              value: style,
+              label: FOCUS_LABEL[style],
+            }))}
+            value={focusStyle}
+            onChange={onFocusStyle}
+          />
           <h3>Model on the map</h3>
           <div className="models" role="group" aria-label="Weather model">
             {MODELS.map((entry) => (
