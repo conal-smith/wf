@@ -85,3 +85,29 @@ test("How the stars work draws", async ({ page }) => {
   });
   expect(errors).toEqual([]);
 });
+
+// The /ai page sends every assistant here (mcp/pages/worker.ts on Pages).
+test("the MCP endpoint answers an assistant and lists the spots", async ({
+  request,
+}) => {
+  let id = 0;
+  const rpc = async (method: string, params: unknown = {}) => {
+    const response = await request.post("/api/mcp", {
+      headers: { Accept: "application/json, text/event-stream" },
+      data: { jsonrpc: "2.0", id: ++id, method, params },
+    });
+    expect(response.status(), method).toBe(200);
+    return (await response.json()) as {
+      result: Record<string, unknown> & { content?: { text: string }[] };
+    };
+  };
+  const hello = await rpc("initialize", {
+    protocolVersion: "2025-06-18",
+    capabilities: {},
+    clientInfo: { name: "smoke", version: "1" },
+  });
+  expect(hello.result.serverInfo).toMatchObject({ name: "wingfoil-ie" });
+  const spots = await rpc("tools/call", { name: "list_spots", arguments: {} });
+  expect(spots.result.isError).toBeFalsy();
+  expect(spots.result.content?.[0].text).toContain("Dollymount");
+});
