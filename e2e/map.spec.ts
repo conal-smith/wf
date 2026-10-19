@@ -1,6 +1,6 @@
 import {
   expect,
-  rememberSpot,
+  chooseSpot,
   steadyFrames,
   test,
   type Page,
@@ -20,9 +20,11 @@ const BATHY_PATH = /BATHY_PATH = "([^"]+)"/.exec(
 const harmonie = readSample("harmonie");
 
 /**
- * The chart, up: every light placed and rated. As a returning visitor who
- * chose `spot` last, the dock drawn for it; with null, a first visit, and no
- * dock until a place is chosen.
+ * The chart, up: every light placed and rated, then `spot` chosen with a tap
+ * on its light and its dock drawn; with null, nothing chosen and no dock.
+ * The tap flies the chart to the spot, and these specs read every light on
+ * the whole of Ireland, so the chart is let go of the spot and zoomed back
+ * out until every light is on it, and rated again.
  */
 export async function openChart(
   page: Page,
@@ -31,7 +33,6 @@ export async function openChart(
   spot: string | null = "brandon",
 ) {
   await page.setViewportSize({ width, height });
-  if (spot) await rememberSpot(page, spot);
   await page.goto("/");
   await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
@@ -39,9 +40,36 @@ export async function openChart(
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
     timeout: 30000,
   });
-  if (spot)
-    await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible();
-  else await expect(page.locator(".dock")).toHaveCount(0);
+  if (!spot) {
+    await expect(page.locator(".dock")).toHaveCount(0);
+    return;
+  }
+  await chooseSpot(page, spot);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
+  const zoomOut = page.getByRole("button", { name: "Zoom out", exact: true });
+  const allOnTheChart = () =>
+    page.evaluate(() => {
+      const chart = document
+        .querySelector(".maplibregl-canvas")!
+        .getBoundingClientRect();
+      return [...document.querySelectorAll(".spot-marker")].every((light) => {
+        const r = light.getBoundingClientRect();
+        return (
+          r.left >= chart.left &&
+          r.right <= chart.right &&
+          r.top >= chart.top &&
+          r.bottom <= chart.bottom
+        );
+      });
+    });
+  for (let i = 0; i < 8 && !(await allOnTheChart()); i++) {
+    await zoomOut.click();
+    await page.waitForTimeout(400);
+  }
+  await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
+    timeout: 30000,
+  });
 }
 
 /** Find a spot by name and take the first result. */
@@ -212,7 +240,7 @@ test("a tap on the open map reads that point's forecast into the dock, focused o
   // Named by the nearest place or its coordinates, with no star and no page.
   const name = page.locator(".dock .dk-name");
   await expect(name).not.toHaveText("Brandon Bay");
-  await expect(page.locator(".dock .dk-head")).toContainText(
+  await expect(page.locator(".dock .dk-tools")).toContainText(
     /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
   );
   await expect(
@@ -476,9 +504,8 @@ test("an unavailable basemap says so, and the dock still reads the forecast", as
   await page.route("https://tiles.openfreemap.org/planet", (route) =>
     route.fulfill({ status: 503, body: "Unavailable" }),
   );
-  // A returning visitor's spot: the dock reads it with no basemap drawn.
-  await rememberSpot(page, "brandon");
-  await page.goto("/");
+  // A spot in the link: the dock reads it with no basemap drawn.
+  await page.goto("/?spot=brandon");
   await expect(page.locator(".map-error")).toBeVisible({ timeout: 30000 });
   await expect(page.getByRole("button", { name: "Reload map" })).toBeVisible();
   await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
@@ -528,11 +555,12 @@ test("round the chosen spot: a loupe that holds its size, a range ring, or nothi
   await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(1);
   await expect(map).toHaveClass(/is-focus/);
 
-  // Kept for the next visit.
+  // Kept for the next visit, which opens on the chart alone.
   await page.reload();
-  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount", {
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
+  await expect(page.locator(".dock")).toHaveCount(0);
   await layers.click();
   await expect(choice.getByRole("button", { name: "Off" })).toHaveAttribute(
     "aria-pressed",

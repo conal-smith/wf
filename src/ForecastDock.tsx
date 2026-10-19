@@ -11,6 +11,8 @@ import {
 } from "react";
 import {
   ArrowDown,
+  ArrowUpRight,
+  ChartSpline,
   CloudRain,
   CloudSun,
   Layers3,
@@ -21,7 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "../ui/Button";
-import { Segmented } from "../ui/Segmented";
+import { arrowPath, framePath, stemPath, type KeepOut } from "../ui/penPaths";
 import { StarGlyphs } from "../ui/StarGlyphs";
 // Only when asked for: the chart's Blend view.
 const BlendChart = lazy(() => import("./BlendChart"));
@@ -31,6 +33,7 @@ import {
   candleGroups,
   modelSupport,
   niceMax,
+  timeToX,
   valueScale,
 } from "./chart";
 import type { PlaceHour } from "./ratings";
@@ -141,27 +144,37 @@ const ROWS = {
 };
 type Rows = typeof ROWS;
 /**
- * A phone's: the rows that stand blank through the night and on a calm day,
- * the stars and the wing, and the tide's band, drawn tighter. At the narrow
- * width, the night's blank rows were a gap the height of the figures between
- * the hours and the tide. dock.css sets the same heights on the cells.
+ * A phone's: every row as tight as its figures allow, and tightest the ones
+ * that stand blank through the night and on a calm day (the stars and the
+ * wing) and the tide's band. The dock is a strip along the foot of the chart,
+ * and every pixel of it is one the chart does not have. dock.css sets the
+ * same heights on the cells.
  */
-const PHONE_ROWS: Rows = { ...ROWS, stars: 16, wing: 16, tide: 30 };
+const PHONE_ROWS: Rows = {
+  ...ROWS,
+  day: 16,
+  hour: 16,
+  stars: 14,
+  wind: 17,
+  from: 15,
+  wing: 15,
+  tide: 22,
+};
 /**
  * The rows between the hours and the tide. The stars head both views; the
  * blend's chart stands in for the table's figures. A point in open water has
- * no stars or wing, and a week with no hour worth a wing has no wing row.
+ * no stars or wing, and a week with no hour worth rating has neither row.
  */
 const rowsAboveTide = (
   rows: Rows,
   view: DockView,
   isPoint: boolean,
-  wing: boolean,
+  rated: boolean,
 ) =>
-  (isPoint ? 0 : rows.stars) +
+  (!isPoint && rated ? rows.stars : 0) +
   (view === "blend"
     ? rows.blend
-    : rows.wind + rows.from + (!isPoint && wing ? rows.wing : 0));
+    : rows.wind + rows.from + (!isPoint && rated ? rows.wing : 0));
 const MORE_ROWS = ["waves", "sky", "air", "rain", "sea"] as const;
 type MoreRow = (typeof MORE_ROWS)[number];
 /** The height of the rows under the hours, as a spot's dock draws them. */
@@ -169,10 +182,10 @@ const rowsUnderHours = (
   rows: Rows,
   view: DockView,
   isPoint: boolean,
-  wing: boolean,
+  rated: boolean,
   more: boolean,
 ) =>
-  rowsAboveTide(rows, view, isPoint, wing) +
+  rowsAboveTide(rows, view, isPoint, rated) +
   rows.tide +
   (more ? MORE_ROWS.reduce((h, k) => h + rows[k], 0) : 0);
 /**
@@ -248,7 +261,7 @@ const StripTable = memo(function StripTable({
   weather,
   sea,
   isPoint,
-  wing,
+  rated,
   tideHeight,
 }: {
   spot: Spot;
@@ -268,8 +281,8 @@ const StripTable = memo(function StripTable({
   weather: SpotWeather;
   sea: SeaTemperatureState;
   isPoint: boolean;
-  /** Whether any hour has a wing to show: else the row is left out. */
-  wing: boolean;
+  /** Whether any hour is worth rating: else the stars and wing rows are left out. */
+  rated: boolean;
   tideHeight: number;
 }) {
   const facing = spot.facing ?? null;
@@ -347,7 +360,7 @@ const StripTable = memo(function StripTable({
         </tr>
         {/* The stars, in either view: the blend's chart is the same hours
             the stars and the chart's lights are rated from. */}
-        {!isPoint && (
+        {!isPoint && rated && (
           <tr className="tt-stars">
             {cells("s", (hour, column, at) =>
               hour?.rating ? (
@@ -400,7 +413,7 @@ const StripTable = memo(function StripTable({
                 ) : null,
               )}
             </tr>
-            {!isPoint && wing && (
+            {!isPoint && rated && (
               <tr className="tt-wing">
                 {cells("g", (hour) =>
                   hour?.rating?.potential
@@ -466,6 +479,163 @@ function xOf(
         ((t - columns[i].time) / step(i, i + 1)) * (centre(i + 1) - centre(i))
       );
   return centre(b);
+}
+
+/** The pen's handwriting at the time now: Kalam's advance at 13px, near enough. */
+const HAND_CHAR = 6.4;
+
+/**
+ * Now, as the red pen marks it: a line down the hours at the time, drawn
+ * under the table so the figures it passes stay on top of it, and the time
+ * written over it in the day row with an arrow down to the line. The time
+ * goes to the right of the line, else to its left, wherever no day's name
+ * stands, and when the strip is scrolled so the day's sticky name stands over
+ * the line, after the name, the arrow reaching back to the line.
+ */
+function NowMark({
+  columns,
+  g,
+  now,
+  top,
+  height,
+}: {
+  columns: readonly StripColumn[];
+  g: StripGeometry;
+  now: number;
+  /** Where the hours start: the line runs from there to the foot. */
+  top: number;
+  height: number;
+}) {
+  // Between the columns' centres: a column is its hour, so 14:20 is a third
+  // of the way from 14's centre to 15's.
+  const x = useMemo(
+    () =>
+      timeToX(
+        columns,
+        now,
+        columns.map((_, i) => g.x[i] + g.w[i] / 2),
+      ),
+    [columns, now, g],
+  );
+  const text = clock(now);
+  const width = text.length * HAND_CHAR;
+  // Which side, and how far from the line the time is written.
+  const [place, setPlace] = useState<{ side: 1 | -1; reach: number }>({
+    side: 1,
+    reach: 16,
+  });
+  // The scrolling strip, whose day names the time keeps clear of: found from
+  // the mark itself, since a child's effects run before its parent's ref is set.
+  const mark = useRef<SVGSVGElement>(null);
+  useLayoutEffect(() => {
+    const el = mark.current?.parentElement;
+    if (!el || x === null) return;
+    const lay = () => {
+      // The days' names where they stand now, in the strip's own pixels.
+      const origin = el.getBoundingClientRect().left - el.scrollLeft;
+      const names = [
+        ...el.querySelectorAll<HTMLElement>("tr.tt-day td > span"),
+      ].map((span) => {
+        const r = span.getBoundingClientRect();
+        return { left: r.left - origin, right: r.right - origin };
+      });
+      const hit = (a: number, b: number) =>
+        a < 0 ||
+        b > g.total ||
+        names.some((n) => a < n.right + 3 && b > n.left - 3);
+      const span = (side: 1 | -1, reach: number) =>
+        side === 1
+          ? ([x + reach, x + reach + 3 + width] as const)
+          : ([x - reach - 3 - width, x - reach] as const);
+      let next: { side: 1 | -1; reach: number } = { side: 1, reach: 16 };
+      if (hit(...span(1, 16))) {
+        if (!hit(...span(-1, 16))) next = { side: -1, reach: 16 };
+        else {
+          // A name over the line or just after it: write after the name.
+          const over = names.filter(
+            (n) => n.right > x - width && n.left < x + 16 + width,
+          );
+          const after = Math.max(...over.map((n) => n.right)) + 4;
+          next = { side: 1, reach: Math.max(16, after - x) };
+        }
+      }
+      setPlace((old) =>
+        old.side === next.side && Math.abs(old.reach - next.reach) < 1
+          ? old
+          : next,
+      );
+    };
+    lay();
+    el.addEventListener("scroll", lay, { passive: true });
+    return () => el.removeEventListener("scroll", lay);
+  }, [x, width, g]);
+  if (x === null) return null;
+  const seed = Math.floor(now / 60000);
+  const arrow = arrowPath(x, top - 2, place.side, seed, place.reach);
+  return (
+    <svg
+      ref={mark}
+      className="tt-under"
+      width={g.total}
+      height={height}
+      aria-hidden="true"
+    >
+      <path className="pen-now" d={stemPath(x, top - 1, height - 2, seed)} />
+      <path className="pen-now-arrow" d={arrow.d} />
+      <text
+        className="pen-now-time"
+        x={arrow.from.x + place.side * 2}
+        // Low enough in a phone's shorter day row for its tops to show.
+        y={Math.max(arrow.from.y + 4, 11)}
+        textAnchor={place.side === 1 ? "start" : "end"}
+      >
+        {text}
+      </text>
+    </svg>
+  );
+}
+
+/**
+ * Boxes, in the pen layer's own pixels, of what the frame round the chosen
+ * hour must not cross: the tide's times and dots, which are placed freely
+ * and straddle the hours, and any figure or glyph in the column or its
+ * neighbours that reaches into the pen's lane along a border (on a phone,
+ * five star places fill a column edge to edge).
+ */
+function keepOut(
+  wrap: HTMLElement,
+  pen: SVGSVGElement,
+  g: StripGeometry,
+  at: number,
+): KeepOut[] {
+  const origin = pen.getBoundingClientRect();
+  const lanes = [g.x[at], g.x[at] + g.w[at]];
+  const out: KeepOut[] = [];
+  const add = (el: Element, pad: number) => {
+    const b = el.getBoundingClientRect();
+    if (!b.width) return;
+    out.push({
+      x: b.left - origin.left - pad,
+      y: b.top - origin.top - pad,
+      w: b.width + pad * 2,
+      h: b.height + pad * 2,
+    });
+  };
+  for (let k = at - 1; k <= at + 1; k++)
+    wrap
+      .querySelectorAll(
+        `td[data-i="${k}"] svg, td[data-i="${k}"] b, td[data-i="${k}"] span:not(:has(*))`,
+      )
+      .forEach((el) => {
+        const b = el.getBoundingClientRect();
+        const left = b.left - origin.left;
+        const right = b.right - origin.left;
+        if (lanes.some((x) => left < x + 2.5 && right > x - 2.5)) add(el, 1.5);
+      });
+  wrap
+    .querySelectorAll(".tide-row text, .tide-row circle")
+    .forEach((el) => add(el, el.tagName === "text" ? 2 : 1.6));
+  return out;
 }
 
 /**
@@ -656,7 +826,8 @@ function MoreRows({
 
 /**
  * The tide under the hours: a curve per day, its turns named. Each turn gets
- * a dot on the curve and a short label, "High 17:35", in a band of its own:
+ * a dot on the curve and a short label, its time and its height ("17:35
+ * 4.1m", the height in a lighter ink), in a band of its own:
  * the highs along the top of the row and the lows along the foot, so the two
  * never meet however close the curve brings them. Where the three- and
  * six-hourly columns narrow, two turns can stand a column apart; a label that
@@ -749,6 +920,9 @@ function TideRow({
     X: number;
     Y: number;
     high: boolean;
+    time: string;
+    height: string;
+    /** The label as it is laid out: the time, a space and the height. */
     text: string;
     full: string;
   }[] = [];
@@ -787,12 +961,15 @@ function TideRow({
       const t = Date.parse(event.time);
       const high = event.kind === "high";
       const word = high ? "High" : "Low";
+      const height = `${event.height.toFixed(1)}m`;
       turns.push({
         key: event.time,
         X: xOf(columns, day, g, t),
         Y: y(event.height),
         high,
-        text: clock(t),
+        time: clock(t),
+        height,
+        text: `${clock(t)} ${height}`,
         full: `${word} tide ${clock(t)} · ${event.height.toFixed(1)} m`,
       });
     }
@@ -854,7 +1031,7 @@ function TideRow({
                 y={turn.high ? 10 : H - 2}
                 textAnchor={label.anchor}
               >
-                {turn.text}
+                {turn.time} <tspan className="tide-height">{turn.height}</tspan>
               </text>
             )}
           </g>
@@ -908,18 +1085,13 @@ export default function ForecastDock(props: Props) {
   useEffect(() => {
     if (view === "blend" && !isPoint) onWantModels?.();
   }, [view, isPoint]);
-  // The scroll that brings each hour under the cursor, and where the cursor
-  // stands at a scroll: still in the middle through the week, walking out to
-  // the ends so the first hour sits against the labels (see `stripTrack`).
+  // The scroll that brings each hour to the strip's cursor, and where that
+  // point stands at a scroll: still in the middle through the week, walking
+  // out to the ends so the first hour sits against the labels (see
+  // `stripTrack`). It is not drawn: the pen's frame marks the hour there.
   const track = useMemo(() => stripTrack(g, wrapWidth), [g, wrapWidth]);
   const shape = useRef({ g, track });
   shape.current = { g, track };
-  const cursor = useRef<HTMLDivElement>(null);
-  const placeCursor = () => {
-    const el = wrap.current;
-    if (el && cursor.current)
-      cursor.current.style.left = `${label + track.cursorAt(el.scrollLeft)}px`;
-  };
   const column = columns[selected];
 
   // The blend, only while it is the view: the chart reads every member. The
@@ -947,9 +1119,9 @@ export default function ForecastDock(props: Props) {
     () => daylightOn(spot, axis),
     [spot.lat, spot.lon, axis],
   );
-  // A week with no hour worth a wing, a calm one or one still being rated
-  // at night, leaves out the wing row rather than draw it empty.
-  const wing = !hours || hours.some((hour) => !!hour?.rating?.potential);
+  // A week with no hour worth rating, a calm one or one still being rated
+  // at night, leaves out the stars and the wing rather than draw them empty.
+  const rated = !hours || hours.some((hour) => !!hour?.rating?.potential);
   const waves = useSpotWaves(more ? marineModels : NO_MODELS, named, axis);
   const weather = useSpotWeather(more ? marineModels : NO_MODELS, named, axis);
   const sea = useSpotSeaTemperature(more ? named : undefined);
@@ -1038,15 +1210,23 @@ export default function ForecastDock(props: Props) {
     const going = programmatic.current;
     const elsewhere = !!going && Math.abs(going.left - reach) >= 1;
     const here = Math.abs(el.scrollLeft - left) < 1;
-    if (here && !elsewhere) return placeCursor();
+    if (here && !elsewhere) return;
     const animate = smooth && !reducedMotion && !here;
     wheeling.current?.letGo();
     clearTimeout(scrollEnd.current);
     programmatic.current = { left: reach, until: performance.now() + 1500 };
     el.scrollTo({ left, behavior: animate ? "smooth" : "auto" });
   };
+  // The hour the strip's own scroll chose is already where it is; any other
+  // is scrolled to. The strip's word is taken once: left standing, an hour
+  // read from a scroll long ago would keep the keys from ever scrolling back
+  // to it.
+  const selectedNow = useRef(selected);
+  selectedNow.current = selected;
   useLayoutEffect(() => {
-    if (fromScroll.current === selected) return;
+    const fromStrip = fromScroll.current === selected;
+    fromScroll.current = -1;
+    if (fromStrip) return;
     scrollTo(selected, true);
   }, [selected, track, view, more]);
   // A fresh place opens on the same hour, not wherever the last one was left.
@@ -1057,7 +1237,6 @@ export default function ForecastDock(props: Props) {
   }, [placeKey]);
 
   const onScroll = () => {
-    placeCursor();
     const going = programmatic.current;
     if (going) {
       const el = wrap.current;
@@ -1077,7 +1256,7 @@ export default function ForecastDock(props: Props) {
       if (!el || programmatic.current) return;
       const { g, track } = shape.current;
       const i = columnAtX(g, track.timeAt(el.scrollLeft));
-      fromScroll.current = i;
+      if (i !== selectedNow.current) fromScroll.current = i;
       onSelect(i, false);
       clearTimeout(scrollEnd.current);
       scrollEnd.current = window.setTimeout(() => {
@@ -1115,9 +1294,17 @@ export default function ForecastDock(props: Props) {
     };
   }, []);
 
-  // The cursor, where the scroll has put it; and the selected column, marked
-  // in place rather than by re-rendering the table.
-  useLayoutEffect(placeCursor);
+  // The selected column, marked in place rather than by re-rendering the
+  // table, and the pen's frame round it: twice round, on the column's own
+  // border so it hides none of its figures, lifting over any that reach the
+  // border. A new hour is drawn in as a hand would draw it; while the hours
+  // are run through, each is simply there, and the pen catches up when they
+  // stop.
+  const tableHeight =
+    rows.day + rows.hour + rowsUnderHours(rows, view, isPoint, rated, more);
+  const pen = useRef<SVGSVGElement>(null);
+  const frames = useRef<(SVGPathElement | null)[]>([]);
+  const framed = useRef({ at: -1, when: 0 });
   useLayoutEffect(() => {
     const el = wrap.current;
     if (!el) return;
@@ -1127,6 +1314,37 @@ export default function ForecastDock(props: Props) {
     el.querySelectorAll(`td[data-i="${selected}"]`).forEach((td) =>
       td.classList.add("c-sel"),
     );
+    const [first, second] = frames.current;
+    if (!pen.current || !first || !second || g.w[selected] === undefined)
+      return;
+    const keep = view === "blend" ? [] : keepOut(el, pen.current, g, selected);
+    const x = g.x[selected] + 1;
+    const w = g.w[selected] - 2;
+    const y = rows.day - 1;
+    const h = tableHeight + 1.5 - y;
+    first.setAttribute("d", framePath(x, y, w, h, 6, selected + 3, keep));
+    second.setAttribute(
+      "d",
+      framePath(x - 1.1, y - 0.4, w + 2.2, h + 1.4, 8, selected + 41, keep),
+    );
+    const moved = framed.current.at !== selected;
+    const at = performance.now();
+    const quick = at - framed.current.when < 250;
+    if (moved) framed.current = { at: selected, when: at };
+    if (!moved || reducedMotion || !first.animate) return;
+    for (const [path, delay] of [
+      [first, 0],
+      [second, 380],
+    ] as const) {
+      path.getAnimations().forEach((a) => a.cancel());
+      if (!quick)
+        path.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], {
+          duration: 600,
+          delay,
+          easing: "cubic-bezier(0.5, 0.1, 0.3, 1)",
+          fill: "backwards",
+        });
+    }
   });
 
   const tideDot = useMemo(() => {
@@ -1135,39 +1353,54 @@ export default function ForecastDock(props: Props) {
     if (h === null) return null;
     const lo = Math.min(...tide.curve.curve);
     const hi = Math.max(...tide.curve.curve);
-    const top = rows.day + rows.hour + rowsAboveTide(rows, view, isPoint, wing);
+    const top =
+      rows.day + rows.hour + rowsAboveTide(rows, view, isPoint, rated);
     return {
       x: centre(selected),
       y: top + rows.tide - 6 - ((h - lo) / (hi - lo || 1)) * (rows.tide - 14),
     };
-  }, [tide, column, selected, g, view, isPoint, wing, rows]);
+  }, [tide, column, selected, g, view, isPoint, rated, rows]);
 
   return (
     <section className="dock" aria-label={`Forecast for ${spot.name}`}>
-      <div className="dk-head">
-        {!isPoint && (
-          <StarToggle
-            on={starred}
-            name={spot.name}
-            onToggle={onToggleStar}
-            size={19}
-          />
-        )}
-        <h2 className="dk-name">{spot.name}</h2>
+      {/* The dock is its hours and nothing else: the spot's name, its star,
+          the switch to the blend, its page and the fold stand on the chart
+          just above the dock's top edge, in a box like the map's own
+          controls, so the dock is no taller than its rows. A phone keeps
+          only the glyphs: the light the pen has looped on the chart says
+          which spot it is, and the name is there for a screen reader. */}
+      <div className="dk-tools chart-box" role="group" aria-label="This spot">
+        <div className="dk-id">
+          {!isPoint && (
+            <StarToggle
+              on={starred}
+              name={spot.name}
+              onToggle={onToggleStar}
+              size={phone ? 17 : 16}
+            />
+          )}
+          <h2 className="dk-name">{spot.name}</h2>
+          {/* A point's place name is a guess at where it is, so its
+              coordinates stay; a riding place's name is enough on its own. */}
+          {isPoint && spot.county && (
+            <span className="dk-coords">{spot.county}</span>
+          )}
+        </div>
         {/* The stars are the rider's own: said once, where they are read,
             and the way to change them. */}
         {prefs.rider.custom && !isPoint && (
           <Button
-            variant="pill"
+            variant="quiet"
             size="sm"
-            className="dk-custom"
+            className="dk-tool dk-custom"
             aria-label="Custom star rating: edit"
+            title="Your own star rating: edit"
             onClick={onCustomStars}
             data-custom-stars
           >
             <svg
-              width="10"
-              height="10"
+              width="11"
+              height="11"
               viewBox="-5 -5 10 10"
               aria-hidden="true"
             >
@@ -1176,66 +1409,69 @@ export default function ForecastDock(props: Props) {
                 d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z"
               />
             </svg>
-            Custom stars
+            <span className="dk-tool-word">Custom</span>
           </Button>
         )}
-        {/* A point's place name is a guess at where it is, so its
-            coordinates stay; a riding place's name is enough on its own. */}
-        {isPoint && spot.county && (
-          <span className="dk-coords">{spot.county}</span>
-        )}
-        <div className="dk-acts">
-          <Segmented
-            className="dk-view"
-            aria-label="Show the hours as"
-            options={[
-              { value: "table", label: "Table" },
-              { value: "blend", label: "Blend", disabled: isPoint },
-            ]}
-            value={view}
-            onChange={onView}
-          />
-          {!isPoint && (
-            <Button
-              variant="primary"
-              size="sm"
-              href={spotHref(spot.id)}
-              data-spot-page-link
-            >
-              Spot page →
-            </Button>
-          )}
-          {/* The dock's one fold: the waves, the sky, the air, the rain and
-              the sea, under the rows that are always there. Up to open, as a
-              sheet along the foot of the screen grows upwards. */}
+        {/* The table or every model's wind drawn as a chart: one glyph, on
+            while the blend is shown. A point has no blend. */}
+        {!isPoint && (
           <Button
-            variant="pill"
+            variant="quiet"
             size="sm"
             icon
-            className="dk-chev"
-            aria-label={
-              more ? "Hide waves, sky and sea" : "Show waves, sky and sea"
-            }
-            title={more ? "Fewer rows" : "More rows"}
-            aria-expanded={more}
-            onClick={() => onMore(!more)}
+            className="dk-tool dk-view"
+            aria-label="Blend"
+            title={view === "blend" ? "Back to the table" : "The models' blend"}
+            pressed={view === "blend"}
+            onClick={() => onView(view === "blend" ? "table" : "blend")}
           >
-            <svg width="14" height="9" viewBox="0 0 14 9" aria-hidden="true">
-              <path
-                d={more ? "M1 1.5L7 7.5L13 1.5" : "M1 7.5L7 1.5L13 7.5"}
-                fill="none"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <ChartSpline size={16} strokeWidth={1.4} aria-hidden="true" />
           </Button>
-        </div>
+        )}
+        {!isPoint && (
+          <Button
+            variant="quiet"
+            size="sm"
+            icon
+            className="dk-tool"
+            aria-label="Spot page"
+            title="The spot's own page"
+            href={spotHref(spot.id)}
+            data-spot-page-link
+          >
+            <ArrowUpRight size={17} strokeWidth={1.4} aria-hidden="true" />
+          </Button>
+        )}
+        {/* The dock's one fold: the waves, the sky, the air, the rain and
+            the sea, under the rows that are always there. Up to open, as a
+            sheet along the foot of the screen grows upwards. */}
+        <Button
+          variant="quiet"
+          size="sm"
+          icon
+          className="dk-tool dk-chev"
+          aria-label={
+            more ? "Hide waves, sky and sea" : "Show waves, sky and sea"
+          }
+          title={more ? "Fewer rows" : "More rows"}
+          aria-expanded={more}
+          onClick={() => onMore(!more)}
+        >
+          <svg width="14" height="9" viewBox="0 0 14 9" aria-hidden="true">
+            <path
+              d={more ? "M1 1.5L7 7.5L13 1.5" : "M1 7.5L7 1.5L13 7.5"}
+              fill="none"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </Button>
       </div>
 
       {/* The time, for a keyboard and a screen reader: the hours scrolling
-          under the cursor are the slider a finger and a mouse use, and this
-          steps them. Out of sight; its focus ring is drawn on the hours. */}
+          through the pen's frame are the slider a finger and a mouse use, and
+          this steps them. Out of sight; its focus ring is drawn on the hours. */}
       <input
         type="range"
         className="sr-only dk-time"
@@ -1281,7 +1517,7 @@ export default function ForecastDock(props: Props) {
             <div aria-hidden="true" style={{ height: rows.day }} />
             <div aria-hidden="true" style={{ height: rows.hour }} />
             {/* The stars need no name: they are stars. */}
-            {!isPoint && (
+            {!isPoint && rated && (
               <div aria-hidden="true" style={{ height: rows.stars }} />
             )}
             {view === "blend" ? (
@@ -1324,7 +1560,7 @@ export default function ForecastDock(props: Props) {
                 <div aria-hidden="true" style={{ height: rows.from }}>
                   <RowLabel glyph={Navigation2} title="Where the wind goes" />
                 </div>
-                {!isPoint && wing && (
+                {!isPoint && rated && (
                   <div aria-hidden="true" style={{ height: rows.wing }}>
                     <RowLabel glyph={WingGlyph} title="Wing, m²" />
                   </div>
@@ -1361,6 +1597,13 @@ export default function ForecastDock(props: Props) {
               if (td) onSelect(Number(td.dataset.i), true);
             }}
           >
+            <NowMark
+              columns={columns}
+              g={g}
+              now={now}
+              top={rows.day}
+              height={tableHeight}
+            />
             <StripTable
               spot={spot}
               columns={columns}
@@ -1378,7 +1621,7 @@ export default function ForecastDock(props: Props) {
               weather={weather}
               sea={sea}
               isPoint={isPoint}
-              wing={wing}
+              rated={rated}
               tideHeight={rows.tide}
             />
             {/* Where the scroll comes to rest: one mark per hour, at the
@@ -1391,15 +1634,22 @@ export default function ForecastDock(props: Props) {
               ))}
             </div>
             <svg
+              ref={pen}
               className="tt-pen"
               width={g.total}
-              height={
-                rows.day +
-                rows.hour +
-                rowsUnderHours(rows, view, isPoint, wing, more)
-              }
+              height={tableHeight}
               aria-hidden="true"
             >
+              <path
+                ref={(el) => void (frames.current[0] = el)}
+                className="pen-frame"
+                pathLength={1}
+              />
+              <path
+                ref={(el) => void (frames.current[1] = el)}
+                className="pen-frame is-second"
+                pathLength={1}
+              />
               {tideDot && (
                 <circle
                   className="tide-dot"
@@ -1410,15 +1660,6 @@ export default function ForecastDock(props: Props) {
               )}
             </svg>
           </div>
-          {/* The hour the map shows. No flag with the day and time: the
-                day's heading stays in sight above it, and the hour cell under
-                the line is inked. The line starts at the hours. */}
-          <div
-            ref={cursor}
-            className="dk-cur"
-            style={{ top: rows.day }}
-            aria-hidden="true"
-          />
         </div>
       </div>
     </section>

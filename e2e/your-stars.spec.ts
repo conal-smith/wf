@@ -1,4 +1,4 @@
-import { expect, rememberSpot, test, type Page } from "./fixtures";
+import { expect, test, type Page } from "./fixtures";
 
 /**
  * "Your star rating" (spot/web/YourStarsDialog.tsx): opened from Display
@@ -7,9 +7,8 @@ import { expect, rememberSpot, test, type Page } from "./fixtures";
  */
 
 async function openMap(page: Page, width = 1440, height = 1000) {
-  await rememberSpot(page, "brandon");
   await page.setViewportSize({ width, height });
-  await page.goto("/");
+  await page.goto("/?spot=brandon");
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
     timeout: 30000,
   });

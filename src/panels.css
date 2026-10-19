@@ -24,20 +24,6 @@
   stroke-dasharray: 2 4;
   opacity: 0.3;
 }
-.chart-now {
-  stroke: var(--color-ink-2);
-  stroke-width: 1.2;
-  stroke-dasharray: 3 3;
-}
-.chart-now-label {
-  font: 500 8.5px var(--font-mono);
-  letter-spacing: 0.08em;
-  text-anchor: middle;
-  fill: var(--color-ink-2);
-  paint-order: stroke;
-  stroke: var(--color-ground);
-  stroke-width: 3px;
-}
 .chart-cursor {
   stroke: var(--color-ink-2);
   stroke-width: 1;

@@ -1,8 +1,8 @@
-import { expect, rememberSpot, test, type Page } from "./fixtures";
+import { chooseSpot, expect, test, type Page } from "./fixtures";
 
-// The map as a returning visitor has it, with a spot's whole week in the dock
-// (Brandon Bay's, chosen last): the most it draws on load.
-test.beforeEach(({ page }) => rememberSpot(page, "brandon"));
+// The map as a rider has it once they choose a spot: every light rated on the
+// whole of Ireland, then Brandon Bay's whole week in the dock, the most it
+// draws (nothing opens a dock as the page loads).
 
 /**
  * Performance budgets: what each page downloads, how often, and whether it
@@ -55,6 +55,7 @@ async function mapReady(page: Page) {
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
     timeout: 30000,
   });
+  await chooseSpot(page, "brandon");
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
     timeout: 30000,
   });

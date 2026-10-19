@@ -1,4 +1,4 @@
-import { expect, rememberSpot, test } from "./fixtures";
+import { expect, test } from "./fixtures";
 import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleColumnsWithoutEcmwf, stripAt } from "./columns";
 
@@ -10,9 +10,8 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   await page.setViewportSize({ width: 390, height: 844 });
   const clock = Date.parse(ecmwf.runTime) + 14 * 3600000;
   await page.clock.setFixedTime(new Date(clock));
-  // A returning visitor's spot, so the dock shows the strip.
-  await rememberSpot(page);
-  await page.goto("/");
+  // A spot in the link, so the dock shows the strip.
+  await page.goto("/?spot=brandon");
   await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
@@ -89,8 +88,7 @@ test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", as
   );
   await page.clock.setFixedTime(SAMPLE_CLOCK);
   // A spot's dock, so its rows are there to read: Brandon Bay, chosen last.
-  await rememberSpot(page, "brandon");
-  await page.goto("/");
+  await page.goto("/?spot=brandon");
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({ timeout: 30000 });
   // Without ECMWF the long range falls to GFS, and the strip says so.
   await expect(page.locator(".dock tr.tt-hour td[data-i]")).toHaveCount(

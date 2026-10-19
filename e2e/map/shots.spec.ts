@@ -31,8 +31,8 @@ import { sampleStrip } from "../columns";
 test.use({ reducedMotion: "reduce" });
 
 // Every state but the first visit's is a returning visitor's, with Brandon
-// Bay chosen last and so in the dock: a first visit opens on no spot, and no
-// dock.
+// Bay chosen last. That opens nothing: the map opens with no dock until a
+// spot is chosen, so the states about a spot's dock choose Brandon Bay.
 test.beforeEach(({ page }) => rememberSpot(page, "brandon"));
 
 /** Where a shot lands, relative to the repo root Playwright is run from. */
@@ -190,6 +190,7 @@ for (const { width, height } of [
 
     test("the dock's hours", async ({ page }) => {
       await openMap(page);
+      await pick(page, "Brandon Bay");
       await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
       await page.getByRole("slider", { name: "Forecast time" }).fill("12");
       await shoot(page, "dock", width);
@@ -197,6 +198,7 @@ for (const { width, height } of [
 
     test("the dock's waves, sky and sea", async ({ page }) => {
       await openMap(page);
+      await pick(page, "Brandon Bay");
       await page
         .getByRole("button", { name: "Show waves, sky and sea" })
         .click();
@@ -251,8 +253,9 @@ for (const { width, height } of [
 
     test("the dock's blend", async ({ page }) => {
       await openMap(page);
+      await pick(page, "Brandon Bay");
       await page
-        .locator(".dk-view")
+        .locator(".dock")
         .getByRole("button", { name: "Blend" })
         .click();
       await expect(page.locator(".dock .blend-chart")).toBeVisible();
@@ -270,6 +273,7 @@ for (const { width, height } of [
 
     test("your spots, starred", async ({ page }) => {
       await openMap(page);
+      await pick(page, "Brandon Bay");
       await page
         .locator(".dock")
         .getByRole("button", { name: "Star Brandon Bay" })
