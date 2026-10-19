@@ -4,10 +4,10 @@ import { readSample } from "./sample";
 import { clock } from "../src/strip";
 
 /**
- * The map has no default place. Its dock opens on the spot in the link, else
- * the one this visitor chose last, else their first star, else there is no
- * dock: the whole of Ireland and every light, the chart alone, at the hour
- * the page opened on (src/openingSpot.ts).
+ * The map has no default place, and no dock until a spot is chosen. Only a
+ * link that names a spot opens on it; a remembered or starred spot waits for
+ * a tap, and the page opens on the whole of Ireland and every light, the
+ * chart alone, at the hour the page opened on (src/openingSpot.ts).
  */
 
 const harmonie = readSample<{
@@ -140,13 +140,12 @@ test.describe("on a phone", () => {
   test("in the morning the hour opened on is the one framed in the middle", async ({
     page,
   }) => {
-    await rememberSpot(page);
     // 11:00 Irish time. The strip fills out as the models answer, the browser
     // re-snaps its scroll as it does, and the opening hour is set again for
     // the longer strip: a scroll read a frame late, against the strip as it
     // was, once picked an hour the strip was no longer scrolling to.
     await page.clock.setFixedTime(new Date("2026-09-13T10:00:00Z"));
-    await openMap(page);
+    await openMap(page, "/?spot=brandon");
     await expect(dockName(page)).toHaveText("Brandon Bay");
     await expectHourUnderCursor(page);
   });
@@ -185,7 +184,7 @@ async function expectHourUnderCursor(page: Page) {
   ).toHaveClass(/c-sel/);
 }
 
-test("the spot chosen is the one a returning visit opens on, unfocused; a bare point is not", async ({
+test("the spot chosen is remembered, a bare point is not, and neither opens the next visit", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -214,83 +213,77 @@ test("the spot chosen is the one a returning visit opens on, unfocused; a bare p
   }, box);
   await canvas.click({ position: water });
   // Named by the nearest place or its coordinates, with no star.
-  await expect(page.locator(".dock .dk-head")).toContainText(
+  await expect(page.locator(".dock .dk-tools")).toContainText(
     /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
   );
   await expect(
     page.locator(".dock").getByRole("button", { name: /^Star / }),
   ).toHaveCount(0);
 
+  expect(Object.keys((await stored(page)).visits).sort()).toEqual([
+    "dollymount",
+    "keel",
+  ]);
+
+  // Remembered for your spots, but the next visit opens on the chart alone:
+  // nothing at its foot until a spot is chosen again.
   await page.reload();
-  await expect(dockName(page)).toHaveText("Dollymount", { timeout: 30000 });
-  await expect(page.locator('[data-spot-id="dollymount"]')).toHaveClass(
-    /\bsel\b/,
-  );
-  // Restored, not linked: the chart is not focused on it or flown to.
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+    timeout: 30000,
+  });
+  await expect(page.locator(".dock")).toHaveCount(0);
+  await expect(page.locator(".spot-marker.sel")).toHaveCount(0);
   await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
-  await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
 });
 
-test("a spot in the link wins over the remembered one, and is focused", async ({
+test("a spot in the link opens on it, focused; a remembered one waits to be chosen", async ({
   page,
 }) => {
   await rememberSpot(page, "dollymount");
   await openMap(page, "/?spot=keel");
   await expect(dockName(page)).toHaveText("Keel Beach");
   await expect(page.locator(".map-canvas")).toHaveClass(/is-focus/);
-  // Opening a link is not choosing: the remembered spot stands.
+  // Opening a link is not choosing, and the remembered spot opens nothing.
   await page.goto("/");
-  await expect(dockName(page)).toHaveText("Dollymount", { timeout: 30000 });
-  await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
-});
-
-test("a visitor who has starred but never chosen opens on their first star", async ({
-  page,
-}) => {
-  await page.addInitScript((key) => {
-    if (localStorage.getItem(key) === null)
-      localStorage.setItem(
-        key,
-        JSON.stringify({ starred: ["rusheen", "keel"], visits: {} }),
-      );
-  }, SPOTS_KEY);
-  await openMap(page);
-  await expect(dockName(page)).toHaveText("Rusheen Bay");
-  await expect(
-    page.locator(".dock").getByRole("button", { name: "Unstar Rusheen Bay" }),
-  ).toBeVisible();
-  await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
-});
-
-test("a remembered spot the catalogue no longer holds falls back down the list", async ({
-  page,
-}) => {
-  await page.addInitScript((key) => {
-    localStorage.setItem(
-      key,
-      JSON.stringify({
-        starred: ["atlantis", "keel"],
-        visits: { lyonesse: { id: "lyonesse", count: 9, last: 9e12 } },
-      }),
-    );
-  }, SPOTS_KEY);
-  await openMap(page);
-  // The last chosen has gone, so the first star still here.
-  await expect(dockName(page)).toHaveText("Keel Beach");
-
-  // And with nothing left that is still a place: no spot.
-  await page.addInitScript((key) => {
-    localStorage.setItem(
-      key,
-      JSON.stringify({
-        starred: ["atlantis"],
-        visits: { lyonesse: { id: "lyonesse", count: 9, last: 9e12 } },
-      }),
-    );
-  }, SPOTS_KEY);
-  await page.reload();
   await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
   await expect(page.locator(".dock")).toHaveCount(0);
+  expect(Object.keys((await stored(page)).visits)).toEqual(["dollymount"]);
 });
+
+for (const [width, height] of [
+  [390, 844],
+  [1440, 900],
+]) {
+  test(`a visitor with stars and a spot chosen before still opens on the chart alone, at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.addInitScript((key) => {
+      if (localStorage.getItem(key) === null)
+        localStorage.setItem(
+          key,
+          JSON.stringify({
+            starred: ["rusheen", "keel"],
+            visits: { brandon: { id: "brandon", count: 3, last: 9e12 } },
+          }),
+        );
+    }, SPOTS_KEY);
+    await openMap(page);
+    await expect(page.locator(".dock")).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () =>
+          document.querySelector(".map-footer")!.getBoundingClientRect().height,
+      ),
+    ).toBe(0);
+    await expect(page.locator(".spot-marker.sel")).toHaveCount(0);
+    // A tap on a star's light brings its dock.
+    await page.locator('[data-spot-id="rusheen"]').dispatchEvent("click");
+    await expect(dockName(page)).toHaveText("Rusheen Bay");
+    await expect(
+      page.locator(".dock").getByRole("button", { name: "Unstar Rusheen Bay" }),
+    ).toBeVisible();
+  });
+}

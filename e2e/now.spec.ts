@@ -1,4 +1,4 @@
-import { expect, rememberSpot, test } from "./fixtures";
+import { expect, test } from "./fixtures";
 import { readSample } from "./sample";
 import { stripAt } from "./columns";
 
@@ -16,8 +16,7 @@ test("the strip opens on now and fades the hours gone, whatever is selected", as
   // An afternoon inside HARMONIE's run: 16:30 Irish time.
   const now = Date.parse(harmonie.runTime) + 2.5 * 3600000;
   await page.clock.setFixedTime(new Date(now));
-  await rememberSpot(page, "brandon");
-  await page.goto("/");
+  await page.goto("/?spot=brandon");
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({ timeout: 30000 });
   const strip = stripAt(now);
   const slider = page.getByRole("slider", { name: "Forecast time" });
@@ -47,9 +46,8 @@ test("at night the strip opens on the hour now, a night column of its own", asyn
   // open on Monday 07:00, with the selected line drawn there.
   const night = Date.parse(harmonie.runTime) + 8 * 3600000;
   // The dark is a place's: the night is hatched only with a spot open.
-  await rememberSpot(page, "brandon");
   await page.clock.setFixedTime(new Date(night));
-  await page.goto("/");
+  await page.goto("/?spot=brandon");
   const slider = page.getByRole("slider", { name: "Forecast time" });
   await expect(slider).toHaveAttribute("aria-valuetext", "Sunday 22:00", {
     timeout: 30000,
@@ -68,8 +66,7 @@ test("the pen rules a line at the time now, between the hours, and writes the ti
   // 16:30 Irish time: half way from 16's column to 17's.
   const now = Date.parse(harmonie.runTime) + 2.5 * 3600000;
   await page.clock.setFixedTime(new Date(now));
-  await rememberSpot(page, "brandon");
-  await page.goto("/");
+  await page.goto("/?spot=brandon");
   const mark = page.locator(".dock .tt-under");
   await expect(mark.locator(".pen-now-time")).toHaveText("16:30", {
     timeout: 30000,

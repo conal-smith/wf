@@ -28,13 +28,12 @@ export const test = base.extend<{ page: Page }>({
 export const SPOTS_KEY = "wingfoil.spots.v1";
 
 /**
- * Open the map as a visitor who chose `id` before: the dock opens on that
- * spot, with the chart on the whole of Ireland and nothing focused.
- *
- * A first visit opens on no spot at all (src/openingSpot.ts), so a spec about
- * a spot's dock says which spot, here or with `/?spot=` (which focuses it as a
- * shared link does). The store is written before the page's own scripts, and
- * only while it is empty: a spec that stars, chooses or reloads keeps what the
+ * Store `id` as the spot this visitor chose before, as the map's favourites
+ * do. It no longer opens anything: the map opens with no dock until a spot is
+ * chosen, however many it remembers (src/openingSpot.ts). A spec about a
+ * spot's dock opens one with `/?spot=` (focused, as a shared link is) or
+ * `chooseSpot`. The store is written before the page's own scripts, and only
+ * while it is empty: a spec that stars, chooses or reloads keeps what the
  * page wrote.
  */
 export async function rememberSpot(page: Page, id = "brandon") {
@@ -51,6 +50,21 @@ export async function rememberSpot(page: Page, id = "brandon") {
     },
     [SPOTS_KEY, id] as const,
   );
+}
+
+/**
+ * Choose a spot as a rider does, with a tap on its light: the dock opens on
+ * it and the chart flies there. The lights stand close on the whole of
+ * Ireland, so the tap goes to the light itself rather than to a point on the
+ * screen another light may cover.
+ */
+export async function chooseSpot(page: Page, id = "brandon") {
+  await page
+    .locator(`.spot-marker[data-spot-id="${id}"]`)
+    .evaluate((light: HTMLElement) => light.click());
+  await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible({
+    timeout: 30000,
+  });
 }
 
 export { expect } from "@playwright/test";

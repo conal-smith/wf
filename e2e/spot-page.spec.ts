@@ -1,4 +1,4 @@
-import { expect, rememberSpot, test, type Page } from "./fixtures";
+import { expect, test, type Page } from "./fixtures";
 import { SAMPLE_CLOCK } from "./columns";
 
 /**
@@ -279,8 +279,7 @@ test("an unknown spot says so and offers what it may have meant", async ({
 test("the map's dock opens the spot page, for the spot it opens on and one chosen", async ({
   page,
 }) => {
-  await rememberSpot(page, "brandon");
-  await page.goto("/");
+  await page.goto("/?spot=brandon");
   await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
@@ -296,7 +295,7 @@ test("the map's dock opens the spot page, for the spot it opens on and one chose
   await page.locator(".spot-row").first().click();
   await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  const link = page.locator(".dock").getByRole("link", { name: "Spot page →" });
+  const link = page.locator(".dock").getByRole("link", { name: "Spot page" });
   await expect(link).toHaveAttribute("href", "/spot/dollymount");
   await link.click();
   await expect(page).toHaveURL(/\/spot\/dollymount$/);

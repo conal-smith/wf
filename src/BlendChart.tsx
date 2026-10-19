@@ -178,7 +178,6 @@ export default function BlendChart({
     [lines, centres, units, max, height],
   );
 
-  const nowX = timeToX(columns, Date.now(), centres);
   const hovered = hover === null ? null : stats[hover.index];
   const hoverModels =
     hover === null
@@ -368,23 +367,6 @@ export default function BlendChart({
             angle === null || median[index] === null || !arrowColumns.has(index)
               ? null
               : arrow(angle, centres[index], y(median[index]!)),
-          )}
-          {/* Now, in ink and named: the red line through the strip is the
-              hour the map shows, and two unlabelled red lines read as one
-              thing drawn twice. */}
-          {nowX !== null && (
-            <g className="chart-now-mark">
-              <line
-                className="chart-now"
-                x1={nowX}
-                x2={nowX}
-                y1="12"
-                y2={height}
-              />
-              <text className="chart-now-label" x={nowX} y="9">
-                now
-              </text>
-            </g>
           )}
           {hover !== null && hovered && hovered.n > 0 && (
             <line
