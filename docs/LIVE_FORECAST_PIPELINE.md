@@ -71,8 +71,10 @@ ECMWF is also supported: `--models ecmwf` imports its full 15-day IFS control
 forecast (85 frames). It always retains 3-hour steps through +144h, then 6-hour
 steps through +360h; `--step` only affects the regional models. Only the 00/12 UTC
 products reach +360h; the 06/18 cycles are shorter and cannot replace this snapshot.
-The shipped timetable takes the 00 UTC run once a day, `--ecmwf-cycle 00` at 08:20
-UTC with a 10:20 retry, because open data publishes the whole run at about 07:35 UTC. See the
+The shipped timetable takes both full-length runs, the 00 UTC run at 08:20 UTC and the
+12 UTC run at 20:20, each with a retry two hours later, because open data publishes a
+whole run about 7 h 35 m after its run time (since 19 October 2026; before, the 00 UTC
+run alone, with `--ecmwf-cycle 00`). See the
 [ECMWF specification](ECMWF_15_DAY_PLAN.md) for source, contract and acceptance tests.
 
 GFS is supported the same way: `--models gfs` imports NOAA's public-domain 0.25°
@@ -547,9 +549,9 @@ against 37.7 ms without.
 ```sh
 R2="--bucket wingfoil-forecast --endpoint-url https://ACCOUNT.r2.cloudflarestorage.com"
 
-# Twice a day (HARMONIE), once a day (ECMWF's 00 UTC run, 08:20 and a 10:20 retry)
+# Six times a day (HARMONIE), twice a day (ECMWF's 00 and 12 UTC runs, each with a retry)
 docker run --rm --env-file r2.env force5-forecast:latest --models harmonie --step 1 $R2
-docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf --ecmwf-cycle 00 $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf $R2
 
 # Four cycles a day
 docker run --rm --env-file r2.env force5-forecast:latest --models icon-eu --step 1 $R2

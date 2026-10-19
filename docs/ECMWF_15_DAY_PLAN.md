@@ -84,7 +84,10 @@ For a mirror outage, the importer accepts `--source ecmwf` or `--source google`;
 there is no silent fallback to another numerical model.
 
 Production uses the same ECR → scheduled ECS job → S3 → CloudFront arrangement
-as [the live pipeline](LIVE_FORECAST_PIPELINE.md). The shipped timetable takes the
+as [the live pipeline](LIVE_FORECAST_PIPELINE.md). Since 19 October 2026 the shipped
+timetable takes **both full-length runs**, the 00 UTC at 08:20 and the 12 UTC at 20:20
+UTC, each with a retry two hours later, and no `--ecmwf-cycle`: a slot that fires early
+finds the other cycle's run, which the bucket already serves. Until then it took the
 **00 UTC run once a day**: open data publishes all of it, +0 h to +360 h, at about
 07:35 UTC (the index files of 8–11 October 2026 were all stamped 07:34; the 12 UTC
 run lands at 19:34), so `deploy/local/jobs.toml` runs `--ecmwf-cycle 00` at 08:20

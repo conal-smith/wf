@@ -89,10 +89,10 @@ in UTC. The shipped schedule is:
 
 | Job               | When (UTC)         | Why                                                   |
 | ----------------- | ------------------ | ----------------------------------------------------- |
-| `harmonie`        | 07/12 at :00       | twice a day; ~785 MB a run, 30 h age limit            |
+| `harmonie`        | 05/08/11/16/19/23 at :35 | before each time riders look; ~826 MB a run, 30 h |
 | `icon-eu`         | 03 at :30          | once a day, the 00 UTC cycle; 30 h age limit          |
 | `icon-eu-weather` | 03 at :40          | once a day, the 00 UTC cycle; 30 h age limit          |
-| `ecmwf`           | 08/10 at :20       | the 00 UTC run, out ~07:35; 10:20 is a retry; 40 h    |
+| `ecmwf`           | 08/10/20/22 at :20 | the 00 and 12 UTC runs, out ~07:35 and ~19:35; retries |
 | `harmonie-eps`    | off                | lagged control members; enable knowingly              |
 | `ecmwf-ens`       | off (retired)      | 00 UTC run, 10 members, +60h–+144h when enabled       |
 | `aifs`            | off (retired)      | all four AIFS cycles when enabled                     |
