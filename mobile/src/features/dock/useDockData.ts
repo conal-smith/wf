@@ -12,6 +12,7 @@ import type { Spot } from "../../../../force5/src/weather";
 import {
   useBlend,
   useMarineModels,
+  usePointTide,
   useSpotSeaTemperature,
   useSpotTide,
   useSpotWaves,
@@ -59,7 +60,7 @@ export function useDockBlend(
   return useBlend(wanted && spot ? merged : NO_MODELS, blendModels, spot?.id, axis);
 }
 
-export { useSpotTide };
+export { usePointTide, useSpotTide };
 
 /**
  * The hour under the cursor while the finger moves: a little store outside

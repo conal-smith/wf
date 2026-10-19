@@ -199,6 +199,14 @@ export function tideSpotNote(
     : "This spot's tide station is missing from the predictions.";
 }
 
+/** The spots on water the sea does not reach (a freshwater lake), by id. */
+export const freshwaterSpots = (manifest: TideManifest): Set<string> =>
+  new Set(
+    Object.entries(manifest.spots ?? {})
+      .filter(([, link]) => link.noTide)
+      .map(([id]) => id),
+  );
+
 /**
  * The credit for a station's tides: its own (the Marine Institute's, or in
  * Northern Ireland wingfoil.ie's from the Environment Agency's gauges and

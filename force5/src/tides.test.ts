@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   TIDES_URL,
   eventsBetween,
+  freshwaterSpots,
   loadTides,
   tideAt,
   tideCredit,
@@ -205,6 +206,21 @@ describe("station curve", () => {
     expect(tideSpotNote(m, "oxford-island")).toBe(
       "No tide: a freshwater lake.",
     );
+  });
+  it("lists the spots on water the sea does not reach", () => {
+    const m: TideManifest = {
+      ...manifest(),
+      spots: {
+        brandon: { station: "fenit", distanceKm: 12.4 },
+        "lough-derg-killaloe": {
+          station: null,
+          distanceKm: 64.8,
+          noTide: true,
+          reason: "No tide: a freshwater lake.",
+        },
+      },
+    };
+    expect([...freshwaterSpots(m)]).toEqual(["lough-derg-killaloe"]);
   });
   it("credits each station's own source, the manifest's otherwise", () => {
     const m = validateTideManifest({

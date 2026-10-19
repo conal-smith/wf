@@ -68,6 +68,9 @@ import { seaTemperatureText } from "../force5/src/seaTemperature";
 import type { ModelAvailability } from "../force5/src/manifests";
 import { spotSquare } from "../force5/src/spotData";
 import { useSpotSquares } from "./useSpotSquares";
+import { usePointModels } from "./usePointModels";
+import { POINT_SERIES_ID } from "../force5/src/series";
+import { pointSourceNote, type PointSources } from "../force5/src/pointSource";
 import type { Prefs } from "../force5/src/prefs";
 import {
   noStarsWhy,
@@ -123,6 +126,11 @@ interface Props {
   isPoint: boolean;
   /** Its forecast is still being read out of the map's frames. */
   pointPending?: boolean;
+  /**
+   * The riding place a point borrows its waves, weather and sea from, or why
+   * none (src/pointSource.ts); null for a riding place.
+   */
+  pointSource?: PointSources<Spot> | null;
   /** The waves, weather and sea rows, opened by the head's chevron. */
   more: boolean;
   onMore: (more: boolean) => void;
@@ -266,6 +274,7 @@ const StripTable = memo(function StripTable({
   weather,
   sea,
   isPoint,
+  pointNote,
   rated,
   tideHeight,
 }: {
@@ -286,6 +295,8 @@ const StripTable = memo(function StripTable({
   weather: SpotWeather;
   sea: SeaTemperatureState;
   isPoint: boolean;
+  /** For a point that has no riding place near to read its sea from, why. */
+  pointNote: string | null;
   /** Whether any hour is worth rating: else the stars and wing rows are left out. */
   rated: boolean;
   tideHeight: number;
@@ -450,7 +461,7 @@ const StripTable = memo(function StripTable({
             waves={waves}
             weather={weather}
             sea={sea}
-            isPoint={isPoint}
+            pointNote={pointNote}
           />
         )}
       </tbody>
@@ -655,7 +666,7 @@ function MoreRows({
   waves,
   weather,
   sea,
-  isPoint,
+  pointNote,
 }: {
   columns: readonly StripColumn[];
   cells: (
@@ -670,7 +681,8 @@ function MoreRows({
   waves: SpotWaves;
   weather: SpotWeather;
   sea: SeaTemperatureState;
-  isPoint: boolean;
+  /** For a point that has no riding place near to read them from, why. */
+  pointNote: string | null;
 }) {
   const span = (key: string, text: string) => (
     <tr className={`tt-more tt-${key}`} key={key}>
@@ -679,10 +691,10 @@ function MoreRows({
       </td>
     </tr>
   );
-  if (isPoint)
+  if (pointNote)
     return (
       <>
-        {span("waves", "Waves, weather and the sea: riding places only")}
+        {span("waves", pointNote)}
         {MORE_ROWS.slice(1).map((key) => (
           <tr className={`tt-more tt-${key}`} key={key}>
             <td colSpan={columns.length} className="d0" />
@@ -1074,6 +1086,7 @@ export default function ForecastDock(props: Props) {
     reachable,
     onShowOnMap,
     isPoint,
+    pointSource = null,
     more,
     onMore,
     marine,
@@ -1091,8 +1104,8 @@ export default function ForecastDock(props: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const [wrapWidth, setWrapWidth] = useState(0);
   useEffect(() => {
-    if (view === "blend" && !isPoint) onWantModels?.();
-  }, [view, isPoint]);
+    if (view === "blend") onWantModels?.();
+  }, [view]);
   // The scroll that brings each hour to the strip's cursor, and where that
   // point stands at a scroll: still in the middle through the week, walking
   // out to the ends so the first hour sits against the labels (see
@@ -1104,24 +1117,43 @@ export default function ForecastDock(props: Props) {
 
   // The blend, only while it is the view: the chart reads every member. The
   // manifests carry no spot data, so each model's one square holding this spot
-  // is read for it, and for the waves and weather rows, and nothing else.
+  // is read for it, and for the waves and weather rows, and nothing else. A
+  // point has no series of its own: each model's frames are sampled at it for
+  // the blend, and its waves, weather and sea are a riding place's near it.
   const axis = useMemo(() => columns.map((c) => c.validTime), [columns]);
+  const lender = isPoint ? (pointSource?.source?.spot ?? null) : spot;
   const square = useMemo(
-    () => (isPoint ? null : [spotSquare(spot.lat, spot.lon)]),
-    [isPoint, spot.lat, spot.lon],
+    () => (lender ? [spotSquare(lender.lat, lender.lon)] : null),
+    [lender?.lat, lender?.lon],
   );
   const blendModels = useSpotSquares(
-    view === "blend" ? models : NO_MODELS,
+    view === "blend" && !isPoint ? models : NO_MODELS,
     square,
   );
+  const pointModels = useMemo(
+    () =>
+      view === "blend" && isPoint
+        ? models.filter((model) => prefs.blendModels.includes(model.id))
+        : NO_MODELS,
+    [view, isPoint, models, prefs.blendModels],
+  );
+  const sampled = usePointModels(pointModels, isPoint ? spot : null, axis);
   const marineModels = useSpotSquares(more ? marine : NO_MODELS, square);
   const named = isPoint ? undefined : spot.id;
   const blend = useBlend(
-    view === "blend" && named ? blendModels : NO_MODELS,
+    view !== "blend" ? NO_MODELS : isPoint ? sampled.models : blendModels,
     prefs.blendModels,
-    named,
+    isPoint ? POINT_SERIES_ID : named,
     axis,
   );
+  // Every model's frames tried at a point, and not one hour read.
+  const unread = isPoint && !sampled.pending && sampled.models.length > 0;
+  /** Whose waves, weather and sea the rows show. */
+  const lent = lender?.id;
+  const pointNote =
+    isPoint && pointSource && !pointSource.source
+      ? pointSourceNote(pointSource)
+      : null;
   // Which columns are dark at this place, by the same sun the stars go by.
   const daylight = useMemo(
     () => daylightOn(spot, axis),
@@ -1130,9 +1162,9 @@ export default function ForecastDock(props: Props) {
   // A week with no hour worth rating, a calm one or one still being rated
   // at night, leaves out the stars and the wing rather than draw them empty.
   const rated = !hours || hours.some((hour) => !!hour?.rating?.potential);
-  const waves = useSpotWaves(more ? marineModels : NO_MODELS, named, axis);
-  const weather = useSpotWeather(more ? marineModels : NO_MODELS, named, axis);
-  const sea = useSpotSeaTemperature(more ? named : undefined);
+  const waves = useSpotWaves(more ? marineModels : NO_MODELS, lent, axis);
+  const weather = useSpotWeather(more ? marineModels : NO_MODELS, lent, axis);
+  const sea = useSpotSeaTemperature(more ? lent : undefined);
   // The top of the blend's scale, shared by the chart and its tick labels
   // in the label column (which stay put while the hours scroll).
   const blendMax = useMemo(() => {
@@ -1145,7 +1177,13 @@ export default function ForecastDock(props: Props) {
   const blendNode = useMemo(() => {
     if (view !== "blend") return null;
     if (!blend.lines.length)
-      return <p className="blend-empty">Reading the models…</p>;
+      return (
+        <p className="blend-empty">
+          {unread
+            ? "No model's wind could be read here"
+            : "Reading the models…"}
+        </p>
+      );
     const nights = dayNights(
       spot.lat,
       spot.lon,
@@ -1181,6 +1219,7 @@ export default function ForecastDock(props: Props) {
     reducedMotion,
     spot.lat,
     spot.lon,
+    unread,
   ]);
 
   useLayoutEffect(() => {
@@ -1393,6 +1432,12 @@ export default function ForecastDock(props: Props) {
           {isPoint && spot.county && (
             <span className="dk-coords">{spot.county}</span>
           )}
+          {/* Whose waves, weather and sea a point's rows are, once open. */}
+          {isPoint && more && pointSource?.source && (
+            <span className="dk-coords dk-lent">
+              {pointSourceNote(pointSource)}
+            </span>
+          )}
         </div>
         {/* The stars are the rider's own: said once, where they are read,
             and the way to change them. */}
@@ -1421,21 +1466,19 @@ export default function ForecastDock(props: Props) {
           </Button>
         )}
         {/* The table or every model's wind drawn as a chart: one glyph, on
-            while the blend is shown. A point has no blend. */}
-        {!isPoint && (
-          <Button
-            variant="quiet"
-            size="sm"
-            icon
-            className="dk-tool dk-view"
-            aria-label="Blend"
-            title={view === "blend" ? "Back to the table" : "The models' blend"}
-            pressed={view === "blend"}
-            onClick={() => onView(view === "blend" ? "table" : "blend")}
-          >
-            <ChartSpline size={16} strokeWidth={1.4} aria-hidden="true" />
-          </Button>
-        )}
+            while the blend is shown. A point's is sampled from the frames. */}
+        <Button
+          variant="quiet"
+          size="sm"
+          icon
+          className="dk-tool dk-view"
+          aria-label="Blend"
+          title={view === "blend" ? "Back to the table" : "The models' blend"}
+          pressed={view === "blend"}
+          onClick={() => onView(view === "blend" ? "table" : "blend")}
+        >
+          <ChartSpline size={16} strokeWidth={1.4} aria-hidden="true" />
+        </Button>
         {!isPoint && (
           <Button
             variant="quiet"
@@ -1629,6 +1672,7 @@ export default function ForecastDock(props: Props) {
               weather={weather}
               sea={sea}
               isPoint={isPoint}
+              pointNote={pointNote}
               rated={rated}
               tideHeight={rows.tide}
             />

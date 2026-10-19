@@ -26,6 +26,7 @@ import {
   type FocusStyle,
 } from "./focus";
 import { drawNeatline } from "./neatline";
+import { isLakeWater } from "./pointSource";
 import { setMapView } from "./tiledField";
 import {
   createWindLayer,
@@ -281,20 +282,14 @@ function nearestPlace(map: maplibregl.Map, lon: number, lat: number) {
   return best;
 }
 
-/**
- * Is a point on a lake? OpenMapTiles classes its water: the sea, inside OSM's
- * coastline, is "ocean", and a lough or reservoir "lake" (a pond "pond").
- * Rivers are not asked about: an estuary's tide runs up them.
- */
+/** Is a point on a lake, by the basemap's water drawn there (isLakeWater)? */
 function onLake(map: maplibregl.Map, point: maplibregl.PointLike) {
   try {
     if (!map.getLayer("water")) return false;
-    const classes = map
-      .queryRenderedFeatures(point, { layers: ["water"] })
-      .map((f) => f.properties?.class);
-    return (
-      !classes.includes("ocean") &&
-      classes.some((c) => c === "lake" || c === "pond")
+    return isLakeWater(
+      map
+        .queryRenderedFeatures(point, { layers: ["water"] })
+        .map((f) => f.properties?.class),
     );
   } catch {
     return false;

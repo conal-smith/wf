@@ -5,6 +5,7 @@ import {
   frameForTime,
   framePosition,
   loadOrder,
+  pointReadQueue,
   modelStretches,
   windTrackBackground,
   type ColumnModel,
@@ -285,6 +286,41 @@ describe("loadOrder", () => {
       threeHourly.length - 1,
     );
     expect(loadOrder([], NOW)).toEqual([]);
+  });
+});
+
+describe("pointReadQueue", () => {
+  const t = (iso: string) => Date.parse(iso);
+  const threeHourly = frames("2026-09-14T00:00:00Z", every(21, 3));
+  const sixHourly = frames("2026-09-14T00:00:00Z", every(18, 6));
+  it("takes the models in turn, each in its own load order", () => {
+    const queue = pointReadQueue(
+      [{ frames: threeHourly }, { frames: sixHourly }],
+      t("2026-09-14T00:00:00Z"),
+      t("2026-09-14T21:00:00Z"),
+      t("2026-09-14T06:00:00Z"),
+    );
+    expect(queue.slice(0, 4)).toEqual([
+      [0, 2],
+      [1, 1],
+      [0, 3],
+      [1, 2],
+    ]);
+    // Every frame of both, once each.
+    expect(queue.filter(([run]) => run === 0)).toHaveLength(8);
+    expect(queue.filter(([run]) => run === 1)).toHaveLength(4);
+  });
+  it("reads only the dock's hours, a margin either side, and skips what is read", () => {
+    const queue = pointReadQueue(
+      [{ frames: threeHourly, done: [false, false, false, true] }],
+      t("2026-09-14T12:00:00Z"),
+      t("2026-09-14T15:00:00Z"),
+      t("2026-09-14T12:00:00Z"),
+      3,
+    );
+    // 09–18h, less 09h, which is read.
+    expect(queue.map(([, frame]) => frame).sort()).toEqual([4, 5, 6]);
+    expect(pointReadQueue([], 0, 1)).toEqual([]);
   });
 });
 

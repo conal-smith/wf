@@ -17,6 +17,8 @@ import { AppState, Linking, Platform, Pressable, StyleSheet, View, type TextInpu
 import { useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { areaAt, foilReadout, nearestArea } from "../../../../force5/src/foilDepth";
+import { isLakeWater, nearestSpotOnWater, pointSourceNote } from "../../../../force5/src/pointSource";
+import { freshwaterSpots } from "../../../../force5/src/tides";
 import type { Spot } from "../../../../force5/src/weather";
 import { pointHours } from "../../../../src/ratings";
 import { clock, dayShort } from "../../../../src/strip";
@@ -32,6 +34,8 @@ import { holdUpdates } from "../updates/hold";
 import { ChartHeader } from "./ChartHeader";
 import { ChartMap, type FocusMark } from "./ChartMap";
 import { FitGlyph, Instrument, InstrumentStack, KeyGlyph, LayersGlyph, LocateGlyph } from "./ChartControls";
+import { moreCells } from "../dock/dockLogic";
+import { useMarine, usePointTide } from "../dock/useDockData";
 import { DockSheet, PEEK } from "./DockSheet";
 import {
   foilLayers,
@@ -236,7 +240,7 @@ export default function ChartScreen() {
       }
       tick();
       const coords = degrees(lat, lon);
-      setPicked({ lon, lat, name: coords, coords: "" });
+      setPicked({ lon, lat, name: coords, coords: "", lake: false });
       setFocusOn("point");
       pointRef.current?.present();
       // The nearest town or village, within a few kilometres (WindMap.tsx `nearestPlace`).
@@ -262,6 +266,10 @@ export default function ChartScreen() {
         }
       }
       if (best) setPicked((p) => (p && p.lon === lon && p.lat === lat ? { ...p, name: best, coords } : p));
+      // On a lake, by the basemap's water there (isLakeWater): no sea's tide.
+      const water = await mapRef.current?.queryRenderedFeatures([x, y], { layers: ["water"] }).catch(() => []);
+      if (isLakeWater((water ?? []).map((f) => f.properties?.class)))
+        setPicked((p) => (p && p.lon === lon && p.lat === lat ? { ...p, lake: true } : p));
     },
     [searchOpen],
   );
@@ -456,6 +464,26 @@ export default function ChartScreen() {
     [picked, model.manifest, series.values, axis],
   );
 
+  // Its tide, the nearest station's; its waves, weather and sea, the nearest
+  // riding place's on the same water within 15 km (src/App.tsx).
+  const pointTide = usePointTide(picked);
+  const pointSources = useMemo(
+    () =>
+      picked
+        ? nearestSpotOnWater(spots, picked.lat, picked.lon, {
+            lake: picked.lake,
+            freshwater: pointTide.manifest ? freshwaterSpots(pointTide.manifest) : null,
+          })
+        : null,
+    [picked, spots, pointTide.manifest],
+  );
+  const lender = pointSources?.source?.spot ?? null;
+  const pointMarine = useMarine(lender, axis, !!picked);
+  const pointMore = useMemo(
+    () => (lender ? moreCells(strip, pointMarine.waves, pointMarine.weather, pointMarine.sea) : null),
+    [lender, strip, pointMarine.waves, pointMarine.weather, pointMarine.sea],
+  );
+
   /* ---- the focus: everything away from the chosen spot or point goes quiet ---- */
   const focusAt = focusOn === "point" ? picked : focusOn === "spot" ? spot : null;
   const focus = useMemo<FocusMark | null>(
@@ -623,6 +651,10 @@ export default function ChartScreen() {
         onSelect={selectTime}
         foil={readout}
         foilOn={layers.foil && !!foilState.manifest}
+        tide={pointTide.tide}
+        tideNote={pointTide.loading ? "" : pointTide.error}
+        lent={pointSources ? pointSourceNote(pointSources) : null}
+        more={pointMore}
         onClose={closePoint}
         onDismiss={pointDismissed}
       />
