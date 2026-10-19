@@ -8,6 +8,7 @@ import "../ui/fonts.css";
 import "../ui/theme.css";
 import { mapFirstRequests, startEarly } from "../force5/src/boot";
 import { FEATURES } from "../shared/web/features";
+import PagesOverMap from "./PagesOverMap";
 import {
   isAiPath,
   isCommunityPath,
@@ -98,10 +99,12 @@ else {
   // The map's manifest and places, alongside its chunk rather than after it
   // (force5/src/boot.ts).
   startEarly(mapFirstRequests());
+  // The AI page, /stars and the spot pages open over it from its links, and
+  // the way back is the map as it was (src/PagesOverMap.tsx).
   void loadMap().then(({ default: App }) =>
     root.render(
       <React.StrictMode>
-        <App />
+        <PagesOverMap map={<App />} />
       </React.StrictMode>,
     ),
   );
