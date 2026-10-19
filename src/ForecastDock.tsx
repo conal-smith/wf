@@ -77,7 +77,12 @@ import {
 } from "../force5/src/stars";
 import { dayNights } from "../force5/src/sun";
 import { daylightOn } from "./ratings";
-import { eventsBetween, tideAt, type SpotTide } from "../force5/src/tides";
+import {
+  eventsBetween,
+  tideAt,
+  tideStationLine,
+  type SpotTide,
+} from "../force5/src/tides";
 import { convert, type Units } from "../force5/src/units";
 import { compass, type Spot } from "../force5/src/weather";
 import { spotHref } from "../force5/src/siteNav";
@@ -1009,8 +1014,11 @@ function TideRow({
       height={H}
       className="tide-row"
       role="img"
-      aria-label={`Tide at ${tide.station.name}, metres above chart datum`}
+      aria-label={`Tide at ${tideStationLine(tide)}, metres above chart datum`}
     >
+      {/* The station credited, and how far it is: a tapped point's is
+          whichever is nearest, not one the reader chose. */}
+      <title>{`Tide at ${tideStationLine(tide)}`}</title>
       {night}
       {paths}
       {turns.map((turn) => {

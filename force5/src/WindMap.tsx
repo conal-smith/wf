@@ -134,8 +134,16 @@ type Props = {
   bottomInset: number;
   phone: boolean;
   onSelect: (spot: Spot) => void;
-  /** A tap on the open map, not a light: the point, and the nearest place's name. */
-  onPick: (point: { lon: number; lat: number; place: string | null }) => void;
+  /**
+   * A tap on the open map, not a light: the point, the nearest place's name,
+   * and whether the basemap has it on a lake rather than the sea.
+   */
+  onPick: (point: {
+    lon: number;
+    lat: number;
+    place: string | null;
+    lake: boolean;
+  }) => void;
   onReady: (controls: MapControls | null) => void;
   /** A tile the frame on screen needs could not be read (windLayer.ts). */
   onTilesFailed?: (frame: Frame) => void;
@@ -271,6 +279,26 @@ function nearestPlace(map: maplibregl.Map, lon: number, lat: number) {
     return null;
   }
   return best;
+}
+
+/**
+ * Is a point on a lake? OpenMapTiles classes its water: the sea, inside OSM's
+ * coastline, is "ocean", and a lough or reservoir "lake" (a pond "pond").
+ * Rivers are not asked about: an estuary's tide runs up them.
+ */
+function onLake(map: maplibregl.Map, point: maplibregl.PointLike) {
+  try {
+    if (!map.getLayer("water")) return false;
+    const classes = map
+      .queryRenderedFeatures(point, { layers: ["water"] })
+      .map((f) => f.properties?.class);
+    return (
+      !classes.includes("ocean") &&
+      classes.some((c) => c === "lake" || c === "pond")
+    );
+  } catch {
+    return false;
+  }
 }
 
 export default function WindMap(props: Props) {
@@ -458,8 +486,15 @@ export default function WindMap(props: Props) {
         if (target?.closest(".spot-marker")) return;
         if (event.originalEvent.detail > 1) return;
         const { lng, lat } = event.lngLat;
+        // Read now, while the water drawn under the finger is what was tapped.
+        const lake = onLake(map, event.point);
         pending = window.setTimeout(() => {
-          latest.current.onPick({ lon: lng, lat, place: nearestPlace(map, lng, lat) });
+          latest.current.onPick({
+            lon: lng,
+            lat,
+            place: nearestPlace(map, lng, lat),
+            lake,
+          });
         }, 300);
       });
       map.on("dblclick", cancelPick);

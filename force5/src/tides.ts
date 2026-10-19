@@ -1,6 +1,7 @@
 // Tide predictions. A tide manifest is not a wind manifest: it maps spots to
 // gauge stations and points at one curve file per station. Heights are metres
 // above the station's own datum, which must be shown with every reading.
+import { distanceKm } from "./foilDepth";
 import { forecastUrl } from "./urls";
 
 export const TIDES_URL = "marine/tides.json";
@@ -51,6 +52,8 @@ export interface TideManifest {
   generatedAt?: string;
   stations: TideStation[] | Record<string, TideStation>;
   spots: Record<string, TideSpotLink>;
+  /** The adapter's station limit, km: no spot is given a station farther off. */
+  maxDistanceKm?: number;
   attribution?: string;
   licenseUrl?: string;
   sourceUrl?: string;
@@ -208,6 +211,84 @@ export function tideCredit(
   const entry =
     typeof station === "string" ? tideStation(manifest, station) : station;
   return entry?.attribution ?? manifest.attribution ?? null;
+}
+
+/**
+ * The station limit when a manifest does not state its own: fetch_tides.py's
+ * MAX_DISTANCE_KM, which it publishes as the manifest's `maxDistanceKm`.
+ */
+export const TIDE_STATION_LIMIT_KM = 40;
+/** fetch_tides.py's PREFER_MI_KM: how much farther a Marine Institute station may be and still win. */
+const PREFER_MI_KM = 5;
+const MARINE_INSTITUTE = "Marine Institute";
+
+export interface PointTideLink {
+  /** Null beyond the station limit, or on a freshwater lake. */
+  station: TideStation | null;
+  distanceKm: number;
+  /** Why there is no station, said as a spot's link says it. */
+  reason?: string;
+}
+
+/**
+ * The tide station for a point that is not a spot, as fetch_tides.py's
+ * assign_stations links a spot: the nearest by great-circle distance, unless a Marine Institute station is at most PREFER_MI_KM
+ * farther than another provider's nearest; within the manifest's limit, and
+ * never for water the sea does not reach. A basin's or a modelled station is
+ * taken as it is published.
+ */
+export function tideStationNear(
+  manifest: TideManifest,
+  lat: number,
+  lon: number,
+  freshwater = false,
+): PointTideLink {
+  const limit = finite(manifest.maxDistanceKm)
+    ? manifest.maxDistanceKm
+    : TIDE_STATION_LIMIT_KM;
+  const ranked = tideStations(manifest)
+    .map((station) => ({
+      station,
+      km: distanceKm(lon, lat, station.lon, station.lat),
+    }))
+    // As Python sorts (km, id): an exact tie goes to the first id.
+    .sort((a, b) => a.km - b.km || (a.station.id < b.station.id ? -1 : 1));
+  let nearest = ranked[0];
+  if (!nearest)
+    return {
+      station: null,
+      distanceKm: Infinity,
+      reason: "No tide station is close enough to this point.",
+    };
+  if (
+    nearest.station.provider &&
+    nearest.station.provider !== MARINE_INSTITUTE
+  ) {
+    const mi = ranked.find((r) => r.station.provider === MARINE_INSTITUTE);
+    if (mi && mi.km <= Math.min(limit, nearest.km + PREFER_MI_KM)) nearest = mi;
+  }
+  const km = Math.round(nearest.km * 10) / 10;
+  if (freshwater)
+    return {
+      station: null,
+      distanceKm: km,
+      reason: "No tide: a freshwater lake.",
+    };
+  if (nearest.km > limit)
+    return {
+      station: null,
+      distanceKm: km,
+      reason: `No tide station within ${limit.toFixed(0)} km: the nearest, ${nearest.station.name}, is ${nearest.km.toFixed(0)} km away.`,
+    };
+  return { station: nearest.station, distanceKm: km };
+}
+
+/** "Dublin Port, 4.8 km away": the station a tide is read at, and how far off. */
+export function tideStationLine(
+  tide: Pick<SpotTide, "station" | "distanceKm">,
+): string {
+  const km = tide.distanceKm;
+  return `${tide.station.name}, ${km < 10 ? km.toFixed(1) : Math.round(km)} km away`;
 }
 
 /** Curve for the station nearest a spot, or null when no station is mapped. */
