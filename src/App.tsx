@@ -1313,6 +1313,7 @@ export default function App() {
               selectedId={picked ? null : (point?.id ?? null)}
               focus={focusAt ? { lon: focusAt.lon, lat: focusAt.lat } : null}
               focusStyle={focusStyle}
+              units={prefs.units}
               mark={focusAt ? { lon: focusAt.lon, lat: focusAt.lat } : null}
               picked={picked ? { lon: picked.lon, lat: picked.lat } : null}
               onPick={pickPoint}

@@ -312,6 +312,14 @@ class PruneCacheTest(unittest.TestCase):
         self.assertTrue(self.old.exists())
 
 
+class FrozenDatetime(datetime):
+    """The clock the tree was aged against: on the real one, it ages a day a day."""
+
+    @classmethod
+    def now(cls, tz=None):
+        return NOW if tz else NOW.replace(tzinfo=None)
+
+
 def run_main(argv):
     """Call the command line, returning its exit code and captured JSON event."""
     out, err = io.StringIO(), io.StringIO()
@@ -322,6 +330,12 @@ def run_main(argv):
 
 class MainTest(unittest.TestCase):
     def setUp(self):
+        # The command reads the time itself; it must be the time the tree was
+        # aged against, or a 1000-hour window lets go of NOW's 200-hour-old run
+        # 800 hours later.
+        clock = patch.object(prune, "datetime", FrozenDatetime)
+        clock.start()
+        self.addCleanup(clock.stop)
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.tree = Tree(self.directory.name)
