@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  ASSISTANTS,
+  CHATGPT_APPS,
+  EXAMPLE_PROMPTS,
+  addPlan,
+  askLink,
+  askSends,
   claudeCodeCommand,
   claudeLink,
   codexConfig,
   cursorLink,
+  deviceOf,
   geminiConfig,
+  grokLink,
+  isAssistant,
   mcpUrl,
   vscodeLink,
 } from "./install";
@@ -65,5 +74,103 @@ describe("install links", () => {
     expect(JSON.parse(geminiConfig(URL_))).toEqual({
       mcpServers: { "wingfoil-ie": { httpUrl: URL_ } },
     });
+  });
+});
+
+describe("asking", () => {
+  const prompt = "When's the next good session after work near me?";
+
+  it("opens a new chat in each app with the question typed in", () => {
+    const at = (link: string) => {
+      const u = new URL(link);
+      return [u.origin + u.pathname, u.searchParams.get("q")];
+    };
+    expect(at(askLink("claude", prompt))).toEqual([
+      "https://claude.ai/new",
+      prompt,
+    ]);
+    expect(at(askLink("chatgpt", prompt))).toEqual([
+      "https://chatgpt.com/",
+      prompt,
+    ]);
+    expect(at(askLink("grok", prompt))).toEqual(["https://grok.com/", prompt]);
+  });
+
+  it("encodes the question, apostrophes, commas and question marks too", () => {
+    const link = askLink("claude", "Is it 15 to 25 knots? & what's the tide?");
+    expect(link).not.toMatch(/[ &?]what/);
+    expect(new URL(link).searchParams.get("q")).toBe(
+      "Is it 15 to 25 knots? & what's the tide?",
+    );
+  });
+
+  it("knows which app asks the question it is opened with", () => {
+    expect(askSends("chatgpt")).toBe(true);
+    expect(askSends("claude")).toBe(false);
+    expect(askSends("grok")).toBe(false);
+  });
+
+  it("leads with the question the page is for", () => {
+    expect(EXAMPLE_PROMPTS[0]).toBe(prompt);
+    expect(new Set(EXAMPLE_PROMPTS).size).toBe(EXAMPLE_PROMPTS.length);
+  });
+});
+
+describe("devices", () => {
+  const IPHONE =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1";
+  const ANDROID =
+    "Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36";
+  const MAC =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15";
+
+  it("tells a phone from a computer, an iPad asking for the desktop site included", () => {
+    expect(deviceOf(IPHONE, 5)).toBe("iphone");
+    expect(deviceOf(ANDROID, 5)).toBe("android");
+    expect(deviceOf(MAC, 0)).toBe("computer");
+    expect(deviceOf(MAC, 5)).toBe("iphone");
+    expect(deviceOf("")).toBe("computer");
+  });
+});
+
+describe("adding to an app", () => {
+  it("knows the three apps by name", () => {
+    expect(ASSISTANTS).toEqual(["claude", "chatgpt", "grok"]);
+    expect(isAssistant("grok")).toBe(true);
+    expect(isAssistant("gemini")).toBe(false);
+    expect(isAssistant(null)).toBe(false);
+  });
+
+  it("fills Claude's dialog in, on a phone as on a computer", () => {
+    for (const device of ["iphone", "android", "computer"] as const) {
+      const plan = addPlan("claude", device, URL_);
+      expect(plan.href).toBe(claudeLink(URL_));
+      expect(plan.copies).toBe(false);
+    }
+    expect(addPlan("claude", "iphone", URL_).note).toMatch(/Tap Add/);
+    expect(addPlan("claude", "computer", URL_).note).toMatch(/Click Add/);
+  });
+
+  it("copies the address for the apps that cannot be handed it", () => {
+    for (const device of ["iphone", "android", "computer"] as const) {
+      expect(addPlan("chatgpt", device, URL_).copies).toBe(true);
+      expect(addPlan("grok", device, URL_).copies).toBe(true);
+      // Grok's connectors, which open the Grok app on a phone.
+      expect(addPlan("grok", device, URL_).href).toBe(
+        "https://grok.com/connectors",
+      );
+    }
+    expect(grokLink()).toBe("https://grok.com/connectors");
+  });
+
+  it("sends ChatGPT to its apps on a computer, and only copies on a phone", () => {
+    expect(addPlan("chatgpt", "computer", URL_).href).toBe(CHATGPT_APPS);
+    expect(CHATGPT_APPS).toBe("https://chatgpt.com/plugins");
+    for (const device of ["iphone", "android"] as const) {
+      const plan = addPlan("chatgpt", device, URL_);
+      expect(plan.href).toBeUndefined();
+      expect(plan.label).toBe("Copy the address");
+      expect(plan.note).toMatch(/computer only/);
+    }
   });
 });
