@@ -98,9 +98,9 @@ describe("the chart's inks", () => {
       expect(css).not.toContain(old);
   });
 
-  it("leaves the wind ramp and the two fixed marks where they were", () => {
-    expect(resolved("wind-k00")).toBe("#355897");
-    expect(resolved("wind-k65")).toBe("#724297");
+  it("holds the wind ramp's ends and the two fixed marks", () => {
+    expect(resolved("wind-k00")).toBe("#aacbea");
+    expect(resolved("wind-k65")).toBe("#231628");
     expect(resolved("now-marker")).toBe("#bf6546");
     expect(resolved("gust")).toBe("#e0803a");
   });

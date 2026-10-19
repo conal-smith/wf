@@ -10,7 +10,7 @@ import * as WebBrowser from "expo-web-browser";
 import { memo, type ReactNode, type Ref } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop, Text as SvgText } from "react-native-svg";
-import { DEPTHS, type RideStop } from "../../../../force5/src/chartStyle";
+import { DEPTHS } from "../../../../force5/src/chartStyle";
 import {
   FOIL_CLEARANCE_METRES,
   levelLine,
@@ -217,7 +217,6 @@ interface Props {
   sheetRef: Ref<BottomSheetModal>;
   onClose: () => void;
   scale: string;
-  rideStops: readonly RideStop[];
   rider: Rider;
   spotId: string | null;
   satellite: string | null;
@@ -265,7 +264,7 @@ export const InfoSheet = memo(function InfoSheet(props: Props) {
         <T variant="label" caps color="ink2">
           Wash and arrows
         </T>
-        <KnotScale stops={props.rideStops} rider={props.rider} />
+        <KnotScale />
         <View style={styles.tints} accessible accessibilityLabel="Depth tints, 0 to 50 metres and more">
           {[0, 1, 2, 5, 10, 20, 50].map((d) => (
             <View

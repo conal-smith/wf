@@ -59,19 +59,6 @@ export const windScale: readonly [number, string][] = [
   [65, c("color-wind-k65")],
 ];
 
-/** The rider's own band, calm to storm (windBand in force5/src/stars.ts). */
-export const ride = {
-  calm: c("ride-calm"),
-  light: c("ride-light"),
-  floor: c("ride-floor"),
-  good: c("ride-good"),
-  best: c("ride-best"),
-  top: c("ride-top"),
-  much: c("ride-much"),
-  over: c("ride-over"),
-  storm: c("ride-storm"),
-} as const;
-
 /** A 4-point grid, as the site's --spacing. */
 export const space = {
   "2xs": 2,

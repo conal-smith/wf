@@ -3,18 +3,17 @@
  * (force5/src/windLayer.ts):
  *
  *   ink      lines drifting with the forecast, in ink: light air thin and pale
- *   arrows   arrows on the water tinted on the rider's own scale
- *   wash     the rider's scale as a wash over the sea, with the ink lines on it
+ *   arrows   arrows on the water tinted on the wind scale (PALETTE)
+ *   wash     the wind scale as a wash over the sea, with the ink lines on it
  *
  * Everything here is arithmetic over a sampler (`TiledField.sample`), so the
  * screen's field, the arrows' grid and the wash's pixels are tested in Node.
  * The lines themselves move in particleSim.ts, on the UI thread.
  */
 import type { Feature, FeatureCollection, Point } from "geojson";
-import { rideColour, type Rgb, type RideStop } from "../../../../force5/src/chartStyle";
 import { WASH_STEP } from "../../../../force5/src/tiledField";
 import { KNOTS } from "../../../../force5/src/units";
-import { direction, type Grid, type Wind } from "../../../../force5/src/weather";
+import { direction, windColor, type Grid, type Rgb, type Wind } from "../../../../force5/src/weather";
 import { metresPerPoint, unproject, type Camera } from "./mapLogic";
 
 export type WindStyle = "ink" | "arrows" | "wash";
@@ -53,9 +52,9 @@ export const rgbOf = (hex: string): Rgb => {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 };
 
-/** A speed's colour on the rider's scale, toned a fifth toward the ink so a pale green reads on paper. */
-export function tonedColour(stops: readonly RideStop[], kn: number, ink: Rgb): Rgb {
-  const rgb = rideColour(stops, kn);
+/** A speed's colour on the wind scale, toned a fifth toward the ink so a pale blue reads on paper. */
+export function tonedColour(kn: number, ink: Rgb): Rgb {
+  const rgb = windColor(kn);
   return [0, 1, 2].map((i) => Math.round(rgb[i] * 0.8 + ink[i] * 0.2)) as Rgb;
 }
 
@@ -98,7 +97,7 @@ export function screenField(camera: Camera, sample: Sampler, step = 10): ScreenF
 export interface ArrowProps {
   /** The bearing it points to, downwind. */
   rot: number;
-  /** Its colour on the rider's scale. */
+  /** Its colour on the wind scale, or ink. */
   c: string;
   kn: number;
 }
@@ -110,7 +109,7 @@ export interface ArrowProps {
 export function arrowGrid(
   camera: Camera,
   sample: Sampler,
-  stops: readonly RideStop[],
+  coloured: boolean,
   ink: Rgb,
   gap = 46,
 ): FeatureCollection<Point, ArrowProps> {
@@ -132,7 +131,7 @@ export function arrowGrid(
         geometry: { type: "Point", coordinates: [lon, lat] },
         properties: {
           rot: Math.round((direction(wind.u, wind.v) + 180) % 360),
-          c: hexOf(stops.length ? tonedColour(stops, kn, ink) : ink),
+          c: hexOf(coloured ? tonedColour(kn, ink) : ink),
           kn: Math.round(kn),
         },
       });
@@ -169,8 +168,11 @@ export function washBox(camera: Camera, step = WASH_STEP) {
   return { west, north, east, south, width, height, yN, yS, toPixel };
 }
 
+/** The wash's colours, one per half knot up to the wind scale's last stop. */
+const WASH_LUT = Array.from({ length: 131 }, (_, i) => windColor(i / 2));
+
 /**
- * The rider's scale painted over the box, a pixel per `step` points: over the
+ * The wind scale painted over the box, a pixel per `step` points: over the
  * sea (`sea`, the basemap's water drawn into the same pixels) strongly, over
  * land faintly, and where the water is not known in between; the model's own
  * edge feathered rather than cut (windLayer.ts `paintWash`).
@@ -178,7 +180,6 @@ export function washBox(camera: Camera, step = WASH_STEP) {
 export function washImage(
   camera: Camera,
   sample: Sampler,
-  stops: readonly RideStop[],
   grid: Pick<Grid, "west" | "east" | "north" | "south" | "dx" | "dy">,
   sea: Uint8Array | null,
   step = WASH_STEP,
@@ -186,7 +187,6 @@ export function washImage(
   const box = washBox(camera, step);
   const { width: w, height: h, west, east, north, south, yN, yS } = box;
   const rgba = new Uint8Array(w * h * 4);
-  const lut = Array.from({ length: 81 }, (_, i) => rideColour(stops, i / 2));
   const feather = Math.max(grid.dx, grid.dy) * 6;
   for (let y = 0; y < h; y++) {
     const lat = (2 * Math.atan(Math.exp(yN + ((yS - yN) * (y + 0.5)) / h)) - Math.PI / 2) * (180 / Math.PI);
@@ -195,7 +195,7 @@ export function washImage(
       const wind = sample(lat, lon);
       if (!wind) continue;
       const kn = Math.hypot(wind.u, wind.v) * KNOTS;
-      const rgb = lut[Math.min(80, Math.max(0, Math.round(kn * 2)))];
+      const rgb = WASH_LUT[Math.min(WASH_LUT.length - 1, Math.max(0, Math.round(kn * 2)))];
       const edge = Math.max(
         0,
         Math.min(1, (lon - grid.west) / feather, (grid.east - lon) / feather, (lat - grid.south) / feather, (grid.north - lat) / feather),

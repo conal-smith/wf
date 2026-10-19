@@ -59,6 +59,8 @@ strokes are `pen`; its handwriting is `pen-ink`, which reads as words.
 `--color-wind-k*` stops are the `PALETTE` in `force5/src/weather.ts`. They are
 speed bands, not safety ratings and not ability ratings, and they are the only
 way colour may describe wind. No other element, state or category borrows them.
+They are the same for every rider: the stars are the rider's, the colours are
+not (2026-10-19).
 
 They do not re-theme. A colour that means 35 knots means 35 knots at night and
 on any palette: the Atlantic change left all fourteen at their values (D5, D12),
@@ -278,6 +280,19 @@ the chart, its keys and its slider) and puts a line asking for a tap where a
 spot's rows would be, at their height, so choosing a spot moves nothing. A
 point tapped on the open map is read in the dock but not remembered: it is not
 a riding place.
+
+**2026-10-19 — One wind scale for every rider.** The map's wash and coloured
+arrows had a scale of their own (`--ride-*`), its stops at the rider's
+minimum, sweet spot and maximum, so Learning, Riding and Advanced each
+coloured the same forecast differently. That was a second way for colour to
+describe wind, which the wind rule forbids, and it confused: the same 20 knots
+was green for one rider and orange for another. They are drawn on `PALETTE` now,
+as the dock and the spot page already were, and the palette was redrawn as
+Windy, Windguru and Windfinder draw theirs: pale blue in a calm, deepening to
+10 kn; greens from 10 to 20; yellow by the high 20s; orange to red from 30 to
+40; red to purple by 50; dark purple to nearly black past 60. The rider's level
+moves the stars, the wedge and the lights, never the colour. The map's key
+(`src/KnotScale.tsx`) is generated from the same stops.
 
 ---
 

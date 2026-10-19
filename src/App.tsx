@@ -45,7 +45,6 @@ import FoilLegend from "./FoilLegend";
 import MapInfo from "./MapInfo";
 import { MapInfoOpen, type InfoSection } from "./mapInfoContext";
 import { foilArchiveUrl, useFoilDepth } from "./useFoilDepth";
-import { rideStops as rideStopsFor } from "../force5/src/chartStyle";
 import type { LightState } from "../force5/src/lights";
 import { rideWedge } from "../force5/src/rideWedge";
 import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
@@ -800,10 +799,6 @@ export default function App() {
       }`,
     [column?.time],
   );
-  const rideStops = useMemo(
-    () => rideStopsFor(rider, getComputedStyle(document.documentElement)),
-    [JSON.stringify(rider)],
-  );
 
   /* ---- the satellite image under the chart ---- */
   // Its index and code load the first time an image is chosen; then only the
@@ -1280,8 +1275,6 @@ export default function App() {
               focusStyle={focusStyle}
               onFocusStyle={chooseFocusStyle}
               satelliteTides={satellite.station}
-              rideStops={rideStops}
-              rider={rider}
               model={manifest?.model}
               modelDisabled={!frame || !!pendingModel}
               onModel={(id) => void chooseModel(id)}
@@ -1301,7 +1294,6 @@ export default function App() {
               picked={picked ? { lon: picked.lon, lat: picked.lat } : null}
               onPick={pickPoint}
               windStyle={windStyle}
-              rideStops={rideStops}
               layers={layers}
               foil={foilViews}
               satellite={satellite.image}
@@ -1460,7 +1452,6 @@ export default function App() {
           at={info}
           onClose={() => setInfo(null)}
           scale={scale}
-          rideStops={rideStops}
           rider={rider}
           spotId={picked ? null : (point?.id ?? null)}
           foil={

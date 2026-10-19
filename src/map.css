@@ -737,22 +737,22 @@
 .layers .sw-arrows {
   background: linear-gradient(
     90deg,
-    var(--ride-light),
-    var(--ride-good),
-    var(--ride-best),
-    var(--ride-top),
-    var(--ride-over)
+    var(--color-wind-k05),
+    var(--color-wind-k15),
+    var(--color-wind-k25),
+    var(--color-wind-k30),
+    var(--color-wind-k40)
   );
   height: 3px;
 }
 .layers .sw-wash {
   background: linear-gradient(
     90deg,
-    var(--ride-light),
-    var(--ride-good),
-    var(--ride-best),
-    var(--ride-top),
-    var(--ride-over)
+    var(--color-wind-k05),
+    var(--color-wind-k15),
+    var(--color-wind-k25),
+    var(--color-wind-k30),
+    var(--color-wind-k40)
   );
   opacity: 0.55;
 }
@@ -822,7 +822,7 @@
   }
 }
 
-/* The rider's wind scale, in the key and the layers. */
+/* The wind scale, in the key and the layers. */
 .knot-scale {
   margin: 6px 0 2px;
 }

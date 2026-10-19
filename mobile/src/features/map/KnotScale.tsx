@@ -1,60 +1,42 @@
 /**
- * The wind scale the wash and the arrows are drawn on, for this rider
- * (src/KnotScale.tsx): a bar with the knots where it turns green, where the
- * sweet spot starts and ends, and where it becomes too much.
+ * The wind scale the wash and the arrows are drawn on (src/KnotScale.tsx): the
+ * same for every rider, generated from PALETTE stop for stop, with its knots
+ * under it.
  */
 import { memo } from "react";
 import { StyleSheet, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import type { RideStop } from "../../../../force5/src/chartStyle";
-import { windBand, type Rider } from "../../../../force5/src/stars";
+import { PALETTE, windColor } from "../../../../force5/src/weather";
 import { T } from "../../components/Text";
 import { space } from "../../theme/tokens";
 import { hexOf } from "./windLogic";
 
-const TOP = 40;
+/** The bar runs from calm to this, in knots: the storm stops past it are rare. */
+const TOP = 60;
+const TICKS = [10, 20, 30, 40, 50];
+const STOPS = [...PALETTE.map(([kn]) => kn).filter((kn) => kn < TOP), TOP];
 
-export const KnotScale = memo(function KnotScale({
-  stops,
-  rider,
-  faint = false,
-}: {
-  stops: readonly RideStop[];
-  rider: Rider;
-  faint?: boolean;
-}) {
-  if (!stops.length) return null;
-  const b = windBand(rider);
-  const ticks = [b.min, b.sweetLow, b.sweetHigh, b.max].map(Math.round);
-  const shown = stops.filter((s) => s.kn <= TOP);
+export const KnotScale = memo(function KnotScale({ faint = false }: { faint?: boolean }) {
   return (
     <View
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`Wind scale: green from ${ticks[0]} knots, best ${ticks[1]} to ${ticks[2]} knots, too much from ${ticks[3]} knots`}
+      accessibilityLabel="Wind scale: blue under 10 knots, green 10 to 20, yellow by 30, red by 40, purple from 50"
       style={styles.wrap}
     >
       <Svg width="100%" height={10}>
         <Defs>
-          <LinearGradient id="ride" x1="0" y1="0" x2="1" y2="0">
-            {[
-              ...shown.map((s, i) => (
-                <Stop key={i} offset={s.kn / TOP} stopColor={hexOf(s.rgb)} stopOpacity={faint ? 0.55 : 1} />
-              )),
-              <Stop key="end" offset={1} stopColor={hexOf(stops[stops.length - 1].rgb)} stopOpacity={faint ? 0.55 : 1} />,
-            ]}
+          <LinearGradient id="wind" x1="0" y1="0" x2="1" y2="0">
+            {STOPS.map((kn) => (
+              <Stop key={kn} offset={kn / TOP} stopColor={hexOf(windColor(kn))} stopOpacity={faint ? 0.55 : 1} />
+            ))}
           </LinearGradient>
         </Defs>
-        <Rect x={0} y={0} width="100%" height={10} fill="url(#ride)" />
+        <Rect x={0} y={0} width="100%" height={10} fill="url(#wind)" />
       </Svg>
       <View style={styles.ticks}>
-        {ticks.map((kn, i) => (
-          <T
-            key={i}
-            variant="figureSm"
-            tabular
-            style={[styles.tick, { left: `${(kn / TOP) * 100}%` }]}
-          >
+        {TICKS.map((kn) => (
+          <T key={kn} variant="figureSm" tabular style={[styles.tick, { left: `${(kn / TOP) * 100}%` }]}>
             {kn}
           </T>
         ))}

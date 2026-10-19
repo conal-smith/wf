@@ -1,8 +1,6 @@
 import { Info, SlidersHorizontal, Star } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
-import type { RideStop } from "../force5/src/chartStyle";
 import { MODELS, type ModelId } from "../force5/src/models";
-import type { Rider } from "../force5/src/stars";
 import {
   approxMetres,
   SATELLITE_LABEL,
@@ -66,8 +64,6 @@ export default function MapControls({
   satelliteTides,
   focusStyle,
   onFocusStyle,
-  rideStops,
-  rider,
   model,
   modelDisabled,
   onModel,
@@ -94,8 +90,6 @@ export default function MapControls({
   /** What is drawn round the chosen spot: a loupe, a range ring, or nothing. */
   focusStyle: FocusStyle;
   onFocusStyle: (style: FocusStyle) => void;
-  rideStops: readonly RideStop[];
-  rider: Rider;
   model: string | undefined;
   modelDisabled: boolean;
   onModel: (id: ModelId) => void;
@@ -221,7 +215,7 @@ export default function MapControls({
               <i className={`sw sw-${style}`} aria-hidden="true" />
             </label>
           ))}
-          <KnotScale stops={rideStops} rider={rider} faint={windStyle === "wash"} />
+          <KnotScale faint={windStyle === "wash"} />
           <h3>Chart</h3>
           {(Object.keys(CHART_LABEL) as (keyof ChartLayers)[]).map((key) => {
             const box = (

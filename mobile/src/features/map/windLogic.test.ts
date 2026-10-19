@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_RIDER } from "../../../../force5/src/stars";
+import { windColor } from "../../../../force5/src/weather";
 import { colors } from "../../theme/tokens";
 import type { Camera } from "./mapLogic";
-import { appRideStops } from "./mapStyle";
 import {
   advance,
   BINS,
@@ -33,7 +32,6 @@ import {
 const camera: Camera = { center: [-9, 53], zoom: 7, width: 200, height: 300 };
 /** A westerly of 8 m/s everywhere west of 0°. */
 const westerly = (_lat: number, lon: number) => (lon < 0 ? { u: 8, v: 0, gust: 11 } : null);
-const stops = appRideStops(DEFAULT_RIDER);
 const ink = rgbOf(colors.ink);
 
 describe("the wind's styles", () => {
@@ -47,7 +45,7 @@ describe("the wind's styles", () => {
   it("turns colours to hex and back, and tones them toward the ink", () => {
     expect(hexOf([26, 29, 33])).toBe(colors.ink);
     expect(rgbOf(colors.ink)).toEqual([26, 29, 33]);
-    const t = tonedColour(stops, 20, ink);
+    const t = tonedColour(20, ink);
     expect(t.every((v) => v >= 0 && v <= 255)).toBe(true);
   });
 });
@@ -77,19 +75,19 @@ describe("the screen's field", () => {
 
 describe("the arrows", () => {
   it("point downwind, coloured on the rider's scale", () => {
-    const grid = arrowGrid(camera, westerly, stops, ink);
+    const grid = arrowGrid(camera, westerly, true, ink);
     expect(grid.features.length).toBeGreaterThan(20);
     const a = grid.features[0].properties;
     // From the west, so pointing east.
     expect(a.rot).toBe(90);
     expect(a.kn).toBe(16);
-    expect(a.c).toBe(hexOf(tonedColour(stops, 8 * 1.94384449, ink)));
-    expect(arrowGrid(camera, westerly, [], ink).features[0].properties.c).toBe(colors.ink);
+    expect(a.c).toBe(hexOf(tonedColour(8 * 1.94384449, ink)));
+    expect(arrowGrid(camera, westerly, false, ink).features[0].properties.c).toBe(colors.ink);
   });
 
   it("leave out calm water and no water", () => {
-    expect(arrowGrid(camera, () => ({ u: 0.1, v: 0, gust: null }), stops, ink).features).toHaveLength(0);
-    expect(arrowGrid(camera, () => null, stops, ink).features).toHaveLength(0);
+    expect(arrowGrid(camera, () => ({ u: 0.1, v: 0, gust: null }), true, ink).features).toHaveLength(0);
+    expect(arrowGrid(camera, () => null, true, ink).features).toHaveLength(0);
   });
 });
 
@@ -99,21 +97,23 @@ describe("the wash", () => {
   it("paints the view and a third past each edge, strong over the sea", () => {
     const box = washBox(camera);
     const sea = new Uint8Array(box.width * box.height).fill(1);
-    const image = washImage(camera, westerly, stops, grid, sea);
+    const image = washImage(camera, westerly, grid, sea);
     expect(image.width).toBe(box.width);
     expect(image.rgba).toHaveLength(box.width * box.height * 4);
     expect(image.rgba[3]).toBe(Math.round(0.72 * 255));
+    // 8 m/s is about 15.5 kn: the wind scale's green, whoever is riding.
+    expect([...image.rgba.slice(0, 3)]).toEqual(windColor(15.5));
     const [tl, tr, br, bl] = image.coordinates;
     expect(tl[1]).toBe(tr[1]);
     expect(br[0]).toBe(tr[0]);
     expect(bl[0]).toBe(tl[0]);
     // Faint over land, and in between where the sea is not known.
-    expect(washImage(camera, westerly, stops, grid, new Uint8Array(box.width * box.height)).rgba[3]).toBe(Math.round(0.42 * 255));
-    expect(washImage(camera, westerly, stops, grid, null).rgba[3]).toBe(Math.round(0.55 * 255));
+    expect(washImage(camera, westerly, grid, new Uint8Array(box.width * box.height)).rgba[3]).toBe(Math.round(0.42 * 255));
+    expect(washImage(camera, westerly, grid, null).rgba[3]).toBe(Math.round(0.55 * 255));
   });
 
   it("feathers the model's edge", () => {
-    const image = washImage(camera, westerly, stops, { ...grid, west: -9.2 }, null);
+    const image = washImage(camera, westerly, { ...grid, west: -9.2 }, null);
     const row = Array.from({ length: image.width }, (_, x) => image.rgba[x * 4 + 3]);
     expect(row[0]).toBe(0);
     expect(row[row.length - 1]).toBe(Math.round(0.55 * 255));

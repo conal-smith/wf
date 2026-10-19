@@ -95,20 +95,45 @@ describe("wind conventions", () => {
     expect(windColor(-2)).toEqual(windColor(0));
     expect(windColor(100)).toEqual(windColor(65));
   });
-  it("uses blue below 10 kn, green through 30 kn, then warm and purple speed bands", () => {
-    for (const k of [0, 5, 9]) {
-      const [r, g, b] = windColor(k);
-      expect(b).toBeGreaterThan(g);
-      expect(b).toBeGreaterThan(r);
-    }
-    for (const k of [10, 15, 20, 25, 30]) {
-      const [r, g, b] = windColor(k);
-      expect(g).toBeGreaterThan(r);
-      expect(g).toBeGreaterThan(b);
-    }
-    expect(windColor(35)[0]).toBeGreaterThan(windColor(35)[1]);
-    expect(windColor(45)[0]).toBeGreaterThan(windColor(45)[1] * 2);
-    expect(windColor(65)[2]).toBeGreaterThan(windColor(65)[1]);
+  it("uses blue below 10 kn, green to 25, yellow by 30, then orange, red, purple and nearly black", () => {
+    const hue = (k: number) => {
+      const [r, g, b] = windColor(k).map((v) => v / 255);
+      const max = Math.max(r, g, b),
+        d = max - Math.min(r, g, b);
+      const h =
+        max === r
+          ? ((g - b) / d) % 6
+          : max === g
+            ? (b - r) / d + 2
+            : (r - g) / d + 4;
+      return (h * 60 + 360) % 360;
+    };
+    for (const k of [0, 5, 9]) expect(hue(k), `${k} kn`).toBeGreaterThan(200);
+    for (const k of [0, 5, 9]) expect(hue(k), `${k} kn`).toBeLessThan(240);
+    for (const k of [10, 15, 20]) expect(hue(k), `${k} kn`).toBeGreaterThan(90);
+    for (const k of [10, 15, 20]) expect(hue(k), `${k} kn`).toBeLessThan(170);
+    expect(hue(25)).toBeGreaterThan(60);
+    expect(hue(25)).toBeLessThan(90);
+    expect(hue(30)).toBeGreaterThan(45);
+    expect(hue(30)).toBeLessThan(60);
+    expect(hue(35)).toBeGreaterThan(25);
+    expect(hue(35)).toBeLessThan(45);
+    expect(hue(40)).toBeLessThan(20);
+    expect(hue(45)).toBeGreaterThan(330);
+    expect(hue(50)).toBeGreaterThan(290);
+    expect(hue(50)).toBeLessThan(330);
+    // Deepening: calm is the palest blue, and the storm end nearly black.
+    const light = (k: number) => windColor(k).reduce((a, v) => a + v, 0);
+    expect(light(0)).toBeGreaterThan(light(5));
+    expect(light(5)).toBeGreaterThan(light(9));
+    expect(light(50)).toBeGreaterThan(light(60));
+    expect(light(60)).toBeGreaterThan(light(65));
+    expect(Math.max(...windColor(65))).toBeLessThan(60);
+  });
+  it("blends between its stops rather than stepping", () => {
+    const [a, b, c] = [windColor(20), windColor(22.5), windColor(25)];
+    for (let i = 0; i < 3; i++)
+      expect(b[i]).toBe(Math.round((a[i] + c[i]) / 2));
   });
 });
 describe("forecast integrity and freshness", () => {

@@ -21,7 +21,6 @@ import type {
   StyleSpecification,
 } from "maplibre-gl";
 import { basemapColours } from "./basemap";
-import { windBand, type Rider } from "./stars";
 
 export const OPENFREEMAP = "https://tiles.openfreemap.org";
 export const TILES_URL = `${OPENFREEMAP}/planet`;
@@ -371,68 +370,4 @@ export function chartStyle(
       ),
     ],
   };
-}
-
-/* ---- the wind as a rider reads it ---------------------------------------- */
-
-export type Rgb = [number, number, number];
-
-/** One stop of the rider's wind scale: knots, and the colour there. */
-export interface RideStop {
-  kn: number;
-  rgb: Rgb;
-  /** The theme token the colour came from, for the key's swatches. */
-  token: string;
-}
-
-const hex = (value: string): Rgb | null => {
-  const m = /^#?([0-9a-f]{6})/i.exec(value.trim());
-  if (!m) return null;
-  const n = parseInt(m[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-};
-
-/**
- * The wind scale for this rider: blue below their floor, greens deepening
- * from the floor into the middle of the sweet spot, yellow at its top, orange
- * to red past what they can hold, and the storm colour beyond. The knots come
- * from `windBand`, so the colours follow the rider's level and weight.
- */
-export function rideStops(
-  rider: Rider,
-  root: Pick<CSSStyleDeclaration, "getPropertyValue">,
-): RideStop[] {
-  const b = windBand(rider);
-  const stops: [number, string][] = [
-    [0, "calm"],
-    [Math.max(1, b.min - 3), "light"],
-    [b.min, "floor"],
-    [b.sweetLow, "good"],
-    [(b.sweetLow + b.sweetHigh) / 2, "best"],
-    [b.sweetHigh, "top"],
-    [(b.sweetHigh + b.max) / 2, "much"],
-    [b.max, "over"],
-    [b.max + 10, "storm"],
-  ];
-  return stops.map(([kn, name]) => ({
-    kn,
-    token: `--ride-${name}`,
-    rgb: hex(root.getPropertyValue(`--ride-${name}`)) ?? [128, 128, 128],
-  }));
-}
-
-/** The colour at a speed on the rider's scale, interpolated between stops. */
-export function rideColour(stops: readonly RideStop[], kn: number): Rgb {
-  if (kn <= stops[0].kn) return stops[0].rgb;
-  for (let i = 1; i < stops.length; i++) {
-    if (kn <= stops[i].kn) {
-      const a = stops[i - 1];
-      const b = stops[i];
-      const t = (kn - a.kn) / (b.kn - a.kn || 1);
-      return [0, 1, 2].map((k) =>
-        Math.round(a.rgb[k] + (b.rgb[k] - a.rgb[k]) * t),
-      ) as Rgb;
-    }
-  }
-  return stops[stops.length - 1].rgb;
 }
