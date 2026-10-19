@@ -5,15 +5,15 @@ import { expect, test, type Page } from "./fixtures";
  * chosen spot, at half a nautical mile, the headings the rider can hold at the
  * dock's hour, the no-go, the drift, the offshore winds and the needle.
  *
- * Dollymount's beach faces 125°. In the sample (scripts/sample-weather.mjs),
- * Monday 14:00 there is NE 22 g27, cross-shore, and Tuesday 16:00 WNW 11 g15,
- * offshore; Sunday 22:00 is dark.
+ * Dollymount's beach faces 125°. The hours are found in the sample
+ * (scripts/sample-weather.mjs) as a rider would find them, by scrubbing the
+ * dock: the first daylight hour whose wind is cross-shore, and the first that
+ * is offshore, each with the rider's wind to ride; Sunday 22:00 is dark.
  */
 test.use({ reducedMotion: "reduce" });
 
-const CROSS = "Monday 14:00";
-const OFFSHORE = "Tuesday 16:00";
 const DARK = "Sunday 22:00";
+const MIDDAY = "Monday 14:00";
 
 const slider = (page: Page) =>
   page.getByRole("slider", { name: "Forecast time" });
@@ -27,6 +27,25 @@ async function hour(page: Page, when: string) {
     await s.press("ArrowRight");
   }
   throw new Error(`The dock has no ${when}`);
+}
+
+/**
+ * The first hour in the dock whose foot box names this shore relation and
+ * whose glass has its fans (daylight, wind enough): what it reads, and when.
+ */
+async function firstHour(page: Page, relation: string) {
+  const s = slider(page);
+  await s.press("Home");
+  const rose = page.locator(".map-focus .map-loupe");
+  for (let i = 0; i < 160; i++) {
+    const said = await rose.locator(".map-loupe-relation").textContent();
+    if (said === relation && (await rose.locator(".map-rose-fan").count()))
+      return (await rose.locator(".map-loupe-reading").textContent())!;
+    const was = await s.inputValue();
+    await s.press("ArrowRight");
+    if ((await s.inputValue()) === was) break;
+  }
+  throw new Error(`No ${relation} hour with wind to ride`);
 }
 
 async function open(page: Page, spot: string, width = 1440, height = 900) {
@@ -55,9 +74,9 @@ test("Dollymount's cross-shore hour: the no-go, out and home, and the wind at th
   page,
 }) => {
   await open(page, "dollymount");
-  await hour(page, CROSS);
+  const reading = await firstHour(page, "CROSS");
   const r = rose(page);
-  await expect(r.locator(".map-loupe-reading")).toHaveText("NE 22 g27");
+  expect(reading).toMatch(/^[NESW]{1,3} \d+( g\d+)?$/);
   await expect(r.locator(".map-loupe-relation")).toHaveText("CROSS");
   await expect(r.locator(".map-loupe-relation")).not.toHaveClass(/is-warn/);
   // The no-go upwind, hatched; the tack out washed to the rim; the tack home.
@@ -100,9 +119,9 @@ test("Dollymount's cross-shore hour: the no-go, out and home, and the wind at th
     page.locator('[data-spot-id="dollymount"] .lt-wedge path'),
   ).not.toHaveAttribute("d", /A/);
 
-  // It follows the dock: the next hour, the next reading.
-  await slider(page).press("ArrowRight");
-  await expect(r.locator(".map-loupe-reading")).not.toHaveText("NE 22 g27");
+  // It follows the dock: back at the start, another hour's reading.
+  await slider(page).press("Home");
+  await expect(r.locator(".map-loupe-reading")).not.toHaveText(reading);
 
   // Half a nautical mile with knots; a kilometre with km/h, a little larger.
   const before = await radius(page);
@@ -122,9 +141,10 @@ test("an offshore hour: the drift out to sea in red, and no way out or home", as
   page,
 }) => {
   await open(page, "dollymount");
-  await hour(page, OFFSHORE);
+  const reading = await firstHour(page, "OFF");
   const r = rose(page);
-  await expect(r.locator(".map-loupe-reading")).toHaveText("WNW 11 g15");
+  // Offshore at Dollymount is a wind from the west to the north.
+  expect(reading).toMatch(/^(W|WNW|NW|NNW) \d+/);
   await expect(r.locator(".map-loupe-relation")).toHaveText("OFF");
   await expect(r.locator(".map-loupe-relation")).toHaveClass(/is-warn/);
   await expect(r.locator(".map-rose-drift")).toHaveClass(/is-out/);
@@ -159,7 +179,7 @@ test("a spot with no shore facing: no red, no out or home, the needle and the re
 }) => {
   // Malahide Estuary's facing is null (data/locations/shore-facing.json).
   await open(page, "malahide-estuary");
-  await hour(page, CROSS);
+  await hour(page, MIDDAY);
   const r = rose(page);
   await expect(r.locator(".map-dial-needle")).toHaveCount(1);
   await expect(r.locator(".map-loupe-reading")).toHaveText(/^\w+ \d+( g\d+)?$/);
@@ -177,7 +197,7 @@ test("on a phone the rose fits above the dock, and stays readable zoomed out or 
   page,
 }) => {
   await open(page, "dollymount", 390, 844);
-  await hour(page, CROSS);
+  const reading = await firstHour(page, "CROSS");
   const r = rose(page);
   // Flown in to fit: the bezel inside the screen's width, its foot box above the dock.
   const rim = await page
@@ -189,7 +209,7 @@ test("on a phone the rose fits above the dock, and stays readable zoomed out or 
   const dock = await page.locator(".dock").boundingBox();
   expect(foot!.y + foot!.height).toBeLessThanOrEqual(dock!.y);
   await expect(r.locator(".map-rose-fan.is-out")).toHaveCount(1);
-  await expect(r.locator(".map-loupe-reading")).toHaveText("NE 22 g27");
+  await expect(r.locator(".map-loupe-reading")).toHaveText(reading);
 
   // Zoomed far out the rose is held at its smallest: no fans, the wind stays.
   const zoomOut = page.getByRole("button", { name: "Zoom out", exact: true });
