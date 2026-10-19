@@ -826,7 +826,8 @@ function MoreRows({
 
 /**
  * The tide under the hours: a curve per day, its turns named. Each turn gets
- * a dot on the curve and a short label, "High 17:35", in a band of its own:
+ * a dot on the curve and a short label, its time and its height ("17:35
+ * 4.1m", the height in a lighter ink), in a band of its own:
  * the highs along the top of the row and the lows along the foot, so the two
  * never meet however close the curve brings them. Where the three- and
  * six-hourly columns narrow, two turns can stand a column apart; a label that
@@ -919,6 +920,9 @@ function TideRow({
     X: number;
     Y: number;
     high: boolean;
+    time: string;
+    height: string;
+    /** The label as it is laid out: the time, a space and the height. */
     text: string;
     full: string;
   }[] = [];
@@ -957,12 +961,15 @@ function TideRow({
       const t = Date.parse(event.time);
       const high = event.kind === "high";
       const word = high ? "High" : "Low";
+      const height = `${event.height.toFixed(1)}m`;
       turns.push({
         key: event.time,
         X: xOf(columns, day, g, t),
         Y: y(event.height),
         high,
-        text: clock(t),
+        time: clock(t),
+        height,
+        text: `${clock(t)} ${height}`,
         full: `${word} tide ${clock(t)} · ${event.height.toFixed(1)} m`,
       });
     }
@@ -1024,7 +1031,7 @@ function TideRow({
                 y={turn.high ? 10 : H - 2}
                 textAnchor={label.anchor}
               >
-                {turn.text}
+                {turn.time} <tspan className="tide-height">{turn.height}</tspan>
               </text>
             )}
           </g>

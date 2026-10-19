@@ -365,6 +365,11 @@ table.tt {
   stroke: var(--color-ground);
   stroke-width: 3px;
 }
+/* The turn's height beside its time, in a lighter ink: the time is what a
+   rider plans by. */
+.tide-height {
+  fill: var(--color-ink-muted);
+}
 .tide-none {
   font: italic 12.5px var(--font-body);
   fill: var(--color-ink-muted);

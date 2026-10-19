@@ -189,10 +189,12 @@ test("the week is one strip of hours round the clock, with no day slider over it
     page.locator(".dock tr.tt-from td .g-arrow").first(),
   ).toBeVisible();
   await expect(page.locator(".dock tr.tt-from")).not.toContainText(/[NSEW]/);
-  // The tide's turns are just their times on the curve; the turn and the
-  // height in full are in its title.
+  // The tide's turns are their times and heights on the curve; the turn and
+  // the height in full are in its title.
   const tide = page.locator(".dock .tide-row");
-  await expect(tide.locator(".tide-label").first()).toHaveText(/^\d\d:\d\d$/);
+  await expect(tide.locator(".tide-label").first()).toHaveText(
+    /^\d\d:\d\d \d+\.\dm$/,
+  );
   await expect(tide.locator("g > title").first()).toHaveText(
     /^(High|Low) tide \d\d:\d\d · \d+\.\d m$/,
   );
