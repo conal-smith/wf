@@ -10,7 +10,10 @@ import sys
 import tempfile
 import unittest
 
-from PIL import Image
+try:  # The pictures need Pillow; CI installs only the worker's requirements.
+    from PIL import Image
+except ImportError:
+    Image = None
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import publish  # noqa: E402
@@ -61,6 +64,7 @@ class GeometryTest(unittest.TestCase):
         self.assertEqual(spots.area_for([dict(AREA, cover=None)], -6, 54)["id"], "ireland")
 
 
+@unittest.skipUnless(Image, "Pillow is not installed")
 class PictureTest(unittest.TestCase):
     def test_centred_on_the_place(self):
         tiles = {k: png(c) for k, c in QUARTERS.items()}
@@ -94,7 +98,8 @@ class PublishTest(unittest.TestCase):
             entry = {"id": place, "lonLat": [-6, 53]}
             for tide in ("high", "low"):
                 entry[tide] = f"{place}-{tide}.webp"
-                Image.new("RGB", (4, 2)).save(os.path.join(folder, entry[tide]), "WEBP")
+                with open(os.path.join(folder, entry[tide]), "wb") as fh:
+                    fh.write(f"{place} {tide}".encode())  # publish.py reads only the bytes
             entries.append(entry)
         with open(os.path.join(folder, "spots.json"), "w") as fh:
             json.dump({"schemaVersion": 1, "kind": "satellite-spots", "spots": entries}, fh)

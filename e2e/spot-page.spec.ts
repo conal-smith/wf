@@ -494,7 +494,10 @@ test("the place from above: framed under the header, at high or low tide, marked
 test("no picture leaves no gap: none published, none of this place, or one that will not load", async ({
   page,
 }) => {
-  // The e2e site publishes no pictures, as production before its first set.
+  // No list published, as production before its first set: the site answers 404.
+  await page.route("**/satellite/spots.json", (route) =>
+    route.fulfill({ status: 404 }),
+  );
   await page.goto("/spot/brandon");
   await expect(heading(page)).toBeVisible({ timeout: 30000 });
   await expect(page.locator("[data-rider-chip]")).toBeVisible();
@@ -502,6 +505,7 @@ test("no picture leaves no gap: none published, none of this place, or one that 
   await expect(page.locator("[data-satellite-source]")).toHaveCount(0);
 
   // A picture that is listed but not there takes its frame away with it.
+  await page.unrouteAll();
   await withPictures(page, false);
   await page.reload();
   await expect(heading(page)).toBeVisible({ timeout: 30000 });
