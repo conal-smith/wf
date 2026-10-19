@@ -57,8 +57,9 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
-  // Back to HARMONIE: the map keeps its last frame there, and the chip offers
-  // the run that reaches the hour.
+  // Back to HARMONIE: it does not reach the hour, so the map draws no wind
+  // there (never its last frame), says so, and the chip offers the run that
+  // reaches the hour.
   await layers.click();
   await page.locator('[data-model="harmonie"]').click();
   await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
@@ -70,6 +71,8 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   await expect(
     page.getByRole("button", { name: /Show ECMWF on the map/ }),
   ).toBeVisible();
+  await expect(page.locator(".particle-canvas")).toHaveClass(/is-blank/);
+  await expect(page.locator(".map-model")).toContainText("no wind drawn");
 });
 
 test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", async ({

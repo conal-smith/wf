@@ -48,6 +48,12 @@
   height: 100%;
   pointer-events: none;
   z-index: 1;
+  transition: opacity var(--transition-duration-base) ease;
+}
+/* An hour the map's run does not reach: no wind on the chart, rather than
+   another hour's (force5/src/windLayer.ts). */
+.particle-canvas.is-blank {
+  opacity: 0;
 }
 .map-canvas .maplibregl-marker {
   z-index: 3;
@@ -1322,6 +1328,17 @@
 
 /* ---------- a phone: the boxes close in ---------- */
 @media (max-width: 720px) {
+  /* The spot's tools stand beside the model's label: why there is no wind
+     goes unsaid on the screen there (the streaks being gone says it), and is
+     kept for a screen reader, as .sr-only keeps text. */
+  .map-model-more {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
   .map-head {
     top: 10px;
     left: 10px;

@@ -166,6 +166,8 @@ export function createWindLayer(
   const ink = rgbOf(options.ink);
   const density = options.density ?? 0.4;
   let frame: Frame | null = null;
+  /** Clears the canvas after a fade, should its transition never end. */
+  let blankTimer = 0;
   let style: WindStyle = "ink";
   let paused = false;
   let destroyed = false;
@@ -982,6 +984,20 @@ export function createWindLayer(
   return {
     setFrame(next) {
       frame = next;
+      // No frame: the hour on screen is one the run does not reach. Its lines
+      // fade out (map.css, `.is-blank`) rather than standing still on the
+      // canvas as another hour's wind, and the canvas is cleared once they
+      // have, so they cannot come back as they were.
+      canvas.classList.toggle("is-blank", !next);
+      if (!next) {
+        drawn = 0;
+        const clear = () => {
+          if (!frame && !destroyed) ctx.clearRect(0, 0, width, height);
+        };
+        canvas.addEventListener("transitionend", clear, { once: true });
+        window.clearTimeout(blankTimer);
+        blankTimer = window.setTimeout(clear, 1000);
+      }
       // A new hour, the same lines: they follow its field from here. Its tiles
       // for this view are in (loadFrame waited for them) unless the camera has
       // moved since they were asked for.
@@ -1011,6 +1027,7 @@ export function createWindLayer(
       destroyed = true;
       cancelAnimationFrame(raf);
       window.clearTimeout(washTimer);
+      window.clearTimeout(blankTimer);
       map.off("move", onMove);
       map.off("moveend", onMoveEnd);
       map.off("resize", onMoveEnd);

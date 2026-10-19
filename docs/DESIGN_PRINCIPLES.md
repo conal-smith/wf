@@ -311,6 +311,18 @@ Windy, Windguru and Windfinder draw theirs: pale blue in a calm, deepening to
 moves the stars, the wedge and the lights, never the colour. The map's key
 (`src/KnotScale.tsx`) is generated from the same stops.
 
+**2026-10-19 — The map never draws one hour under another's reading.** Past
+the map model's run (HARMONIE ends about 60 hours out) the map used to keep the
+last frame it had painted, while the lights, the dock and a light's label read
+the selected hour from the blend: a rider saw streaks from the south-west under
+arrows saying "S 10" days later, and took it for a wrong direction. Now the
+streaks fade out and the wash goes at any hour the map's run does not reach,
+and the label where the map names its model says so ("HARMONIE ends Wed 22:00
+· no wind drawn"), as does "Model on the map" in the layers. The map still
+changes model only when the reader asks (docs/FORECAST_DATA_PLAN.md: switching
+on a far click was ruled a trap); the dock's chip, "Show ECMWF on the map", is
+how they ask.
+
 ---
 
 ## Still open
