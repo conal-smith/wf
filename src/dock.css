@@ -1,7 +1,8 @@
 /*
- * The dock: the chosen spot's week as one strip of hours under a fixed
- * cursor, scrolled by hand or stepped from the keys. Paper with a double rule
- * along its top; figures in the mono face.
+ * The dock: the chosen spot's week as one strip of hours, scrolled by hand or
+ * stepped from the keys, the chosen hour framed by the red pen and the time
+ * now ruled down it. Paper with a double rule along its top; figures in the
+ * mono face.
  */
 .dock {
   position: relative;
@@ -166,11 +167,15 @@
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
+  /* Room for the foot of the pen's frame, which overflow-y would clip. */
+  padding-bottom: 5px;
 }
 .tt-wrap::-webkit-scrollbar {
   display: none;
 }
 table.tt {
+  /* Over the line at now (.tt-under), so the figures it passes stay on top. */
+  position: relative;
   border-collapse: collapse;
   table-layout: fixed;
   font-family: var(--font-mono);
@@ -206,6 +211,8 @@ table.tt {
   padding: 0 6px;
   font: 500 10px var(--font-mono);
   color: var(--color-ink-muted);
+  /* The time now, written in the day row, slides under the day's name. */
+  background: var(--color-ground);
 }
 .tt tr.tt-day td b {
   font: 650 13px var(--font-display);
@@ -267,12 +274,12 @@ table.tt {
 .tt td.past {
   opacity: 0.42;
 }
-.tt td.c-sel {
-  background-color: color-mix(in srgb, var(--color-ink) 7%, transparent);
-}
+/* The chosen hour, written in the pen's ink: the pen's frame (.pen-frame)
+   is the rest of the mark, and nothing is filled. */
 .tt tr.tt-hour td.c-sel {
-  background: var(--color-ink);
-  color: var(--color-ink-inverse);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-pen-ink);
 }
 .tt tr.tt-stars td .hour-stars {
   vertical-align: middle;
@@ -359,15 +366,45 @@ table.tt {
 .tide-dot {
   fill: var(--color-chart-magenta);
 }
-/* The cursor: the hour the map shows, in the middle of the strip through the
-   week and out at the ends (ForecastDock places it as the strip scrolls). */
-.dk-cur {
+/* The red pen on the hours (ui/penPaths.ts): twice round the chosen hour,
+   on its border, and a line down the hours at the time now, the time written
+   over it in the pen's hand. The frame is drawn in by ForecastDock, which
+   holds it for a reader who asks for less motion. */
+.pen-frame {
+  fill: none;
+  stroke: var(--color-pen);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  opacity: 0.88;
+}
+.pen-frame.is-second {
+  stroke-width: 1.4;
+  opacity: 0.62;
+}
+.tt-under {
   position: absolute;
-  bottom: 0;
-  width: 0;
-  border-left: 1.5px solid color-mix(in srgb, var(--color-pen) 85%, transparent);
+  left: 0;
+  top: 0;
+  overflow: visible;
   pointer-events: none;
-  z-index: 3;
+}
+.pen-now,
+.pen-now-arrow {
+  fill: none;
+  stroke: var(--color-pen);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+.pen-now-arrow {
+  stroke-width: 1.4;
+}
+.pen-now-time {
+  font: 13px var(--font-hand);
+  fill: var(--color-pen-ink);
 }
 
 /* ---------- a phone: a sheet along the foot of the screen ---------- */

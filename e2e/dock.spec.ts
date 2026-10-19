@@ -90,14 +90,29 @@ async function openDock(page: Page, width = 1440, height = 900) {
 const slider = (page: Page) =>
   page.getByRole("slider", { name: "Forecast time" });
 
-/** Where the selected column sits against the cursor, in pixels. */
+/**
+ * How far, in pixels, the selected hour is from where the strip stands: the
+ * scroll against the one that brings that hour to the strip's middle (its
+ * snap mark), and the pen's frame against the hour's own column.
+ */
 async function offCursor(page: Page) {
   return page.evaluate(() => {
-    const cell = document.querySelector(".dock tr.tt-hour td.c-sel");
-    const cursor = document.querySelector(".dock .dk-cur");
-    if (!cell || !cursor) return Infinity;
+    const wrap = document.querySelector<HTMLElement>(".dock .tt-wrap");
+    const cell = document.querySelector<HTMLElement>(
+      ".dock tr.tt-hour td.c-sel",
+    );
+    const frame = document.querySelector(".dock .pen-frame");
+    if (!wrap || !cell || !frame) return Infinity;
+    const snap =
+      wrap.querySelectorAll<HTMLElement>(".tt-snaps i")[Number(cell.dataset.i)];
+    const max = wrap.scrollWidth - wrap.clientWidth;
+    const scroll = Math.abs(
+      wrap.scrollLeft - Math.min(max, parseFloat(snap.style.left)),
+    );
     const c = cell.getBoundingClientRect();
-    return Math.abs(c.left + c.width / 2 - cursor.getBoundingClientRect().left);
+    const f = frame.getBoundingClientRect();
+    const framed = Math.abs(c.left + c.width / 2 - (f.left + f.width / 2));
+    return Math.max(scroll, framed);
   });
 }
 
@@ -180,7 +195,7 @@ test("the week is one strip of hours round the clock, with no day slider over it
   );
   await expect(tide).not.toContainText(/\b(HW|LW)\b/);
   // The time is a slider still, for the keys and a screen reader, named
-  // by its day and hour; on the screen it is the cursor over the hours.
+  // by its day and hour; on the screen it is the pen's frame round an hour.
   await expect(slider(page)).toHaveAttribute(
     "aria-valuetext",
     /^(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day \d\d:\d\d$/,
@@ -199,11 +214,11 @@ test("the strip and the slider move together, by swipe, wheel and key", async ({
 }) => {
   await openDock(page);
   const wrap = page.locator(".dock .tt-wrap");
-  // The time moving scrolls the strip: the hour sits under the cursor.
+  // The time moving scrolls the strip: the hour comes to its middle, framed.
   await slider(page).fill("12");
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   // The strip scrolling moves the time, and the slider with it: whatever
-  // comes to rest under the cursor is the hour.
+  // comes to rest in the middle is the hour.
   const cw = await page
     .locator(".dock tr.tt-hour td[data-i]")
     .first()
@@ -301,7 +316,7 @@ test("the strip and the slider move together, by swipe, wheel and key", async ({
   await slider(page).press("Home");
   await expect(slider(page)).toHaveValue("0");
   // At the start the table sits against the labels, with no blank paper
-  // before it, and the cursor comes out to the first hour instead.
+  // before it, and the frame comes out to the first hour instead.
   await expect.poll(() => wrap.evaluate((el) => el.scrollLeft)).toBe(0);
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   // The same hour the next day, not as many columns into it: the first day
@@ -326,7 +341,7 @@ test("a night hour is a column of its own: tapped, keyed and under the line", as
   await expect(slider(page)).toHaveValue(String(now));
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   // The small hours of Monday: a tap on one selects it, the slider says so,
-  // and the red line stands on that column, not on the morning's.
+  // and the pen's frame goes round that column, not the morning's.
   const small = sampleStrip.findIndex(
     (c) => c.date !== sampleStrip[0].date && c.hour === 3,
   );
@@ -611,7 +626,7 @@ test("the blend draws every model that covers the spot, on the strip's hours", a
   const chart = page.locator(".dock .blend-chart");
   await expect(chart).toBeVisible();
   expect(await chart.locator(".model-line").count()).toBeGreaterThan(3);
-  // The tide still runs under it, and the cursor over both. The chart's
+  // The tide still runs under it. The chart's
   // label column is its unit and its scale, without a name.
   await expect(page.locator(".dock .tide-row")).toBeVisible();
   const scale = page.locator(".dock .dk-lab-blend");

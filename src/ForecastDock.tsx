@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "../ui/Button";
+import { arrowPath, framePath, stemPath, type KeepOut } from "../ui/penPaths";
 import { Segmented } from "../ui/Segmented";
 import { StarGlyphs } from "../ui/StarGlyphs";
 // Only when asked for: the chart's Blend view.
@@ -469,6 +470,143 @@ function xOf(
 }
 
 /**
+ * Where a time falls along the whole strip, between its columns' centres:
+ * a column is its hour, so 14:20 is a third of the way from 14's centre to
+ * 15's. Null before the strip's first hour or after its last.
+ */
+function stripX(columns: readonly StripColumn[], g: StripGeometry, t: number) {
+  const n = columns.length;
+  if (!n) return null;
+  const centre = (i: number) => g.x[i] + g.w[i] / 2;
+  const step = n > 1 ? columns[1].time - columns[0].time : 3600000;
+  if (t < columns[0].time)
+    return columns[0].time - t <= step / 2
+      ? centre(0) - ((columns[0].time - t) / step) * g.w[0]
+      : null;
+  for (let i = 0; i < n - 1; i++)
+    if (t < columns[i + 1].time)
+      return (
+        centre(i) +
+        ((t - columns[i].time) / (columns[i + 1].time - columns[i].time)) *
+          (centre(i + 1) - centre(i))
+      );
+  return t - columns[n - 1].time <= 3600000 / 2
+    ? centre(n - 1) + ((t - columns[n - 1].time) / 3600000) * g.w[n - 1]
+    : null;
+}
+
+/** The pen's handwriting at the time now: Kalam's advance at 13px, near enough. */
+const HAND_CHAR = 6.4;
+
+/**
+ * Now, as the red pen marks it: a line down the hours at the time, drawn
+ * under the table so the figures it passes stay on top of it, and the time
+ * written over it in the day row with an arrow down to the line. The time
+ * goes to the right of the line, or to its left where the next day's name
+ * stands; the day's own name, sticky at the strip's left, covers it as the
+ * strip scrolls past.
+ */
+function NowMark({
+  columns,
+  days,
+  g,
+  now,
+  top,
+  height,
+}: {
+  columns: readonly StripColumn[];
+  days: readonly StripDay[];
+  g: StripGeometry;
+  now: number;
+  /** Where the hours start: the line runs from there to the foot. */
+  top: number;
+  height: number;
+}) {
+  const x = stripX(columns, g, now);
+  if (x === null) return null;
+  const text = clock(now);
+  const width = text.length * HAND_CHAR;
+  // The day now falls in, and the next one, whose name stands at its start.
+  const today = days.findIndex(
+    (day) =>
+      x >= g.x[day.start] &&
+      x <= g.x[day.start + day.count - 1] + g.w[day.start + day.count - 1],
+  );
+  const next = days[today + 1];
+  const nextAt = next ? g.x[next.start] : Infinity;
+  // A day's name and date take some 60px from its start.
+  const ownName = today >= 0 ? g.x[days[today].start] + 66 : -Infinity;
+  const reach = Math.max(16, ownName - x);
+  const right = x + reach + 3 + width + 4 < Math.min(nextAt, g.total);
+  const side = right ? 1 : -1;
+  const seed = Math.floor(now / 60000);
+  const arrow = arrowPath(x, top - 2, side, seed, right ? reach : 16);
+  return (
+    <svg
+      className="tt-under"
+      width={g.total}
+      height={height}
+      aria-hidden="true"
+      data-now={text}
+    >
+      <path className="pen-now" d={stemPath(x, top - 1, height - 2, seed)} />
+      <path className="pen-now-arrow" d={arrow.d} />
+      <text
+        className="pen-now-time"
+        x={arrow.from.x + side * 2}
+        y={arrow.from.y + 4}
+        textAnchor={right ? "start" : "end"}
+      >
+        {text}
+      </text>
+    </svg>
+  );
+}
+
+/**
+ * Boxes, in the pen layer's own pixels, of what the frame round the chosen
+ * hour must not cross: the tide's times and dots, which are placed freely
+ * and straddle the hours, and any figure or glyph in the column or its
+ * neighbours that reaches into the pen's lane along a border (on a phone,
+ * five star places fill a column edge to edge).
+ */
+function keepOut(
+  wrap: HTMLElement,
+  pen: SVGSVGElement,
+  g: StripGeometry,
+  at: number,
+): KeepOut[] {
+  const origin = pen.getBoundingClientRect();
+  const lanes = [g.x[at], g.x[at] + g.w[at]];
+  const out: KeepOut[] = [];
+  const add = (el: Element, pad: number) => {
+    const b = el.getBoundingClientRect();
+    if (!b.width) return;
+    out.push({
+      x: b.left - origin.left - pad,
+      y: b.top - origin.top - pad,
+      w: b.width + pad * 2,
+      h: b.height + pad * 2,
+    });
+  };
+  for (let k = at - 1; k <= at + 1; k++)
+    wrap
+      .querySelectorAll(
+        `td[data-i="${k}"] svg, td[data-i="${k}"] b, td[data-i="${k}"] span:not(:has(*))`,
+      )
+      .forEach((el) => {
+        const b = el.getBoundingClientRect();
+        const left = b.left - origin.left;
+        const right = b.right - origin.left;
+        if (lanes.some((x) => left < x + 2.5 && right > x - 2.5)) add(el, 1.5);
+      });
+  wrap
+    .querySelectorAll(".tide-row text, .tide-row circle")
+    .forEach((el) => add(el, el.tagName === "text" ? 2 : 1.6));
+  return out;
+}
+
+/**
  * The rows below the fold: the sea, the sky, the air and the rain, one native
  * step per column (a code or an amount does not survive being interpolated),
  * and the water's measured temperature where a station is in range.
@@ -908,18 +1046,13 @@ export default function ForecastDock(props: Props) {
   useEffect(() => {
     if (view === "blend" && !isPoint) onWantModels?.();
   }, [view, isPoint]);
-  // The scroll that brings each hour under the cursor, and where the cursor
-  // stands at a scroll: still in the middle through the week, walking out to
-  // the ends so the first hour sits against the labels (see `stripTrack`).
+  // The scroll that brings each hour to the strip's cursor, and where that
+  // point stands at a scroll: still in the middle through the week, walking
+  // out to the ends so the first hour sits against the labels (see
+  // `stripTrack`). It is not drawn: the pen's frame marks the hour there.
   const track = useMemo(() => stripTrack(g, wrapWidth), [g, wrapWidth]);
   const shape = useRef({ g, track });
   shape.current = { g, track };
-  const cursor = useRef<HTMLDivElement>(null);
-  const placeCursor = () => {
-    const el = wrap.current;
-    if (el && cursor.current)
-      cursor.current.style.left = `${label + track.cursorAt(el.scrollLeft)}px`;
-  };
   const column = columns[selected];
 
   // The blend, only while it is the view: the chart reads every member. The
@@ -1038,7 +1171,7 @@ export default function ForecastDock(props: Props) {
     const going = programmatic.current;
     const elsewhere = !!going && Math.abs(going.left - reach) >= 1;
     const here = Math.abs(el.scrollLeft - left) < 1;
-    if (here && !elsewhere) return placeCursor();
+    if (here && !elsewhere) return;
     const animate = smooth && !reducedMotion && !here;
     wheeling.current?.letGo();
     clearTimeout(scrollEnd.current);
@@ -1057,7 +1190,6 @@ export default function ForecastDock(props: Props) {
   }, [placeKey]);
 
   const onScroll = () => {
-    placeCursor();
     const going = programmatic.current;
     if (going) {
       const el = wrap.current;
@@ -1115,9 +1247,17 @@ export default function ForecastDock(props: Props) {
     };
   }, []);
 
-  // The cursor, where the scroll has put it; and the selected column, marked
-  // in place rather than by re-rendering the table.
-  useLayoutEffect(placeCursor);
+  // The selected column, marked in place rather than by re-rendering the
+  // table, and the pen's frame round it: twice round, on the column's own
+  // border so it hides none of its figures, lifting over any that reach the
+  // border. A new hour is drawn in as a hand would draw it; while the hours
+  // are run through, each is simply there, and the pen catches up when they
+  // stop.
+  const tableHeight =
+    rows.day + rows.hour + rowsUnderHours(rows, view, isPoint, wing, more);
+  const pen = useRef<SVGSVGElement>(null);
+  const frames = useRef<(SVGPathElement | null)[]>([]);
+  const framed = useRef({ at: -1, when: 0 });
   useLayoutEffect(() => {
     const el = wrap.current;
     if (!el) return;
@@ -1127,6 +1267,37 @@ export default function ForecastDock(props: Props) {
     el.querySelectorAll(`td[data-i="${selected}"]`).forEach((td) =>
       td.classList.add("c-sel"),
     );
+    const [first, second] = frames.current;
+    if (!pen.current || !first || !second || g.w[selected] === undefined)
+      return;
+    const keep = view === "blend" ? [] : keepOut(el, pen.current, g, selected);
+    const x = g.x[selected] + 1;
+    const w = g.w[selected] - 2;
+    const y = rows.day - 1;
+    const h = tableHeight + 1.5 - y;
+    first.setAttribute("d", framePath(x, y, w, h, 6, selected + 3, keep));
+    second.setAttribute(
+      "d",
+      framePath(x - 1.1, y - 0.4, w + 2.2, h + 1.4, 8, selected + 41, keep),
+    );
+    const moved = framed.current.at !== selected;
+    const at = performance.now();
+    const quick = at - framed.current.when < 250;
+    if (moved) framed.current = { at: selected, when: at };
+    if (!moved || reducedMotion || !first.animate) return;
+    for (const [path, delay] of [
+      [first, 0],
+      [second, 380],
+    ] as const) {
+      path.getAnimations().forEach((a) => a.cancel());
+      if (!quick)
+        path.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], {
+          duration: 600,
+          delay,
+          easing: "cubic-bezier(0.5, 0.1, 0.3, 1)",
+          fill: "backwards",
+        });
+    }
   });
 
   const tideDot = useMemo(() => {
@@ -1234,8 +1405,8 @@ export default function ForecastDock(props: Props) {
       </div>
 
       {/* The time, for a keyboard and a screen reader: the hours scrolling
-          under the cursor are the slider a finger and a mouse use, and this
-          steps them. Out of sight; its focus ring is drawn on the hours. */}
+          through the pen's frame are the slider a finger and a mouse use, and
+          this steps them. Out of sight; its focus ring is drawn on the hours. */}
       <input
         type="range"
         className="sr-only dk-time"
@@ -1361,6 +1532,14 @@ export default function ForecastDock(props: Props) {
               if (td) onSelect(Number(td.dataset.i), true);
             }}
           >
+            <NowMark
+              columns={columns}
+              days={days}
+              g={g}
+              now={now}
+              top={rows.day}
+              height={tableHeight}
+            />
             <StripTable
               spot={spot}
               columns={columns}
@@ -1391,15 +1570,22 @@ export default function ForecastDock(props: Props) {
               ))}
             </div>
             <svg
+              ref={pen}
               className="tt-pen"
               width={g.total}
-              height={
-                rows.day +
-                rows.hour +
-                rowsUnderHours(rows, view, isPoint, wing, more)
-              }
+              height={tableHeight}
               aria-hidden="true"
             >
+              <path
+                ref={(el) => void (frames.current[0] = el)}
+                className="pen-frame"
+                pathLength={1}
+              />
+              <path
+                ref={(el) => void (frames.current[1] = el)}
+                className="pen-frame is-second"
+                pathLength={1}
+              />
               {tideDot && (
                 <circle
                   className="tide-dot"
@@ -1410,15 +1596,6 @@ export default function ForecastDock(props: Props) {
               )}
             </svg>
           </div>
-          {/* The hour the map shows. No flag with the day and time: the
-                day's heading stays in sight above it, and the hour cell under
-                the line is inked. The line starts at the hours. */}
-          <div
-            ref={cursor}
-            className="dk-cur"
-            style={{ top: rows.day }}
-            aria-hidden="true"
-          />
         </div>
       </div>
     </section>

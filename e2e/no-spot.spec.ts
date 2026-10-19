@@ -137,7 +137,7 @@ test.describe("on a phone", () => {
     hasTouch: true,
   });
 
-  test("in the morning the hour opened on is the one under the cursor", async ({
+  test("in the morning the hour opened on is the one framed in the middle", async ({
     page,
   }) => {
     await rememberSpot(page);
@@ -154,14 +154,26 @@ test.describe("on a phone", () => {
 
 async function expectHourUnderCursor(page: Page) {
   const slider = page.getByRole("slider", { name: "Forecast time" });
+  // The scroll against the one that brings the selected hour to the
+  // strip's middle (its snap mark), and the pen's frame against its column.
   const offCursor = () =>
     page.evaluate(() => {
-      const cell = document.querySelector(".dock tr.tt-hour td.c-sel");
-      const cursor = document.querySelector(".dock .dk-cur");
-      if (!cell || !cursor) return Infinity;
+      const wrap = document.querySelector<HTMLElement>(".dock .tt-wrap");
+      const cell = document.querySelector<HTMLElement>(
+        ".dock tr.tt-hour td.c-sel",
+      );
+      const frame = document.querySelector(".dock .pen-frame");
+      if (!wrap || !cell || !frame) return Infinity;
+      const snap =
+        wrap.querySelectorAll<HTMLElement>(".tt-snaps i")[
+          Number(cell.dataset.i)
+        ];
+      const max = wrap.scrollWidth - wrap.clientWidth;
       const c = cell.getBoundingClientRect();
-      return Math.abs(
-        c.left + c.width / 2 - cursor.getBoundingClientRect().left,
+      const f = frame.getBoundingClientRect();
+      return Math.max(
+        Math.abs(wrap.scrollLeft - Math.min(max, parseFloat(snap.style.left))),
+        Math.abs(c.left + c.width / 2 - (f.left + f.width / 2)),
       );
     });
   await expect.poll(offCursor).toBeLessThan(2);
