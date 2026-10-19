@@ -100,6 +100,10 @@ function stageStaticData() {
     filter: (path) => !region.test(path),
   });
   stageOffline(data, "satellite");
+  // The spot pictures are on the data host only, which the e2e site is not:
+  // without their list a spot page draws none, and a spec that wants one
+  // routes in a set of its own (e2e/spot-page.spec.ts).
+  rmSync(join(E2E_PUBLIC, "satellite", "spots.json"), { force: true });
   const indexPath = join(E2E_PUBLIC, "foildepth", "index.json");
   const index = JSON.parse(readFileSync(indexPath, "utf8"));
   if (!index.base) return;

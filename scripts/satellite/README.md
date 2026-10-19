@@ -1,6 +1,7 @@
 # Satellite imagery at high and low tide, and intertidal heights
 
-Two products from one national pass over Sentinel-2 L2A, 2017-01 to 2026-10:
+Two products from one national pass over Sentinel-2 L2A, 2017-01 to 2026-10,
+and a picture of each riding place cut from the first (below, "Spot pictures"):
 
 1. **Imagery** for the map's Layers panel, Satellite: **High tide** / **Low tide**
    (`force5/src/satellite.ts`). Natural colour over the whole island and 5 km
@@ -52,6 +53,8 @@ $PY -I $S/bedtype.py apply      # rocky.tif per tile: rock or weed, percent
 $PY -I $S/tiles.py imagery --tiles 29UPV --bbox -6.26,53.34,-6.04,53.50 --out <root>/out/satellite-offline
 $PY -I $S/publish.py --area ireland --imagery <root>/out/satellite --intertidal <root>/out/intertidal \
     --offline <root>/out/satellite-offline --env deploy/home-compute/.env --upload
+$PY -I $S/spots.py --out <root>/out/spots    # a picture of each riding place, from the published archives (1 min)
+$PY -I $S/publish.py --spots <root>/out/spots --env deploy/home-compute/.env --upload
 ```
 
 The offline imagery can also be cut from the national archives with
@@ -434,6 +437,29 @@ Every region whose tiles were all among the seven came out with the same
 tiles as the published set (Howth, Dublin Port, Port Oriel, Malin Head, the
 Killard, Strangford, Skerries, Buncrana and Tory basins), which checks the
 repair.
+
+## Spot pictures
+
+Each riding place's page (/spot/<id>, `spot/web/SpotSatellite.tsx`) opens on
+the place from above, at high tide or at low tide: `spots.py` cuts one WebP a
+place and tide from the imagery archives, 1200 x 600 at zoom 14.5 (4 m a
+pixel at 53.5°N, 4.8 km across; the archives' own 5.8 m resampled), north
+up and centred on the place, laid on the chart's paper where the archive has
+no image. It reads the archives the site's `public/satellite/index.json`
+names, by range from the data host (`--imagery` reads a local set instead),
+so nothing is read from Sentinel-2 again and it runs anywhere in about a
+minute: 148 places, 296 pictures, 6.4 MB (16–25 kB each), on 19 October
+2026, every place in `public/riding-locations.json` pictured.
+
+`publish.py --spots` puts them under their own `satellite/v…/` beside a
+`spots.json` that lists them, and writes the site's copy,
+`public/satellite/spots.json`, with the set's `base`. The page reads that
+list beside the forecast, then only its own picture, lazily; a place moved
+since its picture was cut is ringed where it is now, or, moved to within
+15% of the picture's edge or off it, left without one. Until a set is
+published (or for a place added since), there is no list or no entry, and
+the page draws nothing in its place. Cut them again after the imagery is
+republished or places are added or moved; nothing schedules it.
 
 ## Findings
 

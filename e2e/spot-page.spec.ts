@@ -397,3 +397,140 @@ test("How the stars work draws the bands, the shore sectors and a live hour work
   ).toContainText("you");
   expect(errors).toEqual([]);
 });
+
+/** A published set of spot pictures (scripts/satellite/spots.py), Brandon's only. */
+const pictures = {
+  schemaVersion: 1,
+  kind: "satellite-spots",
+  base: "satellite/v0123456789ab/",
+  zoom: 14.5,
+  width: 1200,
+  height: 600,
+  attribution:
+    "Contains modified Copernicus Sentinel data 2017–2026, composited for wingfoil.ie; tide levels from the Marine Institute (CC BY 4.0)",
+  spots: [
+    {
+      id: "brandon",
+      lonLat: [-10.024, 52.276],
+      high: "brandon-high.webp",
+      low: "brandon-low.webp",
+    },
+  ],
+};
+/** A 12 by 6 lossless WebP: the sea, in one colour. */
+const WEBP = Buffer.from(
+  "UklGRh4AAABXRUJQVlA4TBEAAAAvC0ABAAdQt6IUr/+BiOh/AAA=",
+  "base64",
+);
+
+async function withPictures(page: Page, served = true) {
+  await page.route("**/satellite/spots.json", (route) =>
+    route.fulfill({ json: pictures }),
+  );
+  await page.route("**/satellite/v0123456789ab/*.webp", (route) =>
+    served
+      ? route.fulfill({ body: WEBP, contentType: "image/webp" })
+      : route.fulfill({ status: 404 }),
+  );
+}
+
+const picture = (page: Page) => page.locator("[data-spot-satellite]");
+
+test("the place from above: framed under the header, at high or low tide, marked and credited", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await withPictures(page);
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+
+  // Under the header's facts, before the rider and the week.
+  await expect(picture(page)).toBeVisible();
+  const order = await page
+    .locator("[data-shore-summary], [data-spot-satellite], [data-rider-chip]")
+    .evaluateAll((els) =>
+      els.map((el) =>
+        el.hasAttribute("data-spot-satellite")
+          ? "picture"
+          : el.hasAttribute("data-shore-summary")
+            ? "header"
+            : "rider",
+      ),
+    );
+  expect(order.slice(0, 3)).toEqual(["header", "picture", "rider"]);
+
+  const image = picture(page).getByRole("img", {
+    name: /Brandon Bay from above/,
+  });
+  await expect(image).toHaveAttribute(
+    "src",
+    /\/satellite\/v0123456789ab\/brandon-high\.webp$/,
+  );
+  await expect(image).toHaveAttribute("loading", "lazy");
+  await expect(image).toHaveAttribute("alt", /high tide, north up/);
+  // The place ringed where it is (the picture's centre), the scale in round metres.
+  const frame = await picture(page).locator("img").boundingBox();
+  const mark = await picture(page).locator("[data-place-mark]").boundingBox();
+  expect(frame && mark).toBeTruthy();
+  expect(
+    Math.abs(mark!.x + mark!.width / 2 - (frame!.x + frame!.width / 2)),
+  ).toBeLessThan(2);
+  expect(
+    Math.abs(mark!.y + mark!.height / 2 - (frame!.y + frame!.height / 2)),
+  ).toBeLessThan(2);
+  await expect(picture(page).locator("[data-scale]")).toHaveText(
+    /^\d+(\.\d+)? k?m$/,
+  );
+  await expect(picture(page)).toContainText(
+    "Contains modified Copernicus Sentinel data 2017–2026, composited for wingfoil.ie",
+  );
+
+  // Low tide: the other picture, the same frame.
+  await picture(page).getByRole("button", { name: "Low tide" }).click();
+  await expect(picture(page)).toHaveAttribute("data-tide", "low");
+  await expect(picture(page).locator("img")).toHaveAttribute(
+    "src",
+    /brandon-low\.webp$/,
+  );
+  await expect(picture(page).locator("img")).toHaveAttribute("alt", /low tide/);
+
+  // The whole credit is with the page's other sources.
+  await expect(page.locator("[data-satellite-source]")).toContainText(
+    "Copernicus Sentinel data",
+  );
+  expect(errors).toEqual([]);
+});
+
+test("no picture leaves no gap: none published, none of this place, or one that will not load", async ({
+  page,
+}) => {
+  // No list published, as production before its first set: the site answers 404.
+  await page.route("**/satellite/spots.json", (route) =>
+    route.fulfill({ status: 404 }),
+  );
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  await expect(page.locator("[data-rider-chip]")).toBeVisible();
+  await expect(picture(page)).toHaveCount(0);
+  await expect(page.locator("[data-satellite-source]")).toHaveCount(0);
+
+  // A picture that is listed but not there takes its frame away with it.
+  await page.unrouteAll();
+  await withPictures(page, false);
+  await page.reload();
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  await expect(page.locator("[data-rider-chip]")).toBeVisible();
+  await expect(picture(page)).toHaveCount(0);
+});
+
+test("on a phone the picture is under the header and the week still on the first screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await withPictures(page);
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  await expect(picture(page)).toBeInViewport();
+  await expect(page.locator("[data-day-card]").last()).toBeInViewport();
+});

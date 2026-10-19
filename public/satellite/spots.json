@@ -1,0 +1,1347 @@
+{
+ "schemaVersion": 1,
+ "kind": "satellite-spots",
+ "generatedAt": "2026-10-19T16:30:07Z",
+ "zoom": 14.5,
+ "width": 1200,
+ "height": 600,
+ "attribution": "Contains modified Copernicus Sentinel data 2017\u20132026, composited for wingfoil.ie; tide levels from the Marine Institute (CC BY 4.0), EOT20 (DGFI-TUM, CC BY 4.0) and UK tide gauges via Copernicus Marine and EMODnet Physics.",
+ "imagery": {
+  "ireland": "satellite/v7d2f74f0389f/"
+ },
+ "spots": [
+  {
+   "id": "brandon",
+   "lonLat": [
+    -10.024,
+    52.276
+   ],
+   "high": "brandon-high.webp",
+   "low": "brandon-low.webp"
+  },
+  {
+   "id": "dollymount",
+   "lonLat": [
+    -6.144748,
+    53.367583
+   ],
+   "high": "dollymount-high.webp",
+   "low": "dollymount-low.webp"
+  },
+  {
+   "id": "rusheen",
+   "lonLat": [
+    -9.121,
+    53.251
+   ],
+   "high": "rusheen-high.webp",
+   "low": "rusheen-low.webp"
+  },
+  {
+   "id": "keel",
+   "lonLat": [
+    -10.067,
+    53.971
+   ],
+   "high": "keel-high.webp",
+   "low": "keel-low.webp"
+  },
+  {
+   "id": "inchydoney",
+   "lonLat": [
+    -8.867,
+    51.596
+   ],
+   "high": "inchydoney-high.webp",
+   "low": "inchydoney-low.webp"
+  },
+  {
+   "id": "rossnowlagh",
+   "lonLat": [
+    -8.21,
+    54.559
+   ],
+   "high": "rossnowlagh-high.webp",
+   "low": "rossnowlagh-low.webp"
+  },
+  {
+   "id": "tramore",
+   "lonLat": [
+    -7.136,
+    52.154
+   ],
+   "high": "tramore-high.webp",
+   "low": "tramore-low.webp"
+  },
+  {
+   "id": "ballyholme",
+   "lonLat": [
+    -5.645,
+    54.67
+   ],
+   "high": "ballyholme-high.webp",
+   "low": "ballyholme-low.webp"
+  },
+  {
+   "id": "fi-blackrock-beach",
+   "lonLat": [
+    -6.366643,
+    53.961177
+   ],
+   "high": "fi-blackrock-beach-high.webp",
+   "low": "fi-blackrock-beach-low.webp"
+  },
+  {
+   "id": "fi-seancheibh-an-spideil",
+   "lonLat": [
+    -9.305612,
+    53.243064
+   ],
+   "high": "fi-seancheibh-an-spideil-high.webp",
+   "low": "fi-seancheibh-an-spideil-low.webp"
+  },
+  {
+   "id": "fi-fanore-beach",
+   "lonLat": [
+    -9.28892,
+    53.117767
+   ],
+   "high": "fi-fanore-beach-high.webp",
+   "low": "fi-fanore-beach-low.webp"
+  },
+  {
+   "id": "fi-grange-beach",
+   "lonLat": [
+    -6.829831,
+    52.198195
+   ],
+   "high": "fi-grange-beach-high.webp",
+   "low": "fi-grange-beach-low.webp"
+  },
+  {
+   "id": "fi-maharees-beach",
+   "lonLat": [
+    -10.031265,
+    52.289247
+   ],
+   "high": "fi-maharees-beach-high.webp",
+   "low": "fi-maharees-beach-low.webp"
+  },
+  {
+   "id": "fi-mountshannon-lough-derg",
+   "lonLat": [
+    -8.429834,
+    52.931724
+   ],
+   "high": "fi-mountshannon-lough-derg-high.webp",
+   "low": "fi-mountshannon-lough-derg-low.webp"
+  },
+  {
+   "id": "fi-pollan-bay",
+   "lonLat": [
+    -7.379951,
+    55.299913
+   ],
+   "high": "fi-pollan-bay-high.webp",
+   "low": "fi-pollan-bay-low.webp"
+  },
+  {
+   "id": "fi-tullan-strand",
+   "lonLat": [
+    -8.266933,
+    54.490714
+   ],
+   "high": "fi-tullan-strand-high.webp",
+   "low": "fi-tullan-strand-low.webp"
+  },
+  {
+   "id": "fi-white-strand-doonbeg",
+   "lonLat": [
+    -9.551283,
+    52.747978
+   ],
+   "high": "fi-white-strand-doonbeg-high.webp",
+   "low": "fi-white-strand-doonbeg-low.webp"
+  },
+  {
+   "id": "fi-lahinch-beach",
+   "lonLat": [
+    -9.34783,
+    52.933611
+   ],
+   "high": "fi-lahinch-beach-high.webp",
+   "low": "fi-lahinch-beach-low.webp"
+  },
+  {
+   "id": "kilcrea",
+   "lonLat": [
+    -6.175549,
+    53.469082
+   ],
+   "high": "kilcrea-high.webp",
+   "low": "kilcrea-low.webp"
+  },
+  {
+   "id": "newtownards",
+   "lonLat": [
+    -5.62772,
+    54.56012
+   ],
+   "high": "newtownards-high.webp",
+   "low": "newtownards-low.webp"
+  },
+  {
+   "id": "web-mulranny-murrivaugh",
+   "lonLat": [
+    -9.764168,
+    53.899869
+   ],
+   "high": "web-mulranny-murrivaugh-high.webp",
+   "low": "web-mulranny-murrivaugh-low.webp"
+  },
+  {
+   "id": "web-drum-beach",
+   "lonLat": [
+    -10.086098,
+    54.191538
+   ],
+   "high": "web-drum-beach-high.webp",
+   "low": "web-drum-beach-low.webp"
+  },
+  {
+   "id": "web-cross-beach-belmullet",
+   "lonLat": [
+    -10.082719,
+    54.207289
+   ],
+   "high": "web-cross-beach-belmullet-high.webp",
+   "low": "web-cross-beach-belmullet-low.webp"
+  },
+  {
+   "id": "web-benone-strand",
+   "lonLat": [
+    -6.8395,
+    55.168
+   ],
+   "high": "web-benone-strand-high.webp",
+   "low": "web-benone-strand-low.webp"
+  },
+  {
+   "id": "web-magheraroarty",
+   "lonLat": [
+    -8.1514,
+    55.151
+   ],
+   "high": "web-magheraroarty-high.webp",
+   "low": "web-magheraroarty-low.webp"
+  },
+  {
+   "id": "doogort",
+   "lonLat": [
+    -10.023357,
+    54.011727
+   ],
+   "high": "doogort-high.webp",
+   "low": "doogort-low.webp"
+  },
+  {
+   "id": "dooniver",
+   "lonLat": [
+    -9.939974,
+    54.007398
+   ],
+   "high": "dooniver-high.webp",
+   "low": "dooniver-low.webp"
+  },
+  {
+   "id": "keel-lake",
+   "lonLat": [
+    -10.064315,
+    53.982593
+   ],
+   "high": "keel-lake-high.webp",
+   "low": "keel-lake-low.webp"
+  },
+  {
+   "id": "aghleam",
+   "lonLat": [
+    -10.093309,
+    54.11659
+   ],
+   "high": "aghleam-high.webp",
+   "low": "aghleam-low.webp"
+  },
+  {
+   "id": "belmullet",
+   "lonLat": [
+    -9.991926,
+    54.223383
+   ],
+   "high": "belmullet-high.webp",
+   "low": "belmullet-low.webp"
+  },
+  {
+   "id": "elly-beach",
+   "lonLat": [
+    -10.08504,
+    54.157949
+   ],
+   "high": "elly-beach-high.webp",
+   "low": "elly-beach-low.webp"
+  },
+  {
+   "id": "trawmore-bay",
+   "lonLat": [
+    -9.952391,
+    54.182706
+   ],
+   "high": "trawmore-bay-high.webp",
+   "low": "trawmore-bay-low.webp"
+  },
+  {
+   "id": "bertra",
+   "lonLat": [
+    -9.654896,
+    53.794263
+   ],
+   "high": "bertra-high.webp",
+   "low": "bertra-low.webp"
+  },
+  {
+   "id": "carrownisky",
+   "lonLat": [
+    -9.899613,
+    53.748051
+   ],
+   "high": "carrownisky-high.webp",
+   "low": "carrownisky-low.webp"
+  },
+  {
+   "id": "dogs-bay",
+   "lonLat": [
+    -9.964863,
+    53.377824
+   ],
+   "high": "dogs-bay-high.webp",
+   "low": "dogs-bay-low.webp"
+  },
+  {
+   "id": "spanish-point",
+   "lonLat": [
+    -9.433657,
+    52.840184
+   ],
+   "high": "spanish-point-high.webp",
+   "low": "spanish-point-low.webp"
+  },
+  {
+   "id": "easkey",
+   "lonLat": [
+    -8.956334,
+    54.291986
+   ],
+   "high": "easkey-high.webp",
+   "low": "easkey-low.webp"
+  },
+  {
+   "id": "enniscrone",
+   "lonLat": [
+    -9.1185,
+    54.209936
+   ],
+   "high": "enniscrone-high.webp",
+   "low": "enniscrone-low.webp"
+  },
+  {
+   "id": "dunmoran",
+   "lonLat": [
+    -8.731616,
+    54.263798
+   ],
+   "high": "dunmoran-high.webp",
+   "low": "dunmoran-low.webp"
+  },
+  {
+   "id": "strandhill",
+   "lonLat": [
+    -8.607036,
+    54.272822
+   ],
+   "high": "strandhill-high.webp",
+   "low": "strandhill-low.webp"
+  },
+  {
+   "id": "rosses-point",
+   "lonLat": [
+    -8.571551,
+    54.315101
+   ],
+   "high": "rosses-point-high.webp",
+   "low": "rosses-point-low.webp"
+  },
+  {
+   "id": "lissadell",
+   "lonLat": [
+    -8.579713,
+    54.343651
+   ],
+   "high": "lissadell-high.webp",
+   "low": "lissadell-low.webp"
+  },
+  {
+   "id": "streedagh",
+   "lonLat": [
+    -8.558377,
+    54.404411
+   ],
+   "high": "streedagh-high.webp",
+   "low": "streedagh-low.webp"
+  },
+  {
+   "id": "portnoo",
+   "lonLat": [
+    -8.445128,
+    54.843509
+   ],
+   "high": "portnoo-high.webp",
+   "low": "portnoo-low.webp"
+  },
+  {
+   "id": "bloody-foreland",
+   "lonLat": [
+    -8.28507,
+    55.158518
+   ],
+   "high": "bloody-foreland-high.webp",
+   "low": "bloody-foreland-low.webp"
+  },
+  {
+   "id": "dunfanaghy",
+   "lonLat": [
+    -7.951626,
+    55.1845
+   ],
+   "high": "dunfanaghy-high.webp",
+   "low": "dunfanaghy-low.webp"
+  },
+  {
+   "id": "downings",
+   "lonLat": [
+    -7.836669,
+    55.192982
+   ],
+   "high": "downings-high.webp",
+   "low": "downings-low.webp"
+  },
+  {
+   "id": "portsalon",
+   "lonLat": [
+    -7.616059,
+    55.194205
+   ],
+   "high": "portsalon-high.webp",
+   "low": "portsalon-low.webp"
+  },
+  {
+   "id": "portstewart",
+   "lonLat": [
+    -6.746131,
+    55.168929
+   ],
+   "high": "portstewart-high.webp",
+   "low": "portstewart-low.webp"
+  },
+  {
+   "id": "whiterocks",
+   "lonLat": [
+    -6.633128,
+    55.207464
+   ],
+   "high": "whiterocks-high.webp",
+   "low": "whiterocks-low.webp"
+  },
+  {
+   "id": "portballintrae",
+   "lonLat": [
+    -6.547626,
+    55.215857
+   ],
+   "high": "portballintrae-high.webp",
+   "low": "portballintrae-low.webp"
+  },
+  {
+   "id": "browns-bay",
+   "lonLat": [
+    -5.766308,
+    54.854313
+   ],
+   "high": "browns-bay-high.webp",
+   "low": "browns-bay-low.webp"
+  },
+  {
+   "id": "lough-neagh-antrim",
+   "lonLat": [
+    -6.240852,
+    54.716133
+   ],
+   "high": "lough-neagh-antrim-high.webp",
+   "low": "lough-neagh-antrim-low.webp"
+  },
+  {
+   "id": "oxford-island",
+   "lonLat": [
+    -6.366881,
+    54.489371
+   ],
+   "high": "oxford-island-high.webp",
+   "low": "oxford-island-low.webp"
+  },
+  {
+   "id": "millisle",
+   "lonLat": [
+    -5.525331,
+    54.607633
+   ],
+   "high": "millisle-high.webp",
+   "low": "millisle-low.webp"
+  },
+  {
+   "id": "kearney",
+   "lonLat": [
+    -5.472542,
+    54.384764
+   ],
+   "high": "kearney-high.webp",
+   "low": "kearney-low.webp"
+  },
+  {
+   "id": "newcastle",
+   "lonLat": [
+    -5.885668,
+    54.209745
+   ],
+   "high": "newcastle-high.webp",
+   "low": "newcastle-low.webp"
+  },
+  {
+   "id": "cranfield",
+   "lonLat": [
+    -6.063147,
+    54.023075
+   ],
+   "high": "cranfield-high.webp",
+   "low": "cranfield-low.webp"
+  },
+  {
+   "id": "warrenpoint",
+   "lonLat": [
+    -6.255486,
+    54.099317
+   ],
+   "high": "warrenpoint-high.webp",
+   "low": "warrenpoint-low.webp"
+  },
+  {
+   "id": "carlingford",
+   "lonLat": [
+    -6.191986,
+    54.051687
+   ],
+   "high": "carlingford-high.webp",
+   "low": "carlingford-low.webp"
+  },
+  {
+   "id": "greenore",
+   "lonLat": [
+    -6.1323,
+    54.034803
+   ],
+   "high": "greenore-high.webp",
+   "low": "greenore-low.webp"
+  },
+  {
+   "id": "giles-quay",
+   "lonLat": [
+    -6.238613,
+    53.985313
+   ],
+   "high": "giles-quay-high.webp",
+   "low": "giles-quay-low.webp"
+  },
+  {
+   "id": "annagassan",
+   "lonLat": [
+    -6.354718,
+    53.889374
+   ],
+   "high": "annagassan-high.webp",
+   "low": "annagassan-low.webp"
+  },
+  {
+   "id": "clogherhead",
+   "lonLat": [
+    -6.244677,
+    53.799652
+   ],
+   "high": "clogherhead-high.webp",
+   "low": "clogherhead-low.webp"
+  },
+  {
+   "id": "termonfeckin",
+   "lonLat": [
+    -6.249621,
+    53.758842
+   ],
+   "high": "termonfeckin-high.webp",
+   "low": "termonfeckin-low.webp"
+  },
+  {
+   "id": "bettystown",
+   "lonLat": [
+    -6.243341,
+    53.698424
+   ],
+   "high": "bettystown-high.webp",
+   "low": "bettystown-low.webp"
+  },
+  {
+   "id": "laytown",
+   "lonLat": [
+    -6.237436,
+    53.681619
+   ],
+   "high": "laytown-high.webp",
+   "low": "laytown-low.webp"
+  },
+  {
+   "id": "gormanston",
+   "lonLat": [
+    -6.217405,
+    53.642663
+   ],
+   "high": "gormanston-high.webp",
+   "low": "gormanston-low.webp"
+  },
+  {
+   "id": "skerries",
+   "lonLat": [
+    -6.106705,
+    53.582886
+   ],
+   "high": "skerries-high.webp",
+   "low": "skerries-low.webp"
+  },
+  {
+   "id": "rush-north",
+   "lonLat": [
+    -6.085018,
+    53.524642
+   ],
+   "high": "rush-north-high.webp",
+   "low": "rush-north-low.webp"
+  },
+  {
+   "id": "rush-south",
+   "lonLat": [
+    -6.105486,
+    53.511213
+   ],
+   "high": "rush-south-high.webp",
+   "low": "rush-south-low.webp"
+  },
+  {
+   "id": "donabate",
+   "lonLat": [
+    -6.118269,
+    53.476222
+   ],
+   "high": "donabate-high.webp",
+   "low": "donabate-low.webp"
+  },
+  {
+   "id": "low-rock",
+   "lonLat": [
+    -6.135773,
+    53.448599
+   ],
+   "high": "low-rock-high.webp",
+   "low": "low-rock-low.webp"
+  },
+  {
+   "id": "portmarnock",
+   "lonLat": [
+    -6.123934,
+    53.431328
+   ],
+   "high": "portmarnock-high.webp",
+   "low": "portmarnock-low.webp"
+  },
+  {
+   "id": "burrow-beach",
+   "lonLat": [
+    -6.102573,
+    53.393342
+   ],
+   "high": "burrow-beach-high.webp",
+   "low": "burrow-beach-low.webp"
+  },
+  {
+   "id": "bull-island-north",
+   "lonLat": [
+    -6.112576,
+    53.382748
+   ],
+   "high": "bull-island-north-high.webp",
+   "low": "bull-island-north-low.webp"
+  },
+  {
+   "id": "poolbeg",
+   "lonLat": [
+    -6.190029,
+    53.33724
+   ],
+   "high": "poolbeg-high.webp",
+   "low": "poolbeg-low.webp"
+  },
+  {
+   "id": "sandymount",
+   "lonLat": [
+    -6.20844,
+    53.329
+   ],
+   "high": "sandymount-high.webp",
+   "low": "sandymount-low.webp"
+  },
+  {
+   "id": "seapoint",
+   "lonLat": [
+    -6.158851,
+    53.297328
+   ],
+   "high": "seapoint-high.webp",
+   "low": "seapoint-low.webp"
+  },
+  {
+   "id": "killiney",
+   "lonLat": [
+    -6.111424,
+    53.258868
+   ],
+   "high": "killiney-high.webp",
+   "low": "killiney-low.webp"
+  },
+  {
+   "id": "bray",
+   "lonLat": [
+    -6.096573,
+    53.202527
+   ],
+   "high": "bray-high.webp",
+   "low": "bray-low.webp"
+  },
+  {
+   "id": "greystones",
+   "lonLat": [
+    -6.059049,
+    53.144276
+   ],
+   "high": "greystones-high.webp",
+   "low": "greystones-low.webp"
+  },
+  {
+   "id": "brittas-bay",
+   "lonLat": [
+    -6.054621,
+    52.886357
+   ],
+   "high": "brittas-bay-high.webp",
+   "low": "brittas-bay-low.webp"
+  },
+  {
+   "id": "kilmuckridge",
+   "lonLat": [
+    -6.238689,
+    52.513792
+   ],
+   "high": "kilmuckridge-high.webp",
+   "low": "kilmuckridge-low.webp"
+  },
+  {
+   "id": "curracloe",
+   "lonLat": [
+    -6.363361,
+    52.386746
+   ],
+   "high": "curracloe-high.webp",
+   "low": "curracloe-low.webp"
+  },
+  {
+   "id": "the-burrow",
+   "lonLat": [
+    -6.390287,
+    52.299111
+   ],
+   "high": "the-burrow-high.webp",
+   "low": "the-burrow-low.webp"
+  },
+  {
+   "id": "rosslare",
+   "lonLat": [
+    -6.389953,
+    52.288924
+   ],
+   "high": "rosslare-high.webp",
+   "low": "rosslare-low.webp"
+  },
+  {
+   "id": "st-margarets",
+   "lonLat": [
+    -6.350234,
+    52.202976
+   ],
+   "high": "st-margarets-high.webp",
+   "low": "st-margarets-low.webp"
+  },
+  {
+   "id": "ladys-island-lake",
+   "lonLat": [
+    -6.390614,
+    52.200802
+   ],
+   "high": "ladys-island-lake-high.webp",
+   "low": "ladys-island-lake-low.webp"
+  },
+  {
+   "id": "kilmore-quay",
+   "lonLat": [
+    -6.588337,
+    52.171946
+   ],
+   "high": "kilmore-quay-high.webp",
+   "low": "kilmore-quay-low.webp"
+  },
+  {
+   "id": "cullenstown",
+   "lonLat": [
+    -6.720667,
+    52.215863
+   ],
+   "high": "cullenstown-high.webp",
+   "low": "cullenstown-low.webp"
+  },
+  {
+   "id": "duncannon",
+   "lonLat": [
+    -6.929027,
+    52.219686
+   ],
+   "high": "duncannon-high.webp",
+   "low": "duncannon-low.webp"
+  },
+  {
+   "id": "dungarvan",
+   "lonLat": [
+    -7.610865,
+    52.085206
+   ],
+   "high": "dungarvan-high.webp",
+   "low": "dungarvan-low.webp"
+  },
+  {
+   "id": "red-barn",
+   "lonLat": [
+    -7.842419,
+    51.949146
+   ],
+   "high": "red-barn-high.webp",
+   "low": "red-barn-low.webp"
+  },
+  {
+   "id": "ballycotton",
+   "lonLat": [
+    -8.022668,
+    51.838391
+   ],
+   "high": "ballycotton-high.webp",
+   "low": "ballycotton-low.webp"
+  },
+  {
+   "id": "cobh",
+   "lonLat": [
+    -8.291671,
+    51.850219
+   ],
+   "high": "cobh-high.webp",
+   "low": "cobh-low.webp"
+  },
+  {
+   "id": "cork-harbour",
+   "lonLat": [
+    -8.295975,
+    51.804778
+   ],
+   "high": "cork-harbour-high.webp",
+   "low": "cork-harbour-low.webp"
+  },
+  {
+   "id": "garrettstown",
+   "lonLat": [
+    -8.580384,
+    51.643089
+   ],
+   "high": "garrettstown-high.webp",
+   "low": "garrettstown-low.webp"
+  },
+  {
+   "id": "coolmaine",
+   "lonLat": [
+    -8.673366,
+    51.641274
+   ],
+   "high": "coolmaine-high.webp",
+   "low": "coolmaine-low.webp"
+  },
+  {
+   "id": "owenahincha",
+   "lonLat": [
+    -9.000244,
+    51.566035
+   ],
+   "high": "owenahincha-high.webp",
+   "low": "owenahincha-low.webp"
+  },
+  {
+   "id": "glandore",
+   "lonLat": [
+    -9.125042,
+    51.561002
+   ],
+   "high": "glandore-high.webp",
+   "low": "glandore-low.webp"
+  },
+  {
+   "id": "schull",
+   "lonLat": [
+    -9.529248,
+    51.522219
+   ],
+   "high": "schull-high.webp",
+   "low": "schull-low.webp"
+  },
+  {
+   "id": "bantry-bay",
+   "lonLat": [
+    -9.460869,
+    51.680061
+   ],
+   "high": "bantry-bay-high.webp",
+   "low": "bantry-bay-low.webp"
+  },
+  {
+   "id": "waterville",
+   "lonLat": [
+    -10.173055,
+    51.826754
+   ],
+   "high": "waterville-high.webp",
+   "low": "waterville-low.webp"
+  },
+  {
+   "id": "rossbeigh",
+   "lonLat": [
+    -9.973168,
+    52.069371
+   ],
+   "high": "rossbeigh-high.webp",
+   "low": "rossbeigh-low.webp"
+  },
+  {
+   "id": "inch",
+   "lonLat": [
+    -9.966576,
+    52.123582
+   ],
+   "high": "inch-high.webp",
+   "low": "inch-low.webp"
+  },
+  {
+   "id": "ventry",
+   "lonLat": [
+    -10.360499,
+    52.132618
+   ],
+   "high": "ventry-high.webp",
+   "low": "ventry-low.webp"
+  },
+  {
+   "id": "smerwick",
+   "lonLat": [
+    -10.37985,
+    52.194052
+   ],
+   "high": "smerwick-high.webp",
+   "low": "smerwick-low.webp"
+  },
+  {
+   "id": "fermoyle",
+   "lonLat": [
+    -10.124634,
+    52.243529
+   ],
+   "high": "fermoyle-high.webp",
+   "low": "fermoyle-low.webp"
+  },
+  {
+   "id": "gowlane",
+   "lonLat": [
+    -10.085514,
+    52.248055
+   ],
+   "high": "gowlane-high.webp",
+   "low": "gowlane-low.webp"
+  },
+  {
+   "id": "stradbally",
+   "lonLat": [
+    -10.073915,
+    52.253014
+   ],
+   "high": "stradbally-high.webp",
+   "low": "stradbally-low.webp"
+  },
+  {
+   "id": "aughacasla",
+   "lonLat": [
+    -9.970487,
+    52.238481
+   ],
+   "high": "aughacasla-high.webp",
+   "low": "aughacasla-low.webp"
+  },
+  {
+   "id": "scraggane",
+   "lonLat": [
+    -10.026455,
+    52.30835
+   ],
+   "high": "scraggane-high.webp",
+   "low": "scraggane-low.webp"
+  },
+  {
+   "id": "garrywilliam-point",
+   "lonLat": [
+    -10.059679,
+    52.306629
+   ],
+   "high": "garrywilliam-point-high.webp",
+   "low": "garrywilliam-point-low.webp"
+  },
+  {
+   "id": "banna",
+   "lonLat": [
+    -9.838001,
+    52.336301
+   ],
+   "high": "banna-high.webp",
+   "low": "banna-low.webp"
+  },
+  {
+   "id": "mullaghmore",
+   "lonLat": [
+    -8.447869,
+    54.466366
+   ],
+   "high": "mullaghmore-high.webp",
+   "low": "mullaghmore-low.webp"
+  },
+  {
+   "id": "aghada",
+   "lonLat": [
+    -8.209769,
+    51.845132
+   ],
+   "high": "aghada-high.webp",
+   "low": "aghada-low.webp"
+  },
+  {
+   "id": "annascaul",
+   "lonLat": [
+    -10.050271,
+    52.136511
+   ],
+   "high": "annascaul-high.webp",
+   "low": "annascaul-low.webp"
+  },
+  {
+   "id": "blessington",
+   "lonLat": [
+    -6.482577,
+    53.132727
+   ],
+   "high": "blessington-high.webp",
+   "low": "blessington-low.webp"
+  },
+  {
+   "id": "broadmeadows-south",
+   "lonLat": [
+    -6.167131,
+    53.455592
+   ],
+   "high": "broadmeadows-south-high.webp",
+   "low": "broadmeadows-south-low.webp"
+  },
+  {
+   "id": "bunbeg",
+   "lonLat": [
+    -8.308914,
+    55.064783
+   ],
+   "high": "bunbeg-high.webp",
+   "low": "bunbeg-low.webp"
+  },
+  {
+   "id": "cahore",
+   "lonLat": [
+    -6.195549,
+    52.56082
+   ],
+   "high": "cahore-high.webp",
+   "low": "cahore-low.webp"
+  },
+  {
+   "id": "carrickfinn",
+   "lonLat": [
+    -8.34639,
+    55.045324
+   ],
+   "high": "carrickfinn-high.webp",
+   "low": "carrickfinn-low.webp"
+  },
+  {
+   "id": "clonea",
+   "lonLat": [
+    -7.541637,
+    52.09527
+   ],
+   "high": "clonea-high.webp",
+   "low": "clonea-low.webp"
+  },
+  {
+   "id": "cunnamore",
+   "lonLat": [
+    -9.424813,
+    51.503881
+   ],
+   "high": "cunnamore-high.webp",
+   "low": "cunnamore-low.webp"
+  },
+  {
+   "id": "dooey",
+   "lonLat": [
+    -8.400024,
+    54.852484
+   ],
+   "high": "dooey-high.webp",
+   "low": "dooey-low.webp"
+  },
+  {
+   "id": "dun-laoghaire",
+   "lonLat": [
+    -6.13687,
+    53.297565
+   ],
+   "high": "dun-laoghaire-high.webp",
+   "low": "dun-laoghaire-low.webp"
+  },
+  {
+   "id": "dunmore-east",
+   "lonLat": [
+    -6.987059,
+    52.151388
+   ],
+   "high": "dunmore-east-high.webp",
+   "low": "dunmore-east-low.webp"
+  },
+  {
+   "id": "east-ferry",
+   "lonLat": [
+    -8.204266,
+    51.869459
+   ],
+   "high": "east-ferry-high.webp",
+   "low": "east-ferry-low.webp"
+  },
+  {
+   "id": "glin",
+   "lonLat": [
+    -9.293927,
+    52.588609
+   ],
+   "high": "glin-high.webp",
+   "low": "glin-low.webp"
+  },
+  {
+   "id": "liscannor",
+   "lonLat": [
+    -9.374664,
+    52.941924
+   ],
+   "high": "liscannor-high.webp",
+   "low": "liscannor-low.webp"
+  },
+  {
+   "id": "mannin-bay",
+   "lonLat": [
+    -10.063777,
+    53.442776
+   ],
+   "high": "mannin-bay-high.webp",
+   "low": "mannin-bay-low.webp"
+  },
+  {
+   "id": "marble-hill",
+   "lonLat": [
+    -7.899836,
+    55.177299
+   ],
+   "high": "marble-hill-high.webp",
+   "low": "marble-hill-low.webp"
+  },
+  {
+   "id": "mountcharles",
+   "lonLat": [
+    -8.208264,
+    54.650556
+   ],
+   "high": "mountcharles-high.webp",
+   "low": "mountcharles-low.webp"
+  },
+  {
+   "id": "murvagh",
+   "lonLat": [
+    -8.163373,
+    54.604924
+   ],
+   "high": "murvagh-high.webp",
+   "low": "murvagh-low.webp"
+  },
+  {
+   "id": "oysterhaven",
+   "lonLat": [
+    -8.450634,
+    51.695878
+   ],
+   "high": "oysterhaven-high.webp",
+   "low": "oysterhaven-low.webp"
+  },
+  {
+   "id": "portrush",
+   "lonLat": [
+    -6.656481,
+    55.202347
+   ],
+   "high": "portrush-high.webp",
+   "low": "portrush-low.webp"
+  },
+  {
+   "id": "tracht",
+   "lonLat": [
+    -8.986575,
+    53.171776
+   ],
+   "high": "tracht-high.webp",
+   "low": "tracht-low.webp"
+  },
+  {
+   "id": "tyrella",
+   "lonLat": [
+    -5.746193,
+    54.250659
+   ],
+   "high": "tyrella-high.webp",
+   "low": "tyrella-low.webp"
+  },
+  {
+   "id": "lough-derg-killaloe",
+   "lonLat": [
+    -8.467936,
+    52.839821
+   ],
+   "high": "lough-derg-killaloe-high.webp",
+   "low": "lough-derg-killaloe-low.webp"
+  },
+  {
+   "id": "white-strand-kerry",
+   "lonLat": [
+    -10.27488,
+    51.942988
+   ],
+   "high": "white-strand-kerry-high.webp",
+   "low": "white-strand-kerry-low.webp"
+  },
+  {
+   "id": "ballyhornan",
+   "lonLat": [
+    -5.551776,
+    54.301664
+   ],
+   "high": "ballyhornan-high.webp",
+   "low": "ballyhornan-low.webp"
+  },
+  {
+   "id": "benderg-bay",
+   "lonLat": [
+    -5.535564,
+    54.312005
+   ],
+   "high": "benderg-bay-high.webp",
+   "low": "benderg-bay-low.webp"
+  },
+  {
+   "id": "killard",
+   "lonLat": [
+    -5.541111,
+    54.320084
+   ],
+   "high": "killard-high.webp",
+   "low": "killard-low.webp"
+  },
+  {
+   "id": "malahide-estuary",
+   "lonLat": [
+    -6.173072,
+    53.463347
+   ],
+   "high": "malahide-estuary-high.webp",
+   "low": "malahide-estuary-low.webp"
+  },
+  {
+   "id": "portrane",
+   "lonLat": [
+    -6.109482,
+    53.495188
+   ],
+   "high": "portrane-high.webp",
+   "low": "portrane-low.webp"
+  },
+  {
+   "id": "donabate-north-beach",
+   "lonLat": [
+    -6.111939,
+    53.481942
+   ],
+   "high": "donabate-north-beach-high.webp",
+   "low": "donabate-north-beach-low.webp"
+  },
+  {
+   "id": "malahide-estuary-south-park",
+   "lonLat": [
+    -6.182803,
+    53.458976
+   ],
+   "high": "malahide-estuary-south-park-high.webp",
+   "low": "malahide-estuary-south-park-low.webp"
+  }
+ ],
+ "base": "satellite/v66b18d152cc7/"
+}
