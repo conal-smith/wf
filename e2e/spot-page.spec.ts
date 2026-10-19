@@ -183,6 +183,18 @@ test("a spot page is the week day by day: hours in figures, the tide and the lig
   expect(await turns.count()).toBe(
     await turns.filter({ hasText: /^(High|Low) tide\d\d:\d\d/ }).count(),
   );
+  // The curve stands on a scale of metres, the same every day, and each turn
+  // has its time and height written beside it.
+  await expect(tide.locator("[data-tide-metre]")).toHaveCount(3);
+  await expect(tide.locator('[data-tide-turn="high"]').first()).toHaveText(
+    /^\d\d:\d\d · 4\.1 m$/,
+  );
+  await expect(tide.locator('[data-tide-turn="low"]').first()).toHaveText(
+    /^\d\d:\d\d · 0\.8 m$/,
+  );
+  await expect(tide.locator("[data-tide-turn]")).toHaveCount(
+    await turns.count(),
+  );
 
   // Sources, the way to how the stars work, and the line every forecast
   // here ends on.

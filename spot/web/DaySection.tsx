@@ -139,15 +139,15 @@ const WIDE = "(min-width: 45rem)";
  * keeps is the space it fills and nothing moves when it draws. Built from
  * the parts as they are set below: an hour is `h-10`, `wide:h-9` (40px, 36px
  * wide); the column heads 24px, 31px wide where the knot scale's 20px figure
- * shows; a fold 32px; and DayTide's 84px curve over its four rows of light,
- * 209px whatever the tides. The rows are the day's own, so a three-hourly day
+ * shows; a fold 32px; and DayTide's 124px curve over its four rows of light,
+ * 249px whatever the tides. The rows are the day's own, so a three-hourly day
  * keeps the space of its four or five, not of twelve.
  */
 function estimate(rows: readonly SpotRow[], wide: boolean): number {
   const { before, light, after } = darkRuns(rows);
   const folds = Number(before.length > 0) + Number(after.length > 0);
   const head = light.length ? (wide ? 31 : 24) : 0;
-  return head + folds * 32 + light.length * (wide ? 36 : 40) + 209;
+  return head + folds * 32 + light.length * (wide ? 36 : 40) + 249;
 }
 
 export function DaySection(props: DaySectionProps) {
