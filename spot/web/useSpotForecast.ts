@@ -1,10 +1,12 @@
 /**
  * One riding place's forecast, read in the browser through the MCP server's own
  * reduction (mcp/api/forecast.ts): every live model's series for the spot,
- * reduced to one consensus line per hour, with the waves, weather, tides, sea
- * temperature and runs behind it. An agent and this page read the same numbers.
+ * with one model's own line per hour as the headline (the one the rider takes
+ * their stars from, `from`), and the waves, weather, tides, sea temperature
+ * and runs behind it. An agent and this page read the same numbers.
  */
 import { useEffect, useState } from "react";
+import { DEFAULT_STARS_FROM, type StarsFrom } from "../../force5/src/lead";
 import {
   findSpot,
   loadSpots,
@@ -64,11 +66,23 @@ export function candidatesFor(
 let shared: ForecastSource | null = null;
 const source = () => (shared ??= siteSource());
 
-export function useSpotForecast(id: string | null, attempt = 0): SpotState {
+/**
+ * The place's forecast, read again when the rider takes their stars from
+ * another model: the page already drawn stays while it is read, so a change of
+ * model does not blank the page.
+ */
+export function useSpotForecast(
+  id: string | null,
+  attempt = 0,
+  from: StarsFrom = DEFAULT_STARS_FROM,
+): SpotState {
   const [state, setState] = useState<SpotState>({ kind: "loading" });
+  const { model, then } = from;
   useEffect(() => {
     let current = true;
-    setState({ kind: "loading" });
+    setState((was) =>
+      was.kind === "ready" && was.spot.id === id ? was : { kind: "loading" },
+    );
     (async () => {
       const spots = await loadSpots(source());
       if (id === null) return { kind: "index", spots } as const;
@@ -84,6 +98,7 @@ export function useSpotForecast(id: string | null, attempt = 0): SpotState {
       const forecast = await spotForecast(source(), spot, forecastWindow(now), {
         now,
         perModel: true,
+        from: { model, then },
       });
       return { kind: "ready", spot, forecast } as const;
     })().then(
@@ -104,6 +119,6 @@ export function useSpotForecast(id: string | null, attempt = 0): SpotState {
     return () => {
       current = false;
     };
-  }, [id, attempt]);
+  }, [id, attempt, model, then]);
   return state;
 }

@@ -18,6 +18,7 @@
  */
 
 import type { CustomRating } from "../../force5/src/stars.js";
+import type { StarsChoice } from "../../force5/src/lead.js";
 
 export const COMPANION_NAME = "Gust";
 
@@ -63,6 +64,8 @@ export interface RiderContext {
   wings: number[];
   /** The rider's own star rating, which Gust then rates with. */
   custom?: CustomRating | null;
+  /** The model the rider's stars come from, everywhere and at their own spots. */
+  starsFrom?: StarsChoice;
 }
 
 export interface ChatContext {

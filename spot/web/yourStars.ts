@@ -154,7 +154,7 @@ export const FROM: Record<DirectionKey, number> = {
 
 /**
  * An hour of `windKn` gusting `gustKn` from `dir`, rated for this rider:
- * steady models, daylight, and no wing to fit, so only the three curves speak.
+ * daylight, and no wing to fit, so only the three curves speak.
  */
 export function rateExample(
   rider: Rider,
@@ -167,7 +167,6 @@ export function rateExample(
       windKn,
       gustKn,
       from: FROM[dir],
-      agreement: "high",
       daylight: true,
     },
     { facing: FACING },

@@ -28,7 +28,16 @@ import {
 } from "../shared/schema.js";
 import { deviceCredentials, hashSecret, isAdmin, newDeviceId, newSecret, secretMatches } from "./auth.js";
 import { announce } from "./evaluate.js";
-import { PLACES, ratingCache, readBlend, readBlendPointer, staleBlend, type Blend } from "./forecast.js";
+import {
+  PLACES,
+  ratingCache,
+  readBlend,
+  readBlendPointer,
+  readModelWind,
+  ridesApart,
+  staleBlend,
+  type Blend,
+} from "./forecast.js";
 import type { AlertsRepo, DeviceRow } from "./repo.js";
 
 const MINUTE = 60_000;
@@ -181,7 +190,13 @@ export function createAlertsRouter(deps: AlertsDeps) {
   });
 
   // The blend previews are worked out on, read again at most every five minutes.
-  type Held = { at: number; blend: Blend | null; ratings: ReturnType<typeof ratingCache> | null };
+  type Held = {
+    at: number;
+    blend: Blend | null;
+    ratings: ReturnType<typeof ratingCache> | null;
+    /** The same with the models read too, once a rider rated apart has asked. */
+    apart?: Promise<ReturnType<typeof ratingCache>>;
+  };
   let held: Held | null = null;
   let loading: Promise<Held> | null = null;
   const previewBlend = async (): Promise<Held> => {
@@ -209,7 +224,16 @@ export function createAlertsRouter(deps: AlertsDeps) {
     limiter.take(`alerts:${c.var.device.id}`, "reaction");
     if (!deps.source) return refuse(c, 503, "not_configured", "The forecast is not configured here.");
     const device = c.var.device;
-    const { blend, ratings } = await previewBlend();
+    const preview = await previewBlend();
+    const { blend } = preview;
+    // A rider whose stars come from other models than the blend's is rated
+    // from the models themselves, read once for every such rider.
+    const ratings =
+      blend && preview.ratings && ridesApart(blend.pointer, device.rider)
+        ? await (preview.apart ??= readModelWind(deps.source, now()).then((wind) =>
+            ratingCache(blend, wind),
+          ))
+        : preview.ratings;
     const unknownSpots = [...new Set(device.rules.flatMap((rule) => rule.spots))].filter(
       (id) => !PLACES.has(id) || (blend !== null && !blend.spots[id]),
     );

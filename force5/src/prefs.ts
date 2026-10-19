@@ -1,6 +1,13 @@
 // Display preferences for the forecast dock. Persistence is best effort:
 // private browsing, blocked storage and quota errors must never break the page.
 import { isUnits, type Units } from "./units";
+import {
+  parseStarsChoice,
+  withSpotStars,
+  withStarsFrom,
+  type StarsChoice,
+  type StarsFrom,
+} from "./lead";
 import { modelEntry, windModels } from "./manifests";
 import {
   DEFAULT_RIDER,
@@ -52,8 +59,9 @@ export interface Prefs {
   blendModels: string[];
   view: ForecastView;
   /**
-   * Who the stars are rated for: weight, level, the wings they own, and their
-   * own star rating, rating or kept (stars.ts `Rider`).
+   * Who the stars are rated for: weight, level, the wings they own, their
+   * own star rating, rating or kept, and the model the stars come from
+   * (stars.ts `Rider`, lead.ts `StarsChoice`).
    */
   rider: Rider;
   /**
@@ -275,7 +283,30 @@ export function parseRider(value: unknown): Rider {
       parseCustomRating(raw.custom),
       parseCustomRating(raw.keptCustom),
     ),
+    ...withStarsChoice(parseStarsChoice(raw.starsFrom)),
   };
+}
+
+/** A rider carries `starsFrom` only when it is not the default, so a default rider stays as it always was. */
+const withStarsChoice = (
+  choice: StarsChoice | undefined,
+): Pick<Rider, "starsFrom"> => (choice ? { starsFrom: choice } : {});
+
+/**
+ * The rider with the model their stars come from changed: everywhere
+ * (`change`), or at one spot (`spot`, with null for "same as everywhere").
+ */
+export function withRiderStarsFrom(
+  rider: Rider,
+  change:
+    { everywhere: Partial<StarsFrom> } | { spot: string; model: string | null },
+): Rider {
+  const { starsFrom: old, ...rest } = rider;
+  const next =
+    "everywhere" in change
+      ? withStarsFrom(old, change.everywhere)
+      : withSpotStars(old, change.spot, change.model);
+  return { ...rest, ...withStarsChoice(next) };
 }
 
 /** A rider carries `custom` or `keptCustom` only when there is one, so a standard rider stays as it always was. */

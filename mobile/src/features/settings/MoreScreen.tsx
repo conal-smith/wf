@@ -13,7 +13,7 @@ import { usePrefs } from "../../data/prefs";
 import { colors, fonts, space } from "../../theme/tokens";
 import { DOCK_ROWS, dockRowOn } from "../dock/dockLogic";
 import { openLink } from "./SettingsPage";
-import { SOURCE_CODE_URL, riderSummary } from "./settingsLogic";
+import { SOURCE_CODE_URL, STARS_FROM_NOTE, riderSummary, starsFromValue } from "./settingsLogic";
 
 const go = (path: string) => () => router.push(path as never);
 
@@ -31,10 +31,16 @@ export function MoreScreen() {
         <ListRow label="Rider" value={riderSummary(prefs.rider)} onPress={go("/settings/rider")} hint="Level, weight and wings" />
       </ListSection>
 
-      <ListSection title="The forecast">
+      <ListSection title="The forecast" footer={STARS_FROM_NOTE}>
+        <ListRow
+          label="Stars from"
+          value={starsFromValue(prefs.rider.starsFrom)}
+          onPress={go("/settings/stars-from")}
+          hint="The one model each hour's stars come from"
+        />
+        <ListRow label="Models in the blend" value={`${inBlend} of ${models.length}`} onPress={go("/settings/models")} />
         <ListRow label="Units" value={unit?.label ?? prefs.units} onPress={go("/settings/units")} />
         <ListRow label="Dock rows" value={`${rowsOn} of ${DOCK_ROWS.length}`} onPress={go("/settings/rows")} />
-        <ListRow label="Models in the blend" value={`${inBlend} of ${models.length}`} onPress={go("/settings/models")} />
       </ListSection>
 
       <ListSection title="How it works">

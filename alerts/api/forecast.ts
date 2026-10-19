@@ -1,7 +1,11 @@
 /**
  * The forecast alerts are evaluated on: the published blend (weather/blend.json
  * and its spot squares, rebuilt hourly by force5/blend), rated per rider the
- * way the map rates it.
+ * way the map rates it. The blend carries the hours the default stars come
+ * from (HARMONIE, then ECMWF; force5/src/lead.ts); a rider who takes their
+ * stars from other models, everywhere or at a spot of theirs, is rated from
+ * those models' own spot squares instead, read through the forecast server's
+ * loader and its `hourWind` (mcp/api/forecast.ts), the rule the spot page uses.
  *
  * The map reads the blend through src/spotBlend.ts, which this service cannot
  * import: that module and its imports (src/ratings.ts, force5/src/weather.ts)
@@ -27,6 +31,18 @@ import {
 import { rateHour, type Agreement, type Rider } from "../../force5/src/stars.js";
 import { dayNights } from "../../force5/src/sun.js";
 import { shoreFacing } from "../../companion/api/spots.js";
+import {
+  overriddenSpots,
+  sameStarsFrom,
+  starsFromAt,
+  type StarsFrom,
+} from "../../force5/src/lead.js";
+import {
+  hourWind,
+  loadWind,
+  spotWindLines,
+} from "../../mcp/api/forecast.js";
+import { squaresFor } from "../../force5/src/spotData.js";
 import type { ForecastSource } from "../../mcp/api/source.js";
 import catalogue from "../../public/riding-locations.json" with { type: "json" };
 import type { RatedColumn } from "../shared/match.js";
@@ -64,6 +80,11 @@ export interface BlendPointer {
   times: string[];
   base: string;
   spots: SpotIndex;
+  /**
+   * The models every place's hours are (src/spotBlend.ts). Absent from a blend
+   * built before 19 October 2026, which then fits no rider's stars.
+   */
+  lead?: StarsFrom;
 }
 
 /** One place's consensus on the blend's times: knots in tenths, bearings in degrees. */
@@ -72,6 +93,8 @@ export interface BlendSeries {
   gust: (number | null)[];
   from: (number | null)[];
   agreement: string;
+  /** Which model each time is: its place in the pointer's sources, base 36. */
+  lead?: string;
 }
 
 export interface Blend {
@@ -171,13 +194,61 @@ export function blendHours(blend: Blend, place: Place, rider: Rider): RatedColum
 }
 
 export const riderKey = (rider: Rider) =>
-  JSON.stringify([rider.weightKg, rider.skill, [...rider.wings].sort((a, b) => a - b), rider.custom ?? null]);
+  JSON.stringify([
+    rider.weightKg,
+    rider.skill,
+    [...rider.wings].sort((a, b) => a - b),
+    rider.custom ?? null,
+    rider.starsFrom ?? null,
+  ]);
+
+/** Every live wind model with the spot squares of every place: what a rider rated apart is read from. */
+export type ModelWind = Awaited<ReturnType<typeof loadWind>>;
+
+/** The models' own forecasts at every place, for riders whose stars the blend does not carry. */
+export const readModelWind = (source: ForecastSource, now: number): Promise<ModelWind> =>
+  loadWind(source, now, squaresFor([...PLACES.values()]));
+
+/** Whether a place's hours, for this rider, come from the blend: their stars there come from its models. */
+export const fromBlend = (pointer: Pick<BlendPointer, "lead">, rider: Rider, spotId: string) =>
+  sameStarsFrom(pointer.lead, starsFromAt(rider.starsFrom, spotId));
+
+/** Whether any place is rated from the models for this rider: then the models must be read. */
+export const ridesApart = (pointer: Pick<BlendPointer, "lead">, rider: Rider) =>
+  !sameStarsFrom(pointer.lead, starsFromAt(rider.starsFrom)) ||
+  overriddenSpots(rider.starsFrom).some((id) => !fromBlend(pointer, rider, id));
+
+/**
+ * One place's hours on the blend's own times, rated for this rider from the
+ * models their stars come from there (`hourWind`, as the spot page has them).
+ * Null where no model is read or none publishes the place.
+ */
+export function modelHours(wind: ModelWind, place: Place, times: readonly string[], rider: Rider): RatedColumn[] | null {
+  const { lines } = spotWindLines(wind.loaded, place.id);
+  if (!lines.length) return null;
+  const from = starsFromAt(rider.starsFrom, place.id);
+  const light = daylight(place, times);
+  return times.map((iso, i) => {
+    const w = hourWind(lines, Date.parse(iso), false, from);
+    const hour = {
+      windKn: w?.wind_kn ?? null,
+      gustKn: w?.gust_kn ?? null,
+      from: w ? w.direction_deg : null,
+      agreement: w?.agreement ?? null,
+      daylight: light[i],
+    };
+    return { ...hour, rating: rateHour(hour, { facing: place.facing }, rider) };
+  });
+}
 
 /**
  * A rated-hours lookup per rider, for one blend: many devices share a rider
  * (the default most of all), so each place is rated once per rider per run.
+ * A place whose stars, for this rider, come from other models than the
+ * blend's is rated from `wind`, the models' own forecasts; without them it is
+ * unknown.
  */
-export function ratingCache(blend: Blend) {
+export function ratingCache(blend: Blend, wind: ModelWind | null = null) {
   const byRider = new Map<string, Map<string, RatedColumn[] | null>>();
   return (rider: Rider) => {
     const key = riderKey(rider);
@@ -187,7 +258,13 @@ export function ratingCache(blend: Blend) {
     return (spotId: string): RatedColumn[] | null => {
       if (cache.has(spotId)) return cache.get(spotId)!;
       const place = PLACES.get(spotId);
-      const hours = place ? blendHours(blend, place, rider) : null;
+      const hours = !place
+        ? null
+        : fromBlend(blend.pointer, rider, spotId)
+          ? blendHours(blend, place, rider)
+          : wind
+            ? modelHours(wind, place, blend.pointer.times, rider)
+            : null;
       cache.set(spotId, hours);
       return hours;
     };

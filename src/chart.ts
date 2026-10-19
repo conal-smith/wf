@@ -8,12 +8,7 @@
 // Catmull-Rom, which the data layer does not do.
 import { framePosition } from "../force5/src/timeline";
 import { KNOTS, convert, type Units } from "../force5/src/units";
-import {
-  direction,
-  windColor,
-  type FrameInfo,
-  type Wind,
-} from "../force5/src/weather";
+import { windColor, type FrameInfo, type Wind } from "../force5/src/weather";
 import {
   bridgeableGapHours,
   interpolateSeries,
@@ -442,53 +437,6 @@ export function vectorMean(
     u: usable.reduce((sum, point) => sum + point.u, 0) / usable.length,
     v: usable.reduce((sum, point) => sum + point.v, 0) / usable.length,
   };
-}
-
-/** `vectorMean` with each vector counted by its weight. */
-function weightedVectorMean(
-  points: readonly { u: number; v: number; weight: number }[],
-): { u: number; v: number } | null {
-  const usable = points.filter(
-    (point) => Number.isFinite(point.u) && Number.isFinite(point.v),
-  );
-  const total = usable.reduce((sum, point) => sum + point.weight, 0);
-  if (!usable.length || !(total > 0)) return null;
-  return {
-    u: usable.reduce((sum, point) => sum + point.u * point.weight, 0) / total,
-    v: usable.reduce((sum, point) => sum + point.v * point.weight, 0) / total,
-  };
-}
-
-/**
- * The headline bearing per axis hour, for the arrows on the headline line: the
- * lead model's own (`lead`, its index in `vectorsByModel`: HARMONIE,
- * `LEAD_MODEL`) wherever it has the hour, as the headline wind is; elsewhere
- * the mean across every model that covers it.
- */
-export function meanDirections(
-  vectorsByModel: readonly ({ u: number; v: number } | null)[][],
-  length: number,
-  /** Each model's weight at an axis index (`modelWeight`); equal when left out. */
-  weightAt?: (model: number, index: number) => number,
-  lead?: number,
-): (number | null)[] {
-  return Array.from({ length }, (_, index) => {
-    const own = lead === undefined ? null : vectorsByModel[lead]?.[index];
-    if (own && Number.isFinite(own.u) && Number.isFinite(own.v))
-      return Math.hypot(own.u, own.v) < 0.1 ? null : direction(own.u, own.v);
-    const at = vectorsByModel.flatMap((vectors, model) => {
-      const vector = vectors[index];
-      return vector
-        ? [{ ...vector, weight: weightAt ? weightAt(model, index) : 1 }]
-        : [];
-    });
-    const mean = weightAt
-      ? weightedVectorMean(at)
-      : vectorMean(at.map(({ u, v }) => ({ u, v })));
-    return mean === null || Math.hypot(mean.u, mean.v) < 0.1
-      ? null
-      : direction(mean.u, mean.v);
-  });
 }
 
 /** Plain words for an agreement label; colour never carries this on its own. */

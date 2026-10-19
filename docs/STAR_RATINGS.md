@@ -9,6 +9,53 @@ The logic is `force5/src/stars.ts`, a pure module with its tests beside it. The
 dock draws it (`src/StarsRows.tsx`); nothing else is needed to rate an hour, so
 the map, the forecast server and a notification job can all rate the same way.
 
+## One model, the rider's choice
+
+**Ruling, 19 October 2026: the stars come from one model, the rider's choice.**
+Every hour is rated on one model's own wind, gust and direction, never on a
+median or blend of several. The rider picks the model ("Stars from", HARMONIE
+unless they say otherwise) and the one that takes over where its run ends
+("When it ends", ECMWF unless they say otherwise), and may give any spot of
+theirs a model of its own (its fallback stays the same). Each hour is the
+first of the two that reaches it; an hour neither reaches has no stars, and no
+other model stands in. Where that model gives no gust, the hour has none. How
+far the other models agree is shown beside the stars, as context, and never
+takes a star off.
+
+The rule is `force5/src/lead.ts` (`starsFromAt`, `pickModel`), shared by every
+surface that rates:
+
+| Surface                              | Where the hours come from                                                                                                                                 |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Map lights, dock stars (web and app) | `src/ratings.ts` `placeConsensus`, or for the default choice the published blend built by the same function (`src/spotBlend.ts`, `force5/blend/build.ts`) |
+| Dock's Blend chart                   | `src/useBlend.ts` → `blendStats(…, headline)`: the headline line is the same one model's                                                                  |
+| Spot page, MCP tools, Gust           | `mcp/api/forecast.ts` `hourWind(…, from)`; `get_spot_forecast` and `find_wind` take `stars_from` and `then`                                               |
+| Alerts                               | the published blend for a rider on the default; the models' own spot squares through `hourWind` for any other (`alerts/api/forecast.ts`)                  |
+| Verification                         | `force5/ingest/consensus.py`, a line-by-line replica held to the TypeScript by `force5/ingest/fixtures/blend-consensus.json`                              |
+
+The choice rides on the rider (`Rider.starsFrom`, a `StarsChoice` in
+`force5.prefs.v1`), so every page and service that is handed the rider rates
+from it: Display options (beside the level), the spot page's rider line and its
+hour card's model table ("use for stars": every spot, or just this one), and
+the app's Settings. Like the weight and the level it stays on the device; only
+a rider's own star rating is kept with their account. The app's alerts get it
+with the rest of the rider when the phone registers.
+
+The published blend is built for the default choice and says so (`lead` in
+the pointer, and in each place which model each hour is). A reader whose
+choice matches it rates from it; any other choice is worked out in the browser
+from the models' own spot squares, the squares in view, as a reader who
+leaves models out of their blend always was. A spot with a model of its own is
+worked out that way alone, beside the published blend for every other place
+(`placesRatedApart`).
+
+Where the stars hand over from one model to the next, the dock draws a dashed
+pen line down the hours with "ECMWF from Wed 22:00" written by it, the dock's
+head names the model that rates the hour in hand ("★ HARMONIE"; magenta, "★
+from GFS", where the spot has its own), and every hour's stars say "from
+HARMONIE" to a screen reader. The spot page puts a handover row in the day's
+table, names the model on the day's header and in each hour's card.
+
 ## Two numbers per hour
 
 |               | What it is                                                 | Drawn as              |
@@ -17,7 +64,7 @@ the map, the forecast server and a notification job can all rate the same way.
 | **Stars**     | What is left once the spot and the forecast have their say | solid stars           |
 
 Stars never exceed potential, so the faded stars are always the upside a
-kinder direction, a steadier breeze or better model agreement would have given.
+kinder direction or a steadier breeze would have given.
 Solid and faded differ by shape (filled against outline) as well as by tone.
 
 ### Rideable wind: the steady wind, lifted only to the floor
@@ -54,33 +101,31 @@ holds a little more at the top (fourth root). Five stars sit in the middle half
 of the sweet spot; four at its edges; one to four ramps up from the floor; two
 at the ceiling, falling to none six knots past it.
 
-### Stars: what the spot and the forecast take away
+### Stars: what the spot takes away
 
 ```
-stars = round(wind − gusts − direction − agreement − wing), from 0 to potential
+stars = round(wind − gusts − direction − wing), from 0 to potential
 ```
 
 Each deduction is a sentence in the cell's tooltip when it costs a whole star,
 so a rider can argue with it.
 
-| Condition                                                                       | Learning   | Riding | Advanced |
-| ------------------------------------------------------------------------------- | ---------- | ------ | -------- |
-| Onshore (wind within 30° of straight onshore)                                   | −1         | −1     | −1       |
-| Cross-onshore                                                                   | —          | —      | —        |
-| Cross-shore                                                                     | −0.5       | —      | —        |
-| Cross-offshore                                                                  | −3         | −1.5   | −1       |
-| Offshore (wind within 30° of straight off the beach)                            | −5         | −4     | −4       |
-| Gusts, by how strong they are (below)                                           | to −3      | to −2  | to −2    |
-| Models disagree / differ a little (agreement low / moderate, below)             | −1 / −0.25 | same   | same     |
-| Your wings don't fit (biggest < 75% or smallest > 135% of the recommended size) | −1         | −1     | −1       |
+| Condition                                                                       | Learning | Riding | Advanced |
+| ------------------------------------------------------------------------------- | -------- | ------ | -------- |
+| Onshore (wind within 30° of straight onshore)                                   | −1       | −1     | −1       |
+| Cross-onshore                                                                   | —        | —      | —        |
+| Cross-shore                                                                     | −0.5     | —      | —        |
+| Cross-offshore                                                                  | −3       | −1.5   | −1       |
+| Offshore (wind within 30° of straight off the beach)                            | −5       | −4     | −4       |
+| Gusts, by how strong they are (below)                                           | to −3    | to −2  | to −2    |
+| The models disagree (shown beside the stars, never counted, since v5)           | —        | —      | —        |
+| Your wings don't fit (biggest < 75% or smallest > 135% of the recommended size) | −1       | −1     | −1       |
 
 Offshore is a deduction like the others, not a cap: the faded stars still say
 what the wind is worth, and a rider's own rating may set it as they like.
 
-The quarter for some spread among the models is the one that usually costs
-nothing; when it does tip an hour under a whole star, the reason says so ("The
-models differ a little, enough to hold back a star"). The gusts and the
-direction are named the same way: only when they cost a whole star.
+The gusts and the direction are named in the reasons only when they cost a
+whole star.
 
 ### The gusts (`gustLoss`, `gustCurve`)
 
@@ -100,7 +145,7 @@ The knots are for 80 kg and move with weight as the top of the band does
 (fourth root of weight / 80).
 
 The owner's calibration, for Riding at 80 kg, cross-onshore, no wings listed,
-the models agreeing (`force5/src/stars.test.ts` asserts every line, and the
+(`force5/src/stars.test.ts` asserts every line, and the
 mockup's figures for the other two levels):
 
 | Wind       | v3  | v4  | Why                                              |
@@ -143,6 +188,18 @@ it; knots are held to the tenth, the wind handles in order a knot apart within
 half stars. `standardRating(rider, level)` is a level's own rating for that
 rider's weight, where "Start from" begins, so saving it unchanged rates as the
 level does.
+
+### Why v5 (19 October 2026)
+
+The owner's ruling: "Why are ECMWF and GFS contributing towards the stars? It's
+supposed to only take whatever the user has configured. We don't use more than
+one model." v4 rated HARMONIE's own hour, but past HARMONIE's run it rated a
+weighted median of the other models (in practice GFS's number once ICON-EU had
+ended too), and every hour lost a quarter to a whole star when the models'
+spread was moderate or low, so a model the rider never looked at could take a
+star off. v5 rates one model's hour, the rider's choice, then one fallback,
+never a blend, and the agreement is context only. The wind, gust and direction
+bands are v4's.
 
 ### Why v4 (18 October 2026)
 
@@ -296,12 +353,11 @@ and picks a window themselves.
 ## On the spot page
 
 `/spot/<id>` (`spot/web/`) is the chart's broadsheet for one place, day by
-day. It rates the forecast server's headline line: HARMONIE's own wind, gust and
-direction while it reaches the hour, and past it the weighted median of the
-other models, with agreement read across every model (`mcp/api/forecast.ts`),
-so the stars there are the stars an assistant would be given. The dock follows
-the same rule, so the two agree unless a reader has left models out in Display
-options.
+day. It rates the forecast server's headline line, one model's own wind, gust
+and direction by the rider's choice (`hourWind`, `mcp/api/forecast.ts`), with
+agreement read across every model as context, so the stars there are the stars
+an assistant would be given. The dock follows the same rule from the same
+`force5/src/lead.ts`, so the two agree.
 
 - **The week strip**, a column a day for seven Irish days, by name and date.
   Choosing a day takes the page to it. No day is rated: the stars are the
@@ -343,8 +399,8 @@ neither shows.
 1. **Rider feedback.** A "rode it: ★★★" check-in from the community spot card
    would give ground truth to tune the bands and deductions against, and is the
    honest way to make the stars better than a formula.
-2. **Alerts.** Follow a place, get the bell when a four-star window with high
-   agreement appears in the next 48 hours.
+2. **Alerts.** Follow a place, get the bell when a four-star window appears in
+   the next 48 hours.
 3. **Per-place knowledge.** Tide windows ("works from mid tide up") and known
    good directions from local riders, as overrides on the computed facing.
 4. **Waves.** A wave-riding session (cross-off with swell) for advanced riders,

@@ -63,10 +63,10 @@ export function forecastHour(
           direction: place.from === null ? "" : compass(place.from),
           agreement: place.agreement,
           models: 0,
-          // A rated hour does not carry which line its wind is (HARMONIE's own
-          // or the blend's), and nothing on the app's page reads it.
-          lead: null,
-          gust_lead: null,
+          // The one model the wind is (and the stars came from); a wind always
+          // has one, the empty name only a guard.
+          lead: place.model ?? "",
+          gust_lead: place.gustKn === null ? null : place.model,
         };
   return {
     time: column.validTime,

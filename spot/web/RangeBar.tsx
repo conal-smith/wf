@@ -1,21 +1,22 @@
 /**
  * An hour's wind against the rider's own range. The frame is the range: its
  * left edge the rider's floor, its right edge the most they can hold, the
- * sweet spot tinted inside. The models' spread is an ink line across it, the
- * headline wind a dot on that line and the gust a tick above it; a headline
- * outside the range is an arrowhead pinned beyond the edge it missed. The
- * headline is HARMONIE's own while it reaches the hour and the blend of the
- * models past it (`HourWind.lead`). Every row draws the same frame, so down a
- * column it reads where each hour sits.
+ * sweet spot tinted inside. On it, one model's own forecast, the one the
+ * stars come from (`HourWind.lead`): a dot at its mean and an orange tail to
+ * its gust, "13, gusting 19"; a mean outside the range is an arrowhead pinned
+ * beyond the edge it missed. Every row draws the same frame, so down a column
+ * it reads where each hour sits.
  *
- * Tapped, it opens `RangeDetail`: the same frame drawn large and labelled, and
- * every model's wind, HARMONIE's first while it reaches the hour.
+ * Tapped, it opens `RangeDetail`: the same frame drawn large and labelled,
+ * with the other models as faint ticks, and every model's wind, the one the
+ * stars come from first. Any of them can be picked there to rate the stars.
  */
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { modelName, type StarsFrom } from "../../force5/src/lead";
 import { SHORE_LABEL, type ShoreAngle } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
-import { LEAD_MODEL } from "../../force5/src/weights";
 import type { HourWind } from "../../mcp/api/forecast";
+import { Button } from "../../ui";
 import { MONO_LABEL, tv } from "../../ui/tv";
 import { WindArrow } from "./glyphs";
 import { clock, compass, windIn } from "./spot";
@@ -25,13 +26,14 @@ const styles = tv({
     svg: "block shrink-0 overflow-visible",
     sweet: "fill-chart-magenta/10",
     frame: "fill-none stroke-ink",
-    models: "stroke-ink",
-    cap: "stroke-ink",
+    tick: "stroke-ink/40",
     mean: "fill-ink",
     out: "fill-ink",
+    tail: "fill-none stroke-gust",
     gust: "fill-gust",
     label: "fill-ink-muted font-mono text-eyebrow normal-case",
     labelStrong: "fill-ink font-mono text-eyebrow font-semibold normal-case",
+    labelGust: "fill-gust font-mono text-eyebrow font-semibold normal-case",
     detail: "flex flex-col gap-2.5",
     when: ["text-ink-muted", MONO_LABEL],
     headline:
@@ -40,10 +42,11 @@ const styles = tv({
     gustSup: "align-super text-caption text-gust",
     facts: "m-0 flex flex-col gap-1 font-mono text-caption",
     fact: "flex gap-3",
-    // Wide enough for "HARMONIE", the longest term.
-    term: ["w-16 shrink-0 pt-px text-ink-muted", MONO_LABEL],
+    // Wide enough for "Stars from", the longest term.
+    term: ["w-18 shrink-0 pt-px text-ink-muted", MONO_LABEL],
     value: "m-0 text-ink-2",
     strong: "font-semibold text-ink",
+    context: "font-body text-caption text-ink-muted italic",
     warn: "m-0 text-pen-ink",
     table: "w-full border-collapse font-mono text-caption tabular-nums",
     th: [
@@ -54,7 +57,14 @@ const styles = tv({
     td: "border-0 border-b border-line py-0.5 text-left font-normal text-ink-2",
     lead: "font-semibold text-ink",
     tag: "ml-1 text-eyebrow text-ink-muted",
+    pickCell: "w-6 border-0 border-b border-line p-0",
+    pick: "h-5 w-5 text-ink",
+    ring: "fill-none stroke-ink",
+    dot: "fill-ink",
     note: "m-0 font-body text-caption text-ink-muted italic",
+    ask: "flex flex-col gap-2 border-0 border-t border-line pt-2",
+    askTitle: ["m-0 text-ink", MONO_LABEL],
+    askButtons: "flex flex-wrap items-center gap-2",
   },
 });
 
@@ -107,15 +117,15 @@ export function rangeText(knots: number, band: Band, units: Units): string {
   }
 }
 
-/** The headline's name: HARMONIE while it leads the hour, else the blend. */
+/** The headline's name: the model the hour's stars come from, "HARMONIE", "ECMWF". */
 export const headlineName = (wind: Pick<HourWind, "lead">) =>
-  wind.lead === LEAD_MODEL ? "HARMONIE" : "Blend";
+  modelName(wind.lead);
 
 /** What the frame draws, for a screen reader and the trigger's label. */
 export function rangeWords(wind: HourWind, band: Band, units: Units): string {
   const say = (k: number) => windIn(k, units);
   return [
-    `${wind.lead === LEAD_MODEL ? "HARMONIE" : "blend"} ${say(wind.wind_kn)}${wind.gust_kn !== null ? ` gusting ${say(wind.gust_kn)}` : ""}`,
+    `${headlineName(wind)} ${say(wind.wind_kn)}${wind.gust_kn !== null ? ` gusting ${say(wind.gust_kn)}` : ""}`,
     wind.models > 1
       ? `${wind.models} models ${say(wind.min_kn)}–${say(wind.max_kn)}`
       : null,
@@ -125,25 +135,45 @@ export function rangeWords(wind: HourWind, band: Band, units: Units): string {
     .join(", ");
 }
 
-/** The frame and the hour's wind in it. `height` is the row's; 18 in a row. */
+/** Every other model's mean, for the card's faint ticks. */
+export function otherWinds(wind: HourWind): { id: string; knots: number }[] {
+  return Object.entries(wind.by_model ?? {})
+    .filter(([id]) => id !== wind.lead)
+    .map(([id, line]) => ({ id, knots: line.wind_kn }));
+}
+
+/**
+ * The frame and the hour's wind in it: the mean as a dot, the tail to the
+ * gust, and in the card (`ticks`) the other models faint. `height` is the
+ * row's; 22 in a row.
+ */
 function Frame({
   wind,
   band,
   width,
   height,
   mid,
+  ticks = false,
 }: {
   wind: HourWind;
   band: Band;
   width: number;
   height: number;
   mid: number;
+  ticks?: boolean;
 }) {
   const s = styles();
   const { left, right, x, held } = scale(band, width);
   const half = Math.min(8, height / 2 - 1);
-  const lo = held(wind.min_kn);
-  const hi = held(wind.max_kn);
+  // The tail starts where the mean is drawn: on the frame's edge for a mean
+  // pinned beyond it.
+  const meanX =
+    wind.wind_kn < band.min
+      ? left
+      : wind.wind_kn > band.max
+        ? right
+        : x(wind.wind_kn);
+  const gustX = wind.gust_kn === null ? null : held(wind.gust_kn);
   return (
     <>
       <rect
@@ -160,32 +190,39 @@ function Frame({
         width={right - left - 1}
         height={half * 2 - 1}
       />
-      {wind.models > 1 && (
+      {ticks &&
+        otherWinds(wind).map(({ id, knots }) => (
+          <line
+            key={id}
+            className={s.tick()}
+            x1={held(knots)}
+            x2={held(knots)}
+            y1={mid - 5}
+            y2={mid + 5}
+            strokeWidth={1.2}
+            data-model-tick={id}
+          />
+        ))}
+      {gustX !== null && (
         <>
           <line
-            className={s.models()}
-            x1={lo}
-            x2={hi}
+            className={s.tail()}
+            x1={meanX}
+            x2={gustX}
             y1={mid}
             y2={mid}
-            strokeWidth={2}
+            strokeWidth={2.2}
+            strokeLinecap="round"
           />
-          <line className={s.cap()} x1={lo} x2={lo} y1={mid - 3} y2={mid + 3} />
-          <line className={s.cap()} x1={hi} x2={hi} y1={mid - 3} y2={mid + 3} />
+          <circle className={s.gust()} cx={gustX} cy={mid} r={2.6} />
         </>
-      )}
-      {wind.gust_kn !== null && (
-        <path
-          className={s.gust()}
-          d={`M${held(wind.gust_kn) - 3.5} ${mid - half - 5}h7l-3.5 5z`}
-        />
       )}
       {wind.wind_kn < band.min ? (
         <path className={s.out()} d={`M1 ${mid}l7-4.5v9z`} />
       ) : wind.wind_kn > band.max ? (
         <path className={s.out()} d={`M${width - 1} ${mid}l-7-4.5v9z`} />
       ) : (
-        <circle className={s.mean()} cx={x(wind.wind_kn)} cy={mid} r={3.4} />
+        <circle className={s.mean()} cx={meanX} cy={mid} r={3.4} />
       )}
     </>
   );
@@ -247,6 +284,32 @@ export function RangeAxis({ band, units }: { band: Band; units: Units }) {
 
 const DETAIL_WIDTH = 284;
 
+/**
+ * Where the mean's and the gust's figures go under the card's chart: under
+ * their marks, or pushed apart, the mean to the left and the gust to the
+ * right, where they would run into each other.
+ */
+export function figurePlaces(
+  meanX: number,
+  gustX: number | null,
+  width: number,
+): {
+  mean: { x: number; anchor: "middle" | "end" };
+  gust: { x: number; anchor: "middle" | "start" } | null;
+} {
+  const room = 26;
+  if (gustX === null || Math.abs(gustX - meanX) >= room)
+    return {
+      mean: { x: meanX, anchor: "middle" },
+      gust: gustX === null ? null : { x: gustX, anchor: "middle" },
+    };
+  const at = Math.min(Math.max((meanX + gustX) / 2, room), width - room);
+  return {
+    mean: { x: at - 2, anchor: "end" },
+    gust: { x: at + 2, anchor: "start" },
+  };
+}
+
 /** The frame, large and labelled: the card's chart. */
 function DetailChart({
   wind,
@@ -259,8 +322,19 @@ function DetailChart({
 }) {
   const s = styles();
   const say = (knots: number) => windIn(knots, units);
-  const { left, right, x } = scale(band, DETAIL_WIDTH);
+  const { left, right, x, held } = scale(band, DETAIL_WIDTH);
   const mid = 30;
+  const meanX =
+    wind.wind_kn < band.min
+      ? 6
+      : wind.wind_kn > band.max
+        ? DETAIL_WIDTH - 6
+        : x(wind.wind_kn);
+  const places = figurePlaces(
+    meanX,
+    wind.gust_kn === null ? null : held(wind.gust_kn),
+    DETAIL_WIDTH,
+  );
   return (
     <svg
       className={s.svg()}
@@ -289,28 +363,27 @@ function DetailChart({
         width={DETAIL_WIDTH}
         height={22}
         mid={mid}
+        ticks
       />
-      {wind.models > 1 && (
-        <>
-          <text
-            className={s.label()}
-            x={scale(band, DETAIL_WIDTH).held(wind.min_kn)}
-            y={54}
-            textAnchor="middle"
-          >
-            {say(wind.min_kn)}
-          </text>
-          {say(wind.max_kn) !== say(wind.min_kn) && (
-            <text
-              className={s.label()}
-              x={scale(band, DETAIL_WIDTH).held(wind.max_kn)}
-              y={54}
-              textAnchor="middle"
-            >
-              {say(wind.max_kn)}
-            </text>
-          )}
-        </>
+      <text
+        className={s.labelStrong()}
+        x={places.mean.x}
+        y={54}
+        textAnchor={places.mean.anchor}
+        data-chart-mean
+      >
+        {say(wind.wind_kn)}
+      </text>
+      {places.gust && wind.gust_kn !== null && (
+        <text
+          className={s.labelGust()}
+          x={places.gust.x}
+          y={54}
+          textAnchor={places.gust.anchor}
+          data-chart-gust
+        >
+          g{say(wind.gust_kn)}
+        </text>
       )}
     </svg>
   );
@@ -337,6 +410,9 @@ function Fact({
 
 const WARN_SHORE: ReadonlySet<ShoreAngle> = new Set(["offshore", "cross-off"]);
 
+/** Where a model picked in the card should rate from: every spot, or this one. */
+export type StarsWhere = "everywhere" | "spot";
+
 /** The card the frame opens: the hour's wind, broken down. Figures, not advice. */
 export function RangeDetail({
   time,
@@ -349,6 +425,9 @@ export function RangeDetail({
   rainMm,
   models,
   riderText,
+  starsFrom,
+  spotName,
+  onStarsFrom,
 }: {
   time: number;
   /** "Wed 14 Oct" */
@@ -362,16 +441,24 @@ export function RangeDetail({
   /** The live wind models, in the order the sources list them. */
   models: readonly { id: string; name: string }[];
   riderText: string;
+  /** The model the rider takes this spot's stars from, and the one after it. */
+  starsFrom: StarsFrom;
+  spotName: string;
+  /** Rate the stars from another model, everywhere or at this spot. */
+  onStarsFrom?: (model: string, where: StarsWhere) => void;
 }) {
   const s = styles();
   const say = (knots: number) => windIn(knots, units);
   const byModel = wind.by_model ?? {};
   const rows = [
-    ...models.filter((m) => m.id === LEAD_MODEL),
-    ...models.filter((m) => m.id !== LEAD_MODEL),
+    ...models.filter((m) => m.id === wind.lead),
+    ...models.filter((m) => m.id !== wind.lead),
   ].filter((m) => byModel[m.id]);
-  const leadLive = models.some((m) => m.id === LEAD_MODEL);
-  const leadHere = Boolean(byModel[LEAD_MODEL]);
+  const [asking, setAsking] = useState<string | null>(null);
+  const pick = (where: StarsWhere) => {
+    if (asking) onStarsFrom?.(asking, where);
+    setAsking(null);
+  };
   return (
     <div className={s.detail()} data-range-detail>
       <span className={s.when()}>
@@ -390,29 +477,38 @@ export function RangeDetail({
       </span>
       <DetailChart wind={wind} band={band} units={units} />
       <dl className={s.facts()}>
-        <Fact term={headlineName(wind)}>
-          <b className={s.strong()}>{say(wind.wind_kn)}</b>
-          {wind.models > 1 && (
+        <Fact term="Stars from">
+          <b className={s.strong()} data-stars-from>
+            {headlineName(wind)}
+          </b>
+          {wind.lead !== starsFrom.model && (
             <>
               {" "}
-              · lowest <b className={s.strong()}>{say(wind.min_kn)}</b> ·
-              highest <b className={s.strong()}>{say(wind.max_kn)}</b>
+              <span className={s.context()}>
+                {modelName(starsFrom.model)} does not reach this hour
+              </span>
             </>
           )}
         </Fact>
-        {wind.gust_kn !== null && (
-          <Fact term="Gusts">
-            <b className={s.strong()}>{say(wind.gust_kn)}</b>
-            {wind.gust_max_kn !== null &&
-              say(wind.gust_max_kn) !== say(wind.gust_kn) && (
-                <> · highest {say(wind.gust_max_kn)}</>
-              )}
-          </Fact>
-        )}
+        <Fact term="Wind">
+          <b className={s.strong()}>{say(wind.wind_kn)}</b>
+          {wind.gust_kn !== null && (
+            <>
+              {" "}
+              · gusts <b className={s.strong()}>{say(wind.gust_kn)}</b>
+            </>
+          )}
+        </Fact>
         {wind.agreement && (
           <Fact term="Agree">
             <b className={s.strong()}>{wind.agreement}</b> · {wind.models}{" "}
-            models
+            models, {say(wind.min_kn)}–{say(wind.max_kn)}
+            {wind.gust_max_kn !== null &&
+              (wind.gust_kn === null ||
+                say(wind.gust_max_kn) !== say(wind.gust_kn)) && (
+                <>, gusts to {say(wind.gust_max_kn)}</>
+              )}{" "}
+            <span className={s.context()}>shown, takes nothing off</span>
           </Fact>
         )}
         <Fact term="You">
@@ -430,6 +526,11 @@ export function RangeDetail({
         <table className={s.table()} data-range-models>
           <thead>
             <tr>
+              {onStarsFrom && (
+                <th scope="col" className={s.th()}>
+                  <span className="sr-only">Stars from</span>
+                </th>
+              )}
               <th scope="col" className={s.th()}>
                 Model
               </th>
@@ -447,14 +548,31 @@ export function RangeDetail({
           <tbody>
             {rows.map((model) => {
               const line = byModel[model.id];
-              const lead = model.id === LEAD_MODEL;
+              const lead = model.id === wind.lead;
+              const chosen = model.id === starsFrom.model;
               const weight = lead ? s.lead() : "";
               const num = s.td({ className: [weight, s.num()] });
               return (
                 <tr key={model.id} data-model={model.id}>
+                  {onStarsFrom && (
+                    <td className={s.pickCell()}>
+                      <Button
+                        icon
+                        size="sm"
+                        className={s.pick()}
+                        aria-label={`Stars from ${model.name}`}
+                        pressed={chosen ? "worded" : false}
+                        data-stars-pick={model.id}
+                        onMouseDown={keepFocus}
+                        onClick={() => setAsking(chosen ? null : model.id)}
+                      >
+                        <PickMark on={asking ? asking === model.id : chosen} />
+                      </Button>
+                    </td>
+                  )}
                   <th scope="row" className={s.td({ className: weight })}>
                     {model.name}
-                    {lead && <span className={s.tag()}>lead</span>}
+                    {lead && <span className={s.tag()}>stars</span>}
                   </th>
                   <td className={num}>{say(line.wind_kn)}</td>
                   <td className={num}>
@@ -467,10 +585,68 @@ export function RangeDetail({
           </tbody>
         </table>
       )}
-      {leadLive && !leadHere && (
-        <p className={s.note()}>HARMONIE does not reach this hour.</p>
+      {asking && (
+        <div
+          className={s.ask()}
+          role="group"
+          aria-label={`Stars from ${modelName(asking)}`}
+          data-stars-ask
+        >
+          <p className={s.askTitle()}>Stars from {modelName(asking)}:</p>
+          <div className={s.askButtons()}>
+            <Button
+              variant="pill"
+              size="sm"
+              onMouseDown={keepFocus}
+              onClick={() => pick("everywhere")}
+            >
+              Every spot
+            </Button>
+            <Button
+              variant="pill"
+              size="sm"
+              onMouseDown={keepFocus}
+              onClick={() => pick("spot")}
+            >
+              Just {spotName}
+            </Button>
+            <Button
+              variant="link"
+              size="sm"
+              onMouseDown={keepFocus}
+              onClick={() => setAsking(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+      {onStarsFrom && !asking && rows.length > 1 && (
+        <p className={s.note()}>
+          Pick a model to rate every hour from it. The others never change the
+          stars.
+        </p>
       )}
       <p className={s.note()}>Rated for {riderText}.</p>
     </div>
+  );
+}
+
+/**
+ * A press in the card leaves the focus where it was. The card closes when the
+ * control that opened it loses the focus (ui/RatingTip), so a button in it
+ * that took the focus would close it under the press.
+ */
+const keepFocus = (event: { preventDefault: () => void }) =>
+  event.preventDefault();
+
+/** The model chosen for the stars, as a radio's ring and dot. */
+function PickMark({ on }: { on: boolean }) {
+  const s = styles();
+  return (
+    <svg width={14} height={14} viewBox="0 0 14 14" aria-hidden="true">
+      <circle className={s.ring()} cx={7} cy={7} r={5.75} strokeWidth={1.5} />
+      {on && <circle className={s.dot()} cx={7} cy={7} r={3} />}
+    </svg>
   );
 }

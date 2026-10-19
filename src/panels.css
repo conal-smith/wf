@@ -307,6 +307,35 @@
 .filter-model.is-unavailable .model-swatch {
   opacity: 0.35;
 }
+/* Stars from: the model, the one past its run, and the open spot's own,
+   each a capsule as wide as the panel. */
+.filter-stars-from {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+/* Four models side by side in the panel's width: each takes its share. */
+.filter-stars-from > [role="group"] {
+  display: flex;
+  align-self: stretch;
+}
+.filter-stars-from > [role="group"] button {
+  flex: 1 1 auto;
+  padding: 0 4px;
+  letter-spacing: 0.02em;
+}
+.filter-sub {
+  margin-top: 6px;
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+/* A spot with its own model is said in magenta, as the dock's chip says it. */
+.filter-spot-stars button[aria-pressed="true"]:not(:first-child) {
+  background: var(--color-chart-magenta);
+}
 .filter-note {
   margin: 8px 0 0;
   font: italic 13px/1.35 var(--font-body);

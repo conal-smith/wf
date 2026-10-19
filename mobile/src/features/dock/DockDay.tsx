@@ -23,6 +23,7 @@ import type { BlendDrawing } from "./blendLogic";
 import {
   darkRuns,
   dayHead,
+  handoverLabel,
   hatchPath,
   hourReading,
   speedIn,
@@ -30,6 +31,7 @@ import {
   windInk,
   wingFor,
   type DayTidePaths,
+  type DockHandover,
   type MoreCells,
   type RowLayout,
 } from "./dockLogic";
@@ -57,6 +59,8 @@ export interface DockDayProps {
   scale: number;
   onHour: (column: number) => void;
   onStars: (column: number) => void;
+  /** Where the model the stars come from changes along the strip. */
+  handovers: readonly DockHandover[];
 }
 
 const PAST = 0.42;
@@ -300,6 +304,50 @@ export const DockDay = memo(function DockDay(props: DockDayProps) {
           </Pressable>
         );
       })}
+
+      {/* Where one model's run ends and the next takes over: the pen's dashed
+          stem at the column's edge, and its words in the day's heading. */}
+      {spot &&
+        read &&
+        props.handovers
+          .filter((change) => change.at >= day.start && change.at <= end)
+          .map((change) => {
+            const x = local(change.at);
+            const size = 13 * scale;
+            const label = at.day
+              ? handoverLabel(x, width, (dayHead(day).length * 7.5 + 12) * scale, change.text.length * 6 * scale)
+              : null;
+            return (
+              <Svg
+                key={change.at}
+                style={styles.abs}
+                width={width}
+                height={layout.height}
+                pointerEvents="none"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              >
+                <Path
+                  d={`M${x} ${at.day ? at.day.h : bodyTop}V${layout.height}`}
+                  stroke={colors.penInk}
+                  strokeWidth={1.2}
+                  strokeDasharray="4 3"
+                />
+                {label && at.day ? (
+                  <SvgText
+                    x={label.x}
+                    y={at.day.h / 2 + size * 0.35}
+                    textAnchor={label.anchor}
+                    fontFamily={fonts.hand}
+                    fontSize={size}
+                    fill={colors.penInk}
+                  >
+                    {change.text}
+                  </SvgText>
+                ) : null}
+              </Svg>
+            );
+          })}
 
       {/* The day's edge: a heavy ink rule down every row. */}
       <View style={styles.edge} pointerEvents="none" />

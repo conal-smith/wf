@@ -3,9 +3,11 @@
  * explanation everywhere, opened by a tap on an hour's stars in the dock or on
  * the spot page. A card of the chart's paper, ruled twice in ink, over a
  * scrim: the wing, the wind, the shore,
- * and every reason a star came off, in the pen's ink.
+ * and every reason a star came off, in the pen's ink, and the one model the
+ * stars came from. How far the models agree is context: it never costs a star.
  */
 import { Modal, Pressable, StyleSheet, View } from "react-native";
+import { modelName } from "../../../force5/src/lead";
 import {
   SHORE_LABEL,
   starsText,
@@ -36,7 +38,15 @@ export interface HourExplanation {
   sweet: { low: number; high: number };
   /** Where the shore is not known, the wind alone is rated. */
   facingKnown: boolean;
+  /** The one model the hour was rated from (PlaceHour.model); null where none reached it. */
+  model?: string | null;
+  /** The model is this spot's own, not the rider's choice everywhere. */
+  spotOwn?: boolean;
 }
+
+/** "Stars from HARMONIE", "Stars from GFS, at this spot". */
+export const starsFromLine = (model: string | null | undefined, spotOwn = false): string | null =>
+  model ? `Stars from ${modelName(model)}${spotOwn ? ", at this spot" : ""}` : null;
 
 /** The one-line verdict: "5 m wing" / "No stars" / "Dark: not rated". */
 export function verdictText(
@@ -140,6 +150,11 @@ export function RatingTip({
                   </T>
                 )}
               <Rule style={styles.rule} />
+              {e.rating && starsFromLine(e.model, e.spotOwn) ? (
+                <T variant="caption" color="muted">
+                  {starsFromLine(e.model, e.spotOwn)}
+                </T>
+              ) : null}
               <T variant="caption" color="muted">
                 Rated for {e.riderText} · best {e.sweet.low}–{e.sweet.high} kn
               </T>

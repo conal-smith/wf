@@ -70,6 +70,7 @@ import { ALL_SQUARES, useSpotSquaresState } from "./useSpotSquares";
 import {
   blendColumnModels,
   ownBlendModels,
+  placesRatedApart,
   trustedSpotBlend,
 } from "./spotBlend";
 import { useBlendSquares, useSpotBlend } from "./useSpotBlend";
@@ -99,7 +100,7 @@ import {
   windModels,
 } from "../force5/src/manifests";
 import { runLabel } from "../force5/src/revalidate";
-import { LEAD_MODEL } from "../force5/src/weights";
+import { starsFromAt, starsFromText } from "../force5/src/lead";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
 // The display options, only when asked for from the map's controls.
 const DisplayFilter = lazy(() => import("./DisplayFilter"));
@@ -460,7 +461,13 @@ export default function App() {
     prefs.blendModels,
     windModels().map((model) => model.id),
   );
-  const pointer = trustedSpotBlend(spotBlend.blend, ownBlend, clockNow);
+  // So is one whose stars come from other models than the published blend's.
+  const pointer = trustedSpotBlend(
+    spotBlend.blend,
+    ownBlend,
+    clockNow,
+    starsFromAt(rider.starsFrom),
+  );
   // The lights read the spot squares in view, once the camera settles, and
   // the open spot's and the reader's own wherever they are: never every place.
   const mapView = useViewBounds(mapReady ? controls.current?.map : null);
@@ -486,6 +493,12 @@ export default function App() {
   );
   // Squares that cannot be read are as good as no blend at all.
   const published = blendSquares.failed ? null : pointer;
+  // A spot the rider rates from a model of its own is worked out from that
+  // model's square, beside the published blend that rates every other.
+  const ratedApart = useMemo(
+    () => placesRatedApart(spots, rider, published),
+    [spots, rider, published],
+  );
   const [wantModels, setWantModels] = useState(false);
   // The display options list every wind model, and say which answered.
   useEffect(() => {
@@ -494,7 +507,10 @@ export default function App() {
   const { models } = useModelAvailability(
     !!pendingModel,
     undefined,
-    wantModels || ownBlend || (spotBlend.resolved && !published),
+    wantModels ||
+      ownBlend ||
+      (spotBlend.resolved && !published) ||
+      ratedApart.length > 0,
   );
 
   /* ---- the week's columns, and the strip of them the dock shows ---- */
@@ -739,17 +755,11 @@ export default function App() {
     () => models.filter((model) => model.wind !== null),
     [models],
   );
-  const ownSquares = useMemo(
-    () =>
-      published
-        ? null
-        : squaresToRead(
-            mapView,
-            windOnly.flatMap((model) => model.wind!.spots.squares),
-            ownPlaces,
-          ),
-    [published, mapView, windOnly, ownPlaces],
-  );
+  const ownSquares = useMemo(() => {
+    const listed = windOnly.flatMap((model) => model.wind!.spots.squares);
+    if (!published) return squaresToRead(mapView, listed, ownPlaces);
+    return ratedApart.length ? squaresToRead(null, listed, ratedApart) : null;
+  }, [published, mapView, windOnly, ownPlaces, ratedApart]);
   // `rated.squares` is what was read, not what was asked: a square some model
   // could not read keeps its places pending, and the rest are rated.
   const rated = useSpotSquaresState(windOnly, ownSquares, true);
@@ -766,6 +776,11 @@ export default function App() {
       : rated.squares === ALL_SQUARES
         ? null
         : (rated.squares ?? []),
+    published
+      ? rated.squares === ALL_SQUARES
+        ? null
+        : (rated.squares ?? [])
+      : null,
   );
   const lights = useMemo(() => {
     const out = new Map<string, LightState>();
@@ -946,9 +961,7 @@ export default function App() {
   const stationsKey = layers.foil
     ? [
         ...new Set(
-          [...foilInView, foilArea].flatMap((a) =>
-            a ? [a.station] : [],
-          ),
+          [...foilInView, foilArea].flatMap((a) => (a ? [a.station] : [])),
         ),
       ]
         .sort()
@@ -1216,17 +1229,15 @@ export default function App() {
         <li>
           Wind: {manifest?.modelName ?? "HARMONIE"} on the map
           {manifest ? ` (${runLabel(manifest.runTime)} run)` : ""}; the stars
-          rate{" "}
-          {prefs.blendModels.includes(LEAD_MODEL)
-            ? "HARMONIE's own forecast while it reaches the hour, then a blend of "
-            : "a blend of "}
-          {prefs.blendModels.length} models
+          rate one model&rsquo;s own forecast,{" "}
+          {starsFromText(starsFromAt(rider.starsFrom))}, and{" "}
+          {prefs.blendModels.length} models give the agreement beside them
         </li>
         <li>Depths: EMODnet Bathymetry, metres below chart datum</li>
         {foilState.manifest && (
           <li>
-            Foilable depth: {foilState.manifest.attribution}{" "}
-            Heights above LAT against the tide predictions below.
+            Foilable depth: {foilState.manifest.attribution} Heights above LAT
+            against the tide predictions below.
           </li>
         )}
         <li>
@@ -1338,6 +1349,7 @@ export default function App() {
                     models={models.filter(
                       (model) => model.entry.kind === "wind",
                     )}
+                    spot={point && !picked ? point : null}
                     onClose={close}
                   />
                 </Suspense>
@@ -1476,6 +1488,7 @@ export default function App() {
                   now={clockNow}
                   prefs={prefs}
                   onCustomStars={openStars}
+                  onStarsFrom={() => setPanel("options")}
                   models={models}
                   onWantModels={() => setWantModels(true)}
                   starred={

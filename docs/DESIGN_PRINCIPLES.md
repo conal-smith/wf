@@ -336,6 +336,21 @@ the water before the rocks. Bearings are rounded to 5° and the key says
 "about": it is not a polar. The angles and their sources are in
 [RIDE_ROSE.md](RIDE_ROSE.md).
 
+**2026-10-19 — The stars come from one model, the rider's choice.** "Why are
+ECMWF and GFS contributing towards the stars? It's supposed to only take
+whatever the user has configured. We don't use more than one model." Every
+hour's stars, on every surface (the lights, the dock, the spot page, the app,
+the alerts, the MCP tools and Gust), are one model's own wind, gust and
+direction: the rider's "Stars from" (HARMONIE unless they choose another) while
+it reaches the hour, then one model they choose for when it ends (ECMWF unless
+they choose another), and a spot may have a model of its own. Never a median or
+a blend. The other models are context: their agreement is shown beside the
+stars and takes nothing off, and the wind bar is the one model's mean to its
+gust, the others at most faint ticks in its card. Where the model changes, the
+page says so in the pen's hand ("ECMWF from Wed 22:00"), and where the stars
+are shown, the model is named. The rule, the surfaces and the published
+blend's part in it are in [STAR_RATINGS.md](STAR_RATINGS.md).
+
 ---
 
 ## Still open

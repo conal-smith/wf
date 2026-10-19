@@ -1,14 +1,15 @@
 // Star ratings for a wing-foiling session: how good an hour is, for this rider,
-// at this spot. Pure functions over numbers the dock already has — the headline
-// wind and gust (HARMONIE's own while it reaches the hour, else the weighted
-// median of the models), its direction and agreement — so the map, the dock
-// and the forecast server can all rate an hour the same way.
+// at this spot. Pure functions over numbers the dock already has — one model's
+// own wind, gust and direction for the hour, the model the rider takes their
+// stars from (force5/src/lead.ts: HARMONIE, then ECMWF, unless they choose
+// otherwise) — so the map, the dock and the forecast server can all rate an
+// hour the same way. The other models never move a star (the ruling of 19
+// October 2026, docs/STAR_RATINGS.md).
 //
 // Two numbers per hour, both out of five:
 //   potential  what the wind alone is worth to this rider (the faded stars)
-//   stars      what is left once the spot and the forecast have their say:
-//              how strong the gusts are, the shore angle and whether the
-//              models agree (solid)
+//   stars      what is left once the spot has its say: how strong the
+//              gusts are and the shore angle (solid)
 // Both rate the steady wind, the mean: it is what holds you on the foil, and
 // whether a session is on at all. Below the floor a gust is a chance to get
 // up, so it can lift the hour to the floor and no further. Three curves then
@@ -19,6 +20,8 @@
 //   direction  stars off for each of the five ways the wind meets the beach
 // `stars` never exceeds `potential`, so the faded stars are always the upside a
 // better direction or a steadier breeze would have delivered.
+
+import type { StarsChoice } from "./lead.js";
 
 export type Skill = "beginner" | "intermediate" | "advanced";
 export const SKILLS: readonly Skill[] = [
@@ -96,6 +99,12 @@ export interface Rider {
    * (then it is `custom`): the two are never both set.
    */
   keptCustom?: CustomRating | null;
+  /**
+   * Which model the stars come from, and the one that takes over where its
+   * run ends, everywhere and at any spot of the rider's own (force5/src/lead.ts).
+   * Absent while it is the default, HARMONIE then ECMWF everywhere.
+   */
+  starsFrom?: StarsChoice;
 }
 
 /** The rider's own star rating, whether it rates now or is kept: null when they have none. */
@@ -466,13 +475,17 @@ export interface SpotShore {
 export type Agreement = "high" | "moderate" | "low";
 
 export interface HourInput {
-  /** The headline mean wind, in knots: HARMONIE's while it reaches the hour, else the weighted median. */
+  /** The mean wind, in knots, of the one model the hour is rated from. */
   windKn: number | null;
-  /** The headline gust, in knots, chosen as the wind is, where any model publishes one. */
+  /** That model's gust, in knots; null where it gives none. */
   gustKn: number | null;
-  /** Mean bearing the wind blows from, in degrees. */
+  /** Where that model has the wind blowing from, in degrees. */
   from: number | null;
-  agreement: Agreement | null;
+  /**
+   * How far all the models agree. Context only: it is shown beside the stars
+   * and never changes them.
+   */
+  agreement?: Agreement | null;
   /** False at night: nobody is rated for a session they cannot see. */
   daylight: boolean;
 }
@@ -566,7 +579,7 @@ const SHORE_REASON: Record<ShoreAngle, string> = {
 /**
  * One hour, rated. Null when there is nothing to rate: no wind reading, or dark.
  *
- *   stars = round(wind − gusts − direction − agreement − wing), 0 to potential
+ *   stars = round(wind − gusts − direction − wing), 0 to potential
  *
  * The deductions are deliberately few and legible — each one is a sentence in
  * `reasons` when it costs a whole star — because a rider should be able to
@@ -589,12 +602,10 @@ export function rateHour(
       : shoreAngle(hour.from, shore.facing);
   const direction = angle ? directionCost(rider, angle) : 0;
   const gusts = gustLoss(hour.gustKn, gustCurve(rider));
-  // Models that differ a little cost a quarter, which only shows when it tips
-  // the hour below a whole star.
-  const agreement =
-    hour.agreement === "low" ? 1 : hour.agreement === "moderate" ? 0.25 : 0;
+  // How far the other models agree is context, never a cost: the stars are
+  // the one model's (the ruling of 19 October 2026).
   const quiver = wing.fit === "fits" ? 0 : 1;
-  const score = base - direction - gusts - agreement - quiver;
+  const score = base - direction - gusts - quiver;
 
   const potential = Math.round(base);
   const starsFrom = (x: number) => clamp(Math.round(x), 0, potential);
@@ -608,10 +619,6 @@ export function rateHour(
     reasons.push(
       `Gusts to ${Math.round(hour.gustKn!)} kn: more than you will want to hold.`,
     );
-  if (hour.agreement === "low")
-    reasons.push("The models disagree, so this hour is a guess.");
-  else if (costs(agreement))
-    reasons.push("The models differ a little, enough to hold back a star.");
   if (wing.fit === "underpowered")
     reasons.push(
       `Your biggest wing is small for this: about ${wing.recommended} m² would suit.`,

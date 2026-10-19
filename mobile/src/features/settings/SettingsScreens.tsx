@@ -1,12 +1,14 @@
 /**
  * The More tab's pages: the rider, the units, the dock's rows, the models in
- * the blend, and where the data comes from. Each writes the site's own
+ * the blend, and where the data comes from (the model the stars come from has
+ * its own page, StarsFrom.tsx). Each writes the site's own
  * preference (force5.prefs.v1) through `usePrefs().update`, so the chart, the
  * dock and the spot pages follow at once.
  */
 import { useEffect, useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { starsFromAt, starsFromText } from "../../../../force5/src/lead";
 import { windModels } from "../../../../force5/src/manifests";
 import { setRow } from "../../../../force5/src/prefs";
 import { ESTIMATE_WEIGHT_KG } from "../../../../force5/src/stars";
@@ -174,8 +176,9 @@ export function ModelsScreen() {
         </ListSection>
       ) : null}
       <T variant="caption" color="muted" style={styles.small}>
-        The stars rate HARMONIE&rsquo;s own forecast while it reaches the hour; past it, a weighted median of the other
-        models, each counting by how well it has verified against Irish stations that far into its run.
+        The stars come from one model&rsquo;s own forecast, {starsFromText(starsFromAt(prefs.rider.starsFrom))} (Stars
+        from). The models in the blend give the agreement and the range beside them, each counting by how well it has
+        verified against Irish stations that far into its run; they never change a star.
       </T>
     </SettingsPage>
   );

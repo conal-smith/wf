@@ -17,7 +17,9 @@ import {
   compassWords,
   darkRuns,
   dayTide,
+  dockHandovers,
   dockRowOn,
+  handoverLabel,
   hatchPath,
   hourReading,
   nearestCentre,
@@ -178,6 +180,35 @@ describe("words", () => {
       /no wind reading/,
     );
     expect(hourReading(col, hour({ daylight: false, rating: null }), "kn")).toMatch(/dark, not rated/);
+  });
+
+  it("names the one model the stars came from", () => {
+    const col = columns(15)[14];
+    const rated = hour({ from: 225, model: "gfs" });
+    expect(hourReading(col, rated, "kn")).toBe(
+      `Saturday 15:00, ${rated.rating!.stars} stars, south-west 18 knots gusting 24, stars from GFS`,
+    );
+    // An hour with no stars came from no model worth naming.
+    expect(hourReading(col, hour({ daylight: false, rating: null, model: "gfs" }), "kn")).not.toMatch(/stars from/);
+  });
+
+  it("marks where the model the stars come from changes", () => {
+    const strip = columns(24);
+    const models = [...Array(22).fill("harmonie"), "ecmwf", "ecmwf"];
+    const hours = models.map((model) => hour({ model }));
+    // A column no model reached neither starts nor ends a run.
+    hours[5] = hour({ model: null, windKn: null, rating: null });
+    expect(dockHandovers(hours, strip)).toEqual([{ at: 22, text: "ECMWF from Sat 23:00" }]);
+    expect(dockHandovers(null, strip)).toEqual([]);
+    expect(dockHandovers(models.map(() => hour({ model: "gfs" })), strip)).toEqual([]);
+  });
+
+  it("puts the handover's words beside its stem, clear of the day's name", () => {
+    expect(handoverLabel(300, 900, 90, 120)).toEqual({ x: 304, anchor: "start" });
+    // Near the day's start the words wait for the name to end.
+    expect(handoverLabel(20, 900, 90, 120)).toEqual({ x: 90, anchor: "start" });
+    // Near its end they turn back to the stem's left.
+    expect(handoverLabel(850, 900, 90, 120)).toEqual({ x: 846, anchor: "end" });
   });
 
   it("says offshore", () => {
