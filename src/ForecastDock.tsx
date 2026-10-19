@@ -68,8 +68,6 @@ import { seaTemperatureText } from "../force5/src/seaTemperature";
 import type { ModelAvailability } from "../force5/src/manifests";
 import { spotSquare } from "../force5/src/spotData";
 import { useSpotSquares } from "./useSpotSquares";
-import { usePointModels } from "./usePointModels";
-import { POINT_SERIES_ID } from "../force5/src/series";
 import { pointSourceNote, type PointSources } from "../force5/src/pointSource";
 import type { Prefs } from "../force5/src/prefs";
 import {
@@ -1104,8 +1102,8 @@ export default function ForecastDock(props: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const [wrapWidth, setWrapWidth] = useState(0);
   useEffect(() => {
-    if (view === "blend") onWantModels?.();
-  }, [view]);
+    if (view === "blend" && !isPoint) onWantModels?.();
+  }, [view, isPoint]);
   // The scroll that brings each hour to the strip's cursor, and where that
   // point stands at a scroll: still in the middle through the week, walking
   // out to the ends so the first hour sits against the labels (see
@@ -1118,8 +1116,9 @@ export default function ForecastDock(props: Props) {
   // The blend, only while it is the view: the chart reads every member. The
   // manifests carry no spot data, so each model's one square holding this spot
   // is read for it, and for the waves and weather rows, and nothing else. A
-  // point has no series of its own: each model's frames are sampled at it for
-  // the blend, and its waves, weather and sea are a riding place's near it.
+  // point has no series of its own, and so no blend: sampling every model's
+  // frames at it cost megabytes against a riding place's kilobytes. Its waves,
+  // weather and sea are a riding place's near it.
   const axis = useMemo(() => columns.map((c) => c.validTime), [columns]);
   const lender = isPoint ? (pointSource?.source?.spot ?? null) : spot;
   const square = useMemo(
@@ -1130,24 +1129,14 @@ export default function ForecastDock(props: Props) {
     view === "blend" && !isPoint ? models : NO_MODELS,
     square,
   );
-  const pointModels = useMemo(
-    () =>
-      view === "blend" && isPoint
-        ? models.filter((model) => prefs.blendModels.includes(model.id))
-        : NO_MODELS,
-    [view, isPoint, models, prefs.blendModels],
-  );
-  const sampled = usePointModels(pointModels, isPoint ? spot : null, axis);
   const marineModels = useSpotSquares(more ? marine : NO_MODELS, square);
   const named = isPoint ? undefined : spot.id;
   const blend = useBlend(
-    view !== "blend" ? NO_MODELS : isPoint ? sampled.models : blendModels,
+    view === "blend" && named ? blendModels : NO_MODELS,
     prefs.blendModels,
-    isPoint ? POINT_SERIES_ID : named,
+    named,
     axis,
   );
-  // Every model's frames tried at a point, and not one hour read.
-  const unread = isPoint && !sampled.pending && sampled.models.length > 0;
   /** Whose waves, weather and sea the rows show. */
   const lent = lender?.id;
   const pointNote =
@@ -1177,13 +1166,7 @@ export default function ForecastDock(props: Props) {
   const blendNode = useMemo(() => {
     if (view !== "blend") return null;
     if (!blend.lines.length)
-      return (
-        <p className="blend-empty">
-          {unread
-            ? "No model's wind could be read here"
-            : "Reading the models…"}
-        </p>
-      );
+      return <p className="blend-empty">Reading the models…</p>;
     const nights = dayNights(
       spot.lat,
       spot.lon,
@@ -1219,7 +1202,6 @@ export default function ForecastDock(props: Props) {
     reducedMotion,
     spot.lat,
     spot.lon,
-    unread,
   ]);
 
   useLayoutEffect(() => {
@@ -1466,19 +1448,21 @@ export default function ForecastDock(props: Props) {
           </Button>
         )}
         {/* The table or every model's wind drawn as a chart: one glyph, on
-            while the blend is shown. A point's is sampled from the frames. */}
-        <Button
-          variant="quiet"
-          size="sm"
-          icon
-          className="dk-tool dk-view"
-          aria-label="Blend"
-          title={view === "blend" ? "Back to the table" : "The models' blend"}
-          pressed={view === "blend"}
-          onClick={() => onView(view === "blend" ? "table" : "blend")}
-        >
-          <ChartSpline size={16} strokeWidth={1.4} aria-hidden="true" />
-        </Button>
+            while the blend is shown. A point has no blend. */}
+        {!isPoint && (
+          <Button
+            variant="quiet"
+            size="sm"
+            icon
+            className="dk-tool dk-view"
+            aria-label="Blend"
+            title={view === "blend" ? "Back to the table" : "The models' blend"}
+            pressed={view === "blend"}
+            onClick={() => onView(view === "blend" ? "table" : "blend")}
+          >
+            <ChartSpline size={16} strokeWidth={1.4} aria-hidden="true" />
+          </Button>
+        )}
         {!isPoint && (
           <Button
             variant="quiet"
