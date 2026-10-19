@@ -1,6 +1,7 @@
 // The mark round the chosen spot: a loupe laid on the chart, a range ring, or
 // nothing. Pure geometry, so the sizes can be tested without a map; WindMap.tsx
 // draws them.
+import type { Units } from "./units";
 
 /** How the map marks the chosen spot's surroundings. */
 export type FocusStyle = "loupe" | "ring" | "off";
@@ -55,26 +56,58 @@ export function bezelTicks(r: number) {
   return ticks;
 }
 
-/** The round distances a range ring is drawn at, in nautical miles. */
-export const RANGE_STEPS_NM = [0.25, 0.5, 1, 2, 3, 5, 10, 20, 50, 100];
-const NM = 1852;
+/**
+ * The distance a range ring is measured in, after the rider's speed units:
+ * nautical miles with knots, miles with miles an hour, kilometres with
+ * kilometres an hour, and metres (kilometres past one) with metres a second.
+ */
+const RANGE_UNITS: Record<
+  Units,
+  { metres: number; steps: readonly number[]; label: (n: number) => string }
+> = {
+  kn: {
+    metres: 1852,
+    steps: [0.25, 0.5, 1, 2, 3, 5, 10, 20, 50, 100],
+    label: (n) => `${n} NM`,
+  },
+  mph: {
+    metres: 1609.344,
+    steps: [0.25, 0.5, 1, 2, 3, 5, 10, 20, 50, 100],
+    label: (n) => `${n} mi`,
+  },
+  "km/h": {
+    metres: 1000,
+    steps: [0.25, 0.5, 1, 2, 3, 5, 10, 20, 50, 100, 200],
+    label: (n) => `${n} km`,
+  },
+  "m/s": {
+    metres: 1000,
+    steps: [0.25, 0.5, 1, 2, 3, 5, 10, 20, 50, 100, 200],
+    label: (n) => (n < 1 ? `${n * 1000} m` : `${n} km`),
+  },
+};
 
 /**
  * The range ring: the longest round distance that sits inside 42% of the
- * map's shorter side, and its radius on screen. Chosen again whenever the
- * camera rests, so it steps through the distances as the rider zooms; in
- * between it is a distance on the chart and moves with it.
+ * map's shorter side, in the rider's units, and its radius on screen. Chosen
+ * again whenever the camera rests, so it steps through the distances as the
+ * rider zooms; in between it is a distance on the chart and moves with it.
  */
-export function rangeRing(metresPerPx: number, short: number) {
+export function rangeRing(
+  metresPerPx: number,
+  short: number,
+  units: Units = "kn",
+) {
+  const unit = RANGE_UNITS[units];
   const max = 0.42 * short;
-  const nm =
-    [...RANGE_STEPS_NM].reverse().find((n) => (n * NM) / metresPerPx <= max) ??
-    RANGE_STEPS_NM[0];
-  return { nm, px: (nm * NM) / metresPerPx };
+  const n =
+    [...unit.steps]
+      .reverse()
+      .find((d) => (d * unit.metres) / metresPerPx <= max) ?? unit.steps[0];
+  const metres = n * unit.metres;
+  // "0.5 NM", "500 m": the ring's distance, as it is written beside it.
+  return { metres, label: unit.label(n), px: metres / metresPerPx };
 }
-
-/** "2 NM": the ring's distance, as it is written beside it. */
-export const rangeLabel = (nm: number) => `${nm} NM`;
 
 /**
  * The light paper wash beyond the mark, as holes round the spot in pixels

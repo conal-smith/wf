@@ -21,7 +21,6 @@ import {
   bezelTicks,
   metresPerPixel,
   loupeRadius,
-  rangeLabel,
   rangeRing,
   washHoles,
   type FocusStyle,
@@ -35,6 +34,7 @@ import {
   type WindStyle,
 } from "./windLayer";
 import type { Frame, Spot } from "./weather";
+import type { Units } from "./units";
 
 maplibregl.setWorkerUrl(workerUrl);
 maplibregl.setWorkerCount(2);
@@ -117,6 +117,8 @@ type Props = {
   focus: { lon: number; lat: number } | null;
   /** The rider's choice of mark round the focus: a loupe, a range ring, or none. */
   focusStyle: FocusStyle;
+  /** The rider's speed units, which the range ring's distance follows (NM with knots). */
+  units: Units;
   /** Where the pen rings: the chosen spot or point. */
   mark: { lon: number; lat: number } | null;
   /** A point tapped on the open map, marked where it was tapped. */
@@ -308,6 +310,7 @@ export default function WindMap(props: Props) {
     selectedId,
     focus,
     focusStyle,
+    units,
     mark,
     picked,
     windStyle,
@@ -755,9 +758,9 @@ export default function WindMap(props: Props) {
             class: style === "loupe" ? "map-loupe" : "map-range",
           }) as SVGGElement)
         : null;
-    /** The mark's radius on screen, and the ring's distance in nautical miles. */
+    /** The mark's radius on screen, and the ring's distance, written as the rider reads it. */
     let r = 0;
-    let nm = 0;
+    let range = { metres: 0, label: "" };
     let washedAt = -1;
     let raf = 0;
     const mpp = () => (spot ? metresPerPixel(map.getZoom(), spot.lat) : 0);
@@ -810,8 +813,8 @@ export default function WindMap(props: Props) {
         `translate(${q.x.toFixed(1)} ${q.y.toFixed(1)})`,
       );
       if (style === "ring") {
-        const next = (nm * 1852) / mpp();
-        if (Math.abs(next - r) > 0.05) drawRange(g, (r = next), rangeLabel(nm));
+        const next = range.metres / mpp();
+        if (Math.abs(next - r) > 0.05) drawRange(g, (r = next), range.label);
       } else if (map.getZoom() !== washedAt)
         // A glass stays the same size through a zoom, so the hole in the
         // wash under its rim is cut again on every frame of one.
@@ -829,7 +832,7 @@ export default function WindMap(props: Props) {
       if (style === "loupe") {
         const next = loupeRadius(width, visible);
         if (next !== r) drawLoupe(g, (r = next));
-      } else nm = rangeRing(mpp(), Math.min(width, visible)).nm;
+      } else range = rangeRing(mpp(), Math.min(width, visible), units);
       place();
       wash();
       names();
@@ -873,7 +876,7 @@ export default function WindMap(props: Props) {
       map.off("zoomend", measure);
       map.off("resize", measure);
     };
-  }, [ready, focus?.lon, focus?.lat, focusStyle]);
+  }, [ready, focus?.lon, focus?.lat, focusStyle, units]);
   // The dock's height is the map's visible height: the glass is sized to it.
   useEffect(() => remeasure.current(), [bottomInset]);
 
