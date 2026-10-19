@@ -524,6 +524,23 @@ test("round the chosen spot: a loupe that holds its size, a range ring, or nothi
   await expect(focus).toHaveAttribute("data-focus", "ring");
   await expect(focus.locator(".map-loupe-rim")).toHaveCount(0);
   await expect(focus.locator(".map-range-label")).toHaveText(/^[\d.]+ NM$/);
+  // Its distance follows the speed units: miles with miles an hour, metres
+  // (or kilometres) with metres a second.
+  const units = async (id: string) => {
+    await page
+      .getByRole("button", { name: "Display options", exact: true })
+      .click();
+    await page.locator(`[data-units="${id}"]`).click();
+    await page.getByLabel("Close display options").click();
+  };
+  await units("mph");
+  await expect(focus.locator(".map-range-label")).toHaveText(/^[\d.]+ mi$/);
+  await units("m/s");
+  await expect(focus.locator(".map-range-label")).toHaveText(
+    /^(\d+ m|[\d.]+ km)$/,
+  );
+  await units("kn");
+  await layers.click();
   // Nothing at all: the pen's ring alone marks the spot.
   await choice.getByRole("button", { name: "Off" }).click();
   await expect(focus).toHaveAttribute("data-focus", "off");
