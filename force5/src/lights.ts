@@ -20,6 +20,7 @@
  */
 import * as maplibregl from "maplibre-gl";
 import type { Wedge } from "./rideWedge";
+import { knotsIn, type Units } from "./units";
 import type { Spot } from "./weather";
 
 export interface LightState {
@@ -30,6 +31,7 @@ export interface LightState {
   dark: boolean;
   /** Where the wind blows from, in degrees, or null with no reading. */
   from: number | null;
+  /** The wind, in knots whatever the rider's units: `knotsIn` converts it. */
   windKn: number | null;
   compass: string | null;
   mark: "struck" | "cross-off" | null;
@@ -112,6 +114,7 @@ export interface Lights {
     selected: string | null,
     named: ReadonlySet<string>,
     label: (spot: Spot, state: LightState | undefined) => string,
+    units: Units,
   ): void;
   element(id: string): HTMLButtonElement | undefined;
   destroy(): void;
@@ -247,7 +250,7 @@ export function createLights(
     });
   }
   return {
-    update(states, selected, named, label) {
+    update(states, selected, named, label, units) {
       for (const spot of spots) {
         const entry = entries.get(spot.id);
         if (!entry) continue;
@@ -255,7 +258,7 @@ export function createLights(
         const on = spot.id === selected;
         const w = s?.wedge;
         const key = s
-          ? `${s.pending}|${s.stars}|${s.dark}|${s.mark}|${s.from === null ? "" : Math.round(s.from)}|${s.windKn === null ? "" : Math.round(s.windKn)}|${w ? `${Math.round(w.from)},${Math.round(w.to)},${Math.round(w.power * 20)},${w.state}` : ""}|${on}|${named.has(spot.id)}`
+          ? `${s.pending}|${s.stars}|${s.dark}|${s.mark}|${s.from === null ? "" : Math.round(s.from)}|${s.windKn === null ? "" : knotsIn(s.windKn, units)}|${w ? `${Math.round(w.from)},${Math.round(w.to)},${Math.round(w.power * 20)},${w.state}` : ""}|${on}|${named.has(spot.id)}`
           : `none|${on}|${named.has(spot.id)}`;
         if (entry.key === key) continue;
         entry.key = key;
@@ -288,10 +291,17 @@ export function createLights(
           s && !s.pending && s.compass !== null && s.windKn !== null
             ? // The wind and the shore, not the stars: the ring's figure
               // says those, and "0★" under a dashed "0" read as a glitch.
-              `${s.compass} ${Math.round(s.windKn)}${s.mark ? ` · ${s.mark === "struck" ? "offshore" : "cross-off"}` : ""}`
+              `${s.compass} ${knotsIn(s.windKn, units)}${s.mark ? ` · ${s.mark === "struck" ? "offshore" : "cross-off"}` : ""}`
             : "";
-        el.setAttribute("aria-label", label(spot, s));
         dirty = true;
+      }
+      // Every time, not only when the light changes: the name also says the
+      // hour and the units, which a light's look does not show.
+      for (const spot of spots) {
+        const el = entries.get(spot.id)?.el;
+        const name = label(spot, states.get(spot.id));
+        if (el && el.getAttribute("aria-label") !== name)
+          el.setAttribute("aria-label", name);
       }
       if (dirty) queue();
     },
