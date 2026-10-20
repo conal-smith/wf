@@ -1528,7 +1528,10 @@ export default function ForecastDock(props: Props) {
   // them found them, the dock growing or shrinking under them, and go back
   // to its edge once the pointer is off them. Holding the dock's height in
   // place of them kept it from shrinking, but the blend still grew it, and
-  // the tools with it, on the first click (#91).
+  // the tools with it, on the first click (#91). A finger is held for as
+  // well: on a phone the blend lifted them 53 px, and the next tap at the
+  // same place went to the hours (#107). It has no pointer that moves off,
+  // so they go back when it next comes down anywhere else.
   const dockRef = useRef<HTMLElement>(null);
   const toolsRef = useRef<HTMLDivElement>(null);
   /** The tools' top on the screen when a click on them was made, while held. */
@@ -1544,8 +1547,6 @@ export default function ForecastDock(props: Props) {
   const hold = (event: React.MouseEvent) => {
     const el = toolsRef.current;
     if (!el || !event.detail || pinned.current !== null) return;
-    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches)
-      return;
     pinned.current = el.getBoundingClientRect().top;
   };
   const letGo = () => {
@@ -1572,9 +1573,15 @@ export default function ForecastDock(props: Props) {
         letGo();
     };
     window.addEventListener("pointermove", away);
+    window.addEventListener("pointerdown", away, true);
+    // A phone turned or a window resized moves the dock for no click of
+    // theirs: where the tools were held is no longer where they were.
+    window.addEventListener("resize", letGo);
     return () => {
       watch.disconnect();
       window.removeEventListener("pointermove", away);
+      window.removeEventListener("pointerdown", away, true);
+      window.removeEventListener("resize", letGo);
     };
   }, []);
 
