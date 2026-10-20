@@ -12,18 +12,22 @@ import {
   GUSTY_SPREAD_KN,
   MAX_WINDOW_HOURS,
   METHOD,
+  axis,
   countyKey,
   distanceKm,
   findPlace,
   findSessions,
   findSpot,
+  forecastReach,
   loadSpots,
   localTime,
   modelStatus,
   spotForecast,
   windowFor,
   type Place,
+  type Reach,
   type RidingSpot,
+  type Window,
 } from "./forecast.js";
 import type { ForecastSource } from "./httpSource.js";
 import {
@@ -110,7 +114,33 @@ const fromArg = (words: string) =>
 
 /** How far find_wind's max_km may reach: well past any two points in Ireland. */
 const MAX_KM = 600;
-const HOUR = 3600000;
+
+const timeOf = (millis: number) =>
+  `${localTime(millis)} (${new Date(millis).toISOString()})`;
+
+/**
+ * What an answer must say about its window, since the rows alone don't show
+ * it: hours past the end of the forecast have no wind. A window wholly past
+ * that end is an error, not rows of nulls or an empty list that reads as "no
+ * wind that week".
+ */
+function aboutWindow(
+  window: Window,
+  reach: Reach,
+  words: { before: string; after: string },
+): { error: string } | { note: string | undefined } {
+  const ends = `${timeOf(reach.time)}, the last hour ${reach.model} covers`;
+  if (reach.time < window.from)
+    return {
+      error: `The forecast does not reach ${localTime(window.from)} yet: it ends ${ends}. ${words.before}, or ask again nearer the time.`,
+    };
+  return {
+    note:
+      reach.time < axis(window).at(-1)!
+        ? `Only part of the window is forecast: it ends ${ends}. ${words.after}`
+        : undefined,
+  };
+}
 
 export const listSpots = tool({
   name: "list_spots",
@@ -215,16 +245,32 @@ export const getSpotForecast = tool({
       );
     const at = (deps.now ?? Date.now)();
     const window = windowFor(at, { from, hours, stepHours: step_hours });
+    const models = starsFromArgs(stars_from, then);
     const forecast = await spotForecast(deps.source, match.spot, window, {
       perModel: per_model,
       now: at,
-      from: starsFromArgs(stars_from, then),
+      from: models,
     });
-    if (!forecast.sources.wind.length)
+    // Only the headline's two models give an hour wind, as in find_wind.
+    const reach = forecastReach(forecast.sources.wind, models);
+    if (!reach)
       return failure(
         `No wind forecast is published for ${match.spot.name} right now. Try again later or see https://wingfoil.ie.`,
       );
-    return answer(forecast);
+    const about = aboutWindow(window, reach, {
+      before: "Ask for a time before then",
+      after: "Later hours have no wind yet.",
+    });
+    if ("error" in about) return failure(about.error);
+    // The note beside the window it is about.
+    const { spot: where, window: span, ...rest } = forecast;
+    const { note } = about;
+    return answer({
+      spot: where,
+      window: span,
+      ...(note && { note }),
+      ...rest,
+    });
   },
 });
 
@@ -389,16 +435,12 @@ export const findWind = tool({
       return failure(
         "No wind forecast is published right now. Try again later.",
       );
-    // An empty list past the forecast's end reads as "no wind that week".
-    const ends = `${localTime(found.reach.time)} (${new Date(found.reach.time).toISOString()}), the last hour ${found.reach.model} covers`;
-    if (found.reach.time < window.from)
-      return failure(
-        `The forecast does not reach ${localTime(window.from)} yet: it ends ${ends}. Search from before then, or ask again nearer the time.`,
-      );
-    const note =
-      found.reach.time < window.to - HOUR
-        ? `Only part of the window is forecast: it ends ${ends}. No spot can have a session after that yet.`
-        : null;
+    const about = aboutWindow(window, found.reach, {
+      before: "Search from before then",
+      after: "No spot can have a session after that yet.",
+    });
+    if ("error" in about) return failure(about.error);
+    const { note } = about;
     return answer({
       window: {
         from: new Date(window.from).toISOString(),

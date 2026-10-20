@@ -285,6 +285,47 @@ describe("the MCP endpoint", () => {
     );
   });
 
+  it("says where the forecast ends when a spot's window runs past it", async () => {
+    const { call } = harness();
+    // Donabate's headline is ECMWF's by then, and its run ends at 00:00Z on 28 Sept.
+    const beyond = await call("get_spot_forecast", {
+      spot: "donabate",
+      from: "2026-10-01T00:00:00Z",
+    });
+    expect(beyond.isError).toBe(true);
+    expect(beyond.text).toMatch(
+      /^The forecast does not reach Thu, 1 Oct, 01:00 yet: it ends Mon, 28 Sept, 01:00 \(2026-09-28T00:00:00.000Z\), the last hour ECMWF covers\. Ask for a time before then, or ask again nearer the time\.$/,
+    );
+    const part = (
+      await call("get_spot_forecast", {
+        spot: "donabate",
+        from: "2026-09-27T18:00:00Z",
+        hours: 12,
+        step_hours: 3,
+      })
+    ).json();
+    expect(part.note).toMatch(
+      /^Only part of the window is forecast: it ends .*2026-09-28T00:00:00.000Z\), the last hour ECMWF covers\. Later hours have no wind yet\.$/,
+    );
+    expect(part.hours[0].wind).not.toBeNull();
+    expect(part.hours.at(-1).wind).toBeNull();
+    // Up to the last hour forecast, and no further: the whole window is covered.
+    const upTo = (
+      await call("get_spot_forecast", {
+        spot: "donabate",
+        from: "2026-09-27T18:00:00Z",
+        hours: 7,
+        step_hours: 3,
+      })
+    ).json();
+    expect(upTo.hours.at(-1).time).toBe("2026-09-28T00:00:00.000Z");
+    expect(upTo.note).toBeUndefined();
+    const whole = (
+      await call("get_spot_forecast", { spot: "donabate", hours: 48 })
+    ).json();
+    expect(whole.note).toBeUndefined();
+  });
+
   it("goes on from one of several spots close together, and asks only when they are far apart", async () => {
     const { call } = harness();
     const malahide = await call("find_wind", { near: "Malahide", max_km: 20 });

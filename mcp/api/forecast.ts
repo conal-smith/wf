@@ -1404,7 +1404,7 @@ export async function findSessions(
    * after it) reach, and which of them reaches it, or null when neither is
    * published: no hour past it can be a session.
    */
-  reach: { time: number; model: string } | null;
+  reach: Reach | null;
 }> {
   const counties = options.counties?.length
     ? new Set(options.counties.map(countyKey))
@@ -1463,21 +1463,38 @@ export async function findSessions(
       b.rideable_hours - a.rideable_hours ||
       (a.distance_km ?? 0) - (b.distance_km ?? 0),
   );
-  const leads = leadOrder(options.from ?? DEFAULT_STARS_FROM);
-  const reach = wind.loaded
-    .filter((l) => leads.includes(l.run.id))
-    .map((l) => ({ time: Date.parse(l.run.until), model: l.run.name }))
-    .reduce<{ time: number; model: string } | null>(
-      (last, r) => (last && last.time >= r.time ? last : r),
-      null,
-    );
+  const runs = wind.loaded.map((l) => l.run);
   return {
     spots: results.slice(0, options.limit),
     searched: pool.length,
-    sources: wind.loaded.map((l) => l.run),
+    sources: runs,
     unavailable: wind.unavailable,
-    reach,
+    reach: forecastReach(runs, options.from),
   };
+}
+
+export interface Reach {
+  time: number;
+  model: string;
+}
+
+/**
+ * The last hour the headline's models (the stars' model and the one after it)
+ * reach among `runs`, and which of them reaches it, or null when neither is
+ * published. GFS alone, live but not one of the two, never counts.
+ */
+export function forecastReach(
+  runs: readonly ModelRun[],
+  from: StarsFrom = DEFAULT_STARS_FROM,
+): Reach | null {
+  const leads = leadOrder(from);
+  return runs
+    .filter((run) => leads.includes(run.id))
+    .map((run) => ({ time: Date.parse(run.until), model: run.name }))
+    .reduce<Reach | null>(
+      (last, r) => (last && last.time >= r.time ? last : r),
+      null,
+    );
 }
 
 interface SessionHour {
