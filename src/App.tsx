@@ -46,6 +46,7 @@ import MapInfo from "./MapInfo";
 import { MapInfoOpen, type InfoSection } from "./mapInfoContext";
 import { foilArchiveUrl, useFoilDepth } from "./useFoilDepth";
 import type { LightState } from "../force5/src/lights";
+import { knotsIn, unitName } from "../force5/src/units";
 import { rideWedge } from "../force5/src/rideWedge";
 import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
@@ -846,7 +847,7 @@ export default function App() {
               s.dark || s.stars === null
                 ? "dark"
                 : `${s.stars} star${s.stars === 1 ? "" : "s"}`
-            }${s.compass && s.windKn !== null ? `, ${s.compass} ${Math.round(s.windKn)} knots` : ""}${
+            }${s.compass && s.windKn !== null ? `, ${s.compass} ${knotsIn(s.windKn, prefs.units)} ${unitName(prefs.units)}` : ""}${
               s.mark === "struck"
                 ? ", offshore"
                 : s.mark === "cross-off"
@@ -854,7 +855,7 @@ export default function App() {
                   : ""
             }`
       }`,
-    [column?.time],
+    [column?.time, prefs.units],
   );
 
   /* ---- the satellite image under the chart ---- */
@@ -862,6 +863,8 @@ export default function App() {
   // areas in view are drawn. The station nearest the map's centre gives the
   // panel and the key the tide each image was taken at.
   const satellite = useSatellite(layers.satellite, chartView);
+  // The chosen tide's image is drawn whole once its tiles are in (WindMap).
+  const [satelliteLoading, setSatelliteLoading] = useState(false);
   const chooseSatellite = (option: SatelliteOption) =>
     chooseLayers({ ...layers, satellite: option });
 
@@ -1420,6 +1423,7 @@ export default function App() {
               focusStyle={focusStyle}
               onFocusStyle={chooseFocusStyle}
               satelliteTides={satellite.station}
+              satelliteLoading={satelliteLoading}
               model={manifest?.model}
               modelNote={
                 reachNote && column
@@ -1458,6 +1462,7 @@ export default function App() {
                 setMapReady(!!c);
               }}
               onTilesFailed={(failed) => recoverRun(failed.model, failed.run)}
+              onSatelliteLoading={setSatelliteLoading}
             />
             {(status || (loading && frame)) && (
               <div

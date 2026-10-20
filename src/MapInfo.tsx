@@ -152,8 +152,9 @@ function MapKey({
         </dt>
         <dd>
           Wedge, on the spot you open with the range ring or no mark: the
-          headings you can hold out to sea at your level in this wind. Longer
-          the better powered; it pulses faster with more stars.
+          headings you can hold out to sea at your level in this wind. The
+          longer the wedge, the better powered you are; it pulses faster with
+          more stars.
         </dd>
         <dt>
           <KeyRose />

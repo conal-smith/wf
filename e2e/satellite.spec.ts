@@ -136,6 +136,11 @@ test("the satellite image draws at high and at low tide in the Malahide estuary,
   const high = await photograph(page);
   await choose(page, "Low tide");
   await expect(page.locator("[data-satellite='low']")).toHaveCount(1);
+  // Drawn whole once its tiles are in, over the high tide's until then.
+  await expect(page.locator("[data-satellite-loading='false']")).toHaveCount(
+    1,
+    { timeout: 30000 },
+  );
   const low = await photograph(page);
 
   // The image covers the view, land and sea; between the tides the estuary's
