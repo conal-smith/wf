@@ -24,6 +24,7 @@ import {
   rowHours,
   shadeBands,
   shoreSummary,
+  skyStopsOn,
   spotRows,
   tideCurve,
   tideHeightAt,
@@ -31,6 +32,7 @@ import {
   windArcs,
   windIn,
   type TideTurn,
+  type SpotDay,
 } from "./spot";
 
 const wind = (knots: number, deg = 270, gust: number | null = null) =>
@@ -416,6 +418,41 @@ describe("the one model the stars come from", () => {
     // A rider who chose ECMWF needs no saying of it.
     expect(dayLeads(later.slice(1), { model: "ecmwf", then: "gfs" })).toEqual(
       [],
+    );
+  });
+});
+
+describe("where the sky stops", () => {
+  // A day of hours from 06:00 to 21:00, light from 08:00 to 18:00, with the
+  // sky model's weather up to (not including) `sky` o'clock.
+  const day = (date: string, sky: number) =>
+    ({
+      date,
+      rows: Array.from({ length: 16 }, (_, i) => {
+        const at = 6 + i;
+        return {
+          time: Date.parse(`${date}T${String(at).padStart(2, "0")}:00:00Z`),
+          hour: {
+            daylight: at >= 8 && at <= 18,
+            weather: at < sky ? { air_c: 12 } : undefined,
+          },
+        };
+      }),
+    }) as unknown as SpotDay;
+
+  it("is the first day whose light the sky no longer reaches", () => {
+    const days = [day("2026-10-20", 24), day("2026-10-21", 14)];
+    expect(skyStopsOn([...days, day("2026-10-22", 0)])).toBe("2026-10-21");
+  });
+
+  it("passes over a day whose sky runs out only after dark", () => {
+    const days = [day("2026-10-21", 20), day("2026-10-22", 0)];
+    expect(skyStopsOn([...days, day("2026-10-23", 0)])).toBe("2026-10-22");
+  });
+
+  it("is no day where the sky reaches them all", () => {
+    expect(skyStopsOn([day("2026-10-20", 24), day("2026-10-21", 24)])).toBe(
+      null,
     );
   });
 });
