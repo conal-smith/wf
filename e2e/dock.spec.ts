@@ -1555,3 +1555,30 @@ test("a point tapped off Dublin Bay reads wind, waves, weather and tide, and no 
   await expect(dock.getByRole("button", { name: "Blend" })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("the blend and the fold stay under the pointer, so a second click is theirs, not the chart's", async ({
+  page,
+}) => {
+  await openDock(page);
+  const tools = page.locator(".dock .dk-tools");
+  for (const name of ["Blend", /waves, sky and sea/]) {
+    const button = tools.getByRole("button", { name });
+    // Once to change the dock's height, which moves the tools with its top
+    // edge; then at the button where it now is, three times over.
+    await button.click();
+    const box = (await button.boundingBox())!;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    for (let i = 0; i < 3; i++) {
+      await page.mouse.click(x, y);
+      await expect
+        .poll(async () => (await button.boundingBox())?.y)
+        .toBeCloseTo(box.y, 0);
+    }
+    // No point was picked: the dock is still the spot's.
+    await page.waitForTimeout(400);
+    await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
+    // Off the tools, the dock lets go of the height it held.
+    await page.mouse.move(x - 600, y - 300);
+  }
+});
