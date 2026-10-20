@@ -1633,21 +1633,37 @@ test("a point tapped off Dublin Bay reads wind, waves, weather and tide, and no 
   expect(errors).toEqual([]);
 });
 
-test("the blend and the fold stay under the pointer, so a second click is theirs, not the chart's", async ({
+test("the blend and the fold stay under the pointer from the first click, so every click is theirs, not the chart's", async ({
   page,
 }) => {
-  await openDock(page);
-  const tools = page.locator(".dock .dk-tools");
-  for (const name of ["Blend", /waves, sky and sea/]) {
+  // The desktop the blend was found moving on (#91).
+  await openDock(page, 1920, 1113);
+  const dock = page.locator(".dock");
+  const tools = dock.locator(".dk-tools");
+  /** How far above the dock's top edge the tools stand. */
+  const standing = async () => {
+    const [t, d] = await Promise.all([tools.boundingBox(), dock.boundingBox()]);
+    return d!.y - (t!.y + t!.height);
+  };
+  for (const [name, state] of [
+    ["Blend", "aria-pressed"],
+    [/waves, sky and sea/, "aria-expanded"],
+  ] as const) {
     const button = tools.getByRole("button", { name });
-    // Once to change the dock's height, which moves the tools with its top
-    // edge; then at the button where it now is, three times over.
-    await button.click();
+    // Where it stands before the first click, which changes the dock's
+    // height and once moved the tools with its top edge: three clicks there,
+    // each of them the button's.
     const box = (await button.boundingBox())!;
     const x = box.x + box.width / 2;
     const y = box.y + box.height / 2;
-    for (let i = 0; i < 3; i++) {
+    const was = await button.getAttribute(state);
+    const edge = await standing();
+    for (let i = 1; i <= 3; i++) {
       await page.mouse.click(x, y);
+      await expect(button).toHaveAttribute(
+        state,
+        i % 2 ? String(was !== "true") : String(was),
+      );
       await expect
         .poll(async () => (await button.boundingBox())?.y)
         .toBeCloseTo(box.y, 0);
@@ -1655,7 +1671,8 @@ test("the blend and the fold stay under the pointer, so a second click is theirs
     // No point was picked: the dock is still the spot's.
     await page.waitForTimeout(400);
     await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
-    // Off the tools, the dock lets go of the height it held.
+    // Off the tools, they go back to the dock's top edge.
     await page.mouse.move(x - 600, y - 300);
+    await expect.poll(standing).toBeCloseTo(edge, 0);
   }
 });

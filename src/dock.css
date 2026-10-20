@@ -27,6 +27,8 @@
   align-items: stretch;
   max-width: calc(100% - 24px);
   padding: 2px;
+  /* Over the hours, where a click held them as the dock grew (ForecastDock). */
+  z-index: 1;
 }
 .dk-id {
   display: flex;
