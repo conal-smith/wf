@@ -7,8 +7,8 @@
  * learner: the caller decides, through `mark`).
  *
  * Behind the open spot's ring, a wedge spans the headings this rider can
- * hold out to sea at the hour's wind (./rideWedge): longer the better
- * powered, pulsing faster the more stars. The caller gives it to one light
+ * hold out to sea at the hour's wind (./rideWedge): the longer the wedge,
+ * the better powered the rider, and it pulses faster the more stars. The caller gives it to one light
  * only; on all of them at once it buried the chart. The pulse is a transform
  * and an opacity on an HTML box, for the compositor to run.
  *
