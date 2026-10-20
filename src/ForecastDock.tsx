@@ -212,15 +212,16 @@ const rowsUnderHours = (
 /**
  * Each row's name as a glyph, with the name and unit in its title: the rows
  * read by their figures, and a word per row took a column of the dock's
- * width from the hours.
+ * width from the hours. The unit stays on screen beside the glyph, as the
+ * wind's does, so a bare 0.7 or 12 says what it counts.
  */
 type RowGlyph = LucideIcon | typeof WingGlyph;
-const MORE_LABEL: Record<MoreRow, [RowGlyph, string]> = {
-  waves: [Waves, "Waves, m"],
+const MORE_LABEL: Record<MoreRow, [RowGlyph, string, string?]> = {
+  waves: [Waves, "Waves, m (height) and s (period)", "m"],
   sky: [CloudSun, "Sky"],
-  air: [Thermometer, "Air, °C"],
-  rain: [CloudRain, "Rain, mm"],
-  sea: [SeaTempGlyph, "Sea, °C"],
+  air: [Thermometer, "Air, °C", "°C"],
+  rain: [CloudRain, "Rain, mm", "mm"],
+  sea: [SeaTempGlyph, "Sea, °C", "°C"],
 };
 const RowLabel = ({
   glyph: Glyph,
@@ -1745,6 +1746,9 @@ export default function ForecastDock(props: Props) {
                     glyph={MORE_LABEL[key][0]}
                     title={MORE_LABEL[key][1]}
                   />
+                  {MORE_LABEL[key][2] && (
+                    <small className="dk-unit">{MORE_LABEL[key][2]}</small>
+                  )}
                 </div>
               ))}
           </div>
