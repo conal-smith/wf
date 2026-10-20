@@ -14,13 +14,26 @@ import {
   isCommunityPath,
   isMarketPath,
   isSpotPath,
+  isSwitchedOffPath,
 } from "../force5/src/siteNav";
+
+// A section switched off in this build (shared/web/features.ts) is not there.
+// The host answers its paths with the app all the same (public/_redirects), so
+// the reader is sent on to the map at its own address, `/`, rather than shown
+// the map under one that names a page that does not exist. Replaced, not
+// pushed, so Back does not return to it; and before anything reads the URL.
+if (isSwitchedOffPath(window.location.pathname, FEATURES))
+  window.history.replaceState(
+    null,
+    "",
+    "/" + window.location.search + window.location.hash,
+  );
 
 // The marketplace is its own bundle; the map never loads it and it never
 // loads the map. Everything under /market goes there — which is also what the
 // shared site menu links to, from the same one match.
 const MarketApp = React.lazy(() => import("../market/web/MarketApp"));
-// Switched off (shared/web/features.ts), /market is the map's like any other path.
+// Switched off (shared/web/features.ts), /market was sent on to `/` above.
 const isMarket = FEATURES.market && isMarketPath(window.location.pathname);
 
 // The community is the third bundle, split off the same way: everything under

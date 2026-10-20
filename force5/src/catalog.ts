@@ -33,16 +33,18 @@ export interface ModelEntry {
 
 // Hues are provisional: a design ruling on model identity colours is pending.
 // `detail` is what the layers list and the display options print beside a
-// name, in one form: the grid in kilometres, then the reach or the members
-// where those set a model apart. A grid in degrees is given as the
-// kilometres it comes to over Ireland, as near as a reader needs (0.25° is
-// some 28 km north to south and 17 km across here; 25 km is the usual
-// shorthand), so ECMWF and HARMONIE compare at a glance.
+// name, in one form for every model: the grid in kilometres, then how far
+// ahead its published run reaches, in days (the run the site serves, so
+// GFS's 240 hours of its 384, HARMONIE's 60), then the members of an
+// ensemble. A grid in degrees is given as the kilometres it comes to over
+// Ireland, as near as a reader needs (0.25° is some 28 km north to south and
+// 17 km across here; 25 km is the usual shorthand), so ECMWF and HARMONIE
+// compare at a glance.
 export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "harmonie",
     name: "HARMONIE",
-    detail: "2 km",
+    detail: "2 km · 2½ days",
     manifestUrl: "weather/harmonie.json",
     kind: "wind",
     hue: { wind: "#1a9e8a", gust: "#e9a23b" },
@@ -51,7 +53,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "icon-eu",
     name: "ICON-EU",
-    detail: "6.5 km",
+    detail: "6.5 km · 3 days",
     manifestUrl: "weather/latest.json",
     kind: "wind",
     hue: { wind: "#3f6fd8", gust: "#e5672f" },
@@ -69,7 +71,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "gfs",
     name: "GFS",
-    detail: "25 km · 16 days",
+    detail: "25 km · 10 days",
     manifestUrl: "weather/gfs.json",
     kind: "wind",
     hue: { wind: "#2c8f6f", gust: "#d98a2b" },
@@ -161,7 +163,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "gfs-wave",
     name: "GFS-Wave",
-    detail: "9 km",
+    detail: "9 km · 10 days",
     manifestUrl: "weather/gfs-wave.json",
     kind: "wave",
     hue: { wind: "#1f6f8b", gust: "#cf7d2f" },
@@ -170,7 +172,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "mi-swan",
     name: "MI SWAN",
-    detail: "Irish shelf",
+    detail: "2 km · 6 days",
     manifestUrl: "weather/mi-swan.json",
     kind: "wave",
     hue: { wind: "#2a7f62", gust: "#cf8a2f" },
@@ -183,7 +185,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     // and the dock reads the precomputed spot series.
     id: "icon-eu-weather",
     name: "ICON-EU weather",
-    detail: "6.5 km surface",
+    detail: "6.5 km · 3 days",
     manifestUrl: "weather/icon-eu-weather.json",
     kind: "weather",
     hue: { wind: "#4c86c6", gust: "#dd8b46" },
