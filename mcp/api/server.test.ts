@@ -362,6 +362,41 @@ describe("the MCP endpoint", () => {
     );
   });
 
+  it("says a place far outside Ireland is beyond max_km's reach, and how far a nearer one has to go", async () => {
+    const { call } = harness();
+    const newYork = await call("find_wind", { near: { lat: 40.7, lon: -74 } });
+    expect(newYork.isError).toBe(true);
+    expect(newYork.text).toMatch(
+      /^No spots within 100 km of 40\.7, -74\. The nearest spot is .+ \(.+\), about \d{4} km away, beyond the 600 km limit on max_km\. This server covers Ireland only\.$/,
+    );
+    // Counties can't help either.
+    const withCounties = await call("find_wind", {
+      near: { lat: 40.7, lon: -74 },
+      max_km: 600,
+      counties: ["Kerry"],
+    });
+    expect(withCounties.isError).toBe(true);
+    expect(withCounties.text).toMatch(/This server covers Ireland only\.$/);
+    // In the midlands a larger max_km does help, and says how large.
+    const athlone = await call("find_wind", {
+      near: { lat: 53.42, lon: -7.94 },
+      max_km: 5,
+    });
+    expect(athlone.isError).toBe(true);
+    const said =
+      /^No spots within 5 km of 53\.42, -7\.94\. The nearest spot is .+ \(.+\), about \d+ km away\. Try a larger max_km, at least (\d+)\.$/.exec(
+        athlone.text,
+      );
+    expect(said).not.toBeNull();
+    const raised = (
+      await call("find_wind", {
+        near: { lat: 53.42, lon: -7.94 },
+        max_km: Number(said![1]),
+      })
+    ).json();
+    expect(raised.searched_spots).toBeGreaterThan(0);
+  });
+
   it("goes on from one of several spots close together, and asks only when they are far apart", async () => {
     const { call } = harness();
     const malahide = await call("find_wind", { near: "Malahide", max_km: 20 });

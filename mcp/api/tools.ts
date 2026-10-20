@@ -435,9 +435,10 @@ export const findWind = tool({
     });
     if (near && !found.searched)
       return failure(
-        counties.length
-          ? tooFar(spots, counties, near.place, maxKm)
-          : `No spots within ${maxKm} km of ${near.place.name}. Try a larger max_km.`,
+        outsideIreland(spots, near.place, maxKm) ??
+          (counties.length
+            ? tooFar(spots, counties, near.place, maxKm)
+            : tooSmall(spots, near.place, maxKm)),
       );
     if (!found.reach)
       return failure(
@@ -476,6 +477,42 @@ export const findWind = tool({
     });
   },
 });
+
+/** The spot nearest `near`, and how far it is. */
+function nearestSpot(
+  spots: readonly RidingSpot[],
+  near: Place,
+): { spot: RidingSpot; km: number } {
+  return spots
+    .map((spot) => ({ spot, km: distanceKm(near, spot) }))
+    .reduce((a, b) => (b.km < a.km ? b : a));
+}
+
+/**
+ * Why nothing is within max_km of a place so far from Ireland that no max_km
+ * could reach a spot, or null when one could: "try a larger max_km" would
+ * send the agent round in circles.
+ */
+function outsideIreland(
+  spots: readonly RidingSpot[],
+  near: Place,
+  maxKm: number,
+): string | null {
+  const { spot, km } = nearestSpot(spots, near);
+  return km > MAX_KM
+    ? `No spots within ${maxKm} km of ${near.name}. The nearest spot is ${spot.name} (${spot.county}), about ${Math.round(km)} km away, beyond the ${MAX_KM} km limit on max_km. This server covers Ireland only.`
+    : null;
+}
+
+/** Why nothing is within max_km of near, and how far max_km has to go. */
+function tooSmall(
+  spots: readonly RidingSpot[],
+  near: Place,
+  maxKm: number,
+): string {
+  const { spot, km } = nearestSpot(spots, near);
+  return `No spots within ${maxKm} km of ${near.name}. The nearest spot is ${spot.name} (${spot.county}), about ${Math.round(km)} km away. Try a larger max_km, at least ${Math.ceil(km)}.`;
+}
 
 /**
  * Why no spot is both in the counties asked for and within max_km of near:
