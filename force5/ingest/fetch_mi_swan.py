@@ -20,6 +20,15 @@ the cell containing it is usually dry. This importer searches the surrounding
 cells for the closest wet one and records that offset per spot. It refuses to
 borrow a cell farther away than the search limit rather than pretend an open-sea
 state belongs to a sheltered lough or an inland lake.
+
+Directions from open water. That closest wet cell is nearly always on SWAN's
+coastline: a cell with land on one side, which no wave can reach across, so its
+direction is pinned to the open-water sector whatever the wind does (Malahide's
+read "from SE" for days of north-westerlies while the cell one step offshore
+turned NNW). Heights and periods stay with the closest wet cell; the directions
+(`mwd`, `pwd`, `spread`) come from the closest wet cell whose four neighbours
+are all wet, within the same limit, and are null where there is none rather
+than the coastline's constant.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -85,22 +94,27 @@ VARIABLES = {
              "description": "Peak wave period tps, at the spectral peak."},
     "mwd": {"units": "deg", "label": "Mean direction",
             "description": "Mean wave direction theta0 in the meteorological convention: the "
-                           "bearing the waves come from."},
+                           "bearing the waves come from. Read from the spot's `directionCell`, clear of "
+                           "the coastline."},
     "pwd": {"units": "deg", "label": "Peak direction",
             "description": "Peak wave direction thetap in the meteorological convention: the "
                            "bearing the waves come from. SWAN reads it off its discrete spectral "
                            "direction bins, so it steps in 10° increments (5°, 15°, 25° and so on) "
-                           "and is much coarser than the mean direction."},
+                           "and is much coarser than the mean direction. From the `directionCell`, "
+                           "as the mean direction."},
     "spread": {"units": "deg", "label": "Directional spread",
                "description": "Directional spreading of the wave spectrum; larger values mean a "
-                              "more confused sea."},
+                              "more confused sea. From the `directionCell`, as the directions."},
 }
 # Frames cover Ireland and its approaches, not the whole 480 x 280 shelf domain.
 FRAME_BOX = (-11.0, 51.0, -5.0, 56.0)  # west, south, east, north
+# `cellDegrees` is the grid step (lat, lon): the mask is read one cell wider than
+# the search, so a cell at the limit still has its four neighbours to be judged by.
 DATASETS = {
-    SHELF: {"label": "Irish Shelf SWAN", "searchKm": 8.0},
+    SHELF: {"label": "Irish Shelf SWAN", "searchKm": 8.0, "cellDegrees": (0.025, 0.025)},
     # The 200 m nest exists to resolve Galway Bay, so its search stays local.
-    NEST: {"label": "Connemara SWAN nest", "searchKm": 2.0},
+    NEST: {"label": "Connemara SWAN nest", "searchKm": 2.0,
+           "cellDegrees": (0.0017727, 0.0029766)},
 }
 INFO_COLUMNS = ["Row Type", "Variable Name", "Attribute Name", "Data Type", "Value"]
 SESSION = timing.count_responses(requests.Session())
@@ -196,10 +210,10 @@ def inside(spot, bounds):
             and bounds["lon_min"] <= spot["lon"] <= bounds["lon_max"])
 
 
-def search_box(spot, kilometres, bounds):
-    """A degree box around the spot, clipped to the dataset's own extent."""
-    d_lat = kilometres / 111.195
-    d_lon = kilometres / (111.195 * max(math.cos(math.radians(spot["lat"])), 0.05))
+def search_box(spot, kilometres, bounds, pad=(0.0, 0.0)):
+    """A degree box around the spot, `pad` degrees wider, clipped to the dataset's extent."""
+    d_lat = kilometres / 111.195 + pad[0]
+    d_lon = kilometres / (111.195 * max(math.cos(math.radians(spot["lat"])), 0.05)) + pad[1]
     south = max(spot["lat"] - d_lat, bounds["lat_min"])
     north = min(spot["lat"] + d_lat, bounds["lat_max"])
     west = max(spot["lon"] - d_lon, bounds["lon_min"])
@@ -233,10 +247,31 @@ def number(text, key):
     return round(value, digits)
 
 
+# Read from the closest open-water cell rather than the closest wet one.
+DIRECTION_KEYS = ("mwd", "pwd", "spread")
+
+
+def open_water(cells):
+    """The wet cells whose four neighbours are wet too: not on SWAN's coastline.
+
+    `cells` are (lat, lon, wet) over a full index block. A neighbour outside the
+    block is unknown, so a cell on the block's edge never counts as open: the
+    block is read a cell wider than the search for that reason."""
+    latitudes = {lat: i for i, lat in enumerate(sorted({lat for lat, _, _ in cells}))}
+    longitudes = {lon: j for j, lon in enumerate(sorted({lon for _, lon, _ in cells}))}
+    wet = {(latitudes[lat], longitudes[lon]) for lat, lon, ok in cells if ok}
+    return {(lat, lon) for lat, lon, ok in cells
+            if ok and all((latitudes[lat] + di, longitudes[lon] + dj) in wet
+                          for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)))}
+
+
 def nearest_valid(dataset, info, spot, when, cache):
-    """Closest wet cell to the spot, or None plus the reason nothing was found."""
+    """Closest wet cell to the spot, or None plus the reason nothing was found.
+
+    The point also carries `open`: the closest wet cell clear of the coastline,
+    which the directions are read from, or None when there is none in range."""
     limit = DATASETS[dataset]["searchKm"]
-    extent = search_box(spot, limit, info["bounds"])
+    extent = search_box(spot, limit, info["bounds"], DATASETS[dataset]["cellDegrees"])
     if extent is None:
         return None, {"reason": f"{DATASETS[dataset]['label']} does not cover this location."}
     text = fetch(griddap(dataset, block(["swh"], when, when, 1, *extent)),
@@ -244,21 +279,29 @@ def nearest_valid(dataset, info, spot, when, cache):
     cells = erddap_rows(text, columns(["swh"]))
     if not cells:
         raise ValueError(f"{dataset} returned no cells around {spot['id']}")
-    closest, wet = None, None
-    for _, latitude, longitude, raw in cells:
-        lat, lon = float(latitude), float(longitude)
+    closest, wet, clear = None, None, None
+    grid = [(float(latitude), float(longitude), not missing(raw))
+            for _, latitude, longitude, raw in cells]
+    clear_cells = open_water(grid)
+    for lat, lon, ok in grid:
         kilometres = distance_km(spot["lat"], spot["lon"], lat, lon)
         if closest is None or kilometres < closest[0]:
-            closest = (kilometres, not missing(raw))
+            closest = (kilometres, ok)
         # The request is a degree box, so its corners reach past the stated radius.
-        if not missing(raw) and kilometres <= limit and (wet is None or kilometres < wet[0]):
+        if ok and kilometres <= limit and (wet is None or kilometres < wet[0]):
             wet = (kilometres, lat, lon)
+        if ((lat, lon) in clear_cells and kilometres <= limit
+                and (clear is None or kilometres < clear[0])):
+            clear = (kilometres, lat, lon)
     searched = {"cellsSearched": len(cells), "searchKm": limit}
     if wet is None:
         return None, {**searched, "reason": f"No wet {DATASETS[dataset]['label']} cell within "
                                            f"{limit:.0f} km of this location."}
     return ({"dataset": dataset, "lat": round(wet[1], 6), "lon": round(wet[2], 6),
-             "offsetKm": round(wet[0], 2)},
+             "offsetKm": round(wet[0], 2),
+             "open": None if clear is None else {
+                 "dataset": dataset, "lat": round(clear[1], 6), "lon": round(clear[2], 6),
+                 "offsetKm": round(clear[0], 2)}},
             # neighbourSearch is true when the cell containing the spot is dry.
             {**searched, "offsetKm": round(wet[0], 2), "neighbourSearch": not closest[1]})
 
@@ -332,6 +375,7 @@ def spot_task(spot, infos, run, hours, step, cache):
     record.update({"dataset": point["dataset"], "cellLat": point["lat"], "cellLon": point["lon"],
                    "nearestOffsetKm": point["offsetKm"],
                    "neighbourSearch": meta["neighbourSearch"], "nest": point["dataset"] == NEST})
+    record["directionCell"] = with_open_directions(series, point, run, hours, step, cache)
     others = [item for item in candidates if item[0] is not point]
     if others:
         other = others[0][0]
@@ -340,6 +384,25 @@ def spot_task(spot, infos, run, hours, step, cache):
             "meanAbsSwhDifferenceM": mean_difference(
                 series, point_series(other["dataset"], other, run, hours, step, cache))}
     return record, series
+
+
+def with_open_directions(series, point, run, hours, step, cache):
+    """Put the open-water cell's directions into `series`; say which cell they are from.
+
+    A coastline cell's direction is pinned to the open-water sector, so it is
+    replaced, by nulls where no open-water cell is in range."""
+    clear = point["open"]
+    if clear and (clear["lat"], clear["lon"]) == (point["lat"], point["lon"]):
+        return {"lat": clear["lat"], "lon": clear["lon"], "offsetKm": clear["offsetKm"]}
+    source = point_series(clear["dataset"], clear, run, hours, step, cache) if clear else None
+    for index, entry in enumerate(series):
+        for key in DIRECTION_KEYS:
+            entry["values"][key] = source[index]["values"][key] if source else None
+    if clear is None:
+        return {"lat": None, "lon": None, "offsetKm": None,
+                "reason": "Every wet cell in range touches the coastline, where SWAN's "
+                          "direction cannot turn towards the land: no direction is published."}
+    return {"lat": clear["lat"], "lon": clear["lon"], "offsetKm": clear["offsetKm"]}
 
 
 def frame_axis(bounds, low, high, key):
@@ -394,6 +457,7 @@ def describe(step, hours, framed, spots):
     used = [record for record in spots.values() if record.get("dataset")]
     nested = sum(1 for record in used if record.get("nest"))
     searched = sum(1 for record in used if record.get("neighbourSearch"))
+    clear = sum(1 for record in used if (record.get("directionCell") or {}).get("lat") is not None)
     return (
         f"One Marine Institute SWAN run, subset server-side by ERDDAP, with no spatial or temporal "
         f"interpolation anywhere. `run` is the model day at 00 UTC, the first forecast hour: it "
@@ -405,7 +469,11 @@ def describe(step, hours, framed, spots):
         f"a neighbour, {nested} use the 200 m Connemara nest in preference to the 0.025° shelf grid, "
         f"and {len(spots) - len(used)} have no wet cell within the search limit and are published as "
         f"nulls with a stated reason. `nearestOffsetKm` is the distance from the location to the "
-        f"cell actually used. `shww` is derived by Force5 from the published total and swell "
+        f"cell actually used. The directions (mwd, pwd, spread) are read from the nearest wet "
+        f"cell whose four neighbours are all wet, `directionCell`, within the same limit: on "
+        f"SWAN's coastline nothing arrives from the land side, so a cell there points to open "
+        f"water whatever the wind; {clear} locations have one, the rest publish null directions. "
+        f"`shww` is derived by Force5 from the published total and swell "
         f"heights; every other value is source output, rounded only. Land and unresolved cells are "
         f"null, never zero. "
         + (f"Frames are the {abs(FRAME_BOX[0])}-{abs(FRAME_BOX[2])}°W / {FRAME_BOX[1]}-"
