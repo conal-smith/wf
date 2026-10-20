@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { approxMetres, parseSatelliteOption } from "./satellite";
+import {
+  approxMetres,
+  parseSatelliteOption,
+  satelliteTidesLine,
+} from "./satellite";
 import {
   nearestSatelliteStation,
   satelliteLayers,
@@ -139,5 +143,11 @@ describe("satellite", () => {
     expect(satelliteNote("low", null)).toBe("Satellite: low tide");
     expect(satelliteNote("off", howth)).toBeNull();
     expect(approxMetres(0.95)).toBe("≈0.9 m"); // toFixed's rounding of a binary 0.95
+  });
+
+  it("writes the panel's tides one way, both figures in the key's form", () => {
+    expect(satelliteTidesLine(ireland.stations[1])).toBe(
+      "Tide in the images at Galway: high ≈4.3 m, low ≈0.9 m",
+    );
   });
 });

@@ -108,8 +108,18 @@ async function choose(page: Page, name: "Off" | "High tide" | "Low tide") {
     .getByRole("button", { name, exact: true });
   await button.click();
   await expect(button).toHaveAttribute("aria-pressed", "true");
+  // Under the switch, the tides both images were taken at, near here.
+  const tides = page.locator("[data-satellite-tides]");
+  let line: string | null = null;
+  if (name !== "Off") {
+    await expect(tides).toHaveText(
+      /^Tide in the images at .+: high ≈\d\.\d m, low ≈\d\.\d m$/,
+    );
+    line = await tides.textContent();
+  }
   await page.keyboard.press("Escape");
   await expect(page.getByRole("group", { name: "Layers" })).toHaveCount(0);
+  return line;
 }
 
 test("the satellite image draws at high and at low tide in the Malahide estuary, and is kept", async ({
@@ -131,10 +141,11 @@ test("the satellite image draws at high and at low tide in the Malahide estuary,
   );
   const off = await photograph(page);
 
-  await choose(page, "High tide");
+  const highTides = await choose(page, "High tide");
   await expect(page.locator("[data-satellite='high']")).toHaveCount(1);
   const high = await photograph(page);
-  await choose(page, "Low tide");
+  // The same figures whichever image is shown.
+  expect(await choose(page, "Low tide")).toBe(highTides);
   await expect(page.locator("[data-satellite='low']")).toHaveCount(1);
   // Drawn whole once its tiles are in, over the high tide's until then.
   await expect(page.locator("[data-satellite-loading='false']")).toHaveCount(

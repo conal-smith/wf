@@ -2,9 +2,10 @@ import { Info, SlidersHorizontal, Star } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { MODELS, type ModelId } from "../force5/src/models";
 import {
-  approxMetres,
   SATELLITE_LABEL,
   SATELLITE_OPTIONS,
+  SATELLITE_TIDES_NOTE,
+  satelliteTidesLine,
   type SatelliteOption,
 } from "../force5/src/satellite";
 import type { ChartLayers } from "../force5/src/WindMap";
@@ -271,10 +272,12 @@ export default function MapControls({
               </small>
             )}
             {satellite !== "off" && satelliteTides && (
-              <small>
-                {satelliteTides.name}: high {approxMetres(satelliteTides.high)},
-                low {approxMetres(satelliteTides.low)}
-              </small>
+              <>
+                <small data-satellite-tides>
+                  {satelliteTidesLine(satelliteTides)}
+                </small>
+                <small>{SATELLITE_TIDES_NOTE}</small>
+              </>
             )}
           </div>
           <h3>Round the chosen spot</h3>
