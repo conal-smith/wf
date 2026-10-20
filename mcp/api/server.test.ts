@@ -124,6 +124,8 @@ describe("the MCP endpoint", () => {
       "gfs",
     ]);
     expect(typeof found.spots[0].sessions[0].gusty).toBe("boolean");
+    expect(found.offshore_hours).toBe("left out");
+    expect("shore" in found.spots[0].sessions[0]).toBe(true);
     const backwards = await call("find_wind", { min_kn: 20, max_kn: 10 });
     expect(backwards.isError).toBe(true);
     const gustBelowWind = await call("find_wind", {
