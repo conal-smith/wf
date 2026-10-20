@@ -1329,6 +1329,17 @@ const coastTides = {
 };
 
 /**
+ * Choose the range ring round a chosen spot, before the page opens. The
+ * loupe flies a spot in to fit its half-mile rose, three or four zooms
+ * closer than `tapAt`'s two lights stand apart; the ring keeps the camera
+ * where these taps were framed.
+ */
+const ringNotLoupe = (page: Page) =>
+  page.addInitScript(() =>
+    localStorage.setItem("wingfoil.map.focus.v1", "ring"),
+  );
+
+/**
  * Tap the chart at a place, from two riding places' lights round it: the
  * chart zoomed out until both are on it, and the place put on the screen
  * by Web Mercator from where their lights stand.
@@ -1435,6 +1446,7 @@ test("a point tapped on Dublin Bay reads its nearest station's tide; one on Loug
   await page.route("**/marine/tides-*-test.json", (route) =>
     route.fulfill({ json: tideCurve }),
   );
+  await ringNotLoupe(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/?spot=dollymount");
   await expect(page.locator(".spot-marker")).toHaveCount(148, {
@@ -1497,6 +1509,7 @@ test("a point tapped off Dublin Bay reads wind, waves, weather and tide, and no 
   await page.route("**/marine/tides-*-test.json", (route) =>
     route.fulfill({ json: tideCurve }),
   );
+  await ringNotLoupe(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/?spot=dollymount");
   await expect(page.locator(".spot-marker")).toHaveCount(148, {

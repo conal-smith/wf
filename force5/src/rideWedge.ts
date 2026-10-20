@@ -1,6 +1,6 @@
 /**
- * The wedge a light shows: the headings this rider can hold, at this hour's
- * wind, on the tack that heads out to sea, cut off at the beach.
+ * The wedge a light shows, and the rose the loupe draws: the headings this
+ * rider can hold, at this hour's wind.
  *
  * How high a wing foiler points and how deep they go downwind depends on how
  * good they are and how well powered: nobody points just off the foil, and
@@ -9,36 +9,53 @@
  * agree on what the hour is; the band already assumes the wing we would
  * recommend, so the rider's quiver is not read here.
  *
- * The angles are rough guides from riding, not measurements, and gear moves
- * them as much as skill does: the wedge says "about here", not a polar. They
- * are the headings a session is ridden on, back and forth across the wind,
- * not the deepest a rider could bear away. Centred a little upwind of
- * across, and never past 110° off: a wedge reaching 135° and more told a
- * rider to run downwind, where a session ends a long walk from where it
- * began.
+ * The angles are checked against what schools, makers and riders' GPS tracks
+ * say (docs/RIDE_ROSE.md, 19 October 2026): about 45° off the true wind for a
+ * good rider (Duotone's academy, AFS, Wing Daily), 50–60° measured by riding
+ * riders, a beam reach at best for a learner, and 10–15° worse in light air.
+ * Gear moves them as much as skill does, so they say "about here", not a
+ * polar. They are the headings a session is ridden on, back and forth across
+ * the wind, not the deepest a rider could bear away: never past 110° off,
+ * since a heading at 135° and more runs downwind, where a session ends a long
+ * walk from where it began.
  */
-import { rideableWind, windBand, type Rider, type Skill } from "./stars";
+import {
+  rideableWind,
+  shoreAngle,
+  windBand,
+  type Rider,
+  type ShoreAngle,
+  type Skill,
+} from "./stars";
 
 /** Degrees off the true wind: [highest upwind, deepest downwind]. */
 type Range = readonly [number, number];
 
-/** Powered up, in the sweet spot. */
+/**
+ * Powered up, in the sweet spot. A learner holds a beam reach at best; a
+ * riding rider about 60° (GPS tracks measure 50–61°); an advanced rider about
+ * 45°, as Duotone and AFS teach it.
+ */
 const BEST: Record<Skill, Range> = {
-  beginner: [85, 105],
+  beginner: [90, 105],
   intermediate: [60, 105],
   advanced: [45, 110],
 };
-/** Just foiling, at the band's floor: nobody points, and nobody runs off. */
+/**
+ * Just foiling, at the band's floor: about 15° lower upwind (a light-air
+ * Formula sailor loses 10–15°, and a wing foiler slipping off the foil more),
+ * and nobody runs off.
+ */
 const AT_FLOOR: Record<Skill, Range> = {
-  beginner: [95, 102],
-  intermediate: [85, 100],
-  advanced: [75, 105],
+  beginner: [95, 100],
+  intermediate: [75, 100],
+  advanced: [60, 105],
 };
-/** At the band's top: a little worse upwind, and less off the wind. */
+/** At the band's top: about 5° worse upwind, and less off the wind. */
 const AT_TOP: Record<Skill, Range> = {
-  beginner: [90, 104],
-  intermediate: [68, 104],
-  advanced: [48, 108],
+  beginner: [95, 100],
+  intermediate: [65, 100],
+  advanced: [50, 105],
 };
 
 export type WedgeState = "building" | "sweet" | "overpowered" | "over";
@@ -132,4 +149,118 @@ export function rideWedge(
     t[1] - t[0] > best[1] - best[0] ? t : best,
   );
   return { from, to, power: ride.power, state: ride.state };
+}
+
+/* ---- the rose: every heading, for the loupe ------------------------------ */
+
+/** How a reach meets the beach: the tack out to sea, the tack home, or neither known. */
+export type ReachKind = "out" | "home" | "reach";
+
+/** A span of compass bearings, clockwise from `from` (0–360) to `to` (`from` up to 360 more). */
+export interface Span {
+  from: number;
+  to: number;
+}
+
+export interface RoseReach extends Span {
+  kind: ReachKind;
+}
+
+export interface Rose {
+  /** Where the wind blows from, as given. */
+  windFrom: number;
+  /** How it meets the beach, or null where the facing is not known. */
+  shore: ShoreAngle | null;
+  /** The headings too close to the wind to hold, or null when nothing is drawn. */
+  nogo: Span | null;
+  /** The reaches either side of the no-go. */
+  reaches: RoseReach[];
+  /** Straight downwind: where a rider off the foil drifts, or null. */
+  drift: number | null;
+  /** True when the drift carries a rider away from the beach (cross-off, offshore). */
+  driftOut: boolean;
+}
+
+/** To the nearest 5°: the rose says "about here", not a polar. */
+const five = (d: number) => Math.round(d / 5) * 5;
+const span = (a: number, b: number): Span => {
+  const from = norm(five(a));
+  return { from, to: from + norm(five(b) - five(a)) };
+};
+
+/**
+ * The rose for an hour. Null with no wind or no direction: the dock has
+ * nothing to show either. In the dark or below the rider's floor, only the
+ * wind: no no-go, no reaches, no drift. With a beach, the reach that heads
+ * out to sea is cut off at it, as the light's wedge is, and the other is the
+ * way home; if neither heads out, nothing is drawn but the wind, as the wedge
+ * is not. With no beach (a tapped point, a place whose facing is not known)
+ * or in an offshore wind, both are plain reaches, uncut: there is no out to
+ * name, and no home but upwind.
+ */
+export function rideRose(
+  rider: Rider,
+  hour: {
+    windKn: number | null;
+    gustKn: number | null;
+    from: number | null;
+    daylight: boolean;
+  },
+  facing: number | null,
+): Rose | null {
+  const { windKn, gustKn, from } = hour;
+  if (windKn === null || from === null) return null;
+  const shore = facing === null ? null : shoreAngle(from, facing);
+  const bare: Rose = {
+    windFrom: from,
+    shore,
+    nogo: null,
+    reaches: [],
+    drift: null,
+    driftOut: false,
+  };
+  if (!hour.daylight) return bare;
+  const ride = rideRange(rider, rideableWind(windKn, gustKn, rider));
+  if (!ride) return bare;
+  const [up, down] = ride.range;
+  const tacks = [span(from + up, from + down), span(from - down, from - up)];
+  let reaches: RoseReach[];
+  if (facing === null || shore === "offshore")
+    reaches = tacks.map((t) => ({ ...t, kind: "reach" }));
+  else {
+    reaches = tacks.map((t) => {
+      const sea = clipToSea(t.from, t.to, facing);
+      return sea
+        ? { ...span(sea[0], sea[1]), kind: "out" as const }
+        : { ...t, kind: "home" as const };
+    });
+    if (!reaches.some((r) => r.kind === "out")) return bare;
+  }
+  return {
+    ...bare,
+    nogo: span(from - up, from + up),
+    reaches,
+    drift: norm(five(from + 180)),
+    driftOut: shore === "cross-off" || shore === "offshore",
+  };
+}
+
+/**
+ * The wind directions that are offshore at a beach facing `facing`, and the
+ * two cross-offshore spans either side, on shoreAngle's bands (./stars): the
+ * offshore within 30° of straight off the beach, cross-off from 30° to 70°.
+ */
+export function offshoreSpans(facing: number): {
+  offshore: Span;
+  crossOff: [Span, Span];
+} {
+  const off = facing + 180;
+  const at = (a: number, b: number): Span => {
+    const from = norm(off + a);
+    return { from, to: from + (b - a) };
+  };
+  return {
+    offshore: at(-30, 30),
+    crossOff: [at(-70, -30), at(30, 70)],
+  };
 }

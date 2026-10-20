@@ -273,6 +273,11 @@ looks wrong and no direction is safer than the wrong one. Worth checking next:
 **Brandon Bay** (computed E, from a pin on the Maharees neck) and the other
 places left without a facing, listed by `strength` in the file.
 
+The same facing draws the loupe's ride rose on the map: the tack out to sea,
+the tack home, the no-go and the drift, on angles shared with the light's
+wedge (`rideRange`). Those angles, with their sources and the dated check of
+19 October 2026, are in [RIDE_ROSE.md](RIDE_ROSE.md).
+
 ### Wing size
 
 Fitted to published size charts: an 80 kg rider on 5.5 m² at 15 knots, 4.5 m²

@@ -19,11 +19,20 @@ import { createLights, type LightState, type Lights } from "./lights";
 import {
   LOUPE_BAND,
   bezelTicks,
+  dialDrawing,
+  footBox,
   metresPerPixel,
-  loupeRadius,
   rangeRing,
+  roseDrawing,
+  roseFitRadius,
+  roseRadius,
+  roseScale,
   washHoles,
+  zoomFor,
   type FocusStyle,
+  type Line,
+  type LoupeRose,
+  type RoseScale,
 } from "./focus";
 import { drawNeatline } from "./neatline";
 import { isLakeWater } from "./pointSource";
@@ -118,8 +127,10 @@ type Props = {
   focus: { lon: number; lat: number } | null;
   /** The rider's choice of mark round the focus: a loupe, a range ring, or none. */
   focusStyle: FocusStyle;
-  /** The rider's speed units, which the range ring's distance follows (NM with knots). */
+  /** The rider's speed units, which the range ring's and the rose's distances follow (NM with knots). */
   units: Units;
+  /** The loupe's ride rose for the dock's hour at the focus, or null with no wind to show. */
+  rose: LoupeRose | null;
   /** Where the pen rings: the chosen spot or point. */
   mark: { lon: number; lat: number } | null;
   /** A point tapped on the open map, marked where it was tapped. */
@@ -173,18 +184,101 @@ function svgEl(
   return el;
 }
 
+/** A line from focus.ts's geometry, as an SVG line. */
+const lineAttrs = (l: Line) => ({ x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2 });
+
+/** The hatches the rose fills with: ink for the no-go, the pen's for offshore. */
+function hatches(g: SVGGElement) {
+  const defs = svgEl(g, "defs");
+  for (const [id, size, angle] of [
+    ["loupe-hatch", 6, 45],
+    ["loupe-redhatch", 3.6, -45],
+    ["loupe-redlight", 6, -45],
+  ] as const) {
+    const p = svgEl(defs, "pattern", {
+      id,
+      width: size,
+      height: size,
+      patternUnits: "userSpaceOnUse",
+      patternTransform: `rotate(${angle})`,
+    });
+    svgEl(p, "line", { class: id, x1: 0, y1: 0, x2: 0, y2: size });
+  }
+}
+
 /**
  * The loupe at the origin, `r` pixels to the inside of its rim: drawn as the
  * chart draws a box, ink, a band of paper and ink, with a compass bezel's
  * ticks in the paper and N at the top. No handle and no magnifying: the chart
  * runs straight on through the glass.
+ *
+ * Inside it, the ride rose for the dock's hour (focus.ts `roseDrawing`): the
+ * no-go hatched, the tack out washed in paper, the tack home dashed, the drift
+ * downwind, and the half-way ring with its distance when it is to scale. On
+ * the bezel, the offshore winds in the pen's red, the needle in the wind's
+ * colour, and the reading in a box at its foot.
  */
-function drawLoupe(g: SVGGElement, r: number) {
+function drawLoupe(
+  g: SVGGElement,
+  r: number,
+  /** The rose's distances while it is to scale, else null. */
+  scale: RoseScale | null,
+  loupe: LoupeRose | null,
+) {
   g.replaceChildren();
+  hatches(g);
+  // Held at its smallest, no longer to scale: a compass, with nothing inside.
+  const rose = roseDrawing(scale ? (loupe?.rose ?? null) : null, r, scale);
+  const glass = svgEl(g, "g", { class: "map-rose" });
+  if (rose.nogo) {
+    const nogo = svgEl(glass, "g", { class: "map-rose-nogo" });
+    svgEl(nogo, "path", { class: "map-rose-nogo-fill", d: rose.nogo.fill });
+    svgEl(nogo, "path", { class: "map-rose-nogo-hatch", d: rose.nogo.fill });
+    for (const e of rose.nogo.edges)
+      svgEl(nogo, "line", { class: "map-rose-nogo-edge", ...lineAttrs(e) });
+  }
+  for (const fan of rose.fans) {
+    const fg = svgEl(glass, "g", { class: `map-rose-fan is-${fan.kind}` });
+    if (fan.fill)
+      svgEl(fg, "path", { class: "map-rose-fan-fill", d: fan.fill });
+    for (const e of fan.edges)
+      svgEl(fg, "line", { class: "map-rose-fan-edge", ...lineAttrs(e) });
+    svgEl(fg, "path", { class: "map-rose-fan-arc", d: fan.arc });
+    if (fan.head) svgEl(fg, "path", { class: "map-rose-head", d: fan.head });
+  }
+  for (const ring of rose.rings)
+    svgEl(glass, "circle", { class: "map-rose-ring", r: ring.r });
+  if (rose.drift) {
+    const dg = svgEl(glass, "g", {
+      class: `map-rose-drift${rose.drift.out ? " is-out" : ""}`,
+    });
+    svgEl(dg, "line", {
+      class: "map-rose-drift-halo",
+      ...lineAttrs(rose.drift.line),
+    });
+    svgEl(dg, "line", {
+      class: "map-rose-drift-line",
+      ...lineAttrs(rose.drift.line),
+    });
+    svgEl(dg, "path", { class: "map-rose-drift-head", d: rose.drift.head });
+  }
+  for (const l of [...rose.rings.map((ring) => ring.label), ...rose.labels])
+    svgEl(glass, "text", {
+      class: `map-rose-label is-${l.kind}`,
+      x: l.x,
+      y: l.y,
+      "text-anchor": "middle",
+    }).textContent = l.text;
+
   const rim = svgEl(g, "g", { class: "map-loupe-rim" });
   svgEl(rim, "circle", { class: "map-loupe-band", r: r + LOUPE_BAND / 2 });
   svgEl(rim, "circle", { class: "map-loupe-edge is-inner", r });
   svgEl(rim, "circle", { class: "map-loupe-edge", r: r + LOUPE_BAND });
+  const dial = loupe ? dialDrawing(loupe.rose.windFrom, loupe.facing, r) : null;
+  for (const d of dial?.crossOff ?? [])
+    svgEl(g, "path", { class: "map-dial-crossoff", d });
+  if (dial?.offshore)
+    svgEl(g, "path", { class: "map-dial-offshore", d: dial.offshore.band });
   for (const t of bezelTicks(r))
     svgEl(g, "line", {
       class: t.long ? "map-loupe-tick is-long" : "map-loupe-tick",
@@ -204,6 +298,55 @@ function drawLoupe(g: SVGGElement, r: number) {
     class: "map-loupe-glint",
     d: `M${(Math.cos(3.55) * g0).toFixed(1)} ${(Math.sin(3.55) * g0).toFixed(1)} A${g0} ${g0} 0 0 1 ${(Math.cos(4.25) * g0).toFixed(1)} ${(Math.sin(4.25) * g0).toFixed(1)}`,
   });
+  if (!loupe || !dial) return;
+  if (dial.offshore) {
+    svgEl(g, "path", { class: "map-dial-offshore-arc", d: dial.offshore.arc });
+    svgEl(g, "path", {
+      id: "loupe-offshore-words",
+      class: "map-dial-words-path",
+      d: dial.offshore.text,
+    });
+    const words = svgEl(g, "text", { class: "map-dial-words" });
+    svgEl(words, "textPath", {
+      href: "#loupe-offshore-words",
+      startOffset: "50%",
+      "text-anchor": "middle",
+    }).textContent = "OFFSHORE";
+  }
+  const needle = svgEl(g, "g", { class: "map-dial-needle" });
+  svgEl(needle, "path", {
+    d: dial.needle,
+    fill: loupe.colour,
+  });
+  svgEl(needle, "circle", { cx: dial.pin[0], cy: dial.pin[1], r: 1.6 });
+  const box = footBox(loupe.reading, loupe.relation, r);
+  const foot = svgEl(g, "g", { class: "map-loupe-foot" });
+  svgEl(foot, "rect", {
+    class: "map-loupe-foot-box",
+    x: -box.w / 2,
+    y: -box.h / 2,
+    width: box.w,
+    height: box.h,
+  });
+  svgEl(foot, "rect", {
+    class: "map-loupe-foot-rule",
+    x: -box.w / 2 + 2.5,
+    y: -box.h / 2 + 2.5,
+    width: box.w - 5,
+    height: box.h - 5,
+  });
+  svgEl(foot, "text", {
+    class: "map-loupe-reading",
+    x: -box.w / 2 + 9,
+    y: 4.5,
+  }).textContent = loupe.reading;
+  svgEl(foot, "text", {
+    class: `map-loupe-relation${loupe.warn ? " is-warn" : ""}`,
+    x: box.w / 2 - 8,
+    y: 4,
+    "text-anchor": "end",
+  }).textContent = loupe.relation;
+  foot.setAttribute("transform", `translate(0 ${box.y.toFixed(1)})`);
 }
 
 /** The range ring at the origin, `r` pixels out, with its distance written up and to the right. */
@@ -306,6 +449,7 @@ export default function WindMap(props: Props) {
     focus,
     focusStyle,
     units,
+    rose,
     mark,
     picked,
     windStyle,
@@ -505,8 +649,28 @@ export default function WindMap(props: Props) {
           // coast is a short glide, the length of the country a longer
           // flight. A fixed 2.2 s kept the rider waiting that long even for
           // the next bay over.
-          const zoom = Math.max(map.getZoom(), 10.4);
-          const center = seaward(spot);
+          // With the loupe, at the zoom that fits its rose (half a nautical
+          // mile, or a kilometre) comfortably in the map left clear, on the
+          // spot itself; else a little out to sea, closer in if already so.
+          const { focusStyle: style, units: u } = latest.current;
+          const pad = padding();
+          const { clientWidth: cw, clientHeight: ch } = map.getContainer();
+          const zoom =
+            style === "loupe"
+              ? Math.min(
+                  map.getMaxZoom(),
+                  zoomFor(
+                    roseScale(u).metres,
+                    roseFitRadius(
+                      cw - pad.left - pad.right,
+                      ch - pad.top - pad.bottom,
+                    ),
+                    spot.lat,
+                  ),
+                )
+              : Math.max(map.getZoom(), 10.4);
+          const center: [number, number] =
+            style === "loupe" ? [spot.lon, spot.lat] : seaward(spot);
           const from = map.project(map.getCenter());
           const to = map.project(center);
           const { clientWidth: w, clientHeight: h } = map.getContainer();
@@ -520,7 +684,7 @@ export default function WindMap(props: Props) {
           map.flyTo({
             center,
             zoom,
-            padding: padding(),
+            padding: pad,
             duration: latest.current.reducedMotion ? 0 : duration,
             curve: 1.5,
             essential: true,
@@ -733,11 +897,16 @@ export default function WindMap(props: Props) {
 
   // Focus: a loupe laid on the chart round the chosen spot, or a range ring,
   // with a light wash of paper beyond it; or, as the rider chooses, nothing.
-  // Neither shrinks as the rider zooms in, as the old spotlight did: the
-  // loupe is a size on the screen, and the ring a round distance on the
-  // chart, chosen again whenever the camera rests. The wind and the lights
-  // are never washed.
+  // Both are distances on the chart and scale with it through a zoom: the
+  // loupe's rose reaches half a nautical mile or a kilometre (focus.ts
+  // `roseScale`), the ring a round distance chosen again whenever the camera
+  // rests. Zoomed far out the rose stops at ROSE_MIN_PX, a compass with the
+  // wind and nothing inside; zoomed in past the screen its bezel runs off it,
+  // and the box at its foot is held in view. A pan only moves the glass; it
+  // is drawn again when its size changes, or the hour (`rose`). The wind and
+  // the lights are never washed.
   const remeasure = useRef(() => {});
+  const redrawRose = useRef(() => {});
   useEffect(() => {
     const map = mapRef.current;
     const svg = glass.current;
@@ -756,6 +925,30 @@ export default function WindMap(props: Props) {
     /** The mark's radius on screen, and the ring's distance, written as the rider reads it. */
     let r = 0;
     let range = { metres: 0, label: "" };
+    const scale = roseScale(units);
+    /** Whether the rose is drawn to scale (not held at its smallest). */
+    let toScale = false;
+    const drawRose = () => {
+      if (g) drawLoupe(g, r, toScale ? scale : null, latest.current.rose);
+    };
+    /** The foot box, kept in the map's clear area when the bezel's foot is off it. */
+    const pinFoot = (q: { x: number; y: number }) => {
+      const foot = g?.querySelector(".map-loupe-foot");
+      const loupe = latest.current.rose;
+      if (!foot || !loupe) return;
+      const el = map.getContainer();
+      const p = latest.current;
+      // In the glass's own coordinates: above the dock, as padding() keeps.
+      const at = footBox(loupe.reading, loupe.relation, r, {
+        left: -q.x,
+        right: el.clientWidth - q.x,
+        bottom: el.clientHeight - p.bottomInset - (p.phone ? 64 : 24) - q.y,
+      });
+      foot.setAttribute(
+        "transform",
+        `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})`,
+      );
+    };
     let washedAt = -1;
     let raf = 0;
     const mpp = () => (spot ? metresPerPixel(map.getZoom(), spot.lat) : 0);
@@ -810,10 +1003,18 @@ export default function WindMap(props: Props) {
       if (style === "ring") {
         const next = range.metres / mpp();
         if (Math.abs(next - r) > 0.05) drawRange(g, (r = next), range.label);
-      } else if (map.getZoom() !== washedAt)
-        // A glass stays the same size through a zoom, so the hole in the
-        // wash under its rim is cut again on every frame of one.
-        wash();
+      } else {
+        const next = roseRadius(scale.metres, mpp());
+        if (Math.abs(next.r - r) > 0.05 || next.toScale !== toScale) {
+          r = next.r;
+          toScale = next.toScale;
+          drawRose();
+        }
+        pinFoot(q);
+        // The hole in the wash under the rim is cut again on every frame of
+        // a zoom: held at its smallest, the glass is a size on the screen.
+        if (map.getZoom() !== washedAt) wash();
+      }
     };
     /** Sized for the map: the glass to its shorter side, the ring's distance to the zoom too. */
     const measure = () => {
@@ -824,10 +1025,8 @@ export default function WindMap(props: Props) {
       const box = map.getContainer();
       const width = box.clientWidth;
       const visible = box.clientHeight - latest.current.bottomInset - 70;
-      if (style === "loupe") {
-        const next = loupeRadius(width, visible);
-        if (next !== r) drawLoupe(g, (r = next));
-      } else range = rangeRing(mpp(), Math.min(width, visible), units);
+      if (style !== "loupe")
+        range = rangeRing(mpp(), Math.min(width, visible), units);
       place();
       wash();
       names();
@@ -837,6 +1036,11 @@ export default function WindMap(props: Props) {
     };
     measure();
     remeasure.current = measure;
+    redrawRose.current = () => {
+      if (style !== "loupe" || !spot || !g || !r) return;
+      drawRose();
+      pinFoot(map.project([spot.lon, spot.lat]));
+    };
     const { opacity } = washHoles(style, 0);
     let hide = 0;
     if (opacity) {
@@ -867,13 +1071,18 @@ export default function WindMap(props: Props) {
       clearTimeout(hide);
       cancelAnimationFrame(raf);
       remeasure.current = () => {};
+      redrawRose.current = () => {};
       map.off("move", queue);
       map.off("zoomend", measure);
       map.off("resize", measure);
     };
   }, [ready, focus?.lon, focus?.lat, focusStyle, units]);
-  // The dock's height is the map's visible height: the glass is sized to it.
+  // The dock's height is the map's visible height: the ring is sized to it,
+  // and the rose's foot box kept above it.
   useEffect(() => remeasure.current(), [bottomInset]);
+  // The dock's hour, or the rider, changed: the rose, and only the rose.
+  const roseKey = rose ? JSON.stringify(rose) : "";
+  useEffect(() => redrawRose.current(), [roseKey]);
 
   // The neatline, and the pen's loop, follow the map as it moves.
   useEffect(() => {

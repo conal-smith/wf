@@ -492,7 +492,7 @@ test("an unavailable basemap says so, and the dock still reads the forecast", as
     .toBeGreaterThan(10);
 });
 
-test("round the chosen spot: a loupe that holds its size, a range ring, or nothing, kept as chosen", async ({
+test("round the chosen spot: a loupe at a true distance, a range ring, or nothing, kept as chosen", async ({
   page,
 }) => {
   await openChart(page, 1440, 900, null);
@@ -501,15 +501,37 @@ test("round the chosen spot: a loupe that holds its size, a range ring, or nothi
   const focus = page.locator(".map-focus");
   await expect(map).toHaveClass(/is-focus/);
   await expect(focus).toHaveAttribute("data-focus", "loupe");
-  // The glass is a size on the screen: zooming in does not shrink it.
+  // The glass is a distance on the chart, flown in to fill the clear map:
+  // zooming out once halves it.
   const rim = () =>
     page
       .locator(".map-loupe-edge.is-inner")
       .evaluate((el) => Math.round(el.getBoundingClientRect().width));
-  const wide = await rim();
+  /** The rim's width once the camera has stopped. */
+  const steady = async () => {
+    let last = -1;
+    await expect
+      .poll(
+        async () => {
+          const now = await rim();
+          const same = now === last;
+          last = now;
+          return same;
+        },
+        { intervals: [400], timeout: 15000 },
+      )
+      .toBe(true);
+    return last;
+  };
+  // The flight climbs out before it comes in: wait for it to arrive.
+  await expect.poll(rim, { timeout: 15000 }).toBeGreaterThanOrEqual(300);
+  const wide = await steady();
   expect(wide).toBeGreaterThanOrEqual(300);
-  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
-  await expect.poll(rim).toBe(wide);
+  await page.getByRole("button", { name: "Zoom out", exact: true }).click();
+  await expect.poll(rim).toBeLessThan(wide * 0.6);
+  const further = await steady();
+  expect(further / wide).toBeGreaterThan(0.45);
+  expect(further / wide).toBeLessThan(0.55);
 
   // The range ring, from the layers.
   const layers = page.getByRole("button", { name: "Layers", exact: true });

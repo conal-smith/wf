@@ -48,7 +48,7 @@ import { foilArchiveUrl, useFoilDepth } from "./useFoilDepth";
 import type { LightState } from "../force5/src/lights";
 import { rideWedge } from "../force5/src/rideWedge";
 import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
-import { isFocusStyle, type FocusStyle } from "../force5/src/focus";
+import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ForecastDock, { type DockView } from "./ForecastDock";
 import MapControls, { type MapPanel } from "./MapControls";
 import MapHead from "./MapHead";
@@ -786,7 +786,9 @@ export default function App() {
     const out = new Map<string, LightState>();
     // The riding wedge is the open spot's alone: on every light at once it
     // buried the chart, and it is a reading of one place, not an overview.
+    // Under the loupe it goes: the rose is the same thing, bigger.
     const open = picked ? null : (point?.id ?? null);
+    const loupeOn = focusStyle === "loupe" && !!open && focusId === open;
     for (const spot of spots) {
       const row = hours.get(spot.id);
       const hour = row?.[selected];
@@ -799,7 +801,7 @@ export default function App() {
         compass: hour?.from != null ? compass(hour.from) : null,
         mark: offshoreMark(hour?.rating ?? null, rider),
         wedge:
-          spot.id === open && hour?.rating
+          spot.id === open && !loupeOn && hour?.rating
             ? rideWedge(
                 rider,
                 hour.windKn,
@@ -811,7 +813,17 @@ export default function App() {
       });
     }
     return out;
-  }, [spots, hours, version, selected, rider, picked, point?.id]);
+  }, [
+    spots,
+    hours,
+    version,
+    selected,
+    rider,
+    picked,
+    point?.id,
+    focusStyle,
+    focusId,
+  ]);
   const named = useMemo(() => new Set(starred), [starred]);
   const column = strip[selected];
   const lightLabel = useCallback(
@@ -1166,6 +1178,27 @@ export default function App() {
         ? point
         : null;
 
+  /* ---- the loupe's ride rose: the dock's hour, at the focus ---- */
+  // What the dock shows, whichever model it comes from, even past the end of
+  // the map's run: the rose reads the place, not the map.
+  const roseHour =
+    focusAt && focusStyle === "loupe" ? pointHours?.[selected] : undefined;
+  const roseFacing = picked ? null : (point?.facing ?? null);
+  const rose = useMemo(
+    () =>
+      roseHour ? loupeRose(rider, roseHour, roseFacing, prefs.units) : null,
+    [
+      roseHour?.windKn,
+      roseHour?.gustKn,
+      roseHour?.from,
+      roseHour?.daylight,
+      !!roseHour,
+      rider,
+      roseFacing,
+      prefs.units,
+    ],
+  );
+
   /* ---- the run that reaches the hour, when the map's does not ---- */
   const reach =
     manifest && column ? mapReach(manifest.frames, column.time) : null;
@@ -1353,6 +1386,7 @@ export default function App() {
               focus={focusAt ? { lon: focusAt.lon, lat: focusAt.lat } : null}
               focusStyle={focusStyle}
               units={prefs.units}
+              rose={rose}
               mark={focusAt ? { lon: focusAt.lon, lat: focusAt.lat } : null}
               picked={picked ? { lon: picked.lon, lat: picked.lat } : null}
               onPick={pickPoint}
