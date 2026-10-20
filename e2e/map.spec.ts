@@ -570,8 +570,9 @@ test("round the chosen spot: a loupe at a true distance, a range ring, or nothin
   await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(1);
   await expect(map).toHaveClass(/is-focus/);
 
-  // Kept for the next visit, which opens on the chart alone.
-  await page.reload();
+  // Kept for the next visit, which opens on the chart alone: at `/`, as the
+  // reload of a chosen spot's own link (`/?spot=brandon`) opens on it.
+  await page.goto("/");
   await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
