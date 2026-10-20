@@ -326,6 +326,42 @@ describe("the MCP endpoint", () => {
     expect(whole.note).toBeUndefined();
   });
 
+  it("says so when a from in the past is moved to the current hour", async () => {
+    const { call } = harness();
+    // The fixtures' clock is 18:00Z on 16 Sept.
+    for (const [name, args] of [
+      ["find_wind", { from: "2025-10-20T00:00:00Z" }],
+      ["find_wind", { from: "2026-09-16T00:00:00Z", hours: 3 }],
+      ["get_spot_forecast", { spot: "donabate", from: "2025-01-01T00:00:00Z" }],
+    ] as const) {
+      const answer = (await call(name, args)).json();
+      expect(answer.window.from).toBe("2026-09-16T18:00:00.000Z");
+      expect(answer.note).toBe(
+        "from was in the past, so the window starts at the current hour, Wed, 16 Sept, 19:00 (2026-09-16T18:00:00.000Z); earlier hours aren't available.",
+      );
+    }
+    // Earlier in the current hour is still the current hour: nothing moved.
+    for (const from of ["2026-09-16T17:30:00Z", "2026-09-16T18:00:00Z"]) {
+      const answer = (
+        await call("get_spot_forecast", { spot: "donabate", from, hours: 3 })
+      ).json();
+      expect(answer.window.from).toBe("2026-09-16T18:00:00.000Z");
+      expect(answer.note).toBeUndefined();
+    }
+    // Both at once: moved to now, and past the end of GFS's run.
+    const both = (
+      await call("find_wind", {
+        from: "2026-09-01T00:00:00Z",
+        hours: 48,
+        stars_from: "gfs",
+        then: "gfs",
+      })
+    ).json();
+    expect(both.note).toMatch(
+      /^from was in the past, .* Only part of the window is forecast: /,
+    );
+  });
+
   it("goes on from one of several spots close together, and asks only when they are far apart", async () => {
     const { call } = harness();
     const malahide = await call("find_wind", { near: "Malahide", max_km: 20 });

@@ -114,18 +114,21 @@ const fromArg = (words: string) =>
 
 /** How far find_wind's max_km may reach: well past any two points in Ireland. */
 const MAX_KM = 600;
+const HOUR = 3600000;
 
 const timeOf = (millis: number) =>
   `${localTime(millis)} (${new Date(millis).toISOString()})`;
 
 /**
- * What an answer must say about its window, since the rows alone don't show
- * it: hours past the end of the forecast have no wind. A window wholly past
- * that end is an error, not rows of nulls or an empty list that reads as "no
- * wind that week".
+ * What an answer must say about its window, since both tools quietly move or
+ * cut it short and the rows alone don't show it: a `from` in the past starts
+ * at the current hour instead, and hours past the end of the forecast have no
+ * wind. A window wholly past that end is an error, not rows of nulls or an
+ * empty list that reads as "no wind that week".
  */
 function aboutWindow(
   window: Window,
+  from: string | undefined,
   reach: Reach,
   words: { before: string; after: string },
 ): { error: string } | { note: string | undefined } {
@@ -134,12 +137,17 @@ function aboutWindow(
     return {
       error: `The forecast does not reach ${localTime(window.from)} yet: it ends ${ends}. ${words.before}, or ask again nearer the time.`,
     };
-  return {
-    note:
-      reach.time < axis(window).at(-1)!
-        ? `Only part of the window is forecast: it ends ${ends}. ${words.after}`
-        : undefined,
-  };
+  const notes: string[] = [];
+  // windowFor starts no earlier than the current hour.
+  if (from && Math.ceil(Date.parse(from) / HOUR) * HOUR < window.from)
+    notes.push(
+      `from was in the past, so the window starts at the current hour, ${timeOf(window.from)}; earlier hours aren't available.`,
+    );
+  if (reach.time < axis(window).at(-1)!)
+    notes.push(
+      `Only part of the window is forecast: it ends ${ends}. ${words.after}`,
+    );
+  return { note: notes.join(" ") || undefined };
 }
 
 export const listSpots = tool({
@@ -257,7 +265,7 @@ export const getSpotForecast = tool({
       return failure(
         `No wind forecast is published for ${match.spot.name} right now. Try again later or see https://wingfoil.ie.`,
       );
-    const about = aboutWindow(window, reach, {
+    const about = aboutWindow(window, from, reach, {
       before: "Ask for a time before then",
       after: "Later hours have no wind yet.",
     });
@@ -309,7 +317,7 @@ export const findWind = tool({
         "Leave out hours whose gust is more than this many times the mean wind, e.g. 1.5.",
       ),
     from: fromArg(
-      "ISO 8601 start of the search, e.g. 2026-10-23T00:00:00Z. Defaults to now.",
+      "ISO 8601 start of the search, e.g. 2026-10-23T00:00:00Z. Defaults to now; earlier times are not available.",
     ),
     hours: z
       .number()
@@ -435,7 +443,7 @@ export const findWind = tool({
       return failure(
         "No wind forecast is published right now. Try again later.",
       );
-    const about = aboutWindow(window, found.reach, {
+    const about = aboutWindow(window, args.from, found.reach, {
       before: "Search from before then",
       after: "No spot can have a session after that yet.",
     });
