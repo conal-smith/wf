@@ -12,18 +12,22 @@ import {
   GUSTY_SPREAD_KN,
   MAX_WINDOW_HOURS,
   METHOD,
+  axis,
   countyKey,
   distanceKm,
   findPlace,
   findSessions,
   findSpot,
+  forecastReach,
   loadSpots,
   localTime,
   modelStatus,
   spotForecast,
   windowFor,
   type Place,
+  type Reach,
   type RidingSpot,
+  type Window,
 } from "./forecast.js";
 import type { ForecastSource } from "./httpSource.js";
 import {
@@ -111,6 +115,40 @@ const fromArg = (words: string) =>
 /** How far find_wind's max_km may reach: well past any two points in Ireland. */
 const MAX_KM = 600;
 const HOUR = 3600000;
+
+const timeOf = (millis: number) =>
+  `${localTime(millis)} (${new Date(millis).toISOString()})`;
+
+/**
+ * What an answer must say about its window, since both tools quietly move or
+ * cut it short and the rows alone don't show it: a `from` in the past starts
+ * at the current hour instead, and hours past the end of the forecast have no
+ * wind. A window wholly past that end is an error, not rows of nulls or an
+ * empty list that reads as "no wind that week".
+ */
+function aboutWindow(
+  window: Window,
+  from: string | undefined,
+  reach: Reach,
+  words: { before: string; after: string },
+): { error: string } | { note: string | undefined } {
+  const ends = `${timeOf(reach.time)}, the last hour ${reach.model} covers`;
+  if (reach.time < window.from)
+    return {
+      error: `The forecast does not reach ${localTime(window.from)} yet: it ends ${ends}. ${words.before}, or ask again nearer the time.`,
+    };
+  const notes: string[] = [];
+  // windowFor starts no earlier than the current hour.
+  if (from && Math.ceil(Date.parse(from) / HOUR) * HOUR < window.from)
+    notes.push(
+      `from was in the past, so the window starts at the current hour, ${timeOf(window.from)}; earlier hours aren't available.`,
+    );
+  if (reach.time < axis(window).at(-1)!)
+    notes.push(
+      `Only part of the window is forecast: it ends ${ends}. ${words.after}`,
+    );
+  return { note: notes.join(" ") || undefined };
+}
 
 export const listSpots = tool({
   name: "list_spots",
@@ -215,16 +253,32 @@ export const getSpotForecast = tool({
       );
     const at = (deps.now ?? Date.now)();
     const window = windowFor(at, { from, hours, stepHours: step_hours });
+    const models = starsFromArgs(stars_from, then);
     const forecast = await spotForecast(deps.source, match.spot, window, {
       perModel: per_model,
       now: at,
-      from: starsFromArgs(stars_from, then),
+      from: models,
     });
-    if (!forecast.sources.wind.length)
+    // Only the headline's two models give an hour wind, as in find_wind.
+    const reach = forecastReach(forecast.sources.wind, models);
+    if (!reach)
       return failure(
         `No wind forecast is published for ${match.spot.name} right now. Try again later or see https://wingfoil.ie.`,
       );
-    return answer(forecast);
+    const about = aboutWindow(window, from, reach, {
+      before: "Ask for a time before then",
+      after: "Later hours have no wind yet.",
+    });
+    if ("error" in about) return failure(about.error);
+    // The note beside the window it is about.
+    const { spot: where, window: span, ...rest } = forecast;
+    const { note } = about;
+    return answer({
+      spot: where,
+      window: span,
+      ...(note && { note }),
+      ...rest,
+    });
   },
 });
 
@@ -263,7 +317,7 @@ export const findWind = tool({
         "Leave out hours whose gust is more than this many times the mean wind, e.g. 1.5.",
       ),
     from: fromArg(
-      "ISO 8601 start of the search, e.g. 2026-10-23T00:00:00Z. Defaults to now.",
+      "ISO 8601 start of the search, e.g. 2026-10-23T00:00:00Z. Defaults to now; earlier times are not available.",
     ),
     hours: z
       .number()
@@ -381,24 +435,21 @@ export const findWind = tool({
     });
     if (near && !found.searched)
       return failure(
-        counties.length
-          ? tooFar(spots, counties, near.place, maxKm)
-          : `No spots within ${maxKm} km of ${near.place.name}. Try a larger max_km.`,
+        outsideIreland(spots, near.place, maxKm) ??
+          (counties.length
+            ? tooFar(spots, counties, near.place, maxKm)
+            : tooSmall(spots, near.place, maxKm)),
       );
     if (!found.reach)
       return failure(
         "No wind forecast is published right now. Try again later.",
       );
-    // An empty list past the forecast's end reads as "no wind that week".
-    const ends = `${localTime(found.reach.time)} (${new Date(found.reach.time).toISOString()}), the last hour ${found.reach.model} covers`;
-    if (found.reach.time < window.from)
-      return failure(
-        `The forecast does not reach ${localTime(window.from)} yet: it ends ${ends}. Search from before then, or ask again nearer the time.`,
-      );
-    const note =
-      found.reach.time < window.to - HOUR
-        ? `Only part of the window is forecast: it ends ${ends}. No spot can have a session after that yet.`
-        : null;
+    const about = aboutWindow(window, args.from, found.reach, {
+      before: "Search from before then",
+      after: "No spot can have a session after that yet.",
+    });
+    if ("error" in about) return failure(about.error);
+    const { note } = about;
     return answer({
       window: {
         from: new Date(window.from).toISOString(),
@@ -426,6 +477,42 @@ export const findWind = tool({
     });
   },
 });
+
+/** The spot nearest `near`, and how far it is. */
+function nearestSpot(
+  spots: readonly RidingSpot[],
+  near: Place,
+): { spot: RidingSpot; km: number } {
+  return spots
+    .map((spot) => ({ spot, km: distanceKm(near, spot) }))
+    .reduce((a, b) => (b.km < a.km ? b : a));
+}
+
+/**
+ * Why nothing is within max_km of a place so far from Ireland that no max_km
+ * could reach a spot, or null when one could: "try a larger max_km" would
+ * send the agent round in circles.
+ */
+function outsideIreland(
+  spots: readonly RidingSpot[],
+  near: Place,
+  maxKm: number,
+): string | null {
+  const { spot, km } = nearestSpot(spots, near);
+  return km > MAX_KM
+    ? `No spots within ${maxKm} km of ${near.name}. The nearest spot is ${spot.name} (${spot.county}), about ${Math.round(km)} km away, beyond the ${MAX_KM} km limit on max_km. This server covers Ireland only.`
+    : null;
+}
+
+/** Why nothing is within max_km of near, and how far max_km has to go. */
+function tooSmall(
+  spots: readonly RidingSpot[],
+  near: Place,
+  maxKm: number,
+): string {
+  const { spot, km } = nearestSpot(spots, near);
+  return `No spots within ${maxKm} km of ${near.name}. The nearest spot is ${spot.name} (${spot.county}), about ${Math.round(km)} km away. Try a larger max_km, at least ${Math.ceil(km)}.`;
+}
 
 /**
  * Why no spot is both in the counties asked for and within max_km of near:

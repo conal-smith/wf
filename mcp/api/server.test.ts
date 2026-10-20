@@ -285,6 +285,118 @@ describe("the MCP endpoint", () => {
     );
   });
 
+  it("says where the forecast ends when a spot's window runs past it", async () => {
+    const { call } = harness();
+    // Donabate's headline is ECMWF's by then, and its run ends at 00:00Z on 28 Sept.
+    const beyond = await call("get_spot_forecast", {
+      spot: "donabate",
+      from: "2026-10-01T00:00:00Z",
+    });
+    expect(beyond.isError).toBe(true);
+    expect(beyond.text).toMatch(
+      /^The forecast does not reach Thu, 1 Oct, 01:00 yet: it ends Mon, 28 Sept, 01:00 \(2026-09-28T00:00:00.000Z\), the last hour ECMWF covers\. Ask for a time before then, or ask again nearer the time\.$/,
+    );
+    const part = (
+      await call("get_spot_forecast", {
+        spot: "donabate",
+        from: "2026-09-27T18:00:00Z",
+        hours: 12,
+        step_hours: 3,
+      })
+    ).json();
+    expect(part.note).toMatch(
+      /^Only part of the window is forecast: it ends .*2026-09-28T00:00:00.000Z\), the last hour ECMWF covers\. Later hours have no wind yet\.$/,
+    );
+    expect(part.hours[0].wind).not.toBeNull();
+    expect(part.hours.at(-1).wind).toBeNull();
+    // Up to the last hour forecast, and no further: the whole window is covered.
+    const upTo = (
+      await call("get_spot_forecast", {
+        spot: "donabate",
+        from: "2026-09-27T18:00:00Z",
+        hours: 7,
+        step_hours: 3,
+      })
+    ).json();
+    expect(upTo.hours.at(-1).time).toBe("2026-09-28T00:00:00.000Z");
+    expect(upTo.note).toBeUndefined();
+    const whole = (
+      await call("get_spot_forecast", { spot: "donabate", hours: 48 })
+    ).json();
+    expect(whole.note).toBeUndefined();
+  });
+
+  it("says so when a from in the past is moved to the current hour", async () => {
+    const { call } = harness();
+    // The fixtures' clock is 18:00Z on 16 Sept.
+    for (const [name, args] of [
+      ["find_wind", { from: "2025-10-20T00:00:00Z" }],
+      ["find_wind", { from: "2026-09-16T00:00:00Z", hours: 3 }],
+      ["get_spot_forecast", { spot: "donabate", from: "2025-01-01T00:00:00Z" }],
+    ] as const) {
+      const answer = (await call(name, args)).json();
+      expect(answer.window.from).toBe("2026-09-16T18:00:00.000Z");
+      expect(answer.note).toBe(
+        "from was in the past, so the window starts at the current hour, Wed, 16 Sept, 19:00 (2026-09-16T18:00:00.000Z); earlier hours aren't available.",
+      );
+    }
+    // Earlier in the current hour is still the current hour: nothing moved.
+    for (const from of ["2026-09-16T17:30:00Z", "2026-09-16T18:00:00Z"]) {
+      const answer = (
+        await call("get_spot_forecast", { spot: "donabate", from, hours: 3 })
+      ).json();
+      expect(answer.window.from).toBe("2026-09-16T18:00:00.000Z");
+      expect(answer.note).toBeUndefined();
+    }
+    // Both at once: moved to now, and past the end of GFS's run.
+    const both = (
+      await call("find_wind", {
+        from: "2026-09-01T00:00:00Z",
+        hours: 48,
+        stars_from: "gfs",
+        then: "gfs",
+      })
+    ).json();
+    expect(both.note).toMatch(
+      /^from was in the past, .* Only part of the window is forecast: /,
+    );
+  });
+
+  it("says a place far outside Ireland is beyond max_km's reach, and how far a nearer one has to go", async () => {
+    const { call } = harness();
+    const newYork = await call("find_wind", { near: { lat: 40.7, lon: -74 } });
+    expect(newYork.isError).toBe(true);
+    expect(newYork.text).toMatch(
+      /^No spots within 100 km of 40\.7, -74\. The nearest spot is .+ \(.+\), about \d{4} km away, beyond the 600 km limit on max_km\. This server covers Ireland only\.$/,
+    );
+    // Counties can't help either.
+    const withCounties = await call("find_wind", {
+      near: { lat: 40.7, lon: -74 },
+      max_km: 600,
+      counties: ["Kerry"],
+    });
+    expect(withCounties.isError).toBe(true);
+    expect(withCounties.text).toMatch(/This server covers Ireland only\.$/);
+    // In the midlands a larger max_km does help, and says how large.
+    const athlone = await call("find_wind", {
+      near: { lat: 53.42, lon: -7.94 },
+      max_km: 5,
+    });
+    expect(athlone.isError).toBe(true);
+    const said =
+      /^No spots within 5 km of 53\.42, -7\.94\. The nearest spot is .+ \(.+\), about \d+ km away\. Try a larger max_km, at least (\d+)\.$/.exec(
+        athlone.text,
+      );
+    expect(said).not.toBeNull();
+    const raised = (
+      await call("find_wind", {
+        near: { lat: 53.42, lon: -7.94 },
+        max_km: Number(said![1]),
+      })
+    ).json();
+    expect(raised.searched_spots).toBeGreaterThan(0);
+  });
+
   it("goes on from one of several spots close together, and asks only when they are far apart", async () => {
     const { call } = harness();
     const malahide = await call("find_wind", { near: "Malahide", max_km: 20 });
