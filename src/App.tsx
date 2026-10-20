@@ -46,6 +46,7 @@ import MapInfo from "./MapInfo";
 import { MapInfoOpen, type InfoSection } from "./mapInfoContext";
 import { foilArchiveUrl, useFoilDepth } from "./useFoilDepth";
 import type { LightState } from "../force5/src/lights";
+import { knotsIn, unitName } from "../force5/src/units";
 import { rideWedge } from "../force5/src/rideWedge";
 import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
@@ -835,7 +836,7 @@ export default function App() {
               s.dark || s.stars === null
                 ? "dark"
                 : `${s.stars} star${s.stars === 1 ? "" : "s"}`
-            }${s.compass && s.windKn !== null ? `, ${s.compass} ${Math.round(s.windKn)} knots` : ""}${
+            }${s.compass && s.windKn !== null ? `, ${s.compass} ${knotsIn(s.windKn, prefs.units)} ${unitName(prefs.units)}` : ""}${
               s.mark === "struck"
                 ? ", offshore"
                 : s.mark === "cross-off"
@@ -843,7 +844,7 @@ export default function App() {
                   : ""
             }`
       }`,
-    [column?.time],
+    [column?.time, prefs.units],
   );
 
   /* ---- the satellite image under the chart ---- */

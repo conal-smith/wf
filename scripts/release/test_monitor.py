@@ -211,8 +211,27 @@ class ARun(unittest.TestCase):
         row = check(domain)
         self.assertEqual(codes(row), ["headers", "headers"])
         self.assertIn("cached for 14400 s", row["problems"][0]["message"])
+        self.assertNotIn("CDN", row["problems"][0]["message"])
         self.assertIn("not cached as immutable", row["problems"][1]["message"])
         self.assertIn("Content-Encoding none", row["problems"][1]["message"])
+
+    def test_a_pointer_the_cdn_rewrites_is_still_a_problem_and_says_so(self):
+        # What data.wingfoil.ie did in October 2026: the bucket holds max-age=0, an
+        # uncached HEAD gets it, and Cloudflare's Browser Cache TTL raises the cached
+        # GET to four hours.
+        domain = self.domain()
+
+        def fetch(method, url, headers, timeout):
+            status, answer, body = domain(method, url, headers, timeout)
+            if method == "GET" and url == BASE + "weather/harmonie.json":
+                answer = {"Cache-Control": "public, max-age=14400, s-maxage=60, must-revalidate"}
+            return status, answer, body
+
+        row = check(fetch)
+        self.assertEqual(codes(row), ["headers"])
+        self.assertIn("cached for 14400 s", row["problems"][0]["message"])
+        self.assertIn("uncached HEAD gets public, max-age=0", row["problems"][0]["message"])
+        self.assertIn("Browser Cache TTL", row["problems"][0]["message"])
 
     def test_a_pointer_that_is_missing_or_does_not_parse(self):
         self.assertEqual(codes(check(Domain({}))), ["pointer"])

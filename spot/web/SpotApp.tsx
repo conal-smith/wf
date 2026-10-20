@@ -65,6 +65,7 @@ import {
   goodWindArcs,
   groupDays,
   leadChanges,
+  skyStopsOn,
   spotRows,
   tideTurns,
 } from "./spot";
@@ -391,6 +392,10 @@ function SpotPage({
     [rows, spot.lat, spot.lon],
   );
   const changes = useMemo(() => leadChanges(rows), [rows]);
+  const skyStops = useMemo(
+    () => skyStopsOn(days.map(({ day }) => day)),
+    [days],
+  );
   const band = useMemo(() => bandKnots(rider), [rider]);
   const turns = useMemo(() => tideTurns(forecast), [forecast]);
   const ceiling = Math.max(4.5, ...turns.map((t) => t.height)) + 0.3;
@@ -526,6 +531,7 @@ function SpotPage({
               (change) => dublinDate(change.time) === day.date,
             )}
             onStarsFrom={changeStarsFrom}
+            skyStops={day.date === skyStops}
           />
         ))}
       </div>
