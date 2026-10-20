@@ -658,6 +658,14 @@ export default function WindMap(props: Props) {
     let pending = 0;
     const cancelPick = () => window.clearTimeout(pending);
     window.addEventListener("popstate", cancelPick);
+    // So does a light clicked meanwhile, even the open spot's own: its click
+    // stops at the light (./lights), so the map's own never hears of it.
+    const box = container.current;
+    const onLight = (event: MouseEvent) => {
+      if ((event.target as Element | null)?.closest?.(".spot-marker"))
+        cancelPick();
+    };
+    box.addEventListener("click", onLight, true);
     const zoomClass = () => {
       const z = map.getZoom();
       const el = map.getContainer();
@@ -720,7 +728,11 @@ export default function WindMap(props: Props) {
         const { lng, lat } = event.lngLat;
         // Read now, while the water drawn under the finger is what was tapped.
         const lake = onLake(map, event.point);
+        // A spot chosen in the wait, from the list, the search or a link,
+        // is the rider's last word: the tap picks nothing over it.
+        const chosen = latest.current.selectedId;
         pending = window.setTimeout(() => {
+          if (latest.current.selectedId !== chosen) return;
           latest.current.onPick({
             lon: lng,
             lat,
@@ -799,6 +811,7 @@ export default function WindMap(props: Props) {
       clearTimeout(loadTimeout);
       cancelPick();
       window.removeEventListener("popstate", cancelPick);
+      box.removeEventListener("click", onLight, true);
       resize.disconnect();
       windRef.current?.destroy();
       windRef.current = null;
