@@ -154,6 +154,13 @@ const FOCUS_KEY = "wingfoil.map.focus.v1";
 const MORE_KEY = "wingfoil.map.more.v1";
 /** The focus is on the point tapped on the map, not a riding place. */
 const AT_POINT = "@point";
+/**
+ * What is open over the chart and shuts on a press away from it, each said
+ * open on the control it hangs from: the site menu and the search's list in
+ * the head, the layers, your spots and the options beside the controls.
+ */
+const OVER_THE_CHART =
+  '.map-head [aria-expanded="true"], .map-ctrl [aria-expanded="true"]';
 
 /** Where the map was tapped, as the map hands it over. */
 interface TappedAt {
@@ -1091,6 +1098,12 @@ export default function App() {
     probeFoil(at.lon, at.lat);
   };
   const clearFocus = () => setFocusId(null);
+  /**
+   * A tap on the open chart. With a spot or point chosen it lets go of it,
+   * as Escape does, and moves nothing: the dock keeps it until another is
+   * chosen or it is closed (#109). With none, it picks the point tapped.
+   */
+  const tapChart = (at: TappedAt) => (focusId ? clearFocus() : pickPoint(at));
   const hideDock = () => {
     setPicked(null);
     setPoint(null);
@@ -1163,6 +1176,9 @@ export default function App() {
       controls.current?.flyTo(point);
   }, [mapReady]);
 
+  // Escape is a tap on the open chart from the keys: it shuts what is open
+  // over the chart first (the site menu and the search take theirs before
+  // it reaches here), and lets go of the spot or point chosen after.
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || document.querySelector("dialog[open]"))
@@ -1461,7 +1477,8 @@ export default function App() {
               rose={rose}
               mark={focusAt ? { lon: focusAt.lon, lat: focusAt.lat } : null}
               picked={picked ? { lon: picked.lon, lat: picked.lat } : null}
-              onPick={pickPoint}
+              covered={() => !!document.querySelector(OVER_THE_CHART)}
+              onPick={tapChart}
               windStyle={windStyle}
               layers={layers}
               foil={foilViews}

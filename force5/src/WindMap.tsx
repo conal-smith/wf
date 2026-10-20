@@ -147,8 +147,15 @@ type Props = {
   phone: boolean;
   onSelect: (spot: Spot) => void;
   /**
+   * Whether a panel or a menu is open over the chart, and shuts on a press
+   * away from it: a press on the chart then only shuts it, and picks and
+   * chooses nothing.
+   */
+  covered?: () => boolean;
+  /**
    * A tap on the open map, not a light: the point, the nearest place's name,
-   * and whether the basemap has it on a lake rather than the sea.
+   * and whether the basemap has it on a lake rather than the sea. With a
+   * spot or point already chosen, the page lets go of it instead.
    */
   onPick: (point: {
     lon: number;
@@ -658,12 +665,25 @@ export default function WindMap(props: Props) {
     let pending = 0;
     const cancelPick = () => window.clearTimeout(pending);
     window.addEventListener("popstate", cancelPick);
-    // So does a light clicked meanwhile, even the open spot's own: its click
-    // stops at the light (./lights), so the map's own never hears of it.
+    // A press on the chart while something is open over it only shuts that:
+    // it picks no point and chooses no light. Each of those boxes shuts
+    // itself on the press, before its click, so whether one was open is read
+    // first, as the press sets out.
     const box = container.current;
+    let shutting = false;
+    const onPress = (event: PointerEvent) => {
+      if (box.contains(event.target as Node))
+        shutting = latest.current.covered?.() ?? false;
+    };
+    window.addEventListener("pointerdown", onPress, true);
+    // A light clicked in a tap's wait lets go of the tap, even the open
+    // spot's own light: its click stops at the light (./lights), so the
+    // map's own never hears of it.
     const onLight = (event: MouseEvent) => {
-      if ((event.target as Element | null)?.closest?.(".spot-marker"))
-        cancelPick();
+      if (!(event.target as Element | null)?.closest?.(".spot-marker")) return;
+      cancelPick();
+      // A key on a light chooses it whatever was pressed before.
+      if (shutting && event.detail) event.stopPropagation();
     };
     box.addEventListener("click", onLight, true);
     const zoomClass = () => {
@@ -718,13 +738,14 @@ export default function WindMap(props: Props) {
           onTilesFailed: (failed) => latest.current.onTilesFailed?.(failed),
         });
       }
-      // A tap on the open map reads that point's forecast, after a moment's
-      // wait for a second tap: a double tap zooms and picks nothing.
+      // A tap on the open map reads that point's forecast, or lets go of the
+      // spot or point chosen, after a moment's wait for a second tap: a
+      // double tap zooms and does neither.
       map.on("click", (event) => {
         cancelPick();
         const target = event.originalEvent.target as HTMLElement | null;
         if (target?.closest(".spot-marker")) return;
-        if (event.originalEvent.detail > 1) return;
+        if (shutting || event.originalEvent.detail > 1) return;
         const { lng, lat } = event.lngLat;
         // Read now, while the water drawn under the finger is what was tapped.
         const lake = onLake(map, event.point);
@@ -811,6 +832,7 @@ export default function WindMap(props: Props) {
       clearTimeout(loadTimeout);
       cancelPick();
       window.removeEventListener("popstate", cancelPick);
+      window.removeEventListener("pointerdown", onPress, true);
       box.removeEventListener("click", onLight, true);
       resize.disconnect();
       windRef.current?.destroy();

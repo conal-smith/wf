@@ -1760,7 +1760,8 @@ export default function ForecastDock(props: Props) {
           </svg>
         </Button>
         {/* Done with this place: the dock goes, and the chart has the screen
-            (Escape only lets go of the chart's focus on it). */}
+            (Escape, or a tap on the open chart, only lets go of the chart's
+            focus on it). */}
         <Button
           variant="quiet"
           size="sm"

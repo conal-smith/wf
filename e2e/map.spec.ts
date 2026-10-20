@@ -770,3 +770,245 @@ test("a light off the chart keeps its stars and wind in its name while a spot is
   await page.getByRole("slider", { name: "Forecast time" }).fill("10");
   await expect(far).toHaveAttribute("aria-label", summary);
 });
+
+/*
+ * A press on the chart (#109). With a panel or a menu open over it, it shuts
+ * that and does nothing else. With nothing open and a spot or a point chosen,
+ * it lets go of it, as Escape does, and moves nothing; a light still chooses
+ * its spot. Only with nothing chosen does it pick the point under it.
+ */
+for (const device of [
+  { name: "desktop", use: { viewport: { width: 1440, height: 900 } } },
+  {
+    name: "phone",
+    use: {
+      viewport: { width: 393, height: 852 },
+      isMobile: true,
+      hasTouch: true,
+    },
+  },
+]) {
+  test.describe(`a press on the chart, on a ${device.name}`, () => {
+    test.use(device.use);
+    const touch = "hasTouch" in device.use;
+    const press = (page: Page, at: { x: number; y: number }) =>
+      touch ? page.touchscreen.tap(at.x, at.y) : page.mouse.click(at.x, at.y);
+    /** Somewhere on the chart with no light and no box over it. */
+    const clear = async (page: Page) => {
+      const at = await page.evaluate(() => {
+        for (let y = 160; y < innerHeight - 80; y += 20)
+          for (let x = 40; x < innerWidth - 40; x += 20)
+            if (
+              document
+                .elementFromPoint(x, y)
+                ?.classList.contains("maplibregl-canvas")
+            )
+              return { x, y };
+        return null;
+      });
+      expect(at).not.toBeNull();
+      return at!;
+    };
+    /** The middle of a light other than `not` with nothing over it, if any. */
+    const lightAt = (page: Page, not: string) =>
+      page.evaluate((not) => {
+        for (const light of document.querySelectorAll<HTMLElement>(
+          ".spot-marker",
+        )) {
+          const r = light.getBoundingClientRect();
+          const x = r.x + r.width / 2;
+          const y = r.y + r.height / 2;
+          const id = light.dataset.spotId!;
+          if (
+            id !== not &&
+            y > 160 &&
+            document.elementFromPoint(x, y)?.closest(".spot-marker") === light
+          )
+            return { id, x, y };
+        }
+        return null;
+      }, not);
+    const aLight = async (page: Page, not: string) => {
+      const at = await lightAt(page, not);
+      expect(at).not.toBeNull();
+      return at!;
+    };
+    const dockName = (page: Page) => page.locator(".dock .dk-name");
+    const coords = /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/;
+    /** A spot from a link, the chart flown to it and at rest. */
+    const openOn = async (page: Page, id: string, name: string) => {
+      await page.goto(`/?spot=${id}`);
+      await expect(dockName(page)).toHaveText(name, { timeout: 30000 });
+      await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
+        timeout: 30000,
+      });
+      await steadyFrames(page);
+      await page.waitForTimeout(2500);
+    };
+
+    test("a press with a panel or a menu open shuts it, and picks and chooses nothing", async ({
+      page,
+    }) => {
+      await openOn(page, "keel", "Keel Beach");
+      const map = page.locator(".map-canvas");
+      /** A moment past the tap's wait, and Keel as it was. */
+      const unmoved = async () => {
+        await page.waitForTimeout(800);
+        await expect(dockName(page)).toHaveText("Keel Beach");
+        await expect(page).toHaveURL(/\/\?spot=keel$/);
+        await expect(map).toHaveClass(/is-focus/);
+        await expect(page.locator(".pick-mark")).toHaveCount(0);
+      };
+      for (const name of [
+        "Layers",
+        "Your spots",
+        "Display options",
+        "Site menu",
+      ]) {
+        const button = page.getByRole("button", { name, exact: true });
+        await button.click();
+        await expect(button).toHaveAttribute("aria-expanded", "true");
+        await press(page, await clear(page));
+        await expect(button).toHaveAttribute("aria-expanded", "false");
+        await unmoved();
+      }
+      // The search's list of spots, as the reader types.
+      await page.getByRole("combobox", { name: "Find a spot" }).fill("Bran");
+      await expect(page.locator(".find .results")).toBeVisible();
+      await press(page, await clear(page));
+      await expect(page.locator(".find .results")).toHaveCount(0);
+      await unmoved();
+
+      // With nothing chosen, the same: the panel shuts and no point is
+      // picked, and a light pressed through it is not chosen either.
+      await page.goto("/");
+      await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
+        timeout: 30000,
+      });
+      await steadyFrames(page);
+      const layers = page.getByRole("button", { name: "Layers", exact: true });
+      const none = async () => {
+        await page.waitForTimeout(800);
+        await expect(page.locator(".dock")).toHaveCount(0);
+        await expect(page.locator(".pick-mark")).toHaveCount(0);
+        await expect(page.locator(".spot-marker.sel")).toHaveCount(0);
+        await expect(page).toHaveURL(/\/$/);
+      };
+      await layers.click();
+      await press(page, await clear(page));
+      await expect(layers).toHaveAttribute("aria-expanded", "false");
+      await none();
+      await layers.click();
+      await press(page, await aLight(page, ""));
+      await expect(layers).toHaveAttribute("aria-expanded", "false");
+      await none();
+      // Shut, the chart is the reader's again: a press picks its point.
+      await press(page, await clear(page));
+      await expect(page.locator(".dock .dk-tools")).toContainText(coords);
+      await expect(page.locator(".pick-mark")).toHaveCount(1);
+    });
+
+    test("a press with a spot or a point chosen lets go of it rather than move it", async ({
+      page,
+    }) => {
+      await openOn(page, "keel", "Keel Beach");
+      const map = page.locator(".map-canvas");
+      const keel = page.locator('[data-spot-id="keel"]');
+      // A double tap zooms, and lets go of nothing.
+      if (!touch) {
+        const at = await clear(page);
+        await page.mouse.dblclick(at.x, at.y);
+        await page.waitForTimeout(800);
+        await expect(map).toHaveClass(/is-focus/);
+        await steadyFrames(page);
+      }
+      // One press lets go of Keel: the chart's focus goes, the dock keeps
+      // it, and no point is picked where the press was.
+      const at = await clear(page);
+      await press(page, at);
+      await expect(map).not.toHaveClass(/is-focus/);
+      await page.waitForTimeout(800);
+      await expect(dockName(page)).toHaveText("Keel Beach");
+      await expect(page).toHaveURL(/\/\?spot=keel$/);
+      await expect(page.locator(".pick-mark")).toHaveCount(0);
+      await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(0);
+
+      // With nothing chosen, the next press picks the point.
+      await press(page, at);
+      await expect(page.locator(".dock .dk-tools")).toContainText(coords);
+      await expect(page.locator(".pick-mark")).toHaveCount(1);
+      await expect(map).toHaveClass(/is-focus/);
+      await expect(keel).not.toHaveClass(/\bsel\b/);
+      const point = await dockName(page).textContent();
+
+      // And the point is let go of the same way, not moved to the next press.
+      await steadyFrames(page);
+      await page.waitForTimeout(1500);
+      await press(page, await clear(page));
+      await expect(map).not.toHaveClass(/is-focus/);
+      await page.waitForTimeout(800);
+      await expect(dockName(page)).toHaveText(point!);
+      await expect(page.locator(".pick-mark")).toHaveCount(1);
+
+      // A light still chooses its spot, focused, at one press.
+      const zoomOut = page.getByRole("button", {
+        name: "Zoom out",
+        exact: true,
+      });
+      await zoomOut.click();
+      await page.waitForTimeout(1000);
+      const light = await aLight(page, "");
+      await press(page, light);
+      await expect(page).toHaveURL(new RegExp(`/\\?spot=${light.id}$`));
+      await expect(map).toHaveClass(/is-focus/);
+      await expect(page.locator(".pick-mark")).toHaveCount(0);
+      // And another light, over the one chosen, at one press too.
+      await steadyFrames(page);
+      await page.waitForTimeout(2500);
+      for (let i = 0; i < 6 && !(await lightAt(page, light.id)); i++) {
+        await zoomOut.click();
+        await page.waitForTimeout(800);
+      }
+      const next = await aLight(page, light.id);
+      await press(page, next);
+      await expect(page).toHaveURL(new RegExp(`/\\?spot=${next.id}$`));
+      await expect(map).toHaveClass(/is-focus/);
+      await page.waitForTimeout(800);
+      await expect(page).toHaveURL(new RegExp(`/\\?spot=${next.id}$`));
+    });
+  });
+}
+
+test("Escape shuts what is open over the chart first, then lets go of the chosen spot", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/?spot=keel");
+  const dockName = page.locator(".dock .dk-name");
+  await expect(dockName).toHaveText("Keel Beach", { timeout: 30000 });
+  const map = page.locator(".map-canvas");
+  await expect(map).toHaveClass(/is-focus/, { timeout: 30000 });
+  for (const name of ["Layers", "Your spots", "Display options", "Site menu"]) {
+    const button = page.getByRole("button", { name, exact: true });
+    await button.click();
+    await expect(button).toHaveAttribute("aria-expanded", "true");
+    await page.keyboard.press("Escape");
+    await expect(button).toHaveAttribute("aria-expanded", "false");
+    await expect(map).toHaveClass(/is-focus/);
+    await expect(dockName).toHaveText("Keel Beach");
+  }
+  // The search's list goes with the words in it, and the field with the next.
+  const find = page.getByRole("combobox", { name: "Find a spot" });
+  await find.fill("Bran");
+  await expect(page.locator(".find .results")).toBeVisible();
+  await find.press("Escape");
+  await expect(page.locator(".find .results")).toHaveCount(0);
+  await find.press("Escape");
+  await expect(find).not.toBeFocused();
+  await expect(map).toHaveClass(/is-focus/);
+  // Nothing open: Escape lets go of Keel, and the dock keeps it.
+  await page.keyboard.press("Escape");
+  await expect(map).not.toHaveClass(/is-focus/);
+  await expect(dockName).toHaveText("Keel Beach");
+  await expect(page).toHaveURL(/\/\?spot=keel$/);
+});
