@@ -11,6 +11,7 @@ import {
   isAiPath,
   isCommunityPath,
   isMarketPath,
+  isSwitchedOffPath,
   OWN_BUNDLE_PATHS,
 } from "./siteNav";
 
@@ -190,6 +191,31 @@ describe("siteSections", () => {
     expect(ids(false, false)).toEqual(["map", "ai"]);
     expect(ids(true, false)).toEqual(["map", "market", "ai"]);
     expect(ids(false, true)).toEqual(["map", "community", "ai"]);
+  });
+});
+
+describe("isSwitchedOffPath", () => {
+  it("is a switched-off section's path, and nothing else", () => {
+    const off = { market: false, community: false };
+    const on = { market: true, community: true };
+    for (const path of ["/market", "/market/sell", "/community/t/1"]) {
+      expect(isSwitchedOffPath(path, off), path).toBe(true);
+      expect(isSwitchedOffPath(path, on), path).toBe(false);
+    }
+    expect(
+      isSwitchedOffPath("/market", { market: false, community: true }),
+    ).toBe(true);
+    expect(
+      isSwitchedOffPath("/community", { market: false, community: true }),
+    ).toBe(false);
+    for (const path of [
+      "/",
+      "/ai",
+      "/spot/brandon",
+      "/marketplace",
+      "/communityx",
+    ])
+      expect(isSwitchedOffPath(path, off), path).toBe(false);
   });
 });
 

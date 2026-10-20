@@ -26,7 +26,10 @@ only: every spot square it lists; for a tiled run, every tile of the coarsest
 level and the first level-0 tile at the first frame, skipping tiles the pointer
 calls `absent`; for a schemaVersion 1 bundle, every file it names by `url`. Every
 one of those must be cached as immutable and every tile served brotli or gzip
-encoded; the pointer must not be cached for long.
+encoded; the pointer, as a browser's GET gets it, must not be cached for long.
+A HEAD bypasses Cloudflare's cache, and with it the Browser Cache TTL that
+rewrites max-age, so the monitor reads the pointer's header from the GET, and
+asks a HEAD only to say whether the bucket or the CDN is to blame.
 
 **The site**, when --site is given: it answers 200 with the
 `wingfoil:forecast-base` meta naming this data domain, and the data domain allows
@@ -225,6 +228,22 @@ def pointer_header_problem(headers):
     return None
 
 
+def edge_rewrite(http, url):
+    """Why a pointer the GET found cached too long may not be the publisher's fault, or "".
+
+    Cloudflare answers a HEAD without its cache, with the header the bucket holds, but
+    raises a cached GET's max-age to the zone's Browser Cache TTL unless that is set to
+    Respect Existing Headers (four hours on data.wingfoil.ie in October 2026). So a
+    HEAD that is fine says where to look.
+    """
+    answer = http.head(url)
+    cache = answer.headers.get("cache-control", "")
+    if answer.status != 200 or not cache or pointer_header_problem(answer.headers):
+        return ""
+    return (f", though an uncached HEAD gets {cache}: the CDN raised max-age "
+            "(Cloudflare's Browser Cache TTL or a cache rule's Browser TTL)")
+
+
 def immutable_header_problem(headers, tile=False):
     """Why a run's file is cached or encoded wrongly, or None."""
     cache = headers.get("cache-control", "")
@@ -332,7 +351,7 @@ def check_model(http, base, model, now, pool, note=""):
         return row
     header = pointer_header_problem(response.headers)
     if header:
-        row.problem("headers", f"{published} {header}")
+        row.problem("headers", f"{published} {header}{edge_rewrite(http, base + published)}")
     try:
         pointer = json.loads(response.text)
         if not isinstance(pointer, dict):

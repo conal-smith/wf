@@ -66,3 +66,64 @@ test("a page loaded at /ai is drawn alone, as before", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.locator(".maplibregl-canvas")).toHaveCount(0);
 });
+
+test("the map's site menu is closed when the reader comes back from the AI page", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".maplibregl-canvas")).toBeVisible({
+    timeout: 30000,
+  });
+  const trigger = page.getByRole("button", { name: "Site menu" });
+  await trigger.click();
+  // A browser that tells the menu nothing of focus leaving it, as Safari
+  // fires no blur when the focused row is hidden under the page, and nothing
+  // fires one in a window in the background: the row has to close the menu
+  // itself. The clicks come alone, with no pointerdown before them, as an
+  // assistive or scripted click does.
+  await page.evaluate(() => {
+    document.addEventListener("focusout", (e) => e.stopPropagation(), true);
+  });
+  await page
+    .getByRole("navigation", { name: "Site" })
+    .getByRole("link", { name: "Use with AI" })
+    .dispatchEvent("click", { button: 0 });
+  await expect(page).toHaveURL(/\/ai$/);
+  await expect(page.locator(".map-under-page")).toHaveCount(1);
+
+  await page
+    .getByRole("link", { name: "Chart" })
+    .dispatchEvent("click", { button: 0 });
+  await expect(page.locator(".map-under-page")).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Site" })).toHaveCount(0);
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+  // And one click opens it again, one closes it.
+  await trigger.click();
+  await expect(page.getByRole("navigation", { name: "Site" })).toBeVisible();
+  await trigger.click();
+  await expect(page.getByRole("navigation", { name: "Site" })).toHaveCount(0);
+});
+
+test("Escape on the AI page closes its site menu, and only that", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".maplibregl-canvas")).toBeVisible({
+    timeout: 30000,
+  });
+  await openAi(page);
+
+  // The page's own menu: Escape is the menu's, not the way back to the map.
+  const trigger = page.getByRole("button", { name: "Site menu" });
+  await trigger.click();
+  await expect(page.getByRole("navigation", { name: "Site" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("navigation", { name: "Site" })).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  await expect(page).toHaveURL(/\/ai$/);
+
+  // Closed, Escape is the way back again.
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/$/);
+});
