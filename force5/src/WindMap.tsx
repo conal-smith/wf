@@ -192,6 +192,13 @@ const WORLD = [
 const SVG = "http://www.w3.org/2000/svg";
 
 /**
+ * How far the mark round a spot is stretched through a zoom before it is drawn
+ * again at its new size: a third smaller or half again larger, and its lines
+ * and print still read as the mark's.
+ */
+const STRETCH = [0.67, 1.5] as const;
+
+/**
  * While `redraw` draws over a drawing: for each parent, how many of its
  * elements have been drawn again so far.
  */
@@ -1110,9 +1117,10 @@ export default function WindMap(props: Props) {
   // `roseScale`), the ring a round distance chosen again whenever the camera
   // rests. Zoomed far out the rose stops at ROSE_MIN_PX, a compass with the
   // wind and nothing inside; zoomed in past the screen its bezel runs off it,
-  // and the box at its foot is held in view. A pan only moves the glass; it
-  // is drawn again when its size changes, or the hour (`rose`). The wind and
-  // the lights are never washed.
+  // and the box at its foot is held in view. A pan only moves the glass, and
+  // a zoom stretches it, until the stretch would show or the camera rests
+  // (`stale`); it is drawn again then, or for a new hour (`rose`). The wind
+  // and the lights are never washed.
   //
   // It moves in the frame the map is drawn: MapLibre fires "move" as it
   // renders, and its own markers are moved there too. A frame later, the
@@ -1154,6 +1162,8 @@ export default function WindMap(props: Props) {
     }
     /** The mark's radius on screen, and the ring's distance, written as the rider reads it. */
     let r = 0;
+    /** The radius it stands at on the screen now, its sheet stretched to it through a zoom. */
+    let shown = 0;
     let range = { metres: 0, label: "" };
     const scale = roseScale(units);
     /** Whether the rose is drawn to scale (not held at its smallest). */
@@ -1182,7 +1192,7 @@ export default function WindMap(props: Props) {
       const el = map.getContainer();
       const p = latest.current;
       // Round the spot: above the dock, as padding() keeps.
-      const at = footBox(loupe.reading, loupe.relation, r, {
+      const at = footBox(loupe.reading, loupe.relation, shown, {
         left: -q.x,
         right: el.clientWidth - q.x,
         bottom: el.clientHeight - p.bottomInset - (p.phone ? 64 : 24) - q.y,
@@ -1207,11 +1217,11 @@ export default function WindMap(props: Props) {
       const source = map.getSource("focus") as GeoJSONSource | undefined;
       if (!source) return;
       const m = mpp();
-      hole = (washHoles(style, r).holes[0] ?? 0) * m;
+      hole = (washHoles(style, shown).holes[0] ?? 0) * m;
       source.setData({
         type: "FeatureCollection",
         features: spot
-          ? washHoles(style, r).holes.map((px) => ({
+          ? washHoles(style, shown).holes.map((px) => ({
               type: "Feature" as const,
               properties: {},
               geometry: {
@@ -1227,7 +1237,7 @@ export default function WindMap(props: Props) {
     };
     /** The places named at full strength: those the wash leaves clear. */
     const names = () => {
-      const [clear] = washHoles(style, r).holes;
+      const [clear] = washHoles(style, shown).holes;
       if (spot && clear && map.getLayer("places-near"))
         map.setFilter("places-near", [
           "all",
@@ -1242,6 +1252,18 @@ export default function WindMap(props: Props) {
         ]);
     };
     /**
+     * Whether the mark is to be drawn again at a radius of `now` pixels. At
+     * rest, whenever it is not drawn at that size. Through a zoom its sheet is
+     * stretched instead, a change the compositor makes alone, until the
+     * stretch would show in its lines and print: drawn again on every frame
+     * of a pinch, the rose was painted and rastered again on every frame.
+     */
+    const stale = (now: number, still: boolean) =>
+      !r ||
+      (still
+        ? Math.abs(now - r) > 0.05
+        : now / r < STRETCH[0] || now / r > STRETCH[1]);
+    /**
      * Over the spot, wherever the camera has it; the ring at its distance.
      * The sheet is moved as a layer of its own (src/map.css), so a pan
      * paints nothing again. At rest it stands on whole pixels, the rest
@@ -1253,32 +1275,39 @@ export default function WindMap(props: Props) {
       const still = !map.isMoving();
       const x = still ? Math.round(q.x) : q.x;
       const y = still ? Math.round(q.y) : q.y;
-      sheet.style.transform = `translate(${x}px, ${y}px)`;
       setAttr(
         g,
         "transform",
         `translate(${(q.x - x).toFixed(2)} ${(q.y - y).toFixed(2)})`,
       );
       if (style === "ring") {
-        const next = range.metres / mpp();
-        if (Math.abs(next - r) > 0.05) {
-          r = next;
+        shown = range.metres / mpp();
+        if (stale(shown, still)) {
+          r = shown;
           redraw(g, () => drawRange(g!, r, range.label));
         }
       } else {
         const next = roseRadius(scale.metres, mpp());
-        if (Math.abs(next.r - r) > 0.05 || next.toScale !== toScale) {
-          r = next.r;
+        shown = next.r;
+        if (next.toScale !== toScale || stale(shown, still)) {
+          r = shown;
           toScale = next.toScale;
           drawRose();
         }
+      }
+      const k = Math.abs(shown - r) > 0.05 ? shown / r : 1;
+      sheet.style.transform =
+        k === 1
+          ? `translate(${x}px, ${y}px)`
+          : `translate(${x}px, ${y}px) scale(${k.toFixed(4)})`;
+      if (style === "loupe") {
         pinFoot(q, x, y, still);
         // The hole in the wash is a distance on the chart, under the rim's
         // band through most of a zoom: in one it is cut again only when its
         // edge would show, and once the camera rests (`measure`). Cut on
         // every frame, it kept MapLibre tiling it again, a step behind.
         const edge = hole / mpp();
-        if (!still && (edge < r || edge > r + LOUPE_BAND)) wash();
+        if (!still && (edge < shown || edge > shown + LOUPE_BAND * k)) wash();
       }
     };
     /** Sized for the map: the glass to its shorter side, the ring's distance to the zoom too. */
