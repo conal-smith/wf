@@ -123,8 +123,26 @@ describe("the MCP endpoint", () => {
       "ecmwf",
       "gfs",
     ]);
+    expect(typeof found.spots[0].sessions[0].gusty).toBe("boolean");
     const backwards = await call("find_wind", { min_kn: 20, max_kn: 10 });
     expect(backwards.isError).toBe(true);
+    const gustBelowWind = await call("find_wind", {
+      min_kn: 14,
+      max_gust_kn: 10,
+    });
+    expect(gustBelowWind.isError).toBe(true);
+    const limited = (
+      await call("find_wind", {
+        min_kn: 0,
+        max_kn: 80,
+        max_gust_kn: 25,
+        hours: 12,
+        daylight_only: false,
+      })
+    ).json();
+    expect(limited.max_gust_kn).toBe(25);
+    for (const spot of limited.spots)
+      for (const s of spot.sessions) expect(s.gust_kn).toBeLessThanOrEqual(25);
   });
 
   it("names every live source with its licence", async () => {
