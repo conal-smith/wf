@@ -351,6 +351,18 @@ page says so in the pen's hand ("ECMWF from Wed 22:00"), and where the stars
 are shown, the model is named. The rule, the surfaces and the published
 blend's part in it are in [STAR_RATINGS.md](STAR_RATINGS.md).
 
+**2026-10-20 — A tap away shuts what is open, then lets go of what is
+chosen** (#109). A tap on the chart picked a point wherever it fell: with the
+layers open it shut them and moved the spot as well, and with a spot chosen it
+moved the spot to the tap. Now a tap on the chart, like Escape, does one thing
+at a time. With a panel or a menu open over the chart (the layers, your spots,
+the options, the site menu, the search's list) it shuts that, and picks and
+chooses nothing, a light included. With nothing open and a spot or point
+chosen, it lets go of it: the chart's focus goes, the dock keeps the forecast
+until another is chosen or it is closed. Only with nothing chosen does a tap
+pick the point under it. A light still chooses its spot at one tap, and a
+double tap still zooms and does neither.
+
 ---
 
 ## Still open
