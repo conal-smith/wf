@@ -112,12 +112,20 @@ describe("the mark round the chosen spot", () => {
   });
 
   it("washes lightly beyond the loupe, and more lightly still beyond the ring", () => {
-    expect(washHoles("loupe", 200)).toEqual({ holes: [206.5], opacity: 0.18 });
+    expect(washHoles("loupe", 200)).toEqual({
+      holes: [206.5],
+      opacity: [0.18],
+    });
     const ring = washHoles("ring", 100);
     expect(ring.holes).toEqual([145, 185, 225, 265, 305]);
-    // The five layers add up to 10% at the most.
-    expect(1 - (1 - ring.opacity) ** 5).toBeCloseTo(0.1);
-    expect(washHoles("off", 100)).toEqual({ holes: [], opacity: 0 });
+    // Each band as strong as the sheets of paper once stacked there: one
+    // sheet's worth past the first hole, and 10% beyond the last.
+    const sheet = ring.opacity[0];
+    ring.opacity.forEach((o, i) =>
+      expect(o).toBeCloseTo(1 - (1 - sheet) ** (i + 1), 10),
+    );
+    expect(ring.opacity[4]).toBeCloseTo(0.1);
+    expect(washHoles("off", 100)).toEqual({ holes: [], opacity: [] });
   });
 });
 

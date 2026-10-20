@@ -28,6 +28,7 @@ import {
   roseRadius,
   roseScale,
   washHoles,
+  WASH_BANDS,
   zoomFor,
   type FocusStyle,
   type Line,
@@ -190,6 +191,14 @@ const WORLD = [
 ];
 
 const SVG = "http://www.w3.org/2000/svg";
+
+/**
+ * The wash's layers, a band of it apiece (focus.ts `washHoles`): the first,
+ * "focus", the loupe's, the rest the ring's as it feathers out.
+ */
+const WASH_LAYERS = Array.from({ length: WASH_BANDS }, (_, i) =>
+  i ? `focus-${i}` : "focus",
+);
 
 /**
  * How far the mark round a spot is stretched through a zoom before it is drawn
@@ -732,19 +741,22 @@ export default function WindMap(props: Props) {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
-      map.addLayer(
-        {
-          id: "focus",
-          type: "fill",
-          source: "focus",
-          layout: { visibility: "none" },
-          paint: {
-            "fill-color": colours.paper,
-            "fill-opacity": 0,
-            "fill-opacity-transition": { duration: 450 },
+      WASH_LAYERS.forEach((id, band) =>
+        map.addLayer(
+          {
+            id,
+            type: "fill",
+            source: "focus",
+            filter: ["==", ["get", "band"], band],
+            layout: { visibility: "none" },
+            paint: {
+              "fill-color": colours.paper,
+              "fill-opacity": 0,
+              "fill-opacity-transition": { duration: 450 },
+            },
           },
-        },
-        "water-names",
+          "water-names",
+        ),
       );
       if (particles.current) {
         windRef.current = createWindLayer(map, particles.current, {
@@ -883,9 +895,10 @@ export default function WindMap(props: Props) {
           ? "wind-wash"
           : "water-names";
       const order = map.getLayersOrder();
+      const at = order.indexOf("focus");
       // Moving a layer is itself a style change: only when it is out of place.
-      if (order[order.indexOf("focus") + 1] !== under)
-        map.moveLayer("focus", under);
+      if ([...WASH_LAYERS, under].some((id, i) => order[at + i] !== id))
+        for (const id of WASH_LAYERS) map.moveLayer(id, under);
     };
     settle();
     // The wash's layer is added once its first image is ready.
@@ -1217,18 +1230,22 @@ export default function WindMap(props: Props) {
       const source = map.getSource("focus") as GeoJSONSource | undefined;
       if (!source) return;
       const m = mpp();
-      hole = (washHoles(style, shown).holes[0] ?? 0) * m;
+      const holes = washHoles(style, shown).holes.map((px) => px * m);
+      hole = holes[0] ?? 0;
       source.setData({
         type: "FeatureCollection",
         features: spot
-          ? washHoles(style, shown).holes.map((px) => ({
+          ? holes.map((metres, band) => ({
               type: "Feature" as const,
-              properties: {},
+              properties: { band },
               geometry: {
                 type: "Polygon" as const,
+                // Out to the next hole, or the edge of the world.
                 coordinates: [
-                  WORLD,
-                  ring(spot.lon, spot.lat, px * m).reverse(),
+                  band + 1 < holes.length
+                    ? ring(spot.lon, spot.lat, holes[band + 1])
+                    : WORLD,
+                  ring(spot.lon, spot.lat, metres).reverse(),
                 ],
               },
             }))
@@ -1335,18 +1352,23 @@ export default function WindMap(props: Props) {
       place();
     };
     const { opacity } = washHoles(style, 0);
-    let hide = 0;
-    if (opacity) {
-      map.setLayoutProperty("focus", "visibility", "visible");
-      map.setPaintProperty("focus", "fill-opacity", opacity);
-    } else {
-      map.setPaintProperty("focus", "fill-opacity", 0);
-      // Drawn only while there is a wash: an empty layer still costs a pass.
-      hide = window.setTimeout(() => {
-        if (map.getLayer("focus"))
-          map.setLayoutProperty("focus", "visibility", "none");
-      }, 500);
-    }
+    const hide: number[] = [];
+    WASH_LAYERS.forEach((id, band) => {
+      const o = opacity[band] ?? 0;
+      if (o) {
+        map.setLayoutProperty(id, "visibility", "visible");
+        map.setPaintProperty(id, "fill-opacity", o);
+      } else if (map.getLayoutProperty(id, "visibility") !== "none") {
+        map.setPaintProperty(id, "fill-opacity", 0);
+        // Drawn only while there is a wash: an empty layer still costs a pass.
+        hide.push(
+          window.setTimeout(() => {
+            if (map.getLayer(id))
+              map.setLayoutProperty(id, "visibility", "none");
+          }, 500),
+        );
+      }
+    });
     // The names away from the spot step back with the wash; with no mark,
     // they stay as they are.
     const quiet = style !== "off";
@@ -1362,7 +1384,7 @@ export default function WindMap(props: Props) {
     map.on("zoomend", measure);
     map.on("resize", measure);
     return () => {
-      clearTimeout(hide);
+      hide.forEach(clearTimeout);
       remeasure.current = () => {};
       redrawRose.current = () => {};
       map.off("move", place);
