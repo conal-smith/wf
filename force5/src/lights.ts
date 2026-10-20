@@ -19,6 +19,7 @@
  * `placeLabels`.
  */
 import * as maplibregl from "maplibre-gl";
+import { nearestLight } from "./lightHit";
 import type { Wedge } from "./rideWedge";
 import type { Spot } from "./weather";
 
@@ -220,6 +221,22 @@ export function createLights(
     attributes: true,
     attributeFilter: ["class"],
   });
+  const byId = new Map(spots.map((spot) => [spot.id, spot]));
+  /**
+   * The spot a click on `el` meant: from a pointer, the nearest light within
+   * a button's reach of it (./lightHit), since the reaches of close lights
+   * overlap; from a key, the light's own.
+   */
+  const meant = (spot: Spot, el: HTMLElement, event: MouseEvent): Spot => {
+    if (!event.detail) return spot;
+    const reach = parseFloat(getComputedStyle(el, "::before").width) / 2 || 22;
+    const centres = [...entries].map(([id, entry]) => {
+      const r = entry.el.getBoundingClientRect();
+      return { id, x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+    const id = nearestLight(centres, event.clientX, event.clientY, reach);
+    return (id && byId.get(id)) || spot;
+  };
   for (const spot of spots) {
     const el = document.createElement("button");
     el.type = "button";
@@ -230,7 +247,7 @@ export function createLights(
     el.querySelector(".lt-lab b")!.textContent = spot.name;
     el.addEventListener("click", (event) => {
       event.stopPropagation();
-      onSelect(spot);
+      onSelect(meant(spot, el, event));
     });
     const marker = new maplibregl.Marker({ element: el, anchor: "center" })
       .setLngLat([spot.lon, spot.lat])

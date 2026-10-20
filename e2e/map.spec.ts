@@ -277,6 +277,45 @@ test("a light shows the selected hour's stars, as the dock does, and follows the
   }
 });
 
+test("a click just off a light's ring chooses it, and the nearest light wins", async ({
+  page,
+}) => {
+  await openChart(page, 1440, 900, null);
+  // A light with room round it, and a point a little way off its ring.
+  const { id, x, y } = await page.evaluate(() => {
+    const lights = [...document.querySelectorAll<HTMLElement>(".spot-marker")]
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        return {
+          id: el.dataset.spotId!,
+          x: r.x + r.width / 2,
+          y: r.y + r.height / 2,
+        };
+      })
+      .filter((l) => l.y > 300 && l.y < 700);
+    const alone = lights.find((l) =>
+      lights.every((o) => o === l || Math.hypot(o.x - l.x, o.y - l.y) > 40),
+    )!;
+    return { id: alone.id, x: alone.x, y: alone.y + 13 };
+  });
+  expect(
+    await page.evaluate(
+      ([x, y]) =>
+        document
+          .elementFromPoint(x, y)
+          ?.closest(".spot-marker")
+          ?.getAttribute("data-spot-id"),
+      [x, y],
+    ),
+  ).toBe(id);
+  await page.mouse.click(x, y);
+  await expect(page.locator(".spot-marker.sel")).toHaveAttribute(
+    "data-spot-id",
+    id,
+  );
+  await expect(page.locator(".pick-mark")).toHaveCount(0);
+});
+
 test("only offshore is struck through; a learner's cross-offshore is too", async ({
   page,
 }) => {
