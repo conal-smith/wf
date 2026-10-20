@@ -1504,6 +1504,24 @@ export default function ForecastDock(props: Props) {
     }
   });
 
+  // The tools stand on the dock's top edge, so the blend (taller than the
+  // table's rows) and the fold move them as the dock's height changes: the
+  // button clicked was no longer under the pointer, and the next click went
+  // to the chart where it had been, and picked that point in place of the
+  // spot. While a mouse is on the tools the dock keeps the tallest height a
+  // click on them has seen, so they stay where the pointer is; it lets go
+  // when the pointer leaves them.
+  const dockRef = useRef<HTMLElement>(null);
+  const [held, setHeld] = useState<number | null>(null);
+  const hold = (event: React.MouseEvent) => {
+    const el = dockRef.current;
+    if (!el || !event.detail) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches)
+      return;
+    const height = el.getBoundingClientRect().height;
+    setHeld((was) => Math.max(was ?? 0, height));
+  };
+
   const tideDot = useMemo(() => {
     if (!tide || !column) return null;
     const h = tideAt(tide.curve, column.time);
@@ -1519,14 +1537,24 @@ export default function ForecastDock(props: Props) {
   }, [tide, column, selected, g, view, isPoint, rated, rows]);
 
   return (
-    <section className="dock" aria-label={`Forecast for ${spot.name}`}>
+    <section
+      ref={dockRef}
+      className="dock"
+      aria-label={`Forecast for ${spot.name}`}
+      style={held ? { minHeight: held } : undefined}
+    >
       {/* The dock is its hours and nothing else: the spot's name, its star,
           the switch to the blend, its page and the fold stand on the chart
           just above the dock's top edge, in a box like the map's own
           controls, so the dock is no taller than its rows. A phone keeps
           only the glyphs: the light the pen has looped on the chart says
           which spot it is, and the name is there for a screen reader. */}
-      <div className="dk-tools chart-box" role="group" aria-label="This spot">
+      <div
+        className="dk-tools chart-box"
+        role="group"
+        aria-label="This spot"
+        onPointerLeave={() => setHeld(null)}
+      >
         <div className="dk-id">
           {!isPoint && (
             <StarToggle
@@ -1619,7 +1647,10 @@ export default function ForecastDock(props: Props) {
             aria-label="Blend"
             title={view === "blend" ? "Back to the table" : "The models' blend"}
             pressed={view === "blend"}
-            onClick={() => onView(view === "blend" ? "table" : "blend")}
+            onClick={(event) => {
+              hold(event);
+              onView(view === "blend" ? "table" : "blend");
+            }}
           >
             <ChartSpline size={16} strokeWidth={1.4} aria-hidden="true" />
           </Button>
@@ -1651,7 +1682,10 @@ export default function ForecastDock(props: Props) {
           }
           title={more ? "Fewer rows" : "More rows"}
           aria-expanded={more}
-          onClick={() => onMore(!more)}
+          onClick={(event) => {
+            hold(event);
+            onMore(!more);
+          }}
         >
           <svg width="14" height="9" viewBox="0 0 14 9" aria-hidden="true">
             <path
