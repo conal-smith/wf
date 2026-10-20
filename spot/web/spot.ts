@@ -440,6 +440,28 @@ export function darkRuns(rows: readonly SpotRow[]): {
   };
 }
 
+/** The row from which the sky model no longer reaches the day's end. */
+export function skyEnd(rows: readonly SpotRow[]): number {
+  let end = rows.length;
+  while (end > 0 && !rows[end - 1].hour.weather) end--;
+  return end;
+}
+
+/**
+ * The day the sky model stops on: the first whose daylight runs past its last
+ * hour, where the Sky column first says "not yet", or null where it reaches
+ * every day. Said once there, under the day, the days after keep their own
+ * "not yet" without it.
+ */
+export function skyStopsOn(days: readonly SpotDay[]): string | null {
+  for (const day of days) {
+    const end = skyEnd(day.rows);
+    if (darkRuns(day.rows).light.some((row) => day.rows.indexOf(row) >= end))
+      return day.date;
+  }
+  return null;
+}
+
 /**
  * What a folded run of night says, from the sun rather than from the rows.
  * A row is rated when its hour starts between sunrise and sunset, so the fold

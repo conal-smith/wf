@@ -9,6 +9,7 @@
  */
 import { z } from "zod";
 import {
+  GUSTY_SPREAD_KN,
   MAX_WINDOW_HOURS,
   METHOD,
   findSessions,
@@ -56,8 +57,9 @@ export const INSTRUCTIONS = `wingfoil.ie forecasts wind, waves and tides for win
 
 - Start with list_spots or find_wind to learn spot ids; get_spot_forecast accepts an id, a name or part of one.
 - Speeds are knots, directions are degrees the wind comes FROM, times are UTC with a \`local\` Europe/Dublin label. Quote the local time to people.
-- The forecast is one model's own, the one wingfoil.ie rates its stars from, never a blend of several: HARMONIE's (Met Éireann's 2.5 km model, the most accurate here) while it reaches the hour, about the next 60 hours, and ECMWF's past it, unless a caller passes stars_from and then to choose others. \`lead\` says which model an hour is. \`agreement\` says how closely all the models agree, as context; say so when it is low, and use by_model to explain a disagreement.
+- The forecast is one model's own, the one wingfoil.ie rates its stars from, never a blend of several: HARMONIE's (Met Éireann's 2.5 km model, the most accurate here) while it reaches the hour, about the next 60 hours, and ECMWF's past it, unless a caller passes stars_from and then to choose others. \`lead\` says which model an hour is. \`agreement\` says how closely all the models agree, as context; \`confidence\` is the same but low wherever fewer than three models cover the hour (\`models\`), as happens a few days out. Hedge when confidence is low, say why (few models, or models disagreeing), and use by_model to explain a disagreement.
 - ${METHOD}
+- Point out sessions find_wind marks \`gusty\`. When someone has a gust limit, pass max_gust_kn (or max_gust_factor) so hours past it are left out.
 - ${CARE}
 - Credit the model providers named in \`sources\` when you share a forecast, and link people to https://wingfoil.ie for the map.`;
 
@@ -204,6 +206,22 @@ export const findWind = tool({
       .max(80)
       .optional()
       .describe("Highest wind wanted in knots (default 30)."),
+    max_gust_kn: z
+      .number()
+      .min(0)
+      .max(100)
+      .optional()
+      .describe(
+        "Leave out hours gusting over this many knots (default no limit).",
+      ),
+    max_gust_factor: z
+      .number()
+      .min(1)
+      .max(5)
+      .optional()
+      .describe(
+        "Leave out hours whose gust is more than this many times the mean wind, e.g. 1.5.",
+      ),
     from: z
       .string()
       .max(40)
@@ -245,6 +263,8 @@ export const findWind = tool({
     const minKnots = args.min_kn ?? 14;
     const maxKnots = args.max_kn ?? 30;
     if (maxKnots < minKnots) return failure("max_kn must be at least min_kn.");
+    if (args.max_gust_kn !== undefined && args.max_gust_kn < minKnots)
+      return failure("max_gust_kn must be at least min_kn.");
     const at = (deps.now ?? Date.now)();
     const spots = await loadSpots(deps.source);
     const window = windowFor(at, {
@@ -255,6 +275,8 @@ export const findWind = tool({
     const found = await findSessions(deps.source, spots, window, {
       minKnots,
       maxKnots,
+      maxGustKnots: args.max_gust_kn,
+      maxGustFactor: args.max_gust_factor,
       daylightOnly: args.daylight_only ?? true,
       minSessionHours: args.min_session_hours ?? 2,
       county: args.county,
@@ -276,12 +298,18 @@ export const findWind = tool({
         to: new Date(window.to).toISOString(),
       },
       wind_range_kn: [minKnots, maxKnots],
+      ...(args.max_gust_kn !== undefined && { max_gust_kn: args.max_gust_kn }),
+      ...(args.max_gust_factor !== undefined && {
+        max_gust_factor: args.max_gust_factor,
+      }),
       searched_spots: found.searched,
       spots: found.spots,
       sources: found.sources,
       unavailable: found.unavailable,
       method:
-        "An hour counts when its wind is inside the range; each session's agreement is the worst of its hours, as context. " +
+        "An hour counts when its wind is inside the range and its gust (the lead model's, else the top of every model's) is inside max_gust_kn and max_gust_factor. " +
+        `A session is \`gusty\` when some hour gusts ${GUSTY_SPREAD_KN} kn or more over its mean; \`gust_kn\` is its strongest gust. ` +
+        "Each session's agreement, confidence and models are the worst of its hours, as context. " +
         METHOD,
     });
   },

@@ -969,8 +969,14 @@ export default function WindMap(props: Props) {
     };
   }, [ready, spots]);
   useEffect(() => {
-    lightsRef.current?.update(lights, selectedId, named, props.lightLabel);
-  }, [ready, spots, lights, selectedId, named]);
+    lightsRef.current?.update(
+      lights,
+      selectedId,
+      named,
+      props.lightLabel,
+      units,
+    );
+  }, [ready, spots, lights, selectedId, named, units, props.lightLabel]);
 
   // Focus: a loupe laid on the chart round the chosen spot, or a range ring,
   // with a light wash of paper beyond it; or, as the rider chooses, nothing.

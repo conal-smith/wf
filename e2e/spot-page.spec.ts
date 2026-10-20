@@ -507,6 +507,37 @@ test("the place from above: framed under the header, at high or low tide, marked
   expect(errors).toEqual([]);
 });
 
+test("one press switches the tide: a picture still on its way is said to be loading, and swapped in when it arrives", async ({
+  page,
+}) => {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/satellite/spots.json", (route) =>
+    route.fulfill({ json: pictures }),
+  );
+  await page.route("**/satellite/v0123456789ab/*.webp", async (route) => {
+    if (route.request().url().endsWith("-low.webp")) await held;
+    await route.fulfill({ body: WEBP, contentType: "image/webp" });
+  });
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  const image = picture(page).locator("img");
+  await expect(image).toHaveAttribute("src", /brandon-high\.webp$/);
+
+  // The low tide's picture is not in yet: the high stays, and says so.
+  await picture(page).getByRole("button", { name: "Low tide" }).click();
+  await expect(picture(page)).toHaveAttribute("data-tide", "low");
+  await expect(picture(page).locator("[data-picture-loading]")).toHaveText(
+    /Loading low tide/i,
+  );
+  await expect(image).toHaveAttribute("src", /brandon-high\.webp$/);
+
+  // It arrives: no second press.
+  release();
+  await expect(image).toHaveAttribute("src", /brandon-low\.webp$/);
+  await expect(picture(page).locator("[data-picture-loading]")).toHaveCount(0);
+});
+
 test("no picture leaves no gap: none published, none of this place, or one that will not load", async ({
   page,
 }) => {

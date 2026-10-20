@@ -277,6 +277,24 @@ test("a light shows the selected hour's stars, as the dock does, and follows the
   }
 });
 
+test("a light's wind and its name follow the rider's units", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem("force5.prefs.v1", JSON.stringify({ units: "m/s" })),
+  );
+  await openChart(page, 1440, 900, null);
+  const light = page.locator('[data-spot-id="brandon"]');
+  const label = await light.getAttribute("aria-label");
+  const said = / (\d+) metres per second/.exec(label ?? "");
+  expect(said, label ?? "").not.toBeNull();
+  expect(label).not.toContain("knots");
+  // The figure beside the light is the same speed, in the same units.
+  await expect(light.locator(".lt-lab i")).toHaveText(
+    new RegExp(`^[NESW]+ ${said![1]}\\b`),
+  );
+});
+
 test("only offshore is struck through; a learner's cross-offshore is too", async ({
   page,
 }) => {
