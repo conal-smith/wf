@@ -25,6 +25,14 @@ export const convert = (speed: number, units: Units) => speed * FACTORS[units];
 export const unitLabel = (units: Units) =>
   UNITS.find((unit) => unit.id === units)?.label ?? units;
 
+/** A speed held in knots, in `units`, rounded to a whole number as a label prints it. */
+export const knotsIn = (knots: number, units: Units) =>
+  Math.round(convert(knots / KNOTS, units));
+
+/** The unit as it is read aloud: "knots", "metres per second". */
+export const unitName = (units: Units) =>
+  (UNITS.find((unit) => unit.id === units)?.name ?? units).toLowerCase();
+
 /** Rounded value with its unit label; an em dash for missing data, never zero. */
 export function formatSpeed(
   metresPerSecond: number | null | undefined,

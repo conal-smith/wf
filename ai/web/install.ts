@@ -111,7 +111,13 @@ export interface AddPlan {
   copies: boolean;
   /** One line under the button: what happens, and what is left to do. */
   note: string;
+  /** The line once the address is copied: that it is, and what is left. */
+  copiedNote?: string;
 }
+
+/** Where ChatGPT hides custom servers until they are asked for. */
+const CHATGPT_DEVELOPER_MODE =
+  "No such option? First open Settings → Security and turn on Developer mode.";
 
 export function addPlan(
   assistant: Assistant,
@@ -136,12 +142,15 @@ export function addPlan(
             label: "Copy the address",
             copies: true,
             note: "ChatGPT adds a server on a computer only: at chatgpt.com/plugins, press +, then Add custom MCP server. Once added it is in the app too.",
+            copiedNote:
+              "Address copied. ChatGPT adds a server on a computer only: at chatgpt.com/plugins, press +, then Add custom MCP server, and paste it. Once added it is in the app too.",
           }
         : {
             href: CHATGPT_APPS,
             label: "Add to ChatGPT",
             copies: true,
-            note: "Copies the address and opens ChatGPT: press +, then Add custom MCP server, paste it, and choose No authentication. No such option? Turn on Developer mode in Settings, Security first.",
+            note: `Copies the address and opens ChatGPT: press +, then Add custom MCP server, paste it, and choose No authentication. ${CHATGPT_DEVELOPER_MODE}`,
+            copiedNote: `Address copied. In ChatGPT, press +, then Add custom MCP server, paste it, and choose No authentication. ${CHATGPT_DEVELOPER_MODE}`,
           };
     case "grok":
       return {
@@ -149,6 +158,8 @@ export function addPlan(
         label: "Add to Grok",
         copies: true,
         note: "Copies the address and opens Grok's connectors: New Connector, Custom, then paste it.",
+        copiedNote:
+          "Address copied. In Grok's connectors: New Connector, Custom, then paste it.",
       };
   }
 }

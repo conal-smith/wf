@@ -385,6 +385,36 @@ test("a night hour is a column of its own: tapped, keyed and under the line", as
   expect(hatched).toBe(true);
 });
 
+test("the arrow keys step the hour as the page opens, with nothing clicked, and only as pressed", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.goto("/?spot=brandon");
+  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
+    timeout: 30000,
+  });
+  const start = Number(await slider(page).inputValue());
+  // Nothing has the focus: no hour has been clicked, nor the strip.
+  expect(
+    await page.evaluate(() => document.activeElement === document.body),
+  ).toBe(true);
+  await page.keyboard.press("ArrowRight");
+  await expect(slider(page)).toHaveValue(String(start + 1));
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowLeft");
+  await expect(slider(page)).toHaveValue(String(start + 2));
+  // Nothing comes later: no scroll left running is read back as hours.
+  await page.waitForTimeout(1500);
+  await expect(slider(page)).toHaveValue(String(start + 2));
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  // In the search field the keys move the caret, not the hour.
+  const search = page.getByRole("combobox", { name: "Find a spot" });
+  await search.fill("keel");
+  await search.press("ArrowLeft");
+  await expect(slider(page)).toHaveValue(String(start + 2));
+});
+
 test("a tap on an hour selects it", async ({ page }) => {
   await openDock(page);
   const cell = page.locator('.dock tr.tt-wing td[data-i="6"]');
@@ -1503,6 +1533,13 @@ test("a point tapped on Dublin Bay reads its nearest station's tide; one on Loug
     .getByRole("button", { name: /^Close the forecast for / })
     .click();
   await expect(page.locator(".dock")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/$/);
+  // A step in the history like a choice: Back opens it again.
+  await page.goBack();
+  await expect(page.locator(".dock .tide-none")).toHaveText(
+    "No tide: a freshwater lake.",
+    { timeout: 15000 },
+  );
   expect(errors).toEqual([]);
 });
 

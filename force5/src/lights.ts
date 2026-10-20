@@ -7,8 +7,8 @@
  * learner: the caller decides, through `mark`).
  *
  * Behind the open spot's ring, a wedge spans the headings this rider can
- * hold out to sea at the hour's wind (./rideWedge): longer the better
- * powered, pulsing faster the more stars. The caller gives it to one light
+ * hold out to sea at the hour's wind (./rideWedge): the longer the wedge,
+ * the better powered the rider, and it pulses faster the more stars. The caller gives it to one light
  * only; on all of them at once it buried the chart. The pulse is a transform
  * and an opacity on an HTML box, for the compositor to run.
  *
@@ -19,7 +19,9 @@
  * `placeLabels`.
  */
 import * as maplibregl from "maplibre-gl";
+import { nearestLight } from "./lightHit";
 import type { Wedge } from "./rideWedge";
+import { knotsIn, type Units } from "./units";
 import type { Spot } from "./weather";
 
 export interface LightState {
@@ -30,6 +32,7 @@ export interface LightState {
   dark: boolean;
   /** Where the wind blows from, in degrees, or null with no reading. */
   from: number | null;
+  /** The wind, in knots whatever the rider's units: `knotsIn` converts it. */
   windKn: number | null;
   compass: string | null;
   mark: "struck" | "cross-off" | null;
@@ -112,6 +115,7 @@ export interface Lights {
     selected: string | null,
     named: ReadonlySet<string>,
     label: (spot: Spot, state: LightState | undefined) => string,
+    units: Units,
   ): void;
   element(id: string): HTMLButtonElement | undefined;
   destroy(): void;
@@ -220,6 +224,22 @@ export function createLights(
     attributes: true,
     attributeFilter: ["class"],
   });
+  const byId = new Map(spots.map((spot) => [spot.id, spot]));
+  /**
+   * The spot a click on `el` meant: from a pointer, the nearest light within
+   * a button's reach of it (./lightHit), since the reaches of close lights
+   * overlap; from a key, the light's own.
+   */
+  const meant = (spot: Spot, el: HTMLElement, event: MouseEvent): Spot => {
+    if (!event.detail) return spot;
+    const reach = parseFloat(getComputedStyle(el, "::before").width) / 2 || 22;
+    const centres = [...entries].map(([id, entry]) => {
+      const r = entry.el.getBoundingClientRect();
+      return { id, x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+    const id = nearestLight(centres, event.clientX, event.clientY, reach);
+    return (id && byId.get(id)) || spot;
+  };
   for (const spot of spots) {
     const el = document.createElement("button");
     el.type = "button";
@@ -230,7 +250,7 @@ export function createLights(
     el.querySelector(".lt-lab b")!.textContent = spot.name;
     el.addEventListener("click", (event) => {
       event.stopPropagation();
-      onSelect(spot);
+      onSelect(meant(spot, el, event));
     });
     const marker = new maplibregl.Marker({ element: el, anchor: "center" })
       .setLngLat([spot.lon, spot.lat])
@@ -247,7 +267,7 @@ export function createLights(
     });
   }
   return {
-    update(states, selected, named, label) {
+    update(states, selected, named, label, units) {
       for (const spot of spots) {
         const entry = entries.get(spot.id);
         if (!entry) continue;
@@ -255,7 +275,7 @@ export function createLights(
         const on = spot.id === selected;
         const w = s?.wedge;
         const key = s
-          ? `${s.pending}|${s.stars}|${s.dark}|${s.mark}|${s.from === null ? "" : Math.round(s.from)}|${s.windKn === null ? "" : Math.round(s.windKn)}|${w ? `${Math.round(w.from)},${Math.round(w.to)},${Math.round(w.power * 20)},${w.state}` : ""}|${on}|${named.has(spot.id)}`
+          ? `${s.pending}|${s.stars}|${s.dark}|${s.mark}|${s.from === null ? "" : Math.round(s.from)}|${s.windKn === null ? "" : knotsIn(s.windKn, units)}|${w ? `${Math.round(w.from)},${Math.round(w.to)},${Math.round(w.power * 20)},${w.state}` : ""}|${on}|${named.has(spot.id)}`
           : `none|${on}|${named.has(spot.id)}`;
         if (entry.key === key) continue;
         entry.key = key;
@@ -288,10 +308,17 @@ export function createLights(
           s && !s.pending && s.compass !== null && s.windKn !== null
             ? // The wind and the shore, not the stars: the ring's figure
               // says those, and "0★" under a dashed "0" read as a glitch.
-              `${s.compass} ${Math.round(s.windKn)}${s.mark ? ` · ${s.mark === "struck" ? "offshore" : "cross-off"}` : ""}`
+              `${s.compass} ${knotsIn(s.windKn, units)}${s.mark ? ` · ${s.mark === "struck" ? "offshore" : "cross-off"}` : ""}`
             : "";
-        el.setAttribute("aria-label", label(spot, s));
         dirty = true;
+      }
+      // Every time, not only when the light changes: the name also says the
+      // hour and the units, which a light's look does not show.
+      for (const spot of spots) {
+        const el = entries.get(spot.id)?.el;
+        const name = label(spot, states.get(spot.id));
+        if (el && el.getAttribute("aria-label") !== name)
+          el.setAttribute("aria-label", name);
       }
       if (dirty) queue();
     },

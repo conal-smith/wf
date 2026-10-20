@@ -41,6 +41,7 @@ import {
 import type { PlaceHour } from "./ratings";
 import WeatherGlyph from "./WeatherGlyph";
 import { wheelHours, type WheelHours } from "./wheelHours";
+import { arrowsFree, hourStep } from "./hourKeys";
 import {
   clock,
   columnAtX,
@@ -218,15 +219,16 @@ const rowsUnderHours = (
 /**
  * Each row's name as a glyph, with the name and unit in its title: the rows
  * read by their figures, and a word per row took a column of the dock's
- * width from the hours.
+ * width from the hours. The unit stays on screen beside the glyph, as the
+ * wind's does, so a bare 0.7 or 12 says what it counts.
  */
 type RowGlyph = LucideIcon | typeof WingGlyph;
-const MORE_LABEL: Record<MoreRow, [RowGlyph, string]> = {
-  waves: [Waves, "Waves, m"],
+const MORE_LABEL: Record<MoreRow, [RowGlyph, string, string?]> = {
+  waves: [Waves, "Waves, m (height) and s (period)", "m"],
   sky: [CloudSun, "Sky"],
-  air: [Thermometer, "Air, °C"],
-  rain: [CloudRain, "Rain, mm"],
-  sea: [SeaTempGlyph, "Sea, °C"],
+  air: [Thermometer, "Air, °C", "°C"],
+  rain: [CloudRain, "Rain, mm", "mm"],
+  sea: [SeaTempGlyph, "Sea, °C", "°C"],
 };
 const RowLabel = ({
   glyph: Glyph,
@@ -1439,6 +1441,31 @@ export default function ForecastDock(props: Props) {
     };
   }, []);
 
+  // Left and Right step the hour wherever the focus is, unless it is in a
+  // control whose own keys they are (src/hourKeys.ts): not only once an hour
+  // has been clicked. Each press is one hour, from the hour in hand, at once:
+  // the strip's own key scroll is not left to run, as a burst of its smooth
+  // scrolls was read back as hours long after the keys had stopped. A page
+  // over the map leaves the dock mounted but inert, and its keys alone.
+  const keyed = useRef({ selected, count: columns.length, onSelect });
+  keyed.current = { selected, count: columns.length, onSelect };
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => {
+      const step = hourStep(event);
+      if (!step || event.defaultPrevented || !arrowsFree(event.target)) return;
+      if (wrap.current?.closest("[inert]")) return;
+      if (document.querySelector("dialog[open]")) return;
+      event.preventDefault();
+      const { selected, count, onSelect } = keyed.current;
+      const next = Math.max(0, Math.min(count - 1, selected + step));
+      if (next === selected) return;
+      keyed.current.selected = next;
+      onSelect(next, true);
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, []);
+
   // The selected column, marked in place rather than by re-rendering the
   // table, and the pen's frame round it: twice round, on the column's own
   // border so it hides none of its figures, lifting over any that reach the
@@ -1773,6 +1800,9 @@ export default function ForecastDock(props: Props) {
                     glyph={MORE_LABEL[key][0]}
                     title={MORE_LABEL[key][1]}
                   />
+                  {MORE_LABEL[key][2] && (
+                    <small className="dk-unit">{MORE_LABEL[key][2]}</small>
+                  )}
                 </div>
               ))}
           </div>

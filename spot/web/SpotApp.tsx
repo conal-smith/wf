@@ -65,10 +65,12 @@ import {
   goodWindArcs,
   groupDays,
   leadChanges,
+  skyStopsOn,
   spotRows,
   tideTurns,
 } from "./spot";
 import { SpotSatellite, useSpotPicture } from "./SpotSatellite";
+import { TableKey } from "./TableKey";
 import StarsPage from "./StarsPage";
 import { useSpotForecast } from "./useSpotForecast";
 import { useWidth } from "./useWidth";
@@ -390,6 +392,10 @@ function SpotPage({
     [rows, spot.lat, spot.lon],
   );
   const changes = useMemo(() => leadChanges(rows), [rows]);
+  const skyStops = useMemo(
+    () => skyStopsOn(days.map(({ day }) => day)),
+    [days],
+  );
   const band = useMemo(() => bandKnots(rider), [rider]);
   const turns = useMemo(() => tideTurns(forecast), [forecast]);
   const ceiling = Math.max(4.5, ...turns.map((t) => t.height)) + 0.3;
@@ -525,9 +531,13 @@ function SpotPage({
               (change) => dublinDate(change.time) === day.date,
             )}
             onStarsFrom={changeStarsFrom}
+            skyStops={day.date === skyStops}
           />
         ))}
       </div>
+      {days.length > 0 && (
+        <TableKey band={band} units={units} unitText={unitText} />
+      )}
       <SourcesFooter forecast={forecast} picture={picture} />
     </main>
   );

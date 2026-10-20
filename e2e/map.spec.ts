@@ -277,6 +277,63 @@ test("a light shows the selected hour's stars, as the dock does, and follows the
   }
 });
 
+test("a click just off a light's ring chooses it, and the nearest light wins", async ({
+  page,
+}) => {
+  await openChart(page, 1440, 900, null);
+  // A light with room round it, and a point a little way off its ring.
+  const { id, x, y } = await page.evaluate(() => {
+    const lights = [...document.querySelectorAll<HTMLElement>(".spot-marker")]
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        return {
+          id: el.dataset.spotId!,
+          x: r.x + r.width / 2,
+          y: r.y + r.height / 2,
+        };
+      })
+      .filter((l) => l.y > 300 && l.y < 700);
+    const alone = lights.find((l) =>
+      lights.every((o) => o === l || Math.hypot(o.x - l.x, o.y - l.y) > 40),
+    )!;
+    return { id: alone.id, x: alone.x, y: alone.y + 13 };
+  });
+  expect(
+    await page.evaluate(
+      ([x, y]) =>
+        document
+          .elementFromPoint(x, y)
+          ?.closest(".spot-marker")
+          ?.getAttribute("data-spot-id"),
+      [x, y],
+    ),
+  ).toBe(id);
+  await page.mouse.click(x, y);
+  await expect(page.locator(".spot-marker.sel")).toHaveAttribute(
+    "data-spot-id",
+    id,
+  );
+  await expect(page.locator(".pick-mark")).toHaveCount(0);
+});
+
+test("a light's wind and its name follow the rider's units", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem("force5.prefs.v1", JSON.stringify({ units: "m/s" })),
+  );
+  await openChart(page, 1440, 900, null);
+  const light = page.locator('[data-spot-id="brandon"]');
+  const label = await light.getAttribute("aria-label");
+  const said = / (\d+) metres per second/.exec(label ?? "");
+  expect(said, label ?? "").not.toBeNull();
+  expect(label).not.toContain("knots");
+  // The figure beside the light is the same speed, in the same units.
+  await expect(light.locator(".lt-lab i")).toHaveText(
+    new RegExp(`^[NESW]+ ${said![1]}\\b`),
+  );
+});
+
 test("only offshore is struck through; a learner's cross-offshore is too", async ({
   page,
 }) => {
@@ -570,8 +627,9 @@ test("round the chosen spot: a loupe at a true distance, a range ring, or nothin
   await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(1);
   await expect(map).toHaveClass(/is-focus/);
 
-  // Kept for the next visit, which opens on the chart alone.
-  await page.reload();
+  // Kept for the next visit, which opens on the chart alone: at `/`, as the
+  // reload of a chosen spot's own link (`/?spot=brandon`) opens on it.
+  await page.goto("/");
   await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });

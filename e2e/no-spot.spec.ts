@@ -236,6 +236,32 @@ test("the spot chosen is remembered, a bare point is not, and neither opens the 
   await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
 });
 
+test("the spot chosen is in the link, by search or light, and Back steps through them", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openMap(page);
+  await expect(page).toHaveURL(/\/$/);
+  await findSpot(page, "Keel");
+  await expect(dockName(page)).toHaveText("Keel Beach");
+  await expect(page).toHaveURL(/\/\?spot=keel$/);
+  await page.locator('[data-spot-id="dollymount"]').dispatchEvent("click");
+  await expect(dockName(page)).toHaveText("Dollymount");
+  await expect(page).toHaveURL(/\/\?spot=dollymount$/);
+  // Back to the spot before, then to the chart alone; Forward again.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/\?spot=keel$/);
+  await expect(dockName(page)).toHaveText("Keel Beach");
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator(".dock")).toHaveCount(0);
+  await page.goForward();
+  await expect(dockName(page)).toHaveText("Keel Beach");
+  // The link opens on the spot it names.
+  await page.goto("/?spot=keel");
+  await expect(dockName(page)).toHaveText("Keel Beach", { timeout: 30000 });
+});
+
 test("a spot in the link opens on it, focused; a remembered one waits to be chosen", async ({
   page,
 }) => {

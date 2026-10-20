@@ -46,6 +46,7 @@ import MapInfo from "./MapInfo";
 import { MapInfoOpen, type InfoSection } from "./mapInfoContext";
 import { foilArchiveUrl, useFoilDepth } from "./useFoilDepth";
 import type { LightState } from "../force5/src/lights";
+import { knotsIn, unitName } from "../force5/src/units";
 import { rideWedge } from "../force5/src/rideWedge";
 import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
@@ -92,7 +93,7 @@ import {
   stripDays,
 } from "./strip";
 import { ridingLocations } from "./locations";
-import { openingSpot } from "./openingSpot";
+import { openingSpot, spotAddress } from "./openingSpot";
 import { takeEarly } from "../force5/src/boot";
 import {
   loadManifest,
@@ -154,6 +155,17 @@ const MORE_KEY = "wingfoil.map.more.v1";
 /** The focus is on the point tapped on the map, not a riding place. */
 const AT_POINT = "@point";
 
+/** Where the map was tapped, as the map hands it over. */
+interface TappedAt {
+  lon: number;
+  lat: number;
+  place: string | null;
+  lake: boolean;
+}
+/** The state of a history entry of the map's own: a tapped point's. */
+interface MapEntry {
+  mapPoint?: TappedAt;
+}
 /** A point tapped on the map, as the dock names it. */
 interface Picked {
   lon: number;
@@ -835,7 +847,7 @@ export default function App() {
               s.dark || s.stars === null
                 ? "dark"
                 : `${s.stars} star${s.stars === 1 ? "" : "s"}`
-            }${s.compass && s.windKn !== null ? `, ${s.compass} ${Math.round(s.windKn)} knots` : ""}${
+            }${s.compass && s.windKn !== null ? `, ${s.compass} ${knotsIn(s.windKn, prefs.units)} ${unitName(prefs.units)}` : ""}${
               s.mark === "struck"
                 ? ", offshore"
                 : s.mark === "cross-off"
@@ -843,7 +855,7 @@ export default function App() {
                   : ""
             }`
       }`,
-    [column?.time],
+    [column?.time, prefs.units],
   );
 
   /* ---- the satellite image under the chart ---- */
@@ -851,6 +863,8 @@ export default function App() {
   // areas in view are drawn. The station nearest the map's centre gives the
   // panel and the key the tide each image was taken at.
   const satellite = useSatellite(layers.satellite, chartView);
+  // The chosen tide's image is drawn whole once its tiles are in (WindMap).
+  const [satelliteLoading, setSatelliteLoading] = useState(false);
   const chooseSatellite = (option: SatelliteOption) =>
     chooseLayers({ ...layers, satellite: option });
 
@@ -1029,20 +1043,42 @@ export default function App() {
         : null,
     [picked, spots, pointTide.manifest],
   );
+  /**
+   * Each spot chosen is a step in the page's history, with the spot in its
+   * link (`/?spot=keel`, src/openingSpot.ts): the link can be shared, Back
+   * goes to the spot before or, from the first, closes the dock, and Forward
+   * comes back. A tapped point is a step too, with no spot in the link, and
+   * the point in the entry's state; a tap after a tap only moves it.
+   */
+  const remember = (id: string | null, at?: TappedAt) => {
+    const href = spotAddress(location.href, id);
+    const state: MapEntry = at ? { mapPoint: at } : {};
+    const here = window.history.state as MapEntry | null;
+    if (at && here?.mapPoint) window.history.replaceState(state, "", href);
+    else if (
+      at ||
+      here?.mapPoint ||
+      href !== location.pathname + location.search + location.hash
+    )
+      window.history.pushState(state, "", href);
+  };
   const selectSpot = (spot: Spot, fly = true) => {
+    showSpot(spot, fly);
+    fav.visit(spot.id);
+    remember(spot.id);
+  };
+  const showSpot = (spot: Spot, fly = true) => {
     setPicked(null);
     setPoint(spot);
     setFocusId(spot.id);
-    fav.visit(spot.id);
     if (fly) controls.current?.flyTo(spot);
   };
   /** A tap on the open map: that point's forecast in the dock, and the focus on it. */
-  const pickPoint = (at: {
-    lon: number;
-    lat: number;
-    place: string | null;
-    lake: boolean;
-  }) => {
+  const pickPoint = (at: TappedAt) => {
+    showPoint(at);
+    remember(null, at);
+  };
+  const showPoint = (at: TappedAt) => {
     const coords = degrees(at.lat, at.lon);
     setPicked({
       lon: at.lon,
@@ -1055,12 +1091,41 @@ export default function App() {
     probeFoil(at.lon, at.lat);
   };
   const clearFocus = () => setFocusId(null);
-  /** The dock's close: no spot nor point, and the chart alone. */
-  const closeDock = () => {
+  const hideDock = () => {
     setPicked(null);
     setPoint(null);
     setFocusId(null);
   };
+  /**
+   * The dock's close: no spot nor point, and the chart alone, as a step in
+   * the history like a choice (Back opens the dock again).
+   */
+  const closeDock = () => {
+    hideDock();
+    remember(null);
+  };
+  // Back and Forward through the spots and points chosen: the dock follows
+  // the link. An entry that already shows what the dock shows changes
+  // nothing (the way back from a page over the map lands on one), so the
+  // chart is not flown anywhere it was not.
+  const popped = useRef(() => {});
+  popped.current = () => {
+    if (location.pathname !== "/") return;
+    const at = (window.history.state as MapEntry | null)?.mapPoint;
+    if (at) {
+      if (picked?.lon !== at.lon || picked?.lat !== at.lat) showPoint(at);
+      return;
+    }
+    const spot = openingSpot(location.search, spots);
+    if (spot) {
+      if (picked || point?.id !== spot.id) showSpot(spot);
+    } else if (picked || point) hideDock();
+  };
+  useEffect(() => {
+    const pop = () => popped.current();
+    window.addEventListener("popstate", pop);
+    return () => window.removeEventListener("popstate", pop);
+  }, []);
   useEffect(() => {
     if (!mapReady) return;
     controls.current?.fitIreland(0);
@@ -1371,6 +1436,7 @@ export default function App() {
               focusStyle={focusStyle}
               onFocusStyle={chooseFocusStyle}
               satelliteTides={satellite.station}
+              satelliteLoading={satelliteLoading}
               model={manifest?.model}
               modelNote={
                 reachNote && column
@@ -1409,6 +1475,7 @@ export default function App() {
                 setMapReady(!!c);
               }}
               onTilesFailed={(failed) => recoverRun(failed.model, failed.run)}
+              onSatelliteLoading={setSatelliteLoading}
             />
             {(status || (loading && frame)) && (
               <div

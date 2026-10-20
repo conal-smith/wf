@@ -5,12 +5,28 @@ import {
   convert,
   formatSpeed,
   isUnits,
+  knotsIn,
   unitLabel,
+  unitName,
   type Units,
 } from "./units";
 import { convert as convertFromWeather } from "./weather";
 
 describe("display units", () => {
+  it("gives a speed held in knots in the rider's units, rounded", () => {
+    expect(knotsIn(12, "kn")).toBe(12);
+    expect(knotsIn(12, "m/s")).toBe(6);
+    expect(knotsIn(12, "km/h")).toBe(22);
+    expect(knotsIn(12, "mph")).toBe(14);
+  });
+
+  it("names every unit as it is read aloud", () => {
+    expect(unitName("kn")).toBe("knots");
+    expect(unitName("m/s")).toBe("metres per second");
+    expect(unitName("km/h")).toBe("kilometres per hour");
+    expect(unitName("mph")).toBe("miles per hour");
+  });
+
   it("converts metres per second into every offered unit", () => {
     expect(convert(10, "m/s")).toBe(10);
     expect(convert(10, "kn")).toBeCloseTo(19.4384, 3);

@@ -62,6 +62,7 @@ export default function MapControls({
   satellite,
   onSatellite,
   satelliteTides,
+  satelliteLoading = false,
   focusStyle,
   onFocusStyle,
   model,
@@ -88,6 +89,8 @@ export default function MapControls({
   onSatellite: (option: SatelliteOption) => void;
   /** The images' tides at the station nearest the map's centre, once known. */
   satelliteTides: { name: string; high: number; low: number } | null;
+  /** The chosen image's tiles are still coming in: it shows whole, once they are. */
+  satelliteLoading?: boolean;
   /** What is drawn round the chosen spot: a loupe, a range ring, or nothing. */
   focusStyle: FocusStyle;
   onFocusStyle: (style: FocusStyle) => void;
@@ -251,10 +254,10 @@ export default function MapControls({
               box
             );
           })}
-          <h3>Satellite</h3>
+          <h3>Satellite at tide</h3>
           <div className="layer-sat">
             <Segmented
-              aria-label="Satellite"
+              aria-label="Satellite at tide"
               options={SATELLITE_OPTIONS.map((option) => ({
                 value: option,
                 label: SATELLITE_LABEL[option],
@@ -262,6 +265,11 @@ export default function MapControls({
               value={satellite}
               onChange={onSatellite}
             />
+            {satellite !== "off" && satelliteLoading && (
+              <small role="status" data-satellite-loading>
+                Loading the {SATELLITE_LABEL[satellite].toLowerCase()} image…
+              </small>
+            )}
             {satellite !== "off" && satelliteTides && (
               <small>
                 {satelliteTides.name}: high {approxMetres(satelliteTides.high)},

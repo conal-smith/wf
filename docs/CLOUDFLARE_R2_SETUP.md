@@ -126,7 +126,16 @@ these are the things only the real service can answer:
    that the browser decodes the frame. If Cloudflare mangles it,
    `FORCE5_BUCKET_ENCODING=gzip` is the one-variable fallback.
 4. **Pointer manifests** (`weather/gfs.json`) must come back with
-   `max-age=0, must-revalidate`, so a new run is seen at once.
+   `max-age=0, must-revalidate`, so a new run is seen at once. Check it with a
+   GET, `curl -s -D - -o /dev/null https://<data-domain>/weather/gfs.json`, not
+   `curl -I`: Cloudflare answers a HEAD without its cache (`cf-cache-status:
+   DYNAMIC`) and so shows the bucket's header, while a cached GET has its
+   `max-age` raised to the zone's **Browser Cache TTL** (four hours on
+   data.wingfoil.ie in October 2026).
+   Set *Caching > Configuration > Browser Cache TTL* to **Respect Existing
+   Headers**, or give the cache rule for the data domain a Browser TTL of
+   **Respect origin TTL**. The production monitor (`npm run monitor`) checks
+   this the way a browser sees it.
 5. Publish a second, newer run and confirm the first run's objects are
    **deleted from the bucket** (only the newest run is kept), and that
    `python force5/ingest/prune.py --bucket force5-forecast --endpoint-url … --dry-run`
