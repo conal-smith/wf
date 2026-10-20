@@ -49,7 +49,7 @@ test("at night the strip opens on the hour now, a night column of its own", asyn
   await page.clock.setFixedTime(new Date(night));
   await page.goto("/?spot=brandon");
   const slider = page.getByRole("slider", { name: "Forecast time" });
-  await expect(slider).toHaveAttribute("aria-valuetext", "Sunday 22:00", {
+  await expect(slider).toHaveAttribute("aria-valuetext", "Sun 13 Sept, 22:00", {
     timeout: 30000,
   });
   const at = await slider.inputValue();

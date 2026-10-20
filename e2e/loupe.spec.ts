@@ -12,8 +12,8 @@ import { expect, test, type Page } from "./fixtures";
  */
 test.use({ reducedMotion: "reduce" });
 
-const DARK = "Sunday 22:00";
-const MIDDAY = "Monday 14:00";
+const DARK = "Sun 13 Sept, 22:00";
+const MIDDAY = "Mon 14 Sept, 14:00";
 
 const slider = (page: Page) =>
   page.getByRole("slider", { name: "Forecast time" });
