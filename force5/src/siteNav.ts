@@ -54,6 +54,23 @@ export function siteSections(features: {
   );
 }
 
+/**
+ * Whether a path is a section's that is switched off in this build: the
+ * marketplace's or the community's, with that feature off. The host still
+ * answers it with the app (public/_redirects), and the entry point sends the
+ * reader on to the map at `/` rather than draw the map under an address that
+ * names a page that is not there.
+ */
+export function isSwitchedOffPath(
+  pathname: string,
+  features: { market: boolean; community: boolean },
+): boolean {
+  return (
+    (!features.market && isMarketPath(pathname)) ||
+    (!features.community && isCommunityPath(pathname))
+  );
+}
+
 /** `/market` and everything under it — but not `/marketplace-of-ideas`. */
 const MARKET_PATH = /^\/market(\/|$)/;
 
