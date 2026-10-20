@@ -34,6 +34,7 @@ import {
 import { sunTimes } from "../../force5/src/sun.js";
 import { KNOTS } from "../../force5/src/units.js";
 import {
+  AGREEMENT_MIN_MODELS,
   AGREEMENT_SPREAD_KN,
   agreementFrom,
   leadHours,
@@ -606,6 +607,12 @@ export interface HourWind {
    */
   agreement: Agreement | null;
   models: number;
+  /**
+   * How far to trust the hour: `agreement`, but low behind fewer than three
+   * models. hourWind always gives it; an hour built from elsewhere (the app's
+   * spot page) may not.
+   */
+  confidence?: Agreement;
   /** Which model the headline wind, gust and direction are, and so the stars. */
   lead: string;
   /**
@@ -647,6 +654,25 @@ export function spotWindLines(
   return { lines, outside };
 }
 
+const RANK = { high: 0, moderate: 1, low: 2 } as const;
+const worse = (a: Agreement, b: Agreement) => (RANK[a] >= RANK[b] ? a : b);
+
+/**
+ * How far to trust an hour or a session: its agreement, but never above "low"
+ * behind fewer than three models. One or two models can agree by chance, and
+ * once HARMONIE's and ICON-EU's runs end only ECMWF and GFS are left, so a
+ * closely agreeing pair must not read as four models agreeing.
+ * Lead time is already in the agreement, whose spread limits tighten by day.
+ */
+export function confidenceOf(
+  agreement: Agreement | null,
+  models: number,
+): Agreement {
+  return agreement === null || models < AGREEMENT_MIN_MODELS
+    ? "low"
+    : agreement;
+}
+
 /**
  * One hour at a spot: the headline from the one model the stars come from
  * (`from`: HARMONIE then ECMWF unless a caller names others), the range and
@@ -675,6 +701,13 @@ export function hourWind(
     .map((s) => s.gust! * KNOTS)
     .sort((a, b) => a - b);
   const direction = bearing(lead.u, lead.v);
+  const agreement =
+    samples.length > 1
+      ? agreementFrom(
+          speeds,
+          leadHours(Math.max(...samples.map((s) => s.runTime)), time),
+        )
+      : null;
   const hour: HourWind = {
     wind_kn: round(lead.speed * KNOTS),
     min_kn: round(speeds[0]),
@@ -683,14 +716,9 @@ export function hourWind(
     gust_max_kn: gusts.length ? round(gusts[gusts.length - 1]) : null,
     direction_deg: direction,
     direction: compass(direction),
-    agreement:
-      samples.length > 1
-        ? agreementFrom(
-            speeds,
-            leadHours(Math.max(...samples.map((s) => s.runTime)), time),
-          )
-        : null,
+    agreement,
     models: samples.length,
+    confidence: confidenceOf(agreement, samples.length),
     lead: lead.id,
     gust_lead: lead.gust === null ? null : lead.id,
   };
@@ -1045,7 +1073,9 @@ export const METHOD =
   `ahead: high under ${AGREEMENT_SPREAD_KN[0][0]} kn today and under ` +
   `${AGREEMENT_SPREAD_KN[3][0]} kn from day 3, low from ` +
   `${AGREEMENT_SPREAD_KN[0][1]} kn today and ${AGREEMENT_SPREAD_KN[3][1]} kn ` +
-  "from day 3, and never high from fewer than three models. Not " +
+  "from day 3, and never high from fewer than three models. `confidence` is " +
+  "the agreement but low wherever fewer than three models cover the hour " +
+  "(`models`; once the shorter runs end, only ECMWF and GFS are left). Not " +
   "bias-corrected against observations. " +
   "Waves come from the finest wave model that covers the spot. " +
   "Model forecasts only: never a statement that conditions are safe.";
@@ -1140,12 +1170,18 @@ export interface Session {
   min_kn: number;
   max_kn: number;
   gust_max_kn: number | null;
+  /** The strongest headline gust (the lead model's, else every model's top). */
+  gust_kn: number | null;
+  /** Some hour gusts GUSTY_SPREAD_KN or more over its mean wind. */
+  gusty: boolean;
   direction: string;
   direction_deg: number;
   /** The worst agreement of any hour; null when only one model covered it. */
   agreement: Agreement | null;
   /** The fewest models behind any hour of the session. */
   models: number;
+  /** The worst confidence of any hour: low wherever fewer than three models cover it. */
+  confidence: Agreement;
 }
 export interface SpotSessions {
   spot: RidingSpot;
@@ -1156,6 +1192,10 @@ export interface SpotSessions {
 export interface FindOptions {
   minKnots: number;
   maxKnots: number;
+  /** An hour gusting over this many knots is not rideable. */
+  maxGustKnots?: number;
+  /** Nor one whose gust is more than this many times its mean wind. */
+  maxGustFactor?: number;
   daylightOnly: boolean;
   minSessionHours: number;
   county?: string;
@@ -1172,6 +1212,29 @@ export interface FindOptions {
  * beside each session, as the site shows it beside the stars, and decides
  * nothing (the ruling of 19 October 2026).
  */
+/**
+ * How far over its mean an hour may gust before its session is flagged
+ * `gusty`. The stars take nothing off for a riding day's 8 or 9 knots over the
+ * mean (force5/src/stars.ts); a gust 12 or more over it is a different day.
+ */
+export const GUSTY_SPREAD_KN = 12;
+
+/** The gust a limit reads: the headline's, else the top of every model's. */
+const gustOf = (hour: HourWind) => hour.gust_kn ?? hour.gust_max_kn;
+
+/** Whether an hour's gust is inside the limits a search asked for. */
+function gustWithin(hour: HourWind, options: FindOptions): boolean {
+  const gust = gustOf(hour);
+  if (gust === null) return true;
+  if (options.maxGustKnots !== undefined && gust > options.maxGustKnots)
+    return false;
+  return (
+    options.maxGustFactor === undefined ||
+    hour.wind_kn <= 0 ||
+    gust / hour.wind_kn <= options.maxGustFactor
+  );
+}
+
 export async function findSessions(
   source: ForecastSource,
   spots: readonly RidingSpot[],
@@ -1207,6 +1270,7 @@ export async function findSessions(
         hour !== null &&
         hour.wind_kn >= options.minKnots &&
         hour.wind_kn <= options.maxKnots &&
+        gustWithin(hour, options) &&
         (!options.daylightOnly || daylight(spot, time));
       if (good) run.push({ time, hour: hour! });
       else close();
@@ -1233,6 +1297,10 @@ function session(run: { time: number; hour: HourWind }[]): Session {
   const gusts = run.flatMap((r) =>
     r.hour.gust_max_kn === null ? [] : [r.hour.gust_max_kn],
   );
+  const headlineGusts = run.flatMap((r) => {
+    const gust = gustOf(r.hour);
+    return gust === null ? [] : [gust];
+  });
   // Direction from the unit vectors, so SW and W average to WSW, not to E.
   let x = 0;
   let y = 0;
@@ -1242,11 +1310,10 @@ function session(run: { time: number; hour: HourWind }[]): Session {
   }
   const direction =
     Math.round(((Math.atan2(x, y) * 180) / Math.PI + 360) % 360) % 360;
-  const rank = { high: 0, moderate: 1, low: 2 } as const;
   const worst = run.reduce<Agreement | null>((acc, r) => {
     const a = r.hour.agreement;
     if (a === null) return acc;
-    return acc === null || rank[a] > rank[acc] ? a : acc;
+    return acc === null ? a : worse(acc, a);
   }, null);
   const first = run[0].time;
   const last = run[run.length - 1].time;
@@ -1261,10 +1328,21 @@ function session(run: { time: number; hour: HourWind }[]): Session {
     min_kn: Math.min(...speeds),
     max_kn: Math.max(...speeds),
     gust_max_kn: gusts.length ? Math.max(...gusts) : null,
+    gust_kn: headlineGusts.length ? Math.max(...headlineGusts) : null,
+    gusty: run.some((r) => {
+      const gust = gustOf(r.hour);
+      return gust !== null && gust - r.hour.wind_kn >= GUSTY_SPREAD_KN;
+    }),
     direction: compass(direction),
     direction_deg: direction,
     agreement: worst,
     models: Math.min(...run.map((r) => r.hour.models)),
+    confidence: run
+      .map(
+        (r) =>
+          r.hour.confidence ?? confidenceOf(r.hour.agreement, r.hour.models),
+      )
+      .reduce(worse),
   };
 }
 

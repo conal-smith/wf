@@ -10,7 +10,9 @@ import {
 import {
   WAVE_MODELS,
   WEATHER_MODELS,
+  GUSTY_SPREAD_KN,
   WIND_MODELS,
+  confidenceOf,
   findSessions,
   findSpot,
   hourEnsemble,
@@ -407,6 +409,20 @@ describe("hourWind", () => {
     expect(hourWind([harmonie, ecmwf, ...others], at + 6 * HOUR, false)).toBeNull();
   });
 
+  it("is low on confidence behind fewer than three models, however closely they agree", () => {
+    const harmonie = line("harmonie", { u: 0, v: 5, gust: 7 });
+    // Four that agree exactly, and a pair agreeing as closely.
+    const four = hourWind([harmonie, ...others.slice(0, 3)], at, false)!;
+    expect(four.models).toBe(4);
+    expect(four.agreement).toBe("high");
+    expect(four.confidence).toBe("high");
+    const two = hourWind([harmonie, others[0]], at, false)!;
+    expect(two.models).toBe(2);
+    expect(two.agreement).toBe("moderate");
+    expect(two.confidence).toBe("low");
+    expect(hourWind([harmonie], at, false)!.confidence).toBe("low");
+  });
+
   it("takes the models a caller names", () => {
     const harmonie = line("harmonie", { u: 9, v: 0, gust: 12 });
     const hour = hourWind([harmonie, ...others], at, false, {
@@ -482,6 +498,15 @@ describe("the ensembles' members", () => {
   });
 });
 
+describe("confidenceOf", () => {
+  it("keeps the agreement from three models on, and is low below", () => {
+    expect(confidenceOf("high", 3)).toBe("high");
+    expect(confidenceOf("moderate", 4)).toBe("moderate");
+    expect(confidenceOf("moderate", 2)).toBe("low");
+    expect(confidenceOf(null, 1)).toBe("low");
+  });
+});
+
 describe("findSessions", () => {
   it("ranks spots by hours in the range and groups them into sessions", async () => {
     const source = fixtureSource();
@@ -500,8 +525,12 @@ describe("findSessions", () => {
       expect(result.rideable_hours).toBe(
         result.sessions.reduce((sum, s) => sum + s.hours, 0),
       );
-      for (const s of result.sessions)
+      for (const s of result.sessions) {
         expect(s.agreement === null).toBe(s.models === 1);
+        // The fixtures' live runs are ECMWF and GFS alone: never above low.
+        expect(s.models).toBeLessThanOrEqual(2);
+        expect(s.confidence).toBe("low");
+      }
     }
     const hours = all.spots.map((s) => s.rideable_hours);
     expect(hours).toEqual([...hours].sort((a, b) => b - a));
@@ -521,6 +550,64 @@ describe("findSessions", () => {
     expect(dark.searched).toBe(
       spots.filter((s) => s.county === "Dublin").length,
     );
+  });
+});
+
+describe("findSessions' gust limits", () => {
+  const search = async (limits: object) => {
+    const source = fixtureSource();
+    const spots = await loadSpots(source);
+    const window = windowFor(FIXTURE_NOW, { hours: 48, stepHours: 1 });
+    return findSessions(source, spots, window, {
+      minKnots: 0,
+      maxKnots: 80,
+      daylightOnly: false,
+      minSessionHours: 1,
+      limit: 30,
+      now: FIXTURE_NOW,
+      ...limits,
+    });
+  };
+
+  it("leaves hours gusting over max_gust_kn out of the rideable hours", async () => {
+    const all = await search({});
+    const calm = await search({ maxGustKnots: 25 });
+    const total = (r: typeof all) =>
+      r.spots.reduce((sum, s) => sum + s.rideable_hours, 0);
+    expect(total(calm)).toBeLessThan(total(all));
+    expect(calm.spots.length).toBeGreaterThan(0);
+    for (const s of calm.spots.flatMap((r) => r.sessions))
+      expect(s.gust_kn).toBeLessThanOrEqual(25);
+    expect(
+      all.spots.flatMap((r) => r.sessions).some((s) => s.gust_kn! > 25),
+    ).toBe(true);
+  });
+
+  it("leaves out hours gusting more than max_gust_factor times the mean", async () => {
+    const steady = await search({ maxGustFactor: 1.6 });
+    for (const s of steady.spots.flatMap((r) => r.sessions))
+      expect(s.gust_kn!).toBeLessThanOrEqual(1.6 * s.max_kn + 0.1);
+    const hours = (r: typeof steady) =>
+      r.spots.reduce((sum, s) => sum + s.rideable_hours, 0);
+    expect(hours(steady)).toBeGreaterThan(0);
+    expect(hours(steady)).toBeLessThan(hours(await search({})));
+  });
+
+  it("flags a session whose gusts run 12 kn or more over the mean", async () => {
+    const sessions = (await search({})).spots.flatMap((r) => r.sessions);
+    // The fixtures' whole two days gust to about 30 kn over a 12 kn mean.
+    expect(sessions.length).toBeGreaterThan(0);
+    for (const s of sessions) {
+      expect(s.gusty).toBe(true);
+      expect(s.gust_kn! - s.min_kn).toBeGreaterThanOrEqual(GUSTY_SPREAD_KN);
+    }
+    // Under a 25 kn limit some sessions stay within 12 kn of every hour's mean.
+    const calm = (await search({ maxGustKnots: 25 })).spots.flatMap(
+      (r) => r.sessions,
+    );
+    expect(calm.some((s) => !s.gusty)).toBe(true);
+    for (const s of calm.filter((s) => !s.gusty))
+      expect(s.gust_kn! - s.max_kn).toBeLessThan(GUSTY_SPREAD_KN);
   });
 });
 

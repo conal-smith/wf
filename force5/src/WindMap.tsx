@@ -159,7 +159,20 @@ type Props = {
   onReady: (controls: MapControls | null) => void;
   /** A tile the frame on screen needs could not be read (windLayer.ts). */
   onTilesFailed?: (frame: Frame) => void;
+  /**
+   * The satellite image chosen is still coming in (true), or is drawn
+   * (false): the picture shows whole, not tile by tile, so until it does the
+   * page can say it is loading.
+   */
+  onSatelliteLoading?: (loading: boolean) => void;
 };
+
+/** The satellite image's opacity, once its tiles are in. */
+const SATELLITE_OPACITY = 0.92;
+/** How long a newly loaded satellite image takes to fade in over the old. */
+const SATELLITE_FADE_MS = 300;
+/** The longest a newly chosen image is kept back for its tiles. */
+const SATELLITE_WAIT_MS = 10000;
 
 const WORLD = [
   [-40, 35],
@@ -841,10 +854,17 @@ export default function WindMap(props: Props) {
   // chart's lines still read over it. Read by range only: an archive is a
   // quarter of a gigabyte, and a host that answered with all of it would be
   // refused rather than downloaded (archives.ts).
+  //
+  // A layer newly shown is drawn see-through until its tiles for the view
+  // are in, and only then fades in, whole, over what was there; the image it
+  // replaces (the other tide's) stays under it until then. Drawn as its tiles
+  // came, the new tide would cover the view a rectangle at a time, with the
+  // bare chart between (#39).
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
     const shown = new Set<string>();
+    const waiting: string[] = [];
     for (const area of satellite?.layers ?? []) {
       const id = `satellite-${area.id}-${satellite!.option}`;
       shown.add(id);
@@ -858,6 +878,8 @@ export default function WindMap(props: Props) {
           maxzoom: area.maxzoom,
           attribution: area.attribution,
         });
+      const hidden =
+        !map.getLayer(id) || map.getLayoutProperty(id, "visibility") === "none";
       if (!map.getLayer(id))
         map.addLayer(
           {
@@ -867,16 +889,71 @@ export default function WindMap(props: Props) {
             // MapLibre rounds a raster's zoom: half a zoom under the archive's
             // first is where its tiles start.
             minzoom: Math.max(0, area.minzoom - 0.5),
-            paint: { "raster-opacity": 0.92, "raster-fade-duration": 150 },
+            paint: { "raster-opacity": 0, "raster-fade-duration": 150 },
           },
           map.getLayer("relief") ? "relief" : undefined,
         );
-      map.setLayoutProperty(id, "visibility", "visible");
+      if (hidden) {
+        map.setPaintProperty(id, "raster-opacity-transition", {
+          duration: 0,
+          delay: 0,
+        });
+        map.setPaintProperty(id, "raster-opacity", 0);
+        map.setLayoutProperty(id, "visibility", "visible");
+      }
+      if (map.getPaintProperty(id, "raster-opacity") === 0) waiting.push(id);
     }
-    for (const id of map.getLayersOrder())
-      if (id.startsWith("satellite-") && !shown.has(id))
+    const leaving = () =>
+      map
+        .getLayersOrder()
+        .filter(
+          (id) =>
+            id.startsWith("satellite-") &&
+            !shown.has(id) &&
+            map.getLayoutProperty(id, "visibility") !== "none",
+        );
+    const hideLeaving = () => {
+      for (const id of leaving())
         map.setLayoutProperty(id, "visibility", "none");
+    };
     map.getContainer().dataset.satellite = satellite?.option ?? "off";
+    const loading = (on: boolean) => {
+      map.getContainer().dataset.satelliteLoading = String(on);
+      latest.current.onSatelliteLoading?.(on);
+    };
+    if (!waiting.length) {
+      hideLeaving();
+      loading(false);
+      return;
+    }
+    loading(true);
+    let fading: ReturnType<typeof setTimeout> | undefined;
+    const reveal = () => {
+      map.off("sourcedata", check);
+      clearTimeout(cap);
+      const duration = latest.current.reducedMotion ? 0 : SATELLITE_FADE_MS;
+      for (const id of waiting) {
+        map.setPaintProperty(id, "raster-opacity-transition", {
+          duration,
+          delay: 0,
+        });
+        map.setPaintProperty(id, "raster-opacity", SATELLITE_OPACITY);
+      }
+      loading(false);
+      fading = setTimeout(hideLeaving, duration);
+    };
+    const check = () => {
+      if (waiting.every((id) => map.isSourceLoaded(id))) reveal();
+    };
+    // A host that never answers keeps nothing back for long.
+    const cap = setTimeout(reveal, SATELLITE_WAIT_MS);
+    map.on("sourcedata", check);
+    check();
+    return () => {
+      map.off("sourcedata", check);
+      clearTimeout(cap);
+      clearTimeout(fading);
+    };
   }, [ready, satellite]);
 
   // The lights: made once per set of places, then written to in place.
@@ -892,8 +969,14 @@ export default function WindMap(props: Props) {
     };
   }, [ready, spots]);
   useEffect(() => {
-    lightsRef.current?.update(lights, selectedId, named, props.lightLabel);
-  }, [ready, spots, lights, selectedId, named]);
+    lightsRef.current?.update(
+      lights,
+      selectedId,
+      named,
+      props.lightLabel,
+      units,
+    );
+  }, [ready, spots, lights, selectedId, named, units, props.lightLabel]);
 
   // Focus: a loupe laid on the chart round the chosen spot, or a range ring,
   // with a light wash of paper beyond it; or, as the rider chooses, nothing.

@@ -7,7 +7,10 @@
  *
  * Nothing is drawn until the list of pictures says this place has one, and
  * nothing if its picture will not load: no picture, no gap. The frame keeps
- * the picture's shape while it loads, so the page never moves under it.
+ * the picture's shape while it loads, so the page never moves under it. Once
+ * the first picture is in, the other tide's is fetched behind it, so the
+ * switch is one press; a press before it is in keeps the picture there is,
+ * says the other is loading, and swaps it in the moment it arrives.
  */
 import { ArrowUp } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -38,6 +41,7 @@ const styles = tv({
     ink: "fill-none stroke-ink",
     ring: "fill-card stroke-ink",
     north: "absolute top-3 right-3 gap-0.5 font-semibold",
+    loading: "absolute top-3 left-3",
     scale: "absolute bottom-3 left-3 gap-2",
     bar: "block h-1.5 border-0 border-x border-b border-ink",
     caption: "flex flex-wrap items-center justify-between gap-x-4 gap-y-2",
@@ -98,6 +102,40 @@ function Picture({
 }) {
   const s = styles();
   const [tide, setTide] = useState<PictureTide>("high");
+  // The pictures the browser has, by address.
+  const [ready, setReady] = useState<ReadonlySet<string>>(() => new Set());
+  const loaded = (url: string) =>
+    setReady((r) => (r.has(url) ? r : new Set(r).add(url)));
+  const has = (which: PictureTide) => ready.has(picture.urls[which]);
+  const other: PictureTide = tide === "high" ? "low" : "high";
+  // The chosen tide's picture once it is in; until then the other's, if that
+  // one is (the switch was pressed before its picture arrived).
+  const shown = !has(tide) && has(other) ? other : tide;
+  const waiting = shown !== tide;
+  // Fetch what is not in yet: the chosen tide's, and once either picture is
+  // in, the other's behind it. A picture the browser has loaded is in its
+  // cache, so the <img> takes it from there the moment `shown` turns to it.
+  const fetching = useRef(new Map<string, HTMLImageElement>());
+  const started = has("high") || has("low");
+  useEffect(() => {
+    for (const which of ["high", "low"] as const) {
+      const url = picture.urls[which];
+      if (ready.has(url) || fetching.current.has(url)) continue;
+      if (which !== tide && !started) continue;
+      const image = new Image();
+      image.decoding = "async";
+      image.onload = () => loaded(url);
+      image.onerror = onFail;
+      image.src = url;
+      fetching.current.set(url, image);
+    }
+  }, [picture, tide, started]);
+  useEffect(() => {
+    const images = fetching.current;
+    return () => {
+      for (const image of images.values()) image.onload = image.onerror = null;
+    };
+  }, []);
   const [frameRef, size] = useSize<HTMLDivElement>();
   const place = size && inFrame(picture, size.width, size.height);
   const scale = place && scaleBar(place.metresPerScreenPixel, size.width * 0.3);
@@ -107,15 +145,16 @@ function Picture({
       : `, and an arrow the way its beach faces (${compass(facing)})`;
   return (
     <figure className={s.figure()} data-spot-satellite data-tide={tide}>
-      <div className={s.frame()} ref={frameRef}>
+      <div className={s.frame()} ref={frameRef} aria-busy={waiting}>
         <img
           className={s.image()}
-          src={picture.urls[tide]}
+          src={picture.urls[shown]}
           width={picture.width}
           height={picture.height}
-          alt={`${name} from above at ${tide} tide, north up: a satellite picture with the riding place ringed at its centre${faces}.`}
+          alt={`${name} from above at ${shown} tide, north up: a satellite picture with the riding place ringed at its centre${faces}.`}
           loading="lazy"
           decoding="async"
+          onLoad={() => loaded(picture.urls[shown])}
           onError={onFail}
         />
         {place && (
@@ -142,6 +181,17 @@ function Picture({
             <circle className={s.ring()} r={7.6} strokeWidth={1.4} />
             <circle className="fill-ink" r={2} />
           </svg>
+        )}
+        {waiting && (
+          <Chip
+            tone="glass"
+            eyebrow
+            className={s.loading()}
+            role="status"
+            data-picture-loading
+          >
+            Loading {tide} tide…
+          </Chip>
         )}
         <Chip tone="glass" eyebrow className={s.north()} aria-hidden="true">
           <ArrowUp size={11} strokeWidth={2} />N
