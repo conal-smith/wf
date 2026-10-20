@@ -22,7 +22,7 @@ export const SATELLITE_OPTIONS: readonly SatelliteOption[] = [
   "low",
 ];
 
-/** The Layers panel's switch, under its "Satellite" heading. */
+/** The Layers panel's switch, under its "Satellite at tide" heading. */
 export const SATELLITE_LABEL: Record<SatelliteOption, string> = {
   off: "Off",
   high: "High tide",
