@@ -1677,6 +1677,56 @@ test("the blend and the fold stay under the pointer from the first click, so eve
   }
 });
 
+test.describe("on a phone", () => {
+  // The phone the blend was found moving on (#107), a finger and no mouse.
+  test.use({
+    viewport: { width: 393, height: 852 },
+    isMobile: true,
+    hasTouch: true,
+  });
+
+  test("the blend stays under the finger from the first tap, so every tap is its, not the hours'", async ({
+    page,
+  }) => {
+    await withTides(page);
+    await page.goto("/?spot=malahide-estuary");
+    const dock = page.locator(".dock");
+    await expect(dock.locator("tr.tt-stars")).toBeVisible({ timeout: 30000 });
+    const tools = dock.locator(".dk-tools");
+    const standing = async () => {
+      const [t, d] = await Promise.all([
+        tools.boundingBox(),
+        dock.boundingBox(),
+      ]);
+      return d!.y - (t!.y + t!.height);
+    };
+    const blend = tools.getByRole("button", { name: "Blend" });
+    const box = (await blend.boundingBox())!;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    const edge = await standing();
+    const table = (await dock.boundingBox())!.height;
+    for (let i = 1; i <= 3; i++) {
+      await page.touchscreen.tap(x, y);
+      await expect(blend).toHaveAttribute("aria-pressed", String(i % 2 === 1));
+      await expect
+        .poll(async () => (await blend.boundingBox())?.y)
+        .toBeCloseTo(box.y, 0);
+    }
+    // The blend did grow the dock, under the tools rather than with them.
+    await expect(dock.locator(".tt-blend")).toBeVisible();
+    expect((await dock.boundingBox())!.height).toBeGreaterThan(table + 20);
+    await page.waitForTimeout(400);
+    await expect(
+      page.getByRole("region", { name: "Forecast for Malahide Estuary" }),
+    ).toBeVisible();
+    // A tap anywhere else puts them back on the dock's top edge.
+    const hours = (await dock.locator("tr.tt-day").boundingBox())!;
+    await page.touchscreen.tap(hours.x + 40, hours.y + hours.height / 2);
+    await expect.poll(standing).toBeCloseTo(edge, 0);
+  });
+});
+
 test("on a phone's blend, a turn's time and height stay over the tide's dot where it passes them", async ({
   page,
 }) => {
