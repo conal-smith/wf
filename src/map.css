@@ -83,17 +83,29 @@
 .map-focus {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
   pointer-events: none;
-  overflow: visible;
   z-index: 2;
 }
-/* Moved over the spot as a layer of its own: a pan paints nothing again. */
-.map-canvas.is-focus > .map-focus {
+.map-sheet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+/* The loupe's foot box, on a sheet only as big as what is drawn on it. */
+.map-sheet.is-foot {
+  width: 1px;
+  height: 1px;
+}
+/* Each sheet is moved over the spot as a layer of its own: a pan paints
+   nothing again, and nor does the foot box held in view. */
+.map-canvas.is-focus .map-sheet {
   will-change: transform;
 }
-.map-focus > g {
+.map-focus > div {
   animation: chart-fade 400ms ease both;
 }
 /* The rim as the chart draws a box: ink, a band of paper, ink. */
@@ -739,7 +751,7 @@
     animation: none;
   }
   .map-pen-loop,
-  .map-focus > g {
+  .map-focus > div {
     animation: none;
   }
 }

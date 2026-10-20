@@ -100,30 +100,43 @@ export function rangeRing(
   return { metres, label: unit.label(n), px: metres / metresPerPx };
 }
 
+/** The most bands the wash is ever cut in: each is a layer of its own on the map. */
+export const WASH_BANDS = 5;
+
 /**
- * The light paper wash beyond the mark, as holes round the spot in pixels
- * and the opacity each layer of it is drawn at: stacked, the layers add up.
- * The loupe's is one flat 18%, its edge under the rim's paper band. The
- * ring's is barely there and only well beyond it, feathered out to 10% in
- * five steps too slight to see.
+ * The light paper wash beyond the mark: holes round the spot in pixels, and
+ * the wash's strength from each hole out to the next, the last out to the
+ * edge of the world. The loupe's is one flat 18%, its edge under the rim's
+ * paper band. The ring's is barely there and only well beyond it, feathered
+ * out to 10% in five steps too slight to see.
+ *
+ * Each band is as strong as that many sheets of the first one's paper laid
+ * on one another, which is how the ring's wash was first drawn: five sheets
+ * of the whole world, each with its hole, stacked. That filled the map five
+ * times over on every frame; a band apiece fills it once.
  */
 export function washHoles(
   style: FocusStyle,
   px: number,
-): { holes: number[]; opacity: number } {
-  if (style === "loupe") return { holes: [px + LOUPE_BAND / 2], opacity: 0.18 };
+): { holes: number[]; opacity: number[] } {
+  if (style === "loupe")
+    return { holes: [px + LOUPE_BAND / 2], opacity: [0.18] };
   if (style === "ring") {
-    const steps = 5;
+    const steps = WASH_BANDS;
     const start = px * 1.45;
+    const sheet = 1 - (1 - 0.1) ** (1 / steps);
     return {
       holes: Array.from(
         { length: steps },
         (_, i) => start + (i * 160) / (steps - 1),
       ),
-      opacity: 1 - (1 - 0.1) ** (1 / steps),
+      opacity: Array.from(
+        { length: steps },
+        (_, i) => 1 - (1 - sheet) ** (i + 1),
+      ),
     };
   }
-  return { holes: [], opacity: 0 };
+  return { holes: [], opacity: [] };
 }
 
 /* ---- the ride rose: the loupe's glass, at a true distance ----------------- */

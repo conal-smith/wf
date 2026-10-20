@@ -28,6 +28,7 @@ import {
   roseRadius,
   roseScale,
   washHoles,
+  WASH_BANDS,
   zoomFor,
   type FocusStyle,
   type Line,
@@ -192,6 +193,21 @@ const WORLD = [
 const SVG = "http://www.w3.org/2000/svg";
 
 /**
+ * The wash's layers, a band of it apiece (focus.ts `washHoles`): the first,
+ * "focus", the loupe's, the rest the ring's as it feathers out.
+ */
+const WASH_LAYERS = Array.from({ length: WASH_BANDS }, (_, i) =>
+  i ? `focus-${i}` : "focus",
+);
+
+/**
+ * How far the mark round a spot is stretched through a zoom before it is drawn
+ * again at its new size: a third smaller or half again larger, and its lines
+ * and print still read as the mark's.
+ */
+const STRETCH = [0.67, 1.5] as const;
+
+/**
  * While `redraw` draws over a drawing: for each parent, how many of its
  * elements have been drawn again so far.
  */
@@ -292,8 +308,8 @@ function hatches(g: SVGGElement) {
  * Inside it, the ride rose for the dock's hour (focus.ts `roseDrawing`): the
  * no-go hatched, the tack out washed in paper, the tack home dashed, the drift
  * downwind, and the half-way ring with its distance when it is to scale. On
- * the bezel, the offshore winds in the pen's red, the needle in the wind's
- * colour, and the reading in a box at its foot.
+ * the bezel, the offshore winds in the pen's red and the needle in the wind's
+ * colour. The reading in a box at its foot is `drawFoot`'s.
  */
 function drawLoupe(
   g: SVGGElement,
@@ -404,42 +420,50 @@ function drawLoupe(
     fill: loupe.colour,
   });
   svgEl(needle, "circle", { cx: dial.pin[0], cy: dial.pin[1], r: 1.6 });
-  const box = footBox(loupe.reading, loupe.relation, r);
-  const foot = svgEl(g, "g", {
-    class: "map-loupe-foot",
-    transform: `translate(0 ${box.y.toFixed(1)})`,
+}
+
+/**
+ * The box at the bezel's foot: the reading, and the wind's relation to the
+ * shore. It is drawn round the origin of a sheet of its own and moved there
+ * (`place` in the focus effect), so a box held in view as the chart moves
+ * under it costs no drawing at all.
+ */
+function drawFoot(foot: SVGGElement, loupe: LoupeRose | null) {
+  redraw(foot, () => {
+    if (!loupe) return;
+    const box = footBox(loupe.reading, loupe.relation, 0);
+    svgEl(foot, "rect", {
+      class: "map-loupe-foot-box",
+      x: -box.w / 2,
+      y: -box.h / 2,
+      width: box.w,
+      height: box.h,
+    });
+    svgEl(foot, "rect", {
+      class: "map-loupe-foot-rule",
+      x: -box.w / 2 + 2.5,
+      y: -box.h / 2 + 2.5,
+      width: box.w - 5,
+      height: box.h - 5,
+    });
+    write(
+      svgEl(foot, "text", {
+        class: "map-loupe-reading",
+        x: -box.w / 2 + 9,
+        y: 4.5,
+      }),
+      loupe.reading,
+    );
+    write(
+      svgEl(foot, "text", {
+        class: `map-loupe-relation${loupe.warn ? " is-warn" : ""}`,
+        x: box.w / 2 - 8,
+        y: 4,
+        "text-anchor": "end",
+      }),
+      loupe.relation,
+    );
   });
-  svgEl(foot, "rect", {
-    class: "map-loupe-foot-box",
-    x: -box.w / 2,
-    y: -box.h / 2,
-    width: box.w,
-    height: box.h,
-  });
-  svgEl(foot, "rect", {
-    class: "map-loupe-foot-rule",
-    x: -box.w / 2 + 2.5,
-    y: -box.h / 2 + 2.5,
-    width: box.w - 5,
-    height: box.h - 5,
-  });
-  write(
-    svgEl(foot, "text", {
-      class: "map-loupe-reading",
-      x: -box.w / 2 + 9,
-      y: 4.5,
-    }),
-    loupe.reading,
-  );
-  write(
-    svgEl(foot, "text", {
-      class: `map-loupe-relation${loupe.warn ? " is-warn" : ""}`,
-      x: box.w / 2 - 8,
-      y: 4,
-      "text-anchor": "end",
-    }),
-    loupe.relation,
-  );
 }
 
 /** The range ring at the origin, `r` pixels out, with its distance written up and to the right. */
@@ -559,7 +583,7 @@ export default function WindMap(props: Props) {
   const particles = useRef<HTMLCanvasElement | null>(null);
   const neat = useRef<SVGSVGElement>(null);
   const pen = useRef<SVGSVGElement | null>(null);
-  const glass = useRef<SVGSVGElement | null>(null);
+  const glass = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const windRef = useRef<WindLayer | null>(null);
   const lightsRef = useRef<Lights | null>(null);
@@ -639,8 +663,8 @@ export default function WindMap(props: Props) {
     const canvas = document.createElement("canvas");
     canvas.className = "particle-canvas";
     canvas.setAttribute("aria-hidden", "true");
-    const lens = document.createElementNS(SVG, "svg");
-    lens.setAttribute("class", "map-focus");
+    const lens = document.createElement("div");
+    lens.className = "map-focus";
     lens.setAttribute("aria-hidden", "true");
     const sheet = document.createElementNS(SVG, "svg");
     sheet.setAttribute("class", "map-pen");
@@ -717,19 +741,22 @@ export default function WindMap(props: Props) {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
-      map.addLayer(
-        {
-          id: "focus",
-          type: "fill",
-          source: "focus",
-          layout: { visibility: "none" },
-          paint: {
-            "fill-color": colours.paper,
-            "fill-opacity": 0,
-            "fill-opacity-transition": { duration: 450 },
+      WASH_LAYERS.forEach((id, band) =>
+        map.addLayer(
+          {
+            id,
+            type: "fill",
+            source: "focus",
+            filter: ["==", ["get", "band"], band],
+            layout: { visibility: "none" },
+            paint: {
+              "fill-color": colours.paper,
+              "fill-opacity": 0,
+              "fill-opacity-transition": { duration: 450 },
+            },
           },
-        },
-        "water-names",
+          "water-names",
+        ),
       );
       if (particles.current) {
         windRef.current = createWindLayer(map, particles.current, {
@@ -868,9 +895,10 @@ export default function WindMap(props: Props) {
           ? "wind-wash"
           : "water-names";
       const order = map.getLayersOrder();
+      const at = order.indexOf("focus");
       // Moving a layer is itself a style change: only when it is out of place.
-      if (order[order.indexOf("focus") + 1] !== under)
-        map.moveLayer("focus", under);
+      if ([...WASH_LAYERS, under].some((id, i) => order[at + i] !== id))
+        for (const id of WASH_LAYERS) map.moveLayer(id, under);
     };
     settle();
     // The wash's layer is added once its first image is ready.
@@ -1102,9 +1130,10 @@ export default function WindMap(props: Props) {
   // `roseScale`), the ring a round distance chosen again whenever the camera
   // rests. Zoomed far out the rose stops at ROSE_MIN_PX, a compass with the
   // wind and nothing inside; zoomed in past the screen its bezel runs off it,
-  // and the box at its foot is held in view. A pan only moves the glass; it
-  // is drawn again when its size changes, or the hour (`rose`). The wind and
-  // the lights are never washed.
+  // and the box at its foot is held in view. A pan only moves the glass, and
+  // a zoom stretches it, until the stretch would show or the camera rests
+  // (`stale`); it is drawn again then, or for a new hour (`rose`). The wind
+  // and the lights are never washed.
   //
   // It moves in the frame the map is drawn: MapLibre fires "move" as it
   // renders, and its own markers are moved there too. A frame later, the
@@ -1113,22 +1142,41 @@ export default function WindMap(props: Props) {
   const redrawRose = useRef(() => {});
   useEffect(() => {
     const map = mapRef.current;
-    const svg = glass.current;
-    if (!ready || !map || !svg) return;
+    const lens = glass.current;
+    if (!ready || !map || !lens) return;
     const spot = focus;
     const style: FocusStyle = spot ? focusStyle : "off";
     map.getContainer().classList.toggle("is-focus", !!spot);
-    svg.dataset.focus = style;
-    svg.replaceChildren();
-    svg.style.transform = "";
-    const g =
-      spot && style !== "off"
-        ? (svgEl(svg, "g", {
-            class: style === "loupe" ? "map-loupe" : "map-range",
-          }) as SVGGElement)
-        : null;
+    lens.dataset.focus = style;
+    lens.replaceChildren();
+    // The mark on a sheet of its own, and the loupe's foot box on another:
+    // each is moved as a layer (src/map.css), so neither is drawn again for
+    // the other's sake.
+    let sheet: SVGSVGElement | null = null;
+    let g: SVGGElement | null = null;
+    let footSheet: SVGSVGElement | null = null;
+    let foot: SVGGElement | null = null;
+    if (spot && style !== "off") {
+      const mark = document.createElement("div");
+      mark.className = style === "loupe" ? "map-loupe" : "map-range";
+      sheet = document.createElementNS(SVG, "svg");
+      sheet.setAttribute("class", "map-sheet");
+      g = svgEl(sheet, "g") as SVGGElement;
+      mark.append(sheet);
+      if (style === "loupe") {
+        footSheet = document.createElementNS(SVG, "svg");
+        footSheet.setAttribute("class", "map-sheet is-foot");
+        foot = svgEl(footSheet, "g", {
+          class: "map-loupe-foot",
+        }) as SVGGElement;
+        mark.append(footSheet);
+      }
+      lens.append(mark);
+    }
     /** The mark's radius on screen, and the ring's distance, written as the rider reads it. */
     let r = 0;
+    /** The radius it stands at on the screen now, its sheet stretched to it through a zoom. */
+    let shown = 0;
     let range = { metres: 0, label: "" };
     const scale = roseScale(units);
     /** Whether the rose is drawn to scale (not held at its smallest). */
@@ -1136,27 +1184,43 @@ export default function WindMap(props: Props) {
     const drawRose = () => {
       if (g)
         redraw(g, () =>
-          drawLoupe(g, r, toScale ? scale : null, latest.current.rose),
+          drawLoupe(g!, r, toScale ? scale : null, latest.current.rose),
         );
     };
-    /** The foot box, kept in the map's clear area when the bezel's foot is off it. */
-    const pinFoot = (q: { x: number; y: number }) => {
-      const foot = g?.querySelector(".map-loupe-foot");
+    /**
+     * The foot box, below the bezel, or held in the map's clear area when the
+     * bezel's foot is off it. While the camera moves it goes where it is
+     * wanted in one move of its sheet, so holding it in view draws nothing.
+     * At rest its sheet stands where the glass's does, on whole pixels, and
+     * the box is set in from there, as it was when the two were one drawing.
+     */
+    const pinFoot = (
+      q: { x: number; y: number },
+      x: number,
+      y: number,
+      still: boolean,
+    ) => {
       const loupe = latest.current.rose;
-      if (!foot || !loupe) return;
+      if (!foot || !footSheet || !loupe) return;
       const el = map.getContainer();
       const p = latest.current;
-      // In the glass's own coordinates: above the dock, as padding() keeps.
-      const at = footBox(loupe.reading, loupe.relation, r, {
+      // Round the spot: above the dock, as padding() keeps.
+      const at = footBox(loupe.reading, loupe.relation, shown, {
         left: -q.x,
         right: el.clientWidth - q.x,
         bottom: el.clientHeight - p.bottomInset - (p.phone ? 64 : 24) - q.y,
       });
-      setAttr(
-        foot,
-        "transform",
-        `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})`,
-      );
+      if (still) {
+        footSheet.style.transform = `translate(${x}px, ${y}px)`;
+        setAttr(
+          foot,
+          "transform",
+          `translate(${(q.x - x).toFixed(2)} ${(q.y - y).toFixed(2)}) translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})`,
+        );
+      } else {
+        footSheet.style.transform = `translate(${q.x + at.x}px, ${q.y + at.y}px)`;
+        if (foot.hasAttribute("transform")) foot.removeAttribute("transform");
+      }
     };
     /** The radius of the hole in the wash under the rim, in metres. */
     let hole = 0;
@@ -1166,18 +1230,22 @@ export default function WindMap(props: Props) {
       const source = map.getSource("focus") as GeoJSONSource | undefined;
       if (!source) return;
       const m = mpp();
-      hole = (washHoles(style, r).holes[0] ?? 0) * m;
+      const holes = washHoles(style, shown).holes.map((px) => px * m);
+      hole = holes[0] ?? 0;
       source.setData({
         type: "FeatureCollection",
         features: spot
-          ? washHoles(style, r).holes.map((px) => ({
+          ? holes.map((metres, band) => ({
               type: "Feature" as const,
-              properties: {},
+              properties: { band },
               geometry: {
                 type: "Polygon" as const,
+                // Out to the next hole, or the edge of the world.
                 coordinates: [
-                  WORLD,
-                  ring(spot.lon, spot.lat, px * m).reverse(),
+                  band + 1 < holes.length
+                    ? ring(spot.lon, spot.lat, holes[band + 1])
+                    : WORLD,
+                  ring(spot.lon, spot.lat, metres).reverse(),
                 ],
               },
             }))
@@ -1186,7 +1254,7 @@ export default function WindMap(props: Props) {
     };
     /** The places named at full strength: those the wash leaves clear. */
     const names = () => {
-      const [clear] = washHoles(style, r).holes;
+      const [clear] = washHoles(style, shown).holes;
       if (spot && clear && map.getLayer("places-near"))
         map.setFilter("places-near", [
           "all",
@@ -1201,43 +1269,62 @@ export default function WindMap(props: Props) {
         ]);
     };
     /**
+     * Whether the mark is to be drawn again at a radius of `now` pixels. At
+     * rest, whenever it is not drawn at that size. Through a zoom its sheet is
+     * stretched instead, a change the compositor makes alone, until the
+     * stretch would show in its lines and print: drawn again on every frame
+     * of a pinch, the rose was painted and rastered again on every frame.
+     */
+    const stale = (now: number, still: boolean) =>
+      !r ||
+      (still
+        ? Math.abs(now - r) > 0.05
+        : now / r < STRETCH[0] || now / r > STRETCH[1]);
+    /**
      * Over the spot, wherever the camera has it; the ring at its distance.
      * The sheet is moved as a layer of its own (src/map.css), so a pan
      * paints nothing again. At rest it stands on whole pixels, the rest
      * drawn in, as sharp as it was.
      */
     const place = () => {
-      if (!spot || !g) return;
+      if (!spot || !g || !sheet) return;
       const q = map.project([spot.lon, spot.lat]);
       const still = !map.isMoving();
       const x = still ? Math.round(q.x) : q.x;
       const y = still ? Math.round(q.y) : q.y;
-      svg.style.transform = `translate(${x}px, ${y}px)`;
       setAttr(
         g,
         "transform",
         `translate(${(q.x - x).toFixed(2)} ${(q.y - y).toFixed(2)})`,
       );
       if (style === "ring") {
-        const next = range.metres / mpp();
-        if (Math.abs(next - r) > 0.05) {
-          r = next;
-          redraw(g, () => drawRange(g, r, range.label));
+        shown = range.metres / mpp();
+        if (stale(shown, still)) {
+          r = shown;
+          redraw(g, () => drawRange(g!, r, range.label));
         }
       } else {
         const next = roseRadius(scale.metres, mpp());
-        if (Math.abs(next.r - r) > 0.05 || next.toScale !== toScale) {
-          r = next.r;
+        shown = next.r;
+        if (next.toScale !== toScale || stale(shown, still)) {
+          r = shown;
           toScale = next.toScale;
           drawRose();
         }
-        pinFoot(q);
+      }
+      const k = Math.abs(shown - r) > 0.05 ? shown / r : 1;
+      sheet.style.transform =
+        k === 1
+          ? `translate(${x}px, ${y}px)`
+          : `translate(${x}px, ${y}px) scale(${k.toFixed(4)})`;
+      if (style === "loupe") {
+        pinFoot(q, x, y, still);
         // The hole in the wash is a distance on the chart, under the rim's
         // band through most of a zoom: in one it is cut again only when its
         // edge would show, and once the camera rests (`measure`). Cut on
         // every frame, it kept MapLibre tiling it again, a step behind.
         const edge = hole / mpp();
-        if (!still && (edge < r || edge > r + LOUPE_BAND)) wash();
+        if (!still && (edge < shown || edge > shown + LOUPE_BAND * k)) wash();
       }
     };
     /** Sized for the map: the glass to its shorter side, the ring's distance to the zoom too. */
@@ -1255,26 +1342,33 @@ export default function WindMap(props: Props) {
       wash();
       names();
     };
+    if (foot) drawFoot(foot, latest.current.rose);
     measure();
     remeasure.current = measure;
     redrawRose.current = () => {
       if (style !== "loupe" || !spot || !g || !r) return;
       drawRose();
-      pinFoot(map.project([spot.lon, spot.lat]));
+      if (foot) drawFoot(foot, latest.current.rose);
+      place();
     };
     const { opacity } = washHoles(style, 0);
-    let hide = 0;
-    if (opacity) {
-      map.setLayoutProperty("focus", "visibility", "visible");
-      map.setPaintProperty("focus", "fill-opacity", opacity);
-    } else {
-      map.setPaintProperty("focus", "fill-opacity", 0);
-      // Drawn only while there is a wash: an empty layer still costs a pass.
-      hide = window.setTimeout(() => {
-        if (map.getLayer("focus"))
-          map.setLayoutProperty("focus", "visibility", "none");
-      }, 500);
-    }
+    const hide: number[] = [];
+    WASH_LAYERS.forEach((id, band) => {
+      const o = opacity[band] ?? 0;
+      if (o) {
+        map.setLayoutProperty(id, "visibility", "visible");
+        map.setPaintProperty(id, "fill-opacity", o);
+      } else if (map.getLayoutProperty(id, "visibility") !== "none") {
+        map.setPaintProperty(id, "fill-opacity", 0);
+        // Drawn only while there is a wash: an empty layer still costs a pass.
+        hide.push(
+          window.setTimeout(() => {
+            if (map.getLayer(id))
+              map.setLayoutProperty(id, "visibility", "none");
+          }, 500),
+        );
+      }
+    });
     // The names away from the spot step back with the wash; with no mark,
     // they stay as they are.
     const quiet = style !== "off";
@@ -1290,7 +1384,7 @@ export default function WindMap(props: Props) {
     map.on("zoomend", measure);
     map.on("resize", measure);
     return () => {
-      clearTimeout(hide);
+      hide.forEach(clearTimeout);
       remeasure.current = () => {};
       redrawRose.current = () => {};
       map.off("move", place);
