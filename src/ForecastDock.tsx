@@ -39,6 +39,7 @@ import {
 import type { PlaceHour } from "./ratings";
 import WeatherGlyph from "./WeatherGlyph";
 import { wheelHours, type WheelHours } from "./wheelHours";
+import { arrowsFree, hourStep } from "./hourKeys";
 import {
   clock,
   columnAtX,
@@ -1423,6 +1424,31 @@ export default function ForecastDock(props: Props) {
       wheel.detach();
       wheeling.current = null;
     };
+  }, []);
+
+  // Left and Right step the hour wherever the focus is, unless it is in a
+  // control whose own keys they are (src/hourKeys.ts): not only once an hour
+  // has been clicked. Each press is one hour, from the hour in hand, at once:
+  // the strip's own key scroll is not left to run, as a burst of its smooth
+  // scrolls was read back as hours long after the keys had stopped. A page
+  // over the map leaves the dock mounted but inert, and its keys alone.
+  const keyed = useRef({ selected, count: columns.length, onSelect });
+  keyed.current = { selected, count: columns.length, onSelect };
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => {
+      const step = hourStep(event);
+      if (!step || event.defaultPrevented || !arrowsFree(event.target)) return;
+      if (wrap.current?.closest("[inert]")) return;
+      if (document.querySelector("dialog[open]")) return;
+      event.preventDefault();
+      const { selected, count, onSelect } = keyed.current;
+      const next = Math.max(0, Math.min(count - 1, selected + step));
+      if (next === selected) return;
+      keyed.current.selected = next;
+      onSelect(next, true);
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
   }, []);
 
   // The selected column, marked in place rather than by re-rendering the
