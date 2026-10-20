@@ -1170,6 +1170,10 @@ export interface Session {
   min_kn: number;
   max_kn: number;
   gust_max_kn: number | null;
+  /** The strongest headline gust (the lead model's, else every model's top). */
+  gust_kn: number | null;
+  /** Some hour gusts GUSTY_SPREAD_KN or more over its mean wind. */
+  gusty: boolean;
   direction: string;
   direction_deg: number;
   /** The worst agreement of any hour; null when only one model covered it. */
@@ -1188,6 +1192,10 @@ export interface SpotSessions {
 export interface FindOptions {
   minKnots: number;
   maxKnots: number;
+  /** An hour gusting over this many knots is not rideable. */
+  maxGustKnots?: number;
+  /** Nor one whose gust is more than this many times its mean wind. */
+  maxGustFactor?: number;
   daylightOnly: boolean;
   minSessionHours: number;
   county?: string;
@@ -1204,6 +1212,29 @@ export interface FindOptions {
  * beside each session, as the site shows it beside the stars, and decides
  * nothing (the ruling of 19 October 2026).
  */
+/**
+ * How far over its mean an hour may gust before its session is flagged
+ * `gusty`. The stars take nothing off for a riding day's 8 or 9 knots over the
+ * mean (force5/src/stars.ts); a gust 12 or more over it is a different day.
+ */
+export const GUSTY_SPREAD_KN = 12;
+
+/** The gust a limit reads: the headline's, else the top of every model's. */
+const gustOf = (hour: HourWind) => hour.gust_kn ?? hour.gust_max_kn;
+
+/** Whether an hour's gust is inside the limits a search asked for. */
+function gustWithin(hour: HourWind, options: FindOptions): boolean {
+  const gust = gustOf(hour);
+  if (gust === null) return true;
+  if (options.maxGustKnots !== undefined && gust > options.maxGustKnots)
+    return false;
+  return (
+    options.maxGustFactor === undefined ||
+    hour.wind_kn <= 0 ||
+    gust / hour.wind_kn <= options.maxGustFactor
+  );
+}
+
 export async function findSessions(
   source: ForecastSource,
   spots: readonly RidingSpot[],
@@ -1239,6 +1270,7 @@ export async function findSessions(
         hour !== null &&
         hour.wind_kn >= options.minKnots &&
         hour.wind_kn <= options.maxKnots &&
+        gustWithin(hour, options) &&
         (!options.daylightOnly || daylight(spot, time));
       if (good) run.push({ time, hour: hour! });
       else close();
@@ -1265,6 +1297,10 @@ function session(run: { time: number; hour: HourWind }[]): Session {
   const gusts = run.flatMap((r) =>
     r.hour.gust_max_kn === null ? [] : [r.hour.gust_max_kn],
   );
+  const headlineGusts = run.flatMap((r) => {
+    const gust = gustOf(r.hour);
+    return gust === null ? [] : [gust];
+  });
   // Direction from the unit vectors, so SW and W average to WSW, not to E.
   let x = 0;
   let y = 0;
@@ -1292,6 +1328,11 @@ function session(run: { time: number; hour: HourWind }[]): Session {
     min_kn: Math.min(...speeds),
     max_kn: Math.max(...speeds),
     gust_max_kn: gusts.length ? Math.max(...gusts) : null,
+    gust_kn: headlineGusts.length ? Math.max(...headlineGusts) : null,
+    gusty: run.some((r) => {
+      const gust = gustOf(r.hour);
+      return gust !== null && gust - r.hour.wind_kn >= GUSTY_SPREAD_KN;
+    }),
     direction: compass(direction),
     direction_deg: direction,
     agreement: worst,

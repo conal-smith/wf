@@ -10,6 +10,7 @@ import {
 import {
   WAVE_MODELS,
   WEATHER_MODELS,
+  GUSTY_SPREAD_KN,
   WIND_MODELS,
   confidenceOf,
   findSessions,
@@ -549,6 +550,64 @@ describe("findSessions", () => {
     expect(dark.searched).toBe(
       spots.filter((s) => s.county === "Dublin").length,
     );
+  });
+});
+
+describe("findSessions' gust limits", () => {
+  const search = async (limits: object) => {
+    const source = fixtureSource();
+    const spots = await loadSpots(source);
+    const window = windowFor(FIXTURE_NOW, { hours: 48, stepHours: 1 });
+    return findSessions(source, spots, window, {
+      minKnots: 0,
+      maxKnots: 80,
+      daylightOnly: false,
+      minSessionHours: 1,
+      limit: 30,
+      now: FIXTURE_NOW,
+      ...limits,
+    });
+  };
+
+  it("leaves hours gusting over max_gust_kn out of the rideable hours", async () => {
+    const all = await search({});
+    const calm = await search({ maxGustKnots: 25 });
+    const total = (r: typeof all) =>
+      r.spots.reduce((sum, s) => sum + s.rideable_hours, 0);
+    expect(total(calm)).toBeLessThan(total(all));
+    expect(calm.spots.length).toBeGreaterThan(0);
+    for (const s of calm.spots.flatMap((r) => r.sessions))
+      expect(s.gust_kn).toBeLessThanOrEqual(25);
+    expect(
+      all.spots.flatMap((r) => r.sessions).some((s) => s.gust_kn! > 25),
+    ).toBe(true);
+  });
+
+  it("leaves out hours gusting more than max_gust_factor times the mean", async () => {
+    const steady = await search({ maxGustFactor: 1.6 });
+    for (const s of steady.spots.flatMap((r) => r.sessions))
+      expect(s.gust_kn!).toBeLessThanOrEqual(1.6 * s.max_kn + 0.1);
+    const hours = (r: typeof steady) =>
+      r.spots.reduce((sum, s) => sum + s.rideable_hours, 0);
+    expect(hours(steady)).toBeGreaterThan(0);
+    expect(hours(steady)).toBeLessThan(hours(await search({})));
+  });
+
+  it("flags a session whose gusts run 12 kn or more over the mean", async () => {
+    const sessions = (await search({})).spots.flatMap((r) => r.sessions);
+    // The fixtures' whole two days gust to about 30 kn over a 12 kn mean.
+    expect(sessions.length).toBeGreaterThan(0);
+    for (const s of sessions) {
+      expect(s.gusty).toBe(true);
+      expect(s.gust_kn! - s.min_kn).toBeGreaterThanOrEqual(GUSTY_SPREAD_KN);
+    }
+    // Under a 25 kn limit some sessions stay within 12 kn of every hour's mean.
+    const calm = (await search({ maxGustKnots: 25 })).spots.flatMap(
+      (r) => r.sessions,
+    );
+    expect(calm.some((s) => !s.gusty)).toBe(true);
+    for (const s of calm.filter((s) => !s.gusty))
+      expect(s.gust_kn! - s.max_kn).toBeLessThan(GUSTY_SPREAD_KN);
   });
 });
 
