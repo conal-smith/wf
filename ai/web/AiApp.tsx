@@ -14,7 +14,14 @@
  * them. A phone gets the apps and the questions and nothing else.
  */
 import { ArrowLeft, ArrowUpRight, Check, Copy, Plus } from "lucide-react";
-import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
 import { API_ROOT } from "../../shared/web/http";
 import { usePageTitle } from "../../shared/web/usePageTitle";
@@ -94,6 +101,13 @@ const styles = tv({
     addressLabel: "shrink-0",
     addressValue:
       "min-w-0 font-mono text-caption tracking-normal wrap-anywhere text-ink normal-case",
+    // A glyph-only copy button says "Copied" in a tag above it, as the
+    // worded ones say it in place: over the row, so nothing beside it moves.
+    copyAt: "relative inline-flex shrink-0",
+    copiedTag: [
+      "pointer-events-none absolute right-0 bottom-full z-panel mb-1 rounded-control bg-inverse px-1.5 py-0.5 whitespace-nowrap text-ink-inverse",
+      MONO_LABEL,
+    ],
   },
 });
 
@@ -117,16 +131,34 @@ function keepAssistant(assistant: Assistant) {
   }
 }
 
-/** Copy, then say so for a moment. */
-function useCopied(): [boolean, (value: string) => void] {
+/**
+ * Copy, then say so for a moment. The copy answers once the clipboard has
+ * it, so a caller can say more than "Copied".
+ */
+function useCopied(): [boolean, (value: string) => Promise<void>] {
   const [copied, setCopied] = useState(false);
-  const copy = (value: string) => {
-    void navigator.clipboard?.writeText(value).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    });
+  const timer = useRef<number | undefined>(undefined);
+  const copy = async (value: string) => {
+    if (!navigator.clipboard) throw new Error("No clipboard");
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setCopied(false), 1600);
   };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
   return [copied, copy];
+}
+
+/**
+ * What a copy says to a screen reader: the same "Copied" every button shows,
+ * in a live region that is always there, so the change is heard.
+ */
+function CopiedStatus({ copied, label }: { copied: boolean; label: string }) {
+  return (
+    <span className="sr-only" role="status">
+      {copied ? `Copied ${label}` : ""}
+    </span>
+  );
 }
 
 function CopyButton({
@@ -139,31 +171,43 @@ function CopyButton({
   /** The glyph alone, in a row of text where words would crowd it. */
   bare?: boolean;
 }) {
+  const s = styles();
   const [copied, copy] = useCopied();
   const Glyph = copied ? Check : Copy;
   if (bare)
     return (
-      <Button
-        icon
-        variant="quiet"
-        size="sm"
-        aria-label={copied ? "Copied" : `Copy ${label}`}
-        title={copied ? "Copied" : "Copy"}
-        onClick={() => copy(value)}
-      >
-        <Glyph size={14} aria-hidden="true" />
-      </Button>
+      <span className={s.copyAt()}>
+        <Button
+          icon
+          variant="quiet"
+          size="sm"
+          aria-label={`Copy ${label}`}
+          title="Copy"
+          onClick={() => void copy(value).catch(() => {})}
+        >
+          <Glyph size={14} aria-hidden="true" />
+        </Button>
+        {copied && (
+          <span className={s.copiedTag()} aria-hidden="true">
+            Copied
+          </span>
+        )}
+        <CopiedStatus copied={copied} label={label} />
+      </span>
     );
   return (
-    <Button
-      variant="pill"
-      size="sm"
-      aria-label={`Copy ${label}`}
-      onClick={() => copy(value)}
-    >
-      <Glyph size={14} aria-hidden="true" />
-      <span>{copied ? "Copied" : "Copy"}</span>
-    </Button>
+    <>
+      <Button
+        variant="pill"
+        size="sm"
+        aria-label={`Copy ${label}`}
+        onClick={() => void copy(value).catch(() => {})}
+      >
+        <Glyph size={14} aria-hidden="true" />
+        <span>{copied ? "Copied" : "Copy"}</span>
+      </Button>
+      <CopiedStatus copied={copied} label={label} />
+    </>
   );
 }
 
@@ -244,20 +288,33 @@ export default function AiApp() {
   const pick = (next: Assistant) => {
     setAssistant(next);
     keepAssistant(next);
+    setCopiedFor(null);
   };
   const name = ASSISTANT_NAME[assistant];
   const sends = askSends(assistant);
   const plan = addPlan(assistant, device, url);
   const [copied, copy] = useCopied();
+  // The app the address was copied for, which the note under the button
+  // keeps saying (the copy's own "Copied" is gone by the time the reader is
+  // back from the app's tab), until another is picked.
+  const [copiedFor, setCopiedFor] = useState<Assistant | null>(null);
   // A computer keeps this page in its tab. A phone follows the link in the
   // same one: that is what hands it to the app (a universal or app link),
   // where a new tab can stay in the browser.
   const away = phone ? {} : { target: "_blank", rel: "noopener" };
 
   const add = (event: MouseEvent) => {
-    if (plan.copies) copy(url);
+    if (plan.copies)
+      void copy(url).then(
+        () => setCopiedFor(assistant),
+        () => {},
+      );
     if (!plan.href) event.preventDefault();
   };
+  // A button that copies says so before it is pressed, with the copy glyph,
+  // and after, with the same "Copied" as every copy button on the page.
+  const AddGlyph = copied ? Check : plan.copies ? Copy : Plus;
+  const addWords = copied ? "Copied" : plan.label;
 
   return (
     <div className={s.root()}>
@@ -316,8 +373,8 @@ export default function AiApp() {
                       onClick={add}
                       data-add={assistant}
                     >
-                      <Plus size={15} aria-hidden="true" />
-                      <span>{plan.label}</span>
+                      <AddGlyph size={15} aria-hidden="true" />
+                      <span>{addWords}</span>
                     </Button>
                   ) : (
                     <Button
@@ -326,24 +383,22 @@ export default function AiApp() {
                       onClick={add}
                       data-add={assistant}
                     >
-                      {copied ? (
-                        <Check size={15} aria-hidden="true" />
-                      ) : (
-                        <Copy size={15} aria-hidden="true" />
-                      )}
-                      <span>{copied ? "Copied" : plan.label}</span>
+                      <AddGlyph size={15} aria-hidden="true" />
+                      <span>{addWords}</span>
                     </Button>
                   )}
                 </div>
-                <p className={s.note()} aria-live="polite">
-                  {plan.copies && plan.href && copied
-                    ? `Address copied. ${plan.note}`
-                    : plan.note}
-                </p>
+                {/* The address beside the button that copies it, so what is
+                    on the clipboard is in sight. */}
                 <p className={s.address()}>
                   <span className={s.addressLabel()}>The address</span>
                   <code className={s.addressValue()}>{url}</code>
                   <CopyButton value={url} label="the server address" bare />
+                </p>
+                <p className={s.note()} aria-live="polite" data-add-note>
+                  {copiedFor === assistant && plan.copiedNote
+                    ? plan.copiedNote
+                    : plan.note}
                 </p>
               </Step>
 

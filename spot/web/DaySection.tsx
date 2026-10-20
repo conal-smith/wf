@@ -50,6 +50,7 @@ import {
   gustJumps,
   handoverWords,
   placeChanges,
+  skyEnd,
   windIn,
   type DaySun,
   type LeadChange,
@@ -58,6 +59,7 @@ import {
   type TideTurn,
 } from "./spot";
 import { STARS_HREF } from "../../force5/src/siteNav";
+import { rangeKeyWords } from "./TableKey";
 
 const styles = tv({
   slots: {
@@ -99,6 +101,9 @@ const styles = tv({
     sky: "w-16",
     air: "ml-1 align-middle text-body font-medium text-ink",
     notYet: "font-body text-caption text-ink-muted italic",
+    // Under the hour the Sky column first says "not yet", what that means.
+    skyNote:
+      "border-0 border-b border-line px-1 py-1 text-right font-body text-caption text-ink-muted",
     unit: "text-ink-muted",
     muted: "text-ink-muted",
     more: "border-b border-line",
@@ -156,6 +161,8 @@ export interface DaySectionProps {
   changes: readonly LeadChange[];
   /** Rate the stars from another model, picked in an hour's card. */
   onStarsFrom?: (model: string, where: StarsWhere) => void;
+  /** The sky model stops on this day: say under it what "not yet" means. */
+  skyStops?: boolean;
 }
 
 /** The theme's `wide` breakpoint (ui/theme.css), where the rows get shorter. */
@@ -166,15 +173,26 @@ const WIDE = "(min-width: 45rem)";
  * keeps is the space it fills and nothing moves when it draws. Built from
  * the parts as they are set below: an hour is `h-10`, `wide:h-9` (40px, 36px
  * wide); the column heads 24px, 31px wide where the knot scale's 20px figure
- * shows; a fold 32px; and DayTide's 124px curve over its four rows of light,
- * 249px whatever the tides. The rows are the day's own, so a three-hourly day
- * keeps the space of its four or five, not of twelve.
+ * shows; a fold 32px; the line where the sky stops 24px; and
+ * DayTide's 124px curve over its four rows of light, 249px whatever the
+ * tides. The rows are the day's own, so a three-hourly day keeps the space
+ * of its four or five, not of twelve.
  */
-function estimate(rows: readonly SpotRow[], wide: boolean): number {
+function estimate(
+  rows: readonly SpotRow[],
+  wide: boolean,
+  skyStops: boolean,
+): number {
   const { before, light, after } = darkRuns(rows);
   const folds = Number(before.length > 0) + Number(after.length > 0);
   const head = light.length ? (wide ? 31 : 24) : 0;
-  return head + folds * 32 + light.length * (wide ? 36 : 40) + 249;
+  return (
+    head +
+    folds * 32 +
+    light.length * (wide ? 36 : 40) +
+    (skyStops ? 24 : 0) +
+    249
+  );
 }
 
 export function DaySection(props: DaySectionProps) {
@@ -244,7 +262,7 @@ export function DaySection(props: DaySectionProps) {
       ) : (
         <div
           className={s.placeholder()}
-          style={{ height: estimate(day.rows, wide) }}
+          style={{ height: estimate(day.rows, wide, !!props.skyStops) }}
           aria-busy="true"
         />
       )}
@@ -270,6 +288,7 @@ function DayBody({
   starsFrom,
   changes,
   onStarsFrom,
+  skyStops,
 }: DaySectionProps) {
   const s = styles();
   const names = dayNames(day.date, now);
@@ -301,10 +320,10 @@ function DayBody({
 
   // The sky model stops days before the wind models do. Past its last hour a
   // column of dashes would read as readings missing hour by hour, so the
-  // first row it no longer reaches says "not yet" (forecast) once, and the
-  // rest stay blank; a dash is kept for a gap before that.
-  let skyEnds = day.rows.length;
-  while (skyEnds > 0 && !day.rows[skyEnds - 1].hour.weather) skyEnds--;
+  // first row it no longer reaches says "not yet" (forecast) once, a line
+  // under it on the day the sky stops says why, and the rest stay blank; a
+  // dash is kept for a gap before that.
+  const skyEnds = skyEnd(day.rows);
   const drawn = [
     ...(showNight ? before : []),
     ...light,
@@ -330,6 +349,14 @@ function DayBody({
     <Fragment key={row.time}>
       {placed.before.get(row.time)?.map(handoverRow)}
       {hourRow(row)}
+      {skyStops && row.time === skyNote && (
+        <tr data-sky-note>
+          <td id={`sky-note-${day.date}`} colSpan={9} className={s.skyNote()}>
+            Sky <span className={s.notYet()}>not yet</span>: the weather
+            forecast does not reach this far ahead yet.
+          </td>
+        </tr>
+      )}
       {row.time === lastDrawn && placed.end.map(handoverRow)}
     </Fragment>
   );
@@ -425,7 +452,14 @@ function DayBody({
                   />
                 </RatingTip>
               </span>
-              <span className={s.windPlain()}>
+              <span
+                className={s.windPlain()}
+                title={
+                  jump
+                    ? `Gust ${windIn(wind.gust_kn!, units)} ${unitText}, in red: well over the wind`
+                    : undefined
+                }
+              >
                 <Figure
                   value={windIn(wind.wind_kn, units)}
                   sup={
@@ -477,7 +511,7 @@ function DayBody({
           {rating?.potential ? (
             <>
               {rating.wing.own ?? rating.wing.recommended}
-              <span className={s.unit()}> m</span>
+              <span className={s.unit()}> m²</span>
             </>
           ) : (
             <span className={s.muted()}>–</span>
@@ -521,7 +555,8 @@ function DayBody({
           ) : row.time === skyNote ? (
             <span
               className={s.notYet()}
-              title="The sky forecast does not reach this far yet"
+              title="The weather forecast does not reach this far ahead yet"
+              aria-describedby={skyStops ? `sky-note-${day.date}` : undefined}
             >
               not yet<span className="sr-only"> forecast</span>
             </span>
@@ -560,7 +595,11 @@ function DayBody({
               <th scope="col" className={s.th()}>
                 From
               </th>
-              <th scope="col" className={s.th({ className: s.range() })}>
+              <th
+                scope="col"
+                className={s.th({ className: s.range() })}
+                title={rangeKeyWords(unitText)}
+              >
                 <span className="sr-only">The wind against your range</span>
                 <RangeAxis band={band} units={units} />
               </th>
@@ -694,7 +733,7 @@ function verdict(rating: HourRating | null, daylight: boolean) {
     <>
       {rating.potential > 0 ? (
         <>
-          <b className="font-mono font-semibold">{wing} m</b> wing
+          <b className="font-mono font-semibold">{wing} m²</b> wing
         </>
       ) : (
         "No stars"

@@ -55,6 +55,64 @@ test("one pick sets the add button and where the questions open, and is kept", a
   await expect(page.getByRole("link", { name: "Add to Cursor" })).toBeVisible();
 });
 
+test("every copy says Copied, on the button and to a screen reader", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/ai");
+  const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
+  const address = page.getByRole("button", {
+    name: "Copy the server address",
+  });
+
+  // The glyph-only buttons: a "Copied" tag in sight, and the same in a live
+  // region beside each.
+  await address.click();
+  await expect(address.locator("..")).toContainText("Copied");
+  await expect(
+    page.getByRole("status").filter({ hasText: "Copied the server address" }),
+  ).toHaveCount(1);
+  expect(await clipboard()).toMatch(/\/api\/mcp$/);
+
+  const question = page
+    .getByRole("button", { name: "Copy the question" })
+    .first();
+  await question.click();
+  await expect(question.locator("..")).toContainText("Copied");
+  expect(await clipboard()).toMatch(/^When's the next good session/);
+
+  // The worded ones say it in place.
+  const command = page.getByRole("button", {
+    name: "Copy the Claude Code command",
+  });
+  await command.click();
+  await expect(command).toHaveText(/Copied/);
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Copied the Claude Code command" }),
+  ).toHaveCount(1);
+
+  // Adding to Grok copies the address on the way and says so under the
+  // button, after the tab it opens is long gone.
+  await page.route("https://grok.com/**", (route) => route.abort());
+  await pick(page, "Grok").click();
+  await page.evaluate(() => navigator.clipboard.writeText(""));
+  const [tab] = await Promise.all([
+    context.waitForEvent("page"),
+    add(page).click(),
+  ]);
+  await tab.close();
+  expect(await clipboard()).toMatch(/\/api\/mcp$/);
+  await expect(page.locator("[data-add-note]")).toHaveText(
+    /^Address copied\. In Grok's connectors/,
+  );
+  await page.waitForTimeout(2000);
+  await expect(page.locator("[data-add-note]")).toHaveText(/^Address copied/);
+  await expect(add(page)).toHaveText(/Add to Grok/);
+});
+
 test.describe("on a phone", () => {
   test.use({
     viewport: { width: 390, height: 844 },

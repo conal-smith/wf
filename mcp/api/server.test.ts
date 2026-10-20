@@ -124,6 +124,36 @@ describe("the MCP endpoint", () => {
       "gfs",
     ]);
     expect(typeof found.spots[0].sessions[0].gusty).toBe("boolean");
+    expect(found.offshore_hours).toBe("left out");
+    expect("shore" in found.spots[0].sessions[0]).toBe(true);
+    const nearby = (
+      await call("find_wind", {
+        min_kn: 0,
+        max_kn: 80,
+        hours: 12,
+        daylight_only: false,
+        near: "Dublin",
+        max_km: 40,
+        counties: ["Dublin", "Wicklow"],
+      })
+    ).json();
+    expect(nearby.near).toMatchObject({ name: "County Dublin", max_km: 40 });
+    expect(nearby.counties).toEqual(["Dublin", "Wicklow"]);
+    expect(nearby.spots.length).toBeGreaterThan(0);
+    for (const spot of nearby.spots) {
+      expect(spot.distance_km).toBeLessThanOrEqual(40);
+      expect(["Dublin", "Wicklow"]).toContain(spot.spot.county);
+    }
+    const coords = (
+      await call("find_wind", { near: { lat: 52.26, lon: -9.7 }, max_km: 30 })
+    ).json();
+    expect(coords.near).toMatchObject({ lat: 52.26, lon: -9.7 });
+    const nowhere = await call("find_wind", { near: "Narnia" });
+    expect(nowhere.isError).toBe(true);
+    expect(nowhere.text).toMatch(/lat, lon/);
+    const atlantis = await call("find_wind", { counties: ["Atlantis"] });
+    expect(atlantis.isError).toBe(true);
+    expect(atlantis.text).toMatch(/Counties with spots: .*Kerry/);
     const backwards = await call("find_wind", { min_kn: 20, max_kn: 10 });
     expect(backwards.isError).toBe(true);
     const gustBelowWind = await call("find_wind", {

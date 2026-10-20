@@ -80,6 +80,12 @@ export default function FoilLegend({
         <span style={{ left: "50%" }}>3 m</span>
         <span style={{ left: "100%" }}>6 m+</span>
       </div>
+      <p className="foil-small" data-foil-floor>
+        The water&rsquo;s depth now, so a rising tide carries it to 6 m and
+        more. Where the bottom is over {-floor} m under the lowest tide (LAT),
+        nothing is drawn: it is deep enough at any tide, and the chart&rsquo;s
+        depth tints show it.
+      </p>
       <ul>
         <li>
           <i className="fk fk-enough" aria-hidden="true" />
@@ -114,8 +120,7 @@ export default function FoilLegend({
         OpenStreetMap&rsquo;s coastline; the foreshore&rsquo;s heights come from
         satellite images at known tides where there are some, and where no
         survey reached the depth is estimated from the surveys round it (a tap
-        says so). Water more than {-floor} m deep at the lowest tide is not
-        drawn: it is deep enough at any tide. Not for navigation.
+        says so). Not for navigation.
       </p>
     </div>
   );

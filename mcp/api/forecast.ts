@@ -45,6 +45,8 @@ import {
   pickModel,
   type StarsFrom,
 } from "../../force5/src/lead.js";
+import { shoreFacing } from "../../force5/src/shoreFacing.js";
+import { shoreAngle, type ShoreAngle } from "../../force5/src/stars.js";
 import type { ForecastSource } from "./httpSource.js";
 
 const HOUR = 3600000;
@@ -141,7 +143,30 @@ export const localTime = (millis: number) =>
   localFormat.format(new Date(millis));
 const iso = (millis: number) => new Date(millis).toISOString();
 
-export type { Agreement };
+export type { Agreement, ShoreAngle };
+
+/**
+ * How the wind meets the spot's shore, as the stars rate it (force5/src/stars.ts
+ * shoreAngle, from the facing the map reads): null where the facing is not
+ * known well enough, or there is no wind.
+ */
+export function shoreOf(
+  facing: number | null,
+  wind: Pick<HourWind, "direction_deg"> | null,
+): ShoreAngle | null {
+  return facing === null || wind === null
+    ? null
+    : shoreAngle(wind.direction_deg, facing);
+}
+
+/** onshore 0 … offshore 4: how far out to sea the wind would carry a rider. */
+const SEAWARD: Record<ShoreAngle, number> = {
+  onshore: 0,
+  "cross-on": 1,
+  cross: 2,
+  "cross-off": 3,
+  offshore: 4,
+};
 
 // ---- spots ------------------------------------------------------------------
 
@@ -202,6 +227,75 @@ export function findSpot(
   const county = spots.filter((s) => fold(s.county) === q);
   if (county.length === 1) return { spot: county[0] };
   return { spot: null, candidates: county };
+}
+
+/** Kilometres between two points, as the crow flies. */
+export function distanceKm(
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+): number {
+  const r = Math.PI / 180;
+  const h =
+    Math.sin(((b.lat - a.lat) * r) / 2) ** 2 +
+    Math.cos(a.lat * r) *
+      Math.cos(b.lat * r) *
+      Math.sin(((b.lon - a.lon) * r) / 2) ** 2;
+  return 2 * 6371.0088 * Math.asin(Math.sqrt(Math.min(1, h)));
+}
+
+export interface Place {
+  name: string;
+  lat: number;
+  lon: number;
+}
+
+const LAT_LON = /^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/;
+
+/**
+ * Where a rider is, from what an agent passed: a latitude and longitude, as
+ * numbers or "53.35, -6.26"; a county, as the middle of its spots; or a spot.
+ * Anything else is an error that says what would do, since this server knows
+ * no towns but its spots and their counties.
+ */
+export function findPlace(
+  spots: readonly RidingSpot[],
+  near: string | { lat: number; lon: number },
+): { place: Place } | { error: string } {
+  if (typeof near !== "string")
+    return { place: { name: `${near.lat}, ${near.lon}`, ...near } };
+  const coords = LAT_LON.exec(near);
+  if (coords) {
+    const lat = Number(coords[1]);
+    const lon = Number(coords[2]);
+    if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180)
+      return { place: { name: `${lat}, ${lon}`, lat, lon } };
+  }
+  const q = fold(near).replace(/^(county|co) /, "");
+  const county = spots.filter((s) => fold(s.county) === q);
+  if (q && county.length) {
+    const mean = (pick: (s: RidingSpot) => number) =>
+      round(county.reduce((sum, s) => sum + pick(s), 0) / county.length, 3);
+    return {
+      place: {
+        name: `County ${county[0].county}`,
+        lat: mean((s) => s.lat),
+        lon: mean((s) => s.lon),
+      },
+    };
+  }
+  const match = findSpot(spots, near);
+  if (match.spot) {
+    const { name, lat, lon } = match.spot;
+    return { place: { name, lat, lon } };
+  }
+  return {
+    error: match.candidates.length
+      ? `"${near}" could be any of: ${match.candidates
+          .slice(0, 8)
+          .map((s) => `${s.name} (${s.county})`)
+          .join("; ")}. Ask which, or pass near as { lat, lon }.`
+      : `This server only knows its spots and their counties, not "${near}". Pass near as { lat, lon } for the person's town, or name their county.`,
+  };
 }
 
 // ---- manifests --------------------------------------------------------------
@@ -1037,6 +1131,8 @@ export interface ForecastHour {
   local: string;
   daylight: boolean;
   wind: HourWind | null;
+  /** How the headline wind meets the shore; null where the facing is unknown. */
+  shore?: ShoreAngle | null;
   waves?: HourWaves | null;
   weather?: HourWeather | null;
   /** Where an ensemble reaches the spot: the spread of its members. */
@@ -1045,6 +1141,8 @@ export interface ForecastHour {
 
 export interface SpotForecast {
   spot: RidingSpot;
+  /** The bearing the shore looks out to sea along, or null where unknown. */
+  shore_facing_deg?: number | null;
   units: Record<string, string>;
   window: { from: string; to: string; step_hours: number };
   hours: ForecastHour[];
@@ -1113,12 +1211,15 @@ export async function spotForecast(
   const memberLines = spotMemberLines(wind.loaded, spot.id);
   const waveSource = preferredSource(waves.loaded, spot.id, ["swh"]);
   const weatherSource = preferredSource(weather.loaded, spot.id, ["t2m"]);
+  const facing = shoreFacing(spot.id);
   const hours = axis(window).map((time): ForecastHour => {
+    const wind = hourWind(lines, time, options.perModel ?? false, options.from);
     const hour: ForecastHour = {
       time: iso(time),
       local: localTime(time),
       daylight: daylight(spot, time),
-      wind: hourWind(lines, time, options.perModel ?? false, options.from),
+      wind,
+      shore: shoreOf(facing, wind),
     };
     if (waveSource) hour.waves = hourWaves(waveSource, time);
     if (weatherSource) hour.weather = hourWeather(weatherSource, time);
@@ -1136,6 +1237,7 @@ export async function spotForecast(
   });
   return {
     spot,
+    shore_facing_deg: facing,
     units: UNITS,
     window: {
       from: iso(window.from),
@@ -1176,6 +1278,10 @@ export interface Session {
   gusty: boolean;
   direction: string;
   direction_deg: number;
+  /** The most offshore of its hours; null where the shore's facing is unknown. */
+  shore: ShoreAngle | null;
+  /** Hours with the wind dead offshore: none unless offshore hours were allowed. */
+  offshore_hours: number;
   /** The worst agreement of any hour; null when only one model covered it. */
   agreement: Agreement | null;
   /** The fewest models behind any hour of the session. */
@@ -1185,6 +1291,10 @@ export interface Session {
 }
 export interface SpotSessions {
   spot: RidingSpot;
+  /** Kilometres from `near`, as the crow flies, when a search gave one. */
+  distance_km?: number;
+  /** The bearing the shore looks out to sea along, or null where unknown. */
+  shore_facing_deg: number | null;
   rideable_hours: number;
   sessions: Session[];
 }
@@ -1196,22 +1306,21 @@ export interface FindOptions {
   maxGustKnots?: number;
   /** Nor one whose gust is more than this many times its mean wind. */
   maxGustFactor?: number;
+  /** Count hours with the wind dead offshore too (they are left out by default). */
+  allowOffshore?: boolean;
   daylightOnly: boolean;
   minSessionHours: number;
-  county?: string;
+  /** Only spots in these counties. */
+  counties?: readonly string[];
+  /** Only spots within maxKm of here, each with its distance. */
+  near?: { lat: number; lon: number };
+  maxKm?: number;
   limit: number;
   now: number;
   /** The model the headline is, and the one past its run (default HARMONIE, then ECMWF). */
   from?: StarsFrom;
 }
 
-/**
- * Spots ranked by how many hours of the window the headline wind (one model's,
- * as the stars have it) sits inside the asked wind range, grouped into
- * sessions of consecutive hours. How far the other models agree is reported
- * beside each session, as the site shows it beside the stars, and decides
- * nothing (the ruling of 19 October 2026).
- */
 /**
  * How far over its mean an hour may gust before its session is flagged
  * `gusty`. The stars take nothing off for a riding day's 8 or 9 knots over the
@@ -1235,6 +1344,15 @@ function gustWithin(hour: HourWind, options: FindOptions): boolean {
   );
 }
 
+/**
+ * Spots ranked by how many hours of the window the headline wind (one model's,
+ * as the stars have it) sits inside the asked wind range, grouped into
+ * sessions of consecutive hours. How far the other models agree is reported
+ * beside each session, as the site shows it beside the stars, and decides
+ * nothing (the ruling of 19 October 2026). With `near`, only spots within
+ * `maxKm` are searched, each with its distance, and equal hours rank nearest
+ * first.
+ */
 export async function findSessions(
   source: ForecastSource,
   spots: readonly RidingSpot[],
@@ -1246,44 +1364,63 @@ export async function findSessions(
   sources: ModelRun[];
   unavailable: Unavailable[];
 }> {
-  const county = options.county ? fold(options.county) : null;
-  const pool = county
-    ? spots.filter((s) => fold(s.county) === county)
-    : [...spots];
-  // The squares of the places searched: every square for all of Ireland, the
-  // county's own for a county.
+  const counties = options.counties?.length
+    ? new Set(options.counties.map(fold))
+    : null;
+  const near = options.near;
+  const distance = new Map(
+    near ? spots.map((s) => [s.id, round(distanceKm(near, s))]) : [],
+  );
+  const pool = spots.filter(
+    (s) =>
+      (!counties || counties.has(fold(s.county))) &&
+      (options.maxKm === undefined ||
+        !near ||
+        distance.get(s.id)! <= options.maxKm),
+  );
+  // The squares of the places searched: every square for all of Ireland,
+  // fewer for a county or a radius.
   const wind = await loadWind(source, options.now, squaresFor(pool));
   const times = axis({ ...window, stepHours: 1 });
   const results: SpotSessions[] = [];
   for (const spot of pool) {
     const { lines } = spotWindLines(wind.loaded, spot.id);
     if (!lines.length) continue;
+    const facing = shoreFacing(spot.id);
     const sessions: Session[] = [];
-    let run: { time: number; hour: HourWind }[] = [];
+    let run: SessionHour[] = [];
     const close = () => {
       if (run.length >= options.minSessionHours) sessions.push(session(run));
       run = [];
     };
     for (const time of times) {
       const hour = hourWind(lines, time, false, options.from);
+      const shore = shoreOf(facing, hour);
       const good =
         hour !== null &&
         hour.wind_kn >= options.minKnots &&
         hour.wind_kn <= options.maxKnots &&
         gustWithin(hour, options) &&
+        (options.allowOffshore || shore !== "offshore") &&
         (!options.daylightOnly || daylight(spot, time));
-      if (good) run.push({ time, hour: hour! });
+      if (good) run.push({ time, hour: hour!, shore });
       else close();
     }
     close();
     if (sessions.length)
       results.push({
         spot,
+        ...(near && { distance_km: distance.get(spot.id)! }),
+        shore_facing_deg: facing,
         rideable_hours: sessions.reduce((sum, s) => sum + s.hours, 0),
         sessions,
       });
   }
-  results.sort((a, b) => b.rideable_hours - a.rideable_hours);
+  results.sort(
+    (a, b) =>
+      b.rideable_hours - a.rideable_hours ||
+      (a.distance_km ?? 0) - (b.distance_km ?? 0),
+  );
   return {
     spots: results.slice(0, options.limit),
     searched: pool.length,
@@ -1292,7 +1429,13 @@ export async function findSessions(
   };
 }
 
-function session(run: { time: number; hour: HourWind }[]): Session {
+interface SessionHour {
+  time: number;
+  hour: HourWind;
+  shore: ShoreAngle | null;
+}
+
+function session(run: SessionHour[]): Session {
   const speeds = run.map((r) => r.hour.wind_kn);
   const gusts = run.flatMap((r) =>
     r.hour.gust_max_kn === null ? [] : [r.hour.gust_max_kn],
@@ -1335,6 +1478,14 @@ function session(run: { time: number; hour: HourWind }[]): Session {
     }),
     direction: compass(direction),
     direction_deg: direction,
+    shore: run.reduce<ShoreAngle | null>(
+      (most, { shore }) =>
+        shore !== null && (most === null || SEAWARD[shore] > SEAWARD[most])
+          ? shore
+          : most,
+      null,
+    ),
+    offshore_hours: run.filter((r) => r.shore === "offshore").length,
     agreement: worst,
     models: Math.min(...run.map((r) => r.hour.models)),
     confidence: run

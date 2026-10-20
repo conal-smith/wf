@@ -114,6 +114,12 @@ export function SiteMenu({
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const firstLink = useRef<HTMLAnchorElement>(null);
+  // Whether the menu was open when the trigger was pressed, or null for a
+  // press from the keyboard. Safari does not focus a button it is pressed on:
+  // the press takes focus off the row to the body, the menu hears focus leave
+  // and closes, and the click that follows would open it again. The press,
+  // not what the blur left, says which way the click goes.
+  const openAtPress = useRef<boolean | null>(null);
 
   // Dismissing puts focus back where it came from. Safari does not focus a
   // button on click, so closing through the trigger would otherwise drop focus
@@ -180,7 +186,13 @@ export function SiteMenu({
         // stay the reader's own, and `aria-haspopup` would promise otherwise.
         // The controlled element only exists while the panel does.
         aria-controls={open ? panelId : undefined}
-        onClick={() => (open ? close() : setOpen(true))}
+        onPointerDown={() => (openAtPress.current = open)}
+        onClick={() => {
+          const wasOpen = openAtPress.current ?? open;
+          openAtPress.current = null;
+          if (wasOpen) close();
+          else setOpen(true);
+        }}
       >
         {open ? (
           <X size={size === "sm" ? 15 : 18} aria-hidden="true" />
@@ -204,6 +216,13 @@ export function SiteMenu({
                     className={styles.row({ current: here })}
                     href={section.href}
                     aria-current={here ? "page" : undefined}
+                    // Following a row closes the menu, said here rather than
+                    // left to focus leaving it: a click that brings no focus
+                    // with it (Safari's on a link, a window in the background,
+                    // a scripted click) fires no blur, and the map, kept
+                    // under the page the row opens (src/PagesOverMap.tsx),
+                    // came back with its menu still open.
+                    onClick={() => setOpen(false)}
                   >
                     {section.label}
                   </a>

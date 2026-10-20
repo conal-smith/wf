@@ -43,6 +43,17 @@ def dry(lat, lon):
             or (abs(lat - 53.5) < 0.2 and abs(lon + 8.5) < 0.2))
 
 
+# What SWAN's coastline does to a direction: a wet cell beside a dry one hears
+# nothing from the land side, so it points to the open sea whatever the wind.
+COAST_DIRECTION = 135.0
+
+
+def on_coast(dataset, lat, lon):
+    d_lat, d_lon = AXES[dataset]["lat"][1], AXES[dataset]["lon"][1]
+    return any(dry(lat + a * d_lat, lon + b * d_lon)
+               for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+
+
 def source_value(variable, dataset, hour, lat, lon):
     """Deterministic, plausible values; the nest reads slightly higher than the shelf."""
     base = 1.4 + 0.3 * math.sin(hour / 6.0) + 0.4 * (lat - 52.0)
@@ -139,8 +150,11 @@ class FakeErddap:
                     cells = []
                     for name in names:
                         key = next(k for k, v in fetch_mi_swan.SOURCE_VARIABLES.items() if v == name)
+                        value = source_value(name, dataset, hour, lat, lon)
+                        if key in ("mwd", "pwd") and on_coast(dataset, lat, lon):
+                            value = COAST_DIRECTION
                         cells.append("NaN" if dry(lat, lon) or (key, hour) in self.holes
-                                     else str(source_value(name, dataset, hour, lat, lon)))
+                                     else str(value))
                     lines.append(f"{fetch_mi_swan.stamp(when)},{lat},{lon}," + ",".join(cells))
         return "\n".join(lines) + "\n"
 
@@ -218,6 +232,46 @@ class SwanTests(unittest.TestCase):
         self.assertAlmostEqual(record["nearestOffsetKm"], 1.58, places=1)
         self.assertLess(record["nearestOffsetKm"], record["searched"][SHELF]["searchKm"])
 
+    def test_directions_come_from_the_nearest_cell_clear_of_the_coastline(self):
+        manifest = self.run_main("--hours", "3")
+        record = manifest["spotCells"]["brandon"]
+        # The nearest wet cell sits beside the dry one: its heights are kept...
+        self.assertEqual((record["cellLat"], record["cellLon"]), (52.2875, -10.0375))
+        # ...but its direction is the coastline's, so the directions come from the
+        # nearest cell with water all round, corner to corner with the dry one.
+        cell = record["directionCell"]
+        self.assertEqual((cell["lat"], cell["lon"]), (52.2625, -10.0375))
+        self.assertGreater(cell["offsetKm"], record["nearestOffsetKm"])
+        self.assertLessEqual(cell["offsetKm"], record["searched"][SHELF]["searchKm"])
+        for step in manifest["spotSeries"]["brandon"]:
+            self.assertNotEqual(step["values"]["mwd"], COAST_DIRECTION)
+            self.assertAlmostEqual(step["values"]["mwd"], 280.0 + 0.1 * step["hour"], places=1)
+            self.assertAlmostEqual(step["values"]["pwd"], 285.0 + 0.1 * step["hour"], places=1)
+            self.assertEqual(step["values"]["spread"], 24.5)
+        self.assertIn("directionCell", manifest["processing"])
+
+    def test_an_open_water_cell_keeps_its_own_directions_without_a_second_read(self):
+        manifest = self.run_main("--hours", "3")
+        record = manifest["spotCells"]["rusheen"]
+        self.assertEqual((record["directionCell"]["lat"], record["directionCell"]["lon"]),
+                         (record["cellLat"], record["cellLon"]))
+        series = [url for url in self.erddap.requests
+                  if NEST in url and "mean_wave_period_tm02" in url]
+        self.assertEqual(len(series), 1)
+
+    def test_no_cell_clear_of_the_coastline_in_range_publishes_no_direction(self):
+        # Only the coastline cell is within this limit: no direction, not its constant.
+        with patch.dict(fetch_mi_swan.DATASETS[SHELF], {"searchKm": 1.6}):
+            manifest = self.run_main("--hours", "3")
+        record = manifest["spotCells"]["brandon"]
+        self.assertEqual((record["cellLat"], record["cellLon"]), (52.2875, -10.0375))
+        self.assertIsNone(record["directionCell"]["lat"])
+        self.assertIn("coastline", record["directionCell"]["reason"])
+        for step in manifest["spotSeries"]["brandon"]:
+            self.assertIsNotNone(step["values"]["swh"])
+            for key in ("mwd", "pwd", "spread"):
+                self.assertIsNone(step["values"][key])
+
     def test_a_wet_home_cell_records_no_neighbour_search(self):
         record = self.run_main("--hours", "3")["spotCells"]["rusheen"]
         self.assertFalse(record["neighbourSearch"])
@@ -241,7 +295,8 @@ class SwanTests(unittest.TestCase):
         for url in masks:
             latitudes = re.findall(r"\[\((-?[\d.]+)\):1:\((-?[\d.]+)\)\]", url)
             south, north = float(latitudes[0][0]), float(latitudes[0][1])
-            self.assertLess(north - south, 2 * 8.0 / 111.195 + 2e-6)
+            # One cell wider either side, for the outermost cells' neighbours.
+            self.assertLess(north - south, 2 * (8.0 / 111.195 + 0.025) + 2e-6)
 
     # --- nest preference --------------------------------------------------
     def test_the_connemara_nest_wins_for_a_spot_inside_it(self):

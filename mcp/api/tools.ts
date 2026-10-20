@@ -12,8 +12,10 @@ import {
   GUSTY_SPREAD_KN,
   MAX_WINDOW_HOURS,
   METHOD,
+  findPlace,
   findSessions,
   findSpot,
+  fold,
   loadSpots,
   modelStatus,
   spotForecast,
@@ -56,12 +58,17 @@ export const CARE =
 export const INSTRUCTIONS = `wingfoil.ie forecasts wind, waves and tides for wing foiling spots in Ireland (Republic and Northern Ireland).
 
 - Start with list_spots or find_wind to learn spot ids; get_spot_forecast accepts an id, a name or part of one.
+- Before recommending spots, ask where the person is based (or use their location if you have it) and pass find_wind near ({ lat, lon } for a town, or a county or spot) with max_km, or the counties they'd travel to. Searching all of Ireland suits only someone willing to travel anywhere.
 - Speeds are knots, directions are degrees the wind comes FROM, times are UTC with a \`local\` Europe/Dublin label. Quote the local time to people.
 - The forecast is one model's own, the one wingfoil.ie rates its stars from, never a blend of several: HARMONIE's (Met Éireann's 2.5 km model, the most accurate here) while it reaches the hour, about the next 60 hours, and ECMWF's past it, unless a caller passes stars_from and then to choose others. \`lead\` says which model an hour is. \`agreement\` says how closely all the models agree, as context; \`confidence\` is the same but low wherever fewer than three models cover the hour (\`models\`), as happens a few days out. Hedge when confidence is low, say why (few models, or models disagreeing), and use by_model to explain a disagreement.
 - ${METHOD}
+- \`shore\` says how the wind meets the spot's beach: onshore, cross-on, cross, cross-off or offshore (the same rule wingfoil.ie's stars use). Offshore and cross-off wind carry a rider who falls away from the beach out to sea: always warn about them. find_wind leaves dead offshore hours out unless allow_offshore is set. A null shore means the beach's facing is unknown, so say offshore wind can't be ruled out there.
 - Point out sessions find_wind marks \`gusty\`. When someone has a gust limit, pass max_gust_kn (or max_gust_factor) so hours past it are left out.
 - ${CARE}
 - Credit the model providers named in \`sources\` when you share a forecast, and link people to https://wingfoil.ie for the map.`;
+
+/** How far from `near` find_wind looks unless told: about an hour and a half's drive. */
+export const DEFAULT_MAX_KM = 100;
 
 const answer = (value: unknown): ToolOutcome => ({ ok: true, value });
 const failure = (message: string): ToolOutcome => ({ ok: false, message });
@@ -124,7 +131,7 @@ export const getSpotForecast = tool({
   name: "get_spot_forecast",
   title: "Spot forecast",
   description:
-    "Hour-by-hour forecast for one spot: wind speed, gusts and direction from one weather model, the one wingfoil.ie rates its stars from (HARMONIE while it reaches the hour, then ECMWF, unless stars_from and then name others), with the range across every model and how well they agree as context, plus waves, air temperature, rain, daylight, sunrise and sunset, high and low tides and the latest sea temperature.",
+    "Hour-by-hour forecast for one spot: wind speed, gusts and direction from one weather model, the one wingfoil.ie rates its stars from (HARMONIE while it reaches the hour, then ECMWF, unless stars_from and then name others), with the range across every model and how well they agree as context, how the wind meets the shore (onshore to offshore), plus waves, air temperature, rain, daylight, sunrise and sunset, high and low tides and the latest sea temperature.",
   inputSchema: {
     spot: z
       .string()
@@ -192,7 +199,7 @@ export const findWind = tool({
   name: "find_wind",
   title: "Find wind",
   description:
-    "Rank spots by how many hours the wind will be in a range, grouped into sessions, on the one model wingfoil.ie rates its stars from (HARMONIE, then ECMWF, unless stars_from and then name others). Use this for 'where should I go this weekend?'.",
+    "Rank spots by how many hours the wind will be in a range, grouped into sessions, on the one model wingfoil.ie rates its stars from (HARMONIE, then ECMWF, unless stars_from and then name others), leaving out hours blowing dead offshore. Each session says how the wind meets the shore. Use this for 'where should I go this weekend?'.",
   inputSchema: {
     min_kn: z
       .number()
@@ -239,6 +246,37 @@ export const findWind = tool({
       .max(40)
       .optional()
       .describe("Only spots in this county."),
+    counties: z
+      .array(z.string().max(40))
+      .max(32)
+      .optional()
+      .describe("Only spots in these counties, e.g. ['Dublin', 'Wicklow']."),
+    near: z
+      .union([
+        z.string().min(1).max(80),
+        z.object({
+          lat: z.number().min(-90).max(90),
+          lon: z.number().min(-180).max(180),
+        }),
+      ])
+      .optional()
+      .describe(
+        'Where the person is: { lat, lon }, "lat, lon", a county or a spot name. Only spots within max_km are searched, and each gets its distance_km.',
+      ),
+    max_km: z
+      .number()
+      .min(1)
+      .max(600)
+      .optional()
+      .describe(
+        `How far from near to look, as the crow flies (default ${DEFAULT_MAX_KM} km).`,
+      ),
+    allow_offshore: z
+      .boolean()
+      .optional()
+      .describe(
+        "Also count hours with the wind blowing dead offshore (default false: they are left out).",
+      ),
     daylight_only: z
       .boolean()
       .optional()
@@ -267,6 +305,19 @@ export const findWind = tool({
       return failure("max_gust_kn must be at least min_kn.");
     const at = (deps.now ?? Date.now)();
     const spots = await loadSpots(deps.source);
+    const counties = [
+      ...(args.county ? [args.county] : []),
+      ...(args.counties ?? []),
+    ];
+    const known = new Set(spots.map((s) => fold(s.county)));
+    const unknown = counties.filter((c) => !known.has(fold(c)));
+    if (unknown.length)
+      return failure(
+        `No spots in ${unknown.join(", ")}. Counties with spots: ${[...new Set(spots.map((s) => s.county))].sort().join(", ")}.`,
+      );
+    const near = args.near === undefined ? null : findPlace(spots, args.near);
+    if (near && "error" in near) return failure(near.error);
+    const maxKm = args.max_km ?? DEFAULT_MAX_KM;
     const window = windowFor(at, {
       from: args.from,
       hours: args.hours ?? 72,
@@ -277,16 +328,19 @@ export const findWind = tool({
       maxKnots,
       maxGustKnots: args.max_gust_kn,
       maxGustFactor: args.max_gust_factor,
+      allowOffshore: args.allow_offshore ?? false,
       daylightOnly: args.daylight_only ?? true,
       minSessionHours: args.min_session_hours ?? 2,
-      county: args.county,
+      counties,
+      near: near?.place,
+      maxKm,
       limit: args.limit ?? 8,
       now: at,
       from: starsFromArgs(args.stars_from, args.then),
     });
-    if (args.county && !found.searched)
+    if (near && !found.searched)
       return failure(
-        `No spots in ${args.county}. Call list_spots to see the counties.`,
+        `No spots within ${maxKm} km of ${near.place.name}${counties.length ? ` in ${counties.join(", ")}` : ""}. Try a larger max_km.`,
       );
     if (!found.sources.length)
       return failure(
@@ -298,6 +352,9 @@ export const findWind = tool({
         to: new Date(window.to).toISOString(),
       },
       wind_range_kn: [minKnots, maxKnots],
+      ...(near && { near: { ...near.place, max_km: maxKm } }),
+      ...(counties.length && { counties }),
+      offshore_hours: args.allow_offshore ? "counted" : "left out",
       ...(args.max_gust_kn !== undefined && { max_gust_kn: args.max_gust_kn }),
       ...(args.max_gust_factor !== undefined && {
         max_gust_factor: args.max_gust_factor,
@@ -309,6 +366,7 @@ export const findWind = tool({
       method:
         "An hour counts when its wind is inside the range and its gust (the lead model's, else the top of every model's) is inside max_gust_kn and max_gust_factor. " +
         `A session is \`gusty\` when some hour gusts ${GUSTY_SPREAD_KN} kn or more over its mean; \`gust_kn\` is its strongest gust. ` +
+        "Hours with the wind dead offshore are left out unless allow_offshore; a session's `shore` is its most offshore hour's, null where the beach's facing is unknown. " +
         "Each session's agreement, confidence and models are the worst of its hours, as context. " +
         METHOD,
     });

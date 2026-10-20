@@ -483,6 +483,10 @@ table.tt {
     font-size: 8.5px;
     letter-spacing: 0.06em;
   }
+  /* A phone's label column holds the glyph alone: the units are in its title. */
+  .dk-labs .dk-unit {
+    display: none;
+  }
   /* Every row as tight as its figures allow (ForecastDock's PHONE_ROWS). */
   .tt tr.tt-day td {
     height: 16px;
