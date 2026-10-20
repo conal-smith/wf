@@ -504,13 +504,12 @@ table.tt {
     width: 32px;
     padding: 0;
   }
+  /* The label column is 28px: a glyph and its unit drawn closer, so "mm"
+     and "°C" end inside it rather than over the hours. */
   .dk-labs div {
+    gap: 1px;
     font-size: 8.5px;
     letter-spacing: 0.06em;
-  }
-  /* A phone's label column holds the glyph alone: the units are in its title. */
-  .dk-labs .dk-unit {
-    display: none;
   }
   /* Every row as tight as its figures allow (ForecastDock's PHONE_ROWS). */
   .tt tr.tt-day td {

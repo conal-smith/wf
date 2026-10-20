@@ -1330,6 +1330,36 @@ test("waves, sky, air, rain and sea are one tap away, and stay open", async ({
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
 });
 
+test("on a phone, the rows under the tide keep their units beside their glyphs", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto("/?spot=brandon");
+  await expect(page.locator(".dock tr.tt-wind")).toBeVisible({
+    timeout: 30000,
+  });
+  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  await expect(page.locator(".dock tr.tt-sea")).toHaveCount(1);
+  // A bare 0.5, 12° or 0 says nothing: each figure's unit is on the screen,
+  // the wind's under its glyph and the others' beside theirs (the sky's
+  // glyphs need none).
+  await expect(page.locator(".dk-labs .dk-lab-wind small")).toBeVisible();
+  const units = page.locator(".dk-labs .dk-unit");
+  await expect(units).toHaveText(["m", "°C", "mm", "°C"]);
+  // Each within the label column, clear of its glyph and of the hours.
+  const column = (await page.locator(".dk-labs").boundingBox())!;
+  for (const unit of await units.all()) {
+    await expect(unit).toBeVisible();
+    const box = (await unit.boundingBox())!;
+    const glyph = (await unit
+      .locator("xpath=preceding-sibling::*[1]")
+      .boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(glyph.x + glyph.width);
+    expect(box.x + box.width).toBeLessThanOrEqual(column.x + column.width);
+  }
+});
+
 /**
  * The coast's stations as the tide manifest publishes them: two Marine
  * Institute gauges on Dublin Bay, and Larne, 34 km from Lough Neagh's
