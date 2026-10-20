@@ -108,12 +108,16 @@ describe("model registry", () => {
   it("keeps the map models the picker shows, in order", () => {
     expect(MODELS.map((model) => [model.id, model.name, model.detail])).toEqual(
       [
-        ["harmonie", "HARMONIE", "2 km"],
-        ["icon-eu", "ICON-EU", "6.5 km"],
+        ["harmonie", "HARMONIE", "2 km · 2½ days"],
+        ["icon-eu", "ICON-EU", "6.5 km · 3 days"],
         ["ecmwf", "ECMWF", "25 km · 15 days"],
-        ["gfs", "GFS", "25 km · 16 days"],
+        ["gfs", "GFS", "25 km · 10 days"],
       ],
     );
+  });
+  it("gives every published model's detail in one form: the grid, then the reach", () => {
+    for (const model of liveModels())
+      expect(model.detail, model.id).toMatch(/^\d+(\.\d+)? km · [\d½]+ days$/);
   });
 });
 
