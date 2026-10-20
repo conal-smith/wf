@@ -1,9 +1,10 @@
 # The ride rose
 
 When a spot or a tapped point is chosen and "Round the chosen spot" is
-**Loupe** (the default), the map lays a glass round it. The glass is a ride
-rose for the hour the dock has selected and for this rider: the headings they
-can hold from this beach, the no-go upwind, where they would drift, the wind
+**Loupe**, the map lays a glass round it. The default is **Range ring**; a
+rider's choice is kept for their next visit. The glass is a ride rose for the
+hour the dock has selected and for this rider: the headings they can hold
+from this beach, the no-go upwind, where they would drift, the wind
 directions that are offshore here, the wind's needle, and the reading at the
 foot ("NE 22 g27 · CROSS"). It is the mockup's recommended design
 (`wingfoil-mockups/loupe-purpose`, design 1 with design 2's needle and box,
@@ -70,8 +71,13 @@ tack. A dashed ring marks half of it.
   90 px and bearings from 120 px.
 - **Zoomed in past the screen.** The bezel runs off the screen, and the foot
   box stays pinned inside the clear map above the dock.
-- **Redrawing.** A pan only moves the glass. The glass is redrawn when its size
-  changes (a zoom), when the hour changes, and when the rider's level or units
+- **Redrawing.** The glass moves in the same frame as the chart, from
+  MapLibre's `move` event, as its markers do. A pan only moves the glass, as a
+  layer of its own, so nothing is painted again. Through a zoom the elements
+  already drawn are given their new sizes rather than built again, and the
+  hole in the paper wash, a distance on the chart, is cut again only when its
+  edge would leave the rim's band, and once the camera rests. The glass is
+  also redrawn when the hour changes, and when the rider's level or units
   change.
 
 ## The angles, and where they come from (19 October 2026)
