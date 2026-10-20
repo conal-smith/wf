@@ -45,6 +45,8 @@ import {
   pickModel,
   type StarsFrom,
 } from "../../force5/src/lead.js";
+import { shoreFacing } from "../../force5/src/shoreFacing.js";
+import { shoreAngle, type ShoreAngle } from "../../force5/src/stars.js";
 import type { ForecastSource } from "./httpSource.js";
 
 const HOUR = 3600000;
@@ -141,7 +143,30 @@ export const localTime = (millis: number) =>
   localFormat.format(new Date(millis));
 const iso = (millis: number) => new Date(millis).toISOString();
 
-export type { Agreement };
+export type { Agreement, ShoreAngle };
+
+/**
+ * How the wind meets the spot's shore, as the stars rate it (force5/src/stars.ts
+ * shoreAngle, from the facing the map reads): null where the facing is not
+ * known well enough, or there is no wind.
+ */
+export function shoreOf(
+  facing: number | null,
+  wind: Pick<HourWind, "direction_deg"> | null,
+): ShoreAngle | null {
+  return facing === null || wind === null
+    ? null
+    : shoreAngle(wind.direction_deg, facing);
+}
+
+/** onshore 0 … offshore 4: how far out to sea the wind would carry a rider. */
+const SEAWARD: Record<ShoreAngle, number> = {
+  onshore: 0,
+  "cross-on": 1,
+  cross: 2,
+  "cross-off": 3,
+  offshore: 4,
+};
 
 // ---- spots ------------------------------------------------------------------
 
@@ -1037,6 +1062,8 @@ export interface ForecastHour {
   local: string;
   daylight: boolean;
   wind: HourWind | null;
+  /** How the headline wind meets the shore; null where the facing is unknown. */
+  shore?: ShoreAngle | null;
   waves?: HourWaves | null;
   weather?: HourWeather | null;
   /** Where an ensemble reaches the spot: the spread of its members. */
@@ -1045,6 +1072,8 @@ export interface ForecastHour {
 
 export interface SpotForecast {
   spot: RidingSpot;
+  /** The bearing the shore looks out to sea along, or null where unknown. */
+  shore_facing_deg?: number | null;
   units: Record<string, string>;
   window: { from: string; to: string; step_hours: number };
   hours: ForecastHour[];
@@ -1113,12 +1142,15 @@ export async function spotForecast(
   const memberLines = spotMemberLines(wind.loaded, spot.id);
   const waveSource = preferredSource(waves.loaded, spot.id, ["swh"]);
   const weatherSource = preferredSource(weather.loaded, spot.id, ["t2m"]);
+  const facing = shoreFacing(spot.id);
   const hours = axis(window).map((time): ForecastHour => {
+    const wind = hourWind(lines, time, options.perModel ?? false, options.from);
     const hour: ForecastHour = {
       time: iso(time),
       local: localTime(time),
       daylight: daylight(spot, time),
-      wind: hourWind(lines, time, options.perModel ?? false, options.from),
+      wind,
+      shore: shoreOf(facing, wind),
     };
     if (waveSource) hour.waves = hourWaves(waveSource, time);
     if (weatherSource) hour.weather = hourWeather(weatherSource, time);
@@ -1136,6 +1168,7 @@ export async function spotForecast(
   });
   return {
     spot,
+    shore_facing_deg: facing,
     units: UNITS,
     window: {
       from: iso(window.from),
@@ -1176,6 +1209,10 @@ export interface Session {
   gusty: boolean;
   direction: string;
   direction_deg: number;
+  /** The most offshore of its hours; null where the shore's facing is unknown. */
+  shore: ShoreAngle | null;
+  /** Hours with the wind dead offshore: none unless offshore hours were allowed. */
+  offshore_hours: number;
   /** The worst agreement of any hour; null when only one model covered it. */
   agreement: Agreement | null;
   /** The fewest models behind any hour of the session. */
@@ -1185,6 +1222,8 @@ export interface Session {
 }
 export interface SpotSessions {
   spot: RidingSpot;
+  /** The bearing the shore looks out to sea along, or null where unknown. */
+  shore_facing_deg: number | null;
   rideable_hours: number;
   sessions: Session[];
 }
@@ -1196,6 +1235,8 @@ export interface FindOptions {
   maxGustKnots?: number;
   /** Nor one whose gust is more than this many times its mean wind. */
   maxGustFactor?: number;
+  /** Count hours with the wind dead offshore too (they are left out by default). */
+  allowOffshore?: boolean;
   daylightOnly: boolean;
   minSessionHours: number;
   county?: string;
@@ -1258,27 +1299,31 @@ export async function findSessions(
   for (const spot of pool) {
     const { lines } = spotWindLines(wind.loaded, spot.id);
     if (!lines.length) continue;
+    const facing = shoreFacing(spot.id);
     const sessions: Session[] = [];
-    let run: { time: number; hour: HourWind }[] = [];
+    let run: SessionHour[] = [];
     const close = () => {
       if (run.length >= options.minSessionHours) sessions.push(session(run));
       run = [];
     };
     for (const time of times) {
       const hour = hourWind(lines, time, false, options.from);
+      const shore = shoreOf(facing, hour);
       const good =
         hour !== null &&
         hour.wind_kn >= options.minKnots &&
         hour.wind_kn <= options.maxKnots &&
         gustWithin(hour, options) &&
+        (options.allowOffshore || shore !== "offshore") &&
         (!options.daylightOnly || daylight(spot, time));
-      if (good) run.push({ time, hour: hour! });
+      if (good) run.push({ time, hour: hour!, shore });
       else close();
     }
     close();
     if (sessions.length)
       results.push({
         spot,
+        shore_facing_deg: facing,
         rideable_hours: sessions.reduce((sum, s) => sum + s.hours, 0),
         sessions,
       });
@@ -1292,7 +1337,13 @@ export async function findSessions(
   };
 }
 
-function session(run: { time: number; hour: HourWind }[]): Session {
+interface SessionHour {
+  time: number;
+  hour: HourWind;
+  shore: ShoreAngle | null;
+}
+
+function session(run: SessionHour[]): Session {
   const speeds = run.map((r) => r.hour.wind_kn);
   const gusts = run.flatMap((r) =>
     r.hour.gust_max_kn === null ? [] : [r.hour.gust_max_kn],
@@ -1335,6 +1386,14 @@ function session(run: { time: number; hour: HourWind }[]): Session {
     }),
     direction: compass(direction),
     direction_deg: direction,
+    shore: run.reduce<ShoreAngle | null>(
+      (most, { shore }) =>
+        shore !== null && (most === null || SEAWARD[shore] > SEAWARD[most])
+          ? shore
+          : most,
+      null,
+    ),
+    offshore_hours: run.filter((r) => r.shore === "offshore").length,
     agreement: worst,
     models: Math.min(...run.map((r) => r.hour.models)),
     confidence: run

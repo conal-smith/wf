@@ -14,6 +14,7 @@ import {
   WIND_MODELS,
   confidenceOf,
   findSessions,
+  shoreOf,
   findSpot,
   hourEnsemble,
   hourWind,
@@ -24,6 +25,8 @@ import {
   type RidingSpot,
 } from "./forecast";
 import { FIXTURE_NOW, fixtureSource } from "./testing";
+import { shoreFacing } from "../../force5/src/shoreFacing";
+import { shoreAngle } from "../../force5/src/stars";
 import { SOURCE_CACHE_LIMIT, cached } from "./httpSource";
 import { WAVE_SOURCE_PREFERENCE } from "../../force5/src/waves";
 import {
@@ -564,6 +567,7 @@ describe("findSessions' gust limits", () => {
       daylightOnly: false,
       minSessionHours: 1,
       limit: 30,
+      allowOffshore: true,
       now: FIXTURE_NOW,
       ...limits,
     });
@@ -608,6 +612,74 @@ describe("findSessions' gust limits", () => {
     expect(calm.some((s) => !s.gusty)).toBe(true);
     for (const s of calm.filter((s) => !s.gusty))
       expect(s.gust_kn! - s.max_kn).toBeLessThan(GUSTY_SPREAD_KN);
+  });
+});
+
+describe("the shore", () => {
+  const search = async (allowOffshore?: boolean) => {
+    const source = fixtureSource();
+    const spots = await loadSpots(source);
+    const window = windowFor(FIXTURE_NOW, { hours: 48, stepHours: 1 });
+    return findSessions(source, spots, window, {
+      minKnots: 0,
+      maxKnots: 80,
+      daylightOnly: false,
+      minSessionHours: 1,
+      limit: 30,
+      allowOffshore,
+      now: FIXTURE_NOW,
+    });
+  };
+
+  it("is the stars' shore angle against the map's facing, or null where that is unknown", () => {
+    expect(shoreOf(101, { direction_deg: 101 })).toBe("onshore");
+    expect(shoreOf(101, { direction_deg: 281 })).toBe("offshore");
+    expect(shoreOf(101, { direction_deg: 191 })).toBe("cross");
+    expect(shoreOf(null, { direction_deg: 281 })).toBeNull();
+    expect(shoreOf(101, null)).toBeNull();
+  });
+
+  it("classifies every hour of a spot forecast the way the web app does", async () => {
+    const source = fixtureSource();
+    const spot = (await loadSpots(source)).find((s) => s.id === "brandon")!;
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 24 }),
+      { now: FIXTURE_NOW },
+    );
+    const facing = shoreFacing("brandon")!;
+    expect(facing).not.toBeNull();
+    expect(forecast.shore_facing_deg).toBe(facing);
+    const windy = forecast.hours.filter((h) => h.wind);
+    expect(windy.length).toBeGreaterThan(0);
+    for (const h of forecast.hours)
+      expect(h.shore).toBe(
+        h.wind ? shoreAngle(h.wind.direction_deg, facing) : null,
+      );
+  });
+
+  it("leaves dead offshore hours out of find_wind unless they are allowed", async () => {
+    const safe = await search();
+    const all = await search(true);
+    const brandon = (r: typeof all) =>
+      r.spots.find((s) => s.spot.id === "brandon");
+    // The fixtures blow from the west, dead offshore on Brandon Bay's east-facing beach.
+    expect(brandon(all)!.sessions.some((s) => s.shore === "offshore")).toBe(
+      true,
+    );
+    expect(brandon(all)!.sessions[0].offshore_hours).toBeGreaterThan(0);
+    expect(brandon(safe)?.rideable_hours ?? 0).toBeLessThan(
+      brandon(all)!.rideable_hours,
+    );
+    for (const result of safe.spots) {
+      expect(result.shore_facing_deg).toBe(shoreFacing(result.spot.id));
+      for (const s of result.sessions) {
+        expect(s.offshore_hours).toBe(0);
+        expect(s.shore).not.toBe("offshore");
+        if (result.shore_facing_deg === null) expect(s.shore).toBeNull();
+      }
+    }
   });
 });
 
