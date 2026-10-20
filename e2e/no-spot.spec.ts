@@ -1,4 +1,11 @@
-import { expect, rememberSpot, SPOTS_KEY, test, type Page } from "./fixtures";
+import {
+  expect,
+  rememberSpot,
+  SPOTS_KEY,
+  steadyFrames,
+  test,
+  type Page,
+} from "./fixtures";
 import { sampleStrip } from "./columns";
 import { readSample } from "./sample";
 import { clock } from "../src/strip";
@@ -46,6 +53,23 @@ const stored = (page: Page) =>
 
 const dockName = (page: Page) => page.locator(".dock .dk-name");
 const brandon = (page: Page) => page.locator('[data-spot-id="brandon"]');
+
+/** A point on the open chart: water or land, clear of the lights and the boxes over it. */
+async function openChart(page: Page) {
+  const open = await page.evaluate(() => {
+    for (let y = 200; y < innerHeight - 240; y += 20)
+      for (let x = 30; x < innerWidth - 30; x += 20)
+        if (
+          document
+            .elementFromPoint(x, y)
+            ?.classList.contains("maplibregl-canvas")
+        )
+          return { x, y };
+    return null;
+  });
+  expect(open).not.toBeNull();
+  return open!;
+}
 
 for (const [width, height] of [
   [390, 844],
@@ -278,27 +302,51 @@ test("Back lets go of a tap on the chart still waiting to pick a point: the char
   await page.goBack();
   await expect(page).toHaveURL(/\/\?spot=tramore$/);
   await expect(dockName(page)).toHaveText("Tramore");
-  // Open water or land, clear of the lights and the boxes over the chart.
-  const open = await page.evaluate(() => {
-    for (let y = 200; y < 600; y += 20)
-      for (let x = 30; x < 360; x += 20)
-        if (
-          document
-            .elementFromPoint(x, y)
-            ?.classList.contains("maplibregl-canvas")
-        )
-          return { x, y };
-    return null;
-  });
-  expect(open).not.toBeNull();
+  const open = await openChart(page);
   // A tap there waits a moment for a second before it picks the point: Back
   // within that moment, and then the moment passing, picks nothing.
-  await page.mouse.click(open!.x, open!.y);
+  await page.mouse.click(open.x, open.y);
   await page.goBack();
   await page.waitForTimeout(800);
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator(".dock")).toHaveCount(0);
   expect(await page.evaluate(() => history.state)).toBeNull();
+});
+
+test("a spot chosen while a tap on the chart waits to pick its point is the one the dock opens on", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openMap(page);
+  const light = async (id: string) => {
+    const box = (await page.locator(`[data-spot-id="${id}"]`).boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
+  /** The dock a moment after the tap's wait, and the link. */
+  const settles = async (name: string, id: string) => {
+    await page.waitForTimeout(800);
+    await expect(dockName(page)).toHaveText(name);
+    await expect(page).toHaveURL(new RegExp(`/\\?spot=${id}$`));
+  };
+  // A tap on the chart, then at once a light: the light's click stops there,
+  // and the map never heard of it.
+  let open = await openChart(page);
+  let at = await light("tramore");
+  await page.mouse.click(open.x, open.y);
+  await page.mouse.click(at.x, at.y);
+  await settles("Tramore", "tramore");
+  // The same with the open spot's own light, once the chart has flown to it.
+  await steadyFrames(page);
+  open = await openChart(page);
+  at = await light("tramore");
+  await page.mouse.click(open.x, open.y);
+  await page.mouse.click(at.x, at.y);
+  await settles("Tramore", "tramore");
+  // And a spot found by the search.
+  open = await openChart(page);
+  await page.mouse.click(open.x, open.y);
+  await findSpot(page, "Keel");
+  await settles("Keel Beach", "keel");
 });
 
 test("a spot in the link opens on it, focused; a remembered one waits to be chosen", async ({
