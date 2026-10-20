@@ -93,7 +93,7 @@ import {
   stripDays,
 } from "./strip";
 import { ridingLocations } from "./locations";
-import { openingSpot } from "./openingSpot";
+import { openingSpot, spotAddress } from "./openingSpot";
 import { takeEarly } from "../force5/src/boot";
 import {
   loadManifest,
@@ -155,6 +155,17 @@ const MORE_KEY = "wingfoil.map.more.v1";
 /** The focus is on the point tapped on the map, not a riding place. */
 const AT_POINT = "@point";
 
+/** Where the map was tapped, as the map hands it over. */
+interface TappedAt {
+  lon: number;
+  lat: number;
+  place: string | null;
+  lake: boolean;
+}
+/** The state of a history entry of the map's own: a tapped point's. */
+interface MapEntry {
+  mapPoint?: TappedAt;
+}
 /** A point tapped on the map, as the dock names it. */
 interface Picked {
   lon: number;
@@ -1032,20 +1043,38 @@ export default function App() {
         : null,
     [picked, spots, pointTide.manifest],
   );
+  /**
+   * Each spot chosen is a step in the page's history, with the spot in its
+   * link (`/?spot=keel`, src/openingSpot.ts): the link can be shared, Back
+   * goes to the spot before or, from the first, closes the dock, and Forward
+   * comes back. A tapped point is a step too, with no spot in the link, and
+   * the point in the entry's state; a tap after a tap only moves it.
+   */
+  const remember = (id: string | null, at?: TappedAt) => {
+    const href = spotAddress(location.href, id);
+    const state: MapEntry = at ? { mapPoint: at } : {};
+    const here = window.history.state as MapEntry | null;
+    if (at && here?.mapPoint) window.history.replaceState(state, "", href);
+    else if (at || href !== location.pathname + location.search + location.hash)
+      window.history.pushState(state, "", href);
+  };
   const selectSpot = (spot: Spot, fly = true) => {
+    showSpot(spot, fly);
+    fav.visit(spot.id);
+    remember(spot.id);
+  };
+  const showSpot = (spot: Spot, fly = true) => {
     setPicked(null);
     setPoint(spot);
     setFocusId(spot.id);
-    fav.visit(spot.id);
     if (fly) controls.current?.flyTo(spot);
   };
   /** A tap on the open map: that point's forecast in the dock, and the focus on it. */
-  const pickPoint = (at: {
-    lon: number;
-    lat: number;
-    place: string | null;
-    lake: boolean;
-  }) => {
+  const pickPoint = (at: TappedAt) => {
+    showPoint(at);
+    remember(null, at);
+  };
+  const showPoint = (at: TappedAt) => {
     const coords = degrees(at.lat, at.lon);
     setPicked({
       lon: at.lon,
@@ -1058,6 +1087,32 @@ export default function App() {
     probeFoil(at.lon, at.lat);
   };
   const clearFocus = () => setFocusId(null);
+  // Back and Forward through the spots and points chosen: the dock follows
+  // the link. An entry that already shows what the dock shows changes
+  // nothing (the way back from a page over the map lands on one), so the
+  // chart is not flown anywhere it was not.
+  const popped = useRef(() => {});
+  popped.current = () => {
+    if (location.pathname !== "/") return;
+    const at = (window.history.state as MapEntry | null)?.mapPoint;
+    if (at) {
+      if (picked?.lon !== at.lon || picked?.lat !== at.lat) showPoint(at);
+      return;
+    }
+    const spot = openingSpot(location.search, spots);
+    if (spot) {
+      if (picked || point?.id !== spot.id) showSpot(spot);
+    } else if (picked || point) {
+      setPicked(null);
+      setPoint(null);
+      setFocusId(null);
+    }
+  };
+  useEffect(() => {
+    const pop = () => popped.current();
+    window.addEventListener("popstate", pop);
+    return () => window.removeEventListener("popstate", pop);
+  }, []);
   useEffect(() => {
     if (!mapReady) return;
     controls.current?.fitIreland(0);
