@@ -13,6 +13,8 @@ import {
   GUSTY_SPREAD_KN,
   WIND_MODELS,
   confidenceOf,
+  distanceKm,
+  findPlace,
   findSessions,
   shoreOf,
   findSpot,
@@ -543,7 +545,7 @@ describe("findSessions", () => {
       maxKnots: 80,
       daylightOnly: true,
       minSessionHours: 2,
-      county: "Dublin",
+      counties: ["Dublin"],
       limit: 30,
       now: FIXTURE_NOW,
     });
@@ -683,6 +685,92 @@ describe("the shore", () => {
   });
 });
 
+describe("near and counties", () => {
+  const search = async (filters: object) => {
+    const source = fixtureSource();
+    const spots = await loadSpots(source);
+    const window = windowFor(FIXTURE_NOW, { hours: 12, stepHours: 1 });
+    const found = await findSessions(source, spots, window, {
+      minKnots: 0,
+      maxKnots: 80,
+      daylightOnly: false,
+      minSessionHours: 1,
+      limit: 30,
+      allowOffshore: true,
+      now: FIXTURE_NOW,
+      ...filters,
+    });
+    return { spots, found };
+  };
+
+  it("finds where someone is from coordinates, a county or a spot", async () => {
+    const spots = await loadSpots(fixtureSource());
+    expect(findPlace(spots, { lat: 53.35, lon: -6.26 })).toEqual({
+      place: { name: "53.35, -6.26", lat: 53.35, lon: -6.26 },
+    });
+    expect(findPlace(spots, " 53.35, -6.26 ")).toEqual({
+      place: { name: "53.35, -6.26", lat: 53.35, lon: -6.26 },
+    });
+    const dublin = findPlace(spots, "Co. Dublin");
+    expect("place" in dublin && dublin.place.name).toBe("County Dublin");
+    if ("place" in dublin) {
+      expect(dublin.place.lat).toBeGreaterThan(53);
+      expect(dublin.place.lat).toBeLessThan(53.7);
+    }
+    const dollymount = spots.find((s) => s.id === "dollymount")!;
+    expect(findPlace(spots, "dollymount")).toEqual({
+      place: {
+        name: dollymount.name,
+        lat: dollymount.lat,
+        lon: dollymount.lon,
+      },
+    });
+    const nowhere = findPlace(spots, "Narnia");
+    expect("error" in nowhere && nowhere.error).toMatch(/lat, lon/);
+  });
+
+  it("measures kilometres as the crow flies", () => {
+    // Dublin to Galway is about 186 km.
+    expect(
+      distanceKm({ lat: 53.35, lon: -6.26 }, { lat: 53.27, lon: -9.05 }),
+    ).toBeCloseTo(186, -1);
+  });
+
+  it("searches only spots within max_km of near, nearest first among equals", async () => {
+    const near = { lat: 53.35, lon: -6.26 };
+    const { spots, found } = await search({ near, maxKm: 40 });
+    const within = spots.filter((s) => distanceKm(near, s) <= 40);
+    expect(within.length).toBeGreaterThan(0);
+    expect(within.length).toBeLessThan(spots.length);
+    expect(found.searched).toBe(within.length);
+    expect(found.spots.length).toBeGreaterThan(0);
+    for (const [i, r] of found.spots.entries()) {
+      expect(r.distance_km).toBeLessThanOrEqual(40);
+      expect(r.distance_km).toBeCloseTo(distanceKm(near, r.spot), 0);
+      const next = found.spots[i + 1];
+      if (next && next.rideable_hours === r.rideable_hours)
+        expect(next.distance_km!).toBeGreaterThanOrEqual(r.distance_km!);
+    }
+    // Without near, no distances.
+    const all = await search({});
+    expect(all.found.spots.every((r) => r.distance_km === undefined)).toBe(
+      true,
+    );
+  });
+
+  it("searches only the counties asked for", async () => {
+    const { spots, found } = await search({
+      counties: ["Dublin", "wicklow"],
+    });
+    expect(found.searched).toBe(
+      spots.filter((s) => ["Dublin", "Wicklow"].includes(s.county)).length,
+    );
+    expect(found.spots.length).toBeGreaterThan(0);
+    for (const r of found.spots)
+      expect(["Dublin", "Wicklow"]).toContain(r.spot.county);
+  });
+});
+
 describe("which spot squares are read", () => {
   /** The fixture source, recording every spot square asked for. */
   const counting = () => {
@@ -802,7 +890,7 @@ describe("which spot squares are read", () => {
       maxKnots: 80,
       daylightOnly: false,
       minSessionHours: 1,
-      county: "Dublin",
+      counties: ["Dublin"],
       limit: 30,
       now: FIXTURE_NOW,
     });

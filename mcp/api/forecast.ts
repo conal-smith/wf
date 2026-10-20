@@ -229,6 +229,75 @@ export function findSpot(
   return { spot: null, candidates: county };
 }
 
+/** Kilometres between two points, as the crow flies. */
+export function distanceKm(
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+): number {
+  const r = Math.PI / 180;
+  const h =
+    Math.sin(((b.lat - a.lat) * r) / 2) ** 2 +
+    Math.cos(a.lat * r) *
+      Math.cos(b.lat * r) *
+      Math.sin(((b.lon - a.lon) * r) / 2) ** 2;
+  return 2 * 6371.0088 * Math.asin(Math.sqrt(Math.min(1, h)));
+}
+
+export interface Place {
+  name: string;
+  lat: number;
+  lon: number;
+}
+
+const LAT_LON = /^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/;
+
+/**
+ * Where a rider is, from what an agent passed: a latitude and longitude, as
+ * numbers or "53.35, -6.26"; a county, as the middle of its spots; or a spot.
+ * Anything else is an error that says what would do, since this server knows
+ * no towns but its spots and their counties.
+ */
+export function findPlace(
+  spots: readonly RidingSpot[],
+  near: string | { lat: number; lon: number },
+): { place: Place } | { error: string } {
+  if (typeof near !== "string")
+    return { place: { name: `${near.lat}, ${near.lon}`, ...near } };
+  const coords = LAT_LON.exec(near);
+  if (coords) {
+    const lat = Number(coords[1]);
+    const lon = Number(coords[2]);
+    if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180)
+      return { place: { name: `${lat}, ${lon}`, lat, lon } };
+  }
+  const q = fold(near).replace(/^(county|co) /, "");
+  const county = spots.filter((s) => fold(s.county) === q);
+  if (q && county.length) {
+    const mean = (pick: (s: RidingSpot) => number) =>
+      round(county.reduce((sum, s) => sum + pick(s), 0) / county.length, 3);
+    return {
+      place: {
+        name: `County ${county[0].county}`,
+        lat: mean((s) => s.lat),
+        lon: mean((s) => s.lon),
+      },
+    };
+  }
+  const match = findSpot(spots, near);
+  if (match.spot) {
+    const { name, lat, lon } = match.spot;
+    return { place: { name, lat, lon } };
+  }
+  return {
+    error: match.candidates.length
+      ? `"${near}" could be any of: ${match.candidates
+          .slice(0, 8)
+          .map((s) => `${s.name} (${s.county})`)
+          .join("; ")}. Ask which, or pass near as { lat, lon }.`
+      : `This server only knows its spots and their counties, not "${near}". Pass near as { lat, lon } for the person's town, or name their county.`,
+  };
+}
+
 // ---- manifests --------------------------------------------------------------
 
 export interface ModelRun {
@@ -1222,6 +1291,8 @@ export interface Session {
 }
 export interface SpotSessions {
   spot: RidingSpot;
+  /** Kilometres from `near`, as the crow flies, when a search gave one. */
+  distance_km?: number;
   /** The bearing the shore looks out to sea along, or null where unknown. */
   shore_facing_deg: number | null;
   rideable_hours: number;
@@ -1239,20 +1310,17 @@ export interface FindOptions {
   allowOffshore?: boolean;
   daylightOnly: boolean;
   minSessionHours: number;
-  county?: string;
+  /** Only spots in these counties. */
+  counties?: readonly string[];
+  /** Only spots within maxKm of here, each with its distance. */
+  near?: { lat: number; lon: number };
+  maxKm?: number;
   limit: number;
   now: number;
   /** The model the headline is, and the one past its run (default HARMONIE, then ECMWF). */
   from?: StarsFrom;
 }
 
-/**
- * Spots ranked by how many hours of the window the headline wind (one model's,
- * as the stars have it) sits inside the asked wind range, grouped into
- * sessions of consecutive hours. How far the other models agree is reported
- * beside each session, as the site shows it beside the stars, and decides
- * nothing (the ruling of 19 October 2026).
- */
 /**
  * How far over its mean an hour may gust before its session is flagged
  * `gusty`. The stars take nothing off for a riding day's 8 or 9 knots over the
@@ -1276,6 +1344,15 @@ function gustWithin(hour: HourWind, options: FindOptions): boolean {
   );
 }
 
+/**
+ * Spots ranked by how many hours of the window the headline wind (one model's,
+ * as the stars have it) sits inside the asked wind range, grouped into
+ * sessions of consecutive hours. How far the other models agree is reported
+ * beside each session, as the site shows it beside the stars, and decides
+ * nothing (the ruling of 19 October 2026). With `near`, only spots within
+ * `maxKm` are searched, each with its distance, and equal hours rank nearest
+ * first.
+ */
 export async function findSessions(
   source: ForecastSource,
   spots: readonly RidingSpot[],
@@ -1287,12 +1364,22 @@ export async function findSessions(
   sources: ModelRun[];
   unavailable: Unavailable[];
 }> {
-  const county = options.county ? fold(options.county) : null;
-  const pool = county
-    ? spots.filter((s) => fold(s.county) === county)
-    : [...spots];
-  // The squares of the places searched: every square for all of Ireland, the
-  // county's own for a county.
+  const counties = options.counties?.length
+    ? new Set(options.counties.map(fold))
+    : null;
+  const near = options.near;
+  const distance = new Map(
+    near ? spots.map((s) => [s.id, round(distanceKm(near, s))]) : [],
+  );
+  const pool = spots.filter(
+    (s) =>
+      (!counties || counties.has(fold(s.county))) &&
+      (options.maxKm === undefined ||
+        !near ||
+        distance.get(s.id)! <= options.maxKm),
+  );
+  // The squares of the places searched: every square for all of Ireland,
+  // fewer for a county or a radius.
   const wind = await loadWind(source, options.now, squaresFor(pool));
   const times = axis({ ...window, stepHours: 1 });
   const results: SpotSessions[] = [];
@@ -1323,12 +1410,17 @@ export async function findSessions(
     if (sessions.length)
       results.push({
         spot,
+        ...(near && { distance_km: distance.get(spot.id)! }),
         shore_facing_deg: facing,
         rideable_hours: sessions.reduce((sum, s) => sum + s.hours, 0),
         sessions,
       });
   }
-  results.sort((a, b) => b.rideable_hours - a.rideable_hours);
+  results.sort(
+    (a, b) =>
+      b.rideable_hours - a.rideable_hours ||
+      (a.distance_km ?? 0) - (b.distance_km ?? 0),
+  );
   return {
     spots: results.slice(0, options.limit),
     searched: pool.length,
