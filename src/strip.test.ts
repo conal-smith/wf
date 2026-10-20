@@ -8,6 +8,7 @@ import {
   stripColumns,
   stripDays,
   stripTrack,
+  timeSpoken,
   rainColumns,
 } from "./strip";
 
@@ -271,5 +272,18 @@ describe("rainColumns", () => {
   });
   it("leaves a column past the last step empty", () => {
     expect(rainColumns([at("2026-10-08T18:00:00Z")], steps)).toEqual([null]);
+  });
+});
+
+describe("timeSpoken", () => {
+  it("says an hour's day, date and Irish time", () => {
+    // 13:00 UTC is 14:00 in Irish summer time.
+    expect(timeSpoken(Date.parse("2026-10-20T13:00:00Z"))).toBe(
+      "Tue 20 Oct, 14:00",
+    );
+    // And the same as UTC in winter, past midnight's day change.
+    expect(timeSpoken(Date.parse("2026-12-01T00:30:00Z"))).toBe(
+      "Tue 1 Dec, 00:30",
+    );
   });
 });

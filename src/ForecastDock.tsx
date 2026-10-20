@@ -49,6 +49,7 @@ import {
   rainColumns,
   stripGeometry,
   stripTrack,
+  timeSpoken,
   type StripColumn,
   type StripDay,
   type StripGeometry,
@@ -1649,9 +1650,7 @@ export default function ForecastDock(props: Props) {
         max={Math.max(0, columns.length - 1)}
         step={1}
         value={selected}
-        aria-valuetext={
-          column ? `${dayLong(column.time)} ${clock(column.time)}` : ""
-        }
+        aria-valuetext={column ? timeSpoken(column.time) : ""}
         onChange={(event) => onSelect(Number(event.target.value), true)}
         onKeyDown={(event) => {
           // A day at a time with Page Up and Page Down, to the same hour.

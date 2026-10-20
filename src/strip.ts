@@ -36,6 +36,11 @@ const weekdayLong = new Intl.DateTimeFormat("en-IE", {
   timeZone: TIME_ZONE,
   weekday: "long",
 });
+const dayMonth = new Intl.DateTimeFormat("en-GB", {
+  timeZone: TIME_ZONE,
+  day: "numeric",
+  month: "short",
+});
 
 /** "2026-10-05": the Irish calendar day an instant falls on. */
 export const irishDate = (time: number) => dateFormat.format(new Date(time));
@@ -48,6 +53,9 @@ export const irishHour = (time: number) =>
 export const dayShort = (time: number) => weekday.format(new Date(time));
 /** "Monday". */
 export const dayLong = (time: number) => weekdayLong.format(new Date(time));
+/** "Tue 20 Oct, 14:00", Irish time: an hour as a screen reader says it. */
+export const timeSpoken = (time: number) =>
+  `${dayShort(time)} ${dayMonth.format(new Date(time))}, ${clock(time)}`;
 /** "13". */
 export const hourLabel = (time: number) => clock(time).slice(0, 2);
 

@@ -89,7 +89,8 @@ export function ratePlace(
  * blend or, without one, the models; null means every square. `modelsLoaded`
  * names the models' squares in hand beside a published blend. A place in any
  * other square gets no row, so its light stays pending: the map reads only the
- * squares in view, and a place it has not read is unknown, not calm.
+ * squares in view, and a place it has not read is unknown, not calm. A row
+ * worked out from this run before the map moved off its square is kept.
  */
 export function useRatings(
   models: readonly ModelAvailability[],
@@ -143,8 +144,17 @@ export function useRatings(
       modelsKnown,
     });
 
+  // The runs the rows are worked out from: the published blend's sources,
+  // or the models'. Not the squares read from them, which come and go.
+  const runKey = [
+    ...(published ? published.sources.map((src) => `${src.id}@${src.run}`) : []),
+    ...(!published || second
+      ? manifests.map((manifest) => `${manifest.model}@${manifest.run}`)
+      : []),
+  ].join(",");
+
   // What the table was last worked out for, apart from its source.
-  const basis = useRef({ blendKey, places, axisKey, riderKey });
+  const basis = useRef({ blendKey, places, axisKey, riderKey, runKey });
 
   /** Whether the square a place's row was read from is still read. */
   const stillKnown = (place: RatedPlace) => {
@@ -165,7 +175,8 @@ export function useRatings(
       basis.current.places === places &&
       basis.current.axisKey === axisKey &&
       basis.current.riderKey === riderKey;
-    basis.current = { blendKey, places, axisKey, riderKey };
+    const sameRun = same && basis.current.runKey === runKey;
+    basis.current = { blendKey, places, axisKey, riderKey, runKey };
     table.current = done;
     if ((!published && !manifests.length) || !axis.length || !places.length) {
       setVersion((v) => v + 1);
@@ -174,11 +185,21 @@ export function useRatings(
     // Only the data moved on — more squares read as the map moved, or the next
     // run — so the rows in hand stay up until each is worked out again, rather
     // than every light blinking to pending at each pan. A row whose square is
-    // no longer read goes at once.
+    // no longer read stays while its run does: the map moved off it, and its
+    // hours are what they were (a light off the chart still says its stars
+    // and wind to a screen reader, with a spot's forecast open or not). With
+    // the next run it goes at once, never to be worked out again from data
+    // that has gone.
+    const kept = new Set<string>();
     if (same)
       for (const place of places) {
         const row = before.get(place.id);
-        if (row && stillKnown(place)) done.set(place.id, row);
+        if (!row) continue;
+        if (stillKnown(place)) done.set(place.id, row);
+        else if (sameRun) {
+          done.set(place.id, row);
+          kept.add(place.id);
+        }
       }
     setVersion((v) => v + 1);
     const wanted = new Set(first);
@@ -197,7 +218,7 @@ export function useRatings(
         const place = order[next++];
         const row = hoursFor(place);
         if (row) done.set(place.id, row);
-        else done.delete(place.id);
+        else if (!kept.has(place.id)) done.delete(place.id);
       } while (next < order.length && performance.now() < until);
       // One repaint per slice, never one per place.
       setVersion((v) => v + 1);
@@ -210,7 +231,17 @@ export function useRatings(
       clearTimeout(handle);
     };
     // The keys stand in for the arrays, which are rebuilt every render.
-  }, [source, second, blendKey, places, axisKey, riderKey, loadedKey, modelsKey]);
+  }, [
+    source,
+    second,
+    blendKey,
+    places,
+    axisKey,
+    riderKey,
+    loadedKey,
+    modelsKey,
+    runKey,
+  ]);
 
   // A place asked for first after the run began is done at once.
   useEffect(() => {

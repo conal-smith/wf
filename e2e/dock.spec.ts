@@ -210,7 +210,7 @@ test("the week is one strip of hours round the clock, with no day slider over it
   // by its day and hour; on the screen it is the pen's frame round an hour.
   await expect(slider(page)).toHaveAttribute(
     "aria-valuetext",
-    /^(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day \d\d:\d\d$/,
+    /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} [A-Z][a-z]{2,3}, \d\d:\d\d$/,
   );
   // Nothing on the page scrolls sideways; the strip carries the hours.
   expect(
@@ -361,7 +361,10 @@ test("a night hour is a column of its own: tapped, keyed and under the line", as
   await expect(cell).toHaveClass(/\bnight\b/);
   await cell.click();
   await expect(slider(page)).toHaveValue(String(small));
-  await expect(slider(page)).toHaveAttribute("aria-valuetext", "Monday 03:00");
+  await expect(slider(page)).toHaveAttribute(
+    "aria-valuetext",
+    /^Mon \d{1,2} [A-Z][a-z]{2,3}, 03:00$/,
+  );
   await expect(
     page.locator(`.dock tr.tt-hour td[data-i="${small}"]`),
   ).toHaveClass(/\bc-sel\b/);
@@ -369,7 +372,10 @@ test("a night hour is a column of its own: tapped, keyed and under the line", as
   // The keys step through the night an hour at a time.
   await slider(page).focus();
   await page.keyboard.press("ArrowRight");
-  await expect(slider(page)).toHaveAttribute("aria-valuetext", "Monday 04:00");
+  await expect(slider(page)).toHaveAttribute(
+    "aria-valuetext",
+    /^Mon \d{1,2} [A-Z][a-z]{2,3}, 04:00$/,
+  );
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   // The tide under it is hatched across the same dark columns.
   const hatched = await page.evaluate((i) => {
@@ -1180,7 +1186,10 @@ test("a tab coming back lands on now, unless the reader chose a later hour", asy
   const strip = stripAt(afternoon);
   const opening = Number(await slider(page).inputValue());
   expect(strip[opening].time).toBeGreaterThanOrEqual(afternoon - 3600000);
-  await expect(slider(page)).toHaveAttribute("aria-valuetext", "Monday 10:00");
+  await expect(slider(page)).toHaveAttribute(
+    "aria-valuetext",
+    /^Mon \d{1,2} [A-Z][a-z]{2,3}, 10:00$/,
+  );
   // The tab is left for six hours with the reader on the opening hour: the
   // hour has gone by, and coming back lands on now (15 UTC, 16:00 Irish).
   await page.clock.setSystemTime(new Date(afternoon + 6 * 3600000));
@@ -1189,7 +1198,7 @@ test("a tab coming back lands on now, unless the reader chose a later hour", asy
   );
   await expect(slider(page)).toHaveAttribute(
     "aria-valuetext",
-    /^Monday 1[5-7]:00$/,
+    /^Mon \d{1,2} [A-Z][a-z]{2,3}, 1[5-7]:00$/,
   );
   // A time chosen ahead is the reader's own, and is kept.
   const later = Number(await slider(page).getAttribute("max")) - 3;
@@ -1237,7 +1246,7 @@ test("the strip runs fifteen days, the coarser far ones in narrower columns", as
   await slider(page).press("End");
   await expect(slider(page)).toHaveAttribute(
     "aria-valuetext",
-    new RegExp(`^\\w+ \\d\\d:00$`),
+    new RegExp(`^\\w+ \\d{1,2} \\w+, \\d\\d:00$`),
   );
   const last = page.locator(
     `.dock tr.tt-hour td[data-i="${sampleStrip.length - 1}"]`,
