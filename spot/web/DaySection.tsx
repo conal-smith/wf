@@ -477,7 +477,7 @@ function DayBody({
           {rating?.potential ? (
             <>
               {rating.wing.own ?? rating.wing.recommended}
-              <span className={s.unit()}> m</span>
+              <span className={s.unit()}> m²</span>
             </>
           ) : (
             <span className={s.muted()}>–</span>
@@ -694,7 +694,7 @@ function verdict(rating: HourRating | null, daylight: boolean) {
     <>
       {rating.potential > 0 ? (
         <>
-          <b className="font-mono font-semibold">{wing} m</b> wing
+          <b className="font-mono font-semibold">{wing} m²</b> wing
         </>
       ) : (
         "No stars"
