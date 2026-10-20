@@ -1534,7 +1534,45 @@ test("a point tapped on Dublin Bay reads its nearest station's tide; one on Loug
     "No tide: a freshwater lake.",
     { timeout: 15000 },
   );
+  // Said once, not all along the week.
+  await expect(page.locator(".dock .tide-none")).toHaveCount(1);
+  // And the dock closes from its own button, leaving the chart alone.
+  await page
+    .locator(".dock")
+    .getByRole("button", { name: /^Close the forecast for / })
+    .click();
+  await expect(page.locator(".dock")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/$/);
+  // A step in the history like a choice: Back opens it again.
+  await page.goBack();
+  await expect(page.locator(".dock .tide-none")).toHaveText(
+    "No tide: a freshwater lake.",
+    { timeout: 15000 },
+  );
   expect(errors).toEqual([]);
+});
+
+test("while the tide is fetched its row waits, and does not say there is none", async ({
+  page,
+}) => {
+  let release = () => {};
+  const held = new Promise<void>((done) => (release = done));
+  await page.route("**/marine/tides.json", async (route) => {
+    await held;
+    await route.fulfill({ json: tideManifest });
+  });
+  await page.route("**/marine/tides-Fenit-test.json", (route) =>
+    route.fulfill({ json: tideCurve }),
+  );
+  await page.goto("/?spot=brandon");
+  const row = page.locator(".dock .tt-tide");
+  await expect(row.locator(".tide-wait")).toBeVisible({ timeout: 30000 });
+  await expect(row.locator("[aria-busy=true]")).toHaveCount(1);
+  await expect(row.locator(".tide-none")).toHaveCount(0);
+  release();
+  await expect(row.locator(".tide-line").first()).toBeVisible();
+  await expect(row.locator(".tide-wait")).toHaveCount(0);
+  await expect(row.locator(".tide-none")).toHaveCount(0);
 });
 
 test("a point tapped off Dublin Bay reads wind, waves, weather and tide, and no blend", async ({

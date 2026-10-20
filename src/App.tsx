@@ -1055,7 +1055,11 @@ export default function App() {
     const state: MapEntry = at ? { mapPoint: at } : {};
     const here = window.history.state as MapEntry | null;
     if (at && here?.mapPoint) window.history.replaceState(state, "", href);
-    else if (at || href !== location.pathname + location.search + location.hash)
+    else if (
+      at ||
+      here?.mapPoint ||
+      href !== location.pathname + location.search + location.hash
+    )
       window.history.pushState(state, "", href);
   };
   const selectSpot = (spot: Spot, fly = true) => {
@@ -1087,6 +1091,19 @@ export default function App() {
     probeFoil(at.lon, at.lat);
   };
   const clearFocus = () => setFocusId(null);
+  const hideDock = () => {
+    setPicked(null);
+    setPoint(null);
+    setFocusId(null);
+  };
+  /**
+   * The dock's close: no spot nor point, and the chart alone, as a step in
+   * the history like a choice (Back opens the dock again).
+   */
+  const closeDock = () => {
+    hideDock();
+    remember(null);
+  };
   // Back and Forward through the spots and points chosen: the dock follows
   // the link. An entry that already shows what the dock shows changes
   // nothing (the way back from a page over the map lands on one), so the
@@ -1102,11 +1119,7 @@ export default function App() {
     const spot = openingSpot(location.search, spots);
     if (spot) {
       if (picked || point?.id !== spot.id) showSpot(spot);
-    } else if (picked || point) {
-      setPicked(null);
-      setPoint(null);
-      setFocusId(null);
-    }
+    } else if (picked || point) hideDock();
   };
   useEffect(() => {
     const pop = () => popped.current();
@@ -1557,6 +1570,8 @@ export default function App() {
                   onToggleStar={() => dockSpot && fav.toggle(dockSpot.id)}
                   tide={tide.tide}
                   tideNote={tide.error}
+                  tideLoading={tide.loading}
+                  onClose={closeDock}
                   phone={phone}
                   view={picked ? "table" : view}
                   onView={setView}
