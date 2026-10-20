@@ -251,10 +251,10 @@ export default function MapControls({
               box
             );
           })}
-          <h3>Satellite</h3>
+          <h3>Satellite at tide</h3>
           <div className="layer-sat">
             <Segmented
-              aria-label="Satellite"
+              aria-label="Satellite at tide"
               options={SATELLITE_OPTIONS.map((option) => ({
                 value: option,
                 label: SATELLITE_LABEL[option],
