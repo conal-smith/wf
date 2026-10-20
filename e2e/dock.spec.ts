@@ -1676,3 +1676,62 @@ test("the blend and the fold stay under the pointer from the first click, so eve
     await expect.poll(standing).toBeCloseTo(edge, 0);
   }
 });
+
+test("on a phone's blend, a turn's time and height stay over the tide's dot where it passes them", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/?spot=brandon");
+  const dock = page.locator(".dock");
+  await expect(dock.locator(".tide-label").first()).toBeVisible({
+    timeout: 30000,
+  });
+  await dock.getByRole("button", { name: "Blend" }).click();
+  await expect(dock.locator(".tt-blend")).toBeVisible();
+  /**
+   * Where the dot and a label meet, the points of the label's glyphs, and how
+   * many of them the dot covers. The dot is made hit-testable for the asking,
+   * as it is drawn (the pen's layers take no pointer).
+   */
+  const meeting = () =>
+    page.evaluate(() => {
+      const dot = document.querySelector<SVGCircleElement>(".dock .tide-dot");
+      if (!dot) return null;
+      const d = dot.getBoundingClientRect();
+      const points: [number, number][] = [];
+      for (const label of document.querySelectorAll(".dock .tide-label")) {
+        const r = label.getBoundingClientRect();
+        for (
+          let x = Math.max(d.left, r.left);
+          x < Math.min(d.right, r.right);
+          x++
+        )
+          for (
+            let y = Math.max(d.top, r.top);
+            y < Math.min(d.bottom, r.bottom);
+            y++
+          )
+            points.push([x + 0.5, y + 0.5]);
+      }
+      const at = ([x, y]: [number, number]) => document.elementFromPoint(x, y);
+      dot.style.display = "none";
+      const glyphs = points.filter((p) => at(p)?.closest(".tide-label"));
+      dot.style.display = "";
+      dot.style.pointerEvents = "auto";
+      const covered = glyphs.filter((p) => at(p) === dot).length;
+      dot.style.pointerEvents = "";
+      return glyphs.length ? { glyphs: glyphs.length, covered } : null;
+    });
+  // Through the hours until the dot has passed over a few labels.
+  const slider = page.getByRole("slider", { name: "Forecast time" });
+  const last = Number(await slider.getAttribute("max"));
+  const met: { glyphs: number; covered: number }[] = [];
+  for (let at = 0; at <= last && met.length < 4; at++) {
+    await slider.fill(String(at));
+    const meets = await meeting();
+    if (meets) met.push(meets);
+  }
+  expect(met.length).toBeGreaterThan(0);
+  expect(met.map((m) => m.covered)).toEqual(met.map(() => 0));
+});

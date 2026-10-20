@@ -1917,6 +1917,25 @@ export default function ForecastDock(props: Props) {
                 }
               />
             ))}
+            {/* The tide at the chosen hour, on its curve: under the table,
+                as the line at now is, so a turn's time and height written
+                beside the curve stay on top of it, their halo round them,
+                where the dot passes (#98). */}
+            {tideDot && (
+              <svg
+                className="tt-under"
+                width={g.total}
+                height={tableHeight}
+                aria-hidden="true"
+              >
+                <circle
+                  className="tide-dot"
+                  cx={tideDot.x}
+                  cy={tideDot.y}
+                  r="3.4"
+                />
+              </svg>
+            )}
             <StripTable
               spot={spot}
               columns={columns}
@@ -1965,14 +1984,6 @@ export default function ForecastDock(props: Props) {
                 className="pen-frame is-second"
                 pathLength={1}
               />
-              {tideDot && (
-                <circle
-                  className="tide-dot"
-                  cx={tideDot.x}
-                  cy={tideDot.y}
-                  r="3.4"
-                />
-              )}
             </svg>
           </div>
         </div>
