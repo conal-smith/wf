@@ -1633,21 +1633,37 @@ test("a point tapped off Dublin Bay reads wind, waves, weather and tide, and no 
   expect(errors).toEqual([]);
 });
 
-test("the blend and the fold stay under the pointer, so a second click is theirs, not the chart's", async ({
+test("the blend and the fold stay under the pointer from the first click, so every click is theirs, not the chart's", async ({
   page,
 }) => {
-  await openDock(page);
-  const tools = page.locator(".dock .dk-tools");
-  for (const name of ["Blend", /waves, sky and sea/]) {
+  // The desktop the blend was found moving on (#91).
+  await openDock(page, 1920, 1113);
+  const dock = page.locator(".dock");
+  const tools = dock.locator(".dk-tools");
+  /** How far above the dock's top edge the tools stand. */
+  const standing = async () => {
+    const [t, d] = await Promise.all([tools.boundingBox(), dock.boundingBox()]);
+    return d!.y - (t!.y + t!.height);
+  };
+  for (const [name, state] of [
+    ["Blend", "aria-pressed"],
+    [/waves, sky and sea/, "aria-expanded"],
+  ] as const) {
     const button = tools.getByRole("button", { name });
-    // Once to change the dock's height, which moves the tools with its top
-    // edge; then at the button where it now is, three times over.
-    await button.click();
+    // Where it stands before the first click, which changes the dock's
+    // height and once moved the tools with its top edge: three clicks there,
+    // each of them the button's.
     const box = (await button.boundingBox())!;
     const x = box.x + box.width / 2;
     const y = box.y + box.height / 2;
-    for (let i = 0; i < 3; i++) {
+    const was = await button.getAttribute(state);
+    const edge = await standing();
+    for (let i = 1; i <= 3; i++) {
       await page.mouse.click(x, y);
+      await expect(button).toHaveAttribute(
+        state,
+        i % 2 ? String(was !== "true") : String(was),
+      );
       await expect
         .poll(async () => (await button.boundingBox())?.y)
         .toBeCloseTo(box.y, 0);
@@ -1655,7 +1671,67 @@ test("the blend and the fold stay under the pointer, so a second click is theirs
     // No point was picked: the dock is still the spot's.
     await page.waitForTimeout(400);
     await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
-    // Off the tools, the dock lets go of the height it held.
+    // Off the tools, they go back to the dock's top edge.
     await page.mouse.move(x - 600, y - 300);
+    await expect.poll(standing).toBeCloseTo(edge, 0);
   }
+});
+
+test("on a phone's blend, a turn's time and height stay over the tide's dot where it passes them", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/?spot=brandon");
+  const dock = page.locator(".dock");
+  await expect(dock.locator(".tide-label").first()).toBeVisible({
+    timeout: 30000,
+  });
+  await dock.getByRole("button", { name: "Blend" }).click();
+  await expect(dock.locator(".tt-blend")).toBeVisible();
+  /**
+   * Where the dot and a label meet, the points of the label's glyphs, and how
+   * many of them the dot covers. The dot is made hit-testable for the asking,
+   * as it is drawn (the pen's layers take no pointer).
+   */
+  const meeting = () =>
+    page.evaluate(() => {
+      const dot = document.querySelector<SVGCircleElement>(".dock .tide-dot");
+      if (!dot) return null;
+      const d = dot.getBoundingClientRect();
+      const points: [number, number][] = [];
+      for (const label of document.querySelectorAll(".dock .tide-label")) {
+        const r = label.getBoundingClientRect();
+        for (
+          let x = Math.max(d.left, r.left);
+          x < Math.min(d.right, r.right);
+          x++
+        )
+          for (
+            let y = Math.max(d.top, r.top);
+            y < Math.min(d.bottom, r.bottom);
+            y++
+          )
+            points.push([x + 0.5, y + 0.5]);
+      }
+      const at = ([x, y]: [number, number]) => document.elementFromPoint(x, y);
+      dot.style.display = "none";
+      const glyphs = points.filter((p) => at(p)?.closest(".tide-label"));
+      dot.style.display = "";
+      dot.style.pointerEvents = "auto";
+      const covered = glyphs.filter((p) => at(p) === dot).length;
+      dot.style.pointerEvents = "";
+      return glyphs.length ? { glyphs: glyphs.length, covered } : null;
+    });
+  // Through the hours until the dot has passed over a few labels.
+  const slider = page.getByRole("slider", { name: "Forecast time" });
+  const last = Number(await slider.getAttribute("max"));
+  const met: { glyphs: number; covered: number }[] = [];
+  for (let at = 0; at <= last && met.length < 4; at++) {
+    await slider.fill(String(at));
+    const meets = await meeting();
+    if (meets) met.push(meets);
+  }
+  expect(met.length).toBeGreaterThan(0);
+  expect(met.map((m) => m.covered)).toEqual(met.map(() => 0));
 });

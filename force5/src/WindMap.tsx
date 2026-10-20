@@ -576,6 +576,13 @@ export default function WindMap(props: Props) {
         ),
       20000,
     );
+    // A tap on the chart waiting to become a picked point (below). Back or
+    // Forward lets go of it: the tap was on the chart as it stood, and a
+    // point picked after the step opened over an address that names no spot
+    // and pushed the history on from there (#90).
+    let pending = 0;
+    const cancelPick = () => window.clearTimeout(pending);
+    window.addEventListener("popstate", cancelPick);
     const zoomClass = () => {
       const z = map.getZoom();
       const el = map.getContainer();
@@ -630,8 +637,6 @@ export default function WindMap(props: Props) {
       }
       // A tap on the open map reads that point's forecast, after a moment's
       // wait for a second tap: a double tap zooms and picks nothing.
-      let pending = 0;
-      const cancelPick = () => window.clearTimeout(pending);
       map.on("click", (event) => {
         cancelPick();
         const target = event.originalEvent.target as HTMLElement | null;
@@ -717,6 +722,8 @@ export default function WindMap(props: Props) {
     resize.observe(container.current);
     return () => {
       clearTimeout(loadTimeout);
+      cancelPick();
+      window.removeEventListener("popstate", cancelPick);
       resize.disconnect();
       windRef.current?.destroy();
       windRef.current = null;

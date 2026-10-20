@@ -262,6 +262,45 @@ test("the spot chosen is in the link, by search or light, and Back steps through
   await expect(dockName(page)).toHaveText("Keel Beach", { timeout: 30000 });
 });
 
+test("Back lets go of a tap on the chart still waiting to pick a point: the chart alone at the link with no spot (#90)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openMap(page);
+  await page.locator('[data-spot-id="tramore"]').dispatchEvent("click");
+  await expect(dockName(page)).toHaveText("Tramore", { timeout: 30000 });
+  await page
+    .locator(".dock")
+    .getByRole("button", { name: "Close the forecast for Tramore" })
+    .click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator(".dock")).toHaveCount(0);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/\?spot=tramore$/);
+  await expect(dockName(page)).toHaveText("Tramore");
+  // Open water or land, clear of the lights and the boxes over the chart.
+  const open = await page.evaluate(() => {
+    for (let y = 200; y < 600; y += 20)
+      for (let x = 30; x < 360; x += 20)
+        if (
+          document
+            .elementFromPoint(x, y)
+            ?.classList.contains("maplibregl-canvas")
+        )
+          return { x, y };
+    return null;
+  });
+  expect(open).not.toBeNull();
+  // A tap there waits a moment for a second before it picks the point: Back
+  // within that moment, and then the moment passing, picks nothing.
+  await page.mouse.click(open!.x, open!.y);
+  await page.goBack();
+  await page.waitForTimeout(800);
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator(".dock")).toHaveCount(0);
+  expect(await page.evaluate(() => history.state)).toBeNull();
+});
+
 test("a spot in the link opens on it, focused; a remembered one waits to be chosen", async ({
   page,
 }) => {

@@ -1524,19 +1524,59 @@ export default function ForecastDock(props: Props) {
   // table's rows) and the fold move them as the dock's height changes: the
   // button clicked was no longer under the pointer, and the next click went
   // to the chart where it had been, and picked that point in place of the
-  // spot. While a mouse is on the tools the dock keeps the tallest height a
-  // click on them has seen, so they stay where the pointer is; it lets go
-  // when the pointer leaves them.
+  // spot. While a mouse is on the tools they stay where the first click on
+  // them found them, the dock growing or shrinking under them, and go back
+  // to its edge once the pointer is off them. Holding the dock's height in
+  // place of them kept it from shrinking, but the blend still grew it, and
+  // the tools with it, on the first click (#91).
   const dockRef = useRef<HTMLElement>(null);
-  const [held, setHeld] = useState<number | null>(null);
+  const toolsRef = useRef<HTMLDivElement>(null);
+  /** The tools' top on the screen when a click on them was made, while held. */
+  const pinned = useRef<number | null>(null);
+  const pin = () => {
+    const el = toolsRef.current;
+    if (!el) return;
+    el.style.translate = "";
+    if (pinned.current === null) return;
+    const by = pinned.current - el.getBoundingClientRect().top;
+    if (by) el.style.translate = `0 ${by}px`;
+  };
   const hold = (event: React.MouseEvent) => {
-    const el = dockRef.current;
-    if (!el || !event.detail) return;
+    const el = toolsRef.current;
+    if (!el || !event.detail || pinned.current !== null) return;
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches)
       return;
-    const height = el.getBoundingClientRect().height;
-    setHeld((was) => Math.max(was ?? 0, height));
+    pinned.current = el.getBoundingClientRect().top;
   };
+  const letGo = () => {
+    pinned.current = null;
+    pin();
+  };
+  // After the render a click asked for, and again as the dock's height
+  // settles after it (the blend's chart comes in a moment later): both
+  // before the frame is painted, so the tools are never seen to move.
+  useLayoutEffect(pin);
+  useEffect(() => {
+    const el = dockRef.current;
+    if (!el) return;
+    const watch = new ResizeObserver(pin);
+    watch.observe(el);
+    // Off the tools by where the pointer is, not by a pointerleave: the
+    // browser sends one when the dock moves under a still pointer, before
+    // the tools are put back under it, and that let go of them at once.
+    const away = (event: PointerEvent) => {
+      const box = toolsRef.current?.getBoundingClientRect();
+      if (pinned.current === null || !box) return;
+      const { clientX: x, clientY: y } = event;
+      if (x < box.left || x > box.right || y < box.top || y > box.bottom)
+        letGo();
+    };
+    window.addEventListener("pointermove", away);
+    return () => {
+      watch.disconnect();
+      window.removeEventListener("pointermove", away);
+    };
+  }, []);
 
   const tideDot = useMemo(() => {
     if (!tide || !column) return null;
@@ -1557,7 +1597,6 @@ export default function ForecastDock(props: Props) {
       ref={dockRef}
       className="dock"
       aria-label={`Forecast for ${spot.name}`}
-      style={held ? { minHeight: held } : undefined}
     >
       {/* The dock is its hours and nothing else: the spot's name, its star,
           the switch to the blend, its page and the fold stand on the chart
@@ -1566,10 +1605,10 @@ export default function ForecastDock(props: Props) {
           only the glyphs: the light the pen has looped on the chart says
           which spot it is, and the name is there for a screen reader. */}
       <div
+        ref={toolsRef}
         className="dk-tools chart-box"
         role="group"
         aria-label="This spot"
-        onPointerLeave={() => setHeld(null)}
       >
         <div className="dk-id">
           {!isPoint && (
@@ -1878,6 +1917,25 @@ export default function ForecastDock(props: Props) {
                 }
               />
             ))}
+            {/* The tide at the chosen hour, on its curve: under the table,
+                as the line at now is, so a turn's time and height written
+                beside the curve stay on top of it, their halo round them,
+                where the dot passes (#98). */}
+            {tideDot && (
+              <svg
+                className="tt-under"
+                width={g.total}
+                height={tableHeight}
+                aria-hidden="true"
+              >
+                <circle
+                  className="tide-dot"
+                  cx={tideDot.x}
+                  cy={tideDot.y}
+                  r="3.4"
+                />
+              </svg>
+            )}
             <StripTable
               spot={spot}
               columns={columns}
@@ -1926,14 +1984,6 @@ export default function ForecastDock(props: Props) {
                 className="pen-frame is-second"
                 pathLength={1}
               />
-              {tideDot && (
-                <circle
-                  className="tide-dot"
-                  cx={tideDot.x}
-                  cy={tideDot.y}
-                  r="3.4"
-                />
-              )}
             </svg>
           </div>
         </div>
