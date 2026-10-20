@@ -316,10 +316,10 @@ export default function App() {
     setWindStyle(style);
     store.set(WIND_KEY, style);
   };
-  /** The mark round the chosen spot: the loupe unless the rider chose otherwise. */
+  /** The mark round the chosen spot: the range ring unless the rider chose otherwise. */
   const [focusStyle, setFocusStyle] = useState<FocusStyle>(() => {
     const saved = store.get(FOCUS_KEY);
-    return isFocusStyle(saved) ? saved : "loupe";
+    return isFocusStyle(saved) ? saved : "ring";
   });
   const chooseFocusStyle = (style: FocusStyle) => {
     setFocusStyle(style);

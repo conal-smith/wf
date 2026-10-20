@@ -190,9 +190,14 @@ test("finding a spot flies there and focuses it, with no box over the map; Escap
   // The pen rings it and writes nothing beside it: the dock has the hour.
   await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(1);
   await expect(page.locator(".map-pen text")).toHaveCount(0);
-  // A glass is laid round it, by default, under the lights.
-  await expect(page.locator(".map-focus")).toHaveAttribute("data-focus", "loupe");
-  await expect(page.locator(".map-focus .map-loupe-north")).toHaveText("N");
+  // A range ring is drawn round it, by default, under the lights.
+  await expect(page.locator(".map-focus")).toHaveAttribute(
+    "data-focus",
+    "ring",
+  );
+  await expect(page.locator(".map-focus .map-range-label")).toHaveText(
+    /^[\d.]+ NM$/,
+  );
   // The wind stays at full strength.
   await expect(page.locator(".particle-canvas")).toHaveCSS("opacity", "1");
 
@@ -549,10 +554,20 @@ test("an unavailable basemap says so, and the dock still reads the forecast", as
     .toBeGreaterThan(10);
 });
 
-test("round the chosen spot: a loupe at a true distance, a range ring, or nothing, kept as chosen", async ({
+test("round the chosen spot: a range ring, a loupe at a true distance, or nothing, kept as chosen", async ({
   page,
 }) => {
   await openChart(page, 1440, 900, null);
+  // The range ring by default; the loupe, from the layers.
+  const layers = page.getByRole("button", { name: "Layers", exact: true });
+  await layers.click();
+  const panel = page.getByRole("group", { name: "Layers" });
+  const choice = panel.getByRole("group", { name: "Round the chosen spot" });
+  await expect(
+    choice.getByRole("button", { name: "Range ring" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await choice.getByRole("button", { name: "Loupe" }).click();
+  await layers.click();
   await findSpot(page, "Dollymount");
   const map = page.locator(".map-canvas");
   const focus = page.locator(".map-focus");
@@ -590,11 +605,8 @@ test("round the chosen spot: a loupe at a true distance, a range ring, or nothin
   expect(further / wide).toBeGreaterThan(0.45);
   expect(further / wide).toBeLessThan(0.55);
 
-  // The range ring, from the layers.
-  const layers = page.getByRole("button", { name: "Layers", exact: true });
+  // Back to the range ring.
   await layers.click();
-  const panel = page.getByRole("group", { name: "Layers" });
-  const choice = panel.getByRole("group", { name: "Round the chosen spot" });
   await expect(choice.getByRole("button", { name: "Loupe" })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -644,6 +656,90 @@ test("round the chosen spot: a loupe at a true distance, a range ring, or nothin
   await expect(map).toHaveClass(/is-focus/);
   await expect(focus).toHaveAttribute("data-focus", "off");
   await expect(focus.locator("*")).toHaveCount(0);
+});
+
+/**
+ * From now on, at every frame the chart moves in: how far the mark round the
+ * spot (`mark`, a circle centred on it) stands from the spot's light, which
+ * MapLibre moves in the frame it draws the chart.
+ */
+async function followMark(page: Page, id: string, mark: string) {
+  await page.evaluate(
+    ([id, mark]) => {
+      const light = document.querySelector(
+        `.spot-marker[data-spot-id="${id}"]`,
+      )!;
+      const centre = (el: Element) => {
+        const r = el.getBoundingClientRect();
+        return [r.x + r.width / 2, r.y + r.height / 2];
+      };
+      const gap = () => {
+        const [lx, ly] = centre(light);
+        const [mx, my] = centre(document.querySelector(mark)!);
+        return [mx - lx, my - ly];
+      };
+      const w = window as unknown as { __gaps: number[][]; __rest: number[] };
+      w.__rest = gap();
+      w.__gaps = [];
+      new MutationObserver(() => w.__gaps.push(gap())).observe(light, {
+        attributes: true,
+        attributeFilter: ["style"],
+      });
+    },
+    [id, mark],
+  );
+}
+
+test("the mark round a chosen spot moves with the chart, in the same frame", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  for (const [style, mark] of [
+    ["ring", ".map-range-line"],
+    ["loupe", ".map-loupe-edge.is-inner"],
+  ]) {
+    await page.addInitScript(
+      (style) => localStorage.setItem("wingfoil.map.focus.v1", style),
+      style,
+    );
+    await page.goto("/?spot=dollymount");
+    await expect(page.locator(mark)).toHaveCount(1, { timeout: 30000 });
+    // Flown in and at rest.
+    await page.waitForTimeout(2500);
+    await steadyFrames(page);
+    await followMark(page, "dollymount", mark);
+    // A drag from open chart, then a zoom out and in.
+    const from = await page.evaluate(() => {
+      for (let y = 150; y < 600; y += 37)
+        for (let x = 200; x < 1200; x += 41)
+          if (
+            document
+              .elementFromPoint(x, y)
+              ?.classList.contains("maplibregl-canvas")
+          )
+            return { x, y };
+      return null;
+    });
+    expect(from).not.toBeNull();
+    await page.mouse.move(from!.x, from!.y);
+    await page.mouse.down();
+    await page.mouse.move(from!.x - 160, from!.y - 90, { steps: 20 });
+    await page.mouse.up();
+    await page.waitForTimeout(1200);
+    await page.getByRole("button", { name: "Zoom out", exact: true }).click();
+    await page.waitForTimeout(1200);
+    await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+    await page.waitForTimeout(1200);
+    const { rest, gaps } = await page.evaluate(() => {
+      const w = window as unknown as { __gaps: number[][]; __rest: number[] };
+      return { rest: w.__rest, gaps: w.__gaps };
+    });
+    expect(gaps.length).toBeGreaterThan(5);
+    const worst = Math.max(
+      ...gaps.map(([x, y]) => Math.hypot(x - rest[0], y - rest[1])),
+    );
+    expect(worst, `${style}: px off the spot in a frame`).toBeLessThan(1);
+  }
 });
 
 test("a link that names a spot opens the chart on it", async ({ page }) => {

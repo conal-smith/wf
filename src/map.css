@@ -89,6 +89,10 @@
   overflow: visible;
   z-index: 2;
 }
+/* Moved over the spot as a layer of its own: a pan paints nothing again. */
+.map-canvas.is-focus > .map-focus {
+  will-change: transform;
+}
 .map-focus > g {
   animation: chart-fade 400ms ease both;
 }

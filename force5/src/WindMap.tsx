@@ -184,17 +184,74 @@ const WORLD = [
 
 const SVG = "http://www.w3.org/2000/svg";
 
-/** An SVG element, its attributes set, added to a parent. */
+/**
+ * While `redraw` draws over a drawing: for each parent, how many of its
+ * elements have been drawn again so far.
+ */
+let drawn: Map<Element, number> | null = null;
+
+/**
+ * An SVG element, its attributes set, added to a parent. In a redraw, the
+ * element already in its place is kept when it is of the same kind and
+ * class, and only what differs is set.
+ */
 function svgEl(
   parent: Element,
   tag: string,
   attrs: Record<string, string | number> = {},
 ) {
-  const el = document.createElementNS(SVG, tag);
-  for (const [key, value] of Object.entries(attrs))
-    el.setAttribute(key, typeof value === "number" ? value.toFixed(1) : value);
-  parent.appendChild(el);
+  let el: Element | null = null;
+  if (drawn) {
+    const i = drawn.get(parent) ?? 0;
+    drawn.set(parent, i + 1);
+    const old = parent.children[i];
+    if (
+      old?.localName === tag &&
+      old.getAttribute("class") === (attrs.class ?? null)
+    ) {
+      el = old;
+      drawn.set(el, 0);
+      for (const name of el.getAttributeNames())
+        if (!(name in attrs)) el.removeAttribute(name);
+    } else {
+      el = document.createElementNS(SVG, tag);
+      parent.insertBefore(el, old ?? null);
+    }
+  } else {
+    el = document.createElementNS(SVG, tag);
+    parent.appendChild(el);
+  }
+  for (const [key, value] of Object.entries(attrs)) {
+    const v = typeof value === "number" ? value.toFixed(1) : value;
+    if (el.getAttribute(key) !== v) el.setAttribute(key, v);
+  }
   return el;
+}
+
+/** An element's words, set only when they are not already. */
+function write(el: Element, text: string) {
+  if (el.textContent !== text) el.textContent = text;
+}
+
+/** An attribute, set only when it is not already. */
+function setAttr(el: Element, name: string, value: string) {
+  if (el.getAttribute(name) !== value) el.setAttribute(name, value);
+}
+
+/**
+ * Draws into `g` over what is drawn there: a frame of a zoom moves the
+ * elements already drawn rather than building them again. What the new
+ * drawing does not use goes.
+ */
+function redraw(g: Element, draw: () => void) {
+  drawn = new Map([[g, 0]]);
+  try {
+    draw();
+    for (const [parent, n] of drawn)
+      while (parent.children.length > n) parent.lastElementChild!.remove();
+  } finally {
+    drawn = null;
+  }
 }
 
 /** A line from focus.ts's geometry, as an SVG line. */
@@ -238,7 +295,6 @@ function drawLoupe(
   scale: RoseScale | null,
   loupe: LoupeRose | null,
 ) {
-  g.replaceChildren();
   hatches(g);
   // Held at its smallest, no longer to scale: a compass, with nothing inside.
   const rose = roseDrawing(scale ? (loupe?.rose ?? null) : null, r, scale);
@@ -276,12 +332,15 @@ function drawLoupe(
     svgEl(dg, "path", { class: "map-rose-drift-head", d: rose.drift.head });
   }
   for (const l of [...rose.rings.map((ring) => ring.label), ...rose.labels])
-    svgEl(glass, "text", {
-      class: `map-rose-label is-${l.kind}`,
-      x: l.x,
-      y: l.y,
-      "text-anchor": "middle",
-    }).textContent = l.text;
+    write(
+      svgEl(glass, "text", {
+        class: `map-rose-label is-${l.kind}`,
+        x: l.x,
+        y: l.y,
+        "text-anchor": "middle",
+      }),
+      l.text,
+    );
 
   const rim = svgEl(g, "g", { class: "map-loupe-rim" });
   svgEl(rim, "circle", { class: "map-loupe-band", r: r + LOUPE_BAND / 2 });
@@ -300,11 +359,14 @@ function drawLoupe(
       x2: t.x2,
       y2: t.y2,
     });
-  svgEl(g, "text", {
-    class: "map-loupe-north",
-    y: -r - 2.5,
-    "text-anchor": "middle",
-  }).textContent = "N";
+  write(
+    svgEl(g, "text", {
+      class: "map-loupe-north",
+      y: -r - 2.5,
+      "text-anchor": "middle",
+    }),
+    "N",
+  );
   // A glint on the glass, top left.
   const g0 = r - 16;
   svgEl(g, "path", {
@@ -320,11 +382,14 @@ function drawLoupe(
       d: dial.offshore.text,
     });
     const words = svgEl(g, "text", { class: "map-dial-words" });
-    svgEl(words, "textPath", {
-      href: "#loupe-offshore-words",
-      startOffset: "50%",
-      "text-anchor": "middle",
-    }).textContent = "OFFSHORE";
+    write(
+      svgEl(words, "textPath", {
+        href: "#loupe-offshore-words",
+        startOffset: "50%",
+        "text-anchor": "middle",
+      }),
+      "OFFSHORE",
+    );
   }
   const needle = svgEl(g, "g", { class: "map-dial-needle" });
   svgEl(needle, "path", {
@@ -333,7 +398,10 @@ function drawLoupe(
   });
   svgEl(needle, "circle", { cx: dial.pin[0], cy: dial.pin[1], r: 1.6 });
   const box = footBox(loupe.reading, loupe.relation, r);
-  const foot = svgEl(g, "g", { class: "map-loupe-foot" });
+  const foot = svgEl(g, "g", {
+    class: "map-loupe-foot",
+    transform: `translate(0 ${box.y.toFixed(1)})`,
+  });
   svgEl(foot, "rect", {
     class: "map-loupe-foot-box",
     x: -box.w / 2,
@@ -348,23 +416,27 @@ function drawLoupe(
     width: box.w - 5,
     height: box.h - 5,
   });
-  svgEl(foot, "text", {
-    class: "map-loupe-reading",
-    x: -box.w / 2 + 9,
-    y: 4.5,
-  }).textContent = loupe.reading;
-  svgEl(foot, "text", {
-    class: `map-loupe-relation${loupe.warn ? " is-warn" : ""}`,
-    x: box.w / 2 - 8,
-    y: 4,
-    "text-anchor": "end",
-  }).textContent = loupe.relation;
-  foot.setAttribute("transform", `translate(0 ${box.y.toFixed(1)})`);
+  write(
+    svgEl(foot, "text", {
+      class: "map-loupe-reading",
+      x: -box.w / 2 + 9,
+      y: 4.5,
+    }),
+    loupe.reading,
+  );
+  write(
+    svgEl(foot, "text", {
+      class: `map-loupe-relation${loupe.warn ? " is-warn" : ""}`,
+      x: box.w / 2 - 8,
+      y: 4,
+      "text-anchor": "end",
+    }),
+    loupe.relation,
+  );
 }
 
 /** The range ring at the origin, `r` pixels out, with its distance written up and to the right. */
 function drawRange(g: SVGGElement, r: number, label: string) {
-  g.replaceChildren();
   svgEl(g, "circle", { class: "map-range-halo", r });
   svgEl(g, "circle", { class: "map-range-line", r });
   for (const [x, y] of [
@@ -380,11 +452,14 @@ function drawRange(g: SVGGElement, r: number, label: string) {
       x2: x * (r + 6),
       y2: y * (r + 6),
     });
-  svgEl(g, "text", {
-    class: "map-range-label",
-    x: Math.cos(-0.95) * r + 8,
-    y: Math.sin(-0.95) * r - 6,
-  }).textContent = label;
+  write(
+    svgEl(g, "text", {
+      class: "map-range-label",
+      x: Math.cos(-0.95) * r + 8,
+      y: Math.sin(-0.95) * r - 6,
+    }),
+    label,
+  );
 }
 
 function ring(lon: number, lat: number, metres: number, n = 56) {
@@ -988,6 +1063,10 @@ export default function WindMap(props: Props) {
   // and the box at its foot is held in view. A pan only moves the glass; it
   // is drawn again when its size changes, or the hour (`rose`). The wind and
   // the lights are never washed.
+  //
+  // It moves in the frame the map is drawn: MapLibre fires "move" as it
+  // renders, and its own markers are moved there too. A frame later, the
+  // mark trailed the chart on every pan.
   const remeasure = useRef(() => {});
   const redrawRose = useRef(() => {});
   useEffect(() => {
@@ -999,6 +1078,7 @@ export default function WindMap(props: Props) {
     map.getContainer().classList.toggle("is-focus", !!spot);
     svg.dataset.focus = style;
     svg.replaceChildren();
+    svg.style.transform = "";
     const g =
       spot && style !== "off"
         ? (svgEl(svg, "g", {
@@ -1012,7 +1092,10 @@ export default function WindMap(props: Props) {
     /** Whether the rose is drawn to scale (not held at its smallest). */
     let toScale = false;
     const drawRose = () => {
-      if (g) drawLoupe(g, r, toScale ? scale : null, latest.current.rose);
+      if (g)
+        redraw(g, () =>
+          drawLoupe(g, r, toScale ? scale : null, latest.current.rose),
+        );
     };
     /** The foot box, kept in the map's clear area when the bezel's foot is off it. */
     const pinFoot = (q: { x: number; y: number }) => {
@@ -1027,20 +1110,21 @@ export default function WindMap(props: Props) {
         right: el.clientWidth - q.x,
         bottom: el.clientHeight - p.bottomInset - (p.phone ? 64 : 24) - q.y,
       });
-      foot.setAttribute(
+      setAttr(
+        foot,
         "transform",
         `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})`,
       );
     };
-    let washedAt = -1;
-    let raf = 0;
+    /** The radius of the hole in the wash under the rim, in metres. */
+    let hole = 0;
     const mpp = () => (spot ? metresPerPixel(map.getZoom(), spot.lat) : 0);
     /** The wash beyond the mark, in metres round the spot at this zoom. */
     const wash = () => {
       const source = map.getSource("focus") as GeoJSONSource | undefined;
       if (!source) return;
-      washedAt = map.getZoom();
       const m = mpp();
+      hole = (washHoles(style, r).holes[0] ?? 0) * m;
       source.setData({
         type: "FeatureCollection",
         features: spot
@@ -1074,18 +1158,30 @@ export default function WindMap(props: Props) {
           ],
         ]);
     };
-    /** Over the spot, wherever the camera has it; the ring at its distance. */
+    /**
+     * Over the spot, wherever the camera has it; the ring at its distance.
+     * The sheet is moved as a layer of its own (src/map.css), so a pan
+     * paints nothing again. At rest it stands on whole pixels, the rest
+     * drawn in, as sharp as it was.
+     */
     const place = () => {
-      raf = 0;
       if (!spot || !g) return;
       const q = map.project([spot.lon, spot.lat]);
-      g.setAttribute(
+      const still = !map.isMoving();
+      const x = still ? Math.round(q.x) : q.x;
+      const y = still ? Math.round(q.y) : q.y;
+      svg.style.transform = `translate(${x}px, ${y}px)`;
+      setAttr(
+        g,
         "transform",
-        `translate(${q.x.toFixed(1)} ${q.y.toFixed(1)})`,
+        `translate(${(q.x - x).toFixed(2)} ${(q.y - y).toFixed(2)})`,
       );
       if (style === "ring") {
         const next = range.metres / mpp();
-        if (Math.abs(next - r) > 0.05) drawRange(g, (r = next), range.label);
+        if (Math.abs(next - r) > 0.05) {
+          r = next;
+          redraw(g, () => drawRange(g, r, range.label));
+        }
       } else {
         const next = roseRadius(scale.metres, mpp());
         if (Math.abs(next.r - r) > 0.05 || next.toScale !== toScale) {
@@ -1094,9 +1190,12 @@ export default function WindMap(props: Props) {
           drawRose();
         }
         pinFoot(q);
-        // The hole in the wash under the rim is cut again on every frame of
-        // a zoom: held at its smallest, the glass is a size on the screen.
-        if (map.getZoom() !== washedAt) wash();
+        // The hole in the wash is a distance on the chart, under the rim's
+        // band through most of a zoom: in one it is cut again only when its
+        // edge would show, and once the camera rests (`measure`). Cut on
+        // every frame, it kept MapLibre tiling it again, a step behind.
+        const edge = hole / mpp();
+        if (!still && (edge < r || edge > r + LOUPE_BAND)) wash();
       }
     };
     /** Sized for the map: the glass to its shorter side, the ring's distance to the zoom too. */
@@ -1113,9 +1212,6 @@ export default function WindMap(props: Props) {
       place();
       wash();
       names();
-    };
-    const queue = () => {
-      if (!raf) raf = requestAnimationFrame(place);
     };
     measure();
     remeasure.current = measure;
@@ -1147,15 +1243,16 @@ export default function WindMap(props: Props) {
       "visibility",
       quiet ? "visible" : "none",
     );
-    map.on("move", queue);
+    map.on("move", place);
+    map.on("moveend", place);
     map.on("zoomend", measure);
     map.on("resize", measure);
     return () => {
       clearTimeout(hide);
-      cancelAnimationFrame(raf);
       remeasure.current = () => {};
       redrawRose.current = () => {};
-      map.off("move", queue);
+      map.off("move", place);
+      map.off("moveend", place);
       map.off("zoomend", measure);
       map.off("resize", measure);
     };
@@ -1197,15 +1294,20 @@ export default function WindMap(props: Props) {
           // stands above the strip of the rider's spots.
           clearBottom: phone ? 84 : 36,
         });
-      if (spot && path) {
-        const q = map.project([spot.lon, spot.lat]);
-        path.setAttribute("d", loopPath(q.x, q.y, 24, 18, 7));
-      }
+    };
+    // The loop rings the spot in the glass: moved in the same frame as the
+    // chart, as the focus is.
+    const loop = () => {
+      if (!spot || !path) return;
+      const q = map.project([spot.lon, spot.lat]);
+      path.setAttribute("d", loopPath(q.x, q.y, 24, 18, 7));
     };
     const queue = () => {
+      loop();
       if (!raf) raf = requestAnimationFrame(place);
     };
     place();
+    loop();
     map.on("move", queue);
     map.on("resize", queue);
     return () => {

@@ -92,8 +92,8 @@ export async function backToIreland(page: Page) {
         );
       });
     });
-  // The loupe flies a chosen spot in to fit its half-mile rose, about zoom
-  // 13: eight steps out from there is not yet the whole country.
+  // The loupe, when chosen, flies a spot in to fit its half-mile rose, about
+  // zoom 13: eight steps out from there is not yet the whole country.
   for (let i = 0; i < 12 && !(await allOnTheChart()); i++) {
     await zoomOut.click();
     await page.waitForTimeout(400);
