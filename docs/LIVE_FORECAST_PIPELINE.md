@@ -883,7 +883,13 @@ Cache headers are set by the uploader and unchanged from the AWS design:
 
 Cloudflare cache rules can override origin headers, so verify the served response, not
 just the uploaded metadata — in particular that the pointer's edge TTL is short enough
-for the browser's five-minute revalidation to see a new run.
+for the browser's five-minute revalidation to see a new run. Verify with a GET: a HEAD
+bypasses Cloudflare's cache and shows the bucket's header, while a cached GET gets the
+zone's Browser Cache TTL whenever the origin's `max-age` is shorter. In October 2026 that
+raised every pointer to `max-age=14400`; the zone needs Browser Cache TTL set to
+*Respect Existing Headers* (or the data domain's cache rule a Browser TTL of *Respect
+origin TTL*). The site's own pointer fetches use `cache: "no-cache"`, so they revalidate
+anyway, but any other reader (an opened link, a script) holds a pointer for four hours.
 
 ### Conditional writes on R2
 

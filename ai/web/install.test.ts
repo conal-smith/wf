@@ -163,6 +163,24 @@ describe("adding to an app", () => {
     expect(grokLink()).toBe("https://grok.com/connectors");
   });
 
+  it("says the address is copied, and what is left, for every app that copies it", () => {
+    for (const device of ["iphone", "android", "computer"] as const)
+      for (const assistant of ASSISTANTS) {
+        const plan = addPlan(assistant, device, URL_);
+        if (plan.copies) expect(plan.copiedNote).toMatch(/^Address copied\. /);
+        else expect(plan.copiedNote).toBeUndefined();
+      }
+  });
+
+  it("sends the reader to Settings → Security first for ChatGPT's developer mode", () => {
+    const plan = addPlan("chatgpt", "computer", URL_);
+    for (const line of [plan.note, plan.copiedNote])
+      expect(line).toMatch(
+        /First open Settings → Security and turn on Developer mode\.$/,
+      );
+    expect(plan.note).not.toMatch(/Security first/);
+  });
+
   it("sends ChatGPT to its apps on a computer, and only copies on a phone", () => {
     expect(addPlan("chatgpt", "computer", URL_).href).toBe(CHATGPT_APPS);
     expect(CHATGPT_APPS).toBe("https://chatgpt.com/plugins");
