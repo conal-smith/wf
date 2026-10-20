@@ -656,3 +656,21 @@ test("a link that names a spot opens the chart on it", async ({ page }) => {
   await expect(page.getByRole("dialog")).toHaveCount(0);
   void SAMPLE_CLOCK;
 });
+
+test("a light off the chart keeps its stars and wind in its name while a spot is open", async ({
+  page,
+}) => {
+  await openChart(page, 1440, 900, null);
+  const far = page.locator('[data-spot-id="dollymount"]');
+  const summary =
+    /^Dollymount, Dublin: \d\d:\d\d (dark|\d stars?), [NESW]+ \d+ knots/;
+  await expect(far).toHaveAttribute("aria-label", summary);
+  // Brandon's forecast flies the chart to Kerry, off Dollymount's square.
+  await chooseSpot(page, "brandon");
+  await expect(page.locator(".map-canvas")).toHaveClass(/is-focus/);
+  await page.waitForTimeout(2000);
+  await expect(far).toHaveAttribute("aria-label", summary);
+  // And at another hour, from the same run.
+  await page.getByRole("slider", { name: "Forecast time" }).fill("10");
+  await expect(far).toHaveAttribute("aria-label", summary);
+});
