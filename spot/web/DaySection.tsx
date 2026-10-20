@@ -59,6 +59,7 @@ import {
   type TideTurn,
 } from "./spot";
 import { STARS_HREF } from "../../force5/src/siteNav";
+import { rangeKeyWords } from "./TableKey";
 
 const styles = tv({
   slots: {
@@ -451,7 +452,14 @@ function DayBody({
                   />
                 </RatingTip>
               </span>
-              <span className={s.windPlain()}>
+              <span
+                className={s.windPlain()}
+                title={
+                  jump
+                    ? `Gust ${windIn(wind.gust_kn!, units)} ${unitText}, in red: well over the wind`
+                    : undefined
+                }
+              >
                 <Figure
                   value={windIn(wind.wind_kn, units)}
                   sup={
@@ -587,7 +595,11 @@ function DayBody({
               <th scope="col" className={s.th()}>
                 From
               </th>
-              <th scope="col" className={s.th({ className: s.range() })}>
+              <th
+                scope="col"
+                className={s.th({ className: s.range() })}
+                title={rangeKeyWords(unitText)}
+              >
                 <span className="sr-only">The wind against your range</span>
                 <RangeAxis band={band} units={units} />
               </th>

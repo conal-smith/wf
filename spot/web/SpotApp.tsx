@@ -70,6 +70,7 @@ import {
   tideTurns,
 } from "./spot";
 import { SpotSatellite, useSpotPicture } from "./SpotSatellite";
+import { TableKey } from "./TableKey";
 import StarsPage from "./StarsPage";
 import { useSpotForecast } from "./useSpotForecast";
 import { useWidth } from "./useWidth";
@@ -534,6 +535,9 @@ function SpotPage({
           />
         ))}
       </div>
+      {days.length > 0 && (
+        <TableKey band={band} units={units} unitText={unitText} />
+      )}
       <SourcesFooter forecast={forecast} picture={picture} />
     </main>
   );
