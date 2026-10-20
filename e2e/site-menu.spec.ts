@@ -98,6 +98,38 @@ test("closing through the trigger returns focus to it, even unfocused", async ({
   await expect(trigger(page)).toBeFocused();
 });
 
+test("one press on the trigger closes the menu, even one that drops focus first", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await trigger(page).click();
+  await expect(row(page, "Wind map")).toBeFocused();
+
+  // Safari does not focus a button it is pressed on: the press takes focus
+  // off the row to the body, the menu hears focus leave and closes, and the
+  // click that follows must not open it again.
+  await page.evaluate(() => {
+    document.addEventListener(
+      "mousedown",
+      () => (document.activeElement as HTMLElement | null)?.blur(),
+      true,
+    );
+  });
+  // The press's events on the button itself, so the click is not lost to
+  // the glyph swapped under the pointer.
+  for (const type of [
+    "pointerdown",
+    "mousedown",
+    "pointerup",
+    "mouseup",
+    "click",
+  ])
+    await trigger(page).dispatchEvent(type, { button: 0 });
+  await expect(panel(page)).toHaveCount(0);
+  await expect(trigger(page)).toHaveAttribute("aria-expanded", "false");
+  await expect(trigger(page)).toBeFocused();
+});
+
 test("the menu carries the reader between the map and the marketplace", async ({
   page,
 }) => {
