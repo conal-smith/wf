@@ -77,7 +77,7 @@ describe("the MCP endpoint", () => {
     const forecast = answer.json();
     expect(forecast.spot.id).toBe("brandon");
     expect(forecast.window.step_hours).toBe(1);
-    expect(forecast.hours).toHaveLength(7);
+    expect(forecast.hours).toHaveLength(6);
     expect(forecast.hours[0].wind.wind_kn).toEqual(expect.any(Number));
     expect(forecast.sources.wind.length).toBeGreaterThan(0);
   });
@@ -173,6 +173,164 @@ describe("the MCP endpoint", () => {
     expect(limited.max_gust_kn).toBe(25);
     for (const spot of limited.spots)
       for (const s of spot.sessions) expect(s.gust_kn).toBeLessThanOrEqual(25);
+  });
+
+  it("refuses a from that is not an ISO 8601 time, rather than starting now", async () => {
+    const { call } = harness();
+    for (const [name, args] of [
+      ["find_wind", { from: "tomorrow" }],
+      ["get_spot_forecast", { spot: "donabate", from: "next friday" }],
+      ["find_wind", { from: "2026-02-30" }],
+    ] as const) {
+      const answer = await call(name, args);
+      expect(answer.isError).toBe(true);
+      expect(answer.text).toMatch(
+        /from must be an ISO 8601 time such as 2026-10-23T00:00:00Z/,
+      );
+    }
+    // A date, a time with or without its offset: all ISO 8601.
+    for (const from of [
+      "2026-09-17",
+      "2026-09-17T09:00:00Z",
+      "2026-09-17T10:00+01:00",
+    ]) {
+      const answer = await call("get_spot_forecast", {
+        spot: "dollymount",
+        from,
+        hours: 3,
+      });
+      expect(answer.isError).toBe(false);
+      expect(answer.json().window.from).toMatch(/^2026-09-17T/);
+    }
+  });
+
+  it("gives hours: N as N hours, the end exclusive", async () => {
+    const { call } = harness();
+    const rows = async (hours: number, step_hours?: number) => {
+      const forecast = (
+        await call("get_spot_forecast", {
+          spot: "dollymount",
+          hours,
+          step_hours,
+        })
+      ).json();
+      expect(
+        Date.parse(forecast.window.to) - Date.parse(forecast.window.from),
+      ).toBe(hours * 3600000);
+      return forecast.hours.length;
+    };
+    expect(await rows(1)).toBe(1);
+    expect(await rows(24)).toBe(24);
+    expect(await rows(72, 1)).toBe(72);
+    expect(await rows(48)).toBe(16);
+  });
+
+  it("takes a county as Co. X, Co X or County X, in any case", async () => {
+    const { call } = harness();
+    const base = { min_kn: 0, max_kn: 80, hours: 12, daylight_only: false };
+    const one = (
+      await call("find_wind", { ...base, county: "Co. Dublin" })
+    ).json();
+    expect(one.counties).toEqual(["Dublin"]);
+    expect(one.spots.length).toBeGreaterThan(0);
+    const wicklow = (
+      await call("find_wind", { ...base, counties: ["County Wicklow"] })
+    ).json();
+    expect(wicklow.counties).toEqual(["Wicklow"]);
+    const two = (
+      await call("find_wind", {
+        ...base,
+        counties: ["dublin", "co. wicklow", "CO DUBLIN"],
+      })
+    ).json();
+    expect(two.counties).toEqual(["Dublin", "Wicklow"]);
+    expect(two.searched_spots).toBeGreaterThan(one.searched_spots);
+    const kerry = (await call("list_spots", { county: "county kerry" })).json();
+    expect(kerry.spots.length).toBeGreaterThan(0);
+    const near = (
+      await call("find_wind", { ...base, near: "co wicklow" })
+    ).json();
+    expect(near.near.name).toBe("County Wicklow");
+  });
+
+  it("refuses max_km without near", async () => {
+    const { call } = harness();
+    const answer = await call("find_wind", { max_km: 20 });
+    expect(answer.isError).toBe(true);
+    expect(answer.text).toMatch(/^max_km needs near/);
+  });
+
+  it("says where the forecast ends when the window runs past it", async () => {
+    const { call } = harness();
+    // The fixtures' ECMWF run, the one find_wind ranks from by then, ends at 00:00Z on 28 Sept.
+    const beyond = await call("find_wind", { from: "2026-10-01T00:00:00Z" });
+    expect(beyond.isError).toBe(true);
+    expect(beyond.text).toMatch(
+      /does not reach .*: it ends Mon, 28 Sept, 01:00 \(2026-09-28T00:00:00.000Z\), the last hour ECMWF covers/,
+    );
+    const part = (
+      await call("find_wind", { from: "2026-09-27T00:00:00Z", hours: 48 })
+    ).json();
+    expect(part.note).toMatch(
+      /^Only part of the window is forecast: it ends .*2026-09-28T00:00:00.000Z/,
+    );
+    const whole = (await call("find_wind", { hours: 48 })).json();
+    expect(whole.note).toBeUndefined();
+    // On GFS alone, which reaches only the next morning.
+    const gfs = (
+      await call("find_wind", { hours: 48, stars_from: "gfs", then: "gfs" })
+    ).json();
+    expect(gfs.note).toMatch(
+      /2026-09-17T06:00:00.000Z\), the last hour GFS covers/,
+    );
+  });
+
+  it("goes on from one of several spots close together, and asks only when they are far apart", async () => {
+    const { call } = harness();
+    const malahide = await call("find_wind", { near: "Malahide", max_km: 20 });
+    expect(malahide.isError).toBe(false);
+    const found = malahide.json();
+    expect(found.near).toMatchObject({ name: "Malahide Estuary", max_km: 20 });
+    expect(found.near.note).toMatch(/"Malahide" matches 4 spots within 5 km/);
+    const beach = await call("find_wind", { near: "beach" });
+    expect(beach.isError).toBe(true);
+    expect(beach.text).toMatch(/could be any of: .*Ask which/);
+  });
+
+  it("says how far a county's nearest spot is when counties and max_km cannot both be met", async () => {
+    const { call } = harness();
+    const wexford = await call("find_wind", {
+      near: "malahide-estuary",
+      max_km: 30,
+      counties: ["Wexford"],
+    });
+    expect(wexford.isError).toBe(true);
+    const said =
+      /^Wexford's nearest spot \(Cahore\) is about (\d+) km from Malahide Estuary, past max_km 30\. Drop counties, or raise max_km to at least (\d+)\.$/.exec(
+        wexford.text,
+      );
+    expect(said).not.toBeNull();
+    const km = Number(said![2]);
+    expect(Number(said![1])).toBeGreaterThan(90);
+    // Raised as far as it says, the search finds Wexford.
+    const raised = (
+      await call("find_wind", {
+        near: "malahide-estuary",
+        max_km: km,
+        counties: ["Wexford"],
+        min_kn: 0,
+        max_kn: 80,
+      })
+    ).json();
+    expect(raised.searched_spots).toBeGreaterThan(0);
+    const two = await call("find_wind", {
+      near: "malahide-estuary",
+      max_km: 30,
+      counties: ["Wexford", "Kerry"],
+    });
+    expect(two.text).toMatch(
+      /^Wexford's nearest spot .*; Kerry's \(.+\) about \d+ km/,
+    );
   });
 
   it("names every live source with its licence", async () => {

@@ -12,7 +12,9 @@ import {
   WEATHER_MODELS,
   GUSTY_SPREAD_KN,
   WIND_MODELS,
+  axis,
   confidenceOf,
+  countyKey,
   distanceKm,
   findPlace,
   findSessions,
@@ -140,6 +142,16 @@ describe("windowFor", () => {
       Date.parse("2026-09-17T10:00:00Z"),
     );
   });
+
+  it("gives N hours as N steps, the end exclusive", () => {
+    const hours = (n: number, stepHours?: number) =>
+      axis(windowFor(now, { hours: n, stepHours }));
+    expect(hours(1)).toEqual([Date.parse("2026-09-16T18:00:00Z")]);
+    expect(hours(24)).toHaveLength(24);
+    expect(hours(48)).toHaveLength(16);
+    expect(hours(12, 6)).toHaveLength(2);
+    expect(hours(24).at(-1)).toBe(Date.parse("2026-09-17T17:00:00Z"));
+  });
 });
 
 describe("spotForecast", () => {
@@ -234,8 +246,9 @@ describe("spotForecast", () => {
     expect(forecast.sources.waves?.id).toBe("gfs-wave");
     expect(forecast.hours[0].waves?.height_m).toEqual(expect.any(Number));
     expect(forecast.hours[0].weather?.air_c).toEqual(expect.any(Number));
-    // 19:00 Irish time in mid-September is before sunset; 21:00 is after.
-    expect(forecast.hours.map((h) => h.daylight)).toEqual([true, false, false]);
+    // 19:00 Irish time in mid-September is before sunset; 22:00 is after.
+    // Six hours at three-hourly steps is two rows: the end is exclusive.
+    expect(forecast.hours.map((h) => h.daylight)).toEqual([true, false]);
     expect(forecast.sun[0].sunset).toMatch(/^Wed, 16 Sept, 19:\d\d$/);
     // No tide or sea-temperature bundle in the fixtures: said, not invented.
     expect(forecast.tides).toBeNull();
@@ -729,6 +742,39 @@ describe("near and counties", () => {
     expect("error" in nowhere && nowhere.error).toMatch(/lat, lon/);
   });
 
+  it("reads a county however it is written", () => {
+    for (const words of [
+      "Wicklow",
+      "wicklow",
+      "Co. Wicklow",
+      "co wicklow",
+      "CO.WICKLOW",
+      "County Wicklow",
+      " county  wicklow ",
+    ])
+      expect(countyKey(words)).toBe("wicklow");
+    // Only a whole word "Co" or "County" goes: Cork stays Cork.
+    expect(countyKey("Cork")).toBe("cork");
+    expect(countyKey("Co. Cork")).toBe("cork");
+  });
+
+  it("takes one of several spots a name matches when they lie close together", async () => {
+    const spots = await loadSpots(fixtureSource());
+    const malahide = findPlace(spots, "Malahide");
+    expect("place" in malahide && malahide.place).toMatchObject({
+      name: "Malahide Estuary",
+      note: '"Malahide" matches 4 spots within 5 km of each other; distances are from Malahide Estuary.',
+    });
+    // Far apart, the agent must still ask which.
+    const strand = findPlace(spots, "strand");
+    expect("error" in strand && strand.error).toMatch(
+      /could be any of: .*Ask which/,
+    );
+    // A single match carries no note.
+    const one = findPlace(spots, "malahide-estuary");
+    expect("place" in one && one.place.note).toBeUndefined();
+  });
+
   it("measures kilometres as the crow flies", () => {
     // Dublin to Galway is about 186 km.
     expect(
@@ -760,7 +806,7 @@ describe("near and counties", () => {
 
   it("searches only the counties asked for", async () => {
     const { spots, found } = await search({
-      counties: ["Dublin", "wicklow"],
+      counties: ["Co. Dublin", "county wicklow"],
     });
     expect(found.searched).toBe(
       spots.filter((s) => ["Dublin", "Wicklow"].includes(s.county)).length,
@@ -768,6 +814,42 @@ describe("near and counties", () => {
     expect(found.spots.length).toBeGreaterThan(0);
     for (const r of found.spots)
       expect(["Dublin", "Wicklow"]).toContain(r.spot.county);
+  });
+});
+
+describe("how far the forecast reaches", () => {
+  const reach = async (from?: { model: string; then: string }) => {
+    const source = fixtureSource();
+    const found = await findSessions(
+      source,
+      await loadSpots(source),
+      windowFor(FIXTURE_NOW, { hours: 6 }),
+      {
+        minKnots: 0,
+        maxKnots: 80,
+        daylightOnly: false,
+        minSessionHours: 1,
+        counties: ["Dublin"],
+        limit: 1,
+        now: FIXTURE_NOW,
+        from,
+      },
+    );
+    return found.reach;
+  };
+
+  it("is the furthest run of the models the ranking reads", async () => {
+    // HARMONIE has ended, so ECMWF; GFS, live but not read, reaches less far anyway.
+    expect(await reach()).toEqual({
+      time: Date.parse("2026-09-28T00:00:00Z"),
+      model: "ECMWF",
+    });
+    expect(await reach({ model: "gfs", then: "gfs" })).toEqual({
+      time: Date.parse("2026-09-17T06:00:00Z"),
+      model: "GFS",
+    });
+    // Neither model published: nothing can be ranked.
+    expect(await reach({ model: "harmonie", then: "icon-eu" })).toBeNull();
   });
 });
 

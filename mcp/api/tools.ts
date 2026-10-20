@@ -12,14 +12,17 @@ import {
   GUSTY_SPREAD_KN,
   MAX_WINDOW_HOURS,
   METHOD,
+  countyKey,
+  distanceKm,
   findPlace,
   findSessions,
   findSpot,
-  fold,
   loadSpots,
+  localTime,
   modelStatus,
   spotForecast,
   windowFor,
+  type Place,
   type RidingSpot,
 } from "./forecast.js";
 import type { ForecastSource } from "./httpSource.js";
@@ -77,6 +80,38 @@ const describeSpot = (s: RidingSpot) => `${s.name} (${s.county}, id ${s.id})`;
 
 const tool = <Shape extends z.ZodRawShape>(t: ForecastTool<Shape>) => t;
 
+const ISO_TIME =
+  /^(\d{4})-(\d{2})-(\d{2})([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/i;
+
+/**
+ * Whether `from` is an ISO 8601 date or time, and a real one. Date.parse alone
+ * would take "next friday" as no time at all, and the window would quietly
+ * start now: an agent could pass today's forecast on as Friday's.
+ */
+function isIsoTime(value: string): boolean {
+  const parts = ISO_TIME.exec(value.trim());
+  if (!parts || !Number.isFinite(Date.parse(value))) return false;
+  const [y, m, d] = parts.slice(1, 4).map(Number);
+  const day = new Date(Date.UTC(y, m - 1, d));
+  return day.getUTCMonth() === m - 1 && day.getUTCDate() === d;
+}
+
+/** The start of a window, as both tools take it. */
+const fromArg = (words: string) =>
+  z
+    .string()
+    .max(40)
+    .refine(isIsoTime, {
+      message:
+        'from must be an ISO 8601 time such as 2026-10-23T00:00:00Z. Work out a day like "tomorrow" or "next friday" from today\'s date first.',
+    })
+    .optional()
+    .describe(words);
+
+/** How far find_wind's max_km may reach: well past any two points in Ireland. */
+const MAX_KM = 600;
+const HOUR = 3600000;
+
 export const listSpots = tool({
   name: "list_spots",
   title: "List riding spots",
@@ -91,9 +126,9 @@ export const listSpots = tool({
   },
   async run({ county }, deps) {
     const spots = await loadSpots(deps.source);
-    const wanted = county?.trim().toLowerCase();
+    const wanted = county ? countyKey(county) : "";
     const list = wanted
-      ? spots.filter((s) => s.county.toLowerCase() === wanted)
+      ? spots.filter((s) => countyKey(s.county) === wanted)
       : spots;
     if (wanted && !list.length)
       return failure(
@@ -140,20 +175,18 @@ export const getSpotForecast = tool({
       .describe(
         "Spot id, name or part of a name, e.g. 'dollymount' or 'Brandon Bay'.",
       ),
-    from: z
-      .string()
-      .max(40)
-      .optional()
-      .describe(
-        "ISO 8601 start time. Defaults to now; earlier times are not available.",
-      ),
+    from: fromArg(
+      "ISO 8601 start time, e.g. 2026-10-23T09:00:00Z. Defaults to now; earlier times are not available.",
+    ),
     hours: z
       .number()
       .int()
       .min(1)
       .max(MAX_WINDOW_HOURS)
       .optional()
-      .describe("How many hours ahead to cover (default 48, at most 240)."),
+      .describe(
+        "How many hours to cover from the start (default 48, at most 240). The end is exclusive: 24 at hourly steps is 24 rows.",
+      ),
     step_hours: z
       .union([z.literal(1), z.literal(3), z.literal(6)])
       .optional()
@@ -229,11 +262,9 @@ export const findWind = tool({
       .describe(
         "Leave out hours whose gust is more than this many times the mean wind, e.g. 1.5.",
       ),
-    from: z
-      .string()
-      .max(40)
-      .optional()
-      .describe("ISO 8601 start of the search. Defaults to now."),
+    from: fromArg(
+      "ISO 8601 start of the search, e.g. 2026-10-23T00:00:00Z. Defaults to now.",
+    ),
     hours: z
       .number()
       .int()
@@ -245,7 +276,7 @@ export const findWind = tool({
       .string()
       .max(40)
       .optional()
-      .describe("Only spots in this county."),
+      .describe('Only spots in this county, e.g. "Kerry" or "Co. Kerry".'),
     counties: z
       .array(z.string().max(40))
       .max(32)
@@ -266,10 +297,10 @@ export const findWind = tool({
     max_km: z
       .number()
       .min(1)
-      .max(600)
+      .max(MAX_KM)
       .optional()
       .describe(
-        `How far from near to look, as the crow flies (default ${DEFAULT_MAX_KM} km).`,
+        `How far from near to look, as the crow flies (default ${DEFAULT_MAX_KM} km). Only with near.`,
       ),
     allow_offshore: z
       .boolean()
@@ -303,18 +334,28 @@ export const findWind = tool({
     if (maxKnots < minKnots) return failure("max_kn must be at least min_kn.");
     if (args.max_gust_kn !== undefined && args.max_gust_kn < minKnots)
       return failure("max_gust_kn must be at least min_kn.");
+    // Without near there is nothing to measure from, and all of Ireland
+    // would come back looking as if it were within max_km.
+    if (args.max_km !== undefined && args.near === undefined)
+      return failure(
+        "max_km needs near, the place to measure from. Pass where the person is as near, or leave max_km out.",
+      );
     const at = (deps.now ?? Date.now)();
     const spots = await loadSpots(deps.source);
-    const counties = [
+    // Each county by its own name, however it was asked for ("co. wicklow").
+    const names = new Map(
+      spots.filter((s) => s.county).map((s) => [countyKey(s.county), s.county]),
+    );
+    const asked = [
       ...(args.county ? [args.county] : []),
       ...(args.counties ?? []),
     ];
-    const known = new Set(spots.map((s) => fold(s.county)));
-    const unknown = counties.filter((c) => !known.has(fold(c)));
+    const unknown = asked.filter((c) => !names.has(countyKey(c)));
     if (unknown.length)
       return failure(
-        `No spots in ${unknown.join(", ")}. Counties with spots: ${[...new Set(spots.map((s) => s.county))].sort().join(", ")}.`,
+        `No spots in ${unknown.join(", ")}. Counties with spots: ${[...new Set(names.values())].sort().join(", ")}.`,
       );
+    const counties = [...new Set(asked.map((c) => names.get(countyKey(c))!))];
     const near = args.near === undefined ? null : findPlace(spots, args.near);
     if (near && "error" in near) return failure(near.error);
     const maxKm = args.max_km ?? DEFAULT_MAX_KM;
@@ -340,17 +381,30 @@ export const findWind = tool({
     });
     if (near && !found.searched)
       return failure(
-        `No spots within ${maxKm} km of ${near.place.name}${counties.length ? ` in ${counties.join(", ")}` : ""}. Try a larger max_km.`,
+        counties.length
+          ? tooFar(spots, counties, near.place, maxKm)
+          : `No spots within ${maxKm} km of ${near.place.name}. Try a larger max_km.`,
       );
-    if (!found.sources.length)
+    if (!found.reach)
       return failure(
         "No wind forecast is published right now. Try again later.",
       );
+    // An empty list past the forecast's end reads as "no wind that week".
+    const ends = `${localTime(found.reach.time)} (${new Date(found.reach.time).toISOString()}), the last hour ${found.reach.model} covers`;
+    if (found.reach.time < window.from)
+      return failure(
+        `The forecast does not reach ${localTime(window.from)} yet: it ends ${ends}. Search from before then, or ask again nearer the time.`,
+      );
+    const note =
+      found.reach.time < window.to - HOUR
+        ? `Only part of the window is forecast: it ends ${ends}. No spot can have a session after that yet.`
+        : null;
     return answer({
       window: {
         from: new Date(window.from).toISOString(),
         to: new Date(window.to).toISOString(),
       },
+      ...(note && { note }),
       wind_range_kn: [minKnots, maxKnots],
       ...(near && { near: { ...near.place, max_km: maxKm } }),
       ...(counties.length && { counties }),
@@ -372,6 +426,37 @@ export const findWind = tool({
     });
   },
 });
+
+/**
+ * Why no spot is both in the counties asked for and within max_km of near:
+ * how far each county's nearest spot is, so the agent can drop the counties or
+ * raise max_km far enough, rather than nudge it.
+ */
+function tooFar(
+  spots: readonly RidingSpot[],
+  counties: readonly string[],
+  near: Place,
+  maxKm: number,
+): string {
+  const nearest = counties.map((county) => {
+    const [spot, km] = spots
+      .filter((s) => s.county === county)
+      .map((s): [RidingSpot, number] => [s, distanceKm(near, s)])
+      .reduce((a, b) => (b[1] < a[1] ? b : a));
+    return { county, spot, km };
+  });
+  const [first, ...rest] = nearest;
+  const each = [
+    `${first.county}'s nearest spot (${first.spot.name}) is about ${Math.round(first.km)} km from ${near.name}`,
+    ...rest.map(
+      (n) => `${n.county}'s (${n.spot.name}) about ${Math.round(n.km)} km`,
+    ),
+  ].join("; ");
+  const reach = Math.ceil(Math.min(...nearest.map((n) => n.km)));
+  return reach <= MAX_KM
+    ? `${each}, past max_km ${maxKm}. Drop counties, or raise max_km to at least ${reach}.`
+    : `${each}, past the ${MAX_KM} km max_km allows. Drop counties.`;
+}
 
 export const forecastSources = tool({
   name: "forecast_sources",

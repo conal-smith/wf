@@ -42,6 +42,7 @@ import {
 } from "../../force5/src/weights.js";
 import {
   DEFAULT_STARS_FROM,
+  leadOrder,
   pickModel,
   type StarsFrom,
 } from "../../force5/src/lead.js";
@@ -200,6 +201,14 @@ export const fold = (value: string) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
+/**
+ * A county as an agent may write it: "Wicklow", "Co. Wicklow", "co wicklow" or
+ * "County Wicklow" all fold to "wicklow". What every county argument and every
+ * spot's county are compared by.
+ */
+export const countyKey = (value: string) =>
+  fold(value).replace(/^(county|co) /, "");
+
 export type SpotMatch =
   { spot: RidingSpot } | { spot: null; candidates: RidingSpot[] };
 
@@ -224,7 +233,7 @@ export function findSpot(
   });
   if (partial.length === 1) return { spot: partial[0] };
   if (partial.length > 1) return { spot: null, candidates: partial };
-  const county = spots.filter((s) => fold(s.county) === q);
+  const county = spots.filter((s) => countyKey(s.county) === countyKey(query));
   if (county.length === 1) return { spot: county[0] };
   return { spot: null, candidates: county };
 }
@@ -247,7 +256,16 @@ export interface Place {
   name: string;
   lat: number;
   lon: number;
+  /** Why this place was chosen, when the words matched several spots close together. */
+  note?: string;
 }
+
+/**
+ * How close together the spots a name matches must all lie for `near` to take
+ * one and go on: a radius search from any of them finds much the same spots,
+ * so asking which would be a pointless question.
+ */
+export const CLOSE_TOGETHER_KM = 5;
 
 const LAT_LON = /^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/;
 
@@ -270,8 +288,8 @@ export function findPlace(
     if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180)
       return { place: { name: `${lat}, ${lon}`, lat, lon } };
   }
-  const q = fold(near).replace(/^(county|co) /, "");
-  const county = spots.filter((s) => fold(s.county) === q);
+  const q = countyKey(near);
+  const county = spots.filter((s) => countyKey(s.county) === q);
   if (q && county.length) {
     const mean = (pick: (s: RidingSpot) => number) =>
       round(county.reduce((sum, s) => sum + pick(s), 0) / county.length, 3);
@@ -287,6 +305,23 @@ export function findPlace(
   if (match.spot) {
     const { name, lat, lon } = match.spot;
     return { place: { name, lat, lon } };
+  }
+  const close = match.candidates.every((a) =>
+    match.candidates.every((b) => distanceKm(a, b) <= CLOSE_TOGETHER_KM),
+  );
+  if (match.candidates.length > 1 && close) {
+    // The shortest name is the plainest, "Malahide Estuary" over "Low Rock — Malahide".
+    const { name, lat, lon } = match.candidates.reduce((a, b) =>
+      b.name.length < a.name.length ? b : a,
+    );
+    return {
+      place: {
+        name,
+        lat,
+        lon,
+        note: `"${near}" matches ${match.candidates.length} spots within ${CLOSE_TOGETHER_KM} km of each other; distances are from ${name}.`,
+      },
+    };
   }
   return {
     error: match.candidates.length
@@ -648,9 +683,10 @@ export function windowFor(
   return { from, to: from + hours * HOUR, stepHours };
 }
 
+/** The window's hours, a step apart, from `from` up to but not including `to`. */
 export function axis(window: Window): number[] {
   const times: number[] = [];
-  for (let t = window.from; t <= window.to; t += window.stepHours * HOUR)
+  for (let t = window.from; t < window.to; t += window.stepHours * HOUR)
     times.push(t);
   return times;
 }
@@ -1061,7 +1097,7 @@ async function spotTides(
   const events = curve.events.flatMap((e): SpotTides["events"] => {
     if (!isObject(e) || !finite(e.height)) return [];
     const time = Date.parse(e.time as string);
-    if (!Number.isFinite(time) || time < window.from || time > window.to)
+    if (!Number.isFinite(time) || time < window.from || time >= window.to)
       return [];
     if (e.kind !== "high" && e.kind !== "low") return [];
     return [
@@ -1363,9 +1399,15 @@ export async function findSessions(
   searched: number;
   sources: ModelRun[];
   unavailable: Unavailable[];
+  /**
+   * The last hour the models the ranking reads (the stars' model and the one
+   * after it) reach, and which of them reaches it, or null when neither is
+   * published: no hour past it can be a session.
+   */
+  reach: { time: number; model: string } | null;
 }> {
   const counties = options.counties?.length
-    ? new Set(options.counties.map(fold))
+    ? new Set(options.counties.map(countyKey))
     : null;
   const near = options.near;
   const distance = new Map(
@@ -1373,7 +1415,7 @@ export async function findSessions(
   );
   const pool = spots.filter(
     (s) =>
-      (!counties || counties.has(fold(s.county))) &&
+      (!counties || counties.has(countyKey(s.county))) &&
       (options.maxKm === undefined ||
         !near ||
         distance.get(s.id)! <= options.maxKm),
@@ -1421,11 +1463,20 @@ export async function findSessions(
       b.rideable_hours - a.rideable_hours ||
       (a.distance_km ?? 0) - (b.distance_km ?? 0),
   );
+  const leads = leadOrder(options.from ?? DEFAULT_STARS_FROM);
+  const reach = wind.loaded
+    .filter((l) => leads.includes(l.run.id))
+    .map((l) => ({ time: Date.parse(l.run.until), model: l.run.name }))
+    .reduce<{ time: number; model: string } | null>(
+      (last, r) => (last && last.time >= r.time ? last : r),
+      null,
+    );
   return {
     spots: results.slice(0, options.limit),
     searched: pool.length,
     sources: wind.loaded.map((l) => l.run),
     unavailable: wind.unavailable,
+    reach,
   };
 }
 

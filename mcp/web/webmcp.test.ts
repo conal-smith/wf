@@ -66,7 +66,7 @@ describe("WebMCP", () => {
       hours: 6,
     });
     expect(forecast.spot.id).toBe("brandon");
-    expect(forecast.hours).toHaveLength(7);
+    expect(forecast.hours).toHaveLength(6);
     expect(JSON.parse(JSON.stringify(forecast))).toEqual(forecast);
   });
 
