@@ -58,3 +58,23 @@ export function parseSatelliteOption(value: unknown): SatelliteOption {
 export function approxMetres(metres: number) {
   return `≈${metres.toFixed(1)} m`;
 }
+
+/**
+ * The Layers panel's line under the switch, the same whichever image is
+ * shown: the tides both images were taken at, at the station nearest the
+ * map's centre (satelliteIndex.ts's SatelliteStation), each as the key gives
+ * it. "Tide in the images at Galway: high ≈4.0 m, low ≈0.8 m".
+ */
+export function satelliteTidesLine(station: {
+  name: string;
+  high: number;
+  low: number;
+}) {
+  return `Tide in the images at ${station.name}: high ${approxMetres(station.high)}, low ${approxMetres(station.low)}`;
+}
+
+/** What those figures are, under them. */
+export const SATELLITE_TIDES_NOTE =
+  "Above chart datum (LAT). Each image blends clear Sentinel-2 passes " +
+  "from several years taken near that tide, so it is not one day's " +
+  "picture, nor today's tide.";
