@@ -1055,6 +1055,12 @@ export default function App() {
     probeFoil(at.lon, at.lat);
   };
   const clearFocus = () => setFocusId(null);
+  /** The dock's close: no spot nor point, and the chart alone. */
+  const closeDock = () => {
+    setPicked(null);
+    setPoint(null);
+    setFocusId(null);
+  };
   useEffect(() => {
     if (!mapReady) return;
     controls.current?.fitIreland(0);
@@ -1497,6 +1503,8 @@ export default function App() {
                   onToggleStar={() => dockSpot && fav.toggle(dockSpot.id)}
                   tide={tide.tide}
                   tideNote={tide.error}
+                  tideLoading={tide.loading}
+                  onClose={closeDock}
                   phone={phone}
                   view={picked ? "table" : view}
                   onView={setView}

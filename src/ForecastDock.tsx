@@ -20,9 +20,11 @@ import {
   Thermometer,
   Waves,
   Wind,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "../ui/Button";
+import { Skeleton } from "../ui/Skeleton";
 import { arrowPath, framePath, stemPath, type KeepOut } from "../ui/penPaths";
 import { StarGlyphs } from "../ui/StarGlyphs";
 // Only when asked for: the chart's Blend view.
@@ -121,6 +123,10 @@ interface Props {
   tide: SpotTide | null;
   /** Why the spot has no tide curve (a lake, no station near), when it has none. */
   tideNote?: string | null;
+  /** The tide is still being fetched: its row waits, saying nothing yet. */
+  tideLoading?: boolean;
+  /** Close the dock: no spot or point chosen, the chart alone. */
+  onClose: () => void;
   phone: boolean;
   view: DockView;
   onView: (view: DockView) => void;
@@ -274,6 +280,7 @@ const StripTable = memo(function StripTable({
   units,
   tide,
   tideNote,
+  tideLoading,
   g,
   now,
   blend,
@@ -295,6 +302,7 @@ const StripTable = memo(function StripTable({
   units: Units;
   tide: SpotTide | null;
   tideNote: string | null;
+  tideLoading: boolean;
   g: StripGeometry;
   now: number;
   blend: React.ReactNode | null;
@@ -453,6 +461,7 @@ const StripTable = memo(function StripTable({
             <TideRow
               tide={tide}
               note={tideNote}
+              loading={tideLoading}
               columns={columns}
               days={days}
               g={g}
@@ -937,6 +946,7 @@ function MoreRows({
 function TideRow({
   tide,
   note,
+  loading,
   columns,
   days,
   g,
@@ -945,6 +955,7 @@ function TideRow({
 }: {
   tide: SpotTide | null;
   note: string | null;
+  loading: boolean;
   columns: readonly StripColumn[];
   days: readonly StripDay[];
   g: StripGeometry;
@@ -987,23 +998,25 @@ function TideRow({
     </g>
   );
   if (!tide) {
-    // The strip is a week wide and opens scrolled to the hour, so the reason
-    // is written all along it, not only at its start.
-    const text = note ?? "No tide station near";
-    const every = Math.max(360, text.length * 6.5 + 80);
-    const at = Array.from(
-      { length: Math.max(1, Math.ceil((width - 8) / every)) },
-      (_, i) => 8 + i * every,
-    );
+    // Said once, held at the strip's left edge as the week scrolls under it
+    // (dock.css), so it is in sight at any hour: it was written all along the
+    // week, five times over on a wide screen. While the tide is still being
+    // fetched the row says nothing yet, rather than that there is none.
     return (
-      <svg width={width} height={H} className="tide-row" aria-hidden="true">
-        {night}
-        {at.map((x) => (
-          <text key={x} className="tide-none" x={x} y={H / 2 + 4}>
-            {text}
-          </text>
-        ))}
-      </svg>
+      <div
+        className="tide-row tide-empty"
+        style={{ width, height: H }}
+        aria-busy={loading || undefined}
+      >
+        <svg width={width} height={H} aria-hidden="true">
+          {night}
+        </svg>
+        {loading ? (
+          <Skeleton className="tide-wait" />
+        ) : (
+          <span className="tide-none">{note ?? "No tide station nearby"}</span>
+        )}
+      </div>
     );
   }
   const curve = tide.curve;
@@ -1158,6 +1171,8 @@ export default function ForecastDock(props: Props) {
     onToggleStar,
     tide,
     tideNote = null,
+    tideLoading = false,
+    onClose,
     phone,
     view,
     onView,
@@ -1636,6 +1651,19 @@ export default function ForecastDock(props: Props) {
             />
           </svg>
         </Button>
+        {/* Done with this place: the dock goes, and the chart has the screen
+            (Escape only lets go of the chart's focus on it). */}
+        <Button
+          variant="quiet"
+          size="sm"
+          icon
+          className="dk-tool dk-close"
+          aria-label={`Close the forecast for ${spot.name}`}
+          title="Close"
+          onClick={onClose}
+        >
+          <X size={16} strokeWidth={1.4} aria-hidden="true" />
+        </Button>
       </div>
 
       {/* The time, for a keyboard and a screen reader: the hours scrolling
@@ -1796,6 +1824,7 @@ export default function ForecastDock(props: Props) {
               units={prefs.units}
               tide={tide}
               tideNote={tideNote}
+              tideLoading={tideLoading}
               g={g}
               now={now}
               blend={blendNode}
