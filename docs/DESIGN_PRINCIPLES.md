@@ -321,7 +321,8 @@ and the label where the map names its model says so ("HARMONIE ends Wed 22:00
 · no wind drawn"), as does "Model on the map" in the layers. The map still
 changes model only when the reader asks (docs/FORECAST_DATA_PLAN.md: switching
 on a far click was ruled a trap); the dock's chip, "Show ECMWF on the map", is
-how they ask.
+how they ask. (Superseded on 2026-10-21 by the hand-over, below: the no-wind
+rule stands for an hour no run the map can draw reaches.)
 
 **2026-10-19 — The loupe is a ride rose, at a true distance.** The glass
 round the chosen spot framed it and said nothing. Now it shows the headings
@@ -362,6 +363,18 @@ chosen, it lets go of it: the chart's focus goes, the dock keeps the forecast
 until another is chosen or it is closed. Only with nothing chosen does a tap
 pick the point under it. A light still chooses its spot at one tap, and a
 double tap still zooms and does neither.
+
+**2026-10-21 — Past the reader's model, the map hands over.** With the map
+blank past HARMONIE's 60 hours, most of a fifteen-day slider showed no wind,
+and readers took it for the wind lines not working beyond HARMONIE (issue
+#122). Now, at an hour the chosen model does not reach, the map draws the model
+the dock's column comes from (ECMWF, or GFS), says so where it names its model
+("ECMWF on the map from Sat 09:00"; on a phone "ECMWF from Sat 09:00"), and
+goes back to the chosen model when the hour is inside its run again. The
+choice itself is never changed, which is what made switching on a far click a
+trap: the reader is not left on a coarse grid after scrolling back. The jump in
+detail at the seam (2.5 km to 0.25°) is the honest one; the label is there so
+it does not read as a fault. The stars and the lights stay on their own model.
 
 ---
 

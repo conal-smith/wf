@@ -47,7 +47,9 @@ Revision 2 folds in an independent review. That review found:
 - a `selectTime` handler and `timeline.ts` already exist;
 - the square sizes in revision 1 left out the overlap;
 - ECMWF-ENS members would blow the budget;
-- auto-switching the map model on a far click would be a UX trap.
+- auto-switching the map model on a far click would be a UX trap. (Reversed on
+  2026-10-21 for the hours past the map model's run: see "The map model's role"
+  below.)
 
 ## What we want
 
@@ -413,14 +415,33 @@ to orchestrate it later).
 
 - The map model only decides which columns have a map frame: the map frame
   nearest the column's time, within that model's cadence.
-- Selecting a column the map model can't reach shows a chip: **"Show ECMWF on
-  the map"**. Nothing switches implicitly.
-  - Since 2026-10-19 the map draws **no wind** there, and the label where the
-    map names its model says why ("HARMONIE ends Wed 22:00 · no wind drawn").
-    It used to keep its last frame, which left another hour's streaks under
-    the lights' and the dock's reading of the selected hour (see the ruling in
-    `DESIGN_PRINCIPLES.md`).
-  - The chip calls `chooseModel(id, targetTime)`; `chooseModel` gains the
+- **Since 2026-10-21 the map hands over.** At an hour the reader's map model
+  does not reach, the map draws the model the dock's column there comes from
+  (`handoverModel` in `force5/src/timeline.ts`): ECMWF past HARMONIE, or GFS
+  where that is the long range on offer. The label where the map names its
+  model says so ("ECMWF on the map from Sat 09:00"), as does "Model on the map"
+  in the layers, and the map goes back to the reader's model as soon as the
+  hour is inside its run again. The reader's choice is never changed by it.
+  - Why the earlier ruling was reversed. "Nothing switches implicitly" was
+    written against a click on a far column swapping the map's model for good,
+    which would have left the reader on ECMWF's coarse grid after scrolling
+    back to tomorrow. The hand-over is not that: it lasts exactly as long as
+    the hour is out of the chosen run's reach. And the manual chip it replaces
+    left most of a fifteen-day slider with no wind on the map at all, which
+    readers took for the wind lines not working beyond HARMONIE (issue #122);
+    with no spot open there was no chip to press.
+  - It holds with no spot open: the covering model is worked out from the runs
+    the dock's columns are built from, not from the dock on screen.
+  - Both runs are kept in hand once loaded, so scrubbing back and forth across
+    the seam swaps frames, not manifests. The stars and the lights stay on
+    their own model; only the wind on the map hands over.
+  - A run that cannot be read is passed over for five minutes and the next one
+    that covers the hour is drawn instead. Where none does, the map draws **no
+    wind** and the label says why ("HARMONIE ends Wed 22:00 · no wind drawn"),
+    as it has since 2026-10-19 (never its last frame: see the ruling in
+    `DESIGN_PRINCIPLES.md`). The dock's chip, **"Show ECMWF on the map"**, is
+    left for that case only.
+  - The chip calls `chooseModel(id, targetTime)`; `chooseModel` takes the
     `targetTime` argument and stays one atomic commit.
 - **The selected time is stored as a time, not a column number.** Today
   `App.tsx` keeps `requestedIndex`, an index into the map model's frames, and
@@ -587,8 +608,9 @@ to orchestrate it later).
     table is useful after about a third of the download;
   - stop at once when the reader picks another point or model (already done).
 - Past the map model's range (HARMONIE ends at +60 h) a bare point's cells are
-  empty, and the "Show ECMWF on the map" chip from Phase 2 is how the reader
-  gets the long range for that point.
+  empty: its series is read from the reader's own map model, not the one the
+  map hands over to. Choosing ECMWF in the layers is how the reader gets the
+  long range for that point.
 
 **Adding spots**
 

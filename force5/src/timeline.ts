@@ -204,11 +204,12 @@ export function frameForTime(
 }
 
 /**
- * What the map can draw for a time: the frame that stands for it, or, where
+ * What one run can draw for a time: the frame that stands for it, or, where
  * the run does not reach it, which end of the run it lies past and that end's
- * valid time. Past either end the map draws no wind at all: a frame from
- * another hour, under the dock's and the lights' reading of this one, would
- * be two moments shown as one.
+ * valid time. Past either end that run draws nothing: a frame from another
+ * hour, under the dock's and the lights' reading of this one, would be two
+ * moments shown as one. The map hands the hour to a run that reaches it
+ * (`handoverModel`), or draws no wind where none does.
  */
 export type MapReach =
   | { drawn: true; index: number }
@@ -228,6 +229,54 @@ export function mapReach(
         side: "after",
         edge: frames[frames.length - 1].validTime,
       };
+}
+
+/**
+ * The model the map hands over to at a time its own run does not reach, or
+ * null where the reader's run reaches it or no other run the map can draw does.
+ *
+ * The dock's column at that time names a model, and the map draws that one
+ * where it can: ECMWF past HARMONIE, or GFS where ECMWF is not published, so
+ * the map and the dock tell the same model's story at every hour. A column
+ * owned by a model the map cannot draw (the long range can fall to one) gives
+ * way to the drawable run that covers the time and reaches furthest, finest
+ * grid first on a tie, as the dock's own long range is chosen.
+ *
+ * Only a run that spans the time counts, and never an ensemble mean or an
+ * expired run: the map draws a forecast for the hour or nothing at all.
+ */
+export function handoverModel(
+  models: readonly ColumnModel[],
+  drawable: readonly string[],
+  own: { id: string; frames: readonly Pick<FrameInfo, "validTime">[] },
+  time: number,
+  column?: Pick<DockColumn, "model">,
+  now = Date.now(),
+): string | null {
+  if (!Number.isFinite(time)) return null;
+  if (own.frames.length && frameForTime(own.frames, time) !== null) return null;
+  const covering = models.flatMap((model) => {
+    if (model.ensemble || model.id === own.id) return [];
+    if (!drawable.includes(model.id)) return [];
+    if (freshness(model.manifest, now) === "expired") return [];
+    const times = modelTimes(model.manifest).map((validTime) => ({
+      validTime,
+    }));
+    if (framePosition(times, time) === null) return [];
+    return [
+      {
+        id: model.id,
+        km: model.manifest.resolutionKm ?? Infinity,
+        last: Date.parse(times[times.length - 1].validTime),
+      },
+    ];
+  });
+  if (column && covering.some((model) => model.id === column.model))
+    return column.model;
+  covering.sort(
+    (a, b) => b.last - a.last || a.km - b.km || (a.id < b.id ? -1 : 1),
+  );
+  return covering[0]?.id ?? null;
 }
 
 /**
