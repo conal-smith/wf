@@ -3,23 +3,24 @@
  * `src/main.tsx` lazy-loads it for /ai, so neither the map nor the other
  * sections pay for it.
  *
- * Three steps driven by one choice: pick your AI, add wingfoil.ie to it, ask.
- * The pick is remembered, and it sets both the one filled button (the way
- * that app takes a server on this device, ai/web/install.ts) and where every
- * example question opens. The endpoint itself is mcp/api/server.ts.
+ * Two steps: add wingfoil.ie to your AI, then ask. Every assistant is a tile
+ * with its own buttons, Add where it takes a server and Ask, so one tap opens
+ * its app (ai/web/install.ts says how, on this device). The last one used is
+ * remembered: its button is the one filled, the note under the tiles is its,
+ * and the example questions open in it. The endpoint is mcp/api/server.ts.
  *
  * Set as the chart's broadsheet: the headline with the question it is all for
  * under it, the steps under heavy rules with their numbers in the chart's
- * ring, and on a computer the editors and terminals in a ruled column beside
- * them. A phone gets the apps and the questions and nothing else.
+ * ring, and the editors and terminals in a ruled column beside them on a
+ * computer, under them on a phone, which can only copy their lines.
  */
 import { ArrowLeft, ArrowUpRight, Check, Copy, Plus } from "lucide-react";
 import {
+  Fragment,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type MouseEvent,
   type ReactNode,
 } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
@@ -29,18 +30,22 @@ import {
   Button,
   Headline,
   Kicker,
+  Pane,
   PenUnderline,
-  Segmented,
   SectionHeading,
 } from "../../ui";
 import { Masthead, MastheadMark, mastheadStyles } from "../../ui/Masthead";
 import { MONO_LABEL, RING, tv } from "../../ui/tv";
 import {
+  ASKING,
   ASSISTANTS,
   ASSISTANT_NAME,
   EXAMPLE_PROMPTS,
+  NO_LIVE_DATA,
   addPlan,
+  addressParts,
   askLink,
+  askNote,
   askSends,
   claudeCodeCommand,
   codexConfig,
@@ -72,8 +77,16 @@ const styles = tv({
     number:
       "inline-grid size-9 shrink-0 place-items-center rounded-full border border-ink font-mono text-figure tabular-nums",
     stepBody: "flex min-w-0 flex-1 flex-col gap-3",
-    // The pick keeps its own width, as the dock's switch does.
-    picker: "self-start",
+    // Two across on a phone, and as many as fit once there is the room.
+    tiles: "m-0 grid list-none grid-cols-2 gap-2 p-0 wide:grid-cols-tiles",
+    tileItem: "flex min-w-0",
+    tile: "flex flex-1 flex-col gap-1 p-3",
+    tileName: "m-0 font-display text-lead text-ink",
+    tileBrief: "m-0 font-body text-body text-ink-2",
+    // The buttons sit side by side where they fit, and a narrow tile stacks
+    // them, each its full width, so the two are always the same size.
+    tileActions: "mt-auto flex flex-wrap gap-2 pt-2",
+    tileAction: "grow",
     actions: "flex flex-wrap items-center gap-2",
     note: "m-0 max-w-reading font-body text-body text-ink-2",
     prompts: "m-0 flex list-none flex-col p-0",
@@ -85,10 +98,10 @@ const styles = tv({
       RING,
     ],
     promptGlyph: "shrink-0 text-ink-muted",
-    // The coding agents: a ruled column on a computer, and not on a phone,
-    // which has none of them.
+    // The coding agents: a ruled column beside the steps on a computer, and
+    // under them on a phone, which can copy their lines to send itself.
     coders:
-      "flex flex-col gap-3 rail:border-0 rail:border-l rail:border-line rail:pl-8 max-wide:hidden",
+      "flex flex-col gap-3 rail:border-0 rail:border-l rail:border-line rail:pl-8",
     where: "m-0 flex flex-wrap items-baseline gap-2",
     path: "font-mono text-caption text-ink-muted",
     // The column is narrow, and a box that scrolls sideways with no bar
@@ -99,8 +112,10 @@ const styles = tv({
     rowCode: "min-w-0 flex-1",
     address: ["m-0 flex items-center gap-2 text-ink-muted", MONO_LABEL],
     addressLabel: "shrink-0",
+    // Broken only after a slash (addressParts), unless one piece is wider
+    // than the phone: "…/api/mc" over "p" reads as a wrong address.
     addressValue:
-      "min-w-0 font-mono text-caption tracking-normal wrap-anywhere text-ink normal-case",
+      "min-w-0 font-mono text-caption tracking-normal wrap-break-word text-ink normal-case",
     // A glyph-only copy button says "Copied" in a tag above it, as the
     // worded ones say it in place: over the row, so nothing beside it moves.
     copyAt: "relative inline-flex shrink-0",
@@ -113,7 +128,7 @@ const styles = tv({
 
 const STORE_KEY = "wingfoil:ai-assistant";
 
-/** The assistant picked last time on this device, or Claude. */
+/** The assistant used last time on this device, or Claude. */
 function storedAssistant(): Assistant {
   try {
     const kept = globalThis.localStorage?.getItem(STORE_KEY);
@@ -127,7 +142,7 @@ function keepAssistant(assistant: Assistant) {
   try {
     globalThis.localStorage?.setItem(STORE_KEY, assistant);
   } catch {
-    // Storage blocked: the pick lasts as long as the page.
+    // Storage blocked: the choice lasts as long as the page.
   }
 }
 
@@ -285,36 +300,41 @@ export default function AiApp() {
   );
   const phone = device !== "computer";
   const [assistant, setAssistant] = useState<Assistant>(storedAssistant);
-  const pick = (next: Assistant) => {
+  const [copied, copy] = useCopied();
+  // The app the address was copied for, which the note under the tiles
+  // keeps saying (the copy's own "Copied" is gone by the time the reader is
+  // back from the app's tab), until another app is used.
+  const [copiedFor, setCopiedFor] = useState<Assistant | null>(null);
+  const use = (next: Assistant) => {
+    if (next !== assistant) setCopiedFor(null);
     setAssistant(next);
     keepAssistant(next);
-    setCopiedFor(null);
   };
   const name = ASSISTANT_NAME[assistant];
-  const sends = askSends(assistant);
   const plan = addPlan(assistant, device, url);
-  const [copied, copy] = useCopied();
-  // The app the address was copied for, which the note under the button
-  // keeps saying (the copy's own "Copied" is gone by the time the reader is
-  // back from the app's tab), until another is picked.
-  const [copiedFor, setCopiedFor] = useState<Assistant | null>(null);
   // A computer keeps this page in its tab. A phone follows the link in the
-  // same one: that is what hands it to the app (a universal or app link),
-  // where a new tab can stay in the browser.
+  // same one: that is what hands it to the app (a universal link, or an
+  // Android intent), where a new tab can stay in the browser.
   const away = phone ? {} : { target: "_blank", rel: "noopener" };
 
-  const add = (event: MouseEvent) => {
-    if (plan.copies)
+  const add = (next: Assistant) => {
+    use(next);
+    if (addPlan(next, device, url)?.copies)
       void copy(url).then(
-        () => setCopiedFor(assistant),
+        () => setCopiedFor(next),
         () => {},
       );
-    if (!plan.href) event.preventDefault();
   };
-  // A button that copies says so before it is pressed, with the copy glyph,
-  // and after, with the same "Copied" as every copy button on the page.
-  const AddGlyph = copied ? Check : plan.copies ? Copy : Plus;
-  const addWords = copied ? "Copied" : plan.label;
+  // Copied on the way, for the app that may not type it in.
+  const ask = (next: Assistant, prompt: string) => {
+    use(next);
+    if (!askSends(next)) void navigator.clipboard?.writeText(prompt);
+  };
+  const addNote = !plan
+    ? `${name} can't take wingfoil.ie, so it answers without the forecast. Every app with an Add button can.`
+    : copiedFor === assistant && plan.copiedNote
+      ? plan.copiedNote
+      : plan.note;
 
   return (
     <div className={s.root()}>
@@ -349,73 +369,99 @@ export default function AiApp() {
 
           <div className={s.columns()}>
             <ol className={s.steps()}>
-              <Step n={1} id="ai-pick" title="Pick your AI">
-                <Segmented
-                  aria-label="Your AI"
-                  className={s.picker()}
-                  options={ASSISTANTS.map((a) => ({
-                    value: a,
-                    label: ASSISTANT_NAME[a],
-                  }))}
-                  value={assistant}
-                  onChange={pick}
+              <Step n={1} id="ai-add" title="Add wingfoil.ie to your AI">
+                <ul className={s.tiles()}>
+                  {ASSISTANTS.map((a) => {
+                    const tilePlan = addPlan(a, device, url);
+                    const tileName = ASSISTANT_NAME[a];
+                    const current = a === assistant;
+                    const flash = copied && copiedFor === a;
+                    // A button that copies says so before it is pressed,
+                    // with the copy glyph, and after, with the same "Copied"
+                    // as every copy button on the page.
+                    const AddGlyph = flash
+                      ? Check
+                      : tilePlan?.copies
+                        ? Copy
+                        : Plus;
+                    const AskGlyph =
+                      ASKING[a] === "paste" ? Copy : ArrowUpRight;
+                    return (
+                      <li key={a} className={s.tileItem()}>
+                        <Pane className={s.tile()} data-assistant={a}>
+                          <h3 className={s.tileName()}>{tileName}</h3>
+                          <p className={s.tileBrief()}>
+                            {tilePlan ? tilePlan.brief : NO_LIVE_DATA}
+                          </p>
+                          <div className={s.tileActions()}>
+                            {/* The app used last has the one filled button:
+                                Add where it takes the server, else Ask. */}
+                            {tilePlan && (
+                              <Button
+                                href={tilePlan.href}
+                                {...away}
+                                variant={current ? "primary" : "pill"}
+                                className={s.tileAction()}
+                                onClick={() => add(a)}
+                                aria-label={`Add wingfoil.ie to ${tileName}`}
+                                data-add={a}
+                              >
+                                <AddGlyph size={14} aria-hidden="true" />
+                                <span>{flash ? "Copied" : "Add"}</span>
+                              </Button>
+                            )}
+                            <Button
+                              href={askLink(a, EXAMPLE_PROMPTS[0], device)}
+                              {...away}
+                              variant={
+                                current && !tilePlan ? "primary" : "pill"
+                              }
+                              className={s.tileAction()}
+                              onClick={() => ask(a, EXAMPLE_PROMPTS[0])}
+                              aria-label={`Ask ${tileName}`}
+                              data-ask={a}
+                            >
+                              <AskGlyph size={14} aria-hidden="true" />
+                              <span>Ask</span>
+                            </Button>
+                          </div>
+                        </Pane>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <CopiedStatus
+                  copied={copied && copiedFor !== null}
+                  label="the server address"
                 />
-              </Step>
-
-              <Step n={2} id="ai-add" title="Add wingfoil.ie">
-                <div className={s.actions()}>
-                  {plan.href ? (
-                    <Button
-                      href={plan.href}
-                      {...away}
-                      variant="primary"
-                      size="lg"
-                      onClick={add}
-                      data-add={assistant}
-                    >
-                      <AddGlyph size={15} aria-hidden="true" />
-                      <span>{addWords}</span>
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      onClick={add}
-                      data-add={assistant}
-                    >
-                      <AddGlyph size={15} aria-hidden="true" />
-                      <span>{addWords}</span>
-                    </Button>
-                  )}
-                </div>
-                {/* The address beside the button that copies it, so what is
+                {/* The address under the buttons that copy it, so what is
                     on the clipboard is in sight. */}
                 <p className={s.address()}>
                   <span className={s.addressLabel()}>The address</span>
-                  <code className={s.addressValue()}>{url}</code>
+                  <code className={s.addressValue()}>
+                    {addressParts(url).map((part, i) => (
+                      <Fragment key={i}>
+                        {part}
+                        <wbr />
+                      </Fragment>
+                    ))}
+                  </code>
                   <CopyButton value={url} label="the server address" bare />
                 </p>
                 <p className={s.note()} aria-live="polite" data-add-note>
-                  {copiedFor === assistant && plan.copiedNote
-                    ? plan.copiedNote
-                    : plan.note}
+                  {addNote}
                 </p>
               </Step>
 
-              <Step n={3} id="ai-ask" title="Ask">
+              <Step n={2} id="ai-ask" title="Ask">
                 <ul className={s.prompts()}>
                   {EXAMPLE_PROMPTS.map((prompt) => (
                     <li key={prompt} className={s.prompt()}>
                       <a
                         className={s.promptLink()}
-                        href={askLink(assistant, prompt)}
+                        href={askLink(assistant, prompt, device)}
                         {...away}
-                        // Copied on the way, for the app that may not
-                        // type it in.
-                        onClick={() => {
-                          if (!sends)
-                            void navigator.clipboard?.writeText(prompt);
-                        }}
+                        onClick={() => ask(assistant, prompt)}
                         aria-label={`Ask ${name}: ${prompt}`}
                       >
                         <span>&ldquo;{prompt}&rdquo;</span>
@@ -429,24 +475,32 @@ export default function AiApp() {
                     </li>
                   ))}
                 </ul>
-                <p className={s.note()}>
-                  {sends
-                    ? `Each opens in ${name} and asks it.`
-                    : `Each opens in ${name}, and is copied as it goes: if it is not typed in, paste it.`}
+                <p className={s.note()} data-ask-note>
+                  {askNote(assistant)} To ask another app, press its Ask above.
                 </p>
               </Step>
             </ol>
 
             <section className={s.coders()} aria-labelledby="ai-coders">
               <SectionHeading id="ai-coders">Coding agents</SectionHeading>
-              <div className={s.actions()}>
-                <Button href={cursorLink(url)} variant="pill" size="sm">
-                  <span>Add to Cursor</span>
-                </Button>
-                <Button href={vscodeLink(url)} variant="pill" size="sm">
-                  <span>Add to VS Code</span>
-                </Button>
-              </div>
+              {/* Cursor's and VS Code's links open the editor on this
+                  machine, which a phone has not got. */}
+              {phone ? (
+                <p className={s.note()}>
+                  These run on a computer. Copy a line to send yourself, or open
+                  this page there to add wingfoil.ie to Cursor or VS Code in one
+                  click.
+                </p>
+              ) : (
+                <div className={s.actions()}>
+                  <Button href={cursorLink(url)} variant="pill" size="sm">
+                    <span>Add to Cursor</span>
+                  </Button>
+                  <Button href={vscodeLink(url)} variant="pill" size="sm">
+                    <span>Add to VS Code</span>
+                  </Button>
+                </div>
+              )}
               <Kicker>Claude Code</Kicker>
               <Snippet
                 value={claudeCodeCommand(url)}
