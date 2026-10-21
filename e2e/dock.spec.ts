@@ -1,9 +1,11 @@
 import {
   backToIreland,
   chooseSpot,
+  closePanel,
   expect,
   steadyFrames,
   test,
+  unfoldTools,
   type Page,
 } from "./fixtures";
 import { readSample } from "./sample";
@@ -502,6 +504,7 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   await expect(panel).toHaveCount(0);
   await yours.click();
   await expect(panel).toContainText("Tap the red star");
+  await closePanel(page);
   await page
     .locator(".dock")
     .getByRole("button", { name: "Star Brandon Bay" })
@@ -509,14 +512,13 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   await expect(
     page.locator(".dock").getByRole("button", { name: "Unstar Brandon Bay" }),
   ).toHaveAttribute("aria-pressed", "true");
-  // A tap away, on the dock's star, closed it; the star opens it again.
-  await expect(panel).toHaveCount(0);
   await yours.click();
   await expect(panel.locator(".fvl li").first()).toContainText("Brandon Bay");
   const stored = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("wingfoil.spots.v1") ?? "{}"),
   );
   expect(stored.starred).toEqual(["brandon"]);
+  await closePanel(page);
   // Chosen again from the search, the spot comes back starred.
   await page.getByRole("combobox", { name: "Find a spot" }).fill("Brandon");
   await page.locator(".spot-row").first().click();
@@ -554,6 +556,7 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   // The key is not in the panel: it is the map's information, a button away.
   await yours.click();
   await expect(panel).not.toContainText("Depths in metres below chart datum");
+  await closePanel(page);
   await page.getByRole("button", { name: "Map information" }).click();
   await expect(
     page.getByRole("dialog", { name: "About the map" }),
@@ -575,7 +578,7 @@ test("units, the rider and the blend's models are display options, kept on reloa
   await page.locator('input[data-rider="weight"]').fill("100");
   await page.locator('[data-skill="beginner"]').click();
   await page.locator('input[data-model-toggle="gfs"]').uncheck();
-  await page.getByLabel("Close display options").click();
+  await closePanel(page);
   await expect(page.locator(".dk-labs")).toContainText("m/s");
   // A heavier learner takes a bigger wing for the same wind, hour by hour.
   await expect
@@ -683,7 +686,7 @@ async function starsFrom(page: Page, group: string, model: string) {
     .getByRole("group", { name: group, exact: true })
     .getByRole("button", { name: model, exact: true })
     .click();
-  await page.getByLabel("Close display options").click();
+  await closePanel(page);
 }
 
 test("the stars come from one model, the rider's choice: the dock names it and the map follows", async ({
@@ -787,7 +790,7 @@ test("a spot can take its stars from a model of its own, and says so", async ({
   await expect(chip).toHaveAttribute("data-stars-from-chip", "ecmwf");
 });
 
-test("the display options open beside the map's controls, one panel at a time", async ({
+test("the display options open over the dimmed map from its controls, one panel at a time", async ({
   page,
 }) => {
   await openDock(page);
@@ -817,8 +820,10 @@ test("the display options open beside the map's controls, one panel at a time", 
   await expect(panel).toBeVisible();
   await expect(trigger).toHaveAttribute("aria-expanded", "true");
   await expect(trigger).toHaveAttribute("aria-controls", "map-options");
-  await expect(page.locator("dialog[open]")).toHaveCount(0);
-  await page.keyboard.press("Tab");
+  // A modal: the focus is in it from the start.
+  await expect(
+    page.getByRole("dialog", { name: "Display options" }),
+  ).toBeVisible();
   await page.keyboard.press("Tab");
   expect(
     await page.evaluate(() =>
@@ -829,21 +834,14 @@ test("the display options open beside the map's controls, one panel at a time", 
   await expect(panel).toHaveCount(0);
   await expect(trigger).toBeFocused();
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
-  // One at a time: the layers take its place.
+  // A press on the dimmed map round it shuts it, as its X does, and the
+  // focus goes back to its button.
   await trigger.click();
   await expect(panel).toBeVisible();
-  await page.getByRole("button", { name: "Layers", exact: true }).click();
-  await expect(panel).toHaveCount(0);
-  await expect(page.getByRole("group", { name: "Layers" })).toBeVisible();
-  // A tap away, on the dock, shuts it; so does its own button, and Done.
-  await trigger.click();
-  await page.locator(".dock .dk-name").click();
+  await page.mouse.click(4, 400);
   await expect(panel).toHaveCount(0);
   await trigger.click();
-  await trigger.click();
-  await expect(panel).toHaveCount(0);
-  await trigger.click();
-  await page.getByLabel("Close display options").click();
+  await closePanel(page);
   await expect(panel).toHaveCount(0);
   await expect(trigger).toBeFocused();
 });
@@ -923,13 +921,24 @@ test("on a phone the dock is its hours alone, its tools on the chart, under a si
   expect(
     (await page.locator(".dock .dk-name").boundingBox())!.width,
   ).toBeLessThanOrEqual(1);
-  // The tools stand on the chart just above the dock, glyphs alone, and
-  // all of them within the screen.
+  // The tools stand on the chart just above the dock, folded into one
+  // glyph until it is pressed, then glyphs alone, all within the screen.
   const tools = page.getByRole("group", { name: "This spot" });
+  const fold = tools.getByRole("button", { name: "The spot's tools" });
+  await expect(fold).toHaveAttribute("aria-expanded", "false");
+  const folded = (await tools.boundingBox())!;
+  expect(folded.width).toBeLessThan(48);
+  await expect(tools.getByRole("button", { name: "Blend" })).toBeHidden();
+  await fold.click();
+  await expect(
+    tools.getByRole("button", { name: "Fold the spot's tools" }),
+  ).toHaveAttribute("aria-expanded", "true");
   const box = (await tools.boundingBox())!;
   expect(box.y + box.height).toBeLessThanOrEqual(dock.y);
   expect(box.y + box.height).toBeGreaterThan(dock.y - 20);
   expect(box.x + box.width).toBeLessThanOrEqual(390);
+  // Opened leftwards from under the finger: its right edge stays put.
+  expect(box.x + box.width).toBeCloseTo(folded.x + folded.width, 0);
   for (const name of [
     "Star Brandon Bay",
     "Blend",
@@ -997,7 +1006,7 @@ test("an hour past the map's model offers the run that reaches it", async ({
   await expect(page.locator(".layers .models-note")).toHaveText(
     /^HARMONIE ends \w{3} \d\d:\d\d: no wind on the map at \w{3} \d\d:\d\d\. ECMWF reaches it\.$/,
   );
-  await page.getByRole("button", { name: "Layers", exact: true }).click();
+  await closePanel(page);
   // Back to an hour HARMONIE reaches, and its wind is drawn again.
   await slider(page).fill("2");
   await expect(chip).toHaveCount(0);
@@ -1339,6 +1348,7 @@ test("on a phone, the rows under the tide keep their units beside their glyphs",
   await expect(page.locator(".dock tr.tt-wind")).toBeVisible({
     timeout: 30000,
   });
+  await unfoldTools(page);
   await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
   await expect(page.locator(".dock tr.tt-sea")).toHaveCount(1);
   // A bare 0.5, 12° or 0 says nothing: each figure's unit is on the screen,
@@ -1507,6 +1517,10 @@ const SPOT_AT: Record<string, [number, number]> = {
 test("a point tapped on Dublin Bay reads its nearest station's tide; one on Lough Neagh has none", async ({
   page,
 }) => {
+  // Two pages opened and two points picked, each waiting on its tide: on a
+  // shared CI runner it passed every step and ran out of the default time on
+  // the last.
+  test.slow();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/marine/tides.json", (route) =>
@@ -1723,6 +1737,7 @@ test.describe("on a phone", () => {
     const dock = page.locator(".dock");
     await expect(dock.locator("tr.tt-stars")).toBeVisible({ timeout: 30000 });
     const tools = dock.locator(".dk-tools");
+    await unfoldTools(page);
     const standing = async () => {
       const [t, d] = await Promise.all([
         tools.boundingBox(),
@@ -1767,6 +1782,7 @@ test("on a phone's blend, a turn's time and height stay over the tide's dot wher
   await expect(dock.locator(".tide-label").first()).toBeVisible({
     timeout: 30000,
   });
+  await unfoldTools(page);
   await dock.getByRole("button", { name: "Blend" }).click();
   await expect(dock.locator(".tt-blend")).toBeVisible();
   /**

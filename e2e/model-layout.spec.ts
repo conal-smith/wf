@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./fixtures";
+import { closePanel, expect, test, type Page } from "./fixtures";
 
 /** Where the dock and the boxes over the chart stand, to a tenth of a pixel. */
 const geometry = (page: Page) =>
@@ -39,7 +39,7 @@ for (const width of [320, 390, 820, 1440]) {
         "aria-pressed",
         "true",
       );
-      await layers.click();
+      await closePanel(page);
       await expect.poll(() => geometry(page)).toEqual(baseline);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),

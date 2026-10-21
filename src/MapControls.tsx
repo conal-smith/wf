@@ -1,5 +1,5 @@
 import { Info, SlidersHorizontal, Star } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { MODELS, type ModelId } from "../force5/src/models";
 import {
   SATELLITE_LABEL,
@@ -11,6 +11,7 @@ import {
 import type { ChartLayers } from "../force5/src/WindMap";
 import { FOCUS_STYLES, type FocusStyle } from "../force5/src/focus";
 import type { WindStyle } from "../force5/src/windLayer";
+import { Dialog } from "../ui/Dialog";
 import { Segmented } from "../ui/Segmented";
 import { InfoButton } from "./InfoPop";
 import { KnotScale } from "./KnotScale";
@@ -34,8 +35,14 @@ const FOCUS_LABEL: Record<FocusStyle, string> = {
   off: "Off",
 };
 
-/** A panel that opens beside the controls: one at a time. */
+/** A panel that opens over the dimmed map: one at a time. */
 export type MapPanel = "layers" | "spots" | "options" | null;
+
+const PANEL_TITLE: Record<Exclude<MapPanel, null>, string> = {
+  layers: "Layers",
+  spots: "Your spots",
+  options: "Display options",
+};
 
 /**
  * Top right: zoom, the layers (the wind's style, the chart's parts, the
@@ -43,9 +50,11 @@ export type MapPanel = "layers" | "spots" | "options" | null;
  * model the map draws), and under them your spots, the display options
  * (units, the rider, the blend's models) and the "i" that opens the map's
  * information: its key, the stars, the foil layer and the sources. The
- * layers, your spots and the options open beside the controls, one at a time,
- * and close on their button, on Escape or on a tap anywhere else; a keyboard
- * is handed back to the button it opened from.
+ * layers, your spots and the options open one at a time in a dialog over the
+ * dimmed map, as the information does: beside the controls they covered the
+ * chart and the dock's tools on a phone. They close on their X, on Escape or
+ * on a tap on the backdrop, and a keyboard is handed back to the button they
+ * opened from.
  */
 export default function MapControls({
   onZoomIn,
@@ -104,7 +113,6 @@ export default function MapControls({
   modelDisabled: boolean;
   onModel: (id: ModelId) => void;
 }) {
-  const panel = useRef<HTMLDivElement>(null);
   const layersButton = useRef<HTMLButtonElement>(null);
   const spotsButton = useRef<HTMLButtonElement>(null);
   const optionsButton = useRef<HTMLButtonElement>(null);
@@ -113,40 +121,11 @@ export default function MapControls({
     spots: spotsButton,
     options: optionsButton,
   };
-  useEffect(() => {
-    if (!open) return;
-    const button = buttons[open];
-    const down = (event: PointerEvent) => {
-      const t = event.target as Node;
-      // A dialog opened from the panel (an "i", the stars' "?") is over the
-      // page, not away from the panel: a press in it leaves the panel be.
-      if (t instanceof Element && t.closest("dialog[open]")) return;
-      if (!panel.current?.contains(t) && !button.current?.contains(t))
-        onOpen(null);
-    };
-    document.addEventListener("pointerdown", down);
-    return () => document.removeEventListener("pointerdown", down);
-  }, [open]);
   const toggle = (which: Exclude<MapPanel, null>) =>
     onOpen(open === which ? null : which);
-  /** Shut the panel, and put a keyboard back on the button that opened it. */
-  const close = () => {
-    if (open) buttons[open].current?.focus({ preventScroll: true });
-    onOpen(null);
-  };
+  const close = () => onOpen(null);
   return (
-    <div
-      className="map-ctrl"
-      onKeyDown={(event) => {
-        // The page's own Escape shuts the panel; from inside it, focus would
-        // otherwise be left on nothing.
-        if (
-          event.key === "Escape" &&
-          panel.current?.contains(event.target as Node)
-        )
-          buttons[open!]?.current?.focus({ preventScroll: true });
-      }}
-    >
+    <div className="map-ctrl">
       <div className="zbox chart-box" role="group" aria-label="Map controls">
         <button type="button" aria-label="Zoom in" title="Zoom in" onClick={onZoomIn}>
           +
@@ -201,114 +180,123 @@ export default function MapControls({
           <Info size={16} strokeWidth={1.3} aria-hidden="true" />
         </button>
       </div>
-      {open === "spots" && <div ref={panel}>{spots()}</div>}
-      {open === "options" && <div ref={panel}>{options(close)}</div>}
-      {open === "layers" && (
-        <div
-          ref={panel}
-          id="map-layers"
-          className="layers chart-box"
-          role="group"
-          aria-label="Layers"
+      {open && (
+        <Dialog
+          open
+          title={PANEL_TITLE[open]}
+          className="map-panel-dialog"
+          returnFocus={buttons[open]}
+          onClose={close}
         >
-          <h3>Wind</h3>
-          {(Object.keys(WIND_LABEL) as WindStyle[]).map((style) => (
-            <label key={style}>
-              <input
-                type="radio"
-                name="wind-style"
-                value={style}
-                checked={windStyle === style}
-                onChange={() => onWindStyle(style)}
-              />
-              <span>{WIND_LABEL[style]}</span>
-              <i className={`sw sw-${style}`} aria-hidden="true" />
-            </label>
-          ))}
-          <KnotScale faint={windStyle === "wash"} />
-          <h3>Chart</h3>
-          {(Object.keys(CHART_LABEL) as (keyof ChartLayers)[]).map((key) => {
-            const box = (
-              <label key={key}>
-                <input
-                  type="checkbox"
-                  data-layer={key}
-                  checked={layers[key]}
-                  onChange={(event) =>
-                    onLayersChange({ ...layers, [key]: event.target.checked })
-                  }
+          {open === "spots" && spots()}
+          {open === "options" && options(close)}
+          {open === "layers" && (
+            <div
+              id="map-layers"
+              className="layers"
+              role="group"
+              aria-label="Layers"
+            >
+              <h3>Wind</h3>
+              {(Object.keys(WIND_LABEL) as WindStyle[]).map((style) => (
+                <label key={style}>
+                  <input
+                    type="radio"
+                    name="wind-style"
+                    value={style}
+                    checked={windStyle === style}
+                    onChange={() => onWindStyle(style)}
+                  />
+                  <span>{WIND_LABEL[style]}</span>
+                  <i className={`sw sw-${style}`} aria-hidden="true" />
+                </label>
+              ))}
+              <KnotScale faint={windStyle === "wash"} />
+              <h3>Chart</h3>
+              {(Object.keys(CHART_LABEL) as (keyof ChartLayers)[]).map((key) => {
+                const box = (
+                  <label key={key}>
+                    <input
+                      type="checkbox"
+                      data-layer={key}
+                      checked={layers[key]}
+                      onChange={(event) =>
+                        onLayersChange({ ...layers, [key]: event.target.checked })
+                      }
+                    />
+                    <span>{CHART_LABEL[key]}</span>
+                  </label>
+                );
+                // The foil layer's key is in the map's information, not on the
+                // chart: its "i" opens it there, beside the switch.
+                return key === "foil" ? (
+                  <div key={key} className="layer-info">
+                    {box}
+                    <InfoButton
+                      label="About foilable depth"
+                      onOpen={() => onInfo("foil")}
+                    />
+                  </div>
+                ) : (
+                  box
+                );
+              })}
+              <h3>Satellite at tide</h3>
+              <div className="layer-sat">
+                <Segmented
+                  aria-label="Satellite at tide"
+                  options={SATELLITE_OPTIONS.map((option) => ({
+                    value: option,
+                    label: SATELLITE_LABEL[option],
+                  }))}
+                  value={satellite}
+                  onChange={onSatellite}
                 />
-                <span>{CHART_LABEL[key]}</span>
-              </label>
-            );
-            // The foil layer's key is in the map's information, not on the
-            // chart: its "i" opens it there, beside the switch.
-            return key === "foil" ? (
-              <div key={key} className="layer-info">
-                {box}
-                <InfoButton
-                  label="About foilable depth"
-                  onOpen={() => onInfo("foil")}
-                />
+                {satellite !== "off" && satelliteLoading && (
+                  <small role="status" data-satellite-loading>
+                    Loading the {SATELLITE_LABEL[satellite].toLowerCase()} image…
+                  </small>
+                )}
+                {satellite !== "off" && satelliteTides && (
+                  <>
+                    <small data-satellite-tides>
+                      {satelliteTidesLine(satelliteTides)}
+                    </small>
+                    <small>{SATELLITE_TIDES_NOTE}</small>
+                  </>
+                )}
               </div>
-            ) : (
-              box
-            );
-          })}
-          <h3>Satellite at tide</h3>
-          <div className="layer-sat">
-            <Segmented
-              aria-label="Satellite at tide"
-              options={SATELLITE_OPTIONS.map((option) => ({
-                value: option,
-                label: SATELLITE_LABEL[option],
-              }))}
-              value={satellite}
-              onChange={onSatellite}
-            />
-            {satellite !== "off" && satelliteLoading && (
-              <small role="status" data-satellite-loading>
-                Loading the {SATELLITE_LABEL[satellite].toLowerCase()} image…
-              </small>
-            )}
-            {satellite !== "off" && satelliteTides && (
-              <>
-                <small data-satellite-tides>
-                  {satelliteTidesLine(satelliteTides)}
-                </small>
-                <small>{SATELLITE_TIDES_NOTE}</small>
-              </>
-            )}
-          </div>
-          <h3>Round the chosen spot</h3>
-          <Segmented
-            aria-label="Round the chosen spot"
-            options={FOCUS_STYLES.map((style) => ({
-              value: style,
-              label: FOCUS_LABEL[style],
-            }))}
-            value={focusStyle}
-            onChange={onFocusStyle}
-          />
-          <h3>Model on the map</h3>
-          {modelNote && <p className="models-note">{modelNote}</p>}
-          <div className="models" role="group" aria-label="Weather model">
-            {MODELS.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                data-model={entry.id}
-                aria-label={`Use ${entry.name} model`}
-                aria-pressed={model === entry.id}
-                disabled={modelDisabled}
-                onClick={() => onModel(entry.id)}
-              >
-                <span>{entry.name}</span>
-                <small>{entry.detail}</small>
-              </button>
-            ))}
-          </div>
-        </div>
+              <h3>Round the chosen spot</h3>
+              <Segmented
+                aria-label="Round the chosen spot"
+                options={FOCUS_STYLES.map((style) => ({
+                  value: style,
+                  label: FOCUS_LABEL[style],
+                }))}
+                value={focusStyle}
+                onChange={onFocusStyle}
+              />
+              <h3>Model on the map</h3>
+              {modelNote && <p className="models-note">{modelNote}</p>}
+              <div className="models" role="group" aria-label="Weather model">
+                {MODELS.map((entry) => (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    data-model={entry.id}
+                    aria-label={`Use ${entry.name} model`}
+                    aria-pressed={model === entry.id}
+                    disabled={modelDisabled}
+                    onClick={() => onModel(entry.id)}
+                  >
+                    <span>{entry.name}</span>
+                    <small>{entry.detail}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </Dialog>
       )}
     </div>
   );

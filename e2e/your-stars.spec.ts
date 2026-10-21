@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./fixtures";
+import { closePanel, expect, test, type Page } from "./fixtures";
 
 /**
  * "Your star rating" (spot/web/YourStarsDialog.tsx): opened from Display
@@ -132,7 +132,7 @@ test("a rider sets their own stars, which the dock then rates with, keeps them w
   const custom = levels(page).getByRole("button", { name: "Custom" });
   await expect(custom).toHaveAttribute("aria-pressed", "true");
   await expect(customise(page)).toHaveText("Edit custom");
-  await options(page).click();
+  await closePanel(page);
 
   // The dock's chip says so, and opens the dialog on what was saved.
   const chip = page.getByRole("button", { name: "Custom star rating: edit" });

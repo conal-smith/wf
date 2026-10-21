@@ -200,6 +200,9 @@ export function Dialog({
       onCancel={(event) => {
         // Escape. The dialog is closed by `open` going false, not by the
         // browser, so that the owner's state and the screen cannot disagree.
+        // React hands a dialog opened from inside this one its cancel too:
+        // that Escape is the inner one's, and this one stays open.
+        if (event.target !== event.currentTarget) return;
         event.preventDefault();
         if (!busy) onClose();
       }}

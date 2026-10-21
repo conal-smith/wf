@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, test, unfoldTools } from "./fixtures";
 
 for (const width of [390, 1440]) {
   test(`a light opens its spot in the dock, with no box over the map, at ${width}px`, async ({
@@ -18,6 +18,7 @@ for (const width of [390, 1440]) {
     await expect(dock.locator(".dk-name")).toHaveText(
       "Kilcrea — Malahide Estuary",
     );
+    await unfoldTools(page);
     await expect(
       dock.getByRole("button", { name: "Star Kilcrea — Malahide Estuary" }),
     ).toHaveAttribute("aria-pressed", "false");

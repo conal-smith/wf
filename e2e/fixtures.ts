@@ -136,3 +136,28 @@ export async function steadyFrames(page: Page) {
     )
     .toBeLessThan(50);
 }
+
+/**
+ * Shut the map's open panel (the layers, your spots or the display options)
+ * on its dialog's X. It is modal, so the button it opened from is behind it.
+ */
+export async function closePanel(page: Page) {
+  await page
+    .locator("dialog.map-panel-dialog > div:first-child")
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
+  await expect(page.locator("dialog.map-panel-dialog")).toHaveCount(0);
+}
+
+/**
+ * On a phone the dock's tools are folded into one glyph (src/ForecastDock.tsx
+ * `dk-fold`): open them, where they are folded, before a press on one.
+ */
+export async function unfoldTools(page: Page) {
+  const fold = page.locator(".dk-tools .dk-fold");
+  if (
+    (await fold.count()) &&
+    (await fold.getAttribute("aria-expanded")) === "false"
+  )
+    await fold.click();
+}

@@ -1,8 +1,7 @@
 import { useEffect } from "react";
+import { pageTitle } from "../../site/shared/pageTitle";
 
-/** `Sell your gear — wingfoil.ie Market`: the page, then the site and section. */
-export const pageTitle = (title: string, section: string) =>
-  `${title} — wingfoil.ie ${section}`;
+export { pageTitle };
 
 /** Names the tab for as long as the page is mounted, then puts back what was there. */
 export function usePageTitle(title: string, section: string) {

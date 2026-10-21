@@ -34,7 +34,6 @@ import { Segmented } from "../ui/Segmented";
 interface Props {
   prefs: Prefs;
   onChange: (prefs: Prefs) => void;
-  onClose: () => void;
   /** Live wind models and whether their manifest answered. */
   models: readonly ModelAvailability[];
   /** Open "Your star rating", to make one or to change the rider's own. */
@@ -49,14 +48,13 @@ interface Props {
 }
 
 /**
- * The display options: the units, the rider and the blend's models. A panel
- * beside the map's controls, as the layers and your spots are, and shut the
- * same ways (src/MapControls.tsx): its button, Escape, a tap away, or Done.
+ * The display options: the units, the rider and the blend's models. In a
+ * dialog over the map, as the layers and your spots are, and shut the same
+ * ways (src/MapControls.tsx): its X, Escape or a tap on the backdrop.
  */
 export default function DisplayFilter({
   prefs,
   onChange,
-  onClose,
   models,
   onCustomiseStars,
   onStarsOn,
@@ -95,20 +93,11 @@ export default function DisplayFilter({
   return (
     <div
       id="map-options"
-      className="display-filter chart-box"
+      className="display-filter"
       role="group"
       aria-label="Forecast display options"
     >
-      <div className="filter-head">
-        <h2>Units</h2>
-        <button
-          className="filter-close"
-          aria-label="Close display options"
-          onClick={onClose}
-        >
-          Done
-        </button>
-      </div>
+      <h2>Units</h2>
       <div className="filter-units" role="group" aria-label="Wind units">
         {UNITS.map((unit) => (
           <button

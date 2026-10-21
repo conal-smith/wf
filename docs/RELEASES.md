@@ -105,7 +105,11 @@ Two buttons, with you in between. Both are *Actions → Release → Run workflow
      smoke suite runs against `STAGING_SITE_URL`.
      The build carries `_worker.js` (mcp/pages/worker.ts) and `_routes.json`,
      so Pages itself answers the MCP endpoint at `/api/mcp`, reading the same
-     data as the map; every other path stays a static file.
+     data as the map, and serves the spot pages, `/stars` and `/ai` under
+     their own title and description (mcp/pages/head.ts) for search engines
+     and link previews; every other path stays a static file. The build also
+     writes `sitemap.xml` (scripts/build-sitemap.mjs), which `robots.txt`
+     names.
    - Then, and only then, what passed is recorded as the prerelease
      `v<date>-rc.<run>` (the workflow run's number), tagged on the commit and
      carrying `images.json`, `site.tar.gz` and `staged.json`: the digests, the

@@ -276,7 +276,7 @@ function Step({
 }
 
 export default function AiApp() {
-  usePageTitle("Ask your AI", "AI");
+  usePageTitle("Connect your AI agent to the wing foil forecast", "AI");
   const s = styles();
   const url = mcpUrl(API_ROOT, window.location.origin);
   const device = useMemo(

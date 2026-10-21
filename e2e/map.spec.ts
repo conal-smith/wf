@@ -2,6 +2,7 @@ import {
   expect,
   backToIreland,
   chooseSpot,
+  closePanel,
   steadyFrames,
   test,
   type Page,
@@ -75,10 +76,11 @@ async function openLayers(page: Page) {
     await layers.click();
 }
 
-/** The model the map is drawing, from the layers panel. */
+/** The model the map is drawing, from the layers panel, shut after. */
 async function chooseModel(page: Page, id: string) {
   await openLayers(page);
   await page.locator(`[data-model="${id}"]`).click();
+  await closePanel(page);
 }
 
 /** Which model the layers panel says is on the map. */
@@ -88,6 +90,7 @@ async function expectModel(page: Page, id: string) {
     "aria-pressed",
     "true",
   );
+  await closePanel(page);
 }
 
 test("the chart opens on paper: the head, the controls, the lights and a flush dock", async ({
@@ -371,7 +374,7 @@ test("only offshore is struck through; a learner's cross-offshore is too", async
     .getByRole("button", { name: "Display options", exact: true })
     .click();
   await page.locator('[data-skill="beginner"]').click();
-  await page.getByLabel("Close display options").click();
+  await closePanel(page);
   await expect(page.locator(".spot-marker.xoff")).toHaveCount(0);
   for (const id of crossOff)
     await expect(page.locator(`[data-spot-id="${id}"]`)).toHaveClass(/\boff\b/);
@@ -567,7 +570,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
     choice.getByRole("button", { name: "Range ring" }),
   ).toHaveAttribute("aria-pressed", "true");
   await choice.getByRole("button", { name: "Loupe" }).click();
-  await layers.click();
+  await closePanel(page);
   await findSpot(page, "Dollymount");
   const map = page.locator(".map-canvas");
   const focus = page.locator(".map-focus");
@@ -615,6 +618,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   await expect(focus).toHaveAttribute("data-focus", "ring");
   await expect(focus.locator(".map-loupe-rim")).toHaveCount(0);
   await expect(focus.locator(".map-range-label")).toHaveText(/^[\d.]+ NM$/);
+  await closePanel(page);
   // Its distance follows the speed units: miles with miles an hour, metres
   // (or kilometres) with metres a second.
   const units = async (id: string) => {
@@ -622,7 +626,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
       .getByRole("button", { name: "Display options", exact: true })
       .click();
     await page.locator(`[data-units="${id}"]`).click();
-    await page.getByLabel("Close display options").click();
+    await closePanel(page);
   };
   await units("mph");
   await expect(focus.locator(".map-range-label")).toHaveText(/^[\d.]+ mi$/);
@@ -638,6 +642,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   await expect(focus.locator("*")).toHaveCount(0);
   await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(1);
   await expect(map).toHaveClass(/is-focus/);
+  await closePanel(page);
 
   // Kept for the next visit, which opens on the chart alone: at `/`, as the
   // reload of a chosen spot's own link (`/?spot=brandon`) opens on it.
@@ -833,6 +838,12 @@ for (const device of [
       expect(at).not.toBeNull();
       return at!;
     };
+    /** The dimmed map beside an open panel's dialog, off its box. */
+    const backdrop = async (page: Page) => {
+      const box = await page.locator("dialog.map-panel-dialog").boundingBox();
+      expect(box).not.toBeNull();
+      return { x: Math.max(2, box!.x / 2), y: box!.y + box!.height / 2 };
+    };
     const dockName = (page: Page) => page.locator(".dock .dk-name");
     const coords = /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/;
     /** A spot from a link, the chart flown to it and at rest. */
@@ -868,7 +879,11 @@ for (const device of [
         const button = page.getByRole("button", { name, exact: true });
         await button.click();
         await expect(button).toHaveAttribute("aria-expanded", "true");
-        await press(page, await clear(page));
+        // The panels are modal: the press lands on the dimmed map round them.
+        await press(
+          page,
+          name === "Site menu" ? await clear(page) : await backdrop(page),
+        );
         await expect(button).toHaveAttribute("aria-expanded", "false");
         await unmoved();
       }
@@ -880,7 +895,7 @@ for (const device of [
       await unmoved();
 
       // With nothing chosen, the same: the panel shuts and no point is
-      // picked, and a light pressed through it is not chosen either.
+      // picked, nor a light under the dimmed map round it.
       await page.goto("/");
       await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
         timeout: 30000,
@@ -895,11 +910,7 @@ for (const device of [
         await expect(page).toHaveURL(/\/$/);
       };
       await layers.click();
-      await press(page, await clear(page));
-      await expect(layers).toHaveAttribute("aria-expanded", "false");
-      await none();
-      await layers.click();
-      await press(page, await aLight(page, ""));
+      await press(page, await backdrop(page));
       await expect(layers).toHaveAttribute("aria-expanded", "false");
       await none();
       // Shut, the chart is the reader's again: a press picks its point.
