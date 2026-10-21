@@ -7,11 +7,39 @@
          cannot read a CSS variable, so the value is written out here; the two
          are held equal by tests/ui-theme.test.ts. -->
     <meta name="theme-color" content="#f3eee3" />
+    <!-- The map's head. The spot pages, /stars and /ai are served this file
+         with their own title, description and address in these same tags
+         (mcp/pages/head.ts, written by the Pages worker): keep each tag's
+         name and content in this order, which is what it rewrites. -->
+    <title>
+      Wing foil forecast for Ireland, ready for your AI agent | wingfoil.ie
+    </title>
     <meta
       name="description"
-      content="Explore Ireland's wind. Real forecast maps, local spots and a clearer view of your next session."
+      content="Wind and wave forecasts your AI agent can read: every wing foil spot in Ireland, rated for your weight and wings."
     />
-    <title>wingfoil.ie — Find your wind</title>
+    <link rel="canonical" href="https://wingfoil.ie/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="wingfoil.ie" />
+    <meta property="og:locale" content="en_IE" />
+    <meta
+      property="og:title"
+      content="Wing foil forecast for Ireland, ready for your AI agent | wingfoil.ie"
+    />
+    <meta
+      property="og:description"
+      content="Wind and wave forecasts your AI agent can read: every wing foil spot in Ireland, rated for your weight and wings."
+    />
+    <meta property="og:url" content="https://wingfoil.ie/" />
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="Wing foil forecast for Ireland, ready for your AI agent | wingfoil.ie"
+    />
+    <meta
+      name="twitter:description"
+      content="Wind and wave forecasts your AI agent can read: every wing foil spot in Ireland, rated for your weight and wings."
+    />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>

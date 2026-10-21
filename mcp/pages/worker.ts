@@ -15,10 +15,16 @@
  * staging's data on staging and production's in production; everything else
  * (`riding-locations.json`) from the site's own files. A site with no such tag
  * (a development build) reads both from itself.
+ *
+ * It also answers the spot pages, /stars and /ai, with index.html under their
+ * own title and description (head.ts), so a search engine finds each spot by
+ * its name; `_routes.json` names those paths too.
  */
 import { Hono } from "hono";
 import { httpSource, type ForecastSource } from "../api/httpSource.js";
 import { createMcpRouter } from "../api/server.js";
+import locations from "../../public/riding-locations.json";
+import { pageHead, withHead, type HeadSpot } from "./head.js";
 
 /** The binding Pages gives an advanced-mode worker for the static files. */
 interface Env {
@@ -66,11 +72,41 @@ function appFor(request: Request, env: Env): Promise<Hono> {
   return app;
 }
 
+/** The riding places this build was made with, by id, for their pages' heads. */
+const SPOTS: ReadonlyMap<string, HeadSpot> = new Map(
+  (locations as HeadSpot[]).map((spot) => [spot.id, spot] as const),
+);
+
+/**
+ * A page with a head of its own: index.html, as `_redirects` would have
+ * served it, with that head in place of the map's. Its status and headers are
+ * index.html's, less a length the rewrite has changed.
+ */
+async function withPageHead(
+  request: Request,
+  env: Env,
+): Promise<Response | null> {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+  const url = new URL(request.url);
+  const head = pageHead(url.pathname, SPOTS);
+  if (!head) return null;
+  const index = await env.ASSETS.fetch(new URL("/", url.origin).href);
+  if (!index.ok) return null;
+  const headers = new Headers(index.headers);
+  headers.delete("content-length");
+  headers.delete("etag");
+  const html = withHead(await index.text(), head);
+  return new Response(request.method === "HEAD" ? null : html, {
+    status: index.status,
+    headers,
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
     if (pathname !== "/api/mcp" && pathname !== "/api/mcp/")
-      return env.ASSETS.fetch(request);
+      return (await withPageHead(request, env)) ?? env.ASSETS.fetch(request);
     const mcp = await appFor(request, env);
     // Hono's routes have no trailing slash; a client given one still reaches it.
     const url = new URL(request.url);

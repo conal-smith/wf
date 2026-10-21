@@ -1,6 +1,14 @@
 {
   "version": 1,
-  "description": "Run _worker.js (mcp/pages/worker.ts) for the MCP endpoint only; every other path is a static file.",
-  "include": ["/api/mcp", "/api/mcp/"],
+  "description": "Run _worker.js (mcp/pages/worker.ts) for the MCP endpoint, and for the spot pages, /stars and /ai to give each its own title and description (mcp/pages/head.ts); every other path is a static file.",
+  "include": [
+    "/api/mcp",
+    "/api/mcp/",
+    "/spot/*",
+    "/stars",
+    "/stars/",
+    "/ai",
+    "/ai/"
+  ],
   "exclude": []
 }
