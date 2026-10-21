@@ -52,6 +52,39 @@
   white-space: nowrap;
   color: var(--color-ink-muted);
 }
+/* The water's temperature (ForecastDock, `waterText`), said once beside the
+   name while the rows are open: one value for the week, where a row across
+   the hours read as a temperature missing from each of them. The figure in
+   ink; where it was measured, how far and how long ago, muted. */
+.dk-sea {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+  padding-left: 8px;
+  border-left: 1px solid var(--color-line);
+  font: 500 11px var(--font-mono);
+  white-space: nowrap;
+  color: var(--color-ink-muted);
+  cursor: default;
+}
+.dk-sea b {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+/* The model's is approximate, and no figure to weight above its source. */
+.dk-sea[data-water="model"] b {
+  font-weight: 500;
+  color: var(--color-ink-muted);
+}
+.dk-sea-long {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dk-sea-glyph,
+.dk-sea-short {
+  display: none;
+}
 /* Each tool a square of the box, ruled off from the one before, as the
    map's zoom and layers are; the kit's quiet button squared off. */
 .dk-tools .dk-tool {
@@ -504,14 +537,39 @@ table.tt {
     width: 32px;
     padding: 0;
   }
+  /* The water's glyph, its value and how far the station is (or "model"):
+     the words are read out, and a phone's head has no room for them. Nor
+     has the row of tools once unfolded, where the reading was clipped under
+     the stars' chip: it stands in the folded box, the tools' resting state,
+     and gives the room up while they are open. */
+  .dk-sea {
+    gap: 3px;
+    padding-left: 6px;
+  }
+  .dk-sea-long,
+  .dk-sea[data-water="none"],
+  .dk-tools:not(.is-folded) .dk-sea {
+    display: none;
+  }
+  .dk-sea-glyph {
+    display: block;
+    flex: none;
+  }
+  .dk-sea-short {
+    display: inline;
+  }
   /* Folded to its one glyph (ForecastDock): the rest are there to open,
-     and the spot's name is still read out. */
+     and the spot's name is still read out. The water's reading stays: it
+     belongs to the open rows, which folding the tools does not shut. */
   .dk-tools.is-folded > :not(.dk-fold, .dk-id),
-  .dk-tools.is-folded .dk-id > :not(.dk-name) {
+  .dk-tools.is-folded .dk-id > :not(.dk-name, .dk-sea) {
     display: none;
   }
   .dk-tools.is-folded .dk-id {
     padding: 0;
+  }
+  .dk-tools.is-folded .dk-sea {
+    padding-right: 6px;
   }
   .dk-tools.is-folded .dk-fold {
     border-left: 0;
@@ -566,10 +624,10 @@ table.tt {
 .tt tr.tt-waves td {
   border-top: 1px solid var(--color-line);
 }
-/* One line across the hours (the sea's reading, a row no model reaches),
-   held at the left of the view as the tide's reason is (.tide-none): from
-   the first column it scrolled away with them, and opening at the hour now
-   left "14.6 °C measured · M2 buoy" as "2 buoy". */
+/* One line across the hours (a row no model reaches, or why a point has
+   none), held at the left of the view as the tide's reason is (.tide-none):
+   from the first column it scrolled away with them, and opening at the hour
+   left the sea's old "14.6 °C measured · M2 buoy" as "2 buoy". */
 .tt td.more-note {
   overflow: clip;
   text-align: left;
@@ -613,9 +671,6 @@ table.tt {
 }
 /* An hour inside an interval whose total another column prints. */
 .rain-cell.is-part {
-  color: var(--color-ink-muted);
-}
-.tt .proxy {
   color: var(--color-ink-muted);
 }
 @media (max-width: 720px) {

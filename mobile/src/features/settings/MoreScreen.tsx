@@ -20,7 +20,7 @@ const go = (path: string) => () => router.push(path as never);
 export function MoreScreen() {
   const { prefs } = usePrefs();
   const unit = UNITS.find((u) => u.id === prefs.units);
-  const rowsOn = DOCK_ROWS.filter((r) => dockRowOn(prefs, r.row, true)).length;
+  const rowsOn = DOCK_ROWS.filter((r) => dockRowOn(prefs, r.row)).length;
   const models = windModels();
   const inBlend = models.filter((m) => prefs.blendModels.includes(m.id)).length;
   return (

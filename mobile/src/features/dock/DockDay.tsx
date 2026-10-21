@@ -221,7 +221,7 @@ export const DockDay = memo(function DockDay(props: DockDayProps) {
 
       {/* The more rows' notes, where a row has nothing per hour to show. */}
       {props.more &&
-        (["waves", "sky", "air", "rain", "sea"] as const).map((row) => {
+        (["waves", "sky", "air", "rain"] as const).map((row) => {
           const slot = at[row];
           const data = props.more![row];
           if (!slot || data.cells || !data.note) return null;
@@ -378,7 +378,6 @@ function MoreCellsColumn({
   const sky = more.sky.cells?.[i];
   const air = more.air.cells?.[i];
   const rain = more.rain.cells?.[i];
-  const sea = more.sea.cells?.[i];
   return (
     <>
       {at.waves && wave && (
@@ -423,13 +422,6 @@ function MoreCellsColumn({
         >
           <T allowFontScaling={false} tabular style={[styles.small, fs(11)]}>
             {rain.text}
-          </T>
-        </View>
-      )}
-      {at.sea && sea !== null && sea !== undefined && (
-        <View style={[styles.cellAbs, { top: at.sea.y - top, height: at.sea.h }]} accessibilityLabel={`Sea about ${sea} degrees, the model's skin temperature`}>
-          <T allowFontScaling={false} tabular color="muted" style={fs(11)}>
-            ~{sea}°
           </T>
         </View>
       )}

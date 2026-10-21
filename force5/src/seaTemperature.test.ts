@@ -10,7 +10,9 @@ import {
   seaTemperatureNote,
   seaTemperatureStation,
   seaTemperatureStations,
+  skinNow,
   validateSeaTemperatureManifest,
+  waterText,
   type SeaTemperatureManifest,
 } from "./seaTemperature";
 
@@ -286,6 +288,58 @@ describe("seaTemperatureText", () => {
   it("keeps a decimal for a station close enough for one to matter", () => {
     const close = { ...reading(), distanceKm: 4.32 };
     expect(seaTemperatureText(close).detail).toContain("4.3 km");
+  });
+});
+
+describe("waterText", () => {
+  const reading = () =>
+    seaTemperatureForSpot(
+      validateSeaTemperatureManifest(manifest()),
+      "dollymount",
+      Date.parse("2026-09-17T01:00:00Z"),
+    )!;
+
+  it("says a station's measurement once, with where, how far and how old", () => {
+    expect(waterText(reading(), 12.6)).toEqual({
+      measured: true,
+      value: "15.5 °C",
+      detail: "M2 buoy, 49 km, 2 h ago",
+      short: "49 km",
+      label: "Water 15.5 °C, measured at the M2 buoy 49 km away, 2 h ago",
+    });
+  });
+
+  it("falls back to the model's skin temperature, marked as the model's", () => {
+    expect(waterText(null, 13.6)).toEqual({
+      measured: false,
+      value: "~14 °C",
+      detail: "model, not measured",
+      short: "model",
+      label: "Water about 14 °C, the model's skin temperature, not measured",
+    });
+  });
+
+  it("says nothing with neither", () => {
+    expect(waterText(null, null)).toBeNull();
+    expect(waterText(null, Number.NaN)).toBeNull();
+  });
+});
+
+describe("skinNow", () => {
+  const hour = 3600000;
+  const now = Date.parse("2026-09-17T10:20:00Z");
+  const at = (h: number) => Date.parse("2026-09-17T10:00:00Z") + h * hour;
+
+  it("takes the first column from the current hour on that has a value", () => {
+    expect(
+      skinNow([11, 12, null, 14], [at(-2), at(-1), at(0), at(1)], now),
+    ).toBe(14);
+    expect(skinNow([11, 13], [at(-1), at(0)], now)).toBe(13);
+  });
+
+  it("falls back to the latest before it, then to nothing", () => {
+    expect(skinNow([11, 12, null], [at(-2), at(-1), at(0)], now)).toBe(12);
+    expect(skinNow([null, undefined], [at(0), at(1)], now)).toBeNull();
   });
 });
 

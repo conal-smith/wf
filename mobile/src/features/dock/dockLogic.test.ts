@@ -22,6 +22,7 @@ import {
   handoverLabel,
   hatchPath,
   hourReading,
+  moreCells,
   nearestCentre,
   prefsView,
   rowLayout,
@@ -120,7 +121,7 @@ describe("rows", () => {
   it("opens on the table, the tide and the fold, or the stars over the blend in its place", () => {
     const table = rowLayout({ detent: "open", view: "table", spot: true, more: true, on: () => true });
     expect(table.slots.map((s) => s.row)).toEqual([
-      "day", "hour", "stars", "wind", "from", "wing", "tide", "waves", "sky", "air", "rain", "sea",
+      "day", "hour", "stars", "wind", "from", "wing", "tide", "waves", "sky", "air", "rain",
     ]);
     const blend = rowLayout({ detent: "open", view: "blend", spot: true, more: false, on: () => true });
     expect(blend.slots.map((s) => s.row)).toEqual(["day", "hour", "stars", "blend", "tide"]);
@@ -146,10 +147,34 @@ describe("rows", () => {
     const prefs = defaultPrefs();
     expect(dockRowOn(prefs, "wing")).toBe(true);
     expect(dockRowOn(prefs, "from")).toBe(true);
-    expect(dockRowOn(prefs, "sea", false)).toBe(false);
     expect(dockRowOn(setRow(prefs, "wing", false), "wing")).toBe(false);
-    expect(dockRowOn(setRow(prefs, "sea", true), "sea", false)).toBe(true);
     expect(dockRowOn(prefs, "wind")).toBe(true);
+  });
+
+  it("says the water's temperature once, not in a row across the hours", () => {
+    const columns = [0, 1, 2].map((h) => ({ time: T0 + h * HOUR }));
+    const waves = { source: null, published: true, columns: [] };
+    const weather = {
+      source: { fields: { skin: "tg" }, series: [] },
+      published: true,
+      columns: [null, { values: { tg: 13.6 } }, { values: { tg: 14.2 } }],
+    } as unknown as Parameters<typeof moreCells>[2];
+    const none = { observed: null, manifest: null, note: null, loading: false };
+    const model = moreCells(columns, waves, weather, none, T0);
+    expect(model).not.toHaveProperty("sea");
+    expect(model.water).toMatchObject({ measured: false, value: "~14 °C", detail: "model, not measured" });
+    const observed = {
+      station: { id: "M2", name: "M2", lat: 53.5, lon: -5.4, network: "buoy" as const },
+      distanceKm: 45.5,
+      latest: { time: new Date(T0 - 2 * HOUR).toISOString(), value: 14.5 },
+      series: [],
+      ageHours: 2,
+    };
+    const measured = moreCells(columns, waves, weather, { ...none, observed }, T0);
+    expect(measured.water).toMatchObject({ measured: true, value: "14.5 °C", detail: "M2 buoy, 46 km, 2 h ago" });
+    const bare = { source: null, published: true, columns: [] };
+    expect(moreCells(columns, waves, bare, none, T0).water).toBe("none");
+    expect(moreCells(columns, waves, bare, { ...none, loading: true }, T0).water).toBeNull();
   });
 
   it("opens on the table until the chart is chosen", () => {

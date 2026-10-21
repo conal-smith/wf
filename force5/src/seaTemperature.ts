@@ -214,13 +214,13 @@ export function seaTemperatureForSpot(
   };
 }
 
-/** What each network is, in the words the row and its tooltip use. */
+/** What each network is, in the words the reading and its tooltip use. */
 export const NETWORK_LABEL: Record<SeaTemperatureNetwork, string> = {
   coastal: "coastal logger",
   sentinel: "sentinel buoy",
   buoy: "weather buoy",
 };
-/** The one word that follows a station's name in the row's own reading. */
+/** The one word that follows a station's name in its reading. */
 export const NETWORK_WORD: Record<SeaTemperatureNetwork, string> = {
   coastal: "logger",
   sentinel: "buoy",
@@ -230,7 +230,7 @@ export const NETWORK_WORD: Record<SeaTemperatureNetwork, string> = {
 /**
  * How long ago a reading was taken, in words. The age is half of what an
  * observation says: forty minutes is the water now, thirty hours is yesterday's
- * water, and the row has to be honest about which it is showing.
+ * water, and the reading has to be honest about which it is showing.
  */
 export function observationAge(ageHours: number): string {
   if (!Number.isFinite(ageHours)) return "age unknown";
@@ -251,25 +251,98 @@ export interface SeaTemperatureText {
   detail: string;
 }
 
+/** A station's distance: a decimal only where it is close enough to matter. */
+const distanceText = (km: number) =>
+  `${km < 10 ? km.toFixed(1) : String(Math.round(km))} km`;
+
 /**
- * The reading the Sea row prints, in two parts so the row can weight the
- * measurement above its provenance. One line either way, because an observation
- * is one value and not a column per forecast hour.
+ * The reading in two parts, so a label can weight the measurement above its
+ * provenance. One line either way, because an observation is one value and not
+ * a column per forecast hour.
  */
 export function seaTemperatureText(
   observed: SpotSeaTemperature,
   ageHours: number = observed.ageHours,
 ): SeaTemperatureText {
-  const distance =
-    observed.distanceKm < 10
-      ? observed.distanceKm.toFixed(1)
-      : String(Math.round(observed.distanceKm));
   return {
     value: `${observed.latest.value.toFixed(1)} °C`,
     detail: `${observed.station.name} ${
       NETWORK_WORD[observed.station.network]
-    }, ${distance} km, ${observationAge(ageHours)}`,
+    }, ${distanceText(observed.distanceKm)}, ${observationAge(ageHours)}`,
   };
+}
+
+export interface WaterText {
+  /** A station's measurement, or the model's skin temperature. */
+  measured: boolean;
+  /** "14.5 °C" measured; "~14 °C" from the model, which is no closer than that. */
+  value: string;
+  /** "M2 buoy, 46 km, 2 h ago", or "model, not measured". */
+  detail: string;
+  /**
+   * What a narrow head keeps beside the value: the station's distance, the one
+   * thing that says how far a buoy offshore is from the beach, or "model".
+   */
+  short: string;
+  /** The whole of it in words, for a screen reader and a title. */
+  label: string;
+}
+
+/**
+ * The water's temperature, said once for a spot: it barely moves over a
+ * forecast's week, and a row across every hour holding one value read as a
+ * temperature missing from each of them (#119). A station's measurement where
+ * one is in range, else the model's skin temperature, marked as the model's;
+ * null when there is neither.
+ */
+export function waterText(
+  observed: SpotSeaTemperature | null,
+  skin: number | null,
+  ageHours?: number,
+): WaterText | null {
+  if (observed) {
+    const text = seaTemperatureText(observed, ageHours);
+    const station = `${observed.station.name} ${NETWORK_WORD[observed.station.network]}`;
+    const distance = distanceText(observed.distanceKm);
+    const age = observationAge(ageHours ?? observed.ageHours);
+    return {
+      measured: true,
+      value: text.value,
+      detail: text.detail,
+      short: distance,
+      label: `Water ${text.value}, measured at the ${station} ${distance} away, ${age}`,
+    };
+  }
+  if (skin === null || !Number.isFinite(skin)) return null;
+  const degrees = Math.round(skin);
+  return {
+    measured: false,
+    value: `~${degrees} °C`,
+    detail: "model, not measured",
+    short: "model",
+    label: `Water about ${degrees} °C, the model's skin temperature, not measured`,
+  };
+}
+
+/**
+ * The model's skin temperature to quote once, from a value per forecast
+ * column: the first column from the current hour on that has one, else the
+ * latest before it. `times` are the columns' instants, oldest first.
+ */
+export function skinNow(
+  values: readonly (number | null | undefined)[],
+  times: readonly number[],
+  now: number,
+): number | null {
+  const hour = now - (now % 3600000);
+  let before: number | null = null;
+  for (let i = 0; i < times.length; i++) {
+    const value = values[i];
+    if (typeof value !== "number" || !Number.isFinite(value)) continue;
+    if (times[i] >= hour) return value;
+    before = value;
+  }
+  return before;
 }
 
 /** The same reading as one line, for a label or an accessible name. */
