@@ -1517,6 +1517,10 @@ const SPOT_AT: Record<string, [number, number]> = {
 test("a point tapped on Dublin Bay reads its nearest station's tide; one on Lough Neagh has none", async ({
   page,
 }) => {
+  // Two pages opened and two points picked, each waiting on its tide: on a
+  // shared CI runner it passed every step and ran out of the default time on
+  // the last.
+  test.slow();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/marine/tides.json", (route) =>
