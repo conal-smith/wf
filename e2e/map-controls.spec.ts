@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { closePanel, expect, test } from "./fixtures";
 
 test("the chart's controls: zoom and the layers by keyboard, with the credits behind the i", async ({
   page,
@@ -169,28 +169,33 @@ for (const width of [390, 1440]) {
     await expect(star).toHaveAttribute("aria-expanded", "true");
     await expect(panel).toContainText("Dollymount");
     await expect(panel).toContainText("Often opened");
-    // Beside the controls, clear of the head and the dock, and on the page.
-    const box = (await panel.boundingBox())!;
-    const rail = (await controls.boundingBox())!;
-    const dock = (await page.locator(".map-footer").boundingBox())!;
-    expect(box.x + box.width).toBeLessThanOrEqual(rail.x);
+    // In a dialog over the dimmed map, on the page, with its own X.
+    const dialog = page.getByRole("dialog", { name: "Your spots" });
+    await expect(dialog).toBeVisible();
+    const box = (await dialog.boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.y + box.height).toBeLessThan(dock.y);
-    // Its button closes it, as does Escape, as does a tap away.
-    await star.click();
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    expect(
+      await dialog.evaluate(
+        (el) => getComputedStyle(el, "::backdrop").backdropFilter,
+      ),
+    ).toMatch(/blur/);
+    // Its X closes it, as does Escape, as does a press on the dimmed map.
+    await closePanel(page);
     await expect(panel).toHaveCount(0);
+    await expect(star).toHaveAttribute("aria-expanded", "false");
     await star.click();
     await page.keyboard.press("Escape");
     await expect(panel).toHaveCount(0);
     await star.click();
-    // A star alone opens no dock: the tap away is on the small print.
-    await page.locator(".map-model").click();
+    // A star alone opens no dock: the press is on the backdrop.
+    await page.mouse.click(Math.max(2, box.x / 2), box.y + box.height / 2);
     await expect(panel).toHaveCount(0);
-    // One at a time: the layers close your spots, and the other way round.
-    await star.click();
+    await expect(page.locator(".dock")).toHaveCount(0);
+    // One at a time: the layers in place of your spots, and the other way.
     await layers.click();
-    await expect(panel).toHaveCount(0);
     await expect(page.getByRole("group", { name: "Layers" })).toBeVisible();
+    await closePanel(page);
     await star.click();
     await expect(page.getByRole("group", { name: "Layers" })).toHaveCount(0);
     await expect(panel).toBeVisible();

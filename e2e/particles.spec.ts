@@ -1,4 +1,4 @@
-import { chooseSpot, expect, test, type Page } from "./fixtures";
+import { chooseSpot, closePanel, expect, test, type Page } from "./fixtures";
 
 declare global {
   interface Window {
@@ -228,7 +228,7 @@ test("zoomed right in, the coloured arrows go to ink and keep moving", async ({
     .getByRole("group", { name: "Layers" })
     .getByRole("radio", { name: "Coloured arrows" })
     .check();
-  await layers.click();
+  await closePanel(page);
   await expect.poll(() => tinted(page)).toBeGreaterThan(20);
   // The depths take over from zoom 11 (windLayer.ts); the chart opens near 6.
   // A press zooms one level on from wherever the camera has got to, so each

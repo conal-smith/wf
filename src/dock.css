@@ -504,6 +504,18 @@ table.tt {
     width: 32px;
     padding: 0;
   }
+  /* Folded to its one glyph (ForecastDock): the rest are there to open,
+     and the spot's name is still read out. */
+  .dk-tools.is-folded > :not(.dk-fold, .dk-id),
+  .dk-tools.is-folded .dk-id > :not(.dk-name) {
+    display: none;
+  }
+  .dk-tools.is-folded .dk-id {
+    padding: 0;
+  }
+  .dk-tools.is-folded .dk-fold {
+    border-left: 0;
+  }
   /* The label column is 28px: a glyph and its unit drawn closer, so "mm"
      and "°C" end inside it rather than over the hours. */
   .dk-labs div {
@@ -554,12 +566,20 @@ table.tt {
 .tt tr.tt-waves td {
   border-top: 1px solid var(--color-line);
 }
+/* One line across the hours (the sea's reading, a row no model reaches),
+   held at the left of the view as the tide's reason is (.tide-none): from
+   the first column it scrolled away with them, and opening at the hour now
+   left "14.6 °C measured · M2 buoy" as "2 buoy". */
 .tt td.more-note {
-  padding-left: 8px;
+  overflow: clip;
   text-align: left;
   font: italic 12px var(--font-body);
   color: var(--color-ink-muted);
   cursor: default;
+}
+.tt td.more-note > span {
+  position: sticky;
+  left: 8px;
 }
 .wave-cell {
   display: inline-flex;

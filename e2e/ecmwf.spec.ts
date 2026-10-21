@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { closePanel, expect, test } from "./fixtures";
 import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleColumnsWithoutEcmwf, stripAt } from "./columns";
 
@@ -23,7 +23,7 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
     "aria-pressed",
     "true",
   );
-  await layers.click();
+  await closePanel(page);
   await expect(page.locator(".map-model")).toContainText("ECMWF");
   // Hourly where HARMONIE reaches, ECMWF's own three- and six-hourly steps after.
   const strip = stripAt(clock);
@@ -66,7 +66,7 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
     "aria-pressed",
     "true",
   );
-  await layers.click();
+  await closePanel(page);
   await expect(slider).toHaveValue(String(strip.length - 1));
   await expect(
     page.getByRole("button", { name: /Show ECMWF on the map/ }),
@@ -107,6 +107,7 @@ test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", as
       "aria-pressed",
       "true",
     );
+    await closePanel(page);
     await page.getByRole("button", { name: "Dismiss" }).click();
   }
 });

@@ -157,7 +157,7 @@ const AT_POINT = "@point";
 /**
  * What is open over the chart and shuts on a press away from it, each said
  * open on the control it hangs from: the site menu and the search's list in
- * the head, the layers, your spots and the options beside the controls.
+ * the head, and the layers, your spots and the options in their dialog.
  */
 const OVER_THE_CHART =
   '.map-head [aria-expanded="true"], .map-ctrl [aria-expanded="true"]';
@@ -298,7 +298,7 @@ export default function App() {
     setMore(next);
     store.set(MORE_KEY, next ? "1" : "0");
   };
-  /** The layers, your spots or the display options, beside the map's controls. */
+  /** The layers, your spots or the display options, in a dialog over the map. */
   const [panel, setPanel] = useState<MapPanel>(null);
   /** The information dialog's part to open at, or null while it is shut. */
   const [info, setInfo] = useState<InfoSection | null>(null);
@@ -1437,7 +1437,6 @@ export default function App() {
                       (model) => model.entry.kind === "wind",
                     )}
                     spot={point && !picked ? point : null}
-                    onClose={close}
                   />
                 </Suspense>
               )}

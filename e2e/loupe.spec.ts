@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./fixtures";
+import { closePanel, expect, test, type Page } from "./fixtures";
 
 /**
  * The loupe's ride rose (force5/src/focus.ts, drawn by WindMap.tsx): round the
@@ -133,7 +133,7 @@ test("Dollymount's cross-shore hour: the no-go, out and home, and the wind at th
     .getByRole("button", { name: "Display options", exact: true })
     .click();
   await page.locator('[data-units="km/h"]').click();
-  await page.getByLabel("Close display options").click();
+  await closePanel(page);
   await expect
     .poll(() => labels(page))
     .toEqual(expect.arrayContaining(["1 km", "500 m"]));

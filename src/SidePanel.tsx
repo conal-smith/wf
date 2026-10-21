@@ -74,7 +74,7 @@ function Entry({
 /**
  * Your spots: the starred and the often opened, each with its stars and wind
  * at the hour the map shows. Behind the star under Layers
- * (src/MapControls.tsx), opening beside the controls as the layers do, on a
+ * (src/MapControls.tsx), in a dialog over the map as the layers are, on a
  * phone as on a wide screen; it used to sit over the chart all the time, and
  * on a phone as a strip over the dock.
  */
@@ -108,9 +108,8 @@ export default function SidePanel(props: Props) {
   const looked = frequent.filter((v) => spots.has(v.id)).slice(0, 4);
 
   return (
-    <aside id="map-spots" className="side chart-box" aria-label="Your spots">
+    <aside id="map-spots" className="side" aria-label="Your spots">
       <div className="side-head">
-        <h3>Your spots</h3>
         <span className="when">
           {column
             ? `${dayShort(column.time).toUpperCase()} ${Number(column.date.slice(8))} ${clock(column.time)}`

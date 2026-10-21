@@ -13,8 +13,10 @@ import {
   ArrowDown,
   ArrowUpRight,
   ChartSpline,
+  ChevronRight,
   CloudRain,
   CloudSun,
+  Ellipsis,
   Layers3,
   Navigation2,
   Thermometer,
@@ -778,7 +780,7 @@ function MoreRows({
   const span = (key: string, text: string) => (
     <tr className={`tt-more tt-${key}`} key={key}>
       <td colSpan={columns.length} className="d0 more-note">
-        {text}
+        <span>{text}</span>
       </td>
     </tr>
   );
@@ -1534,6 +1536,12 @@ export default function ForecastDock(props: Props) {
   // so they go back when it next comes down anywhere else.
   const dockRef = useRef<HTMLElement>(null);
   const toolsRef = useRef<HTMLDivElement>(null);
+  /**
+   * A phone's tools folded into one glyph until it is pressed: open, the row
+   * of them stood over the chart's foot and the map's own model chip.
+   */
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const folded = phone && !toolsOpen;
   /** The tools' top on the screen when a click on them was made, while held. */
   const pinned = useRef<number | null>(null);
   const pin = () => {
@@ -1613,7 +1621,8 @@ export default function ForecastDock(props: Props) {
           which spot it is, and the name is there for a screen reader. */}
       <div
         ref={toolsRef}
-        className="dk-tools chart-box"
+        id="dk-tools"
+        className={`dk-tools chart-box${folded ? " is-folded" : ""}`}
         role="group"
         aria-label="This spot"
       >
@@ -1773,6 +1782,32 @@ export default function ForecastDock(props: Props) {
         >
           <X size={16} strokeWidth={1.4} aria-hidden="true" />
         </Button>
+        {/* A phone's one glyph for the rest, at the right where the row ends,
+            so the row opens leftwards from under the finger. */}
+        {phone && (
+          <Button
+            variant="quiet"
+            size="sm"
+            icon
+            className="dk-tool dk-fold"
+            aria-label={
+              toolsOpen ? "Fold the spot's tools" : "The spot's tools"
+            }
+            title={toolsOpen ? "Fewer tools" : "More tools"}
+            aria-expanded={toolsOpen}
+            aria-controls="dk-tools"
+            onClick={(event) => {
+              hold(event);
+              setToolsOpen(!toolsOpen);
+            }}
+          >
+            {toolsOpen ? (
+              <ChevronRight size={16} strokeWidth={1.4} aria-hidden="true" />
+            ) : (
+              <Ellipsis size={16} strokeWidth={1.4} aria-hidden="true" />
+            )}
+          </Button>
+        )}
       </div>
 
       {/* The time, for a keyboard and a screen reader: the hours scrolling
