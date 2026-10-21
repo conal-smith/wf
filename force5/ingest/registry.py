@@ -2,7 +2,7 @@
 
 `script` runs inside the worker, `manifest` is the published pointer path under
 `public/` (its first segment is also the immutable object root for that model),
-`kind` selects the validator, `maxAgeHours` is the default freshness limit, and
+`kind` selects the validator, `maxAgeHours` is the freshness limit (below), and
 `workerStep` is False for an adapter whose cadence is its own, so the worker never
 forces its 1/3-hour `--step` on a source that does not publish those steps.
 `cache` names the directory under `.cache/` that holds the model's raw downloads;
@@ -19,6 +19,18 @@ here and its fetch script.
 upstream source (the blend, the forecast archive, the verification): the worker
 passes it the bucket, prefix, endpoint and region, and the credentials stay in the
 environment it inherits. Without a bucket such a job reads the work directory.
+
+`maxAgeHours` is what "stale" means everywhere: a run older than it is later than
+its schedule in deploy/local/jobs.toml allows, so an ingest failed or a provider is
+late. It is the oldest the served run gets on its normal cadence (the gap between
+the slots that replace it, plus the provider's publication lag and the job's own
+time) with room for a late slot, so a once-a-day model on time is never stale.
+status.py calls a run past it stale, the production monitor (scripts/release/
+monitor.py) alerts an hour after, the worker refuses to publish an older run, and
+the map and the MCP label it, from force5/src/catalog.ts's `staleAfterHours`, which
+repeats it for every model the site lists: scripts/release/test_monitor.py fails if
+the two differ, and force5/ingest/test_scheduler.py checks the limits against the
+schedule.
 """
 
 # The exit code an adapter that declares `readsPublishedRun` uses to say "the run I
@@ -41,19 +53,24 @@ PUBLISHED_RUN_ENV = "FORCE5_PUBLISHED_RUN"
 # re-upload a run the site already serves. Tides and sea temperature do not: see
 # their entries.
 MODELS = {
-    # Fetched at 07 and 12 UTC, each time the cycle about three hours earlier, so the
-    # noon run is about 22 h old when the morning's replaces it, an hour more if that
-    # job queues. 30 h leaves a late or failed morning slot to the noon one.
+    # Fetched six times a day (05, 08, 11, 16, 19 and 23 UTC at :35), each time the
+    # cycle about three hours earlier. The longest gap, 23:35 to 05:35, leaves the
+    # served run about 9 h old before the next lands; 15 h leaves one failed slot to
+    # the next (10 h across 19:35 to 05:35, plus 3 h of lag and an hour of queueing
+    # and download) before it reads as stale.
     "harmonie": {"script": "fetch_harmonie.py", "manifest": "weather/harmonie.json",
-                 "kind": "wind", "maxAgeHours": 30, "cache": "harmonie", "readsPublishedRun": True},
+                 "kind": "wind", "maxAgeHours": 15, "cache": "harmonie", "readsPublishedRun": True},
+    # Once a day, the 00 UTC cycle (about 3.5 h behind) at 03:30 UTC, its weather half
+    # at 03:40, so the served run is about 28.5 h old when the next day's lands.
     "icon-eu": {"script": "fetch_forecast.py", "manifest": "weather/latest.json",
                 "kind": "wind", "maxAgeHours": 30, "cache": "grib", "readsPublishedRun": True},
     "icon-eu-weather": {"script": "fetch_icon_weather.py", "manifest": "weather/icon-eu-weather.json",
                         "kind": "weather", "maxAgeHours": 30, "cache": "grib",
                         "readsPublishedRun": True},
-    # Fetched once a day, the 00 UTC run (complete on open data at about 07:35 UTC)
-    # at 08:20 with a 10:20 retry: the run it replaces is 32-36 h old by then, and
-    # a day with neither slot succeeding is stale from 16 UTC.
+    # Twice a day, the 00 and 12 UTC runs (complete on open data at about 07:35 and
+    # 19:35 UTC) at 08:20 and 20:20 with retries at 10:20 and 22:20: a run is about
+    # 22 h old when its successor's retry lands. 40 h leaves a whole failed cycle to
+    # the next one's retry.
     "ecmwf": {"script": "fetch_ecmwf.py", "manifest": "weather/ecmwf.json",
               "kind": "wind", "maxAgeHours": 40, "cache": "ecmwf", "readsPublishedRun": True},
     "ecmwf-ens": {"script": "fetch_ecmwf_ens.py", "manifest": "weather/ecmwf-ens.json",
@@ -69,8 +86,12 @@ MODELS = {
     "ecmwf-wave": {"script": "fetch_ecmwf_wave.py", "manifest": "weather/ecmwf-wave.json",
                    "kind": "wave", "maxAgeHours": 24, "cache": "ecmwf-wave",
                    "readsPublishedRun": True},
+    # Four cycles a day, each about 4 h behind, read at :00 with a retry at :45 for a
+    # cycle not yet complete (the 06Z on 18 October), so a run landing on the retry is
+    # about 11.5 h old when the next lands, an hour more if it queues. 13 h makes a
+    # cycle that both slots missed stale, and nothing on time.
     "gfs": {"script": "fetch_gfs.py", "manifest": "weather/gfs.json",
-            "kind": "wind", "maxAgeHours": 12, "cache": "gfs", "readsPublishedRun": True},
+            "kind": "wind", "maxAgeHours": 13, "cache": "gfs", "readsPublishedRun": True},
     # GEFS is 3-hourly at best and defaults to 6-hourly; it has no hourly product.
     # The newest GEFS cycle is often still publishing at its slot; accept the previous one.
     "gefs": {"script": "fetch_gefs.py", "manifest": "weather/gefs.json",
@@ -87,8 +108,10 @@ MODELS = {
               "readsPublishedRun": True},
     "harmonie-eps": {"script": "fetch_harmonie_eps.py", "manifest": "weather/harmonie-eps.json",
                      "kind": "wind", "maxAgeHours": 12, "readsPublishedRun": True},
+    # GFS's cycles about 3 h 50 m behind, at :30 with a :55 retry, queueing behind GFS's
+    # own slot: as GFS, 13 h.
     "gfs-wave": {"script": "fetch_gfswave.py", "manifest": "weather/gfs-wave.json",
-                 "kind": "wave", "maxAgeHours": 12, "cache": "gfswave", "readsPublishedRun": True},
+                 "kind": "wave", "maxAgeHours": 13, "cache": "gfswave", "readsPublishedRun": True},
     # Predictions, not a run: `run` is the hour the job ran, so it never repeats from
     # one daily slot to the next and there is no provider run to compare it with.
     "tides": {"script": "fetch_tides.py", "manifest": "marine/tides.json",
@@ -100,7 +123,8 @@ MODELS = {
     "sea-temperature": {"script": "fetch_sea_temperature.py",
                         "manifest": "marine/sea-temperature.json",
                         "kind": "observation", "maxAgeHours": 48},
-    # One SWAN run a day, published around 09 UTC and occasionally a day late.
+    # One SWAN run a day, published around 09 UTC and occasionally a day late, read at
+    # 10:15 (14:15 and 18:15 retry): about 34.5 h old when the next day's lands.
     "mi-swan": {"script": "fetch_mi_swan.py", "manifest": "weather/mi-swan.json",
                 "kind": "wave", "maxAgeHours": 36, "readsPublishedRun": True},
     # Not a model: every riding place's consensus of the wind models above, worked

@@ -165,13 +165,21 @@ describe("dockColumns", () => {
     expect(dockColumns([stale], NOW)).toEqual([]);
   });
 
-  it("keeps a run older than eighteen hours: stale is not expired", () => {
-    // ECMWF at 00 UTC lands hours late and reads as stale twice a day. Gating
-    // on that would cut the dock from fifteen days to whatever GFS reaches.
-    expect(freshness(ecmwf().manifest, NOW)).toBe("stale");
-    const columns = dockColumns([harmonie(), ecmwf(), gfs()], NOW);
+  it("keeps a stale run: stale is not expired", () => {
+    // ECMWF's 00 UTC run a day old is on schedule, not stale: it lands eight
+    // hours late and the 12 UTC run replaces it twelve hours after that.
+    expect(freshness(ecmwf().manifest, NOW)).toBe("fresh");
+    // Two days old, past its 40-hour limit, it is stale. Gating on that would
+    // cut the dock from fifteen days to whatever GFS reaches.
+    const late = model("ecmwf", {
+      runTime: "2026-09-12T00:00:00Z",
+      hours: every(360, 6),
+      km: 28,
+    });
+    expect(freshness(late.manifest, NOW)).toBe("stale");
+    const columns = dockColumns([harmonie(), late, gfs()], NOW);
     expect(owners(columns)).toContain("ecmwf");
-    expect(columns.at(-1)!.validTime).toBe(at("2026-09-13T00:00:00Z", 360));
+    expect(columns.at(-1)!.validTime).toBe(at("2026-09-12T00:00:00Z", 360));
   });
 
   it("ignores which model the map is drawing", () => {

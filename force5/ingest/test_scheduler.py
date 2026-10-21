@@ -1,7 +1,7 @@
 """The local cadence scheduler: schedule arithmetic and forgiving configuration."""
 import atexit
 import contextlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import io
 from pathlib import Path
 import shutil
@@ -224,6 +224,51 @@ class ShippedScheduleTest(unittest.TestCase):
                                "about 7 h 35 m after its run time")
             self.assertLessEqual(first + 24 + hours(own[0], own[-1]) + 1,
                                  MODELS["ecmwf"]["maxAgeHours"])
+
+    def test_a_run_on_time_is_never_stale(self):
+        # "Stale" means later than the schedule allows (issue #120), so a model on its
+        # normal cadence must never reach maxAgeHours: not a once-a-day run the hours
+        # before tomorrow's slot. Per model, the provider's cycles and how long after
+        # its run time a cycle is complete (jobs.toml's comments). Each slot takes the
+        # newest complete cycle; the served run is oldest just before a slot that
+        # takes a newer one has finished (its timeout), plus an hour of queueing.
+        cadence = {
+            "harmonie": (range(24), timedelta(hours=2, minutes=25)),
+            "icon-eu": ((0,), timedelta(hours=3, minutes=30)),
+            "icon-eu-weather": ((0,), timedelta(hours=3, minutes=30)),
+            "ecmwf": ((0, 12), timedelta(hours=7, minutes=35)),
+            "gfs": ((0, 6, 12, 18), timedelta(hours=4)),
+            "gfs-wave": ((0, 6, 12, 18), timedelta(hours=3, minutes=50)),
+            "mi-swan": ((0,), timedelta(hours=9)),
+        }
+        with contextlib.redirect_stdout(io.StringIO()):
+            jobs = {job["id"]: job for job in scheduler.load_jobs(JOBS_FILE)}
+        enabled = {model for job in jobs.values() if job["enabled"] for model in job["models"]
+                   if MODELS[model]["kind"] in ("wind", "wave", "weather")}
+        self.assertEqual(enabled, set(cadence), "Give a newly enabled forecast its cadence here")
+        start = datetime(2026, 10, 12, tzinfo=timezone.utc)
+        for model, (cycles, lag) in cadence.items():
+            job = jobs[model]
+            slots = sorted(start + timedelta(days=day, hours=hour, minutes=minute)
+                           for day in range(3) for hour in job["hours"] for minute in job["minutes"])
+
+            def newest(slot):
+                ready = slot - lag
+                return max(ready.replace(hour=cycle, minute=0) - timedelta(days=back)
+                           for back in (0, 1) for cycle in cycles
+                           if ready.replace(hour=cycle, minute=0) - timedelta(days=back) <= ready)
+
+            served, oldest = newest(slots[0]), 0.0
+            for slot in slots[1:]:
+                run = newest(slot)
+                if run > served:
+                    landed = slot + timedelta(seconds=job["timeout_seconds"])
+                    oldest = max(oldest, (landed - served).total_seconds() / 3600)
+                    served = run
+            self.assertGreater(oldest, 0, model)
+            self.assertLessEqual(oldest + 1, MODELS[model]["maxAgeHours"],
+                                 f"{model}'s run is {oldest:.1f} h old on time, "
+                                 f"too near its {MODELS[model]['maxAgeHours']} h limit")
 
     def test_every_registered_model_has_a_cadence(self):
         with contextlib.redirect_stdout(io.StringIO()):

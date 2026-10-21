@@ -549,7 +549,7 @@ export const forecastSources = tool({
   name: "forecast_sources",
   title: "Forecast sources",
   description:
-    "Which weather models are live on wingfoil.ie, when each run was made, how far ahead it reaches, and its attribution and licence.",
+    "Which weather models are live on wingfoil.ie, when each run was made and how old it is, how far ahead it reaches, whether it is stale (older than that model's schedule allows: a once-a-day run on time is not), and its attribution and licence.",
   inputSchema: {},
   async run(_args, deps) {
     return answer(await modelStatus(deps.source, (deps.now ?? Date.now)()));

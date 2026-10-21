@@ -48,11 +48,10 @@ import {
 } from "../../force5/src/lead.js";
 import { shoreFacing } from "../../force5/src/shoreFacing.js";
 import { shoreAngle, type ShoreAngle } from "../../force5/src/stars.js";
+import { isStale } from "../../force5/src/catalog.js";
 import type { ForecastSource } from "./httpSource.js";
 
 const HOUR = 3600000;
-/** A run older than this is flagged stale, as the map flags it. */
-const STALE_HOURS = 18;
 /** Waves and weather are nearest-step, never interpolated (VARIABLE_MATCH_HOURS). */
 const VARIABLE_MATCH_HOURS = 1.5;
 export const TIME_ZONE = "Europe/Dublin";
@@ -342,6 +341,13 @@ export interface ModelRun {
   run_time: string;
   /** The last hour this run forecasts. */
   until: string;
+  /** Hours since the run started, at the time of asking. */
+  age_hours: number;
+  /**
+   * Older than its model's schedule allows (catalog.ts's `staleAfterHours`, as
+   * the map and the production monitor read it): an ingest failed or a
+   * provider is late. A once-a-day run on time is never stale.
+   */
   stale: boolean;
   attribution: string;
   license_url: string;
@@ -396,7 +402,8 @@ function runOf(
     provider: text(body.provider) ?? "",
     run_time: iso(runTime),
     until: iso(until),
-    stale: now - runTime > STALE_HOURS * HOUR,
+    age_hours: round((now - runTime) / HOUR),
+    stale: isStale(entry.id, runTime, now),
     attribution: text(body.attribution) ?? "",
     license_url: text(body.licenseUrl) ?? "",
   };

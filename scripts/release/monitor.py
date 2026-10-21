@@ -89,18 +89,35 @@ SIGNATURE = re.compile(r"<!-- production-monitor signature: ([^>]*?) -->")
 
 # --- which models -----------------------------------------------------------------
 
-def catalog_flags(text):
-    """{id: {"retired": bool, "planned": bool}} for every entry of catalog.ts's MODEL_CATALOG."""
+def catalog_entries(text):
+    """{id: the entry's source text} for every entry of catalog.ts's MODEL_CATALOG."""
     start = text.index("MODEL_CATALOG")
     body = text[start:text.index("\n];", start)]
     found = list(re.finditer(r'\bid:\s*"([^"]+)"', body))
-    flags = {}
+    entries = {}
     for index, match in enumerate(found):
         end = found[index + 1].start() if index + 1 < len(found) else len(body)
-        entry = body[match.end():end]
-        flags[match.group(1)] = {"retired": bool(re.search(r"\bretired:\s*true\b", entry)),
-                                 "planned": bool(re.search(r"\bplanned:\s*true\b", entry))}
-    return flags
+        entries[match.group(1)] = body[match.end():end]
+    return entries
+
+
+def catalog_flags(text):
+    """{id: {"retired": bool, "planned": bool}} for every entry of catalog.ts's MODEL_CATALOG."""
+    return {model: {"retired": bool(re.search(r"\bretired:\s*true\b", entry)),
+                    "planned": bool(re.search(r"\bplanned:\s*true\b", entry))}
+            for model, entry in catalog_entries(text).items()}
+
+
+def catalog_stale_hours(text):
+    """{id: staleAfterHours or None}: when the map and the MCP call a model's run stale.
+
+    It must be registry.py's maxAgeHours, the limit this monitor checks (plus its
+    margin); test_monitor.py fails if the two differ, so all three agree."""
+    hours = {}
+    for model, entry in catalog_entries(text).items():
+        match = re.search(r"\bstaleAfterHours:\s*([0-9.]+)", entry)
+        hours[model] = float(match.group(1)) if match else None
+    return hours
 
 
 def enabled_models(jobs):

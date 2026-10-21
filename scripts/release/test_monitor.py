@@ -131,6 +131,47 @@ const other = { id: "w", retired: true };"""
             "z": {"retired": False, "planned": False}})
 
 
+class StaleLimits(unittest.TestCase):
+    """The map, the MCP and the monitor call the same run stale (issue #120)."""
+
+    def test_the_site_reads_the_registrys_limit_for_every_model_it_lists(self):
+        hours = monitor.catalog_stale_hours(monitor.CATALOG_FILE.read_text())
+        flags = monitor.catalog_flags(monitor.CATALOG_FILE.read_text())
+        for model, limit in hours.items():
+            if model in monitor.MODELS:
+                self.assertEqual(limit, float(monitor.MODELS[model]["maxAgeHours"]),
+                                 f"{model}: staleAfterHours in force5/src/catalog.ts must be "
+                                 "maxAgeHours in force5/ingest/registry.py")
+            else:
+                self.assertTrue(flags[model]["planned"], f"{model} has no registry entry")
+                self.assertIsNone(limit, f"{model} is planned: it has no schedule to be late on")
+        for model, _ in monitor.load_live_models():
+            if model in hours:
+                self.assertIsNotNone(hours[model], model)
+
+    def test_a_once_a_day_run_is_not_stale_before_the_next_days_slot(self):
+        # The cutoff that used to be one 18 h for every model, against the ages the
+        # issue measured on 21 October: ICON-EU and SWAN once a day, ECMWF twice.
+        hours = monitor.catalog_stale_hours(monitor.CATALOG_FILE.read_text())
+        self.assertGreater(hours["icon-eu"], 24 + 3.5)
+        self.assertGreater(hours["icon-eu-weather"], 24 + 3.5)
+        self.assertGreater(hours["mi-swan"], 24 + 10)
+        self.assertGreater(hours["ecmwf"], 12 + 8.5)
+        self.assertLess(hours["harmonie"], 18, "HARMONIE runs six times a day")
+
+    def test_parsing_reads_each_entrys_own_limit(self):
+        text = """export const MODEL_CATALOG: readonly ModelEntry[] = [
+  { id: "x", kind: "wind", staleAfterHours: 30, retired: true },
+  {
+    id: "y",
+    planned: true,
+  },
+  { id: "z", staleAfterHours: 12.5 },
+];
+const other = { id: "w", staleAfterHours: 1 };"""
+        self.assertEqual(monitor.catalog_stale_hours(text), {"x": 30.0, "y": None, "z": 12.5})
+
+
 class Http(unittest.TestCase):
     def test_retries_a_dropped_request_and_a_5xx_but_not_a_404(self):
         answers = [urllib.error.URLError("reset"), (503, {}, b""), (200, {}, b"ok")]

@@ -394,11 +394,12 @@ to orchestrate it later).
   - then the longest fresh model's times (ECMWF, else GFS);
   - **one seam only**;
   - a model counts unless its run has **expired**
-    (`freshness(m) !== "expired"`, `weather.ts:493`). The 18-hour "stale" mark
-    does **not** remove a model from the columns: ECMWF only runs at 00/12 UTC
-    and lands 8–9 h late, so it is "stale" for about three hours twice a day,
-    and gating on it would shrink the dock to GFS's 10 days each time. An
-    older run keeps its columns, and the model band labels it "older run".
+    (`freshness(m) !== "expired"`, `weather.ts`). The "stale" mark — a run
+    older than its model's schedule allows, `staleAfterHours` in
+    `force5/src/catalog.ts` (registry.py's `maxAgeHours`) — does **not**
+    remove a model from the columns: gating on it would shrink the dock to
+    GFS's 10 days whenever an ECMWF slot failed. An older run keeps its
+    columns, and the model band labels it "older run".
 
 **Always the newest run**
 
