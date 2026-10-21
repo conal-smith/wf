@@ -314,10 +314,14 @@ class OtherBundles(unittest.TestCase):
 class Site(unittest.TestCase):
     SITE = "https://site.example.com/"
 
-    def run_site(self, html, allow, status=200):
+    SCRIPT = '<script type="module" crossorigin src="/assets/index-C5f053Kk.js"></script>'
+
+    def run_site(self, html, allow, status=200, asset=IMMUTABLE):
         def fetch(method, url, headers, timeout):
             if url == self.SITE:
                 return status, {}, html.encode()
+            if url == "https://site.example.com/assets/index-C5f053Kk.js" and method == "GET":
+                return (200, asset, b"") if asset is not None else (404, {}, b"")
             if url == BASE + "weather/harmonie.json" and headers.get("Origin") == "https://site.example.com":
                 return 200, {"Access-Control-Allow-Origin": allow} if allow else {}, b""
             return 404, {}, b""
@@ -326,14 +330,23 @@ class Site(unittest.TestCase):
         return codes(monitor.check_site(http, self.SITE, BASE, [("harmonie", "")]).as_dict())
 
     def test_the_meta_and_cors(self):
-        meta = f'<meta name="wingfoil:forecast-base" content="{BASE}" />'
+        meta = f'<meta name="wingfoil:forecast-base" content="{BASE}" />' + self.SCRIPT
         self.assertEqual(self.run_site(meta, allow="https://site.example.com"), [])
         self.assertEqual(self.run_site(meta, allow="*"), [])
         self.assertEqual(self.run_site(meta.replace(BASE, BASE.rstrip("/")), allow="*"), [])
         self.assertEqual(self.run_site(meta, allow=""), ["cors"])
-        self.assertEqual(self.run_site("<html></html>", allow="*"), ["site"])
+        self.assertEqual(self.run_site(f"<html>{self.SCRIPT}</html>", allow="*"), ["site"])
         self.assertEqual(self.run_site(meta.replace("data.", "other."), allow="*"), ["site"])
         self.assertEqual(self.run_site(meta, allow="*", status=522), ["site"])
+
+    def test_the_hashed_assets_are_immutable(self):
+        meta = f'<meta name="wingfoil:forecast-base" content="{BASE}" />'
+        # As production served them in October 2026: four hours, revalidated.
+        four_hours = {"Cache-Control": "public, max-age=14400, must-revalidate"}
+        self.assertEqual(self.run_site(meta + self.SCRIPT, allow="*", asset=four_hours), ["assets"])
+        self.assertEqual(self.run_site(meta + self.SCRIPT, allow="*", asset=None), ["assets"])
+        self.assertEqual(self.run_site(meta, allow="*"), ["assets"])
+        self.assertEqual(self.run_site(meta + self.SCRIPT, allow="*"), [])
 
 
 class Reporting(unittest.TestCase):

@@ -32,7 +32,8 @@ rewrites max-age, so the monitor reads the pointer's header from the GET, and
 asks a HEAD only to say whether the bucket or the CDN is to blame.
 
 **The site**, when --site is given: it answers 200 with the
-`wingfoil:forecast-base` meta naming this data domain, and the data domain allows
+`wingfoil:forecast-base` meta naming this data domain, the first content-hashed
+script it names under /assets/ is cached as immutable, and the data domain allows
 that origin (CORS) on a pointer. No browser.
 
 The result is a Markdown table (stdout, and --summary for $GITHUB_STEP_SUMMARY)
@@ -443,6 +444,20 @@ def check_site(http, site, base, live):
         row.problem("site", f"{site} has no {FORECAST_BASE_META} meta")
     elif match.group(1).rstrip("/") + "/" != base:
         row.problem("site", f"{site} reads its forecast from {match.group(1)}, not {base}")
+    # Vite's content-hashed bundle, as a returning visitor's browser GETs it: cached for
+    # a year, not revalidated (public/_headers on Cloudflare Pages, the Caddyfile on the
+    # self-hosted image). The HTML that names it is what must be revalidated.
+    script = re.search(r"""["'](/assets/[^"'?#]+\.js)["']""", response.text)
+    if not script:
+        row.problem("assets", f"{site} names no /assets/ script")
+    else:
+        url = urllib.parse.urljoin(site, script.group(1))
+        answer = http.request("GET", url)
+        row.checked += 1
+        problem = (immutable_header_problem(answer.headers) if answer.status == 200
+                   else answer.describe())
+        if problem:
+            row.problem("assets", f"{url} {problem}")
     if live:
         parts = urllib.parse.urlsplit(site)
         origin = f"{parts.scheme}://{parts.netloc}"
