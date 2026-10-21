@@ -377,10 +377,14 @@ interface WindManifest {
 interface VariableStep {
   time: number;
   values: Record<string, number | null>;
+  /** Hours of the interval `precip` totals up to this step, where stated. */
+  precipHours?: number | null;
 }
 interface VariablesManifest {
   variables: Record<string, { units?: string; label?: string }>;
   spotSeries: Record<string, unknown>;
+  /** The run's native cadence: ICON-EU weather publishes every 3 hours. */
+  stepHours?: number;
 }
 
 function runOf(
@@ -602,9 +606,17 @@ function variableSteps(
     const values: Record<string, number | null> = {};
     for (const [key, value] of Object.entries(row.values))
       values[key] = finite(value) ? value : null;
-    return [{ time, values }];
+    const interval = row.precipIntervalHours;
+    const precipHours =
+      Array.isArray(interval) &&
+      finite(interval[0]) &&
+      finite(interval[1]) &&
+      interval[1] > interval[0]
+        ? interval[1] - interval[0]
+        : null;
+    return [{ time, values, precipHours }];
   });
-  return steps.length ? steps : null;
+  return steps.length ? steps.sort((a, b) => a.time - b.time) : null;
 }
 
 /** Twice the series' median cadence: bridges ECMWF's 3 → 6 h tail, not a hole. */
@@ -1023,25 +1035,135 @@ function hourWaves(source: SpotVariables, time: number): HourWaves | null {
 
 export interface HourWeather {
   air_c: number | null;
+  /**
+   * The model's rain total over the `rain_interval_hours` ending at this hour
+   * (or at `rain_until`), on one row only; null on the interval's other hours.
+   */
   rain_mm: number | null;
+  rain_interval_hours?: number;
+  /** Where the interval does not end at this row's hour: when it does end. */
+  rain_until?: string;
   cloud_pct: number | null;
   /** The model's present-weather code (WMO 4677), where it publishes one. */
   weather_code: number | null;
 }
-function hourWeather(source: SpotVariables, time: number): HourWeather | null {
+
+/** A rain total and the interval it covers, as one row carries it. */
+interface RainTotal {
+  mm: number;
+  hours: number;
+  until: number;
+}
+
+/** A minute: rows and steps both fall on the hour, so this is only rounding. */
+const SLACK = 60000;
+
+/**
+ * The model's rain totals, each given to one row of the window so that adding
+ * the rows up gives the rain and never more. A step's `precip` is the total
+ * over the interval that ends at it (three hours for ICON-EU), so it belongs to
+ * that interval and to no other hour: read into each of three hourly rows, as
+ * the other weather fields are, it would say three times the rain. As in the
+ * dock (src/strip.ts `rainColumns`), the last row inside an interval carries
+ * it. Rows coarser than the steps can leave an interval with no row inside it,
+ * which then goes to the first row after it, so a six-hourly row sums the two
+ * intervals since the row before. An interval wholly before the first row or
+ * after the last is outside the window and dropped.
+ */
+function rainRows(
+  times: readonly number[],
+  steps: readonly VariableStep[],
+  stepHours: number | null,
+): (RainTotal | null)[] {
+  const rows: (RainTotal | null)[] = times.map(() => null);
+  steps.forEach((step, k) => {
+    const mm = step.values.precip;
+    if (!finite(mm)) return;
+    // The interval the step states, else the gap since the step before it.
+    const hours =
+      step.precipHours ??
+      (k > 0 ? (step.time - steps[k - 1].time) / HOUR : stepHours);
+    if (!hours || hours <= 0) return;
+    const end = step.time;
+    const start = end - hours * HOUR;
+    let row = -1;
+    for (let i = times.length - 1; i >= 0 && row < 0; i--)
+      if (times[i] <= end + SLACK) row = i;
+    if (row < 0) return;
+    if (times[row] <= start + SLACK) {
+      row = times.findIndex((t) => t > end + SLACK);
+      if (row < 0) return;
+    }
+    const total = rows[row];
+    rows[row] = total
+      ? {
+          mm: total.mm + mm,
+          hours: total.hours + hours,
+          until: Math.max(total.until, end),
+        }
+      : { mm, hours, until: end };
+  });
+  return rows;
+}
+
+/** The native cadence of a weather run: as its manifest states, else its steps'. */
+function weatherStepHours(source: SpotVariables): number | null {
+  const stated = source.manifest.stepHours;
+  if (finite(stated) && stated > 0) return stated;
+  const gap = maxGap(source.steps) / 2;
+  return gap > 0 ? round(gap / HOUR, 2) : null;
+}
+
+function hourWeather(
+  source: SpotVariables,
+  time: number,
+  rain: RainTotal | null,
+): HourWeather | null {
   const step = stepAt(source.steps, time);
-  if (!step) return null;
   const value = (name: string, places: number) => {
-    const v = step.values[name];
+    const v = step?.values[name];
     return finite(v) ? round(v, places) : null;
   };
-  const result = {
+  const result: HourWeather = {
     air_c: value("t2m", 0),
-    rain_mm: value("precip", 1),
+    rain_mm: rain && round(rain.mm, 1),
+    ...(rain && { rain_interval_hours: round(rain.hours, 2) }),
+    ...(rain &&
+      Math.abs(rain.until - time) > SLACK && { rain_until: iso(rain.until) }),
     cloud_pct: value("clct", 0),
     weather_code: value("ww", 0),
   };
-  return Object.values(result).every((v) => v === null) ? null : result;
+  return [
+    result.air_c,
+    result.rain_mm,
+    result.cloud_pct,
+    result.weather_code,
+  ].every((v) => v === null)
+    ? null
+    : result;
+}
+
+/**
+ * Each hour's rain as the total of the interval it falls in, read back from
+ * the row that carries it, by the hour's time: for a reader that draws each
+ * hour on its own (the spot page's sky) rather than adding the rows up. An
+ * hour no total covers is absent.
+ */
+export function rainByHour(
+  hours: readonly ForecastHour[],
+): Map<number, number> {
+  const times = hours.map((hour) => Date.parse(hour.time));
+  const rain = new Map<number, number>();
+  for (const hour of hours) {
+    const weather = hour.weather;
+    if (!weather?.rain_interval_hours || weather.rain_mm === null) continue;
+    const until = Date.parse(weather.rain_until ?? hour.time);
+    const start = until - weather.rain_interval_hours * HOUR;
+    for (const time of times)
+      if (time > start + SLACK && time <= until + SLACK)
+        rain.set(time, weather.rain_mm);
+  }
+  return rain;
 }
 
 export interface SpotTides {
@@ -1180,7 +1302,13 @@ export interface SpotForecast {
   /** The bearing the shore looks out to sea along, or null where unknown. */
   shore_facing_deg?: number | null;
   units: Record<string, string>;
-  window: { from: string; to: string; step_hours: number };
+  window: {
+    from: string;
+    to: string;
+    step_hours: number;
+    /** How far apart the weather model's own steps are, where one reaches the spot. */
+    weather_step_hours?: number;
+  };
   hours: ForecastHour[];
   sun: { date: string; sunrise: string | null; sunset: string | null }[];
   tides: SpotTides | { note: string } | null;
@@ -1219,7 +1347,16 @@ export const UNITS = {
   direction: "degrees the wind or waves come FROM (0 = north)",
   waves: "metres (significant height), seconds (peak period)",
   temperature: "°C",
-  rain: "mm in the forecast step",
+  rain:
+    "mm: the weather model's own total over the `rain_interval_hours` " +
+    "(3 for ICON-EU) ending at that row's hour, or at `rain_until` where " +
+    "given. Each total is on one row only, with null on the interval's other " +
+    "hours, so adding rain_mm up over rows gives the rain in their intervals. " +
+    "A row further apart than the model's steps sums the intervals since the " +
+    "row before",
+  weather:
+    "air_c, cloud_pct and weather_code are the weather model's nearest step, " +
+    "`window.weather_step_hours` apart, so they repeat on the hours between",
   time: "UTC ISO time, with `local` in Europe/Dublin",
 };
 
@@ -1248,7 +1385,12 @@ export async function spotForecast(
   const waveSource = preferredSource(waves.loaded, spot.id, ["swh"]);
   const weatherSource = preferredSource(weather.loaded, spot.id, ["t2m"]);
   const facing = shoreFacing(spot.id);
-  const hours = axis(window).map((time): ForecastHour => {
+  const times = axis(window);
+  const weatherStep = weatherSource && weatherStepHours(weatherSource);
+  const rain = weatherSource
+    ? rainRows(times, weatherSource.steps, weatherStep)
+    : [];
+  const hours = times.map((time, row): ForecastHour => {
     const wind = hourWind(lines, time, options.perModel ?? false, options.from);
     const hour: ForecastHour = {
       time: iso(time),
@@ -1258,7 +1400,8 @@ export async function spotForecast(
       shore: shoreOf(facing, wind),
     };
     if (waveSource) hour.waves = hourWaves(waveSource, time);
-    if (weatherSource) hour.weather = hourWeather(weatherSource, time);
+    if (weatherSource)
+      hour.weather = hourWeather(weatherSource, time, rain[row]);
     if (memberLines.length) hour.ensemble = hourEnsemble(memberLines, time);
     return hour;
   });
@@ -1279,6 +1422,7 @@ export async function spotForecast(
       from: iso(window.from),
       to: iso(window.to),
       step_hours: window.stepHours,
+      ...(weatherStep && { weather_step_hours: weatherStep }),
     },
     hours,
     sun,

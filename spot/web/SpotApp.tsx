@@ -33,6 +33,7 @@ import {
   WEATHER_MODELS,
   WIND_MODELS,
   localTime,
+  rainByHour,
   type RidingSpot,
   type SpotForecast,
   type Unavailable,
@@ -392,6 +393,7 @@ function SpotPage({
     [rows, spot.lat, spot.lon],
   );
   const changes = useMemo(() => leadChanges(rows), [rows]);
+  const rain = useMemo(() => rainByHour(forecast.hours), [forecast.hours]);
   const skyStops = useMemo(
     () => skyStopsOn(days.map(({ day }) => day)),
     [days],
@@ -532,6 +534,7 @@ function SpotPage({
             )}
             onStarsFrom={changeStarsFrom}
             skyStops={day.date === skyStops}
+            rain={rain}
           />
         ))}
       </div>

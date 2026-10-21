@@ -204,7 +204,7 @@ export const getSpotForecast = tool({
   name: "get_spot_forecast",
   title: "Spot forecast",
   description:
-    "Hour-by-hour forecast for one spot: wind speed, gusts and direction from one weather model, the one wingfoil.ie rates its stars from (HARMONIE while it reaches the hour, then ECMWF, unless stars_from and then name others), with the range across every model and how well they agree as context, how the wind meets the shore (onshore to offshore), plus waves, air temperature, rain, daylight, sunrise and sunset, high and low tides and the latest sea temperature.",
+    "Hour-by-hour forecast for one spot: wind speed, gusts and direction from one weather model, the one wingfoil.ie rates its stars from (HARMONIE while it reaches the hour, then ECMWF, unless stars_from and then name others), with the range across every model and how well they agree as context, how the wind meets the shore (onshore to offshore), plus waves, air temperature, rain, daylight, sunrise and sunset, high and low tides and the latest sea temperature. Rain is the weather model's own total over an interval (3 hours for ICON-EU), given once on the row where its interval ends (`rain_interval_hours`) and null on the hours before it, so add rain_mm up over the rows for a period's rain.",
   inputSchema: {
     spot: z
       .string()

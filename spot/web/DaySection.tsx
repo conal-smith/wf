@@ -163,6 +163,12 @@ export interface DaySectionProps {
   onStarsFrom?: (model: string, where: StarsWhere) => void;
   /** The sky model stops on this day: say under it what "not yet" means. */
   skyStops?: boolean;
+  /**
+   * Each hour's rain, as the total of the model interval it falls in. The
+   * forecast gives a total once, at the hour it ends, so every hour of the
+   * interval can still show its sky (mcp/api/forecast.ts `rainByHour`).
+   */
+  rain: ReadonlyMap<number, number>;
 }
 
 /** The theme's `wide` breakpoint (ui/theme.css), where the rows get shorter. */
@@ -289,6 +295,7 @@ function DayBody({
   changes,
   onStarsFrom,
   skyStops,
+  rain,
 }: DaySectionProps) {
   const s = styles();
   const names = dayNames(day.date, now);
@@ -375,7 +382,7 @@ function DayBody({
         units={units}
         unitText={unitText}
         shore={row.shore}
-        rainMm={hour.weather?.rain_mm}
+        rainMm={rain.get(row.time) ?? null}
         models={models}
         riderText={riderText}
         starsFrom={starsFrom}
@@ -545,7 +552,12 @@ function DayBody({
         <td className={s.cell({ className: s.sky() })}>
           {hour.weather ? (
             <>
-              <SkyGlyph weather={hour.weather} />
+              <SkyGlyph
+                weather={{
+                  ...hour.weather,
+                  rain_mm: rain.get(row.time) ?? null,
+                }}
+              />
               {hour.weather.air_c != null && (
                 <span className={s.air()}>{hour.weather.air_c}°</span>
               )}

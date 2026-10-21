@@ -24,6 +24,7 @@ import {
   hourWind,
   loadSpots,
   modelStatus,
+  rainByHour,
   spotForecast,
   windowFor,
   type RidingSpot,
@@ -354,6 +355,256 @@ describe("spotForecast", () => {
       now: FIXTURE_NOW,
     });
     expect(forecast.tides).toEqual({ note: "No tide: a freshwater lake." });
+  });
+});
+
+describe("rain", () => {
+  // ICON-EU's shape: a step every three hours from the run, each step's
+  // precip the total over the three hours ending at it, none at
+  // initialization. The step at 15:00 on the 17th has lost its rain.
+  const RUN = Date.parse("2026-09-16T18:00:00Z");
+  const TOTALS = [null, 0.8, 0.1, 0, 2.4, 1.3, 0.5, null, 0.7];
+  const BASE = "weather/icon-eu-weather-2026091618-3h-v1-e1ed202a/";
+  const SQUARE = `${BASE}spots/n52w008.json`;
+  const at = (iso: string) => Date.parse(iso);
+
+  async function rainForecast(
+    window: { from?: string; hours: number; stepHours: number },
+    options: {
+      totals?: (number | null)[];
+      /** Leave the first steps out, so the run starts after the window. */
+      skip?: number;
+      /** Drop the stated intervals, so the gaps between steps say them. */
+      unstated?: boolean;
+    } = {},
+  ) {
+    const totals = options.totals ?? TOTALS;
+    const inner = fixtureSource();
+    const pointer = (await inner.json(
+      "weather/icon-eu-weather.json",
+    )) as Record<string, unknown>;
+    const square = (await inner.json(SQUARE)) as {
+      spotSeries: Record<string, unknown>;
+    };
+    const series = totals
+      .map((precip, k) => ({
+        hour: 3 * k,
+        validTime: new Date(RUN + 3 * k * HOUR).toISOString(),
+        ...(!options.unstated && {
+          precipIntervalHours: k ? [3 * k - 3, 3 * k] : null,
+        }),
+        values: { t2m: 10 + k, precip, clct: 40 + k, ww: 61 },
+      }))
+      .slice(options.skip ?? 0);
+    const source = fixtureSource({
+      "weather/icon-eu-weather.json": {
+        ...pointer,
+        frames: [],
+        horizonHours: 3 * (totals.length - 1),
+      },
+      [SQUARE]: {
+        ...square,
+        spotSeries: { ...square.spotSeries, dollymount: series },
+      },
+    });
+    const spot = findSpot(await loadSpots(source), "dollymount").spot!;
+    return spotForecast(source, spot, windowFor(FIXTURE_NOW, window), {
+      now: FIXTURE_NOW,
+    });
+  }
+  const rainOf = (forecast: Awaited<ReturnType<typeof rainForecast>>) =>
+    forecast.hours.map((h) => [
+      h.time.slice(11, 16),
+      h.weather?.rain_mm ?? null,
+      h.weather?.rain_interval_hours ?? null,
+      h.weather?.rain_until?.slice(11, 16) ?? null,
+    ]);
+  const sum = (values: (number | null | undefined)[]) =>
+    values.reduce<number>((total, v) => total + (v ?? 0), 0);
+
+  it("gives each three-hour total once, at the hour its interval ends", async () => {
+    const forecast = await rainForecast({ hours: 24, stepHours: 1 });
+    expect(forecast.window.weather_step_hours).toBe(3);
+    expect(rainOf(forecast).filter(([, mm]) => mm !== null)).toEqual([
+      ["21:00", 0.8, 3, null],
+      ["00:00", 0.1, 3, null],
+      ["03:00", 0, 3, null],
+      ["06:00", 2.4, 3, null],
+      ["09:00", 1.3, 3, null],
+      ["12:00", 0.5, 3, null],
+      // The window ends at 18:00, inside the last interval: its last hour
+      // carries it, and says the hour it runs to.
+      ["17:00", 0.7, 3, "18:00"],
+    ]);
+    // The hours inside an interval have none of their own.
+    expect(rainOf(forecast).slice(0, 4)).toEqual([
+      ["18:00", null, null, null],
+      ["19:00", null, null, null],
+      ["20:00", null, null, null],
+      ["21:00", 0.8, 3, null],
+    ]);
+  });
+
+  it("adds up over the hours to the three-hour totals, not three times them", async () => {
+    const forecast = await rainForecast({ hours: 24, stepHours: 1 });
+    const hours = forecast.hours.map((h) => ({
+      time: Date.parse(h.time),
+      mm: h.weather?.rain_mm,
+    }));
+    const between = (from: string, to: string) =>
+      sum(
+        hours
+          .filter((h) => h.time > at(from) && h.time <= at(to))
+          .map((h) => h.mm),
+      );
+    // Each interval's hours add up to its own total.
+    TOTALS.forEach((total, k) => {
+      if (!k || total === null) return;
+      const end = RUN + 3 * k * HOUR;
+      if (end >= RUN + 24 * HOUR) return;
+      expect(
+        sum(
+          hours
+            .filter((h) => h.time > end - 3 * HOUR && h.time <= end)
+            .map((h) => h.mm),
+        ),
+      ).toBeCloseTo(total, 5);
+    });
+    // Overnight, 21:00 to 06:00 UTC: the three intervals ending at 00, 03, 06.
+    expect(between("2026-09-16T21:00:00Z", "2026-09-17T06:00:00Z")).toBeCloseTo(
+      0.1 + 0 + 2.4,
+      5,
+    );
+    // The whole day: every total once, where each read into all three of its
+    // hours would say three times the rain.
+    expect(sum(hours.map((h) => h.mm))).toBeCloseTo(5.8, 5);
+    // The other weather repeats the nearest step's: three-hourly, not hourly.
+    expect(forecast.hours.slice(2, 5).map((h) => h.weather?.air_c)).toEqual([
+      11, 11, 11,
+    ]);
+  });
+
+  it("leaves an interval whose rain is missing empty, not zero", async () => {
+    const forecast = await rainForecast({ hours: 24, stepHours: 1 });
+    // 12:00 to 15:00 on the 17th has no total.
+    const afternoon = forecast.hours.filter(
+      (h) =>
+        Date.parse(h.time) > at("2026-09-17T12:00:00Z") &&
+        Date.parse(h.time) <= at("2026-09-17T15:00:00Z"),
+    );
+    expect(afternoon).toHaveLength(3);
+    for (const h of afternoon) {
+      expect(h.weather?.rain_mm).toBeNull();
+      expect(h.weather).not.toHaveProperty("rain_interval_hours");
+      expect(h.weather?.air_c).toEqual(expect.any(Number));
+    }
+  });
+
+  it("says when an interval the window's end cuts through ends", async () => {
+    // 18:00 to 23:00: the interval to midnight is printed at 22:00, its last
+    // hour in the window, with the hour it runs to.
+    const forecast = await rainForecast({ hours: 5, stepHours: 1 });
+    expect(rainOf(forecast)).toEqual([
+      ["18:00", null, null, null],
+      ["19:00", null, null, null],
+      ["20:00", null, null, null],
+      ["21:00", 0.8, 3, null],
+      ["22:00", 0.1, 3, "00:00"],
+    ]);
+  });
+
+  it("has no rain before the run's first interval or past its last step", async () => {
+    // The run starts at midnight: nothing before it, then its first interval.
+    const late = await rainForecast(
+      { hours: 8, stepHours: 1 },
+      { skip: 2, unstated: true },
+    );
+    expect(rainOf(late)).toEqual([
+      ["18:00", null, null, null],
+      ["19:00", null, null, null],
+      ["20:00", null, null, null],
+      ["21:00", null, null, null],
+      ["22:00", null, null, null],
+      ["23:00", null, null, null],
+      ["00:00", 0.1, 3, null],
+      ["01:00", 0, 3, "03:00"],
+    ]);
+    // Out of the steps' reach the hour has no weather at all.
+    expect(late.hours[0].weather).toBeNull();
+    expect(late.hours[5].weather?.air_c).toBe(12);
+    // The run ends at 12:00 on the 17th: its last total there, then none.
+    const short = await rainForecast(
+      { hours: 24, stepHours: 1 },
+      { totals: TOTALS.slice(0, 7) },
+    );
+    const tail = short.hours.filter(
+      (h) => Date.parse(h.time) >= at("2026-09-17T12:00:00Z"),
+    );
+    expect(tail[0].weather?.rain_mm).toBe(0.5);
+    expect(tail[1].weather?.rain_mm).toBeNull();
+    expect(tail[1].weather?.air_c).toBe(16);
+    expect(tail.slice(2).every((h) => h.weather === null)).toBe(true);
+  });
+
+  it("reads the interval from the steps' spacing where no step states it", async () => {
+    const stated = await rainForecast({ hours: 24, stepHours: 1 });
+    const unstated = await rainForecast(
+      { hours: 24, stepHours: 1 },
+      { unstated: true },
+    );
+    expect(rainOf(unstated)).toEqual(rainOf(stated));
+  });
+
+  it("gives three-hourly rows off the steps' hours each interval once, and says when it ends", async () => {
+    // Rows at 19, 22, 01 …: each falls inside one interval and carries it.
+    const forecast = await rainForecast({
+      from: "2026-09-16T19:00:00Z",
+      hours: 24,
+      stepHours: 3,
+    });
+    expect(rainOf(forecast)).toEqual([
+      ["19:00", 0.8, 3, "21:00"],
+      ["22:00", 0.1, 3, "00:00"],
+      ["01:00", 0, 3, "03:00"],
+      ["04:00", 2.4, 3, "06:00"],
+      ["07:00", 1.3, 3, "09:00"],
+      ["10:00", 0.5, 3, "12:00"],
+      ["13:00", null, null, null],
+      ["16:00", 0.7, 3, "18:00"],
+    ]);
+    expect(sum(forecast.hours.map((h) => h.weather?.rain_mm))).toBeCloseTo(
+      0.8 + 0.1 + 0 + 2.4 + 1.3 + 0.5 + 0.7,
+      5,
+    );
+  });
+
+  it("sums the intervals since the row before on six-hourly rows", async () => {
+    const forecast = await rainForecast({ hours: 24, stepHours: 6 });
+    expect(rainOf(forecast)).toEqual([
+      ["18:00", null, null, null],
+      ["00:00", 0.9, 6, null],
+      ["06:00", 2.4, 6, null],
+      ["12:00", 1.8, 6, null],
+    ]);
+  });
+
+  it("gives every hour of an interval its total back, for a reader drawing each hour", async () => {
+    const forecast = await rainForecast({ hours: 24, stepHours: 1 });
+    const rain = rainByHour(forecast.hours);
+    const around = (iso: string) => rain.get(at(iso)) ?? null;
+    expect(around("2026-09-16T19:00:00Z")).toBe(0.8);
+    expect(around("2026-09-16T21:00:00Z")).toBe(0.8);
+    expect(around("2026-09-16T22:00:00Z")).toBe(0.1);
+    expect(around("2026-09-17T07:00:00Z")).toBe(1.3);
+    expect(around("2026-09-17T14:00:00Z")).toBeNull();
+    expect(around("2026-09-16T18:00:00Z")).toBeNull();
+  });
+
+  it("tells an agent what a row's rain covers", async () => {
+    const forecast = await rainForecast({ hours: 3, stepHours: 1 });
+    expect(forecast.units.rain).toMatch(/rain_interval_hours/);
+    expect(forecast.units.rain).toMatch(/null/);
+    expect(forecast.units.weather).toMatch(/weather_step_hours/);
   });
 });
 
