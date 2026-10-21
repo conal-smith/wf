@@ -23,8 +23,7 @@
 import { Hono } from "hono";
 import { httpSource, type ForecastSource } from "../api/httpSource.js";
 import { createMcpRouter } from "../api/server.js";
-import locations from "../../public/riding-locations.json";
-import { pageHead, withHead, type HeadSpot } from "./head.js";
+import { isPagePath, pageHead, withHead, type HeadSpot } from "./head.js";
 
 /** The binding Pages gives an advanced-mode worker for the static files. */
 interface Env {
@@ -72,10 +71,28 @@ function appFor(request: Request, env: Env): Promise<Hono> {
   return app;
 }
 
-/** The riding places this build was made with, by id, for their pages' heads. */
-const SPOTS: ReadonlyMap<string, HeadSpot> = new Map(
-  (locations as HeadSpot[]).map((spot) => [spot.id, spot] as const),
-);
+/**
+ * The riding places, by id, for their pages' heads: the site's own
+ * riding-locations.json, read once per isolate as the MCP server reads it. A
+ * failed read is not kept.
+ */
+let spots: Promise<ReadonlyMap<string, HeadSpot>> | undefined;
+
+function spotsFor(origin: string, env: Env) {
+  spots ??= (async () => {
+    const res = await env.ASSETS.fetch(
+      new URL("/riding-locations.json", origin).href,
+    );
+    if (!res.ok)
+      throw new Error(`riding-locations.json answered ${res.status}`);
+    const list = (await res.json()) as HeadSpot[];
+    return new Map(list.map((spot) => [spot.id, spot] as const));
+  })().catch((error) => {
+    spots = undefined;
+    throw error;
+  });
+  return spots;
+}
 
 /**
  * A page with a head of its own: index.html, as `_redirects` would have
@@ -88,7 +105,11 @@ async function withPageHead(
 ): Promise<Response | null> {
   if (request.method !== "GET" && request.method !== "HEAD") return null;
   const url = new URL(request.url);
-  const head = pageHead(url.pathname, SPOTS);
+  if (!isPagePath(url.pathname)) return null;
+  const head = pageHead(
+    url.pathname,
+    await spotsFor(url.origin, env).catch(() => new Map()),
+  );
   if (!head) return null;
   const index = await env.ASSETS.fetch(new URL("/", url.origin).href);
   if (!index.ok) return null;

@@ -7,7 +7,7 @@
  * reads these tags, so the page a reader sees is the same either way.
  */
 
-import { pageTitle } from "../../shared/web/pageTitle.js";
+import { pageTitle } from "../../site/shared/pageTitle.js";
 
 /** Where the site is, whichever host served it: staging points here too. */
 export const SITE = "https://wingfoil.ie";
@@ -36,6 +36,10 @@ export const HOME: PageHead = {
 };
 
 const SPOT = /^\/spot\/([^/]+)\/?$/;
+
+/** A path with a head of its own, as far as its shape says: before any spot is read. */
+export const isPagePath = (pathname: string) =>
+  /^\/(spot\/[^/]+|stars|ai)\/?$/.test(pathname);
 
 /**
  * The head for `pathname`, or null where the map's own (index.html) stands:

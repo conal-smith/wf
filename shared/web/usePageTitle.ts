@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { pageTitle } from "./pageTitle";
+import { pageTitle } from "../../site/shared/pageTitle";
 
 export { pageTitle };
 

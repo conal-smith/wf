@@ -134,9 +134,13 @@ describe("the Pages worker", () => {
 });
 
 describe("the pages with heads of their own", () => {
-  /** The real index.html, as Pages would serve it at `/`. */
+  /** The real index.html and riding places, as Pages would serve them. */
   const html = readFileSync(
     new URL("../../index.html", import.meta.url),
+    "utf8",
+  );
+  const places = readFileSync(
+    new URL("../../public/riding-locations.json", import.meta.url),
     "utf8",
   );
   const site = () => {
@@ -146,6 +150,7 @@ describe("the pages with heads of their own", () => {
         input instanceof Request ? input.url : input,
       );
       asked.push(pathname);
+      if (pathname === "/riding-locations.json") return new Response(places);
       return pathname === "/"
         ? new Response(html, {
             headers: {
@@ -214,12 +219,41 @@ describe("the pages with heads of their own", () => {
     await worker.fetch(get("/"), env);
     await worker.fetch(get("/spots.json"), env);
     await worker.fetch(get("/spot/%E0%A4%A"), env);
+    // The places are read once, for the first spot path, and kept.
     expect(asked).toEqual([
+      "/riding-locations.json",
       "/spot/nowhere",
       "/",
       "/spots.json",
       "/spot/%E0%A4%A",
     ]);
+  });
+});
+
+describe("a spot page whose places cannot be read", () => {
+  it("is the map's own page, and the next request reads them again", async () => {
+    const asked: string[] = [];
+    let up = false;
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const { pathname } = new URL(
+        input instanceof Request ? input.url : input,
+      );
+      asked.push(pathname);
+      if (pathname === "/riding-locations.json")
+        return up
+          ? Response.json([
+              { id: "kilcrea", name: "Kilcrea", county: "Dublin" },
+            ])
+          : new Response("Unavailable", { status: 503 });
+      return new Response(INDEX.replace("<head>", "<head><title>Map</title>"));
+    });
+    const env = { ASSETS: { fetch: fetch as typeof globalThis.fetch } };
+    const page = () =>
+      worker.fetch(new Request("https://wingfoil.test/spot/kilcrea"), env);
+    expect(await (await page()).text()).toContain("<title>Map</title>");
+    up = true;
+    expect(await (await page()).text()).toContain("<title>Kilcrea wing foil");
+    expect(asked.filter((p) => p === "/riding-locations.json")).toHaveLength(2);
   });
 });
 
