@@ -32,7 +32,8 @@ rewrites max-age, so the monitor reads the pointer's header from the GET, and
 asks a HEAD only to say whether the bucket or the CDN is to blame.
 
 **The site**, when --site is given: it answers 200 with the
-`wingfoil:forecast-base` meta naming this data domain, and the data domain allows
+`wingfoil:forecast-base` meta naming this data domain, the first content-hashed
+script it names under /assets/ is cached as immutable, and the data domain allows
 that origin (CORS) on a pointer. No browser.
 
 The result is a Markdown table (stdout, and --summary for $GITHUB_STEP_SUMMARY)
@@ -89,18 +90,35 @@ SIGNATURE = re.compile(r"<!-- production-monitor signature: ([^>]*?) -->")
 
 # --- which models -----------------------------------------------------------------
 
-def catalog_flags(text):
-    """{id: {"retired": bool, "planned": bool}} for every entry of catalog.ts's MODEL_CATALOG."""
+def catalog_entries(text):
+    """{id: the entry's source text} for every entry of catalog.ts's MODEL_CATALOG."""
     start = text.index("MODEL_CATALOG")
     body = text[start:text.index("\n];", start)]
     found = list(re.finditer(r'\bid:\s*"([^"]+)"', body))
-    flags = {}
+    entries = {}
     for index, match in enumerate(found):
         end = found[index + 1].start() if index + 1 < len(found) else len(body)
-        entry = body[match.end():end]
-        flags[match.group(1)] = {"retired": bool(re.search(r"\bretired:\s*true\b", entry)),
-                                 "planned": bool(re.search(r"\bplanned:\s*true\b", entry))}
-    return flags
+        entries[match.group(1)] = body[match.end():end]
+    return entries
+
+
+def catalog_flags(text):
+    """{id: {"retired": bool, "planned": bool}} for every entry of catalog.ts's MODEL_CATALOG."""
+    return {model: {"retired": bool(re.search(r"\bretired:\s*true\b", entry)),
+                    "planned": bool(re.search(r"\bplanned:\s*true\b", entry))}
+            for model, entry in catalog_entries(text).items()}
+
+
+def catalog_stale_hours(text):
+    """{id: staleAfterHours or None}: when the map and the MCP call a model's run stale.
+
+    It must be registry.py's maxAgeHours, the limit this monitor checks (plus its
+    margin); test_monitor.py fails if the two differ, so all three agree."""
+    hours = {}
+    for model, entry in catalog_entries(text).items():
+        match = re.search(r"\bstaleAfterHours:\s*([0-9.]+)", entry)
+        hours[model] = float(match.group(1)) if match else None
+    return hours
 
 
 def enabled_models(jobs):
@@ -426,6 +444,20 @@ def check_site(http, site, base, live):
         row.problem("site", f"{site} has no {FORECAST_BASE_META} meta")
     elif match.group(1).rstrip("/") + "/" != base:
         row.problem("site", f"{site} reads its forecast from {match.group(1)}, not {base}")
+    # Vite's content-hashed bundle, as a returning visitor's browser GETs it: cached for
+    # a year, not revalidated (public/_headers on Cloudflare Pages, the Caddyfile on the
+    # self-hosted image). The HTML that names it is what must be revalidated.
+    script = re.search(r"""["'](/assets/[^"'?#]+\.js)["']""", response.text)
+    if not script:
+        row.problem("assets", f"{site} names no /assets/ script")
+    else:
+        url = urllib.parse.urljoin(site, script.group(1))
+        answer = http.request("GET", url)
+        row.checked += 1
+        problem = (immutable_header_problem(answer.headers) if answer.status == 200
+                   else answer.describe())
+        if problem:
+            row.problem("assets", f"{url} {problem}")
     if live:
         parts = urllib.parse.urlsplit(site)
         origin = f"{parts.scheme}://{parts.netloc}"

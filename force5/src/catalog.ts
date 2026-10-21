@@ -20,6 +20,17 @@ export interface ModelEntry {
   /** Publishes per-member spot series. */
   ensemble?: boolean;
   hue: ModelHues;
+  /**
+   * How old, in hours from its run time, a run may be before it reads as
+   * stale: later than its schedule allows, so an ingest failed or a provider is
+   * late. It is force5/ingest/registry.py's `maxAgeHours` for the same model —
+   * the limit status.py calls stale and the production monitor alerts on, an
+   * hour later — repeated here because the site cannot read Python;
+   * scripts/release/test_monitor.py fails if the two differ. A model on its
+   * normal cycle never reaches it: the limit is the oldest the served run gets
+   * before the next scheduled slot replaces it, with room for a late slot.
+   */
+  staleAfterHours?: number;
   /** Has map frames worth drawing as a raster layer. */
   mapCapable: boolean;
   /** No adapter publishes this yet; show it, do not fetch it. */
@@ -47,6 +58,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "2 km · 2½ days",
     manifestUrl: "weather/harmonie.json",
     kind: "wind",
+    staleAfterHours: 15,
     hue: { wind: "#1a9e8a", gust: "#e9a23b" },
     mapCapable: true,
   },
@@ -56,6 +68,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "6.5 km · 3 days",
     manifestUrl: "weather/latest.json",
     kind: "wind",
+    staleAfterHours: 30,
     hue: { wind: "#3f6fd8", gust: "#e5672f" },
     mapCapable: true,
   },
@@ -65,6 +78,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "25 km · 15 days",
     manifestUrl: "weather/ecmwf.json",
     kind: "wind",
+    staleAfterHours: 40,
     hue: { wind: "#8a4bc9", gust: "#d23a6a" },
     mapCapable: true,
   },
@@ -74,6 +88,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "25 km · 10 days",
     manifestUrl: "weather/gfs.json",
     kind: "wind",
+    staleAfterHours: 13,
     hue: { wind: "#2c8f6f", gust: "#d98a2b" },
     mapCapable: true,
   },
@@ -83,6 +98,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "25 km · 10 members · from day 3",
     manifestUrl: "weather/ecmwf-ens.json",
     kind: "wind",
+    staleAfterHours: 36,
     ensemble: true,
     hue: { wind: "#6e5bd6", gust: "#c9497c" },
     mapCapable: false,
@@ -94,6 +110,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "2 km · members",
     manifestUrl: "weather/harmonie-eps.json",
     kind: "wind",
+    staleAfterHours: 12,
     ensemble: true,
     hue: { wind: "#31bfa6", gust: "#f0b44f" },
     mapCapable: false,
@@ -105,6 +122,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "25 km · 31 members",
     manifestUrl: "weather/gefs.json",
     kind: "wind",
+    staleAfterHours: 18,
     ensemble: true,
     hue: { wind: "#4aa3b8", gust: "#e07b3a" },
     mapCapable: true,
@@ -116,6 +134,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "11 km",
     manifestUrl: "weather/arpege.json",
     kind: "wind",
+    staleAfterHours: 12,
     hue: { wind: "#2f7fb5", gust: "#e28a3d" },
     mapCapable: true,
     retired: true,
@@ -126,6 +145,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "2.5 km",
     manifestUrl: "weather/arome.json",
     kind: "wind",
+    staleAfterHours: 12,
     hue: { wind: "#16a3d0", gust: "#e2703c" },
     mapCapable: true,
     retired: true,
@@ -156,6 +176,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "25 km · 15 days",
     manifestUrl: "weather/aifs.json",
     kind: "wind",
+    staleAfterHours: 12,
     hue: { wind: "#a05fd6", gust: "#d4653f" },
     mapCapable: true,
     retired: true,
@@ -166,6 +187,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "9 km · 10 days",
     manifestUrl: "weather/gfs-wave.json",
     kind: "wave",
+    staleAfterHours: 13,
     hue: { wind: "#1f6f8b", gust: "#cf7d2f" },
     mapCapable: true,
   },
@@ -175,6 +197,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "2 km · 6 days",
     manifestUrl: "weather/mi-swan.json",
     kind: "wave",
+    staleAfterHours: 36,
     hue: { wind: "#2a7f62", gust: "#cf8a2f" },
     mapCapable: true,
   },
@@ -188,6 +211,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "6.5 km · 3 days",
     manifestUrl: "weather/icon-eu-weather.json",
     kind: "weather",
+    staleAfterHours: 30,
     hue: { wind: "#4c86c6", gust: "#dd8b46" },
     mapCapable: false,
   },
@@ -197,6 +221,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "25 km · 15 days",
     manifestUrl: "weather/ecmwf-wave.json",
     kind: "wave",
+    staleAfterHours: 24,
     hue: { wind: "#4a5bc0", gust: "#c96f33" },
     mapCapable: true,
     retired: true,
@@ -210,6 +235,15 @@ export function requireModel(id: string): ModelEntry {
   if (!entry) throw new Error(`Unknown forecast model ${id}.`);
   return entry;
 }
+/** For a model with no limit of its own: the cutoff every model once shared. */
+export const DEFAULT_STALE_AFTER_HOURS = 18;
+/** The age in hours past which a model's run reads as stale. */
+export const staleAfterHours = (id: string | undefined) =>
+  (id === undefined ? undefined : modelEntry(id)?.staleAfterHours) ??
+  DEFAULT_STALE_AFTER_HOURS;
+/** Whether a run of `id` that started at `runTime` (ms) is older than its limit. */
+export const isStale = (id: string | undefined, runTime: number, now: number) =>
+  now - runTime > staleAfterHours(id) * 3600000;
 const published = (m: ModelEntry) => !m.planned && !m.retired;
 export const liveModels = () => MODEL_CATALOG.filter(published);
 export const windModels = () =>

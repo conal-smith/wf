@@ -89,7 +89,7 @@ in UTC. The shipped schedule is:
 
 | Job               | When (UTC)         | Why                                                   |
 | ----------------- | ------------------ | ----------------------------------------------------- |
-| `harmonie`        | 05/08/11/16/19/23 at :35 | before each time riders look; ~826 MB a run, 30 h |
+| `harmonie`        | 05/08/11/16/19/23 at :35 | before each time riders look; ~826 MB a run, 15 h |
 | `icon-eu`         | 03 at :30          | once a day, the 00 UTC cycle; 30 h age limit          |
 | `icon-eu-weather` | 03 at :40          | once a day, the 00 UTC cycle; 30 h age limit          |
 | `ecmwf`           | 08/10/20/22 at :20 | the 00 and 12 UTC runs, out ~07:35 and ~19:35; retries |
@@ -158,9 +158,10 @@ docker compose -f deploy/local/docker-compose.yml ps
 
 `status` prints one row per registered model and exits nonzero if any model is
 `absent`, `unreadable`, `incomplete` (a manifest referencing an object that is not on
-disk), `stale` (older than the registry's limit for that model: 12 h for most regional
-models, 30 h for HARMONIE, ICON-EU and tides, 36 h for the daily SWAN run, 40 h
-for ECMWF's once-a-day run) or `expired` (its coverage has
+disk), `stale` (older than the registry's limit for that model, which its schedule
+sets: 13 h for GFS and GFS-Wave, 15 h for HARMONIE, 30 h for the once-a-day ICON-EU
+and tides, 36 h for the daily SWAN run, 40 h for ECMWF; the map and the MCP call a run
+stale at the same limit) or `expired` (its coverage has
 already ended). `--json` emits one object per line for a monitoring script, and
 `--models gfs` narrows it to the models you actually serve. `web` also has a Docker
 health check on `/healthz`; that only proves the server is up, so judge freshness with

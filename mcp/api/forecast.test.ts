@@ -181,9 +181,14 @@ describe("spotForecast", () => {
       "harmonie: The latest published run has already ended.",
     );
     expect(gone.some((reason) => reason.startsWith("arpege"))).toBe(false);
-    expect(forecast.sources.wind.find((r) => r.id === "ecmwf")?.stale).toBe(
-      true,
-    );
+    // ECMWF's run is 90 h old, past its 40 h limit; GFS's 12 h old, inside
+    // its 13 h (catalog.ts's staleAfterHours, the monitor's limit too).
+    const ecmwf = forecast.sources.wind.find((r) => r.id === "ecmwf");
+    expect(ecmwf?.age_hours).toBe(90);
+    expect(ecmwf?.stale).toBe(true);
+    const gfs = forecast.sources.wind.find((r) => r.id === "gfs");
+    expect(gfs?.age_hours).toBe(12);
+    expect(gfs?.stale).toBe(false);
   });
 
   it("gives ECMWF's own wind where HARMONIE has ended, with every model's range and agreement", async () => {
@@ -365,6 +370,7 @@ describe("hourWind", () => {
     provider: "test",
     run_time: "2026-10-14T06:00:00Z",
     until: "2026-10-16T18:00:00Z",
+    age_hours: 6,
     stale: false,
     attribution: "",
     license_url: "",

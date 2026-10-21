@@ -101,11 +101,11 @@ interface Candidate {
  * two.
  *
  * A model counts unless its run has **expired** — its last forecast time is
- * already behind us. The eighteen-hour "stale" mark deliberately does not
- * disqualify one: ECMWF runs at 00 and 12 UTC and lands eight or nine hours
- * late, so it reads as stale for about three hours twice a day, and gating on
- * that would collapse the dock from fifteen days to ten every time. An older
- * run keeps its columns; the header's model band is what says it is older.
+ * already behind us. Being **stale** — older than its schedule allows
+ * (catalog.ts's `staleAfterHours`) — deliberately does not disqualify one: a
+ * failed ECMWF slot would otherwise collapse the dock from fifteen days to ten
+ * until the next one lands. An older run keeps its columns; the header's model
+ * band is what says it is older.
  */
 export function dockColumns(
   models: readonly ColumnModel[],

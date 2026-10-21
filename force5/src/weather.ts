@@ -1,5 +1,5 @@
 // Force5's provider-neutral forecast contract and sampling utilities.
-import { modelEntry } from "./catalog";
+import { isStale, modelEntry } from "./catalog";
 import { validateTiles, type TilesSpec } from "./f5tile";
 import {
   RUN_SCHEMA_VERSION,
@@ -601,6 +601,8 @@ export function nearestFrame(
  * they have been read, say the same.
  */
 export interface RunTimes {
+  /** The catalog id, which sets how old a run may get before it is stale. */
+  model?: string;
   runTime: string;
   frames: readonly Pick<FrameInfo, "validTime">[];
   horizonHours?: number;
@@ -622,13 +624,18 @@ export function lastValidTime(m: RunTimes): number | null {
   );
   return times.length ? Math.max(...times) : null;
 }
+/**
+ * `expired` once the run's last hour is behind us; `stale` once it is older
+ * than its model's schedule allows (catalog.ts's `staleAfterHours`), which a
+ * once-a-day run on time never is; otherwise `fresh`.
+ */
 export function freshness(
   m: RunTimes,
   now = Date.now(),
 ): "expired" | "stale" | "fresh" {
   const last = lastValidTime(m);
   if (last === null || last < now) return "expired";
-  if (now - Date.parse(m.runTime) > 18 * 3600000) return "stale";
+  if (isStale(m.model, Date.parse(m.runTime), now)) return "stale";
   return "fresh";
 }
 // Built once: a formatter costs tens of microseconds to construct and well

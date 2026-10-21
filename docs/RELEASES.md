@@ -107,7 +107,9 @@ Two buttons, with you in between. Both are *Actions → Release → Run workflow
      so Pages itself answers the MCP endpoint at `/api/mcp`, reading the same
      data as the map, and serves the spot pages, `/stars` and `/ai` under
      their own title and description (mcp/pages/head.ts) for search engines
-     and link previews; every other path stays a static file. The build also
+     and link previews; every other path stays a static file, with
+     `_headers` (public/) caching the content-hashed `/assets/*` as
+     `immutable` for a year. The build also
      writes `sitemap.xml` (scripts/build-sitemap.mjs), which `robots.txt`
      names.
    - Then, and only then, what passed is recorded as the prerelease
@@ -225,8 +227,9 @@ the blend, wind observations, the forecast archive and the verification scores.
   `br` or `gzip`; the pointer itself not cached for longer than five minutes;
 - once `MONITOR_SITE_URL` is set (leave it unset until the first production
   release has deployed the site): the site answers 200 with the
-  `wingfoil:forecast-base` meta naming the data domain, and the data domain's
-  CORS lets the site's origin read a pointer. No browser.
+  `wingfoil:forecast-base` meta naming the data domain, the first `/assets/`
+  script it names is cached `immutable` (public/_headers), and the data
+  domain's CORS lets the site's origin read a pointer. No browser.
 
 Every request has a 10-second timeout and is retried twice on a dropped
 connection, a timeout, a 429 or a 5xx, so one lost request is not an alarm. The
