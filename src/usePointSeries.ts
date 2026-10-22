@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { loadManifest } from "../force5/src/manifests";
+import { expireManifest, loadManifest } from "../force5/src/manifests";
 import { samplePoint } from "../force5/src/tiledField";
 import type { Manifest, Point, Wind } from "../force5/src/weather";
 import {
@@ -28,6 +28,11 @@ export interface PointSeries {
   /** True when the manifest already publishes a series for this spot. */
   named: boolean;
   pending: boolean;
+  /**
+   * The reader's own run's hours that could not be read. A handed run's are
+   * not counted: the hook asks for that run's manifest again itself, and the
+   * reader's run is the one a caller would look for a newer copy of.
+   */
   failures: number;
   retry: () => void;
 }
@@ -69,9 +74,20 @@ export function usePointSeries(
     values: (Wind | null)[];
     handed: readonly HandedSeries[];
     failures: number;
+    /** The handed runs' hours that could not be read. */
+    handedFailures: number;
     pending: boolean;
-  }>({ key: "", values: [], handed: NO_RUNS, failures: 0, pending: false });
+  }>({
+    key: "",
+    values: [],
+    handed: NO_RUNS,
+    failures: 0,
+    handedFailures: 0,
+    pending: false,
+  });
   const [retry, setRetry] = useState(0);
+  /** Asks for the handed runs' manifests again, past the cache's minutes. */
+  const [reload, setReload] = useState(0);
   const key =
     manifest && point
       ? `${manifest.model}/${manifest.run}/${point.lon}/${point.lat}`
@@ -115,7 +131,7 @@ export function usePointSeries(
       });
     });
     return () => controller.abort();
-  }, [ids, retry]);
+  }, [ids, retry, reload]);
   const handedRuns = ids && runs.ids === ids ? runs.manifests : [];
   const runsKey = handedRuns.map((m) => `${m.model}/${m.run}`).join();
   const runsFailed = ids && runs.ids === ids ? runs.failed : 0;
@@ -182,6 +198,7 @@ export function usePointSeries(
         if (i < order.length) jobs.push({ run, readings, index: order[i] });
     let next = 0;
     let failures = 0;
+    let handedFailures = 0;
     const snapshot = (pending: boolean) => ({
       key,
       values: [...own.values],
@@ -191,6 +208,7 @@ export function usePointSeries(
         stretches,
       })),
       failures,
+      handedFailures,
       pending,
     });
     setSamples(snapshot(true));
@@ -218,7 +236,8 @@ export function usePointSeries(
           );
           readings.done[index] = true;
         } catch {
-          failures++;
+          if (run === manifest) failures++;
+          else handedFailures++;
         }
         publish();
       }
@@ -237,6 +256,21 @@ export function usePointSeries(
   }, [manifest, named, key, retry, handedKey, runsKey]);
 
   const current = samples.key === key;
+  // A handed run whose hours or manifest could not be read may have been
+  // replaced, its directory deleted: its manifest is asked for again, past
+  // the cache, once for each run in hand, so a run that is simply missing a
+  // file is not asked for over and over.
+  const asked = useRef("");
+  const settled = current && !samples.pending;
+  const handedFailed =
+    settled && (samples.handedFailures > 0 || runsFailed > 0);
+  useEffect(() => {
+    const at = `${key}|${ids}|${runsKey}`;
+    if (!handedFailed || asked.current === at) return;
+    asked.current = at;
+    for (const id of ids.split(",")) expireManifest(id);
+    setReload((value) => value + 1);
+  }, [handedFailed, key, ids, runsKey]);
   return {
     key,
     values: named || (current ? samples.values : EMPTY),
@@ -245,9 +279,7 @@ export function usePointSeries(
     // The handed runs' manifests still on their way count as reading.
     pending:
       !named && current && (samples.pending || (!!ids && runs.ids !== ids)),
-    // A handed run whose manifest could not be read is a failure too: the
-    // retry asks for it again.
-    failures: named ? 0 : current ? samples.failures + runsFailed : 0,
+    failures: named ? 0 : current ? samples.failures : 0,
     retry: () => setRetry((value) => value + 1),
   };
 }
