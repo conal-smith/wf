@@ -20,7 +20,9 @@ import { areaAt, foilReadout, nearestArea } from "../../../../force5/src/foilDep
 import { isLakeWater, nearestSpotOnWater, pointSourceNote } from "../../../../force5/src/pointSource";
 import { freshwaterSpots } from "../../../../force5/src/tides";
 import type { Spot } from "../../../../force5/src/weather";
-import { pointHours } from "../../../../src/ratings";
+import { MAP_MODEL_IDS } from "../../../../force5/src/models";
+import { pointHandovers } from "../../../../force5/src/timeline";
+import { handedPointHours } from "../../../../src/ratings";
 import { clock, dayShort } from "../../../../src/strip";
 import { usePointSeries } from "../../../../src/usePointSeries";
 import { done, refused, tick } from "../../components/haptics";
@@ -55,6 +57,7 @@ import {
   focusRadius,
   IRELAND_BOUNDS,
   LAYERS_KEY,
+  modelLabel,
   parseLayers,
   project,
   sameView,
@@ -372,6 +375,10 @@ export default function ChartScreen() {
 
   /* ---- the wind ---- */
   const model = useMapModel();
+  // The rider's model and run, or past its end the model drawn in its place.
+  const runLabel = model.manifest
+    ? modelLabel({ name: model.manifest.modelName, run: model.run, staleness: model.staleness }, model.handover)
+    : null;
   const tiles = useFrameTiles(model.frame, camera, model.recover);
   const animate = focused && appActive && !reducedMotion;
   const linesWanted = animate && showsLines(windStyle);
@@ -458,10 +465,29 @@ export default function ChartScreen() {
 
   /* ---- a point's own forecast ---- */
   const pickedPoint = useMemo(() => (picked ? { name: picked.name, lat: picked.lat, lon: picked.lon } : null), [picked]);
-  const series = usePointSeries(picked ? model.manifest : null, pickedPoint);
+  // Past the end of the rider's run the point goes on in the run the chart
+  // hands over to there, as a spot's hours go on in ECMWF's past HARMONIE's.
+  const { columnModels, now } = forecast;
+  const pointHanded = useMemo(
+    () =>
+      picked && model.manifest
+        ? pointHandovers(
+            columnModels,
+            MAP_MODEL_IDS,
+            { id: model.manifest.model, frames: model.manifest.frames },
+            strip,
+            now,
+          )
+        : [],
+    [picked, columnModels, model.manifest, strip, now],
+  );
+  const series = usePointSeries(picked ? model.manifest : null, pickedPoint, pointHanded);
   const pickedHours = useMemo(
-    () => (picked && model.manifest ? pointHours(model.manifest.frames, series.values, picked, axis) : undefined),
-    [picked, model.manifest, series.values, axis],
+    () =>
+      picked && model.manifest
+        ? handedPointHours(model.manifest.frames, series.values, series.handed, picked, axis)
+        : undefined,
+    [picked, model.manifest, series.values, series.handed, axis],
   );
 
   // Its tide, the nearest station's; its waves, weather and sea, the nearest
@@ -560,17 +586,16 @@ export default function ChartScreen() {
         />
         {!searchOpen ? (
           <View style={styles.notes} pointerEvents="box-none">
-            {model.manifest ? (
+            {runLabel ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`${model.manifest.modelName} on the map, ${model.run} run${model.staleness === "fresh" ? "" : model.staleness === "stale" ? ", an older run" : ", archived"}. Opens Layers.`}
+                accessibilityLabel={runLabel.spoken}
                 onPress={() => layersRef.current?.present()}
                 hitSlop={{ top: 7, bottom: 7 }}
                 style={styles.run}
               >
-                <T variant="label" caps color={model.staleness === "fresh" ? "ink2" : "warn"}>
-                  {model.manifest.modelName} · {model.run}
-                  {model.staleness === "expired" ? " · archived" : model.staleness === "stale" ? " · older run" : ""}
+                <T variant="label" caps color={runLabel.warn ? "warn" : "ink2"}>
+                  {runLabel.text}
                 </T>
               </Pressable>
             ) : null}

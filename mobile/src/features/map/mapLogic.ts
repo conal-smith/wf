@@ -12,6 +12,7 @@ import { parseSatelliteOption, type SatelliteOption } from "../../../../force5/s
 import type { ViewBounds } from "../../../../force5/src/squares";
 import type { MapView } from "../../../../force5/src/tiledField";
 import type { Spot } from "../../../../force5/src/weather";
+import { clock, dayShort } from "../../../../src/strip";
 
 export { IRELAND };
 
@@ -253,6 +254,48 @@ export const store = {
     }
   },
 };
+
+/* ---- the model on the chart --------------------------------------------- */
+
+type Staleness = "fresh" | "stale" | "expired";
+
+/**
+ * What the chart's model label says, and says aloud: the rider's model and
+ * its run, or past either end of that run the model drawn in its place and
+ * from when ("ECMWF from Sat 09:00"), as the site's map says it on a phone.
+ * The label is how the jump in detail at the seam reads as a hand-over, not a
+ * fault. `warn` where the run drawn is an older or an archived one.
+ */
+export function modelLabel(
+  model: { name: string; run: string | null; staleness: Staleness },
+  handover: {
+    name: string;
+    side: "before" | "after";
+    at: number | null;
+    staleness: Staleness;
+  } | null,
+): { text: string; spoken: string; warn: boolean } {
+  const staleness = handover?.staleness ?? model.staleness;
+  const shown = staleness === "expired" ? " · archived" : staleness === "stale" ? " · older run" : "";
+  const said = staleness === "expired" ? ", archived" : staleness === "stale" ? ", an older run" : "";
+  if (!handover)
+    return {
+      text: `${model.name} · ${model.run}${shown}`,
+      spoken: `${model.name} on the map, ${model.run} run${said}. Opens Layers.`,
+      warn: staleness !== "fresh",
+    };
+  const when =
+    handover.at === null
+      ? ""
+      : ` ${handover.side === "before" ? "until" : "from"} ${dayShort(handover.at)} ${clock(handover.at)}`;
+  const why =
+    handover.side === "before" ? `before ${model.name}’s run starts` : `past the end of ${model.name}’s run`;
+  return {
+    text: `${handover.name}${when}${shown}`,
+    spoken: `${handover.name} on the map${when}, ${why}${said}. Opens Layers.`,
+    warn: staleness !== "fresh",
+  };
+}
 
 /** "52.12° N, 10.05° W", for a point tapped on the open map (src/App.tsx). */
 export const degrees = (lat: number, lon: number) =>

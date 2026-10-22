@@ -9,6 +9,7 @@ import {
   focusRadius,
   IRELAND_BOUNDS,
   mapViewOf,
+  modelLabel,
   parseLayers,
   project,
   sameView,
@@ -110,6 +111,38 @@ describe("the stored layers", () => {
       satellite: "high",
     });
     expect(parseLayers(JSON.stringify({ foil: "yes", satellite: "mid" }))).toEqual(DEFAULT_LAYERS);
+  });
+});
+
+describe("the model on the chart", () => {
+  const harmonie = { name: "HARMONIE", run: "06:00 UTC", staleness: "fresh" } as const;
+  // Sat 24 Oct 2026, 09:00 in Ireland (still summer time: 08:00 UTC).
+  const seam = Date.parse("2026-10-24T08:00:00Z");
+
+  it("names the rider's model and run inside the run", () => {
+    expect(modelLabel(harmonie, null)).toEqual({
+      text: "HARMONIE · 06:00 UTC",
+      spoken: "HARMONIE on the map, 06:00 UTC run. Opens Layers.",
+      warn: false,
+    });
+    expect(modelLabel({ ...harmonie, staleness: "stale" }, null).text).toBe("HARMONIE · 06:00 UTC · older run");
+  });
+
+  it("names the model handed over to past the end of the rider's run, and from when", () => {
+    const ecmwf = { name: "ECMWF", side: "after", at: seam, staleness: "fresh" } as const;
+    expect(modelLabel(harmonie, ecmwf)).toEqual({
+      text: "ECMWF from Sat 09:00",
+      spoken: "ECMWF on the map from Sat 09:00, past the end of HARMONIE’s run. Opens Layers.",
+      warn: false,
+    });
+    // Before the rider's run starts, until it does.
+    expect(modelLabel(harmonie, { ...ecmwf, side: "before" }).text).toBe("ECMWF until Sat 09:00");
+    // The run drawn is the one whose age is said: here ECMWF's, not HARMONIE's.
+    const older = modelLabel(harmonie, { ...ecmwf, staleness: "stale" });
+    expect(older.text).toBe("ECMWF from Sat 09:00 · older run");
+    expect(older.warn).toBe(true);
+    // While the column it starts at is not known, the model alone.
+    expect(modelLabel(harmonie, { ...ecmwf, at: null }).text).toBe("ECMWF");
   });
 });
 

@@ -73,6 +73,11 @@ export interface Forecast {
   published: LoadedBlend | null;
   /** The wind models' manifests, once asked for. */
   models: readonly ModelAvailability[];
+  /**
+   * The runs the strip's columns are built from: past the end of its own run
+   * the chart hands its wind over to one of them (force5/src/timeline.ts).
+   */
+  columnModels: readonly ColumnModel[];
   /** True once the first answer about the blend (or its absence) is in. */
   resolved: boolean;
   /** The index into `strip` of the hour chosen. */
@@ -246,6 +251,7 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
       rider,
       published: published ? blendSquares.blend : null,
       models,
+      columnModels,
       resolved: spotBlend.resolved && (!!published || modelsResolved),
       selected,
       selectTime: setChosenTime,
@@ -256,7 +262,7 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
       now,
     }),
     // `hours` is one Map mutated in place; `version` says when it changed.
-    [spots, strip, days, axis, hours, version, rider, published, blendSquares.blend, models, spotBlend.resolved, modelsResolved, selected, spot, openSpot, wantModels, now],
+    [spots, strip, days, axis, hours, version, rider, published, blendSquares.blend, models, columnModels, spotBlend.resolved, modelsResolved, selected, spot, openSpot, wantModels, now],
   );
   return <ForecastContext value={value}>{children}</ForecastContext>;
 }
