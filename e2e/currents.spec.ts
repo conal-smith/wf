@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./fixtures";
+import { expect, openFromMenu, test, type Page } from "./fixtures";
 
 /**
  * The Currents layer: off on a first visit, and then nothing of it is read,
@@ -20,7 +20,7 @@ function watch(page: Page) {
 }
 
 async function layers(page: Page) {
-  await page.getByRole("button", { name: "Layers", exact: true }).click();
+  await openFromMenu(page, "Layers");
   return page.getByRole("group", { name: "Layers" });
 }
 
