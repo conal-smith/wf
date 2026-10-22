@@ -984,7 +984,8 @@
     var(--color-wind-k30),
     var(--color-wind-k40)
   );
-  opacity: 0.55;
+  /* As strong as the sea is washed (windLayer.ts, WASH_SEA). */
+  opacity: 0.92;
 }
 /* The satellite's three choices, and under them the tide each image was
    taken at near the map's centre, as the models' details are written. */

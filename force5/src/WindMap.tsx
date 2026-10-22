@@ -6,6 +6,7 @@ import { loopPath } from "../../ui/penPaths";
 import {
   BATHY_PATH,
   CHART_LAYERS,
+  COAST_INK,
   IRELAND,
   PLACE_CLASSES,
   TILES_URL,
@@ -884,9 +885,15 @@ export default function WindMap(props: Props) {
   useEffect(() => {
     windRef.current?.setStyle(windStyle);
     particles.current?.setAttribute("data-wind-style", windStyle);
+    const map = mapRef.current;
+    // The coast heavier over the coloured wind, so the shore stays drawn.
+    if (ready && map?.getLayer("coast")) {
+      const coast = COAST_INK[windStyle === "wash" ? "wash" : "chart"];
+      map.setPaintProperty("coast", "line-opacity", coast["line-opacity"]);
+      map.setPaintProperty("coast", "line-width", coast["line-width"]);
+    }
     // The wind stays at full strength round a focused spot: under the wash,
     // the focus quietens the depths it is drawn over and leaves the wash be.
-    const map = mapRef.current;
     if (!ready || !map?.getLayer("focus")) return;
     const settle = () => {
       if (!map.getLayer("focus")) return;

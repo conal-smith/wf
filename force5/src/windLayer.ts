@@ -29,8 +29,10 @@
  * The wash is an image source covering the view and a margin round it, drawn
  * under the contours and the coast, and kept off the land through a mask made
  * from the basemap's own water polygons; where those have not loaded yet the
- * land gets a fainter wash rather than none. Zoomed right in, where the
- * depths take over, the wash fades out and the coloured arrows go to ink.
+ * land gets a fainter wash rather than none. It is as strong zoomed right in
+ * as it is over the whole country: a rider who chose it is reading the wind
+ * by it, at a spot as much as along the coast. The coloured arrows, though,
+ * go to ink where the depths take over.
  *
  * The field is a frame's `TiledField` (tiledField.ts). Each time the camera
  * settles, the layer says what it shows — the wash's box, a third of the view
@@ -72,21 +74,22 @@ const WASH_LUT = Array.from({ length: 131 }, (_, i) => windColor(i / 2));
 /**
  * The zoom where the depths take over. Zoomed right in, a rider is reading
  * how deep the water is, and the depth tints are at full strength from here
- * (chartStyle): the wind's colours would clash with them, so the wash has
- * faded out by this zoom and the coloured arrows are drawn in ink. The
- * moving lines themselves stay at every zoom.
+ * (chartStyle): the coloured arrows would clash with them, so they are drawn
+ * in ink. The moving lines themselves stay at every zoom. The wash does not
+ * give way: it was chosen to be read, and it lies over the tints, under the
+ * contours, the soundings and the coast's ink, at every zoom.
  */
 const DEPTHS_ZOOM = 11;
-/** The wash fades over the half zoom before it. */
-const WASH_FADE = 0.5;
 /**
  * Opacity of the wash over the sea, over land, and where the mask has not
- * reached yet. Strong enough to read the wind by: at a half and a tenth the
- * sea was pale and the land all but blank.
+ * reached yet. The sea all but the wind's own colour: at seven tenths the
+ * scale's light greens and yellows washed out to pastel on the paper and
+ * read as the chart, not the wind. The land fainter, so the coast still
+ * parts sea from shore under the coast's ink.
  */
-const WASH_SEA = 0.72;
-const WASH_LAND = 0.42;
-const WASH_UNKNOWN = 0.55;
+const WASH_SEA = 0.92;
+const WASH_LAND = 0.5;
+const WASH_UNKNOWN = 0.7;
 
 export interface WindLayerOptions {
   ink: string;
@@ -834,8 +837,6 @@ export function createWindLayer(
     if (!on || !frame) return;
     const rect = map.getContainer().getBoundingClientRect();
     const zoom = map.getZoom();
-    // Where the depths take over the wash has faded out: no image to make.
-    if (zoom >= DEPTHS_ZOOM) return;
     const centre = map.getCenter();
     // The field's version too: a tile arriving is a new picture of the same hour.
     const key = `${frame.model}|${frame.validTime}|${frame.field.version}|${zoom.toFixed(3)}|${centre.lng.toFixed(4)}|${centre.lat.toFixed(4)}|${rect.width}x${rect.height}`;
@@ -928,15 +929,7 @@ export function createWindLayer(
           type: "raster",
           source: "wind-wash",
           paint: {
-            "raster-opacity": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              DEPTHS_ZOOM - WASH_FADE,
-              1,
-              DEPTHS_ZOOM,
-              0,
-            ],
+            "raster-opacity": 1,
             "raster-fade-duration": 0,
             "raster-resampling": "linear",
           },

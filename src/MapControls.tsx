@@ -211,7 +211,7 @@ export default function MapControls({
                   <i className={`sw sw-${style}`} aria-hidden="true" />
                 </label>
               ))}
-              <KnotScale faint={windStyle === "wash"} />
+              <KnotScale />
               <h3>Chart</h3>
               {(Object.keys(CHART_LABEL) as (keyof ChartLayers)[]).map((key) => {
                 const box = (
