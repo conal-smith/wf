@@ -376,6 +376,25 @@ trap: the reader is not left on a coarse grid after scrolling back. The jump in
 detail at the seam (2.5 km to 0.25°) is the honest one; the label is there so
 it does not read as a fault. The stars and the lights stay on their own model.
 
+**2026-10-22 — The site menu is the one way in to the chart's options.** The
+top right held zoom, the layers, your spots, the display options and the "i",
+beside a site menu at the top left: two places to look, and five instruments
+on the chart for a reader who came for the wind. Now the top right is zoom
+alone (it moves the chart, it configures nothing), and the menu opens on the
+chart's own rows, under a mono "THE CHART" and over the site's sections: the
+layers, your spots, the display options and "About the map", each opening the
+dialog it did before, with the focus handed back to the menu. The rows carry
+drawn glyphs, as do the layers' switches, each drawn as an Admiralty chart
+draws the thing (INT 1): stepped tint bands with a drying height, a dotted
+contour and its italic soundings, a hill in hachures, a light's flare beside
+its name, an underlined drying height over sand stipple, a photograph inset,
+a feathered wind arrow over a tint, a compass rose and a range ring. Single
+ink at a stroke of 1.5, in one module (src/chartGlyphs.tsx) that the tidal
+streams and a survey's lines draw from too, so a row reads at a glance and
+reads as the chart. "Foilable depth"
+is "Tidal depth" now, and the wash is "Coloured wind": the names say what a
+reader sees, not what the layer is for.
+
 ---
 
 ## Still open

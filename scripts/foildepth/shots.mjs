@@ -54,7 +54,8 @@ for (let i = 0; i < Number(zooms); i++) {
 // The key is in the map's information dialog, not on the chart: open it,
 // read it, and shut it again so the chart is clear for the next move.
 const readKey = async (read) => {
-  await page.getByRole("button", { name: "Map information" }).click();
+  await page.getByRole("button", { name: "Site menu" }).click();
+  await page.getByRole("button", { name: "About the map", exact: true }).click();
   const key = page.locator(".foil-at");
   await key.waitFor();
   const value = await read(key);

@@ -384,8 +384,8 @@ site's stations, within a few millimetres of theirs.
   `base` on the data host (`forecastUrl`, `force5/src/urls.ts`).
 - `src/App.tsx`: the areas over the chart's view (`areasInView`), the water
   level at the dock's selected column (`tideAt`, and a basin's
-  `waterLevelAt`), the layer switch (Layers → Chart → "Foilable depth at the
-  tide", on by default), the key (`src/FoilLegend.tsx`, in the map's
+  `waterLevelAt`), the layer switch (site menu → Layers → Chart →
+  "Tidal depth", on by default), the key (`src/FoilLegend.tsx`, in the map's
   information dialog, not on the chart), and a tapped point's water
   (`force5/src/foilProbe.ts` reads one pixel out of the archive). `areasAt`
   says which archives may hold a point: inside a pilot's box the pilots only

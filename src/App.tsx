@@ -51,7 +51,7 @@ import { rideWedge } from "../force5/src/rideWedge";
 import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ForecastDock, { type DockView } from "./ForecastDock";
-import MapControls, { type MapPanel } from "./MapControls";
+import MapControls, { chartTools, type MapPanel } from "./MapControls";
 import MapHead from "./MapHead";
 import SidePanel from "./SidePanel";
 import { InfoPop } from "./InfoPop";
@@ -162,12 +162,12 @@ const MORE_KEY = "wingfoil.map.more.v1";
 /** The focus is on the point tapped on the map, not a riding place. */
 const AT_POINT = "@point";
 /**
- * What is open over the chart and shuts on a press away from it, each said
- * open on the control it hangs from: the site menu and the search's list in
- * the head, and the layers, your spots and the options in their dialog.
+ * What is open over the chart and shuts on a press away from it: the site
+ * menu and the search's list in the head, each said open on the control it
+ * hangs from, and the layers, your spots, the options or the map's
+ * information in their dialog.
  */
-const OVER_THE_CHART =
-  '.map-head [aria-expanded="true"], .map-ctrl [aria-expanded="true"]';
+const OVER_THE_CHART = '.map-head [aria-expanded="true"], dialog[open]';
 
 /** Where the map was tapped, as the map hands it over. */
 interface TappedAt {
@@ -1469,7 +1469,7 @@ export default function App() {
         <li>Depths: EMODnet Bathymetry, metres below chart datum</li>
         {foilState.manifest && (
           <li>
-            Foilable depth: {foilState.manifest.attribution} Heights above LAT
+            Tidal depth: {foilState.manifest.attribution} Heights above LAT
             against the tide predictions below.
           </li>
         )}
@@ -1520,6 +1520,9 @@ export default function App() {
         ? frameError
         : null;
 
+  // The site menu is the one way in to the chart's own tools.
+  const menuTools = useMemo(() => chartTools(setPanel, setInfo), []);
+
   const shell = (
     <div
       className={`app-shell${phone ? " is-phone" : ""}${focusId ? " is-focus" : ""}`}
@@ -1541,6 +1544,7 @@ export default function App() {
               starred={starred}
               hourAt={hourAt}
               onPick={(spot) => selectSpot(spot)}
+              tools={menuTools}
             />
             <MapControls
               onZoomIn={() => controls.current?.zoomIn()}
@@ -1586,7 +1590,6 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              infoOpen={!!info}
               onInfo={setInfo}
               windStyle={windStyle}
               onWindStyle={chooseWind}

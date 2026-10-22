@@ -1,4 +1,4 @@
-import { chooseSpot, expect, test, type Page } from "./fixtures";
+import { chooseSpot, expect, openFromMenu, test, type Page } from "./fixtures";
 
 /**
  * Gust, the companion, against the real API with its scripted fake model
@@ -88,9 +88,7 @@ test("a profile is only saved when the rider confirms it", async ({ page }) => {
   });
   // The display options hold the new rider at once.
   await page.keyboard.press("Escape");
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openFromMenu(page, "Display options");
   await expect(page.locator('input[data-rider="weight"]')).toHaveValue("85");
   await expect(page.locator('[data-skill="intermediate"]')).toHaveAttribute(
     "aria-pressed",

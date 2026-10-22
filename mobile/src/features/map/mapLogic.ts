@@ -234,7 +234,7 @@ export const CHART_LABEL: Record<keyof ChartLayers, string> = {
   soundings: "Contours, soundings",
   relief: "Land relief",
   names: "Spot names",
-  foil: "Foilable depth at the tide",
+  foil: "Tidal depth",
 };
 
 /** A store that never throws: the choice still holds for this session. */

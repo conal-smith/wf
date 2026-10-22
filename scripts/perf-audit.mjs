@@ -346,13 +346,12 @@ async function interactions(browser, profileName, shotDir) {
 
   // Switch model: ECMWF (a different grid and run), then back to HARMONIE.
   for (const model of ["ecmwf", "harmonie"]) {
-    // The models sit in the layers panel; open it as a reader would.
-    const layers = page.getByRole("button", { name: "Layers", exact: true });
-    if (
-      (await layers.count()) &&
-      (await layers.getAttribute("aria-expanded")) !== "true"
-    )
-      await layers.click();
+    // The models sit in the layers panel; open it from the site menu, as a
+    // reader would.
+    if (!(await page.getByRole("dialog", { name: "Layers" }).count())) {
+      await page.getByRole("button", { name: "Site menu" }).click();
+      await page.getByRole("button", { name: "Layers", exact: true }).click();
+    }
     const button = page.locator(`[data-model="${model}"]`).first();
     if (!(await button.count())) continue;
     await time(

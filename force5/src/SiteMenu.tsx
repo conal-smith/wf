@@ -16,11 +16,11 @@
  * in every bundle.
  */
 import { Menu, X } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "../../ui/Button";
 import { Puffin } from "../../ui/Puffin";
 import { surfaceStyles } from "../../ui/Surface";
-import { RING, tv } from "../../ui/tv";
+import { MONO_LABEL, RING, tv } from "../../ui/tv";
 import { FEATURES } from "../../shared/web/features";
 import { siteSections, type SiteSectionId } from "./siteNav";
 
@@ -53,6 +53,10 @@ export const siteMenuStyles = tv({
       "animate-menu-in motion-reduce:animate-none",
     ],
     list: "m-0 flex list-none flex-col p-0",
+    // The page's own tools, over the sections, named in the mono label as a
+    // chart names its parts; a rule in ink keeps them apart from the site.
+    tools: "mb-3 border-b border-ink",
+    toolsHead: [MONO_LABEL, "m-0 px-2 pt-1 pb-1.5 text-ink-muted"],
     // The Almanac signs the menu: the puffin and one line in the house's
     // voice, under the sections, as the chart's menu does.
     almanac:
@@ -68,6 +72,17 @@ export const siteMenuStyles = tv({
       "transition-colors duration-fast not-disabled:hover:text-chart-magenta",
       RING,
     ],
+    /*
+     * A tool is a row like a section's, with its glyph in the margin: it is
+     * the kit's quiet button, its mono capitals and pill taken back to the
+     * row's face and hairline. The last one stands on the rule under them.
+     */
+    tool: [
+      "h-touch w-full justify-start gap-3 rounded-none border-0 border-b border-line px-2 last:border-b-0",
+      "font-display text-prose font-semibold tracking-normal text-ink normal-case",
+      "not-disabled:hover:bg-transparent not-disabled:hover:text-chart-magenta",
+    ],
+    glyph: "inline-flex size-5 shrink-0 items-center justify-center",
   },
   variants: {
     /*
@@ -89,6 +104,16 @@ export const siteMenuStyles = tv({
   defaultVariants: { ground: "map" },
 });
 
+/** Something the page itself opens from the menu: the map's layers, say. */
+export interface SiteMenuTool {
+  id: string;
+  label: string;
+  /** A small drawn glyph in `currentColor`, beside the name. */
+  glyph?: ReactNode;
+  /** Called once the menu has shut and handed the focus back to its trigger. */
+  onSelect: () => void;
+}
+
 export function SiteMenu({
   /**
    * The section this app is. Named by the caller rather than read from the URL
@@ -105,16 +130,25 @@ export function SiteMenu({
    * instrument. The panel is the chart's double-ruled box either way.
    */
   ground = "map",
+  /**
+   * The page's own tools, over the sections: on the map, its layers, your
+   * spots, the display options and what the map means. The menu is the one
+   * way in to them, so they come first. Each opens a dialog of the page's,
+   * which hands the focus back to the trigger when it shuts.
+   */
+  tools,
 }: {
   current: SiteSectionId;
   size?: "sm" | "md";
   ground?: "map" | "content";
+  tools?: { title: string; items: readonly SiteMenuTool[] };
 }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const firstLink = useRef<HTMLAnchorElement>(null);
+  const firstTool = useRef<HTMLButtonElement>(null);
   // Whether the menu was open when the trigger was pressed, or null for a
   // press from the keyboard. Safari does not focus a button it is pressed on:
   // the press takes focus off the row to the body, the menu hears focus leave
@@ -133,7 +167,7 @@ export function SiteMenu({
   // Opening is a keyboard event as often as a pointer one, so the panel takes
   // focus rather than waiting to be tabbed into.
   useEffect(() => {
-    if (open) firstLink.current?.focus();
+    if (open) (firstTool.current ?? firstLink.current)?.focus();
   }, [open]);
 
   useEffect(() => {
@@ -202,40 +236,81 @@ export function SiteMenu({
         )}
       </Button>
       {open && (
-        <nav
+        <div
           id={panelId}
           className={surfaceStyles({ className: styles.panel() })}
-          aria-label="Site"
         >
-          <ul className={styles.list()}>
-            {siteSections(FEATURES).map((section, index) => {
-              const here = section.id === current;
-              return (
-                <li key={section.id}>
-                  <a
-                    ref={index === 0 ? firstLink : undefined}
-                    className={styles.row({ current: here })}
-                    href={section.href}
-                    aria-current={here ? "page" : undefined}
-                    // Following a row closes the menu, said here rather than
-                    // left to focus leaving it: a click that brings no focus
-                    // with it (Safari's on a link, a window in the background,
-                    // a scripted click) fires no blur, and the map, kept
-                    // under the page the row opens (src/PagesOverMap.tsx),
-                    // came back with its menu still open.
-                    onClick={() => setOpen(false)}
-                  >
-                    {section.label}
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
-          <p className={styles.almanac()}>
-            <Puffin size={44} />
-            <span>The Almanac reads every forecast so you don’t have to.</span>
-          </p>
-        </nav>
+          {tools && tools.items.length > 0 && (
+            <div
+              className={styles.tools()}
+              role="group"
+              aria-labelledby={`${panelId}-tools`}
+            >
+              <p id={`${panelId}-tools`} className={styles.toolsHead()}>
+                {tools.title}
+              </p>
+              <ul className={styles.list()}>
+                {tools.items.map((tool, index) => (
+                  <li key={tool.id}>
+                    <Button
+                      ref={index === 0 ? firstTool : undefined}
+                      variant="quiet"
+                      className={styles.tool()}
+                      aria-haspopup="dialog"
+                      // Safari does not focus a button it is pressed on, and
+                      // the press would take the focus off the row to the
+                      // body: the menu would hear it leave and shut before
+                      // the click. Holding the focus where it is keeps the
+                      // row there to be clicked.
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        close();
+                        tool.onSelect();
+                      }}
+                    >
+                      {tool.glyph && (
+                        <span className={styles.glyph()}>{tool.glyph}</span>
+                      )}
+                      {tool.label}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <nav aria-label="Site">
+            <ul className={styles.list()}>
+              {siteSections(FEATURES).map((section, index) => {
+                const here = section.id === current;
+                return (
+                  <li key={section.id}>
+                    <a
+                      ref={index === 0 ? firstLink : undefined}
+                      className={styles.row({ current: here })}
+                      href={section.href}
+                      aria-current={here ? "page" : undefined}
+                      // Following a row closes the menu, said here rather than
+                      // left to focus leaving it: a click that brings no focus
+                      // with it (Safari's on a link, a window in the background,
+                      // a scripted click) fires no blur, and the map, kept
+                      // under the page the row opens (src/PagesOverMap.tsx),
+                      // came back with its menu still open.
+                      onClick={() => setOpen(false)}
+                    >
+                      {section.label}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className={styles.almanac()}>
+              <Puffin size={44} />
+              <span>
+                The Almanac reads every forecast so you don’t have to.
+              </span>
+            </p>
+          </nav>
+        </div>
       )}
     </div>
   );

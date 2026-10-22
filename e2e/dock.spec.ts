@@ -3,6 +3,8 @@ import {
   chooseSpot,
   closePanel,
   expect,
+  menuRow,
+  openFromMenu,
   steadyFrames,
   test,
   unfoldTools,
@@ -428,7 +430,7 @@ test("the stars open nothing on hover, and their explanation is the map's i", as
   await expect(
     page.locator(".dock").getByRole("button", { name: "How the stars work" }),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Map information" }).click();
+  await openFromMenu(page, "About the map");
   const info = page.getByRole("dialog", { name: "About the map" });
   await expect(info.locator("#map-info-stars")).toBeInViewport();
   await expect(
@@ -484,10 +486,9 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
 }) => {
   await openDock(page);
   const panel = page.getByRole("complementary", { name: "Your spots" });
-  const yours = page.getByRole("button", { name: "Your spots", exact: true });
-  // Behind the star under Layers, not on the chart.
+  // In the site menu, not on the chart.
   await expect(panel).toHaveCount(0);
-  await yours.click();
+  await openFromMenu(page, "Your spots");
   await expect(panel).toContainText("Tap the red star");
   await closePanel(page);
   await page
@@ -497,7 +498,7 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   await expect(
     page.locator(".dock").getByRole("button", { name: "Unstar Brandon Bay" }),
   ).toHaveAttribute("aria-pressed", "true");
-  await yours.click();
+  await openFromMenu(page, "Your spots");
   await expect(panel.locator(".fvl li").first()).toContainText("Brandon Bay");
   const stored = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("wingfoil.spots.v1") ?? "{}"),
@@ -514,7 +515,7 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   // entry's title, not printed as a bare "1×".
   await page.getByRole("combobox", { name: "Find a spot" }).fill("Dollymount");
   await page.locator(".spot-row").first().click();
-  await yours.click();
+  await openFromMenu(page, "Your spots");
   await expect(panel).toContainText("Often opened");
   await expect(panel).toContainText("Dollymount");
   // Each spot at the hour the map shows, never a day's best.
@@ -528,7 +529,7 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   ).toHaveAttribute("title", /^Opened (once|\d+ times) on this device$/);
   await page.reload();
   await expect(panel).toHaveCount(0);
-  await yours.click({ timeout: 30000 });
+  await openFromMenu(page, "Your spots");
   await expect(panel.locator(".fvl li").first()).toContainText("Brandon Bay", {
     timeout: 30000,
   });
@@ -539,10 +540,10 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   await panel.getByRole("button", { name: /^Dollymount/ }).click();
   await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
   // The key is not in the panel: it is the map's information, a button away.
-  await yours.click();
+  await openFromMenu(page, "Your spots");
   await expect(panel).not.toContainText("Depths in metres below chart datum");
   await closePanel(page);
-  await page.getByRole("button", { name: "Map information" }).click();
+  await openFromMenu(page, "About the map");
   await expect(
     page.getByRole("dialog", { name: "About the map" }),
   ).toContainText("Depths in metres below chart datum");
@@ -556,9 +557,7 @@ test("units, the rider and the blend's models are display options, kept on reloa
     page.locator(".dock tr.tt-wing td[data-i]").allTextContents();
   const before = await wing();
   // From the map's controls now, not the dock's head.
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openFromMenu(page, "Display options");
   await page.locator('[data-units="m/s"]').click();
   await page.locator('input[data-rider="weight"]').fill("100");
   await page.locator('[data-skill="beginner"]').click();
@@ -585,9 +584,7 @@ test("units, the rider and the blend's models are display options, kept on reloa
   await expect(page.locator(".dk-labs")).toContainText("m/s", {
     timeout: 30000,
   });
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openFromMenu(page, "Display options");
   await expect(page.locator('[data-units="m/s"]')).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -664,9 +661,7 @@ async function selectFrom(page: Page, model: string): Promise<string> {
 
 /** Choose in Display options' Stars from: `group` names which row. */
 async function starsFrom(page: Page, group: string, model: string) {
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openFromMenu(page, "Display options");
   await page
     .getByRole("group", { name: group, exact: true })
     .getByRole("button", { name: model, exact: true })
@@ -775,36 +770,33 @@ test("a spot can take its stars from a model of its own, and says so", async ({
   await expect(chip).toHaveAttribute("data-stars-from-chip", "ecmwf");
 });
 
-test("the display options open over the dimmed map from its controls, one panel at a time", async ({
+test("the display options open over the dimmed map from the site menu, one panel at a time", async ({
   page,
 }) => {
   await openDock(page);
-  const trigger = page.getByRole("button", {
-    name: "Display options",
-    exact: true,
-  });
+  const trigger = page.getByRole("button", { name: "Site menu" });
   const panel = page.locator("#map-options");
-  // Under your spots, over the map's information, in the controls' column.
+  // The map's controls are zoom alone; the options are in the menu, under
+  // your spots and over the map's information.
   const names = await page
     .locator(".zbox button")
     .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-  expect(names).toEqual([
-    "Zoom in",
-    "Zoom out",
-    "Layers",
-    "Your spots",
-    "Display options",
-    "Map information",
-  ]);
+  expect(names).toEqual(["Zoom in", "Zoom out"]);
   await expect(page.locator(".dock").getByLabel("Display options")).toHaveCount(
     0,
   );
   // From the keyboard: open, into it, and Escape hands focus back.
   await trigger.focus();
   await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("group", { name: "The chart" }).getByRole("button"),
+  ).toHaveText(["Layers", "Your spots", "Display options", "About the map"]);
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(menuRow(page, "Display options")).toBeFocused();
+  await page.keyboard.press("Enter");
   await expect(panel).toBeVisible();
-  await expect(trigger).toHaveAttribute("aria-expanded", "true");
-  await expect(trigger).toHaveAttribute("aria-controls", "map-options");
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
   // A modal: the focus is in it from the start.
   await expect(
     page.getByRole("dialog", { name: "Display options" }),
@@ -820,12 +812,11 @@ test("the display options open over the dimmed map from its controls, one panel 
   await expect(trigger).toBeFocused();
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
   // A press on the dimmed map round it shuts it, as its X does, and the
-  // focus goes back to its button.
-  await trigger.click();
-  await expect(panel).toBeVisible();
+  // focus goes back to the menu's trigger.
+  await openFromMenu(page, "Display options");
   await page.mouse.click(4, 400);
   await expect(panel).toHaveCount(0);
-  await trigger.click();
+  await openFromMenu(page, "Display options");
   await closePanel(page);
   await expect(panel).toHaveCount(0);
   await expect(trigger).toBeFocused();
@@ -1030,7 +1021,7 @@ test("an hour past the map's model hands the map to the run that reaches it", as
     page.getByRole("button", { name: /Show ECMWF on the map/ }),
   ).toHaveCount(0);
   // The reader's choice is still HARMONIE, and the layers say what is drawn.
-  await page.getByRole("button", { name: "Layers", exact: true }).click();
+  await openFromMenu(page, "Layers");
   await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -1214,7 +1205,7 @@ test("an open tab moves to a newer run and keeps the time it was showing", async
   await page.clock.fastForward("05:01");
   await expect(page.locator(".frame-status")).toHaveCount(0);
   // Hands off, and a minute later the deferred check goes through.
-  await page.getByLabel("Display options", { exact: true }).focus();
+  await page.getByRole("button", { name: "Site menu" }).focus();
   await page.clock.fastForward("01:00");
   await expect(page.locator(".frame-status")).toContainText(
     "Updated to the 16:00 UTC run",

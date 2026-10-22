@@ -6,7 +6,7 @@ import {
 } from "../force5/src/foilDepth";
 
 /**
- * The key to the foilable-depth layer, in the map's information dialog
+ * The key to the tidal-depth layer, in the map's information dialog
  * (src/MapInfo.tsx) rather than over the chart: the three colours, the tide
  * and the hour they are drawn for, a tapped point's water, and what the
  * picture cannot know. With the layer off, the colours and where to turn it
@@ -44,8 +44,7 @@ export default function FoilLegend({
     <div className="foil-key">
       {!on ? (
         <p className="foil-at">
-          Off. Turn it on in Layers, under Chart: &ldquo;Foilable depth at the
-          tide&rdquo;.
+          Off. Turn it on in Layers, under Chart: &ldquo;Tidal depth&rdquo;.
         </p>
       ) : error ? (
         <p className="foil-at is-error" role="status">
