@@ -624,11 +624,16 @@
 .lt-key.s5 .lt-n {
   fill: var(--color-ground);
 }
+/* A dark hour is not rated, but the spot is still there: a solid grey disc
+   with a firm rim. At 12% and 35% ink, scaled down at the home view, every
+   light vanished into the coastline from sunset to sunrise (#131). */
 .lt.dark .lt-ring {
-  fill: color-mix(in srgb, var(--color-ink) 12%, transparent);
-  stroke: color-mix(in srgb, var(--color-ink) 35%, transparent);
+  fill: color-mix(in srgb, var(--color-ink) 22%, var(--color-ground));
+  stroke: color-mix(in srgb, var(--color-ink) 75%, transparent);
 }
-.lt.dark .lt-arrow,
+.lt.dark .lt-arrow {
+  stroke: color-mix(in srgb, var(--color-ink) 65%, transparent);
+}
 .lt.pending .lt-arrow {
   stroke: color-mix(in srgb, var(--color-ink) 35%, transparent);
 }
