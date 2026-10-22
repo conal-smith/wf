@@ -2,10 +2,14 @@
 
 Gathers score.py's pieces from every tile of the region, scores each
 
-    score = (P(foam | big) - P(foam | calm)) x sqrt(min(area ha, 20))
+    score = (P(foam | big) - P(foam | calm)) x area (ha)
 
-(how much more it breaks in big swell than in calm, and how much water does,
-capped so a long beach is not everything), joins pieces within
+the hectares of extra white water a big swell brings there (chosen over
+the first try, the same with the square root of the area capped at 20 ha,
+and over P(foam | mid) and the bare difference, by how many of Ireland's
+first four tiles' known breaks each put among the top places against
+chance: 7 of 21 in the top 25 places, 4.2 times chance; Great Britain is
+the check that was not looked at). Joins pieces within
 rank.placeKm into **places** (each named by its best piece), and writes:
 
     <root>/candidates-<region>.geojson   every piece: point, score, rank, swell window, wind, looks
@@ -22,7 +26,6 @@ P(foam | big)), else **shore** (the surf zone of a beach or the foot of a rock).
 """
 import argparse
 import glob
-import math
 import os
 import sys
 
@@ -34,7 +37,8 @@ import wf  # noqa: E402
 
 
 def piece_score(c):
-    return (c["pBig"] - c["pCalm"]) * math.sqrt(min(c["areaHa"], 20))
+    """Hectares of extra white water in a big swell: (P big - P calm) x area."""
+    return (c["pBig"] - c["pCalm"]) * c["areaHa"]
 
 
 def kind_of(c, outer_m):

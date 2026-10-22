@@ -142,8 +142,12 @@ sector, period and size, the swells that lit it (Hs, Tp, power), and the winds.
 
 ### Ranking and checking (`rank.py`)
 
-A piece's score is (P big − P calm) × √(area in ha, capped at 20); pieces within
-1.5 km join into **places**, named by their best. Kinds: *shore* (the surf zone
+A piece's score is (P big − P calm) × its area in ha: the hectares of extra white
+water a big swell brings there. (The first try, the same with √area capped at
+20 ha, put 4 of Ireland's first 21 known breaks among the top 25 places, 2.7
+times chance; this puts 7, 4.2 times; P(foam | mid) or the bare difference did
+worse. Chosen on those tiles, so Great Britain's breaks are the fair check.)
+Pieces within 1.5 km join into **places**, named by their best. Kinds: *shore* (the surf zone
 of a beach, or the foot of a rock), *outer* (foam mostly over 300 m out: a reef
 or bar), *bigwave* (outer and lit mostly by the biggest swells: P mid under a
 third of P big).

@@ -63,7 +63,8 @@ def main():
             continue
         t1 = time.time()
         counts = read.run(tile, a.workers)
-        score.run(tile)
+        if os.path.exists(wf.rpath("s2", tile, "log.jsonl")):  # a tile with nothing to search has none
+            score.run(tile)
         wf.write_json(done, {"tile": tile, "counts": counts, "seconds": round(time.time() - t1)})
         print(f"== {tile} done ({n}/{len(tiles)}) in {time.time() - t1:.0f} s; {time.time() - t0:.0f} s so far", flush=True)
     print("all tiles done", flush=True)

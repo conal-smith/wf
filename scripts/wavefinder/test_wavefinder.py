@@ -162,9 +162,10 @@ class Ranking(unittest.TestCase):
         c.update(kw)
         return c
 
-    def test_score_caps_area(self):
-        self.assertAlmostEqual(rank.piece_score(self.piece(areaHa=80)), rank.piece_score(self.piece(areaHa=20)))
+    def test_score_is_extra_white_water(self):
+        self.assertAlmostEqual(rank.piece_score(self.piece(areaHa=10)), (0.5 - 0.02) * 10)
         self.assertGreater(rank.piece_score(self.piece(areaHa=10)), rank.piece_score(self.piece(areaHa=2)))
+        self.assertEqual(rank.piece_score(self.piece(pCalm=0.5)), 0)
 
     def test_kinds(self):
         self.assertEqual(rank.kind_of(self.piece(), 300), "shore")

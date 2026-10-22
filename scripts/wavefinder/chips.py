@@ -76,14 +76,15 @@ RAMP = np.array([[255, 255, 204], [161, 218, 180], [65, 182, 196], [44, 127, 184
                 np.float32)
 
 
-def freq_image(pb, base=None, vmax=0.8):
-    """P(foam | big) on a ramp from pale yellow to deep blue, over a faded picture (or white)."""
+def freq_image(pb, base=None, vmax=0.8, floor=0.12):
+    """P(foam | big) on a ramp from pale yellow to deep blue (from `floor`: below it, the turbid
+    water over flats and the odd stray look), over a faded picture (or white)."""
     img = (np.full(pb.shape + (3,), 255, np.float32) if base is None
            else 255 - (255 - base.astype(np.float32)) * 0.35)
     v = np.clip(pb / vmax, 0, 1) * (len(RAMP) - 1)
     k = np.minimum(v.astype(int), len(RAMP) - 2)
     col = RAMP[k] + (RAMP[k + 1] - RAMP[k]) * (v - k)[..., None]
-    on = pb >= 0.05
+    on = pb >= floor
     img[on] = col[on]
     return img.astype(np.uint8)
 

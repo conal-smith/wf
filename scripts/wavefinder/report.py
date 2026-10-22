@@ -273,7 +273,7 @@ def card(region, piece, title, rel, big, calm, fields, anchor, extra=""):
         pics.append(f'<figure><img src="{rel["calm"]}" loading="lazy"><figcaption>Calm: '
                     f'{esc(look_caption(calm, fields, piece.get("facing")))}</figcaption></figure>')
     pics.append(f'<figure><img src="{rel["freq"]}" loading="lazy"><figcaption>How often each 10 m pixel foamed in '
-                f'big swell (pale 5% to deep blue 80%+)</figcaption></figure>')
+                f'big swell (pale 12% to deep blue 80%+)</figcaption></figure>')
     return (f'<section class="card" id="{esc(anchor)}"><h3>{esc(title)}</h3>'
             f'<p class="meta">{piece["lat"]:.4f}, {piece["lon"]:.4f} · piece {esc(piece["id"])} · place #{piece["placeRank"]} '
             f'· score {piece["score"]}{extra}</p>'
@@ -473,7 +473,8 @@ not counted as clean.</li>
 <li><b>Breaking.</b> Per pixel, P(foam | big, clean) and P(foam | calm); a pixel foaming in at least
 {cfg['score']['minFoamBig'] * 100:.0f}% of at least {cfg['score']['minBigLooks']} big looks and {cfg['score']['minLift']}×
 as often as in calm is breaking water. Joined into pieces about {cfg['score']['segmentKm']} km across, scored
-(P big − P calm) × √(area, ha, capped at 20), and joined within {cfg['rank']['placeKm']} km into places.</li>
+(P big − P calm) × area in ha (the extra white water a big swell brings), and joined within {cfg['rank']['placeKm']} km
+into places.</li>
 <li><b>Swell window.</b> Each piece's share of pixels foaming in every look clear over it: the directions, periods
 and sizes that light it up (the rose: share of the looks from each direction that lit it; thicker for more looks).</li>
 </ol>
