@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 import fetch_tides
 import tides_ni
-from fetch_tides import (assign_stations, distance_km, main, read_curve, read_events,
-                         station_catalogue, station_payload)
+from fetch_tides import (DAYS_AFTER, DAYS_BEFORE, assign_stations, distance_km, main, read_curve,
+                         read_events, station_catalogue, station_payload)
 from publish_s3 import publish, validate_bundle
 from test_publish_s3 import FakeS3
 
@@ -214,7 +214,7 @@ class TideTests(unittest.TestCase):
     def run_main(self, argv=("fetch_tides.py",), corrupt=None, step=5):
         now = datetime.now(timezone.utc)
         start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
-        self.window = (start, start + timedelta(days=9))
+        self.window = (start, start + timedelta(days=DAYS_BEFORE + DAYS_AFTER))
         with patch("fetch_tides.ROOT", self.root), patch("sys.argv", list(argv)), \
              patch("fetch_tides.load_spots", return_value=SPOTS), \
              patch("fetch_tides.fetch_csv", side_effect=self.fake_erddap(corrupt, step)):
@@ -256,9 +256,22 @@ class TideTests(unittest.TestCase):
         station = json.loads((self.root / "public" / manifest["stations"]["Bangor"]["url"]).read_text())
         self.assertEqual((station["station"], station["datum"], station["stepMinutes"]), ("Bangor", "LAT", 10))
         self.assertEqual((station["from"], station["to"]), (manifest["coverage"]["from"], manifest["coverage"]["to"]))
-        self.assertEqual(len(station["curve"]), 9 * 144 + 1)
+        self.assertEqual(len(station["curve"]), (DAYS_BEFORE + DAYS_AFTER) * 144 + 1)
         self.assertTrue(-0.1 < min(station["curve"]) < max(station["curve"]) < 4.5)
-        self.assertGreaterEqual(len(station["events"]), 30)
+        self.assertGreaterEqual(len(station["events"]), 60)
+
+    def test_the_predictions_reach_past_the_end_of_the_docks_fortnight(self):
+        # The dock shows the next fifteen Irish days, as far as ECMWF reaches: the
+        # tide must not stop days before the wind does (it stopped at day 8), and
+        # must still reach the last of them the day after a nightly run fails.
+        manifest = self.run_main()
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        reach = datetime.fromisoformat(manifest["coverage"]["to"].replace("Z", "+00:00"))
+        self.assertGreaterEqual(reach, today + timedelta(days=16))
+        for identifier, station in manifest["stations"].items():
+            with self.subTest(station=identifier):
+                payload = json.loads((self.root / "public" / station["url"]).read_text())
+                self.assertEqual(payload["to"], manifest["coverage"]["to"])
 
     def test_station_files_are_immutable_and_named_by_window_and_content(self):
         manifest = self.run_main()

@@ -176,7 +176,7 @@ class ShippedScheduleTest(unittest.TestCase):
         identities = [job["id"] for job in jobs]
         self.assertEqual(identities, ["harmonie", "icon-eu", "icon-eu-weather", "ecmwf",
                                       "harmonie-eps", "ecmwf-ens", "aifs", "gfs", "gefs", "arpege",
-                                      "arome", "gfs-wave", "mi-swan", "ecmwf-wave", "tides",
+                                      "arome", "gfs-wave", "gfs-weather", "mi-swan", "ecmwf-wave", "tides",
                                       "sea-temperature", "blend", "blend-after-harmonie", "wind-obs",
                                       "forecast-archive",
                                       "verify", "prune"])
@@ -239,6 +239,8 @@ class ShippedScheduleTest(unittest.TestCase):
             "ecmwf": ((0, 12), timedelta(hours=7, minutes=35)),
             "gfs": ((0, 6, 12, 18), timedelta(hours=4)),
             "gfs-wave": ((0, 6, 12, 18), timedelta(hours=3, minutes=50)),
+            # The whole 384 h run, listed later than the wind's 240 h.
+            "gfs-weather": ((0, 6, 12, 18), timedelta(hours=4, minutes=45)),
             "mi-swan": ((0,), timedelta(hours=9)),
         }
         with contextlib.redirect_stdout(io.StringIO()):

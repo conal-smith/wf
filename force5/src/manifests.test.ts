@@ -57,6 +57,7 @@ describe("model registry", () => {
       "gfs-wave",
       "mi-swan",
       "icon-eu-weather",
+      "gfs-weather",
       "ecmwf-wave",
     ])
       expect(ids).toContain(id);
@@ -77,6 +78,7 @@ describe("model registry", () => {
       "gfs-wave",
       "mi-swan",
       "icon-eu-weather",
+      "gfs-weather",
     ]);
     expect(windModels().every((model) => model.kind === "wind")).toBe(true);
     expect(waveModels().map((model) => model.id)).toEqual([
@@ -85,14 +87,24 @@ describe("model registry", () => {
     ]);
     expect(weatherModels().map((model) => model.id)).toEqual([
       "icon-eu-weather",
+      "gfs-weather",
     ]);
-    // The surface bundle is a live model, and not one the map can draw.
-    expect(requireModel("icon-eu-weather").mapCapable).toBe(false);
-    expect(requireModel("icon-eu-weather").planned).toBeUndefined();
+    // The surface bundles are live models, and not ones the map can draw.
+    for (const id of ["icon-eu-weather", "gfs-weather"]) {
+      expect(requireModel(id).mapCapable).toBe(false);
+      expect(requireModel(id).planned).toBeUndefined();
+    }
     expect(requireModel("harmonie-eps").planned).toBe(true);
     // Retired to save downloads: still known, never fetched nor listed, and
     // distinct from a planned model, which the display options grey out.
-    for (const id of ["ecmwf-ens", "gefs", "arpege", "arome", "aifs", "ecmwf-wave"]) {
+    for (const id of [
+      "ecmwf-ens",
+      "gefs",
+      "arpege",
+      "arome",
+      "aifs",
+      "ecmwf-wave",
+    ]) {
       expect(requireModel(id).retired).toBe(true);
       expect(requireModel(id).planned).toBeUndefined();
     }
@@ -260,7 +272,14 @@ describe("availability sweep", () => {
       // The wave ids answer with a wind bundle here, which is a fault, not a
       // conversion: the registry decides the contract, so they come back unavailable.
     ).toEqual(["harmonie", "icon-eu", "ecmwf"]);
-    for (const id of ["gefs", "arpege", "arome", "aifs", "ecmwf-ens", "ecmwf-wave"])
+    for (const id of [
+      "gefs",
+      "arpege",
+      "arome",
+      "aifs",
+      "ecmwf-ens",
+      "ecmwf-wave",
+    ])
       expect(urls.some((url) => url.endsWith(`/${id}.json`))).toBe(false);
     const absent = availability.find((model) => model.id === "gfs")!;
     expect(absent.manifest).toBeNull();
@@ -286,7 +305,12 @@ describe("availability sweep", () => {
           ? "icon-eu"
           : url.replace(/^.*weather\//, "").replace(/\.json$/, "");
         if (id !== "ecmwf") return ok(pointer({ model: id }));
-        const { base: _base, spots: _spots, tiles: _tiles, ...old } = pointer({
+        const {
+          base: _base,
+          spots: _spots,
+          tiles: _tiles,
+          ...old
+        } = pointer({
           model: "ecmwf",
         });
         return ok({ ...old, schemaVersion: 1, spotForecasts: {} });
@@ -548,4 +572,3 @@ describe("spot squares", () => {
     );
   });
 });
-

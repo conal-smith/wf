@@ -120,6 +120,13 @@ minutes = [30, 55]          # is a retry for a cycle not out at :30, as GFS's :4
 timeout_seconds = 2400
 
 [[jobs]]
+id = "gfs-weather"
+models = ["gfs-weather"]
+hours = [5, 11, 17, 23]     # 00/06/12/18 UTC cycles plus ~5 h: the whole 384 h run is
+minutes = [5, 35]           # listed later than the wind's 240 h. :35 is a retry that stops
+timeout_seconds = 2400      # at once when :05 has published. ~13 MB a run from NOMADS.
+
+[[jobs]]
 id = "mi-swan"
 models = ["mi-swan"]
 hours = [10, 14, 18]        # One SWAN run a day, published around 09 UTC, sometimes late.

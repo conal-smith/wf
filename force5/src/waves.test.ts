@@ -11,6 +11,7 @@ import {
   MAX_WAVE_HORIZON_HOURS,
   WAVE_MATCH_HOURS,
   WAVE_SOURCE_PREFERENCE,
+  handedWaveSource,
   preferredWaveSource,
   validateWaveManifest,
   validateWaveSpots,
@@ -20,6 +21,7 @@ import {
   waveHours,
   waveSeries,
   waveSeriesHasData,
+  waveSources,
   type WaveManifest,
 } from "./waves";
 
@@ -435,5 +437,58 @@ describe("loading a wave manifest", () => {
     await expect(loadWaveManifest("gfs-wave")).rejects.toThrow(
       /does not match/,
     );
+  });
+});
+
+describe("handing a spot's waves from one source to the next", () => {
+  // MI SWAN's run ends six days out and GFS-Wave's ten: past SWAN's last step
+  // the row goes on in GFS-Wave's rather than stopping.
+  const swan = waveManifest({
+    model: "mi-swan",
+    runTime: "2026-10-22T00:00:00Z",
+    hours: [0, 3, 6],
+    variables: SWAN_VARIABLES,
+    values: () => ({ swh: 2, pp1d: 11, mwd: 280 }),
+  });
+  const gfs = waveManifest({
+    runTime: "2026-10-22T00:00:00Z",
+    hours: [0, 3, 6, 9, 12],
+    values: (hour) => ({ swh: 3 + hour / 100, pp1d: 9, mwd: 300 }),
+  });
+  it("lists every source that sees the spot, finest first", () => {
+    expect(
+      waveSources([gfs, swan], "brandon").map((s) => s.manifest.model),
+    ).toEqual(["mi-swan", "gfs-wave"]);
+    expect(waveSources([gfs, swan], "dollymount")).toEqual([]);
+  });
+  it("reads as the shelf model while it reaches, then as GFS-Wave", () => {
+    const source = handedWaveSource(waveSources([gfs, swan], "brandon"))!;
+    expect(source.manifest.model).toBe("mi-swan");
+    expect(source.fields.total.height).toBe("swh");
+    expect(
+      source.series.map((step) => [step.hour, step.values.swh, step.model]),
+    ).toEqual([
+      [0, 2, "mi-swan"],
+      [3, 2, "mi-swan"],
+      [6, 2, "mi-swan"],
+      [9, 3.09, "gfs-wave"],
+      [12, 3.12, "gfs-wave"],
+    ]);
+    const columns = waveAtAxis(source.series, [
+      "2026-10-22T06:00:00Z",
+      "2026-10-22T12:00:00Z",
+    ]);
+    expect(columns.map((step) => step?.values.pp1d)).toEqual([11, 9]);
+  });
+  it("is the one source alone where only one sees the spot, and none with none", () => {
+    const blind = waveManifest({
+      model: "mi-swan",
+      variables: SWAN_VARIABLES,
+      values: () => null,
+    });
+    const source = handedWaveSource(waveSources([gfs, blind], "brandon"))!;
+    expect(source.manifest.model).toBe("gfs-wave");
+    expect(source.series.every((step) => step.model === "gfs-wave")).toBe(true);
+    expect(handedWaveSource([])).toBeNull();
   });
 });

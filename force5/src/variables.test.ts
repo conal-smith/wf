@@ -27,6 +27,8 @@ import {
   variablesHours,
   type VariableStep,
   type VariablesManifest,
+  handOverSeries,
+  handoverColumns,
 } from "./variables";
 import {
   validateWeatherManifest,
@@ -226,5 +228,92 @@ describe("the shared variables reader", () => {
     expect(() => checkWeather(short)).toThrow(
       /Invalid weather forecast manifest/,
     );
+  });
+});
+
+describe("a series handed over from one run to the next", () => {
+  const step = (
+    validTime: string,
+    values: Record<string, number | null>,
+  ): VariableStep => ({ hour: 0, validTime, values });
+  const swan = [
+    step("2026-10-27T21:00:00Z", { swh: 2.1 }),
+    step("2026-10-28T00:00:00Z", { swh: 2.2 }),
+  ];
+  const gfs = [
+    step("2026-10-27T21:00:00Z", { swh: 3.0 }),
+    step("2026-10-28T00:00:00Z", { swh: 3.1 }),
+    step("2026-10-28T03:00:00Z", { swh: 3.2 }),
+    step("2026-10-28T06:00:00Z", { swh: 3.3 }),
+  ];
+  it("keeps every step of the first run and goes on in the next past its end", () => {
+    // MI SWAN's six days end on the Wednesday; GFS-Wave's ten go on, and the
+    // rows with them, rather than stopping where SWAN does.
+    const series = handOverSeries([
+      { model: "mi-swan", series: swan },
+      { model: "gfs-wave", series: gfs },
+    ]);
+    expect(series.map((s) => [s.validTime, s.values.swh, s.model])).toEqual([
+      ["2026-10-27T21:00:00Z", 2.1, "mi-swan"],
+      ["2026-10-28T00:00:00Z", 2.2, "mi-swan"],
+      ["2026-10-28T03:00:00Z", 3.2, "gfs-wave"],
+      ["2026-10-28T06:00:00Z", 3.3, "gfs-wave"],
+    ]);
+    // Never two models' sea state on one hour.
+    expect(new Set(series.map((s) => s.validTime)).size).toBe(series.length);
+  });
+  it("names a later run's readings as the first run does", () => {
+    const series = handOverSeries([
+      {
+        model: "a",
+        series: [step("2026-10-28T00:00:00Z", { swh: 1, pp1d: 9 })],
+      },
+      {
+        model: "b",
+        series: [step("2026-10-28T03:00:00Z", { swh: 2, mwp: 8 })],
+        names: { mwp: "pp1d" },
+      },
+    ]);
+    expect(series[1].values).toEqual({ swh: 2, pp1d: 8 });
+  });
+  it("adds nothing from a run that reaches no further than the one before", () => {
+    const series = handOverSeries([
+      { model: "gfs-wave", series: gfs },
+      { model: "mi-swan", series: swan },
+    ]);
+    expect(series.every((s) => s.model === "gfs-wave")).toBe(true);
+    expect(handOverSeries([])).toEqual([]);
+  });
+  it("says where on the dock's columns the model changes, past any gap", () => {
+    const at = (model?: string) => (model ? { model } : null);
+    expect([
+      ...handoverColumns([
+        at("mi-swan"),
+        null,
+        at("mi-swan"),
+        null,
+        at("gfs-wave"),
+        at("gfs-wave"),
+      ]),
+    ]).toEqual([4]);
+    // A run's own steps name no model, and one model alone has no seam.
+    expect(handoverColumns([at(), at("a"), at("a")]).size).toBe(0);
+    expect(handoverColumns([]).size).toBe(0);
+  });
+  it("lands on the dock's columns as one series, each column its model's", () => {
+    const series = handOverSeries([
+      { model: "mi-swan", series: swan },
+      { model: "gfs-wave", series: gfs },
+    ]);
+    const columns = variableAtAxis(series, [
+      "2026-10-28T00:00:00Z",
+      "2026-10-28T06:00:00Z",
+      "2026-10-29T00:00:00Z",
+    ]);
+    expect(columns.map((c) => c?.model ?? null)).toEqual([
+      "mi-swan",
+      "gfs-wave",
+      null,
+    ]);
   });
 });

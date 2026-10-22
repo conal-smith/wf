@@ -9,6 +9,7 @@ import {
   VARIABLE_MATCH_HOURS,
   VARIABLE_STEP_HOURS,
   VARIABLE_VALUE_LIMITS,
+  handOverSeries,
   pickVariable,
   validateVariableSpots,
   validateVariablesManifest,
@@ -216,31 +217,80 @@ export interface WaveSource {
 }
 
 /**
- * The wave manifest to read for one spot. Ireland's own shelf model wins when
- * it resolves the location; GFS-Wave is the global fallback. A manifest whose
- * series for the spot is all nulls is not a source: it has said it cannot see
- * this place, and the next model gets the chance.
+ * Every wave manifest that can be read for one spot, in the order the dock
+ * prefers them. Ireland's own shelf model wins when it resolves the location;
+ * GFS-Wave is the global fallback. A manifest whose series for the spot is all
+ * nulls is not a source: it has said it cannot see this place, and the next
+ * model gets the chance.
  */
-export function preferredWaveSource(
+export function waveSources(
   manifests: readonly WaveManifest[],
   spotId: string | undefined,
   preference: readonly string[] = WAVE_SOURCE_PREFERENCE,
-): WaveSource | null {
+): WaveSource[] {
   const order = (manifest: WaveManifest) => {
     const rank = preference.indexOf(manifest.model);
     return rank === -1 ? preference.length : rank;
   };
+  const out: WaveSource[] = [];
   for (const manifest of [...manifests].sort((a, b) => order(a) - order(b))) {
     const series = waveSeries(manifest, spotId);
     const fields = waveFields(manifest);
     if (!series || !fields || !waveSeriesHasData(series, fields.total.height))
       continue;
-    return {
+    out.push({
       manifest,
       series,
       fields,
       note: waveCoverageNote(manifest, spotId),
-    };
+    });
   }
-  return null;
+  return out;
+}
+
+/** The wave manifest to read first for one spot (`waveSources`). */
+export const preferredWaveSource = (
+  manifests: readonly WaveManifest[],
+  spotId: string | undefined,
+  preference: readonly string[] = WAVE_SOURCE_PREFERENCE,
+): WaveSource | null => waveSources(manifests, spotId, preference)[0] ?? null;
+
+/** A later source's names for each sea state, as the first source calls them. */
+function waveNames(lead: WaveFields, other: WaveFields) {
+  const names: Record<string, string> = {};
+  for (const key of ["total", "swell", "windsea"] as const) {
+    const to = lead[key];
+    const from = other[key];
+    if (!to || !from) continue;
+    for (const part of ["height", "period", "direction"] as const) {
+      const a = from[part];
+      const b = to[part];
+      if (a && b && a !== b) names[a] = b;
+    }
+  }
+  return names;
+}
+
+/**
+ * The spot's waves from every source in turn: the first source's own run, then
+ * each next one's past the end of it (`handOverSeries`), so Ireland's 2.8 km
+ * shelf model's six days go on in GFS-Wave's ten rather than stopping. The
+ * result reads as the first source, its fields and its coverage note; each
+ * step names the model it came from. Null with no source.
+ */
+export function handedWaveSource(
+  sources: readonly WaveSource[],
+): WaveSource | null {
+  const [lead] = sources;
+  if (!lead) return null;
+  return {
+    ...lead,
+    series: handOverSeries(
+      sources.map((source) => ({
+        model: source.manifest.model,
+        series: source.series,
+        names: waveNames(lead.fields, source.fields),
+      })),
+    ),
+  };
 }

@@ -48,6 +48,7 @@ DESCRIPTIONS = {
     "arome": "AROME (Météo-France)",
     "harmonie-eps": "HARMONIE ensemble (Met Éireann)",
     "gfs-wave": "GFS-Wave (NOAA)",
+    "gfs-weather": "GFS surface weather (NOAA)",
     "mi-swan": "Irish Shelf SWAN waves (Marine Institute)",
     "tides": "Tide predictions (Marine Institute; Northern Ireland harmonic)",
     "sea-temperature": "Sea temperature observations",
@@ -91,6 +92,8 @@ ENSEMBLE = {"cpu": "2", "memory": "4Gb", "disk": "20Gb"}
 RESOURCES = {
     "harmonie": MODEL, "icon-eu": MODEL, "ecmwf": MODEL, "gfs-wave": MODEL,
     "icon-eu-weather": FORECAST, "gfs": FORECAST,
+    # Its whole 384 h run's series are in memory before they are written.
+    "gfs-weather": MODEL,
     "ecmwf-ens": ENSEMBLE, "ecmwf-wave": ENSEMBLE, "harmonie-eps": ENSEMBLE, "gefs": ENSEMBLE,
     "tides": FEED, "sea-temperature": FEED, "blend": FEED, "wind-obs": FEED,
     "mi-swan": FEED,
@@ -105,7 +108,7 @@ RESOURCES = {
 # GRIB, ECMWF its whole 85-frame run from cache, verification a 30-day archive.
 MEASURED_PEAK_MB = {
     "harmonie": 290, "icon-eu": 335, "ecmwf": 315, "gfs-wave": 360,
-    "icon-eu-weather": 225, "gfs": 230, "verify": 225,
+    "icon-eu-weather": 225, "gfs": 230, "verify": 225, "gfs-weather": 355,
     "mi-swan": 190, "blend": 185, "forecast-archive": 140,
     "tides": 135, "sea-temperature": 135, "wind-obs": 135,
 }

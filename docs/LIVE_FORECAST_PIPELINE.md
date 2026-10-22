@@ -303,6 +303,22 @@ the same four cycles as ICON-EU wind with a publication lag of about 3.5 hours
 (`deploy/local/jobs.toml` runs it at 03/09/15/21 UTC, ten minutes after the wind job
 so the two never share the worker lock), and alarm on the same 12-hour threshold.
 
+GFS surface weather is the second: `--models gfs-weather` runs `fetch_gfs_weather.py`,
+which reads sixteen GFS 0.25° surface fields through the same NOMADS subregion filter as
+the GFS wind importer (about 100 KB a step, 13 MB for the whole 384-hour run at three-hour
+steps; `--source s3` reads the same messages by range from NOAA's bucket) and publishes
+`weather/gfs-weather.json` with its spot squares and no frames, in ICON-EU weather's own
+variable names. It is what the dock's sky, air and rain rows read past ICON-EU weather's
+three days: the dock reads ICON-EU while it reaches the hour and GFS from its end on
+(`handedWeatherSource`, force5/src/surface.ts), as the waves go on in GFS-Wave past MI
+SWAN's six days (`handedWaveSource`), and as the wind goes on in ECMWF past HARMONIE.
+GFS has no present-weather code, so `ww` is **derived** there from GFS's own
+categorical precipitation type and rate, visibility and total cloud at the hour, and the
+manifest's `presentWeatherNote` says how; it never says shower, drizzle or thunder, which
+GFS cannot tell from rain. GFS publishes no accumulation at hour 0, so `tp` is null there.
+The 384-hour run is listed later than the wind's 240, so its slots are an hour after
+GFS's (05/11/17/23 UTC at :05, with a :35 retry); the registry's age limit is 14 hours.
+
 ### ARPEGE and AROME (Météo-France)
 
 **Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
@@ -462,6 +478,7 @@ ICON-EU WEATHER: --models icon-eu-weather --bucket YOUR_FORECAST_BUCKET
 ECMWF:    --models ecmwf --bucket YOUR_FORECAST_BUCKET
 GFS:      --models gfs --step 3 --bucket YOUR_FORECAST_BUCKET
 GFS-WAVE: --models gfs-wave --bucket YOUR_FORECAST_BUCKET
+GFS WEATHER: --models gfs-weather --bucket YOUR_FORECAST_BUCKET
 GEFS:     --models gefs --bucket YOUR_FORECAST_BUCKET
 ARPEGE:   --models arpege --step 3 --bucket YOUR_FORECAST_BUCKET
 AROME:    --models arome --step 3 --bucket YOUR_FORECAST_BUCKET
@@ -473,7 +490,10 @@ MI-SWAN:  --models mi-swan --bucket YOUR_FORECAST_BUCKET
 ```
 
 Tides need one nightly run: predictions extend to 2029, so the schedule only refreshes the
-published nine-day window. Northern Ireland's nine stations are predicted in the same run
+published window, yesterday and the sixteen days from today: the dock's strip is the next
+fifteen days, as far as ECMWF reaches, so its last day keeps its tide even the day after a
+nightly run has failed. (It was nine days until 22 October 2026, and the tide stopped a
+week before the wind did.) Northern Ireland's nine stations are predicted in the same run
 from the harmonic constants the image carries (`force5/ingest/tide_stations_ni.json`,
 `scripts/tides/README.md`), with no download; a failed Marine Institute fetch still fails
 the whole run and keeps the last published predictions. The manifest's `run` is the ingest hour, which keeps the
@@ -557,6 +577,7 @@ docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models icon-eu --step 1 $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models icon-eu-weather $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models gfs --step 3 $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models gfs-weather $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models gefs $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models aifs $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models arpege --step 3 $R2
@@ -653,7 +674,7 @@ the inherited environment before each job, so a stray value cannot make a job cl
 success.
 
 Every forecast adapter is in the contract: `harmonie`, `icon-eu`, `icon-eu-weather`,
-`ecmwf`, `ecmwf-ens`, `aifs`, `ecmwf-wave`, `gfs`, `gefs`, `arpege`, `arome`,
+`ecmwf`, `ecmwf-ens`, `aifs`, `ecmwf-wave`, `gfs`, `gfs-weather`, `gefs`, `arpege`, `arome`,
 `harmonie-eps`, `gfs-wave` and `mi-swan`. Each decides from the discovery step it
 already makes (an inventory listing, a package listing, ECMWF's `latest()` probe,
 SWAN's info page and `time[last]`), after its freshness check, so a stale or
@@ -920,7 +941,7 @@ model runs at a time and the pointer is re-read immediately before the write.
 Audited against every entry in `registry.py`:
 
 - **Clean, no change needed.** `harmonie`, `icon-eu`, `icon-eu-weather`, `gfs`,
-  `gefs`, `gfs-wave`, `aifs`, `ecmwf-wave`, `arpege`, `arome`, `sea-temperature`: all
+  `gfs-weather`, `gefs`, `gfs-wave`, `aifs`, `ecmwf-wave`, `arpege`, `arome`, `sea-temperature`: all
   cache under `.cache/<model>/<run>/` and only ever read files they wrote earlier in
   the same process.
 - **Re-derived, one extra request.** `tides` re-downloads the ERDDAP station
@@ -992,6 +1013,7 @@ weather/ecmwf-ens.json, weather/ecmwf-ens-RUN-144h-25m-v1-HASH8/  ECMWF ENS, lik
 weather/harmonie-eps.json, weather/harmonie-eps-RUN-48h-v1-HASH8/ HARMONIE EPS, likewise
 weather/mi-swan.json, weather/mi-swan-RUN-144h-v1-HASH8/    Irish Shelf SWAN: squares, frames only with --frames
 weather/icon-eu-weather.json, weather/icon-eu-weather-RUN-72h-v1-HASH8/  surface weather: squares only
+weather/gfs-weather.json, weather/gfs-weather-RUN-384h-v1-HASH8/  GFS surface weather: squares only
 weather/gfs-wave.json, weather/gfs-wave-RUN-240h-v1-HASH8/  GFS-Wave: squares only
 weather/ecmwf-wave.json, weather/ecmwf-wave-RUN-360h-10v-v1-HASH8/  ECMWF Wave: squares only
 weather/blend.json, weather/blend-RUN-HOURSh-v2-HASH8/spots/SQUARE.json   every place's blend, by square; no frames
@@ -1081,7 +1103,8 @@ forecast checks its per-spot data as read back from its squares:
   measurements up to 100,000 (hectopascals, millimetres, J/kg) instead of 1,000, and a
   variable may declare `"kind": "code"` for a whole code-table entry such as WMO present
   weather, which is checked for being a small integer rather than range-checked.
-  ICON-EU surface weather (`icon-eu-weather`) is the first weather adapter.
+  ICON-EU surface weather (`icon-eu-weather`) is the first weather adapter and GFS
+  surface weather (`gfs-weather`) the second.
 - `tide` validates the station manifest and every referenced station file: monotonic
   times, heights within −1 to 8 m above LAT, and event heights agreeing with the curve
   extremes to within 0.15 m.
