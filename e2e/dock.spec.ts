@@ -967,19 +967,24 @@ test("on a phone the labels fold away as the reader slides the hours, and open a
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   await expect(grid).not.toHaveClass(/is-folded/);
   expect((await page.locator(".dock .dk-labs").boundingBox())!.width).toBe(28);
-  // A finger's slide folds them, and the hours take their column.
-  const box = (await wrap.boundingBox())!;
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Input.synthesizeScrollGesture", {
-    x: box.x + box.width / 2,
-    y: box.y + box.height / 2,
-    xDistance: -160,
-    yDistance: 0,
-    gestureSourceType: "touch",
+  // A finger on the strip, and the strip slid under it, folds them: the
+  // hours take their column and stay where the finger has them. The snap
+  // is held off, so where the slide stops is the slide's alone.
+  const at = await page
+    .locator(".dock tr.tt-hour td.c-sel")
+    .getAttribute("data-i");
+  const hour = page.locator(`.dock tr.tt-hour td[data-i="${at}"]`);
+  const was = (await hour.boundingBox())!.x;
+  await wrap.evaluate((el) => {
+    el.style.scrollSnapType = "none";
+    el.dispatchEvent(new Event("touchstart", { bubbles: true }));
+    el.scrollLeft += 160;
   });
   await expect(grid).toHaveClass(/is-folded/);
   const dock = (await page.locator(".dock").boundingBox())!;
   expect((await wrap.boundingBox())!.x - dock.x).toBeLessThan(10);
+  expect(Math.abs((await hour.boundingBox())!.x - (was - 160))).toBeLessThan(2);
+  await wrap.evaluate((el) => (el.style.scrollSnapType = ""));
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   // Slid back to the start of the week, they open again.
   await slider(page).press("Home");
