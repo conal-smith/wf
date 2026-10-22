@@ -471,6 +471,38 @@ export function pointHours(
   });
 }
 
+/**
+ * A bare point's hours with the hand-over in them: its own run's where that
+ * reaches the column, and in each stretch past it the hours of the run the map
+ * hands over to there (`pointHandovers` in force5/src/timeline.ts). A column
+ * whose handed run has not been read yet stays empty, as one of the point's
+ * own does until its file lands.
+ */
+export function handedPointHours(
+  frames: Parameters<typeof pointHours>[0],
+  values: Parameters<typeof pointHours>[1],
+  handed: readonly {
+    manifest: { frames: Parameters<typeof pointHours>[0] };
+    values: Parameters<typeof pointHours>[1];
+    stretches: readonly { from: number; to: number }[];
+  }[],
+  place: Pick<RatedPlace, "lat" | "lon">,
+  axis: readonly string[],
+): PlaceHour[] {
+  const hours = pointHours(frames, values, place, axis);
+  if (!handed.length) return hours;
+  const axisTimes = axis.map((iso) => Date.parse(iso));
+  for (const run of handed) {
+    if (!run.stretches.length) continue;
+    const theirs = pointHours(run.manifest.frames, run.values, place, axis);
+    axisTimes.forEach((t, c) => {
+      if (run.stretches.some(({ from, to }) => t >= from && t <= to))
+        hours[c] = theirs[c];
+    });
+  }
+  return hours;
+}
+
 /** "SW 18g24": an hour's wind as a list of spots gives it, in knots; "" with none. */
 export function hourWind(
   hour: Pick<PlaceHour, "windKn" | "gustKn" | "from">,

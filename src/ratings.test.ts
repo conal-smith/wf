@@ -20,6 +20,7 @@ import {
 import { direction } from "../force5/src/weather";
 import {
   daylightOn,
+  handedPointHours,
   hourWind,
   offshoreMark,
   placeConsensus,
@@ -351,6 +352,83 @@ describe("pointHours", () => {
     expect(out.every((hour) => hour.rating === null)).toBe(true);
     // Past the run: nothing, not a borrowed neighbour.
     expect(out[2].windKn).toBe(null);
+  });
+});
+
+describe("handedPointHours", () => {
+  const HOUR = 3600000;
+  const from = (start: string, hours: readonly number[]) =>
+    hours.map((hour) => ({
+      hour,
+      validTime: new Date(Date.parse(start) + hour * HOUR).toISOString(),
+    }));
+  // HARMONIE's run, hourly to 13:00; ECMWF's, three-hourly over the same day.
+  const harmonie = from("2026-10-24T11:00:00Z", [0, 1, 2]);
+  const ecmwf = from("2026-10-24T00:00:00Z", [9, 12, 15, 18, 21]);
+  const own = [
+    { u: -6, v: 0, gust: 9 },
+    { u: -6, v: 0, gust: 9 },
+    { u: -6, v: 0, gust: 9 },
+  ];
+  const axis = [
+    "2026-10-24T12:00:00Z",
+    "2026-10-24T13:00:00Z",
+    "2026-10-24T15:00:00Z",
+    "2026-10-24T16:00:00Z",
+    "2026-10-24T21:00:00Z",
+  ];
+  const stretches = [
+    {
+      from: Date.parse("2026-10-24T15:00:00Z"),
+      to: Date.parse("2026-10-24T21:00:00Z"),
+    },
+  ];
+  const place = { lat: 53.52, lon: -6.36 };
+  it("goes on past the reader's run in the run handed over to", () => {
+    // Only the frames the stretch needs were read: none before 15:00.
+    const values = [
+      null,
+      null,
+      { u: 0, v: -10, gust: null },
+      { u: 0, v: -13, gust: null },
+      { u: 0, v: -12, gust: null },
+    ];
+    const out = handedPointHours(
+      harmonie,
+      own,
+      [{ manifest: { frames: ecmwf }, values, stretches }],
+      place,
+      axis,
+    );
+    // Within HARMONIE's run, HARMONIE's wind.
+    expect(out[0].windKn).toBeCloseTo(6 * 1.94384449, 6);
+    expect(out[1].windKn).toBeCloseTo(6 * 1.94384449, 6);
+    // Past it, ECMWF's: at its own steps and between them.
+    expect(out[2].windKn).toBeCloseTo(10 * 1.94384449, 6);
+    expect(out[3].windKn).toBeCloseTo(11 * 1.94384449, 6);
+    expect(out[3].from).toBe(0);
+    expect(out[4].windKn).toBeCloseTo(12 * 1.94384449, 6);
+    // Still a point: no stars, whichever run the wind is from.
+    expect(out.every((hour) => hour.rating === null)).toBe(true);
+  });
+  it("leaves a handed hour empty until its run is read, and is the point's own without one", () => {
+    const unread = handedPointHours(
+      harmonie,
+      own,
+      [
+        {
+          manifest: { frames: ecmwf },
+          values: ecmwf.map(() => null),
+          stretches,
+        },
+      ],
+      place,
+      axis,
+    );
+    expect(unread.slice(2).every((hour) => hour.windKn === null)).toBe(true);
+    expect(handedPointHours(harmonie, own, [], place, axis)).toEqual(
+      pointHours(harmonie, own, place, axis),
+    );
   });
 });
 

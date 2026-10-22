@@ -280,6 +280,95 @@ export function handoverModel(
 }
 
 /**
+ * When the hand-over the map is drawing begins, for the label that names it.
+ * Past the end of the reader's run it is the first column of the stretch the
+ * same model owns beyond that end, so the label names the hour the other
+ * model's wind begins rather than the reader's last; before the reader's run
+ * starts it is that start, where the hand-over stops. Null without a column.
+ */
+export function handoverStart(
+  columns: readonly { time: number; model: string }[],
+  index: number,
+  beyond: { side: "before" | "after"; edge: string },
+): number | null {
+  const column = columns[index];
+  if (!column) return null;
+  const edge = Date.parse(beyond.edge);
+  if (beyond.side === "before") return edge;
+  let from = index;
+  while (
+    from > 0 &&
+    columns[from - 1].time > edge &&
+    columns[from - 1].model === column.model
+  )
+    from--;
+  return columns[from].time;
+}
+
+/** A run of the dock's columns a bare point reads from a model not its own. */
+export interface HandedStretch {
+  model: string;
+  /** The first and the last column's time handed to it, both included. */
+  from: number;
+  to: number;
+}
+
+/**
+ * Where a bare map point's wind comes from past the reader's own run: each
+ * unbroken stretch of the dock's columns that the map would hand to another
+ * model (`handoverModel`), with that model. A point is read out of the map's
+ * frames, so without this its cells went empty wherever the reader's run
+ * stopped, beside a spot's that went on in ECMWF's; now the point's columns
+ * and the map tell the same model's story at every hour. Columns the reader's
+ * run reaches belong to no stretch.
+ */
+export function pointHandovers(
+  models: readonly ColumnModel[],
+  drawable: readonly string[],
+  own: { id: string; frames: readonly Pick<FrameInfo, "validTime">[] },
+  columns: readonly Pick<DockColumn, "validTime" | "model">[],
+  now = Date.now(),
+): HandedStretch[] {
+  const stretches: HandedStretch[] = [];
+  // The model the column before was handed to, so a stretch is unbroken.
+  let before: string | null = null;
+  for (const column of columns) {
+    const time = Date.parse(column.validTime);
+    const id = handoverModel(models, drawable, own, time, column, now);
+    if (id && id === before) stretches[stretches.length - 1].to = time;
+    else if (id) stretches.push({ model: id, from: time, to: time });
+    before = id;
+  }
+  return stretches;
+}
+
+/**
+ * The frames of a run handed over to that a point needs read: those inside
+ * its stretches, and the one either side of each where a column falls between
+ * two of the run's steps, so the column can be drawn between them. Nothing
+ * else of the run is read: inside the reader's own run its wind is the one
+ * shown, and every file is a download.
+ */
+export function handedFrames(
+  frames: readonly Pick<FrameInfo, "validTime">[],
+  stretches: readonly Pick<HandedStretch, "from" | "to">[],
+): number[] {
+  const times = frames.map((frame) => Date.parse(frame.validTime));
+  const wanted = new Set<number>();
+  for (const { from, to } of stretches) {
+    const first = times.findIndex((time) => time >= from);
+    let last = times.length - 1;
+    while (last >= 0 && times[last] > to) last--;
+    if (first === -1 || last === -1) continue;
+    const lo = times[first] > from ? first - 1 : first;
+    const hi = times[last] < to ? last + 1 : last;
+    for (let i = Math.max(0, lo); i <= Math.min(times.length - 1, hi); i++)
+      wanted.add(i);
+  }
+  return [...wanted].sort((a, b) => a - b);
+}
+
+/**
  * The order to read a run's frames in for a bare map point, which has no
  * precomputed series and has to be sampled out of the frames one file at a time.
  *

@@ -79,8 +79,8 @@ import { useViewBounds } from "./useViewBounds";
 import { squaresToRead } from "../force5/src/squares";
 import { usePointSeries } from "./usePointSeries";
 import {
+  handedPointHours,
   offshoreMark,
-  pointHours as pointHoursFrom,
   type PlaceHour,
   type RatedPlace,
 } from "./ratings";
@@ -132,7 +132,9 @@ import {
   dockColumns,
   frameForTime,
   handoverModel,
+  handoverStart,
   mapReach,
+  pointHandovers,
   type ColumnModel,
 } from "../force5/src/timeline";
 import { freshwaterSpots, tideAt } from "../force5/src/tides";
@@ -643,6 +645,18 @@ export default function App() {
   const [handoverFailed, setHandoverFailed] = useState<
     ReadonlyMap<string, number>
   >(() => new Map());
+  /** The runs the map can hand over to now: the columns', less any just failed. */
+  const handable = useMemo(
+    () =>
+      columnModels.filter(
+        (model) =>
+          !(
+            clockNow - (handoverFailed.get(model.id) ?? -Infinity) <
+            MANIFEST_REVALIDATE_MS
+          ),
+      ),
+    [columnModels, clockNow, handoverFailed],
+  );
   /**
    * The model the map hands over to where the reader's run does not reach the
    * hour: the one the dock's column there comes from (force5/src/timeline.ts).
@@ -654,13 +668,7 @@ export default function App() {
     () =>
       manifest
         ? handoverModel(
-            columnModels.filter(
-              (model) =>
-                !(
-                  clockNow - (handoverFailed.get(model.id) ?? -Infinity) <
-                  MANIFEST_REVALIDATE_MS
-                ),
-            ),
+            handable,
             MAP_MODEL_IDS,
             { id: manifest.model, frames: manifest.frames },
             mapAt,
@@ -668,7 +676,7 @@ export default function App() {
             clockNow,
           )
         : null,
-    [columnModels, manifest, mapAt, mapColumn?.model, clockNow, handoverFailed],
+    [handable, manifest, mapAt, mapColumn?.model, clockNow],
   );
   // Kept once loaded, so a scrub back and forth across the seam swaps between
   // two runs already in hand rather than reading a manifest at every crossing.
@@ -1317,7 +1325,27 @@ export default function App() {
       picked ? { name: picked.name, lat: picked.lat, lon: picked.lon } : null,
     [picked],
   );
-  const series = usePointSeries(picked ? manifest : null, pickedPoint);
+  // Past the end of the reader's run the point goes on in the run the map
+  // hands over to there, as a spot's hours go on in ECMWF's past HARMONIE's:
+  // read from the reader's run alone, its cells went empty for days.
+  const pointHanded = useMemo(
+    () =>
+      picked && manifest
+        ? pointHandovers(
+            handable,
+            MAP_MODEL_IDS,
+            { id: manifest.model, frames: manifest.frames },
+            strip,
+            clockNow,
+          )
+        : [],
+    [!!picked, handable, manifest, strip, clockNow],
+  );
+  const series = usePointSeries(
+    picked ? manifest : null,
+    pickedPoint,
+    pointHanded,
+  );
   const seriesFailed = !series.named && !series.pending && series.failures > 0;
   useEffect(() => {
     if (seriesFailed && manifest) recoverRun(manifest.model, manifest.run);
@@ -1325,9 +1353,15 @@ export default function App() {
   const pickedHours = useMemo<PlaceHour[] | undefined>(
     () =>
       picked && manifest
-        ? pointHoursFrom(manifest.frames, series.values, picked, axis)
+        ? handedPointHours(
+            manifest.frames,
+            series.values,
+            series.handed,
+            picked,
+            axis,
+          )
         : undefined,
-    [picked, manifest, series.values, axis],
+    [picked, manifest, series.values, series.handed, axis],
   );
   const dockSpot: Spot | null = picked
     ? {
@@ -1401,19 +1435,11 @@ export default function App() {
    * reader's last.
    */
   const beyond = reach && !reach.drawn ? reach : null;
-  const handoverAt = useMemo(() => {
-    if (!handoverName || !beyond || !mapColumn) return null;
-    const edge = Date.parse(beyond.edge);
-    if (beyond.side === "before") return edge;
-    let from = mapIndex;
-    while (
-      from > 0 &&
-      strip[from - 1].time > edge &&
-      strip[from - 1].model === mapColumn.model
-    )
-      from--;
-    return strip[from].time;
-  }, [handoverName, beyond?.side, beyond?.edge, mapIndex, strip]);
+  const handoverAt = useMemo(
+    () =>
+      handoverName && beyond ? handoverStart(strip, mapIndex, beyond) : null,
+    [handoverName, beyond?.side, beyond?.edge, mapIndex, strip],
+  );
   const handoverWhen =
     handoverAt === null ? "" : `${dayShort(handoverAt)} ${clock(handoverAt)}`;
   // Only where nothing can be handed over: the chip lets the reader ask for
