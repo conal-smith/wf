@@ -81,12 +81,6 @@ import {
 } from "../force5/src/stars";
 import { dayNights } from "../force5/src/sun";
 import { daylightOn } from "./ratings";
-import {
-  eventsBetween,
-  tideAt,
-  tideStationLine,
-  type SpotTide,
-} from "../force5/src/tides";
 import { convert, type Units } from "../force5/src/units";
 import { compass, type Spot } from "../force5/src/weather";
 import { spotHref } from "../force5/src/siteNav";
@@ -121,8 +115,6 @@ interface Props {
   onWantModels?: () => void;
   starred: boolean;
   onToggleStar: () => void;
-  /** The tide, drawn faint behind the hours' figures where there is one. */
-  tide: SpotTide | null;
   /** Close the dock: no spot or point chosen, the chart alone. */
   onClose: () => void;
   phone: boolean;
@@ -183,12 +175,11 @@ const PHONE_ROWS: Rows = {
   wing: 15,
 };
 /**
- * The rows the tide is drawn behind, under the hours. The stars head both
- * views; the blend's chart stands in for the table's figures. A point in open
- * water has no stars or wing, and a week with no hour worth rating has
- * neither row.
+ * The rows of figures under the hours. The stars head both views; the
+ * blend's chart stands in for the table's figures. A point in open water has
+ * no stars or wing, and a week with no hour worth rating has neither row.
  */
-const tideBand = (
+const figureRows = (
   rows: Rows,
   view: DockView,
   isPoint: boolean,
@@ -212,7 +203,7 @@ const rowsUnderHours = (
   rated: boolean,
   more: boolean,
 ) =>
-  tideBand(rows, view, isPoint, rated) +
+  figureRows(rows, view, isPoint, rated) +
   (more ? MORE_ROWS.reduce((h, k) => h + rows[k], 0) : 0);
 /**
  * Each row's name as a glyph, with the name and unit in its title: the rows
@@ -246,9 +237,6 @@ const RAIN_FULL_MM = 4;
  */
 const starSize = (width: number, full: number) =>
   Math.max(4, Math.min(full < 60 ? 8.6 : 9.5, (width - 6) / 5.4));
-
-/** The mono face's advance at the tide labels' 9.5px, for laying them out. */
-const TIDE_CHAR = 5.75;
 
 /**
  * Where the wind goes, as one arrow and no letters: red where it blows off
@@ -460,34 +448,6 @@ const StripTable = memo(function StripTable({
   );
 });
 
-/** Where a time falls along the strip, between its columns' centres. */
-function xOf(
-  columns: readonly StripColumn[],
-  day: StripDay,
-  g: StripGeometry,
-  t: number,
-) {
-  const a = day.start;
-  const b = day.start + day.count - 1;
-  const centre = (i: number) => g.x[i] + g.w[i] / 2;
-  const step = (i: number, j: number) => columns[j].time - columns[i].time;
-  if (t <= columns[a].time) {
-    const span = day.count > 1 ? step(a, a + 1) : 3600000;
-    return centre(a) - ((columns[a].time - t) / span) * g.w[a];
-  }
-  if (t >= columns[b].time) {
-    const span = day.count > 1 ? step(b - 1, b) : 3600000;
-    return centre(b) + ((t - columns[b].time) / span) * g.w[b];
-  }
-  for (let i = a; i < b; i++)
-    if (t <= columns[i + 1].time)
-      return (
-        centre(i) +
-        ((t - columns[i].time) / step(i, i + 1)) * (centre(i + 1) - centre(i))
-      );
-  return centre(b);
-}
-
 /** The pen's handwriting at the time now: Kalam's advance at 13px, near enough. */
 const HAND_CHAR = 6.4;
 
@@ -675,10 +635,9 @@ function NowMark({
 
 /**
  * Boxes, in the pen layer's own pixels, of what the frame round the chosen
- * hour must not cross: the tide's times and turns, which are placed freely
- * and straddle the hours, and any figure or glyph in the column or its
- * neighbours that reaches into the pen's lane along a border (on a phone,
- * five star places fill a column edge to edge).
+ * hour must not cross: any figure or glyph in the column or its neighbours
+ * that reaches into the pen's lane along a border (on a phone, five star
+ * places fill a column edge to edge).
  */
 function keepOut(
   wrap: HTMLElement,
@@ -710,9 +669,6 @@ function keepOut(
         const right = b.right - origin.left;
         if (lanes.some((x) => left < x + 2.5 && right > x - 2.5)) add(el, 1.5);
       });
-  wrap
-    .querySelectorAll(".tide-band text, .tide-band .tide-turn")
-    .forEach((el) => add(el, el.tagName === "text" ? 2 : 1.6));
   return out;
 }
 
@@ -880,168 +836,6 @@ function MoreRows({
   );
 }
 
-/**
- * The tide, faint behind the rows of figures: a curve per day across the
- * band from the stars to the wing, high water along its top and low water
- * along its foot, so it says when the water is up without a row of its own.
- * Each turn is a dot with its time beside it; the heights are the spot
- * page's. A time that would run into the one before it, along the top or
- * the foot, tries the other side of its dot, and failing that is left out.
- *
- * The chosen hour is a dot on the curve, drawn under the turns so their
- * times stay readable where it passes them (#98).
- */
-function TideBand({
-  tide,
-  columns,
-  days,
-  g,
-  top,
-  height: H,
-  at,
-}: {
-  tide: SpotTide;
-  columns: readonly StripColumn[];
-  days: readonly StripDay[];
-  g: StripGeometry;
-  /** The band's top, and its height, in the strip's pixels. */
-  top: number;
-  height: number;
-  /** The chosen hour: where along the strip, and when. */
-  at: { x: number; t: number } | null;
-}) {
-  const curve = tide.curve;
-  const y = useMemo(() => {
-    const lo = Math.min(...curve.curve);
-    const hi = Math.max(...curve.curve);
-    return (h: number) => top + H - 4 - ((h - lo) / (hi - lo || 1)) * (H - 8);
-  }, [curve, top, H]);
-  const drawn = useMemo(() => {
-    const paths: React.ReactNode[] = [];
-    const turns: {
-      key: string;
-      X: number;
-      Y: number;
-      high: boolean;
-      time: string;
-    }[] = [];
-    days.forEach((day) => {
-      const first = columns[day.start];
-      const last = columns[day.start + day.count - 1];
-      const half =
-        day.count > 1
-          ? (columns[day.start + 1].time - first.time) / 2
-          : 1800000;
-      const halfEnd =
-        day.count > 1
-          ? (last.time - columns[day.start + day.count - 2].time) / 2
-          : 1800000;
-      const a = first.time - half;
-      const b = last.time + halfEnd;
-      let d = "";
-      for (let t = a; t <= b; t += 600000) {
-        const h = tideAt(curve, t);
-        if (h === null) continue;
-        d += `${d ? "L" : "M"}${xOf(columns, day, g, t).toFixed(1)} ${y(h).toFixed(1)}`;
-      }
-      if (!d) return;
-      const x0 = xOf(columns, day, g, a);
-      const x1 = xOf(columns, day, g, b);
-      paths.push(
-        <g key={day.date}>
-          <path
-            className="tide-fill"
-            d={`${d}L${x1.toFixed(1)} ${top + H}L${x0.toFixed(1)} ${top + H}Z`}
-          />
-          <path className="tide-line" d={d} />
-        </g>,
-      );
-      for (const event of eventsBetween(curve, a, b)) {
-        // A turn on the stroke of a day's edge falls in both days' spans.
-        if (turns.some((turn) => turn.key === event.time)) continue;
-        const t = Date.parse(event.time);
-        turns.push({
-          key: event.time,
-          X: xOf(columns, day, g, t),
-          Y: y(event.height),
-          high: event.kind === "high",
-          time: clock(t),
-        });
-      }
-    });
-    // Lay out the top's times and the foot's left to right: beside the dot
-    // after it, else before it, else not at all.
-    const placed = new Map<string, { x: number; anchor: "start" | "end" }>();
-    for (const high of [true, false]) {
-      let edge = -Infinity;
-      const band = turns
-        .filter((t) => t.high === high)
-        .sort((p, q) => p.X - q.X);
-      for (const turn of band) {
-        const w = turn.time.length * TIDE_CHAR;
-        const after = turn.X + 5;
-        const before = turn.X - 5 - w;
-        // Nor over another turn's dot along the same edge.
-        const clear = (from: number) =>
-          !band.some((o) => o !== turn && o.X > from - 4 && o.X < from + w + 4);
-        if (after >= edge + 8 && after + w <= g.total && clear(after)) {
-          placed.set(turn.key, { x: after, anchor: "start" });
-          edge = after + w;
-        } else if (before >= Math.max(0, edge + 8) && clear(before)) {
-          placed.set(turn.key, { x: turn.X - 5, anchor: "end" });
-          edge = turn.X - 5;
-        }
-      }
-    }
-    return {
-      curves: paths,
-      turns: turns.map((turn) => {
-        const label = placed.get(turn.key);
-        return (
-          <g key={turn.key}>
-            <circle
-              className={`tide-turn ${turn.high ? "tide-hw" : "tide-lw"}`}
-              cx={turn.X.toFixed(1)}
-              cy={turn.Y.toFixed(1)}
-              r="2.2"
-            />
-            {label && (
-              <text
-                className="tide-label"
-                x={label.x.toFixed(1)}
-                y={(turn.Y + 3.2).toFixed(1)}
-                textAnchor={label.anchor}
-              >
-                {turn.time}
-              </text>
-            )}
-          </g>
-        );
-      }),
-    };
-  }, [curve, columns, days, g, y, top, H]);
-  const h = at ? tideAt(curve, at.t) : null;
-  // The station credited, and how far it is: a tapped point's is whichever
-  // is nearest, not one the reader chose.
-  const station = `Tide at ${tideStationLine(tide)}`;
-  return (
-    <svg
-      className="tide-band"
-      width={g.total}
-      height={top + H}
-      role="img"
-      aria-label={station}
-    >
-      <title>{station}</title>
-      {drawn.curves}
-      {at && h !== null && (
-        <circle className="tide-dot" cx={at.x} cy={y(h)} r="3.4" />
-      )}
-      {drawn.turns}
-    </svg>
-  );
-}
-
 const NO_MODELS: readonly ModelAvailability[] = [];
 
 export default function ForecastDock(props: Props) {
@@ -1058,7 +852,6 @@ export default function ForecastDock(props: Props) {
     onWantModels,
     starred,
     onToggleStar,
-    tide,
     onClose,
     phone,
     view,
@@ -1086,7 +879,6 @@ export default function ForecastDock(props: Props) {
     () => stripGeometry(columns, cw, phone ? cw - 4 : Math.round(cw * 0.8)),
     [columns, cw, phone],
   );
-  const centre = (i: number) => (g.x[i] ?? 0) + (g.w[i] ?? cw) / 2;
   const wrap = useRef<HTMLDivElement>(null);
   const [wrapWidth, setWrapWidth] = useState(0);
   useEffect(() => {
@@ -1544,9 +1336,6 @@ export default function ForecastDock(props: Props) {
     };
   }, []);
 
-  const tideTop = rows.day + rows.hour;
-  const tideHeight = tideBand(rows, view, isPoint, rated);
-
   return (
     <section
       ref={dockRef}
@@ -1922,20 +1711,6 @@ export default function ForecastDock(props: Props) {
               if (td) onSelect(Number(td.dataset.i), true);
             }}
           >
-            {/* The tide, faint behind the rows of figures and under the
-                line at now, which crosses it. Not behind the blend, where
-                its curve would read as one more model's line. */}
-            {tide && view !== "blend" && (
-              <TideBand
-                tide={tide}
-                columns={columns}
-                days={days}
-                g={g}
-                top={tideTop}
-                height={tideHeight}
-                at={column ? { x: centre(selected), t: column.time } : null}
-              />
-            )}
             <NowMark
               columns={columns}
               g={g}
@@ -1951,7 +1726,7 @@ export default function ForecastDock(props: Props) {
                 handover={handover}
                 top={rows.day}
                 height={
-                  rows.day + rows.hour + tideBand(rows, view, isPoint, rated)
+                  rows.day + rows.hour + figureRows(rows, view, isPoint, rated)
                 }
               />
             ))}
