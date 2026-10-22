@@ -105,7 +105,8 @@ function preloadTheMap(): Plugin {
 /**
  * The chart's static archives, which deployments read from the data host
  * (scripts/foildepth/publish.py: bathy/v…/, foildepth/v…/;
- * scripts/satellite/publish.py: satellite/v…/, intertidal/v…/), served by the
+ * scripts/satellite/publish.py: satellite/v…/, intertidal/v…/; scripts/lidar/publish.py:
+ * lidar/v…/), served by the
  * dev and preview servers at the same paths from `public-data/`, by range, so
  * the map works offline. They are not in `public/`, so no build ships them to
  * Pages. An archive that is not on disk (the national foilable-depth regions,
@@ -122,7 +123,7 @@ function staticData(): Plugin {
     (req, res, next) => {
       const path = decodeURIComponent((req.url ?? "").split("?")[0]);
       const match =
-        /^\/((?:foildepth|bathy|satellite|intertidal)\/v[0-9a-f]+\/[\w.-]+)$/.exec(
+        /^\/((?:foildepth|bathy|satellite|intertidal|lidar)\/v[0-9a-f]+\/[\w.-]+)$/.exec(
           path,
         );
       if (!match || (req.method !== "GET" && req.method !== "HEAD"))

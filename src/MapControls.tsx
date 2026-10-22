@@ -29,6 +29,7 @@ import {
   SatelliteGlyph,
   SoundingsGlyph,
   SpotsGlyph,
+  SurveyGlyph,
   TidalDepthGlyph,
   TintsGlyph,
 } from "./chartGlyphs";
@@ -52,6 +53,12 @@ const CHART_LABEL: Record<keyof ChartLayers, string> = {
   relief: "Land relief",
   names: "Spot names",
   foil: "Tidal depth",
+  lidar: "LiDAR data",
+};
+/** The chart's switches whose key is in the map's information, behind an "i". */
+const CHART_INFO: Partial<Record<keyof ChartLayers, [string, InfoSection]>> = {
+  foil: ["About tidal depth", "foil"],
+  lidar: ["About the LiDAR data", "lidar"],
 };
 /** Each part's glyph, drawn as the chart draws the part; a row without one still reads. */
 const CHART_GLYPH: Partial<Record<keyof ChartLayers, ReactNode>> = {
@@ -60,6 +67,7 @@ const CHART_GLYPH: Partial<Record<keyof ChartLayers, ReactNode>> = {
   relief: <ReliefGlyph />,
   names: <NamesGlyph />,
   foil: <TidalDepthGlyph />,
+  lidar: <SurveyGlyph />,
 };
 const SATELLITE_GLYPH: Partial<Record<SatelliteOption, ReactNode>> = {
   high: <HighTideGlyph size={16} />,
@@ -251,14 +259,16 @@ export default function MapControls({
                       <span>{CHART_LABEL[key]}</span>
                     </label>
                   );
-                  // The tidal depth's key is in the map's information, not on the
-                  // chart: its "i" opens it there, beside the switch.
-                  return key === "foil" ? (
+                  // The tidal depth's key and the LiDAR's are in the map's
+                  // information, not on the chart: each one's "i" opens it
+                  // there, beside the switch.
+                  const info = CHART_INFO[key];
+                  return info ? (
                     <div key={key} className="layer-info">
                       {box}
                       <InfoButton
-                        label="About tidal depth"
-                        onOpen={() => onInfo("foil")}
+                        label={info[0]}
+                        onOpen={() => onInfo(info[1])}
                       />
                     </div>
                   ) : (
