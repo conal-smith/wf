@@ -181,6 +181,11 @@
   position: relative;
   display: grid;
 }
+/* A phone's labels, folded away while the reader slides the hours. */
+.dk-grid.is-folded .dk-labs {
+  overflow: hidden;
+  visibility: hidden;
+}
 .dk-labs div {
   display: flex;
   align-items: center;
@@ -325,7 +330,7 @@ table.tt {
 /* The dark hours, dusk to dawn: hatched as a chart shades what is not there to
    be used (ui/theme.css `hatch`), their hour in a lighter hand. The figures
    under them stay in ink: the wind still blows at night, it is only not
-   rated. The tide row hatches the same columns (.tide-hatch). */
+   rated. */
 .tt tr.tt-hour td.night {
   font-weight: 400;
   color: var(--color-ink-muted);
@@ -367,15 +372,6 @@ table.tt {
   font-weight: 600;
   font-size: 12px;
 }
-.tt tr.tt-tide td {
-  height: 40px;
-  padding: 0;
-  /* Clip and not hidden, as the day's: a scroller here would unstick the
-     reason there is no curve (.tide-none). */
-  overflow: clip;
-  text-align: left;
-  cursor: default;
-}
 .tt tr.tt-blend td {
   height: 100px;
   padding: 0;
@@ -390,65 +386,40 @@ table.tt {
   font: italic 13px var(--font-body);
   color: var(--color-ink-muted);
 }
-.tide-row {
-  display: block;
+/* The tide, faint behind the figures: under the table, as the line at now
+   is, so the figures stay on top of it. */
+.tide-band {
+  position: absolute;
+  left: 0;
+  top: 0;
   overflow: visible;
-}
-/* The night's hatch under the curve, as the cells above have it. */
-.tide-hatch {
-  fill: color-mix(in srgb, var(--color-ink) 9%, transparent);
+  pointer-events: none;
 }
 .tide-fill {
-  fill: color-mix(in srgb, var(--color-depth) 16%, transparent);
+  fill: color-mix(in srgb, var(--color-depth) 11%, transparent);
 }
 .tide-line {
   fill: none;
   stroke: var(--map-tide);
-  stroke-width: 1.4;
+  stroke-width: 1.2;
+  opacity: 0.5;
+}
+.tide-turn {
+  stroke: var(--color-ink-muted);
+  opacity: 0.7;
 }
 .tide-hw {
-  fill: var(--color-ink);
-  stroke: var(--color-ink);
+  fill: var(--color-ink-muted);
 }
 .tide-lw {
   fill: var(--color-ground);
-  stroke: var(--color-ink);
 }
 .tide-label {
-  font: 500 9.5px var(--font-mono);
-  fill: var(--color-ink);
+  font: 500 9px var(--font-mono);
+  fill: var(--color-ink-muted);
   paint-order: stroke;
   stroke: var(--color-ground);
-  stroke-width: 3px;
-}
-/* The turn's height beside its time, in a lighter ink: the time is what a
-   rider plans by. */
-.tide-height {
-  fill: var(--color-ink-muted);
-}
-/* No curve: the reason once, or while the tide is fetched a bar that says
-   nothing yet, held at the left of the hours as they scroll under it. */
-.tide-empty {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.tide-empty svg {
-  position: absolute;
-  inset: 0 auto auto 0;
-}
-.tide-none,
-.tide-wait {
-  position: sticky;
-  left: 8px;
-}
-.tide-none {
-  font: italic 12.5px var(--font-body);
-  white-space: nowrap;
-  color: var(--color-ink-muted);
-}
-.tide-wait {
-  width: 240px;
+  stroke-width: 2.5px;
 }
 .tt-pen {
   position: absolute;
@@ -630,9 +601,6 @@ table.tt {
   .tt tr.tt-stars td,
   .tt tr.tt-from td {
     line-height: 0;
-  }
-  .tt tr.tt-tide td {
-    height: 22px;
   }
   .map-reach {
     bottom: calc(100% + 52px);

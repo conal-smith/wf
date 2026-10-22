@@ -67,9 +67,11 @@ export default function MapHead({
         <Wordmark size="sm" />
       </a>
       <div className="find">
+        {/* No rule under the words: the head's box already holds the field. */}
         <SearchField
           ref={input}
           size="md"
+          className="border-b-0"
           aria-label="Find a spot"
           placeholder="Find a spot…"
           autoComplete="off"

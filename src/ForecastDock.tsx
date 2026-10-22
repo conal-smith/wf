@@ -3,7 +3,6 @@ import {
   memo,
   Suspense,
   useEffect,
-  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -26,7 +25,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "../ui/Button";
-import { Skeleton } from "../ui/Skeleton";
 import { arrowPath, framePath, stemPath, type KeepOut } from "../ui/penPaths";
 import { StarGlyphs } from "../ui/StarGlyphs";
 // Only when asked for: the chart's Blend view.
@@ -123,11 +121,8 @@ interface Props {
   onWantModels?: () => void;
   starred: boolean;
   onToggleStar: () => void;
+  /** The tide, drawn faint behind the hours' figures where there is one. */
   tide: SpotTide | null;
-  /** Why the spot has no tide curve (a lake, no station near), when it has none. */
-  tideNote?: string | null;
-  /** The tide is still being fetched: its row waits, saying nothing yet. */
-  tideLoading?: boolean;
   /** Close the dock: no spot or point chosen, the chart alone. */
   onClose: () => void;
   phone: boolean;
@@ -164,7 +159,6 @@ const ROWS = {
   wind: 20,
   from: 20,
   wing: 20,
-  tide: 40,
   blend: 100,
   waves: 20,
   sky: 20,
@@ -175,7 +169,7 @@ type Rows = typeof ROWS;
 /**
  * A phone's: every row as tight as its figures allow, and tightest the ones
  * that stand blank through the night and on a calm day (the stars and the
- * wing) and the tide's band. The dock is a strip along the foot of the chart,
+ * wing). The dock is a strip along the foot of the chart,
  * and every pixel of it is one the chart does not have. dock.css sets the
  * same heights on the cells.
  */
@@ -187,14 +181,14 @@ const PHONE_ROWS: Rows = {
   wind: 17,
   from: 15,
   wing: 15,
-  tide: 22,
 };
 /**
- * The rows between the hours and the tide. The stars head both views; the
- * blend's chart stands in for the table's figures. A point in open water has
- * no stars or wing, and a week with no hour worth rating has neither row.
+ * The rows the tide is drawn behind, under the hours. The stars head both
+ * views; the blend's chart stands in for the table's figures. A point in open
+ * water has no stars or wing, and a week with no hour worth rating has
+ * neither row.
  */
-const rowsAboveTide = (
+const tideBand = (
   rows: Rows,
   view: DockView,
   isPoint: boolean,
@@ -218,8 +212,7 @@ const rowsUnderHours = (
   rated: boolean,
   more: boolean,
 ) =>
-  rowsAboveTide(rows, view, isPoint, rated) +
-  rows.tide +
+  tideBand(rows, view, isPoint, rated) +
   (more ? MORE_ROWS.reduce((h, k) => h + rows[k], 0) : 0);
 /**
  * Each row's name as a glyph, with the name and unit in its title: the rows
@@ -284,9 +277,6 @@ const StripTable = memo(function StripTable({
   hours,
   daylight,
   units,
-  tide,
-  tideNote,
-  tideLoading,
   g,
   now,
   blend,
@@ -296,7 +286,6 @@ const StripTable = memo(function StripTable({
   isPoint,
   pointNote,
   rated,
-  tideHeight,
 }: {
   spot: Spot;
   columns: readonly StripColumn[];
@@ -305,9 +294,6 @@ const StripTable = memo(function StripTable({
   /** Whether each column is in daylight at the place: its hatching. */
   daylight: readonly boolean[];
   units: Units;
-  tide: SpotTide | null;
-  tideNote: string | null;
-  tideLoading: boolean;
   g: StripGeometry;
   now: number;
   blend: React.ReactNode | null;
@@ -319,7 +305,6 @@ const StripTable = memo(function StripTable({
   pointNote: string | null;
   /** Whether any hour is worth rating: else the stars and wing rows are left out. */
   rated: boolean;
-  tideHeight: number;
 }) {
   const facing = spot.facing ?? null;
   const full = Math.max(...g.w, 0);
@@ -460,20 +445,6 @@ const StripTable = memo(function StripTable({
             )}
           </>
         )}
-        <tr className="tt-tide">
-          <td colSpan={columns.length} className="d0">
-            <TideRow
-              tide={tide}
-              note={tideNote}
-              loading={tideLoading}
-              columns={columns}
-              days={days}
-              g={g}
-              daylight={daylight}
-              height={tideHeight}
-            />
-          </td>
-        </tr>
         {more && (
           <MoreRows
             columns={columns}
@@ -704,7 +675,7 @@ function NowMark({
 
 /**
  * Boxes, in the pen layer's own pixels, of what the frame round the chosen
- * hour must not cross: the tide's times and dots, which are placed freely
+ * hour must not cross: the tide's times and turns, which are placed freely
  * and straddle the hours, and any figure or glyph in the column or its
  * neighbours that reaches into the pen's lane along a border (on a phone,
  * five star places fill a column edge to edge).
@@ -740,7 +711,7 @@ function keepOut(
         if (lanes.some((x) => left < x + 2.5 && right > x - 2.5)) add(el, 1.5);
       });
   wrap
-    .querySelectorAll(".tide-row text, .tide-row circle")
+    .querySelectorAll(".tide-band text, .tide-band .tide-turn")
     .forEach((el) => add(el, el.tagName === "text" ? 2 : 1.6));
   return out;
 }
@@ -910,225 +881,163 @@ function MoreRows({
 }
 
 /**
- * The tide under the hours: a curve per day, its turns named. Each turn gets
- * a dot on the curve and a short label, its time and its height ("17:35
- * 4.1m", the height in a lighter ink), in a band of its own:
- * the highs along the top of the row and the lows along the foot, so the two
- * never meet however close the curve brings them. Where the three- and
- * six-hourly columns narrow, two turns can stand a column apart; a label that
- * would run into the one before it in its band tries the other side of its
- * dot, and failing that is left out. The dot stays, and its title (and the
- * row's) carries the time and the height in full.
+ * The tide, faint behind the rows of figures: a curve per day across the
+ * band from the stars to the wing, high water along its top and low water
+ * along its foot, so it says when the water is up without a row of its own.
+ * Each turn is a dot with its time beside it; the heights are the spot
+ * page's. A time that would run into the one before it, along the top or
+ * the foot, tries the other side of its dot, and failing that is left out.
  *
- * Behind it, the night's columns are hatched as the cells over them are, so
- * the dark hours run down the dock as one band from the hours to the foot.
+ * The chosen hour is a dot on the curve, drawn under the turns so their
+ * times stay readable where it passes them (#98).
  */
-function TideRow({
+function TideBand({
   tide,
-  note,
-  loading,
   columns,
   days,
   g,
-  daylight,
+  top,
   height: H,
+  at,
 }: {
-  tide: SpotTide | null;
-  note: string | null;
-  loading: boolean;
+  tide: SpotTide;
   columns: readonly StripColumn[];
   days: readonly StripDay[];
   g: StripGeometry;
-  daylight: readonly boolean[];
+  /** The band's top, and its height, in the strip's pixels. */
+  top: number;
   height: number;
+  /** The chosen hour: where along the strip, and when. */
+  at: { x: number; t: number } | null;
 }) {
-  const width = g.total;
-  const hatch = `tide-hatch-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
-  // One rect per run of dark columns, edge to edge, as the cells above it.
-  const dark: { x: number; w: number }[] = [];
-  columns.forEach((_, at) => {
-    if (daylight[at]) return;
-    const last = dark[dark.length - 1];
-    if (last && last.x + last.w === g.x[at]) last.w += g.w[at];
-    else dark.push({ x: g.x[at], w: g.w[at] });
-  });
-  const night = dark.length > 0 && (
-    <g className="tide-night" aria-hidden="true">
-      <defs>
-        <pattern
-          id={hatch}
-          width="4"
-          height="4"
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(45)"
-        >
-          <rect className="tide-hatch" width="1" height="4" />
-        </pattern>
-      </defs>
-      {dark.map((run) => (
-        <rect
-          key={run.x}
-          x={run.x}
-          y="0"
-          width={run.w}
-          height={H}
-          fill={`url(#${hatch})`}
-        />
-      ))}
-    </g>
-  );
-  if (!tide) {
-    // Said once, held at the strip's left edge as the week scrolls under it
-    // (dock.css), so it is in sight at any hour: it was written all along the
-    // week, five times over on a wide screen. While the tide is still being
-    // fetched the row says nothing yet, rather than that there is none.
-    return (
-      <div
-        className="tide-row tide-empty"
-        style={{ width, height: H }}
-        aria-busy={loading || undefined}
-      >
-        <svg width={width} height={H} aria-hidden="true">
-          {night}
-        </svg>
-        {loading ? (
-          <Skeleton className="tide-wait" />
-        ) : (
-          <span className="tide-none">{note ?? "No tide station nearby"}</span>
-        )}
-      </div>
-    );
-  }
   const curve = tide.curve;
-  const lo = Math.min(...curve.curve);
-  const hi = Math.max(...curve.curve);
-  const y = (h: number) => H - 6 - ((h - lo) / (hi - lo || 1)) * (H - 14);
-  const paths: React.ReactNode[] = [];
-  const turns: {
-    key: string;
-    X: number;
-    Y: number;
-    high: boolean;
-    time: string;
-    height: string;
-    /** The label as it is laid out: the time, a space and the height. */
-    text: string;
-    full: string;
-  }[] = [];
-  days.forEach((day) => {
-    const first = columns[day.start];
-    const last = columns[day.start + day.count - 1];
-    const half =
-      day.count > 1 ? (columns[day.start + 1].time - first.time) / 2 : 1800000;
-    const halfEnd =
-      day.count > 1
-        ? (last.time - columns[day.start + day.count - 2].time) / 2
-        : 1800000;
-    const a = first.time - half;
-    const b = last.time + halfEnd;
-    let d = "";
-    for (let t = a; t <= b; t += 600000) {
-      const h = tideAt(curve, t);
-      if (h === null) continue;
-      d += `${d ? "L" : "M"}${xOf(columns, day, g, t).toFixed(1)} ${y(h).toFixed(1)}`;
-    }
-    if (!d) return;
-    const x0 = xOf(columns, day, g, a);
-    const x1 = xOf(columns, day, g, b);
-    paths.push(
-      <g key={day.date}>
-        <path
-          className="tide-fill"
-          d={`${d}L${x1.toFixed(1)} ${H}L${x0.toFixed(1)} ${H}Z`}
-        />
-        <path className="tide-line" d={d} />
-      </g>,
-    );
-    for (const event of eventsBetween(curve, a, b)) {
-      // A turn on the stroke of a day's edge falls in both days' spans.
-      if (turns.some((turn) => turn.key === event.time)) continue;
-      const t = Date.parse(event.time);
-      const high = event.kind === "high";
-      const word = high ? "High" : "Low";
-      const height = `${event.height.toFixed(1)}m`;
-      turns.push({
-        key: event.time,
-        X: xOf(columns, day, g, t),
-        Y: y(event.height),
-        high,
-        time: clock(t),
-        height,
-        text: `${clock(t)} ${height}`,
-        full: `${word} tide ${clock(t)} · ${event.height.toFixed(1)} m`,
-      });
-    }
-  });
-  // Lay each band's labels out left to right: beside the dot after it, else
-  // before it, else not at all.
-  const placed = new Map<string, { x: number; anchor: "start" | "end" }>();
-  for (const high of [true, false]) {
-    let edge = -Infinity;
-    for (const turn of turns
-      .filter((t) => t.high === high)
-      .sort((p, q) => p.X - q.X)) {
-      const w = turn.text.length * TIDE_CHAR;
-      const after = turn.X + 5;
-      const before = turn.X - 5 - w;
-      // Nor over another turn's dot where that dot reaches into the band.
-      const clear = (from: number) =>
-        !turns.some(
-          (o) =>
-            o !== turn &&
-            o.X > from - 4 &&
-            o.X < from + w + 4 &&
-            (high ? o.Y < 16 : o.Y > H - 14),
-        );
-      if (after >= edge + 8 && after + w <= width && clear(after)) {
-        placed.set(turn.key, { x: after, anchor: "start" });
-        edge = after + w;
-      } else if (before >= Math.max(0, edge + 8) && clear(before)) {
-        placed.set(turn.key, { x: turn.X - 5, anchor: "end" });
-        edge = turn.X - 5;
+  const y = useMemo(() => {
+    const lo = Math.min(...curve.curve);
+    const hi = Math.max(...curve.curve);
+    return (h: number) => top + H - 4 - ((h - lo) / (hi - lo || 1)) * (H - 8);
+  }, [curve, top, H]);
+  const drawn = useMemo(() => {
+    const paths: React.ReactNode[] = [];
+    const turns: {
+      key: string;
+      X: number;
+      Y: number;
+      high: boolean;
+      time: string;
+    }[] = [];
+    days.forEach((day) => {
+      const first = columns[day.start];
+      const last = columns[day.start + day.count - 1];
+      const half =
+        day.count > 1
+          ? (columns[day.start + 1].time - first.time) / 2
+          : 1800000;
+      const halfEnd =
+        day.count > 1
+          ? (last.time - columns[day.start + day.count - 2].time) / 2
+          : 1800000;
+      const a = first.time - half;
+      const b = last.time + halfEnd;
+      let d = "";
+      for (let t = a; t <= b; t += 600000) {
+        const h = tideAt(curve, t);
+        if (h === null) continue;
+        d += `${d ? "L" : "M"}${xOf(columns, day, g, t).toFixed(1)} ${y(h).toFixed(1)}`;
+      }
+      if (!d) return;
+      const x0 = xOf(columns, day, g, a);
+      const x1 = xOf(columns, day, g, b);
+      paths.push(
+        <g key={day.date}>
+          <path
+            className="tide-fill"
+            d={`${d}L${x1.toFixed(1)} ${top + H}L${x0.toFixed(1)} ${top + H}Z`}
+          />
+          <path className="tide-line" d={d} />
+        </g>,
+      );
+      for (const event of eventsBetween(curve, a, b)) {
+        // A turn on the stroke of a day's edge falls in both days' spans.
+        if (turns.some((turn) => turn.key === event.time)) continue;
+        const t = Date.parse(event.time);
+        turns.push({
+          key: event.time,
+          X: xOf(columns, day, g, t),
+          Y: y(event.height),
+          high: event.kind === "high",
+          time: clock(t),
+        });
+      }
+    });
+    // Lay out the top's times and the foot's left to right: beside the dot
+    // after it, else before it, else not at all.
+    const placed = new Map<string, { x: number; anchor: "start" | "end" }>();
+    for (const high of [true, false]) {
+      let edge = -Infinity;
+      const band = turns
+        .filter((t) => t.high === high)
+        .sort((p, q) => p.X - q.X);
+      for (const turn of band) {
+        const w = turn.time.length * TIDE_CHAR;
+        const after = turn.X + 5;
+        const before = turn.X - 5 - w;
+        // Nor over another turn's dot along the same edge.
+        const clear = (from: number) =>
+          !band.some((o) => o !== turn && o.X > from - 4 && o.X < from + w + 4);
+        if (after >= edge + 8 && after + w <= g.total && clear(after)) {
+          placed.set(turn.key, { x: after, anchor: "start" });
+          edge = after + w;
+        } else if (before >= Math.max(0, edge + 8) && clear(before)) {
+          placed.set(turn.key, { x: turn.X - 5, anchor: "end" });
+          edge = turn.X - 5;
+        }
       }
     }
-  }
-  return (
-    <svg
-      width={width}
-      height={H}
-      className="tide-row"
-      role="img"
-      aria-label={`Tide at ${tideStationLine(tide)}, metres above chart datum`}
-    >
-      {/* The station credited, and how far it is: a tapped point's is
-          whichever is nearest, not one the reader chose. */}
-      <title>{`Tide at ${tideStationLine(tide)}`}</title>
-      {night}
-      {paths}
-      {turns.map((turn) => {
+    return {
+      curves: paths,
+      turns: turns.map((turn) => {
         const label = placed.get(turn.key);
         return (
           <g key={turn.key}>
-            <title>{turn.full}</title>
             <circle
-              className={turn.high ? "tide-hw" : "tide-lw"}
+              className={`tide-turn ${turn.high ? "tide-hw" : "tide-lw"}`}
               cx={turn.X.toFixed(1)}
               cy={turn.Y.toFixed(1)}
-              r="2.6"
+              r="2.2"
             />
             {label && (
               <text
                 className="tide-label"
                 x={label.x.toFixed(1)}
-                y={turn.high ? 10 : H - 2}
+                y={(turn.Y + 3.2).toFixed(1)}
                 textAnchor={label.anchor}
               >
-                {turn.time} <tspan className="tide-height">{turn.height}</tspan>
+                {turn.time}
               </text>
             )}
           </g>
         );
-      })}
+      }),
+    };
+  }, [curve, columns, days, g, y, top, H]);
+  const h = at ? tideAt(curve, at.t) : null;
+  // The station credited, and how far it is: a tapped point's is whichever
+  // is nearest, not one the reader chose.
+  const station = `Tide at ${tideStationLine(tide)}`;
+  return (
+    <svg
+      className="tide-band"
+      width={g.total}
+      height={top + H}
+      role="img"
+      aria-label={station}
+    >
+      <title>{station}</title>
+      {drawn.curves}
+      {at && h !== null && (
+        <circle className="tide-dot" cx={at.x} cy={y(h)} r="3.4" />
+      )}
+      {drawn.turns}
     </svg>
   );
 }
@@ -1150,8 +1059,6 @@ export default function ForecastDock(props: Props) {
     starred,
     onToggleStar,
     tide,
-    tideNote = null,
-    tideLoading = false,
     onClose,
     phone,
     view,
@@ -1168,7 +1075,11 @@ export default function ForecastDock(props: Props) {
     onStarsFrom,
   } = props;
   const cw = phone ? 52 : 62;
-  const label = phone ? 28 : 32;
+  // A phone folds the label column away once the reader slides the hours,
+  // for the room, and opens it again at the start of the week.
+  const [labelsFolded, setLabelsFolded] = useState(false);
+  const labels = phone ? 28 : 32;
+  const label = phone && labelsFolded ? 0 : labels;
   const rows = phone ? PHONE_ROWS : ROWS;
   // A phone keeps its coarse columns nearly whole: "15 g17" has to fit.
   const g = useMemo(
@@ -1340,6 +1251,14 @@ export default function ForecastDock(props: Props) {
   const wheeling = useRef<WheelHours | null>(null);
   const scrollFrame = useRef(0);
   const scrollEnd = useRef(0);
+  /** Whether the reader's own scroll is moving the strip, until it settles. */
+  const sliding = useRef(false);
+  /**
+   * Whether a finger has been on the strip since the time last moved it: only
+   * a slide folds the labels, never the browser settling the time's scroll
+   * on an hour as the strip fills out.
+   */
+  const touched = useRef(false);
   const scrollTo = (index: number, smooth: boolean) => {
     const el = wrap.current;
     if (!el) return;
@@ -1357,6 +1276,8 @@ export default function ForecastDock(props: Props) {
     const animate = smooth && !reducedMotion && !here;
     wheeling.current?.letGo();
     clearTimeout(scrollEnd.current);
+    sliding.current = false;
+    touched.current = false;
     programmatic.current = { left: reach, until: performance.now() + 1500 };
     el.scrollTo({ left, behavior: animate ? "smooth" : "auto" });
   };
@@ -1366,10 +1287,15 @@ export default function ForecastDock(props: Props) {
   // to it.
   const selectedNow = useRef(selected);
   selectedNow.current = selected;
+  // A strip that changes shape under the reader's own slide (the phone's
+  // labels folding away) is left where their finger has it.
+  const scrolledOn = useRef(track);
   useLayoutEffect(() => {
     const fromStrip = fromScroll.current === selected;
     fromScroll.current = -1;
-    if (fromStrip) return;
+    const reshaped = scrolledOn.current !== track;
+    scrolledOn.current = track;
+    if (fromStrip || (reshaped && sliding.current)) return;
     scrollTo(selected, true);
   }, [selected, track, view, more]);
   // A fresh place opens on the same hour, not wherever the last one was left.
@@ -1380,6 +1306,8 @@ export default function ForecastDock(props: Props) {
   }, [placeKey]);
 
   const onScroll = () => {
+    if (labelsFolded && wrap.current && wrap.current.scrollLeft < 1)
+      setLabelsFolded(false);
     const going = programmatic.current;
     if (going) {
       const el = wrap.current;
@@ -1397,12 +1325,18 @@ export default function ForecastDock(props: Props) {
       // re-snapping as the columns arrive does that on load): read nothing
       // from it then, and read the strip as it is now, not as it was.
       if (!el || programmatic.current) return;
+      sliding.current = true;
+      // Far enough from the start that the hours given back to the strip
+      // still leave it short of the start, which would open the labels again.
+      if (phone && touched.current && el.scrollLeft > labels)
+        setLabelsFolded(true);
       const { g, track } = shape.current;
       const i = columnAtX(g, track.timeAt(el.scrollLeft));
       if (i !== selectedNow.current) fromScroll.current = i;
       onSelect(i, false);
       clearTimeout(scrollEnd.current);
       scrollEnd.current = window.setTimeout(() => {
+        sliding.current = false;
         onSelect(i, true);
       }, 180);
     });
@@ -1414,6 +1348,16 @@ export default function ForecastDock(props: Props) {
     },
     [],
   );
+  // The labels folded away, the strip widens to the left over their column:
+  // scrolled back by as much, the hours stay under the reader's finger, the
+  // hours behind the labels come into view, and the strip's new shape is
+  // read before the scroll this sends.
+  useLayoutEffect(() => {
+    const el = wrap.current;
+    if (!el || !labelsFolded) return;
+    el.scrollLeft -= labels;
+    setWrapWidth(el.clientWidth);
+  }, [labelsFolded]);
 
   // The wheel moves the hours: the dock scrolls one way only, so an up or
   // down turn of a mouse wheel or a trackpad goes through time without Shift
@@ -1600,19 +1544,8 @@ export default function ForecastDock(props: Props) {
     };
   }, []);
 
-  const tideDot = useMemo(() => {
-    if (!tide || !column) return null;
-    const h = tideAt(tide.curve, column.time);
-    if (h === null) return null;
-    const lo = Math.min(...tide.curve.curve);
-    const hi = Math.max(...tide.curve.curve);
-    const top =
-      rows.day + rows.hour + rowsAboveTide(rows, view, isPoint, rated);
-    return {
-      x: centre(selected),
-      y: top + rows.tide - 6 - ((h - lo) / (hi - lo || 1)) * (rows.tide - 14),
-    };
-  }, [tide, column, selected, g, view, isPoint, rated, rows]);
+  const tideTop = rows.day + rows.hour;
+  const tideHeight = tideBand(rows, view, isPoint, rated);
 
   return (
     <section
@@ -1898,7 +1831,7 @@ export default function ForecastDock(props: Props) {
 
       <div className="dk-body">
         <div
-          className="dk-grid"
+          className={`dk-grid${label ? "" : " is-folded"}`}
           style={{ gridTemplateColumns: `${label}px minmax(0, 1fr)` }}
         >
           <div className="dk-labs">
@@ -1955,8 +1888,6 @@ export default function ForecastDock(props: Props) {
                 )}
               </>
             )}
-            {/* The tide's curve needs no name, nor its times a unit. */}
-            <div aria-hidden="true" style={{ height: rows.tide }} />
             {more &&
               MORE_ROWS.map((key) => (
                 <div key={key} aria-hidden="true" style={{ height: ROWS[key] }}>
@@ -1977,7 +1908,10 @@ export default function ForecastDock(props: Props) {
             tabIndex={0}
             onWheel={() => (programmatic.current = null)}
             onPointerDown={() => (programmatic.current = null)}
-            onTouchStart={() => (programmatic.current = null)}
+            onTouchStart={() => {
+              programmatic.current = null;
+              touched.current = true;
+            }}
             onKeyDown={() => (programmatic.current = null)}
             aria-label="The week hour by hour: scroll sideways to move through time"
             onScroll={onScroll}
@@ -1988,6 +1922,20 @@ export default function ForecastDock(props: Props) {
               if (td) onSelect(Number(td.dataset.i), true);
             }}
           >
+            {/* The tide, faint behind the rows of figures and under the
+                line at now, which crosses it. Not behind the blend, where
+                its curve would read as one more model's line. */}
+            {tide && view !== "blend" && (
+              <TideBand
+                tide={tide}
+                columns={columns}
+                days={days}
+                g={g}
+                top={tideTop}
+                height={tideHeight}
+                at={column ? { x: centre(selected), t: column.time } : null}
+              />
+            )}
             <NowMark
               columns={columns}
               g={g}
@@ -2003,31 +1951,10 @@ export default function ForecastDock(props: Props) {
                 handover={handover}
                 top={rows.day}
                 height={
-                  rows.day +
-                  rows.hour +
-                  rowsAboveTide(rows, view, isPoint, rated)
+                  rows.day + rows.hour + tideBand(rows, view, isPoint, rated)
                 }
               />
             ))}
-            {/* The tide at the chosen hour, on its curve: under the table,
-                as the line at now is, so a turn's time and height written
-                beside the curve stay on top of it, their halo round them,
-                where the dot passes (#98). */}
-            {tideDot && (
-              <svg
-                className="tt-under"
-                width={g.total}
-                height={tableHeight}
-                aria-hidden="true"
-              >
-                <circle
-                  className="tide-dot"
-                  cx={tideDot.x}
-                  cy={tideDot.y}
-                  r="3.4"
-                />
-              </svg>
-            )}
             <StripTable
               spot={spot}
               columns={columns}
@@ -2035,9 +1962,6 @@ export default function ForecastDock(props: Props) {
               hours={hours}
               daylight={daylight}
               units={prefs.units}
-              tide={tide}
-              tideNote={tideNote}
-              tideLoading={tideLoading}
               g={g}
               now={now}
               blend={blendNode}
@@ -2047,7 +1971,6 @@ export default function ForecastDock(props: Props) {
               isPoint={isPoint}
               pointNote={pointNote}
               rated={rated}
-              tideHeight={rows.tide}
             />
             {/* Where the scroll comes to rest: one mark per hour, at the
                   scroll that puts it under the cursor. The hours' own cells
