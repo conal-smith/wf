@@ -17,11 +17,11 @@ const SECTION_ID: Record<InfoSection, string> = {
 };
 
 /**
- * Everything the map explains, behind the "i" under Layers: what its marks
- * mean, how the stars are given, the foilable-depth layer's colours and
- * tide, and where it all comes from. One dialog over the dimmed chart, so
+ * Everything the map explains, behind "About the map" in the site menu: what
+ * its marks mean, how the stars are given, the tidal-depth layer's colours
+ * and tide, and where it all comes from. One dialog over the dimmed chart, so
  * none of it sits on the map; mounted only while open. A "?" by the stars, or
- * the "i" by the foil layer, opens it at its own part.
+ * the "i" by the tidal depth's switch, opens it at its own part.
  */
 export default function MapInfo({
   at,
@@ -40,7 +40,7 @@ export default function MapInfo({
   rider: Rider;
   /** The open spot, for the stars page's worked example. */
   spotId: string | null;
-  /** The foilable-depth key (src/FoilLegend.tsx). */
+  /** The tidal-depth key (src/FoilLegend.tsx). */
   foil: ReactNode;
   sources: ReactNode;
   /** "Satellite: high tide (≈4.6 m)" while the image is on, else null. */
@@ -105,7 +105,7 @@ export default function MapInfo({
           </ul>
           <p>
             Dark hours aren&rsquo;t rated. Your weight and level are in the
-            display options, under your spots at the top right.
+            display options, in the menu at the top left.
           </p>
           <p className="ip-fig">Rated for {riderLine(rider)}</p>
           <p>
@@ -121,7 +121,7 @@ export default function MapInfo({
           </p>
         </>,
       )}
-      {section("foil", "Foilable depth", foil)}
+      {section("foil", "Tidal depth", foil)}
       {section("sources", "Sources", sources)}
     </Dialog>
   );
@@ -203,7 +203,7 @@ function MapKey({
         </dt>
         <dd>Wind, at the hour shown</dd>
       </dl>
-      <h4>Wash and coloured arrows</h4>
+      <h4>Coloured wind and coloured arrows</h4>
       <KnotScale />
       <div className="tints" aria-label="Depth tints">
         {[0, 1, 2, 5, 10, 20, 50].map((d) => (

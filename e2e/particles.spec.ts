@@ -1,4 +1,11 @@
-import { chooseSpot, closePanel, expect, test, type Page } from "./fixtures";
+import {
+  chooseSpot,
+  closePanel,
+  expect,
+  openFromMenu,
+  test,
+  type Page,
+} from "./fixtures";
 
 declare global {
   interface Window {
@@ -167,15 +174,14 @@ test("every wind style keeps the arrows drawing, in any order, and is remembered
   const canvas = page.locator(".particle-canvas");
   await expect(canvas).toHaveAttribute("data-wind-style", "ink");
   await expect.poll(() => inked(page)).toBeGreaterThan(100);
-  const layers = page.getByRole("button", { name: "Layers", exact: true });
-  await layers.click();
+  await openFromMenu(page, "Layers");
   const panel = page.getByRole("group", { name: "Layers" });
   for (const [name, style] of [
-    ["Wash", "wash"],
+    ["Coloured wind", "wash"],
     ["Coloured arrows", "arrows"],
     ["Ink", "ink"],
     ["Coloured arrows", "arrows"],
-    ["Wash", "wash"],
+    ["Coloured wind", "wash"],
     ["Ink", "ink"],
   ]) {
     await panel.getByRole("radio", { name }).check();
@@ -188,7 +194,7 @@ test("every wind style keeps the arrows drawing, in any order, and is remembered
       .poll(() => inked(page), { message: name })
       .toBeGreaterThan(100);
   }
-  await panel.getByRole("radio", { name: "Wash" }).check();
+  await panel.getByRole("radio", { name: "Coloured wind" }).check();
   await page.reload();
   // The style is read back as the page mounts, before the chart is up; the
   // arrows then wait for the whole chart to load again, as they did the first
@@ -222,8 +228,7 @@ test("zoomed right in, the coloured arrows go to ink and keep moving", async ({
   // Seven zooms, each waited out: more than the default test time on CI.
   test.slow();
   await instrument(page);
-  const layers = page.getByRole("button", { name: "Layers", exact: true });
-  await layers.click();
+  await openFromMenu(page, "Layers");
   await page
     .getByRole("group", { name: "Layers" })
     .getByRole("radio", { name: "Coloured arrows" })

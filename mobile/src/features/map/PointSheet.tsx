@@ -195,7 +195,7 @@ export const PointSheet = memo(function PointSheet(props: Props) {
       </SheetSection>
 
       {props.foilOn ? (
-        <SheetSection title="Foilable depth">
+        <SheetSection title="Tidal depth">
           <T variant="pen" color="penInk">
             {props.foil ?? "Reading the seabed here…"}
           </T>

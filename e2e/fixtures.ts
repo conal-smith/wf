@@ -149,6 +149,28 @@ export async function closePanel(page: Page) {
   await expect(page.locator("dialog.map-panel-dialog")).toHaveCount(0);
 }
 
+/** The chart's own tools, each a row of the site menu's (src/MapControls.tsx `chartTools`). */
+export type ChartTool =
+  "Layers" | "Your spots" | "Display options" | "About the map";
+
+/** A chart tool's row in the site menu, while the menu is open. */
+export const menuRow = (page: Page, name: ChartTool) =>
+  page
+    .getByRole("group", { name: "The chart" })
+    .getByRole("button", { name, exact: true });
+
+/**
+ * Open the layers, your spots, the display options or the map's information
+ * as a rider does: from the site menu, the one way in to them.
+ */
+export async function openFromMenu(page: Page, name: ChartTool) {
+  const menu = page.getByRole("button", { name: "Site menu" });
+  if ((await menu.getAttribute("aria-expanded")) !== "true") await menu.click();
+  await menuRow(page, name).click();
+  // Each dialog is titled as its row is named.
+  await expect(page.getByRole("dialog", { name })).toBeVisible();
+}
+
 /**
  * On a phone the dock's tools are folded into one glyph (src/ForecastDock.tsx
  * `dk-fold`): open them, where they are folded, before a press on one.

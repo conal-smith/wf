@@ -2,7 +2,7 @@ import { useId, useMemo, useRef, useState } from "react";
 import { SearchField } from "../ui/SearchField";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { Wordmark } from "../ui/Wordmark";
-import { SiteMenu } from "../force5/src/SiteMenu";
+import { SiteMenu, type SiteMenuTool } from "../force5/src/SiteMenu";
 import type { Spot } from "../force5/src/weather";
 import { hourWind, type PlaceHour } from "./ratings";
 
@@ -14,19 +14,23 @@ const fold = (s: string) =>
 
 /**
  * The chart's head, top left: the site menu, the name, and "Find a spot…",
- * whose list opens under the box as the reader types.
+ * whose list opens under the box as the reader types. The menu is the one way
+ * in to the chart's own tools (the layers, your spots, the display options and
+ * what the map means), over the site's sections.
  */
 export default function MapHead({
   spots,
   starred,
   hourAt,
   onPick,
+  tools,
 }: {
   spots: readonly Spot[];
   starred: readonly string[];
   /** A place's rated hour at the time the map shows, where there is one. */
   hourAt: (id: string) => PlaceHour | null;
   onPick: (spot: Spot) => void;
+  tools: readonly SiteMenuTool[];
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -62,7 +66,11 @@ export default function MapHead({
   const showing = open && query.trim().length > 0;
   return (
     <header className="map-head chart-box">
-      <SiteMenu current="map" size="sm" />
+      <SiteMenu
+        current="map"
+        size="sm"
+        tools={{ title: "The chart", items: tools }}
+      />
       <a className="map-brand" href="/" aria-label="wingfoil.ie, the chart">
         <Wordmark size="sm" />
       </a>
@@ -119,7 +127,12 @@ export default function MapHead({
           }}
         />
         {showing && (
-          <ul id={list} className="results chart-box" role="listbox" aria-label="Spots">
+          <ul
+            id={list}
+            className="results chart-box"
+            role="listbox"
+            aria-label="Spots"
+          >
             {hits.length ? (
               hits.map((spot, i) => {
                 const hour = hourAt(spot.id);

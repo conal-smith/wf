@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { expect, test, type Page } from "./fixtures";
+import { expect, openFromMenu, test, type Page } from "./fixtures";
 import { SAMPLE_CLOCK, sampleStrip } from "./columns";
 
 /**
@@ -95,7 +95,12 @@ const index = {
   estimateBlue: 4,
   padMetres: 10,
   areas: [
-    region("tide-galway", "Galway", [-9.25, 53.2, -9.0, 53.3], [-9.048, 53.269]),
+    region(
+      "tide-galway",
+      "Galway",
+      [-9.25, 53.2, -9.0, 53.3],
+      [-9.048, 53.269],
+    ),
     region("tide-howth", "Howth", [-6.3, 53.3, -6.0, 53.5], [-6.068, 53.391]),
   ],
   attribution: "Synthetic.",
@@ -150,10 +155,9 @@ async function open(page: Page, asked: string[]) {
   // The layer is on by default: nothing stored.
   await page.goto("/?spot=rusheen");
   await expect(page.locator(".map-loading")).toHaveCount(0, { timeout: 30000 });
-  await expect(page.locator('.spot-marker[data-spot-id="rusheen"]')).toHaveCount(
-    1,
-    { timeout: 30000 },
-  );
+  await expect(
+    page.locator('.spot-marker[data-spot-id="rusheen"]'),
+  ).toHaveCount(1, { timeout: 30000 });
   // The same chart, photographed twice, is the same picture: nothing that
   // moves or marks over it (a marker hidden still has its box, for the tap).
   await page.addStyleTag({
@@ -231,10 +235,10 @@ test("a national region draws on its own station's tide, answers a tap, and only
   await slider.fill(String(low.i));
   await expect(slider).toHaveValue(String(low.i));
   const atLow = await photograph(page);
-  await page.getByRole("button", { name: "Layers", exact: true }).click();
+  await openFromMenu(page, "Layers");
   await page
     .getByRole("group", { name: "Layers" })
-    .getByRole("checkbox", { name: "Foilable depth at the tide" })
+    .getByRole("checkbox", { name: "Tidal depth" })
     .uncheck();
   await page.keyboard.press("Escape");
   const off = await photograph(page);
@@ -244,23 +248,27 @@ test("a national region draws on its own station's tide, answers a tap, and only
 
   // Back on, at high water: a tap beside the spot, on the flat, is read out
   // as (tide − 1) m of water at Galway's tide.
-  await page.getByRole("button", { name: "Layers", exact: true }).click();
+  await openFromMenu(page, "Layers");
   await page
     .getByRole("group", { name: "Layers" })
-    .getByRole("checkbox", { name: "Foilable depth at the tide" })
+    .getByRole("checkbox", { name: "Tidal depth" })
     .check();
   await page.keyboard.press("Escape");
   await slider.fill(String(high.i));
   const spot = (await page
     .locator('.spot-marker[data-spot-id="rusheen"]')
     .boundingBox())!;
-  await page.mouse.click(spot.x + spot.width / 2 + 40, spot.y + spot.height / 2);
-  await page.getByRole("button", { name: "Map information" }).click();
+  await page.mouse.click(
+    spot.x + spot.width / 2 + 40,
+    spot.y + spot.height / 2,
+  );
+  await openFromMenu(page, "About the map");
   const probe = page.locator(".foil-probe");
   await expect(probe).toBeVisible({ timeout: 10000 });
-  const water = /^~(\d+\.\d) m of water at .* \(tide (\d+\.\d) m at Galway\)\.$/.exec(
-    (await probe.innerText()).trim(),
-  );
+  const water =
+    /^~(\d+\.\d) m of water at .* \(tide (\d+\.\d) m at Galway\)\.$/.exec(
+      (await probe.innerText()).trim(),
+    );
   expect(water, await probe.innerText()).not.toBeNull();
   expect(Number(water![1])).toBeCloseTo(Number(water![2]) - 1, 1);
 

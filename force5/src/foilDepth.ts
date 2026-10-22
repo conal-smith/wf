@@ -220,7 +220,7 @@ export function validateFoilManifest(m: FoilManifest): FoilManifest {
             a.level.lagHours >= 0)) &&
         Array.isArray(a.sources),
     );
-  if (!ok) throw new Error("Invalid foilable-depth index.");
+  if (!ok) throw new Error("Invalid tidal-depth index.");
   return m;
 }
 

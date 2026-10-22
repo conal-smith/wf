@@ -57,7 +57,7 @@ export function useFoilDepth(
         { signal: controller.signal },
       );
       if (!response.ok)
-        throw new Error("The foilable-depth survey is missing.");
+        throw new Error("The tidal-depth survey is missing.");
       return validateFoilManifest(await response.json());
     })()
       .then((manifest) => {
@@ -69,7 +69,7 @@ export function useFoilDepth(
         setState({
           ...EMPTY,
           error:
-            e instanceof Error ? e.message : "Foilable depth is unavailable.",
+            e instanceof Error ? e.message : "Tidal depth is unavailable.",
         });
       });
     return () => controller.abort();

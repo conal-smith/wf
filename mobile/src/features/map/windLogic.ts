@@ -23,7 +23,7 @@ export const WIND_STYLES: readonly WindStyle[] = ["ink", "arrows", "wash"];
 export const WIND_LABEL: Record<WindStyle, string> = {
   ink: "Ink",
   arrows: "Arrows",
-  wash: "Wash",
+  wash: "Coloured wind",
 };
 
 /** The stored style, or ink for anything else (src/App.tsx). */

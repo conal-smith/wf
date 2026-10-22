@@ -1,8 +1,9 @@
 import {
-  expect,
   backToIreland,
   chooseSpot,
   closePanel,
+  expect,
+  openFromMenu,
   steadyFrames,
   test,
   type Page,
@@ -71,9 +72,8 @@ async function openWater(page: Page) {
 }
 
 async function openLayers(page: Page) {
-  const layers = page.getByRole("button", { name: "Layers", exact: true });
-  if ((await layers.getAttribute("aria-expanded")) !== "true")
-    await layers.click();
+  if (!(await page.getByRole("dialog", { name: "Layers" }).isVisible()))
+    await openFromMenu(page, "Layers");
 }
 
 /** The model the map is drawing, from the layers panel, shut after. */
@@ -102,11 +102,12 @@ test("the chart opens on paper: the head, the controls, the lights and a flush d
   await expect(page.locator(".map-loading")).toHaveCount(0);
   // The brand, not the old one: the wordmark, and no Force5 logo or glass.
   await expect(page.locator(".map-head")).toContainText("wingfoil.ie");
-  await expect(page.locator(".force5-logo, .platform-brand, .glass")).toHaveCount(0);
-  await expect(page.getByRole("combobox", { name: "Find a spot" })).toHaveAttribute(
-    "placeholder",
-    "Find a spot…",
-  );
+  await expect(
+    page.locator(".force5-logo, .platform-brand, .glass"),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("combobox", { name: "Find a spot" }),
+  ).toHaveAttribute("placeholder", "Find a spot…");
   for (const box of [".map-head", ".zbox", ".dock"]) {
     const filter = await page
       .locator(box)
@@ -123,11 +124,9 @@ test("the chart opens on paper: the head, the controls, the lights and a flush d
   await expect(page.locator(".dock tr.tt-day td")).toHaveCount(
     new Set(sampleStrip.map((c) => c.date)).size,
   );
-  // Nothing else is on the chart: the rider's spots are behind the star.
+  // Nothing else is on the chart: the rider's spots are in the menu.
   await expect(page.locator(".side")).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Your spots", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Site menu" })).toBeVisible();
   const slider = page.getByRole("slider", { name: "Forecast time" });
   await slider.focus();
   await slider.press("Home");
@@ -136,7 +135,9 @@ test("the chart opens on paper: the head, the controls, the lights and a flush d
   await expect(slider).toHaveValue("1");
   await expect(slider).toHaveAttribute("max", String(sampleStrip.length - 1));
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
   ).toBe(true);
   await expect(page.locator(".map-error")).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -243,7 +244,9 @@ test("a tap on the open map reads that point's forecast into the dock, focused o
   await expect(page.locator(".dk-labs")).not.toContainText("Stars");
   // A double tap zooms and picks nothing.
   const before = await name.textContent();
-  await page.locator(".maplibregl-canvas").dblclick({ position: { x: at.x + 40, y: at.y } });
+  await page
+    .locator(".maplibregl-canvas")
+    .dblclick({ position: { x: at.x + 40, y: at.y } });
   await page.waitForTimeout(500);
   await expect(name).toHaveText(before!);
   // Escape clears the focus, and a light chooses a riding place again.
@@ -370,9 +373,7 @@ test("only offshore is struck through; a learner's cross-offshore is too", async
     .locator(".spot-marker.xoff")
     .evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.spotId));
   // The rider is learning: every cross-offshore hour is struck as well.
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openFromMenu(page, "Display options");
   await page.locator('[data-skill="beginner"]').click();
   await closePanel(page);
   await expect(page.locator(".spot-marker.xoff")).toHaveCount(0);
@@ -431,9 +432,7 @@ test("a model switch that fails or is cancelled cannot relabel what is drawn", a
   const noon = stripAt(clock).findIndex(
     (c) => c.validTime === "2026-09-14T12:00:00Z",
   );
-  await page
-    .getByRole("slider", { name: "Forecast time" })
-    .fill(String(noon));
+  await page.getByRole("slider", { name: "Forecast time" }).fill(String(noon));
   await expect(page.locator(".frame-status")).toHaveCount(0);
   // HARMONIE's tiles for that hour fail, so the switch cannot complete.
   const noonTiles = `**/weather/harmonie-*/t/*/*/*/${String(
@@ -505,7 +504,9 @@ test("a missing snapshot is actionable, and an expired one is labelled", async (
     route.fulfill({ status: 404, body: "Missing" }),
   );
   await page.goto("/");
-  await expect(page.getByRole("alert")).toContainText("npm run weather:refresh");
+  await expect(page.getByRole("alert")).toContainText(
+    "npm run weather:refresh",
+  );
   await page.unroute("**/weather/harmonie.json");
   await page.goto("/");
   await expect(page.locator(".map-model")).toHaveText(harmonie.modelName);
@@ -551,9 +552,7 @@ test("an unavailable basemap says so, and the dock still reads the forecast", as
   await expect(page.getByRole("button", { name: "Reload map" })).toBeVisible();
   await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
   await expect
-    .poll(() =>
-      page.locator(".dock tr.tt-wind td .kn").count(),
-    )
+    .poll(() => page.locator(".dock tr.tt-wind td .kn").count())
     .toBeGreaterThan(10);
 });
 
@@ -562,8 +561,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
 }) => {
   await openChart(page, 1440, 900, null);
   // The range ring by default; the loupe, from the layers.
-  const layers = page.getByRole("button", { name: "Layers", exact: true });
-  await layers.click();
+  await openFromMenu(page, "Layers");
   const panel = page.getByRole("group", { name: "Layers" });
   const choice = panel.getByRole("group", { name: "Round the chosen spot" });
   await expect(
@@ -609,7 +607,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   expect(further / wide).toBeLessThan(0.55);
 
   // Back to the range ring.
-  await layers.click();
+  await openFromMenu(page, "Layers");
   await expect(choice.getByRole("button", { name: "Loupe" })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -622,9 +620,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   // Its distance follows the speed units: miles with miles an hour, metres
   // (or kilometres) with metres a second.
   const units = async (id: string) => {
-    await page
-      .getByRole("button", { name: "Display options", exact: true })
-      .click();
+    await openFromMenu(page, "Display options");
     await page.locator(`[data-units="${id}"]`).click();
     await closePanel(page);
   };
@@ -635,7 +631,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
     /^(\d+ m|[\d.]+ km)$/,
   );
   await units("kn");
-  await layers.click();
+  await openFromMenu(page, "Layers");
   // Nothing at all: the pen's ring alone marks the spot.
   await choice.getByRole("button", { name: "Off" }).click();
   await expect(focus).toHaveAttribute("data-focus", "off");
@@ -651,7 +647,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
     timeout: 30000,
   });
   await expect(page.locator(".dock")).toHaveCount(0);
-  await layers.click();
+  await openFromMenu(page, "Layers");
   await expect(choice.getByRole("button", { name: "Off" })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -870,23 +866,19 @@ for (const device of [
         await expect(map).toHaveClass(/is-focus/);
         await expect(page.locator(".pick-mark")).toHaveCount(0);
       };
-      for (const name of [
-        "Layers",
-        "Your spots",
-        "Display options",
-        "Site menu",
-      ]) {
-        const button = page.getByRole("button", { name, exact: true });
-        await button.click();
-        await expect(button).toHaveAttribute("aria-expanded", "true");
+      for (const name of ["Layers", "Your spots", "Display options"] as const) {
+        await openFromMenu(page, name);
         // The panels are modal: the press lands on the dimmed map round them.
-        await press(
-          page,
-          name === "Site menu" ? await clear(page) : await backdrop(page),
-        );
-        await expect(button).toHaveAttribute("aria-expanded", "false");
+        await press(page, await backdrop(page));
+        await expect(page.getByRole("dialog", { name })).toHaveCount(0);
         await unmoved();
       }
+      const menu = page.getByRole("button", { name: "Site menu" });
+      await menu.click();
+      await expect(menu).toHaveAttribute("aria-expanded", "true");
+      await press(page, await clear(page));
+      await expect(menu).toHaveAttribute("aria-expanded", "false");
+      await unmoved();
       // The search's list of spots, as the reader types.
       await page.getByRole("combobox", { name: "Find a spot" }).fill("Bran");
       await expect(page.locator(".find .results")).toBeVisible();
@@ -901,7 +893,6 @@ for (const device of [
         timeout: 30000,
       });
       await steadyFrames(page);
-      const layers = page.getByRole("button", { name: "Layers", exact: true });
       const none = async () => {
         await page.waitForTimeout(800);
         await expect(page.locator(".dock")).toHaveCount(0);
@@ -909,9 +900,9 @@ for (const device of [
         await expect(page.locator(".spot-marker.sel")).toHaveCount(0);
         await expect(page).toHaveURL(/\/$/);
       };
-      await layers.click();
+      await openFromMenu(page, "Layers");
       await press(page, await backdrop(page));
-      await expect(layers).toHaveAttribute("aria-expanded", "false");
+      await expect(page.getByRole("dialog", { name: "Layers" })).toHaveCount(0);
       await none();
       // Shut, the chart is the reader's again: a press picks its point.
       await press(page, await clear(page));
@@ -1003,15 +994,19 @@ test("Escape shuts what is open over the chart first, then lets go of the chosen
   await expect(dockName).toHaveText("Keel Beach", { timeout: 30000 });
   const map = page.locator(".map-canvas");
   await expect(map).toHaveClass(/is-focus/, { timeout: 30000 });
-  for (const name of ["Layers", "Your spots", "Display options", "Site menu"]) {
-    const button = page.getByRole("button", { name, exact: true });
-    await button.click();
-    await expect(button).toHaveAttribute("aria-expanded", "true");
+  for (const name of ["Layers", "Your spots", "Display options"] as const) {
+    await openFromMenu(page, name);
     await page.keyboard.press("Escape");
-    await expect(button).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByRole("dialog", { name })).toHaveCount(0);
     await expect(map).toHaveClass(/is-focus/);
     await expect(dockName).toHaveText("Keel Beach");
   }
+  const menu = page.getByRole("button", { name: "Site menu" });
+  await menu.click();
+  await expect(menu).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveAttribute("aria-expanded", "false");
+  await expect(map).toHaveClass(/is-focus/);
   // The search's list goes with the words in it, and the field with the next.
   const find = page.getByRole("combobox", { name: "Find a spot" });
   await find.fill("Bran");

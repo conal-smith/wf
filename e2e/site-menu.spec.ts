@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./fixtures";
+import { expect, menuRow, test, type Page } from "./fixtures";
 
 /**
  * The one menu that crosses between the three apps on this origin.
@@ -42,7 +42,9 @@ test("on the map the menu opens by keyboard and Escape closes only the menu", as
   await expect(trigger(page)).toHaveAttribute("aria-controls", /.+/);
   await expect(panel(page)).toBeVisible();
   await expect(panel(page).getByRole("link")).toHaveText(SECTIONS);
-  await expect(row(page, "Wind map")).toBeFocused();
+  // On the map the chart's own tools come first, over the sections, and the
+  // first of them takes the focus.
+  await expect(menuRow(page, "Layers")).toBeFocused();
   await expect(row(page, "Wind map")).toHaveAttribute("aria-current", "page");
   await expect(row(page, "Marketplace")).toHaveAttribute("href", "/market");
   await expect(row(page, "Marketplace")).not.toHaveAttribute(
@@ -72,9 +74,9 @@ test("on the map the menu opens by click and closes on a click outside", async (
   await trigger(page).click();
   await expect(panel(page)).toBeVisible();
 
-  // Anything outside the menu closes it; the Layers button is a real control
-  // rather than a spot on the map, so the click cannot move the camera.
-  await page.getByRole("button", { name: "Layers", exact: true }).click();
+  // Anything outside the menu closes it; the zoom is a real control rather
+  // than a spot on the map, so the click cannot move the camera far.
+  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
   await expect(panel(page)).toHaveCount(0);
   await expect(trigger(page)).toHaveAttribute("aria-expanded", "false");
 });
@@ -103,7 +105,7 @@ test("one press on the trigger closes the menu, even one that drops focus first"
 }) => {
   await page.goto("/");
   await trigger(page).click();
-  await expect(row(page, "Wind map")).toBeFocused();
+  await expect(menuRow(page, "Layers")).toBeFocused();
 
   // Safari does not focus a button it is pressed on: the press takes focus
   // off the row to the body, the menu hears focus leave and closes, and the
@@ -245,7 +247,9 @@ test("at 390px the menu shares the header row without wrapping or scrolling", as
     .getByRole("combobox", { name: "Find a spot" })
     .boundingBox())!;
   const controls = (await page.locator(".map-ctrl").boundingBox())!;
-  expect(Math.abs(menu.y + menu.height / 2 - (brand.y + brand.height / 2))).toBeLessThan(4);
+  expect(
+    Math.abs(menu.y + menu.height / 2 - (brand.y + brand.height / 2)),
+  ).toBeLessThan(4);
   expect(menu.x + menu.width).toBeLessThanOrEqual(brand.x);
   expect(brand.x + brand.width).toBeLessThanOrEqual(search.x);
   expect(search.x + search.width).toBeLessThanOrEqual(controls.x);
