@@ -520,9 +520,6 @@ table.tt {
     padding: 2px 8px calc(1px + env(safe-area-inset-bottom));
   }
   /* The glyphs alone: the chart's loop says which spot it is. */
-  .dk-id {
-    padding: 0 4px;
-  }
   .dk-tools .dk-name,
   .dk-tools .dk-coords,
   .dk-tools .dk-tool-word {
@@ -537,25 +534,54 @@ table.tt {
     width: 32px;
     padding: 0;
   }
-  /* The water's glyph, its value and how far the station is (or "model"):
-     the words are read out, and a phone's head has no room for them. Nor
-     has the row of tools once unfolded, where the reading was clipped under
-     the stars' chip: it stands in the folded box, the tools' resting state,
-     and gives the room up while they are open. */
-  .dk-sea {
-    gap: 3px;
-    padding-left: 6px;
+  /* The water's reading. Folded, the tools' resting state, it keeps its
+     glyph, the value and how far the station is (or "model"), ruled off
+     from the fold like a tool: against it, the fold's "⋯" read as the
+     reading cut short (#130). Open, the tools' row has no room beside it,
+     so the whole of it, in words as the desktop's, takes a line of its own
+     along the box's top, and the station and the reading's age are a tap
+     away. It wraps to the row's width rather than widen the box over the
+     map's own chip. */
+  .dk-tools:not(.is-folded) {
+    flex-wrap: wrap;
   }
-  .dk-sea-long,
-  .dk-sea[data-water="none"],
+  .dk-tools:not(.is-folded) .dk-id {
+    display: contents;
+  }
+  .dk-tools:not(.is-folded) .star-toggle {
+    margin: 0 4px;
+  }
   .dk-tools:not(.is-folded) .dk-sea {
+    /* Over the star's finger target, which would take a tap on the words. */
+    position: relative;
+    z-index: 1;
+    flex: 1 0 100%;
+    order: -1;
+    contain: inline-size;
+    padding: 4px 0;
+    border: 0;
+    border-bottom: 1px solid var(--color-line);
+    white-space: normal;
+  }
+  /* Inside the line, where its width does not count towards the box's. */
+  .dk-tools:not(.is-folded) .dk-sea-long {
+    padding: 0 6px;
+  }
+  .dk-tools.is-folded .dk-sea {
+    gap: 3px;
+    padding: 0 6px;
+    border: 0;
+    border-right: 1px solid var(--color-line);
+  }
+  .dk-tools.is-folded .dk-sea-long,
+  .dk-tools.is-folded .dk-sea[data-water="none"] {
     display: none;
   }
-  .dk-sea-glyph {
+  .dk-tools.is-folded .dk-sea-glyph {
     display: block;
     flex: none;
   }
-  .dk-sea-short {
+  .dk-tools.is-folded .dk-sea-short {
     display: inline;
   }
   /* Folded to its one glyph (ForecastDock): the rest are there to open,
@@ -567,9 +593,6 @@ table.tt {
   }
   .dk-tools.is-folded .dk-id {
     padding: 0;
-  }
-  .dk-tools.is-folded .dk-sea {
-    padding-right: 6px;
   }
   .dk-tools.is-folded .dk-fold {
     border-left: 0;
