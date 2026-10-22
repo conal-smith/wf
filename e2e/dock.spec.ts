@@ -1472,32 +1472,92 @@ test("a station's water temperature is said once in the spot's head, with how fa
   await expect(sea).toHaveCount(0);
 });
 
-test("on a phone, the water's reading keeps its value and the station's distance in the folded tools", async ({
+/**
+ * Kilcrea's water, where #130 was seen: the M2 buoy, 48.6 km out from the
+ * estuary, read five hours before the sample's now. A long spot name, and a
+ * station far enough off to need its name and age said.
+ */
+const kilcreaSea = () => ({
+  schemaVersion: 1,
+  kind: "observation",
+  stations: {
+    M2: {
+      id: "M2",
+      name: "M2",
+      lat: 53.48,
+      lon: -5.43,
+      network: "buoy",
+      depth: null,
+    },
+  },
+  spots: {
+    kilcrea: {
+      station: "M2",
+      distanceKm: 48.6,
+      latest: {
+        time: new Date(SAMPLE_CLOCK.getTime() - 5 * 3600000).toISOString(),
+        value: 14.5,
+      },
+    },
+  },
+});
+
+test("on a phone, the water's reading keeps its value and the station's distance in the folded tools, and says the rest with them open, never over the hours", async ({
   page,
 }) => {
   await withTides(page);
   await page.route("**/marine/sea-temperature.json", (route) =>
-    route.fulfill({ json: seaReading() }),
+    route.fulfill({ json: kilcreaSea() }),
   );
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/?spot=brandon");
-  await expect(page.locator(".dock tr.tt-wind")).toBeVisible({
-    timeout: 30000,
-  });
+  await page.goto("/?spot=kilcrea");
+  const dock = page.locator(".dock");
+  const wind = dock.locator("tr.tt-wind");
+  await expect(wind).toBeVisible({ timeout: 30000 });
   await unfoldTools(page);
   await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
-  const sea = page.locator(".dk-tools .dk-sea");
-  const short = sea.locator(".dk-sea-short");
-  await expect(short).toHaveText("14.5 °C · 46 km");
-  // The unfolded row of tools has no room for it: it waits for the fold.
-  await expect(sea).toBeHidden();
   const tools = page.getByRole("group", { name: "This spot" });
+  const sea = tools.locator(".dk-sea");
+  /** Whether the tools stand anywhere on the dock's hours, or its wind. */
+  const overHours = async () => {
+    const [t, d, w] = await Promise.all([
+      tools.boundingBox(),
+      dock.boundingBox(),
+      wind.boundingBox(),
+    ]);
+    const foot = t!.y + t!.height;
+    return foot > d!.y || (foot > w!.y && t!.y < w!.y + w!.height);
+  };
+  /** Whether the text is cut short, an ellipsis or a clip at its end. */
+  const cut = (text: typeof sea) =>
+    text.evaluate((el) => el.scrollWidth > el.clientWidth);
+  // Open, the whole of it in words, on a line of its own over the row of
+  // tools: the station and how old the reading is are a tap away.
+  const long = sea.locator(".dk-sea-long");
+  await expect(long).toBeVisible();
+  await expect(long).toHaveText("Water 14.5 °C · M2 buoy, 49 km, 5 h ago");
+  expect(await cut(long)).toBe(false);
+  let box = (await tools.boundingBox())!;
+  const line = (await long.boundingBox())!;
+  const row = (await tools
+    .getByRole("button", { name: "Blend" })
+    .boundingBox())!;
+  expect(line.y + line.height).toBeLessThanOrEqual(row.y);
+  expect(line.x).toBeGreaterThanOrEqual(box.x);
+  expect(line.x + line.width).toBeLessThanOrEqual(box.x + box.width);
+  // The press that opened the rows grew the dock under the tools, and they
+  // rose with its edge rather than stand over the first hours (#130).
+  await expect.poll(overHours).toBe(false);
   await tools.getByRole("button", { name: "Fold the spot's tools" }).click();
+  const short = sea.locator(".dk-sea-short");
   await expect(short).toBeVisible();
+  await expect(short).toHaveText("14.5 °C · 49 km");
   await expect(sea.locator(".dk-sea-glyph")).toBeVisible();
-  await expect(sea.locator(".dk-sea-long")).toBeHidden();
+  await expect(long).toBeHidden();
+  expect(await cut(short)).toBe(false);
+  expect(await cut(sea)).toBe(false);
   // All of it in the box, clear of the fold's glyph, and the box on the screen.
-  const box = (await tools.boundingBox())!;
+  box = (await tools.boundingBox())!;
   const reading = (await short.boundingBox())!;
   const fold = (await tools
     .getByRole("button", { name: "The spot's tools" })
@@ -1506,6 +1566,14 @@ test("on a phone, the water's reading keeps its value and the station's distance
   expect(box.x + box.width).toBeLessThanOrEqual(390);
   expect(reading.x).toBeGreaterThanOrEqual(box.x);
   expect(reading.x + reading.width).toBeLessThanOrEqual(fold.x);
+  await expect.poll(overHours).toBe(false);
+  // The station and the age are still read out, as is the spot's name.
+  await expect(sea.locator(".sr-only")).toHaveText(
+    "Water 14.5 °C, measured at the M2 buoy 49 km away, 5 h ago",
+  );
+  await expect(tools.locator(".dk-name")).toHaveText(
+    "Kilcrea — Malahide Estuary",
+  );
 });
 
 /**
@@ -1922,7 +1990,7 @@ test.describe("on a phone", () => {
     hasTouch: true,
   });
 
-  test("the blend stays under the finger from the first tap, so every tap is its, not the hours'", async ({
+  test("the blend's tools rise with the dock's edge rather than over its hours, and every tap after the first is the blend's", async ({
     page,
   }) => {
     await withTides(page);
@@ -1939,21 +2007,34 @@ test.describe("on a phone", () => {
       return d!.y - (t!.y + t!.height);
     };
     const blend = tools.getByRole("button", { name: "Blend" });
+    const edge = await standing();
+    const table = (await dock.boundingBox())!.height;
+    // The first tap grows the dock, and the tools rise with its top edge:
+    // held where the finger found them, they stood over the first hours
+    // until a tap somewhere else (#130). The tap's old place is the hours'.
+    await blend.tap();
+    await expect(blend).toHaveAttribute("aria-pressed", "true");
+    await expect(dock.locator(".tt-blend")).toBeVisible();
+    await expect
+      .poll(async () => (await dock.boundingBox())!.height)
+      .toBeGreaterThan(table + 20);
+    await expect.poll(standing).toBeCloseTo(edge, 0);
+    // From there every tap at the same place is the blend's (#107): the
+    // dock shrinks under the tools, which stay where the finger found them,
+    // and grows back up to them.
     const box = (await blend.boundingBox())!;
     const x = box.x + box.width / 2;
     const y = box.y + box.height / 2;
-    const edge = await standing();
-    const table = (await dock.boundingBox())!.height;
     for (let i = 1; i <= 3; i++) {
       await page.touchscreen.tap(x, y);
-      await expect(blend).toHaveAttribute("aria-pressed", String(i % 2 === 1));
+      await expect(blend).toHaveAttribute("aria-pressed", String(i % 2 === 0));
       await expect
         .poll(async () => (await blend.boundingBox())?.y)
         .toBeCloseTo(box.y, 0);
+      expect(await standing()).toBeGreaterThanOrEqual(edge - 0.5);
     }
-    // The blend did grow the dock, under the tools rather than with them.
-    await expect(dock.locator(".tt-blend")).toBeVisible();
-    expect((await dock.boundingBox())!.height).toBeGreaterThan(table + 20);
+    // The table again, the tools held above its edge.
+    expect(await standing()).toBeGreaterThan(edge + 20);
     await page.waitForTimeout(400);
     await expect(
       page.getByRole("region", { name: "Forecast for Malahide Estuary" }),

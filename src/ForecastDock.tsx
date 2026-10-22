@@ -1526,7 +1526,12 @@ export default function ForecastDock(props: Props) {
   // the tools with it, on the first click (#91). A finger is held for as
   // well: on a phone the blend lifted them 53 px, and the next tap at the
   // same place went to the hours (#107). It has no pointer that moves off,
-  // so they go back when it next comes down anywhere else.
+  // so they go back when it next comes down anywhere else. Held down there,
+  // though, a finger's tools sat over the first hours' wind until that tap
+  // (#130), and a tap on what they hid went to them: on a phone, or under a
+  // finger, they are held above the dock's edge as it shrinks, and rise with
+  // it as it grows. They are held by their foot, where the row of them is: a
+  // phone's grows a line at its top as it opens.
   const dockRef = useRef<HTMLElement>(null);
   const toolsRef = useRef<HTMLDivElement>(null);
   /**
@@ -1535,20 +1540,29 @@ export default function ForecastDock(props: Props) {
    */
   const [toolsOpen, setToolsOpen] = useState(false);
   const folded = phone && !toolsOpen;
-  /** The tools' top on the screen when a click on them was made, while held. */
+  /** The tools' foot on the screen when a click on them was made, while held. */
   const pinned = useRef<number | null>(null);
+  /**
+   * Whether the held tools may come down over the hours: under a mouse on a
+   * wide screen, which lets go of them as it moves off.
+   */
+  const overHours = useRef(false);
   const pin = () => {
     const el = toolsRef.current;
     if (!el) return;
     el.style.translate = "";
     if (pinned.current === null) return;
-    const by = pinned.current - el.getBoundingClientRect().top;
+    let by = pinned.current - el.getBoundingClientRect().bottom;
+    if (!overHours.current) by = Math.min(by, 0);
     if (by) el.style.translate = `0 ${by}px`;
   };
   const hold = (event: React.MouseEvent) => {
     const el = toolsRef.current;
-    if (!el || !event.detail || pinned.current !== null) return;
-    pinned.current = el.getBoundingClientRect().top;
+    if (!el || !event.detail) return;
+    overHours.current =
+      !phone && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    // Where they stand now: a finger's may have risen since the last click.
+    pinned.current = el.getBoundingClientRect().bottom;
   };
   const letGo = () => {
     pinned.current = null;
@@ -1642,8 +1656,8 @@ export default function ForecastDock(props: Props) {
           )}
           {/* The water's temperature, once for the week rather than a row
               across the hours. A phone keeps its glyph, the value and how
-              far the station is (or "model"), in the folded box; the rest
-              is read out. */}
+              far the station is (or "model") in the folded box, and says
+              the whole of it on a line of its own once the tools are open. */}
           {water && (
             <span
               className="dk-sea"
