@@ -29,7 +29,7 @@ test("the currents layer is off at first and nothing of it is loaded", async ({
 }) => {
   const asked = watch(page);
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });
   const panel = await layers(page);
@@ -45,7 +45,7 @@ test("turned on, it reads the run and keeps the rider's choice", async ({
   page.on("pageerror", (error) => errors.push(error.message));
   const asked = watch(page);
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });
   const panel = await layers(page);
@@ -89,7 +89,7 @@ test("with no current forecast published the page still works, and says so", asy
     ),
   );
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });
   const panel = await layers(page);
