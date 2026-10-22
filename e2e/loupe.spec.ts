@@ -242,11 +242,7 @@ test("pointing upwind: typical by default, sharp narrows the no-go, and it is ke
   const typical = await bearings();
   expect(typical).toHaveLength(2);
 
-  const options = page.getByRole("button", {
-    name: "Display options",
-    exact: true,
-  });
-  await options.click();
+  await openFromMenu(page, "Display options");
   const pointing = page.getByRole("group", { name: "Pointing upwind" });
   await expect(
     pointing.getByRole("button", { name: "Typical" }),
@@ -273,7 +269,7 @@ test("pointing upwind: typical by default, sharp narrows the no-go, and it is ke
   // Kept on the device, with the weight and the level.
   await page.reload();
   await expect(page.locator(".map-loupe-foot")).toBeVisible({ timeout: 30000 });
-  await options.click();
+  await openFromMenu(page, "Display options");
   await expect(
     page
       .getByRole("group", { name: "Pointing upwind" })
