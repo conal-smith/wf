@@ -5,11 +5,13 @@ selected, how much water there is over the bed, and where it is deep enough
 to wing-foil. It is drawn like the satellite height map of the foreshore it
 is partly built from: one smooth colour scale across the tide's reach.
 
-- the water is coloured by its **depth at this tide** (tide − bed): pale
-  straw at the tide's edge, sea green while it is too shallow for the mast,
-  then a step to **teal where a metre of water** (`FOIL_CLEARANCE_METRES`)
-  makes it rideable, on through the chart's blue to a faint wash six metres
-  down, so the chart's own tints and soundings read through deep water;
+- the water is coloured by its **depth at this tide** (tide − bed): nearly
+  white at the tide's edge, light sea blue while it is too shallow for the
+  mast (water, but not enough; not green, the wind's colour of good
+  riding), then a step to **strong blue where a metre of water**
+  (`FOIL_CLEARANCE_METRES`) makes it rideable, on through the chart's blue
+  to a faint wash six metres down, so the chart's own tints and soundings
+  read through deep water;
 - a thin wet-sand line is the **waterline** at the hour (not ink: a bank the
   satellite measured flat at the tide would draw as a dark blot);
 - the foreshore the tide has left is only a **light sand tint**: dry ground

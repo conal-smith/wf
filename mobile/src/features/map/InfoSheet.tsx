@@ -130,7 +130,7 @@ function DepthScale({ palette }: { palette: FoilColours }) {
   return (
     <View
       accessible
-      accessibilityLabel={`Depth of water at this tide: pale at the edge, green while too shallow, teal from ${c} m, blue to 6 m`}
+      accessibilityLabel={`Depth of water at this tide: pale at the edge, light blue while too shallow, strong blue from ${c} m, fading to 6 m`}
     >
       <T variant="caption" color="muted">
         Depth of water at this tide

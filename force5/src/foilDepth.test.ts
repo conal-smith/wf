@@ -264,9 +264,9 @@ describe("colours", () => {
 describe("foilColours", () => {
   it("reads the colours off the theme", () => {
     const theme: Record<string, string> = {
-      "--map-foil-edge": " #ece296",
-      "--map-foil-shallow": "#92c48c ",
-      "--map-foil-enough": "#34929c",
+      "--map-foil-edge": " #d6eef3",
+      "--map-foil-shallow": "#96d6e8 ",
+      "--map-foil-enough": "#1e80b0",
       "--map-foil-deep": "#2e6696",
       "--map-foil-deeper": "#2e4c80",
       "--map-foil-line": "#183442",
@@ -275,9 +275,9 @@ describe("foilColours", () => {
     };
     const root = { getPropertyValue: (name: string) => theme[name] ?? "" };
     expect(foilColours(root)).toEqual({
-      edge: "#ece296",
-      shallow: "#92c48c",
-      enough: "#34929c",
+      edge: "#d6eef3",
+      shallow: "#96d6e8",
+      enough: "#1e80b0",
       deep: "#2e6696",
       deeper: "#2e4c80",
       line: "#183442",
