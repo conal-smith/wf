@@ -369,7 +369,7 @@ describe("rain", () => {
   // initialization. The step at 15:00 on the 17th has lost its rain.
   const RUN = Date.parse("2026-09-16T18:00:00Z");
   const TOTALS = [null, 0.8, 0.1, 0, 2.4, 1.3, 0.5, null, 0.7];
-  const BASE = "weather/icon-eu-weather-2026091618-3h-v1-e1ed202a/";
+  const BASE = "weather/icon-eu-weather-2026091618-3h-v1-438ee9cf/";
   const SQUARE = `${BASE}spots/n52w008.json`;
   const at = (iso: string) => Date.parse(iso);
 

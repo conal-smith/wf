@@ -78,7 +78,7 @@ async function gustArrived(page: Page) {
 async function openMap(page: Page, path = "/") {
   await hideBasemap(page);
   await page.goto(path);
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
@@ -347,7 +347,7 @@ for (const { width, height } of [
       await expect(page.locator(".map-model")).toContainText("archived", {
         timeout: 30000,
       });
-      await expect(page.locator(".spot-marker")).toHaveCount(148);
+      await expect(page.locator(".spot-marker")).toHaveCount(149);
       await gustArrived(page);
       await shoot(page, "stale", width);
     });

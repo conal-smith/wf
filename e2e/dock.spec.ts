@@ -85,7 +85,7 @@ async function openDock(page: Page, width = 1440, height = 900) {
   await withTides(page);
   await page.setViewportSize({ width, height });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
@@ -1765,7 +1765,7 @@ test("a point tapped on Dublin Bay reads its nearest station's tide; one on Loug
   await ringNotLoupe(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/?spot=dollymount");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount", {
@@ -1792,7 +1792,7 @@ test("a point tapped on Dublin Bay reads its nearest station's tide; one on Loug
 
   // Lough Neagh: Larne is within the limit, but the sea does not reach it.
   await page.goto("/?spot=lough-neagh-antrim");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".dock .dk-name")).toHaveText(
@@ -1868,7 +1868,7 @@ test("a point tapped off Dublin Bay reads wind, waves, weather and tide, and no 
   await ringNotLoupe(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/?spot=dollymount");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount", {
@@ -1927,7 +1927,7 @@ test("a point's wind goes on past HARMONIE's run in ECMWF's, as a spot's does", 
   await ringNotLoupe(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/?spot=dollymount");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount", {

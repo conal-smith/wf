@@ -12,7 +12,7 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   await page.clock.setFixedTime(new Date(clock));
   // A spot in the link, so the dock shows the strip.
   await page.goto("/?spot=brandon");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".map-loading")).toHaveCount(0);

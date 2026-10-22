@@ -35,7 +35,7 @@ export async function openChart(
 ) {
   await page.setViewportSize({ width, height });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
@@ -647,7 +647,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   // Kept for the next visit, which opens on the chart alone: at `/`, as the
   // reload of a chosen spot's own link (`/?spot=brandon`) opens on it.
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".dock")).toHaveCount(0);

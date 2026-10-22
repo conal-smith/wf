@@ -8,7 +8,7 @@
  * (src/useBlend.ts), and the tests hold it to them value for value. What it does differently is never parse a time
  * twice: a model publishes every spot on the same steps, so where each axis
  * column falls between them is worked out once per model and reused for all
- * 148 places, rather than searched for with `Date.parse` in every series.
+ * 149 places, rather than searched for with `Date.parse` in every series.
  */
 import { agreementFrom, leadHours, type Agreement } from "../force5/src/blend";
 import {

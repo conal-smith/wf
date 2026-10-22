@@ -1,5 +1,5 @@
 /**
- * The rider's places: every one of the 148 to search, the ones they star and
+ * The rider's places: every one of the 149 to search, the ones they star and
  * the ones they keep opening, each with its stars and wind at the hour the
  * chart shows, and the nearest to them when they ask. The lists keep their
  * own order (the rider's, the most opened, the nearest), never a rating's.

@@ -161,7 +161,7 @@ test("every wind style keeps the arrows drawing, in any order, and is remembered
   page,
 }) => {
   await instrument(page);
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   const canvas = page.locator(".particle-canvas");
