@@ -4,10 +4,13 @@ import {
   dockColumns,
   frameForTime,
   framePosition,
+  handedFrames,
   handoverModel,
+  handoverStart,
   loadOrder,
   mapReach,
   modelStretches,
+  pointHandovers,
   windTrackBackground,
   type ColumnModel,
 } from "./timeline";
@@ -429,6 +432,121 @@ describe("handoverModel", () => {
         NOW,
       ),
     ).toBeNull();
+  });
+});
+
+describe("handoverStart", () => {
+  const columns = [
+    { time: Date.parse("2026-09-16T05:00:00Z"), model: "harmonie" },
+    { time: Date.parse("2026-09-16T06:00:00Z"), model: "harmonie" },
+    { time: Date.parse("2026-09-16T09:00:00Z"), model: "ecmwf" },
+    { time: Date.parse("2026-09-16T12:00:00Z"), model: "ecmwf" },
+    { time: Date.parse("2026-09-16T15:00:00Z"), model: "ecmwf" },
+  ];
+  it("names the first hour past the reader's run, not its last", () => {
+    const after = { side: "after", edge: "2026-09-16T06:00:00Z" } as const;
+    expect(handoverStart(columns, 4, after)).toBe(columns[2].time);
+    expect(handoverStart(columns, 2, after)).toBe(columns[2].time);
+  });
+  it("names the reader's first hour before its run, where the hand-over stops", () => {
+    const before = { side: "before", edge: "2026-09-16T09:00:00Z" } as const;
+    expect(handoverStart(columns, 0, before)).toBe(columns[2].time);
+  });
+  it("gives nothing without a column", () => {
+    expect(
+      handoverStart([], 0, { side: "after", edge: "2026-09-16T06:00:00Z" }),
+    ).toBeNull();
+  });
+});
+
+describe("pointHandovers", () => {
+  const drawable = ["harmonie", "icon-eu", "ecmwf", "gfs"];
+  const own = (m: ColumnModel) => ({
+    id: m.id,
+    frames: (m.manifest as Manifest).frames,
+  });
+  const offered = () => [harmonie(), iconEu(), ecmwf(), gfs()];
+  it("hands a point's columns past HARMONIE's run to ECMWF's, as a spot's are", () => {
+    const columns = dockColumns(offered(), NOW);
+    expect(
+      pointHandovers(offered(), drawable, own(harmonie()), columns, NOW),
+    ).toEqual([
+      {
+        model: "ecmwf",
+        // ECMWF's first column past HARMONIE's +60 h, through the strip's end.
+        from: Date.parse("2026-09-16T09:00:00Z"),
+        to: Date.parse(columns.at(-1)!.validTime),
+      },
+    ]);
+  });
+  it("hands over only where the reader's own run stops, whatever the columns' model", () => {
+    // ICON-EU reaches the first of ECMWF's columns; past its +72 h, ECMWF.
+    const stretches = pointHandovers(
+      offered(),
+      drawable,
+      own(iconEu()),
+      dockColumns(offered(), NOW),
+      NOW,
+    );
+    expect(stretches.map((s) => s.model)).toEqual(["ecmwf"]);
+    expect(stretches[0].from).toBe(Date.parse("2026-09-16T21:00:00Z"));
+  });
+  it("keeps the stretches before and after the reader's run apart", () => {
+    // A HARMONIE run that has only just landed: the head, before it starts,
+    // is ECMWF's, and so is everything after it ends; its own hours are not.
+    const justLanded = model("harmonie", {
+      runTime: "2026-09-14T01:00:00Z",
+      hours: every(60, 1),
+      km: 2,
+    });
+    const models = [justLanded, iconEu(), ecmwf(), gfs()];
+    const columns = dockColumns(models, NOW);
+    const stretches = pointHandovers(
+      models,
+      drawable,
+      own(justLanded),
+      columns,
+      NOW,
+    );
+    expect(stretches.map((s) => s.model)).toEqual(["ecmwf", "ecmwf"]);
+    expect(stretches[0].to).toBeLessThan(Date.parse("2026-09-14T01:00:00Z"));
+    expect(stretches[1].from).toBeGreaterThan(
+      Date.parse("2026-09-16T13:00:00Z"),
+    );
+  });
+  it("hands nothing over where the reader's run reaches every column", () => {
+    expect(
+      pointHandovers(
+        offered(),
+        drawable,
+        own(ecmwf()),
+        dockColumns(offered(), NOW),
+        NOW,
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("handedFrames", () => {
+  const run = frames("2026-09-14T00:00:00Z", every(12, 3));
+  const time = (hour: number) => Date.parse(at("2026-09-14T00:00:00Z", hour));
+  it("reads the frames inside a stretch, and no others", () => {
+    expect(handedFrames(run, [{ from: time(3), to: time(6) }])).toEqual([1, 2]);
+  });
+  it("reads the steps either side of a column that falls between two", () => {
+    expect(handedFrames(run, [{ from: time(4), to: time(4) }])).toEqual([1, 2]);
+    // And never past the run's ends.
+    expect(handedFrames(run, [{ from: time(10), to: time(20) }])).toEqual([
+      3, 4,
+    ]);
+  });
+  it("reads each frame once, however many stretches want it", () => {
+    expect(
+      handedFrames(run, [
+        { from: time(0), to: time(3) },
+        { from: time(3), to: time(4) },
+      ]),
+    ).toEqual([0, 1, 2]);
   });
 });
 

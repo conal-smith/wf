@@ -1815,6 +1815,61 @@ test("a point tapped off Dublin Bay reads wind, waves, weather and tide, and no 
   expect(errors).toEqual([]);
 });
 
+test("a point's wind goes on past HARMONIE's run in ECMWF's, as a spot's does", async ({
+  page,
+}) => {
+  // A tap, then two runs' frames read at the point one file at a time: on a
+  // shared CI runner that can outlast the default time.
+  test.slow();
+  await page.route("**/marine/tides.json", (route) =>
+    route.fulfill({ json: coastTides }),
+  );
+  await page.route("**/marine/tides-*-test.json", (route) =>
+    route.fulfill({ json: tideCurve }),
+  );
+  await ringNotLoupe(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/?spot=dollymount");
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+    timeout: 30000,
+  });
+  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount", {
+    timeout: 30000,
+  });
+  await page.keyboard.press("Escape");
+  await tapAt(page, ["dollymount", "seapoint"], [53.33, -6.1]);
+  const dock = page.locator(".dock");
+  await expect(dock.locator(".dk-tools")).toContainText(
+    /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
+  );
+  // The strip's columns past HARMONIE's run are ECMWF's. The point used to
+  // read the map's own run alone, and left every one of them empty.
+  const far = sampleStrip.flatMap((column, at) =>
+    column.model === "ecmwf" ? [at] : [],
+  );
+  expect(far.length).toBeGreaterThan(10);
+  const filled = (columns: readonly number[]) =>
+    dock.evaluate(
+      (dock, columns) =>
+        columns.filter(
+          (at) => !!dock.querySelector(`tr.tt-wind td[data-i="${at}"] .kn`),
+        ).length,
+      columns,
+    );
+  await expect.poll(() => filled(far), { timeout: 45000 }).toBe(far.length);
+  // And within HARMONIE's run, HARMONIE's wind is read as before.
+  const near = sampleStrip.flatMap((column, at) =>
+    column.model === "harmonie" ? [at] : [],
+  );
+  await expect.poll(() => filled(near), { timeout: 30000 }).toBe(near.length);
+  // An hour picked far past HARMONIE has its wind, under the map's hand-over.
+  await slider(page).fill(String(far[far.length - 4]));
+  await expect(page.locator(".map-model")).toHaveText(
+    /^ECMWF on the map from \w{3} \d\d:\d\d( · older run)?$/,
+  );
+  await expect(dock.locator("tr.tt-wind td.c-sel .kn")).toHaveText(/^\d+$/);
+});
+
 test("the blend and the fold stay under the pointer from the first click, so every click is theirs, not the chart's", async ({
   page,
 }) => {

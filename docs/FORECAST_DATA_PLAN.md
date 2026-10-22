@@ -433,6 +433,9 @@ to orchestrate it later).
     with no spot open there was no chip to press.
   - It holds with no spot open: the covering model is worked out from the runs
     the dock's columns are built from, not from the dock on screen.
+  - The app's chart hands over the same way, from the same `handoverModel`
+    (`mobile/src/features/map/useMapModel.ts`, since 2026-10-22, issue #129),
+    and names the model drawn in its label ("ECMWF from Sat 09:00").
   - Both runs are kept in hand once loaded, so scrubbing back and forth across
     the seam swaps frames, not manifests. The stars and the lights stay on
     their own model; only the wind on the map hands over.
@@ -608,10 +611,13 @@ to orchestrate it later).
     hourly model load every third hour first, then fill in the rest, so the
     table is useful after about a third of the download;
   - stop at once when the reader picks another point or model (already done).
-- Past the map model's range (HARMONIE ends at +60 h) a bare point's cells are
-  empty: its series is read from the reader's own map model, not the one the
-  map hands over to. Choosing ECMWF in the layers is how the reader gets the
-  long range for that point.
+- Past the map model's range (HARMONIE ends at +60 h) a bare point goes on in
+  the run the map hands over to there, as a spot's hours do (since 2026-10-22,
+  issue #129; until then its cells were empty past +60 h). `pointHandovers` in
+  `force5/src/timeline.ts` gives the stretches of columns each run stands for,
+  `usePointSeries` reads only the frames those stretches need, in turns with
+  the reader's own run, and `handedPointHours` puts the two together. The app's
+  point sheet reads it the same way.
 
 **Adding spots**
 
