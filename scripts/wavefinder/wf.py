@@ -125,6 +125,36 @@ def at_time_angle(times, values, t):
     return float(out) if np.ndim(out) == 0 else out
 
 
+def blend_weights(lon, lat, points, n=3, max_km=80.0, min_km=5.0):
+    """Inverse-square-distance weights of the n nearest points (within max_km, the nearest
+    always), {id: weight} summing to 1: a block's sea state blended from the points round it,
+    so neighbouring blocks that fall to different points do not jump."""
+    d = sorted((max(float(haversine_km(lon, lat, p["lon"], p["lat"])), min_km), p["id"]) for p in points)
+    near = [x for k, x in enumerate(d[:n]) if k == 0 or x[0] <= max_km]
+    w = {pid: 1 / km ** 2 for km, pid in near}
+    tot = sum(w.values())
+    return {pid: v / tot for pid, v in w.items()}
+
+
+def blend(values, weights):
+    """Weighted [hs, tp, dir, wind, wind from] of several points' [hs, tp, dir, wind, wind from]
+    ({id: list}); directions on the circle. A point with a missing value is left out of that
+    value's mean; all missing gives None."""
+    out = []
+    for k in range(5):
+        pairs = [(weights[p], v[k]) for p, v in values.items() if p in weights and v and v[k] is not None]
+        if not pairs:
+            out.append(None)
+            continue
+        w = np.array([a for a, _ in pairs])
+        x = np.array([b for _, b in pairs], dtype=np.float64)
+        if k in (2, 4):
+            out.append(round(circular_mean(x, w)[0], 1))
+        else:
+            out.append(round(float((w * x).sum() / w.sum()), 2))
+    return out
+
+
 def angle_diff(a, b):
     """Smallest signed difference a - b in degrees, in [-180, 180)."""
     return (np.asarray(a, dtype=np.float64) - b + 180) % 360 - 180

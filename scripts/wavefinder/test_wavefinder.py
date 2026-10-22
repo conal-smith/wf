@@ -66,6 +66,27 @@ class SeaState(unittest.TestCase):
         self.assertAlmostEqual(float(wf.angle_diff(350, 10)), -20)
 
 
+class Blend(unittest.TestCase):
+    PTS = [{"id": "a", "lon": -9.0, "lat": 54.0}, {"id": "b", "lon": -10.0, "lat": 54.0},
+           {"id": "c", "lon": -6.0, "lat": 54.0}]
+
+    def test_weights(self):
+        w = wf.blend_weights(-9.0, 54.0, self.PTS)
+        self.assertAlmostEqual(sum(w.values()), 1.0)
+        self.assertNotIn("c", w)  # 200 km away
+        self.assertGreater(w["a"], 0.9)
+        mid = wf.blend_weights(-9.5, 54.0, self.PTS)
+        self.assertAlmostEqual(mid["a"], mid["b"], places=6)
+
+    def test_blend(self):
+        v = wf.blend({"a": [2.0, 12, 350, 4, 90], "b": [4.0, 14, 10, 6, None]}, {"a": 0.5, "b": 0.5})
+        self.assertAlmostEqual(v[0], 3.0)
+        self.assertAlmostEqual(v[1], 13.0)
+        self.assertAlmostEqual(v[2] % 360, 0.0, places=6)
+        self.assertAlmostEqual(v[4], 90.0)
+        self.assertEqual(wf.blend({"a": [None] * 5}, {"a": 1.0}), [None] * 5)
+
+
 class Wind(unittest.TestCase):
     def test_onshore_offshore(self):
         # A west-facing shore (the sea to the west): a westerly blows onshore.
@@ -199,6 +220,12 @@ class Windows(unittest.TestCase):
         self.assertEqual(w["litWinds"], {"light": 1, "onshore": 1})
         self.assertEqual(w["lit"]["hs"][0] <= w["lit"]["hs"][1], True)
         self.assertGreater(w["lit"]["powerKw"][1], 0)
+
+    def test_pooled_ring(self):
+        counts = {"bad": 0.1, "05_05": [10, 1, 0, 0, 0], "05_06": [10, 1, 5000, 400, 0], "09_09": [1, 1, 9000, 9000, 0]}
+        self.assertEqual(score.pooled(counts, "05_05"), [20, 2, 5000, 400, 0])
+        self.assertFalse(score.clean(score.pooled(counts, "05_05"), CFG))  # 8% whitecaps next door
+        self.assertTrue(score.clean([10, 1, 0, 0, 0], CFG))  # no ring, no cloud: clean
 
     def test_report_picks_clean_big_and_clear_calm(self):
         fields = ["stamp", "class", "clean", "foamShare", "seenShare", "hs", "tp", "dir", "wind", "windFrom",

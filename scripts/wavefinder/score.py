@@ -1,10 +1,13 @@
 """Where a tile's water breaks: per pixel, how often it foams in big swell and in
 calm, and the candidate breaks that come out of it.
 
-Each look is classed per block by the sea state at the block's point
-(wf.sea_class): big, calm or mid. A big or mid look counts as **clean** in a
-block when its offshore ring (2-5 km out) has under score.maxWhitecap of its
-clear pixels foaming and under 30% SCL cloud: foam out there is whitecaps
+Each look is classed per block (wf.sea_class: big, calm or mid) by the sea
+state blended from the three points nearest the block's searched pixels
+(inverse-square distance, wf.blend), so blocks either side of the line between
+two points do not jump. A big or mid look counts as **clean** in a
+block when the offshore ring (2-5 km out) in it and the blocks within about
+10 km has under score.maxWhitecap of its clear pixels foaming and under 30%
+SCL cloud: foam out there is whitecaps
 (an onshore gale) or haze, and the same would be counted as breaking near the
 shore. Per pixel:
 
@@ -45,15 +48,30 @@ import wf  # noqa: E402
 LIT = 0.3
 
 
-def block_class(sea, point, cfg, p75):
-    v = sea.get(point)
-    if not v or None in v:
-        return "none", v
-    return wf.sea_class(v[0], v[1], v[3], cfg["seaState"], p75), v
+def block_class(v, cfg, p75):
+    """A block's class in a look from its blended sea state v ([hs, tp, dir, wind, wind from])."""
+    if not v or None in (v[0], v[1], v[3]):
+        return "none"
+    return wf.sea_class(v[0], v[1], v[3], cfg["seaState"], p75)
+
+
+def pooled(counts, key, radius=2):
+    """A block's ring counts pooled with its neighbours' within `radius` blocks (about 10 km),
+    so a block with little ring of its own (an inner bay) is judged by the sea outside it,
+    and neighbouring blocks are not judged apart."""
+    i, j = int(key[:2]), int(key[3:])
+    tot = [0, 0, 0, 0, 0]
+    for k, c in counts.items():
+        if k == "bad" or not isinstance(c, list):
+            continue
+        if abs(int(k[:2]) - i) <= radius and abs(int(k[3:]) - j) <= radius:
+            tot = [a + b for a, b in zip(tot, c)]
+    return tot
 
 
 def clean(counts, cfg):
-    """A block-look's offshore ring says no whitecaps or haze (or there is no ring)."""
+    """A block-look's offshore ring (counts pooled by `pooled`) says no whitecaps or haze
+    (or there is no ring)."""
     rv, rf, rc = counts[2], counts[3], counts[4]
     if rv < 2000:
         return rc < 2000
@@ -81,7 +99,18 @@ def run(tile):
     doc, log = looks_of(tile)
     size = doc["blockSize"]
     points = {p["id"]: p for p in wf.read_json(wf.rpath("work", "seastate", "points.json"))["points"]}
-    p75 = {k: p.get("hsPercentiles", {}).get("75") for k, p in points.items()}
+    # Each block's sea state blended from the three points nearest its searched pixels
+    # (wf.blend_weights), from the tile's sea state at every acquisition.
+    seastate = wf.read_json(wf.rpath("work", "seastate", f"{tile}.json"))["looks"]
+    weights = {k: wf.blend_weights(lon, lat, list(points.values())) for k, (lon, lat) in doc["blocks"].items()}
+    p75 = {k: sum(w * (points[p].get("hsPercentiles", {}).get("75") or 0) for p, w in ws.items())
+           for k, ws in weights.items()}
+    sea_of = {}
+
+    def sea_at(st, k):
+        if (st, k) not in sea_of:
+            sea_of[(st, k)] = wf.blend(seastate.get(st, {}), weights[k])
+        return sea_of[(st, k)]
     with np.load(wf.rpath("s2", tile, "masks.npz")) as z:
         masks = {k: (z[k] & 1) > 0 for k in z.files}
     keys = sorted(masks)
@@ -98,8 +127,8 @@ def run(tile):
             for k in keys:
                 if k not in z.files or k not in counts:
                     continue
-                cls, _ = block_class(lk["sea"], doc["blockPoints"][k], cfg, p75.get(doc["blockPoints"][k]))
-                ok = clean(counts[k], cfg)
+                cls = block_class(sea_at(st, k), cfg, p75[k])
+                ok = clean(pooled(counts, k), cfg)
                 classes[(st, k)] = (cls, ok)
                 row = {"big": 0, "calm": 2, "mid": 4}.get(cls)
                 if row is None:
@@ -237,7 +266,7 @@ def run(tile):
                 continue
             bk = f"{(s['_px'][0][0] // size) + r0:02d}_{(s['_px'][1][0] // size) + c0:02d}"
             cls, ok = classes.get((st, bk), ("none", False))
-            v = lk["sea"].get(s["point"]) or [None] * 5
+            v = sea_at(st, bk)
             per[s["id"]].append([st, cls, bool(ok), round(foamy[n_] / valid[n_], 3), round(valid[n_] / s["pixels"], 2)]
                                 + list(v) + [lk["cloud"]])
     for s in segs:
