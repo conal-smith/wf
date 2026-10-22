@@ -130,13 +130,19 @@ def main():
     breaks = [b for b in wf.read_json(os.path.join(HERE, "breaks.json"))["breaks"] if b["region"] == a.region
               and len(centres) and float(wf.haversine_km(b["lon"], b["lat"], centres[:, 0], centres[:, 1]).min()) <= 4]
     val = []
+    clon = np.array([c["lon"] for c in cands])
+    clat = np.array([c["lat"] for c in cands])
     for b, best, d in wf.recall(breaks, cands, cfg["validateKm"]):
         near = min(cands, key=lambda c: float(wf.haversine_km(b["lon"], b["lat"], c["lon"], c["lat"]))) if cands else None
+        # The best-ranked place with a piece within reach: what the top-N counts (and chance) measure.
+        reach = (wf.haversine_km(b["lon"], b["lat"], clon, clat) <= cfg["validateKm"]) if cands else np.zeros(0, bool)
+        best_rank = int(min(c["placeRank"] for c, r in zip(cands, reach) if r)) if reach.any() else None
         val.append({"name": b["name"], "kind": b["kind"], "east": bool(b.get("east")), "lat": b["lat"], "lon": b["lon"],
                     "found": best is not None, "km": round(d, 2),
                     "piece": near["id"] if near else None,
                     "pieceRank": near["rank"] if near else None,
-                    "placeRank": near["placeRank"] if near else None,
+                    "placeRank": best_rank if best_rank is not None else (near["placeRank"] if near else None),
+                    "nearestPlaceRank": near["placeRank"] if near else None,
                     "pBig": near["pBig"] if near else None,
                     "nBig": near["nBig"] if near else None})
     found = sum(v["found"] for v in val)
@@ -145,6 +151,7 @@ def main():
     doc = {"region": a.region, "tiles": covered, "breaks": len(val), "found": found,
            "recall": round(found / max(len(val), 1), 3), "km": cfg["validateKm"], "results": val,
            "baseline": base,
+           # Known breaks with a piece of one of the top N places within reach (as chance is counted).
            "top": {str(n): sum(1 for v in val if v["found"] and v["placeRank"] <= n) for n in (25, 50, 100, 200)}}
     wf.write_json(wf.rpath("work", "validation.json"), doc, indent=1)
     wf.write_json(wf.rpath("work", "places.json"), {"region": a.region, "places": pl}, indent=None)
