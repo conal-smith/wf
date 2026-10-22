@@ -31,7 +31,7 @@ const harmonie = readSample<{
  */
 async function openMap(page: Page, path = "/") {
   await page.goto(path);
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   if (!new URL(path, "http://x").searchParams.has("spot"))
@@ -253,7 +253,7 @@ test("the spot chosen is remembered, a bare point is not, and neither opens the 
   // Remembered for your spots, but the next visit opens on the chart alone:
   // nothing at its foot until a spot is chosen again.
   await page.reload();
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".dock")).toHaveCount(0);
@@ -360,7 +360,7 @@ test("a spot in the link opens on it, focused; a remembered one waits to be chos
   await expect(page.locator(".map-canvas")).toHaveClass(/is-focus/);
   // Opening a link is not choosing, and the remembered spot opens nothing.
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".dock")).toHaveCount(0);

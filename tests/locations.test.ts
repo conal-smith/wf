@@ -17,7 +17,7 @@ describe("saved Irish wind-sport coordinates", () => {
     const spots = ridingLocations(
       JSON.parse(readFileSync("public/spots.json", "utf8")),
     );
-    expect(spots).toHaveLength(148);
+    expect(spots).toHaveLength(149);
     expect(spots.every((s) => s.kind === "spot" && !s.website)).toBe(true);
     expect(spots.find((s) => s.id === "kilcrea")).toMatchObject({
       name: "Kilcrea — Malahide Estuary",
@@ -254,19 +254,24 @@ describe("riding places placed on OpenStreetMap", () => {
       return Math.hypot(x, y) * 6371;
     };
     // The owner may put two of their places closer than that (they know both
-    // launches), but not on top of each other or of another place.
+    // launches), but not on top of each other or of another place. Closer
+    // still is two launches either side of a neck, looking out on different
+    // water: Skerries' North Beach and South Strand, either side of Red Island.
     const placed = new Set([
       ...Object.keys(owner.overrides),
       ...owner.records.map((record: { id: string }) => record.id),
     ]);
+    const apart = (a?: number | null, b?: number | null) =>
+      a == null || b == null ? 0 : 180 - Math.abs(((a - b + 540) % 360) - 180);
     for (let i = 0; i < spots.length; i++)
-      for (let j = i + 1; j < spots.length; j++)
-        expect(
-          km(spots[i], spots[j]),
-          `${spots[i].id} and ${spots[j].id}`,
-        ).toBeGreaterThan(
-          placed.has(spots[i].id!) || placed.has(spots[j].id!) ? 0.5 : 0.9,
+      for (let j = i + 1; j < spots.length; j++) {
+        const [a, b] = [spots[i], spots[j]];
+        const owned = placed.has(a.id!) || placed.has(b.id!);
+        const necked = owned && apart(a.facing, b.facing) >= 45;
+        expect(km(a, b), `${a.id} and ${b.id}`).toBeGreaterThan(
+          necked ? 0.15 : owned ? 0.5 : 0.9,
         );
+      }
   });
   it("gives every public place a shore facing entry, published only where it is clear", () => {
     for (const spot of spots) {

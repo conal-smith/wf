@@ -13,7 +13,7 @@ const launcher = (page: Page) =>
 /** The chart, and Gust in his corner: he comes once the chart is drawn. */
 async function openMap(page: Page) {
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 20000,
   });
   await expect(launcher(page)).toBeVisible({ timeout: 20000 });
@@ -112,7 +112,7 @@ test("the conversation survives a reload, and a new chat clears it", async ({
   await expect(log.locator("[data-spot-card]")).toHaveCount(1);
 
   await page.reload();
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 20000,
   });
   await launcher(page).click();
@@ -194,7 +194,7 @@ test("gone from the map once the month's budget is spent", async ({ page }) => {
     }),
   );
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 20000,
   });
   // He would have come by now: the chart is drawn and the page idle.
