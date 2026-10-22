@@ -57,19 +57,30 @@ def foam_overlay(bands, cfg):
     return img, f
 
 
-def freq_box(tif, lon, lat, km):
-    """(P big, P calm) round a point from score.py's tile raster (10 m), km across."""
+def freq_mosaic(tile, lon, lat, km):
+    """P(foam | big) from every score.py tile raster of the region, on exactly the grid
+    read_box gives `tile` round the point, so a box across two tiles' shares is whole."""
+    import glob
     import rasterio
+    from rasterio.transform import from_origin
+    from rasterio.warp import reproject, Resampling
     from pyproj import Transformer
-    with rasterio.open(tif) as src:
-        x, y = Transformer.from_crs(4326, src.crs, always_xy=True).transform(lon, lat)
-        c, r = ~src.transform * (x, y)
-        half = int(km * 1000 / 2 / 10)
-        from rasterio.windows import Window
-        win = Window(int(c) - half, int(r) - half, 2 * half, 2 * half)
-        pb = src.read(1, window=win, boundless=True, fill_value=0)
-        pc = src.read(2, window=win, boundless=True, fill_value=0)
-    return pb, pc
+    common = wf.satellite()
+    cat = common.read_json(common.path("downloads", "catalog", f"{tile}.json"))
+    epsg = cat["epsg"]
+    l, b, r, t = cat["bbox10"]
+    x, y = Transformer.from_crs(4326, f"EPSG:{epsg}", always_xy=True).transform(lon, lat)
+    half = int(km * 1000 / 2 / 10)
+    col, row = int((x - l) / 10), int((t - y) / 10)
+    tf = from_origin(l + (col - half) * 10, t - (row - half) * 10, 10, 10)
+    out = np.zeros((2 * half, 2 * half), np.float32)
+    for f in sorted(glob.glob(wf.rpath("work", "score", "*.tif"))):
+        with rasterio.open(f) as src:
+            dst = np.zeros_like(out)
+            reproject(rasterio.band(src, 1), dst, dst_transform=tf, dst_crs=f"EPSG:{epsg}",
+                      resampling=Resampling.nearest, src_nodata=None, dst_nodata=0)
+            out = np.maximum(out, dst)
+    return out
 
 
 RAMP = np.array([[255, 255, 204], [161, 218, 180], [65, 182, 196], [44, 127, 184], [37, 52, 148], [8, 29, 88]],

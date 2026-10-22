@@ -197,7 +197,7 @@ def chip_set(region, tile, piece, big, calm, out_dir, km=4.0):
         rel[kind + "Foam"] = os.path.relpath(pf, REPORT)
     pq = os.path.join(out_dir, f"{name}-freq.png")
     if not os.path.exists(pq):
-        pb, _ = chips.freq_box(wf.rpath("work", "score", f"{tile}.tif"), piece["lon"], piece["lat"], km)
+        pb = chips.freq_mosaic(tile, piece["lon"], piece["lat"], km)
         base = None
         if "calm" in rel:
             base = np.array(Image.open(os.path.join(REPORT, rel["calm"])).convert("RGB"))
@@ -252,9 +252,10 @@ def card(region, piece, title, rel, big, calm, fields, anchor, extra=""):
             f"<tr><th>P(foam | moderate)</th><td>{piece['pMid']:.2f}</td></tr>",
             f"<tr><th>Kind</th><td>{piece['kind']} (foam {piece.get('offshoreM', '?')} m from shore, "
             f"90% within {piece.get('offshoreP90M', '?')} m)</td></tr>",
-            f"<tr><th>Seabed</th><td>{piece.get('depthMin')}–{piece.get('depthMax')} m, median {piece.get('depthMedian')} m "
-            f"(EMODnet DTM under the piece's sea), slope {piece.get('slope')}"
-            f", shore faces {piece.get('facing')}°</td></tr>"]
+            (f"<tr><th>Seabed</th><td>{piece.get('depthMin')}–{piece.get('depthMax')} m, median {piece.get('depthMedian')} m "
+             f"(EMODnet DTM under the piece's sea), slope {piece.get('slope')}" if piece.get("depthMedian") is not None
+             else "<tr><th>Seabed</th><td>no DTM sea under it (its 115 m cells there are land: the foot of the shore)")
+            + f", shore faces {piece.get('facing')}°</td></tr>"]
     if lit:
         rows.append(f"<tr><th>Lit by</th><td>Hs {lit['hs'][0]}–{lit['hs'][1]} m, Tp {lit['tp'][0]}–{lit['tp'][1]} s, "
                     f"from {lit['dir']}° (offshore point {piece['point']}); {piece['nLit']} of {piece['nSwell']} "
@@ -382,9 +383,10 @@ def region_section(region, out_root, top, n_new, names):
                      f'<td>{b["km"]}</td><td>#{b["placeRank"]}</td><td>{b["pBig"]}</td><td>{b["nBig"]}</td></tr>')
     base = val.get("baseline", {})
     km2 = search
-    missing = [t for t in plan_tiles if t not in tiles_done]
+    # A tile read with nothing of its own to search has no score file, but is done.
+    missing = [t for t in plan_tiles if t not in tiles_done and not os.path.exists(wf.rpath("s2", t, "done.json"))]
     parts = [f'<h2 id="{region}">{esc(NAMES.get(region, region))}</h2>',
-             f'<p class="meta">{len(tiles_done)} of {len(plan_tiles)} Sentinel-2 tiles done'
+             f'<p class="meta">{len(plan_tiles) - len(missing)} of {len(plan_tiles)} Sentinel-2 tiles done'
              + (f" (still to come: {', '.join(missing)})" if missing else "") + "</p>",
              '<div class="kpi">'
              f'<div><b>{km2["searchedKm2"]:,} km²</b>searched</div>'
@@ -417,7 +419,7 @@ def region_section(region, out_root, top, n_new, names):
              f'<h3>Ranked places</h3><table class="list"><tr><th>#</th><th>Place</th><th>Lat, lon</th><th>Score</th>'
              '<th>Kind</th><th>P big / calm</th><th>Looks big / calm</th><th>Lit by (dir, Tp, Hs)</th><th>Depth</th>'
              '<th>Pieces</th></tr>' + "".join(rows) + "</table>"]
-    return "\n".join(parts), {"tiles": len(tiles_done), "planTiles": len(plan_tiles), "pieces": len(pieces),
+    return "\n".join(parts), {"tiles": len(plan_tiles) - len(missing), "planTiles": len(plan_tiles), "pieces": len(pieces),
                               "places": len(places), "found": val["found"], "breaks": val["breaks"]}
 
 
