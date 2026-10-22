@@ -333,6 +333,28 @@ export function useSpotSeaTemperature(
   return state;
 }
 
+/**
+ * The tide manifest alone, while a point is chosen on the site: its lakes
+ * (`freshwaterSpots`) keep a point on a lough from borrowing the sea's
+ * forecast. The site's dock draws no tide, so it fetches no station's curve;
+ * the app's dock and spot screen read theirs through the hooks below.
+ */
+export function useTideManifest(wanted: boolean): TideManifest | null {
+  const [manifest, setManifest] = useState<TideManifest | null>(null);
+  useEffect(() => {
+    if (!wanted) return;
+    const controller = new AbortController();
+    tideManifest(controller.signal)
+      .then((m) => {
+        if (!controller.signal.aborted) setManifest(m);
+      })
+      // No manifest: a point borrows from the nearest spot, lake or sea.
+      .catch(() => {});
+    return () => controller.abort();
+  }, [wanted]);
+  return wanted ? manifest : null;
+}
+
 export interface TideState {
   tide: SpotTide | null;
   manifest: TideManifest | null;

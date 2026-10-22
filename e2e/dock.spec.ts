@@ -21,9 +21,10 @@ const harmonie = readSample("harmonie");
 // the link. The map opens on no spot (e2e/no-spot.spec.ts).
 
 /**
- * A tide fixture, so the tide row is tested the same way whether or not
- * `public/marine` has been generated locally (it is git-ignored): a plain
- * semidiurnal curve, with its highs and lows where the curve turns.
+ * A tide fixture, so Brandon Bay has a station whether or not
+ * `public/marine` has been generated locally (it is git-ignored), and the
+ * dock is seen to draw none of it: a plain semidiurnal curve, with its highs
+ * and lows where the curve turns.
  */
 const STEP_MINUTES = 30;
 const FROM = "2026-09-13T00:00:00Z";
@@ -199,12 +200,11 @@ test("the week is one strip of hours round the clock, with no day slider over it
     page.locator(".dock tr.tt-from td .g-arrow").first(),
   ).toBeVisible();
   await expect(page.locator(".dock tr.tt-from")).not.toContainText(/[NSEW]/);
-  // The tide is faint behind the figures, its own row gone: its turns are
-  // their times on the curve, the heights left to the spot's page.
+  // No tide, though the spot has a station: drawn behind the figures it got
+  // in their way, and the spot's page has it, times and heights.
   await expect(page.locator(".dock tr.tt-tide")).toHaveCount(0);
-  const tide = page.locator(".dock .tide-band");
-  await expect(tide.locator(".tide-label").first()).toHaveText(/^\d\d:\d\d$/);
-  await expect(tide).not.toContainText(/\b(HW|LW)\b|m$/);
+  await expect(page.locator(".dock .tide-band")).toHaveCount(0);
+  await expect(page.locator(".dock")).not.toContainText(/\b(HW|LW)\b/);
   // The time is a slider still, for the keys and a screen reader, named
   // by its day and hour; on the screen it is the pen's frame round an hour.
   await expect(slider(page)).toHaveAttribute(
@@ -839,10 +839,7 @@ test("the blend draws every model that covers the spot, on the strip's hours", a
   const chart = page.locator(".dock .blend-chart");
   await expect(chart).toBeVisible();
   expect(await chart.locator(".model-line").count()).toBeGreaterThan(3);
-  // The tide is not drawn behind it, where its curve would read as one more
-  // model's line. The chart's label column is its unit and its scale,
-  // without a name.
-  await expect(page.locator(".dock .tide-band")).toHaveCount(0);
+  // The chart's label column is its unit and its scale, without a name.
   const scale = page.locator(".dock .dk-lab-blend");
   await expect(scale).toContainText("kn");
   await expect(scale.locator("b").first()).toHaveText(/^\d+$/);
@@ -1409,7 +1406,7 @@ test("waves, sky, air, rain and sea are one tap away, and stay open", async ({
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
 });
 
-test("on a phone, the rows under the tide keep their units beside their glyphs", async ({
+test("on a phone, the rows below the fold keep their units beside their glyphs", async ({
   page,
 }) => {
   await withTides(page);
@@ -1747,10 +1744,10 @@ const SPOT_AT: Record<string, [number, number]> = {
   "oxford-island": [54.489371, -6.3668812],
 };
 
-test("a point tapped on Dublin Bay reads its nearest station's tide; one on Lough Neagh has none", async ({
+test("a point tapped on Dublin Bay draws no tide behind its hours, nor one on Lough Neagh", async ({
   page,
 }) => {
-  // Two pages opened and two points picked, each waiting on its tide: on a
+  // Two pages opened and two points picked, each waiting on its hours: on a
   // shared CI runner it passed every step and ran out of the default time on
   // the last.
   test.slow();
@@ -1779,16 +1776,14 @@ test("a point tapped on Dublin Bay reads its nearest station's tide; one on Loug
   await expect(page.locator(".dock .dk-tools")).toContainText(
     /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
   );
-  const tide = page.locator(".dock .tide-band");
-  await expect(tide).toHaveAttribute(
-    "aria-label",
-    /^Tide at (Dublin Port|Howth), \d+\.\d km away$/,
-    { timeout: 15000 },
-  );
-  await expect(tide.locator(".tide-label").first()).toHaveText(/^\d\d:\d\d$/);
-  await expect(tide.locator(":scope > title")).toHaveText(
-    /^Tide at (Dublin Port|Howth), \d+\.\d km away$/,
-  );
+  // Dublin Port and Howth are both near, and neither's curve is drawn
+  // behind the hours.
+  await expect
+    .poll(() => page.locator(".dock tr.tt-wind td .kn").count(), {
+      timeout: 30000,
+    })
+    .toBeGreaterThan(5);
+  await expect(page.locator(".dock .tide-band")).toHaveCount(0);
 
   // Lough Neagh: Larne is within the limit, but the sea does not reach it.
   await page.goto("/?spot=lough-neagh-antrim");
@@ -1804,7 +1799,7 @@ test("a point tapped on Dublin Bay reads its nearest station's tide; one on Loug
   await expect(page.locator(".dock .dk-tools")).toContainText(
     /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
   );
-  // No tide is drawn behind the hours: the spot's page says why.
+  // Nor here, where Larne is within the limit but the sea does not reach.
   await expect
     .poll(() => page.locator(".dock tr.tt-wind td .kn").count(), {
       timeout: 30000,
@@ -1828,33 +1823,7 @@ test("a point tapped on Dublin Bay reads its nearest station's tide; one on Loug
   expect(errors).toEqual([]);
 });
 
-test("while the tide is fetched the hours stand without it, and it is drawn behind them as it comes", async ({
-  page,
-}) => {
-  let release = () => {};
-  const held = new Promise<void>((done) => (release = done));
-  await page.route("**/marine/tides.json", async (route) => {
-    await held;
-    await route.fulfill({ json: tideManifest });
-  });
-  await page.route("**/marine/tides-Fenit-test.json", (route) =>
-    route.fulfill({ json: tideCurve }),
-  );
-  await page.goto("/?spot=brandon");
-  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
-    timeout: 30000,
-  });
-  const before = (await page.locator(".dock").boundingBox())!.height;
-  await expect(page.locator(".dock .tide-band")).toHaveCount(0);
-  release();
-  await expect(
-    page.locator(".dock .tide-band .tide-line").first(),
-  ).toBeVisible();
-  // Behind the figures, so the dock is no taller for it.
-  expect((await page.locator(".dock").boundingBox())!.height).toBe(before);
-});
-
-test("a point tapped off Dublin Bay reads wind, waves, weather and tide, and no blend", async ({
+test("a point tapped off Dublin Bay reads wind, waves and weather, and no blend", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -1884,11 +1853,6 @@ test("a point tapped off Dublin Bay reads wind, waves, weather and tide, and no 
   await expect
     .poll(() => dock.locator("tr.tt-wind td .kn").count(), { timeout: 30000 })
     .toBeGreaterThan(5);
-  // The tide, the nearest station's.
-  await expect(dock.locator(".tide-band .tide-label").first()).toHaveText(
-    /^\d\d:\d\d$/,
-    { timeout: 15000 },
-  );
   // The waves and the weather, a riding place's on the bay, said whose.
   await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
   await expect(dock.locator(".dk-lent")).toHaveText(
@@ -2073,32 +2037,4 @@ test.describe("on a phone", () => {
     await page.touchscreen.tap(hours.x + 40, hours.y + hours.height / 2);
     await expect.poll(standing).toBeCloseTo(edge, 0);
   });
-});
-
-test("on a phone, the tide's turns are painted over its dot, and the figures over both", async ({
-  page,
-}) => {
-  await withTides(page);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/?spot=brandon");
-  const dock = page.locator(".dock");
-  await expect(dock.locator(".tide-label").first()).toBeVisible({
-    timeout: 30000,
-  });
-  await expect(dock.locator(".tide-dot")).toHaveCount(1);
-  // Painted in order: the dot, then every turn's time over it (#98), and the
-  // table after the tide, so its figures stand over the curve.
-  const order = await page.evaluate(() => {
-    const dot = document.querySelector(".dock .tide-dot")!;
-    const labels = [...document.querySelectorAll(".dock .tide-label")];
-    const band = document.querySelector(".dock .tide-band")!;
-    const table = document.querySelector(".dock table.tt")!;
-    const after = (a: Node, b: Node) =>
-      !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    return {
-      labels: labels.every((label) => after(dot, label)),
-      table: after(band, table),
-    };
-  });
-  expect(order).toEqual({ labels: true, table: true });
 });
