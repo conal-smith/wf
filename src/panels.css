@@ -236,6 +236,28 @@
   letter-spacing: 0;
   text-transform: none;
 }
+/* How high the rider points: a capsule as wide as the level's, and under
+   it the angle that choice draws. */
+.rider-pointing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.rider-pointing > [role="group"] {
+  display: flex;
+  align-self: stretch;
+}
+.rider-pointing > [role="group"] button {
+  flex: 1 1 auto;
+  padding: 0 4px;
+  letter-spacing: 0.03em;
+}
+.rider-pointing-angle {
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.06em;
+  color: var(--color-ink-muted);
+}
 .filter-models {
   display: flex;
   flex-direction: column;

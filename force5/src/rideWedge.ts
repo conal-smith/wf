@@ -13,6 +13,10 @@
  * say (docs/RIDE_ROSE.md, 19 October 2026): about 45° off the true wind for a
  * good rider (Duotone's academy, AFS, Wing Daily), 50–60° measured by riding
  * riders, a beam reach at best for a learner, and 10–15° worse in light air.
+ * Those are the good end: what is taught as the aim and what a rider proud
+ * enough of a track to post it measured. A rider out for a session holds
+ * about 10° less (the owner's ruling of 22 October 2026), so that is the
+ * default, and a rider who points higher or lower says so (`Pointing`).
  * Gear moves them as much as skill does, so they say "about here", not a
  * polar. They are the headings a session is ridden on, back and forth across
  * the wind, not the deepest a rider could bear away: never past 110° off,
@@ -23,6 +27,7 @@ import {
   rideableWind,
   shoreAngle,
   windBand,
+  type Pointing,
   type Rider,
   type ShoreAngle,
   type Skill,
@@ -32,14 +37,15 @@ import {
 type Range = readonly [number, number];
 
 /**
- * Powered up, in the sweet spot. A learner holds a beam reach at best; a
- * riding rider about 60° (GPS tracks measure 50–61°); an advanced rider about
- * 45°, as Duotone and AFS teach it.
+ * Powered up, in the sweet spot, for a rider of typical pointing. A learner
+ * holds a beam reach at best; a riding rider about 70° and an advanced rider
+ * about 55°: 10° short of the 60° GPS tracks measure and the 45° Duotone and
+ * AFS teach, which a session rider does not hold tack after tack.
  */
 const BEST: Record<Skill, Range> = {
   beginner: [90, 105],
-  intermediate: [60, 105],
-  advanced: [45, 110],
+  intermediate: [70, 105],
+  advanced: [55, 110],
 };
 /**
  * Just foiling, at the band's floor: about 15° lower upwind (a light-air
@@ -48,15 +54,37 @@ const BEST: Record<Skill, Range> = {
  */
 const AT_FLOOR: Record<Skill, Range> = {
   beginner: [95, 100],
-  intermediate: [75, 100],
-  advanced: [60, 105],
+  intermediate: [85, 100],
+  advanced: [70, 105],
 };
 /** At the band's top: about 5° worse upwind, and less off the wind. */
 const AT_TOP: Record<Skill, Range> = {
   beginner: [95, 100],
-  intermediate: [65, 100],
-  advanced: [50, 105],
+  intermediate: [75, 100],
+  advanced: [60, 105],
 };
+
+/**
+ * How much higher or lower than typical a rider points, in degrees off the
+ * wind. Sharp is the good end the sources give (60° riding, 45° advanced);
+ * cautious is a rider still learning to work upwind. Only the upwind edge
+ * moves: how deep a session is ridden does not change with how high.
+ */
+const POINTING_OFF: Record<Pointing, number> = {
+  cautious: 10,
+  typical: 0,
+  sharp: -10,
+};
+
+/**
+ * The upwind edge for a rider's pointing. Pointing lower never closes the
+ * reach: at least 10° of it stays, or what the level had where it had less
+ * (a learner just foiling).
+ */
+function pointed(range: Range, pointing: Pointing = "typical"): Range {
+  const [up, down] = range;
+  return [Math.min(up + POINTING_OFF[pointing], Math.max(up, down - 10)), down];
+}
 
 export type WedgeState = "building" | "sweet" | "overpowered" | "over";
 
@@ -79,8 +107,24 @@ const mix = (a: Range, b: Range, t: number): Range => [
   lerp(a[1], b[1], t),
 ];
 
+/**
+ * How high the rider points powered up, in degrees off the true wind: what
+ * the display options say beside the pointing they chose.
+ */
+export const upwindAngle = (rider: Rider): number =>
+  pointed(BEST[rider.skill], rider.pointing)[0];
+
 /** What the rider can hold at a rideable wind, or null below their floor. */
 export function rideRange(
+  rider: Rider,
+  rideKn: number,
+): { range: Range; power: number; state: WedgeState } | null {
+  const ride = levelRange(rider, rideKn);
+  return ride && { ...ride, range: pointed(ride.range, rider.pointing) };
+}
+
+/** What the rider's level holds, at typical pointing. */
+function levelRange(
   rider: Rider,
   rideKn: number,
 ): { range: Range; power: number; state: WedgeState } | null {

@@ -77,27 +77,60 @@ tack. A dashed ring marks half of it.
   already drawn are given their new sizes rather than built again, and the
   hole in the paper wash, a distance on the chart, is cut again only when its
   edge would leave the rim's band, and once the camera rests. The glass is
-  also redrawn when the hour changes, and when the rider's level or units
-  change.
+  also redrawn when the hour changes, and when the rider's level, pointing
+  or units change.
 
-## The angles, and where they come from (19 October 2026)
+## The angles, and where they come from (19 and 22 October 2026)
 
 The owner asked for this check: "Showing where you cannot go is good. Make sure
 that's actually accurate." These are the numbers, with their sources. They are
 rounded to 5° on the rose, and the key says "about", because riders, boards and
 foils vary as much as levels do. They are a guide, not a polar.
 
+On 22 October 2026 the owner judged the rose to point too high: "I don't think
+people can go so sharp an angle into the wind generally, unless they are very
+very good", and asked for it to be configurable. The sources below give the
+good end: the angle schools teach as the aim, and GPS tracks a rider was
+pleased enough with to post. A rider out for an ordinary session, tack after
+tack, in chop and gusts, holds about 10° less. The default is now that rider,
+and **Pointing upwind** in the display options (`Rider.pointing`) moves it.
+
 ### Upwind: the no-go half-angle (degrees off the true wind)
+
+At the default, **Typical** pointing:
 
 | Level (stars) | Powered up (sweet spot) | Just foiling (band's floor) | Overpowered (band's top) |
 |---|---|---|---|
 | Learning | 90° | 95° | 95° |
-| Riding | 60° | 75° | 65° |
-| Advanced | 45° | 60° | 50° |
+| Riding | 70° | 85° | 75° |
+| Advanced | 55° | 70° | 60° |
 
 Between those points, `rideRange` blends smoothly across the rider's own wind
 band (`windBand` in `stars.ts`), so the rose and the stars agree on how well
 powered the hour is.
+
+### Pointing upwind: the rider's own say
+
+| Pointing | Upwind edge | Riding, powered up | Advanced, powered up | Learning, powered up |
+|---|---|---|---|---|
+| Cautious | 10° lower | 80° | 65° | 95° |
+| Typical (default) | as above | 70° | 55° | 90° |
+| Sharp | 10° higher | 60° | 45° | 80° |
+
+- **Sharp** is the sources' good end: 60° riding and 45° advanced, the angles
+  the rose drew from 19 to 22 October 2026.
+- **Cautious** is a rider still learning to work upwind, or on a low-aspect
+  wing and a short mast.
+- Only the upwind edge moves. How deep a session is ridden, and how powered
+  the hour is, do not change with how high the rider points.
+- Pointing lower never closes the reach: at least 10° of it stays, or what the
+  level has where it has less (a learner just foiling keeps 95–100°).
+- It is not a star. The stars rate the wind and how it meets the beach, not
+  the heading, so a change of pointing moves the loupe's no-go and the light's
+  wedge and rates nothing again. It is kept on the device with the weight and
+  the level (`parseRider` in `force5/src/prefs.ts`), absent while it is
+  Typical. The mobile app reads it through the light's wedge but has no
+  control for it yet.
 
 - **About 45° for a good rider.** This is well supported:
   - Duotone Wing Academy: "You can only go up to around 45 degrees into the
@@ -140,6 +173,23 @@ powered the hour is.
   Kite-foil racers reach about 40–43°. No published wing-race VMG data was
   found. Advanced is therefore capped at 45°, not 40°: the rose assumes the
   wing the stars would recommend and an everyday foil.
+
+### What changed in `rideRange` (22 October 2026)
+
+Typical pointing is 10° lower upwind for riding and advanced riders, at every
+point of the band. Sharp gives back exactly the 19 October numbers.
+
+| | 19 October | Typical, now |
+|---|---|---|
+| Riding, powered | 60–105° | 70–105° |
+| Riding, at floor | 75–100° | 85–100° |
+| Riding, at top | 65–100° | 75–100° |
+| Advanced, powered | 45–110° | 55–110° |
+| Advanced, at floor | 60–105° | 70–105° |
+| Advanced, at top | 50–105° | 60–105° |
+
+The learner is unchanged at Typical: a beam reach at best was already what an
+ordinary learner holds.
 
 ### What changed in `rideRange` (19 October 2026)
 
@@ -207,8 +257,12 @@ bands in red, from the same numbers (`offshoreSpans`, which is tested against
 
 ### How sure we are
 
-- Advanced at 45°: well supported (several schools and makers).
-- Riding at 60°: supported (two forum GPS measurements).
+- Advanced at 45°, as the good end (Sharp): well supported (several schools
+  and makers).
+- Riding at 60°, as the good end (Sharp): supported (two forum GPS
+  measurements).
+- Typical, 10° short of those: the owner's judgement of an ordinary session,
+  not measured.
 - Learning at 90°: inferred from coaching.
 - The light and overpowered adjustments: extrapolated from windsurfing.
 

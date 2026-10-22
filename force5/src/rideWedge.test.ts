@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { offshoreSpans, rideRange, rideRose, rideWedge } from "./rideWedge";
+import {
+  offshoreSpans,
+  rideRange,
+  rideRose,
+  rideWedge,
+  upwindAngle,
+} from "./rideWedge";
 import { DEFAULT_RIDER, shoreAngle, windBand, type Rider } from "./stars";
 
 const rider = (over: Partial<Rider> = {}): Rider => ({
@@ -14,6 +20,13 @@ const onWater = (w: { from: number; to: number }, facing: number) =>
   [w.from, (w.from + w.to) / 2, w.to].every(
     (b) => Math.abs(((((b - facing) % 360) + 540) % 360) - 180) <= 90 + 1e-9,
   );
+
+/** The range in the middle of the rider's sweet spot. */
+const sweet = (skill: Rider["skill"], over: Partial<Rider> = {}) => {
+  const r = rider({ skill, ...over });
+  const band = windBand(r);
+  return rideRange(r, (band.sweetLow + band.sweetHigh) / 2)!.range;
+};
 
 describe("rideRange", () => {
   it("is nothing below the rider's floor", () => {
@@ -39,17 +52,13 @@ describe("rideRange", () => {
     expect(top.power).toBeLessThan(sweet.power);
   });
 
-  it("points as schools and GPS tracks say, powered up: 90°, 60° and 45° off the wind", () => {
-    // docs/RIDE_ROSE.md: a learner holds a beam reach at best, a riding rider
-    // about 60°, an advanced rider about 45° (Duotone, AFS, Wing Daily).
-    const sweet = (skill: Rider["skill"]) => {
-      const band = windBand(rider({ skill }));
-      return rideRange(rider({ skill }), (band.sweetLow + band.sweetHigh) / 2)!
-        .range;
-    };
+  it("points as a session rider holds it, powered up: 90°, 70° and 55° off the wind", () => {
+    // docs/RIDE_ROSE.md: a learner holds a beam reach at best; a riding and
+    // an advanced rider 10° short of the 60° and 45° the GPS tracks and the
+    // schools give, which is the good end.
     expect(sweet("beginner")).toEqual([90, 105]);
-    expect(sweet("intermediate")).toEqual([60, 105]);
-    expect(sweet("advanced")).toEqual([45, 110]);
+    expect(sweet("intermediate")).toEqual([70, 105]);
+    expect(sweet("advanced")).toEqual([55, 110]);
     // Just foiling, about 15° lower; at the top of the band, about 5°.
     for (const skill of ["intermediate", "advanced"] as const) {
       const band = windBand(rider({ skill }));
@@ -71,12 +80,85 @@ describe("rideRange", () => {
   });
 });
 
+describe("pointing", () => {
+  it("points 10° higher when sharp, back to the sources' good end, and 10° lower when cautious", () => {
+    // Sharp is what the schools and the GPS tracks give: 60° and 45°.
+    expect(sweet("intermediate", { pointing: "sharp" })).toEqual([60, 105]);
+    expect(sweet("advanced", { pointing: "sharp" })).toEqual([45, 110]);
+    expect(sweet("intermediate", { pointing: "cautious" })).toEqual([80, 105]);
+    expect(sweet("advanced", { pointing: "cautious" })).toEqual([65, 110]);
+    expect(sweet("intermediate", { pointing: "typical" })).toEqual(
+      sweet("intermediate"),
+    );
+  });
+
+  it("moves only the upwind edge, at every wind the rider can ride", () => {
+    for (const skill of ["beginner", "intermediate", "advanced"] as const) {
+      const band = windBand(rider({ skill }));
+      for (let kn = band.min; kn <= band.max + 2; kn += 0.5) {
+        const typical = rideRange(rider({ skill }), kn)!;
+        const sharp = rideRange(rider({ skill, pointing: "sharp" }), kn)!;
+        const cautious = rideRange(rider({ skill, pointing: "cautious" }), kn)!;
+        expect(sharp.range[0]).toBeCloseTo(typical.range[0] - 10);
+        expect(cautious.range[0]).toBeGreaterThanOrEqual(typical.range[0]);
+        for (const r of [sharp, cautious]) {
+          expect(r.range[1]).toBe(typical.range[1]);
+          expect(r.power).toBe(typical.power);
+          expect(r.state).toBe(typical.state);
+        }
+      }
+    }
+  });
+
+  it("never closes the reach for a cautious rider", () => {
+    // A learner powered up keeps 10° of reach, 95°–105°; just foiling, the
+    // 95°–100° the level has.
+    expect(sweet("beginner", { pointing: "cautious" })).toEqual([95, 105]);
+    const learner = rider({ skill: "beginner", pointing: "cautious" });
+    expect(rideRange(learner, windBand(learner).min)!.range).toEqual([95, 100]);
+    for (const skill of ["beginner", "intermediate", "advanced"] as const) {
+      const r = rider({ skill, pointing: "cautious" });
+      const band = windBand(r);
+      for (let kn = band.min; kn <= band.max; kn += 0.5) {
+        const [up, down] = rideRange(r, kn)!.range;
+        expect(down - up).toBeGreaterThanOrEqual(5 - 1e-9);
+      }
+    }
+  });
+
+  it("says the angle the display options show, powered up", () => {
+    expect(upwindAngle(rider())).toBe(70);
+    expect(upwindAngle(rider({ pointing: "sharp" }))).toBe(60);
+    expect(
+      upwindAngle(rider({ skill: "advanced", pointing: "cautious" })),
+    ).toBe(65);
+    expect(upwindAngle(rider({ skill: "beginner" }))).toBe(90);
+  });
+
+  it("widens the loupe's no-go, and the light's wedge with it", () => {
+    const typical = rideRose(rider(), hour(225), DOLLY)!;
+    const sharp = rideRose(rider({ pointing: "sharp" }), hour(225), DOLLY)!;
+    const cautious = rideRose(
+      rider({ pointing: "cautious" }),
+      hour(225),
+      DOLLY,
+    )!;
+    expect(sharp.nogo).toEqual({ from: 165, to: 285 });
+    expect(typical.nogo).toEqual({ from: 155, to: 295 });
+    expect(cautious.nogo).toEqual({ from: 145, to: 305 });
+    const wedge = (pointing: Rider["pointing"]) =>
+      rideWedge(rider({ pointing }), 18, 22, 45, SE)!;
+    expect(width(wedge("sharp"))).toBeGreaterThan(width(wedge("typical")));
+    expect(width(wedge("typical"))).toBeGreaterThan(width(wedge("cautious")));
+  });
+});
+
 describe("rideWedge", () => {
   it("lies on the water in a cross-shore wind, along the beach", () => {
     const w = rideWedge(rider(), 18, 22, 45, SE)!;
     expect(onWater(w, SE)).toBe(true);
-    // Intermediate in the sweet spot: 60°–105° off a north-easterly.
-    expect(w.from).toBeCloseTo(105);
+    // Intermediate in the sweet spot: 70°–105° off a north-easterly.
+    expect(w.from).toBeCloseTo(115);
     expect(w.to).toBeCloseTo(150);
   });
 
@@ -141,11 +223,11 @@ describe("rideRose", () => {
   it("draws Dollymount's cross-shore afternoon: out to the south-east, home to the north-west", () => {
     const rose = rideRose(rider(), hour(225), DOLLY)!;
     expect(rose.shore).toBe("cross");
-    // Within 60° of a south-westerly, for a riding rider.
-    expect(rose.nogo).toEqual({ from: 165, to: 285 });
+    // Within 70° of a south-westerly, for a riding rider.
+    expect(rose.nogo).toEqual({ from: 155, to: 295 });
     expect(rose.reaches).toEqual([
-      { from: 285, to: 330, kind: "home" },
-      { from: 120, to: 165, kind: "out" },
+      { from: 295, to: 330, kind: "home" },
+      { from: 120, to: 155, kind: "out" },
     ]);
     expect(rose.drift).toBe(45);
     expect(rose.driftOut).toBe(false);
@@ -155,7 +237,7 @@ describe("rideRose", () => {
     const learner = rideRose(rider({ skill: "beginner" }), hour(225), DOLLY)!;
     const advanced = rideRose(rider({ skill: "advanced" }), hour(225), DOLLY)!;
     expect(learner.nogo).toEqual({ from: 135, to: 315 });
-    expect(advanced.nogo).toEqual({ from: 180, to: 270 });
+    expect(advanced.nogo).toEqual({ from: 170, to: 280 });
   });
 
   it("rounds every bearing to 5°", () => {
@@ -183,8 +265,8 @@ describe("rideRose", () => {
     expect(rose.shore).toBeNull();
     expect(rose.driftOut).toBe(false);
     expect(rose.reaches).toEqual([
-      { from: 285, to: 330, kind: "reach" },
-      { from: 120, to: 165, kind: "reach" },
+      { from: 295, to: 330, kind: "reach" },
+      { from: 120, to: 155, kind: "reach" },
     ]);
   });
 
