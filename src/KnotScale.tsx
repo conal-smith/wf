@@ -5,12 +5,13 @@ const TOP = 60;
 const TICKS = [10, 20, 30, 40, 50];
 
 /**
- * The wind scale the wash and the coloured arrows are drawn on: the same for
- * every rider, generated from PALETTE stop for stop, with its knots under it.
+ * The wind scale the coloured wind and the coloured arrows are drawn on: the
+ * same for every rider, generated from PALETTE stop for stop, with its knots
+ * under it. At full strength for both: the coloured wind lies on the sea all
+ * but opaque (windLayer.ts), so its colours are the scale's own.
  */
-export function KnotScale({ faint = false }: { faint?: boolean }) {
-  const rgb = (kn: number) =>
-    `rgb(${windColor(kn).join(" ")}${faint ? " / 0.55" : ""})`;
+export function KnotScale() {
+  const rgb = (kn: number) => `rgb(${windColor(kn).join(" ")})`;
   const gradient = `linear-gradient(90deg, ${[
     ...PALETTE.map(([kn]) => kn).filter((kn) => kn < TOP),
     TOP,

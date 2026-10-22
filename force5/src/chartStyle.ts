@@ -97,6 +97,26 @@ export const DEPTH_BY_ZOOM: Record<string, [string, ExpressionSpecification]> =
     relief: ["line-opacity", zoomed(6.5, 0.1, 9, 0.2, 11, 0.45)],
   };
 
+/**
+ * The coast's ink: as the chart draws it, and heavier under the coloured
+ * wind (windLayer.ts), where a hairline is lost between the sea's strong
+ * colour and the land's fainter one. The map switches between them with
+ * the wind's style (WindMap.tsx).
+ */
+export const COAST_INK: Record<
+  "chart" | "wash",
+  { "line-opacity": number; "line-width": ExpressionSpecification }
+> = {
+  chart: {
+    "line-opacity": 0.85,
+    "line-width": zoomed(5, 0.5, 10, 1, 14, 1.6),
+  },
+  wash: {
+    "line-opacity": 1,
+    "line-width": zoomed(5, 0.9, 10, 1.5, 14, 2.2),
+  },
+};
+
 /** The layers each switch in the layers panel turns on and off. */
 export const CHART_LAYERS = {
   tints: ["bands"],
@@ -270,11 +290,7 @@ export function chartStyle(
         type: "line",
         source: "omt",
         "source-layer": "water",
-        paint: {
-          "line-color": c.ink,
-          "line-opacity": 0.85,
-          "line-width": zoomed(5, 0.5, 10, 1, 14, 1.6),
-        },
+        paint: { "line-color": c.ink, ...COAST_INK.chart },
       },
       {
         id: "contour-labels",
