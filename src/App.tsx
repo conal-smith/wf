@@ -97,12 +97,18 @@ import { openingSpot, spotAddress } from "./openingSpot";
 import { takeEarly } from "../force5/src/boot";
 import {
   loadManifest,
+  MANIFEST_REVALIDATE_MS,
   ManifestUnavailableError,
   windModels,
 } from "../force5/src/manifests";
 import { runLabel } from "../force5/src/revalidate";
 import { starsFromAt, starsFromText } from "../force5/src/lead";
-import { loadModel, MODELS, type ModelId } from "../force5/src/models";
+import {
+  loadModel,
+  MAP_MODEL_IDS,
+  MODELS,
+  type ModelId,
+} from "../force5/src/models";
 // The display options, only when asked for from the map's controls.
 const DisplayFilter = lazy(() => import("./DisplayFilter"));
 // Gust is a launcher in the corner until he is asked: his code comes once
@@ -125,6 +131,7 @@ import {
 import {
   dockColumns,
   frameForTime,
+  handoverModel,
   mapReach,
   type ColumnModel,
 } from "../force5/src/timeline";
@@ -134,7 +141,6 @@ import { FEATURES } from "../shared/web/features";
 import { favourites } from "../shared/web/favourites";
 import {
   compass,
-  dayLabel,
   defaultPrefs,
   freshness,
   loadFrame,
@@ -626,64 +632,151 @@ export default function App() {
     setModelError("");
     setModelNotice(`Updated to the ${runLabel(next.runTime)} run.`);
   };
+
+  /* ---- past the reader's run, the run that covers the hour ---- */
+  const mapAt = mapTime ? Date.parse(mapTime) : NaN;
+  const mapIndex = strip.length && mapTime ? nearestColumn(strip, mapAt) : -1;
+  const mapColumn = strip[mapIndex];
+  // A run whose manifest could not be read is passed over for five minutes,
+  // the manifest cache's own span, so the next run that covers the hour (GFS,
+  // past ECMWF) is drawn rather than nothing; after that it is asked again.
+  const [handoverFailed, setHandoverFailed] = useState<
+    ReadonlyMap<string, number>
+  >(() => new Map());
+  /**
+   * The model the map hands over to where the reader's run does not reach the
+   * hour: the one the dock's column there comes from (force5/src/timeline.ts).
+   * Worked out from the runs the columns are built from, so it holds with no
+   * spot open and no dock on screen. The reader's choice stays `manifest`, and
+   * the map goes back to it as soon as the hour is inside its run again.
+   */
+  const handoverId = useMemo(
+    () =>
+      manifest
+        ? handoverModel(
+            columnModels.filter(
+              (model) =>
+                !(
+                  clockNow - (handoverFailed.get(model.id) ?? -Infinity) <
+                  MANIFEST_REVALIDATE_MS
+                ),
+            ),
+            MAP_MODEL_IDS,
+            { id: manifest.model, frames: manifest.frames },
+            mapAt,
+            mapColumn,
+            clockNow,
+          )
+        : null,
+    [columnModels, manifest, mapAt, mapColumn?.model, clockNow, handoverFailed],
+  );
+  // Kept once loaded, so a scrub back and forth across the seam swaps between
+  // two runs already in hand rather than reading a manifest at every crossing.
+  const [handover, setHandover] = useState<Manifest | null>(null);
+  /** A newer run of the hand-over's model, found after one of its tiles failed. */
+  const commitHandover = ({ manifest: next, frame: nextFrame }: RunSwap) => {
+    setHandover(next);
+    setFrame(nextFrame);
+    setFrameError("");
+  };
+  useEffect(() => {
+    if (!handoverId) return;
+    const controller = new AbortController();
+    // Through the manifest cache: the run in hand comes straight back, and one
+    // older than five minutes is checked against its ETag, not read again.
+    loadManifest(handoverId, controller.signal)
+      .then((next) => {
+        if (!controller.signal.aborted) setHandover(next);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setHandoverFailed((failed) =>
+            new Map(failed).set(handoverId, Date.now()),
+          );
+      });
+    return () => controller.abort();
+  }, [handoverId]);
+  const handing =
+    handoverId &&
+    handover?.model === handoverId &&
+    frameForTime(handover.frames, mapAt) !== null
+      ? handover
+      : null;
+  /** The hand-over's run is still on its way: the map waits for it. */
+  const handoverDue = !!handoverId && handover?.model !== handoverId;
+  /** The run the map draws from: the reader's own, or the one handed over to. */
+  const mapRun = handing ?? manifest;
+
+  // A frame belongs to one run: an hour of HARMONIE's is not ECMWF's, even
+  // where their lead hours match.
   const paintedIndex =
-    manifest && frame
-      ? manifest.frames.findIndex((f) => f.hour === frame.hour)
+    mapRun && frame && frame.model === mapRun.model && frame.run === mapRun.run
+      ? mapRun.frames.findIndex((f) => f.hour === frame.hour)
       : -1;
   const requestedIndex =
-    manifest && mapTime
-      ? (frameForTime(manifest.frames, Date.parse(mapTime)) ??
-        (paintedIndex >= 0
-          ? paintedIndex
-          : nearestFrame(manifest.frames, Date.parse(mapTime))))
+    mapRun && mapTime
+      ? (frameForTime(mapRun.frames, mapAt) ??
+        (paintedIndex >= 0 ? paintedIndex : nearestFrame(mapRun.frames, mapAt)))
       : 0;
+  const painted = paintedIndex >= 0 && paintedIndex === requestedIndex;
   useEffect(() => {
     // No frame before the page knows its opening time: one asked for sooner
     // (the run's first, and its prefetch) would only be thrown away.
-    if (!manifest || pendingModel || !mapTime) return;
+    if (!mapRun || pendingModel || !mapTime) return;
+    setFrameError("");
+    if (painted) return;
     const controller = new AbortController();
     const epoch = modelEpoch.current;
     const current = () =>
       !controller.signal.aborted && epoch === modelEpoch.current;
-    setFrameError("");
-    loadFrame(manifest, requestedIndex)
+    const own = mapRun === manifest;
+    loadFrame(mapRun, requestedIndex)
       .then((data) => {
         if (!current()) return;
         setFrame(data);
-        if (requestedIndex + 1 < manifest.frames.length)
-          void loadFrame(manifest, requestedIndex + 1, { base: false }).catch(
+        if (requestedIndex + 1 < mapRun.frames.length)
+          void loadFrame(mapRun, requestedIndex + 1, { base: false }).catch(
             () => {},
           );
       })
       .catch(async (e) => {
         if (!current()) return;
         const swap = await loadNewerRun(
-          manifest,
-          manifest.frames[requestedIndex].validTime,
+          mapRun,
+          mapRun.frames[requestedIndex].validTime,
           controller.signal,
         ).catch(() => null);
         if (!current()) return;
-        if (swap) return commitRun(swap);
+        if (swap) return own ? commitRun(swap) : commitHandover(swap);
         setFrameError(e.message);
       });
     return () => controller.abort();
-  }, [manifest, requestedIndex, retry, pendingModel, !mapTime]);
+    // The reader's run as well as the drawn one: a newer run of theirs swapped
+    // in while the hand-over is drawn replaces the frame, which is asked again.
+  }, [
+    mapRun,
+    manifest,
+    requestedIndex,
+    retry,
+    pendingModel,
+    !mapTime,
+    painted,
+  ]);
 
   /**
-   * Whether the map's run reaches the hour the map is at. Past it the map
-   * draws no wind, rather than the last frame it painted: the lights and the
-   * dock read the hour itself, and two hours shown as one moment is wrong.
-   * Nothing switches model by itself (docs/FORECAST_DATA_PLAN.md); the dock's
-   * chip offers the run that reaches the hour.
+   * Whether the map has a run that reaches the hour it is at. Where neither
+   * the reader's run nor a hand-over does, it draws no wind, rather than the
+   * last frame it painted: the lights and the dock read the hour itself, and
+   * two hours shown as one moment is wrong. While the hand-over's run is on
+   * its way the frame on screen stands, as it does through any scrub.
    */
   const mapDraws =
-    !manifest ||
+    !mapRun ||
     !mapTime ||
-    frameForTime(manifest.frames, Date.parse(mapTime)) !== null;
-  const activeIndex = paintedIndex >= 0 ? paintedIndex : requestedIndex;
-  const loading = !frame || activeIndex !== requestedIndex;
-  const forecast = manifest?.frames[activeIndex];
-  const staleness = manifest ? freshness(manifest) : "fresh";
+    frameForTime(mapRun.frames, mapAt) !== null ||
+    handoverDue;
+  const loading = !frame || handoverDue || !painted;
+  const staleness = mapRun ? freshness(mapRun) : "fresh";
 
   const chooseModel = async (id: ModelId, wanted?: string) => {
     if (!manifest || !frame || (id === manifest.model && !wanted)) return;
@@ -699,15 +792,10 @@ export default function App() {
     try {
       const next = await loadModel(id, targetTime, controller.signal);
       if (controller.signal.aborted) return;
+      // A run that does not reach the time hands it over (`handoverModel`),
+      // and the label where the map names its model says so.
       setManifest(next.manifest);
       setFrame(next.frame);
-      if (
-        Math.abs(Date.parse(next.frame.validTime) - Date.parse(targetTime)) >
-        3600000
-      )
-        setModelNotice(
-          `${next.manifest.modelName} on the map from ${dayLabel(next.frame.validTime)} ${timeLabel(next.frame.validTime)}.`,
-        );
     } catch (e) {
       if (!controller.signal.aborted)
         setModelError(
@@ -727,17 +815,22 @@ export default function App() {
    */
   const [recovery] = useState(() => new RunRecovery());
   const recoverRun = (model: string, run: string) => {
-    if (!manifest || pendingModel || model !== manifest.model) return;
-    if (run !== manifest.run) return;
+    if (pendingModel) return;
+    // The reader's run, or the one handed over to past it.
+    const shown = [manifest, handing].find(
+      (m) => m && m.model === model && m.run === run,
+    );
+    if (!shown) return;
     const epoch = modelEpoch.current;
     const time = selectedTime ?? frame?.validTime;
     if (!time) return;
-    const shown = manifest;
     recovery.attempt(
       shown.base,
       () => loadNewerRun(shown, time, new AbortController().signal),
       (swap) => {
-        if (epoch === modelEpoch.current) commitRun(swap);
+        if (epoch !== modelEpoch.current) return;
+        if (shown === manifest) commitRun(swap);
+        else commitHandover(swap);
       },
     );
   };
@@ -1286,17 +1379,47 @@ export default function App() {
     ],
   );
 
-  /* ---- the run that reaches the hour, when the map's does not ---- */
-  const reach =
-    manifest && column ? mapReach(manifest.frames, column.time) : null;
+  /* ---- the hour past the reader's run: the hand-over, or why no wind ---- */
+  const reach = manifest && mapTime ? mapReach(manifest.frames, mapAt) : null;
   const beyondMap = !!reach && !reach.drawn;
-  /** Said where the map's model is named, and in the layers: why no wind. */
+  /** Where the reader's run stops: said in the label and in the layers. */
   const reachNote =
     manifest && reach && !reach.drawn
       ? `${manifest.modelName} ${reach.side === "after" ? "ends" : "starts"} ${dayShort(Date.parse(reach.edge))} ${clock(Date.parse(reach.edge))}`
       : null;
+  /** The model drawn in its place, by name, once it is drawn or on its way. */
+  const handoverName =
+    beyondMap && (handing || handoverDue)
+      ? (handing?.modelName ??
+        MODELS.find((m) => m.id === handoverId)?.name ??
+        null)
+      : null;
+  /**
+   * When the hand-over starts (or, before the reader's run, when it stops):
+   * the first column of the stretch past the reader's run that the same model
+   * owns, so the label names the hour the other model's wind begins, not the
+   * reader's last.
+   */
+  const beyond = reach && !reach.drawn ? reach : null;
+  const handoverAt = useMemo(() => {
+    if (!handoverName || !beyond || !mapColumn) return null;
+    const edge = Date.parse(beyond.edge);
+    if (beyond.side === "before") return edge;
+    let from = mapIndex;
+    while (
+      from > 0 &&
+      strip[from - 1].time > edge &&
+      strip[from - 1].model === mapColumn.model
+    )
+      from--;
+    return strip[from].time;
+  }, [handoverName, beyond?.side, beyond?.edge, mapIndex, strip]);
+  const handoverWhen =
+    handoverAt === null ? "" : `${dayShort(handoverAt)} ${clock(handoverAt)}`;
+  // Only where nothing can be handed over: the chip lets the reader ask for
+  // the run the dock's column comes from, if it could not be read by itself.
   const reachable =
-    beyondMap && column
+    beyondMap && !handing && !handoverDue && column
       ? (MODELS.find((m) => m.id === column.model) ?? null)
       : null;
 
@@ -1315,8 +1438,11 @@ export default function App() {
       <ul>
         <li>
           Wind: {manifest?.modelName ?? "HARMONIE"} on the map
-          {manifest ? ` (${runLabel(manifest.runTime)} run)` : ""}; the stars
-          rate one model&rsquo;s own forecast,{" "}
+          {manifest ? ` (${runLabel(manifest.runTime)} run)` : ""}
+          {handing
+            ? `, ${handing.modelName} (${runLabel(handing.runTime)} run) at the hours it does not reach`
+            : ""}
+          ; the stars rate one model&rsquo;s own forecast,{" "}
           {starsFromText(starsFromAt(rider.starsFrom))}, and{" "}
           {prefs.blendModels.length} models give the agreement beside them
         </li>
@@ -1454,8 +1580,10 @@ export default function App() {
               satelliteLoading={satelliteLoading}
               model={manifest?.model}
               modelNote={
-                reachNote && column
-                  ? `${reachNote}: no wind on the map at ${dayShort(column.time)} ${clock(column.time)}.${reachable && reachable.id !== manifest?.model ? ` ${reachable.name} reaches it.` : ""}`
+                reachNote && mapColumn
+                  ? handoverName
+                    ? `${reachNote}: ${handoverName} is on the map at ${dayShort(mapColumn.time)} ${clock(mapColumn.time)}, and ${manifest?.modelName} comes back within its own hours.`
+                    : `${reachNote}: no wind on the map at ${dayShort(mapColumn.time)} ${clock(mapColumn.time)}.${reachable && reachable.id !== manifest?.model ? ` ${reachable.name} reaches it.` : ""}`
                   : null
               }
               modelDisabled={!frame || !!pendingModel}
@@ -1500,7 +1628,7 @@ export default function App() {
               >
                 <span>
                   {status ??
-                    `Loading ${forecast ? timeLabel(manifest!.frames[requestedIndex].validTime) : "wind"}…`}
+                    `Loading ${mapRun && mapTime && !handoverDue ? timeLabel(mapRun.frames[requestedIndex].validTime) : "wind"}…`}
                 </span>
                 {pendingModel && (
                   <button
@@ -1541,9 +1669,19 @@ export default function App() {
                 <span
                   className="map-model"
                   data-run-state={staleness}
-                  data-reach={reachNote ? "beyond" : undefined}
+                  data-reach={
+                    handoverName ? "handover" : reachNote ? "beyond" : undefined
+                  }
                 >
-                  {reachNote ? (
+                  {handoverName ? (
+                    // "ECMWF on the map from Sat 09:00"; on a phone, where
+                    // the spot's tools stand beside it, "ECMWF from Sat 09:00".
+                    <>
+                      {handoverName}
+                      <span className="map-model-more"> on the map</span>
+                      {` ${beyond?.side === "before" ? "until" : "from"} ${handoverWhen}`}
+                    </>
+                  ) : reachNote ? (
                     <>
                       {reachNote}
                       <span className="map-model-more"> · no wind drawn</span>

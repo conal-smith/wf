@@ -39,7 +39,10 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   await expect(slider).toHaveAttribute("max", String(strip.length - 1));
   // Step across the seam with the keys, and to the end.
   const seam = strip.findIndex(
-    (c, i) => i > 0 && c.time - strip[i - 1].time >= 3 * 3600000 && c.date === strip[i - 1].date,
+    (c, i) =>
+      i > 0 &&
+      c.time - strip[i - 1].time >= 3 * 3600000 &&
+      c.date === strip[i - 1].date,
   );
   await slider.fill(String(seam));
   await slider.press("ArrowRight");
@@ -52,14 +55,15 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
     page.locator(`.dock tr.tt-hour td[data-i="${strip.length - 1}"]`),
   ).toHaveClass(/c-sel/);
   // ECMWF reaches the end: nothing to offer, nothing failing.
-  await expect(page.getByRole("button", { name: /on the map$/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /on the map$/ })).toHaveCount(
+    0,
+  );
   await expect(page.locator(".frame-status.is-error")).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
-  // Back to HARMONIE: it does not reach the hour, so the map draws no wind
-  // there (never its last frame), says so, and the chip offers the run that
-  // reaches the hour.
+  // Back to HARMONIE: it does not reach the hour, so the map hands it to
+  // ECMWF, says so, and keeps HARMONIE as the reader's choice.
   await layers.click();
   await page.locator('[data-model="harmonie"]').click();
   await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
@@ -68,11 +72,18 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   );
   await closePanel(page);
   await expect(slider).toHaveValue(String(strip.length - 1));
-  await expect(
-    page.getByRole("button", { name: /Show ECMWF on the map/ }),
-  ).toBeVisible();
-  await expect(page.locator(".particle-canvas")).toHaveClass(/is-blank/);
-  await expect(page.locator(".map-model")).toContainText("no wind drawn");
+  await expect(page.locator(".map-model")).toHaveAttribute(
+    "data-reach",
+    "handover",
+  );
+  // On a phone the label is the short form; the rest is for a screen reader.
+  await expect(page.locator(".map-model")).toHaveText(
+    /^ECMWF on the map from \w{3} \d\d:\d\d( · older run)?$/,
+  );
+  await expect(page.locator(".particle-canvas")).not.toHaveClass(/is-blank/);
+  await expect(page.getByRole("button", { name: /on the map$/ })).toHaveCount(
+    0,
+  );
 });
 
 test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", async ({
@@ -92,7 +103,9 @@ test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", as
   await page.clock.setFixedTime(SAMPLE_CLOCK);
   // A spot's dock, so its rows are there to read: Brandon Bay, chosen last.
   await page.goto("/?spot=brandon");
-  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
+    timeout: 30000,
+  });
   // Without ECMWF the long range falls to GFS, and the strip says so.
   await expect(page.locator(".dock tr.tt-hour td[data-i]")).toHaveCount(
     stripAt(SAMPLE_CLOCK.getTime(), sampleColumnsWithoutEcmwf).length,

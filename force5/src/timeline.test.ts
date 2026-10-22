@@ -4,6 +4,7 @@ import {
   dockColumns,
   frameForTime,
   framePosition,
+  handoverModel,
   loadOrder,
   mapReach,
   modelStretches,
@@ -288,6 +289,146 @@ describe("mapReach", () => {
   it("has no answer without frames or a time", () => {
     expect(mapReach([], NOW)).toBeNull();
     expect(mapReach(list, NaN)).toBeNull();
+  });
+});
+
+describe("handoverModel", () => {
+  const drawable = ["harmonie", "icon-eu", "ecmwf", "gfs"];
+  const own = (m: ColumnModel) => ({
+    id: m.id,
+    frames: (m.manifest as Manifest).frames,
+  });
+  const offered = () => [harmonie(), iconEu(), ecmwf(), gfs()];
+  // HARMONIE ends at 2026-09-16T06:00Z; ICON-EU at 18:00 that day.
+  const sunday = Date.parse("2026-09-20T12:00:00Z");
+  it("hands nothing over where the reader's run reaches the hour", () => {
+    const within = Date.parse("2026-09-15T09:00:00Z");
+    expect(
+      handoverModel(
+        offered(),
+        drawable,
+        own(harmonie()),
+        within,
+        {
+          model: "harmonie",
+        },
+        NOW,
+      ),
+    ).toBeNull();
+  });
+  it("draws the dock column's model past the end of the reader's run", () => {
+    expect(
+      handoverModel(
+        offered(),
+        drawable,
+        own(harmonie()),
+        sunday,
+        {
+          model: "ecmwf",
+        },
+        NOW,
+      ),
+    ).toBe("ecmwf");
+    // GFS where that is what the dock's long range is.
+    expect(
+      handoverModel(
+        offered(),
+        drawable,
+        own(harmonie()),
+        sunday,
+        {
+          model: "gfs",
+        },
+        NOW,
+      ),
+    ).toBe("gfs");
+  });
+  it("needs no dock: without a column it takes the run that reaches furthest", () => {
+    expect(
+      handoverModel(
+        offered(),
+        drawable,
+        own(harmonie()),
+        sunday,
+        undefined,
+        NOW,
+      ),
+    ).toBe("ecmwf");
+    // Past GFS's ten days only ECMWF is left.
+    const late = Date.parse("2026-09-26T00:00:00Z");
+    expect(
+      handoverModel(offered(), drawable, own(iconEu()), late, undefined, NOW),
+    ).toBe("ecmwf");
+  });
+  it("passes over a column's model the map cannot draw", () => {
+    const aifs = model("aifs", {
+      runTime: "2026-09-13T00:00:00Z",
+      hours: every(360, 6),
+      km: 28,
+    });
+    expect(
+      handoverModel(
+        [...offered(), aifs],
+        drawable,
+        own(harmonie()),
+        sunday,
+        { model: "aifs" },
+        NOW,
+      ),
+    ).toBe("ecmwf");
+  });
+  it("hands over before the reader's run starts as well as after it ends", () => {
+    const justLanded = model("harmonie", {
+      runTime: "2026-09-14T01:00:00Z",
+      hours: every(60, 1),
+      km: 2,
+    });
+    expect(
+      handoverModel(
+        offered(),
+        drawable,
+        own(justLanded),
+        NOW,
+        {
+          model: "ecmwf",
+        },
+        NOW,
+      ),
+    ).toBe("ecmwf");
+  });
+  it("never hands over to an ensemble mean, an expired run or one that stops short", () => {
+    const mean = model("ecmwf", {
+      runTime: "2026-09-13T00:00:00Z",
+      hours: every(360, 6),
+      km: 28,
+      ensemble: true,
+    });
+    const expired = model("gfs", {
+      runTime: "2026-09-01T00:00:00Z",
+      hours: every(240, 3),
+      km: 28,
+    });
+    expect(
+      handoverModel(
+        [harmonie(), iconEu(), mean, expired],
+        drawable,
+        own(harmonie()),
+        sunday,
+        { model: "ecmwf" },
+        NOW,
+      ),
+    ).toBeNull();
+    // A model the reader already has is not a hand-over to itself.
+    expect(
+      handoverModel(
+        offered(),
+        drawable,
+        own(ecmwf()),
+        Date.parse("2026-10-30T00:00:00Z"),
+        undefined,
+        NOW,
+      ),
+    ).toBeNull();
   });
 });
 

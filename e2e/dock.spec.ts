@@ -10,6 +10,7 @@ import {
 } from "./fixtures";
 import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleStrip, stripAt } from "./columns";
+import { clock, dayShort } from "../src/strip";
 import { buildPyramid } from "../scripts/f5tile.mjs";
 import { readFileSync } from "node:fs";
 import { spotSquare } from "../force5/src/squares";
@@ -976,60 +977,94 @@ const inked = (page: Page) =>
     return count;
   });
 
-test("an hour past the map's model offers the run that reaches it", async ({
+test("an hour past the map's model hands the map to the run that reaches it", async ({
   page,
 }) => {
   await openDock(page);
-  const chip = page.getByRole("button", { name: /Show ECMWF on the map/ });
   const canvas = page.locator(".particle-canvas");
   const label = page.locator(".map-model");
-  await expect(chip).toHaveCount(0);
   await expect(label).toHaveText("HARMONIE");
   await expect.poll(() => inked(page), { timeout: 20000 }).toBeGreaterThan(0);
-  // The strip's last day: far past HARMONIE.
+  // The strip's last day: far past HARMONIE, inside ECMWF's run.
   const far = sampleStrip.length - 4;
   await slider(page).fill(String(far));
-  await expect(chip).toBeVisible();
-  // The map draws no wind there: HARMONIE's last frame left standing under
-  // the lights' and the dock's reading of this hour was two moments shown as
-  // one. It says why, where it names its model.
-  await expect(canvas).toHaveClass(/is-blank/);
-  await expect(label).toHaveText(
-    /^HARMONIE ends \w{3} \d\d:\d\d · no wind drawn$/,
+  // The map draws ECMWF there, the run the dock's columns come from, and says
+  // so where it names its model: from ECMWF's first hour past HARMONIE's last.
+  const seam = sampleStrip.find((column) => column.model === "ecmwf")!;
+  const from = `${dayShort(seam.time)} ${clock(seam.time)}`;
+  // The sample's ECMWF run is more than eighteen hours old at the sample
+  // clock, and the label says so of whichever run it is drawing.
+  const handedOver = new RegExp(
+    `^ECMWF on the map from ${from}( · older run)?$`,
   );
-  await expect.poll(() => inked(page), { timeout: 5000 }).toBe(0);
+  await expect(label).toHaveText(handedOver, { timeout: 20000 });
+  await expect(label).toHaveAttribute("data-reach", "handover");
+  await expect(canvas).not.toHaveClass(/is-blank/);
+  await expect.poll(() => inked(page), { timeout: 20000 }).toBeGreaterThan(0);
+  // Nothing to ask for: the chip that offered ECMWF is not needed.
+  await expect(
+    page.getByRole("button", { name: /Show ECMWF on the map/ }),
+  ).toHaveCount(0);
+  // The reader's choice is still HARMONIE, and the layers say what is drawn.
   await page.getByRole("button", { name: "Layers", exact: true }).click();
   await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
     "aria-pressed",
     "true",
   );
   await expect(page.locator(".layers .models-note")).toHaveText(
-    /^HARMONIE ends \w{3} \d\d:\d\d: no wind on the map at \w{3} \d\d:\d\d\. ECMWF reaches it\.$/,
+    /^HARMONIE ends \w{3} \d\d:\d\d: ECMWF is on the map at \w{3} \d\d:\d\d, and HARMONIE comes back within its own hours\.$/,
   );
   await closePanel(page);
-  // Back to an hour HARMONIE reaches, and its wind is drawn again.
+  // Back and forth across the seam: both runs are in hand, so no manifest is
+  // read again, and the map is HARMONIE's within its hours.
+  const manifests: string[] = [];
+  page.on("request", (request) => {
+    if (/\/weather\/(harmonie|ecmwf)\.json/.test(request.url()))
+      manifests.push(request.url());
+  });
   await slider(page).fill("2");
-  await expect(chip).toHaveCount(0);
-  await expect(canvas).not.toHaveClass(/is-blank/);
   await expect(label).toHaveText("HARMONIE");
+  await expect(canvas).not.toHaveClass(/is-blank/);
   await expect.poll(() => inked(page), { timeout: 20000 }).toBeGreaterThan(0);
   await slider(page).fill(String(far));
-  await expect(canvas).toHaveClass(/is-blank/);
-  // Nothing switched by itself; the chip is the reader asking.
-  await chip.click();
-  await page.getByRole("button", { name: "Layers", exact: true }).click();
-  await expect(page.locator('[data-model="ecmwf"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-    { timeout: 20000 },
-  );
-  await expect(slider(page)).toHaveValue(String(far));
-  await expect(chip).toHaveCount(0);
-  // ECMWF reaches the hour: its wind is drawn, and named.
-  await expect(canvas).not.toHaveClass(/is-blank/);
-  await expect(label).toHaveText(/^ECMWF/);
-  await expect(label).not.toContainText("no wind drawn");
+  await expect(label).toHaveText(handedOver);
   await expect.poll(() => inked(page), { timeout: 20000 }).toBeGreaterThan(0);
+  await slider(page).fill("2");
+  await expect(label).toHaveText("HARMONIE");
+  await slider(page).fill(String(far));
+  await expect(label).toHaveText(handedOver);
+  expect(manifests).toEqual([]);
+  // With the dock closed and no spot open, the hand-over stands: it comes
+  // from the runs on offer, not from the dock.
+  await page
+    .getByRole("button", { name: "Close the forecast for Brandon Bay" })
+    .click();
+  await expect(page.locator(".dock")).toHaveCount(0);
+  await expect(label).toHaveText(handedOver);
+  await expect(canvas).not.toHaveClass(/is-blank/);
+  await expect.poll(() => inked(page), { timeout: 20000 }).toBeGreaterThan(0);
+});
+
+test("an hour no run the map can draw reaches draws no wind, and says why", async ({
+  page,
+}) => {
+  // ECMWF cannot be read: the dock's long range still names it (from the
+  // published blend), but there is nothing to hand the map over to.
+  await page.route("**/weather/ecmwf.json", (route) =>
+    route.fulfill({ status: 503, body: "Unavailable" }),
+  );
+  await openDock(page);
+  const canvas = page.locator(".particle-canvas");
+  const label = page.locator(".map-model");
+  await expect.poll(() => inked(page), { timeout: 20000 }).toBeGreaterThan(0);
+  await slider(page).fill(String(sampleStrip.length - 4));
+  // Never HARMONIE's last frame standing in for the hour.
+  await expect(canvas).toHaveClass(/is-blank/, { timeout: 20000 });
+  await expect(label).toHaveText(
+    /^HARMONIE ends \w{3} \d\d:\d\d · no wind drawn$/,
+  );
+  await expect(label).toHaveAttribute("data-reach", "beyond");
+  await expect.poll(() => inked(page), { timeout: 5000 }).toBe(0);
 });
 
 /**
