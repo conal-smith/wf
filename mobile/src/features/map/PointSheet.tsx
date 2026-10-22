@@ -90,7 +90,7 @@ export const PointSheet = memo(function PointSheet(props: Props) {
         ["Sky", reading(more.sky, selected, (c) => c.words)],
         ["Air", reading(more.air, selected, (c) => `${c}°`)],
         ["Rain", reading(more.rain, selected, (c) => c.words)],
-        ["Sea", reading(more.sea, selected, (c) => `about ${c}°, the model's skin temperature`)],
+        ["Sea", more.water && more.water !== "none" ? `${more.water.value} · ${more.water.detail}` : null],
       ]
     : [];
   const marine = lines.filter((line): line is [string, string] => !!line[1]);

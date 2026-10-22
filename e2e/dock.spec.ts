@@ -1339,9 +1339,17 @@ test("waves, sky, air, rain and sea are one tap away, and stay open", async ({
 }) => {
   await openDock(page);
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
+  await expect(page.locator(".dock .dk-sea")).toHaveCount(0);
   await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
-  for (const row of ["waves", "sky", "air", "rain", "sea"])
+  for (const row of ["waves", "sky", "air", "rain"])
     await expect(page.locator(`.dock tr.tt-${row}`)).toHaveCount(1);
+  // The sea is one value for the week: said once in the head, not a row.
+  // The sample publishes no station, so it is the model's, and says so.
+  await expect(page.locator(".dock tr.tt-sea")).toHaveCount(0);
+  await expect(page.locator(".dk-tools .dk-sea-long")).toHaveText(
+    /^Water ~\d+ °C · model, not measured$/,
+    { timeout: 20000 },
+  );
   // The sample's wave run is a short one: a few hours have a sea state.
   await expect
     .poll(() => page.locator(".dock tr.tt-waves .wave-cell b").count(), {
@@ -1385,13 +1393,13 @@ test("on a phone, the rows under the tide keep their units beside their glyphs",
   });
   await unfoldTools(page);
   await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
-  await expect(page.locator(".dock tr.tt-sea")).toHaveCount(1);
+  await expect(page.locator(".dock tr.tt-rain")).toHaveCount(1);
   // A bare 0.5, 12° or 0 says nothing: each figure's unit is on the screen,
   // the wind's under its glyph and the others' beside theirs (the sky's
   // glyphs need none).
   await expect(page.locator(".dk-labs .dk-lab-wind small")).toBeVisible();
   const units = page.locator(".dk-labs .dk-unit");
-  await expect(units).toHaveText(["m", "°C", "mm", "°C"]);
+  await expect(units).toHaveText(["m", "°C", "mm"]);
   // Each within the label column, clear of its glyph and of the hours.
   const column = (await page.locator(".dk-labs").boundingBox())!;
   for (const unit of await units.all()) {
@@ -1403,6 +1411,101 @@ test("on a phone, the rows under the tide keep their units beside their glyphs",
     expect(box.x).toBeGreaterThanOrEqual(glyph.x + glyph.width);
     expect(box.x + box.width).toBeLessThanOrEqual(column.x + column.width);
   }
+});
+
+/**
+ * Brandon Bay's water as the sea-temperature manifest publishes it: an
+ * offshore weather buoy, 45.5 km out, read two hours before the sample's now.
+ */
+const seaReading = () => ({
+  schemaVersion: 1,
+  kind: "observation",
+  stations: {
+    M3: {
+      id: "M3",
+      name: "M3",
+      lat: 51.217,
+      lon: -10.55,
+      network: "buoy",
+      depth: null,
+    },
+  },
+  spots: {
+    brandon: {
+      station: "M3",
+      distanceKm: 45.5,
+      latest: {
+        time: new Date(SAMPLE_CLOCK.getTime() - 2 * 3600000).toISOString(),
+        value: 14.5,
+      },
+    },
+  },
+});
+
+test("a station's water temperature is said once in the spot's head, with how far away it was read", async ({
+  page,
+}) => {
+  await page.route("**/marine/sea-temperature.json", (route) =>
+    route.fulfill({ json: seaReading() }),
+  );
+  await openDock(page);
+  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  const sea = page.locator(".dk-tools .dk-sea");
+  await expect(sea.locator(".dk-sea-long")).toHaveText(
+    "Water 14.5 °C · M3 buoy, 46 km, 2 h ago",
+  );
+  await expect(sea).toHaveAttribute("data-water", "measured");
+  await expect(sea.locator(".sr-only")).toHaveText(
+    "Water 14.5 °C, measured at the M3 buoy 46 km away, 2 h ago",
+  );
+  await expect(sea.locator(".dk-sea-short")).toBeHidden();
+  // No row for it, and no glyph for one in the label column.
+  await expect(page.locator(".dock tr.tt-sea")).toHaveCount(0);
+  await expect(page.locator('.dk-labs [title^="Sea"]')).toHaveCount(0);
+  // Within the box, which stays within the screen.
+  const box = (await page.locator(".dk-tools").boundingBox())!;
+  const text = (await sea.boundingBox())!;
+  expect(text.x + text.width).toBeLessThanOrEqual(box.x + box.width);
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  // Shut, the rows and the reading go together.
+  await page.getByRole("button", { name: "Hide waves, sky and sea" }).click();
+  await expect(sea).toHaveCount(0);
+});
+
+test("on a phone, the water's reading keeps its value and the station's distance in the folded tools", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.route("**/marine/sea-temperature.json", (route) =>
+    route.fulfill({ json: seaReading() }),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/?spot=brandon");
+  await expect(page.locator(".dock tr.tt-wind")).toBeVisible({
+    timeout: 30000,
+  });
+  await unfoldTools(page);
+  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  const sea = page.locator(".dk-tools .dk-sea");
+  const short = sea.locator(".dk-sea-short");
+  await expect(short).toHaveText("14.5 °C · 46 km");
+  // The unfolded row of tools has no room for it: it waits for the fold.
+  await expect(sea).toBeHidden();
+  const tools = page.getByRole("group", { name: "This spot" });
+  await tools.getByRole("button", { name: "Fold the spot's tools" }).click();
+  await expect(short).toBeVisible();
+  await expect(sea.locator(".dk-sea-glyph")).toBeVisible();
+  await expect(sea.locator(".dk-sea-long")).toBeHidden();
+  // All of it in the box, clear of the fold's glyph, and the box on the screen.
+  const box = (await tools.boundingBox())!;
+  const reading = (await short.boundingBox())!;
+  const fold = (await tools
+    .getByRole("button", { name: "The spot's tools" })
+    .boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(390);
+  expect(reading.x).toBeGreaterThanOrEqual(box.x);
+  expect(reading.x + reading.width).toBeLessThanOrEqual(fold.x);
 });
 
 /**

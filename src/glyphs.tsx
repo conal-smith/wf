@@ -104,6 +104,7 @@ export const windWords = (from: number | null, kn: number | null) =>
 
 interface RowGlyphProps {
   size?: number;
+  className?: string;
   strokeWidth?: number;
   "aria-hidden"?: boolean | "true" | "false";
 }

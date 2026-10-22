@@ -10,7 +10,8 @@
  * came from, and the strip; "open"
  * is the week: the stars, the wind and its gusts in the wind's own colours,
  * where it goes, the wing, the tide, and under the fold the waves, the sky,
- * the air, the rain and the sea; or the models' blend in place of the table.
+ * the air and the rain, with the water's temperature said once under the
+ * name; or the models' blend in place of the table.
  */
 import { useBottomSheetInternal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
@@ -159,11 +160,11 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
   const marine = useMarine(spot, axis, open && more);
   const blend = useDockBlend(spot, models, prefs.blendModels, axis, open && view === "blend", wantModels);
   const cells = useMemo(
-    () => (open && more && spot ? moreCells(strip, marine.waves, marine.weather, marine.sea) : null),
-    [open, more, spot, strip, marine.waves, marine.weather, marine.sea],
+    () => (open && more && spot ? moreCells(strip, marine.waves, marine.weather, marine.sea, now) : null),
+    [open, more, spot, strip, marine.waves, marine.weather, marine.sea, now],
   );
-  const seaAvailable = cells?.seaAvailable ?? false;
-  const on = useCallback((row: DockRow) => dockRowOn(prefs, row, seaAvailable), [prefs, seaAvailable]);
+  const water = cells?.water ?? null;
+  const on = useCallback((row: DockRow) => dockRowOn(prefs, row), [prefs]);
   const layout = useMemo(
     () => rowLayout({ detent, view, spot: !!spot, more, on, scale }),
     [detent, view, spot, more, on, scale],
@@ -457,6 +458,33 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
           ) : null}
         </View>
 
+        {/* The water's temperature, once for the week under the spot's
+            name rather than a row across the hours, as the site's dock says
+            it: where it was measured and how far away, or that it is the
+            model's. */}
+        {water ? (
+          <View
+            style={styles.water}
+            accessible
+            accessibilityLabel={water === "none" ? "No water temperature here" : water.label}
+          >
+            <SeaTempGlyph size={13} color={colors.muted} />
+            <T variant="label" color="muted" numberOfLines={1} style={styles.waterText}>
+              {water === "none" ? (
+                "No water temperature here"
+              ) : (
+                <>
+                  Water{" "}
+                  <T variant="label" tabular color={water.measured ? "ink" : "muted"}>
+                    {water.value}
+                  </T>{" "}
+                  · {water.detail}
+                </>
+              )}
+            </T>
+          </View>
+        ) : null}
+
         <Readout store={scrub} spot={!!spot} hours={hours} strip={strip} units={units} onStep={choose} />
 
         {open && spot ? (
@@ -685,8 +713,6 @@ const RowLabels = memo(function RowLabels({
         return <ThermometerGlyph size={13} />;
       case "rain":
         return <SkyGlyph icon="rain" size={13} />;
-      case "sea":
-        return <SeaTempGlyph size={13} />;
       case "stars":
         return (
           <Svg width={12} height={12}>
@@ -742,6 +768,14 @@ const styles = StyleSheet.create({
   nameAlone: { paddingLeft: space.md },
   chev: { minWidth: hitTarget, minHeight: hitTarget, alignItems: "center", justifyContent: "center" },
   pressed: { opacity: 0.55 },
+  water: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.xs,
+    paddingHorizontal: space.md,
+    paddingBottom: space.xs,
+  },
+  waterText: { flexShrink: 1 },
   pressedRow: { backgroundColor: colors.sunken },
   readoutModel: { flexShrink: 1 },
   readout: {

@@ -287,8 +287,8 @@ const NO_SEA_TEMPERATURE: SeaTemperatureState = {
 /**
  * The nearest station's water temperature for a named spot, on the same fetch
  * discipline as the tides: one manifest, aborted with the spot, and a 404 is an
- * absence with a reason rather than an error anybody is shown. The Sea row falls
- * back to the model's skin temperature when this says no.
+ * absence with a reason rather than an error anybody is shown. The dock's water
+ * reading falls back to the model's skin temperature when this says no.
  */
 export function useSpotSeaTemperature(
   spotId: string | undefined,

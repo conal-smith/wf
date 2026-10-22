@@ -116,8 +116,7 @@ export function RowsScreen() {
       <ListSwitch
         key={info.row}
         label={info.label}
-        detail={info.row === "sea" ? "Untouched, it shows where a station measures the sea" : undefined}
-        value={dockRowOn(prefs, info.row, info.row === "sea" ? false : true)}
+        value={dockRowOn(prefs, info.row)}
         onChange={(on) => update((p) => setRow(p, info.key!, on))}
       />
     ) : (
@@ -126,7 +125,7 @@ export function RowsScreen() {
   return (
     <SettingsPage title="Dock rows">
       <ListSection title="Under the hours">{always.map(row)}</ListSection>
-      <ListSection title="More rows" footer="Opened with the chevron in the dock's head: the waves, the sky, the air, the rain and the sea.">
+      <ListSection title="More rows" footer="Opened with the chevron in the dock's head: the waves, the sky, the air and the rain, and the water's temperature, said once in the head.">
         {fold.map(row)}
       </ListSection>
     </SettingsPage>

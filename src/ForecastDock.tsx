@@ -66,11 +66,10 @@ import {
   useSpotWeather,
   type SpotWaves,
   type SpotWeather,
-  type SeaTemperatureState,
 } from "./useBlend";
 import { presentWeather } from "../force5/src/surface";
 import { variableValue } from "../force5/src/variables";
-import { seaTemperatureText } from "../force5/src/seaTemperature";
+import { skinNow, waterText } from "../force5/src/seaTemperature";
 import type { ModelAvailability } from "../force5/src/manifests";
 import { spotSquare } from "../force5/src/spotData";
 import { useSpotSquares } from "./useSpotSquares";
@@ -171,7 +170,6 @@ const ROWS = {
   sky: 20,
   air: 20,
   rain: 20,
-  sea: 20,
 };
 type Rows = typeof ROWS;
 /**
@@ -206,7 +204,11 @@ const rowsAboveTide = (
   (view === "blend"
     ? rows.blend
     : rows.wind + rows.from + (!isPoint && rated ? rows.wing : 0));
-const MORE_ROWS = ["waves", "sky", "air", "rain", "sea"] as const;
+/**
+ * The water's temperature is not among them: it is one value for the week,
+ * said once in the spot's head (`waterText`), not a row across every hour.
+ */
+const MORE_ROWS = ["waves", "sky", "air", "rain"] as const;
 type MoreRow = (typeof MORE_ROWS)[number];
 /** The height of the rows under the hours, as a spot's dock draws them. */
 const rowsUnderHours = (
@@ -231,7 +233,6 @@ const MORE_LABEL: Record<MoreRow, [RowGlyph, string, string?]> = {
   sky: [CloudSun, "Sky"],
   air: [Thermometer, "Air, °C", "°C"],
   rain: [CloudRain, "Rain, mm", "mm"],
-  sea: [SeaTempGlyph, "Sea, °C", "°C"],
 };
 const RowLabel = ({
   glyph: Glyph,
@@ -292,7 +293,6 @@ const StripTable = memo(function StripTable({
   more,
   waves,
   weather,
-  sea,
   isPoint,
   pointNote,
   rated,
@@ -314,9 +314,8 @@ const StripTable = memo(function StripTable({
   more: boolean;
   waves: SpotWaves;
   weather: SpotWeather;
-  sea: SeaTemperatureState;
   isPoint: boolean;
-  /** For a point that has no riding place near to read its sea from, why. */
+  /** For a point that has no riding place near to read its rows from, why. */
   pointNote: string | null;
   /** Whether any hour is worth rating: else the stars and wing rows are left out. */
   rated: boolean;
@@ -482,7 +481,6 @@ const StripTable = memo(function StripTable({
             g={g}
             waves={waves}
             weather={weather}
-            sea={sea}
             pointNote={pointNote}
           />
         )}
@@ -748,9 +746,9 @@ function keepOut(
 }
 
 /**
- * The rows below the fold: the sea, the sky, the air and the rain, one native
- * step per column (a code or an amount does not survive being interpolated),
- * and the water's measured temperature where a station is in range.
+ * The rows below the fold: the waves, the sky, the air and the rain, one
+ * native step per column (a code or an amount does not survive being
+ * interpolated).
  */
 function MoreRows({
   columns,
@@ -758,7 +756,6 @@ function MoreRows({
   g,
   waves,
   weather,
-  sea,
   pointNote,
 }: {
   columns: readonly StripColumn[];
@@ -773,7 +770,6 @@ function MoreRows({
   g: StripGeometry;
   waves: SpotWaves;
   weather: SpotWeather;
-  sea: SeaTemperatureState;
   /** For a point that has no riding place near to read them from, why. */
   pointNote: string | null;
 }) {
@@ -804,7 +800,6 @@ function MoreRows({
       {cells(key, (_, __, column) => render(column))}
     </tr>
   );
-  const observed = sea.observed;
   // The rain's intervals, against the columns: see `rainColumns`.
   const series = weather.source?.series ?? [];
   const rain = fields?.rain
@@ -910,26 +905,6 @@ function MoreRows({
             );
           })
         : span("rain", "")}
-      {observed
-        ? (() => {
-            const text = seaTemperatureText(observed);
-            return span("sea", `${text.value} measured · ${text.detail}`);
-          })()
-        : fields?.skin
-          ? row("sea", (column) => {
-              const value = at(column, fields.skin);
-              return value === null ? (
-                "–"
-              ) : (
-                <span
-                  className="proxy"
-                  title="The model's skin temperature: approximate, not a measurement"
-                >
-                  ~{Math.round(value)}°
-                </span>
-              );
-            })
-          : span("sea", sea.loading ? "" : "No sea temperature here")}
     </>
   );
 }
@@ -1275,6 +1250,24 @@ export default function ForecastDock(props: Props) {
   const waves = useSpotWaves(more ? marineModels : NO_MODELS, lent, axis);
   const weather = useSpotWeather(more ? marineModels : NO_MODELS, lent, axis);
   const sea = useSpotSeaTemperature(more ? lent : undefined);
+  // The water's temperature, said once in the head while the rows are open:
+  // the station's measurement, else the model's skin temperature at the hour
+  // now. "none" once both have answered and neither has one.
+  const water = useMemo(() => {
+    if (!more || pointNote) return null;
+    const skin = weather.source?.fields.skin;
+    const text = waterText(
+      sea.observed,
+      skin
+        ? skinNow(
+            columns.map((_, at) => variableValue(weather.columns[at], skin)),
+            columns.map((c) => c.time),
+            now,
+          )
+        : null,
+    );
+    return text ?? (!sea.loading && weather.published ? "none" : null);
+  }, [more, pointNote, sea, weather, columns, now]);
   // The top of the blend's scale, shared by the chart and its tick labels
   // in the label column (which stay put while the hours scroll).
   const blendMax = useMemo(() => {
@@ -1647,6 +1640,48 @@ export default function ForecastDock(props: Props) {
               {pointSourceNote(pointSource)}
             </span>
           )}
+          {/* The water's temperature, once for the week rather than a row
+              across the hours. A phone keeps its glyph, the value and how
+              far the station is (or "model"), in the folded box; the rest
+              is read out. */}
+          {water && (
+            <span
+              className="dk-sea"
+              data-water={
+                water === "none"
+                  ? "none"
+                  : water.measured
+                    ? "measured"
+                    : "model"
+              }
+              title={
+                water === "none" ? "No water temperature here" : water.label
+              }
+            >
+              <span className="sr-only">
+                {water === "none" ? "No water temperature here" : water.label}
+              </span>
+              <SeaTempGlyph
+                className="dk-sea-glyph"
+                size={13}
+                aria-hidden="true"
+              />
+              {water === "none" ? (
+                <span className="dk-sea-long" aria-hidden="true">
+                  No water temperature here
+                </span>
+              ) : (
+                <>
+                  <span className="dk-sea-long" aria-hidden="true">
+                    Water <b>{water.value}</b> · {water.detail}
+                  </span>
+                  <span className="dk-sea-short" aria-hidden="true">
+                    <b>{water.value}</b> · {water.short}
+                  </span>
+                </>
+              )}
+            </span>
+          )}
         </div>
         {/* The stars are the rider's own: said once, where they are read,
             and the way to change them. */}
@@ -1995,7 +2030,6 @@ export default function ForecastDock(props: Props) {
               more={more}
               waves={waves}
               weather={weather}
-              sea={sea}
               isPoint={isPoint}
               pointNote={pointNote}
               rated={rated}

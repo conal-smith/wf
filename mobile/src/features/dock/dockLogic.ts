@@ -15,7 +15,11 @@ import {
   SHORE_LABEL,
   type HourRating,
 } from "../../../../force5/src/stars";
-import { seaTemperatureText } from "../../../../force5/src/seaTemperature";
+import {
+  skinNow,
+  waterText,
+  type WaterText,
+} from "../../../../force5/src/seaTemperature";
 import {
   presentWeather,
   type PresentWeather,
@@ -72,8 +76,7 @@ export type DockRow =
   | "waves"
   | "sky"
   | "air"
-  | "rain"
-  | "sea";
+  | "rain";
 
 export interface DockRowInfo {
   row: DockRow;
@@ -94,22 +97,18 @@ export const DOCK_ROWS: readonly DockRowInfo[] = [
   { row: "sky", key: "weather", label: "Sky", more: true },
   { row: "air", key: "air", label: "Air temperature", more: true },
   { row: "rain", key: "rain", label: "Rain", more: true },
-  { row: "sea", key: "sea", label: "Sea temperature", more: true },
 ];
 
 /**
  * Whether a row is on. The site's dock always drew its rows, so an untouched
- * row is on (the sea row only where there is a temperature to show); once the
- * rider has switched it, their choice stands (`rowOn`).
+ * row is on; once the rider has switched it, their choice stands (`rowOn`).
+ * The water's temperature is no row: it is said once in the dock's head
+ * (`MoreCells.water`), as the site's dock says it.
  */
-export function dockRowOn(
-  prefs: Prefs,
-  row: DockRow,
-  seaAvailable = true,
-): boolean {
+export function dockRowOn(prefs: Prefs, row: DockRow): boolean {
   const info = DOCK_ROWS.find((r) => r.row === row);
   if (!info?.key) return true;
-  return rowOn(prefs, info.key, row === "sea" ? seaAvailable : true);
+  return rowOn(prefs, info.key, true);
 }
 
 /** Heights at the base type size; scaled with Dynamic Type (`rowLayout`). */
@@ -126,7 +125,6 @@ export const ROW_HEIGHT: Record<DockRow | "day" | "hour" | "blend", number> = {
   sky: 24,
   air: 22,
   rain: 22,
-  sea: 22,
 };
 
 export interface RowSlot {
@@ -174,7 +172,7 @@ export function rowLayout(options: {
       }
       if (on("tide")) rows.push("tide");
       if (more)
-        for (const row of ["waves", "sky", "air", "rain", "sea"] as const)
+        for (const row of ["waves", "sky", "air", "rain"] as const)
           if (on(row)) rows.push(row);
     }
   }
@@ -667,23 +665,26 @@ export interface MoreCells {
   sky: MoreRow<SkyCell>;
   air: MoreRow<number>;
   rain: MoreRow<RainCell>;
-  /** The sea: a measurement is one value across the row, a model's skin a cell each. */
-  sea: MoreRow<number> & { measured: boolean };
-  /** Whether there is a sea temperature to show at all (the row's default). */
-  seaAvailable: boolean;
+  /**
+   * The water's temperature, once for the week rather than a row across the
+   * hours: a station's measurement where one is in range, else the model's
+   * skin temperature, marked as the model's. "none" once both have answered
+   * and neither has one; null while they are still being read.
+   */
+  water: WaterText | "none" | null;
 }
 
 /**
  * The rows under the fold, as the site's dock fills them: one native step per
- * column (a code or an amount does not survive being interpolated), the rain
- * printed once per interval, and the sea's measurement where a station is in
- * range, else the model's skin temperature, marked approximate.
+ * column (a code or an amount does not survive being interpolated) and the
+ * rain printed once per interval; and the water's temperature, said once.
  */
 export function moreCells(
   columns: readonly Pick<StripColumn, "time">[],
   waves: SpotWaves,
   weather: SpotWeather,
   sea: SeaTemperatureState,
+  now: number = Date.now(),
 ): MoreCells {
   const n = columns.length;
   const set = waves.source?.fields.total ?? null;
@@ -769,35 +770,21 @@ export function moreCells(
         }),
       }
     : none("");
-  let seaRow: MoreCells["sea"];
-  if (sea.observed) {
-    const text = seaTemperatureText(sea.observed);
-    seaRow = {
-      cells: null,
-      note: `${text.value} measured · ${text.detail}`,
-      measured: true,
-    };
-  } else if (fields?.skin) {
-    seaRow = {
-      note: null,
-      measured: false,
-      cells: Array.from({ length: n }, (_, c) => {
-        const v = at(c, fields.skin);
-        return v === null ? null : Math.round(v);
-      }),
-    };
-  } else
-    seaRow = {
-      cells: null,
-      note: sea.loading ? "" : "No sea temperature here",
-      measured: false,
-    };
+  const water = waterText(
+    sea.observed,
+    fields?.skin
+      ? skinNow(
+          columns.map((_, c) => at(c, fields.skin)),
+          columns.map((c) => c.time),
+          now,
+        )
+      : null,
+  );
   return {
     waves: wavesRow,
     sky: skyRow,
     air: airRow,
     rain: rainRow,
-    sea: seaRow,
-    seaAvailable: !!sea.observed || !!fields?.skin,
+    water: water ?? (!sea.loading && weather.published ? "none" : null),
   };
 }

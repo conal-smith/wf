@@ -275,7 +275,7 @@ export const LICENCE_URL = "https://www.gnu.org/licenses/agpl-3.0.html";
 export const CREDITS: readonly { what: string; who: string }[] = [
   { what: "Wind", who: "Met Éireann HARMONIE, DWD ICON-EU, ECMWF IFS and AIFS, NOAA GFS and GEFS, Météo-France ARPEGE and AROME" },
   { what: "Waves and weather", who: "The Marine Institute, NOAA and DWD" },
-  { what: "Tides and sea temperature", who: "The stations named under each spot's tide and sea rows" },
+  { what: "Tides and sea temperature", who: "The stations named in each spot's tide row and water reading" },
   { what: "Riding places", who: "Fáilte Ireland (CC BY 4.0), OpenStreetMap contributors (ODbL) and the sources listed with the site's places" },
   { what: "Depths", who: "EMODnet Bathymetry (CC BY 4.0)" },
 ];
