@@ -1,0 +1,52 @@
+{
+  "about": "Tidal stream curves for channels the currents model cannot resolve (force5/src/tidalStreams.ts). Each place's published spring peak rates, when its streams turn relative to high or low water at a reference port, and the tide station the site already has that stands for that port. Rates are knots at mean springs, scaled through the day by the tidal range at the station; every figure is from the open pilotage guides listed, never from UKHO tidal stream tables. A rough guide, not for safety.",
+  "sites": [
+    {
+      "id": "strangford-narrows",
+      "name": "Strangford Narrows",
+      "lat": 54.3585,
+      "lon": -5.5395,
+      "station": "Bangor",
+      "reference": "HW Belfast",
+      "timing": "the flood from 3½ h before high water at Belfast (Bangor’s, on this site), the ebb from 2½ h after",
+      "stationNote": "The guides time the Narrows from high water at Belfast. The nearest station the site has that keeps Belfast's time is Bangor, a gauge at the mouth of Belfast Lough, taken here as Belfast's high water with no offset: the two are within a few minutes of each other. Killard Point, at the Narrows' mouth, is a model's point, and the lough's own station is Killard Point 100 minutes later, so neither is used.",
+      "turns": [
+        { "at": "high", "offsetMinutes": -210, "begins": "flood" },
+        { "at": "high", "offsetMinutes": 150, "begins": "ebb" }
+      ],
+      "flood": { "towards": 340, "springKnots": 5.0 },
+      "ebb": { "towards": 160, "springKnots": 7.5 },
+      "slackMinutes": 15,
+      "springRangeMetres": 2.91,
+      "springRangeNote": "Bangor's mean spring range, 2(M2 + S2), from its harmonic constants (force5/ingest/tide_stations_ni.json: M2 1.149 m, S2 0.306 m).",
+      "note": "East Channel rates: the ebb reaches 7.5 kn at springs and the guides give over 8 kn in places; the flood about 5 kn. The flood starts 3½ h before HW Belfast and runs about 6 h; the ebb starts 2½ h after. Slack lasts about 15 minutes. Ebb against the wind raises dangerous seas off the entrance.",
+      "sources": [
+        { "title": "eOceanic: entering and exiting the Strangford Narrows", "url": "https://eoceanic.com/sailing/routes/42/entering_and_exiting_the_strangford_narrows" },
+        { "title": "Visit My Harbour: Strangford and Portaferry approach", "url": "https://www.visitmyharbour.com/harbour/strangford-portaferry-approach/" }
+      ]
+    },
+    {
+      "id": "malahide-channel",
+      "name": "Malahide channel",
+      "lat": 53.4525,
+      "lon": -6.1355,
+      "station": "Dublin_Port",
+      "reference": "HW and LW Dublin",
+      "timing": "in from Dublin’s low water and out from its high water, each 5 minutes later",
+      "stationNote": "The channel runs in and out with Malahide's own high and low water, which is Dublin's about 5 minutes later; Dublin Port is the Marine Institute gauge the site has, and 5 minutes are added to its times.",
+      "turns": [
+        { "at": "low", "offsetMinutes": 5, "begins": "flood" },
+        { "at": "high", "offsetMinutes": 5, "begins": "ebb" }
+      ],
+      "flood": { "towards": 265, "springKnots": 3.0 },
+      "ebb": { "towards": 85, "springKnots": 3.5 },
+      "springRangeMetres": 3.41,
+      "springRangeNote": "Dublin Port's mean spring range, 2(M2 + S2), from a harmonic fit to four months of the Marine Institute's own predictions there (M2 1.301 m, S2 0.405 m).",
+      "note": "In the channel the spring flood reaches about 3 kn and the ebb 3.5 kn, and the tide runs strongly through the marina. Outside the bar the stream runs north and south at up to 1 kn. Onshore wind against the ebb makes a steep chop at the entrance.",
+      "sources": [
+        { "title": "Visit My Harbour: Malahide Marina", "url": "https://www.visitmyharbour.com/harbour/malahide-marina/" },
+        { "title": "eOceanic: Malahide", "url": "https://eoceanic.com/sailing/harbours/73/malahide/resources/" }
+      ]
+    }
+  ]
+}

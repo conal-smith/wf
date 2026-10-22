@@ -45,6 +45,7 @@ import FoilLegend from "./FoilLegend";
 import MapInfo from "./MapInfo";
 import { MapInfoOpen, type InfoSection } from "./mapInfoContext";
 import { foilArchiveUrl, useFoilDepth } from "./useFoilDepth";
+import { useCurrents } from "./useCurrents";
 import type { LightState } from "../force5/src/lights";
 import { knotsIn, unitName } from "../force5/src/units";
 import { rideWedge } from "../force5/src/rideWedge";
@@ -219,6 +220,8 @@ const DEFAULT_LAYERS: MapLayers = {
   relief: true,
   names: true,
   foil: true,
+  // Off by default: nothing of it is read until a rider asks for it.
+  currents: false,
   satellite: "off",
 };
 
@@ -981,6 +984,8 @@ export default function App() {
   // them (they depend on the index the hook loads).
   const [foilStations, setFoilStations] = useState<string[]>([]);
   const foilState = useFoilDepth(layers.foil, foilStations);
+  // The Currents layer at the hour the map shows; nothing at all while off.
+  const currents = useCurrents(layers.currents, mapAt, prefs.units);
   // Read from the stylesheet only once the layer is wanted.
   const foilPalette = useMemo(
     () =>
@@ -1493,6 +1498,13 @@ export default function App() {
           gauges (Open Government Licence v3.0) and the EOT20 ocean tide model
           (DGFI-TUM, CC BY 4.0)
         </li>
+        {layers.currents && (
+          <li>
+            Currents: the Marine Institute&rsquo;s NE Atlantic ROMS model (CC BY
+            4.0), and channels&rsquo; tidal streams from published pilotage
+            guides; a rough guide, not for safety
+          </li>
+        )}
         <li>
           Satellite imagery and intertidal heights:{" "}
           {satellite.attribution ?? SATELLITE_ATTRIBUTION}
@@ -1609,6 +1621,7 @@ export default function App() {
                     : `${reachNote}: no wind on the map at ${dayShort(mapColumn.time)} ${clock(mapColumn.time)}.${reachable && reachable.id !== manifest?.model ? ` ${reachable.name} reaches it.` : ""}`
                   : null
               }
+              currentsNote={currents.note}
               modelDisabled={!frame || !!pendingModel}
               onModel={(id) => void chooseModel(id)}
             />
@@ -1632,6 +1645,7 @@ export default function App() {
               windStyle={windStyle}
               layers={layers}
               foil={foilViews}
+              currents={currents.features}
               satellite={satellite.image}
               reducedMotion={reducedMotion}
               bottomInset={dockHeight}
