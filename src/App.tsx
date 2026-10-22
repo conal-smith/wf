@@ -1749,8 +1749,6 @@ export default function App() {
                   }
                   onToggleStar={() => dockSpot && fav.toggle(dockSpot.id)}
                   tide={tide.tide}
-                  tideNote={tide.error}
-                  tideLoading={tide.loading}
                   onClose={closeDock}
                   phone={phone}
                   view={picked ? "table" : view}

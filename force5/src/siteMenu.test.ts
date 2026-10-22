@@ -75,37 +75,38 @@ describe("the site menu's recipe", () => {
 describe("on the chart", () => {
   /*
    * The trigger is the kit's own button, not one that looks like it: every
-   * class of the kit's instrument (the square ink box laid over the map), its
-   * hover and ring included, and only the menu's hit band on top. It is the
-   * same box on a page's masthead: the chart draws its controls one way.
+   * class of the kit's (its hover and ring included), and only the menu's
+   * hit band on top. On a page's masthead it is the square ink box laid over
+   * the map; on the chart it stands inside the head's own box, and is the
+   * kit's quiet button, so there is no box in a box.
    */
-  it("draws the trigger as exactly the kit's square instrument, on either ground", () => {
+  it("draws the trigger as exactly the kit's button: bare on the chart, the square instrument on a page", () => {
     const classOf = (markup: string) =>
       markup
         .match(/<button[^>]*\bclass="([^"]+)"/)?.[1]
         .split(" ")
         .sort();
     const cases = [
-      [{ current: "map", size: "md", ground: "map" }, "md"],
-      [{ current: "market", size: "sm", ground: "content" }, "sm"],
+      [{ current: "map", size: "md", ground: "map" }, "md", "quiet"],
+      [{ current: "market", size: "sm", ground: "content" }, "sm", "raised"],
     ] as const;
-    for (const [props, size] of cases) {
+    for (const [props, size, variant] of cases) {
       const kit = buttonStyles({
-        variant: "raised",
+        variant,
         size,
         icon: true,
         className: siteMenuStyles({ ground: props.ground }).trigger(),
       });
       const drawn = classOf(html(props));
       expect(drawn, props.ground).toEqual(kit.split(" ").sort());
-      for (const name of [
-        "rounded-none",
-        "border-ink",
-        "bg-card",
-        "not-disabled:hover:bg-inverse",
+      expect(drawn, props.ground).toContain(
         "not-disabled:focus-visible:outline-focus",
-      ])
-        expect(drawn, `${props.ground} ${name}`).toContain(name);
+      );
+      const box = ["rounded-none", "border-ink", "bg-card"];
+      for (const name of box)
+        if (variant === "raised")
+          expect(drawn, `${props.ground} ${name}`).toContain(name);
+        else expect(drawn, `${props.ground} ${name}`).not.toContain(name);
     }
   });
 

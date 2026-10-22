@@ -99,9 +99,10 @@ export function SiteMenu({
   /** The trigger's control height, so it sits in scale with its neighbours. */
   size = "md",
   /**
-   * What the menu stands on: the moving map, or a page's masthead. The
-   * trigger is the chart's square instrument either way, and the panel the
-   * chart's double-ruled box.
+   * What the menu stands on: the moving map, or a page's masthead. On the
+   * map the trigger stands inside the head's own box, and is drawn bare
+   * rather than a box in a box; on a page it is the chart's square
+   * instrument. The panel is the chart's double-ruled box either way.
    */
   ground = "map",
 }: {
@@ -175,7 +176,7 @@ export function SiteMenu({
     >
       <Button
         ref={trigger}
-        variant="raised"
+        variant={ground === "map" ? "quiet" : "raised"}
         size={size}
         icon
         className={styles.trigger()}
