@@ -116,7 +116,10 @@ export function useRatings(
   const axisKey = axis.length
     ? `${axis[0]}|${axis[axis.length - 1]}|${axis.length}`
     : "";
-  const riderKey = JSON.stringify(rider);
+  // How high the rider points moves the wedge and the loupe, never a star:
+  // a change to it rates nothing again.
+  const { pointing: _pointing, ...rated } = rider;
+  const riderKey = JSON.stringify(rated);
   const blendKey = [...blendModels].sort().join(",");
   // What the hours are worked out from; a new one starts the table again.
   // Beside a published blend the models count only for a spot the rider

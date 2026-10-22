@@ -80,6 +80,21 @@ describe("display preferences", () => {
     ).toEqual({ weightKg: null, skill: "intermediate", wings: [3] });
     expect(parseRider("heavy")).toEqual(defaultPrefs().rider);
   });
+  it("keeps how high the rider points only when it is not typical", () => {
+    const base = { weightKg: null, skill: "intermediate", wings: [] };
+    expect(parseRider({ ...base, pointing: "sharp" }).pointing).toBe("sharp");
+    expect(parseRider({ ...base, pointing: "cautious" }).pointing).toBe(
+      "cautious",
+    );
+    // Typical is the default, and anything else is not a pointing at all.
+    expect(parseRider({ ...base, pointing: "typical" })).toEqual(base);
+    expect(parseRider({ ...base, pointing: "very" })).toEqual(base);
+    expect(parseRider({ ...base, pointing: 10 })).toEqual(base);
+    // Kept on the device, as the weight and the level are.
+    const storage = fakeStorage();
+    saveRider(parseRider({ ...base, pointing: "sharp" }), storage);
+    expect(loadPrefs(storage).rider.pointing).toBe("sharp");
+  });
   it("starts with no row touched by hand", () => {
     expect(defaultPrefs().touchedRows).toEqual([]);
   });

@@ -15,10 +15,12 @@ import {
   MAX_WING_M2,
   MIN_WEIGHT_KG,
   MIN_WING_M2,
+  POINTINGS,
   SKILLS,
   parseCustomRating,
   rateOn,
   type CustomRating,
+  type Pointing,
   type Rider,
   type StarsOn,
 } from "./stars";
@@ -253,6 +255,7 @@ function mergeRows(value: unknown, defaults: Record<RowKey, boolean>) {
  * or kept, goes through its own validation (stars.ts `parseCustomRating`); one
  * that does not pass, or was stored in another version, is left out and the
  * level rates. Given both, the one rating wins and the kept one is dropped.
+ * How high the rider points is kept only when it is not typical.
  */
 export function parseRider(value: unknown): Rider {
   if (!value || typeof value !== "object") return DEFAULT_RIDER;
@@ -269,6 +272,7 @@ export function parseRider(value: unknown): Rider {
     skill: SKILLS.includes(raw.skill as Rider["skill"])
       ? (raw.skill as Rider["skill"])
       : DEFAULT_RIDER.skill,
+    ...withPointing(raw.pointing),
     wings: [
       ...new Set(
         wings.filter(
@@ -286,6 +290,12 @@ export function parseRider(value: unknown): Rider {
     ...withStarsChoice(parseStarsChoice(raw.starsFrom)),
   };
 }
+
+/** A rider carries `pointing` only when it is known and not typical, so a default rider stays as it always was. */
+const withPointing = (value: unknown): Pick<Rider, "pointing"> =>
+  POINTINGS.includes(value as Pointing) && value !== "typical"
+    ? { pointing: value as Pointing }
+    : {};
 
 /** A rider carries `starsFrom` only when it is not the default, so a default rider stays as it always was. */
 const withStarsChoice = (
