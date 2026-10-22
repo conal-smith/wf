@@ -922,6 +922,10 @@ for (const device of [
     test("a press with a spot or a point chosen lets go of it rather than move it", async ({
       page,
     }) => {
+      // A spot, a point and two lights chosen in turn, each after the frames
+      // settle: on a shared CI runner it passed every step and ran out of the
+      // default time on the last.
+      test.slow();
       await openOn(page, "keel", "Keel Beach");
       const map = page.locator(".map-canvas");
       const keel = page.locator('[data-spot-id="keel"]');
