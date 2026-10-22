@@ -74,7 +74,7 @@ from squares import check_base, square_index, square_path  # noqa: E402
 # not merely about to be replaced.
 MARGIN_HOURS = 1.0
 # A run kind publishes a run directory behind a schemaVersion 2 pointer.
-RUN_KINDS = ("wind", "wave", "weather", "blend")
+RUN_KINDS = ("wind", "wave", "weather", "current", "blend")
 # Pointers are revalidated by every reader; anything cached longer than this is wrong.
 POINTER_MAX_AGE_SECONDS = 300
 IMMUTABLE_MIN_AGE_SECONDS = 86400
