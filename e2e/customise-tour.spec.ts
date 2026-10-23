@@ -181,7 +181,7 @@ test("the tour is offered on a first visit, can be skipped, and is not offered a
 
   await page.reload();
   await mapUp(page);
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(500);
   await expect(prompt(page)).toHaveCount(0);
   await expect(card(page)).toHaveCount(0);
 });
@@ -200,7 +200,7 @@ test("No thanks is never asked again; Escape leaves the tour; the menu replays i
   await expect(prompt(page)).toHaveCount(0);
   await page.reload();
   await mapUp(page);
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(500);
   await expect(prompt(page)).toHaveCount(0);
 
   // From the menu, at any time; Escape leaves it.
@@ -242,7 +242,7 @@ test("a browser that says it is automated is never offered the tour", async ({
 }) => {
   await page.goto("/");
   await mapUp(page);
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(500);
   await expect(prompt(page)).toHaveCount(0);
 });
 
