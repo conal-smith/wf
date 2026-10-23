@@ -11,25 +11,19 @@ import {
 import {
   ArrowDown,
   ArrowUpRight,
-  ChartSpline,
   ChevronRight,
-  CloudRain,
-  CloudSun,
   Ellipsis,
   Layers3,
-  Navigation2,
-  Thermometer,
-  Waves,
-  Wind,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import { Button } from "../ui/Button";
 import { arrowPath, framePath, stemPath, type KeepOut } from "../ui/penPaths";
 import { StarGlyphs } from "../ui/StarGlyphs";
 // Only when asked for: the chart's Blend view.
 const BlendChart = lazy(() => import("./BlendChart"));
-import { SeaTempGlyph, StarToggle, WindArrow, WingGlyph } from "./glyphs";
+import { ChartGlyph, glyphs } from "./chartGlyphs";
+import type { GlyphDef } from "./glyphSet";
+import { SeaTempGlyph, StarToggle, WindArrow } from "./glyphs";
 import {
   axisTicks,
   candleGroups,
@@ -211,22 +205,16 @@ const rowsUnderHours = (
  * width from the hours. The unit stays on screen beside the glyph, as the
  * wind's does, so a bare 0.7 or 12 says what it counts.
  */
-type RowGlyph = LucideIcon | typeof WingGlyph;
-const MORE_LABEL: Record<MoreRow, [RowGlyph, string, string?]> = {
-  waves: [Waves, "Waves, m (height) and s (period)", "m"],
-  sky: [CloudSun, "Sky"],
-  air: [Thermometer, "Air, °C", "°C"],
-  rain: [CloudRain, "Rain, mm", "mm"],
+const MORE_LABEL: Record<MoreRow, [GlyphDef, string, string?]> = {
+  waves: [glyphs.waves, "Waves, m (height) and s (period)", "m"],
+  sky: [glyphs.partly, "Sky"],
+  air: [glyphs.air, "Air, °C", "°C"],
+  rain: [glyphs.drop, "Rain, mm", "mm"],
 };
-const RowLabel = ({
-  glyph: Glyph,
-  title,
-}: {
-  glyph: RowGlyph;
-  title: string;
-}) => (
+/** The glyph set's (src/glyphSet.ts): ink, with the weather's colour inside. */
+const RowLabel = ({ glyph, title }: { glyph: GlyphDef; title: string }) => (
   <span className="dk-glyph" title={title}>
-    <Glyph size={14} strokeWidth={1.6} aria-hidden="true" />
+    <ChartGlyph glyph={glyph} size={14} />
   </span>
 );
 /** Rain, in millimetres over one step, that saturates a cell's tint. */
@@ -443,6 +431,7 @@ const StripTable = memo(function StripTable({
             g={g}
             waves={waves}
             weather={weather}
+            daylight={daylight}
             pointNote={pointNote}
           />
         )}
@@ -686,9 +675,12 @@ function MoreRows({
   g,
   waves,
   weather,
+  daylight,
   pointNote,
 }: {
   columns: readonly StripColumn[];
+  /** Whether each column is in daylight: the moon, not the sun, after dark. */
+  daylight: readonly boolean[];
   cells: (
     key: string,
     render: (
@@ -803,7 +795,11 @@ function MoreRows({
                 <span
                   title={`${reading.description}${by(weather.columns[column])}`}
                 >
-                  <WeatherGlyph weather={reading} size={14} />
+                  <WeatherGlyph
+                    weather={reading}
+                    size={18}
+                    dark={!daylight[column]}
+                  />
                 </span>
               ) : (
                 "–"
@@ -1538,7 +1534,7 @@ export default function ForecastDock(props: Props) {
               onView(view === "blend" ? "table" : "blend");
             }}
           >
-            <ChartSpline size={16} strokeWidth={1.4} aria-hidden="true" />
+            <ChartGlyph glyph={glyphs.blend} size={17} />
           </Button>
         )}
         {!isPoint && (
@@ -1706,17 +1702,20 @@ export default function ForecastDock(props: Props) {
                   style={{ height: rows.wind }}
                 >
                   <RowLabel
-                    glyph={Wind}
+                    glyph={glyphs.wind}
                     title={`Wind and gust, ${prefs.units}`}
                   />
                   <small>{prefs.units}</small>
                 </div>
                 <div aria-hidden="true" style={{ height: rows.from }}>
-                  <RowLabel glyph={Navigation2} title="Where the wind goes" />
+                  <RowLabel
+                    glyph={glyphs.direction}
+                    title="Where the wind goes"
+                  />
                 </div>
                 {!isPoint && rated && (
                   <div aria-hidden="true" style={{ height: rows.wing }}>
-                    <RowLabel glyph={WingGlyph} title="Wing, m²" />
+                    <RowLabel glyph={glyphs.wing} title="Wing, m²" />
                   </div>
                 )}
               </>
