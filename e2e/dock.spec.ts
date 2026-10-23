@@ -672,6 +672,9 @@ async function starsFrom(page: Page, group: string, model: string) {
 test("the stars come from one model, the rider's choice: the dock names it and the map follows", async ({
   page,
 }) => {
+  // Out to the whole of Ireland twice, a step at a time, each step read once
+  // the camera rests (backToIreland).
+  test.slow();
   await openDock(page);
   // The whole of Ireland, with Brandon's dock open: every light rated.
   await backToIreland(page);
@@ -1241,6 +1244,19 @@ test("a tab whose run's tiles have gone moves to the run its pointer names now",
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
     timeout: 30000,
   });
+  // The flight in to the spot over first: chosen on the way, the hour's tiles
+  // were read for the wider view the camera passed through, the next bay's
+  // among them.
+  await expect(page.locator(".map-lights")).toHaveCount(1, { timeout: 30000 });
+  await expect
+    .poll(
+      async () => {
+        await page.waitForTimeout(300);
+        return page.locator(".map-lights.is-moving").count();
+      },
+      { timeout: 15000 },
+    )
+    .toBe(0);
   // An hour of the reader's own, so nothing but the map's view asks for tiles.
   const ahead =
     sampleStrip.findIndex((c) => c.time > SAMPLE_CLOCK.getTime()) + 3;

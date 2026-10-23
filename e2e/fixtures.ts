@@ -77,6 +77,17 @@ export async function backToIreland(page: Page) {
   await page.keyboard.press("Escape");
   await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
   const zoomOut = page.getByRole("button", { name: "Zoom out", exact: true });
+  // The lights read with the camera at rest: through a move they are drawn
+  // on a canvas, and their buttons wait where it last rested
+  // (force5/src/lights.ts). Read mid-move, the chart they waited on was the
+  // one before it.
+  const atRest = () =>
+    page.waitForFunction(
+      () => !document.querySelector(".map-lights.is-moving"),
+      null,
+      { polling: "raf", timeout: 10000 },
+    );
+  await atRest();
   const allOnTheChart = () =>
     page.evaluate(() => {
       const chart = document
@@ -95,8 +106,9 @@ export async function backToIreland(page: Page) {
   // The loupe, when chosen, flies a spot in to fit its half-mile rose, about
   // zoom 13: eight steps out from there is not yet the whole country.
   for (let i = 0; i < 12 && !(await allOnTheChart()); i++) {
+    // The step out begins with the click, and is read once it has ended.
     await zoomOut.click();
-    await page.waitForTimeout(400);
+    await atRest();
   }
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
     timeout: 30000,
