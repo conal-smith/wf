@@ -130,7 +130,7 @@ function DepthScale({ palette }: { palette: FoilColours }) {
   return (
     <View
       accessible
-      accessibilityLabel={`Depth of water at this tide: pale at the edge, green while too shallow, teal from ${c} m, blue to 6 m`}
+      accessibilityLabel={`Depth of water at this tide: pale at the edge, light blue while too shallow, strong blue from ${c} m, fading to 6 m`}
     >
       <T variant="caption" color="muted">
         Depth of water at this tide
@@ -187,7 +187,7 @@ export function FoilKey(p: FoilKeyProps) {
     <View style={styles.gap}>
       <T variant="body" color={p.error ? "warn" : "ink"} accessibilityLiveRegion="polite">
         {!p.on
-          ? "Off. Turn it on in Layers, under Chart: “Foilable depth at the tide”."
+          ? "Off. Turn it on in Layers, under Chart: “Tidal depth”."
           : p.error
             ? p.error
             : p.area && p.station
@@ -262,7 +262,7 @@ export const InfoSheet = memo(function InfoSheet(props: Props) {
           The pen: the spot you open, or a point you tap
         </KeyRow>
         <T variant="label" caps color="ink2">
-          Wash and arrows
+          Coloured wind and arrows
         </T>
         <KnotScale />
         <View style={styles.tints} accessible accessibilityLabel="Depth tints, 0 to 50 metres and more">
@@ -311,7 +311,7 @@ export const InfoSheet = memo(function InfoSheet(props: Props) {
         />
       </SheetSection>
 
-      <SheetSection title="Foilable depth">
+      <SheetSection title="Tidal depth">
         <FoilKey {...props.foil} />
       </SheetSection>
 
@@ -323,7 +323,7 @@ export const InfoSheet = memo(function InfoSheet(props: Props) {
         <T variant="body">Depths: EMODnet Bathymetry, metres below chart datum.</T>
         {props.foil.attribution ? (
           <T variant="body">
-            Foilable depth: {props.foil.attribution} Heights above LAT against the tide predictions below.
+            Tidal depth: {props.foil.attribution} Heights above LAT against the tide predictions below.
           </T>
         ) : null}
         <T variant="body">Coast and places: © OpenStreetMap contributors, OpenFreeMap.</T>

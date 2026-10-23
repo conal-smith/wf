@@ -182,6 +182,27 @@
       ],
       "aliases": [],
       "note": ""
+    },
+    {
+      "id": "skerries-south-strand",
+      "editorId": "new-skerries-south-strand-r3d1",
+      "name": "Skerries — South Strand",
+      "county": "Dublin",
+      "countySource": "osm-county-boundary",
+      "jurisdiction": "IE",
+      "lat": 53.58222,
+      "lon": -6.10395,
+      "kind": "spot",
+      "coordinateType": "owner-surveyed",
+      "waterType": "sea",
+      "sports": [
+        "wingfoiling"
+      ],
+      "aliases": [
+        "Red Island",
+        "South Beach"
+      ],
+      "note": ""
     }
   ]
 }

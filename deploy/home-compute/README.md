@@ -148,6 +148,7 @@ repository's `.venv` and a scratch `FORCE5_WORK_DIR`, never with a bucket:
 | Job | Ceiling | Peak, MB | CPU s | How it was measured |
 | --- | --- | --- | --- | --- |
 | `gfs-wave` | 1 GB | 360 | 2.5 | a live run, local output only |
+| `gfs-weather` | 1 GB | 355 | 7 | a live 384 h run, local output only (22 October 2026) |
 | `icon-eu` | 1 GB | 335 | 16 | 73 hourly frames decoded from cached GRIB (*) |
 | `ecmwf` | 1 GB | 315 | 4 | the whole cached 2026100700 run, 85 frames |
 | `harmonie` | 1 GB | 290 | 5 | 61 hourly frames from cached GRIB (*); two whole files downloaded at once peaked at 171 |
@@ -155,6 +156,7 @@ repository's `.venv` and a scratch `FORCE5_WORK_DIR`, never with a bucket:
 | `icon-eu-weather` | 512 MB | 225 | 13 | a cached run, 25 steps as scheduled |
 | `verify` | 512 MB | 225 | 23 | a 30-day archive made from today's archived runs |
 | `mi-swan` | 512 MB | 190 | 1 | a live run |
+| `currents` | 512 MB | 240 | 4 | a live run (22 October 2026) |
 | `blend` | 512 MB | 185 | 0.4 | the site's current runs, read over public HTTPS; includes Node |
 | `forecast-archive` | 512 MB | 140 | 1.4 | archiving four new runs at once from that copy |
 | `tides`, `sea-temperature`, `wind-obs` | 512 MB | 135 | 0.2-0.4 | live runs |

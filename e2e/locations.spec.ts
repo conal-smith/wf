@@ -5,7 +5,7 @@ test("public riding places are on the chart and the Blast alias finds Kilcrea, w
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   // Riding places only: no schools, clubs or areas among the lights.

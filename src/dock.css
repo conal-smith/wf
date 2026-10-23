@@ -386,50 +386,12 @@ table.tt {
   font: italic 13px var(--font-body);
   color: var(--color-ink-muted);
 }
-/* The tide, faint behind the figures: under the table, as the line at now
-   is, so the figures stay on top of it. */
-.tide-band {
-  position: absolute;
-  left: 0;
-  top: 0;
-  overflow: visible;
-  pointer-events: none;
-}
-.tide-fill {
-  fill: color-mix(in srgb, var(--color-depth) 11%, transparent);
-}
-.tide-line {
-  fill: none;
-  stroke: var(--map-tide);
-  stroke-width: 1.2;
-  opacity: 0.5;
-}
-.tide-turn {
-  stroke: var(--color-ink-muted);
-  opacity: 0.7;
-}
-.tide-hw {
-  fill: var(--color-ink-muted);
-}
-.tide-lw {
-  fill: var(--color-ground);
-}
-.tide-label {
-  font: 500 9px var(--font-mono);
-  fill: var(--color-ink-muted);
-  paint-order: stroke;
-  stroke: var(--color-ground);
-  stroke-width: 2.5px;
-}
 .tt-pen {
   position: absolute;
   left: 0;
   top: 0;
   overflow: visible;
   pointer-events: none;
-}
-.tide-dot {
-  fill: var(--color-chart-magenta);
 }
 /* The red pen on the hours (ui/penPaths.ts): twice round the chosen hour,
    on its border, and a line down the hours at the time now, the time written
@@ -616,8 +578,7 @@ table.tt {
   border-top: 1px solid var(--color-line);
 }
 /* One line across the hours (a row no model reaches, or why a point has
-   none), held at the left of the view as the tide's reason is (.tide-none):
-   from the first column it scrolled away with them, and opening at the hour
+   none), held at the left of the view: from the first column it scrolled away with them, and opening at the hour
    left the sea's old "14.6 °C measured · M2 buoy" as "2 buoy". */
 .tt td.more-note {
   overflow: clip;
@@ -659,6 +620,23 @@ table.tt {
     var(--color-depth) calc(var(--rain, 0) * 45%),
     transparent
   );
+}
+/* The first hour a row reads from the next model, past the end of the one
+   before it: a dashed ink line at its edge, as the stars' hand-over has. */
+.tt tr.tt-more td.handed {
+  --handed: linear-gradient(var(--color-ink) 50%, transparent 0) left top / 1px
+    4px repeat-y;
+  background: var(--handed);
+}
+/* Over the night's hatching, not in place of it. */
+.tt tr.tt-more td.handed.night {
+  background:
+    var(--handed),
+    repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-ink) 9%, transparent) 0 1px,
+      transparent 1px 4px
+    );
 }
 /* An hour inside an interval whose total another column prints. */
 .rain-cell.is-part {

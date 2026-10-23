@@ -16,15 +16,19 @@ import {
   spotOverride,
   starsFromAt,
 } from "../force5/src/lead";
+import { upwindAngle } from "../force5/src/rideWedge";
 import { UNITS, type Units } from "../force5/src/units";
 import {
   ESTIMATE_WEIGHT_KG,
   MAX_WEIGHT_KG,
   MIN_WEIGHT_KG,
+  POINTINGS,
+  POINTING_LABEL,
   SKILLS,
   SKILL_LABEL,
   savedCustom,
   starsOn,
+  type Pointing,
   type Rider,
   type StarsOn,
 } from "../force5/src/stars";
@@ -154,6 +158,23 @@ export default function DisplayFilter({
             {saved ? "Edit custom" : "Customise"}
           </Button>
         </div>
+        {/* How high they point: the loupe's no-go and the light's wedge,
+            never the stars (force5/src/rideWedge.ts). */}
+        <div className="rider-pointing">
+          <span className="filter-sub">Pointing upwind</span>
+          <Segmented<Pointing>
+            aria-label="Pointing upwind"
+            options={POINTINGS.map((pointing) => ({
+              value: pointing,
+              label: POINTING_LABEL[pointing],
+            }))}
+            value={prefs.rider.pointing ?? "typical"}
+            onChange={(pointing) => setRider({ pointing })}
+          />
+          <small className="rider-pointing-angle" data-upwind-angle>
+            About {upwindAngle(prefs.rider)}° off the wind, powered up
+          </small>
+        </div>
         <label className="rider-field">
           <span>Wings you own</span>
           <input
@@ -175,7 +196,9 @@ export default function DisplayFilter({
         </label>
       </div>
       <p className="filter-note">
-        The stars, the lights and the wing are rated for this rider.{" "}
+        The stars, the lights and the wing are rated for this rider. How high
+        they point moves the loupe&rsquo;s no-go and the light&rsquo;s wedge,
+        never a star.{" "}
         {prefs.rider.weightKg === null
           ? `Until you give a weight they assume ${ESTIMATE_WEIGHT_KG} kg.`
           : ""}

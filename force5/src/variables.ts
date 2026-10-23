@@ -16,8 +16,8 @@
 import type { SpotIndex } from "./spotData";
 import { usableRunPath, validateRunPointer, type Grid } from "./weather";
 
-/** The two bundle kinds built on a declared variable map. */
-export type VariablesKind = "wave" | "weather";
+/** The bundle kinds built on a declared variable map. */
+export type VariablesKind = "wave" | "weather" | "current";
 
 /** Cadences the importers publish; anything else is a contract break. */
 export const VARIABLE_STEP_HOURS: readonly number[] = [1, 3, 6];
@@ -31,6 +31,8 @@ export const MAX_VARIABLES_HORIZON_HOURS = 384;
 export const VARIABLE_VALUE_LIMITS: Record<VariablesKind, number> = {
   wave: 1000,
   weather: 100_000,
+  // Surface currents in m/s (force5/src/currents.ts).
+  current: 10,
 };
 /** A code-table entry is a small whole number, never a measurement. */
 export const MAX_VARIABLE_CODE = 1000;
@@ -75,6 +77,11 @@ export interface VariableStep {
   values: Record<string, number | null>;
   /** As on the frame: the interval `precip` covers, null at initialization. */
   precipIntervalHours?: [number, number] | null;
+  /**
+   * The model a step was taken from, in a series handed over from one run to
+   * the next (`handOverSeries`). A run's own published steps carry none.
+   */
+  model?: string;
 }
 /**
  * Everything both kinds declare. `waves.ts` and `surface.ts` narrow `kind`.
@@ -352,6 +359,63 @@ export const variableSeriesHasData = (
 ) =>
   !!series &&
   series.some((step) => typeof step.values?.[variable] === "number");
+
+/** One run handed a place's hours, as `handOverSeries` takes it. */
+export interface HandedRun {
+  model: string;
+  series: readonly VariableStep[];
+  /**
+   * The run's variable names, each as the first run calls the same reading,
+   * where the two differ. A reading the first run has no name for is left as
+   * the run published it.
+   */
+  names?: Readonly<Record<string, string>>;
+}
+
+/**
+ * One place's steps read from several runs in turn, as the wind hands over
+ * from HARMONIE to ECMWF past HARMONIE's reach (force5/src/lead.ts): every step
+ * of the first run, then of each next run only the steps past the last one
+ * already taken. So the rows run as far as the furthest of the runs reaches,
+ * a later run never fills a gap inside an earlier one's reach, and an hour is
+ * never two models' at once. Each step says which model it came from, in the
+ * first run's names for its readings. A run that reaches no further than those
+ * before it adds nothing.
+ */
+export function handOverSeries(runs: readonly HandedRun[]): VariableStep[] {
+  const out: VariableStep[] = [];
+  let reach = -Infinity;
+  for (const { model, series, names } of runs) {
+    for (const step of series) {
+      const time = Date.parse(step.validTime);
+      if (!(time > reach)) continue;
+      const values: Record<string, number | null> = {};
+      for (const [name, value] of Object.entries(step.values ?? {}))
+        values[names?.[name] ?? name] = value;
+      out.push({ ...step, values, model });
+    }
+    if (out.length) reach = Date.parse(out[out.length - 1].validTime);
+  }
+  return out;
+}
+
+/**
+ * The columns where a handed-over series changes model: each column whose
+ * step is from another model than the last column before it that has one.
+ * The dock marks them, as it marks where the stars hand over.
+ */
+export function handoverColumns(
+  columns: readonly ({ model?: string } | null | undefined)[],
+): Set<number> {
+  const out = new Set<number>();
+  let last: string | undefined;
+  columns.forEach((step, at) => {
+    if (!step?.model) return;
+    if (last !== undefined && step.model !== last) out.add(at);
+    last = step.model;
+  });
+  return out;
+}
 
 /**
  * The nearest native step to each time on the dock's axis, or null where no

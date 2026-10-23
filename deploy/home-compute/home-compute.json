@@ -797,6 +797,70 @@
       }
     },
     {
+      "id": "gfs-weather",
+      "description": "GFS surface weather (NOAA)",
+      "schedule": {
+        "at": {
+          "hours": [
+            5,
+            11,
+            17,
+            23
+          ],
+          "minutes": [
+            5,
+            35
+          ]
+        },
+        "timezone": "UTC"
+      },
+      "labels": {
+        "application": "wingfoil",
+        "models": "gfs-weather"
+      },
+      "task": {
+        "image": "${WINGFOIL_IMAGE}",
+        "requiredEnv": [
+          "S3_BUCKET",
+          "S3_ENDPOINT_URL",
+          "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY",
+          "FORCE5_SIDECARS"
+        ],
+        "passEnv": [
+          "S3_PREFIX",
+          "AWS_REGION",
+          "ECMWF_SOURCE",
+          "FORCE5_BROTLI_QUALITY"
+        ],
+        "resources": {
+          "cpu": "1",
+          "memory": "1Gb",
+          "disk": "2Gb"
+        },
+        "network": {
+          "type": "Full"
+        },
+        "timeouts": {
+          "queueSeconds": 3600,
+          "totalSeconds": 6600
+        },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
+        "parameters": [
+          "--models",
+          "gfs-weather"
+        ],
+        "report": {
+          "format": "json-lines",
+          "trackEvent": "forecast_complete",
+          "trackBy": "model"
+        }
+      }
+    },
+    {
       "id": "mi-swan",
       "description": "Irish Shelf SWAN waves (Marine Institute)",
       "schedule": {
@@ -850,6 +914,68 @@
         "parameters": [
           "--models",
           "mi-swan"
+        ],
+        "report": {
+          "format": "json-lines",
+          "trackEvent": "forecast_complete",
+          "trackBy": "model"
+        }
+      }
+    },
+    {
+      "id": "currents",
+      "description": "NE Atlantic ROMS surface currents (Marine Institute)",
+      "schedule": {
+        "at": {
+          "hours": [
+            3,
+            7,
+            13
+          ],
+          "minutes": [
+            20
+          ]
+        },
+        "timezone": "UTC"
+      },
+      "labels": {
+        "application": "wingfoil",
+        "models": "currents"
+      },
+      "task": {
+        "image": "${WINGFOIL_IMAGE}",
+        "requiredEnv": [
+          "S3_BUCKET",
+          "S3_ENDPOINT_URL",
+          "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY",
+          "FORCE5_SIDECARS"
+        ],
+        "passEnv": [
+          "S3_PREFIX",
+          "AWS_REGION",
+          "ECMWF_SOURCE",
+          "FORCE5_BROTLI_QUALITY"
+        ],
+        "resources": {
+          "cpu": "1",
+          "memory": "512Mb",
+          "disk": "2Gb"
+        },
+        "network": {
+          "type": "Full"
+        },
+        "timeouts": {
+          "queueSeconds": 3600,
+          "totalSeconds": 5400
+        },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
+        "parameters": [
+          "--models",
+          "currents"
         ],
         "report": {
           "format": "json-lines",

@@ -220,7 +220,7 @@ export function validateFoilManifest(m: FoilManifest): FoilManifest {
             a.level.lagHours >= 0)) &&
         Array.isArray(a.sources),
     );
-  if (!ok) throw new Error("Invalid foilable-depth index.");
+  if (!ok) throw new Error("Invalid tidal-depth index.");
   return m;
 }
 
@@ -363,9 +363,10 @@ export function mixColour(a: string, b: string, t: number): string {
 }
 
 /**
- * The water's colour scale by depth (tide − bed), metres: pale at the edge
- * of the tide, green to the clearance, then a step to the teal of "deep
- * enough" and on through blue to a faint wash at six metres and more.
+ * The water's colour scale by depth (tide − bed), metres: nearly white at
+ * the edge of the tide, light blue to the clearance, then a step to the
+ * strong blue of "deep enough" and on through darker blue to a faint wash
+ * at six metres and more.
  */
 export function depthScale(
   colours: FoilColours,

@@ -1,4 +1,4 @@
-import { closePanel, expect, test, type Page } from "./fixtures";
+import { closePanel, expect, openFromMenu, test, type Page } from "./fixtures";
 
 /**
  * The loupe's ride rose (force5/src/focus.ts, drawn by WindMap.tsx): round the
@@ -129,9 +129,7 @@ test("Dollymount's cross-shore hour: the no-go, out and home, and the wind at th
 
   // Half a nautical mile with knots; a kilometre with km/h, a little larger.
   const before = await radius(page);
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openFromMenu(page, "Display options");
   await page.locator('[data-units="km/h"]').click();
   await closePanel(page);
   await expect
@@ -233,4 +231,48 @@ test("on a phone the rose fits above the dock, and stays readable zoomed out or 
   expect(pinned!.y + pinned!.height).toBeLessThanOrEqual(dockNow!.y);
   expect(pinned!.x).toBeGreaterThanOrEqual(0);
   expect(pinned!.x + pinned!.width).toBeLessThanOrEqual(390);
+});
+
+test("pointing upwind: typical by default, sharp narrows the no-go, and it is kept", async ({
+  page,
+}) => {
+  await open(page, "dollymount");
+  await firstHour(page, "CROSS");
+  const bearings = async () => (await labels(page)).filter((w) => /°$/.test(w));
+  const typical = await bearings();
+  expect(typical).toHaveLength(2);
+
+  await openFromMenu(page, "Display options");
+  const pointing = page.getByRole("group", { name: "Pointing upwind" });
+  await expect(
+    pointing.getByRole("button", { name: "Typical" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  // A riding rider holds about 70° powered up; sharp is the schools' 60°.
+  await expect(page.locator("[data-upwind-angle]")).toHaveText(
+    "About 70° off the wind, powered up",
+  );
+  await pointing.getByRole("button", { name: "Sharp" }).click();
+  await expect(page.locator("[data-upwind-angle]")).toHaveText(
+    "About 60° off the wind, powered up",
+  );
+  await closePanel(page);
+  // Each tack's upwind edge moves 10° nearer the wind; the deep edge stays.
+  await expect.poll(bearings).not.toEqual(typical);
+  const sharp = await bearings();
+  const span = (b: string) => {
+    const [from, to] = b.replace("°", "").split("–").map(Number);
+    return (to - from + 360) % 360;
+  };
+  for (let i = 0; i < 2; i++)
+    expect(span(sharp[i])).toBeGreaterThanOrEqual(span(typical[i]));
+
+  // Kept on the device, with the weight and the level.
+  await page.reload();
+  await expect(page.locator(".map-loupe-foot")).toBeVisible({ timeout: 30000 });
+  await openFromMenu(page, "Display options");
+  await expect(
+    page
+      .getByRole("group", { name: "Pointing upwind" })
+      .getByRole("button", { name: "Sharp" }),
+  ).toHaveAttribute("aria-pressed", "true");
 });

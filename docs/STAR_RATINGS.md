@@ -260,8 +260,8 @@ OpenStreetMap data): for each place, 72 bearings at 300 m, 700 m and 1.2 km,
 each tested for water, and the facing is the circular mean of the water
 bearings. `strength` says how lopsided that is; below 0.15 (a pin on an isthmus,
 a lough's middle, an estuary with water all round) no facing is published and
-the hour is rated on the wind alone. 125 of the 148 places have one computed,
-and the overrides below bring it to 126.
+the hour is rated on the wind alone. 126 of the 149 places have one computed,
+and the overrides below bring it to 127.
 
 It is a computed estimate. `data/locations/shore-facing.json` has an
 `overrides` block for corrections, which win and survive a rerun. The first
@@ -269,9 +269,12 @@ five are from knowing the beaches, not a survey: Dollymount (ESE, 125°) and
 Tramore (S, 175°), whose pins sit deep in their bays and fell under the cut-off
 with the right bearing; Streedagh and Waterville likewise, at their computed
 bearings; and White Strand Doonbeg set to unknown, because the computed NE
-looks wrong and no direction is safer than the wrong one. Worth checking next:
-**Brandon Bay** (computed E, from a pin on the Maharees neck) and the other
-places left without a facing, listed by `strength` in the file.
+looks wrong and no direction is safer than the wrong one. The sixth is
+Skerries — South Strand (ESE, 105°, square to the beach's high-water line):
+its pin sits on the sand beside Red Island's neck, and the harbour and North
+Beach behind the neck pull the computed bearing round to NE (50°). Worth
+checking next: **Brandon Bay** (computed E, from a pin on the Maharees neck)
+and the other places left without a facing, listed by `strength` in the file.
 
 The same facing draws the loupe's ride rose on the map: the tack out to sea,
 the tack home, the no-go and the drift, on angles shared with the light's

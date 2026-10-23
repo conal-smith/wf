@@ -44,14 +44,16 @@ import {
   type TideManifest,
 } from "../force5/src/tides";
 import {
-  preferredWeatherSource,
+  handedWeatherSource,
   weatherAtAxis,
+  weatherSources,
   type WeatherSource,
   type WeatherStep,
 } from "../force5/src/surface";
 import {
-  preferredWaveSource,
+  handedWaveSource,
   waveAtAxis,
+  waveSources,
   type WaveSource,
   type WaveStep,
 } from "../force5/src/waves";
@@ -333,6 +335,28 @@ export function useSpotSeaTemperature(
   return state;
 }
 
+/**
+ * The tide manifest alone, while a point is chosen on the site: its lakes
+ * (`freshwaterSpots`) keep a point on a lough from borrowing the sea's
+ * forecast. The site's dock draws no tide, so it fetches no station's curve;
+ * the app's dock and spot screen read theirs through the hooks below.
+ */
+export function useTideManifest(wanted: boolean): TideManifest | null {
+  const [manifest, setManifest] = useState<TideManifest | null>(null);
+  useEffect(() => {
+    if (!wanted) return;
+    const controller = new AbortController();
+    tideManifest(controller.signal)
+      .then((m) => {
+        if (!controller.signal.aborted) setManifest(m);
+      })
+      // No manifest: a point borrows from the nearest spot, lake or sea.
+      .catch(() => {});
+    return () => controller.abort();
+  }, [wanted]);
+  return wanted ? manifest : null;
+}
+
 export interface TideState {
   tide: SpotTide | null;
   manifest: TideManifest | null;
@@ -419,11 +443,18 @@ function useTide(
 }
 
 export interface SpotWaves {
-  /** The source actually read for this spot, or null when none covers it. */
+  /**
+   * What the rows read for this spot, or null when no source covers it: the
+   * preferred source, its series going on in the next one's past its end
+   * (`handedWaveSource`).
+   */
   source: WaveSource | null;
   /** Whether any wave manifest answered at all, however it covers this spot. */
   published: boolean;
-  /** The nearest native wave step per dock column; null where none is close. */
+  /**
+   * The nearest native wave step per dock column; null where none is close.
+   * Each says the model it came from.
+   */
   columns: (WaveStep | null)[];
 }
 
@@ -433,6 +464,9 @@ const NO_WAVES: SpotWaves = { source: null, published: false, columns: [] };
  * Waves for one spot on the dock's own columns. The wave manifests come from
  * the same availability sweep the blend uses, so no extra request is made, and
  * the columns hold native forecast steps rather than interpolated sea states.
+ * Each source runs as far as its own run does and the next takes over there:
+ * one that has ended short of the week leaves the rest to the one after it,
+ * not a row of dashes.
  */
 export function useSpotWaves(
   models: readonly ModelAvailability[],
@@ -447,18 +481,7 @@ export function useSpotWaves(
   );
   return useMemo(() => {
     if (!waves.length) return NO_WAVES;
-    // The preferred source first; one whose run is over (nothing on these
-    // columns) gives way to the next that has something to say.
-    let left = [...waves];
-    while (left.length) {
-      const source = preferredWaveSource(left, spotId);
-      if (!source) break;
-      const columns = waveAtAxis(source.series, axis);
-      if (columns.some(Boolean) || !axis.length)
-        return { source, published: true, columns };
-      left = left.filter((m) => m !== source.manifest);
-    }
-    const source = preferredWaveSource(waves, spotId);
+    const source = handedWaveSource(waveSources(waves, spotId));
     return {
       source,
       published: true,
@@ -469,11 +492,18 @@ export function useSpotWaves(
 }
 
 export interface SpotWeather {
-  /** The source actually read for this spot, or null when none covers it. */
+  /**
+   * What the rows read for this spot, or null when no source covers it: the
+   * preferred source, its series going on in the next one's past its end
+   * (`handedWeatherSource`).
+   */
   source: WeatherSource | null;
   /** Whether any weather manifest answered at all, however it covers this spot. */
   published: boolean;
-  /** The nearest native step per dock column; null where none is close. */
+  /**
+   * The nearest native step per dock column; null where none is close. Each
+   * says the model it came from.
+   */
   columns: (WeatherStep | null)[];
 }
 
@@ -488,7 +518,9 @@ const NO_WEATHER: SpotWeather = {
  * availability sweep the blend and the waves use, so no extra request is made.
  * The columns hold native forecast steps: a present-weather code is an index
  * into a table and a rain total belongs to an interval, so neither survives
- * being interpolated onto a column the model did not publish.
+ * being interpolated onto a column the model did not publish. As with the
+ * waves, each source runs as far as its own run does and the next takes over
+ * there.
  */
 export function useSpotWeather(
   models: readonly ModelAvailability[],
@@ -505,16 +537,7 @@ export function useSpotWeather(
   );
   return useMemo(() => {
     if (!published.length) return NO_WEATHER;
-    let left = [...published];
-    while (left.length) {
-      const source = preferredWeatherSource(left, spotId);
-      if (!source) break;
-      const columns = weatherAtAxis(source.series, axis);
-      if (columns.some(Boolean) || !axis.length)
-        return { source, published: true, columns };
-      left = left.filter((m) => m !== source.manifest);
-    }
-    const source = preferredWeatherSource(published, spotId);
+    const source = handedWeatherSource(weatherSources(published, spotId));
     return {
       source,
       published: true,

@@ -1,5 +1,7 @@
 import {
+  closePanel,
   expect,
+  openFromMenu,
   rememberSpot,
   SPOTS_KEY,
   test,
@@ -78,7 +80,7 @@ async function gustArrived(page: Page) {
 async function openMap(page: Page, path = "/") {
   await hideBasemap(page);
   await page.goto(path);
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
@@ -182,7 +184,7 @@ for (const { width, height } of [
 
     test("layers panel", async ({ page }) => {
       await openMap(page);
-      await page.getByRole("button", { name: "Layers", exact: true }).click();
+      await openFromMenu(page, "Layers");
       await expect(page.getByRole("group", { name: "Layers" })).toBeVisible();
       await shoot(page, "layers", width);
     });
@@ -277,9 +279,7 @@ for (const { width, height } of [
 
     test("display options", async ({ page }) => {
       await openMap(page);
-      await page
-        .getByRole("button", { name: "Display options", exact: true })
-        .click();
+      await openFromMenu(page, "Display options");
       await expect(page.locator("#map-options")).toBeVisible();
       await shoot(page, "display-filter", width);
     });
@@ -294,9 +294,7 @@ for (const { width, height } of [
       await pick(page, "Dollymount");
       await page.keyboard.press("Escape");
       await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
-      await page
-        .getByRole("button", { name: "Your spots", exact: true })
-        .click();
+      await openFromMenu(page, "Your spots");
       await expect(
         page.getByRole("complementary", { name: "Your spots" }),
       ).toBeVisible();
@@ -305,7 +303,7 @@ for (const { width, height } of [
 
     test("the key", async ({ page }) => {
       await openMap(page);
-      await page.getByRole("button", { name: "Map information" }).click();
+      await openFromMenu(page, "About the map");
       await expect(page.locator(".map-info .key")).toBeVisible();
       await shoot(page, "key", width);
     });
@@ -347,7 +345,7 @@ for (const { width, height } of [
       await expect(page.locator(".map-model")).toContainText("archived", {
         timeout: 30000,
       });
-      await expect(page.locator(".spot-marker")).toHaveCount(148);
+      await expect(page.locator(".spot-marker")).toHaveCount(149);
       await gustArrived(page);
       await shoot(page, "stale", width);
     });
@@ -355,10 +353,10 @@ for (const { width, height } of [
     test("model switch loading", async ({ page }) => {
       await openMap(page);
       await page.route("**/weather/icon-eu-*/t/**", () => {});
-      await page.getByRole("button", { name: "Layers", exact: true }).click();
+      await openFromMenu(page, "Layers");
       await page.locator('[data-model="icon-eu"]').click();
       await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
-      await page.getByRole("button", { name: "Layers", exact: true }).click();
+      await closePanel(page);
       await shoot(page, "model-loading", width);
     });
 
@@ -367,10 +365,10 @@ for (const { width, height } of [
         route.fulfill({ status: 503, body: "Unavailable" }),
       );
       await openMap(page);
-      await page.getByRole("button", { name: "Layers", exact: true }).click();
+      await openFromMenu(page, "Layers");
       await page.locator('[data-model="icon-eu"]').click();
       await expect(page.locator(".frame-status.is-error")).toBeVisible();
-      await page.getByRole("button", { name: "Layers", exact: true }).click();
+      await closePanel(page);
       await shoot(page, "warning", width);
     });
 

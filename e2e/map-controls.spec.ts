@@ -1,11 +1,11 @@
-import { closePanel, expect, test } from "./fixtures";
+import { closePanel, expect, menuRow, openFromMenu, test } from "./fixtures";
 
-test("the chart's controls: zoom and the layers by keyboard, with the credits behind the i", async ({
+test("the chart's controls: zoom on the right, the layers from the menu by keyboard, with the credits behind the i", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   const controls = page.getByRole("group", { name: "Map controls" });
@@ -13,46 +13,54 @@ test("the chart's controls: zoom and the layers by keyboard, with the credits be
   await expect(
     controls.getByRole("button", { name: "Show all of Ireland" }),
   ).toHaveCount(0);
-  for (const name of [
-    "Zoom in",
-    "Zoom out",
-    "Layers",
-    "Your spots",
-    "Map information",
-  ])
-    await expect(controls.getByRole("button", { name, exact: true })).toBeVisible();
+  // Zoom, and nothing else: the chart's own tools are in the site menu.
+  await expect(controls.getByRole("button")).toHaveText(["+", "−"]);
+  for (const name of ["Zoom in", "Zoom out"])
+    await expect(
+      controls.getByRole("button", { name, exact: true }),
+    ).toBeVisible();
   // Clear of the head and of the dock.
   const box = (await controls.boundingBox())!;
   const dock = (await page.locator(".map-footer").boundingBox())!;
   const head = (await page.locator(".map-head").boundingBox())!;
   expect(box.y + box.height).toBeLessThan(dock.y);
   expect(head.x + head.width).toBeLessThanOrEqual(box.x);
-  // The layers open from the keyboard and close on Escape, focus kept.
-  const layers = controls.getByRole("button", { name: "Layers", exact: true });
-  await layers.focus();
+  // The layers open from the menu by keyboard, and close on Escape with the
+  // focus back on the menu's trigger.
+  const menu = page.getByRole("button", { name: "Site menu" });
+  await menu.focus();
+  await page.keyboard.press("Enter");
+  await expect(menuRow(page, "Layers")).toBeFocused();
+  await expect(
+    page.getByRole("group", { name: "The chart" }).getByRole("button"),
+  ).toHaveText(["Layers", "Your spots", "Display options", "About the map"]);
   await page.keyboard.press("Enter");
   const panel = page.getByRole("group", { name: "Layers" });
   await expect(panel).toBeVisible();
-  for (const name of ["Ink", "Coloured arrows", "Wash"])
+  for (const name of ["Ink", "Coloured arrows", "Coloured wind"])
     await expect(panel.getByRole("radio", { name })).toBeVisible();
   await expect(panel.getByRole("radio", { name: "Ink" })).toBeChecked();
   await expect(panel.locator(".knot-scale")).toBeVisible();
-  await expect(panel.getByRole("group", { name: "Weather model" })).toBeVisible();
+  await expect(
+    panel.getByRole("group", { name: "Weather model" }),
+  ).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(panel).toHaveCount(0);
+  await expect(menu).toBeFocused();
+  await expect(menu).toHaveAttribute("aria-expanded", "false");
   // The chart's parts switch off and stay off.
-  await layers.click();
+  await openFromMenu(page, "Layers");
   await panel.getByRole("checkbox", { name: "Spot names" }).uncheck();
   await expect(page.locator(".map-canvas")).toHaveClass(/no-names/);
   await page.reload();
   await expect(page.locator(".map-canvas")).toHaveClass(/no-names/, {
     timeout: 30000,
   });
-  await layers.click();
+  await openFromMenu(page, "Layers");
   await panel.getByRole("checkbox", { name: "Spot names" }).check();
   await page.keyboard.press("Escape");
-  // The key is a button away, in a dialog rather than on the chart.
-  await controls.getByRole("button", { name: "Map information" }).click();
+  // The key is in the menu, in a dialog rather than on the chart.
+  await openFromMenu(page, "About the map");
   await expect(
     page.getByRole("dialog", { name: "About the map" }),
   ).toContainText("Depths in metres below chart datum");
@@ -64,15 +72,17 @@ test("the chart's controls: zoom and the layers by keyboard, with the credits be
   await expect(
     print.locator('a[href="https://www.openstreetmap.org/copyright"]'),
   ).toBeVisible();
-  await expect(print.locator('a[href="https://openfreemap.org/"]')).toBeVisible();
+  await expect(
+    print.locator('a[href="https://openfreemap.org/"]'),
+  ).toBeVisible();
   await expect(print).toContainText("EMODnet");
   await expect(print).toContainText("Not for navigation");
 });
 
-test("the map's information is one dialog over the dimmed chart: the i under Layers and the foil layer's i", async ({
+test("the map's information is one dialog over the dimmed chart: from the menu and from the tidal depth's i", async ({
   page,
 }) => {
-  // The foilable-depth layer on, as a rider who had it on last time.
+  // The tidal-depth layer on, as a rider who had it on last time.
   await page.addInitScript(() =>
     localStorage.setItem(
       "wingfoil.map.layers.v1",
@@ -81,25 +91,24 @@ test("the map's information is one dialog over the dimmed chart: the i under Lay
   );
   // And Brandon Bay in the dock, from the link: the stars' link names it.
   await page.goto("/?spot=brandon");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   // Its key is not drawn on the chart, nor anything of the dialog's until asked.
   await expect(page.locator(".foil-key")).toHaveCount(0);
   await expect(page.locator(".map-info")).toHaveCount(0);
-  const controls = page.getByRole("group", { name: "Map controls" });
-  const open = controls.getByRole("button", { name: "Map information" });
-  await open.click();
+  const menu = page.getByRole("button", { name: "Site menu" });
+  await openFromMenu(page, "About the map");
   const info = page.getByRole("dialog", { name: "About the map" });
   await expect(info).toBeVisible();
-  for (const name of ["Map key", "Star ratings", "Foilable depth", "Sources"])
-    await expect(info.getByRole("heading", { name, exact: true })).toBeVisible();
+  for (const name of ["Map key", "Star ratings", "Tidal depth", "Sources"])
+    await expect(
+      info.getByRole("heading", { name, exact: true }),
+    ).toBeVisible();
   await expect(info).toContainText("Deep enough, 1 m or more");
   await expect(info).toContainText("Not for navigation");
   // Modal, over a scrim: the page behind is dimmed and cannot be reached.
-  expect(
-    await info.evaluate((el) => el.matches(":modal")),
-  ).toBe(true);
+  expect(await info.evaluate((el) => el.matches(":modal"))).toBe(true);
   expect(
     await info.evaluate(
       (el) => getComputedStyle(el, "::backdrop").backgroundColor,
@@ -107,10 +116,10 @@ test("the map's information is one dialog over the dimmed chart: the i under Lay
   ).not.toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/);
   await page.keyboard.press("Escape");
   await expect(info).toHaveCount(0);
-  await expect(open).toBeFocused();
-  // The foil layer's own i opens it at the foil key.
-  await controls.getByRole("button", { name: "Layers", exact: true }).click();
-  await page.getByRole("button", { name: "About foilable depth" }).click();
+  await expect(menu).toBeFocused();
+  // The tidal depth's own i opens it at its key.
+  await openFromMenu(page, "Layers");
+  await page.getByRole("button", { name: "About tidal depth" }).click();
   await expect(info).toBeVisible();
   await expect(info.locator("#map-info-foil")).toBeInViewport();
   await info.getByRole("button", { name: "Close" }).click();
@@ -122,8 +131,7 @@ test("the map's information is one dialog over the dimmed chart: the i under Lay
   await expect(
     page.locator(".dock").getByRole("button", { name: "How the stars work" }),
   ).toHaveCount(0);
-  await open.click();
-  await expect(info).toBeVisible();
+  await openFromMenu(page, "About the map");
   await expect(info.locator("#map-info-stars")).toBeAttached();
   await expect(
     info.getByRole("link", { name: "How the stars work, in full →" }),
@@ -131,7 +139,7 @@ test("the map's information is one dialog over the dimmed chart: the i under Lay
 });
 
 for (const width of [390, 1440]) {
-  test(`your spots are behind the star under Layers, and open as the layers do, at ${width}px`, async ({
+  test(`your spots are in the menu, and open as the layers do, at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 });
@@ -142,31 +150,29 @@ for (const width of [390, 1440]) {
       ),
     );
     await page.goto("/");
-    await expect(page.locator(".spot-marker")).toHaveCount(148, {
+    await expect(page.locator(".spot-marker")).toHaveCount(149, {
       timeout: 30000,
     });
     // Nothing of them on the chart until asked: no panel, no strip.
     const panel = page.getByRole("complementary", { name: "Your spots" });
     await expect(panel).toHaveCount(0);
     await expect(page.locator(".side")).toHaveCount(0);
-    const controls = page.getByRole("group", { name: "Map controls" });
-    const star = controls.getByRole("button", { name: "Your spots", exact: true });
-    const layers = controls.getByRole("button", { name: "Layers", exact: true });
-    // The star is under Layers, the "i" under it, all one column.
-    const at = async (name: string) =>
-      (await controls.getByRole("button", { name, exact: true }).boundingBox())!;
-    const [l, s, i] = [
+    const menu = page.getByRole("button", { name: "Site menu" });
+    // Under Layers in the menu, one column of the chart's tools.
+    await menu.click();
+    const at = async (name: "Layers" | "Your spots" | "Display options") =>
+      (await menuRow(page, name).boundingBox())!;
+    const [l, s, o] = [
       await at("Layers"),
       await at("Your spots"),
-      await at("Map information"),
+      await at("Display options"),
     ];
     expect(s.x).toBe(l.x);
     expect(s.y).toBeGreaterThan(l.y);
-    expect(i.y).toBeGreaterThan(s.y);
-    await expect(star).toHaveAttribute("aria-expanded", "false");
-    await star.click();
+    expect(o.y).toBeGreaterThan(s.y);
+    await menuRow(page, "Your spots").click();
     await expect(panel).toBeVisible();
-    await expect(star).toHaveAttribute("aria-expanded", "true");
+    await expect(menu).toHaveAttribute("aria-expanded", "false");
     await expect(panel).toContainText("Dollymount");
     await expect(panel).toContainText("Often opened");
     // In a dialog over the dimmed map, on the page, with its own X.
@@ -183,20 +189,20 @@ for (const width of [390, 1440]) {
     // Its X closes it, as does Escape, as does a press on the dimmed map.
     await closePanel(page);
     await expect(panel).toHaveCount(0);
-    await expect(star).toHaveAttribute("aria-expanded", "false");
-    await star.click();
+    await openFromMenu(page, "Your spots");
     await page.keyboard.press("Escape");
     await expect(panel).toHaveCount(0);
-    await star.click();
+    await expect(menu).toBeFocused();
+    await openFromMenu(page, "Your spots");
     // A star alone opens no dock: the press is on the backdrop.
     await page.mouse.click(Math.max(2, box.x / 2), box.y + box.height / 2);
     await expect(panel).toHaveCount(0);
     await expect(page.locator(".dock")).toHaveCount(0);
     // One at a time: the layers in place of your spots, and the other way.
-    await layers.click();
+    await openFromMenu(page, "Layers");
     await expect(page.getByRole("group", { name: "Layers" })).toBeVisible();
     await closePanel(page);
-    await star.click();
+    await openFromMenu(page, "Your spots");
     await expect(page.getByRole("group", { name: "Layers" })).toHaveCount(0);
     await expect(panel).toBeVisible();
     // The small print's "i" in the panel opens a dialog, and a press in it

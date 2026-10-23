@@ -709,7 +709,7 @@ function waveBundle(model, spots, runMs, grid) {
   const names = Object.keys(WAVE_VARIABLES);
   const mask = new Array(grid.width * grid.height).fill(false);
   // A cell another location reads from stays water: one masked corner is
-  // enough to mask a location, and with 148 places on a coarse sample grid a
+  // enough to mask a location, and with 149 places on a coarse sample grid a
   // neighbour can share a corner (Kinvara shares one with Rusheen).
   const shared = new Set(
     spots
@@ -847,12 +847,98 @@ function waveBundle(model, spots, runMs, grid) {
   return { manifest, files, prefix };
 }
 
+/**
+ * Surface currents, as fetch_currents.py publishes them: u and v in m/s, a
+ * frame every hour, a series per riding location. A smooth field turning
+ * every 12.42 hours like a semi-diurnal tide, over land as well as sea: the
+ * bundle says it is synthetic, and the map only has to draw arrows from it.
+ */
+const CURRENT = {
+  u: { base: 0, amp: 0.25, gx: 0.02, gy: 0.02, period: 12.42, phase: 0 },
+  v: { base: 0, amp: 0.6, gx: 0.03, gy: 0.02, period: 12.42, phase: 0.25 },
+};
+
+function currentBundle(model, spots, runMs, grid) {
+  const run = runId(runMs);
+  const hours = frameHours(model);
+  const prefix = `${model.id}-${run}-${hours[hours.length - 1]}h-v1`;
+  const series = Object.fromEntries(spots.map((spot) => [spot.id, []]));
+  const frames = [];
+  const files = [];
+  for (const hour of hours) {
+    const valid = iso(runMs + hour * HOUR);
+    const planes = {
+      u: plane(grid, CURRENT.u, hour, model.seed),
+      v: plane(grid, CURRENT.v, hour, model.seed),
+    };
+    const payload = {
+      model: model.id,
+      run,
+      hour,
+      validTime: valid,
+      grid,
+      u: bounded(field(grid, planes.u), 10, null, `${model.id} u`),
+      v: bounded(field(grid, planes.v), 10, null, `${model.id} v`),
+    };
+    const url = `weather/${prefix}/${pad(hour, 3)}.json`;
+    files.push([url, payload]);
+    frames.push({ hour, validTime: valid, url });
+    for (const spot of spots) {
+      const x = spotX(grid, spot.lon);
+      const y = spotY(grid, spot.lat);
+      series[spot.id].push({
+        hour,
+        validTime: valid,
+        values: {
+          u: q2(planeAt(planes.u, x, y)),
+          v: q2(planeAt(planes.v, x, y)),
+        },
+      });
+    }
+  }
+  const manifest = {
+    schemaVersion: 1,
+    kind: "current",
+    model: model.id,
+    modelName: model.name,
+    provider: SYNTHETIC.provider,
+    modelDetail: `${model.name} shaped sample bundle`,
+    resolutionKm: model.resolutionKm,
+    resolutionLabel: `${grid.dx}° × ${grid.dy}° sample grid`,
+    run,
+    runTime: iso(runMs),
+    generatedAt: iso(runMs),
+    stepHours: model.stepHours,
+    horizonHours: hours[hours.length - 1],
+    grid,
+    variables: {
+      u: {
+        units: "m/s",
+        label: "Current, east",
+        description: "Eastward component of a synthetic surface current.",
+      },
+      v: {
+        units: "m/s",
+        label: "Current, north",
+        description: "Northward component of a synthetic surface current.",
+      },
+    },
+    frameVariables: ["u", "v"],
+    frames,
+    spotSeries: series,
+    caveat: "Synthetic sample data: not a current.",
+    ...provenance(),
+  };
+  return { manifest, files, prefix };
+}
+
 function weatherBundle(model, spots, runMs, grid) {
   const run = runId(runMs);
   const hours = frameHours(model);
   const prefix = `${model.id}-${run}-${hours[hours.length - 1]}h-v1`;
   const names = Object.keys(WEATHER_VARIABLES);
-  const gridded = model.frameVariables;
+  // A frameless bundle (GFS weather) publishes its spot series alone.
+  const gridded = model.frameless ? [] : model.frameVariables;
   const series = Object.fromEntries(spots.map((spot) => [spot.id, []]));
   const frames = [];
   const files = [];
@@ -918,8 +1004,15 @@ function weatherBundle(model, spots, runMs, grid) {
       ...fields,
     };
     const url = `weather/${prefix}/${pad(hour, 3)}.json`;
-    files.push([url, payload]);
-    frames.push({ hour, validTime: valid, url, precipIntervalHours: interval });
+    if (!model.frameless) {
+      files.push([url, payload]);
+      frames.push({
+        hour,
+        validTime: valid,
+        url,
+        precipIntervalHours: interval,
+      });
+    }
     for (const spot of spots) {
       const x = spotX(grid, spot.lon);
       const y = spotY(grid, spot.lat);
@@ -970,7 +1063,9 @@ function weatherBundle(model, spots, runMs, grid) {
         ];
       }),
     ),
-    frameVariables: [...gridded],
+    ...(model.frameless
+      ? { horizonHours: hours[hours.length - 1] }
+      : { frameVariables: [...gridded] }),
     frames,
     spotSeries: series,
     precipitationNote:
@@ -1004,6 +1099,8 @@ const FIXTURE_RUNS = {
   aifs: "2026-09-16T06:00:00Z",
   "gfs-wave": "2026-09-16T18:00:00Z",
   "icon-eu-weather": "2026-09-16T18:00:00Z",
+  "gfs-weather": "2026-09-16T18:00:00Z",
+  currents: "2026-09-13T00:00:00Z",
 };
 
 /**
@@ -1140,9 +1237,43 @@ const CATALOGUE = [
     spacing: { fixtures: 0.25, live: 0.125 },
     live: { horizonHours: 72 },
   },
+  {
+    // The dock's sky, air and rain past ICON-EU weather's three days, as far
+    // as the strip's fifteen; spot series only, as the adapter publishes it.
+    id: "gfs-weather",
+    file: "gfs-weather.json",
+    kind: "weather",
+    name: "GFS weather",
+    seed: 0.53,
+    stepHours: 3,
+    horizonHours: 6,
+    resolutionKm: 28,
+    frameless: true,
+    spacing: { fixtures: 0.25, live: 0.25 },
+    live: { horizonHours: 360 },
+  },
+  {
+    // Only with --all (the dev sample and the e2e site): the committed unit
+    // fixtures have no reader for it, and 73 frames would only weigh them down.
+    id: "currents",
+    file: "currents.json",
+    kind: "current",
+    name: "NE Atlantic ROMS",
+    seed: 0.07,
+    stepHours: 1,
+    horizonHours: 72,
+    resolutionKm: 1.4,
+    spacing: { fixtures: 0.25, live: 0.1 },
+    optional: true,
+  },
 ];
 
-const BUILDERS = { wind: windBundle, wave: waveBundle, weather: weatherBundle };
+const BUILDERS = {
+  wind: windBundle,
+  wave: waveBundle,
+  weather: weatherBundle,
+  current: currentBundle,
+};
 
 /**
  * The run a live bundle publishes: the most recent whole cycle a real adapter

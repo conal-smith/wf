@@ -55,7 +55,12 @@ NON_TIDAL = {
 USER_AGENT = "Force5/0.1 (wingfoil.ie prototype)"
 SOURCE_STEP_MINUTES = 5  # The published curve; we republish every second sample.
 STEP_MINUTES = 10
-DAYS_BEFORE, DAYS_AFTER = 1, 8
+# Yesterday, and sixteen days on from today: the dock's strip is the next fifteen
+# Irish days (src/strip.ts, STRIP_DAYS), as far as ECMWF's 15-day run reaches, so
+# its last day has its tide, and still has it the day after a nightly run fails.
+# They are astronomical predictions: the Marine Institute publishes them years ahead.
+DAYS_BEFORE, DAYS_AFTER = 1, 16
+MAX_DAYS_AFTER = 21
 MAX_DISTANCE_KM = 40.0
 PREFER_MI_KM = 5.0
 DATUM_TOLERANCE_METRES = 0.03
@@ -276,8 +281,8 @@ def main():
                         help="Refuse a spot whose nearest station is farther than this")
     parser.add_argument("--days-ahead", type=int, default=DAYS_AFTER)
     args = parser.parse_args()
-    if not 0 < args.max_distance_km <= 500 or not 1 <= args.days_ahead <= 14:
-        parser.error("Use a 0–500 km station limit and a 1–14 day horizon")
+    if not 0 < args.max_distance_km <= 500 or not 1 <= args.days_ahead <= MAX_DAYS_AFTER:
+        parser.error(f"Use a 0–500 km station limit and a 1–{MAX_DAYS_AFTER} day horizon")
     now = datetime.now(timezone.utc)
     start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=DAYS_BEFORE)
     end = start + timedelta(days=DAYS_BEFORE + args.days_ahead)

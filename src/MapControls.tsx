@@ -1,5 +1,4 @@
-import { Info, SlidersHorizontal, Star } from "lucide-react";
-import { useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { MODELS, type ModelId } from "../force5/src/models";
 import {
   SATELLITE_LABEL,
@@ -8,11 +7,32 @@ import {
   satelliteTidesLine,
   type SatelliteOption,
 } from "../force5/src/satellite";
+import type { SiteMenuTool } from "../force5/src/SiteMenu";
 import type { ChartLayers } from "../force5/src/WindMap";
 import { FOCUS_STYLES, type FocusStyle } from "../force5/src/focus";
 import type { WindStyle } from "../force5/src/windLayer";
 import { Dialog } from "../ui/Dialog";
 import { Segmented } from "../ui/Segmented";
+import {
+  AboutGlyph,
+  ArrowsWindGlyph,
+  ColouredWindGlyph,
+  CurrentsGlyph,
+  HighTideGlyph,
+  InkWindGlyph,
+  LayersGlyph,
+  LoupeGlyph,
+  LowTideGlyph,
+  NamesGlyph,
+  OptionsGlyph,
+  ReliefGlyph,
+  RingGlyph,
+  SatelliteGlyph,
+  SoundingsGlyph,
+  SpotsGlyph,
+  TidalDepthGlyph,
+  TintsGlyph,
+} from "./chartGlyphs";
 import { InfoButton } from "./InfoPop";
 import { KnotScale } from "./KnotScale";
 import type { InfoSection } from "./mapInfoContext";
@@ -20,19 +40,42 @@ import type { InfoSection } from "./mapInfoContext";
 const WIND_LABEL: Record<WindStyle, string> = {
   ink: "Ink",
   arrows: "Coloured arrows",
-  wash: "Wash",
+  wash: "Coloured wind",
+};
+const WIND_GLYPH: Record<WindStyle, ReactNode> = {
+  ink: <InkWindGlyph />,
+  arrows: <ArrowsWindGlyph />,
+  wash: <ColouredWindGlyph />,
 };
 const CHART_LABEL: Record<keyof ChartLayers, string> = {
   tints: "Depth tints",
   soundings: "Contours, soundings",
   relief: "Land relief",
   names: "Spot names",
-  foil: "Foilable depth at the tide",
+  foil: "Tidal depth",
+  currents: "Currents, a rough guide",
+};
+/** Each part's glyph, drawn as the chart draws the part; a row without one still reads. */
+const CHART_GLYPH: Partial<Record<keyof ChartLayers, ReactNode>> = {
+  tints: <TintsGlyph />,
+  soundings: <SoundingsGlyph />,
+  relief: <ReliefGlyph />,
+  names: <NamesGlyph />,
+  foil: <TidalDepthGlyph />,
+  currents: <CurrentsGlyph />,
+};
+const SATELLITE_GLYPH: Partial<Record<SatelliteOption, ReactNode>> = {
+  high: <HighTideGlyph size={16} />,
+  low: <LowTideGlyph size={16} />,
 };
 const FOCUS_LABEL: Record<FocusStyle, string> = {
   loupe: "Loupe",
   ring: "Range ring",
   off: "Off",
+};
+const FOCUS_GLYPH: Partial<Record<FocusStyle, ReactNode>> = {
+  loupe: <LoupeGlyph size={16} />,
+  ring: <RingGlyph size={16} />,
 };
 
 /** A panel that opens over the dimmed map: one at a time. */
@@ -45,16 +88,43 @@ const PANEL_TITLE: Record<Exclude<MapPanel, null>, string> = {
 };
 
 /**
- * Top right: zoom, the layers (the wind's style, the chart's parts, the
- * satellite image under it, what is drawn round the chosen spot, and which
- * model the map draws), and under them your spots, the display options
- * (units, the rider, the blend's models) and the "i" that opens the map's
- * information: its key, the stars, the foil layer and the sources. The
- * layers, your spots and the options open one at a time in a dialog over the
- * dimmed map, as the information does: beside the controls they covered the
- * chart and the dock's tools on a phone. They close on their X, on Escape or
- * on a tap on the backdrop, and a keyboard is handed back to the button they
- * opened from.
+ * The chart's own rows in the site menu (force5/src/SiteMenu.tsx), the one
+ * way in to them: the layers, your spots, the display options, and what the
+ * map means. Each row is named as the dialog it opens is titled.
+ */
+export function chartTools(
+  onOpen: (panel: Exclude<MapPanel, null>) => void,
+  onInfo: (at: InfoSection) => void,
+): SiteMenuTool[] {
+  const panel = (id: Exclude<MapPanel, null>, glyph: ReactNode) => ({
+    id,
+    label: PANEL_TITLE[id],
+    glyph,
+    onSelect: () => onOpen(id),
+  });
+  return [
+    panel("layers", <LayersGlyph />),
+    panel("spots", <SpotsGlyph />),
+    panel("options", <OptionsGlyph />),
+    {
+      id: "about",
+      label: "About the map",
+      glyph: <AboutGlyph />,
+      onSelect: () => onInfo("key"),
+    },
+  ];
+}
+
+/**
+ * Top right: zoom, and nothing else, for the chart is moved there. The
+ * layers (the wind's style, the chart's parts, the satellite image under it,
+ * what is drawn round the chosen spot, and which model the map draws), your
+ * spots and the display options (units, the rider, the blend's models) are
+ * opened from the site menu (`chartTools`), one at a time in a dialog over
+ * the dimmed map, as the map's information is: four buttons here, beside a
+ * menu that held more, were too many ways in. They close on their X, on
+ * Escape or on a tap on the backdrop, and the focus goes back to where it was
+ * when they opened: the menu's trigger, or the dock's button.
  */
 export default function MapControls({
   onZoomIn,
@@ -63,7 +133,6 @@ export default function MapControls({
   onOpen,
   spots,
   options,
-  infoOpen,
   onInfo,
   windStyle,
   onWindStyle,
@@ -79,6 +148,7 @@ export default function MapControls({
   modelNote,
   modelDisabled,
   onModel,
+  currentsNote = null,
 }: {
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -88,7 +158,7 @@ export default function MapControls({
   spots: () => ReactNode;
   /** The display options (src/DisplayFilter.tsx), given a way to close. */
   options: (close: () => void) => ReactNode;
-  infoOpen: boolean;
+  /** The map's information, at the tidal depth's part from its "i". */
   onInfo: (at: InfoSection) => void;
   windStyle: WindStyle;
   onWindStyle: (style: WindStyle) => void;
@@ -112,72 +182,28 @@ export default function MapControls({
   modelNote?: string | null;
   modelDisabled: boolean;
   onModel: (id: ModelId) => void;
+  /** What the Currents layer cannot draw at the hour shown, while it is on. */
+  currentsNote?: string | null;
 }) {
-  const layersButton = useRef<HTMLButtonElement>(null);
-  const spotsButton = useRef<HTMLButtonElement>(null);
-  const optionsButton = useRef<HTMLButtonElement>(null);
-  const buttons = {
-    layers: layersButton,
-    spots: spotsButton,
-    options: optionsButton,
-  };
-  const toggle = (which: Exclude<MapPanel, null>) =>
-    onOpen(open === which ? null : which);
   const close = () => onOpen(null);
   return (
     <div className="map-ctrl">
       <div className="zbox chart-box" role="group" aria-label="Map controls">
-        <button type="button" aria-label="Zoom in" title="Zoom in" onClick={onZoomIn}>
+        <button
+          type="button"
+          aria-label="Zoom in"
+          title="Zoom in"
+          onClick={onZoomIn}
+        >
           +
         </button>
-        <button type="button" aria-label="Zoom out" title="Zoom out" onClick={onZoomOut}>
+        <button
+          type="button"
+          aria-label="Zoom out"
+          title="Zoom out"
+          onClick={onZoomOut}
+        >
           −
-        </button>
-        <button
-          ref={layersButton}
-          type="button"
-          aria-label="Layers"
-          title="Layers"
-          aria-expanded={open === "layers"}
-          aria-controls="map-layers"
-          onClick={() => toggle("layers")}
-        >
-          <svg width="16" height="14" viewBox="0 0 16 14" aria-hidden="true">
-            <path d="M8 1L15 4.5L8 8L1 4.5Z" fill="none" strokeWidth="1.2" strokeLinejoin="round" />
-            <path d="M1 8L8 11.5L15 8" fill="none" strokeWidth="1.2" strokeLinejoin="round" />
-          </svg>
-        </button>
-        <button
-          ref={spotsButton}
-          type="button"
-          aria-label="Your spots"
-          title="Your spots"
-          aria-expanded={open === "spots"}
-          aria-controls="map-spots"
-          onClick={() => toggle("spots")}
-        >
-          <Star size={16} strokeWidth={1.3} aria-hidden="true" />
-        </button>
-        <button
-          ref={optionsButton}
-          type="button"
-          aria-label="Display options"
-          title="Display options"
-          aria-expanded={open === "options"}
-          aria-controls="map-options"
-          onClick={() => toggle("options")}
-        >
-          <SlidersHorizontal size={16} strokeWidth={1.3} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          aria-label="Map information"
-          title="Map information"
-          aria-haspopup="dialog"
-          aria-expanded={infoOpen}
-          onClick={() => onInfo("key")}
-        >
-          <Info size={16} strokeWidth={1.3} aria-hidden="true" />
         </button>
       </div>
       {open && (
@@ -185,7 +211,6 @@ export default function MapControls({
           open
           title={PANEL_TITLE[open]}
           className="map-panel-dialog"
-          returnFocus={buttons[open]}
           onClose={close}
         >
           {open === "spots" && spots()}
@@ -207,54 +232,76 @@ export default function MapControls({
                     checked={windStyle === style}
                     onChange={() => onWindStyle(style)}
                   />
+                  {WIND_GLYPH[style]}
                   <span>{WIND_LABEL[style]}</span>
-                  <i className={`sw sw-${style}`} aria-hidden="true" />
                 </label>
               ))}
-              <KnotScale faint={windStyle === "wash"} />
+              <KnotScale />
               <h3>Chart</h3>
-              {(Object.keys(CHART_LABEL) as (keyof ChartLayers)[]).map((key) => {
-                const box = (
-                  <label key={key}>
-                    <input
-                      type="checkbox"
-                      data-layer={key}
-                      checked={layers[key]}
-                      onChange={(event) =>
-                        onLayersChange({ ...layers, [key]: event.target.checked })
-                      }
-                    />
-                    <span>{CHART_LABEL[key]}</span>
-                  </label>
-                );
-                // The foil layer's key is in the map's information, not on the
-                // chart: its "i" opens it there, beside the switch.
-                return key === "foil" ? (
-                  <div key={key} className="layer-info">
-                    {box}
-                    <InfoButton
-                      label="About foilable depth"
-                      onOpen={() => onInfo("foil")}
-                    />
-                  </div>
-                ) : (
-                  box
-                );
-              })}
-              <h3>Satellite at tide</h3>
+              {(Object.keys(CHART_LABEL) as (keyof ChartLayers)[]).map(
+                (key) => {
+                  const box = (
+                    <label key={key}>
+                      <input
+                        type="checkbox"
+                        data-layer={key}
+                        checked={layers[key]}
+                        onChange={(event) =>
+                          onLayersChange({
+                            ...layers,
+                            [key]: event.target.checked,
+                          })
+                        }
+                      />
+                      {CHART_GLYPH[key]}
+                      <span>{CHART_LABEL[key]}</span>
+                    </label>
+                  );
+                  // The tidal depth's and the currents' keys are in the map's
+                  // information, not on the chart: their "i" opens it there,
+                  // beside the switch.
+                  if (key !== "foil" && key !== "currents") return box;
+                  return (
+                    <div key={key} className="layer-info">
+                      {box}
+                      <InfoButton
+                        label={
+                          key === "foil" ? "About tidal depth" : "About currents"
+                        }
+                        onOpen={() => onInfo(key)}
+                      />
+                      {key === "currents" && layers.currents && (
+                        <small data-currents-note>
+                          {currentsNote ?? "Not for safety."}
+                        </small>
+                      )}
+                    </div>
+                  );
+                },
+              )}
+              <h3>
+                <SatelliteGlyph size={16} />
+                Satellite at tide
+              </h3>
               <div className="layer-sat">
                 <Segmented
                   aria-label="Satellite at tide"
                   options={SATELLITE_OPTIONS.map((option) => ({
                     value: option,
-                    label: SATELLITE_LABEL[option],
+                    label: (
+                      <>
+                        {SATELLITE_GLYPH[option]}
+                        {SATELLITE_LABEL[option]}
+                      </>
+                    ),
                   }))}
                   value={satellite}
                   onChange={onSatellite}
                 />
                 {satellite !== "off" && satelliteLoading && (
                   <small role="status" data-satellite-loading>
-                    Loading the {SATELLITE_LABEL[satellite].toLowerCase()} image…
+                    Loading the {SATELLITE_LABEL[satellite].toLowerCase()}{" "}
+                    image…
                   </small>
                 )}
                 {satellite !== "off" && satelliteTides && (
@@ -271,7 +318,12 @@ export default function MapControls({
                 aria-label="Round the chosen spot"
                 options={FOCUS_STYLES.map((style) => ({
                   value: style,
-                  label: FOCUS_LABEL[style],
+                  label: (
+                    <>
+                      {FOCUS_GLYPH[style]}
+                      {FOCUS_LABEL[style]}
+                    </>
+                  ),
                 }))}
                 value={focusStyle}
                 onChange={onFocusStyle}

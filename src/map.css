@@ -862,7 +862,7 @@
   cursor: default;
 }
 
-/* ---------- top right: zoom, Ireland, layers, your spots, the "i" ---------- */
+/* ---------- top right: zoom (the rest is in the site menu) ---------- */
 .map-ctrl {
   position: absolute;
   top: 18px;
@@ -948,44 +948,40 @@
 .layers .layer-info label {
   flex: 1;
 }
-.layers .sw {
-  display: inline-block;
-  width: 30px;
-  height: 8px;
-  margin-left: auto;
+/* Under the Currents switch while it is on: what it cannot draw, or that it
+   is not for safety. */
+.layers .layer-info {
+  flex-wrap: wrap;
 }
-.layers .sw-ink {
-  background: linear-gradient(
-    90deg,
-    var(--color-ink) 0 30%,
-    transparent 30% 45%,
-    var(--color-ink) 45% 75%,
-    transparent 75%
-  );
-  height: 2px;
+.layers .layer-info small {
+  flex-basis: 100%;
+  font: 400 9.5px var(--font-mono);
+  color: var(--color-ink-muted);
 }
-.layers .sw-arrows {
-  background: linear-gradient(
-    90deg,
-    var(--color-wind-k05),
-    var(--color-wind-k15),
-    var(--color-wind-k25),
-    var(--color-wind-k30),
-    var(--color-wind-k40)
-  );
-  height: 3px;
+/* Each row's glyph (src/chartGlyphs.tsx), between the switch and its name,
+   and in a switch's capsule before its word. */
+.layers label > .g-chart {
+  flex: none;
 }
-.layers .sw-wash {
-  background: linear-gradient(
-    90deg,
-    var(--color-wind-k05),
-    var(--color-wind-k15),
-    var(--color-wind-k25),
-    var(--color-wind-k30),
-    var(--color-wind-k40)
-  );
-  opacity: 0.55;
+.layers [role="group"] > button > .g-chart {
+  flex: none;
+  margin-right: 2px;
 }
+.layers h3 > .g-chart {
+  vertical-align: -3px;
+  margin-right: 6px;
+}
+/* A glyph's figures, a sounding or a drying height, in the chart's italic. */
+.g-chart .g-fig {
+  fill: currentColor;
+  stroke: none;
+  font: italic 500 8.5px var(--font-body);
+}
+.g-chart .g-fig-lg {
+  font-size: 12px;
+  font-weight: 600;
+}
+
 /* The satellite's three choices, and under them the tide each image was
    taken at near the map's centre, as the models' details are written. */
 .layers .layer-sat {
@@ -1213,6 +1209,39 @@
 }
 .k-wind path.faint {
   stroke: color-mix(in srgb, var(--color-ink) 30%, transparent);
+}
+/* The Currents layer's key: its arrows as the chart draws them. */
+.map-info .cur-key {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 4px 8px;
+  align-items: center;
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.cur-key dt {
+  display: grid;
+  place-items: center;
+}
+.cur-key dd {
+  margin: 0;
+}
+.cur-key path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cur-key .cur-k-model {
+  stroke: var(--color-depth);
+  stroke-width: 1.4;
+}
+.cur-key .cur-k-stream {
+  stroke: var(--color-ink);
+  stroke-width: 1.8;
+}
+.map-info .cur-sites {
+  padding-left: 18px;
 }
 .key .tints {
   display: flex;

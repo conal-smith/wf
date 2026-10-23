@@ -4,6 +4,7 @@
 // here is which of a manifest's declared variables carry which reading, and what
 // a WMO present-weather code actually means.
 import {
+  handOverSeries,
   VARIABLE_MATCH_HOURS,
   VARIABLE_VALUE_LIMITS,
   pickVariable,
@@ -21,8 +22,14 @@ import {
 export const MAX_WEATHER_VALUE = VARIABLE_VALUE_LIMITS.weather;
 /** How far a dock column may sit from a native step and still read it. */
 export const WEATHER_MATCH_HOURS = VARIABLE_MATCH_HOURS;
-/** Sources in the order the dock prefers them; there is one adapter so far. */
-export const WEATHER_SOURCE_PREFERENCE: readonly string[] = ["icon-eu-weather"];
+/**
+ * Sources in the order the dock prefers them, finest first: ICON-EU's 6.5 km
+ * for its three days, then GFS's 0.25° to sixteen (`handedWeatherSource`).
+ */
+export const WEATHER_SOURCE_PREFERENCE: readonly string[] = [
+  "icon-eu-weather",
+  "gfs-weather",
+];
 
 export type WeatherStep = VariableStep;
 
@@ -123,27 +130,67 @@ export interface WeatherSource {
 }
 
 /**
- * The weather manifest to read for one spot. A manifest whose series for the
- * spot carries no air temperature at all is not a source: it has said it cannot
- * see this place, and the next model gets the chance.
+ * Every weather manifest that can be read for one spot, in the order the dock
+ * prefers them. A manifest whose series for the spot carries no air
+ * temperature at all is not a source: it has said it cannot see this place,
+ * and the next model gets the chance.
  */
-export function preferredWeatherSource(
+export function weatherSources(
   manifests: readonly WeatherManifest[],
   spotId: string | undefined,
   preference: readonly string[] = WEATHER_SOURCE_PREFERENCE,
-): WeatherSource | null {
+): WeatherSource[] {
   const order = (manifest: WeatherManifest) => {
     const rank = preference.indexOf(manifest.model);
     return rank === -1 ? preference.length : rank;
   };
+  const out: WeatherSource[] = [];
   for (const manifest of [...manifests].sort((a, b) => order(a) - order(b))) {
     const series = weatherSeries(manifest, spotId);
     const fields = weatherFields(manifest);
     if (!series || !fields.air || !weatherSeriesHasData(series, fields.air))
       continue;
-    return { manifest, series, fields };
+    out.push({ manifest, series, fields });
   }
-  return null;
+  return out;
+}
+
+/** The weather manifest to read first for one spot (`weatherSources`). */
+export const preferredWeatherSource = (
+  manifests: readonly WeatherManifest[],
+  spotId: string | undefined,
+  preference: readonly string[] = WEATHER_SOURCE_PREFERENCE,
+): WeatherSource | null =>
+  weatherSources(manifests, spotId, preference)[0] ?? null;
+
+/**
+ * The spot's weather from every source in turn: the first source's own run,
+ * then each next one's past the end of it (`handOverSeries`), so ICON-EU's
+ * three days go on in GFS's fifteen rather than stopping. The result reads as
+ * the first source, in its names for each reading; each step names the model
+ * it came from. A rain total keeps its own interval, so the rain row prints
+ * the handed run's totals as they were forecast. Null with no source.
+ */
+export function handedWeatherSource(
+  sources: readonly WeatherSource[],
+): WeatherSource | null {
+  const [lead] = sources;
+  if (!lead) return null;
+  const keys = Object.keys(lead.fields) as (keyof WeatherFields)[];
+  return {
+    ...lead,
+    series: handOverSeries(
+      sources.map(({ manifest, series, fields }) => {
+        const names: Record<string, string> = {};
+        for (const key of keys) {
+          const from = fields[key];
+          const to = lead.fields[key];
+          if (from && to && from !== to) names[from] = to;
+        }
+        return { model: manifest.model, series, names };
+      }),
+    ),
+  };
 }
 
 /**

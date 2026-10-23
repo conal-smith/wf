@@ -45,13 +45,14 @@ import FoilLegend from "./FoilLegend";
 import MapInfo from "./MapInfo";
 import { MapInfoOpen, type InfoSection } from "./mapInfoContext";
 import { foilArchiveUrl, useFoilDepth } from "./useFoilDepth";
+import { useCurrents } from "./useCurrents";
 import type { LightState } from "../force5/src/lights";
 import { knotsIn, unitName } from "../force5/src/units";
 import { rideWedge } from "../force5/src/rideWedge";
 import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ForecastDock, { type DockView } from "./ForecastDock";
-import MapControls, { type MapPanel } from "./MapControls";
+import MapControls, { chartTools, type MapPanel } from "./MapControls";
 import MapHead from "./MapHead";
 import SidePanel from "./SidePanel";
 import { InfoPop } from "./InfoPop";
@@ -63,8 +64,7 @@ import useRunRefresh, {
 import {
   useMarineModels,
   useModelAvailability,
-  usePointTide,
-  useSpotTide,
+  useTideManifest,
 } from "./useBlend";
 import { useRatings } from "./useRatings";
 import { ALL_SQUARES, useSpotSquaresState } from "./useSpotSquares";
@@ -163,12 +163,12 @@ const MORE_KEY = "wingfoil.map.more.v1";
 /** The focus is on the point tapped on the map, not a riding place. */
 const AT_POINT = "@point";
 /**
- * What is open over the chart and shuts on a press away from it, each said
- * open on the control it hangs from: the site menu and the search's list in
- * the head, and the layers, your spots and the options in their dialog.
+ * What is open over the chart and shuts on a press away from it: the site
+ * menu and the search's list in the head, each said open on the control it
+ * hangs from, and the layers, your spots, the options or the map's
+ * information in their dialog.
  */
-const OVER_THE_CHART =
-  '.map-head [aria-expanded="true"], .map-ctrl [aria-expanded="true"]';
+const OVER_THE_CHART = '.map-head [aria-expanded="true"], dialog[open]';
 
 /** Where the map was tapped, as the map hands it over. */
 interface TappedAt {
@@ -220,6 +220,8 @@ const DEFAULT_LAYERS: MapLayers = {
   relief: true,
   names: true,
   foil: true,
+  // Off by default: nothing of it is read until a rider asks for it.
+  currents: false,
   satellite: "off",
 };
 
@@ -982,6 +984,8 @@ export default function App() {
   // them (they depend on the index the hook loads).
   const [foilStations, setFoilStations] = useState<string[]>([]);
   const foilState = useFoilDepth(layers.foil, foilStations);
+  // The Currents layer at the hour the map shows; nothing at all while off.
+  const currents = useCurrents(layers.currents, mapAt, prefs.units);
   // Read from the stylesheet only once the layer is wanted.
   const foilPalette = useMemo(
     () =>
@@ -1133,10 +1137,7 @@ export default function App() {
       : null;
 
   /* ---- choosing a spot ---- */
-  const spotTide = useSpotTide(picked ? undefined : point?.id);
-  // A tapped point takes its nearest station's tide, as a spot is linked to one.
-  const pointTide = usePointTide(picked);
-  const tide = picked ? pointTide : spotTide;
+  const tideManifest = useTideManifest(!!picked);
   // The riding place a point borrows its waves, weather and sea from: the
   // nearest on the same water (a lake's for a lake), within 15 km.
   const pointSource = useMemo(
@@ -1144,12 +1145,10 @@ export default function App() {
       picked
         ? nearestSpotOnWater(spots, picked.lat, picked.lon, {
             lake: picked.lake,
-            freshwater: pointTide.manifest
-              ? freshwaterSpots(pointTide.manifest)
-              : null,
+            freshwater: tideManifest ? freshwaterSpots(tideManifest) : null,
           })
         : null,
-    [picked, spots, pointTide.manifest],
+    [picked, spots, tideManifest],
   );
   /**
    * Each spot chosen is a step in the page's history, with the spot in its
@@ -1475,7 +1474,7 @@ export default function App() {
         <li>Depths: EMODnet Bathymetry, metres below chart datum</li>
         {foilState.manifest && (
           <li>
-            Foilable depth: {foilState.manifest.attribution} Heights above LAT
+            Tidal depth: {foilState.manifest.attribution} Heights above LAT
             against the tide predictions below.
           </li>
         )}
@@ -1499,6 +1498,13 @@ export default function App() {
           gauges (Open Government Licence v3.0) and the EOT20 ocean tide model
           (DGFI-TUM, CC BY 4.0)
         </li>
+        {layers.currents && (
+          <li>
+            Currents: the Marine Institute&rsquo;s NE Atlantic ROMS model (CC BY
+            4.0), and channels&rsquo; tidal streams from published pilotage
+            guides; a rough guide, not for safety
+          </li>
+        )}
         <li>
           Satellite imagery and intertidal heights:{" "}
           {satellite.attribution ?? SATELLITE_ATTRIBUTION}
@@ -1526,6 +1532,9 @@ export default function App() {
         ? frameError
         : null;
 
+  // The site menu is the one way in to the chart's own tools.
+  const menuTools = useMemo(() => chartTools(setPanel, setInfo), []);
+
   const shell = (
     <div
       className={`app-shell${phone ? " is-phone" : ""}${focusId ? " is-focus" : ""}`}
@@ -1547,6 +1556,7 @@ export default function App() {
               starred={starred}
               hourAt={hourAt}
               onPick={(spot) => selectSpot(spot)}
+              tools={menuTools}
             />
             <MapControls
               onZoomIn={() => controls.current?.zoomIn()}
@@ -1592,7 +1602,6 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              infoOpen={!!info}
               onInfo={setInfo}
               windStyle={windStyle}
               onWindStyle={chooseWind}
@@ -1612,6 +1621,7 @@ export default function App() {
                     : `${reachNote}: no wind on the map at ${dayShort(mapColumn.time)} ${clock(mapColumn.time)}.${reachable && reachable.id !== manifest?.model ? ` ${reachable.name} reaches it.` : ""}`
                   : null
               }
+              currentsNote={currents.note}
               modelDisabled={!frame || !!pendingModel}
               onModel={(id) => void chooseModel(id)}
             />
@@ -1635,6 +1645,7 @@ export default function App() {
               windStyle={windStyle}
               layers={layers}
               foil={foilViews}
+              currents={currents.features}
               satellite={satellite.image}
               reducedMotion={reducedMotion}
               bottomInset={dockHeight}
@@ -1748,7 +1759,6 @@ export default function App() {
                     !!dockSpot && !picked && starred.includes(dockSpot.id)
                   }
                   onToggleStar={() => dockSpot && fav.toggle(dockSpot.id)}
-                  tide={tide.tide}
                   onClose={closeDock}
                   phone={phone}
                   view={picked ? "table" : view}

@@ -70,7 +70,7 @@ export const LayersSheet = memo(function LayersSheet(props: Props) {
             {key === "foil" ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="About foilable depth"
+                accessibilityLabel="About tidal depth"
                 onPress={props.onFoilKey}
                 style={styles.about}
               >

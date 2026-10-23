@@ -1034,5 +1034,12 @@
     "county": "Dublin",
     "lat": 53.458976,
     "lon": -6.182803
+  },
+  {
+    "id": "skerries-south-strand",
+    "name": "Skerries — South Strand",
+    "county": "Dublin",
+    "lat": 53.58222,
+    "lon": -6.10395
   }
 ]

@@ -6,6 +6,7 @@ import { loopPath } from "../../ui/penPaths";
 import {
   BATHY_PATH,
   CHART_LAYERS,
+  COAST_INK,
   IRELAND,
   PLACE_CLASSES,
   TILES_URL,
@@ -45,6 +46,7 @@ import {
   type WindStyle,
 } from "./windLayer";
 import type { Frame, Spot } from "./weather";
+import type { CurrentFeature } from "./currents";
 import type { Units } from "./units";
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -72,6 +74,8 @@ export interface ChartLayers {
   names: boolean;
   /** Foilable depth at the selected tide, round the coast. */
   foil: boolean;
+  /** Surface currents at the hour shown: a rough guide, off unless asked for. */
+  currents: boolean;
 }
 
 /** One area's foilable-depth layer (a region or a pilot), as the map draws it. */
@@ -140,6 +144,11 @@ type Props = {
   layers: ChartLayers;
   /** The foilable-depth areas to draw, or null to draw none. */
   foil: readonly FoilView[] | null;
+  /**
+   * The Currents layer's arrows at the hour shown, or null with the layer
+   * off. Its drawing code is loaded the first time there are any.
+   */
+  currents?: readonly CurrentFeature[] | null;
   /** The satellite image to draw under the chart's lines, or null for none. */
   satellite?: SatelliteImage | null;
   reducedMotion: boolean;
@@ -574,6 +583,7 @@ export default function WindMap(props: Props) {
     windStyle,
     layers,
     foil,
+    currents = null,
     satellite = null,
     reducedMotion,
     bottomInset,
@@ -884,9 +894,15 @@ export default function WindMap(props: Props) {
   useEffect(() => {
     windRef.current?.setStyle(windStyle);
     particles.current?.setAttribute("data-wind-style", windStyle);
+    const map = mapRef.current;
+    // The coast heavier over the coloured wind, so the shore stays drawn.
+    if (ready && map?.getLayer("coast")) {
+      const coast = COAST_INK[windStyle === "wash" ? "wash" : "chart"];
+      map.setPaintProperty("coast", "line-opacity", coast["line-opacity"]);
+      map.setPaintProperty("coast", "line-width", coast["line-width"]);
+    }
     // The wind stays at full strength round a focused spot: under the wash,
     // the focus quietens the depths it is drawn over and leaves the wash be.
-    const map = mapRef.current;
     if (!ready || !map?.getLayer("focus")) return;
     const settle = () => {
       if (!map.getLayer("focus")) return;
@@ -990,6 +1006,27 @@ export default function WindMap(props: Props) {
       if (id.startsWith("foil-") && !shown.has(id))
         map.setLayoutProperty(id, "visibility", "none");
   }, [ready, foil]);
+
+  // Currents: one GeoJSON source and one symbol layer (currentsLayer.ts),
+  // whose code is fetched the first time the layer is turned on.
+  const currentsLayer = useRef<typeof import("./currentsLayer") | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    if (!currents) {
+      currentsLayer.current?.hideCurrents(map);
+      return;
+    }
+    let live = true;
+    import("./currentsLayer").then((layer) => {
+      currentsLayer.current = layer;
+      if (live && mapRef.current === map)
+        layer.drawCurrents(map, [...currents]);
+    });
+    return () => {
+      live = false;
+    };
+  }, [ready, currents]);
 
   // The satellite image: one raster source and layer per area and tide, made
   // the first time it is wanted and kept, hidden when another tide is chosen

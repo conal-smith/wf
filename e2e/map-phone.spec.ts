@@ -43,18 +43,18 @@ test("a phone opens on the whole island, every light in view, and keeps them thr
   // A last visit in the north-west, which once opened the chart there.
   await rememberSpot(page, "keel");
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
     timeout: 30000,
   });
-  await expect.poll(() => lightsInView(page)).toEqual({ seen: 148, all: 148 });
+  await expect.poll(() => lightsInView(page)).toEqual({ seen: 149, all: 149 });
   // The south coast too, not just the north-west.
   for (const id of ["tramore", "kearney", "keel"])
     await expect(page.locator(`[data-spot-id="${id}"]`)).toBeInViewport();
 
   await page.getByRole("button", { name: "Zoom out", exact: true }).click();
   await page.waitForTimeout(800);
-  await expect.poll(() => lightsInView(page)).toEqual({ seen: 148, all: 148 });
+  await expect.poll(() => lightsInView(page)).toEqual({ seen: 149, all: 149 });
 });

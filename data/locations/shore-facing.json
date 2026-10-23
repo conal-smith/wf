@@ -7,7 +7,8 @@
     "tramore": 175,
     "streedagh": 306,
     "waterville": 217,
-    "fi-white-strand-doonbeg": null
+    "fi-white-strand-doonbeg": null,
+    "skerries-south-strand": 105
   },
   "places": {
     "brandon": {
@@ -897,6 +898,12 @@
       "bearing": 35,
       "strength": 0.27,
       "water": 0.46
+    },
+    "skerries-south-strand": {
+      "facing": 50,
+      "bearing": 50,
+      "strength": 0.18,
+      "water": 0.69
     }
   }
 }

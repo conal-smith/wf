@@ -6,7 +6,7 @@ for (const width of [390, 1440]) {
   }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/");
-    await expect(page.locator(".spot-marker")).toHaveCount(148, {
+    await expect(page.locator(".spot-marker")).toHaveCount(149, {
       timeout: 30000,
     });
     await page.getByRole("combobox", { name: "Find a spot" }).fill("Blast");

@@ -303,6 +303,22 @@ the same four cycles as ICON-EU wind with a publication lag of about 3.5 hours
 (`deploy/local/jobs.toml` runs it at 03/09/15/21 UTC, ten minutes after the wind job
 so the two never share the worker lock), and alarm on the same 12-hour threshold.
 
+GFS surface weather is the second: `--models gfs-weather` runs `fetch_gfs_weather.py`,
+which reads sixteen GFS 0.25° surface fields through the same NOMADS subregion filter as
+the GFS wind importer (about 100 KB a step, 13 MB for the whole 384-hour run at three-hour
+steps; `--source s3` reads the same messages by range from NOAA's bucket) and publishes
+`weather/gfs-weather.json` with its spot squares and no frames, in ICON-EU weather's own
+variable names. It is what the dock's sky, air and rain rows read past ICON-EU weather's
+three days: the dock reads ICON-EU while it reaches the hour and GFS from its end on
+(`handedWeatherSource`, force5/src/surface.ts), as the waves go on in GFS-Wave past MI
+SWAN's six days (`handedWaveSource`), and as the wind goes on in ECMWF past HARMONIE.
+GFS has no present-weather code, so `ww` is **derived** there from GFS's own
+categorical precipitation type and rate, visibility and total cloud at the hour, and the
+manifest's `presentWeatherNote` says how; it never says shower, drizzle or thunder, which
+GFS cannot tell from rain. GFS publishes no accumulation at hour 0, so `tp` is null there.
+The 384-hour run is listed later than the wind's 240, so its slots are an hour after
+GFS's (05/11/17/23 UTC at :05, with a :35 retry); the registry's age limit is 14 hours.
+
 ### ARPEGE and AROME (Météo-France)
 
 **Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
@@ -462,6 +478,7 @@ ICON-EU WEATHER: --models icon-eu-weather --bucket YOUR_FORECAST_BUCKET
 ECMWF:    --models ecmwf --bucket YOUR_FORECAST_BUCKET
 GFS:      --models gfs --step 3 --bucket YOUR_FORECAST_BUCKET
 GFS-WAVE: --models gfs-wave --bucket YOUR_FORECAST_BUCKET
+GFS WEATHER: --models gfs-weather --bucket YOUR_FORECAST_BUCKET
 GEFS:     --models gefs --bucket YOUR_FORECAST_BUCKET
 ARPEGE:   --models arpege --step 3 --bucket YOUR_FORECAST_BUCKET
 AROME:    --models arome --step 3 --bucket YOUR_FORECAST_BUCKET
@@ -470,15 +487,61 @@ SEA TEMPERATURE: --models sea-temperature --bucket YOUR_FORECAST_BUCKET
 ECMWF ENS: --models ecmwf-ens --bucket YOUR_FORECAST_BUCKET
 HARMONIE EPS: --models harmonie-eps --step 3 --bucket YOUR_FORECAST_BUCKET
 MI-SWAN:  --models mi-swan --bucket YOUR_FORECAST_BUCKET
+CURRENTS: --models currents --bucket YOUR_FORECAST_BUCKET
 ```
 
 Tides need one nightly run: predictions extend to 2029, so the schedule only refreshes the
-published nine-day window. Northern Ireland's nine stations are predicted in the same run
+published window, yesterday and the sixteen days from today: the dock's strip is the next
+fifteen days, as far as ECMWF reaches, so its last day keeps its tide even the day after a
+nightly run has failed. (It was nine days until 22 October 2026, and the tide stopped a
+week before the wind did.) Northern Ireland's nine stations are predicted in the same run
 from the harmonic constants the image carries (`force5/ingest/tide_stations_ni.json`,
 `scripts/tides/README.md`), with no download; a failed Marine Institute fetch still fails
 the whole run and keeps the last published predictions. The manifest's `run` is the ingest hour, which keeps the
 existing staleness and compare-and-swap rules working unchanged; its default age limit is
 30 hours.
+
+### Surface currents (Marine Institute ROMS)
+
+`--models currents` (`fetch_currents.py`) publishes the Marine Institute's North East
+Atlantic ROMS model, which the map draws as its **Currents** layer (off unless a rider
+turns it on). Public ERDDAP griddap `IMI_NEATL`, CC BY 4.0, no account; the Marine
+Institute says its forecasts are not for safety-critical decisions, and the bundle,
+the layer and the map's information all say so.
+
+- **The data.** A regular 0.0125° grid over 48–58° N, 18–1° W (1360 × 800 cells: about
+  1.4 km north-south and 0.8 km east-west here), regridded by the Marine Institute from
+  ROMS's 2 km curvilinear grid, hourly, tides included. `sea_surface_x_velocity` and
+  `sea_surface_y_velocity` are the surface current in m/s (the velocity the water
+  moves with, so the bearing is where it flows to); land is NaN. The aggregate holds a
+  week of hindcast and then the day's forecast, 241 hours in all.
+- **Run and cadence.** Each day's forecast files (THREDDS
+  `NEATLANTIC_NATIVE_2KM_40L_1H/FORECAST`) are written between about 00:35 and 00:55
+  UTC on the model day and reach 72 h past its 00 UTC, where the axis ends; the
+  aggregate carries no model-day attribute, so `run` is the axis end less 72 h, and a
+  run that does not fall on 00 UTC (an aggregate mid-update) publishes nothing.
+  `jobs.toml` reads it at 03:20 with retries at 07:20 and 13:20 that cost two small
+  requests once the run is published (`readsPublishedRun`); the registry limit is 36 h.
+- **What it publishes.** `weather/currents.json` and its run directory: 73 hourly
+  frames of `u` and `v` over 11–5° W, 51–56° N at every fourth cell (0.05°, 120 × 100,
+  about 127 kB of JSON or 16 kB compressed a frame; the map thins the arrows further by
+  zoom), and every riding location's series from the closest cell with water within
+  5 km (`spotCells`), nulls with a reason where there is none (the inland lakes, and
+  Cork Harbour, Carlingford Lough and Waterford Harbour, which the grid does not reach).
+  A run is about 350 small requests, some 15 MB compressed, in 30–70 seconds; the
+  adapter peaked at 168 MB.
+- **Narrow channels.** At 1–2 km the model has the streams' timing and direction but
+  not a narrow channel's speed: Strangford Narrows is land in this grid. The map adds
+  tidal stream curves for such places (`force5/src/tidalStreams.json`, worked out in
+  the browser by `tidalStreams.ts` from the tide predictions the site already
+  publishes): each place's published spring rates each way, when its streams turn
+  relative to high or low water at a reference port, and the tide station that stands
+  for that port, scaled by the day's range. Strangford Narrows is timed from HW
+  Belfast, read at **Bangor** with no offset (a gauge in the mouth of Belfast Lough,
+  within a few minutes of Belfast); Malahide's channel from Dublin's high and low
+  water, read at **Dublin Port**, plus 5 minutes. The figures come from open pilotage
+  guides (eOceanic, Visit My Harbour), never UKHO's tidal stream tables, which are
+  copyright.
 
 Sea temperature is an **observation** feed, not a cycle: run it every three hours
 (`deploy/local/jobs.toml` uses 00/03/…/21 UTC at :15, sharing that minute with the SWAN
@@ -557,6 +620,7 @@ docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models icon-eu --step 1 $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models icon-eu-weather $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models gfs --step 3 $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models gfs-weather $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models gefs $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models aifs $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models arpege --step 3 $R2
@@ -567,6 +631,7 @@ docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf-ens $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf-wave $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models gfs-wave $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models mi-swan $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models currents $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models sea-temperature $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models tides $R2
 
@@ -653,8 +718,8 @@ the inherited environment before each job, so a stray value cannot make a job cl
 success.
 
 Every forecast adapter is in the contract: `harmonie`, `icon-eu`, `icon-eu-weather`,
-`ecmwf`, `ecmwf-ens`, `aifs`, `ecmwf-wave`, `gfs`, `gefs`, `arpege`, `arome`,
-`harmonie-eps`, `gfs-wave` and `mi-swan`. Each decides from the discovery step it
+`ecmwf`, `ecmwf-ens`, `aifs`, `ecmwf-wave`, `gfs`, `gfs-weather`, `gefs`, `arpege`, `arome`,
+`harmonie-eps`, `gfs-wave`, `mi-swan` and `currents`. Each decides from the discovery step it
 already makes (an inventory listing, a package listing, ECMWF's `latest()` probe,
 SWAN's info page and `time[last]`), after its freshness check, so a stale or
 incomplete source still fails rather than reading as "nothing new". `ecmwf` and
@@ -675,7 +740,7 @@ an explicit `--run` always skips the check.
 
 ### The blend: every spot's stars, by spot square
 
-The map rates all 148 riding places at once, and before this it did so in the browser
+The map rates all 149 riding places at once, and before this it did so in the browser
 from every wind model's manifest: about 2.4 MB compressed, which on a slow phone kept
 the lights pending for some 20 seconds. The `blend` job works that consensus out once
 an hour instead and publishes it as a run, the way the models are published: the
@@ -920,7 +985,7 @@ model runs at a time and the pointer is re-read immediately before the write.
 Audited against every entry in `registry.py`:
 
 - **Clean, no change needed.** `harmonie`, `icon-eu`, `icon-eu-weather`, `gfs`,
-  `gefs`, `gfs-wave`, `aifs`, `ecmwf-wave`, `arpege`, `arome`, `sea-temperature`: all
+  `gfs-weather`, `gefs`, `gfs-wave`, `aifs`, `ecmwf-wave`, `arpege`, `arome`, `sea-temperature`: all
   cache under `.cache/<model>/<run>/` and only ever read files they wrote earlier in
   the same process.
 - **Re-derived, one extra request.** `tides` re-downloads the ERDDAP station
@@ -991,7 +1056,9 @@ weather/gefs.json, weather/gefs-RUN-240h-v1-HASH8/          GEFS: mean frames, m
 weather/ecmwf-ens.json, weather/ecmwf-ens-RUN-144h-25m-v1-HASH8/  ECMWF ENS, likewise
 weather/harmonie-eps.json, weather/harmonie-eps-RUN-48h-v1-HASH8/ HARMONIE EPS, likewise
 weather/mi-swan.json, weather/mi-swan-RUN-144h-v1-HASH8/    Irish Shelf SWAN: squares, frames only with --frames
+weather/currents.json, weather/currents-RUN-72h-v1-HASH8/   ROMS surface currents: 73 JSON frames + squares
 weather/icon-eu-weather.json, weather/icon-eu-weather-RUN-72h-v1-HASH8/  surface weather: squares only
+weather/gfs-weather.json, weather/gfs-weather-RUN-384h-v1-HASH8/  GFS surface weather: squares only
 weather/gfs-wave.json, weather/gfs-wave-RUN-240h-v1-HASH8/  GFS-Wave: squares only
 weather/ecmwf-wave.json, weather/ecmwf-wave-RUN-360h-10v-v1-HASH8/  ECMWF Wave: squares only
 weather/blend.json, weather/blend-RUN-HOURSh-v2-HASH8/spots/SQUARE.json   every place's blend, by square; no frames
@@ -1045,7 +1112,7 @@ The pointer lists them:
 reach in `horizonHours`, so freshness never needs a square. A spot page, the dock and
 the forecast server read the one square holding the spot; the browser's own blend reads
 the squares in view and the reader's own spots'; the blend job reads them all. Ireland's
-148 riding places fall in ten squares. The blend is published the same way, its places
+149 riding places fall in ten squares. The blend is published the same way, its places
 under `spotBlend` (see "The blend" above).
 
 The split happens in one place, `rundir.write_run`, as the adapter finishes: adapters
@@ -1081,7 +1148,8 @@ forecast checks its per-spot data as read back from its squares:
   measurements up to 100,000 (hectopascals, millimetres, J/kg) instead of 1,000, and a
   variable may declare `"kind": "code"` for a whole code-table entry such as WMO present
   weather, which is checked for being a small integer rather than range-checked.
-  ICON-EU surface weather (`icon-eu-weather`) is the first weather adapter.
+  ICON-EU surface weather (`icon-eu-weather`) is the first weather adapter and GFS
+  surface weather (`gfs-weather`) the second.
 - `tide` validates the station manifest and every referenced station file: monotonic
   times, heights within −1 to 8 m above LAT, and event heights agreeing with the curve
   extremes to within 0.15 m.

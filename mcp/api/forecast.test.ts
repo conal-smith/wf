@@ -42,12 +42,12 @@ import {
 
 const HOUR = 3600000;
 const pick = (kind: string) =>
-  MODEL_CATALOG.filter(
-    (m) => m.kind === kind && !m.planned && !m.retired,
-  ).map((m) => ({
-    id: m.id,
-    manifestUrl: m.manifestUrl,
-  }));
+  MODEL_CATALOG.filter((m) => m.kind === kind && !m.planned && !m.retired).map(
+    (m) => ({
+      id: m.id,
+      manifestUrl: m.manifestUrl,
+    }),
+  );
 const strip = (list: readonly { id: string; manifestUrl: string }[]) =>
   list.map(({ id, manifestUrl }) => ({ id, manifestUrl }));
 
@@ -241,10 +241,7 @@ describe("spotForecast", () => {
     expect(wind.agreement).toBe(
       agreementFrom(speeds, Math.min(...rows.map((r) => r.lead))),
     );
-    expect(Object.keys(wind.by_model!).sort()).toEqual([
-      "ecmwf",
-      "gfs",
-    ]);
+    expect(Object.keys(wind.by_model!).sort()).toEqual(["ecmwf", "gfs"]);
   });
 
   it("adds waves, weather, daylight and sunrise beside the wind", async () => {
@@ -316,12 +313,14 @@ describe("spotForecast", () => {
             lat: 54.665,
             lon: -5.67,
             provider: "wingfoil.ie",
-            attribution: "Tidal predictions by wingfoil.ie from Environment Agency tide gauge data",
+            attribution:
+              "Tidal predictions by wingfoil.ie from Environment Agency tide gauge data",
             url: "marine/tides-Bangor.json",
           },
         },
         spots: { dollymount: { station: "Bangor", distanceKm: 3.1 } },
-        attribution: "Tidal predictions © Marine Institute, CC BY 4.0; Northern Ireland: wingfoil.ie",
+        attribution:
+          "Tidal predictions © Marine Institute, CC BY 4.0; Northern Ireland: wingfoil.ie",
       },
       "marine/tides-Bangor.json": {
         stepMinutes: 10,
@@ -339,7 +338,11 @@ describe("spotForecast", () => {
       windowFor(FIXTURE_NOW, { hours: 6 }),
       { now: FIXTURE_NOW },
     );
-    expect(forecast.tides && "attribution" in forecast.tides && forecast.tides.attribution).toBe(
+    expect(
+      forecast.tides &&
+        "attribution" in forecast.tides &&
+        forecast.tides.attribution,
+    ).toBe(
       "Tidal predictions by wingfoil.ie from Environment Agency tide gauge data",
     );
   });
@@ -351,14 +354,24 @@ describe("spotForecast", () => {
         kind: "tide",
         stations: [{ id: "DUB", name: "Dublin Port", lat: 53.3, lon: -6.2 }],
         spots: {
-          dollymount: { station: null, distanceKm: 30, noTide: true, reason: "No tide: a freshwater lake." },
+          dollymount: {
+            station: null,
+            distanceKm: 30,
+            noTide: true,
+            reason: "No tide: a freshwater lake.",
+          },
         },
       },
     });
     const spot = findSpot(await loadSpots(withTides), "dollymount").spot!;
-    const forecast = await spotForecast(withTides, spot, windowFor(FIXTURE_NOW, { hours: 6 }), {
-      now: FIXTURE_NOW,
-    });
+    const forecast = await spotForecast(
+      withTides,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 6 }),
+      {
+        now: FIXTURE_NOW,
+      },
+    );
     expect(forecast.tides).toEqual({ note: "No tide: a freshwater lake." });
   });
 });
@@ -369,7 +382,7 @@ describe("rain", () => {
   // initialization. The step at 15:00 on the 17th has lost its rain.
   const RUN = Date.parse("2026-09-16T18:00:00Z");
   const TOTALS = [null, 0.8, 0.1, 0, 2.4, 1.3, 0.5, null, 0.7];
-  const BASE = "weather/icon-eu-weather-2026091618-3h-v1-e1ed202a/";
+  const BASE = "weather/icon-eu-weather-2026091618-3h-v1-438ee9cf/";
   const SQUARE = `${BASE}spots/n52w008.json`;
   const at = (iso: string) => Date.parse(iso);
 
@@ -605,6 +618,77 @@ describe("rain", () => {
     expect(around("2026-09-16T18:00:00Z")).toBeNull();
   });
 
+  it("goes on in GFS's weather past the end of ICON-EU's, rain and all", async () => {
+    // ICON-EU's run ends at 12:00 on the 17th; GFS's goes on, and the hours
+    // after it read GFS's steps rather than none.
+    const inner = fixtureSource();
+    const pointer = (await inner.json(
+      "weather/icon-eu-weather.json",
+    )) as Record<string, unknown>;
+    const square = (await inner.json(SQUARE)) as {
+      spotSeries: Record<string, unknown>;
+    };
+    const steps = (totals: (number | null)[], air: number, from = 0) =>
+      totals
+        .map((precip, k) => ({
+          hour: 3 * k,
+          validTime: new Date(RUN + 3 * k * HOUR).toISOString(),
+          precipIntervalHours: k ? [3 * k - 3, 3 * k] : null,
+          values: { t2m: air, precip, clct: 50, ww: 61 },
+        }))
+        .slice(from);
+    const GFS = "gfs-weather-2026091618-24h-v1-0a1b2c3d/";
+    const source = fixtureSource({
+      "weather/icon-eu-weather.json": {
+        ...pointer,
+        frames: [],
+        horizonHours: 18,
+      },
+      [SQUARE]: {
+        ...square,
+        spotSeries: {
+          ...square.spotSeries,
+          dollymount: steps(TOTALS.slice(0, 7), 10),
+        },
+      },
+      "weather/gfs-weather.json": {
+        ...pointer,
+        model: "gfs-weather",
+        modelName: "GFS weather",
+        base: GFS,
+        frames: [],
+        horizonHours: 24,
+      },
+      [`weather/${GFS}spots/n52w008.json`]: {
+        ...square,
+        model: "gfs-weather",
+        spotSeries: {
+          dollymount: steps([...TOTALS.slice(0, 7), 0.4, 0.9], 20),
+        },
+      },
+    });
+    const spot = findSpot(await loadSpots(source), "dollymount").spot!;
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 24, stepHours: 1 }),
+      { now: FIXTURE_NOW },
+    );
+    expect(forecast.sources.weather?.id).toBe("icon-eu-weather");
+    expect(forecast.sources.weather_after?.map((run) => run.id)).toEqual([
+      "gfs-weather",
+    ]);
+    const hour = (iso: string) =>
+      forecast.hours.find((h) => h.time === iso)?.weather;
+    expect(hour("2026-09-17T12:00:00.000Z")?.air_c).toBe(10);
+    expect(hour("2026-09-17T15:00:00.000Z")?.air_c).toBe(20);
+    // GFS's own totals, on their own intervals, once ICON-EU's have ended.
+    expect(hour("2026-09-17T12:00:00.000Z")?.rain_mm).toBe(0.5);
+    expect(hour("2026-09-17T15:00:00.000Z")?.rain_mm).toBe(0.4);
+    expect(hour("2026-09-17T17:00:00.000Z")?.rain_mm).toBe(0.9);
+    expect(forecast.method).toMatch(/weather_after/);
+  });
+
   it("tells an agent what a row's rain covers", async () => {
     const forecast = await rainForecast({ hours: 3, stepHours: 1 });
     expect(forecast.units.rain).toMatch(/rain_interval_hours/);
@@ -681,7 +765,9 @@ describe("hourWind", () => {
     expect(hour.direction_deg).toBe(90);
     expect(hour.models).toBe(5);
     // The four others still reach +6 h, but they never stand in for the two.
-    expect(hourWind([harmonie, ecmwf, ...others], at + 6 * HOUR, false)).toBeNull();
+    expect(
+      hourWind([harmonie, ecmwf, ...others], at + 6 * HOUR, false),
+    ).toBeNull();
   });
 
   it("is low on confidence behind fewer than three models, however closely they agree", () => {
@@ -748,15 +834,18 @@ describe("the ensembles' members", () => {
       { time: at, u: 0, v: -speed, gust: null },
       { time: at + 6 * HOUR, u: 0, v: -speed, gust: null },
     ]);
-    const run = { name: "GEFS" } as Parameters<typeof hourEnsemble>[0][0]["run"];
+    const run = { name: "GEFS" } as Parameters<
+      typeof hourEnsemble
+    >[0][0]["run"];
     const hour = hourEnsemble([{ run, members, gap: 12 * HOUR }], at)!;
     expect(hour.members).toBe(4);
     expect(hour.models).toEqual(["GEFS"]);
     expect(hour.p50_kn).toBeCloseTo(5.5 * KNOTS, 0);
     expect(hour.p10_kn).toBeLessThan(hour.p50_kn);
     expect(hour.p90_kn).toBeGreaterThan(hour.p50_kn);
-    expect(hourEnsemble([{ run, members, gap: 12 * HOUR }], at - HOUR))
-      .toBeNull();
+    expect(
+      hourEnsemble([{ run, members, gap: 12 * HOUR }], at - HOUR),
+    ).toBeNull();
   });
 
   it("ignores a retired ensemble's file, even when one is published", async () => {
@@ -1187,7 +1276,11 @@ describe("which spot squares are read", () => {
 
   it("forgets a cached read when asked", async () => {
     let reads = 0;
-    const source = cached(async () => ++reads, 60000, () => 0);
+    const source = cached(
+      async () => ++reads,
+      60000,
+      () => 0,
+    );
     expect(await source.json("weather/ecmwf.json")).toBe(1);
     expect(await source.json("weather/ecmwf.json")).toBe(1);
     source.forget!("weather/ecmwf.json");
@@ -1197,7 +1290,11 @@ describe("which spot squares are read", () => {
   it("keeps no run's files, drops what has expired, and holds at most its limit", async () => {
     let clock = 0;
     let reads = 0;
-    const source = cached(async () => ++reads, 60000, () => clock);
+    const source = cached(
+      async () => ++reads,
+      60000,
+      () => clock,
+    );
     // Every run has new square paths: kept, they would pile up for ever.
     for (let run = 0; run < 50; run++)
       await source.json(
@@ -1205,8 +1302,12 @@ describe("which spot squares are read", () => {
       );
     expect(source.size()).toBe(0);
     // Shared while in flight, all the same.
-    const square = "weather/harmonie-2026101106-61h-v3-1a2b3c4d/spots/n52w008.json";
-    const [a, b] = await Promise.all([source.json(square), source.json(square)]);
+    const square =
+      "weather/harmonie-2026101106-61h-v3-1a2b3c4d/spots/n52w008.json";
+    const [a, b] = await Promise.all([
+      source.json(square),
+      source.json(square),
+    ]);
     expect(a).toBe(b);
     await source.json("weather/ecmwf.json");
     await source.json("marine/tides/dublin-2026-10-11.json");

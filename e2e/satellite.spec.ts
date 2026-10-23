@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./fixtures";
+import { expect, openFromMenu, test, type Page } from "./fixtures";
 
 /**
  * The satellite image draws under the chart in the Malahide estuary, at high
@@ -102,7 +102,7 @@ async function differs(page: Page, a: Buffer, b: Buffer, by = 40) {
 }
 
 async function choose(page: Page, name: "Off" | "High tide" | "Low tide") {
-  await page.getByRole("button", { name: "Layers", exact: true }).click();
+  await openFromMenu(page, "Layers");
   const button = page
     .getByRole("group", { name: "Satellite" })
     .getByRole("button", { name, exact: true });
@@ -172,7 +172,7 @@ test("the satellite image draws at high and at low tide in the Malahide estuary,
   }
 
   // The key names the tide the image was taken at, near here.
-  await page.getByRole("button", { name: "Map information" }).click();
+  await openFromMenu(page, "About the map");
   await expect(page.locator(".k-sat")).toContainText(
     /Satellite: low tide \(≈\d\.\d m\)/,
   );
@@ -189,7 +189,7 @@ test("the satellite image draws at high and at low tide in the Malahide estuary,
   await expect(page.locator("[data-satellite='low']")).toHaveCount(1, {
     timeout: 30000,
   });
-  await page.getByRole("button", { name: "Layers", exact: true }).click();
+  await openFromMenu(page, "Layers");
   await expect(
     page
       .getByRole("group", { name: "Satellite" })

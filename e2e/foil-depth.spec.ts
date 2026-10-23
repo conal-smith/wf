@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./fixtures";
+import { expect, openFromMenu, test, type Page } from "./fixtures";
 import { SAMPLE_CLOCK, sampleStrip } from "./columns";
 
 /**
@@ -92,7 +92,7 @@ async function open(page: Page, ranges: boolean) {
   // is the same picture.
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/?spot=kilcrea");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".map-loading")).toHaveCount(0, { timeout: 30000 });
@@ -200,10 +200,10 @@ for (const ranges of [true, false])
     await expect(slider).toHaveValue(String(low.i));
     const atLow = await photograph(page);
     // The same hour with the layer off.
-    await page.getByRole("button", { name: "Layers", exact: true }).click();
+    await openFromMenu(page, "Layers");
     await page
       .getByRole("group", { name: "Layers" })
-      .getByRole("checkbox", { name: "Foilable depth at the tide" })
+      .getByRole("checkbox", { name: "Tidal depth" })
       .uncheck();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("group", { name: "Layers" })).toHaveCount(0);

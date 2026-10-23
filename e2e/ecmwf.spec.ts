@@ -1,4 +1,4 @@
-import { closePanel, expect, test } from "./fixtures";
+import { closePanel, expect, openFromMenu, test } from "./fixtures";
 import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleColumnsWithoutEcmwf, stripAt } from "./columns";
 
@@ -12,12 +12,11 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   await page.clock.setFixedTime(new Date(clock));
   // A spot in the link, so the dock shows the strip.
   await page.goto("/?spot=brandon");
-  await expect(page.locator(".spot-marker")).toHaveCount(148, {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
   await expect(page.locator(".map-loading")).toHaveCount(0);
-  const layers = page.getByRole("button", { name: "Layers", exact: true });
-  await layers.click();
+  await openFromMenu(page, "Layers");
   await page.locator('[data-model="ecmwf"]').click();
   await expect(page.locator('[data-model="ecmwf"]')).toHaveAttribute(
     "aria-pressed",
@@ -64,7 +63,7 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   );
   // Back to HARMONIE: it does not reach the hour, so the map hands it to
   // ECMWF, says so, and keeps HARMONIE as the reader's choice.
-  await layers.click();
+  await openFromMenu(page, "Layers");
   await page.locator('[data-model="harmonie"]').click();
   await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
     "aria-pressed",
@@ -110,10 +109,9 @@ test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", as
   await expect(page.locator(".dock tr.tt-hour td[data-i]")).toHaveCount(
     stripAt(SAMPLE_CLOCK.getTime(), sampleColumnsWithoutEcmwf).length,
   );
-  const layers = page.getByRole("button", { name: "Layers", exact: true });
   for (const next of [null, { ...ecmwf, model: "wrong" }]) {
     body = next;
-    await layers.click();
+    await openFromMenu(page, "Layers");
     await page.locator('[data-model="ecmwf"]').click();
     await expect(page.locator(".frame-status.is-error")).toBeVisible();
     await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(

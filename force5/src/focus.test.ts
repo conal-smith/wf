@@ -163,9 +163,9 @@ describe("the ride rose's geometry", () => {
       expect.arrayContaining([
         "NO-GO",
         "OUT",
-        "120–165°",
+        "120–155°",
         "HOME",
-        "285–330°",
+        "295–330°",
         "DRIFT",
         "0.5 NM",
       ]),
@@ -189,7 +189,7 @@ describe("the ride rose's geometry", () => {
   it("drops the words on a small rose, and everything under its floor", () => {
     const rose = rideRose(rider, { ...day, from: 225 }, DOLLYMOUNT)!;
     const small = roseDrawing(rose, 100, null);
-    expect(small.labels.map((l) => l.text)).not.toContain("120–165°");
+    expect(small.labels.map((l) => l.text)).not.toContain("120–155°");
     expect(small.labels.map((l) => l.text)).toContain("OUT");
     const tiny = roseDrawing(rose, 80, null);
     expect(tiny.labels).toHaveLength(0);

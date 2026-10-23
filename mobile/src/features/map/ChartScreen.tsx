@@ -448,7 +448,7 @@ export default function ChartScreen() {
     !probe || !layers.foil
       ? null
       : !probe.area
-        ? "No survey here: the foilable depth is drawn round the coast."
+        ? "No survey here: the tidal depth is drawn round the coast."
         : !probe.done
           ? null
           : probeLevel && foilTime !== null && foilStation && keyArea?.id === probe.area

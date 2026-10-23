@@ -1,4 +1,4 @@
-import { closePanel, expect, test, type Page } from "./fixtures";
+import { closePanel, expect, openFromMenu, test, type Page } from "./fixtures";
 
 /**
  * "Your star rating" (spot/web/YourStarsDialog.tsx): opened from Display
@@ -14,8 +14,6 @@ async function openMap(page: Page, width = 1440, height = 1000) {
   });
 }
 
-const options = (page: Page) =>
-  page.getByRole("button", { name: "Display options", exact: true });
 const dialog = (page: Page) =>
   page.getByRole("dialog", { name: "Your star rating" });
 const levels = (page: Page) =>
@@ -51,7 +49,7 @@ test("a rider sets their own stars, which the dock then rates with, keeps them w
   ).toBeVisible({ timeout: 30000 });
   const before = await stars(page);
 
-  await options(page).click();
+  await openFromMenu(page, "Display options");
   // The three levels, Riding pressed, and no Custom until there is one.
   await expect(levels(page).getByRole("button")).toHaveText([
     "Learning",
@@ -128,7 +126,7 @@ test("a rider sets their own stars, which the dock then rates with, keeps them w
   await expect(box).toBeHidden();
   await expect.poll(() => stars(page)).not.toBe(before);
   const own = await stars(page);
-  await options(page).click();
+  await openFromMenu(page, "Display options");
   const custom = levels(page).getByRole("button", { name: "Custom" });
   await expect(custom).toHaveAttribute("aria-pressed", "true");
   await expect(customise(page)).toHaveText("Edit custom");
@@ -155,7 +153,7 @@ test("a rider sets their own stars, which the dock then rates with, keeps them w
   await expect(chip).toBeVisible();
 
   // A level picked: it rates, and the rider's own is kept to go back to.
-  await options(page).click();
+  await openFromMenu(page, "Display options");
   await levels(page).getByRole("button", { name: "Riding" }).click();
   await expect(custom).toHaveAttribute("aria-pressed", "false");
   await expect(customise(page)).toHaveText("Edit custom");
@@ -165,7 +163,7 @@ test("a rider sets their own stars, which the dock then rates with, keeps them w
   await customise(page).click();
   await expect(min).toHaveAttribute("aria-valuetext", "13 kn");
   await box.getByRole("button", { name: "Cancel" }).click();
-  await options(page).click();
+  await openFromMenu(page, "Display options");
   await custom.click();
   await expect(custom).toHaveAttribute("aria-pressed", "true");
   await expect(chip).toBeVisible();
@@ -177,7 +175,7 @@ test("a rider sets their own stars, which the dock then rates with, keeps them w
   await expect(box).toBeHidden();
   await expect(chip).toHaveCount(0);
   await expect.poll(() => stars(page)).toBe(before);
-  await options(page).click();
+  await openFromMenu(page, "Display options");
   await expect(custom).toHaveCount(0);
   await expect(customise(page)).toHaveText("Customise");
   expect(
@@ -193,7 +191,7 @@ test("the dialog speaks the rider's unit and keeps knots", async ({ page }) => {
     localStorage.setItem("force5.prefs.v1", JSON.stringify({ units: "mph" })),
   );
   await openMap(page);
-  await options(page).click();
+  await openFromMenu(page, "Display options");
   await customise(page).click();
   const box = dialog(page);
   const max = box.getByRole("slider", { name: "Maximum wind speed" });
@@ -219,7 +217,7 @@ test("on a phone the dialog fits the width, and the web drags", async ({
   page,
 }) => {
   await openMap(page, 390, 844);
-  await options(page).click();
+  await openFromMenu(page, "Display options");
   await customise(page).click();
   const box = dialog(page);
   await expect(box).toBeVisible();
@@ -244,7 +242,7 @@ test("on a phone a finger scrolls the page over the web and the grid, unless it 
   page,
 }) => {
   await openMap(page, 390, 844);
-  await options(page).click();
+  await openFromMenu(page, "Display options");
   await customise(page).click();
   const box = dialog(page);
   const web = box.locator("[data-direction-web]");

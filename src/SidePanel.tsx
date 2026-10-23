@@ -73,9 +73,9 @@ function Entry({
 
 /**
  * Your spots: the starred and the often opened, each with its stars and wind
- * at the hour the map shows. Behind the star under Layers
- * (src/MapControls.tsx), in a dialog over the map as the layers are, on a
- * phone as on a wide screen; it used to sit over the chart all the time, and
+ * at the hour the map shows. Opened from the site menu
+ * (src/MapControls.tsx `chartTools`), in a dialog over the map as the layers
+ * are, on a phone as on a wide screen; it used to sit over the chart all the time, and
  * on a phone as a strip over the dock.
  */
 export default function SidePanel(props: Props) {

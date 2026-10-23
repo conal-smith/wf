@@ -130,7 +130,7 @@ export function useFoilIndex(enabled: boolean): { manifest: FoilManifest | null;
       })
       .catch((e: unknown) => {
         if (!controller.signal.aborted)
-          setState({ manifest: null, error: e instanceof Error ? e.message : "Foilable depth is unavailable." });
+          setState({ manifest: null, error: e instanceof Error ? e.message : "Tidal depth is unavailable." });
       });
     return () => controller.abort();
   }, [enabled, loaded]);

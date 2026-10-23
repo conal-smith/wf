@@ -101,7 +101,9 @@ in UTC. The shipped schedule is:
 | `arpege`          | off (retired)      | 6-hourly cycles plus ~4 h 50 m; ~107 MB per run       |
 | `arome`           | off (retired)      | eight cycles a day plus ~4 h 55 m; ~109 MB per run    |
 | `gfs-wave`        | 04/10/16/22 at :30 | NOAA's 6-hourly wave cycles, ~3 h 50 m late; :55 retry |
+| `gfs-weather`     | 05/11/17/23 at :05 | GFS surface weather, 384 h, ~5 h late; :35 retry     |
 | `mi-swan`         | 10/14/18 at :15    | one SWAN run a day, published ~09 UTC, sometimes late |
+| `currents`        | 03/07/13 at :20    | one ROMS run a day, written ~00:55 UTC; two retries   |
 | `ecmwf-wave`      | off (retired)      | the 00/12 wave stream, ~707 MB per run                |
 | `tides`           | 01:05 daily        | predictions, not a forecast cycle                     |
 | `sea-temperature` | every 3 h at :15   | Marine Institute observations, newest reading         |
@@ -127,8 +129,9 @@ already published download nothing):
 | `icon-eu-weather` | ~300 MB | 1 | ~9 GB |
 | `icon-eu` | ~250 MB | 1 | ~7.5 GB |
 | `ecmwf` | ~245 MB | 1 | ~7.4 GB |
-| `gfs`, `gfs-wave`, `mi-swan`, observations, tides | 1-6 MB each | 4-24 | ~1 GB |
-| **Total** | | | **~72-74 GB** |
+| `gfs-weather` | ~13 MB | 4 | ~1.5 GB |
+| `gfs`, `gfs-wave`, `mi-swan`, observations, tides | 1-8 MB each | 4-24 | ~1 GB |
+| **Total** | | | **~74-76 GB** |
 
 Edit the file, then check and apply it:
 
