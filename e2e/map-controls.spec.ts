@@ -1,4 +1,12 @@
-import { closePanel, expect, menuRow, openFromMenu, test } from "./fixtures";
+import {
+  closePanel,
+  expect,
+  layerTile,
+  menuRow,
+  openFromMenu,
+  setLayer,
+  test,
+} from "./fixtures";
 
 test("the chart's controls: zoom on the right, the layers from the menu by keyboard, with the credits behind the i", async ({
   page,
@@ -30,17 +38,56 @@ test("the chart's controls: zoom on the right, the layers from the menu by keybo
   const menu = page.getByRole("button", { name: "Site menu" });
   await menu.focus();
   await page.keyboard.press("Enter");
-  await expect(menuRow(page, "Layers")).toBeFocused();
+  await expect(menuRow(page, "Customise")).toBeFocused();
   await expect(
     page.getByRole("group", { name: "The chart" }).getByRole("button"),
-  ).toHaveText(["Layers", "Your spots", "Display options", "About the map"]);
+  ).toHaveText([
+    "Customise",
+    "Layers",
+    "Your spots",
+    "Display options",
+    "About the map",
+    "Take the tour",
+  ]);
+  await page.keyboard.press("Tab");
+  await expect(menuRow(page, "Layers")).toBeFocused();
   await page.keyboard.press("Enter");
   const panel = page.getByRole("group", { name: "Layers" });
   await expect(panel).toBeVisible();
-  for (const name of ["Ink", "Coloured arrows", "Coloured wind"])
-    await expect(panel.getByRole("radio", { name })).toBeVisible();
-  await expect(panel.getByRole("radio", { name: "Ink" })).toBeChecked();
+  // Each layer a tile with a picture of it, a toggle under its group's name.
+  const wind = panel.getByRole("group", { name: "Wind" });
+  await expect(wind.getByRole("button")).toHaveCount(3);
+  for (const [i, name] of ["Ink", "Coloured wind", "Coloured arrows"].entries())
+    await expect(wind.getByRole("button").nth(i)).toHaveAccessibleName(name);
+  await expect(layerTile(page, "Ink")).toHaveAttribute("aria-pressed", "true");
+  await expect(layerTile(page, "Ink")).toHaveAccessibleDescription(
+    "Streaks, the default",
+  );
+  for (const group of [
+    "Sea",
+    "Chart",
+    "Ground",
+    "Round your spot",
+    "Weather model",
+  ])
+    await expect(panel.getByRole("group", { name: group })).toBeVisible();
+  // The knot scale is there while the wind is drawn in its colours.
+  await expect(panel.locator(".knot-scale")).toHaveCount(0);
+  // The tiles take the keys: Tab reaches Ink first, Space presses it.
+  await page.keyboard.press("Tab");
+  await expect(layerTile(page, "Ink")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(layerTile(page, "Coloured wind")).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(layerTile(page, "Coloured wind")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(layerTile(page, "Ink")).toHaveAttribute("aria-pressed", "false");
   await expect(panel.locator(".knot-scale")).toBeVisible();
+  // Reset puts the defaults back.
+  await page.getByRole("button", { name: "Reset", exact: true }).click();
+  await expect(layerTile(page, "Ink")).toHaveAttribute("aria-pressed", "true");
   await expect(
     panel.getByRole("group", { name: "Weather model" }),
   ).toBeVisible();
@@ -50,14 +97,14 @@ test("the chart's controls: zoom on the right, the layers from the menu by keybo
   await expect(menu).toHaveAttribute("aria-expanded", "false");
   // The chart's parts switch off and stay off.
   await openFromMenu(page, "Layers");
-  await panel.getByRole("checkbox", { name: "Spot names" }).uncheck();
+  await setLayer(page, "Spot names", false);
   await expect(page.locator(".map-canvas")).toHaveClass(/no-names/);
   await page.reload();
   await expect(page.locator(".map-canvas")).toHaveClass(/no-names/, {
     timeout: 30000,
   });
   await openFromMenu(page, "Layers");
-  await panel.getByRole("checkbox", { name: "Spot names" }).check();
+  await setLayer(page, "Spot names", true);
   await page.keyboard.press("Escape");
   // The key is in the menu, in a dialog rather than on the chart.
   await openFromMenu(page, "About the map");

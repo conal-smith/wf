@@ -6,6 +6,7 @@ import "./dock.css";
 import "./panels.css";
 import {
   lazy,
+  startTransition,
   Suspense,
   useCallback,
   useEffect,
@@ -56,6 +57,8 @@ import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ForecastDock, { type DockView } from "./ForecastDock";
 import MapControls, { chartTools, type MapPanel } from "./MapControls";
 import MapHead from "./MapHead";
+import { CustomiseGlyph, TourGlyph } from "./chartGlyphs";
+import { tourOffered, tourSeen } from "./tourOffer";
 import SidePanel from "./SidePanel";
 import { InfoPop } from "./InfoPop";
 import useRunRefresh, {
@@ -120,6 +123,11 @@ const YourStarsDialog = lazy(() => import("../spot/web/YourStarsDialog"));
 const AccountRider = lazy(() => import("../shared/web/AccountRider"));
 /** The LiDAR layer's key: with the map's information, and only its part. */
 const LidarKey = lazy(() => import("./LidarKey"));
+// Customise and the tour, each only when asked for; the tour's offer only on
+// a first visit (src/tourOffer.ts).
+const Customise = lazy(() => import("./Customise"));
+const Tour = lazy(() => import("./Tour"));
+const TourPrompt = lazy(() => import("./TourPrompt"));
 import type { MapAction } from "../companion/shared/protocol";
 import {
   parseRider,
@@ -242,7 +250,14 @@ function useMedia(query: string) {
   return match;
 }
 
-/** Follows a value at most every `ms` while it keeps changing, then settles on it. */
+/**
+ * Follows a value at most every `ms` while it keeps changing, then settles on
+ * it. What follows is never urgent: a key's hour commits at once and runs its
+ * effects there and then, and the value set straight after it, urgent too,
+ * was one more render queued behind each key. Keys coming faster than the
+ * page could draw them never let that queue empty, and React stopped the page
+ * with "Maximum update depth exceeded".
+ */
 function useThrottled<T>(value: T, ms: number): T {
   const [out, setOut] = useState(value);
   const last = useRef(0);
@@ -250,7 +265,7 @@ function useThrottled<T>(value: T, ms: number): T {
     const wait = last.current + ms - performance.now();
     if (wait <= 0) {
       last.current = performance.now();
-      setOut(value);
+      startTransition(() => setOut(value));
       return;
     }
     const timer = window.setTimeout(() => {
@@ -323,6 +338,12 @@ export default function App() {
   const [info, setInfo] = useState<InfoSection | null>(null);
   /** The part it is drawn at: kept while it fades out, once shut. */
   const infoShown = useFadeOut(info);
+  /** Customise, the tour, or the first visit's offer of it, over the chart. */
+  const [guide, setGuide] = useState<"offer" | "tour" | "customise" | null>(
+    () => (tourOffered() ? "offer" : null),
+  );
+  /** Customise is kept while it fades out, once shut. */
+  const customiseShown = useFadeOut(guide === "customise");
   const [view, setView] = useState<DockView>("table");
   const [windStyle, setWindStyle] = useState<WindStyle>(() => {
     const saved = store.get(WIND_KEY) as WindStyle | null;
@@ -741,7 +762,8 @@ export default function App() {
     // No frame before the page knows its opening time: one asked for sooner
     // (the run's first, and its prefetch) would only be thrown away.
     if (!mapRun || pendingModel || !mapTime) return;
-    setFrameError("");
+    // Only when there is one: on every hour, a render queued for nothing.
+    if (frameError) setFrameError("");
     if (painted) return;
     const controller = new AbortController();
     const epoch = modelEpoch.current;
@@ -1573,8 +1595,30 @@ export default function App() {
         ? frameError
         : null;
 
-  // The site menu is the one way in to the chart's own tools.
-  const menuTools = useMemo(() => chartTools(setPanel, setInfo), []);
+  // The site menu is the one way in to the chart's own tools: Customise
+  // first, and the tour last.
+  const menuTools = useMemo(
+    () => [
+      {
+        id: "customise",
+        label: "Customise",
+        glyph: <CustomiseGlyph />,
+        onSelect: () => setGuide("customise"),
+      },
+      ...chartTools(setPanel, setInfo),
+      {
+        id: "tour",
+        label: "Take the tour",
+        glyph: <TourGlyph />,
+        onSelect: () => setGuide("tour"),
+      },
+    ],
+    [],
+  );
+  const leaveTour = () => {
+    tourSeen();
+    setGuide(null);
+  };
 
   const shell = (
     <div
@@ -1663,6 +1707,11 @@ export default function App() {
               }
               currentsNote={currents.note}
               foilNote={foilFar ? FOIL_ZOOM_NOTE : null}
+              onResetLayers={() => {
+                chooseWind("ink");
+                chooseLayers(DEFAULT_LAYERS);
+                chooseFocusStyle("ring");
+              }}
               modelDisabled={!frame || !!pendingModel}
               onModel={(id) => pickRiderModel(id)}
             />
@@ -1795,7 +1844,6 @@ export default function App() {
                   now={clockNow}
                   prefs={prefs}
                   onCustomStars={openStars}
-                  onStarsFrom={() => setPanel("options")}
                   models={models}
                   onWantModels={() => setWantModels(true)}
                   starred={
@@ -1840,6 +1888,57 @@ export default function App() {
       {syncAccount && (
         <Suspense fallback={null}>
           <AccountRider />
+        </Suspense>
+      )}
+      {customiseShown && (
+        <Suspense fallback={null}>
+          <Customise
+            open={guide === "customise"}
+            prefs={prefs}
+            starred={starred}
+            spots={spots}
+            hours={hours}
+            times={strip.map((c) => c.time)}
+            prefer={first}
+            centre={controls.current?.map.getCenter() ?? null}
+            onClose={() => setGuide(null)}
+            onSave={(next, toggle) => {
+              changePrefs(next);
+              if (next.starsUpdatedAt !== prefs.starsUpdatedAt)
+                announcePrefs("device");
+              toggle.forEach((id) => fav.toggle(id));
+              setGuide(null);
+            }}
+          />
+        </Suspense>
+      )}
+      {guide && guide !== "customise" && (
+        <Suspense fallback={null}>
+          {guide === "tour" ? (
+            <Tour
+              phone={phone}
+              spot={picked ? null : (point?.id ?? null)}
+              onSpot={(id) => {
+                const spot = id && spotById.get(id);
+                if (spot) showSpot(spot);
+                else hideDock();
+              }}
+              view={view}
+              onView={setView}
+              focusStyle={focusStyle}
+              onFocusStyle={setFocusStyle}
+              onPanel={setPanel}
+              onEnd={(customise) => {
+                tourSeen();
+                setGuide(customise ? "customise" : null);
+              }}
+            />
+          ) : (
+            mapReady &&
+            !dockOpen && (
+              <TourPrompt onTour={() => setGuide("tour")} onNo={leaveTour} />
+            )
+          )}
         </Suspense>
       )}
       {!error && gustDue && FEATURES.gust && (
@@ -1901,8 +2000,8 @@ export default function App() {
               ) : (
                 <div className="foil-key" data-lidar-key>
                   <p className="foil-at">
-                    Off. Turn it on in Layers, under Chart: &ldquo;LiDAR
-                    data&rdquo;.
+                    Off. Turn it on in Layers, under Ground:
+                    &ldquo;LiDAR&rdquo;.
                   </p>
                 </div>
               )

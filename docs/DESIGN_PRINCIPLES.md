@@ -47,11 +47,23 @@ never used to make something stand out.
 ## The pen rule
 
 **The red pen marks the one thing that matters, and nothing else.** A loop
-round the best hour, an underline under the word that carries the note, a
-strike through a spot that is offshore, and the note itself in the hand. One
-mark on a view, two at most. It is never a fill, never a control, never a
-status: a warning is `warn`, a different red that means degraded. The pen's
-strokes are `pen`; its handwriting is `pen-ink`, which reads as words.
+round the chosen spot or hour, a line at the time now, a strike through a spot
+that is offshore. One mark on a view, two at most. It marks; it does not
+write a verdict beside the mark (the information rule). It is never a fill,
+never a control, never a status: a warning is `warn`, a different red that
+means degraded. The pen's strokes are `pen`; its handwriting is `pen-ink`,
+which reads as words.
+
+## The information rule
+
+**Present information, don't comment on it.** The chart, the dock and the spot
+page show the wind, the stars, the hours, the figures and plain labels, and
+leave the reading of them to the rider. No verdict or advice in the house
+voice: not "Go after lunch: four stars on a 5 m", not "Go 13–16, shallow after
+3", in the pen's hand or in type. Highlighting the key hours is fine (the
+stars, the pen's frame round the chosen hour, the line at now, a tint), and so
+is a label that says what a figure is ("14.4 °C, M3 weather buoy, 50 km from
+here").
 
 ## The wind rule
 
@@ -160,6 +172,9 @@ along the inline one.
 - Don't lay a translucent panel over the map; it is solid paper.
 - Don't use the pen for more than the one thing that matters on a view, and
   never as a fill or a status.
+- Don't write a verdict or advice on the chart, the dock or the spot page.
+  Highlight the hours that matter and say what the figures are; the rider
+  reads them.
 - Don't restyle a focus ring. There is one: 2px of `focus`, the chart's
   magenta, 2px clear of the control (`RING` in `ui/tv.ts`), on every control.
 - Don't let colour be the only carrier of a state. Status says the status in
@@ -418,6 +433,26 @@ same set (2026-10-23, later): its hours had their own grey suns and clouds,
 and now show the dock's, drizzle and showers told from rain, and the moon in
 a dark hour. The set and `ChartGlyph` sit in shared/web, which the map and
 the spot page may both import, since neither may import the other.
+
+**2026-10-23 — Present information, don't comment on it; a phone's dock is a
+sheet.** "It's okay if we highlight the key times, but I don't want this
+commentary because I just think it looks crap." The dock writes nothing in
+the pen's hand: the time now is the red line alone, and where the stars hand
+over to the next model is the dashed line alone, the head's chip naming the
+model that rates the hour in hand (this replaces the hand-written "ECMWF from
+Wed 22:00" of 2026-10-19). The rule is the information rule above. The water's
+temperature left the dock's head, where on a phone "14.4 °C · 50 km" was the
+most central thing on the screen: it is one measurement, often from a buoy far
+offshore, and it is said on the spot's page with its station, its kind, its
+distance and its age. The spot's name is the way to its page (a chevron after
+it, as on any map); the separate page glyph is gone. The blend is a labelled
+toggle, "Blend", among the tools. On a phone the dock is a bottom sheet: its
+head (the name and the tools) is inside it, not floating on the chart, and it
+is swiped between three heights, peek (the head alone), half (the hours and
+the wind) and full (with the waves, sky, air and rain), and closed from peek.
+A sideways swipe is still the hours'. The handle is a button for a keyboard
+and a screen reader, and the glide is skipped for a reader who asks for less
+motion.
 
 ---
 

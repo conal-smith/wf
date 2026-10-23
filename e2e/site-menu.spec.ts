@@ -44,7 +44,7 @@ test("on the map the menu opens by keyboard and Escape closes only the menu", as
   await expect(panel(page).getByRole("link")).toHaveText(SECTIONS);
   // On the map the chart's own tools come first, over the sections, and the
   // first of them takes the focus.
-  await expect(menuRow(page, "Layers")).toBeFocused();
+  await expect(menuRow(page, "Customise")).toBeFocused();
   await expect(row(page, "Wind map")).toHaveAttribute("aria-current", "page");
   await expect(row(page, "Marketplace")).toHaveAttribute("href", "/market");
   await expect(row(page, "Marketplace")).not.toHaveAttribute(
@@ -105,7 +105,7 @@ test("one press on the trigger closes the menu, even one that drops focus first"
 }) => {
   await page.goto("/");
   await trigger(page).click();
-  await expect(menuRow(page, "Layers")).toBeFocused();
+  await expect(menuRow(page, "Customise")).toBeFocused();
 
   // Safari does not focus a button it is pressed on: the press takes focus
   // off the row to the body, the menu hears focus leave and closes, and the

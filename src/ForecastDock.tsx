@@ -10,20 +10,18 @@ import {
 } from "react";
 import {
   ArrowDown,
-  ArrowUpRight,
   ChevronRight,
-  Ellipsis,
   Layers3,
   X,
 } from "lucide-react";
 import { Button } from "../ui/Button";
-import { arrowPath, framePath, stemPath, type KeepOut } from "../ui/penPaths";
+import { framePath, stemPath, type KeepOut } from "../ui/penPaths";
 import { StarGlyphs } from "../ui/StarGlyphs";
 // Only when asked for: the chart's Blend view.
 const BlendChart = lazy(() => import("./BlendChart"));
 import { ChartGlyph, glyphs } from "./chartGlyphs";
 import type { GlyphDef } from "../shared/web/glyphSet";
-import { SeaTempGlyph, StarToggle, WindArrow } from "./glyphs";
+import { StarToggle, WindArrow } from "./glyphs";
 import {
   axisTicks,
   candleGroups,
@@ -53,7 +51,6 @@ import {
 } from "./strip";
 import {
   useBlend,
-  useSpotSeaTemperature,
   useSpotWaves,
   useSpotWeather,
   type SpotWaves,
@@ -61,7 +58,15 @@ import {
 } from "./useBlend";
 import { presentWeather } from "../force5/src/surface";
 import { handoverColumns, variableValue } from "../force5/src/variables";
-import { skinNow, waterText } from "../force5/src/seaTemperature";
+import {
+  follow,
+  isSheetDrag,
+  settle,
+  speed,
+  step,
+  SLOP,
+  type Snap,
+} from "./sheetSnap";
 import type { ModelAvailability } from "../force5/src/manifests";
 import { spotSquare } from "../force5/src/spotData";
 import { useSpotSquares } from "./useSpotSquares";
@@ -133,8 +138,6 @@ interface Props {
   marine: readonly ModelAvailability[];
   /** Open "Your star rating", from the chip a rider's own stars put in the head. */
   onCustomStars?: () => void;
-  /** Open the display options, where the model the stars come from is chosen. */
-  onStarsFrom?: () => void;
 }
 
 const ROWS = {
@@ -184,7 +187,9 @@ const figureRows = (
     : rows.wind + rows.from + (!isPoint && rated ? rows.wing : 0));
 /**
  * The water's temperature is not among them: it is one value for the week,
- * said once in the spot's head (`waterText`), not a row across every hour.
+ * not a row across every hour, and it is said on the spot's own page, with
+ * the station it was read at and how far off that is, where there is room
+ * to say what a buoy 50 km out does and does not tell a rider.
  */
 const MORE_ROWS = ["waves", "sky", "air", "rain"] as const;
 type MoreRow = (typeof MORE_ROWS)[number];
@@ -439,78 +444,11 @@ const StripTable = memo(function StripTable({
   );
 });
 
-/** The pen's handwriting at the time now: Kalam's advance at 13px, near enough. */
-const HAND_CHAR = 6.4;
-
 /**
- * Where words written at the top of a pen line down the hours go: to the
- * right of the line, else to its left, wherever no day's name stands, and
- * when the strip is scrolled so the day's sticky name stands over the line,
- * after the name. `reach` is how far from the line they start.
- */
-function useNotePlace(
-  mark: React.RefObject<SVGSVGElement | null>,
-  x: number | null,
-  width: number,
-  g: StripGeometry,
-  reach: number,
-): { side: 1 | -1; reach: number } {
-  const [place, setPlace] = useState<{ side: 1 | -1; reach: number }>({
-    side: 1,
-    reach,
-  });
-  // The scrolling strip, whose day names the words keep clear of: found from
-  // the mark itself, since a child's effects run before its parent's ref is set.
-  useLayoutEffect(() => {
-    const el = mark.current?.parentElement;
-    if (!el || x === null) return;
-    const lay = () => {
-      // The days' names where they stand now, in the strip's own pixels.
-      const origin = el.getBoundingClientRect().left - el.scrollLeft;
-      const names = [
-        ...el.querySelectorAll<HTMLElement>("tr.tt-day td > span"),
-      ].map((span) => {
-        const r = span.getBoundingClientRect();
-        return { left: r.left - origin, right: r.right - origin };
-      });
-      const hit = (a: number, b: number) =>
-        a < 0 ||
-        b > g.total ||
-        names.some((n) => a < n.right + 3 && b > n.left - 3);
-      const span = (side: 1 | -1, out: number) =>
-        side === 1
-          ? ([x + out, x + out + 3 + width] as const)
-          : ([x - out - 3 - width, x - out] as const);
-      let next: { side: 1 | -1; reach: number } = { side: 1, reach };
-      if (hit(...span(1, reach))) {
-        if (!hit(...span(-1, reach))) next = { side: -1, reach };
-        else {
-          // A name over the line or just after it: write after the name.
-          const over = names.filter(
-            (n) => n.right > x - width && n.left < x + reach + width,
-          );
-          const after = Math.max(...over.map((n) => n.right)) + 4;
-          next = { side: 1, reach: Math.max(reach, after - x) };
-        }
-      }
-      setPlace((old) =>
-        old.side === next.side && Math.abs(old.reach - next.reach) < 1
-          ? old
-          : next,
-      );
-    };
-    lay();
-    el.addEventListener("scroll", lay, { passive: true });
-    return () => el.removeEventListener("scroll", lay);
-  }, [x, width, g, reach]);
-  return place;
-}
-
-/**
- * Where the stars hand over from one model to the next: a dashed pen line at
+ * Where the stars hand over from one model to the next: a dashed ink line at
  * the edge of the first hour the new model rates, down through the stars and
- * the wind, and the model and the time written by hand in the day row
- * ("ECMWF from Wed 22:00"), in ink rather than the red of now.
+ * the wind. It says nothing in words: the head's chip names the model that
+ * rates the hour in hand, and each hour's stars say whose they are.
  */
 function HandoverMark({
   columns,
@@ -527,47 +465,29 @@ function HandoverMark({
   height: number;
 }) {
   const column = columns[handover.at];
-  const x = column ? g.x[handover.at] : null;
-  const text = column
-    ? `${modelName(handover.to)} from ${dayShort(column.time)} ${clock(column.time)}`
-    : "";
-  const width = text.length * HAND_CHAR;
-  const mark = useRef<SVGSVGElement>(null);
-  const place = useNotePlace(mark, x, width, g, 4);
-  if (x === null) return null;
-  const seed = Math.floor(column!.time / 3600000);
+  if (!column) return null;
+  const x = g.x[handover.at];
+  const seed = Math.floor(column.time / 3600000);
   return (
     <svg
-      ref={mark}
       className="tt-under"
       width={g.total}
       height={height}
       aria-hidden="true"
       data-handover={handover.to}
     >
-      <path
-        className="pen-handover"
-        d={stemPath(x, top - 12, height - 2, seed)}
-      />
-      <text
-        className="pen-handover-text"
-        x={x + place.side * place.reach}
-        y={11}
-        textAnchor={place.side === 1 ? "start" : "end"}
-      >
-        {text}
-      </text>
+      {/* Named for a pointer that rests on it: the dock's head no longer
+          says the model, so the line does, quietly. */}
+      <title>{`${modelName(handover.to)} from ${dayShort(column.time)} ${clock(column.time)}`}</title>
+      <path className="pen-handover" d={stemPath(x, top, height - 2, seed)} />
     </svg>
   );
 }
 
 /**
  * Now, as the red pen marks it: a line down the hours at the time, drawn
- * under the table so the figures it passes stay on top of it, and the time
- * written over it in the day row with an arrow down to the line. The time
- * goes to the right of the line, else to its left, wherever no day's name
- * stands, and when the strip is scrolled so the day's sticky name stands over
- * the line, after the name, the arrow reaching back to the line.
+ * under the table so the figures it passes stay on top of it. The line is
+ * the mark, with no words written by it: the hours over it say the time.
  */
 function NowMark({
   columns,
@@ -594,32 +514,17 @@ function NowMark({
       ),
     [columns, now, g],
   );
-  const text = clock(now);
-  const width = text.length * HAND_CHAR;
-  const mark = useRef<SVGSVGElement>(null);
-  const place = useNotePlace(mark, x, width, g, 16);
   if (x === null) return null;
   const seed = Math.floor(now / 60000);
-  const arrow = arrowPath(x, top - 2, place.side, seed, place.reach);
   return (
     <svg
-      ref={mark}
       className="tt-under"
       width={g.total}
       height={height}
       aria-hidden="true"
+      data-now={clock(now)}
     >
       <path className="pen-now" d={stemPath(x, top - 1, height - 2, seed)} />
-      <path className="pen-now-arrow" d={arrow.d} />
-      <text
-        className="pen-now-time"
-        x={arrow.from.x + place.side * 2}
-        // Low enough in a phone's shorter day row for its tops to show.
-        y={Math.max(arrow.from.y + 4, 11)}
-        textAnchor={place.side === 1 ? "start" : "end"}
-      >
-        {text}
-      </text>
     </svg>
   );
 }
@@ -661,6 +566,34 @@ function keepOut(
         if (lanes.some((x) => left < x + 2.5 && right > x - 2.5)) add(el, 1.5);
       });
   return out;
+}
+
+/**
+ * Whether something between `target` and the sheet scrolls up and down and
+ * has room to go the way a finger moving `dy` would take it: then the drag
+ * is its, not the sheet's.
+ */
+function scrollsAlong(
+  target: EventTarget | null,
+  sheet: HTMLElement,
+  dy: number,
+): boolean {
+  for (
+    let el = target instanceof Element ? target : null;
+    el && el !== sheet;
+    el = el.parentElement
+  ) {
+    const { overflowY } = getComputedStyle(el);
+    if (overflowY !== "auto" && overflowY !== "scroll") continue;
+    if (el.scrollHeight <= el.clientHeight + 1) continue;
+    if (
+      dy > 0
+        ? el.scrollTop > 0
+        : el.scrollTop + el.clientHeight < el.scrollHeight - 1
+    )
+      return true;
+  }
+  return false;
 }
 
 /**
@@ -904,7 +837,6 @@ export default function ForecastDock(props: Props) {
     onMore,
     marine,
     onCustomStars,
-    onStarsFrom,
   } = props;
   const cw = phone ? 52 : 62;
   // A phone folds the label column away once the reader slides the hours,
@@ -989,28 +921,8 @@ export default function ForecastDock(props: Props) {
         : handovers(hours.map((hour) => hour?.model ?? null)),
     [hours, isPoint],
   );
-  const ratedBy = hours?.[selected]?.model ?? starsFrom.model;
   const waves = useSpotWaves(more ? marineModels : NO_MODELS, lent, axis);
   const weather = useSpotWeather(more ? marineModels : NO_MODELS, lent, axis);
-  const sea = useSpotSeaTemperature(more ? lent : undefined);
-  // The water's temperature, said once in the head while the rows are open:
-  // the station's measurement, else the model's skin temperature at the hour
-  // now. "none" once both have answered and neither has one.
-  const water = useMemo(() => {
-    if (!more || pointNote) return null;
-    const skin = weather.source?.fields.skin;
-    const text = waterText(
-      sea.observed,
-      skin
-        ? skinNow(
-            columns.map((_, at) => variableValue(weather.columns[at], skin)),
-            columns.map((c) => c.time),
-            now,
-          )
-        : null,
-    );
-    return text ?? (!sea.loading && weather.published ? "none" : null);
-  }, [more, pointNote, sea, weather, columns, now]);
   // The top of the blend's scale, shared by the chart and its tick labels
   // in the label column (which stay put while the hours scroll).
   const blendMax = useMemo(() => {
@@ -1306,16 +1218,11 @@ export default function ForecastDock(props: Props) {
   // though, a finger's tools sat over the first hours' wind until that tap
   // (#130), and a tap on what they hid went to them: on a phone, or under a
   // finger, they are held above the dock's edge as it shrinks, and rise with
-  // it as it grows. They are held by their foot, where the row of them is: a
-  // phone's grows a line at its top as it opens.
+  // it as it grows. They are held by their foot, where the row of them is.
+  // A phone's are none of this: they are the head of its sheet, in the dock
+  // and not over the chart, and move with its edge as any sheet's head does.
   const dockRef = useRef<HTMLElement>(null);
   const toolsRef = useRef<HTMLDivElement>(null);
-  /**
-   * A phone's tools folded into one glyph until it is pressed: open, the row
-   * of them stood over the chart's foot and the map's own model chip.
-   */
-  const [toolsOpen, setToolsOpen] = useState(false);
-  const folded = phone && !toolsOpen;
   /** The tools' foot on the screen when a click on them was made, while held. */
   const pinned = useRef<number | null>(null);
   /**
@@ -1334,9 +1241,10 @@ export default function ForecastDock(props: Props) {
   };
   const hold = (event: React.MouseEvent) => {
     const el = toolsRef.current;
-    if (!el || !event.detail) return;
-    overHours.current =
-      !phone && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (!el || !event.detail || phone) return;
+    overHours.current = window.matchMedia(
+      "(hover: hover) and (pointer: fine)",
+    ).matches;
     // Where they stand now: a finger's may have risen since the last click.
     pinned.current = el.getBoundingClientRect().bottom;
   };
@@ -1376,22 +1284,220 @@ export default function ForecastDock(props: Props) {
     };
   }, []);
 
+  /* ---- a phone's dock is a bottom sheet, swiped up and down ---- */
+  // Three heights (src/sheetSnap.ts): peek, its head alone, so the chart has
+  // the screen and the spot is kept; half, the hours and the wind under
+  // them; and full, with the waves, sky, air and rain rows, which is the
+  // fold's `more` and is remembered as it is. Pulled down from peek it
+  // closes. A drag is the sheet's once it is mostly up or down: a sideways
+  // one is the hours' own scroll, and the browser has that. The sheet's
+  // tallest snap fits the shortest phone, so nothing in it scrolls up and
+  // down; anything that ever does keeps a drag it can move with.
+  const [peek, setPeek] = useState(false);
+  const snap: Snap = peek ? "peek" : more ? "full" : "half";
+  // A spot chosen opens on its hours, whatever the last was left at.
+  useEffect(() => setPeek(false), [placeKey]);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  /** How far the sheet stands off its place, in px down, while it moves. */
+  const offset = useRef(0);
+  /** The sheet's top on the screen before a snap moved it, to glide from. */
+  const glideFrom = useRef<number | null>(null);
+  /**
+   * Move the sheet from `from` px off its place to `to`, as a hand lets go
+   * of it, or at once for a reader who asks for less motion.
+   */
+  const glide = (el: HTMLElement, from: number, to = 0, done?: () => void) => {
+    const at = (px: number) => (px ? `0 ${px}px` : "");
+    offset.current = to;
+    el.style.transition = "none";
+    el.style.translate = at(from);
+    let over = false;
+    const end = () => {
+      if (over) return;
+      over = true;
+      el.style.transition = "";
+      el.style.translate = at(to);
+      if (!to) el.classList.remove("is-moving");
+      done?.();
+    };
+    if (motion.current || from === to) return end();
+    el.classList.add("is-moving");
+    // The start laid out before the move to the end, so it is seen to move.
+    void el.offsetHeight;
+    el.style.transition = "translate 220ms cubic-bezier(0.2, 0.8, 0.2, 1)";
+    el.style.translate = at(to);
+    el.addEventListener("transitionend", end, { once: true });
+    window.setTimeout(end, 320);
+  };
+  /** Take the sheet to a snap, or close the dock, from wherever it stands. */
+  const goTo = (target: Snap | "close") => {
+    const el = dockRef.current;
+    if (!el) return;
+    if (target === "close")
+      return glide(el, offset.current, el.offsetHeight + 8, onClose);
+    if (target === snap) return glide(el, offset.current);
+    glideFrom.current = el.getBoundingClientRect().top;
+    setPeek(target === "peek");
+    if (target !== "peek" && (target === "full") !== more)
+      onMore(target === "full");
+  };
+  // The snap's new height is laid out: the sheet glides there from where
+  // the finger, or the old height, left it.
+  useLayoutEffect(() => {
+    const el = dockRef.current;
+    const from = glideFrom.current;
+    if (!el || from === null) return;
+    glideFrom.current = null;
+    el.style.translate = "";
+    glide(el, from - el.getBoundingClientRect().top);
+  });
+  /** The sheet's height at each snap, from its height now. */
+  const heights = (): Record<Snap, number> => {
+    const head =
+      (dockRef.current?.offsetHeight ?? 0) -
+      (bodyRef.current?.offsetHeight ?? 0);
+    // The strip's rows, and the room under them for the pen's frame.
+    const half =
+      head +
+      rows.day +
+      rows.hour +
+      rowsUnderHours(rows, view, isPoint, rated, false) +
+      5;
+    return {
+      peek: head,
+      half,
+      full: half + MORE_ROWS.reduce((h, k) => h + ROWS[k], 0),
+    };
+  };
+  const sheet = useRef({ snap, heights, goTo });
+  sheet.current = { snap, heights, goTo };
+  useEffect(() => {
+    const el = dockRef.current;
+    if (!phone || !el) return;
+    let drag: {
+      id: number;
+      x: number;
+      y: number;
+      from: Snap;
+      heights: Record<Snap, number>;
+      on: boolean;
+      samples: { t: number; y: number }[];
+    } | null = null;
+    /** When the last drag let go: the click that follows it is not a press. */
+    let dropped = -Infinity;
+    const down = (event: PointerEvent) => {
+      if (drag || !event.isPrimary || event.button !== 0) return;
+      if ((event.target as Element).closest("input, select, textarea")) return;
+      drag = {
+        id: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        from: sheet.current.snap,
+        heights: sheet.current.heights(),
+        on: false,
+        samples: [],
+      };
+    };
+    const move = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const dx = event.clientX - drag.x;
+      const dy = event.clientY - drag.y;
+      if (!drag.on) {
+        if (Math.hypot(dx, dy) < SLOP) return;
+        if (!isSheetDrag(dx, dy) || scrollsAlong(event.target, el, dy)) {
+          drag = null;
+          return;
+        }
+        drag.on = true;
+        // The finger is the sheet's, not the strip's: the hours re-settling
+        // as the sheet changes height are not the reader sliding them.
+        touched.current = false;
+        el.setPointerCapture(event.pointerId);
+        el.classList.add("is-moving");
+        el.style.transition = "none";
+      }
+      event.preventDefault();
+      drag.samples.push({ t: event.timeStamp, y: event.clientY });
+      if (drag.samples.length > 16) drag.samples.shift();
+      const h = drag.heights;
+      const room = drag.from === "peek" ? Infinity : h[drag.from] - h.peek;
+      offset.current = follow(dy, h.full - h[drag.from], room);
+      el.style.translate = `0 ${offset.current}px`;
+    };
+    const up = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const { on, from, y, samples, heights } = drag;
+      drag = null;
+      if (!on) return;
+      dropped = event.timeStamp;
+      sheet.current.goTo(
+        event.type === "pointercancel"
+          ? from
+          : settle(from, event.clientY - y, speed(samples), heights),
+      );
+    };
+    const click = (event: MouseEvent) => {
+      if (event.timeStamp - dropped > 400) return;
+      dropped = -Infinity;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    el.addEventListener("pointerdown", down);
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", up);
+    el.addEventListener("pointercancel", up);
+    el.addEventListener("click", click, true);
+    return () => {
+      el.removeEventListener("pointerdown", down);
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", up);
+      el.removeEventListener("pointercancel", up);
+      el.removeEventListener("click", click, true);
+      el.classList.remove("is-moving");
+      el.style.translate = el.style.transition = "";
+    };
+  }, [phone]);
+
   return (
     <section
       ref={dockRef}
-      className="dock"
+      className={`dock${phone ? " is-sheet" : ""}${phone && peek ? " is-peek" : ""}`}
       aria-label={`Forecast for ${spot.name}`}
     >
-      {/* The dock is its hours and nothing else: the spot's name, its star,
-          the switch to the blend, its page and the fold stand on the chart
-          just above the dock's top edge, in a box like the map's own
-          controls, so the dock is no taller than its rows. A phone keeps
-          only the glyphs: the light the pen has looped on the chart says
-          which spot it is, and the name is there for a screen reader. */}
+      {/* A phone's sheet: swiped up for more of it and down for less, and
+          off the screen from its head alone. Its handle is a button too, for
+          a keyboard and a screen reader: a press tucks the hours away or
+          brings them back, and Up and Down step through the three heights. */}
+      {phone && (
+        <Button
+          variant="quiet"
+          size="sm"
+          icon
+          className="dk-grab"
+          aria-label={peek ? "Show the hours" : "Tuck the hours away"}
+          aria-expanded={!peek}
+          aria-controls="dk-body"
+          title="Swipe up or down"
+          onClick={() => goTo(peek ? (more ? "full" : "half") : "peek")}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+            event.preventDefault();
+            event.stopPropagation();
+            goTo(step(snap, event.key === "ArrowUp" ? 1 : -1));
+          }}
+        />
+      )}
+      {/* The spot's name, its star, whose forecast the stars are, the switch
+          to the blend, the fold and the close. On a wide screen they stand on
+          the chart just above the dock's top edge, in a box like the map's
+          own controls, so the dock is no taller than its rows; on a phone
+          they are the head of its sheet. The name is the way to the spot's
+          own page, as a place's name is on any map: its water, its tides and
+          its days in full are there. */}
       <div
         ref={toolsRef}
         id="dk-tools"
-        className={`dk-tools chart-box${folded ? " is-folded" : ""}`}
+        className={`dk-tools${phone ? "" : " chart-box"}`}
         role="group"
         aria-label="This spot"
       >
@@ -1404,7 +1510,26 @@ export default function ForecastDock(props: Props) {
               size={phone ? 17 : 16}
             />
           )}
-          <h2 className="dk-name">{spot.name}</h2>
+          <h2 className="dk-name">
+            {isPoint ? (
+              spot.name
+            ) : (
+              <a
+                href={spotHref(spot.id)}
+                aria-label={`${spot.name}, spot page`}
+                title={`${spot.name}'s own page: the days in full, the tides and the water`}
+                data-spot-page-link
+              >
+                <span>{spot.name}</span>
+                <ChevronRight
+                  className="dk-name-go"
+                  size={phone ? 15 : 16}
+                  strokeWidth={1.6}
+                  aria-hidden="true"
+                />
+              </a>
+            )}
+          </h2>
           {/* A point's place name is a guess at where it is, so its
               coordinates stay; a riding place's name is enough on its own. */}
           {isPoint && spot.county && (
@@ -1414,48 +1539,6 @@ export default function ForecastDock(props: Props) {
           {isPoint && more && pointSource?.source && (
             <span className="dk-coords dk-lent">
               {pointSourceNote(pointSource)}
-            </span>
-          )}
-          {/* The water's temperature, once for the week rather than a row
-              across the hours. A phone keeps its glyph, the value and how
-              far the station is (or "model") in the folded box, and says
-              the whole of it on a line of its own once the tools are open. */}
-          {water && (
-            <span
-              className="dk-sea"
-              data-water={
-                water === "none"
-                  ? "none"
-                  : water.measured
-                    ? "measured"
-                    : "model"
-              }
-              title={
-                water === "none" ? "No water temperature here" : water.label
-              }
-            >
-              <span className="sr-only">
-                {water === "none" ? "No water temperature here" : water.label}
-              </span>
-              <SeaTempGlyph
-                className="dk-sea-glyph"
-                size={13}
-                aria-hidden="true"
-              />
-              {water === "none" ? (
-                <span className="dk-sea-long" aria-hidden="true">
-                  No water temperature here
-                </span>
-              ) : (
-                <>
-                  <span className="dk-sea-long" aria-hidden="true">
-                    Water <b>{water.value}</b> · {water.detail}
-                  </span>
-                  <span className="dk-sea-short" aria-hidden="true">
-                    <b>{water.value}</b> · {water.short}
-                  </span>
-                </>
-              )}
             </span>
           )}
         </div>
@@ -1485,45 +1568,12 @@ export default function ForecastDock(props: Props) {
             <span className="dk-tool-word">Custom</span>
           </Button>
         )}
-        {/* Whose forecast the wind and the stars are, at the hour in hand:
-            the rider's model, or ECMWF past the end of its run. */}
-        {!isPoint && rated && (
-          <Button
-            variant="quiet"
-            size="sm"
-            className="dk-tool dk-stars-from"
-            aria-label={`${modelName(ratedBy)}'s forecast: change the model`}
-            title={`The wind and the stars here are ${modelName(ratedBy)}'s forecast${
-              column ? ` at ${dayShort(column.time)} ${clock(column.time)}` : ""
-            }${
-              ratedBy !== starsFrom.model
-                ? `, past the end of ${modelName(starsFrom.model)}'s run`
-                : ""
-            }. The other models are context and change no star. Change the model in Display options.`}
-            onClick={onStarsFrom}
-            data-stars-from-chip={ratedBy}
-          >
-            <svg
-              width="10"
-              height="10"
-              viewBox="-5 -5 10 10"
-              aria-hidden="true"
-            >
-              <path
-                fill="currentColor"
-                d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z"
-              />
-            </svg>
-            <span className="dk-from-word">{modelName(ratedBy)}</span>
-          </Button>
-        )}
-        {/* The table or every model's wind drawn as a chart: one glyph, on
-            while the blend is shown. A point has no blend. */}
+        {/* The table or every model's wind drawn as a chart: its glyph and
+            its name, on while the blend is shown. A point has no blend. */}
         {!isPoint && (
           <Button
             variant="quiet"
             size="sm"
-            icon
             className="dk-tool dk-view"
             aria-label="Blend"
             title={view === "blend" ? "Back to the table" : "The models' blend"}
@@ -1534,20 +1584,9 @@ export default function ForecastDock(props: Props) {
             }}
           >
             <ChartGlyph glyph={glyphs.blend} size={17} />
-          </Button>
-        )}
-        {!isPoint && (
-          <Button
-            variant="quiet"
-            size="sm"
-            icon
-            className="dk-tool"
-            aria-label="Spot page"
-            title="The spot's own page"
-            href={spotHref(spot.id)}
-            data-spot-page-link
-          >
-            <ArrowUpRight size={17} strokeWidth={1.4} aria-hidden="true" />
+            <span className="dk-view-word" aria-hidden="true">
+              Blend
+            </span>
           </Button>
         )}
         {/* The dock's one fold: the waves, the sky, the air, the rain and
@@ -1592,32 +1631,6 @@ export default function ForecastDock(props: Props) {
         >
           <X size={16} strokeWidth={1.4} aria-hidden="true" />
         </Button>
-        {/* A phone's one glyph for the rest, at the right where the row ends,
-            so the row opens leftwards from under the finger. */}
-        {phone && (
-          <Button
-            variant="quiet"
-            size="sm"
-            icon
-            className="dk-tool dk-fold"
-            aria-label={
-              toolsOpen ? "Fold the spot's tools" : "The spot's tools"
-            }
-            title={toolsOpen ? "Fewer tools" : "More tools"}
-            aria-expanded={toolsOpen}
-            aria-controls="dk-tools"
-            onClick={(event) => {
-              hold(event);
-              setToolsOpen(!toolsOpen);
-            }}
-          >
-            {toolsOpen ? (
-              <ChevronRight size={16} strokeWidth={1.4} aria-hidden="true" />
-            ) : (
-              <Ellipsis size={16} strokeWidth={1.4} aria-hidden="true" />
-            )}
-          </Button>
-        )}
       </div>
 
       {/* The time, for a keyboard and a screen reader: the hours scrolling
@@ -1657,7 +1670,7 @@ export default function ForecastDock(props: Props) {
         </div>
       )}
 
-      <div className="dk-body">
+      <div className="dk-body" id="dk-body" ref={bodyRef}>
         <div
           className={`dk-grid${label ? "" : " is-folded"}`}
           style={{ gridTemplateColumns: `${label}px minmax(0, 1fr)` }}

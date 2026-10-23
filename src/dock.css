@@ -15,7 +15,7 @@
 }
 
 /* ---------- the spot's tools, on the chart over the dock ---------- */
-/* The name, the star, the blend, the spot's page and the fold, in a box like
+/* The name, the star, the blend, the fold and the close, in a box like
    the map's controls (map.css `.zbox`), standing on the dock's top edge at
    the right as the small print stands at the left: inside the dock's own
    layout, so it moves with the dock's edge in the same frame. */
@@ -52,38 +52,35 @@
   white-space: nowrap;
   color: var(--color-ink-muted);
 }
-/* The water's temperature (ForecastDock, `waterText`), said once beside the
-   name while the rows are open: one value for the week, where a row across
-   the hours read as a temperature missing from each of them. The figure in
-   ink; where it was measured, how far and how long ago, muted. */
-.dk-sea {
+/* The name is the way to the spot's own page, where its water, its tides and
+   its days in full are: a chevron after it, as a place in a list has. */
+.dk-name a {
   display: inline-flex;
-  gap: 4px;
   align-items: center;
+  max-width: 100%;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 2px;
+}
+.dk-name a > span {
   min-width: 0;
-  padding-left: 8px;
-  border-left: 1px solid var(--color-line);
-  font: 500 11px var(--font-mono);
-  white-space: nowrap;
-  color: var(--color-ink-muted);
-  cursor: default;
-}
-.dk-sea b {
-  font-weight: 600;
-  color: var(--color-ink);
-}
-/* The model's is approximate, and no figure to weight above its source. */
-.dk-sea[data-water="model"] b {
-  font-weight: 500;
-  color: var(--color-ink-muted);
-}
-.dk-sea-long {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.dk-sea-glyph,
-.dk-sea-short {
-  display: none;
+.dk-name-go {
+  flex: none;
+  color: var(--color-ink-muted);
+}
+@media (hover: hover) and (pointer: fine) {
+  .dk-name a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+}
+.dk-name a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 /* Each tool a square of the box, ruled off from the one before, as the
    map's zoom and layers are; the kit's quiet button squared off. */
@@ -113,12 +110,12 @@
   padding: 0 8px;
   font-size: 10px;
 }
-.dk-tools .dk-stars-from {
+.dk-tools .dk-view {
   width: auto;
   gap: 4px;
   padding: 0 8px;
 }
-.dk-from-word {
+.dk-view-word {
   font: 500 10px var(--font-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -266,8 +263,8 @@ table.tt {
 }
 .tt tr.tt-day td > span {
   position: sticky;
-  /* Flush with the strip's edge, so the paper behind the name covers all of
-     the time now as it scrolls out under it. */
+  /* Flush with the strip's edge, so the paper behind the name covers the
+     line at now as it scrolls out under it. */
   left: 0;
   display: inline-flex;
   gap: 5px;
@@ -275,7 +272,7 @@ table.tt {
   padding: 0 6px 0 12px;
   font: 500 10px var(--font-mono);
   color: var(--color-ink-muted);
-  /* The time now, written in the day row, slides under the day's name. */
+  /* The line at now slides under the day's name. */
   background: var(--color-ground);
 }
 .tt tr.tt-day td b {
@@ -387,8 +384,7 @@ table.tt {
   pointer-events: none;
 }
 /* The red pen on the hours (ui/penPaths.ts): twice round the chosen hour,
-   on its border, and a line down the hours at the time now, the time written
-   over it in the pen's hand. The frame is drawn in by ForecastDock, which
+   on its border, and a line down the hours at the time now. The frame is drawn in by ForecastDock, which
    holds it for a reader who asks for less motion. */
 .pen-frame {
   fill: none;
@@ -410,8 +406,10 @@ table.tt {
   overflow: visible;
   pointer-events: none;
 }
-.pen-now,
-.pen-now-arrow {
+/* The time now, ruled down the hours in the red pen, and where the stars hand
+   over to the next model, dashed in ink: lines only, with no words written
+   by them. */
+.pen-now {
   fill: none;
   stroke: var(--color-pen);
   stroke-width: 1.6;
@@ -419,14 +417,6 @@ table.tt {
   stroke-linejoin: round;
   opacity: 0.9;
 }
-.pen-now-arrow {
-  stroke-width: 1.4;
-}
-.pen-now-time {
-  font: 13px var(--font-hand);
-  fill: var(--color-pen-ink);
-}
-/* Where the stars hand over to the next model: ink, not the red of now. */
 .pen-handover {
   fill: none;
   stroke: var(--color-ink);
@@ -435,18 +425,81 @@ table.tt {
   stroke-linecap: round;
   opacity: 0.7;
 }
-.pen-handover-text {
-  font: 13px var(--font-hand);
-  fill: var(--color-ink);
-}
 
 /* ---------- a phone: a strip along the foot of the screen ---------- */
 @media (max-width: 720px) {
+  /* A bottom sheet (ForecastDock, src/sheetSnap.ts): a handle at the top,
+     then its head, the spot's name and tools, then the hours. A vertical
+     drag anywhere on it is the sheet's; a sideways one stays the hours'
+     scroll, which pan-x leaves to the browser. */
   .dock {
-    padding: 2px 8px calc(1px + env(safe-area-inset-bottom));
+    padding: 7px 8px calc(1px + env(safe-area-inset-bottom));
+    touch-action: pan-x;
   }
-  /* The glyphs alone: the chart's loop says which spot it is. */
-  .dk-tools .dk-name,
+  /* Paper under the sheet while it is pulled up past its height, or glides
+     to a new one, so the chart is never seen through the gap. */
+  .dock.is-moving::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: 100vh;
+    background: var(--color-ground);
+  }
+  /* The kit's quiet button, drawn as a sheet's handle: a short bar. Low,
+     so it takes no row of its own; a finger drags the sheet anywhere, and
+     the press is for a keyboard and a screen reader as much as a finger. */
+  .dock.is-sheet .dk-grab {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    z-index: 2;
+    width: 64px;
+    min-width: 0;
+    height: 16px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    translate: -50% 0;
+    cursor: grab;
+  }
+  .dk-grab::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 50%;
+    width: 34px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-ink-muted);
+    opacity: 0.55;
+    translate: -50% 0;
+  }
+  .dk-grab:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: -2px;
+  }
+  /* The head: in the sheet, not over the chart. */
+  .dk-tools {
+    position: static;
+    max-width: none;
+    margin: 0 -4px;
+    padding: 0;
+    align-items: center;
+  }
+  .dk-id {
+    flex: 1 1 auto;
+    gap: 2px;
+    padding: 0;
+  }
+  .dk-name {
+    max-width: none;
+    font-size: 16px;
+  }
   .dk-tools .dk-coords,
   .dk-tools .dk-tool-word {
     position: absolute;
@@ -456,72 +509,29 @@ table.tt {
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  .dk-tools .dk-custom {
-    width: 32px;
-    padding: 0;
-  }
-  /* The water's reading. Folded, the tools' resting state, it keeps its
-     glyph, the value and how far the station is (or "model"), ruled off
-     from the fold like a tool: against it, the fold's "⋯" read as the
-     reading cut short (#130). Open, the tools' row has no room beside it,
-     so the whole of it, in words as the desktop's, takes a line of its own
-     along the box's top, and the station and the reading's age are a tap
-     away. It wraps to the row's width rather than widen the box over the
-     map's own chip. */
-  .dk-tools:not(.is-folded) {
-    flex-wrap: wrap;
-  }
-  .dk-tools:not(.is-folded) .dk-id {
-    display: contents;
-  }
-  .dk-tools:not(.is-folded) .star-toggle {
-    margin: 0 4px;
-  }
-  .dk-tools:not(.is-folded) .dk-sea {
-    /* Over the star's finger target, which would take a tap on the words. */
-    position: relative;
-    z-index: 1;
-    flex: 1 0 100%;
-    order: -1;
-    contain: inline-size;
-    padding: 4px 0;
-    border: 0;
-    border-bottom: 1px solid var(--color-line);
-    white-space: normal;
-  }
-  /* Inside the line, where its width does not count towards the box's. */
-  .dk-tools:not(.is-folded) .dk-sea-long {
-    padding: 0 6px;
-  }
-  .dk-tools.is-folded .dk-sea {
-    gap: 3px;
-    padding: 0 6px;
-    border: 0;
-    border-right: 1px solid var(--color-line);
-  }
-  .dk-tools.is-folded .dk-sea-long,
-  .dk-tools.is-folded .dk-sea[data-water="none"] {
-    display: none;
-  }
-  .dk-tools.is-folded .dk-sea-glyph {
-    display: block;
-    flex: none;
-  }
-  .dk-tools.is-folded .dk-sea-short {
-    display: inline;
-  }
-  /* Folded to its one glyph (ForecastDock): the rest are there to open,
-     and the spot's name is still read out. The water's reading stays: it
-     belongs to the open rows, which folding the tools does not shut. */
-  .dk-tools.is-folded > :not(.dk-fold, .dk-id),
-  .dk-tools.is-folded .dk-id > :not(.dk-name, .dk-sea) {
-    display: none;
-  }
-  .dk-tools.is-folded .dk-id {
-    padding: 0;
-  }
-  .dk-tools.is-folded .dk-fold {
+  .dk-tools .dk-tool {
+    width: 34px;
+    min-width: 34px;
+    height: 30px;
+    min-height: 30px;
     border-left: 0;
+  }
+  .dk-tools .dk-custom {
+    padding: 0;
+  }
+  .dk-tools .dk-view {
+    width: auto;
+    padding: 0 6px;
+  }
+  /* Peek: the head alone, the hours tucked under the screen's foot. The
+     tools for the hours go with them; the name and the close stay. */
+  .dock.is-peek .dk-body {
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
+  .dock.is-peek .dk-tools > :not(.dk-id, .dk-close) {
+    display: none;
   }
   /* The label column is 28px: a glyph and its unit drawn closer, so "mm"
      and "°C" end inside it rather than over the hours. */
