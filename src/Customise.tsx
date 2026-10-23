@@ -494,7 +494,7 @@ function Preview({
             <StarGlyphs
               stars={stars[i]}
               potential={ratings[i].potential}
-              size={small ? 6 : 8}
+              size={small ? 5 : 8}
             />
           </div>
         ))}
@@ -931,8 +931,10 @@ function GustTrace({
       </text>
       {day && (
         <text x="14" y="125">
-          {clock(hour.time)} · GUSTS {shown(gust, unit)}{" "}
-          {unit.label.toUpperCase()}
+          {clock(hour.time)} ·{" "}
+          {hour.gustKn === null
+            ? "NO GUST IN THIS FORECAST"
+            : `GUSTS ${shown(gust, unit)} ${unit.label.toUpperCase()}`}
         </text>
       )}
     </svg>
