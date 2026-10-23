@@ -1,7 +1,8 @@
 /**
  * The chart's border: a neatline of alternating ink and paper bars, one per
  * graticule step, with the latitudes up the side and the longitudes along the
- * top, as an Admiralty chart frames its sheet. Redrawn as the map moves.
+ * top, as an Admiralty chart frames its sheet. Drawn again as the map moves,
+ * over the elements already there.
  */
 import type { Map as MapLibreMap } from "maplibre-gl";
 
@@ -19,22 +20,59 @@ function degrees(value: number, hemisphere: string) {
       : `${d}°${hemisphere}`;
 }
 
+const SVG = "http://www.w3.org/2000/svg";
+
+/** An element to draw: its tag, its attributes, and a label's words. */
+type Shape = { attrs: Record<string, string>; text?: string };
+
+/**
+ * `shapes` drawn into `g` over what is there: the elements already drawn are
+ * moved, and only what differs is set. Built again from markup on every frame
+ * of a move, the frame was parsed, made and laid out anew each time.
+ */
+function paint(g: Element, tag: string, shapes: readonly Shape[]) {
+  const kids = g.children;
+  shapes.forEach((shape, i) => {
+    let el = kids[i];
+    if (!el) el = g.appendChild(document.createElementNS(SVG, tag));
+    for (const name of el.getAttributeNames())
+      if (!(name in shape.attrs)) el.removeAttribute(name);
+    for (const [name, value] of Object.entries(shape.attrs))
+      if (el.getAttribute(name) !== value) el.setAttribute(name, value);
+    if (shape.text !== undefined && el.textContent !== shape.text)
+      el.textContent = shape.text;
+  });
+  while (kids.length > shapes.length) g.lastElementChild!.remove();
+}
+
+/** The neatline's three sheets, bars under labels under the frame, made once. */
+function sheets(svg: SVGSVGElement) {
+  if (svg.children.length !== 3) {
+    svg.replaceChildren();
+    for (let i = 0; i < 3; i++)
+      svg.appendChild(document.createElementNS(SVG, "g"));
+  }
+  return [...svg.children] as [Element, Element, Element];
+}
+
 export function drawNeatline(
   svg: SVGSVGElement,
   map: MapLibreMap,
   options: {
+    /** The map's size, read when it changes, not on every frame of a move. */
+    width: number;
+    height: number;
     bottom: number;
     phone: boolean;
     /** Pixels above the frame's foot to keep the left-hand latitudes out of. */
     clearBottom?: number;
   },
 ) {
-  const box = map.getContainer().getBoundingClientRect();
-  const w = box.width;
-  const bottom = Math.max(0, Math.min(box.height, options.bottom));
+  const w = options.width;
+  const bottom = Math.max(0, Math.min(options.height, options.bottom));
   const b = options.phone ? 5 : 7;
   if (!w || !bottom) {
-    svg.innerHTML = "";
+    svg.replaceChildren();
     return;
   }
   const tl = map.unproject([0, 0]);
@@ -43,8 +81,25 @@ export function drawNeatline(
   const pxLat = bottom / (tl.lat - br.lat);
   const sLon = STEPS.find((s) => s * pxLon >= 44) ?? 5;
   const sLat = STEPS.find((s) => s * pxLat >= 44) ?? 5;
-  const parts: string[] = [];
+  const bars: Shape[] = [];
+  const labels: Shape[] = [];
   const bar = (i: number) => (((i % 2) + 2) % 2 ? "nl-b" : "nl-a");
+  const rect = (
+    cls: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ) =>
+    bars.push({
+      attrs: {
+        class: cls,
+        x: x.toFixed(1),
+        y: y.toFixed(1),
+        width: width.toFixed(1),
+        height: height.toFixed(1),
+      },
+    });
   // Labels keep clear of the boxes in the corners.
   const clearX = options.phone ? 60 : 400;
   for (
@@ -52,53 +107,82 @@ export function drawNeatline(
     v < br.lng;
     i++, v = i * sLon
   ) {
-    const x1 = Math.max(0, map.project([v, tl.lat]).x);
-    const x2 = Math.min(w, map.project([v + sLon, tl.lat]).x);
-    parts.push(
-      `<rect class="${bar(i)}" x="${x1.toFixed(1)}" y="0" width="${(x2 - x1).toFixed(1)}" height="${b}"/>`,
-    );
-    if (!options.phone)
-      parts.push(
-        `<rect class="${bar(i)}" x="${x1.toFixed(1)}" y="${(bottom - b).toFixed(1)}" width="${(x2 - x1).toFixed(1)}" height="${b}"/>`,
-      );
     const lx = map.project([v, tl.lat]).x;
+    const x1 = Math.max(0, lx);
+    const x2 = Math.min(w, map.project([v + sLon, tl.lat]).x);
+    rect(bar(i), x1, 0, x2 - x1, b);
+    if (!options.phone) rect(bar(i), x1, bottom - b, x2 - x1, b);
     if (
       !options.phone &&
       lx > clearX &&
       lx < w - clearX &&
       (i % 2 === 0 || sLon * pxLon > 90)
     )
-      parts.push(
-        `<text class="nl-t" x="${lx.toFixed(1)}" y="${b + 11}" text-anchor="middle">${degrees(v, "W")}</text>`,
-      );
+      labels.push({
+        attrs: {
+          class: "nl-t",
+          x: lx.toFixed(1),
+          y: String(b + 11),
+          "text-anchor": "middle",
+        },
+        text: degrees(v, "W"),
+      });
   }
   for (
     let i = Math.floor(br.lat / sLat), v = i * sLat;
     v < tl.lat;
     i++, v = i * sLat
   ) {
-    const y1 = Math.min(bottom, map.project([tl.lng, v]).y);
-    const y2 = Math.max(0, map.project([tl.lng, v + sLat]).y);
-    parts.push(
-      `<rect class="${bar(i)}" x="0" y="${y2.toFixed(1)}" width="${b}" height="${(y1 - y2).toFixed(1)}"/>`,
-      `<rect class="${bar(i)}" x="${w - b}" y="${y2.toFixed(1)}" width="${b}" height="${(y1 - y2).toFixed(1)}"/>`,
-    );
     const ly = map.project([tl.lng, v]).y;
+    const y1 = Math.min(bottom, ly);
+    const y2 = Math.max(0, map.project([tl.lng, v + sLat]).y);
+    rect(bar(i), 0, y2, b, y1 - y2);
+    rect(bar(i), w - b, y2, b, y1 - y2);
     // A label runs some 22px either side of its line.
     if (
       ly > 90 &&
       ly < bottom - Math.max(20, (options.clearBottom ?? 0) + 22) &&
       (i % 2 === 0 || sLat * pxLat > 90)
     )
-      parts.push(
-        `<text class="nl-t" transform="translate(${b + 11} ${ly.toFixed(1)}) rotate(-90)" text-anchor="middle">${degrees(v, "N")}</text>`,
-      );
+      labels.push({
+        attrs: {
+          class: "nl-t",
+          transform: `translate(${b + 11} ${ly.toFixed(1)}) rotate(-90)`,
+          "text-anchor": "middle",
+        },
+        text: degrees(v, "N"),
+      });
   }
-  parts.push(
-    `<rect class="nl-frame" x=".5" y=".5" width="${w - 1}" height="${bottom - 1}"/>`,
-    `<rect class="nl-frame nl-inner" x="${b + 0.5}" y="${b + 0.5}" width="${w - 2 * b - 1}" height="${bottom - 2 * b - (options.phone ? -b : 1)}"/>`,
-  );
-  svg.setAttribute("width", String(w));
-  svg.setAttribute("height", String(box.height));
-  svg.innerHTML = parts.join("");
+  const frame = (
+    cls: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ) => ({
+    attrs: {
+      class: cls,
+      x: String(x),
+      y: String(y),
+      width: String(width),
+      height: String(height),
+    },
+  });
+  const [barSheet, labelSheet, frameSheet] = sheets(svg);
+  paint(barSheet, "rect", bars);
+  paint(labelSheet, "text", labels);
+  paint(frameSheet, "rect", [
+    frame("nl-frame", 0.5, 0.5, w - 1, bottom - 1),
+    frame(
+      "nl-frame nl-inner",
+      b + 0.5,
+      b + 0.5,
+      w - 2 * b - 1,
+      bottom - 2 * b - (options.phone ? -b : 1),
+    ),
+  ]);
+  if (svg.getAttribute("width") !== String(w))
+    svg.setAttribute("width", String(w));
+  const h = String(options.height);
+  if (svg.getAttribute("height") !== h) svg.setAttribute("height", h);
 }

@@ -1453,14 +1453,21 @@ export default function WindMap(props: Props) {
         }) as SVGPathElement;
     }
     let raf = 0;
+    // The map's size, read when it changes: read on every frame of a move,
+    // it laid the page out again under the lights just moved.
+    let size = { width: 0, height: 0 };
+    const measure = () => {
+      const { width, height } = map.getContainer().getBoundingClientRect();
+      size = { width, height };
+    };
     const place = () => {
       raf = 0;
       if (neat.current)
         drawNeatline(neat.current, map, {
+          ...size,
           // The frame runs down to the dock: on a phone the strip of the
           // rider's spots sits inside it, as the mockup draws it.
-          bottom:
-            map.getContainer().clientHeight - bottomInset + (phone ? 54 : 0),
+          bottom: size.height - bottomInset + (phone ? 54 : 0),
           phone,
           // The small print's "i" sits in the frame's foot on the left, over
           // the latitudes there (src/map.css .map-print): on a phone it
@@ -1479,14 +1486,19 @@ export default function WindMap(props: Props) {
       loop();
       if (!raf) raf = requestAnimationFrame(place);
     };
+    const resized = () => {
+      measure();
+      queue();
+    };
+    measure();
     place();
     loop();
     map.on("move", queue);
-    map.on("resize", queue);
+    map.on("resize", resized);
     return () => {
       cancelAnimationFrame(raf);
       map.off("move", queue);
-      map.off("resize", queue);
+      map.off("resize", resized);
     };
   }, [ready, mark?.lon, mark?.lat, bottomInset, phone]);
 

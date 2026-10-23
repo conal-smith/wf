@@ -186,13 +186,13 @@ export function useRatings(
       return;
     }
     // Only the data moved on — more squares read as the map moved, or the next
-    // run — so the rows in hand stay up until each is worked out again, rather
-    // than every light blinking to pending at each pan. A row whose square is
-    // no longer read stays while its run does: the map moved off it, and its
-    // hours are what they were (a light off the chart still says its stars
-    // and wind to a screen reader, with a spot's forecast open or not). With
-    // the next run it goes at once, never to be worked out again from data
-    // that has gone.
+    // run — so the rows in hand stay up (with the next run, until each is
+    // worked out again), rather than every light blinking to pending at each
+    // pan. A row whose square is no longer read stays while its run does: the
+    // map moved off it, and its hours are what they were (a light off the
+    // chart still says its stars and wind to a screen reader, with a spot's
+    // forecast open or not). With the next run it goes at once, never to be
+    // worked out again from data that has gone.
     const kept = new Set<string>();
     if (same)
       for (const place of places) {
@@ -205,10 +205,15 @@ export function useRatings(
         }
       }
     setVersion((v) => v + 1);
+    // Within the same run a row in hand is already the row: only the places
+    // without one are worked out. Each zoom in or out changes the squares in
+    // view, and every place was rated again at each, under the next gesture.
+    const todo = sameRun ? places.filter((p) => !done.has(p.id)) : places;
+    if (!todo.length) return;
     const wanted = new Set(first);
     const order = [
-      ...places.filter((p) => wanted.has(p.id)),
-      ...places.filter((p) => !wanted.has(p.id)),
+      ...todo.filter((p) => wanted.has(p.id)),
+      ...todo.filter((p) => !wanted.has(p.id)),
     ];
     let next = 0;
     let handle = 0;
