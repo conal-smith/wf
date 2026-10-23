@@ -47,32 +47,44 @@ test("the lights read the blend's squares in view, and nothing where the blend h
 
   // Zoom in, then pan far to the south-east, over Brittany: a long way from
   // any square the blend lists.
-  // The camera is at rest when the markers sit still: two readings a quarter
-  // second apart agree. (Waiting for frame-rate drawing instead never ends on
-  // CI's software renderer at this zoom.)
-  const markers = () =>
-    page.locator(".spot-marker").evaluateAll((all) =>
-      all.slice(0, 8).map((marker) => {
-        const box = marker.getBoundingClientRect();
-        return `${Math.round(box.left)},${Math.round(box.top)}`;
-      }).join(" "),
+  // The camera is at rest once a move has ended: through one the lights are
+  // drawn on a canvas and their buttons wait where it last rested
+  // (force5/src/lights.ts), so buttons that sit still say nothing of the
+  // camera. (Waiting for frame-rate drawing instead never ends on CI's
+  // software renderer at this zoom.)
+  const atRest = () =>
+    page.waitForFunction(
+      () => !document.querySelector(".map-lights.is-moving"),
+      null,
+      { polling: 100, timeout: 30000 },
     );
-  const atRest = async () => {
-    const first = await markers();
-    await page.waitForTimeout(250);
-    return first === (await markers());
-  };
-  const zoomIn = page.getByRole("button", { name: "Zoom in" });
-  for (let i = 0; i < 3; i++) {
-    await zoomIn.click();
-    await page.waitForTimeout(400);
-  }
-  await expect.poll(atRest, { timeout: 30000 }).toBe(true);
+  // Three steps in, each pressed once the last has ended, all in the page:
+  // on CI's software renderer every frame of the chart settling is the whole
+  // map drawn and read back, and a press from the test waited on it.
+  await page
+    .getByRole("button", { name: "Zoom in" })
+    .evaluate(async (zoomIn: HTMLElement) => {
+      const atRest = () =>
+        new Promise<void>((resolve) => {
+          const look = () =>
+            document.querySelector(".map-lights.is-moving")
+              ? setTimeout(look, 50)
+              : resolve();
+          look();
+        });
+      for (let i = 0; i < 3; i++) {
+        zoomIn.click();
+        await atRest();
+      }
+    });
+  await atRest();
+  // A drag in two strokes of two steps each: every step waits for a frame of
+  // the map, and the chart goes where the pointer goes however many it takes.
   for (let i = 0; i < 6; i++) {
     await page.mouse.move(1100, 650);
     await page.mouse.down();
-    await page.mouse.move(700, 250, { steps: 8 });
-    await page.mouse.move(300, 150, { steps: 8 });
+    await page.mouse.move(700, 250, { steps: 2 });
+    await page.mouse.move(300, 150, { steps: 2 });
     await page.mouse.up();
     await page.waitForTimeout(300);
   }

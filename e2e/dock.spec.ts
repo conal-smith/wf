@@ -287,6 +287,10 @@ test("the strip and the slider move together, by swipe, wheel and key", async ({
   // A plain wheel, turned up or down, moves the hours sideways, eased over
   // a few frames rather than in one jump, and comes to rest on an hour.
   await wrap.hover();
+  // Counted in frames, so read at frame rate: the hours scrolled above have
+  // the chart drawing each one's wind, and on CI's software renderer a frame
+  // of that is a fifth of a second, the ease over in two or three of them.
+  await steadyFrames(page);
   const before = await wrap.evaluate((el) => el.scrollLeft);
   const frames = wrap.evaluate(
     (el) =>
