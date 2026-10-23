@@ -427,7 +427,8 @@ Lough inside the Narrows) takes every pixel inside it and none outside
 (`station_cells`), and the index carries the polygon so a tap reads the same
 region. Each region is one archive, z6–13 (512 px tiles: ~5.8 m a
 pixel at z13, 53°N; z6–9 are overviews, the mean of the heights under each
-pixel, so the coast shows on the all-Ireland view), drawn on its own
+pixel; the site draws and reads nothing under z9, `FOIL_MIN_ZOOM` in
+force5/src/foilDepth.ts, so z6–8 go unread), drawn on its own
 station's curve with its own ramp. A point is read from the region whose
 station is nearest (`stationLonLat` in the index), as the cells were cut.
 

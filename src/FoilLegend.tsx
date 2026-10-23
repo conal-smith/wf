@@ -1,5 +1,6 @@
 import {
   FOIL_CLEARANCE_METRES,
+  FOIL_ZOOM_NOTE,
   levelLine,
   surveyLine,
   type FoilArea,
@@ -14,6 +15,7 @@ import {
  */
 export default function FoilLegend({
   on,
+  far = false,
   area,
   station,
   tide,
@@ -26,6 +28,8 @@ export default function FoilLegend({
 }: {
   /** The layer is drawn; off, there is no tide or survey to report. */
   on: boolean;
+  /** The chart is out past the layer's zoom, so nothing of it is drawn. */
+  far?: boolean;
   area: FoilArea | null;
   station: string | null;
   /** The water level the colours are drawn for, above LAT. */
@@ -45,6 +49,11 @@ export default function FoilLegend({
       {!on ? (
         <p className="foil-at">
           Off. Turn it on in Layers, under Chart: &ldquo;Tidal depth&rdquo;.
+        </p>
+      ) : far ? (
+        <p className="foil-at" data-foil-far>
+          {FOIL_ZOOM_NOTE} It is drawn closer in, where a bay&rsquo;s shallows
+          can be read.
         </p>
       ) : error ? (
         <p className="foil-at is-error" role="status">
@@ -104,6 +113,7 @@ export default function FoilLegend({
         </li>
       </ul>
       {on &&
+        !far &&
         (readout ? (
           <p className="foil-probe">{readout}</p>
         ) : (

@@ -33,6 +33,8 @@ import {
   areaAt,
   areasAt,
   areasInView,
+  FOIL_MIN_ZOOM,
+  FOIL_ZOOM_NOTE,
   foilColours,
   foilRamp,
   foilReadout,
@@ -994,7 +996,10 @@ export default function App() {
   // key's area and of a tapped point's. Set after each render that changes
   // them (they depend on the index the hook loads).
   const [foilStations, setFoilStations] = useState<string[]>([]);
-  const foilState = useFoilDepth(layers.foil, foilStations);
+  // Out past the layer's zoom nothing of it is fetched or drawn: not the
+  // index, a tide curve, an archive, nor a tapped point's depth.
+  const foilFar = !chartView || chartView.zoom < FOIL_MIN_ZOOM;
+  const foilState = useFoilDepth(layers.foil && !foilFar, foilStations);
   // The Currents layer at the hour the map shows; nothing at all while off.
   const currents = useCurrents(layers.currents, mapAt, prefs.units);
   // Read from the stylesheet only once the layer is wanted.
@@ -1032,10 +1037,10 @@ export default function App() {
   // Only the areas over the chart's view are drawn, and only theirs fetched.
   const foilInView = useMemo(
     () =>
-      foilState.manifest && chartView
+      foilState.manifest && chartView && !foilFar
         ? areasInView(foilState.manifest.areas, chartView, chartView.zoom)
         : [],
-    [foilState.manifest, chartView],
+    [foilState.manifest, chartView, foilFar],
   );
   const foilViews = useMemo<FoilView[] | null>(() => {
     const m = foilState.manifest;
@@ -1112,7 +1117,8 @@ export default function App() {
     // A pilot wins where it is, and a basin's box overlaps its area's: the
     // first archive with water under the point is the side of the weir it is
     // on. Elsewhere it is the one region whose station is nearest.
-    const candidates = layers.foil && m ? areasAt(m.areas, lon, lat) : [];
+    const candidates =
+      layers.foil && m && !foilFar ? areasAt(m.areas, lon, lat) : [];
     if (!m || !candidates.length) {
       setFoilProbe(null);
       return;
@@ -1634,6 +1640,7 @@ export default function App() {
                   : null
               }
               currentsNote={currents.note}
+              foilNote={foilFar ? FOIL_ZOOM_NOTE : null}
               modelDisabled={!frame || !!pendingModel}
               onModel={(id) => void chooseModel(id)}
             />
@@ -1845,6 +1852,7 @@ export default function App() {
           foil={
             <FoilLegend
               on={layers.foil}
+              far={foilFar}
               area={foilArea}
               station={foilStation}
               tide={foilArea ? (foilTides[foilArea.id]?.water ?? null) : null}

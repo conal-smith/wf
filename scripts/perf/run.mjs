@@ -17,7 +17,8 @@
  *   --profiles LIST     desktop,phone
  *   --foil LIST         on,off
  *   --scenarios LIST    cold,idle,zoom,pan,hours,taps (in that order; "none"
- *                       for only the soak or Lighthouse)
+ *                       for only the soak or Lighthouse); also ireland and
+ *                       coast, quick zooms in and out (not run unless named)
  *   --idle SECONDS      the idle scenario's length (60)
  *   --hours N           forecast hours stepped (24)
  *   --soak SECONDS      also run the leak soak on the desktop, foil on and
@@ -747,6 +748,20 @@ const SCENARIOS = {
     return { frames: mergeFrames(frames), tilesSettledMs: settle };
   },
 
+  /**
+   * In and out over all of Ireland as the chart opens, a zoom and a half each
+   * way, three times, without waiting for the tiles between: a rider's quick
+   * zooms, a wheel's or a pinch's.
+   */
+  async ireland(visit) {
+    return zoomInOut(visit, 1.5);
+  },
+
+  /** The same, closer in: the east coast, z7.5 to z9.5 and back, three times. */
+  async coast(visit) {
+    return zoomInOut(visit, 2);
+  },
+
   /** Along the east coast at z11, Skerries to Rosslare. */
   async pan(visit) {
     const { page } = visit;
@@ -856,6 +871,23 @@ const SCENARIOS = {
   },
 };
 
+/** In and out by `by` zooms from where the camera is, three times, 500 ms each way. */
+async function zoomInOut(visit, by) {
+  const { page } = visit;
+  const from = await page.evaluate(() => window.__perf.map().getZoom());
+  const frames = [];
+  for (let i = 0; i < 3; i++) {
+    frames.push(await ease(page, { zoom: from + by }, 500));
+    frames.push(await ease(page, { zoom: from }, 500));
+  }
+  const t = await now(page);
+  await idle(page, 20000);
+  return {
+    frames: mergeFrames(frames),
+    tilesSettledMs: [Math.round((await now(page)) - t)],
+  };
+}
+
 /** Where each scenario starts from, once the previous one has finished. */
 /**
  * The dock's hours, for the hour steps. A first visit opens on the chart
@@ -897,6 +929,17 @@ const START = {
   },
   zoom: (page) => jump(page, { center: AT.between, zoom: 9 }),
   pan: (page) => jump(page, { center: AT.eastCoast[0], zoom: 11 }),
+  ireland: (page) =>
+    page.evaluate(() =>
+      window.__perf.map().fitBounds(
+        [
+          [-10.7, 51.35],
+          [-5.4, 55.45],
+        ],
+        { duration: 0, padding: 20 },
+      ),
+    ),
+  coast: (page) => jump(page, { center: AT.dublinBay, zoom: 7.5 }),
   hours: async (page) => {
     await openHours(page);
     await jump(page, { center: AT.dublinBay, zoom: 12 });

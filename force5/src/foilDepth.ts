@@ -33,6 +33,18 @@ export const FOIL_CLEARANCE_METRES = 1;
 export const FOIL_INDEX_PATH = "foildepth/index.json";
 
 /**
+ * The zoom the layer is drawn from, and anything of it fetched: z9, where a
+ * bay's shallows are some tens of pixels across. Further out they are a
+ * pixel or two along the coast that no one can read, and the whole of
+ * Ireland in view was every region's archive at once (41 of them), read and
+ * drawn again at each step of a zoom (scripts/perf, `ireland`).
+ */
+export const FOIL_MIN_ZOOM = 9;
+
+/** The words in Layers and the key while the layer is on and the chart is out past it. */
+export const FOIL_ZOOM_NOTE = "Zoom in to see.";
+
+/**
  * How far above the floor the deep colour fades in, in metres: the edge of
  * what is drawn (5 m under LAT) is a short fade into the chart's own tints,
  * not a hard line that reads as a feature of the seabed.

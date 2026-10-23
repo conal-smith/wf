@@ -205,6 +205,8 @@ const OWN = {
   ],
 };
 OWN.pan = OWN.zoom;
+OWN.ireland = OWN.zoom;
+OWN.coast = OWN.zoom;
 
 export function markdownReport(report) {
   const runs = Object.keys(report.runs);
