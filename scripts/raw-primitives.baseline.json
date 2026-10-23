@@ -4,7 +4,7 @@
   "areas": {
     "src": {
       "button": 15,
-      "input": 7,
+      "input": 5,
       "select": 0,
       "textarea": 0
     },

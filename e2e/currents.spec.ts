@@ -33,7 +33,10 @@ test("the currents layer is off at first and nothing of it is loaded", async ({
     timeout: 30000,
   });
   const panel = await layers(page);
-  await expect(panel.locator('input[data-layer="currents"]')).not.toBeChecked();
+  await expect(panel.locator('[data-layer="currents"]')).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
   await page.waitForTimeout(500);
   expect(asked).toEqual([]);
 });
@@ -49,7 +52,11 @@ test("turned on, it reads the run and keeps the rider's choice", async ({
     timeout: 30000,
   });
   const panel = await layers(page);
-  await panel.locator('input[data-layer="currents"]').check();
+  await panel.locator('[data-layer="currents"]').click();
+  await expect(panel.locator('[data-layer="currents"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(panel.locator("[data-currents-note]")).toHaveText(
     "Not for safety.",
   );

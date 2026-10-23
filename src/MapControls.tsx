@@ -1,92 +1,25 @@
-import type { ReactNode } from "react";
-import { MODELS, type ModelId } from "../force5/src/models";
-import {
-  SATELLITE_LABEL,
-  SATELLITE_OPTIONS,
-  SATELLITE_TIDES_NOTE,
-  satelliteTidesLine,
-  type SatelliteOption,
-} from "../force5/src/satellite";
+import { lazy, Suspense, type ReactNode } from "react";
+import type { ModelId } from "../force5/src/models";
+import type { SatelliteOption } from "../force5/src/satellite";
 import type { SiteMenuTool } from "../force5/src/SiteMenu";
 import type { ChartLayers } from "../force5/src/WindMap";
-import { FOCUS_STYLES, type FocusStyle } from "../force5/src/focus";
+import type { FocusStyle } from "../force5/src/focus";
 import type { WindStyle } from "../force5/src/windLayer";
 import { useFadeOut } from "../ui/Backdrop";
 import { Dialog } from "../ui/Dialog";
-import { Segmented } from "../ui/Segmented";
 import {
   AboutGlyph,
-  ArrowsWindGlyph,
-  ColouredWindGlyph,
-  CurrentsGlyph,
-  HighTideGlyph,
-  InkWindGlyph,
   LayersGlyph,
-  LoupeGlyph,
-  LowTideGlyph,
-  NamesGlyph,
   OptionsGlyph,
-  ReliefGlyph,
-  RingGlyph,
-  SatelliteGlyph,
-  SoundingsGlyph,
   SpotsGlyph,
-  SurveyGlyph,
-  TidalDepthGlyph,
-  TintsGlyph,
 } from "./chartGlyphs";
-import { InfoButton } from "./InfoPop";
-import { KnotScale } from "./KnotScale";
 import type { InfoSection } from "./mapInfoContext";
 
-const WIND_LABEL: Record<WindStyle, string> = {
-  ink: "Ink",
-  arrows: "Coloured arrows",
-  wash: "Coloured wind",
-};
-const WIND_GLYPH: Record<WindStyle, ReactNode> = {
-  ink: <InkWindGlyph />,
-  arrows: <ArrowsWindGlyph />,
-  wash: <ColouredWindGlyph />,
-};
-const CHART_LABEL: Record<keyof ChartLayers, string> = {
-  tints: "Depth tints",
-  soundings: "Contours, soundings",
-  relief: "Land relief",
-  names: "Spot names",
-  foil: "Tidal depth",
-  lidar: "LiDAR data",
-  currents: "Currents, a rough guide",
-};
-/** The chart's switches whose key is in the map's information, behind an "i". */
-const CHART_INFO: Partial<Record<keyof ChartLayers, [string, InfoSection]>> = {
-  foil: ["About tidal depth", "foil"],
-  lidar: ["About the LiDAR data", "lidar"],
-  currents: ["About currents", "currents"],
-};
-/** Each part's glyph, drawn as the chart draws the part; a row without one still reads. */
-const CHART_GLYPH: Partial<Record<keyof ChartLayers, ReactNode>> = {
-  tints: <TintsGlyph />,
-  soundings: <SoundingsGlyph />,
-  relief: <ReliefGlyph />,
-  names: <NamesGlyph />,
-  foil: <TidalDepthGlyph />,
-  lidar: <SurveyGlyph />,
-  currents: <CurrentsGlyph />,
-};
-const SATELLITE_GLYPH: Partial<Record<SatelliteOption, ReactNode>> = {
-  high: <HighTideGlyph size={16} />,
-  low: <LowTideGlyph size={16} />,
-};
-const FOCUS_LABEL: Record<FocusStyle, string> = {
-  loupe: "Loupe",
-  ring: "Range ring",
-  off: "Off",
-};
-const FOCUS_GLYPH: Partial<Record<FocusStyle, ReactNode>> = {
-  loupe: <LoupeGlyph size={16} />,
-  ring: <RingGlyph size={16} />,
-};
+/**
+ * The layers' tiles, their pictures and their stylesheet: loaded the first
+ * time Layers is opened, and not before (src/LayersPanel.tsx).
+ */
+const LayersPanel = lazy(() => import("./LayersPanel"));
 
 /** A panel that opens over the dimmed map: one at a time. */
 export type MapPanel = "layers" | "spots" | "options" | null;
@@ -155,11 +88,12 @@ export default function MapControls({
   focusStyle,
   onFocusStyle,
   model,
-  modelNote,
+  modelNote = null,
   modelDisabled,
   onModel,
   currentsNote = null,
   foilNote = null,
+  onResetLayers,
 }: {
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -197,6 +131,8 @@ export default function MapControls({
   currentsNote?: string | null;
   /** Why the tidal depth is not drawn, while it is on: the chart is out too far. */
   foilNote?: string | null;
+  /** The layers' Reset: the wind, the chart's parts and the focus as at first. */
+  onResetLayers: () => void;
 }) {
   const close = () => onOpen(null);
   // The panel drawn: the open one, or the one fading out after it closed.
@@ -221,7 +157,35 @@ export default function MapControls({
           −
         </button>
       </div>
-      {shown && (
+      {shown === "layers" && (
+        // Nothing until its chunk is in: then the dialog opens whole, its
+        // tiles and their stylesheet with it.
+        <Suspense fallback={null}>
+          <LayersPanel
+            open={open === "layers"}
+            onClose={close}
+            onInfo={onInfo}
+            windStyle={windStyle}
+            onWindStyle={onWindStyle}
+            layers={layers}
+            onLayersChange={onLayersChange}
+            satellite={satellite}
+            onSatellite={onSatellite}
+            satelliteTides={satelliteTides}
+            satelliteLoading={satelliteLoading}
+            focusStyle={focusStyle}
+            onFocusStyle={onFocusStyle}
+            model={model}
+            modelNote={modelNote}
+            modelDisabled={modelDisabled}
+            onModel={onModel}
+            currentsNote={currentsNote}
+            foilNote={foilNote}
+            onReset={onResetLayers}
+          />
+        </Suspense>
+      )}
+      {(shown === "spots" || shown === "options") && (
         <Dialog
           open={open !== null}
           title={PANEL_TITLE[shown]}
@@ -230,141 +194,6 @@ export default function MapControls({
         >
           {shown === "spots" && spots()}
           {shown === "options" && options(close)}
-          {shown === "layers" && (
-            <div
-              id="map-layers"
-              className="layers"
-              role="group"
-              aria-label="Layers"
-            >
-              <h3>Wind</h3>
-              {(Object.keys(WIND_LABEL) as WindStyle[]).map((style) => (
-                <label key={style}>
-                  <input
-                    type="radio"
-                    name="wind-style"
-                    value={style}
-                    checked={windStyle === style}
-                    onChange={() => onWindStyle(style)}
-                  />
-                  {WIND_GLYPH[style]}
-                  <span>{WIND_LABEL[style]}</span>
-                </label>
-              ))}
-              <KnotScale />
-              <h3>Chart</h3>
-              {(Object.keys(CHART_LABEL) as (keyof ChartLayers)[]).map(
-                (key) => {
-                  const box = (
-                    <label key={key}>
-                      <input
-                        type="checkbox"
-                        data-layer={key}
-                        checked={layers[key]}
-                        onChange={(event) =>
-                          onLayersChange({
-                            ...layers,
-                            [key]: event.target.checked,
-                          })
-                        }
-                      />
-                      {CHART_GLYPH[key]}
-                      <span>{CHART_LABEL[key]}</span>
-                    </label>
-                  );
-                  // The tidal depth's, the LiDAR's and the currents' keys are in
-                  // the map's information, not on the chart: each one's "i"
-                  // opens it there, beside the switch.
-                  const info = CHART_INFO[key];
-                  if (!info) return box;
-                  return (
-                    <div key={key} className="layer-info">
-                      {box}
-                      <InfoButton
-                        label={info[0]}
-                        onOpen={() => onInfo(info[1])}
-                      />
-                      {key === "foil" && layers.foil && foilNote && (
-                        <small data-foil-note>{foilNote}</small>
-                      )}
-                      {key === "currents" && layers.currents && (
-                        <small data-currents-note>
-                          {currentsNote ?? "Not for safety."}
-                        </small>
-                      )}
-                    </div>
-                  );
-                },
-              )}
-              <h3>
-                <SatelliteGlyph size={16} />
-                Satellite at tide
-              </h3>
-              <div className="layer-sat">
-                <Segmented
-                  aria-label="Satellite at tide"
-                  options={SATELLITE_OPTIONS.map((option) => ({
-                    value: option,
-                    label: (
-                      <>
-                        {SATELLITE_GLYPH[option]}
-                        {SATELLITE_LABEL[option]}
-                      </>
-                    ),
-                  }))}
-                  value={satellite}
-                  onChange={onSatellite}
-                />
-                {satellite !== "off" && satelliteLoading && (
-                  <small role="status" data-satellite-loading>
-                    Loading the {SATELLITE_LABEL[satellite].toLowerCase()}{" "}
-                    image…
-                  </small>
-                )}
-                {satellite !== "off" && satelliteTides && (
-                  <>
-                    <small data-satellite-tides>
-                      {satelliteTidesLine(satelliteTides)}
-                    </small>
-                    <small>{SATELLITE_TIDES_NOTE}</small>
-                  </>
-                )}
-              </div>
-              <h3>Round the chosen spot</h3>
-              <Segmented
-                aria-label="Round the chosen spot"
-                options={FOCUS_STYLES.map((style) => ({
-                  value: style,
-                  label: (
-                    <>
-                      {FOCUS_GLYPH[style]}
-                      {FOCUS_LABEL[style]}
-                    </>
-                  ),
-                }))}
-                value={focusStyle}
-                onChange={onFocusStyle}
-              />
-              <h3>Model on the map</h3>
-              {modelNote && <p className="models-note">{modelNote}</p>}
-              <div className="models" role="group" aria-label="Weather model">
-                {MODELS.map((entry) => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    data-model={entry.id}
-                    aria-label={`Use ${entry.name} model`}
-                    aria-pressed={model === entry.id}
-                    disabled={modelDisabled}
-                    onClick={() => onModel(entry.id)}
-                  >
-                    <span>{entry.name}</span>
-                    <small>{entry.detail}</small>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </Dialog>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { expect, openFromMenu, test, type Page } from "./fixtures";
+import { expect, openFromMenu, setLayer, test, type Page } from "./fixtures";
 import { SAMPLE_CLOCK, sampleStrip } from "./columns";
 
 /**
@@ -201,10 +201,7 @@ for (const ranges of [true, false])
     const atLow = await photograph(page);
     // The same hour with the layer off.
     await openFromMenu(page, "Layers");
-    await page
-      .getByRole("group", { name: "Layers" })
-      .getByRole("checkbox", { name: "Tidal depth" })
-      .uncheck();
+    await setLayer(page, "Tidal depth", false);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("group", { name: "Layers" })).toHaveCount(0);
     const off = await photograph(page);

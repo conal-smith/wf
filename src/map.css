@@ -906,10 +906,10 @@
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;
 }
-/* The layers, your spots and the display options (panels.css), one at a
-   time in the kit's dialog over the dimmed map (src/MapControls.tsx). The
-   dialog scrolls a tall panel; its body's prose sizes give way to the
-   panels' own. */
+/* The layers (layers.css, with their own chunk), your spots and the display
+   options (panels.css), one at a time in the kit's dialog over the dimmed map
+   (src/MapControls.tsx). The dialog scrolls a tall panel; its body's prose
+   sizes give way to the panels' own. */
 .map-panel-dialog {
   max-width: 380px;
 }
@@ -917,59 +917,6 @@
   gap: 0;
   font-size: 14.5px;
   color: var(--color-ink);
-}
-.layers h3 {
-  margin: 10px 0 4px;
-  font: 500 9.5px var(--font-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-.layers h3:first-child {
-  margin-top: 0;
-}
-.layers label {
-  display: flex;
-  gap: 9px;
-  align-items: center;
-  padding: 2px 0;
-  font-size: 14.5px;
-  cursor: pointer;
-}
-.layers input {
-  accent-color: var(--color-chart-magenta);
-  margin: 0;
-}
-.layers .layer-info {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.layers .layer-info label {
-  flex: 1;
-}
-/* Under the Currents switch while it is on: what it cannot draw, or that it
-   is not for safety. */
-.layers .layer-info {
-  flex-wrap: wrap;
-}
-.layers .layer-info small {
-  flex-basis: 100%;
-  font: 400 9.5px var(--font-mono);
-  color: var(--color-ink-muted);
-}
-/* Each row's glyph (src/chartGlyphs.tsx), between the switch and its name,
-   and in a switch's capsule before its word. */
-.layers label > .g-chart {
-  flex: none;
-}
-.layers [role="group"] > button > .g-chart {
-  flex: none;
-  margin-right: 2px;
-}
-.layers h3 > .g-chart {
-  vertical-align: -3px;
-  margin-right: 6px;
 }
 /* A glyph's figures, a sounding or a drying height, in the chart's italic. */
 .g-chart .g-fig {
@@ -980,72 +927,6 @@
 .g-chart .g-fig-lg {
   font-size: 12px;
   font-weight: 600;
-}
-
-/* The satellite's three choices, and under them the tide each image was
-   taken at near the map's centre, as the models' details are written. */
-.layers .layer-sat {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 2px 0;
-}
-/* The capsule fills the panel, its three parts sharing it, so it fits the
-   phone's narrower panel too. */
-.layers .layer-sat > [role="group"] {
-  align-self: stretch;
-}
-.layers .layer-sat > [role="group"] > button {
-  flex: 1 1 auto;
-  padding-inline: 6px;
-}
-.layers .layer-sat small {
-  font: 400 9.5px var(--font-mono);
-  color: var(--color-ink-muted);
-}
-.layers .models {
-  display: flex;
-  flex-direction: column;
-}
-.layers .models button {
-  position: relative;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 4px 4px 4px 14px;
-  border: 0;
-  border-bottom: 1px solid var(--color-line);
-  background: none;
-  text-align: left;
-  font: 600 14px var(--font-display);
-  color: var(--color-ink);
-  cursor: pointer;
-}
-.layers .models button small {
-  font: 400 9.5px var(--font-mono);
-  color: var(--color-ink-muted);
-}
-.layers .models button[aria-pressed="true"] {
-  font-style: italic;
-  background: var(--color-sunken);
-}
-/* The dot in the margin, out of the row's flex: as a third flex item it sat
-   between the name and the detail and pushed the chosen name to the middle. */
-.layers .models button[aria-pressed="true"]::before {
-  content: "●";
-  position: absolute;
-  left: 3px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-chart-magenta);
-  font-size: 9px;
-}
-@media (hover: hover) and (pointer: fine) {
-  .layers .models button:hover:not(:disabled) {
-    color: var(--color-chart-magenta);
-  }
 }
 
 /* The wind scale, in the key and the layers. */

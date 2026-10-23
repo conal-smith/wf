@@ -184,7 +184,7 @@ test("every wind style keeps the arrows drawing, in any order, and is remembered
     ["Coloured wind", "wash"],
     ["Ink", "ink"],
   ]) {
-    await panel.getByRole("radio", { name }).check();
+    await panel.getByRole("button", { name, exact: true }).click();
     await expect(canvas).toHaveAttribute("data-wind-style", style);
     // Fresh arrows in the new style, not what was left of the last one: the
     // attribute is set once the layer has the style (WindMap.tsx), and each
@@ -194,7 +194,9 @@ test("every wind style keeps the arrows drawing, in any order, and is remembered
       .poll(() => inked(page), { message: name })
       .toBeGreaterThan(100);
   }
-  await panel.getByRole("radio", { name: "Coloured wind" }).check();
+  await panel
+    .getByRole("button", { name: "Coloured wind", exact: true })
+    .click();
   await page.reload();
   // The style is read back as the page mounts, before the chart is up; the
   // arrows then wait for the whole chart to load again, as they did the first
@@ -231,8 +233,8 @@ test("zoomed right in, the coloured arrows go to ink and keep moving", async ({
   await openFromMenu(page, "Layers");
   await page
     .getByRole("group", { name: "Layers" })
-    .getByRole("radio", { name: "Coloured arrows" })
-    .check();
+    .getByRole("button", { name: "Coloured arrows", exact: true })
+    .click();
   await closePanel(page);
   await expect.poll(() => tinted(page)).toBeGreaterThan(20);
   // The depths take over from zoom 11 (windLayer.ts); the chart opens near 6.

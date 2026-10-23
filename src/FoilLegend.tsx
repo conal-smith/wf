@@ -48,7 +48,7 @@ export default function FoilLegend({
     <div className="foil-key">
       {!on ? (
         <p className="foil-at">
-          Off. Turn it on in Layers, under Chart: &ldquo;Tidal depth&rdquo;.
+          Off. Turn it on in Layers, under Sea: &ldquo;Tidal depth&rdquo;.
         </p>
       ) : far ? (
         <p className="foil-at" data-foil-far>

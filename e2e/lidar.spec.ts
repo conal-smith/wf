@@ -1,4 +1,11 @@
-import { expect, openFromMenu, test, type Page } from "./fixtures";
+import {
+  expect,
+  layerTile,
+  openFromMenu,
+  setLayer,
+  test,
+  type Page,
+} from "./fixtures";
 
 /**
  * The LiDAR layer: off by default with nothing of it fetched; turned on in
@@ -84,9 +91,11 @@ async function changed(page: Page, a: Buffer, b: Buffer) {
 
 async function toggle(page: Page, on: boolean) {
   await openFromMenu(page, "Layers");
-  const box = page.getByRole("checkbox", { name: "LiDAR data" });
-  await expect(box).toBeChecked({ checked: !on });
-  await box.setChecked(on);
+  await expect(layerTile(page, "LiDAR")).toHaveAttribute(
+    "aria-pressed",
+    String(!on),
+  );
+  await setLayer(page, "LiDAR", on);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("group", { name: "Layers" })).toHaveCount(0);
 }

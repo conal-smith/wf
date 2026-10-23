@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { expect, openFromMenu, test, type Page } from "./fixtures";
+import { expect, openFromMenu, setLayer, test, type Page } from "./fixtures";
 import { SAMPLE_CLOCK, sampleStrip } from "./columns";
 
 /**
@@ -236,10 +236,7 @@ test("a national region draws on its own station's tide, answers a tap, and only
   await expect(slider).toHaveValue(String(low.i));
   const atLow = await photograph(page);
   await openFromMenu(page, "Layers");
-  await page
-    .getByRole("group", { name: "Layers" })
-    .getByRole("checkbox", { name: "Tidal depth" })
-    .uncheck();
+  await setLayer(page, "Tidal depth", false);
   await page.keyboard.press("Escape");
   const off = await photograph(page);
   expect(await differs(page, atHigh, off)).toBeGreaterThan(0.05);
@@ -249,10 +246,7 @@ test("a national region draws on its own station's tide, answers a tap, and only
   // Back on, at high water: a tap beside the spot, on the flat, is read out
   // as (tide − 1) m of water at Galway's tide.
   await openFromMenu(page, "Layers");
-  await page
-    .getByRole("group", { name: "Layers" })
-    .getByRole("checkbox", { name: "Tidal depth" })
-    .check();
+  await setLayer(page, "Tidal depth", true);
   await page.keyboard.press("Escape");
   await slider.fill(String(high.i));
   const spot = (await page
@@ -303,7 +297,10 @@ test("over the whole chart nothing of it is fetched, and Layers says to zoom in"
   expect(asked).toEqual([]);
   await openFromMenu(page, "Layers");
   const panel = page.getByRole("group", { name: "Layers" });
-  await expect(panel.locator('input[data-layer="foil"]')).toBeChecked();
+  await expect(panel.locator('[data-layer="foil"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(panel.locator("[data-foil-note]")).toHaveText("Zoom in to see.");
   await page.keyboard.press("Escape");
 
