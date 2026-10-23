@@ -1,14 +1,13 @@
 /**
  * The More tab's pages: the rider, the units, the dock's rows, the models in
- * the blend, and where the data comes from (the model the stars come from has
- * its own page, StarsFrom.tsx). Each writes the site's own
+ * the blend, and where the data comes from (the rider's one model has its
+ * own page, ModelChoice.tsx). Each writes the site's own
  * preference (force5.prefs.v1) through `usePrefs().update`, so the chart, the
  * dock and the spot pages follow at once.
  */
 import { useEffect, useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { starsFromAt, starsFromText } from "../../../../force5/src/lead";
 import { windModels } from "../../../../force5/src/manifests";
 import { setRow } from "../../../../force5/src/prefs";
 import { ESTIMATE_WEIGHT_KG } from "../../../../force5/src/stars";
@@ -23,7 +22,16 @@ import { colors, fonts, hitTarget, space } from "../../theme/tokens";
 import { DOCK_ROWS, dockRowOn } from "../dock/dockLogic";
 import { CustomiseLink, LevelSwitch, WeightField, WingChips, useRider } from "./RiderFields";
 import { SettingsPage, openLink } from "./SettingsPage";
-import { CREDITS, LICENCE_URL, SOURCE_CODE_URL, modelRows, riderWords, runText, toggleBlendModel } from "./settingsLogic";
+import {
+  CREDITS,
+  LICENCE_URL,
+  SOURCE_CODE_URL,
+  modelRows,
+  modelStarsLine,
+  riderWords,
+  runText,
+  toggleBlendModel,
+} from "./settingsLogic";
 
 export function RiderScreen() {
   const [rider, change] = useRider();
@@ -175,9 +183,9 @@ export function ModelsScreen() {
         </ListSection>
       ) : null}
       <T variant="caption" color="muted" style={styles.small}>
-        The stars come from one model&rsquo;s own forecast, {starsFromText(starsFromAt(prefs.rider.starsFrom))} (Stars
-        from). The models in the blend give the agreement and the range beside them, each counting by how well it has
-        verified against Irish stations that far into its run; they never change a star.
+        {modelStarsLine(prefs.rider.starsFrom)} The models in the blend give the agreement and the range beside them,
+        each counting by how well it has verified against Irish stations that far into its run; they never change a
+        star.
       </T>
     </SettingsPage>
   );

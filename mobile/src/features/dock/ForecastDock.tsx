@@ -35,7 +35,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import Svg from "react-native-svg";
-import { modelName, spotOverride } from "../../../../force5/src/lead";
+import { modelName } from "../../../../force5/src/lead";
 import { modelEntry } from "../../../../force5/src/manifests";
 import { dayNights } from "../../../../force5/src/sun";
 import { tideAt } from "../../../../force5/src/tides";
@@ -68,7 +68,6 @@ import { useForecast, useSpotHours } from "../../data/forecast";
 import { usePrefs } from "../../data/prefs";
 import { colors, fonts, hitTarget, radius, space, withAlpha } from "../../theme/tokens";
 import { riderWords } from "../settings/settingsLogic";
-import { SpotStarsChip } from "../settings/StarsFrom";
 import { CustomStarsChip } from "../stars/StarRating";
 import { holdUpdates } from "../updates/hold";
 import { blendDrawing } from "./blendLogic";
@@ -344,9 +343,8 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
       sweet: { low: band.sweetLow, high: band.sweetHigh },
       facingKnown: (spot?.facing ?? null) !== null,
       model: hour.model,
-      spotOwn: !!hour.model && hour.model === spotOverride(forecast.rider.starsFrom, spot?.id),
     };
-  }, [tip, hours, strip, units, forecast.rider, band, spot?.facing, spot?.id]);
+  }, [tip, hours, strip, units, forecast.rider, band, spot?.facing]);
   const onStars = useCallback((column: number) => {
     tick();
     setTip(column);
@@ -442,7 +440,6 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
             {spot ? spot.name : "All of Ireland"}
           </T>
           {spot ? <CustomStarsChip /> : null}
-          {spot ? <SpotStarsChip spotId={spot.id} /> : null}
           {spot && open ? (
             <Pressable
               accessibilityRole="button"

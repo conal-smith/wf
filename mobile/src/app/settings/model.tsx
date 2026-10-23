@@ -1,3 +1,3 @@
-import { StarsFromScreen } from "../../features/settings/StarsFrom";
+import { ModelChoiceScreen } from "../../features/settings/ModelChoice";
 
-export default StarsFromScreen;
+export default ModelChoiceScreen;

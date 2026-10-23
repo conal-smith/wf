@@ -362,8 +362,8 @@ export function hourReading(
   }
   if (rating?.shore === "offshore" || rating?.shore === "cross-off")
     parts.push(SHORE_LABEL[rating.shore]);
-  // The one model the stars came from (the ruling of 19 October 2026).
-  if (rating && hour.model) parts.push(`stars from ${modelName(hour.model)}`);
+  // The one model the hour was rated from: the rider's, or ECMWF past its run.
+  if (rating && hour.model) parts.push(`${modelName(hour.model)} forecast`);
   return parts.join(", ");
 }
 

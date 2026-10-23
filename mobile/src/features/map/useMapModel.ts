@@ -1,20 +1,24 @@
 /**
- * The wind the chart draws: one model's run (HARMONIE until the rider picks
- * another), and its frame for the hour chosen, as the site's map loads them
+ * The wind the chart draws: the rider's model's run (force5/src/lead.ts:
+ * HARMONIE until the rider picks another, in the chart's Layers or in
+ * Settings → Model, one choice for both and the one the stars rate), and its
+ * frame for the hour chosen, as the site's map loads them
  * (src/App.tsx): the frame follows the hour a little behind a fast scrub, a
  * frame that cannot be read looks for a newer run, and a model switch is one
  * transaction that leaves the old model drawn until the new one is whole.
  *
  * Past either end of the rider's run the chart hands over, as the site's map
- * does: it draws the model the strip's column at that hour comes from (ECMWF
- * past HARMONIE, or GFS), says so, and goes back to the rider's model as soon
- * as the hour is inside its run again. The rider's choice is never changed by
- * it. Only where no run the chart can draw reaches the hour does the frame
+ * does: it draws ECMWF where that covers the hour, the model the stars take
+ * over to (else the one the strip's column comes from, GFS as a rule), says
+ * so, and goes back to the rider's model as soon as the hour is inside its
+ * run again. The rider's choice is never changed by it. Only where no run the chart can draw reaches the hour does the frame
  * stay the nearest one, and `reachable` name the model to offer.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState } from "react-native";
+import { chosenModel, DEFAULT_MODEL } from "../../../../force5/src/lead";
 import { loadManifest, MANIFEST_REVALIDATE_MS } from "../../../../force5/src/manifests";
+import { withRiderModel } from "../../../../force5/src/prefs";
 import { loadModel, MAP_MODEL_IDS, MODELS, type ModelId } from "../../../../force5/src/models";
 import { REVALIDATE_MS, runLabel } from "../../../../force5/src/revalidate";
 import { loadFrame } from "../../../../force5/src/tiledField";
@@ -28,6 +32,12 @@ import {
 import { nearestColumn } from "../../../../src/strip";
 import { loadNewerRun } from "../../../../src/useRunRefresh";
 import { useForecast } from "../../data/forecast";
+import { usePrefs } from "../../data/prefs";
+
+const isMapModel = (id: string): id is ModelId => (MAP_MODEL_IDS as readonly string[]).includes(id);
+
+/** The rider's model as the chart can draw it: every model a rider can pick is one. */
+const mapModelOf = (id: string): ModelId => (isMapModel(id) ? id : (DEFAULT_MODEL as ModelId));
 
 /** Follows a value at most every `ms` while it keeps changing, then settles on it. */
 function useThrottled<T>(value: T, ms: number): T {
@@ -73,6 +83,7 @@ export interface MapModel {
    * until when) its wind is the chart's.
    */
   handover: Handover | null;
+  /** The rider's model changed here: the chart, the dock and the stars follow. */
   chooseModel: (id: ModelId, wanted?: string) => void;
   cancel: () => void;
   retry: () => void;
@@ -97,6 +108,13 @@ export interface Handover {
 
 export function useMapModel(): MapModel {
   const { strip, selected, columnModels, now } = useForecast();
+  const { prefs, setModel, update } = usePrefs();
+  /** The rider's model: the chart opens on it and moves to it whenever it changes. */
+  const wanted = mapModelOf(chosenModel(prefs.rider.starsFrom));
+  const wantedNow = useRef(wanted);
+  useEffect(() => {
+    wantedNow.current = wanted;
+  });
   const column = strip[selected];
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [frame, setFrame] = useState<Frame | null>(null);
@@ -109,10 +127,15 @@ export function useMapModel(): MapModel {
   const epoch = useRef(0);
   const request = useRef<AbortController | null>(null);
 
-  /* ---- the first run: HARMONIE's ---- */
+  /* ---- the first run: the rider's model's (again on Retry) ---- */
+  // The model the chart last set out to draw: a switch that fails is not
+  // asked again until the rider chooses again or retries.
+  const asked = useRef<ModelId>(wanted);
   useEffect(() => {
     const controller = new AbortController();
-    loadManifest("harmonie", controller.signal)
+    const id = wantedNow.current;
+    asked.current = id;
+    loadManifest(id, controller.signal)
       .then((m) => {
         if (!controller.signal.aborted) setManifest(m);
       })
@@ -265,13 +288,30 @@ export function useMapModel(): MapModel {
     return () => sub.remove();
   }, [commit]);
 
-  /* ---- choosing a model ---- */
-  const chooseModel = useCallback(
+  /* ---- switching model ---- */
+  /**
+   * A switch that failed or was cancelled puts the rider's model back to the
+   * one still drawn, so the stars never rate a model the chart is not
+   * showing. Read from the prefs as they are then, not as this render saw them.
+   */
+  const keepDrawn = useCallback(
+    (drawn: string) =>
+      update((was) =>
+        chosenModel(was.rider.starsFrom) === drawn ? was : { ...was, rider: withRiderModel(was.rider, drawn) },
+      ),
+    [update],
+  );
+  /** The switch in flight, and the model drawn while it loads. */
+  const switching = useRef<{ controller: AbortController; drawn: string } | null>(null);
+  /** Draws `id`, the old model left drawn until the new one is whole. */
+  const switchTo = useCallback(
     (id: ModelId, wanted?: string) => {
       if (!manifest || !frame || (id === manifest.model && !wanted)) return;
+      // A newer switch replaces this one: the one replaced keeps the prefs as they are.
       request.current?.abort();
       const controller = new AbortController();
       request.current = controller;
+      switching.current = { controller, drawn: manifest.model };
       epoch.current++;
       setPendingModel(id);
       setModelError("");
@@ -291,12 +331,43 @@ export function useMapModel(): MapModel {
           setModelError(
             `Could not switch to ${MODELS.find((m) => m.id === id)?.name}. ${manifest.modelName} is still shown.${e instanceof Error ? ` ${e.message}` : ""}`,
           );
+          // `asked` already names the model that failed: the rider's model put
+          // back to the drawn one asks for no switch, so nothing is retried.
+          keepDrawn(manifest.model);
         })
         .finally(() => {
+          if (switching.current?.controller === controller) switching.current = null;
           if (request.current === controller) setPendingModel(null);
         });
     },
-    [manifest, frame, mapTime],
+    [manifest, frame, mapTime, keepDrawn],
+  );
+
+  // The rider's model, chosen here or in Settings → Model: the chart moves to
+  // it once it has a run in hand, and once for each choice.
+  const askedTime = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!manifest || !frame || asked.current === wanted) return;
+    asked.current = wanted;
+    const time = askedTime.current;
+    askedTime.current = undefined;
+    if (manifest.model !== wanted || time) switchTo(wanted, time);
+  }, [wanted, manifest, frame, switchTo]);
+
+  /** Choosing a model on the chart is choosing the rider's model. */
+  const chooseModel = useCallback(
+    (id: ModelId, time?: string) => {
+      if (id !== wanted) {
+        askedTime.current = time;
+        setModel(id);
+      } else if (manifest && (manifest.model !== id || time)) {
+        // Already the rider's but not drawn (a switch that failed), or a run of
+        // it that reaches the hour asked for.
+        asked.current = id;
+        switchTo(id, time);
+      }
+    },
+    [wanted, manifest, setModel, switchTo],
   );
 
   const tried = useRef(new Set<string>());
@@ -321,9 +392,13 @@ export function useMapModel(): MapModel {
   );
 
   const cancel = useCallback(() => {
+    const cancelled = switching.current;
+    switching.current = null;
     request.current?.abort();
     setPendingModel(null);
-  }, []);
+    // Only a switch still in flight: one that has ended has cleared `switching`.
+    if (cancelled) keepDrawn(cancelled.drawn);
+  }, [keepDrawn]);
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   const dismiss = useCallback(() => {
     setModelError("");

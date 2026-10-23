@@ -211,10 +211,10 @@ describe("words", () => {
     const col = columns(15)[14];
     const rated = hour({ from: 225, model: "gfs" });
     expect(hourReading(col, rated, "kn")).toBe(
-      `Saturday 15:00, ${rated.rating!.stars} stars, south-west 18 knots gusting 24, stars from GFS`,
+      `Saturday 15:00, ${rated.rating!.stars} stars, south-west 18 knots gusting 24, GFS forecast`,
     );
     // An hour with no stars came from no model worth naming.
-    expect(hourReading(col, hour({ daylight: false, rating: null, model: "gfs" }), "kn")).not.toMatch(/stars from/);
+    expect(hourReading(col, hour({ daylight: false, rating: null, model: "gfs" }), "kn")).not.toMatch(/forecast/);
   });
 
   it("marks where the model the stars come from changes", () => {

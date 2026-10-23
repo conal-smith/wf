@@ -40,13 +40,11 @@ export interface HourExplanation {
   facingKnown: boolean;
   /** The one model the hour was rated from (PlaceHour.model); null where none reached it. */
   model?: string | null;
-  /** The model is this spot's own, not the rider's choice everywhere. */
-  spotOwn?: boolean;
 }
 
-/** "Stars from HARMONIE", "Stars from GFS, at this spot". */
-export const starsFromLine = (model: string | null | undefined, spotOwn = false): string | null =>
-  model ? `Stars from ${modelName(model)}${spotOwn ? ", at this spot" : ""}` : null;
+/** "HARMONIE's forecast": the model the hour was rated from. */
+export const modelLine = (model: string | null | undefined): string | null =>
+  model ? `${modelName(model)}’s forecast` : null;
 
 /** The one-line verdict: "5 m wing" / "No stars" / "Dark: not rated". */
 export function verdictText(
@@ -150,9 +148,9 @@ export function RatingTip({
                   </T>
                 )}
               <Rule style={styles.rule} />
-              {e.rating && starsFromLine(e.model, e.spotOwn) ? (
+              {e.rating && modelLine(e.model) ? (
                 <T variant="caption" color="muted">
-                  {starsFromLine(e.model, e.spotOwn)}
+                  {modelLine(e.model)}
                 </T>
               ) : null}
               <T variant="caption" color="muted">

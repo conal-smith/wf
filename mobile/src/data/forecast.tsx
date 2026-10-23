@@ -10,10 +10,10 @@
  *    squares are read for the chart's view (setView, from the map) and for
  *    the open, starred and most-opened spots, wherever they are.
  *  - The models' manifests are fetched only when something needs them: a
- *    rider who has left a model out of the blend, a blend too old to trust or
- *    built with other models than the rider's stars come from, a spot the
- *    rider rates from a model of its own (read from that model's square beside
- *    the blend), or a screen that lists the models (wantModels).
+ *    blend missing, too old to trust or rated from another model than the
+ *    rider's (a rider who picked a model other than HARMONIE), or a screen
+ *    that lists the models (wantModels). The models the rider keeps in the
+ *    blend never move a star, so leaving one out needs nothing read.
  */
 import {
   createContext,
@@ -25,7 +25,7 @@ import {
   type ReactNode,
 } from "react";
 import { AppState } from "react-native";
-import { windModels, type ModelAvailability } from "../../../force5/src/manifests";
+import type { ModelAvailability } from "../../../force5/src/manifests";
 import { squaresToRead, type ViewBounds } from "../../../force5/src/squares";
 import { starsFromAt } from "../../../force5/src/lead";
 import { ratedRider, type Rider } from "../../../force5/src/stars";
@@ -34,8 +34,6 @@ import type { Spot } from "../../../force5/src/weather";
 import type { PlaceHour, RatedPlace } from "../../../src/ratings";
 import {
   blendColumnModels,
-  ownBlendModels,
-  placesRatedApart,
   trustedSpotBlend,
   type LoadedBlend,
 } from "../../../src/spotBlend";
@@ -131,17 +129,8 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
 
   /* ---- the published blend, and the models only when they are wanted ---- */
   const spotBlend = useSpotBlend(false);
-  const ownBlend = ownBlendModels(
-    prefs.blendModels,
-    windModels().map((model) => model.id),
-  );
-  // So is one whose stars come from other models than the published blend's.
-  const pointer = trustedSpotBlend(
-    spotBlend.blend,
-    ownBlend,
-    now,
-    starsFromAt(rider.starsFrom),
-  );
+  // A blend rated from another model than the rider's is not theirs.
+  const pointer = trustedSpotBlend(spotBlend.blend, now, starsFromAt(rider.starsFrom));
   const ownPlaces = useMemo(() => {
     const ids = new Set([...(spotId ? [spotId] : []), ...starred, ...frequent.map((v) => v.id)]);
     return spots.filter((s) => ids.has(s.id));
@@ -155,19 +144,10 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
     spotBlend.recheck,
   );
   const published = blendSquares.failed ? null : pointer;
-  // A spot the rider rates from a model of its own is worked out from that
-  // model's square, beside the published blend that rates every other.
-  const ratedApart = useMemo(
-    () => placesRatedApart(spots, rider, published),
-    [spots, rider, published],
-  );
   const { models, resolved: modelsResolved } = useModelAvailability(
     false,
     undefined,
-    modelsWanted ||
-      ownBlend ||
-      (spotBlend.resolved && !published) ||
-      ratedApart.length > 0,
+    modelsWanted || (spotBlend.resolved && !published),
   );
 
   /* ---- the week's columns, and the strip of them the dock shows ---- */
@@ -207,9 +187,8 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
   const windOnly = useMemo(() => models.filter((model) => model.wind !== null), [models]);
   const ownSquares = useMemo(() => {
     const listed = windOnly.flatMap((model) => model.wind!.spots.squares);
-    if (!published) return squaresToRead(view, listed, ownPlaces);
-    return ratedApart.length ? squaresToRead(null, listed, ratedApart) : null;
-  }, [published, view, windOnly, ownPlaces, ratedApart]);
+    return published ? null : squaresToRead(view, listed, ownPlaces);
+  }, [published, view, windOnly, ownPlaces]);
   const rated = useSpotSquaresState(windOnly, ownSquares, true);
   const { hours, version } = useRatings(
     rated.models,
@@ -224,11 +203,6 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
       : rated.squares === ALL_SQUARES
         ? null
         : (rated.squares ?? []),
-    published
-      ? rated.squares === ALL_SQUARES
-        ? null
-        : (rated.squares ?? [])
-      : null,
   );
 
   const openSpot = useCallback(
