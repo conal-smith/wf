@@ -31,6 +31,7 @@ import {
   SatelliteGlyph,
   SoundingsGlyph,
   SpotsGlyph,
+  SurveyGlyph,
   TidalDepthGlyph,
   TintsGlyph,
 } from "./chartGlyphs";
@@ -54,7 +55,14 @@ const CHART_LABEL: Record<keyof ChartLayers, string> = {
   relief: "Land relief",
   names: "Spot names",
   foil: "Tidal depth",
+  lidar: "LiDAR data",
   currents: "Currents, a rough guide",
+};
+/** The chart's switches whose key is in the map's information, behind an "i". */
+const CHART_INFO: Partial<Record<keyof ChartLayers, [string, InfoSection]>> = {
+  foil: ["About tidal depth", "foil"],
+  lidar: ["About the LiDAR data", "lidar"],
+  currents: ["About currents", "currents"],
 };
 /** Each part's glyph, drawn as the chart draws the part; a row without one still reads. */
 const CHART_GLYPH: Partial<Record<keyof ChartLayers, ReactNode>> = {
@@ -63,6 +71,7 @@ const CHART_GLYPH: Partial<Record<keyof ChartLayers, ReactNode>> = {
   relief: <ReliefGlyph />,
   names: <NamesGlyph />,
   foil: <TidalDepthGlyph />,
+  lidar: <SurveyGlyph />,
   currents: <CurrentsGlyph />,
 };
 const SATELLITE_GLYPH: Partial<Record<SatelliteOption, ReactNode>> = {
@@ -260,18 +269,17 @@ export default function MapControls({
                       <span>{CHART_LABEL[key]}</span>
                     </label>
                   );
-                  // The tidal depth's and the currents' keys are in the map's
-                  // information, not on the chart: their "i" opens it there,
-                  // beside the switch.
-                  if (key !== "foil" && key !== "currents") return box;
+                  // The tidal depth's, the LiDAR's and the currents' keys are in
+                  // the map's information, not on the chart: each one's "i"
+                  // opens it there, beside the switch.
+                  const info = CHART_INFO[key];
+                  if (!info) return box;
                   return (
                     <div key={key} className="layer-info">
                       {box}
                       <InfoButton
-                        label={
-                          key === "foil" ? "About tidal depth" : "About currents"
-                        }
-                        onOpen={() => onInfo(key)}
+                        label={info[0]}
+                        onOpen={() => onInfo(info[1])}
                       />
                       {key === "currents" && layers.currents && (
                         <small data-currents-note>

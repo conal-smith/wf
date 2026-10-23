@@ -16,6 +16,7 @@ const SECTION_ID: Record<InfoSection, string> = {
   key: "map-info-key",
   stars: "map-info-stars",
   foil: "map-info-foil",
+  lidar: "map-info-lidar",
   currents: "map-info-currents",
   sources: "map-info-sources",
 };
@@ -25,7 +26,7 @@ const SECTION_ID: Record<InfoSection, string> = {
  * its marks mean, how the stars are given, the tidal-depth layer's colours
  * and tide, and where it all comes from. One dialog over the dimmed chart, so
  * none of it sits on the map; mounted only while open. A "?" by the stars, or
- * the "i" by the tidal depth's switch, opens it at its own part.
+ * the "i" by the tidal depth's switch or the LiDAR's, opens it at its own part.
  */
 export default function MapInfo({
   at,
@@ -35,6 +36,7 @@ export default function MapInfo({
   rider,
   spotId,
   foil,
+  lidar,
   sources,
   satellite = null,
   satelliteError = null,
@@ -49,6 +51,8 @@ export default function MapInfo({
   spotId: string | null;
   /** The tidal-depth key (src/FoilLegend.tsx). */
   foil: ReactNode;
+  /** The LiDAR layer's key (src/LidarKey.tsx). */
+  lidar: ReactNode;
   sources: ReactNode;
   /** "Satellite: high tide (≈4.6 m)" while the image is on, else null. */
   satellite?: string | null;
@@ -129,6 +133,7 @@ export default function MapInfo({
         </>,
       )}
       {section("foil", "Tidal depth", foil)}
+      {section("lidar", "LiDAR data", lidar)}
       {section(
         "currents",
         "Currents",
