@@ -73,7 +73,8 @@ MAX_HEIGHT_METRES = 8.0  # Tidal range above LAT; no Irish station approaches th
 MIN_HEIGHT_METRES = -1.0
 # How large a measurement a variables bundle may publish: metres and seconds for
 # waves, but a weather bundle carries hectopascals, millimetres and J/kg as well.
-VARIABLE_LIMITS = {"wave": 1000, "weather": 100_000}
+# Surface currents are m/s: a component past 10 is a broken field, not a reading.
+VARIABLE_LIMITS = {"wave": 1000, "weather": 100_000, "current": 10}
 MAX_CODE = 1000  # A code-table entry is a small whole number, never a measurement.
 # Sea water: below freezing point at salinity, above anything Irish waters reach.
 OBSERVATION_MIN_CELSIUS, OBSERVATION_MAX_CELSIUS = -2.0, 35.0
@@ -97,7 +98,7 @@ PRECONDITION_CODES = ("PreconditionFailed", "412", "ConditionalRequestConflict",
 UNSUPPORTED_CONDITION_CODES = ("NotImplemented", "501")
 MISSING_CODES = ("NoSuchKey", "NotFound", "404")
 # Kinds published as a run directory and a schemaVersion 2 pointer.
-RUN_KINDS = ("wind", "wave", "weather", "blend")
+RUN_KINDS = ("wind", "wave", "weather", "current", "blend")
 
 
 def error_code(error):
@@ -281,7 +282,7 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
         raise ValueError("Refusing to publish a stale or future-dated run")
     if datetime.fromisoformat(manifest["runTime"].replace("Z", "+00:00")) != run:
         raise ValueError("Run time does not match run identity")
-    # Wave and weather bundles are the same shape: declared variables, optional
+    # Wave, weather and current bundles are the same shape: declared variables, optional
     # frames of one array each, and a precomputed series per riding location.
     if manifest.get("encoding") is not None:
         raise ValueError("Whole-frame encodings are retired: wind frames are published as tiles")
@@ -437,7 +438,7 @@ def variable_value(value, name, codes, limit):
 
 
 def validate_variables_bundle(files, model, manifest, run, now):
-    """A wave or weather run: declared variables, optional frames, spot series."""
+    """A wave, weather or current run: declared variables, optional frames, spot series."""
     kind = manifest.get("kind", "wave")
     limit = VARIABLE_LIMITS[kind]
     variables = manifest.get("variables")

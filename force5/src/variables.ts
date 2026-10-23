@@ -16,8 +16,8 @@
 import type { SpotIndex } from "./spotData";
 import { usableRunPath, validateRunPointer, type Grid } from "./weather";
 
-/** The two bundle kinds built on a declared variable map. */
-export type VariablesKind = "wave" | "weather";
+/** The bundle kinds built on a declared variable map. */
+export type VariablesKind = "wave" | "weather" | "current";
 
 /** Cadences the importers publish; anything else is a contract break. */
 export const VARIABLE_STEP_HOURS: readonly number[] = [1, 3, 6];
@@ -31,6 +31,8 @@ export const MAX_VARIABLES_HORIZON_HOURS = 384;
 export const VARIABLE_VALUE_LIMITS: Record<VariablesKind, number> = {
   wave: 1000,
   weather: 100_000,
+  // Surface currents in m/s (force5/src/currents.ts).
+  current: 10,
 };
 /** A code-table entry is a small whole number, never a measurement. */
 export const MAX_VARIABLE_CODE = 1000;

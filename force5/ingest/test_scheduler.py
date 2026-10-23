@@ -176,7 +176,7 @@ class ShippedScheduleTest(unittest.TestCase):
         identities = [job["id"] for job in jobs]
         self.assertEqual(identities, ["harmonie", "icon-eu", "icon-eu-weather", "ecmwf",
                                       "harmonie-eps", "ecmwf-ens", "aifs", "gfs", "gefs", "arpege",
-                                      "arome", "gfs-wave", "gfs-weather", "mi-swan", "ecmwf-wave", "tides",
+                                      "arome", "gfs-wave", "gfs-weather", "mi-swan", "currents", "ecmwf-wave", "tides",
                                       "sea-temperature", "blend", "blend-after-harmonie", "wind-obs",
                                       "forecast-archive",
                                       "verify", "prune"])
@@ -242,11 +242,14 @@ class ShippedScheduleTest(unittest.TestCase):
             # The whole 384 h run, listed later than the wind's 240 h.
             "gfs-weather": ((0, 6, 12, 18), timedelta(hours=4, minutes=45)),
             "mi-swan": ((0,), timedelta(hours=9)),
+            # ROMS writes the day's forecast files by about 00:55 UTC; ERDDAP's
+            # aggregate takes them up within the hour or so after.
+            "currents": ((0,), timedelta(hours=2)),
         }
         with contextlib.redirect_stdout(io.StringIO()):
             jobs = {job["id"]: job for job in scheduler.load_jobs(JOBS_FILE)}
         enabled = {model for job in jobs.values() if job["enabled"] for model in job["models"]
-                   if MODELS[model]["kind"] in ("wind", "wave", "weather")}
+                   if MODELS[model]["kind"] in ("wind", "wave", "weather", "current")}
         self.assertEqual(enabled, set(cadence), "Give a newly enabled forecast its cadence here")
         start = datetime(2026, 10, 12, tzinfo=timezone.utc)
         for model, (cycles, lag) in cadence.items():

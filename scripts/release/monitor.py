@@ -17,7 +17,7 @@ site calls retired or planned. A model the site lists but no job publishes is
 therefore checked, and goes stale: that is a real fault, not noise.
 
 **What is checked, per model.** The pointer parses; a run (`wind`, `wave`,
-`weather`, `blend`) is schemaVersion 2 with a usable `base` and spot square index;
+`weather`, `current`, `blend`) is schemaVersion 2 with a usable `base` and spot square index;
 tides, observations, the archive and the scores are the schemaVersion 1 bundles
 they are. Its `run` is no older than force5/ingest/registry.py's `maxAgeHours` --
 the limit status.py calls stale, the one that means something is wrong -- plus
@@ -74,7 +74,7 @@ from squares import check_base, square_index, square_path  # noqa: E402
 # not merely about to be replaced.
 MARGIN_HOURS = 1.0
 # A run kind publishes a run directory behind a schemaVersion 2 pointer.
-RUN_KINDS = ("wind", "wave", "weather", "blend")
+RUN_KINDS = ("wind", "wave", "weather", "current", "blend")
 # Pointers are revalidated by every reader; anything cached longer than this is wrong.
 POINTER_MAX_AGE_SECONDS = 300
 IMMUTABLE_MIN_AGE_SECONDS = 86400

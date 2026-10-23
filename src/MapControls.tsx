@@ -17,6 +17,7 @@ import {
   AboutGlyph,
   ArrowsWindGlyph,
   ColouredWindGlyph,
+  CurrentsGlyph,
   HighTideGlyph,
   InkWindGlyph,
   LayersGlyph,
@@ -52,6 +53,7 @@ const CHART_LABEL: Record<keyof ChartLayers, string> = {
   relief: "Land relief",
   names: "Spot names",
   foil: "Tidal depth",
+  currents: "Currents, a rough guide",
 };
 /** Each part's glyph, drawn as the chart draws the part; a row without one still reads. */
 const CHART_GLYPH: Partial<Record<keyof ChartLayers, ReactNode>> = {
@@ -60,6 +62,7 @@ const CHART_GLYPH: Partial<Record<keyof ChartLayers, ReactNode>> = {
   relief: <ReliefGlyph />,
   names: <NamesGlyph />,
   foil: <TidalDepthGlyph />,
+  currents: <CurrentsGlyph />,
 };
 const SATELLITE_GLYPH: Partial<Record<SatelliteOption, ReactNode>> = {
   high: <HighTideGlyph size={16} />,
@@ -145,6 +148,7 @@ export default function MapControls({
   modelNote,
   modelDisabled,
   onModel,
+  currentsNote = null,
 }: {
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -178,6 +182,8 @@ export default function MapControls({
   modelNote?: string | null;
   modelDisabled: boolean;
   onModel: (id: ModelId) => void;
+  /** What the Currents layer cannot draw at the hour shown, while it is on. */
+  currentsNote?: string | null;
 }) {
   const close = () => onOpen(null);
   return (
@@ -251,18 +257,25 @@ export default function MapControls({
                       <span>{CHART_LABEL[key]}</span>
                     </label>
                   );
-                  // The tidal depth's key is in the map's information, not on the
-                  // chart: its "i" opens it there, beside the switch.
-                  return key === "foil" ? (
+                  // The tidal depth's and the currents' keys are in the map's
+                  // information, not on the chart: their "i" opens it there,
+                  // beside the switch.
+                  if (key !== "foil" && key !== "currents") return box;
+                  return (
                     <div key={key} className="layer-info">
                       {box}
                       <InfoButton
-                        label="About tidal depth"
-                        onOpen={() => onInfo("foil")}
+                        label={
+                          key === "foil" ? "About tidal depth" : "About currents"
+                        }
+                        onOpen={() => onInfo(key)}
                       />
+                      {key === "currents" && layers.currents && (
+                        <small data-currents-note>
+                          {currentsNote ?? "Not for safety."}
+                        </small>
+                      )}
                     </div>
-                  ) : (
-                    box
                   );
                 },
               )}

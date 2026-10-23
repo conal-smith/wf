@@ -156,6 +156,7 @@ repository's `.venv` and a scratch `FORCE5_WORK_DIR`, never with a bucket:
 | `icon-eu-weather` | 512 MB | 225 | 13 | a cached run, 25 steps as scheduled |
 | `verify` | 512 MB | 225 | 23 | a 30-day archive made from today's archived runs |
 | `mi-swan` | 512 MB | 190 | 1 | a live run |
+| `currents` | 512 MB | 240 | 4 | a live run (22 October 2026) |
 | `blend` | 512 MB | 185 | 0.4 | the site's current runs, read over public HTTPS; includes Node |
 | `forecast-archive` | 512 MB | 140 | 1.4 | archiving four new runs at once from that copy |
 | `tides`, `sea-temperature`, `wind-obs` | 512 MB | 135 | 0.2-0.4 | live runs |
