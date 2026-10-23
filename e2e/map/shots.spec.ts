@@ -5,7 +5,6 @@ import {
   rememberSpot,
   SPOTS_KEY,
   test,
-  unfoldTools,
   type Page,
 } from "../fixtures";
 import { sampleStrip } from "../columns";
@@ -208,16 +207,10 @@ for (const { width, height } of [
     test("the dock's waves, sky and sea", async ({ page }) => {
       await openMap(page);
       await pick(page, "Brandon Bay");
-      // A phone's tools are folded: opened for the press, and folded again,
-      // their resting state, where the water's reading stands.
-      await unfoldTools(page);
       await page
         .getByRole("button", { name: "Show waves, sky and sea" })
         .click();
-      const fold = page.getByRole("button", { name: "Fold the spot's tools" });
-      if (await fold.count()) await fold.click();
       await expect(page.locator(".dock tr.tt-rain")).toHaveCount(1);
-      await expect(page.locator(".dk-tools .dk-sea")).toBeVisible();
       // Inside the sample's weather run, which starts three days on.
       const noon = sampleStrip.findIndex(
         (c) => c.date === "2026-09-17" && c.hour >= 12,

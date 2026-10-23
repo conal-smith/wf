@@ -191,15 +191,3 @@ export async function setLayer(page: Page, name: string, on: boolean) {
   await expect(tile).toHaveAttribute("aria-pressed", String(on));
 }
 
-/**
- * On a phone the dock's tools are folded into one glyph (src/ForecastDock.tsx
- * `dk-fold`): open them, where they are folded, before a press on one.
- */
-export async function unfoldTools(page: Page) {
-  const fold = page.locator(".dk-tools .dk-fold");
-  if (
-    (await fold.count()) &&
-    (await fold.getAttribute("aria-expanded")) === "false"
-  )
-    await fold.click();
-}

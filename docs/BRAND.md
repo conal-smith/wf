@@ -28,10 +28,10 @@ of it.
    (`wide:`) and 900 (`rail:`). Nothing pressed is shorter than 44px on a
    finger. A field is 16px on a touch device.
 4. **The pen is for the one thing that matters.** One mark on a view, two at
-   most: a loop round the best hour, an underline under the word that
-   carries the note, a strike through what is off. The pen's note says the
-   verdict in a few words ("Go 13:00–16:00. Four stars on a 6 m."). The pen
-   is never a fill, a control or a status.
+   most: a loop round the chosen spot or hour, a line at now, a strike
+   through what is off. It marks and does not comment: no verdict beside the
+   mark ("Go 13:00–16:00" is not written; see the information rule in
+   DESIGN_PRINCIPLES.md). The pen is never a fill, a control or a status.
 5. **One filled action per view.** The ink pill (`Button variant="primary"`),
    magenta under the pointer. Everything else is ruled in ink, or quiet.
 6. **Rules, not surfaces.** One paper. Things are set apart by an ink rule
@@ -223,9 +223,10 @@ head: the menu, the wordmark (`Wordmark size="sm"`), and "Find a spot…" as a
 `SearchField`. Spot lights are the mockup's `.lt`: a figure in a ring (ink at
 3–4 stars, magenta at 5, dashed at none, struck through in the pen when
 offshore). In the dock the pen goes twice round the chosen hour and rules a
-line at the time now, the time written over it in its hand; the dock's tools
-(the star, the blend, the spot's page, the fold) stand on the chart in a box
-like the map's controls. `StarGlyphs` in `src/StarsRows.tsx` already draws through the kit;
+line at the time now, with nothing written by it; the dock's tools (the star,
+the name that opens the spot's page, the blend, the fold, the close) stand on
+the chart in a box like the map's controls, and on a phone are the head of
+the dock's sheet. `StarGlyphs` in `src/StarsRows.tsx` already draws through the kit;
 it keeps the dock's narrow width with `slots="potential"`. Gust is still the
 ink blob with a magenta wing; whether he becomes the puffin is the owner's
 call. The Force5 logo in the top bar is the old brand. The map visual

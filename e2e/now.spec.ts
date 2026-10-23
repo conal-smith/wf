@@ -60,17 +60,19 @@ test("at night the strip opens on the hour now, a night column of its own", asyn
   await expect(hour).toHaveClass(/\bc-sel\b/);
 });
 
-test("the pen rules a line at the time now, between the hours, and writes the time over it", async ({
+test("the pen rules a line at the time now, between the hours, and writes nothing by it", async ({
   page,
 }) => {
   // 16:30 Irish time: half way from 16's column to 17's.
   const now = Date.parse(harmonie.runTime) + 2.5 * 3600000;
   await page.clock.setFixedTime(new Date(now));
   await page.goto("/?spot=brandon");
-  const mark = page.locator(".dock .tt-under");
-  await expect(mark.locator(".pen-now-time")).toHaveText("16:30", {
+  const mark = page.locator(".dock .tt-under[data-now]");
+  await expect(mark).toHaveAttribute("data-now", "16:30", {
     timeout: 30000,
   });
+  // A line, and no words: the hours over it say the time.
+  await expect(page.locator(".dock .tt-under text")).toHaveCount(0);
   const strip = stripAt(now);
   const lineAt = () =>
     mark
@@ -91,6 +93,6 @@ test("the pen rules a line at the time now, between the hours, and writes the ti
   // And it goes on with the clock.
   await page.clock.setFixedTime(new Date(now + 2 * 3600000));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-  await expect(mark.locator(".pen-now-time")).toHaveText("18:30");
+  await expect(mark).toHaveAttribute("data-now", "18:30");
   expect(await lineAt()).toBeGreaterThan(b);
 });
