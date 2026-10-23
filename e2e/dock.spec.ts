@@ -410,6 +410,25 @@ test("the arrow keys step the hour as the page opens, with nothing clicked, and 
   await expect(slider(page)).toHaveValue(String(start + 2));
 });
 
+test("the arrow keys run through the hours as fast as they come, with no page error", async ({
+  page,
+}) => {
+  // A runner draws each hour in up to a second.
+  test.slow();
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await openDock(page);
+  const start = Number(await slider(page).inputValue());
+  // Faster than the hours can be drawn, as a key held down sends them: each
+  // hour's render used to leave the map's hour queued behind it, and past
+  // fifty React stopped the page with "Maximum update depth exceeded".
+  const steps = 60;
+  for (let i = 0; i < steps; i++) await page.keyboard.press("ArrowRight");
+  await expect(slider(page)).toHaveValue(String(start + steps));
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  expect(errors).toEqual([]);
+});
+
 test("a tap on an hour selects it", async ({ page }) => {
   await openDock(page);
   const cell = page.locator('.dock tr.tt-wing td[data-i="6"]');
