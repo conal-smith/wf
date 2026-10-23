@@ -6,6 +6,7 @@ import "./dock.css";
 import "./panels.css";
 import {
   lazy,
+  startTransition,
   Suspense,
   useCallback,
   useEffect,
@@ -244,7 +245,14 @@ function useMedia(query: string) {
   return match;
 }
 
-/** Follows a value at most every `ms` while it keeps changing, then settles on it. */
+/**
+ * Follows a value at most every `ms` while it keeps changing, then settles on
+ * it. What follows is never urgent: a key's hour commits at once and runs its
+ * effects there and then, and the value set straight after it, urgent too,
+ * was one more render queued behind each key. Keys coming faster than the
+ * page could draw them never let that queue empty, and React stopped the page
+ * with "Maximum update depth exceeded".
+ */
 function useThrottled<T>(value: T, ms: number): T {
   const [out, setOut] = useState(value);
   const last = useRef(0);
@@ -252,7 +260,7 @@ function useThrottled<T>(value: T, ms: number): T {
     const wait = last.current + ms - performance.now();
     if (wait <= 0) {
       last.current = performance.now();
-      setOut(value);
+      startTransition(() => setOut(value));
       return;
     }
     const timer = window.setTimeout(() => {
@@ -743,7 +751,8 @@ export default function App() {
     // No frame before the page knows its opening time: one asked for sooner
     // (the run's first, and its prefetch) would only be thrown away.
     if (!mapRun || pendingModel || !mapTime) return;
-    setFrameError("");
+    // Only when there is one: on every hour, a render queued for nothing.
+    if (frameError) setFrameError("");
     if (painted) return;
     const controller = new AbortController();
     const epoch = modelEpoch.current;
