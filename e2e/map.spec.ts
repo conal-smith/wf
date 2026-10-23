@@ -721,14 +721,23 @@ test("the mark round a chosen spot moves with the chart, in the same frame", asy
       return null;
     });
     expect(from).not.toBeNull();
+    // Five steps to the drag: each waits for a frame of the chart, on CI's
+    // software renderer the whole map drawn and read back, and five frames
+    // of a drag are as many readings as twenty.
     await page.mouse.move(from!.x, from!.y);
     await page.mouse.down();
-    await page.mouse.move(from!.x - 160, from!.y - 90, { steps: 20 });
+    await page.mouse.move(from!.x - 160, from!.y - 90, { steps: 5 });
     await page.mouse.up();
     await page.waitForTimeout(1200);
-    await page.getByRole("button", { name: "Zoom out", exact: true }).click();
+    // Pressed in the page: a click's checks that the button stands still
+    // wait on those frames too, for a button that never moves.
+    const press = (name: string) =>
+      page
+        .getByRole("button", { name, exact: true })
+        .evaluate((button: HTMLElement) => button.click());
+    await press("Zoom out");
     await page.waitForTimeout(1200);
-    await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+    await press("Zoom in");
     await page.waitForTimeout(1200);
     const { rest, gaps } = await page.evaluate(() => {
       const w = window as unknown as { __gaps: number[][]; __rest: number[] };
