@@ -502,11 +502,11 @@ test("the spot's tools stand on the chart over the dock, and no day is rated", a
 }) => {
   await openDock(page);
   // No county, no compass, no line of the day's best, no small print, no
-  // play, no water: the star, the name (the way to the spot's page), whose
-  // forecast the stars are, the blend, the fold and the close, in a box on
-  // the chart at the dock's top edge. The dock under it is its rows.
+  // play, no water, no model: the star, the name (the way to the spot's
+  // page), the blend, the fold and the close, in a box on the chart at the
+  // dock's top edge. The dock under it is its rows.
   const tools = page.getByRole("group", { name: "This spot" });
-  await expect(tools).toHaveText(/^Brandon Bay(HARMONIE|ECMWF)Blend$/);
+  await expect(tools).toHaveText(/^Brandon BayBlend$/);
   const box = (await tools.boundingBox())!;
   const dock = (await page.locator(".dock").boundingBox())!;
   expect(box.y + box.height).toBeLessThanOrEqual(dock.y);
