@@ -497,35 +497,6 @@
   color: var(--color-pen);
 }
 /* Past the rider's range: an outline, still. */
-/* The loupe's rose in the key (src/MapInfo.tsx). */
-.k-rose-rim {
-  fill: none;
-  stroke: var(--color-ink);
-  stroke-width: 1.4;
-}
-.k-rose-nogo {
-  fill: var(--color-ink);
-  fill-opacity: 0.18;
-  stroke: var(--color-ink);
-  stroke-width: 0.6;
-  stroke-dasharray: 1.5 1.5;
-}
-.k-rose-out {
-  fill: var(--color-ground);
-  stroke: var(--color-ink);
-  stroke-width: 1;
-}
-.k-rose-off {
-  fill: none;
-  stroke: var(--color-pen);
-  stroke-width: 2;
-  stroke-linecap: round;
-}
-.k-rose-needle {
-  stroke: var(--color-ink);
-  stroke-width: 0.8;
-  stroke-linejoin: round;
-}
 .lt-key-wedge {
   fill: var(--color-ink);
   stroke: var(--color-ink);
@@ -1092,8 +1063,7 @@
   letter-spacing: 0.06em;
   color: var(--color-ink-muted);
 }
-.side h4,
-.map-info h4 {
+.side h4 {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1166,102 +1136,6 @@
   font: 400 10.5px var(--font-mono);
   color: var(--color-ink-muted);
 }
-/* The key, in the map's information (src/MapInfo.tsx) */
-.key .k-t1 {
-  margin: 8px 0 0;
-  padding-left: 0.3em;
-  font: 700 19px var(--font-display);
-  letter-spacing: 0.3em;
-  text-align: center;
-}
-.key .k-t2 {
-  margin: 0;
-  font: italic 400 12.5px var(--font-display);
-  text-align: center;
-}
-.key .k-scale {
-  margin: 2px 0 4px;
-  font: 500 9px var(--font-mono);
-  letter-spacing: 0.12em;
-  text-align: center;
-  color: var(--color-ink-muted);
-}
-.key dl {
-  display: grid;
-  grid-template-columns: 36px 1fr;
-  gap: 4px 8px;
-  align-items: center;
-  margin: 6px 0 0;
-  font-size: 13px;
-  line-height: 1.2;
-}
-.key dt {
-  display: grid;
-  place-items: center;
-}
-.key dd {
-  margin: 0;
-}
-.k-wind path {
-  fill: none;
-  stroke: color-mix(in srgb, var(--color-ink) 55%, transparent);
-  stroke-linecap: round;
-}
-.k-wind path.faint {
-  stroke: color-mix(in srgb, var(--color-ink) 30%, transparent);
-}
-/* The Currents layer's key: its arrows as the chart draws them. */
-.map-info .cur-key {
-  display: grid;
-  grid-template-columns: 36px 1fr;
-  gap: 4px 8px;
-  align-items: center;
-  margin: 0 0 8px;
-  font-size: 13px;
-  line-height: 1.2;
-}
-.cur-key dt {
-  display: grid;
-  place-items: center;
-}
-.cur-key dd {
-  margin: 0;
-}
-.cur-key path {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.cur-key .cur-k-model {
-  stroke: var(--color-depth);
-  stroke-width: 1.4;
-}
-.cur-key .cur-k-stream {
-  stroke: var(--color-ink);
-  stroke-width: 1.8;
-}
-.map-info .cur-sites {
-  padding-left: 18px;
-}
-.key .tints {
-  display: flex;
-  margin: 10px 0 2px;
-  border: 1px solid color-mix(in srgb, var(--color-depth) 60%, transparent);
-}
-.key .tints span {
-  flex: 1;
-  height: 14px;
-  font: italic 9.5px/14px var(--font-body);
-  text-align: center;
-  color: var(--color-ink-2);
-}
-.key .datum {
-  margin: 3px 0 0;
-  font-size: 12px;
-  font-style: italic;
-  text-align: center;
-}
-
 /* ---------- small round buttons: i for the small print, ? for the stars ---------- */
 .info-i,
 .help-q {
@@ -1312,13 +1186,11 @@
 }
 /* What an "i" opens (src/InfoPop.tsx), and the map's information
    (src/MapInfo.tsx): the kit's dialog, with the chart's small print in it. */
-.info-pop ul,
-.map-info ul {
+.info-pop ul {
   margin: 0;
   padding-left: 18px;
 }
-.info-pop a,
-.map-info a {
+.info-pop a {
   color: inherit;
 }
 .ip-fig {
@@ -1328,37 +1200,6 @@
 .ip-small {
   font-size: 13px;
   color: var(--color-ink-muted);
-}
-.mi-part {
-  display: grid;
-  gap: 8px;
-  scroll-margin-top: 12px;
-}
-.mi-part + .mi-part {
-  padding-top: 14px;
-  border-top: 1px solid var(--color-line);
-}
-.mi-part h3 {
-  margin: 0;
-  font: 500 10px var(--font-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-.map-info .key {
-  color: var(--color-ink);
-}
-.map-info .mi-glyphs {
-  display: grid;
-  gap: 6px;
-  padding: 0;
-  list-style: none;
-}
-.mi-glyphs li {
-  display: grid;
-  grid-template-columns: 64px 1fr;
-  gap: 10px;
-  align-items: baseline;
 }
 
 /* The red star a rider keeps a spot with. */
@@ -1452,85 +1293,6 @@
   color: var(--color-warn);
 }
 
-/* ---------- foilable depth: the key, in the map's information ---------- */
-.foil-key {
-  font-size: 14px;
-  line-height: 1.4;
-}
-.foil-key .foil-at {
-  margin: 0 0 6px;
-  font: 500 11px var(--font-mono);
-  color: var(--color-ink);
-}
-.foil-key .foil-at.is-error {
-  color: var(--color-warn);
-}
-.map-info .foil-key ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.foil-key li {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 1px 0;
-}
-.foil-key .fk {
-  flex: none;
-  width: 22px;
-  height: 10px;
-  border: 1px solid var(--color-ink);
-}
-.foil-key .fk-enough {
-  background: var(--map-foil-enough);
-}
-.foil-key .fk-shallow {
-  background: var(--map-foil-shallow);
-}
-.foil-key .fk-line {
-  height: 0;
-  border: 0;
-  border-top: 2px solid var(--map-foil-line);
-}
-.foil-key .fk-dry {
-  background: var(--map-foil-dry);
-}
-.foil-key .fk-title {
-  margin: 0 0 4px;
-}
-.foil-key .fk-scale {
-  height: 10px;
-  border: 1px solid var(--color-ink);
-}
-.foil-key .fk-ticks {
-  position: relative;
-  height: 14px;
-  margin: 2px 0 6px;
-  font: 500 10px var(--font-mono);
-  color: var(--color-ink-muted);
-}
-.foil-key .fk-ticks span {
-  position: absolute;
-  left: 0;
-  transform: translateX(-50%);
-  white-space: nowrap;
-}
-.foil-key .fk-ticks span:first-child {
-  transform: none;
-}
-.foil-key .fk-ticks span:last-child {
-  transform: translateX(-100%);
-}
-.foil-key .foil-probe {
-  margin: 6px 0 0;
-  font: 500 11px var(--font-mono);
-}
-.foil-key .foil-small {
-  margin: 6px 0 0;
-  font-size: 13px;
-  color: var(--color-ink-muted);
-}
 .map-footer {
   position: absolute;
   left: 0;
