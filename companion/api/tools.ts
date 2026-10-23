@@ -503,7 +503,7 @@ const getSpotForecast = tool({
     if (typeof window === "string") return failed(window);
     const forecast = await spotForecast(ctx.source, place, window, {
       now: ctx.now,
-      from: starsFromAt(ctx.rider.starsFrom, place.id),
+      from: starsFromAt(ctx.rider.starsFrom),
     });
     if (!forecast.sources.wind.length)
       return failed(
@@ -649,7 +649,7 @@ const findSessions = tool({
           lines,
           time,
           false,
-          starsFromAt(ctx.rider.starsFrom, spot.id),
+          starsFromAt(ctx.rider.starsFrom),
         );
         const isDay = daylight(spot, time);
         return {

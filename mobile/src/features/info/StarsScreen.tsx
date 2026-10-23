@@ -35,7 +35,7 @@ import {
   type Rider,
   type Skill,
 } from "../../../../force5/src/stars";
-import { starsFromAt, starsFromText } from "../../../../force5/src/lead";
+import { leadText, starsFromAt } from "../../../../force5/src/lead";
 import { compass } from "../../../../force5/src/weather";
 import type { Ledger } from "../../../../spot/web/ledger";
 import { clock, dayNames, dublinDate } from "../../../../spot/web/spot";
@@ -154,10 +154,10 @@ export function StarsScreen() {
           <GustTable rider={rider} />
           <OtherTable />
           <P>
-            Every hour is rated from one model&rsquo;s own forecast, the one in
-            Stars from: {starsFromText(starsFromAt(rider.starsFrom))} for you.
-            Whether the other models agree is shown beside the stars, and never
-            changes them.
+            Every hour is rated from one model&rsquo;s own forecast, the model
+            you see on the chart: {leadText(starsFromAt(rider.starsFrom))} for
+            you, as the run reaches the hour. Whether the other models agree is
+            shown beside the stars, and never changes them.
           </P>
           <T variant="body" color="muted" style={styles.italic}>
             Tap an hour&rsquo;s stars, in the dock or on a spot&rsquo;s page, to

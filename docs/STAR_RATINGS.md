@@ -13,47 +13,64 @@ the map, the forecast server and a notification job can all rate the same way.
 
 **Ruling, 19 October 2026: the stars come from one model, the rider's choice.**
 Every hour is rated on one model's own wind, gust and direction, never on a
-median or blend of several. The rider picks the model ("Stars from", HARMONIE
-unless they say otherwise) and the one that takes over where its run ends
-("When it ends", ECMWF unless they say otherwise), and may give any spot of
-theirs a model of its own (its fallback stays the same). Each hour is the
-first of the two that reaches it; an hour neither reaches has no stars, and no
-other model stands in. Where that model gives no gust, the hour has none. How
-far the other models agree is shown beside the stars, as context, and never
-takes a star off.
+median or blend of several.
 
-The rule is `force5/src/lead.ts` (`starsFromAt`, `pickModel`), shared by every
-surface that rates:
+**23 October 2026: one choice, the model the rider sees.** The rider picks one
+model ("Model", HARMONIE unless they pick another), and it is the model the
+map draws, the dock and the spot page give, and the stars rate. Past the end
+of its run ECMWF takes over on its own, because it runs fifteen days and
+HARMONIE some two and a half; there is no setting for it, and ECMWF itself
+hands over to nobody. There are no spots with a model of their own any more:
+a spot rated from a model the map was not drawing broke "what you see is what
+is rated". Each hour is the first of the two that reaches it; an hour neither
+reaches has no stars, and no other model stands in. Where that model gives no
+gust, the hour has none. How far the other models agree is shown beside the
+stars, as context, and never takes a star off.
+
+The rule is `force5/src/lead.ts` (`starsFromAt`, `leadFor`, `pickModel`), shared
+by every surface that rates:
 
 | Surface                              | Where the hours come from                                                                                                                                 |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Map lights, dock stars (web and app) | `src/ratings.ts` `placeConsensus`, or for the default choice the published blend built by the same function (`src/spotBlend.ts`, `force5/blend/build.ts`) |
 | Dock's Blend chart                   | `src/useBlend.ts` → `blendStats(…, headline)`: the headline line is the same one model's                                                                  |
-| Spot page, MCP tools, Gust           | `mcp/api/forecast.ts` `hourWind(…, from)`; `get_spot_forecast` and `find_wind` take `stars_from` and `then`                                               |
+| Spot page, MCP tools, Gust           | `mcp/api/forecast.ts` `hourWind(…, from)`; `get_spot_forecast` and `find_wind` take `model`                                                                  |
 | Alerts                               | the published blend for a rider on the default; the models' own spot squares through `hourWind` for any other (`alerts/api/forecast.ts`)                  |
 | Verification                         | `force5/ingest/consensus.py`, a line-by-line replica held to the TypeScript by `force5/ingest/fixtures/blend-consensus.json`                              |
 
-The choice rides on the rider (`Rider.starsFrom`, a `StarsChoice` in
-`force5.prefs.v1`), so every page and service that is handed the rider rates
-from it: Display options (beside the level), the spot page's rider line and its
-hour card's model table ("use for stars": every spot, or just this one), and
-the app's Settings. Like the weight and the level it stays on the device; only
-a rider's own star rating is kept with their account. The app's alerts get it
-with the rest of the rider when the phone registers.
+The choice rides on the rider (`Rider.starsFrom`, a `StarsChoice` of one
+`model` in `force5.prefs.v1`; the field keeps its old name so stored riders
+still read), so every page and service that is handed the rider rates from it.
+It is set in Display options ("Model", above "Models in the blend"), the map's
+Layers ("Model, for the map and the stars"), the spot page's rider line and its
+hour card's model table, and the app's Settings → Model; all of them set the
+same choice, and the map moves to it. The map opens on it (`storedMapModel` in
+`force5/src/boot.ts`), so a rider on HARMONIE downloads nothing new. A choice
+saved before 23 October keeps its model; what it said for after the run's end
+(`then`) and for spots of their own (`spots`) is dropped (`parseStarsChoice`).
+Like the weight and the level it stays on the device; only a rider's own star
+rating is kept with their account. The app's alerts get it with the rest of
+the rider when the phone registers.
 
 The published blend is built for the default choice and says so (`lead` in
 the pointer, and in each place which model each hour is). A reader whose
-choice matches it rates from it; any other choice is worked out in the browser
-from the models' own spot squares, the squares in view, as a reader who
-leaves models out of their blend always was. A spot with a model of its own is
-worked out that way alone, beside the published blend for every other place
-(`placesRatedApart`).
+choice matches it rates from it; any other model is worked out in the browser
+from the models' own spot squares, the squares in view.
+
+The rider also chooses which models go into the blend ("Models in the blend",
+every live wind model by default). The blend is context: the dock's Blend
+chart draws the models ticked, with the rider's model's own line through them
+as the headline the stars rate, and how far they agree. Since the blend moves
+no star, a rider's own blend no longer stops the map rating from the published
+file: the lights cost the same for any blend. The chart reads only the ticked
+models' (and the rider's model's and ECMWF's) spot square for the open spot,
+and only while it is shown.
 
 Where the stars hand over from one model to the next, the dock draws a dashed
-pen line down the hours with "ECMWF from Wed 22:00" written by it, the dock's
-head names the model that rates the hour in hand ("★ HARMONIE"; magenta, "★
-from GFS", where the spot has its own), and every hour's stars say "from
-HARMONIE" to a screen reader. The spot page puts a handover row in the day's
+pen line down the hours with "ECMWF from Wed 22:00" written by it, and the
+dock's head names the model whose forecast the hour in hand is ("★ HARMONIE",
+"★ ECMWF" past the end of its run). The map hands over to ECMWF at the same
+hours (`handoverModel` in `force5/src/timeline.ts`) and its label says so. The spot page puts a handover row in the day's
 table, names the model on the day's header and in each hour's card.
 
 ## Two numbers per hour

@@ -276,13 +276,10 @@ describe("the MCP endpoint", () => {
     );
     const whole = (await call("find_wind", { hours: 48 })).json();
     expect(whole.note).toBeUndefined();
-    // On GFS alone, which reaches only the next morning.
-    const gfs = (
-      await call("find_wind", { hours: 48, stars_from: "gfs", then: "gfs" })
-    ).json();
-    expect(gfs.note).toMatch(
-      /2026-09-17T06:00:00.000Z\), the last hour GFS covers/,
-    );
+    // On GFS, which reaches only the next morning, ECMWF takes over: the
+    // window is whole all the same.
+    const gfs = (await call("find_wind", { hours: 48, model: "gfs" })).json();
+    expect(gfs.note).toBeUndefined();
   });
 
   it("says where the forecast ends when a spot's window runs past it", async () => {
@@ -348,18 +345,6 @@ describe("the MCP endpoint", () => {
       expect(answer.window.from).toBe("2026-09-16T18:00:00.000Z");
       expect(answer.note).toBeUndefined();
     }
-    // Both at once: moved to now, and past the end of GFS's run.
-    const both = (
-      await call("find_wind", {
-        from: "2026-09-01T00:00:00Z",
-        hours: 48,
-        stars_from: "gfs",
-        then: "gfs",
-      })
-    ).json();
-    expect(both.note).toMatch(
-      /^from was in the past, .* Only part of the window is forecast: /,
-    );
   });
 
   it("says a place far outside Ireland is beyond max_km's reach, and how far a nearer one has to go", async () => {

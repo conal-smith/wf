@@ -141,25 +141,19 @@ describe("the blend, as the service reads it", () => {
     expect(ratings(DEFAULT_RIDER)("nowhere")).toBeNull();
   });
 
-  it("rates a rider whose stars come from other models from those models, and only them", async () => {
+  it("rates a rider who picked another model from that model, and only it", async () => {
     const blend = (await readBlend(blendSource(options)))!;
-    const gfs: Rider = { ...DEFAULT_RIDER, starsFrom: { model: "gfs", then: "ecmwf" } };
-    const ownSpot: Rider = {
-      ...DEFAULT_RIDER,
-      starsFrom: { model: "harmonie", then: "ecmwf", spots: { dollymount: "gfs" } },
-    };
+    const gfs: Rider = { ...DEFAULT_RIDER, starsFrom: { model: "gfs" } };
     expect(ridesApart(blend.pointer, DEFAULT_RIDER)).toBe(false);
     expect(ridesApart(blend.pointer, gfs)).toBe(true);
-    expect(ridesApart(blend.pointer, ownSpot)).toBe(true);
     // A blend from before the ruling serves nobody's stars.
     const old = (await readBlend(blendSource({ ...options, ruleBefore: true })))!;
     expect(ridesApart(old.pointer, DEFAULT_RIDER)).toBe(true);
 
     // Without the models, a place rated apart is unknown rather than the blend's.
     expect(ratingCache(blend)(gfs)("brandon")).toBeNull();
-    expect(ratingCache(blend)(ownSpot)("dollymount")).toBeNull();
-    expect(ratingCache(blend)(ownSpot)("brandon")).toEqual(
-      blendHours(blend, PLACES.get("brandon")!, ownSpot),
+    expect(ratingCache(blend)(DEFAULT_RIDER)("brandon")).toEqual(
+      blendHours(blend, PLACES.get("brandon")!, DEFAULT_RIDER),
     );
 
     // With them: GFS's own wind, never HARMONIE's.
@@ -188,7 +182,6 @@ describe("the blend, as the service reads it", () => {
     expect(hours[noon].windKn).toBeCloseTo(4 * 1.94384449, 1);
     expect(hours[noon].from).toBe(90);
     expect(hours).toEqual(modelHours(wind, PLACES.get("brandon")!, blend.pointer.times, gfs));
-    expect(ratingCache(blend, wind)(ownSpot)("dollymount")![noon].windKn).toBeCloseTo(4 * 1.94384449, 1);
   });
 
   it("has no blend when none is published", async () => {

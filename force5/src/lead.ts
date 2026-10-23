@@ -1,43 +1,57 @@
 // Which one model an hour's stars come from.
 //
 // The ruling of 19 October 2026: the stars come from one model, the rider's
-// choice, never from a blend of several. The rider picks the model (HARMONIE
-// unless they say otherwise) and the one that takes over where its run ends
-// (ECMWF unless they say otherwise), and may pick another model for a spot of
-// their own. Every hour is rated from the first of those two that reaches it,
-// on its own wind, gust and direction; an hour neither reaches has no stars.
-// The other models stay on the page as context — the agreement, the range,
-// the faint ticks — and never move a star.
+// choice, never from a blend of several. Since 23 October 2026 that choice is
+// the one model the rider picks to see: the map draws it, the dock and the
+// spot page give its wind, and the stars rate it (HARMONIE unless they pick
+// another). Past the end of its run ECMWF takes over, on its own and with no
+// setting for it, because ECMWF runs fifteen days and HARMONIE some two and a
+// half; ECMWF itself has nothing to hand over to. Every hour is rated from
+// the first of those two that reaches it, on its own wind, gust and
+// direction; an hour neither reaches has no stars. Where the handover falls is
+// still marked, quietly, on the hours. The other models stay on the page as
+// context — the blend, the agreement, the range, the faint ticks — and never
+// move a star.
 //
 // Plain data and arithmetic with no imports beyond the catalogue, so the map,
 // the dock, the spot page, the forecast server (mcp/api, compiled on its own),
 // the alerts and the app all read the same rule.
 import { MODEL_CATALOG } from "./catalog.js";
 
-/** The model that rates an hour, and the one that takes over where its run ends. */
+/**
+ * The model that rates an hour, and the one that takes over where its run
+ * ends: always `leadFor` a chosen model, never a choice of its own.
+ */
 export interface StarsFrom {
   model: string;
   then: string;
 }
 
-/**
- * What the rider has chosen: one model and its fallback for every spot, and
- * any spot of theirs rated from another model (its fallback stays the same).
- */
-export interface StarsChoice extends StarsFrom {
-  /** Spot id → the model that rates that spot instead. */
-  spots?: Readonly<Record<string, string>>;
+/** What the rider has chosen: the one model they see, and so the one the stars rate. */
+export interface StarsChoice {
+  model: string;
 }
 
-/** HARMONIE while it reaches the hour, then ECMWF, which runs fifteen days. */
-export const DEFAULT_STARS_FROM: StarsFrom = Object.freeze({
-  model: "harmonie",
-  then: "ecmwf",
+/** HARMONIE, Met Éireann's 2 km model, unless the rider picks another. */
+export const DEFAULT_MODEL = "harmonie";
+
+/** The model that takes over past the end of any other's run: ECMWF, fifteen days. */
+export const FALLBACK_MODEL = "ecmwf";
+
+/** The models to rate an hour from for a chosen model: it, then ECMWF past its run. */
+export const leadFor = (model: string): StarsFrom => ({
+  model,
+  then: FALLBACK_MODEL,
 });
 
+/** HARMONIE while it reaches the hour, then ECMWF. */
+export const DEFAULT_STARS_FROM: StarsFrom = Object.freeze(
+  leadFor(DEFAULT_MODEL),
+);
+
 /**
- * The models a rider can take their stars from: every published wind model
- * that is one forecast rather than an ensemble's members.
+ * The models a rider can pick: every published wind model that is one
+ * forecast rather than an ensemble's members.
  */
 export const STARS_MODELS: readonly string[] = MODEL_CATALOG.filter(
   (entry) =>
@@ -54,30 +68,28 @@ export const isStarsModel = (id: unknown): id is string =>
 export const modelName = (id: string): string =>
   MODEL_CATALOG.find((entry) => entry.id === id)?.name ?? id.toUpperCase();
 
-/** What rates a spot: the rider's choice, with that spot's own model if they gave it one. */
-export function starsFromAt(
+/** The one model the rider picked, HARMONIE if they never did. */
+export const chosenModel = (choice: StarsChoice | null | undefined): string =>
+  choice?.model ?? DEFAULT_MODEL;
+
+/** What rates every spot for this rider: their model, then ECMWF past its run. */
+export const starsFromAt = (
   choice: StarsChoice | null | undefined,
-  spotId?: string | null,
-): StarsFrom {
-  const model = choice?.model ?? DEFAULT_STARS_FROM.model;
-  const then = choice?.then ?? DEFAULT_STARS_FROM.then;
-  const own = spotId ? choice?.spots?.[spotId] : undefined;
-  return { model: own ?? model, then };
-}
+): StarsFrom => leadFor(chosenModel(choice));
 
 export const sameStarsFrom = (
   a: StarsFrom | null | undefined,
   b: StarsFrom | null | undefined,
 ): boolean => !!a && !!b && a.model === b.model && a.then === b.then;
 
-/** The models to try for an hour, in order: the chosen one, then its fallback. */
+/** The models to try for an hour, in order: the chosen one, then ECMWF, once each. */
 export const leadOrder = (from: StarsFrom): string[] =>
   from.then === from.model ? [from.model] : [from.model, from.then];
 
 /**
  * The one model that rates an hour: the chosen model where it has the hour,
- * else the fallback where that has it, else none. `has` says whether a model
- * gives a wind for the hour.
+ * else ECMWF where that has it, else none. `has` says whether a model gives a
+ * wind for the hour.
  */
 export function pickModel(
   from: StarsFrom,
@@ -87,72 +99,27 @@ export function pickModel(
   return null;
 }
 
-/** Whether a spot has a model of its own, other than the rider's choice everywhere. */
-export const spotOverride = (
-  choice: StarsChoice | null | undefined,
-  spotId: string | null | undefined,
-): string | null => (spotId ? (choice?.spots?.[spotId] ?? null) : null);
-
-/** The spots with a model of their own. */
-export const overriddenSpots = (
-  choice: StarsChoice | null | undefined,
-): string[] => Object.keys(choice?.spots ?? {});
-
 /**
- * A stored choice, field by field: a model that is not (or no longer) one to
- * rate from is dropped, and the default stands in for it. Undefined when what
- * is left is the default everywhere, so a rider who never chose stays as they
- * always were.
+ * A stored choice: its model kept while it is still one to pick, the default
+ * otherwise. What the rider once chose for after the run's end (`then`) and
+ * for spots of their own (`spots`) is no longer a choice and is dropped.
+ * Undefined when what is left is the default, so a rider who never chose
+ * stays as they always were.
  */
 export function parseStarsChoice(value: unknown): StarsChoice | undefined {
   if (!value || typeof value !== "object") return undefined;
-  const raw = value as Record<string, unknown>;
-  const model = isStarsModel(raw.model) ? raw.model : DEFAULT_STARS_FROM.model;
-  const then = isStarsModel(raw.then) ? raw.then : DEFAULT_STARS_FROM.then;
-  const spots: Record<string, string> = {};
-  if (raw.spots && typeof raw.spots === "object" && !Array.isArray(raw.spots))
-    for (const [id, own] of Object.entries(
-      raw.spots as Record<string, unknown>,
-    ))
-      if (id && isStarsModel(own) && own !== model) spots[id] = own;
-  const choice: StarsChoice = Object.keys(spots).length
-    ? { model, then, spots }
-    : { model, then };
-  return isDefaultChoice(choice) ? undefined : choice;
+  const model = (value as Record<string, unknown>).model;
+  return isStarsModel(model) && model !== DEFAULT_MODEL ? { model } : undefined;
 }
 
-/** Whether a choice rates every spot the default way. */
+/** Whether a choice is the default: HARMONIE. */
 export const isDefaultChoice = (
   choice: StarsChoice | null | undefined,
-): boolean =>
-  !choice ||
-  (sameStarsFrom(choice, DEFAULT_STARS_FROM) &&
-    !overriddenSpots(choice).length);
+): boolean => chosenModel(choice) === DEFAULT_MODEL;
 
-/** The choice with its model or fallback changed for every spot. */
-export function withStarsFrom(
-  choice: StarsChoice | null | undefined,
-  change: Partial<StarsFrom>,
-): StarsChoice | undefined {
-  const from = starsFromAt(choice);
-  return parseStarsChoice({ ...from, spots: choice?.spots, ...change });
-}
-
-/**
- * One spot rated from `model`, or back to the rider's choice everywhere with
- * null (or with the model that already rates everywhere).
- */
-export function withSpotStars(
-  choice: StarsChoice | null | undefined,
-  spotId: string,
-  model: string | null,
-): StarsChoice | undefined {
-  const { [spotId]: _old, ...spots } = choice?.spots ?? {};
-  return parseStarsChoice({
-    ...starsFromAt(choice),
-    spots: model ? { ...spots, [spotId]: model } : spots,
-  });
-}
+/** The choice of `model`, or undefined for the default. */
+export const withModel = (model: string): StarsChoice | undefined =>
+  parseStarsChoice({ model });
 
 /** Where the model rating the hours changes: the column it changes at, and to whom. */
 export interface Handover {
@@ -178,6 +145,6 @@ export function handovers(models: readonly (string | null)[]): Handover[] {
   return out;
 }
 
-/** "HARMONIE, then ECMWF", or just "GFS" where the two are one. */
-export const starsFromText = (from: StarsFrom): string =>
+/** "HARMONIE, then ECMWF", or just "ECMWF" where the two are one. */
+export const leadText = (from: StarsFrom): string =>
   leadOrder(from).map(modelName).join(", then ");

@@ -21,7 +21,7 @@ import {
   type ViewToken,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { spotOverride, starsFromAt, type StarsFrom } from "../../../../force5/src/lead";
+import { starsFromAt, type StarsFrom } from "../../../../force5/src/lead";
 import { SHORE_LABEL } from "../../../../force5/src/stars";
 import { compass } from "../../../../force5/src/weather";
 import {
@@ -54,7 +54,6 @@ import { useMarine, useSpotTide } from "../dock/useDockData";
 import { tideCredit } from "../../../../force5/src/tides";
 import { RiderLine } from "../settings/RiderFields";
 import { riderWords } from "../settings/settingsLogic";
-import { SpotStarsLine } from "../settings/StarsFrom";
 import { DayTide } from "./DayTide";
 import {
   dayItems,
@@ -192,7 +191,7 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
   }, [landing, sections, goTo]);
 
   /* ---- why these stars ---- */
-  const starsFromKey = JSON.stringify(starsFromAt(forecast.rider.starsFrom, id));
+  const starsFromKey = JSON.stringify(starsFromAt(forecast.rider.starsFrom));
   const starsFrom = useMemo(() => JSON.parse(starsFromKey) as StarsFrom, [starsFromKey]);
   const [tip, setTip] = useState<PageRow | null>(null);
   const explanation = useMemo<HourExplanation | null>(
@@ -210,10 +209,9 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
             sweet: { low: band.sweetLow, high: band.sweetHigh },
             facingKnown: facing !== null,
             model: tip.place.model,
-            spotOwn: !!tip.place.model && tip.place.model === spotOverride(forecast.rider.starsFrom, id),
           }
         : null,
-    [tip, now, units, forecast.rider, band, facing, id],
+    [tip, now, units, forecast.rider, band, facing],
   );
 
   const share = useCallback(() => {
@@ -264,7 +262,6 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
         </T>
       </View>
       <RiderLine />
-      <SpotStarsLine spotId={id} />
       {days.length ? (
         <WeekStrip
           days={days}

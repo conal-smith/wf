@@ -1,7 +1,7 @@
 /**
  * The More tab's arithmetic: who the stars are rated for, in the site's words
  * (spot/web/RiderSwitch.tsx) and through its validation (`parseRider`), the
- * model the stars come from (force5/src/lead.ts), the models in the blend,
+ * rider's one model (force5/src/lead.ts), the models in the blend,
  * and the lines a rider pastes into an AI assistant (ai/web/install.ts's own).
  */
 import {
@@ -13,13 +13,13 @@ import {
   mcpUrl,
 } from "../../../../ai/web/install";
 import {
-  DEFAULT_STARS_FROM,
+  chosenModel,
+  DEFAULT_MODEL,
+  leadOrder,
   modelName,
   STARS_MODELS,
   starsFromAt,
-  starsFromText,
   type StarsChoice,
-  type StarsFrom,
 } from "../../../../force5/src/lead";
 import { modelEntry, type ModelAvailability, type ModelEntry } from "../../../../force5/src/manifests";
 import { parseRider } from "../../../../force5/src/prefs";
@@ -167,90 +167,40 @@ export function toggleBlendModel(
   return order.filter((m) => next.includes(m)).concat(next.filter((m) => !order.includes(m)));
 }
 
-/* ------------------------------------------------------------ stars from */
+/* ----------------------------------------------------------------- model */
 
-/** Under "Stars from", in the site's words: what follows it, and what the blend still does. */
-export const STARS_FROM_NOTE =
-  "The stars, the lights, the wing and your alerts follow Stars from. The blend's models still give the agreement.";
+/** Under "Model", in the site's words: what follows it, and what takes over. */
+export const MODEL_NOTE =
+  "The chart, the wind and the stars are this model's forecast. Past the end of its run ECMWF's, which runs fifteen days.";
 
-/** "HARMONIE, then ECMWF": the More tab's value for "Stars from". */
-export const starsFromValue = (choice: StarsChoice | null | undefined) =>
-  starsFromText(starsFromAt(choice));
+/**
+ * "The stars stay your model's own: HARMONIE's, then ECMWF's past the end of
+ * its run." Said under the blend's models, which never rate a star.
+ */
+export function modelStarsLine(choice: StarsChoice | null | undefined): string {
+  const [model, then] = leadOrder(starsFromAt(choice)).map(modelName);
+  return `The stars stay your model's own: ${model}'s${then ? `, then ${then}'s past the end of its run` : ""}.`;
+}
 
-export interface StarsModelRow {
+/** "HARMONIE": the More tab's value for "Model". */
+export const modelValue = (choice: StarsChoice | null | undefined) => modelName(chosenModel(choice));
+
+export interface ModelChoiceRow {
   id: string;
   name: string;
-  /** "2 km · recommended". */
+  /** "2 km · 2½ days · recommended". */
   detail: string;
   on: boolean;
 }
 
 const modelDetail = (id: string) =>
-  [modelEntry(id)?.detail, id === DEFAULT_STARS_FROM.model ? "recommended" : null]
-    .filter(Boolean)
-    .join(" · ");
+  [modelEntry(id)?.detail, id === DEFAULT_MODEL ? "recommended" : null].filter(Boolean).join(" · ");
 
-/** Every model the stars can come from, and whether they do. */
-export const starsModelRows = (choice: StarsChoice | null | undefined): StarsModelRow[] => {
-  const { model } = starsFromAt(choice);
+/** Every model a rider can pick, and whether it is theirs. */
+export const modelChoiceRows = (choice: StarsChoice | null | undefined): ModelChoiceRow[] => {
+  const model = chosenModel(choice);
   return STARS_MODELS.map((id) => ({ id, name: modelName(id), detail: modelDetail(id), on: id === model }));
 };
-
-/**
- * The models that can take over where the chosen one ends: every other. Where
- * the two are one (a choice made elsewhere), none is ticked.
- */
-export const thenRows = (choice: StarsChoice | null | undefined): StarsModelRow[] => {
-  const { model, then } = starsFromAt(choice);
-  return STARS_MODELS.filter((id) => id !== model).map((id) => ({
-    id,
-    name: modelName(id),
-    detail: modelEntry(id)?.detail ?? "",
-    on: id === then,
-  }));
-};
-
-/** "When HARMONIE ends". */
-export const thenTitle = (choice: StarsChoice | null | undefined) =>
-  `When ${modelName(starsFromAt(choice).model)} ends`;
-
-/**
- * A new model for every spot. The one that took over becoming the model
- * itself hands the takeover to the model it replaces, so the two stay two.
- */
-export function pickStarsModel(from: StarsFrom, model: string): Partial<StarsFrom> {
-  return model === from.then && model !== from.model ? { model, then: from.model } : { model };
-}
-
-/** "same" for the rider's choice everywhere, or a model of the spot's own. */
-export type SpotStars = "same" | (string & {});
-
-export interface SpotStarsRow {
-  value: SpotStars;
-  label: string;
-  on: boolean;
-}
-
-/**
- * The choices at one spot: the same as everywhere, or another model (its
- * fallback stays the rider's). The model that rates everywhere is "same".
- */
-export function spotStarsRows(choice: StarsChoice | null | undefined, spotId: string): SpotStarsRow[] {
-  const everywhere = starsFromAt(choice);
-  const own = choice?.spots?.[spotId] ?? null;
-  return [
-    { value: "same", label: `Same as everywhere (${modelName(everywhere.model)})`, on: !own },
-    ...STARS_MODELS.filter((id) => id !== everywhere.model).map((id) => ({
-      value: id,
-      label: modelName(id),
-      on: own === id,
-    })),
-  ];
-}
-
-/** The spots with a model of their own, by id, with that model's name. */
-export const spotOverrides = (choice: StarsChoice | null | undefined) =>
-  Object.entries(choice?.spots ?? {}).map(([id, model]) => ({ id, model, name: modelName(model) }));
 
 /* ------------------------------------------------------------------ AI */
 

@@ -36,7 +36,6 @@ import {
   RangeDetail,
   rangeWords,
   type Band,
-  type StarsWhere,
 } from "./RangeBar";
 import {
   HOUR,
@@ -155,12 +154,12 @@ export interface DaySectionProps {
   spotName: string;
   /** The live wind models, for the hour's card. */
   models: readonly { id: string; name: string }[];
-  /** The model the rider takes this spot's stars from, and the one after it. */
+  /** The rider's model, and ECMWF after it. */
   starsFrom: StarsFrom;
-  /** Where that model's run ends and the next takes over, on this day. */
+  /** Where that model's run ends and ECMWF takes over, on this day. */
   changes: readonly LeadChange[];
-  /** Rate the stars from another model, picked in an hour's card. */
-  onStarsFrom?: (model: string, where: StarsWhere) => void;
+  /** Pick another model, in an hour's card. */
+  onModel?: (model: string) => void;
   /** The sky model stops on this day: say under it what "not yet" means. */
   skyStops?: boolean;
   /**
@@ -293,7 +292,7 @@ function DayBody({
   models,
   starsFrom,
   changes,
-  onStarsFrom,
+  onModel,
   skyStops,
   rain,
 }: DaySectionProps) {
@@ -386,8 +385,7 @@ function DayBody({
         models={models}
         riderText={riderText}
         starsFrom={starsFrom}
-        spotName={spotName}
-        onStarsFrom={onStarsFrom}
+        onModel={onModel}
       />
     );
     const tipLabel = wind
@@ -688,9 +686,10 @@ function HourTip({
       <p className={s.tipVerdict()}>{verdict(rating, hour.daylight)}</p>
       {wind && (
         <span className={s.tipFrom()} data-tip-from>
-          Stars from <b className="font-semibold">{modelName(wind.lead)}</b>
+          <b className="font-semibold">{modelName(wind.lead)}</b>&rsquo;s
+          forecast
           {wind.lead !== starsFrom.model &&
-            ` · ${modelName(starsFrom.model)} does not reach this hour`}
+            ` · past the end of ${modelName(starsFrom.model)}'s run`}
         </span>
       )}
       {wind && (

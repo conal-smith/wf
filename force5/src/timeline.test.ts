@@ -319,7 +319,7 @@ describe("handoverModel", () => {
       ),
     ).toBeNull();
   });
-  it("draws the dock column's model past the end of the reader's run", () => {
+  it("draws ECMWF past the end of the reader's run, as the stars do", () => {
     expect(
       handoverModel(
         offered(),
@@ -332,10 +332,23 @@ describe("handoverModel", () => {
         NOW,
       ),
     ).toBe("ecmwf");
-    // GFS where that is what the dock's long range is.
+    // ECMWF, the one the stars take over to, even where the dock's long
+    // range is GFS's; GFS where ECMWF is not published.
     expect(
       handoverModel(
         offered(),
+        drawable,
+        own(harmonie()),
+        sunday,
+        {
+          model: "gfs",
+        },
+        NOW,
+      ),
+    ).toBe("ecmwf");
+    expect(
+      handoverModel(
+        [harmonie(), iconEu(), gfs()],
         drawable,
         own(harmonie()),
         sunday,

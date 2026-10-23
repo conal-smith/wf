@@ -377,7 +377,7 @@ describe("the one model the stars come from", () => {
     const [change] = leadChanges(rows);
     expect(handoverWords(change, from)).toEqual({
       kicker: "ECMWF from Wed 22:00",
-      text: "HARMONIE's run ends here. The stars from here are ECMWF's, the model you chose for when it ends.",
+      text: "HARMONIE's run ends here. From here the wind and the stars are ECMWF's, which runs fifteen days.",
     });
     expect(
       handoverWords({ ...change, from: "ecmwf", to: "harmonie" }, from).text,
@@ -412,11 +412,11 @@ describe("the one model the stars come from", () => {
     );
     expect(dayLeads(later, from)).toEqual(["harmonie", "ecmwf"]);
     expect(dayLeadText(dayLeads(later, from))).toBe(
-      "stars from HARMONIE, then ECMWF",
+      "HARMONIE, then ECMWF",
     );
     expect(dayLeads(later.slice(1), from)).toEqual(["ecmwf"]);
     // A rider who chose ECMWF needs no saying of it.
-    expect(dayLeads(later.slice(1), { model: "ecmwf", then: "gfs" })).toEqual(
+    expect(dayLeads(later.slice(1), { model: "ecmwf", then: "ecmwf" })).toEqual(
       [],
     );
   });

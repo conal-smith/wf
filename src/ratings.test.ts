@@ -8,11 +8,13 @@ import {
 } from "../force5/src/blend";
 import { spotSeries } from "../force5/src/series";
 import { DEFAULT_RIDER, rateHour } from "../force5/src/stars";
+import { parseRider } from "../force5/src/prefs";
 import { ensembleManifest, windManifest } from "../force5/src/testing";
 import type { Manifest } from "../force5/src/weather";
 import { axisVectors } from "./chart";
 import {
   DEFAULT_STARS_FROM,
+  leadFor,
   leadOrder,
   pickModel,
   type StarsFrom,
@@ -230,16 +232,14 @@ describe("placeConsensus", () => {
     const without = placeConsensus(manifests, ["ecmwf", ...others], "brandon", axis);
     expect(without.median).toEqual(c.median);
     expect(without.model).toEqual(c.model);
-    // A rider who takes their stars from GFS gets GFS's own, then ECMWF's.
-    const gfs = placeConsensus(manifests, ids, "brandon", axis, {
-      model: "gfs",
-      then: "ecmwf",
-    });
+    // A rider who picked GFS gets GFS's own, then ECMWF's.
+    const gfs = placeConsensus(manifests, ids, "brandon", axis, leadFor("gfs"));
     expect(gfs.model[0]).toBe("gfs");
     expect(gfs.median[0]).toBeCloseTo(3);
     expect(gfs.model[10]).toBeNull();
     same(manifests, ids, "brandon", axis);
-    same(manifests, ids, "brandon", axis, { model: "icon-eu", then: "gfs" });
+    same(manifests, ids, "brandon", axis, leadFor("icon-eu"));
+    same(manifests, ids, "brandon", axis, leadFor("ecmwf"));
   });
 
   it("leaves a model out where it publishes nothing for the place", () => {
@@ -286,7 +286,7 @@ describe("placeHours", () => {
     expect(noon.model).toBe("harmonie");
   });
 
-  it("rates a spot from the rider's own model for it, and every other spot from their choice", () => {
+  it("rates every spot from the rider's model, an old choice's own spots and fallback left out", () => {
     const steady = (model: string, u: number) =>
       windManifest({
         model,
@@ -298,20 +298,13 @@ describe("placeHours", () => {
     const ids = ["harmonie", "gfs", "ecmwf"];
     const axis = hourly("2026-10-05T12:00:00Z", 1);
     const place = { id: "brandon", lat: 52.27, lon: -10.02, facing: 270 };
-    const rider = {
+    const rider = parseRider({
       ...DEFAULT_RIDER,
-      starsFrom: { model: "ecmwf", then: "harmonie", spots: { brandon: "gfs" } },
-    };
-    const own = placeHours(manifests, ids, place, axis, rider)[0];
-    expect(own.model).toBe("gfs");
-    expect(own.windKn).toBeCloseTo(4 * 1.94384449, 6);
-    const elsewhere = {
-      ...rider,
-      starsFrom: { ...rider.starsFrom, spots: { dollymount: "gfs" } },
-    };
-    const other = placeHours(manifests, ids, place, axis, elsewhere)[0];
-    expect(other.model).toBe("ecmwf");
-    expect(other.windKn).toBeCloseTo(5 * 1.94384449, 6);
+      starsFrom: { model: "gfs", then: "harmonie", spots: { brandon: "ecmwf" } },
+    });
+    const hour = placeHours(manifests, ids, place, axis, rider)[0];
+    expect(hour.model).toBe("gfs");
+    expect(hour.windKn).toBeCloseTo(4 * 1.94384449, 6);
     // The default rider: HARMONIE.
     expect(placeHours(manifests, ids, place, axis, DEFAULT_RIDER)[0].model).toBe("harmonie");
   });

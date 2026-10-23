@@ -1,8 +1,8 @@
 // Star ratings for a wing-foiling session: how good an hour is, for this rider,
 // at this spot. Pure functions over numbers the dock already has — one model's
-// own wind, gust and direction for the hour, the model the rider takes their
-// stars from (force5/src/lead.ts: HARMONIE, then ECMWF, unless they choose
-// otherwise) — so the map, the dock and the forecast server can all rate an
+// own wind, gust and direction for the hour, the model the rider picked
+// (force5/src/lead.ts: HARMONIE unless they pick another, ECMWF past the end
+// of its run) — so the map, the dock and the forecast server can all rate an
 // hour the same way. The other models never move a star (the ruling of 19
 // October 2026, docs/STAR_RATINGS.md).
 //
@@ -115,9 +115,9 @@ export interface Rider {
    */
   keptCustom?: CustomRating | null;
   /**
-   * Which model the stars come from, and the one that takes over where its
-   * run ends, everywhere and at any spot of the rider's own (force5/src/lead.ts).
-   * Absent while it is the default, HARMONIE then ECMWF everywhere.
+   * The one model the rider picked: the map draws it and the stars rate it,
+   * ECMWF taking over past the end of its run (force5/src/lead.ts). Absent
+   * while it is the default, HARMONIE.
    */
   starsFrom?: StarsChoice;
 }

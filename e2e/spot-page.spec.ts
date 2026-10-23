@@ -148,7 +148,7 @@ test("a spot page is the week day by day: hours in figures, the tide and the lig
   await frame.click();
   const card = page.locator("[data-range-detail]");
   await expect(card).toBeVisible();
-  await expect(card.locator("dt").first()).toHaveText(/^Stars from$/i);
+  await expect(card.locator("dt").first()).toHaveText(/^Model$/i);
   await expect(card.locator("[data-stars-from]")).toHaveText(
     /^(HARMONIE|ECMWF)$/,
   );

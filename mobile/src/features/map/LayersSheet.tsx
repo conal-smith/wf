@@ -1,8 +1,10 @@
 /**
  * Layers (src/MapControls.tsx): how the wind is drawn, which parts of the
- * chart, the satellite image under it at which tide, and which model the
- * map draws, with its run. Every choice is kept as the site keeps it
- * (wingfoil.map.wind.v1, wingfoil.map.layers.v1).
+ * chart, the satellite image under it at which tide, and the rider's model,
+ * with its run: the one the map draws and the stars rate, the same choice as
+ * Settings → Model (force5/src/lead.ts). Every choice is kept as the site
+ * keeps it (wingfoil.map.wind.v1, wingfoil.map.layers.v1, and the model in
+ * force5.prefs.v1).
  */
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { memo, type Ref } from "react";
@@ -14,6 +16,7 @@ import { tick } from "../../components/haptics";
 import { Segmented } from "../../components/Segmented";
 import { T } from "../../components/Text";
 import { colors, hitTarget, space } from "../../theme/tokens";
+import { MODEL_NOTE } from "../settings/settingsLogic";
 import { ChartSheet, SheetSection } from "./ChartSheet";
 import { KnotScale } from "./KnotScale";
 import { CHART_LABEL, type ChartLayers, type MapLayers } from "./mapLogic";
@@ -111,7 +114,7 @@ export const LayersSheet = memo(function LayersSheet(props: Props) {
       </SheetSection>
 
       <SheetSection
-        title="Model on the map"
+        title="Model"
         aside={
           props.run ? (
             <T variant="label" caps color={props.staleness === "fresh" ? "muted" : "warn"}>
@@ -120,7 +123,7 @@ export const LayersSheet = memo(function LayersSheet(props: Props) {
           ) : null
         }
       >
-        <View accessibilityRole="radiogroup" accessibilityLabel="Weather model on the map">
+        <View accessibilityRole="radiogroup" accessibilityLabel="Model">
           {MODELS.map((entry) => {
             const on = props.model === entry.id;
             const busy = props.pendingModel === entry.id;
@@ -151,6 +154,9 @@ export const LayersSheet = memo(function LayersSheet(props: Props) {
             );
           })}
         </View>
+        <T variant="caption" color="muted">
+          {MODEL_NOTE}
+        </T>
       </SheetSection>
     </ChartSheet>
   );

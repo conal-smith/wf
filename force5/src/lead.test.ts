@@ -1,27 +1,27 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_STARS_FROM,
+  FALLBACK_MODEL,
   STARS_MODELS,
+  chosenModel,
   handovers,
   isDefaultChoice,
+  leadFor,
   leadOrder,
+  leadText,
   modelName,
   parseStarsChoice,
   pickModel,
-  sameStarsFrom,
-  spotOverride,
   starsFromAt,
-  starsFromText,
-  withSpotStars,
-  withStarsFrom,
+  withModel,
 } from "./lead";
 
 describe("the one model the stars come from", () => {
   it("is HARMONIE, then ECMWF, by default", () => {
     expect(DEFAULT_STARS_FROM).toEqual({ model: "harmonie", then: "ecmwf" });
     expect(starsFromAt(undefined)).toEqual(DEFAULT_STARS_FROM);
-    expect(starsFromAt(undefined, "portrane")).toEqual(DEFAULT_STARS_FROM);
-    expect(starsFromText(DEFAULT_STARS_FROM)).toBe("HARMONIE, then ECMWF");
+    expect(chosenModel(undefined)).toBe("harmonie");
+    expect(leadText(DEFAULT_STARS_FROM)).toBe("HARMONIE, then ECMWF");
   });
 
   it("offers every published deterministic wind model, and no ensemble", () => {
@@ -29,8 +29,17 @@ describe("the one model the stars come from", () => {
     expect(modelName("icon-eu")).toBe("ICON-EU");
   });
 
-  it("rates an hour from the chosen model where it has it, else the fallback alone", () => {
-    const from = { model: "gfs", then: "ecmwf" };
+  it("hands every model over to ECMWF past its run, and ECMWF to nobody", () => {
+    expect(FALLBACK_MODEL).toBe("ecmwf");
+    for (const model of STARS_MODELS)
+      expect(starsFromAt({ model })).toEqual({ model, then: "ecmwf" });
+    expect(leadOrder(leadFor("gfs"))).toEqual(["gfs", "ecmwf"]);
+    expect(leadOrder(leadFor("ecmwf"))).toEqual(["ecmwf"]);
+    expect(leadText(leadFor("ecmwf"))).toBe("ECMWF");
+  });
+
+  it("rates an hour from the chosen model where it has it, else ECMWF alone", () => {
+    const from = leadFor("gfs");
     expect(pickModel(from, (m) => m === "gfs" || m === "ecmwf")).toBe("gfs");
     expect(pickModel(from, (m) => m === "ecmwf" || m === "harmonie")).toBe(
       "ecmwf",
@@ -39,22 +48,6 @@ describe("the one model the stars come from", () => {
     expect(pickModel(from, (m) => m === "harmonie" || m === "icon-eu")).toBe(
       null,
     );
-    expect(leadOrder({ model: "gfs", then: "gfs" })).toEqual(["gfs"]);
-  });
-
-  it("lets a spot of the rider's own take another model, keeping the fallback", () => {
-    const choice = {
-      model: "harmonie",
-      then: "ecmwf",
-      spots: { portrane: "gfs" },
-    };
-    expect(starsFromAt(choice, "portrane")).toEqual({
-      model: "gfs",
-      then: "ecmwf",
-    });
-    expect(starsFromAt(choice, "brandon")).toEqual(DEFAULT_STARS_FROM);
-    expect(spotOverride(choice, "portrane")).toBe("gfs");
-    expect(spotOverride(choice, "brandon")).toBeNull();
   });
 
   it("finds each handover along a row of hours, across the hours none rates", () => {
@@ -72,38 +65,32 @@ describe("a stored choice", () => {
       parseStarsChoice({ model: "harmonie", then: "ecmwf" }),
     ).toBeUndefined();
     expect(isDefaultChoice(undefined)).toBe(true);
+    expect(withModel("harmonie")).toBeUndefined();
   });
 
-  it("drops a model that is not one to rate from, and a spot that says what everywhere says", () => {
+  it("keeps an old choice's model, and drops what it said for after the run and for spots of its own", () => {
     expect(
       parseStarsChoice({
-        model: "gefs",
-        then: "gfs",
-        spots: { a: "ukv", b: "ecmwf", c: "harmonie", "": "gfs" },
+        model: "gfs",
+        then: "harmonie",
+        spots: { portrane: "icon-eu" },
       }),
-    ).toEqual({ model: "harmonie", then: "gfs", spots: { b: "ecmwf" } });
-    expect(parseStarsChoice("gfs")).toBeUndefined();
+    ).toEqual({ model: "gfs" });
+    // An old choice of HARMONIE with its own fallback and spots is the default now.
+    expect(
+      parseStarsChoice({
+        model: "harmonie",
+        then: "gfs",
+        spots: { portrane: "gfs" },
+      }),
+    ).toBeUndefined();
   });
 
-  it("changes everywhere or at one spot, and back", () => {
-    const gfs = withStarsFrom(undefined, { model: "gfs" });
-    expect(gfs).toEqual({ model: "gfs", then: "ecmwf" });
-    const portrane = withSpotStars(gfs, "portrane", "harmonie");
-    expect(portrane).toEqual({
-      model: "gfs",
-      then: "ecmwf",
-      spots: { portrane: "harmonie" },
-    });
-    // The spot keeps its own model when the rest changes.
-    expect(withStarsFrom(portrane, { then: "gfs" })).toEqual({
-      model: "gfs",
-      then: "gfs",
-      spots: { portrane: "harmonie" },
-    });
-    expect(withSpotStars(portrane, "portrane", null)).toEqual(gfs);
-    expect(withStarsFrom(gfs, { model: "harmonie" })).toBeUndefined();
-    expect(
-      sameStarsFrom(starsFromAt(portrane, "portrane"), DEFAULT_STARS_FROM),
-    ).toBe(true);
+  it("drops a model that is not one to pick", () => {
+    expect(parseStarsChoice({ model: "gefs", then: "gfs" })).toBeUndefined();
+    expect(parseStarsChoice({ model: "../x" })).toBeUndefined();
+    expect(parseStarsChoice("gfs")).toBeUndefined();
+    expect(withModel("icon-eu")).toEqual({ model: "icon-eu" });
+    expect(isDefaultChoice({ model: "icon-eu" })).toBe(false);
   });
 });

@@ -7,8 +7,8 @@
  * which keeps the stored star rating; the level pill through `withStarsOn`,
  * which keeps the rider's own rating as they go on or off it; and that rating
  * itself only through `withCustomStars`. The last two stamp when what the
- * account keeps has changed. The model the stars come from, everywhere or at
- * one spot, through `withRiderStarsFrom` (`setStarsFrom`).
+ * account keeps has changed. The rider's one model (the chart's, the dock's
+ * and the stars'), through `withRiderModel` (`setModel`).
  */
 import { createContext, use, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import {
@@ -16,7 +16,7 @@ import {
   saveRider,
   savePrefs,
   withCustomStars,
-  withRiderStarsFrom,
+  withRiderModel,
   withStarsOn,
   type Prefs,
 } from "../../../force5/src/prefs";
@@ -31,11 +31,9 @@ interface PrefsValue {
   setStarsOn: (on: StarsOn) => void;
   /** The rider's own star rating saved and rating, or deleted with null. */
   setCustomStars: (custom: CustomRating | null) => void;
-  /** The model the stars come from: everywhere, or at one spot (null: the same as everywhere). */
-  setStarsFrom: (change: StarsFromChange) => void;
+  /** The rider's model: the one the chart draws, the dock gives and the stars rate. */
+  setModel: (model: string) => void;
 }
-
-export type StarsFromChange = Parameters<typeof withRiderStarsFrom>[1];
 
 const PrefsContext = createContext<PrefsValue | null>(null);
 
@@ -65,13 +63,13 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     (custom: CustomRating | null) => update((p) => withCustomStars(p, custom)),
     [update],
   );
-  const setStarsFrom = useCallback(
-    (change: StarsFromChange) => update((p) => ({ ...p, rider: withRiderStarsFrom(p.rider, change) })),
+  const setModel = useCallback(
+    (model: string) => update((p) => ({ ...p, rider: withRiderModel(p.rider, model) })),
     [update],
   );
   const value = useMemo(
-    () => ({ prefs, update, changeRider, setStarsOn, setCustomStars, setStarsFrom }),
-    [prefs, update, changeRider, setStarsOn, setCustomStars, setStarsFrom],
+    () => ({ prefs, update, changeRider, setStarsOn, setCustomStars, setModel }),
+    [prefs, update, changeRider, setStarsOn, setCustomStars, setModel],
   );
   return <PrefsContext value={value}>{children}</PrefsContext>;
 }

@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   starsFromAt,
-  starsFromText,
+  leadText,
   type StarsChoice,
 } from "../../force5/src/lead";
 import { loadPrefs, saveRider } from "../../force5/src/prefs";
@@ -162,19 +162,21 @@ export default function StarsPage() {
           </SectionHeading>
           <p className={s.p()}>
             Every hour is rated from one forecast model&rsquo;s own wind, gust
-            and direction, never from a mix of several. Unless you choose
-            otherwise that is HARMONIE, Met &Eacute;ireann&rsquo;s 2 km model,
-            for as far as its run reaches (about two and a half days), then
-            ECMWF, which runs fifteen days. Where one hands over to the other,
-            the spot page says so between the hours.
+            and direction, never from a mix of several: the model you pick to
+            see, on the map and here. Unless you pick another that is HARMONIE,
+            Met &Eacute;ireann&rsquo;s 2 km model, for as far as its run
+            reaches (about two and a half days). Past the end of any
+            model&rsquo;s run ECMWF takes over, which runs fifteen days. Where
+            one hands over to the other, the spot page says so between the
+            hours.
           </p>
           <p className={s.p()}>
             Your stars now come from{" "}
             <b className="font-semibold" data-stars-from-text>
-              {starsFromText(starsFromAt(rider.starsFrom))}
+              {leadText(starsFromAt(rider.starsFrom))}
             </b>
-            . Change it under &ldquo;Stars from&rdquo; above, for every spot, or
-            on a spot&rsquo;s own page for that spot alone.
+            . Change the model above, under &ldquo;Model&rdquo;, or in the
+            map&rsquo;s Display options: it is the same choice everywhere.
           </p>
           <p className={s.p()}>
             The other models are still shown: as faint ticks against your range
@@ -890,7 +892,7 @@ function useExample(spotId: string, choice: StarsChoice | undefined): Example {
         source,
         spot,
         { from, to: from + 48 * HOUR, stepHours: 1 },
-        { now, from: starsFromAt(choice, spot.id) },
+        { now, from: starsFromAt(choice) },
       );
       return { kind: "ready", spot, forecast } as const;
     })().then(
