@@ -53,7 +53,7 @@ const TARGETS = {
   hoursWrap: ".dock .tt-wrap",
   // The loupe's sheet is the whole map: its rim and the reading under it are the loupe.
   loupe: [".map-loupe .map-loupe-rim", ".map-loupe .map-loupe-foot-box"],
-  blend: [".dock .chart-holder", ".dock tr.tt-blend"],
+  blend: [".dock tr.tt-blend", ".dock .blend-chart"],
   menu: '.map-head [aria-label="Site menu"]',
   layers: "dialog[open]",
 } as const;
