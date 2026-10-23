@@ -791,7 +791,15 @@ test("the display options open over the dimmed map from the site menu, one panel
   await page.keyboard.press("Enter");
   await expect(
     page.getByRole("group", { name: "The chart" }).getByRole("button"),
-  ).toHaveText(["Layers", "Your spots", "Display options", "About the map"]);
+  ).toHaveText([
+    "Customise",
+    "Layers",
+    "Your spots",
+    "Display options",
+    "About the map",
+    "Take the tour",
+  ]);
+  await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
   await expect(menuRow(page, "Display options")).toBeFocused();

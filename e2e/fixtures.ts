@@ -149,9 +149,17 @@ export async function closePanel(page: Page) {
   await expect(page.locator("dialog.map-panel-dialog")).toHaveCount(0);
 }
 
-/** The chart's own tools, each a row of the site menu's (src/MapControls.tsx `chartTools`). */
+/**
+ * The chart's own tools, each a row of the site menu's: Customise, the ones
+ * src/MapControls.tsx `chartTools` lists, and the tour (src/App.tsx).
+ */
 export type ChartTool =
-  "Layers" | "Your spots" | "Display options" | "About the map";
+  | "Customise"
+  | "Layers"
+  | "Your spots"
+  | "Display options"
+  | "About the map"
+  | "Take the tour";
 
 /** A chart tool's row in the site menu, while the menu is open. */
 export const menuRow = (page: Page, name: ChartTool) =>

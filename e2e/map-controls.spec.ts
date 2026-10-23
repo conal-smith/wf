@@ -30,10 +30,19 @@ test("the chart's controls: zoom on the right, the layers from the menu by keybo
   const menu = page.getByRole("button", { name: "Site menu" });
   await menu.focus();
   await page.keyboard.press("Enter");
-  await expect(menuRow(page, "Layers")).toBeFocused();
+  await expect(menuRow(page, "Customise")).toBeFocused();
   await expect(
     page.getByRole("group", { name: "The chart" }).getByRole("button"),
-  ).toHaveText(["Layers", "Your spots", "Display options", "About the map"]);
+  ).toHaveText([
+    "Customise",
+    "Layers",
+    "Your spots",
+    "Display options",
+    "About the map",
+    "Take the tour",
+  ]);
+  await page.keyboard.press("Tab");
+  await expect(menuRow(page, "Layers")).toBeFocused();
   await page.keyboard.press("Enter");
   const panel = page.getByRole("group", { name: "Layers" });
   await expect(panel).toBeVisible();
