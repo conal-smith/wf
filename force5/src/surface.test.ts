@@ -4,6 +4,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearManifestCache, loadWeatherManifest } from "./manifests";
 import {
+  WEATHER_SOURCE_PREFERENCE,
+  handedWeatherSource,
   precipIntervalHours,
   presentWeather,
   preferredWeatherSource,
@@ -11,6 +13,7 @@ import {
   weatherFields,
   weatherSeries,
   weatherSeriesHasData,
+  weatherSources,
   type WeatherIcon,
 } from "./surface";
 import { pointerOf, weatherManifest, windManifest } from "./testing";
@@ -174,5 +177,72 @@ describe("the WMO present-weather mapping", () => {
   it("says nothing rather than guessing when there is no code", () => {
     for (const code of [null, undefined, 61.5, 100, 1000, -1, NaN])
       expect(presentWeather(code as number | null | undefined)).toBeNull();
+  });
+});
+
+describe("handing a spot's weather from one source to the next", () => {
+  // ICON-EU weather's three days, then GFS's sixteen: past ICON-EU's last step
+  // the sky, air and rain go on in GFS's rather than stopping.
+  const icon = weatherManifest({
+    runTime: "2026-10-22T00:00:00Z",
+    hours: [0, 3, 6],
+  });
+  const gfs = weatherManifest({
+    model: "gfs-weather",
+    runTime: "2026-10-22T00:00:00Z",
+    hours: [0, 3, 6, 9, 12],
+    values: (hour) => ({
+      t2m: 9,
+      td2m: 7,
+      rh2m: 90,
+      tp: hour === 0 ? null : hour,
+      precip: hour === 0 ? null : 3,
+      clct: 100,
+      clcl: 100,
+      clcm: 50,
+      clch: 0,
+      pmsl: 1001,
+      vis: 9,
+      cape: 30,
+      ww: 63,
+      tg: 12,
+    }),
+  });
+  it("prefers ICON-EU, then GFS", () => {
+    expect(WEATHER_SOURCE_PREFERENCE).toEqual([
+      "icon-eu-weather",
+      "gfs-weather",
+    ]);
+    expect(
+      weatherSources([gfs, icon], "brandon").map((s) => s.manifest.model),
+    ).toEqual(["icon-eu-weather", "gfs-weather"]);
+  });
+  it("goes on in GFS past ICON-EU's end, each rain total on its own interval", () => {
+    const source = handedWeatherSource(weatherSources([gfs, icon], "brandon"))!;
+    expect(source.manifest.model).toBe("icon-eu-weather");
+    expect(
+      source.series.map((step) => [
+        step.hour,
+        step.values.t2m,
+        step.values.ww,
+        step.precipIntervalHours,
+        step.model,
+      ]),
+    ).toEqual([
+      [0, 15, 3, null, "icon-eu-weather"],
+      [3, 15.3, 61, [0, 3], "icon-eu-weather"],
+      [6, 15.6, 61, [3, 6], "icon-eu-weather"],
+      [9, 9, 63, [6, 9], "gfs-weather"],
+      [12, 9, 63, [9, 12], "gfs-weather"],
+    ]);
+  });
+  it("is GFS alone where ICON-EU has nothing, and none with no source", () => {
+    const blank = weatherManifest({ values: () => null });
+    const source = handedWeatherSource(
+      weatherSources([blank, gfs], "brandon"),
+    )!;
+    expect(source.manifest.model).toBe("gfs-weather");
+    expect(source.series).toHaveLength(5);
+    expect(handedWeatherSource([])).toBeNull();
   });
 });

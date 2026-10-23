@@ -621,6 +621,23 @@ table.tt {
     transparent
   );
 }
+/* The first hour a row reads from the next model, past the end of the one
+   before it: a dashed ink line at its edge, as the stars' hand-over has. */
+.tt tr.tt-more td.handed {
+  --handed: linear-gradient(var(--color-ink) 50%, transparent 0) left top / 1px
+    4px repeat-y;
+  background: var(--handed);
+}
+/* Over the night's hatching, not in place of it. */
+.tt tr.tt-more td.handed.night {
+  background:
+    var(--handed),
+    repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-ink) 9%, transparent) 0 1px,
+      transparent 1px 4px
+    );
+}
 /* An hour inside an interval whose total another column prints. */
 .rain-cell.is-part {
   color: var(--color-ink-muted);

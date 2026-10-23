@@ -216,6 +216,19 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     mapCapable: false,
   },
   {
+    // GFS's surface weather, the dock's sky, air and rain past ICON-EU
+    // weather's three days (force5/src/surface.ts hands over to it there).
+    // Not map-capable: it publishes no frames, only the spot series.
+    id: "gfs-weather",
+    name: "GFS weather",
+    detail: "25 km · 16 days",
+    manifestUrl: "weather/gfs-weather.json",
+    kind: "weather",
+    staleAfterHours: 14,
+    hue: { wind: "#6b7fa8", gust: "#c9813d" },
+    mapCapable: false,
+  },
+  {
     id: "ecmwf-wave",
     name: "ECMWF Wave",
     detail: "25 km · 15 days",

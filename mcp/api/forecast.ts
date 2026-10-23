@@ -86,6 +86,11 @@ export const WEATHER_MODELS: readonly CatalogEntry[] = [
     name: "ICON-EU weather",
     manifestUrl: "weather/icon-eu-weather.json",
   },
+  {
+    id: "gfs-weather",
+    name: "GFS weather",
+    manifestUrl: "weather/gfs-weather.json",
+  },
 ];
 export const SPOTS_URL = "riding-locations.json";
 export const TIDES_URL = "marine/tides.json";
@@ -1000,21 +1005,38 @@ interface SpotVariables {
   run: ModelRun;
   manifest: VariablesManifest;
   steps: VariableStep[];
+  /** The runs that go on past `run`'s end, in turn (`handedSource`). */
+  after: ModelRun[];
 }
 
-/** The first source, finest first, that says anything about this spot. */
-function preferredSource(
+/**
+ * The spot's steps from every source that says anything about it, finest
+ * first: the first source's own run, then each next one's past the end of the
+ * steps already taken, as the site's dock hands MI SWAN over to GFS-Wave and
+ * ICON-EU weather to GFS's (force5/src/variables.ts, `handOverSeries`). The
+ * sources of a kind publish the same names for the readings read here.
+ */
+function handedSource(
   loaded: Loaded<VariablesManifest>[],
   spotId: string,
   variable: readonly string[],
 ): SpotVariables | null {
+  let out: SpotVariables | null = null;
   for (const { run, manifest } of loaded) {
     const steps = variableSteps(manifest, spotId);
     const name = pick(manifest, variable);
-    if (steps && name && steps.some((s) => finite(s.values[name])))
-      return { run, manifest, steps };
+    if (!steps || !name || !steps.some((s) => finite(s.values[name]))) continue;
+    if (!out) {
+      out = { run, manifest, steps, after: [] };
+      continue;
+    }
+    const reach = out.steps[out.steps.length - 1]?.time ?? -Infinity;
+    const later = steps.filter((step) => step.time > reach);
+    if (!later.length) continue;
+    out.steps = [...out.steps, ...later];
+    out.after.push(run);
   }
-  return null;
+  return out;
 }
 
 export interface HourWaves {
@@ -1324,7 +1346,11 @@ export interface SpotForecast {
     wind: ModelRun[];
     wind_outside_domain: string[];
     waves: ModelRun | null;
+    /** The wave runs that go on past `waves`' end, in turn. */
+    waves_after?: ModelRun[];
     weather: ModelRun | null;
+    /** The weather runs that go on past `weather`'s end, in turn. */
+    weather_after?: ModelRun[];
     unavailable: Unavailable[];
   };
   method: string;
@@ -1346,7 +1372,9 @@ export const METHOD =
   "the agreement but low wherever fewer than three models cover the hour " +
   "(`models`; once the shorter runs end, only ECMWF and GFS are left). Not " +
   "bias-corrected against observations. " +
-  "Waves come from the finest wave model that covers the spot. " +
+  "Waves come from the finest wave model that covers the spot and, past the " +
+  "end of its run, from the next (`sources.waves_after`); the weather goes " +
+  "on the same way (`sources.weather_after`). " +
   "Model forecasts only: never a statement that conditions are safe.";
 
 export const UNITS = {
@@ -1356,7 +1384,7 @@ export const UNITS = {
   temperature: "°C",
   rain:
     "mm: the weather model's own total over the `rain_interval_hours` " +
-    "(3 for ICON-EU) ending at that row's hour, or at `rain_until` where " +
+    "(3 for ICON-EU and GFS) ending at that row's hour, or at `rain_until` where " +
     "given. Each total is on one row only, with null on the interval's other " +
     "hours, so adding rain_mm up over rows gives the rain in their intervals. " +
     "A row further apart than the model's steps sums the intervals since the " +
@@ -1389,8 +1417,8 @@ export async function spotForecast(
   ]);
   const { lines, outside } = spotWindLines(wind.loaded, spot.id);
   const memberLines = spotMemberLines(wind.loaded, spot.id);
-  const waveSource = preferredSource(waves.loaded, spot.id, ["swh"]);
-  const weatherSource = preferredSource(weather.loaded, spot.id, ["t2m"]);
+  const waveSource = handedSource(waves.loaded, spot.id, ["swh"]);
+  const weatherSource = handedSource(weather.loaded, spot.id, ["t2m"]);
   const facing = shoreFacing(spot.id);
   const times = axis(window);
   const weatherStep = weatherSource && weatherStepHours(weatherSource);
@@ -1439,7 +1467,11 @@ export async function spotForecast(
       wind: lines.map((l) => l.run),
       wind_outside_domain: outside,
       waves: waveSource?.run ?? null,
+      ...(waveSource?.after.length && { waves_after: waveSource.after }),
       weather: weatherSource?.run ?? null,
+      ...(weatherSource?.after.length && {
+        weather_after: weatherSource.after,
+      }),
       unavailable: [
         ...wind.unavailable,
         ...waves.unavailable,

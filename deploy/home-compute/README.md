@@ -148,6 +148,7 @@ repository's `.venv` and a scratch `FORCE5_WORK_DIR`, never with a bucket:
 | Job | Ceiling | Peak, MB | CPU s | How it was measured |
 | --- | --- | --- | --- | --- |
 | `gfs-wave` | 1 GB | 360 | 2.5 | a live run, local output only |
+| `gfs-weather` | 1 GB | 355 | 7 | a live 384 h run, local output only (22 October 2026) |
 | `icon-eu` | 1 GB | 335 | 16 | 73 hourly frames decoded from cached GRIB (*) |
 | `ecmwf` | 1 GB | 315 | 4 | the whole cached 2026100700 run, 85 frames |
 | `harmonie` | 1 GB | 290 | 5 | 61 hourly frames from cached GRIB (*); two whole files downloaded at once peaked at 171 |

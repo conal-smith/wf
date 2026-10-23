@@ -66,7 +66,7 @@ import {
   type SpotWeather,
 } from "./useBlend";
 import { presentWeather } from "../force5/src/surface";
-import { variableValue } from "../force5/src/variables";
+import { handoverColumns, variableValue } from "../force5/src/variables";
 import { skinNow, waterText } from "../force5/src/seaTemperature";
 import type { ModelAvailability } from "../force5/src/manifests";
 import { spotSquare } from "../force5/src/spotData";
@@ -303,6 +303,8 @@ const StripTable = memo(function StripTable({
       column: StripColumn,
       at: number,
     ) => React.ReactNode,
+    /** The columns where the row's model hands over to the next. */
+    handed?: ReadonlySet<number>,
   ) =>
     columns.map((column, at) => {
       const hour = hours?.[at];
@@ -319,6 +321,7 @@ const StripTable = memo(function StripTable({
               night ? "night" : "",
               column.time + 3600000 <= now ? "past" : "",
               first ? "d0" : "",
+              handed?.has(at) ? "handed" : "",
             ]
               .filter(Boolean)
               .join(" ") || undefined
@@ -693,6 +696,7 @@ function MoreRows({
       column: StripColumn,
       at: number,
     ) => React.ReactNode,
+    handed?: ReadonlySet<number>,
   ) => React.ReactNode;
   g: StripGeometry;
   waves: SpotWaves;
@@ -722,9 +726,22 @@ function MoreRows({
   const fields = weather.source?.fields;
   const at = (column: number, name: string | null | undefined) =>
     variableValue(weather.columns[column], name);
-  const row = (key: MoreRow, render: (column: number) => React.ReactNode) => (
+  // Each source runs as far as its own run, and the next takes over there:
+  // every cell's title names the model it is from, and the first of the next
+  // model's is marked, as the stars' hand-over is. MI SWAN's 2.8 km sea at a
+  // beach and GFS-Wave's 9 km one offshore can differ by metres; the step
+  // between them is the models', not the sea's.
+  const wavesHanded = handoverColumns(waves.columns);
+  const weatherHanded = handoverColumns(weather.columns);
+  const by = (step: { model?: string } | null | undefined) =>
+    step?.model ? ` · ${modelName(step.model)}` : "";
+  const row = (
+    key: MoreRow,
+    render: (column: number) => React.ReactNode,
+    handed: ReadonlySet<number>,
+  ) => (
     <tr className={`tt-more tt-${key}`} key={key}>
-      {cells(key, (_, __, column) => render(column))}
+      {cells(key, (_, __, column) => render(column), handed)}
     </tr>
   );
   // The rain's intervals, against the columns: see `rainColumns`.
@@ -738,35 +755,39 @@ function MoreRows({
   return (
     <>
       {waves.source && set
-        ? row("waves", (column) => {
-            const step = waves.columns[column];
-            const height = step ? step.values[set.height] : null;
-            if (typeof height !== "number") return "–";
-            const period = set.period ? step!.values[set.period] : null;
-            const dir = set.direction ? step!.values[set.direction] : null;
-            // A coarse column holds the arrow and the height; the period
-            // stays in the title rather than running into the next cell.
-            const roomy = g.w[column] >= 58;
-            return (
-              <span
-                className="wave-cell"
-                title={`${height.toFixed(1)} m${typeof period === "number" ? ` at ${Math.round(period)} s` : ""}${typeof dir === "number" ? ` from ${compass(dir)}` : ""}`}
-              >
-                {typeof dir === "number" && (
-                  <ArrowDown
-                    size={11}
-                    strokeWidth={1.6}
-                    style={{ transform: `rotate(${dir}deg)` }}
-                    aria-label={`from ${compass(dir)}`}
-                  />
-                )}
-                <b>{height.toFixed(1)}</b>
-                {roomy && typeof period === "number" && (
-                  <small>{Math.round(period)}s</small>
-                )}
-              </span>
-            );
-          })
+        ? row(
+            "waves",
+            (column) => {
+              const step = waves.columns[column];
+              const height = step ? step.values[set.height] : null;
+              if (typeof height !== "number") return "–";
+              const period = set.period ? step!.values[set.period] : null;
+              const dir = set.direction ? step!.values[set.direction] : null;
+              // A coarse column holds the arrow and the height; the period
+              // stays in the title rather than running into the next cell.
+              const roomy = g.w[column] >= 58;
+              return (
+                <span
+                  className="wave-cell"
+                  title={`${height.toFixed(1)} m${typeof period === "number" ? ` at ${Math.round(period)} s` : ""}${typeof dir === "number" ? ` from ${compass(dir)}` : ""}${by(step)}`}
+                >
+                  {typeof dir === "number" && (
+                    <ArrowDown
+                      size={11}
+                      strokeWidth={1.6}
+                      style={{ transform: `rotate(${dir}deg)` }}
+                      aria-label={`from ${compass(dir)}`}
+                    />
+                  )}
+                  <b>{height.toFixed(1)}</b>
+                  {roomy && typeof period === "number" && (
+                    <small>{Math.round(period)}s</small>
+                  )}
+                </span>
+              );
+            },
+            wavesHanded,
+          )
         : span(
             "waves",
             waves.published
@@ -774,16 +795,22 @@ function MoreRows({
               : "Waves: reading…",
           )}
       {fields
-        ? row("sky", (column) => {
-            const reading = presentWeather(at(column, fields.present));
-            return reading ? (
-              <span title={reading.description}>
-                <WeatherGlyph weather={reading} size={14} />
-              </span>
-            ) : (
-              "–"
-            );
-          })
+        ? row(
+            "sky",
+            (column) => {
+              const reading = presentWeather(at(column, fields.present));
+              return reading ? (
+                <span
+                  title={`${reading.description}${by(weather.columns[column])}`}
+                >
+                  <WeatherGlyph weather={reading} size={14} />
+                </span>
+              ) : (
+                "–"
+              );
+            },
+            weatherHanded,
+          )
         : span(
             "sky",
             weather.published
@@ -791,46 +818,63 @@ function MoreRows({
               : "Weather: reading…",
           )}
       {fields
-        ? row("air", (column) => {
-            const value = at(column, fields.air);
-            return value === null ? "–" : `${Math.round(value)}°`;
-          })
+        ? row(
+            "air",
+            (column) => {
+              const value = at(column, fields.air);
+              return value === null ? (
+                "–"
+              ) : (
+                <span
+                  title={`${value.toFixed(1)} °C${by(weather.columns[column])}`}
+                >
+                  {Math.round(value)}°
+                </span>
+              );
+            },
+            weatherHanded,
+          )
         : span("air", "")}
       {fields
-        ? row("rain", (column) => {
-            // A total belongs to its interval, and to no other hour. Every
-            // other row may borrow the nearest step for a column between two,
-            // but a three-hour total read into each of three hourly columns
-            // says three times the rain. So the interval's last column prints
-            // it and the others in it carry its tint and a dot; the title
-            // says which interval either way, since the steps need not fall
-            // on the columns' hours.
-            const covered = rain[column];
-            const value = covered
-              ? variableValue(series[covered.step], fields.rain)
-              : null;
-            if (!covered || value === null) return "–";
-            const amount = value < 0.05 ? "0" : value.toFixed(1);
-            const own = covered.own;
-            const exact = Math.abs(covered.end - columns[column].time) <= 60000;
-            return (
-              <span
-                className={`rain-cell${own ? "" : " is-part"}`}
-                style={
-                  {
-                    "--rain": Math.min(1, value / RAIN_FULL_MM).toFixed(2),
-                  } as React.CSSProperties
-                }
-                title={
-                  own && exact
-                    ? `${amount} mm in the ${covered.hours} h to here`
-                    : `${amount} mm in the ${covered.hours} h to ${clock(covered.end)}${own ? "" : ", printed at the last column it covers"}`
-                }
-              >
-                {own ? amount : "·"}
-              </span>
-            );
-          })
+        ? row(
+            "rain",
+            (column) => {
+              // A total belongs to its interval, and to no other hour. Every
+              // other row may borrow the nearest step for a column between two,
+              // but a three-hour total read into each of three hourly columns
+              // says three times the rain. So the interval's last column prints
+              // it and the others in it carry its tint and a dot; the title
+              // says which interval either way, since the steps need not fall
+              // on the columns' hours.
+              const covered = rain[column];
+              const value = covered
+                ? variableValue(series[covered.step], fields.rain)
+                : null;
+              if (!covered || value === null) return "–";
+              const amount = value < 0.05 ? "0" : value.toFixed(1);
+              const own = covered.own;
+              const exact =
+                Math.abs(covered.end - columns[column].time) <= 60000;
+              return (
+                <span
+                  className={`rain-cell${own ? "" : " is-part"}`}
+                  style={
+                    {
+                      "--rain": Math.min(1, value / RAIN_FULL_MM).toFixed(2),
+                    } as React.CSSProperties
+                  }
+                  title={`${
+                    own && exact
+                      ? `${amount} mm in the ${covered.hours} h to here`
+                      : `${amount} mm in the ${covered.hours} h to ${clock(covered.end)}${own ? "" : ", printed at the last column it covers"}`
+                  }${by(series[covered.step])}`}
+                >
+                  {own ? amount : "·"}
+                </span>
+              );
+            },
+            weatherHanded,
+          )
         : span("rain", "")}
     </>
   );

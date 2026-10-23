@@ -112,6 +112,14 @@ MODELS = {
     # own slot: as GFS, 13 h.
     "gfs-wave": {"script": "fetch_gfswave.py", "manifest": "weather/gfs-wave.json",
                  "kind": "wave", "maxAgeHours": 13, "cache": "gfswave", "readsPublishedRun": True},
+    # GFS's surface weather, the dock's sky, air and rain past ICON-EU weather's three
+    # days. Its 384 h run is complete later than the wind's 240 h, so its slots are at
+    # :05 and :35 an hour after GFS's: the 00 UTC run is taken at 05:05 and served until
+    # the 06 UTC run lands at 11:05, at most 40 minutes later (the timeout), when it is
+    # 11 h 45 m old. 14 h leaves a late slot and an hour of queueing.
+    "gfs-weather": {"script": "fetch_gfs_weather.py", "manifest": "weather/gfs-weather.json",
+                    "kind": "weather", "maxAgeHours": 14, "cache": "gfs-weather",
+                    "readsPublishedRun": True},
     # Predictions, not a run: `run` is the hour the job ran, so it never repeats from
     # one daily slot to the next and there is no provider run to compare it with.
     "tides": {"script": "fetch_tides.py", "manifest": "marine/tides.json",

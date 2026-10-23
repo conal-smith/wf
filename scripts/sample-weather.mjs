@@ -852,7 +852,8 @@ function weatherBundle(model, spots, runMs, grid) {
   const hours = frameHours(model);
   const prefix = `${model.id}-${run}-${hours[hours.length - 1]}h-v1`;
   const names = Object.keys(WEATHER_VARIABLES);
-  const gridded = model.frameVariables;
+  // A frameless bundle (GFS weather) publishes its spot series alone.
+  const gridded = model.frameless ? [] : model.frameVariables;
   const series = Object.fromEntries(spots.map((spot) => [spot.id, []]));
   const frames = [];
   const files = [];
@@ -918,8 +919,15 @@ function weatherBundle(model, spots, runMs, grid) {
       ...fields,
     };
     const url = `weather/${prefix}/${pad(hour, 3)}.json`;
-    files.push([url, payload]);
-    frames.push({ hour, validTime: valid, url, precipIntervalHours: interval });
+    if (!model.frameless) {
+      files.push([url, payload]);
+      frames.push({
+        hour,
+        validTime: valid,
+        url,
+        precipIntervalHours: interval,
+      });
+    }
     for (const spot of spots) {
       const x = spotX(grid, spot.lon);
       const y = spotY(grid, spot.lat);
@@ -970,7 +978,9 @@ function weatherBundle(model, spots, runMs, grid) {
         ];
       }),
     ),
-    frameVariables: [...gridded],
+    ...(model.frameless
+      ? { horizonHours: hours[hours.length - 1] }
+      : { frameVariables: [...gridded] }),
     frames,
     spotSeries: series,
     precipitationNote:
@@ -1004,6 +1014,7 @@ const FIXTURE_RUNS = {
   aifs: "2026-09-16T06:00:00Z",
   "gfs-wave": "2026-09-16T18:00:00Z",
   "icon-eu-weather": "2026-09-16T18:00:00Z",
+  "gfs-weather": "2026-09-16T18:00:00Z",
 };
 
 /**
@@ -1139,6 +1150,22 @@ const CATALOGUE = [
     frameVariables: ["t2m", "precip", "clct", "pmsl", "ww"],
     spacing: { fixtures: 0.25, live: 0.125 },
     live: { horizonHours: 72 },
+  },
+  {
+    // The dock's sky, air and rain past ICON-EU weather's three days, as far
+    // as the strip's fifteen; spot series only, as the adapter publishes it.
+    id: "gfs-weather",
+    file: "gfs-weather.json",
+    kind: "weather",
+    name: "GFS weather",
+    seed: 0.53,
+    stepHours: 3,
+    horizonHours: 6,
+    resolutionKm: 28,
+    frameless: true,
+    spacing: { fixtures: 0.25, live: 0.25 },
+    live: { horizonHours: 360 },
+    optional: true,
   },
 ];
 
