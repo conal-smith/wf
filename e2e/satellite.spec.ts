@@ -173,6 +173,7 @@ test("the satellite image draws at high and at low tide in the Malahide estuary,
 
   // The key names the tide the image was taken at, near here.
   await openFromMenu(page, "About the map");
+  await page.getByRole("tab", { name: "Satellite" }).click();
   await expect(page.locator(".k-sat")).toContainText(
     /Satellite: low tide \(≈\d\.\d m\)/,
   );

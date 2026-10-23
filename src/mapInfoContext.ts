@@ -1,8 +1,17 @@
 import { createContext } from "react";
 
-/** The parts of the map's information dialog, in the order it shows them. */
+/** The parts of the map's information dialog, in the order its rail lists them. */
 export type InfoSection =
-  "key" | "stars" | "foil" | "lidar" | "currents" | "sources";
+  | "key"
+  | "stars"
+  | "wind"
+  | "blend"
+  | "foil"
+  | "lidar"
+  | "currents"
+  | "satellite"
+  | "sources"
+  | "about";
 
 /**
  * Opens the map's information dialog at one of its parts. Provided by the map

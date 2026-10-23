@@ -45,8 +45,6 @@ import {
 } from "../force5/src/foilDepth";
 import { elevationAt } from "../force5/src/foilProbe";
 import { useFadeOut } from "../ui/Backdrop";
-import FoilLegend from "./FoilLegend";
-import MapInfo from "./MapInfo";
 import { MapInfoOpen, type InfoSection } from "./mapInfoContext";
 import { foilArchiveUrl, useFoilDepth } from "./useFoilDepth";
 import { useCurrents } from "./useCurrents";
@@ -115,6 +113,8 @@ import {
 } from "../force5/src/models";
 // The display options, only when asked for from the map's controls.
 const DisplayFilter = lazy(() => import("./DisplayFilter"));
+// The map's information: a chunk of its own, fetched when it first opens.
+const MapInfo = lazy(() => import("./MapInfo"));
 // Gust is a launcher in the corner until he is asked: his code comes once
 // the chart is up, not before it.
 const Companion = lazy(() =>
@@ -1842,52 +1842,54 @@ export default function App() {
         </Suspense>
       )}
       {infoShown && (
-        <MapInfo
-          at={infoShown}
-          open={info !== null}
-          onClose={() => setInfo(null)}
-          scale={scale}
-          rider={rider}
-          spotId={picked ? null : (point?.id ?? null)}
-          foil={
-            <FoilLegend
-              on={layers.foil}
-              far={foilFar}
-              area={foilArea}
-              station={foilStation}
-              tide={foilArea ? (foilTides[foilArea.id]?.water ?? null) : null}
-              sea={
-                foilArea?.level ? (foilTides[foilArea.id]?.sea ?? null) : null
-              }
-              when={
+        <Suspense fallback={null}>
+          <MapInfo
+            at={infoShown}
+            open={info !== null}
+            onClose={() => setInfo(null)}
+            scale={scale}
+            rider={rider}
+            starsFrom={starsFromAt(rider.starsFrom)}
+            blendModels={prefs.blendModels}
+            spotId={picked ? null : (point?.id ?? null)}
+            foil={{
+              on: layers.foil,
+              far: foilFar,
+              area: foilArea,
+              station: foilStation,
+              tide: foilArea ? (foilTides[foilArea.id]?.water ?? null) : null,
+              sea: foilArea?.level
+                ? (foilTides[foilArea.id]?.sea ?? null)
+                : null,
+              when:
                 foilTime !== null
                   ? `${dayShort(foilTime)} ${clock(foilTime)}`
-                  : ""
-              }
-              readout={foilProbeText}
-              error={foilState.error}
-              floor={foilState.manifest?.floorMetres}
-            />
-          }
-          lidar={
-            // Off, its key's code is not loaded either.
-            layers.lidar ? (
-              <Suspense fallback={null}>
-                <LidarKey index={lidar.index} error={lidar.error} />
-              </Suspense>
-            ) : (
-              <div className="foil-key" data-lidar-key>
-                <p className="foil-at">
-                  Off. Turn it on in Layers, under Chart: &ldquo;LiDAR
-                  data&rdquo;.
-                </p>
-              </div>
-            )
-          }
-          sources={sources}
-          satellite={satellite.note}
-          satelliteError={satellite.error}
-        />
+                  : "",
+              readout: foilProbeText,
+              error: foilState.error,
+              floor: foilState.manifest?.floorMetres,
+            }}
+            lidar={
+              // Off, its key's code is not loaded either.
+              layers.lidar ? (
+                <Suspense fallback={null}>
+                  <LidarKey index={lidar.index} error={lidar.error} />
+                </Suspense>
+              ) : (
+                <div className="foil-key" data-lidar-key>
+                  <p className="foil-at">
+                    Off. Turn it on in Layers, under Chart: &ldquo;LiDAR
+                    data&rdquo;.
+                  </p>
+                </div>
+              )
+            }
+            sources={sources}
+            satellite={satellite.note}
+            satelliteError={satellite.error}
+            satelliteTides={satellite.station}
+          />
+        </Suspense>
       )}
     </div>
   );
