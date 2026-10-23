@@ -199,8 +199,8 @@ function vectorOn(
 /**
  * One place's hours on the axis, as the stars rate them: each hour is one
  * model's own wind, gust and bearing — the rider's model (`from.model`,
- * HARMONIE by default) wherever it reaches the hour, else the model that takes
- * over (`from.then`, ECMWF by default), else nothing (force5/src/lead.ts).
+ * HARMONIE by default) wherever it reaches the hour, else ECMWF, which takes
+ * over past the end of its run (`from.then`), else nothing (force5/src/lead.ts).
  * `model` says which, hour by hour. The gust is that model's too, null where
  * it gives none: no other model fills it in. Those two are read from
  * `manifests` whether or not the reader has them in their blend.
@@ -348,8 +348,8 @@ export function daylightOn(
 }
 
 /**
- * One place's columns, rated for this rider, from the model they take this
- * place's stars from (`starsFromAt`).
+ * One place's columns, rated for this rider, from the model they picked
+ * (`starsFromAt`).
  */
 export function placeHours(
   manifests: readonly Manifest[],
@@ -363,7 +363,7 @@ export function placeHours(
     blendIds,
     place.id,
     axis,
-    starsFromAt(rider.starsFrom, place.id),
+    starsFromAt(rider.starsFrom),
   );
   const light = daylightOn(place, axis);
   return axis.map((_, at) => {

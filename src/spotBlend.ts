@@ -21,12 +21,13 @@
  * reads only the squares in view, and the dock only its spot's
  * (`loadBlendSquares`, through the one spot loader, force5/src/spotData.ts).
  *
- * Only the default is published: stars from HARMONIE then ECMWF, the agreement
- * across every wind model. A reader who picks their own models, or takes their
- * stars from another model, gets the hours worked out in the browser from the
- * models' own spot squares (src/useRatings.ts); a spot of theirs rated from
- * another model is worked out that way alone, and every other place still
- * comes from here.
+ * Only the default is published: the hours HARMONIE then ECMWF rate, the
+ * agreement across every wind model. A rider who picked another model gets the
+ * hours worked out in the browser from that model's and ECMWF's own spot
+ * squares (src/useRatings.ts). A rider who makes a blend of their own still
+ * reads this one: the stars never come from the blend, so the lights are the
+ * same for any blend, and the blend's own chart reads the chosen models' squares
+ * for the open spot alone, only while it is shown (src/ForecastDock.tsx).
  *
  * Compatible both ways with the site before the ruling of 19 October 2026: the
  * schema stays 2 and the new keys (`lead` in the pointer and in each place) are
@@ -54,7 +55,6 @@ import { modelWeight } from "../force5/src/weights";
 import {
   DEFAULT_STARS_FROM,
   sameStarsFrom,
-  starsFromAt,
   type StarsFrom,
 } from "../force5/src/lead";
 import {
@@ -83,56 +83,23 @@ export const staleSpotBlend = (
 ) => now - Date.parse(blend.generatedAt) > SPOT_BLEND_MAX_AGE_HOURS * 3600000;
 
 /**
- * Whether the reader blends their own set of models: any wind model left out.
- * Only the blend of every wind model is published.
- */
-export const ownBlendModels = (
-  blendModels: readonly string[],
-  windModelIds: readonly string[],
-) => !windModelIds.every((id) => blendModels.includes(id));
-
-/**
  * The published blend the map may rate from, or null for the browser to work
- * the hours out itself from the models: when there is none, when the reader
- * blends their own models, once it is older than six hours, or when the
- * reader's stars come from other models than the ones it was built with
- * (`from`; a blend that names none was built by the rule before 19 October
- * 2026 and fits nobody).
+ * the hours out itself from the models: when there is none, once it is older
+ * than six hours, or when the rider's stars come from another model than the
+ * one it was built with (`from`; a blend that names none was built by the rule
+ * before 19 October 2026 and fits nobody). The rider's own choice of models
+ * for the blend does not count: it moves no star.
  */
 export const trustedSpotBlend = <
   B extends Pick<SpotBlend, "generatedAt"> & { lead?: StarsFrom },
 >(
   blend: B | null,
-  ownModels: boolean,
   now = Date.now(),
   from: StarsFrom = DEFAULT_STARS_FROM,
 ): B | null =>
-  ownModels ||
-  !blend ||
-  staleSpotBlend(blend, now) ||
-  !sameStarsFrom(blend.lead, from)
+  !blend || staleSpotBlend(blend, now) || !sameStarsFrom(blend.lead, from)
     ? null
     : blend;
-
-/**
- * The places this rider rates from other models than a published blend's:
- * their spots of their own (`StarsChoice.spots`), each worked out in the
- * browser from those models while every other place is read from the blend.
- * None without a published blend, when every place is worked out anyway.
- */
-export function placesRatedApart<P extends { id: string }>(
-  places: readonly P[],
-  rider: Pick<Rider, "starsFrom">,
-  published: { lead?: StarsFrom } | null,
-): P[] {
-  const own = rider.starsFrom?.spots;
-  if (!published || !own) return [];
-  return places.filter(
-    (place) =>
-      place.id in own &&
-      !sameStarsFrom(published.lead, starsFromAt(rider.starsFrom, place.id)),
-  );
-}
 
 /** One model the blend read: enough of its run for the dock's columns. */
 export interface BlendSource {

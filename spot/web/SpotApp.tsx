@@ -16,7 +16,7 @@ import { starsFromAt } from "../../force5/src/lead";
 import {
   loadPrefs,
   saveRider,
-  withRiderStarsFrom,
+  withRiderModel,
 } from "../../force5/src/prefs";
 import { shoreFacing } from "../../force5/src/shoreFacing";
 import {
@@ -60,7 +60,6 @@ import { MONO_LABEL, RING, tv } from "../../ui/tv";
 import { DaySection } from "./DaySection";
 import { SpotFrame } from "./Frame";
 import { FacingGlyph, KeepStar } from "./glyphs";
-import type { StarsWhere } from "./RangeBar";
 import { RiderSwitch, riderWords } from "./RiderSwitch";
 import { loadSpotPictures, type SpotPicture } from "./satellite";
 import {
@@ -162,7 +161,7 @@ function useRider() {
 function SpotRoute({ id }: { id: string | null }) {
   const [attempt, setAttempt] = useState(0);
   const [rider, changeRider] = useRider();
-  const state = useSpotForecast(id, attempt, starsFromAt(rider.starsFrom, id));
+  const state = useSpotForecast(id, attempt, starsFromAt(rider.starsFrom));
   const s = styles();
   const title =
     state.kind === "ready"
@@ -374,18 +373,9 @@ function SpotPage({
   }, []);
   const units = useMemo(() => loadPrefs().units, []);
   const unitText = unitLabel(units);
-  const starsFrom = starsFromAt(rider.starsFrom, spot.id);
-  // A model picked in an hour's card: for every spot, which also brings this
-  // one back to it, or for this spot alone.
-  const changeStarsFrom = (model: string, where: StarsWhere) =>
-    onRider(
-      where === "spot"
-        ? withRiderStarsFrom(rider, { spot: spot.id, model })
-        : withRiderStarsFrom(
-            withRiderStarsFrom(rider, { everywhere: { model } }),
-            { spot: spot.id, model: null },
-          ),
-    );
+  const starsFrom = starsFromAt(rider.starsFrom);
+  // A model picked in an hour's card: the rider's from now on, everywhere.
+  const changeModel = (model: string) => onRider(withRiderModel(rider, model));
   const facing = shoreFacing(spot.id);
   const rows = useMemo(
     () => spotRows(forecast.hours, now, facing, rider),
@@ -494,11 +484,7 @@ function SpotPage({
       {picture && (
         <SpotSatellite picture={picture} name={spot.name} facing={facing} />
       )}
-      <RiderSwitch
-        rider={rider}
-        onChange={onRider}
-        spot={{ id: spot.id, name: spot.name }}
-      />
+      <RiderSwitch rider={rider} onChange={onRider} />
       <WeekStrip
         days={days.map(({ day }) => ({ date: day.date }))}
         current={shown}
@@ -528,7 +514,7 @@ function SpotPage({
             changes={changes.filter(
               (change) => dublinDate(change.time) === day.date,
             )}
-            onStarsFrom={changeStarsFrom}
+            onModel={changeModel}
             skyStops={day.date === skyStops}
             rain={rain}
           />

@@ -11,7 +11,7 @@
  * with the other models as faint ticks, and every model's wind, the one the
  * stars come from first. Any of them can be picked there to rate the stars.
  */
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { modelName, type StarsFrom } from "../../force5/src/lead";
 import { SHORE_LABEL, type ShoreAngle } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
@@ -42,7 +42,7 @@ const styles = tv({
     gustSup: "align-super text-caption text-gust",
     facts: "m-0 flex flex-col gap-1 font-mono text-caption",
     fact: "flex gap-3",
-    // Wide enough for "Stars from", the longest term.
+    // Wide enough for "Shore" and "Model", the longest terms.
     term: ["w-18 shrink-0 pt-px text-ink-muted", MONO_LABEL],
     value: "m-0 text-ink-2",
     strong: "font-semibold text-ink",
@@ -62,9 +62,6 @@ const styles = tv({
     ring: "fill-none stroke-ink",
     dot: "fill-ink",
     note: "m-0 font-body text-caption text-ink-muted italic",
-    ask: "flex flex-col gap-2 border-0 border-t border-line pt-2",
-    askTitle: ["m-0 text-ink", MONO_LABEL],
-    askButtons: "flex flex-wrap items-center gap-2",
   },
 });
 
@@ -410,9 +407,6 @@ function Fact({
 
 const WARN_SHORE: ReadonlySet<ShoreAngle> = new Set(["offshore", "cross-off"]);
 
-/** Where a model picked in the card should rate from: every spot, or this one. */
-export type StarsWhere = "everywhere" | "spot";
-
 /** The card the frame opens: the hour's wind, broken down. Figures, not advice. */
 export function RangeDetail({
   time,
@@ -426,8 +420,7 @@ export function RangeDetail({
   models,
   riderText,
   starsFrom,
-  spotName,
-  onStarsFrom,
+  onModel,
 }: {
   time: number;
   /** "Wed 14 Oct" */
@@ -441,11 +434,10 @@ export function RangeDetail({
   /** The live wind models, in the order the sources list them. */
   models: readonly { id: string; name: string }[];
   riderText: string;
-  /** The model the rider takes this spot's stars from, and the one after it. */
+  /** The rider's model, and ECMWF after it. */
   starsFrom: StarsFrom;
-  spotName: string;
-  /** Rate the stars from another model, everywhere or at this spot. */
-  onStarsFrom?: (model: string, where: StarsWhere) => void;
+  /** Pick another model: the rider's from now on, here and on the map. */
+  onModel?: (model: string) => void;
 }) {
   const s = styles();
   const say = (knots: number) => windIn(knots, units);
@@ -454,11 +446,6 @@ export function RangeDetail({
     ...models.filter((m) => m.id === wind.lead),
     ...models.filter((m) => m.id !== wind.lead),
   ].filter((m) => byModel[m.id]);
-  const [asking, setAsking] = useState<string | null>(null);
-  const pick = (where: StarsWhere) => {
-    if (asking) onStarsFrom?.(asking, where);
-    setAsking(null);
-  };
   return (
     <div className={s.detail()} data-range-detail>
       <span className={s.when()}>
@@ -477,7 +464,7 @@ export function RangeDetail({
       </span>
       <DetailChart wind={wind} band={band} units={units} />
       <dl className={s.facts()}>
-        <Fact term="Stars from">
+        <Fact term="Model">
           <b className={s.strong()} data-stars-from>
             {headlineName(wind)}
           </b>
@@ -485,7 +472,7 @@ export function RangeDetail({
             <>
               {" "}
               <span className={s.context()}>
-                {modelName(starsFrom.model)} does not reach this hour
+                past the end of {modelName(starsFrom.model)}&rsquo;s run
               </span>
             </>
           )}
@@ -526,9 +513,9 @@ export function RangeDetail({
         <table className={s.table()} data-range-models>
           <thead>
             <tr>
-              {onStarsFrom && (
+              {onModel && (
                 <th scope="col" className={s.th()}>
-                  <span className="sr-only">Stars from</span>
+                  <span className="sr-only">Your model</span>
                 </th>
               )}
               <th scope="col" className={s.th()}>
@@ -554,19 +541,19 @@ export function RangeDetail({
               const num = s.td({ className: [weight, s.num()] });
               return (
                 <tr key={model.id} data-model={model.id}>
-                  {onStarsFrom && (
+                  {onModel && (
                     <td className={s.pickCell()}>
                       <Button
                         icon
                         size="sm"
                         className={s.pick()}
-                        aria-label={`Stars from ${model.name}`}
+                        aria-label={`Use ${model.name}`}
                         pressed={chosen ? "worded" : false}
                         data-stars-pick={model.id}
                         onMouseDown={keepFocus}
-                        onClick={() => setAsking(chosen ? null : model.id)}
+                        onClick={() => !chosen && onModel(model.id)}
                       >
-                        <PickMark on={asking ? asking === model.id : chosen} />
+                        <PickMark on={chosen} />
                       </Button>
                     </td>
                   )}
@@ -585,46 +572,10 @@ export function RangeDetail({
           </tbody>
         </table>
       )}
-      {asking && (
-        <div
-          className={s.ask()}
-          role="group"
-          aria-label={`Stars from ${modelName(asking)}`}
-          data-stars-ask
-        >
-          <p className={s.askTitle()}>Stars from {modelName(asking)}:</p>
-          <div className={s.askButtons()}>
-            <Button
-              variant="pill"
-              size="sm"
-              onMouseDown={keepFocus}
-              onClick={() => pick("everywhere")}
-            >
-              Every spot
-            </Button>
-            <Button
-              variant="pill"
-              size="sm"
-              onMouseDown={keepFocus}
-              onClick={() => pick("spot")}
-            >
-              Just {spotName}
-            </Button>
-            <Button
-              variant="link"
-              size="sm"
-              onMouseDown={keepFocus}
-              onClick={() => setAsking(null)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
-      {onStarsFrom && !asking && rows.length > 1 && (
+      {onModel && rows.length > 1 && (
         <p className={s.note()}>
-          Pick a model to rate every hour from it. The others never change the
-          stars.
+          Pick a model to see its forecast, here and on the map, and rate the
+          stars from it. The others never change the stars.
         </p>
       )}
       <p className={s.note()}>Rated for {riderText}.</p>

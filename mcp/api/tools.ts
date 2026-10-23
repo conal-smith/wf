@@ -33,6 +33,7 @@ import type { ForecastSource } from "./httpSource.js";
 import {
   DEFAULT_STARS_FROM,
   STARS_MODELS,
+  leadFor,
   type StarsFrom,
 } from "../../force5/src/lead.js";
 
@@ -67,7 +68,7 @@ export const INSTRUCTIONS = `wingfoil.ie forecasts wind, waves and tides for win
 - Start with list_spots or find_wind to learn spot ids; get_spot_forecast accepts an id, a name or part of one.
 - Before recommending spots, ask where the person is based (or use their location if you have it) and pass find_wind near ({ lat, lon } for a town, or a county or spot) with max_km, or the counties they'd travel to. Searching all of Ireland suits only someone willing to travel anywhere.
 - Speeds are knots, directions are degrees the wind comes FROM, times are UTC with a \`local\` Europe/Dublin label. Quote the local time to people.
-- The forecast is one model's own, the one wingfoil.ie rates its stars from, never a blend of several: HARMONIE's (Met Éireann's 2.5 km model, the most accurate here) while it reaches the hour, about the next 60 hours, and ECMWF's past it, unless a caller passes stars_from and then to choose others. \`lead\` says which model an hour is. \`agreement\` says how closely all the models agree, as context; \`confidence\` is the same but low wherever fewer than three models cover the hour (\`models\`), as happens a few days out. Hedge when confidence is low, say why (few models, or models disagreeing), and use by_model to explain a disagreement.
+- The forecast is one model's own, the one wingfoil.ie rates its stars from, never a blend of several: HARMONIE's (Met Éireann's 2.5 km model, the most accurate here) while it reaches the hour, about the next 60 hours, and ECMWF's past it, unless a caller passes \`model\` to choose another (ECMWF still takes over past the end of its run). \`lead\` says which model an hour is. \`agreement\` says how closely all the models agree, as context; \`confidence\` is the same but low wherever fewer than three models cover the hour (\`models\`), as happens a few days out. Hedge when confidence is low, say why (few models, or models disagreeing), and use by_model to explain a disagreement.
 - ${METHOD}
 - \`shore\` says how the wind meets the spot's beach: onshore, cross-on, cross, cross-off or offshore (the same rule wingfoil.ie's stars use). Offshore and cross-off wind carry a rider who falls away from the beach out to sea: always warn about them. find_wind leaves dead offshore hours out unless allow_offshore is set. A null shore means the beach's facing is unknown, so say offshore wind can't be ruled out there.
 - Point out sessions find_wind marks \`gusty\`. When someone has a gust limit, pass max_gust_kn (or max_gust_factor) so hours past it are left out.
@@ -176,35 +177,24 @@ export const listSpots = tool({
   },
 });
 
-/** The two arguments that choose the model a forecast's headline is (force5/src/lead.ts). */
-const STARS_FROM_ARGS = {
-  stars_from: z
+/** The argument that chooses the model a forecast's headline is (force5/src/lead.ts). */
+const MODEL_ARGS = {
+  model: z
     .enum(STARS_MODELS as [string, ...string[]])
     .optional()
     .describe(
-      "The one model the wind, gust and direction come from, as wingfoil.ie rates its stars (default harmonie).",
-    ),
-  then: z
-    .enum(STARS_MODELS as [string, ...string[]])
-    .optional()
-    .describe(
-      "The model that takes over past the end of stars_from's run (default ecmwf).",
+      "The one model the wind, gust and direction come from, as a wingfoil.ie rider picks it (default harmonie). Past the end of its run ECMWF's take over, as on the site.",
     ),
 };
 
-const starsFromArgs = (
-  model: string | undefined,
-  then: string | undefined,
-): StarsFrom => ({
-  model: model ?? DEFAULT_STARS_FROM.model,
-  then: then ?? DEFAULT_STARS_FROM.then,
-});
+const modelArg = (model: string | undefined): StarsFrom =>
+  model ? leadFor(model) : DEFAULT_STARS_FROM;
 
 export const getSpotForecast = tool({
   name: "get_spot_forecast",
   title: "Spot forecast",
   description:
-    "Hour-by-hour forecast for one spot: wind speed, gusts and direction from one weather model, the one wingfoil.ie rates its stars from (HARMONIE while it reaches the hour, then ECMWF, unless stars_from and then name others), with the range across every model and how well they agree as context, how the wind meets the shore (onshore to offshore), plus waves, air temperature, rain, daylight, sunrise and sunset, high and low tides and the latest sea temperature. Rain is the weather model's own total over an interval (3 hours for ICON-EU), given once on the row where its interval ends (`rain_interval_hours`) and null on the hours before it, so add rain_mm up over the rows for a period's rain.",
+    "Hour-by-hour forecast for one spot: wind speed, gusts and direction from one weather model, the one wingfoil.ie rates its stars from (HARMONIE while it reaches the hour, then ECMWF, unless `model` names another, which ECMWF then follows), with the range across every model and how well they agree as context, how the wind meets the shore (onshore to offshore), plus waves, air temperature, rain, daylight, sunrise and sunset, high and low tides and the latest sea temperature. Rain is the weather model's own total over an interval (3 hours for ICON-EU), given once on the row where its interval ends (`rain_interval_hours`) and null on the hours before it, so add rain_mm up over the rows for a period's rain.",
   inputSchema: {
     spot: z
       .string()
@@ -237,10 +227,10 @@ export const getSpotForecast = tool({
       .describe(
         "Also give each model's own wind at every hour, to explain disagreement.",
       ),
-    ...STARS_FROM_ARGS,
+    ...MODEL_ARGS,
   },
   async run(
-    { spot, from, hours, step_hours, per_model, stars_from, then },
+    { spot, from, hours, step_hours, per_model, model },
     deps,
   ) {
     const spots = await loadSpots(deps.source);
@@ -253,7 +243,7 @@ export const getSpotForecast = tool({
       );
     const at = (deps.now ?? Date.now)();
     const window = windowFor(at, { from, hours, stepHours: step_hours });
-    const models = starsFromArgs(stars_from, then);
+    const models = modelArg(model);
     const forecast = await spotForecast(deps.source, match.spot, window, {
       perModel: per_model,
       now: at,
@@ -286,7 +276,7 @@ export const findWind = tool({
   name: "find_wind",
   title: "Find wind",
   description:
-    "Rank spots by how many hours the wind will be in a range, grouped into sessions, on the one model wingfoil.ie rates its stars from (HARMONIE, then ECMWF, unless stars_from and then name others), leaving out hours blowing dead offshore. Each session says how the wind meets the shore. Use this for 'where should I go this weekend?'.",
+    "Rank spots by how many hours the wind will be in a range, grouped into sessions, on the one model wingfoil.ie rates its stars from (HARMONIE, then ECMWF, unless `model` names another, which ECMWF then follows), leaving out hours blowing dead offshore. Each session says how the wind meets the shore. Use this for 'where should I go this weekend?'.",
   inputSchema: {
     min_kn: z
       .number()
@@ -380,7 +370,7 @@ export const findWind = tool({
       .max(30)
       .optional()
       .describe("How many spots to return (default 8)."),
-    ...STARS_FROM_ARGS,
+    ...MODEL_ARGS,
   },
   async run(args, deps) {
     const minKnots = args.min_kn ?? 14;
@@ -431,7 +421,7 @@ export const findWind = tool({
       maxKm,
       limit: args.limit ?? 8,
       now: at,
-      from: starsFromArgs(args.stars_from, args.then),
+      from: modelArg(args.model),
     });
     if (near && !found.searched)
       return failure(

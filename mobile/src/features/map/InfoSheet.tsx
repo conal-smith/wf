@@ -317,8 +317,9 @@ export const InfoSheet = memo(function InfoSheet(props: Props) {
 
       <SheetSection title="Sources">
         <T variant="body">
-          Wind: {props.model ? `${props.model.name} on the map${props.model.run ? ` (${props.model.run} run)` : ""}` : "HARMONIE on the map"}; the
-          stars rate HARMONIE&rsquo;s own forecast while it reaches the hour, then a blend of {props.blendModels} models.
+          Wind and stars: {props.model ? `${props.model.name}${props.model.run ? ` (${props.model.run} run)` : ""}` : "HARMONIE"}, the
+          model on the map{props.model?.name === "ECMWF" ? "" : ", and past the end of its run ECMWF"}. A blend of {props.blendModels} models gives the agreement
+          beside the stars, and never changes one.
         </T>
         <T variant="body">Depths: EMODnet Bathymetry, metres below chart datum.</T>
         {props.foil.attribution ? (

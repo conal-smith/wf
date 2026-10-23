@@ -6,16 +6,17 @@ import {
 } from "../force5/src/manifests";
 import {
   parseRider,
-  withRiderStarsFrom,
+  withRiderModel,
   withStarsOn,
   type Prefs,
 } from "../force5/src/prefs";
 import {
+  FALLBACK_MODEL,
   STARS_MODELS,
+  chosenModel,
   modelName,
-  spotOverride,
-  starsFromAt,
 } from "../force5/src/lead";
+import { modelEntry } from "../force5/src/catalog";
 import { upwindAngle } from "../force5/src/rideWedge";
 import { UNITS, type Units } from "../force5/src/units";
 import {
@@ -47,12 +48,11 @@ interface Props {
    * the account may keep (force5/src/prefs.ts `withStarsOn`).
    */
   onStarsOn: (prefs: Prefs) => void;
-  /** The riding place open in the dock, which may take its stars from a model of its own. */
-  spot?: { id: string; name: string } | null;
 }
 
 /**
- * The display options: the units, the rider and the blend's models. In a
+ * The display options: the units, the rider, their model and the blend's
+ * models. In a
  * dialog over the map, as the layers and your spots are, and shut the same
  * ways (src/MapControls.tsx): its X, Escape or a tap on the backdrop.
  */
@@ -62,7 +62,6 @@ export default function DisplayFilter({
   models,
   onCustomiseStars,
   onStarsOn,
-  spot = null,
 }: Props) {
   const setUnits = (units: Units) => onChange({ ...prefs, units });
   const toggleModel = (id: string, on: boolean) =>
@@ -84,12 +83,11 @@ export default function DisplayFilter({
   const saved = savedCustom(prefs.rider);
   const on = starsOn(prefs.rider);
   const choices: StarsOn[] = saved ? [...SKILLS, "custom"] : [...SKILLS];
-  // The one model the stars come from, the one that takes over where its run
-  // ends, and the open spot's own (force5/src/lead.ts).
-  const from = starsFromAt(prefs.rider.starsFrom);
-  const own = spot ? spotOverride(prefs.rider.starsFrom, spot.id) : null;
-  const setStarsFrom = (change: Parameters<typeof withRiderStarsFrom>[1]) =>
-    onChange({ ...prefs, rider: withRiderStarsFrom(prefs.rider, change) });
+  // The one model the rider sees and the stars rate (force5/src/lead.ts):
+  // the map moves to it as it changes (src/App.tsx).
+  const model = chosenModel(prefs.rider.starsFrom);
+  const setModel = (id: string) =>
+    onChange({ ...prefs, rider: withRiderModel(prefs.rider, id) });
   const planned = MODEL_CATALOG.filter(
     (entry) => entry.planned && entry.kind === "wind",
   );
@@ -203,68 +201,34 @@ export default function DisplayFilter({
           ? `Until you give a weight they assume ${ESTIMATE_WEIGHT_KG} kg.`
           : ""}
       </p>
-      <h2>Stars from</h2>
-      <div className="filter-stars-from">
+      <h2>Model</h2>
+      <div className="filter-model-choice">
         <Segmented<string>
-          aria-label="Stars from"
+          aria-label="Model"
           options={STARS_MODELS.map((id) => ({
             value: id,
             label: modelName(id),
           }))}
-          value={from.model}
-          onChange={(id) =>
-            // The model that took over becomes the one that leads: the one
-            // it took over from takes over in its place.
-            setStarsFrom({
-              everywhere:
-                id === from.then
-                  ? { model: id, then: from.model }
-                  : { model: id },
-            })
-          }
+          value={model}
+          onChange={setModel}
         />
-        {/* Past the end of the model's run, one other model: never a blend. */}
-        <span className="filter-sub">When {modelName(from.model)} ends</span>
-        <Segmented<string>
-          aria-label={`When ${modelName(from.model)} ends`}
-          options={STARS_MODELS.filter((id) => id !== from.model).map((id) => ({
-            value: id,
-            label: modelName(id),
-          }))}
-          value={from.then}
-          onChange={(id) => setStarsFrom({ everywhere: { then: id } })}
-        />
-        {spot && (
-          <>
-            <span className="filter-sub">At {spot.name}</span>
-            <Segmented<string>
-              aria-label={`Stars at ${spot.name}`}
-              className="filter-spot-stars"
-              options={[
-                { value: "same", label: "Same" },
-                ...STARS_MODELS.filter((id) => id !== from.model).map((id) => ({
-                  value: id,
-                  label: modelName(id),
-                })),
-              ]}
-              value={own ?? "same"}
-              onChange={(id) =>
-                setStarsFrom({
-                  spot: spot.id,
-                  model: id === "same" ? null : id,
-                })
-              }
-            />
-          </>
-        )}
+        <small className="filter-sub" data-model-detail>
+          {modelEntry(model)?.detail}
+        </small>
       </div>
       <p className="filter-note">
-        Every hour&rsquo;s stars are one model&rsquo;s own forecast:{" "}
-        {modelName(from.model)}, then {modelName(from.then)} where its run ends.
-        The models in the blend give the agreement beside them and never change
-        a star.
+        The map, the wind and the stars are {modelName(model)}&rsquo;s own
+        forecast
+        {model === FALLBACK_MODEL
+          ? "."
+          : `, and ${modelName(FALLBACK_MODEL)}'s past the end of its run, which goes on to fifteen days.`}
       </p>
       <h2>Models in the blend</h2>
+      <p className="filter-note">
+        The blend chart draws every model ticked here, and they say how far
+        the forecast agrees. The stars stay {modelName(model)}&rsquo;s whatever
+        you tick.
+      </p>
       <div className="filter-models">
         {models.map((model) => (
           <label

@@ -166,7 +166,7 @@ const STEPS: Step[] = [
   {
     id: "blend",
     title: "The blend",
-    body: "Every model’s wind, laid over each other. Bunched strands agree; spread ones don’t. Your stars come from one model.",
+    body: "Every model’s wind, laid over each other. Bunched strands agree; spread ones don’t. Your stars stay your model’s own.",
     prep: (p) => p.onView("blend"),
     target: () => {
       const chart =

@@ -51,14 +51,14 @@ export function useAlertHours(spotIds: readonly string[]): AlertHours {
         const spot = spotById(id);
         return spot ? [{ id, lat: spot.lat, lon: spot.lon, facing: spot.facing ?? null }] : [];
       });
-    const fromBlend = places.filter((p) => fromPublished(blend, p, rider));
+    const fromBlend = fromPublished(blend, rider) ? places : [];
     void loadBlendSquares(readForecastJson, blend, squaresFor(fromBlend))
       .then((loaded) => {
         if (!current) return;
         const map = new Map(
           places.map((p) => [
             p.id,
-            fromPublished(loaded, p, rider) ? spotBlendHours(loaded, p, axis, rider) : null,
+            fromPublished(loaded, rider) ? spotBlendHours(loaded, p, axis, rider) : null,
           ]),
         );
         setHours({ key, map });
@@ -73,9 +73,9 @@ export function useAlertHours(spotIds: readonly string[]): AlertHours {
 
   const hoursOf = useMemo<HoursOf | null>(() => {
     if (!hours || hours.key !== key || !published) return null;
-    // A spot rated apart reads the forecast's row, from its own model.
+    // A rider whose model is not the published blend's reads the forecast's row, from their model.
     return (id) =>
-      fromPublished(published, { id }, rider)
+      fromPublished(published, rider)
         ? (hours.map.get(id) ?? null)
         : (table.get(id) ?? null);
     // `table` is one Map filled in place; `version` says when it gained rows.

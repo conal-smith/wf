@@ -85,10 +85,9 @@ import { compass, type Spot } from "../force5/src/weather";
 import { spotHref } from "../force5/src/siteNav";
 import {
   handovers,
+  leadOrder,
   modelName,
-  spotOverride,
   starsFromAt,
-  starsFromText,
   type Handover,
 } from "../force5/src/lead";
 
@@ -139,8 +138,6 @@ interface Props {
   marine: readonly ModelAvailability[];
   /** Open "Your star rating", from the chip a rider's own stars put in the head. */
   onCustomStars?: () => void;
-  /** Open the display options, where the model the stars come from is chosen. */
-  onStarsFrom?: () => void;
 }
 
 const ROWS = {
@@ -479,6 +476,9 @@ function HandoverMark({
       aria-hidden="true"
       data-handover={handover.to}
     >
+      {/* Named for a pointer that rests on it: the dock's head no longer
+          says the model, so the line does, quietly. */}
+      <title>{`${modelName(handover.to)} from ${dayShort(column.time)} ${clock(column.time)}`}</title>
       <path className="pen-handover" d={stemPath(x, top, height - 2, seed)} />
     </svg>
   );
@@ -837,7 +837,6 @@ export default function ForecastDock(props: Props) {
     onMore,
     marine,
     onCustomStars,
-    onStarsFrom,
   } = props;
   const cw = phone ? 52 : 62;
   // A phone folds the label column away once the reader slides the hours,
@@ -877,8 +876,16 @@ export default function ForecastDock(props: Props) {
     () => (lender ? [spotSquare(lender.lat, lender.lon)] : null),
     [lender?.lat, lender?.lon],
   );
+  // The models the blend's chart reads: the rider's own pick of them, and
+  // their model and ECMWF for the line the stars are, each only for its square
+  // holding this spot (a model left out of the blend is not read).
+  const starsFrom = starsFromAt(prefs.rider.starsFrom);
+  const chartModels = useMemo(() => {
+    const wanted = new Set([...prefs.blendModels, ...leadOrder(starsFrom)]);
+    return models.filter((model) => wanted.has(model.id));
+  }, [models, prefs.blendModels, starsFrom.model]);
   const blendModels = useSpotSquares(
-    view === "blend" && !isPoint ? models : NO_MODELS,
+    view === "blend" && !isPoint ? chartModels : NO_MODELS,
     square,
   );
   const marineModels = useSpotSquares(more ? marine : NO_MODELS, square);
@@ -888,7 +895,7 @@ export default function ForecastDock(props: Props) {
     prefs.blendModels,
     named,
     axis,
-    starsFromAt(prefs.rider.starsFrom, isPoint ? null : spot.id),
+    starsFrom,
   );
   /** Whose waves, weather and sea the rows show. */
   const lent = lender?.id;
@@ -914,14 +921,6 @@ export default function ForecastDock(props: Props) {
         : handovers(hours.map((hour) => hour?.model ?? null)),
     [hours, isPoint],
   );
-  const ownModel = isPoint
-    ? null
-    : spotOverride(prefs.rider.starsFrom, spot.id);
-  const starsFrom = starsFromAt(
-    prefs.rider.starsFrom,
-    isPoint ? null : spot.id,
-  );
-  const ratedBy = hours?.[selected]?.model ?? starsFrom.model;
   const waves = useSpotWaves(more ? marineModels : NO_MODELS, lent, axis);
   const weather = useSpotWeather(more ? marineModels : NO_MODELS, lent, axis);
   // The top of the blend's scale, shared by the chart and its tick labels
@@ -1567,39 +1566,6 @@ export default function ForecastDock(props: Props) {
               />
             </svg>
             <span className="dk-tool-word">Custom</span>
-          </Button>
-        )}
-        {/* Whose forecast the stars are, at the hour in hand: one model's,
-            the rider's choice, and magenta where this spot has its own. */}
-        {!isPoint && rated && (
-          <Button
-            variant="quiet"
-            size="sm"
-            className={`dk-tool dk-stars-from${ownModel ? " is-own" : ""}`}
-            aria-label={`Stars from ${modelName(ratedBy)}${ownModel ? ` at ${spot.name}` : ""}: change`}
-            title={`The stars here are ${modelName(ratedBy)}'s forecast${
-              column ? ` at ${dayShort(column.time)} ${clock(column.time)}` : ""
-            }. Stars from ${starsFromText(starsFrom)}${
-              ownModel ? ` at ${spot.name}` : ""
-            }; the other models are context and change no star. Change it in Display options.`}
-            onClick={onStarsFrom}
-            data-stars-from-chip={ratedBy}
-          >
-            <svg
-              width="10"
-              height="10"
-              viewBox="-5 -5 10 10"
-              aria-hidden="true"
-            >
-              <path
-                fill="currentColor"
-                d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z"
-              />
-            </svg>
-            <span className="dk-from-word">
-              {ownModel ? "from " : ""}
-              {modelName(ratedBy)}
-            </span>
           </Button>
         )}
         {/* The table or every model's wind drawn as a chart: its glyph and

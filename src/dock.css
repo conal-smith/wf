@@ -110,29 +110,16 @@
   padding: 0 8px;
   font-size: 10px;
 }
-.dk-tools .dk-stars-from {
-  width: auto;
-  gap: 4px;
-  padding: 0 8px;
-}
 .dk-tools .dk-view {
   width: auto;
   gap: 4px;
   padding: 0 8px;
 }
-.dk-from-word,
 .dk-view-word {
   font: 500 10px var(--font-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
-}
-/* A spot rated from a model of its own: said in magenta, dashed, so two
-   spots that disagree say why. */
-.dk-tools .dk-stars-from.is-own {
-  color: var(--color-chart-magenta);
-  outline: 1px dashed var(--color-chart-magenta);
-  outline-offset: -4px;
 }
 .dk-chev svg {
   stroke: currentColor;
@@ -532,7 +519,6 @@ table.tt {
   .dk-tools .dk-custom {
     padding: 0;
   }
-  .dk-tools .dk-stars-from,
   .dk-tools .dk-view {
     width: auto;
     padding: 0 6px;

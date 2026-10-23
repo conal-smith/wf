@@ -465,8 +465,8 @@ export default function LayersPanel({
         ))}
         <section className="lp-group">
           <header className="lp-head">
-            <h3>Model on the map</h3>
-            <span className="lp-rule">one at a time</span>
+            <h3>Model, for the map and the stars</h3>
+            <span className="lp-rule">ECMWF past its run</span>
           </header>
           {modelNote && <p className="models-note">{modelNote}</p>}
           <div className="lp-models" role="group" aria-label="Weather model">

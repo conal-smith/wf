@@ -1,13 +1,7 @@
 // Display preferences for the forecast dock. Persistence is best effort:
 // private browsing, blocked storage and quota errors must never break the page.
 import { isUnits, type Units } from "./units";
-import {
-  parseStarsChoice,
-  withSpotStars,
-  withStarsFrom,
-  type StarsChoice,
-  type StarsFrom,
-} from "./lead";
+import { parseStarsChoice, withModel, type StarsChoice } from "./lead";
 import { modelEntry, windModels } from "./manifests";
 import {
   DEFAULT_RIDER,
@@ -303,20 +297,12 @@ const withStarsChoice = (
 ): Pick<Rider, "starsFrom"> => (choice ? { starsFrom: choice } : {});
 
 /**
- * The rider with the model their stars come from changed: everywhere
- * (`change`), or at one spot (`spot`, with null for "same as everywhere").
+ * The rider with their model changed: the one the map draws, the dock and
+ * the spot page give, and the stars rate (force5/src/lead.ts).
  */
-export function withRiderStarsFrom(
-  rider: Rider,
-  change:
-    { everywhere: Partial<StarsFrom> } | { spot: string; model: string | null },
-): Rider {
-  const { starsFrom: old, ...rest } = rider;
-  const next =
-    "everywhere" in change
-      ? withStarsFrom(old, change.everywhere)
-      : withSpotStars(old, change.spot, change.model);
-  return { ...rest, ...withStarsChoice(next) };
+export function withRiderModel(rider: Rider, model: string): Rider {
+  const { starsFrom: _old, ...rest } = rider;
+  return { ...rest, ...withStarsChoice(withModel(model)) };
 }
 
 /** A rider carries `custom` or `keptCustom` only when there is one, so a standard rider stays as it always was. */

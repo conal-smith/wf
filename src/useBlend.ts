@@ -85,7 +85,7 @@ const sameSweep = (
  * is scrubbing or playing; an unchanged sweep keeps the previous array, so the
  * blend is only recomputed when a model has actually published a new run.
  */
-/** The model the map opens on (src/App.tsx), which the dock reads first. */
+/** The model the map opens on unless the rider picked another (src/App.tsx). */
 const MAP_MODEL = "harmonie";
 
 export function useModelAvailability(
@@ -102,6 +102,8 @@ export function useModelAvailability(
    * published. Once on, it stays on.
    */
   enabled = true,
+  /** The model the map draws, the rider's: read first, alone. */
+  mapModel: string = MAP_MODEL,
 ): {
   models: ModelAvailability[];
   resolved: boolean;
@@ -134,7 +136,7 @@ export function useModelAvailability(
     // them: on a phone the dock waited seconds for a file it could have had in
     // half of one. The rest follow once it is in (or has failed); the sweep
     // then finds it in the manifest cache.
-    const lead = entries.find((m) => m.id === MAP_MODEL);
+    const lead = entries.find((m) => m.id === mapModel);
     void (
       lead ? loadAnyManifest(lead.id, controller.signal) : Promise.resolve()
     )
