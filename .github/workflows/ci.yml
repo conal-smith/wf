@@ -99,16 +99,18 @@ jobs:
 
   # The whole Playwright suite against the staged sample site (scripts/e2e-site.mjs):
   # the map, the dock, spot pages, the marketplace and the community.
-  # Split over three runners: one runner took 20-30 minutes, against the 30 minute limit.
+  # Split over four runners: one runner took 20-30 minutes, against the 30 minute limit.
+  # --fully-parallel splits by test, not by file (dock.spec.ts alone is a fifth of the
+  # suite); each runner still runs one test at a time.
   e2e:
-    name: End-to-end (Chromium, ${{ matrix.shard }}/3)
+    name: End-to-end (Chromium, ${{ matrix.shard }}/4)
     if: ${{ inputs.release_gate || github.event_name == 'workflow_dispatch' || github.event.repository.private == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -121,7 +123,7 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Playwright
-        run: npx playwright test --project=desktop --project=phone --shard=${{ matrix.shard }}/3
+        run: npx playwright test --project=desktop --project=phone --fully-parallel --shard=${{ matrix.shard }}/4
       - name: Keep the report
         if: failure()
         uses: actions/upload-artifact@v7
