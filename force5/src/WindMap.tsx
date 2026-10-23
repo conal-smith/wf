@@ -36,6 +36,7 @@ import {
   type LoupeRose,
   type RoseScale,
 } from "./focus";
+import { FOIL_MIN_ZOOM } from "./foilDepth";
 import { drawNeatline } from "./neatline";
 import { isLakeWater } from "./pointSource";
 import { setMapView } from "./tiledField";
@@ -949,6 +950,8 @@ export default function WindMap(props: Props) {
   // coast's ink and every name. A layer shows from half a zoom under its
   // archive's min zoom: MapLibre rounds a raster's zoom, so that is where its
   // tiles start, and where a region's cut-out for a pilot's box starts too.
+  // Never further out than FOIL_MIN_ZOOM: a zoom out past it hides the
+  // layers at once, and their tiles are not read through the rest of it.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
@@ -973,7 +976,7 @@ export default function WindMap(props: Props) {
             id,
             type: "color-relief",
             source: id,
-            minzoom: Math.max(0, area.minzoom - 0.5),
+            minzoom: Math.max(FOIL_MIN_ZOOM, area.minzoom - 0.5),
             paint: {
               "color-relief-color": area.color,
               "color-relief-opacity": 1,

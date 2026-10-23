@@ -149,6 +149,7 @@ export default function MapControls({
   modelDisabled,
   onModel,
   currentsNote = null,
+  foilNote = null,
 }: {
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -184,6 +185,8 @@ export default function MapControls({
   onModel: (id: ModelId) => void;
   /** What the Currents layer cannot draw at the hour shown, while it is on. */
   currentsNote?: string | null;
+  /** Why the tidal depth is not drawn, while it is on: the chart is out too far. */
+  foilNote?: string | null;
 }) {
   const close = () => onOpen(null);
   return (
@@ -270,6 +273,9 @@ export default function MapControls({
                         }
                         onOpen={() => onInfo(key)}
                       />
+                      {key === "foil" && layers.foil && foilNote && (
+                        <small data-foil-note>{foilNote}</small>
+                      )}
                       {key === "currents" && layers.currents && (
                         <small data-currents-note>
                           {currentsNote ?? "Not for safety."}

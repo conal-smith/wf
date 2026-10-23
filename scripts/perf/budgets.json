@@ -10,9 +10,8 @@
     { "id": "cold bytes", "scenario": "cold", "metric": "network.MB", "profiles": ["desktop"], "max": 4.5, "seen": 3.67 },
     { "id": "cold bytes", "scenario": "cold", "metric": "network.MB", "profiles": ["phone"], "max": 3.0, "seen": 2.5 },
     { "id": "cold requests", "scenario": "cold", "metric": "network.requests", "max": 260, "seen": 213 },
-    { "id": "cold foil archive bytes", "scenario": "cold", "metric": "network.bySource.foil-archives.MB", "foil": "on", "max": 1.0, "seen": 0.66 },
+    { "id": "cold: no tidal depth over all of Ireland", "scenario": "cold", "metric": "foilLayers.layers", "foil": "on", "max": 0, "seen": 0, "note": "41 regions' layers, 88 archive reads, 42 tide curves and 95.5 MB of heights before the layer waited for z9 (FOIL_MIN_ZOOM)" },
     { "id": "cold duplicate fetches", "scenario": "cold", "metric": "network.duplicateFetches", "max": 2, "seen": 0 },
-    { "id": "cold foil DEM held", "scenario": "cold", "metric": "tiles.foil.rasterMB", "foil": "on", "max": 110, "seen": 95.5 },
     { "id": "cold ArrayBuffers after GC", "scenario": "cold", "metric": "heap.afterGcAfterMB.buffers", "max": 70, "seen": 52 },
     { "id": "cold blocking time", "scenario": "cold", "metric": "cpu.longTasks.blockingMs", "profiles": ["desktop"], "max": 150, "gpu": true, "seen": 0 },
     { "id": "cold blocking time", "scenario": "cold", "metric": "cpu.longTasks.blockingMs", "profiles": ["phone"], "max": 300, "gpu": true, "seen": 14 },
@@ -30,6 +29,7 @@
     { "id": "pan: dropped frames", "scenario": "pan", "metric": "frames.droppedPct", "max": 5, "gpu": true, "seen": 2.1 },
     { "id": "pan: longest task", "scenario": "pan", "metric": "cpu.longTasks.maxMs", "max": 150, "gpu": true, "seen": 0 },
     { "id": "pan: duplicate fetches", "scenario": "pan", "metric": "network.duplicateFetches", "max": 5, "seen": 0 },
+    { "id": "ireland: no tidal depth zooming over all of Ireland", "scenario": "ireland", "metric": "foilLayers.layers", "foil": "on", "max": 0, "seen": 0, "note": "41 layers, 260 archive reads and 209 MB of heights in three zooms in and out before FOIL_MIN_ZOOM" },
     { "id": "zoom: dropped frames", "scenario": "zoom", "metric": "frames.droppedPct", "max": 5, "gpu": true, "seen": 1.4 },
     { "id": "zoom: foil DEM held", "scenario": "zoom", "metric": "tiles.foil.rasterMB", "foil": "on", "max": 130, "seen": 97.5 },
 

@@ -279,3 +279,41 @@ test("a national region draws on its own station's tide, answers a tap, and only
   expect(asked.filter((p) => /howth/i.test(p))).toEqual([]);
   expect(errors).toEqual([]);
 });
+
+test("over the whole chart nothing of it is fetched, and Layers says to zoom in", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const asked: string[] = [];
+  page.on("request", (r) => {
+    const path = new URL(r.url()).pathname;
+    if (/foildepth|tides-/.test(path)) asked.push(path);
+  });
+  await page.route("**/foildepth/index.json", (route) =>
+    route.fulfill({ json: index }),
+  );
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  // The layer is on by default: nothing stored.
+  await page.goto("/");
+  await expect(page.locator(".spot-marker").first()).toBeVisible({
+    timeout: 30000,
+  });
+  await page.waitForTimeout(1000);
+  expect(asked).toEqual([]);
+  await openFromMenu(page, "Layers");
+  const panel = page.getByRole("group", { name: "Layers" });
+  await expect(panel.locator('input[data-layer="foil"]')).toBeChecked();
+  await expect(panel.locator("[data-foil-note]")).toHaveText("Zoom in to see.");
+  await page.keyboard.press("Escape");
+
+  // In to a bay's zoom, the index is read and the note goes.
+  const zoomIn = page.getByRole("button", { name: "Zoom in" });
+  for (let i = 0; i < 3; i++) await zoomIn.click();
+  await expect
+    .poll(() => asked.some((p) => p.endsWith("/foildepth/index.json")))
+    .toBe(true);
+  await openFromMenu(page, "Layers");
+  await expect(panel.locator("[data-foil-note]")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
