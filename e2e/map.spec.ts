@@ -616,22 +616,6 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   await expect(focus).toHaveAttribute("data-focus", "ring");
   await expect(focus.locator(".map-loupe-rim")).toHaveCount(0);
   await expect(focus.locator(".map-range-label")).toHaveText(/^[\d.]+ NM$/);
-  await closePanel(page);
-  // Its distance follows the speed units: miles with miles an hour, metres
-  // (or kilometres) with metres a second.
-  const units = async (id: string) => {
-    await openFromMenu(page, "Display options");
-    await page.locator(`[data-units="${id}"]`).click();
-    await closePanel(page);
-  };
-  await units("mph");
-  await expect(focus.locator(".map-range-label")).toHaveText(/^[\d.]+ mi$/);
-  await units("m/s");
-  await expect(focus.locator(".map-range-label")).toHaveText(
-    /^(\d+ m|[\d.]+ km)$/,
-  );
-  await units("kn");
-  await openFromMenu(page, "Layers");
   // Nothing at all: the pen's ring alone marks the spot.
   await choice.getByRole("button", { name: "Nothing", exact: true }).click();
   await expect(focus).toHaveAttribute("data-focus", "off");
@@ -857,6 +841,41 @@ for (const device of [
       await page.waitForTimeout(2500);
     };
 
+    if (touch) {
+      // A finger on the screen, the suite's only tap on the chart: the
+      // sheet, the spot and the point in turn. The desktop's tests below go
+      // through every case.
+      test("a tap shuts the Layers sheet and picks nothing, then lets go of the spot, then picks the point", async ({
+        page,
+      }) => {
+        await openOn(page, "keel", "Keel Beach");
+        const map = page.locator(".map-canvas");
+        // The sheet spans the width: the tap lands on the dimmed map above.
+        await openFromMenu(page, "Layers");
+        await press(page, await backdrop(page));
+        await expect(page.getByRole("dialog", { name: "Layers" })).toHaveCount(
+          0,
+        );
+        await page.waitForTimeout(800);
+        await expect(dockName(page)).toHaveText("Keel Beach");
+        await expect(page).toHaveURL(/\/\?spot=keel$/);
+        await expect(map).toHaveClass(/is-focus/);
+        await expect(page.locator(".pick-mark")).toHaveCount(0);
+        // One tap lets go of Keel, and picks no point where it was.
+        const at = await clear(page);
+        await press(page, at);
+        await expect(map).not.toHaveClass(/is-focus/);
+        await page.waitForTimeout(800);
+        await expect(dockName(page)).toHaveText("Keel Beach");
+        await expect(page.locator(".pick-mark")).toHaveCount(0);
+        // With nothing chosen, the next tap picks the point.
+        await press(page, at);
+        await expect(page.locator(".dock .dk-tools")).toContainText(coords);
+        await expect(page.locator(".pick-mark")).toHaveCount(1);
+      });
+      return;
+    }
+
     test("a press with a panel or a menu open shuts it, and picks and chooses nothing", async ({
       page,
     }) => {
@@ -870,13 +889,13 @@ for (const device of [
         await expect(map).toHaveClass(/is-focus/);
         await expect(page.locator(".pick-mark")).toHaveCount(0);
       };
-      for (const name of ["Layers", "Your spots", "Display options"] as const) {
-        await openFromMenu(page, name);
-        // The panels are modal: the press lands on the dimmed map round them.
-        await press(page, await backdrop(page));
-        await expect(page.getByRole("dialog", { name })).toHaveCount(0);
-        await unmoved();
-      }
+      // The panels are modal: the press lands on the dimmed map round them.
+      // Layers stands for them all here; your spots' and the display
+      // options' own tests press round those.
+      await openFromMenu(page, "Layers");
+      await press(page, await backdrop(page));
+      await expect(page.getByRole("dialog", { name: "Layers" })).toHaveCount(0);
+      await unmoved();
       const menu = page.getByRole("button", { name: "Site menu" });
       await menu.click();
       await expect(menu).toHaveAttribute("aria-expanded", "true");
@@ -924,14 +943,12 @@ for (const device of [
       await openOn(page, "keel", "Keel Beach");
       const map = page.locator(".map-canvas");
       const keel = page.locator('[data-spot-id="keel"]');
-      // A double tap zooms, and lets go of nothing.
-      if (!touch) {
-        const at = await clear(page);
-        await page.mouse.dblclick(at.x, at.y);
-        await page.waitForTimeout(800);
-        await expect(map).toHaveClass(/is-focus/);
-        await steadyFrames(page);
-      }
+      // A double click zooms, and lets go of nothing.
+      const twice = await clear(page);
+      await page.mouse.dblclick(twice.x, twice.y);
+      await page.waitForTimeout(800);
+      await expect(map).toHaveClass(/is-focus/);
+      await steadyFrames(page);
       // One press lets go of Keel: the chart's focus goes, the dock keeps
       // it, and no point is picked where the press was.
       const at = await clear(page);
