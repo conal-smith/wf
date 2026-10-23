@@ -141,7 +141,7 @@ export interface MapInfoProps {
   onClose: () => void;
   scale: string;
   rider: Rider;
-  /** Which model rates the stars, and which takes over where it ends. */
+  /** The rider's model, which the stars rate, and ECMWF past its run. */
   starsFrom: StarsFrom;
   /** The models the blend lays over each other (the display options). */
   blendModels: readonly string[];
@@ -574,8 +574,9 @@ function StarsPart({
           The dark. Dark hours aren&rsquo;t rated.
         </Key>
         <Key mark={<StarGlyph size={22} />} name="One model">
-          {then ? `${model}, then ${then} where its run ends` : model}: one
-          model&rsquo;s own forecast, never a blend.
+          {then ? `${model}, then ${then} past the end of its run` : model}:
+          the model you picked, the one the map draws, and its own forecast,
+          never a blend.
         </Key>
       </ul>
       <h4>
@@ -587,9 +588,9 @@ function StarsPart({
         effect up to {Math.round(gustCurve(rider).fine)} kn
       </p>
       <p className="mi-sm">
-        Your weight, your level, your wings and the model the stars come from
-        are in the display options, in the menu at the top left; your own wind
-        and gusts under Customise there.
+        Your weight, your level, your wings and your model are in the display
+        options, in the menu at the top left; your own wind and gusts under
+        Customise there.
       </p>
       <a
         className="mi-more"
@@ -692,7 +693,7 @@ function BlendPart({
       </p>
       <BlendFigure />
       <h4>
-        The models <small>the stars come from the underlined one</small>
+        The models <small>the stars are the underlined one&rsquo;s</small>
       </h4>
       <table className="mi-models">
         <tbody>
@@ -710,9 +711,9 @@ function BlendPart({
               <td>{entry.detail}</td>
               <td className="mi-tag">
                 {entry.id === lead
-                  ? "stars from"
+                  ? "your model"
                   : entry.id === then
-                    ? "where it ends"
+                    ? "past its run"
                     : ""}
               </td>
             </tr>
@@ -722,7 +723,8 @@ function BlendPart({
       <p className="mi-sm">
         The models in the blend give the agreement beside the stars, and never
         change a star. Which are in it is yours to choose, in the display
-        options.
+        options, under the one model you pick for the map and the stars; ECMWF
+        takes over past the end of its run on its own.
       </p>
     </>
   );
