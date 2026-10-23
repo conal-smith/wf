@@ -70,12 +70,7 @@ import {
 } from "./useBlend";
 import { useRatings } from "./useRatings";
 import { ALL_SQUARES, useSpotSquaresState } from "./useSpotSquares";
-import {
-  blendColumnModels,
-  ownBlendModels,
-  placesRatedApart,
-  trustedSpotBlend,
-} from "./spotBlend";
+import { blendColumnModels, trustedSpotBlend } from "./spotBlend";
 import { useBlendSquares, useSpotBlend } from "./useSpotBlend";
 import { useViewBounds } from "./useViewBounds";
 import { squaresToRead } from "../force5/src/squares";
@@ -96,15 +91,14 @@ import {
 } from "./strip";
 import { ridingLocations } from "./locations";
 import { openingSpot, spotAddress } from "./openingSpot";
-import { takeEarly } from "../force5/src/boot";
+import { storedMapModel, takeEarly } from "../force5/src/boot";
 import {
   loadManifest,
   MANIFEST_REVALIDATE_MS,
   ManifestUnavailableError,
-  windModels,
 } from "../force5/src/manifests";
 import { runLabel } from "../force5/src/revalidate";
-import { starsFromAt, starsFromText } from "../force5/src/lead";
+import { chosenModel, leadText, starsFromAt } from "../force5/src/lead";
 import {
   loadModel,
   MAP_MODEL_IDS,
@@ -127,7 +121,11 @@ const AccountRider = lazy(() => import("../shared/web/AccountRider"));
 /** The LiDAR layer's key: with the map's information, and only its part. */
 const LidarKey = lazy(() => import("./LidarKey"));
 import type { MapAction } from "../companion/shared/protocol";
-import { parseRider, withCustomStars } from "../force5/src/prefs";
+import {
+  parseRider,
+  withCustomStars,
+  withRiderModel,
+} from "../force5/src/prefs";
 import type { CustomRating } from "../force5/src/stars";
 import {
   announcePrefs,
@@ -289,6 +287,9 @@ export default function App() {
     () => signedInHint() || Boolean(import.meta.env.VITE_MARKET_DEV_USER),
   );
   const rider = prefs.rider;
+  // The one model the rider picked: the map draws it, the dock gives its wind
+  // and the stars rate it, ECMWF past the end of its run (force5/src/lead.ts).
+  const riderModel = chosenModel(rider.starsFrom) as ModelId;
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [spots, setSpots] = useState<Spot[]>([]);
   const [frame, setFrame] = useState<Frame | null>(null);
@@ -412,8 +413,18 @@ export default function App() {
     const spotsUrl = `${import.meta.env.BASE_URL}spots.json`;
     Promise.all([
       // Through the manifest cache, which the availability sweep reads too: one
-      // download and one parse of the map's model, not one each.
-      loadManifest("harmonie", controller.signal).catch((e) => {
+      // download and one parse of the map's model, not one each. The rider's
+      // model, as the page's head asked for it (force5/src/boot.ts); HARMONIE
+      // if theirs cannot be read, and the map says so when it tries again.
+      (async () => {
+        const first = storedMapModel();
+        try {
+          return await loadManifest(first, controller.signal);
+        } catch (e) {
+          if (first === "harmonie" || controller.signal.aborted) throw e;
+          return loadManifest("harmonie", controller.signal);
+        }
+      })().catch((e) => {
         throw e instanceof ManifestUnavailableError
           ? new Error(
               "The forecast snapshot is missing. Run npm run weather:refresh:harmonie, then reload.",
@@ -494,16 +505,11 @@ export default function App() {
 
   /* ---- the published blend, and the models only when they are wanted ---- */
   const spotBlend = useSpotBlend(!!pendingModel);
-  // The blend is published for every wind model; a reader who has left some
-  // out gets theirs worked out here, from the manifests, as before.
-  const ownBlend = ownBlendModels(
-    prefs.blendModels,
-    windModels().map((model) => model.id),
-  );
-  // So is one whose stars come from other models than the published blend's.
+  // The published blend rates HARMONIE, then ECMWF: a rider who picked
+  // another model gets their hours worked out here, from the models. Which
+  // models they put in the blend moves no star, so it never matters here.
   const pointer = trustedSpotBlend(
     spotBlend.blend,
-    ownBlend,
     clockNow,
     starsFromAt(rider.starsFrom),
   );
@@ -532,12 +538,6 @@ export default function App() {
   );
   // Squares that cannot be read are as good as no blend at all.
   const published = blendSquares.failed ? null : pointer;
-  // A spot the rider rates from a model of its own is worked out from that
-  // model's square, beside the published blend that rates every other.
-  const ratedApart = useMemo(
-    () => placesRatedApart(spots, rider, published),
-    [spots, rider, published],
-  );
   const [wantModels, setWantModels] = useState(false);
   // The display options list every wind model, and say which answered.
   useEffect(() => {
@@ -546,10 +546,8 @@ export default function App() {
   const { models } = useModelAvailability(
     !!pendingModel,
     undefined,
-    wantModels ||
-      ownBlend ||
-      (spotBlend.resolved && !published) ||
-      ratedApart.length > 0,
+    wantModels || (spotBlend.resolved && !published),
+    riderModel,
   );
 
   /* ---- the week's columns, and the strip of them the dock shows ---- */
@@ -817,14 +815,44 @@ export default function App() {
       setManifest(next.manifest);
       setFrame(next.frame);
     } catch (e) {
-      if (!controller.signal.aborted)
+      if (!controller.signal.aborted) {
         setModelError(
           `Could not switch to ${MODELS.find((m) => m.id === id)?.name}. ${manifest.modelName} is still shown. ${e instanceof Error ? e.message : ""}`,
         );
+        stayOn(manifest.model);
+      }
     } finally {
       if (modelRequest.current === controller) setPendingModel(null);
     }
   };
+  /**
+   * A switch that failed or was cancelled: the rider's model is the one still
+   * drawn, so the stars never rate a model the map is not showing.
+   */
+  const stayOn = (model: string) =>
+    setPrefs((was) => {
+      if (chosenModel(was.rider.starsFrom) === model) return was;
+      const next = { ...was, rider: withRiderModel(was.rider, model) };
+      savePrefs(next);
+      return next;
+    });
+  /**
+   * The rider picks a model: theirs from now on, for the map, the dock and the
+   * stars alike, and the map moves to it (at `wanted`, where given).
+   */
+  const pickRiderModel = (id: ModelId, wanted?: string) => {
+    if (id !== riderModel)
+      changePrefs({ ...prefs, rider: withRiderModel(prefs.rider, id) });
+    void chooseModel(id, wanted);
+  };
+  // A model picked elsewhere (the display options, the account, another tab)
+  // moves the map to it too. Once per change: a run that cannot be read leaves
+  // the map on the one it had, says so, and the rider back on it (`stayOn`).
+  useEffect(() => {
+    if (!manifest || !frame) return;
+    if (manifest.model === riderModel || pendingModel === riderModel) return;
+    void chooseModel(riderModel);
+  }, [riderModel, !!frame]);
   /**
    * A tile of the run on screen could not be read — one the map needs for the
    * view, or one of a bare point's hours: the run may have been replaced and
@@ -881,17 +909,16 @@ export default function App() {
     ],
     [point?.id, starred, frequent],
   );
-  // The reader's own blend reads the same squares from every wind model; the
-  // published blend needs none of them.
+  // Without the published blend (another model picked, or none published) the
+  // same squares are read from every wind model; with it, none of them.
   const windOnly = useMemo(
     () => models.filter((model) => model.wind !== null),
     [models],
   );
   const ownSquares = useMemo(() => {
     const listed = windOnly.flatMap((model) => model.wind!.spots.squares);
-    if (!published) return squaresToRead(mapView, listed, ownPlaces);
-    return ratedApart.length ? squaresToRead(null, listed, ratedApart) : null;
-  }, [published, mapView, windOnly, ownPlaces, ratedApart]);
+    return published ? null : squaresToRead(mapView, listed, ownPlaces);
+  }, [published, mapView, windOnly, ownPlaces]);
   // `rated.squares` is what was read, not what was asked: a square some model
   // could not read keeps its places pending, and the rest are rated.
   const rated = useSpotSquaresState(windOnly, ownSquares, true);
@@ -908,11 +935,6 @@ export default function App() {
       : rated.squares === ALL_SQUARES
         ? null
         : (rated.squares ?? []),
-    published
-      ? rated.squares === ALL_SQUARES
-        ? null
-        : (rated.squares ?? [])
-      : null,
   );
   const lights = useMemo(() => {
     const out = new Map<string, LightState>();
@@ -1484,9 +1506,10 @@ export default function App() {
           {handing
             ? `, ${handing.modelName} (${runLabel(handing.runTime)} run) at the hours it does not reach`
             : ""}
-          ; the stars rate one model&rsquo;s own forecast,{" "}
-          {starsFromText(starsFromAt(rider.starsFrom))}, and{" "}
-          {prefs.blendModels.length} models give the agreement beside them
+          ; the stars rate one model&rsquo;s own forecast, the one you picked:{" "}
+          {leadText(starsFromAt(rider.starsFrom))} past the end of its run.
+          The blend of {prefs.blendModels.length} models is context beside
+          them and moves no star
         </li>
         <li>Depths: EMODnet Bathymetry, metres below chart datum</li>
         {foilState.manifest && (
@@ -1616,7 +1639,6 @@ export default function App() {
                     models={models.filter(
                       (model) => model.entry.kind === "wind",
                     )}
-                    spot={point && !picked ? point : null}
                   />
                 </Suspense>
               )}
@@ -1642,7 +1664,7 @@ export default function App() {
               currentsNote={currents.note}
               foilNote={foilFar ? FOIL_ZOOM_NOTE : null}
               modelDisabled={!frame || !!pendingModel}
-              onModel={(id) => void chooseModel(id)}
+              onModel={(id) => pickRiderModel(id)}
             />
             {/* After the boxes: the keys reach the menu, the search and the
                 controls before the lights. */}
@@ -1692,6 +1714,7 @@ export default function App() {
                     onClick={() => {
                       modelRequest.current?.abort();
                       setPendingModel(null);
+                      if (manifest) stayOn(manifest.model);
                     }}
                   >
                     Cancel
@@ -1787,7 +1810,7 @@ export default function App() {
                   reachable={reachable}
                   onShowOnMap={() =>
                     reachable && column
-                      ? void chooseModel(reachable.id, column.validTime)
+                      ? pickRiderModel(reachable.id, column.validTime)
                       : undefined
                   }
                 />

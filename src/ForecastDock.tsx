@@ -80,10 +80,9 @@ import { compass, type Spot } from "../force5/src/weather";
 import { spotHref } from "../force5/src/siteNav";
 import {
   handovers,
+  leadOrder,
   modelName,
-  spotOverride,
   starsFromAt,
-  starsFromText,
   type Handover,
 } from "../force5/src/lead";
 
@@ -945,8 +944,16 @@ export default function ForecastDock(props: Props) {
     () => (lender ? [spotSquare(lender.lat, lender.lon)] : null),
     [lender?.lat, lender?.lon],
   );
+  // The models the blend's chart reads: the rider's own pick of them, and
+  // their model and ECMWF for the line the stars are, each only for its square
+  // holding this spot (a model left out of the blend is not read).
+  const starsFrom = starsFromAt(prefs.rider.starsFrom);
+  const chartModels = useMemo(() => {
+    const wanted = new Set([...prefs.blendModels, ...leadOrder(starsFrom)]);
+    return models.filter((model) => wanted.has(model.id));
+  }, [models, prefs.blendModels, starsFrom.model]);
   const blendModels = useSpotSquares(
-    view === "blend" && !isPoint ? models : NO_MODELS,
+    view === "blend" && !isPoint ? chartModels : NO_MODELS,
     square,
   );
   const marineModels = useSpotSquares(more ? marine : NO_MODELS, square);
@@ -956,7 +963,7 @@ export default function ForecastDock(props: Props) {
     prefs.blendModels,
     named,
     axis,
-    starsFromAt(prefs.rider.starsFrom, isPoint ? null : spot.id),
+    starsFrom,
   );
   /** Whose waves, weather and sea the rows show. */
   const lent = lender?.id;
@@ -981,13 +988,6 @@ export default function ForecastDock(props: Props) {
         ? []
         : handovers(hours.map((hour) => hour?.model ?? null)),
     [hours, isPoint],
-  );
-  const ownModel = isPoint
-    ? null
-    : spotOverride(prefs.rider.starsFrom, spot.id);
-  const starsFrom = starsFromAt(
-    prefs.rider.starsFrom,
-    isPoint ? null : spot.id,
   );
   const ratedBy = hours?.[selected]?.model ?? starsFrom.model;
   const waves = useSpotWaves(more ? marineModels : NO_MODELS, lent, axis);
@@ -1485,19 +1485,21 @@ export default function ForecastDock(props: Props) {
             <span className="dk-tool-word">Custom</span>
           </Button>
         )}
-        {/* Whose forecast the stars are, at the hour in hand: one model's,
-            the rider's choice, and magenta where this spot has its own. */}
+        {/* Whose forecast the wind and the stars are, at the hour in hand:
+            the rider's model, or ECMWF past the end of its run. */}
         {!isPoint && rated && (
           <Button
             variant="quiet"
             size="sm"
-            className={`dk-tool dk-stars-from${ownModel ? " is-own" : ""}`}
-            aria-label={`Stars from ${modelName(ratedBy)}${ownModel ? ` at ${spot.name}` : ""}: change`}
-            title={`The stars here are ${modelName(ratedBy)}'s forecast${
+            className="dk-tool dk-stars-from"
+            aria-label={`${modelName(ratedBy)}'s forecast: change the model`}
+            title={`The wind and the stars here are ${modelName(ratedBy)}'s forecast${
               column ? ` at ${dayShort(column.time)} ${clock(column.time)}` : ""
-            }. Stars from ${starsFromText(starsFrom)}${
-              ownModel ? ` at ${spot.name}` : ""
-            }; the other models are context and change no star. Change it in Display options.`}
+            }${
+              ratedBy !== starsFrom.model
+                ? `, past the end of ${modelName(starsFrom.model)}'s run`
+                : ""
+            }. The other models are context and change no star. Change the model in Display options.`}
             onClick={onStarsFrom}
             data-stars-from-chip={ratedBy}
           >
@@ -1512,10 +1514,7 @@ export default function ForecastDock(props: Props) {
                 d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z"
               />
             </svg>
-            <span className="dk-from-word">
-              {ownModel ? "from " : ""}
-              {modelName(ratedBy)}
-            </span>
+            <span className="dk-from-word">{modelName(ratedBy)}</span>
           </Button>
         )}
         {/* The table or every model's wind drawn as a chart: one glyph, on

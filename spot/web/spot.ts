@@ -357,8 +357,8 @@ export function leadChanges(rows: readonly SpotRow[]): LeadChange[] {
 }
 
 /**
- * The handover row's words: "ECMWF from Wed 22:00", and why. `from` is what
- * the rider chose for this spot.
+ * The handover row's words: "ECMWF from Wed 22:00", and why. `from` is the
+ * rider's model and ECMWF after it.
  */
 export function handoverWords(
   change: LeadChange,
@@ -376,8 +376,8 @@ export function handoverWords(
     kicker,
     text:
       change.to === from.then
-        ? `${was}'s run ends here. The stars from here are ${to}'s, the model you chose for when it ends.`
-        : `${was}'s run ends here. The stars from here are ${to}'s.`,
+        ? `${was}'s run ends here. From here the wind and the stars are ${to}'s, which runs fifteen days.`
+        : `${was}'s run ends here. From here the wind and the stars are ${to}'s.`,
   };
 }
 
@@ -395,9 +395,9 @@ export function dayLeads(rows: readonly SpotRow[], from: StarsFrom): string[] {
   return leads.every((lead) => lead === from.model) ? [] : leads;
 }
 
-/** "stars from HARMONIE, then ECMWF": who rates a day, said in its header. */
+/** "HARMONIE, then ECMWF": whose forecast a day is, said in its header. */
 export const dayLeadText = (leads: readonly string[]) =>
-  `stars from ${leads.map(modelName).join(", then ")}`;
+  leads.map(modelName).join(", then ");
 
 /**
  * Where each change goes among the rows a day draws: before the first drawn

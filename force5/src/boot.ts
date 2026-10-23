@@ -23,6 +23,8 @@
  *
  * Deliberately free of React and of every app: the entry imports it.
  */
+import { modelEntry } from "./catalog";
+import { chosenModel, parseStarsChoice } from "./lead";
 import { forecastUrl } from "./urls";
 
 declare global {
@@ -32,14 +34,41 @@ declare global {
   }
 }
 
+/** force5/src/prefs.ts `PREFS_KEY`, named again so the entry need not import the preferences. */
+const STORED_PREFS = "force5.prefs.v1";
+
 /**
- * What the map asks for first, as src/App.tsx names it. Not the blend the
- * lights are rated from (src/spotBlend.ts): the lights also wait for MapLibre,
- * the largest file on the page, so asked for here it only shared the line with
- * the dock's manifest and delayed the first paint, for stars no sooner.
+ * The model the map opens on: the one the rider picked (force5/src/lead.ts),
+ * read straight from what this device stored, HARMONIE if they never did or
+ * storage cannot be read. src/App.tsx opens on the same one.
  */
-export const mapFirstRequests = (): string[] => [
-  forecastUrl("weather/harmonie.json"),
+export function storedMapModel(
+  storage: Pick<Storage, "getItem"> | null = typeof localStorage === "undefined"
+    ? null
+    : localStorage,
+): string {
+  try {
+    const raw = storage?.getItem(STORED_PREFS);
+    const rider = raw ? (JSON.parse(raw) as { rider?: unknown })?.rider : null;
+    return chosenModel(
+      rider && typeof rider === "object"
+        ? parseStarsChoice((rider as { starsFrom?: unknown }).starsFrom)
+        : undefined,
+    );
+  } catch {
+    return chosenModel(undefined);
+  }
+}
+
+/**
+ * What the map asks for first, as src/App.tsx names it: the rider's model's
+ * manifest and the places. Not the blend the lights are rated from
+ * (src/spotBlend.ts): the lights also wait for MapLibre, the largest file on
+ * the page, so asked for here it only shared the line with the dock's
+ * manifest and delayed the first paint, for stars no sooner.
+ */
+export const mapFirstRequests = (model = storedMapModel()): string[] => [
+  forecastUrl(modelEntry(model)?.manifestUrl ?? "weather/harmonie.json"),
   `${import.meta.env.BASE_URL}spots.json`,
 ];
 

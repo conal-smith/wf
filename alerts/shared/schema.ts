@@ -28,10 +28,13 @@ import { parseStarsChoice } from "../../force5/src/lead.js";
 const int = (min: number, max: number) => z.number().int().min(min).max(max);
 
 const starsModel = z.string().regex(/^[a-z0-9-]{1,24}$/, "Not a model id.");
+// An app from before 23 October 2026 also sends the model for after the run's
+// end (`then`) and spots of the rider's own (`spots`): no longer choices, they
+// are taken and dropped.
 const starsChoiceSchema = z
   .object({
     model: starsModel,
-    then: starsModel,
+    then: starsModel.optional(),
     spots: z.record(z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/), starsModel).optional(),
   })
   .refine((choice) => Object.keys(choice.spots ?? {}).length <= 200, "Too many spots.")
@@ -43,8 +46,8 @@ export const riderSchema = z.object({
   wings: z.array(z.number().min(MIN_WING_M2).max(MAX_WING_M2)).max(12),
   // The rider's own star rating, which the server then rates with.
   custom: customRatingSchema.nullable().optional(),
-  // The models the rider's stars come from (force5/src/lead.ts), checked
-  // again by `parseStarsChoice` so a model no longer published is the default.
+  // The one model the rider picked (force5/src/lead.ts), checked again by
+  // `parseStarsChoice` so a model no longer published is the default.
   starsFrom: starsChoiceSchema.optional(),
 }) satisfies z.ZodType<Rider>;
 

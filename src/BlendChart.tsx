@@ -155,7 +155,10 @@ export default function BlendChart({
         const hue = modelHue(line.model);
         const member = line.memberIndex !== undefined;
         return (
-          <g key={`${line.model}-${line.memberIndex ?? "mean"}-${index}`}>
+          <g
+            key={`${line.model}-${line.memberIndex ?? "mean"}-${index}`}
+            data-model={line.model}
+          >
             <path
               className="model-line"
               d={linePath(centres, line.speed.map(show), y)}

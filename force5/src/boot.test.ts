@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mapFirstRequests, startEarly, takeEarly } from "./boot";
+import { mapFirstRequests, startEarly, storedMapModel, takeEarly } from "./boot";
+import { PREFS_KEY } from "./prefs";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -12,7 +13,7 @@ describe("startEarly", () => {
       asked.push([url, init]);
       return Promise.resolve(new Response("{}"));
     });
-    startEarly(mapFirstRequests());
+    startEarly(mapFirstRequests("harmonie"));
     expect(asked).toEqual([
       ["/weather/harmonie.json", { cache: "no-cache" }],
       ["/spots.json", { cache: "no-cache" }],
@@ -35,6 +36,25 @@ describe("startEarly", () => {
     expect(unhandled).not.toHaveBeenCalled();
     // The caller that does come still sees the failure.
     await expect(window.__f5early!["/spots.json"]).rejects.toThrow("offline");
+  });
+});
+
+describe("storedMapModel", () => {
+  const stored = (value: unknown) => ({
+    getItem: (key: string) =>
+      key === PREFS_KEY ? JSON.stringify(value) : null,
+  });
+  it("opens on the model the rider picked, HARMONIE otherwise", () => {
+    expect(storedMapModel(null)).toBe("harmonie");
+    expect(storedMapModel(stored({}))).toBe("harmonie");
+    expect(
+      storedMapModel(stored({ rider: { starsFrom: { model: "gfs", then: "harmonie" } } })),
+    ).toBe("gfs");
+    expect(storedMapModel(stored({ rider: { starsFrom: { model: "ukv" } } }))).toBe(
+      "harmonie",
+    );
+    expect(storedMapModel({ getItem: () => "not json" })).toBe("harmonie");
+    expect(mapFirstRequests("icon-eu")[0]).toBe("/weather/latest.json");
   });
 });
 

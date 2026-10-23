@@ -10,7 +10,7 @@ import {
   setRow,
   saveRider,
   withCustomStars,
-  withRiderStarsFrom,
+  withRiderModel,
   withStarsOn,
   type Prefs,
   type PrefsStorage,
@@ -390,31 +390,29 @@ describe("the model the stars come from", () => {
     ).toEqual(DEFAULT_RIDER);
   });
 
-  it("is kept with the rider, everywhere and at a spot of theirs, and survives a reload", () => {
+  it("is kept with the rider and survives a reload", () => {
     const storage = fakeStorage();
-    const gfs = withRiderStarsFrom(DEFAULT_RIDER, {
-      everywhere: { model: "gfs" },
+    const gfs = withRiderModel(DEFAULT_RIDER, "gfs");
+    expect(gfs.starsFrom).toEqual({ model: "gfs" });
+    savePrefs({ ...defaultPrefs(), rider: gfs }, storage);
+    expect(loadPrefs(storage).rider).toEqual(gfs);
+    expect(withRiderModel(gfs, "harmonie")).toEqual(DEFAULT_RIDER);
+  });
+
+  it("keeps an old saved model, and ignores its fallback and its spots of their own", () => {
+    const storage = fakeStorage({
+      [PREFS_KEY]: JSON.stringify({
+        rider: {
+          ...DEFAULT_RIDER,
+          starsFrom: {
+            model: "icon-eu",
+            then: "gfs",
+            spots: { portrane: "harmonie" },
+          },
+        },
+      }),
     });
-    const portrane = withRiderStarsFrom(gfs, {
-      spot: "portrane",
-      model: "harmonie",
-    });
-    expect(portrane.starsFrom).toEqual({
-      model: "gfs",
-      then: "ecmwf",
-      spots: { portrane: "harmonie" },
-    });
-    savePrefs({ ...defaultPrefs(), rider: portrane }, storage);
-    expect(loadPrefs(storage).rider).toEqual(portrane);
-    // Back to the same as everywhere, then back to the default.
-    const back = withRiderStarsFrom(portrane, {
-      spot: "portrane",
-      model: null,
-    });
-    expect(back.starsFrom).toEqual({ model: "gfs", then: "ecmwf" });
-    expect(
-      withRiderStarsFrom(back, { everywhere: { model: "harmonie" } }),
-    ).toEqual(DEFAULT_RIDER);
+    expect(loadPrefs(storage).rider.starsFrom).toEqual({ model: "icon-eu" });
   });
 
   it("drops a stored model that is no longer offered", () => {
@@ -423,9 +421,6 @@ describe("the model the stars come from", () => {
         ...DEFAULT_RIDER,
         starsFrom: { model: "arpege", then: "gfs" },
       }).starsFrom,
-    ).toEqual({
-      model: "harmonie",
-      then: "gfs",
-    });
+    ).toBeUndefined();
   });
 });

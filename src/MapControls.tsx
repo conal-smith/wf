@@ -345,7 +345,9 @@ export default function MapControls({
                 value={focusStyle}
                 onChange={onFocusStyle}
               />
-              <h3>Model on the map</h3>
+              {/* The rider's one model: the map's, the dock's and the
+                  stars', the same choice as in the display options. */}
+              <h3>Model, for the map and the stars</h3>
               {modelNote && <p className="models-note">{modelNote}</p>}
               <div className="models" role="group" aria-label="Weather model">
                 {MODELS.map((entry) => (

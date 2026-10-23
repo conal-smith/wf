@@ -64,7 +64,7 @@ export interface RiderContext {
   wings: number[];
   /** The rider's own star rating, which Gust then rates with. */
   custom?: CustomRating | null;
-  /** The model the rider's stars come from, everywhere and at their own spots. */
+  /** The one model the rider picked, which their stars rate (ECMWF past its run). */
   starsFrom?: StarsChoice;
 }
 

@@ -3,15 +3,20 @@ import { DEFAULT_RIDER } from "../../force5/src/stars";
 import { riderSchema } from "./schema";
 
 describe("the rider a device sends", () => {
-  it("keeps the models its stars come from, so its alerts follow them", () => {
-    const starsFrom = {
-      model: "gfs",
-      then: "ecmwf",
-      spots: { portrane: "harmonie" },
-    };
+  it("keeps the model its stars come from, so its alerts follow it", () => {
     expect(
-      riderSchema.parse({ ...DEFAULT_RIDER, starsFrom }).starsFrom,
-    ).toEqual(starsFrom);
+      riderSchema.parse({ ...DEFAULT_RIDER, starsFrom: { model: "gfs" } })
+        .starsFrom,
+    ).toEqual({ model: "gfs" });
+  });
+
+  it("takes an older app's fallback and spots of its own, and drops them", () => {
+    expect(
+      riderSchema.parse({
+        ...DEFAULT_RIDER,
+        starsFrom: { model: "gfs", then: "harmonie", spots: { portrane: "harmonie" } },
+      }).starsFrom,
+    ).toEqual({ model: "gfs" });
   });
 
   it("drops a model no longer offered, and the default altogether", () => {
@@ -20,7 +25,7 @@ describe("the rider a device sends", () => {
         ...DEFAULT_RIDER,
         starsFrom: { model: "gefs", then: "gfs" },
       }).starsFrom,
-    ).toEqual({ model: "harmonie", then: "gfs" });
+    ).toBeUndefined();
     expect(
       riderSchema.parse({
         ...DEFAULT_RIDER,

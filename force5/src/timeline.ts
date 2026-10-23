@@ -1,3 +1,4 @@
+import { FALLBACK_MODEL } from "./lead";
 import {
   KNOTS,
   freshness,
@@ -235,12 +236,14 @@ export function mapReach(
  * The model the map hands over to at a time its own run does not reach, or
  * null where the reader's run reaches it or no other run the map can draw does.
  *
- * The dock's column at that time names a model, and the map draws that one
- * where it can: ECMWF past HARMONIE, or GFS where ECMWF is not published, so
- * the map and the dock tell the same model's story at every hour. A column
- * owned by a model the map cannot draw (the long range can fall to one) gives
- * way to the drawable run that covers the time and reaches furthest, finest
- * grid first on a tie, as the dock's own long range is chosen.
+ * ECMWF wherever it covers the time: past the end of the rider's model it is
+ * the one the stars take over to (force5/src/lead.ts), so the map, the dock
+ * and the stars tell the same model's story at every hour. Where ECMWF is not
+ * published, the dock's column at that time names a model and the map draws
+ * that one where it can, GFS as a rule. A column owned by a model the map
+ * cannot draw (the long range can fall to one) gives way to the drawable run
+ * that covers the time and reaches furthest, finest grid first on a tie, as
+ * the dock's own long range is chosen.
  *
  * Only a run that spans the time counts, and never an ensemble mean or an
  * expired run: the map draws a forecast for the hour or nothing at all.
@@ -271,6 +274,8 @@ export function handoverModel(
       },
     ];
   });
+  if (covering.some((model) => model.id === FALLBACK_MODEL))
+    return FALLBACK_MODEL;
   if (column && covering.some((model) => model.id === column.model))
     return column.model;
   covering.sort(

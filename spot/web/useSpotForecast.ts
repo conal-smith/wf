@@ -1,8 +1,8 @@
 /**
  * One riding place's forecast, read in the browser through the MCP server's own
  * reduction (mcp/api/forecast.ts): every live model's series for the spot,
- * with one model's own line per hour as the headline (the one the rider takes
- * their stars from, `from`), and the waves, weather, tides, sea temperature
+ * with one model's own line per hour as the headline (the rider's model, and
+ * ECMWF past the end of its run, `from`), and the waves, weather, tides, sea temperature
  * and runs behind it. An agent and this page read the same numbers.
  */
 import { useEffect, useState } from "react";
@@ -67,8 +67,7 @@ let shared: ForecastSource | null = null;
 const source = () => (shared ??= siteSource());
 
 /**
- * The place's forecast, read again when the rider takes their stars from
- * another model: the page already drawn stays while it is read, so a change of
+ * The place's forecast, read again when the rider picks another model: the page already drawn stays while it is read, so a change of
  * model does not blank the page.
  */
 export function useSpotForecast(

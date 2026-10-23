@@ -9,9 +9,7 @@ import {
   BLEND_KEY,
   blendPrefix,
   checkBlendSpots,
-  ownBlendModels,
   parseSpotBlend,
-  placesRatedApart,
   spotBlendHours,
   staleSpotBlend,
   trustedSpotBlend,
@@ -148,29 +146,20 @@ describe("staleSpotBlend", () => {
 
 describe("trustedSpotBlend", () => {
   const at = Date.parse(blend.generatedAt);
-  const wind = ["harmonie", "ecmwf", "gfs"];
 
-  it("rates from the published blend only while the reader blends every wind model", () => {
-    expect(ownBlendModels(wind, wind)).toBe(false);
-    expect(ownBlendModels([...wind, "ecmwf-ens"], wind)).toBe(false);
-    expect(ownBlendModels(["harmonie", "ecmwf"], wind)).toBe(true);
-    expect(trustedSpotBlend(pointer, false, at)).toBe(pointer);
-    expect(trustedSpotBlend(pointer, true, at)).toBeNull();
-  });
-
-  it("rates from it only for a reader whose stars come from the models it was built with", () => {
-    expect(trustedSpotBlend(pointer, false, at, { model: "harmonie", then: "ecmwf" })).toBe(pointer);
-    expect(trustedSpotBlend(pointer, false, at, { model: "gfs", then: "ecmwf" })).toBeNull();
-    expect(trustedSpotBlend(pointer, false, at, { model: "harmonie", then: "gfs" })).toBeNull();
+  it("rates from it only for a rider whose stars come from the models it was built with", () => {
+    expect(trustedSpotBlend(pointer, at)).toBe(pointer);
+    expect(trustedSpotBlend(pointer, at, { model: "harmonie", then: "ecmwf" })).toBe(pointer);
+    expect(trustedSpotBlend(pointer, at, { model: "gfs", then: "ecmwf" })).toBeNull();
     // A blend built by the rule before 19 October 2026 names none, and fits nobody.
     const { lead: _lead, ...old } = pointer;
-    expect(trustedSpotBlend(old, false, at)).toBeNull();
+    expect(trustedSpotBlend(old, at)).toBeNull();
   });
 
   it("stops trusting it past six hours, and without one there is none", () => {
-    expect(trustedSpotBlend(pointer, false, at + 6 * 3600000)).toBe(pointer);
-    expect(trustedSpotBlend(pointer, false, at + 6 * 3600000 + 1)).toBeNull();
-    expect(trustedSpotBlend(null, false, at)).toBeNull();
+    expect(trustedSpotBlend(pointer, at + 6 * 3600000)).toBe(pointer);
+    expect(trustedSpotBlend(pointer, at + 6 * 3600000 + 1)).toBeNull();
+    expect(trustedSpotBlend(null, at)).toBeNull();
   });
 });
 
@@ -208,46 +197,14 @@ describe("ratePlace", () => {
   });
 });
 
-describe("placesRatedApart", () => {
-  const places = [brandon, { ...brandon, id: "portrane" }, { ...brandon, id: "inch" }];
-  it("is the rider's spots of their own the blend cannot serve", () => {
-    const rider: Rider = {
-      ...DEFAULT_RIDER,
-      starsFrom: {
-        model: "gfs",
-        then: "ecmwf",
-        spots: { portrane: "harmonie", inch: "icon-eu" },
-      },
+describe("ratePlace for a rider's own blend", () => {
+  it("still reads the published blend: the blend's models move no star", () => {
+    const source = {
+      published: blend,
+      manifests,
+      blendModels: ["ecmwf"],
+      known: new Set(["n52w012"]),
     };
-    // Portrane, rated HARMONIE then ECMWF, is the blend's; Inch is not.
-    expect(placesRatedApart(places, rider, blend).map((p) => p.id)).toEqual(["inch"]);
-    expect(placesRatedApart(places, rider, null)).toEqual([]);
-    expect(placesRatedApart(places, DEFAULT_RIDER, blend)).toEqual([]);
-  });
-});
-
-describe("ratePlace beside a published blend", () => {
-  const rider: Rider = {
-    ...DEFAULT_RIDER,
-    starsFrom: { model: "harmonie", then: "ecmwf", spots: { brandon: "ecmwf" } },
-  };
-  const source = {
-    published: blend,
-    manifests,
-    blendModels: ids,
-    known: new Set(["n52w012"]),
-    modelsKnown: new Set<string>(),
-  };
-  it("works a spot rated from its own model out from the models, once their square is read", () => {
-    expect(ratePlace(brandon, blend.times, rider, source)).toBeNull();
-    const read = { ...source, modelsKnown: new Set(["n52w012"]) };
-    const hours = ratePlace(brandon, blend.times, rider, read)!;
-    expect(hours).toEqual(placeHours(manifests, ids, brandon, blend.times, rider));
-    expect(new Set(hours.map((h) => h.model))).toEqual(new Set(["ecmwf"]));
-  });
-  it("reads every other spot from the blend", () => {
-    const other = { ...brandon, id: "nowhere" };
-    expect(ratePlace(other, blend.times, rider, source)).toBeNull();
     expect(ratePlace(brandon, blend.times, DEFAULT_RIDER, source)).toEqual(
       spotBlendHours(blend, brandon, blend.times, DEFAULT_RIDER),
     );

@@ -660,17 +660,17 @@ async function selectFrom(page: Page, model: string): Promise<string> {
   return at!;
 }
 
-/** Choose in Display options' Stars from: `group` names which row. */
-async function starsFrom(page: Page, group: string, model: string) {
+/** Pick the rider's one model in Display options. */
+async function pickModel(page: Page, model: string) {
   await openFromMenu(page, "Display options");
   await page
-    .getByRole("group", { name: group, exact: true })
+    .getByRole("group", { name: "Model", exact: true })
     .getByRole("button", { name: model, exact: true })
     .click();
   await closePanel(page);
 }
 
-test("the stars come from one model, the rider's choice: the dock names it and the map follows", async ({
+test("the stars come from one model, the rider's: the dock names it, and the map draws it and follows", async ({
   page,
 }) => {
   await openDock(page);
@@ -696,9 +696,9 @@ test("the stars come from one model, the rider's choice: the dock names it and t
   await expect.poll(() => dockAndLightAgree(page)).toBe(true);
   const lightsBefore = await lightRatings(page);
 
-  // Stars from GFS, everywhere. The sample's GFS run starts days later, so
+  // GFS, the rider's model now. The sample's GFS run starts days later, so
   // that hour is ECMWF's now, the model that takes over: never HARMONIE's.
-  await starsFrom(page, "Stars from", "GFS");
+  await pickModel(page, "GFS");
   await expect
     .poll(async () => {
       const labels = await starLabels(page);
@@ -725,10 +725,14 @@ test("the stars come from one model, the rider's choice: the dock names it and t
   await expect
     .poll(() => dockAndLightAgree(page), { timeout: 30000 })
     .toBe(true);
-  // An hour GFS reaches is named GFS in the dock's head.
+  // An hour GFS reaches is named GFS in the dock's head, and the map draws
+  // GFS's own wind at it: the model the rider sees is the one the stars rate.
   await selectFrom(page, "GFS");
   await expect(chip).toHaveAttribute("data-stars-from-chip", "gfs");
   await expect(chip).toContainText("GFS");
+  await expect(page.locator(".map-model")).toHaveText(/^GFS\b/, {
+    timeout: 30000,
+  });
   await expect
     .poll(() => dockAndLightAgree(page), { timeout: 30000 })
     .toBe(true);
@@ -740,7 +744,7 @@ test("the stars come from one model, the rider's choice: the dock names it and t
   await expect(page.locator('.dock [data-handover="gfs"]')).toHaveCount(1, {
     timeout: 30000,
   });
-  await starsFrom(page, "Stars from", "HARMONIE");
+  await pickModel(page, "HARMONIE");
   await expect(page.locator('.dock [data-handover="gfs"]')).toHaveCount(0);
   await backToIreland(page);
   await selectHour(page, hour);
@@ -750,25 +754,43 @@ test("the stars come from one model, the rider's choice: the dock names it and t
     .toEqual(lightsBefore);
 });
 
-test("a spot can take its stars from a model of its own, and says so", async ({
+test("one model to pick and no fallback to set, and a blend of the rider's own that moves no star", async ({
   page,
 }) => {
   await openDock(page);
-  const chip = page.locator(".dock [data-stars-from-chip]");
-  await starsFrom(page, "Stars at Brandon Bay", "GFS");
-  await selectFrom(page, "GFS");
-  await expect(chip).toHaveAttribute("data-stars-from-chip", "gfs");
-  await expect(chip).toHaveClass(/is-own/);
-  await expect(chip).toContainText("from GFS");
-  // Every other place is still the published blend's, and still rated.
   await backToIreland(page);
-  await expect
-    .poll(() => dockAndLightAgree(page), { timeout: 30000 })
-    .toBe(true);
-  await starsFrom(page, "Stars at Brandon Bay", "Same");
-  await expect(chip).not.toHaveClass(/is-own/);
-  // That hour, past HARMONIE's run, is ECMWF's again by default.
-  await expect(chip).toHaveAttribute("data-stars-from-chip", "ecmwf");
+  await selectFrom(page, "HARMONIE");
+  await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
+    timeout: 30000,
+  });
+  const lightsBefore = await lightRatings(page);
+  await openFromMenu(page, "Display options");
+  const panel = page.locator("#map-options");
+  // One choice: no "Stars from", nothing for when the run ends, no spot's own.
+  await expect(panel).not.toContainText(/stars from/i);
+  await expect(panel.getByRole("group", { name: /ends$/ })).toHaveCount(0);
+  await expect(panel.getByRole("group", { name: /^Stars at/ })).toHaveCount(0);
+  await expect(
+    panel.getByRole("group", { name: "Model", exact: true }).getByRole("button"),
+  ).toHaveText(["HARMONIE", "ICON-EU", "ECMWF", "GFS"]);
+  // A blend of the rider's own: GFS and ICON-EU left out.
+  for (const id of ["gfs", "icon-eu"]) {
+    const box = panel.locator(`[data-model-toggle="${id}"]`);
+    await expect(box).toBeEnabled({ timeout: 30000 });
+    await box.uncheck();
+  }
+  await closePanel(page);
+  // The lights are the stars, and the stars are HARMONIE's whatever the blend.
+  await expect(page.locator(".spot-marker.pending")).toHaveCount(0);
+  expect(await lightRatings(page)).toEqual(lightsBefore);
+  // The blend chart draws only the models ticked.
+  await page.locator(".dock").getByRole("button", { name: "Blend" }).click();
+  const chart = page.locator(".dock .blend-chart");
+  await expect(chart.locator('[data-model="harmonie"]').first()).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(chart.locator('[data-model="gfs"]')).toHaveCount(0);
+  await expect(chart.locator('[data-model="icon-eu"]')).toHaveCount(0);
 });
 
 test("the display options open over the dimmed map from the site menu, one panel at a time", async ({

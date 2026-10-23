@@ -25,7 +25,7 @@ interface Props {
 }
 
 export const STARS_HELP =
-  "How good each hour looks for wing foiling, out of five. Solid stars are what the hour is worth here; faded ones are what the wind alone would give if the direction or the gusts had been kinder. Each hour is one model's forecast, the one chosen under Stars from; the other models never change a star. Rated for the rider in Display options.";
+  "How good each hour looks for wing foiling, out of five. Solid stars are what the hour is worth here; faded ones are what the wind alone would give if the direction or the gusts had been kinder. Each hour is one model's forecast, the model you picked in Display options, and ECMWF's past the end of its run, where a dashed line marks the change; the other models never change a star. Rated for the rider in Display options.";
 export const WING_HELP =
   "The wing size the stars assume for that hour, in square metres: your own wing where you have listed them, otherwise what a rider of your weight and level would usually take.";
 

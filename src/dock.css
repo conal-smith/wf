@@ -124,13 +124,6 @@
   text-transform: uppercase;
   white-space: nowrap;
 }
-/* A spot rated from a model of its own: said in magenta, dashed, so two
-   spots that disagree say why. */
-.dk-tools .dk-stars-from.is-own {
-  color: var(--color-chart-magenta);
-  outline: 1px dashed var(--color-chart-magenta);
-  outline-offset: -4px;
-}
 .dk-chev svg {
   stroke: currentColor;
 }

@@ -1359,8 +1359,8 @@ export interface SpotForecast {
 export const METHOD =
   "Wind, gust and direction are one model's own forecast, never a blend of " +
   "several: HARMONIE's while it reaches the hour (about 60 hours ahead), and " +
-  "past it ECMWF's (`lead` names the model; `stars_from` and `then` choose " +
-  "others). Where that model gives no gust, `gust_kn` is null. An hour neither " +
+  "past it ECMWF's (`lead` names the model; `model` chooses another, which " +
+  "ECMWF follows the same way). Where that model gives no gust, `gust_kn` is null. An hour neither " +
   "model reaches has no wind. The range (min_kn, max_kn, gust_max_kn) is " +
   "across every model, as context, and agreement comes from the standard " +
   "deviation of every model's speed (an ensemble's member mean counting once), " +
