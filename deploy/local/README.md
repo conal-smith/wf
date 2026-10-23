@@ -103,6 +103,7 @@ in UTC. The shipped schedule is:
 | `gfs-wave`        | 04/10/16/22 at :30 | NOAA's 6-hourly wave cycles, ~3 h 50 m late; :55 retry |
 | `gfs-weather`     | 05/11/17/23 at :05 | GFS surface weather, 384 h, ~5 h late; :35 retry     |
 | `mi-swan`         | 10/14/18 at :15    | one SWAN run a day, published ~09 UTC, sometimes late |
+| `currents`        | 03/07/13 at :20    | one ROMS run a day, written ~00:55 UTC; two retries   |
 | `ecmwf-wave`      | off (retired)      | the 00/12 wave stream, ~707 MB per run                |
 | `tides`           | 01:05 daily        | predictions, not a forecast cycle                     |
 | `sea-temperature` | every 3 h at :15   | Marine Institute observations, newest reading         |

@@ -85,7 +85,11 @@ describe("the shared variables reader", () => {
     );
   });
   it("holds a weather bundle to the wider value bound", () => {
-    expect(VARIABLE_VALUE_LIMITS).toEqual({ wave: 1000, weather: 100_000 });
+    expect(VARIABLE_VALUE_LIMITS).toEqual({
+      wave: 1000,
+      weather: 100_000,
+      current: 10,
+    });
     // 1016.8 hPa is an ordinary reading and would break the wave bound.
     expect(
       checkWeather(weatherManifest()).spotSeries!.brandon[0].values.pmsl,

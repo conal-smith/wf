@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, type ReactNode } from "react";
 import { Dialog } from "../ui/Dialog";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { DEPTHS } from "../force5/src/chartStyle";
@@ -9,11 +9,15 @@ import { KnotScale } from "./KnotScale";
 import type { InfoSection } from "./mapInfoContext";
 import { riderLine } from "./riderLine";
 
+/** The Currents layer's key, its own chunk: few readers open it. */
+const CurrentsKey = lazy(() => import("./CurrentsKey"));
+
 const SECTION_ID: Record<InfoSection, string> = {
   key: "map-info-key",
   stars: "map-info-stars",
   foil: "map-info-foil",
   lidar: "map-info-lidar",
+  currents: "map-info-currents",
   sources: "map-info-sources",
 };
 
@@ -127,6 +131,13 @@ export default function MapInfo({
       )}
       {section("foil", "Tidal depth", foil)}
       {section("lidar", "LiDAR data", lidar)}
+      {section(
+        "currents",
+        "Currents",
+        <Suspense fallback={<p>Loading…</p>}>
+          <CurrentsKey />
+        </Suspense>,
+      )}
       {section("sources", "Sources", sources)}
     </Dialog>
   );

@@ -47,6 +47,7 @@ import {
   type WindStyle,
 } from "./windLayer";
 import type { Frame, Spot } from "./weather";
+import type { CurrentFeature } from "./currents";
 import type { Units } from "./units";
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -76,6 +77,8 @@ export interface ChartLayers {
   foil: boolean;
   /** The LiDAR surveys' ground heights, where we have them (force5/src/lidar.ts). */
   lidar: boolean;
+  /** Surface currents at the hour shown: a rough guide, off unless asked for. */
+  currents: boolean;
 }
 
 /** One area's foilable-depth layer (a region or a pilot), as the map draws it. */
@@ -144,6 +147,11 @@ type Props = {
   layers: ChartLayers;
   /** The foilable-depth areas to draw, or null to draw none. */
   foil: readonly FoilView[] | null;
+  /**
+   * The Currents layer's arrows at the hour shown, or null with the layer
+   * off. Its drawing code is loaded the first time there are any.
+   */
+  currents?: readonly CurrentFeature[] | null;
   /** The satellite image to draw under the chart's lines, or null for none. */
   satellite?: SatelliteImage | null;
   /** The LiDAR layer to draw, or null for none (force5/src/lidar.ts). */
@@ -580,6 +588,7 @@ export default function WindMap(props: Props) {
     windStyle,
     layers,
     foil,
+    currents = null,
     satellite = null,
     lidar = null,
     reducedMotion,
@@ -1009,6 +1018,27 @@ export default function WindMap(props: Props) {
       if (id.startsWith("foil-") && !shown.has(id))
         map.setLayoutProperty(id, "visibility", "none");
   }, [ready, foil]);
+
+  // Currents: one GeoJSON source and one symbol layer (currentsLayer.ts),
+  // whose code is fetched the first time the layer is turned on.
+  const currentsLayer = useRef<typeof import("./currentsLayer") | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    if (!currents) {
+      currentsLayer.current?.hideCurrents(map);
+      return;
+    }
+    let live = true;
+    import("./currentsLayer").then((layer) => {
+      currentsLayer.current = layer;
+      if (live && mapRef.current === map)
+        layer.drawCurrents(map, [...currents]);
+    });
+    return () => {
+      live = false;
+    };
+  }, [ready, currents]);
 
   // The satellite image: one raster source and layer per area and tide, made
   // the first time it is wanted and kept, hidden when another tide is chosen

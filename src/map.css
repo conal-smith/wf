@@ -948,6 +948,16 @@
 .layers .layer-info label {
   flex: 1;
 }
+/* Under the Currents switch while it is on: what it cannot draw, or that it
+   is not for safety. */
+.layers .layer-info {
+  flex-wrap: wrap;
+}
+.layers .layer-info small {
+  flex-basis: 100%;
+  font: 400 9.5px var(--font-mono);
+  color: var(--color-ink-muted);
+}
 /* Each row's glyph (src/chartGlyphs.tsx), between the switch and its name,
    and in a switch's capsule before its word. */
 .layers label > .g-chart {
@@ -1199,6 +1209,39 @@
 }
 .k-wind path.faint {
   stroke: color-mix(in srgb, var(--color-ink) 30%, transparent);
+}
+/* The Currents layer's key: its arrows as the chart draws them. */
+.map-info .cur-key {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 4px 8px;
+  align-items: center;
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.cur-key dt {
+  display: grid;
+  place-items: center;
+}
+.cur-key dd {
+  margin: 0;
+}
+.cur-key path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cur-key .cur-k-model {
+  stroke: var(--color-depth);
+  stroke-width: 1.4;
+}
+.cur-key .cur-k-stream {
+  stroke: var(--color-ink);
+  stroke-width: 1.8;
+}
+.map-info .cur-sites {
+  padding-left: 18px;
 }
 .key .tints {
   display: flex;

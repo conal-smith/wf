@@ -17,6 +17,7 @@ import {
   AboutGlyph,
   ArrowsWindGlyph,
   ColouredWindGlyph,
+  CurrentsGlyph,
   HighTideGlyph,
   InkWindGlyph,
   LayersGlyph,
@@ -54,11 +55,13 @@ const CHART_LABEL: Record<keyof ChartLayers, string> = {
   names: "Spot names",
   foil: "Tidal depth",
   lidar: "LiDAR data",
+  currents: "Currents, a rough guide",
 };
 /** The chart's switches whose key is in the map's information, behind an "i". */
 const CHART_INFO: Partial<Record<keyof ChartLayers, [string, InfoSection]>> = {
   foil: ["About tidal depth", "foil"],
   lidar: ["About the LiDAR data", "lidar"],
+  currents: ["About currents", "currents"],
 };
 /** Each part's glyph, drawn as the chart draws the part; a row without one still reads. */
 const CHART_GLYPH: Partial<Record<keyof ChartLayers, ReactNode>> = {
@@ -68,6 +71,7 @@ const CHART_GLYPH: Partial<Record<keyof ChartLayers, ReactNode>> = {
   names: <NamesGlyph />,
   foil: <TidalDepthGlyph />,
   lidar: <SurveyGlyph />,
+  currents: <CurrentsGlyph />,
 };
 const SATELLITE_GLYPH: Partial<Record<SatelliteOption, ReactNode>> = {
   high: <HighTideGlyph size={16} />,
@@ -153,6 +157,7 @@ export default function MapControls({
   modelNote,
   modelDisabled,
   onModel,
+  currentsNote = null,
 }: {
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -186,6 +191,8 @@ export default function MapControls({
   modelNote?: string | null;
   modelDisabled: boolean;
   onModel: (id: ModelId) => void;
+  /** What the Currents layer cannot draw at the hour shown, while it is on. */
+  currentsNote?: string | null;
 }) {
   const close = () => onOpen(null);
   return (
@@ -259,20 +266,24 @@ export default function MapControls({
                       <span>{CHART_LABEL[key]}</span>
                     </label>
                   );
-                  // The tidal depth's key and the LiDAR's are in the map's
-                  // information, not on the chart: each one's "i" opens it
-                  // there, beside the switch.
+                  // The tidal depth's, the LiDAR's and the currents' keys are in
+                  // the map's information, not on the chart: each one's "i"
+                  // opens it there, beside the switch.
                   const info = CHART_INFO[key];
-                  return info ? (
+                  if (!info) return box;
+                  return (
                     <div key={key} className="layer-info">
                       {box}
                       <InfoButton
                         label={info[0]}
                         onOpen={() => onInfo(info[1])}
                       />
+                      {key === "currents" && layers.currents && (
+                        <small data-currents-note>
+                          {currentsNote ?? "Not for safety."}
+                        </small>
+                      )}
                     </div>
-                  ) : (
-                    box
                   );
                 },
               )}

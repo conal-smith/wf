@@ -487,6 +487,7 @@ SEA TEMPERATURE: --models sea-temperature --bucket YOUR_FORECAST_BUCKET
 ECMWF ENS: --models ecmwf-ens --bucket YOUR_FORECAST_BUCKET
 HARMONIE EPS: --models harmonie-eps --step 3 --bucket YOUR_FORECAST_BUCKET
 MI-SWAN:  --models mi-swan --bucket YOUR_FORECAST_BUCKET
+CURRENTS: --models currents --bucket YOUR_FORECAST_BUCKET
 ```
 
 Tides need one nightly run: predictions extend to 2029, so the schedule only refreshes the
@@ -499,6 +500,48 @@ from the harmonic constants the image carries (`force5/ingest/tide_stations_ni.j
 the whole run and keeps the last published predictions. The manifest's `run` is the ingest hour, which keeps the
 existing staleness and compare-and-swap rules working unchanged; its default age limit is
 30 hours.
+
+### Surface currents (Marine Institute ROMS)
+
+`--models currents` (`fetch_currents.py`) publishes the Marine Institute's North East
+Atlantic ROMS model, which the map draws as its **Currents** layer (off unless a rider
+turns it on). Public ERDDAP griddap `IMI_NEATL`, CC BY 4.0, no account; the Marine
+Institute says its forecasts are not for safety-critical decisions, and the bundle,
+the layer and the map's information all say so.
+
+- **The data.** A regular 0.0125° grid over 48–58° N, 18–1° W (1360 × 800 cells: about
+  1.4 km north-south and 0.8 km east-west here), regridded by the Marine Institute from
+  ROMS's 2 km curvilinear grid, hourly, tides included. `sea_surface_x_velocity` and
+  `sea_surface_y_velocity` are the surface current in m/s (the velocity the water
+  moves with, so the bearing is where it flows to); land is NaN. The aggregate holds a
+  week of hindcast and then the day's forecast, 241 hours in all.
+- **Run and cadence.** Each day's forecast files (THREDDS
+  `NEATLANTIC_NATIVE_2KM_40L_1H/FORECAST`) are written between about 00:35 and 00:55
+  UTC on the model day and reach 72 h past its 00 UTC, where the axis ends; the
+  aggregate carries no model-day attribute, so `run` is the axis end less 72 h, and a
+  run that does not fall on 00 UTC (an aggregate mid-update) publishes nothing.
+  `jobs.toml` reads it at 03:20 with retries at 07:20 and 13:20 that cost two small
+  requests once the run is published (`readsPublishedRun`); the registry limit is 36 h.
+- **What it publishes.** `weather/currents.json` and its run directory: 73 hourly
+  frames of `u` and `v` over 11–5° W, 51–56° N at every fourth cell (0.05°, 120 × 100,
+  about 127 kB of JSON or 16 kB compressed a frame; the map thins the arrows further by
+  zoom), and every riding location's series from the closest cell with water within
+  5 km (`spotCells`), nulls with a reason where there is none (the inland lakes, and
+  Cork Harbour, Carlingford Lough and Waterford Harbour, which the grid does not reach).
+  A run is about 350 small requests, some 15 MB compressed, in 30–70 seconds; the
+  adapter peaked at 168 MB.
+- **Narrow channels.** At 1–2 km the model has the streams' timing and direction but
+  not a narrow channel's speed: Strangford Narrows is land in this grid. The map adds
+  tidal stream curves for such places (`force5/src/tidalStreams.json`, worked out in
+  the browser by `tidalStreams.ts` from the tide predictions the site already
+  publishes): each place's published spring rates each way, when its streams turn
+  relative to high or low water at a reference port, and the tide station that stands
+  for that port, scaled by the day's range. Strangford Narrows is timed from HW
+  Belfast, read at **Bangor** with no offset (a gauge in the mouth of Belfast Lough,
+  within a few minutes of Belfast); Malahide's channel from Dublin's high and low
+  water, read at **Dublin Port**, plus 5 minutes. The figures come from open pilotage
+  guides (eOceanic, Visit My Harbour), never UKHO's tidal stream tables, which are
+  copyright.
 
 Sea temperature is an **observation** feed, not a cycle: run it every three hours
 (`deploy/local/jobs.toml` uses 00/03/…/21 UTC at :15, sharing that minute with the SWAN
@@ -588,6 +631,7 @@ docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf-ens $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf-wave $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models gfs-wave $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models mi-swan $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models currents $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models sea-temperature $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models tides $R2
 
@@ -675,7 +719,7 @@ success.
 
 Every forecast adapter is in the contract: `harmonie`, `icon-eu`, `icon-eu-weather`,
 `ecmwf`, `ecmwf-ens`, `aifs`, `ecmwf-wave`, `gfs`, `gfs-weather`, `gefs`, `arpege`, `arome`,
-`harmonie-eps`, `gfs-wave` and `mi-swan`. Each decides from the discovery step it
+`harmonie-eps`, `gfs-wave`, `mi-swan` and `currents`. Each decides from the discovery step it
 already makes (an inventory listing, a package listing, ECMWF's `latest()` probe,
 SWAN's info page and `time[last]`), after its freshness check, so a stale or
 incomplete source still fails rather than reading as "nothing new". `ecmwf` and
@@ -1012,6 +1056,7 @@ weather/gefs.json, weather/gefs-RUN-240h-v1-HASH8/          GEFS: mean frames, m
 weather/ecmwf-ens.json, weather/ecmwf-ens-RUN-144h-25m-v1-HASH8/  ECMWF ENS, likewise
 weather/harmonie-eps.json, weather/harmonie-eps-RUN-48h-v1-HASH8/ HARMONIE EPS, likewise
 weather/mi-swan.json, weather/mi-swan-RUN-144h-v1-HASH8/    Irish Shelf SWAN: squares, frames only with --frames
+weather/currents.json, weather/currents-RUN-72h-v1-HASH8/   ROMS surface currents: 73 JSON frames + squares
 weather/icon-eu-weather.json, weather/icon-eu-weather-RUN-72h-v1-HASH8/  surface weather: squares only
 weather/gfs-weather.json, weather/gfs-weather-RUN-384h-v1-HASH8/  GFS surface weather: squares only
 weather/gfs-wave.json, weather/gfs-wave-RUN-240h-v1-HASH8/  GFS-Wave: squares only

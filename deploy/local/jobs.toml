@@ -134,6 +134,14 @@ minutes = [15]
 timeout_seconds = 1800
 
 [[jobs]]
+id = "currents"
+models = ["currents"]
+hours = [3, 7, 13]          # One ROMS run a day, its forecast files written by about
+minutes = [20]              # 00:55 UTC on the model day; 07:20 and 13:20 are retries
+timeout_seconds = 1200      # that download nothing once 03:20 has published. ~15 MB
+                            # compressed from ERDDAP (73 frames, two small requests a spot).
+
+[[jobs]]
 id = "ecmwf-wave"
 models = ["ecmwf-wave"]
 args = ["--ecmwf-source", "ecmwf"]

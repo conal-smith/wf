@@ -40,6 +40,8 @@ export const IRELAND: [[number, number], [number, number]] = [
 
 const FONT = ["Noto Sans Italic"];
 const FONT_UP = ["Noto Sans Regular"];
+/** The upright face, for a layer of the map's own that prints figures (currentsLayer.ts). */
+export const CHART_FONT = FONT_UP;
 
 /** The depths a band or contour can carry, shallow to deep. */
 export const DEPTHS = [0, 1, 2, 3, 5, 10, 20, 30, 50, 100, 200] as const;
