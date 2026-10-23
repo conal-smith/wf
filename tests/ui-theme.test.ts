@@ -103,6 +103,11 @@ const COLOURS: Record<string, string> = {
   // and the gust cap on a candle. D12.
   "now-marker": "#bf6546",
   gust: "#e0803a",
+  // The weather's state, and nothing else: the sun is the buoy's yellow.
+  "weather-sun": "#e9b200",
+  "weather-rain": "#3a7fb0",
+  "weather-cloud": "#d6d0c2",
+  "weather-night": "#e7dcb4",
 };
 
 // Size, line height, then weight and tracking where the step has one.

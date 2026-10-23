@@ -198,6 +198,17 @@
   --color-now-marker: #bf6546;
   --color-gust: #e0803a;
 
+  /* The weather's state, and nothing else: the sky's glyphs (src/glyphSet.ts)
+     drawn as a chart draws a buoy, an ink outline with the colour inside. The
+     sun is the buoy's own yellow; rain a sea-blue, for a drop, the rain row's
+     tint and a shower's streaks; cloud and night (the moon) pale fills that
+     the ink outline carries. Fills and marks, never words: rain is 3.7:1 on
+     paper. Like the wind's, they mean the weather and do not re-theme. */
+  --color-weather-sun: #e9b200;
+  --color-weather-rain: #3a7fb0;
+  --color-weather-cloud: #d6d0c2;
+  --color-weather-night: #e7dcb4;
+
   /* ---- type ------------------------------------------------------------ */
 
   /* Four faces, each with one job, self-hosted (ui/fonts.css):

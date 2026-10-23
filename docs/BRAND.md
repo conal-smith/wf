@@ -65,6 +65,14 @@ of it.
 | `land`, `relief` | `#ede3c8`, `#b59e74` | Land buff, and its relief lines. |
 | `basemap-water`, `basemap-land` | `#e5edea`, `#ede3c8` | What WindMap paints over the basemap. |
 | `wind-k00` … `wind-k65` | unchanged | Wind speed and nothing else. |
+| `weather-sun` | `#e9b200` | The sun, a thunderbolt: the buoy's own yellow. A fill, never text. |
+| `weather-rain` | `#3a7fb0` | Rain: a drop, a shower's streaks, the rain row's tint. 3.75:1, a mark, never words. |
+| `weather-cloud`, `weather-night` | `#d6d0c2`, `#e7dcb4` | A cloud's grey and the moon's pale fill, inside an ink outline only. |
+
+**Colour, only here.** The weather's state (sun, rain, cloud, night), the
+wind-speed scale, the chart's magenta for the best of something, and the warm
+red for a warning. Everything else is ink on paper. A glyph carries colour as
+a chart draws a buoy: an ink outline, and the colour inside it.
 
 ## Type
 
@@ -182,6 +190,9 @@ the section's own, because each router takes a link over in its own way:
   mockup does.
 - Use `chart-magenta` for the best of something, once.
 - Draw stars with `StarGlyphs`, and leave the dark unrated.
+- Draw a glyph from the set (`src/glyphSet.ts`, drawn by `ChartGlyph` in
+  `src/chartGlyphs.tsx` and `SetGlyph` in the app) before reaching for lucide:
+  the weather, the wind and the blend, the dock's rows, the chart's symbols.
 - Pass `strokeWidth={1.5}` to lucide icons beside mono labels; the default 2
   reads heavy against the thin rules.
 
@@ -194,7 +205,8 @@ the section's own, because each router takes a link over in its own way:
 - Don't round a box, or square a capsule.
 - Don't set sentences in the mono face, or figures in the body face.
 - Don't put a second filled action on a view.
-- Don't use the wind ramp for anything but wind speed.
+- Don't use the wind ramp for anything but wind speed, or the weather's
+  colours for anything but the weather.
 
 ## For each section
 
