@@ -410,6 +410,41 @@
 }
 
 /* ---------- the lights ---------- */
+/* Their common parent, with no box: each light stacks in the map's own
+   order, as MapLibre's markers did. */
+.map-lights {
+  display: contents;
+}
+/* Each placed by force5/src/lights.ts where the camera rests, a layer of
+   its own as a marker was. */
+.map-canvas .lt {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  will-change: transform;
+}
+/* Through a move the lights are drawn here instead
+   (force5/src/lightsCanvas.ts), but for one the rider is at, which stays a
+   button. */
+.lights-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+/* Out of sight, as a layer's opacity (hidden, every one's insides were
+   styled again at each move's start and end), and out of reach: a tap
+   through a move is on the lights as drawn (force5/src/lights.ts). */
+.map-lights.is-moving .lt:not(.lt-live) {
+  opacity: 0;
+  pointer-events: none;
+}
+.map-lights.is-moving .lt:not(.lt-live) svg {
+  transition: none;
+}
 .lt {
   width: 20px;
   height: 20px;
