@@ -300,7 +300,17 @@ export const DockDay = memo(function DockDay(props: DockDayProps) {
                 </T>
               </View>
             )}
-            {props.more && <MoreCellsColumn more={props.more} i={i} at={at} top={bodyTop} fs={fs} w={w} />}
+            {props.more && (
+              <MoreCellsColumn
+                more={props.more}
+                i={i}
+                at={at}
+                top={bodyTop}
+                fs={fs}
+                w={w}
+                dark={daylight[i] === false}
+              />
+            )}
           </Pressable>
         );
       })}
@@ -366,9 +376,12 @@ function MoreCellsColumn({
   top,
   fs,
   w,
+  dark,
 }: {
   more: MoreCells;
   i: number;
+  /** A dark hour: the moon for the sun. */
+  dark: boolean;
   at: RowLayout["at"];
   top: number;
   fs: (size: number) => { fontSize: number; lineHeight: number };
@@ -402,7 +415,7 @@ function MoreCellsColumn({
       )}
       {at.sky && sky && (
         <View style={[styles.cellAbs, { top: at.sky.y - top, height: at.sky.h }]} accessibilityLabel={sky.words}>
-          <SkyGlyph icon={sky.icon} size={15} />
+          <SkyGlyph icon={sky.icon} size={17} dark={dark} />
         </View>
       )}
       {at.air && air !== null && air !== undefined && (
@@ -416,7 +429,7 @@ function MoreCellsColumn({
         <View
           style={[
             styles.cellAbs,
-            { top: at.rain.y - top, height: at.rain.h, backgroundColor: withAlpha(colors.depth, 0.08 + rain.tint * 0.4) },
+            { top: at.rain.y - top, height: at.rain.h, backgroundColor: withAlpha(colors.weatherRain, 0.08 + rain.tint * 0.4) },
           ]}
           accessibilityLabel={`Rain ${rain.words}`}
         >

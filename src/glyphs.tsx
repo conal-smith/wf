@@ -5,6 +5,7 @@
  */
 import { useContext, type ReactNode } from "react";
 import { compass } from "../force5/src/weather";
+import { ChartGlyph, glyphs } from "./chartGlyphs";
 import { InfoButton } from "./InfoPop";
 import { MapInfoOpen } from "./mapInfoContext";
 
@@ -102,60 +103,26 @@ export function StarsHelp() {
 export const windWords = (from: number | null, kn: number | null) =>
   from === null || kn === null ? "" : `${compass(from)} ${Math.round(kn)}`;
 
-interface RowGlyphProps {
-  size?: number;
-  className?: string;
-  strokeWidth?: number;
-  "aria-hidden"?: boolean | "true" | "false";
-}
-
 /**
- * A wing, for the dock's wing-size row: the leading edge's arc and the strut
- * across it, drawn on lucide's 24-unit grid so it sits with its icons.
+ * A thermometer standing in a wave, for the sea's temperature: the set's
+ * (src/glyphSet.ts), under the name the dock's head knows it by.
  */
-export function WingGlyph({
-  size = 14,
-  strokeWidth = 1.6,
-  ...rest
-}: RowGlyphProps) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...rest}
-    >
-      <path d="M3 17C6 8 13 4 21 5C17 9 12 14 3 17Z" />
-      <path d="M7 14L17 7" />
-    </svg>
-  );
-}
-
-/** A thermometer standing in a wave, for the sea's temperature. */
 export function SeaTempGlyph({
   size = 14,
   strokeWidth = 1.6,
-  ...rest
-}: RowGlyphProps) {
+  className,
+}: {
+  size?: number;
+  strokeWidth?: number;
+  className?: string;
+  "aria-hidden"?: boolean | "true" | "false";
+}) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
+    <ChartGlyph
+      glyph={glyphs.seaTemp}
+      size={size}
       strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...rest}
-    >
-      <path d="M12 3a2 2 0 0 0-2 2v7.3a3.5 3.5 0 1 0 4 0V5a2 2 0 0 0-2-2Z" />
-      <path d="M2 21c2-1.3 3.3-1.3 5 0s3 1.3 5 0 3.3-1.3 5 0 3 1.3 5 0" />
-    </svg>
+      className={className}
+    />
   );
 }

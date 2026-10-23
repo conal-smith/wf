@@ -171,6 +171,23 @@
           "$description": "The gust cap on a candle (D12). Not re-themed."
         }
       },
+      "weather": {
+        "rain": {
+          "$type": "color",
+          "$value": "#3a7fb0",
+          "$description": "Rain's sea-blue: a drop, a shower's streaks, the rain row's tint. 3.7:1 on paper, so a fill or a mark, never words."
+        },
+        "cloud": {
+          "$type": "color",
+          "$value": "#d6d0c2",
+          "$description": "A cloud's grey, a fill inside an ink outline only."
+        },
+        "night": {
+          "$type": "color",
+          "$value": "#e7dcb4",
+          "$description": "The moon's pale fill, inside an ink outline only."
+        }
+      },
       "wind": {
         "k00": {
           "$type": "color",
@@ -1325,6 +1342,56 @@
           "com.sprintengine": {
             "role": "data",
             "use": "The cap on a candle (D12)."
+          }
+        }
+      },
+      "weather": {
+        "sun": {
+          "$type": "color",
+          "$value": "{ref.color.buoy.500}",
+          "$description": "The sun, in the buoy's yellow. --color-weather-sun. Not re-themed.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Inside the sun's disc, a thunderbolt, a buoy.",
+              "doNotUse": "As text, or for anything but the weather's state."
+            }
+          }
+        },
+        "rain": {
+          "$type": "color",
+          "$value": "{ref.color.weather.rain}",
+          "$description": "Rain. --color-weather-rain. Not re-themed.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "A drop, a shower's streaks, drizzle's dots, the rain row's tint.",
+              "doNotUse": "As text, or for anything but the weather's state."
+            }
+          }
+        },
+        "cloud": {
+          "$type": "color",
+          "$value": "{ref.color.weather.cloud}",
+          "$description": "Cloud. --color-weather-cloud. Not re-themed.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Inside a cloud's ink outline.",
+              "doNotUse": "As text, or for anything but the weather's state."
+            }
+          }
+        },
+        "night": {
+          "$type": "color",
+          "$value": "{ref.color.weather.night}",
+          "$description": "The moon. --color-weather-night. Not re-themed.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Inside the moon's ink outline, for a clear or part-cloudy dark hour.",
+              "doNotUse": "As text, or for anything but the weather's state."
+            }
           }
         }
       },
