@@ -4,7 +4,6 @@ import {
   SPOTS_KEY,
   steadyFrames,
   test,
-  unfoldTools,
   type Page,
 } from "./fixtures";
 import { sampleStrip } from "./columns";
@@ -294,7 +293,6 @@ test("Back lets go of a tap on the chart still waiting to pick a point: the char
   await openMap(page);
   await page.locator('[data-spot-id="tramore"]').dispatchEvent("click");
   await expect(dockName(page)).toHaveText("Tramore", { timeout: 30000 });
-  await unfoldTools(page);
   await page
     .locator(".dock")
     .getByRole("button", { name: "Close the forecast for Tramore" })
@@ -397,7 +395,6 @@ for (const [width, height] of [
     // A tap on a star's light brings its dock.
     await page.locator('[data-spot-id="rusheen"]').dispatchEvent("click");
     await expect(dockName(page)).toHaveText("Rusheen Bay");
-    await unfoldTools(page);
     await expect(
       page.locator(".dock").getByRole("button", { name: "Unstar Rusheen Bay" }),
     ).toBeVisible();

@@ -1274,8 +1274,13 @@ async function spotTides(
 
 export interface SpotSea {
   celsius: number;
+  /** When it was read, in Irish time ("Wed, 16 Sept, 21:12"). */
   measured: string;
+  /** The same instant as an ISO time, to say how long ago it was. */
+  time: string;
   station: string;
+  /** "coastal", "sentinel" or "buoy"; null where the bundle does not say. */
+  network: string | null;
   distance_km: number;
   attribution: string | null;
 }
@@ -1303,9 +1308,11 @@ async function spotSea(
   return {
     celsius: round(latest.value),
     measured: localTime(time),
+    time: iso(time),
     station: isObject(station)
       ? (text(station.name) ?? spot.station)
       : spot.station,
+    network: isObject(station) ? text(station.network) : null,
     distance_km: finite(spot.distanceKm) ? round(spot.distanceKm) : 0,
     attribution: text(manifest.attribution),
   };

@@ -36,8 +36,14 @@ import {
   rainByHour,
   type RidingSpot,
   type SpotForecast,
+  type SpotSea,
   type Unavailable,
 } from "../../mcp/api/forecast";
+import {
+  NETWORK_LABEL,
+  observationAge,
+  type SeaTemperatureNetwork,
+} from "../../force5/src/seaTemperature";
 import { favourites } from "../../shared/web/favourites";
 import { onPrefsChange, signedInHint } from "../../shared/web/riderSync";
 import { usePageTitle } from "../../shared/web/usePageTitle";
@@ -88,6 +94,7 @@ const styles = tv({
     ],
     metaItem: "inline-flex items-center gap-1.5",
     strong: "font-semibold text-ink",
+    water: "m-0 -mt-2 font-body text-body text-ink",
     star: [
       "inline-flex min-h-control-sm cursor-pointer items-center gap-1.5 rounded-full border-0 bg-transparent px-2 text-ink",
       "pointer-coarse:min-h-touch pointer-coarse:min-w-touch not-disabled:hover:bg-sunken",
@@ -482,19 +489,8 @@ function SpotPage({
             {spot.county}
           </span>
         )}
-        {sea && (
-          <span
-            className={s.metaItem()}
-            data-sea-temperature
-            title={`${sea.station}, ${sea.measured}`}
-          >
-            <Dot />
-            <span>
-              Sea <b className={s.strong()}>{sea.celsius.toFixed(1)}°</b>
-            </span>
-          </span>
-        )}
       </p>
+      {sea && <WaterLine sea={sea} now={now} />}
       {picture && (
         <SpotSatellite picture={picture} name={spot.name} facing={facing} />
       )}
@@ -573,6 +569,38 @@ function missingWords(model: Unavailable): string {
   return `the ${model.name}${what} model${why ? ` (${why})` : ""}`;
 }
 
+/** How far off a station is before the page says it may not be the beach's water. */
+const FAR_KM = 10;
+
+/**
+ * The water's temperature, said here rather than on the map's dock: one
+ * measurement, not a forecast, and only as good as where it was taken. So
+ * the station, what kind it is, how far off and how long ago are said with
+ * it, and a station far from the spot is said to be far.
+ */
+function WaterLine({ sea, now }: { sea: SpotSea; now: number }) {
+  const s = styles();
+  const kind = NETWORK_LABEL[sea.network as SeaTemperatureNetwork] ?? "station";
+  const age = observationAge((now - Date.parse(sea.time)) / 3600000);
+  const km =
+    sea.distance_km < 10
+      ? sea.distance_km.toFixed(1)
+      : String(Math.round(sea.distance_km));
+  return (
+    <p className={s.water()} data-sea-temperature>
+      <span>
+        Water <b className={s.strong()}>{sea.celsius.toFixed(1)} °C</b>
+      </span>{" "}
+      <span className={s.muted()}>
+        measured {age} at the {sea.station} {kind}, {km} km from here
+        {sea.distance_km >= FAR_KM &&
+          ": the nearest station reporting, and the water at the shore can differ"}
+        .
+      </span>
+    </p>
+  );
+}
+
 /**
  * The point between the header's facts, as the shore summary has inside its
  * own: without it "best SE–SSW, N–ENE" and "Kerry" read as one list.
@@ -622,7 +650,8 @@ function SourcesFooter({
         )}
         {sea && (
           <li>
-            Sea: {sea.station}, {sea.measured}
+            Water temperature: {sea.station}, {sea.distance_km} km away, read{" "}
+            {sea.measured}
             {sea.attribution ? ` · ${sea.attribution}` : ""}.
           </li>
         )}
