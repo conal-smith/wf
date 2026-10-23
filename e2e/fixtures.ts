@@ -76,28 +76,53 @@ export async function chooseSpot(page: Page, id = "brandon") {
 export async function backToIreland(page: Page) {
   await page.keyboard.press("Escape");
   await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
-  const zoomOut = page.getByRole("button", { name: "Zoom out", exact: true });
-  const allOnTheChart = () =>
-    page.evaluate(() => {
-      const chart = document
-        .querySelector(".maplibregl-canvas")!
-        .getBoundingClientRect();
-      return [...document.querySelectorAll(".spot-marker")].every((light) => {
-        const r = light.getBoundingClientRect();
-        return (
-          r.left >= chart.left &&
-          r.right <= chart.right &&
-          r.top >= chart.top &&
-          r.bottom <= chart.bottom
-        );
-      });
+  // Out a step at a time until every light is on the chart, each step read
+  // once the camera rests: through a move the lights are drawn on a canvas,
+  // and their buttons wait where it last rested (force5/src/lights.ts). Read
+  // mid-move, the chart they waited on was the one before it.
+  //
+  // The whole walk out runs in the page, one round trip for all of it. On
+  // CI's software renderer every frame of a chart still settling from a step
+  // is the whole map drawn and read back, the page's thread busy for most of
+  // it, and a press and a reading from the test each waited on that thread:
+  // seconds a step, for a button that never moves.
+  await page
+    .getByRole("button", { name: "Zoom out", exact: true })
+    .evaluate(async (zoomOut: HTMLElement) => {
+      const atRest = () =>
+        new Promise<void>((resolve, reject) => {
+          const until = performance.now() + 10000;
+          const look = () => {
+            if (!document.querySelector(".map-lights.is-moving")) resolve();
+            else if (performance.now() > until)
+              reject(new Error("the camera never came to rest"));
+            else setTimeout(look, 50);
+          };
+          look();
+        });
+      const allOnTheChart = () => {
+        const chart = document
+          .querySelector(".maplibregl-canvas")!
+          .getBoundingClientRect();
+        return [...document.querySelectorAll(".spot-marker")].every((light) => {
+          const r = light.getBoundingClientRect();
+          return (
+            r.left >= chart.left &&
+            r.right <= chart.right &&
+            r.top >= chart.top &&
+            r.bottom <= chart.bottom
+          );
+        });
+      };
+      await atRest();
+      // The loupe, when chosen, flies a spot in to fit its half-mile rose,
+      // about zoom 13: eight steps out from there is not yet the whole country.
+      for (let i = 0; i < 12 && !allOnTheChart(); i++) {
+        // The step out begins with the press, and is read once it has ended.
+        zoomOut.click();
+        await atRest();
+      }
     });
-  // The loupe, when chosen, flies a spot in to fit its half-mile rose, about
-  // zoom 13: eight steps out from there is not yet the whole country.
-  for (let i = 0; i < 12 && !(await allOnTheChart()); i++) {
-    await zoomOut.click();
-    await page.waitForTimeout(400);
-  }
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
     timeout: 30000,
   });
@@ -198,4 +223,3 @@ export async function setLayer(page: Page, name: string, on: boolean) {
     await tile.click();
   await expect(tile).toHaveAttribute("aria-pressed", String(on));
 }
-

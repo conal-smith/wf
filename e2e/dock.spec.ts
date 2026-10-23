@@ -287,6 +287,10 @@ test("the strip and the slider move together, by swipe, wheel and key", async ({
   // A plain wheel, turned up or down, moves the hours sideways, eased over
   // a few frames rather than in one jump, and comes to rest on an hour.
   await wrap.hover();
+  // Counted in frames, so read at frame rate: the hours scrolled above have
+  // the chart drawing each one's wind, and on CI's software renderer a frame
+  // of that is a fifth of a second, the ease over in two or three of them.
+  await steadyFrames(page);
   const before = await wrap.evaluate((el) => el.scrollLeft);
   const frames = wrap.evaluate(
     (el) =>
@@ -732,6 +736,9 @@ async function pickModel(page: Page, model: string) {
 test("the stars come from one model, the rider's: the hours name it, and the map draws it and follows", async ({
   page,
 }) => {
+  // Out to the whole of Ireland twice, a step at a time, each step read once
+  // the camera rests (backToIreland).
+  test.slow();
   await openDock(page);
   // The whole of Ireland, with Brandon's dock open: every light rated.
   await backToIreland(page);
@@ -1310,6 +1317,19 @@ test("a tab whose run's tiles have gone moves to the run its pointer names now",
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
     timeout: 30000,
   });
+  // The flight in to the spot over first: chosen on the way, the hour's tiles
+  // were read for the wider view the camera passed through, the next bay's
+  // among them.
+  await expect(page.locator(".map-lights")).toHaveCount(1, { timeout: 30000 });
+  await expect
+    .poll(
+      async () => {
+        await page.waitForTimeout(300);
+        return page.locator(".map-lights.is-moving").count();
+      },
+      { timeout: 15000 },
+    )
+    .toBe(0);
   // An hour of the reader's own, so nothing but the map's view asks for tiles.
   const ahead =
     sampleStrip.findIndex((c) => c.time > SAMPLE_CLOCK.getTime()) + 3;

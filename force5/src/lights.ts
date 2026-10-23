@@ -12,14 +12,25 @@
  * only; on all of them at once it buried the chart. The pulse is a transform
  * and an opacity on an HTML box, for the compositor to run.
  *
- * One DOM marker per place, made once and written to in place: rebuilding a
+ * One DOM button per place, made once and written to in place: rebuilding a
  * hundred and more markers per hour scrubbed stalls the camera.
+ *
+ * They are not MapLibre's markers, and are not moved one by one through a
+ * camera move: each frame of a zoom, a marker's projection, its transform,
+ * its promise and animation frame, and the browser working out its style
+ * again and moving its layer cost the page more than the rest of the chart
+ * did. The buttons are placed where the camera rests; through a move they
+ * step aside (src/map.css `.is-moving`) and one canvas draws them, from
+ * pictures made at rest (./lightsCanvas). The chart has no rotation and no
+ * pitch, so a move takes every light by one scale and shift. A light the
+ * rider is at (open, pointed at, on the keys) stays a button and is moved.
  *
  * The names beside the lights are laid out once the camera rests: see
  * `placeLabels`.
  */
-import * as maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 import { nearestLight } from "./lightHit";
+import { drawLights, lookOf, type Drawn, type Look } from "./lightsCanvas";
 import type { Wedge } from "./rideWedge";
 import { knotsIn, type Units } from "./units";
 import type { Spot } from "./weather";
@@ -42,7 +53,18 @@ export interface LightState {
 
 interface Entry {
   el: HTMLButtonElement;
-  marker: maplibregl.Marker;
+  lngLat: [number, number];
+  /** Where it stood on the screen as the camera last rested. */
+  x: number;
+  y: number;
+  /**
+   * Its pictures for the canvas through a move (./lightsCanvas), by what each
+   * was made from: a zoom in and out over the whole chart goes back and
+   * forth between two looks, the lights smaller at the national zoom.
+   */
+  looks: Map<string, Look>;
+  /** Counted up whenever its look changes: its state, or its name's place. */
+  rev: number;
   arrow: SVGGElement;
   pulse: HTMLElement;
   wedge: SVGPathElement;
@@ -68,6 +90,9 @@ const MANAGED = [
   "named",
   "w-over",
 ];
+
+/** How long a frame of a move may spend making the lights' pictures. */
+const BUDGET_MS = 4;
 
 /** The base map's own names, which a light's name should not print over. */
 const PLACE_LAYERS = ["places", "places-near", "water-names"];
@@ -148,7 +173,13 @@ export function createLights(
     const layers = PLACE_LAYERS.filter((id) => map.getLayer(id));
     const rings: { el: HTMLElement; box: Box }[] = [];
     const shown: { el: HTMLElement; ring: Box; lab: Box; rank: number }[] = [];
-    for (const { el } of entries.values()) {
+    const before = new Map<Entry, string>();
+    for (const entry of entries.values()) {
+      const { el } = entry;
+      before.set(
+        entry,
+        `${el.classList.contains("lab-hide")}${el.classList.contains("lab-left")}`,
+      );
       el.classList.remove("lab-hide", "lab-left");
     }
     for (const { el } of entries.values()) {
@@ -204,11 +235,22 @@ export function createLights(
       } else if (rank >= 100) placed.push(lab);
       else el.classList.add("lab-hide");
     }
+    for (const [entry, was] of before) {
+      const { el } = entry;
+      if (
+        `${el.classList.contains("lab-hide")}${el.classList.contains("lab-left")}` !==
+        was
+      )
+        entry.rev++;
+    }
   };
   let queued = 0;
   const queue = () => {
     if (!queued) queued = requestAnimationFrame(() => {
       queued = 0;
+      // Laid out where the buttons stand, once the camera rests: through a
+      // move they stand where it last did.
+      if (moving) return;
       placeLabels();
     });
   };
@@ -219,6 +261,12 @@ export function createLights(
   const classes = new MutationObserver(() => {
     dirty = true;
     queue();
+    // Across a zoom's own steps (the lights smaller further out, the names
+    // shown closer in) the canvas changes with the buttons.
+    if (moving) {
+      refresh();
+      follow();
+    }
   });
   classes.observe(map.getContainer(), {
     attributes: true,
@@ -240,6 +288,175 @@ export function createLights(
     const id = nearestLight(centres, event.clientX, event.clientY, reach);
     return (id && byId.get(id)) || spot;
   };
+  // The lights' common parent: no box of its own (display: contents), so each
+  // light stacks in the map as a marker did. The canvas the lights are drawn
+  // on through a move goes under it, so a light kept a button stays on top.
+  const layer = document.createElement("div");
+  layer.className = "map-lights";
+  const canvas = document.createElement("canvas");
+  canvas.className = "lights-canvas";
+  canvas.setAttribute("aria-hidden", "true");
+  map.getCanvasContainer().append(canvas, layer);
+  /** Where the screen's top left corner was when the lights were last placed. */
+  let origin: maplibregl.LngLat | null = null;
+  let restZoom = 0;
+  const moveTo = (el: HTMLElement, x: number, y: number) => {
+    el.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+  };
+  /** The lights kept as buttons through a move, and the rest, as drawn. */
+  let live: Entry[] = [];
+  /** The lights still waiting for their pictures, buttons until they have them. */
+  const waiting = new Set<Entry>();
+  let drawn: Drawn[] = [];
+  let moving = false;
+  /** Whether some light still waits for its picture, out of the last frame's time. */
+  let behind = false;
+  const dpr = () => window.devicePixelRatio || 1;
+  /** A light the rider is at: pointed at, open, on the keys, or pulsing. */
+  const isLive = ({ el, pulse }: Entry) =>
+    el.classList.contains("sel") ||
+    el.classList.contains("gust-highlight") ||
+    el === document.activeElement ||
+    el.matches(":hover") ||
+    pulse.style.display !== "none";
+  /**
+   * Each light's picture, made again where what it is drawn from changed:
+   * its classes and state, the chart's (zoom, focus, names) and the pixel
+   * ratio. A name is drawn only for a light within a screen of the view:
+   * further off, at a close zoom, every name in the country would be a
+   * picture held.
+   */
+  const capture = (budget: number) => {
+    const w = boxW;
+    const h = boxH;
+    const chart = `${map.getContainer().className}|${dpr()}`;
+    const out = new Map<Entry, Look>();
+    const until = performance.now() + budget;
+    behind = false;
+    for (const entry of entries.values()) {
+      if (live.includes(entry)) continue;
+      const near =
+        entry.x > -w && entry.x < 2 * w && entry.y > -h && entry.y < 2 * h;
+      const sig = `${chart}|${entry.rev}|${near}`;
+      let look = entry.looks.get(sig);
+      if (!look && performance.now() > until) {
+        // Out of time in this frame: it stays a button until the next.
+        behind = true;
+        continue;
+      }
+      if (!look) {
+        const r = entry.el.getBoundingClientRect();
+        look = lookOf(
+          entry.el,
+          { x: r.left + r.width / 2, y: r.top + r.height / 2 },
+          dpr(),
+          near,
+        );
+        // The last few only: the pictures of a look long gone are let go.
+        if (entry.looks.size >= 3)
+          entry.looks.delete(entry.looks.keys().next().value!);
+        entry.looks.set(sig, look);
+      }
+      out.set(entry, look);
+    }
+    return out;
+  };
+  /**
+   * What the canvas draws, in the order the buttons stack: the named on top.
+   * Through a move, a few milliseconds of new pictures a frame: a zoom in to
+   * where every light's name shows makes a picture of each.
+   */
+  const refresh = () => {
+    const looks = capture(BUDGET_MS);
+    // A light with no picture yet stays a button, moved, until it has one.
+    for (const entry of entries.values()) {
+      if (live.includes(entry)) continue;
+      const wait = !looks.has(entry);
+      if (wait === waiting.has(entry)) continue;
+      if (wait) waiting.add(entry);
+      else waiting.delete(entry);
+      entry.el.classList.toggle("lt-live", wait);
+    }
+    const named = (e: Entry) => e.el.classList.contains("named");
+    const all = [...looks.keys()];
+    drawn = [
+      ...all.filter((e) => !named(e)),
+      ...all.filter(named),
+    ].map((e) => ({ x: e.x, y: e.y, look: looks.get(e)! }));
+  };
+  /** Each light at its place on the screen, with the camera at rest. */
+  const place = () => {
+    for (const entry of entries.values()) {
+      const p = map.project(entry.lngLat);
+      entry.x = Math.round(p.x);
+      entry.y = Math.round(p.y);
+      moveTo(entry.el, entry.x, entry.y);
+    }
+    origin = map.unproject([0, 0]);
+    restZoom = map.getZoom();
+  };
+  /**
+   * The map's box, read when it is resized: read as a move begins, it laid
+   * the page out again then and there.
+   */
+  let boxW = 0;
+  let boxH = 0;
+  const measure = () => {
+    const box = map.getContainer();
+    boxW = box.clientWidth;
+    boxH = box.clientHeight;
+  };
+  /** The canvas over the map's box, in device pixels. */
+  const size = () => {
+    const w = Math.round(boxW * dpr());
+    const h = Math.round(boxH * dpr());
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+  };
+  const resized = () => {
+    measure();
+    end();
+  };
+  /** A move begins: the lights step aside for their pictures. */
+  const begin = () => {
+    if (moving) return;
+    moving = true;
+    live = [...entries.values()].filter(isLive);
+    for (const entry of live) entry.el.classList.add("lt-live");
+    refresh();
+    size();
+    layer.classList.add("is-moving");
+    follow();
+  };
+  /** Through a move: the same scale and shift for every light. */
+  const follow = () => {
+    if (!origin) return;
+    if (!moving) begin();
+    else if (behind) refresh();
+    const at = map.project(origin);
+    const k = 2 ** (map.getZoom() - restZoom);
+    drawLights(canvas, drawn, k, at.x, at.y, dpr());
+    for (const { el, x, y } of live) moveTo(el, k * x + at.x, k * y + at.y);
+    for (const { el, x, y } of waiting)
+      moveTo(el, k * x + at.x, k * y + at.y);
+  };
+  /** At rest: the buttons back, where the camera has them. */
+  const end = () => {
+    place();
+    if (!moving) return;
+    moving = false;
+    layer.classList.remove("is-moving");
+    for (const entry of [...live, ...waiting])
+      entry.el.classList.remove("lt-live");
+    live = [];
+    waiting.clear();
+    drawn = [];
+    const g = canvas.getContext("2d")!;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, canvas.width, canvas.height);
+  };
   for (const spot of spots) {
     const el = document.createElement("button");
     el.type = "button";
@@ -252,12 +469,18 @@ export function createLights(
       event.stopPropagation();
       onSelect(meant(spot, el, event));
     });
-    const marker = new maplibregl.Marker({ element: el, anchor: "center" })
-      .setLngLat([spot.lon, spot.lat])
-      .addTo(map);
+    // As MapLibre's markers do: a press on a light neither drags it as an
+    // image nor moves the focus.
+    el.addEventListener("dragstart", (event) => event.preventDefault());
+    el.addEventListener("mousedown", (event) => event.preventDefault());
+    layer.appendChild(el);
     entries.set(spot.id, {
       el,
-      marker,
+      lngLat: [spot.lon, spot.lat],
+      x: 0,
+      y: 0,
+      looks: new Map(),
+      rev: 0,
       arrow: el.querySelector<SVGGElement>(".lt-wind")!,
       pulse: el.querySelector<HTMLElement>(".lt-pulse")!,
       wedge: el.querySelector<SVGPathElement>(".lt-wedge path")!,
@@ -266,6 +489,36 @@ export function createLights(
       key: "",
     });
   }
+  // Through a move the buttons are out of reach (src/map.css): a tap on a
+  // light as it is drawn chooses it all the same, the nearest within a
+  // button's reach (./lightHit), and goes no further, to the chart's own pick.
+  const box = map.getContainer();
+  const tapped = (event: MouseEvent) => {
+    if (!moving || !origin || !box.contains(event.target as Node)) return;
+    const frame = box.getBoundingClientRect();
+    const at = map.project(origin);
+    const k = 2 ** (map.getZoom() - restZoom);
+    const centres = [...entries].map(([id, { x, y }]) => ({
+      id,
+      x: frame.left + k * x + at.x,
+      y: frame.top + k * y + at.y,
+    }));
+    // A button's reach (src/map.css .lt::before): 44 px across under a
+    // finger, 32 under a mouse.
+    const reach = window.matchMedia("(pointer: coarse)").matches ? 22 : 16;
+    const id = nearestLight(centres, event.clientX, event.clientY, reach);
+    const spot = id ? byId.get(id) : undefined;
+    if (!spot) return;
+    event.stopPropagation();
+    onSelect(spot);
+  };
+  window.addEventListener("click", tapped, true);
+  measure();
+  place();
+  map.on("movestart", begin);
+  map.on("move", follow);
+  map.on("moveend", end);
+  map.on("resize", resized);
   return {
     update(states, selected, named, label, units) {
       for (const spot of spots) {
@@ -279,6 +532,7 @@ export function createLights(
           : `none|${on}|${named.has(spot.id)}`;
         if (entry.key === key) continue;
         entry.key = key;
+        entry.rev++;
         const { el } = entry;
         const level =
           !s || s.pending ? "pending" : s.dark || s.stars === null ? "dark" : `s${s.stars}`;
@@ -328,7 +582,13 @@ export function createLights(
       classes.disconnect();
       map.off("moveend", queue);
       map.off("idle", queue);
-      for (const entry of entries.values()) entry.marker.remove();
+      map.off("movestart", begin);
+      map.off("move", follow);
+      map.off("moveend", end);
+      map.off("resize", resized);
+      window.removeEventListener("click", tapped, true);
+      layer.remove();
+      canvas.remove();
       entries.clear();
     },
   };
