@@ -593,10 +593,12 @@ has no frames.
   A place whose square has not been read gets no row and keeps its pending light,
   never a calm one: this holds for the browser's own blend too, where a place
   with no model data would otherwise rate as an hour of no wind.
-- **The browser's own blend** (the reader picked their own models, or the
-  published blend is more than six hours old, or none of its squares can be read)
-  reads the same squares from each wind model, rather than every square of every
-  model. Those two rules are unchanged (`trustedSpotBlend`); a square of the
+- **The browser's own blend** (the reader picked another model than HARMONIE to
+  see and rate from, or the published blend is more than six hours old, or none of
+  its squares can be read) reads the same squares from each wind model, rather than
+  every square of every model. Those two rules are unchanged (`trustedSpotBlend`);
+  since 23 October 2026 a reader's own choice of models for the blend is not one of
+  the reasons, because the blend moves no star; a square of the
   published blend that fails alone leaves its places pending and the rest shown.
 - **Sizes**, on the real blend of 9 October 2026 (146 places, 126 times): one
   file of 247 KB raw, 77 KB gzipped, became a pointer of 5.7 KB raw, 1.2 KB

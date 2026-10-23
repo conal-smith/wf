@@ -342,10 +342,11 @@ ECMWF and GFS contributing towards the stars? It's supposed to only take
 whatever the user has configured. We don't use more than one model." Every
 hour's stars, on every surface (the lights, the dock, the spot page, the app,
 the alerts, the MCP tools and Gust), are one model's own wind, gust and
-direction: the rider's "Stars from" (HARMONIE unless they choose another) while
-it reaches the hour, then one model they choose for when it ends (ECMWF unless
-they choose another), and a spot may have a model of its own. Never a median or
-a blend. The other models are context: their agreement is shown beside the
+direction: the rider's model (HARMONIE unless they choose another) while it
+reaches the hour, then ECMWF past the end of its run. Never a median or a
+blend. (Since 23 October 2026 that is one choice, the model the rider sees on
+the map, with no setting for the fallback and no model of a spot's own;
+docs/STAR_RATINGS.md.) The other models are context: their agreement is shown beside the
 stars and takes nothing off, and the wind bar is the one model's mean to its
 gust, the others at most faint ticks in its card. Where the model changes, the
 page says so in the pen's hand ("ECMWF from Wed 22:00"), and where the stars

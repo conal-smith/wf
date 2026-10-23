@@ -768,9 +768,9 @@ pointer `weather/blend.json` (about 1 kB compressed) and a run directory beside 
 - **Old and new readers.** `lead` arrived on 19 October 2026 inside schema 2, so a
   site from before reads the new file as it read the old (it ignores the new keys);
   this site never rates from a file without `lead`, built by the old rule, and works
-  the hours out from the models until the next hourly blend. A reader whose stars
-  come from other models is worked out from the models' own squares too, and so is a
-  spot of theirs with a model of its own (`placesRatedApart`).
+  the hours out from the models until the next hourly blend. A reader who picked
+  another model is worked out from the models' own squares too. A reader's own choice
+  of models for the blend does not count: the blend moves no star.
 - **The weighting.** Each model counts by how well it verified against Irish stations
   that far into its run (`MODEL_WEIGHTS` in `force5/src/weights.ts`; the backtest is in
   docs/VERIFICATION.md, "Blend weights"): HARMONIE 4 for as long as it runs, AROME and
