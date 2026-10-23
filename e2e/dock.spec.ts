@@ -432,6 +432,7 @@ test("the stars open nothing on hover, and their explanation is the map's i", as
   ).toHaveCount(0);
   await openFromMenu(page, "About the map");
   const info = page.getByRole("dialog", { name: "About the map" });
+  await info.getByRole("tab", { name: "Stars" }).click();
   await expect(info.locator("#map-info-stars")).toBeInViewport();
   await expect(
     info.getByRole("link", { name: "How the stars work, in full →" }),

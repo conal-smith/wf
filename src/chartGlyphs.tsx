@@ -111,6 +111,34 @@ export function AboutGlyph(props: ChartGlyphProps) {
   );
 }
 
+/* ---- the map's information ---- */
+
+/** A star inked in: the rating, as the dock and the lights give it. */
+export function StarGlyph(props: ChartGlyphProps) {
+  return (
+    <Glyph {...props}>
+      <path
+        d="M12 2.5L14.7 8.9L21.5 9.4L16.3 13.8L18 20.5L12 16.9L6.1 20.6L7.7 13.9L2.5 9.5L9.3 8.9Z"
+        fill="currentColor"
+      />
+    </Glyph>
+  );
+}
+
+/**
+ * The sources: a chart's source diagram, the sheet ruled into the surveys
+ * it was compiled from.
+ */
+export function SourcesGlyph(props: ChartGlyphProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M4 3H20V21H4Z" />
+      <path d="M4 10H13V21M13 14H20" strokeWidth={1} />
+      <path d="M6.5 6H17.5" strokeWidth={1} strokeOpacity={0.6} />
+    </Glyph>
+  );
+}
+
 /* ---- the wind ---- */
 
 /** The wind in ink: the streaks the particles leave, one strong, one faint. */

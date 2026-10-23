@@ -149,6 +149,7 @@ test("the LiDAR layer loads nothing until it is turned on, then draws, keys and 
   await expect(key.locator("[data-lidar-sources] li").first()).toContainText(
     /Lough Foyle: bathymetric, 2008, 5 m; CC BY 4\.0/,
   );
+  await page.getByRole("tab", { name: "Sources & credits" }).click();
   await expect(page.locator("#map-info-sources")).toContainText(
     "OSNI River Basin LiDAR",
   );

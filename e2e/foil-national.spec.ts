@@ -257,6 +257,7 @@ test("a national region draws on its own station's tide, answers a tap, and only
     spot.y + spot.height / 2,
   );
   await openFromMenu(page, "About the map");
+  await page.getByRole("tab", { name: "Tidal depth" }).click();
   const probe = page.locator(".foil-probe");
   await expect(probe).toBeVisible({ timeout: 10000 });
   const water =

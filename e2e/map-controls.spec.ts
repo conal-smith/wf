@@ -139,12 +139,38 @@ test("the map's information is one dialog over the dimmed chart: from the menu a
   await openFromMenu(page, "About the map");
   const info = page.getByRole("dialog", { name: "About the map" });
   await expect(info).toBeVisible();
-  for (const name of ["Map key", "Star ratings", "Tidal depth", "Sources"])
-    await expect(
-      info.getByRole("heading", { name, exact: true }),
-    ).toBeVisible();
-  await expect(info).toContainText("Deep enough, 1 m or more");
-  await expect(info).toContainText("Not for navigation");
+  // A rail of parts, the key chosen; each part in its own panel beside it.
+  expect(
+    await info
+      .getByRole("tab")
+      .evaluateAll((tabs) => tabs.map((tab) => tab.getAttribute("aria-label"))),
+  ).toEqual([
+    "The map’s key",
+    "Stars",
+    "Wind & gusts",
+    "The blend & models",
+    "Tidal depth",
+    "LiDAR data",
+    "Currents",
+    "Satellite",
+    "Sources & credits",
+    "About",
+  ]);
+  await expect(
+    info.getByRole("tab", { name: "The map’s key" }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(
+    info.getByRole("heading", { name: /^The lights/ }),
+  ).toBeVisible();
+  await info.getByRole("tab", { name: "Tidal depth" }).click();
+  await expect(info.getByRole("tabpanel")).toContainText(
+    "Deep enough, 1 m or more",
+  );
+  // The arrows walk the rail.
+  await page.keyboard.press("ArrowDown");
+  await expect(info.getByRole("tab", { name: "LiDAR data" })).toBeFocused();
+  await info.getByRole("tab", { name: "Sources & credits" }).click();
+  await expect(info.getByRole("tabpanel")).toContainText("Not for navigation");
   // Modal, over a scrim: the page behind is dimmed and cannot be reached.
   expect(await info.evaluate((el) => el.matches(":modal"))).toBe(true);
   expect(
@@ -170,6 +196,7 @@ test("the map's information is one dialog over the dimmed chart: from the menu a
     page.locator(".dock").getByRole("button", { name: "How the stars work" }),
   ).toHaveCount(0);
   await openFromMenu(page, "About the map");
+  await info.getByRole("tab", { name: "Stars" }).click();
   await expect(info.locator("#map-info-stars")).toBeAttached();
   await expect(
     info.getByRole("link", { name: "How the stars work, in full →" }),
