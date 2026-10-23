@@ -103,7 +103,11 @@
   /* Paper laid over a photograph, which still shows a little through it. */
   --color-glass: #f3eee3eb;
   --color-inverse: #1a1d21;
-  --color-scrim: #1a1d212e;
+  /* Behind a dialog: a wash of paper over the page, or the map, blurred under
+     it (`scrim`, below). Where nothing blurs it, the wash is thicker, so the
+     chart's marks do not read through the box's edge. */
+  --color-scrim: #f3eee366;
+  --color-scrim-solid: #f3eee3cc;
 
   /* The sea and the shore, as a chart tints them. `sea` is the ground the map
      floats on, what shows in a tile gap. The four tints run shallow to deep:
@@ -291,9 +295,13 @@
   --inset-shadow-frame: inset 0 0 0 3px #f3eee3, inset 0 0 0 4px #1a1d21;
 
   /* Glass is a badge over a photograph now, not a panel over the map: paper
-     over the map is opaque. The scrim behind a dialog barely softens. */
+     over the map is opaque. Behind a dialog the page goes soft: the map's
+     marks blur out of reading while its shapes stay. Measured on a phone
+     profile with the map moving under it, a blur costs the compositor the
+     same at 2px as at 12px, and the map does not draw while a dialog is over
+     it, so the radius is chosen for the look. */
   --blur-glass: 12px;
-  --blur-scrim: 2px;
+  --blur-scrim: 6px;
 
   /* Measures, as `max-w-dialog`: the widths a dialog and a line of reading
      take when the viewport leaves them the room. */
@@ -352,7 +360,11 @@
   /* A placeholder breathing while its content loads, a dialog arriving, and
      a panel dropping from the control that opened it. */
   --animate-pulse: pulse 1s ease-in-out infinite alternate;
-  --animate-dialog-in: dialog-in 150ms ease both;
+  /* `backwards`, not `both`: once in, the box and its backdrop hold no
+     opacity of their own, so the fade out a dialog closes with (`modal-fade`)
+     can run. An animation still filling forwards keeps a transition off it. */
+  --animate-dialog-in: dialog-in 150ms ease backwards;
+  --animate-scrim-in: scrim-in 150ms ease backwards;
   --animate-menu-in: menu-in 150ms ease both;
   /* The pen drawing its stroke in, once, as a hand would: on a path with
      `pathLength="1"` and `strokeDasharray="1"` (ui/Pen.tsx). Held off for a
@@ -392,6 +404,12 @@
     from {
       opacity: 0;
       transform: translateY(8px);
+    }
+  }
+
+  @keyframes scrim-in {
+    from {
+      opacity: 0;
     }
   }
 
@@ -451,6 +469,70 @@
 @utility paper-grain {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-repeat: repeat;
+}
+
+/*
+ * The backdrop behind every dialog and sheet: the page, or the moving map,
+ * blurred under a wash of paper, fading in. On a <dialog> it is
+ * `backdrop:scrim` (ui/Dialog.tsx); over anything else, ui/Backdrop.tsx.
+ *
+ * Where the browser cannot blur, and for a reader who asks for less
+ * transparency, the wash is thicker and nothing is blurred. For a reader who
+ * asks for less motion it is simply there.
+ */
+@utility scrim {
+  background-color: var(--color-scrim);
+  -webkit-backdrop-filter: blur(var(--blur-scrim));
+  backdrop-filter: blur(var(--blur-scrim));
+  animation: var(--animate-scrim-in);
+  @supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+  ) {
+    background-color: var(--color-scrim-solid);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: var(--color-scrim-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/*
+ * A modal <dialog> that fades out as it closes, its backdrop with it: the box
+ * and the scrim go to nothing over the fast duration while the browser keeps
+ * them on top (`overlay`, `display`). Only where it can keep them on top:
+ * elsewhere the dialog, closed, would drop back into the page for those
+ * frames, so there it goes at once, as it always did. Closed is closed at
+ * once all the same: the focus is back, the page under it live, and the box
+ * fading out takes no pointer. The owner keeps the dialog mounted while it
+ * fades (`useFadeOut`, ui/Backdrop.tsx).
+ */
+@utility modal-fade {
+  @supports (overlay: auto) {
+    transition:
+      opacity var(--transition-duration-fast) ease,
+      overlay var(--transition-duration-fast) allow-discrete,
+      display var(--transition-duration-fast) allow-discrete;
+    &:not([open]) {
+      opacity: 0;
+      pointer-events: none;
+    }
+    &::backdrop {
+      transition: opacity var(--transition-duration-fast) ease;
+    }
+    &:not([open])::backdrop {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+    &::backdrop {
+      transition: none;
+    }
+  }
 }
 
 /* The dark hours: a fine diagonal hatch in ink, as a chart shades what is

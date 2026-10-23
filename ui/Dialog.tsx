@@ -7,6 +7,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { BACKDROP } from "./Backdrop";
 import { Button } from "./Button";
 import { tv, type VariantProps } from "./tv";
 
@@ -18,7 +19,9 @@ export const dialogStyles = tv({
     base: [
       "m-auto w-11/12 gap-5 rounded-dialog border border-ink bg-card paper-grain p-7 font-body text-ink shadow-surface inset-shadow-frame max-wide:p-5",
       "open:grid open:animate-dialog-in motion-reduce:animate-none",
-      "backdrop:bg-scrim backdrop:backdrop-blur-scrim",
+      // The map or the page behind, blurred under a wash of paper, fading in
+      // as the box arrives and out with it as it goes (ui/Backdrop.tsx).
+      BACKDROP,
     ],
     head: "flex items-start justify-between gap-3 border-b border-ink pb-3",
     title: "m-0 font-display text-lead text-ink",
@@ -150,6 +153,11 @@ export type DialogProps = VariantProps<typeof dialogStyles> & {
 /**
  * A modal. Native <dialog>, so the focus is trapped, Escape cancels and the
  * page behind is inert without any of that being written here.
+ *
+ * It fades out when `open` goes false while it is still mounted. An owner
+ * that draws it only while open can keep it the fade longer with
+ * `useFadeOut` (ui/Backdrop.tsx); one that unmounts it at once closes it at
+ * once, as before.
  */
 export function Dialog({
   open,
