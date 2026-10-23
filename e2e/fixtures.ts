@@ -178,3 +178,24 @@ export async function openFromMenu(page: Page, name: ChartTool) {
   // Each dialog is titled as its row is named.
   await expect(page.getByRole("dialog", { name })).toBeVisible();
 }
+
+/**
+ * A tile in the open Layers panel (src/LayersPanel.tsx), by its name: each is
+ * a toggle button, its state in `aria-pressed`.
+ */
+export const layerTile = (page: Page, name: string) =>
+  page
+    .getByRole("group", { name: "Layers" })
+    .getByRole("button", { name, exact: true });
+
+/**
+ * Turn a tile on or off, as `check()` and `uncheck()` did a checkbox: pressed
+ * only if it is not already as asked, and then it must be.
+ */
+export async function setLayer(page: Page, name: string, on: boolean) {
+  const tile = layerTile(page, name);
+  if ((await tile.getAttribute("aria-pressed")) !== String(on))
+    await tile.click();
+  await expect(tile).toHaveAttribute("aria-pressed", String(on));
+}
+

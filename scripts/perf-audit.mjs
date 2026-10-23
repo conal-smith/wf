@@ -351,6 +351,8 @@ async function interactions(browser, profileName, shotDir) {
     if (!(await page.getByRole("dialog", { name: "Layers" }).count())) {
       await page.getByRole("button", { name: "Site menu" }).click();
       await page.getByRole("button", { name: "Layers", exact: true }).click();
+      // The panel is a chunk of its own, loaded on this first open.
+      await page.getByRole("dialog", { name: "Layers" }).waitFor();
     }
     const button = page.locator(`[data-model="${model}"]`).first();
     if (!(await button.count())) continue;

@@ -563,7 +563,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   // The range ring by default; the loupe, from the layers.
   await openFromMenu(page, "Layers");
   const panel = page.getByRole("group", { name: "Layers" });
-  const choice = panel.getByRole("group", { name: "Round the chosen spot" });
+  const choice = panel.getByRole("group", { name: "Round your spot" });
   await expect(
     choice.getByRole("button", { name: "Range ring" }),
   ).toHaveAttribute("aria-pressed", "true");
@@ -633,7 +633,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   await units("kn");
   await openFromMenu(page, "Layers");
   // Nothing at all: the pen's ring alone marks the spot.
-  await choice.getByRole("button", { name: "Off" }).click();
+  await choice.getByRole("button", { name: "Nothing", exact: true }).click();
   await expect(focus).toHaveAttribute("data-focus", "off");
   await expect(focus.locator("*")).toHaveCount(0);
   await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(1);
@@ -648,10 +648,9 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   });
   await expect(page.locator(".dock")).toHaveCount(0);
   await openFromMenu(page, "Layers");
-  await expect(choice.getByRole("button", { name: "Off" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(
+    choice.getByRole("button", { name: "Nothing", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Escape");
   await findSpot(page, "Brandon");
   await expect(map).toHaveClass(/is-focus/);
@@ -834,11 +833,16 @@ for (const device of [
       expect(at).not.toBeNull();
       return at!;
     };
-    /** The dimmed map beside an open panel's dialog, off its box. */
+    /**
+     * The dimmed map beside an open panel's dialog, off its box: to its left,
+     * or above it where it spans the width, as the Layers sheet does.
+     */
     const backdrop = async (page: Page) => {
       const box = await page.locator("dialog.map-panel-dialog").boundingBox();
       expect(box).not.toBeNull();
-      return { x: Math.max(2, box!.x / 2), y: box!.y + box!.height / 2 };
+      if (box!.x >= 8) return { x: box!.x / 2, y: box!.y + box!.height / 2 };
+      expect(box!.y).toBeGreaterThanOrEqual(8);
+      return { x: box!.x + box!.width / 2, y: box!.y / 2 };
     };
     const dockName = (page: Page) => page.locator(".dock .dk-name");
     const coords = /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/;

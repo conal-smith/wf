@@ -1077,7 +1077,7 @@ test("an hour past the map's model hands the map to the run that reaches it", as
     "aria-pressed",
     "true",
   );
-  await expect(page.locator(".layers .models-note")).toHaveText(
+  await expect(page.locator("#map-layers .models-note")).toHaveText(
     /^HARMONIE ends \w{3} \d\d:\d\d: ECMWF is on the map at \w{3} \d\d:\d\d, and HARMONIE comes back within its own hours\.$/,
   );
   await closePanel(page);

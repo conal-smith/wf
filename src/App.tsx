@@ -1685,6 +1685,11 @@ export default function App() {
               }
               currentsNote={currents.note}
               foilNote={foilFar ? FOIL_ZOOM_NOTE : null}
+              onResetLayers={() => {
+                chooseWind("ink");
+                chooseLayers(DEFAULT_LAYERS);
+                chooseFocusStyle("ring");
+              }}
               modelDisabled={!frame || !!pendingModel}
               onModel={(id) => void chooseModel(id)}
             />
@@ -1973,8 +1978,8 @@ export default function App() {
               ) : (
                 <div className="foil-key" data-lidar-key>
                   <p className="foil-at">
-                    Off. Turn it on in Layers, under Chart: &ldquo;LiDAR
-                    data&rdquo;.
+                    Off. Turn it on in Layers, under Ground:
+                    &ldquo;LiDAR&rdquo;.
                   </p>
                 </div>
               )
