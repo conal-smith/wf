@@ -100,6 +100,37 @@ export function OptionsGlyph(props: ChartGlyphProps) {
   );
 }
 
+/** Three rules, each with a paper stop on it, set by hand: Customise. */
+export function CustomiseGlyph(props: ChartGlyphProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+      <path
+        d="M10.8 7a2.3 2.3 0 1 1-4.6 0a2.3 2.3 0 1 1 4.6 0M17.8 12a2.3 2.3 0 1 1-4.6 0a2.3 2.3 0 1 1 4.6 0M12.3 17a2.3 2.3 0 1 1-4.6 0a2.3 2.3 0 1 1 4.6 0"
+        style={{ fill: "var(--color-ground)" }}
+      />
+    </Glyph>
+  );
+}
+
+/** A dotted track from a start to a flag: the tour. */
+export function TourGlyph(props: ChartGlyphProps) {
+  return (
+    <Glyph {...props}>
+      <path
+        d="M5 19.5C9 19.5 8.5 14 12 14s3.5-5 6.2-5"
+        strokeDasharray="1.2 2.6"
+      />
+      <path d="M18.2 11V3.2" />
+      <path
+        d="M18.2 3.4l4 1.8-4 1.8ZM6.7 19.5a1.7 1.7 0 1 1-3.4 0a1.7 1.7 0 1 1 3.4 0"
+        fill="currentColor"
+        strokeWidth={1}
+      />
+    </Glyph>
+  );
+}
+
 /** The chart's note: an "i" in a ring, for what the map's marks mean. */
 export function AboutGlyph(props: ChartGlyphProps) {
   return (

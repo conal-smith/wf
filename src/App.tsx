@@ -57,6 +57,8 @@ import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ForecastDock, { type DockView } from "./ForecastDock";
 import MapControls, { chartTools, type MapPanel } from "./MapControls";
 import MapHead from "./MapHead";
+import { CustomiseGlyph, TourGlyph } from "./chartGlyphs";
+import { tourOffered, tourSeen } from "./tourOffer";
 import SidePanel from "./SidePanel";
 import { InfoPop } from "./InfoPop";
 import useRunRefresh, {
@@ -127,6 +129,11 @@ const YourStarsDialog = lazy(() => import("../spot/web/YourStarsDialog"));
 const AccountRider = lazy(() => import("../shared/web/AccountRider"));
 /** The LiDAR layer's key: with the map's information, and only its part. */
 const LidarKey = lazy(() => import("./LidarKey"));
+// Customise and the tour, each only when asked for; the tour's offer only on
+// a first visit (src/tourOffer.ts).
+const Customise = lazy(() => import("./Customise"));
+const Tour = lazy(() => import("./Tour"));
+const TourPrompt = lazy(() => import("./TourPrompt"));
 import type { MapAction } from "../companion/shared/protocol";
 import { parseRider, withCustomStars } from "../force5/src/prefs";
 import type { CustomRating } from "../force5/src/stars";
@@ -330,6 +337,12 @@ export default function App() {
   const [info, setInfo] = useState<InfoSection | null>(null);
   /** The part it is drawn at: kept while it fades out, once shut. */
   const infoShown = useFadeOut(info);
+  /** Customise, the tour, or the first visit's offer of it, over the chart. */
+  const [guide, setGuide] = useState<"offer" | "tour" | "customise" | null>(
+    () => (tourOffered() ? "offer" : null),
+  );
+  /** Customise is kept while it fades out, once shut. */
+  const customiseShown = useFadeOut(guide === "customise");
   const [view, setView] = useState<DockView>("table");
   const [windStyle, setWindStyle] = useState<WindStyle>(() => {
     const saved = store.get(WIND_KEY) as WindStyle | null;
@@ -1559,8 +1572,30 @@ export default function App() {
         ? frameError
         : null;
 
-  // The site menu is the one way in to the chart's own tools.
-  const menuTools = useMemo(() => chartTools(setPanel, setInfo), []);
+  // The site menu is the one way in to the chart's own tools: Customise
+  // first, and the tour last.
+  const menuTools = useMemo(
+    () => [
+      {
+        id: "customise",
+        label: "Customise",
+        glyph: <CustomiseGlyph />,
+        onSelect: () => setGuide("customise"),
+      },
+      ...chartTools(setPanel, setInfo),
+      {
+        id: "tour",
+        label: "Take the tour",
+        glyph: <TourGlyph />,
+        onSelect: () => setGuide("tour"),
+      },
+    ],
+    [],
+  );
+  const leaveTour = () => {
+    tourSeen();
+    setGuide(null);
+  };
 
   const shell = (
     <div
@@ -1826,6 +1861,57 @@ export default function App() {
       {syncAccount && (
         <Suspense fallback={null}>
           <AccountRider />
+        </Suspense>
+      )}
+      {customiseShown && (
+        <Suspense fallback={null}>
+          <Customise
+            open={guide === "customise"}
+            prefs={prefs}
+            starred={starred}
+            spots={spots}
+            hours={hours}
+            times={strip.map((c) => c.time)}
+            prefer={first}
+            centre={controls.current?.map.getCenter() ?? null}
+            onClose={() => setGuide(null)}
+            onSave={(next, toggle) => {
+              changePrefs(next);
+              if (next.starsUpdatedAt !== prefs.starsUpdatedAt)
+                announcePrefs("device");
+              toggle.forEach((id) => fav.toggle(id));
+              setGuide(null);
+            }}
+          />
+        </Suspense>
+      )}
+      {guide && guide !== "customise" && (
+        <Suspense fallback={null}>
+          {guide === "tour" ? (
+            <Tour
+              phone={phone}
+              spot={picked ? null : (point?.id ?? null)}
+              onSpot={(id) => {
+                const spot = id && spotById.get(id);
+                if (spot) showSpot(spot);
+                else hideDock();
+              }}
+              view={view}
+              onView={setView}
+              focusStyle={focusStyle}
+              onFocusStyle={setFocusStyle}
+              onPanel={setPanel}
+              onEnd={(customise) => {
+                tourSeen();
+                setGuide(customise ? "customise" : null);
+              }}
+            />
+          ) : (
+            mapReady &&
+            !dockOpen && (
+              <TourPrompt onTour={() => setGuide("tour")} onNo={leaveTour} />
+            )
+          )}
         </Suspense>
       )}
       {!error && gustDue && FEATURES.gust && (
