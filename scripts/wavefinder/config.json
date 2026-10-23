@@ -1,0 +1,65 @@
+{
+  "start": "2017-01-01",
+  "end": "2026-10-15",
+  "regions": {
+    "ireland": {"satelliteRoot": "/Volumes/workdrive/satellite", "satelliteConfig": "config.json",
+                "box": [-11.5, 51.0, -5.0, 56.0]},
+    "gb": {"satelliteRoot": "/Volumes/workdrive/satellite-gb", "satelliteConfig": "config-gb.json",
+           "box": [-9.0, 49.5, 2.5, 61.5]}
+  },
+  "seaState": {
+    "pointSeaKmMax": 45,
+    "grid": 0.5,
+    "bigHs": 2.0,
+    "bigTp": 11.0,
+    "calmHs": 1.0,
+    "calmWind": 6.0,
+    "readHs": 1.2
+  },
+  "band": {
+    "seaKm": 1.5,
+    "landKm": 0.3,
+    "offshoreKm": [2.0, 5.0]
+  },
+  "depth": {
+    "maxMetres": 15,
+    "cellPixels": 1
+  },
+  "enclosed": {
+    "gapKm": 0.75,
+    "keepKm": 2.5
+  },
+  "select": {
+    "maxTileCloud": 70,
+    "calmLooks": 30,
+    "maxBadShare": 0.6
+  },
+  "foam": {
+    "minGreen": 0.07,
+    "minNir": 0.04,
+    "maxSwirShare": 0.35,
+    "minBlueRed": 0.85,
+    "cloudSwir": 0.06
+  },
+  "score": {
+    "minBigLooks": 6,
+    "minCalmLooks": 4,
+    "minFoamBig": 0.25,
+    "minLift": 4.0,
+    "maxWhitecap": 0.02,
+    "clusterMinPixels": 12,
+    "clusterConnect": 3,
+    "segmentKm": 1.0
+  },
+  "rank": {
+    "placeKm": 1.5,
+    "outerM": 300
+  },
+  "validateKm": 1.5,
+  "notes": {
+    "seaState": "ERA5-Ocean (0.5 deg) significant wave height, peak period and mean direction from Open-Meteo's marine archive, and ERA5 10 m wind from its weather archive, at every 0.5 deg cell within pointSeaKmMax km of the coast. A look is 'big' when Hs >= bigHs and Tp >= bigTp at the pixel's point, 'calm' when Hs <= calmHs and wind <= calmWind m/s. Every look with Hs >= readHs at any of the tile's points is read, and calmLooks of the clearest calm ones.",
+    "band": "The nearshore band read at 10 m: sea within seaKm of land and land within landKm of the sea (coarse.tif, 100 m). The offshore ring (offshoreKm) inside the same blocks measures each look's whitecaps away from the shore.",
+    "foam": "wf.foam: B03 >= minGreen, B08 >= minNir, B11 <= maxSwirShare x B03, B02 >= minBlueRed x B04. cloudSwir: a pixel SCL calls cloud is kept (foam is often called cloud) unless its B11 is over cloudSwir and over maxSwirShare x B03.",
+    "score": "A pixel is a candidate when it was seen in minBigLooks big looks and minCalmLooks calm ones, foamed in minFoamBig of the big looks with a whitecap share offshore under maxWhitecap, and its lift (P big / P calm) is over minLift. Candidates within clusterConnect pixels join; clusters under clusterMinPixels are dropped."
+  }
+}
