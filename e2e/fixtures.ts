@@ -170,16 +170,3 @@ export async function openFromMenu(page: Page, name: ChartTool) {
   // Each dialog is titled as its row is named.
   await expect(page.getByRole("dialog", { name })).toBeVisible();
 }
-
-/**
- * On a phone the dock's tools are folded into one glyph (src/ForecastDock.tsx
- * `dk-fold`): open them, where they are folded, before a press on one.
- */
-export async function unfoldTools(page: Page) {
-  const fold = page.locator(".dk-tools .dk-fold");
-  if (
-    (await fold.count()) &&
-    (await fold.getAttribute("aria-expanded")) === "false"
-  )
-    await fold.click();
-}

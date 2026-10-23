@@ -7,7 +7,7 @@ import {
   openFromMenu,
   steadyFrames,
   test,
-  unfoldTools,
+  type Locator,
   type Page,
 } from "./fixtures";
 import { readSample } from "./sample";
@@ -130,6 +130,45 @@ async function offCursor(page: Page) {
     const framed = Math.abs(c.left + c.width / 2 - (f.left + f.width / 2));
     return Math.max(scroll, framed);
   });
+}
+
+/**
+ * A finger's swipe from the middle of `at` (near its top, for a tall one), by
+ * `dx` and `dy` px in `steps` moves a frame apart: real touch events, which
+ * the browser scrolls with and the dock's sheet reads as pointers.
+ */
+async function swipe(
+  page: Page,
+  at: Locator,
+  dx: number,
+  dy: number,
+  steps = 12,
+) {
+  const box = (await at.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + Math.min(box.height / 2, 10);
+  const cdp = await page.context().newCDPSession(page);
+  const point = (i: number) => [
+    { x: x + (dx * i) / steps, y: y + (dy * i) / steps },
+  ];
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: point(0),
+  });
+  for (let i = 1; i <= steps; i++) {
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: point(i),
+    });
+    await page.waitForTimeout(16);
+  }
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  await cdp.detach();
+  // The sheet's glide to where it settles.
+  await page.waitForTimeout(350);
 }
 
 test("the week is one strip of hours round the clock, with no day slider over it", async ({
@@ -463,11 +502,11 @@ test("the spot's tools stand on the chart over the dock, and no day is rated", a
 }) => {
   await openDock(page);
   // No county, no compass, no line of the day's best, no small print, no
-  // play: the star, the name, whose forecast the stars are, the blend, the
-  // page and the fold, in a box on the chart at the dock's top edge. The
-  // dock under it is its rows.
+  // play, no water: the star, the name (the way to the spot's page), whose
+  // forecast the stars are, the blend, the fold and the close, in a box on
+  // the chart at the dock's top edge. The dock under it is its rows.
   const tools = page.getByRole("group", { name: "This spot" });
-  await expect(tools).toHaveText(/^Brandon Bay(HARMONIE|ECMWF)$/);
+  await expect(tools).toHaveText(/^Brandon Bay(HARMONIE|ECMWF)Blend$/);
   const box = (await tools.boundingBox())!;
   const dock = (await page.locator(".dock").boundingBox())!;
   expect(box.y + box.height).toBeLessThanOrEqual(dock.y);
@@ -495,10 +534,11 @@ test("the spot's tools stand on the chart over the dock, and no day is rated", a
     /star/,
   );
   await expect(page.locator(".dock .tt-pen .pen-loop")).toHaveCount(0);
-  await expect(tools.getByRole("link", { name: "Spot page" })).toHaveAttribute(
-    "href",
-    "/spot/brandon",
-  );
+  // The name is the link: there is no glyph of its own for the page.
+  const name = tools.getByRole("link", { name: "Brandon Bay, spot page" });
+  await expect(name).toHaveAttribute("href", "/spot/brandon");
+  await expect(tools.locator(".dk-name a")).toHaveCount(1);
+  await expect(tools.locator("a")).toHaveCount(1);
 });
 
 test("a starred spot is kept on this device: the dock and your spots agree", async ({
@@ -698,7 +738,8 @@ test("the stars come from one model, the rider's choice: the dock names it and t
   const chip = page.locator(".dock [data-stars-from-chip]");
 
   // By default HARMONIE rates the hours it reaches, and ECMWF alone takes
-  // over where its run ends, marked on the hours in the site's own hand.
+  // over where its run ends, marked on the hours by a dashed line with no
+  // words by it: the chip names the model at the hour in hand.
   await expect(chip).toHaveAttribute("data-stars-from-chip", "harmonie");
   await expect(chip).toContainText("HARMONIE");
   const before = await starLabels(page);
@@ -707,9 +748,8 @@ test("the stars come from one model, the rider's choice: the dock names it and t
   expect(before.every((label) => /from (HARMONIE|ECMWF)$/.test(label))).toBe(
     true,
   );
-  await expect(page.locator('.dock [data-handover="ecmwf"]')).toHaveText(
-    /^ECMWF from \w{3} \d\d:\d\d$/,
-  );
+  await expect(page.locator('.dock [data-handover="ecmwf"]')).toHaveCount(1);
+  await expect(page.locator('.dock [data-handover="ecmwf"]')).toHaveText("");
   // A daylight hour of HARMONIE's, where the lights have stars to show.
   const hour = await selectFrom(page, "HARMONIE");
   await expect.poll(() => dockAndLightAgree(page)).toBe(true);
@@ -728,9 +768,8 @@ test("the stars come from one model, the rider's choice: the dock names it and t
     })
     .toBe(true);
   await expect(chip).toHaveAttribute("data-stars-from-chip", "ecmwf");
-  await expect(page.locator('.dock [data-handover="gfs"]')).toHaveText(
-    /^GFS from \w{3} \d\d:\d\d$/,
-  );
+  await expect(page.locator('.dock [data-handover="gfs"]')).toHaveCount(1);
+  await expect(page.locator('.dock [data-handover="gfs"]')).toHaveText("");
   await expect(page.locator('.dock [data-handover="ecmwf"]')).toHaveCount(1);
 
   // The map follows at the same hour: every light rated again, from the
@@ -893,7 +932,7 @@ test("the head's chevron is the dock's one fold: the rows under the figures", as
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
 });
 
-test("on a phone the dock is its hours alone, its tools on the chart, under a sixth of the screen", async ({
+test("on a phone the dock is a sheet: its head in it, then its hours, under a sixth of the screen", async ({
   page,
 }) => {
   await withTides(page);
@@ -902,47 +941,31 @@ test("on a phone the dock is its hours alone, its tools on the chart, under a si
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
     timeout: 30000,
   });
-  await expect(page.locator(".dock-grab")).toHaveCount(0);
-  // No name and no row of buttons over the hours: the dock is its rows.
   const dock = (await page.locator(".dock").boundingBox())!;
   expect(dock.height).toBeLessThan(844 / 6);
-  const hours = (await page.locator(".dock tr.tt-day").boundingBox())!;
-  expect(hours.y - dock.y).toBeLessThan(8);
-  // The name is there for a screen reader, and not on the screen: the
-  // chart's loop says which spot it is.
-  await expect(
-    page.getByRole("region", { name: "Forecast for Brandon Bay" }),
-  ).toBeVisible();
-  expect(
-    (await page.locator(".dock .dk-name").boundingBox())!.width,
-  ).toBeLessThanOrEqual(1);
-  // The tools stand on the chart just above the dock, folded into one
-  // glyph until it is pressed, then glyphs alone, all within the screen.
+  // The head is the sheet's own top, under its handle: nothing of the
+  // spot's stands on the chart over it, and the hours are under the head.
   const tools = page.getByRole("group", { name: "This spot" });
-  const fold = tools.getByRole("button", { name: "The spot's tools" });
-  await expect(fold).toHaveAttribute("aria-expanded", "false");
-  const folded = (await tools.boundingBox())!;
-  expect(folded.width).toBeLessThan(48);
-  await expect(tools.getByRole("button", { name: "Blend" })).toBeHidden();
-  await fold.click();
-  await expect(
-    tools.getByRole("button", { name: "Fold the spot's tools" }),
-  ).toHaveAttribute("aria-expanded", "true");
   const box = (await tools.boundingBox())!;
-  expect(box.y + box.height).toBeLessThanOrEqual(dock.y);
-  expect(box.y + box.height).toBeGreaterThan(dock.y - 20);
+  const hours = (await page.locator(".dock tr.tt-day").boundingBox())!;
+  expect(box.y).toBeGreaterThanOrEqual(dock.y);
+  expect(box.y + box.height).toBeLessThanOrEqual(hours.y + 1);
+  expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(390);
-  // Opened leftwards from under the finger: its right edge stays put.
-  expect(box.x + box.width).toBeCloseTo(folded.x + folded.width, 0);
+  await expect(page.locator(".dock .dk-grab")).toBeVisible();
+  // The name is on the screen, and is the way to the spot's page.
+  await expect(
+    tools.getByRole("link", { name: "Brandon Bay, spot page" }),
+  ).toBeVisible();
+  // Every tool at once: nothing folded behind a glyph to find.
+  await expect(page.locator(".dock .dk-fold")).toHaveCount(0);
   for (const name of [
     "Star Brandon Bay",
     "Blend",
-    "Spot page",
     "Show waves, sky and sea",
+    "Close the forecast for Brandon Bay",
   ])
-    await expect(
-      tools.getByRole(name === "Spot page" ? "link" : "button", { name }),
-    ).toBeVisible();
+    await expect(tools.getByRole("button", { name })).toBeVisible();
   // The blend's glyph switches the view, and back.
   const blend = tools.getByRole("button", { name: "Blend" });
   await blend.click();
@@ -1369,7 +1392,7 @@ test("the strip runs fifteen days, the coarser far ones in narrower columns", as
   expect(widths[0]).toBeCloseTo(Math.max(...widths), 0);
 });
 
-test("waves, sky, air, rain and sea are one tap away, and stay open", async ({
+test("waves, sky, air and rain are one tap away, and stay open", async ({
   page,
 }) => {
   await openDock(page);
@@ -1378,13 +1401,10 @@ test("waves, sky, air, rain and sea are one tap away, and stay open", async ({
   await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
   for (const row of ["waves", "sky", "air", "rain"])
     await expect(page.locator(`.dock tr.tt-${row}`)).toHaveCount(1);
-  // The sea is one value for the week: said once in the head, not a row.
-  // The sample publishes no station, so it is the model's, and says so.
+  // The sea is one value for the week, and is the spot page's to say: no
+  // row for it here, and nothing in the head.
   await expect(page.locator(".dock tr.tt-sea")).toHaveCount(0);
-  await expect(page.locator(".dk-tools .dk-sea-long")).toHaveText(
-    /^Water ~\d+ °C · model, not measured$/,
-    { timeout: 20000 },
-  );
+  await expect(page.locator(".dock .dk-sea")).toHaveCount(0);
   // The sample's wave run is a short one: a few hours have a sea state.
   await expect
     .poll(() => page.locator(".dock tr.tt-waves .wave-cell b").count(), {
@@ -1450,7 +1470,6 @@ test("on a phone, the rows below the fold keep their units beside their glyphs",
   await expect(page.locator(".dock tr.tt-wind")).toBeVisible({
     timeout: 30000,
   });
-  await unfoldTools(page);
   await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
   await expect(page.locator(".dock tr.tt-rain")).toHaveCount(1);
   // A bare 0.5, 12° or 0 says nothing: each figure's unit is on the screen,
@@ -1501,139 +1520,38 @@ const seaReading = () => ({
   },
 });
 
-test("a station's water temperature is said once in the spot's head, with how far away it was read", async ({
-  page,
-}) => {
-  await page.route("**/marine/sea-temperature.json", (route) =>
-    route.fulfill({ json: seaReading() }),
-  );
-  await openDock(page);
-  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
-  const sea = page.locator(".dk-tools .dk-sea");
-  await expect(sea.locator(".dk-sea-long")).toHaveText(
-    "Water 14.5 °C · M3 buoy, 46 km, 2 h ago",
-  );
-  await expect(sea).toHaveAttribute("data-water", "measured");
-  await expect(sea.locator(".sr-only")).toHaveText(
-    "Water 14.5 °C, measured at the M3 buoy 46 km away, 2 h ago",
-  );
-  await expect(sea.locator(".dk-sea-short")).toBeHidden();
-  // No row for it, and no glyph for one in the label column.
-  await expect(page.locator(".dock tr.tt-sea")).toHaveCount(0);
-  await expect(page.locator('.dk-labs [title^="Sea"]')).toHaveCount(0);
-  // Within the box, which stays within the screen.
-  const box = (await page.locator(".dk-tools").boundingBox())!;
-  const text = (await sea.boundingBox())!;
-  expect(text.x + text.width).toBeLessThanOrEqual(box.x + box.width);
-  expect(box.x).toBeGreaterThanOrEqual(0);
-  // Shut, the rows and the reading go together.
-  await page.getByRole("button", { name: "Hide waves, sky and sea" }).click();
-  await expect(sea).toHaveCount(0);
-});
-
-/**
- * Kilcrea's water, where #130 was seen: the M2 buoy, 48.6 km out from the
- * estuary, read five hours before the sample's now. A long spot name, and a
- * station far enough off to need its name and age said.
- */
-const kilcreaSea = () => ({
-  schemaVersion: 1,
-  kind: "observation",
-  stations: {
-    M2: {
-      id: "M2",
-      name: "M2",
-      lat: 53.48,
-      lon: -5.43,
-      network: "buoy",
-      depth: null,
-    },
-  },
-  spots: {
-    kilcrea: {
-      station: "M2",
-      distanceKm: 48.6,
-      latest: {
-        time: new Date(SAMPLE_CLOCK.getTime() - 5 * 3600000).toISOString(),
-        value: 14.5,
-      },
-    },
-  },
-});
-
-test("on a phone, the water's reading keeps its value and the station's distance in the folded tools, and says the rest with them open, never over the hours", async ({
-  page,
-}) => {
-  await withTides(page);
-  await page.route("**/marine/sea-temperature.json", (route) =>
-    route.fulfill({ json: kilcreaSea() }),
-  );
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/?spot=kilcrea");
-  const dock = page.locator(".dock");
-  const wind = dock.locator("tr.tt-wind");
-  await expect(wind).toBeVisible({ timeout: 30000 });
-  await unfoldTools(page);
-  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
-  const tools = page.getByRole("group", { name: "This spot" });
-  const sea = tools.locator(".dk-sea");
-  /** Whether the tools stand anywhere on the dock's hours, or its wind. */
-  const overHours = async () => {
-    const [t, d, w] = await Promise.all([
-      tools.boundingBox(),
-      dock.boundingBox(),
-      wind.boundingBox(),
-    ]);
-    const foot = t!.y + t!.height;
-    return foot > d!.y || (foot > w!.y && t!.y < w!.y + w!.height);
-  };
-  /** Whether the text is cut short, an ellipsis or a clip at its end. */
-  const cut = (text: typeof sea) =>
-    text.evaluate((el) => el.scrollWidth > el.clientWidth);
-  // Open, the whole of it in words, on a line of its own over the row of
-  // tools: the station and how old the reading is are a tap away.
-  const long = sea.locator(".dk-sea-long");
-  await expect(long).toBeVisible();
-  await expect(long).toHaveText("Water 14.5 °C · M2 buoy, 49 km, 5 h ago");
-  expect(await cut(long)).toBe(false);
-  let box = (await tools.boundingBox())!;
-  const line = (await long.boundingBox())!;
-  const row = (await tools
-    .getByRole("button", { name: "Blend" })
-    .boundingBox())!;
-  expect(line.y + line.height).toBeLessThanOrEqual(row.y);
-  expect(line.x).toBeGreaterThanOrEqual(box.x);
-  expect(line.x + line.width).toBeLessThanOrEqual(box.x + box.width);
-  // The press that opened the rows grew the dock under the tools, and they
-  // rose with its edge rather than stand over the first hours (#130).
-  await expect.poll(overHours).toBe(false);
-  await tools.getByRole("button", { name: "Fold the spot's tools" }).click();
-  const short = sea.locator(".dk-sea-short");
-  await expect(short).toBeVisible();
-  await expect(short).toHaveText("14.5 °C · 49 km");
-  await expect(sea.locator(".dk-sea-glyph")).toBeVisible();
-  await expect(long).toBeHidden();
-  expect(await cut(short)).toBe(false);
-  expect(await cut(sea)).toBe(false);
-  // All of it in the box, clear of the fold's glyph, and the box on the screen.
-  box = (await tools.boundingBox())!;
-  const reading = (await short.boundingBox())!;
-  const fold = (await tools
-    .getByRole("button", { name: "The spot's tools" })
-    .boundingBox())!;
-  expect(box.x).toBeGreaterThanOrEqual(0);
-  expect(box.x + box.width).toBeLessThanOrEqual(390);
-  expect(reading.x).toBeGreaterThanOrEqual(box.x);
-  expect(reading.x + reading.width).toBeLessThanOrEqual(fold.x);
-  await expect.poll(overHours).toBe(false);
-  // The station and the age are still read out, as is the spot's name.
-  await expect(sea.locator(".sr-only")).toHaveText(
-    "Water 14.5 °C, measured at the M2 buoy 49 km away, 5 h ago",
-  );
-  await expect(tools.locator(".dk-name")).toHaveText(
-    "Kilcrea — Malahide Estuary",
-  );
-});
+for (const width of [390, 1440])
+  test(`the water's temperature is not in the dock but on the spot's page, with its station, distance and age, at ${width}px`, async ({
+    page,
+  }) => {
+    await withTides(page);
+    await page.route("**/marine/sea-temperature.json", (route) =>
+      route.fulfill({ json: seaReading() }),
+    );
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/?spot=brandon");
+    const dock = page.locator(".dock");
+    await expect(dock.locator("tr.tt-wind")).toBeVisible({ timeout: 30000 });
+    // Nowhere in the dock, with the rows open or shut: on a phone its
+    // "14.5 °C · 46 km" was the most central thing on the screen.
+    await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+    await expect(dock.locator("tr.tt-rain")).toHaveCount(1);
+    await page.waitForTimeout(500);
+    await expect(dock.locator(".dk-sea")).toHaveCount(0);
+    await expect(dock).not.toContainText("°C ·");
+    await expect(dock).not.toContainText(/\bkm\b/);
+    // The spot's name opens its page, which says all of it.
+    await dock.getByRole("link", { name: "Brandon Bay, spot page" }).click();
+    await expect(page).toHaveURL(/\/spot\/brandon$/);
+    const water = page.locator("[data-sea-temperature]");
+    await expect(water).toHaveText(
+      "Water 14.5 °C measured 2 h ago at the M3 weather buoy, 46 km from here: the nearest station reporting, and the water at the shore can differ.",
+      { timeout: 30000 },
+    );
+    await expect(page.locator("[data-sources]")).toContainText(
+      "Water temperature: M3, 45.5 km away, read",
+    );
+  });
 
 /**
  * The coast's stations as the tide manifest publishes them: two Marine
@@ -2018,7 +1936,7 @@ test.describe("on a phone", () => {
     hasTouch: true,
   });
 
-  test("the blend's tools rise with the dock's edge rather than over its hours, and every tap after the first is the blend's", async ({
+  test("the blend grows the sheet under its head, which rises with the sheet's edge and never stands over the hours", async ({
     page,
   }) => {
     await withTides(page);
@@ -2026,50 +1944,147 @@ test.describe("on a phone", () => {
     const dock = page.locator(".dock");
     await expect(dock.locator("tr.tt-stars")).toBeVisible({ timeout: 30000 });
     const tools = dock.locator(".dk-tools");
-    await unfoldTools(page);
-    const standing = async () => {
-      const [t, d] = await Promise.all([
+    /** How far below the sheet's top the head stands, and whether over the hours. */
+    const place = async () => {
+      const [t, d, h] = await Promise.all([
         tools.boundingBox(),
         dock.boundingBox(),
+        dock.locator("tr.tt-day").boundingBox(),
       ]);
-      return d!.y - (t!.y + t!.height);
+      return {
+        inset: Math.round(t!.y - d!.y),
+        clear: t!.y + t!.height <= h!.y + 1,
+      };
     };
+    const at = await place();
+    expect(at.clear).toBe(true);
     const blend = tools.getByRole("button", { name: "Blend" });
-    const edge = await standing();
     const table = (await dock.boundingBox())!.height;
-    // The first tap grows the dock, and the tools rise with its top edge:
-    // held where the finger found them, they stood over the first hours
-    // until a tap somewhere else (#130). The tap's old place is the hours'.
-    await blend.tap();
-    await expect(blend).toHaveAttribute("aria-pressed", "true");
-    await expect(dock.locator(".tt-blend")).toBeVisible();
-    await expect
-      .poll(async () => (await dock.boundingBox())!.height)
-      .toBeGreaterThan(table + 20);
-    await expect.poll(standing).toBeCloseTo(edge, 0);
-    // From there every tap at the same place is the blend's (#107): the
-    // dock shrinks under the tools, which stay where the finger found them,
-    // and grows back up to them.
-    const box = (await blend.boundingBox())!;
-    const x = box.x + box.width / 2;
-    const y = box.y + box.height / 2;
     for (let i = 1; i <= 3; i++) {
-      await page.touchscreen.tap(x, y);
-      await expect(blend).toHaveAttribute("aria-pressed", String(i % 2 === 0));
-      await expect
-        .poll(async () => (await blend.boundingBox())?.y)
-        .toBeCloseTo(box.y, 0);
-      expect(await standing()).toBeGreaterThanOrEqual(edge - 0.5);
+      await blend.tap();
+      await expect(blend).toHaveAttribute("aria-pressed", String(i % 2 === 1));
+      await expect(
+        dock.locator(i % 2 ? ".tt-blend" : "tr.tt-wind"),
+      ).toBeVisible();
+      await expect.poll(place).toEqual(at);
     }
-    // The table again, the tools held above its edge.
-    expect(await standing()).toBeGreaterThan(edge + 20);
-    await page.waitForTimeout(400);
+    expect((await dock.boundingBox())!.height).toBeGreaterThan(table + 20);
     await expect(
       page.getByRole("region", { name: "Forecast for Malahide Estuary" }),
     ).toBeVisible();
-    // A tap anywhere else puts them back on the dock's top edge.
-    const hours = (await dock.locator("tr.tt-day").boundingBox())!;
-    await page.touchscreen.tap(hours.x + 40, hours.y + hours.height / 2);
-    await expect.poll(standing).toBeCloseTo(edge, 0);
+  });
+
+  /** The phone's opening scroll to the hour, settled, so a touch is a touch on still hours. */
+  const settled = async (page: Page) => {
+    await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
+      timeout: 30000,
+    });
+    await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  };
+
+  test("a swipe takes the sheet between peek, half and full, and down from peek closes it", async ({
+    page,
+  }) => {
+    await withTides(page);
+    await page.goto("/?spot=brandon");
+    await settled(page);
+    const dock = page.locator(".dock");
+    const head = dock.locator(".dk-tools");
+    const wrap = dock.locator(".tt-wrap");
+    const more = dock.getByRole("button", { name: /waves, sky and sea/ });
+    const height = async () => (await dock.boundingBox())!.height;
+    const half = await height();
+    // Down: the hours tuck away under the screen's foot, the head stays.
+    await swipe(page, head, 0, 90);
+    await expect(dock).toHaveClass(/is-peek/);
+    await expect(wrap).toBeHidden();
+    await expect(dock.locator(".dk-name")).toBeVisible();
+    await expect.poll(height).toBeLessThan(60);
+    // Up: the hours again, and up from them the rows under them.
+    await swipe(page, head, 0, -90);
+    await expect(dock).not.toHaveClass(/is-peek/);
+    await expect(wrap).toBeVisible();
+    await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
+    await expect.poll(height).toBeCloseTo(half, 0);
+    await swipe(page, wrap, 0, -90);
+    await expect(dock.locator("tr.tt-waves")).toHaveCount(1);
+    await expect(more).toHaveAttribute("aria-expanded", "true");
+    // The hour is where it was: a drag up the hours is not a slide of them.
+    await expect(dock.locator("tr.tt-hour td.c-sel")).toHaveCount(1);
+    await expect.poll(() => offCursor(page)).toBeLessThan(2);
+    // A short quick flick is as good as a long pull: one snap down.
+    await swipe(page, head, 0, 30, 3);
+    await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
+    await expect(dock).not.toHaveClass(/is-peek/);
+    // Down twice more: peek, then closed, the chart alone at the bare link.
+    await swipe(page, head, 0, 90);
+    await expect(dock).toHaveClass(/is-peek/);
+    await swipe(page, head, 0, 90);
+    await expect(dock).toHaveCount(0);
+    await expect(page).toHaveURL(/\/$/);
+  });
+
+  test("a sideways swipe on the hours is still theirs, and a drag never presses a button", async ({
+    page,
+  }) => {
+    await withTides(page);
+    await page.goto("/?spot=brandon");
+    await settled(page);
+    const dock = page.locator(".dock");
+    const wrap = dock.locator(".tt-wrap");
+    const hour = () =>
+      dock.locator("tr.tt-hour td.c-sel").getAttribute("data-i");
+    const was = await hour();
+    const left = await wrap.evaluate((el) => el.scrollLeft);
+    await swipe(page, wrap, -200, 20);
+    await expect.poll(hour).not.toBe(was);
+    expect(await wrap.evaluate((el) => el.scrollLeft)).toBeGreaterThan(left);
+    await expect(dock).not.toHaveClass(/is-peek/);
+    await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
+    // A drag that starts on the blend moves the sheet, and is no press.
+    const blend = dock.getByRole("button", { name: "Blend" });
+    await swipe(page, blend, 0, 90);
+    await expect(dock).toHaveClass(/is-peek/);
+    await page.waitForTimeout(300);
+    await expect(blend).toBeHidden();
+    await swipe(page, dock.locator(".dk-tools"), 0, -90);
+    await expect(blend).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test("the handle is a button: a press and Up and Down move the sheet, at once for less motion", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await withTides(page);
+    await page.goto("/?spot=brandon");
+    await settled(page);
+    const dock = page.locator(".dock");
+    const grab = dock.getByRole("button", { name: "Tuck the hours away" });
+    await expect(grab).toHaveAttribute("aria-expanded", "true");
+    await grab.focus();
+    await page.keyboard.press("Enter");
+    await expect(dock).toHaveClass(/is-peek/);
+    const show = dock.getByRole("button", { name: "Show the hours" });
+    await expect(show).toHaveAttribute("aria-expanded", "false");
+    await expect(show).toBeFocused();
+    // Nothing glides: the sheet is where it is going in the same frame.
+    expect(
+      await dock.evaluate((el) => [el.style.translate, el.style.transition]),
+    ).toEqual(["", ""]);
+    await page.keyboard.press("ArrowUp");
+    await expect(dock.locator("tr.tt-wind")).toBeVisible();
+    await page.keyboard.press("ArrowUp");
+    await expect(dock.locator("tr.tt-waves")).toHaveCount(1);
+    // Up and Down are the sheet's here, not the hours'.
+    const hour = await dock
+      .locator("tr.tt-hour td.c-sel")
+      .getAttribute("data-i");
+    await page.keyboard.press("ArrowDown");
+    await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
+    await expect(dock.locator("tr.tt-wind")).toBeVisible();
+    await expect(dock.locator("tr.tt-hour td.c-sel")).toHaveAttribute(
+      "data-i",
+      hour!,
+    );
   });
 });
