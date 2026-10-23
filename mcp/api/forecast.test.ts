@@ -258,6 +258,42 @@ describe("spotForecast", () => {
     expect(forecast.sea_temperature).toBeNull();
   });
 
+  it("says where the water was read, how far off and when", async () => {
+    const withSea = fixtureSource({
+      "marine/sea-temperature.json": {
+        schemaVersion: 1,
+        kind: "observation",
+        stations: {
+          M2: { id: "M2", name: "M2", lat: 53.48, lon: -5.43, network: "buoy" },
+        },
+        spots: {
+          dollymount: {
+            station: "M2",
+            distanceKm: 48.64,
+            latest: { time: "2026-09-16T15:00:00Z", value: 14.46 },
+          },
+        },
+        attribution: "Marine Institute",
+      },
+    });
+    const spot = findSpot(await loadSpots(withSea), "dollymount").spot!;
+    const forecast = await spotForecast(
+      withSea,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 6 }),
+      { now: FIXTURE_NOW },
+    );
+    expect(forecast.sea_temperature).toEqual({
+      celsius: 14.5,
+      measured: "Wed, 16 Sept, 16:00",
+      time: "2026-09-16T15:00:00.000Z",
+      station: "M2",
+      network: "buoy",
+      distance_km: 48.6,
+      attribution: "Marine Institute",
+    });
+  });
+
   it("lists the tides inside the window with their datum", async () => {
     const withTides = fixtureSource({
       "marine/tides.json": {

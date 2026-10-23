@@ -1,0 +1,707 @@
+/* The map's information (src/MapInfo.tsx): the kit's dialog, laid out as a
+   rail of glyphs down the left with the chosen section beside it, and on a
+   phone as a row of tabs over the section. In MapInfo's own chunk, so the
+   map carries none of it until the dialog is opened. */
+
+/* The dialog's head is the cartouche at the top of the rail, its body falls
+   away (`display: contents`) so the rail and the section are the box's own
+   columns. Only the grid is set here: the kit's `open:grid` says when the
+   box is drawn at all. */
+.map-info {
+  position: relative;
+  grid-template-columns: 230px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  width: 940px;
+  max-width: calc(100% - 32px);
+  height: 640px;
+  max-height: calc(100% - 32px);
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.map-info > div:first-child {
+  grid-column: 1;
+  grid-row: 1;
+  display: block;
+  padding: 16px 16px 12px;
+  border-bottom: 3px double var(--color-ink);
+  border-right: 1px solid var(--color-ink);
+  background: var(--color-ground);
+}
+/* The cartouche: the sheet's name over its title, as a chart names itself. */
+.map-info > div:first-child h2 {
+  font: italic 600 19px/1.15 var(--font-display);
+}
+.map-info > div:first-child h2::before {
+  content: "IRELAND";
+  display: block;
+  margin-bottom: 2px;
+  font: normal 600 10px var(--font-mono);
+  letter-spacing: 0.3em;
+}
+.map-info > div:first-child > button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+}
+.map-info > div:last-child {
+  display: contents;
+}
+
+/* ---- the rail ---- */
+.mi-nav {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 0;
+  border-right: 1px solid var(--color-ink);
+  background-color: var(--color-sunken);
+}
+.map-info .mi-nav .mi-tab {
+  position: relative;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  height: 42px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 0;
+  font: 600 14.5px var(--font-display);
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: left;
+  color: var(--color-ink-2);
+}
+.mi-tab .mi-short {
+  display: none;
+}
+.map-info .mi-nav .mi-tab[aria-selected="true"] {
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-style: italic;
+  font-weight: 700;
+}
+.mi-tab[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--color-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .map-info .mi-nav .mi-tab:hover {
+    background: var(--color-ground);
+    color: var(--color-chart-magenta);
+  }
+}
+.mi-nav hr {
+  margin: 6px 14px;
+  border: 0;
+  border-top: 1px solid var(--color-line);
+}
+
+/* ---- the section ---- */
+.mi-main {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px 30px 30px;
+  color: var(--color-ink);
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+.mi-main:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+.mi-kick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 500 10px/1.3 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.mi-main h3 {
+  margin: 6px 0 4px;
+  font: 700 30px/1.05 var(--font-display);
+  letter-spacing: -0.02em;
+}
+.mi-lede {
+  max-width: 58ch;
+  margin: 0 0 18px;
+  font-size: 15px;
+  color: var(--color-ink-2);
+}
+.mi-main h4 {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin: 20px 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--color-ink);
+  font: 600 17px var(--font-display);
+}
+.mi-main h4 small {
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.mi-main p {
+  margin: 0 0 8px;
+}
+.mi-main .mi-sm,
+.mi-main .ip-small {
+  max-width: 64ch;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+.mi-main a {
+  color: inherit;
+}
+.mi-more {
+  display: inline-block;
+  margin-top: 12px;
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  text-underline-offset: 3px;
+}
+.mi-fig {
+  font: 500 12px var(--font-mono);
+}
+
+/* A grid of marks, each beside its name and a line on it. */
+.mi-keys {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mi-keys li {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+.mi-spec {
+  display: grid;
+  place-items: center;
+  min-height: 34px;
+}
+.mi-keys b {
+  display: block;
+  font: 600 14px var(--font-display);
+}
+.mi-keys li > span:last-child > span {
+  display: block;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--color-ink-muted);
+}
+
+/* A figure, with its legend beside it. */
+.mi-beside {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+.mi-legend {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+.mi-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mi-legend i {
+  flex: none;
+  width: 22px;
+  height: 14px;
+  border: 1px solid var(--color-ink);
+}
+.mi-sw-nogo {
+  background: var(--color-ground) var(--mi-hatch);
+}
+.mi-sw-out {
+  background: var(--color-ground);
+}
+.mi-sw-home {
+  border-style: dashed !important;
+}
+.map-info .mi-sw-off {
+  height: 4px;
+  border-color: var(--color-pen);
+  background: var(--color-pen);
+}
+.map-info {
+  --mi-hatch: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-ink) 30%, transparent) 0 1px,
+    transparent 1px 4px
+  );
+}
+
+/* The equation the stars are: what the wind earns, less what it costs. */
+.mi-eq {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 14px;
+  border: 1px solid var(--color-ink);
+  background: var(--color-ground);
+}
+.mi-eq > span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.mi-eq small {
+  font: 500 9.5px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.mi-eq .mi-op {
+  font: 400 22px var(--font-mono);
+  color: var(--color-ink-muted);
+}
+.mi-dark {
+  display: block;
+  width: 46px;
+  height: 18px;
+  border: 1px solid var(--color-line);
+  background: var(--mi-hatch);
+}
+
+/* Three ways to draw the wind, side by side. */
+.mi-three {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.mi-three figure {
+  margin: 0;
+}
+.mi-three .mi-cut {
+  display: grid;
+  place-items: center;
+  height: 70px;
+  border: 1px solid var(--color-ink);
+  background: var(--color-sea);
+}
+.mi-three figcaption {
+  margin-top: 5px;
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.mi-three figcaption small {
+  display: block;
+  font: italic 12.5px var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-ink-muted);
+}
+.mi-wind-fig {
+  font: 600 30px var(--font-mono);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.mi-wind-fig small {
+  margin-left: 2px;
+  font: 500 14px var(--font-mono);
+  color: var(--color-ink-muted);
+}
+
+/* The blend's figure and its models. */
+.mi-blend {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--color-ink);
+  background: var(--color-ground);
+}
+.mi-blend text {
+  font: 500 9.5px var(--font-mono);
+  letter-spacing: 0.1em;
+  fill: var(--color-ink-muted);
+}
+.mi-models {
+  width: 100%;
+  border-collapse: collapse;
+  font: 12.5px var(--font-mono);
+}
+.mi-models td {
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--color-line);
+}
+.mi-models td:first-child {
+  width: 22px;
+}
+.mi-models .mi-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--color-ink);
+  vertical-align: middle;
+}
+.mi-models b {
+  font-weight: 600;
+}
+.mi-models tr.is-lead b {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.mi-models .mi-tag {
+  font: 500 9.5px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+/* The chart's own symbols, INT 1: each with its name and where it is. */
+.mi-symbols {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mi-symbols li {
+  display: grid;
+  gap: 3px;
+}
+.mi-symbols .g-chart {
+  color: var(--color-ink);
+}
+.mi-symbols b {
+  font: 600 14px var(--font-display);
+}
+.mi-symbols span {
+  font: italic 12.5px/1.3 var(--font-body);
+  color: var(--color-ink-muted);
+}
+
+/* The sources: a heavy rule, a line each. */
+.mi-sources ul {
+  margin: 0;
+  padding: 0;
+  border-top: 2px solid var(--color-ink);
+  list-style: none;
+}
+.mi-sources li {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--color-line);
+  font-size: 14px;
+  color: var(--color-ink-2);
+}
+.mi-sources .ip-small {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--color-warn);
+  background: var(--color-warn-ground);
+  font-size: 14px;
+  color: var(--color-ink);
+}
+
+/* About: the name, the puffin beside it. */
+.mi-about {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  padding-bottom: 12px;
+  border-bottom: 3px double var(--color-ink);
+}
+.mi-about > div {
+  flex: 1;
+}
+.mi-about .mi-lede {
+  margin: 8px 0 0;
+}
+
+/* The key's lights and the loupe's rose, drawn bigger than on the chart. */
+.mi-main .k-light,
+.mi-main .k-rose {
+  overflow: visible;
+}
+.mi-main .tints {
+  display: flex;
+  border: 1px solid color-mix(in srgb, var(--color-depth) 60%, transparent);
+}
+.mi-main .tints span {
+  flex: 1;
+  height: 18px;
+  font: italic 10px/18px var(--font-body);
+  text-align: center;
+  color: var(--color-ink-2);
+}
+.mi-main .k-sat {
+  font: 500 11px var(--font-mono);
+}
+.mi-main .k-sat.is-error {
+  color: var(--color-warn);
+}
+.mi-main .foil-key .fk-title {
+  display: none;
+}
+
+/* ---- the keys each part draws, moved here from src/map.css ---- */
+
+/* The loupe's rose. */
+.k-rose-rim {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 1.4;
+}
+.k-rose-nogo {
+  fill: var(--color-ink);
+  fill-opacity: 0.18;
+  stroke: var(--color-ink);
+  stroke-width: 0.6;
+  stroke-dasharray: 1.5 1.5;
+}
+.k-rose-out {
+  fill: var(--color-ground);
+  stroke: var(--color-ink);
+  stroke-width: 1;
+}
+.k-rose-off {
+  fill: none;
+  stroke: var(--color-pen);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.k-rose-needle {
+  stroke: var(--color-ink);
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+}
+
+/* The Currents layer's key: its arrows as the chart draws them. */
+.map-info .cur-key {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 4px 8px;
+  align-items: center;
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.cur-key dt {
+  display: grid;
+  place-items: center;
+}
+.cur-key dd {
+  margin: 0;
+}
+.cur-key path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cur-key .cur-k-model {
+  stroke: var(--color-depth);
+  stroke-width: 1.4;
+}
+.cur-key .cur-k-stream {
+  stroke: var(--color-ink);
+  stroke-width: 1.8;
+}
+.map-info .cur-sites {
+  padding-left: 18px;
+}
+/* The tidal depth's key (src/FoilLegend.tsx). */
+.foil-key {
+  font-size: 14px;
+  line-height: 1.4;
+}
+.foil-key .foil-at {
+  margin: 0 0 6px;
+  font: 500 11px var(--font-mono);
+  color: var(--color-ink);
+}
+.foil-key .foil-at.is-error {
+  color: var(--color-warn);
+}
+.map-info .foil-key ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.foil-key li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 1px 0;
+}
+.foil-key .fk {
+  flex: none;
+  width: 22px;
+  height: 10px;
+  border: 1px solid var(--color-ink);
+}
+.foil-key .fk-enough {
+  background: var(--map-foil-enough);
+}
+.foil-key .fk-shallow {
+  background: var(--map-foil-shallow);
+}
+.foil-key .fk-line {
+  height: 0;
+  border: 0;
+  border-top: 2px solid var(--map-foil-line);
+}
+.foil-key .fk-dry {
+  background: var(--map-foil-dry);
+}
+.foil-key .fk-title {
+  margin: 0 0 4px;
+}
+.foil-key .fk-scale {
+  height: 10px;
+  border: 1px solid var(--color-ink);
+}
+.foil-key .fk-ticks {
+  position: relative;
+  height: 14px;
+  margin: 2px 0 6px;
+  font: 500 10px var(--font-mono);
+  color: var(--color-ink-muted);
+}
+.foil-key .fk-ticks span {
+  position: absolute;
+  left: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.foil-key .fk-ticks span:first-child {
+  transform: none;
+}
+.foil-key .fk-ticks span:last-child {
+  transform: translateX(-100%);
+}
+.foil-key .foil-probe {
+  margin: 6px 0 0;
+  font: 500 11px var(--font-mono);
+}
+.foil-key .foil-small {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+
+/* ---- a phone: the whole screen, the rail a row of tabs ---- */
+@media (max-width: 720px) {
+  .map-info {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    border: 0;
+    box-shadow: none;
+  }
+  .map-info > div:first-child {
+    padding: max(12px, env(safe-area-inset-top)) 56px 8px 14px;
+    border-right: 0;
+  }
+  .mi-nav {
+    grid-row: 2;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-ink);
+    scrollbar-width: none;
+  }
+  .mi-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .mi-nav hr {
+    display: none;
+  }
+  .map-info .mi-nav .mi-tab {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    width: auto;
+    min-width: 72px;
+    height: 62px;
+    padding: 6px 8px 4px;
+    font: 500 9px var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .map-info .mi-nav .mi-tab[aria-selected="true"] {
+    font-style: normal;
+    font-weight: 600;
+  }
+  .mi-tab .mi-name {
+    display: none;
+  }
+  .mi-tab .mi-short {
+    display: inline;
+  }
+  .mi-tab[aria-selected="true"]::before {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    height: 3px;
+  }
+  .mi-main {
+    grid-column: 1;
+    grid-row: 3;
+    padding: 16px 16px max(24px, env(safe-area-inset-bottom));
+  }
+  .mi-main h3 {
+    font-size: 26px;
+  }
+  .mi-keys {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mi-beside {
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .mi-three {
+    gap: 8px;
+  }
+  .mi-three figcaption small {
+    display: none;
+  }
+}

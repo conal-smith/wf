@@ -178,26 +178,66 @@ until `EXPO_TOKEN` and `EAS_PROJECT_ID` exist, so nothing here changes the
 site's train until then. MOBILE.md has the diagram, the setup and how to roll
 the app back.
 
-### The Mac mini
+### The forecast jobs
 
-Production's forecast is the worker image running on the Mac mini. To run the
-released image instead of one built from the checkout:
+A promote does not move the forecast jobs. Since 18 October 2026 every job runs
+on Cloudflare Containers through Home Compute's hosted control plane (its
+scheduler is hc-core); the Mac mini is drained and kept as a fallback. Each job
+is pinned to the worker image's multi-platform ghcr digest, and Cloudflare cannot
+pull from ghcr.io, so after each promote the new image is copied into
+Cloudflare's registry, hc-core is deployed with it, and every job is pointed at
+the new digest. Until then production keeps running the previous release's
+image. From a Home Compute checkout on its `main` (Home Compute's
+[docs/cloudflare-containers.md](https://github.com/sprintengine/home-compute/blob/main/docs/cloudflare-containers.md)
+and [docs/deploy.md](https://github.com/sprintengine/home-compute/blob/main/docs/deploy.md)
+have the detail):
 
-```sh
-deploy/home-compute/macmini.sh pull          # ghcr.io/sprintengine/wingfoil-forecast:production
-deploy/home-compute/macmini.sh pull ghcr.io/sprintengine/wingfoil-forecast:2026.10.10   # a release (image tags have no v)
-```
+1. **The digest.** `crane digest ghcr.io/sprintengine/wingfoil-forecast:<date>`
+   (image tags have no `v`: release `v2026.10.23.2` is `:2026.10.23.2`), after
+   `gh auth token | crane auth login ghcr.io -u <github user> --password-stdin`
+   with a token that has `read:packages`. Check that `crane config … --platform
+   linux/amd64` has `org.opencontainers.image.revision` set to the release's commit.
+2. **Copy it to Cloudflare** (`npx wrangler login` first), without deploying:
+   `cloud/scripts/set-container-image.sh ghcr.io/sprintengine/wingfoil-forecast:<date>`.
+   It copies the linux/amd64 image (several minutes for the worker image) and
+   rewrites the three image lines in `cloud/wrangler.core.jsonc`; `git diff`
+   should show nothing else.
+3. **Pick a quiet window.** A run whose pinned digest is not the deployed image
+   fails at once rather than waiting, so swap between slots: from :25 to :45 in
+   an hour with no job at :20 to :45 (00, 01, 02, 06, 09, 12, 14, 15, 18 and
+   21 UTC with today's `jobs.toml`). Start the admin session,
+   `HC_ADMIN=http://127.0.0.1:8790; cloud/scripts/local-admin.sh` (or use an
+   Access service token against hc-web), and check that `GET $HC_ADMIN/v1/snapshot`
+   lists no `activeRuns`.
+4. **Swap.** Drain the executor so nothing starts mid-swap
+   (`PATCH $HC_ADMIN/v1/machines/m_cloudflarecontainer0000000 {"drain":true}`),
+   deploy hc-core (`npx wrangler deploy -c wrangler.core.jsonc` from `cloud/`),
+   point every Cloudflare job at the new digest
+   (`PATCH $HC_ADMIN/v1/jobs/<id>/image {"image":"ghcr.io/sprintengine/wingfoil-forecast@sha256:<digest>"}`),
+   then undrain (`{"drain":false}`). Runs that came due meanwhile start at the
+   next cron minute.
+5. **Commit the image lines** (and any preset change) to Home Compute's `main`
+   through a pull request, so the next hc-core deploy does not put the old image
+   back.
+6. **A new job** in `deploy/local/jobs.toml` is not added by any of this. Run
+   `deploy/schedules.py --check`, then import only the new jobs from
+   `deploy/home-compute/home-compute.json` with Home Compute's
+   `node src/cli.mjs cloud import <file> --preset wingfoil --image ghcr.io/sprintengine/wingfoil-forecast@sha256:<digest> --dry-run`
+   (then again without `--dry-run`; the import never touches jobs that are not in
+   the file). Cloudflare refuses a run longer than 1200 s and the import gives a
+   job its total timeout less its queue time, so set the new job's
+   `timeouts.runSeconds` to 1200 or less with `PUT $HC_ADMIN/v1/jobs/<id>`
+   (`If-Match: <revision>`). Add its model to the preset's `freshness` map
+   (`presets/wingfoil.json`, the `maxAgeHours` of `force5/ingest/registry.py`) for
+   the stale alert. Start its first run with `POST $HC_ADMIN/v1/jobs/<id>/run`.
+7. **Check** the jobs' next runs on the dashboard, then run the production
+   monitor (*Actions → Production monitor → Run workflow*).
 
-`pull` tags it as `wingfoil-forecast:local`, so Home Compute and the menu bar
-app need no change; the next job runs it. Colima is linux/arm64, so the pull
-selects that platform from the manifest list. `:production` names the list only
-after a promote of a nightly that built it; merging the multi-arch workflow
-does not move the tag. `macmini.sh image` still builds from the checkout when
-you are trying something out. The same image runs anywhere Docker does. Home
-Compute can also run a job on Cloudflare Containers: there the released image is
-pushed into Cloudflare's registry (linux/amd64) with Home Compute's
-`cloud/scripts/set-container-image.sh ghcr.io/sprintengine/wingfoil-forecast:production`
-and hc-core is deployed again; the job definitions do not change.
+**The Mac mini fallback.** `deploy/home-compute/macmini.sh pull [image]` pulls
+the released image (`:production` by default; Colima is linux/arm64, so it takes
+that platform from the manifest list) and tags it `wingfoil-forecast:local` for
+jobs placed on the Mac mini. `macmini.sh image` builds from the checkout when you
+are trying something out.
 
 ## The production monitor
 

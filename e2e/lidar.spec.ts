@@ -1,4 +1,11 @@
-import { expect, openFromMenu, test, type Page } from "./fixtures";
+import {
+  expect,
+  layerTile,
+  openFromMenu,
+  setLayer,
+  test,
+  type Page,
+} from "./fixtures";
 
 /**
  * The LiDAR layer: off by default with nothing of it fetched; turned on in
@@ -84,9 +91,11 @@ async function changed(page: Page, a: Buffer, b: Buffer) {
 
 async function toggle(page: Page, on: boolean) {
   await openFromMenu(page, "Layers");
-  const box = page.getByRole("checkbox", { name: "LiDAR data" });
-  await expect(box).toBeChecked({ checked: !on });
-  await box.setChecked(on);
+  await expect(layerTile(page, "LiDAR")).toHaveAttribute(
+    "aria-pressed",
+    String(!on),
+  );
+  await setLayer(page, "LiDAR", on);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("group", { name: "Layers" })).toHaveCount(0);
 }
@@ -140,6 +149,7 @@ test("the LiDAR layer loads nothing until it is turned on, then draws, keys and 
   await expect(key.locator("[data-lidar-sources] li").first()).toContainText(
     /Lough Foyle: bathymetric, 2008, 5 m; CC BY 4\.0/,
   );
+  await page.getByRole("tab", { name: "Sources & credits" }).click();
   await expect(page.locator("#map-info-sources")).toContainText(
     "OSNI River Basin LiDAR",
   );

@@ -5,7 +5,6 @@
  */
 import { useContext, type ReactNode } from "react";
 import { compass } from "../force5/src/weather";
-import { ChartGlyph, glyphs } from "./chartGlyphs";
 import { InfoButton } from "./InfoPop";
 import { MapInfoOpen } from "./mapInfoContext";
 
@@ -102,27 +101,3 @@ export function StarsHelp() {
 /** "WSW 14": where it blows from and how hard. */
 export const windWords = (from: number | null, kn: number | null) =>
   from === null || kn === null ? "" : `${compass(from)} ${Math.round(kn)}`;
-
-/**
- * A thermometer standing in a wave, for the sea's temperature: the set's
- * (src/glyphSet.ts), under the name the dock's head knows it by.
- */
-export function SeaTempGlyph({
-  size = 14,
-  strokeWidth = 1.6,
-  className,
-}: {
-  size?: number;
-  strokeWidth?: number;
-  className?: string;
-  "aria-hidden"?: boolean | "true" | "false";
-}) {
-  return (
-    <ChartGlyph
-      glyph={glyphs.seaTemp}
-      size={size}
-      strokeWidth={strokeWidth}
-      className={className}
-    />
-  );
-}

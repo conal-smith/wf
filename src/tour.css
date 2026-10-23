@@ -1,0 +1,152 @@
+/* The first visit's offer (src/TourPrompt.tsx) and the tour (src/Tour.tsx),
+   in their own chunks. The chart's box, the Almanac's puffin, the pen's ring. */
+
+/* ---- the offer: on the chart, low and in the middle, never over the head ---- */
+.tour-prompt {
+  position: fixed;
+  z-index: var(--z-index-header);
+  bottom: 28px;
+  left: 50%;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  width: min(430px, calc(100% - 24px));
+  padding: 14px 18px 14px 12px;
+  transform: translateX(-50%);
+  animation: tour-in 0.35s ease-out both;
+}
+.tour-prompt h3,
+.tour-say h3 {
+  margin: 0;
+  font: 600 var(--text-lead) / 1.2 var(--font-display);
+  color: var(--color-ink);
+}
+.tour-prompt p,
+.tour-say p {
+  margin: 4px 0 0;
+  font: var(--text-prose) / 1.4 var(--font-body);
+  color: var(--color-ink-2);
+}
+.tour-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+@keyframes tour-in {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+/* ---- the tour ---- */
+/* Over a dialog (the layers' card), the tour is drawn inside it, where the
+   modal leaves the page live; a transform on the dialog, while it animates
+   in, would hold the tour to the dialog's box. */
+dialog[open]:has(> .tour) {
+  overflow: visible;
+  transform: none;
+  translate: none;
+  animation: none;
+}
+.tour {
+  position: fixed;
+  z-index: calc(var(--z-index-dialog) + 10);
+  inset: 0;
+  pointer-events: none;
+}
+.tour-dim {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}
+.tour-ring {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.tour-ring path {
+  fill: none;
+  stroke: var(--color-pen);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  animation: var(--animate-ink);
+}
+.tour-card {
+  position: absolute;
+  width: 340px;
+  padding: 12px 14px 12px;
+  pointer-events: auto;
+  animation: tour-in 0.25s ease-out both;
+}
+.tour-k {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font: 500 var(--text-eyebrow) var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.tour .tour-skip {
+  padding: 0 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.tour-say {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 6px;
+}
+.tour-say > div {
+  flex: 1;
+  min-width: 0;
+}
+.tour-sign {
+  margin: 6px 0 0;
+  font: italic var(--text-body) var(--font-body);
+  color: var(--color-ink-muted);
+}
+.tour-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-line);
+}
+.tour-sp {
+  flex: 1;
+}
+.tour-dots {
+  display: flex;
+  gap: 5px;
+}
+.tour-dots i {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--color-ink);
+  border-radius: 50%;
+}
+.tour-dots .is-on {
+  background: var(--color-ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-prompt,
+  .tour-card,
+  .tour-ring path {
+    animation: none;
+  }
+}
+@media (max-width: 719px) {
+  .tour-prompt {
+    bottom: 16px;
+  }
+  .tour-card {
+    width: calc(100% - 20px);
+  }
+}

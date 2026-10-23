@@ -2,11 +2,11 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import type { WeatherIcon } from "../force5/src/surface";
+import type { WeatherIcon } from "../../force5/src/surface";
 import * as glyphs from "./glyphSet";
 import type { GlyphDef, GlyphPart } from "./glyphSet";
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const set = Object.entries(glyphs).filter(
   (entry): entry is [string, GlyphDef] => Array.isArray(entry[1]),
 );
@@ -159,13 +159,17 @@ describe("the glyph set", () => {
     expect(JSON.stringify(glyphs)).not.toContain("transform");
   });
 
-  it("is drawn by the site and the app from this one file", () => {
-    const site = readFileSync(resolve(ROOT, "src/chartGlyphs.tsx"), "utf8");
-    const app = readFileSync(
-      resolve(ROOT, "mobile/src/components/Glyphs.tsx"),
-      "utf8",
+  it("is drawn by the map, the spot page and the app from this one file", () => {
+    const read = (path: string) => readFileSync(resolve(ROOT, path), "utf8");
+    expect(read("shared/web/ChartGlyph.tsx")).toMatch(/from "\.\/glyphSet"/);
+    expect(read("src/chartGlyphs.tsx")).toMatch(
+      /from "\.\.\/shared\/web\/(glyphSet|ChartGlyph)"/,
     );
-    expect(site).toMatch(/from "\.\/glyphSet"/);
-    expect(app).toMatch(/from "\.\.\/\.\.\/\.\.\/src\/glyphSet"/);
+    expect(read("spot/web/glyphs.tsx")).toMatch(
+      /from "\.\.\/\.\.\/shared\/web\/(glyphSet|ChartGlyph)"/,
+    );
+    expect(read("mobile/src/components/Glyphs.tsx")).toMatch(
+      /from "\.\.\/\.\.\/\.\.\/shared\/web\/glyphSet"/,
+    );
   });
 });

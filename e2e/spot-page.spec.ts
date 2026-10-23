@@ -570,3 +570,35 @@ test("on a phone the picture is under the header and the week still on the first
   await expect(picture(page)).toBeInViewport();
   await expect(page.locator("[data-day-card]").last()).toBeInViewport();
 });
+
+test("the sky is the dock's: the glyph set, in the weather's colours", async ({
+  page,
+}) => {
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  // The sample's weather run starts a few days on, and a far day draws as it
+  // comes into view: go down the week until one has a sky.
+  const skies = page.locator('[data-day] tr[data-hour] svg[role="img"].g-set');
+  await expect(page.locator("[data-day]").first()).toBeVisible();
+  for (const day of await page.locator("[data-day]").all()) {
+    if (await skies.count()) break;
+    await day.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
+  }
+  await expect.poll(() => skies.count(), { timeout: 20000 }).toBeGreaterThan(0);
+  // Each named in words, and each filling its shape with a weather's paint
+  // (shared/web/glyphSet.ts) inside an ink outline.
+  const drawn = await skies.evaluateAll((svgs) =>
+    svgs.map((svg) => ({
+      named: !!svg.getAttribute("aria-label"),
+      paints: [...svg.querySelectorAll("path, circle")]
+        .map((el) => (el as SVGElement).style.fill)
+        .filter(Boolean)
+        .join(" "),
+    })),
+  );
+  for (const { named, paints } of drawn) {
+    expect(named).toBe(true);
+    expect(paints).toMatch(/var\(--color-weather-(sun|cloud|night|rain)\)/);
+  }
+});

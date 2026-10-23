@@ -57,7 +57,7 @@ export default function LidarKey({
         </>
       )}
       <p className="foil-small">
-        The dock&rsquo;s tides are on the same datum: ground under the
+        The tide predictions are on the same datum: ground under the
         tide&rsquo;s height is under water. Blue is below the lowest tide, aqua
         to sand the foreshore from low water to high, grey buff above the tides;
         shaded from the north-west.

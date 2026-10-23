@@ -101,13 +101,29 @@ async function differs(page: Page, a: Buffer, b: Buffer, by = 40) {
   );
 }
 
+/** Each tide's tile in Layers, under Ground. */
+const TILE = {
+  "High tide": "Satellite, high tide",
+  "Low tide": "Satellite, low tide",
+} as const;
+const tile = (page: Page, name: keyof typeof TILE) =>
+  page
+    .getByRole("group", { name: "Ground" })
+    .getByRole("button", { name: TILE[name], exact: true });
+
 async function choose(page: Page, name: "Off" | "High tide" | "Low tide") {
   await openFromMenu(page, "Layers");
-  const button = page
-    .getByRole("group", { name: "Satellite" })
-    .getByRole("button", { name, exact: true });
-  await button.click();
-  await expect(button).toHaveAttribute("aria-pressed", "true");
+  if (name === "Off") {
+    // No image: the tide that is on, pressed again.
+    for (const tide of ["High tide", "Low tide"] as const)
+      if ((await tile(page, tide).getAttribute("aria-pressed")) === "true")
+        await tile(page, tide).click();
+    for (const tide of ["High tide", "Low tide"] as const)
+      await expect(tile(page, tide)).toHaveAttribute("aria-pressed", "false");
+  } else {
+    await tile(page, name).click();
+    await expect(tile(page, name)).toHaveAttribute("aria-pressed", "true");
+  }
   // Under the switch, the tides both images were taken at, near here.
   const tides = page.locator("[data-satellite-tides]");
   let line: string | null = null;
@@ -173,6 +189,7 @@ test("the satellite image draws at high and at low tide in the Malahide estuary,
 
   // The key names the tide the image was taken at, near here.
   await openFromMenu(page, "About the map");
+  await page.getByRole("tab", { name: "Satellite" }).click();
   await expect(page.locator(".k-sat")).toContainText(
     /Satellite: low tide \(≈\d\.\d m\)/,
   );
@@ -190,11 +207,7 @@ test("the satellite image draws at high and at low tide in the Malahide estuary,
     timeout: 30000,
   });
   await openFromMenu(page, "Layers");
-  await expect(
-    page
-      .getByRole("group", { name: "Satellite" })
-      .getByRole("button", { name: "Low tide", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(tile(page, "Low tide")).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Escape");
 
   // And off again is off, and stays so.
