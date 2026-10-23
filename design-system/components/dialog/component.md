@@ -13,8 +13,11 @@ inert. Its buttons are the Button component's classes.
   `sem.texture.grain`) in the double rule: a `sem.rule.hairline` ink border
   plus `sem.shadow.frame`, then `sem.shadow.surface`. Square
   (`sem.radius.dialog`). Sentences in `sem.font.family.body`.
-- Backdrop: `::backdrop` in `sem.color.scrim` with a `sem.blur.scrim` blur: the
-  page behind barely softens.
+- Backdrop: `::backdrop` in `sem.color.scrim`, a wash of paper, over a
+  `sem.blur.scrim` blur of the page or the map behind; it fades in with
+  `sem.animate.scrim-in`. Where the browser cannot blur, or the reader asks for
+  less transparency, it is `sem.color.scrim-solid` with no blur. The product's
+  one recipe for it is ui/Backdrop.tsx (`scrim`, `Backdrop`).
 - Head: `.wf-dialog__head` — the title and the close button, top-aligned and
   `sem.space.x3` apart, over a hairline ink rule with `sem.space.x3` beneath.
 - Title: `.wf-dialog__title` — the display face at `sem.font.size.lead` and

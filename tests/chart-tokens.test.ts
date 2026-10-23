@@ -106,6 +106,30 @@ describe("the chart's inks", () => {
   });
 });
 
+describe("the weather's colours", () => {
+  it("are the glyph sheet's, the sun the buoy's own yellow", () => {
+    expect(resolved("weather-sun")).toBe(resolved("buoy"));
+    expect(resolved("weather-rain")).toBe("#3a7fb0");
+    expect(resolved("weather-cloud")).toBe("#d6d0c2");
+    expect(resolved("weather-night")).toBe("#e7dcb4");
+  });
+
+  it("keep rain to a mark: it shows on paper, and does not read as words", () => {
+    const paper = resolved("ground");
+    const rain = contrast(resolved("weather-rain"), paper);
+    expect(rain).toBeGreaterThanOrEqual(3);
+    expect(rain).toBeLessThan(4.5);
+  });
+
+  it("keep the pale fills inside an ink line that reads round them", () => {
+    for (const fill of ["weather-cloud", "weather-night", "weather-sun"])
+      expect(
+        contrast(resolved("ink"), resolved(fill)),
+        fill,
+      ).toBeGreaterThanOrEqual(7);
+  });
+});
+
 describe("contrast, as the ruling records it", () => {
   const PRINCIPLES = resolve(ROOT, "docs/DESIGN_PRINCIPLES.md");
 

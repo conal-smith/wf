@@ -210,10 +210,12 @@ def client(env):
                                       connect_timeout=15, read_timeout=300))
 
 
-def put_new(s3, bucket, key, body_path=None, body=None, content_type="application/octet-stream"):
+def put_new(s3, bucket, key, body_path=None, body=None, content_type="application/octet-stream",
+            prefixes=PREFIXES):
     """Add one object; never overwrite. Returns 'put' or 'kept'."""
-    if not key.startswith(PREFIXES):
-        raise SystemExit(f"refusing to write outside the satellite and intertidal prefixes: {key}")
+    if not key.startswith(prefixes):
+        raise SystemExit(f"refusing to write outside the {' and '.join(p.split('/')[0] for p in prefixes)} "
+                         f"prefixes: {key}")
     size = os.path.getsize(body_path) if body_path else len(body)
     try:
         head = s3.head_object(Bucket=bucket, Key=key)

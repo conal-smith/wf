@@ -395,6 +395,25 @@ reads as the chart. "Foilable depth"
 is "Tidal depth" now, and the wash is "Coloured wind": the names say what a
 reader sees, not what the layer is for.
 
+**2026-10-23 — The glyphs take a little colour, and only where it means
+something.** The customise-wizard mockup's glyph sheet is the set now: one
+24-unit grid, one 1.5 stroke (1.6 at 18 pixels and under), round ends, each
+drawn as a chart draws a buoy, an ink outline with a colour inside only where
+the colour says something. The weather's state takes four tokens: the sun is
+the buoy's yellow (`weather-sun`), rain a sea-blue (`weather-rain`,
+`#3a7fb0`), a cloud's grey (`weather-cloud`, `#d6d0c2`) and the moon's pale
+fill (`weather-night`, `#e7dcb4`). With the wind ramp, the chart's magenta
+for the best and the warm red for a warning, that is all the colour there
+is; the rest is ink on paper. Rain is 3.75:1 on paper, a mark and never
+words, so the rain row's figures stay in ink over a rain-blue tint; the pale
+fills sit inside an ink line at 8.72:1 (sun), 11.00:1 (cloud) and 12.32:1
+(moon), and on the proposed night chart they carry the shape themselves
+(8.8:1 to 12.4:1 on the night ground). None re-themes. The set is data
+(`src/glyphSet.ts`) that the site (`ChartGlyph`) and the app (`SetGlyph`)
+both draw, so the dock's row labels, its sky (the moon in the dark hours) and
+the blend's switch are the same on both; the layers' and the site menu's
+glyphs stay src/chartGlyphs.tsx's own.
+
 ---
 
 ## Still open

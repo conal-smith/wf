@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useFadeOut } from "../ui/Backdrop";
 import { Dialog } from "../ui/Dialog";
 
 /**
@@ -54,13 +55,15 @@ export function InfoPop({
   wide?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // Kept while it fades out, once closed.
+  const shown = useFadeOut(open);
   return (
     <>
       <InfoButton label={label} open={open} onOpen={() => setOpen(true)} />
-      {open &&
+      {shown &&
         createPortal(
           <Dialog
-            open
+            open={open}
             title={label}
             size={wide ? "wide" : "md"}
             className="info-pop"

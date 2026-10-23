@@ -11,6 +11,7 @@ import type { SiteMenuTool } from "../force5/src/SiteMenu";
 import type { ChartLayers } from "../force5/src/WindMap";
 import { FOCUS_STYLES, type FocusStyle } from "../force5/src/focus";
 import type { WindStyle } from "../force5/src/windLayer";
+import { useFadeOut } from "../ui/Backdrop";
 import { Dialog } from "../ui/Dialog";
 import { Segmented } from "../ui/Segmented";
 import {
@@ -30,6 +31,7 @@ import {
   SatelliteGlyph,
   SoundingsGlyph,
   SpotsGlyph,
+  SurveyGlyph,
   TidalDepthGlyph,
   TintsGlyph,
 } from "./chartGlyphs";
@@ -53,7 +55,14 @@ const CHART_LABEL: Record<keyof ChartLayers, string> = {
   relief: "Land relief",
   names: "Spot names",
   foil: "Tidal depth",
+  lidar: "LiDAR data",
   currents: "Currents, a rough guide",
+};
+/** The chart's switches whose key is in the map's information, behind an "i". */
+const CHART_INFO: Partial<Record<keyof ChartLayers, [string, InfoSection]>> = {
+  foil: ["About tidal depth", "foil"],
+  lidar: ["About the LiDAR data", "lidar"],
+  currents: ["About currents", "currents"],
 };
 /** Each part's glyph, drawn as the chart draws the part; a row without one still reads. */
 const CHART_GLYPH: Partial<Record<keyof ChartLayers, ReactNode>> = {
@@ -62,6 +71,7 @@ const CHART_GLYPH: Partial<Record<keyof ChartLayers, ReactNode>> = {
   relief: <ReliefGlyph />,
   names: <NamesGlyph />,
   foil: <TidalDepthGlyph />,
+  lidar: <SurveyGlyph />,
   currents: <CurrentsGlyph />,
 };
 const SATELLITE_GLYPH: Partial<Record<SatelliteOption, ReactNode>> = {
@@ -189,6 +199,8 @@ export default function MapControls({
   foilNote?: string | null;
 }) {
   const close = () => onOpen(null);
+  // The panel drawn: the open one, or the one fading out after it closed.
+  const shown = useFadeOut(open);
   return (
     <div className="map-ctrl">
       <div className="zbox chart-box" role="group" aria-label="Map controls">
@@ -209,16 +221,16 @@ export default function MapControls({
           −
         </button>
       </div>
-      {open && (
+      {shown && (
         <Dialog
-          open
-          title={PANEL_TITLE[open]}
+          open={open !== null}
+          title={PANEL_TITLE[shown]}
           className="map-panel-dialog"
           onClose={close}
         >
-          {open === "spots" && spots()}
-          {open === "options" && options(close)}
-          {open === "layers" && (
+          {shown === "spots" && spots()}
+          {shown === "options" && options(close)}
+          {shown === "layers" && (
             <div
               id="map-layers"
               className="layers"
@@ -260,18 +272,17 @@ export default function MapControls({
                       <span>{CHART_LABEL[key]}</span>
                     </label>
                   );
-                  // The tidal depth's and the currents' keys are in the map's
-                  // information, not on the chart: their "i" opens it there,
-                  // beside the switch.
-                  if (key !== "foil" && key !== "currents") return box;
+                  // The tidal depth's, the LiDAR's and the currents' keys are in
+                  // the map's information, not on the chart: each one's "i"
+                  // opens it there, beside the switch.
+                  const info = CHART_INFO[key];
+                  if (!info) return box;
                   return (
                     <div key={key} className="layer-info">
                       {box}
                       <InfoButton
-                        label={
-                          key === "foil" ? "About tidal depth" : "About currents"
-                        }
-                        onOpen={() => onInfo(key)}
+                        label={info[0]}
+                        onOpen={() => onInfo(info[1])}
                       />
                       {key === "foil" && layers.foil && foilNote && (
                         <small data-foil-note>{foilNote}</small>

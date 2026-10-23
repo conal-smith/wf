@@ -1383,6 +1383,30 @@ test("waves, sky, air, rain and sea are one tap away, and stay open", async ({
   await expect
     .poll(() => page.locator(".dock tr.tt-sky .weather-cell").count())
     .toBeGreaterThan(0);
+  // The sky in the glyph set's colours (src/glyphSet.ts), inside an ink
+  // outline: each glyph fills something with the weather's own paint, and
+  // the moon stands for the sun in a dark hour. The rows' labels are ink.
+  const fills = await page
+    .locator(".dock tr.tt-sky .weather-cell")
+    .evaluateAll((cells) =>
+      cells.map((cell) => ({
+        moon:
+          !!cell.closest("td.night") &&
+          /^(clear|partly)$/.test((cell as HTMLElement).dataset.weather ?? ""),
+        paints: [...cell.querySelectorAll("svg path, svg circle")]
+          .map((el) => (el as SVGElement).style.fill)
+          .filter(Boolean),
+      })),
+    );
+  for (const { paints } of fills)
+    expect(paints.join(" ")).toMatch(
+      /var\(--color-weather-(sun|cloud|night|rain)\)/,
+    );
+  for (const { moon, paints } of fills)
+    if (moon) expect(paints).toContain("var(--color-weather-night)");
+  await expect(
+    page.locator('.dk-labs .dk-glyph[title="Rain, mm"] svg path'),
+  ).toHaveCSS("fill", "rgb(58, 127, 176)");
   // A total, a dash, or the dot of an hour inside a total printed further on.
   await expect(page.locator(".dock tr.tt-rain td[data-i]").first()).toHaveText(
     /^(–|·|\d+(\.\d)?)$/,

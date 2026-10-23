@@ -1,15 +1,18 @@
 /**
  * The chart's small glyphs, drawn as the site draws them (src/glyphs.tsx,
  * src/WeatherGlyph.tsx): an arrow blowing downwind, the red star a rider keeps
- * a spot with, a wing, the sea's thermometer, and nine shapes for the sky.
+ * a spot with, and the site's glyph set (src/glyphSet.ts, `SetGlyph`): the
+ * rows' glyphs and the sky, an ink outline with the weather's colour inside.
  * Each draws into its own <Svg>, or as a group (`*Mark`) into a larger one,
  * so a row of a hundred hours is one drawing rather than a hundred.
  */
 import { memo } from "react";
 import { Pressable, StyleSheet } from "react-native";
-import Svg, { Circle, G, Path } from "react-native-svg";
+import Svg, { Circle, G, Path, Text as SvgText } from "react-native-svg";
 import type { WeatherIcon } from "../../../force5/src/surface";
-import { colors, hitTarget } from "../theme/tokens";
+import * as glyphs from "../../../src/glyphSet";
+import { glyphStroke, skyGlyph, type GlyphDef, type GlyphPaint } from "../../../src/glyphSet";
+import { colors, fonts, hitTarget } from "../theme/tokens";
 import { tick } from "./haptics";
 
 /** The arrow, in a 14-unit box centred on 0,0, pointing down before it is turned. */
@@ -176,94 +179,99 @@ interface StrokeProps {
   strokeWidth?: number;
 }
 
-function Stroke({ size = 14, color = colors.ink, strokeWidth = 1.6, d }: StrokeProps & { d: string[] }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" accessible={false}>
-      {d.map((path) => (
-        <Path
-          key={path}
-          d={path}
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ))}
-    </Svg>
-  );
-}
-
-/** A wing: the leading edge's arc and the strut across it. */
-export const WingGlyph = (props: StrokeProps) => (
-  <Stroke {...props} d={["M3 17C6 8 13 4 21 5C17 9 12 14 3 17Z", "M7 14L17 7"]} />
-);
-
-/** A thermometer standing in a wave, for the sea's temperature. */
-export const SeaTempGlyph = (props: StrokeProps) => (
-  <Stroke
-    {...props}
-    d={[
-      "M12 3a2 2 0 0 0-2 2v7.3a3.5 3.5 0 1 0 4 0V5a2 2 0 0 0-2-2Z",
-      "M2 21c2-1.3 3.3-1.3 5 0s3 1.3 5 0 3.3-1.3 5 0 3 1.3 5 0",
-    ]}
-  />
-);
-
-/** The wind's row: three streams. */
-export const WindGlyph = (props: StrokeProps) => (
-  <Stroke
-    {...props}
-    d={["M3 8h10a3 3 0 1 0-3-3", "M3 12h15a3 3 0 1 1-3 3", "M3 16h7"]}
-  />
-);
-
-/** Where the wind goes: an arrowhead. */
-export const DirectionGlyph = (props: StrokeProps) => (
-  <Stroke {...props} d={["M12 2 19 21 12 17 5 21Z"]} />
-);
-
-/** Waves: two crests. */
-export const WavesGlyph = (props: StrokeProps) => (
-  <Stroke
-    {...props}
-    d={[
-      "M2 9c2-1.3 3.3-1.3 5 0s3 1.3 5 0 3.3-1.3 5 0 3 1.3 5 0",
-      "M2 15c2-1.3 3.3-1.3 5 0s3 1.3 5 0 3.3-1.3 5 0 3 1.3 5 0",
-    ]}
-  />
-);
-
-/** The air's temperature: a thermometer. */
-export const ThermometerGlyph = (props: StrokeProps) => (
-  <Stroke {...props} d={["M14 4v10.5a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"]} />
-);
-
-const CLOUD = "M7.5 18h9a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 6.6 10.7 3.7 3.7 0 0 0 7.5 18Z";
-const CLOUD_HIGH = "M7.5 14h9a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 6.6 6.7 3.7 3.7 0 0 0 7.5 14Z";
-const SMALL_SUN = [
-  "M8 7.5a2.5 2.5 0 1 0 0 .01",
-  "M8 2.5v1M3 7.5h1M4.5 4l.7.7M11.5 4l-.7.7",
-];
-
-const SKY: Record<WeatherIcon, string[]> = {
-  clear: [
-    "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z",
-    "M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
-  ],
-  partly: [...SMALL_SUN, "M9.5 20h8a3.5 3.5 0 0 0 .5-6.96A4.8 4.8 0 0 0 9 13.3 3.2 3.2 0 0 0 9.5 20Z"],
-  cloudy: [CLOUD],
-  fog: [CLOUD_HIGH, "M4 18h16M6 21h12"],
-  drizzle: [CLOUD_HIGH, "M8 18v.5M12 19v.5M16 18v.5M10 21.5v.5M14 21.5v.5"],
-  rain: [CLOUD_HIGH, "M8 17l-1 4M12 17l-1 4M16 17l-1 4"],
-  showers: [...SMALL_SUN, "M9.5 16h8a3.5 3.5 0 0 0 .5-6.96A4.8 4.8 0 0 0 9 9.3 3.2 3.2 0 0 0 9.5 16Z", "M11 19l-.8 3M15 19l-.8 3"],
-  thunder: [CLOUD_HIGH, "M13 14l-3 4.5h4L11 23"],
-  snow: ["M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9", "M10 4.5l2 1.5 2-1.5M10 19.5l2-1.5 2 1.5"],
+/** Each paint of the glyph set (src/glyphSet.ts), from the theme; `ink` is the glyph's colour. */
+const PAINT: Record<Exclude<GlyphPaint, "ink" | "wind">, string> = {
+  paper: colors.paper,
+  sun: colors.weatherSun,
+  rain: colors.weatherRain,
+  cloud: colors.weatherCloud,
+  night: colors.weatherNight,
+  gust: colors.gust,
+  magenta: colors.magenta,
+  pen: colors.pen,
+  depth: colors.depth,
 };
 
-/** One shape per present-weather group, in the row's ink. Its words go on the cell. */
-export const SkyGlyph = memo(function SkyGlyph({ icon, ...props }: StrokeProps & { icon: WeatherIcon }) {
-  return <Stroke {...props} d={SKY[icon]} />;
+/**
+ * A glyph from the site's set (src/glyphSet.ts), drawn as the site's
+ * `ChartGlyph` draws it: an ink outline in `color`, the weather's colour
+ * inside. `wind` fills a speed arrow. Decorative: the words go on whatever
+ * holds it.
+ */
+export const SetGlyph = memo(function SetGlyph({
+  glyph,
+  size = 14,
+  color = colors.ink,
+  strokeWidth,
+  wind,
+}: StrokeProps & { glyph: GlyphDef; wind?: string }) {
+  const paint = (p: GlyphPaint | "none" | undefined, fallback: string) =>
+    p === undefined ? fallback : p === "none" ? "none" : p === "ink" ? color : p === "wind" ? (wind ?? color) : PAINT[p];
+  const width = strokeWidth ?? glyphStroke(size);
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" accessible={false}>
+      {glyph.map((part, i) => {
+        if ("text" in part)
+          return (
+            <SvgText
+              key={i}
+              x={part.x}
+              y={part.y}
+              fontSize={part.size}
+              fontFamily={part.face === "mono" ? fonts.monoBold : part.italic ? fonts.bodyItalic : fonts.body}
+              textAnchor={part.middle ? "middle" : undefined}
+              fill={paint(part.fill, color)}
+            >
+              {part.text}
+            </SvgText>
+          );
+        const common = {
+          fill: paint(part.fill, "none"),
+          stroke: paint(part.stroke, color),
+          strokeWidth: part.width ?? width,
+          strokeDasharray: part.dash,
+          strokeLinecap: "round" as const,
+          strokeLinejoin: "round" as const,
+          opacity: part.opacity,
+        };
+        return "d" in part ? (
+          <Path key={i} d={part.d} {...common} />
+        ) : (
+          <Circle key={i} cx={part.cx} cy={part.cy} r={part.r} {...common} />
+        );
+      })}
+    </Svg>
+  );
+});
+
+/** A wing: the leading edge's arc and the strut across it. */
+export const WingGlyph = (props: StrokeProps) => <SetGlyph {...props} glyph={glyphs.wing} />;
+
+/** A thermometer standing in a wave, for the sea's temperature. */
+export const SeaTempGlyph = (props: StrokeProps) => <SetGlyph {...props} glyph={glyphs.seaTemp} />;
+
+/** The wind's row: three streams. */
+export const WindGlyph = (props: StrokeProps) => <SetGlyph {...props} glyph={glyphs.wind} />;
+
+/** Where the wind goes, in its ring. */
+export const DirectionGlyph = (props: StrokeProps) => <SetGlyph {...props} glyph={glyphs.direction} />;
+
+/** Waves: two crests over the sea's line. */
+export const WavesGlyph = (props: StrokeProps) => <SetGlyph {...props} glyph={glyphs.waves} />;
+
+/** The air's temperature: a thermometer, its bulb full. */
+export const ThermometerGlyph = (props: StrokeProps) => <SetGlyph {...props} glyph={glyphs.air} />;
+
+/** Rain, in millimetres: a drop in rain's blue. */
+export const DropGlyph = (props: StrokeProps) => <SetGlyph {...props} glyph={glyphs.drop} />;
+
+/** One shape per present-weather group, the weather's colour inside; the moon for the sun after dark. */
+export const SkyGlyph = memo(function SkyGlyph({
+  icon,
+  dark,
+  ...props
+}: StrokeProps & { icon: WeatherIcon; dark?: boolean }) {
+  return <SetGlyph {...props} glyph={skyGlyph(icon, dark)} />;
 });
 
 /** A chevron, up or down, for a fold. */

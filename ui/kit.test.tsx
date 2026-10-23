@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { avatarStyles } from "./Avatar";
+import { BACKDROP, backdropStyles } from "./Backdrop";
 import { buttonStyles } from "./Button";
 import { checkboxStyles } from "./Checkbox";
 import { chipStyles } from "./Chip";
@@ -44,6 +45,7 @@ import { wordmarkStyles } from "./Wordmark";
 
 const {
   Avatar,
+  Backdrop,
   Button,
   Checkbox,
   Chip,
@@ -79,6 +81,7 @@ const {
 
 const RECIPES = {
   avatarStyles,
+  backdropStyles,
   buttonStyles,
   checkboxStyles,
   chipStyles,
@@ -191,11 +194,12 @@ describe("the kit is styled only from the theme", () => {
 });
 
 describe("S2: what ui/ exports", () => {
-  it("is the thirty-four components, by name", () => {
+  it("is the thirty-five components, by name", () => {
     const components = Object.keys(kit).filter((name) => /^[A-Z]/.test(name));
     expect(components.sort()).toEqual(
       [
         "Avatar",
+        "Backdrop",
         "Button",
         "Checkbox",
         "Chip",
@@ -606,16 +610,51 @@ describe("S7: Dialog", () => {
       expect(base).not.toContain(name);
   });
 
-  it("has the scrim and a 2px blur for a backdrop", () => {
-    const base = dialogStyles().base();
-    expect(base).toContain("backdrop:bg-scrim");
-    expect(base).toContain("backdrop:backdrop-blur-scrim");
-    const css = build(["backdrop:bg-scrim", "backdrop:backdrop-blur-scrim"]);
+  it("has the shared backdrop: paper over a 6px blur, fading in and out", () => {
+    const base = dialogStyles().base().split(" ");
+    for (const name of BACKDROP.split(" ")) expect(base).toContain(name);
+    const css = build(["backdrop:scrim"]);
     expect(css).toContain(
-      "::backdrop {\n  background-color: var(--color-scrim);",
+      ".backdrop\\:scrim::backdrop {\n  background-color: var(--color-scrim);",
     );
-    expect(css).toContain("--tw-backdrop-blur: blur(var(--blur-scrim));");
-    expect(css).toMatch(/--blur-scrim: 2px;/);
+    // Written as a pattern, not the property's own words: ui/ is scanned for
+    // class names, and those words would come out as a utility of their own.
+    expect(css).toMatch(/drop-filter: blur\(var\(--blur-scrim\)\);/);
+    expect(css).toContain("animation: var(--animate-scrim-in);");
+    expect(css).toMatch(/--blur-scrim: 6px;/);
+  });
+
+  it("falls back to a thicker wash and no blur, and holds still for less motion", () => {
+    const css = build(["scrim"]);
+    const solid = /background-color: var\(--color-scrim-solid\);/;
+    const noBlur = css.slice(css.indexOf("prefers-reduced-transparency"));
+    expect(noBlur).toMatch(solid);
+    expect(noBlur).toMatch(/drop-filter: none;/);
+    const unsupported = css.slice(css.indexOf("@supports not"));
+    expect(unsupported).toMatch(solid);
+    const still = css.slice(css.indexOf("prefers-reduced-motion"));
+    expect(still).toMatch(/animation: none;/);
+  });
+
+  it("fades out only where the browser keeps a closing dialog on top", () => {
+    const css = build(["modal-fade"]);
+    const gated = css.slice(css.indexOf("@supports (overlay: auto)"));
+    expect(gated).toContain(
+      "overlay var(--transition-duration-fast) allow-discrete",
+    );
+    expect(gated).toContain(
+      "display var(--transition-duration-fast) allow-discrete",
+    );
+    expect(css.indexOf("transition:")).toBeGreaterThan(
+      css.indexOf("@supports (overlay: auto)"),
+    );
+  });
+
+  it("Backdrop draws the scrim while open, and nothing once gone", () => {
+    expect(html(<Backdrop open onClose={() => {}} />)).toMatch(
+      /^<div aria-hidden="true" data-backdrop="" class="[^"]*\bscrim\b/,
+    );
+    expect(html(<Backdrop open={false} />)).toBe("");
   });
 
   const host = (open = false) => ({

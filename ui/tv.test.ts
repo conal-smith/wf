@@ -156,7 +156,7 @@ describe("ui/theme.css: blur, measures and animation", () => {
 
   it.each([
     ["backdrop-blur-glass", "--blur-glass", "12px"],
-    ["backdrop-blur-scrim", "--blur-scrim", "2px"],
+    ["backdrop-blur-scrim", "--blur-scrim", "6px"],
     ["max-w-dialog", "--container-dialog", "420px"],
     ["max-w-dialog-wide", "--container-dialog-wide", "640px"],
     ["max-w-reading", "--container-reading", "44ch"],

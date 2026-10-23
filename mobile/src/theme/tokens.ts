@@ -15,7 +15,9 @@ export const colors = {
   paper: c("color-ground"),
   sunken: c("color-sunken"),
   inverse: c("color-inverse"),
-  scrim: c("color-scrim"),
+  // The site's scrim blurs the page under a wash of paper. The app blurs
+  // nothing, so it takes the wash the site falls back to where nothing blurs.
+  scrim: c("color-scrim-solid"),
   ink: c("color-ink"),
   ink2: c("color-ink-2"),
   muted: c("color-ink-muted"),
@@ -32,6 +34,11 @@ export const colors = {
   warnGround: c("color-warn-ground"),
   now: c("color-now"),
   gust: c("color-gust"),
+  // The weather's state, and nothing else (src/glyphSet.ts): the sun is the buoy's yellow.
+  weatherSun: c("color-weather-sun"),
+  weatherRain: c("color-weather-rain"),
+  weatherCloud: c("color-weather-cloud"),
+  weatherNight: c("color-weather-night"),
   sea: c("color-sea"),
   depth: c("color-depth"),
   land: c("color-land"),

@@ -16,6 +16,16 @@
           "$type": "color",
           "$value": "#f3eee3eb",
           "$description": "Paper at 92%, laid over a photograph so a little of it shows through."
+        },
+        "a40": {
+          "$type": "color",
+          "$value": "#f3eee366",
+          "$description": "Paper at 40%: the wash over a blurred page behind a dialog."
+        },
+        "a80": {
+          "$type": "color",
+          "$value": "#f3eee3cc",
+          "$description": "Paper at 80%: the same wash where nothing blurs the page under it."
         }
       },
       "ink": {
@@ -47,7 +57,7 @@
         "a18": {
           "$type": "color",
           "$value": "#1a1d212e",
-          "$description": "Ink at 18%: the scrim behind a dialog, which barely softens the page."
+          "$description": "Ink at 18%: the scrim behind a dialog until it became a wash of paper."
         },
         "a09": {
           "$type": "color",
@@ -159,6 +169,23 @@
           "$type": "color",
           "$value": "#e0803a",
           "$description": "The gust cap on a candle (D12). Not re-themed."
+        }
+      },
+      "weather": {
+        "rain": {
+          "$type": "color",
+          "$value": "#3a7fb0",
+          "$description": "Rain's sea-blue: a drop, a shower's streaks, the rain row's tint. 3.7:1 on paper, so a fill or a mark, never words."
+        },
+        "cloud": {
+          "$type": "color",
+          "$value": "#d6d0c2",
+          "$description": "A cloud's grey, a fill inside an ink outline only."
+        },
+        "night": {
+          "$type": "color",
+          "$value": "#e7dcb4",
+          "$description": "The moon's pale fill, inside an ink outline only."
         }
       },
       "wind": {
@@ -637,9 +664,9 @@
       }
     },
     "blur": {
-      "2": {
+      "6": {
         "$type": "dimension",
-        "$value": "2px",
+        "$value": "6px",
         "$description": "Scrim blur."
       },
       "12": {
@@ -779,14 +806,29 @@
       },
       "scrim": {
         "$type": "color",
-        "$value": "{ref.color.ink.a18}",
-        "$description": "Behind a dialog. --color-scrim.",
+        "$value": "{ref.color.paper.a40}",
+        "$description": "Behind a dialog, over the page it blurs. --color-scrim.",
         "$extensions": {
           "com.sprintengine": {
             "role": "surface",
-            "use": "The modal backdrop only.",
+            "use": "The modal backdrop only, with --blur-scrim under it.",
             "modes": {
-              "light": "{ref.color.ink.a18}",
+              "light": "{ref.color.paper.a40}",
+              "dark": "{ref.color.night.scrim}"
+            }
+          }
+        }
+      },
+      "scrim-solid": {
+        "$type": "color",
+        "$value": "{ref.color.paper.a80}",
+        "$description": "Behind a dialog where the page is not blurred. --color-scrim-solid.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "The modal backdrop for a reader who asks for less transparency, and in a browser that cannot blur.",
+            "modes": {
+              "light": "{ref.color.paper.a80}",
               "dark": "{ref.color.night.scrim}"
             }
           }
@@ -1300,6 +1342,56 @@
           "com.sprintengine": {
             "role": "data",
             "use": "The cap on a candle (D12)."
+          }
+        }
+      },
+      "weather": {
+        "sun": {
+          "$type": "color",
+          "$value": "{ref.color.buoy.500}",
+          "$description": "The sun, in the buoy's yellow. --color-weather-sun. Not re-themed.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Inside the sun's disc, a thunderbolt, a buoy.",
+              "doNotUse": "As text, or for anything but the weather's state."
+            }
+          }
+        },
+        "rain": {
+          "$type": "color",
+          "$value": "{ref.color.weather.rain}",
+          "$description": "Rain. --color-weather-rain. Not re-themed.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "A drop, a shower's streaks, drizzle's dots, the rain row's tint.",
+              "doNotUse": "As text, or for anything but the weather's state."
+            }
+          }
+        },
+        "cloud": {
+          "$type": "color",
+          "$value": "{ref.color.weather.cloud}",
+          "$description": "Cloud. --color-weather-cloud. Not re-themed.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Inside a cloud's ink outline.",
+              "doNotUse": "As text, or for anything but the weather's state."
+            }
+          }
+        },
+        "night": {
+          "$type": "color",
+          "$value": "{ref.color.weather.night}",
+          "$description": "The moon. --color-weather-night. Not re-themed.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Inside the moon's ink outline, for a clear or part-cloudy dark hour.",
+              "doNotUse": "As text, or for anything but the weather's state."
+            }
           }
         }
       },
@@ -2514,12 +2606,12 @@
       },
       "scrim": {
         "$type": "dimension",
-        "$value": "{ref.blur.2}",
+        "$value": "{ref.blur.6}",
         "$description": "--blur-scrim.",
         "$extensions": {
           "com.sprintengine": {
             "role": "surface",
-            "use": "Behind a dialog's scrim."
+            "use": "Under the scrim behind a dialog: the page, or the map, softened."
           }
         }
       }
@@ -2744,12 +2836,23 @@
       },
       "dialog-in": {
         "$type": "string",
-        "$value": "dialog-in 150ms ease both",
+        "$value": "dialog-in 150ms ease backwards",
         "$description": "--animate-dialog-in.",
         "$extensions": {
           "com.sprintengine": {
             "role": "motion",
             "use": "A dialog arriving."
+          }
+        }
+      },
+      "scrim-in": {
+        "$type": "string",
+        "$value": "scrim-in 150ms ease backwards",
+        "$description": "--animate-scrim-in.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "motion",
+            "use": "The backdrop behind a dialog fading in. Off under reduced motion."
           }
         }
       },

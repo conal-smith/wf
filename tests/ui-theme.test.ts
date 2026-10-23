@@ -64,7 +64,8 @@ const COLOURS: Record<string, string> = {
   sunken: "#ede6d6",
   glass: "#f3eee3eb",
   inverse: "#1a1d21",
-  scrim: "#1a1d212e",
+  scrim: "#f3eee366",
+  "scrim-solid": "#f3eee3cc",
   // The sea and the shore, as a chart tints them, shallow to deep.
   sea: "#d5e6ea",
   "sea-1": "#a9cbd8",
@@ -103,6 +104,11 @@ const COLOURS: Record<string, string> = {
   // and the gust cap on a candle. D12.
   "now-marker": "#bf6546",
   gust: "#e0803a",
+  // The weather's state, and nothing else: the sun is the buoy's yellow.
+  "weather-sun": "#e9b200",
+  "weather-rain": "#3a7fb0",
+  "weather-cloud": "#d6d0c2",
+  "weather-night": "#e7dcb4",
 };
 
 // Size, line height, then weight and tracking where the step has one.

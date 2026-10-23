@@ -653,12 +653,15 @@ class StaticDataTest(unittest.TestCase):
             "satellite/vfedcba987654/low.pmtiles",  # an older version, still kept
             "intertidal/v0123456789ab/index.json",
             "intertidal/v0123456789ab/tide-howth.pmtiles",
+            "lidar/v0123456789ab/index.json",
+            "lidar/v0123456789ab/lidar.pmtiles",
+            "lidar/v0123456789ab/coverage.json",
         )]
 
     def test_the_static_prefixes_are_not_data_roots(self):
         for root in prune.STATIC_ROOTS:
             self.assertNotIn(root, prune.DATA_ROOTS)
-        self.assertEqual(set(prune.STATIC_ROOTS), {"foildepth", "bathy", "satellite", "intertidal"})
+        self.assertEqual(set(prune.STATIC_ROOTS), {"foildepth", "bathy", "satellite", "intertidal", "lidar"})
 
     def test_a_bucket_sweep_leaves_every_static_object(self):
         for kwargs in ({}, {"min_age_hours": 0, "grace": 0}):
@@ -677,6 +680,7 @@ class StaticDataTest(unittest.TestCase):
         self.assertTrue(prune.is_static("site/foildepth/v1/x.pmtiles"))
         self.assertTrue(prune.is_static("site/satellite/v1/high.pmtiles"))
         self.assertTrue(prune.is_static("intertidal/v1/tide-howth.pmtiles"))
+        self.assertTrue(prune.is_static("lidar/v1/lidar.pmtiles"))
         self.assertFalse(prune.is_static("weather/foildepthy/x.json"))
         self.assertFalse(prune.is_static("weather/satellites/x.json"))
 
@@ -684,7 +688,7 @@ class StaticDataTest(unittest.TestCase):
         other = self.s3.seed("weather/harmonie-old/000.json", b"{}", NOW - timedelta(days=400))
         for key in ("foildepth/v0123456789ab/tide-howth.pmtiles", "bathy/v0123456789ab/ireland.pmtiles",
                     "prefix/foildepth/v1/index.json", "satellite/v0123456789ab/high.pmtiles",
-                    "intertidal/v0123456789ab/tide-howth.pmtiles"):
+                    "intertidal/v0123456789ab/tide-howth.pmtiles", "lidar/v0123456789ab/lidar.pmtiles"):
             with self.assertRaises(ValueError):
                 prune.delete_keys(self.s3, "test", ["weather/harmonie-old/000.json", key])
         for key in self.static:

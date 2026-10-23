@@ -47,6 +47,7 @@ import { Button } from "../../components/Button";
 import {
   Chevron,
   DirectionGlyph,
+  DropGlyph,
   SeaTempGlyph,
   SkyGlyph,
   StarsMark,
@@ -712,7 +713,7 @@ const RowLabels = memo(function RowLabels({
       case "air":
         return <ThermometerGlyph size={13} />;
       case "rain":
-        return <SkyGlyph icon="rain" size={13} />;
+        return <DropGlyph size={13} />;
       case "stars":
         return (
           <Svg width={12} height={12}>

@@ -613,11 +613,13 @@ table.tt {
 .tt .weather-cell svg {
   stroke-width: 1.5;
 }
+/* Rain's blue behind the figure, deeper as it pours: the colour is the
+   weather's; the figure stays in ink, which rain's blue is too light to be. */
 .rain-cell {
   padding: 0 3px;
   background: color-mix(
     in srgb,
-    var(--color-depth) calc(var(--rain, 0) * 45%),
+    var(--color-weather-rain) calc(var(--rain, 0) * 45%),
     transparent
   );
 }

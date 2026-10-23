@@ -12,8 +12,22 @@
  * of its strength rather than a colour of its own. The figures are set in the
  * chart's italic through src/map.css (`.g-fig`). Each is a picture beside its
  * name, so each is hidden from a screen reader.
+ *
+ * The rest of the set (the weather, the wind and the blend, the dock's rows,
+ * the chart's symbols and the app's) is data in src/glyphSet.ts, which the
+ * app draws from too, and is drawn here by `ChartGlyph`:
+ *
+ *   import { ChartGlyph, glyphs } from "./chartGlyphs";
+ *   <ChartGlyph glyph={glyphs.blend} size={16} />
+ *
+ * Those carry colour where it means something (the weather's state, the
+ * wind's speed, the best, a warning), each from the theme.
  */
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import type { GlyphDef, GlyphPaint } from "./glyphSet";
+import { glyphStroke } from "./glyphSet";
+
+export * as glyphs from "./glyphSet";
 
 export interface ChartGlyphProps {
   size?: number;
@@ -351,5 +365,100 @@ export function RingGlyph(props: ChartGlyphProps) {
       <path d="M12 2V5M12 19V22M2 12H5M19 12H22" strokeWidth={1.1} />
       <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
     </Glyph>
+  );
+}
+
+/* ---- the set: src/glyphSet.ts, drawn ---- */
+
+/** Each paint, from the theme. `wind` is the colour handed in for a speed. */
+const PAINT: Record<Exclude<GlyphPaint, "wind">, string> = {
+  ink: "currentColor",
+  paper: "var(--color-ground)",
+  sun: "var(--color-weather-sun)",
+  rain: "var(--color-weather-rain)",
+  cloud: "var(--color-weather-cloud)",
+  night: "var(--color-weather-night)",
+  gust: "var(--color-gust)",
+  magenta: "var(--color-chart-magenta)",
+  pen: "var(--color-pen)",
+  depth: "var(--color-depth)",
+};
+
+const FACE = { mono: "var(--font-mono)", body: "var(--font-body)" };
+
+/**
+ * A glyph from the set, at a size, in the text's colour with its colour
+ * inside. `wind` is the colour a speed arrow is filled with. Decorative: the
+ * words go on whatever holds it, unless `title` names it.
+ */
+export function ChartGlyph({
+  glyph,
+  size = 20,
+  strokeWidth,
+  className,
+  wind,
+  title,
+}: ChartGlyphProps & { glyph: GlyphDef; wind?: string; title?: string }) {
+  const paint = (p: GlyphPaint | "none" | undefined) =>
+    p === undefined
+      ? undefined
+      : p === "none"
+        ? "none"
+        : p === "wind"
+          ? (wind ?? "currentColor")
+          : PAINT[p];
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth ?? glyphStroke(size)}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role={title ? "img" : undefined}
+      aria-label={title}
+      aria-hidden={title ? undefined : true}
+      className={className ? `g-set ${className}` : "g-set"}
+    >
+      {title && <title>{title}</title>}
+      {glyph.map((part, i) => {
+        if ("text" in part)
+          return (
+            <text
+              key={i}
+              x={part.x}
+              y={part.y}
+              textAnchor={part.middle ? "middle" : undefined}
+              stroke="none"
+              style={{
+                fill: paint(part.fill ?? "ink"),
+                fontFamily: FACE[part.face],
+                fontSize: part.size,
+                fontWeight: part.weight,
+                fontStyle: part.italic ? "italic" : undefined,
+              }}
+            >
+              {part.text}
+            </text>
+          );
+        const style: CSSProperties = {
+          fill: paint(part.fill),
+          stroke: paint(part.stroke),
+        };
+        const common = {
+          style,
+          strokeWidth: part.width,
+          strokeDasharray: part.dash,
+          opacity: part.opacity,
+        };
+        return "d" in part ? (
+          <path key={i} d={part.d} {...common} />
+        ) : (
+          <circle key={i} cx={part.cx} cy={part.cy} r={part.r} {...common} />
+        );
+      })}
+    </svg>
   );
 }
