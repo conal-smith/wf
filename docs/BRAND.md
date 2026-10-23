@@ -190,8 +190,9 @@ the section's own, because each router takes a link over in its own way:
   mockup does.
 - Use `chart-magenta` for the best of something, once.
 - Draw stars with `StarGlyphs`, and leave the dark unrated.
-- Draw a glyph from the set (`src/glyphSet.ts`, drawn by `ChartGlyph` in
-  `src/chartGlyphs.tsx` and `SetGlyph` in the app) before reaching for lucide:
+- Draw a glyph from the set (`shared/web/glyphSet.ts`, drawn by `ChartGlyph`
+  in `shared/web/ChartGlyph.tsx`, `glyphs` from `src/chartGlyphs.tsx` on the
+  map, and `SetGlyph` in the app) before reaching for lucide:
   the weather, the wind and the blend, the dock's rows, the chart's symbols.
 - Pass `strokeWidth={1.5}` to lucide icons beside mono labels; the default 2
   reads heavy against the thin rules.

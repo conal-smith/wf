@@ -258,7 +258,8 @@ describe("the spot page bundle", () => {
     expect(reached(ENTRY, "WindMap")).toEqual([]);
     expect(reached(ENTRY, "maplibre-gl")).toEqual([]);
     // It borrows nothing from the map's sources: its stars come from the kit
-    // and its glyphs are its own (spot/web/glyphs.tsx).
+    // and its sky from the glyph set the map draws from too
+    // (shared/web/glyphSet.ts, drawn by shared/web/ChartGlyph.tsx).
     expect(
       [...staticGraph(ENTRY)].filter((m) => m.startsWith("src/")).sort(),
     ).toEqual([]);
@@ -288,6 +289,7 @@ describe("the spot page bundle", () => {
     expect(graph).toContain("mcp/api/httpSource.ts");
     expect(graph).toContain("force5/src/stars.ts");
     expect(graph).not.toContain("mcp/api/source.ts");
+    expect(graph).toContain("shared/web/glyphSet.ts");
     expect([...graph].filter((m) => m.startsWith("node:"))).toEqual([]);
   });
 

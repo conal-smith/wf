@@ -105,7 +105,7 @@ export const windWords = (from: number | null, kn: number | null) =>
 
 /**
  * A thermometer standing in a wave, for the sea's temperature: the set's
- * (src/glyphSet.ts), under the name the dock's head knows it by.
+ * (shared/web/glyphSet.ts), under the name the dock's head knows it by.
  */
 export function SeaTempGlyph({
   size = 14,

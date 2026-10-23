@@ -557,6 +557,7 @@ function DayBody({
                   ...hour.weather,
                   rain_mm: rain.get(row.time) ?? null,
                 }}
+                dark={!hour.daylight}
               />
               {hour.weather.air_c != null && (
                 <span className={s.air()}>{hour.weather.air_c}°</span>

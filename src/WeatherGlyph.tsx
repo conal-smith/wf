@@ -1,9 +1,9 @@
 import type { PresentWeather } from "../force5/src/surface";
 import { ChartGlyph } from "./chartGlyphs";
-import { skyGlyph } from "./glyphSet";
+import { skyGlyph } from "../shared/web/glyphSet";
 
 /**
- * One shape per present-weather group, from the glyph set (src/glyphSet.ts):
+ * One shape per present-weather group, from the glyph set (shared/web/glyphSet.ts):
  * an ink outline with the weather's colour inside, the sun's yellow, rain's
  * blue, a cloud's grey, so a day's sky reads at a glance. In the dark hours a
  * clear or part-cloudy sky is the moon. Nine groups for a hundred codes: the

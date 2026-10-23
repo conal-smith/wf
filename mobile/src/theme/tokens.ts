@@ -34,7 +34,7 @@ export const colors = {
   warnGround: c("color-warn-ground"),
   now: c("color-now"),
   gust: c("color-gust"),
-  // The weather's state, and nothing else (src/glyphSet.ts): the sun is the buoy's yellow.
+  // The weather's state, and nothing else (shared/web/glyphSet.ts): the sun is the buoy's yellow.
   weatherSun: c("color-weather-sun"),
   weatherRain: c("color-weather-rain"),
   weatherCloud: c("color-weather-cloud"),
