@@ -48,10 +48,29 @@
   }
 }
 
-/* The page behind barely softens: the scrim, and a blur of two. */
+/* The page behind softens under a wash of paper: the scrim, over a blur. */
 .wf-dialog::backdrop {
   background: var(--sem-color-scrim);
+  -webkit-backdrop-filter: blur(var(--sem-blur-scrim));
   backdrop-filter: blur(var(--sem-blur-scrim));
+  animation: var(--sem-animate-scrim-in);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .wf-dialog::backdrop {
+    background: var(--sem-color-scrim-solid);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .wf-dialog::backdrop {
+    background: var(--sem-color-scrim-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wf-dialog::backdrop {
+    animation: none;
+  }
 }
 
 /* size="wide" */
@@ -104,5 +123,11 @@
   from {
     opacity: 0;
     transform: translateY(var(--sem-space-x2));
+  }
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
   }
 }

@@ -15,7 +15,9 @@ export const colors = {
   paper: c("color-ground"),
   sunken: c("color-sunken"),
   inverse: c("color-inverse"),
-  scrim: c("color-scrim"),
+  // The site's scrim blurs the page under a wash of paper. The app blurs
+  // nothing, so it takes the wash the site falls back to where nothing blurs.
+  scrim: c("color-scrim-solid"),
   ink: c("color-ink"),
   ink2: c("color-ink-2"),
   muted: c("color-ink-muted"),

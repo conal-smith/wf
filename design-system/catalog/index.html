@@ -19,6 +19,8 @@
   --ref-color-paper-100: #f3eee3;
   --ref-color-paper-200: #ede6d6;
   --ref-color-paper-glass: #f3eee3eb;
+  --ref-color-paper-a40: #f3eee366;
+  --ref-color-paper-a80: #f3eee3cc;
   --ref-color-ink-500: #7c7b78;
   --ref-color-ink-600: #5b5c5b;
   --ref-color-ink-700: #3b3c3e;
@@ -129,7 +131,7 @@
   --ref-shadow-dock: 0px -8px 22px -16px #3c2d1473;
   --ref-shadow-frame: inset 0 0 0 3px #f3eee3, inset 0 0 0 4px #1a1d21;
   --ref-shadow-frame-night: inset 0 0 0 3px #1d1c19, inset 0 0 0 4px #ece5d6;
-  --ref-blur-2: 2px;
+  --ref-blur-6: 6px;
   --ref-blur-12: 12px;
   --ref-duration-150: 150ms;
   --ref-duration-250: 250ms;
@@ -143,7 +145,8 @@
   --sem-color-sunken: var(--ref-color-paper-200);
   --sem-color-glass: var(--ref-color-paper-glass);
   --sem-color-inverse: var(--ref-color-ink-900);
-  --sem-color-scrim: var(--ref-color-ink-a18);
+  --sem-color-scrim: var(--ref-color-paper-a40);
+  --sem-color-scrim-solid: var(--ref-color-paper-a80);
   --sem-color-sea: var(--ref-color-sea-ground);
   --sem-color-sea-1: var(--ref-color-sea-1);
   --sem-color-sea-2: var(--ref-color-sea-2);
@@ -280,7 +283,7 @@
   --sem-shadow-dock: var(--ref-shadow-dock);
   --sem-shadow-frame: var(--ref-shadow-frame);
   --sem-blur-glass: var(--ref-blur-12);
-  --sem-blur-scrim: var(--ref-blur-2);
+  --sem-blur-scrim: var(--ref-blur-6);
   --sem-container-dialog: 420px;
   --sem-container-dialog-wide: 640px;
   --sem-container-reading: 44ch;
@@ -300,7 +303,8 @@
   --sem-duration-fast: var(--ref-duration-150);
   --sem-duration-base: var(--ref-duration-250);
   --sem-animate-pulse: pulse 1s ease-in-out infinite alternate;
-  --sem-animate-dialog-in: dialog-in 150ms ease both;
+  --sem-animate-dialog-in: dialog-in 150ms ease backwards;
+  --sem-animate-scrim-in: scrim-in 150ms ease backwards;
   --sem-animate-menu-in: menu-in 150ms ease both;
   --sem-animate-ink: ink 750ms cubic-bezier(0.5, 0.1, 0.3, 1) both;
   --sem-animate-bob: bob 6s ease-in-out infinite;
@@ -328,6 +332,7 @@
   --sem-color-glass: var(--ref-color-night-glass);
   --sem-color-inverse: var(--ref-color-night-ink);
   --sem-color-scrim: var(--ref-color-night-scrim);
+  --sem-color-scrim-solid: var(--ref-color-night-scrim);
   --sem-color-sea: var(--ref-color-night-sea);
   --sem-color-sea-1: var(--ref-color-night-sea-1);
   --sem-color-sea-2: var(--ref-color-night-sea-2);
@@ -377,6 +382,7 @@
   --sem-color-glass: var(--ref-color-night-glass);
   --sem-color-inverse: var(--ref-color-night-ink);
   --sem-color-scrim: var(--ref-color-night-scrim);
+  --sem-color-scrim-solid: var(--ref-color-night-scrim);
   --sem-color-sea: var(--ref-color-night-sea);
   --sem-color-sea-1: var(--ref-color-night-sea-1);
   --sem-color-sea-2: var(--ref-color-night-sea-2);
@@ -422,7 +428,8 @@
   --sem-color-sunken: var(--ref-color-paper-200);
   --sem-color-glass: var(--ref-color-paper-glass);
   --sem-color-inverse: var(--ref-color-ink-900);
-  --sem-color-scrim: var(--ref-color-ink-a18);
+  --sem-color-scrim: var(--ref-color-paper-a40);
+  --sem-color-scrim-solid: var(--ref-color-paper-a80);
   --sem-color-sea: var(--ref-color-sea-ground);
   --sem-color-sea-1: var(--ref-color-sea-1);
   --sem-color-sea-2: var(--ref-color-sea-2);
@@ -1367,10 +1374,29 @@ code {
   }
 }
 
-/* The page behind barely softens: the scrim, and a blur of two. */
+/* The page behind softens under a wash of paper: the scrim, over a blur. */
 .wf-dialog::backdrop {
   background: var(--sem-color-scrim);
+  -webkit-backdrop-filter: blur(var(--sem-blur-scrim));
   backdrop-filter: blur(var(--sem-blur-scrim));
+  animation: var(--sem-animate-scrim-in);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .wf-dialog::backdrop {
+    background: var(--sem-color-scrim-solid);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .wf-dialog::backdrop {
+    background: var(--sem-color-scrim-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wf-dialog::backdrop {
+    animation: none;
+  }
 }
 
 /* size="wide" */
@@ -1423,6 +1449,12 @@ code {
   from {
     opacity: 0;
     transform: translateY(var(--sem-space-x2));
+  }
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
   }
 }
 
@@ -7632,12 +7664,14 @@ code {
 <h4 class="catalog-tier-heading"><code>ref</code> colors</h4><div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-paper-100)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.paper.100</code><code class="catalog-token-value">#f3eee3</code></p><p class="catalog-token-meta">The chart's paper. Every ground, card and the solid fallback are this one sheet.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-paper-200)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.paper.200</code><code class="catalog-token-value">#ede6d6</code></p><p class="catalog-token-meta">The paper's second sheet: a well, a tinted row, the current menu row.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-paper-glass)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.paper.glass</code><code class="catalog-token-value">#f3eee3eb</code></p><p class="catalog-token-meta">Paper at 92%, laid over a photograph so a little of it shows through.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-paper-a40)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.paper.a40</code><code class="catalog-token-value">#f3eee366</code></p><p class="catalog-token-meta">Paper at 40%: the wash over a blurred page behind a dialog.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-paper-a80)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.paper.a80</code><code class="catalog-token-value">#f3eee3cc</code></p><p class="catalog-token-meta">Paper at 80%: the same wash where nothing blurs the page under it.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-ink-500)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.ink.500</code><code class="catalog-token-value">#7c7b78</code></p><p class="catalog-token-meta">A stroke's ink: a field's box, a disabled icon. 3.7:1 on paper; never words.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-ink-600)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.ink.600</code><code class="catalog-token-value">#5b5c5b</code></p><p class="catalog-token-meta">Muted ink, the floor for words. 5.8:1 on paper, 5.4:1 on the second sheet.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-ink-700)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.ink.700</code><code class="catalog-token-value">#3b3c3e</code></p><p class="catalog-token-meta">Second ink, for secondary text. 9.5:1 on paper.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-ink-900)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.ink.900</code><code class="catalog-token-value">#1a1d21</code></p><p class="catalog-token-meta">The ink: text, rules, the filled action. 14.6:1 on paper.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-ink-a20)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.ink.a20</code><code class="catalog-token-value">#1a1d2133</code></p><p class="catalog-token-meta">Ink at 20%: the hairline between rows.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-ink-a18)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.ink.a18</code><code class="catalog-token-value">#1a1d212e</code></p><p class="catalog-token-meta">Ink at 18%: the scrim behind a dialog, which barely softens the page.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-ink-a18)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.ink.a18</code><code class="catalog-token-value">#1a1d212e</code></p><p class="catalog-token-meta">Ink at 18%: the scrim behind a dialog until it became a wash of paper.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-ink-a09)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.ink.a09</code><code class="catalog-token-value">#1a1d2117</code></p><p class="catalog-token-meta">Ink at 9%: the hatch a chart shades the dark hours with.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-magenta-600)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.magenta.600</code><code class="catalog-token-value">#b0186a</code></p><p class="catalog-token-meta">The chart's magenta. 5.7:1 on paper; paper on it is 5.7:1.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-pen-500)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.pen.500</code><code class="catalog-token-value">#d43a2c</code></p><p class="catalog-token-meta">The red pen's stroke. 4.1:1 on paper: a mark, not words.</p></div></div>
@@ -7701,7 +7735,8 @@ code {
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-sunken)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-sunken)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.sunken</code><code class="catalog-token-value">{ref.color.paper.200}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">The paper's second sheet. --color-sunken. A well, a placeholder, a tinted row, the selected hour, a quiet control under the pointer.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-glass)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-glass)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.glass</code><code class="catalog-token-value">{ref.color.paper.glass}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">Paper over a photograph. --color-glass. A badge over a photograph (Chip tone glass), and nothing else. <strong>Do not:</strong> Over the map: paper over the map is opaque.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-inverse)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-inverse)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.inverse</code><code class="catalog-token-value">{ref.color.ink.900}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">The inverse fill: ink. --color-inverse. A pressed toggle, the on segment, the hour flag, a strong count.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-scrim)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-scrim)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.scrim</code><code class="catalog-token-value">{ref.color.ink.a18}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">Behind a dialog. --color-scrim. The modal backdrop only.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-scrim)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-scrim)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.scrim</code><code class="catalog-token-value">{ref.color.paper.a40}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">Behind a dialog, over the page it blurs. --color-scrim. The modal backdrop only, with --blur-scrim under it.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-scrim-solid)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-scrim-solid)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.scrim-solid</code><code class="catalog-token-value">{ref.color.paper.a80}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">Behind a dialog where the page is not blurred. --color-scrim-solid. The modal backdrop for a reader who asks for less transparency, and in a browser that cannot blur.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-sea)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-sea)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.sea</code><code class="catalog-token-value">{ref.color.sea.ground}</code><span class="catalog-badge">chart</span></p><p class="catalog-token-meta">The sea. --color-sea. The ground the map floats on; the fill under a tide curve.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-sea-1)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-sea-1)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.sea-1</code><code class="catalog-token-value">{ref.color.sea.1}</code><span class="catalog-badge">chart</span></p><p class="catalog-token-meta">Depth tint, under a metre. --color-sea-1. Bathymetry: drying and under a metre.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-sea-2)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-sea-2)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.sea-2</code><code class="catalog-token-value">{ref.color.sea.2}</code><span class="catalog-badge">chart</span></p><p class="catalog-token-meta">Depth tint, about three metres. --color-sea-2. Bathymetry.</p></div></div>
@@ -7871,7 +7906,7 @@ code {
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.dock</code><code class="catalog-token-value">0px -8px 22px -16px #3c2d1473</code></p><p class="catalog-token-meta">The dock's shadow, cast upward over the map.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.frame</code><code class="catalog-token-value">inset 0 0 0 3px #f3eee3, inset 0 0 0 4px #1a1d21</code></p><p class="catalog-token-meta">The double rule's inner line: three of paper, then one of ink.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.frame-night</code><code class="catalog-token-value">inset 0 0 0 3px #1d1c19, inset 0 0 0 4px #ece5d6</code></p><p class="catalog-token-meta">Proposed night chart: the double rule's inner line.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.blur.2</code><code class="catalog-token-value">2px</code></p><p class="catalog-token-meta">Scrim blur.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.blur.6</code><code class="catalog-token-value">6px</code></p><p class="catalog-token-meta">Scrim blur.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.blur.12</code><code class="catalog-token-value">12px</code></p><p class="catalog-token-meta">Glass blur.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.duration.150</code><code class="catalog-token-value">150ms</code></p><p class="catalog-token-meta">Fast.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.duration.250</code><code class="catalog-token-value">250ms</code></p><p class="catalog-token-meta">Base.</p></div></div>
@@ -7901,7 +7936,7 @@ code {
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.dock</code><code class="catalog-token-value">{ref.shadow.dock}</code><span class="catalog-badge">elevation</span></p><p class="catalog-token-meta">--shadow-dock. The dock, cast upward.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.frame</code><code class="catalog-token-value">{ref.shadow.frame}</code><span class="catalog-badge">structure</span></p><p class="catalog-token-meta">--inset-shadow-frame: the double rule's inner line. With a 1px ink border, round a box that matters: a Surface, a Dialog, a double Pane.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.blur.glass</code><code class="catalog-token-value">{ref.blur.12}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">--blur-glass. Behind a glass badge over a photograph.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.blur.scrim</code><code class="catalog-token-value">{ref.blur.2}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">--blur-scrim. Behind a dialog's scrim.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.blur.scrim</code><code class="catalog-token-value">{ref.blur.6}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">--blur-scrim. Under the scrim behind a dialog: the page, or the map, softened.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.container.dialog</code><code class="catalog-token-value">420px</code><span class="catalog-badge">measure</span></p><p class="catalog-token-meta">--container-dialog. A dialog's width.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.container.dialog-wide</code><code class="catalog-token-value">640px</code><span class="catalog-badge">measure</span></p><p class="catalog-token-meta">--container-dialog-wide. A wide dialog's width.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.container.reading</code><code class="catalog-token-value">44ch</code><span class="catalog-badge">measure</span></p><p class="catalog-token-meta">--container-reading. A line of reading; an empty state's words.</p></div></div>
@@ -7921,7 +7956,8 @@ code {
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.duration.fast</code><code class="catalog-token-value">{ref.duration.150}</code><span class="catalog-badge">motion</span></p><p class="catalog-token-meta">--transition-duration-fast. Colour changes on hover and press.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.duration.base</code><code class="catalog-token-value">{ref.duration.250}</code><span class="catalog-badge">motion</span></p><p class="catalog-token-meta">--transition-duration-base. A panel moving.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.animate.pulse</code><code class="catalog-token-value">pulse 1s ease-in-out infinite alternate</code><span class="catalog-badge">motion</span></p><p class="catalog-token-meta">--animate-pulse. A skeleton breathing while its content loads. Off under reduced motion.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.animate.dialog-in</code><code class="catalog-token-value">dialog-in 150ms ease both</code><span class="catalog-badge">motion</span></p><p class="catalog-token-meta">--animate-dialog-in. A dialog arriving.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.animate.dialog-in</code><code class="catalog-token-value">dialog-in 150ms ease backwards</code><span class="catalog-badge">motion</span></p><p class="catalog-token-meta">--animate-dialog-in. A dialog arriving.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.animate.scrim-in</code><code class="catalog-token-value">scrim-in 150ms ease backwards</code><span class="catalog-badge">motion</span></p><p class="catalog-token-meta">--animate-scrim-in. The backdrop behind a dialog fading in. Off under reduced motion.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.animate.menu-in</code><code class="catalog-token-value">menu-in 150ms ease both</code><span class="catalog-badge">motion</span></p><p class="catalog-token-meta">--animate-menu-in. A panel dropping from its trigger.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.animate.ink</code><code class="catalog-token-value">ink 750ms cubic-bezier(0.5, 0.1, 0.3, 1) both</code><span class="catalog-badge">motion</span></p><p class="catalog-token-meta">--animate-ink: the pen drawing its stroke in, once. On a path with pathLength 1 and stroke-dasharray 1. Off under reduced motion.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.animate.bob</code><code class="catalog-token-value">bob 6s ease-in-out infinite</code><span class="catalog-badge">motion</span></p><p class="catalog-token-meta">--animate-bob: the puffin shifting his weight. The puffin, now and then. Off under reduced motion.</p></div></div>
@@ -9584,7 +9620,7 @@ code {
 <div class="catalog-doc">
 <p>The chart's box as a modal (<code>ui/Dialog.tsx</code>, <code>dialogStyles</code>), and the question with one destructive answer built on it (<code>ui/ConfirmDialog.tsx</code>). A native <code>dialog</code>, so focus is trapped, Escape cancels and the page behind is inert. Its buttons are the Button component's classes.</p>
 <h4>Anatomy</h4>
-<ul><li>Box: <code>.wf-dialog</code> — 11/12 of the width up to <code>sem.container.dialog</code>, <code>sem.space.x7</code> inset (<code>sem.space.x5</code> under <code>sem.breakpoint.wide</code>), a grid with <code>sem.space.x5</code> between its parts. Paper (<code>sem.color.card</code> with <code>sem.texture.grain</code>) in the double rule: a <code>sem.rule.hairline</code> ink border plus <code>sem.shadow.frame</code>, then <code>sem.shadow.surface</code>. Square (<code>sem.radius.dialog</code>). Sentences in <code>sem.font.family.body</code>.</li><li>Backdrop: <code>::backdrop</code> in <code>sem.color.scrim</code> with a <code>sem.blur.scrim</code> blur: the page behind barely softens.</li><li>Head: <code>.wf-dialog__head</code> — the title and the close button, top-aligned and <code>sem.space.x3</code> apart, over a hairline ink rule with <code>sem.space.x3</code> beneath.</li><li>Title: <code>.wf-dialog__title</code> — the display face at <code>sem.font.size.lead</code> and <code>sem.font.weight.lead</code>, in ink.</li><li>Close: an icon button, quiet and small (<code>.wf-button--icon.wf-button--sm</code>), <code>aria-label=&quot;Close&quot;</code>, a 15px X.</li><li>Body: <code>.wf-dialog__body</code> — a grid, <code>sem.space.x3</code> gaps, <code>sem.font.size.prose</code> in <code>sem.color.ink-2</code>.</li><li>Actions: <code>.wf-dialog__actions</code> — a wrapping row set right, <code>sem.space.x2</code> apart. The filled action, if any, comes last.</li></ul>
+<ul><li>Box: <code>.wf-dialog</code> — 11/12 of the width up to <code>sem.container.dialog</code>, <code>sem.space.x7</code> inset (<code>sem.space.x5</code> under <code>sem.breakpoint.wide</code>), a grid with <code>sem.space.x5</code> between its parts. Paper (<code>sem.color.card</code> with <code>sem.texture.grain</code>) in the double rule: a <code>sem.rule.hairline</code> ink border plus <code>sem.shadow.frame</code>, then <code>sem.shadow.surface</code>. Square (<code>sem.radius.dialog</code>). Sentences in <code>sem.font.family.body</code>.</li><li>Backdrop: <code>::backdrop</code> in <code>sem.color.scrim</code>, a wash of paper, over a <code>sem.blur.scrim</code> blur of the page or the map behind; it fades in with <code>sem.animate.scrim-in</code>. Where the browser cannot blur, or the reader asks for less transparency, it is <code>sem.color.scrim-solid</code> with no blur. The product's one recipe for it is ui/Backdrop.tsx (<code>scrim</code>, <code>Backdrop</code>).</li><li>Head: <code>.wf-dialog__head</code> — the title and the close button, top-aligned and <code>sem.space.x3</code> apart, over a hairline ink rule with <code>sem.space.x3</code> beneath.</li><li>Title: <code>.wf-dialog__title</code> — the display face at <code>sem.font.size.lead</code> and <code>sem.font.weight.lead</code>, in ink.</li><li>Close: an icon button, quiet and small (<code>.wf-button--icon.wf-button--sm</code>), <code>aria-label=&quot;Close&quot;</code>, a 15px X.</li><li>Body: <code>.wf-dialog__body</code> — a grid, <code>sem.space.x3</code> gaps, <code>sem.font.size.prose</code> in <code>sem.color.ink-2</code>.</li><li>Actions: <code>.wf-dialog__actions</code> — a wrapping row set right, <code>sem.space.x2</code> apart. The filled action, if any, comes last.</li></ul>
 <h4>Variants</h4>
 <ul><li><strong>Md</strong> (the default) — up to <code>sem.container.dialog</code> (420px).</li><li><strong>Wide</strong> (<code>--wide</code>) — up to <code>sem.container.dialog-wide</code> (640px), for a form or a table.</li><li><strong>Dismissible</strong> (the default) — draws the close button. A question with its own Cancel does without it.</li><li><strong>ConfirmDialog</strong> — no close button; Cancel (<code>.wf-button--pill</code>) then the destructive answer (<code>.wf-button--danger</code>), named for what it does (&quot;Remove listing&quot;).</li></ul>
 <h4>States</h4>
@@ -9645,10 +9681,29 @@ code {
   }
 }
 
-/* The page behind barely softens: the scrim, and a blur of two. */
+/* The page behind softens under a wash of paper: the scrim, over a blur. */
 .wf-dialog::backdrop {
   background: var(--sem-color-scrim);
+  -webkit-backdrop-filter: blur(var(--sem-blur-scrim));
   backdrop-filter: blur(var(--sem-blur-scrim));
+  animation: var(--sem-animate-scrim-in);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .wf-dialog::backdrop {
+    background: var(--sem-color-scrim-solid);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .wf-dialog::backdrop {
+    background: var(--sem-color-scrim-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wf-dialog::backdrop {
+    animation: none;
+  }
 }
 
 /* size=&quot;wide&quot; */
@@ -9701,6 +9756,12 @@ code {
   from {
     opacity: 0;
     transform: translateY(var(--sem-space-x2));
+  }
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
   }
 }
 </code></pre></details>

@@ -8,6 +8,12 @@
  * build.
  */
 export { Avatar, initials, type AvatarProps } from "./Avatar";
+export {
+  Backdrop,
+  backdropStyles,
+  useFadeOut,
+  type BackdropProps,
+} from "./Backdrop";
 export { Button, type ButtonProps } from "./Button";
 export { Checkbox, type CheckboxProps } from "./Checkbox";
 export { Chip, type ChipProps } from "./Chip";

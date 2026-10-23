@@ -11,6 +11,7 @@ import type { SiteMenuTool } from "../force5/src/SiteMenu";
 import type { ChartLayers } from "../force5/src/WindMap";
 import { FOCUS_STYLES, type FocusStyle } from "../force5/src/focus";
 import type { WindStyle } from "../force5/src/windLayer";
+import { useFadeOut } from "../ui/Backdrop";
 import { Dialog } from "../ui/Dialog";
 import { Segmented } from "../ui/Segmented";
 import {
@@ -186,6 +187,8 @@ export default function MapControls({
   currentsNote?: string | null;
 }) {
   const close = () => onOpen(null);
+  // The panel drawn: the open one, or the one fading out after it closed.
+  const shown = useFadeOut(open);
   return (
     <div className="map-ctrl">
       <div className="zbox chart-box" role="group" aria-label="Map controls">
@@ -206,16 +209,16 @@ export default function MapControls({
           −
         </button>
       </div>
-      {open && (
+      {shown && (
         <Dialog
-          open
-          title={PANEL_TITLE[open]}
+          open={open !== null}
+          title={PANEL_TITLE[shown]}
           className="map-panel-dialog"
           onClose={close}
         >
-          {open === "spots" && spots()}
-          {open === "options" && options(close)}
-          {open === "layers" && (
+          {shown === "spots" && spots()}
+          {shown === "options" && options(close)}
+          {shown === "layers" && (
             <div
               id="map-layers"
               className="layers"

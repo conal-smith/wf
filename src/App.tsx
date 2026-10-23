@@ -41,6 +41,7 @@ import {
   type FoilPoint,
 } from "../force5/src/foilDepth";
 import { elevationAt } from "../force5/src/foilProbe";
+import { useFadeOut } from "../ui/Backdrop";
 import FoilLegend from "./FoilLegend";
 import MapInfo from "./MapInfo";
 import { MapInfoOpen, type InfoSection } from "./mapInfoContext";
@@ -312,6 +313,8 @@ export default function App() {
   const [panel, setPanel] = useState<MapPanel>(null);
   /** The information dialog's part to open at, or null while it is shut. */
   const [info, setInfo] = useState<InfoSection | null>(null);
+  /** The part it is drawn at: kept while it fades out, once shut. */
+  const infoShown = useFadeOut(info);
   const [view, setView] = useState<DockView>("table");
   const [windStyle, setWindStyle] = useState<WindStyle>(() => {
     const saved = store.get(WIND_KEY) as WindStyle | null;
@@ -1821,9 +1824,10 @@ export default function App() {
           />
         </Suspense>
       )}
-      {info && (
+      {infoShown && (
         <MapInfo
-          at={info}
+          at={infoShown}
+          open={info !== null}
           onClose={() => setInfo(null)}
           scale={scale}
           rider={rider}

@@ -64,7 +64,8 @@ const COLOURS: Record<string, string> = {
   sunken: "#ede6d6",
   glass: "#f3eee3eb",
   inverse: "#1a1d21",
-  scrim: "#1a1d212e",
+  scrim: "#f3eee366",
+  "scrim-solid": "#f3eee3cc",
   // The sea and the shore, as a chart tints them, shallow to deep.
   sea: "#d5e6ea",
   "sea-1": "#a9cbd8",

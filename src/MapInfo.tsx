@@ -29,6 +29,7 @@ const SECTION_ID: Record<InfoSection, string> = {
  */
 export default function MapInfo({
   at,
+  open = true,
   onClose,
   scale,
   rider,
@@ -39,6 +40,8 @@ export default function MapInfo({
   satelliteError = null,
 }: {
   at: InfoSection;
+  /** False while it fades out, once shut. */
+  open?: boolean;
   onClose: () => void;
   scale: string;
   rider: Rider;
@@ -72,7 +75,7 @@ export default function MapInfo({
   );
   return (
     <Dialog
-      open
+      open={open}
       title="About the map"
       size="wide"
       className="map-info"
