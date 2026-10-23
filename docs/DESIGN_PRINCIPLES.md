@@ -409,10 +409,14 @@ words, so the rain row's figures stay in ink over a rain-blue tint; the pale
 fills sit inside an ink line at 8.72:1 (sun), 11.00:1 (cloud) and 12.32:1
 (moon), and on the proposed night chart they carry the shape themselves
 (8.8:1 to 12.4:1 on the night ground). None re-themes. The set is data
-(`src/glyphSet.ts`) that the site (`ChartGlyph`) and the app (`SetGlyph`)
+(`shared/web/glyphSet.ts`) that the site (`ChartGlyph`) and the app (`SetGlyph`)
 both draw, so the dock's row labels, its sky (the moon in the dark hours) and
 the blend's switch are the same on both; the layers' and the site menu's
-glyphs stay src/chartGlyphs.tsx's own.
+glyphs stay src/chartGlyphs.tsx's own. The spot page's sky draws from the
+same set (2026-10-23, later): its hours had their own grey suns and clouds,
+and now show the dock's, drizzle and showers told from rain, and the moon in
+a dark hour. The set and `ChartGlyph` sit in shared/web, which the map and
+the spot page may both import, since neither may import the other.
 
 ---
 

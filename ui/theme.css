@@ -202,7 +202,7 @@
   --color-now-marker: #bf6546;
   --color-gust: #e0803a;
 
-  /* The weather's state, and nothing else: the sky's glyphs (src/glyphSet.ts)
+  /* The weather's state, and nothing else: the sky's glyphs (shared/web/glyphSet.ts)
      drawn as a chart draws a buoy, an ink outline with the colour inside. The
      sun is the buoy's own yellow; rain a sea-blue, for a drop, the rain row's
      tint and a shower's streaks; cloud and night (the moon) pale fills that

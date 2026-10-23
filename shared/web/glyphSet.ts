@@ -10,16 +10,18 @@
  * scale, the chart's magenta for the best of something, and the warm red for a
  * warning. Everything else is ink on paper.
  *
- * Plain data and no React, so the site (src/chartGlyphs.tsx, `ChartGlyph`) and
- * the app (mobile/src/components/Glyphs.tsx, `SetGlyph`) draw the same
- * glyphs from this one file: a part names its paint, and each renderer maps
- * the paint to the theme's colour. Import a glyph by name; one not imported is
- * not in the bundle.
+ * Plain data and no React, so the site (shared/web/ChartGlyph.tsx, which the
+ * map's src/chartGlyphs.tsx and the spot page both draw with) and the app
+ * (mobile/src/components/Glyphs.tsx, `SetGlyph`) draw the same glyphs from
+ * this one file. It lives in shared/web because the map and the spot page
+ * may each import from there, and not from each other. A part names its
+ * paint, and each renderer maps the paint to the theme's colour. Import a
+ * glyph by name; one not imported is not in the bundle.
  *
  * The layers' glyphs and the site menu's rows are src/chartGlyphs.tsx's own
  * (drawn first, as JSX); the stars are ui/StarGlyphs.tsx's.
  */
-import type { WeatherIcon } from "../force5/src/surface";
+import type { WeatherIcon } from "../../force5/src/surface";
 
 /**
  * What a part is painted with. `ink` is the text's own colour (currentColor);

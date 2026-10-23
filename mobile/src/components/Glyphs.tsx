@@ -1,7 +1,7 @@
 /**
  * The chart's small glyphs, drawn as the site draws them (src/glyphs.tsx,
  * src/WeatherGlyph.tsx): an arrow blowing downwind, the red star a rider keeps
- * a spot with, and the site's glyph set (src/glyphSet.ts, `SetGlyph`): the
+ * a spot with, and the site's glyph set (shared/web/glyphSet.ts, `SetGlyph`): the
  * rows' glyphs and the sky, an ink outline with the weather's colour inside.
  * Each draws into its own <Svg>, or as a group (`*Mark`) into a larger one,
  * so a row of a hundred hours is one drawing rather than a hundred.
@@ -10,8 +10,8 @@ import { memo } from "react";
 import { Pressable, StyleSheet } from "react-native";
 import Svg, { Circle, G, Path, Text as SvgText } from "react-native-svg";
 import type { WeatherIcon } from "../../../force5/src/surface";
-import * as glyphs from "../../../src/glyphSet";
-import { glyphStroke, skyGlyph, type GlyphDef, type GlyphPaint } from "../../../src/glyphSet";
+import * as glyphs from "../../../shared/web/glyphSet";
+import { glyphStroke, skyGlyph, type GlyphDef, type GlyphPaint } from "../../../shared/web/glyphSet";
 import { colors, fonts, hitTarget } from "../theme/tokens";
 import { tick } from "./haptics";
 
@@ -179,7 +179,7 @@ interface StrokeProps {
   strokeWidth?: number;
 }
 
-/** Each paint of the glyph set (src/glyphSet.ts), from the theme; `ink` is the glyph's colour. */
+/** Each paint of the glyph set (shared/web/glyphSet.ts), from the theme; `ink` is the glyph's colour. */
 const PAINT: Record<Exclude<GlyphPaint, "ink" | "wind">, string> = {
   paper: colors.paper,
   sun: colors.weatherSun,
@@ -193,7 +193,7 @@ const PAINT: Record<Exclude<GlyphPaint, "ink" | "wind">, string> = {
 };
 
 /**
- * A glyph from the site's set (src/glyphSet.ts), drawn as the site's
+ * A glyph from the site's set (shared/web/glyphSet.ts), drawn as the site's
  * `ChartGlyph` draws it: an ink outline in `color`, the weather's colour
  * inside. `wind` fills a speed arrow. Decorative: the words go on whatever
  * holds it.

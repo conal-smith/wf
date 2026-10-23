@@ -22,7 +22,7 @@ import { StarGlyphs } from "../ui/StarGlyphs";
 // Only when asked for: the chart's Blend view.
 const BlendChart = lazy(() => import("./BlendChart"));
 import { ChartGlyph, glyphs } from "./chartGlyphs";
-import type { GlyphDef } from "./glyphSet";
+import type { GlyphDef } from "../shared/web/glyphSet";
 import { SeaTempGlyph, StarToggle, WindArrow } from "./glyphs";
 import {
   axisTicks,
@@ -211,7 +211,7 @@ const MORE_LABEL: Record<MoreRow, [GlyphDef, string, string?]> = {
   air: [glyphs.air, "Air, °C", "°C"],
   rain: [glyphs.drop, "Rain, mm", "mm"],
 };
-/** The glyph set's (src/glyphSet.ts): ink, with the weather's colour inside. */
+/** The glyph set's (shared/web/glyphSet.ts): ink, with the weather's colour inside. */
 const RowLabel = ({ glyph, title }: { glyph: GlyphDef; title: string }) => (
   <span className="dk-glyph" title={title}>
     <ChartGlyph glyph={glyph} size={14} />

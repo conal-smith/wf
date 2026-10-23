@@ -1,12 +1,15 @@
 /**
  * The small marks the spot page repeats on every row, drawn as the chart
  * draws them: thin ink strokes on paper. The wind's arrow, the wind against
- * the beach, the way the beach faces, the sky, and the star a rider keeps a
+ * the beach, the way the beach faces, the sky (the glyph set's, in the
+ * weather's colours, as the dock draws it), and the star a rider keeps a
  * place by. Each says in words what it draws, for a screen reader and a hover.
  */
 import type { HourWeather } from "../../mcp/api/forecast";
 import { SHORE_LABEL, shoreAngle } from "../../force5/src/stars";
-import { presentWeather } from "../../force5/src/surface";
+import { presentWeather, type WeatherIcon } from "../../force5/src/surface";
+import { ChartGlyph } from "../../shared/web/ChartGlyph";
+import { skyGlyph } from "../../shared/web/glyphSet";
 import { tv } from "../../ui/tv";
 import { compass } from "./spot";
 
@@ -15,11 +18,9 @@ const glyph = tv({
     svg: "inline-block shrink-0 overflow-visible align-middle",
     stroke: "fill-none stroke-ink",
     warn: "fill-none stroke-pen",
-    fill: "fill-ink",
     paper: "fill-card stroke-ink",
     land: "fill-land",
     sea: "fill-depth",
-    rain: "fill-none stroke-depth",
     pen: "stroke-pen",
   },
 });
@@ -137,22 +138,21 @@ export function FacingGlyph({
   );
 }
 
-type Sky = "clear" | "partly" | "cloudy" | "rain" | "fog" | "thunder" | "snow";
-
-/** The sky in one word, from the model's present weather or its cloud and rain. */
-export function skyOf(weather: HourWeather): Sky | null {
+/**
+ * The sky as a present-weather group, from the model's code, or from its
+ * cloud and rain where it gives no code. A clear or cloudy code over rain the
+ * model still counts is rain.
+ */
+export function skyOf(weather: HourWeather): WeatherIcon | null {
   const present = presentWeather(weather.weather_code);
+  const raining = (weather.rain_mm ?? 0) >= 0.3;
   if (present) {
-    const icon = present.icon as string;
-    if (icon === "drizzle" || icon === "showers" || icon === "rain")
+    const { icon } = present;
+    if (raining && (icon === "clear" || icon === "partly" || icon === "cloudy"))
       return "rain";
-    if (icon === "clear" || icon === "partly" || icon === "cloudy") {
-      if ((weather.rain_mm ?? 0) >= 0.3) return "rain";
-      return icon;
-    }
-    if (icon === "fog" || icon === "thunder" || icon === "snow") return icon;
+    return icon;
   }
-  if ((weather.rain_mm ?? 0) >= 0.3) return "rain";
+  if (raining) return "rain";
   if (weather.cloud_pct === null) return null;
   return weather.cloud_pct < 25
     ? "clear"
@@ -161,20 +161,21 @@ export function skyOf(weather: HourWeather): Sky | null {
       : "cloudy";
 }
 
-const SUN_RAYS =
-  "M0 -6.2V-5M0 5V6.2M-6.2 0H-5M5 0H6.2M-4.4 -4.4L-3.6 -3.6M3.6 3.6L4.4 4.4M-4.4 4.4L-3.6 3.6M3.6 -3.6L4.4 -4.4";
-const CLOUD =
-  "M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z";
-
-/** The sky as a weather report draws it: sun, sun and cloud, cloud, rain… */
+/**
+ * The sky as the dock draws it, from the glyph set (shared/web/glyphSet.ts):
+ * an ink outline with the weather's colour inside, the moon for the sun in a
+ * dark hour. Named in words for a screen reader and a hover.
+ */
 export function SkyGlyph({
   weather,
   size = 18,
+  dark = false,
 }: {
   weather: HourWeather;
   size?: number;
+  /** A dark hour: the moon for the sun. */
+  dark?: boolean;
 }) {
-  const s = glyph();
   const sky = skyOf(weather);
   if (!sky) return null;
   const present = presentWeather(weather.weather_code);
@@ -186,76 +187,13 @@ export function SkyGlyph({
     ]
       .filter(Boolean)
       .join(", ") || sky;
-  const sun = (
-    <g strokeWidth={1.1} strokeLinecap="round">
-      <circle className={s.paper()} r={3.4} />
-      <path className={s.stroke()} d={SUN_RAYS} />
-    </g>
-  );
-  const cloud = (x: number, y: number, k = 1) => (
-    <path
-      className={s.paper()}
-      transform={`translate(${x} ${y}) scale(${k})`}
-      d={CLOUD}
-      strokeWidth={1.1}
-      strokeLinejoin="round"
-    />
-  );
   return (
-    <svg
-      className={s.svg()}
-      width={size}
-      height={size}
-      viewBox="-9 -9 18 18"
-      role="img"
-      aria-label={words}
-    >
-      <title>{words}</title>
-      {sky === "clear" && sun}
-      {sky === "partly" && (
-        <>
-          <g transform="translate(-2.4 -2.2) scale(.8)">{sun}</g>
-          {cloud(2, 2.4, 0.85)}
-        </>
-      )}
-      {sky === "cloudy" && cloud(0, 0)}
-      {(sky === "rain" || sky === "thunder" || sky === "snow") && (
-        <>
-          {cloud(0, -1.5)}
-          {sky === "rain" && (
-            <path
-              className={s.rain()}
-              d="M-3 4.5L-4 7.5M0.5 4.5L-0.5 7.5M4 4.5L3 7.5"
-              strokeWidth={1.2}
-              strokeLinecap="round"
-            />
-          )}
-          {sky === "thunder" && (
-            <path
-              className={s.stroke()}
-              d="M0.5 3.6L-1.5 6.4H1L-0.6 8.8"
-              strokeWidth={1.1}
-              strokeLinejoin="round"
-            />
-          )}
-          {sky === "snow" && (
-            <g className={s.fill()}>
-              <circle cx={-3} cy={6} r={0.8} />
-              <circle cx={0.5} cy={7.2} r={0.8} />
-              <circle cx={4} cy={6} r={0.8} />
-            </g>
-          )}
-        </>
-      )}
-      {sky === "fog" && (
-        <path
-          className={s.stroke()}
-          d="M-6.5 -3H6.5M-5 0.5H5M-6.5 4H6.5"
-          strokeWidth={1.2}
-          strokeLinecap="round"
-        />
-      )}
-    </svg>
+    <ChartGlyph
+      glyph={skyGlyph(sky, dark)}
+      size={size}
+      title={words}
+      className={glyph().svg()}
+    />
   );
 }
 
