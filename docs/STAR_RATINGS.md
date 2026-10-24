@@ -34,7 +34,7 @@ by every surface that rates:
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Map lights, dock stars (web and app) | `src/ratings.ts` `placeConsensus`, or for the default choice the published blend built by the same function (`src/spotBlend.ts`, `force5/blend/build.ts`) |
 | Dock's Blend chart                   | `src/useBlend.ts` → `blendStats(…, headline)`: the headline line is the same one model's                                                                  |
-| Spot page, MCP tools, Gust           | `mcp/api/forecast.ts` `hourWind(…, from)`; `get_spot_forecast` and `find_wind` take `model`                                                                  |
+| Spot page, MCP tools, Gust           | `mcp/api/forecast.ts` `hourWind(…, from)`; `get_spot_forecast` and `find_wind` take `model`                                                               |
 | Alerts                               | the published blend for a rider on the default; the models' own spot squares through `hourWind` for any other (`alerts/api/forecast.ts`)                  |
 | Verification                         | `force5/ingest/consensus.py`, a line-by-line replica held to the TypeScript by `force5/ingest/fixtures/blend-consensus.json`                              |
 
@@ -81,7 +81,8 @@ table, names the model on the day's header and in each hour's card.
 | **Stars**     | What is left once the spot and the forecast have their say | solid stars           |
 
 Stars never exceed potential, so the faded stars are always the upside a
-kinder direction or a steadier breeze would have given.
+kinder direction or a steadier breeze would have given. An hour whose gust is
+over the rider's limit has neither: no stars are drawn at all.
 Solid and faded differ by shape (filled against outline) as well as by tone.
 
 ### Rideable wind: the steady wind, lifted only to the floor
@@ -104,13 +105,17 @@ the rating: no page names it as a wind of its own.
 
 ### Potential: the rideable wind against the rider's band
 
-Each level has a band of wind, in knots, for an 80 kg rider:
+Each level has a band of wind, in knots, for an 80 kg rider. The top is the
+most the rider can hold, gusts included (below):
 
 | Level    | Floor | Sweet spot | Ceiling |
 | -------- | ----- | ---------- | ------- |
 | Learning | 13    | 15–20      | 24      |
 | Riding   | 11    | 14–24      | 30      |
 | Advanced | 8     | 13–28      | 35      |
+
+"Nobody goes out in 40; 30 is about the max, maybe 35 for very advanced" (the
+owner, 24 October 2026).
 
 A heavier rider needs more wind to get going — a wing's power rises with the
 square of the wind, so the floor moves with the square root of the weight — and
@@ -121,90 +126,133 @@ at the ceiling, falling to none six knots past it.
 ### Stars: what the spot takes away
 
 ```
-stars = round(wind − gusts − direction − wing), from 0 to potential
+stars = round(wind − gusty − direction − wing), from 0 to potential
 ```
 
-Each deduction is a sentence in the cell's tooltip when it costs a whole star,
-so a rider can argue with it.
+and no stars, potential too, when the hour's gust is over the top of the
+rider's band. Each deduction is a sentence in the cell's tooltip when it costs
+a whole star, so a rider can argue with it.
 
 | Condition                                                                       | Learning | Riding | Advanced |
 | ------------------------------------------------------------------------------- | -------- | ------ | -------- |
-| Onshore (wind within 30° of straight onshore)                                   | −1       | −1     | −1       |
+| A gust over your limit, the top of your band (below)                            | all      | all    | all      |
+| Onshore (wind within 30° of straight onshore)                                   | —        | —      | —        |
 | Cross-onshore                                                                   | —        | —      | —        |
-| Cross-shore                                                                     | −0.5     | —      | —        |
+| Cross-shore                                                                     | —        | —      | —        |
 | Cross-offshore                                                                  | −3       | −1.5   | −1       |
 | Offshore (wind within 30° of straight off the beach)                            | −5       | −4     | −4       |
-| Gusts, by how strong they are (below)                                           | to −3    | to −2  | to −2    |
+| Gusty or very gusty, by how much it bothers you (below)                         | to −3    | to −3  | to −3    |
 | The models disagree (shown beside the stars, never counted, since v5)           | —        | —      | —        |
 | Your wings don't fit (biggest < 75% or smallest > 135% of the recommended size) | −1       | −1     | −1       |
 
 Offshore is a deduction like the others, not a cap: the faded stars still say
 what the wind is worth, and a rider's own rating may set it as they like.
+Cross-shore never costs a star: "it's perfect conditions".
 
-The gusts and the direction are named in the reasons only when they cost a
+Gusty wind and the direction are named in the reasons only when they cost a
 whole star.
 
-### The gusts (`gustLoss`, `gustCurve`)
+### Gusts over your limit (`gustsOverLimit`)
 
-The mean decides the stars; what a gust costs depends on how strong it is,
-not on how far it runs over the mean. The models' gust is the hour's
-strongest, so a riding day's 8 or 9 knots over is ordinary; what makes a
-session hard is a gust past what you can hold. Each level has a curve: no loss
-up to `fine`, a straight ramp to `most` stars off at `worst`, and flat past it.
+The top of the rider's band, `max`, is the most they can hold, gusts
+included: 24, 30 and 35 kn at 80 kg, moving with weight by the fourth root of
+weight / 80, or their own figure in a rating of their own. An hour whose gust
+is over it gets no stars and no potential, so nothing is drawn, not even
+outline stars: a kinder direction would not make it rideable. The reason
+reads "Gusts over your limit", and an hour with no stars says "gusts over your
+limit" (`noStarsWhy`; the session is `too-gusty`, or `too-strong` where the
+mean is too strong on its own).
 
-| Level    | No effect up to (fine) | Most off from (worst) | Most off |
-| -------- | ---------------------- | --------------------- | -------- |
-| Learning | 20 kn                  | 28 kn                 | 3        |
-| Riding   | 28 kn                  | 40 kn                 | 2        |
-| Advanced | 33 kn                  | 45 kn                 | 2        |
+### Gusty wind (`gustiness`, `gustyCost`)
 
-The knots are for 80 kg and move with weight as the top of the band does
-(fourth root of weight / 80).
+How gusty an hour is, is its gust over its mean, counted only when the mean is
+at or above the rider's floor (below it a gust is a chance to get up):
 
-The owner's calibration, for Riding at 80 kg, cross-onshore, no wings listed,
-(`force5/src/stars.test.ts` asserts every line, and the
-mockup's figures for the other two levels):
+| Gust ÷ mean | The hour is |
+| ----------- | ----------- |
+| under 1.5   | steady      |
+| 1.5 or more | gusty       |
+| 1.8 or more | very gusty  |
 
-| Wind       | v3  | v4  | Why                                              |
+What that costs is the rider's choice, "Gusty wind: how much uneven wind
+bothers you" in Customise (`Rider.gusty`, "some" unless they pick another):
+
+| Gusty wind bothers you | Steady | Gusty | Very gusty |
+| ---------------------- | ------ | ----- | ---------- |
+| Not much (`little`)    | —      | —     | −1         |
+| Some (`some`)          | —      | −1    | −2         |
+| A lot (`lots`)         | —      | −2    | −3         |
+
+The stars lost show as outline stars, as any other cost does, and the reason
+says "Gusty" or "Very gusty" when it moved a star.
+
+The owner's calibration of v6, for Riding at 80 kg, gusty wind "some",
+cross-onshore, no wings listed (`force5/src/stars.test.ts` asserts every line,
+with the other two levels):
+
+| Wind       | v5  | v6  | Why                                              |
 | ---------- | --- | --- | ------------------------------------------------ |
 | 9 gust 17  | 1   | 1   | under the floor: the gusts are a chance, no more |
-| 12 gust 20 | 2   | 2   | a light day; the gusts don't make it windier     |
-| 15 gust 27 | 3   | 4   | an ordinary gust on a good wind                  |
+| 12 gust 20 | 2   | 1   | gusty (1.67): one off                            |
+| 15 gust 20 | 4   | 4   | steady (1.33)                                    |
+| 15 gust 27 | 4   | 2   | very gusty (1.8): two off                        |
 | 18 gust 24 | 5   | 5   | steady                                           |
-| 18 gust 27 | 5   | 5   | an ordinary gust                                 |
-| 22 gust 32 | 4   | 4   | a third of a star for a 32 kn gust               |
-| 25 gust 38 | 2   | 2   | strong, with gusts nearly at the worst           |
+| 18 gust 27 | 5   | 4   | gusty (1.5): one off                             |
+| 22 gust 32 | 4   | 0   | a gust over 30: no stars                         |
+| 25 gust 33 | 3   | 0   | a gust over 30: no stars                         |
+| 25 gust 38 | 2   | 0   | a gust over 30: no stars                         |
 
-Learning: 12g20 1, 15g22 3, 15g27 1, 18g24 4, 18g27 2, 22g32 0. Advanced:
-9g17 2, 12g20 3, 15g22 to 22g32 5, 25g38 4.
+v6, solid out of outlined. Learning: 12g20 1/1, 15g20 and 15g22 4/4, 18g24
+5/5, and none for 15g27, 18g27, 22g32 or 25g38 (gusts over 24). Advanced: 9g17
+0/2 and 10g16 1/2 (over its 8 kn floor, and gusty), 12g20 2/3, 15g27 3/5, 18g27
+4/5, 22g32 and 25g33 5/5, 25g38 none (a gust over 35).
 
 ### A rider's own rating (`CustomRating`)
 
 A rider can set their own stars ("Customise" or "Edit custom" under the level
 pill in Display options, or the "Custom stars" chip in the dock): the four
-wind handles, the gust curve and the stars each direction takes off, starting
-from a level. The app has the same dialog as a screen of its own
+wind handles, the top one their limit for gusts, and the stars each direction
+takes off, starting from a level. The app has the same dialog as a screen of its own
 (`mobile/src/features/stars`), from the same link under the pill in More ›
 Rider and the chip in the dock, on the site's arithmetic
 (`spot/web/yourStars.ts`).
 
 ```ts
-{ version: 1, base: Skill,
+{ version: 2, base: Skill,
   wind: { min, sweetLow, sweetHigh, max },        // knots
-  gust: { fine, worst, most },                    // knots, knots, stars
   direction: { onshore, crossOn, cross, crossOff, offshore } } // stars off
 ```
 
 It rides on the rider (`Rider.custom`), so every page and service that rates
-for a rider (`rateHour`) uses it. It replaces the level's band, gust curve and
-direction costs, with no weight scaling; `base` keeps the level's share of a
-gust below the floor and its wing sizes. `parseCustomRating` is the one place
-it is made safe, whoever wrote it: another version or a missing number drops
-it; knots are held to the tenth, the wind handles in order a knot apart within
-2–40 kn, the gust's a knot apart within 1–50 kn, and every star figure 0–5 in
-half stars. `standardRating(rider, level)` is a level's own rating for that
+for a rider (`rateHour`) uses it. It replaces the level's band and direction
+costs, with no weight scaling; `base` keeps the level's share of a gust below
+the floor and its wing sizes. How much gusty wind bothers the rider is not in
+it: it is the rider's whatever rates (`Rider.gusty`, kept on the device as
+how high they point is, and sent with the rider to the alerts and to Gust).
+`parseCustomRating` is the one place it is made safe, whoever wrote it: a
+version 1 rating, from before v6, is read as version 2 with its gust curve
+left behind, so nobody loses their wind and directions; any other version or
+a missing number drops it; knots are held to the tenth, the wind handles in
+order a knot apart within 2–40 kn, and every star figure 0–5 in half stars. `standardRating(rider, level)` is a level's own rating for that
 rider's weight, where "Start from" begins, so saving it unchanged rates as the
 level does.
+
+### Why v6 (24 October 2026)
+
+The owner's rulings. A rider's top wind now means "the most I can hold, gusts
+included", so an hour gusting over it has no stars at all, not outline stars,
+and says "Gusts over your limit"; the tops stay 24, 30 and 35 kn at 80 kg
+("nobody goes out in 40; 30 is about the max, maybe 35 for very advanced").
+The gust curve went: v4 and v5 charged a 32 kn gust on a 22 kn riding day a
+third of a star, which said nothing useful about an hour few riders would go
+out in, while a 15 kn mean gusting 27 lost nothing though it rides very
+unevenly. Gusty wind is judged by gust ÷ mean instead, from the floor up, and
+each rider says how much it bothers them, so gusty wind costs outline stars
+and a rider who doesn't mind it can say so. Onshore, cross-onshore and
+cross-shore cost nothing for any level: cross-shore "is perfect conditions",
+and onshore cost a star on hours that ride well. A rider's own rating is now
+version 2, without the gust curve; a version 1 rating is read with its wind
+and directions kept.
 
 ### Why v5 (19 October 2026)
 
@@ -322,7 +370,8 @@ does: "too light", "too strong" or "offshore" (`noStarsWhy`).
 
 ## The rider
 
-Weight, level, wings and any custom rating live in the display preferences
+Weight, level, wings, how much gusty wind bothers the rider (`gusty`, absent
+while it is "some") and any custom rating live in the display preferences
 (`force5.prefs.v1`), validated field by field on load: a weight outside
 30–160 kg or a wing outside 1.5–10 m² is dropped rather than rated, and a
 custom rating goes through `parseCustomRating`. Until a weight is given the
@@ -399,7 +448,8 @@ an assistant would be given. The dock follows the same rule from the same
 - **Rate for** (Learning / Riding / Advanced, with weight and wings behind a
   fold) writes the same `rider` in `force5.prefs.v1` as the dock's Display
   options, through the same `parseRider` validation, and re-rates the page
-  live.
+  live. How much gusty wind bothers the rider is set in Customise on the map,
+  and the page reads it from the same rider.
 
 ### The members' spread
 
