@@ -14,17 +14,17 @@ import {
 import {
   NEVER,
   applyDraft,
+  costLabel,
   draftOf,
   draftRider,
-  lessOff,
+  hourWhy,
   levelRating,
+  nearest,
   onItsLevel,
+  parseWings,
   rateSample,
-  sampleBest,
   sampleDay,
-  shoreChoice,
   spotChanges,
-  starsOff,
   withLevel,
   withShore,
   type SampleDay,
@@ -68,7 +68,7 @@ describe("the draft", () => {
     expect(draft.custom).toEqual(own);
   });
   it("starts again from a new level's band and shore", () => {
-    const draft = withShore(draftOf(prefs(), []), "cross", "never");
+    const draft = withShore(draftOf(prefs(), []), "cross", NEVER);
     const learner = withLevel(draft, "beginner", 60);
     expect(learner.custom).toEqual(levelRating("beginner", 60));
     expect(learner.custom.wind.min).toBeLessThan(
@@ -85,38 +85,35 @@ describe("the draft", () => {
 
 describe("the shore", () => {
   const draft = draftOf(prefs(), []);
-  it("names each cost as ride, less or never", () => {
-    expect([0, 0.5, 1, 4, 5].map(shoreChoice)).toEqual([
-      "ride",
-      "less",
-      "less",
-      "less",
+  it("says each cost as no cost, stars off, or never", () => {
+    expect([0, 0.5, 1.5, 4, 5].map(costLabel)).toEqual([
+      "no cost",
+      "−0.5★",
+      "−1.5★",
+      "−4★",
       "never",
     ]);
-    expect([1, 1.5, 4].map(starsOff)).toEqual(["−1", "−1½", "−4"]);
   });
-  it("keeps the level's own half stars for less, else takes one star", () => {
-    // A rider's cross-offshore costs one and a half; cross-shore costs nothing.
-    expect(lessOff(draft, "crossOff")).toBe(1.5);
-    expect(lessOff(draft, "cross")).toBe(1);
-    expect(withShore(draft, "cross", "less").custom.direction.cross).toBe(1);
+  it("sets a way of wind in half stars, from none to never, as a dot is dragged", () => {
+    expect(withShore(draft, "cross", 1.3).custom.direction.cross).toBe(1.5);
+    expect(withShore(draft, "cross", 7).custom.direction.cross).toBe(NEVER);
+    expect(withShore(draft, "crossOff", -1).custom.direction.crossOff).toBe(0);
+    // A drag that lands on the same half star changes nothing.
+    expect(withShore(draft, "crossOff", 1.6)).toBe(draft);
   });
-  it("rates never as no stars in any wind, and ride as nothing off", () => {
-    const never = withShore(draft, "crossOn", "never");
+  it("rates never as no stars in any wind, and no cost as nothing off", () => {
+    const never = withShore(draft, "crossOn", NEVER);
     expect(never.custom.direction.crossOn).toBe(NEVER);
     const rider = draftRider(never, prefs().rider);
     for (const kn of [12, 16, 20, 26]) expect(rate(rider, kn).stars).toBe(0);
-    // Offshore, ridden: the wind alone rates it.
-    const ride = draftRider(
-      withShore(draft, "offshore", "ride"),
-      prefs().rider,
-    );
+    // Offshore at no cost: the wind alone rates it.
+    const ride = draftRider(withShore(draft, "offshore", 0), prefs().rider);
     expect(rate(ride, 18, 90).stars).toBe(rate(ride, 18, 225).stars);
   });
   it("holds offshore at never for a learner", () => {
     const learner = withLevel(draft, "beginner", null);
     expect(learner.custom.direction.offshore).toBe(NEVER);
-    expect(withShore(learner, "offshore", "ride")).toBe(learner);
+    expect(withShore(learner, "offshore", 0)).toBe(learner);
     const own = {
       ...standardRating(prefs().rider, "beginner"),
       direction: {
@@ -128,6 +125,75 @@ describe("the shore", () => {
       draftOf(prefs({ skill: "beginner", custom: own }), []).custom.direction
         .offshore,
     ).toBe(NEVER);
+  });
+});
+
+describe("the wings", () => {
+  it("reads every number typed, and keeps them with the rider", () => {
+    expect(parseWings("4, 5.5")).toEqual([4, 5.5]);
+    expect(parseWings("4 and 5.5m")).toEqual([4, 5.5]);
+    expect(parseWings("")).toEqual([]);
+    const before = prefs({ wings: [3] });
+    const draft = draftOf(before, []);
+    expect(draft.wings).toEqual([3]);
+    const next = applyDraft(before, { ...draft, wings: [4, 5.5] }, NOW);
+    expect(next.rider.wings).toEqual([4, 5.5]);
+    // And the draft rates with them: a 2 m² wing alone is small for 12 knots.
+    const small = draftRider({ ...draft, wings: [2] }, before.rider);
+    expect(rate(small, 14).reasons.join(" ")).toMatch(/biggest wing is small/);
+  });
+});
+
+describe("why an hour has fewer stars", () => {
+  // A west-facing beach: 225 is cross-onshore, 135 cross-offshore, 90 offshore.
+  const hour = (windKn: number, gustKn: number, from = 225) => ({
+    time: 0,
+    windKn,
+    gustKn,
+    from,
+  });
+  const why = (rider: Rider, h: ReturnType<typeof hour>) =>
+    hourWhy(
+      h,
+      rateHour({ ...h, daylight: true }, { facing: 270 }, rider)!,
+      rider,
+    );
+  const rider = draftRider(draftOf(prefs(), []), prefs().rider);
+  it("is a gust over the rider's top: too strong, the gust in red", () => {
+    expect(why(rider, hour(22, 32))).toEqual({
+      gust: "over",
+      word: "too strong",
+    });
+  });
+  it("is gusty wind, when it took a star: the gust in orange", () => {
+    expect(why(rider, hour(18, 27))).toEqual({ gust: "gusty", word: "gusty" });
+    expect(why(rider, hour(18, 24))).toEqual({ gust: null, word: "" });
+  });
+  it("is the way of wind, by its short name, when it took a star", () => {
+    expect(why(rider, hour(18, 22, 135))).toEqual({
+      gust: null,
+      word: "x-off",
+    });
+    expect(why(rider, hour(18, 22, 90))).toEqual({
+      gust: null,
+      word: "offshore",
+    });
+    // Cross-shore costs nothing.
+    expect(why(rider, hour(18, 22, 180))).toEqual({ gust: null, word: "" });
+  });
+});
+
+describe("the spots near", () => {
+  const places = [
+    { id: "far", lat: 52.2, lon: -10.0 },
+    { id: "near", lat: 53.45, lon: -6.15 },
+    { id: "nearer", lat: 53.44, lon: -6.16 },
+  ];
+  it("lists the nearest first with their distances, whatever is starred", () => {
+    const list = nearest(places, { lat: 53.44, lng: -6.16 }, 2);
+    expect(list.map((x) => x.place.id)).toEqual(["nearer", "near"]);
+    expect(list[0].km).toBe(0);
+    expect(Math.round(list[1].km)).toBe(1);
   });
 });
 
@@ -309,15 +375,11 @@ describe("the sample day", () => {
       Array.from({ length: 9 }, (_, i) => i * H),
     );
   });
-  it("rates every hour of it for the rider, and frames the best of them", () => {
+  it("rates every hour of it for the rider", () => {
     const day: SampleDay = sampleDay(hours, times, places, [])!;
     const ratings = rateSample(day, prefs().rider);
+    expect(ratings).toHaveLength(9);
     expect(ratings.every((r) => r.stars >= 4)).toBe(true);
-    expect(sampleBest(ratings)).toEqual({
-      from: 0,
-      to: 8,
-      stars: ratings[0].stars,
-    });
   });
 });
 

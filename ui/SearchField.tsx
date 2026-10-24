@@ -33,8 +33,16 @@ export const searchFieldStyles = tv({
         input: "text-lead font-normal pointer-coarse:text-lead",
       },
     },
+    // A capsule ruled all round in ink rather than a rule under the words:
+    // a search inside a box, where a lone rule would read as a divider.
+    shape: {
+      rule: {},
+      pill: {
+        base: "rounded-pill border border-ink px-3.5 hover:border-chart-magenta",
+      },
+    },
   },
-  defaultVariants: { size: "lg" },
+  defaultVariants: { size: "lg", shape: "rule" },
 });
 
 /** The magnifier, which grows with the box. */
@@ -56,12 +64,13 @@ export type SearchFieldProps = Omit<
 
 export function SearchField({
   size = "lg",
+  shape,
   busy = false,
   className,
   children,
   ...props
 }: SearchFieldProps) {
-  const styles = searchFieldStyles({ size });
+  const styles = searchFieldStyles({ size, shape });
   return (
     <div className={styles.base({ className })} aria-busy={busy}>
       <Search size={ICON[size]} aria-hidden="true" />

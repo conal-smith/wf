@@ -21,7 +21,7 @@ import {
 import { UPWIND_DEFAULT, upwindOf } from "../force5/src/rideWedge";
 import {
   DEFAULT_RIDER,
-  bestWindow,
+  gustsOverLimit,
   rateHour,
   ratingLevel,
   sameCustomRating,
@@ -31,10 +31,11 @@ import {
   type Gusty,
   type HourRating,
   type Rider,
+  type ShoreAngle,
   type Skill,
 } from "../force5/src/stars";
 import type { Units } from "../force5/src/units";
-import { inForces } from "../spot/web/yourStars";
+import { inForces, setDirection } from "../spot/web/yourStars";
 import type { PlaceHour } from "./ratings";
 
 /** What the wizard is setting, until "Show me the chart" saves it. */
@@ -48,6 +49,8 @@ export interface Draft {
   /** The wind band and the shore: the level's until changed. */
   custom: CustomRating;
   units: Units;
+  /** The wings the rider owns, in m²: a star comes off where none suits. */
+  wings: number[];
   /** The rider's spots, most recently starred first. */
   starred: string[];
 }
@@ -68,6 +71,7 @@ export function draftOf(prefs: Prefs, starred: readonly string[]): Draft {
       ? lockShore(rider.custom)
       : levelRating(skill, rider.weightKg),
     units: prefs.units,
+    wings: [...rider.wings],
     starred: [...starred],
   });
 }
@@ -121,15 +125,24 @@ export const draftRider = (draft: Draft, rider: Rider): Rider => ({
   weightKg: draft.weightKg,
   upwind: draft.upwind,
   gusty: draft.gusty,
+  wings: draft.wings,
   custom: draft.custom,
   keptCustom: null,
 });
 
+/**
+ * The wings typed into "Wings you own": every number in it, "4, 5.5" or
+ * "4 and 5.5m", made safe as a stored rider's are (`parseRider`).
+ */
+export const parseWings = (text: string): number[] =>
+  parseRider({
+    ...DEFAULT_RIDER,
+    wings: (text.match(/\d+(?:\.\d+)?/g) ?? []).map(Number),
+  }).wings;
+
 /* ---- the shore ---- */
 
-/** The three answers for each way of wind: ride it, a star or so off, or never. */
-export type ShoreChoice = "ride" | "less" | "never";
-/** Never: five off leaves no star in any wind. */
+/** Never: five off leaves no star in any wind, the web's middle. */
 export const NEVER = 5;
 
 /** Offshore is never for a learner: the wizard holds it there. */
@@ -142,48 +155,22 @@ function lockShore(rating: CustomRating): CustomRating {
     : rating;
 }
 
-export const shoreChoice = (off: number): ShoreChoice =>
-  off <= 0 ? "ride" : off >= NEVER ? "never" : "less";
-
 /**
- * What "less" takes off for this way of wind: what it takes off now, when
- * that is between none and all; else the level's own figure there; else one
- * star. So a level's half stars are kept, and said, rather than rounded.
+ * The stars a way of wind takes off, as a dot on the web sets them: in half
+ * stars from none to never (yourStars.ts `setDirection`). A learner's
+ * offshore stays at never.
  */
-export function lessOff(draft: Draft, key: DirectionKey): number {
-  const now = draft.custom.direction[key];
-  if (now > 0 && now < NEVER) return now;
-  const level = levelRating(draft.skill, draft.weightKg).direction[key];
-  return level > 0 && level < NEVER ? level : 1;
-}
-
-export function withShore(
-  draft: Draft,
-  key: DirectionKey,
-  choice: ShoreChoice,
-): Draft {
+export function withShore(draft: Draft, key: DirectionKey, off: number): Draft {
   if (shoreLocked(draft.skill, key)) return draft;
-  const off =
-    choice === "ride" ? 0 : choice === "never" ? NEVER : lessOff(draft, key);
-  return {
-    ...draft,
-    custom: {
-      ...draft.custom,
-      direction: { ...draft.custom.direction, [key]: off },
-    },
-  };
+  const custom = setDirection(draft.custom, key, off);
+  return custom.direction[key] === draft.custom.direction[key]
+    ? draft
+    : { ...draft, custom };
 }
 
-/** A tap on the beach's wedge: ride, then less, then never, then ride. */
-export const NEXT_SHORE: Record<ShoreChoice, ShoreChoice> = {
-  ride: "less",
-  less: "never",
-  never: "ride",
-};
-
-/** "−1", "−1½": stars off as the wizard names them. */
-export const starsOff = (off: number) =>
-  `−${Math.floor(off) || ""}${off % 1 ? "½" : ""}`;
+/** What a way of wind costs, as the wizard says it: "no cost", "−1.5★", "never". */
+export const costLabel = (off: number) =>
+  off >= NEVER ? "never" : off <= 0 ? "no cost" : `−${off}★`;
 
 /* ---- saving ---- */
 
@@ -207,6 +194,7 @@ export function applyDraft(
     weightKg: draft.weightKg,
     upwind: draft.upwind,
     gusty: draft.gusty,
+    wings: draft.wings,
   });
   const next: Prefs = { ...prefs, units: draft.units, rider };
   const custom = { ...draft.custom, base: draft.skill };
@@ -332,6 +320,79 @@ export function sampleDay(
   };
 }
 
-/** The sample's best hours for the rider, where any are worth a star: the pen's frame. */
-export const sampleBest = (ratings: readonly HourRating[]) =>
-  bestWindow(ratings, 2) ?? bestWindow(ratings, 1);
+/** The shore angle's key in a custom rating. */
+const DIRECTION_OF: Record<ShoreAngle, DirectionKey> = {
+  onshore: "onshore",
+  "cross-on": "crossOn",
+  cross: "cross",
+  "cross-off": "crossOff",
+  offshore: "offshore",
+};
+
+/** The word under an hour for the way of wind that cost it a star. */
+export const SHORE_WORD: Record<DirectionKey, string> = {
+  onshore: "onshore",
+  crossOn: "x-on",
+  cross: "cross",
+  crossOff: "x-off",
+  offshore: "offshore",
+};
+
+/**
+ * Why a sample hour has fewer stars than its wind is worth, as the hour says
+ * it under its stars: a gust over the rider's top ("too strong", the gust in
+ * red), a way of wind they never ride, gusty wind (the gust in orange), or a
+ * way of wind that took a star off. Each only when it moved a star, as the
+ * reasons in force5/src/stars.ts are.
+ */
+export function hourWhy(
+  hour: SampleHour,
+  rating: HourRating,
+  rider: Rider,
+): { gust: "over" | "gusty" | null; word: string } {
+  if (gustsOverLimit(hour.gustKn, rider))
+    return { gust: "over", word: "too strong" };
+  const key = rating.shore ? DIRECTION_OF[rating.shore] : null;
+  const costs = rider.custom?.direction;
+  // The stars this hour would have with the shore costing nothing.
+  const free =
+    key && costs?.[key]
+      ? rateHour({ ...hour, daylight: true }, { facing: null }, rider)!.stars
+      : rating.stars;
+  const shore = key !== null && free > rating.stars;
+  const gusty = rating.reasons.some((r) => /^(Very gusty|Gusty)$/.test(r));
+  if (shore && costs![key!] >= NEVER)
+    return { gust: gusty ? "gusty" : null, word: SHORE_WORD[key!] };
+  if (gusty) return { gust: "gusty", word: "gusty" };
+  return { gust: null, word: shore ? SHORE_WORD[key!] : "" };
+}
+
+/* ---- the rider's spots ---- */
+
+/** Where "Your spots" lists the nearest from: the map's centre, or the rider. */
+export interface Origin {
+  lat: number;
+  lng: number;
+}
+
+/** Kilometres from `origin` to a place, near enough to order a short list. */
+export const kmFrom = (origin: Origin, place: { lat: number; lon: number }) =>
+  Math.hypot(
+    (place.lat - origin.lat) * 111.2,
+    (place.lon - origin.lng) * 111.2 * Math.cos((origin.lat * Math.PI) / 180),
+  );
+
+/**
+ * The `count` places nearest `origin`, nearest first, each with its distance.
+ * Their order is the distance alone, so starring one moves nothing.
+ */
+export function nearest<T extends { lat: number; lon: number }>(
+  places: readonly T[],
+  origin: Origin,
+  count: number,
+): { place: T; km: number }[] {
+  return places
+    .map((place) => ({ place, km: kmFrom(origin, place) }))
+    .sort((a, b) => a.km - b.km)
+    .slice(0, count);
+}

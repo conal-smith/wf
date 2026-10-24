@@ -90,12 +90,23 @@
 }
 
 .wf-dialog__title {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-family: var(--sem-font-family-display);
   font-size: var(--sem-font-size-lead);
   line-height: var(--sem-font-line-lead);
   font-weight: var(--sem-font-weight-lead);
   color: var(--sem-color-ink);
+}
+
+/* A figure beside the title, before the close: how far through a wizard is. */
+.wf-dialog__aside {
+  flex-shrink: 0;
+  align-self: center;
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-label);
+  color: var(--sem-color-ink-muted);
 }
 
 /* ---- body: a sentence or two ---- */

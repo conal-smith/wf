@@ -551,6 +551,25 @@ timeline and on each card's day, as it marks the chosen hour in the dock. The
 site's root opens on whichever of the two pages the rider last had; a link
 that names one wins.
 
+**2026-10-24 — Customise, in plain words, one title a step.** "It reads
+like cryptic riddles." The owner approved the wizard of the mockup
+`backlog/mockups/2026-10-24-customise-wizard.html` (src/Customise.tsx). Six
+steps, each with one title in the dialog's head beside "n / 6" and the close,
+and a thin bar of segments under it for the progress; no "Customise your
+chart" over them, no row of step labels, no Almanac or puffin. The words say
+literally what a thing is ("Still getting up on the foil.", "Blows along the
+beach. Ideal for most riders."), and a step says nothing it does not need.
+Units and "Wings you own" join the first step, so Display options is the
+units, the model and the models in the blend. The wind's top is "Too much,
+in gusts", hatched in the pen's red past it, and the sample day says why an
+hour lost stars in a word ("too strong", "gusty", "offshore"), its gust red
+over the top and orange when gusty. The shore is the draggable web again,
+its arrows the way the wind blows. The spots step says what its list is near
+and keeps its order as spots are starred. The dialog keeps the name
+"Customise" for a screen reader while its title changes (`label` on
+ui/Dialog.tsx), and the search in a box is a capsule (`shape="pill"` on
+ui/SearchField.tsx).
+
 ---
 
 ## Still open

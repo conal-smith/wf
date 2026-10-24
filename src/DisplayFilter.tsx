@@ -1,10 +1,9 @@
-import { useState } from "react";
 import {
   MODEL_CATALOG,
   modelHue,
   type ModelAvailability,
 } from "../force5/src/manifests";
-import { parseRider, withRiderModel, type Prefs } from "../force5/src/prefs";
+import { withRiderModel, type Prefs } from "../force5/src/prefs";
 import {
   FALLBACK_MODEL,
   STARS_MODELS,
@@ -13,7 +12,6 @@ import {
 } from "../force5/src/lead";
 import { modelEntry } from "../force5/src/catalog";
 import { UNITS, type Units } from "../force5/src/units";
-import type { Rider } from "../force5/src/stars";
 import { Segmented } from "../ui/Segmented";
 
 interface Props {
@@ -25,10 +23,10 @@ interface Props {
 
 /**
  * The display options: the units, the model and the blend's models. The
- * rider's weight, level and own star rating are set in Customise, from the
- * site menu, and nowhere else on the map. In a dialog over the map, as the
- * layers are, and shut the same ways (src/MapControls.tsx): its X, Escape or
- * a tap on the backdrop.
+ * rider's weight, level, wings and own star rating are set in Customise,
+ * from the site menu, and nowhere else on the map. In a dialog over the
+ * map, as the layers are, and shut the same ways (src/MapControls.tsx): its
+ * X, Escape or a tap on the backdrop.
  */
 export default function DisplayFilter({ prefs, onChange, models }: Props) {
   const setUnits = (units: Units) => onChange({ ...prefs, units });
@@ -39,12 +37,6 @@ export default function DisplayFilter({ prefs, onChange, models }: Props) {
         ? [...new Set([...prefs.blendModels, id])]
         : prefs.blendModels.filter((entry) => entry !== id),
     });
-  // The field keeps what the reader is typing ("5." on the way to "5.5"); the
-  // stored rider only ever holds what parses, through the same validation a
-  // stored value gets on load.
-  const [wingsText, setWingsText] = useState(prefs.rider.wings.join(", "));
-  const setRider = (rider: Partial<Rider>) =>
-    onChange({ ...prefs, rider: parseRider({ ...prefs.rider, ...rider }) });
   // The one model the rider sees and the stars rate (force5/src/lead.ts):
   // the map moves to it as it changes (src/App.tsx).
   const model = chosenModel(prefs.rider.starsFrom);
@@ -74,28 +66,6 @@ export default function DisplayFilter({ prefs, onChange, models }: Props) {
             {unit.label}
           </button>
         ))}
-      </div>
-      <h2>Your riding</h2>
-      <div className="filter-rider">
-        <label className="rider-field">
-          <span>Wings you own</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            data-rider="wings"
-            placeholder="e.g. 4, 5.5"
-            value={wingsText}
-            onChange={(event) => {
-              setWingsText(event.target.value);
-              setRider({
-                wings: (event.target.value.match(/\d+(?:\.\d+)?/g) ?? []).map(
-                  Number,
-                ),
-              });
-            }}
-          />
-          <small>m²</small>
-        </label>
       </div>
       <h2>Model</h2>
       <div className="filter-model-choice">

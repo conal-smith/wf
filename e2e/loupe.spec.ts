@@ -252,7 +252,12 @@ test("degrees into the wind: set in Customise, they move the no-go, and are kept
   const upwind = async () => {
     await openFromMenu(page, "Customise");
     const wizard = page.getByRole("dialog", { name: "Customise" });
-    await wizard.getByRole("button", { name: "Upwind", exact: true }).click();
+    // The fourth of its six steps.
+    for (let i = 0; i < 3; i++)
+      await wizard.getByRole("button", { name: "Next", exact: true }).click();
+    await expect(
+      wizard.getByRole("heading", { name: "Can you ride upwind?" }),
+    ).toBeVisible();
     return wizard;
   };
   const wizard = await upwind();
@@ -261,7 +266,7 @@ test("degrees into the wind: set in Customise, they move the no-go, and are kept
     .getByRole("group", { name: "Can you ride upwind?" })
     .getByRole("button", { name: /^Not yet/ })
     .click();
-  await wizard.getByRole("button", { name: "Done", exact: true }).click();
+  await wizard.getByRole("button", { name: "Skip", exact: true }).click();
   await wizard.getByRole("button", { name: "Show me the chart" }).click();
   await expect(wizard).toHaveCount(0);
 

@@ -116,3 +116,16 @@
   line-height: var(--sem-font-line-lead);
   font-weight: var(--sem-font-weight-normal);
 }
+
+/* ---- shape: pill ---- */
+/* A capsule ruled all round in ink rather than a rule under the words: a
+ * search inside a box, where a lone rule would read as a divider. */
+.wf-search-field--pill {
+  padding: 0 calc(var(--sem-space-step) * 3.5);
+  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  border-radius: var(--sem-radius-pill);
+}
+.wf-search-field--pill:hover,
+.wf-search-field--pill.is-hover {
+  border-color: var(--sem-color-chart-magenta);
+}
