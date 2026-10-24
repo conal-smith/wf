@@ -2,8 +2,8 @@
  * The layers' rail (src/LayerRail.tsx): beside the zoom, a column of round
  * switches over the chart with no panel behind them. Off is faint and flat,
  * sunk a little into the chart; on is a paper disc ruled in ink, with the
- * hairline inside it and the marker's soft shadow under it. Each group is set
- * apart by a short rule.
+ * hairline inside it and a small thing's soft shadow under it. Each group is
+ * set apart by a short rule.
  */
 .lr {
   display: flex;
@@ -55,10 +55,7 @@
   background: var(--color-card);
   border-color: var(--color-ink);
   color: var(--color-ink);
-  box-shadow:
-    inset 0 0 0 1.5px var(--color-card),
-    inset 0 0 0 2.5px var(--color-line),
-    var(--shadow-marker);
+  box-shadow: var(--inset-shadow-frame), var(--shadow-card);
 }
 .lr .lr-ic:active {
   transform: translateY(1px);

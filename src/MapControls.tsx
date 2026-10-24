@@ -177,6 +177,8 @@ export default function MapControls({
         >
           −
         </button>
+        {/* The chart is moved above the rule, and drawn below it. */}
+        <span className="zbox-rule" aria-hidden="true" />
         <button
           type="button"
           aria-label="Layers"

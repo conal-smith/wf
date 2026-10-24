@@ -909,6 +909,11 @@
 .zbox button svg {
   stroke: currentColor;
 }
+.zbox-rule {
+  height: 1px;
+  margin: 1px 4px;
+  background: var(--color-line);
+}
 /* Pressed is ink with its sheen; a press nudges the key down a pixel. */
 .zbox button[aria-pressed="true"],
 .zbox button[aria-expanded="true"] {
