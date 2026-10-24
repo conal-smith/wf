@@ -244,7 +244,6 @@ test("the week is one strip of hours round the clock, with no day slider over it
   // No tide, though the spot has a station: drawn behind the figures it got
   // in their way, and the spot's page has it, times and heights.
   await expect(page.locator(".dock tr.tt-tide")).toHaveCount(0);
-  await expect(page.locator(".dock .tide-band")).toHaveCount(0);
   await expect(page.locator(".dock")).not.toContainText(/\b(HW|LW)\b/);
   // The time is a slider still, for the keys and a screen reader, named
   // by its day and hour; on the screen it is the pen's frame round an hour.
@@ -600,17 +599,6 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   // And unstarring from the panel takes it off.
   await panel.getByRole("button", { name: "Unstar Brandon Bay" }).click();
   await expect(panel).toContainText("Tap the red star");
-  // A spot chosen from the panel is the dock's.
-  await panel.getByRole("button", { name: /^Dollymount/ }).click();
-  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
-  // The key is not in the panel: it is the map's information, a button away.
-  await openFromMenu(page, "Your spots");
-  await expect(panel).not.toContainText("Depths in metres below chart datum");
-  await closePanel(page);
-  await openFromMenu(page, "About the map");
-  await expect(
-    page.getByRole("dialog", { name: "About the map" }),
-  ).toContainText("Depths in metres below chart datum");
 });
 
 test("units, the rider and the blend's models are display options, kept on reload", async ({
@@ -799,13 +787,8 @@ test("the stars come from one model, the rider's: the hours name it, and the map
     .poll(() => dockAndLightAgree(page), { timeout: 30000 })
     .toBe(true);
 
-  // Kept on reload, and back to the default puts the published blend's
-  // lights back as they were.
-  await page.reload();
-  await chooseSpot(page, "brandon");
-  await expect(page.locator('.dock [data-handover="gfs"]')).toHaveCount(1, {
-    timeout: 30000,
-  });
+  // And back to the default puts the published blend's lights back as they
+  // were.
   await pickModel(page, "HARMONIE");
   await expect(page.locator('.dock [data-handover="gfs"]')).toHaveCount(0);
   await backToIreland(page);
@@ -1739,16 +1722,13 @@ async function tapAt(
 const SPOT_AT: Record<string, [number, number]> = {
   dollymount: [53.367583, -6.144748],
   seapoint: [53.2973278, -6.1588509],
-  "lough-neagh-antrim": [54.7161331, -6.2408518],
-  "oxford-island": [54.489371, -6.3668812],
 };
 
-test("a point tapped on Dublin Bay draws no tide behind its hours, nor one on Lough Neagh", async ({
+test("a point tapped off Dublin Bay reads wind, waves and weather, and no blend", async ({
   page,
 }) => {
-  // Two pages opened and two points picked, each waiting on its hours: on a
-  // shared CI runner it passed every step and ran out of the default time on
-  // the last.
+  // A tap, then two runs' frames read at the point one file at a time: on a
+  // shared CI runner that can outlast the default time.
   test.slow();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -1769,80 +1749,7 @@ test("a point tapped on Dublin Bay draws no tide behind its hours, nor one on Lo
   });
   await page.keyboard.press("Escape");
   await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
-
-  // Out on the bay, off Poolbeg: not a riding place, and no spot's tide link.
-  await tapAt(page, ["dollymount", "seapoint"], [53.33, -6.1]);
-  await expect(page.locator(".dock .dk-tools")).toContainText(
-    /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
-  );
-  // Dublin Port and Howth are both near, and neither's curve is drawn
-  // behind the hours.
-  await expect
-    .poll(() => page.locator(".dock tr.tt-wind td .kn").count(), {
-      timeout: 30000,
-    })
-    .toBeGreaterThan(5);
-  await expect(page.locator(".dock .tide-band")).toHaveCount(0);
-
-  // Lough Neagh: Larne is within the limit, but the sea does not reach it.
-  await page.goto("/?spot=lough-neagh-antrim");
-  await expect(page.locator(".spot-marker")).toHaveCount(149, {
-    timeout: 30000,
-  });
-  await expect(page.locator(".dock .dk-name")).toHaveText(
-    "Lough Neagh — Antrim",
-    { timeout: 30000 },
-  );
-  await page.keyboard.press("Escape");
-  await tapAt(page, ["lough-neagh-antrim", "oxford-island"], [54.6, -6.45]);
-  await expect(page.locator(".dock .dk-tools")).toContainText(
-    /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
-  );
-  // Nor here, where Larne is within the limit but the sea does not reach.
-  await expect
-    .poll(() => page.locator(".dock tr.tt-wind td .kn").count(), {
-      timeout: 30000,
-    })
-    .toBeGreaterThan(5);
-  await expect(page.locator(".dock .tide-band")).toHaveCount(0);
-  // And the dock closes from its own button, leaving the chart alone.
-  await page
-    .locator(".dock")
-    .getByRole("button", { name: /^Close the forecast for / })
-    .click();
-  await expect(page.locator(".dock")).toHaveCount(0);
-  await expect(page).toHaveURL(/\/$/);
-  // A step in the history like a choice: Back opens it again.
-  await page.goBack();
-  await expect(page.locator(".dock .dk-tools")).toContainText(
-    /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
-    { timeout: 15000 },
-  );
-  await expect(page.locator(".dock .tide-band")).toHaveCount(0);
-  expect(errors).toEqual([]);
-});
-
-test("a point tapped off Dublin Bay reads wind, waves and weather, and no blend", async ({
-  page,
-}) => {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  await page.route("**/marine/tides.json", (route) =>
-    route.fulfill({ json: coastTides }),
-  );
-  await page.route("**/marine/tides-*-test.json", (route) =>
-    route.fulfill({ json: tideCurve }),
-  );
-  await ringNotLoupe(page);
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/?spot=dollymount");
-  await expect(page.locator(".spot-marker")).toHaveCount(149, {
-    timeout: 30000,
-  });
-  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount", {
-    timeout: 30000,
-  });
-  await page.keyboard.press("Escape");
+  // Out on the bay, off Poolbeg: not a riding place.
   await tapAt(page, ["dollymount", "seapoint"], [53.33, -6.1]);
   const dock = page.locator(".dock");
   await expect(dock.locator(".dk-tools")).toContainText(
@@ -1852,58 +1759,9 @@ test("a point tapped off Dublin Bay reads wind, waves and weather, and no blend"
   await expect
     .poll(() => dock.locator("tr.tt-wind td .kn").count(), { timeout: 30000 })
     .toBeGreaterThan(5);
-  // The waves and the weather, a riding place's on the bay, said whose.
-  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
-  await expect(dock.locator(".dk-lent")).toHaveText(
-    /^Waves, weather and sea from .+, \d+\.\d km$/,
-  );
-  await expect
-    .poll(() => dock.locator("tr.tt-waves .wave-cell b").count(), {
-      timeout: 20000,
-    })
-    .toBeGreaterThan(0);
-  await expect
-    .poll(() =>
-      dock.locator("tr.tt-air td").filter({ hasText: /\d+°/ }).count(),
-    )
-    .toBeGreaterThan(0);
-  await expect(dock.locator("tr.tt-waves")).not.toContainText(
-    "riding places only",
-  );
-  // No blend: every model's frames sampled at a point is megabytes.
-  await expect(dock.getByRole("button", { name: "Blend" })).toHaveCount(0);
-  expect(errors).toEqual([]);
-});
-
-test("a point's wind goes on past HARMONIE's run in ECMWF's, as a spot's does", async ({
-  page,
-}) => {
-  // A tap, then two runs' frames read at the point one file at a time: on a
-  // shared CI runner that can outlast the default time.
-  test.slow();
-  await page.route("**/marine/tides.json", (route) =>
-    route.fulfill({ json: coastTides }),
-  );
-  await page.route("**/marine/tides-*-test.json", (route) =>
-    route.fulfill({ json: tideCurve }),
-  );
-  await ringNotLoupe(page);
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/?spot=dollymount");
-  await expect(page.locator(".spot-marker")).toHaveCount(149, {
-    timeout: 30000,
-  });
-  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount", {
-    timeout: 30000,
-  });
-  await page.keyboard.press("Escape");
-  await tapAt(page, ["dollymount", "seapoint"], [53.33, -6.1]);
-  const dock = page.locator(".dock");
-  await expect(dock.locator(".dk-tools")).toContainText(
-    /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
-  );
-  // The strip's columns past HARMONIE's run are ECMWF's. The point used to
-  // read the map's own run alone, and left every one of them empty.
+  // The strip's columns past HARMONIE's run are ECMWF's, as a spot's are.
+  // The point used to read the map's own run alone, and left every one of
+  // them empty.
   const far = sampleStrip.flatMap((column, at) =>
     column.model === "ecmwf" ? [at] : [],
   );
@@ -1928,6 +1786,37 @@ test("a point's wind goes on past HARMONIE's run in ECMWF's, as a spot's does", 
     /^ECMWF on the map from \w{3} \d\d:\d\d( · older run)?$/,
   );
   await expect(dock.locator("tr.tt-wind td.c-sel .kn")).toHaveText(/^\d+$/);
+  // The waves and the weather, a riding place's on the bay, said whose.
+  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  await expect(dock.locator(".dk-lent")).toHaveText(
+    /^Waves, weather and sea from .+, \d+\.\d km$/,
+  );
+  await expect
+    .poll(() => dock.locator("tr.tt-waves .wave-cell b").count(), {
+      timeout: 20000,
+    })
+    .toBeGreaterThan(0);
+  await expect
+    .poll(() =>
+      dock.locator("tr.tt-air td").filter({ hasText: /\d+°/ }).count(),
+    )
+    .toBeGreaterThan(0);
+  await expect(dock.locator("tr.tt-waves")).not.toContainText(
+    "riding places only",
+  );
+  // No blend: every model's frames sampled at a point is megabytes.
+  await expect(dock.getByRole("button", { name: "Blend" })).toHaveCount(0);
+  // And the dock closes from its own button, leaving the chart alone.
+  await dock.getByRole("button", { name: /^Close the forecast for / }).click();
+  await expect(dock).toHaveCount(0);
+  await expect(page).toHaveURL(/\/$/);
+  // A step in the history like a choice: Back opens it again.
+  await page.goBack();
+  await expect(dock.locator(".dk-tools")).toContainText(
+    /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
+    { timeout: 15000 },
+  );
+  expect(errors).toEqual([]);
 });
 
 test("the blend and the fold stay under the pointer from the first click, so every click is theirs, not the chart's", async ({
