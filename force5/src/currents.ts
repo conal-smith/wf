@@ -20,7 +20,7 @@ import {
   type TidalStreamAt,
   type TidalStreamSite,
 } from "./tidalStreams";
-import { KNOTS, convert, unitLabel, type Units } from "./units";
+import { KNOTS, convert, scaleUnits, unitLabel, type Units } from "./units";
 import type { Grid } from "./weather";
 
 export const CURRENTS_URL = "weather/currents.json";
@@ -140,9 +140,12 @@ export interface CurrentFeature {
   };
 }
 
-/** A speed held in m/s, in the rider's units, to a tenth: currents are slow. */
+/**
+ * A speed held in m/s, in the rider's units, to a tenth: currents are slow.
+ * Water has no forces: a rider in Force reads a stream in knots.
+ */
 export const currentText = (metresPerSecond: number, units: Units) =>
-  `${convert(metresPerSecond, units).toFixed(1)} ${unitLabel(units)}`;
+  `${convert(metresPerSecond, scaleUnits(units)).toFixed(1)} ${unitLabel(scaleUnits(units))}`;
 
 /** Every wet cell of a frame faster than MIN_ARROW_MS, as features. */
 export function modelArrows(
