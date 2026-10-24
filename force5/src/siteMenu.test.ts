@@ -5,9 +5,16 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buttonStyles } from "../../ui/Button";
-import { surfaceStyles } from "../../ui/Surface";
 import { compileTheme, holds } from "../../ui/theme.testkit";
-import { SiteMenu, siteMenuStyles } from "./SiteMenu";
+import { FEATURES } from "../../shared/web/features";
+import * as glyphs from "../../shared/web/glyphSet";
+import {
+  DRAG,
+  SiteMenu,
+  SiteSections,
+  dragCloses,
+  siteMenuStyles,
+} from "./SiteMenu";
 
 /**
  * The site menu, drawn from ui/ and the theme rather than the design bundle's
@@ -34,12 +41,12 @@ function written(value: Classes | undefined): string[] {
 /** The one class that is a hook for e2e, not a rule. */
 const HOOK = "f5-site-menu";
 
-describe("the site menu's recipe", () => {
-  let build: (names: string[]) => string;
-  beforeAll(async () => {
-    build = await compileTheme();
-  });
+let build: (names: string[]) => string;
+beforeAll(async () => {
+  build = await compileTheme();
+});
 
+describe("the site menu's recipe", () => {
   it("resolves every class it writes from the theme", () => {
     const { slots, variants, compoundVariants } = siteMenuStyles as unknown as {
       slots: Classes;
@@ -108,48 +115,73 @@ describe("on the chart", () => {
   });
 
   /*
-   * The panel is a Surface with the menu's placement on it: the chart's
-   * double-ruled paper box, solid on either ground, dropping in and holding
-   * still for a reader who asks for less motion.
+   * The drawer: paper at the left edge, ruled in ink down its right edge,
+   * its corners and its shadow the theme's (so a change to the dialog's
+   * radius or the sheet's shadow reaches it), sliding in over the kit's
+   * backdrop and holding still for a reader who asks for less motion.
    */
-  it("composes the panel from the Surface: the chart's box, solid, declinable motion", () => {
-    expect(SOURCE).toContain("surfaceStyles({ className: styles.panel() })");
-    for (const ground of ["map", "content"] as const) {
-      const classes = surfaceStyles({
-        className: siteMenuStyles({ ground }).panel(),
-      }).split(" ");
-      for (const name of [
-        "animate-menu-in",
-        "motion-reduce:animate-none",
-        "bg-card",
-        "paper-float",
-        "inset-shadow-frame",
-        "shadow-float",
-        "rounded-dialog",
-        "absolute",
-        "top-full",
-        "mt-2",
-        "p-2",
-      ])
-        expect(classes, `${ground} ${name}`).toContain(name);
-      expect(classes, ground).not.toContain("p-5");
-      expect(classes.join(" "), ground).not.toMatch(/glass|backdrop/);
-    }
-  });
-
-  it("names the sections in the display face, on hairlines, with no icons", () => {
-    const row = siteMenuStyles().row().split(" ");
-    for (const name of ["font-display", "border-b", "border-line", "h-touch"])
-      expect(row).toContain(name);
-    expect(SOURCE).not.toMatch(/from "lucide-react";[\s\S]*Store/);
-  });
-
-  it("is signed by the Almanac: the puffin and one line, under the sections", () => {
-    expect(SOURCE).toContain("<Puffin size={44} />");
-    expect(SOURCE).toContain(
-      "The Almanac reads every forecast so you don’t have to.",
+  it("draws the drawer from the theme: the left edge, the dialog's radius, the kit's backdrop", () => {
+    const classes = siteMenuStyles().drawer().split(" ");
+    for (const name of [
+      "fixed",
+      "left-0",
+      "inset-y-0",
+      "h-dvh",
+      "w-80",
+      "max-w-11/12",
+      "rounded-r-dialog",
+      "border-r",
+      "border-ink",
+      "bg-card",
+      "paper-grain",
+      "shadow-sheet",
+      "backdrop:scrim",
+      "drawer-slide",
+      "touch-pan-y",
+    ])
+      expect(classes, name).toContain(name);
+    // No radius or shadow of its own.
+    expect(classes.join(" ")).not.toMatch(
+      /rounded-(?!r-dialog)|shadow-(?!sheet)/,
     );
-    expect(siteMenuStyles().almanac()).toContain("italic");
+    expect(classes.join(" ")).not.toMatch(/glass/);
+    expect(SOURCE).toMatch(/<dialog[\s\S]*className=\{styles\.drawer\(\)\}/);
+  });
+
+  it("slides in and out at the fast duration, and holds still for less motion", () => {
+    const css = build(["drawer-slide"]);
+    expect(css).toMatch(/@starting-style \{\s*transform: translateX\(-100%\);/);
+    expect(css).toContain("transform var(--transition-duration-fast) ease");
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{[^}]*transition: none;/,
+    );
+  });
+
+  it("names every row in the body face, on hairlines, with its glyph in the margin", () => {
+    for (const slot of ["row", "tool"] as const) {
+      const row = siteMenuStyles()[slot]().split(" ");
+      for (const name of ["font-body", "border-b", "border-line", "h-touch"])
+        expect(row, `${slot} ${name}`).toContain(name);
+    }
+    expect(SOURCE).toContain(
+      "<ChartGlyph glyph={SECTION_GLYPH[section.id]} />",
+    );
+    expect(SOURCE).toContain(
+      "<span className={styles.glyph()}>{tool.glyph}</span>",
+    );
+  });
+
+  it("is signed by nothing: the Almanac and its puffin are gone from the menu", () => {
+    expect(SOURCE).not.toContain("Puffin");
+    expect(SOURCE).not.toContain("Almanac");
+  });
+
+  it("has a grip on its right edge, and a close button and the name at its head", () => {
+    const grip = siteMenuStyles().grip().split(" ");
+    for (const name of ["absolute", "right-1.5", "top-1/2", "rounded-full"])
+      expect(grip).toContain(name);
+    expect(SOURCE).toContain('aria-label="Close menu"');
+    expect(SOURCE).toContain('<Wordmark size="sm" />');
   });
 
   it("sets the section you are in in the italic, heavier, on the second sheet", () => {
@@ -175,6 +207,12 @@ describe("on the chart", () => {
 });
 
 describe("the markup", () => {
+  it("draws nothing of the drawer until it is opened", () => {
+    const markup = html({ current: "map" });
+    expect(markup).not.toContain("<dialog");
+    expect(markup).not.toContain("<nav");
+  });
+
   it("is a disclosure: a named button, closed, controlling nothing yet", () => {
     const markup = html({ current: "community", size: "sm" });
     expect(markup).toContain('aria-label="Site menu"');
@@ -184,5 +222,70 @@ describe("the markup", () => {
     expect(markup).not.toContain("aria-pressed");
     expect(markup).toMatch(new RegExp(`^<div class="${HOOK} `));
     expect(markup).not.toContain("data-mode");
+  });
+});
+
+describe("the sections", () => {
+  const rows = (props: Parameters<typeof SiteSections>[0]) =>
+    renderToStaticMarkup(createElement(SiteSections, props));
+
+  it("gives every section its glyph, the chart's and the AI's among them", () => {
+    const markup = rows({
+      current: "map",
+      features: { market: true, community: true },
+    });
+    const links = markup.match(/<a [^>]*>[\s\S]*?<\/a>/g) ?? [];
+    expect(links.map((link) => link.replace(/<[^>]+>/g, ""))).toEqual([
+      "Wind map",
+      "Marketplace",
+      "Community",
+      "Use with AI",
+    ]);
+    for (const link of links) expect(link).toMatch(/<svg[^>]*class="g-set"/);
+    // The two drawn for the menu: the folded chart, and the bubble.
+    for (const glyph of [glyphs.windMap, glyphs.useWithAi]) {
+      const sheet = glyph[0];
+      expect("d" in sheet && markup.includes(`d="${sheet.d}"`)).toBe(true);
+    }
+    expect(markup).toContain('aria-current="page"');
+  });
+
+  it("draws nothing at all of the marketplace or the community when they are off", () => {
+    const markup = rows({
+      current: "map",
+      features: { market: false, community: false },
+    });
+    expect(markup).not.toMatch(/Marketplace|Community|\/market|\/community/);
+    expect(markup.match(/<li>/g)).toHaveLength(2);
+  });
+
+  it("leaves them out as production builds it, with no feature switched on", () => {
+    // No build of the site sets VITE_FEATURE_MARKET or VITE_FEATURE_COMMUNITY
+    // but the end-to-end suite's (package.json, preview:e2e); this test runs
+    // without them, as production does.
+    expect(FEATURES.market).toBe(false);
+    expect(FEATURES.community).toBe(false);
+    expect(rows({ current: "ai" })).not.toMatch(/Marketplace|Community/);
+    for (const path of [
+      ".github/workflows/release.yml",
+      "deploy/local/Dockerfile.web",
+    ])
+      expect(read(path), path).not.toMatch(/VITE_FEATURE_(MARKET|COMMUNITY)/);
+  });
+});
+
+describe("a finger on the drawer", () => {
+  const at = 1000;
+  it("puts it away past the line, or with a flick", () => {
+    expect(dragCloses({ dx: -DRAG.CLOSE_AT - 1, speed: 0, at }, at + 500)).toBe(
+      true,
+    );
+    expect(dragCloses({ dx: -30, speed: -1, at }, at + 16)).toBe(true);
+  });
+  it("springs back from a short drag, a slow one, or a flick held still", () => {
+    expect(dragCloses({ dx: -40, speed: -0.1, at }, at + 16)).toBe(false);
+    expect(dragCloses({ dx: -40, speed: -1, at }, at + 400)).toBe(false);
+    // A twitch is not a flick.
+    expect(dragCloses({ dx: -6, speed: -2, at }, at + 8)).toBe(false);
   });
 });

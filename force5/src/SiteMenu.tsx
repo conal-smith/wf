@@ -14,14 +14,37 @@
  * Drawn from ui/ and the theme, like the pages it sits in: ui/theme.css scans
  * this one file of force5/src (and none of the map's), so its classes resolve
  * in every bundle.
+ *
+ * The menu is a drawer from the left (owner's ruling of 2026-10-24, the mockup
+ * `backlog/mockups/2026-10-24-your-spots-home.html`): a modal <dialog> over
+ * the kit's backdrop, so the focus is trapped in it and the page behind is
+ * inert, with the page's own tools and then the site's sections, each with
+ * its glyph in the margin. A finger can push it back off to the left.
  */
 import { Menu, X } from "lucide-react";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
+import { useFadeOut } from "../../ui/Backdrop";
 import { Button } from "../../ui/Button";
-import { Puffin } from "../../ui/Puffin";
-import { surfaceStyles } from "../../ui/Surface";
-import { MONO_LABEL, RING, tv } from "../../ui/tv";
-import { FEATURES } from "../../shared/web/features";
+import { backdropPress, onBackdrop } from "../../ui/Dialog";
+import { RING, tv } from "../../ui/tv";
+import { Wordmark } from "../../ui/Wordmark";
+import { ChartGlyph } from "../../shared/web/ChartGlyph";
+import { FEATURES, type SiteFeatures } from "../../shared/web/features";
+import {
+  community,
+  market,
+  useWithAi,
+  windMap,
+  type GlyphDef,
+} from "../../shared/web/glyphSet";
 import { siteSections, type SiteSectionId } from "./siteNav";
 
 /*
@@ -29,6 +52,23 @@ import { siteSections, type SiteSectionId } from "./siteNav";
  * finds the menu by it, to hide it and to ask whether a tap landed on it.
  */
 const HOOK = "f5-site-menu";
+
+/** Each section's glyph, beside its name in the drawer. */
+const SECTION_GLYPH: Record<SiteSectionId, GlyphDef> = {
+  map: windMap,
+  market,
+  community,
+  ai: useWithAi,
+};
+
+/*
+ * How a finger puts the drawer away. A press has to travel a few pixels to the
+ * left, and more left than up or down, before it is a drag at all: a tap on a
+ * row, or a scroll down a long list, is not one. Let go past CLOSE_AT pixels,
+ * or flicked faster than FLICK pixels a millisecond, it shuts; otherwise it
+ * springs back.
+ */
+export const DRAG = { SLOP: 8, CLOSE_AT: 70, FLICK: 0.5 } as const;
 
 export const siteMenuStyles = tv({
   slots: {
@@ -46,50 +86,54 @@ export const siteMenuStyles = tv({
       "pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:top-1/2",
       "pointer-coarse:after:h-touch pointer-coarse:after:-translate-y-1/2",
     ],
-    // The chart's box, hung below the trigger by a gap from its leading
-    // edge, padded tight so the rows carry the padding. A menu is a sheet,
-    // so it takes a sheet's corner; it floats as a box over the chart does.
-    panel: [
-      "absolute top-full left-0 z-panel mt-2 min-w-60 rounded-dialog p-2",
-      "animate-menu-in motion-reduce:animate-none",
-    ],
-    list: "m-0 flex list-none flex-col p-0",
-    // The page's own tools, over the sections, named in the mono label as a
-    // chart names its parts; a rule in ink keeps them apart from the site.
-    tools: "mb-3 border-b border-ink",
-    toolsHead: [MONO_LABEL, "m-0 px-2 pt-1 pb-1.5 text-ink-muted"],
-    // The Almanac signs the menu: the puffin and one line in the house's
-    // voice, under the sections, as the chart's menu does.
-    almanac:
-      "m-0 flex max-w-60 items-center gap-2 px-2 pt-3 pb-1 font-body text-body text-ink-muted italic",
     /*
-     * A row is a section's name in the display face, on a hairline, the height
-     * of touch: the index of a broadsheet, not a list of buttons. It goes
+     * The drawer: the full height of the screen at the left edge, paper with
+     * its grain, ruled in ink down its right edge, where its corners take the
+     * dialog's radius. It scrolls a list too long for a short screen, and
+     * leaves the vertical pan to the browser so a sideways drag is the
+     * script's.
+     */
+    drawer: [
+      "fixed inset-y-0 left-0 right-auto m-0 h-dvh max-h-none w-80 max-w-11/12",
+      "overflow-y-auto overscroll-contain touch-pan-y",
+      "rounded-r-dialog border-0 border-r border-ink bg-card paper-grain shadow-sheet",
+      "px-safe-5 pt-safe-4 pb-safe-4 font-body text-ink",
+      "backdrop:scrim drawer-slide",
+    ],
+    // The close button and the nameplate, over the broadsheet's heavy rule.
+    head: "flex items-center gap-3 border-b-2 border-ink pb-2.5",
+    list: "m-0 mt-2.5 flex list-none flex-col p-0",
+    // The site's sections, a gap under the page's own tools.
+    sections: "mt-4",
+    /*
+     * A row is a name on a hairline, the height of touch, with its glyph in
+     * the margin: the index of a broadsheet, not a list of buttons. It goes
      * magenta under the pointer, as every link on the chart does.
      */
     row: [
-      "flex h-touch w-full items-center gap-2 border-b border-line px-2",
-      "font-display text-prose font-semibold text-ink no-underline",
+      "flex h-touch w-full items-center gap-3 border-b border-line px-0.5",
+      "font-body text-prose font-medium text-ink no-underline",
       "transition-colors duration-fast not-disabled:hover:text-chart-magenta",
       RING,
     ],
     /*
-     * A tool is a row like a section's, with its glyph in the margin: it is
-     * the kit's quiet button, its mono capitals and pill taken back to the
-     * row's face and hairline. The last one stands on the rule under them.
+     * A tool is a row like a section's: the kit's quiet button, its mono
+     * capitals and pill taken back to the row's face and hairline.
      */
     tool: [
-      "h-touch w-full justify-start gap-3 rounded-none border-0 border-b border-line px-2 last:border-b-0",
-      "font-display text-prose font-semibold tracking-normal text-ink normal-case",
+      "h-touch w-full justify-start gap-3 rounded-none border-0 border-b border-line px-0.5",
+      "font-body text-prose font-medium tracking-normal text-ink normal-case",
       "not-disabled:hover:bg-transparent not-disabled:hover:text-chart-magenta",
     ],
     glyph: "inline-flex size-5 shrink-0 items-center justify-center",
+    // A small bar on the right edge, saying the drawer can be pushed away.
+    grip: "pointer-events-none absolute top-1/2 right-1.5 h-touch w-1 -translate-y-1/2 rounded-full bg-line",
   },
   variants: {
     /*
      * What the menu stands on: the moving map or a page. Both are paper now
-     * (the chart draws its boxes solid), so the ground only says how far the
-     * menu sits into the bar it starts.
+     * (the chart draws its boxes solid), and the trigger is the same round
+     * button on either, so the ground draws nothing of its own.
      */
     ground: {
       map: {},
@@ -115,6 +159,84 @@ export interface SiteMenuTool {
   onSelect: () => void;
 }
 
+/** A finger on the drawer: where it went down, and how it has moved since. */
+interface Drag {
+  id: number;
+  x0: number;
+  y0: number;
+  dx: number;
+  /** When it last moved, and how fast, in pixels a millisecond. */
+  at: number;
+  speed: number;
+  /** Past the slop, and to the left: the drawer follows it. */
+  active: boolean;
+}
+
+/**
+ * Whether a drag let go here puts the drawer away: far enough, or a flick.
+ * A flick has to have moved lately, so a drag held still before it is let go
+ * springs back unless it is past the line.
+ */
+export function dragCloses(
+  drag: { dx: number; speed: number; at: number },
+  now: number,
+): boolean {
+  const flick = now - drag.at < 100 && drag.speed < -DRAG.FLICK;
+  return drag.dx < -DRAG.CLOSE_AT || (flick && drag.dx < -2 * DRAG.SLOP);
+}
+
+/**
+ * The site's sections, each a link with its glyph in the margin, the one you
+ * are in marked. Only the sections switched on in this build are drawn: with
+ * the marketplace or the community off (as production has them,
+ * shared/web/features.ts), nothing of it is.
+ */
+export function SiteSections({
+  current,
+  features = FEATURES,
+  className,
+  first,
+  onFollow,
+}: {
+  current: SiteSectionId;
+  features?: Pick<SiteFeatures, "market" | "community">;
+  className?: string;
+  /** Handed the first row, for the drawer to focus as it opens. */
+  first?: (el: HTMLAnchorElement | null) => void;
+  /** Following a row: the drawer shuts. */
+  onFollow?: () => void;
+}) {
+  const styles = siteMenuStyles();
+  return (
+    <nav aria-label="Site" className={className}>
+      <ul className={styles.list()}>
+        {siteSections(features).map((section, index) => {
+          const here = section.id === current;
+          return (
+            <li key={section.id}>
+              <a
+                ref={index === 0 ? first : undefined}
+                className={styles.row({ current: here })}
+                href={section.href}
+                aria-current={here ? "page" : undefined}
+                // Following a row closes the menu: the map, kept under the
+                // page the row opens (src/PagesOverMap.tsx), comes back with
+                // its menu shut.
+                onClick={onFollow}
+              >
+                <span className={styles.glyph()}>
+                  <ChartGlyph glyph={SECTION_GLYPH[section.id]} />
+                </span>
+                {section.label}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
 export function SiteMenu({
   /**
    * The section this app is. Named by the caller rather than read from the URL
@@ -128,87 +250,148 @@ export function SiteMenu({
    * What the menu stands on: the moving map, or a page's masthead. The
    * trigger is the round menu button either way: the kit's raised paper
    * button, lit from above, inside the head's box on the map and on the
-   * masthead on a page. The panel is the chart's box either way.
+   * masthead on a page. The drawer is the same either way.
    */
   ground = "map",
   /**
-   * The page's own tools, over the sections: on the map, its layers, your
-   * spots, the display options and what the map means. The menu is the one
-   * way in to them, so they come first. Each opens a dialog of the page's,
-   * which hands the focus back to the trigger when it shuts.
+   * The page's own tools, over the sections: on the map, Customise, its
+   * layers, your spots, the display options, what the map means and the
+   * tour. The menu is the one way in to them, so they come first. Each opens
+   * a dialog of the page's, which hands the focus back to the trigger when it
+   * shuts.
    */
   tools,
+  /** Which sections are switched on: the build's, unless a test says. */
+  features = FEATURES,
 }: {
   current: SiteSectionId;
   size?: "sm" | "md";
   ground?: "map" | "content";
   tools?: { title: string; items: readonly SiteMenuTool[] };
+  features?: Pick<SiteFeatures, "market" | "community">;
 }) {
   const [open, setOpen] = useState(false);
-  const panelId = useId();
-  const root = useRef<HTMLDivElement>(null);
+  // Kept the slide's length after it shuts, so it can slide out.
+  const shown = useFadeOut(open);
+  const drawerId = useId();
+  const drawer = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  const firstLink = useRef<HTMLAnchorElement>(null);
-  const firstTool = useRef<HTMLButtonElement>(null);
-  // Whether the menu was open when the trigger was pressed, or null for a
-  // press from the keyboard. Safari does not focus a button it is pressed on:
-  // the press takes focus off the row to the body, the menu hears focus leave
-  // and closes, and the click that follows would open it again. The press,
-  // not what the blur left, says which way the click goes.
-  const openAtPress = useRef<boolean | null>(null);
+  const firstRow = useRef<HTMLElement | null>(null);
+  const drag = useRef<Drag | null>(null);
+  // A drag ends in a click on whatever it let go over: that click is the
+  // drag's, not a press of the row.
+  const dragged = useRef(false);
+  const [press] = useState(() => backdropPress(() => drawer.current));
 
-  // Dismissing puts focus back where it came from. Safari does not focus a
-  // button on click, so closing through the trigger would otherwise drop focus
-  // onto the body and leave a keyboard reader at the top of the document.
-  const close = () => {
+  /*
+   * Shut at once, here rather than in an effect: a tool's dialog opens in the
+   * same breath, and must find this one closed and the focus on the trigger,
+   * to give it back there when it shuts in turn.
+   */
+  const close = useCallback(() => {
+    const el = drawer.current;
+    if (el) {
+      // Whatever a finger left on it goes, so it slides out from there.
+      el.style.transition = "";
+      el.style.transform = "";
+      if (el.open) el.close();
+    }
+    drag.current = null;
     setOpen(false);
     trigger.current?.focus();
-  };
-
-  // Opening is a keyboard event as often as a pointer one, so the panel takes
-  // focus rather than waiting to be tabbed into.
-  useEffect(() => {
-    if (open) (firstTool.current ?? firstLink.current)?.focus();
-  }, [open]);
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
+    const el = drawer.current;
+    if (!open || !el) return;
+    if (!el.open) el.showModal();
+    // The browser focuses the close button; the first row is what was asked.
+    firstRow.current?.focus();
+    // The page under it holds still while it is open.
+    const root = document.documentElement;
+    const overflow = root.style.overflow;
+    root.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       // The map has a global Escape handler of its own, which closes the
       // search, the layers panel, the spot card or the sheet. Capturing on the
       // document and stopping there is what makes Escape with this menu open
-      // mean "close this menu" and nothing else: a capture listener here runs
-      // before every bubble-phase listener, including one on `window`.
+      // mean "close this menu" and nothing else.
       event.preventDefault();
       event.stopPropagation();
       close();
     };
-    const onPointerDown = (event: Event) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
-    };
     document.addEventListener("keydown", onKeyDown, true);
-    document.addEventListener("pointerdown", onPointerDown, true);
     return () => {
       document.removeEventListener("keydown", onKeyDown, true);
-      document.removeEventListener("pointerdown", onPointerDown, true);
+      root.style.overflow = overflow;
     };
-  }, [open]);
+  }, [open, close]);
+
+  // Unmounted while open (a page swapped under it), it lets the page go.
+  useEffect(() => () => drawer.current?.close(), []);
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLDialogElement>) => {
+    press.down(event);
+    dragged.current = false;
+    if (event.button !== 0 || onBackdrop(drawer.current, event)) return;
+    drag.current = {
+      id: event.pointerId,
+      x0: event.clientX,
+      y0: event.clientY,
+      dx: 0,
+      at: event.timeStamp,
+      speed: 0,
+      active: false,
+    };
+  };
+
+  const onPointerMove = (event: ReactPointerEvent<HTMLDialogElement>) => {
+    const d = drag.current;
+    const el = drawer.current;
+    if (!d || !el || event.pointerId !== d.id) return;
+    const dx = event.clientX - d.x0;
+    const dy = event.clientY - d.y0;
+    if (!d.active) {
+      if (Math.abs(dx) < DRAG.SLOP && Math.abs(dy) < DRAG.SLOP) return;
+      // Down, up or to the right: a scroll or a slip, not a drag.
+      if (dx > 0 || Math.abs(dy) >= Math.abs(dx)) {
+        drag.current = null;
+        return;
+      }
+      d.active = true;
+      el.setPointerCapture?.(event.pointerId);
+      el.style.transition = "none";
+    }
+    const next = Math.min(0, dx);
+    const dt = event.timeStamp - d.at;
+    // Events can come in the same millisecond; a finger never moves in none.
+    d.speed = (next - d.dx) / Math.max(dt, 1);
+    d.dx = next;
+    d.at = event.timeStamp;
+    el.style.transform = `translateX(${next}px)`;
+  };
+
+  const onPointerEnd = (event: ReactPointerEvent<HTMLDialogElement>) => {
+    const d = drag.current;
+    const el = drawer.current;
+    if (!d || event.pointerId !== d.id) return;
+    drag.current = null;
+    if (!d.active || !el) return;
+    dragged.current = true;
+    if (event.type === "pointerup" && dragCloses(d, event.timeStamp)) close();
+    else {
+      // Back to where it was, at the drawer's own pace.
+      el.style.transition = "";
+      el.style.transform = "";
+    }
+  };
 
   const styles = siteMenuStyles({ ground });
+  const toolItems = tools?.items ?? [];
 
   return (
-    <div
-      className={styles.root()}
-      ref={root}
-      // Tabbing past the last row closes the menu rather than leaving it hanging
-      // open behind the reader. Not a focus trap: focus is free to leave, and
-      // this is what happens when it does.
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null))
-          setOpen(false);
-      }}
-    >
+    <div className={styles.root()}>
       <Button
         ref={trigger}
         variant="raised"
@@ -218,60 +401,87 @@ export function SiteMenu({
         // The label stays put; `aria-expanded` is what says open or closed.
         aria-label="Site menu"
         aria-expanded={open}
-        // A disclosure, not a menubar. The panel is a nav of links: arrow keys
-        // stay the reader's own, and `aria-haspopup` would promise otherwise.
-        // The controlled element only exists while the panel does.
-        aria-controls={open ? panelId : undefined}
-        onPointerDown={() => (openAtPress.current = open)}
-        onClick={() => {
-          const wasOpen = openAtPress.current ?? open;
-          openAtPress.current = null;
-          if (wasOpen) close();
-          else setOpen(true);
-        }}
+        // The drawer only exists while it is open (or sliding out).
+        aria-controls={open ? drawerId : undefined}
+        onClick={() => setOpen(true)}
       >
-        {open ? (
-          <X size={size === "sm" ? 15 : 18} aria-hidden="true" />
-        ) : (
-          <Menu size={size === "sm" ? 15 : 18} aria-hidden="true" />
-        )}
+        <Menu size={size === "sm" ? 15 : 18} aria-hidden="true" />
       </Button>
-      {open && (
-        <div
-          id={panelId}
-          className={surfaceStyles({ className: styles.panel() })}
+      {shown && (
+        <dialog
+          ref={drawer}
+          id={drawerId}
+          aria-label="Site menu"
+          className={styles.drawer()}
+          onCancel={(event) => {
+            // Escape, where the document's listener did not hear it first.
+            // Closed by `open` going false, not by the browser, so the state
+            // and the screen cannot disagree.
+            event.preventDefault();
+            close();
+          }}
+          onKeyDown={(event) => {
+            // The page behind is inert, but a modal lets Tab out past its last
+            // row to the browser's own chrome. Round the drawer instead.
+            if (event.key !== "Tab") return;
+            const rows = [
+              ...event.currentTarget.querySelectorAll<HTMLElement>(
+                "a[href], button:not(:disabled)",
+              ),
+            ];
+            const edge = event.shiftKey ? rows[0] : rows[rows.length - 1];
+            if (document.activeElement !== edge) return;
+            event.preventDefault();
+            (event.shiftKey ? rows[rows.length - 1] : rows[0])?.focus();
+          }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerEnd}
+          onPointerCancel={onPointerEnd}
+          onClickCapture={(event) => {
+            if (!dragged.current) return;
+            dragged.current = false;
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          onClick={(event) => {
+            if (press.click(event)) close();
+          }}
         >
-          {tools && tools.items.length > 0 && (
-            <div
-              className={styles.tools()}
-              role="group"
-              aria-labelledby={`${panelId}-tools`}
+          <div className={styles.head()}>
+            <Button
+              variant="quiet"
+              size="sm"
+              icon
+              aria-label="Close menu"
+              onClick={close}
             >
-              <p id={`${panelId}-tools`} className={styles.toolsHead()}>
-                {tools.title}
-              </p>
+              <X size={15} aria-hidden="true" />
+            </Button>
+            <Wordmark size="sm" />
+          </div>
+          {toolItems.length > 0 && (
+            <div role="group" aria-label={tools?.title}>
               <ul className={styles.list()}>
-                {tools.items.map((tool, index) => (
+                {toolItems.map((tool, index) => (
                   <li key={tool.id}>
                     <Button
-                      ref={index === 0 ? firstTool : undefined}
+                      ref={
+                        index === 0
+                          ? (el: HTMLButtonElement | null) => {
+                              firstRow.current = el;
+                            }
+                          : undefined
+                      }
                       variant="quiet"
                       className={styles.tool()}
                       aria-haspopup="dialog"
-                      // Safari does not focus a button it is pressed on, and
-                      // the press would take the focus off the row to the
-                      // body: the menu would hear it leave and shut before
-                      // the click. Holding the focus where it is keeps the
-                      // row there to be clicked.
-                      onMouseDown={(event) => event.preventDefault()}
                       onClick={() => {
                         close();
                         tool.onSelect();
                       }}
                     >
-                      {tool.glyph && (
-                        <span className={styles.glyph()}>{tool.glyph}</span>
-                      )}
+                      <span className={styles.glyph()}>{tool.glyph}</span>
                       {tool.label}
                     </Button>
                   </li>
@@ -279,39 +489,21 @@ export function SiteMenu({
               </ul>
             </div>
           )}
-          <nav aria-label="Site">
-            <ul className={styles.list()}>
-              {siteSections(FEATURES).map((section, index) => {
-                const here = section.id === current;
-                return (
-                  <li key={section.id}>
-                    <a
-                      ref={index === 0 ? firstLink : undefined}
-                      className={styles.row({ current: here })}
-                      href={section.href}
-                      aria-current={here ? "page" : undefined}
-                      // Following a row closes the menu, said here rather than
-                      // left to focus leaving it: a click that brings no focus
-                      // with it (Safari's on a link, a window in the background,
-                      // a scripted click) fires no blur, and the map, kept
-                      // under the page the row opens (src/PagesOverMap.tsx),
-                      // came back with its menu still open.
-                      onClick={() => setOpen(false)}
-                    >
-                      {section.label}
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-            <p className={styles.almanac()}>
-              <Puffin size={44} />
-              <span>
-                The Almanac reads every forecast so you don’t have to.
-              </span>
-            </p>
-          </nav>
-        </div>
+          <SiteSections
+            current={current}
+            features={features}
+            className={toolItems.length > 0 ? styles.sections() : undefined}
+            first={
+              toolItems.length === 0
+                ? (el) => {
+                    firstRow.current = el;
+                  }
+                : undefined
+            }
+            onFollow={close}
+          />
+          <span aria-hidden="true" className={styles.grip()} />
+        </dialog>
       )}
     </div>
   );

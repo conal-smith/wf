@@ -592,6 +592,46 @@
   }
 }
 
+/*
+ * A modal <dialog> drawn as a drawer from the left edge (the site menu,
+ * force5/src/SiteMenu.tsx): it slides in over the fast duration as it opens,
+ * and back out to the edge as it closes, its backdrop fading with it. Closed
+ * is closed at once, as with `modal-fade`: the browser keeps it on top for
+ * the slide where it can, and elsewhere it goes at once. While a finger drags
+ * it, the script sets its transform and holds the transition off. For a
+ * reader who asks for less motion it is simply there, and simply gone.
+ */
+@utility drawer-slide {
+  transition: transform var(--transition-duration-fast) ease;
+  &[open] {
+    @starting-style {
+      transform: translateX(-100%);
+    }
+  }
+  @supports (overlay: auto) {
+    transition:
+      transform var(--transition-duration-fast) ease,
+      overlay var(--transition-duration-fast) allow-discrete,
+      display var(--transition-duration-fast) allow-discrete;
+    &:not([open]) {
+      transform: translateX(-100%);
+      pointer-events: none;
+    }
+    &::backdrop {
+      transition: opacity var(--transition-duration-fast) ease;
+    }
+    &:not([open])::backdrop {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+    &::backdrop {
+      transition: none;
+    }
+  }
+}
+
 /* The dark hours: a fine diagonal hatch in ink, as a chart shades what is
    not there to be used. Over a table cell, a strip of a day, a tide curve. */
 @utility hatch {

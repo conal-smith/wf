@@ -498,6 +498,23 @@ boxes of 2026-10-05 and the "rules, not surfaces" lift, not the rules
 themselves: structure is still drawn in ink. Values: `ui/theme.css` "shape and
 depth"; the bundle's `sem.radius.*`, `sem.shadow.*` and `sem.gradient.*`.
 
+**2026-10-24 — The site menu is a drawer from the left.** The owner approved
+the menu of the "Your spots" mockup (`backlog/mockups/2026-10-24-your-spots-home.html`)
+for every page that has the site menu. The button stays where it was (top
+left on the chart, at the left of a page's masthead); it opens a drawer from
+the left edge over the kit's backdrop, a modal, so the focus is held in it,
+Escape and a press on the backdrop shut it and the focus goes back to the
+button. Its head is the close button and the name; then the page's own tools
+and the site's sections, every row with its glyph in the margin (the wind
+map's is a chart folded in three with a coast and a streak of wind, Use with
+AI's a speech bubble with a spark: `windMap` and `useWithAi` in
+shared/web/glyphSet.ts). A section switched off in the build is not drawn at
+all. A finger drags it back off to the left: past about 70 px, or flicked, it
+shuts; short of that it springs back, and a small grip on its right edge says
+so. The Almanac's line and its puffin left the menu. Its corners and shadow are
+the theme's (`rounded-r-dialog`, `shadow-sheet`), so it takes any change to
+those with the rest of the site (`force5/src/SiteMenu.tsx`).
+
 ---
 
 ## Still open
