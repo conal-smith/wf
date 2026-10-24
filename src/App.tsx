@@ -118,8 +118,6 @@ const MapInfo = lazy(() => import("./MapInfo"));
 const Companion = lazy(() =>
   import("../companion/web/Companion").then((m) => ({ default: m.Companion })),
 );
-// A rider's own star rating, set in a dialog of its own, only when asked for.
-const YourStarsDialog = lazy(() => import("../spot/web/YourStarsDialog"));
 // The account's copy of the rider, on a device that has signed in before.
 const AccountRider = lazy(() => import("../shared/web/AccountRider"));
 /** The LiDAR layer's key: with the map's information, and only its part. */
@@ -130,12 +128,7 @@ const Customise = lazy(() => import("./Customise"));
 const Tour = lazy(() => import("./Tour"));
 const TourPrompt = lazy(() => import("./TourPrompt"));
 import type { MapAction } from "../companion/shared/protocol";
-import {
-  parseRider,
-  withCustomStars,
-  withRiderModel,
-} from "../force5/src/prefs";
-import type { CustomRating } from "../force5/src/stars";
+import { parseRider, withRiderModel } from "../force5/src/prefs";
 import {
   announcePrefs,
   onPrefsChange,
@@ -290,18 +283,6 @@ export default function App() {
   const changePrefs = (next: Prefs) => {
     setPrefs(next);
     savePrefs(next);
-  };
-  // The rider's own star rating: the dialog, once opened, stays mounted so
-  // it can hand the focus back as it closes.
-  const [starsOpen, setStarsOpen] = useState(false);
-  const [starsWanted, setStarsWanted] = useState(false);
-  const openStars = () => {
-    setStarsWanted(true);
-    setStarsOpen(true);
-  };
-  const setCustomStars = (custom: CustomRating | null) => {
-    changePrefs(withCustomStars(prefs, custom));
-    announcePrefs("device");
   };
   const [syncAccount] = useState(
     () => signedInHint() || Boolean(import.meta.env.VITE_MARKET_DEV_USER),
@@ -1691,21 +1672,11 @@ export default function App() {
                   onToggleStar={(id) => fav.toggle(id)}
                 />
               )}
-              options={(close) => (
+              options={() => (
                 <Suspense fallback={null}>
                   <DisplayFilter
                     prefs={prefs}
                     onChange={changePrefs}
-                    onCustomiseStars={() => {
-                      close();
-                      openStars();
-                    }}
-                    onStarsOn={(next) => {
-                      changePrefs(next);
-                      // On or off the rider's own: the account keeps that.
-                      if (next.starsUpdatedAt !== prefs.starsUpdatedAt)
-                        announcePrefs("device");
-                    }}
                     models={models.filter(
                       (model) => model.entry.kind === "wind",
                     )}
@@ -1894,24 +1865,6 @@ export default function App() {
             </div>
           </section>
         </main>
-      )}
-      {starsWanted && (
-        <Suspense fallback={null}>
-          <YourStarsDialog
-            open={starsOpen}
-            rider={prefs.rider}
-            units={prefs.units}
-            onClose={() => setStarsOpen(false)}
-            onSave={(custom) => {
-              setCustomStars(custom);
-              setStarsOpen(false);
-            }}
-            onDelete={() => {
-              setCustomStars(null);
-              setStarsOpen(false);
-            }}
-          />
-        </Suspense>
       )}
       {syncAccount && (
         <Suspense fallback={null}>

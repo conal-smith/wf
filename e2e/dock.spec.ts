@@ -5,6 +5,7 @@ import {
   expect,
   menuRow,
   openFromMenu,
+  setRider,
   steadyFrames,
   test,
   type Locator,
@@ -607,7 +608,7 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   await expect(panel).toContainText("Tap the red star");
 });
 
-test("units, the rider and the blend's models are display options, kept on reload", async ({
+test("units and the blend's models are display options, kept on reload; the rider is Customise's", async ({
   page,
 }) => {
   await openDock(page);
@@ -616,12 +617,28 @@ test("units, the rider and the blend's models are display options, kept on reloa
   const before = await wing();
   // From the map's controls now, not the dock's head.
   await openFromMenu(page, "Display options");
+  const options = page.locator("#map-options");
+  // No weight, no level and no way to the rider's own stars: those are
+  // Customise's, from the site menu.
+  await expect(options.locator('[data-rider="weight"]')).toHaveCount(0);
+  await expect(
+    options.getByRole("group", { name: "Riding level" }),
+  ).toHaveCount(0);
+  await expect(
+    options.getByRole("button", { name: /^(Customise|Edit custom)$/ }),
+  ).toHaveCount(0);
+  await expect(options.getByRole("heading")).toContainText([
+    "Units",
+    "Model",
+    "Models in the blend",
+  ]);
   await page.locator('[data-units="m/s"]').click();
-  await page.locator('input[data-rider="weight"]').fill("100");
-  await page.locator('[data-skill="beginner"]').click();
   await page.locator('input[data-model-toggle="gfs"]').uncheck();
   await closePanel(page);
   await expect(page.locator(".dk-labs")).toContainText("m/s");
+  // A heavier learner, as Customise saves one, takes a bigger wing for the
+  // same wind, hour by hour.
+  await setRider(page, { weightKg: 100, skill: "beginner" });
   // A heavier learner takes a bigger wing for the same wind, hour by hour.
   await expect
     .poll(async () => {
@@ -644,10 +661,6 @@ test("units, the rider and the blend's models are display options, kept on reloa
   });
   await openFromMenu(page, "Display options");
   await expect(page.locator('[data-units="m/s"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(page.locator('[data-skill="beginner"]')).toHaveAttribute(
     "aria-pressed",
     "true",
   );

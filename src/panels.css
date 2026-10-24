@@ -213,31 +213,6 @@
   font-style: italic;
   color: var(--color-ink-muted);
 }
-/* The level, or the rider's own stars, and under it the way to make or
-   change their own. */
-.rider-level {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-}
-/* Four choices once the rider has their own stars: the capsule takes the
-   panel's width and its words sit closer, so Custom fits beside Advanced. */
-.rider-level .filter-units {
-  align-self: stretch;
-  margin-top: 0;
-}
-.rider-level .filter-units button {
-  flex: 1 1 auto;
-  padding: 5px 4px;
-  letter-spacing: 0.03em;
-}
-/* The kit's link, in the words' own face, as the settings' links are drawn. */
-.rider-customise {
-  font: 14px var(--font-body);
-  letter-spacing: 0;
-  text-transform: none;
-}
 /* How high the rider points: a capsule as wide as the level's, and under
    it the angle that choice draws. */
 .rider-pointing {

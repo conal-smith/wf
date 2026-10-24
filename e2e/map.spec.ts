@@ -4,6 +4,7 @@ import {
   closePanel,
   expect,
   openFromMenu,
+  setRider,
   steadyFrames,
   test,
   type Page,
@@ -372,10 +373,9 @@ test("only offshore is struck through; a learner's cross-offshore is too", async
   const crossOff = await page
     .locator(".spot-marker.xoff")
     .evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.spotId));
-  // The rider is learning: every cross-offshore hour is struck as well.
-  await openFromMenu(page, "Display options");
-  await page.locator('[data-skill="beginner"]').click();
-  await closePanel(page);
+  // The rider is learning, as Customise saves one: every cross-offshore
+  // hour is struck as well.
+  await setRider(page, { skill: "beginner" });
   await expect(page.locator(".spot-marker.xoff")).toHaveCount(0);
   for (const id of crossOff)
     await expect(page.locator(`[data-spot-id="${id}"]`)).toHaveClass(/\boff\b/);
