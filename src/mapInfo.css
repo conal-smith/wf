@@ -253,6 +253,12 @@
 .mi-sw-home {
   border-style: dashed !important;
 }
+.map-info .mi-sw-slow {
+  height: 0;
+  border-width: 0 0 2px;
+  border-style: dotted;
+  border-color: var(--color-ink-muted);
+}
 .map-info .mi-sw-off {
   height: 4px;
   border-color: var(--color-pen);

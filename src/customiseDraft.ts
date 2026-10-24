@@ -16,6 +16,7 @@ import {
   withStarsOn,
   type Prefs,
 } from "../force5/src/prefs";
+import { UPWIND_DEFAULT, upwindOf } from "../force5/src/rideWedge";
 import {
   DEFAULT_RIDER,
   bestWindow,
@@ -26,7 +27,6 @@ import {
   type CustomRating,
   type DirectionKey,
   type HourRating,
-  type Pointing,
   type Rider,
   type Skill,
 } from "../force5/src/stars";
@@ -38,7 +38,8 @@ import type { PlaceHour } from "./ratings";
 export interface Draft {
   skill: Skill;
   weightKg: number | null;
-  pointing: Pointing;
+  /** Degrees into the wind, past straight across it: the level's until changed. */
+  upwind: number;
   /** The wind band, the gusts and the shore: the level's until changed. */
   custom: CustomRating;
   units: Units;
@@ -56,7 +57,7 @@ export function draftOf(prefs: Prefs, starred: readonly string[]): Draft {
   return inUnits({
     skill,
     weightKg: rider.weightKg,
-    pointing: rider.pointing ?? "typical",
+    upwind: upwindOf({ skill, upwind: rider.upwind }),
     custom: rider.custom
       ? lockShore(rider.custom)
       : levelRating(skill, rider.weightKg),
@@ -91,7 +92,8 @@ export const levelRating = (skill: Skill, weightKg: number | null) =>
 
 /**
  * A new level or weight: the wind, the gusts and the shore start again from
- * that level's, as Display options' level does.
+ * that level's, as Display options' level does. A new level starts the
+ * degrees into the wind again from its own too; a new weight leaves them.
  */
 export const withLevel = (
   draft: Draft,
@@ -102,6 +104,7 @@ export const withLevel = (
     ...draft,
     skill,
     weightKg,
+    upwind: skill === draft.skill ? draft.upwind : UPWIND_DEFAULT[skill],
     custom: levelRating(skill, weightKg),
   });
 
@@ -110,7 +113,7 @@ export const draftRider = (draft: Draft, rider: Rider): Rider => ({
   ...rider,
   skill: draft.skill,
   weightKg: draft.weightKg,
-  pointing: draft.pointing,
+  upwind: draft.upwind,
   custom: draft.custom,
   keptCustom: null,
 });
@@ -179,7 +182,7 @@ export const starsOff = (off: number) =>
 
 /**
  * The preferences with the draft saved: the rider's level, weight and
- * pointing, the units, and either the level rating (the draft's wind, gusts
+ * degrees into the wind, the units, and either the level rating (the draft's wind, gusts
  * and shore left as the level has them, the rider's own rating kept aside) or
  * the draft as the rider's own rating. Through the same functions Display
  * options and "Your star rating" save with, so the account's copy is stamped
@@ -194,7 +197,7 @@ export function applyDraft(
     ...prefs.rider,
     skill: draft.skill,
     weightKg: draft.weightKg,
-    pointing: draft.pointing,
+    upwind: draft.upwind,
   });
   const next: Prefs = { ...prefs, units: draft.units, rider };
   const custom = { ...draft.custom, base: draft.skill };

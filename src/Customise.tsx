@@ -3,7 +3,7 @@
  * the settings the stars are rated on, as the owner saw it in the mockup
  * (wingfoil-mockups/customise-wizard): their level, their wind and gusts on a
  * real day re-rated as they drag, the winds they will ride each way round the
- * beach, how high they point, their units, their spots, and the lot together.
+ * beach, how far into the wind they ride, their units, their spots, and the lot together.
  *
  * Its own chunk, fetched when it is opened. It edits a draft and saves it on
  * the last step through src/customiseDraft.ts, into the preferences Display
@@ -18,20 +18,23 @@ import {
   useMemo,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import type { Prefs } from "../force5/src/prefs";
-import { upwindAngle } from "../force5/src/rideWedge";
+import {
+  COURSE_DEEP,
+  UPWIND_MAX,
+  clampUpwind,
+  upwindAngle,
+} from "../force5/src/rideWedge";
 import {
   DIRECTION_KEYS,
-  POINTINGS,
-  POINTING_LABEL,
   SKILLS,
   SKILL_LABEL,
   rateHour,
   shoreAngle,
   type DirectionKey,
-  type Pointing,
   type Skill,
 } from "../force5/src/stars";
 import { UNITS, beaufort, forceKn, type Units } from "../force5/src/units";
@@ -107,9 +110,9 @@ const STEPS = [
   },
   {
     id: "pointing",
-    short: "Pointing",
-    title: "How high do you point?",
-    say: "This only moves the loupe. It never moves a star.",
+    short: "Upwind",
+    title: "Can you ride upwind?",
+    say: "",
   },
   {
     id: "units",
@@ -397,7 +400,7 @@ function LevelStep({ draft, setDraft, unit }: StepProps & { unit: UnitScale }) {
               onClick={() => setDraft(withLevel(draft, skill, draft.weightKg))}
             >
               <MiniRose
-                upwind={upwindAngle({ weightKg: null, wings: [], skill })}
+                upwind={upwindAngle({ skill })}
               />
               <span className="cw-level-words">
                 <b>{SKILL_LABEL[skill]}</b>
@@ -485,11 +488,11 @@ function MiniRose({ upwind }: { upwind: number }) {
       />
       <path
         className="cw-tack"
-        d={`M${c} ${c}L${p(upwind, R * 0.9)}A${R * 0.9} ${R * 0.9} 0 0 1 ${p(105, R * 0.9)}Z`}
+        d={`M${c} ${c}L${p(upwind, R * 0.9)}A${R * 0.9} ${R * 0.9} 0 0 1 ${p(COURSE_DEEP, R * 0.9)}Z`}
       />
       <path
         className="cw-tack is-home"
-        d={`M${c} ${c}L${p(-105, R * 0.9)}A${R * 0.9} ${R * 0.9} 0 0 1 ${p(-upwind, R * 0.9)}Z`}
+        d={`M${c} ${c}L${p(-COURSE_DEEP, R * 0.9)}A${R * 0.9} ${R * 0.9} 0 0 1 ${p(-upwind, R * 0.9)}Z`}
       />
       <circle className="cw-rim" cx={c} cy={c} r={R} />
     </svg>
@@ -1225,116 +1228,320 @@ function ShoreStep({
   );
 }
 
-/* ---- 4. pointing ---- */
+/* ---- 4. upwind ---- */
 
+/**
+ * The three quick answers, in degrees into the wind past straight across it
+ * (force5/src/rideWedge.ts `upwindOf`). The slider and the picture's handles
+ * fine-tune from there.
+ */
+const UP_ANSWERS = [
+  {
+    into: 0,
+    name: "Not yet",
+    line: "I can ride straight across the wind and hold my ground.",
+  },
+  { into: 5, name: "A little", line: "I gain a bit of ground on each tack." },
+  { into: 20, name: "Yes", line: "I can work my way upwind." },
+] as const;
+
+/** How the summary and the slider say a number of degrees into the wind. */
+const intoWords = (into: number) =>
+  into ? `${into}° into the wind` : "straight across the wind";
+
+/** The upwind picture's frame: the board at the middle, the wind from the top. */
+const UP = { cx: 150, cy: 168, r: 118, vx: -36, vw: 372, vh: 310 };
+
+/**
+ * "Can you ride upwind?": one number, degrees into the wind counted from
+ * straight across it, used in every wind. The picture draws it as the loupe
+ * will: the no-go hatched into the wind, the two courses to about 120° off
+ * it, the slow water downwind faint, and the angle in magenta. Answered with
+ * a quick answer, the slider, or a handle on the course's edge.
+ */
 function PointingStep({ draft, setDraft }: StepProps) {
   const id = useId().replace(/[^\w-]/g, "");
-  const target = upwindAngle({
-    weightKg: null,
-    wings: [],
-    skill: draft.skill,
-    pointing: draft.pointing,
-  });
-  const [a, setA] = useState(target);
-  const from = useRef(target);
-  // Swung to the new angle, as a needle does; at once for a reader who asks for less motion.
-  useLayoutEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
-      return setA(target);
-    const start = performance.now();
-    const was = from.current;
-    let frame = 0;
-    const tick = (now: number) => {
-      const k = Math.min(1, (now - start) / 450);
-      const v = was + (target - was) * (1 - (1 - k) ** 3);
-      from.current = v;
-      setA(v);
-      if (k < 1) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [target]);
-  const wind = 300;
-  const c = 140;
-  const p = (deg: number, r: number) => {
-    const t = ((deg - 90) * Math.PI) / 180;
-    return `${(c + Math.cos(t) * r).toFixed(1)} ${(c + Math.sin(t) * r).toFixed(1)}`;
+  const svg = useRef<SVGSVGElement>(null);
+  const into = draft.upwind;
+  const set = (deg: number) => {
+    const next = clampUpwind(deg);
+    if (next !== draft.upwind) setDraft({ ...draft, upwind: next });
   };
-  const arc = (d0: number, d1: number, r: number) =>
-    `M${c} ${c}L${p(d0, r)}A${r} ${r} 0 ${d1 - d0 > 180 ? 1 : 0} 1 ${p(d1, r)}Z`;
+  const { cx, cy, r } = UP;
+  const up = upwindAngle({ skill: draft.skill, upwind: into });
+  /** A point `rr` out on a heading `a` degrees off the wind, clockwise from the top. */
+  const p = (a: number, rr: number): [number, number] => [
+    cx + rr * Math.sin((a * Math.PI) / 180),
+    cy - rr * Math.cos((a * Math.PI) / 180),
+  ];
+  const xy = (a: number, rr: number) =>
+    p(a, rr)
+      .map((n) => n.toFixed(1))
+      .join(" ");
+  const sector = (a1: number, a2: number, rr: number) =>
+    `M${cx} ${cy}L${xy(a1, rr)}A${rr} ${rr} 0 ${a2 - a1 > 180 ? 1 : 0} 1 ${xy(a2, rr)}Z`;
+  // The latest `set`, for a drag that outlives the render it began in.
+  const setLatest = useRef(set);
+  setLatest.current = set;
+  /** Dragging an edge: the degrees into the wind for the pointer, either side. */
+  const grab = (event: ReactPointerEvent<SVGGElement>) => {
+    event.preventDefault();
+    const move = (m: PointerEvent) => {
+      const box = svg.current?.getBoundingClientRect();
+      if (!box) return;
+      const k = UP.vw / box.width;
+      const x = Math.abs((m.clientX - box.left) * k + UP.vx - cx);
+      const y = (m.clientY - box.top) * k - cy;
+      setLatest.current(90 - (Math.atan2(x, -y) * 180) / Math.PI);
+    };
+    const up = () => {
+      removeEventListener("pointermove", move);
+      removeEventListener("pointerup", up);
+      removeEventListener("pointercancel", up);
+    };
+    addEventListener("pointermove", move);
+    addEventListener("pointerup", up);
+    addEventListener("pointercancel", up);
+  };
+  const handle = (side: 1 | -1) => {
+    const [x, y] = p(side * up, r);
+    return (
+      <g
+        className="cw-up-edge"
+        data-edge={side > 0 ? "right" : "left"}
+        onPointerDown={grab}
+      >
+        <circle cx={x} cy={y} r="16" className="cw-up-edge-hit" />
+        <circle cx={x} cy={y} r="7" className="cw-up-edge-dot" />
+      </g>
+    );
+  };
+  const angle = (side: 1 | -1) => {
+    if (!into) return null;
+    const rr = r * 0.82;
+    const [x1, y1] = p(side * 90, rr);
+    const [x2, y2] = p(side * up, rr);
+    const [lx, ly] = p(side * (up - 9), r + 14);
+    return (
+      <g>
+        <path
+          className="cw-up-angle"
+          d={`M${x1.toFixed(1)} ${y1.toFixed(1)}A${rr} ${rr} 0 0 ${side > 0 ? 0 : 1} ${x2.toFixed(1)} ${y2.toFixed(1)}`}
+        />
+        <text
+          className="cw-up-deg"
+          x={lx}
+          y={ly + 4}
+          textAnchor={side > 0 ? "start" : "end"}
+        >
+          {into}°
+        </text>
+      </g>
+    );
+  };
   return (
-    <div className="cw-point">
-      <svg className="cw-rose" viewBox="0 0 280 280" aria-hidden="true">
+    <div className="cw-up">
+      <svg
+        ref={svg}
+        className="cw-up-pic"
+        viewBox={`${UP.vx} 0 ${UP.vw} ${UP.vh}`}
+        aria-hidden="true"
+      >
         <defs>
           <pattern
             id={`${id}h`}
-            width="4"
-            height="4"
+            width="5"
+            height="5"
             patternUnits="userSpaceOnUse"
             patternTransform="rotate(45)"
           >
-            <line className="cw-hatch" x1="0" y1="0" x2="0" y2="4" />
+            <line className="cw-hatch" x1="0" y1="0" x2="0" y2="5" />
           </pattern>
         </defs>
-        <rect className="cw-land" x="0" y="220" width="280" height="60" />
-        <path className="cw-shoreline" d="M0 220H280" />
-        <text className="cw-lab" x="10" y="272">
-          BEACH
-        </text>
-        <text className="cw-lab" x="10" y="18">
-          SEA
-        </text>
-        <circle className="cw-rose-face" cx={c} cy={c} r="100" />
+        <circle className="cw-up-face" cx={cx} cy={cy} r={r} />
         <path
-          d={arc(wind - a, wind + a, 100)}
+          className="cw-up-nogo"
+          d={sector(-up, up, r)}
           style={{ fill: `url(#${id}h)` }}
-          className="cw-rose-nogo"
         />
-        <path d={arc(wind + a, wind + 180 - 15, 92)} className="cw-rose-out" />
-        <path d={arc(wind - 180 + 15, wind - a, 92)} className="cw-rose-home" />
+        <path className="cw-up-course" d={sector(up, COURSE_DEEP, r)} />
+        <path className="cw-up-course" d={sector(-COURSE_DEEP, -up, r)} />
         <path
-          d={`M${p(wind, 66)}A66 66 0 0 1 ${p(wind + a, 66)}`}
-          className="cw-rose-angle"
+          className="cw-up-slow"
+          d={sector(COURSE_DEEP, 360 - COURSE_DEEP, r)}
         />
+        <line
+          className="cw-up-across"
+          x1={cx - r - 8}
+          x2={cx + r + 8}
+          y1={cy}
+          y2={cy}
+        />
+        <text className="cw-lab" x={cx + r + 10} y={cy + 3}>
+          ACROSS
+        </text>
         <text
-          className="cw-rose-deg"
-          x={p(wind + a / 2, 82).split(" ")[0]}
-          y={Number(p(wind + a / 2, 82).split(" ")[1]) + 4}
+          className="cw-lab"
+          x={cx - r - 10}
+          y={cy + 3}
+          textAnchor="end"
+        >
+          ACROSS
+        </text>
+        <text
+          className="cw-lab is-strong"
+          x={cx}
+          y={cy - r * 0.5}
           textAnchor="middle"
         >
-          {Math.round(a)}°
+          CAN&rsquo;T GO
         </text>
-        <path d={`M${p(wind, 128)}L${p(wind, 104)}`} className="cw-rose-wind" />
-        <circle cx={c} cy={c} r="5" className="cw-rose-dot" />
+        {([-1, 1] as const).map((side) => {
+          const [x, y] = p((side * (up + COURSE_DEEP)) / 2, r * 0.6);
+          return (
+            <text
+              key={side}
+              className="cw-lab is-strong"
+              x={x}
+              y={y + 3}
+              textAnchor="middle"
+            >
+              RIDE
+            </text>
+          );
+        })}
+        <text
+          className="cw-lab"
+          x={cx}
+          y={cy + r * 0.62}
+          textAnchor="middle"
+        >
+          SLOW
+        </text>
+        {angle(1)}
+        {angle(-1)}
+        <path
+          className="cw-up-wind"
+          d={`M${cx} 6V${cy - r - 12}`}
+        />
+        <path
+          className="cw-up-wind-head"
+          d={`M${cx - 6} ${cy - r - 14}L${cx + 6} ${cy - r - 14}L${cx} ${cy - r - 3}Z`}
+        />
+        <text className="cw-lab is-strong" x={cx + 10} y="18">
+          WIND
+        </text>
+        <path
+          className="cw-up-board"
+          d={`M${cx} ${cy - 12}C${cx + 5} ${cy - 4} ${cx + 5} ${cy + 8} ${cx} ${cy + 12}C${cx - 5} ${cy + 8} ${cx - 5} ${cy - 4} ${cx} ${cy - 12}Z`}
+        />
+        {handle(1)}
+        {handle(-1)}
       </svg>
       <div>
-        <div className="cw-kick">Upwind, powered up</div>
-        <div className="cw-big" data-upwind>
-          {Math.round(target)}°<small> off the wind</small>
+        <div className="cw-up-answers" role="group" aria-label="Can you ride upwind?">
+          {UP_ANSWERS.map((a) => (
+            <Button
+              key={a.into}
+              variant="quiet"
+              className="cw-up-answer"
+              pressed={into === a.into}
+              onClick={() => set(a.into)}
+            >
+              <b>{a.name}</b>
+              <span>{a.line}</span>
+            </Button>
+          ))}
         </div>
-        <Segmented<Pointing>
-          aria-label="Pointing upwind"
-          options={POINTINGS.map((value) => ({
-            value,
-            label: POINTING_LABEL[value],
-          }))}
-          value={draft.pointing}
-          onChange={(pointing) => setDraft({ ...draft, pointing })}
-        />
+        <div className="cw-into" data-upwind>
+          <output>{into}°</output>
+          <span>into the wind</span>
+        </div>
+        <IntoSlider value={into} onChange={set} />
         <ul className="cw-legend">
           <li>
             <i className="is-nogo" />
-            No-go, into the wind
+            Can&rsquo;t go: too close to the wind
           </li>
           <li>
             <i className="is-out" />
-            Your tack out
+            Your course
           </li>
           <li>
-            <i className="is-home" />
-            Your tack home
+            <i className="is-slow" />
+            Downwind: possible, but slow
           </li>
         </ul>
+      </div>
+    </div>
+  );
+}
+
+/** Degrees into the wind, 0 to UPWIND_MAX: dragged, or a degree at a time from the keyboard. */
+function IntoSlider({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (deg: number) => void;
+}) {
+  const track = useRef<HTMLDivElement>(null);
+  const at = (clientX: number) => {
+    const box = track.current!.getBoundingClientRect();
+    return ((clientX - box.left) / box.width) * UPWIND_MAX;
+  };
+  const left = `${(value / UPWIND_MAX) * 100}%`;
+  return (
+    <div className="cw-slide">
+      <div
+        className="cw-slide-track"
+        ref={track}
+        onPointerDown={(event) => {
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          onChange(at(event.clientX));
+          (
+            event.currentTarget.querySelector("[role=slider]") as HTMLElement
+          ).focus();
+        }}
+        onPointerMove={(event) => {
+          if (event.currentTarget.hasPointerCapture(event.pointerId))
+            onChange(at(event.clientX));
+        }}
+      >
+        <i className="cw-slide-fill" style={{ width: left }} />
+        <span
+          role="slider"
+          tabIndex={0}
+          aria-label="Degrees into the wind"
+          aria-valuemin={0}
+          aria-valuemax={UPWIND_MAX}
+          aria-valuenow={value}
+          aria-valuetext={intoWords(value)}
+          className="cw-slide-knob"
+          style={{ left }}
+          onKeyDown={(event) => {
+            const by = (
+              {
+                ArrowLeft: -1,
+                ArrowDown: -1,
+                ArrowRight: 1,
+                ArrowUp: 1,
+                PageDown: -5,
+                PageUp: 5,
+                Home: -UPWIND_MAX,
+                End: UPWIND_MAX,
+              } as Record<string, number>
+            )[event.key];
+            if (!by) return;
+            event.preventDefault();
+            onChange(value + by);
+          }}
+        />
+      </div>
+      <div className="cw-slide-ends">
+        <span>Straight across</span>
+        <span>{UPWIND_MAX}° into it</span>
       </div>
     </div>
   );
@@ -1607,20 +1814,7 @@ function Summary({
             "wind",
           )}
           {row("Shores", DIRECTION_KEYS.map(mark), "shore")}
-          {row(
-            "Pointing",
-            <>
-              <b>{POINTING_LABEL[draft.pointing]}</b> · about{" "}
-              {upwindAngle({
-                weightKg: null,
-                wings: [],
-                skill: draft.skill,
-                pointing: draft.pointing,
-              })}
-              °
-            </>,
-            "pointing",
-          )}
+          {row("Upwind", <b>{intoWords(draft.upwind)}</b>, "pointing")}
           {row("Units", <b>{unit.label}</b>, "units")}
           {row(
             "Spots",

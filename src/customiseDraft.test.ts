@@ -49,7 +49,12 @@ describe("the draft", () => {
       standardRating(prefs({ skill: "advanced", weightKg: 95 }).rider),
     );
     expect(draft.starred).toEqual(["a"]);
-    expect(draft.pointing).toBe("typical");
+    // Advanced starts 35° into the wind.
+    expect(draft.upwind).toBe(35);
+  });
+  it("starts from the rider's own degrees into the wind, when they have them", () => {
+    expect(draftOf(prefs({ upwind: 5 }), []).upwind).toBe(5);
+    expect(draftOf(prefs(), []).upwind).toBe(20);
   });
   it("starts from the rider's own rating while it rates, at the level it started from", () => {
     const own: CustomRating = {
@@ -67,6 +72,12 @@ describe("the draft", () => {
     expect(learner.custom.wind.min).toBeLessThan(
       levelRating("beginner", 80).wind.min,
     );
+  });
+  it("starts the degrees into the wind again with a new level, and keeps them with a new weight", () => {
+    const draft = { ...draftOf(prefs(), []), upwind: 30 };
+    expect(withLevel(draft, "intermediate", 90).upwind).toBe(30);
+    expect(withLevel(draft, "beginner", null).upwind).toBe(0);
+    expect(withLevel(draft, "advanced", null).upwind).toBe(35);
   });
 });
 
@@ -119,18 +130,25 @@ describe("the shore", () => {
 });
 
 describe("saving", () => {
+  it("saves no degrees into the wind while they are the level's own", () => {
+    const before = prefs({ upwind: 30 });
+    const back = { ...draftOf(before, []), upwind: 20 };
+    expect(applyDraft(before, back, NOW).rider).not.toHaveProperty("upwind");
+    const own = { ...draftOf(before, []), upwind: 0 };
+    expect(applyDraft(before, own, NOW).rider.upwind).toBe(0);
+  });
   it("rates on the level, saving no rating of the rider's own, when the wind, gusts and shore are the level's", () => {
     const before = prefs();
     const draft = {
       ...withLevel(draftOf(before, []), "advanced", 70),
-      pointing: "sharp" as const,
+      upwind: 45,
       units: "km/h" as const,
     };
     const next = applyDraft(before, draft, NOW);
     expect(next.rider).toEqual({
       weightKg: 70,
       skill: "advanced",
-      pointing: "sharp",
+      upwind: 45,
       wings: [],
     });
     expect(next.units).toBe("km/h");

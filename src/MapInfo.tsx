@@ -426,6 +426,10 @@ function MapKey({ scale }: { scale: string }) {
             Your tack home
           </li>
           <li>
+            <i className="mi-sw-slow" aria-hidden="true" />
+            Downwind: possible, but slow
+          </li>
+          <li>
             <i className="mi-sw-off" aria-hidden="true" />
             Offshore winds, on the rim
           </li>
@@ -439,11 +443,11 @@ function MapKey({ scale }: { scale: string }) {
         </ul>
       </div>
       <p className="mi-sm">
-        About the headings you can hold at your level in this hour&rsquo;s wind,
-        out to sea and home, and the way you drift if you fall, dotted. How high
-        you point (Pointing upwind, in the display options) sets how wide the
-        no-go is. Its rim is half a nautical mile (or a kilometre) away. Round
-        the chosen spot is a range ring unless you choose the loupe, or nothing,
+        About the headings you can hold in this hour&rsquo;s wind, out to sea
+        and home, and the way you drift if you fall, dotted. How far into the
+        wind you can ride (in Customise) decides how wide the no-go is. Its
+        rim is half a nautical mile (or a kilometre) away. Round the chosen
+        spot is a range ring unless you choose the loupe, or nothing,
         in Layers.
       </p>
       <h4>

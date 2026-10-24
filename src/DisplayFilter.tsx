@@ -12,14 +12,8 @@ import {
   modelName,
 } from "../force5/src/lead";
 import { modelEntry } from "../force5/src/catalog";
-import { upwindAngle } from "../force5/src/rideWedge";
 import { UNITS, type Units } from "../force5/src/units";
-import {
-  POINTINGS,
-  POINTING_LABEL,
-  type Pointing,
-  type Rider,
-} from "../force5/src/stars";
+import type { Rider } from "../force5/src/stars";
 import { Segmented } from "../ui/Segmented";
 
 interface Props {
@@ -83,23 +77,6 @@ export default function DisplayFilter({ prefs, onChange, models }: Props) {
       </div>
       <h2>Your riding</h2>
       <div className="filter-rider">
-        {/* How high they point: the loupe's no-go and the light's wedge,
-            never the stars (force5/src/rideWedge.ts). */}
-        <div className="rider-pointing">
-          <span className="filter-sub">Pointing upwind</span>
-          <Segmented<Pointing>
-            aria-label="Pointing upwind"
-            options={POINTINGS.map((pointing) => ({
-              value: pointing,
-              label: POINTING_LABEL[pointing],
-            }))}
-            value={prefs.rider.pointing ?? "typical"}
-            onChange={(pointing) => setRider({ pointing })}
-          />
-          <small className="rider-pointing-angle" data-upwind-angle>
-            About {upwindAngle(prefs.rider)}° off the wind, powered up
-          </small>
-        </div>
         <label className="rider-field">
           <span>Wings you own</span>
           <input

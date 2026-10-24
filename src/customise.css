@@ -595,57 +595,180 @@
   font: 600 var(--text-caption) var(--font-mono);
 }
 
-/* ---- pointing ---- */
-.cw-point {
+/* ---- upwind ---- */
+.cw-up {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 320px 1fr;
   align-items: center;
   gap: 24px;
 }
-.cw-rose {
+.cw-up-pic {
+  display: block;
   width: 100%;
-  max-width: 280px;
+  touch-action: none;
+  user-select: none;
 }
-.cw-rose-face {
-  fill: var(--color-sea-4);
+.cw-up-face {
+  fill: var(--color-sunken);
+  stroke: var(--color-line);
+}
+.cw-up-nogo {
   stroke: var(--color-ink);
-  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
 }
-.cw-rose-nogo {
-  stroke: var(--color-ink);
-  stroke-width: 0.8;
-}
-.cw-rose-out {
+.cw-up-course {
   fill: var(--color-ground);
   stroke: var(--color-ink);
-  stroke-width: 1.1;
+  stroke-width: 1.5;
 }
-.cw-rose-home {
+/* Downwind of the course: possible, but slow, so it is drawn faintly. */
+.cw-up-slow {
   fill: none;
   stroke: var(--color-ink);
-  stroke-dasharray: 4 3;
+  stroke-dasharray: 2 3;
+  stroke-opacity: 0.6;
 }
-.cw-rose-angle {
+.cw-up-across {
+  stroke: var(--color-ink);
+  stroke-opacity: 0.4;
+  stroke-dasharray: 1 3;
+}
+.cw-up-angle {
   fill: none;
   stroke: var(--color-chart-magenta);
-  stroke-width: 1.6;
+  stroke-width: 2;
 }
-.cw-rose-deg {
-  font: 600 12px var(--font-mono);
+.cw-up-deg {
+  font: 600 11px var(--font-mono);
   fill: var(--color-chart-magenta);
 }
-.cw-rose-wind {
+.cw-up-wind {
   stroke: var(--color-ink);
-  stroke-width: 3;
-  stroke-linecap: round;
+  stroke-width: 2.5;
 }
-.cw-rose-dot {
+.cw-up-wind-head,
+.cw-up-board {
   fill: var(--color-ink);
 }
-.cw-big {
-  margin: 4px 0 14px;
-  font: 600 var(--text-headline) / 1 var(--font-mono);
-  letter-spacing: -0.03em;
+.cw-up-edge {
+  cursor: grab;
+  touch-action: none;
+}
+.cw-up-edge:active {
+  cursor: grabbing;
+}
+.cw-up-edge-hit {
+  fill: transparent;
+}
+.cw-up-edge:hover .cw-up-edge-hit {
+  fill: var(--color-line);
+}
+.cw-up-edge-dot {
+  fill: var(--color-ink);
+  stroke: var(--color-ground);
+  stroke-width: 2;
+}
+.cw-up-answers {
+  display: grid;
+  border-top: 1px solid var(--color-ink);
+}
+.cw .cw-up-answer {
+  display: block;
+  height: auto;
+  padding: 10px 12px;
+  border-radius: 0;
+  border-bottom: 1px solid var(--color-line);
+  font: inherit;
+  text-align: left;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: normal;
+  color: var(--color-ink);
+  background: none;
+}
+.cw .cw-up-answer[aria-pressed="true"] {
+  background: var(--color-sunken);
+  box-shadow: inset 3px 0 0 var(--color-ink);
+}
+.cw-up-answer b {
+  display: block;
+  font: 600 var(--text-lead) / 1.2 var(--font-display);
+}
+.cw-up-answer span {
+  font: var(--text-body) / 1.4 var(--font-body);
+  color: var(--color-ink-2);
+}
+.cw-into {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 18px 0 4px;
+}
+.cw-into output {
+  font: 600 var(--text-title) / 1 var(--font-mono);
+  letter-spacing: -0.02em;
+}
+.cw-into span {
+  font: 500 var(--text-label) var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-2);
+}
+.cw-slide {
+  margin: 6px 11px 0;
+}
+.cw-slide-track {
+  position: relative;
+  height: 32px;
+  touch-action: none;
+  cursor: pointer;
+}
+.cw-slide-track::before,
+.cw-slide-fill {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 0;
+  height: 4px;
+  border-radius: 999px;
+}
+.cw-slide-track::before {
+  right: 0;
+  background: var(--color-line);
+}
+.cw-slide-fill {
+  background: var(--color-ink);
+}
+.cw-slide-knob {
+  position: absolute;
+  top: 16px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--color-ground);
+  border-radius: 999px;
+  background: var(--color-ink);
+  box-shadow: var(--shadow-control);
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
+}
+/* A finger's target round the drawn knob. */
+.cw-slide-knob::after {
+  content: "";
+  position: absolute;
+  inset: -11px;
+}
+.cw-slide-knob:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.cw-slide-ends {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 -11px;
+  font: 500 var(--text-eyebrow) var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
 }
 .cw-legend {
   display: grid;
@@ -668,14 +791,15 @@
   background: repeating-linear-gradient(
     45deg,
     var(--color-ink) 0 1px,
-    var(--color-sea-4) 1px 4px
+    var(--color-sunken) 1px 4px
   );
 }
 .cw-legend .is-out {
   background: var(--color-ground);
+  border-width: 1.5px;
 }
-.cw-legend .is-home {
-  border-style: dashed;
+.cw-legend .is-slow {
+  border-style: dotted;
 }
 
 /* ---- units ---- */
@@ -889,22 +1013,22 @@
   }
   .cw-gust,
   .cw-shore,
-  .cw-point,
+  .cw-up,
   .cw-sum {
     grid-template-columns: 1fr;
   }
   .cw-gust-trace {
     max-height: 170px;
   }
-  .cw-beach,
-  .cw-rose {
+  .cw-beach {
     justify-self: center;
     max-width: 240px;
   }
+  .cw-up-pic {
+    justify-self: center;
+    max-width: 300px;
+  }
   .cw-angle {
     flex-wrap: wrap;
-  }
-  .cw-big {
-    font-size: var(--text-title);
   }
 }

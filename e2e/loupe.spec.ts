@@ -233,46 +233,57 @@ test("on a phone the rose fits above the dock, and stays readable zoomed out or 
   expect(pinned!.x + pinned!.width).toBeLessThanOrEqual(390);
 });
 
-test("pointing upwind: typical by default, sharp narrows the no-go, and it is kept", async ({
+test("degrees into the wind: set in Customise, they move the no-go, and are kept", async ({
   page,
 }) => {
   await open(page, "dollymount");
   await firstHour(page, "CROSS");
   const bearings = async () => (await labels(page)).filter((w) => /°$/.test(w));
-  const typical = await bearings();
-  expect(typical).toHaveLength(2);
+  const riding = await bearings();
+  expect(riding).toHaveLength(2);
+  // Past the course, downwind, is drawn faintly along the rim.
+  await expect(rose(page).locator(".map-rose-slow")).toHaveCount(1);
 
+  // Display options no longer carry it: Customise is where the rider says.
   await openFromMenu(page, "Display options");
-  const pointing = page.getByRole("group", { name: "Pointing upwind" });
-  await expect(
-    pointing.getByRole("button", { name: "Typical" }),
-  ).toHaveAttribute("aria-pressed", "true");
-  // A riding rider holds about 70° powered up; sharp is the schools' 60°.
-  await expect(page.locator("[data-upwind-angle]")).toHaveText(
-    "About 70° off the wind, powered up",
-  );
-  await pointing.getByRole("button", { name: "Sharp" }).click();
-  await expect(page.locator("[data-upwind-angle]")).toHaveText(
-    "About 60° off the wind, powered up",
-  );
+  await expect(page.getByText("Pointing upwind")).toHaveCount(0);
   await closePanel(page);
-  // Each tack's upwind edge moves 10° nearer the wind; the deep edge stays.
-  await expect.poll(bearings).not.toEqual(typical);
-  const sharp = await bearings();
+
+  const upwind = async () => {
+    await openFromMenu(page, "Customise");
+    const wizard = page.getByRole("dialog", { name: "Customise" });
+    await wizard.getByRole("button", { name: "Upwind", exact: true }).click();
+    return wizard;
+  };
+  const wizard = await upwind();
+  await expect(wizard.locator("[data-upwind] output")).toHaveText("20°");
+  await wizard
+    .getByRole("group", { name: "Can you ride upwind?" })
+    .getByRole("button", { name: /^Not yet/ })
+    .click();
+  await wizard.getByRole("button", { name: "Done", exact: true }).click();
+  await wizard.getByRole("button", { name: "Show me the chart" }).click();
+  await expect(wizard).toHaveCount(0);
+
+  // Straight across the wind: each course's upwind edge drops 20°, to 90°
+  // off the wind, and its deep edge stays at 120°.
+  await expect.poll(bearings).not.toEqual(riding);
+  const across = await bearings();
   const span = (b: string) => {
     const [from, to] = b.replace("°", "").split("–").map(Number);
     return (to - from + 360) % 360;
   };
   for (let i = 0; i < 2; i++)
-    expect(span(sharp[i])).toBeGreaterThanOrEqual(span(typical[i]));
+    expect(span(across[i])).toBeLessThan(span(riding[i]));
 
   // Kept on the device, with the weight and the level.
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("force5.prefs.v1")!).rider.upwind,
+    ),
+  ).toBe(0);
   await page.reload();
   await expect(page.locator(".map-loupe-foot")).toBeVisible({ timeout: 30000 });
-  await openFromMenu(page, "Display options");
-  await expect(
-    page
-      .getByRole("group", { name: "Pointing upwind" })
-      .getByRole("button", { name: "Sharp" }),
-  ).toHaveAttribute("aria-pressed", "true");
+  const again = await upwind();
+  await expect(again.locator("[data-upwind] output")).toHaveText("0°");
 });
