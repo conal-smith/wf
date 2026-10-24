@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock-up · Customise, round two</title>
+<!--
+  A design exploration, not product code. Standalone: open it straight from the
+  repo. Faces are read from node_modules by relative path, as the other
+  mockups here do; without an `npm install` they fall back to Georgia and the
+  system monospace.
+
+  What it explores: the Customise wizard (src/Customise.tsx) after the owner's
+  review of 24 October 2026.
+    - One title per step. No "Customise your chart" heading, no seven-label
+      progress bar, no Almanac lines.
+    - Wind: one top limit that the gusts are held to; the separate gust step
+      is gone. A "gusty wind" setting replaces it.
+    - Shore: the draggable web is back. Each spoke points the way the wind
+      blows, so offshore points out to sea and onshore points in over the land.
+      Cross-shore costs nothing by default.
+    - Upwind: "Can you ride upwind?", with the wind's arrow drawn, and a
+      narrower downwind course.
+    - Units folded into the first step.
+    - Spots: starred spots stay where they are; the list says where "near" is.
+  Open a step by URL for screenshots: ?step=shore
+-->
+<style>
+@font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: italic; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-italic.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 400;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 500;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 600;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
+
+/* The light chart, as design-system/foundations/tokens.css states it. */
+:root {
+  --ground: #f3eee3; --sunken: #ede6d6; --inverse: #1a1d21; --depth: #5f8c9c; --land: #ede3c8;
+  --sea: #dce8ec; --line: #1a1d2133; --line-strong: #7c7b78; --hatch: #1a1d2117;
+  --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b; --disabled: #7c7b78; --ink-inv: #f3eee3;
+  --focus: #b0186a; --pen: #d43a2c; --pen-ink: #bf3125; --gust: #e0803a;
+  --display: "Fraunces Variable", Fraunces, Georgia, serif;
+  --body: "Newsreader Variable", Newsreader, Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --frame: inset 0 0 0 3px #f3eee3, inset 0 0 0 4px #1a1d21;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 14px; }
+body { margin: 0; color: var(--ink); font-family: var(--body); font-size: 13px; line-height: 1.4;
+  background: #9fbf8f radial-gradient(circle at 30% 20%, #b8d1a6, #8fb07f 70%); min-height: 100vh; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3, p { margin: 0; }
+.mono { font-family: var(--mono); }
+.eyebrow { font: 500 10px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+/* ---- mockup chrome (not product) ---------------------------------------- */
+.mockbar { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+  padding: 8px 16px; background: #1a1d21; color: #f3eee3; font: 500 11px var(--mono); letter-spacing: .08em; }
+.mockbar b { margin-right: 10px; text-transform: uppercase; letter-spacing: .14em; }
+.mockbar button { background: none; border: 1px solid #f3eee355; border-radius: 99px; padding: 3px 10px; text-transform: uppercase; letter-spacing: .1em; font-size: 10px; }
+.mockbar button[aria-pressed=true] { background: #f3eee3; color: #1a1d21; }
+.stage { display: grid; grid-template-columns: minmax(0, 680px) minmax(260px, 340px); gap: 24px; justify-content: center;
+  align-items: start; padding: 32px 16px 48px; }
+@media (max-width: 1000px) { .stage { grid-template-columns: minmax(0, 680px); } }
+.why { background: #fffdf6; border: 1px dashed #1a1d2166; border-radius: 12px; padding: 14px 16px; font-size: 14px; line-height: 1.45; }
+.why h4 { margin: 0 0 6px; font: 600 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--focus); }
+.why ul { margin: 0; padding-left: 18px; } .why li { margin: 4px 0; }
+.why .q { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #1a1d2144; }
+
+/* ---- the dialog ---------------------------------------------------------- */
+.cw { background: var(--ground); border-radius: 18px; box-shadow: var(--frame), 0 20px 50px -20px #0006; padding: 20px 26px 16px;
+  display: flex; flex-direction: column; max-height: calc(100vh - 110px); min-height: 520px; }
+.cw-head { display: flex; align-items: center; gap: 14px; padding: 2px 0 12px; position: relative; }
+.cw-head h2 { flex: 1; font: 700 26px/1.1 var(--display); letter-spacing: -.02em; }
+.cw-count { font: 500 11px var(--mono); letter-spacing: .1em; color: var(--muted); white-space: nowrap; }
+.cw-x { width: 32px; height: 32px; border: 0; background: none; font-size: 20px; line-height: 1; }
+/* progress: one rule under the head that fills, no labels */
+.cw-prog { display: grid; grid-auto-flow: column; gap: 3px; height: 3px; margin-bottom: 4px; }
+.cw-prog i { background: #1a1d2122; } .cw-prog i.done { background: var(--ink); }
+.cw-body { flex: 1; min-height: 0; overflow: auto; padding: 18px 2px 18px; }
+.cw-sub { font-size: 15px; color: var(--ink-2); margin: -4px 0 16px; max-width: 54ch; }
+.cw-foot { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--ink); }
+.cw-foot .sp { flex: 1; }
+.btn { height: 40px; padding: 0 20px; border-radius: 99px; border: 1.5px solid var(--ink); background: transparent;
+  font: 500 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+.btn.primary { background: var(--ink); color: var(--ink-inv); }
+.btn.quiet { border-color: transparent; color: var(--muted); padding: 0 6px; }
+
+/* segmented */
+.seg { display: inline-flex; border: 1.5px solid var(--ink); border-radius: 99px; padding: 2px; }
+.seg button { border: 0; background: none; border-radius: 99px; padding: 6px 14px; font: 500 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.seg button[aria-pressed=true] { background: var(--ink); color: var(--ink-inv); }
+
+/* ---- step: you ----------------------------------------------------------- */
+.levels { display: grid; gap: 8px; }
+.level { display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; text-align: left; padding: 12px 14px;
+  background: transparent; border: 1.5px solid var(--line); border-radius: 12px; }
+.level[aria-pressed=true] { border-color: var(--ink); background: #fffdf6; box-shadow: inset 4px 0 0 var(--ink); }
+.level b { font: 600 17px var(--display); }
+.level span { color: var(--ink-2); font-size: 14px; grid-column: 1; }
+.level small { grid-row: 1 / span 2; grid-column: 2; align-self: center; font: 500 12px var(--mono); color: var(--muted); text-align: right; }
+.row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.row:first-of-type { border-top: 1px solid var(--line); margin-top: 18px; }
+.row > .eyebrow { width: 90px; }
+.stepper { display: inline-flex; align-items: center; gap: 10px; }
+.stepper button { width: 32px; height: 32px; border-radius: 99px; border: 1.5px solid var(--ink); background: none; font-size: 16px; }
+.stepper output { font: 600 19px var(--mono); min-width: 64px; text-align: center; }
+.stepper output small { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 2px; }
+
+/* the force glyph: a Beaufort staff, a half feather per force, and the number beside it */
+.bf { display: inline-flex; align-items: center; gap: 1px; white-space: nowrap; vertical-align: middle; }
+.bf svg { display: block; overflow: visible; }
+.bf b { font-weight: inherit; }
+.bf-key { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font: 600 13px var(--mono); }
+.bf-key small { display: block; font: 500 9px var(--mono); letter-spacing: .08em; color: var(--muted); text-align: center; text-transform: uppercase; }
+
+/* ---- step: wind ---------------------------------------------------------- */
+.range { position: relative; height: 92px; margin: 6px 14px 0; user-select: none; touch-action: none; }
+.range .track { position: absolute; left: 0; right: 0; top: 34px; height: 16px; border: 1px solid var(--ink); border-radius: 99px; background: #fffdf6; overflow: hidden; }
+.range .zone { position: absolute; top: 34px; height: 16px; }
+.range .zone.ok { background: #1a1d2133; } .range .zone.sweet { background: var(--ink); }
+.range .zone.over { background: repeating-linear-gradient(-45deg, var(--pen) 0 1.5px, transparent 1.5px 5px); }
+.range .h { position: absolute; top: 28px; width: 40px; height: 28px; margin-left: -20px; border-radius: 99px; border: 1.5px solid var(--ink);
+  background: var(--ground); font: 600 12px/25px var(--mono); text-align: center; cursor: grab; z-index: 2; }
+.range .h.top { border-color: var(--pen-ink); color: var(--pen-ink); }
+.range .lab { position: absolute; top: 4px; font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); transform: translateX(-50%); white-space: nowrap; }
+.range .lab.top { color: var(--pen-ink); }
+.range .ticks { position: absolute; left: 0; right: 0; top: 60px; font: 500 10px var(--mono); color: var(--muted); }
+.range .ticks span { position: absolute; transform: translateX(-50%); }
+.range .ticks span::before { content: ""; position: absolute; left: 50%; top: -6px; height: 4px; border-left: 1px solid var(--ink); }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 4px 14px 0; font: 500 11px var(--mono); color: var(--ink-2); }
+.legend i { display: inline-block; width: 18px; height: 10px; border: 1px solid var(--ink); vertical-align: -1px; margin-right: 6px; }
+
+.day { margin-top: 20px; border: 1px solid var(--ink); border-radius: 14px; background: #fffdf6; padding: 10px 12px 8px; }
+.day-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.day-h b { font: 600 15px var(--display); }
+.hours { display: grid; grid-template-columns: repeat(9, 1fr); text-align: center; font-family: var(--mono); }
+.hours .t { font-size: 10px; color: var(--muted); }
+.hours .w { font: 600 15px var(--mono); margin-top: 4px; }
+.hours .g { font-size: 10px; color: var(--muted); }
+.hours .g.over { color: var(--pen-ink); font-weight: 600; }
+.hours .g.gy { color: var(--gust); font-weight: 600; }
+.hours .s { display: flex; justify-content: center; gap: 1px; margin-top: 6px; min-height: 12px; }
+.hours .s .star { width: 9px; height: 9px; }
+.hours .why-c { font-size: 9px; color: var(--muted); min-height: 12px; letter-spacing: .04em; }
+.star { width: 10px; height: 10px; display: block; }
+
+.gusty { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.gusty h3 { font: 600 17px var(--display); }
+.gusty p { grid-column: 1; color: var(--ink-2); font-size: 14px; }
+.gusty .seg { grid-row: 1 / span 2; grid-column: 2; }
+
+/* ---- step: shore (the web) ---------------------------------------------- */
+.shore { display: grid; grid-template-columns: 330px 1fr; gap: 20px; align-items: start; }
+@media (max-width: 640px) { .shore { grid-template-columns: 1fr; } }
+.web svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; border-radius: 14px; }
+.web .dot { cursor: grab; }
+.web .dot:hover circle.hit { fill: #1a1d2111; }
+.dirs { list-style: none; margin: 0; padding: 0; }
+.dirs li { display: grid; grid-template-columns: 1fr auto; padding: 9px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.dirs li:first-child { border-top: 2px solid var(--ink); }
+.dirs b { font: 600 15px var(--display); }
+.dirs .v { font: 600 12px var(--mono); }
+.dirs .v.never { color: var(--pen-ink); }
+.dirs small { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
+
+/* ---- step: upwind -------------------------------------------------------- */
+.up { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: center; }
+@media (max-width: 640px) { .up { grid-template-columns: 1fr; } }
+.opts { display: grid; gap: 8px; }
+.opt { text-align: left; padding: 10px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: none; }
+.opt[aria-pressed=true] { border-color: var(--ink); background: #fffdf6; box-shadow: inset 4px 0 0 var(--ink); }
+.opt b { font: 600 16px var(--display); display: block; }
+.opt span { color: var(--ink-2); font-size: 14px; }
+.into { display: flex; align-items: baseline; gap: 10px; margin: 18px 0 4px; }
+.into output { font: 600 34px/1 var(--mono); letter-spacing: -.02em; }
+.into span { font: 500 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.slide { width: 100%; accent-color: var(--ink); margin: 6px 0 0; }
+.slide-ends { display: flex; justify-content: space-between; font: 500 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.up-svg .edge { cursor: grab; }
+.key { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 4px; font: 500 11px var(--mono); color: var(--ink-2); }
+.key li { display: flex; align-items: center; gap: 8px; }
+
+/* ---- step: spots --------------------------------------------------------- */
+.search { display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--ink); border-radius: 99px; padding: 7px 14px; }
+.search input { flex: 1; border: 0; background: none; font: italic 16px var(--body); outline: none; }
+.near { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-bottom: 6px; border-bottom: 1px solid var(--ink); }
+.linkbtn { border: 0; background: none; font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; }
+.spots { list-style: none; margin: 0; padding: 0; }
+.spots li { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.spots .tog { border: 0; background: none; padding: 0; width: 24px; height: 24px; }
+.spots b { font: 500 15px var(--body); } .spots small { color: var(--muted); font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; margin-left: 8px; }
+.spots .km { font: 500 12px var(--mono); color: var(--muted); }
+
+/* ---- step: done ---------------------------------------------------------- */
+.sum { list-style: none; margin: 0; padding: 0; }
+.sum li { display: grid; grid-template-columns: 84px 1fr auto; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.sum li:first-child { border-top: 1px solid var(--line); }
+.sum .val { font: 500 13px var(--mono); }
+.sum .val .never { color: var(--pen-ink); }
+
+/* ---- the plan, under the stage ------------------------------------------- */
+.plan { max-width: 1000px; margin: 0 auto 80px; background: var(--ground); border-radius: 18px; box-shadow: var(--frame); padding: 28px 32px; }
+.plan h2 { font: 700 26px var(--display); letter-spacing: -.02em; border-bottom: 3px double var(--ink); padding-bottom: 8px; }
+.plan h3 { font: 600 18px var(--display); margin: 22px 0 6px; }
+.plan p, .plan li { font-size: 15px; line-height: 1.5; max-width: 72ch; }
+.plan table { border-collapse: collapse; font: 500 12px var(--mono); margin-top: 8px; }
+.plan th, .plan td { padding: 5px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+.plan th { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); border-bottom-color: var(--ink); }
+.plan .open { background: #fffdf6; border-radius: 10px; border-left: 3px solid var(--focus); padding: 8px 14px; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="mockbar" id="mockbar"><b>Mock-up · Customise</b></div>
+
+<div class="stage">
+  <div class="cw" role="dialog" aria-labelledby="cw-title">
+    <div class="cw-head">
+      <h2 id="cw-title"></h2>
+      <span class="cw-count" id="cw-count"></span>
+      <button class="cw-x" aria-label="Close">×</button>
+    </div>
+    <div class="cw-prog" id="cw-prog"></div>
+    <div class="cw-body" id="cw-body"></div>
+    <div class="cw-foot">
+      <button class="btn quiet" id="skip">Skip</button>
+      <span class="sp"></span>
+      <button class="btn" id="back">Back</button>
+      <button class="btn primary" id="next">Next</button>
+    </div>
+  </div>
+  <aside class="why" id="why"></aside>
+</div>
+
+<section class="plan" id="plan">
+  <h2>The stars, gusts included: the plan</h2>
+
+  <h3>1. One top limit, and the gusts count against it</h3>
+  <p>The gust step goes. The wind step keeps four handles (<i>too light</i>, the sweet spot's two ends, <i>too much</i>), and
+    <b>too much is compared with the gust</b>, not the mean. "I can hold 30 knots" means 30 in the gusts, which is how riders say it.</p>
+  <ul>
+    <li>Mean below the floor: no stars, as now. Gusts below the floor can still lift it to one star, as now.</li>
+    <li>Gust at or under your top: the mean alone decides the stars, as now.</li>
+    <li>Gust over your top: <b>no stars</b>, whatever the mean. It's too windy for you. The hour shows no stars at all (not outline ones), and its gust figure turns red.</li>
+  </ul>
+  <p>Because the top now means gusts, the level defaults move up to gust figures:</p>
+  <table id="p-levels"></table>
+
+  <h3>2. Gusty or smooth: a setting, shown as outline stars</h3>
+  <p>A separate question from "too strong": how <i>uneven</i> the wind is. We measure it as the gust over the mean (the gust factor), banded:</p>
+  <table id="p-bands"></table>
+  <p>The rider says how much gusty wind bothers them: <b>Not much</b>, <b>Some</b> (default) or <b>A lot</b>. The stars it takes off are drawn as
+    outline stars, the way every other lost star already is (solid = what you get, outline = what the wind would have been worth).
+    So a gusty hour reads as, say, ★★★☆☆: the wind is good, but it is not smooth.</p>
+  <div class="open"><b>Watch out:</b> the very first rating (v1) took stars off for any gust factor over 1.35, and Irish model winds nearly always
+    exceed that. On 4 October Dublin Bay sat at zero all day while people were out riding (docs/STAR_RATINGS.md, "Why v2").
+    That's why "gusty" starts at 1.5, not 1.35.
+    Before building, I'd replay a week of published hours to check how many lose a star.</div>
+
+  <h3>3. The shore: a web you drag</h3>
+  <p>Each spoke is a wind direction relative to the beach, pointing <b>the way the wind blows</b>: offshore points out to sea, onshore points in over the land.
+    The dot on each spoke sets what that wind costs: at the rim it costs nothing, each ring in is one star off, and the centre is <b>never</b>.
+    Left and right are one setting, so dragging one side moves its mirror.</p>
+  <table id="p-shore"></table>
+
+  <h3>4. Worked examples</h3>
+  <p>Riding, 80 kg, cross-onshore, the proposed defaults ("Some" for gusty wind). Solid stars first, outline stars in brackets.</p>
+  <table id="p-worked"></table>
+</section>
+
+<script>
+/* ======================================================================
+   The proposed rating, small enough to read. Knots throughout.
+   ====================================================================== */
+const LEVELS = {
+  learning: { name: "Learning", line: "Still getting up on the foil.",                  wind: [13, 15, 20, 26], into: 0 },
+  riding:   { name: "Riding",   line: "Riding both ways, starting to gybe.",              wind: [11, 14, 24, 34], into: 20 },
+  advanced: { name: "Advanced", line: "Light-wind pumping, happy in strong wind too.", wind: [8, 13, 28, 40], into: 35 },
+};
+const GUSTY = [                   // gust factor bands
+  { at: 1.0, name: "Steady" },
+  { at: 1.5, name: "Gusty" },
+  { at: 1.8, name: "Very gusty" },
+];
+// stars off for [steady, gusty, very gusty]
+const GUST_PREF = { little: { name: "Not much", off: [0, 0, 1] }, some: { name: "Some", off: [0, 1, 2] }, lots: { name: "A lot", off: [0, 2, 3] } };
+const SHORE = ["onshore", "crossOn", "cross", "crossOff", "offshore"];
+const SHORE_NAME = { onshore: "Onshore", crossOn: "Cross-onshore", cross: "Cross-shore", crossOff: "Cross-offshore", offshore: "Offshore" };
+const SHORE_LINE = {
+  onshore: "Blows straight in. Choppy getting out, but it brings you back.",
+  crossOn: "Blows in at an angle. The easiest wind to learn in.",
+  cross: "Blows along the beach. Ideal for most riders.",
+  crossOff: "Blows out at an angle. You drift away from the beach.",
+  offshore: "Blows straight out to sea. If you fall, you drift away.",
+};
+const NEVER = 5; // five stars off: nothing left, as the web's centre
+const SHORE_DEFAULT = {
+  learning: { onshore: 0, crossOn: 0, cross: 0, crossOff: 3, offshore: NEVER },
+  riding:   { onshore: 0, crossOn: 0, cross: 0, crossOff: 1.5, offshore: 4 },
+  advanced: { onshore: 0, crossOn: 0, cross: 0, crossOff: 1, offshore: 4 },
+};
+
+function windStars(mean, [lo, sLo, sHi]) {
+  // the level's potential curve on the mean: 1→4 from floor to sweet spot, 5 in its middle half, 4 at its edges
+  if (mean < lo) return 0;
+  if (mean < sLo) return 1 + 3 * (mean - lo) / (sLo - lo);
+  const q = (sHi - sLo) / 4;
+  if (mean <= sHi) return (mean >= sLo + q && mean <= sHi - q) ? 5 : 4 + Math.min(mean - sLo, sHi - mean) / q;
+  return 4; // past the sweet spot the gust's limit takes over (below)
+}
+function rate(h, r) {
+  const [lo, , , top] = r.wind;
+  let mean = h.mean;
+  if (mean < lo) mean = Math.min(lo, mean + 0.3 * Math.min(h.gust - mean, mean)); // gusts lift a light hour to the floor at most
+  let potential = windStars(mean, r.wind);
+  const reasons = [];
+  if (h.gust > top) return { stars: 0, potential: 0, reasons: ["over"], band: GUSTY[0] }; // any gust past your top: no stars
+  const factor = h.mean > 0 ? h.gust / h.mean : 1;
+  const bi = GUSTY.findLastIndex((b) => factor >= b.at), band = GUSTY[bi];
+  const gustOff = h.mean >= lo ? GUST_PREF[r.gusty].off[bi] : 0;
+  const dirCost = r.shore[h.shore];
+  if (dirCost >= NEVER) return { stars: 0, potential: Math.round(potential), reasons: ["never"], band };
+  const stars = Math.max(0, Math.min(Math.round(potential), Math.round(potential - gustOff - dirCost)));
+  const withoutGust = Math.max(0, Math.min(Math.round(potential), Math.round(potential - dirCost)));
+  if (withoutGust > stars) reasons.push("gusty");          // named only when it moved a star
+  if (Math.round(potential) > withoutGust) reasons.push("dir");
+  return { stars, potential: Math.round(potential), reasons, band };
+}
+
+/* ======================================================================
+   State
+   ====================================================================== */
+const STEPS = [
+  { id: "you",    title: "How do you ride?" },
+  { id: "wind",   title: "What wind suits you?" },
+  { id: "shore",  title: "Stars by wind direction",
+    sub: "How many stars should a spot lose when the wind blows offshore, onshore or along the beach? Drag a dot in to take stars off. A dot in the middle means no stars for that wind." },
+  { id: "upwind", title: "Can you ride upwind?" },
+  { id: "spots",  title: "Your spots" },
+  { id: "done",   title: "All set" },
+];
+const S = {
+  step: 0, level: "learning", weight: 95, unit: "kn", gusty: "some", into: 0,
+  wind: [...LEVELS.learning.wind], shore: { ...SHORE_DEFAULT.learning },
+  starred: ["malahide", "kilcrea", "broadmeadows"], q: "", near: "map",
+};
+const params = new URLSearchParams(location.search);
+if (params.get("step")) S.step = Math.max(0, STEPS.findIndex((s) => s.id === params.get("step")));
+if (params.get("level") && LEVELS[params.get("level")]) setLevel(params.get("level"));
+function setLevel(l) { S.level = l; S.wind = [...LEVELS[l].wind]; if (S.unit === "bft") snapBand(); S.shore = { ...SHORE_DEFAULT[l] }; S.into = LEVELS[l].into; }
+const INTO_MAX = 45; // degrees into the wind past square across it; 45 is about as high as a very good rider points
+
+const UNIT = { kn: [1, "kn"], ms: [0.5144, "m/s"], kmh: [1.852, "km/h"], mph: [1.1508, "mph"], bft: [null, "Force"] };
+// The Beaufort scale: the knots each force starts at, from Force 1 to Force 12.
+const BFT = [1, 4, 7, 11, 17, 22, 28, 34, 41, 48, 56, 64];
+const force = (kn) => BFT.filter((e) => kn >= e).length;
+/* A force as the old charts drew it: a staff with a half feather for each force,
+   whole feathers first from the tip (Force 5 = two whole and a half). The number sits
+   beside it, so nobody has to count. currentColor, so a red gust draws it red. */
+function bfGlyph(f, h = 14) {
+  const w = h * 0.72, top = 1, step = h * 0.17, full = w - 2, half = full * 0.55;
+  let d = `M2 ${h} L2 ${top}`, y = top;
+  for (let i = 0; i < Math.floor(f / 2); i++, y += step) d += ` M2 ${y} l${full} ${-step * 0.9}`;
+  if (f % 2) { y += f > 1 ? 0 : step * 0.6; d += ` M2 ${y} l${half} ${-step * 0.55}`; }
+  return `<svg width="${w}" height="${h}" viewBox="0 -2 ${w} ${h + 2}" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="${h > 16 ? 1.8 : 1.4}" stroke-linecap="round"/></svg>`;
+}
+const bf = (f, h) => `<span class="bf" aria-label="Force ${f}">${bfGlyph(f, h)}<b>${f}</b></span>`;
+const u = (kn, h) => S.unit === "bft" ? bf(force(kn), h) : Math.round(kn * UNIT[S.unit][0]);
+const ul = () => S.unit === "bft" ? "" : UNIT[S.unit][1];
+const gustText = (kn) => S.unit === "bft" ? `g ${bf(force(kn), 10)}` : `g${u(kn)}`;
+// With forces, a handle sits on a whole force: the lower two at its first knot, the upper two at its last.
+const forceKn = (f, i) => i < 2 ? BFT[f - 1] ?? 0 : (BFT[f] ?? 65) - 1;
+// The band in whole forces, each handle a force above the one before it: Learning's 13/15/20/26 kn is F4 / F5–F5 / F6.
+function snapBand() {
+  let last = 0;
+  S.wind = S.wind.map((kn, i) => { let f = force(kn); if (i !== 2) f = Math.max(f, last + 1); else f = Math.max(f, last); last = f; return forceKn(f, i); });
+}
+
+// A sample Saturday at a beach facing east; the wind backs from cross-on to cross-off through the afternoon.
+const DAY = [
+  { t: 10, mean: 16, gust: 21, shore: "crossOn" },
+  { t: 11, mean: 13, gust: 23, shore: "crossOn" },
+  { t: 12, mean: 15, gust: 20, shore: "cross" },
+  { t: 13, mean: 18, gust: 23, shore: "cross" },
+  { t: 14, mean: 18, gust: 26, shore: "cross" },
+  { t: 15, mean: 20, gust: 31, shore: "cross" },
+  { t: 16, mean: 22, gust: 33, shore: "crossOff" },
+  { t: 17, mean: 21, gust: 27, shore: "crossOff" },
+  { t: 18, mean: 21, gust: 25, shore: "offshore" },
+];
+
+/* ======================================================================
+   Little drawings
+   ====================================================================== */
+const STAR_PATH = "M5 .6l1.3 2.9 3.1.3-2.4 2.1.7 3.1L5 7.4 2.3 9l.7-3.1L.6 3.8l3.1-.3z";
+function stars(n, p) {
+  let s = "";
+  for (let i = 0; i < p; i++) s += `<svg class="star" viewBox="0 0 10 10"><path d="${STAR_PATH}" fill="${i < n ? "#1a1d21" : "none"}" stroke="#1a1d21" stroke-width=".8"/></svg>`;
+  return s || `<span style="font:500 10px var(--mono);color:var(--muted)">–</span>`;
+}
+const STAR_TOGGLE = (on) => `<svg viewBox="0 0 20 20" width="20" height="20"><path d="M10 1.8l2.5 5.4 5.9.6-4.4 4 1.3 5.8L10 14.6l-5.3 3 1.3-5.8-4.4-4 5.9-.6z"
+  fill="${on ? "#d43a2c" : "none"}" stroke="#d43a2c" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+
+/* ======================================================================
+   Steps
+   ====================================================================== */
+const WHY = {
+  you: `<h4>What changed</h4><ul>
+    <li>One title. "Customise your chart", the step labels and the Almanac are gone; the thin bar under the title is the progress.</li>
+    <li>Units moved here from their own step: one row didn't need a whole page.</li>
+    <li>Level copy says what the level means in plain words.</li></ul>`,
+  wind: `<h4>What changed</h4><ul>
+    <li>The gust step is gone. <b>Too much</b> is now your limit <i>in the gusts</i>: any gust past it and the hour gets no stars (red hatching, red gust figure).</li>
+    <li><b>Gusty wind</b> is a separate question: how much uneven wind bothers you. What it costs shows as outline stars.</li>
+    <li>Drag the handles or change the setting and the sample day re-rates.</li></ul>
+    <div class="q"><b>Your call:</b> the model's gust is the hour's strongest, so "no stars past the top" will blank more hours than today. That's why the top's defaults move up (plan, below). Gusty starts at 1.5× the mean, very gusty at 1.8×.</div>`,
+  shore: `<h4>What changed</h4><ul>
+    <li>The draggable web is back. Each dot sets what that wind costs: rim = nothing, each ring in = a star off, centre = never.</li>
+    <li>Spokes point <b>where the wind goes</b>: offshore points out to sea, onshore points in over the land.</li>
+    <li>Cross-shore costs nothing. Onshore defaults to no cost, for every level.</li>
+    <li>Left and right mirror each other, since the stars don't know which side is which.</li></ul>`,
+  upwind: `<h4>What changed</h4><ul>
+    <li>Asked as "Can you ride upwind?". The answer is <b>degrees into the wind</b>, counted from straight across it: 0° means you hold your ground, 10° means you climb a little.</li>
+    <li>0° is the least it goes: we assume everyone can ride straight across the wind.</li>
+    <li>Pick an answer, then fine-tune with the slider or by dragging the edge of your course on the picture.</li>
+    <li>Each level starts somewhere sensible: Learning 0°, Riding 20°, Advanced 35°.</li>
+    <li>One number, used in every wind. The map draws exactly this angle round your spot.</li>
+    <li>Your course is narrower: from the no-go edge to about 120° off the wind. Further downwind is drawn faintly, because it's possible but slow.</li></ul>
+    <div class="q"><b>Your call:</b> this setting only changes the course drawn round a spot on the map, not the stars. Should it also cost stars when the only course out is too close to the wind?</div>`,
+  spots: `<h4>What changed</h4><ul>
+    <li>The list keeps its order when you star a spot, so nothing jumps when you tap; the red star in the row is all it needs.</li>
+    <li>The list says what it's near. Today that's wherever the map is centred, which is why you saw Malahide.
+      There's no geolocation; everyone sees whatever their map is looking at. Here "Use my location" asks the browser once.</li>
+    <li>The "best on Saturday" star column is gone: it made it look like a rating of the spot.</li></ul>`,
+  done: `<h4>What changed</h4><ul>
+    <li>No Almanac quote. The summary is the page.</li>
+    <li>The sample day sits under the summary, so the stars you just set are the last thing you see.</li></ul>`,
+};
+
+function render() {
+  const st = STEPS[S.step];
+  document.getElementById("cw-title").textContent = st.title;
+  document.getElementById("cw-count").textContent = `${S.step + 1} / ${STEPS.length}`;
+  document.getElementById("cw-prog").innerHTML = STEPS.map((_, i) => `<i class="${i <= S.step ? "done" : ""}"></i>`).join("");
+  document.getElementById("back").style.visibility = S.step ? "visible" : "hidden";
+  document.getElementById("next").textContent = S.step === STEPS.length - 1 ? "Show me the chart" : "Next";
+  document.getElementById("skip").style.visibility = S.step === STEPS.length - 1 ? "hidden" : "visible";
+  document.getElementById("why").innerHTML = WHY[st.id];
+  const body = document.getElementById("cw-body");
+  body.innerHTML = (st.sub ? `<p class="cw-sub">${st.sub}</p>` : "") + VIEWS[st.id]();
+  BIND[st.id]?.(body);
+  document.querySelectorAll("#mockbar button").forEach((b, i) => b.setAttribute("aria-pressed", i === S.step));
+  renderPlan();
+}
+
+const VIEWS = {
+  you: () => `
+    <div class="levels">${Object.entries(LEVELS).map(([k, l]) => `
+      <button class="level" data-level="${k}" aria-pressed="${S.level === k}">
+        <b>${l.name}</b><span>${l.line}</span>
+        <small>${u(l.wind[0])}–${u(l.wind[3])} ${ul()}</small>
+      </button>`).join("")}</div>
+    <div class="row"><span class="eyebrow">Weight</span>
+      <span class="stepper"><button data-w="-5" aria-label="Lighter">−</button><output>${S.weight}<small>kg</small></output><button data-w="5" aria-label="Heavier">+</button></span>
+      <span style="color:var(--muted)">Heavier riders need more wind.</span></div>
+    <div class="row"><span class="eyebrow">Wind in</span>
+      <span class="seg">${Object.entries(UNIT).map(([k, [, n]]) => `<button data-unit="${k}" aria-pressed="${S.unit === k}">${n}</button>`).join("")}</span>
+      ${S.unit === "bft" ? `<div class="bf-key" style="flex-basis:100%">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((f) => `<span>${bf(f, 16)}<small>${BFT[f - 1]}–${BFT[f] - 1} kn</small></span>`).join("")}</div>` : ""}</div>`,
+
+  wind: () => {
+    const lo = 4, hi = 50, pc = (v) => ((v - lo) / (hi - lo)) * 100;
+    const [a, b, c, d] = S.wind;
+    const ticks = (S.unit === "bft" ? BFT.filter((e) => e >= 4 && e <= 50) : [5, 10, 15, 20, 25, 30, 35, 40, 45, 50])
+      .map((v) => `<span style="left:${pc(v)}%">${S.unit === "bft" ? force(v) : u(v)}</span>`).join("")
+;
+    const hours = DAY.map((h) => ({ h, r: rate(h, S) }));
+    return `
+      <div class="range" id="range">
+        <div class="track"></div>
+        <div class="zone ok" style="left:${pc(a)}%;width:${pc(b) - pc(a)}%"></div>
+        <div class="zone sweet" style="left:${pc(b)}%;width:${pc(c) - pc(b)}%"></div>
+        <div class="zone ok" style="left:${pc(c)}%;width:${pc(d) - pc(c)}%"></div>
+        <div class="zone over" style="left:${pc(d)}%;right:0"></div>
+        <span class="lab" style="left:${pc(a)}%;transform:translateX(calc(-100% - 24px))">Too light</span>
+        <span class="lab" style="left:${(pc(b) + pc(c)) / 2}%">Sweet spot</span>
+        <span class="lab top" style="left:${pc(d)}%;transform:translateX(${pc(d) > 66 ? "calc(-100% - 24px)" : "24px"})">Too much, in gusts</span>
+        ${[a, b, c, d].map((v, i) => `<div class="h ${i === 3 ? "top" : ""}" data-i="${i}" style="left:${pc(v)}%" role="slider" aria-valuenow="${v}" tabindex="0">${u(v)}</div>`).join("")}
+        <div class="ticks">${ticks}</div>
+      </div>
+      <div class="legend"><span><i style="background:#1a1d2133"></i>rideable</span><span><i style="background:#1a1d21"></i>best</span>
+        <span><i style="background:repeating-linear-gradient(-45deg,#d43a2c 0 1.5px,transparent 1.5px 5px)"></i>a gust past here: no stars</span></div>
+
+      <div class="gusty">
+        <h3>Gusty wind</h3>
+        <p>How much does uneven wind bother you? Stars it costs are shown hollow.</p>
+        <span class="seg">${Object.entries(GUST_PREF).map(([k, g]) => `<button data-gusty="${k}" aria-pressed="${S.gusty === k}">${g.name}</button>`).join("")}</span>
+      </div>
+
+      <div class="day">
+        <div class="day-h"><b>Saturday at Malahide</b><span class="eyebrow">wind · gust · stars</span></div>
+        <div class="hours">
+          ${hours.map(({ h }) => `<div class="t">${h.t}:00</div>`).join("")}
+          ${hours.map(({ h }) => `<div class="w">${u(h.mean, 17)}</div>`).join("")}
+          ${hours.map(({ h, r }) => `<div class="g ${r.reasons.includes("over") ? "over" : r.reasons.includes("gusty") ? "gy" : ""}">${gustText(h.gust)}</div>`).join("")}
+          ${hours.map(({ r }) => `<div class="s">${stars(r.stars, r.potential)}</div>`).join("")}
+          ${hours.map(({ r }) => `<div class="why-c">${r.reasons.includes("never") ? "offshore" : r.reasons.includes("over") ? "too strong" : r.reasons.includes("gusty") ? "gusty" : r.reasons.includes("dir") ? "x-off" : ""}</div>`).join("")}
+        </div>
+      </div>`;
+  },
+
+  shore: () => `
+    <div class="shore">
+      <div class="web">${webSvg()}</div>
+      <ul class="dirs">${SHORE.map((k) => `
+        <li><b>${SHORE_NAME[k]}</b><span class="v ${S.shore[k] >= NEVER ? "never" : ""}">${costLabel(S.shore[k])}</span><small>${SHORE_LINE[k]}</small></li>`).join("")}</ul>
+    </div>`,
+
+  upwind: () => {
+    return `<div class="up"><div class="up-svg">${upwindSvg()}</div>
+      <div><div class="opts">${UP_OPTS.map((o) => `<button class="opt" data-into="${o.into}" aria-pressed="${S.into === o.into}"><b>${o.name}</b><span>${o.line}</span></button>`).join("")}</div>
+      <div class="into"><output>${S.into}°</output><span>into the wind</span></div>
+      <input class="slide" id="into" type="range" min="0" max="${INTO_MAX}" step="1" value="${S.into}" aria-label="Degrees into the wind">
+      <div class="slide-ends"><span>Straight across</span><span>${INTO_MAX}° into it</span></div>
+      <ul class="key">
+        <li><svg width="22" height="12"><rect x=".5" y=".5" width="21" height="11" fill="url(#hatch)" stroke="#1a1d21"/></svg>Can't go: too close to the wind</li>
+        <li><svg width="22" height="12"><rect x=".5" y=".5" width="21" height="11" fill="#fffdf6" stroke="#1a1d21" stroke-width="1.5"/></svg>Your course</li>
+        <li><svg width="22" height="12"><rect x=".5" y=".5" width="21" height="11" fill="none" stroke="#1a1d21" stroke-dasharray="2 2"/></svg>Downwind: possible, but slow</li>
+      </ul></div></div>`;
+  },
+
+  spots: () => {
+    const q = S.q.trim().toLowerCase();
+    const list = q ? SPOTS.filter((s) => s.name.toLowerCase().includes(q)) : SPOTS.slice(0, 9);
+    return `
+      <label class="search"><svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" fill="none" stroke="#1a1d21" stroke-width="1.5"/><path d="M11 11l4 4" stroke="#1a1d21" stroke-width="1.5"/></svg>
+        <input id="q" placeholder="Find a spot by name or county" value="${S.q}"></label>
+      <div class="near"><span class="eyebrow">${q ? "Matches" : S.near === "me" ? "Nearest to you" : "Nearest to where the map is · Malahide"}</span>
+        ${q ? "" : `<button class="linkbtn" id="near">${S.near === "me" ? "Use the map instead" : "Use my location"}</button>`}</div>
+      <ul class="spots">${list.map((s) => `
+        <li><button class="tog" data-star="${s.id}" aria-pressed="${S.starred.includes(s.id)}">${STAR_TOGGLE(S.starred.includes(s.id))}</button>
+          <span><b>${s.name}</b><small>${s.county}</small></span><span class="km">${q ? "" : s.km + " km"}</span></li>`).join("") || `<li><span></span><span style="color:var(--muted)">No spot by that name.</span></li>`}</ul>`;
+  },
+
+  done: () => {
+    const lv = LEVELS[S.level];
+    const shore = SHORE.map((k) => S.shore[k] >= NEVER ? `<span class="never">${SHORE_NAME[k].toLowerCase()} never</span>` : S.shore[k] ? `${SHORE_NAME[k].toLowerCase()} −${S.shore[k]}★` : null).filter(Boolean);
+    const rows = [
+      ["You", `${lv.name} · ${S.weight} kg · ${UNIT[S.unit][1].toLowerCase()}`, 0],
+      ["Wind", `${u(S.wind[0])}–${u(S.wind[3])} ${ul()} · best ${u(S.wind[1])}–${u(S.wind[2])} · gusty: ${GUST_PREF[S.gusty].name.toLowerCase()}`, 1],
+      ["Shore", shore.length ? shore.join(" · ") : "any direction", 2],
+      ["Upwind", S.into ? `${S.into}° into the wind` : "straight across the wind", 3],
+      ["Spots", S.starred.map((id) => SPOTS.find((s) => s.id === id).name).join(", ") || "none yet", 4],
+    ];
+    const hours = DAY.map((h) => ({ h, r: rate(h, S) }));
+    return `<ul class="sum">${rows.map(([k, v, i]) => `<li><span class="eyebrow">${k}</span><span class="val">${v}</span><button class="linkbtn" data-go="${i}">Change</button></li>`).join("")}</ul>
+      <div class="day"><div class="day-h"><b>Saturday at Malahide, for you</b></div>
+        <div class="hours">${hours.map(({ h }) => `<div class="t">${h.t}:00</div>`).join("")}
+          ${hours.map(({ h }) => `<div class="w">${u(h.mean)}</div>`).join("")}
+          ${hours.map(({ r }) => `<div class="s">${stars(r.stars, r.potential)}</div>`).join("")}</div></div>`;
+  },
+};
+
+function costLabel(v) { return v >= NEVER ? "never" : v === 0 ? "no cost" : `−${v}★`; }
+
+/* The web. Sea above the beach line, land below. Each spoke points the way the
+   wind blows: offshore up into the sea, onshore down over the land. */
+const W = { cx: 165, cy: 170, r: 122 };
+const SPOKES = [ // angle of the spoke on screen, degrees clockwise from up
+  { k: "offshore", a: 0 }, { k: "crossOff", a: 45 }, { k: "cross", a: 90 }, { k: "crossOn", a: 135 },
+  { k: "onshore", a: 180 }, { k: "crossOn", a: 225 }, { k: "cross", a: 270 }, { k: "crossOff", a: 315 },
+];
+const pt = (a, rr) => [W.cx + rr * Math.sin(a * Math.PI / 180), W.cy - rr * Math.cos(a * Math.PI / 180)];
+const radiusFor = (v) => W.r * (1 - v / NEVER); // rim = nothing off, each ring a star, centre = never
+function webSvg() {
+  const { cx, cy, r } = W;
+  const rings = [1, 2, 3, 4].map((n) => `<circle cx="${cx}" cy="${cy}" r="${r * (1 - n / NEVER)}" fill="none" stroke="#1a1d2122"/>`).join("");
+  const spokes = SPOKES.map(({ k, a }) => {
+    const [x, y] = pt(a, r + 2), [lx, ly] = pt(a, r + 22);
+    const tip = pt(a, r + 14), l = pt(a - 3, r + 8), rr = pt(a + 3, r + 8), tail = pt(a, r + 1);
+    const danger = k === "offshore" || k === "crossOff";
+    return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#1a1d2144"/>
+      <path d="M${tail} L${tip} M${l} L${tip} L${rr}" fill="none" stroke="${danger ? "#d43a2c" : "#1a1d21"}" stroke-width="1.5"/>
+      <text x="${a % 180 === 90 ? pt(a, r + 8)[0] : lx}" y="${ly + (a % 180 === 90 ? 17 : 3)}" text-anchor="${a === 90 ? "start" : a === 270 ? "end" : "middle"}" font-family="IBM Plex Mono, monospace" font-size="9.5" letter-spacing=".06em"
+        fill="${danger ? "#bf3125" : "#3b3c3e"}">${{ offshore: "OFF", crossOff: "X-OFF", cross: "CROSS", crossOn: "X-ON", onshore: "ON" }[k]}</text>`;
+  }).join("");
+  const poly = SPOKES.map(({ k, a }) => pt(a, radiusFor(S.shore[k])).join(",")).join(" ");
+  const dots = SPOKES.map(({ k, a }, i) => {
+    const [x, y] = pt(a, radiusFor(S.shore[k]));
+    const never = S.shore[k] >= NEVER;
+    return `<g class="dot" data-spoke="${i}"><circle class="hit" cx="${x}" cy="${y}" r="15" fill="transparent"/>
+      <circle cx="${x}" cy="${y}" r="7" fill="${never ? "#d43a2c" : "#1a1d21"}" stroke="#f3eee3" stroke-width="2"/></g>`;
+  }).join("");
+  return `<svg viewBox="-26 0 382 340" aria-label="Stars by wind direction">
+    <defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line y2="5" stroke="#1a1d2155"/></pattern></defs>
+    <rect x="-26" y="0" width="382" height="${cy}" fill="#dce8ec"/>
+    <rect x="-26" y="${cy}" width="382" height="${340 - cy}" fill="#ede3c8"/>
+    <line x1="-26" x2="356" y1="${cy}" y2="${cy}" stroke="#1a1d21" stroke-width="1.5"/>
+    <text x="-18" y="16" font-family="IBM Plex Mono, monospace" font-size="10" letter-spacing=".14em" fill="#5b5c5b">SEA</text>
+    <text x="-18" y="332" font-family="IBM Plex Mono, monospace" font-size="10" letter-spacing=".14em" fill="#5b5c5b">LAND</text>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="#f3eee388" stroke="#1a1d21"/>
+    ${rings}
+    <text x="${cx + 4}" y="${cy - r + 12}" font-family="IBM Plex Mono, monospace" font-size="8" fill="#5b5c5b">0★</text>
+    <text x="${cx + 4}" y="${cy - r * (1 - 2 / 5) + 10}" font-family="IBM Plex Mono, monospace" font-size="8" fill="#5b5c5b">−2★</text>
+    ${spokes}
+    <polygon points="${poly}" fill="#1a1d2122" stroke="#1a1d21" stroke-width="1.5" stroke-linejoin="round"/>
+    <circle cx="${cx}" cy="${cy}" r="10" fill="#f3eee3" stroke="#d43a2c"/>
+    <text x="${cx}" y="${cy + 3}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7" fill="#bf3125">NEVER</text>
+    ${dots}
+    <text x="${cx}" y="${cy + r + 40}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9" fill="#5b5c5b">ARROWS: THE WAY THE WIND BLOWS</text>
+  </svg>`;
+}
+
+/* The upwind picture: wind from the top of the frame, the board at the middle.
+   The no-go runs to (90 - into)° off the wind each side; the course from there
+   to 120° off; past that, downwind, is drawn faintly. */
+const UP = { cx: 150, cy: 168, r: 118, vx: -36, vw: 372 }; // viewBox x and width
+const UP_OPTS = [
+  { into: 0,  name: "Not yet",  line: "I can ride straight across the wind and hold my ground." },
+  { into: 5,  name: "A little", line: "I gain a bit of ground on each tack." },
+  { into: 20, name: "Yes",      line: "I can work my way upwind." },
+];
+function upwindSvg() {
+  const { cx, cy, r } = UP, reach = 120;
+  const up = 90 - S.into; // degrees off the wind
+  const p = (a, rr) => [cx + rr * Math.sin(a * Math.PI / 180), cy - rr * Math.cos(a * Math.PI / 180)];
+  const arc = (a1, a2, rr) => { const [x1, y1] = p(a1, rr), [x2, y2] = p(a2, rr); return `M${cx},${cy} L${x1},${y1} A${rr},${rr} 0 ${Math.abs(a2 - a1) > 180 ? 1 : 0} 1 ${x2},${y2} Z`; };
+  const mono = `font-family="IBM Plex Mono, monospace"`;
+  // the angle into the wind: a magenta arc from the beam up to the course's edge, each side
+  const into = (side) => {
+    if (!S.into) return "";
+    const rr = r * 0.82, [x1, y1] = p(side * 90, rr), [x2, y2] = p(side * up, rr);
+    return `<path d="M${x1},${y1} A${rr},${rr} 0 0 ${side > 0 ? 0 : 1} ${x2},${y2}" fill="none" stroke="#b0186a" stroke-width="2"/>`;
+  };
+  const label = (side) => { const [x, y] = p(side * (up - 9), r + 14);
+    return `<text x="${x}" y="${y + 4}" text-anchor="${side > 0 ? "start" : "end"}" ${mono} font-size="11" font-weight="600" fill="#b0186a">${S.into}°</text>`; };
+  const edge = (side) => { const [x, y] = p(side * up, r); return `<g class="edge"><circle cx="${x}" cy="${y}" r="14" fill="transparent"/><circle cx="${x}" cy="${y}" r="7" fill="#1a1d21" stroke="#f3eee3" stroke-width="2"/></g>`; };
+  return `<svg viewBox="${UP.vx} 0 ${UP.vw} 310" width="100%" style="touch-action:none;user-select:none">
+    <defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line y2="5" stroke="#1a1d2166"/></pattern>
+      <marker id="ah" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#1a1d21"/></marker></defs>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="#ede6d6" stroke="#1a1d2155"/>
+    <path d="${arc(-up, up, r)}" fill="url(#hatch)" stroke="#1a1d21" stroke-dasharray="3 3"/>
+    <path d="${arc(up, reach, r)}" fill="#fffdf6" stroke="#1a1d21" stroke-width="1.5"/>
+    <path d="${arc(-reach, -up, r)}" fill="#fffdf6" stroke="#1a1d21" stroke-width="1.5"/>
+    <path d="${arc(reach, 360 - reach, r)}" fill="none" stroke="#1a1d21" stroke-dasharray="2 3"/>
+    <line x1="${cx - r - 8}" x2="${cx + r + 8}" y1="${cy}" y2="${cy}" stroke="#1a1d2166" stroke-dasharray="1 3"/>
+    <text x="${cx + r + 10}" y="${cy + 3}" ${mono} font-size="8.5" fill="#5b5c5b">ACROSS</text>
+    <text x="${cx - r - 10}" y="${cy + 3}" text-anchor="end" ${mono} font-size="8.5" fill="#5b5c5b">ACROSS</text>
+    <text x="${cx}" y="${cy - r * 0.5}" text-anchor="middle" ${mono} font-size="10" letter-spacing=".12em" fill="#1a1d21">CAN'T GO</text>
+    ${[-1, 1].map((sd) => { const [x, y] = p(sd * (up + reach) / 2, r * .6); return `<text x="${x}" y="${y + 3}" text-anchor="middle" ${mono} font-size="9.5" letter-spacing=".1em" fill="#1a1d21">RIDE</text>`; }).join("")}
+    <text x="${cx}" y="${cy + r * 0.62}" text-anchor="middle" ${mono} font-size="9" letter-spacing=".1em" fill="#5b5c5b">SLOW</text>
+    ${into(1)}${into(-1)}
+    <line x1="${cx}" y1="6" x2="${cx}" y2="${cy - r - 4}" stroke="#1a1d21" stroke-width="2.5" marker-end="url(#ah)"/>
+    <text x="${cx + 10}" y="18" ${mono} font-size="10" letter-spacing=".14em" fill="#1a1d21">WIND</text>
+    <path d="M${cx} ${cy - 12} C ${cx + 5} ${cy - 4}, ${cx + 5} ${cy + 8}, ${cx} ${cy + 12} C ${cx - 5} ${cy + 8}, ${cx - 5} ${cy - 4}, ${cx} ${cy - 12} Z" fill="#1a1d21"/>
+    ${edge(1)}${edge(-1)}${label(1)}${label(-1)}
+  </svg>`;
+}
+
+const SPOTS = [
+  { id: "malahide", name: "Malahide Estuary", county: "Dublin", km: 0 },
+  { id: "kilcrea", name: "Kilcrea, Malahide Estuary", county: "Dublin", km: 1 },
+  { id: "broadmeadows", name: "Broadmeadows Estuary, south shore", county: "Dublin", km: 1 },
+  { id: "southpark", name: "Malahide Estuary, South Park", county: "Dublin", km: 1 },
+  { id: "lowrock", name: "Low Rock, Malahide", county: "Dublin", km: 3 },
+  { id: "donabate", name: "Donabate", county: "Dublin", km: 4 },
+  { id: "velvet", name: "Portmarnock, Velvet Strand", county: "Dublin", km: 5 },
+  { id: "donabaten", name: "Donabate North Beach", county: "Dublin", km: 5 },
+  { id: "portrane", name: "Portrane", county: "Dublin", km: 6 },
+  { id: "rush", name: "Rush South Beach", county: "Dublin", km: 7 },
+  { id: "dollymount", name: "Dollymount Strand", county: "Dublin", km: 9 },
+  { id: "brittas", name: "Brittas Bay", county: "Wicklow", km: 48 },
+];
+
+/* ======================================================================
+   Wiring
+   ====================================================================== */
+const BIND = {
+  you: (el) => {
+    el.querySelectorAll("[data-level]").forEach((b) => b.onclick = () => { setLevel(b.dataset.level); render(); });
+    el.querySelectorAll("[data-w]").forEach((b) => b.onclick = () => { S.weight = Math.max(40, Math.min(140, S.weight + +b.dataset.w)); render(); });
+    el.querySelectorAll("[data-unit]").forEach((b) => b.onclick = () => { S.unit = b.dataset.unit; if (S.unit === "bft") snapBand(); render(); });
+  },
+  wind: (el) => {
+    el.querySelectorAll("[data-gusty]").forEach((b) => b.onclick = () => { S.gusty = b.dataset.gusty; render(); });
+    const range = el.querySelector("#range");
+    el.querySelectorAll(".h").forEach((h) => h.onpointerdown = (e) => {
+      h.setPointerCapture(e.pointerId);
+      const i = +h.dataset.i;
+      h.onpointermove = (m) => {
+        const box = range.getBoundingClientRect();
+        let v = Math.round(4 + ((m.clientX - box.left) / box.width) * 46);
+        if (S.unit === "bft") {                       // whole forces, and never onto a neighbour's
+          const f = force(v), lo = i ? force(S.wind[i - 1]) + (i === 2 ? 0 : 1) : 1, hi = i < 3 ? force(S.wind[i + 1]) - (i === 1 ? 0 : 1) : 10;
+          if (f < lo || f > hi) return;
+          v = forceKn(f, i);
+          if (v !== S.wind[i]) { S.wind[i] = v; render(); document.querySelector(`.h[data-i="${i}"]`)?.setPointerCapture?.(m.pointerId); }
+          return;
+        }
+        v = Math.max(i ? S.wind[i - 1] + 1 : 4, Math.min(i < 3 ? S.wind[i + 1] - 1 : 50, v));
+        if (v !== S.wind[i]) { S.wind[i] = v; render(); document.querySelector(`.h[data-i="${i}"]`)?.setPointerCapture?.(m.pointerId); }
+      };
+    });
+  },
+  shore: (el) => {
+    const svg = el.querySelector("svg");
+    el.querySelectorAll(".dot").forEach((d) => d.onpointerdown = (e) => {
+      e.preventDefault();
+      const { k, a } = SPOKES[+d.dataset.spoke];
+      const move = (m) => {
+        const box = svg.getBoundingClientRect(), sc = 382 / box.width;
+        const x = (m.clientX - box.left) * sc - 26 - W.cx, y = (m.clientY - box.top) * sc - W.cy;
+        const along = x * Math.sin(a * Math.PI / 180) - y * Math.cos(a * Math.PI / 180);
+        const v = Math.max(0, Math.min(NEVER, Math.round((1 - along / W.r) * NEVER * 2) / 2));
+        if (v !== S.shore[k]) { S.shore[k] = v; render(); }
+      };
+      const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); };
+      addEventListener("pointermove", move); addEventListener("pointerup", up);
+    });
+  },
+  upwind: (el) => {
+    // Redraw the picture, the figure and the answers in place, so the slider under a finger is never replaced.
+    const refresh = () => {
+      el.querySelector(".up-svg").innerHTML = upwindSvg();
+      el.querySelector(".into output").textContent = `${S.into}°`;
+      el.querySelector("#into").value = S.into;
+      el.querySelectorAll("[data-into]").forEach((b) => b.setAttribute("aria-pressed", S.into === +b.dataset.into));
+      bindEdges();
+    };
+    el.querySelectorAll("[data-into]").forEach((b) => b.onclick = () => { S.into = +b.dataset.into; refresh(); });
+    el.querySelector("#into").oninput = (e) => { S.into = +e.target.value; refresh(); };
+    const bindEdges = () => el.querySelectorAll(".edge").forEach((h) => h.onpointerdown = (e) => {
+      e.preventDefault();
+      const move = (m) => {
+        const box = el.querySelector(".up-svg svg").getBoundingClientRect(), sc = UP.vw / box.width;
+        const x = Math.abs((m.clientX - box.left) * sc + UP.vx - UP.cx), y = (m.clientY - box.top) * sc - UP.cy;
+        const off = Math.atan2(x, -y) * 180 / Math.PI;                 // degrees off the wind
+        const v = Math.max(0, Math.min(INTO_MAX, Math.round(90 - off)));
+        if (v !== S.into) { S.into = v; refresh(); }
+      };
+      const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); };
+      addEventListener("pointermove", move); addEventListener("pointerup", up);
+    });
+    bindEdges();
+  },
+  spots: (el) => {
+    const q = el.querySelector("#q");
+    q.oninput = () => { S.q = q.value; const pos = q.selectionStart; render(); const n = document.getElementById("q"); n.focus(); n.setSelectionRange(pos, pos); };
+    el.querySelectorAll("[data-star]").forEach((b) => b.onclick = () => {
+      const id = b.dataset.star;
+      S.starred = S.starred.includes(id) ? S.starred.filter((s) => s !== id) : [...S.starred, id];
+      render();
+    });
+    el.querySelectorAll("[data-unstar]").forEach((b) => b.onclick = () => { S.starred = S.starred.filter((s) => s !== b.dataset.unstar); render(); });
+    const near = el.querySelector("#near"); if (near) near.onclick = () => { S.near = S.near === "me" ? "map" : "me"; render(); };
+  },
+  done: (el) => el.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => { S.step = +b.dataset.go; render(); }),
+};
+document.getElementById("next").onclick = () => { if (S.step < STEPS.length - 1) { S.step++; render(); } };
+document.getElementById("back").onclick = () => { if (S.step) { S.step--; render(); } };
+document.getElementById("skip").onclick = () => { S.step = STEPS.length - 1; render(); };
+const bar = document.getElementById("mockbar");
+STEPS.forEach((s, i) => { const b = document.createElement("button"); b.textContent = s.id; b.onclick = () => { S.step = i; render(); }; bar.append(b); });
+
+/* The plan's tables, from the same functions the mock-up rates with. */
+function renderPlan() {
+  document.getElementById("p-levels").innerHTML = `<tr><th>Level</th><th>Too light</th><th>Sweet spot</th><th>Too much (gusts)</th><th>Today's ceiling (mean)</th><th>Today's gust "fine"</th></tr>` +
+    [["learning", 24, 20], ["riding", 30, 28], ["advanced", 35, 33]].map(([k, ceil, fine]) => { const w = LEVELS[k].wind;
+      return `<tr><td>${LEVELS[k].name}</td><td>${w[0]}</td><td>${w[1]}–${w[2]}</td><td><b>${w[3]}</b></td><td>${ceil}</td><td>${fine}</td></tr>`; }).join("");
+  document.getElementById("p-bands").innerHTML = `<tr><th>Gust ÷ mean</th><th>Called</th><th>Not much</th><th>Some</th><th>A lot</th><th>e.g.</th></tr>` +
+    GUSTY.map((b, i) => `<tr><td>${i ? "≥ " + b.at : "< " + GUSTY[1].at}</td><td>${b.name}</td>${Object.values(GUST_PREF).map((g) => `<td>${g.off[i] ? "−" + g.off[i] + "★" : "—"}</td>`).join("")}<td>${["18 g24", "18 g27", "15 g28"][i]}</td></tr>`).join("");
+  document.getElementById("p-shore").innerHTML = `<tr><th>Wind</th>${Object.values(LEVELS).map((l) => `<th>${l.name}</th>`).join("")}<th>Today (L / R / A)</th></tr>` +
+    SHORE.map((k, i) => `<tr><td>${SHORE_NAME[k]}</td>${Object.keys(LEVELS).map((l) => `<td>${costLabel(SHORE_DEFAULT[l][k])}</td>`).join("")}<td>${["−1 / −1 / −1", "— / — / —", "−½ / — / —", "−3 / −1.5 / −1", "−5 / −4 / −4"][i]}</td></tr>`).join("");
+  const R = { wind: LEVELS.riding.wind, gusty: "some", shore: SHORE_DEFAULT.riding };
+  const ex = [[9, 17, 1], [12, 20, 2], [15, 22, 4], [15, 27, 4], [18, 24, 5], [18, 27, 5], [22, 32, 4], [25, 38, 2], [28, 40, null]];
+  document.getElementById("p-worked").innerHTML = `<tr><th>Wind</th><th>Gust ÷ mean</th><th>Proposed</th><th>Today (v5)</th><th>Why</th></tr>` +
+    ex.map(([m, g, now]) => { const r = rate({ mean: m, gust: g, shore: "crossOn" }, R);
+      const why = r.reasons.includes("over") ? `gust ${g - R.wind[3]} kn past the top` : r.reasons.includes("gusty") ? r.band.name.toLowerCase() : m < R.wind[0] ? "below the floor" : "";
+      return `<tr><td>${m} g${g}</td><td>${(g / m).toFixed(2)}</td><td>${"★".repeat(r.stars)}${"☆".repeat(r.potential - r.stars) || ""} (${r.stars})</td><td>${now ?? "–"}</td><td>${why}</td></tr>`; }).join("");
+}
+
+render();
+</script>
+</body>
+</html>
