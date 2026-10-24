@@ -160,7 +160,6 @@ test("the map's information is one dialog over the dimmed chart: from the menu a
     "Wind & gusts",
     "The blend & models",
     "Tidal depth",
-    "LiDAR data",
     "Currents",
     "Satellite",
     "Sources & credits",
@@ -178,7 +177,7 @@ test("the map's information is one dialog over the dimmed chart: from the menu a
   );
   // The arrows walk the rail.
   await page.keyboard.press("ArrowDown");
-  await expect(info.getByRole("tab", { name: "LiDAR data" })).toBeFocused();
+  await expect(info.getByRole("tab", { name: "Currents" })).toBeFocused();
   await info.getByRole("tab", { name: "Sources & credits" }).click();
   await expect(info.getByRole("tabpanel")).toContainText("Not for navigation");
   // Modal, over a scrim: the page behind is dimmed and cannot be reached.

@@ -8,7 +8,6 @@ const LAYERS: ChartLayers = {
   relief: true,
   names: true,
   foil: true,
-  lidar: false,
   currents: false,
 };
 

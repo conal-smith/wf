@@ -15,7 +15,6 @@ import {
   chartStyle,
 } from "./chartStyle";
 import { archiveUrl, pmtilesTile } from "./archives";
-import type { LidarView } from "./lidar";
 import { releaseReplacedColorRamps } from "./colorRelief";
 import { forecastUrl } from "./urls";
 import { createLights, type LightState, type Lights } from "./lights";
@@ -77,8 +76,6 @@ export interface ChartLayers {
   names: boolean;
   /** Foilable depth at the selected tide, round the coast. */
   foil: boolean;
-  /** The LiDAR surveys' ground heights, where we have them (force5/src/lidar.ts). */
-  lidar: boolean;
   /** Surface currents at the hour shown: a rough guide, off unless asked for. */
   currents: boolean;
 }
@@ -156,8 +153,6 @@ type Props = {
   currents?: readonly CurrentFeature[] | null;
   /** The satellite image to draw under the chart's lines, or null for none. */
   satellite?: SatelliteImage | null;
-  /** The LiDAR layer to draw, or null for none (force5/src/lidar.ts). */
-  lidar?: LidarView | null;
   reducedMotion: boolean;
   /** The dock's height: what a camera move keeps the spot above. */
   bottomInset: number;
@@ -650,7 +645,6 @@ export default function WindMap(props: Props) {
     foil,
     currents = null,
     satellite = null,
-    lidar = null,
     reducedMotion,
     bottomInset,
     phone,
@@ -1058,13 +1052,7 @@ export default function WindMap(props: Props) {
               resampling: "linear",
             },
           },
-          // Under the LiDAR layer, when it is up: the rider turned that on to
-          // look at.
-          map.getLayer("lidar")
-            ? "lidar"
-            : map.getLayer("rivers")
-              ? "rivers"
-              : undefined,
+          map.getLayer("rivers") ? "rivers" : undefined,
         );
         // Each hour's ramp is two new textures: the old pair is deleted.
         releaseReplacedColorRamps(map.getLayer(id));
@@ -1211,26 +1199,6 @@ export default function WindMap(props: Props) {
       clearTimeout(fading);
     };
   }, [ready, satellite]);
-
-  // The LiDAR layer: its code loads with the first view of it (off by
-  // default, so most pages never load it); off, its layers are hidden.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!ready || !map) return;
-    map.getContainer().dataset.lidar = lidar ? "on" : "off";
-    if (!lidar) {
-      for (const id of ["lidar", "lidar-cover", "lidar-edge"])
-        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
-      return;
-    }
-    let live = true;
-    void import("./lidar").then(({ showLidar }) => {
-      if (live && mapRef.current === map) showLidar(map, lidar);
-    });
-    return () => {
-      live = false;
-    };
-  }, [ready, lidar]);
 
   // The lights: made once per set of places, then written to in place.
   useEffect(() => {

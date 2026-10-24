@@ -105,14 +105,14 @@ function preloadTheMap(): Plugin {
 /**
  * The chart's static archives, which deployments read from the data host
  * (scripts/foildepth/publish.py: bathy/v…/, foildepth/v…/;
- * scripts/satellite/publish.py: satellite/v…/, intertidal/v…/; scripts/lidar/publish.py:
- * lidar/v…/), served by the
+ * scripts/satellite/publish.py: satellite/v…/, intertidal/v…/), served by the
  * dev and preview servers at the same paths from `public-data/`, by range, so
  * the map works offline. They are not in `public/`, so no build ships them to
  * Pages. An archive that is not on disk (the national foilable-depth regions,
  * the satellite imagery and the intertidal heights, too large to commit) is
  * fetched from the data host in dev, range and all, when it is reachable; the
- * e2e site stages its own (scripts/e2e-site.mjs).
+ * e2e site stages its own (scripts/e2e-site.mjs). The LiDAR layer's lidar/v…/
+ * is not among them: the layer is off since 2026-10-24 (scripts/lidar/README.md).
  */
 function staticData(): Plugin {
   const root = fileURLToPath(new URL("./public-data/", import.meta.url));
@@ -123,7 +123,7 @@ function staticData(): Plugin {
     (req, res, next) => {
       const path = decodeURIComponent((req.url ?? "").split("?")[0]);
       const match =
-        /^\/((?:foildepth|bathy|satellite|intertidal|lidar)\/v[0-9a-f]+\/[\w.-]+)$/.exec(
+        /^\/((?:foildepth|bathy|satellite|intertidal)\/v[0-9a-f]+\/[\w.-]+)$/.exec(
           path,
         );
       if (!match || (req.method !== "GET" && req.method !== "HEAD"))

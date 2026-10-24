@@ -40,7 +40,6 @@ import {
   SoundingsGlyph,
   SourcesGlyph,
   StarGlyph,
-  SurveyGlyph,
   TidalDepthGlyph,
   TintsGlyph,
 } from "./chartGlyphs";
@@ -99,12 +98,6 @@ const PARTS: readonly Part[] = [
     rule: true,
   },
   {
-    id: "lidar",
-    name: "LiDAR data",
-    short: "LiDAR",
-    glyph: (size) => <SurveyGlyph size={size} />,
-  },
-  {
     id: "currents",
     name: "Currents",
     short: "Currents",
@@ -149,8 +142,6 @@ export interface MapInfoProps {
   spotId: string | null;
   /** The tidal-depth key's readings (src/FoilLegend.tsx). */
   foil: Parameters<typeof FoilLegend>[0];
-  /** The LiDAR layer's key (src/LidarKey.tsx), or where to turn it on. */
-  lidar: ReactNode;
   sources: ReactNode;
   /** "Satellite: high tide (≈4.6 m)" while the image is on, else null. */
   satellite?: string | null;
@@ -179,7 +170,6 @@ export default function MapInfo({
   blendModels,
   spotId,
   foil,
-  lidar,
   sources,
   satellite = null,
   satelliteError = null,
@@ -246,18 +236,6 @@ export default function MapInfo({
           The colours <small>depth at this tide</small>
         </h4>
         <FoilLegend {...foil} />
-      </>
-    ),
-    lidar: () => (
-      <>
-        <p className="mi-lede">
-          The shape of the foreshore and the shallows, from airborne laser
-          surveys: the banks, the channels and the bars a foil can catch.
-        </p>
-        <h4>
-          The colours <small>height above the lowest tide</small>
-        </h4>
-        {lidar}
       </>
     ),
     currents: () => (
