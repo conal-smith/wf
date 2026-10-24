@@ -153,7 +153,7 @@ repository's `.venv` and a scratch `FORCE5_WORK_DIR`, never with a bucket:
 | `ecmwf` | 1 GB | 315 | 4 | the whole cached 2026100700 run, 85 frames |
 | `harmonie` | 1 GB | 290 | 5 | 61 hourly frames from cached GRIB (*); two whole files downloaded at once peaked at 171 |
 | `gfs` | 512 MB | 230 | 2 | a live run |
-| `icon-eu-weather` | 512 MB | 225 | 13 | a cached run, 25 steps as scheduled |
+| `icon-eu-weather` | 512 MB | 225 | 13 | a cached run, 25 steps (three-hourly, as scheduled then; hourly since 24 October 2026 is 73 steps and not yet measured) |
 | `verify` | 512 MB | 225 | 23 | a 30-day archive made from today's archived runs |
 | `mi-swan` | 512 MB | 190 | 1 | a live run |
 | `currents` | 512 MB | 240 | 4 | a live run (22 October 2026) |

@@ -39,6 +39,7 @@ timeout_seconds = 3300
 [[jobs]]
 id = "icon-eu-weather"
 models = ["icon-eu-weather"]
+args = ["--step", "1"]      # Hourly, so each hour's rain is its own: ~845 MB a run.
 hours = [3]                 # Once a day: the 00 UTC cycle, ready before the morning.
 minutes = [40]
 timeout_seconds = 3300

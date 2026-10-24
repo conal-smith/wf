@@ -15,7 +15,8 @@ import fetch_gfs
 import fetch_gfs_weather
 import fetch_icon_weather
 from fetch_gfs_weather import (READ, VARIABLES, accumulation_step, decode, derive, filter_url,
-                               index_ranges, main, present_weather)
+                               index_ranges, ladder, main, parse_args, present_weather,
+                               step_ranges)
 from publish_s3 import validate_bundle
 from registry import MODELS, UNCHANGED_EXIT
 from runfixtures import read_whole, use_catalogue
@@ -196,11 +197,26 @@ class GfsWeatherTests(unittest.TestCase):
             index_ranges(self.idx(6), 9)
 
     def test_invalid_horizons_and_runs_are_refused(self):
-        for arguments in [["--hours", "400"], ["--hours", "0"], ["--hours", "10"],
-                          ["--run", "2026091613"], ["--source", "ecmwf"]]:
+        # Parsed only: a horizon this test thought invalid would otherwise fetch a real run.
+        for arguments in [["--hours", "400"], ["--hours", "0"], ["--hours", "2"],
+                          ["--hours", "122"], ["--run", "2026091613"], ["--source", "ecmwf"]]:
             with self.subTest(arguments=arguments), redirect_stderr(io.StringIO()), \
                  self.assertRaises(SystemExit):
-                main(arguments)
+                parse_args(arguments)
+        self.assertEqual([parse_args(["--hours", hours]).hours for hours in ("10", "123")],
+                         [10, 123])
+
+    def test_the_ladder_is_hourly_to_120_hours_and_three_hourly_beyond(self):
+        hours = ladder(384)
+        self.assertEqual(len(hours), 121 + 88)
+        self.assertEqual(hours[:3], [0, 1, 2])
+        self.assertEqual(hours[119:124], [119, 120, 123, 126, 129])
+        self.assertEqual(hours[-1], 384)
+        self.assertEqual(step_ranges(384), [{"throughHour": 120, "stepHours": 1},
+                                            {"throughHour": 384, "stepHours": 3}])
+        # A horizon inside the hourly part is hourly all the way.
+        self.assertEqual(step_ranges(6), [{"throughHour": 6, "stepHours": 1}])
+        self.assertEqual(ladder(6), [0, 1, 2, 3, 4, 5, 6])
 
     # --- publication ------------------------------------------------------
     def fresh_cycle(self):
@@ -217,21 +233,61 @@ class GfsWeatherTests(unittest.TestCase):
             return decode(self.grib(hour=hour, run=run), run_id, hour, layout)
         with patch("fetch_gfs_weather.ROOT", self.root), \
              patch.dict("os.environ", {"FORCE5_SPOTS_FILE": str(spots)}, clear=True), \
-             patch("fetch_gfs.inventory", return_value={0, 3, 6}), \
+             patch("fetch_gfs.inventory", return_value=set(range(7))), \
              patch("fetch_gfs_weather.download", return_value=b"GRIB-stub"), \
              patch("fetch_gfs_weather.decode", side_effect=stamped), \
              patch("sys.stdout", io.StringIO()):
             main(["--hours", "6", "--run", run])
         manifest = read_whole(self.root / "public/weather/gfs-weather.json")
         self.assertEqual((manifest["kind"], manifest["model"], manifest["stepHours"],
-                          manifest["horizonHours"], manifest["frames"]),
-                         ("weather", "gfs-weather", 3, 6, []))
+                          manifest["stepRanges"], manifest["horizonHours"], manifest["frames"]),
+                         ("weather", "gfs-weather", 1, [{"throughHour": 6, "stepHours": 1}], 6,
+                          []))
         series = manifest["spotSeries"]["brandon"]
-        self.assertEqual([step["precipIntervalHours"] for step in series], [None, [0, 3], [3, 6]])
-        self.assertEqual([step["values"]["precip"] for step in series], [None, 4.0, 0.0])
+        # Hourly: each step's rain is its own hour's.
+        self.assertEqual([step["precipIntervalHours"] for step in series],
+                         [None, [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]])
+        self.assertEqual([step["values"]["precip"] for step in series],
+                         [None, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         self.assertEqual(series[1]["values"]["ww"], 61)
         self.assertEqual(series[1]["values"]["t2m"], 10.0)
         self.assertIn("derived", manifest["presentWeatherNote"])
+        validate_bundle(self.root / "public", "gfs-weather",
+                        max_age_hours=MODELS["gfs-weather"]["maxAgeHours"])
+
+    def test_past_120_hours_the_steps_and_the_rain_are_three_hourly(self):
+        spots = self.root / "spots.json"
+        spots.write_text(json.dumps([{"id": "brandon", "lat": 54.1, "lon": -17.9}]))
+        use_catalogue(self, spots)
+        run = self.fresh_cycle()
+        decoded = {}
+
+        def stamped(path, run_id, hour, layout=None):
+            # One step's messages, decoded once and re-stamped: 125 steps of real GRIB.
+            if "base" not in decoded:
+                decoded["base"] = decode(self.grib(hour=6, run=run), run_id, 6, layout)
+            fields, layout = decoded["base"]
+            if hour == 0:
+                fields = {name: value for name, value in fields.items() if name != "tp"}
+            else:
+                fields = {**fields, "tp": [round(0.5 * hour, 1)] * 4}
+            return fields, layout
+        with patch("fetch_gfs_weather.ROOT", self.root), \
+             patch.dict("os.environ", {"FORCE5_SPOTS_FILE": str(spots)}, clear=True), \
+             patch("fetch_gfs.inventory", return_value=set(range(127))), \
+             patch("fetch_gfs_weather.download", return_value=b"GRIB-stub"), \
+             patch("fetch_gfs_weather.decode", side_effect=stamped), \
+             patch("sys.stdout", io.StringIO()):
+            main(["--hours", "126", "--run", run])
+        manifest = read_whole(self.root / "public/weather/gfs-weather.json")
+        self.assertEqual(manifest["stepRanges"], [{"throughHour": 120, "stepHours": 1},
+                                                  {"throughHour": 126, "stepHours": 3}])
+        series = manifest["spotSeries"]["brandon"]
+        self.assertEqual([step["hour"] for step in series[119:]], [119, 120, 123, 126])
+        self.assertEqual([step["precipIntervalHours"] for step in series[119:]],
+                         [[118, 119], [119, 120], [120, 123], [123, 126]])
+        # Half a millimetre an hour: an hour's worth to +120 h, three hours' after.
+        self.assertEqual([step["values"]["precip"] for step in series[119:]], [0.5, 0.5, 1.5, 1.5])
         validate_bundle(self.root / "public", "gfs-weather",
                         max_age_hours=MODELS["gfs-weather"]["maxAgeHours"])
 

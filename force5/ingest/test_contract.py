@@ -688,5 +688,35 @@ class ReadsBucketContractTests(unittest.TestCase):
         self.assertFalse([path for path in MANIFESTS.values() if path.split("/")[0] == "archive"])
 
 
+class StepContractTests(unittest.TestCase):
+    """Every adapter the worker hands its `--step` must take it.
+
+    The worker passes `--step` to every wind and weather adapter whose registry
+    entry does not say `workerStep: False`; one that did not declare it would fail
+    with a usage error on its first scheduled run.
+    """
+
+    HERE = Path(__file__).resolve().parent
+
+    def step_option(self, script):
+        tree = ast.parse((self.HERE / script).read_text())
+        return [node for node in ast.walk(tree)
+                if isinstance(node, ast.Call) and getattr(node.func, "attr", None) == "add_argument"
+                and node.args and isinstance(node.args[0], ast.Constant)
+                and node.args[0].value == "--step"]
+
+    def test_every_adapter_given_the_workers_step_takes_it(self):
+        import worker
+        stepped = [model for model, entry in MODELS.items()
+                   if model not in worker.ECMWF_MODELS and entry["kind"] in worker.STEPPED_KINDS
+                   and entry.get("workerStep", True)]
+        # ICON-EU weather is among them, so its rain is hourly as scheduled.
+        self.assertIn("icon-eu-weather", stepped)
+        self.assertNotIn("gfs-weather", stepped)
+        for model in stepped:
+            with self.subTest(model=model):
+                self.assertTrue(self.step_option(MODELS[model]["script"]))
+
+
 if __name__ == "__main__":
     unittest.main()

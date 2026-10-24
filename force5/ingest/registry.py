@@ -117,9 +117,11 @@ MODELS = {
     # :05 and :35 an hour after GFS's: the 00 UTC run is taken at 05:05 and served until
     # the 06 UTC run lands at 11:05, at most 40 minutes later (the timeout), when it is
     # 11 h 45 m old. 14 h leaves a late slot and an hour of queueing.
+    # Its cadence is GFS's own, hourly to +120 h and three-hourly beyond, never the
+    # worker's step.
     "gfs-weather": {"script": "fetch_gfs_weather.py", "manifest": "weather/gfs-weather.json",
                     "kind": "weather", "maxAgeHours": 14, "cache": "gfs-weather",
-                    "readsPublishedRun": True},
+                    "workerStep": False, "readsPublishedRun": True},
     # Predictions, not a run: `run` is the hour the job ran, so it never repeats from
     # one daily slot to the next and there is no provider run to compare it with.
     "tides": {"script": "fetch_tides.py", "manifest": "marine/tides.json",

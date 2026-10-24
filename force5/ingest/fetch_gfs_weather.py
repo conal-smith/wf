@@ -10,7 +10,9 @@ Open Data bucket through their `.idx` sidecar.
 It publishes a `kind: "weather"` bundle in ICON-EU weather's own names (t2m,
 td2m, rh2m, tp, precip, clct, clcl, clcm, clch, pmsl, vis, cape, ww, tg), so
 the dock reads either the same way, with a precomputed series per riding
-location and no map frames (docs/TILING_DESIGN.md).
+location and no map frames (docs/TILING_DESIGN.md). Steps are GFS's own:
+hourly to +120 h, so the dock's rain is each hour's own there, and
+three-hourly beyond, declared as a `stepRanges` ladder.
 
 Units are converted and rounded once, here: °C, mm, %, hPa, km, J/kg. `tp` is
 GFS's precipitation accumulated since initialization and `precip` the amount
@@ -42,9 +44,10 @@ import timing
 
 MODEL = "gfs-weather"
 SOURCE_URL = "https://www.nco.ncep.noaa.gov/pmb/products/gfs/"
-# GFS's whole run, three-hourly: hourly steps stop at +120 h, and three-hourly
-# ones are what the dock's columns past ICON-EU weather fall on anyway.
-STEP = 3
+# GFS's whole run on its own ladder: hourly steps to +120 h, three-hourly beyond.
+# About 100 KB a step through the filter, so 209 steps are some 21 MB a run.
+HOURLY_THROUGH = fetch_gfs.HOURLY_THROUGH
+LATER_STEP = 3
 DEFAULT_HOURS = 384
 MAX_HOURS = 384
 MAX_AGE_HOURS = MODELS[MODEL]["maxAgeHours"]
@@ -371,16 +374,36 @@ def download(source, run, hour):
                     for start, end in fetch_gfs.contiguous(index_ranges(text, hour)))
 
 
+def step_ranges(horizon):
+    """GFS's ladder to `horizon`: hourly to +120 h, then three-hourly."""
+    ranges = [{"throughHour": min(horizon, HOURLY_THROUGH), "stepHours": 1}]
+    if horizon > HOURLY_THROUGH:
+        ranges.append({"throughHour": horizon, "stepHours": LATER_STEP})
+    return ranges
+
+
+def ladder(horizon):
+    """The hours `step_ranges` publishes, from initialization."""
+    hours, end = [0], 0
+    for entry in step_ranges(horizon):
+        hours.extend(range(end + entry["stepHours"], entry["throughHour"] + 1, entry["stepHours"]))
+        end = entry["throughHour"]
+    return hours
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--hours", type=int, default=DEFAULT_HOURS,
-                        help=f"{STEP}–{MAX_HOURS}, divisible by {STEP}")
+                        help=f"3–{MAX_HOURS}: hourly steps to +{HOURLY_THROUGH} h, then "
+                             f"{LATER_STEP}-hourly, so past it a multiple of {LATER_STEP}")
     parser.add_argument("--run", help="Optional specific YYYYMMDDHH run (00/06/12/18)")
     parser.add_argument("--source", choices=["nomads", "s3"], default="nomads",
                         help="NOMADS subregion filter, or ranged reads from NOAA's S3 mirror")
     args = parser.parse_args(argv)
-    if not STEP <= args.hours <= MAX_HOURS or args.hours % STEP:
-        parser.error(f"Use {STEP}–{MAX_HOURS} hours divisible by {STEP}")
+    if not 3 <= args.hours <= MAX_HOURS or (args.hours > HOURLY_THROUGH
+                                             and (args.hours - HOURLY_THROUGH) % LATER_STEP):
+        parser.error(f"Use 3–{MAX_HOURS} hours; past +{HOURLY_THROUGH} h, on a "
+                     f"{LATER_STEP}-hour step")
     if args.run and not re.fullmatch(r"\d{8}(00|06|12|18)", args.run):
         parser.error("A run is YYYYMMDDHH on a 00/06/12/18 cycle")
     return args
@@ -393,8 +416,8 @@ def manifest_for(run, run_time, args, grid, series):
         "modelDetail": "Global Forecast System surface fields, 0.25° deterministic",
         "resolutionKm": None, "resolutionLabel": "0.25° global grid",
         "run": run, "runTime": run_time.isoformat().replace("+00:00", "Z"),
-        "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": STEP,
-        "grid": grid,
+        "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": 1,
+        "stepRanges": step_ranges(args.hours), "grid": grid,
         "variables": {name: {key: entry[key] for key in ("units", "label", "description")}
                               | ({"kind": CODE} if entry.get("kind") == CODE else {})
                       for name, entry in VARIABLES.items()},
@@ -403,7 +426,8 @@ def manifest_for(run, run_time, args, grid, series):
         "frames": [], "horizonHours": args.hours, "spotSeries": series,
         "precipitationNote": (
             "tp is GFS's own accumulation since initialization (APCP), which GFS does not publish at "
-            f"hour 0; precip is the amount in the {STEP}-hour interval ending at each step, obtained by "
+            "hour 0; precip is the amount in the interval ending at each step, an hour long to "
+            f"+{HOURLY_THROUGH} h and {LATER_STEP} hours beyond, obtained by "
             "differencing it (the first interval's is the first accumulation itself), clamped at zero "
             "and null at initialization, which has no interval. Each series step declares that "
             "interval in precipIntervalHours."),
@@ -415,7 +439,8 @@ def manifest_for(run, run_time, args, grid, series):
         "processing": (
             "Sixteen GFS 0.25° surface fields (TMP and DPT and RH at 2 m, TMP at the surface, APCP, "
             "TCDC, LCDC, MCDC, HCDC, PRMSL, VIS, CAPE, PRATE and the four categorical precipitation "
-            "types) are read from one cycle at three-hour steps, checked for parameter, level, units, "
+            f"types) are read from one cycle at hourly steps to +{HOURLY_THROUGH} h and three-hourly "
+            "steps beyond, checked for parameter, level, units, "
             "statistical processing, initialization and valid time, then cropped to 18°W–2°E / "
             "48°–59°N on the source grid, rows north-to-south and columns west-to-east. Values are "
             "converted to the published units and rounded once (0.1 °C, whole per cent, 0.1 hPa, "
@@ -437,7 +462,7 @@ def manifest_for(run, run_time, args, grid, series):
 def main(argv=None):
     args = parse_args(argv)
     fetch_gfs.THROTTLE.pause = PAUSE[args.source]
-    hours = list(range(0, args.hours + 1, STEP))
+    hours = ladder(args.hours)
     timing.start("discover")
     run = discover(args.source, hours, args.run)
     run_time = run_datetime(run)
@@ -483,14 +508,15 @@ def main(argv=None):
     # The shared crop names one unit for a wind grid; a weather grid has many.
     grid = {key: value for key, value in decoded[0][1][2].items() if key != "units"}
     series = {spot["id"]: [] for spot in spots}
-    previous_tp = None
+    previous_tp, previous_hour = None, None
     for hour in hours:
         fields, layout = decoded[hour]
         if layout[0] != signature:
             raise ValueError("GFS grid changed within the run")
         published = derive(fields, previous_tp)
         previous_tp = fields.get("tp")
-        interval = None if hour == 0 else [hour - STEP, hour]
+        interval = None if previous_hour is None else [previous_hour, hour]
+        previous_hour = hour
         valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
         for spot in spots:
             series[spot["id"]].append({"hour": hour, "validTime": valid,
