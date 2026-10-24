@@ -77,10 +77,11 @@ export interface LayerGroup {
 
 /**
  * Every layer the chart can draw, in the groups and the order the Layers
- * panel (src/LayersPanel.tsx) shows them: the wind, the sea, the chart, the
- * ground under it, and what is drawn round the chosen spot. In the wind and
- * round the spot one is always on, as a radio's choice is; a satellite tide
- * pressed again is no image; the rest each switch their own part.
+ * panel (src/LayersPanel.tsx) and the layers' rail (src/LayerRail.tsx) both
+ * show them: the wind, the sea, the chart, the ground under it, and what is
+ * drawn round the chosen spot. A layer added here is in both. In the wind
+ * and round the spot one is always on, as a radio's choice is; a satellite
+ * tide pressed again is no image; the rest each switch their own part.
  */
 export function layerGroups({
   windStyle,
@@ -295,4 +296,39 @@ export function layerGroups({
       ],
     },
   ];
+}
+
+/** One of the rail's buttons: a layer's glyph, its name, and its switch. */
+export interface RailItem {
+  id: string;
+  name: string;
+  glyph: ReactNode;
+  on: boolean;
+  press: () => void;
+}
+
+/**
+ * The groups as the layers' rail draws them: a button a layer, with no
+ * picture and no words under it. A group's "none of these" has no button of
+ * its own there: pressing the layer that is on chooses it instead, as a
+ * satellite tide pressed again is no image. A group of which one is always on
+ * (the wind) keeps it on, as the panel does.
+ */
+export function railGroups(groups: LayerGroup[]) {
+  return groups.map((group) => {
+    const none = group.tiles.find((tile) => tile.none);
+    return {
+      id: group.id,
+      name: group.name,
+      items: group.tiles
+        .filter((tile) => !tile.none)
+        .map((tile): RailItem => ({
+          id: tile.id,
+          name: tile.name,
+          glyph: tile.glyph,
+          on: tile.on,
+          press: tile.on && none ? none.press : tile.press,
+        })),
+    };
+  });
 }

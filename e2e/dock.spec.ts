@@ -844,12 +844,12 @@ test("the display options open over the dimmed map from the site menu, one panel
   await openDock(page);
   const trigger = page.getByRole("button", { name: "Site menu" });
   const panel = page.locator("#map-options");
-  // The map's controls are zoom alone; the options are in the menu, under
-  // your spots and over the map's information.
+  // The map's controls are zoom and the layers; the options are in the
+  // menu, under your spots and over the map's information.
   const names = await page
     .locator(".zbox button")
     .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-  expect(names).toEqual(["Zoom in", "Zoom out"]);
+  expect(names).toEqual(["Zoom in", "Zoom out", "Layers"]);
   await expect(page.locator(".dock").getByLabel("Display options")).toHaveCount(
     0,
   );

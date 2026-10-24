@@ -125,11 +125,14 @@ function TileGroup({
  * of it (src/layerCuttings.tsx), under ruled headings: the wind, the sea, the
  * chart, the ground under it, and what is drawn round the chosen spot; then
  * which model draws the wind. Each tile is a toggle button, and the layers,
- * their groups and how each group's switches combine are src/layerGroups.tsx.
+ * their groups and how each group's switches combine are src/layerGroups.tsx,
+ * which the desktop's layers' rail (src/LayerRail.tsx) draws from too.
  *
- * Opened from the site menu (src/MapControls.tsx), and only then loaded: this
- * file, its pictures and its stylesheet are a chunk of their own. On a phone
- * the dialog is a sheet that slides up from the foot, three tiles across.
+ * Opened from the site menu, and from Layers under the zoom and in the dock
+ * where there is no room for the rail (src/MapControls.tsx), and only then
+ * loaded: this file, its pictures and its stylesheet are a chunk of their
+ * own. On a phone the dialog is a sheet that slides up from the foot, three
+ * tiles across.
  */
 export default function LayersPanel({
   open,

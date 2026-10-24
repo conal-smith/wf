@@ -13,6 +13,8 @@ import {
   OptionsGlyph,
   SpotsGlyph,
 } from "./chartGlyphs";
+import LayerRail from "./LayerRail";
+import { layerGroups } from "./layerGroups";
 import type { InfoSection } from "./mapInfoContext";
 
 /**
@@ -59,15 +61,19 @@ export function chartTools(
 }
 
 /**
- * Top right: zoom, and nothing else, for the chart is moved there. The
- * layers (the wind's style, the chart's parts, the satellite image under it,
- * what is drawn round the chosen spot, and which model the map draws), your
- * spots and the display options (units, the rider, the blend's models) are
- * opened from the site menu (`chartTools`), one at a time in a dialog over
- * the dimmed map, as the map's information is: four buttons here, beside a
- * menu that held more, were too many ways in. They close on their X, on
- * Escape or on a tap on the backdrop, and the focus goes back to where it was
- * when they opened: the menu's trigger, or the dock's button.
+ * Top right: zoom, and under it Layers. On a desktop, Layers opens the
+ * layers' rail beside the zoom (src/LayerRail.tsx), a column of round
+ * switches with no panel behind them, and shuts it again; it stays as it was
+ * left on this device. On a phone, or where the rail would run into the dock,
+ * it opens the Layers panel, as the site menu's row does.
+ *
+ * The panel (the wind's style, the chart's parts, the satellite image under
+ * it, what is drawn round the chosen spot, and which model the map draws),
+ * your spots and the display options (units, the model, the blend's models)
+ * open from the site menu (`chartTools`), one at a time in a dialog over the
+ * dimmed map, as the map's information is. They close on their X, on Escape
+ * or on a tap on the backdrop, and the focus goes back to where it was when
+ * they opened: the menu's trigger, Layers, or the dock's button.
  */
 export default function MapControls({
   onZoomIn,
@@ -94,11 +100,26 @@ export default function MapControls({
   currentsNote = null,
   foilNote = null,
   onResetLayers,
+  desktop,
+  rail,
+  onLayers,
+  onRailFits,
+  layoutKey,
 }: {
   onZoomIn: () => void;
   onZoomOut: () => void;
   open: MapPanel;
   onOpen: (panel: MapPanel) => void;
+  /** A fine pointer and the width for the layers' rail. */
+  desktop: boolean;
+  /** The rail is open, and there is room for it. */
+  rail: boolean;
+  /** Layers pressed: the rail, or the panel where there is none. */
+  onLayers: () => void;
+  /** Whether the rail would fit above the dock, as that changes. */
+  onRailFits: (fits: boolean) => void;
+  /** Changes as the dock opens, grows or goes, for the rail to fit again. */
+  layoutKey: string;
   /** Your spots (src/SidePanel.tsx), drawn while their panel is open. */
   spots: () => ReactNode;
   /** The display options (src/DisplayFilter.tsx), given a way to close. */
@@ -156,7 +177,35 @@ export default function MapControls({
         >
           −
         </button>
+        <button
+          type="button"
+          aria-label="Layers"
+          title="Layers"
+          aria-expanded={rail || open === "layers"}
+          aria-controls={desktop ? "map-rail" : undefined}
+          onClick={onLayers}
+        >
+          <LayersGlyph size={18} />
+        </button>
       </div>
+      {desktop && (
+        <LayerRail
+          id="map-rail"
+          shown={rail}
+          onFits={onRailFits}
+          layoutKey={layoutKey}
+          groups={layerGroups({
+            windStyle,
+            onWindStyle,
+            layers,
+            onLayersChange,
+            satellite,
+            onSatellite,
+            focusStyle,
+            onFocusStyle,
+          })}
+        />
+      )}
       {shown === "layers" && (
         // Nothing until its chunk is in: then the dialog opens whole, its
         // tiles and their stylesheet with it.

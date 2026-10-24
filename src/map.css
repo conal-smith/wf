@@ -873,12 +873,18 @@
   cursor: default;
 }
 
-/* ---------- top right: zoom (the rest is in the site menu) ---------- */
+/* ---------- top right: zoom and the layers ---------- */
+/* The layers' rail (rail.css) stands to the left of the box, at its top,
+   and far enough left to be clear of Gust's button in the corner below. */
 .map-ctrl {
   position: absolute;
   top: 18px;
   right: 18px;
   z-index: 21;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-start;
+  gap: 16px;
 }
 /* Each key a control's corner inside the box's, a little apart: the box's
    inset plus the key's corner is the box's own, so the curves nest. */

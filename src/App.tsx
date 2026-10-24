@@ -173,6 +173,8 @@ const WIND_KEY = "wingfoil.map.wind.v1";
 const LAYERS_KEY = "wingfoil.map.layers.v1";
 const FOCUS_KEY = "wingfoil.map.focus.v1";
 const MORE_KEY = "wingfoil.map.more.v1";
+/** The layers' rail, open or shut on this device. */
+const RAIL_KEY = "wingfoil.map.rail.v1";
 /** The focus is on the point tapped on the map, not a riding place. */
 const AT_POINT = "@point";
 /**
@@ -206,6 +208,8 @@ interface Picked {
 const degrees = (lat: number, lon: number) =>
   `${Math.abs(lat).toFixed(2)}° ${lat < 0 ? "S" : "N"}, ${Math.abs(lon).toFixed(2)}° ${lon < 0 ? "W" : "E"}`;
 const PHONE = "(max-width: 720px)";
+/** Room, and a fine pointer, for the layers' rail (src/LayerRail.tsx). */
+const DESKTOP = "(hover: hover) and (pointer: fine) and (min-width: 721px)";
 
 const store = {
   get(key: string): string | null {
@@ -335,6 +339,17 @@ export default function App() {
   };
   /** The layers, your spots or the display options, in a dialog over the map. */
   const [panel, setPanel] = useState<MapPanel>(null);
+  // The layers' rail: on a desktop, where it fits above the dock, Layers
+  // opens and shuts it, and this device keeps it as it was left; else
+  // Layers opens the panel.
+  const desktop = useMedia(DESKTOP);
+  const [railOpen, setRailOpen] = useState(() => store.get(RAIL_KEY) === "1");
+  const [railFits, setRailFits] = useState(true);
+  const pressLayers = () => {
+    if (!desktop || !railFits) return setPanel("layers");
+    setRailOpen(!railOpen);
+    store.set(RAIL_KEY, railOpen ? "0" : "1");
+  };
   /** The information dialog's part to open at, or null while it is shut. */
   const [info, setInfo] = useState<InfoSection | null>(null);
   /** The part it is drawn at: kept while it fades out, once shut. */
@@ -1654,6 +1669,11 @@ export default function App() {
               onZoomOut={() => controls.current?.zoomOut()}
               open={panel}
               onOpen={setPanel}
+              desktop={desktop}
+              rail={desktop && railOpen && railFits}
+              onLayers={pressLayers}
+              onRailFits={setRailFits}
+              layoutKey={`${dockOpen ? dockHeight : 0}`}
               spots={() => (
                 <SidePanel
                   spots={spotById}

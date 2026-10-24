@@ -1,0 +1,93 @@
+/*
+ * The layers' rail (src/LayerRail.tsx): beside the zoom, a column of round
+ * switches over the chart with no panel behind them. Off is faint and flat,
+ * sunk a little into the chart; on is a paper disc ruled in ink, with the
+ * hairline inside it and the marker's soft shadow under it. Each group is set
+ * apart by a short rule.
+ */
+.lr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 2px;
+}
+/* Shut, or no room for it: out of sight, and still measured. */
+.lr[data-shown="false"] {
+  visibility: hidden;
+}
+.lr-grp {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lr-grp + .lr-grp::before {
+  content: "";
+  display: block;
+  width: 14px;
+  height: 1.5px;
+  margin: 4px auto 2px;
+  border-radius: var(--radius-full);
+  background: var(--color-line-strong);
+}
+.lr .lr-ic {
+  position: relative;
+  width: var(--spacing-control-sm);
+  height: var(--spacing-control-sm);
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-ground) 45%, transparent);
+  color: color-mix(in srgb, var(--color-ink) 50%, transparent);
+  box-shadow: inset 0 1px 2px
+    color-mix(in srgb, var(--color-ink) 8%, transparent);
+  transition:
+    background-color var(--transition-duration-fast) ease,
+    color var(--transition-duration-fast) ease,
+    border-color var(--transition-duration-fast) ease,
+    box-shadow var(--transition-duration-fast) ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lr .lr-ic:hover {
+    background: color-mix(in srgb, var(--color-ground) 75%, transparent);
+    color: color-mix(in srgb, var(--color-ink) 75%, transparent);
+  }
+}
+.lr .lr-ic[aria-pressed="true"] {
+  background: var(--color-card);
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+  box-shadow:
+    inset 0 0 0 1.5px var(--color-card),
+    inset 0 0 0 2.5px var(--color-line),
+    var(--shadow-marker);
+}
+.lr .lr-ic:active {
+  transform: translateY(1px);
+}
+/* Its name and whether it is on, to its left, under the pointer and on the
+   keys' focus: in the button's own mono label, ink on paper turned over. */
+.lr-tip {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px 8px;
+  border-radius: var(--radius-control);
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-duration-fast) ease;
+}
+.lr-tip small {
+  font-size: inherit;
+  opacity: 0.7;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lr-ic:hover .lr-tip {
+    opacity: 1;
+  }
+}
+.lr-ic:focus-visible .lr-tip {
+  opacity: 1;
+}
