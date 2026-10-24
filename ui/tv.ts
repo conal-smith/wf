@@ -30,7 +30,7 @@ export const THEME_NAMES = {
   // knows, and `font-body` beside a caller's `font-mono` would keep both.
   font: ["display", "body", "mono", "hand"],
   radius: ["control", "surface", "pill", "dialog", "full"],
-  shadow: ["control", "marker", "surface", "dock"],
+  shadow: ["card", "float", "sheet", "dock", "marker", "control", "raised"],
   "inset-shadow": ["frame"],
   blur: ["glass", "scrim"],
   container: ["dialog", "dialog-wide", "reading", "measure", "page", "form"],

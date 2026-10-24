@@ -379,13 +379,13 @@ describe("ui/theme.css: the values", () => {
     },
   );
 
-  // Square, as print is: a field keeps a whisper of a corner, a pressable
-  // thing is a capsule, and a box is square.
+  // Mixed and rounded (2026-10-24): a control's corner, a box's, a sheet's,
+  // and the capsule for what is pressed.
   it.each([
-    ["control", "2px"],
-    ["surface", "0px"],
+    ["control", "10px"],
+    ["surface", "14px"],
     ["pill", "9999px"],
-    ["dialog", "0px"],
+    ["dialog", "18px"],
     ["full", "9999px"],
   ])("radius %s is %s", (name, value) => {
     const css = build([`rounded-${name}`]);
@@ -395,13 +395,17 @@ describe("ui/theme.css: the values", () => {
     expect(variable(css, `--radius-${name}`)).toBe(value);
   });
 
-  // Little shadow, and a warm one: paper lifts off paper.
+  // Shadow by elevation, soft and stacked, the far one warm: the last layer
+  // of each is the one that says how high it stands.
   it.each([
-    ["control", "0px 1px 0px", "#1a1d210f"],
+    ["card", "0 2px 4px -2px", "#1a1d211a"],
+    ["float", "0 14px 28px -12px", "#3c2d1466"],
+    ["sheet", "0 24px 48px -16px", "#3c2d1480"],
+    ["dock", "0 -24px 48px -16px", "#3c2d1480"],
     ["marker", "0px 4px 10px -6px", "#3c2d1466"],
-    ["surface", "0px 6px 18px -10px", "#3c2d1459"],
-    ["dock", "0px -8px 22px -16px", "#3c2d1473"],
-  ])("shadow %s is a little warm paper shadow", (name, geometry, ink) => {
+    ["control", "0 1px 2px", "#1a1d2150"],
+    ["raised", "0 1px 2px", "#1a1d2126"],
+  ])("shadow %s ends in %s %s", (name, geometry, ink) => {
     const declarations = rule(build([`shadow-${name}`]), `shadow-${name}`);
     expect(declarations).toMatch(/--tw-shadow: [^;]+;/);
     expect(declarations).toContain(
