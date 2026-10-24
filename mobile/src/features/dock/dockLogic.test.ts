@@ -192,9 +192,10 @@ describe("words", () => {
     expect(hourReading(col, kind, "kn")).toBe(
       `Saturday 15:00, ${kind.rating!.stars} stars, south-west 18 knots gusting 24`,
     );
-    const lost = hour();
+    // Cross-offshore costs a rider a star and a half.
+    const lost = hour({ from: 135 });
     expect(hourReading(col, lost, "kn")).toBe(
-      `Saturday 15:00, ${lost.rating!.stars} stars, ${lost.rating!.potential} possible, west-south-west 18 knots gusting 24`,
+      `Saturday 15:00, ${lost.rating!.stars} stars, ${lost.rating!.potential} possible, south-east 18 knots gusting 24, cross-offshore`,
     );
   });
 

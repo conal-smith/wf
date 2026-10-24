@@ -15,7 +15,7 @@ const hour = (windKn: number, from: number, daylight = true): PlaceHour => {
 
 describe("the worked example", () => {
   it("prefers an hour that lost a star, so there is something to show", () => {
-    const row = strip.map((_, i) => (i === 5 ? hour(18, 270) : i === 6 ? hour(18, 225) : hour(4, 225)));
+    const row = strip.map((_, i) => (i === 5 ? hour(18, 135) : i === 6 ? hour(18, 225) : hour(4, 225)));
     const picked = workedHour(["inch"], new Map([["inch", row]]), strip, DEFAULT_RIDER, () => spot, NOW)!;
     expect(picked.time).toBe(strip[5].time);
     expect(picked.result.stars).toBeLessThan(picked.result.potential);

@@ -22,7 +22,7 @@ import {
   satelliteTidesLine,
 } from "../force5/src/satellite";
 import { STARS_HREF } from "../force5/src/siteNav";
-import { gustCurve, windBand, type Rider } from "../force5/src/stars";
+import { windBand, type Rider } from "../force5/src/stars";
 import { windColor } from "../force5/src/weather";
 import {
   AboutGlyph,
@@ -556,9 +556,9 @@ function StarsPart({
           The dark. Dark hours aren&rsquo;t rated.
         </Key>
         <Key mark={<StarGlyph size={22} />} name="One model">
-          {then ? `${model}, then ${then} past the end of its run` : model}:
-          the model you picked, the one the map draws, and its own forecast,
-          never a blend.
+          {then ? `${model}, then ${then} past the end of its run` : model}: the
+          model you picked, the one the map draws, and its own forecast, never a
+          blend.
         </Key>
       </ul>
       <h4>
@@ -566,8 +566,8 @@ function StarsPart({
       </h4>
       <p className="mi-fig">Rated for {riderLine(rider)}</p>
       <p className="mi-fig">
-        Rides {Math.round(band.min)}–{Math.round(band.max)} kn · gusts have no
-        effect up to {Math.round(gustCurve(rider).fine)} kn
+        Rides {Math.round(band.min)}–{Math.round(band.max)} kn · no stars for
+        gusts over {Math.round(band.max)} kn
       </p>
       <p className="mi-sm">
         Your weight, your level, your wings and your model are in the display

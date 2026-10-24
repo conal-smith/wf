@@ -42,7 +42,7 @@ const rate = (rider: Rider, windKn: number, from = 225, gustKn = windKn + 4) =>
   rateHour({ windKn, gustKn, from, daylight: true }, { facing: 270 }, rider)!;
 
 describe("the draft", () => {
-  it("starts from the level that rates, and its band, gusts and shore", () => {
+  it("starts from the level that rates, and its band and shore", () => {
     const draft = draftOf(prefs({ skill: "advanced", weightKg: 95 }), ["a"]);
     expect(draft.skill).toBe("advanced");
     expect(draft.custom).toEqual(
@@ -51,6 +51,8 @@ describe("the draft", () => {
     expect(draft.starred).toEqual(["a"]);
     // Advanced starts 35° into the wind.
     expect(draft.upwind).toBe(35);
+    expect(draft.gusty).toBe("some");
+    expect(draftOf(prefs({ gusty: "lots" }), []).gusty).toBe("lots");
   });
   it("starts from the rider's own degrees into the wind, when they have them", () => {
     expect(draftOf(prefs({ upwind: 5 }), []).upwind).toBe(5);
@@ -59,13 +61,13 @@ describe("the draft", () => {
   it("starts from the rider's own rating while it rates, at the level it started from", () => {
     const own: CustomRating = {
       ...standardRating(prefs().rider, "advanced"),
-      gust: { fine: 20, worst: 30, most: 3 },
+      wind: { min: 9, sweetLow: 12, sweetHigh: 26, max: 33 },
     };
     const draft = draftOf(prefs({ skill: "beginner", custom: own }), []);
     expect(draft.skill).toBe("advanced");
     expect(draft.custom).toEqual(own);
   });
-  it("starts again from a new level's band, gusts and shore", () => {
+  it("starts again from a new level's band and shore", () => {
     const draft = withShore(draftOf(prefs(), []), "cross", "never");
     const learner = withLevel(draft, "beginner", 60);
     expect(learner.custom).toEqual(levelRating("beginner", 60));
@@ -137,7 +139,7 @@ describe("saving", () => {
     const own = { ...draftOf(before, []), upwind: 0 };
     expect(applyDraft(before, own, NOW).rider.upwind).toBe(0);
   });
-  it("rates on the level, saving no rating of the rider's own, when the wind, gusts and shore are the level's", () => {
+  it("rates on the level, saving no rating of the rider's own, when the wind and shore are the level's", () => {
     const before = prefs();
     const draft = {
       ...withLevel(draftOf(before, []), "advanced", 70),
@@ -154,7 +156,7 @@ describe("saving", () => {
     expect(next.units).toBe("km/h");
     expect(next.starsUpdatedAt).toBeNull();
   });
-  it("saves a changed band, gusts or shore as the rider's own rating, stamped, which the stars then rate with", () => {
+  it("saves a changed band or shore as the rider's own rating, stamped, which the stars then rate with", () => {
     const before = prefs();
     const draft = draftOf(before, []);
     const changed = {
@@ -187,7 +189,7 @@ describe("saving", () => {
   it("leaves the rider's own rating as it was when nothing changed, and keeps it aside when a level takes over", () => {
     const own = {
       ...standardRating(prefs().rider),
-      gust: { fine: 20, worst: 30, most: 3 },
+      wind: { min: 10, sweetLow: 13, sweetHigh: 22, max: 28 },
     };
     const before = {
       ...prefs({ custom: own }),
@@ -220,6 +222,24 @@ describe("saving", () => {
     expect(onItsLevel(withLevel(draft, "advanced", 70))).toBe(true);
     // In knots, the same band is the rider's own.
     expect(onItsLevel({ ...draft, units: "kn" })).toBe(false);
+  });
+  it("keeps gusty wind on the rider, not in a rating of their own", () => {
+    const before = prefs();
+    const lots = applyDraft(
+      before,
+      { ...draftOf(before, []), gusty: "lots" },
+      NOW,
+    );
+    expect(lots.rider).toEqual({ ...before.rider, gusty: "lots" });
+    expect(lots.rider.custom).toBeUndefined();
+    // Some is the default, and not kept.
+    const back = applyDraft(lots, { ...draftOf(lots, []), gusty: "some" }, NOW);
+    expect(back.rider.gusty).toBeUndefined();
+    // And the draft rates with it: 18 gusting 27 is gusty.
+    const rider = (gusty: "little" | "lots") =>
+      draftRider({ ...draftOf(before, []), gusty }, before.rider);
+    expect(rate(rider("little"), 18, 225, 27).stars).toBe(5);
+    expect(rate(rider("lots"), 18, 225, 27).stars).toBe(3);
   });
   it("names the spots starred and unstarred", () => {
     expect(spotChanges(["a", "b"], ["c", "a"])).toEqual(["c", "b"]);

@@ -10,10 +10,12 @@ import {
   MAX_WING_M2,
   MIN_WEIGHT_KG,
   MIN_WING_M2,
+  GUSTIES,
   SKILLS,
   parseCustomRating,
   rateOn,
   type CustomRating,
+  type Gusty,
   type Rider,
   type StarsOn,
 } from "./stars";
@@ -251,6 +253,7 @@ function mergeRows(value: unknown, defaults: Record<RowKey, boolean>) {
  * How far into the wind the rider rides is kept only when it is not their
  * level's own; a rider stored before 24 October 2026 with a `pointing` has it
  * read as degrees (`withUpwind`).
+ * How much gusty wind bothers them is kept only when it is not "some".
  */
 export function parseRider(value: unknown): Rider {
   if (!value || typeof value !== "object") return DEFAULT_RIDER;
@@ -269,6 +272,7 @@ export function parseRider(value: unknown): Rider {
         : null,
     skill,
     ...withUpwind(skill, raw.upwind, raw.pointing),
+    ...withGusty(raw.gusty),
     wings: [
       ...new Set(
         wings.filter(
@@ -317,6 +321,12 @@ function withUpwind(
         : level;
   return deg === level ? {} : { upwind: deg };
 }
+
+/** A rider carries `gusty` only when it is known and not "some", so a default rider stays as it always was. */
+const withGusty = (value: unknown): Pick<Rider, "gusty"> =>
+  GUSTIES.includes(value as Gusty) && value !== "some"
+    ? { gusty: value as Gusty }
+    : {};
 
 /** A rider carries `starsFrom` only when it is not the default, so a default rider stays as it always was. */
 const withStarsChoice = (

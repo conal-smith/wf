@@ -151,6 +151,18 @@ describe("display preferences", () => {
       upwind: 25,
     });
   });
+  it("keeps how much gusty wind bothers the rider only when it is not some", () => {
+    const base = { weightKg: null, skill: "intermediate", wings: [] };
+    expect(parseRider({ ...base, gusty: "lots" }).gusty).toBe("lots");
+    expect(parseRider({ ...base, gusty: "little" }).gusty).toBe("little");
+    // Some is the default, and anything else is not an answer at all.
+    expect(parseRider({ ...base, gusty: "some" })).toEqual(base);
+    expect(parseRider({ ...base, gusty: "very" })).toEqual(base);
+    expect(parseRider({ ...base, gusty: 2 })).toEqual(base);
+    const storage = fakeStorage();
+    saveRider(parseRider({ ...base, gusty: "lots" }), storage);
+    expect(loadPrefs(storage).rider.gusty).toBe("lots");
+  });
   it("starts with no row touched by hand", () => {
     expect(defaultPrefs().touchedRows).toEqual([]);
   });
@@ -326,7 +338,7 @@ describe("display preferences", () => {
           }),
         }),
       );
-    expect(load({ ...own, version: 2 }).rider.custom).toBeUndefined();
+    expect(load({ ...own, version: 3 }).rider.custom).toBeUndefined();
     expect(load({ ...own, wind: null }).rider.custom).toBeUndefined();
     expect(load("custom").rider.custom).toBeUndefined();
     expect(

@@ -8,16 +8,19 @@
 //
 // Two numbers per hour, both out of five:
 //   potential  what the wind alone is worth to this rider (the faded stars)
-//   stars      what is left once the spot has its say: how strong the
-//              gusts are and the shore angle (solid)
+//   stars      what is left once the spot has its say: how gusty the wind
+//              is and the shore angle (solid)
 // Both rate the steady wind, the mean: it is what holds you on the foil, and
 // whether a session is on at all. Below the floor a gust is a chance to get
-// up, so it can lift the hour to the floor and no further. Three curves then
-// set the stars, each a level's own or the rider's (a `CustomRating`):
-//   wind       stars for the mean, on min / sweetLow / sweetHigh / max
-//   gusts      stars off for how strong the gust is: none up to `fine`, a
-//              straight ramp to `most` off at `worst`, flat past it
+// up, so it can lift the hour to the floor and no further. Two curves, each a
+// level's own or the rider's (a `CustomRating`), and one rider setting then
+// set the stars:
+//   wind       stars for the mean, on min / sweetLow / sweetHigh / max; `max`
+//              is the most the rider can hold, gusts included, so a gust
+//              over it leaves the hour no stars at all, not even faded ones
 //   direction  stars off for each of the five ways the wind meets the beach
+//   gusty      stars off for gusty wind, by gust ÷ mean, as much as the
+//              rider says gusty wind bothers them (`Rider.gusty`)
 // `stars` never exceeds `potential`, so the faded stars are always the upside a
 // better direction or a steadier breeze would have delivered.
 
@@ -45,15 +48,17 @@ export interface WindBand {
   max: number;
 }
 
-/** Stars off for how strong the gust is, in knots and stars. */
-export interface GustCurve {
-  /** Gusts up to this cost nothing. */
-  fine: number;
-  /** Gusts from this on cost `most`; in between, a straight ramp. */
-  worst: number;
-  /** The most the gusts take off, 0–5. */
-  most: number;
-}
+/**
+ * How much gusty wind bothers the rider, in their own words: "some" is the
+ * default. It sets the stars gusty and very gusty hours lose (`GUSTY_OFF`).
+ */
+export type Gusty = "little" | "some" | "lots";
+export const GUSTIES: readonly Gusty[] = ["little", "some", "lots"];
+export const GUSTY_LABEL: Record<Gusty, string> = {
+  little: "Not much",
+  some: "Some",
+  lots: "A lot",
+};
 
 /** The five ways the wind meets a beach, as the custom rating names them. */
 export type DirectionKey =
@@ -68,20 +73,23 @@ export const DIRECTION_KEYS: readonly DirectionKey[] = [
 /** Stars off, 0–5 in half stars, for each way the wind meets the beach. */
 export type DirectionCosts = Record<DirectionKey, number>;
 
-/** The version of the stored `CustomRating` shape; anything else is dropped. */
-export const CUSTOM_RATING_VERSION = 1;
+/**
+ * The version of the stored `CustomRating` shape. Version 1 also had a gust
+ * curve, which v6 of the stars dropped: it is read without it. Anything else
+ * is dropped.
+ */
+export const CUSTOM_RATING_VERSION = 2;
 
 /**
  * A rider's own star rating, all in knots and stars. When a rider has one it
- * replaces their level's band, gust curve and direction costs, with no weight
- * scaling; `base` is the level it started from, which keeps the level's share
- * of a gust below the floor and its wing sizes.
+ * replaces their level's band and direction costs, with no weight scaling;
+ * `base` is the level it started from, which keeps the level's share of a
+ * gust below the floor and its wing sizes.
  */
 export interface CustomRating {
   version: typeof CUSTOM_RATING_VERSION;
   base: Skill;
   wind: WindBand;
-  gust: GustCurve;
   direction: DirectionCosts;
 }
 
@@ -95,6 +103,8 @@ export interface Rider {
    * move with it, the stars do not. Absent while it is their level's own.
    */
   upwind?: number;
+  /** How much gusty wind bothers them; absent while it is "some". */
+  gusty?: Gusty;
   /** Wing sizes the rider owns, in square metres; empty means "recommend one". */
   wings: number[];
   /** The rider's own star rating while it rates, in place of the level's; absent while a level rates. */
@@ -167,7 +177,9 @@ const clamp = (value: number, low: number, high: number) =>
  * Mean-wind band, in knots, for an 80 kg rider of each level. The size guides
  * and the forums agree on the middle: about 12 kn before an average rider
  * stays up without pumping, 14–20 the comfortable range, 18–24 fully lit, and
- * most riders short of expert struggling from 25–28.
+ * most riders short of expert struggling from 25–28. The top is the most a
+ * rider holds, gusts included: "nobody goes out in 40; 30 is about the max,
+ * maybe 35 for very advanced" (the owner, 24 October 2026).
  */
 const BANDS: Record<Skill, WindBand> = {
   beginner: { min: 13, sweetLow: 15, sweetHigh: 20, max: 24 },
@@ -176,32 +188,37 @@ const BANDS: Record<Skill, WindBand> = {
 };
 
 /**
- * Stars off for the gust, by how strong it is, for an 80 kg rider of each
- * level. The models' gust is the hour's strongest, so a riding day's 8 or 9
- * knots over the mean costs nothing; what costs is a gust past what the rider
- * can hold. A learner feels it from 20 kn and loses up to three stars.
+ * How gusty an hour is, by its gust over its mean: under 1.5 steady, from 1.5
+ * gusty, from 1.8 very gusty. The models' gust is the hour's strongest, so a
+ * riding day's gust a third over the mean is ordinary.
  */
-const GUSTS: Record<Skill, GustCurve> = {
-  beginner: { fine: 20, worst: 28, most: 3 },
-  intermediate: { fine: 28, worst: 40, most: 2 },
-  advanced: { fine: 33, worst: 45, most: 2 },
+export type Gustiness = "steady" | "gusty" | "very-gusty";
+export const GUSTY_FROM = 1.5;
+export const VERY_GUSTY_FROM = 1.8;
+
+/** Stars off for a gusty and a very gusty hour, by how much it bothers the rider. */
+export const GUSTY_OFF: Record<Gusty, Record<Gustiness, number>> = {
+  little: { steady: 0, gusty: 0, "very-gusty": 1 },
+  some: { steady: 0, gusty: 1, "very-gusty": 2 },
+  lots: { steady: 0, gusty: 2, "very-gusty": 3 },
 };
 
 /**
- * Stars off for each way the wind meets the beach. Cross-onshore is the kind
- * one; onshore is slow to get out through; cross-offshore and offshore carry
- * a rider who falls away from the beach, most of all a learner.
+ * Stars off for each way the wind meets the beach. Onshore, cross-onshore and
+ * cross-shore cost nothing: cross-shore is perfect, and onshore only slow to
+ * get out through. Cross-offshore and offshore carry a rider who falls away
+ * from the beach, most of all a learner.
  */
 const DIRECTIONS: Record<Skill, DirectionCosts> = {
-  beginner: { onshore: 1, crossOn: 0, cross: 0.5, crossOff: 3, offshore: 5 },
+  beginner: { onshore: 0, crossOn: 0, cross: 0, crossOff: 3, offshore: 5 },
   intermediate: {
-    onshore: 1,
+    onshore: 0,
     crossOn: 0,
     cross: 0,
     crossOff: 1.5,
     offshore: 4,
   },
-  advanced: { onshore: 1, crossOn: 0, cross: 0, crossOff: 1, offshore: 4 },
+  advanced: { onshore: 0, crossOn: 0, cross: 0, crossOff: 1, offshore: 4 },
 };
 
 /**
@@ -263,28 +280,42 @@ export function windBand(rider: Rider): WindBand {
   };
 }
 
-/**
- * The rider's gust curve: their own, else their level's, its knots moving
- * with weight as the top of the band does (fourth root): a heavier rider holds
- * a little more.
- */
-export function gustCurve(rider: Rider): GustCurve {
-  if (rider.custom) return { ...rider.custom.gust };
-  const base = GUSTS[rider.skill];
-  const high = (riderWeight(rider) / ESTIMATE_WEIGHT_KG) ** 0.25;
-  return { fine: base.fine * high, worst: base.worst * high, most: base.most };
-}
-
 /** Stars off for each way the wind meets the beach: the rider's own, else their level's. */
 export function directionCosts(rider: Rider): DirectionCosts {
   return { ...(rider.custom?.direction ?? DIRECTIONS[rider.skill]) };
 }
 
-/** Stars the gust takes off: none up to `fine`, `most` from `worst`, a straight ramp between. */
-export function gustLoss(gustKn: number | null, curve: GustCurve): number {
-  if (gustKn === null || gustKn <= curve.fine) return 0;
-  return ramp(gustKn, curve.fine, curve.worst, 0, curve.most);
+/**
+ * Whether the hour's gust is over the most the rider can hold, the top of
+ * their band: then the hour has no stars at all.
+ */
+export const gustsOverLimit = (gustKn: number | null, rider: Rider) =>
+  gustKn !== null && gustKn > windBand(rider).max;
+
+/**
+ * How gusty an hour is, by its gust over its mean. Only an hour at or above
+ * the rider's floor can be gusty: below it a gust is a chance to get up.
+ */
+export function gustiness(
+  windKn: number,
+  gustKn: number | null,
+  rider: Rider,
+): Gustiness {
+  if (gustKn === null || windKn < windBand(rider).min) return "steady";
+  const factor = gustKn / windKn;
+  return factor >= VERY_GUSTY_FROM
+    ? "very-gusty"
+    : factor >= GUSTY_FROM
+      ? "gusty"
+      : "steady";
 }
+
+/**
+ * Stars off for how gusty the hour is, by how much gusty wind bothers this
+ * rider: "some" unless they have said, or said something it cannot read.
+ */
+export const gustyCost = (rider: Rider, kind: Gustiness): number =>
+  (GUSTY_OFF[rider.gusty ?? "some"] ?? GUSTY_OFF.some)[kind];
 
 /** The custom rating's name for each shore angle. */
 export const DIRECTION_OF: Record<ShoreAngle, DirectionKey> = {
@@ -300,12 +331,11 @@ export const directionCost = (rider: Rider, angle: ShoreAngle): number =>
   directionCosts(rider)[DIRECTION_OF[angle]];
 
 /**
- * What a custom rating may hold, in knots: the ends of the dialog's two
- * scales, and the knot that keeps each handle apart from the next.
+ * What a custom rating may hold, in knots: the end of the dialog's wind
+ * scale, and the knot that keeps each handle apart from the next.
  */
 export const CUSTOM_LIMITS = {
   windTopKn: 40,
-  gustTopKn: 50,
   apartKn: 1,
 } as const;
 
@@ -325,7 +355,6 @@ export function standardRating(
     version: CUSTOM_RATING_VERSION,
     base: skill,
     wind: windBand(standard),
-    gust: gustCurve(standard),
     direction: directionCosts(standard),
   });
 }
@@ -334,14 +363,15 @@ export function standardRating(
  * The one place a custom rating is made safe, whoever wrote it — the dialog,
  * the device's storage, the account or a phone registering for alerts. Any
  * missing or non-numeric field, or another version, and it is dropped (null):
- * the rider is rated on their level. Numbers out of range are clamped: knots
- * to a tenth, the wind handles in order a knot apart within 0–40, the gust's
- * a knot apart within 0–50, and every star figure 0–5 in half stars.
+ * the rider is rated on their level. A version 1 rating is read as version 2,
+ * its gust curve left behind, so nobody loses their wind and directions.
+ * Numbers out of range are clamped: knots to a tenth, the wind handles in
+ * order a knot apart within 2–40, and every star figure 0–5 in half stars.
  */
 export function parseCustomRating(value: unknown): CustomRating | null {
   if (!value || typeof value !== "object") return null;
   const raw = value as Record<string, unknown>;
-  if (raw.version !== CUSTOM_RATING_VERSION) return null;
+  if (raw.version !== CUSTOM_RATING_VERSION && raw.version !== 1) return null;
   if (!SKILLS.includes(raw.base as Skill)) return null;
   const read = (group: unknown, keys: readonly string[]) => {
     if (!group || typeof group !== "object") return null;
@@ -354,20 +384,18 @@ export function parseCustomRating(value: unknown): CustomRating | null {
     return out;
   };
   const wind = read(raw.wind, ["min", "sweetLow", "sweetHigh", "max"]);
-  const gust = read(raw.gust, ["fine", "worst", "most"]);
   const direction = read(raw.direction, DIRECTION_KEYS);
-  if (!wind || !gust || !direction) return null;
+  if (!wind || !direction) return null;
   return normalCustomRating({
     version: CUSTOM_RATING_VERSION,
     base: raw.base as Skill,
     wind: wind as unknown as WindBand,
-    gust: gust as unknown as GustCurve,
     direction: direction as unknown as DirectionCosts,
   });
 }
 
 function normalCustomRating(rating: CustomRating): CustomRating {
-  const { windTopKn, gustTopKn, apartKn } = CUSTOM_LIMITS;
+  const { windTopKn, apartKn } = CUSTOM_LIMITS;
   // Each handle no lower than a knot past the one before it, and low enough
   // to leave a knot for each one after it, so any four numbers come out in
   // order.
@@ -380,8 +408,6 @@ function normalCustomRating(rating: CustomRating): CustomRating {
     clamp(w.sweetHigh, sweetLow + apartKn, windTopKn - apartKn),
   );
   const max = tenth(clamp(w.max, sweetHigh + apartKn, windTopKn));
-  const fine = tenth(clamp(rating.gust.fine, 1, gustTopKn - apartKn));
-  const worst = tenth(clamp(rating.gust.worst, fine + apartKn, gustTopKn));
   const direction = {} as DirectionCosts;
   for (const key of DIRECTION_KEYS)
     direction[key] = halfStar(rating.direction[key]);
@@ -389,7 +415,6 @@ function normalCustomRating(rating: CustomRating): CustomRating {
     version: CUSTOM_RATING_VERSION,
     base: rating.base,
     wind: { min, sweetLow, sweetHigh, max },
-    gust: { fine, worst, most: halfStar(rating.gust.most) },
     direction,
   };
 }
@@ -504,12 +529,13 @@ export type SessionKind =
   | "powered"
   | "overpowered"
   | "too-strong"
+  | "too-gusty"
   | "offshore";
 
 /**
  * Why an hour has no stars, where the wind or the shore says so: "too
- * light", "too strong", or "offshore" when the offshore wind is what cost the
- * stars. The kinds in between are the rating's own business and
+ * light", "too strong", "gusts over your limit", or "offshore" when the
+ * offshore wind is what cost the stars. The kinds in between are the rating's own business and
  * have no words on the page: a rider reads the stars and the figures.
  */
 export function noStarsWhy(rating: Pick<HourRating, "session">): string | null {
@@ -518,6 +544,8 @@ export function noStarsWhy(rating: Pick<HourRating, "session">): string | null {
       return "too light";
     case "too-strong":
       return "too strong";
+    case "too-gusty":
+      return "gusts over your limit";
     case "offshore":
       return "offshore";
     default:
@@ -573,6 +601,13 @@ function session(windKn: number, band: WindBand): SessionKind {
   return "too-strong";
 }
 
+/** What a gusty hour is called, said when it costs a star. */
+const GUSTY_REASON: Record<Gustiness, string> = {
+  steady: "",
+  gusty: "Gusty",
+  "very-gusty": "Very gusty",
+};
+
 /** What each shore angle is like, said when it costs a star. */
 const SHORE_REASON: Record<ShoreAngle, string> = {
   onshore: "Onshore: slow to get out through the chop.",
@@ -585,11 +620,12 @@ const SHORE_REASON: Record<ShoreAngle, string> = {
 /**
  * One hour, rated. Null when there is nothing to rate: no wind reading, or dark.
  *
- *   stars = round(wind − gusts − direction − wing), 0 to potential
+ *   stars = round(wind − gusty − direction − wing), 0 to potential
  *
- * The deductions are deliberately few and legible — each one is a sentence in
- * `reasons` when it costs a whole star — because a rider should be able to
- * argue with the stars.
+ * and none at all, potential too, when the gust is over the top of the
+ * rider's band. The deductions are deliberately few and legible — each one is
+ * a sentence in `reasons` when it costs a whole star — because a rider should
+ * be able to argue with the stars.
  */
 export function rateHour(
   hour: HourInput,
@@ -607,11 +643,29 @@ export function rateHour(
       ? null
       : shoreAngle(hour.from, shore.facing);
   const direction = angle ? directionCost(rider, angle) : 0;
-  const gusts = gustLoss(hour.gustKn, gustCurve(rider));
+  const gusty = gustiness(hour.windKn, hour.gustKn, rider);
+  const gusts = gustyCost(rider, gusty);
   // How far the other models agree is context, never a cost: the stars are
   // the one model's (the ruling of 19 October 2026).
   const quiver = wing.fit === "fits" ? 0 : 1;
   const score = base - direction - gusts - quiver;
+
+  // A gust over what the rider can hold: no stars, not even faded ones, for
+  // a kinder direction would not make it rideable (the ruling of 24 October
+  // 2026).
+  if (gustsOverLimit(hour.gustKn, rider)) {
+    const kind = session(rideKn, band);
+    return {
+      rideKn,
+      liftKn: rideKn - hour.windKn,
+      stars: 0,
+      potential: 0,
+      session: kind === "too-strong" ? kind : "too-gusty",
+      shore: angle,
+      wing,
+      reasons: ["Gusts over your limit"],
+    };
+  }
 
   const potential = Math.round(base);
   const starsFrom = (x: number) => clamp(Math.round(x), 0, potential);
@@ -621,10 +675,7 @@ export function rateHour(
 
   const reasons: string[] = [];
   if (angle && costs(direction)) reasons.push(SHORE_REASON[angle]);
-  if (costs(gusts))
-    reasons.push(
-      `Gusts to ${Math.round(hour.gustKn!)} kn: more than you will want to hold.`,
-    );
+  if (costs(gusts)) reasons.push(GUSTY_REASON[gusty]);
   if (wing.fit === "underpowered")
     reasons.push(
       `Your biggest wing is small for this: about ${wing.recommended} m² would suit.`,

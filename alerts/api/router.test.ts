@@ -122,10 +122,14 @@ describe("devices", () => {
   it("keeps the rider's own star rating, clamped, and refuses one it cannot read", async () => {
     const { register, call } = setup();
     const { auth } = await register();
-    const custom: CustomRating = { ...standardRating(DEFAULT_RIDER), gust: { fine: 30, worst: 20, most: 9 } };
+    const custom: CustomRating = { ...standardRating(DEFAULT_RIDER), wind: { min: 20, sweetLow: 18, sweetHigh: 18, max: 10 } };
     const put = await call("PUT", "/devices/me", { rider: { ...DEFAULT_RIDER, custom } }, auth);
     expect(put.status).toBe(200);
-    expect(((await put.json()) as { rider: { custom: CustomRating } }).rider.custom.gust).toEqual({ fine: 30, worst: 31, most: 5 });
+    expect(((await put.json()) as { rider: { custom: CustomRating } }).rider.custom.wind).toEqual({ min: 20, sweetLow: 21, sweetHigh: 22, max: 23 });
+    // A phone from before v6 sends its version 1 rating, gust curve and all: read without the curve.
+    const v1 = await call("PUT", "/devices/me", { rider: { ...DEFAULT_RIDER, custom: { ...custom, version: 1, gust: { fine: 24, worst: 30, most: 3 } } } }, auth);
+    expect(v1.status).toBe(200);
+    expect(((await v1.json()) as { rider: { custom: CustomRating } }).rider.custom).toEqual({ ...custom, wind: { min: 20, sweetLow: 21, sweetHigh: 22, max: 23 } });
     const bad = await call("PUT", "/devices/me", { rider: { ...DEFAULT_RIDER, custom: { ...custom, version: 9 } } }, auth);
     expect(bad.status).toBe(400);
     expect(((await bad.json()) as { details: Record<string, string> }).details).toHaveProperty(["rider.custom"]);

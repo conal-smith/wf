@@ -1,7 +1,8 @@
 /**
  * One hour's stars worked through line by line, for "How the stars work": the
  * rideable wind, what it is worth on its own, and each thing the spot and the
- * wind take off, down to the solid stars. It restates rateHour's
+ * wind take off, down to the solid stars, or none at all for a gust over the
+ * rider's limit. It restates rateHour's
  * arithmetic (force5/src/stars.ts) so every step can be shown with its
  * figures; ledger.test.ts holds the two to the same answer for every level,
  * shore, gust and agreement, so they cannot drift apart unnoticed. The
@@ -11,8 +12,9 @@ import {
   SHORE_LABEL,
   SKILL_LABEL,
   directionCost,
-  gustCurve,
-  gustLoss,
+  gustiness,
+  gustsOverLimit,
+  gustyCost,
   rateHour,
   rideableWind,
   shoreAngle,
@@ -45,6 +47,12 @@ export interface LedgerHour {
   from: number;
   agreement: Agreement | null;
 }
+
+const GUSTINESS_WORD = {
+  steady: "steady",
+  gusty: "gusty",
+  "very-gusty": "very gusty",
+} as const;
 
 const minus = (value: number) =>
   value === 0 ? "none" : `−${Number(value.toFixed(2))}`;
@@ -81,22 +89,38 @@ export function ledger(
     });
 
   const base = windScore(ride, band);
+  const limit = Math.round(band.max);
+
+  // A gust over the rider's limit: no stars, faded ones too, whatever else.
+  if (gustsOverLimit(gustKn, rider)) {
+    lines.push({
+      what: `Gusts to ${one(gustKn!)} kn, over your ${limit} kn limit`,
+      figure: "no stars",
+    });
+    lines.push({ what: "Rating", figure: "0, so 0 solid", total: true });
+    lines.push({
+      what: "Wing",
+      figure: `${rating.wing.own ?? rating.wing.recommended} m²`,
+    });
+    return { lines, stars: 0, potential: 0, rating };
+  }
+
   const potential = Math.round(base);
   lines.push({
     what: "Stars for that wind",
     figure: `${base.toFixed(1)}, so ${potential} outlined`,
   });
 
-  const curve = gustCurve(rider);
-  const gusts = gustLoss(gustKn, curve);
-  const fine = Math.round(curve.fine);
+  const kind = gustiness(windKn, gustKn, rider);
+  const gusts = gustyCost(rider, kind);
+  const factor = gustKn === null ? "" : (gustKn / windKn).toFixed(2);
   lines.push({
     what:
       gustKn === null
         ? "No gusts forecast"
-        : gustKn <= curve.fine
-          ? `Gusts to ${one(gustKn)} kn, no more than the ${fine} kn that costs nothing`
-          : `Gusts to ${one(gustKn)} kn, past the ${fine} kn that costs nothing`,
+        : windKn < band.min
+          ? `Gusts to ${one(gustKn)} kn: under your floor, gusty wind costs nothing`
+          : `Gusts to ${one(gustKn)} kn, ${factor} times the wind: ${GUSTINESS_WORD[kind]}`,
     figure: minus(gusts),
   });
 

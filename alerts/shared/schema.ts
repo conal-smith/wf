@@ -6,6 +6,7 @@
  */
 import { z } from "zod";
 import {
+  GUSTIES,
   MAX_WEIGHT_KG,
   MAX_WING_M2,
   MIN_WEIGHT_KG,
@@ -46,6 +47,9 @@ export const riderSchema = z.object({
   wings: z.array(z.number().min(MIN_WING_M2).max(MAX_WING_M2)).max(12),
   // The rider's own star rating, which the server then rates with.
   custom: customRatingSchema.nullable().optional(),
+  // How much gusty wind bothers them; left out by an app from before v6 of
+  // the stars, and then "some", as it is on the phone.
+  gusty: z.enum(GUSTIES as [Rider["gusty"] & string, ...(Rider["gusty"] & string)[]]).optional(),
   // The one model the rider picked (force5/src/lead.ts), checked again by
   // `parseStarsChoice` so a model no longer published is the default.
   starsFrom: starsChoiceSchema.optional(),

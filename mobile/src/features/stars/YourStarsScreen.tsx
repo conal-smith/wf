@@ -1,8 +1,8 @@
 /**
  * "Your star rating" (design-system/patterns/your-stars.html, and the site's
  * spot/web/YourStarsDialog.tsx): a rider sets their own stars. Start from a
- * level; drag the four wind handles and the gusts' two, and pick the most the
- * gusts take off; drag each direction's dot in and out on the beach, offshore
+ * level; drag the four wind handles, the top one the most you can hold,
+ * gusts included; drag each direction's dot in and out on the beach, offshore
  * up over the sea and onshore down over the land; and see it all together,
  * and against the level, before saving.
  *
@@ -37,7 +37,6 @@ import Svg, {
 import {
   SKILLS,
   SKILL_LABEL,
-  gustLoss,
   savedCustom,
   standardRating,
   windScore,
@@ -52,7 +51,6 @@ import {
   DIRECTION_WORD,
   EXAMPLES,
   GRID_STEP,
-  GUST_KEYS,
   GUST_TOP,
   SHADE,
   WEB_DIRS,
@@ -62,8 +60,6 @@ import {
   breakdown,
   gridStars,
   halfStars,
-  moveGust,
-  moveGustForce,
   moveWind,
   moveWindForce,
   offAt,
@@ -142,7 +138,7 @@ export function YourStarsScreen() {
         </View>
 
         <Block title="Wind speed: stars">
-          <Curve kind="wind" yours={draft} level={level} unit={unit} width={inner} />
+          <Curve yours={draft} level={level} unit={unit} width={inner} />
           <Legend name={baseName} />
           <Handles
             keys={WIND_KEYS}
@@ -169,45 +165,6 @@ export function YourStarsScreen() {
             <Fig name="Ideal from" kn={draft.wind.sweetLow} unit={unit} />
             <Fig name="Ideal to" kn={draft.wind.sweetHigh} unit={unit} />
             <Fig name="Maximum" kn={draft.wind.max} unit={unit} />
-          </View>
-        </Block>
-
-        <Block title="Gusts: stars taken off">
-          <Curve kind="gust" yours={draft} level={level} unit={unit} width={inner} />
-          <Legend name={baseName} />
-          <Handles
-            keys={GUST_KEYS}
-            values={draft.gust}
-            top={GUST_TOP}
-            unit={unit}
-            scale="gust"
-            width={inner - AXIS_RIGHT}
-            labels={{
-              fine: "Gusts have no effect up to",
-              worst: "Gusts take off the most from",
-            }}
-            spans={[["fine", "worst", "fill"]]}
-            onMove={(key, kn) => setDraft((d) => (unit.force ? moveGustForce : moveGust)(d, key, kn))}
-          />
-          <View style={styles.figs}>
-            <Fig name="No effect up to" kn={draft.gust.fine} unit={unit} />
-            <Fig name="Most off from" kn={draft.gust.worst} unit={unit} />
-          </View>
-          <View style={styles.most}>
-            <T variant="eyebrow" caps color="muted">
-              Most off
-            </T>
-            <Segmented<string>
-              value={String(draft.gust.most)}
-              accessibilityLabel="The most the gusts take off"
-              segments={[
-                { value: "1", label: "1★", accessibilityLabel: "1 star" },
-                { value: "2", label: "2★", accessibilityLabel: "2 stars" },
-                { value: "3", label: "3★", accessibilityLabel: "3 stars" },
-                { value: "5", label: "All", accessibilityLabel: "All stars" },
-              ]}
-              onChange={(most) => setDraft((d) => ({ ...d, gust: { ...d.gust, most: Number(most) } }))}
-            />
           </View>
         </Block>
 
@@ -332,41 +289,31 @@ const line = (top: number, X: (kn: number) => number, Y: (kn: number) => number)
   return points.join(" ");
 };
 
-/**
- * Stars for each wind speed, 0 to 40 kn, or stars taken off for each gust,
- * 0 to 50 kn, hanging from the top line: theirs solid, the level's dashed.
- */
+/** Stars for each wind speed, 0 to 40 kn: theirs solid, the level's dashed. */
 const Curve = memo(function Curve({
-  kind,
   yours,
   level,
   unit,
   width,
 }: {
-  kind: "wind" | "gust";
   yours: CustomRating;
   level: CustomRating;
   unit: UnitScale;
   width: number;
 }) {
   const plot = width - AXIS_RIGHT;
-  const top = kind === "wind" ? WIND_TOP : GUST_TOP;
+  const top = WIND_TOP;
   const X = (kn: number) => (kn / top) * plot;
-  const Y = kind === "wind" ? (stars: number) => 74 - (stars / 5) * 64 : (stars: number) => 8 + (stars / 5) * 64;
-  const of = (r: CustomRating) =>
-    line(top, X, (kn) => Y(kind === "wind" ? windScore(kn, r.wind) : gustLoss(kn, r.gust)));
+  const Y = (stars: number) => 74 - (stars / 5) * 64;
+  const of = (r: CustomRating) => line(top, X, (kn) => Y(windScore(kn, r.wind)));
   const mine = of(yours);
-  const rows = kind === "wind" ? [1, 2, 3, 4, 5] : [0, 1, 2, 3, 4, 5];
-  const floor = kind === "wind" ? 74 : Y(0);
+  const rows = [1, 2, 3, 4, 5];
+  const floor = 74;
   return (
     <View
       accessible
       accessibilityRole="image"
-      accessibilityLabel={
-        kind === "wind"
-          ? "Stars for each wind speed, yours against the level you started from"
-          : "Stars the gusts take off for each gust speed, yours against the level you started from"
-      }
+      accessibilityLabel="Stars for each wind speed, yours against the level you started from"
     >
       <Svg width={width} height={92}>
         {rows.map((n) => (
@@ -374,7 +321,7 @@ const Curve = memo(function Curve({
         ))}
         {rows.map((n) => (
           <SvgText key={`t${n}`} {...axisText} x={plot + 4} y={Y(n) + 3}>
-            {kind === "wind" ? `${n}★` : n ? `−${n}★` : "0"}
+            {`${n}★`}
           </SvgText>
         ))}
         <Polygon points={`0,${floor} ${mine} ${plot},${floor}`} fill={colors.sunken} />
@@ -791,7 +738,7 @@ const Together = memo(function Together({ rider, unit, width }: { rider: Rider; 
   const Y = (kn: number) => h - (kn / GUST_TOP) * h;
   const paths = useMemo(() => squares(cells, X, Y), [cells]); // eslint-disable-line react-hooks/exhaustive-deps
   const [pw, pg] = pick;
-  const { rating, wind, gusts, direction } = breakdown(rider, pw, pg, dir);
+  const { rating, wind, over, gusts, direction } = breakdown(rider, pw, pg, dir);
   const topW = WIND_TOP * unit.perKn;
   const topG = GUST_TOP * unit.perKn;
   const s = width / 400;
@@ -815,10 +762,9 @@ const Together = memo(function Together({ rider, unit, width }: { rider: Rider; 
 
   const sx = left + ((Math.floor(pw / GRID_STEP) * GRID_STEP) / WIND_TOP) * w;
   const sy = h - (((Math.floor(pg / GRID_STEP) + 1) * GRID_STEP) / GUST_TOP) * h;
-  const why = [
-    gusts ? `, gusts −${Number(gusts.toFixed(1))}` : "",
-    direction ? `, direction ${halfStars(direction)}` : "",
-  ].join("");
+  const why = over
+    ? ", gusts over your limit"
+    : [gusts ? `, gusty ${halfStars(gusts)}` : "", direction ? `, direction ${halfStars(direction)}` : ""].join("");
   const axes = [];
   for (let v = 0; v <= topW + 1e-6; v += unit.tick)
     axes.push(
@@ -982,7 +928,6 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: space.xs },
   figs: { flexDirection: "row", flexWrap: "wrap", rowGap: space.sm },
   fig: { width: "50%", gap: space["2xs"] },
-  most: { gap: space.xs },
   band: { height: hitTarget, justifyContent: "center" },
   scale: { position: "absolute", left: 0, opacity: 0.35 },
   span: { position: "absolute", height: 4, backgroundColor: colors.ink },

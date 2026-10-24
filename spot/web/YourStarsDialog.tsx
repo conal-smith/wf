@@ -1,10 +1,11 @@
 /**
  * "Your star rating": a rider sets their own stars, as the owner signed them
  * off in design-system/patterns/your-stars.html. Start from a level; drag the
- * four wind handles and the gusts' two, and pick the most the gusts take off;
- * drag each direction's dot in and out on the beach, offshore up over the sea
- * and onshore down over the land; and see it all together, and against the
- * level, before saving.
+ * four wind handles, the top one the most you can hold, gusts included; drag
+ * each direction's dot in and out on the beach, offshore up over the sea and
+ * onshore down over the land; and see it all together, and against the
+ * level, before saving. The gust curve the pattern draws went with v6 of the
+ * stars (24 October 2026).
  *
  * Everything is kept in knots, as the rating is, and drawn in the rider's
  * unit. The arithmetic is yourStars.ts and force5/src/stars.ts; nothing here
@@ -21,7 +22,6 @@ import {
 import {
   SKILLS,
   SKILL_LABEL,
-  gustLoss,
   savedCustom,
   standardRating,
   windScore,
@@ -47,7 +47,6 @@ import {
   DIRECTION_WORD,
   EXAMPLES,
   GRID_STEP,
-  GUST_KEYS,
   GUST_TOP,
   SHADE,
   WEB_DIRS,
@@ -56,13 +55,10 @@ import {
   WIND_TOP,
   breakdown,
   forceBand,
-  forceGusts,
   forceTicks,
   gridStars,
   halfStars,
   knotsOf,
-  moveGust,
-  moveGustForce,
   moveWind,
   moveWindForce,
   offAt,
@@ -106,14 +102,10 @@ const styles = tv({
       RING,
     ],
     figs: "mt-1 grid grid-cols-4 gap-2 max-wide:grid-cols-2",
-    figsThree: "mt-1 flex flex-wrap gap-2",
     fig: "flex flex-col gap-0.5",
-    figMost: "flex flex-none flex-col gap-0.5 max-wide:basis-full",
-    figGrow: "flex min-w-0 flex-1 flex-col gap-0.5",
     figName: ["text-ink-muted", MONO_LABEL],
     figValue: "font-mono text-figure text-ink tabular-nums",
     figUnit: "font-mono text-label text-ink-muted",
-    most: "self-start",
     // A finger scrolls the page over the web; only one that lands on a dot
     // drags it (the touchstart below holds the page still for that one).
     web: "mx-auto mt-1 block h-auto w-full max-w-96 touch-pan-y select-none",
@@ -181,7 +173,7 @@ export default function YourStarsDialog({
   const unit = unitScale(units);
   // In Force, the handles stand on whole forces from the start.
   const fit = (rating: CustomRating) =>
-    unit.force ? forceGusts(forceBand(rating)) : rating;
+    unit.force ? forceBand(rating) : rating;
   const [draft, setDraft] = useState<CustomRating>(() =>
     fit(savedCustom(rider) ?? standardRating(rider)),
   );
@@ -278,55 +270,6 @@ export default function YourStarsDialog({
           <Fig name="Ideal from" kn={draft.wind.sweetLow} unit={unit} />
           <Fig name="Ideal to" kn={draft.wind.sweetHigh} unit={unit} />
           <Fig name="Maximum" kn={draft.wind.max} unit={unit} />
-        </div>
-      </div>
-
-      <div className={s.block()}>
-        <Kicker as="span" tone="ink">
-          Gusts: stars taken off
-        </Kicker>
-        <GustCurve yours={draft} level={level} unit={unit} />
-        <Legend name={baseName} />
-        <Handles
-          keys={GUST_KEYS}
-          values={draft.gust}
-          top={GUST_TOP}
-          unit={unit}
-          scale="gust"
-          labels={{
-            fine: "Gusts have no effect up to",
-            worst: "Gusts take off the most from",
-          }}
-          spans={[["fine", "worst", "fill"]]}
-          onMove={(key, kn) =>
-            setDraft((d) =>
-              unit.force ? moveGustForce(d, key, kn) : moveGust(d, key, kn),
-            )
-          }
-        />
-        <div className={s.figsThree()}>
-          <Fig name="No effect up to" kn={draft.gust.fine} unit={unit} grow />
-          <Fig name="Most off from" kn={draft.gust.worst} unit={unit} grow />
-          <div className={s.figMost()}>
-            <span className={s.figName()}>Most off</span>
-            <Segmented
-              aria-label="The most the gusts take off"
-              className={s.most()}
-              options={[
-                { value: "1", label: "1★" },
-                { value: "2", label: "2★" },
-                { value: "3", label: "3★" },
-                { value: "5", label: "All" },
-              ]}
-              value={String(draft.gust.most)}
-              onChange={(most) =>
-                setDraft((d) => ({
-                  ...d,
-                  gust: { ...d.gust, most: Number(most) },
-                }))
-              }
-            />
-          </div>
         </div>
       </div>
 
@@ -433,17 +376,14 @@ function Fig({
   name,
   kn,
   unit,
-  grow = false,
 }: {
   name: string;
   kn: number;
   unit: UnitScale;
-  /** In a row that wraps, sharing what the last one leaves. */
-  grow?: boolean;
 }) {
   const s = styles();
   return (
-    <div className={grow ? s.figGrow() : s.fig()}>
+    <div className={s.fig()}>
       <span className={s.figName()}>{name}</span>
       <span className={s.figValue()}>
         {unit.force ? (
@@ -573,66 +513,9 @@ function WindCurve({
   );
 }
 
-/** Stars taken off for each gust speed, 0 to 50 kn, hanging from the top line. */
-function GustCurve({
-  yours,
-  level,
-  unit,
-}: {
-  yours: CustomRating;
-  level: CustomRating;
-  unit: UnitScale;
-}) {
-  const s = styles();
-  const X = (kn: number) => (kn / GUST_TOP) * 400;
-  const Y = (stars: number) => 8 + (stars / 5) * 64;
-  const of = (r: CustomRating) =>
-    line(GUST_TOP, X, (kn) => Y(gustLoss(kn, r.gust)));
-  const mine = of(yours);
-  return (
-    <svg
-      className={s.curve()}
-      viewBox="0 0 400 92"
-      role="img"
-      aria-label="Stars the gusts take off for each gust speed, yours against the level you started from"
-    >
-      {[0, 1, 2, 3, 4, 5].map((n) => (
-        <g key={n}>
-          <line
-            className={s.grid()}
-            x1={0}
-            x2={400}
-            y1={Y(n)}
-            y2={Y(n)}
-            strokeWidth={1}
-          />
-          <text className={s.axis()} x={404} y={Y(n) + 3}>
-            {n ? `−${n}★` : "0"}
-          </text>
-        </g>
-      ))}
-      <polygon className={s.under()} points={`0,${Y(0)} ${mine} 400,${Y(0)}`} />
-      <polyline
-        className={s.base()}
-        points={of(level)}
-        strokeWidth={1.25}
-        strokeDasharray="3 3"
-      />
-      <polyline
-        className={s.yours()}
-        points={mine}
-        strokeWidth={2}
-        strokeLinejoin="round"
-      />
-      <XAxis topKn={GUST_TOP} y={90} unit={unit} />
-    </svg>
-  );
-}
-
 /** The wind's own colours along the knots, as the map's wind layer draws them. */
-const SCALE: Record<"wind" | "gust", string> = {
+const SCALE: Record<"wind", string> = {
   wind: "linear-gradient(to right, var(--color-wind-k00) 0%, var(--color-wind-k05) 12.5%, var(--color-wind-k10) 25%, var(--color-wind-k15) 37.5%, var(--color-wind-k20) 50%, var(--color-wind-k25) 62.5%, var(--color-wind-k30) 75%, var(--color-wind-k35) 87.5%, var(--color-wind-k40) 100%)",
-  gust: "linear-gradient(to right, var(--color-wind-k00) 0%, var(--color-wind-k10) 20%, var(--color-wind-k20) 40%, var(--color-wind-k30) 60%, var(--color-wind-k40) 80%, var(--color-wind-k45) 90%, var(--color-wind-k50) 100%)",
 };
 
 /**
@@ -654,7 +537,7 @@ function Handles<K extends string>({
   values: Record<K, number>;
   top: number;
   unit: UnitScale;
-  scale: "wind" | "gust";
+  scale: "wind";
   labels: Record<K, string>;
   spans: [K, K, "fill" | "edge"][];
   onMove: (key: K, kn: number) => void;
@@ -1102,7 +985,12 @@ function Together({ rider, unit }: { rider: Rider; unit: UnitScale }) {
   const X = (kn: number) => left + (kn / WIND_TOP) * w;
   const Y = (kn: number) => h - (kn / GUST_TOP) * h;
   const [pw, pg] = pick;
-  const { rating, wind, gusts, direction } = breakdown(rider, pw, pg, dir);
+  const { rating, wind, over, gusts, direction } = breakdown(
+    rider,
+    pw,
+    pg,
+    dir,
+  );
   const topW = WIND_TOP * unit.perKn;
   const topG = GUST_TOP * unit.perKn;
 
@@ -1142,10 +1030,12 @@ function Together({ rider, unit }: { rider: Rider; unit: UnitScale }) {
   const sx = left + ((Math.floor(pw / GRID_STEP) * GRID_STEP) / WIND_TOP) * w;
   const sy =
     h - (((Math.floor(pg / GRID_STEP) + 1) * GRID_STEP) / GUST_TOP) * h;
-  const why = [
-    gusts ? `, gusts −${Number(gusts.toFixed(1))}` : "",
-    direction ? `, direction ${halfStars(direction)}` : "",
-  ].join("");
+  const why = over
+    ? ", gusts over your limit"
+    : [
+        gusts ? `, gusty ${halfStars(gusts)}` : "",
+        direction ? `, direction ${halfStars(direction)}` : "",
+      ].join("");
   const axes = [];
   // In Force, a tick where each force starts, named by it.
   if (unit.force) {

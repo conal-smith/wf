@@ -100,6 +100,12 @@ describe("riderFrom", () => {
       DEFAULT_RIDER,
     );
   });
+  it("carries how much gusty wind bothers the rider, some left out", () => {
+    expect(riderFrom({ ...DEFAULT_RIDER, gusty: "lots" }).gusty).toBe("lots");
+    expect(riderFrom({ ...DEFAULT_RIDER, gusty: "some" })).toEqual(
+      DEFAULT_RIDER,
+    );
+  });
 });
 
 describe("dublinDayStart", () => {
