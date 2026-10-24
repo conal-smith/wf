@@ -385,6 +385,24 @@ table.tt {
   font: italic 13px var(--font-body);
   color: var(--color-ink-muted);
 }
+/* The tide, a faint blue backdrop behind the figures, with no words on it:
+   under the table, as the line at now is, so the figures stay on top of it. */
+.tide-band {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.tide-fill {
+  fill: color-mix(in srgb, var(--color-depth) 11%, transparent);
+}
+.tide-line {
+  fill: none;
+  stroke: var(--map-tide);
+  stroke-width: 1.2;
+  opacity: 0.5;
+}
 .tt-pen {
   position: absolute;
   left: 0;
@@ -590,7 +608,8 @@ table.tt {
   border-top: 1px solid var(--color-line);
 }
 /* One line across the hours (a row no model reaches, or why a point has
-   none), held at the left of the view: from the first column it scrolled away with them, and opening at the hour
+   none), held at the left of the view as the tide's reason is (.tide-none):
+   from the first column it scrolled away with them, and opening at the hour
    left the sea's old "14.6 °C measured · M2 buoy" as "2 buoy". */
 .tt td.more-note {
   overflow: clip;

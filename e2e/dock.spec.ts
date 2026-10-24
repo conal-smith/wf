@@ -23,10 +23,9 @@ const harmonie = readSample("harmonie");
 // the link. The map opens on no spot (e2e/no-spot.spec.ts).
 
 /**
- * A tide fixture, so Brandon Bay has a station whether or not
- * `public/marine` has been generated locally (it is git-ignored), and the
- * dock is seen to draw none of it: a plain semidiurnal curve, with its highs
- * and lows where the curve turns.
+ * A tide fixture, so the tide row is tested the same way whether or not
+ * `public/marine` has been generated locally (it is git-ignored): a plain
+ * semidiurnal curve, with its highs and lows where the curve turns.
  */
 const STEP_MINUTES = 30;
 const FROM = "2026-09-13T00:00:00Z";
@@ -241,10 +240,12 @@ test("the week is one strip of hours round the clock, with no day slider over it
     page.locator(".dock tr.tt-from td .g-arrow").first(),
   ).toBeVisible();
   await expect(page.locator(".dock tr.tt-from")).not.toContainText(/[NSEW]/);
-  // No tide, though the spot has a station: drawn behind the figures it got
-  // in their way, and the spot's page has it, times and heights.
+  // The tide is a faint backdrop behind the figures, its own row gone and
+  // no word on it: the turns' times and heights are the spot page's.
   await expect(page.locator(".dock tr.tt-tide")).toHaveCount(0);
-  await expect(page.locator(".dock")).not.toContainText(/\b(HW|LW)\b/);
+  const tide = page.locator(".dock .tide-band");
+  await expect(tide.locator(".tide-line").first()).toBeAttached();
+  await expect(tide.locator("text, title, circle")).toHaveCount(0);
   // The time is a slider still, for the keys and a screen reader, named
   // by its day and hour; on the screen it is the pen's frame round an hour.
   await expect(slider(page)).toHaveAttribute(
@@ -905,7 +906,10 @@ test("the blend draws every model that covers the spot, on the strip's hours", a
   const chart = page.locator(".dock .blend-chart");
   await expect(chart).toBeVisible();
   expect(await chart.locator(".model-line").count()).toBeGreaterThan(3);
-  // The chart's label column is its unit and its scale, without a name.
+  // The tide is not drawn behind it, where its curve would read as one more
+  // model's line. The chart's label column is its unit and its scale,
+  // without a name.
+  await expect(page.locator(".dock .tide-band")).toHaveCount(0);
   const scale = page.locator(".dock .dk-lab-blend");
   await expect(scale).toContainText("kn");
   await expect(scale.locator("b").first()).toHaveText(/^\d+$/);
@@ -1490,7 +1494,7 @@ test("waves, sky, air and rain are one tap away, and stay open", async ({
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
 });
 
-test("on a phone, the rows below the fold keep their units beside their glyphs", async ({
+test("on a phone, the rows under the tide keep their units beside their glyphs", async ({
   page,
 }) => {
   await withTides(page);
@@ -1724,7 +1728,7 @@ const SPOT_AT: Record<string, [number, number]> = {
   seapoint: [53.2973278, -6.1588509],
 };
 
-test("a point tapped off Dublin Bay reads wind, waves and weather, and no blend", async ({
+test("a point tapped off Dublin Bay reads wind, waves, weather and its nearest station's tide, and no blend", async ({
   page,
 }) => {
   // A tap, then two runs' frames read at the point one file at a time: on a
@@ -1759,6 +1763,10 @@ test("a point tapped off Dublin Bay reads wind, waves and weather, and no blend"
   await expect
     .poll(() => dock.locator("tr.tt-wind td .kn").count(), { timeout: 30000 })
     .toBeGreaterThan(5);
+  // The tide, the nearest station's, behind the figures.
+  await expect(dock.locator(".tide-band .tide-line").first()).toBeAttached({
+    timeout: 15000,
+  });
   // The strip's columns past HARMONIE's run are ECMWF's, as a spot's are.
   // The point used to read the map's own run alone, and left every one of
   // them empty.
@@ -2022,4 +2030,23 @@ test.describe("on a phone", () => {
       hour!,
     );
   });
+});
+
+test("on a phone, the figures are painted over the tide", async ({ page }) => {
+  await withTides(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/?spot=brandon");
+  const dock = page.locator(".dock");
+  await expect(dock.locator(".tide-band .tide-line").first()).toBeAttached({
+    timeout: 30000,
+  });
+  // The table comes after the tide, so its figures stand over the curve.
+  const after = await page.evaluate(() => {
+    const band = document.querySelector(".dock .tide-band")!;
+    const table = document.querySelector(".dock table.tt")!;
+    return !!(
+      band.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING
+    );
+  });
+  expect(after).toBe(true);
 });
