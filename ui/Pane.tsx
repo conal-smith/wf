@@ -5,25 +5,30 @@ export const paneStyles = tv({
   base: "rounded-surface p-5 text-ink",
   variants: {
     kind: {
-      // A box ruled in ink, on paper with its grain.
-      card: "border border-ink bg-card paper-grain",
+      // A card on the page: ruled in ink with the hairline inside, on paper
+      // with its grain, a box's corner, and only a contact shadow under it.
+      card: "border border-ink bg-card paper-grain inset-shadow-frame shadow-card",
       // The paper's second sheet, with no rule: a well, an aside.
       sunken: "bg-sunken",
       /*
        * The broadsheet's section: a heavy rule above, nothing at the sides,
        * and no inset of its own, so it lines up with the column it is in.
-       * Most of a page is this rather than a box.
+       * Most of a page is this rather than a box. A print rule: square, and
+       * no shadow.
        */
-      ruled: "border-t-2 border-ink px-0 pt-3 pb-0",
+      ruled: "rounded-none border-t-2 border-ink px-0 pt-3 pb-0",
     },
-    /** A second rule inside the first: the chart's box, for one that matters. */
+    /**
+     * The hairline inside the rule. A card has it already; this is for a
+     * sunken pane that is to read as a box.
+     */
     double: { true: "inset-shadow-frame" },
     /**
      * A pane that stands on the page on its own, rather than sitting in a
-     * column of panes: it lifts off the paper a little, and takes the wider
-     * inset where the width is there to pay for it.
+     * column of panes: it takes the wider inset where the width is there to
+     * pay for it. It is still a card: it casts the contact shadow, no more.
      */
-    standing: { true: "p-6 shadow-surface max-wide:p-5" },
+    standing: { true: "p-6 shadow-card max-wide:p-5" },
   },
   defaultVariants: { kind: "card" },
 });

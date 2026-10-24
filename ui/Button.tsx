@@ -9,9 +9,12 @@ import { DISABLED, HOVER, RING, tv, type VariantProps } from "./tv";
 /*
  * Every button speaks in the mono label: tracked capitals in IBM Plex Mono,
  * as the chart's own controls do. The shapes are the chart's too: a capsule
- * ruled in ink, filled in ink when it is the one action, and a square box for
- * an instrument laid over the map.
+ * ruled in ink, filled in ink when it is the one action, and a raised paper
+ * button for an instrument laid over the map. A filled ink control carries
+ * the ink sheen, a raised one the paper's; both nudge down a pixel when
+ * pressed. Nothing larger than a control is lit.
  */
+const NUDGE = "not-disabled:active:translate-y-px";
 export const buttonStyles = tv({
   base: [
     "inline-flex shrink-0 items-center justify-center gap-1.5 border border-transparent bg-transparent",
@@ -28,9 +31,10 @@ export const buttonStyles = tv({
       // The one filled control: an ink pill, magenta under the pointer. A
       // view has one of these, or none.
       primary: [
-        "rounded-full border-accent bg-accent text-accent-ink",
-        "not-disabled:hover:border-accent-hover not-disabled:hover:bg-accent-hover",
-        "disabled:border-line disabled:bg-sunken",
+        "rounded-full border-accent bg-accent sheen-ink text-accent-ink shadow-control",
+        "not-disabled:hover:border-accent-hover not-disabled:hover:bg-accent-hover not-disabled:hover:bg-none",
+        "disabled:border-line disabled:bg-sunken disabled:bg-none disabled:shadow-none",
+        NUDGE,
       ],
       // A capsule ruled in ink, which turns to ink under the pointer.
       pill: [
@@ -39,14 +43,16 @@ export const buttonStyles = tv({
         "disabled:border-line disabled:bg-transparent",
       ],
       /*
-       * The chart's instrument: a square box ruled in ink, for a control laid
-       * over the moving map (the site menu, zoom, layers), where a capsule
-       * among the coastlines would read as one more shape on the chart. It
-       * casts no shadow of its own; the frame it stands in has one.
+       * The chart's instrument: a raised paper button ruled in ink, for a
+       * control laid over the moving map or heading a page (the site menu),
+       * lit from above with a lip and a contact shadow of its own. A
+       * control's corner with words in it; round with an icon.
        */
       raised: [
-        "rounded-none border-ink bg-card",
-        "not-disabled:hover:bg-inverse not-disabled:hover:text-ink-inverse disabled:bg-transparent",
+        "rounded-control border-ink bg-card sheen-raised shadow-raised",
+        "not-disabled:hover:bg-inverse not-disabled:hover:sheen-ink not-disabled:hover:text-ink-inverse not-disabled:hover:shadow-control",
+        "disabled:bg-transparent disabled:bg-none disabled:shadow-none",
+        NUDGE,
       ],
       // A way back or on, in the label face, underlined in ink: "<- Chart".
       // A hover names its own background even where it wants none: the
@@ -70,7 +76,12 @@ export const buttonStyles = tv({
     icon: { true: "rounded-full p-0 pointer-coarse:min-w-touch" },
     pressed: {
       // Filled in ink as well as recoloured, and heavier: never colour alone.
-      true: "border-ink bg-inverse font-semibold text-ink-inverse shadow-control not-disabled:hover:bg-inverse disabled:bg-sunken",
+      // The ink has its sheen and its lip, so it reads as pressed in.
+      true: [
+        "border-ink bg-inverse sheen-ink font-semibold text-ink-inverse shadow-control not-disabled:hover:bg-inverse",
+        "disabled:bg-sunken disabled:bg-none disabled:shadow-none",
+        NUDGE,
+      ],
       /*
        * A toggle that renames itself when it goes on — Save becomes Saved, the
        * heart beside it filled in — has already said so twice, in the word and
@@ -84,8 +95,8 @@ export const buttonStyles = tv({
     { icon: true, size: "sm", class: "w-control-sm" },
     { icon: true, size: "md", class: "w-control-md" },
     { icon: true, size: "lg", class: "w-control-lg" },
-    // The instrument stays square with an icon in it.
-    { icon: true, variant: "raised", class: "rounded-none" },
+    // The instrument is round with an icon in it: the round menu button.
+    { icon: true, variant: "raised", class: "rounded-full" },
     /*
      * A link in running text: no box of its own, whatever size was asked for.
      * A thumb still gets a touch-tall target: on a coarse pointer an invisible

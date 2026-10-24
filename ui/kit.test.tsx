@@ -300,13 +300,35 @@ describe("S3: the chart's shapes", () => {
       expect(primary).toContain(name);
   });
 
-  it("the instrument over the map is a square ink box, icon or not", () => {
+  it("the instrument is a raised paper button: a control's corner, round with an icon", () => {
     for (const icon of [false, true]) {
       const raised = buttonStyles({ variant: "raised", icon }).split(" ");
-      expect(raised, String(icon)).toContain("rounded-none");
-      expect(raised, String(icon)).not.toContain("rounded-full");
-      expect(raised, String(icon)).toContain("border-ink");
+      expect(raised, String(icon)).toContain(
+        icon ? "rounded-full" : "rounded-control",
+      );
+      expect(raised, String(icon)).not.toContain("rounded-none");
+      for (const name of ["border-ink", "sheen-raised", "shadow-raised"])
+        expect(raised, String(icon)).toContain(name);
     }
+  });
+
+  it("a pressed or filled ink control carries the ink's sheen and nudges when pressed", () => {
+    for (const classes of [
+      buttonStyles({ pressed: true }),
+      buttonStyles({ variant: "primary" }),
+    ]) {
+      const list = classes.split(" ");
+      for (const name of [
+        "sheen-ink",
+        "shadow-control",
+        "not-disabled:active:translate-y-px",
+        "disabled:bg-none",
+      ])
+        expect(list).toContain(name);
+    }
+    // A quiet, pill or link button is not lit.
+    for (const variant of ["quiet", "pill", "link"] as const)
+      expect(buttonStyles({ variant })).not.toMatch(/(^| )sheen-/);
   });
 
   it("a chip is a mono tag on the paper's second sheet, ruled with a hairline", () => {
@@ -327,14 +349,15 @@ describe("S3: the chart's shapes", () => {
     expect(chipStyles()).not.toContain("glass");
   });
 
-  it("a surface is the chart's box: paper with grain in a double rule", () => {
+  it("a surface is the chart's box: lit paper, the ink rule and its hairline, floating", () => {
     const surface = surfaceStyles().split(" ");
     for (const name of [
       "bg-card",
-      "paper-grain",
+      "paper-float",
       "border-ink",
       "inset-shadow-frame",
       "rounded-surface",
+      "shadow-float",
     ])
       expect(surface).toContain(name);
     expect(surfaceStyles({ rule: "single" })).not.toContain(
@@ -447,13 +470,27 @@ describe("S4: states", () => {
   });
 
   // A pane that is the page's own box rather than one of a column of them.
-  it("a standing pane lifts off the ground and takes the wider inset", () => {
+  it("a standing pane takes the wider inset, and is still a card", () => {
     const standing = paneStyles({ standing: true }).split(" ");
-    for (const name of ["p-6", "shadow-surface", "max-wide:p-5"])
+    for (const name of ["p-6", "shadow-card", "max-wide:p-5"])
       expect(standing).toContain(name);
     expect(standing).not.toContain("p-5");
     expect(paneStyles().split(" ")).toContain("p-5");
-    expect(paneStyles()).not.toContain("shadow-surface");
+  });
+
+  it("a card pane has the ink rule, its hairline and a contact shadow; a ruled one is square and bare", () => {
+    const card = paneStyles().split(" ");
+    for (const name of [
+      "rounded-surface",
+      "border-ink",
+      "inset-shadow-frame",
+      "shadow-card",
+    ])
+      expect(card).toContain(name);
+    const ruled = paneStyles({ kind: "ruled" }).split(" ");
+    expect(ruled).toContain("rounded-none");
+    expect(ruled.some((c) => c.startsWith("shadow-"))).toBe(false);
+    expect(ruled).not.toContain("inset-shadow-frame");
   });
 
   it("hover and disabled are written for every button", () => {

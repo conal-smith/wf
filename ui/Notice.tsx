@@ -5,7 +5,9 @@ import { tv, type VariantProps } from "./tv";
 export const noticeStyles = tv({
   slots: {
     // Set off as the broadsheet sets off a note: a heavy rule down its edge.
-    base: "flex items-start gap-3 border-l-3 px-4 py-3 font-body text-prose",
+    // The rule is print and stays square; the far side takes a control's
+    // corner.
+    base: "flex items-start gap-3 rounded-r-control border-l-3 px-4 py-3 font-body text-prose",
     icon: "mt-0.5 shrink-0",
     body: "min-w-0",
   },

@@ -76,18 +76,18 @@ describe("on the chart", () => {
   /*
    * The trigger is the kit's own button, not one that looks like it: every
    * class of the kit's (its hover and ring included), and only the menu's
-   * hit band on top. On a page's masthead it is the square ink box laid over
-   * the map; on the chart it stands inside the head's own box, and is the
-   * kit's quiet button, so there is no box in a box.
+   * hit band on top. On either ground it is the round menu button: the
+   * kit's raised paper button with an icon in it (mixed and rounded,
+   * 2026-10-24).
    */
-  it("draws the trigger as exactly the kit's button: bare on the chart, the square instrument on a page", () => {
+  it("draws the trigger as exactly the kit's button: the round raised menu button on either ground", () => {
     const classOf = (markup: string) =>
       markup
         .match(/<button[^>]*\bclass="([^"]+)"/)?.[1]
         .split(" ")
         .sort();
     const cases = [
-      [{ current: "map", size: "md", ground: "map" }, "md", "quiet"],
+      [{ current: "map", size: "md", ground: "map" }, "md", "raised"],
       [{ current: "market", size: "sm", ground: "content" }, "sm", "raised"],
     ] as const;
     for (const [props, size, variant] of cases) {
@@ -102,11 +102,8 @@ describe("on the chart", () => {
       expect(drawn, props.ground).toContain(
         "not-disabled:focus-visible:outline-focus",
       );
-      const box = ["rounded-none", "border-ink", "bg-card"];
-      for (const name of box)
-        if (variant === "raised")
-          expect(drawn, `${props.ground} ${name}`).toContain(name);
-        else expect(drawn, `${props.ground} ${name}`).not.toContain(name);
+      for (const name of ["rounded-full", "border-ink", "sheen-raised"])
+        expect(drawn, `${props.ground} ${name}`).toContain(name);
     }
   });
 
@@ -125,8 +122,10 @@ describe("on the chart", () => {
         "animate-menu-in",
         "motion-reduce:animate-none",
         "bg-card",
-        "paper-grain",
+        "paper-float",
         "inset-shadow-frame",
+        "shadow-float",
+        "rounded-dialog",
         "absolute",
         "top-full",
         "mt-2",

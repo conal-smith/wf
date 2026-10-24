@@ -47,9 +47,10 @@ export const siteMenuStyles = tv({
       "pointer-coarse:after:h-touch pointer-coarse:after:-translate-y-1/2",
     ],
     // The chart's box, hung below the trigger by a gap from its leading
-    // edge, padded tight so the rows carry the padding.
+    // edge, padded tight so the rows carry the padding. A menu is a sheet,
+    // so it takes a sheet's corner; it floats as a box over the chart does.
     panel: [
-      "absolute top-full left-0 z-panel mt-2 min-w-60 p-2",
+      "absolute top-full left-0 z-panel mt-2 min-w-60 rounded-dialog p-2",
       "animate-menu-in motion-reduce:animate-none",
     ],
     list: "m-0 flex list-none flex-col p-0",
@@ -124,10 +125,10 @@ export function SiteMenu({
   /** The trigger's control height, so it sits in scale with its neighbours. */
   size = "md",
   /**
-   * What the menu stands on: the moving map, or a page's masthead. On the
-   * map the trigger stands inside the head's own box, and is drawn bare
-   * rather than a box in a box; on a page it is the chart's square
-   * instrument. The panel is the chart's double-ruled box either way.
+   * What the menu stands on: the moving map, or a page's masthead. The
+   * trigger is the round menu button either way: the kit's raised paper
+   * button, lit from above, inside the head's box on the map and on the
+   * masthead on a page. The panel is the chart's box either way.
    */
   ground = "map",
   /**
@@ -210,7 +211,7 @@ export function SiteMenu({
     >
       <Button
         ref={trigger}
-        variant={ground === "map" ? "quiet" : "raised"}
+        variant="raised"
         size={size}
         icon
         className={styles.trigger()}

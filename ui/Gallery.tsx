@@ -161,8 +161,8 @@ export default function Gallery() {
             <Swatch key={name} name={name} fill={fill} />
           ))}
         </div>
-        <Row label="the double rule, the hairline, the hatch of the dark">
-          <span className="block h-16 w-32 border border-ink bg-card inset-shadow-frame" />
+        <Row label="a card's edge, the double rule, the hairline, the hatch of the dark">
+          <span className="block h-16 w-32 rounded-surface border border-ink bg-card inset-shadow-frame shadow-card" />
           <span className="block h-16 w-32 border-0 border-t-3 border-double border-ink" />
           <span className="block h-16 w-32 border-b border-line" />
           <span className="block h-16 w-32 border border-line hatch" />
@@ -448,15 +448,15 @@ export default function Gallery() {
       <Section title="Pane and Surface">
         <div className="flex flex-wrap gap-4">
           <Pane className="min-w-72 flex-1">
-            <p className="m-0">Pane, card: one ink rule</p>
+            <p className="m-0">Pane, card: the ink rule and its hairline</p>
           </Pane>
-          <Pane double className="min-w-72 flex-1">
-            <p className="m-0">Pane, double: the chart's box</p>
+          <Pane kind="sunken" double className="min-w-72 flex-1">
+            <p className="m-0">Pane, sunken and framed</p>
           </Pane>
           <Pane kind="sunken" className="min-w-72 flex-1">
             <p className="m-0">Pane, sunken</p>
           </Pane>
-          <Pane standing double className="min-w-72 flex-1">
+          <Pane standing className="min-w-72 flex-1">
             <p className="m-0">Pane, standing</p>
           </Pane>
           <Pane kind="ruled" className="min-w-72 flex-1">

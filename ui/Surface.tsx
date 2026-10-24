@@ -3,15 +3,16 @@ import { tv, type VariantProps } from "./tv";
 
 export const surfaceStyles = tv({
   base: [
-    // Paper, opaque, with its grain: over a moving map a translucent panel
-    // is a second, blurred map, and the chart draws its boxes solid.
-    "rounded-surface border border-ink bg-card paper-grain p-5 text-ink shadow-surface",
+    // Paper, opaque, with its grain and the faintest light from above: over
+    // a moving map a translucent panel is a second, blurred map, and the
+    // chart draws its boxes solid. A box's corner, and it floats.
+    "rounded-surface border border-ink bg-card paper-float p-5 text-ink shadow-float",
   ],
   variants: {
     /*
-     * The chart's box is a double rule: the border, three of paper, and a
-     * second line inside it. `single` for a box that sits inside another, or
-     * one small enough that two lines would be most of it.
+     * The chart's box is the ink rule with a hairline just inside it: the
+     * border, two of paper, and the hairline. `single` for a box that sits
+     * inside another, or one small enough that two lines would be most of it.
      */
     rule: {
       double: "inset-shadow-frame",
