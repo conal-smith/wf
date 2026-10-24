@@ -5,6 +5,7 @@ import {
   expect,
   menuRow,
   openFromMenu,
+  setRider,
   steadyFrames,
   test,
   type Locator,
@@ -510,7 +511,7 @@ test("the spot's tools stand on the chart over the dock, and no day is rated", a
   // page), the blend, the fold and the close, in a box on the chart at the
   // dock's top edge. The dock under it is its rows.
   const tools = page.getByRole("group", { name: "This spot" });
-  await expect(tools).toHaveText(/^Brandon BayBlend$/);
+  await expect(tools).toHaveText(/^Brandon BayLayersBlend$/);
   const box = (await tools.boundingBox())!;
   const dock = (await page.locator(".dock").boundingBox())!;
   expect(box.y + box.height).toBeLessThanOrEqual(dock.y);
@@ -519,7 +520,12 @@ test("the spot's tools stand on the chart over the dock, and no day is rated", a
   await expect(
     tools.getByRole("button", { name: "About these figures" }),
   ).toHaveCount(0);
-  for (const name of ["Star Brandon Bay", "Blend", "Show waves, sky and sea"])
+  for (const name of [
+    "Star Brandon Bay",
+    "Layers",
+    "Blend",
+    "Show waves, sky and sea",
+  ])
     await expect(tools.getByRole("button", { name })).toBeVisible();
   await expect(tools.getByRole("button", { name: "Blend" })).toHaveAttribute(
     "aria-pressed",
@@ -602,7 +608,7 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   await expect(panel).toContainText("Tap the red star");
 });
 
-test("units, the rider and the blend's models are display options, kept on reload", async ({
+test("units and the blend's models are display options, kept on reload; the rider is Customise's", async ({
   page,
 }) => {
   await openDock(page);
@@ -611,12 +617,28 @@ test("units, the rider and the blend's models are display options, kept on reloa
   const before = await wing();
   // From the map's controls now, not the dock's head.
   await openFromMenu(page, "Display options");
+  const options = page.locator("#map-options");
+  // No weight, no level and no way to the rider's own stars: those are
+  // Customise's, from the site menu.
+  await expect(options.locator('[data-rider="weight"]')).toHaveCount(0);
+  await expect(
+    options.getByRole("group", { name: "Riding level" }),
+  ).toHaveCount(0);
+  await expect(
+    options.getByRole("button", { name: /^(Customise|Edit custom)$/ }),
+  ).toHaveCount(0);
+  await expect(options.getByRole("heading")).toContainText([
+    "Units",
+    "Model",
+    "Models in the blend",
+  ]);
   await page.locator('[data-units="m/s"]').click();
-  await page.locator('input[data-rider="weight"]').fill("100");
-  await page.locator('[data-skill="beginner"]').click();
   await page.locator('input[data-model-toggle="gfs"]').uncheck();
   await closePanel(page);
   await expect(page.locator(".dk-labs")).toContainText("m/s");
+  // A heavier learner, as Customise saves one, takes a bigger wing for the
+  // same wind, hour by hour.
+  await setRider(page, { weightKg: 100, skill: "beginner" });
   // A heavier learner takes a bigger wing for the same wind, hour by hour.
   await expect
     .poll(async () => {
@@ -639,10 +661,6 @@ test("units, the rider and the blend's models are display options, kept on reloa
   });
   await openFromMenu(page, "Display options");
   await expect(page.locator('[data-units="m/s"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(page.locator('[data-skill="beginner"]')).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -844,12 +862,12 @@ test("the display options open over the dimmed map from the site menu, one panel
   await openDock(page);
   const trigger = page.getByRole("button", { name: "Site menu" });
   const panel = page.locator("#map-options");
-  // The map's controls are zoom alone; the options are in the menu, under
-  // your spots and over the map's information.
+  // The map's controls are zoom and the layers; the options are in the
+  // menu, under your spots and over the map's information.
   const names = await page
     .locator(".zbox button")
     .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-  expect(names).toEqual(["Zoom in", "Zoom out"]);
+  expect(names).toEqual(["Zoom in", "Zoom out", "Layers"]);
   await expect(page.locator(".dock").getByLabel("Display options")).toHaveCount(
     0,
   );
@@ -981,6 +999,7 @@ test("on a phone the dock is a sheet: its head in it, then its hours, under a si
   await expect(page.locator(".dock .dk-fold")).toHaveCount(0);
   for (const name of [
     "Star Brandon Bay",
+    "Layers",
     "Blend",
     "Show waves, sky and sea",
     "Close the forecast for Brandon Bay",

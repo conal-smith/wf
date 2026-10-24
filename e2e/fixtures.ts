@@ -128,6 +128,22 @@ export async function backToIreland(page: Page) {
   });
 }
 
+/**
+ * Change the stored rider in the page and say so, as Customise does on Save:
+ * the display options no longer set the rider's weight or level.
+ */
+export async function setRider(page: Page, rider: Record<string, unknown>) {
+  await page.evaluate((rider) => {
+    const key = "force5.prefs.v1";
+    const prefs = JSON.parse(localStorage.getItem(key) ?? "{}");
+    localStorage.setItem(
+      key,
+      JSON.stringify({ ...prefs, rider: { ...prefs.rider, ...rider } }),
+    );
+    dispatchEvent(new CustomEvent("wingfoil:prefs", { detail: "device" }));
+  }, rider);
+}
+
 export { expect } from "@playwright/test";
 export type { Locator, Page } from "@playwright/test";
 

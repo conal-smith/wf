@@ -118,8 +118,6 @@ const MapInfo = lazy(() => import("./MapInfo"));
 const Companion = lazy(() =>
   import("../companion/web/Companion").then((m) => ({ default: m.Companion })),
 );
-// A rider's own star rating, set in a dialog of its own, only when asked for.
-const YourStarsDialog = lazy(() => import("../spot/web/YourStarsDialog"));
 // The account's copy of the rider, on a device that has signed in before.
 const AccountRider = lazy(() => import("../shared/web/AccountRider"));
 /** The LiDAR layer's key: with the map's information, and only its part. */
@@ -130,12 +128,7 @@ const Customise = lazy(() => import("./Customise"));
 const Tour = lazy(() => import("./Tour"));
 const TourPrompt = lazy(() => import("./TourPrompt"));
 import type { MapAction } from "../companion/shared/protocol";
-import {
-  parseRider,
-  withCustomStars,
-  withRiderModel,
-} from "../force5/src/prefs";
-import type { CustomRating } from "../force5/src/stars";
+import { parseRider, withRiderModel } from "../force5/src/prefs";
 import {
   announcePrefs,
   onPrefsChange,
@@ -173,6 +166,8 @@ const WIND_KEY = "wingfoil.map.wind.v1";
 const LAYERS_KEY = "wingfoil.map.layers.v1";
 const FOCUS_KEY = "wingfoil.map.focus.v1";
 const MORE_KEY = "wingfoil.map.more.v1";
+/** The layers' rail, open or shut on this device. */
+const RAIL_KEY = "wingfoil.map.rail.v1";
 /** The focus is on the point tapped on the map, not a riding place. */
 const AT_POINT = "@point";
 /**
@@ -206,6 +201,8 @@ interface Picked {
 const degrees = (lat: number, lon: number) =>
   `${Math.abs(lat).toFixed(2)}° ${lat < 0 ? "S" : "N"}, ${Math.abs(lon).toFixed(2)}° ${lon < 0 ? "W" : "E"}`;
 const PHONE = "(max-width: 720px)";
+/** Room, and a fine pointer, for the layers' rail (src/LayerRail.tsx). */
+const DESKTOP = "(hover: hover) and (pointer: fine) and (min-width: 721px)";
 
 const store = {
   get(key: string): string | null {
@@ -287,18 +284,6 @@ export default function App() {
     setPrefs(next);
     savePrefs(next);
   };
-  // The rider's own star rating: the dialog, once opened, stays mounted so
-  // it can hand the focus back as it closes.
-  const [starsOpen, setStarsOpen] = useState(false);
-  const [starsWanted, setStarsWanted] = useState(false);
-  const openStars = () => {
-    setStarsWanted(true);
-    setStarsOpen(true);
-  };
-  const setCustomStars = (custom: CustomRating | null) => {
-    changePrefs(withCustomStars(prefs, custom));
-    announcePrefs("device");
-  };
   const [syncAccount] = useState(
     () => signedInHint() || Boolean(import.meta.env.VITE_MARKET_DEV_USER),
   );
@@ -335,6 +320,17 @@ export default function App() {
   };
   /** The layers, your spots or the display options, in a dialog over the map. */
   const [panel, setPanel] = useState<MapPanel>(null);
+  // The layers' rail: on a desktop, where it fits above the dock, Layers
+  // opens and shuts it, and this device keeps it as it was left; else
+  // Layers opens the panel.
+  const desktop = useMedia(DESKTOP);
+  const [railOpen, setRailOpen] = useState(() => store.get(RAIL_KEY) === "1");
+  const [railFits, setRailFits] = useState(true);
+  const pressLayers = () => {
+    if (!desktop || !railFits) return setPanel("layers");
+    setRailOpen(!railOpen);
+    store.set(RAIL_KEY, railOpen ? "0" : "1");
+  };
   /** The information dialog's part to open at, or null while it is shut. */
   const [info, setInfo] = useState<InfoSection | null>(null);
   /** The part it is drawn at: kept while it fades out, once shut. */
@@ -1654,6 +1650,11 @@ export default function App() {
               onZoomOut={() => controls.current?.zoomOut()}
               open={panel}
               onOpen={setPanel}
+              desktop={desktop}
+              rail={desktop && railOpen && railFits}
+              onLayers={pressLayers}
+              onRailFits={setRailFits}
+              layoutKey={`${dockOpen ? dockHeight : 0}`}
               spots={() => (
                 <SidePanel
                   spots={spotById}
@@ -1671,21 +1672,11 @@ export default function App() {
                   onToggleStar={(id) => fav.toggle(id)}
                 />
               )}
-              options={(close) => (
+              options={() => (
                 <Suspense fallback={null}>
                   <DisplayFilter
                     prefs={prefs}
                     onChange={changePrefs}
-                    onCustomiseStars={() => {
-                      close();
-                      openStars();
-                    }}
-                    onStarsOn={(next) => {
-                      changePrefs(next);
-                      // On or off the rider's own: the account keeps that.
-                      if (next.starsUpdatedAt !== prefs.starsUpdatedAt)
-                        announcePrefs("device");
-                    }}
                     models={models.filter(
                       (model) => model.entry.kind === "wind",
                     )}
@@ -1849,7 +1840,8 @@ export default function App() {
                   onSelect={(at) => selectColumn(at)}
                   now={clockNow}
                   prefs={prefs}
-                  onCustomStars={openStars}
+                  layersOpen={desktop && railOpen && railFits}
+                  onLayers={pressLayers}
                   models={models}
                   onWantModels={() => setWantModels(true)}
                   starred={
@@ -1873,24 +1865,6 @@ export default function App() {
             </div>
           </section>
         </main>
-      )}
-      {starsWanted && (
-        <Suspense fallback={null}>
-          <YourStarsDialog
-            open={starsOpen}
-            rider={prefs.rider}
-            units={prefs.units}
-            onClose={() => setStarsOpen(false)}
-            onSave={(custom) => {
-              setCustomStars(custom);
-              setStarsOpen(false);
-            }}
-            onDelete={() => {
-              setCustomStars(null);
-              setStarsOpen(false);
-            }}
-          />
-        </Suspense>
       )}
       {syncAccount && (
         <Suspense fallback={null}>

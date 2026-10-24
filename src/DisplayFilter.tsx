@@ -4,12 +4,7 @@ import {
   modelHue,
   type ModelAvailability,
 } from "../force5/src/manifests";
-import {
-  parseRider,
-  withRiderModel,
-  withStarsOn,
-  type Prefs,
-} from "../force5/src/prefs";
+import { parseRider, withRiderModel, type Prefs } from "../force5/src/prefs";
 import {
   FALLBACK_MODEL,
   STARS_MODELS,
@@ -20,20 +15,11 @@ import { modelEntry } from "../force5/src/catalog";
 import { upwindAngle } from "../force5/src/rideWedge";
 import { UNITS, type Units } from "../force5/src/units";
 import {
-  ESTIMATE_WEIGHT_KG,
-  MAX_WEIGHT_KG,
-  MIN_WEIGHT_KG,
   POINTINGS,
   POINTING_LABEL,
-  SKILLS,
-  SKILL_LABEL,
-  savedCustom,
-  starsOn,
   type Pointing,
   type Rider,
-  type StarsOn,
 } from "../force5/src/stars";
-import { Button } from "../ui/Button";
 import { Segmented } from "../ui/Segmented";
 
 interface Props {
@@ -41,28 +27,16 @@ interface Props {
   onChange: (prefs: Prefs) => void;
   /** Live wind models and whether their manifest answered. */
   models: readonly ModelAvailability[];
-  /** Open "Your star rating", to make one or to change the rider's own. */
-  onCustomiseStars: () => void;
-  /**
-   * A level picked, or the rider's own rating: a change to the preferences
-   * the account may keep (force5/src/prefs.ts `withStarsOn`).
-   */
-  onStarsOn: (prefs: Prefs) => void;
 }
 
 /**
- * The display options: the units, the rider, their model and the blend's
- * models. In a
- * dialog over the map, as the layers and your spots are, and shut the same
- * ways (src/MapControls.tsx): its X, Escape or a tap on the backdrop.
+ * The display options: the units, the model and the blend's models. The
+ * rider's weight, level and own star rating are set in Customise, from the
+ * site menu, and nowhere else on the map. In a dialog over the map, as the
+ * layers and your spots are, and shut the same ways (src/MapControls.tsx):
+ * its X, Escape or a tap on the backdrop.
  */
-export default function DisplayFilter({
-  prefs,
-  onChange,
-  models,
-  onCustomiseStars,
-  onStarsOn,
-}: Props) {
+export default function DisplayFilter({ prefs, onChange, models }: Props) {
   const setUnits = (units: Units) => onChange({ ...prefs, units });
   const toggleModel = (id: string, on: boolean) =>
     onChange({
@@ -71,18 +45,12 @@ export default function DisplayFilter({
         ? [...new Set([...prefs.blendModels, id])]
         : prefs.blendModels.filter((entry) => entry !== id),
     });
-  // Both fields keep what the reader is typing ("5." on the way to "5.5"); the
+  // The field keeps what the reader is typing ("5." on the way to "5.5"); the
   // stored rider only ever holds what parses, through the same validation a
   // stored value gets on load.
-  const [weightText, setWeightText] = useState(
-    prefs.rider.weightKg === null ? "" : String(prefs.rider.weightKg),
-  );
   const [wingsText, setWingsText] = useState(prefs.rider.wings.join(", "));
   const setRider = (rider: Partial<Rider>) =>
     onChange({ ...prefs, rider: parseRider({ ...prefs.rider, ...rider }) });
-  const saved = savedCustom(prefs.rider);
-  const on = starsOn(prefs.rider);
-  const choices: StarsOn[] = saved ? [...SKILLS, "custom"] : [...SKILLS];
   // The one model the rider sees and the stars rate (force5/src/lead.ts):
   // the map moves to it as it changes (src/App.tsx).
   const model = chosenModel(prefs.rider.starsFrom);
@@ -115,47 +83,6 @@ export default function DisplayFilter({
       </div>
       <h2>Your riding</h2>
       <div className="filter-rider">
-        <label className="rider-field">
-          <span>Weight</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            data-rider="weight"
-            min={MIN_WEIGHT_KG}
-            max={MAX_WEIGHT_KG}
-            placeholder={String(ESTIMATE_WEIGHT_KG)}
-            value={weightText}
-            onChange={(event) => {
-              setWeightText(event.target.value);
-              const value = event.target.valueAsNumber;
-              setRider({ weightKg: Number.isFinite(value) ? value : null });
-            }}
-          />
-          <small>kg</small>
-        </label>
-        <div className="rider-level">
-          <div className="filter-units" role="group" aria-label="Riding level">
-            {choices.map((choice) => (
-              <button
-                key={choice}
-                data-skill={choice}
-                aria-pressed={on === choice}
-                onClick={() => onStarsOn(withStarsOn(prefs, choice))}
-              >
-                {choice === "custom" ? "Custom" : SKILL_LABEL[choice]}
-              </button>
-            ))}
-          </div>
-          <Button
-            variant="link"
-            size="sm"
-            className="rider-customise"
-            onClick={onCustomiseStars}
-            data-customise-stars
-          >
-            {saved ? "Edit custom" : "Customise"}
-          </Button>
-        </div>
         {/* How high they point: the loupe's no-go and the light's wedge,
             never the stars (force5/src/rideWedge.ts). */}
         <div className="rider-pointing">
@@ -193,14 +120,6 @@ export default function DisplayFilter({
           <small>m²</small>
         </label>
       </div>
-      <p className="filter-note">
-        The stars, the lights and the wing are rated for this rider. How high
-        they point moves the loupe&rsquo;s no-go and the light&rsquo;s wedge,
-        never a star.{" "}
-        {prefs.rider.weightKg === null
-          ? `Until you give a weight they assume ${ESTIMATE_WEIGHT_KG} kg.`
-          : ""}
-      </p>
       <h2>Model</h2>
       <div className="filter-model-choice">
         <Segmented<string>
