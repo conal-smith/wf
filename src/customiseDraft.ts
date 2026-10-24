@@ -10,7 +10,7 @@
  * wind takes off. Left as the level has them, the level rates and no custom
  * rating is saved; changed, they are the rider's own. How much gusty wind
  * bothers the rider is theirs whatever rates, so it is kept on the rider, as
- * how high they point is.
+ * how far into the wind they ride is.
  */
 import {
   parseRider,

@@ -228,7 +228,8 @@ for a rider (`rateHour`) uses it. It replaces the level's band and direction
 costs, with no weight scaling; `base` keeps the level's share of a gust below
 the floor and its wing sizes. How much gusty wind bothers the rider is not in
 it: it is the rider's whatever rates (`Rider.gusty`, kept on the device as
-how high they point is, and sent with the rider to the alerts and to Gust).
+how far into the wind they ride is, and sent with the rider to the alerts and
+to Gust).
 `parseCustomRating` is the one place it is made safe, whoever wrote it: a
 version 1 rating, from before v6, is read as version 2 with its gust curve
 left behind, so nobody loses their wind and directions; any other version or
