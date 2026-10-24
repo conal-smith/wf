@@ -50,7 +50,7 @@ import { MapInfoOpen, type InfoSection } from "./mapInfoContext";
 import { foilArchiveUrl, useFoilDepth } from "./useFoilDepth";
 import { useCurrents } from "./useCurrents";
 import type { LightState } from "../force5/src/lights";
-import { knotsIn, unitName } from "../force5/src/units";
+import { speedWords } from "../force5/src/units";
 import { rideWedge } from "../force5/src/rideWedge";
 import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
@@ -1012,7 +1012,7 @@ export default function App() {
               s.dark || s.stars === null
                 ? "dark"
                 : `${s.stars} star${s.stars === 1 ? "" : "s"}`
-            }${s.compass && s.windKn !== null ? `, ${s.compass} ${knotsIn(s.windKn, prefs.units)} ${unitName(prefs.units)}` : ""}${
+            }${s.compass && s.windKn !== null ? `, ${s.compass} ${speedWords(s.windKn, prefs.units)}` : ""}${
               s.mark === "struck"
                 ? ", offshore"
                 : s.mark === "cross-off"
@@ -1535,9 +1535,9 @@ export default function App() {
             ? `, ${handing.modelName} (${runLabel(handing.runTime)} run) at the hours it does not reach`
             : ""}
           ; the stars rate one model&rsquo;s own forecast, the one you picked:{" "}
-          {leadText(starsFromAt(rider.starsFrom))} past the end of its run.
-          The blend of {prefs.blendModels.length} models is context beside
-          them and moves no star
+          {leadText(starsFromAt(rider.starsFrom))} past the end of its run. The
+          blend of {prefs.blendModels.length} models is context beside them and
+          moves no star
         </li>
         <li>Depths: EMODnet Bathymetry, metres below chart datum</li>
         {foilState.manifest && (

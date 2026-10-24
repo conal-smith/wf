@@ -29,7 +29,7 @@ import type { Units } from "../../force5/src/units";
 import { Figure, RatingTip, StarGlyphs } from "../../ui";
 import { MONO_LABEL, RING, tv } from "../../ui/tv";
 import { DayTide } from "./DayTide";
-import { ShoreGlyph, SkyGlyph, WindArrow } from "./glyphs";
+import { ShoreGlyph, SkyGlyph, WindArrow, WindValue } from "./glyphs";
 import {
   RangeAxis,
   RangeBar,
@@ -50,7 +50,10 @@ import {
   handoverWords,
   placeChanges,
   skyEnd,
+  gustShown,
   windIn,
+  windSay,
+  windWords,
   type DaySun,
   type LeadChange,
   type SpotDay,
@@ -372,6 +375,8 @@ function DayBody({
     const index = day.rows.indexOf(row);
     const wind = hour.wind;
     const jump = wind ? gustJumps(wind.wind_kn, wind.gust_kn) : false;
+    // The gust as the row writes it: in Force, none in the wind's own force.
+    const gust = wind ? gustShown(wind.wind_kn, wind.gust_kn, units) : null;
     const detail = wind && (
       <RangeDetail
         time={row.time}
@@ -389,7 +394,7 @@ function DayBody({
       />
     );
     const tipLabel = wind
-      ? `${clock(row.time)}: ${rangeWords(wind, band, units)} ${unitText}`
+      ? `${clock(row.time)}: ${rangeWords(wind, band, units)}${units === "bft" ? "" : ` ${unitText}`}`
       : "";
     return (
       <tr
@@ -447,11 +452,11 @@ function DayBody({
               <span className={s.windTip()}>
                 <RatingTip label={tipLabel} detail={detail}>
                   <Figure
-                    value={windIn(wind.wind_kn, units)}
+                    value={<WindValue knots={wind.wind_kn} units={units} />}
                     sup={
-                      wind.gust_kn === null
-                        ? undefined
-                        : windIn(wind.gust_kn, units)
+                      gust === null ? undefined : (
+                        <WindValue knots={gust} units={units} small />
+                      )
                     }
                     alarm={jump}
                   />
@@ -461,22 +466,22 @@ function DayBody({
                 className={s.windPlain()}
                 title={
                   jump
-                    ? `Gust ${windIn(wind.gust_kn!, units)} ${unitText}, in red: well over the wind`
+                    ? `Gust ${windWords(wind.gust_kn!, units)}, in red: well over the wind`
                     : undefined
                 }
               >
                 <Figure
-                  value={windIn(wind.wind_kn, units)}
+                  value={<WindValue knots={wind.wind_kn} units={units} />}
                   sup={
-                    wind.gust_kn === null
-                      ? undefined
-                      : windIn(wind.gust_kn, units)
+                    gust === null ? undefined : (
+                      <WindValue knots={gust} units={units} small />
+                    )
                   }
                   alarm={jump}
-                  label={`${windIn(wind.wind_kn, units)} ${unitText}${
-                    wind.gust_kn === null
+                  label={`${windWords(wind.wind_kn, units)}${
+                    gust === null
                       ? ""
-                      : `, gusting ${windIn(wind.gust_kn, units)}`
+                      : `, gusting ${units === "bft" ? windWords(gust, units) : windIn(gust, units)}`
                   }`}
                 />
               </span>
@@ -696,8 +701,8 @@ function HourTip({
         <ul className={s.tipList()}>
           <li className={s.tipItem()}>
             <WindArrow from={wind.direction_deg} size={12} />
-            {wind.direction} {windIn(wind.wind_kn, units)}
-            {wind.gust_kn !== null && ` g${windIn(wind.gust_kn, units)}`}
+            {wind.direction} {windSay(wind.wind_kn, units)}
+            {wind.gust_kn !== null && ` g${windSay(wind.gust_kn, units)}`}
           </li>
           <li className={s.tipItem()}>
             {facing !== null && (
@@ -719,9 +724,9 @@ function HourTip({
             )}
           {wind.models > 1 && wind.agreement && (
             <li className={s.tipContext()} data-tip-context>
-              All {wind.models} models {windIn(wind.min_kn, units)}–
-              {windIn(wind.max_kn, units)}, agree {wind.agreement}. Context, not
-              counted.
+              All {wind.models} models {windSay(wind.min_kn, units)}–
+              {windSay(wind.max_kn, units)}, agree {wind.agreement}. Context,
+              not counted.
             </li>
           )}
         </ul>

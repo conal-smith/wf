@@ -14,11 +14,16 @@ import {
   GUST_TOP,
   WIND_TOP,
   breakdown,
+  forceBand,
+  forceGusts,
+  forceTicks,
   gridStars,
   halfStars,
   knotsOf,
   moveGust,
+  moveGustForce,
   moveWind,
+  moveWindForce,
   offAt,
   onLevel,
   polar,
@@ -27,6 +32,7 @@ import {
   WEB_R,
   webRadius,
   rateExample,
+  said,
   setDirection,
   shown,
   stepped,
@@ -45,7 +51,8 @@ const MOCKUP: CustomRating = {
 
 describe("units", () => {
   it("shows every handle's position as the figure it was set to, in every unit", () => {
-    for (const { id } of UNITS) {
+    // Force is whole forces, not figures: its own tests are below.
+    for (const { id } of UNITS.filter((u) => u.id !== "bft")) {
       const unit = unitScale(id);
       for (let v = 0; v <= GUST_TOP * unit.perKn; v += unit.step) {
         const kn = knotsOf(v, unit);
@@ -185,5 +192,118 @@ describe("the direction web", () => {
     expect(offAt(0, -WEB_R)).toBe(0);
     expect(offAt(WEB_R * 2, 0)).toBe(0);
     expect(offAt(0, 0)).toBe(5);
+  });
+});
+
+describe("Force: the handles on whole forces", () => {
+  const bft = unitScale("bft");
+  const band = (r: CustomRating) => [
+    r.wind.min,
+    r.wind.sweetLow,
+    r.wind.sweetHigh,
+    r.wind.max,
+  ];
+  const forces = (r: CustomRating) =>
+    band(r).map((kn) => Number(shown(kn, bft)));
+
+  it("shows a force, and says it in full", () => {
+    expect(bft.force).toBe(true);
+    expect(shown(18, bft)).toBe("5");
+    expect(said(18, bft)).toBe("Force 5");
+    expect(said(18, unitScale("kn"))).toBe("18 kn");
+  });
+
+  it("sets Learning's 13/15/20/26 kn as F4 / F5–F5 / F6, as the mockup does", () => {
+    const learning: CustomRating = {
+      ...MOCKUP,
+      wind: { min: 13, sweetLow: 15, sweetHigh: 20, max: 26 },
+    };
+    const set = forceBand(learning);
+    // The lower two on a force's first knot, the upper two on its last.
+    expect(band(set)).toEqual([11, 17, 21, 27]);
+    expect(forces(set)).toEqual([4, 5, 5, 6]);
+  });
+
+  it("keeps each handle on a force of its own, but the sweet spot's two", () => {
+    const squeezed: CustomRating = {
+      ...MOCKUP,
+      wind: { min: 12, sweetLow: 13, sweetHigh: 14, max: 15 },
+    };
+    const f = forces(forceBand(squeezed));
+    expect(f[1]).toBeGreaterThan(f[0]);
+    expect(f[2]).toBeGreaterThanOrEqual(f[1]);
+    expect(f[3]).toBeGreaterThan(f[2]);
+    // Every level, every weight: in order, on the scale, on a force's edge.
+    for (const skill of ["beginner", "intermediate", "advanced"] as const)
+      for (const weightKg of [50, 80, 120]) {
+        const set = forceBand(
+          standardRating({ ...DEFAULT_RIDER, skill, weightKg }, skill),
+        );
+        const [a, b, c, d] = forces(set);
+        expect(a).toBeGreaterThanOrEqual(2);
+        expect(b).toBeGreaterThan(a);
+        expect(c).toBeGreaterThanOrEqual(b);
+        expect(d).toBeGreaterThan(c);
+        expect(set.wind.max).toBeLessThanOrEqual(WIND_TOP);
+        expect(forceBand(set)).toEqual(set);
+      }
+  });
+
+  const LEARNING: CustomRating = {
+    ...MOCKUP,
+    wind: { min: 13, sweetLow: 15, sweetHigh: 20, max: 26 },
+  };
+
+  it("moves a handle a force at a time, and never onto a neighbour's", () => {
+    const start = forceBand(LEARNING); // F4 / F5–F5 / F6
+    expect(forces(start)).toEqual([4, 5, 5, 6]);
+    // Pulled into the sweet spot's force, the minimum stops a force short.
+    expect(forces(moveWindForce(start, "min", 19))).toEqual([4, 5, 5, 6]);
+    // Down a force, to its first knot.
+    const lower = moveWindForce(start, "min", 8);
+    expect(lower.wind.min).toBe(7);
+    // The top of the sweet spot up to F6 pushes nothing: the maximum is F6,
+    // so it stops at F5; the maximum up to F7 goes to F7's last knot, 33.
+    expect(forces(moveWindForce(start, "sweetHigh", 25))).toEqual([4, 5, 5, 6]);
+    const wider = moveWindForce(start, "max", 30);
+    expect(wider.wind.max).toBe(33);
+    expect(forces(moveWindForce(wider, "sweetHigh", 25))).toEqual([4, 5, 6, 7]);
+    // Never past the scale: F8's last knot is the top, 40.
+    expect(moveWindForce(wider, "max", 60).wind.max).toBe(40);
+  });
+
+  it("steps a handle a whole force from the keyboard", () => {
+    const start = forceBand(LEARNING);
+    const up = moveWindForce(start, "max", stepped(start.wind.max, 1, bft));
+    expect(up.wind.max).toBe(33);
+    const down = moveWindForce(up, "max", stepped(up.wind.max, -1, bft));
+    expect(down.wind.max).toBe(27);
+  });
+
+  it("sets the gusts on forces' last knots, a force apart", () => {
+    const set = forceGusts(MOCKUP); // 24 and 30 kn: F6 and F7
+    expect(set.gust.fine).toBe(27);
+    expect(set.gust.worst).toBe(33);
+    expect(moveGustForce(set, "fine", 30).gust.fine).toBe(27);
+    expect(moveGustForce(set, "worst", 45).gust.worst).toBe(47);
+    expect(moveGustForce(set, "worst", 60).gust.worst).toBe(47);
+    expect(moveGustForce(set, "worst", 10).gust.worst).toBe(33);
+    expect(forceGusts(set)).toEqual(set);
+  });
+
+  it("ticks a scale where each force starts", () => {
+    expect(forceTicks(0, WIND_TOP)).toEqual([
+      { kn: 1, force: 1 },
+      { kn: 4, force: 2 },
+      { kn: 7, force: 3 },
+      { kn: 11, force: 4 },
+      { kn: 17, force: 5 },
+      { kn: 22, force: 6 },
+      { kn: 28, force: 7 },
+      { kn: 34, force: 8 },
+    ]);
+    expect(forceTicks(10, GUST_TOP).map((t) => t.force)).toEqual([
+      4, 5, 6, 7, 8, 9, 10,
+    ]);
   });
 });

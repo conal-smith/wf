@@ -3,7 +3,15 @@
 // draws them.
 import { offshoreSpans, rideRose, type Rose, type Span } from "./rideWedge";
 import type { Rider } from "./stars";
-import { convert, KNOTS, unitLabel, type Units } from "./units";
+import {
+  beaufort,
+  isForce,
+  scaleUnits,
+  speedShort,
+  unitLabel,
+  type ScaleUnits,
+  type Units,
+} from "./units";
 import { compass, windColor } from "./weather";
 
 /** How the map marks the chosen spot's surroundings. */
@@ -51,9 +59,10 @@ export function bezelTicks(r: number) {
  * The distance a range ring is measured in, after the rider's speed units:
  * nautical miles with knots, miles with miles an hour, kilometres with
  * kilometres an hour, and metres (kilometres past one) with metres a second.
+ * Force is read in knots, so nautical miles.
  */
 const RANGE_UNITS: Record<
-  Units,
+  ScaleUnits,
   { metres: number; steps: readonly number[]; label: (n: number) => string }
 > = {
   kn: {
@@ -89,7 +98,7 @@ export function rangeRing(
   short: number,
   units: Units = "kn",
 ) {
-  const unit = RANGE_UNITS[units];
+  const unit = RANGE_UNITS[scaleUnits(units)];
   const max = 0.42 * short;
   const n =
     [...unit.steps]
@@ -158,7 +167,7 @@ export interface RoseScale {
 const metricLabel = (km: number) => (km < 1 ? `${km * 1000} m` : `${km} km`);
 
 export function roseScale(units: Units): RoseScale {
-  const unit = RANGE_UNITS[units];
+  const unit = RANGE_UNITS[scaleUnits(units)];
   const n = unit.steps.reduce((best, d) =>
     Math.abs(d * unit.metres - 1000) < Math.abs(best * unit.metres - 1000)
       ? d
@@ -440,8 +449,12 @@ export interface LoupeRose {
   windKn: number;
   /** The needle's fill: the wind's colour at its speed, on PALETTE. */
   colour: string;
-  /** "SW 16 g22", in the rider's units. */
+  /** "SW 16 g22", in the rider's units; "SW F4 gF6" in Force. */
   reading: string;
+  /** Where the wind comes from, "SW": the reading's first word. */
+  from: string;
+  /** In Force, the forces the box draws as glyphs; null in any other unit. */
+  forces: { wind: number; gust: number | null } | null;
   /** "CROSS", or the units where there is no beach. */
   relation: string;
   /** The relation in the pen's red: cross-offshore or offshore. */
@@ -495,17 +508,28 @@ export function loupeRose(
 ): LoupeRose | null {
   const rose = rideRose(rider, hour, facing);
   if (!rose || hour.windKn === null) return null;
-  const speed = (kn: number) => Math.round(convert(kn / KNOTS, units));
-  const gust =
-    hour.gustKn !== null && hour.gustKn > hour.windKn
-      ? ` g${speed(hour.gustKn)}`
-      : "";
+  // A gust over the wind; in Force, only one in a higher force.
+  const gustKn =
+    hour.gustKn !== null &&
+    hour.gustKn > hour.windKn &&
+    !(isForce(units) && beaufort(hour.gustKn) <= beaufort(hour.windKn))
+      ? hour.gustKn
+      : null;
+  const gust = gustKn === null ? "" : ` g${speedShort(gustKn, units)}`;
+  const from = compass(rose.windFrom);
   return {
     rose,
     facing,
     windKn: hour.windKn,
     colour: `rgb(${windColor(hour.windKn).join(",")})`,
-    reading: `${compass(rose.windFrom)} ${speed(hour.windKn)}${gust}`,
+    reading: `${from} ${speedShort(hour.windKn, units)}${gust}`,
+    from,
+    forces: isForce(units)
+      ? {
+          wind: beaufort(hour.windKn),
+          gust: gustKn === null ? null : beaufort(gustKn),
+        }
+      : null,
     relation: rose.shore
       ? RELATION[rose.shore]
       : unitLabel(units).toUpperCase(),

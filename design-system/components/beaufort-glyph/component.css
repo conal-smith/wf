@@ -1,0 +1,40 @@
+/* BeaufortGlyph — ui/BeaufortGlyph.tsx (beaufortGlyphStyles), rendered in CSS.
+ * Consumes --sem-* only.
+ *
+ * A wind in Force as the old charts wrote it: a short staff with feathers at
+ * its top, a half feather a force, whole ones first from the tip (Force 5 is
+ * two whole and a half), and a pennant for ten so the feathers never run down
+ * the staff (Force 11 a pennant and a half, 12 a pennant and a whole). The
+ * force's number stands beside it, so nobody counts feathers.
+ *
+ * The geometry is the component's and lives in the SVG (ui/beaufortPath.ts):
+ * a box 0.72 × size wide; feathers rising 0.15 × size, 0.17 × size apart and
+ * never closer than a stroke and 0.65px; a stroke of 1.8 over 16px, 1.4 from
+ * 13px, 1.15 below. Only paint lives here, and it is currentColor: the glyph
+ * takes the colour, size and weight of the text it is set in. */
+
+.wf-beaufort-glyph {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--sem-space-step) * 0.25);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.wf-beaufort-glyph__glyph {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+/* The staff and the feathers: strokes, round-ended. */
+.wf-beaufort-glyph__staff {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+}
+/* The pennant for ten: filled, its corners rounded to match. */
+.wf-beaufort-glyph__pennant {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-linejoin: round;
+}
+/* The number is the text's own: no rule here. */

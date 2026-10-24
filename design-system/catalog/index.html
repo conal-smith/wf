@@ -765,6 +765,8 @@ code {
 #ds-view-components:checked ~ .ds-catalog #components .catalog-view { display: block; }
 #ds-view-component-avatar:checked ~ .ds-catalog #components { display: block; }
 #ds-view-component-avatar:checked ~ .ds-catalog #component-avatar { display: block; }
+#ds-view-component-beaufort-glyph:checked ~ .ds-catalog #components { display: block; }
+#ds-view-component-beaufort-glyph:checked ~ .ds-catalog #component-beaufort-glyph { display: block; }
 #ds-view-component-button:checked ~ .ds-catalog #components { display: block; }
 #ds-view-component-button:checked ~ .ds-catalog #component-button { display: block; }
 #ds-view-component-checkbox:checked ~ .ds-catalog #components { display: block; }
@@ -839,6 +841,8 @@ code {
 #ds-view-components:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-components"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
 #ds-view-component-avatar:checked ~ .ds-catalog .catalog-nav label[for="ds-view-component-avatar"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
 #ds-view-component-avatar:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-component-avatar"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
+#ds-view-component-beaufort-glyph:checked ~ .ds-catalog .catalog-nav label[for="ds-view-component-beaufort-glyph"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
+#ds-view-component-beaufort-glyph:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-component-beaufort-glyph"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
 #ds-view-component-button:checked ~ .ds-catalog .catalog-nav label[for="ds-view-component-button"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
 #ds-view-component-button:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-component-button"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
 #ds-view-component-checkbox:checked ~ .ds-catalog .catalog-nav label[for="ds-view-component-checkbox"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
@@ -990,6 +994,48 @@ code {
   height: 100%;
   object-fit: cover;
 }
+
+/* components/beaufort-glyph/component.css */
+/* BeaufortGlyph — ui/BeaufortGlyph.tsx (beaufortGlyphStyles), rendered in CSS.
+ * Consumes --sem-* only.
+ *
+ * A wind in Force as the old charts wrote it: a short staff with feathers at
+ * its top, a half feather a force, whole ones first from the tip (Force 5 is
+ * two whole and a half), and a pennant for ten so the feathers never run down
+ * the staff (Force 11 a pennant and a half, 12 a pennant and a whole). The
+ * force's number stands beside it, so nobody counts feathers.
+ *
+ * The geometry is the component's and lives in the SVG (ui/beaufortPath.ts):
+ * a box 0.72 × size wide; feathers rising 0.15 × size, 0.17 × size apart and
+ * never closer than a stroke and 0.65px; a stroke of 1.8 over 16px, 1.4 from
+ * 13px, 1.15 below. Only paint lives here, and it is currentColor: the glyph
+ * takes the colour, size and weight of the text it is set in. */
+
+.wf-beaufort-glyph {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--sem-space-step) * 0.25);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.wf-beaufort-glyph__glyph {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+/* The staff and the feathers: strokes, round-ended. */
+.wf-beaufort-glyph__staff {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+}
+/* The pennant for ten: filled, its corners rounded to match. */
+.wf-beaufort-glyph__pennant {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-linejoin: round;
+}
+/* The number is the text's own: no rule here. */
 
 /* components/button/component.css */
 /* Button — ui/Button.tsx (buttonStyles), rendered in CSS. Consumes --sem-* only.
@@ -3898,6 +3944,57 @@ code {
         font-variant-numeric: tabular-nums;
         color: var(--sem-color-ink-muted);
       }
+.ds-embed-component-beaufort-glyph {
+        margin: 0;
+      }
+.ds-embed-component-beaufort-glyph .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+.ds-embed-component-beaufort-glyph .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+.ds-embed-component-beaufort-glyph .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+.ds-embed-component-beaufort-glyph .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+.ds-embed-component-beaufort-glyph .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+.ds-embed-component-beaufort-glyph .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+.ds-embed-component-beaufort-glyph .demo__row--figure { font-family: var(--sem-font-family-mono); font-size: var(--sem-font-size-figure); font-weight: var(--sem-font-weight-semibold); }
+.ds-embed-component-beaufort-glyph .demo__row--body { font-family: var(--sem-font-family-mono); font-size: var(--sem-font-size-body); font-weight: var(--sem-font-weight-semibold); }
+.ds-embed-component-beaufort-glyph .demo__row--caption { font-family: var(--sem-font-family-mono); font-size: var(--sem-font-size-caption); color: var(--sem-color-ink-muted); }
+.ds-embed-component-beaufort-glyph .demo__cell { display: inline-flex; align-items: baseline; gap: var(--sem-space-x1); font-family: var(--sem-font-family-mono); }
+.ds-embed-component-beaufort-glyph .demo__cell b { font-size: var(--sem-font-size-body); font-weight: var(--sem-font-weight-semibold); }
+.ds-embed-component-beaufort-glyph .demo__cell small { font-size: var(--sem-font-size-caption); color: var(--sem-color-ink-muted); }
+.ds-embed-component-beaufort-glyph .demo__cell small.is-alarm { color: var(--sem-color-pen-ink); font-weight: var(--sem-font-weight-semibold); }
 .ds-embed-component-button {
         margin: 0;
       }
@@ -7640,6 +7737,7 @@ code {
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-foundations-doc-principles" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-components" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-avatar" />
+<input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-beaufort-glyph" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-button" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-checkbox" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-chip" />
@@ -7700,6 +7798,7 @@ code {
 <label class="catalog-nav-item" for="ds-view-foundations-doc-principles">Principles</label>
 <label class="catalog-nav-group" for="ds-view-components">Components</label>
 <label class="catalog-nav-item" for="ds-view-component-avatar">Avatar</label>
+<label class="catalog-nav-item" for="ds-view-component-beaufort-glyph">BeaufortGlyph</label>
 <label class="catalog-nav-item" for="ds-view-component-button">Button</label>
 <label class="catalog-nav-item" for="ds-view-component-checkbox">Checkbox</label>
 <label class="catalog-nav-item" for="ds-view-component-chip">Chip</label>
@@ -8096,6 +8195,15 @@ code {
 <div id="foundations-glyphs" class="catalog-view">
 <h3>Glyphs</h3>
 <div class="catalog-glyph-grid">
+<figure class="catalog-glyph"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12.24 17" width="12.24" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Force 5: a half feather a force, whole ones first from the tip. The number goes beside it. -->
+  <path d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l5.41 -1.53" />
+</svg><figcaption>beaufort-force</figcaption></figure>
+<figure class="catalog-glyph"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12.24 17" width="12.24" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Force 10: a pennant for ten, so the feathers never run down the staff. -->
+  <path d="M1.5 16.1V3.45" />
+  <path d="M1.5 3.45L11.34 0.9L1.5 7.79Z" fill="currentColor" stroke-width="1.08" />
+</svg><figcaption>beaufort-pennant</figcaption></figure>
 <figure class="catalog-glyph"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-7 -7 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
   <!-- Points up; rotate by (from + 180) degrees so it blows downwind. -->
   <path d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" />
@@ -8466,6 +8574,285 @@ code {
         &lt;span class=&quot;wf-avatar&quot; aria-hidden=&quot;true&quot;&gt;
           &lt;svg class=&quot;wf-avatar__image&quot; viewBox=&quot;0 0 40 40&quot; preserveAspectRatio=&quot;xMidYMid slice&quot;&gt;&lt;rect class=&quot;demo__sky&quot; width=&quot;40&quot; height=&quot;40&quot; /&gt;&lt;rect class=&quot;demo__sea&quot; y=&quot;22&quot; width=&quot;40&quot; height=&quot;18&quot; /&gt;&lt;path class=&quot;demo__land&quot; d=&quot;M0 32 Q14 27 40 33 V40 H0Z&quot; /&gt;&lt;path class=&quot;demo__wing&quot; d=&quot;M12 12 Q22 5 30 14 Q21 11 16 17Z&quot; /&gt;&lt;path class=&quot;demo__rider&quot; d=&quot;M19 18 a2.2 2.2 0 1 1 0.01 0Z M17 21 h4 l1 7 h-6Z&quot; /&gt;&lt;/svg&gt;
         &lt;/span&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</code></pre></details>
+</div>
+<div id="component-beaufort-glyph" class="catalog-view catalog-component">
+<h3>BeaufortGlyph</h3>
+<div class="catalog-component-grid">
+<div class="catalog-stage ds-embed-component-beaufort-glyph">
+<section class="demo" data-mode="light">
+      <h2 class="demo__head">BeaufortGlyph</h2>
+
+      <p class="demo__label">Force 0 to 12 · 17px, beside a table's figure</p>
+      <div class="demo__row demo__row--figure"><span class="wf-beaufort-glyph" role="img" aria-label="Force 0"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">0</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 1"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 5.18l5.41 -1.53" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">1</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 2"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">2</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 3"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l5.41 -1.53" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">3</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 4"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">4</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 5"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l5.41 -1.53" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">5</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 6"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">6</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 7"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55M1.5 12.12l5.41 -1.53" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">7</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 8"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55M1.5 12.12l9.84 -2.55" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">8</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 9"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55M1.5 12.12l9.84 -2.55M1.5 15.01l5.41 -1.53" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">9</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 10"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45" stroke-width="1.8" /><path class="wf-beaufort-glyph__pennant" d="M1.5 3.45L11.34 0.9L1.5 7.79Z" stroke-width="1.08" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">10</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 11"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 9.52l5.41 -1.53" stroke-width="1.8" /><path class="wf-beaufort-glyph__pennant" d="M1.5 3.45L11.34 0.9L1.5 7.79Z" stroke-width="1.08" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">11</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 12"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 9.52l9.84 -2.55" stroke-width="1.8" /><path class="wf-beaufort-glyph__pennant" d="M1.5 3.45L11.34 0.9L1.5 7.79Z" stroke-width="1.08" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">12</span></span></div>
+
+      <p class="demo__label">14px · the default</p>
+      <div class="demo__row demo__row--body"><span class="wf-beaufort-glyph" role="img" aria-label="Force 0"><svg class="wf-beaufort-glyph__glyph" width="10.08" height="14" viewBox="0 0 10.08 14" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 13.3V2.8" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">0</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 1"><svg class="wf-beaufort-glyph__glyph" width="10.08" height="14" viewBox="0 0 10.08 14" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 13.3V2.8M1.3 4.23l4.44 -1.26" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">1</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 2"><svg class="wf-beaufort-glyph__glyph" width="10.08" height="14" viewBox="0 0 10.08 14" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 13.3V2.8M1.3 2.8l8.08 -2.1" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">2</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 3"><svg class="wf-beaufort-glyph__glyph" width="10.08" height="14" viewBox="0 0 10.08 14" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l4.44 -1.26" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">3</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 4"><svg class="wf-beaufort-glyph__glyph" width="10.08" height="14" viewBox="0 0 10.08 14" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l8.08 -2.1" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">4</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 5"><svg class="wf-beaufort-glyph__glyph" width="10.08" height="14" viewBox="0 0 10.08 14" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l8.08 -2.1M1.3 7.56l4.44 -1.26" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">5</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 6"><svg class="wf-beaufort-glyph__glyph" width="10.08" height="14" viewBox="0 0 10.08 14" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l8.08 -2.1M1.3 7.56l8.08 -2.1" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">6</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 7"><svg class="wf-beaufort-glyph__glyph" width="10.08" height="14" viewBox="0 0 10.08 14" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l8.08 -2.1M1.3 7.56l8.08 -2.1M1.3 9.94l4.44 -1.26" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">7</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 8"><svg class="wf-beaufort-glyph__glyph" width="10.08" height="14" viewBox="0 0 10.08 14" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l8.08 -2.1M1.3 7.56l8.08 -2.1M1.3 9.94l8.08 -2.1" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">8</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 9"><svg class="wf-beaufort-glyph__glyph" width="10.08" height="14" viewBox="0 0 10.08 14" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l8.08 -2.1M1.3 7.56l8.08 -2.1M1.3 9.94l8.08 -2.1M1.3 12.32l4.44 -1.26" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">9</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 10"><svg class="wf-beaufort-glyph__glyph" width="10.08" height="14" viewBox="0 0 10.08 14" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 13.3V2.8" stroke-width="1.4" /><path class="wf-beaufort-glyph__pennant" d="M1.3 2.8L9.38 0.7L1.3 6.37Z" stroke-width="0.84" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">10</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 11"><svg class="wf-beaufort-glyph__glyph" width="10.08" height="14" viewBox="0 0 10.08 14" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 13.3V2.8M1.3 7.8l4.44 -1.26" stroke-width="1.4" /><path class="wf-beaufort-glyph__pennant" d="M1.3 2.8L9.38 0.7L1.3 6.37Z" stroke-width="0.84" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">11</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 12"><svg class="wf-beaufort-glyph__glyph" width="10.08" height="14" viewBox="0 0 10.08 14" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 13.3V2.8M1.3 7.8l8.08 -2.1" stroke-width="1.4" /><path class="wf-beaufort-glyph__pennant" d="M1.3 2.8L9.38 0.7L1.3 6.37Z" stroke-width="0.84" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">12</span></span></div>
+
+      <p class="demo__label">10px · a gust written small</p>
+      <div class="demo__row demo__row--caption"><span class="wf-beaufort-glyph" role="img" aria-label="Force 0"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">0</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 1"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 3.16l3 -0.9" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">1</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 2"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 2.08l5.46 -1.5" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">2</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 3"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l3 -0.9" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">3</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 4"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">4</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 5"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l3 -0.9" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">5</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 6"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">6</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 7"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5M1.17 7.48l3 -0.9" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">7</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 8"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5M1.17 7.48l5.46 -1.5" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">8</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 9"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5M1.17 7.48l5.46 -1.5M1.17 9.28l3 -0.9" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">9</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 10"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08" stroke-width="1.15" /><path class="wf-beaufort-glyph__pennant" d="M1.17 2.08L6.63 0.58L1.17 4.78Z" stroke-width="0.69" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">10</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 11"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 5.86l3 -0.9" stroke-width="1.15" /><path class="wf-beaufort-glyph__pennant" d="M1.17 2.08L6.63 0.58L1.17 4.78Z" stroke-width="0.69" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">11</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 12"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 5.86l5.46 -1.5" stroke-width="1.15" /><path class="wf-beaufort-glyph__pennant" d="M1.17 2.08L6.63 0.58L1.17 4.78Z" stroke-width="0.69" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">12</span></span></div>
+
+      <p class="demo__label">The dock's cell · the wind, and the gust small; red where it jumps</p>
+      <div class="demo__row">
+        <span class="demo__cell"><b><span class="wf-beaufort-glyph" role="img" aria-label="Force 4"><svg class="wf-beaufort-glyph__glyph" width="11.52" height="16" viewBox="0 0 11.52 16" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 15.3V3.1M1.3 3.1l9.52 -2.4M1.3 5.82l9.52 -2.4" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">4</span></span></b><small>g<span class="wf-beaufort-glyph" role="img" aria-label="Force 5"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l3 -0.9" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">5</span></span></small></span>
+        <span class="demo__cell"><b><span class="wf-beaufort-glyph" role="img" aria-label="Force 5"><svg class="wf-beaufort-glyph__glyph" width="11.52" height="16" viewBox="0 0 11.52 16" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 15.3V3.1M1.3 3.1l9.52 -2.4M1.3 5.82l9.52 -2.4M1.3 8.54l5.24 -1.44" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">5</span></span></b><small class="is-alarm">g<span class="wf-beaufort-glyph" role="img" aria-label="Force 7"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5M1.17 7.48l3 -0.9" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">7</span></span></small></span>
+        <span class="demo__cell"><b><span class="wf-beaufort-glyph" role="img" aria-label="Force 6"><svg class="wf-beaufort-glyph__glyph" width="11.52" height="16" viewBox="0 0 11.52 16" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 15.3V3.1M1.3 3.1l9.52 -2.4M1.3 5.82l9.52 -2.4M1.3 8.54l9.52 -2.4" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">6</span></span></b><small>g<span class="wf-beaufort-glyph" role="img" aria-label="Force 8"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5M1.17 7.48l5.46 -1.5" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">8</span></span></small></span>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">BeaufortGlyph · night chart (proposed)</h2>
+      <div class="demo__row demo__row--figure"><span class="wf-beaufort-glyph" role="img" aria-label="Force 0"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">0</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 1"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 5.18l5.41 -1.53" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">1</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 2"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">2</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 3"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l5.41 -1.53" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">3</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 4"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">4</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 5"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l5.41 -1.53" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">5</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 6"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">6</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 7"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55M1.5 12.12l5.41 -1.53" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">7</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 8"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55M1.5 12.12l9.84 -2.55" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">8</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 9"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55M1.5 12.12l9.84 -2.55M1.5 15.01l5.41 -1.53" stroke-width="1.8" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">9</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 10"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45" stroke-width="1.8" /><path class="wf-beaufort-glyph__pennant" d="M1.5 3.45L11.34 0.9L1.5 7.79Z" stroke-width="1.08" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">10</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 11"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 9.52l5.41 -1.53" stroke-width="1.8" /><path class="wf-beaufort-glyph__pennant" d="M1.5 3.45L11.34 0.9L1.5 7.79Z" stroke-width="1.08" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">11</span></span>
+        <span class="wf-beaufort-glyph" role="img" aria-label="Force 12"><svg class="wf-beaufort-glyph__glyph" width="12.24" height="17" viewBox="0 0 12.24 17" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.5 16.1V3.45M1.5 9.52l9.84 -2.55" stroke-width="1.8" /><path class="wf-beaufort-glyph__pennant" d="M1.5 3.45L11.34 0.9L1.5 7.79Z" stroke-width="1.08" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">12</span></span></div>
+      <div class="demo__row">
+        <span class="demo__cell"><b><span class="wf-beaufort-glyph" role="img" aria-label="Force 5"><svg class="wf-beaufort-glyph__glyph" width="11.52" height="16" viewBox="0 0 11.52 16" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.3 15.3V3.1M1.3 3.1l9.52 -2.4M1.3 5.82l9.52 -2.4M1.3 8.54l5.24 -1.44" stroke-width="1.4" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">5</span></span></b><small class="is-alarm">g<span class="wf-beaufort-glyph" role="img" aria-label="Force 7"><svg class="wf-beaufort-glyph__glyph" width="7.2" height="10" viewBox="0 0 7.2 10" aria-hidden="true"><path class="wf-beaufort-glyph__staff" d="M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5M1.17 7.48l3 -0.9" stroke-width="1.15" /></svg><span class="wf-beaufort-glyph__number" aria-hidden="true">7</span></span></small></span>
+      </div>
+    </section>
+</div>
+<div class="catalog-doc">
+<p>A wind in Force (Beaufort) as the old charts drew it (<code>ui/BeaufortGlyph.tsx</code>, <code>beaufortGlyphStyles</code>; its geometry is <code>ui/beaufortPath.ts</code>): a short staff with feathers at its top, a half feather for each force, and the force's number beside it so nobody has to count. Used wherever the rider's wind is shown and they read it in Force.</p>
+<h4>Anatomy</h4>
+<ul><li>Root: <code>.wf-beaufort-glyph</code>, an inline flex row, centred, 1px apart, aligned to the middle of the text it sits in.</li><li>Glyph: <code>.wf-beaufort-glyph__glyph</code>, an SVG <code>0.72 × size</code> wide and <code>size</code> tall, <code>overflow: visible</code>.</li><li>Staff: <code>.wf-beaufort-glyph__staff</code>, one stroked path in <code>currentColor</code>, round caps: the staff from the foot to the tip, then the feathers leaving it up and to the right, whole ones first from the tip, the half last.</li><li>Pennant: <code>.wf-beaufort-glyph__pennant</code>, a filled triangle from the tip, for ten. Force 11 adds a half feather under it, 12 a whole one.</li><li>Number: <code>.wf-beaufort-glyph__number</code>, the force in the text's own face, size and weight.</li></ul>
+<h4>Variants</h4>
+<ul><li>Size: 17 beside a table's figure (the spot page's hour rows, the level cards), 16 in the dock's wind cell, 14 the default, 10 for a gust written small after &quot;g&quot;. The number is the text's size, not the glyph's.</li><li>Bare: the glyph alone, where the number is written beside it already.</li><li>Force 0 is the bare staff; 1 a half feather set a little down from the tip, as the charts set it; 10 to 12 fly the pennant.</li></ul>
+<h4>States</h4>
+<ul><li>None of its own. It is <code>currentColor</code>: in a gust in the pen's ink (the wind figure's alarm) it is red; on an ink fill it is paper.</li></ul>
+<h4>Usage</h4>
+<ul><li>Draw a wind in Force with this wherever a figure stands: the dock's cell, the spot page's rows, the loupe's foot box (the map draws <code>beaufortPath</code> in its own SVG), the wizard's preview and handles.</li><li>Where only text fits, write it: &quot;Force 5&quot; in words and for a screen reader, &quot;F5&quot; in a line of figures (a map light's label, a tooltip's line).</li><li>A scale has no forces to draw along: a chart's axis, a range ring, a tidal stream read Force in knots, and a scale's ticks stand where each force starts, named by its number.</li><li>The feathers are the old notation, not a wind barb: never draw a knot barb (a feather for ten knots) with it.</li></ul>
+<h4>Accessibility</h4>
+<ul><li>The root carries <code>role=&quot;img&quot;</code> and <code>aria-label=&quot;Force 5&quot;</code>; the SVG and the number are <code>aria-hidden</code>. An empty label hides it all, for a place whose words already say the force.</li><li>The number carries the reading; the feathers repeat it. Colour carries nothing of its own.</li></ul>
+</div>
+</div>
+<details class="catalog-source"><summary>components/beaufort-glyph/component.css</summary><pre><code>/* BeaufortGlyph — ui/BeaufortGlyph.tsx (beaufortGlyphStyles), rendered in CSS.
+ * Consumes --sem-* only.
+ *
+ * A wind in Force as the old charts wrote it: a short staff with feathers at
+ * its top, a half feather a force, whole ones first from the tip (Force 5 is
+ * two whole and a half), and a pennant for ten so the feathers never run down
+ * the staff (Force 11 a pennant and a half, 12 a pennant and a whole). The
+ * force's number stands beside it, so nobody counts feathers.
+ *
+ * The geometry is the component's and lives in the SVG (ui/beaufortPath.ts):
+ * a box 0.72 × size wide; feathers rising 0.15 × size, 0.17 × size apart and
+ * never closer than a stroke and 0.65px; a stroke of 1.8 over 16px, 1.4 from
+ * 13px, 1.15 below. Only paint lives here, and it is currentColor: the glyph
+ * takes the colour, size and weight of the text it is set in. */
+
+.wf-beaufort-glyph {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--sem-space-step) * 0.25);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.wf-beaufort-glyph__glyph {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+/* The staff and the feathers: strokes, round-ended. */
+.wf-beaufort-glyph__staff {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+}
+/* The pennant for ten: filled, its corners rounded to match. */
+.wf-beaufort-glyph__pennant {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-linejoin: round;
+}
+/* The number is the text's own: no rule here. */
+</code></pre></details>
+<details class="catalog-source"><summary>components/beaufort-glyph/component.html (demo)</summary><pre><code>&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+  &lt;head&gt;
+    &lt;meta charset=&quot;utf-8&quot; /&gt;
+    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot; /&gt;
+    &lt;title&gt;BeaufortGlyph — wingfoil-chart&lt;/title&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../../foundations/tokens.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;component.css&quot; /&gt;
+    &lt;style&gt;
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* Demo only: the sizes the site sets them at. */
+      .demo__row--figure { font-family: var(--sem-font-family-mono); font-size: var(--sem-font-size-figure); font-weight: var(--sem-font-weight-semibold); }
+      .demo__row--body { font-family: var(--sem-font-family-mono); font-size: var(--sem-font-size-body); font-weight: var(--sem-font-weight-semibold); }
+      .demo__row--caption { font-family: var(--sem-font-family-mono); font-size: var(--sem-font-size-caption); color: var(--sem-color-ink-muted); }
+      .demo__cell { display: inline-flex; align-items: baseline; gap: var(--sem-space-x1); font-family: var(--sem-font-family-mono); }
+      .demo__cell b { font-size: var(--sem-font-size-body); font-weight: var(--sem-font-weight-semibold); }
+      .demo__cell small { font-size: var(--sem-font-size-caption); color: var(--sem-color-ink-muted); }
+      .demo__cell small.is-alarm { color: var(--sem-color-pen-ink); font-weight: var(--sem-font-weight-semibold); }
+    &lt;/style&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;section class=&quot;demo&quot; data-mode=&quot;light&quot;&gt;
+      &lt;h2 class=&quot;demo__head&quot;&gt;BeaufortGlyph&lt;/h2&gt;
+
+      &lt;p class=&quot;demo__label&quot;&gt;Force 0 to 12 · 17px, beside a table's figure&lt;/p&gt;
+      &lt;div class=&quot;demo__row demo__row--figure&quot;&gt;&lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 0&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;0&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 1&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 5.18l5.41 -1.53&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;1&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 2&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;2&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 3&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l5.41 -1.53&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;3&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 4&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;4&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 5&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l5.41 -1.53&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;5&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 6&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;6&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 7&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55M1.5 12.12l5.41 -1.53&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;7&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 8&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55M1.5 12.12l9.84 -2.55&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;8&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 9&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55M1.5 12.12l9.84 -2.55M1.5 15.01l5.41 -1.53&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;9&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 10&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;path class=&quot;wf-beaufort-glyph__pennant&quot; d=&quot;M1.5 3.45L11.34 0.9L1.5 7.79Z&quot; stroke-width=&quot;1.08&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;10&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 11&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 9.52l5.41 -1.53&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;path class=&quot;wf-beaufort-glyph__pennant&quot; d=&quot;M1.5 3.45L11.34 0.9L1.5 7.79Z&quot; stroke-width=&quot;1.08&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;11&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 12&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 9.52l9.84 -2.55&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;path class=&quot;wf-beaufort-glyph__pennant&quot; d=&quot;M1.5 3.45L11.34 0.9L1.5 7.79Z&quot; stroke-width=&quot;1.08&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;12&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
+
+      &lt;p class=&quot;demo__label&quot;&gt;14px · the default&lt;/p&gt;
+      &lt;div class=&quot;demo__row demo__row--body&quot;&gt;&lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 0&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;10.08&quot; height=&quot;14&quot; viewBox=&quot;0 0 10.08 14&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 13.3V2.8&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;0&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 1&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;10.08&quot; height=&quot;14&quot; viewBox=&quot;0 0 10.08 14&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 13.3V2.8M1.3 4.23l4.44 -1.26&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;1&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 2&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;10.08&quot; height=&quot;14&quot; viewBox=&quot;0 0 10.08 14&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 13.3V2.8M1.3 2.8l8.08 -2.1&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;2&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 3&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;10.08&quot; height=&quot;14&quot; viewBox=&quot;0 0 10.08 14&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l4.44 -1.26&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;3&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 4&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;10.08&quot; height=&quot;14&quot; viewBox=&quot;0 0 10.08 14&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l8.08 -2.1&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;4&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 5&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;10.08&quot; height=&quot;14&quot; viewBox=&quot;0 0 10.08 14&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l8.08 -2.1M1.3 7.56l4.44 -1.26&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;5&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 6&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;10.08&quot; height=&quot;14&quot; viewBox=&quot;0 0 10.08 14&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l8.08 -2.1M1.3 7.56l8.08 -2.1&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;6&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 7&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;10.08&quot; height=&quot;14&quot; viewBox=&quot;0 0 10.08 14&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l8.08 -2.1M1.3 7.56l8.08 -2.1M1.3 9.94l4.44 -1.26&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;7&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 8&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;10.08&quot; height=&quot;14&quot; viewBox=&quot;0 0 10.08 14&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l8.08 -2.1M1.3 7.56l8.08 -2.1M1.3 9.94l8.08 -2.1&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;8&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 9&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;10.08&quot; height=&quot;14&quot; viewBox=&quot;0 0 10.08 14&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 13.3V2.8M1.3 2.8l8.08 -2.1M1.3 5.18l8.08 -2.1M1.3 7.56l8.08 -2.1M1.3 9.94l8.08 -2.1M1.3 12.32l4.44 -1.26&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;9&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 10&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;10.08&quot; height=&quot;14&quot; viewBox=&quot;0 0 10.08 14&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 13.3V2.8&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;path class=&quot;wf-beaufort-glyph__pennant&quot; d=&quot;M1.3 2.8L9.38 0.7L1.3 6.37Z&quot; stroke-width=&quot;0.84&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;10&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 11&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;10.08&quot; height=&quot;14&quot; viewBox=&quot;0 0 10.08 14&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 13.3V2.8M1.3 7.8l4.44 -1.26&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;path class=&quot;wf-beaufort-glyph__pennant&quot; d=&quot;M1.3 2.8L9.38 0.7L1.3 6.37Z&quot; stroke-width=&quot;0.84&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;11&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 12&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;10.08&quot; height=&quot;14&quot; viewBox=&quot;0 0 10.08 14&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 13.3V2.8M1.3 7.8l8.08 -2.1&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;path class=&quot;wf-beaufort-glyph__pennant&quot; d=&quot;M1.3 2.8L9.38 0.7L1.3 6.37Z&quot; stroke-width=&quot;0.84&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;12&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
+
+      &lt;p class=&quot;demo__label&quot;&gt;10px · a gust written small&lt;/p&gt;
+      &lt;div class=&quot;demo__row demo__row--caption&quot;&gt;&lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 0&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;0&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 1&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 3.16l3 -0.9&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;1&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 2&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 2.08l5.46 -1.5&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;2&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 3&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l3 -0.9&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;3&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 4&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;4&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 5&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l3 -0.9&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;5&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 6&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;6&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 7&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5M1.17 7.48l3 -0.9&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;7&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 8&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5M1.17 7.48l5.46 -1.5&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;8&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 9&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5M1.17 7.48l5.46 -1.5M1.17 9.28l3 -0.9&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;9&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 10&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;path class=&quot;wf-beaufort-glyph__pennant&quot; d=&quot;M1.17 2.08L6.63 0.58L1.17 4.78Z&quot; stroke-width=&quot;0.69&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;10&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 11&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 5.86l3 -0.9&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;path class=&quot;wf-beaufort-glyph__pennant&quot; d=&quot;M1.17 2.08L6.63 0.58L1.17 4.78Z&quot; stroke-width=&quot;0.69&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;11&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 12&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 5.86l5.46 -1.5&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;path class=&quot;wf-beaufort-glyph__pennant&quot; d=&quot;M1.17 2.08L6.63 0.58L1.17 4.78Z&quot; stroke-width=&quot;0.69&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;12&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
+
+      &lt;p class=&quot;demo__label&quot;&gt;The dock's cell · the wind, and the gust small; red where it jumps&lt;/p&gt;
+      &lt;div class=&quot;demo__row&quot;&gt;
+        &lt;span class=&quot;demo__cell&quot;&gt;&lt;b&gt;&lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 4&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;11.52&quot; height=&quot;16&quot; viewBox=&quot;0 0 11.52 16&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 15.3V3.1M1.3 3.1l9.52 -2.4M1.3 5.82l9.52 -2.4&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;4&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;&lt;small&gt;g&lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 5&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l3 -0.9&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;5&lt;/span&gt;&lt;/span&gt;&lt;/small&gt;&lt;/span&gt;
+        &lt;span class=&quot;demo__cell&quot;&gt;&lt;b&gt;&lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 5&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;11.52&quot; height=&quot;16&quot; viewBox=&quot;0 0 11.52 16&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 15.3V3.1M1.3 3.1l9.52 -2.4M1.3 5.82l9.52 -2.4M1.3 8.54l5.24 -1.44&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;5&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;&lt;small class=&quot;is-alarm&quot;&gt;g&lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 7&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5M1.17 7.48l3 -0.9&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;7&lt;/span&gt;&lt;/span&gt;&lt;/small&gt;&lt;/span&gt;
+        &lt;span class=&quot;demo__cell&quot;&gt;&lt;b&gt;&lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 6&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;11.52&quot; height=&quot;16&quot; viewBox=&quot;0 0 11.52 16&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 15.3V3.1M1.3 3.1l9.52 -2.4M1.3 5.82l9.52 -2.4M1.3 8.54l9.52 -2.4&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;6&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;&lt;small&gt;g&lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 8&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5M1.17 7.48l5.46 -1.5&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;8&lt;/span&gt;&lt;/span&gt;&lt;/small&gt;&lt;/span&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+
+    &lt;section class=&quot;demo&quot; data-mode=&quot;dark&quot;&gt;
+      &lt;h2 class=&quot;demo__head&quot;&gt;BeaufortGlyph · night chart (proposed)&lt;/h2&gt;
+      &lt;div class=&quot;demo__row demo__row--figure&quot;&gt;&lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 0&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;0&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 1&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 5.18l5.41 -1.53&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;1&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 2&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;2&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 3&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l5.41 -1.53&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;3&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 4&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;4&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 5&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l5.41 -1.53&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;5&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 6&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;6&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 7&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55M1.5 12.12l5.41 -1.53&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;7&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 8&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55M1.5 12.12l9.84 -2.55&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;8&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 9&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 3.45l9.84 -2.55M1.5 6.34l9.84 -2.55M1.5 9.23l9.84 -2.55M1.5 12.12l9.84 -2.55M1.5 15.01l5.41 -1.53&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;9&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 10&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;path class=&quot;wf-beaufort-glyph__pennant&quot; d=&quot;M1.5 3.45L11.34 0.9L1.5 7.79Z&quot; stroke-width=&quot;1.08&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;10&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 11&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 9.52l5.41 -1.53&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;path class=&quot;wf-beaufort-glyph__pennant&quot; d=&quot;M1.5 3.45L11.34 0.9L1.5 7.79Z&quot; stroke-width=&quot;1.08&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;11&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 12&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;12.24&quot; height=&quot;17&quot; viewBox=&quot;0 0 12.24 17&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.5 16.1V3.45M1.5 9.52l9.84 -2.55&quot; stroke-width=&quot;1.8&quot; /&gt;&lt;path class=&quot;wf-beaufort-glyph__pennant&quot; d=&quot;M1.5 3.45L11.34 0.9L1.5 7.79Z&quot; stroke-width=&quot;1.08&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;12&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;demo__row&quot;&gt;
+        &lt;span class=&quot;demo__cell&quot;&gt;&lt;b&gt;&lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 5&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;11.52&quot; height=&quot;16&quot; viewBox=&quot;0 0 11.52 16&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.3 15.3V3.1M1.3 3.1l9.52 -2.4M1.3 5.82l9.52 -2.4M1.3 8.54l5.24 -1.44&quot; stroke-width=&quot;1.4&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;5&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;&lt;small class=&quot;is-alarm&quot;&gt;g&lt;span class=&quot;wf-beaufort-glyph&quot; role=&quot;img&quot; aria-label=&quot;Force 7&quot;&gt;&lt;svg class=&quot;wf-beaufort-glyph__glyph&quot; width=&quot;7.2&quot; height=&quot;10&quot; viewBox=&quot;0 0 7.2 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path class=&quot;wf-beaufort-glyph__staff&quot; d=&quot;M1.17 9.43V2.08M1.17 2.08l5.46 -1.5M1.17 3.88l5.46 -1.5M1.17 5.68l5.46 -1.5M1.17 7.48l3 -0.9&quot; stroke-width=&quot;1.15&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-beaufort-glyph__number&quot; aria-hidden=&quot;true&quot;&gt;7&lt;/span&gt;&lt;/span&gt;&lt;/small&gt;&lt;/span&gt;
       &lt;/div&gt;
     &lt;/section&gt;
   &lt;/body&gt;

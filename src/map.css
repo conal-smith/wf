@@ -294,6 +294,16 @@
   font: 600 13px var(--font-mono);
   fill: var(--color-ink);
 }
+/* In Force: the wind's glyph beside its force, the gust's smaller. */
+.map-loupe-glyph path {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.map-loupe-glyph path.is-pennant {
+  fill: var(--color-ink);
+}
 .map-loupe-relation {
   font: 500 10px var(--font-mono);
   letter-spacing: 0.08em;

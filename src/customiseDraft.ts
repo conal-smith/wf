@@ -31,6 +31,7 @@ import {
   type Skill,
 } from "../force5/src/stars";
 import type { Units } from "../force5/src/units";
+import { inForces } from "../spot/web/yourStars";
 import type { PlaceHour } from "./ratings";
 
 /** What the wizard is setting, until "Show me the chart" saves it. */
@@ -52,7 +53,7 @@ export interface Draft {
 export function draftOf(prefs: Prefs, starred: readonly string[]): Draft {
   const rider = prefs.rider;
   const skill = ratingLevel(rider);
-  return {
+  return inUnits({
     skill,
     weightKg: rider.weightKg,
     pointing: rider.pointing ?? "typical",
@@ -61,7 +62,27 @@ export function draftOf(prefs: Prefs, starred: readonly string[]): Draft {
       : levelRating(skill, rider.weightKg),
     units: prefs.units,
     starred: [...starred],
-  };
+  });
+}
+
+/**
+ * The draft as its units show it: in Force, the band and the gusts on whole
+ * forces (yourStars.ts `inForces`), as the handles stand.
+ */
+export const inUnits = (draft: Draft): Draft =>
+  draft.units === "bft" ? { ...draft, custom: inForces(draft.custom) } : draft;
+
+/**
+ * Whether the draft's wind, gusts and shore are its level's: as the level
+ * has them, or, in Force, as the level's are set in whole forces.
+ */
+export function onItsLevel(draft: Draft): boolean {
+  const custom = { ...draft.custom, base: draft.skill };
+  const level = levelRating(draft.skill, draft.weightKg);
+  return (
+    sameCustomRating(custom, level) ||
+    (draft.units === "bft" && sameCustomRating(custom, inForces(level)))
+  );
 }
 
 /** A level's own band, gusts and shore for a rider of this weight. */
@@ -76,12 +97,13 @@ export const withLevel = (
   draft: Draft,
   skill: Skill,
   weightKg: number | null,
-): Draft => ({
-  ...draft,
-  skill,
-  weightKg,
-  custom: levelRating(skill, weightKg),
-});
+): Draft =>
+  inUnits({
+    ...draft,
+    skill,
+    weightKg,
+    custom: levelRating(skill, weightKg),
+  });
 
 /** The rider the draft rates as: the custom rating in use, the rest as it is. */
 export const draftRider = (draft: Draft, rider: Rider): Rider => ({
@@ -176,8 +198,7 @@ export function applyDraft(
   });
   const next: Prefs = { ...prefs, units: draft.units, rider };
   const custom = { ...draft.custom, base: draft.skill };
-  if (sameCustomRating(custom, levelRating(draft.skill, draft.weightKg)))
-    return withStarsOn(next, draft.skill, now);
+  if (onItsLevel(draft)) return withStarsOn(next, draft.skill, now);
   if (sameCustomRating(custom, prefs.rider.custom)) return next;
   return withCustomStars(next, custom, now);
 }

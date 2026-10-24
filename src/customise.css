@@ -222,6 +222,24 @@
 }
 .cw-stepper small,
 .cw-big small,
+/* In Force, the forces and the knots each runs over. */
+.cw-bf-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font: 600 var(--text-body) / 1 var(--font-mono);
+}
+.cw-bf-key small {
+  display: block;
+  margin-top: 3px;
+  font: 500 var(--text-eyebrow) / 1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
 .cw-eg small {
   margin-left: 2px;
   font: 500 var(--text-caption) var(--font-mono);
@@ -316,7 +334,8 @@
   margin: 0 14px;
   touch-action: pan-y;
 }
-.cw-range svg {
+/* The scale's drawing; not a glyph in a knob. */
+.cw-range > svg {
   position: absolute;
   inset: 0;
   overflow: visible;

@@ -15,7 +15,7 @@ import {
 } from "../../../force5/src/stars";
 import type { Units } from "../../../force5/src/units";
 import { compass } from "../../../force5/src/weather";
-import { windIn } from "../../../spot/web/spot";
+import { windSay } from "../../../spot/web/spot";
 import { colors, fonts, hitTarget, shadow, space } from "../theme/tokens";
 import { Button } from "./Button";
 import { WindArrow } from "./Glyphs";
@@ -116,8 +116,8 @@ export function RatingTip({
                   {e.from !== null && <WindArrow from={e.from} size={14} />}
                   <T variant="figureSm" tabular>
                     {e.from !== null ? `${compass(e.from)} ` : ""}
-                    {windIn(e.windKn, e.units)}
-                    {e.gustKn !== null ? ` g${windIn(e.gustKn, e.units)}` : ""}
+                    {windSay(e.windKn, e.units)}
+                    {e.gustKn !== null ? ` g${windSay(e.gustKn, e.units)}` : ""}
                   </T>
                 </View>
               )}

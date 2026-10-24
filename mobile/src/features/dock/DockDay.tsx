@@ -26,7 +26,7 @@ import {
   handoverLabel,
   hatchPath,
   hourReading,
-  speedIn,
+  speedText,
   starSize,
   windInk,
   wingFor,
@@ -277,10 +277,10 @@ export const DockDay = memo(function DockDay(props: DockDayProps) {
                 {hour && hour.windKn !== null ? (
                   <>
                     <T allowFontScaling={false} tabular style={[styles.kn, fs(12.5)]}>
-                      {speedIn(hour.windKn, units)}
+                      {speedText(hour.windKn, units)}
                       {hour.gustKn !== null ? (
                         <T allowFontScaling={false} tabular color="muted" style={[styles.gu, fs(9.5)]}>
-                          {` g${speedIn(hour.gustKn, units)}`}
+                          {` g${speedText(hour.gustKn, units)}`}
                         </T>
                       ) : null}
                     </T>

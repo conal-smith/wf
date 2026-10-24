@@ -38,6 +38,8 @@ import { sectionHeadingStyles } from "./SectionHeading";
 import { segmentedStyles } from "./Segmented";
 import { skeletonStyles } from "./Skeleton";
 import { starGlyphsStyles } from "./StarGlyphs";
+import { beaufortGlyphStyles } from "./BeaufortGlyph";
+import { beaufortPath } from "./beaufortPath";
 import { surfaceStyles } from "./Surface";
 import { UI, compileTheme, holds, selector } from "./theme.testkit";
 import { MONO_LABEL, RING, RING_WITHIN } from "./tv";
@@ -46,6 +48,7 @@ import { wordmarkStyles } from "./Wordmark";
 const {
   Avatar,
   Backdrop,
+  BeaufortGlyph,
   Button,
   Checkbox,
   Chip,
@@ -82,6 +85,7 @@ const {
 const RECIPES = {
   avatarStyles,
   backdropStyles,
+  beaufortGlyphStyles,
   buttonStyles,
   checkboxStyles,
   chipStyles,
@@ -194,12 +198,13 @@ describe("the kit is styled only from the theme", () => {
 });
 
 describe("S2: what ui/ exports", () => {
-  it("is the thirty-five components, by name", () => {
+  it("is the thirty-six components, by name", () => {
     const components = Object.keys(kit).filter((name) => /^[A-Z]/.test(name));
     expect(components.sort()).toEqual(
       [
         "Avatar",
         "Backdrop",
+        "BeaufortGlyph",
         "Button",
         "Checkbox",
         "Chip",
@@ -1145,6 +1150,33 @@ describe("the chart's own primitives", () => {
     expect(html(<Figure value={14} label="14 knots" />)).toContain(
       'role="img" aria-label="14 knots"',
     );
+  });
+
+  it("BeaufortGlyph draws the force's feathers and writes its number", () => {
+    const five = html(<BeaufortGlyph force={5} size={17} />);
+    expect(five).toContain('aria-label="Force 5"');
+    expect(five).toContain('role="img"');
+    expect(five).toMatch(/>5<\/span>/);
+    // The staff and three feathers: two whole and a half.
+    const d = five.match(/ d="([^"]+)"/)![1];
+    expect(d.match(/M/g)).toHaveLength(4);
+    expect(html(<BeaufortGlyph force={5} bare />)).not.toMatch(/>5<\/span>/);
+    expect(html(<BeaufortGlyph force={3} label="" />)).toContain(
+      'aria-hidden="true"',
+    );
+  });
+
+  it("BeaufortGlyph flies a pennant from Force 10, so the staff stays clear", () => {
+    expect(html(<BeaufortGlyph force={9} />)).not.toContain("Z");
+    const ten = html(<BeaufortGlyph force={10} size={10} />);
+    expect(ten).toMatch(/d="M[^"]*Z"/);
+    expect(beaufortPath(12, 10).stroke.match(/M/g)).toHaveLength(2);
+    // Every feather on the staff, inside the box, at the 10px gust size.
+    for (let f = 0; f <= 12; f++) {
+      const { stroke, height } = beaufortPath(f, 10);
+      for (const [, y] of stroke.matchAll(/M[\d.]+ ([\d.]+)/g))
+        expect(Number(y)).toBeLessThanOrEqual(height);
+    }
   });
 
   it("StarGlyphs draws five places: solid, faded, then dots", () => {

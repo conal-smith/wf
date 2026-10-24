@@ -18,8 +18,8 @@ import type { Units } from "../../force5/src/units";
 import type { HourWind } from "../../mcp/api/forecast";
 import { Button } from "../../ui";
 import { MONO_LABEL, tv } from "../../ui/tv";
-import { WindArrow } from "./glyphs";
-import { clock, compass, windIn } from "./spot";
+import { WindArrow, WindValue } from "./glyphs";
+import { clock, compass, windIn, windSay } from "./spot";
 
 const styles = tv({
   slots: {
@@ -97,20 +97,32 @@ export function rangeZone(knots: number, band: Band): RangeZone {
   return "over";
 }
 
-/** "2 under your minimum, 13": where a wind sits in the rider's range, in words. */
+/** The sweet spot as it is written: "15–20", or "F5" where it is one force. */
+export function sweet(band: Band, units: Units): string {
+  const low = windSay(band.sweetLow, units);
+  const high = windSay(band.sweetHigh, units);
+  return low === high ? low : `${low}–${high}`;
+}
+
+/**
+ * "2 under your minimum, 13": where a wind sits in the rider's range, in
+ * words. In Force, "under your minimum, F4": a difference of forces is not a
+ * force.
+ */
 export function rangeText(knots: number, band: Band, units: Units): string {
-  const say = (k: number) => windIn(k, units);
+  const say = (k: number) => windSay(k, units);
+  const by = (k: number) => (units === "bft" ? "" : `${k} `);
   switch (rangeZone(knots, band)) {
     case "under":
-      return `${say(band.min) - say(knots)} under your minimum, ${say(band.min)}`;
+      return `${by(windIn(band.min, units) - windIn(knots, units))}under your minimum, ${say(band.min)}`;
     case "light":
-      return `between your minimum, ${say(band.min)}, and your best, ${say(band.sweetLow)}–${say(band.sweetHigh)}`;
+      return `between your minimum, ${say(band.min)}, and your best, ${sweet(band, units)}`;
     case "best":
-      return `in your best, ${say(band.sweetLow)}–${say(band.sweetHigh)}`;
+      return `in your best, ${sweet(band, units)}`;
     case "strong":
-      return `between your best, ${say(band.sweetLow)}–${say(band.sweetHigh)}, and your most, ${say(band.max)}`;
+      return `between your best, ${sweet(band, units)}, and your most, ${say(band.max)}`;
     case "over":
-      return `${say(knots) - say(band.max)} over your most, ${say(band.max)}`;
+      return `${by(windIn(knots, units) - windIn(band.max, units))}over your most, ${say(band.max)}`;
   }
 }
 
@@ -120,7 +132,7 @@ export const headlineName = (wind: Pick<HourWind, "lead">) =>
 
 /** What the frame draws, for a screen reader and the trigger's label. */
 export function rangeWords(wind: HourWind, band: Band, units: Units): string {
-  const say = (k: number) => windIn(k, units);
+  const say = (k: number) => windSay(k, units);
   return [
     `${headlineName(wind)} ${say(wind.wind_kn)}${wind.gust_kn !== null ? ` gusting ${say(wind.gust_kn)}` : ""}`,
     wind.models > 1
@@ -243,7 +255,7 @@ export function RangeBar({ wind, band }: { wind: HourWind; band: Band }) {
 /** The frame's labels, for its column's head: the floor, the best, the most. */
 export function RangeAxis({ band, units }: { band: Band; units: Units }) {
   const s = styles();
-  const say = (knots: number) => windIn(knots, units);
+  const say = (knots: number) => windSay(knots, units);
   const { left, right, x } = scale(band, RANGE_WIDTH);
   return (
     <svg className={s.svg()} width={RANGE_WIDTH} height={20} aria-hidden="true">
@@ -270,7 +282,7 @@ export function RangeAxis({ band, units }: { band: Band; units: Units }) {
         y={9}
         textAnchor="middle"
       >
-        {say(band.sweetLow)}–{say(band.sweetHigh)}
+        {sweet(band, units)}
       </text>
       <text className={s.label()} x={right} y={9} textAnchor="middle">
         {say(band.max)}
@@ -318,7 +330,7 @@ function DetailChart({
   units: Units;
 }) {
   const s = styles();
-  const say = (knots: number) => windIn(knots, units);
+  const say = (knots: number) => windSay(knots, units);
   const { left, right, x, held } = scale(band, DETAIL_WIDTH);
   const mid = 30;
   const meanX =
@@ -349,7 +361,7 @@ function DetailChart({
         y={9}
         textAnchor="middle"
       >
-        best {say(band.sweetLow)}–{say(band.sweetHigh)}
+        best {sweet(band, units)}
       </text>
       <text className={s.label()} x={right} y={9} textAnchor="end">
         max {say(band.max)}
@@ -440,7 +452,7 @@ export function RangeDetail({
   onModel?: (model: string) => void;
 }) {
   const s = styles();
-  const say = (knots: number) => windIn(knots, units);
+  const say = (knots: number) => windSay(knots, units);
   const byModel = wind.by_model ?? {};
   const rows = [
     ...models.filter((m) => m.id === wind.lead),
@@ -453,12 +465,14 @@ export function RangeDetail({
       </span>
       <span className={s.headline()}>
         <span className={s.big()}>
-          {say(wind.wind_kn)}
+          <WindValue knots={wind.wind_kn} units={units} />
           {wind.gust_kn !== null && (
-            <span className={s.gustSup()}>{say(wind.gust_kn)}</span>
+            <span className={s.gustSup()}>
+              <WindValue knots={wind.gust_kn} units={units} small />
+            </span>
           )}
         </span>
-        {unitText}
+        {units === "bft" ? null : unitText}
         <WindArrow from={wind.direction_deg} size={14} />
         {wind.direction}
       </span>

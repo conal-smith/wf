@@ -15,7 +15,13 @@ import {
   type ShoreAngle,
 } from "../../force5/src/stars";
 import { sunTimes } from "../../force5/src/sun";
-import { KNOTS, convert, type Units } from "../../force5/src/units";
+import {
+  KNOTS,
+  beaufort,
+  convert,
+  unitLabel,
+  type Units,
+} from "../../force5/src/units";
 import type { ForecastHour, SpotForecast } from "../../mcp/api/forecast";
 
 export const HOUR = 3600000;
@@ -201,12 +207,36 @@ export function shoreSummary(facing: number | null): string | null {
 
 // ---- wind -------------------------------------------------------------------
 
-/** A speed in knots, in the reader's units, rounded as the dock rounds it. */
+/** A speed in knots, in the reader's units, rounded as the dock rounds it; the force in Force. */
 export function windIn(knots: number, units: Units): number {
   if (units === "kn") return Math.round(knots);
+  if (units === "bft") return beaufort(knots);
   const value = convert(knots / KNOTS, units);
   return units === "m/s" ? Math.round(value * 10) / 10 : Math.round(value);
 }
+
+/**
+ * The gust a row writes beside the wind, or null: in Force a gust in the
+ * wind's own force says nothing, so it is left out.
+ */
+export const gustShown = (
+  knots: number,
+  gust: number | null,
+  units: Units,
+): number | null =>
+  gust === null || (units === "bft" && beaufort(gust) <= beaufort(knots))
+    ? null
+    : gust;
+
+/** A speed in knots as a line of text writes it: "14", or "F4" in Force. */
+export const windSay = (knots: number, units: Units): string =>
+  units === "bft" ? `F${beaufort(knots)}` : String(windIn(knots, units));
+
+/** A speed in knots said in full: "14 kn", or "Force 4". */
+export const windWords = (knots: number, units: Units): string =>
+  units === "bft"
+    ? `Force ${beaufort(knots)}`
+    : `${windIn(knots, units)} ${unitLabel(units)}`;
 
 /** Vector mean of bearings, weighted by speed, so SW and W make WSW, not E. */
 export function meanBearing(

@@ -35,7 +35,7 @@ import {
   foldText,
   goodWindArcs,
   gustJumps,
-  windIn,
+  windSay,
 } from "../../../../spot/web/spot";
 import { Button } from "../../components/Button";
 import { SkyGlyph, StarToggle, WindArrow } from "../../components/Glyphs";
@@ -590,7 +590,7 @@ const HourRow = memo(function HourRow({
           {place.windKn !== null ? (
             <>
               <T variant="figure" tabular style={styles.figure}>
-                {windIn(place.windKn, units)}
+                {windSay(place.windKn, units)}
               </T>
               {place.gustKn !== null ? (
                 <T
@@ -599,7 +599,7 @@ const HourRow = memo(function HourRow({
                   color={jump ? "penInk" : "muted"}
                   style={styles.gust}
                 >
-                  {windIn(place.gustKn, units)}
+                  {windSay(place.gustKn, units)}
                 </T>
               ) : null}
             </>

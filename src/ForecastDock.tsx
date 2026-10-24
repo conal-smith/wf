@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/Button";
 import { framePath, stemPath, type KeepOut } from "../ui/penPaths";
+import { BeaufortGlyph } from "../ui/BeaufortGlyph";
 import { StarGlyphs } from "../ui/StarGlyphs";
 // Only when asked for: the chart's Blend view.
 const BlendChart = lazy(() => import("./BlendChart"));
@@ -84,7 +85,15 @@ import {
   tideAt,
   type SpotTide,
 } from "../force5/src/tides";
-import { convert, type Units } from "../force5/src/units";
+import {
+  beaufort,
+  convert,
+  isForce,
+  knotsIn,
+  scaleUnits,
+  unitLabel,
+  type Units,
+} from "../force5/src/units";
 import { compass, type Spot } from "../force5/src/weather";
 import { spotHref } from "../force5/src/siteNav";
 import {
@@ -330,8 +339,15 @@ const StripTable = memo(function StripTable({
         </td>
       );
     });
-  const speed = (kn: number | null) =>
-    kn === null ? "" : Math.round(convert(kn / 1.94384449, units));
+  // In Force, the old charts' glyph and the force: the gust's small.
+  const speed = (kn: number | null, gust = false) =>
+    kn === null ? (
+      ""
+    ) : isForce(units) ? (
+      <BeaufortGlyph force={beaufort(kn)} size={gust ? 10 : 16} />
+    ) : (
+      knotsIn(kn, units)
+    );
   return (
     <table className="tt" style={{ width: g.total }}>
       <colgroup>
@@ -408,9 +424,17 @@ const StripTable = memo(function StripTable({
                 hour && hour.windKn !== null ? (
                   <>
                     <span className="kn">{speed(hour.windKn)}</span>
-                    {hour.gustKn !== null && (
-                      <span className="gu"> g{speed(hour.gustKn)}</span>
-                    )}
+                    {hour.gustKn !== null &&
+                      // In Force, a gust in the wind's own force says nothing.
+                      !(
+                        isForce(units) &&
+                        beaufort(hour.gustKn) <= beaufort(hour.windKn)
+                      ) && (
+                        <span className="gu">
+                          {" "}
+                          g{speed(hour.gustKn, true)}
+                        </span>
+                      )}
                   </>
                 ) : (
                   "–"
@@ -1041,7 +1065,7 @@ export default function ForecastDock(props: Props) {
       (top, hour) => Math.max(top, hour.max ?? 0, hour.gust.max ?? 0),
       0,
     );
-    return niceMax(convert(peak, prefs.units));
+    return niceMax(convert(peak, scaleUnits(prefs.units)));
   }, [blend.stats, prefs.units]);
   const blendNode = useMemo(() => {
     if (view !== "blend") return null;
@@ -1805,7 +1829,7 @@ export default function ForecastDock(props: Props) {
                 {/* No name: the chart is plainly the wind. Its unit, and
                       its gridlines numbered here where they stay put while
                       the hours scroll, on the chart's own scale. */}
-                <small>{prefs.units}</small>
+                <small>{scaleUnits(prefs.units)}</small>
                 {blend.lines.length > 0 &&
                   axisTicks(blendMax)
                     .slice(1)
@@ -1829,9 +1853,9 @@ export default function ForecastDock(props: Props) {
                 >
                   <RowLabel
                     glyph={glyphs.wind}
-                    title={`Wind and gust, ${prefs.units}`}
+                    title={`Wind and gust, ${unitLabel(prefs.units)}`}
                   />
-                  <small>{prefs.units}</small>
+                  <small>{unitLabel(prefs.units)}</small>
                 </div>
                 <div aria-hidden="true" style={{ height: rows.from }}>
                   <RowLabel

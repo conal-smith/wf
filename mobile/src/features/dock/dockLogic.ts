@@ -29,7 +29,12 @@ import {
   tideAt,
   type TideCurve,
 } from "../../../../force5/src/tides";
-import { KNOTS, convert, type Units } from "../../../../force5/src/units";
+import {
+  knotsIn,
+  speedShort,
+  speedWords,
+  type Units,
+} from "../../../../force5/src/units";
 import { variableValue } from "../../../../force5/src/variables";
 import { compass } from "../../../../force5/src/weather";
 import type { PlaceHour } from "../../../../src/ratings";
@@ -315,16 +320,11 @@ const COMPASS_WORDS: Record<string, string> = {
 export const compassWords = (degrees: number) =>
   COMPASS_WORDS[compass(degrees)] ?? compass(degrees);
 
-const UNIT_WORDS: Record<Units, string> = {
-  kn: "knots",
-  "m/s": "metres per second",
-  "km/h": "kilometres per hour",
-  mph: "miles per hour",
-};
+/** A speed in knots, in the reader's units, rounded as the dock rounds it; the force in Force. */
+export const speedIn = (kn: number, units: Units) => knotsIn(kn, units);
 
-/** A speed in knots, in the reader's units, rounded as the dock rounds it. */
-export const speedIn = (kn: number, units: Units) =>
-  Math.round(convert(kn / KNOTS, units));
+/** A speed in knots as a figure is written: "18", or "F5" in Force. */
+export const speedText = (kn: number, units: Units) => speedShort(kn, units);
 
 /**
  * One hour read aloud: "Saturday 14:00, 4 stars, west-south-west 18 knots
@@ -355,9 +355,11 @@ export function hourReading(
   else {
     const from = hour.from === null ? "" : `${compassWords(hour.from)} `;
     const gust =
-      hour.gustKn === null ? "" : ` gusting ${speedIn(hour.gustKn, units)}`;
+      hour.gustKn === null
+        ? ""
+        : ` gusting ${units === "bft" ? speedWords(hour.gustKn, units) : speedIn(hour.gustKn, units)}`;
     parts.push(
-      `${from}${speedIn(hour.windKn, units)} ${UNIT_WORDS[units]}${gust}`,
+      `${from}${speedWords(hour.windKn, units)}${gust}`,
     );
   }
   if (rating?.shore === "offshore" || rating?.shore === "cross-off")
@@ -414,9 +416,9 @@ export function windFigures(
   units: Units,
 ): string {
   if (!hour || hour.windKn === null) return "–";
-  const gust = hour.gustKn === null ? "" : ` g${speedIn(hour.gustKn, units)}`;
+  const gust = hour.gustKn === null ? "" : ` g${speedText(hour.gustKn, units)}`;
   const from = hour.from === null ? "" : ` · ${compass(hour.from)}`;
-  return `${speedIn(hour.windKn, units)}${gust}${from}`;
+  return `${speedText(hour.windKn, units)}${gust}${from}`;
 }
 
 /** The wing an hour's stars assume, or null where the wind gives no stars. */

@@ -6,7 +6,8 @@
  *
  * Everything is held in knots, as the rating is, and shown in the rider's
  * unit; a handle snaps to a whole unit (half a metre per second), and is kept
- * to the tenth of a knot, which shows again as the figure it was set to.
+ * to the tenth of a knot, which shows again as the figure it was set to. In
+ * Force a handle snaps to a whole force instead: see `moveWindForce`.
  */
 import {
   CUSTOM_LIMITS,
@@ -24,12 +25,20 @@ import {
   type HourRating,
   type Rider,
 } from "../../force5/src/stars";
-import { KNOTS, convert, unitLabel, type Units } from "../../force5/src/units";
+import {
+  BEAUFORT_KN,
+  KNOTS,
+  beaufort,
+  convert,
+  forceKn,
+  unitLabel,
+  type Units,
+} from "../../force5/src/units";
 
 /** One of the rider's units, against the knot the rating is kept in. */
 export interface UnitScale {
   label: string;
-  /** Shown units to the knot. */
+  /** Shown units to the knot. In Force, the scale is drawn in knots: 1. */
   perKn: number;
   /** A handle's step, in shown units. */
   step: number;
@@ -37,6 +46,8 @@ export interface UnitScale {
   dp: number;
   /** An axis label every this many shown units. */
   tick: number;
+  /** Whether the rider reads forces: a figure is a force, a handle a whole one. */
+  force: boolean;
 }
 
 const STEPS: Record<Units, { step: number; dp: number; tick: number }> = {
@@ -44,6 +55,7 @@ const STEPS: Record<Units, { step: number; dp: number; tick: number }> = {
   mph: { step: 1, dp: 0, tick: 10 },
   "km/h": { step: 1, dp: 0, tick: 20 },
   "m/s": { step: 0.5, dp: 1, tick: 5 },
+  bft: { step: 1, dp: 0, tick: 10 },
 };
 
 export function unitScale(units: Units): UnitScale {
@@ -51,12 +63,17 @@ export function unitScale(units: Units): UnitScale {
     label: unitLabel(units),
     perKn: convert(1 / KNOTS, units),
     ...STEPS[units],
+    force: units === "bft",
   };
 }
 
-/** Knots as the rider reads them: "15", or "7.5" in metres per second. */
+/** Knots as the rider reads them: "15", or "7.5" in metres per second, or the force, "5". */
 export const shown = (kn: number, unit: UnitScale) =>
-  (kn * unit.perKn).toFixed(unit.dp);
+  unit.force ? String(beaufort(kn)) : (kn * unit.perKn).toFixed(unit.dp);
+
+/** A speed written out with its unit: "15 kn", "Force 5". */
+export const said = (kn: number, unit: UnitScale) =>
+  unit.force ? `Force ${beaufort(kn)}` : `${shown(kn, unit)} ${unit.label}`;
 
 /** A figure in the rider's unit, snapped to the step, back in knots to the tenth. */
 export function knotsOf(value: number, unit: UnitScale): number {
@@ -64,9 +81,24 @@ export function knotsOf(value: number, unit: UnitScale): number {
   return Math.round((snapped / unit.perKn) * 10) / 10;
 }
 
-/** A handle moved by `steps` of the rider's unit from where it shows. */
+/**
+ * A handle moved by `steps` of the rider's unit from where it shows. In Force,
+ * by whole forces: the first knot of the force it lands in, which the move
+ * then sets on the force's first or last knot as the handle wants.
+ */
 export const stepped = (kn: number, steps: number, unit: UnitScale) =>
-  knotsOf(Number(shown(kn, unit)) + steps * unit.step, unit);
+  unit.force
+    ? forceKn(beaufort(kn) + steps, "first")
+    : knotsOf(Number(shown(kn, unit)) + steps * unit.step, unit);
+
+/**
+ * Where a scale in knots is ticked for a rider in Force: at each force's first
+ * knot between `from` and `to`, labelled with the force that starts there.
+ */
+export const forceTicks = (from: number, to: number) =>
+  BEAUFORT_KN.map((kn, i) => ({ kn, force: i + 1 })).filter(
+    (t) => t.kn >= from && t.kn <= to,
+  );
 
 export type WindKey = keyof CustomRating["wind"];
 export type GustKey = "fine" | "worst";
@@ -120,6 +152,97 @@ export function moveGust(
       : clamp(kn, rating.gust.fine + apartKn, GUST_TOP);
   return safe({ ...rating, gust: { ...rating.gust, [key]: value } });
 }
+
+/*
+ * In Force, the band is set in whole forces: the lower two handles on a
+ * force's first knot, the upper two on its last, and each on a force of its
+ * own but for the sweet spot, which may be one force wide (Learning's
+ * 13/15/20/26 kn is F4 / F5–F5 / F6). The forces the scale holds: F2 (from
+ * 4 kn, since the band starts no lower than 2) to F8 (34–40 kn, the top).
+ */
+const FORCE_LOW = 2;
+const FORCE_TOP = beaufort(CUSTOM_LIMITS.windTopKn);
+const EDGE: readonly ("first" | "last")[] = ["first", "first", "last", "last"];
+/** How many forces each handle stands above the one before it. */
+const APART = [0, 1, 0, 1];
+
+/** The four handles' forces kept in order and on the scale, low to high. */
+function forceOrder(forces: number[]): number[] {
+  const out = [...forces];
+  for (let i = 0; i < 4; i++)
+    out[i] = Math.max(out[i], i ? out[i - 1] + APART[i] : FORCE_LOW);
+  for (let i = 3; i >= 0; i--)
+    out[i] = Math.min(out[i], i < 3 ? out[i + 1] - APART[i + 1] : FORCE_TOP);
+  return out;
+}
+
+/** The band set in whole forces, each handle where Force puts it. */
+export function forceBand(rating: CustomRating): CustomRating {
+  const forces = forceOrder(WIND_KEYS.map((key) => beaufort(rating.wind[key])));
+  const wind = { ...rating.wind };
+  WIND_KEYS.forEach((key, i) => (wind[key] = forceKn(forces[i], EDGE[i])));
+  return safe({ ...rating, wind });
+}
+
+/** One handle moved in Force: to a whole force, never onto a neighbour's. */
+export function moveWindForce(
+  rating: CustomRating,
+  key: WindKey,
+  kn: number,
+): CustomRating {
+  const i = WIND_KEYS.indexOf(key);
+  const forces = WIND_KEYS.map((k) => beaufort(rating.wind[k]));
+  const low = i ? forces[i - 1] + APART[i] : FORCE_LOW;
+  const high = i < 3 ? forces[i + 1] - APART[i + 1] : FORCE_TOP;
+  const force = clamp(beaufort(kn), low, Math.max(low, high));
+  return safe({
+    ...rating,
+    wind: { ...rating.wind, [key]: forceKn(force, EDGE[i]) },
+  });
+}
+
+/**
+ * The gust handles in Force, each on a force's last knot: "no effect up to
+ * F6" is gusts to 27 kn, and "the most off by F8" is the most from the top of
+ * F8, so the stars go as the gusts climb through it. The two a force apart at
+ * least; the most no higher than the scale's last whole force, F9.
+ */
+const GUST_FORCE_TOP = 9;
+
+export function moveGustForce(
+  rating: CustomRating,
+  key: GustKey,
+  kn: number,
+): CustomRating {
+  const fine = beaufort(rating.gust.fine);
+  const worst = beaufort(rating.gust.worst);
+  const force =
+    key === "fine"
+      ? clamp(beaufort(kn), 1, worst - 1)
+      : clamp(beaufort(kn), fine + 1, GUST_FORCE_TOP);
+  return safe({
+    ...rating,
+    gust: { ...rating.gust, [key]: forceKn(force, "last") },
+  });
+}
+
+/** Both gust handles set in whole forces. */
+export function forceGusts(rating: CustomRating): CustomRating {
+  const fine = clamp(beaufort(rating.gust.fine), 1, GUST_FORCE_TOP - 1);
+  const worst = clamp(beaufort(rating.gust.worst), fine + 1, GUST_FORCE_TOP);
+  return safe({
+    ...rating,
+    gust: {
+      ...rating.gust,
+      fine: forceKn(fine, "last"),
+      worst: forceKn(worst, "last"),
+    },
+  });
+}
+
+/** The band and the gusts set in whole forces, as a rider in Force sets them. */
+export const inForces = (rating: CustomRating): CustomRating =>
+  forceGusts(forceBand(rating));
 
 /** Stars off for one direction, in half stars from 0 to 5. */
 export function setDirection(
