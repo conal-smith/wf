@@ -34,6 +34,7 @@ import {
   LoupeGlyph,
   LowTideGlyph,
   NamesGlyph,
+  RainGlyph,
   ReliefGlyph,
   RingGlyph,
   SatelliteGlyph,
@@ -45,6 +46,7 @@ import {
 } from "./chartGlyphs";
 import FoilLegend from "./FoilLegend";
 import { KnotScale } from "./KnotScale";
+import { RainScale } from "./RainScale";
 import type { InfoSection } from "./mapInfoContext";
 import { riderLine } from "./riderLine";
 import "./mapInfo.css";
@@ -104,6 +106,12 @@ const PARTS: readonly Part[] = [
     glyph: (size) => <CurrentsGlyph size={size} />,
   },
   {
+    id: "rain",
+    name: "Rain",
+    short: "Rain",
+    glyph: (size) => <RainGlyph size={size} />,
+  },
+  {
     id: "satellite",
     name: "Satellite",
     short: "Satellite",
@@ -142,6 +150,11 @@ export interface MapInfoProps {
   spotId: string | null;
   /** The tidal-depth key's readings (src/FoilLegend.tsx). */
   foil: Parameters<typeof FoilLegend>[0];
+  /**
+   * The Rain layer: whether it is on, and what it draws at the hour shown
+   * (or why it draws nothing there).
+   */
+  rain?: { on: boolean; line: string | null };
   sources: ReactNode;
   /** "Satellite: high tide (≈4.6 m)" while the image is on, else null. */
   satellite?: string | null;
@@ -170,6 +183,7 @@ export default function MapInfo({
   blendModels,
   spotId,
   foil,
+  rain = { on: false, line: null },
   sources,
   satellite = null,
   satelliteError = null,
@@ -249,6 +263,7 @@ export default function MapInfo({
         </Suspense>
       </>
     ),
+    rain: () => <RainPart {...rain} />,
     satellite: () => (
       <SatellitePart
         line={satellite}
@@ -459,6 +474,35 @@ function MapKey({ scale }: { scale: string }) {
       <p className="mi-sm">
         Drawn as an Admiralty chart draws each thing, from INT 1, its book of
         symbols.
+      </p>
+    </>
+  );
+}
+
+/** The Rain layer: what its blues mean, where they come from, what they miss. */
+function RainPart({ on, line }: { on: boolean; line: string | null }) {
+  return (
+    <>
+      <p className="mi-lede">
+        Where it rains in the hour shown, and how hard.
+      </p>
+      <h4>
+        The colours <small>rain in the hour</small>
+      </h4>
+      <RainScale />
+      <p data-rain-line>
+        {on
+          ? (line ?? "Reading…")
+          : "Off. Turn it on in Layers, under Weather: \u201cRain\u201d."}
+      </p>
+      <p>
+        From DWD&rsquo;s ICON-EU model: about 6.5 km, hourly, for three days
+        from its run. Dry is left clear. At a three-hour column the blues are
+        the mean of its hours. A shower a few kilometres across can be missed
+        or put in the wrong place.
+      </p>
+      <p className="ip-small">
+        Weather data: Deutscher Wetterdienst (DWD) ICON-EU open data, CC BY 4.0.
       </p>
     </>
   );

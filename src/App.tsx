@@ -48,6 +48,7 @@ import { useFadeOut } from "../ui/Backdrop";
 import { MapInfoOpen, type InfoSection } from "./mapInfoContext";
 import { foilArchiveUrl, useFoilDepth } from "./useFoilDepth";
 import { useCurrents } from "./useCurrents";
+import { useRain } from "./useRain";
 import type { LightState } from "../force5/src/lights";
 import { speedWords } from "../force5/src/units";
 import { rideWedge } from "../force5/src/rideWedge";
@@ -246,6 +247,8 @@ const DEFAULT_LAYERS: MapLayers = {
   foil: true,
   // Off by default: nothing of it is read until a rider asks for it.
   currents: false,
+  // Off too, and nothing of it read until asked for.
+  rain: false,
   satellite: "off",
 };
 
@@ -1071,6 +1074,18 @@ export default function App() {
   const foilState = useFoilDepth(layers.foil && !foilFar, foilStations);
   // The Currents layer at the hour the map shows; nothing at all while off.
   const currents = useCurrents(layers.currents, mapAt, prefs.units);
+  // The Rain layer at the hour the map shows: the rain of that column's own
+  // hours, from the column before it, as the dock's rain row reads it.
+  const rain = useRain(
+    layers.rain,
+    mapAt,
+    mapIndex > 0 ? (strip[mapIndex - 1]?.time ?? null) : null,
+  );
+  const rainLine = rain.view
+    ? `Shown: the rain ${dayShort(rain.view.from)} ${clock(rain.view.from)} to ${clock(rain.view.to)}${
+        rain.view.to - rain.view.from > 3600000 ? ", per hour" : ""
+      }.`
+    : rain.note;
   // Read from the stylesheet only once the layer is wanted.
   const foilPalette = useMemo(
     () =>
@@ -1608,6 +1623,12 @@ export default function App() {
           gauges (Open Government Licence v3.0) and the EOT20 ocean tide model
           (DGFI-TUM, CC BY 4.0)
         </li>
+        {layers.rain && (
+          <li>
+            Rain: Deutscher Wetterdienst&rsquo;s ICON-EU model (CC BY 4.0),
+            the rain in each hour
+          </li>
+        )}
         {layers.currents && (
           <li>
             Currents: the Marine Institute&rsquo;s NE Atlantic ROMS model (CC BY
@@ -1860,6 +1881,7 @@ export default function App() {
               layers={layers}
               foil={foilViews}
               currents={currents.features}
+              rain={rain.view}
               satellite={satellite.image}
               reducedMotion={reducedMotion}
               bottomInset={dockHeight}
@@ -2098,6 +2120,7 @@ export default function App() {
               error: foilState.error,
               floor: foilState.manifest?.floorMetres,
             }}
+            rain={{ on: layers.rain, line: rainLine }}
             sources={sources}
             satellite={satellite.note}
             satelliteError={satellite.error}

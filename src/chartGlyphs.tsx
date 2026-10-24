@@ -378,6 +378,20 @@ export function CurrentsGlyph(props: ChartGlyphProps) {
   );
 }
 
+/**
+ * Rain: a cloud's outline, a light tint of the ink under it where it falls,
+ * and the streaks of rain slanting out of it, as a weather map hatches rain.
+ */
+export function RainGlyph(props: ChartGlyphProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M7 13.5A3.5 3.5 0 0 1 7.6 6.6 4.6 4.6 0 0 1 16.4 6.2 3.7 3.7 0 0 1 17.2 13.5Z" />
+      <path d="M6 15.5L18 15.5 16 22 4 22Z" {...tint(0.14)} />
+      <path d="M8.5 16L7 20.5M12.5 16L11 20.5M16.5 16L15 20.5" />
+    </Glyph>
+  );
+}
+
 /** A survey's lines: tracks run side by side, a sounding at every step. */
 export function SurveyGlyph(props: ChartGlyphProps) {
   const lines = [6, 12, 18];

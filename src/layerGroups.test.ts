@@ -9,6 +9,7 @@ const LAYERS: ChartLayers = {
   names: true,
   foil: true,
   currents: false,
+  rain: false,
 };
 
 function choices(over: Partial<LayerChoices> = {}): LayerChoices {

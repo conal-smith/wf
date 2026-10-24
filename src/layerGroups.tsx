@@ -14,6 +14,7 @@ import {
   LoupeGlyph,
   LowTideGlyph,
   NamesGlyph,
+  RainGlyph,
   ReliefGlyph,
   RingGlyph,
   SatelliteGlyph,
@@ -65,7 +66,7 @@ export interface LayerTile {
 
 export interface LayerGroup {
   /** For the panel's notes under a group. */
-  id: "wind" | "sea" | "chart" | "ground" | "focus";
+  id: "wind" | "sea" | "weather" | "chart" | "ground" | "focus";
   name: string;
   /** The group's glyph, before its name. */
   glyph: ReactNode;
@@ -77,10 +78,11 @@ export interface LayerGroup {
 /**
  * Every layer the chart can draw, in the groups and the order the Layers
  * panel (src/LayersPanel.tsx) and the layers' rail (src/LayerRail.tsx) both
- * show them: the wind, the sea, the chart, the ground under it, and what is
- * drawn round the chosen spot. A layer added here is in both. In the wind
- * and round the spot one is always on, as a radio's choice is; a satellite
- * tide pressed again is no image; the rest each switch their own part.
+ * show them: the wind, the sea, the weather, the chart, the ground under it,
+ * and what is drawn round the chosen spot. A layer added here is in both. In
+ * the wind and round the spot one is always on, as a radio's choice is; a
+ * satellite tide pressed again is no image; the rest each switch their own
+ * part.
  */
 export function layerGroups({
   windStyle,
@@ -199,6 +201,25 @@ export function layerGroups({
             "currents",
             <CurrentsGlyph size={18} />,
             { label: "About currents", at: "currents" },
+          ),
+          isNew: true,
+        },
+      ],
+    },
+    {
+      id: "weather",
+      name: "Weather",
+      glyph: <RainGlyph size={14} />,
+      rule: "over the chart",
+      tiles: [
+        {
+          ...part(
+            "rain",
+            "Rain",
+            "In the hour shown",
+            "rain",
+            <RainGlyph size={18} />,
+            { label: "About rain", at: "rain" },
           ),
           isNew: true,
         },

@@ -101,6 +101,7 @@ test("on a desktop, Layers opens the rail beside the zoom, clear of the dock, wi
   expect(ours.map(([name]) => name)).toEqual([
     "Wind",
     "Sea",
+    "Weather",
     "Chart",
     "Ground",
     "Round your spot",
