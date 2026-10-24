@@ -1,15 +1,19 @@
 /**
  * "Customise": the site menu's first row, a wizard that walks a rider through
- * the settings the stars are rated on, as the owner saw it in the mockup
- * (wingfoil-mockups/customise-wizard): their level, their wind and how much
- * gusty wind bothers them on a real day re-rated as they change them, the
- * winds they will ride each way round the beach, how far into the wind they
- * ride, their units, their spots, and the lot together.
+ * the settings the stars are rated on, as the owner approved it in the mockup
+ * backlog/mockups/2026-10-24-customise-wizard.html: how they ride (level,
+ * weight, wings and units), the wind that suits them and how much gusty wind
+ * bothers them, on a real day re-rated as they change them, the stars each way
+ * of wind takes off, how far into the wind they ride, their spots, and the lot
+ * together.
+ *
+ * One title per step, in the dialog's head, with how far through it is and a
+ * thin bar under it. The words say what each thing is, plainly.
  *
  * Its own chunk, fetched when it is opened. It edits a draft and saves it on
- * the last step through src/customiseDraft.ts, into the preferences Display
- * options and "Your star rating" write: closing it any other way keeps
- * nothing.
+ * the last step through src/customiseDraft.ts, into the preferences the
+ * stars, Display options and the spot page read: closing it any other way
+ * keeps nothing.
  */
 import "./customise.css";
 import {
@@ -30,117 +34,93 @@ import {
   upwindAngle,
 } from "../force5/src/rideWedge";
 import {
-  DIRECTION_KEYS,
   GUSTIES,
   GUSTY_LABEL,
   SKILLS,
   SKILL_LABEL,
-  rateHour,
-  shoreAngle,
   type DirectionKey,
   type Gusty,
   type Skill,
 } from "../force5/src/stars";
 import { UNITS, beaufort, forceKn, type Units } from "../force5/src/units";
-import { compass, type Spot } from "../force5/src/weather";
+import type { Spot } from "../force5/src/weather";
 import { BeaufortGlyph } from "../ui/BeaufortGlyph";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
-import { Puffin } from "../ui/Puffin";
 import { SearchField } from "../ui/SearchField";
 import { Segmented } from "../ui/Segmented";
 import { StarGlyphs } from "../ui/StarGlyphs";
-import { framePath } from "../ui/penPaths";
+import { TextInput } from "../ui/TextInput";
 import {
+  WEB_DIRS,
+  WEB_R,
   WIND_KEYS,
   WIND_TOP,
   forceTicks,
   knotsOf,
   moveWind,
   moveWindForce,
+  offAt,
+  polar,
   said,
   shown,
   stepped,
   unitScale,
+  webRadius,
   type UnitScale,
 } from "../spot/web/yourStars";
 import {
-  NEXT_SHORE,
+  NEVER,
   applyDraft,
+  costLabel,
   draftOf,
   draftRider,
+  hourWhy,
   inUnits,
-  lessOff,
   levelRating,
-  onItsLevel,
+  nearest,
+  parseWings,
   rateSample,
-  sampleBest,
   sampleDay,
-  shoreChoice,
   shoreLocked,
   spotChanges,
-  starsOff,
   withLevel,
   withShore,
   type Draft,
+  type Origin,
   type SampleDay,
-  type ShoreChoice,
 } from "./customiseDraft";
 import { StarToggle } from "./glyphs";
 import type { PlaceHour } from "./ratings";
 import { clock, dayLong } from "./strip";
 
 const STEPS = [
-  {
-    id: "level",
-    short: "Level",
-    title: "How do you ride?",
-    say: "Be honest. The stars are only as good as this; everything else follows from it.",
-  },
-  {
-    id: "wind",
-    short: "Wind",
-    title: "Your wind",
-    say: "Drag the handles. Watch {day}'s stars move.",
-  },
+  { id: "you", title: "How do you ride?" },
+  { id: "wind", title: "What wind suits you?" },
   {
     id: "shore",
-    short: "Shore",
-    title: "Which winds will you ride?",
-    say: "Tap the wedges. Red is the wind that carries you out.",
+    title: "Stars by wind direction",
+    sub: "How many stars should a spot lose when the wind blows offshore, onshore or along the beach? Drag a dot in to take stars off. A dot in the middle means no stars for that wind.",
   },
-  {
-    id: "pointing",
-    short: "Upwind",
-    title: "Can you ride upwind?",
-    say: "",
-  },
-  {
-    id: "units",
-    short: "Units",
-    title: "Your units",
-    say: "Knots, unless you're told otherwise.",
-  },
-  {
-    id: "spots",
-    short: "Spots",
-    title: "Your home spots",
-    say: "Star the beaches you ride. They're your Favourites in the spot finder.",
-  },
-  {
-    id: "summary",
-    short: "Done",
-    title: "Here’s what we’ll show you",
-    say: "",
-  },
+  { id: "upwind", title: "Can you ride upwind?" },
+  { id: "spots", title: "Your spots" },
+  { id: "done", title: "All set" },
 ] as const;
 export type CustomiseStep = (typeof STEPS)[number]["id"];
 
 const LEVEL_LINE: Record<Skill, string> = {
-  beginner: "Still finding the foil. You want the wind bringing you home.",
-  intermediate: "Up, riding both ways, starting to gybe.",
-  advanced: "Pumping light days, holding down the big ones.",
+  beginner: "Still getting up on the foil.",
+  intermediate: "Riding both ways, starting to gybe.",
+  advanced: "Light-wind pumping, happy in strong wind too.",
 };
+/** The five ways of wind, onshore first, as the shore step lists them. */
+const SHORE_ORDER: readonly DirectionKey[] = [
+  "onshore",
+  "crossOn",
+  "cross",
+  "crossOff",
+  "offshore",
+];
 const DIRECTION_NAME: Record<DirectionKey, string> = {
   onshore: "Onshore",
   crossOn: "Cross-onshore",
@@ -148,27 +128,21 @@ const DIRECTION_NAME: Record<DirectionKey, string> = {
   crossOff: "Cross-offshore",
   offshore: "Offshore",
 };
-const DIRECTION_SHORT: Record<DirectionKey, string> = {
-  onshore: "On",
-  crossOn: "X-on",
-  cross: "Cross",
-  crossOff: "X-off",
-  offshore: "Off",
-};
 const DIRECTION_LINE: Record<DirectionKey, string> = {
-  onshore: "Slow to get out through the chop.",
-  crossOn: "Brings you home. The kind one.",
-  cross: "Runs along the beach.",
-  crossOff: "A drift takes you out, not in.",
-  offshore: "Carries you out to sea if you fall.",
+  onshore: "Blows straight in. Choppy getting out, but it brings you back.",
+  crossOn: "Blows in at an angle. The easiest wind to learn in.",
+  cross: "Blows along the beach. Ideal for most riders.",
+  crossOff: "Blows out at an angle. You drift away from the beach.",
+  offshore: "Blows straight out to sea. If you fall, you drift away.",
 };
-const OF_ANGLE = {
-  onshore: "onshore",
-  "cross-on": "crossOn",
-  cross: "cross",
-  "cross-off": "crossOff",
-  offshore: "offshore",
-} as const;
+/** The web's short names, at the end of each spoke. */
+const DIRECTION_SHORT: Record<DirectionKey, string> = {
+  onshore: "ON",
+  crossOn: "X-ON",
+  cross: "CROSS",
+  crossOff: "X-OFF",
+  offshore: "OFF",
+};
 
 export interface CustomiseProps {
   /** False while it fades out, once shut (ui/Backdrop.tsx `useFadeOut`). */
@@ -188,6 +162,9 @@ export interface CustomiseProps {
   onSave: (prefs: Prefs, toggle: string[]) => void;
 }
 
+/** Where the rider is, once the browser has said: asked for once a visit. */
+type Here = Origin | "asking" | "refused" | null;
+
 export default function Customise({
   open,
   prefs,
@@ -202,6 +179,7 @@ export default function Customise({
 }: CustomiseProps) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(prefs, starred));
   const [at, setAt] = useState(0);
+  const [here, setHere] = useState<Here>(null);
   const byId = useMemo(
     () => new Map(spots.map((s) => [s.id, s] as const)),
     [spots],
@@ -210,14 +188,13 @@ export default function Customise({
   const [day] = useState(() => sampleDay(hours, times, byId, prefer));
   const step = STEPS[at];
   const last = at === STEPS.length - 1;
+  const body = useRef<HTMLDivElement>(null);
   const go = (to: number) => {
     setAt(to);
     body.current?.scrollTo({ top: 0 });
   };
-  const body = useRef<HTMLDivElement>(null);
   const rider = draftRider(draft, prefs.rider);
   const unit = unitScale(draft.units);
-  const dayName = day ? dayLong(day.hours[0].time) : "";
   const save = () => {
     onSave(applyDraft(prefs, draft), spotChanges(starred, draft.starred));
   };
@@ -226,16 +203,24 @@ export default function Customise({
     <Dialog
       open={open}
       size="wide"
-      title="Customise your chart"
+      label="Customise"
+      title={step.title}
+      aside={
+        <span className="cw-count">
+          {at + 1} / {STEPS.length}
+        </span>
+      }
       className="cw"
       onClose={onClose}
       actions={
         <div className="cw-foot">
-          {last ? (
-            <span className="cw-kick">All set</span>
-          ) : (
-            <Button variant="quiet" onClick={onClose}>
-              Skip for now
+          {!last && (
+            <Button
+              variant="quiet"
+              className="cw-skip"
+              onClick={() => go(STEPS.length - 1)}
+            >
+              Skip
             </Button>
           )}
           <span className="cw-sp" />
@@ -253,48 +238,23 @@ export default function Customise({
         </div>
       }
     >
-      <div className="cw-head">
-        <div className="cw-kick">
-          <span>Step</span>{" "}
-          <b>
-            {at + 1} of {STEPS.length}
-          </b>
-        </div>
-        <ol
-          className="cw-scale"
-          aria-label={`Step ${at + 1} of ${STEPS.length}`}
-        >
-          {STEPS.map((s, i) => (
-            <li
-              key={s.id}
-              className={i < at ? "is-done" : i === at ? "is-here" : ""}
-            >
-              <Button
-                variant="quiet"
-                className="cw-tick"
-                aria-current={i === at ? "step" : undefined}
-                onClick={() => go(i)}
-              >
-                <i aria-hidden="true" />
-                {s.short}
-              </Button>
-            </li>
-          ))}
-        </ol>
+      <div
+        className="cw-prog"
+        role="progressbar"
+        aria-label="Customise"
+        aria-valuemin={1}
+        aria-valuemax={STEPS.length}
+        aria-valuenow={at + 1}
+        aria-valuetext={`Step ${at + 1} of ${STEPS.length}`}
+      >
+        {STEPS.map((s, i) => (
+          <i key={s.id} className={i <= at ? "is-done" : undefined} />
+        ))}
       </div>
       <div className="cw-body" ref={body} data-step={step.id}>
-        <h3 className="cw-title">{step.title}</h3>
-        {step.say && (
-          <div className="cw-alm">
-            <Puffin size={48} bob />
-            <p>
-              <b>The Almanac</b>
-              {step.say.replace("{day}", dayName || "the day")}
-            </p>
-          </div>
-        )}
-        {step.id === "level" && (
-          <LevelStep draft={draft} setDraft={setDraft} unit={unit} />
+        {"sub" in step && <p className="cw-sub">{step.sub}</p>}
+        {step.id === "you" && (
+          <YouStep draft={draft} setDraft={setDraft} unit={unit} />
         )}
         {step.id === "wind" && (
           <WindStep
@@ -305,29 +265,22 @@ export default function Customise({
             rider={rider}
           />
         )}
-        {step.id === "shore" && (
-          <ShoreStep draft={draft} setDraft={setDraft} unit={unit} day={day} />
-        )}
-        {step.id === "pointing" && (
+        {step.id === "shore" && <ShoreStep draft={draft} setDraft={setDraft} />}
+        {step.id === "upwind" && (
           <PointingStep draft={draft} setDraft={setDraft} />
-        )}
-        {step.id === "units" && (
-          <UnitsStep draft={draft} setDraft={setDraft} day={day} />
         )}
         {step.id === "spots" && (
           <SpotsStep
             draft={draft}
             setDraft={setDraft}
             spots={spots}
-            hours={hours}
-            times={times}
-            day={day}
             centre={centre}
-            rider={rider}
+            here={here}
+            setHere={setHere}
           />
         )}
-        {step.id === "summary" && (
-          <Summary
+        {step.id === "done" && (
+          <Done
             draft={draft}
             unit={unit}
             day={day}
@@ -342,25 +295,17 @@ export default function Customise({
 }
 
 type StepProps = { draft: Draft; setDraft: (draft: Draft) => void };
-const band = (draft: Draft, unit: UnitScale) => {
-  const w = draft.custom.wind;
-  if (unit.force)
-    return `${written(w.min, unit)}–${written(w.max, unit)} · sweet ${sweetText(w, unit)}`;
-  return `${shown(w.min, unit)}–${shown(w.max, unit)} ${unit.label} · sweet ${shown(w.sweetLow, unit)}–${shown(w.sweetHigh, unit)}`;
-};
+type DraftRider = ReturnType<typeof draftRider>;
 
 /** A speed in a line of text: "15", or "F5" in Force. */
 const written = (kn: number, unit: UnitScale) =>
   unit.force ? `F${beaufort(kn)}` : shown(kn, unit);
 
-/** The sweet spot in forces: "F5–F6", or "F5" where it is one force. */
-const sweetText = (
-  w: { sweetLow: number; sweetHigh: number },
-  unit: UnitScale,
-) => {
-  const low = written(w.sweetLow, unit);
-  const high = written(w.sweetHigh, unit);
-  return low === high ? low : `${low}–${high}`;
+/** Two speeds as a range: "14–24", or "F5–F6", or "F5" where it is one force. */
+const span = (low: number, high: number, unit: UnitScale) => {
+  const a = written(low, unit);
+  const b = written(high, unit);
+  return a === b ? a : `${a}–${b}`;
 };
 
 /**
@@ -383,10 +328,14 @@ function Speed({
   );
 }
 
-/* ---- 1. the level ---- */
+/* ---- 1. how they ride ---- */
 
-function LevelStep({ draft, setDraft, unit }: StepProps & { unit: UnitScale }) {
+function YouStep({ draft, setDraft, unit }: StepProps & { unit: UnitScale }) {
   const weight = draft.weightKg ?? 80;
+  const wingsId = useId();
+  // The field keeps what is being typed ("5." on the way to "5.5"); the
+  // draft holds only what parses.
+  const [wingsText, setWingsText] = useState(draft.wings.join(", "));
   return (
     <>
       <div className="cw-levels" role="group" aria-label="Riding level">
@@ -400,171 +349,104 @@ function LevelStep({ draft, setDraft, unit }: StepProps & { unit: UnitScale }) {
               pressed={draft.skill === skill}
               onClick={() => setDraft(withLevel(draft, skill, draft.weightKg))}
             >
-              <MiniRose upwind={upwindAngle({ skill })} />
-              <span className="cw-level-words">
-                <b>{SKILL_LABEL[skill]}</b>
-                <span>{LEVEL_LINE[skill]}</span>
-              </span>
-              {unit.force ? (
-                <span className="cw-level-band">
-                  <span>
-                    <Speed kn={w.min} unit={unit} size={17} />–
-                    <Speed kn={w.max} unit={unit} size={17} />
-                  </span>
-                  <small>sweet {sweetText(w, unit)}</small>
-                </span>
-              ) : (
-                <span className="cw-level-band">
-                  {shown(w.min, unit)}–{shown(w.max, unit)}
-                  <small>
-                    {unit.label} · sweet {shown(w.sweetLow, unit)}–
-                    {shown(w.sweetHigh, unit)}
-                  </small>
-                </span>
-              )}
+              <b>{SKILL_LABEL[skill]}</b>
+              <span>{LEVEL_LINE[skill]}</span>
+              <small>
+                <Speed kn={w.min} unit={unit} size={15} />–
+                <Speed kn={w.max} unit={unit} size={15} />
+                {unit.force ? "" : ` ${unit.label}`}
+              </small>
             </Button>
           );
         })}
       </div>
-      <div className="cw-weight">
-        <span className="cw-kick">Your weight</span>
-        <span className="cw-stepper">
-          <Button
-            variant="pill"
-            size="sm"
-            icon
-            aria-label="Lighter"
-            onClick={() =>
-              setDraft(withLevel(draft, draft.skill, Math.max(40, weight - 5)))
-            }
-          >
-            −
-          </Button>
-          <output aria-live="polite">
-            {weight}
-            <small>kg</small>
-          </output>
-          <Button
-            variant="pill"
-            size="sm"
-            icon
-            aria-label="Heavier"
-            onClick={() =>
-              setDraft(withLevel(draft, draft.skill, Math.min(140, weight + 5)))
-            }
-          >
-            +
-          </Button>
-        </span>
-        <span className="cw-small">
-          {draft.weightKg === null ? "A guess until you set it. " : ""}Heavier
-          needs more wind.
-        </span>
+      <div className="cw-rows">
+        <div className="cw-row">
+          <span className="cw-kick">Weight</span>
+          <span className="cw-stepper">
+            <Button
+              variant="pill"
+              size="sm"
+              icon
+              aria-label="Lighter"
+              onClick={() =>
+                setDraft(
+                  withLevel(draft, draft.skill, Math.max(40, weight - 5)),
+                )
+              }
+            >
+              −
+            </Button>
+            <output aria-live="polite">
+              {weight}
+              <small>kg</small>
+            </output>
+            <Button
+              variant="pill"
+              size="sm"
+              icon
+              aria-label="Heavier"
+              onClick={() =>
+                setDraft(
+                  withLevel(draft, draft.skill, Math.min(140, weight + 5)),
+                )
+              }
+            >
+              +
+            </Button>
+          </span>
+          <span className="cw-note">Heavier riders need more wind.</span>
+        </div>
+        <div className="cw-row">
+          <label className="cw-kick" htmlFor={wingsId}>
+            Wings you own
+          </label>
+          <span className="cw-wings">
+            <TextInput
+              id={wingsId}
+              inputMode="decimal"
+              data-rider="wings"
+              placeholder="e.g. 4, 5.5"
+              value={wingsText}
+              onChange={(event) => {
+                setWingsText(event.target.value);
+                setDraft({ ...draft, wings: parseWings(event.target.value) });
+              }}
+            />
+            <small>m²</small>
+          </span>
+          <span className="cw-note">
+            Optional. A star comes off when none suits the wind.
+          </span>
+        </div>
+        <div className="cw-row">
+          <span className="cw-kick">Wind in</span>
+          <Segmented<Units>
+            aria-label="Wind units"
+            options={UNITS.map((u) => ({ value: u.id, label: u.label }))}
+            value={draft.units}
+            onChange={(units) => setDraft(inUnits({ ...draft, units }))}
+          />
+          {unit.force && (
+            // The old charts' notation, with the knots each force runs over.
+            <ul className="cw-bf-key" aria-label="The forces in knots">
+              {Array.from({ length: 10 }, (_, i) => i + 1).map((force) => (
+                <li key={force}>
+                  <BeaufortGlyph force={force} size={16} />
+                  <small>
+                    {forceKn(force, "first")}–{forceKn(force, "last")} kn
+                  </small>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </>
   );
 }
 
-/** A rose with the level's no-go hatched: how high it points, at a glance. */
-function MiniRose({ upwind }: { upwind: number }) {
-  const c = 22;
-  const R = 18;
-  const p = (a: number, r: number) => {
-    const t = ((a - 90) * Math.PI) / 180;
-    return `${(c + Math.cos(t) * r).toFixed(1)} ${(c + Math.sin(t) * r).toFixed(1)}`;
-  };
-  return (
-    <svg
-      className="cw-minirose"
-      width="44"
-      height="44"
-      viewBox="0 0 44 44"
-      aria-hidden="true"
-    >
-      <path
-        className="cw-nogo"
-        d={`M${c} ${c}L${p(-upwind, R)}A${R} ${R} 0 0 1 ${p(upwind, R)}Z`}
-      />
-      <path
-        className="cw-tack"
-        d={`M${c} ${c}L${p(upwind, R * 0.9)}A${R * 0.9} ${R * 0.9} 0 0 1 ${p(COURSE_DEEP, R * 0.9)}Z`}
-      />
-      <path
-        className="cw-tack is-home"
-        d={`M${c} ${c}L${p(-COURSE_DEEP, R * 0.9)}A${R * 0.9} ${R * 0.9} 0 0 1 ${p(-upwind, R * 0.9)}Z`}
-      />
-      <circle className="cw-rim" cx={c} cy={c} r={R} />
-    </svg>
-  );
-}
-
 /* ---- 2. the wind and gusty wind ---- */
-
-/** A real day at a real spot, rated for the draft: the stars move as the rider drags. */
-function Preview({
-  day,
-  rider,
-  unit,
-}: {
-  day: SampleDay | null;
-  rider: ReturnType<typeof draftRider>;
-  unit: UnitScale;
-}) {
-  const before = useRef<number[]>([]);
-  const ratings = day ? rateSample(day, rider) : [];
-  const stars = ratings.map((r) => r.stars);
-  const was = before.current;
-  // Nine hours across a phone leave each one a finger's width: smaller stars.
-  const small = window.matchMedia("(max-width: 719px)").matches;
-  useEffect(() => {
-    before.current = stars;
-  });
-  if (!day)
-    return <p className="cw-small">No forecast in hand yet to try it on.</p>;
-  const best = Math.max(...stars);
-  return (
-    <div className="cw-preview" data-preview>
-      <div className="cw-preview-h">
-        <span className="cw-kick">
-          ★ {dayLong(day.hours[0].time)} at {day.spot.name}, for you
-        </span>
-        <span className="cw-kick" data-best>
-          {best ? `best ${best}★` : "no stars"}
-        </span>
-      </div>
-      <div className="cw-preview-hours">
-        {day.hours.map((hour, i) => (
-          <div
-            // Keyed on the stars too, so each change draws in again.
-            key={`${hour.time}-${stars[i]}`}
-            className={
-              was.length && was[i] !== stars[i] ? "is-changed" : undefined
-            }
-          >
-            <span className="cw-t">{clock(hour.time).slice(0, 2)}</span>
-            <span className="cw-w">
-              <Speed kn={hour.windKn} unit={unit} size={small ? 12 : 15} />
-              {hour.gustKn !== null &&
-                // In Force, a gust in the wind's own force says nothing.
-                !(
-                  unit.force && beaufort(hour.gustKn) <= beaufort(hour.windKn)
-                ) && (
-                  <sup>
-                    <Speed kn={hour.gustKn} unit={unit} size={10} />
-                  </sup>
-                )}
-            </span>
-            <StarGlyphs
-              stars={stars[i]}
-              potential={ratings[i].potential}
-              size={small ? 5 : 8}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function WindStep({
   draft,
@@ -575,148 +457,43 @@ function WindStep({
 }: StepProps & {
   unit: UnitScale;
   day: SampleDay | null;
-  rider: ReturnType<typeof draftRider>;
+  rider: DraftRider;
 }) {
-  const w = draft.custom.wind;
-  const id = useId().replace(/[^\w-]/g, "");
-  const set = (custom: Draft["custom"]) => setDraft({ ...draft, custom });
   return (
     <>
-      <Preview day={day} rider={rider} unit={unit} />
-      <section className="cw-tool">
-        <div className="cw-tool-h">
-          <h4>Your wind band</h4>
-          <span className="cw-fig">{band(draft, unit)}</span>
-        </div>
-        <Range
-          min={0}
-          max={WIND_TOP}
-          values={WIND_KEYS.map((k) => w[k])}
-          names={[
-            "Too light below",
-            "Sweet spot from",
-            "Sweet spot to",
-            "Too much above",
-          ]}
-          dark={[1, 2]}
-          unit={unit}
-          onMove={(i, kn) =>
-            set(
-              (unit.force ? moveWindForce : moveWind)(
-                draft.custom,
-                WIND_KEYS[i],
-                kn,
-              ),
-            )
-          }
-          paint={(x, width) => (
-            <>
-              <defs>
-                <pattern
-                  id={`${id}h`}
-                  width="5"
-                  height="5"
-                  patternUnits="userSpaceOnUse"
-                  patternTransform="rotate(45)"
-                >
-                  <line className="cw-hatch" x1="0" y1="0" x2="0" y2="5" />
-                </pattern>
-                <linearGradient id={`${id}r`}>
-                  {[0, 5, 9, 10, 15, 20, 25, 30, 35, 40].map((k) => (
-                    <stop
-                      key={k}
-                      offset={k / 40}
-                      style={{
-                        stopColor: `var(--color-wind-k${String(k).padStart(2, "0")})`,
-                      }}
-                    />
-                  ))}
-                </linearGradient>
-              </defs>
-              <rect
-                x="0"
-                y="40"
-                width={width}
-                height="10"
-                fill={`url(#${id}h)`}
-                className="cw-bar"
-              />
-              <rect
-                x={x(w.min)}
-                y="40"
-                width={x(w.max) - x(w.min)}
-                height="10"
-                className="cw-bar-on"
-              />
-              <rect
-                x={x(w.sweetLow)}
-                y="40"
-                width={x(w.sweetHigh) - x(w.sweetLow)}
-                height="10"
-                className="cw-bar-sweet"
-              />
-              <rect
-                x="0"
-                y="40"
-                width={width}
-                height="10"
-                className="cw-bar-edge"
-              />
-              <rect
-                x="0"
-                y="60"
-                width={width}
-                height="6"
-                fill={`url(#${id}r)`}
-                className="cw-ramp"
-              />
-              <text
-                className="cw-lab is-strong"
-                x={(x(w.sweetLow) + x(w.sweetHigh)) / 2}
-                y="28"
-                textAnchor="middle"
-              >
-                SWEET
-              </text>
-              {x(w.min) > 60 && (
-                <text
-                  className="cw-lab"
-                  x={x(w.min) - 6}
-                  y="28"
-                  textAnchor="end"
-                >
-                  FOILING
-                </text>
-              )}
-              {width - x(w.max) > 70 && (
-                <text className="cw-lab" x={x(w.max) + 6} y="28">
-                  TOO MUCH
-                </text>
-              )}
-              <Ticks x={x} from={0} to={WIND_TOP} unit={unit} />
-            </>
-          )}
-        />
-        <div className="cw-zones">
-          <span>
-            <i className="is-light" />
-            Too light
-          </span>
-          <span>
-            <i className="is-on" />
-            Building · overpowered
-          </span>
-          <span>
-            <i className="is-sweet" />
-            <b>Sweet spot</b>
-          </span>
-        </div>
-      </section>
-      <section className="cw-tool">
-        <div className="cw-tool-h">
-          <h4>Gusty wind</h4>
-        </div>
-        <p className="cw-small">How much uneven wind bothers you.</p>
+      <WindRange
+        wind={draft.custom.wind}
+        units={draft.units}
+        unit={unit}
+        onMove={(i, kn) =>
+          setDraft({
+            ...draft,
+            custom: (unit.force ? moveWindForce : moveWind)(
+              draft.custom,
+              WIND_KEYS[i],
+              kn,
+            ),
+          })
+        }
+      />
+      <div className="cw-zones">
+        <span>
+          <i className="is-ok" />
+          rideable
+        </span>
+        <span>
+          <i className="is-sweet" />
+          best
+        </span>
+        <span>
+          <i className="is-over" />a gust past here: no stars
+        </span>
+      </div>
+      <div className="cw-gusty">
+        <h3>Gusty wind</h3>
+        <p>
+          How much does uneven wind bother you? Stars it costs are shown hollow.
+        </p>
         <Segmented<Gusty>
           aria-label="Gusty wind"
           options={GUSTIES.map((gusty) => ({
@@ -726,96 +503,53 @@ function WindStep({
           value={draft.gusty}
           onChange={(gusty) => setDraft({ ...draft, gusty })}
         />
-      </section>
+      </div>
+      <SampleDayCard day={day} rider={rider} unit={unit} />
     </>
   );
 }
 
-/**
- * The scale's figures: every five knots, in the rider's unit. In Force, a
- * tick where each force starts, named by it.
- */
-function Ticks({
-  x,
-  from,
-  to,
-  unit,
-}: {
-  x: (kn: number) => number;
-  from: number;
-  to: number;
-  unit: UnitScale;
-}) {
-  const out: ReactNode[] = [];
-  if (unit.force)
-    return (
-      <>
-        {forceTicks(from, to).map(({ kn, force }) => (
-          <g key={kn}>
-            <line
-              className="cw-tick-line"
-              x1={x(kn)}
-              x2={x(kn)}
-              y1="74"
-              y2="80"
-            />
-            <text className="cw-tick-fig" x={x(kn)} y="91" textAnchor="middle">
-              {force}
-            </text>
-          </g>
-        ))}
-      </>
-    );
-  for (let kn = from; kn <= to; kn += 5)
-    out.push(
-      <g key={kn}>
-        <line
-          className="cw-tick-line"
-          x1={x(kn)}
-          x2={x(kn)}
-          y1="74"
-          y2={kn % 10 ? 78 : 80}
-        />
-        <text
-          className="cw-tick-fig"
-          x={x(kn)}
-          y="91"
-          textAnchor={kn === to ? "end" : "middle"}
-        >
-          {Math.round(Number(shown(kn, unit)))}
-          {kn === to ? ` ${unit.label}` : ""}
-        </text>
-      </g>,
-    );
-  return <>{out}</>;
-}
+/** The wind scale's ends, in knots: past the highest top a handle can reach. */
+const SCALE_FROM = 0;
+const SCALE_TO = 50;
+/** A tick every this many of the rider's unit. */
+const TICK: Record<Units, number> = {
+  kn: 5,
+  mph: 5,
+  "km/h": 10,
+  "m/s": 5,
+  bft: 1,
+};
+const HANDLE_NAMES = [
+  "Too light below",
+  "Sweet spot from",
+  "Sweet spot to",
+  "Too much, in gusts",
+];
 
 /**
- * Handles on a scale in knots, shown in the rider's unit: dragged, or moved
- * a step at a time from the keyboard. Where they may go is the caller's
- * (yourStars.ts `moveWind`), which keeps them a knot apart.
+ * The rider's band on a scale in knots, shown in their unit: too light, the
+ * sweet spot, and the top, which a gust may not pass (hatched in the pen's
+ * red past it). Four handles, dragged or moved a step at a time from the
+ * keyboard; where they may go is yourStars.ts's (`moveWind`), which keeps
+ * them a knot apart.
  */
-function Range({
-  min,
-  max,
-  values,
-  names,
-  dark = [],
+function WindRange({
+  wind,
+  units,
   unit,
   onMove,
-  paint,
 }: {
-  min: number;
-  max: number;
-  values: number[];
-  names: string[];
-  dark?: number[];
+  wind: Draft["custom"]["wind"];
+  units: Units;
   unit: UnitScale;
   onMove: (i: number, kn: number) => void;
-  paint: (x: (kn: number) => number, width: number) => ReactNode;
 }) {
   const host = useRef<HTMLDivElement>(null);
+  const light = useRef<HTMLSpanElement>(null);
+  const much = useRef<HTMLSpanElement>(null);
   const [width, setWidth] = useState(0);
+  const [labels, setLabels] = useState({ light: 70, much: 130 });
   useLayoutEffect(() => {
     const el = host.current!;
     const seen = new ResizeObserver(() => setWidth(el.clientWidth));
@@ -823,27 +557,97 @@ function Range({
     setWidth(el.clientWidth);
     return () => seen.disconnect();
   }, []);
-  const x = (kn: number) => ((kn - min) / (max - min)) * width;
+  // The labels' widths, to keep them on the scale whatever its width.
+  useLayoutEffect(() => {
+    const next = {
+      light: light.current?.offsetWidth ?? 0,
+      much: much.current?.offsetWidth ?? 0,
+    };
+    if (next.light !== labels.light || next.much !== labels.much)
+      setLabels(next);
+  });
+  const pc = (kn: number) =>
+    ((Math.min(kn, SCALE_TO) - SCALE_FROM) / (SCALE_TO - SCALE_FROM)) * 100;
+  const x = (kn: number) => (pc(kn) / 100) * width;
   const at = (clientX: number) => {
     const box = host.current!.getBoundingClientRect();
-    return min + ((clientX - box.left) / box.width) * (max - min);
+    return (
+      SCALE_FROM + ((clientX - box.left) / box.width) * (SCALE_TO - SCALE_FROM)
+    );
   };
+  const values = WIND_KEYS.map((k) => wind[k]);
+  const ticks = unit.force
+    ? forceTicks(SCALE_FROM + 1, SCALE_TO).map(({ kn, force }) => ({
+        kn,
+        label: String(force),
+      }))
+    : Array.from(
+        {
+          length: Math.floor((SCALE_TO * unit.perKn) / TICK[units] + 1e-9),
+        },
+        (_, i) => {
+          const value = (i + 1) * TICK[units];
+          return { kn: value / unit.perKn, label: String(value) };
+        },
+      );
+  // Too light ends short of its handle; too much starts past its own, or
+  // keeps to the scale's end where there is no room.
+  const lightLeft = Math.max(0, x(wind.min) - 24 - labels.light);
+  // On a narrow scale, every other tick is labelled, so the figures never touch.
+  const sparse = width > 0 && width / ticks.length < 44;
+  const muchLeft = Math.min(x(wind.max) + 24, width - labels.much);
   return (
     <div className="cw-range" ref={host}>
-      <svg width={width} height="96" aria-hidden="true">
-        {width > 0 && paint(x, width)}
-      </svg>
+      <div className="cw-track">
+        <i
+          className="cw-zone is-ok"
+          style={{
+            left: `${pc(wind.min)}%`,
+            width: `${pc(wind.sweetLow) - pc(wind.min)}%`,
+          }}
+        />
+        <i
+          className="cw-zone is-sweet"
+          style={{
+            left: `${pc(wind.sweetLow)}%`,
+            width: `${pc(wind.sweetHigh) - pc(wind.sweetLow)}%`,
+          }}
+        />
+        <i
+          className="cw-zone is-ok"
+          style={{
+            left: `${pc(wind.sweetHigh)}%`,
+            width: `${pc(wind.max) - pc(wind.sweetHigh)}%`,
+          }}
+        />
+        <i
+          className="cw-zone is-over"
+          style={{ left: `${pc(wind.max)}%`, right: 0 }}
+        />
+      </div>
+      <span className="cw-rlab" ref={light} style={{ left: lightLeft }}>
+        Too light
+      </span>
+      <span
+        className="cw-rlab is-mid"
+        style={{ left: (x(wind.sweetLow) + x(wind.sweetHigh)) / 2 }}
+      >
+        Sweet spot
+      </span>
+      <span className="cw-rlab is-top" ref={much} style={{ left: muchLeft }}>
+        Too much, in gusts
+      </span>
       {values.map((v, i) => (
         <span
           key={i}
           role="slider"
           tabIndex={0}
-          aria-label={names[i]}
-          aria-valuemin={min}
-          aria-valuemax={max}
+          aria-label={HANDLE_NAMES[i]}
+          aria-valuemin={2}
+          aria-valuemax={WIND_TOP}
           aria-valuenow={v}
           aria-valuetext={said(v, unit)}
-          className={`cw-knob${dark.includes(i) ? " is-dark" : ""}`}
+          className={`cw-knob${i === 3 ? " is-top" : ""}`}
           style={{ left: x(v) }}
           onPointerDown={(event) => {
             event.preventDefault();
@@ -870,196 +674,338 @@ function Range({
             onMove(i, stepped(v, by, unit));
           }}
         >
-          <Speed kn={v} unit={unit} size={12} />
+          <Speed kn={v} unit={unit} size={13} />
         </span>
       ))}
+      <div className="cw-ticks" aria-hidden="true">
+        {ticks.map((t, i) => (
+          <span key={t.kn} style={{ left: `${pc(t.kn)}%` }}>
+            {sparse && (ticks.length - 1 - i) % 2 ? "" : t.label}
+            {i === ticks.length - 1 && !unit.force ? ` ${unit.label}` : ""}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
 
-/* ---- 3. the shore ---- */
-
-/** The wedges the wind comes from, in degrees round from straight out to sea. */
-const WEDGES: [number, number, DirectionKey][] = [
-  [-30, 30, "onshore"],
-  [30, 70, "crossOn"],
-  [70, 110, "cross"],
-  [110, 150, "crossOff"],
-  [150, 210, "offshore"],
-  [-70, -30, "crossOn"],
-  [-110, -70, "cross"],
-  [-150, -110, "crossOff"],
-];
-
-function ShoreStep({
-  draft,
-  setDraft,
-  unit,
+/**
+ * A real day at a real spot, rated for the draft: the stars move as the rider
+ * drags. Under each hour, the gust (red over the rider's top, orange where it
+ * is gusty) and, where something took stars off, the word for it. On the
+ * last step, the hours, the wind and the stars alone.
+ */
+function SampleDayCard({
   day,
-}: StepProps & { unit: UnitScale; day: SampleDay | null }) {
-  const id = useId().replace(/[^\w-]/g, "");
-  const choice = (key: DirectionKey) =>
-    shoreChoice(draft.custom.direction[key]);
-  const cx = 150;
-  const cy = 165;
-  const R0 = 40;
-  const R1 = 118;
-  const pt = (a: number, r: number): [number, number] => {
-    const t = ((a - 90) * Math.PI) / 180;
-    return [cx + Math.cos(t) * r, cy + Math.sin(t) * r];
-  };
-  const wedge = (a0: number, a1: number) => {
-    const [x0, y0] = pt(a0, R1);
-    const [x1, y1] = pt(a1, R1);
-    const [x2, y2] = pt(a1, R0);
-    const [x3, y3] = pt(a0, R0);
-    return `M${x0.toFixed(1)} ${y0.toFixed(1)}A${R1} ${R1} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}A${R0} ${R0} 0 0 0 ${x3.toFixed(1)} ${y3.toFixed(1)}Z`;
-  };
-  // Midday on the day the wizard shows: how this shore takes it.
-  const noon = day?.hours[Math.floor(day.hours.length / 2)];
-  const today =
-    noon && noon.from !== null && day!.spot.facing !== null
-      ? OF_ANGLE[shoreAngle(noon.from, day!.spot.facing)]
-      : null;
+  rider,
+  unit,
+  forYou = false,
+}: {
+  day: SampleDay | null;
+  rider: DraftRider;
+  unit: UnitScale;
+  forYou?: boolean;
+}) {
+  const before = useRef<number[]>([]);
+  const ratings = day ? rateSample(day, rider) : [];
+  const stars = ratings.map((r) => r.stars);
+  const was = before.current;
+  // Nine hours across a phone leave each one a finger's width: smaller stars.
+  const small = window.matchMedia("(max-width: 719px)").matches;
+  useEffect(() => {
+    before.current = stars;
+  });
+  if (!day)
+    return <p className="cw-note">No forecast in hand yet to try it on.</p>;
   return (
-    <div className="cw-shore">
-      <svg
-        className="cw-beach"
-        viewBox="0 0 300 300"
-        role="group"
-        aria-label="Wind directions round the beach"
-      >
-        <defs>
-          <marker
-            id={`${id}m`}
-            viewBox="0 0 8 8"
-            refX="6"
-            refY="4"
-            markerWidth="6"
-            markerHeight="6"
-            orient="auto"
-          >
-            <path d="M0 0L8 4L0 8Z" fill="context-stroke" />
-          </marker>
-          <pattern
-            id={`${id}h`}
-            width="4"
-            height="4"
-            patternUnits="userSpaceOnUse"
-            patternTransform="rotate(45)"
-          >
-            <line className="cw-hatch" x1="0" y1="0" x2="0" y2="4" />
-          </pattern>
-        </defs>
-        <rect className="cw-land" x="0" y={cy} width="300" height={300 - cy} />
-        <rect className="cw-sea" x="0" y="0" width="300" height={cy} />
-        <path
-          className="cw-shoreline"
-          d={`M0 ${cy}C60 ${cy - 4} 110 ${cy + 3} 150 ${cy}S250 ${cy - 3} 300 ${cy + 2}`}
-        />
-        <text className="cw-lab" x="8" y="16">
-          SEA
-        </text>
-        <text className="cw-lab" x="8" y="292">
-          LAND
-        </text>
-        {WEDGES.map(([a0, a1, key]) => {
-          const mid = (a0 + a1) / 2;
-          const state = choice(key);
-          const [ax, ay] = pt(mid, R1 + 14);
-          const [bx, by] = pt(mid, R1 - 4);
-          const [lx, ly] = pt(mid, (R0 + R1) / 2);
-          const locked = shoreLocked(draft.skill, key);
+    <div className="cw-day" data-sample>
+      <div className="cw-day-h">
+        <b>
+          {dayLong(day.hours[0].time)} at {day.spot.name}
+          {forYou ? ", for you" : ""}
+        </b>
+        {!forYou && <span className="cw-kick">wind · gust · stars</span>}
+      </div>
+      <div className="cw-hours">
+        {day.hours.map((hour, i) => {
+          const rating = ratings[i];
+          const why = hourWhy(hour, rating, rider);
           return (
-            <g key={a0}>
-              <path
-                className={`cw-wedge is-${state}${key === "offshore" || key === "crossOff" ? " is-danger" : ""}`}
-                style={state === "less" ? { fill: `url(#${id}h)` } : undefined}
-                d={wedge(a0, a1)}
-                data-wedge={key}
-                onClick={() =>
-                  !locked && setDraft(withShore(draft, key, NEXT_SHORE[state]))
-                }
-              >
-                <title>{DIRECTION_NAME[key]}</title>
-              </path>
-              <path
-                className={`cw-arrow${key === "offshore" ? " is-off" : ""}`}
-                d={`M${ax.toFixed(1)} ${ay.toFixed(1)}L${bx.toFixed(1)} ${by.toFixed(1)}`}
-                markerEnd={`url(#${id}m)`}
-              />
-              <text
-                className={`cw-lab${key === "offshore" ? " is-warn" : ""}`}
-                x={lx}
-                y={ly + 3}
-                textAnchor="middle"
-              >
-                {DIRECTION_SHORT[key]}
-                {state === "never" ? " ✕" : state === "ride" ? " ✓" : ""}
-              </text>
-            </g>
+            <div
+              // Keyed on the stars too, so each change draws in again.
+              key={`${hour.time}-${stars[i]}`}
+              className={
+                !forYou && was.length && was[i] !== stars[i]
+                  ? "is-changed"
+                  : undefined
+              }
+            >
+              <span className="cw-t">{clock(hour.time)}</span>
+              <span className="cw-w">
+                <Speed kn={hour.windKn} unit={unit} size={small ? 13 : 16} />
+              </span>
+              {!forYou && (
+                <span
+                  className={`cw-g${why.gust ? ` is-${why.gust}` : ""}`}
+                  data-gust={why.gust ?? undefined}
+                >
+                  {hour.gustKn === null ? (
+                    ""
+                  ) : unit.force ? (
+                    <>
+                      g{" "}
+                      <BeaufortGlyph force={beaufort(hour.gustKn)} size={10} />
+                    </>
+                  ) : (
+                    `g${shown(hour.gustKn, unit)}`
+                  )}
+                </span>
+              )}
+              <span className="cw-s">
+                {rating.potential ? (
+                  <StarGlyphs
+                    stars={stars[i]}
+                    potential={rating.potential}
+                    slots="potential"
+                    size={small ? 6 : 9}
+                  />
+                ) : (
+                  <span aria-label="No stars">–</span>
+                )}
+              </span>
+              {!forYou && <span className="cw-why">{why.word}</span>}
+            </div>
           );
         })}
-        <text className="cw-beach-name" x={cx} y={cy + 24} textAnchor="middle">
-          your beach
-        </text>
-      </svg>
-      <div>
-        <div className="cw-angles">
-          {DIRECTION_KEYS.map((key) => {
-            const locked = shoreLocked(draft.skill, key);
-            const danger =
-              key === "offshore" ||
-              (draft.skill === "beginner" && key === "crossOff");
-            const less = lessOff(draft, key);
-            return (
-              <div className="cw-angle" key={key} data-direction={key}>
-                <span className="cw-angle-words">
-                  <b>{DIRECTION_NAME[key]}</b>
-                  <span className={danger ? "is-warn" : undefined}>
-                    {DIRECTION_LINE[key]}
-                    {locked ? " Never for a learner." : ""}
-                  </span>
-                </span>
-                {locked ? (
-                  <span className="cw-lock">Never</span>
-                ) : (
-                  <Segmented<ShoreChoice>
-                    aria-label={DIRECTION_NAME[key]}
-                    className={
-                      key === "offshore" || key === "crossOff"
-                        ? "cw-seg-danger"
-                        : undefined
-                    }
-                    options={[
-                      { value: "ride", label: "Ride" },
-                      { value: "less", label: `${starsOff(less)}★` },
-                      { value: "never", label: "Never" },
-                    ]}
-                    value={choice(key)}
-                    onChange={(next) => setDraft(withShore(draft, key, next))}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-        {noon && today && (
-          <p className="cw-today">
-            {dayLong(noon.time)} at {day!.spot.name}:{" "}
-            <b>
-              {compass(noon.from!)} {written(noon.windKn, unit)}
-            </b>
-            , {DIRECTION_NAME[today].toLowerCase()}.{" "}
-            {choice(today) === "ride"
-              ? "You'll ride it."
-              : choice(today) === "never"
-                ? "Not for you."
-                : `It costs ${starsOff(draft.custom.direction[today]).slice(1)} star${draft.custom.direction[today] > 1 ? "s" : ""}.`}
-          </p>
-        )}
       </div>
     </div>
+  );
+}
+
+/* ---- 3. stars by wind direction ---- */
+
+function ShoreStep({ draft, setDraft }: StepProps) {
+  const off = draft.custom.direction;
+  return (
+    <div className="cw-shore">
+      <ShoreWeb
+        off={off}
+        locked={(key) => shoreLocked(draft.skill, key)}
+        onChange={(key, value) => setDraft(withShore(draft, key, value))}
+      />
+      <ul className="cw-dirs">
+        {SHORE_ORDER.map((key) => (
+          <li key={key} data-direction={key}>
+            <b>{DIRECTION_NAME[key]}</b>
+            <span className={`cw-cost${off[key] >= NEVER ? " is-never" : ""}`}>
+              {costLabel(off[key])}
+            </span>
+            <small>
+              {DIRECTION_LINE[key]}
+              {shoreLocked(draft.skill, key) ? " Never for a learner." : ""}
+            </small>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** The spokes round the web, clockwise from straight out to sea. */
+const SPOKES = WEB_DIRS.flatMap((d) => d.at.map((a) => ({ key: d.key, a })));
+/** The ring the shape is drawn round, in the spokes' order round the web. */
+const RING = [...SPOKES].sort(
+  (p, q) => ((p.a + 360) % 360) - ((q.a + 360) % 360),
+);
+const f1 = (n: number) => n.toFixed(1);
+
+/**
+ * The beach from above, sea up and land down (spot/web/yourStars.ts's web),
+ * and a spoke for each way of wind, its arrow pointing the way the wind
+ * blows: offshore out over the sea, onshore in over the land. The dot on a
+ * spoke is what that wind costs: on the rim nothing, a star a ring, in the
+ * middle never. The two sides are one setting, so a dot moves its mirror.
+ * Each dot is a slider for the keyboard.
+ */
+function ShoreWeb({
+  off,
+  locked,
+  onChange,
+}: {
+  off: Record<DirectionKey, number>;
+  locked: (key: DirectionKey) => boolean;
+  onChange: (key: DirectionKey, off: number) => void;
+}) {
+  const svg = useRef<SVGSVGElement>(null);
+  const dragging = useRef<DirectionKey | null>(null);
+  const R = WEB_R;
+  const at = (event: { clientX: number; clientY: number }) => {
+    const el = svg.current!;
+    const point = el.createSVGPoint();
+    point.x = event.clientX;
+    point.y = event.clientY;
+    return point.matrixTransform(el.getScreenCTM()!.inverse());
+  };
+  const grab =
+    (key: DirectionKey) => (event: ReactPointerEvent<SVGGElement>) => {
+      event.preventDefault();
+      (
+        event.currentTarget.closest("[data-dot]") as SVGGElement | null
+      )?.focus?.();
+      if (locked(key)) return;
+      dragging.current = key;
+      svg.current!.setPointerCapture(event.pointerId);
+    };
+  const move = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (!dragging.current) return;
+    const p = at(event);
+    onChange(dragging.current, offAt(p.x, p.y));
+  };
+  const stop = () => {
+    dragging.current = null;
+  };
+  const arrow = (a: number) => {
+    const [tx, ty] = polar(a, R + 1);
+    const [hx, hy] = polar(a, R + 12);
+    const [lx, ly] = polar(a - 3.5, R + 7);
+    const [rx, ry] = polar(a + 3.5, R + 7);
+    return `M${f1(tx)} ${f1(ty)}L${f1(hx)} ${f1(hy)}M${f1(lx)} ${f1(ly)}L${f1(hx)} ${f1(hy)}L${f1(rx)} ${f1(ry)}`;
+  };
+  const label = (key: DirectionKey, a: number) => {
+    const side = Math.abs(a) === 90;
+    const [x, y] = polar(a, side ? R + 4 : R + 19);
+    return (
+      <text
+        key={`l${a}`}
+        className={`cw-web-name${key === "offshore" || key === "crossOff" ? " is-danger" : ""}`}
+        x={f1(x)}
+        y={f1(side ? 14 : y + 3)}
+        textAnchor={a === 90 ? "start" : a === -90 ? "end" : "middle"}
+      >
+        {DIRECTION_SHORT[key]}
+      </text>
+    );
+  };
+  return (
+    <svg
+      ref={svg}
+      className="cw-web"
+      viewBox="-158 -140 316 284"
+      role="group"
+      aria-label="Stars by wind direction"
+      onPointerMove={move}
+      onPointerUp={stop}
+      onPointerCancel={stop}
+      data-direction-web
+    >
+      <rect className="cw-web-sea" x="-158" y="-140" width="316" height="140" />
+      <rect className="cw-web-land" x="-158" y="0" width="316" height="144" />
+      <line className="cw-web-beach" x1="-158" x2="158" y1="0" y2="0" />
+      <text className="cw-web-word" x="-150" y="-128">
+        SEA
+      </text>
+      <text className="cw-web-word" x="-150" y="138">
+        LAND
+      </text>
+      <circle className="cw-web-rim" r={R} />
+      {[1, 2, 3, 4].map((n) => (
+        <circle key={n} className="cw-web-ring" r={webRadius(n)} />
+      ))}
+      <text className="cw-web-step" x="4" y={-R + 10}>
+        0★
+      </text>
+      <text className="cw-web-step" x="4" y={f1(-webRadius(2) + 9)}>
+        −2★
+      </text>
+      {SPOKES.map(({ key, a }) => {
+        const [x, y] = polar(a, R);
+        const danger = key === "offshore" || key === "crossOff";
+        return (
+          <g key={`s${a}`}>
+            <line className="cw-web-spoke" x2={f1(x)} y2={f1(y)} />
+            <path
+              className={`cw-web-arrow${danger ? " is-danger" : ""}`}
+              d={arrow(a)}
+            />
+            {label(key, a)}
+          </g>
+        );
+      })}
+      <polygon
+        className="cw-web-shape"
+        points={RING.map(({ key, a }) =>
+          polar(a, webRadius(off[key])).map(f1).join(","),
+        ).join(" ")}
+      />
+      <circle className="cw-web-never" r="9" />
+      <text className="cw-web-never-word" y="2.2" textAnchor="middle">
+        NEVER
+      </text>
+      {SPOKES.map(({ key, a }) => {
+        const [x, y] = polar(a, webRadius(off[key]));
+        const first = WEB_DIRS.find((d) => d.key === key)!.at[0] === a;
+        const never = off[key] >= NEVER;
+        const lock = locked(key);
+        const dot = (
+          <>
+            <circle className="cw-dot-hit" cx={f1(x)} cy={f1(y)} r="14" />
+            <circle className="cw-dot-ring" cx={f1(x)} cy={f1(y)} r="10" />
+            <circle
+              className={`cw-dot-face${never ? " is-never" : ""}`}
+              cx={f1(x)}
+              cy={f1(y)}
+              r="6.5"
+            />
+          </>
+        );
+        return first ? (
+          <g
+            key={`d${a}`}
+            className={`cw-dot${lock ? " is-locked" : ""}`}
+            data-dot={key}
+            tabIndex={0}
+            role="slider"
+            aria-label={`${DIRECTION_NAME[key]}: stars taken off`}
+            aria-valuemin={0}
+            aria-valuemax={NEVER}
+            aria-valuenow={off[key]}
+            aria-valuetext={costLabel(off[key])}
+            aria-readonly={lock || undefined}
+            onPointerDown={grab(key)}
+            onKeyDown={(event) => {
+              const to = (
+                {
+                  ArrowUp: off[key] + 0.5,
+                  ArrowRight: off[key] + 0.5,
+                  ArrowDown: off[key] - 0.5,
+                  ArrowLeft: off[key] - 0.5,
+                  Home: 0,
+                  End: NEVER,
+                } as Record<string, number>
+              )[event.key];
+              if (to === undefined) return;
+              event.preventDefault();
+              onChange(key, to);
+            }}
+          >
+            {dot}
+          </g>
+        ) : (
+          <g
+            key={`d${a}`}
+            className={`cw-dot${lock ? " is-locked" : ""}`}
+            data-dot={key}
+            aria-hidden="true"
+            onPointerDown={grab(key)}
+          >
+            {dot}
+          </g>
+        );
+      })}
+      <text className="cw-web-word" x="0" y="138" textAnchor="middle">
+        ARROWS: THE WAY THE WIND BLOWS
+      </text>
+    </svg>
   );
 }
 
@@ -1373,128 +1319,65 @@ function IntoSlider({
   );
 }
 
-/* ---- 5. units ---- */
-
-function UnitsStep({
-  draft,
-  setDraft,
-  day,
-}: StepProps & { day: SampleDay | null }) {
-  const hour = day?.hours[Math.floor(day.hours.length / 2)] ?? {
-    windKn: 16,
-    gustKn: 23,
-  };
-  const unit = unitScale(draft.units);
-  return (
-    <div className="cw-units">
-      <div className="cw-unit-row">
-        <b>Wind</b>
-        <Segmented<Units>
-          aria-label="Wind units"
-          options={UNITS.map((u) => ({ value: u.id, label: u.label }))}
-          value={draft.units}
-          onChange={(units) => setDraft(inUnits({ ...draft, units }))}
-        />
-        <span className="cw-eg">
-          <Speed kn={hour.windKn} unit={unit} size={17} />
-          {hour.gustKn !== null && (
-            <sup>
-              g<Speed kn={hour.gustKn} unit={unit} size={10} />
-            </sup>
-          )}
-          {!unit.force && <small>{unit.label}</small>}
-        </span>
-      </div>
-      {unit.force && (
-        // The old charts' notation, with the knots each force runs over.
-        <ul className="cw-bf-key" aria-label="The forces in knots">
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((force) => (
-            <li key={force}>
-              <BeaufortGlyph force={force} size={16} />
-              <small>
-                {forceKn(force, "first")}–{forceKn(force, "last")} kn
-              </small>
-            </li>
-          ))}
-        </ul>
-      )}
-      <p className="cw-small">
-        Every wind on the chart, the dock and the stars’ figures.
-      </p>
-    </div>
-  );
-}
-
-/* ---- 6. the rider's spots ---- */
+/* ---- 5. the rider's spots ---- */
 
 const fold = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
+/** How many places the list shows. */
+const LISTED = 9;
+
+/**
+ * The places nearest where the map is (or, once asked, the rider), with a
+ * star each. The list keeps its order as they are starred: nothing jumps
+ * under a finger, and the red star in the row says it all. "Use my location"
+ * asks the browser, once.
+ */
 function SpotsStep({
   draft,
   setDraft,
   spots,
-  hours,
-  times,
-  day,
   centre,
-  rider,
+  here,
+  setHere,
 }: StepProps & {
   spots: readonly Spot[];
-  hours: ReadonlyMap<string, readonly PlaceHour[]>;
-  times: readonly number[];
-  day: SampleDay | null;
-  centre: { lat: number; lng: number } | null;
-  rider: ReturnType<typeof draftRider>;
+  centre: Origin | null;
+  here: Here;
+  setHere: (here: Here) => void;
 }) {
   const [query, setQuery] = useState("");
-  const km = (s: Spot) =>
-    centre
-      ? Math.round(
-          Math.hypot(
-            (s.lat - centre.lat) * 111.2,
-            (s.lon - centre.lng) *
-              111.2 *
-              Math.cos((centre.lat * Math.PI) / 180),
-          ),
-        )
-      : null;
+  const [nearMe, setNearMe] = useState(typeof here === "object" && !!here);
+  const me = here && typeof here === "object" ? here : null;
+  const origin = nearMe && me ? me : centre;
   const q = fold(query.trim());
-  const list = q
+  const list: { place: Spot; km: number | null }[] = q
     ? spots
         .filter(
           (s) => fold(s.name).includes(q) || fold(s.county ?? "").startsWith(q),
         )
-        .slice(0, 9)
-    : [
-        ...draft.starred
-          .map((id) => spots.find((s) => s.id === id))
-          .filter((s): s is Spot => !!s),
-        ...[...spots]
-          .filter((s) => !draft.starred.includes(s.id))
-          .sort((a, b) => (km(a) ?? 0) - (km(b) ?? 0))
-          .slice(0, 8),
-      ];
-  // Each place's best on the wizard's day, where its hours are in hand.
-  const date = day
-    ? new Date(day.hours[0].time).toISOString().slice(0, 10)
-    : null;
-  const best = (id: string) => {
-    const rows = hours.get(id);
-    if (!rows || !date) return null;
-    let top: { stars: number; potential: number } | null = null;
-    rows.forEach((h, i) => {
-      if (
-        !h.daylight ||
-        h.windKn === null ||
-        new Date(times[i]).toISOString().slice(0, 10) !== date
-      )
-        return;
-      const facing = spots.find((s) => s.id === id)?.facing ?? null;
-      const r = rateHour({ ...h, daylight: true }, { facing }, rider);
-      if (r && (!top || r.stars > top.stars)) top = r;
-    });
-    return top as { stars: number; potential: number } | null;
+        .slice(0, LISTED)
+        .map((place) => ({ place, km: null }))
+    : origin
+      ? nearest(spots, origin, LISTED)
+      : [...spots]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .slice(0, LISTED)
+          .map((place) => ({ place, km: null }));
+  const centreName =
+    centre && !nearMe ? nearest(spots, centre, 1)[0]?.place.name : null;
+  const canAsk = typeof navigator !== "undefined" && "geolocation" in navigator;
+  const useMine = () => {
+    if (me) return setNearMe(true);
+    setHere("asking");
+    navigator.geolocation.getCurrentPosition(
+      (at) => {
+        setHere({ lat: at.coords.latitude, lng: at.coords.longitude });
+        setNearMe(true);
+      },
+      () => setHere("refused"),
+      { maximumAge: 600000, timeout: 20000 },
+    );
   };
   const toggle = (id: string) =>
     setDraft({
@@ -1507,60 +1390,77 @@ function SpotsStep({
     <div className="cw-spots">
       <SearchField
         size="md"
+        shape="pill"
         aria-label="Find a spot"
-        placeholder="Find a spot…"
+        placeholder="Find a spot by name or county"
         autoComplete="off"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
       />
-      <div className="cw-kick cw-spots-k">
-        {q
-          ? "Found"
-          : draft.starred.length
-            ? "Yours, then near the chart"
-            : "Near the chart’s centre"}
-        {day && !q ? ` · best on ${dayLong(day.hours[0].time)}` : ""}
+      <div className="cw-near">
+        <span className="cw-kick" data-near>
+          {q
+            ? "Matches"
+            : nearMe && me
+              ? "Nearest to you"
+              : centreName
+                ? `Nearest to where the map is · ${centreName}`
+                : "Spots"}
+        </span>
+        {!q &&
+          (nearMe ? (
+            <Button
+              variant="link"
+              size="sm"
+              className="cw-link"
+              onClick={() => setNearMe(false)}
+            >
+              Use the map instead
+            </Button>
+          ) : canAsk && here !== "refused" ? (
+            <Button
+              variant="link"
+              size="sm"
+              className="cw-link"
+              disabled={here === "asking"}
+              onClick={useMine}
+            >
+              {here === "asking" ? "Finding you…" : "Use my location"}
+            </Button>
+          ) : null)}
       </div>
+      {here === "refused" && !q && (
+        <p className="cw-note">
+          Your browser didn&rsquo;t share your location.
+        </p>
+      )}
       <ul className="cw-spot-list">
-        {list.map((spot) => {
-          const top = best(spot.id);
-          const distance = km(spot);
-          return (
-            <li key={spot.id}>
-              <StarToggle
-                on={draft.starred.includes(spot.id)}
-                name={spot.name}
-                onToggle={() => toggle(spot.id)}
-                size={18}
-              />
-              <span className="cw-spot-name">
-                <b>{spot.name}</b>
-                <small>{spot.county}</small>
-              </span>
-              <span>
-                {top && (
-                  <StarGlyphs
-                    stars={top.stars}
-                    potential={top.potential}
-                    size={9}
-                  />
-                )}
-              </span>
-              <span className="cw-km">
-                {distance !== null && !q ? `${distance} km` : ""}
-              </span>
-            </li>
-          );
-        })}
-        {!list.length && <li className="cw-small">No spot by that name.</li>}
+        {list.map(({ place, km }) => (
+          <li key={place.id}>
+            <StarToggle
+              on={draft.starred.includes(place.id)}
+              name={place.name}
+              onToggle={() => toggle(place.id)}
+              size={20}
+            />
+            <span className="cw-spot-name">
+              <b>{place.name}</b>
+              {place.county && <small>{place.county}</small>}
+            </span>
+            <span className="cw-km">
+              {km === null ? "" : `${Math.round(km)} km`}
+            </span>
+          </li>
+        ))}
+        {!list.length && <li className="cw-note">No spot by that name.</li>}
       </ul>
     </div>
   );
 }
 
-/* ---- 7. all together ---- */
+/* ---- 6. all set ---- */
 
-function Summary({
+function Done({
   draft,
   unit,
   day,
@@ -1571,152 +1471,79 @@ function Summary({
   draft: Draft;
   unit: UnitScale;
   day: SampleDay | null;
-  rider: ReturnType<typeof draftRider>;
+  rider: DraftRider;
   byId: ReadonlyMap<string, Spot>;
   onChange: (step: CustomiseStep) => void;
 }) {
-  const r = draft.custom;
-  const changed = !onItsLevel(draft);
-  const mark = (key: DirectionKey) => {
-    const c = shoreChoice(r.direction[key]);
-    return (
-      <span key={key} className={`cw-mark is-${c}`}>
-        {c === "ride" ? "✓" : c === "never" ? "✕" : starsOff(r.direction[key])}{" "}
-        {DIRECTION_SHORT[key].toLowerCase()}
-      </span>
-    );
-  };
-  const row = (name: string, value: ReactNode, step: CustomiseStep) => (
-    <tr>
-      <th>{name}</th>
-      <td>{value}</td>
-      <td className="cw-chg">
-        <Button
-          variant="link"
-          size="sm"
-          aria-label={`Change ${name.toLowerCase()}`}
-          onClick={() => onChange(step)}
-        >
-          Change
-        </Button>
-      </td>
-    </tr>
-  );
-  const ratings = day ? rateSample(day, rider) : [];
-  const win = sampleBest(ratings);
-  const cell = 26;
+  const w = draft.custom.wind;
+  const off = draft.custom.direction;
+  const costs = SHORE_ORDER.filter((key) => off[key] > 0);
+  const rows: [string, CustomiseStep, ReactNode][] = [
+    [
+      "You",
+      "you",
+      <>
+        {SKILL_LABEL[draft.skill]} · {draft.weightKg ?? 80} kg
+        {draft.wings.length
+          ? ` · wings ${draft.wings.join(", ")} m²`
+          : ""} · {unit.label.toLowerCase()}
+      </>,
+    ],
+    [
+      "Wind",
+      "wind",
+      <>
+        {span(w.min, w.max, unit)}
+        {unit.force ? "" : ` ${unit.label}`} · best{" "}
+        {span(w.sweetLow, w.sweetHigh, unit)} · gusty:{" "}
+        {GUSTY_LABEL[draft.gusty].toLowerCase()}
+      </>,
+    ],
+    [
+      "Shore",
+      "shore",
+      costs.length
+        ? costs.map((key, i) => (
+            <span key={key}>
+              {i ? " · " : ""}
+              <span className={off[key] >= NEVER ? "is-never" : undefined}>
+                {DIRECTION_NAME[key].toLowerCase()}{" "}
+                {off[key] >= NEVER ? "never" : `−${off[key]}★`}
+              </span>
+            </span>
+          ))
+        : "any direction",
+    ],
+    ["Upwind", "upwind", intoWords(draft.upwind)],
+    [
+      "Spots",
+      "spots",
+      draft.starred
+        .map((id) => byId.get(id)?.name)
+        .filter(Boolean)
+        .join(", ") || "none yet",
+    ],
+  ];
   return (
-    <div className="cw-sum">
-      <table className="cw-sum-t">
-        <tbody>
-          {row(
-            "You",
-            <>
-              <b>{SKILL_LABEL[draft.skill]}</b> · {draft.weightKg ?? 80} kg
-              {draft.weightKg === null ? " (a guess)" : ""}
-            </>,
-            "level",
-          )}
-          {row(
-            "Wind",
-            <>
-              <b>
-                {written(r.wind.min, unit)}–{written(r.wind.max, unit)}
-              </b>
-              {unit.force ? "" : ` ${unit.label}`} · sweet{" "}
-              {unit.force
-                ? sweetText(r.wind, unit)
-                : `${shown(r.wind.sweetLow, unit)}–${shown(r.wind.sweetHigh, unit)}`}
-              {changed ? " · your own" : ""}
-            </>,
-            "wind",
-          )}
-          {row("Gusty wind", <b>{GUSTY_LABEL[draft.gusty]}</b>, "wind")}
-          {row("Shores", DIRECTION_KEYS.map(mark), "shore")}
-          {row("Upwind", <b>{intoWords(draft.upwind)}</b>, "pointing")}
-          {row("Units", <b>{unit.label}</b>, "units")}
-          {row(
-            "Spots",
-            draft.starred
-              .map((id) => byId.get(id)?.name)
-              .filter(Boolean)
-              .join(", ") || "none yet",
-            "spots",
-          )}
-        </tbody>
-      </table>
-      <div>
-        {day && (
-          <div className="cw-sample" data-sample>
-            <div className="cw-kick">{dayLong(day.hours[0].time)}, for you</div>
-            <h4>{day.spot.name}</h4>
-            <svg
-              viewBox={`-4 0 ${day.hours.length * cell + 8} 64`}
-              aria-label={`Stars, hour by hour: ${ratings.map((x) => x.stars).join(", ")}`}
+    <>
+      <ul className="cw-sum">
+        {rows.map(([name, step, value]) => (
+          <li key={name} data-sum={step}>
+            <span className="cw-kick">{name}</span>
+            <span className="cw-val">{value}</span>
+            <Button
+              variant="link"
+              size="sm"
+              className="cw-link"
+              aria-label={`Change ${name.toLowerCase()}`}
+              onClick={() => onChange(step)}
             >
-              {day.hours.map((hour, i) => {
-                const n = ratings[i].stars;
-                const x = i * cell + cell / 2;
-                return (
-                  <g key={hour.time}>
-                    <text
-                      className="cw-sum-hour"
-                      x={x}
-                      y="11"
-                      textAnchor="middle"
-                    >
-                      {clock(hour.time).slice(0, 2)}
-                    </text>
-                    <circle
-                      className={`cw-sum-dot is-${n === 5 ? "five" : n >= 3 ? "good" : n ? "some" : "none"}`}
-                      cx={x}
-                      cy="28"
-                      r="8.5"
-                    />
-                    <text
-                      className={`cw-sum-n${n >= 3 ? " is-on" : ""}`}
-                      x={x}
-                      y="31.5"
-                      textAnchor="middle"
-                    >
-                      {n}
-                    </text>
-                    <text
-                      className="cw-sum-kn"
-                      x={x}
-                      y="54"
-                      textAnchor="middle"
-                    >
-                      {written(hour.windKn, unit)}
-                    </text>
-                  </g>
-                );
-              })}
-              {win && win.stars > 0 && (
-                // The pen frames the best hours, and says nothing of them.
-                <path
-                  className="cw-pen"
-                  d={framePath(
-                    win.from * cell + 1,
-                    16,
-                    (win.to - win.from + 1) * cell - 2,
-                    44,
-                    6,
-                    3,
-                  )}
-                />
-              )}
-            </svg>
-          </div>
-        )}
-        <div className="cw-sign">
-          <Puffin size={64} bob />
-          <p>
-            Your chart is set. The stars are yours now.
-            <b>— The Almanac</b>
-          </p>
-        </div>
-      </div>
-    </div>
+              Change
+            </Button>
+          </li>
+        ))}
+      </ul>
+      <SampleDayCard day={day} rider={rider} unit={unit} forYou />
+    </>
   );
 }

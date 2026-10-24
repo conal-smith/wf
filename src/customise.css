@@ -1,15 +1,36 @@
-/* "Customise" (src/Customise.tsx): in its own chunk with the wizard, and
-   drawn from the theme's tokens as the rest of the map's sheets are. The
-   kit's dialog is the box; the wizard keeps its head and its foot still and
-   scrolls the step between them. */
+/* "Customise" (src/Customise.tsx): in its own chunk with the wizard, drawn
+   from the theme's tokens as the rest of the map's sheets are, to the mockup
+   backlog/mockups/2026-10-24-customise-wizard.html. The kit's dialog is the
+   box: its head holds the step's one title, how far through it is and the
+   close; a thin bar of segments under it; the step scrolls between the head
+   and the foot, which keep still. */
 .cw[open] {
   display: flex;
   flex-direction: column;
   gap: 0;
   width: calc(100% - 32px);
-  max-width: 760px;
-  max-height: min(900px, calc(100dvh - 32px));
-  padding: 18px 24px 16px;
+  max-width: 680px;
+  min-height: min(560px, calc(100dvh - 32px));
+  max-height: min(860px, calc(100dvh - 32px));
+  padding: 20px 26px 16px;
+}
+/* The head: the title, "n / 6" and the close, with no rule under it; the
+   progress is the rule. */
+.cw > div:first-child {
+  align-items: center;
+  gap: 14px;
+  padding: 2px 0 12px;
+  border-bottom: 0;
+}
+.cw > div:first-child h2 {
+  font: var(--text-title--font-weight) 26px / 1.1 var(--font-display);
+  letter-spacing: -0.02em;
+}
+.cw-count {
+  font: 500 var(--text-caption) var(--font-mono);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  color: var(--color-ink-muted);
 }
 .cw > div:nth-child(2) {
   display: flex;
@@ -18,9 +39,32 @@
   gap: 0;
   min-height: 0;
 }
-.cw-head {
-  padding: 10px 0 12px;
-  border-bottom: 3px double var(--color-ink);
+.cw-prog {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 3px;
+  height: 3px;
+  margin-bottom: 4px;
+}
+.cw-prog i {
+  background: color-mix(in srgb, var(--color-ink) 13%, transparent);
+}
+.cw-prog i.is-done {
+  background: var(--color-ink);
+}
+.cw-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 2px;
+  overscroll-behavior: contain;
+}
+.cw-sub {
+  max-width: 54ch;
+  margin: -4px 0 16px;
+  font: var(--text-prose) / 1.4 var(--font-body);
+  color: var(--color-ink-2);
 }
 .cw-kick {
   font: 500 var(--text-eyebrow) / 1.4 var(--font-mono);
@@ -28,100 +72,9 @@
   text-transform: uppercase;
   color: var(--color-ink-muted);
 }
-.cw-kick b {
-  color: var(--color-ink);
-  font-weight: 600;
-}
-.cw-scale {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
-}
-.cw-scale li {
-  min-width: 0;
-}
-.cw .cw-tick {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  width: 100%;
-  height: auto;
-  min-height: 0;
-  padding: 0 0 2px;
-  border-radius: 0;
-  font: 500 var(--text-eyebrow) / 1.2 var(--font-mono);
-  letter-spacing: 0.1em;
-  text-align: left;
-  color: var(--color-ink-muted);
-  background: none;
-}
-.cw .cw-tick i {
-  display: block;
-  height: 8px;
-  border: 1px solid var(--color-ink);
-  border-right-width: 0;
-  background: var(--color-ground);
-}
-.cw-scale li:last-child .cw-tick i {
-  border-right-width: 1px;
-}
-.cw-scale .is-done .cw-tick i {
-  background: var(--color-ink);
-}
-.cw-scale .is-here .cw-tick {
-  color: var(--color-ink);
-  font-weight: 600;
-}
-.cw-scale .is-here .cw-tick i {
-  background: repeating-linear-gradient(
-    -45deg,
-    var(--color-ink) 0 1px,
-    var(--color-ground) 1px 4px
-  );
-}
-.cw-body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 16px 2px 20px;
-  overscroll-behavior: contain;
-}
-.cw-title {
-  margin: 0 0 10px;
-  font: var(--text-title--font-weight) var(--text-title) / 1.15
-    var(--font-display);
-  letter-spacing: -0.02em;
-  color: var(--color-ink);
-}
-.cw-alm {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  max-width: 560px;
-  margin-bottom: 18px;
-}
-.cw-alm p {
-  flex: 1;
+.cw-note {
   margin: 0;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-line);
-  font: italic var(--text-prose) / 1.4 var(--font-body);
-  color: var(--color-ink-2);
-}
-.cw-alm b {
-  display: block;
-  font: 500 var(--text-eyebrow) / 1.6 var(--font-mono);
-  font-style: normal;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-.cw-small {
-  margin: 8px 0 0;
-  font: italic var(--text-body) / 1.4 var(--font-body);
+  font: var(--text-body) / 1.4 var(--font-body);
   color: var(--color-ink-muted);
 }
 .cw-foot {
@@ -130,85 +83,81 @@
   align-items: center;
   gap: 8px;
   padding-top: 12px;
-  border-top: 3px double var(--color-ink);
+  border-top: 1px solid var(--color-ink);
 }
 .cw > div:last-child {
   margin-top: 0;
 }
+.cw .cw-skip {
+  padding: 0 6px;
+  color: var(--color-ink-muted);
+}
 .cw-sp {
   flex: 1;
 }
+.cw .cw-link {
+  font-size: var(--text-caption);
+  letter-spacing: 0.08em;
+}
 
-/* ---- the level ---- */
+/* ---- 1. how they ride ---- */
 .cw-levels {
   display: grid;
-  border-top: 1px solid var(--color-ink);
+  gap: 8px;
 }
 .cw .cw-level {
   display: grid;
-  grid-template-columns: 44px 1fr auto;
-  align-items: center;
-  gap: 14px;
+  grid-template-columns: 1fr auto;
+  gap: 2px 16px;
   height: auto;
-  padding: 12px 10px;
-  border-radius: 0;
-  border-bottom: 1px solid var(--color-line);
+  padding: 12px 14px;
+  border: 1.5px solid var(--color-line);
+  border-radius: var(--radius-control);
   font: inherit;
   text-align: left;
   letter-spacing: normal;
   text-transform: none;
+  white-space: normal;
   color: var(--color-ink);
   background: none;
+  box-shadow: none;
 }
 .cw .cw-level[aria-pressed="true"] {
-  background: var(--color-sunken);
-  box-shadow: inset 3px 0 0 var(--color-ink);
+  border-color: var(--color-ink);
+  background: var(--color-card);
+  box-shadow: inset 4px 0 0 var(--color-ink);
+  color: var(--color-ink);
 }
-.cw-level-words b {
-  display: block;
+.cw-level b {
   font: 600 var(--text-lead) / 1.2 var(--font-display);
 }
-.cw-level-words span {
+.cw-level span {
+  grid-column: 1;
   font: var(--text-body) / 1.4 var(--font-body);
   color: var(--color-ink-2);
-  white-space: normal;
 }
-.cw-level-band {
-  font: 600 var(--text-figure) / 1 var(--font-mono);
-  text-align: right;
-}
-.cw-level-band small {
-  display: block;
-  margin-top: 4px;
-  font: 500 var(--text-caption) / 1 var(--font-mono);
+.cw-level small {
+  display: inline-flex;
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+  align-items: center;
+  font: 500 var(--text-caption) var(--font-mono);
   color: var(--color-ink-muted);
 }
-.cw-minirose .cw-nogo {
-  fill: var(--color-ink);
-  fill-opacity: 0.18;
-  stroke: var(--color-ink);
-  stroke-width: 0.8;
+.cw-rows {
+  margin-top: 6px;
 }
-.cw-minirose .cw-tack {
-  fill: var(--color-ground);
-  stroke: var(--color-ink);
-  stroke-width: 1.1;
-}
-.cw-minirose .cw-tack.is-home {
-  fill: none;
-  stroke-dasharray: 3 2;
-}
-.cw-minirose .cw-rim {
-  fill: none;
-  stroke: var(--color-ink);
-  stroke-width: 1.1;
-}
-.cw-weight {
+.cw-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 10px 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+.cw-row > .cw-kick {
+  width: 104px;
 }
 .cw-stepper {
   display: inline-flex;
@@ -221,13 +170,27 @@
   text-align: center;
 }
 .cw-stepper small,
-.cw-big small,
+.cw-wings small {
+  margin-left: 2px;
+  font: 400 var(--text-caption) var(--font-mono);
+  color: var(--color-ink-muted);
+}
+.cw-wings {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cw-wings > div {
+  width: 128px;
+  min-height: 36px;
+}
 /* In Force, the forces and the knots each runs over. */
 .cw-bf-key {
   display: flex;
+  flex-basis: 100%;
   flex-wrap: wrap;
   gap: 10px 14px;
-  margin: 12px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
   font: 600 var(--text-body) / 1 var(--font-mono);
@@ -237,59 +200,215 @@
   margin-top: 3px;
   font: 500 var(--text-eyebrow) / 1 var(--font-mono);
   letter-spacing: 0.08em;
+  text-align: center;
   text-transform: uppercase;
   color: var(--color-ink-muted);
 }
-.cw-eg small {
-  margin-left: 2px;
-  font: 500 var(--text-caption) var(--font-mono);
+
+/* ---- 2. the wind ---- */
+.cw-range {
+  position: relative;
+  height: 92px;
+  margin: 6px 14px 0;
+  user-select: none;
+  touch-action: pan-y;
+}
+.cw-track {
+  position: absolute;
+  top: 34px;
+  right: 0;
+  left: 0;
+  height: 16px;
+  overflow: hidden;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  background: var(--color-card);
+}
+.cw-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.cw-zone.is-ok,
+.cw-zones .is-ok {
+  background: color-mix(in srgb, var(--color-ink) 20%, var(--color-card));
+}
+.cw-zone.is-sweet,
+.cw-zones .is-sweet {
+  background: var(--color-ink);
+}
+/* Past the top: a gust here and the hour has no stars. */
+.cw-zone.is-over,
+.cw-zones .is-over {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--color-pen) 0 1.5px,
+    transparent 1.5px 5px
+  );
+}
+.cw-rlab {
+  position: absolute;
+  top: 4px;
+  font: 500 var(--text-eyebrow) var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
   color: var(--color-ink-muted);
 }
-.cw-weight .cw-small {
+.cw-rlab.is-mid {
+  transform: translateX(-50%);
+}
+.cw-rlab.is-top {
+  color: var(--color-pen-ink);
+}
+.cw-knob {
+  position: absolute;
+  top: 28px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1.5px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  background: var(--color-ground) var(--gradient-raised);
+  box-shadow: var(--shadow-raised);
+  font: 600 var(--text-caption) / 1 var(--font-mono);
+  color: var(--color-ink);
+  transform: translateX(-50%);
+  cursor: grab;
+  touch-action: none;
+}
+.cw-knob:active {
+  cursor: grabbing;
+}
+.cw-knob.is-top {
+  border-color: var(--color-pen-ink);
+  color: var(--color-pen-ink);
+}
+/* A finger's target round the drawn knob. */
+.cw-knob::after {
+  content: "";
+  position: absolute;
+  inset: -9px -4px;
+}
+.cw-knob:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.cw-ticks {
+  position: absolute;
+  top: 62px;
+  right: 0;
+  left: 0;
+  font: 500 var(--text-eyebrow) var(--font-mono);
+  color: var(--color-ink-muted);
+}
+.cw-ticks span {
+  position: absolute;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.cw-ticks span::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  height: 4px;
+  border-left: 1px solid var(--color-ink);
+}
+.cw-ticks span:last-child {
+  transform: translateX(-85%);
+}
+.cw-ticks span:last-child::before {
+  left: 85%;
+}
+.cw-zones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 4px 14px 0;
+  font: 500 var(--text-caption) var(--font-mono);
+  color: var(--color-ink-2);
+}
+.cw-zones i {
+  display: inline-block;
+  width: 18px;
+  height: 10px;
+  margin-right: 6px;
+  border: 1px solid var(--color-ink);
+  vertical-align: -1px;
+}
+.cw-gusty {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-line);
+}
+.cw-gusty h3 {
   margin: 0;
+  font: 600 var(--text-lead) var(--font-display);
+}
+.cw-gusty p {
+  grid-column: 1;
+  margin: 0;
+  font: var(--text-body) / 1.4 var(--font-body);
+  color: var(--color-ink-2);
+}
+.cw-gusty > [role="group"] {
+  grid-row: 1 / span 2;
+  grid-column: 2;
 }
 
-/* ---- the wind and the gusts ---- */
-/* The sample day is a card in the dialog: the ink rule and its hairline, a
-   box's corner, and a contact shadow, no more. */
-.cw-preview {
-  margin-bottom: 18px;
-  padding: 10px 12px;
+/* The sample day: a card in the dialog, the ink rule and its hairline, a
+   box's corner and a contact shadow. */
+.cw-day {
+  margin-top: 20px;
+  padding: 10px 12px 8px;
   border: 1px solid var(--color-ink);
   border-radius: var(--radius-surface);
   box-shadow: var(--inset-shadow-frame), var(--shadow-card);
 }
-.cw-preview-h {
+.cw-day-h {
   display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 4px 12px;
+  margin-bottom: 6px;
 }
-.cw-preview-hours {
+.cw-day-h b {
+  font: 600 var(--text-prose) var(--font-display);
+}
+.cw-hours {
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  text-align: center;
+  font-family: var(--font-mono);
 }
-.cw-preview-hours > div {
+.cw-hours > div {
   display: grid;
   justify-items: center;
-  gap: 3px;
-  padding: 4px 0;
-  border-left: 1px solid var(--color-line);
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 2px 0;
 }
-.cw-preview-hours > div:first-child {
-  border-left: 0;
-}
-.cw-preview-hours > .is-changed {
+.cw-hours > .is-changed {
   animation: cw-changed 0.9s ease-out;
 }
 @keyframes cw-changed {
   from {
     background: var(--color-sunken);
-    box-shadow: inset 0 -2px 0 var(--color-chart-magenta);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cw-preview-hours > .is-changed {
+  .cw-hours > .is-changed {
     animation: none;
   }
 }
@@ -298,102 +417,189 @@
   color: var(--color-ink-muted);
 }
 .cw-w {
-  font: 600 var(--text-prose) / 1 var(--font-mono);
+  display: inline-flex;
+  margin-top: 2px;
+  font: 600 var(--text-prose) / 1.2 var(--font-mono);
 }
-.cw-w sup,
-.cw-eg sup {
-  margin-left: 1px;
-  font-size: 0.62em;
-  color: var(--color-ink-2);
+.cw-g {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 13px;
+  font: 500 var(--text-eyebrow) var(--font-mono);
+  color: var(--color-ink-muted);
 }
-.cw-tool {
-  margin-top: 6px;
+/* A gust over the top: no stars. A gusty hour: a star or two hollow. */
+.cw-g.is-over {
+  font-weight: 600;
+  color: var(--color-pen-ink);
 }
-.cw-tool + .cw-tool {
-  margin-top: 18px;
+.cw-g.is-gusty {
+  font-weight: 600;
+  color: var(--color-gust);
 }
-.cw-tool-h {
+.cw-s {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-  padding-bottom: 6px;
-  border-bottom: 2px solid var(--color-ink);
+  justify-content: center;
+  min-height: 13px;
+  margin-top: 4px;
+  font: 500 var(--text-eyebrow) var(--font-mono);
+  color: var(--color-ink-muted);
 }
-.cw-tool-h h4 {
-  margin: 0;
-  font: 600 var(--text-lead) var(--font-display);
+.cw-why {
+  min-height: 13px;
+  font: 500 var(--text-eyebrow) var(--font-mono);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--color-ink-muted);
 }
-.cw-fig {
-  font: 600 var(--text-caption) var(--font-mono);
-}
-.cw-range {
-  position: relative;
-  height: 96px;
-  margin: 0 14px;
-  touch-action: pan-y;
-}
-/* The scale's drawing; not a glyph in a knob. */
-.cw-range > svg {
-  position: absolute;
-  inset: 0;
-  overflow: visible;
-}
-.cw-knob {
-  position: absolute;
-  top: 45px;
+
+/* ---- 3. stars by wind direction ---- */
+.cw-shore {
   display: grid;
-  place-items: center;
-  min-width: 30px;
-  height: 22px;
-  padding: 0 5px;
-  border: 1px solid var(--color-ink);
-  border-radius: 999px;
-  /* A raised paper control: lit from above, a lip and a contact shadow. */
-  background: var(--color-ground) var(--gradient-raised);
-  box-shadow: var(--shadow-raised);
-  font: 600 var(--text-caption) / 1 var(--font-mono);
-  color: var(--color-ink);
-  transform: translate(-50%, -50%);
-  cursor: ew-resize;
+  grid-template-columns: 330px 1fr;
+  align-items: start;
+  gap: 20px;
+}
+.cw-web {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-surface);
   touch-action: none;
   user-select: none;
 }
-/* A finger's target round the drawn knob. */
-.cw-knob::after {
-  content: "";
-  position: absolute;
-  inset: -11px -7px;
+.cw-web-sea {
+  fill: var(--color-sea-3);
 }
-.cw-knob.is-dark {
-  background: var(--color-ink) var(--gradient-ink);
-  color: var(--color-ink-inverse);
-  box-shadow: var(--shadow-control);
+.cw-web-land {
+  fill: var(--color-land);
 }
-.cw-knob:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
+.cw-web-beach {
+  stroke: var(--color-ink);
+  stroke-width: 1.5;
 }
+.cw-web-word {
+  font: 500 9px var(--font-mono);
+  letter-spacing: 0.14em;
+  fill: var(--color-ink-muted);
+}
+.cw-web-rim {
+  fill: var(--color-ground);
+  fill-opacity: 0.55;
+  stroke: var(--color-ink);
+}
+.cw-web-ring {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-ink) 13%, transparent);
+}
+.cw-web-step {
+  font: 500 7px var(--font-mono);
+  fill: var(--color-ink-muted);
+}
+.cw-web-spoke {
+  stroke: color-mix(in srgb, var(--color-ink) 27%, transparent);
+}
+.cw-web-arrow {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cw-web-arrow.is-danger {
+  stroke: var(--color-pen);
+}
+.cw-web-name {
+  font: 500 8.5px var(--font-mono);
+  letter-spacing: 0.06em;
+  fill: var(--color-ink-2);
+}
+.cw-web-name.is-danger {
+  fill: var(--color-pen-ink);
+}
+.cw-web-shape {
+  fill: color-mix(in srgb, var(--color-ink) 13%, transparent);
+  stroke: var(--color-ink);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.cw-web-never {
+  fill: var(--color-ground);
+  stroke: var(--color-pen);
+}
+.cw-web-never-word {
+  font: 500 5.5px var(--font-mono);
+  fill: var(--color-pen-ink);
+}
+.cw-dot {
+  cursor: grab;
+  outline: none;
+}
+.cw-dot:active {
+  cursor: grabbing;
+}
+.cw-dot.is-locked {
+  cursor: default;
+}
+.cw-dot-hit {
+  fill: transparent;
+}
+.cw-dot:hover .cw-dot-hit {
+  fill: color-mix(in srgb, var(--color-ink) 7%, transparent);
+}
+.cw-dot-ring {
+  fill: none;
+  stroke: none;
+}
+/* The one focus ring, drawn round the dot: an outline does not follow a circle. */
+.cw-dot:focus-visible .cw-dot-ring {
+  stroke: var(--color-focus);
+  stroke-width: 2;
+}
+.cw-dot-face {
+  fill: var(--color-ink);
+  stroke: var(--color-ground);
+  stroke-width: 2;
+}
+.cw-dot-face.is-never {
+  fill: var(--color-pen);
+}
+.cw-dirs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cw-dirs li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+.cw-dirs li:first-child {
+  border-top: 2px solid var(--color-ink);
+}
+.cw-dirs b {
+  font: 600 var(--text-prose) var(--font-display);
+}
+.cw-cost {
+  font: 600 var(--text-caption) var(--font-mono);
+}
+.cw-cost.is-never {
+  color: var(--color-pen-ink);
+}
+.cw-dirs small {
+  grid-column: 1 / -1;
+  font: var(--text-body) / 1.35 var(--font-body);
+  color: var(--color-ink-muted);
+}
+
+/* ---- 4. upwind ---- */
 .cw-hatch {
   stroke: var(--color-ink);
   stroke-width: 0.8;
   opacity: 0.55;
-}
-.cw-bar-on {
-  fill: color-mix(in srgb, var(--color-ink) 22%, var(--color-ground));
-}
-.cw-bar-sweet {
-  fill: var(--color-ink);
-}
-.cw-bar-edge,
-.cw-ramp {
-  fill-opacity: 1;
-  stroke: var(--color-ink);
-  stroke-width: 0.8;
-}
-.cw-bar-edge {
-  fill: none;
 }
 .cw-lab {
   font: 500 9px var(--font-mono);
@@ -404,146 +610,6 @@
   font-weight: 600;
   fill: var(--color-ink);
 }
-.cw-lab.is-warn {
-  fill: var(--color-warn);
-}
-.cw-tick-line {
-  stroke: var(--color-ink);
-}
-.cw-tick-fig {
-  font: 500 9.5px var(--font-mono);
-  fill: var(--color-ink-2);
-}
-.cw-zones {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  font: 500 var(--text-eyebrow) var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-ink-2);
-}
-.cw-zones i {
-  display: inline-block;
-  width: 18px;
-  height: 9px;
-  margin-right: 6px;
-  border: 1px solid var(--color-ink);
-  vertical-align: -1px;
-}
-.cw-zones .is-light {
-  background: repeating-linear-gradient(
-    45deg,
-    var(--color-ink-muted) 0 1px,
-    var(--color-ground) 1px 4px
-  );
-}
-.cw-zones .is-on {
-  background: color-mix(in srgb, var(--color-ink) 22%, var(--color-ground));
-}
-.cw-zones .is-sweet {
-  background: var(--color-ink);
-}
-
-/* ---- the shore ---- */
-.cw-shore {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 20px;
-}
-.cw-beach {
-  width: 100%;
-  max-width: 300px;
-}
-.cw-land {
-  fill: var(--color-land);
-}
-.cw-sea {
-  fill: var(--color-sea-3);
-}
-.cw-shoreline {
-  fill: none;
-  stroke: var(--color-ink);
-  stroke-width: 1.2;
-}
-.cw-wedge {
-  stroke: var(--color-ink);
-  stroke-width: 1;
-  cursor: pointer;
-  transition: fill var(--default-transition-duration, 0.15s);
-}
-.cw-wedge.is-ride {
-  fill: var(--color-sea-1);
-}
-.cw-wedge.is-less {
-  fill: var(--color-ground);
-}
-.cw-wedge.is-never {
-  fill: var(--color-sunken);
-}
-.cw-wedge.is-never.is-danger {
-  fill: var(--color-warn-ground);
-}
-.cw-wedge:hover {
-  stroke-width: 2;
-}
-.cw-arrow {
-  stroke: var(--color-ink);
-  stroke-width: 1.4;
-}
-.cw-arrow.is-off {
-  stroke: var(--color-pen);
-}
-.cw-beach-name {
-  font: italic 600 11px var(--font-display);
-  fill: var(--color-ink);
-}
-.cw-angles {
-  border-top: 2px solid var(--color-ink);
-}
-.cw-angle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--color-line);
-}
-.cw-angle-words b {
-  display: block;
-  font: 600 var(--text-prose) / 1.2 var(--font-display);
-}
-.cw-angle-words span {
-  font: var(--text-body) / 1.35 var(--font-body);
-  color: var(--color-ink-2);
-}
-.cw-angle-words .is-warn {
-  color: var(--color-warn);
-}
-.cw-lock {
-  padding: 4px 12px;
-  border: 1px solid var(--color-warn);
-  border-radius: 999px;
-  font: 500 var(--text-label) var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--color-warn);
-}
-.cw-seg-danger [aria-pressed="true"]:last-child {
-  background: var(--color-warn);
-}
-.cw-today {
-  margin: 12px 0 0;
-  padding: 8px 12px;
-  border-left: 3px solid var(--color-ink);
-  background: var(--color-sunken);
-  font: var(--text-body) / 1.4 var(--font-body);
-}
-.cw-today b {
-  font: 600 var(--text-caption) var(--font-mono);
-}
-
-/* ---- upwind ---- */
 .cw-up {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -750,51 +816,43 @@
   border-style: dotted;
 }
 
-/* ---- units ---- */
-.cw-unit-row {
+/* ---- 5. the rider's spots ---- */
+.cw-near {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 20px;
-  padding: 12px 0;
-  border-top: 2px solid var(--color-ink);
-  border-bottom: 1px solid var(--color-line);
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-ink);
 }
-.cw-unit-row > b {
-  min-width: 80px;
-  font: 600 var(--text-lead) var(--font-display);
-}
-.cw-eg {
-  margin-left: auto;
-  font: 600 var(--text-figure) var(--font-mono);
-}
-
-/* ---- the rider's spots ---- */
-.cw-spots-k {
-  margin: 12px 0 6px;
+.cw-spots > .cw-note {
+  margin-top: 6px;
 }
 .cw-spot-list {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--color-ink);
 }
 .cw-spot-list li {
   display: grid;
-  grid-template-columns: 32px 1fr auto 56px;
+  grid-template-columns: 28px 1fr auto;
   align-items: center;
-  gap: 10px;
-  min-height: 48px;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 0;
   border-bottom: 1px solid var(--color-line);
 }
 .cw-spot-name b {
-  display: block;
-  font: italic 600 var(--text-prose) / 1.2 var(--font-display);
+  font: 500 var(--text-prose) / 1.25 var(--font-body);
 }
 .cw-spot-name small {
+  margin-left: 8px;
   font: 500 var(--text-eyebrow) var(--font-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  white-space: nowrap;
   color: var(--color-ink-muted);
 }
 .cw-km {
@@ -803,122 +861,29 @@
   color: var(--color-ink-muted);
 }
 
-/* ---- all together ---- */
+/* ---- 6. all set ---- */
 .cw-sum {
-  display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 24px;
-}
-.cw-sum-t {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
-  border-top: 2px solid var(--color-ink);
-}
-.cw-sum-t th,
-.cw-sum-t td {
-  padding: 8px 6px 8px 0;
-  border-bottom: 1px solid var(--color-line);
-  text-align: left;
-  vertical-align: baseline;
-}
-.cw-sum-t th {
-  width: 76px;
-  font: 500 var(--text-eyebrow) var(--font-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-.cw-sum-t td {
-  font: var(--text-caption) / 1.5 var(--font-mono);
-}
-.cw-sum-t .cw-chg {
-  width: 64px;
-  padding-right: 0;
-  text-align: right;
-}
-.cw-mark {
-  display: inline-block;
-  margin-right: 8px;
-  white-space: nowrap;
-}
-.cw-mark.is-never {
-  color: var(--color-warn);
-}
-.cw-sample {
-  padding: 12px;
-  border: 1px solid var(--color-ink);
-  border-radius: var(--radius-surface);
-  box-shadow: var(--inset-shadow-frame), var(--shadow-card);
-}
-.cw-sample h4 {
-  margin: 2px 0 6px;
-  font: italic 600 var(--text-lead) var(--font-display);
-}
-.cw-sample svg {
-  display: block;
-  width: 100%;
-  overflow: visible;
-}
-.cw-sum-hour {
-  font: 500 9px var(--font-mono);
-  fill: var(--color-ink-muted);
-}
-.cw-sum-dot {
-  fill: var(--color-ground);
-  stroke: var(--color-ink);
-}
-.cw-sum-dot.is-none {
-  stroke-dasharray: 2 1.6;
-  opacity: 0.6;
-}
-.cw-sum-dot.is-good {
-  fill: var(--color-ink);
-}
-.cw-sum-dot.is-five {
-  fill: var(--color-chart-magenta);
-  stroke: var(--color-chart-magenta);
-}
-.cw-sum-n {
-  font: 600 10px var(--font-mono);
-  fill: var(--color-ink);
-}
-.cw-sum-n.is-on {
-  fill: var(--color-ink-inverse);
-}
-.cw-sum-kn {
-  font: 600 11px var(--font-mono);
-  fill: var(--color-ink);
-}
-.cw-pen {
-  fill: none;
-  stroke: var(--color-pen);
-  stroke-width: 1.7;
-  stroke-linecap: round;
-}
-.cw-sample .cw-small {
-  font: 500 var(--text-caption) var(--font-mono);
-  font-style: normal;
-}
-.cw-sign {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  margin-top: 16px;
-}
-.cw-sign p {
   margin: 0;
-  font: italic var(--text-prose) / 1.4 var(--font-body);
-  color: var(--color-ink-2);
+  padding: 0;
+  list-style: none;
 }
-.cw-sign b {
-  display: block;
-  margin-top: 4px;
-  font: 500 var(--text-eyebrow) var(--font-mono);
-  font-style: normal;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
+.cw-sum li {
+  display: grid;
+  grid-template-columns: 84px 1fr auto;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+.cw-sum li:first-child {
+  border-top: 1px solid var(--color-line);
+}
+.cw-val {
+  font: 500 var(--text-body) / 1.45 var(--font-mono);
+  color: var(--color-ink);
+}
+.cw-val .is-never {
+  color: var(--color-pen-ink);
 }
 
 /* ---- a phone: the wizard is the screen, and each step one column ---- */
@@ -927,52 +892,68 @@
     width: 100%;
     max-width: none;
     height: 100dvh;
+    min-height: 0;
     max-height: 100dvh;
     margin: 0;
-    padding: 12px 16px 12px;
+    border-radius: 0;
+    padding: 12px 16px;
   }
-  .cw .cw-tick {
-    font-size: 0;
+  .cw > div:first-child h2 {
+    font-size: 22px;
   }
-  .cw .cw-tick i {
-    height: 6px;
+  .cw-body {
+    padding: 14px 0;
   }
-  .cw-title {
-    font-size: 24px;
+  .cw-sub {
+    font-size: var(--text-body);
   }
-  .cw-alm {
-    margin-bottom: 12px;
+  .cw-row > .cw-kick {
+    width: 100%;
   }
-  .cw .cw-level {
-    grid-template-columns: 36px 1fr;
+  .cw-range {
+    margin: 6px 8px 0;
   }
-  .cw-level-band {
-    grid-column: 2;
-    text-align: left;
+  .cw-knob {
+    min-width: 30px;
+    height: 26px;
+    margin-top: 1px;
+    padding: 0 4px;
   }
-  .cw-preview {
-    padding: 8px;
+  .cw-zones {
+    margin: 4px 8px 0;
   }
-  .cw-preview-hours {
-    grid-template-columns: repeat(9, minmax(0, 1fr));
+  .cw-gusty {
+    grid-template-columns: 1fr;
+  }
+  .cw-gusty > [role="group"] {
+    grid-row: auto;
+    grid-column: 1;
+    justify-self: start;
+  }
+  .cw-day {
+    padding: 8px 6px 6px;
   }
   .cw-w {
     font-size: var(--text-body);
   }
+  .cw-why {
+    font-size: 8px;
+    letter-spacing: 0;
+  }
   .cw-shore,
-  .cw-up,
-  .cw-sum {
+  .cw-up {
     grid-template-columns: 1fr;
   }
-  .cw-beach {
+  .cw-web {
     justify-self: center;
-    max-width: 240px;
+    max-width: 340px;
   }
   .cw-up-pic {
     justify-self: center;
     max-width: 300px;
   }
-  .cw-angle {
-    flex-wrap: wrap;
+  .cw-sum li {
+    grid-template-columns: 64px 1fr auto;
+    gap: 8px;
   }
 }
