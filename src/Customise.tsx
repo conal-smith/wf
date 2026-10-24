@@ -34,8 +34,9 @@ import {
   type Pointing,
   type Skill,
 } from "../force5/src/stars";
-import { UNITS, type Units } from "../force5/src/units";
+import { UNITS, beaufort, forceKn, type Units } from "../force5/src/units";
 import { compass, type Spot } from "../force5/src/weather";
+import { BeaufortGlyph } from "../ui/BeaufortGlyph";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
 import { Puffin } from "../ui/Puffin";
@@ -47,9 +48,13 @@ import {
   GUST_TOP,
   WIND_KEYS,
   WIND_TOP,
+  forceTicks,
   knotsOf,
   moveGust,
+  moveGustForce,
   moveWind,
+  moveWindForce,
+  said,
   shown,
   stepped,
   unitScale,
@@ -60,8 +65,10 @@ import {
   applyDraft,
   draftOf,
   draftRider,
+  inUnits,
   lessOff,
   levelRating,
+  onItsLevel,
   rateSample,
   sampleBest,
   sampleDay,
@@ -333,8 +340,44 @@ export default function Customise({
 type StepProps = { draft: Draft; setDraft: (draft: Draft) => void };
 const band = (draft: Draft, unit: UnitScale) => {
   const w = draft.custom.wind;
+  if (unit.force)
+    return `${written(w.min, unit)}–${written(w.max, unit)} · sweet ${sweetText(w, unit)}`;
   return `${shown(w.min, unit)}–${shown(w.max, unit)} ${unit.label} · sweet ${shown(w.sweetLow, unit)}–${shown(w.sweetHigh, unit)}`;
 };
+
+/** A speed in a line of text: "15", or "F5" in Force. */
+const written = (kn: number, unit: UnitScale) =>
+  unit.force ? `F${beaufort(kn)}` : shown(kn, unit);
+
+/** The sweet spot in forces: "F5–F6", or "F5" where it is one force. */
+const sweetText = (
+  w: { sweetLow: number; sweetHigh: number },
+  unit: UnitScale,
+) => {
+  const low = written(w.sweetLow, unit);
+  const high = written(w.sweetHigh, unit);
+  return low === high ? low : `${low}–${high}`;
+};
+
+/**
+ * A speed as a figure: the number, or in Force the old charts' glyph beside
+ * the force (ui/BeaufortGlyph.tsx), `size` px tall.
+ */
+function Speed({
+  kn,
+  unit,
+  size = 14,
+}: {
+  kn: number;
+  unit: UnitScale;
+  size?: number;
+}) {
+  return unit.force ? (
+    <BeaufortGlyph force={beaufort(kn)} size={size} />
+  ) : (
+    <>{shown(kn, unit)}</>
+  );
+}
 
 /* ---- 1. the level ---- */
 
@@ -360,13 +403,23 @@ function LevelStep({ draft, setDraft, unit }: StepProps & { unit: UnitScale }) {
                 <b>{SKILL_LABEL[skill]}</b>
                 <span>{LEVEL_LINE[skill]}</span>
               </span>
-              <span className="cw-level-band">
-                {shown(w.min, unit)}–{shown(w.max, unit)}
-                <small>
-                  {unit.label} · sweet {shown(w.sweetLow, unit)}–
-                  {shown(w.sweetHigh, unit)}
-                </small>
-              </span>
+              {unit.force ? (
+                <span className="cw-level-band">
+                  <span>
+                    <Speed kn={w.min} unit={unit} size={17} />–
+                    <Speed kn={w.max} unit={unit} size={17} />
+                  </span>
+                  <small>sweet {sweetText(w, unit)}</small>
+                </span>
+              ) : (
+                <span className="cw-level-band">
+                  {shown(w.min, unit)}–{shown(w.max, unit)}
+                  <small>
+                    {unit.label} · sweet {shown(w.sweetLow, unit)}–
+                    {shown(w.sweetHigh, unit)}
+                  </small>
+                </span>
+              )}
             </Button>
           );
         })}
@@ -488,8 +541,16 @@ function Preview({
           >
             <span className="cw-t">{clock(hour.time).slice(0, 2)}</span>
             <span className="cw-w">
-              {shown(hour.windKn, unit)}
-              {hour.gustKn !== null && <sup>{shown(hour.gustKn, unit)}</sup>}
+              <Speed kn={hour.windKn} unit={unit} size={small ? 12 : 15} />
+              {hour.gustKn !== null &&
+                // In Force, a gust in the wind's own force says nothing.
+                !(
+                  unit.force && beaufort(hour.gustKn) <= beaufort(hour.windKn)
+                ) && (
+                  <sup>
+                    <Speed kn={hour.gustKn} unit={unit} size={10} />
+                  </sup>
+                )}
             </span>
             <StarGlyphs
               stars={stars[i]}
@@ -541,7 +602,15 @@ function WindStep({
           ]}
           dark={[1, 2]}
           unit={unit}
-          onMove={(i, kn) => set(moveWind(draft.custom, WIND_KEYS[i], kn))}
+          onMove={(i, kn) =>
+            set(
+              (unit.force ? moveWindForce : moveWind)(
+                draft.custom,
+                WIND_KEYS[i],
+                kn,
+              ),
+            )
+          }
           paint={(x, width) => (
             <>
               <defs>
@@ -649,8 +718,9 @@ function WindStep({
         <div className="cw-tool-h">
           <h4>Gusts</h4>
           <span className="cw-fig">
-            fine to {shown(g.fine, unit)} · −{g.most}★ by {shown(g.worst, unit)}{" "}
-            {unit.label}
+            fine to {written(g.fine, unit)} · −{g.most}★ by{" "}
+            {written(g.worst, unit)}
+            {unit.force ? "" : ` ${unit.label}`}
           </span>
         </div>
         <div className="cw-gust">
@@ -663,7 +733,13 @@ function WindStep({
               names={["Gusts cost nothing to", "Gusts take off the most from"]}
               unit={unit}
               onMove={(i, kn) =>
-                set(moveGust(draft.custom, i ? "worst" : "fine", kn))
+                set(
+                  (unit.force ? moveGustForce : moveGust)(
+                    draft.custom,
+                    i ? "worst" : "fine",
+                    kn,
+                  ),
+                )
               }
               paint={(x, width) => (
                 <>
@@ -750,7 +826,10 @@ function WindStep({
   );
 }
 
-/** The scale's figures: every five knots, in the rider's unit. */
+/**
+ * The scale's figures: every five knots, in the rider's unit. In Force, a
+ * tick where each force starts, named by it.
+ */
 function Ticks({
   x,
   from,
@@ -763,6 +842,25 @@ function Ticks({
   unit: UnitScale;
 }) {
   const out: ReactNode[] = [];
+  if (unit.force)
+    return (
+      <>
+        {forceTicks(from, to).map(({ kn, force }) => (
+          <g key={kn}>
+            <line
+              className="cw-tick-line"
+              x1={x(kn)}
+              x2={x(kn)}
+              y1="74"
+              y2="80"
+            />
+            <text className="cw-tick-fig" x={x(kn)} y="91" textAnchor="middle">
+              {force}
+            </text>
+          </g>
+        ))}
+      </>
+    );
   for (let kn = from; kn <= to; kn += 5)
     out.push(
       <g key={kn}>
@@ -839,7 +937,7 @@ function Range({
           aria-valuemin={min}
           aria-valuemax={max}
           aria-valuenow={v}
-          aria-valuetext={`${shown(v, unit)} ${unit.label}`}
+          aria-valuetext={said(v, unit)}
           className={`cw-knob${dark.includes(i) ? " is-dark" : ""}`}
           style={{ left: x(v) }}
           onPointerDown={(event) => {
@@ -867,7 +965,7 @@ function Range({
             onMove(i, stepped(v, by, unit));
           }}
         >
-          {shown(v, unit)}
+          <Speed kn={v} unit={unit} size={12} />
         </span>
       ))}
     </div>
@@ -924,17 +1022,17 @@ function GustTrace({
       <path className="cw-trace" d={d} />
       <line className="cw-base" x1="12" x2="232" y1="112" y2="112" />
       <text x="14" y={y(hour.windKn) + 11}>
-        MEAN {shown(hour.windKn, unit)}
+        MEAN {written(hour.windKn, unit)}
       </text>
       <text x="230" y={y(fine) - 4} textAnchor="end">
-        YOUR LINE {shown(fine, unit)}
+        YOUR LINE {written(fine, unit)}
       </text>
       {day && (
         <text x="14" y="125">
           {clock(hour.time)} ·{" "}
           {hour.gustKn === null
             ? "NO GUST IN THIS FORECAST"
-            : `GUSTS ${shown(gust, unit)} ${unit.label.toUpperCase()}`}
+            : `GUSTS ${unit.force ? written(gust, unit) : `${shown(gust, unit)} ${unit.label.toUpperCase()}`}`}
         </text>
       )}
     </svg>
@@ -1112,7 +1210,7 @@ function ShoreStep({
           <p className="cw-today">
             {dayLong(noon.time)} at {day!.spot.name}:{" "}
             <b>
-              {compass(noon.from!)} {shown(noon.windKn, unit)}
+              {compass(noon.from!)} {written(noon.windKn, unit)}
             </b>
             , {DIRECTION_NAME[today].toLowerCase()}.{" "}
             {choice(today) === "ride"
@@ -1262,14 +1360,31 @@ function UnitsStep({
           aria-label="Wind units"
           options={UNITS.map((u) => ({ value: u.id, label: u.label }))}
           value={draft.units}
-          onChange={(units) => setDraft({ ...draft, units })}
+          onChange={(units) => setDraft(inUnits({ ...draft, units }))}
         />
         <span className="cw-eg">
-          {shown(hour.windKn, unit)}
-          {hour.gustKn !== null && <sup>g{shown(hour.gustKn, unit)}</sup>}
-          <small>{unit.label}</small>
+          <Speed kn={hour.windKn} unit={unit} size={17} />
+          {hour.gustKn !== null && (
+            <sup>
+              g<Speed kn={hour.gustKn} unit={unit} size={10} />
+            </sup>
+          )}
+          {!unit.force && <small>{unit.label}</small>}
         </span>
       </div>
+      {unit.force && (
+        // The old charts' notation, with the knots each force runs over.
+        <ul className="cw-bf-key" aria-label="The forces in knots">
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((force) => (
+            <li key={force}>
+              <BeaufortGlyph force={force} size={16} />
+              <small>
+                {forceKn(force, "first")}–{forceKn(force, "last")} kn
+              </small>
+            </li>
+          ))}
+        </ul>
+      )}
       <p className="cw-small">
         Every wind on the chart, the dock and the stars’ figures.
       </p>
@@ -1428,9 +1543,7 @@ function Summary({
   onChange: (step: CustomiseStep) => void;
 }) {
   const r = draft.custom;
-  const changed =
-    JSON.stringify(r) !==
-    JSON.stringify(levelRating(draft.skill, draft.weightKg));
+  const changed = !onItsLevel(draft);
   const mark = (key: DirectionKey) => {
     const c = shoreChoice(r.direction[key]);
     return (
@@ -1475,10 +1588,12 @@ function Summary({
             "Wind",
             <>
               <b>
-                {shown(r.wind.min, unit)}–{shown(r.wind.max, unit)}
-              </b>{" "}
-              {unit.label} · sweet {shown(r.wind.sweetLow, unit)}–
-              {shown(r.wind.sweetHigh, unit)}
+                {written(r.wind.min, unit)}–{written(r.wind.max, unit)}
+              </b>
+              {unit.force ? "" : ` ${unit.label}`} · sweet{" "}
+              {unit.force
+                ? sweetText(r.wind, unit)
+                : `${shown(r.wind.sweetLow, unit)}–${shown(r.wind.sweetHigh, unit)}`}
               {changed ? " · your own" : ""}
             </>,
             "wind",
@@ -1486,8 +1601,8 @@ function Summary({
           {row(
             "Gusts",
             <>
-              fine to <b>{shown(r.gust.fine, unit)}</b> · −{r.gust.most}★ by{" "}
-              {shown(r.gust.worst, unit)}
+              fine to <b>{written(r.gust.fine, unit)}</b> · −{r.gust.most}★ by{" "}
+              {written(r.gust.worst, unit)}
             </>,
             "wind",
           )}
@@ -1559,7 +1674,7 @@ function Summary({
                       y="54"
                       textAnchor="middle"
                     >
-                      {shown(hour.windKn, unit)}
+                      {written(hour.windKn, unit)}
                     </text>
                   </g>
                 );

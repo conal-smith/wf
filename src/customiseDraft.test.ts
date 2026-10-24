@@ -18,6 +18,7 @@ import {
   draftRider,
   lessOff,
   levelRating,
+  onItsLevel,
   rateSample,
   sampleBest,
   sampleDay,
@@ -182,6 +183,25 @@ describe("saving", () => {
     );
     expect(onLevel.rider.custom).toBeUndefined();
     expect(onLevel.rider.keptCustom).toEqual(own);
+  });
+  it("in Force, sets the band on whole forces and still saves the level as the level", () => {
+    const before = { ...prefs({ skill: "beginner" }), units: "bft" as const };
+    const draft = draftOf(before, []);
+    // Learning's 13/15/20/24 kn: F4 / F5–F5 / F6, each on a force's edge.
+    expect(draft.custom.wind).toEqual({
+      min: 11,
+      sweetLow: 17,
+      sweetHigh: 21,
+      max: 27,
+    });
+    expect(onItsLevel(draft)).toBe(true);
+    const next = applyDraft(before, draft, NOW);
+    expect(next.rider.custom).toBeUndefined();
+    // A new level comes in forces too.
+    expect(withLevel(draft, "advanced", 70).custom.wind.min % 1).toBe(0);
+    expect(onItsLevel(withLevel(draft, "advanced", 70))).toBe(true);
+    // In knots, the same band is the rider's own.
+    expect(onItsLevel({ ...draft, units: "kn" })).toBe(false);
   });
   it("names the spots starred and unstarred", () => {
     expect(spotChanges(["a", "b"], ["c", "a"])).toEqual(["c", "b"]);
