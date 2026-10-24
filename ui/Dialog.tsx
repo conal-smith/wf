@@ -25,7 +25,10 @@ export const dialogStyles = tv({
       BACKDROP,
     ],
     head: "flex items-start justify-between gap-3 border-b border-ink pb-3",
-    title: "m-0 font-display text-lead text-ink",
+    title: "m-0 min-w-0 flex-1 font-display text-lead text-ink",
+    // Beside the title, before the close button: where a wizard says how far
+    // through it is ("2 / 6").
+    aside: "shrink-0 self-center font-mono text-label text-ink-muted",
     body: "grid gap-3 text-prose text-ink-2",
     actions: "flex flex-wrap items-center justify-end gap-2",
   },
@@ -134,6 +137,13 @@ export function backdropPress(host: () => BoxHost | null) {
 export type DialogProps = VariantProps<typeof dialogStyles> & {
   open: boolean;
   title: string;
+  /**
+   * The dialog's name, where the title changes under it (a wizard's steps
+   * are titled each by its own question): read instead of the title.
+   */
+  label?: string;
+  /** A figure in the head, between the title and the close button. */
+  aside?: ReactNode;
   /** Asked for by Escape, by a click on the backdrop and by the close button. */
   onClose: () => void;
   /** Work is under way that closing would orphan: every way out is held shut. */
@@ -163,6 +173,8 @@ export type DialogProps = VariantProps<typeof dialogStyles> & {
 export function Dialog({
   open,
   title,
+  label,
+  aside,
   onClose,
   busy = false,
   actions,
@@ -205,7 +217,8 @@ export function Dialog({
     <dialog
       ref={ref}
       className={styles.base({ className })}
-      aria-labelledby={titleId}
+      aria-labelledby={label ? undefined : titleId}
+      aria-label={label}
       onCancel={(event) => {
         // Escape. The dialog is closed by `open` going false, not by the
         // browser, so that the owner's state and the screen cannot disagree.
@@ -224,6 +237,7 @@ export function Dialog({
         <h2 className={styles.title()} id={titleId}>
           {title}
         </h2>
+        {aside && <div className={styles.aside()}>{aside}</div>}
         {dismissible && (
           <Button
             variant="quiet"

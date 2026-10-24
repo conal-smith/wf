@@ -640,9 +640,29 @@ describe("S7: Dialog", () => {
     expect(markup).toMatch(/^<dialog /);
     const [, id] = markup.match(/aria-labelledby="([^"]+)"/)!;
     expect(markup).toContain(
-      `<h2 class="m-0 font-display text-lead text-ink" id="${id}">`,
+      `<h2 class="m-0 min-w-0 flex-1 font-display text-lead text-ink" id="${id}">`,
     );
     expect(markup).toContain('aria-label="Close"');
+  });
+
+  it("takes a name of its own over a changing title, and a figure in its head", () => {
+    const markup = html(
+      <Dialog
+        open
+        title="How do you ride?"
+        label="Customise"
+        aside="1 / 6"
+        onClose={() => {}}
+      >
+        Body
+      </Dialog>,
+    );
+    expect(markup).toContain('aria-label="Customise"');
+    expect(markup).not.toContain("aria-labelledby");
+    // Between the title and the close button.
+    expect(markup).toMatch(
+      /How do you ride\?<\/h2><div class="[^"]*">1 \/ 6<\/div><button/,
+    );
   });
 
   it("only takes a display of its own while open", () => {

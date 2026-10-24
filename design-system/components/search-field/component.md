@@ -27,6 +27,11 @@ the body face's italic, the magnifier ahead of it.
   line, `sem.space.x3` between its parts, `sem.space.x1` clear on the right,
   a 20 (`sem.space.x5`) magnifier, and the words at `sem.font.size.lead` in
   normal weight on every pointer.
+- **Pill** (`--pill`, `shape="pill"`) — a capsule (`sem.radius.pill`) ruled
+  all round in a `sem.rule.hairline` of `sem.color.ink`, `sem.space.step` ×
+  3.5 either side, for a search inside a box (Customise's "Your spots"),
+  where a lone rule under the words would read as a divider. Combines with
+  the sizes; the hover takes the whole border to `sem.color.chart-magenta`.
 
 ## States
 

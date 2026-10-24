@@ -23,6 +23,9 @@ inert. Its buttons are the Button component's classes.
   `sem.space.x3` apart, over a hairline ink rule with `sem.space.x3` beneath.
 - Title: `.wf-dialog__title` — the display face at `sem.font.size.lead` and
   `sem.font.weight.lead`, in ink.
+- Aside: `.wf-dialog__aside` — optional, between the title and the close: a
+  figure in the mono face at `sem.font.size.label`, `sem.color.ink-muted`,
+  centred on the row. A wizard says how far through it is here ("2 / 6").
 - Close: an icon button, quiet and small (`.wf-button--icon.wf-button--sm`),
   `aria-label="Close"`, a 15px X.
 - Body: `.wf-dialog__body` — a grid, `sem.space.x3` gaps, `sem.font.size.prose`
@@ -37,6 +40,10 @@ inert. Its buttons are the Button component's classes.
   or a table.
 - **Dismissible** (the default) — draws the close button. A question with its
   own Cancel does without it.
+- **Named** (`label`) — a dialog whose title changes under it, as a wizard's
+  steps are each titled by their own question, takes a name of its own
+  (`aria-label`, "Customise") in place of `aria-labelledby`, so it is the same
+  dialog to a screen reader from step to step.
 - **ConfirmDialog** — no close button; Cancel (`.wf-button--pill`) then the
   destructive answer (`.wf-button--danger`), named for what it does ("Remove
   listing").

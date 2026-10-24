@@ -1534,12 +1534,23 @@ code {
 }
 
 .wf-dialog__title {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-family: var(--sem-font-family-display);
   font-size: var(--sem-font-size-lead);
   line-height: var(--sem-font-line-lead);
   font-weight: var(--sem-font-weight-lead);
   color: var(--sem-color-ink);
+}
+
+/* A figure beside the title, before the close: how far through a wizard is. */
+.wf-dialog__aside {
+  flex-shrink: 0;
+  align-self: center;
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-label);
+  color: var(--sem-color-ink-muted);
 }
 
 /* ---- body: a sentence or two ---- */
@@ -2749,6 +2760,19 @@ code {
   font-size: var(--sem-font-size-lead);
   line-height: var(--sem-font-line-lead);
   font-weight: var(--sem-font-weight-normal);
+}
+
+/* ---- shape: pill ---- */
+/* A capsule ruled all round in ink rather than a rule under the words: a
+ * search inside a box, where a lone rule would read as a divider. */
+.wf-search-field--pill {
+  padding: 0 calc(var(--sem-space-step) * 3.5);
+  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  border-radius: var(--sem-radius-pill);
+}
+.wf-search-field--pill:hover,
+.wf-search-field--pill.is-hover {
+  border-color: var(--sem-color-chart-magenta);
 }
 
 /* components/section-heading/component.css */
@@ -10152,9 +10176,9 @@ code {
 <div class="catalog-doc">
 <p>The chart's box as a modal (<code>ui/Dialog.tsx</code>, <code>dialogStyles</code>), and the question with one destructive answer built on it (<code>ui/ConfirmDialog.tsx</code>). A native <code>dialog</code>, so focus is trapped, Escape cancels and the page behind is inert. Its buttons are the Button component's classes.</p>
 <h4>Anatomy</h4>
-<ul><li>Box: <code>.wf-dialog</code> — 11/12 of the width up to <code>sem.container.dialog</code>, <code>sem.space.x7</code> inset (<code>sem.space.x5</code> under <code>sem.breakpoint.wide</code>), a grid with <code>sem.space.x5</code> between its parts. A sheet: flat paper (<code>sem.color.card</code> with <code>sem.texture.grain</code>), a <code>sem.rule.hairline</code> ink border plus <code>sem.shadow.frame</code> (the hairline inside it), then <code>sem.shadow.sheet</code>. A sheet's corner (<code>sem.radius.dialog</code>, 18px). Sentences in <code>sem.font.family.body</code>.</li><li>Backdrop: <code>::backdrop</code> in <code>sem.color.scrim</code>, a wash of paper, over a <code>sem.blur.scrim</code> blur of the page or the map behind; it fades in with <code>sem.animate.scrim-in</code>. Where the browser cannot blur, or the reader asks for less transparency, it is <code>sem.color.scrim-solid</code> with no blur. The product's one recipe for it is ui/Backdrop.tsx (<code>scrim</code>, <code>Backdrop</code>).</li><li>Head: <code>.wf-dialog__head</code> — the title and the close button, top-aligned and <code>sem.space.x3</code> apart, over a hairline ink rule with <code>sem.space.x3</code> beneath.</li><li>Title: <code>.wf-dialog__title</code> — the display face at <code>sem.font.size.lead</code> and <code>sem.font.weight.lead</code>, in ink.</li><li>Close: an icon button, quiet and small (<code>.wf-button--icon.wf-button--sm</code>), <code>aria-label=&quot;Close&quot;</code>, a 15px X.</li><li>Body: <code>.wf-dialog__body</code> — a grid, <code>sem.space.x3</code> gaps, <code>sem.font.size.prose</code> in <code>sem.color.ink-2</code>.</li><li>Actions: <code>.wf-dialog__actions</code> — a wrapping row set right, <code>sem.space.x2</code> apart. The filled action, if any, comes last.</li></ul>
+<ul><li>Box: <code>.wf-dialog</code> — 11/12 of the width up to <code>sem.container.dialog</code>, <code>sem.space.x7</code> inset (<code>sem.space.x5</code> under <code>sem.breakpoint.wide</code>), a grid with <code>sem.space.x5</code> between its parts. A sheet: flat paper (<code>sem.color.card</code> with <code>sem.texture.grain</code>), a <code>sem.rule.hairline</code> ink border plus <code>sem.shadow.frame</code> (the hairline inside it), then <code>sem.shadow.sheet</code>. A sheet's corner (<code>sem.radius.dialog</code>, 18px). Sentences in <code>sem.font.family.body</code>.</li><li>Backdrop: <code>::backdrop</code> in <code>sem.color.scrim</code>, a wash of paper, over a <code>sem.blur.scrim</code> blur of the page or the map behind; it fades in with <code>sem.animate.scrim-in</code>. Where the browser cannot blur, or the reader asks for less transparency, it is <code>sem.color.scrim-solid</code> with no blur. The product's one recipe for it is ui/Backdrop.tsx (<code>scrim</code>, <code>Backdrop</code>).</li><li>Head: <code>.wf-dialog__head</code> — the title and the close button, top-aligned and <code>sem.space.x3</code> apart, over a hairline ink rule with <code>sem.space.x3</code> beneath.</li><li>Title: <code>.wf-dialog__title</code> — the display face at <code>sem.font.size.lead</code> and <code>sem.font.weight.lead</code>, in ink.</li><li>Aside: <code>.wf-dialog__aside</code> — optional, between the title and the close: a figure in the mono face at <code>sem.font.size.label</code>, <code>sem.color.ink-muted</code>, centred on the row. A wizard says how far through it is here (&quot;2 / 6&quot;).</li><li>Close: an icon button, quiet and small (<code>.wf-button--icon.wf-button--sm</code>), <code>aria-label=&quot;Close&quot;</code>, a 15px X.</li><li>Body: <code>.wf-dialog__body</code> — a grid, <code>sem.space.x3</code> gaps, <code>sem.font.size.prose</code> in <code>sem.color.ink-2</code>.</li><li>Actions: <code>.wf-dialog__actions</code> — a wrapping row set right, <code>sem.space.x2</code> apart. The filled action, if any, comes last.</li></ul>
 <h4>Variants</h4>
-<ul><li><strong>Md</strong> (the default) — up to <code>sem.container.dialog</code> (420px).</li><li><strong>Wide</strong> (<code>--wide</code>) — up to <code>sem.container.dialog-wide</code> (640px), for a form or a table.</li><li><strong>Dismissible</strong> (the default) — draws the close button. A question with its own Cancel does without it.</li><li><strong>ConfirmDialog</strong> — no close button; Cancel (<code>.wf-button--pill</code>) then the destructive answer (<code>.wf-button--danger</code>), named for what it does (&quot;Remove listing&quot;).</li></ul>
+<ul><li><strong>Md</strong> (the default) — up to <code>sem.container.dialog</code> (420px).</li><li><strong>Wide</strong> (<code>--wide</code>) — up to <code>sem.container.dialog-wide</code> (640px), for a form or a table.</li><li><strong>Dismissible</strong> (the default) — draws the close button. A question with its own Cancel does without it.</li><li><strong>Named</strong> (<code>label</code>) — a dialog whose title changes under it, as a wizard's steps are each titled by their own question, takes a name of its own (<code>aria-label</code>, &quot;Customise&quot;) in place of <code>aria-labelledby</code>, so it is the same dialog to a screen reader from step to step.</li><li><strong>ConfirmDialog</strong> — no close button; Cancel (<code>.wf-button--pill</code>) then the destructive answer (<code>.wf-button--danger</code>), named for what it does (&quot;Remove listing&quot;).</li></ul>
 <h4>States</h4>
 <ul><li>Opening: <code>sem.animate.dialog-in</code>, a 150ms rise of <code>sem.space.x2</code> from nothing; none for a reader who asks for less motion.</li><li>Closed: the native dialog is hidden by the browser; the grid is set only on <code>[open]</code>. Any other element carrying the class is a static rendering and is drawn open.</li><li>Busy: work is under way that closing would orphan. Every way out is held shut: the close button and both answers are disabled, Escape and a click on the backdrop do nothing. Mark the box <code>aria-busy=&quot;true&quot;</code>.</li></ul>
 <h4>Usage</h4>
@@ -10255,12 +10279,23 @@ code {
 }
 
 .wf-dialog__title {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-family: var(--sem-font-family-display);
   font-size: var(--sem-font-size-lead);
   line-height: var(--sem-font-line-lead);
   font-weight: var(--sem-font-weight-lead);
   color: var(--sem-color-ink);
+}
+
+/* A figure beside the title, before the close: how far through a wizard is. */
+.wf-dialog__aside {
+  flex-shrink: 0;
+  align-self: center;
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-label);
+  color: var(--sem-color-ink-muted);
 }
 
 /* ---- body: a sentence or two ---- */
@@ -15089,6 +15124,12 @@ code {
         <svg class="wf-search-field__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></svg>
         <input class="wf-search-field__input" type="search" placeholder="Find a spot…" aria-label="Find a spot" />
       </div>
+
+      <p class="demo__label">md · pill · a search inside a box</p>
+      <div class="wf-search-field wf-search-field--md wf-search-field--pill" aria-busy="false">
+        <svg class="wf-search-field__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></svg>
+        <input class="wf-search-field__input" type="search" placeholder="Find a spot by name or county" aria-label="Find a spot" />
+      </div>
     </section>
 
     <section class="demo" data-mode="dark">
@@ -15114,7 +15155,7 @@ code {
 <h4>Anatomy</h4>
 <ul><li>Field: <code>.wf-search-field</code> on the wrapper that carries <code>aria-busy</code> — a flex row, <code>sem.space.x2</code> between its parts, <code>sem.space.x0-5</code> either side, no border but a <code>sem.rule.hairline</code> of <code>sem.color.ink</code> underneath, no fill, <code>sem.color.ink-muted</code> (which the magnifier takes).</li><li>Magnifier: <code>.wf-search-field__icon</code> — lucide Search, 16 (<code>sem.space.x4</code>), stroke 2, <code>currentColor</code>, <code>aria-hidden</code>.</li><li>Input: <code>.wf-search-field__input</code> on an <code>&lt;input type=&quot;search&quot;&gt;</code> — bare, no platform appearance, Newsreader at <code>sem.font.size.prose</code>, normal weight, <code>sem.color.ink</code>; the placeholder italic in <code>sem.color.ink-muted</code>.</li><li>Optional trailing part: whatever follows the input inside the field, such as a way to clear it (a quiet icon Button).</li></ul>
 <h4>Variants</h4>
-<ul><li><strong>lg</strong> (the default) — <code>sem.size.control.lg</code> (46) tall: the chart's head.</li><li><strong>md</strong> (<code>--md</code>) — <code>sem.size.control.md</code> (40): a search in a bar.</li><li><strong>hero</strong> (<code>--hero</code>) — the search a page is built around: <code>sem.space.step</code> × 13.5 (54) tall, taller than any other control, on a <code>sem.rule.heavy</code> line, <code>sem.space.x3</code> between its parts, <code>sem.space.x1</code> clear on the right, a 20 (<code>sem.space.x5</code>) magnifier, and the words at <code>sem.font.size.lead</code> in normal weight on every pointer.</li></ul>
+<ul><li><strong>lg</strong> (the default) — <code>sem.size.control.lg</code> (46) tall: the chart's head.</li><li><strong>md</strong> (<code>--md</code>) — <code>sem.size.control.md</code> (40): a search in a bar.</li><li><strong>hero</strong> (<code>--hero</code>) — the search a page is built around: <code>sem.space.step</code> × 13.5 (54) tall, taller than any other control, on a <code>sem.rule.heavy</code> line, <code>sem.space.x3</code> between its parts, <code>sem.space.x1</code> clear on the right, a 20 (<code>sem.space.x5</code>) magnifier, and the words at <code>sem.font.size.lead</code> in normal weight on every pointer.</li><li><strong>Pill</strong> (<code>--pill</code>, <code>shape=&quot;pill&quot;</code>) — a capsule (<code>sem.radius.pill</code>) ruled all round in a <code>sem.rule.hairline</code> of <code>sem.color.ink</code>, <code>sem.space.step</code> × 3.5 either side, for a search inside a box (Customise's &quot;Your spots&quot;), where a lone rule under the words would read as a divider. Combines with the sizes; the hover takes the whole border to <code>sem.color.chart-magenta</code>.</li></ul>
 <h4>States</h4>
 <ul><li>Hover: the line goes to <code>sem.color.chart-magenta</code> (<code>.is-hover</code> in the demo).</li><li>Focus: the one ring round the whole field when its input holds the focus (<code>:focus-within</code>, <code>.is-focus</code> in the demo): <code>sem.ring.width</code> of <code>sem.color.focus</code>, <code>sem.ring.offset</code> clear. The input draws none.</li><li>Busy (<code>aria-busy=&quot;true&quot;</code> on the field): results are on their way; the cursor says progress.</li><li>Coarse pointer: the field is at least <code>sem.size.touch</code> tall, and the words step to <code>sem.font.size.input</code> (16), except hero, which stays at lead.</li></ul>
 <h4>Usage</h4>
@@ -15241,6 +15282,19 @@ code {
   line-height: var(--sem-font-line-lead);
   font-weight: var(--sem-font-weight-normal);
 }
+
+/* ---- shape: pill ---- */
+/* A capsule ruled all round in ink rather than a rule under the words: a
+ * search inside a box, where a lone rule would read as a divider. */
+.wf-search-field--pill {
+  padding: 0 calc(var(--sem-space-step) * 3.5);
+  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  border-radius: var(--sem-radius-pill);
+}
+.wf-search-field--pill:hover,
+.wf-search-field--pill.is-hover {
+  border-color: var(--sem-color-chart-magenta);
+}
 </code></pre></details>
 <details class="catalog-source"><summary>components/search-field/component.html (demo)</summary><pre><code>&lt;!doctype html&gt;
 &lt;html lang=&quot;en&quot;&gt;
@@ -15342,6 +15396,12 @@ code {
       &lt;div class=&quot;wf-search-field wf-search-field--hero&quot; aria-busy=&quot;false&quot;&gt;
         &lt;svg class=&quot;wf-search-field__icon&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;m21 21-4.34-4.34&quot; /&gt;&lt;circle cx=&quot;11&quot; cy=&quot;11&quot; r=&quot;8&quot; /&gt;&lt;/svg&gt;
         &lt;input class=&quot;wf-search-field__input&quot; type=&quot;search&quot; placeholder=&quot;Find a spot…&quot; aria-label=&quot;Find a spot&quot; /&gt;
+      &lt;/div&gt;
+
+      &lt;p class=&quot;demo__label&quot;&gt;md · pill · a search inside a box&lt;/p&gt;
+      &lt;div class=&quot;wf-search-field wf-search-field--md wf-search-field--pill&quot; aria-busy=&quot;false&quot;&gt;
+        &lt;svg class=&quot;wf-search-field__icon&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;m21 21-4.34-4.34&quot; /&gt;&lt;circle cx=&quot;11&quot; cy=&quot;11&quot; r=&quot;8&quot; /&gt;&lt;/svg&gt;
+        &lt;input class=&quot;wf-search-field__input&quot; type=&quot;search&quot; placeholder=&quot;Find a spot by name or county&quot; aria-label=&quot;Find a spot&quot; /&gt;
       &lt;/div&gt;
     &lt;/section&gt;
 
