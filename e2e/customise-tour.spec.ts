@@ -91,16 +91,56 @@ test("Customise walks through the rider's settings and saves them, and the light
   await next.click();
   await next.click();
 
-  // 4. Pointing, 5. units, 6. spots, 7. the lot.
-  await wizard
-    .getByRole("group", { name: "Pointing upwind" })
-    .getByRole("button", { name: "Sharp" })
-    .click();
+  // 4. Upwind: degrees into the wind, Riding's 20° to start.
+  await expect(
+    wizard.getByRole("heading", { name: "Can you ride upwind?" }),
+  ).toBeVisible();
+  const answers = wizard.getByRole("group", { name: "Can you ride upwind?" });
+  const into = wizard.locator("[data-upwind] output");
+  await expect(into).toHaveText("20°");
+  await expect(answers.getByRole("button", { name: /^Yes/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // Each side's angle is in magenta on the picture; straight across, none.
+  await expect(wizard.locator(".cw-up-deg")).toHaveText(["20°", "20°"]);
+  await answers.getByRole("button", { name: /^Not yet/ }).click();
+  await expect(into).toHaveText("0°");
+  await expect(wizard.locator(".cw-up-deg")).toHaveCount(0);
+  const slide = wizard.getByRole("slider", { name: "Degrees into the wind" });
+  await expect(slide).toHaveAttribute("aria-valuetext", "straight across the wind");
+  // The course's edge on the picture is a handle: dragged to 60° off the
+  // wind, it is 30° into it.
+  const pic = await wizard.locator(".cw-up-pic").boundingBox();
+  const edge = await wizard
+    .locator('[data-edge="right"] .cw-up-edge-dot')
+    .boundingBox();
+  const k = pic!.width / 372;
+  const [cx, cy] = [pic!.x + 186 * k, pic!.y + 168 * k];
+  await page.mouse.move(edge!.x + edge!.width / 2, edge!.y + edge!.height / 2);
+  await page.mouse.down();
+  const off = (60 * Math.PI) / 180;
+  await page.mouse.move(cx + Math.sin(off) * 100, cy - Math.cos(off) * 100, {
+    steps: 5,
+  });
+  await page.mouse.up();
+  await expect(into).toHaveText("30°");
+  await expect(wizard.locator(".cw-up-deg")).toHaveText(["30°", "30°"]);
+  // And a degree at a time from the keyboard.
+  await slide.focus();
+  await slide.press("ArrowLeft");
+  await slide.press("ArrowLeft");
+  await expect(into).toHaveText("28°");
+  await expect(slide).toHaveAttribute("aria-valuetext", "28° into the wind");
+  // 5. units, 6. spots, 7. the lot.
   await next.click();
   await next.click();
   await next.click();
   await expect(wizard.getByText("Here’s what we’ll show you")).toBeVisible();
   await expect(wizard.locator("[data-sample]")).toBeVisible();
+  await expect(wizard.getByRole("row", { name: /^Upwind/ })).toContainText(
+    "28° into the wind",
+  );
   await wizard.getByRole("button", { name: "Show me the chart" }).click();
   await expect(wizard).toHaveCount(0);
 
@@ -108,7 +148,8 @@ test("Customise walks through the rider's settings and saves them, and the light
   const rider = await page.evaluate(
     () => JSON.parse(localStorage.getItem("force5.prefs.v1")!).rider,
   );
-  expect(rider.pointing).toBe("sharp");
+  expect(rider.upwind).toBe(28);
+  expect(rider).not.toHaveProperty("pointing");
   expect(rider.custom.wind.min).toBe(13);
   expect(rider.custom.direction).toEqual({
     onshore: 5,

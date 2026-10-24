@@ -36,19 +36,6 @@ export const SKILL_LABEL: Record<Skill, string> = {
   advanced: "Advanced",
 };
 
-/**
- * How high the rider says they point into the wind, against what their level
- * usually holds (./rideWedge): the loupe's no-go and the light's wedge move,
- * the stars do not. "typical" is a session rider's, and the default.
- */
-export type Pointing = "cautious" | "typical" | "sharp";
-export const POINTINGS: readonly Pointing[] = ["cautious", "typical", "sharp"];
-export const POINTING_LABEL: Record<Pointing, string> = {
-  cautious: "Cautious",
-  typical: "Typical",
-  sharp: "Sharp",
-};
-
 export interface WindBand {
   /** Below this the rider cannot stay on the foil for long. */
   min: number;
@@ -102,8 +89,12 @@ export interface Rider {
   /** Kilograms; null means the reader has not said, and the estimate is used. */
   weightKg: number | null;
   skill: Skill;
-  /** How high they point upwind; absent while it is "typical". */
-  pointing?: Pointing;
+  /**
+   * How far into the wind they ride, in degrees past straight across it,
+   * 0–45 (./rideWedge `upwindOf`): the loupe's no-go and the light's wedge
+   * move with it, the stars do not. Absent while it is their level's own.
+   */
+  upwind?: number;
   /** Wing sizes the rider owns, in square metres; empty means "recommend one". */
   wings: number[];
   /** The rider's own star rating while it rates, in place of the level's; absent while a level rates. */

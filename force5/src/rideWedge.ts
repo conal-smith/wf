@@ -2,32 +2,26 @@
  * The wedge a light shows, and the rose the loupe draws: the headings this
  * rider can hold, at this hour's wind.
  *
- * How high a wing foiler points and how deep they go downwind depends on how
- * good they are and how well powered: nobody points just off the foil, and
- * bearing away gets hard when overpowered. The wind side comes from the
- * rider's own band and rideable wind (./stars), so the wedge and the stars
- * agree on what the hour is; the band already assumes the wing we would
- * recommend, so the rider's quiver is not read here.
+ * One number says how high a rider goes: degrees into the wind, counted from
+ * straight across it (`Rider.upwind`). 0° is the least: everyone is taken to
+ * ride straight across the wind and hold their ground. 45° is about the most
+ * a very good rider points (Duotone's academy, AFS and Wing Daily all teach
+ * about 45° off the wind). Each level starts somewhere sensible, Learning at
+ * 0°, Riding at 20° and Advanced at 35°, and the rider moves it in Customise.
+ * The owner ruled (24 October 2026, docs/RIDE_ROSE.md) that it is one angle
+ * in every wind: how powered the hour is does not move the no-go.
  *
- * The angles are checked against what schools, makers and riders' GPS tracks
- * say (docs/RIDE_ROSE.md, 19 October 2026): about 45° off the true wind for a
- * good rider (Duotone's academy, AFS, Wing Daily), 50–60° measured by riding
- * riders, a beam reach at best for a learner, and 10–15° worse in light air.
- * Those are the good end: what is taught as the aim and what a rider proud
- * enough of a track to post it measured. A rider out for a session holds
- * about 10° less (the owner's ruling of 22 October 2026), so that is the
- * default, and a rider who points higher or lower says so (`Pointing`).
- * Gear moves them as much as skill does, so they say "about here", not a
- * polar. They are the headings a session is ridden on, back and forth across
- * the wind, not the deepest a rider could bear away: never past 110° off,
- * since a heading at 135° and more runs downwind, where a session ends a long
- * walk from where it began.
+ * The no-go is 90° less that number either side of the wind. The course runs
+ * from its edge to about 120° off the wind; past that, downwind, is possible
+ * but slow, and the rose draws it faintly rather than as part of the course.
+ * The wind's side, whether the hour is rideable at all and how well powered,
+ * still comes from the rider's own band and rideable wind (./stars), so the
+ * wedge and the stars agree on what the hour is. None of it moves a star.
  */
 import {
   rideableWind,
   shoreAngle,
   windBand,
-  type Pointing,
   type Rider,
   type ShoreAngle,
   type Skill,
@@ -36,55 +30,35 @@ import {
 /** Degrees off the true wind: [highest upwind, deepest downwind]. */
 type Range = readonly [number, number];
 
-/**
- * Powered up, in the sweet spot, for a rider of typical pointing. A learner
- * holds a beam reach at best; a riding rider about 70° and an advanced rider
- * about 55°: 10° short of the 60° GPS tracks measure and the 45° Duotone and
- * AFS teach, which a session rider does not hold tack after tack.
- */
-const BEST: Record<Skill, Range> = {
-  beginner: [90, 105],
-  intermediate: [70, 105],
-  advanced: [55, 110],
-};
-/**
- * Just foiling, at the band's floor: about 15° lower upwind (a light-air
- * Formula sailor loses 10–15°, and a wing foiler slipping off the foil more),
- * and nobody runs off.
- */
-const AT_FLOOR: Record<Skill, Range> = {
-  beginner: [95, 100],
-  intermediate: [85, 100],
-  advanced: [70, 105],
-};
-/** At the band's top: about 5° worse upwind, and less off the wind. */
-const AT_TOP: Record<Skill, Range> = {
-  beginner: [95, 100],
-  intermediate: [75, 100],
-  advanced: [60, 105],
+/** The most a rider can say they go into the wind: about a very good rider's. */
+export const UPWIND_MAX = 45;
+
+/** Where each level starts, in degrees into the wind past straight across it. */
+export const UPWIND_DEFAULT: Record<Skill, number> = {
+  beginner: 0,
+  intermediate: 20,
+  advanced: 35,
 };
 
-/**
- * How much higher or lower than typical a rider points, in degrees off the
- * wind. Sharp is the good end the sources give (60° riding, 45° advanced);
- * cautious is a rider still learning to work upwind. Only the upwind edge
- * moves: how deep a session is ridden does not change with how high.
- */
-const POINTING_OFF: Record<Pointing, number> = {
-  cautious: 10,
-  typical: 0,
-  sharp: -10,
-};
+/** The deepest heading the course runs to, off the wind; past it is slow. */
+export const COURSE_DEEP = 120;
+
+/** A whole number of degrees between 0 and UPWIND_MAX. */
+export const clampUpwind = (deg: number): number =>
+  Math.min(UPWIND_MAX, Math.max(0, Math.round(deg)));
+
+/** How far into the wind the rider rides: their own number, else their level's. */
+export const upwindOf = (rider: Pick<Rider, "skill" | "upwind">): number =>
+  rider.upwind === undefined
+    ? UPWIND_DEFAULT[rider.skill]
+    : clampUpwind(rider.upwind);
 
 /**
- * The upwind edge for a rider's pointing. Pointing lower never closes the
- * reach: at least 10° of it stays, or what the level had where it had less
- * (a learner just foiling).
+ * The no-go's half-angle, in degrees off the true wind: the highest heading
+ * the rider holds, in every wind.
  */
-function pointed(range: Range, pointing: Pointing = "typical"): Range {
-  const [up, down] = range;
-  return [Math.min(up + POINTING_OFF[pointing], Math.max(up, down - 10)), down];
-}
+export const upwindAngle = (rider: Pick<Rider, "skill" | "upwind">): number =>
+  90 - upwindOf(rider);
 
 export type WedgeState = "building" | "sweet" | "overpowered" | "over";
 
@@ -102,50 +76,29 @@ const clamp = (v: number, lo: number, hi: number) =>
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const ease = (t: number) => t * t * (3 - 2 * t);
 const norm = (d: number) => ((d % 360) + 360) % 360;
-const mix = (a: Range, b: Range, t: number): Range => [
-  lerp(a[0], b[0], t),
-  lerp(a[1], b[1], t),
-];
 
 /**
- * How high the rider points powered up, in degrees off the true wind: what
- * the display options say beside the pointing they chose.
+ * What the rider can hold at a rideable wind, or null below their floor: the
+ * course, the same in every wind, and how well powered the hour is, which
+ * the light's wedge draws in its length and its pulse.
  */
-export const upwindAngle = (rider: Rider): number =>
-  pointed(BEST[rider.skill], rider.pointing)[0];
-
-/** What the rider can hold at a rideable wind, or null below their floor. */
 export function rideRange(
   rider: Rider,
   rideKn: number,
 ): { range: Range; power: number; state: WedgeState } | null {
-  const ride = levelRange(rider, rideKn);
-  return ride && { ...ride, range: pointed(ride.range, rider.pointing) };
-}
-
-/** What the rider's level holds, at typical pointing. */
-function levelRange(
-  rider: Rider,
-  rideKn: number,
-): { range: Range; power: number; state: WedgeState } | null {
   const band = windBand(rider);
-  const { skill } = rider;
   if (!(rideKn >= band.min)) return null;
+  const range: Range = [upwindAngle(rider), COURSE_DEEP];
   if (rideKn < band.sweetLow) {
     const t = ease((rideKn - band.min) / (band.sweetLow - band.min));
-    return {
-      range: mix(AT_FLOOR[skill], BEST[skill], t),
-      power: lerp(0.45, 1, t),
-      state: "building",
-    };
+    return { range, power: lerp(0.45, 1, t), state: "building" };
   }
-  if (rideKn <= band.sweetHigh)
-    return { range: BEST[skill], power: 1, state: "sweet" };
+  if (rideKn <= band.sweetHigh) return { range, power: 1, state: "sweet" };
   const t = ease(
     clamp((rideKn - band.sweetHigh) / (band.max - band.sweetHigh), 0, 1),
   );
   return {
-    range: mix(BEST[skill], AT_TOP[skill], t),
+    range,
     power: lerp(1, 0.75, t),
     state: rideKn > band.max ? "over" : "overpowered",
   };
@@ -217,8 +170,10 @@ export interface Rose {
   shore: ShoreAngle | null;
   /** The headings too close to the wind to hold, or null when nothing is drawn. */
   nogo: Span | null;
-  /** The reaches either side of the no-go. */
+  /** The reaches either side of the no-go: the course, to COURSE_DEEP off the wind. */
   reaches: RoseReach[];
+  /** Downwind of the course: possible but slow, drawn faintly. Null when nothing is drawn. */
+  slow: Span | null;
   /** Straight downwind: where a rider off the foil drifts, or null. */
   drift: number | null;
   /** True when the drift carries a rider away from the beach (cross-off, offshore). */
@@ -235,7 +190,7 @@ const span = (a: number, b: number): Span => {
 /**
  * The rose for an hour. Null with no wind or no direction: the dock has
  * nothing to show either. In the dark or below the rider's floor, only the
- * wind: no no-go, no reaches, no drift. With a beach, the reach that heads
+ * wind: no no-go, no reaches, no slow downwind, no drift. With a beach, the reach that heads
  * out to sea is cut off at it, as the light's wedge is, and the other is the
  * way home; if neither heads out, nothing is drawn but the wind, as the wedge
  * is not. With no beach (a tapped point, a place whose facing is not known)
@@ -260,6 +215,7 @@ export function rideRose(
     shore,
     nogo: null,
     reaches: [],
+    slow: null,
     drift: null,
     driftOut: false,
   };
@@ -284,6 +240,7 @@ export function rideRose(
     ...bare,
     nogo: span(from - up, from + up),
     reaches,
+    slow: span(from + down, from + 360 - down),
     drift: norm(five(from + 180)),
     driftOut: shore === "cross-off" || shore === "offshore",
   };

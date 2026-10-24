@@ -270,8 +270,8 @@ export interface RoseLabel {
   x: number;
   y: number;
   text: string;
-  /** A name in tracked capitals, a figure under it, or the pen's words. */
-  kind: "name" | "figure" | "warn";
+  /** A name in tracked capitals, a figure under it, the pen's words, or a faint name. */
+  kind: "name" | "figure" | "warn" | "faint";
 }
 
 export interface RoseFan {
@@ -288,6 +288,8 @@ export interface RoseFan {
 export interface RoseDrawing {
   nogo: { fill: string; edges: Line[] } | null;
   fans: RoseFan[];
+  /** Downwind of the course, possible but slow: a faint dotted arc along the rim. */
+  slow: string | null;
   drift: { line: Line; head: string; out: boolean } | null;
   rings: { r: number; label: RoseLabel }[];
   labels: RoseLabel[];
@@ -301,7 +303,8 @@ const ROSE_HUB = 16;
 
 /**
  * Inside the glass, at radius `r`: the no-go upwind, the reaches (the tack out
- * washed to the rim, the tack home dashed), the drift downwind, and when it is
+ * washed to the rim, the tack home dashed), the slow water downwind of them
+ * faint along the rim, the drift downwind, and when it is
  * to scale, the ring at half the distance with both distances written. Under
  * ROSE_MIN_PX nothing; names from 90 px and bearings from 120, so a small rose
  * is shapes, not a page of print.
@@ -314,6 +317,7 @@ export function roseDrawing(
   const out: RoseDrawing = {
     nogo: null,
     fans: [],
+    slow: null,
     drift: null,
     rings: [],
     labels: [],
@@ -349,6 +353,10 @@ export function roseDrawing(
     });
     if (names) label(mid(reach), r * 0.7, reach.kind.toUpperCase(), "name", -2);
     if (figures) label(mid(reach), r * 0.7, bearings(reach), "figure", 11);
+  }
+  if (rose?.slow) {
+    out.slow = arcPath(rose.slow, r - 3);
+    if (figures) label(mid(rose.slow), r * 0.86, "SLOW", "faint", 4);
   }
   if (rose?.drift != null) {
     const tip = r * 0.66;

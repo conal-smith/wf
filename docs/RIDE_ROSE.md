@@ -4,7 +4,8 @@ When a spot or a tapped point is chosen and "Round the chosen spot" is
 **Loupe**, the map lays a glass round it. The default is **Range ring**; a
 rider's choice is kept for their next visit. The glass is a ride rose for the
 hour the dock has selected and for this rider: the headings they can hold
-from this beach, the no-go upwind, where they would drift, the wind
+from this beach, the no-go upwind, the slow water downwind, where they would
+drift, the wind
 directions that are offshore here, the wind's needle, and the reading at the
 foot ("NE 22 g27 · CROSS"). It is the mockup's recommended design
 (`wingfoil-mockups/loupe-purpose`, design 1 with design 2's needle and box,
@@ -25,9 +26,10 @@ without the 12-hour trail), approved by the owner on 19 October 2026.
 | Part | Drawn as | From |
 |---|---|---|
 | No-go | Hatched in ink over a light paper wash, with dashed edges, labelled NO-GO | `rideRange`'s upwind angle, either side of the wind |
-| Out | Paper wash at about 45% to the rim, with ink edges, a heavy rim arc and an arrowhead, labelled "OUT 120–165°" | The tack that reaches the sea, cut off at the beach (as the light's wedge is) |
-| Home | Dashed edges and a dashed rim arc, labelled "HOME 285–330°" | The other tack, whole |
+| Out | Paper wash at about 45% to the rim, with ink edges, a heavy rim arc and an arrowhead, labelled "OUT 105–155°" | The tack that reaches the sea, cut off at the beach (as the light's wedge is), from the no-go's edge to 120° off the wind |
+| Home | Dashed edges and a dashed rim arc, labelled "HOME 295–345°" | The other tack, whole |
 | Reach | As home, labelled REACH | Both tacks where out and home mean nothing: a tapped point, a place with no facing, or an offshore wind |
+| Slow | A faint dotted arc along the rim, labelled SLOW in muted ink from 120 px | Downwind of both courses, past 120° off the wind each side: possible, but slow, so not drawn as course |
 | Drift | Dotted arrow straight downwind, labelled DRIFT. In the pen's red, with "OUT TO SEA", when the wind is cross-offshore or offshore | The wind's bearing + 180° |
 | Offshore | On the bezel: a dense red hatch where the wind is offshore, a light one where it is cross-offshore, a red arc outside, and the word OFFSHORE | `shoreAngle`'s bands (see below) and the spot's facing |
 | Needle | From outside the bezel in to the glass, at the wind's from-bearing, filled with the wind's colour (`PALETTE`) | The dock's hour |
@@ -77,10 +79,10 @@ tack. A dashed ring marks half of it.
   already drawn are given their new sizes rather than built again, and the
   hole in the paper wash, a distance on the chart, is cut again only when its
   edge would leave the rim's band, and once the camera rests. The glass is
-  also redrawn when the hour changes, and when the rider's level, pointing
-  or units change.
+  also redrawn when the hour changes, and when the rider's level, degrees
+  into the wind or units change.
 
-## The angles, and where they come from (19 and 22 October 2026)
+## The angles, and where they come from (19, 22 and 24 October 2026)
 
 The owner asked for this check: "Showing where you cannot go is good. Make sure
 that's actually accurate." These are the numbers, with their sources. They are
@@ -89,48 +91,61 @@ foils vary as much as levels do. They are a guide, not a polar.
 
 On 22 October 2026 the owner judged the rose to point too high: "I don't think
 people can go so sharp an angle into the wind generally, unless they are very
-very good", and asked for it to be configurable. The sources below give the
-good end: the angle schools teach as the aim, and GPS tracks a rider was
-pleased enough with to post. A rider out for an ordinary session, tack after
-tack, in chop and gusts, holds about 10° less. The default is now that rider,
-and **Pointing upwind** in the display options (`Rider.pointing`) moves it.
+very good", and asked for it to be configurable. That became **Pointing
+upwind** (cautious, typical, sharp) in the display options. On 24 October 2026
+it became one number, below.
 
-### Upwind: the no-go half-angle (degrees off the true wind)
+### Degrees into the wind: the rule (24 October 2026)
 
-At the default, **Typical** pointing:
+The rider says how far into the wind they ride, in degrees counted from
+straight across it (`Rider.upwind`, `upwindOf` in `force5/src/rideWedge.ts`).
+The owner ruled:
 
-| Level (stars) | Powered up (sweet spot) | Just foiling (band's floor) | Overpowered (band's top) |
+- **0° is the least.** Everyone is taken to be able to ride straight across
+  the wind and hold their ground. **45° is the most**, about what a very good
+  rider points (the sources below).
+- **One angle, in every wind.** The owner ruled that the number is used
+  whatever the hour: there is no blending by how powered the hour is, so the
+  light-wind and overpowered adjustments of 19 October are gone from the
+  no-go. How powered the hour is still decides whether there is a course at
+  all (below the rider's floor there is none) and how long and how fast the
+  light's wedge is drawn, from the rider's band in `stars.ts`.
+- **The no-go half-angle is 90° less the number**, either side of the wind.
+- **The course runs from the no-go's edge to about 120° off the wind**
+  (`COURSE_DEEP`). Past that, downwind, is possible but slow: the rose draws
+  it faintly (SLOW), not as part of the course, and the light's wedge leaves
+  it out.
+- **It never moves a star.** The stars rate the wind and how it meets the
+  beach, not the heading.
+
+Each level starts somewhere sensible, and the rider moves it in Customise
+("Can you ride upwind?": Not yet 0°, A little 5°, Yes 20°, then a slider from
+0° to 45° or a handle on the picture's edge):
+
+| Level (stars) | Starts at | No-go half-angle | Course |
 |---|---|---|---|
-| Learning | 90° | 95° | 95° |
-| Riding | 70° | 85° | 75° |
-| Advanced | 55° | 70° | 60° |
+| Learning | 0° into the wind | 90° | 90–120° off the wind |
+| Riding | 20° | 70° | 70–120° |
+| Advanced | 35° | 55° | 55–120° |
 
-Between those points, `rideRange` blends smoothly across the rider's own wind
-band (`windBand` in `stars.ts`), so the rose and the stars agree on how well
-powered the hour is.
+It is kept on the device with the weight and the level (`parseRider` in
+`force5/src/prefs.ts`), as a whole number of degrees held to 0–45, and absent
+while it is the level's own, so a rider who never set it follows their level.
+Customise is the only place to set it: the display options' control went with
+the three words. The mobile app reads it through the light's wedge but has no
+control for it yet.
 
-### Pointing upwind: the rider's own say
+A rider stored before 24 October 2026 with a `pointing` has it read from their
+level's start: typical is the level's own, cautious 10° less (never under 0°),
+sharp 10° more (never over 45°).
 
-| Pointing | Upwind edge | Riding, powered up | Advanced, powered up | Learning, powered up |
-|---|---|---|---|---|
-| Cautious | 10° lower | 80° | 65° | 95° |
-| Typical (default) | as above | 70° | 55° | 90° |
-| Sharp | 10° higher | 60° | 45° | 80° |
+| Stored pointing | Learning | Riding | Advanced |
+|---|---|---|---|
+| Cautious | 0° | 10° | 25° |
+| Typical | 0° | 20° | 35° |
+| Sharp | 10° | 30° | 45° |
 
-- **Sharp** is the sources' good end: 60° riding and 45° advanced, the angles
-  the rose drew from 19 to 22 October 2026.
-- **Cautious** is a rider still learning to work upwind, or on a low-aspect
-  wing and a short mast.
-- Only the upwind edge moves. How deep a session is ridden, and how powered
-  the hour is, do not change with how high the rider points.
-- Pointing lower never closes the reach: at least 10° of it stays, or what the
-  level has where it has less (a learner just foiling keeps 95–100°).
-- It is not a star. The stars rate the wind and how it meets the beach, not
-  the heading, so a change of pointing moves the loupe's no-go and the light's
-  wedge and rates nothing again. It is kept on the device with the weight and
-  the level (`parseRider` in `force5/src/prefs.ts`), absent while it is
-  Typical. The mobile app reads it through the light's wedge but has no
-  control for it yet.
+### The sources
 
 - **About 45° for a good rider.** This is well supported:
   - Duotone Wing Academy: "You can only go up to around 45 degrees into the
@@ -156,7 +171,8 @@ powered the hour is.
   that a learner drifts "downwind bit by bit" towards the "walk of shame"
   (<https://wingfoiltips.com/tutorials/wingfoil-going-upwind/>). This number
   is inferred, not measured.
-- **Light wind costs about 15°.** A top Formula windsurfer reports "<10 knots
+- **Light wind costs about 15°.** (Used from 19 to 24 October 2026; since
+  the owner's ruling of 24 October the rose uses one angle in every wind.) A top Formula windsurfer reports "<10 knots
   = 60-65 deg, >10 knots = 55 deg, >20 knots = 49 deg" off the true wind
   (<https://www.seabreeze.com.au/forums/Windsurfing/General/Formula-Racing>),
   which is 10–15° worse in light air. A wing foiler at the floor also slips off
@@ -166,7 +182,7 @@ powered the hour is.
 - **Overpowered costs about 5°.** The sources only describe this
   qualitatively: a rider gets "knocked around" by the wing
   (<https://www.seabreeze.com.au/forums/Wing-Foiling/Wind-Wings/What-affects-upwind-ability-winging?page=1>).
-  We use +5° and narrow the downwind side a little.
+  We used +5° and narrowed the downwind side a little, until 24 October 2026.
 - **Gear.** A high-aspect foil, a longer mast, a harness and a race wing all
   point higher (same thread, and
   <https://www.seabreeze.com.au/forums/Wing-Foiling/Wind-Wings/Best-wing-upwind-angle-?page=1>).
@@ -174,12 +190,28 @@ powered the hour is.
   found. Advanced is therefore capped at 45°, not 40°: the rose assumes the
   wing the stars would recommend and an everyday foil.
 
+### What changed in `rideRange` (24 October 2026)
+
+One angle in every wind, from the rider's degrees into the wind, and a deeper
+course, to 120°. At each level's start:
+
+| | Typical, 22 October (powered / floor / top) | Now, in every wind |
+|---|---|---|
+| Learning | 90–105° / 95–100° / 95–100° | 90–120° (0°) |
+| Riding | 70–105° / 85–100° / 75–100° | 70–120° (20°) |
+| Advanced | 55–110° / 70–105° / 60–105° | 55–120° (35°) |
+
+Powered up, the upwind edges at each level's start are the 22 October
+numbers: what changed is that a light or an overpowered hour no longer pulls
+them down, and the course runs on to 120° with the slow water past it drawn
+faintly.
+
 ### What changed in `rideRange` (22 October 2026)
 
 Typical pointing is 10° lower upwind for riding and advanced riders, at every
 point of the band. Sharp gives back exactly the 19 October numbers.
 
-| | 19 October | Typical, now |
+| | 19 October | Typical, 22 October |
 |---|---|---|
 | Riding, powered | 60–105° | 70–105° |
 | Riding, at floor | 75–100° | 85–100° |
@@ -210,11 +242,11 @@ pointed 5° too high for someone who holds a beam reach at best. Just foiling
 was too pessimistic: 25–30° worse than powered, where the evidence says
 10–15°.
 
-### Downwind: the reaches stop at about 105–110°; the drift is straight down
+### Downwind: the course stops at about 120°; past it is slow; the drift is straight down
 
-The reaches stop at 100–110° off the wind. That is the deepest heading a
-session is ridden on, back and forth across the wind, rather than the deepest
-a rider can bear away:
+The course stops at 120° off the wind (`COURSE_DEEP`; 100–110° until 24
+October 2026). That is the deepest heading a session is ridden on, back and
+forth across the wind, rather than the deepest a rider can bear away:
 
 - Duotone's best-speed course is "a downwind course at an angle of up to
   around 45 degrees" (about 135° off the wind). Running "straight downwind is
@@ -222,9 +254,9 @@ a rider can bear away:
 - A learner can bear away to about 135°, and a riding rider to about
   150–160°. An advanced rider can run dead downwind briefly, mostly with swell
   to ride.
-- Every heading past about 110° gives away ground that has to be won back
-  upwind. A rose that offered 135° would be telling a rider to run downwind,
-  where a session ends a long walk from where it began.
+- Every heading past about 120° gives away ground that has to be won back
+  upwind, so the rose draws it faintly as SLOW: possible, but not a course to
+  plan a session on, where it ends a long walk from where it began.
 
 **Drift** is straight downwind. That is where a rider who falls, or a learner
 off the foil, ends up with the wing flagged. It turns red when the wind is
@@ -257,14 +289,15 @@ bands in red, from the same numbers (`offshoreSpans`, which is tested against
 
 ### How sure we are
 
-- Advanced at 45°, as the good end (Sharp): well supported (several schools
-  and makers).
-- Riding at 60°, as the good end (Sharp): supported (two forum GPS
-  measurements).
-- Typical, 10° short of those: the owner's judgement of an ordinary session,
-  not measured.
-- Learning at 90°: inferred from coaching.
-- The light and overpowered adjustments: extrapolated from windsurfing.
+- 45° as the most anyone points: well supported (several schools and makers).
+- Riding at 20° into the wind (70° off it): 10° short of the forum GPS
+  measurements' 60°, the owner's judgement of an ordinary session.
+- Advanced at 35° (55° off): 10° short of the schools' 45°, the same
+  judgement.
+- Learning at 0°, a beam reach: inferred from coaching, and the owner's floor.
+- One angle in every wind: the owner's ruling, for a number a rider can set
+  and recognise, over the light-air and overpowered adjustments, which were
+  extrapolated from windsurfing.
 
 The next step would be our own GPS tracks: a few riders of each level logging
 tacks at a known wind on a flat-water spot.

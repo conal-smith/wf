@@ -322,10 +322,11 @@ function hatches(g: SVGGElement) {
  * runs straight on through the glass.
  *
  * Inside it, the ride rose for the dock's hour (focus.ts `roseDrawing`): the
- * no-go hatched, the tack out washed in paper, the tack home dashed, the drift
- * downwind, and the half-way ring with its distance when it is to scale. On
- * the bezel, the offshore winds in the pen's red and the needle in the wind's
- * colour. The reading in a box at its foot is `drawFoot`'s.
+ * no-go hatched, the tack out washed in paper, the tack home dashed, the slow
+ * water downwind of them faint along the rim, the drift downwind, and the
+ * half-way ring with its distance when it is to scale. On the bezel, the
+ * offshore winds in the pen's red and the needle in the wind's colour. The
+ * reading in a box at its foot is `drawFoot`'s.
  */
 function drawLoupe(
   g: SVGGElement,
@@ -354,6 +355,7 @@ function drawLoupe(
     svgEl(fg, "path", { class: "map-rose-fan-arc", d: fan.arc });
     if (fan.head) svgEl(fg, "path", { class: "map-rose-head", d: fan.head });
   }
+  if (rose.slow) svgEl(glass, "path", { class: "map-rose-slow", d: rose.slow });
   for (const ring of rose.rings)
     svgEl(glass, "circle", { class: "map-rose-ring", r: ring.r });
   if (rose.drift) {

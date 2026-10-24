@@ -1,6 +1,7 @@
 // Display preferences for the forecast dock. Persistence is best effort:
 // private browsing, blocked storage and quota errors must never break the page.
 import { isUnits, type Units } from "./units";
+import { UPWIND_DEFAULT, clampUpwind } from "./rideWedge";
 import { parseStarsChoice, withModel, type StarsChoice } from "./lead";
 import { modelEntry, windModels } from "./manifests";
 import {
@@ -9,12 +10,10 @@ import {
   MAX_WING_M2,
   MIN_WEIGHT_KG,
   MIN_WING_M2,
-  POINTINGS,
   SKILLS,
   parseCustomRating,
   rateOn,
   type CustomRating,
-  type Pointing,
   type Rider,
   type StarsOn,
 } from "./stars";
@@ -249,13 +248,18 @@ function mergeRows(value: unknown, defaults: Record<RowKey, boolean>) {
  * or kept, goes through its own validation (stars.ts `parseCustomRating`); one
  * that does not pass, or was stored in another version, is left out and the
  * level rates. Given both, the one rating wins and the kept one is dropped.
- * How high the rider points is kept only when it is not typical.
+ * How far into the wind the rider rides is kept only when it is not their
+ * level's own; a rider stored before 24 October 2026 with a `pointing` has it
+ * read as degrees (`withUpwind`).
  */
 export function parseRider(value: unknown): Rider {
   if (!value || typeof value !== "object") return DEFAULT_RIDER;
   const raw = value as Record<string, unknown>;
   const weight = raw.weightKg;
   const wings = Array.isArray(raw.wings) ? raw.wings : [];
+  const skill = SKILLS.includes(raw.skill as Rider["skill"])
+    ? (raw.skill as Rider["skill"])
+    : DEFAULT_RIDER.skill;
   return {
     weightKg:
       typeof weight === "number" &&
@@ -263,10 +267,8 @@ export function parseRider(value: unknown): Rider {
       weight <= MAX_WEIGHT_KG
         ? Math.round(weight)
         : null,
-    skill: SKILLS.includes(raw.skill as Rider["skill"])
-      ? (raw.skill as Rider["skill"])
-      : DEFAULT_RIDER.skill,
-    ...withPointing(raw.pointing),
+    skill,
+    ...withUpwind(skill, raw.upwind, raw.pointing),
     wings: [
       ...new Set(
         wings.filter(
@@ -285,11 +287,36 @@ export function parseRider(value: unknown): Rider {
   };
 }
 
-/** A rider carries `pointing` only when it is known and not typical, so a default rider stays as it always was. */
-const withPointing = (value: unknown): Pick<Rider, "pointing"> =>
-  POINTINGS.includes(value as Pointing) && value !== "typical"
-    ? { pointing: value as Pointing }
-    : {};
+/**
+ * Before 24 October 2026 a rider said how high they pointed in three words,
+ * against their level: typical was the level's, cautious about 10° lower and
+ * sharp about 10° higher. Read as degrees into the wind from the level's own.
+ */
+const OLD_POINTING: Record<string, number> = {
+  cautious: -10,
+  typical: 0,
+  sharp: 10,
+};
+
+/**
+ * A rider carries `upwind` only when it is a number of degrees that is not
+ * their level's own, so a default rider stays as it always was and follows
+ * their level when it changes. Out of 0–45 it is held to the end it passed.
+ */
+function withUpwind(
+  skill: Rider["skill"],
+  upwind: unknown,
+  pointing: unknown,
+): Pick<Rider, "upwind"> {
+  const level = UPWIND_DEFAULT[skill];
+  const deg =
+    typeof upwind === "number" && Number.isFinite(upwind)
+      ? clampUpwind(upwind)
+      : typeof pointing === "string" && Object.hasOwn(OLD_POINTING, pointing)
+        ? clampUpwind(level + OLD_POINTING[pointing])
+        : level;
+  return deg === level ? {} : { upwind: deg };
+}
 
 /** A rider carries `starsFrom` only when it is not the default, so a default rider stays as it always was. */
 const withStarsChoice = (

@@ -80,20 +80,76 @@ describe("display preferences", () => {
     ).toEqual({ weightKg: null, skill: "intermediate", wings: [3] });
     expect(parseRider("heavy")).toEqual(defaultPrefs().rider);
   });
-  it("keeps how high the rider points only when it is not typical", () => {
+  it("keeps the degrees into the wind only when they are not the level's own", () => {
     const base = { weightKg: null, skill: "intermediate", wings: [] };
-    expect(parseRider({ ...base, pointing: "sharp" }).pointing).toBe("sharp");
-    expect(parseRider({ ...base, pointing: "cautious" }).pointing).toBe(
-      "cautious",
-    );
-    // Typical is the default, and anything else is not a pointing at all.
-    expect(parseRider({ ...base, pointing: "typical" })).toEqual(base);
-    expect(parseRider({ ...base, pointing: "very" })).toEqual(base);
-    expect(parseRider({ ...base, pointing: 10 })).toEqual(base);
+    expect(parseRider({ ...base, upwind: 30 }).upwind).toBe(30);
+    expect(parseRider({ ...base, upwind: 0 }).upwind).toBe(0);
+    // Riding starts at 20°: that is no number of the rider's own.
+    expect(parseRider({ ...base, upwind: 20 })).toEqual(base);
+    expect(parseRider({ ...base, skill: "beginner", upwind: 0 })).toEqual({
+      ...base,
+      skill: "beginner",
+    });
+    // Whole degrees, held to 0–45; anything else is not a number of degrees.
+    expect(parseRider({ ...base, upwind: 12.4 }).upwind).toBe(12);
+    expect(parseRider({ ...base, upwind: 60 }).upwind).toBe(45);
+    expect(parseRider({ ...base, upwind: -5 }).upwind).toBe(0);
+    expect(parseRider({ ...base, upwind: "30" })).toEqual(base);
+    expect(parseRider({ ...base, upwind: Number.NaN })).toEqual(base);
     // Kept on the device, as the weight and the level are.
     const storage = fakeStorage();
-    saveRider(parseRider({ ...base, pointing: "sharp" }), storage);
-    expect(loadPrefs(storage).rider.pointing).toBe("sharp");
+    saveRider(parseRider({ ...base, upwind: 27 }), storage);
+    expect(loadPrefs(storage).rider.upwind).toBe(27);
+  });
+  it("reads a pointing stored before 24 October 2026 as degrees from the level's own", () => {
+    const at = (skill: string, pointing: unknown) =>
+      parseRider({ weightKg: null, skill, wings: [], pointing });
+    // Typical is the level's own, and so absent.
+    for (const skill of ["beginner", "intermediate", "advanced"])
+      expect(at(skill, "typical")).not.toHaveProperty("upwind");
+    // Cautious is 10° less, never under 0°; sharp 10° more, never over 45°.
+    expect(at("intermediate", "cautious").upwind).toBe(10);
+    expect(at("intermediate", "sharp").upwind).toBe(30);
+    expect(at("advanced", "cautious").upwind).toBe(25);
+    expect(at("advanced", "sharp").upwind).toBe(45);
+    expect(at("beginner", "cautious")).not.toHaveProperty("upwind");
+    expect(at("beginner", "sharp").upwind).toBe(10);
+    // Nothing that was not one of the three words.
+    expect(at("intermediate", "very")).not.toHaveProperty("upwind");
+    expect(at("intermediate", "toString")).not.toHaveProperty("upwind");
+    expect(at("intermediate", 10)).not.toHaveProperty("upwind");
+    // The old word is not kept, and a number stored since wins over it.
+    expect(at("intermediate", "sharp")).not.toHaveProperty("pointing");
+    expect(
+      parseRider({
+        weightKg: null,
+        skill: "intermediate",
+        wings: [],
+        pointing: "sharp",
+        upwind: 5,
+      }).upwind,
+    ).toBe(5);
+  });
+  it("migrates a stored pointing as the prefs load", () => {
+    const storage = fakeStorage();
+    storage.setItem(
+      PREFS_KEY,
+      JSON.stringify({
+        version: PREFS_VERSION,
+        rider: {
+          weightKg: 80,
+          skill: "advanced",
+          wings: [],
+          pointing: "cautious",
+        },
+      }),
+    );
+    expect(loadPrefs(storage).rider).toEqual({
+      weightKg: 80,
+      skill: "advanced",
+      wings: [],
+      upwind: 25,
+    });
   });
   it("starts with no row touched by hand", () => {
     expect(defaultPrefs().touchedRows).toEqual([]);

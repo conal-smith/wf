@@ -148,7 +148,7 @@ describe("the ride rose's geometry", () => {
     expect(sectorPath({ from: 0, to: 270 }, 0, 10)).toContain(" 0 1 1 ");
   });
 
-  it("draws the no-go, the tack out washed, the tack home dashed and the drift", () => {
+  it("draws the no-go, the tack out washed, the tack home dashed, the slow water faint and the drift", () => {
     const rose = rideRose(rider, { ...day, from: 225 }, DOLLYMOUNT)!;
     const d = roseDrawing(rose, 150, roseScale("kn"));
     expect(d.nogo).not.toBeNull();
@@ -163,13 +163,18 @@ describe("the ride rose's geometry", () => {
       expect.arrayContaining([
         "NO-GO",
         "OUT",
-        "120–155°",
+        "105–155°",
         "HOME",
-        "295–330°",
+        "295–345°",
+        "SLOW",
         "DRIFT",
         "0.5 NM",
       ]),
     );
+    // Past 120° off the wind each side: a faint arc along the rim, and its
+    // word faint too.
+    expect(d.slow).toMatch(/^M.*A/);
+    expect(d.labels.find((l) => l.text === "SLOW")!.kind).toBe("faint");
     // The half-way ring, half the radius out, with its distance.
     expect(d.rings).toHaveLength(1);
     expect(d.rings[0].r).toBeCloseTo(75);
@@ -189,12 +194,15 @@ describe("the ride rose's geometry", () => {
   it("drops the words on a small rose, and everything under its floor", () => {
     const rose = rideRose(rider, { ...day, from: 225 }, DOLLYMOUNT)!;
     const small = roseDrawing(rose, 100, null);
-    expect(small.labels.map((l) => l.text)).not.toContain("120–155°");
+    expect(small.labels.map((l) => l.text)).not.toContain("105–155°");
+    expect(small.labels.map((l) => l.text)).not.toContain("SLOW");
     expect(small.labels.map((l) => l.text)).toContain("OUT");
+    expect(small.slow).not.toBeNull();
     const tiny = roseDrawing(rose, 80, null);
     expect(tiny.labels).toHaveLength(0);
     expect(tiny.fans).toHaveLength(2);
     expect(roseDrawing(rose, ROSE_MIN_PX - 1, null).fans).toHaveLength(0);
+    expect(roseDrawing(rose, ROSE_MIN_PX - 1, null).slow).toBeNull();
   });
 
   it("hatches the offshore winds on the bezel, and none without a beach", () => {
