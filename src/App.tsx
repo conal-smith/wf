@@ -69,7 +69,8 @@ import useRunRefresh, {
 import {
   useMarineModels,
   useModelAvailability,
-  useTideManifest,
+  usePointTide,
+  useSpotTide,
 } from "./useBlend";
 import { useRatings } from "./useRatings";
 import { ALL_SQUARES, useSpotSquaresState } from "./useSpotSquares";
@@ -1198,7 +1199,10 @@ export default function App() {
       : null;
 
   /* ---- choosing a spot ---- */
-  const tideManifest = useTideManifest(!!picked);
+  const spotTide = useSpotTide(picked ? undefined : point?.id);
+  // A tapped point takes its nearest station's tide, as a spot is linked to one.
+  const pointTide = usePointTide(picked);
+  const tide = picked ? pointTide : spotTide;
   // The riding place a point borrows its waves, weather and sea from: the
   // nearest on the same water (a lake's for a lake), within 15 km.
   const pointSource = useMemo(
@@ -1206,10 +1210,12 @@ export default function App() {
       picked
         ? nearestSpotOnWater(spots, picked.lat, picked.lon, {
             lake: picked.lake,
-            freshwater: tideManifest ? freshwaterSpots(tideManifest) : null,
+            freshwater: pointTide.manifest
+              ? freshwaterSpots(pointTide.manifest)
+              : null,
           })
         : null,
-    [picked, spots, tideManifest],
+    [picked, spots, pointTide.manifest],
   );
   /**
    * Each spot chosen is a step in the page's history, with the spot in its
@@ -1850,6 +1856,7 @@ export default function App() {
                     !!dockSpot && !picked && starred.includes(dockSpot.id)
                   }
                   onToggleStar={() => dockSpot && fav.toggle(dockSpot.id)}
+                  tide={tide.tide}
                   onClose={closeDock}
                   phone={phone}
                   view={picked ? "table" : view}
