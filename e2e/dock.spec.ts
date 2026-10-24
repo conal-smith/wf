@@ -606,13 +606,16 @@ test("units and the blend's models are display options, kept on reload; the ride
   // No weight, no level and no way to the rider's own stars: those are
   // Customise's, from the site menu.
   await expect(options.locator('[data-rider="weight"]')).toHaveCount(0);
+  // Nor the wings: those are Customise's first step now.
+  await expect(options.locator('[data-rider="wings"]')).toHaveCount(0);
+  await expect(options.getByText("Wings you own")).toHaveCount(0);
   await expect(
     options.getByRole("group", { name: "Riding level" }),
   ).toHaveCount(0);
   await expect(
     options.getByRole("button", { name: /^(Customise|Edit custom)$/ }),
   ).toHaveCount(0);
-  await expect(options.getByRole("heading")).toContainText([
+  await expect(options.getByRole("heading")).toHaveText([
     "Units",
     "Model",
     "Models in the blend",

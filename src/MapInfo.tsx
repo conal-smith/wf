@@ -562,7 +562,7 @@ function StarsPart({
         </Key>
       </ul>
       <h4>
-        Rated for you <small>in the display options</small>
+        Rated for you <small>in Customise</small>
       </h4>
       <p className="mi-fig">Rated for {riderLine(rider)}</p>
       <p className="mi-fig">
@@ -570,9 +570,8 @@ function StarsPart({
         gusts over {Math.round(band.max)} kn
       </p>
       <p className="mi-sm">
-        Your weight, your level, your wings and your model are in the display
-        options, in the menu at the top left; your own wind and gusts under
-        Customise there.
+        Your level, weight, wings, wind and shore are in Customise, in the menu
+        at the top left; your model is in Display options there.
       </p>
       <a
         className="mi-more"
