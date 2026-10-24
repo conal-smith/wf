@@ -193,6 +193,19 @@ export const menuRow = (page: Page, name: ChartTool) =>
     .getByRole("button", { name, exact: true });
 
 /**
+ * Open the site menu, a drawer from the left (force5/src/SiteMenu.tsx), and
+ * wait for it to finish sliding in, so what is measured in it holds still.
+ */
+export async function openMenu(page: Page) {
+  const menu = page.getByRole("button", { name: "Site menu" });
+  if ((await menu.getAttribute("aria-expanded")) !== "true") await menu.click();
+  const drawer = page.getByRole("dialog", { name: "Site menu" });
+  await expect(drawer).toBeVisible();
+  await expect.poll(async () => (await drawer.boundingBox())?.x).toBe(0);
+  return drawer;
+}
+
+/**
  * Open the layers, your spots, the display options or the map's information
  * as a rider does: from the site menu, the one way in to them.
  */

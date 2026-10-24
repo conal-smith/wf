@@ -98,10 +98,10 @@ test("the map's site menu is closed when the reader comes back from the AI page"
   await expect(page.getByRole("navigation", { name: "Site" })).toHaveCount(0);
   await expect(trigger).toHaveAttribute("aria-expanded", "false");
 
-  // And one click opens it again, one closes it.
+  // And one click opens it again, one on its X closes it.
   await trigger.click();
   await expect(page.getByRole("navigation", { name: "Site" })).toBeVisible();
-  await trigger.click();
+  await page.getByRole("button", { name: "Close menu" }).click();
   await expect(page.getByRole("navigation", { name: "Site" })).toHaveCount(0);
 });
 

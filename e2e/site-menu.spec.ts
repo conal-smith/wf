@@ -67,69 +67,171 @@ test("on the map the menu opens by keyboard and Escape closes only the menu", as
   await expect(page.locator(".app-shell.is-focus")).toHaveCount(0);
 });
 
-test("on the map the menu opens by click and closes on a click outside", async ({
+/** The drawer itself: the modal the trigger opens. */
+const drawer = (page: Page) => page.getByRole("dialog", { name: "Site menu" });
+
+/** Where the drawer stands, once it has slid in. */
+async function settled(page: Page) {
+  await expect(drawer(page)).toBeVisible();
+  await expect.poll(async () => (await drawer(page).boundingBox())?.x).toBe(0);
+  return (await drawer(page).boundingBox())!;
+}
+
+test("the menu is a drawer from the left, over the dimmed map, with a glyph on every row", async ({
   page,
 }) => {
   await page.goto("/");
   await trigger(page).click();
-  await expect(panel(page)).toBeVisible();
-
-  // Anything outside the menu closes it; the zoom is a real control rather
-  // than a spot on the map, so the click cannot move the camera far.
-  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
-  await expect(panel(page)).toHaveCount(0);
-  await expect(trigger(page)).toHaveAttribute("aria-expanded", "false");
+  const box = await settled(page);
+  // The left edge, the screen's full height, and clear of the right of it.
+  expect(box.y).toBe(0);
+  expect(box.height).toBe(page.viewportSize()!.height);
+  expect(box.width).toBeLessThanOrEqual(320);
+  // A modal over the kit's backdrop: the map under it is inert.
+  expect(await drawer(page).evaluate((el) => el.matches(":modal"))).toBe(true);
+  expect(
+    await drawer(page).evaluate(
+      (el) => getComputedStyle(el, "::backdrop").backgroundColor,
+    ),
+  ).not.toBe("rgba(0, 0, 0, 0)");
+  // Its head: the way out, and the name.
+  await expect(
+    drawer(page).getByRole("button", { name: "Close menu" }),
+  ).toBeVisible();
+  await expect(drawer(page)).toContainText("wingfoil.ie");
+  // The chart's tools, then the sections, each with its glyph in the margin.
+  const rows = drawer(page).locator("li > :is(a, button)");
+  await expect(rows).toHaveText([
+    "Customise",
+    "Layers",
+    "Your spots",
+    "Display options",
+    "About the map",
+    "Take the tour",
+    ...SECTIONS,
+  ]);
+  for (const row of await rows.all())
+    await expect(row.locator("svg")).toHaveCount(1);
+  // The Almanac signs it no longer.
+  await expect(drawer(page)).not.toContainText("Almanac");
+  // The page behind does not scroll while it is open.
+  expect(
+    await page.evaluate(
+      () => getComputedStyle(document.documentElement).overflow,
+    ),
+  ).toBe("hidden");
 });
 
-test("closing through the trigger returns focus to it, even unfocused", async ({
+test("the drawer closes on Escape, on its X and on the backdrop, the focus back on the trigger", async ({
   page,
 }) => {
   await page.goto("/");
+  // Escape.
   await trigger(page).click();
-  await expect(panel(page)).toBeVisible();
-
-  // Safari does not focus a button it was clicked on, so the handler has to put
-  // focus back itself or it lands on the body. Dispatching the click without
-  // the focus that usually comes with it is what that looks like from here.
-  await trigger(page).evaluate((el) => {
-    (el as HTMLElement).blur();
-    el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-  });
-
-  await expect(panel(page)).toHaveCount(0);
+  await settled(page);
+  await page.keyboard.press("Escape");
+  await expect(drawer(page)).toHaveCount(0);
   await expect(trigger(page)).toBeFocused();
+  await expect(trigger(page)).toHaveAttribute("aria-expanded", "false");
+  // Its own X.
+  await trigger(page).click();
+  await settled(page);
+  await drawer(page).getByRole("button", { name: "Close menu" }).click();
+  await expect(drawer(page)).toHaveCount(0);
+  await expect(trigger(page)).toBeFocused();
+  // A press on the dimmed map beside it, which moves nothing under it.
+  await trigger(page).click();
+  const box = await settled(page);
+  await page.mouse.click(box.x + box.width + 200, 500);
+  await expect(drawer(page)).toHaveCount(0);
+  await expect(trigger(page)).toBeFocused();
+  expect(
+    await page.evaluate(
+      () => getComputedStyle(document.documentElement).overflow,
+    ),
+  ).not.toBe("hidden");
 });
 
-test("one press on the trigger closes the menu, even one that drops focus first", async ({
-  page,
-}) => {
+test("the focus stays in the drawer while it is open", async ({ page }) => {
   await page.goto("/");
-  await trigger(page).click();
+  await trigger(page).focus();
+  await page.keyboard.press("Enter");
   await expect(menuRow(page, "Customise")).toBeFocused();
+  // Round the whole drawer and more: the focus never leaves it.
+  for (const key of [
+    ...Array(14).fill("Tab"),
+    ...Array(14).fill("Shift+Tab"),
+  ]) {
+    await page.keyboard.press(key);
+    expect(
+      await page.evaluate(
+        () => !!document.activeElement?.closest("dialog[open]"),
+      ),
+    ).toBe(true);
+  }
+});
 
-  // Safari does not focus a button it is pressed on: the press takes focus
-  // off the row to the body, the menu hears focus leave and closes, and the
-  // click that follows must not open it again.
-  await page.evaluate(() => {
-    document.addEventListener(
-      "mousedown",
-      () => (document.activeElement as HTMLElement | null)?.blur(),
-      true,
-    );
-  });
-  // The press's events on the button itself, so the click is not lost to
-  // the glyph swapped under the pointer.
-  for (const type of [
-    "pointerdown",
-    "mousedown",
-    "pointerup",
-    "mouseup",
-    "click",
-  ])
-    await trigger(page).dispatchEvent(type, { button: 0 });
-  await expect(panel(page)).toHaveCount(0);
+/**
+ * A finger pushes the drawer back off to the left: it follows the finger, and
+ * let go past the line it shuts, short of it it springs back. The mouse's
+ * pointer events stand in for a finger's here: the drawer reads either.
+ */
+test("a drag to the left puts the drawer away, and a short one springs back", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await trigger(page).click();
+  const box = await settled(page);
+  // From the drawer's own paper, under its rows.
+  const x = box.x + box.width - 30;
+  const y = box.y + box.height - 60;
+  const left = async () => (await drawer(page).boundingBox())!.x;
+
+  // A short drag: it follows, then springs back.
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x - 20, y, { steps: 4 });
+  await page.mouse.move(x - 40, y, { steps: 4 });
+  expect(await left()).toBeLessThan(-30);
+  await page.waitForTimeout(200);
+  await page.mouse.up();
+  await expect.poll(left).toBe(0);
+  await expect(drawer(page)).toBeVisible();
+
+  // Past the line: it goes, and the focus is back on the trigger.
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x - 120, y, { steps: 12 });
+  await page.waitForTimeout(200);
+  await page.mouse.up();
+  await expect(drawer(page)).toHaveCount(0);
   await expect(trigger(page)).toHaveAttribute("aria-expanded", "false");
   await expect(trigger(page)).toBeFocused();
+});
+
+test("a fast flick puts the drawer away, and a drag that starts on a row does not press it", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await trigger(page).click();
+  await settled(page);
+
+  // A drag that begins on a row is the drawer's, not a press of the row.
+  const layers = (await menuRow(page, "Layers").boundingBox())!;
+  const x = layers.x + layers.width / 2;
+  const y = layers.y + layers.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x - 40, y, { steps: 2 });
+  await page.mouse.up();
+  await expect(drawer(page)).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Layers" })).toHaveCount(0);
+
+  // And a tap on a row is still a press of it.
+  await trigger(page).click();
+  await settled(page);
+  await menuRow(page, "Layers").click();
+  await expect(page.getByRole("dialog", { name: "Layers" })).toBeVisible();
 });
 
 test("the menu carries the reader between the map and the marketplace", async ({
@@ -255,11 +357,15 @@ test("at 390px the menu shares the header row without wrapping or scrolling", as
   expect(search.x + search.width).toBeLessThanOrEqual(controls.x);
   expect(await overflow()).toBeLessThanOrEqual(0);
 
+  // Open, the drawer stands at the left edge, the full height of the
+  // screen, and leaves a strip of the map showing beside it.
   await trigger(page).click();
-  const open = (await panel(page).boundingBox())!;
-  expect(open.x).toBeGreaterThanOrEqual(0);
-  expect(open.x + open.width).toBeLessThanOrEqual(390);
-  expect(open.y).toBeGreaterThanOrEqual(menu.y + menu.height);
+  const open = await settled(page);
+  expect(open.y).toBe(0);
+  expect(open.height).toBe(844);
+  expect(open.x + open.width).toBeLessThan(390);
+  await page.keyboard.press("Escape");
+  await expect(drawer(page)).toHaveCount(0);
   expect(await overflow()).toBeLessThanOrEqual(0);
 });
 
@@ -313,9 +419,8 @@ test("at 390px the marketplace header takes the menu without squeezing a label",
   ).toBeLessThanOrEqual(0);
 
   await trigger(page).click();
-  const open = (await panel(page).boundingBox())!;
-  expect(open.x).toBeGreaterThanOrEqual(0);
-  expect(open.x + open.width).toBeLessThanOrEqual(390);
+  const open = await settled(page);
+  expect(open.x + open.width).toBeLessThan(390);
 });
 
 /**

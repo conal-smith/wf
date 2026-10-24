@@ -4,6 +4,7 @@ import {
   layerTile,
   menuRow,
   openFromMenu,
+  openMenu,
   setLayer,
   test,
 } from "./fixtures";
@@ -233,7 +234,7 @@ for (const width of [390, 1440]) {
     await expect(page.locator(".side")).toHaveCount(0);
     const menu = page.getByRole("button", { name: "Site menu" });
     // Under Layers in the menu, one column of the chart's tools.
-    await menu.click();
+    await openMenu(page);
     const at = async (name: "Layers" | "Your spots" | "Display options") =>
       (await menuRow(page, name).boundingBox())!;
     const [l, s, o] = [

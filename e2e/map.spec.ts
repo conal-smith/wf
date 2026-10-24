@@ -786,11 +786,14 @@ for (const device of [
     const touch = "hasTouch" in device.use;
     const press = (page: Page, at: { x: number; y: number }) =>
       touch ? page.touchscreen.tap(at.x, at.y) : page.mouse.click(at.x, at.y);
-    /** Somewhere on the chart with no light and no box over it. */
-    const clear = async (page: Page) => {
-      const at = await page.evaluate(() => {
+    /**
+     * Somewhere on the chart with no light and no box over it, `left` pixels
+     * or more from the left edge: clear of the site menu's drawer, say.
+     */
+    const clear = async (page: Page, left = 40) => {
+      const at = await page.evaluate((left) => {
         for (let y = 160; y < innerHeight - 80; y += 20)
-          for (let x = 40; x < innerWidth - 40; x += 20)
+          for (let x = left; x < innerWidth - 40; x += 20)
             if (
               document
                 .elementFromPoint(x, y)
@@ -798,7 +801,7 @@ for (const device of [
             )
               return { x, y };
         return null;
-      });
+      }, left);
       expect(at).not.toBeNull();
       return at!;
     };
@@ -905,10 +908,16 @@ for (const device of [
       await press(page, await backdrop(page));
       await expect(page.getByRole("dialog", { name: "Layers" })).toHaveCount(0);
       await unmoved();
+      // The menu's drawer stands at the left edge: the press lands on the
+      // dimmed map beside it, found before it covers the chart.
       const menu = page.getByRole("button", { name: "Site menu" });
+      const beside = await clear(page, 400);
       await menu.click();
       await expect(menu).toHaveAttribute("aria-expanded", "true");
-      await press(page, await clear(page));
+      await expect(
+        page.getByRole("dialog", { name: "Site menu" }),
+      ).toBeVisible();
+      await press(page, beside);
       await expect(menu).toHaveAttribute("aria-expanded", "false");
       await unmoved();
       // The search's list of spots, as the reader types.
