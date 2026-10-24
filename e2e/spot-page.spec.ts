@@ -388,7 +388,14 @@ test("How the stars work draws the bands, the shore sectors and a live hour work
   await expect(shore.locator("tr", { hasText: "150–180°" })).toContainText(
     "−4\u00a0stars",
   );
-  await expect(page.locator("[data-gust-table]")).toContainText("28\u00a0kn");
+  // Gusty wind costs a star by default, two when very gusty.
+  const gusty = page.locator("[data-gusty-table]");
+  await expect(gusty.locator("tr", { hasText: "1.5 times" })).toContainText(
+    "−1\u00a0star",
+  );
+  await expect(gusty.locator("tr", { hasText: "1.8 times" })).toContainText(
+    "−2\u00a0stars",
+  );
   const ledger = page.locator("[data-ledger]");
   await expect(ledger).toContainText("is rated as");
   await expect(ledger).toContainText(/Rating.*, so \d solid/);

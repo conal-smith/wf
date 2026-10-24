@@ -43,9 +43,9 @@ const riders: Rider[] = [
     custom: {
       ...standardRating(DEFAULT_RIDER, "beginner"),
       wind: { min: 15, sweetLow: 18, sweetHigh: 23, max: 27 },
-      gust: { fine: 24, worst: 30, most: 3 },
     },
   },
+  { weightKg: 80, skill: "intermediate", wings: [], gusty: "lots" },
 ];
 
 /** Two days of everything: calm to a gale, every direction, every agreement. */

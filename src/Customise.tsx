@@ -1,9 +1,10 @@
 /**
  * "Customise": the site menu's first row, a wizard that walks a rider through
  * the settings the stars are rated on, as the owner saw it in the mockup
- * (wingfoil-mockups/customise-wizard): their level, their wind and gusts on a
- * real day re-rated as they drag, the winds they will ride each way round the
- * beach, how far into the wind they ride, their units, their spots, and the lot together.
+ * (wingfoil-mockups/customise-wizard): their level, their wind and how much
+ * gusty wind bothers them on a real day re-rated as they change them, the
+ * winds they will ride each way round the beach, how far into the wind they
+ * ride, their units, their spots, and the lot together.
  *
  * Its own chunk, fetched when it is opened. It edits a draft and saves it on
  * the last step through src/customiseDraft.ts, into the preferences Display
@@ -30,11 +31,14 @@ import {
 } from "../force5/src/rideWedge";
 import {
   DIRECTION_KEYS,
+  GUSTIES,
+  GUSTY_LABEL,
   SKILLS,
   SKILL_LABEL,
   rateHour,
   shoreAngle,
   type DirectionKey,
+  type Gusty,
   type Skill,
 } from "../force5/src/stars";
 import { UNITS, beaufort, forceKn, type Units } from "../force5/src/units";
@@ -46,15 +50,12 @@ import { Puffin } from "../ui/Puffin";
 import { SearchField } from "../ui/SearchField";
 import { Segmented } from "../ui/Segmented";
 import { StarGlyphs } from "../ui/StarGlyphs";
-import { framePath, hand } from "../ui/penPaths";
+import { framePath } from "../ui/penPaths";
 import {
-  GUST_TOP,
   WIND_KEYS,
   WIND_TOP,
   forceTicks,
   knotsOf,
-  moveGust,
-  moveGustForce,
   moveWind,
   moveWindForce,
   said,
@@ -399,9 +400,7 @@ function LevelStep({ draft, setDraft, unit }: StepProps & { unit: UnitScale }) {
               pressed={draft.skill === skill}
               onClick={() => setDraft(withLevel(draft, skill, draft.weightKg))}
             >
-              <MiniRose
-                upwind={upwindAngle({ skill })}
-              />
+              <MiniRose upwind={upwindAngle({ skill })} />
               <span className="cw-level-words">
                 <b>{SKILL_LABEL[skill]}</b>
                 <span>{LEVEL_LINE[skill]}</span>
@@ -499,7 +498,7 @@ function MiniRose({ upwind }: { upwind: number }) {
   );
 }
 
-/* ---- 2. the wind and the gusts ---- */
+/* ---- 2. the wind and gusty wind ---- */
 
 /** A real day at a real spot, rated for the draft: the stars move as the rider drags. */
 function Preview({
@@ -579,12 +578,8 @@ function WindStep({
   rider: ReturnType<typeof draftRider>;
 }) {
   const w = draft.custom.wind;
-  const g = draft.custom.gust;
   const id = useId().replace(/[^\w-]/g, "");
   const set = (custom: Draft["custom"]) => setDraft({ ...draft, custom });
-  const most = [1, 2, 3].includes(g.most)
-    ? [1, 2, 3]
-    : [1, 2, 3, g.most].sort();
   return (
     <>
       <Preview day={day} rider={rider} unit={unit} />
@@ -719,111 +714,18 @@ function WindStep({
       </section>
       <section className="cw-tool">
         <div className="cw-tool-h">
-          <h4>Gusts</h4>
-          <span className="cw-fig">
-            fine to {written(g.fine, unit)} · −{g.most}★ by{" "}
-            {written(g.worst, unit)}
-            {unit.force ? "" : ` ${unit.label}`}
-          </span>
+          <h4>Gusty wind</h4>
         </div>
-        <div className="cw-gust">
-          <GustTrace day={day} fine={g.fine} unit={unit} />
-          <div>
-            <Range
-              min={10}
-              max={GUST_TOP}
-              values={[g.fine, g.worst]}
-              names={["Gusts cost nothing to", "Gusts take off the most from"]}
-              unit={unit}
-              onMove={(i, kn) =>
-                set(
-                  (unit.force ? moveGustForce : moveGust)(
-                    draft.custom,
-                    i ? "worst" : "fine",
-                    kn,
-                  ),
-                )
-              }
-              paint={(x, width) => (
-                <>
-                  <defs>
-                    <linearGradient id={`${id}g`}>
-                      <stop
-                        offset="0"
-                        style={{ stopColor: "var(--color-ground)" }}
-                      />
-                      <stop
-                        offset="1"
-                        style={{ stopColor: "var(--color-gust)" }}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <rect
-                    x="0"
-                    y="40"
-                    width={x(g.fine)}
-                    height="10"
-                    className="cw-bar-calm"
-                  />
-                  <rect
-                    x={x(g.fine)}
-                    y="40"
-                    width={Math.max(0, x(g.worst) - x(g.fine))}
-                    height="10"
-                    fill={`url(#${id}g)`}
-                  />
-                  <rect
-                    x={x(g.worst)}
-                    y="40"
-                    width={Math.max(0, width - x(g.worst))}
-                    height="10"
-                    className="cw-bar-gust"
-                  />
-                  <rect
-                    x="0"
-                    y="40"
-                    width={width}
-                    height="10"
-                    className="cw-bar-edge"
-                  />
-                  {x(g.fine) > 90 && (
-                    <text
-                      className="cw-lab is-strong"
-                      x={x(g.fine) / 2}
-                      y="28"
-                      textAnchor="middle"
-                    >
-                      COSTS NOTHING
-                    </text>
-                  )}
-                  <text
-                    className="cw-lab"
-                    x={(x(g.worst) + width) / 2}
-                    y="28"
-                    textAnchor="middle"
-                  >
-                    −{g.most}★
-                  </text>
-                  <Ticks x={x} from={10} to={GUST_TOP} unit={unit} />
-                </>
-              )}
-            />
-            <div className="cw-most">
-              <span className="cw-kick">At their worst they cost</span>
-              <Segmented<string>
-                aria-label="At their worst the gusts cost"
-                options={most.map((m) => ({
-                  value: String(m),
-                  label: `${m} ★`,
-                }))}
-                value={String(g.most)}
-                onChange={(m) =>
-                  set({ ...draft.custom, gust: { ...g, most: Number(m) } })
-                }
-              />
-            </div>
-          </div>
-        </div>
+        <p className="cw-small">How much uneven wind bothers you.</p>
+        <Segmented<Gusty>
+          aria-label="Gusty wind"
+          options={GUSTIES.map((gusty) => ({
+            value: gusty,
+            label: GUSTY_LABEL[gusty],
+          }))}
+          value={draft.gusty}
+          onChange={(gusty) => setDraft({ ...draft, gusty })}
+        />
       </section>
     </>
   );
@@ -891,7 +793,7 @@ function Ticks({
 /**
  * Handles on a scale in knots, shown in the rider's unit: dragged, or moved
  * a step at a time from the keyboard. Where they may go is the caller's
- * (yourStars.ts `moveWind`, `moveGust`), which keeps them a knot apart.
+ * (yourStars.ts `moveWind`), which keeps them a knot apart.
  */
 function Range({
   min,
@@ -972,73 +874,6 @@ function Range({
         </span>
       ))}
     </div>
-  );
-}
-
-/**
- * The gustiest hour of the day, drawn as a minute-by-minute trace over its
- * mean: what rises past the rider's line is in the gust's own orange.
- */
-function GustTrace({
-  day,
-  fine,
-  unit,
-}: {
-  day: SampleDay | null;
-  fine: number;
-  unit: UnitScale;
-}) {
-  const id = useId().replace(/[^\w-]/g, "");
-  const hour = day
-    ? day.hours.reduce((a, b) => ((b.gustKn ?? 0) > (a.gustKn ?? 0) ? b : a))
-    : { time: 0, windKn: 16, gustKn: 25, from: null };
-  const gust = hour.gustKn ?? hour.windKn;
-  const top = Math.max(34, gust + 6, fine + 6);
-  const y = (kn: number) => 112 - (kn / top) * 100;
-  const rnd = hand(21);
-  let d = "";
-  for (let i = 0; i <= 60; i++) {
-    const spike =
-      rnd() > 0.8 ? (gust - hour.windKn) * (0.75 + rnd() * 0.3) : rnd() * 3;
-    d += `${i ? "L" : "M"}${(12 + (i / 60) * 220).toFixed(1)} ${y(hour.windKn - 2 + rnd() * 2 + spike).toFixed(1)}`;
-  }
-  return (
-    <svg className="cw-gust-trace" viewBox="0 0 240 130" aria-hidden="true">
-      <defs>
-        <clipPath id={`${id}c`}>
-          <rect x="0" y="0" width="240" height={Math.max(0, y(fine))} />
-        </clipPath>
-      </defs>
-      <path
-        className="cw-over"
-        clipPath={`url(#${id}c)`}
-        d={`${d}L232 112L12 112Z`}
-      />
-      <line
-        className="cw-mean"
-        x1="12"
-        x2="232"
-        y1={y(hour.windKn)}
-        y2={y(hour.windKn)}
-      />
-      <line className="cw-line" x1="12" x2="232" y1={y(fine)} y2={y(fine)} />
-      <path className="cw-trace" d={d} />
-      <line className="cw-base" x1="12" x2="232" y1="112" y2="112" />
-      <text x="14" y={y(hour.windKn) + 11}>
-        MEAN {written(hour.windKn, unit)}
-      </text>
-      <text x="230" y={y(fine) - 4} textAnchor="end">
-        YOUR LINE {written(fine, unit)}
-      </text>
-      {day && (
-        <text x="14" y="125">
-          {clock(hour.time)} ·{" "}
-          {hour.gustKn === null
-            ? "NO GUST IN THIS FORECAST"
-            : `GUSTS ${unit.force ? written(gust, unit) : `${shown(gust, unit)} ${unit.label.toUpperCase()}`}`}
-        </text>
-      )}
-    </svg>
   );
 }
 
@@ -1380,12 +1215,7 @@ function PointingStep({ draft, setDraft }: StepProps) {
         <text className="cw-lab" x={cx + r + 10} y={cy + 3}>
           ACROSS
         </text>
-        <text
-          className="cw-lab"
-          x={cx - r - 10}
-          y={cy + 3}
-          textAnchor="end"
-        >
+        <text className="cw-lab" x={cx - r - 10} y={cy + 3} textAnchor="end">
           ACROSS
         </text>
         <text
@@ -1410,20 +1240,12 @@ function PointingStep({ draft, setDraft }: StepProps) {
             </text>
           );
         })}
-        <text
-          className="cw-lab"
-          x={cx}
-          y={cy + r * 0.62}
-          textAnchor="middle"
-        >
+        <text className="cw-lab" x={cx} y={cy + r * 0.62} textAnchor="middle">
           SLOW
         </text>
         {angle(1)}
         {angle(-1)}
-        <path
-          className="cw-up-wind"
-          d={`M${cx} 6V${cy - r - 12}`}
-        />
+        <path className="cw-up-wind" d={`M${cx} 6V${cy - r - 12}`} />
         <path
           className="cw-up-wind-head"
           d={`M${cx - 6} ${cy - r - 14}L${cx + 6} ${cy - r - 14}L${cx} ${cy - r - 3}Z`}
@@ -1439,7 +1261,11 @@ function PointingStep({ draft, setDraft }: StepProps) {
         {handle(-1)}
       </svg>
       <div>
-        <div className="cw-up-answers" role="group" aria-label="Can you ride upwind?">
+        <div
+          className="cw-up-answers"
+          role="group"
+          aria-label="Can you ride upwind?"
+        >
           {UP_ANSWERS.map((a) => (
             <Button
               key={a.into}
@@ -1805,14 +1631,7 @@ function Summary({
             </>,
             "wind",
           )}
-          {row(
-            "Gusts",
-            <>
-              fine to <b>{written(r.gust.fine, unit)}</b> · −{r.gust.most}★ by{" "}
-              {written(r.gust.worst, unit)}
-            </>,
-            "wind",
-          )}
+          {row("Gusty wind", <b>{GUSTY_LABEL[draft.gusty]}</b>, "wind")}
           {row("Shores", DIRECTION_KEYS.map(mark), "shore")}
           {row("Upwind", <b>{intoWords(draft.upwind)}</b>, "pointing")}
           {row("Units", <b>{unit.label}</b>, "units")}

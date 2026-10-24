@@ -5,8 +5,9 @@ import {
   SKILLS,
   bestWindow,
   directionCosts,
-  gustCurve,
-  gustLoss,
+  gustiness,
+  gustsOverLimit,
+  gustyCost,
   noStarsWhy,
   parseCustomRating,
   pickWing,
@@ -136,15 +137,15 @@ describe("hour rating", () => {
   });
   it("keeps the wind's worth as faded stars when the spot takes some away", () => {
     const rating = rateHour(
-      hour({ from: 270, gustKn: 34 }),
+      hour({ from: 135, gustKn: 27 }),
       WEST,
       DEFAULT_RIDER,
     )!;
     expect(rating.potential).toBe(5);
     expect(rating.stars).toBe(3);
     expect(rating.reasons).toEqual([
-      "Onshore: slow to get out through the chop.",
-      "Gusts to 34 kn: more than you will want to hold.",
+      "Cross-offshore: a drift downwind takes you out, not in.",
+      "Gusty",
     ]);
   });
   it("rates on the wind alone where the shore is not known", () => {
@@ -221,40 +222,47 @@ describe("hour rating", () => {
   });
 });
 
-// The owner's calibration, and the mockup's levels (design-system/patterns/
-// your-stars.html): an 80 kg rider, cross-onshore, no wings listed, the models
-// agreeing. [wind, gust, stars, potential].
+// The owner's calibration of v6 (24 October 2026): an 80 kg rider who is
+// bothered by gusty wind "some", cross-onshore, no wings listed, the models
+// agreeing. [wind, gust, stars, potential]. Riding first, as the owner set it:
+// steady wind is rated on the mean, gusty wind loses a star and very gusty
+// two, and a gust over 30 kn leaves no stars at all.
 const CALIBRATION: Record<Skill, [number, number, number, number][]> = {
   intermediate: [
-    [9, 17, 1, 1],
-    [12, 20, 2, 2],
-    [15, 27, 4, 4],
-    [18, 24, 5, 5],
-    [18, 27, 5, 5],
-    [22, 32, 4, 5],
-    [25, 38, 2, 4],
+    [9, 17, 1, 1], // under the floor: the gusts are a chance, no more
+    [12, 20, 1, 2], // gusty (1.67)
+    [15, 20, 4, 4], // steady (1.33)
+    [15, 22, 4, 4],
+    [15, 27, 2, 4], // very gusty (1.8)
+    [18, 24, 5, 5], // steady
+    [18, 27, 4, 5], // gusty (1.5)
+    [22, 32, 0, 0], // a gust over 30
+    [25, 33, 0, 0],
+    [25, 38, 0, 0],
   ],
   beginner: [
     [9, 17, 0, 0],
     [10, 16, 0, 0],
     [12, 20, 1, 1],
-    [15, 22, 3, 4],
-    [15, 27, 1, 4],
-    [18, 24, 4, 5],
-    [18, 27, 2, 5],
-    [22, 32, 0, 3],
-    [25, 38, 0, 2],
+    [15, 20, 4, 4],
+    [15, 22, 4, 4],
+    [15, 27, 0, 0], // a gust over 24
+    [18, 24, 5, 5],
+    [18, 27, 0, 0],
+    [22, 32, 0, 0],
+    [25, 38, 0, 0],
   ],
   advanced: [
-    [9, 17, 2, 2],
-    [10, 16, 2, 2],
-    [12, 20, 3, 3],
+    [9, 17, 0, 2], // over the 8 kn floor, and very gusty
+    [10, 16, 1, 2], // gusty (1.6)
+    [12, 20, 2, 3],
     [15, 22, 5, 5],
-    [15, 27, 5, 5],
+    [15, 27, 3, 5],
     [18, 24, 5, 5],
-    [18, 27, 5, 5],
+    [18, 27, 4, 5],
     [22, 32, 5, 5],
-    [25, 38, 4, 5],
+    [25, 33, 5, 5],
+    [25, 38, 0, 0], // a gust over 35
   ],
 };
 // A west-facing beach: wind from 225 is cross-onshore.
@@ -275,9 +283,9 @@ describe("the calibration", () => {
 
   // 18 gusting 24 from each way round the beach: [onshore, cross, cross-off, offshore].
   const AROUND: Record<Skill, number[]> = {
-    beginner: [3, 3, 1, 0],
-    intermediate: [4, 5, 4, 1],
-    advanced: [4, 5, 4, 1],
+    beginner: [5, 5, 2, 0],
+    intermediate: [5, 5, 4, 1],
+    advanced: [5, 5, 4, 1],
   };
   for (const skill of SKILLS)
     it(`rates 18 gusting 24 round the beach for ${skill}`, () => {
@@ -293,53 +301,118 @@ describe("the calibration", () => {
     });
 });
 
-describe("gusts, by how strong they are", () => {
-  it("cost nothing up to the level's fine, ramp to the most at its worst, and no more", () => {
-    const curves: Record<Skill, [number, number, number]> = {
-      beginner: [20, 28, 3],
-      intermediate: [28, 40, 2],
-      advanced: [33, 45, 2],
-    };
-    for (const skill of SKILLS) {
-      const [fine, worst, most] = curves[skill];
-      const curve = gustCurve(rider({ skill }));
-      expect(curve).toEqual({ fine, worst, most });
-      expect(gustLoss(fine, curve)).toBe(0);
-      expect(gustLoss((fine + worst) / 2, curve)).toBeCloseTo(most / 2, 9);
-      expect(gustLoss(worst, curve)).toBe(most);
-      expect(gustLoss(worst + 20, curve)).toBe(most);
-      expect(gustLoss(null, curve)).toBe(0);
-    }
-  });
-  it("do not care how far the gust runs over the mean, only how strong it is", () => {
-    // 10 kn over at 14 kn costs nothing; 6 kn over at 30 kn does.
-    expect(gustLoss(24, gustCurve(DEFAULT_RIDER))).toBe(0);
-    expect(gustLoss(36, gustCurve(DEFAULT_RIDER))).toBeCloseTo(4 / 3, 9);
-  });
-  it("let a heavier rider hold a little more, as the top of the band does", () => {
-    const heavy = rider({ weightKg: 125 });
-    const scale = (125 / 80) ** 0.25;
-    expect(gustCurve(heavy).fine).toBeCloseTo(28 * scale, 9);
-    expect(gustCurve(heavy).worst).toBeCloseTo(40 * scale, 9);
-    expect(gustCurve(heavy).most).toBe(2);
-    expect(windBand(heavy).max).toBeCloseTo(30 * scale, 9);
-  });
-  it("are named only when they cost a whole star", () => {
-    const gentle = rateHour(
-      hour({ windKn: 18, gustKn: 31, from: 200 }),
-      WEST,
-      DEFAULT_RIDER,
-    )!;
-    expect(gentle.stars).toBe(5);
-    expect(gentle.reasons).toEqual([]);
-    const strong = rateHour(
+describe("gusts over your limit", () => {
+  it("leave the hour no stars, faded ones too, and say so", () => {
+    const rating = rateHour(
       hour({ windKn: 22, gustKn: 32, from: 200 }),
       WEST,
       DEFAULT_RIDER,
     )!;
-    expect(strong.stars).toBe(4);
-    expect(strong.reasons).toEqual([
-      "Gusts to 32 kn: more than you will want to hold.",
+    expect([rating.stars, rating.potential]).toEqual([0, 0]);
+    expect(rating.reasons).toEqual(["Gusts over your limit"]);
+    expect(rating.session).toBe("too-gusty");
+    expect(noStarsWhy(rating)).toBe("gusts over your limit");
+  });
+  it("start just over the top of the band: 24, 30 and 35 kn at 80 kg", () => {
+    const tops: Record<Skill, number> = {
+      beginner: 24,
+      intermediate: 30,
+      advanced: 35,
+    };
+    for (const skill of SKILLS) {
+      const r = rider({ skill });
+      expect(windBand(r).max).toBe(tops[skill]);
+      expect(gustsOverLimit(tops[skill], r)).toBe(false);
+      expect(gustsOverLimit(tops[skill] + 0.1, r)).toBe(true);
+      expect(gustsOverLimit(null, r)).toBe(false);
+    }
+  });
+  it("let a heavier rider hold a little more, as the top of the band does", () => {
+    const heavy = rider({ weightKg: 125 });
+    const top = 30 * (125 / 80) ** 0.25;
+    expect(windBand(heavy).max).toBeCloseTo(top, 9);
+    expect(gustsOverLimit(33.5, heavy)).toBe(false);
+    expect(gustsOverLimit(33.6, heavy)).toBe(true);
+  });
+  it("count against the rider's own top, too", () => {
+    const own = rider({
+      custom: {
+        ...standardRating(DEFAULT_RIDER),
+        wind: { min: 10, sweetLow: 14, sweetHigh: 22, max: 26 },
+      },
+    });
+    expect(
+      rateHour(hour({ windKn: 18, gustKn: 26 }), WEST, own)!.potential,
+    ).toBe(5);
+    expect(
+      rateHour(hour({ windKn: 18, gustKn: 27 }), WEST, own)!.potential,
+    ).toBe(0);
+  });
+  it("leave a wind too strong on its own called too strong", () => {
+    const rating = rateHour(
+      hour({ windKn: 37, gustKn: 45, from: 200 }),
+      WEST,
+      DEFAULT_RIDER,
+    )!;
+    expect(rating.session).toBe("too-strong");
+    expect(rating.reasons).toEqual(["Gusts over your limit"]);
+  });
+});
+
+describe("gusty wind", () => {
+  it("is steady under 1.5 times the mean, gusty from 1.5, very gusty from 1.8", () => {
+    expect(gustiness(18, 26.9, DEFAULT_RIDER)).toBe("steady");
+    expect(gustiness(18, 27, DEFAULT_RIDER)).toBe("gusty");
+    expect(gustiness(15, 26.9, DEFAULT_RIDER)).toBe("gusty");
+    expect(gustiness(15, 27, DEFAULT_RIDER)).toBe("very-gusty");
+    expect(gustiness(18, null, DEFAULT_RIDER)).toBe("steady");
+  });
+  it("only counts at or above the rider's floor", () => {
+    // Riding's floor is 11 kn: below it a gust is a chance to get up.
+    expect(gustiness(10.9, 20, DEFAULT_RIDER)).toBe("steady");
+    expect(gustiness(11, 20, DEFAULT_RIDER)).toBe("very-gusty");
+  });
+  it("costs as much as it bothers the rider", () => {
+    const off = (gusty: Rider["gusty"]) =>
+      (["steady", "gusty", "very-gusty"] as const).map((kind) =>
+        gustyCost(rider({ gusty }), kind),
+      );
+    expect(off("little")).toEqual([0, 0, 1]);
+    expect(off("some")).toEqual([0, 1, 2]);
+    expect(off(undefined)).toEqual([0, 1, 2]);
+    expect(off("lots")).toEqual([0, 2, 3]);
+  });
+  it("shows what it cost as faded stars, and names it", () => {
+    const rate = (gusty: Rider["gusty"], gustKn: number) => {
+      const rating = rateHour(
+        hour({ windKn: 18, gustKn, from: 200 }),
+        WEST,
+        rider({ gusty }),
+      )!;
+      return [rating.stars, rating.potential, ...rating.reasons];
+    };
+    expect(rate("some", 24)).toEqual([5, 5]);
+    expect(rate("some", 27)).toEqual([4, 5, "Gusty"]);
+    expect(rate("lots", 27)).toEqual([3, 5, "Gusty"]);
+    expect(rate("little", 27)).toEqual([5, 5]);
+    expect(rate("some", 29)).toEqual([4, 5, "Gusty"]);
+    const veryGusty = rateHour(
+      hour({ windKn: 15, gustKn: 27, from: 200 }),
+      WEST,
+      rider({ gusty: "little" }),
+    )!;
+    expect(veryGusty.reasons).toEqual(["Very gusty"]);
+  });
+  it("is named only when it moved a star", () => {
+    // Offshore has taken every star already: the gusts move none.
+    const rating = rateHour(
+      hour({ windKn: 15, gustKn: 24, from: 90 }),
+      WEST,
+      DEFAULT_RIDER,
+    )!;
+    expect(rating.stars).toBe(0);
+    expect(rating.reasons).toEqual([
+      "Offshore wind: it blows you away from the beach.",
     ]);
   });
 });
@@ -347,34 +420,50 @@ describe("gusts, by how strong they are", () => {
 describe("direction", () => {
   it("costs each level its own stars for each way the wind meets the beach", () => {
     expect(directionCosts(rider({ skill: "beginner" }))).toEqual({
-      onshore: 1,
+      onshore: 0,
       crossOn: 0,
-      cross: 0.5,
+      cross: 0,
       crossOff: 3,
       offshore: 5,
     });
     expect(directionCosts(DEFAULT_RIDER)).toEqual({
-      onshore: 1,
+      onshore: 0,
       crossOn: 0,
       cross: 0,
       crossOff: 1.5,
       offshore: 4,
     });
     expect(directionCosts(rider({ skill: "advanced" }))).toEqual({
-      onshore: 1,
+      onshore: 0,
       crossOn: 0,
       cross: 0,
       crossOff: 1,
       offshore: 4,
     });
   });
+  it("never takes a star for cross-shore, onshore or cross-onshore", () => {
+    for (const skill of SKILLS)
+      for (const from of [270, 225, 180])
+        expect(
+          rateHour(
+            hour({ windKn: 18, gustKn: 22, from }),
+            WEST,
+            rider({ skill }),
+          )!.stars,
+        ).toBe(5);
+  });
   it("names a direction only when it costs a whole star", () => {
-    // A learner's half star for cross-shore, on an hour where it does not show.
-    const learner = rider({ skill: "beginner" });
+    // A rider's own half star for cross-shore, on an hour where it does not show.
+    const halfOff = rider({
+      custom: {
+        ...standardRating(DEFAULT_RIDER),
+        direction: { ...directionCosts(DEFAULT_RIDER), cross: 0.5 },
+      },
+    });
     const rating = rateHour(
       hour({ windKn: 17, gustKn: 19, from: 180 }),
       WEST,
-      learner,
+      halfOff,
     )!;
     expect(rating.stars).toBe(5);
     expect(rating.reasons).toEqual([]);
@@ -395,7 +484,6 @@ const CUSTOM: CustomRating = {
   version: CUSTOM_RATING_VERSION,
   base: "intermediate",
   wind: { min: 15, sweetLow: 18, sweetHigh: 23, max: 27 },
-  gust: { fine: 24, worst: 30, most: 3 },
   direction: { onshore: 0.5, crossOn: 0, cross: 0, crossOff: 2.5, offshore: 4 },
 };
 
@@ -406,23 +494,22 @@ describe("a custom rating", () => {
     return [rating.stars, rating.potential];
   };
 
-  it("rates the mockup's rider who wants about 20 knots, and no gusts much over 25", () => {
+  it("rates the mockup's rider who wants about 20 knots, and nothing over 27", () => {
     // design-system/patterns/your-stars.html, the desktop dialog's "Yours".
     expect(rate(own(), 12, 20)).toEqual([1, 1]);
     expect(rate(own(), 15, 22)).toEqual([1, 1]);
     expect(rate(own(), 18, 24)).toEqual([4, 4]);
     expect(rate(own(), 18, 27)).toEqual([3, 4]);
-    expect(rate(own(), 22, 32)).toEqual([2, 5]);
-    expect(rate(own(), 25, 38)).toEqual([0, 3]);
+    expect(rate(own(), 22, 32)).toEqual([0, 0]);
+    expect(rate(own(), 25, 38)).toEqual([0, 0]);
     expect(rate(own(), 18, 24, 270)).toEqual([4, 4]);
     expect(rate(own(), 18, 24, 135)).toEqual([2, 4]);
     expect(rate(own(), 18, 24, 90)).toEqual([0, 4]);
   });
-  it("replaces the band, the gusts and the directions, whatever the weight", () => {
+  it("replaces the band and the directions, whatever the weight", () => {
     for (const weightKg of [null, 55, 120]) {
       const r = own({ weightKg });
       expect(windBand(r)).toEqual(CUSTOM.wind);
-      expect(gustCurve(r)).toEqual(CUSTOM.gust);
       expect(directionCosts(r)).toEqual(CUSTOM.direction);
     }
   });
@@ -480,7 +567,7 @@ describe("a custom rating", () => {
     const heavy = rider({ weightKg: 120 });
     const start = standardRating(heavy);
     expect(start.wind.min).toBeCloseTo(windBand(heavy).min, 1);
-    expect(start.gust.worst).toBeCloseTo(gustCurve(heavy).worst, 1);
+    expect(start.wind.max).toBeCloseTo(windBand(heavy).max, 1);
     expect(start.base).toBe("intermediate");
     expect(standardRating(heavy, "advanced").base).toBe("advanced");
   });
@@ -493,15 +580,32 @@ describe("a custom rating, read and made safe", () => {
       CUSTOM,
     );
   });
+  it("reads a version 1 rating as version 2, its gust curve left behind", () => {
+    const v1 = {
+      ...CUSTOM,
+      version: 1,
+      gust: { fine: 24, worst: 30, most: 3 },
+    };
+    expect(parseCustomRating(v1)).toEqual(CUSTOM);
+    expect(parseCustomRating(JSON.parse(JSON.stringify(v1)))).toEqual(CUSTOM);
+    // Its gusts are not checked: they are not read.
+    expect(parseCustomRating({ ...v1, gust: { fine: "24" } })).toEqual(CUSTOM);
+    expect(CUSTOM_RATING_VERSION).toBe(2);
+  });
+  it("leaves a gust curve out of a version 2 rating", () => {
+    expect(
+      parseCustomRating({ ...CUSTOM, gust: { fine: 24, worst: 30, most: 3 } }),
+    ).toEqual(CUSTOM);
+  });
   it("drops another version, a missing field, a word for a number or no level", () => {
-    expect(parseCustomRating({ ...CUSTOM, version: 2 })).toBeNull();
+    expect(parseCustomRating({ ...CUSTOM, version: 3 })).toBeNull();
     expect(parseCustomRating({ ...CUSTOM, version: undefined })).toBeNull();
     expect(parseCustomRating({ ...CUSTOM, base: "pro" })).toBeNull();
     expect(
       parseCustomRating({ ...CUSTOM, wind: { ...CUSTOM.wind, max: "27" } }),
     ).toBeNull();
     expect(
-      parseCustomRating({ ...CUSTOM, gust: { fine: 24, worst: 30 } }),
+      parseCustomRating({ ...CUSTOM, direction: { onshore: 0 } }),
     ).toBeNull();
     expect(
       parseCustomRating({
@@ -537,25 +641,6 @@ describe("a custom rating, read and made safe", () => {
       wind({ min: 12.345, sweetLow: 13.01, sweetHigh: 20, max: 26 }),
     ).toEqual({ min: 12.3, sweetLow: 13.3, sweetHigh: 20, max: 26 });
   });
-  it("keeps the gusts' no-effect a knot under their most-off, within 1 to 50", () => {
-    const gust = (g: CustomRating["gust"]) =>
-      parseCustomRating({ ...CUSTOM, gust: g })!.gust;
-    expect(gust({ fine: 30, worst: 25, most: 2 })).toEqual({
-      fine: 30,
-      worst: 31,
-      most: 2,
-    });
-    expect(gust({ fine: 70, worst: 80, most: 9 })).toEqual({
-      fine: 49,
-      worst: 50,
-      most: 5,
-    });
-    expect(gust({ fine: -3, worst: 0, most: -1 })).toEqual({
-      fine: 1,
-      worst: 2,
-      most: 0,
-    });
-  });
   it("holds every direction, offshore too, to 0–5 in half stars", () => {
     expect(
       parseCustomRating({
@@ -580,13 +665,12 @@ describe("a custom rating, read and made safe", () => {
     const odd = {
       ...CUSTOM,
       wind: { min: 9.72, sweetLow: 10.1, sweetHigh: 30.06, max: 30.5 },
-      gust: { fine: 33.33, worst: 33.9, most: 2.2 },
     };
     const once = parseCustomRating(odd)!;
     expect(parseCustomRating(once)).toEqual(once);
     expect(sameCustomRating(parseCustomRating(once), once)).toBe(true);
     expect(once.wind.sweetLow - once.wind.min).toBeGreaterThanOrEqual(1);
-    expect(once.gust.worst - once.gust.fine).toBeGreaterThanOrEqual(1);
+    expect(once.wind.max - once.wind.sweetHigh).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -613,6 +697,7 @@ describe("noStarsWhy", () => {
   it("names only the plain reasons an hour has no stars", () => {
     expect(noStarsWhy({ session: "too-light" })).toBe("too light");
     expect(noStarsWhy({ session: "too-strong" })).toBe("too strong");
+    expect(noStarsWhy({ session: "too-gusty" })).toBe("gusts over your limit");
     expect(noStarsWhy({ session: "offshore" })).toBe("offshore");
     expect(noStarsWhy({ session: "pump" })).toBeNull();
     expect(noStarsWhy({ session: "cruising" })).toBeNull();

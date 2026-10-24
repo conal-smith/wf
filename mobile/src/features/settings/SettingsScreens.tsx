@@ -46,7 +46,7 @@ export function RiderScreen() {
           </View>
           <T variant="body" color="ink2">
             {riderWords(rider)}: below {band.min} kn you cannot stay up for long; {band.sweetLow}–{band.sweetHigh} kn
-            is the sweet spot; past {band.max} kn is more than you will want to hold.
+            is the sweet spot; a gust over {band.max} kn leaves the hour no stars.
           </T>
         </View>
       </ListSection>

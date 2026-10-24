@@ -18,6 +18,7 @@ test("How the stars work says when the rating is the rider's own", async ({
           weightKg: null,
           skill: "intermediate",
           wings: [],
+          // Saved before v6: version 1, with the gust curve it then had.
           custom: {
             version: 1,
             base: "beginner",

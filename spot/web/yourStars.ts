@@ -13,8 +13,9 @@ import {
   CUSTOM_LIMITS,
   DIRECTION_KEYS,
   directionCosts,
-  gustCurve,
-  gustLoss,
+  gustiness,
+  gustsOverLimit,
+  gustyCost,
   parseCustomRating,
   rateHour,
   rideableWind,
@@ -101,25 +102,23 @@ export const forceTicks = (from: number, to: number) =>
   );
 
 export type WindKey = keyof CustomRating["wind"];
-export type GustKey = "fine" | "worst";
 export const WIND_KEYS: readonly WindKey[] = [
   "min",
   "sweetLow",
   "sweetHigh",
   "max",
 ];
-export const GUST_KEYS: readonly GustKey[] = ["fine", "worst"];
-/** The ends of the two scales, in knots. */
+/** The ends of the wind scale and of the "Together" grid's gusts, in knots. */
 export const WIND_TOP = CUSTOM_LIMITS.windTopKn;
-export const GUST_TOP = CUSTOM_LIMITS.gustTopKn;
+export const GUST_TOP = 50;
 
 const clamp = (x: number, low: number, high: number) =>
   Math.min(high, Math.max(low, x));
 
 /**
  * One handle moved, the others left where they are: it stops a knot short of
- * its neighbours (minimum < ideal from < ideal to < maximum; no effect < most
- * off) and inside its scale. Anything else about the rating is made safe by
+ * its neighbours (minimum < ideal from < ideal to < maximum) and inside its
+ * scale. Anything else about the rating is made safe by
  * the rating's own validation.
  */
 export function moveWind(
@@ -140,24 +139,11 @@ export function moveWind(
   return safe({ ...rating, wind: { ...rating.wind, [key]: value } });
 }
 
-export function moveGust(
-  rating: CustomRating,
-  key: GustKey,
-  kn: number,
-): CustomRating {
-  const { apartKn } = CUSTOM_LIMITS;
-  const value =
-    key === "fine"
-      ? clamp(kn, 1, rating.gust.worst - apartKn)
-      : clamp(kn, rating.gust.fine + apartKn, GUST_TOP);
-  return safe({ ...rating, gust: { ...rating.gust, [key]: value } });
-}
-
 /*
  * In Force, the band is set in whole forces: the lower two handles on a
  * force's first knot, the upper two on its last, and each on a force of its
  * own but for the sweet spot, which may be one force wide (Learning's
- * 13/15/20/26 kn is F4 / F5–F5 / F6). The forces the scale holds: F2 (from
+ * 13/15/20/24 kn is F4 / F5–F5 / F6). The forces the scale holds: F2 (from
  * 4 kn, since the band starts no lower than 2) to F8 (34–40 kn, the top).
  */
 const FORCE_LOW = 2;
@@ -201,48 +187,9 @@ export function moveWindForce(
   });
 }
 
-/**
- * The gust handles in Force, each on a force's last knot: "no effect up to
- * F6" is gusts to 27 kn, and "the most off by F8" is the most from the top of
- * F8, so the stars go as the gusts climb through it. The two a force apart at
- * least; the most no higher than the scale's last whole force, F9.
- */
-const GUST_FORCE_TOP = 9;
-
-export function moveGustForce(
-  rating: CustomRating,
-  key: GustKey,
-  kn: number,
-): CustomRating {
-  const fine = beaufort(rating.gust.fine);
-  const worst = beaufort(rating.gust.worst);
-  const force =
-    key === "fine"
-      ? clamp(beaufort(kn), 1, worst - 1)
-      : clamp(beaufort(kn), fine + 1, GUST_FORCE_TOP);
-  return safe({
-    ...rating,
-    gust: { ...rating.gust, [key]: forceKn(force, "last") },
-  });
-}
-
-/** Both gust handles set in whole forces. */
-export function forceGusts(rating: CustomRating): CustomRating {
-  const fine = clamp(beaufort(rating.gust.fine), 1, GUST_FORCE_TOP - 1);
-  const worst = clamp(beaufort(rating.gust.worst), fine + 1, GUST_FORCE_TOP);
-  return safe({
-    ...rating,
-    gust: {
-      ...rating.gust,
-      fine: forceKn(fine, "last"),
-      worst: forceKn(worst, "last"),
-    },
-  });
-}
-
-/** The band and the gusts set in whole forces, as a rider in Force sets them. */
+/** The band set in whole forces, as a rider in Force sets it. */
 export const inForces = (rating: CustomRating): CustomRating =>
-  forceGusts(forceBand(rating));
+  forceBand(rating);
 
 /** Stars off for one direction, in half stars from 0 to 5. */
 export function setDirection(
@@ -277,7 +224,8 @@ export const FROM: Record<DirectionKey, number> = {
 
 /**
  * An hour of `windKn` gusting `gustKn` from `dir`, rated for this rider:
- * daylight, and no wing to fit, so only the three curves speak.
+ * daylight, and no wing to fit, so only the wind, the gusts and the
+ * direction speak.
  */
 export function rateExample(
   rider: Rider,
@@ -308,7 +256,10 @@ export const onLevel = (rider: Rider, custom: CustomRating): Rider => ({
   custom: null,
 });
 
-/** What the readout says of an hour: its wind, and what came off. */
+/**
+ * What the readout says of an hour: its wind, and what came off: the gusty
+ * wind's stars, the direction's, or all of them for a gust over the limit.
+ */
 export function breakdown(
   rider: Rider,
   windKn: number,
@@ -318,20 +269,22 @@ export function breakdown(
   const rating = rateExample(rider, windKn, gustKn, dir);
   const r = { ...rider, wings: [] };
   const wind = windScore(rideableWind(windKn, gustKn, r), windBand(r));
-  const gusts = gustLoss(gustKn, gustCurve(r));
-  const direction = directionCosts(r)[dir];
-  return { rating, wind, gusts, direction };
+  const over = gustsOverLimit(gustKn, r);
+  const gusts = over ? 0 : gustyCost(r, gustiness(windKn, gustKn, r));
+  const direction = over ? 0 : directionCosts(r)[dir];
+  return { rating, wind, over, gusts, direction };
 }
 
 /** The examples' hours: [wind, gust, direction], cross-onshore unless named. */
 export const EXAMPLES: readonly [number, number, DirectionKey][] = [
   [10, 16, "crossOn"],
   [12, 20, "crossOn"],
-  [15, 22, "crossOn"],
+  [15, 20, "crossOn"],
+  [15, 27, "crossOn"],
   [18, 24, "crossOn"],
   [18, 27, "crossOn"],
   [22, 32, "crossOn"],
-  [25, 38, "crossOn"],
+  [25, 33, "crossOn"],
   [18, 24, "onshore"],
   [18, 24, "crossOff"],
   [18, 24, "offshore"],

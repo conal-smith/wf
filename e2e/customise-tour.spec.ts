@@ -71,6 +71,17 @@ test("Customise walks through the rider's settings and saves them, and the light
   await page.keyboard.press("PageUp");
   await expect(floor).toHaveAttribute("aria-valuetext", "13 kn");
   await expect.poll(() => preview.innerHTML()).not.toBe(before);
+  // Gusty wind: Some to start, and no gust curve to drag.
+  const gusty = wizard.getByRole("group", { name: "Gusty wind" });
+  await expect(gusty.getByRole("button", { name: "Some" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(
+    wizard.getByText("How much uneven wind bothers you."),
+  ).toBeVisible();
+  await expect(wizard.getByRole("slider", { name: /^Gusts/ })).toHaveCount(0);
+  await gusty.getByRole("button", { name: "A lot" }).click();
   await next.click();
 
   // 3. The shore: every way of wind but the kind one, never.
@@ -108,7 +119,10 @@ test("Customise walks through the rider's settings and saves them, and the light
   await expect(into).toHaveText("0°");
   await expect(wizard.locator(".cw-up-deg")).toHaveCount(0);
   const slide = wizard.getByRole("slider", { name: "Degrees into the wind" });
-  await expect(slide).toHaveAttribute("aria-valuetext", "straight across the wind");
+  await expect(slide).toHaveAttribute(
+    "aria-valuetext",
+    "straight across the wind",
+  );
   // The course's edge on the picture is a handle: dragged to 60° off the
   // wind, it is 30° into it.
   const pic = await wizard.locator(".cw-up-pic").boundingBox();
@@ -141,6 +155,9 @@ test("Customise walks through the rider's settings and saves them, and the light
   await expect(wizard.getByRole("row", { name: /^Upwind/ })).toContainText(
     "28° into the wind",
   );
+  await expect(wizard.locator("tr", { hasText: "Gusty wind" })).toContainText(
+    "A lot",
+  );
   await wizard.getByRole("button", { name: "Show me the chart" }).click();
   await expect(wizard).toHaveCount(0);
 
@@ -150,6 +167,7 @@ test("Customise walks through the rider's settings and saves them, and the light
   );
   expect(rider.upwind).toBe(28);
   expect(rider).not.toHaveProperty("pointing");
+  expect(rider.gusty).toBe("lots");
   expect(rider.custom.wind.min).toBe(13);
   expect(rider.custom.direction).toEqual({
     onshore: 5,

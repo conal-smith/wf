@@ -12,7 +12,6 @@ const CUSTOM: CustomRating = {
   version: CUSTOM_RATING_VERSION,
   base: "beginner",
   wind: { min: 15, sweetLow: 18, sweetHigh: 23, max: 27 },
-  gust: { fine: 24, worst: 30, most: 3 },
   direction: { onshore: 0.5, crossOn: 0, cross: 0, crossOff: 2.5, offshore: 0 },
 };
 import { ledger } from "./ledger";
@@ -26,9 +25,20 @@ describe("the worked example's ledger", () => {
           for (const custom of skill === "intermediate"
             ? [null, CUSTOM]
             : [null]) {
-            const rider: Rider = { skill, weightKg, wings, custom };
+            const rider: Rider = {
+              skill,
+              weightKg,
+              wings,
+              custom,
+              // Each of the three answers to gusty wind, turn about.
+              ...(weightKg === 60
+                ? { gusty: "lots" as const }
+                : weightKg === 110
+                  ? { gusty: "little" as const }
+                  : {}),
+            };
             for (let windKn = 4; windKn <= 38; windKn += 2)
-              for (const factor of [null, 1, 1.3, 1.45, 1.6, 2])
+              for (const factor of [null, 1, 1.3, 1.5, 1.6, 1.8, 2])
                 for (let from = 0; from < 360; from += 30)
                   for (const agreement of [
                     null,
@@ -81,38 +91,46 @@ describe("the worked example's ledger", () => {
     );
   });
 
-  it("gives the wind, the gusts by how strong they are, and the direction, line by line", () => {
+  it("gives the wind, how gusty it is, and the direction, line by line", () => {
+    const riding: Rider = { skill: "intermediate", weightKg: null, wings: [] };
     const worked = ledger(
-      { windKn: 22, gustKn: 34, from: 225, agreement: "high" },
+      { windKn: 18, gustKn: 27, from: 225, agreement: "high" },
       270,
-      { skill: "intermediate", weightKg: null, wings: [] },
+      riding,
     )!;
     expect(worked.lines).toEqual([
-      { what: "22.0 kn gusting 34.0 is rated as", figure: "22.0 kn" },
-      { what: "Stars for that wind", figure: "4.8, so 5 outlined" },
-      {
-        what: "Gusts to 34.0 kn, past the 28 kn that costs nothing",
-        figure: "−1",
-      },
+      { what: "18.0 kn gusting 27.0 is rated as", figure: "18.0 kn" },
+      { what: "Stars for that wind", figure: "5.0, so 5 outlined" },
+      { what: "Gusts to 27.0 kn, 1.50 times the wind: gusty", figure: "−1" },
       {
         what: "Wind cross-onshore, 45° from straight onshore",
         figure: "none",
       },
-      { what: "Rating", figure: "3.8, so 4 solid", total: true },
-      { what: "Wing", figure: "4 m²" },
+      { what: "Rating", figure: "4.0, so 4 solid", total: true },
+      { what: "Wing", figure: "4.5 m²" },
     ]);
     expect(
-      ledger({ windKn: 18, gustKn: 24, from: 90, agreement: null }, 270, {
-        skill: "intermediate",
-        weightKg: null,
-        wings: [],
-      })!.lines.slice(2, 4),
+      ledger(
+        { windKn: 18, gustKn: 24, from: 90, agreement: null },
+        270,
+        riding,
+      )!.lines.slice(2, 4),
     ).toEqual([
-      {
-        what: "Gusts to 24.0 kn, no more than the 28 kn that costs nothing",
-        figure: "none",
-      },
+      { what: "Gusts to 24.0 kn, 1.33 times the wind: steady", figure: "none" },
       { what: "Wind offshore, 180° from straight onshore", figure: "−4" },
+    ]);
+  });
+
+  it("stops at a gust over the rider's limit: no stars", () => {
+    const worked = ledger(
+      { windKn: 22, gustKn: 32, from: 225, agreement: "high" },
+      270,
+      { skill: "intermediate", weightKg: null, wings: [] },
+    )!;
+    expect([worked.stars, worked.potential]).toEqual([0, 0]);
+    expect(worked.lines.slice(1, 3)).toEqual([
+      { what: "Gusts to 32.0 kn, over your 30 kn limit", figure: "no stars" },
+      { what: "Rating", figure: "0, so 0 solid", total: true },
     ]);
   });
 
@@ -133,7 +151,7 @@ describe("the worked example's ledger", () => {
       figure: "custom",
     });
     expect(worked.lines.map((line) => line.what)).toContain(
-      "Gusts to 27.0 kn, past the 24 kn that costs nothing",
+      "Gusts to 27.0 kn, 1.50 times the wind: gusty",
     );
     expect(worked.stars).toBe(3);
   });

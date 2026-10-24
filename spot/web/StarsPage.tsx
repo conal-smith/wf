@@ -11,19 +11,19 @@
  * can pass the one in view.
  */
 import { useEffect, useMemo, useState } from "react";
-import {
-  starsFromAt,
-  leadText,
-  type StarsChoice,
-} from "../../force5/src/lead";
+import { starsFromAt, leadText, type StarsChoice } from "../../force5/src/lead";
 import { loadPrefs, saveRider } from "../../force5/src/prefs";
 import { onPrefsChange } from "../../shared/web/riderSync";
 import { shoreFacing } from "../../force5/src/shoreFacing";
 import { mapSpotHref, spotHref } from "../../force5/src/siteNav";
 import {
   SKILLS,
+  GUSTIES,
+  GUSTY_FROM,
+  GUSTY_LABEL,
+  GUSTY_OFF,
+  VERY_GUSTY_FROM,
   directionCosts,
-  gustCurve,
   rateOn,
   rideableWind,
   savedCustom,
@@ -164,11 +164,10 @@ export default function StarsPage() {
             Every hour is rated from one forecast model&rsquo;s own wind, gust
             and direction, never from a mix of several: the model you pick to
             see, on the map and here. Unless you pick another that is HARMONIE,
-            Met &Eacute;ireann&rsquo;s 2 km model, for as far as its run
-            reaches (about two and a half days). Past the end of any
-            model&rsquo;s run ECMWF takes over, which runs fifteen days. Where
-            one hands over to the other, the spot page says so between the
-            hours.
+            Met &Eacute;ireann&rsquo;s 2 km model, for as far as its run reaches
+            (about two and a half days). Past the end of any model&rsquo;s run
+            ECMWF takes over, which runs fifteen days. Where one hands over to
+            the other, the spot page says so between the hours.
           </p>
           <p className={s.p()}>
             Your stars now come from{" "}
@@ -193,8 +192,9 @@ export default function StarsPage() {
             The stars rate the steady wind, the average: it is what holds you up
             on the foil, and what decides whether a session is on. Below your
             minimum a gust is a chance to get up, so it can lift the hour to
-            your minimum, worth a star, and no further. Above it, the gusts take
-            stars off only when they are strong (section 5).
+            your minimum, worth a star, and no further. Above it, gusty wind
+            takes stars off, and a gust over your maximum leaves the hour none
+            (section 5).
           </p>
           <p className={s.p()}>
             Learners get the smallest boost, because they still drop off the
@@ -210,7 +210,7 @@ export default function StarsPage() {
           <p className={s.p()}>
             Each level has its own range. Below the minimum you cannot stay up
             on the foil for long. In the middle of the sweet spot the hour gets
-            five stars. Past the maximum it is more than you will want to hold.
+            five stars. The maximum is the most you can hold, gusts included.
           </p>
           <ScoreChart rider={rider} width={width} />
           <BandTable rider={rider} />
@@ -241,11 +241,17 @@ export default function StarsPage() {
             5. What else <em className="font-normal">takes stars off</em>
           </SectionHeading>
           <p className={s.p()}>
-            Strong gusts. It is how strong a gust is that counts, not how far it
-            runs over the average: up to the first figure it costs nothing, then
-            more and more, to the most from the second.
+            Gusts over your maximum. The hour gets no stars at all, not even
+            outlined ones.
           </p>
-          <GustTable rider={rider} />
+          <p className={s.p()}>
+            Gusty wind. An hour is gusty when its gusts are {GUSTY_FROM} times
+            the average or more, and very gusty from {VERY_GUSTY_FROM} times.
+            How many stars that costs depends on how much gusty wind bothers
+            you, which you set in Customise on the map. Below your minimum it
+            costs nothing.
+          </p>
+          <GustyTable rider={rider} />
           <OtherTable />
           <p className={s.small()}>
             Hover over or tap an hour&rsquo;s stars to see what it lost, and
@@ -279,7 +285,7 @@ export default function StarsPage() {
           <WorkedExample spotId={spotId} rider={rider} />
         </section>
 
-        <p className={s.small()}>wingfoil.ie star rating, version 5.</p>
+        <p className={s.small()}>wingfoil.ie star rating, version 6.</p>
       </main>
     </SpotFrame>
   );
@@ -772,58 +778,47 @@ function ShoreTable({ rider }: { rider: Rider }) {
   );
 }
 
-/** The gusts' curve for each level, at this rider's weight, and theirs. */
-function GustTable({ rider }: { rider: Rider }) {
+/** Stars off for gusty wind, by how much it bothers the rider: theirs marked. */
+function GustyTable({ rider }: { rider: Rider }) {
   const s = styles();
-  const rows: [string, (column: Column) => string][] = [
-    [
-      "No effect up to",
-      (column) =>
-        `${Math.round(gustCurve(columnRider(rider, column)).fine)}\u00a0kn`,
-    ],
-    [
-      "Most off from",
-      (column) =>
-        `${Math.round(gustCurve(columnRider(rider, column)).worst)}\u00a0kn`,
-    ],
-    [
-      "Most off",
-      (column) => starsOff(gustCurve(columnRider(rider, column)).most),
-    ],
-  ];
+  const theirs = rider.gusty ?? "some";
+  const rows = [
+    ["gusty", `${GUSTY_FROM} times the average or more`],
+    ["very-gusty", `${VERY_GUSTY_FROM} times or more`],
+  ] as const;
   return (
-    <table className={s.table()} data-gust-table>
+    <table className={s.table()} data-gusty-table>
       <thead>
         <tr>
           <th className={s.th()}>Gusts</th>
-          {columns(rider).map((column) => (
+          {GUSTIES.map((gusty) => (
             <th
-              key={column}
+              key={gusty}
               className={s.th({
-                className: isYou(rider, column) ? s.you() : undefined,
+                className: gusty === theirs ? s.you() : undefined,
               })}
             >
-              {columnName(column)}
+              {GUSTY_LABEL[gusty]}
             </th>
           ))}
         </tr>
       </thead>
       <tbody>
-        {rows.map(([what, figure]) => (
-          <tr key={what}>
+        {rows.map(([kind, what]) => (
+          <tr key={kind}>
             <td className={s.td()}>{what}</td>
-            {columns(rider).map((column) => (
+            {GUSTIES.map((gusty) => (
               <td
-                key={column}
+                key={gusty}
                 className={s.td({
                   className: [
                     s.num(),
                     s.wraps(),
-                    isYou(rider, column) ? s.you() : "",
+                    gusty === theirs ? s.you() : "",
                   ],
                 })}
               >
-                {figure(column)}
+                {starsOff(GUSTY_OFF[gusty][kind])}
               </td>
             ))}
           </tr>
@@ -833,7 +828,6 @@ function GustTable({ rider }: { rider: Rider }) {
   );
 }
 
-/** The rest, the same for every level. */
 function OtherTable() {
   const s = styles();
   const rows: [string, string][] = [

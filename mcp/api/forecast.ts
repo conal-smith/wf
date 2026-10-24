@@ -1548,9 +1548,10 @@ export interface FindOptions {
 }
 
 /**
- * How far over its mean an hour may gust before its session is flagged
- * `gusty`. The stars take nothing off for a riding day's 8 or 9 knots over the
- * mean (force5/src/stars.ts); a gust 12 or more over it is a different day.
+ * How far over its mean an hour may gust before a search's session is flagged
+ * `gusty`: a flag for the reader, apart from the stars, which judge gusty wind
+ * by gust ÷ mean and take everything off a gust over the rider's limit
+ * (force5/src/stars.ts, v6).
  */
 export const GUSTY_SPREAD_KN = 12;
 

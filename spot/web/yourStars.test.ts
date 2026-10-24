@@ -15,13 +15,10 @@ import {
   WIND_TOP,
   breakdown,
   forceBand,
-  forceGusts,
   forceTicks,
   gridStars,
   halfStars,
   knotsOf,
-  moveGust,
-  moveGustForce,
   moveWind,
   moveWindForce,
   offAt,
@@ -40,12 +37,11 @@ import {
   withRating,
 } from "./yourStars";
 
-// The mockup's desktop rider: about 20 knots, and no gusts much over 25.
+// The mockup's desktop rider: about 20 knots, and nothing over 27.
 const MOCKUP: CustomRating = {
   version: CUSTOM_RATING_VERSION,
   base: "intermediate",
   wind: { min: 15, sweetLow: 18, sweetHigh: 23, max: 27 },
-  gust: { fine: 24, worst: 30, most: 3 },
   direction: { onshore: 0.5, crossOn: 0, cross: 0, crossOff: 2.5, offshore: 4 },
 };
 
@@ -90,13 +86,6 @@ describe("the handles", () => {
     expect(moveWind(MOCKUP, "sweetHigh", 5).wind.sweetHigh).toBe(19);
     expect(moveWind(MOCKUP, "min", 0).wind.min).toBe(2);
     expect(moveWind(MOCKUP, "max", 99).wind.max).toBe(WIND_TOP);
-    expect(moveGust(MOCKUP, "fine", 45).gust).toEqual({
-      fine: 29,
-      worst: 30,
-      most: 3,
-    });
-    expect(moveGust(MOCKUP, "worst", 3).gust.worst).toBe(25);
-    expect(moveGust(MOCKUP, "worst", 80).gust.worst).toBe(GUST_TOP);
   });
   it("set a direction in half stars, offshore as freely as any", () => {
     expect(setDirection(MOCKUP, "offshore", 0).direction.offshore).toBe(0);
@@ -133,30 +122,36 @@ describe("the examples", () => {
     const stars = (r: typeof rider) =>
       EXAMPLES.map(([w, g, d]) => rateExample(r, w, g, d).stars);
     expect(stars(onLevel(rider, MOCKUP))).toEqual([
-      1, 2, 4, 5, 5, 4, 2, 4, 4, 1,
+      1, 1, 4, 2, 5, 4, 0, 0, 5, 4, 1,
     ]);
     expect(stars(withRating(rider, MOCKUP))).toEqual([
-      0, 1, 1, 4, 3, 2, 0, 4, 2, 0,
+      0, 1, 1, 0, 4, 3, 0, 0, 4, 2, 0,
     ]);
     const learning = standardRating(rider, "beginner");
     expect(stars(onLevel(rider, learning))).toEqual(
       stars(withRating(rider, learning)),
     );
     expect(stars(onLevel(rider, learning))).toEqual([
-      0, 1, 3, 4, 2, 0, 0, 3, 1, 0,
+      0, 1, 4, 0, 5, 0, 0, 0, 5, 2, 0,
     ]);
   });
   it("break an hour down as the readout says it", () => {
-    const { rating, wind, gusts, direction } = breakdown(
-      withRating(DEFAULT_RIDER, standardRating(DEFAULT_RIDER, "beginner")),
-      18,
-      27,
-      "crossOn",
-    );
-    expect(rating.stars).toBe(2);
-    expect(wind).toBe(5);
-    expect(gusts).toBeCloseTo(2.625, 9);
-    expect(direction).toBe(0);
+    const riding = withRating(DEFAULT_RIDER, standardRating(DEFAULT_RIDER));
+    // Very gusty: two off a 4.4.
+    expect(breakdown(riding, 15, 27, "crossOn")).toMatchObject({
+      rating: { stars: 2, potential: 4 },
+      wind: 4.4,
+      over: false,
+      gusts: 2,
+      direction: 0,
+    });
+    // A gust over 30: nothing else counts.
+    expect(breakdown(riding, 22, 32, "crossOff")).toMatchObject({
+      rating: { stars: 0, potential: 0 },
+      over: true,
+      gusts: 0,
+      direction: 0,
+    });
   });
 });
 
@@ -165,8 +160,10 @@ describe("the grid", () => {
     const grid = gridStars(withRating(DEFAULT_RIDER, MOCKUP), "crossOn");
     expect(grid).toHaveLength(WIND_TOP / 2);
     expect(grid[0]).toHaveLength(GUST_TOP / 2);
-    // 18–20 kn gusting 24–26 kn is the mockup's four stars.
-    expect(grid[9][12]).toBe(4);
+    // 18–20 kn gusting 24–26 kn is steady and in the sweet spot; gusting
+    // 28–30 it is over the rider's 27.
+    expect(grid[9][12]).toBe(5);
+    expect(grid[9][14]).toBe(0);
     expect(grid[10][2]).toBeNull();
   });
 });
@@ -278,17 +275,6 @@ describe("Force: the handles on whole forces", () => {
     expect(up.wind.max).toBe(33);
     const down = moveWindForce(up, "max", stepped(up.wind.max, -1, bft));
     expect(down.wind.max).toBe(27);
-  });
-
-  it("sets the gusts on forces' last knots, a force apart", () => {
-    const set = forceGusts(MOCKUP); // 24 and 30 kn: F6 and F7
-    expect(set.gust.fine).toBe(27);
-    expect(set.gust.worst).toBe(33);
-    expect(moveGustForce(set, "fine", 30).gust.fine).toBe(27);
-    expect(moveGustForce(set, "worst", 45).gust.worst).toBe(47);
-    expect(moveGustForce(set, "worst", 60).gust.worst).toBe(47);
-    expect(moveGustForce(set, "worst", 10).gust.worst).toBe(33);
-    expect(forceGusts(set)).toEqual(set);
   });
 
   it("ticks a scale where each force starts", () => {

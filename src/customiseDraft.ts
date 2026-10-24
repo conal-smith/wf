@@ -5,10 +5,12 @@
  * through the same functions (force5/src/prefs.ts), so the lights, the dock
  * and every other page rate the hours as the wizard left them.
  *
- * The wizard's wind, gusts and shore are a custom star rating
- * (force5/src/stars.ts `CustomRating`): the band, the gust curve and the stars
- * each way of wind takes off. Left as the level has them, the level rates and
- * no custom rating is saved; changed, they are the rider's own.
+ * The wizard's wind and shore are a custom star rating
+ * (force5/src/stars.ts `CustomRating`): the band and the stars each way of
+ * wind takes off. Left as the level has them, the level rates and no custom
+ * rating is saved; changed, they are the rider's own. How much gusty wind
+ * bothers the rider is theirs whatever rates, so it is kept on the rider, as
+ * how high they point is.
  */
 import {
   parseRider,
@@ -26,6 +28,7 @@ import {
   standardRating,
   type CustomRating,
   type DirectionKey,
+  type Gusty,
   type HourRating,
   type Rider,
   type Skill,
@@ -40,7 +43,9 @@ export interface Draft {
   weightKg: number | null;
   /** Degrees into the wind, past straight across it: the level's until changed. */
   upwind: number;
-  /** The wind band, the gusts and the shore: the level's until changed. */
+  /** How much gusty wind bothers them. */
+  gusty: Gusty;
+  /** The wind band and the shore: the level's until changed. */
   custom: CustomRating;
   units: Units;
   /** The rider's spots, most recently starred first. */
@@ -58,6 +63,7 @@ export function draftOf(prefs: Prefs, starred: readonly string[]): Draft {
     skill,
     weightKg: rider.weightKg,
     upwind: upwindOf({ skill, upwind: rider.upwind }),
+    gusty: rider.gusty ?? "some",
     custom: rider.custom
       ? lockShore(rider.custom)
       : levelRating(skill, rider.weightKg),
@@ -86,13 +92,13 @@ export function onItsLevel(draft: Draft): boolean {
   );
 }
 
-/** A level's own band, gusts and shore for a rider of this weight. */
+/** A level's own band and shore for a rider of this weight. */
 export const levelRating = (skill: Skill, weightKg: number | null) =>
   lockShore(standardRating({ ...DEFAULT_RIDER, skill, weightKg }, skill));
 
 /**
- * A new level or weight: the wind, the gusts and the shore start again from
- * that level's, as Display options' level does. A new level starts the
+ * A new level or weight: the wind and the shore start again from that
+ * level's, as Display options' level does. A new level starts the
  * degrees into the wind again from its own too; a new weight leaves them.
  */
 export const withLevel = (
@@ -114,6 +120,7 @@ export const draftRider = (draft: Draft, rider: Rider): Rider => ({
   skill: draft.skill,
   weightKg: draft.weightKg,
   upwind: draft.upwind,
+  gusty: draft.gusty,
   custom: draft.custom,
   keptCustom: null,
 });
@@ -181,9 +188,10 @@ export const starsOff = (off: number) =>
 /* ---- saving ---- */
 
 /**
- * The preferences with the draft saved: the rider's level, weight and
- * degrees into the wind, the units, and either the level rating (the draft's wind, gusts
- * and shore left as the level has them, the rider's own rating kept aside) or
+ * The preferences with the draft saved: the rider's level, weight, degrees
+ * into the wind and gusty wind, the units, and either the level rating (the
+ * draft's wind and shore left as the level has them, the rider's own rating
+ * kept aside) or
  * the draft as the rider's own rating. Through the same functions Display
  * options and "Your star rating" save with, so the account's copy is stamped
  * the same way.
@@ -198,6 +206,7 @@ export function applyDraft(
     skill: draft.skill,
     weightKg: draft.weightKg,
     upwind: draft.upwind,
+    gusty: draft.gusty,
   });
   const next: Prefs = { ...prefs, units: draft.units, rider };
   const custom = { ...draft.custom, base: draft.skill };

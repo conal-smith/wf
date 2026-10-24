@@ -22,9 +22,13 @@ import Svg, {
   Text as SvgText,
 } from "react-native-svg";
 import {
+  GUSTIES,
+  GUSTY_FROM,
+  GUSTY_LABEL,
+  GUSTY_OFF,
   SKILLS,
+  VERY_GUSTY_FROM,
   directionCosts,
-  gustCurve,
   rateOn,
   rideableWind,
   savedCustom,
@@ -95,8 +99,9 @@ export function StarsScreen() {
             The stars rate the steady wind, the average: it is what holds you up
             on the foil, and what decides whether a session is on. Below your
             minimum a gust is a chance to get up, so it can lift the hour to
-            your minimum, worth a star, and no further. Above it, the gusts take
-            stars off only when they are strong (section 4).
+            your minimum, worth a star, and no further. Above it, gusty wind
+            takes stars off, and a gust over your maximum leaves the hour none
+            (section 4).
           </P>
           <P>
             Learners get the smallest boost, because they still drop off the
@@ -122,7 +127,7 @@ export function StarsScreen() {
           <P>
             Each level has its own range. Below the minimum you cannot stay up
             on the foil for long. In the middle of the sweet spot the hour gets
-            five stars. Past the maximum it is more than you will want to hold.
+            five stars. The maximum is the most you can hold, gusts included.
           </P>
           <ScoreChart rider={rider} width={inner} />
           <BandTable rider={rider} />
@@ -147,11 +152,16 @@ export function StarsScreen() {
 
         <Section n={4} title="What else" soft="takes stars off">
           <P>
-            Strong gusts. It is how strong a gust is that counts, not how far it
-            runs over the average: up to the first figure it costs nothing, then
-            more and more, to the most from the second.
+            Gusts over your maximum. The hour gets no stars at all, not even
+            outlined ones.
           </P>
-          <GustTable rider={rider} />
+          <P>
+            Gusty wind. An hour is gusty when its gusts are {GUSTY_FROM} times
+            the average or more, and very gusty from {VERY_GUSTY_FROM} times.
+            How many stars that costs depends on how much gusty wind bothers
+            you. Below your minimum it costs nothing.
+          </P>
+          <GustyTable rider={rider} />
           <OtherTable />
           <P>
             Every hour is rated from one model&rsquo;s own forecast, the model
@@ -184,7 +194,7 @@ export function StarsScreen() {
         </Section>
 
         <T variant="caption" color="muted" style={styles.italic}>
-          wingfoil.ie star rating, version 5.
+          wingfoil.ie star rating, version 6.
         </T>
       </ScrollView>
     </>
@@ -687,30 +697,22 @@ function ShoreTable({ rider }: { rider: Rider }) {
   );
 }
 
-/** The gusts' curve for each level, at this rider's weight, and theirs. */
-function GustTable({ rider }: { rider: Rider }) {
-  const cols = columns(rider);
-  const rows: [string, (column: Column) => string][] = [
-    [
-      "No effect up to",
-      (column) =>
-        `${Math.round(gustCurve(columnRider(rider, column)).fine)}\u00a0kn`,
-    ],
-    [
-      "Most off from",
-      (column) =>
-        `${Math.round(gustCurve(columnRider(rider, column)).worst)}\u00a0kn`,
-    ],
-    [
-      "Most off",
-      (column) => starsOff(gustCurve(columnRider(rider, column)).most),
-    ],
-  ];
+/** Stars off for gusty wind, by how much it bothers the rider: theirs marked. */
+function GustyTable({ rider }: { rider: Rider }) {
+  const theirs = rider.gusty ?? "some";
   return (
     <Table
-      head={["Gusts", ...cols.map(columnName)]}
-      rows={rows.map(([what, figure]) => [what, ...cols.map(figure)])}
-      you={{ column: cols.findIndex((column) => isYou(rider, column)) + 1 }}
+      head={["Gusts", ...GUSTIES.map((gusty) => GUSTY_LABEL[gusty])]}
+      rows={(
+        [
+          ["gusty", `${GUSTY_FROM} times the average or more`],
+          ["very-gusty", `${VERY_GUSTY_FROM} times or more`],
+        ] as const
+      ).map(([kind, what]) => [
+        what,
+        ...GUSTIES.map((gusty) => starsOff(GUSTY_OFF[gusty][kind])),
+      ])}
+      you={{ column: GUSTIES.indexOf(theirs) + 1 }}
     />
   );
 }
