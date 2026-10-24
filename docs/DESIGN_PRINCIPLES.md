@@ -515,6 +515,25 @@ so. The Almanac's line and its puffin left the menu. Its corners and shadow are
 the theme's (`rounded-r-dialog`, `shadow-sheet`), so it takes any change to
 those with the rest of the site (`force5/src/SiteMenu.tsx`).
 
+**2026-10-24 — The current is a row of the dock.** "I'm on the currents layer
+but it's not showing me the current speed anywhere." The rows below the fold
+gain one, under the waves: the surface current's speed in the rider's wind
+unit, to a tenth, with an arrow where the water runs to (a current is named
+for where it goes, the wind and the waves for where they come from); water
+has no forces, so a rider in Force reads it in knots. Its unit stands under
+its glyph, as the wind's does. A riding place's is the series
+the currents ingest publishes for it in the run's spot squares; a tapped
+point's is its own, from the nearest water in the map's frames, not a nearby
+place's. Where the model has nothing, the row says so once, as the waves'
+does; past the run's three days, a dash. It is read only once the rows are
+open, as the waves and the weather are.
+
+**2026-10-24 — The LiDAR layer is off.** Its surveys reach Dublin's coast,
+Tralee and Brandon Bays, Lough Foyle and Northern Ireland's coast, so on the
+rest of the map it drew nothing and looked broken. The site has no LiDAR
+layer and serves none of it; the pipeline and what it would take to bring
+the layer back (wider coverage) are in scripts/lidar/README.md.
+
 ---
 
 ## Still open

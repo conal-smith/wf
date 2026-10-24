@@ -77,7 +77,9 @@ if ARCHIVE_ROOT in DATA_ROOTS:
 # the foilable-depth archives, the chart's bathymetry, the satellite imagery, the
 # intertidal heights from it and the LiDAR layer. Nothing in the registry points at them, so to a sweep they would be
 # "unreferenced". They are not data roots, no sweep lists them, and `delete_keys`
-# refuses any key inside them, as for the archive.
+# refuses any key inside them, as for the archive. The LiDAR layer is off since
+# 2026-10-24 (scripts/lidar/README.md), but its objects stay until the owner removes
+# them by hand: a sweep never does.
 STATIC_ROOTS = ("foildepth", "bathy", "satellite", "intertidal", "lidar")
 for _root in STATIC_ROOTS:
     if _root in DATA_ROOTS:

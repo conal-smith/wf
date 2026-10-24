@@ -1,6 +1,9 @@
 # The LiDAR layer
 
-A map layer (Layers → Chart → **LiDAR data**, off by default) that shows every
+**Off since 24 October 2026.** See [Off](#off) below: the site has no LiDAR
+layer and serves none of it. This pipeline and the published set are kept.
+
+It was a map layer (Layers → Ground → **LiDAR**, off by default) that showed every
 LiDAR survey we hold where it reaches the coast: the ground's height above the
 lowest tide (LAT, chart datum, the dock's tides' datum), coloured and
 hillshaded, so the sandbars, channels, beaches and reefs a rider cares about
@@ -77,14 +80,40 @@ trial).
 
 `publish.py` versions the set by content under `lidar/v<12 hex>/` on the
 bucket behind https://data.wingfoil.ie (only ever adding objects; the sweep in
-`force5/ingest/prune.py` never touches `lidar/`), writes the site's index
-`public/lidar/index.json` with that `base`, and with `--offline` cuts a small
-set (Malahide to Howth) into `public-data/lidar/v…/` for the dev server and
-the e2e site.
+`force5/ingest/prune.py` never touches `lidar/`). With `--site` it also writes
+the site's index `public/lidar/index.json` with that `base`, and with
+`--offline` cuts a small set (Malahide to Howth) into `public-data/lidar/v…/`
+for the dev server and the e2e site. While the layer is off, leave `--site`
+out: the repo is not touched.
 
-The app (`force5/src/lidar.ts`, `src/useLidar.ts`) loads nothing until the
-layer is turned on: then the index, then the archive's tiles by range as the
-view needs them, and the outline.
+## Off
+
+The owner took the layer off on 24 October 2026. The surveys reach only
+Dublin's coast, Tralee and Brandon Bays, Lough Foyle and Northern Ireland's
+coast, so everywhere else the layer drew nothing and looked broken. So:
+
+- The site has no LiDAR layer: no entry in Layers, no key, no part in "About
+  the map", no code (`force5/src/lidar.ts`, `src/useLidar.ts`,
+  `src/LidarKey.tsx` were removed; they are in git history). A rider's stored
+  choice of it is ignored.
+- The site does not serve it: `public/lidar/index.json` (the pointer the
+  build copied into every deploy) and the committed offline set
+  `public-data/lidar/` were removed, and neither the dev server's data proxy
+  (`vite.config.ts`) nor the e2e site (`scripts/e2e-site.mjs`) serves
+  `lidar/` any more.
+- The published objects are still on the data host, under `lidar/v…/`
+  (`lidar/v1f0f7d51cdae/` was the last the site pointed at). Nothing reads
+  them. Removing them is the owner's call; `prune.py` leaves `lidar/` alone
+  either way.
+
+To bring it back it needs wider coverage first: most of the coast a rider
+uses, not four stretches of it. GSI and OPW's national LiDAR reaches much more
+of the Republic's coast than the pilots took (fetch its tiles with
+`scripts/foildepth/fetch_pilots.py`'s lists and build again), and INFOMAR's
+bathymetric LiDAR covers more bays. With that, restore the client from git
+history, run `publish.py --site` (and `--offline` for the dev and e2e sites),
+put `lidar` back in the static-data paths in `vite.config.ts` and
+`scripts/e2e-site.mjs`, and add the layer to Layers again.
 
 ## Limits
 

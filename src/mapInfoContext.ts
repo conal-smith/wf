@@ -7,7 +7,6 @@ export type InfoSection =
   | "wind"
   | "blend"
   | "foil"
-  | "lidar"
   | "currents"
   | "satellite"
   | "sources"

@@ -18,7 +18,6 @@ import {
   RingGlyph,
   SatelliteGlyph,
   SoundingsGlyph,
-  SurveyGlyph,
   TidalDepthGlyph,
   TintsGlyph,
 } from "./chartGlyphs";
@@ -259,17 +258,6 @@ export function layerGroups({
           "The sand bared",
           <LowTideGlyph size={18} />,
         ),
-        {
-          ...part(
-            "lidar",
-            "LiDAR",
-            "The foreshore's shape",
-            "lidar",
-            <SurveyGlyph size={18} />,
-            { label: "About the LiDAR data", at: "lidar" },
-          ),
-          isNew: true,
-        },
       ],
     },
     {

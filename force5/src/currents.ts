@@ -12,6 +12,7 @@ import { runPath } from "./spotData";
 import {
   validateVariablesManifest,
   type BundleFrame,
+  type VariableStep,
   type VariablesManifest,
 } from "./variables";
 import {
@@ -20,14 +21,19 @@ import {
   type TidalStreamAt,
   type TidalStreamSite,
 } from "./tidalStreams";
-import { KNOTS, convert, scaleUnits, unitLabel, type Units } from "./units";
+import { KNOTS, type Units } from "./units";
 import type { Grid } from "./weather";
+import {
+  MIN_ARROW_MS,
+  currentText,
+  type CurrentReading,
+} from "./currentReading";
+
+export { MIN_ARROW_MS, currentText, type CurrentReading };
 
 export const CURRENTS_URL = "weather/currents.json";
 /** A frame further than this from the hour shown is not that hour's current. */
 export const CURRENTS_MATCH_MS = 30 * 60000;
-/** Slower than this (about 0.1 kn) and an arrow says nothing worth drawing. */
-export const MIN_ARROW_MS = 0.05;
 /** The credit and caveat the layer is shown with, wherever it is shown. */
 export const CURRENTS_CREDIT =
   "Currents: the Marine Institute's NE Atlantic ROMS model (CC BY 4.0), and tidal stream curves from published pilotage guides";
@@ -140,13 +146,6 @@ export interface CurrentFeature {
   };
 }
 
-/**
- * A speed held in m/s, in the rider's units, to a tenth: currents are slow.
- * Water has no forces: a rider in Force reads a stream in knots.
- */
-export const currentText = (metresPerSecond: number, units: Units) =>
-  `${convert(metresPerSecond, scaleUnits(units)).toFixed(1)} ${unitLabel(scaleUnits(units))}`;
-
 /** Every wet cell of a frame faster than MIN_ARROW_MS, as features. */
 export function modelArrows(
   frame: Pick<CurrentsFrame, "u" | "v">,
@@ -231,3 +230,104 @@ export const streamLine = (at: TidalStreamAt, units: Units) =>
   at.slack
     ? "Slack water"
     : `${at.stream === "flood" ? "Flood" : "Ebb"} ${currentText(at.knots / KNOTS, units)} towards ${compass(at.towards)}`;
+
+/* ---- the dock's row: one place's current, hour by hour ---- */
+
+/**
+ * How far from a tapped point the dock will read the water of a frame's cell:
+ * the ingest's own reach for a spot's cell (SEARCH_KM in
+ * force5/ingest/fetch_currents.py). Where the frame's cells stand further
+ * apart than that, as they do (every fourth of the model's, about 3.3 km by
+ * 5.6 km), the reach is one cell's diagonal instead, so a point by the shore
+ * whose own cell is land reads the water one cell on.
+ */
+export const CURRENT_POINT_KM = 5;
+const KM_PER_DEGREE = 111.195;
+
+/** A frame's cell with water in it, and how far it is from the point asked about. */
+export interface CurrentCell {
+  /** Its index in the frame's u and v: rows north to south, west to east. */
+  index: number;
+  lat: number;
+  lon: number;
+  km: number;
+}
+
+/**
+ * The cell with water nearest a point, indexed as `modelArrows` reads the
+ * frame, or null when none is within reach (`CURRENT_POINT_KM`): off the
+ * grid, or inland of the model's coast. Land is null in a frame, never zero.
+ */
+export function nearestWetCell(
+  frame: Pick<CurrentsFrame, "u" | "v">,
+  grid: Grid,
+  lat: number,
+  lon: number,
+): CurrentCell | null {
+  const kmX = grid.dx * KM_PER_DEGREE * Math.cos((lat * Math.PI) / 180);
+  const kmY = grid.dy * KM_PER_DEGREE;
+  if (!(kmX > 0 && kmY > 0)) return null;
+  const reach = Math.max(CURRENT_POINT_KM, Math.hypot(kmX, kmY));
+  const fx = (lon - grid.west) / grid.dx;
+  const fy = (grid.north - lat) / grid.dy;
+  const x0 = Math.max(0, Math.floor(fx - reach / kmX));
+  const x1 = Math.min(grid.width - 1, Math.ceil(fx + reach / kmX));
+  const y0 = Math.max(0, Math.floor(fy - reach / kmY));
+  const y1 = Math.min(grid.height - 1, Math.ceil(fy + reach / kmY));
+  let best: CurrentCell | null = null;
+  for (let y = y0; y <= y1; y++)
+    for (let x = x0; x <= x1; x++) {
+      const index = y * grid.width + x;
+      if (frame.u[index] == null || frame.v[index] == null) continue;
+      const km = Math.hypot((x - fx) * kmX, (y - fy) * kmY);
+      // A hair over the reach: a cell exactly one diagonal off is in it.
+      if (km <= reach + 1e-6 && (!best || km < best.km))
+        best = {
+          index,
+          lat: grid.north - y * grid.dy,
+          lon: grid.west + x * grid.dx,
+          km,
+        };
+    }
+  return best;
+}
+
+/** The current in one cell of a frame, or null where the frame has none. */
+export function currentAt(
+  frame: Pick<CurrentsFrame, "u" | "v">,
+  index: number,
+): CurrentReading | null {
+  const u = frame.u[index];
+  const v = frame.v[index];
+  if (u == null || v == null) return null;
+  return { speed: Math.hypot(u, v), towards: towards(u, v) };
+}
+
+const usableComponent = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 10;
+
+/**
+ * A spot's published series (`spotSeries`) on the dock's columns: for each,
+ * the step nearest it, if one is within `CURRENTS_MATCH_MS`, as a reading.
+ * Past the run's end, before its start, and at a step with no water, null.
+ */
+export function currentsAtAxis(
+  series: readonly Pick<VariableStep, "validTime" | "values">[],
+  axis: readonly string[],
+): (CurrentReading | null)[] {
+  const steps = series
+    .map((step) => ({ time: Date.parse(step.validTime), step }))
+    .filter(({ time }) => Number.isFinite(time));
+  return axis.map((validTime) => {
+    const time = Date.parse(validTime);
+    let near: (typeof steps)[number] | null = null;
+    for (const step of steps)
+      if (!near || Math.abs(step.time - time) < Math.abs(near.time - time))
+        near = step;
+    if (!near || Math.abs(near.time - time) > CURRENTS_MATCH_MS) return null;
+    const { u, v } = near.step.values;
+    return usableComponent(u) && usableComponent(v)
+      ? { speed: Math.hypot(u, v), towards: towards(u, v) }
+      : null;
+  });
+}

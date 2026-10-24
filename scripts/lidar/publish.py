@@ -12,17 +12,18 @@ left alone, one with a different size stops the run, nothing is deleted, and
 nothing outside lidar/v… is written. The bucket sweep (force5/ingest/prune.py,
 STATIC_ROOTS) never touches the prefix.
 
-Then the repo is pointed at it: public/lidar/index.json, the site's copy of
-the index with the set's `base`, which the app reads when the layer is turned
-on (force5/src/lidar.ts).
+The layer is off since 2026-10-24 (README.md, "Off"): the site has no LiDAR
+layer, and the repo is not pointed at the set unless `--site` asks for it.
+With `--site`, it writes public/lidar/index.json, the site's copy of the index
+with the set's `base`, which a LiDAR layer would read when turned on; the
+layer's client code is in git history (the commit that took it off).
 
-`--offline` cuts the set to a box (`--offline-bbox`, default the Malahide
-estuary to Howth) into public-data/lidar/v…/ with its own index, committed,
-so the dev server and the e2e site draw the layer with no network
-(scripts/e2e-site.mjs serves that index in place of the national one). Any
+`--offline` (with `--site`) cuts the set to a box (`--offline-bbox`, default
+the Malahide estuary to Howth) into public-data/lidar/v…/ with its own index,
+so the dev server and the e2e site could draw the layer with no network. Any
 older offline set there is removed.
 
-    python -I publish.py --set <root>/out [--env deploy/home-compute/.env --upload] [--offline]
+    python -I publish.py --set <root>/out [--env deploy/home-compute/.env --upload] [--site [--offline]]
 
 Credentials come from the env file (S3_BUCKET, S3_ENDPOINT_URL,
 AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) and are never printed.
@@ -86,10 +87,16 @@ def main():
     p.add_argument("--set", required=True, help="build.py's --out")
     p.add_argument("--env", help="the env file with the bucket's credentials")
     p.add_argument("--upload", action="store_true", help="put the objects in the bucket (else only the repo)")
-    p.add_argument("--offline", action="store_true", help="also cut a small set into public-data/lidar/")
+    p.add_argument("--site", action="store_true",
+                   help="point the site at the set (public/lidar/index.json); the layer is off since "
+                        "2026-10-24, so not by default")
+    p.add_argument("--offline", action="store_true",
+                   help="with --site, also cut a small set into public-data/lidar/")
     p.add_argument("--offline-bbox", default=OFFLINE_BBOX, help="w,s,e,n")
     p.add_argument("--repo", default=REPO)
     a = p.parse_args()
+    if a.offline and not a.site:
+        raise SystemExit("--offline is for the site's copy: it needs --site")
 
     index, files = lidar_set(a.set)
     base = f"lidar/{satellite.version_of(files)}/"
@@ -100,6 +107,9 @@ def main():
             raise SystemExit("--upload needs --env")
         env = satellite.read_env(a.env)
         print(f"bucket: {upload(satellite.client(env), env['S3_BUCKET'], base, index, files)}")
+    if not a.site:
+        print("repo: untouched (the LiDAR layer is off; --site points the site at the set)")
+        return
     write_json(os.path.join(a.repo, "public", "lidar", "index.json"), site_index(index, base))
     print(f"repo: public/lidar/index.json → {base}")
 

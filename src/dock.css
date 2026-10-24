@@ -214,7 +214,8 @@
   display: inline-flex;
   color: var(--color-ink-muted);
 }
-.dk-labs .dk-lab-wind {
+.dk-labs .dk-lab-wind,
+.dk-labs .dk-lab-stack {
   flex-direction: column;
   justify-content: center;
   gap: 0;
@@ -622,19 +623,22 @@ table.tt {
   position: sticky;
   left: 8px;
 }
-.wave-cell {
+.wave-cell,
+.current-cell {
   display: inline-flex;
   gap: 2px;
   align-items: center;
 }
-.wave-cell b {
+.wave-cell b,
+.current-cell b {
   font-weight: 600;
 }
 .wave-cell small {
   font-size: 9px;
   color: var(--color-ink-muted);
 }
-.wave-cell svg {
+.wave-cell svg,
+.current-cell svg {
   color: var(--color-depth);
 }
 .tt .weather-cell {

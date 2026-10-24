@@ -1444,14 +1444,14 @@ test("the strip runs fifteen days, the coarser far ones in narrower columns", as
   expect(widths[0]).toBeCloseTo(Math.max(...widths), 0);
 });
 
-test("waves, sky, air and rain are one tap away, and stay open", async ({
+test("waves, current, sky, air and rain are one tap away, and stay open", async ({
   page,
 }) => {
   await openDock(page);
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
   await expect(page.locator(".dock .dk-sea")).toHaveCount(0);
   await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
-  for (const row of ["waves", "sky", "air", "rain"])
+  for (const row of ["waves", "current", "sky", "air", "rain"])
     await expect(page.locator(`.dock tr.tt-${row}`)).toHaveCount(1);
   // The sea is one value for the week, and is the spot page's to say: no
   // row for it here, and nothing in the head.
@@ -1503,6 +1503,20 @@ test("waves, sky, air and rain are one tap away, and stay open", async ({
   await expect(page.locator(".dock tr.tt-rain td[data-i]").first()).toHaveText(
     /^(–|·|\d+(\.\d)?)$/,
   );
+  // The current, under the waves: its speed in the wind's unit to a tenth,
+  // and an arrow where the water runs to, for the sample run's three days.
+  await expect
+    .poll(() => page.locator(".dock tr.tt-current .current-cell b").count(), {
+      timeout: 20000,
+    })
+    .toBeGreaterThan(24);
+  const flow = page.locator(".dock tr.tt-current .current-cell").first();
+  await expect(flow.locator("b")).toHaveText(/^\d+\.\d$/);
+  await expect(flow).toHaveAttribute(
+    "title",
+    /^\d+\.\d kn( towards [NESW]{1,3})? · NE Atlantic ROMS$/,
+  );
+  await expect(page.locator(".dk-labs .dk-lab-stack small")).toHaveText("kn");
   // The rows stay open across a reload, for the next spot chosen.
   await page.reload();
   await chooseSpot(page, "brandon");
@@ -1541,6 +1555,50 @@ test("on a phone, the rows under the tide keep their units beside their glyphs",
     expect(box.x).toBeGreaterThanOrEqual(glyph.x + glyph.width);
     expect(box.x + box.width).toBeLessThanOrEqual(column.x + column.width);
   }
+  // The current's unit is the wind's, the rider's, so it stands under its
+  // glyph as the wind's does: "km/h" beside it would run into the hours.
+  const flow = page.locator(".dk-labs .dk-lab-stack small");
+  await expect(flow).toHaveText("kn");
+  const box = (await flow.boundingBox())!;
+  expect(box.x + box.width).toBeLessThanOrEqual(column.x + column.width);
+});
+
+test("a spot's current is its own published series, and says so once when there is none", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const asked: string[] = [];
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (/\/weather\/currents/.test(path)) asked.push(path);
+  });
+  await openDock(page);
+  // Nothing of the currents until the rows below the fold are open.
+  expect(asked).toEqual([]);
+  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  const row = page.locator(".dock tr.tt-current");
+  await expect
+    .poll(() => row.locator(".current-cell b").count(), { timeout: 20000 })
+    .toBeGreaterThan(0);
+  // The pointer and the spot's one square: not the map's frames.
+  expect(asked).toContain("/weather/currents.json");
+  expect(
+    asked.filter((path) => /\/spots\/[ns]\d\d[ew]\d{3}\.json$/.test(path)),
+  ).toHaveLength(1);
+  expect(asked.some((path) => /\/frames\//.test(path))).toBe(false);
+  // Unpublished, the row says so once, across the hours, as the waves' does.
+  await page.route("**/weather/currents.json", (route) =>
+    route.fulfill({ status: 404, body: "" }),
+  );
+  await page.reload();
+  await chooseSpot(page, "brandon");
+  await expect(row.locator("td.more-note")).toHaveText(
+    "No current forecast is published just now",
+    { timeout: 20000 },
+  );
+  await expect(row.locator("td")).toHaveCount(1);
+  expect(errors).toEqual([]);
 });
 
 /**
@@ -1831,6 +1889,16 @@ test("a point tapped off Dublin Bay reads wind, waves, weather and its nearest s
   await expect(dock.locator("tr.tt-waves")).not.toContainText(
     "riding places only",
   );
+  // The current is the point's own, not a riding place's: the nearest water
+  // in the currents' frames, hour by hour.
+  await expect
+    .poll(() => dock.locator("tr.tt-current .current-cell b").count(), {
+      timeout: 30000,
+    })
+    .toBeGreaterThan(24);
+  await expect(
+    dock.locator("tr.tt-current .current-cell b").first(),
+  ).toHaveText(/^\d+\.\d$/);
   // No blend: every model's frames sampled at a point is megabytes.
   await expect(dock.getByRole("button", { name: "Blend" })).toHaveCount(0);
   // And the dock closes from its own button, leaving the chart alone.
@@ -1974,8 +2042,12 @@ test.describe("on a phone", () => {
     // The hour is where it was: a drag up the hours is not a slide of them.
     await expect(dock.locator("tr.tt-hour td.c-sel")).toHaveCount(1);
     await expect.poll(() => offCursor(page)).toBeLessThan(2);
-    // A short quick flick is as good as a long pull: one snap down.
-    await swipe(page, head, 0, 30, 3);
+    // A short quick flick is as good as a long pull: one snap down. Short is
+    // under half of the 100 px from full to half (five rows below the fold),
+    // so it is the flick's speed, not its length, that carries the sheet
+    // there; on a slow runner the speed is read lower, and 30 px with it
+    // fell short of the middle once the current's row made the gap 100.
+    await swipe(page, head, 0, 45, 3);
     await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
     await expect(dock).not.toHaveClass(/is-peek/);
     // Down twice more: peek, then closed, the chart alone at the bare link.

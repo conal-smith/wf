@@ -100,7 +100,6 @@ function stageStaticData() {
     filter: (path) => !region.test(path),
   });
   stageOffline(data, "satellite");
-  stageOffline(data, "lidar");
   // The spot pictures are on the data host only, which the e2e site is not:
   // without their list a spot page draws none, and a spec that wants one
   // routes in a set of its own (e2e/spot-page.spec.ts).
@@ -118,7 +117,6 @@ function stageStaticData() {
 /**
  * The satellite imagery is the whole coast, far too large to commit: a small
  * set (Malahide to Bull Island, scripts/satellite/publish.py --offline) is,
- * and so is the LiDAR layer's (scripts/lidar/publish.py --offline),
  * with an index of its own, and the e2e site serves that index in place of
  * the national one, so it is read from disk too. With no offline set, no
  * index: the e2e site reads nothing from the network.

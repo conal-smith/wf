@@ -2,7 +2,7 @@
  * The Layers panel's pictures (src/LayersPanel.tsx): for each layer a small
  * square cut from the chart, a bit of coast drawn the way that layer draws
  * it. The ink streaks, the coloured wind, the tidal depth's bands, the
- * currents' arrows, a satellite photograph, the LiDAR's shaded ground.
+ * currents' arrows, a satellite photograph.
  *
  * Each picture is a few dozen SVG shapes, coloured with the theme's own
  * tokens (ui/theme.css), so the same colours the chart uses appear here. No
@@ -27,7 +27,6 @@ export type CuttingId =
   | "names"
   | "sat-high"
   | "sat-low"
-  | "lidar"
   | "loupe"
   | "ring"
   | "focus-off";
@@ -425,28 +424,6 @@ function cutting(id: CuttingId): ReactNode {
           <path d={COAST} fill="#8d9466" filter="url(#lp-land)" />
         </>
       );
-    case "lidar":
-      // The survey's ground heights in its own ramp (force5/src/lidar.ts),
-      // shaded from the north-west: the channels below datum blue, the sand
-      // above it in the yellows, the dunes pale.
-      return (
-        <>
-          <rect width="100" height="100" fill="#48739a" />
-          <path d={SHORE} fill="none" stroke="#a6c7d6" strokeWidth="110" />
-          <path d={SHORE} fill="none" stroke="#b4d8d0" strokeWidth="76" />
-          <path d={SHORE} fill="none" stroke="#c6e0b8" strokeWidth="56" />
-          <path d={SHORE} fill="none" stroke="#efdc9e" strokeWidth="38" />
-          <path d={SHORE} fill="none" stroke="#ebc88c" strokeWidth="20" />
-          <path d={COAST} fill="#e8e2cc" />
-          <rect
-            width="100"
-            height="100"
-            filter="url(#lp-shade)"
-            opacity="0.55"
-            style={{ mixBlendMode: "multiply" }}
-          />
-        </>
-      );
     case "loupe":
       return (
         <>
@@ -499,7 +476,7 @@ export function Cutting({ id }: { id: CuttingId }) {
 
 /**
  * What several cuttings share, drawn once in the panel: the coloured wind's
- * gradient, the photograph's mottle and the LiDAR's shading.
+ * gradient and the photograph's mottle.
  */
 export function CuttingDefs() {
   return (
@@ -551,17 +528,6 @@ export function CuttingDefs() {
           <feColorMatrix values="0 0 0 0 .3  0 0 0 0 .38  0 0 0 0 .2  0 0 0 1.1 -.1" />
           <feComposite in2="SourceGraphic" operator="in" />
           <feBlend in2="SourceGraphic" mode="multiply" />
-        </filter>
-        <filter id="lp-shade" x="0" y="0" width="100%" height="100%">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.05"
-            numOctaves="4"
-            seed="2"
-          />
-          <feDiffuseLighting surfaceScale="4" lightingColor="#ffffff">
-            <feDistantLight azimuth="315" elevation="38" />
-          </feDiffuseLighting>
         </filter>
       </defs>
     </svg>

@@ -29,7 +29,6 @@ import {
   type SatelliteOption,
 } from "../force5/src/satellite";
 import { useSatellite } from "./useSatellite";
-import { useLidar } from "./useLidar";
 import {
   areaAt,
   areasAt,
@@ -120,8 +119,6 @@ const Companion = lazy(() =>
 );
 // The account's copy of the rider, on a device that has signed in before.
 const AccountRider = lazy(() => import("../shared/web/AccountRider"));
-/** The LiDAR layer's key: with the map's information, and only its part. */
-const LidarKey = lazy(() => import("./LidarKey"));
 // Customise and the tour, each only when asked for; the tour's offer only on
 // a first visit (src/tourOffer.ts).
 const Customise = lazy(() => import("./Customise"));
@@ -230,8 +227,6 @@ const DEFAULT_LAYERS: MapLayers = {
   relief: true,
   names: true,
   foil: true,
-  // Off, and nothing of it loaded, until the rider asks for it.
-  lidar: false,
   // Off by default: nothing of it is read until a rider asks for it.
   currents: false,
   satellite: "off",
@@ -348,7 +343,11 @@ export default function App() {
   });
   const [layers, setLayers] = useState<MapLayers>(() => {
     try {
-      const saved = JSON.parse(store.get(LAYERS_KEY) ?? "{}");
+      // The LiDAR layer was taken off on 2026-10-24: a rider's stored choice
+      // of it is dropped, and goes from the store with their next change.
+      const { lidar: _lidar, ...saved } = JSON.parse(
+        store.get(LAYERS_KEY) ?? "{}",
+      );
       return {
         ...DEFAULT_LAYERS,
         ...saved,
@@ -1029,9 +1028,6 @@ export default function App() {
   const chooseSatellite = (option: SatelliteOption) =>
     chooseLayers({ ...layers, satellite: option });
 
-  /* ---- the LiDAR surveys' ground heights ---- */
-  const lidar = useLidar(layers.lidar);
-
   /* ---- foilable depth at the selected tide ---- */
   // The stations whose curves are wanted: those of the areas in view, of the
   // key's area and of a tapped point's. Set after each render that changes
@@ -1542,7 +1538,6 @@ export default function App() {
             against the tide predictions below.
           </li>
         )}
-        {lidar.index && <li>{lidar.index.attribution}</li>}
         <li>
           Coast and places: ©{" "}
           <a
@@ -1734,7 +1729,6 @@ export default function App() {
               foil={foilViews}
               currents={currents.features}
               satellite={satellite.image}
-              lidar={lidar.view}
               reducedMotion={reducedMotion}
               bottomInset={dockHeight}
               phone={phone}
@@ -1972,21 +1966,6 @@ export default function App() {
               error: foilState.error,
               floor: foilState.manifest?.floorMetres,
             }}
-            lidar={
-              // Off, its key's code is not loaded either.
-              layers.lidar ? (
-                <Suspense fallback={null}>
-                  <LidarKey index={lidar.index} error={lidar.error} />
-                </Suspense>
-              ) : (
-                <div className="foil-key" data-lidar-key>
-                  <p className="foil-at">
-                    Off. Turn it on in Layers, under Ground:
-                    &ldquo;LiDAR&rdquo;.
-                  </p>
-                </div>
-              )
-            }
             sources={sources}
             satellite={satellite.note}
             satelliteError={satellite.error}

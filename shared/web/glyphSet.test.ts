@@ -64,6 +64,7 @@ describe("the glyph set", () => {
       "gust",
       "direction",
       "waves",
+      "current",
       "air",
       "seaTemp",
       "drop",
@@ -116,6 +117,7 @@ describe("the glyph set", () => {
       "blend",
       "air",
       "waves",
+      "current",
       // The site menu's sections.
       "windMap",
       "market",

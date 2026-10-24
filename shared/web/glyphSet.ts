@@ -305,6 +305,15 @@ export const tideFalling: GlyphDef = [
   { d: "M12 4v10M8.4 10.4 12 14l3.6-3.6" },
 ];
 /** The air's temperature: a thermometer, its bulb full. */
+/**
+ * The dock's Current row: the Layers panel's Currents glyph
+ * (src/chartGlyphs.tsx, `CurrentsGlyph`), the stream's arrow feathered as a
+ * chart sets the flood, without its rate: the row's figures are the rate.
+ */
+export const current: GlyphDef = [
+  { d: "M3 17 17 7M12.6 6.8H17v4.4" },
+  { d: "M3 17l-.4-3.6M5.6 15.1l-.4-3.6M8.2 13.3l-.4-3.6", width: 1.2 },
+];
 export const air: GlyphDef = [
   { d: "M14 14.6V4.8a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0Z" },
   dot(12, 17.6, 1.9),
