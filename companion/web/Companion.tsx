@@ -131,9 +131,10 @@ export function Companion({
         ref={launcher}
         type="button"
         className={[
-          // Paper in an ink ring, like a light on the chart: not glass.
+          // Paper in an ink ring, like a light on the chart: not glass. It
+          // floats over the map, lit faintly from above as a small box is.
           "gust-launcher group grid size-16 cursor-pointer place-items-center rounded-full",
-          "border border-ink bg-card paper-grain shadow-marker inset-shadow-frame",
+          "border border-ink bg-card paper-float shadow-float inset-shadow-frame",
           "not-disabled:hover:bg-card not-disabled:hover:-translate-y-0.5",
           RING,
         ].join(" ")}
@@ -149,7 +150,7 @@ export function Companion({
         {gust.nudging && !gust.open && (
           <span
             aria-hidden="true"
-            className="absolute -top-1 -left-1 flex rounded-full bg-inverse px-2 py-1 shadow-control"
+            className="absolute -top-1 -left-1 flex rounded-full bg-inverse sheen-ink px-2 py-1 shadow-control"
           >
             <StarGlyphs
               stars={nudgeStars}
@@ -197,9 +198,12 @@ function Panel({
       aria-label={COMPANION_NAME}
       tabIndex={-1}
       className={[
-        // The chart's box: opaque paper with its grain, ruled twice in ink.
-        "gust-panel flex flex-col overflow-hidden rounded-surface font-body text-ink focus:outline-hidden",
-        "border border-ink bg-card paper-grain shadow-surface inset-shadow-frame",
+        // A sheet: flat, opaque paper with its grain, the ink rule and the
+        // hairline inside it, a sheet's corner, and the deeper lift. On a
+        // phone it stands on the foot of the screen, and gust.css squares
+        // its two lower corners.
+        "gust-panel flex flex-col overflow-hidden rounded-dialog font-body text-ink focus:outline-hidden",
+        "border border-ink bg-card paper-grain shadow-sheet inset-shadow-frame",
       ].join(" ")}
       onKeyDown={(event) => {
         // The map closes its dock on Escape; inside Gust it closes Gust only.

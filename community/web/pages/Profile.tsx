@@ -69,8 +69,9 @@ export const profileStyles = tv({
     ],
     track:
       "inline-flex h-6 w-11 items-center rounded-full border border-ink bg-sunken px-0.5 transition-colors duration-fast",
+    // The knob: a raised paper control, lit at its lip.
     thumb:
-      "size-4.5 rounded-full border border-ink bg-card shadow-control transition-transform duration-fast motion-reduce:transition-none",
+      "size-4.5 rounded-full border border-ink bg-card shadow-raised transition-transform duration-fast motion-reduce:transition-none",
     loading: "grid gap-3",
     short: "w-1/3",
     hidden: "sr-only",

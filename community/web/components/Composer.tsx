@@ -54,17 +54,24 @@ export const composerStyles = tv({
       NO_RING,
     ],
     photos: "m-0 flex list-none flex-wrap gap-2 p-0",
-    photo: "relative size-18 overflow-hidden border border-line bg-sunken",
+    // A thumbnail: a control's corner, the picture cut to it.
+    photo:
+      "relative size-18 overflow-hidden rounded-control border border-line bg-sunken",
     photoImage: "size-full object-cover",
     photoBusy: "animate-pulse motion-reduce:animate-none",
-    photoRemove: "absolute top-0 right-0 bg-card shadow-control",
+    // A small paper button over the picture, raised and lit so it reads
+    // against any photograph; the sheen lifts under the pointer for the hover.
+    photoRemove:
+      "absolute top-0 right-0 bg-card sheen-raised shadow-raised not-disabled:hover:bg-none",
     error: "m-0 text-body text-warn",
     bar: "flex items-center gap-0.5",
     send: "ml-auto",
     hiddenInput: "hidden",
-    // The people an @ offers, over the field.
+    // The people an @ offers, over the field: a menu, so a sheet's corner,
+    // floating. Padded clear of that corner, so the row the arrows are on
+    // keeps its tint off it; the rows are ruled, so they stay square.
     matches:
-      "absolute bottom-full left-0 z-popover mb-1 flex min-w-56 flex-col border border-ink bg-card paper-grain p-1 shadow-surface",
+      "absolute bottom-full left-0 z-popover mb-1 flex min-w-56 flex-col rounded-dialog border border-ink bg-card paper-float p-2 shadow-float inset-shadow-frame",
     match: [
       "flex min-h-control-md w-full cursor-pointer items-center gap-2 border-b border-line px-2 text-left text-body text-ink-2 last:border-b-0",
       "pointer-coarse:min-h-touch",

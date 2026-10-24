@@ -45,10 +45,11 @@ export const railStyles = tv({
     // Unread is weight and a count, never colour alone.
     unread: { true: { row: "font-semibold text-ink" } },
     // The menu's current row: italic, heavier, on the paper's second sheet,
-    // with a little lift, and said with `aria-current`.
+    // raised as a paper control is, and said with `aria-current`. It is a
+    // ruled row, its one border the hairline under it, so it stays square.
     current: {
       true: {
-        row: "bg-sunken font-semibold text-ink italic shadow-control",
+        row: "bg-sunken font-semibold text-ink italic shadow-raised",
       },
     },
   },

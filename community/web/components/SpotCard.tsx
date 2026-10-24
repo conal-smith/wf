@@ -47,9 +47,11 @@ import type { Spot } from "./NewThreadDialog";
 
 export const spotCardStyles = tv({
   slots: {
-    // A box of its own inside the opening post: one ink rule, square.
+    // A box of its own inside the opening post: a box's corner and a card's
+    // contact shadow, but one ink rule and no hairline inside it, as a box
+    // inside another box is drawn.
     base: [
-      "group grid min-h-touch max-w-measure gap-2 border border-ink bg-ground px-4 py-3 font-body text-ink no-underline",
+      "group grid min-h-touch max-w-measure gap-2 rounded-surface border border-ink bg-ground px-4 py-3 font-body text-ink no-underline shadow-card",
       "max-rail:px-3",
       RING,
     ],

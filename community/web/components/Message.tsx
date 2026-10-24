@@ -64,14 +64,16 @@ export const messageStyles = tv({
     column: "flex min-w-0 flex-col gap-2",
     removed: "m-0 text-prose text-ink-muted italic",
     photos: "grid max-w-dialog grid-cols-2 gap-2",
+    // A thumbnail of the photograph: a control's corner, the picture cut to it.
     photo: [
-      "block aspect-4/3 overflow-hidden border border-line bg-sunken",
+      "block aspect-4/3 overflow-hidden rounded-control border border-line bg-sunken",
       RING,
     ],
     photoImage: "size-full object-cover",
-    // The chart's instrument: a square box ruled in ink, over the letter's corner.
+    // The chart's instrument: a small toolbar ruled in ink, floating over the
+    // letter's corner. A control's corner; too small for the hairline inside.
     tools: [
-      "absolute top-1 right-0 z-popover flex border border-ink bg-card p-0.5 shadow-marker",
+      "absolute top-1 right-0 z-popover flex rounded-control border border-ink bg-card paper-float p-0.5 shadow-float",
       "pointer-events-none opacity-0 transition-opacity duration-fast motion-reduce:transition-none",
       "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
       "group-hover:pointer-events-auto group-hover:opacity-100",

@@ -328,7 +328,7 @@ describe("S6: the rail", () => {
       );
       expect(current.map((row) => row.href)).toEqual([href]);
       // Raised and heavier as well as said: never by colour alone.
-      expect(current[0].attributes).toContain("shadow-control");
+      expect(current[0].attributes).toContain("shadow-raised");
       expect(current[0].attributes).toContain("font-semibold");
     },
   );

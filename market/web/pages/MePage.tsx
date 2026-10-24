@@ -64,9 +64,10 @@ export const meStyles = tv({
       "rounded-control text-ink no-underline",
       RING,
     ],
-    // The photograph on paper, in its hairline frame; a sold one goes grey.
+    // The photograph on paper, in its hairline frame, cut to a thumbnail's
+    // corner; a sold one goes grey.
     thumb:
-      "grid aspect-4/3 w-22 shrink-0 place-items-center overflow-hidden border border-line bg-sunken text-ink-muted max-wide:w-18",
+      "grid aspect-4/3 w-22 shrink-0 place-items-center overflow-hidden rounded-control border border-line bg-sunken text-ink-muted max-wide:w-18",
     thumbImage: "block size-full object-cover group-data-sold:grayscale",
     itemText: "flex min-w-0 flex-col gap-1",
     itemTitle:

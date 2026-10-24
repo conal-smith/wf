@@ -95,7 +95,7 @@ const styles = tv({
     fill: "absolute top-1/2 h-1 -translate-y-1/2 bg-ink",
     edge: "absolute top-1/2 h-1 -translate-y-1/2 bg-ink opacity-35",
     thumb: [
-      "absolute top-1/2 h-5 w-2.5 -translate-1/2 cursor-ew-resize rounded-full border border-ink bg-card shadow-control",
+      "absolute top-1/2 h-5 w-2.5 -translate-1/2 cursor-ew-resize rounded-full border border-ink bg-card shadow-raised",
       RING,
     ],
     figs: "mt-1 grid grid-cols-4 gap-2 max-wide:grid-cols-2",
