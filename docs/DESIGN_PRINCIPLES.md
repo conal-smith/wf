@@ -534,6 +534,23 @@ rest of the map it drew nothing and looked broken. The site has no LiDAR
 layer and serves none of it; the pipeline and what it would take to bring
 the layer back (wider coverage) are in scripts/lidar/README.md.
 
+**2026-10-24 — The spot finder, beside the chart.** From the approved mockup
+`backlog/mockups/2026-10-24-spot-finder.html`: "where is best for me, and
+when?" as a list beside a map, at `/spots` (src/finder). It is a page of the
+chart's bundle, drawn from the chart's own data (the rated hours, the strip of
+columns, the frame on the map), and it replaces Your spots in the menu. It
+lists the rider's Favourites, or every place within 30 km of them, rated at
+one hour, best first: each card the place from above (the spot page's
+picture) with the loupe's ride rose, its stars, its wind, and the day's wind
+as a bar. Each place is a pin on the chart in a plain style (paper land, the
+wind in ink, no lights), its stars said by shape and fill and never by a wind
+colour: an ink pill for four or five, paper for one to three, dashed for none.
+The hour is chosen on a week of daylight bars in the wind's colours and is the
+chart's selected time, so the chart opens on it; the pen marks it, on the
+timeline and on each card's day, as it marks the chosen hour in the dock. The
+site's root opens on whichever of the two pages the rider last had; a link
+that names one wins.
+
 ---
 
 ## Still open

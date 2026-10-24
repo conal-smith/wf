@@ -7,12 +7,7 @@ import type { FocusStyle } from "../force5/src/focus";
 import type { WindStyle } from "../force5/src/windLayer";
 import { useFadeOut } from "../ui/Backdrop";
 import { Dialog } from "../ui/Dialog";
-import {
-  AboutGlyph,
-  LayersGlyph,
-  OptionsGlyph,
-  SpotsGlyph,
-} from "./chartGlyphs";
+import { AboutGlyph, LayersGlyph, OptionsGlyph } from "./chartGlyphs";
 import LayerRail from "./LayerRail";
 import { layerGroups } from "./layerGroups";
 import type { InfoSection } from "./mapInfoContext";
@@ -24,18 +19,18 @@ import type { InfoSection } from "./mapInfoContext";
 const LayersPanel = lazy(() => import("./LayersPanel"));
 
 /** A panel that opens over the dimmed map: one at a time. */
-export type MapPanel = "layers" | "spots" | "options" | null;
+export type MapPanel = "layers" | "options" | null;
 
 const PANEL_TITLE: Record<Exclude<MapPanel, null>, string> = {
   layers: "Layers",
-  spots: "Your spots",
   options: "Display options",
 };
 
 /**
  * The chart's own rows in the site menu (force5/src/SiteMenu.tsx), the one
- * way in to them: the layers, your spots, the display options, and what the
- * map means. Each row is named as the dialog it opens is titled.
+ * way in to them: the layers, the display options, and what the map means.
+ * Each row is named as the dialog it opens is titled. (The rider's spots are
+ * the spot finder's Favourites now, a row of its own: src/App.tsx.)
  */
 export function chartTools(
   onOpen: (panel: Exclude<MapPanel, null>) => void,
@@ -49,7 +44,6 @@ export function chartTools(
   });
   return [
     panel("layers", <LayersGlyph />),
-    panel("spots", <SpotsGlyph />),
     panel("options", <OptionsGlyph />),
     {
       id: "about",
@@ -68,9 +62,9 @@ export function chartTools(
  * it opens the Layers panel, as the site menu's row does.
  *
  * The panel (the wind's style, the chart's parts, the satellite image under
- * it, what is drawn round the chosen spot, and which model the map draws),
- * your spots and the display options (units, the model, the blend's models)
- * open from the site menu (`chartTools`), one at a time in a dialog over the
+ * it, what is drawn round the chosen spot, and which model the map draws)
+ * and the display options (units, the model, the blend's models) open from
+ * the site menu (`chartTools`), one at a time in a dialog over the
  * dimmed map, as the map's information is. They close on their X, on Escape
  * or on a tap on the backdrop, and the focus goes back to where it was when
  * they opened: the menu's trigger, Layers, or the dock's button.
@@ -80,7 +74,6 @@ export default function MapControls({
   onZoomOut,
   open,
   onOpen,
-  spots,
   options,
   onInfo,
   windStyle,
@@ -120,8 +113,6 @@ export default function MapControls({
   onRailFits: (fits: boolean) => void;
   /** Changes as the dock opens, grows or goes, for the rail to fit again. */
   layoutKey: string;
-  /** Your spots (src/SidePanel.tsx), drawn while their panel is open. */
-  spots: () => ReactNode;
   /** The display options (src/DisplayFilter.tsx), given a way to close. */
   options: (close: () => void) => ReactNode;
   /** The map's information, at the tidal depth's part from its "i". */
@@ -236,15 +227,14 @@ export default function MapControls({
           />
         </Suspense>
       )}
-      {(shown === "spots" || shown === "options") && (
+      {shown === "options" && (
         <Dialog
           open={open !== null}
           title={PANEL_TITLE[shown]}
           className="map-panel-dialog"
           onClose={close}
         >
-          {shown === "spots" && spots()}
-          {shown === "options" && options(close)}
+          {options(close)}
         </Dialog>
       )}
     </div>

@@ -140,7 +140,7 @@
 }
 
 /* ---------- display options: in the map's panel dialog ---------- */
-/* As the layers and your spots open (src/map.css .map-panel-dialog). */
+/* As the layers and the options open (src/map.css .map-panel-dialog). */
 .display-filter {
   color: var(--color-ink);
   font-family: var(--font-body);

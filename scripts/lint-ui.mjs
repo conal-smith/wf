@@ -46,6 +46,7 @@ const DIRS = [
   "companion/web",
   "spot/web",
   "force5/src/SiteMenu.tsx",
+  "src/finder",
 ];
 const EXTENSIONS = new Set([
   ".ts",

@@ -11,10 +11,17 @@
  *
  * Only links are taken over: a page loaded at /ai or /spot/… is drawn alone,
  * as before, and a link to the marketplace, the community or the map on
- * another spot (`/?spot=…`) is still a page load.
+ * another spot (`/?spot=…`) is still a page load. The map is the chart or the
+ * spot finder (/spots), whichever the page opened over; a link to the finder
+ * from a page over the chart brings the finder up in its place.
  */
 import React, { Suspense, useEffect, useRef, useState } from "react";
-import { isAiPath, isSpotPath } from "../force5/src/siteNav";
+import {
+  FINDER_HREF,
+  isAiPath,
+  isFinderPath,
+  isSpotPath,
+} from "../force5/src/siteNav";
 
 const AiApp = React.lazy(() => import("../ai/web/AiApp"));
 const SpotApp = React.lazy(() => import("../spot/web/SpotApp"));
@@ -60,6 +67,8 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
   // The map's own query when the first page opened over it: a link back to
   // the map with another (`/?spot=…`) is a page load, as the map reads it once.
   const mapSearch = useRef(window.location.search);
+  // And its path: the chart's `/`, or the spot finder's.
+  const mapPath = useRef(window.location.pathname);
   const page = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,7 +76,7 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
       const pages = depth();
       if (pages) window.history.go(-pages);
       else {
-        window.history.pushState(null, "", "/" + mapSearch.current);
+        window.history.pushState(null, "", mapPath.current + mapSearch.current);
         setOver(null);
       }
     };
@@ -76,7 +85,10 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
       if (!url) return;
       if (isOverPath(url.pathname)) {
         event.preventDefault();
-        if (!depth()) mapSearch.current = window.location.search;
+        if (!depth()) {
+          mapSearch.current = window.location.search;
+          mapPath.current = window.location.pathname;
+        }
         // Whatever on the map had focus (the site menu's row) lets go, and the
         // menu closes behind it as it does when focus leaves.
         if (document.activeElement instanceof HTMLElement)
@@ -84,6 +96,13 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
         window.history.pushState({ overMap: depth() + 1 }, "", url);
         window.scrollTo(0, 0);
         setOver(here());
+      } else if (over && isFinderPath(url.pathname)) {
+        // The finder, in the map's place: the map hears of it as it hears
+        // Back and Forward.
+        event.preventDefault();
+        window.history.pushState(null, "", FINDER_HREF);
+        setOver(null);
+        window.dispatchEvent(new PopStateEvent("popstate"));
       } else if (
         over &&
         url.pathname === "/" &&

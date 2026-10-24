@@ -27,8 +27,8 @@ interface Props {
  * The display options: the units, the model and the blend's models. The
  * rider's weight, level and own star rating are set in Customise, from the
  * site menu, and nowhere else on the map. In a dialog over the map, as the
- * layers and your spots are, and shut the same ways (src/MapControls.tsx):
- * its X, Escape or a tap on the backdrop.
+ * layers are, and shut the same ways (src/MapControls.tsx): its X, Escape or
+ * a tap on the backdrop.
  */
 export default function DisplayFilter({ prefs, onChange, models }: Props) {
   const setUnits = (units: Units) => onChange({ ...prefs, units });

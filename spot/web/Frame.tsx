@@ -7,6 +7,9 @@
 import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
+import { FINDER_HREF } from "../../force5/src/siteNav";
+import { ChartGlyph } from "../../shared/web/ChartGlyph";
+import { spotFinder } from "../../shared/web/glyphSet";
 import { Button } from "../../ui";
 import { Masthead, MastheadMark, mastheadStyles } from "../../ui/Masthead";
 import { tv } from "../../ui/tv";
@@ -18,6 +21,16 @@ const styles = tv({
     masthead: "static",
   },
 });
+
+/** The chart's page beside it, from the menu: the spot finder. */
+const TOOLS = [
+  {
+    id: "finder",
+    label: "Spot finder",
+    glyph: <ChartGlyph glyph={spotFinder} />,
+    href: FINDER_HREF,
+  },
+];
 
 /** The page's frame: the masthead, with the way back to the chart. */
 export function SpotFrame({
@@ -37,7 +50,12 @@ export function SpotFrame({
     <div className={s.root()}>
       <div className={s.page()}>
         <Masthead className={s.masthead()}>
-          <SiteMenu current="map" size="sm" ground="content" />
+          <SiteMenu
+            current="map"
+            size="sm"
+            ground="content"
+            tools={{ title: "The chart", items: TOOLS }}
+          />
           <a
             href="/"
             className={mastheadStyles().brand()}

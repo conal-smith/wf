@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock-up · Spot finder</title>
+<!--
+  A design exploration, not product code. Standalone; faces from node_modules.
+  Satellite and base map are Esri's (World Imagery, Light Gray Canvas), fetched
+  live, standing in for the chart's own; it needs a connection.
+
+  What it explores: "where's best for me, when?" answered the way Airbnb answers
+  "where can I stay": pick a time on a bar of the week's wind, and the spots
+  rated best for you then are listed on the left, each with its satellite view
+  and the ride rose on it, and pinned on a plain map on the right. Hover a card
+  and its pin lights; press a pin and a card opens on the map. The same page,
+  scoped to Favourites, is the favourites view.
+  ?device=phone, ?scope=yours, ?open=<spot id>
+-->
+<style>
+@font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 500;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 600;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
+
+:root {
+  --ground: #f3eee3; --paper: #fffdf6; --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b; --line: #1a1d2133;
+  --pen: #d43a2c; --pen-ink: #bf3125; --magenta: #b0186a;
+  --display: "Fraunces Variable", Fraunces, Georgia, serif;
+  --body: "Newsreader Variable", Newsreader, Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  /* mixed + rounded */
+  --edge: inset 0 0 0 2px #f4efe5, inset 0 0 0 3px #1a1d2142;
+  --float: var(--edge), 0 1px 1px #1a1d211a, 0 3px 6px -2px #1a1d211f, 0 14px 28px -12px #3c2d1466;
+  --card: var(--edge), 0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a;
+  --press: linear-gradient(180deg, #33373d, #15171a);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 14px; }
+body { margin: 0; background: #d9d4c7; color: var(--ink); font-family: var(--body); line-height: 1.35; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3, p { margin: 0; }
+
+.mockbar { position: sticky; top: 0; z-index: 40; display: flex; gap: 6px; align-items: center; padding: 8px 16px; background: #1a1d21; color: #f3eee3; font: 500 11px var(--mono); letter-spacing: .08em; }
+.mockbar b { margin-right: 10px; text-transform: uppercase; letter-spacing: .14em; }
+.mockbar button { background: none; border: 1px solid #f3eee355; border-radius: 99px; padding: 3px 10px; text-transform: uppercase; letter-spacing: .1em; font-size: 10px; }
+.mockbar button[aria-pressed=true] { background: #f3eee3; color: #1a1d21; }
+.stage { display: flex; justify-content: center; padding: 24px 16px 32px; }
+.frame { background: var(--ground); position: relative; overflow: hidden; box-shadow: 0 20px 50px -20px #0007, 0 0 0 1px #1a1d2133; }
+.frame.desk { width: 1280px; height: 840px; border-radius: 10px; }
+.frame.phone { width: 390px; height: 844px; border-radius: 28px; }
+.why { max-width: 1280px; margin: 0 auto 60px; background: #fffdf6; border: 1px dashed #1a1d2166; border-radius: 12px; padding: 14px 18px; font-size: 15px; line-height: 1.5; }
+.why h4 { margin: 14px 0 6px; font: 600 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--magenta); }
+.why h4:first-child { margin-top: 0; }
+.why ul { margin: 0; padding-left: 18px; } .why li { margin: 5px 0; }
+
+/* ---- the page --------------------------------------------------------- */
+.app { height: 100%; display: flex; flex-direction: column; position: relative; }
+.top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 3px double var(--ink); position: relative; z-index: 6; background: var(--ground); }
+.word { font: 800 21px/1 var(--display); letter-spacing: -.03em; }
+.word i { font-weight: 400; font-style: italic; color: var(--magenta); }
+.top .lead { display: flex; align-items: center; gap: 12px; }
+.top .sp { flex: 1; }
+.phone .top { grid-template-columns: auto 1fr; }
+.burger { width: 36px; height: 36px; flex: none; border: 1.5px solid var(--ink); border-radius: 99px; display: grid; place-items: center;
+  background: linear-gradient(180deg, #fff, #f0eadd); box-shadow: inset 0 1px 0 #fff, 0 1px 2px #1a1d2126; }
+.seg { display: inline-flex; border: 1.5px solid var(--ink); border-radius: 99px; padding: 2px; background: var(--paper); box-shadow: inset 0 1px 2px #1a1d2114; }
+.seg button { border: 0; background: none; border-radius: 99px; padding: 4px 12px; font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+.seg button[aria-pressed=true] { color: var(--ground); background: var(--press); box-shadow: inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150; }
+
+/* the search pill, Airbnb's, in our dress */
+.ask { display: flex; align-items: stretch; border: 1px solid var(--ink); border-radius: 99px; background: var(--paper); box-shadow: var(--float); overflow: hidden; }
+.ask > button { border: 0; background: none; padding: 6px 16px; text-align: left; border-left: 1px solid var(--line); }
+.ask > button:first-child { border-left: 0; padding-left: 18px; }
+.ask small { display: block; font: 500 9px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.ask span { font: 600 14px var(--body); white-space: nowrap; }
+
+/* the week's bar: pick a time */
+.when { padding: 12px 18px 10px; border-bottom: 1px solid var(--line); position: relative; z-index: 5; background: var(--ground); }
+.days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.day { border: 0; background: none; padding: 0; text-align: left; }
+.day .bar { position: relative; height: 22px; border-radius: 7px; overflow: hidden; display: flex; box-shadow: inset 0 0 0 1px #1a1d2130; opacity: .55; transition: opacity .12s; }
+.day .bar i { flex: 1; }
+.day:hover .bar { opacity: .85; }
+.day.sel .bar { opacity: 1; box-shadow: inset 0 0 0 1.5px var(--ink); }
+.day .lab { display: flex; justify-content: space-between; align-items: center; padding: 3px 2px 0; font: 600 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.day .lab small { font-weight: 500; color: var(--muted); }
+.day.sel .lab { color: var(--ink); }
+.days { cursor: pointer; touch-action: pan-x; user-select: none; }
+.mark { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 3px; background: var(--pen); box-shadow: 0 0 0 1.5px var(--paper); pointer-events: none; }
+.mark b { position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font: 600 10px var(--mono); color: var(--pen-ink); background: var(--ground); padding: 0 3px; border-radius: 4px; white-space: nowrap; }
+.when { padding-top: 20px; }
+.day .bar { overflow: visible; }
+.day .bar i:first-child { border-radius: 7px 0 0 7px; } .day .bar i:last-child { border-radius: 0 7px 7px 0; }
+
+/* list | map */
+.body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 520px; }
+.list { overflow: auto; padding: 18px 18px 40px; }
+.askw { position: relative; }
+.chev { font-style: normal; font-size: 10px; color: var(--muted); margin-left: 2px; }
+.pick { position: absolute; left: 0; top: calc(100% + 8px); z-index: 20; width: 240px; padding: 6px; border: 1px solid var(--ink); border-radius: 18px; background: var(--ground);
+  box-shadow: var(--edge), 0 1px 1px #1a1d211a, 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480; }
+.pick button { display: block; width: 100%; text-align: left; border: 0; background: none; border-radius: 12px; padding: 8px 12px; }
+.pick button[aria-pressed=true] { background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.pick b { display: block; font: 600 15px var(--body); }
+.pick small { font: 500 12px var(--body); color: var(--muted); }
+.lhead { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.lhead h2 { font: 700 21px/1.1 var(--display); letter-spacing: -.02em; }
+.lhead .sp { flex: 1; }
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 16px; }
+.cardx { border: 0; background: none; padding: 0; text-align: left; border-radius: 16px; transition: transform .12s; }
+.cardx:hover { transform: translateY(-2px); }
+.sat { position: relative; aspect-ratio: 16 / 10; border-radius: 14px; overflow: hidden; border: 1px solid var(--ink); background: #33403f; box-shadow: var(--card); }
+.cardx:hover .sat, .cardx.hl .sat { box-shadow: var(--float); }
+.sat .tiles { position: absolute; left: 0; top: 0; }
+.sat .tiles img { position: absolute; width: 256px; height: 256px; filter: saturate(.8) brightness(1.03); }
+.sat > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sat::after { content: ""; position: absolute; inset: 0; border-radius: 13px; box-shadow: inset 0 0 0 2px #f4efe5aa; pointer-events: none; }
+.badge { position: absolute; left: 8px; top: 8px; display: inline-flex; gap: 1px; padding: 4px 8px; border-radius: 99px; border: 1px solid var(--ink); background: var(--paper); box-shadow: 0 1px 1px #1a1d211a, 0 4px 10px -3px #1a1d2140; z-index: 2; }
+.fav { position: absolute; right: 8px; top: 8px; width: 32px; height: 32px; border-radius: 99px; border: 1px solid var(--ink); display: grid; place-items: center; z-index: 2;
+  background: linear-gradient(180deg, #fff, #f0eadd); box-shadow: inset 0 1px 0 #fff, 0 2px 6px -2px #1a1d2160; }
+.meta { display: flex; align-items: baseline; gap: 8px; padding: 8px 4px 0; }
+.meta b { font: 600 16px/1.2 var(--display); letter-spacing: -.01em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta .w { font: 600 13px var(--mono); display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.meta .w small { font-weight: 500; font-size: 10.5px; color: var(--muted); }
+.fbar { position: relative; height: 10px; margin: 7px 4px 0; border-radius: 99px; overflow: hidden; display: flex; box-shadow: inset 0 0 0 1px #1a1d2126; }
+.fbar i { flex: 1; }
+.fbar .ride { position: absolute; top: 0; bottom: 0; border-radius: 99px; box-shadow: inset 0 0 0 1.5px var(--ink); }
+.fbar .now { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--pen); border-radius: 2px; }
+
+/* the map */
+.mapw { position: relative; padding: 12px 12px 12px 0; }
+.map { position: absolute; inset: 12px 12px 12px 0; border-radius: 18px; overflow: hidden; border: 1px solid var(--ink); background: #e9e7e1; box-shadow: var(--float); }
+.map .tiles { position: absolute; left: 0; top: 0; }
+.map .tiles img { position: absolute; width: 256px; height: 256px; filter: sepia(.18) saturate(.9) brightness(1.02); }
+.pin { position: absolute; transform: translate(-50%, -50%); border: 1px solid var(--ink); border-radius: 99px; padding: 3px 9px 3px 7px; display: inline-flex; align-items: center; gap: 3px;
+  font: 600 12px var(--mono); background: var(--paper); box-shadow: 0 1px 1px #1a1d211a, 0 3px 8px -2px #1a1d2150; transition: transform .1s, background .1s; z-index: 2; white-space: nowrap; }
+.pin.top { background: var(--press); color: var(--ground); border-color: #000; box-shadow: inset 0 1px 0 #ffffff2e, 0 3px 8px -2px #1a1d2170; }
+.pin.zero { color: var(--muted); border-style: dashed; background: #fffdf6cc; font-weight: 500; }
+.pin.hl, .pin:hover { transform: translate(-50%, -50%) scale(1.14); z-index: 4; }
+.pin.hl:not(.top) { background: #fff; outline: 2px solid var(--ink); }
+.mapctl { position: absolute; right: 12px; top: 12px; display: flex; flex-direction: column; gap: 8px; z-index: 5; }
+.mapctl .box { border: 1px solid var(--ink); border-radius: 14px; background: linear-gradient(180deg, #f6f2e9, #f1ebdf); box-shadow: var(--float); padding: 3px; display: flex; flex-direction: column; }
+.mapctl .box button { width: 32px; height: 30px; border: 0; background: none; border-radius: 10px; font: 500 17px var(--mono); display: grid; place-items: center; }
+.pop { position: absolute; width: 270px; border-radius: 18px; border: 1px solid var(--ink); background: var(--ground); box-shadow: var(--edge), 0 1px 1px #1a1d211a, 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480; overflow: hidden; z-index: 8; }
+.pop .sat { border: 0; border-radius: 0; box-shadow: none; }
+.pop .sat::after { display: none; }
+.pop .x { position: absolute; right: 8px; top: 8px; width: 30px; height: 30px; border-radius: 99px; border: 1px solid var(--ink); background: linear-gradient(180deg, #fff, #f0eadd); z-index: 3; font-size: 15px; }
+.pop .fav { right: 44px; width: 30px; height: 30px; }
+.pop .in { padding: 4px 10px 12px; }
+.pop .go { margin-top: 10px; display: flex; gap: 8px; }
+.pop .go button { flex: 1; height: 32px; border-radius: 99px; border: 1.5px solid var(--ink); background: none; font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.pop .go button.p { background: var(--press); color: var(--ground); border-color: #000; }
+.empty { padding: 30px 4px; color: var(--ink-2); font-size: 15px; }
+
+/* phone */
+.phone .top { padding: 10px 12px; gap: 8px; }
+.phone .askw { flex: 1; }
+.phone .ask { width: 100%; }
+.phone .ask > button { flex: 1; padding: 6px 10px; }
+.phone .when { padding: 10px 12px 8px; overflow-x: auto; }
+.phone .days { grid-template-columns: repeat(7, 92px); }
+.phone .body { display: block; position: relative; }
+.phone .list { height: 100%; padding: 12px 12px 90px; }
+.phone .cards { grid-template-columns: 1fr; }
+.phone .mapw { position: absolute; inset: 0; padding: 0; z-index: 3; background: var(--ground); }
+.phone .map { inset: 0; border-radius: 0; border: 0; box-shadow: none; }
+.phone .pop { left: 12px !important; right: 12px; width: auto; top: auto !important; bottom: 76px; }
+.mapbtn { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 9; display: inline-flex; gap: 8px; align-items: center; padding: 10px 18px; border-radius: 99px; border: 1px solid #000;
+  background: var(--press); color: var(--ground); font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; box-shadow: inset 0 1px 0 #ffffff2e, 0 6px 16px -4px #1a1d2190; }
+</style>
+</head>
+<body>
+<div class="mockbar"><b>Mock-up · Spot finder</b>
+  <button data-device="desk">Desktop</button><button data-device="phone">Phone</button>
+</div>
+<div class="stage"><div class="frame" id="frame"></div></div>
+<div class="why">
+  <h4>Spot finder</h4>
+  <ul>
+    <li>Opens on <b>Favourites, now</b>. Press "Where" to switch to every spot near you.</li>
+    <li><b>One hour.</b> Press or drag along the timeline (a finger taps it, and swipes it sideways for more days). Every card, pin and the wind on the map change to that hour.</li>
+    <li>Cards: satellite picture with the ride rose, stars, the wind, and the day's wind as a bar with the hour marked. Hover a card and its pin grows; press a pin for its card.</li>
+    <li>The map draws the wind in ink, as the chart does, from the data the chart already has.</li>
+  </ul>
+</div>
+
+<script>
+/* ---- the wind's colours (force5/src/weather.ts PALETTE) --------------- */
+const PALETTE = [[0, [170, 203, 234]], [5, [128, 174, 224]], [9, [79, 128, 200]], [10, [73, 168, 138]], [15, [76, 179, 90]], [20, [111, 191, 62]],
+  [25, [181, 207, 58]], [30, [236, 210, 58]], [35, [242, 160, 58]], [40, [224, 90, 51]], [45, [200, 48, 74]], [50, [155, 47, 134]], [60, [90, 35, 104]], [65, [35, 22, 40]]];
+function windColor(kn) {
+  const k = Math.max(0, Math.min(65, kn)); let i = 1;
+  while (i < PALETTE.length - 1 && k > PALETTE[i][0]) i++;
+  const [a, ca] = PALETTE[i - 1], [b, cb] = PALETTE[i];
+  return `rgb(${ca.map((v, c) => Math.round(v + (cb[c] - v) * (k - a) / (b - a))).join(",")})`;
+}
+
+/* ---- the week near you: each day a wind from, and its morning, peak and evening -- */
+const HOURS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+const DAYS = [
+  { name: "Sat 24", from: 45, kn: [10, 16, 13] },   // NE: onshore on the east coast
+  { name: "Sun 25", from: 270, kn: [9, 14, 10] },   // W: offshore
+  { name: "Mon 26", from: 0, kn: [6, 9, 7] },       // light N
+  { name: "Tue 27", from: 135, kn: [16, 24, 20] },  // SE: cross-on, good
+  { name: "Wed 28", from: 180, kn: [10, 15, 12] },  // S: cross
+  { name: "Thu 29", from: 90, kn: [24, 33, 28] },   // E: strong onshore
+  { name: "Fri 30", from: 315, kn: [8, 12, 9] },    // NW
+];
+const meanAt = (d, i) => { const [m, p, e] = DAYS[d].kn, h = HOURS[i]; return h <= 13 ? m + (p - m) * Math.sin((h - 7) / 6 * Math.PI / 2) : p + (e - p) * ((h - 13) / 6); };
+
+/* ---- the spots, each with the way its beach faces (out to sea) and how open it is -- */
+const SPOTS = [
+  ["skerries", "Skerries, South Strand", 53.578, -6.104, 100, 1.05], ["rush", "Rush South Beach", 53.52, -6.085, 95, 1.0],
+  ["portrane", "Portrane", 53.493, -6.104, 85, 1.0], ["donabate", "Donabate", 53.485, -6.127, 75, .95],
+  ["malahide", "Malahide Estuary", 53.452, -6.165, 70, .85], ["velvet", "Portmarnock, Velvet Strand", 53.418, -6.125, 95, 1.05],
+  ["dollymount", "Dollymount Strand", 53.367, -6.145, 125, 1.0], ["sandymount", "Sandymount", 53.33, -6.205, 95, .9],
+  ["seapoint", "Seapoint", 53.297, -6.159, 50, .95], ["killiney", "Killiney", 53.258, -6.11, 100, 1.0],
+  ["bray", "Bray", 53.2, -6.095, 95, 1.0], ["greystones", "Greystones", 53.145, -6.06, 100, 1.05], ["brittas", "Brittas Bay", 52.88, -6.05, 110, 1.1],
+].map(([id, name, lat, lon, facing, open]) => ({ id, name, lat, lon, facing, open }));
+
+/* ---- the stars, as the plan has them (Riding: 11 / 14–24 / gusts to 34) ---- */
+const BAND = [11, 14, 24, 34];
+const angleOff = (from, facing) => { const d = Math.abs(((from - facing) % 360 + 540) % 360 - 180); return d; }; // 0 = straight onshore
+const shoreOf = (off) => off < 30 ? "on" : off < 70 ? "x-on" : off < 110 ? "cross" : off < 150 ? "x-off" : "off";
+const COST = { on: 0, "x-on": 0, cross: 0, "x-off": 1.5, off: 5 };
+function rate(spot, d, i) {
+  const mean = meanAt(d, i) * spot.open, gust = mean * 1.35, [lo, sLo, sHi, top] = BAND;
+  let pot = mean < lo ? 0 : mean < sLo ? 1 + 3 * (mean - lo) / (sLo - lo) : mean <= sHi ? 5 : 4;
+  if (gust > top) pot = 0;
+  const shore = shoreOf(angleOff(DAYS[d].from, spot.facing));
+  return { mean, gust, shore, stars: Math.max(0, Math.round(pot - COST[shore])) };
+}
+function best(spot, d, a, b) {
+  let top = { stars: -1 }, at = a;
+  for (let i = a; i <= b; i++) { const r = rate(spot, d, i); if (r.stars > top.stars) { top = r; at = i; } }
+  return { ...top, at };
+}
+
+/* ---- state ------------------------------------------------------------ */
+const params = new URLSearchParams(location.search);
+const S = { device: params.get("device") || "desk", scope: params.get("scope") || "yours", day: 0, a: 7, b: 7,
+  hover: null, open: params.get("open"), mapOn: false, starred: new Set(["velvet", "dollymount", "malahide", "brittas"]) };
+
+/* ---- drawing: tiles, the ride rose, glyphs ----------------------------- */
+const px = (lat, lon, z) => { const n = 2 ** z * 256, r = lat * Math.PI / 180; return [(lon + 180) / 360 * n, (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n]; };
+function tiles(lat, lon, z, w, h, kind, oy = 0) {
+  const [cx, cy] = px(lat, lon, z), ox = cx - w / 2, oyy = cy - h / 2 + oy;
+  const url = kind === "sat" ? (x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`
+                             : (x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/${z}/${y}/${x}`;
+  let s = "";
+  for (let x = Math.floor(ox / 256); x <= Math.floor((ox + w) / 256); x++) for (let y = Math.floor(oyy / 256); y <= Math.floor((oyy + h) / 256); y++)
+    s += `<img alt="" loading="lazy" src="${url(x, y)}" style="left:${x * 256 - ox}px;top:${y * 256 - oyy}px">`;
+  return { html: `<div class="tiles">${s}</div>`, at: (la, lo) => { const [x, y] = px(la, lo, z); return [x - ox, y - oyy]; } };
+}
+// The ride rose on a card: no-go hatched into the wind, the two courses, red on the rim where offshore, the needle.
+function rose(spot, from, w, h) {
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.3, up = 70, reach = 120;
+  const p = (a, r) => [cx + r * Math.sin(a * Math.PI / 180), cy - r * Math.cos(a * Math.PI / 180)];
+  const sector = (a1, a2, r) => { const [x1, y1] = p(a1, r), [x2, y2] = p(a2, r); return `M${cx} ${cy}L${x1} ${y1}A${r} ${r} 0 ${((a2 - a1) % 360 + 360) % 360 > 180 ? 1 : 0} 1 ${x2} ${y2}Z`; };
+  const off = (spot.facing + 180) % 360;   // the bearing the wind comes from when it's dead offshore
+  const arc = (a1, a2, r) => { const [x1, y1] = p(a1, r), [x2, y2] = p(a2, r); return `M${x1} ${y1}A${r} ${r} 0 0 1 ${x2} ${y2}`; };
+  const [nx, ny] = p(from, R + 16), [tx, ty] = p(from, R + 2);
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice">
+    <defs><pattern id="hx" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line y2="5" stroke="#f3eee3" stroke-opacity=".75"/></pattern></defs>
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#f3eee3" stroke-opacity=".8" stroke-width="3"/>
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#1a1d21" stroke-width="1.2"/>
+    <path d="${sector(from - up, from + up, R)}" fill="#f3eee3" fill-opacity=".18"/><path d="${sector(from - up, from + up, R)}" fill="url(#hx)" stroke="#1a1d21" stroke-dasharray="3 2"/>
+    <path d="${sector(from + up, from + reach, R)}" fill="#fffdf6" fill-opacity=".5" stroke="#1a1d21" stroke-width="1.2"/>
+    <path d="${sector(from - reach, from - up, R)}" fill="#fffdf6" fill-opacity=".5" stroke="#1a1d21" stroke-width="1.2"/>
+    <path d="${arc(off - 30, off + 30, R + 4)}" fill="none" stroke="#d43a2c" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M${nx} ${ny}L${tx} ${ty}" stroke="#f3eee3" stroke-width="5" stroke-linecap="round"/><path d="M${nx} ${ny}L${tx} ${ty}" stroke="#1a1d21" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="3.2" fill="#1a1d21" stroke="#f3eee3" stroke-width="1.5"/>
+  </svg>`;
+}
+const STAR = (on, sz = 11, col = "#1a1d21") => `<svg viewBox="0 0 10 10" width="${sz}" height="${sz}"><path d="M5 .6l1.3 2.9 3.1.3-2.4 2.1.7 3.1L5 7.4 2.3 9l.7-3.1L.6 3.8l3.1-.3z" fill="${on ? col : "none"}" stroke="${col}" stroke-width=".8"/></svg>`;
+const stars = (n, sz) => Array.from({ length: 5 }, (_, k) => STAR(k < n, sz)).join("");
+const FAV = (on) => `<svg viewBox="0 0 20 20" width="16" height="16"><path d="M10 1.8l2.5 5.4 5.9.6-4.4 4 1.3 5.8L10 14.6l-5.3 3 1.3-5.8-4.4-4 5.9-.6z" fill="${on ? "#d43a2c" : "none"}" stroke="#d43a2c" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+const arrow = (from, off) => `<svg width="13" height="13" viewBox="-7 -7 14 14"><g transform="rotate(${from + 180})"><path d="M0 5.5V-5M-3 -2L0 -5.5L3 -2" fill="none" stroke="${off ? "#bf3125" : "#1a1d21"}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`;
+const gl = (body, sz = 18) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+const MAP_GLYPH = gl(`<path d="M3 6.5l5.5-2 7 2 5.5-2v13l-5.5 2-7-2-5.5 2z"/><path d="M8.5 4.5v13M15.5 6.5v13" stroke-width="1" stroke-opacity=".55"/>`, 16);
+const LIST_GLYPH = gl(`<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/>`, 16);
+const SKY = ["showers", "sun", "cloud", "sun", "cloud", "rain", "sun"];
+const hh = (i) => `${String(HOURS[i]).padStart(2, "0")}:00`;
+
+/* ---- pieces ------------------------------------------------------------ */
+function whenBar() {
+  return `<div class="when"><div class="days">${DAYS.map((d, k) => {
+    const sel = k === S.day, n = HOURS.length;
+    const win = sel ? `<span class="mark" style="left:${(S.a + .5) / n * 100}%"><b>${hh(S.a)}</b></span>` : "";
+    return `<button class="day ${sel ? "sel" : ""}" data-day="${k}"><div class="bar">${HOURS.map((_, i) => `<i style="background:${windColor(meanAt(k, i))}"></i>`).join("")}${win}</div>
+      <div class="lab"><span>${d.name.slice(0, 3)} ${d.name.slice(4)}</span></div></button>`;
+  }).join("")}</div></div>`;
+}
+function ranked() {
+  const pool = S.scope === "yours" ? SPOTS.filter((s) => S.starred.has(s.id)) : SPOTS;
+  return pool.map((s) => ({ s, r: best(s, S.day, S.a, S.b) })).sort((p, q) => q.r.stars - p.r.stars || q.r.mean - p.r.mean);
+}
+function fbar(s) {
+  const n = HOURS.length, r = best(s, S.day, S.a, S.b);
+  return `<div class="fbar">${HOURS.map((_, i) => `<i style="background:${windColor(meanAt(S.day, i) * s.open)}"></i>`).join("")}
+    <span class="now" style="left:calc(${(S.a + .5) / n * 100}% - 1px)"></span></div>`;
+}
+function satCard(s, w, h, z = 14) {
+  const t = tiles(s.lat, s.lon, z, w, h, "sat");
+  return `${t.html}${rose(s, DAYS[S.day].from, w, h)}`;
+}
+function card({ s, r }, w) {
+  const off = r.shore === "off" || r.shore === "x-off";
+  return `<div class="cardx ${S.hover === s.id ? "hl" : ""}" data-card="${s.id}" role="button" tabindex="0">
+    <div class="sat">${satCard(s, w, Math.round(w * 10 / 16))}
+      <span class="badge">${stars(r.stars, 11)}</span>
+      <button class="fav" data-fav="${s.id}" aria-label="Star ${s.name}">${FAV(S.starred.has(s.id))}</button></div>
+    <div class="meta"><b>${s.name}</b><span class="w">${arrow(DAYS[S.day].from, off)}${Math.round(r.mean)}<small>g${Math.round(r.gust)}</small></span></div>
+    ${fbar(s)}</div>`;
+}
+// The chart's ink wind at the chosen hour: streaks along the wind, longer for more of it.
+function inkWind(w, h) {
+  const from = DAYS[S.day].from, kn = meanAt(S.day, S.a), to = (from + 180) * Math.PI / 180, dx = Math.sin(to), dy = -Math.cos(to);
+  let s = "", seed = 5; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let gx = 0; gx < w + 40; gx += 40) for (let gy = 0; gy < h + 40; gy += 28) {
+    const x = gx + rnd() * 22 - 11, y = gy + rnd() * 16 - 8, l = (6 + kn * .9) * (.7 + rnd() * .6);
+    s += `<path d="M${(x - dx * l / 2).toFixed(1)} ${(y - dy * l / 2).toFixed(1)}l${(dx * l).toFixed(1)} ${(dy * l).toFixed(1)}"/>`;
+  }
+  return `<svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 ${w} ${h}" fill="none" stroke="#1a1d21" stroke-opacity=".45" stroke-width="1.2" stroke-linecap="round">${s}</svg>`;
+}
+function map(w, h) {
+  const z = S.device === "phone" ? 10 : 10, t = tiles(53.33, -6.12, z, w, h, "gray", 0);
+  const list = ranked(), topStars = Math.max(...list.map((x) => x.r.stars));
+  const pins = list.map(({ s, r }) => {
+    const [x, y] = t.at(s.lat, s.lon);
+    if (x < -20 || y < -20 || x > w + 20 || y > h + 20) return "";
+    const cls = r.stars === 0 ? "zero" : r.stars >= 4 ? "top" : "";
+    return `<button class="pin ${cls} ${S.hover === s.id ? "hl" : ""}" data-pin="${s.id}" style="left:${x}px;top:${y}px">${STAR(true, 10, r.stars >= 4 ? "#f3eee3" : "#1a1d21")}${r.stars}</button>`;
+  }).join("");
+  let pop = "";
+  if (S.open) {
+    const s = SPOTS.find((x) => x.id === S.open), r = best(s, S.day, S.a, S.b), [x, y] = t.at(s.lat, s.lon);
+    const left = Math.max(12, Math.min(w - 282, x - 135)), top = y > 300 ? y - 330 : y + 24;
+    pop = `<div class="pop" style="left:${left}px;top:${top}px"><div class="sat" style="aspect-ratio:16/10">${satCard(s, 270, 169, 14)}
+        <button class="x" data-close aria-label="Close">×</button><button class="fav" data-fav="${s.id}">${FAV(S.starred.has(s.id))}</button>
+        <span class="badge">${stars(r.stars, 11)}</span></div>
+      <div class="in"><div class="meta" style="padding-left:0"><b>${s.name}</b><span class="w">${arrow(DAYS[S.day].from, r.shore.includes("off"))}${Math.round(r.mean)}<small>g${Math.round(r.gust)}</small></span></div>
+        ${fbar(s).replace('class="fbar"', 'class="fbar" style="margin-left:0;margin-right:0"')}
+        <div class="go"><button>Open spot</button><button class="p">In the chart</button></div></div></div>`;
+  }
+  return `<div class="map">${t.html}${inkWind(w, h)}${pins}${pop}
+    <div class="mapctl"><div class="box"><button>+</button><button>−</button></div></div></div>`;
+}
+
+const MENU_ROWS = [["Chart"], ["Spot finder", true], ["Favourites"], ["Customise"], ["Display options"], ["Take the tour"]];
+function render() {
+  const phone = S.device === "phone", el = document.getElementById("frame");
+  el.className = `frame ${phone ? "phone" : "desk"}`;
+  const list = ranked();
+  const d = DAYS[S.day], range = `${S.day === 0 && S.a === 7 ? "Now" : `${d.name}, ${hh(S.a)}`}`;
+  const listHtml = `<div class="list">
+      ${list.length ? `<div class="cards">${list.map((x) => card(x, phone ? 364 : 340)).join("")}</div>` : `<div class="empty">Star a spot and it shows here.</div>`}</div>`;
+  el.innerHTML = `<div class="app">
+    <header class="top"><span class="lead"><button class="burger" aria-label="Menu"><svg width="16" height="12"><path d="M0 1h16M0 6h16M0 11h16" stroke="#1a1d21" stroke-width="1.6"/></svg></button>
+      ${phone ? "" : `<span class="word">wingfoil<i>.ie</i></span>`}</span>
+      <div class="askw"><div class="ask"><button id="where" aria-expanded="${!!S.whereOpen}"><small>Where</small><span>${S.scope === "yours" ? "Favourites" : "Near you"} <i class="chev">▾</i></span></button><button><small>When</small><span>${range}</span></button></div>
+        ${S.whereOpen ? `<div class="pick">${[["yours", "Favourites", "The spots you've starred"], ["near", "Near you", "Every spot around you"]].map(([k, n, l]) =>
+          `<button data-scope="${k}" aria-pressed="${S.scope === k}"><b>${n}</b><small>${l}</small></button>`).join("")}</div>` : ""}</div>
+      </header>
+    ${whenBar()}
+    <div class="body">${listHtml}${!phone || S.mapOn ? `<div class="mapw" id="mapw"></div>` : ""}</div>
+    ${phone ? `<button class="mapbtn" id="mapbtn">${S.mapOn ? `${LIST_GLYPH} List` : `${MAP_GLYPH} Map`}</button>` : ""}
+  </div>`;
+  const mw = el.querySelector("#mapw");
+  if (mw) { const r = mw.getBoundingClientRect(); mw.innerHTML = map(Math.round(r.width - (phone ? 0 : 12)), Math.round(r.height - (phone ? 0 : 24))); }
+  bind(el);
+  document.querySelectorAll("[data-device]").forEach((b) => b.setAttribute("aria-pressed", S.device === b.dataset.device));
+}
+function bind(el) {
+  // Press anywhere on the timeline for that day and hour; drag to move along it, across days.
+  const days = el.querySelector(".days");
+  const pick = (x) => {
+    const bars = [...document.querySelectorAll(".day .bar")];
+    let k = bars.findIndex((b) => { const r = b.getBoundingClientRect(); return x >= r.left && x <= r.right; });
+    if (k < 0) k = x < bars[0].getBoundingClientRect().left ? 0 : bars.findIndex((b) => b.getBoundingClientRect().right > x);
+    if (k < 0) k = bars.length - 1;
+    const r = bars[k].getBoundingClientRect(), i = Math.max(0, Math.min(HOURS.length - 1, Math.floor((x - r.left) / r.width * HOURS.length)));
+    if (k !== S.day || i !== S.a) { S.day = k; S.a = S.b = i; S.open = null; render(); }
+  };
+  days.onpointerdown = (e) => {
+    if (e.pointerType === "touch") { pick(e.clientX); return; }   // a finger scrolls the strip; a tap picks
+    e.preventDefault(); pick(e.clientX);
+    const move = (m) => pick(m.clientX), up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); };
+    addEventListener("pointermove", move); addEventListener("pointerup", up);
+  };
+  el.querySelectorAll("[data-scope]").forEach((b) => b.onclick = () => { S.scope = b.dataset.scope; S.whereOpen = false; S.open = null; render(); });
+  const wh = el.querySelector("#where"); if (wh) wh.onclick = () => { S.whereOpen = !S.whereOpen; render(); };
+  el.querySelectorAll("[data-fav]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); const id = b.dataset.fav; S.starred.has(id) ? S.starred.delete(id) : S.starred.add(id); render(); });
+  // hover: the card lights its pin and the pin its card, without drawing the page again
+  const light = (id) => { S.hover = id; el.querySelectorAll("[data-pin]").forEach((p) => p.classList.toggle("hl", p.dataset.pin === id)); el.querySelectorAll("[data-card]").forEach((c) => c.classList.toggle("hl", c.dataset.card === id)); };
+  el.querySelectorAll("[data-card]").forEach((c) => { c.onmouseenter = () => light(c.dataset.card); c.onmouseleave = () => light(null); c.onclick = () => { S.open = c.dataset.card; if (S.device === "phone") S.mapOn = true; render(); }; });
+  el.querySelectorAll("[data-pin]").forEach((p) => { p.onmouseenter = () => light(p.dataset.pin); p.onmouseleave = () => light(null); p.onclick = () => { S.open = p.dataset.pin; render(); }; });
+  el.querySelectorAll("[data-close]").forEach((b) => b.onclick = () => { S.open = null; render(); });
+  const mb = el.querySelector("#mapbtn"); if (mb) mb.onclick = () => { S.mapOn = !S.mapOn; render(); };
+}
+document.querySelectorAll("[data-device]").forEach((b) => b.onclick = () => { S.device = b.dataset.device; S.mapOn = false; render(); });
+render();
+</script>
+</body>
+</html>

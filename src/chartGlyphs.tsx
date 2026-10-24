@@ -25,6 +25,8 @@
  * wind's speed, the best, a warning), each from the theme.
  */
 import type { ReactNode } from "react";
+import { ChartGlyph as SetGlyph } from "../shared/web/ChartGlyph";
+import { chartMap, spotFinder } from "../shared/web/glyphSet";
 
 export { ChartGlyph } from "../shared/web/ChartGlyph";
 export * as glyphs from "../shared/web/glyphSet";
@@ -81,13 +83,15 @@ export function LayersGlyph(props: ChartGlyphProps) {
   );
 }
 
-/** The star a rider keeps a spot with, as the dock's star is drawn. */
-export function SpotsGlyph(props: ChartGlyphProps) {
-  return (
-    <Glyph {...props}>
-      <path d="M12 2.5L14.7 8.9L21.5 9.4L16.3 13.8L18 20.5L12 16.9L6.1 20.6L7.7 13.9L2.5 9.5L9.3 8.9Z" />
-    </Glyph>
-  );
+/**
+ * The spot finder, and the chart from it: the set's own (shared/web), which
+ * the spot page's menu draws too.
+ */
+export function FinderGlyph({ size, strokeWidth }: ChartGlyphProps) {
+  return <SetGlyph glyph={spotFinder} size={size} strokeWidth={strokeWidth} />;
+}
+export function ChartSheetGlyph({ size, strokeWidth }: ChartGlyphProps) {
+  return <SetGlyph glyph={chartMap} size={size} strokeWidth={strokeWidth} />;
 }
 
 /** Three rules, each with its stop where the rider set it: the options. */

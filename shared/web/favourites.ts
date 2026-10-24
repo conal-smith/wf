@@ -4,7 +4,7 @@
  * storage and quota errors never break the page). A signed-in sync can
  * implement `FavouritesStore` later and be swapped in without touching callers.
  *
- * Shared by the map (its "Your spots" panel, popup and dock) and the spot page,
+ * Shared by the map (its dock, and the spot finder's Favourites) and the spot page,
  * so a star set on one shows on the other, and a change in another tab arrives
  * through `subscribe`.
  */

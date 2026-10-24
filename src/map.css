@@ -960,7 +960,7 @@
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;
 }
-/* The layers (layers.css, with their own chunk), your spots and the display
+/* The layers (layers.css, with their own chunk) and the display
    options (panels.css), one at a time in the kit's dialog over the dimmed map
    (src/MapControls.tsx). The dialog scrolls a tall panel; its body's prose
    sizes give way to the panels' own. */
@@ -1009,96 +1009,12 @@
   font: italic 10px var(--font-body);
 }
 
-/* ---------- your spots, behind the star under Layers ---------- */
 /* Gust's panel lines up with the boxes along the top (companion/web/gust.css
    reads these), and on a phone its sheet stops under the zoom rail rather
    than cutting through it. */
 .app-shell {
   --gust-panel-top: 18px;
   --gust-sheet-height: calc(100dvh - 206px);
-}
-/* The hour the lights are read at, under the dialog's title. */
-.side-head {
-  display: flex;
-  margin: 0 0 4px;
-}
-.side-head .when {
-  font: 500 10px var(--font-mono);
-  letter-spacing: 0.06em;
-  color: var(--color-ink-muted);
-}
-.side h4 {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 9px 0 1px;
-  font: 500 9.5px var(--font-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-.fvl {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.fvl li {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
-  gap: 0 6px;
-  align-items: center;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--color-line);
-}
-.fv-go {
-  display: block;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  text-align: left;
-  color: var(--color-ink);
-  cursor: pointer;
-}
-.fv-go b {
-  display: block;
-  font: italic 600 15px var(--font-display);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.fv-go span {
-  display: block;
-  overflow: hidden;
-  font: 400 10.5px var(--font-mono);
-  color: var(--color-ink-muted);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.fv-go span i {
-  font-style: normal;
-  opacity: 0.7;
-}
-@media (hover: hover) and (pointer: fine) {
-  .fv-go:hover b {
-    color: var(--color-chart-magenta);
-  }
-}
-.fvl .none {
-  display: block;
-  padding: 6px 0;
-  border: 0;
-  font: italic 13px var(--font-body);
-  color: var(--color-ink-muted);
-}
-.side .sign {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  font: 400 10.5px var(--font-mono);
-  color: var(--color-ink-muted);
 }
 /* ---------- small round buttons: i for the small print, ? for the stars ---------- */
 .info-i,

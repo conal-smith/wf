@@ -106,6 +106,20 @@ export function isSpotPath(pathname: string): boolean {
 }
 
 /**
+ * The spot finder, `/spots` and anything under it: the riding places rated for the
+ * rider at one hour, listed beside a plain map. A page of the map's own bundle,
+ * drawn by src/App.tsx beside the chart from the same data, so it is not
+ * split off and is not in OWN_BUNDLE_PATHS.
+ */
+export const FINDER_HREF = "/spots";
+
+const FINDER_PATH = /^\/spots(\/|$)/;
+
+export function isFinderPath(pathname: string): boolean {
+  return FINDER_PATH.test(pathname);
+}
+
+/**
  * Every path that `src/main.tsx` splits off from the map: everything else is
  * the map's. The build's preload hint for the map's chunk (vite.config.ts)
  * reads this list, so the hint and the entry point agree on which paths are
@@ -152,7 +166,7 @@ export const mapSpotHref = (id: string) => `/?spot=${encodeURIComponent(id)}`;
 /**
  * Every path with no file behind it that the entry point draws, as the SPA
  * fallback in public/_redirects lists them: each section with a bundle of its
- * own, and the spot page.
+ * own, the spot page, and the spot finder.
  */
 export const APP_ROUTES: readonly string[] = [
   ...SITE_SECTIONS.filter((section) => section.href !== "/").map(
@@ -160,4 +174,5 @@ export const APP_ROUTES: readonly string[] = [
   ),
   "/spot",
   STARS_HREF,
+  FINDER_HREF,
 ];
