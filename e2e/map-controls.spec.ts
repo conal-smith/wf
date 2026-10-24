@@ -1,5 +1,4 @@
 import {
-  closePanel,
   expect,
   layerTile,
   menuRow,
@@ -45,11 +44,13 @@ test("the chart's controls: zoom and Layers on the right, the layers from the me
   ).toHaveText([
     "Customise",
     "Layers",
-    "Your spots",
     "Display options",
     "About the map",
     "Take the tour",
   ]);
+  await expect(
+    page.getByRole("group", { name: "The chart" }).getByRole("link"),
+  ).toHaveText(["Spot finder"]);
   await page.keyboard.press("Tab");
   await expect(menuRow(page, "Layers")).toBeFocused();
   await page.keyboard.press("Enter");
@@ -213,85 +214,28 @@ test("the map's information is one dialog over the dimmed chart: from the menu a
 });
 
 for (const width of [390, 1440]) {
-  test(`your spots are in the menu, and open as the layers do, at ${width}px`, async ({
+  test(`the spot finder is in the menu under the layers, in place of your spots, at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 });
-    await page.addInitScript(() =>
-      localStorage.setItem(
-        "wingfoil.spots.v1",
-        JSON.stringify({ starred: ["dollymount"] }),
-      ),
-    );
     await page.goto("/");
     await expect(page.locator(".spot-marker")).toHaveCount(149, {
       timeout: 30000,
     });
-    // Nothing of them on the chart until asked: no panel, no strip.
-    const panel = page.getByRole("complementary", { name: "Your spots" });
-    await expect(panel).toHaveCount(0);
-    await expect(page.locator(".side")).toHaveCount(0);
     const menu = page.getByRole("button", { name: "Site menu" });
-    // Under Layers in the menu, one column of the chart's tools.
     await openMenu(page);
-    const at = async (name: "Layers" | "Your spots" | "Display options") =>
-      (await menuRow(page, name).boundingBox())!;
-    const [l, s, o] = [
-      await at("Layers"),
-      await at("Your spots"),
-      await at("Display options"),
-    ];
-    expect(s.x).toBe(l.x);
-    expect(s.y).toBeGreaterThan(l.y);
-    expect(o.y).toBeGreaterThan(s.y);
-    await menuRow(page, "Your spots").click();
-    await expect(panel).toBeVisible();
+    const tools = page.getByRole("group", { name: "The chart" });
+    const finder = tools.getByRole("link", { name: "Spot finder" });
+    const l = (await menuRow(page, "Layers").boundingBox())!;
+    const f = (await finder.boundingBox())!;
+    const o = (await menuRow(page, "Display options").boundingBox())!;
+    expect(f.x).toBe(l.x);
+    expect(f.y).toBeGreaterThan(l.y);
+    expect(o.y).toBeGreaterThan(f.y);
+    await finder.click();
     await expect(menu).toHaveAttribute("aria-expanded", "false");
-    await expect(panel).toContainText("Dollymount");
-    await expect(panel).toContainText("Often opened");
-    // In a dialog over the dimmed map, on the page, with its own X.
-    const dialog = page.getByRole("dialog", { name: "Your spots" });
-    await expect(dialog).toBeVisible();
-    const box = (await dialog.boundingBox())!;
-    expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width).toBeLessThanOrEqual(width);
-    expect(
-      await dialog.evaluate(
-        (el) => getComputedStyle(el, "::backdrop").backdropFilter,
-      ),
-    ).toMatch(/blur/);
-    // Its X closes it, as does Escape, as does a press on the dimmed map.
-    await closePanel(page);
-    await expect(panel).toHaveCount(0);
-    await openFromMenu(page, "Your spots");
-    await page.keyboard.press("Escape");
-    await expect(panel).toHaveCount(0);
-    await expect(menu).toBeFocused();
-    await openFromMenu(page, "Your spots");
-    // A star alone opens no dock: the press is on the backdrop.
-    await page.mouse.click(Math.max(2, box.x / 2), box.y + box.height / 2);
-    await expect(panel).toHaveCount(0);
-    await expect(page.locator(".dock")).toHaveCount(0);
-    // One at a time: the layers in place of your spots, and the other way.
-    await openFromMenu(page, "Layers");
-    await expect(page.getByRole("group", { name: "Layers" })).toBeVisible();
-    await closePanel(page);
-    await openFromMenu(page, "Your spots");
-    await expect(page.getByRole("group", { name: "Layers" })).toHaveCount(0);
-    await expect(panel).toBeVisible();
-    // The small print's "i" in the panel opens a dialog, and a press in it
-    // leaves the panel open behind it.
-    await panel.getByRole("button", { name: "About your spots" }).click();
-    const about = page.getByRole("dialog", { name: "About your spots" });
-    await expect(about).toContainText("kept on this device");
-    await about.click();
-    await page.keyboard.press("Escape");
-    await expect(about).toHaveCount(0);
-    await expect(panel).toBeVisible();
-    // A spot chosen from it is the dock's, and the panel makes way.
-    await panel.getByRole("button", { name: /^Dollymount/ }).click();
-    await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
-    await expect(panel).toHaveCount(0);
+    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page.locator("[data-spot-finder]")).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(width);

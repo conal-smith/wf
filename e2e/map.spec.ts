@@ -902,8 +902,8 @@ for (const device of [
         await expect(page.locator(".pick-mark")).toHaveCount(0);
       };
       // The panels are modal: the press lands on the dimmed map round them.
-      // Layers stands for them all here; your spots' and the display
-      // options' own tests press round those.
+      // Layers stands for them both here; the display options' own test
+      // presses round those.
       await openFromMenu(page, "Layers");
       await press(page, await backdrop(page));
       await expect(page.getByRole("dialog", { name: "Layers" })).toHaveCount(0);
@@ -1033,7 +1033,7 @@ test("Escape shuts what is open over the chart first, then lets go of the chosen
   await expect(dockName).toHaveText("Keel Beach", { timeout: 30000 });
   const map = page.locator(".map-canvas");
   await expect(map).toHaveClass(/is-focus/, { timeout: 30000 });
-  for (const name of ["Layers", "Your spots", "Display options"] as const) {
+  for (const name of ["Layers", "Display options"] as const) {
     await openFromMenu(page, name);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog", { name })).toHaveCount(0);

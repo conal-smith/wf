@@ -277,23 +277,6 @@ for (const { width, height } of [
       await shoot(page, "display-filter", width);
     });
 
-    test("your spots, starred", async ({ page }) => {
-      await openMap(page);
-      await pick(page, "Brandon Bay");
-      await page
-        .locator(".dock")
-        .getByRole("button", { name: "Star Brandon Bay" })
-        .click();
-      await pick(page, "Dollymount");
-      await page.keyboard.press("Escape");
-      await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
-      await openFromMenu(page, "Your spots");
-      await expect(
-        page.getByRole("complementary", { name: "Your spots" }),
-      ).toBeVisible();
-      await shoot(page, "your-spots", width);
-    });
-
     test("the key", async ({ page }) => {
       await openMap(page);
       await openFromMenu(page, "About the map");
