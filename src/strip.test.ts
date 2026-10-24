@@ -273,6 +273,56 @@ describe("rainColumns", () => {
   it("leaves a column past the last step empty", () => {
     expect(rainColumns([at("2026-10-08T18:00:00Z")], steps)).toEqual([null]);
   });
+
+  // ICON-EU weather as it is fetched now: a step an hour, each its own hour's.
+  const hourly = Array.from({ length: 13 }, (_, h) => ({
+    validTime: new Date(at("2026-10-08T00:00:00Z") + h * 3600000).toISOString(),
+    precipIntervalHours: h ? ([h - 1, h] as [number, number]) : null,
+  }));
+  const clock = (h: string) => at(`2026-10-08T${h}:00Z`);
+
+  it("gives each hourly column its own hour's rain, and no dots", () => {
+    const times = ["02:00", "03:00", "04:00", "05:00"].map(clock);
+    const out = rainColumns(times, hourly);
+    expect(out.map((c) => c && [c.steps, c.own, c.hours])).toEqual([
+      [[2], true, 1],
+      [[3], true, 1],
+      [[4], true, 1],
+      [[5], true, 1],
+    ]);
+    expect(out[1]!.end).toBe(clock("03:00"));
+  });
+
+  it("adds a three-hourly column's three hours up, once each", () => {
+    // Hourly columns to 06:00, then three-hourly: 09:00 holds 07, 08 and 09.
+    const times = ["05:00", "06:00", "09:00", "12:00"].map(clock);
+    const out = rainColumns(times, hourly);
+    expect(out.map((c) => c && [c.steps, c.own, c.hours])).toEqual([
+      [[5], true, 1],
+      [[6], true, 1],
+      [[7, 8, 9], true, 3],
+      [[10, 11, 12], true, 3],
+    ]);
+    // Every hour is read by exactly one column.
+    const read = out.flatMap((c) => c!.steps);
+    expect(new Set(read).size).toBe(read.length);
+  });
+
+  it("has nothing for the run's own hour, which has no interval", () => {
+    expect(rainColumns([clock("00:00")], hourly)).toEqual([null]);
+  });
+
+  it("reads only the hours a column has where the run starts inside it", () => {
+    // A three-hourly column at 03:00 whose hours start at midnight's run.
+    const out = rainColumns([clock("00:00"), clock("03:00")], hourly);
+    expect(out[1]).toMatchObject({ steps: [1, 2, 3], hours: 3, own: true });
+    // A run that starts at 07:00: its first step is its own hour, no interval.
+    const run = hourly
+      .slice(7)
+      .map((step, k) => (k ? step : { ...step, precipIntervalHours: null }));
+    const late = rainColumns([clock("06:00"), clock("09:00")], run);
+    expect(late[1]).toMatchObject({ steps: [1, 2], hours: 2, own: true });
+  });
 });
 
 describe("timeSpoken", () => {

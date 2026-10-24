@@ -58,6 +58,7 @@ import {
   type SpotWaves,
   type SpotWeather,
 } from "./useBlend";
+import { rainFigure, rainTint } from "../force5/src/rain";
 import { presentWeather } from "../force5/src/surface";
 import { handoverColumns, variableValue } from "../force5/src/variables";
 import {
@@ -243,7 +244,7 @@ const MORE_LABEL: Record<MoreRow, [GlyphDef, string, string?]> = {
   current: [glyphs.current, "Current, and where it runs to"],
   sky: [glyphs.partly, "Sky"],
   air: [glyphs.air, "Air, °C", "°C"],
-  rain: [glyphs.drop, "Rain, mm", "mm"],
+  rain: [glyphs.drop, "Rain, mm per hour", "mm/h"],
 };
 /** The glyph set's (shared/web/glyphSet.ts): ink, with the weather's colour inside. */
 const RowLabel = ({ glyph, title }: { glyph: GlyphDef; title: string }) => (
@@ -251,8 +252,6 @@ const RowLabel = ({ glyph, title }: { glyph: GlyphDef; title: string }) => (
     <ChartGlyph glyph={glyph} size={14} />
   </span>
 );
-/** Rain, in millimetres over one step, that saturates a cell's tint. */
-const RAIN_FULL_MM = 4;
 /**
  * Pixels per star for an hour's cell: the row's size where the column is wide
  * enough, else as large as five stars and their gaps fit with a little air.
@@ -884,37 +883,43 @@ function MoreRows({
         ? row(
             "rain",
             (column) => {
-              // A total belongs to its interval, and to no other hour. Every
-              // other row may borrow the nearest step for a column between two,
-              // but a three-hour total read into each of three hourly columns
-              // says three times the rain. So the interval's last column prints
-              // it and the others in it carry its tint and a dot; the title
-              // says which interval either way, since the steps need not fall
-              // on the columns' hours.
+              // Rain per hour: each hourly step's own amount, and a coarser
+              // column the mean of the steps inside it. A total belongs to its
+              // interval and to no other hour, so a column inside a longer
+              // interval does not borrow it: the interval's last column prints
+              // it and the others carry its tint and a dot. The title says
+              // which hours either way, since the steps need not fall on the
+              // columns' hours.
               const covered = rain[column];
-              const value = covered
-                ? variableValue(series[covered.step], fields.rain)
-                : null;
-              if (!covered || value === null) return "–";
-              const amount = value < 0.05 ? "0" : value.toFixed(1);
+              const values = covered
+                ? covered.steps.map((k) =>
+                    variableValue(series[k], fields.rain),
+                  )
+                : [];
+              if (!covered || values.some((value) => value === null))
+                return "–";
+              const total = values.reduce((sum, v) => sum! + v!, 0)!;
+              const rate = total / covered.hours;
+              const figure = rainFigure(rate, total);
+              const amount = total < 0.05 ? "0" : total.toFixed(1);
               const own = covered.own;
-              const exact =
-                Math.abs(covered.end - columns[column].time) <= 60000;
+              const hours =
+                covered.hours === 1 ? "the hour" : `the ${covered.hours} h`;
               return (
                 <span
                   className={`rain-cell${own ? "" : " is-part"}`}
                   style={
                     {
-                      "--rain": Math.min(1, value / RAIN_FULL_MM).toFixed(2),
+                      "--rain": rainTint(rate).toFixed(2),
                     } as React.CSSProperties
                   }
-                  title={`${
-                    own && exact
-                      ? `${amount} mm in the ${covered.hours} h to here`
-                      : `${amount} mm in the ${covered.hours} h to ${clock(covered.end)}${own ? "" : ", printed at the last column it covers"}`
-                  }${by(series[covered.step])}`}
+                  title={`${amount} mm in ${hours} to ${clock(covered.end)}${
+                    covered.hours > 1 && total >= 0.05
+                      ? `, ${figure} mm/h`
+                      : ""
+                  }${own ? "" : ", printed at the last column it covers"}${by(series[covered.step])}`}
                 >
-                  {own ? amount : "·"}
+                  {own ? figure : "·"}
                 </span>
               );
             },

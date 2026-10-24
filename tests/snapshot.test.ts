@@ -279,14 +279,15 @@ describe.each(["icon-eu-weather"])("published %s weather bundle", (name) => {
     expect(g.dx).not.toBe(g.dy);
     const cells = g.width * g.height;
 
+    // The frames carry the rain alone, which the chart's Rain layer draws;
+    // the series carry every variable.
     const gridded = m.frameVariables!;
-    expect(gridded.length).toBeGreaterThan(0);
+    expect(gridded).toEqual(["precip"]);
     const codes = new Set(
       Object.entries(m.variables)
         .filter(([, meta]) => meta.kind === "code")
         .map(([key]) => key),
     );
-    expect(gridded.some((key) => codes.has(key))).toBe(true);
 
     expect(m.frames.length).toBeGreaterThan(0);
     m.frames.forEach((info, i) => {
@@ -334,15 +335,17 @@ describe.each(["icon-eu-weather"])("published %s weather bundle", (name) => {
     });
   });
 
-  it("publishes a real zero, and rain that is not one flat sheet", () => {
+  it("publishes no rain at initialization, and rain that is not one flat sheet", () => {
     const m = validateWeatherManifest(readBundle<WeatherManifest>(name));
-    const cloud = weatherFields(m).cloud!;
     const rain = weatherFields(m).rain!;
     const frames = m.frames.map((info) =>
       readFrame<Record<string, (number | null)[]>>(m, info.url),
     );
-    // Zero cloud is a value, not a gap: somewhere in the field the sky is clear.
-    expect(frames.some((frame) => frame[cloud].includes(0))).toBe(true);
+    // The run's own hour has no interval: nulls, never a field of zeros.
+    expect(frames[0][rain].every((value) => value === null)).toBe(true);
+    expect(frames[1][rain].every((value) => typeof value === "number")).toBe(
+      true,
+    );
     // And rain varies across the map rather than being one scalar per frame.
     const spread = frames
       .map((frame) => frame[rain].filter((value) => value !== null))

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { MODEL_CATALOG } from "../../force5/src/manifests";
 import { KNOTS } from "../../force5/src/units";
@@ -413,13 +414,30 @@ describe("spotForecast", () => {
 });
 
 describe("rain", () => {
-  // ICON-EU's shape: a step every three hours from the run, each step's
-  // precip the total over the three hours ending at it, none at
-  // initialization. The step at 15:00 on the 17th has lost its rain.
+  // ICON-EU's shape when it was fetched three-hourly: a step every three
+  // hours from the run, each step's precip the total over the three hours
+  // ending at it, none at initialization. The step at 15:00 on the 17th has
+  // lost its rain. (It is hourly now; a three-hour total is what GFS's
+  // weather past +120 h still is, and the harder case for the rows.)
   const RUN = Date.parse("2026-09-16T18:00:00Z");
   const TOTALS = [null, 0.8, 0.1, 0, 2.4, 1.3, 0.5, null, 0.7];
-  const BASE = "weather/icon-eu-weather-2026091618-3h-v1-438ee9cf/";
+  const BASE = `weather/${
+    JSON.parse(
+      readFileSync(
+        new URL(
+          "../../tests/fixtures/weather/icon-eu-weather.json",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ).base
+  }`;
   const SQUARE = `${BASE}spots/n52w008.json`;
+  /** The fixture's pointer, three-hourly and frameless, as these steps are. */
+  const threeHourly = (pointer: Record<string, unknown>, hours: number) => {
+    const { frameVariables: _, stepRanges: __, ...rest } = pointer;
+    return { ...rest, stepHours: 3, frames: [], horizonHours: hours };
+  };
   const at = (iso: string) => Date.parse(iso);
 
   async function rainForecast(
@@ -451,11 +469,10 @@ describe("rain", () => {
       }))
       .slice(options.skip ?? 0);
     const source = fixtureSource({
-      "weather/icon-eu-weather.json": {
-        ...pointer,
-        frames: [],
-        horizonHours: 3 * (totals.length - 1),
-      },
+      "weather/icon-eu-weather.json": threeHourly(
+        pointer,
+        3 * (totals.length - 1),
+      ),
       [SQUARE]: {
         ...square,
         spotSeries: { ...square.spotSeries, dollymount: series },
@@ -675,11 +692,7 @@ describe("rain", () => {
         .slice(from);
     const GFS = "gfs-weather-2026091618-24h-v1-0a1b2c3d/";
     const source = fixtureSource({
-      "weather/icon-eu-weather.json": {
-        ...pointer,
-        frames: [],
-        horizonHours: 18,
-      },
+      "weather/icon-eu-weather.json": threeHourly(pointer, 18),
       [SQUARE]: {
         ...square,
         spotSeries: {
@@ -688,12 +701,10 @@ describe("rain", () => {
         },
       },
       "weather/gfs-weather.json": {
-        ...pointer,
+        ...threeHourly(pointer, 24),
         model: "gfs-weather",
         modelName: "GFS weather",
         base: GFS,
-        frames: [],
-        horizonHours: 24,
       },
       [`weather/${GFS}spots/n52w008.json`]: {
         ...square,

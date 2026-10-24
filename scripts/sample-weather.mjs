@@ -501,10 +501,13 @@ function rainPlane(grid, hour) {
   // Linear plus a bounded wave whose slope (1.2 · 2π/17 ≈ 0.44 mm/h at most)
   // can never cancel the linear one, and which is zero at hour 0.
   const total = 0.45 * hour + 1.2 * (osc(hour, 17, 0.2) - osc(0, 17, 0.2));
+  // The slopes grow with the hour as well as with the total, so even an hour
+  // whose total barely grows (the wave at its trough) is not one flat sheet:
+  // an hourly frame has to vary across the map as a three-hourly one did.
   return {
     a: round(total, 1),
-    bx: q2(0.06 * total * grid.dx),
-    by: q2(0.05 * total * grid.dy),
+    bx: q3(0.06 * total * grid.dx + 0.004 * hour),
+    by: q3(0.05 * total * grid.dy + 0.003 * hour),
   };
 }
 
@@ -1048,6 +1051,7 @@ function weatherBundle(model, spots, runMs, grid) {
     runTime: iso(runMs),
     generatedAt: iso(runMs),
     stepHours: model.stepHours,
+    ...(model.stepRanges ? { stepRanges: model.stepRanges } : {}),
     grid,
     variables: Object.fromEntries(
       names.map((name) => {
@@ -1225,17 +1229,24 @@ const CATALOGUE = [
     live: { horizonHours: 72 },
   },
   {
+    // Hourly, as the adapter fetches it, with the rain alone in its frames:
+    // the chart's Rain layer draws them.
     id: "icon-eu-weather",
     file: "icon-eu-weather.json",
     kind: "weather",
     name: "ICON-EU surface weather",
     seed: 0.37,
-    stepHours: 3,
+    stepHours: 1,
     horizonHours: 3,
     resolutionKm: 6.5,
-    frameVariables: ["t2m", "precip", "clct", "pmsl", "ww"],
+    frameVariables: ["precip"],
     spacing: { fixtures: 0.25, live: 0.125 },
     live: { horizonHours: 72 },
+    // The e2e site's run is the day's own, as production's is: it starts with
+    // HARMONIE's sample run and reaches three days, so the dock's hourly
+    // columns read hourly rain and its three-hourly ones add three hours up.
+    site: { horizonHours: 72 },
+    siteRun: "2026-09-13T12:00:00Z",
   },
   {
     // The dock's sky, air and rain past ICON-EU weather's three days, as far
@@ -1245,12 +1256,20 @@ const CATALOGUE = [
     kind: "weather",
     name: "GFS weather",
     seed: 0.53,
-    stepHours: 3,
+    // GFS's own ladder: hourly to +120 h, three-hourly beyond.
+    stepHours: 1,
+    stepRanges: [{ throughHour: 6, stepHours: 1 }],
     horizonHours: 6,
     resolutionKm: 28,
     frameless: true,
     spacing: { fixtures: 0.25, live: 0.25 },
-    live: { horizonHours: 360 },
+    live: {
+      horizonHours: 360,
+      stepRanges: [
+        { throughHour: 120, stepHours: 1 },
+        { throughHour: 360, stepHours: 3 },
+      ],
+    },
   },
   {
     // Only with --all (the dev sample and the e2e site): the committed unit
@@ -1293,10 +1312,12 @@ function build({ profile, now, spacing, all, site }) {
   for (const model of CATALOGUE) {
     if (model.optional && !all) continue;
     const shaped =
-      profile === "fixtures" ? model : { ...model, ...(model.live ?? {}) };
+      profile === "fixtures"
+        ? { ...model, ...((site && model.site) || {}) }
+        : { ...model, ...(model.live ?? {}) };
     const runMs =
       profile === "fixtures"
-        ? Date.parse(FIXTURE_RUNS[model.id])
+        ? Date.parse((site && model.siteRun) || FIXTURE_RUNS[model.id])
         : liveRun(now, model.stepHours === 6 ? 6 : 3, 3);
     const grid = gridAt(
       spacing ??

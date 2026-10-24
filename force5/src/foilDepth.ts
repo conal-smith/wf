@@ -338,21 +338,22 @@ const EDGE = 0.02;
 /** The waterline's height band, metres: a thin line on a beach, wider on a flat. */
 export const FOIL_LINE_METRES = 0.025;
 
-/** A CSS colour (#rgb, #rrggbb, rgb(), rgba()) as [r, g, b, a], or null. */
+/**
+ * A CSS colour (#rgb, #rgba, #rrggbb, #rrggbbaa, rgb(), rgba()) as
+ * [r, g, b, a], or null. The build's minifier writes a theme's rgba() with
+ * its alpha as #rrggbbaa, which is what getComputedStyle then reads back.
+ */
 export function parseColour(
   css: string,
 ): [number, number, number, number] | null {
   const s = css.trim();
-  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(s);
+  const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(s);
   if (hex) {
     const h =
-      hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join("") : hex[1];
-    return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)).concat(1) as [
-      number,
-      number,
-      number,
-      number,
-    ];
+      hex[1].length <= 4 ? [...hex[1]].map((c) => c + c).join("") : hex[1];
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const a = h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1;
+    return [r, g, b, a];
   }
   const fn = /^rgba?\(([^)]+)\)$/i.exec(s);
   if (!fn) return null;
