@@ -78,10 +78,12 @@
   width: max-content;
   max-width: 240px;
   padding: 9px 11px;
-  border-radius: 0;
-  background: var(--color-solid);
+  /* A tooltip over the chart: a control's corner, the edge every box has,
+     and the float's lift. */
+  border-radius: var(--radius-control);
+  background: var(--color-solid) var(--gradient-float);
   border: 1px solid var(--color-ink);
-  box-shadow: 0 10px 30px color-mix(in srgb, var(--color-ink) 20%, transparent);
+  box-shadow: var(--inset-shadow-frame), var(--shadow-float);
   font-size: 11px;
   color: var(--color-ink);
   pointer-events: none;

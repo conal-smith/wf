@@ -32,12 +32,16 @@
   outline-offset: -4px;
 }
 
-/* The box everything over the chart is drawn in: paper, a rule, a gap of
-   paper and a second rule, and a small warm shadow. */
+/* The box everything over the chart is drawn in (mixed and rounded,
+   2026-10-24): paper with the faintest light from above, the ink rule and
+   the hairline just inside it, a box's corner, and the stacked soft shadow
+   that lifts it off the chart. A box that scrolls clips to its corner. */
 .chart-box {
-  background: var(--color-ground);
+  background-color: var(--color-ground);
+  background-image: var(--gradient-float);
   border: 1px solid var(--color-ink);
-  box-shadow: var(--inset-shadow-frame), var(--shadow-surface);
+  border-radius: var(--radius-surface);
+  box-shadow: var(--inset-shadow-frame), var(--shadow-float);
 }
 
 /* ---------- the chart's layers over the map ---------- */
@@ -376,9 +380,10 @@
   padding: 10px 14px;
   font: italic 15px var(--font-body);
   color: var(--color-ink-muted);
-  background: var(--color-ground);
+  background: var(--color-ground) var(--gradient-float);
   border: 1px solid var(--color-ink);
-  box-shadow: var(--inset-shadow-frame);
+  border-radius: var(--radius-surface);
+  box-shadow: var(--inset-shadow-frame), var(--shadow-float);
   display: flex;
   gap: 12px;
   align-items: center;
@@ -875,9 +880,12 @@
   right: 18px;
   z-index: 21;
 }
+/* Each key a control's corner inside the box's, a little apart: the box's
+   inset plus the key's corner is the box's own, so the curves nest. */
 .zbox {
   display: flex;
   flex-direction: column;
+  gap: 2px;
   padding: 4px;
 }
 .zbox button {
@@ -886,26 +894,32 @@
   width: 32px;
   height: 30px;
   border: 0;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--color-ink);
   font: 500 18px/1 var(--font-mono);
   cursor: pointer;
 }
-.zbox button + button {
-  border-top: 1px solid var(--color-line);
-}
 .zbox button svg {
   stroke: currentColor;
 }
+/* Pressed is ink with its sheen; a press nudges the key down a pixel. */
 .zbox button[aria-pressed="true"],
 .zbox button[aria-expanded="true"] {
-  background: var(--color-ink);
+  background: var(--color-ink) var(--gradient-ink);
   color: var(--color-ink-inverse);
+  box-shadow: var(--shadow-control);
+}
+.zbox button:active {
+  translate: 0 1px;
 }
 @media (hover: hover) and (pointer: fine) {
   .zbox button:hover {
-    background: var(--color-ink);
-    color: var(--color-ink-inverse);
+    background-color: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  }
+  .zbox button[aria-pressed="true"]:hover,
+  .zbox button[aria-expanded="true"]:hover {
+    background-color: var(--color-ink);
   }
 }
 .zbox button:focus-visible {

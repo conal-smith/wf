@@ -232,10 +232,14 @@
 }
 
 /* ---- the wind and the gusts ---- */
+/* The sample day is a card in the dialog: the ink rule and its hairline, a
+   box's corner, and a contact shadow, no more. */
 .cw-preview {
   margin-bottom: 18px;
   padding: 10px 12px;
   border: 1px solid var(--color-ink);
+  border-radius: var(--radius-surface);
+  box-shadow: var(--inset-shadow-frame), var(--shadow-card);
 }
 .cw-preview-h {
   display: flex;
@@ -327,8 +331,9 @@
   padding: 0 5px;
   border: 1px solid var(--color-ink);
   border-radius: 999px;
-  background: var(--color-ground);
-  box-shadow: var(--shadow-control);
+  /* A raised paper control: lit from above, a lip and a contact shadow. */
+  background: var(--color-ground) var(--gradient-raised);
+  box-shadow: var(--shadow-raised);
   font: 600 var(--text-caption) / 1 var(--font-mono);
   color: var(--color-ink);
   transform: translate(-50%, -50%);
@@ -343,8 +348,9 @@
   inset: -11px -7px;
 }
 .cw-knob.is-dark {
-  background: var(--color-ink);
+  background: var(--color-ink) var(--gradient-ink);
   color: var(--color-ink-inverse);
+  box-shadow: var(--shadow-control);
 }
 .cw-knob:focus-visible {
   outline: 2px solid var(--color-focus);
@@ -435,6 +441,7 @@
 .cw-gust-trace {
   width: 100%;
   border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
   background: var(--color-sea-4);
 }
 .cw-gust-trace .cw-over {
@@ -750,6 +757,8 @@
 .cw-sample {
   padding: 12px;
   border: 1px solid var(--color-ink);
+  border-radius: var(--radius-surface);
+  box-shadow: var(--inset-shadow-frame), var(--shadow-card);
 }
 .cw-sample h4 {
   margin: 2px 0 6px;
