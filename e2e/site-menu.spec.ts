@@ -209,22 +209,24 @@ test("a drag to the left puts the drawer away, and a short one springs back", as
   await expect(trigger(page)).toBeFocused();
 });
 
-test("a fast flick puts the drawer away, and a drag that starts on a row does not press it", async ({
+test("a drag that starts on a row is the drawer's, and a tap on a row still presses it", async ({
   page,
 }) => {
   await page.goto("/");
   await trigger(page).click();
   await settled(page);
 
-  // A drag that begins on a row is the drawer's, not a press of the row.
+  // Past the line, from the middle of a row: the drawer goes, the row's
+  // dialog does not open.
   const layers = (await menuRow(page, "Layers").boundingBox())!;
   const x = layers.x + layers.width / 2;
   const y = layers.y + layers.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x - 40, y, { steps: 2 });
+  await page.mouse.move(x - 120, y, { steps: 12 });
   await page.mouse.up();
   await expect(drawer(page)).toHaveCount(0);
+  await page.waitForTimeout(300);
   await expect(page.getByRole("dialog", { name: "Layers" })).toHaveCount(0);
 
   // And a tap on a row is still a press of it.
@@ -232,6 +234,43 @@ test("a fast flick puts the drawer away, and a drag that starts on a row does no
   await settled(page);
   await menuRow(page, "Layers").click();
   await expect(page.getByRole("dialog", { name: "Layers" })).toBeVisible();
+});
+
+/**
+ * A flick: short of the line, but fast. Sent as one burst of pointer events,
+ * so the speed is the drawer's to measure and not the test runner's pace
+ * (the thresholds themselves are force5/src/siteMenu.test.ts's).
+ */
+test("a fast flick puts the drawer away short of the line", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await trigger(page).click();
+  const box = await settled(page);
+  await drawer(page).evaluate(
+    (el, at) => {
+      const send = (type: string, x: number) =>
+        el.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            pointerId: 7,
+            pointerType: "touch",
+            isPrimary: true,
+            button: type === "pointermove" ? -1 : 0,
+            clientX: x,
+            clientY: at.y,
+          }),
+        );
+      send("pointerdown", at.x);
+      send("pointermove", at.x - 12);
+      send("pointermove", at.x - 24);
+      send("pointermove", at.x - 36);
+      send("pointerup", at.x - 36);
+    },
+    { x: box.x + box.width - 30, y: box.y + box.height - 60 },
+  );
+  await expect(drawer(page)).toHaveCount(0);
+  await expect(trigger(page)).toHaveAttribute("aria-expanded", "false");
 });
 
 test("the menu carries the reader between the map and the marketplace", async ({

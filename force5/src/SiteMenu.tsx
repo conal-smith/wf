@@ -360,7 +360,14 @@ export function SiteMenu({
         return;
       }
       d.active = true;
-      el.setPointerCapture?.(event.pointerId);
+      // Held on the drawer however far the finger strays. A pointer the
+      // browser no longer knows (a scripted one) cannot be held, and the
+      // drag goes on without.
+      try {
+        el.setPointerCapture(event.pointerId);
+      } catch {
+        // Nothing to hold.
+      }
       el.style.transition = "none";
     }
     const next = Math.min(0, dx);
