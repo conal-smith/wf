@@ -162,6 +162,7 @@ test("the map's information is one dialog over the dimmed chart: from the menu a
     "The blend & models",
     "Tidal depth",
     "Currents",
+    "Rain",
     "Satellite",
     "Sources & credits",
     "About",

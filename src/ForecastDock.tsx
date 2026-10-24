@@ -1956,7 +1956,20 @@ export default function ForecastDock(props: Props) {
                       title={MORE_LABEL[key][1]}
                     />
                     {MORE_LABEL[key][2] && (
-                      <small className="dk-unit">{MORE_LABEL[key][2]}</small>
+                      // A rate's unit stands in two lines, "mm" over "/h", so
+                      // it keeps to the label column's width on a phone.
+                      <small className="dk-unit">
+                        {MORE_LABEL[key][2].split(/(?=\/)/).map((part, i) =>
+                          i ? (
+                            <span key={part}>
+                              <br />
+                              {part}
+                            </span>
+                          ) : (
+                            part
+                          ),
+                        )}
+                      </small>
                     )}
                   </div>
                 ),
