@@ -184,6 +184,14 @@ type Props = {
    * page can say it is loading.
    */
   onSatelliteLoading?: (loading: boolean) => void;
+  /**
+   * The chart in a plain style, for a page with a map beside it (the spot
+   * finder, src/finder): no neatline round it, and only what the page asks
+   * for of the rest (it passes no lights, and the layers it wants).
+   */
+  plain?: boolean;
+  /** What the map is called to a screen reader: the chart's own by default. */
+  label?: string;
 };
 
 /** The satellite image's opacity, once its tiles are in. */
@@ -581,8 +589,7 @@ function seaward(spot: Spot, metres = 500): [number, number] {
   const a = (spot.facing * Math.PI) / 180;
   return [
     spot.lon +
-      (metres * Math.sin(a)) /
-        (111320 * Math.cos((spot.lat * Math.PI) / 180)),
+      (metres * Math.sin(a)) / (111320 * Math.cos((spot.lat * Math.PI) / 180)),
     spot.lat + (metres * Math.cos(a)) / 111320,
   ];
 }
@@ -595,7 +602,8 @@ function nearestPlace(map: maplibregl.Map, lon: number, lat: number) {
     for (const f of map.querySourceFeatures("omt", { sourceLayer: "place" })) {
       if (f.geometry.type !== "Point") continue;
       const cls = f.properties?.class;
-      if (!["city", "town", "village", "hamlet", "suburb"].includes(cls)) continue;
+      if (!["city", "town", "village", "hamlet", "suburb"].includes(cls))
+        continue;
       const [x, y] = f.geometry.coordinates;
       const km = Math.hypot(
         (x - lon) * 111.32 * Math.cos((lat * Math.PI) / 180),
@@ -648,6 +656,7 @@ export default function WindMap(props: Props) {
     reducedMotion,
     bottomInset,
     phone,
+    plain = false,
   } = props;
   const container = useRef<HTMLDivElement>(null);
   const particles = useRef<HTMLCanvasElement | null>(null);
@@ -790,7 +799,8 @@ export default function WindMap(props: Props) {
     zoomClass();
     let basemapLoaded = false;
     map.on("sourcedata", (event) => {
-      if (event.sourceId === "omt" && event.isSourceLoaded) basemapLoaded = true;
+      if (event.sourceId === "omt" && event.isSourceLoaded)
+        basemapLoaded = true;
     });
     map.on("error", (event) => {
       const source = (event as unknown as { sourceId?: string }).sourceId;
@@ -805,6 +815,16 @@ export default function WindMap(props: Props) {
     });
     map.on("load", () => {
       clearTimeout(loadTimeout);
+      // The plain style: the land in paper and the sea a pale wash, so the
+      // wind's ink and the page's own marks read first.
+      if (latest.current.plain) {
+        map.setPaintProperty("land", "background-color", colours.paper);
+        const sea = getComputedStyle(document.documentElement)
+          .getPropertyValue("--color-basemap-water")
+          .trim();
+        if (sea && map.getLayer("water"))
+          map.setPaintProperty("water", "fill-color", sea);
+      }
       // The light wash beyond the loupe or the range ring: paper over the
       // depths, the contours and the coast, under the wind and the lights.
       map.addSource("focus", {
@@ -1583,11 +1603,13 @@ export default function WindMap(props: Props) {
     <>
       <div
         ref={container}
-        className="map-canvas"
+        className={plain ? "map-canvas is-plain" : "map-canvas"}
         role="region"
-        aria-label="Chart of Ireland's coast with the wing foil forecast"
+        aria-label={
+          props.label ?? "Chart of Ireland's coast with the wing foil forecast"
+        }
       />
-      <svg ref={neat} className="map-neat" aria-hidden="true" />
+      {!plain && <svg ref={neat} className="map-neat" aria-hidden="true" />}
       {!ready && !error && (
         <div className="map-loading" role="status">
           Drawing the chart…

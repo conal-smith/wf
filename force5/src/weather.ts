@@ -286,6 +286,9 @@ export function windColor(knots: number): Rgb {
   ) as Rgb;
 }
 
+/** `windColor` as CSS writes it, for a fill or a background. */
+export const windCss = (knots: number) => `rgb(${windColor(knots).join(" ")})`;
+
 export function validateGrid(g: Grid): void {
   if (
     !g ||
