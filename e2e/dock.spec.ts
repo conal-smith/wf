@@ -1450,7 +1450,7 @@ test("waves, current, sky, air and rain are one tap away, and stay open", async 
   await expect(
     page.locator(".dock tr.tt-waves .wave-cell b").first(),
   ).toHaveText(/^\d+\.\d$/);
-  // The sample's weather run starts three days on: its hours, and dashes before.
+  // The sample's weather run is hourly from HARMONIE's day, three days long.
   await expect
     .poll(() =>
       page.locator(".dock tr.tt-air td").filter({ hasText: /\d+°/ }).count(),
@@ -1481,11 +1481,12 @@ test("waves, current, sky, air and rain are one tap away, and stay open", async 
   for (const { moon, paints } of fills)
     if (moon) expect(paints).toContain("var(--color-weather-night)");
   await expect(
-    page.locator('.dk-labs .dk-glyph[title="Rain, mm"] svg path'),
+    page.locator('.dk-labs .dk-glyph[title="Rain, mm per hour"] svg path'),
   ).toHaveCSS("fill", "rgb(58, 127, 176)");
-  // A total, a dash, or the dot of an hour inside a total printed further on.
+  // An hour's rain, a dash, or the dot of an hour inside a total printed
+  // further on (a three-hourly run under hourly columns).
   await expect(page.locator(".dock tr.tt-rain td[data-i]").first()).toHaveText(
-    /^(–|·|\d+(\.\d)?)$/,
+    /^(–|·|<0\.1|\d+(\.\d)?)$/,
   );
   // The current, under the waves: its speed in the wind's unit to a tenth,
   // and an arrow where the water runs to, for the sample run's three days.
@@ -1527,7 +1528,7 @@ test("on a phone, the rows under the tide keep their units beside their glyphs",
   // glyphs need none).
   await expect(page.locator(".dk-labs .dk-lab-wind small")).toBeVisible();
   const units = page.locator(".dk-labs .dk-unit");
-  await expect(units).toHaveText(["m", "°C", "mm"]);
+  await expect(units).toHaveText(["m", "°C", "mm/h"]);
   // Each within the label column, clear of its glyph and of the hours.
   const column = (await page.locator(".dk-labs").boundingBox())!;
   for (const unit of await units.all()) {

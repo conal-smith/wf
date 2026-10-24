@@ -279,34 +279,51 @@ runs `fetch_icon_weather.py`, which reads thirteen ICON-EU single-level paramete
 (temperature, dew point, humidity, accumulated precipitation, four cloud layers,
 mean-sea-level pressure, visibility, mean-layer CAPE, WMO present weather and ground
 temperature) from one cycle and publishes `weather/icon-eu-weather.json` with its
-spot squares beside it, and no map frames: nothing reads them. The worker passes
-`--step`/`--run` only to wind models, so this task takes the importer's defaults:
-0–72 h at three-hour steps, 25 steps. Its registry age limit is 12 hours, the same as
-ICON-EU wind.
+spot squares and one map frame an hour beside it. It runs **hourly**, 0–72 h, 73
+steps: the worker passes its `--step` (1 by default) to weather models as well as
+wind ones, unless the registry says `workerStep: False` (GFS weather, below), and the
+importer's own default is 1 too. Before 24 October 2026 the worker passed `--step`
+only to wind models and the importer defaulted to 3, so every rain figure was a
+three-hour total and the sky between steps a copy of the step's. Its registry age
+limit is 30 hours.
 
 Bandwidth is the operational constraint. DWD publishes one whole-Europe file per
-parameter per step with no server-side subsetting, so a default run transfers **301 MB
-in 325 bz2 GRIB files** (measured against the live 18 UTC run on 16 September 2026)
-and completes download, validation, cropping and publication in **67 seconds**,
-writing 25 frames of 1.19–1.27 MB (30.3 MB) and a 156 KB manifest. `--step 1` triples
-that transfer. The cache lives in the same `.cache/grib/<run>/` directory as the wind
-importer under distinct parameter names, so a volume holding both ICON jobs for one
-run needs roughly 400 MB.
+parameter per step with no server-side subsetting. Three-hourly, a run transferred
+**301 MB in 325 bz2 GRIB files** (the live 18 UTC run, 16 September 2026, 67 seconds
+end to end). Hourly it is **949 files, about 845 MB**: the thirteen files of one step
+come to about 11.6 MB (0.2 MB for `ww` and 0.4–0.75 MB for `tot_prec` up to 1.3 MB for
+`relhum_2m`, read from DWD's listing for the 00 UTC run of 24 October 2026), so the
+hourly run downloads about 545 MB more, some 16 GB a month at one run a day. The cache
+lives in the same `.cache/grib/<run>/` directory as the wind importer under distinct
+parameter names, so a volume holding both ICON jobs for one run needs roughly 1.1 GB.
 
-Frames carry a declared subset of the variables (`t2m`, `precip`, `clct`, `pmsl`,
-`ww`) because thirteen arrays over 56,817 cells would be about 3 MB per frame;
-`spotSeries` carries every variable at every hour, which is what a chart reads.
-`precip` is differenced from DWD's `tot_prec` accumulation and is `null` at hour 0;
+Each frame (`frames/<HHH>.json`) carries `precip` alone (`frameVariables:
+["precip"]`), the rain in the hour ending at it, on the whole 321 × 177 crop: about
+230 KB of JSON, **10–25 KB gzipped or brotli** (measured from the real 00 UTC run of
+24 October 2026: 24 KB in an hour with rain over three quarters of the crop, 10 KB
+in one with a quarter), so 73 frames add 1–1.8 MB a run to the bucket. The chart's
+Rain layer reads the frame of the hour shown (docs/TILING_DESIGN.md, "As built: the
+Rain layer"). Thirteen arrays a frame would be about 3 MB, so `spotSeries` carries
+every variable and the frames the one the map draws. `precip` is differenced from
+DWD's `tot_prec` accumulation and is `null` at hour 0, where the frame is all nulls;
 `ww` is a WMO code that must never be interpolated or blended; `tg` over sea is a
-model SST **proxy** and must be labelled as one wherever it is shown. Schedule it on
-the same four cycles as ICON-EU wind with a publication lag of about 3.5 hours
-(`deploy/local/jobs.toml` runs it at 03/09/15/21 UTC, ten minutes after the wind job
-so the two never share the worker lock), and alarm on the same 12-hour threshold.
+model SST **proxy** and must be labelled as one wherever it is shown.
+
+**Schedule.** It runs **once a day**, on the 00 UTC cycle at 03:40 UTC
+(`deploy/local/jobs.toml`, and `deploy/home-compute/home-compute.json` generated from
+it), ten minutes after ICON-EU wind's 03:30 slot so the two never share the worker
+lock. This page said 03/09/15/21 UTC until 24 October 2026; the deploy configs have
+run it once a day since the downloads were cut to about 80 GB a month. Running all
+four cycles hourly would be about 100 GB a month for this job alone; a second slot for
+the 12 UTC cycle (about 15:40 UTC) would make the afternoon's rain six to twelve hours
+fresher for about 25 GB a month more. That is a proposal, not the schedule.
 
 GFS surface weather is the second: `--models gfs-weather` runs `fetch_gfs_weather.py`,
 which reads sixteen GFS 0.25° surface fields through the same NOMADS subregion filter as
-the GFS wind importer (about 100 KB a step, 13 MB for the whole 384-hour run at three-hour
-steps; `--source s3` reads the same messages by range from NOAA's bucket) and publishes
+the GFS wind importer (about 100 KB a step; `--source s3` reads the same messages by
+range from NOAA's bucket) on GFS's own ladder, **hourly to +120 h and three-hourly
+beyond**, declared as `stepRanges`: 209 steps and about 21 MB for the whole 384-hour run,
+against 129 steps and 13 MB three-hourly, so about 1 GB a month more. It publishes
 `weather/gfs-weather.json` with its spot squares and no frames, in ICON-EU weather's own
 variable names. It is what the dock's sky, air and rain rows read past ICON-EU weather's
 three days: the dock reads ICON-EU while it reaches the hour and GFS from its end on
@@ -467,7 +484,7 @@ resampled, so a truncated or interpolated cadence cannot publish under either id
 5. Build the image, push it to your ECR repository and register an ECS Fargate task definition. Start with 2 vCPU / 4 GiB RAM and 20 GiB ephemeral storage, then measure actual runtime and peak memory: every event reports both in `resources`, and no enabled job measured above 360 MB in October 2026 (deploy/home-compute/README.md, "What a job uses"), so 1 vCPU / 1 GiB fits each. Use an image digest for deployments and a tested dependency/base-image lock for reproducible releases.
 6. Give tasks outbound HTTPS access to providers, ECR, S3 and logging (appropriate public-subnet/public-IP routing or private-subnet NAT/endpoints). No inbound port is needed. Use a fresh writable scratch directory per task; persistent shared storage is not required.
 7. Run a manual task and verify an entire published forecast through the CDN before enabling the schedule.
-8. Schedule HARMONIE and the HARMONIE ensemble checks hourly, the ensemble with `--step 3` because of its bandwidth; use a separate ICON-EU task schedule matching the full-horizon main cycles, initially every six hours with an appropriate publication delay; give `icon-eu-weather` its own slot on those same cycles rather than adding it to the wind task, because it transfers about 300 MB and must not delay the wind publication. GFS runs four cycles a day (00/06/12/18 UTC) and publishes its longer lead times roughly 3.5–5.5 hours after each run time, so check hourly in the window after a cycle rather than firing once at a fixed offset; the importer refuses a cycle whose requested steps are not all listed yet. The importers discover the latest **complete** run, rather than assuming a scheduled run is ready. Tune scheduling against actual publication latency. See [scheduling ECS tasks with EventBridge Scheduler](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/tasks-scheduled-eventbridge-scheduler.html).
+8. Schedule HARMONIE and the HARMONIE ensemble checks hourly, the ensemble with `--step 3` because of its bandwidth; use a separate ICON-EU task schedule matching the full-horizon main cycles, initially every six hours with an appropriate publication delay; give `icon-eu-weather` its own slot on those same cycles rather than adding it to the wind task, because it transfers about 845 MB (hourly) and must not delay the wind publication. GFS runs four cycles a day (00/06/12/18 UTC) and publishes its longer lead times roughly 3.5–5.5 hours after each run time, so check hourly in the window after a cycle rather than firing once at a fixed offset; the importer refuses a cycle whose requested steps are not all listed yet. The importers discover the latest **complete** run, rather than assuming a scheduled run is ready. Tune scheduling against actual publication latency. See [scheduling ECS tasks with EventBridge Scheduler](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/tasks-scheduled-eventbridge-scheduler.html).
 
 Suggested container arguments:
 
@@ -1057,7 +1074,7 @@ weather/ecmwf-ens.json, weather/ecmwf-ens-RUN-144h-25m-v1-HASH8/  ECMWF ENS, lik
 weather/harmonie-eps.json, weather/harmonie-eps-RUN-48h-v1-HASH8/ HARMONIE EPS, likewise
 weather/mi-swan.json, weather/mi-swan-RUN-144h-v1-HASH8/    Irish Shelf SWAN: squares, frames only with --frames
 weather/currents.json, weather/currents-RUN-72h-v1-HASH8/   ROMS surface currents: 73 JSON frames + squares
-weather/icon-eu-weather.json, weather/icon-eu-weather-RUN-72h-v1-HASH8/  surface weather: squares only
+weather/icon-eu-weather.json, weather/icon-eu-weather-RUN-72h-v1-HASH8/  surface weather: 73 rain frames + squares
 weather/gfs-weather.json, weather/gfs-weather-RUN-384h-v1-HASH8/  GFS surface weather: squares only
 weather/gfs-wave.json, weather/gfs-wave-RUN-240h-v1-HASH8/  GFS-Wave: squares only
 weather/ecmwf-wave.json, weather/ecmwf-wave-RUN-360h-10v-v1-HASH8/  ECMWF Wave: squares only

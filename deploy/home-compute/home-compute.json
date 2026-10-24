@@ -208,7 +208,9 @@
         ],
         "parameters": [
           "--models",
-          "icon-eu-weather"
+          "icon-eu-weather",
+          "--step",
+          "1"
         ],
         "report": {
           "format": "json-lines",

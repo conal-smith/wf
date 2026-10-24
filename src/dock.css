@@ -226,6 +226,10 @@
   text-transform: none;
   opacity: 0.75;
 }
+/* "mm" over "/h": a rate's unit in two short lines. */
+.dk-labs small.dk-unit {
+  line-height: 8px;
+}
 .tt-wrap {
   position: relative;
   min-width: 0;

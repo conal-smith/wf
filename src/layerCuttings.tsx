@@ -2,7 +2,7 @@
  * The Layers panel's pictures (src/LayersPanel.tsx): for each layer a small
  * square cut from the chart, a bit of coast drawn the way that layer draws
  * it. The ink streaks, the coloured wind, the tidal depth's bands, the
- * currents' arrows, a satellite photograph.
+ * currents' arrows, a satellite photograph, a shower crossing the coast.
  *
  * Each picture is a few dozen SVG shapes, coloured with the theme's own
  * tokens (ui/theme.css), so the same colours the chart uses appear here. No
@@ -21,6 +21,7 @@ export type CuttingId =
   | "arrows"
   | "foil"
   | "currents"
+  | "rain"
   | "tints"
   | "soundings"
   | "relief"
@@ -309,6 +310,37 @@ function cutting(id: CuttingId): ReactNode {
           <text x="60" y="25" textAnchor="middle" className="lp-fig">
             A
           </text>
+        </>
+      );
+    case "rain":
+      // A shower coming in off the sea in the layer's own blues, deepest at
+      // its heart, over land and water alike, and the coast's ink over it.
+      return (
+        <>
+          <Sea />
+          <Land />
+          <path
+            d="M18 30C30 8 70 4 90 18C102 30 98 62 86 80C72 98 36 96 22 82C8 66 8 46 18 30Z"
+            {...fill("map-rain-drizzle")}
+          />
+          <path
+            d="M30 34C40 18 68 16 80 28C90 40 86 62 76 72C64 84 42 82 32 70C22 58 22 46 30 34Z"
+            {...fill("map-rain-light")}
+          />
+          <path
+            d="M44 40C52 30 66 30 72 40C78 50 74 62 66 66C56 70 46 66 42 58C38 50 38 46 44 40Z"
+            {...fill("map-rain-moderate")}
+          />
+          <path
+            d="M54 46C58 42 64 42 66 48C68 54 64 58 60 58C55 58 51 51 54 46Z"
+            {...fill("map-rain-heavy")}
+          />
+          <path
+            d={SHORE}
+            fill="none"
+            strokeWidth="1"
+            style={{ stroke: token("color-ink") }}
+          />
         </>
       );
     case "tints":

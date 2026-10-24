@@ -37,6 +37,7 @@ const PLAIN: ChartLayers = {
   names: true,
   foil: false,
   currents: false,
+  rain: false,
 };
 const NO_LIGHTS = new Map<string, LightState>();
 const NO_NAMES = new Set<string>();

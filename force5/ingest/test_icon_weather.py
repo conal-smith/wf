@@ -271,8 +271,10 @@ class DiscoveryTests(unittest.TestCase):
 
     def test_horizon_and_step_arguments_are_checked(self):
         args = parse_args([])
-        self.assertEqual((args.hours, args.step), (72, 3))
-        # Map frames are not published, so there is nothing to choose for them.
+        # Hourly by default: each hour's rain is its own, not a share of three.
+        self.assertEqual((args.hours, args.step), (72, 1))
+        self.assertEqual(parse_args(["--step", "3"]).step, 3)
+        # The frames carry the rain alone, so there is nothing to choose for them.
         self.assertFalse(hasattr(args, "frame_variables"))
         for arguments in [["--hours", "0"], ["--hours", "96"], ["--hours", "10", "--step", "3"],
                           ["--step", "2"], ["--run", "2026091613"], ["--run", "nonsense"],
@@ -314,14 +316,15 @@ class BundleTests(unittest.TestCase):
             values = [45, 0, 0, 0]
         return values, (("signature",), None, grid), {"endStep": hour}
 
-    def run_main(self, argv=(), decode=None):
-        with patch("sys.argv", ["fetch_icon_weather.py", "--hours", "6", "--step", "3",
+    def run_main(self, argv=(), decode=None, hours=6, step=3):
+        with patch("sys.argv", ["fetch_icon_weather.py", "--hours", str(hours), "--step", str(step),
                                "--run", self.run, *argv]), \
              patch("fetch_icon_weather.ROOT", self.root), \
              patch.dict("os.environ", {"FORCE5_SPOTS_FILE": str(self.spots)}, clear=True), \
              patch("fetch_icon_weather.discover",
                    return_value=(self.run, {(hour, field): f"url/{field}/{hour}"
-                                            for hour in (0, 3, 6) for field in DIRECTORIES})), \
+                                            for hour in range(0, hours + 1, step)
+                                            for field in DIRECTORIES})), \
              patch("fetch_icon_weather.get", return_value=bz2.compress(b"GRIB-stub")), \
              patch("fetch_icon_weather.decode", side_effect=decode or self.fake_decode), \
              patch("sys.stdout", io.StringIO()):
@@ -337,15 +340,53 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(set(manifest["variables"]), set(VARIABLES))
         self.assertEqual(manifest["variables"]["ww"]["kind"], "code")
         self.assertNotIn("kind", manifest["variables"]["t2m"])
-        self.assertNotIn("frameVariables", manifest)
-        # The grid the series were sampled on carries many units, so it declares none.
+        # The map frames carry the rain alone, for the chart's Rain layer.
+        self.assertEqual(manifest["frameVariables"], ["precip"])
+        # A weather frame's grid carries many units, so it declares none.
         self.assertNotIn("units", manifest["grid"])
-        # No map frames: the spot series is the product, and the horizon is stated.
-        self.assertEqual((manifest["frames"], manifest["horizonHours"]), ([], 6))
+        self.assertEqual([frame["hour"] for frame in manifest["frames"]], [0, 3, 6])
+        self.assertEqual([frame["precipIntervalHours"] for frame in manifest["frames"]],
+                         [None, [0, 3], [3, 6]])
+        self.assertEqual(manifest["horizonHours"], 6)
         published, _, objects = validate_bundle(self.root / "public", "icon-eu-weather", 12,
                                                 self.run_time + timedelta(hours=1))
         self.assertEqual((published["run"], len(objects)),
-                         (self.run, len(published["spots"]["squares"])))
+                         (self.run, 3 + len(published["spots"]["squares"])))
+
+    def frame(self, manifest, index):
+        info = manifest["frames"][index]
+        return json.loads((self.root / "public/weather" / manifest["base"] / info["url"]).read_text())
+
+    def test_each_frame_is_the_hours_rain_on_the_whole_crop(self):
+        manifest = self.run_main()
+        first, second = self.frame(manifest, 0), self.frame(manifest, 1)
+        # Initialization has no interval: nulls, never a field of zeros that reads as dry.
+        self.assertEqual(first["precip"], [None] * 4)
+        self.assertEqual(second["precip"], [1.5] * 4)
+        self.assertEqual((second["hour"], second["precipIntervalHours"], second["run"]),
+                         (3, [0, 3], self.run))
+        self.assertEqual(second["grid"], manifest["grid"])
+        # Only the rain: the other twelve variables are in the spot series.
+        self.assertNotIn("t2m", second)
+        self.assertNotIn("ww", second)
+
+    def test_hourly_steps_give_each_hour_its_own_rain(self):
+        totals = {0: 0.0, 1: 0.2, 2: 1.4, 3: 1.4}  # 0.2 mm, then 1.2 mm, then dry.
+
+        def hourly(path, field, run, hour, layout=None):
+            values, layout, metadata = self.fake_decode(path, field, run, hour, layout)
+            return ([totals[hour]] * 4 if field == "tp" else values), layout, metadata
+        manifest = self.run_main(decode=hourly, hours=3, step=1)
+        self.assertEqual(manifest["stepHours"], 1)
+        series = manifest["spotSeries"]["brandon"]
+        self.assertEqual([step["values"]["precip"] for step in series], [None, 0.2, 1.2, 0.0])
+        self.assertEqual([step["precipIntervalHours"] for step in series],
+                         [None, [0, 1], [1, 2], [2, 3]])
+        self.assertEqual([self.frame(manifest, i)["precip"][0] for i in range(4)],
+                         [None, 0.2, 1.2, 0.0])
+        self.assertEqual(len(manifest["frames"]), 4)
+        validate_bundle(self.root / "public", "icon-eu-weather", 12,
+                        self.run_time + timedelta(hours=1))
 
     def test_precipitation_is_null_at_initialization_and_differenced_after_it(self):
         manifest = self.run_main()

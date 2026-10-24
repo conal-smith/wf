@@ -1009,6 +1009,43 @@
   font: italic 10px var(--font-body);
 }
 
+/* The rain scale, in the key and the layers: a swatch an amount, on the
+   chart's sea, as the layer's blues lie over it. */
+.rain-scale {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin: 6px 0 8px;
+}
+.rain-scale ol {
+  display: flex;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--map-d20);
+  border: 1px solid var(--color-line);
+}
+.rain-scale li {
+  flex: 1;
+}
+.rain-scale li span {
+  display: block;
+  height: 8px;
+}
+.rain-scale li small {
+  display: block;
+  padding-top: 2px;
+  text-align: center;
+  font: 500 9px var(--font-mono);
+  color: var(--color-ink);
+  background: var(--color-card);
+}
+.rain-scale i {
+  font: italic 10px var(--font-body);
+  color: var(--color-ink);
+}
+
 /* Gust's panel lines up with the boxes along the top (companion/web/gust.css
    reads these), and on a phone its sheet stops under the zoom rail rather
    than cutting through it. */

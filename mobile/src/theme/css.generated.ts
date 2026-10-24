@@ -179,6 +179,10 @@ export const css = {
   "map-foil-line": "rgba(122, 108, 58, 0.72)",
   "map-foil-dry": "rgba(190, 170, 120, 0.26)",
   "map-foil-unsurveyed": "rgba(96, 120, 140, 0.38)",
+  "map-rain-drizzle": "rgba(96, 150, 196, 0.14)",
+  "map-rain-light": "rgba(64, 128, 186, 0.32)",
+  "map-rain-moderate": "rgba(38, 98, 170, 0.52)",
+  "map-rain-heavy": "rgba(24, 58, 140, 0.74)",
 } as const;
 
 export type CssToken = keyof typeof css;

@@ -10,6 +10,12 @@
  * three- and six-hourly further out. Everything here is pure; times are UTC
  * milliseconds and every label is Irish local time.
  */
+import {
+  hoursBetween,
+  rainIntervals,
+  stepCovering,
+  stepsWithin,
+} from "../force5/src/rain";
 import type { DockColumn } from "../force5/src/timeline";
 
 export const TIME_ZONE = "Europe/Dublin";
@@ -292,23 +298,26 @@ export function stripTrack(g: StripGeometry, width: number): StripTrack {
 }
 
 /**
- * Which weather step's rain each column shows. A step's rain is the total
- * over the interval that ends at it, so it belongs to that interval and to
- * no other hour. The column at (or nearest before) each interval's end
- * prints the total; the interval's other columns are marked as inside it
- * rather than handed the figure again, since three hourly columns each
- * reading a three-hour total would say three times the rain. A column no
- * interval covers is left as having none to show. The weather's steps need
- * not fall on the columns' hours: a run on the hour in UTC lands an hour off
- * Irish summer time's three-hourly columns, and every column then sits
- * inside a step's interval rather than on its end.
+ * Which weather steps' rain each column shows. A step's rain is the amount in
+ * the interval that ends at it, so it belongs to that interval and to no other
+ * hour. A column reads the steps whose intervals lie inside its own hours
+ * (from the column before it to its own time): one for an hourly column over
+ * hourly steps, three for a three-hourly column over them, and prints their
+ * amount per hour. A column inside a longer interval (an hourly column in a
+ * three-hour step) is marked as inside it, and the latest column in it prints
+ * it, since three hourly columns each reading a three-hour total would say
+ * three times the rain. A column no interval covers has none to show. The
+ * steps need not fall on the columns' hours: a run on the hour in UTC lands an
+ * hour off Irish summer time's three-hourly columns.
  */
 export interface RainColumn {
-  /** The step whose interval the column falls in. */
+  /** The steps whose rain the column adds up, in order. */
+  steps: number[];
+  /** The last of them, which names the model in the cell's title. */
   step: number;
-  /** Whether this column prints the step's total. */
+  /** Whether this column prints the rain. */
   own: boolean;
-  /** The interval's end, and its length in hours. */
+  /** The end of the hours it covers, and how many hours they are. */
   end: number;
   hours: number;
 }
@@ -320,29 +329,33 @@ export function rainColumns(
     precipIntervalHours?: readonly [number, number] | null;
   }[],
 ): (RainColumn | null)[] {
-  const slack = 60000;
-  const ends = steps.map((s) => Date.parse(s.validTime));
-  const out: (RainColumn | null)[] = times.map((t) => {
-    const k = ends.findIndex((end) => end >= t - slack);
-    if (k < 0) return null;
-    const span = steps[k].precipIntervalHours;
-    const length =
-      span && span[1] > span[0]
-        ? (span[1] - span[0]) * 3600000
-        : k > 0
-          ? ends[k] - ends[k - 1]
-          : ends.length > 1
-            ? ends[1] - ends[0]
-            : 3600000;
-    if (Math.abs(t - ends[k]) > slack && t <= ends[k] - length + slack)
-      return null;
-    return { step: k, own: false, end: ends[k], hours: Math.round(length / 3600000) };
+  const intervals = rainIntervals(steps);
+  const out: (RainColumn | null)[] = times.map((t, i) => {
+    // The column's own hours: from the column before, or for the first, as
+    // long as the gap to the next.
+    const from =
+      i > 0 ? times[i - 1] : t - (times.length > 1 ? times[1] - t : 3600000);
+    const inside = stepsWithin(intervals, from, t);
+    if (inside.length) {
+      const last = inside[inside.length - 1];
+      return {
+        steps: inside,
+        step: last,
+        own: true,
+        end: intervals[last].end,
+        hours: hoursBetween(intervals[inside[0]].start, intervals[last].end),
+      };
+    }
+    const k = stepCovering(intervals, t);
+    if (k === null) return null;
+    const { start, end } = intervals[k];
+    return { steps: [k], step: k, own: false, end, hours: hoursBetween(start, end) };
   });
-  // The latest column inside each interval prints it.
+  // The latest column inside a longer interval prints it.
   const printed = new Set<number>();
   for (let i = out.length - 1; i >= 0; i--) {
     const c = out[i];
-    if (!c || printed.has(c.step)) continue;
+    if (!c || c.own || printed.has(c.step)) continue;
     c.own = true;
     printed.add(c.step);
   }

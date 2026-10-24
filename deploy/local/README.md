@@ -91,7 +91,7 @@ in UTC. The shipped schedule is:
 | ----------------- | ------------------ | ----------------------------------------------------- |
 | `harmonie`        | 05/08/11/16/19/23 at :35 | before each time riders look; ~826 MB a run, 15 h |
 | `icon-eu`         | 03 at :30          | once a day, the 00 UTC cycle; 30 h age limit          |
-| `icon-eu-weather` | 03 at :40          | once a day, the 00 UTC cycle; 30 h age limit          |
+| `icon-eu-weather` | 03 at :40          | once a day, the 00 UTC cycle, hourly steps; 30 h age limit |
 | `ecmwf`           | 08/10/20/22 at :20 | the 00 and 12 UTC runs, out ~07:35 and ~19:35; retries |
 | `harmonie-eps`    | off                | lagged control members; enable knowingly              |
 | `ecmwf-ens`       | off (retired)      | 00 UTC run, 10 members, +60h–+144h when enabled       |
@@ -126,12 +126,17 @@ already published download nothing):
 | Job | Per run | Runs a day | A month |
 | --- | --- | --- | --- |
 | `harmonie` | ~785 MB (61 whole files) | 2 | ~47 GB |
-| `icon-eu-weather` | ~300 MB | 1 | ~9 GB |
+| `icon-eu-weather` | ~845 MB (949 files, hourly) | 1 | ~25 GB |
 | `icon-eu` | ~250 MB | 1 | ~7.5 GB |
 | `ecmwf` | ~245 MB | 1 | ~7.4 GB |
-| `gfs-weather` | ~13 MB | 4 | ~1.5 GB |
+| `gfs-weather` | ~21 MB (209 steps) | 4 | ~2.5 GB |
 | `gfs`, `gfs-wave`, `mi-swan`, observations, tides | 1-8 MB each | 4-24 | ~1 GB |
-| **Total** | | | **~74-76 GB** |
+| **Total** | | | **~91-93 GB** |
+
+ICON-EU weather and GFS weather went hourly on 24 October 2026, so the dock's rain is
+each hour's own and the map has a Rain layer: about 17 GB a month more than the
+~75 GB before, over the ~80 GB target. `--step 3` in the `icon-eu-weather` job's
+`args` takes it back to ~300 MB a run (and three-hour rain).
 
 Edit the file, then check and apply it:
 

@@ -43,6 +43,10 @@ from workspace import workspace_lock
 
 # Adapters that read ECMWF's open data and so take a mirror rather than a step.
 ECMWF_MODELS = ("ecmwf", "ecmwf-ens", "aifs", "ecmwf-wave")
+# The kinds whose adapters take the worker's `--step`, unless their registry entry
+# says `workerStep: False`. ICON-EU weather is one: hourly, so the dock's rain is
+# each hour's own rather than a three-hour total.
+STEPPED_KINDS = ("wind", "weather")
 # Adapters that read NOAA's NOMADS GRIB filter by default and its S3 mirror on request.
 NOAA_MODELS = ("gefs",)
 # getrusage's ru_maxrss is in kilobytes on Linux, the container, and bytes on macOS.
@@ -91,7 +95,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--models", nargs="+", choices=list(MODELS), default=["harmonie"])
     parser.add_argument("--step", type=int, choices=[1, 3], default=1,
-                        help="HARMONIE/ICON cadence; ECMWF always uses native 3/6-hour steps")
+                        help="HARMONIE/ICON (wind and weather) cadence; ECMWF always uses "
+                        "native 3/6-hour steps, GFS weather hourly to +120 h and 3-hourly beyond")
     parser.add_argument("--run", help="Optional available run; normally discover automatically")
     parser.add_argument("--ecmwf-source", choices=["aws", "ecmwf", "google"],
                         default=os.environ.get("ECMWF_SOURCE", "ecmwf"),
@@ -195,7 +200,7 @@ def run_models(args, root, s3):
                     # Only the IFS control takes a cycle: it is the one fetched once a day.
                     if model == "ecmwf" and args.ecmwf_cycle:
                         command += ["--cycle", args.ecmwf_cycle]
-                elif MODELS[model]["kind"] == "wind" and MODELS[model].get("workerStep", True):
+                elif MODELS[model]["kind"] in STEPPED_KINDS and MODELS[model].get("workerStep", True):
                     command += ["--step", str(args.step)]
                 if model in NOAA_MODELS:
                     command += ["--source", args.noaa_source]

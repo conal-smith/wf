@@ -9,6 +9,7 @@ import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
 import { InfoButton } from "./InfoPop";
 import { KnotScale } from "./KnotScale";
+import { RainScale } from "./RainScale";
 import { Cutting, CuttingDefs } from "./layerCuttings";
 import {
   layerGroups,
@@ -173,6 +174,14 @@ export default function LayersPanel({
             <span data-currents-note>{currentsNote ?? "Not for safety."}</span>
           </p>
         )}
+      </>
+    ),
+    weather: layers.rain && (
+      <>
+        <RainScale />
+        <p className="lp-note">
+          <b>Rain:</b> ICON-EU, hourly, for three days.
+        </p>
       </>
     ),
     ground: satellite !== "off" && (satelliteLoading || satelliteTides) && (

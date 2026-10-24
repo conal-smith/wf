@@ -498,7 +498,9 @@ measured:
   0.025° × 0.02° grid with 128-cell tiles (`--site`), so the map has all three
   levels to choose from. ECMWF's and AIFS's 1° sample grids moved their north
   edge from 56° to 56.4° to sit on the lattice.
-- **Wave and weather frames are no longer published.** Nothing read them: the
+- **Wave and weather frames are no longer published** (until the Rain layer
+  brought ICON-EU weather's back, for `precip` alone: see "As built: the Rain
+  layer"). Nothing read them: the
   browser, the forecast server and the blend read spot series, and
   verification reads wind. GFS-Wave, ECMWF Wave and ICON-EU surface weather
   stopped writing them (ICON-EU's `--frame-variables` went with them) and
@@ -550,6 +552,33 @@ files (four frames against 16 level-1 tiles on a phone, 36 native tiles on a
 desktop, one native tile an hour for the bay), but its smooth analytic fields
 compress to almost nothing (0.3 KB a whole frame), so its byte counts say
 nothing about real weather.
+
+## As built: the Rain layer
+
+The first weather frames a reader draws (24 October 2026). ICON-EU surface weather
+is fetched hourly and publishes one JSON frame an hour, `frames/<HHH>.json`, holding
+`precip` alone (`frameVariables: ["precip"]`): millimetres in the hour ending at the
+frame on the whole 0.0625° crop, null at hour 0, which has no interval. They are the
+contract's existing optional weather frames, so the validators already held them to
+the run, the grid and the value bound; nothing in the format changed.
+
+- **JSON, not tiles.** A frame is 56,817 cells, about 230 KB of JSON and 10–25 KB
+  compressed, and mostly zeros or tenths. Only wind frames are tiled (the publisher
+  refuses a `tiles` block on anything else); a rain pyramid would save a phone a few
+  KB on a dry hour. Revisit if a finer rain model or a wider crop comes along.
+- **Reading.** `src/rainData.ts`, loaded only once the layer is on, reads the pointer
+  (five minutes, as the manifests) and the frames the hour needs, then three hours
+  ahead and one behind, keeping every frame of the run it has read. At a three- or
+  six-hourly dock column the map shows the mean rate of the hours inside it, as the
+  dock's rain row does (`rainFramesFor`, force5/src/rain.ts).
+- **Drawing.** One MapLibre image source, the whole crop at two pixels a cell on
+  rows evenly spaced in Mercator (a latitude grid is not), coloured along the
+  logarithm of the rate between the theme's four `--map-rain-*` stops (0.1, 0.5, 2
+  and 8 mm/h; dry is clear and drizzle fades in at a shower's edge). It lies under
+  the relief, so the hachures, the rivers, the coast, the contours, every name and
+  the lights stay over it, and over the satellite picture and the coloured wind,
+  which are put under the relief too (`rainLayer.ts` keeps it there). A new hour is a
+  new image: about 65 ms to build on a laptop, then a PNG data URL.
 
 ## As built: the blend per square
 

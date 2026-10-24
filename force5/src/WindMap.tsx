@@ -49,6 +49,7 @@ import {
 } from "./windLayer";
 import type { Frame, Spot } from "./weather";
 import type { CurrentFeature } from "./currents";
+import type { RainView } from "./rain";
 import type { Units } from "./units";
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -78,6 +79,8 @@ export interface ChartLayers {
   foil: boolean;
   /** Surface currents at the hour shown: a rough guide, off unless asked for. */
   currents: boolean;
+  /** The rain in the hour shown (force5/src/rain.ts), off unless asked for. */
+  rain: boolean;
 }
 
 /** One area's foilable-depth layer (a region or a pilot), as the map draws it. */
@@ -151,6 +154,11 @@ type Props = {
    * off. Its drawing code is loaded the first time there are any.
    */
   currents?: readonly CurrentFeature[] | null;
+  /**
+   * The Rain layer's picture at the hour shown, or null with the layer off or
+   * nothing to draw. Its drawing code is loaded the first time there is one.
+   */
+  rain?: RainView | null;
   /** The satellite image to draw under the chart's lines, or null for none. */
   satellite?: SatelliteImage | null;
   reducedMotion: boolean;
@@ -652,6 +660,7 @@ export default function WindMap(props: Props) {
     layers,
     foil,
     currents = null,
+    rain = null,
     satellite = null,
     reducedMotion,
     bottomInset,
@@ -1109,6 +1118,26 @@ export default function WindMap(props: Props) {
       live = false;
     };
   }, [ready, currents]);
+
+  // Rain: one image source and one raster layer under the chart's ink
+  // (rainLayer.ts), whose code is fetched the first time there is rain to draw.
+  const rainLayer = useRef<typeof import("./rainLayer") | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    if (!rain) {
+      rainLayer.current?.hideRain(map);
+      return;
+    }
+    let live = true;
+    import("./rainLayer").then((layer) => {
+      rainLayer.current = layer;
+      if (live && mapRef.current === map) layer.drawRain(map, rain);
+    });
+    return () => {
+      live = false;
+    };
+  }, [ready, rain]);
 
   // The satellite image: one raster source and layer per area and tide, made
   // the first time it is wanted and kept, hidden when another tide is chosen

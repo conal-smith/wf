@@ -28,21 +28,17 @@ describe("the sample ICON-EU surface weather bundle", () => {
     expect(manifest.provider).toBe("Synthetic sample data");
     expect(manifest.attribution).toMatch(/not a forecast/);
     expect(manifest.kind).toBe("weather");
-    expect(manifest.stepHours).toBe(3);
+    // Hourly, as the adapter fetches it, so each hour's rain is its own.
+    expect(manifest.stepHours).toBe(1);
     expect(weatherHours(manifest)).toEqual(
       manifest.frames.map((frame) => frame.hour),
     );
-    // Hours 0 and 3 only: the sample bundle is an 18 UTC run through +3 h.
-    expect(weatherHours(manifest)).toEqual([0, 3]);
+    // The sample bundle is an 18 UTC run through +3 h.
+    expect(weatherHours(manifest)).toEqual([0, 1, 2, 3]);
     expect(manifest.runTime).toBe("2026-09-16T18:00:00Z");
     expect(manifest.variables.ww.kind).toBe("code");
-    expect(manifest.frameVariables).toEqual([
-      "t2m",
-      "precip",
-      "clct",
-      "pmsl",
-      "ww",
-    ]);
+    // The frames carry the rain alone, for the chart's Rain layer.
+    expect(manifest.frameVariables).toEqual(["precip"]);
   });
   it("names every variable the dock's rows read", () => {
     expect(weatherFields(manifest)).toEqual({
@@ -64,7 +60,7 @@ describe("the sample ICON-EU surface weather bundle", () => {
   });
   it("reads Brandon Bay as the values the bundle publishes", () => {
     const series = weatherSeries(manifest, "brandon")!;
-    expect(series).toHaveLength(2);
+    expect(series).toHaveLength(4);
     expect(weatherSeriesHasData(series)).toBe(true);
     expect(series[0].values.t2m).toBe(13.5);
     expect(series[0].values.clct).toBe(24);
@@ -74,10 +70,13 @@ describe("the sample ICON-EU surface weather bundle", () => {
     expect(series[0].values.tp).toBe(0);
     expect(series[0].values.precip).toBeNull();
     expect(precipIntervalHours(series[0])).toBeNull();
-    expect(series[1].values.precip).toBe(1.3);
-    expect(precipIntervalHours(series[1])).toBe(3);
-    expect(series[1].values.t2m).toBe(11.2);
-    expect(series[1].values.pmsl).toBe(1014.2);
+    // Each hour's own rain, not a share of a three-hour total.
+    expect(series.slice(1).map((step) => step.values.precip)).toEqual([
+      0.7, 0.6, 0.1,
+    ]);
+    expect(precipIntervalHours(series[1])).toBe(1);
+    expect(series[3].values.t2m).toBe(11.2);
+    expect(series[3].values.pmsl).toBe(1014.2);
   });
   it("turns the published codes into the shapes the Weather row draws", () => {
     // A code belongs to the cell containing a location, so which code a place
@@ -101,9 +100,9 @@ describe("the sample ICON-EU surface weather bundle", () => {
     expect(manifest.presentWeatherNote).toMatch(/never interpolated/);
     expect(manifest.precipitationNote).toMatch(/precipIntervalHours/);
   });
-  it("lands its two steps on two dock columns and leaves the rest empty", () => {
+  it("lands its four steps on four dock columns and leaves the rest empty", () => {
     const columns = weatherAtAxis(weatherSeries(manifest, "brandon")!, axis);
-    expect(columns.map((step) => step?.hour ?? null)).toEqual([0, 3]);
+    expect(columns.map((step) => step?.hour ?? null)).toEqual([0, 1, 2, 3]);
     // Three hours past the last step is a wind column GFS has and this run does
     // not; nothing is carried forward into it.
     expect(

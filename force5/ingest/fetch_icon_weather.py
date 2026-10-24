@@ -3,9 +3,11 @@
 No API key (DWD open data, CC BY 4.0). Thirteen single-level parameters are read
 from the same four ICON-EU cycles as the wind importer, cropped to the same
 Ireland/Atlantic 0.0625° grid, and published as a `kind: "weather"` bundle: a
-declared `variables` map and a precomputed series per riding location carrying
-every variable. No map frames are published: nothing reads a weather grid yet
-(docs/TILING_DESIGN.md), and the pointer states its horizon instead.
+declared `variables` map, a precomputed series per riding location carrying
+every variable, and one map frame an hour carrying `precip` alone, which the
+chart's Rain layer draws (docs/TILING_DESIGN.md, "As built: the Rain layer").
+Steps are hourly by default, so each hour's rain is its own and not a share of
+a three-hour total.
 
 Units are converted and rounded once, here, so nothing downstream has to guess:
 °C, mm, %, hPa, km, J/kg. `tp` is DWD's precipitation accumulated since
@@ -26,14 +28,15 @@ import eccodes as ec
 import numpy as np
 
 from fetch_forecast import (BASE, ROOT, decode_handle, get, listing, load_spots,
-                            published_in_bucket, sample, spots_file)
+                            published_in_bucket, sample, spots_file, write_json)
 from registry import UNCHANGED_EXIT
-from rundir import write_run
+from rundir import frame_name, write_run
 import timing
 
 MODEL = "icon-eu-weather"
 CYCLES = ("00", "06", "12", "18")
 MAX_HOURS = 72       # ICON-EU publishes hourly steps to +78 h, three-hourly beyond.
+DEFAULT_STEP = 1     # Hourly: each hour's rain and sky its own (about 845 MB a run).
 MAX_AGE_HOURS = 12   # Four cycles a day, each published about 3.5 hours after its run.
 KELVIN = -273.15     # Added to kelvin to get degrees Celsius.
 CODE = "code"        # A code-table entry, never interpolated and never a measurement.
@@ -125,6 +128,10 @@ VARIABLES = {
 # What is downloaded. `spotSeries` carries every variable at every hour.
 DIRECTORIES = {name: entry["directory"] for name, entry in VARIABLES.items() if entry["directory"]}
 DERIVED = tuple(name for name, entry in VARIABLES.items() if not entry["directory"])
+# What the map frames carry: the rain in the step, for the chart's Rain layer. One
+# array of 56,817 cells is about 230 KB of JSON and a few KB brotli on a dry hour;
+# every variable would be some 3 MB a frame that nothing draws.
+FRAME_VARIABLES = ("precip",)
 
 
 def validate_metadata(metadata, field, run, hour):
@@ -240,7 +247,8 @@ def discover(hours, requested_run=None):
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--hours", type=int, default=72, help=f"3–{MAX_HOURS}, divisible by --step")
-    parser.add_argument("--step", type=int, choices=[1, 3], default=3)
+    parser.add_argument("--step", type=int, choices=[1, 3], default=DEFAULT_STEP,
+                        help="Hours between steps: 1 (the default) or 3, a third of the download")
     parser.add_argument("--run", help="Optional specific YYYYMMDDHH run (00/06/12/18)")
     args = parser.parse_args(argv)
     if not 3 <= args.hours <= MAX_HOURS or args.hours % args.step:
@@ -250,7 +258,19 @@ def parse_args(argv=None):
     return args
 
 
-def manifest_for(run, run_time, args, grid, series):
+def frame_payload(run, hour, valid, grid, interval, precip):
+    """One hour's map frame: the rain in the step, or nulls at initialization.
+
+    An hour with no interval has no amount anywhere, so it publishes nulls rather
+    than a field of zeros, which would read as a dry hour that was forecast.
+    """
+    cells = grid["width"] * grid["height"]
+    return {"model": MODEL, "run": run, "hour": hour, "validTime": valid, "grid": grid,
+            "precipIntervalHours": interval,
+            "precip": [None] * cells if precip is None else precip}
+
+
+def manifest_for(run, run_time, args, grid, frames, series):
     return {
         "schemaVersion": 1, "kind": "weather", "model": MODEL,
         "modelName": "ICON-EU surface weather", "provider": "DWD",
@@ -262,14 +282,15 @@ def manifest_for(run, run_time, args, grid, series):
         "variables": {name: {key: entry[key] for key in ("units", "label", "description")}
                               | ({"kind": CODE} if entry.get("kind") == CODE else {})
                       for name, entry in VARIABLES.items()},
-        # No map frames: nothing reads a weather grid yet, and the spot series is the
-        # product (docs/TILING_DESIGN.md). The horizon is stated instead.
-        "frames": [], "horizonHours": args.hours, "spotSeries": series,
+        # The frames carry the rain alone, for the chart's Rain layer; the spot series
+        # carries every variable (docs/TILING_DESIGN.md, "As built: the Rain layer").
+        "frameVariables": list(FRAME_VARIABLES),
+        "frames": frames, "horizonHours": args.hours, "spotSeries": series,
         "precipitationNote": (
             "tp is the model's own accumulation since initialization; precip is the amount in the "
             f"{args.step}-hour interval ending at each step, obtained by differencing it, clamped at "
-            "zero and null at initialization, which has no interval. Each series step declares "
-            "that interval in precipIntervalHours."),
+            "zero and null at initialization, which has no interval. Each frame and series step "
+            "declares that interval in precipIntervalHours."),
         "seaTemperatureNote": (
             "tg is the model's ground/skin temperature. Over sea it is ICON's own sea-surface "
             "temperature field and a proxy for a measured SST, not an observation; over land it is "
@@ -285,7 +306,8 @@ def manifest_for(run, run_time, args, grid, series):
             "grid, rows north-to-south and columns west-to-east. Values are converted to the published "
             "units and rounded once (0.1 °C, whole per cent, 0.1 hPa, 0.1 km, 0.1 mm, whole J/kg) and "
             "clipped into their plausible range; a value outside it fails the run. precip is derived by "
-            "differencing tot_prec. spotSeries carries every variable at every published hour, "
+            "differencing tot_prec. Each frame carries precip alone, on the whole crop, for the "
+            "map; spotSeries carries every variable at every published hour, "
             "bilinearly sampled except ww, which is read from the containing cell. "
             "No hour is interpolated: only native forecast steps are published."),
         "sourceUrl": BASE + "/",
@@ -341,7 +363,7 @@ def main(argv=None):
     output = ROOT / "public" / "weather"
     prefix = f"{MODEL}-{run}-{args.hours}h-v1"
     layout, grid, previous_tp = None, None, None
-    series = {spot["id"]: [] for spot in spots}
+    frames, series, published = [], {spot["id"]: [] for spot in spots}, 0
     for hour in hours:
         fields = {}
         for field in DIRECTORIES:
@@ -353,17 +375,25 @@ def main(argv=None):
         fields["precip"] = None if previous_tp is None else derive_precip(fields["tp"], previous_tp)
         previous_tp = fields["tp"]
         valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
+        name = frame_name(prefix, hour, "json")
+        write_json(output / name, frame_payload(run, hour, valid, grid, interval, fields["precip"]))
+        size = (output / name).stat().st_size
+        published += size
+        frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
+                       "precipIntervalHours": interval})
         for spot in spots:
             series[spot["id"]].append({"hour": hour, "validTime": valid,
                                        "precipIntervalHours": interval,
                                        "values": {name: None if values is None else sample_variable(
                                            grid, values, spot["lon"], spot["lat"], name)
                                            for name, values in fields.items()}})
-        print(f"  +{hour:03d}h — {grid['width']} × {grid['height']} sampled", flush=True)
-    manifest = manifest_for(run, run_time, args, grid, series)
+        print(f"  +{hour:03d}h — {grid['width']} × {grid['height']} sampled, "
+              f"rain frame {size / 1e3:.0f} KB", flush=True)
+    manifest = manifest_for(run, run_time, args, grid, frames, series)
     # Only this final operation advances the published snapshot.
     write_run(output, f"{MODEL}.json", manifest, prefix, spots)
-    print(f"Published {len(hours)} ICON-EU weather steps for {len(spots)} spots to "
+    print(f"Published {len(hours)} ICON-EU weather steps for {len(spots)} spots and "
+          f"{len(frames)} rain frames ({published / 1e6:.1f} MB) to "
           f"{output / (MODEL + '.json')}", flush=True)
 
 
