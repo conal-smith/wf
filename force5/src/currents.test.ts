@@ -256,5 +256,7 @@ describe("currentsAtAxis: a spot's series on the dock's columns", () => {
     expect(currentText(0.5, "kn")).toBe("1.0 kn");
     expect(currentText(0.5, "km/h")).toBe("1.8 km/h");
     expect(currentText(0.5, "m/s")).toBe("0.5 m/s");
+    // Water has no forces: a rider in Force reads a stream in knots.
+    expect(currentText(0.5, "bft")).toBe("1.0 kn");
   });
 });

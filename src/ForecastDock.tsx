@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   ArrowDown,
+  ArrowUp,
   ChevronRight,
   Layers3,
   X,
@@ -71,6 +72,13 @@ import {
 import type { ModelAvailability } from "../force5/src/manifests";
 import { spotSquare } from "../force5/src/spotData";
 import { useSpotSquares } from "./useSpotSquares";
+import { useSpotCurrents, type SpotCurrents } from "./useSpotCurrents";
+import {
+  MIN_ARROW_MS,
+  currentFigure,
+  currentText,
+  currentUnits,
+} from "../force5/src/currentReading";
 import { pointSourceNote, type PointSources } from "../force5/src/pointSource";
 import type { Prefs } from "../force5/src/prefs";
 import {
@@ -166,6 +174,7 @@ const ROWS = {
   wing: 20,
   blend: 100,
   waves: 20,
+  current: 20,
   sky: 20,
   air: 20,
   rain: 20,
@@ -209,7 +218,7 @@ const tideBand = (
  * the station it was read at and how far off that is, where there is room
  * to say what a buoy 50 km out does and does not tell a rider.
  */
-const MORE_ROWS = ["waves", "sky", "air", "rain"] as const;
+const MORE_ROWS = ["waves", "current", "sky", "air", "rain"] as const;
 type MoreRow = (typeof MORE_ROWS)[number];
 /** The height of the rows under the hours, as a spot's dock draws them. */
 const rowsUnderHours = (
@@ -229,6 +238,9 @@ const rowsUnderHours = (
  */
 const MORE_LABEL: Record<MoreRow, [GlyphDef, string, string?]> = {
   waves: [glyphs.waves, "Waves, m (height) and s (period)", "m"],
+  // The water's speed is in the wind's unit, the rider's: said under its
+  // glyph as the wind's is, since "km/h" beside it would run into the hours.
+  current: [glyphs.current, "Current, and where it runs to"],
   sky: [glyphs.partly, "Sky"],
   air: [glyphs.air, "Air, °C", "°C"],
   rain: [glyphs.drop, "Rain, mm", "mm"],
@@ -281,6 +293,7 @@ const StripTable = memo(function StripTable({
   more,
   waves,
   weather,
+  current,
   isPoint,
   pointNote,
   rated,
@@ -298,6 +311,7 @@ const StripTable = memo(function StripTable({
   more: boolean;
   waves: SpotWaves;
   weather: SpotWeather;
+  current: SpotCurrents;
   isPoint: boolean;
   /** For a point that has no riding place near to read its rows from, why. */
   pointNote: string | null;
@@ -468,6 +482,8 @@ const StripTable = memo(function StripTable({
             g={g}
             waves={waves}
             weather={weather}
+            current={current}
+            units={units}
             daylight={daylight}
             pointNote={pointNote}
           />
@@ -658,10 +674,13 @@ function scrollsAlong(
   return false;
 }
 
+/** No hand-over: the current is one model's. */
+const NONE_HANDED: ReadonlySet<number> = new Set();
+
 /**
- * The rows below the fold: the waves, the sky, the air and the rain, one
- * native step per column (a code or an amount does not survive being
- * interpolated).
+ * The rows below the fold: the waves, the current, the sky, the air and the
+ * rain, one native step per column (a code or an amount does not survive
+ * being interpolated).
  */
 function MoreRows({
   columns,
@@ -669,6 +688,8 @@ function MoreRows({
   g,
   waves,
   weather,
+  current,
+  units,
   daylight,
   pointNote,
 }: {
@@ -687,6 +708,9 @@ function MoreRows({
   g: StripGeometry;
   waves: SpotWaves;
   weather: SpotWeather;
+  /** The current: a point's own, from the map's frames, not a lender's. */
+  current: SpotCurrents;
+  units: Units;
   /** For a point that has no riding place near to read them from, why. */
   pointNote: string | null;
 }) {
@@ -697,11 +721,50 @@ function MoreRows({
       </td>
     </tr>
   );
+  const row = (
+    key: MoreRow,
+    render: (column: number) => React.ReactNode,
+    handed: ReadonlySet<number>,
+  ) => (
+    <tr className={`tt-more tt-${key}`} key={key}>
+      {cells(key, (_, __, column) => render(column), handed)}
+    </tr>
+  );
+  // Where the water runs to, as the arrow points, and how fast. Below about
+  // a tenth of a knot the arrow would only say which way the noise is.
+  const currentRow = current.columns.length
+    ? row(
+        "current",
+        (column) => {
+          const reading = current.columns[column];
+          if (!reading) return "–";
+          const runs = reading.speed >= MIN_ARROW_MS;
+          return (
+            <span
+              className="current-cell"
+              title={`${currentText(reading.speed, units)}${runs ? ` towards ${compass(reading.towards)}` : ""}${current.model ? ` · ${current.model}` : ""}`}
+            >
+              {runs && (
+                <ArrowUp
+                  size={11}
+                  strokeWidth={1.6}
+                  style={{ transform: `rotate(${reading.towards}deg)` }}
+                  aria-label={`towards ${compass(reading.towards)}`}
+                />
+              )}
+              <b>{currentFigure(reading.speed, units)}</b>
+            </span>
+          );
+        },
+        NONE_HANDED,
+      )
+    : span("current", current.note ?? "Current: reading…");
   if (pointNote)
     return (
       <>
         {span("waves", pointNote)}
-        {MORE_ROWS.slice(1).map((key) => (
+        {currentRow}
+        {MORE_ROWS.slice(2).map((key) => (
           <tr className={`tt-more tt-${key}`} key={key}>
             <td colSpan={columns.length} className="d0" />
           </tr>
@@ -721,15 +784,6 @@ function MoreRows({
   const weatherHanded = handoverColumns(weather.columns);
   const by = (step: { model?: string } | null | undefined) =>
     step?.model ? ` · ${modelName(step.model)}` : "";
-  const row = (
-    key: MoreRow,
-    render: (column: number) => React.ReactNode,
-    handed: ReadonlySet<number>,
-  ) => (
-    <tr className={`tt-more tt-${key}`} key={key}>
-      {cells(key, (_, __, column) => render(column), handed)}
-    </tr>
-  );
   // The rain's intervals, against the columns: see `rainColumns`.
   const series = weather.source?.series ?? [];
   const rain = fields?.rain
@@ -780,6 +834,7 @@ function MoreRows({
               ? "No wave model reaches this spot"
               : "Waves: reading…",
           )}
+      {currentRow}
       {fields
         ? row(
             "sky",
@@ -1061,6 +1116,13 @@ export default function ForecastDock(props: Props) {
   );
   const waves = useSpotWaves(more ? marineModels : NO_MODELS, lent, axis);
   const weather = useSpotWeather(more ? marineModels : NO_MODELS, lent, axis);
+  // The current is the place's own, a point's too: the run's series for a
+  // riding place, the map's frames at a point. Read once the rows are open.
+  const currentPlace = useMemo(
+    () => ({ id: isPoint ? undefined : spot.id, lat: spot.lat, lon: spot.lon }),
+    [isPoint, spot.id, spot.lat, spot.lon],
+  );
+  const current = useSpotCurrents(more, currentPlace, axis);
   // The top of the blend's scale, shared by the chart and its tick labels
   // in the label column (which stay put while the hours scroll).
   const blendMax = useMemo(() => {
@@ -1864,17 +1926,36 @@ export default function ForecastDock(props: Props) {
               </>
             )}
             {more &&
-              MORE_ROWS.map((key) => (
-                <div key={key} aria-hidden="true" style={{ height: ROWS[key] }}>
-                  <RowLabel
-                    glyph={MORE_LABEL[key][0]}
-                    title={MORE_LABEL[key][1]}
-                  />
-                  {MORE_LABEL[key][2] && (
-                    <small className="dk-unit">{MORE_LABEL[key][2]}</small>
-                  )}
-                </div>
-              ))}
+              MORE_ROWS.map((key) =>
+                key === "current" ? (
+                  <div
+                    key={key}
+                    aria-hidden="true"
+                    className="dk-lab-stack"
+                    style={{ height: ROWS[key] }}
+                  >
+                    <RowLabel
+                      glyph={MORE_LABEL[key][0]}
+                      title={`Current, ${currentUnits(prefs.units)}, and where it runs to`}
+                    />
+                    <small>{currentUnits(prefs.units)}</small>
+                  </div>
+                ) : (
+                  <div
+                    key={key}
+                    aria-hidden="true"
+                    style={{ height: ROWS[key] }}
+                  >
+                    <RowLabel
+                      glyph={MORE_LABEL[key][0]}
+                      title={MORE_LABEL[key][1]}
+                    />
+                    {MORE_LABEL[key][2] && (
+                      <small className="dk-unit">{MORE_LABEL[key][2]}</small>
+                    )}
+                  </div>
+                ),
+              )}
           </div>
 
           <div
@@ -1942,6 +2023,7 @@ export default function ForecastDock(props: Props) {
               more={more}
               waves={waves}
               weather={weather}
+              current={current}
               isPoint={isPoint}
               pointNote={pointNote}
               rated={rated}
