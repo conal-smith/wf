@@ -155,8 +155,16 @@ export interface SiteMenuTool {
   label: string;
   /** A small drawn glyph in `currentColor`, beside the name. */
   glyph?: ReactNode;
+  /**
+   * A page rather than a dialog (the chart, the spot finder): the row is a
+   * link to it. Where `onSelect` is given too, a plain press calls it in
+   * place of the page load; a press for a new tab is the browser's.
+   */
+  href?: string;
+  /** The page the reader is on, marked as the section you are in is. */
+  current?: boolean;
   /** Called once the menu has shut and handed the focus back to its trigger. */
-  onSelect: () => void;
+  onSelect?: () => void;
 }
 
 /** A finger on the drawer: where it went down, and how it has moved since. */
@@ -255,10 +263,10 @@ export function SiteMenu({
   ground = "map",
   /**
    * The page's own tools, over the sections: on the map, Customise, its
-   * layers, your spots, the display options, what the map means and the
+   * layers, the spot finder, the display options, what the map means and the
    * tour. The menu is the one way in to them, so they come first. Each opens
    * a dialog of the page's, which hands the focus back to the trigger when it
-   * shuts.
+   * shuts, or is a link to a page (`href`).
    */
   tools,
   /** Which sections are switched on: the build's, unless a test says. */
@@ -472,25 +480,59 @@ export function SiteMenu({
               <ul className={styles.list()}>
                 {toolItems.map((tool, index) => (
                   <li key={tool.id}>
-                    <Button
-                      ref={
-                        index === 0
-                          ? (el: HTMLButtonElement | null) => {
-                              firstRow.current = el;
-                            }
-                          : undefined
-                      }
-                      variant="quiet"
-                      className={styles.tool()}
-                      aria-haspopup="dialog"
-                      onClick={() => {
-                        close();
-                        tool.onSelect();
-                      }}
-                    >
-                      <span className={styles.glyph()}>{tool.glyph}</span>
-                      {tool.label}
-                    </Button>
+                    {tool.href !== undefined ? (
+                      <a
+                        ref={
+                          index === 0
+                            ? (el: HTMLAnchorElement | null) => {
+                                firstRow.current = el;
+                              }
+                            : undefined
+                        }
+                        className={styles.row({ current: !!tool.current })}
+                        href={tool.href}
+                        aria-current={tool.current ? "page" : undefined}
+                        onClick={(event) => {
+                          if (
+                            !tool.onSelect ||
+                            event.button !== 0 ||
+                            event.metaKey ||
+                            event.ctrlKey ||
+                            event.shiftKey ||
+                            event.altKey
+                          ) {
+                            close();
+                            return;
+                          }
+                          event.preventDefault();
+                          close();
+                          tool.onSelect();
+                        }}
+                      >
+                        <span className={styles.glyph()}>{tool.glyph}</span>
+                        {tool.label}
+                      </a>
+                    ) : (
+                      <Button
+                        ref={
+                          index === 0
+                            ? (el: HTMLButtonElement | null) => {
+                                firstRow.current = el;
+                              }
+                            : undefined
+                        }
+                        variant="quiet"
+                        className={styles.tool()}
+                        aria-haspopup="dialog"
+                        onClick={() => {
+                          close();
+                          tool.onSelect?.();
+                        }}
+                      >
+                        <span className={styles.glyph()}>{tool.glyph}</span>
+                        {tool.label}
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>

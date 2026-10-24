@@ -125,7 +125,7 @@ const STEPS = [
     id: "spots",
     short: "Spots",
     title: "Your home spots",
-    say: "Star the beaches you ride. They're kept in Your spots.",
+    say: "Star the beaches you ride. They're your Favourites in the spot finder.",
   },
   {
     id: "summary",
@@ -181,7 +181,7 @@ export interface CustomiseProps {
   times: readonly number[];
   /** The places to show a day at first: the open spot, then the rider's own. */
   prefer: readonly string[];
-  /** The chart's centre, which "Your spots" lists the nearest places to. */
+  /** The chart's centre, which the spots step lists the nearest places to. */
   centre: { lat: number; lng: number } | null;
   onClose: () => void;
   /** The preferences to save, and the spots to star or unstar. */

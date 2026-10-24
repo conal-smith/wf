@@ -179,7 +179,7 @@ const STEPS: Step[] = [
   {
     id: "menu",
     title: "Everything else",
-    body: "The menu: Customise, the layers, your spots, the key, and this tour again.",
+    body: "The menu: Customise, the layers, the spot finder, the key, and this tour again.",
     target: () => pad(box(document.querySelector(TARGETS.menu)), 4),
   },
   {

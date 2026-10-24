@@ -551,16 +551,10 @@ test("the spot's tools stand on the chart over the dock, and no day is rated", a
   await expect(tools.locator("a")).toHaveCount(1);
 });
 
-test("a starred spot is kept on this device: the dock and your spots agree", async ({
+test("a starred spot is kept on this device: the dock and the spot finder's favourites agree", async ({
   page,
 }) => {
   await openDock(page);
-  const panel = page.getByRole("complementary", { name: "Your spots" });
-  // In the site menu, not on the chart.
-  await expect(panel).toHaveCount(0);
-  await openFromMenu(page, "Your spots");
-  await expect(panel).toContainText("Tap the red star");
-  await closePanel(page);
   await page
     .locator(".dock")
     .getByRole("button", { name: "Star Brandon Bay" })
@@ -568,44 +562,35 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   await expect(
     page.locator(".dock").getByRole("button", { name: "Unstar Brandon Bay" }),
   ).toHaveAttribute("aria-pressed", "true");
-  await openFromMenu(page, "Your spots");
-  await expect(panel.locator(".fvl li").first()).toContainText("Brandon Bay");
   const stored = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("wingfoil.spots.v1") ?? "{}"),
   );
   expect(stored.starred).toEqual(["brandon"]);
-  await closePanel(page);
   // Chosen again from the search, the spot comes back starred.
   await page.getByRole("combobox", { name: "Find a spot" }).fill("Brandon");
   await page.locator(".spot-row").first().click();
   await expect(
     page.locator(".dock").getByRole("button", { name: "Unstar Brandon Bay" }),
   ).toHaveAttribute("aria-pressed", "true");
-  // Opening a spot counts it among the often opened; the count is in the
-  // entry's title, not printed as a bare "1×".
-  await page.getByRole("combobox", { name: "Find a spot" }).fill("Dollymount");
-  await page.locator(".spot-row").first().click();
-  await openFromMenu(page, "Your spots");
-  await expect(panel).toContainText("Often opened");
-  await expect(panel).toContainText("Dollymount");
-  // Each spot at the hour the map shows, never a day's best.
-  await expect(panel).not.toContainText(/best|done for the day|no stars/);
-  await expect(panel.locator(".side-head .when")).toHaveText(
-    /^[A-Z]{3} \d+ \d\d:\d\d$/,
-  );
-  await expect(panel).not.toContainText("1×");
-  await expect(
-    panel.locator(".fvl li", { hasText: "Dollymount" }).locator(".fv-go span"),
-  ).toHaveAttribute("title", /^Opened (once|\d+ times) on this device$/);
+  // The finder's favourites, from the menu, kept over a reload.
+  await page.getByRole("button", { name: "Site menu" }).click();
+  await page
+    .getByRole("group", { name: "The chart" })
+    .getByRole("link", { name: "Spot finder" })
+    .click();
+  const cards = page.locator("[data-spot-card]");
+  await expect(cards).toHaveCount(1);
+  await expect(cards.first()).toContainText("Brandon Bay");
   await page.reload();
-  await expect(panel).toHaveCount(0);
-  await openFromMenu(page, "Your spots");
-  await expect(panel.locator(".fvl li").first()).toContainText("Brandon Bay", {
-    timeout: 30000,
-  });
-  // And unstarring from the panel takes it off.
-  await panel.getByRole("button", { name: "Unstar Brandon Bay" }).click();
-  await expect(panel).toContainText("Tap the red star");
+  await expect(cards).toHaveCount(1, { timeout: 30000 });
+  // And unstarring it there takes it off.
+  await cards
+    .first()
+    .getByRole("button", { name: "Star Brandon Bay" })
+    .click();
+  await expect(page.locator("[data-finder-empty]")).toHaveText(
+    "Star a spot and it shows here.",
+  );
 });
 
 test("units and the blend's models are display options, kept on reload; the rider is Customise's", async ({
@@ -863,7 +848,7 @@ test("the display options open over the dimmed map from the site menu, one panel
   const trigger = page.getByRole("button", { name: "Site menu" });
   const panel = page.locator("#map-options");
   // The map's controls are zoom and the layers; the options are in the
-  // menu, under your spots and over the map's information.
+  // menu, under the spot finder and over the map's information.
   const names = await page
     .locator(".zbox button")
     .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
@@ -879,7 +864,6 @@ test("the display options open over the dimmed map from the site menu, one panel
   ).toHaveText([
     "Customise",
     "Layers",
-    "Your spots",
     "Display options",
     "About the map",
     "Take the tour",

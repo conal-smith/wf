@@ -104,7 +104,7 @@ test("the menu is a drawer from the left, over the dimmed map, with a glyph on e
   await expect(rows).toHaveText([
     "Customise",
     "Layers",
-    "Your spots",
+    "Spot finder",
     "Display options",
     "About the map",
     "Take the tour",

@@ -179,7 +179,7 @@ export async function steadyFrames(page: Page) {
 }
 
 /**
- * Shut the map's open panel (the layers, your spots or the display options)
+ * Shut the map's open panel (the layers or the display options)
  * on its dialog's X. It is modal, so the button it opened from is behind it.
  */
 export async function closePanel(page: Page) {
@@ -191,13 +191,13 @@ export async function closePanel(page: Page) {
 }
 
 /**
- * The chart's own tools, each a row of the site menu's: Customise, the ones
- * src/MapControls.tsx `chartTools` lists, and the tour (src/App.tsx).
+ * The chart's own tools that open over it, each a row of the site menu's:
+ * Customise, the ones src/MapControls.tsx `chartTools` lists, and the tour
+ * (src/App.tsx). The spot finder is a page, and its row a link.
  */
 export type ChartTool =
   | "Customise"
   | "Layers"
-  | "Your spots"
   | "Display options"
   | "About the map"
   | "Take the tour";
@@ -222,7 +222,7 @@ export async function openMenu(page: Page) {
 }
 
 /**
- * Open the layers, your spots, the display options or the map's information
+ * Open the layers, the display options or the map's information
  * as a rider does: from the site menu, the one way in to them.
  */
 export async function openFromMenu(page: Page, name: ChartTool) {

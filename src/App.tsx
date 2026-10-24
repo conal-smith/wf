@@ -56,9 +56,22 @@ import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ForecastDock, { type DockView } from "./ForecastDock";
 import MapControls, { chartTools, type MapPanel } from "./MapControls";
 import MapHead from "./MapHead";
-import { CustomiseGlyph, TourGlyph } from "./chartGlyphs";
+import {
+  ChartSheetGlyph,
+  CustomiseGlyph,
+  FinderGlyph,
+  TourGlyph,
+} from "./chartGlyphs";
 import { tourOffered, tourSeen } from "./tourOffer";
-import SidePanel from "./SidePanel";
+import { SiteMenu, type SiteMenuTool } from "../force5/src/SiteMenu";
+import { FINDER_HREF, isFinderPath, mapSpotHref } from "../force5/src/siteNav";
+import { followedLink } from "./PagesOverMap";
+import {
+  saveChartCentre,
+  saveView,
+  viewOfPath,
+  type MapView,
+} from "./lastView";
 import { InfoPop } from "./InfoPop";
 import useRunRefresh, {
   loadNewerRun,
@@ -119,6 +132,9 @@ const Companion = lazy(() =>
 );
 // The account's copy of the rider, on a device that has signed in before.
 const AccountRider = lazy(() => import("../shared/web/AccountRider"));
+// The spot finder, at /spots: a page beside the chart, drawn from the chart's
+// own data, in a chunk of its own the first time it is opened.
+const SpotFinder = lazy(() => import("./finder/SpotFinder"));
 // Customise and the tour, each only when asked for; the tour's offer only on
 // a first visit (src/tourOffer.ts).
 const Customise = lazy(() => import("./Customise"));
@@ -170,7 +186,7 @@ const AT_POINT = "@point";
 /**
  * What is open over the chart and shuts on a press away from it: the site
  * menu and the search's list in the head, each said open on the control it
- * hangs from, and the layers, your spots, the options or the map's
+ * hangs from, and the layers, the options or the map's
  * information in their dialog.
  */
 const OVER_THE_CHART = '.map-head [aria-expanded="true"], dialog[open]';
@@ -200,6 +216,7 @@ const degrees = (lat: number, lon: number) =>
 const PHONE = "(max-width: 720px)";
 /** Room, and a fine pointer, for the layers' rail (src/LayerRail.tsx). */
 const DESKTOP = "(hover: hover) and (pointer: fine) and (min-width: 721px)";
+const NONE: readonly string[] = [];
 
 const store = {
   get(key: string): string | null {
@@ -271,6 +288,17 @@ function useThrottled<T>(value: T, ms: number): T {
 }
 
 export default function App() {
+  /**
+   * The chart, or the spot finder beside it (/spots): one app, one set of
+   * data, either page drawn from it. Which one was last open is kept on this
+   * device, and the site's root opens on it (src/lastView.ts, src/main.tsx).
+   */
+  const [page, setPage] = useState<MapView>(() =>
+    viewOfPath(window.location.pathname),
+  );
+  useEffect(() => saveView(page), [page]);
+  /** The places the spot finder lists, which it needs rated first. */
+  const [finderWant, setFinderWant] = useState<readonly string[]>([]);
   const [prefs, setPrefs] = useState<Prefs>(defaultPrefs);
   useEffect(() => setPrefs(loadPrefs()), []);
   // A rating adopted from the account, or changed in another tab.
@@ -313,7 +341,7 @@ export default function App() {
     setMore(next);
     store.set(MORE_KEY, next ? "1" : "0");
   };
-  /** The layers, your spots or the display options, in a dialog over the map. */
+  /** The layers or the display options, in a dialog over the map. */
   const [panel, setPanel] = useState<MapPanel>(null);
   // The layers' rail: on a desktop, where it fits above the dock, Layers
   // opens and shuts it, and this device keeps it as it was left; else
@@ -533,15 +561,18 @@ export default function App() {
   // The lights read the spot squares in view, once the camera settles, and
   // the open spot's and the reader's own wherever they are: never every place.
   const mapView = useViewBounds(mapReady ? controls.current?.map : null);
-  // With no spot open, that is the squares in view and the reader's own.
+  // With no spot open, that is the squares in view and the reader's own; on
+  // the spot finder, the places it lists too.
+  const finderIds = page === "finder" ? finderWant : NONE;
   const ownPlaces = useMemo(() => {
     const ids = new Set([
       ...(point ? [point.id] : []),
       ...starred,
       ...frequent.map((v) => v.id),
+      ...finderIds,
     ]);
     return spots.filter((spot) => ids.has(spot.id));
-  }, [spots, point?.id, starred, frequent]);
+  }, [spots, point?.id, starred, frequent, finderIds]);
   const blendSquares = useBlendSquares(
     pointer,
     useMemo(
@@ -921,11 +952,12 @@ export default function App() {
   );
   const first = useMemo(
     () => [
+      ...finderIds,
       ...(point ? [point.id] : []),
       ...starred,
       ...frequent.map((v) => v.id),
     ],
-    [point?.id, starred, frequent],
+    [point?.id, starred, frequent, finderIds],
   );
   // Without the published blend (another model picked, or none published) the
   // same squares are read from every wind model; with it, none of them.
@@ -1282,7 +1314,13 @@ export default function App() {
   // chart is not flown anywhere it was not.
   const popped = useRef(() => {});
   popped.current = () => {
+    // Between the chart and the spot finder, as the link says.
+    if (isFinderPath(location.pathname)) {
+      setPage("finder");
+      return;
+    }
     if (location.pathname !== "/") return;
+    setPage("chart");
     const at = (window.history.state as MapEntry | null)?.mapPoint;
     if (at) {
       if (picked?.lon !== at.lon || picked?.lat !== at.lat) showPoint(at);
@@ -1298,13 +1336,25 @@ export default function App() {
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);
   }, []);
+  // Where the chart stood, kept while the spot finder is open in its place:
+  // coming back, it stands there again rather than on the whole of Ireland.
+  const camera = useRef<{ center: [number, number]; zoom: number } | null>(
+    null,
+  );
   useEffect(() => {
     if (!mapReady) return;
-    controls.current?.fitIreland(0);
     const map = controls.current?.map;
+    if (camera.current && map) map.jumpTo(camera.current);
+    else controls.current?.fitIreland(0);
     if (!map) return;
-    const update = () => {
+    const update = (moved?: unknown) => {
       const c = map.getCenter();
+      // The finder's "near you" falls back on where the chart was centred;
+      // the whole of Ireland as it opens is nowhere in particular.
+      if (moved) {
+        camera.current = { center: [c.lng, c.lat], zoom: map.getZoom() };
+        saveChartCentre({ lat: c.lat, lon: c.lng });
+      }
       const mpp =
         (40075016.686 * Math.cos((c.lat * Math.PI) / 180)) /
         (512 * 2 ** map.getZoom());
@@ -1592,25 +1642,99 @@ export default function App() {
         ? frameError
         : null;
 
+  /* ---- the chart and the spot finder, one in the other's place ---- */
+  const openFinder = () => {
+    if (!isFinderPath(location.pathname))
+      window.history.pushState({}, "", FINDER_HREF);
+    setPage("finder");
+  };
+  /** Back to the chart as it was: the spot in the dock, if one is. */
+  const openChart = () => {
+    window.history.pushState(
+      {},
+      "",
+      point && !picked ? mapSpotHref(point.id) : "/",
+    );
+    setPage("chart");
+  };
+  const openChartRef = useRef(openChart);
+  openChartRef.current = openChart;
+  /** The chart on a place, at the hour the finder chose (the same hour). */
+  const openInChart = (spot: Spot) => {
+    setPicked(null);
+    setPoint(spot);
+    setFocusId(spot.id);
+    fav.visit(spot.id);
+    window.history.pushState({}, "", mapSpotHref(spot.id));
+    setPage("chart");
+  };
+  // On the finder, a link to the chart's own address (the site menu's Wind
+  // map) is the chart in its place, not a page load: the root would open on
+  // the finder again, the page the rider last had.
+  useEffect(() => {
+    if (page !== "finder") return;
+    const click = (event: MouseEvent) => {
+      const url = followedLink(event);
+      if (!url || url.pathname !== "/" || url.search) return;
+      event.preventDefault();
+      openChartRef.current();
+    };
+    document.addEventListener("click", click);
+    return () => document.removeEventListener("click", click);
+  }, [page]);
+
+  const finderTool: SiteMenuTool = {
+    id: "finder",
+    label: "Spot finder",
+    glyph: <FinderGlyph />,
+    href: FINDER_HREF,
+    onSelect: openFinder,
+  };
   // The site menu is the one way in to the chart's own tools: Customise
-  // first, and the tour last.
-  const menuTools = useMemo(
-    () => [
+  // first, the spot finder after the layers, and the tour last.
+  const menuTools = useMemo(() => {
+    const [layers, ...rest] = chartTools(setPanel, setInfo);
+    return [
       {
         id: "customise",
         label: "Customise",
         glyph: <CustomiseGlyph />,
         onSelect: () => setGuide("customise"),
       },
-      ...chartTools(setPanel, setInfo),
+      layers,
+      finderTool,
+      ...rest,
       {
         id: "tour",
         label: "Take the tour",
         glyph: <TourGlyph />,
         onSelect: () => setGuide("tour"),
       },
-    ],
-    [],
+    ];
+  }, []);
+  const finderMenu = (
+    <SiteMenu
+      current="map"
+      tools={{
+        title: "The chart",
+        items: [
+          {
+            id: "chart",
+            label: "Chart",
+            glyph: <ChartSheetGlyph />,
+            href: "/",
+            onSelect: () => openChartRef.current(),
+          },
+          { ...finderTool, current: true },
+          {
+            id: "customise",
+            label: "Customise",
+            glyph: <CustomiseGlyph />,
+            onSelect: () => setGuide("customise"),
+          },
+        ],
+      }}
+    />
   );
   const leaveTour = () => {
     tourSeen();
@@ -1630,6 +1754,31 @@ export default function App() {
             Try again
           </button>
         </main>
+      ) : page === "finder" ? (
+        <Suspense fallback={null}>
+          <SpotFinder
+            spots={spots}
+            hours={hours}
+            version={version}
+            strip={strip}
+            days={days}
+            selected={selected}
+            isNow={
+              !!strip.length && selected === openingColumn(strip, clockNow)
+            }
+            onSelect={selectColumn}
+            starred={starred}
+            onToggleStar={(id) => fav.toggle(id)}
+            rider={rider}
+            units={prefs.units}
+            frame={mapDraws ? frame : null}
+            reducedMotion={reducedMotion}
+            phone={phone}
+            onWant={setFinderWant}
+            onInChart={openInChart}
+            menu={finderMenu}
+          />
+        </Suspense>
       ) : (
         <main className="workspace">
           <section className="map-panel" aria-label="Wind chart">
@@ -1650,23 +1799,6 @@ export default function App() {
               onLayers={pressLayers}
               onRailFits={setRailFits}
               layoutKey={`${dockOpen ? dockHeight : 0}`}
-              spots={() => (
-                <SidePanel
-                  spots={spotById}
-                  starred={starred}
-                  frequent={frequent}
-                  hours={hours}
-                  columns={strip}
-                  selected={selected}
-                  onGo={(spot) => {
-                    // Chosen: the panel's work is done, and the chart under
-                    // it is where the spot is about to be.
-                    setPanel(null);
-                    selectSpot(spot);
-                  }}
-                  onToggleStar={(id) => fav.toggle(id)}
-                />
-              )}
               options={() => (
                 <Suspense fallback={null}>
                   <DisplayFilter
@@ -1916,7 +2048,7 @@ export default function App() {
           )}
         </Suspense>
       )}
-      {!error && gustDue && FEATURES.gust && (
+      {!error && gustDue && FEATURES.gust && page === "chart" && (
         <Suspense fallback={null}>
           <Companion
             context={{

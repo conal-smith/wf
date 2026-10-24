@@ -249,7 +249,7 @@ test("the spot chosen is remembered, a bare point is not, and neither opens the 
     "keel",
   ]);
 
-  // Remembered for your spots, but the next visit opens on the chart alone:
+  // Remembered on the device, but the next visit opens on the chart alone:
   // nothing at its foot until a spot is chosen again.
   await page.reload();
   await expect(page.locator(".spot-marker")).toHaveCount(149, {

@@ -15,7 +15,7 @@ const fold = (s: string) =>
 /**
  * The chart's head, top left: the site menu, the name, and "Find a spot…",
  * whose list opens under the box as the reader types. The menu is the one way
- * in to the chart's own tools (the layers, your spots, the display options and
+ * in to the chart's own tools (the layers, the spot finder, the options and
  * what the map means), over the site's sections.
  */
 export default function MapHead({

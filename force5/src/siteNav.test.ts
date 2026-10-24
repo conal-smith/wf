@@ -3,6 +3,7 @@ import {
   APP_ROUTES,
   SITE_SECTIONS,
   siteSections,
+  isFinderPath,
   isSpotPath,
   isStarsPath,
   mapSpotHref,
@@ -220,13 +221,25 @@ describe("isSwitchedOffPath", () => {
 });
 
 describe("APP_ROUTES", () => {
-  it("is every section with a bundle of its own, then the spot page and the stars", () => {
+  it("is every section with a bundle of its own, then the spot page, the stars and the spot finder", () => {
     expect(APP_ROUTES).toEqual([
       "/market",
       "/community",
       "/ai",
       "/spot",
       "/stars",
+      "/spots",
     ]);
+  });
+});
+
+describe("isFinderPath", () => {
+  it("is /spots and under it, and not a spot's page", () => {
+    expect(isFinderPath("/spots")).toBe(true);
+    expect(isFinderPath("/spots/")).toBe(true);
+    expect(isFinderPath("/spot")).toBe(false);
+    expect(isFinderPath("/spot/keel")).toBe(false);
+    expect(isFinderPath("/spotsx")).toBe(false);
+    expect(isSpotPath("/spots")).toBe(false);
   });
 });

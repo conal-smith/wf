@@ -51,7 +51,7 @@ export function StarToggle({
       className="star-toggle"
       aria-pressed={on}
       aria-label={`${on ? "Unstar" : "Star"} ${name}`}
-      title={on ? "Starred: on your spots" : "Star: keep it on your spots"}
+      title={on ? "Starred: a favourite" : "Star: keep it as a favourite"}
       onClick={(event) => {
         event.stopPropagation();
         onToggle();
