@@ -13,18 +13,20 @@ export const segmentedStyles = tv({
       "font-mono text-label whitespace-nowrap text-ink uppercase",
       "cursor-pointer touch-manipulation transition-colors duration-fast pointer-coarse:min-h-touch",
       "not-disabled:hover:bg-sunken",
-      // The chosen one is filled in ink and set heavier: not colour alone.
-      "aria-pressed:bg-inverse aria-pressed:font-semibold aria-pressed:text-ink-inverse not-disabled:aria-pressed:hover:bg-inverse",
+      // The chosen one is filled in ink, with the ink's sheen, and set
+      // heavier: not colour alone.
+      "aria-pressed:bg-inverse aria-pressed:sheen-ink aria-pressed:font-semibold aria-pressed:text-ink-inverse aria-pressed:shadow-control not-disabled:aria-pressed:hover:bg-inverse",
       RING,
       DISABLED,
     ],
   },
   variants: {
-    // A column of choices: a ruled list, one row filled.
+    // A column of choices: a ruled list in a box, one row filled. The box
+    // clips the rows to its corners; the rows' rules stay square.
     stack: {
       true: {
-        base: "flex flex-col items-stretch rounded-surface",
-        item: "h-control-md justify-start rounded-none border-b border-line px-4 last:border-b-0",
+        base: "flex flex-col items-stretch overflow-hidden rounded-surface",
+        item: "h-control-md justify-start rounded-none border-b border-line px-4 last:border-b-0 aria-pressed:shadow-none",
       },
     },
   },

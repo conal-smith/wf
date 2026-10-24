@@ -48,8 +48,9 @@ export const threadRowStyles = tv({
     by: "font-display text-body font-semibold text-ink-2",
     // The figures, written into the byline: only where the column is not drawn.
     inline: "rail:hidden",
+    // A thumbnail: a control's corner.
     thumb:
-      "h-14.25 w-19 shrink-0 border border-line bg-sunken object-cover max-rail:hidden",
+      "h-14.25 w-19 shrink-0 rounded-control border border-line bg-sunken object-cover max-rail:hidden",
     // The column of figures: replies, and how many of them are new.
     stats:
       "grid w-20 shrink-0 justify-items-end gap-1 pt-4 text-right max-rail:hidden",

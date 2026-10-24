@@ -86,13 +86,15 @@ export const listingStyles = tv({
      * A thumbnail is the one control on this page ui/ has no part for, so it
      * carries the kit's ring by hand. It is 76 by 57, four to three like the
      * picture it stands for, which is well past the coarse-pointer minimum,
-     * so it asks for none. The chosen one is outlined in ink as well as
-     * brought forward: an opacity on its own is not a state a reader can name.
+     * so it asks for none. It takes a control's corner, the picture cut to it,
+     * and the ring follows the corner. The chosen one is outlined in ink as
+     * well as brought forward: an opacity on its own is not a state a reader
+     * can name.
      * The fill is named again under the pointer so that the site reset's
      * `button:enabled:hover` does not lay its wash over it.
      */
     thumb: [
-      "w-19 shrink-0 cursor-pointer overflow-hidden rounded-none border border-line bg-sunken p-0",
+      "w-19 shrink-0 cursor-pointer overflow-hidden rounded-control border border-line bg-sunken p-0",
       "aspect-4/3 opacity-65 transition-opacity duration-fast",
       "not-disabled:hover:bg-sunken not-disabled:hover:opacity-100",
       "focus-visible:opacity-100",
@@ -104,7 +106,8 @@ export const listingStyles = tv({
     thumbImage: "block size-full object-cover",
 
     // ---- the ad
-    // The one box on the page: the chart's, ruled twice, for what matters.
+    // The one box on the page: the chart's card, the ink rule with its
+    // hairline inside, for what matters.
     ad: "flex min-w-0 flex-col gap-5",
     stack: "flex min-w-0 flex-col gap-4",
     tight: "flex min-w-0 flex-col gap-1",

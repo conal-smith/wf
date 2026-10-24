@@ -12,9 +12,12 @@ import { RING, tv } from "../../../ui/tv";
 export const popoverStyles = tv({
   slots: {
     base: "relative inline-flex",
-    // The chart's box, hung from its trigger: paper ruled in ink, square.
+    // The chart's box, hung from its trigger: paper ruled in ink with the
+    // hairline inside. A menu is a sheet, so it takes a sheet's corner, and
+    // it floats as a box over the chart does. Padded clear of that corner, so
+    // a row's ring is not cut by it; the rows are ruled, so they stay square.
     panel:
-      "absolute z-popover flex w-max min-w-44 flex-col border border-ink bg-card paper-grain p-1 font-body shadow-surface animate-menu-in motion-reduce:animate-none",
+      "absolute z-popover flex w-max min-w-44 flex-col rounded-dialog border border-ink bg-card paper-float p-2 font-body shadow-float inset-shadow-frame animate-menu-in motion-reduce:animate-none",
     // A row of a panel that is a list of choices: the menu's row, on a hairline.
     item: [
       "flex min-h-control-md w-full cursor-pointer items-center gap-2 border-0 border-b border-line px-2 text-left font-display text-body whitespace-nowrap text-ink-2 last:border-b-0",

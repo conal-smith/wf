@@ -598,15 +598,20 @@
       }
     },
     "radius": {
-      "0": {
+      "10": {
         "$type": "dimension",
-        "$value": "0px",
-        "$description": "Square, as print is."
+        "$value": "10px",
+        "$description": "A control's corner: rounded, not a capsule."
       },
-      "2": {
+      "14": {
         "$type": "dimension",
-        "$value": "2px",
-        "$description": "A whisper of a corner."
+        "$value": "14px",
+        "$description": "A box's corner: a card, anything on the chart."
+      },
+      "18": {
+        "$type": "dimension",
+        "$value": "18px",
+        "$description": "A sheet's corner: a dialog, the dock, a menu."
       },
       "round": {
         "$type": "dimension",
@@ -634,33 +639,110 @@
     "shadow": {
       "control": {
         "$type": "shadow",
-        "$value": "0px 1px 0px #1a1d210f",
-        "$description": "A pressed control's lip."
+        "$value": "inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150",
+        "$description": "A pressed ink control's sheen: a lit top lip and a contact shadow."
+      },
+      "control-night": {
+        "$type": "shadow",
+        "$value": "inset 0 1px 0 #ffffff40, 0 1px 2px #00000080",
+        "$description": "Proposed night chart: a pressed control's sheen."
+      },
+      "raised": {
+        "$type": "shadow",
+        "$value": "inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126",
+        "$description": "A raised paper button: a white lip and a contact shadow."
+      },
+      "raised-night": {
+        "$type": "shadow",
+        "$value": "inset 0 1px 0 #ffffff14, 0 1px 2px #00000066",
+        "$description": "Proposed night chart: a raised button."
       },
       "marker": {
         "$type": "shadow",
         "$value": "0px 4px 10px -6px #3c2d1466",
         "$description": "A marker lifting off the chart."
       },
-      "surface": {
+      "card": {
         "$type": "shadow",
-        "$value": "0px 1px 0px #0000000a, 0px 6px 18px -10px #3c2d1459",
-        "$description": "A box lifting off the paper, warm and small."
+        "$value": "0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a",
+        "$description": "A card on a page: a contact shadow only."
+      },
+      "card-night": {
+        "$type": "shadow",
+        "$value": "0 1px 1px #00000040, 0 2px 4px -2px #00000040",
+        "$description": "Proposed night chart: a card's contact shadow."
+      },
+      "float": {
+        "$type": "shadow",
+        "$value": "0 1px 1px #1a1d211a, 0 3px 6px -2px #1a1d211f, 0 14px 28px -12px #3c2d1466",
+        "$description": "A box over the chart: contact, near and far, stacked, the far one warm."
+      },
+      "float-night": {
+        "$type": "shadow",
+        "$value": "0 1px 1px #00000040, 0 3px 6px -2px #00000047, 0 14px 28px -12px #00000099",
+        "$description": "Proposed night chart: a box over the chart."
+      },
+      "sheet": {
+        "$type": "shadow",
+        "$value": "0 1px 1px #1a1d211a, 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480",
+        "$description": "A sheet or a dialog: the float's stack one level deeper."
+      },
+      "sheet-night": {
+        "$type": "shadow",
+        "$value": "0 1px 1px #00000040, 0 6px 12px -4px #0000004d, 0 24px 48px -16px #000000a6",
+        "$description": "Proposed night chart: a sheet or a dialog."
       },
       "dock": {
         "$type": "shadow",
-        "$value": "0px -8px 22px -16px #3c2d1473",
-        "$description": "The dock's shadow, cast upward over the map."
+        "$value": "0 -1px 1px #1a1d211a, 0 -6px 12px -4px #1a1d2124, 0 -24px 48px -16px #3c2d1480",
+        "$description": "The dock: the sheet's stack cast upward, from the foot of the screen over the map."
+      },
+      "dock-night": {
+        "$type": "shadow",
+        "$value": "0 -1px 1px #00000040, 0 -6px 12px -4px #0000004d, 0 -24px 48px -16px #000000a6",
+        "$description": "Proposed night chart: the dock."
       },
       "frame": {
         "$type": "shadow",
-        "$value": "inset 0 0 0 3px #f3eee3, inset 0 0 0 4px #1a1d21",
-        "$description": "The double rule's inner line: three of paper, then one of ink."
+        "$value": "inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142",
+        "$description": "The hairline inside the ink rule: two of paper, then one of ink at a quarter."
       },
       "frame-night": {
         "$type": "shadow",
-        "$value": "inset 0 0 0 3px #1d1c19, inset 0 0 0 4px #ece5d6",
-        "$description": "Proposed night chart: the double rule's inner line."
+        "$value": "inset 0 0 0 2px #1d1c19, inset 0 0 0 3px #ece5d642",
+        "$description": "Proposed night chart: the hairline inside the ink rule."
+      }
+    },
+    "gradient": {
+      "ink": {
+        "$type": "string",
+        "$value": "linear-gradient(180deg, #33373d, #15171a)",
+        "$description": "A pressed ink control's fill: ink, lit a little from above."
+      },
+      "ink-night": {
+        "$type": "string",
+        "$value": "linear-gradient(180deg, #f6f0e3, #dcd4c4)",
+        "$description": "Proposed night chart: a pressed control's fill."
+      },
+      "raised": {
+        "$type": "string",
+        "$value": "linear-gradient(180deg, #ffffff, #f0eadd)",
+        "$description": "A raised paper button's fill: white at the top to paper."
+      },
+      "raised-night": {
+        "$type": "string",
+        "$value": "linear-gradient(180deg, #2e2b25, #22201b)",
+        "$description": "Proposed night chart: a raised button's fill."
+      },
+      "float": {
+        "$type": "string",
+        "$value": "linear-gradient(180deg, #f6f2e9, #f1ebdf)",
+        "$description": "A floating box's paper: the faintest light from above."
+      },
+      "float-night": {
+        "$type": "string",
+        "$value": "linear-gradient(180deg, #211f1c, #1b1a17)",
+        "$description": "Proposed night chart: a floating box's paper."
       }
     },
     "blur": {
@@ -2395,23 +2477,23 @@
     "radius": {
       "control": {
         "$type": "dimension",
-        "$value": "{ref.radius.2}",
+        "$value": "{ref.radius.10}",
         "$description": "--radius-control.",
         "$extensions": {
           "com.sprintengine": {
             "role": "shape",
-            "use": "A field: a whisper of a corner, so it reads as a box to write in."
+            "use": "A control that is not a capsule: a field, a small chip, a segmented row, a tooltip, the instrument button, a layer tile."
           }
         }
       },
       "surface": {
         "$type": "dimension",
-        "$value": "{ref.radius.0}",
+        "$value": "{ref.radius.14}",
         "$description": "--radius-surface.",
         "$extensions": {
           "com.sprintengine": {
             "role": "shape",
-            "use": "A box: square."
+            "use": "A box: a card on a page, anything on the chart (the zoom, the spot's tools, a popup, a Surface)."
           }
         }
       },
@@ -2422,18 +2504,19 @@
         "$extensions": {
           "com.sprintengine": {
             "role": "shape",
-            "use": "A quiet control's capsule."
+            "use": "A quiet control's capsule. Stays a capsule."
           }
         }
       },
       "dialog": {
         "$type": "dimension",
-        "$value": "{ref.radius.0}",
-        "$description": "--radius-dialog.",
+        "$value": "{ref.radius.18}",
+        "$description": "--radius-dialog: a sheet's corner.",
         "$extensions": {
           "com.sprintengine": {
             "role": "shape",
-            "use": "A dialog: square."
+            "use": "A sheet: a Dialog, the dock, a menu, a bottom sheet (its top corners only).",
+            "doNotUse": "On a print rule: a heavy, double or column rule is square."
           }
         }
       },
@@ -2450,7 +2533,7 @@
       },
       "overlay": {
         "$type": "dimension",
-        "$value": "{ref.radius.0}",
+        "$value": "{ref.radius.18}",
         "$description": "A dialog's corner, under the name the Studio catalog reads.",
         "$extensions": {
           "com.sprintengine": {
@@ -2539,7 +2622,26 @@
         "$extensions": {
           "com.sprintengine": {
             "role": "elevation",
-            "use": "A pressed toggle's lip."
+            "use": "A pressed or filled ink control, under sem.gradient.ink: the Button pressed or primary, a segmented choice, the zoom's pressed key.",
+            "modes": {
+              "light": "{ref.shadow.control}",
+              "dark": "{ref.shadow.control-night}"
+            }
+          }
+        }
+      },
+      "raised": {
+        "$type": "shadow",
+        "$value": "{ref.shadow.raised}",
+        "$description": "--shadow-raised.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "elevation",
+            "use": "A raised paper button, under sem.gradient.raised: the round menu button, the instrument.",
+            "modes": {
+              "light": "{ref.shadow.raised}",
+              "dark": "{ref.shadow.raised-night}"
+            }
           }
         }
       },
@@ -2554,14 +2656,49 @@
           }
         }
       },
-      "surface": {
+      "card": {
         "$type": "shadow",
-        "$value": "{ref.shadow.surface}",
-        "$description": "--shadow-surface.",
+        "$value": "{ref.shadow.card}",
+        "$description": "--shadow-card.",
         "$extensions": {
           "com.sprintengine": {
             "role": "elevation",
-            "use": "A Surface, a Dialog, a standing Pane."
+            "use": "A card inside a page or a dialog (a Pane, a spot page row-card, the wizard's sample day): the contact shadow only.",
+            "doNotUse": "Over the map: that is sem.shadow.float.",
+            "modes": {
+              "light": "{ref.shadow.card}",
+              "dark": "{ref.shadow.card-night}"
+            }
+          }
+        }
+      },
+      "float": {
+        "$type": "shadow",
+        "$value": "{ref.shadow.float}",
+        "$description": "--shadow-float.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "elevation",
+            "use": "Anything sitting on the map: a Surface, the zoom, the spot's tools, the search's list, a menu, a popover.",
+            "modes": {
+              "light": "{ref.shadow.float}",
+              "dark": "{ref.shadow.float-night}"
+            }
+          }
+        }
+      },
+      "sheet": {
+        "$type": "shadow",
+        "$value": "{ref.shadow.sheet}",
+        "$description": "--shadow-sheet.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "elevation",
+            "use": "A Dialog or a sheet: one level deeper than float.",
+            "modes": {
+              "light": "{ref.shadow.sheet}",
+              "dark": "{ref.shadow.sheet-night}"
+            }
           }
         }
       },
@@ -2572,21 +2709,75 @@
         "$extensions": {
           "com.sprintengine": {
             "role": "elevation",
-            "use": "The dock, cast upward."
+            "use": "The dock, a sheet standing on the foot of the screen: the sheet's stack cast upward.",
+            "modes": {
+              "light": "{ref.shadow.dock}",
+              "dark": "{ref.shadow.dock-night}"
+            }
           }
         }
       },
       "frame": {
         "$type": "shadow",
         "$value": "{ref.shadow.frame}",
-        "$description": "--inset-shadow-frame: the double rule's inner line.",
+        "$description": "--inset-shadow-frame: the hairline just inside the ink rule.",
         "$extensions": {
           "com.sprintengine": {
             "role": "structure",
-            "use": "With a 1px ink border, round a box that matters: a Surface, a Dialog, a double Pane.",
+            "use": "With a 1px ink border, round every box and sheet: a Surface, a Dialog, a card Pane, the dock, a menu. Listed before the elevation shadow.",
             "modes": {
               "light": "{ref.shadow.frame}",
               "dark": "{ref.shadow.frame-night}"
+            }
+          }
+        }
+      }
+    },
+    "gradient": {
+      "ink": {
+        "$type": "string",
+        "$value": "{ref.gradient.ink}",
+        "$description": "--gradient-ink: the sheen on a pressed ink control.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "A background-image under a filled ink control (the theme's `sheen-ink`), with sem.shadow.control.",
+            "doNotUse": "On a large surface: a page, a dialog, the dock stay flat paper.",
+            "modes": {
+              "light": "{ref.gradient.ink}",
+              "dark": "{ref.gradient.ink-night}"
+            }
+          }
+        }
+      },
+      "raised": {
+        "$type": "string",
+        "$value": "{ref.gradient.raised}",
+        "$description": "--gradient-raised: a raised paper button.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "A background-image under a raised paper button (the theme's `sheen-raised`), with sem.shadow.raised.",
+            "doNotUse": "On a large surface: a page, a dialog, the dock stay flat paper.",
+            "modes": {
+              "light": "{ref.gradient.raised}",
+              "dark": "{ref.gradient.raised-night}"
+            }
+          }
+        }
+      },
+      "float": {
+        "$type": "string",
+        "$value": "{ref.gradient.float}",
+        "$description": "--gradient-float: a floating box's faint top light.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "Under the grain of a small box over the map (the theme's `paper-float`): a Surface, the chart's boxes.",
+            "doNotUse": "On a large surface: a page, a dialog, the dock stay flat paper.",
+            "modes": {
+              "light": "{ref.gradient.float}",
+              "dark": "{ref.gradient.float-night}"
             }
           }
         }

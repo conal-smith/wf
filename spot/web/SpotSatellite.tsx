@@ -30,12 +30,15 @@ import {
 const styles = tv({
   slots: {
     figure: "m-0 flex flex-col gap-2",
-    // Three to two on a phone, its sides cut off; two to one from 720.
+    // Three to two on a phone, its sides cut off; two to one from 720. A box
+    // on the page: a box's corner, the picture cut to it, and a card's
+    // contact shadow.
     frame:
-      "relative aspect-3/2 overflow-hidden border border-ink bg-sunken wide:aspect-2/1",
+      "relative aspect-3/2 overflow-hidden rounded-surface border border-ink bg-sunken shadow-card wide:aspect-2/1",
     image: "block size-full object-cover",
-    // The chart's double rule, laid over the picture's edge.
-    rule: "pointer-events-none absolute inset-0 inset-shadow-frame",
+    // The hairline inside the rule, laid over the picture's edge, on the
+    // frame's own corner so it follows the curve.
+    rule: "pointer-events-none absolute inset-0 rounded-surface inset-shadow-frame",
     mark: "pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 overflow-visible",
     halo: "fill-none stroke-ground",
     ink: "fill-none stroke-ink",

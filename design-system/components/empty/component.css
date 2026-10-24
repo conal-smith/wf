@@ -17,6 +17,7 @@
   background-color: var(--sem-color-card);
   background-image: var(--sem-texture-grain);
   background-repeat: repeat;
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-card);
   color: var(--sem-color-ink-muted);
   font-family: var(--sem-font-family-body);
   font-size: var(--sem-font-size-prose);

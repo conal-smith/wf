@@ -312,7 +312,8 @@ describe("ui/theme.css: blur, measures and animation", () => {
   it("grains the paper with one tile, as a background image only", () => {
     const css = flat(build(["paper-grain"]));
     expect(css).toContain(".paper-grain {");
-    expect(css).toContain('background-image: url("data:image/svg+xml,');
+    expect(css).toContain("background-image: var(--texture-grain);");
+    expect(css).toContain('--texture-grain: url("data:image/svg+xml,');
     expect(css).toContain("feTurbulence");
     expect(css).not.toMatch(/\.paper-grain \{[^}]*background-color/);
   });
@@ -326,13 +327,33 @@ describe("ui/theme.css: blur, measures and animation", () => {
     );
   });
 
-  it("draws the double rule as two inset lines with paper between", () => {
+  it("draws the edge as a gap of paper and a hairline inside the ink rule", () => {
     const css = flat(build(["inset-shadow-frame"]));
     expect(css).toContain(".inset-shadow-frame {");
-    // The outer line is the border; this is the gap of paper and the inner line.
+    // The outer line is the border; this is the gap of paper and the hairline.
     expect(css).toMatch(
-      /--tw-inset-shadow: inset 0 0 0 3px var\(--tw-inset-shadow-color, #\w+\), inset 0 0 0 4px var\(--tw-inset-shadow-color, #\w+\);/,
+      /--tw-inset-shadow: inset 0 0 0 2px var\(--tw-inset-shadow-color, #\w+\), inset 0 0 0 3px var\(--tw-inset-shadow-color, #\w+\);/,
     );
+  });
+
+  it("lifts by elevation with the frame kept, and lights only small things", () => {
+    const css = flat(
+      build([
+        "inset-shadow-frame",
+        "shadow-float",
+        "paper-float",
+        "sheen-ink",
+        "sheen-raised",
+      ]),
+    );
+    // The frame and the lift compose: one box-shadow, the frame's inset first.
+    expect(css).toContain(".shadow-float {");
+    expect(css).toMatch(/box-shadow: var\(--tw-inset-shadow\)/);
+    expect(css).toContain(
+      "background-image: var(--texture-grain), var(--gradient-float);",
+    );
+    expect(css).toContain("background-image: var(--gradient-ink);");
+    expect(css).toContain("background-image: var(--gradient-raised);");
   });
 
   it("draws the pen in once, and lets the puffin bob, both declinable", () => {

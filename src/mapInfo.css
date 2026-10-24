@@ -630,6 +630,8 @@
     max-height: none;
     margin: 0;
     border: 0;
+    /* The whole screen: no edge, no corner, nothing to lift it. */
+    border-radius: 0;
     box-shadow: none;
   }
   .map-info > div:first-child {

@@ -6,8 +6,9 @@ is a Surface.
 
 ## Anatomy
 
-- Container: `.wf-pane` — `sem.space.x5` inset, square
-  (`sem.radius.surface`), `sem.color.ink` words.
+- Container: `.wf-pane` — `sem.space.x5` inset, a box's corner
+  (`sem.radius.surface`, 14px; square for a ruled section), `sem.color.ink`
+  words.
 - Rule: per kind (below): a hairline round it, none, or a heavy rule above.
 - Paper: `sem.color.card` with `sem.texture.grain` for a card; the second
   sheet (`sem.color.sunken`) for a well; nothing for a ruled section.
@@ -15,19 +16,19 @@ is a Surface.
 
 ## Variants
 
-- **Card** (`.wf-pane`, `kind="card"`, the default) — a `sem.rule.hairline`
-  ink border, paper with its grain.
+- **Card** (`.wf-pane`, `kind="card"`, the default) — a card: a
+  `sem.rule.hairline` ink border with `sem.shadow.frame` inside it, paper with
+  its grain, and `sem.shadow.card`, a contact shadow only.
 - **Sunken** (`--sunken`) — `sem.color.sunken`, no rule: a well, an aside, a
   breakdown of figures.
 - **Ruled** (`--ruled`) — a `sem.rule.heavy` ink rule above, nothing at the
   sides, no fill; inset `sem.space.x3` above and none at the sides or foot, so
   it lines up with its column. Most of a page is this.
-- **Double** (`--double`) — adds `sem.shadow.frame`, the chart's box, for the
-  one pane that matters.
-- **Standing** (`--standing`) — a pane on its own rather than in a column:
-  `sem.shadow.surface` and a `sem.space.x6` inset from `sem.breakpoint.wide`
-  (720px) up, `sem.space.x5` under it. With `--double` both shadows draw, the
-  frame first.
+- **Double** (`--double`) — `sem.shadow.frame`. A card has it already; this
+  is for a sunken pane that is to read as a box.
+- **Standing** (`--standing`) — a pane on its own rather than in a column: a
+  `sem.space.x6` inset from `sem.breakpoint.wide` (720px) up, `sem.space.x5`
+  under it. Still a card: the contact shadow, no more.
 
 ## States
 

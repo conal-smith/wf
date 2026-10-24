@@ -97,7 +97,7 @@ export function SpotCard({ card, onShow, compact = false }: SpotCardProps) {
     );
   return (
     <article
-      className="flex flex-col gap-3 border border-ink bg-card paper-grain p-4 font-body text-ink"
+      className="flex flex-col gap-3 rounded-surface border border-ink bg-card paper-grain p-4 font-body text-ink inset-shadow-frame shadow-card"
       aria-label={`${card.name}, ${card.county}`}
       data-spot-card={card.id}
     >

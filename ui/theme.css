@@ -286,24 +286,47 @@
 
   /* ---- shape and depth ------------------------------------------------- */
 
-  /* Square, as print is. A field keeps a whisper of a corner so it reads as a
-     box to write in; anything pressed is a capsule. */
-  --radius-control: 2px;
-  --radius-surface: 0px;
+  /* Mixed and rounded (approved by the owner, 2026-10-24): three corners by
+     size, and the capsule. A control that is not a capsule (a field, a small
+     chip, a tooltip, the instrument) is 10; a box (a card, anything on the
+     chart) is 14; a sheet (a dialog, the dock, a menu) is 18. Anything pressed
+     is still a capsule. A print rule (a heavy rule, a double rule, a column
+     rule) is never rounded. */
+  --radius-control: 10px;
+  --radius-surface: 14px;
   --radius-pill: 9999px;
-  --radius-dialog: 0px;
+  --radius-dialog: 18px;
   --radius-full: 9999px;
 
-  /* Little shadow, and a warm one: paper lifts off paper, it does not float. */
-  --shadow-control: 0px 1px 0px #1a1d210f;
+  /* Shadow by elevation, soft and stacked, the far one warm: a card on a page
+     casts only a contact shadow; a box over the chart floats; a sheet or a
+     dialog sits a level deeper; the dock is a sheet standing on the foot of
+     the screen, so its stack is cast upward. Each is listed after the frame:
+     `inset-shadow-frame shadow-float`. */
+  --shadow-card: 0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a;
+  --shadow-float: 0 1px 1px #1a1d211a, 0 3px 6px -2px #1a1d211f, 0 14px 28px -12px #3c2d1466;
+  --shadow-sheet: 0 1px 1px #1a1d211a, 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480;
+  --shadow-dock: 0 -1px 1px #1a1d211a, 0 -6px 12px -4px #1a1d2124, 0 -24px 48px -16px #3c2d1480;
   --shadow-marker: 0px 4px 10px -6px #3c2d1466;
-  --shadow-surface: 0px 1px 0px #0000000a, 0px 6px 18px -10px #3c2d1459;
-  --shadow-dock: 0px -8px 22px -16px #3c2d1473;
+  /* A small control's own: a pressed ink one's lit lip, under `sheen-ink`,
+     and a raised paper one's, under `sheen-raised`. */
+  --shadow-control: inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150;
+  --shadow-raised: inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126;
 
-  /* The double rule, as `border border-ink inset-shadow-frame`: the border is
-     the outer line, then three of paper, then the inner line. The gap is the
-     paper every surface is, so it vanishes into it. */
-  --inset-shadow-frame: inset 0 0 0 3px #f3eee3, inset 0 0 0 4px #1a1d21;
+  /* The edge, as `border border-ink inset-shadow-frame`: the ink rule is the
+     border, then two of paper, then a hairline of ink at a quarter. Every box
+     and sheet has it. */
+  --inset-shadow-frame: inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142;
+
+  /* Paper is flat; a little light is allowed only where a thing is small.
+     The fill of a pressed ink control (`sheen-ink`), of a raised paper button
+     (`sheen-raised`), and the faintest light from above on a box over the
+     chart (`paper-float`). A page, a dialog and the dock stay flat. */
+  --gradient-ink: linear-gradient(180deg, #33373d, #15171a);
+  --gradient-raised: linear-gradient(180deg, #ffffff, #f0eadd);
+  --gradient-float: linear-gradient(180deg, #f6f2e9, #f1ebdf);
+  /* The paper's grain, the background image of `paper-grain`. */
+  --texture-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 
   /* Glass is a badge over a photograph now, not a panel over the map: paper
      over the map is opaque. Behind a dialog the page goes soft: the map's
@@ -478,8 +501,31 @@
  * It is never laid over the moving map: the map is not paper.
  */
 @utility paper-grain {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image: var(--texture-grain);
   background-repeat: repeat;
+}
+
+/*
+ * A small box over the chart: the grain over the faintest light from above
+ * (`--gradient-float`), so it reads as printed paper lifted off the chart. A
+ * page, a dialog and the dock stay flat: `paper-grain`.
+ */
+@utility paper-float {
+  background-image: var(--texture-grain), var(--gradient-float);
+  background-repeat: repeat, no-repeat;
+}
+
+/*
+ * The two sheens, for small controls only. `sheen-ink` under a pressed or
+ * filled ink control, with `shadow-control`; `sheen-raised` under a raised
+ * paper button, with `shadow-raised`. Each sits over the control's own
+ * `bg-*` colour, which is what shows where a gradient is not drawn.
+ */
+@utility sheen-ink {
+  background-image: var(--gradient-ink);
+}
+@utility sheen-raised {
+  background-image: var(--gradient-raised);
 }
 
 /*

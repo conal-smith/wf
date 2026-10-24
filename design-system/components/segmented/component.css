@@ -73,9 +73,13 @@
 .wf-segmented__item[aria-pressed="true"],
 .wf-segmented__item[aria-pressed="true"]:not(:disabled):hover,
 .wf-segmented__item[aria-pressed="true"].is-hover {
-  background: var(--sem-color-inverse);
+  background: var(--sem-color-inverse) var(--sem-gradient-ink);
   color: var(--sem-color-ink-inverse);
   font-weight: var(--sem-font-weight-semibold);
+  box-shadow: var(--sem-shadow-control);
+}
+.wf-segmented--stack .wf-segmented__item[aria-pressed="true"] {
+  box-shadow: none;
 }
 
 /* ---- stack: a column of choices, a ruled list with one row filled ---- */
@@ -84,13 +88,15 @@
   flex-direction: column;
   align-items: stretch;
   border-radius: var(--sem-radius-surface);
+  /* The box clips its rows to its corner; the rows' rules stay square. */
+  overflow: hidden;
 }
 .wf-segmented--stack .wf-segmented__item {
   height: var(--sem-size-control-md);
   justify-content: flex-start;
   padding: 0 var(--sem-space-x4);
   border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
-  border-radius: var(--sem-radius-surface);
+  border-radius: 0;
 }
 .wf-segmented--stack .wf-segmented__item:last-child {
   border-bottom-width: 0;

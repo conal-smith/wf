@@ -1,12 +1,13 @@
 /* Pane — ui/Pane.tsx (paneStyles), rendered in CSS. Consumes --sem-* only.
  *
- * The box content sits in on a page that is read. Four kinds of box are told
- * apart by their rules, not their fill: the card pane has one ink rule, the
- * sunken pane none (it is the paper's second sheet), and the ruled pane is the
- * broadsheet's section, a heavy rule above and nothing at the sides. Over the
- * map the box is a Surface. */
+ * The box content sits in on a page that is read. The card pane is a card
+ * (mixed and rounded, 2026-10-24): the ink rule and the hairline inside it, a
+ * box's corner, and a contact shadow only. The sunken pane has no rule (it is
+ * the paper's second sheet), and the ruled pane is the broadsheet's section, a
+ * heavy rule above and nothing at the sides: a print rule, square and
+ * unshadowed. Over the map the box is a Surface. */
 
-/* kind="card" (the default): a box ruled in ink, on paper with its grain. */
+/* kind="card" (the default): a card on the page. */
 .wf-pane {
   box-sizing: border-box;
   padding: var(--sem-space-x5);
@@ -16,6 +17,7 @@
   background-image: var(--sem-texture-grain);
   background-repeat: repeat;
   color: var(--sem-color-ink);
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-card);
 }
 
 /* kind="sunken": the paper's second sheet, with no rule: a well, an aside. */
@@ -23,6 +25,7 @@
   border: 0;
   background-color: var(--sem-color-sunken);
   background-image: none;
+  box-shadow: none;
 }
 
 /* kind="ruled": a heavy rule above, nothing at the sides, and no inset of its
@@ -30,26 +33,26 @@
 .wf-pane--ruled {
   border: 0;
   border-top: var(--sem-rule-heavy) solid var(--sem-color-ink);
+  border-radius: 0;
   background-color: transparent;
   background-image: none;
+  box-shadow: none;
   padding: var(--sem-space-x3) 0 0;
 }
 
-/* double: a second rule inside the first, the chart's box, for one that
- * matters. */
+/* double: the hairline inside the rule. A card has it already; this is for a
+ * sunken pane that is to read as a box. */
 .wf-pane--double {
   box-shadow: var(--sem-shadow-frame);
 }
+.wf-pane--double:not(.wf-pane--sunken, .wf-pane--ruled) {
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-card);
+}
 
 /* standing: a pane on the page on its own rather than in a column of panes.
- * It lifts off the paper a little and takes the wider inset where the width
- * pays for it. */
+ * It takes the wider inset where the width pays for it, and is still a card. */
 .wf-pane--standing {
   padding: var(--sem-space-x6);
-  box-shadow: var(--sem-shadow-surface);
-}
-.wf-pane--standing.wf-pane--double {
-  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-surface);
 }
 
 /* max-wide: under sem.breakpoint.wide (45rem) the narrow inset comes back. */

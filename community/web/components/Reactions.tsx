@@ -26,10 +26,11 @@ export const reactionStyles = tv({
   },
   variants: {
     // Yours: outlined and raised as well as filled, and said with aria-pressed.
+    // Raised as a paper control is: a lip of light and a contact shadow.
     mine: {
       true: {
-        chip: "border-ink bg-card text-ink shadow-control not-disabled:hover:border-ink",
-        face: "border border-ink bg-card shadow-control",
+        chip: "border-ink bg-card text-ink shadow-raised not-disabled:hover:border-ink",
+        face: "border border-ink bg-card shadow-raised",
       },
     },
   },

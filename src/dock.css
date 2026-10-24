@@ -1,16 +1,20 @@
 /*
  * The dock: the chosen spot's week as one strip of hours, scrolled by hand or
  * stepped from the keys, the chosen hour framed by the red pen and the time
- * now ruled down it. Paper with a double rule along its top; figures in the
- * mono face.
+ * now ruled down it. A sheet standing on the foot of the screen (mixed and
+ * rounded, 2026-10-24): flat paper, the ink rule and its hairline round the
+ * top and sides, a sheet's corner at the top, and the sheet's stacked shadow
+ * cast upward over the chart. The day rules inside it stay square. Figures
+ * in the mono face.
  */
 .dock {
   position: relative;
   padding: 4px 16px 2px;
   background: var(--color-ground);
-  border: 0;
-  border-top: 3px double var(--color-ink);
-  box-shadow: var(--shadow-dock);
+  border: 1px solid var(--color-ink);
+  border-bottom: 0;
+  border-radius: var(--radius-dialog) var(--radius-dialog) 0 0;
+  box-shadow: var(--inset-shadow-frame), var(--shadow-dock);
   color: var(--color-ink);
 }
 
@@ -25,8 +29,9 @@
   bottom: calc(100% + 10px);
   display: flex;
   align-items: stretch;
+  gap: 2px;
   max-width: calc(100% - 24px);
-  padding: 2px;
+  padding: 3px;
   /* Over the hours, where a click held them as the dock grew (ForecastDock). */
   z-index: 1;
 }
@@ -36,6 +41,10 @@
   align-items: center;
   min-width: 0;
   padding: 0 10px 0 6px;
+}
+/* Over the chart, a hairline between the name and its tools. */
+.dk-tools.chart-box > .dk-id {
+  border-right: 1px solid var(--color-line);
 }
 .dk-name {
   margin: 0;
@@ -60,7 +69,7 @@
   max-width: 100%;
   color: inherit;
   text-decoration: none;
-  border-radius: 2px;
+  border-radius: var(--radius-control);
 }
 .dk-name a > span {
   min-width: 0;
@@ -82,8 +91,9 @@
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
-/* Each tool a square of the box, ruled off from the one before, as the
-   map's zoom and layers are; the kit's quiet button squared off. */
+/* Each tool a key of the box, as the map's zoom keys are: the kit's quiet
+   button at a control's corner, a little apart from the next, so its
+   corner nests in the box's. The name is ruled off from them. */
 .dk-tools .dk-tool {
   width: 32px;
   min-width: 32px;
@@ -91,14 +101,13 @@
   min-height: 30px;
   padding: 0;
   border: 0;
-  border-left: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-control);
   color: var(--color-ink);
 }
 .dk-tools .dk-tool[aria-pressed="true"] {
-  background: var(--color-ink);
+  background: var(--color-ink) var(--gradient-ink);
   color: var(--color-ink-inverse);
-  box-shadow: none;
+  box-shadow: var(--shadow-control);
 }
 .dk-tools .dk-tool:focus-visible {
   outline: 2px solid var(--color-focus);
@@ -143,7 +152,7 @@
 }
 .map-reach-chip {
   pointer-events: auto;
-  box-shadow: var(--shadow-surface);
+  box-shadow: var(--shadow-float);
 }
 .map-reach-chip {
   display: inline-flex;

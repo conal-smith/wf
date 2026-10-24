@@ -2,7 +2,7 @@
 
 A box to write in (`ui/TextInput.tsx` over `ui/control.ts`, `controlStyles`).
 Body-face text, an italic placeholder, a hairline box ruled at the stroke's
-3:1, square but for the field's 2px.
+3:1, at a control's corner (`sem.radius.control`, 10px).
 
 ## Anatomy
 

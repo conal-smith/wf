@@ -43,13 +43,19 @@ export const newThreadStyles = tv({
     tags: "flex flex-wrap gap-1",
     tag: "",
     photos: "m-0 flex list-none flex-wrap gap-2 p-0",
-    photo: "relative h-18 w-24 overflow-hidden border border-line bg-sunken",
+    // A thumbnail: a control's corner, the picture cut to it.
+    photo:
+      "relative h-18 w-24 overflow-hidden rounded-control border border-line bg-sunken",
     image: "size-full object-cover",
-    remove: "absolute top-1 right-1 bg-card shadow-control",
+    // A small paper button over the picture, raised and lit so it reads
+    // against any photograph; under the pointer it turns to lit ink, as the
+    // kit's raised button does.
+    remove:
+      "absolute top-1 right-1 bg-card sheen-raised shadow-raised not-disabled:hover:sheen-ink not-disabled:hover:shadow-control",
     failed:
       "absolute inset-x-0 bottom-0 bg-warn-ground px-1 text-center text-caption text-warn",
     add: [
-      "grid h-18 w-24 cursor-pointer place-items-center border border-dashed border-ink bg-ground text-ink-muted",
+      "grid h-18 w-24 cursor-pointer place-items-center rounded-control border border-dashed border-ink bg-ground text-ink-muted",
       "transition-colors duration-fast not-disabled:hover:border-ink-muted not-disabled:hover:text-ink",
       "disabled:cursor-default disabled:opacity-100",
       RING,

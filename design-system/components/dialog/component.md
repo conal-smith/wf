@@ -9,10 +9,11 @@ inert. Its buttons are the Button component's classes.
 
 - Box: `.wf-dialog` — 11/12 of the width up to `sem.container.dialog`,
   `sem.space.x7` inset (`sem.space.x5` under `sem.breakpoint.wide`), a grid
-  with `sem.space.x5` between its parts. Paper (`sem.color.card` with
-  `sem.texture.grain`) in the double rule: a `sem.rule.hairline` ink border
-  plus `sem.shadow.frame`, then `sem.shadow.surface`. Square
-  (`sem.radius.dialog`). Sentences in `sem.font.family.body`.
+  with `sem.space.x5` between its parts. A sheet: flat paper
+  (`sem.color.card` with `sem.texture.grain`), a `sem.rule.hairline` ink
+  border plus `sem.shadow.frame` (the hairline inside it), then
+  `sem.shadow.sheet`. A sheet's corner (`sem.radius.dialog`, 18px). Sentences
+  in `sem.font.family.body`.
 - Backdrop: `::backdrop` in `sem.color.scrim`, a wash of paper, over a
   `sem.blur.scrim` blur of the page or the map behind; it fades in with
   `sem.animate.scrim-in`. Where the browser cannot blur, or the reader asks for

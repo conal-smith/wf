@@ -12,8 +12,8 @@ The shape of what is loading, so the page does not jump when it lands
 ## Variants
 
 - **Line** (`.wf-skeleton`, the default) — `sem.space.x3` tall, the field's
-  `sem.radius.control`: square, as a line of type is.
-- **Block** (`--block`) — at least 128px (32 steps) tall, square
+  `sem.radius.control`.
+- **Block** (`--block`) — at least 128px (32 steps) tall, a box's corner
   (`sem.radius.surface`): a photo, a chart, a pane's worth.
 - **Circle** (`--circle`) — `sem.size.control.md` across, a full circle: an
   avatar, a light.

@@ -15,9 +15,10 @@ export const dialogStyles = tv({
   slots: {
     // `open:` and not a bare `grid`: a display of its own would show a closed
     // dialog, which the browser hides with nothing stronger than `display`.
-    // The chart's box: paper with its grain, in a double rule.
+    // A sheet: flat paper with its grain, the ink rule and the hairline
+    // inside it, a sheet's corner, and the deeper of the two lifts.
     base: [
-      "m-auto w-11/12 gap-5 rounded-dialog border border-ink bg-card paper-grain p-7 font-body text-ink shadow-surface inset-shadow-frame max-wide:p-5",
+      "m-auto w-11/12 gap-5 rounded-dialog border border-ink bg-card paper-grain p-7 font-body text-ink shadow-sheet inset-shadow-frame max-wide:p-5",
       "open:grid open:animate-dialog-in motion-reduce:animate-none",
       // The map or the page behind, blurred under a wash of paper, fading in
       // as the box arrives and out with it as it goes (ui/Backdrop.tsx).

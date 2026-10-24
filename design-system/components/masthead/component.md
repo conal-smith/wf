@@ -13,8 +13,8 @@ broadsheet's double rule.
 - Bar: `.wf-masthead__bar` — a flex row at least `sem.space.x14` tall,
   `sem.space.x3` gaps, `sem.space.x2` under, the `sem.rule.double` ink rule
   along its foot only.
-- Menu: the site menu's trigger, a Button `--raised --icon --sm` (the square
-  instrument) with an aria-label.
+- Menu: the site menu's trigger, a Button `--raised --icon --sm` (the round
+  menu button, raised paper) with an aria-label.
 - Brand: `.wf-masthead__brand` — the caller's link, holding a Wordmark `--md`
   with `.wf-masthead__mark` and, where the page is not the map's own, the
   section.

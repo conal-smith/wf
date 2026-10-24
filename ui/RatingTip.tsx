@@ -33,7 +33,7 @@ export const ratingTipStyles = tv({
     ],
     // On the dialogs' layer: it is the one thing open, and it must clear the
     // spot page's sticky heads and the map's dock and boxes.
-    card: "pointer-events-auto fixed z-dialog rounded-surface border border-ink bg-card paper-grain p-4 text-left text-ink shadow-surface inset-shadow-frame",
+    card: "pointer-events-auto fixed z-dialog rounded-surface border border-ink bg-card paper-float p-4 text-left text-ink shadow-float inset-shadow-frame",
   },
   variants: {
     size: {

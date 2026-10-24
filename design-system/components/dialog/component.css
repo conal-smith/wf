@@ -2,7 +2,8 @@
  * CSS. Consumes --sem-* only. Its buttons are the Button component's classes
  * (components/button/component.css); nothing here restyles them.
  *
- * The chart's box as a modal: paper with its grain in a double rule, the title
+ * A sheet: flat paper with its grain, the ink rule and the hairline inside it,
+ * a sheet's corner and the sheet's deeper lift (2026-10-24), the title
  * in the display face over an ink rule, the body in sentences, and a row of
  * answers with the one filled action last.
  *
@@ -25,7 +26,7 @@
   background-repeat: repeat;
   color: var(--sem-color-ink);
   font-family: var(--sem-font-family-body);
-  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-surface);
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-sheet);
 }
 
 .wf-dialog[open],
