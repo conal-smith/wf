@@ -31,7 +31,7 @@ without the 12-hour trail), approved by the owner on 19 October 2026.
 | Drift | Dotted arrow straight downwind, labelled DRIFT. In the pen's red, with "OUT TO SEA", when the wind is cross-offshore or offshore | The wind's bearing + 180° |
 | Offshore | On the bezel: a dense red hatch where the wind is offshore, a light one where it is cross-offshore, a red arc outside, and the word OFFSHORE | `shoreAngle`'s bands (see below) and the spot's facing |
 | Needle | From outside the bezel in to the glass, at the wind's from-bearing, filled with the wind's colour (`PALETTE`) | The dock's hour |
-| Foot box | "SW 16 g22" in the rider's units, then the shore relation: ON, CROSS-ON, CROSS, CROSS-OFF (red) or OFF (red). With no beach, the units | The dock's hour |
+| Foot box | "SW 16 g22" in the rider's units (in Force, the wind's glyph and force and the gust's smaller, `BeaufortGlyph`'s drawing), then the shore relation: ON, CROSS-ON, CROSS, CROSS-OFF (red) or OFF (red). With no beach, the units | The dock's hour |
 
 The wind's colour appears only on the needle. The pen's red is used only for
 danger: the offshore winds on the bezel, and the drift when it heads out to
@@ -55,7 +55,7 @@ tack. A dashed ring marks half of it.
 
 | Units | Rim | Ring |
 |---|---|---|
-| kn | 0.5 NM (926 m) | 0.25 NM |
+| kn, Force | 0.5 NM (926 m) | 0.25 NM |
 | mph | 0.5 mi (805 m) | 0.25 mi |
 | km/h, m/s | 1 km | 500 m |
 

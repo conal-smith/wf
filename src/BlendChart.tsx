@@ -3,7 +3,12 @@ import { createPortal } from "react-dom";
 import type { BlendInput, HourStats } from "../force5/src/blend";
 import { modelEntry, modelHue } from "../force5/src/manifests";
 import type { NightInterval } from "../force5/src/sun";
-import { convert, unitLabel, type Units } from "../force5/src/units";
+import {
+  convert,
+  scaleUnits,
+  unitLabel,
+  type Units,
+} from "../force5/src/units";
 import { dayLabel, timeLabel } from "../force5/src/weather";
 import type { DockColumn } from "../force5/src/timeline";
 import {
@@ -39,6 +44,7 @@ export interface BlendChartProps {
   lines: readonly BlendInput[];
   directions: readonly (number | null)[];
   nights: readonly NightInterval[];
+  /** The rider's units; Force is drawn in knots. */
   units: Units;
   /** Top of the value axis, in display units. */
   max: number;
@@ -61,11 +67,13 @@ export default function BlendChart({
   lines,
   directions,
   nights,
-  units,
+  units: riderUnits,
   max,
   waves,
   reducedMotion,
 }: BlendChartProps) {
+  // A chart is a straight scale: a rider in Force reads it in knots.
+  const units = scaleUnits(riderUnits);
   // React's generated ids carry colons, which cannot appear in an SVG url().
   const uid = useId().replace(/[^a-zA-Z0-9-]/g, "");
   const gradientId = `blend-${uid}`;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { ExpressionSpecification, GeoJSONSource } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+import { beaufortPath } from "../../ui/beaufortPath";
 import { loopPath } from "../../ui/penPaths";
 import {
   BATHY_PATH,
@@ -461,14 +462,17 @@ function drawFoot(foot: SVGGElement, loupe: LoupeRose | null) {
       width: box.w - 5,
       height: box.h - 5,
     });
-    write(
-      svgEl(foot, "text", {
-        class: "map-loupe-reading",
-        x: -box.w / 2 + 9,
-        y: 4.5,
-      }),
-      loupe.reading,
-    );
+    if (loupe.forces)
+      drawForces(foot, -box.w / 2 + 9, loupe.from, loupe.forces);
+    else
+      write(
+        svgEl(foot, "text", {
+          class: "map-loupe-reading",
+          x: -box.w / 2 + 9,
+          y: 4.5,
+        }),
+        loupe.reading,
+      );
     write(
       svgEl(foot, "text", {
         class: `map-loupe-relation${loupe.warn ? " is-warn" : ""}`,
@@ -479,6 +483,59 @@ function drawFoot(foot: SVGGElement, loupe: LoupeRose | null) {
       loupe.relation,
     );
   });
+}
+
+/** The reading's mono advance: IBM Plex Mono at 13px is 0.6em a character. */
+const READING_ADVANCE = 7.8;
+
+/**
+ * The reading in Force: "SW", the wind's glyph and force, and the gust's
+ * small after a "g". The words are one line of text with room left in it
+ * (`dx`) where each glyph stands, the glyphs placed by the mono advance.
+ */
+function drawForces(
+  foot: SVGGElement,
+  x: number,
+  from: string,
+  { wind, gust }: { wind: number; gust: number | null },
+) {
+  const big = beaufortPath(wind, 13);
+  const small = gust === null ? null : beaufortPath(gust, 10);
+  // A class of its own, so a redraw never reuses the plain reading's text,
+  // whose words would stay beside the parts.
+  const text = svgEl(foot, "text", {
+    class: "map-loupe-reading is-force",
+    x,
+    y: 4.5,
+  });
+  write(svgEl(text, "tspan"), `${from} `);
+  const bigX = x + (from.length + 1) * READING_ADVANCE;
+  write(svgEl(text, "tspan", { dx: big.width + 1 }), String(wind));
+  const glyph = (
+    d: ReturnType<typeof beaufortPath>,
+    at: number,
+    top: number,
+  ) => {
+    const g = svgEl(foot, "g", {
+      class: "map-loupe-glyph",
+      transform: `translate(${at.toFixed(1)} ${top})`,
+    });
+    svgEl(g, "path", { d: d.stroke, "stroke-width": d.strokeWidth });
+    if (d.fill)
+      svgEl(g, "path", {
+        class: "is-pennant",
+        d: d.fill,
+        "stroke-width": d.strokeWidth * 0.6,
+      });
+  };
+  glyph(big, bigX, -8);
+  if (small && gust !== null) {
+    write(svgEl(text, "tspan"), " g");
+    write(svgEl(text, "tspan", { dx: small.width + 1 }), String(gust));
+    const smallX =
+      bigX + big.width + 1 + (String(wind).length + 2) * READING_ADVANCE;
+    glyph(small, smallX, -5);
+  }
 }
 
 /** The range ring at the origin, `r` pixels out, with its distance written up and to the right. */
