@@ -490,6 +490,28 @@ export const chartMap: GlyphDef = [
   { d: "M3 6l6-2.5 6 2.5 6-2.5V18l-6 2.5L9 18l-6 2.5Z" },
   { d: "M9 3.5V18M15 6v14.5" },
 ];
+/**
+ * The wind map, as the site menu names it: a chart folded in three, a coast
+ * coming in on its right-hand panel and a streak of wind across the others.
+ */
+export const windMap: GlyphDef = [
+  { d: "M3 6.5l5.5-2 7 2 5.5-2v13l-5.5 2-7-2-5.5 2Z" },
+  { d: "M8.5 4.5v13M15.5 6.5v13", width: 1, opacity: 0.55 },
+  {
+    d: "M21 10c-1.5.2-2.2 1.4-3.4 1.6-1.3.2-1.6 1.8-2.6 2.5-1 .7-1.2 2.4-1.4 4.8",
+    width: 1.2,
+  },
+  { d: "M5 12.5c2.2-.9 4-3 7-3.8", width: 1.3 },
+];
+/** Use with AI: a speech bubble with a four-pointed spark in it. */
+export const useWithAi: GlyphDef = [
+  { d: "M4 5.5h16V16H10l-4.5 3.5V16H4Z" },
+  {
+    d: "M12 7.6l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9Z",
+    fill: "ink",
+    width: 0.8,
+  },
+];
 /** A warning: drawn in ink; set it in the warm red where it warns. */
 export const warn: GlyphDef = [
   { d: "M12 3.5 21.5 20H2.5Z" },

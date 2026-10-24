@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Use with AI, as the site menu names it: a speech bubble with a four-pointed spark in it (shared/web/glyphSet.ts, useWithAi). -->
+  <path d="M4 5.5h16V16H10l-4.5 3.5V16H4Z" />
+  <path d="M12 7.6l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9Z" fill="currentColor" stroke-width="0.8" />
+</svg>

@@ -116,6 +116,11 @@ describe("the glyph set", () => {
       "blend",
       "air",
       "waves",
+      // The site menu's sections.
+      "windMap",
+      "market",
+      "community",
+      "useWithAi",
     ] as const)
       for (const paint of paints(glyphs[name]))
         expect([undefined, "ink", "paper"], name).toContain(paint);
