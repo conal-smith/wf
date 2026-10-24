@@ -510,7 +510,7 @@ test("the spot's tools stand on the chart over the dock, and no day is rated", a
   // page), the blend, the fold and the close, in a box on the chart at the
   // dock's top edge. The dock under it is its rows.
   const tools = page.getByRole("group", { name: "This spot" });
-  await expect(tools).toHaveText(/^Brandon BayBlend$/);
+  await expect(tools).toHaveText(/^Brandon BayLayersBlend$/);
   const box = (await tools.boundingBox())!;
   const dock = (await page.locator(".dock").boundingBox())!;
   expect(box.y + box.height).toBeLessThanOrEqual(dock.y);
@@ -519,7 +519,12 @@ test("the spot's tools stand on the chart over the dock, and no day is rated", a
   await expect(
     tools.getByRole("button", { name: "About these figures" }),
   ).toHaveCount(0);
-  for (const name of ["Star Brandon Bay", "Blend", "Show waves, sky and sea"])
+  for (const name of [
+    "Star Brandon Bay",
+    "Layers",
+    "Blend",
+    "Show waves, sky and sea",
+  ])
     await expect(tools.getByRole("button", { name })).toBeVisible();
   await expect(tools.getByRole("button", { name: "Blend" })).toHaveAttribute(
     "aria-pressed",
@@ -981,6 +986,7 @@ test("on a phone the dock is a sheet: its head in it, then its hours, under a si
   await expect(page.locator(".dock .dk-fold")).toHaveCount(0);
   for (const name of [
     "Star Brandon Bay",
+    "Layers",
     "Blend",
     "Show waves, sky and sea",
     "Close the forecast for Brandon Bay",

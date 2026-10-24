@@ -19,7 +19,7 @@ import { framePath, stemPath, type KeepOut } from "../ui/penPaths";
 import { StarGlyphs } from "../ui/StarGlyphs";
 // Only when asked for: the chart's Blend view.
 const BlendChart = lazy(() => import("./BlendChart"));
-import { ChartGlyph, glyphs } from "./chartGlyphs";
+import { ChartGlyph, LayersGlyph, glyphs } from "./chartGlyphs";
 import type { GlyphDef } from "../shared/web/glyphSet";
 import { StarToggle, WindArrow } from "./glyphs";
 import {
@@ -142,8 +142,10 @@ interface Props {
   onMore: (more: boolean) => void;
   /** The wave and weather manifests, once the rows have been opened. */
   marine: readonly ModelAvailability[];
-  /** Open "Your star rating", from the chip a rider's own stars put in the head. */
-  onCustomStars?: () => void;
+  /** The layers' rail is open beside the zoom (src/LayerRail.tsx). */
+  layersOpen: boolean;
+  /** Layers: the rail on a desktop, the panel on a phone (src/App.tsx). */
+  onLayers: () => void;
 }
 
 const ROWS = {
@@ -947,7 +949,8 @@ export default function ForecastDock(props: Props) {
     more,
     onMore,
     marine,
-    onCustomStars,
+    layersOpen,
+    onLayers,
   } = props;
   const cw = phone ? 52 : 62;
   // A phone folds the label column away once the reader slides the hours,
@@ -1656,32 +1659,22 @@ export default function ForecastDock(props: Props) {
             </span>
           )}
         </div>
-        {/* The stars are the rider's own: said once, where they are read,
-            and the way to change them. */}
-        {prefs.rider.custom && !isPoint && (
-          <Button
-            variant="quiet"
-            size="sm"
-            className="dk-tool dk-custom"
-            aria-label="Custom star rating: edit"
-            title="Your own star rating: edit"
-            onClick={onCustomStars}
-            data-custom-stars
-          >
-            <svg
-              width="11"
-              height="11"
-              viewBox="-5 -5 10 10"
-              aria-hidden="true"
-            >
-              <path
-                fill="currentColor"
-                d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z"
-              />
-            </svg>
-            <span className="dk-tool-word">Custom</span>
-          </Button>
-        )}
+        {/* The chart's layers, from the forecast in hand: the rail beside
+            the zoom on a desktop, the panel on a phone. */}
+        <Button
+          variant="quiet"
+          size="sm"
+          className="dk-tool dk-layers"
+          aria-label="Layers"
+          title="Layers"
+          aria-expanded={layersOpen}
+          onClick={onLayers}
+        >
+          <LayersGlyph size={16} />
+          <span className="dk-tool-word" aria-hidden="true">
+            Layers
+          </span>
+        </Button>
         {/* The table or every model's wind drawn as a chart: its glyph and
             its name, on while the blend is shown. A point has no blend. */}
         {!isPoint && (

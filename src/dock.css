@@ -113,7 +113,7 @@
   outline: 2px solid var(--color-focus);
   outline-offset: -2px;
 }
-.dk-tools .dk-custom {
+.dk-tools .dk-layers {
   width: auto;
   gap: 4px;
   padding: 0 8px;
@@ -543,7 +543,7 @@ table.tt {
     min-height: 30px;
     border-left: 0;
   }
-  .dk-tools .dk-custom {
+  .dk-tools .dk-layers {
     padding: 0;
   }
   .dk-tools .dk-view {
