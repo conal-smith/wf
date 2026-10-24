@@ -73,11 +73,14 @@
 }
 
 /* ---- primary: the one filled control, an ink pill, magenta under the pointer ---- */
+/* Lit as a small ink control is (2026-10-24): the ink's sheen and its lip,
+ * flat magenta under the pointer, nudged down a pixel when pressed. */
 .wf-button--primary {
   border-radius: var(--sem-radius-full);
   border-color: var(--sem-color-accent-primary);
-  background: var(--sem-color-accent-primary);
+  background: var(--sem-color-accent-primary) var(--sem-gradient-ink);
   color: var(--sem-color-accent-ink);
+  box-shadow: var(--sem-shadow-control);
 }
 .wf-button--primary:not(:disabled):hover,
 .wf-button--primary.is-hover {
@@ -87,6 +90,12 @@
 .wf-button--primary:disabled {
   border-color: var(--sem-color-line);
   background: var(--sem-color-sunken);
+  box-shadow: none;
+}
+.wf-button--primary:not(:disabled):active,
+.wf-button--raised:not(:disabled):active,
+.wf-button[aria-pressed="true"]:not(:disabled):active {
+  translate: 0 1px;
 }
 
 /* ---- pill: a capsule ruled in ink, which turns to ink under the pointer ---- */
@@ -105,19 +114,25 @@
   background: transparent;
 }
 
-/* ---- raised: the chart's instrument over the map, a square box ruled in ink ---- */
+/* ---- raised: the chart's instrument, a raised paper button ruled in ink ---- */
+/* Lit from above with a lip and a contact shadow; a control's corner with
+ * words in it, round with an icon (the round menu button). Ink with its sheen
+ * under the pointer. */
 .wf-button--raised {
-  border-radius: var(--sem-radius-surface);
+  border-radius: var(--sem-radius-control);
   border-color: var(--sem-color-ink);
-  background: var(--sem-color-card);
+  background: var(--sem-color-card) var(--sem-gradient-raised);
+  box-shadow: var(--sem-shadow-raised);
 }
 .wf-button--raised:not(:disabled):hover,
 .wf-button--raised.is-hover {
-  background: var(--sem-color-inverse);
+  background: var(--sem-color-inverse) var(--sem-gradient-ink);
   color: var(--sem-color-ink-inverse);
+  box-shadow: var(--sem-shadow-control);
 }
 .wf-button--raised:disabled {
   background: transparent;
+  box-shadow: none;
 }
 
 /* ---- link: a way back or on, underlined in ink ("← Chart") ---- */
@@ -173,16 +188,17 @@
 .wf-button[aria-pressed="true"],
 .wf-button[aria-current="true"] {
   border-color: var(--sem-color-ink);
-  background: var(--sem-color-inverse);
+  background: var(--sem-color-inverse) var(--sem-gradient-ink);
   color: var(--sem-color-ink-inverse);
   font-weight: var(--sem-font-weight-semibold);
   box-shadow: var(--sem-shadow-control);
 }
 .wf-button[aria-pressed="true"]:not(:disabled):hover {
-  background: var(--sem-color-inverse);
+  background: var(--sem-color-inverse) var(--sem-gradient-ink);
 }
 .wf-button[aria-pressed="true"]:disabled {
   background: var(--sem-color-sunken);
+  box-shadow: none;
 }
 /* A toggle whose own words say it is on (Save -> Saved) keeps its quiet box. */
 .wf-button--worded[aria-pressed="true"] {
@@ -205,9 +221,9 @@
 .wf-button--icon.wf-button--lg {
   width: var(--sem-size-control-lg);
 }
-/* The instrument stays square with an icon in it. */
+/* The instrument is round with an icon in it: the round menu button. */
 .wf-button--icon.wf-button--raised {
-  border-radius: var(--sem-radius-surface);
+  border-radius: var(--sem-radius-full);
 }
 @media (pointer: coarse) {
   .wf-button--icon {

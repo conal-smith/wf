@@ -28,6 +28,44 @@ the two disagree. So **a value changes in both places, together**: edit
 `npm run design:build` to regenerate the derived `foundations/tokens.css` and
 `catalog/index.html` (never edit those by hand).
 
+### Shape and elevation (mixed and rounded, 24 October 2026)
+
+The owner approved the "mixed and rounded" treatment on 24 October 2026 (the
+`body.mixed` style of `backlog/mockups/2026-10-24-layer-rail.html`; the
+ruling is in [DESIGN_PRINCIPLES.md](DESIGN_PRINCIPLES.md#rulings)). The rule,
+as the tokens hold it:
+
+| Theme | Bundle | Value | For |
+| --- | --- | --- | --- |
+| `--radius-control` | `sem.radius.control` | 10px | a control that is not a capsule: a field, a small chip, a tooltip, a tile, a key |
+| `--radius-surface` | `sem.radius.surface` | 14px | a box: a card on a page, anything on the chart |
+| `--radius-dialog` | `sem.radius.dialog` | 18px | a sheet: a dialog, the dock, a menu |
+| `--radius-pill`, `--radius-full` | `sem.radius.pill`, `.full` | 9999px | what is pressed: stays a capsule |
+| `--inset-shadow-frame` | `sem.shadow.frame` | `inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142` | the hairline inside the 1px ink rule, on every box and sheet |
+| `--shadow-card` | `sem.shadow.card` | `0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a` | a card in a page or a dialog |
+| `--shadow-float` | `sem.shadow.float` | `0 1px 1px #1a1d211a, 0 3px 6px -2px #1a1d211f, 0 14px 28px -12px #3c2d1466` | anything on the map, a menu, a popover |
+| `--shadow-sheet` | `sem.shadow.sheet` | `0 1px 1px #1a1d211a, 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480` | a dialog or a sheet |
+| `--shadow-dock` | `sem.shadow.dock` | the sheet's stack with each offset upward | the dock, on the foot of the screen |
+| `--shadow-control` | `sem.shadow.control` | `inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150` | a pressed or filled ink control |
+| `--shadow-raised` | `sem.shadow.raised` | `inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126` | a raised paper button |
+| `--gradient-ink` (`sheen-ink`) | `sem.gradient.ink` | `linear-gradient(180deg, #33373d, #15171a)` | under a pressed or filled ink control |
+| `--gradient-raised` (`sheen-raised`) | `sem.gradient.raised` | `linear-gradient(180deg, #ffffff, #f0eadd)` | under a raised paper button |
+| `--gradient-float` (`paper-float`) | `sem.gradient.float` | `linear-gradient(180deg, #f6f2e9, #f1ebdf)` | under the grain of a small box over the chart |
+
+A box is `border border-ink inset-shadow-frame` plus its corner and its
+shadow; in the map's plain CSS, `box-shadow: var(--inset-shadow-frame),
+var(--shadow-float)` (`.chart-box` in `src/map.css` is that box). Large
+surfaces stay flat, sheens are for small controls, a lit control nudges down a
+pixel when pressed, and print rules (double rules under heads, table and
+column rules, the dock's day rules) stay square and unshadowed. The bundle
+carries a proposed night value for each shadow and gradient.
+
+The mobile app reads the theme's values through
+`mobile/src/theme/css.generated.ts` (`npm run tokens` in `mobile/`), which is
+regenerated with them, but its components still draw from the hand-written
+`radius` and `shadow` in `mobile/src/theme/tokens.ts`, which are still square
+and still the old shadows: porting them is its own piece of work.
+
 A section that adds values of its own appends them to the end of the theme
 under a banner, `/* ==== <section> ==== … */`. Until they are in the bundle
 the drift check lists them as warnings, "to add to the bundle", rather than

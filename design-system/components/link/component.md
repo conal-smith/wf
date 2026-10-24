@@ -6,8 +6,8 @@ ink, underlined in running text, magenta under the pointer.
 ## Anatomy
 
 - Link: `.wf-link` on an `<a href>` — the surrounding face and size, in
-  `sem.color.quiet`, `sem.radius.control` so the focus ring sits square
-  but for the field's 2px.
+  `sem.color.quiet`, `sem.radius.control` so the focus ring takes a
+  control's corner.
 - Underline (the default): a `sem.rule.hairline` line in
   `sem.color.line-strong`, 3px under the words.
 

@@ -61,22 +61,40 @@ heads its columns.
 - `sem.rule.double` (a CSS `double` border) runs along an edge: the masthead's
   foot, the dock's top, a page's foot. Write the other three sides to zero
   first.
-- **The double rule round a box** is a 1px ink border plus `sem.shadow.frame`
-  (three of paper, then one of ink, inset): the chart's box, for a dialog,
-  anything over the map, a popup.
+- **The edge of every box and sheet** is a 1px ink border plus
+  `sem.shadow.frame` (two of paper, then a hairline of ink at a quarter,
+  inset): a card on a page, the chart's box, a dialog, a menu, the dock.
+- **Print rules stay square and unshadowed**: a heavy rule, a double rule, a
+  table or column rule, the dock's day rules. A section under a rule is
+  `sem.radius` none, never a rounded box with a one-sided border.
 
-**Four kinds of box, told apart by their rules, not their fill**: the pane (one
-rule), the chart's box (the double rule), the pill (a capsule, for what is
-pressed) and the dock (a double rule along its top). A new thing that fits none
-of them should be a section under a rule.
+**Four kinds of box, told apart by their size and their lift, not their
+fill** (mixed and rounded, 2026-10-24): the card (on a page:
+`sem.radius.surface`, `sem.shadow.card`), the chart's box (anything over the
+map: `sem.radius.surface`, `sem.shadow.float`), the sheet (a dialog, the dock,
+a menu: `sem.radius.dialog`, `sem.shadow.sheet`, or `sem.shadow.dock` for the
+dock cast upward) and the pill (a capsule, for what is pressed). All but the
+pill carry the edge above. A new thing that fits none of them should be a
+section under a rule.
 
 **Over the map, paper is opaque.** Glass (`sem.color.glass`) survives only as a
 badge over a photograph, and goes solid for a reader who asks for less
 transparency.
 
-**Shadows are small and warm**: `sem.shadow.control`, `marker`, `surface`,
-`dock`. Paper lifts off paper; it does not float. Everything at one layer casts
-the same shadow. No drop shadow beyond these four.
+**Shadows by elevation**, soft and stacked (contact, near, far), the far one
+warm, always after `sem.shadow.frame`: `sem.shadow.card` (a contact shadow
+only), `float`, `sheet`, `dock` (the sheet's stack cast upward). `marker`
+lifts a light or a small floating button. A small control has its own:
+`sem.shadow.control` under a pressed or filled ink control, `raised` under a
+raised paper one. Everything at one height casts the same shadow. No drop
+shadow beyond these.
+
+**Paper is flat; light is for small things.** A page, a dialog and the dock
+are flat paper. A small box over the chart may take `sem.gradient.float`, the
+faintest light from above, under its grain. A sheen is for small controls
+only: `sem.gradient.ink` under a pressed or filled ink control,
+`sem.gradient.raised` under a raised paper button (the round menu button, a
+knob). A press nudges a lit control down a pixel.
 
 **The paper's grain** (`sem.texture.grain`) is a background image beside the
 paper fill on a section root, the masthead, a card pane, a Surface and a
@@ -102,11 +120,16 @@ capitals), `hand` (Kalam: the pen, and nothing else). Eleven steps:
 - A field on a coarse pointer is `input` (16), so a phone does not zoom.
 - Five weights; `extrabold` (800) is the wordmark's alone.
 
-**Radius.** Square, as print is: `sem.radius.surface` and `sem.radius.dialog`
-are 0. A field keeps `sem.radius.control` (2px), so it reads as a box to write
-in. Anything pressed is a capsule (`sem.radius.full`). A rounded box is a
-mistake; so is a squared capsule. The one exception is the instrument over the
-map (Button `raised`): a square box, on purpose.
+**Radius** (mixed and rounded, 2026-10-24). Three corners by size, and the
+capsule: `sem.radius.control` 10px (a field, a small chip, a tooltip, a
+layer tile, a key in a box, the instrument button with words in it),
+`sem.radius.surface` 14px (a box: a card, anything on the chart),
+`sem.radius.dialog` 18px (a sheet: a dialog, the dock, a menu; a sheet on the
+foot of the screen rounds its top corners only). Anything pressed is a capsule
+(`sem.radius.full`), and so is the instrument with an icon in it (the round
+menu button). A square box is now a mistake; so is a squared capsule, and so
+is a rounded print rule. A key inside a box sits in by the difference of the
+two corners, so the curves nest.
 
 **Tap targets.** Nothing pressed is shorter than `sem.size.touch` (44px) on a
 coarse pointer. A control drawn smaller grows its hit area instead.
@@ -144,8 +167,10 @@ this bundle are drawn at phone width unless they say otherwise.
 - Don't use warm to make something stand out.
 - Don't use the wind ramp for anything but wind speed.
 - Don't lay a translucent or blurred panel over the map.
-- Don't round a box, or square a capsule.
-- Don't add a drop shadow, a gradient fill or a glow. Structure is rules.
+- Don't square a box, round a print rule, or square a capsule.
+- Don't add a drop shadow, a gradient fill or a glow beyond the tokens: the
+  elevation shadows, the faint top light on a floating box, the sheen on a
+  small control. Structure is still rules.
 - Don't set sentences in the mono face, or figures in the body face.
 - Don't restyle the focus ring.
 - Don't let colour alone carry a state: pressed is filled *and* heavier; offshore
@@ -210,6 +235,16 @@ bundle's own.
   except the accent, which is a group. A handful of `interop` aliases
   (`sem.color.bg.app`, `text.primary`, `font.family.ui`, …) exist only so the
   Studio's catalog and door draw in the brand; components never use them.
+- **2026-10-24 — Mixed and rounded** (approved by the owner, from
+  `backlog/mockups/2026-10-24-layer-rail.html`, its "Mixed" style). Corners
+  10 / 14 / 18 by size, capsules kept; the ink rule and the hairline inside it
+  on every box and sheet (`sem.shadow.frame`, now `inset 0 0 0 2px #f3eee3,
+  inset 0 0 0 3px #1a1d2142`); soft stacked shadows by elevation
+  (`sem.shadow.card`, `float`, `sheet`, `dock`; `surface` is gone); paper flat
+  on anything large, the faintest top light on a floating box, a sheen on small
+  controls (`sem.gradient.*`); print rules square and unshadowed. Replaces the
+  square boxes of 2026-10-05. The night chart's values for each are proposed
+  alongside (`ref.shadow.*-night`, `ref.gradient.*-night`).
 - **2026-10-05 — The map's vocabulary is part of the system.** The spot's
   light, the shore compass, the wind-and-gust figure, the tide label and the
   dock's hour cell repeat across the map, the dock, the popup and the spot

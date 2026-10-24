@@ -20,7 +20,8 @@ words in mono capitals, the one that is on filled in ink.
 
 - **Row** (the default) — the capsule, as the dock's switch.
 - **Stack** (`.wf-segmented--stack`) — a column of choices: the group
-  becomes a square box ruled in ink (`sem.radius.surface`), its items
+  becomes a box ruled in ink (`sem.radius.surface`), clipping its square rows
+  to its corner, its items
   `sem.size.control.md` tall rows, `sem.space.x4` across, words to the left,
   divided by `sem.rule.hairline` in `sem.color.line` (none under the last).
   One row filled.

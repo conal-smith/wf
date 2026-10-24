@@ -21,18 +21,21 @@ capitals in every variant; the shape says what it is.
   pointer. One per view, or none.
 - **Pill** (`--pill`) — a capsule ruled in ink on paper; inverse under the
   pointer. Sign in, Previous / Next, Cancel.
-- **Raised** (`--raised`) — the chart's instrument over the map: a square box
-  ruled in ink (the site menu, zoom, IRL, layers). Casts no shadow; its frame
-  does.
+- **Raised** (`--raised`) — the chart's instrument: a raised paper button
+  ruled in ink (the site menu), lit from above (`sem.gradient.raised`) with
+  `sem.shadow.raised`; `sem.radius.control` with words in it, a circle with an
+  icon (the round menu button). Ink with its sheen under the pointer.
 - **Link** (`--link`) — the label face underlined in ink, "← Chart"; magenta
   under the pointer. No box.
 - **Danger** (`--danger`) — the warm pill, for the destructive answer in a
   confirm dialog and nowhere else. Lifts (`sem.shadow.marker`) under the
   pointer.
 - **Sizes** `--sm` (30), md (40), `--lg` (46, semibold).
-- **Icon** (`--icon`) — width equals height; raised stays square.
-- **Pressed** (`aria-pressed="true"`) — filled in inverse, semibold and with
-  `sem.shadow.control`: never colour alone. `--worded` keeps its quiet box for a
+- **Icon** (`--icon`) — width equals height; a circle, raised included.
+- **Pressed** (`aria-pressed="true"`) — filled in inverse with the ink's sheen
+  (`sem.gradient.ink`), semibold and with `sem.shadow.control`: never colour
+  alone. The primary pill carries the same sheen and lip. A lit button (primary,
+  raised, pressed) nudges down a pixel while it is pressed. `--worded` keeps its quiet box for a
   toggle whose words say it is on (Save → Saved).
 
 ## States

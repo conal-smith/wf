@@ -93,10 +93,12 @@ is set apart by an ink rule round it or under it, as a chart boxes its title
 and a broadsheet heads its columns. Most of a page is sections under a heavy
 rule (`Pane kind="ruled"`, `SectionHeading`), not boxes.
 
-**A box is the chart's box**: paper with its grain, a 1px ink border, and for
-one that matters (a dialog, anything laid over the map) a second line inside
-it, the double rule (`inset-shadow-frame`). Inside a box, division is
-`border-line`, the hairline, and nothing heavier.
+**A box is the chart's box**: paper with its grain, a 1px ink border, and just
+inside it a gap of paper and a hairline of ink at a quarter
+(`inset-shadow-frame`). Every box and sheet has both: a card on a page, a
+Surface, a Dialog, a menu, the dock. Since 2026-10-24 (mixed and rounded,
+below) a box also has a rounded corner and a soft shadow by its elevation.
+Inside a box, division is `border-line`, the hairline, and nothing heavier.
 
 **Over the map, paper is opaque.** A translucent panel over a moving map is a
 second, blurred map, and the blur costs a phone every frame. `Surface` is solid
@@ -104,9 +106,11 @@ paper in a double rule. Glass survives only as a badge over a photograph
 (`Chip tone="glass"`), and goes solid for a reader who asks for less
 transparency.
 
-**Four kinds of box, told apart by their rules, not their fill**: the pane (one
-rule), the chart's box (`Surface`, `Dialog`: the double rule), the pill (a
-capsule, for what is pressed) and the dock (a double rule along its top edge).
+**Four kinds of box, told apart by their size and their lift, not their
+fill**: the card (`Pane`, on a page: the ink rule, its hairline, a contact
+shadow), the chart's box (`Surface` and everything over the map: the same
+edge, floating), the sheet (`Dialog`, the dock, a menu: a sheet's corner, a
+level deeper) and the pill (a capsule, for what is pressed).
 If a new thing fits none of them, the answer is usually that it should be a
 section under a rule instead.
 
@@ -133,13 +137,32 @@ every figure and label, `font-hand` Kalam for the pen), and eleven named steps,
 - Five weights: 400, 500, 600, 700, and 800 (`font-extrabold`) for the
   wordmark alone.
 
-**Radius.** Square, as print is: `surface` and `dialog` are 0, `control` is 2
-(a whisper, so a field reads as a box to write in), and `pill` and `full` are a
-capsule, for what is pressed. A rounded box is a mistake on the chart.
+**Radius.** Three corners by size, and the capsule (ruling of 2026-10-24):
+`control` is 10 (a field, a small chip, a tooltip, a layer tile, the
+instrument button, a key in a box), `surface` is 14 (a box: a card on a page,
+anything on the chart), `dialog` is 18 (a sheet: a dialog, the dock, a menu;
+a sheet on the foot of the screen rounds its top corners only), and `pill` and
+`full` are a capsule, for what is pressed, and stay one. A print rule is never
+rounded: a heavy rule under a head, a double rule, a table or column rule, the
+dock's day rules. A one-sided rule on a rounded box thins out into the corner,
+so a section under a rule is `rounded-none`.
 
-**Elevation.** Four shadows, `control`, `marker`, `surface` and `dock`, all
-small and warm: paper lifts off paper, it does not float. They are a hierarchy,
-not a palette: everything at the same layer casts the same shadow.
+**Elevation.** Shadows by height, soft and stacked, the far one warm, always
+listed after the frame: `shadow-card` (a card inside a page or a dialog: a
+contact shadow only), `shadow-float` (anything sitting on the map: the zoom,
+the spot's tools, the search, a menu, a popover, a tooltip), `shadow-sheet`
+(a dialog or sheet, a level deeper) and `shadow-dock` (the sheet's stack cast
+upward, for the dock on the foot of the screen). `shadow-marker` lifts a light
+or a small floating button. A small control has its own: `shadow-control`
+under a pressed or filled ink control, `shadow-raised` under a raised paper
+one. Everything at the same height casts the same shadow; a print rule casts
+none.
+
+**Light.** Paper is flat. The faintest light from above (`paper-float`) is
+allowed on a small box over the chart; a page, a dialog and the dock stay flat
+(`paper-grain`). A sheen is for small controls only: `sheen-ink` under a
+pressed or filled ink control, `sheen-raised` under a raised paper button (the
+round menu button, a knob). A press nudges a lit control down a pixel.
 
 **Colour.** Paper and ink are the structure; the chart's magenta marks the best
 of something (and the focus ring, and the filled action under the pointer); the
@@ -170,6 +193,8 @@ along the inline one.
 - Don't use the wind ramp for anything that is not wind speed.
 - Don't use warm to make something stand out.
 - Don't lay a translucent panel over the map; it is solid paper.
+- Don't round a print rule, shadow one, or light a large surface. Don't square
+  a box or a capsule.
 - Don't use the pen for more than the one thing that matters on a view, and
   never as a fill or a status.
 - Don't write a verdict or advice on the chart, the dock or the spot page.
@@ -453,6 +478,25 @@ the wind) and full (with the waves, sky, air and rain), and closed from peek.
 A sideways swipe is still the hours'. The handle is a button for a keyboard
 and a screen reader, and the glide is skipped for a reader who asks for less
 motion.
+
+**2026-10-24 — Mixed and rounded.** The owner approved a new treatment for
+everything that is a box, from the mockup
+`backlog/mockups/2026-10-24-layer-rail.html` (its "Mixed" style, the
+`body.mixed` rules and the `--r-*` corners). It keeps the broadsheet's edge
+and adds a corner and a lift: the 1px ink rule and the hairline just inside it
+(`inset-shadow-frame`, now two of paper and a hairline of ink at a quarter,
+`#1a1d2142`; the mockup's gap of `#f4efe5` is drawn in the product's paper,
+`#f3eee3`, so it vanishes into it as before) stay on every box and sheet; corners are 10 for a control, 14 for
+a box and 18 for a sheet, with capsules unchanged; and each box is lifted by
+soft stacked shadows by its elevation (`shadow-card`, `shadow-float`,
+`shadow-sheet`, `shadow-dock`). Paper stays flat on anything large; the
+faintest top light is on a floating box only, and a sheen on small controls
+only (a pressed ink control, a raised paper button), which nudge down a pixel
+when pressed. Print rules (double rules under heads, table and column rules,
+the dock's day dividers) stay square and unshadowed. It replaces the square
+boxes of 2026-10-05 and the "rules, not surfaces" lift, not the rules
+themselves: structure is still drawn in ink. Values: `ui/theme.css` "shape and
+depth"; the bundle's `sem.radius.*`, `sem.shadow.*` and `sem.gradient.*`.
 
 ---
 

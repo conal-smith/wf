@@ -7,18 +7,19 @@ its grain, ruled in ink. On a page that is read, the box is a Pane.
 ## Anatomy
 
 - Container: `.wf-surface` — `sem.space.x5` inset on every side,
-  `sem.color.card` with `sem.texture.grain`, `sem.color.ink` words.
-- Rule: a `sem.rule.hairline` border in `sem.color.ink`, square
-  (`sem.radius.surface`).
-- Inner line: `sem.shadow.frame` (three of paper, then one of ink, inset), which
-  with the border makes the double rule.
-- Lift: `sem.shadow.surface`, listed after the frame.
+  `sem.color.card` with `sem.texture.grain` over `sem.gradient.float` (the
+  faintest light from above), `sem.color.ink` words.
+- Rule: a `sem.rule.hairline` border in `sem.color.ink`, a box's corner
+  (`sem.radius.surface`, 14px).
+- Inner line: `sem.shadow.frame` (two of paper, then a hairline of ink at a
+  quarter, inset), just inside the rule.
+- Lift: `sem.shadow.float`, listed after the frame.
 - Content is free: the Surface sets no face or size of its own.
 
 ## Variants
 
 - **Double** (the default, `rule="double"`) — the chart's box: border plus
-  frame plus lift.
+  hairline plus lift.
 - **Single** (`--single`, `rule="single"`) — the border and the lift without
   the inner line, for a box that sits inside another or is small enough that two
   lines would be most of it.
@@ -32,10 +33,10 @@ its grain, ruled in ink. On a page that is read, the box is a Pane.
 
 - Over the map only. A page that is read uses Pane.
 - Never translucent, never blurred: over the map, paper is opaque.
-- Keep the double rule for the box that stands alone over the map; reach for
-  `--single` before nesting one double rule inside another.
-- Everything at one layer casts the same `sem.shadow.surface`; add no other
-  shadow.
+- Keep the hairline for the box that stands alone over the map; reach for
+  `--single` before nesting one framed box inside another.
+- Everything over the map casts the same `sem.shadow.float`; add no other
+  shadow. A dialog or a sheet is a level deeper (`sem.shadow.sheet`).
 - Tops out at `lead` type inside (the spot's name) and `figure` for figures.
 
 ## Accessibility

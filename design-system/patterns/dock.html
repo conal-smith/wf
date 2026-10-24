@@ -58,7 +58,9 @@
         fill: var(--sem-color-pen);
       }
 
-      /* ---- the dock: paper along the foot of the map, a double rule along its top ---- */
+      /* ---- the dock: a sheet on the foot of the map (2026-10-24): the ink rule and
+         its hairline round the top and sides, a sheet's corner at the top, the
+         sheet's stack cast upward ---- */
       .dock__map {
         height: calc(var(--sem-space-step) * 24);
         background: var(--sem-color-sea-3);
@@ -67,12 +69,12 @@
         position: relative;
         box-sizing: border-box;
         padding: 0 var(--sem-space-x3) var(--sem-space-x2);
-        /* The double rule runs along one edge: every side zeroed first. */
-        border: 0 double var(--sem-color-ink);
-        border-top-width: var(--sem-rule-double);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border-bottom: 0;
+        border-radius: var(--sem-radius-dialog) var(--sem-radius-dialog) 0 0;
         background-color: var(--sem-color-ground);
         background-image: var(--sem-texture-grain);
-        box-shadow: var(--sem-shadow-dock);
+        box-shadow: var(--sem-shadow-frame), var(--sem-shadow-dock);
         color: var(--sem-color-ink);
       }
 

@@ -117,15 +117,20 @@ optical size from the font size.
   chart's box). **Write `border-0` before `border-double`**: there is no
   reset, so a border style set on all four sides draws all four at the
   browser's 3px.
-- **Radius.** Boxes are square (`rounded-surface`, `rounded-dialog` are 0); a
-  field keeps 2px (`rounded-control`); anything pressed is a capsule
-  (`rounded-full`). The square instrument over the map is the exception, on
-  purpose.
-- **Shadow.** Small and warm (`shadow-control`, `shadow-marker`,
-  `shadow-surface`, `shadow-dock`). Paper lifts off paper; it does not float.
+- **Radius** (mixed and rounded, 2026-10-24). A control is 10px
+  (`rounded-control`), a box 14px (`rounded-surface`), a sheet 18px
+  (`rounded-dialog`: a dialog, the dock, a menu); anything pressed is still a
+  capsule (`rounded-full`). Print rules stay square.
+- **Shadow.** By elevation, soft and stacked, after the frame:
+  `inset-shadow-frame shadow-card` for a card on a page,
+  `shadow-float` for anything over the map, `shadow-sheet` for a dialog,
+  `shadow-dock` for the dock. A small control has its own (`shadow-control`
+  under `sheen-ink`, `shadow-raised` under `sheen-raised`). A rule casts none.
 - **Paper grain.** `paper-grain` is a background image only; pair it with
   the fill (`bg-ground paper-grain`). Every section root, the masthead, a
   card Pane, a Surface and a Dialog carry it. Do not lay it over the map.
+  A small box over the chart takes `paper-float` instead: the grain over the
+  faintest light from above.
 - **Night.** `hatch` is the fine diagonal ink hatch for the dark hours.
 - **Motion.** `animate-ink` (the pen drawing in, on a path with
   `pathLength="1" strokeDasharray="1"`), `animate-bob` (the puffin), always

@@ -122,18 +122,34 @@
   --ref-size-40: 40px;
   --ref-size-44: 44px;
   --ref-size-46: 46px;
-  --ref-radius-0: 0px;
-  --ref-radius-2: 2px;
+  --ref-radius-10: 10px;
+  --ref-radius-14: 14px;
+  --ref-radius-18: 18px;
   --ref-radius-round: 9999px;
   --ref-rule-1: 1px;
   --ref-rule-2: 2px;
   --ref-rule-3: 3px;
-  --ref-shadow-control: 0px 1px 0px #1a1d210f;
+  --ref-shadow-control: inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150;
+  --ref-shadow-control-night: inset 0 1px 0 #ffffff40, 0 1px 2px #00000080;
+  --ref-shadow-raised: inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126;
+  --ref-shadow-raised-night: inset 0 1px 0 #ffffff14, 0 1px 2px #00000066;
   --ref-shadow-marker: 0px 4px 10px -6px #3c2d1466;
-  --ref-shadow-surface: 0px 1px 0px #0000000a, 0px 6px 18px -10px #3c2d1459;
-  --ref-shadow-dock: 0px -8px 22px -16px #3c2d1473;
-  --ref-shadow-frame: inset 0 0 0 3px #f3eee3, inset 0 0 0 4px #1a1d21;
-  --ref-shadow-frame-night: inset 0 0 0 3px #1d1c19, inset 0 0 0 4px #ece5d6;
+  --ref-shadow-card: 0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a;
+  --ref-shadow-card-night: 0 1px 1px #00000040, 0 2px 4px -2px #00000040;
+  --ref-shadow-float: 0 1px 1px #1a1d211a, 0 3px 6px -2px #1a1d211f, 0 14px 28px -12px #3c2d1466;
+  --ref-shadow-float-night: 0 1px 1px #00000040, 0 3px 6px -2px #00000047, 0 14px 28px -12px #00000099;
+  --ref-shadow-sheet: 0 1px 1px #1a1d211a, 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480;
+  --ref-shadow-sheet-night: 0 1px 1px #00000040, 0 6px 12px -4px #0000004d, 0 24px 48px -16px #000000a6;
+  --ref-shadow-dock: 0 -1px 1px #1a1d211a, 0 -6px 12px -4px #1a1d2124, 0 -24px 48px -16px #3c2d1480;
+  --ref-shadow-dock-night: 0 -1px 1px #00000040, 0 -6px 12px -4px #0000004d, 0 -24px 48px -16px #000000a6;
+  --ref-shadow-frame: inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142;
+  --ref-shadow-frame-night: inset 0 0 0 2px #1d1c19, inset 0 0 0 3px #ece5d642;
+  --ref-gradient-ink: linear-gradient(180deg, #33373d, #15171a);
+  --ref-gradient-ink-night: linear-gradient(180deg, #f6f0e3, #dcd4c4);
+  --ref-gradient-raised: linear-gradient(180deg, #ffffff, #f0eadd);
+  --ref-gradient-raised-night: linear-gradient(180deg, #2e2b25, #22201b);
+  --ref-gradient-float: linear-gradient(180deg, #f6f2e9, #f1ebdf);
+  --ref-gradient-float-night: linear-gradient(180deg, #211f1c, #1b1a17);
   --ref-blur-6: 6px;
   --ref-blur-12: 12px;
   --ref-duration-150: 150ms;
@@ -272,12 +288,12 @@
   --sem-size-control-md: var(--ref-size-40);
   --sem-size-control-lg: var(--ref-size-46);
   --sem-size-touch: var(--ref-size-44);
-  --sem-radius-control: var(--ref-radius-2);
-  --sem-radius-surface: var(--ref-radius-0);
+  --sem-radius-control: var(--ref-radius-10);
+  --sem-radius-surface: var(--ref-radius-14);
   --sem-radius-pill: var(--ref-radius-round);
-  --sem-radius-dialog: var(--ref-radius-0);
+  --sem-radius-dialog: var(--ref-radius-18);
   --sem-radius-full: var(--ref-radius-round);
-  --sem-radius-overlay: var(--ref-radius-0);
+  --sem-radius-overlay: var(--ref-radius-18);
   --sem-rule-hairline: var(--ref-rule-1);
   --sem-rule-heavy: var(--ref-rule-2);
   --sem-rule-double: var(--ref-rule-3);
@@ -285,10 +301,16 @@
   --sem-ring-width: var(--ref-rule-2);
   --sem-ring-offset: var(--ref-rule-2);
   --sem-shadow-control: var(--ref-shadow-control);
+  --sem-shadow-raised: var(--ref-shadow-raised);
   --sem-shadow-marker: var(--ref-shadow-marker);
-  --sem-shadow-surface: var(--ref-shadow-surface);
+  --sem-shadow-card: var(--ref-shadow-card);
+  --sem-shadow-float: var(--ref-shadow-float);
+  --sem-shadow-sheet: var(--ref-shadow-sheet);
   --sem-shadow-dock: var(--ref-shadow-dock);
   --sem-shadow-frame: var(--ref-shadow-frame);
+  --sem-gradient-ink: var(--ref-gradient-ink);
+  --sem-gradient-raised: var(--ref-gradient-raised);
+  --sem-gradient-float: var(--ref-gradient-float);
   --sem-blur-glass: var(--ref-blur-12);
   --sem-blur-scrim: var(--ref-blur-6);
   --sem-container-dialog: 420px;
@@ -376,7 +398,16 @@
   --sem-color-text-muted: var(--ref-color-night-muted);
   --sem-color-border-default: var(--ref-color-night-line);
   --sem-color-status-danger: var(--ref-color-night-warn);
+  --sem-shadow-control: var(--ref-shadow-control-night);
+  --sem-shadow-raised: var(--ref-shadow-raised-night);
+  --sem-shadow-card: var(--ref-shadow-card-night);
+  --sem-shadow-float: var(--ref-shadow-float-night);
+  --sem-shadow-sheet: var(--ref-shadow-sheet-night);
+  --sem-shadow-dock: var(--ref-shadow-dock-night);
   --sem-shadow-frame: var(--ref-shadow-frame-night);
+  --sem-gradient-ink: var(--ref-gradient-ink-night);
+  --sem-gradient-raised: var(--ref-gradient-raised-night);
+  --sem-gradient-float: var(--ref-gradient-float-night);
 }
 </style>
 <style>
@@ -426,7 +457,16 @@
   --sem-color-text-muted: var(--ref-color-night-muted);
   --sem-color-border-default: var(--ref-color-night-line);
   --sem-color-status-danger: var(--ref-color-night-warn);
+  --sem-shadow-control: var(--ref-shadow-control-night);
+  --sem-shadow-raised: var(--ref-shadow-raised-night);
+  --sem-shadow-card: var(--ref-shadow-card-night);
+  --sem-shadow-float: var(--ref-shadow-float-night);
+  --sem-shadow-sheet: var(--ref-shadow-sheet-night);
+  --sem-shadow-dock: var(--ref-shadow-dock-night);
   --sem-shadow-frame: var(--ref-shadow-frame-night);
+  --sem-gradient-ink: var(--ref-gradient-ink-night);
+  --sem-gradient-raised: var(--ref-gradient-raised-night);
+  --sem-gradient-float: var(--ref-gradient-float-night);
 }
 #ds-mode-dark:checked ~ .ds-catalog [data-mode="light"] {
   --sem-color-ground: var(--ref-color-paper-100);
@@ -473,7 +513,16 @@
   --sem-color-text-muted: var(--ref-color-ink-600);
   --sem-color-border-default: var(--ref-color-ink-a20);
   --sem-color-status-danger: var(--ref-color-warm-700);
+  --sem-shadow-control: var(--ref-shadow-control);
+  --sem-shadow-raised: var(--ref-shadow-raised);
+  --sem-shadow-card: var(--ref-shadow-card);
+  --sem-shadow-float: var(--ref-shadow-float);
+  --sem-shadow-sheet: var(--ref-shadow-sheet);
+  --sem-shadow-dock: var(--ref-shadow-dock);
   --sem-shadow-frame: var(--ref-shadow-frame);
+  --sem-gradient-ink: var(--ref-gradient-ink);
+  --sem-gradient-raised: var(--ref-gradient-raised);
+  --sem-gradient-float: var(--ref-gradient-float);
 }
 </style>
 <style>
@@ -1018,11 +1067,14 @@ code {
 }
 
 /* ---- primary: the one filled control, an ink pill, magenta under the pointer ---- */
+/* Lit as a small ink control is (2026-10-24): the ink's sheen and its lip,
+ * flat magenta under the pointer, nudged down a pixel when pressed. */
 .wf-button--primary {
   border-radius: var(--sem-radius-full);
   border-color: var(--sem-color-accent-primary);
-  background: var(--sem-color-accent-primary);
+  background: var(--sem-color-accent-primary) var(--sem-gradient-ink);
   color: var(--sem-color-accent-ink);
+  box-shadow: var(--sem-shadow-control);
 }
 .wf-button--primary:not(:disabled):hover,
 .wf-button--primary.is-hover {
@@ -1032,6 +1084,12 @@ code {
 .wf-button--primary:disabled {
   border-color: var(--sem-color-line);
   background: var(--sem-color-sunken);
+  box-shadow: none;
+}
+.wf-button--primary:not(:disabled):active,
+.wf-button--raised:not(:disabled):active,
+.wf-button[aria-pressed="true"]:not(:disabled):active {
+  translate: 0 1px;
 }
 
 /* ---- pill: a capsule ruled in ink, which turns to ink under the pointer ---- */
@@ -1050,19 +1108,25 @@ code {
   background: transparent;
 }
 
-/* ---- raised: the chart's instrument over the map, a square box ruled in ink ---- */
+/* ---- raised: the chart's instrument, a raised paper button ruled in ink ---- */
+/* Lit from above with a lip and a contact shadow; a control's corner with
+ * words in it, round with an icon (the round menu button). Ink with its sheen
+ * under the pointer. */
 .wf-button--raised {
-  border-radius: var(--sem-radius-surface);
+  border-radius: var(--sem-radius-control);
   border-color: var(--sem-color-ink);
-  background: var(--sem-color-card);
+  background: var(--sem-color-card) var(--sem-gradient-raised);
+  box-shadow: var(--sem-shadow-raised);
 }
 .wf-button--raised:not(:disabled):hover,
 .wf-button--raised.is-hover {
-  background: var(--sem-color-inverse);
+  background: var(--sem-color-inverse) var(--sem-gradient-ink);
   color: var(--sem-color-ink-inverse);
+  box-shadow: var(--sem-shadow-control);
 }
 .wf-button--raised:disabled {
   background: transparent;
+  box-shadow: none;
 }
 
 /* ---- link: a way back or on, underlined in ink ("← Chart") ---- */
@@ -1118,16 +1182,17 @@ code {
 .wf-button[aria-pressed="true"],
 .wf-button[aria-current="true"] {
   border-color: var(--sem-color-ink);
-  background: var(--sem-color-inverse);
+  background: var(--sem-color-inverse) var(--sem-gradient-ink);
   color: var(--sem-color-ink-inverse);
   font-weight: var(--sem-font-weight-semibold);
   box-shadow: var(--sem-shadow-control);
 }
 .wf-button[aria-pressed="true"]:not(:disabled):hover {
-  background: var(--sem-color-inverse);
+  background: var(--sem-color-inverse) var(--sem-gradient-ink);
 }
 .wf-button[aria-pressed="true"]:disabled {
   background: var(--sem-color-sunken);
+  box-shadow: none;
 }
 /* A toggle whose own words say it is on (Save -> Saved) keeps its quiet box. */
 .wf-button--worded[aria-pressed="true"] {
@@ -1150,9 +1215,9 @@ code {
 .wf-button--icon.wf-button--lg {
   width: var(--sem-size-control-lg);
 }
-/* The instrument stays square with an icon in it. */
+/* The instrument is round with an icon in it: the round menu button. */
 .wf-button--icon.wf-button--raised {
-  border-radius: var(--sem-radius-surface);
+  border-radius: var(--sem-radius-full);
 }
 @media (pointer: coarse) {
   .wf-button--icon {
@@ -1335,7 +1400,8 @@ code {
  * CSS. Consumes --sem-* only. Its buttons are the Button component's classes
  * (components/button/component.css); nothing here restyles them.
  *
- * The chart's box as a modal: paper with its grain in a double rule, the title
+ * A sheet: flat paper with its grain, the ink rule and the hairline inside it,
+ * a sheet's corner and the sheet's deeper lift (2026-10-24), the title
  * in the display face over an ink rule, the body in sentences, and a row of
  * answers with the one filled action last.
  *
@@ -1358,7 +1424,7 @@ code {
   background-repeat: repeat;
   color: var(--sem-color-ink);
   font-family: var(--sem-font-family-body);
-  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-surface);
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-sheet);
 }
 
 .wf-dialog[open],
@@ -1485,6 +1551,7 @@ code {
   background-color: var(--sem-color-card);
   background-image: var(--sem-texture-grain);
   background-repeat: repeat;
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-card);
   color: var(--sem-color-ink-muted);
   font-family: var(--sem-font-family-body);
   font-size: var(--sem-font-size-prose);
@@ -2199,13 +2266,14 @@ code {
 /* components/pane/component.css */
 /* Pane — ui/Pane.tsx (paneStyles), rendered in CSS. Consumes --sem-* only.
  *
- * The box content sits in on a page that is read. Four kinds of box are told
- * apart by their rules, not their fill: the card pane has one ink rule, the
- * sunken pane none (it is the paper's second sheet), and the ruled pane is the
- * broadsheet's section, a heavy rule above and nothing at the sides. Over the
- * map the box is a Surface. */
+ * The box content sits in on a page that is read. The card pane is a card
+ * (mixed and rounded, 2026-10-24): the ink rule and the hairline inside it, a
+ * box's corner, and a contact shadow only. The sunken pane has no rule (it is
+ * the paper's second sheet), and the ruled pane is the broadsheet's section, a
+ * heavy rule above and nothing at the sides: a print rule, square and
+ * unshadowed. Over the map the box is a Surface. */
 
-/* kind="card" (the default): a box ruled in ink, on paper with its grain. */
+/* kind="card" (the default): a card on the page. */
 .wf-pane {
   box-sizing: border-box;
   padding: var(--sem-space-x5);
@@ -2215,6 +2283,7 @@ code {
   background-image: var(--sem-texture-grain);
   background-repeat: repeat;
   color: var(--sem-color-ink);
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-card);
 }
 
 /* kind="sunken": the paper's second sheet, with no rule: a well, an aside. */
@@ -2222,6 +2291,7 @@ code {
   border: 0;
   background-color: var(--sem-color-sunken);
   background-image: none;
+  box-shadow: none;
 }
 
 /* kind="ruled": a heavy rule above, nothing at the sides, and no inset of its
@@ -2229,26 +2299,26 @@ code {
 .wf-pane--ruled {
   border: 0;
   border-top: var(--sem-rule-heavy) solid var(--sem-color-ink);
+  border-radius: 0;
   background-color: transparent;
   background-image: none;
+  box-shadow: none;
   padding: var(--sem-space-x3) 0 0;
 }
 
-/* double: a second rule inside the first, the chart's box, for one that
- * matters. */
+/* double: the hairline inside the rule. A card has it already; this is for a
+ * sunken pane that is to read as a box. */
 .wf-pane--double {
   box-shadow: var(--sem-shadow-frame);
 }
+.wf-pane--double:not(.wf-pane--sunken, .wf-pane--ruled) {
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-card);
+}
 
 /* standing: a pane on the page on its own rather than in a column of panes.
- * It lifts off the paper a little and takes the wider inset where the width
- * pays for it. */
+ * It takes the wider inset where the width pays for it, and is still a card. */
 .wf-pane--standing {
   padding: var(--sem-space-x6);
-  box-shadow: var(--sem-shadow-surface);
-}
-.wf-pane--standing.wf-pane--double {
-  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-surface);
 }
 
 /* max-wide: under sem.breakpoint.wide (45rem) the narrow inset comes back. */
@@ -2786,9 +2856,13 @@ code {
 .wf-segmented__item[aria-pressed="true"],
 .wf-segmented__item[aria-pressed="true"]:not(:disabled):hover,
 .wf-segmented__item[aria-pressed="true"].is-hover {
-  background: var(--sem-color-inverse);
+  background: var(--sem-color-inverse) var(--sem-gradient-ink);
   color: var(--sem-color-ink-inverse);
   font-weight: var(--sem-font-weight-semibold);
+  box-shadow: var(--sem-shadow-control);
+}
+.wf-segmented--stack .wf-segmented__item[aria-pressed="true"] {
+  box-shadow: none;
 }
 
 /* ---- stack: a column of choices, a ruled list with one row filled ---- */
@@ -2797,13 +2871,15 @@ code {
   flex-direction: column;
   align-items: stretch;
   border-radius: var(--sem-radius-surface);
+  /* The box clips its rows to its corner; the rows' rules stay square. */
+  overflow: hidden;
 }
 .wf-segmented--stack .wf-segmented__item {
   height: var(--sem-size-control-md);
   justify-content: flex-start;
   padding: 0 var(--sem-space-x4);
   border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
-  border-radius: var(--sem-radius-surface);
+  border-radius: 0;
 }
 .wf-segmented--stack .wf-segmented__item:last-child {
   border-bottom-width: 0;
@@ -3271,9 +3347,10 @@ code {
 /* components/surface/component.css */
 /* Surface — ui/Surface.tsx (surfaceStyles), rendered in CSS. Consumes --sem-* only.
  *
- * The chart's box laid over the moving map: opaque paper with its grain, a
- * hairline of ink round it and, by default, a second line inside it three of
- * paper in (the double rule). Over the map, paper is opaque: a translucent
+ * The chart's box laid over the moving map (mixed and rounded, 2026-10-24):
+ * opaque paper with its grain over the faintest light from above, the ink rule
+ * round it and, by default, the hairline just inside it, a box's corner, and
+ * the float's stacked shadow. Over the map, paper is opaque: a translucent
  * panel would be a second, blurred map. */
 
 .wf-surface {
@@ -3282,17 +3359,17 @@ code {
   border: var(--sem-rule-hairline) solid var(--sem-color-ink);
   border-radius: var(--sem-radius-surface);
   background-color: var(--sem-color-card);
-  background-image: var(--sem-texture-grain);
-  background-repeat: repeat;
+  background-image: var(--sem-texture-grain), var(--sem-gradient-float);
+  background-repeat: repeat, no-repeat;
   color: var(--sem-color-ink);
-  /* rule="double" (the default): the frame's inner line, then the lift. */
-  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-surface);
+  /* rule="double" (the default): the hairline, then the lift. */
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-float);
 }
 
 /* rule="single": a box inside another, or one small enough that two lines
- * would be most of it. The lift stays; only the inner line goes. */
+ * would be most of it. The lift stays; only the hairline goes. */
 .wf-surface--single {
-  box-shadow: var(--sem-shadow-surface);
+  box-shadow: var(--sem-shadow-float);
 }
 
 /* components/text-area/component.css */
@@ -5823,12 +5900,12 @@ code {
         position: relative;
         box-sizing: border-box;
         padding: 0 var(--sem-space-x3) var(--sem-space-x2);
-        
-        border: 0 double var(--sem-color-ink);
-        border-top-width: var(--sem-rule-double);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border-bottom: 0;
+        border-radius: var(--sem-radius-dialog) var(--sem-radius-dialog) 0 0;
         background-color: var(--sem-color-ground);
         background-image: var(--sem-texture-grain);
-        box-shadow: var(--sem-shadow-dock);
+        box-shadow: var(--sem-shadow-frame), var(--sem-shadow-dock);
         color: var(--sem-color-ink);
       }
 .ds-embed-pattern-dock .dock__grab {
@@ -7147,8 +7224,8 @@ code {
         height: calc(var(--sem-space-step) * 5);
         border: var(--sem-rule-hairline) solid var(--sem-color-ink);
         border-radius: var(--sem-radius-full);
-        background: var(--sem-color-card);
-        box-shadow: var(--sem-shadow-control);
+        background: var(--sem-color-card) var(--sem-gradient-raised);
+        box-shadow: var(--sem-shadow-raised);
         cursor: ew-resize;
         pointer-events: auto;
         -webkit-appearance: none;
@@ -7159,8 +7236,8 @@ code {
         height: calc(var(--sem-space-step) * 5);
         border: var(--sem-rule-hairline) solid var(--sem-color-ink);
         border-radius: var(--sem-radius-full);
-        background: var(--sem-color-card);
-        box-shadow: var(--sem-shadow-control);
+        background: var(--sem-color-card) var(--sem-gradient-raised);
+        box-shadow: var(--sem-shadow-raised);
         cursor: ew-resize;
         pointer-events: auto;
       }
@@ -7448,7 +7525,8 @@ code {
         box-sizing: border-box;
         padding: var(--sem-space-x3) var(--sem-space-x4);
         border: var(--sem-rule-hairline) solid var(--sem-color-ink);
-        box-shadow: var(--sem-shadow-frame);
+        border-radius: var(--sem-radius-surface);
+        box-shadow: var(--sem-shadow-frame), var(--sem-shadow-card);
         background-color: var(--sem-color-card);
         background-image: var(--sem-texture-grain);
       }
@@ -7483,9 +7561,11 @@ code {
         max-width: 100%;
         box-sizing: border-box;
         padding: var(--sem-space-x2) var(--sem-space-x3);
-        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border-bottom: 0;
+        border-radius: var(--sem-radius-dialog) var(--sem-radius-dialog) 0 0;
         background-color: var(--sem-color-card);
-        box-shadow: var(--sem-shadow-dock);
+        box-shadow: var(--sem-shadow-frame), var(--sem-shadow-dock);
       }
 .ds-embed-pattern-your-stars .dockhead__top {
         display: flex;
@@ -7908,18 +7988,34 @@ code {
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.size.40</code><code class="catalog-token-value">40px</code></p><p class="catalog-token-meta">Medium control height.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.size.44</code><code class="catalog-token-value">44px</code></p><p class="catalog-token-meta">The tap-target floor on a coarse pointer.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.size.46</code><code class="catalog-token-value">46px</code></p><p class="catalog-token-meta">Large control height.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--ref-radius-0)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.radius.0</code><code class="catalog-token-value">0px</code></p><p class="catalog-token-meta">Square, as print is.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--ref-radius-2)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.radius.2</code><code class="catalog-token-value">2px</code></p><p class="catalog-token-meta">A whisper of a corner.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--ref-radius-10)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.radius.10</code><code class="catalog-token-value">10px</code></p><p class="catalog-token-meta">A control's corner: rounded, not a capsule.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--ref-radius-14)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.radius.14</code><code class="catalog-token-value">14px</code></p><p class="catalog-token-meta">A box's corner: a card, anything on the chart.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--ref-radius-18)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.radius.18</code><code class="catalog-token-value">18px</code></p><p class="catalog-token-meta">A sheet's corner: a dialog, the dock, a menu.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--ref-radius-round)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.radius.round</code><code class="catalog-token-value">9999px</code></p><p class="catalog-token-meta">A capsule.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.rule.1</code><code class="catalog-token-value">1px</code></p><p class="catalog-token-meta">One-pixel rule.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.rule.2</code><code class="catalog-token-value">2px</code></p><p class="catalog-token-meta">Two-pixel rule.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.rule.3</code><code class="catalog-token-value">3px</code></p><p class="catalog-token-meta">Three-pixel rule: the double rule's whole width, and a notice's edge.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.control</code><code class="catalog-token-value">0px 1px 0px #1a1d210f</code></p><p class="catalog-token-meta">A pressed control's lip.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.control</code><code class="catalog-token-value">inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150</code></p><p class="catalog-token-meta">A pressed ink control's sheen: a lit top lip and a contact shadow.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.control-night</code><code class="catalog-token-value">inset 0 1px 0 #ffffff40, 0 1px 2px #00000080</code></p><p class="catalog-token-meta">Proposed night chart: a pressed control's sheen.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.raised</code><code class="catalog-token-value">inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126</code></p><p class="catalog-token-meta">A raised paper button: a white lip and a contact shadow.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.raised-night</code><code class="catalog-token-value">inset 0 1px 0 #ffffff14, 0 1px 2px #00000066</code></p><p class="catalog-token-meta">Proposed night chart: a raised button.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.marker</code><code class="catalog-token-value">0px 4px 10px -6px #3c2d1466</code></p><p class="catalog-token-meta">A marker lifting off the chart.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.surface</code><code class="catalog-token-value">0px 1px 0px #0000000a, 0px 6px 18px -10px #3c2d1459</code></p><p class="catalog-token-meta">A box lifting off the paper, warm and small.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.dock</code><code class="catalog-token-value">0px -8px 22px -16px #3c2d1473</code></p><p class="catalog-token-meta">The dock's shadow, cast upward over the map.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.frame</code><code class="catalog-token-value">inset 0 0 0 3px #f3eee3, inset 0 0 0 4px #1a1d21</code></p><p class="catalog-token-meta">The double rule's inner line: three of paper, then one of ink.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.frame-night</code><code class="catalog-token-value">inset 0 0 0 3px #1d1c19, inset 0 0 0 4px #ece5d6</code></p><p class="catalog-token-meta">Proposed night chart: the double rule's inner line.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.card</code><code class="catalog-token-value">0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a</code></p><p class="catalog-token-meta">A card on a page: a contact shadow only.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.card-night</code><code class="catalog-token-value">0 1px 1px #00000040, 0 2px 4px -2px #00000040</code></p><p class="catalog-token-meta">Proposed night chart: a card's contact shadow.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.float</code><code class="catalog-token-value">0 1px 1px #1a1d211a, 0 3px 6px -2px #1a1d211f, 0 14px 28px -12px #3c2d1466</code></p><p class="catalog-token-meta">A box over the chart: contact, near and far, stacked, the far one warm.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.float-night</code><code class="catalog-token-value">0 1px 1px #00000040, 0 3px 6px -2px #00000047, 0 14px 28px -12px #00000099</code></p><p class="catalog-token-meta">Proposed night chart: a box over the chart.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.sheet</code><code class="catalog-token-value">0 1px 1px #1a1d211a, 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480</code></p><p class="catalog-token-meta">A sheet or a dialog: the float's stack one level deeper.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.sheet-night</code><code class="catalog-token-value">0 1px 1px #00000040, 0 6px 12px -4px #0000004d, 0 24px 48px -16px #000000a6</code></p><p class="catalog-token-meta">Proposed night chart: a sheet or a dialog.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.dock</code><code class="catalog-token-value">0 -1px 1px #1a1d211a, 0 -6px 12px -4px #1a1d2124, 0 -24px 48px -16px #3c2d1480</code></p><p class="catalog-token-meta">The dock: the sheet's stack cast upward, from the foot of the screen over the map.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.dock-night</code><code class="catalog-token-value">0 -1px 1px #00000040, 0 -6px 12px -4px #0000004d, 0 -24px 48px -16px #000000a6</code></p><p class="catalog-token-meta">Proposed night chart: the dock.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.frame</code><code class="catalog-token-value">inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142</code></p><p class="catalog-token-meta">The hairline inside the ink rule: two of paper, then one of ink at a quarter.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.shadow.frame-night</code><code class="catalog-token-value">inset 0 0 0 2px #1d1c19, inset 0 0 0 3px #ece5d642</code></p><p class="catalog-token-meta">Proposed night chart: the hairline inside the ink rule.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.gradient.ink</code><code class="catalog-token-value">linear-gradient(180deg, #33373d, #15171a)</code></p><p class="catalog-token-meta">A pressed ink control's fill: ink, lit a little from above.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.gradient.ink-night</code><code class="catalog-token-value">linear-gradient(180deg, #f6f0e3, #dcd4c4)</code></p><p class="catalog-token-meta">Proposed night chart: a pressed control's fill.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.gradient.raised</code><code class="catalog-token-value">linear-gradient(180deg, #ffffff, #f0eadd)</code></p><p class="catalog-token-meta">A raised paper button's fill: white at the top to paper.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.gradient.raised-night</code><code class="catalog-token-value">linear-gradient(180deg, #2e2b25, #22201b)</code></p><p class="catalog-token-meta">Proposed night chart: a raised button's fill.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.gradient.float</code><code class="catalog-token-value">linear-gradient(180deg, #f6f2e9, #f1ebdf)</code></p><p class="catalog-token-meta">A floating box's paper: the faintest light from above.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.gradient.float-night</code><code class="catalog-token-value">linear-gradient(180deg, #211f1c, #1b1a17)</code></p><p class="catalog-token-meta">Proposed night chart: a floating box's paper.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.blur.6</code><code class="catalog-token-value">6px</code></p><p class="catalog-token-meta">Scrim blur.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.blur.12</code><code class="catalog-token-value">12px</code></p><p class="catalog-token-meta">Glass blur.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.duration.150</code><code class="catalog-token-value">150ms</code></p><p class="catalog-token-meta">Fast.</p></div></div>
@@ -7932,23 +8028,29 @@ code {
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.size.control.md</code><code class="catalog-token-value">{ref.size.40}</code><span class="catalog-badge">size</span></p><p class="catalog-token-meta">--spacing-control-md. A medium control, the default Button.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.size.control.lg</code><code class="catalog-token-value">{ref.size.46}</code><span class="catalog-badge">size</span></p><p class="catalog-token-meta">--spacing-control-lg. A large control.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.size.touch</code><code class="catalog-token-value">{ref.size.44}</code><span class="catalog-badge">size</span></p><p class="catalog-token-meta">--spacing-touch: the tap-target floor. The minimum height of anything pressed on a coarse pointer. <strong>Do not:</strong> Lowered: a smaller control grows its hit area instead.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--sem-radius-control)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.radius.control</code><code class="catalog-token-value">{ref.radius.2}</code><span class="catalog-badge">shape</span></p><p class="catalog-token-meta">--radius-control. A field: a whisper of a corner, so it reads as a box to write in.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--sem-radius-surface)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.radius.surface</code><code class="catalog-token-value">{ref.radius.0}</code><span class="catalog-badge">shape</span></p><p class="catalog-token-meta">--radius-surface. A box: square.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--sem-radius-pill)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.radius.pill</code><code class="catalog-token-value">{ref.radius.round}</code><span class="catalog-badge">shape</span></p><p class="catalog-token-meta">--radius-pill. A quiet control's capsule.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--sem-radius-dialog)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.radius.dialog</code><code class="catalog-token-value">{ref.radius.0}</code><span class="catalog-badge">shape</span></p><p class="catalog-token-meta">--radius-dialog. A dialog: square.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--sem-radius-control)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.radius.control</code><code class="catalog-token-value">{ref.radius.10}</code><span class="catalog-badge">shape</span></p><p class="catalog-token-meta">--radius-control. A control that is not a capsule: a field, a small chip, a segmented row, a tooltip, the instrument button, a layer tile.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--sem-radius-surface)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.radius.surface</code><code class="catalog-token-value">{ref.radius.14}</code><span class="catalog-badge">shape</span></p><p class="catalog-token-meta">--radius-surface. A box: a card on a page, anything on the chart (the zoom, the spot's tools, a popup, a Surface).</p></div></div>
+<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--sem-radius-pill)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.radius.pill</code><code class="catalog-token-value">{ref.radius.round}</code><span class="catalog-badge">shape</span></p><p class="catalog-token-meta">--radius-pill. A quiet control's capsule. Stays a capsule.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--sem-radius-dialog)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.radius.dialog</code><code class="catalog-token-value">{ref.radius.18}</code><span class="catalog-badge">shape</span></p><p class="catalog-token-meta">--radius-dialog: a sheet's corner. A sheet: a Dialog, the dock, a menu, a bottom sheet (its top corners only). <strong>Do not:</strong> On a print rule: a heavy, double or column rule is square.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--sem-radius-full)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.radius.full</code><code class="catalog-token-value">{ref.radius.round}</code><span class="catalog-badge">shape</span></p><p class="catalog-token-meta">--radius-full. Anything pressed; a count, an avatar.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--sem-radius-overlay)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.radius.overlay</code><code class="catalog-token-value">{ref.radius.0}</code><span class="catalog-badge">interop</span></p><p class="catalog-token-meta">A dialog's corner, under the name the Studio catalog reads. Read by the Studio catalog. <strong>Do not:</strong> In components: use sem.radius.dialog or sem.radius.surface.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-radius-box" style="border-radius: var(--sem-radius-overlay)"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.radius.overlay</code><code class="catalog-token-value">{ref.radius.18}</code><span class="catalog-badge">interop</span></p><p class="catalog-token-meta">A dialog's corner, under the name the Studio catalog reads. Read by the Studio catalog. <strong>Do not:</strong> In components: use sem.radius.dialog or sem.radius.surface.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.rule.hairline</code><code class="catalog-token-value">{ref.rule.1}</code><span class="catalog-badge">structure</span></p><p class="catalog-token-meta">One ink rule (`border`). A box's frame, a row's hairline, a field's box.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.rule.heavy</code><code class="catalog-token-value">{ref.rule.2}</code><span class="catalog-badge">structure</span></p><p class="catalog-token-meta">The heavy rule (`border-t-2`, `border-b-2`). Over a broadsheet section; under a section heading.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.rule.double</code><code class="catalog-token-value">{ref.rule.3}</code><span class="catalog-badge">structure</span></p><p class="catalog-token-meta">The double rule along an edge (`border-b-3 border-double`). The masthead's foot, the dock's top, a page's foot.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.rule.edge</code><code class="catalog-token-value">{ref.rule.3}</code><span class="catalog-badge">structure</span></p><p class="catalog-token-meta">A notice's edge (`border-l-3`). The heavy rule down a Notice's left side.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.ring.width</code><code class="catalog-token-value">{ref.rule.2}</code><span class="catalog-badge">focus</span></p><p class="catalog-token-meta">The focus ring's width (`outline-2`). Every control's ring.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.ring.offset</code><code class="catalog-token-value">{ref.rule.2}</code><span class="catalog-badge">focus</span></p><p class="catalog-token-meta">The focus ring's clearance (`outline-offset-2`). Every control's ring.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.control</code><code class="catalog-token-value">{ref.shadow.control}</code><span class="catalog-badge">elevation</span></p><p class="catalog-token-meta">--shadow-control. A pressed toggle's lip.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.control</code><code class="catalog-token-value">{ref.shadow.control}</code><span class="catalog-badge">elevation</span></p><p class="catalog-token-meta">--shadow-control. A pressed or filled ink control, under sem.gradient.ink: the Button pressed or primary, a segmented choice, the zoom's pressed key.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.raised</code><code class="catalog-token-value">{ref.shadow.raised}</code><span class="catalog-badge">elevation</span></p><p class="catalog-token-meta">--shadow-raised. A raised paper button, under sem.gradient.raised: the round menu button, the instrument.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.marker</code><code class="catalog-token-value">{ref.shadow.marker}</code><span class="catalog-badge">elevation</span></p><p class="catalog-token-meta">--shadow-marker. A marker on the chart; the danger button under the pointer.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.surface</code><code class="catalog-token-value">{ref.shadow.surface}</code><span class="catalog-badge">elevation</span></p><p class="catalog-token-meta">--shadow-surface. A Surface, a Dialog, a standing Pane.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.dock</code><code class="catalog-token-value">{ref.shadow.dock}</code><span class="catalog-badge">elevation</span></p><p class="catalog-token-meta">--shadow-dock. The dock, cast upward.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.frame</code><code class="catalog-token-value">{ref.shadow.frame}</code><span class="catalog-badge">structure</span></p><p class="catalog-token-meta">--inset-shadow-frame: the double rule's inner line. With a 1px ink border, round a box that matters: a Surface, a Dialog, a double Pane.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.card</code><code class="catalog-token-value">{ref.shadow.card}</code><span class="catalog-badge">elevation</span></p><p class="catalog-token-meta">--shadow-card. A card inside a page or a dialog (a Pane, a spot page row-card, the wizard's sample day): the contact shadow only. <strong>Do not:</strong> Over the map: that is sem.shadow.float.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.float</code><code class="catalog-token-value">{ref.shadow.float}</code><span class="catalog-badge">elevation</span></p><p class="catalog-token-meta">--shadow-float. Anything sitting on the map: a Surface, the zoom, the spot's tools, the search's list, a menu, a popover.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.sheet</code><code class="catalog-token-value">{ref.shadow.sheet}</code><span class="catalog-badge">elevation</span></p><p class="catalog-token-meta">--shadow-sheet. A Dialog or a sheet: one level deeper than float.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.dock</code><code class="catalog-token-value">{ref.shadow.dock}</code><span class="catalog-badge">elevation</span></p><p class="catalog-token-meta">--shadow-dock. The dock, a sheet standing on the foot of the screen: the sheet's stack cast upward.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.shadow.frame</code><code class="catalog-token-value">{ref.shadow.frame}</code><span class="catalog-badge">structure</span></p><p class="catalog-token-meta">--inset-shadow-frame: the hairline just inside the ink rule. With a 1px ink border, round every box and sheet: a Surface, a Dialog, a card Pane, the dock, a menu. Listed before the elevation shadow.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.gradient.ink</code><code class="catalog-token-value">{ref.gradient.ink}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">--gradient-ink: the sheen on a pressed ink control. A background-image under a filled ink control (the theme's `sheen-ink`), with sem.shadow.control. <strong>Do not:</strong> On a large surface: a page, a dialog, the dock stay flat paper.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.gradient.raised</code><code class="catalog-token-value">{ref.gradient.raised}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">--gradient-raised: a raised paper button. A background-image under a raised paper button (the theme's `sheen-raised`), with sem.shadow.raised. <strong>Do not:</strong> On a large surface: a page, a dialog, the dock stay flat paper.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.gradient.float</code><code class="catalog-token-value">{ref.gradient.float}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">--gradient-float: a floating box's faint top light. Under the grain of a small box over the map (the theme's `paper-float`): a Surface, the chart's boxes. <strong>Do not:</strong> On a large surface: a page, a dialog, the dock stay flat paper.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.blur.glass</code><code class="catalog-token-value">{ref.blur.12}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">--blur-glass. Behind a glass badge over a photograph.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.blur.scrim</code><code class="catalog-token-value">{ref.blur.6}</code><span class="catalog-badge">surface</span></p><p class="catalog-token-meta">--blur-scrim. Under the scrim behind a dialog: the page, or the map, softened.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-specimen-blank"></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.container.dialog</code><code class="catalog-token-value">420px</code><span class="catalog-badge">measure</span></p><p class="catalog-token-meta">--container-dialog. A dialog's width.</p></div></div>
@@ -8082,16 +8184,17 @@ code {
 <p><strong>Wind colours mean wind speed.</strong> The fourteen <code>sem.color.wind.*</code> stops are speed bands and nothing else, the same for every rider, and they do not re-theme: 35 knots is the same colour on any paper, night included.</p>
 <h4>What structure is made of</h4>
 <p><strong>Rules, not surfaces.</strong> One sheet of paper: <code>sem.color.ground</code>, <code>sem.color.card</code> and <code>sem.color.solid</code> are the same value. A thing is set apart by an ink rule round it or under it, as a chart boxes its title and a broadsheet heads its columns.</p>
-<ul><li><code>sem.rule.hairline</code> in <code>sem.color.ink</code> frames a box.</li><li><code>sem.rule.hairline</code> in <code>sem.color.line</code> divides rows inside it, and nothing heavier.</li><li><code>sem.rule.heavy</code> in ink heads a section (<code>Pane kind=&quot;ruled&quot;</code>, <code>SectionHeading</code>). Most of a page is this, not boxes.</li><li><code>sem.rule.double</code> (a CSS <code>double</code> border) runs along an edge: the masthead's foot, the dock's top, a page's foot. Write the other three sides to zero first.</li><li><strong>The double rule round a box</strong> is a 1px ink border plus <code>sem.shadow.frame</code> (three of paper, then one of ink, inset): the chart's box, for a dialog, anything over the map, a popup.</li></ul>
-<p><strong>Four kinds of box, told apart by their rules, not their fill</strong>: the pane (one rule), the chart's box (the double rule), the pill (a capsule, for what is pressed) and the dock (a double rule along its top). A new thing that fits none of them should be a section under a rule.</p>
+<ul><li><code>sem.rule.hairline</code> in <code>sem.color.ink</code> frames a box.</li><li><code>sem.rule.hairline</code> in <code>sem.color.line</code> divides rows inside it, and nothing heavier.</li><li><code>sem.rule.heavy</code> in ink heads a section (<code>Pane kind=&quot;ruled&quot;</code>, <code>SectionHeading</code>). Most of a page is this, not boxes.</li><li><code>sem.rule.double</code> (a CSS <code>double</code> border) runs along an edge: the masthead's foot, the dock's top, a page's foot. Write the other three sides to zero first.</li><li><strong>The edge of every box and sheet</strong> is a 1px ink border plus <code>sem.shadow.frame</code> (two of paper, then a hairline of ink at a quarter, inset): a card on a page, the chart's box, a dialog, a menu, the dock.</li><li><strong>Print rules stay square and unshadowed</strong>: a heavy rule, a double rule, a table or column rule, the dock's day rules. A section under a rule is <code>sem.radius</code> none, never a rounded box with a one-sided border.</li></ul>
+<p><strong>Four kinds of box, told apart by their size and their lift, not their fill</strong> (mixed and rounded, 2026-10-24): the card (on a page: <code>sem.radius.surface</code>, <code>sem.shadow.card</code>), the chart's box (anything over the map: <code>sem.radius.surface</code>, <code>sem.shadow.float</code>), the sheet (a dialog, the dock, a menu: <code>sem.radius.dialog</code>, <code>sem.shadow.sheet</code>, or <code>sem.shadow.dock</code> for the dock cast upward) and the pill (a capsule, for what is pressed). All but the pill carry the edge above. A new thing that fits none of them should be a section under a rule.</p>
 <p><strong>Over the map, paper is opaque.</strong> Glass (<code>sem.color.glass</code>) survives only as a badge over a photograph, and goes solid for a reader who asks for less transparency.</p>
-<p><strong>Shadows are small and warm</strong>: <code>sem.shadow.control</code>, <code>marker</code>, <code>surface</code>, <code>dock</code>. Paper lifts off paper; it does not float. Everything at one layer casts the same shadow. No drop shadow beyond these four.</p>
+<p><strong>Shadows by elevation</strong>, soft and stacked (contact, near, far), the far one warm, always after <code>sem.shadow.frame</code>: <code>sem.shadow.card</code> (a contact shadow only), <code>float</code>, <code>sheet</code>, <code>dock</code> (the sheet's stack cast upward). <code>marker</code> lifts a light or a small floating button. A small control has its own: <code>sem.shadow.control</code> under a pressed or filled ink control, <code>raised</code> under a raised paper one. Everything at one height casts the same shadow. No drop shadow beyond these.</p>
+<p><strong>Paper is flat; light is for small things.</strong> A page, a dialog and the dock are flat paper. A small box over the chart may take <code>sem.gradient.float</code>, the faintest light from above, under its grain. A sheen is for small controls only: <code>sem.gradient.ink</code> under a pressed or filled ink control, <code>sem.gradient.raised</code> under a raised paper button (the round menu button, a knob). A press nudges a lit control down a pixel.</p>
 <p><strong>The paper's grain</strong> (<code>sem.texture.grain</code>) is a background image beside the paper fill on a section root, the masthead, a card pane, a Surface and a Dialog. Never over the moving map.</p>
 <p><strong>The dark hours</strong> are shaded with the hatch (<code>sem.color.hatch</code>, a fine 135° diagonal), never left blank and never rated.</p>
 <h4>Ceilings</h4>
 <p><strong>Type.</strong> Four faces, each with one job: <code>sem.font.family.display</code> (Fraunces: names, headings, the wordmark), <code>body</code> (Newsreader: the few sentences), <code>mono</code> (IBM Plex Mono: every figure, tabular, and every label in tracked capitals), <code>hand</code> (Kalam: the pen, and nothing else). Eleven steps:</p>
 <ul><li><code>eyebrow</code> 10px is the floor, for the mono label in tracked capitals only.</li><li><code>caption</code> 11px is the floor for sentence case.</li><li>Per surface: <strong>one <code>title</code></strong> (30). Per page: <strong>one <code>headline</code></strong> (44), and only on a page that is read; it steps to <code>title</code> under 720px. Per view: <strong>one <code>reading</code></strong> (48), the wind speed.</li><li>A map panel (the popup, a Surface, the dock's head) tops out at <code>lead</code> (19): the spot's name. Its figures are <code>figure</code> (19) or less.</li><li>A field on a coarse pointer is <code>input</code> (16), so a phone does not zoom.</li><li>Five weights; <code>extrabold</code> (800) is the wordmark's alone.</li></ul>
-<p><strong>Radius.</strong> Square, as print is: <code>sem.radius.surface</code> and <code>sem.radius.dialog</code> are 0. A field keeps <code>sem.radius.control</code> (2px), so it reads as a box to write in. Anything pressed is a capsule (<code>sem.radius.full</code>). A rounded box is a mistake; so is a squared capsule. The one exception is the instrument over the map (Button <code>raised</code>): a square box, on purpose.</p>
+<p><strong>Radius</strong> (mixed and rounded, 2026-10-24). Three corners by size, and the capsule: <code>sem.radius.control</code> 10px (a field, a small chip, a tooltip, a layer tile, a key in a box, the instrument button with words in it), <code>sem.radius.surface</code> 14px (a box: a card, anything on the chart), <code>sem.radius.dialog</code> 18px (a sheet: a dialog, the dock, a menu; a sheet on the foot of the screen rounds its top corners only). Anything pressed is a capsule (<code>sem.radius.full</code>), and so is the instrument with an icon in it (the round menu button). A square box is now a mistake; so is a squared capsule, and so is a rounded print rule. A key inside a box sits in by the difference of the two corners, so the curves nest.</p>
 <p><strong>Tap targets.</strong> Nothing pressed is shorter than <code>sem.size.touch</code> (44px) on a coarse pointer. A control drawn smaller grows its hit area instead.</p>
 <p><strong>Contrast.</strong> <code>sem.color.ink-muted</code> is the floor for words. <code>line-strong</code> and <code>ink-disabled</code> are a stroke's 3:1, never text. The pen's marks are <code>pen</code>, its words <code>pen-ink</code>.</p>
 <h4>Little text, figures over prose</h4>
@@ -8099,12 +8202,12 @@ code {
 <h4>Mobile first</h4>
 <p>Draw at 390×844 first, then let it open at 720 (<code>sem.breakpoint.wide</code>) and 900 (<code>sem.breakpoint.rail</code>). The dock, the popup and the spot page are phone layouts that widen, not desktop layouts that shrink. Demos and patterns in this bundle are drawn at phone width unless they say otherwise.</p>
 <h4>Don't</h4>
-<ul><li>Don't write a colour, a px, a radius or a duration that a token holds. A missing value is a missing step: add it to <code>ui/theme.css</code> and to <code>tokens.tokens.json</code>, together.</li><li>Don't put a second filled action on a view.</li><li>Don't use the pen for more than the one thing that matters, or as a fill, a control, a status or emphasis.</li><li>Don't use magenta for &quot;best&quot; twice on one view, or as body text.</li><li>Don't use warm to make something stand out.</li><li>Don't use the wind ramp for anything but wind speed.</li><li>Don't lay a translucent or blurred panel over the map.</li><li>Don't round a box, or square a capsule.</li><li>Don't add a drop shadow, a gradient fill or a glow. Structure is rules.</li><li>Don't set sentences in the mono face, or figures in the body face.</li><li>Don't restyle the focus ring.</li><li>Don't let colour alone carry a state: pressed is filled *and* heavier; offshore is struck through *and* red; warn has an icon *and* words.</li><li>Don't draw a second puffin, or a second headline.</li></ul>
+<ul><li>Don't write a colour, a px, a radius or a duration that a token holds. A missing value is a missing step: add it to <code>ui/theme.css</code> and to <code>tokens.tokens.json</code>, together.</li><li>Don't put a second filled action on a view.</li><li>Don't use the pen for more than the one thing that matters, or as a fill, a control, a status or emphasis.</li><li>Don't use magenta for &quot;best&quot; twice on one view, or as body text.</li><li>Don't use warm to make something stand out.</li><li>Don't use the wind ramp for anything but wind speed.</li><li>Don't lay a translucent or blurred panel over the map.</li><li>Don't square a box, round a print rule, or square a capsule.</li><li>Don't add a drop shadow, a gradient fill or a glow beyond the tokens: the elevation shadows, the faint top light on a floating box, the sheen on a small control. Structure is still rules.</li><li>Don't set sentences in the mono face, or figures in the body face.</li><li>Don't restyle the focus ring.</li><li>Don't let colour alone carry a state: pressed is filled *and* heavier; offshore is struck through *and* red; warn has an icon *and* words.</li><li>Don't draw a second puffin, or a second headline.</li></ul>
 <h4>Gaps, recorded rather than invented</h4>
 <ul><li><strong>The faces.</strong> The bundle names Fraunces, Newsreader, IBM Plex Mono and Kalam; it does not ship them. The product self-hosts them (<code>ui/fonts.css</code>). The Studio door and the catalog draw them only where they are installed, and fall back to Georgia, the system monospace and a cursive otherwise.</li><li><strong>The tide curve's line.</strong> The mockup strokes it in <code>#3F6E7E</code>, a darker teal than <code>sem.color.depth</code>, which has no token; the bundle draws it in <code>depth</code> over a <code>sea</code> fill until the product rules on it.</li><li><strong>The wind-range bar</strong> of the mockup's spot page (models and ensembles) uses hues that are not in the theme; it is left out of the bundle.</li><li><strong>Hover on the map's lights</strong> (the mockup scales the glyph 1.18×) is not in the product yet; the light component shows it as the mockup draws it.</li></ul>
 <h4>Rulings</h4>
 <p>Dated, because an undated rule cannot be told from an opinion. Carried over from <code>docs/DESIGN_PRINCIPLES.md</code>, restated in this bundle's names, then this bundle's own.</p>
-<ul><li><strong>2026-09-14 — The ramp is derived from the product, not invented.</strong> Every colour literal in the map's sources was harvested and clustered.</li><li><strong>2026-09-14 — A legend is generated from <code>PALETTE</code>, never restated.</strong></li><li><strong>2026-09-14 — Shape carries kind on the map; colour carries the reading.</strong> A light says what kind of place by its shape; colour on it means stars or wind, never both.</li><li><strong>2026-09-16 — Model identity hues stay out of the theme</strong>, inside the forecast chart and the display filter's swatches only.</li><li><strong>2026-09-16 — Two type steps for pages that are read: <code>lead</code> and <code>prose</code>.</strong></li><li><strong>2026-09-17 — A page that is read stands on <code>ground</code>, its boxes on <code>card</code>.</strong> Since 2026-10-05 the two are one paper.</li><li><strong>2026-09-20 — Tailwind is the system.</strong> <code>ui/theme.css</code> is the only source of design values; arbitrary values and colour literals are refused by <code>npm run ui:lint</code>.</li><li><strong>2026-09-21 — The map's filled action stays on the accent</strong> (D13).</li><li><strong>2026-09-21 — An active filter is a line, not a fill</strong> (a border and an inset ring in the accent), so it does not rival the one filled action.</li><li><strong>2026-10-05 — The chart.</strong> Paper (<code>#f3eee3</code>) and ink (<code>#1a1d21</code>), structure in rules, opaque paper over the map, square boxes, the focus ring in the chart's magenta, four self-hosted faces on eleven steps, and the red pen with its own rule. Measured on paper: ink 14.62:1, ink-2 9.54:1, ink-muted 5.80:1 (5.40:1 on sunken), line-strong 3.66:1, chart-magenta 5.70:1, warn 5.68:1, pen 4.09:1 (a stroke), pen-ink 4.93:1 (words), paper on the hovered accent 5.70:1.</li><li><strong>2026-10-05 — No dark mode in the product: the chart is paper.</strong> The product ships light only (D9). A <strong>night chart</strong> (as a chart is read under a red light on a night passage) is a possible later mode. The Studio's Design door requires a bundle to declare both modes, so this bundle carries a restrained night chart as a <strong>proposal</strong>: warm dark ink paper (<code>#1d1c19</code>, never blue-shifted), paper-coloured ink, magenta lifted to <code>#e6609f</code> (4.9:1+) and the pen to <code>#ef5f4f</code>, the wind ramp, the now-marker, the gust cap and the buoy unchanged. No product surface reads it. It needs its own contrast pass and a dark basemap before it is offered.</li><li><strong>2026-10-05 — The bundle's names are the product's.</strong> A sem colour is the Tailwind name unchanged (<code>--color-ink-muted</code> is <code>--sem-color-ink-muted</code>), except the accent, which is a group. A handful of <code>interop</code> aliases (<code>sem.color.bg.app</code>, <code>text.primary</code>, <code>font.family.ui</code>, …) exist only so the Studio's catalog and door draw in the brand; components never use them.</li><li><strong>2026-10-05 — The map's vocabulary is part of the system.</strong> The spot's light, the shore compass, the wind-and-gust figure, the tide label and the dock's hour cell repeat across the map, the dock, the popup and the spot page, and are components here, drawn as the mockup draws them.</li></ul>
+<ul><li><strong>2026-09-14 — The ramp is derived from the product, not invented.</strong> Every colour literal in the map's sources was harvested and clustered.</li><li><strong>2026-09-14 — A legend is generated from <code>PALETTE</code>, never restated.</strong></li><li><strong>2026-09-14 — Shape carries kind on the map; colour carries the reading.</strong> A light says what kind of place by its shape; colour on it means stars or wind, never both.</li><li><strong>2026-09-16 — Model identity hues stay out of the theme</strong>, inside the forecast chart and the display filter's swatches only.</li><li><strong>2026-09-16 — Two type steps for pages that are read: <code>lead</code> and <code>prose</code>.</strong></li><li><strong>2026-09-17 — A page that is read stands on <code>ground</code>, its boxes on <code>card</code>.</strong> Since 2026-10-05 the two are one paper.</li><li><strong>2026-09-20 — Tailwind is the system.</strong> <code>ui/theme.css</code> is the only source of design values; arbitrary values and colour literals are refused by <code>npm run ui:lint</code>.</li><li><strong>2026-09-21 — The map's filled action stays on the accent</strong> (D13).</li><li><strong>2026-09-21 — An active filter is a line, not a fill</strong> (a border and an inset ring in the accent), so it does not rival the one filled action.</li><li><strong>2026-10-05 — The chart.</strong> Paper (<code>#f3eee3</code>) and ink (<code>#1a1d21</code>), structure in rules, opaque paper over the map, square boxes, the focus ring in the chart's magenta, four self-hosted faces on eleven steps, and the red pen with its own rule. Measured on paper: ink 14.62:1, ink-2 9.54:1, ink-muted 5.80:1 (5.40:1 on sunken), line-strong 3.66:1, chart-magenta 5.70:1, warn 5.68:1, pen 4.09:1 (a stroke), pen-ink 4.93:1 (words), paper on the hovered accent 5.70:1.</li><li><strong>2026-10-05 — No dark mode in the product: the chart is paper.</strong> The product ships light only (D9). A <strong>night chart</strong> (as a chart is read under a red light on a night passage) is a possible later mode. The Studio's Design door requires a bundle to declare both modes, so this bundle carries a restrained night chart as a <strong>proposal</strong>: warm dark ink paper (<code>#1d1c19</code>, never blue-shifted), paper-coloured ink, magenta lifted to <code>#e6609f</code> (4.9:1+) and the pen to <code>#ef5f4f</code>, the wind ramp, the now-marker, the gust cap and the buoy unchanged. No product surface reads it. It needs its own contrast pass and a dark basemap before it is offered.</li><li><strong>2026-10-05 — The bundle's names are the product's.</strong> A sem colour is the Tailwind name unchanged (<code>--color-ink-muted</code> is <code>--sem-color-ink-muted</code>), except the accent, which is a group. A handful of <code>interop</code> aliases (<code>sem.color.bg.app</code>, <code>text.primary</code>, <code>font.family.ui</code>, …) exist only so the Studio's catalog and door draw in the brand; components never use them.</li><li><strong>2026-10-24 — Mixed and rounded</strong> (approved by the owner, from <code>backlog/mockups/2026-10-24-layer-rail.html</code>, its &quot;Mixed&quot; style). Corners 10 / 14 / 18 by size, capsules kept; the ink rule and the hairline inside it on every box and sheet (<code>sem.shadow.frame</code>, now <code>inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142</code>); soft stacked shadows by elevation (<code>sem.shadow.card</code>, <code>float</code>, <code>sheet</code>, <code>dock</code>; <code>surface</code> is gone); paper flat on anything large, the faintest top light on a floating box, a sheen on small controls (<code>sem.gradient.*</code>); print rules square and unshadowed. Replaces the square boxes of 2026-10-05. The night chart's values for each are proposed alongside (<code>ref.shadow.*-night</code>, <code>ref.gradient.*-night</code>).</li><li><strong>2026-10-05 — The map's vocabulary is part of the system.</strong> The spot's light, the shore compass, the wind-and-gust figure, the tide label and the dock's hour cell repeat across the map, the dock, the popup and the spot page, and are components here, drawn as the mockup draws them.</li></ul>
 </div>
 </section>
 <section id="components" class="catalog-group">
@@ -8463,7 +8566,7 @@ code {
 <h4>Anatomy</h4>
 <ul><li>Container: <code>.wf-button</code> — <code>sem.size.control.md</code> tall, <code>sem.space.x4</code> across, a hairline border (transparent unless the variant rules it), a capsule.</li><li>Label: IBM Plex Mono at <code>sem.font.size.label</code>, <code>sem.font.weight.label</code>, tracked <code>sem.font.tracking.label</code>, uppercase.</li><li>Optional icon: <code>.wf-button__icon</code>, 16px, <code>currentColor</code>, stroke 1.5 beside the mono label (lucide's default 2 reads heavy against the thin rules).</li></ul>
 <h4>Variants</h4>
-<ul><li><strong>Quiet</strong> (<code>.wf-button</code>, the default) — no fill; <code>sem.color.sunken</code> under the pointer. Everything that is not the one action.</li><li><strong>Primary</strong> (<code>--primary</code>) — the ink pill: <code>sem.color.accent.primary</code> fill, <code>sem.color.accent.ink</code> label, <code>sem.color.accent.hover</code> (magenta) under the pointer. One per view, or none.</li><li><strong>Pill</strong> (<code>--pill</code>) — a capsule ruled in ink on paper; inverse under the pointer. Sign in, Previous / Next, Cancel.</li><li><strong>Raised</strong> (<code>--raised</code>) — the chart's instrument over the map: a square box ruled in ink (the site menu, zoom, IRL, layers). Casts no shadow; its frame does.</li><li><strong>Link</strong> (<code>--link</code>) — the label face underlined in ink, &quot;← Chart&quot;; magenta under the pointer. No box.</li><li><strong>Danger</strong> (<code>--danger</code>) — the warm pill, for the destructive answer in a confirm dialog and nowhere else. Lifts (<code>sem.shadow.marker</code>) under the pointer.</li><li><strong>Sizes</strong> <code>--sm</code> (30), md (40), <code>--lg</code> (46, semibold).</li><li><strong>Icon</strong> (<code>--icon</code>) — width equals height; raised stays square.</li><li><strong>Pressed</strong> (<code>aria-pressed=&quot;true&quot;</code>) — filled in inverse, semibold and with <code>sem.shadow.control</code>: never colour alone. <code>--worded</code> keeps its quiet box for a toggle whose words say it is on (Save → Saved).</li></ul>
+<ul><li><strong>Quiet</strong> (<code>.wf-button</code>, the default) — no fill; <code>sem.color.sunken</code> under the pointer. Everything that is not the one action.</li><li><strong>Primary</strong> (<code>--primary</code>) — the ink pill: <code>sem.color.accent.primary</code> fill, <code>sem.color.accent.ink</code> label, <code>sem.color.accent.hover</code> (magenta) under the pointer. One per view, or none.</li><li><strong>Pill</strong> (<code>--pill</code>) — a capsule ruled in ink on paper; inverse under the pointer. Sign in, Previous / Next, Cancel.</li><li><strong>Raised</strong> (<code>--raised</code>) — the chart's instrument: a raised paper button ruled in ink (the site menu), lit from above (<code>sem.gradient.raised</code>) with <code>sem.shadow.raised</code>; <code>sem.radius.control</code> with words in it, a circle with an icon (the round menu button). Ink with its sheen under the pointer.</li><li><strong>Link</strong> (<code>--link</code>) — the label face underlined in ink, &quot;← Chart&quot;; magenta under the pointer. No box.</li><li><strong>Danger</strong> (<code>--danger</code>) — the warm pill, for the destructive answer in a confirm dialog and nowhere else. Lifts (<code>sem.shadow.marker</code>) under the pointer.</li><li><strong>Sizes</strong> <code>--sm</code> (30), md (40), <code>--lg</code> (46, semibold).</li><li><strong>Icon</strong> (<code>--icon</code>) — width equals height; a circle, raised included.</li><li><strong>Pressed</strong> (<code>aria-pressed=&quot;true&quot;</code>) — filled in inverse with the ink's sheen (<code>sem.gradient.ink</code>), semibold and with <code>sem.shadow.control</code>: never colour alone. The primary pill carries the same sheen and lip. A lit button (primary, raised, pressed) nudges down a pixel while it is pressed. <code>--worded</code> keeps its quiet box for a toggle whose words say it is on (Save → Saved).</li></ul>
 <h4>States</h4>
 <ul><li>Hover: per variant above (<code>.is-hover</code> holds it in the demo).</li><li>Focus: <code>:focus-visible</code> draws the one ring — <code>sem.ring.width</code> of <code>sem.color.focus</code>, <code>sem.ring.offset</code> clear (<code>.is-focus</code> in the demo).</li><li>Disabled: <code>sem.color.ink-disabled</code> words, default cursor, no fade; filled variants go to <code>sem.color.sunken</code> on a <code>sem.color.line</code> ring.</li><li>Coarse pointer: never shorter than <code>sem.size.touch</code>; a link grows an invisible touch-tall band instead.</li></ul>
 <h4>Usage</h4>
@@ -8547,11 +8650,14 @@ code {
 }
 
 /* ---- primary: the one filled control, an ink pill, magenta under the pointer ---- */
+/* Lit as a small ink control is (2026-10-24): the ink's sheen and its lip,
+ * flat magenta under the pointer, nudged down a pixel when pressed. */
 .wf-button--primary {
   border-radius: var(--sem-radius-full);
   border-color: var(--sem-color-accent-primary);
-  background: var(--sem-color-accent-primary);
+  background: var(--sem-color-accent-primary) var(--sem-gradient-ink);
   color: var(--sem-color-accent-ink);
+  box-shadow: var(--sem-shadow-control);
 }
 .wf-button--primary:not(:disabled):hover,
 .wf-button--primary.is-hover {
@@ -8561,6 +8667,12 @@ code {
 .wf-button--primary:disabled {
   border-color: var(--sem-color-line);
   background: var(--sem-color-sunken);
+  box-shadow: none;
+}
+.wf-button--primary:not(:disabled):active,
+.wf-button--raised:not(:disabled):active,
+.wf-button[aria-pressed=&quot;true&quot;]:not(:disabled):active {
+  translate: 0 1px;
 }
 
 /* ---- pill: a capsule ruled in ink, which turns to ink under the pointer ---- */
@@ -8579,19 +8691,25 @@ code {
   background: transparent;
 }
 
-/* ---- raised: the chart's instrument over the map, a square box ruled in ink ---- */
+/* ---- raised: the chart's instrument, a raised paper button ruled in ink ---- */
+/* Lit from above with a lip and a contact shadow; a control's corner with
+ * words in it, round with an icon (the round menu button). Ink with its sheen
+ * under the pointer. */
 .wf-button--raised {
-  border-radius: var(--sem-radius-surface);
+  border-radius: var(--sem-radius-control);
   border-color: var(--sem-color-ink);
-  background: var(--sem-color-card);
+  background: var(--sem-color-card) var(--sem-gradient-raised);
+  box-shadow: var(--sem-shadow-raised);
 }
 .wf-button--raised:not(:disabled):hover,
 .wf-button--raised.is-hover {
-  background: var(--sem-color-inverse);
+  background: var(--sem-color-inverse) var(--sem-gradient-ink);
   color: var(--sem-color-ink-inverse);
+  box-shadow: var(--sem-shadow-control);
 }
 .wf-button--raised:disabled {
   background: transparent;
+  box-shadow: none;
 }
 
 /* ---- link: a way back or on, underlined in ink (&quot;← Chart&quot;) ---- */
@@ -8647,16 +8765,17 @@ code {
 .wf-button[aria-pressed=&quot;true&quot;],
 .wf-button[aria-current=&quot;true&quot;] {
   border-color: var(--sem-color-ink);
-  background: var(--sem-color-inverse);
+  background: var(--sem-color-inverse) var(--sem-gradient-ink);
   color: var(--sem-color-ink-inverse);
   font-weight: var(--sem-font-weight-semibold);
   box-shadow: var(--sem-shadow-control);
 }
 .wf-button[aria-pressed=&quot;true&quot;]:not(:disabled):hover {
-  background: var(--sem-color-inverse);
+  background: var(--sem-color-inverse) var(--sem-gradient-ink);
 }
 .wf-button[aria-pressed=&quot;true&quot;]:disabled {
   background: var(--sem-color-sunken);
+  box-shadow: none;
 }
 /* A toggle whose own words say it is on (Save -&gt; Saved) keeps its quiet box. */
 .wf-button--worded[aria-pressed=&quot;true&quot;] {
@@ -8679,9 +8798,9 @@ code {
 .wf-button--icon.wf-button--lg {
   width: var(--sem-size-control-lg);
 }
-/* The instrument stays square with an icon in it. */
+/* The instrument is round with an icon in it: the round menu button. */
 .wf-button--icon.wf-button--raised {
-  border-radius: var(--sem-radius-surface);
+  border-radius: var(--sem-radius-full);
 }
 @media (pointer: coarse) {
   .wf-button--icon {
@@ -9634,7 +9753,7 @@ code {
 <div class="catalog-doc">
 <p>The chart's box as a modal (<code>ui/Dialog.tsx</code>, <code>dialogStyles</code>), and the question with one destructive answer built on it (<code>ui/ConfirmDialog.tsx</code>). A native <code>dialog</code>, so focus is trapped, Escape cancels and the page behind is inert. Its buttons are the Button component's classes.</p>
 <h4>Anatomy</h4>
-<ul><li>Box: <code>.wf-dialog</code> — 11/12 of the width up to <code>sem.container.dialog</code>, <code>sem.space.x7</code> inset (<code>sem.space.x5</code> under <code>sem.breakpoint.wide</code>), a grid with <code>sem.space.x5</code> between its parts. Paper (<code>sem.color.card</code> with <code>sem.texture.grain</code>) in the double rule: a <code>sem.rule.hairline</code> ink border plus <code>sem.shadow.frame</code>, then <code>sem.shadow.surface</code>. Square (<code>sem.radius.dialog</code>). Sentences in <code>sem.font.family.body</code>.</li><li>Backdrop: <code>::backdrop</code> in <code>sem.color.scrim</code>, a wash of paper, over a <code>sem.blur.scrim</code> blur of the page or the map behind; it fades in with <code>sem.animate.scrim-in</code>. Where the browser cannot blur, or the reader asks for less transparency, it is <code>sem.color.scrim-solid</code> with no blur. The product's one recipe for it is ui/Backdrop.tsx (<code>scrim</code>, <code>Backdrop</code>).</li><li>Head: <code>.wf-dialog__head</code> — the title and the close button, top-aligned and <code>sem.space.x3</code> apart, over a hairline ink rule with <code>sem.space.x3</code> beneath.</li><li>Title: <code>.wf-dialog__title</code> — the display face at <code>sem.font.size.lead</code> and <code>sem.font.weight.lead</code>, in ink.</li><li>Close: an icon button, quiet and small (<code>.wf-button--icon.wf-button--sm</code>), <code>aria-label=&quot;Close&quot;</code>, a 15px X.</li><li>Body: <code>.wf-dialog__body</code> — a grid, <code>sem.space.x3</code> gaps, <code>sem.font.size.prose</code> in <code>sem.color.ink-2</code>.</li><li>Actions: <code>.wf-dialog__actions</code> — a wrapping row set right, <code>sem.space.x2</code> apart. The filled action, if any, comes last.</li></ul>
+<ul><li>Box: <code>.wf-dialog</code> — 11/12 of the width up to <code>sem.container.dialog</code>, <code>sem.space.x7</code> inset (<code>sem.space.x5</code> under <code>sem.breakpoint.wide</code>), a grid with <code>sem.space.x5</code> between its parts. A sheet: flat paper (<code>sem.color.card</code> with <code>sem.texture.grain</code>), a <code>sem.rule.hairline</code> ink border plus <code>sem.shadow.frame</code> (the hairline inside it), then <code>sem.shadow.sheet</code>. A sheet's corner (<code>sem.radius.dialog</code>, 18px). Sentences in <code>sem.font.family.body</code>.</li><li>Backdrop: <code>::backdrop</code> in <code>sem.color.scrim</code>, a wash of paper, over a <code>sem.blur.scrim</code> blur of the page or the map behind; it fades in with <code>sem.animate.scrim-in</code>. Where the browser cannot blur, or the reader asks for less transparency, it is <code>sem.color.scrim-solid</code> with no blur. The product's one recipe for it is ui/Backdrop.tsx (<code>scrim</code>, <code>Backdrop</code>).</li><li>Head: <code>.wf-dialog__head</code> — the title and the close button, top-aligned and <code>sem.space.x3</code> apart, over a hairline ink rule with <code>sem.space.x3</code> beneath.</li><li>Title: <code>.wf-dialog__title</code> — the display face at <code>sem.font.size.lead</code> and <code>sem.font.weight.lead</code>, in ink.</li><li>Close: an icon button, quiet and small (<code>.wf-button--icon.wf-button--sm</code>), <code>aria-label=&quot;Close&quot;</code>, a 15px X.</li><li>Body: <code>.wf-dialog__body</code> — a grid, <code>sem.space.x3</code> gaps, <code>sem.font.size.prose</code> in <code>sem.color.ink-2</code>.</li><li>Actions: <code>.wf-dialog__actions</code> — a wrapping row set right, <code>sem.space.x2</code> apart. The filled action, if any, comes last.</li></ul>
 <h4>Variants</h4>
 <ul><li><strong>Md</strong> (the default) — up to <code>sem.container.dialog</code> (420px).</li><li><strong>Wide</strong> (<code>--wide</code>) — up to <code>sem.container.dialog-wide</code> (640px), for a form or a table.</li><li><strong>Dismissible</strong> (the default) — draws the close button. A question with its own Cancel does without it.</li><li><strong>ConfirmDialog</strong> — no close button; Cancel (<code>.wf-button--pill</code>) then the destructive answer (<code>.wf-button--danger</code>), named for what it does (&quot;Remove listing&quot;).</li></ul>
 <h4>States</h4>
@@ -9649,7 +9768,8 @@ code {
  * CSS. Consumes --sem-* only. Its buttons are the Button component's classes
  * (components/button/component.css); nothing here restyles them.
  *
- * The chart's box as a modal: paper with its grain in a double rule, the title
+ * A sheet: flat paper with its grain, the ink rule and the hairline inside it,
+ * a sheet's corner and the sheet's deeper lift (2026-10-24), the title
  * in the display face over an ink rule, the body in sentences, and a row of
  * answers with the one filled action last.
  *
@@ -9672,7 +9792,7 @@ code {
   background-repeat: repeat;
   color: var(--sem-color-ink);
   font-family: var(--sem-font-family-body);
-  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-surface);
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-sheet);
 }
 
 .wf-dialog[open],
@@ -10041,7 +10161,7 @@ code {
 <div class="catalog-doc">
 <p>Where a list would be, when there is nothing to list (<code>ui/Empty.tsx</code>, <code>emptyStyles</code> laid over a card <code>paneStyles</code>). An icon in a ring, a line in the display face's italic, and what to do about it.</p>
 <h4>Anatomy</h4>
-<ul><li>Container: <code>.wf-empty</code> — a card Pane (a <code>sem.rule.hairline</code> ink border, <code>sem.color.card</code> with <code>sem.texture.grain</code>, square), with a tall inset (<code>sem.space.x14</code> by <code>sem.space.x6</code>), everything centred in a grid <code>sem.space.x3</code> apart; sentences in <code>sem.font.family.body</code> at <code>sem.font.size.prose</code>, <code>sem.color.ink-muted</code>.</li><li>Icon: <code>.wf-empty__icon</code> — a 58px ring (a large control and a gap across, 14.5 steps), hairline, holding a 24px lucide icon in <code>currentColor</code>; the Image icon when none is given. Decoration, <code>aria-hidden</code>.</li><li>Title: <code>.wf-empty__title</code> — a <code>p</code>, not a heading: the display face's italic at <code>sem.font.size.lead</code> and <code>sem.font.weight.lead</code>, in ink.</li><li>Body: <code>.wf-empty__body</code> — optional; a grid up to <code>sem.container.reading</code> wide, centred: a sentence, and the button or link that mends it.</li></ul>
+<ul><li>Container: <code>.wf-empty</code> — a card Pane (a <code>sem.rule.hairline</code> ink border, <code>sem.color.card</code> with <code>sem.texture.grain</code>, the hairline inside the rule, a box's corner and the card's contact shadow), with a tall inset (<code>sem.space.x14</code> by <code>sem.space.x6</code>), everything centred in a grid <code>sem.space.x3</code> apart; sentences in <code>sem.font.family.body</code> at <code>sem.font.size.prose</code>, <code>sem.color.ink-muted</code>.</li><li>Icon: <code>.wf-empty__icon</code> — a 58px ring (a large control and a gap across, 14.5 steps), hairline, holding a 24px lucide icon in <code>currentColor</code>; the Image icon when none is given. Decoration, <code>aria-hidden</code>.</li><li>Title: <code>.wf-empty__title</code> — a <code>p</code>, not a heading: the display face's italic at <code>sem.font.size.lead</code> and <code>sem.font.weight.lead</code>, in ink.</li><li>Body: <code>.wf-empty__body</code> — optional; a grid up to <code>sem.container.reading</code> wide, centred: a sentence, and the button or link that mends it.</li></ul>
 <h4>Variants</h4>
 <ul><li><strong>Info</strong> (the default) — the ring in ink on paper.</li><li><strong>Warn</strong> (<code>--warn</code>) — the ring in <code>sem.color.warn</code> on <code>sem.color.warn-ground</code>, for an empty list that is empty because something failed. Only the ring goes warm; the words stay muted and the title ink.</li></ul>
 <h4>States</h4>
@@ -10071,6 +10191,7 @@ code {
   background-color: var(--sem-color-card);
   background-image: var(--sem-texture-grain);
   background-repeat: repeat;
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-card);
   color: var(--sem-color-ink-muted);
   font-family: var(--sem-font-family-body);
   font-size: var(--sem-font-size-prose);
@@ -11739,7 +11860,7 @@ code {
 <div class="catalog-doc">
 <p>A link in text (<code>ui/Link.tsx</code>, <code>linkStyles</code>): a plain <code>&lt;a href&gt;</code> in the quiet ink, underlined in running text, magenta under the pointer.</p>
 <h4>Anatomy</h4>
-<ul><li>Link: <code>.wf-link</code> on an <code>&lt;a href&gt;</code> — the surrounding face and size, in <code>sem.color.quiet</code>, <code>sem.radius.control</code> so the focus ring sits square but for the field's 2px.</li><li>Underline (the default): a <code>sem.rule.hairline</code> line in <code>sem.color.line-strong</code>, 3px under the words.</li></ul>
+<ul><li>Link: <code>.wf-link</code> on an <code>&lt;a href&gt;</code> — the surrounding face and size, in <code>sem.color.quiet</code>, <code>sem.radius.control</code> so the focus ring takes a control's corner.</li><li>Underline (the default): a <code>sem.rule.hairline</code> line in <code>sem.color.line-strong</code>, 3px under the words.</li></ul>
 <h4>Variants</h4>
 <ul><li><strong>Underlined</strong> (the default) — in running text, where ink alone does not say &quot;link&quot;.</li><li><strong>Plain</strong> (<code>.wf-link--plain</code>) — no underline, for a list of nothing but links: a footer, a menu, a row of spot names.</li></ul>
 <h4>States</h4>
@@ -11999,7 +12120,7 @@ code {
 <div class="catalog-doc">
 <p>The header every page that is read shares (<code>ui/Masthead.tsx</code>, <code>mastheadStyles</code>, <code>MastheadMark</code>): the site menu, the nameplate with its section in the mono label, and the section's few actions set right, over the broadsheet's double rule.</p>
 <h4>Anatomy</h4>
-<ul><li>Root: <code>.wf-masthead</code> — a sticky <code>header</code> at the top, at <code>sem.z-index.header</code>, on <code>sem.color.ground</code> with <code>sem.texture.grain</code>, its top padding <code>sem.space.x2</code> or the notch's inset, whichever is larger.</li><li>Bar: <code>.wf-masthead__bar</code> — a flex row at least <code>sem.space.x14</code> tall, <code>sem.space.x3</code> gaps, <code>sem.space.x2</code> under, the <code>sem.rule.double</code> ink rule along its foot only.</li><li>Menu: the site menu's trigger, a Button <code>--raised --icon --sm</code> (the square instrument) with an aria-label.</li><li>Brand: <code>.wf-masthead__brand</code> — the caller's link, holding a Wordmark <code>--md</code> with <code>.wf-masthead__mark</code> and, where the page is not the map's own, the section.</li><li>Section: <code>.wf-masthead__section</code> — the mono label in <code>sem.color.ink-muted</code> after a <code>sem.rule.hairline</code> in <code>sem.color.line</code>, <code>sem.space.x3</code> clear of it: MARKET, COMMUNITY.</li><li>Actions: <code>.wf-masthead__actions</code> — set right, <code>sem.space.x2</code> apart: the one filled action, Sign in.</li></ul>
+<ul><li>Root: <code>.wf-masthead</code> — a sticky <code>header</code> at the top, at <code>sem.z-index.header</code>, on <code>sem.color.ground</code> with <code>sem.texture.grain</code>, its top padding <code>sem.space.x2</code> or the notch's inset, whichever is larger.</li><li>Bar: <code>.wf-masthead__bar</code> — a flex row at least <code>sem.space.x14</code> tall, <code>sem.space.x3</code> gaps, <code>sem.space.x2</code> under, the <code>sem.rule.double</code> ink rule along its foot only.</li><li>Menu: the site menu's trigger, a Button <code>--raised --icon --sm</code> (the round menu button, raised paper) with an aria-label.</li><li>Brand: <code>.wf-masthead__brand</code> — the caller's link, holding a Wordmark <code>--md</code> with <code>.wf-masthead__mark</code> and, where the page is not the map's own, the section.</li><li>Section: <code>.wf-masthead__section</code> — the mono label in <code>sem.color.ink-muted</code> after a <code>sem.rule.hairline</code> in <code>sem.color.line</code>, <code>sem.space.x3</code> clear of it: MARKET, COMMUNITY.</li><li>Actions: <code>.wf-masthead__actions</code> — set right, <code>sem.space.x2</code> apart: the one filled action, Sign in.</li></ul>
 <h4>Variants</h4>
 <ul><li>From 720px (<code>sem.breakpoint.wide</code>) the name and the section sit side by side.</li><li>Under 720px the section stands under the name with no hairline, the wordmark steps to <code>sem.font.size.lead</code>, the bar's gaps close to <code>sem.space.x2</code> and the actions' to <code>sem.space.x1</code>, so the menu, the name and two actions share 390px. <code>.is-narrow</code> on the root holds this layout at any width for the catalog; the product reaches it through the media query only.</li></ul>
 <h4>States</h4>
@@ -12797,9 +12918,9 @@ code {
 <div class="catalog-doc">
 <p>The box content sits in on a page that is read (<code>ui/Pane.tsx</code>, <code>paneStyles</code>). Told apart from its siblings by its rules, never its fill. Over the map the box is a Surface.</p>
 <h4>Anatomy</h4>
-<ul><li>Container: <code>.wf-pane</code> — <code>sem.space.x5</code> inset, square (<code>sem.radius.surface</code>), <code>sem.color.ink</code> words.</li><li>Rule: per kind (below): a hairline round it, none, or a heavy rule above.</li><li>Paper: <code>sem.color.card</code> with <code>sem.texture.grain</code> for a card; the second sheet (<code>sem.color.sunken</code>) for a well; nothing for a ruled section.</li><li>Content is free: the Pane sets no face or size of its own.</li></ul>
+<ul><li>Container: <code>.wf-pane</code> — <code>sem.space.x5</code> inset, a box's corner (<code>sem.radius.surface</code>, 14px; square for a ruled section), <code>sem.color.ink</code> words.</li><li>Rule: per kind (below): a hairline round it, none, or a heavy rule above.</li><li>Paper: <code>sem.color.card</code> with <code>sem.texture.grain</code> for a card; the second sheet (<code>sem.color.sunken</code>) for a well; nothing for a ruled section.</li><li>Content is free: the Pane sets no face or size of its own.</li></ul>
 <h4>Variants</h4>
-<ul><li><strong>Card</strong> (<code>.wf-pane</code>, <code>kind=&quot;card&quot;</code>, the default) — a <code>sem.rule.hairline</code> ink border, paper with its grain.</li><li><strong>Sunken</strong> (<code>--sunken</code>) — <code>sem.color.sunken</code>, no rule: a well, an aside, a breakdown of figures.</li><li><strong>Ruled</strong> (<code>--ruled</code>) — a <code>sem.rule.heavy</code> ink rule above, nothing at the sides, no fill; inset <code>sem.space.x3</code> above and none at the sides or foot, so it lines up with its column. Most of a page is this.</li><li><strong>Double</strong> (<code>--double</code>) — adds <code>sem.shadow.frame</code>, the chart's box, for the one pane that matters.</li><li><strong>Standing</strong> (<code>--standing</code>) — a pane on its own rather than in a column: <code>sem.shadow.surface</code> and a <code>sem.space.x6</code> inset from <code>sem.breakpoint.wide</code> (720px) up, <code>sem.space.x5</code> under it. With <code>--double</code> both shadows draw, the frame first.</li></ul>
+<ul><li><strong>Card</strong> (<code>.wf-pane</code>, <code>kind=&quot;card&quot;</code>, the default) — a card: a <code>sem.rule.hairline</code> ink border with <code>sem.shadow.frame</code> inside it, paper with its grain, and <code>sem.shadow.card</code>, a contact shadow only.</li><li><strong>Sunken</strong> (<code>--sunken</code>) — <code>sem.color.sunken</code>, no rule: a well, an aside, a breakdown of figures.</li><li><strong>Ruled</strong> (<code>--ruled</code>) — a <code>sem.rule.heavy</code> ink rule above, nothing at the sides, no fill; inset <code>sem.space.x3</code> above and none at the sides or foot, so it lines up with its column. Most of a page is this.</li><li><strong>Double</strong> (<code>--double</code>) — <code>sem.shadow.frame</code>. A card has it already; this is for a sunken pane that is to read as a box.</li><li><strong>Standing</strong> (<code>--standing</code>) — a pane on its own rather than in a column: a <code>sem.space.x6</code> inset from <code>sem.breakpoint.wide</code> (720px) up, <code>sem.space.x5</code> under it. Still a card: the contact shadow, no more.</li></ul>
 <h4>States</h4>
 <ul><li>None of its own. A pane is not pressed; a pane loading carries <code>aria-busy</code> and holds Skeletons.</li></ul>
 <h4>Usage</h4>
@@ -12810,13 +12931,14 @@ code {
 </div>
 <details class="catalog-source"><summary>components/pane/component.css</summary><pre><code>/* Pane — ui/Pane.tsx (paneStyles), rendered in CSS. Consumes --sem-* only.
  *
- * The box content sits in on a page that is read. Four kinds of box are told
- * apart by their rules, not their fill: the card pane has one ink rule, the
- * sunken pane none (it is the paper's second sheet), and the ruled pane is the
- * broadsheet's section, a heavy rule above and nothing at the sides. Over the
- * map the box is a Surface. */
+ * The box content sits in on a page that is read. The card pane is a card
+ * (mixed and rounded, 2026-10-24): the ink rule and the hairline inside it, a
+ * box's corner, and a contact shadow only. The sunken pane has no rule (it is
+ * the paper's second sheet), and the ruled pane is the broadsheet's section, a
+ * heavy rule above and nothing at the sides: a print rule, square and
+ * unshadowed. Over the map the box is a Surface. */
 
-/* kind=&quot;card&quot; (the default): a box ruled in ink, on paper with its grain. */
+/* kind=&quot;card&quot; (the default): a card on the page. */
 .wf-pane {
   box-sizing: border-box;
   padding: var(--sem-space-x5);
@@ -12826,6 +12948,7 @@ code {
   background-image: var(--sem-texture-grain);
   background-repeat: repeat;
   color: var(--sem-color-ink);
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-card);
 }
 
 /* kind=&quot;sunken&quot;: the paper's second sheet, with no rule: a well, an aside. */
@@ -12833,6 +12956,7 @@ code {
   border: 0;
   background-color: var(--sem-color-sunken);
   background-image: none;
+  box-shadow: none;
 }
 
 /* kind=&quot;ruled&quot;: a heavy rule above, nothing at the sides, and no inset of its
@@ -12840,26 +12964,26 @@ code {
 .wf-pane--ruled {
   border: 0;
   border-top: var(--sem-rule-heavy) solid var(--sem-color-ink);
+  border-radius: 0;
   background-color: transparent;
   background-image: none;
+  box-shadow: none;
   padding: var(--sem-space-x3) 0 0;
 }
 
-/* double: a second rule inside the first, the chart's box, for one that
- * matters. */
+/* double: the hairline inside the rule. A card has it already; this is for a
+ * sunken pane that is to read as a box. */
 .wf-pane--double {
   box-shadow: var(--sem-shadow-frame);
 }
+.wf-pane--double:not(.wf-pane--sunken, .wf-pane--ruled) {
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-card);
+}
 
 /* standing: a pane on the page on its own rather than in a column of panes.
- * It lifts off the paper a little and takes the wider inset where the width
- * pays for it. */
+ * It takes the wider inset where the width pays for it, and is still a card. */
 .wf-pane--standing {
   padding: var(--sem-space-x6);
-  box-shadow: var(--sem-shadow-surface);
-}
-.wf-pane--standing.wf-pane--double {
-  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-surface);
 }
 
 /* max-wide: under sem.breakpoint.wide (45rem) the narrow inset comes back. */
@@ -15186,7 +15310,7 @@ code {
 <h4>Anatomy</h4>
 <ul><li>Group: <code>.wf-segmented</code> on a <code>role=&quot;group&quot;</code> with an <code>aria-label</code> — an inline row in a <code>sem.rule.hairline</code> capsule (<code>sem.radius.full</code>) of <code>sem.color.ink</code>, on <code>sem.color.card</code>.</li><li>Item: <code>.wf-segmented__item</code>, a <code>&lt;button type=&quot;button&quot;&gt;</code> with <code>aria-pressed</code> — <code>sem.size.control.sm</code> tall, <code>sem.space.x3</code> across, <code>sem.space.x1</code> between an icon and the words, itself a capsule so the filled one sits round inside the rule. IBM Plex Mono at <code>sem.font.size.label</code>, <code>sem.font.weight.label</code>, tracked <code>sem.font.tracking.label</code>, uppercase, <code>sem.color.ink</code>.</li></ul>
 <h4>Variants</h4>
-<ul><li><strong>Row</strong> (the default) — the capsule, as the dock's switch.</li><li><strong>Stack</strong> (<code>.wf-segmented--stack</code>) — a column of choices: the group becomes a square box ruled in ink (<code>sem.radius.surface</code>), its items <code>sem.size.control.md</code> tall rows, <code>sem.space.x4</code> across, words to the left, divided by <code>sem.rule.hairline</code> in <code>sem.color.line</code> (none under the last). One row filled.</li></ul>
+<ul><li><strong>Row</strong> (the default) — the capsule, as the dock's switch.</li><li><strong>Stack</strong> (<code>.wf-segmented--stack</code>) — a column of choices: the group becomes a box ruled in ink (<code>sem.radius.surface</code>), clipping its square rows to its corner, its items <code>sem.size.control.md</code> tall rows, <code>sem.space.x4</code> across, words to the left, divided by <code>sem.rule.hairline</code> in <code>sem.color.line</code> (none under the last). One row filled.</li></ul>
 <h4>States</h4>
 <ul><li>On (<code>aria-pressed=&quot;true&quot;</code>): filled in <code>sem.color.inverse</code>, words in <code>sem.color.ink-inverse</code> and <code>sem.font.weight.semibold</code> — filled and heavier, never colour alone. It stays filled under the pointer.</li><li>Hover: <code>sem.color.sunken</code> under an item that is off (<code>.is-hover</code> in the demo).</li><li>Focus: <code>:focus-visible</code> draws the one ring on the item — <code>sem.ring.width</code> of <code>sem.color.focus</code>, <code>sem.ring.offset</code> clear (<code>.is-focus</code> in the demo).</li><li>Disabled: <code>sem.color.ink-disabled</code> words, default cursor, no fade, no hover.</li><li>Coarse pointer: an item is never shorter than <code>sem.size.touch</code>.</li></ul>
 <h4>Usage</h4>
@@ -15270,9 +15394,13 @@ code {
 .wf-segmented__item[aria-pressed=&quot;true&quot;],
 .wf-segmented__item[aria-pressed=&quot;true&quot;]:not(:disabled):hover,
 .wf-segmented__item[aria-pressed=&quot;true&quot;].is-hover {
-  background: var(--sem-color-inverse);
+  background: var(--sem-color-inverse) var(--sem-gradient-ink);
   color: var(--sem-color-ink-inverse);
   font-weight: var(--sem-font-weight-semibold);
+  box-shadow: var(--sem-shadow-control);
+}
+.wf-segmented--stack .wf-segmented__item[aria-pressed=&quot;true&quot;] {
+  box-shadow: none;
 }
 
 /* ---- stack: a column of choices, a ruled list with one row filled ---- */
@@ -15281,13 +15409,15 @@ code {
   flex-direction: column;
   align-items: stretch;
   border-radius: var(--sem-radius-surface);
+  /* The box clips its rows to its corner; the rows' rules stay square. */
+  overflow: hidden;
 }
 .wf-segmented--stack .wf-segmented__item {
   height: var(--sem-size-control-md);
   justify-content: flex-start;
   padding: 0 var(--sem-space-x4);
   border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
-  border-radius: var(--sem-radius-surface);
+  border-radius: 0;
 }
 .wf-segmented--stack .wf-segmented__item:last-child {
   border-bottom-width: 0;
@@ -16059,7 +16189,7 @@ code {
 <h4>Anatomy</h4>
 <ul><li>Shape: <code>.wf-skeleton</code> — a block-level <code>span</code> filled with <code>sem.color.line</code> (the hairline's ink, which shows on grained paper where the second sheet does not), breathing with <code>sem.animate.pulse</code>. The caller sets its width.</li></ul>
 <h4>Variants</h4>
-<ul><li><strong>Line</strong> (<code>.wf-skeleton</code>, the default) — <code>sem.space.x3</code> tall, the field's <code>sem.radius.control</code>: square, as a line of type is.</li><li><strong>Block</strong> (<code>--block</code>) — at least 128px (32 steps) tall, square (<code>sem.radius.surface</code>): a photo, a chart, a pane's worth.</li><li><strong>Circle</strong> (<code>--circle</code>) — <code>sem.size.control.md</code> across, a full circle: an avatar, a light.</li></ul>
+<ul><li><strong>Line</strong> (<code>.wf-skeleton</code>, the default) — <code>sem.space.x3</code> tall, the field's <code>sem.radius.control</code>.</li><li><strong>Block</strong> (<code>--block</code>) — at least 128px (32 steps) tall, a box's corner (<code>sem.radius.surface</code>): a photo, a chart, a pane's worth.</li><li><strong>Circle</strong> (<code>--circle</code>) — <code>sem.size.control.md</code> across, a full circle: an avatar, a light.</li></ul>
 <h4>States</h4>
 <ul><li>Loading: pulses from 0.45 opacity to whole and back, a second each way.</li><li>Reduced motion: still (<code>prefers-reduced-motion: reduce</code>); the shape alone says something is coming.</li></ul>
 <h4>Usage</h4>
@@ -17326,22 +17456,23 @@ code {
 <div class="catalog-doc">
 <p>The chart's box laid over the moving map (<code>ui/Surface.tsx</code>, <code>surfaceStyles</code>): the search, the layers, the starred spots, a spot's popout. Opaque paper with its grain, ruled in ink. On a page that is read, the box is a Pane.</p>
 <h4>Anatomy</h4>
-<ul><li>Container: <code>.wf-surface</code> — <code>sem.space.x5</code> inset on every side, <code>sem.color.card</code> with <code>sem.texture.grain</code>, <code>sem.color.ink</code> words.</li><li>Rule: a <code>sem.rule.hairline</code> border in <code>sem.color.ink</code>, square (<code>sem.radius.surface</code>).</li><li>Inner line: <code>sem.shadow.frame</code> (three of paper, then one of ink, inset), which with the border makes the double rule.</li><li>Lift: <code>sem.shadow.surface</code>, listed after the frame.</li><li>Content is free: the Surface sets no face or size of its own.</li></ul>
+<ul><li>Container: <code>.wf-surface</code> — <code>sem.space.x5</code> inset on every side, <code>sem.color.card</code> with <code>sem.texture.grain</code> over <code>sem.gradient.float</code> (the faintest light from above), <code>sem.color.ink</code> words.</li><li>Rule: a <code>sem.rule.hairline</code> border in <code>sem.color.ink</code>, a box's corner (<code>sem.radius.surface</code>, 14px).</li><li>Inner line: <code>sem.shadow.frame</code> (two of paper, then a hairline of ink at a quarter, inset), just inside the rule.</li><li>Lift: <code>sem.shadow.float</code>, listed after the frame.</li><li>Content is free: the Surface sets no face or size of its own.</li></ul>
 <h4>Variants</h4>
-<ul><li><strong>Double</strong> (the default, <code>rule=&quot;double&quot;</code>) — the chart's box: border plus frame plus lift.</li><li><strong>Single</strong> (<code>--single</code>, <code>rule=&quot;single&quot;</code>) — the border and the lift without the inner line, for a box that sits inside another or is small enough that two lines would be most of it.</li></ul>
+<ul><li><strong>Double</strong> (the default, <code>rule=&quot;double&quot;</code>) — the chart's box: border plus hairline plus lift.</li><li><strong>Single</strong> (<code>--single</code>, <code>rule=&quot;single&quot;</code>) — the border and the lift without the inner line, for a box that sits inside another or is small enough that two lines would be most of it.</li></ul>
 <h4>States</h4>
 <ul><li>None of its own. It is a box, not a control; what is inside carries focus, hover and disabled.</li></ul>
 <h4>Usage</h4>
-<ul><li>Over the map only. A page that is read uses Pane.</li><li>Never translucent, never blurred: over the map, paper is opaque.</li><li>Keep the double rule for the box that stands alone over the map; reach for <code>--single</code> before nesting one double rule inside another.</li><li>Everything at one layer casts the same <code>sem.shadow.surface</code>; add no other shadow.</li><li>Tops out at <code>lead</code> type inside (the spot's name) and <code>figure</code> for figures.</li></ul>
+<ul><li>Over the map only. A page that is read uses Pane.</li><li>Never translucent, never blurred: over the map, paper is opaque.</li><li>Keep the hairline for the box that stands alone over the map; reach for <code>--single</code> before nesting one framed box inside another.</li><li>Everything over the map casts the same <code>sem.shadow.float</code>; add no other shadow. A dialog or a sheet is a level deeper (<code>sem.shadow.sheet</code>).</li><li>Tops out at <code>lead</code> type inside (the spot's name) and <code>figure</code> for figures.</li></ul>
 <h4>Accessibility</h4>
 <ul><li>A plain <code>div</code>. Give it a landmark or a label where it is a region of its own (<code>role=&quot;region&quot;</code> with <code>aria-label</code>, or a <code>nav</code> for the site menu).</li><li>Ink on paper is 14.6:1; the frame is decoration and carries no meaning.</li><li>In the night chart (proposed) the frame inverts with the paper through the same tokens.</li></ul>
 </div>
 </div>
 <details class="catalog-source"><summary>components/surface/component.css</summary><pre><code>/* Surface — ui/Surface.tsx (surfaceStyles), rendered in CSS. Consumes --sem-* only.
  *
- * The chart's box laid over the moving map: opaque paper with its grain, a
- * hairline of ink round it and, by default, a second line inside it three of
- * paper in (the double rule). Over the map, paper is opaque: a translucent
+ * The chart's box laid over the moving map (mixed and rounded, 2026-10-24):
+ * opaque paper with its grain over the faintest light from above, the ink rule
+ * round it and, by default, the hairline just inside it, a box's corner, and
+ * the float's stacked shadow. Over the map, paper is opaque: a translucent
  * panel would be a second, blurred map. */
 
 .wf-surface {
@@ -17350,17 +17481,17 @@ code {
   border: var(--sem-rule-hairline) solid var(--sem-color-ink);
   border-radius: var(--sem-radius-surface);
   background-color: var(--sem-color-card);
-  background-image: var(--sem-texture-grain);
-  background-repeat: repeat;
+  background-image: var(--sem-texture-grain), var(--sem-gradient-float);
+  background-repeat: repeat, no-repeat;
   color: var(--sem-color-ink);
-  /* rule=&quot;double&quot; (the default): the frame's inner line, then the lift. */
-  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-surface);
+  /* rule=&quot;double&quot; (the default): the hairline, then the lift. */
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-float);
 }
 
 /* rule=&quot;single&quot;: a box inside another, or one small enough that two lines
- * would be most of it. The lift stays; only the inner line goes. */
+ * would be most of it. The lift stays; only the hairline goes. */
 .wf-surface--single {
-  box-shadow: var(--sem-shadow-surface);
+  box-shadow: var(--sem-shadow-float);
 }
 </code></pre></details>
 <details class="catalog-source"><summary>components/surface/component.html (demo)</summary><pre><code>&lt;!doctype html&gt;
@@ -17795,7 +17926,7 @@ code {
     </section>
 </div>
 <div class="catalog-doc">
-<p>A box to write in (<code>ui/TextInput.tsx</code> over <code>ui/control.ts</code>, <code>controlStyles</code>). Body-face text, an italic placeholder, a hairline box ruled at the stroke's 3:1, square but for the field's 2px.</p>
+<p>A box to write in (<code>ui/TextInput.tsx</code> over <code>ui/control.ts</code>, <code>controlStyles</code>). Body-face text, an italic placeholder, a hairline box ruled at the stroke's 3:1, at a control's corner (<code>sem.radius.control</code>, 10px).</p>
 <h4>Anatomy</h4>
 <ul><li>Box: <code>.wf-control</code> (the <code>box</code> slot) — at least <code>sem.size.touch</code> tall, <code>sem.space.x3</code> across, <code>sem.space.x2</code> between its parts, a <code>sem.rule.hairline</code> border in <code>sem.color.line-strong</code>, <code>sem.radius.control</code>, <code>sem.color.card</code>. The box is what is drawn: it takes the border, the hover and the ring, so a prefix sits inside the same outline as the text.</li><li>Element: <code>.wf-control__input</code> (the <code>input</code> slot) — bare, no border, no fill, no ring of its own; Newsreader at <code>sem.font.size.prose</code>, normal weight, in the box's ink.</li><li>Optional prefix: <code>.wf-control__adornment</code> — a currency sign or a unit, a figure's companion, so IBM Plex Mono at <code>sem.font.size.caption</code> in <code>sem.color.ink-muted</code>.</li><li>Shared: this file owns <code>.wf-control</code>, <code>.wf-control__input</code>, <code>.wf-control__adornment</code> and <code>.wf-control--active</code> for all three field controls, as <code>controlStyles</code> does in the product. Text area and select link <code>../text-input/component.css</code> and add only <code>--area</code> and <code>--select</code> in their own files.</li></ul>
 <h4>Variants</h4>
@@ -18981,7 +19112,9 @@ code {
         fill: var(--sem-color-pen);
       }
 
-      /* ---- the dock: paper along the foot of the map, a double rule along its top ---- */
+      /* ---- the dock: a sheet on the foot of the map (2026-10-24): the ink rule and
+         its hairline round the top and sides, a sheet's corner at the top, the
+         sheet's stack cast upward ---- */
       .dock__map {
         height: calc(var(--sem-space-step) * 24);
         background: var(--sem-color-sea-3);
@@ -18990,12 +19123,12 @@ code {
         position: relative;
         box-sizing: border-box;
         padding: 0 var(--sem-space-x3) var(--sem-space-x2);
-        /* The double rule runs along one edge: every side zeroed first. */
-        border: 0 double var(--sem-color-ink);
-        border-top-width: var(--sem-rule-double);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border-bottom: 0;
+        border-radius: var(--sem-radius-dialog) var(--sem-radius-dialog) 0 0;
         background-color: var(--sem-color-ground);
         background-image: var(--sem-texture-grain);
-        box-shadow: var(--sem-shadow-dock);
+        box-shadow: var(--sem-shadow-frame), var(--sem-shadow-dock);
         color: var(--sem-color-ink);
       }
 
@@ -21442,8 +21575,8 @@ code {
         height: calc(var(--sem-space-step) * 5);
         border: var(--sem-rule-hairline) solid var(--sem-color-ink);
         border-radius: var(--sem-radius-full);
-        background: var(--sem-color-card);
-        box-shadow: var(--sem-shadow-control);
+        background: var(--sem-color-card) var(--sem-gradient-raised);
+        box-shadow: var(--sem-shadow-raised);
         cursor: ew-resize;
         pointer-events: auto;
         -webkit-appearance: none;
@@ -21454,8 +21587,8 @@ code {
         height: calc(var(--sem-space-step) * 5);
         border: var(--sem-rule-hairline) solid var(--sem-color-ink);
         border-radius: var(--sem-radius-full);
-        background: var(--sem-color-card);
-        box-shadow: var(--sem-shadow-control);
+        background: var(--sem-color-card) var(--sem-gradient-raised);
+        box-shadow: var(--sem-shadow-raised);
         cursor: ew-resize;
         pointer-events: auto;
       }
@@ -21751,7 +21884,8 @@ code {
         box-sizing: border-box;
         padding: var(--sem-space-x3) var(--sem-space-x4);
         border: var(--sem-rule-hairline) solid var(--sem-color-ink);
-        box-shadow: var(--sem-shadow-frame);
+        border-radius: var(--sem-radius-surface);
+        box-shadow: var(--sem-shadow-frame), var(--sem-shadow-card);
         background-color: var(--sem-color-card);
         background-image: var(--sem-texture-grain);
       }
@@ -21788,9 +21922,11 @@ code {
         max-width: 100%;
         box-sizing: border-box;
         padding: var(--sem-space-x2) var(--sem-space-x3);
-        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border-bottom: 0;
+        border-radius: var(--sem-radius-dialog) var(--sem-radius-dialog) 0 0;
         background-color: var(--sem-color-card);
-        box-shadow: var(--sem-shadow-dock);
+        box-shadow: var(--sem-shadow-frame), var(--sem-shadow-dock);
       }
       .dockhead__top {
         display: flex;

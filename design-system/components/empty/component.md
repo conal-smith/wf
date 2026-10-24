@@ -7,7 +7,8 @@ display face's italic, and what to do about it.
 ## Anatomy
 
 - Container: `.wf-empty` — a card Pane (a `sem.rule.hairline` ink border,
-  `sem.color.card` with `sem.texture.grain`, square), with a tall inset
+  `sem.color.card` with `sem.texture.grain`, the hairline inside the rule, a
+  box's corner and the card's contact shadow), with a tall inset
   (`sem.space.x14` by `sem.space.x6`), everything centred in a grid
   `sem.space.x3` apart; sentences in `sem.font.family.body` at
   `sem.font.size.prose`, `sem.color.ink-muted`.
