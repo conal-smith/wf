@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12.24 17" width="12.24" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Force 10: a pennant for ten, so the feathers never run down the staff. -->
+  <path d="M1.5 16.1V3.45" />
+  <path d="M1.5 3.45L11.34 0.9L1.5 7.79Z" fill="currentColor" stroke-width="1.08" />
+</svg>

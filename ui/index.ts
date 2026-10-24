@@ -14,6 +14,13 @@ export {
   useFadeOut,
   type BackdropProps,
 } from "./Backdrop";
+export {
+  BeaufortGlyph,
+  beaufortGlyphStyles,
+  forceLabel,
+  type BeaufortGlyphProps,
+} from "./BeaufortGlyph";
+export { beaufortPath, type BeaufortDrawing } from "./beaufortPath";
 export { Button, type ButtonProps } from "./Button";
 export { Checkbox, type CheckboxProps } from "./Checkbox";
 export { Chip, type ChipProps } from "./Chip";

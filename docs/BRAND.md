@@ -166,6 +166,7 @@ exports its recipe (`buttonStyles`, …) for a link a router owns.
 | `Headline` | One a page; `headlineStyles().soft()` for the italic tail, `.mark()` for a magenta colon | `as` h1/h2. |
 | `Figure` | The number first, a gust raised, the unit small | `value`, `sup`, `unit`, `size` sm/md/lg, `alarm` (sup in the pen's ink), `label`. |
 | `StarGlyphs` | Solid, faded (the wind alone), dots to five; `null` is the dark | `stars`, `potential`, `size`, `slots` five/potential, `tone` ink/inverse/magenta, `label`. |
+| `BeaufortGlyph` | A wind in Force as the old charts drew it: a staff with a half feather a force, a pennant for ten, the force's number beside it | `force`, `size` (17 by a table's figure, 10 for a gust written small), `bare` (no number), `label` ("Force 5" by default). `beaufortPath` is its geometry, for any SVG (the loupe's foot box). |
 | `RatingTip` | An hour's stars as a button; hover, focus or tap opens the chart's box saying why | `label`, `detail`, `size` md (the spot page) / sm (the map's dock and card). The one explanation on the site. |
 | `PenLoop`, `PenUnderline`, `PenStrike` | The pen's marks round their children, drawn in once | Decoration (`aria-hidden`): say the same thing in words. `seed` picks the hand. |
 | `PenNote` | The pen's handwriting | `size` sm/md, `as`. |
@@ -195,6 +196,9 @@ the section's own, because each router takes a link over in its own way:
   mockup does.
 - Use `chart-magenta` for the best of something, once.
 - Draw stars with `StarGlyphs`, and leave the dark unrated.
+- Draw a wind in Force with `BeaufortGlyph` where a figure stands: the
+  glyph and the force together. Where only text fits (a label, a tooltip,
+  what a screen reader hears) write "Force 5", or "F5" in a line of figures.
 - Draw a glyph from the set (`shared/web/glyphSet.ts`, drawn by `ChartGlyph`
   in `shared/web/ChartGlyph.tsx`, `glyphs` from `src/chartGlyphs.tsx` on the
   map, and `SetGlyph` in the app) before reaching for lucide:

@@ -20,6 +20,7 @@ import {
 import { useState, type ReactNode } from "react";
 import {
   Avatar,
+  BeaufortGlyph,
   Button,
   Checkbox,
   Chip,
@@ -253,6 +254,16 @@ export default function Gallery() {
           <Figure size="lg" value={18} unit="kn" />
           <Figure value={13} sup={26} alarm />
           <Figure value="€450" />
+        </Row>
+        <Row label="force: the old charts' glyph and the number, 0 to 12; a gust small">
+          {Array.from({ length: 13 }, (_, force) => (
+            <span key={force} className="font-mono text-figure">
+              <BeaufortGlyph force={force} size={17} />
+            </span>
+          ))}
+          <span className="font-mono text-caption text-ink-muted">
+            g<BeaufortGlyph force={7} size={10} />
+          </span>
         </Row>
         <Row label="stars: 0 to 5, faded for the wind alone, and the dark">
           <StarGlyphs stars={0} />
