@@ -10,8 +10,10 @@ import { SHORE_LABEL, shoreAngle } from "../../force5/src/stars";
 import { presentWeather, type WeatherIcon } from "../../force5/src/surface";
 import { ChartGlyph } from "../../shared/web/ChartGlyph";
 import { skyGlyph } from "../../shared/web/glyphSet";
+import { BeaufortGlyph } from "../../ui/BeaufortGlyph";
 import { tv } from "../../ui/tv";
-import { compass } from "./spot";
+import { beaufort, type Units } from "../../force5/src/units";
+import { compass, windIn } from "./spot";
 
 const glyph = tv({
   slots: {
@@ -215,5 +217,26 @@ export function KeepStar({ on, size = 17 }: { on: boolean; size?: number }) {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+/**
+ * A wind in the reader's units, as a row writes it: the figure, or in Force
+ * the old charts' glyph beside the force. `small` for a gust written after
+ * it. The glyph names its force for a screen reader ("Force 5").
+ */
+export function WindValue({
+  knots,
+  units,
+  small = false,
+}: {
+  knots: number;
+  units: Units;
+  small?: boolean;
+}) {
+  return units === "bft" ? (
+    <BeaufortGlyph force={beaufort(knots)} size={small ? 10 : 17} />
+  ) : (
+    <>{windIn(knots, units)}</>
   );
 }

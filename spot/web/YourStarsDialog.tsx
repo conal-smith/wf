@@ -30,8 +30,9 @@ import {
   type Rider,
   type Skill,
 } from "../../force5/src/stars";
-import type { Units } from "../../force5/src/units";
+import { beaufort, type Units } from "../../force5/src/units";
 import {
+  BeaufortGlyph,
   Button,
   Dialog,
   Kicker,
@@ -54,15 +55,21 @@ import {
   WIND_KEYS,
   WIND_TOP,
   breakdown,
+  forceBand,
+  forceGusts,
+  forceTicks,
   gridStars,
   halfStars,
   knotsOf,
   moveGust,
+  moveGustForce,
   moveWind,
+  moveWindForce,
   offAt,
   onLevel,
   polar,
   rateExample,
+  said,
   setDirection,
   shown,
   stepped,
@@ -172,13 +179,16 @@ export default function YourStarsDialog({
 }: YourStarsDialogProps) {
   const s = styles();
   const unit = unitScale(units);
-  const [draft, setDraft] = useState<CustomRating>(
-    () => savedCustom(rider) ?? standardRating(rider),
+  // In Force, the handles stand on whole forces from the start.
+  const fit = (rating: CustomRating) =>
+    unit.force ? forceGusts(forceBand(rating)) : rating;
+  const [draft, setDraft] = useState<CustomRating>(() =>
+    fit(savedCustom(rider) ?? standardRating(rider)),
   );
   const saved = !!savedCustom(rider);
   // Each opening starts again from what is saved: Cancel keeps nothing.
   useEffect(() => {
-    if (open) setDraft(savedCustom(rider) ?? standardRating(rider));
+    if (open) setDraft(fit(savedCustom(rider) ?? standardRating(rider)));
     // The rider is read as it was when the dialog opened.
   }, [open]);
 
@@ -230,7 +240,7 @@ export default function YourStarsDialog({
             label: SKILL_LABEL[skill],
           }))}
           value={draft.base}
-          onChange={(skill) => setDraft(standardRating(rider, skill))}
+          onChange={(skill) => setDraft(fit(standardRating(rider, skill)))}
         />
       </div>
 
@@ -257,7 +267,11 @@ export default function YourStarsDialog({
             ["sweetLow", "sweetHigh", "fill"],
             ["sweetHigh", "max", "edge"],
           ]}
-          onMove={(key, kn) => setDraft((d) => moveWind(d, key, kn))}
+          onMove={(key, kn) =>
+            setDraft((d) =>
+              unit.force ? moveWindForce(d, key, kn) : moveWind(d, key, kn),
+            )
+          }
         />
         <div className={s.figs()}>
           <Fig name="Minimum" kn={draft.wind.min} unit={unit} />
@@ -284,7 +298,11 @@ export default function YourStarsDialog({
             worst: "Gusts take off the most from",
           }}
           spans={[["fine", "worst", "fill"]]}
-          onMove={(key, kn) => setDraft((d) => moveGust(d, key, kn))}
+          onMove={(key, kn) =>
+            setDraft((d) =>
+              unit.force ? moveGustForce(d, key, kn) : moveGust(d, key, kn),
+            )
+          }
         />
         <div className={s.figsThree()}>
           <Fig name="No effect up to" kn={draft.gust.fine} unit={unit} grow />
@@ -367,7 +385,8 @@ export default function YourStarsDialog({
                       ],
                     })}
                   >
-                    {shown(wind, unit)} gusting {shown(gust, unit)}
+                    <Speed kn={wind} unit={unit} /> gusting{" "}
+                    <Speed kn={gust} unit={unit} />
                     {dir === "crossOn" ? "" : `, ${DIRECTION_WORD[dir]}`}
                   </td>
                   <td className={s.td()}>
@@ -427,7 +446,14 @@ function Fig({
     <div className={grow ? s.figGrow() : s.fig()}>
       <span className={s.figName()}>{name}</span>
       <span className={s.figValue()}>
-        {shown(kn, unit)} <small className={s.figUnit()}>{unit.label}</small>
+        {unit.force ? (
+          <BeaufortGlyph force={beaufort(kn)} size={17} />
+        ) : (
+          <>
+            {shown(kn, unit)}{" "}
+            <small className={s.figUnit()}>{unit.label}</small>
+          </>
+        )}
       </span>
     </div>
   );
@@ -446,22 +472,37 @@ function XAxis({
   const s = styles();
   const top = topKn * unit.perKn;
   const labels = [];
-  for (let v = 0; v <= top + 1e-6; v += unit.tick) {
-    const x = (v / top) * 400;
-    const end = x > 380;
-    labels.push(
-      <text
-        key={v}
-        className={s.axis()}
-        x={end ? 400 : x}
-        y={y}
-        textAnchor={v ? (end ? "end" : "middle") : "start"}
-      >
-        {v}
-        {end ? ` ${unit.label}` : ""}
-      </text>,
-    );
-  }
+  // In Force, a tick where each force starts, named by it.
+  if (unit.force)
+    for (const tick of forceTicks(1, topKn))
+      labels.push(
+        <text
+          key={tick.kn}
+          className={s.axis()}
+          x={(tick.kn / topKn) * 400}
+          y={y}
+          textAnchor="middle"
+        >
+          {tick.force}
+        </text>,
+      );
+  else
+    for (let v = 0; v <= top + 1e-6; v += unit.tick) {
+      const x = (v / top) * 400;
+      const end = x > 380;
+      labels.push(
+        <text
+          key={v}
+          className={s.axis()}
+          x={end ? 400 : x}
+          y={y}
+          textAnchor={v ? (end ? "end" : "middle") : "start"}
+        >
+          {v}
+          {end ? ` ${unit.label}` : ""}
+        </text>,
+      );
+    }
   return <>{labels}</>;
 }
 
@@ -697,9 +738,13 @@ function Handles<K extends string>({
           data-handle={k}
           aria-label={labels[k]}
           aria-valuemin={0}
-          aria-valuemax={Number((top * unit.perKn).toFixed(unit.dp))}
+          aria-valuemax={
+            unit.force
+              ? beaufort(top)
+              : Number((top * unit.perKn).toFixed(unit.dp))
+          }
           aria-valuenow={Number(shown(values[k], unit))}
-          aria-valuetext={`${shown(values[k], unit)} ${unit.label}`}
+          aria-valuetext={said(values[k], unit)}
           className={s.thumb()}
           style={{ left: pct(values[k]) }}
           onKeyDown={key(k)}
@@ -1102,30 +1147,58 @@ function Together({ rider, unit }: { rider: Rider; unit: UnitScale }) {
     direction ? `, direction ${halfStars(direction)}` : "",
   ].join("");
   const axes = [];
-  for (let v = 0; v <= topW + 1e-6; v += unit.tick)
-    axes.push(
-      <text
-        key={`w${v}`}
-        className={s.axis()}
-        x={left + (v / topW) * w}
-        y={h + 14}
-        textAnchor="middle"
-      >
-        {v}
-      </text>,
-    );
-  for (let v = unit.tick; v <= topG + 1e-6; v += unit.tick)
-    axes.push(
-      <text
-        key={`g${v}`}
-        className={s.axis()}
-        x={left - 4}
-        y={h - (v / topG) * h + 3}
-        textAnchor="end"
-      >
-        {v}
-      </text>,
-    );
+  // In Force, a tick where each force starts, named by it.
+  if (unit.force) {
+    for (const tick of forceTicks(1, WIND_TOP))
+      axes.push(
+        <text
+          key={`w${tick.kn}`}
+          className={s.axis()}
+          x={X(tick.kn)}
+          y={h + 14}
+          textAnchor="middle"
+        >
+          {tick.force}
+        </text>,
+      );
+    for (const tick of forceTicks(1, GUST_TOP))
+      axes.push(
+        <text
+          key={`g${tick.kn}`}
+          className={s.axis()}
+          x={left - 4}
+          y={Y(tick.kn) + 3}
+          textAnchor="end"
+        >
+          {tick.force}
+        </text>,
+      );
+  } else {
+    for (let v = 0; v <= topW + 1e-6; v += unit.tick)
+      axes.push(
+        <text
+          key={`w${v}`}
+          className={s.axis()}
+          x={left + (v / topW) * w}
+          y={h + 14}
+          textAnchor="middle"
+        >
+          {v}
+        </text>,
+      );
+    for (let v = unit.tick; v <= topG + 1e-6; v += unit.tick)
+      axes.push(
+        <text
+          key={`g${v}`}
+          className={s.axis()}
+          x={left - 4}
+          y={h - (v / topG) * h + 3}
+          textAnchor="end"
+        >
+          {v}
+        </text>,
+      );
+  }
 
   return (
     <>
@@ -1211,7 +1284,8 @@ function Together({ rider, unit }: { rider: Rider; unit: UnitScale }) {
       </div>
       <div className={s.readout()} aria-live="polite" data-stars-readout>
         <span>
-          {shown(pw, unit)} gusting {shown(pg, unit)} {unit.label}
+          <Speed kn={pw} unit={unit} /> gusting <Speed kn={pg} unit={unit} />
+          {unit.force ? "" : ` ${unit.label}`}
         </span>
         <StarGlyphs
           stars={rating.stars}
@@ -1223,5 +1297,14 @@ function Together({ rider, unit }: { rider: Rider; unit: UnitScale }) {
         </span>
       </div>
     </>
+  );
+}
+
+/** A speed in the rider's unit, in a line: the figure, or the force's glyph. */
+function Speed({ kn, unit }: { kn: number; unit: UnitScale }) {
+  return unit.force ? (
+    <BeaufortGlyph force={beaufort(kn)} size={14} />
+  ) : (
+    <>{shown(kn, unit)}</>
   );
 }

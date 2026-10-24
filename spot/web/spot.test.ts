@@ -30,7 +30,10 @@ import {
   tideHeightAt,
   tideTrend,
   windArcs,
+  gustShown,
   windIn,
+  windSay,
+  windWords,
   type TideTurn,
   type SpotDay,
 } from "./spot";
@@ -124,6 +127,21 @@ describe("wind", () => {
     expect(windIn(15.4, "kn")).toBe(15);
     expect(windIn(19.44, "m/s")).toBe(10);
     expect(windIn(10, "km/h")).toBe(19);
+  });
+
+  it("writes a wind in Force as its force: a figure, a line, words", () => {
+    expect(windIn(18, "bft")).toBe(5);
+    expect(windSay(18, "bft")).toBe("F5");
+    expect(windSay(18, "kn")).toBe("18");
+    expect(windWords(18, "bft")).toBe("Force 5");
+    expect(windWords(18, "kn")).toBe("18 kn");
+  });
+
+  it("leaves out a gust in the wind's own force, in Force only", () => {
+    expect(gustShown(17, 20, "bft")).toBeNull();
+    expect(gustShown(17, 23, "bft")).toBe(23);
+    expect(gustShown(17, 20, "kn")).toBe(20);
+    expect(gustShown(17, null, "kn")).toBeNull();
   });
 
   it("averages directions as vectors, weighted by speed", () => {

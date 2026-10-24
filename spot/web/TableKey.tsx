@@ -7,7 +7,7 @@
 import type { Units } from "../../force5/src/units";
 import { Figure, Kicker } from "../../ui";
 import { tv } from "../../ui/tv";
-import { WindArrow } from "./glyphs";
+import { WindArrow, WindValue } from "./glyphs";
 import { RangeAxis, type Band } from "./RangeBar";
 import { windIn } from "./spot";
 
@@ -25,7 +25,9 @@ const styles = tv({
 
 /** "The gust, in red where it jumps": the rule `gustJumps` (./spot) applies. */
 export function gustWords(units: Units, unitText: string): string {
-  return `The gust, raised. In red where it jumps well over the wind: ${windIn(10, units)} ${unitText} or more above it, or 60% more.`;
+  // A jump is a difference, which has no force: in knots for a rider in Force.
+  const jump = units === "bft" ? "10 kn" : `${windIn(10, units)} ${unitText}`;
+  return `The gust, raised. In red where it jumps well over the wind: ${jump} or more above it, or 60% more.`;
 }
 
 /** What the frame over the wind says, for its column's head and the key. */
@@ -67,13 +69,24 @@ export function TableKey({
           <dt className={s.mark()}>
             <Figure
               size="sm"
-              value={windIn(14, units)}
-              sup={windIn(25, units)}
+              value={<WindValue knots={14} units={units} />}
+              sup={<WindValue knots={25} units={units} small />}
               alarm
             />
           </dt>
           <dd className={s.words()}>{gustWords(units, unitText)}</dd>
         </div>
+        {units === "bft" && (
+          <div className={s.item()}>
+            <dt className={s.mark()}>
+              <WindValue knots={17} units={units} />
+            </dt>
+            <dd className={s.words()}>
+              Force, as the old charts drew it: half a feather for each force,
+              and the force beside it. Force 5 is 17 to 21 knots.
+            </dd>
+          </div>
+        )}
         <div className={s.item()}>
           <dt className={s.mark()}>
             <span>

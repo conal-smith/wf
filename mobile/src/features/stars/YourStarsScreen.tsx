@@ -63,12 +63,15 @@ import {
   gridStars,
   halfStars,
   moveGust,
+  moveGustForce,
   moveWind,
+  moveWindForce,
   offAt,
   onLevel,
   polar,
   rateExample,
   setDirection,
+  said,
   shown,
   sliceAt,
   stepped,
@@ -159,7 +162,7 @@ export function YourStarsScreen() {
               ["sweetLow", "sweetHigh", "fill"],
               ["sweetHigh", "max", "edge"],
             ]}
-            onMove={(key, kn) => setDraft((d) => moveWind(d, key, kn))}
+            onMove={(key, kn) => setDraft((d) => (unit.force ? moveWindForce : moveWind)(d, key, kn))}
           />
           <View style={styles.figs}>
             <Fig name="Minimum" kn={draft.wind.min} unit={unit} />
@@ -184,7 +187,7 @@ export function YourStarsScreen() {
               worst: "Gusts take off the most from",
             }}
             spans={[["fine", "worst", "fill"]]}
-            onMove={(key, kn) => setDraft((d) => moveGust(d, key, kn))}
+            onMove={(key, kn) => setDraft((d) => (unit.force ? moveGustForce : moveGust)(d, key, kn))}
           />
           <View style={styles.figs}>
             <Fig name="No effect up to" kn={draft.gust.fine} unit={unit} />
@@ -291,7 +294,7 @@ function Legend({ name }: { name: string }) {
 
 function Fig({ name, kn, unit }: { name: string; kn: number; unit: UnitScale }) {
   return (
-    <View style={styles.fig} accessible accessibilityLabel={`${name}: ${shown(kn, unit)} ${unit.label}`}>
+    <View style={styles.fig} accessible accessibilityLabel={`${name}: ${said(kn, unit)}`}>
       <T variant="eyebrow" caps color="muted">
         {name}
       </T>
@@ -491,7 +494,7 @@ function Handles<K extends string>({
               min: 0,
               max: Number((top * unit.perKn).toFixed(unit.dp)),
               now: Number(shown(values[k], unit)),
-              text: `${shown(values[k], unit)} ${unit.label}`,
+              text: said(values[k], unit),
             }}
             accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
             onAccessibilityAction={(e) =>
