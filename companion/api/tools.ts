@@ -19,6 +19,7 @@ import {
   MIN_WEIGHT_KG,
   MIN_WING_M2,
   SHORE_LABEL,
+  GUSTIES,
   SKILLS,
   bestWindow,
   parseCustomRating,
@@ -114,6 +115,11 @@ export function riderFrom(context: RiderContext | null): Rider {
       ),
     ].sort((a, b) => a - b),
     ...(custom ? { custom } : {}),
+    ...(context.gusty &&
+    GUSTIES.includes(context.gusty) &&
+    context.gusty !== "some"
+      ? { gusty: context.gusty }
+      : {}),
     ...(starsFrom ? { starsFrom } : {}),
   };
 }

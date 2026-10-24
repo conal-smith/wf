@@ -194,6 +194,7 @@ export const riderKey = (rider: Rider) =>
     [...rider.wings].sort((a, b) => a - b),
     rider.custom ?? null,
     rider.starsFrom ?? null,
+    rider.gusty ?? "some",
   ]);
 
 /** Every live wind model with the spot squares of every place: what a rider rated apart is read from. */

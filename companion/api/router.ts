@@ -77,6 +77,7 @@ const riderSchema = z.object({
   skill: z.enum(["beginner", "intermediate", "advanced"]),
   wings: z.array(z.number().min(0).max(50)).max(12),
   custom: customRatingSchema.nullable().optional(),
+  gusty: z.enum(["little", "some", "lots"]).optional(),
 });
 
 const contextSchema = z.object({

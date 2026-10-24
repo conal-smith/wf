@@ -17,7 +17,7 @@
  *   done      the end of the turn
  */
 
-import type { CustomRating } from "../../force5/src/stars.js";
+import type { CustomRating, Gusty } from "../../force5/src/stars.js";
 import type { StarsChoice } from "../../force5/src/lead.js";
 
 export const COMPANION_NAME = "Gust";
@@ -64,6 +64,8 @@ export interface RiderContext {
   wings: number[];
   /** The rider's own star rating, which Gust then rates with. */
   custom?: CustomRating | null;
+  /** How much gusty wind bothers them; left out, "some". */
+  gusty?: Gusty;
   /** The one model the rider picked, which their stars rate (ECMWF past its run). */
   starsFrom?: StarsChoice;
 }

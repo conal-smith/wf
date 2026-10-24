@@ -37,4 +37,10 @@ describe("the rider a device sends", () => {
         .success,
     ).toBe(false);
   });
+
+  it("keeps how much gusty wind bothers the rider, and refuses anything else", () => {
+    expect(riderSchema.parse({ ...DEFAULT_RIDER, gusty: "lots" }).gusty).toBe("lots");
+    expect(riderSchema.parse(DEFAULT_RIDER).gusty).toBeUndefined();
+    expect(riderSchema.safeParse({ ...DEFAULT_RIDER, gusty: "very" }).success).toBe(false);
+  });
 });
