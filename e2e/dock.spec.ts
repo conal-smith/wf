@@ -648,7 +648,7 @@ test("a starred spot is kept on this device: the dock and the spot finder's favo
   // The finder's favourites, from the menu, kept over a reload.
   await page.getByRole("button", { name: "Site menu" }).click();
   await page
-    .getByRole("group", { name: "The chart" })
+    .getByRole("navigation", { name: "Site" })
     .getByRole("link", { name: "Spot finder" })
     .click();
   const cards = page.locator("[data-spot-card]");
@@ -925,7 +925,7 @@ test("the display options open over the dimmed map from the site menu, one panel
   const trigger = page.getByRole("button", { name: "Site menu" });
   const panel = page.locator("#map-options");
   // The map's controls are zoom and the layers; the options are in the
-  // menu, under the spot finder and over the map's information.
+  // menu, in the chart's own part, over the map's information.
   const names = await page
     .locator(".zbox button")
     .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
@@ -937,17 +937,15 @@ test("the display options open over the dimmed map from the site menu, one panel
   await trigger.focus();
   await page.keyboard.press("Enter");
   await expect(
-    page.getByRole("group", { name: "The chart" }).getByRole("button"),
+    page.getByRole("group", { name: "This chart" }).getByRole("button"),
   ).toHaveText([
-    "Customise",
     "Layers",
     "Display options",
     "About the map",
     "Take the tour",
   ]);
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Tab");
+  // Past the site's six rows (the navigation and the sections) and Layers.
+  for (let i = 0; i < 7; i++) await page.keyboard.press("Tab");
   await expect(menuRow(page, "Display options")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(panel).toBeVisible();

@@ -121,6 +121,48 @@ export function isFinderPath(pathname: string): boolean {
 }
 
 /**
+ * Customise, from a page that is not the map's: the chart, opened with the
+ * wizard over it. The map reads the word once and takes it out of the
+ * address (src/App.tsx); a page drawn over the map hands it back to the map
+ * instead of loading it (src/PagesOverMap.tsx).
+ */
+export const CUSTOMISE_PARAM = "customise";
+export const CUSTOMISE_HREF = `/?${CUSTOMISE_PARAM}`;
+
+/** Whether an address on this origin asks the map for Customise. */
+export function asksCustomise(url: { pathname: string; search: string }) {
+  return (
+    url.pathname === "/" && new URLSearchParams(url.search).has(CUSTOMISE_PARAM)
+  );
+}
+
+/** The site menu's rows that are the same on every page. */
+export type SiteNavId = "chart" | "finder" | "customise";
+
+/**
+ * The site's navigation, the first rows of the menu on every page, in this
+ * order (owner's ruling of 2026-10-25): the chart, the spot finder, and
+ * Customise. The chart is the map section's own page, so the sections under
+ * these leave the map out: it is here, once, as the chart.
+ */
+export const SITE_NAV: readonly {
+  id: SiteNavId;
+  href: string;
+  label: string;
+}[] = [
+  { id: "chart", href: "/", label: "Chart" },
+  { id: "finder", href: FINDER_HREF, label: "Spot finder" },
+  { id: "customise", href: CUSTOMISE_HREF, label: "Customise" },
+];
+
+/**
+ * The page the menu marks as the one you are on: one of the navigation's or
+ * of the sections', or none (a spot's page, "How the stars work").
+ */
+export type SitePageId =
+  Exclude<SiteNavId, "customise"> | Exclude<SiteSectionId, "map">;
+
+/**
  * Every path that `src/main.tsx` splits off from the map: everything else is
  * the map's. The build's preload hint for the map's chunk (vite.config.ts)
  * reads this list, so the hint and the entry point agree on which paths are
