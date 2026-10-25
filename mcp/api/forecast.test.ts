@@ -22,6 +22,8 @@ import {
   shoreOf,
   findSpot,
   hourEnsemble,
+  daySun,
+  dublinDate,
   hourWind,
   irishZone,
   loadSpots,
@@ -1218,6 +1220,107 @@ describe("findSessions", () => {
     expect(dark.searched).toBe(
       spots.filter((s) => s.county === "Dublin").length,
     );
+  });
+});
+
+describe("light", () => {
+  it("says how light each row is, and each Irish day's first and last light", async () => {
+    const source = fixtureSource();
+    const spot = findSpot(await loadSpots(source), "kilcrea").spot!;
+    const now = Date.parse("2026-10-24T22:00:00Z");
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(now, { hours: 30, stepHours: 1 }),
+      { now },
+    );
+    // Keyed by Irish day, each in Irish time with its zone.
+    expect(forecast.sun.map((d) => d.date)).toEqual([
+      "2026-10-24",
+      "2026-10-25",
+      "2026-10-26",
+    ]);
+    const sunday = forecast.sun[1];
+    expect(sunday.first_light).toMatch(/^Sun, 25 Oct, 0[67]:\d\d GMT$/);
+    expect(sunday.sunset).toMatch(/^Sun, 25 Oct, 17:0\d GMT$/);
+    expect(sunday.last_light).toMatch(/^Sun, 25 Oct, 17:[34]\d GMT$/);
+    const day = daySun(spot, "2026-10-25");
+    expect(day.firstLight!).toBeLessThan(day.sunrise!);
+    expect(day.lastLight! - day.sunset!).toBeGreaterThan(30 * 60000);
+    for (const hour of forecast.hours) {
+      const t = Date.parse(hour.time);
+      const { firstLight, sunrise, sunset, lastLight } = daySun(
+        spot,
+        dublinDate(t),
+      );
+      const expected =
+        t >= sunrise! && t <= sunset!
+          ? "day"
+          : t >= firstLight! && t <= lastLight!
+            ? "twilight"
+            : "dark";
+      expect(hour.light, hour.local).toBe(expected);
+      expect(hour.daylight).toBe(expected === "day");
+    }
+    // 17:00 GMT on Sunday starts before sunset; 18:00 is dark already.
+    const at = (local: string) =>
+      forecast.hours.find((h) => h.local === local)!;
+    expect(at("Sun, 25 Oct, 17:00 GMT").light).toBe("day");
+    expect(at("Sun, 25 Oct, 18:00 GMT").light).toBe("dark");
+    expect(at("Sun, 25 Oct, 07:00 GMT").light).toBe("twilight");
+    expect(forecast.units.light).toMatch(/last light/);
+  });
+
+  const sessions = async (daylightOnly: boolean) => {
+    const source = fixtureSource();
+    const spots = await loadSpots(source);
+    // Late September, when the sun sets just after an hour starts.
+    const now = Date.parse("2026-09-24T00:00:00Z");
+    const found = await findSessions(
+      source,
+      spots,
+      windowFor(now, { hours: 72, stepHours: 1 }),
+      {
+        minKnots: 0,
+        maxKnots: 80,
+        allowOffshore: true,
+        daylightOnly,
+        minSessionHours: 1,
+        counties: ["Dublin"],
+        limit: 30,
+        now,
+      },
+    );
+    return found.spots.flatMap((r) =>
+      r.sessions.map((s) => ({ spot: r.spot, ...s })),
+    );
+  };
+
+  it("ends find_wind's sessions by last light", async () => {
+    const all = await sessions(true);
+    expect(all.length).toBeGreaterThan(0);
+    for (const s of all) {
+      const end = Date.parse(s.to);
+      const { lastLight } = daySun(s.spot, s.to.slice(0, 10));
+      expect(end).toBeLessThanOrEqual(lastLight!);
+      expect(s.dark_hours).toBeUndefined();
+    }
+    const clipped = all.filter((s) => s.ends_at_last_light);
+    expect(clipped.length).toBeGreaterThan(0);
+    for (const s of clipped) {
+      expect(Date.parse(s.to)).toBe(
+        daySun(s.spot, s.to.slice(0, 10)).lastLight,
+      );
+      expect(s.local.endsWith(localStamp(Date.parse(s.to)).slice(-9))).toBe(
+        true,
+      );
+    }
+  });
+
+  it("lets find_wind run past last light when asked, and counts the dark hours", async () => {
+    const all = await sessions(false);
+    expect(all.some((s) => (s.dark_hours ?? 0) > 0)).toBe(true);
+    expect(all.some((s) => s.ends_at_last_light)).toBe(false);
   });
 });
 

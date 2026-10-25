@@ -794,6 +794,36 @@ export function axis(window: Window): number[] {
   return times;
 }
 
+/**
+ * How light it is at an instant: "day" from sunrise to sunset, "twilight"
+ * from first light (civil dawn, the sun 6° below the horizon) to sunrise and
+ * from sunset to last light (civil dusk), "dark" otherwise. The spot page
+ * shades the same bands.
+ */
+export type Light = "day" | "twilight" | "dark";
+
+export function lightAt(spot: RidingSpot, time: number): Light {
+  const sun = sunTimes(spot.lat, spot.lon, new Date(time));
+  if (sun.polar) return sun.polar === "day" ? "day" : "dark";
+  const within = (from: Date | null, to: Date | null) =>
+    !!from && !!to && time >= from.getTime() && time <= to.getTime();
+  if (within(sun.sunrise, sun.sunset)) return "day";
+  return within(sun.civilDawn, sun.civilDusk) ? "twilight" : "dark";
+}
+
+/** First light, sunrise, sunset and last light of an Irish day ("2026-10-25"). */
+export function daySun(spot: RidingSpot, date: string) {
+  // An Irish day's light all falls inside the UTC day of the same date.
+  const sun = sunTimes(spot.lat, spot.lon, new Date(`${date}T12:00:00Z`));
+  const ms = (value: Date | null) => (value ? value.getTime() : null);
+  return {
+    firstLight: ms(sun.civilDawn),
+    sunrise: ms(sun.sunrise),
+    sunset: ms(sun.sunset),
+    lastLight: ms(sun.civilDusk),
+  };
+}
+
 /** Sunrise to sunset at the spot, the same equations the dock draws night from. */
 export function daylight(spot: RidingSpot, time: number): boolean {
   const sun = sunTimes(spot.lat, spot.lon, new Date(time));
@@ -1438,7 +1468,14 @@ async function spotSea(
 export interface ForecastHour {
   time: string;
   local: string;
+  /** The sun is up at the row's time: the hours the stars are rated over. */
   daylight: boolean;
+  /**
+   * How light it is at the row's time: day, twilight (first light to sunrise,
+   * sunset to last light) or dark. spotForecast always gives it; an hour
+   * built elsewhere (the spot page's tests) may not.
+   */
+  light?: Light;
   wind: HourWind | null;
   /** How the headline wind meets the shore; null where the facing is unknown. */
   shore?: ShoreAngle | null;
@@ -1446,6 +1483,18 @@ export interface ForecastHour {
   weather?: HourWeather | null;
   /** Where an ensemble reaches the spot: the spread of its members. */
   ensemble?: HourEnsemble | null;
+}
+
+/** One Irish day's light at the spot, in Irish time with its zone. */
+export interface DayLight {
+  /** The Irish calendar day, "2026-10-25". */
+  date: string;
+  /** Civil dawn: light enough to see the water before sunrise. */
+  first_light: string | null;
+  sunrise: string | null;
+  sunset: string | null;
+  /** Civil dusk: the end of usable light; be off the water by then. */
+  last_light: string | null;
 }
 
 export interface SpotForecast {
@@ -1461,7 +1510,7 @@ export interface SpotForecast {
     weather_step_hours?: number;
   };
   hours: ForecastHour[];
-  sun: { date: string; sunrise: string | null; sunset: string | null }[];
+  sun: DayLight[];
   tides: SpotTides | { note: string } | null;
   sea_temperature: SpotSea | null;
   sources: {
@@ -1543,6 +1592,12 @@ export const UNITS = {
     "glyph drawn for the hour: clear, partly, cloudy, fog, drizzle, rain, " +
     "showers, thunder or snow, rain where a dry code has 0.3 mm or more in " +
     "the hour's rain interval. Describe the sky from these, not from the bare code",
+  light:
+    "each row's `light` is at its time: day from sunrise to sunset, twilight " +
+    "from first light (civil dawn, the sun 6° down) to sunrise and from " +
+    "sunset to last light (civil dusk), dark otherwise. `daylight` is the " +
+    "sun being up, the hours wingfoil.ie rates. `sun` gives each Irish day's " +
+    "first light, sunrise, sunset and last light: a session ends by last light",
   time:
     "`time` is UTC (ISO 8601). Every `local` label, and sunrise, sunset, the " +
     "tides' and the sea temperature's times, is Irish time ending in its zone: " +
@@ -1587,6 +1642,7 @@ export async function spotForecast(
       time: iso(time),
       local: localStamp(time),
       daylight: daylight(spot, time),
+      light: lightAt(spot, time),
       wind,
       shore: shoreOf(facing, wind),
     };
@@ -1611,13 +1667,17 @@ export async function spotForecast(
         ...hour.weather,
         rain_mm: rainEach.get(Date.parse(hour.time)) ?? null,
       });
-  const days = new Set(hours.map((h) => h.time.slice(0, 10)));
-  const sun = [...days].map((day) => {
-    const times = sunTimes(spot.lat, spot.lon, new Date(`${day}T12:00:00Z`));
+  const days = new Set(hours.map((h) => dublinDate(Date.parse(h.time))));
+  const stamp = (time: number | null) =>
+    time === null ? null : localStamp(time);
+  const sun = [...days].map((date): DayLight => {
+    const day = daySun(spot, date);
     return {
-      date: day,
-      sunrise: times.sunrise ? localStamp(times.sunrise.getTime()) : null,
-      sunset: times.sunset ? localStamp(times.sunset.getTime()) : null,
+      date,
+      first_light: stamp(day.firstLight),
+      sunrise: stamp(day.sunrise),
+      sunset: stamp(day.sunset),
+      last_light: stamp(day.lastLight),
     };
   });
   return {
@@ -1655,9 +1715,15 @@ export async function spotForecast(
 
 export interface Session {
   from: string;
+  /** Its last hour's end, or last light where that comes first. */
   to: string;
   local: string;
+  /** The forecast hours it spans; the last may end early, at last light. */
   hours: number;
+  /** It stops at last light (civil dusk), not at its last hour's end. */
+  ends_at_last_light?: boolean;
+  /** Hours after last light or before first light: only where daylight_only is off. */
+  dark_hours?: number;
   wind_kn: number;
   min_kn: number;
   max_kn: number;
@@ -1698,6 +1764,11 @@ export interface FindOptions {
   maxGustFactor?: number;
   /** Count hours with the wind dead offshore too (they are left out by default). */
   allowOffshore?: boolean;
+  /**
+   * Only hours whose start is between sunrise and sunset, the hours the stars
+   * rate, each session ending by last light. Off, every hour counts, dark
+   * ones too, and a session runs to its last hour's end.
+   */
   daylightOnly: boolean;
   minSessionHours: number;
   /** Only spots in these counties. */
@@ -1787,7 +1858,8 @@ export async function findSessions(
     const sessions: Session[] = [];
     let run: SessionHour[] = [];
     const close = () => {
-      if (run.length >= options.minSessionHours) sessions.push(session(run));
+      if (run.length >= options.minSessionHours)
+        sessions.push(session(run, spot, options.daylightOnly));
       run = [];
     };
     for (const time of times) {
@@ -1858,7 +1930,11 @@ interface SessionHour {
   shore: ShoreAngle | null;
 }
 
-function session(run: SessionHour[]): Session {
+function session(
+  run: SessionHour[],
+  spot: RidingSpot,
+  byLastLight: boolean,
+): Session {
   const speeds = run.map((r) => r.hour.wind_kn);
   const gusts = run.flatMap((r) =>
     r.hour.gust_max_kn === null ? [] : [r.hour.gust_max_kn],
@@ -1883,11 +1959,23 @@ function session(run: SessionHour[]): Session {
   }, null);
   const first = run[0].time;
   const last = run[run.length - 1].time;
+  // Never past last light: an hour that starts before sunset is rated, but a
+  // rider must be off the water by dusk.
+  const lastLight = byLastLight
+    ? daySun(spot, dublinDate(last)).lastLight
+    : null;
+  const clipped = lastLight !== null && lastLight < last + HOUR;
+  const end = clipped ? lastLight : last + HOUR;
+  const dark = byLastLight
+    ? 0
+    : run.filter((r) => lightAt(spot, r.time) === "dark").length;
   return {
     from: iso(first),
-    to: iso(last + HOUR),
-    local: localSpan(first, last + HOUR),
+    to: iso(end),
+    local: localSpan(first, end),
     hours: run.length,
+    ...(clipped && { ends_at_last_light: true }),
+    ...(dark > 0 && { dark_hours: dark }),
     wind_kn: round(speeds.reduce((a, b) => a + b, 0) / speeds.length),
     min_kn: Math.min(...speeds),
     max_kn: Math.max(...speeds),
