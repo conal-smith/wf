@@ -77,6 +77,20 @@ whole run about 7 h 35 m after its run time (since 19 October 2026; before, the 
 run alone, with `--ecmwf-cycle 00`). See the
 [ECMWF specification](ECMWF_15_DAY_PLAN.md) for source, contract and acceptance tests.
 
+ECMWF's crop is its own and the widest on the map: **30°W–2°E, 44–62°N**, 129 × 73
+cells (`fetch_ecmwf.BBOX`), where every other model crops to the shared 18°W–2°E,
+48–59°N (`fetch_forecast.BBOX`, 81 × 45 at 0.25°; HARMONIE and the regional models
+are smaller still). Fifteen days is long enough for a storm to cross the Atlantic, and
+a rider on ECMWF can see it coming only where the grid reaches; the chart pans as far
+as this box (`CHART_BOUNDS`, force5/src/chartStyle.ts), and a model with a smaller box
+draws nothing past its own edge. Each field is downloaded whole, so the wider crop costs
+no more download. It costs larger tiles: four native tiles and one overview a frame
+instead of two and one, 2.7 MB of brotli a run instead of 1.2 MB, and an Irish view
+reads about 20 KB for the hour on screen instead of about 12 KB (measured on the 00 UTC
+run of 25 October 2026). The spot series are the same 0.25° points either side of each
+spot, so the dock, the blend, verification, the forecast server and the MCP read
+identical values. The bundle prefix went from `360h-v2` to `360h-v3` with it.
+
 GFS is supported the same way: `--models gfs` imports NOAA's public-domain 0.25°
 deterministic run. The worker's `--step` selects the horizon GFS actually
 publishes at that cadence: `--step 3` gives 0–240 h (81 frames) and `--step 1`
@@ -193,7 +207,7 @@ stops, and `--cycle 0` makes discovery look for the 00 UTC run only, so the
 service downloads one ensemble a day. Gusts are kept.
 
 With `--from-hour 0` the ensemble **mean** is also published as map frames, with
-the same Ireland crop and frame contract as the control product, and a
+the shared Ireland crop (not the control's wider Atlantic one) and the control's frame contract, and a
 single-entry `stepRanges` ladder. A later start publishes no frames, no
 `stepRanges` and no `gustMissingHours`: it is a chart-only ensemble, which the
 publisher and the site both accept. Per-spot member series live in the
@@ -413,8 +427,8 @@ disabled and the site does not fetch it. The adapter below is unchanged; see
 `--models aifs` runs `fetch_aifs.py`, which imports ECMWF's operational machine-learned
 deterministic forecast (`model="aifs-single"`, MARS class `ai`) from the same public
 0.25° open data as the IFS control, with no API key. It publishes
-`weather/aifs.json`: 61 frames in uniform 6-hour steps to +360 h, on the same
-81 × 45 Ireland/Atlantic crop as `ecmwf`. The registry marks it `workerStep: False`, so
+`weather/aifs.json`: 61 frames in uniform 6-hour steps to +360 h, on the shared
+81 × 45 Ireland/Atlantic crop (`ecmwf`'s own reaches further west, north and south). The registry marks it `workerStep: False`, so
 the worker never forces its 1/3-hour `--step` on a source whose only cadence is six
 hours; it does pass `--ecmwf-source`, like the other three ECMWF adapters.
 
@@ -450,7 +464,7 @@ disabled and the site does not fetch it. The adapter below is unchanged; see
 same open data — the WAM ocean wave model coupled to IFS — and publishes the
 `kind: "wave"` bundle `weather/ecmwf-wave.json`. The 00 and 12 UTC cycles run to +360 h
 on exactly the wind control's ladder (3-hourly to +144 h, then 6-hourly), 85 frames of
-ten variables at native 0.25° on the same crop as `ecmwf`. `cadence.expected_hours` now
+ten variables at native 0.25° on the shared 81 × 45 crop, not the wind control's wider one. `cadence.expected_hours` now
 holds both `ecmwf` and `ecmwf-wave` to that ladder, whole or stopped early but never
 resampled, so a truncated or interpolated cadence cannot publish under either id.
 
@@ -1067,7 +1081,7 @@ weather/harmonie-RUN-60h-v2-HASH8/t/1/26/6/000.bin           an overview tile, 2
 weather/harmonie-RUN-60h-v2-HASH8/spots/n52w008.json         every spot's series in one 2° square
 weather/latest.json                                         ICON-EU's pointer
 weather/icon-eu-RUN-72h-v1-HASH8/t/LEVEL/X/Y/HOUR.bin       ICON-EU's tiles
-weather/ecmwf.json, weather/ecmwf-RUN-360h-v2-HASH8/        ECMWF wind + gust
+weather/ecmwf.json, weather/ecmwf-RUN-360h-v3-HASH8/        ECMWF wind + gust, 30°W–2°E, 44–62°N
 weather/gfs.json, weather/gfs-RUN-240h-v1-HASH8/            GFS wind + instantaneous gust
 weather/gefs.json, weather/gefs-RUN-240h-v1-HASH8/          GEFS: mean frames, members in the squares
 weather/ecmwf-ens.json, weather/ecmwf-ens-RUN-144h-25m-v1-HASH8/  ECMWF ENS, likewise
