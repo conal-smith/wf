@@ -17,7 +17,16 @@
     - a bit of fun: four starts pulsing, five really pumps.
   Today's lights are drawn as force5/src/lights.ts and src/map.css draw them,
   so the two can be compared on one made-up Dublin hour (21 kn south-west).
-  ?view=today  ?five=magenta  ?pulse=off|five  ?under=wind  ?zoom=out
+  ?view=today  ?five=nest|solid|disc  ?four=single|nest  ?ramp=light|spots
+  ?pulse=off|five  ?under=wind  ?zoom=out
+
+  Second round (25 October 2026), the owner's steer on the first:
+    - keep the stars magenta; five like before, the only one in the full,
+      deep chart magenta;
+    - one to four on the gradient;
+    - the four's star within a star may be better than the five's disc;
+    - a hollow star can't mean one star: an outline already means a star the
+      hour would have had but for something (see the rating plan).
 -->
 <style>
 @font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
@@ -170,9 +179,18 @@ ol.qs b { font-family: var(--display); font-style: italic; }
   <button data-set="view" data-val="new" aria-pressed="true">Proposed</button>
   <button data-set="view" data-val="today">Today</button>
   <span class="gap"></span>
+  <span class="lab">Four</span>
+  <button data-set="four" data-val="single">Star</button>
+  <button data-set="four" data-val="nest">Star in a star</button>
+  <span class="gap"></span>
   <span class="lab">Five</span>
-  <button data-set="five" data-val="black" aria-pressed="true">Black</button>
-  <button data-set="five" data-val="magenta">Deep magenta</button>
+  <button data-set="five" data-val="nest">Star in a star</button>
+  <button data-set="five" data-val="solid">Solid</button>
+  <button data-set="five" data-val="disc">Black disc</button>
+  <span class="gap"></span>
+  <span class="lab">1–4</span>
+  <button data-set="ramp" data-val="light">Lighter</button>
+  <button data-set="ramp" data-val="spots">As on the spots page</button>
   <span class="gap"></span>
   <span class="lab">Pulse</span>
   <button data-set="pulse" data-val="both" aria-pressed="true">4 &amp; 5</button>
@@ -193,7 +211,7 @@ ol.qs b { font-family: var(--display); font-style: italic; }
   <section class="sheet">
     <p class="eyebrow">1 · The ladder</p>
     <h2>One light for each number of stars</h2>
-    <p class="lede">Today's chart writes the number in a ring. The proposal draws the star itself, in the stars' own colours from the spots page. A plain circle means no stars. Four is a star within a star. Five is a star in a black disc. The short arrow still blows downwind. Dark hours, pending ratings and offshore spots keep today's meaning.</p>
+    <p class="lede">Today's chart writes the number in a ring. The proposal draws the star itself. One to four stars are on the pink gradient, and the star grows a little with each. Five is the only one in the full chart magenta, as five was before, drawn as a star within a star. A plain circle means no stars. The short arrow still blows downwind. Dark hours, pending ratings and offshore spots keep today's meaning.</p>
     <div class="ladder" id="ladder"></div>
     <div class="tall" id="tall"></div>
     <p class="scale-note">Drawn a third larger than on the chart. The chart below shows them at their real size.</p>
@@ -254,7 +272,7 @@ ol.qs b { font-family: var(--display); font-style: italic; }
       </div>
       <div class="tile">
         <h3>The spots page</h3>
-        <p class="note">Already live (7e): coloured stars, with the rest of the five outlined. Nothing changes here. This page sets the colours for the others.</p>
+        <p class="note">Live today (7e): coloured stars, with the rest of the five outlined. With the lighter gradient, one to four get paler and five turns the chart magenta, the same as everywhere else.</p>
         <div class="pair">
           <span class="eyebrow">Today</span><div class="hours" id="cards"></div>
         </div>
@@ -271,8 +289,11 @@ ol.qs b { font-family: var(--display); font-style: italic; }
     <p class="eyebrow">4 · Before we build it</p>
     <h2>Questions for you</h2>
     <ol class="qs">
-      <li><b>Can you tell one, two and three apart?</b> Pink to magenta is subtle at map size, so the star also grows a little with each one. Is that enough, or should a 1–3 star carry its number too?</li>
-      <li><b>Five: black or deep magenta?</b> You said fully black. Black stands out most on the chart and on the coloured wind. Deep magenta keeps the star colours unbroken. Switch between them with <i>Five</i> in the bar.</li>
+      <li><b>The gradient.</b> For five to stand apart in the full magenta, one to four need to be lighter than they are on the spots page today. The spots page would change to match. Compare them with <i>1–4</i> in the bar.</li>
+      <li><b>Five's shape.</b> <i>Star in a star</i> (the shape you liked on four), <i>Solid</i> (the same, filled), or the first round's <i>Black disc</i>.</li>
+      <li><b>Four's shape.</b> A plain star, so only five has the special shape, or a star in a star too, so four and five both stand out.</li>
+      <li><b>Can you tell one, two and three apart?</b> The star grows a little with each one as well as deepening. Is that enough, or should they carry the number?</li>
+      <li><b>No hollow star for one.</b> An outline already means a star the hour lost to something (gusts, a cross-offshore wind…). The rating plan defines it.</li>
       <li><b>How much motion?</b> The proposal: four breathes slowly, five pumps like a heartbeat. With lots of good spots on a windy day, the chart could get busy. <i>5 only</i> keeps the movement for the best. Motion stops for anyone with reduced motion turned on, and while the map is being dragged.</li>
       <li><b>The open spot's wedge.</b> Today the selected spot shows a pulsing wedge of the headings you can hold. The plan is to keep it, pulsing behind the new light.</li>
       <li><b>The app.</b> The phone app's map would get the same lights in the same release.</li>
@@ -282,10 +303,15 @@ ol.qs b { font-family: var(--display); font-style: italic; }
 </main>
 
 <script>
-const COL = ["", "var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)", "var(--s5)"];
+// One to four on the gradient; five the chart's own magenta, as before.
+const RAMPS = {
+  light: ["", "#eeb3cf", "#e290b9", "#d56ba1", "#c54689", "#b0186a"],
+  spots: ["", "#e28bb3", "#d2609a", "#bd3d84", "#a01f6c", "#b0186a"],
+};
+const COL = new Proxy([], { get: (_, i) => RAMPS[state.ramp][i] });
 const STAR = "M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z";
 const star = (r, attrs, dy = 0) => `<path d="${STAR}" transform="translate(0 ${dy}) scale(${r / 5})" ${attrs}/>`;
-const state = { view: "new", five: "black", pulse: "both", under: "plain", zoom: "in" };
+const state = { view: "new", four: "single", five: "nest", ramp: "light", pulse: "both", under: "plain", zoom: "in" };
 
 /** The downwind arrow, starting `from` units out from the centre. */
 function arrow(deg, start, cls = "") {
@@ -310,6 +336,13 @@ function todayLight(k) {
   return `<svg viewBox="-30 -30 60 60" aria-hidden="true">${to == null ? "" : arrow(to, 9.6, arrowCls)}<circle ${ring} r="7.6"/>${strike}<text ${text} y="3.4" text-anchor="middle">${fig}</text></svg>`;
 }
 
+/** A star within a star: an outline round a filled one, in one colour. */
+function nested(colour, r, width = 1.5) {
+  return `${star(r, `class="halo" fill="none" stroke="${colour}" stroke-width="1.4" vector-effect="non-scaling-stroke"`)}
+    <g class="pump">${star(r, `fill="var(--ground)" stroke="${colour}" stroke-width="${width}" stroke-linejoin="round" vector-effect="non-scaling-stroke"`)}
+    ${star(r * .55, `fill="${colour}" stroke="#1a1d2166" stroke-width=".8" vector-effect="non-scaling-stroke"`, 0.6)}</g>`;
+}
+
 /** The proposed light. */
 function newLight(k) {
   const { n, kind, to } = k;
@@ -327,18 +360,28 @@ function newLight(k) {
   } else if (n <= 3) {
     const r = [0, 7.6, 8.6, 9.6][n];
     body = star(r, `fill="${COL[n]}" class="edge" vector-effect="non-scaling-stroke"`); reach = r * .82 + 2;
+  } else if (n === 4 && state.four === "single") {
+    cls = "m4";
+    body = `${star(10.6, `class="halo" fill="none" stroke="${COL[4]}" stroke-width="1.4" vector-effect="non-scaling-stroke"`)}
+      <g class="pump">${star(10.6, `fill="${COL[4]}" class="edge" vector-effect="non-scaling-stroke"`)}</g>`;
+    reach = 10.6 * .82 + 2;
   } else if (n === 4) {
     cls = "m4";
-    body = `${star(13.5, `class="halo" fill="none" stroke="${COL[4]}" stroke-width="1.4" vector-effect="non-scaling-stroke"`)}
-      <g class="pump">${star(13.5, `fill="var(--ground)" stroke="${COL[4]}" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"`)}
-      ${star(7.4, `fill="${COL[4]}" stroke="#1a1d2166" stroke-width=".8" vector-effect="non-scaling-stroke"`, 0.6)}</g>`;
+    body = nested(COL[4], 13.5);
+    reach = 12.5;
+  } else if (five === "disc") {
+    cls = "m5";
+    body = `<circle class="halo" r="11.5" fill="none" stroke="var(--ink)" stroke-width="1.6"/>
+      <g class="pump"><circle r="11.5" fill="var(--ink)"/>${star(8.6, `fill="var(--ground)"`, 0.5)}</g>`;
     reach = 12.5;
   } else {
     cls = "m5";
-    const disc = five === "black" ? "var(--ink)" : COL[5];
-    body = `<circle class="halo" r="11.5" fill="none" stroke="${disc}" stroke-width="1.6"/>
-      <g class="pump"><circle r="11.5" fill="${disc}"/>${star(8.6, `fill="var(--ground)"`, 0.5)}</g>`;
-    reach = 12.5;
+    body = five === "solid"
+      ? `${star(14.5, `class="halo" fill="none" stroke="${COL[5]}" stroke-width="1.5" vector-effect="non-scaling-stroke"`)}
+        <g class="pump">${star(14.5, `fill="${COL[5]}" class="edge" vector-effect="non-scaling-stroke"`)}
+        ${star(6.6, `fill="var(--ground)"`, 0.7)}</g>`
+      : nested(COL[5], 14.5, 2.2);
+    reach = 13.5;
   }
   if (kind === "xoff") arrowCls = "pen";
   return `<svg viewBox="-30 -30 60 60" aria-hidden="true" class="${cls}">${to == null ? "" : arrow(to, reach, arrowCls)}${body}</svg>`;
