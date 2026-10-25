@@ -8,11 +8,7 @@
  */
 import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { modelName } from "../../../force5/src/lead";
-import {
-  SHORE_LABEL,
-  starsText,
-  type HourRating,
-} from "../../../force5/src/stars";
+import { starsText, type HourRating } from "../../../force5/src/stars";
 import type { Units } from "../../../force5/src/units";
 import { compass } from "../../../force5/src/weather";
 import { windSay } from "../../../spot/web/spot";
@@ -20,6 +16,7 @@ import { colors, fonts, hitTarget, shadow, space } from "../theme/tokens";
 import { Button } from "./Button";
 import { WindArrow } from "./Glyphs";
 import { Rule } from "./Rule";
+import { tipShoreText } from "./ratingTipLogic";
 import { Stars } from "./Stars";
 import { T } from "./Text";
 
@@ -38,6 +35,8 @@ export interface HourExplanation {
   sweet: { low: number; high: number };
   /** Where the shore is not known, the wind alone is rated. */
   facingKnown: boolean;
+  /** A spot on the water: the tip says nothing of the shore, as for any spot. */
+  onWater?: boolean;
   /** The one model the hour was rated from (PlaceHour.model); null where none reached it. */
   model?: string | null;
 }
@@ -121,15 +120,12 @@ export function RatingTip({
                   </T>
                 </View>
               )}
-              {e.windKn !== null && (
-                <T variant="body" color="ink2">
-                  {e.rating?.shore
-                    ? SHORE_LABEL[e.rating.shore]
-                    : e.facingKnown
-                      ? "Shore angle unknown for this hour"
-                      : "Facing unknown: the wind alone is rated"}
-                </T>
-              )}
+              {e.windKn !== null &&
+                tipShoreText(e.rating?.shore, e.facingKnown, !!e.onWater) !== null && (
+                  <T variant="body" color="ink2">
+                    {tipShoreText(e.rating?.shore, e.facingKnown, !!e.onWater)}
+                  </T>
+                )}
               {e.rating?.reasons.map((reason) => (
                 <T
                   key={reason}
