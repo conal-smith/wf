@@ -835,6 +835,35 @@ publishes `verify/scores.json`. `archive/` is outside every data root and every 
 path refuses it by name. Everything about it — sources, licences, the scores and what
 they cannot say — is in [VERIFICATION.md](VERIFICATION.md).
 
+### Met Éireann's weather warnings
+
+The `warnings` job (`fetch_warnings.py`) copies Met Éireann's open warnings feed,
+`https://www.met.ie/Open_Data/json/warning_ALL.json` (every land and marine warning in
+force or still to come; format: Met Éireann's *Warning RSS/CAP/JSON Description*, June
+2020), to `marine/warnings.json`, at :25 every hour. The map's dock and
+lights, the spot page and the MCP server all read that one file through
+`force5/src/warnings.ts`, which holds the rule they share: an orange or red warning
+covering an hour stands in place of its stars, and no tool calls the hour rideable; a
+yellow one is shown beside them.
+
+- **Unaltered.** Each warning is copied exactly as published (CC BY 4.0 with Met
+  Éireann's conditions: credit Met Éireann; never change a warning's issue time, onset,
+  expiry, area, description, severity, certainty, event or headline; keep current and
+  remove expired ones). The job leaves out warnings already expired, and fails rather
+  than publish anything from a feed whose shape it does not know: an empty list means
+  "no warnings", which a broken feed must never say. `validate_warnings_bundle` checks
+  the same before upload.
+- **Fresh, or not shown.** `run` is the hour the feed was read in. The readers drop a
+  warning at its own expiry whatever the file's age, and stop trusting a file older than
+  `maxAgeHours` (3, `WARNINGS_MAX_AGE_HOURS` in `force5/src/warnings.ts`; a test holds
+  them equal): the site then shows only its link to Met Éireann's warnings, and the MCP
+  says they could not be checked. A warning issued, upgraded or lifted takes up to about
+  an hour to show; the link to met.ie is there for the latest.
+- **Where a warning applies.** Land warnings name counties, marine ones the coastal
+  stretches between headlands; `data/locations/warning-areas.json` says which of each
+  every riding place takes, and why (its `method`).
+- **Cost.** One small request an hour; about 135 MB peak with the worker, like `wind-obs`.
+
 ### Deleting what is superseded
 
 A run directory is deleted once nothing can still want it, and not at the moment its

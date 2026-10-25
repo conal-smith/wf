@@ -55,6 +55,7 @@ DESCRIPTIONS = {
     "sea-temperature": "Sea temperature observations",
     "blend": "Every spot's wind blend, for the map's stars",
     "wind-obs": "Wind observations (Met Éireann stations, Marine Institute buoys)",
+    "warnings": "Met Éireann weather warnings, land and marine",
     "forecast-archive": "Archive every served wind run and the observations",
     "verify": "Score every model and the blend against the observations",
 }
@@ -97,6 +98,7 @@ RESOURCES = {
     "gfs-weather": MODEL,
     "ecmwf-ens": ENSEMBLE, "ecmwf-wave": ENSEMBLE, "harmonie-eps": ENSEMBLE, "gefs": ENSEMBLE,
     "tides": FEED, "sea-temperature": FEED, "blend": FEED, "wind-obs": FEED,
+    "warnings": FEED,
     "mi-swan": FEED, "currents": FEED,
     # The archive decodes a new run's frames one at a time into Python lists, and
     # verification holds sixteen days of archived runs while it scores a day.
@@ -112,7 +114,7 @@ MEASURED_PEAK_MB = {
     "harmonie": 290, "icon-eu": 335, "ecmwf": 315, "gfs-wave": 360,
     "icon-eu-weather": 225, "gfs": 230, "verify": 225, "gfs-weather": 355,
     "mi-swan": 190, "currents": 240, "blend": 185, "forecast-archive": 140,
-    "tides": 135, "sea-temperature": 135, "wind-obs": 135,
+    "tides": 135, "sea-temperature": 135, "wind-obs": 135, "warnings": 135,
 }
 # A ceiling an edit may not go below: an OOM kill stops a model without a word.
 MIN_HEADROOM = 1.5

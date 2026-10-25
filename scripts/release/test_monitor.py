@@ -310,6 +310,20 @@ class OtherBundles(unittest.TestCase):
         row = check(domain, "wind-obs")
         self.assertEqual((row["limitHours"], codes(row)), (7.0, ["stale"]))
 
+    def test_the_warnings_are_aged_by_the_hour_they_were_read(self):
+        domain = Domain({})
+        domain.put_json("marine/warnings.json", {
+            "schemaVersion": 1, "kind": "warnings", "model": "warnings", "run": "2026101114",
+            "runTime": "2026-10-11T14:00:00Z", "generatedAt": "2026-10-11T14:25:09Z",
+            "warnings": []})
+        row = check(domain, "warnings")
+        self.assertEqual((row["limitHours"], codes(row)), (4.0, []))
+        row = check(domain, "warnings", now=NOW + timedelta(hours=3))
+        self.assertEqual(codes(row), ["stale"])
+
+    def test_the_warnings_are_monitored(self):
+        self.assertIn("warnings", dict(monitor.load_live_models()))
+
 
 class Site(unittest.TestCase):
     SITE = "https://site.example.com/"

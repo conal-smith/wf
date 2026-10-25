@@ -23,6 +23,9 @@
   --ref-color-warm-700: #b02a1f;
   --ref-color-green-700: #2a7046;
   --ref-color-buoy-500: #e9b200;
+  --ref-color-met-yellow: #f0c419;
+  --ref-color-met-orange: #e67322;
+  --ref-color-met-red: #c3241c;
   --ref-color-sea-1: #a9cbd8;
   --ref-color-sea-2: #c3dae2;
   --ref-color-sea-3: #dae8ea;
@@ -185,6 +188,9 @@
   --sem-color-ok: var(--ref-color-green-700);
   --sem-color-warn: var(--ref-color-warm-700);
   --sem-color-warn-ground: var(--ref-color-warm-100);
+  --sem-color-met-yellow: var(--ref-color-met-yellow);
+  --sem-color-met-orange: var(--ref-color-met-orange);
+  --sem-color-met-red: var(--ref-color-met-red);
   --sem-color-now: var(--ref-color-warm-700);
   --sem-color-now-marker: var(--ref-color-mark-now);
   --sem-color-gust: var(--ref-color-mark-gust);

@@ -178,6 +178,13 @@
   --color-ok: #2a7046;
   --color-warn: #b02a1f;
   --color-warn-ground: #efd8cd;
+
+  /* Met Éireann's warning levels (force5/src/warnings.ts), the fill of a
+     warning's mark and nothing else. Ink on yellow and orange, paper on red.
+     They mean what Met Éireann means by them, so they do not re-theme. */
+  --color-met-yellow: #f0c419;
+  --color-met-orange: #e67322;
+  --color-met-red: #c3241c;
   --color-now: #b02a1f;
 
   /* Wind speed, in knots: PALETTE in force5/src/weather.ts, which paints the

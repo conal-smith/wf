@@ -61,6 +61,9 @@ import {
   type TideTurn,
 } from "./spot";
 import { STARS_HREF } from "../../force5/src/siteNav";
+import { LEVEL_LABEL } from "../../force5/src/warnings";
+import type { WarningsAnswer } from "../../mcp/api/warnings";
+import { WarningMark, warningName } from "./Warnings";
 import { rangeKeyWords } from "./TableKey";
 
 const styles = tv({
@@ -88,6 +91,8 @@ const styles = tv({
     time: "w-8 font-mono text-body font-semibold text-ink",
     now: "text-now",
     stars: "w-16",
+    // A yellow warning's mark rides beside the stars it leaves alone.
+    starsWarned: "inline-flex items-center gap-1",
     wind: "w-16",
     from: "w-14 text-ink",
     compass: "ml-1 text-eyebrow text-ink-muted",
@@ -125,6 +130,7 @@ const styles = tv({
     tipHead: "flex items-center justify-between gap-3",
     tipWhen: ["text-ink-muted", MONO_LABEL],
     tipVerdict: "m-0 font-body text-prose text-ink",
+    tipWarning: "m-0 flex items-start gap-1.5 font-body text-body text-ink",
     tipList:
       "m-0 flex list-none flex-col gap-1 p-0 font-mono text-caption text-ink-2",
     tipItem: "flex items-center gap-1.5",
@@ -171,6 +177,8 @@ export interface DaySectionProps {
    * interval can still show its sky (mcp/api/forecast.ts `rainByHour`).
    */
   rain: ReadonlyMap<number, number>;
+  /** Met Éireann's warnings for the place, which the rows' `warning` name by id. */
+  warnings?: WarningsAnswer;
 }
 
 /** The theme's `wide` breakpoint (ui/theme.css), where the rows get shorter. */
@@ -298,6 +306,7 @@ function DayBody({
   onModel,
   skyStops,
   rain,
+  warnings,
 }: DaySectionProps) {
   const s = styles();
   const names = dayNames(day.date, now);
@@ -396,6 +405,14 @@ function DayBody({
     const tipLabel = wind
       ? `${clock(row.time)}: ${rangeWords(wind, band, units)}${units === "bft" ? "" : ` ${unitText}`}`
       : "";
+    // The warnings over the row, in words: what stands in the stars' place
+    // under orange or red, and what a yellow mark beside them means.
+    const warned = row.warning
+      ? row.warning.ids
+          .map((id) => warnings?.items.find((item) => item.id === id))
+          .filter((item) => item !== undefined)
+      : [];
+    const warnedWords = warned.map(warningName).join("; ");
     return (
       <tr
         key={row.time}
@@ -418,15 +435,18 @@ function DayBody({
         <td
           className={s.cell({ className: s.stars() })}
           data-stars={rating ? rating.stars : undefined}
+          data-hour-warning={row.warning?.level}
         >
           <RatingTip
             label={`${clock(row.time)}: ${
-              rating
-                ? starsText(rating)
-                : hour.daylight
-                  ? "no wind reading"
-                  : "dark, not rated"
-            }`}
+              row.warning?.replaces_rating
+                ? `no stars: ${warnedWords || `${LEVEL_LABEL[row.warning.level]} warning`}`
+                : rating
+                  ? starsText(rating)
+                  : hour.daylight
+                    ? "no wind reading"
+                    : "dark, not rated"
+            }${row.warning && !row.warning.replaces_rating ? `; ${warnedWords || "Yellow warning"}` : ""}`}
             detail={
               <HourTip
                 row={row}
@@ -436,14 +456,23 @@ function DayBody({
                 facing={facing}
                 date={names.short}
                 starsFrom={starsFrom}
+                warned={warnedWords}
               />
             }
           >
-            <StarGlyphs
-              stars={rating ? rating.stars : null}
-              potential={rating?.potential}
-              size={9.5}
-            />
+            {row.warning?.replaces_rating ? (
+              // Orange or red: the warning stands where the stars were.
+              <WarningMark level={row.warning.level} />
+            ) : (
+              <span className={s.starsWarned()}>
+                <StarGlyphs
+                  stars={rating ? rating.stars : null}
+                  potential={rating?.potential}
+                  size={9.5}
+                />
+                {row.warning && <WarningMark level={row.warning.level} dot />}
+              </span>
+            )}
           </RatingTip>
         </td>
         <td className={s.cell({ className: s.wind() })}>
@@ -664,6 +693,7 @@ function HourTip({
   facing,
   date,
   starsFrom,
+  warned = "",
 }: {
   row: SpotRow;
   units: Units;
@@ -672,6 +702,8 @@ function HourTip({
   facing: number | null;
   date: string;
   starsFrom: StarsFrom;
+  /** The Met Éireann warnings over the hour, named. */
+  warned?: string;
 }) {
   const s = styles();
   const { hour, rating } = row;
@@ -682,13 +714,32 @@ function HourTip({
         <span className={s.tipWhen()}>
           {date} · {clock(row.time)}
         </span>
-        <StarGlyphs
-          stars={rating ? rating.stars : null}
-          potential={rating?.potential}
-          size={12}
-        />
+        {row.warning?.replaces_rating ? (
+          <WarningMark level={row.warning.level} />
+        ) : (
+          <StarGlyphs
+            stars={rating ? rating.stars : null}
+            potential={rating?.potential}
+            size={12}
+          />
+        )}
       </div>
-      <p className={s.tipVerdict()}>{verdict(rating, hour.daylight)}</p>
+      {row.warning && (
+        <p className={s.tipWarning()} data-tip-warning>
+          <WarningMark level={row.warning.level} dot />
+          <span>
+            {warned || `${LEVEL_LABEL[row.warning.level]} warning`}
+            {row.warning.replaces_rating
+              ? ": no stars while it is in force."
+              : ": the stars stand beside it."}
+          </span>
+        </p>
+      )}
+      <p className={s.tipVerdict()}>
+        {row.warning?.replaces_rating
+          ? "Met Éireann warning."
+          : verdict(rating, hour.daylight)}
+      </p>
       {wind && (
         <span className={s.tipFrom()} data-tip-from>
           <b className="font-semibold">{modelName(wind.lead)}</b>&rsquo;s

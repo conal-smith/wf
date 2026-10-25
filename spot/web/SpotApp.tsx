@@ -13,11 +13,7 @@
 import { MapPin, RefreshCw } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { starsFromAt } from "../../force5/src/lead";
-import {
-  loadPrefs,
-  saveRider,
-  withRiderModel,
-} from "../../force5/src/prefs";
+import { loadPrefs, saveRider, withRiderModel } from "../../force5/src/prefs";
 import { shoreFacing } from "../../force5/src/shoreFacing";
 import {
   STARS_HREF,
@@ -80,6 +76,8 @@ import { TableKey } from "./TableKey";
 import StarsPage from "./StarsPage";
 import { useSpotForecast } from "./useSpotForecast";
 import { useWidth } from "./useWidth";
+import { WarningsPanel } from "./Warnings";
+import { MET_WARNINGS_PAGE } from "../../force5/src/warnings";
 import { WeekStrip } from "./WeekStrip";
 
 const styles = tv({
@@ -480,6 +478,7 @@ function SpotPage({
           </span>
         )}
       </p>
+      <WarningsPanel warnings={forecast.warnings} />
       {sea && <WaterLine sea={sea} now={now} />}
       {picture && (
         <SpotSatellite picture={picture} name={spot.name} facing={facing} />
@@ -517,6 +516,7 @@ function SpotPage({
             onModel={changeModel}
             skyStops={day.date === skyStops}
             rain={rain}
+            warnings={forecast.warnings}
           />
         ))}
       </div>
@@ -641,6 +641,13 @@ function SourcesFooter({
             {sea.attribution ? ` · ${sea.attribution}` : ""}.
           </li>
         )}
+        <li data-warnings-source>
+          Weather warnings: Met Éireann,{" "}
+          <a className={s.link()} href={MET_WARNINGS_PAGE}>
+            met.ie/warnings
+          </a>
+          .
+        </li>
         {picture && (
           <li data-satellite-source>
             Satellite picture: Sentinel-2 at high and low tide ·{" "}

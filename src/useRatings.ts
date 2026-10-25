@@ -4,7 +4,13 @@ import { spotSquare } from "../force5/src/squares";
 import type { Rider } from "../force5/src/stars";
 import type { Manifest } from "../force5/src/weather";
 import { sameStarsFrom, starsFromAt } from "../force5/src/lead";
+import {
+  placeWarnings,
+  warningsStatus,
+  type WarningsManifest,
+} from "../force5/src/warnings";
 import { placeHours, type PlaceHour, type RatedPlace } from "./ratings";
+import { warnHours } from "./warnHours";
 import { spotBlendHours, type BlendRun } from "./spotBlend";
 
 /** Places worked out per slice of main-thread time, and how long a slice may run. */
@@ -25,6 +31,8 @@ export interface RatingSource {
   blendModels: readonly string[];
   /** The squares in hand, the published blend's or the models'; null for every square. */
   known: ReadonlySet<string> | null;
+  /** Met Éireann's warnings, applied to every place's columns; null with none to trust. */
+  warnings?: WarningsManifest | null;
 }
 
 /**
@@ -46,14 +54,29 @@ export function ratePlace(
   place: RatedPlace,
   axis: readonly string[],
   rider: Rider,
-  { published, manifests, blendModels, known }: RatingSource,
+  { published, manifests, blendModels, known, warnings = null }: RatingSource,
 ): PlaceHour[] | null {
   const square = spotSquare(place.lat, place.lon);
   if (known && !known.has(square)) return null;
-  if (fromPublished(published, rider))
-    return spotBlendHours(published!, place, axis, rider);
-  if (!manifests.length) return null;
-  return placeHours(manifests, blendModels, place, axis, rider);
+  const rows = fromPublished(published, rider)
+    ? spotBlendHours(published!, place, axis, rider)
+    : manifests.length
+      ? placeHours(manifests, blendModels, place, axis, rider)
+      : null;
+  if (!rows || !warnings) return rows;
+  // Orange and red stand in place of the stars, for the light, the dock and
+  // the finder alike (force5/src/warnings.ts).
+  const { warnings: mine } = placeWarnings(
+    warnings,
+    {
+      id: place.id,
+      county: place.county ?? "",
+      lat: place.lat,
+      lon: place.lon,
+    },
+    Date.now(),
+  );
+  return warnHours(rows, axis, mine);
 }
 
 /**
@@ -87,6 +110,7 @@ export function useRatings(
   first: readonly string[],
   published: PublishedHours | null = null,
   loaded: readonly string[] | null = null,
+  warnings: WarningsManifest | null = null,
 ): { hours: ReadonlyMap<string, PlaceHour[]>; version: number } {
   const manifests = useMemo<Manifest[]>(
     () =>
@@ -113,12 +137,19 @@ export function useRatings(
     () => (loadedKey === null ? null : new Set(loadedKey.split(","))),
     [loadedKey],
   );
+  // Warnings only from a file still fresh enough to trust: a stale one is
+  // as good as none, and the page keeps only its link to Met Éireann.
+  const trusted =
+    warnings && warningsStatus(warnings, Date.now()) === "current"
+      ? warnings
+      : null;
   const hoursFor = (place: RatedPlace) =>
     ratePlace(place, axis, rider, {
       published,
       manifests,
       blendModels,
       known,
+      warnings: trusted,
     });
 
   // The runs the rows are worked out from: the published blend's sources,
@@ -128,6 +159,8 @@ export function useRatings(
     ...(!published
       ? manifests.map((manifest) => `${manifest.model}@${manifest.run}`)
       : []),
+    // New warnings are worked in as a new run is: the rows in hand stay up.
+    `warnings@${trusted?.generatedAt ?? ""}`,
   ].join(",");
 
   // What the table was last worked out for, apart from its source.

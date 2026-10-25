@@ -1357,6 +1357,63 @@
       }
     },
     {
+      "id": "warnings",
+      "description": "Met Éireann weather warnings, land and marine",
+      "schedule": {
+        "at": {
+          "minutes": [
+            25
+          ]
+        },
+        "timezone": "UTC"
+      },
+      "labels": {
+        "application": "wingfoil",
+        "models": "warnings"
+      },
+      "task": {
+        "image": "${WINGFOIL_IMAGE}",
+        "requiredEnv": [
+          "S3_BUCKET",
+          "S3_ENDPOINT_URL",
+          "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY",
+          "FORCE5_SIDECARS"
+        ],
+        "passEnv": [
+          "S3_PREFIX",
+          "AWS_REGION",
+          "ECMWF_SOURCE",
+          "FORCE5_BROTLI_QUALITY"
+        ],
+        "resources": {
+          "cpu": "1",
+          "memory": "512Mb",
+          "disk": "2Gb"
+        },
+        "network": {
+          "type": "Full"
+        },
+        "timeouts": {
+          "queueSeconds": 3600,
+          "totalSeconds": 4500
+        },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
+        "parameters": [
+          "--models",
+          "warnings"
+        ],
+        "report": {
+          "format": "json-lines",
+          "trackEvent": "forecast_complete",
+          "trackBy": "model"
+        }
+      }
+    },
+    {
       "id": "forecast-archive",
       "description": "Archive every served wind run and the observations",
       "schedule": {

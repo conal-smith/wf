@@ -110,6 +110,23 @@
           "$description": "A buoy's yellow: the puffin's beak and feet, a light on the chart. Never text."
         }
       },
+      "met": {
+        "yellow": {
+          "$type": "color",
+          "$value": "#f0c419",
+          "$description": "Met Éireann's Status Yellow, as the chart prints it."
+        },
+        "orange": {
+          "$type": "color",
+          "$value": "#e67322",
+          "$description": "Met Éireann's Status Orange, as the chart prints it."
+        },
+        "red": {
+          "$type": "color",
+          "$value": "#c3241c",
+          "$description": "Met Éireann's Status Red, as the chart prints it."
+        }
+      },
       "sea": {
         "1": {
           "$type": "color",
@@ -1387,6 +1404,42 @@
               "light": "{ref.color.warm.100}",
               "dark": "{ref.color.night.warn-ground}"
             }
+          }
+        }
+      },
+      "met-yellow": {
+        "$type": "color",
+        "$value": "{ref.color.met.yellow}",
+        "$description": "A Met Éireann Status Yellow warning. --color-met-yellow. Does not re-theme.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "status",
+            "use": "Met Éireann's warning level, and nothing else: the fill of a warning's mark (src/WarningMarks, spot/web/Warnings).",
+            "doNotUse": "For a rating, the wind, or decoration; as text."
+          }
+        }
+      },
+      "met-orange": {
+        "$type": "color",
+        "$value": "{ref.color.met.orange}",
+        "$description": "A Met Éireann Status Orange warning. --color-met-orange. Does not re-theme.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "status",
+            "use": "Met Éireann's warning level, and nothing else: the fill of a warning's mark (src/WarningMarks, spot/web/Warnings).",
+            "doNotUse": "For a rating, the wind, or decoration; as text."
+          }
+        }
+      },
+      "met-red": {
+        "$type": "color",
+        "$value": "{ref.color.met.red}",
+        "$description": "A Met Éireann Status Red warning. --color-met-red. Does not re-theme.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "status",
+            "use": "Met Éireann's warning level, and nothing else: the fill of a warning's mark (src/WarningMarks, spot/web/Warnings).",
+            "doNotUse": "For a rating, the wind, or decoration; as text."
           }
         }
       },

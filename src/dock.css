@@ -707,3 +707,85 @@ table.tt {
     display: none;
   }
 }
+
+/* Met Éireann's warnings (src/DockWarnings.tsx). Under orange or red a star
+   cell holds the warning's tag, filled in its level's colour (the theme's
+   met-*), where the stars were; under yellow a thin bar of its colour runs
+   under the stars it leaves alone. */
+.warn-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font: 600 9px/1 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.warn-bar {
+  display: block;
+  width: 70%;
+  height: 3px;
+  margin: 1px auto 0;
+  border-radius: 2px;
+}
+.warn-mark.lv-yellow,
+.warn-bar.lv-yellow {
+  background: var(--color-met-yellow);
+}
+.warn-mark.lv-orange,
+.warn-bar.lv-orange {
+  background: var(--color-met-orange);
+}
+.warn-mark.lv-red,
+.warn-bar.lv-red {
+  background: var(--color-met-red);
+}
+.warn-mark.lv-red {
+  color: var(--color-ink-inverse);
+}
+/* The strip along the top of the dock: one link a warning, to the spot's page,
+   and Met Éireann's name after them. It scrolls sideways rather than wrap. */
+.dk-warnings {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--color-line);
+  font: 500 11px var(--font-mono);
+  color: var(--color-ink);
+}
+.dk-warning {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+}
+@media (hover: hover) and (pointer: fine) {
+  .dk-warning:hover .dk-warning-kind {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+.dk-warning-kind {
+  font-weight: 600;
+}
+.dk-warning-when {
+  color: var(--color-ink-2);
+}
+.dk-warnings-by {
+  flex: none;
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}

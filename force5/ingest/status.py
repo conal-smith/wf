@@ -30,7 +30,7 @@ from squares import square_index, square_path, load_spot_data
 from timing import JOBS_DIRECTORY
 
 # Job outputs rather than data: their `run` is the hour the job ran.
-JOB_KINDS = ("archive", "verification")
+JOB_KINDS = ("archive", "verification", "warnings")
 
 
 def moment(value):
@@ -137,7 +137,7 @@ def describe(public, model, now, override=None):
 
 
 def describe_job(path, row, now, limit):
-    """The archive or verification job: fresh while it last ran within the limit."""
+    """The archive, verification or warnings job: fresh while it last ran within the limit."""
     try:
         manifest = json.loads(path.read_text())
         run = datetime.strptime(manifest["run"], "%Y%m%d%H").replace(tzinfo=timezone.utc)

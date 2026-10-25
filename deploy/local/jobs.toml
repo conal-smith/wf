@@ -185,6 +185,12 @@ minutes = [50]              # Hourly: Met Éireann's readings land 30-45 minutes
 timeout_seconds = 600       # hour. Each run re-reads 72 h, so a missed hour loses nothing.
 
 [[jobs]]
+id = "warnings"
+models = ["warnings"]
+minutes = [25]              # Hourly: Met Éireann's warnings, copied unaltered. :25 is
+timeout_seconds = 300       # shared only with the daily verify. One small request.
+
+[[jobs]]
 id = "forecast-archive"
 models = ["forecast-archive"]
 minutes = [15]              # Hourly, after the blend: copies every run being served into

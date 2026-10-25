@@ -50,6 +50,16 @@ import { shoreFacing } from "../../force5/src/shoreFacing.js";
 import { shoreAngle, type ShoreAngle } from "../../force5/src/stars.js";
 import { isStale } from "../../force5/src/catalog.js";
 import type { ForecastSource } from "./httpSource.js";
+import {
+  hourWarning,
+  loadWarnings,
+  placeWarnings,
+  warningsAcross,
+  warningsAnswer,
+  type HourWarning,
+  type PlaceWarnings,
+  type WarningsAnswer,
+} from "./warnings.js";
 
 const HOUR = 3600000;
 /** Waves and weather are nearest-step, never interpolated (VARIABLE_MATCH_HOURS). */
@@ -1331,6 +1341,12 @@ export interface ForecastHour {
   weather?: HourWeather | null;
   /** Where an ensemble reaches the spot: the spread of its members. */
   ensemble?: HourEnsemble | null;
+  /**
+   * The Met Éireann warnings covering the hour, on every hour when the spot has
+   * any (null on an hour none covers); absent when it has none. Orange or red
+   * (`replaces_rating`): no rating, never rideable.
+   */
+  warning?: HourWarning | null;
 }
 
 export interface SpotForecast {
@@ -1349,6 +1365,8 @@ export interface SpotForecast {
   sun: { date: string; sunrise: string | null; sunset: string | null }[];
   tides: SpotTides | { note: string } | null;
   sea_temperature: SpotSea | null;
+  /** Met Éireann's warnings for the spot, in force or still to come (mcp/api/warnings.ts). */
+  warnings: WarningsAnswer;
   sources: {
     wind: ModelRun[];
     wind_outside_domain: string[];
@@ -1415,13 +1433,15 @@ export async function spotForecast(
 ): Promise<SpotForecast> {
   // Only the one square that holds the spot is read, of each model.
   const square = [spotSquare(spot.lat, spot.lon)];
-  const [wind, waves, weather, tides, sea] = await Promise.all([
+  const [wind, waves, weather, tides, sea, warned] = await Promise.all([
     loadWind(source, options.now, square),
     loadWaves(source, options.now, square),
     loadWeather(source, options.now, square),
     spotTides(source, spot.id, window),
     spotSea(source, spot.id),
+    loadWarnings(source),
   ]);
+  const warnings = placeWarnings(warned, spot, options.now);
   const { lines, outside } = spotWindLines(wind.loaded, spot.id);
   const memberLines = spotMemberLines(wind.loaded, spot.id);
   const waveSource = handedSource(waves.loaded, spot.id, ["swh"]);
@@ -1445,6 +1465,8 @@ export async function spotForecast(
     if (weatherSource)
       hour.weather = hourWeather(weatherSource, time, rain[row]);
     if (memberLines.length) hour.ensemble = hourEnsemble(memberLines, time);
+    if (warnings.warnings.length)
+      hour.warning = hourWarning(warnings, time, window.stepHours);
     return hour;
   });
   const days = new Set(hours.map((h) => h.time.slice(0, 10)));
@@ -1470,6 +1492,7 @@ export async function spotForecast(
     sun,
     tides,
     sea_temperature: sea,
+    warnings: warningsAnswer(warnings, options.now, spot),
     sources: {
       wind: lines.map((l) => l.run),
       wind_outside_domain: outside,
@@ -1523,6 +1546,8 @@ export interface SpotSessions {
   shore_facing_deg: number | null;
   rideable_hours: number;
   sessions: Session[];
+  /** Ids of the Met Éireann warnings in force at the spot during the search. */
+  warnings?: string[];
 }
 
 export interface FindOptions {
@@ -1590,6 +1615,8 @@ export async function findSessions(
   searched: number;
   sources: ModelRun[];
   unavailable: Unavailable[];
+  /** Every Met Éireann warning in force at a searched spot during the window. */
+  warnings: WarningsAnswer;
   /**
    * The last hour the models the ranking reads (the stars' model and the one
    * after it) reach, and which of them reaches it, or null when neither is
@@ -1613,13 +1640,25 @@ export async function findSessions(
   );
   // The squares of the places searched: every square for all of Ireland,
   // fewer for a county or a radius.
-  const wind = await loadWind(source, options.now, squaresFor(pool));
+  const [wind, warned] = await Promise.all([
+    loadWind(source, options.now, squaresFor(pool)),
+    loadWarnings(source),
+  ]);
   const times = axis({ ...window, stepHours: 1 });
+  const warnings = warningsAcross(warned, pool, options.now, {
+    from: window.from,
+    to: times.at(-1)! + HOUR,
+  });
   const results: SpotSessions[] = [];
   for (const spot of pool) {
     const { lines } = spotWindLines(wind.loaded, spot.id);
     if (!lines.length) continue;
     const facing = shoreFacing(spot.id);
+    const spotWarnings: PlaceWarnings = {
+      status: warnings.answer.status,
+      checkedAt: warnings.answer.checked_at,
+      warnings: warnings.bySpot.get(spot.id) ?? [],
+    };
     const sessions: Session[] = [];
     let run: SessionHour[] = [];
     const close = () => {
@@ -1635,7 +1674,9 @@ export async function findSessions(
         hour.wind_kn <= options.maxKnots &&
         gustWithin(hour, options) &&
         (options.allowOffshore || shore !== "offshore") &&
-        (!options.daylightOnly || daylight(spot, time));
+        (!options.daylightOnly || daylight(spot, time)) &&
+        // Under an orange or red warning an hour is never rideable.
+        !hourWarning(spotWarnings, time)?.replaces_rating;
       if (good) run.push({ time, hour: hour!, shore });
       else close();
     }
@@ -1647,6 +1688,9 @@ export async function findSessions(
         shore_facing_deg: facing,
         rideable_hours: sessions.reduce((sum, s) => sum + s.hours, 0),
         sessions,
+        ...(spotWarnings.warnings.length && {
+          warnings: spotWarnings.warnings.map((w) => w.warning.capId),
+        }),
       });
   }
   results.sort(
@@ -1660,6 +1704,7 @@ export async function findSessions(
     searched: pool.length,
     sources: runs,
     unavailable: wind.unavailable,
+    warnings: warnings.answer,
     reach: forecastReach(runs, options.from),
   };
 }

@@ -23,6 +23,8 @@ import {
   type Units,
 } from "../../force5/src/units";
 import type { ForecastHour, SpotForecast } from "../../mcp/api/forecast";
+import { applyWarnings } from "../../force5/src/warnings";
+import type { HourWarning } from "../../mcp/api/warnings";
 
 export const HOUR = 3600000;
 export const TIME_ZONE = "Europe/Dublin";
@@ -259,10 +261,18 @@ export interface SpotRow {
   /** Hours this row stands for: 1 near, 3 further out. */
   step: number;
   hour: ForecastHour;
-  /** Null in the dark, or with no wind reading. */
+  /**
+   * Null in the dark, with no wind reading, or where an orange or red Met
+   * Éireann warning stands in place of the stars (`warning`).
+   */
   rating: HourRating | null;
   /** How the wind meets the shore, rated or not; null where unknown. */
   shore: ShoreAngle | null;
+  /**
+   * The Met Éireann warnings covering any of the row's hours, or null with
+   * none. Optional: the app (mobile/) builds its rows itself, without them.
+   */
+  warning?: HourWarning | null;
 }
 
 /** Rate one forecast hour for a rider at a shore, from the one model's own wind. */
@@ -304,22 +314,53 @@ export function rowHours(
   });
 }
 
+/**
+ * The warnings covering a row: every hour it stands for, so a three-hour row
+ * carries a warning that starts in its second hour. Null with none.
+ */
+export function rowWarning(
+  byTime: ReadonlyMap<number, ForecastHour>,
+  time: number,
+  step: number,
+): HourWarning | null {
+  const covering = Array.from(
+    { length: step },
+    (_, i) => byTime.get(time + i * HOUR)?.warning ?? null,
+  ).filter((w): w is HourWarning => w !== null);
+  if (!covering.length) return null;
+  const { level, withheld } = applyWarnings(null, covering);
+  return {
+    level: level!,
+    ids: [...new Set(covering.flatMap((w) => w.ids))],
+    replaces_rating: withheld,
+  };
+}
+
 export function spotRows(
   hours: readonly ForecastHour[],
   now: number,
   facing: number | null,
   rider: Rider,
 ): SpotRow[] {
-  return rowHours(hours, now).map(({ hour, time, step }) => ({
-    time,
-    step,
-    hour,
-    rating: rateForecastHour(hour, facing, rider),
-    shore:
-      facing === null || !hour.wind
-        ? null
-        : shoreAngle(hour.wind.direction_deg, facing),
-  }));
+  const byTime = new Map(hours.map((hour) => [Date.parse(hour.time), hour]));
+  return rowHours(hours, now).map(({ hour, time, step }) => {
+    const warning = rowWarning(byTime, time, step);
+    return {
+      time,
+      step,
+      hour,
+      // The one rule the map and the MCP share: under orange or red, no stars.
+      rating: applyWarnings(
+        rateForecastHour(hour, facing, rider),
+        warning ? [warning] : [],
+      ).rating,
+      shore:
+        facing === null || !hour.wind
+          ? null
+          : shoreAngle(hour.wind.direction_deg, facing),
+      warning,
+    };
+  });
 }
 
 export interface SpotDay {
