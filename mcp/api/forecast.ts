@@ -46,7 +46,12 @@ import {
   pickModel,
   type StarsFrom,
 } from "../../force5/src/lead.js";
-import { shoreFacing } from "../../force5/src/shoreFacing.js";
+import {
+  isOnWater,
+  shoreFacing,
+  shoreType,
+  type ShoreType,
+} from "../../force5/src/shoreFacing.js";
 import {
   GUSTY_FROM,
   VERY_GUSTY_FROM,
@@ -244,7 +249,63 @@ export function localSpan(from: number, to: number): string {
 }
 const iso = (millis: number) => new Date(millis).toISOString();
 
-export type { Agreement, ShoreAngle };
+export type { Agreement, ShoreAngle, ShoreType };
+
+/**
+ * How the wind meets a spot: one of the five shore angles at a beach, or
+ * "on-water" at a spot on the water, where riders launch and ride out in the
+ * middle of an estuary or lagoon and no one shore's angle applies.
+ */
+export type SpotShore = ShoreAngle | "on-water";
+
+/** What get_spot_forecast says about the shore of a spot that is not a plain beach. */
+export function shoreNote(spot: RidingSpot, type: ShoreType): string | null {
+  if (type === "on-water")
+    return (
+      `${spot.name} is a spot on the water: riders launch and ride out in the ` +
+      'middle of it, not off one beach. So `shore` is "on-water": onshore and ' +
+      "offshore don't apply, the stars rate the wind alone, and find_wind's " +
+      "offshore filter doesn't apply here. The rider still has to judge the " +
+      "wind against the shore they launch from and the shore it would carry " +
+      "them to if they fell, and how the tide runs."
+    );
+  if (type === "unknown")
+    return (
+      "This beach's facing isn't known well enough to rate against: `shore` " +
+      "is null, the stars rate the wind alone, and offshore wind can't be " +
+      "ruled out, so find_wind's offshore filter can't apply here."
+    );
+  return null;
+}
+
+/**
+ * How close another spot must be to be named as near this one: close enough
+ * to be the same beach or water more often than not, though not always (Keel
+ * Lake lies 1.3 km from Keel's beach).
+ */
+export const NEARBY_KM = 1.5;
+
+export interface NearbySpot {
+  id: string;
+  name: string;
+  distance_km: number;
+}
+
+/** The other spots within NEARBY_KM of a spot, nearest first. */
+export function nearbySpots(
+  spots: readonly RidingSpot[],
+  spot: RidingSpot,
+): NearbySpot[] {
+  return spots
+    .filter((s) => s.id !== spot.id)
+    .map((s) => ({
+      id: s.id,
+      name: s.name,
+      distance_km: round(distanceKm(spot, s)),
+    }))
+    .filter((s) => s.distance_km <= NEARBY_KM)
+    .sort((a, b) => a.distance_km - b.distance_km);
+}
 
 /**
  * How the wind meets the spot's shore, as the stars rate it (force5/src/stars.ts
@@ -1507,8 +1568,11 @@ export interface ForecastHour {
    */
   light?: Light;
   wind: HourWind | null;
-  /** How the headline wind meets the shore; null where the facing is unknown. */
-  shore?: ShoreAngle | null;
+  /**
+   * How the headline wind meets the shore; "on-water" at a spot on the water;
+   * null where a beach's facing is unknown.
+   */
+  shore?: SpotShore | null;
   waves?: HourWaves | null;
   weather?: HourWeather | null;
   /** Where an ensemble reaches the spot: the spread of its members. */
@@ -1544,8 +1608,14 @@ export interface DayWindow {
 
 export interface SpotForecast {
   spot: RidingSpot;
-  /** The bearing the shore looks out to sea along, or null where unknown. */
+  /** The bearing the shore looks out to sea along, or null where there is none. */
   shore_facing_deg?: number | null;
+  /** A beach with a facing, a spot on the water, or a beach whose facing is unknown. */
+  shore_type?: ShoreType;
+  /** What the shore type means for the stars and the offshore filter, where it is not a beach. */
+  shore_note?: string;
+  /** The other spots within NEARBY_KM: often the same beach or water. */
+  nearby?: NearbySpot[];
   /**
    * The winds the shore wants, as the spot page's header gives them ("ENE–ESE",
    * "SSW–W"): cross-onshore and cross-shore. Null where there is no facing.
@@ -1608,6 +1678,16 @@ export const METHOD =
 
 export const UNITS = {
   wind: "knots",
+  shore:
+    "`shore` is how the wind meets the beach, by the stars' rule: onshore, " +
+    "cross-on, cross, cross-off or offshore. A spot on the water " +
+    '(`shore_type` "on-water", such as Malahide Estuary) is ridden in the ' +
+    'middle of the water rather than off one beach: its `shore` is "on-water", ' +
+    "onshore and offshore don't apply, the stars rate the wind alone and " +
+    "find_wind's offshore filter doesn't apply, so the rider judges the wind " +
+    "against the shore they launch from and the one it would carry them to. " +
+    "Where a beach's facing isn't known (`shore_type` \"unknown\") `shore` is " +
+    "null and offshore wind can't be ruled out",
   gust_factor:
     "`gust_factor` is the hour's gust_kn over its wind_kn (one model's, the " +
     "one the stars rate): wingfoil.ie's stars call an hour gusty from " +
@@ -1696,6 +1776,7 @@ export async function spotForecast(
   const waveSource = handedSource(waves.loaded, spot.id, ["swh"]);
   const weatherSource = handedSource(weather.loaded, spot.id, ["t2m"]);
   const facing = shoreFacing(spot.id);
+  const kind = shoreType(spot.id);
   const times = axis(window);
   const weatherStep = weatherSource && weatherStepHours(weatherSource);
   const rain = weatherSource
@@ -1709,7 +1790,7 @@ export async function spotForecast(
       daylight: daylight(spot, time),
       light: lightAt(spot, time),
       wind,
-      shore: shoreOf(facing, wind),
+      shore: kind === "on-water" ? "on-water" : shoreOf(facing, wind),
     };
     if (waveSource) hour.waves = hourWaves(waveSource, time);
     if (weatherSource) {
@@ -1732,6 +1813,7 @@ export async function spotForecast(
         ...hour.weather,
         rain_mm: rainEach.get(Date.parse(hour.time)) ?? null,
       });
+  const note = shoreNote(spot, kind);
   const best = options.rider
     ? rateForecast(lines, window, hours, spot, facing, tides, {
         rider: options.rider,
@@ -1754,6 +1836,8 @@ export async function spotForecast(
   return {
     spot,
     shore_facing_deg: facing,
+    shore_type: kind,
+    ...(note && { shore_note: note }),
     best_directions: bestDirections(facing),
     ...(options.rider && { rider: riderUsed(options.rider) }),
     ...(best && { best_windows: best }),
@@ -1885,8 +1969,11 @@ export interface Session {
   why_not_more_stars?: string[];
   direction: string;
   direction_deg: number;
-  /** The most offshore of its hours; null where the shore's facing is unknown. */
-  shore: ShoreAngle | null;
+  /**
+   * The most offshore of its hours; "on-water" at a spot on the water; null
+   * where a beach's facing is unknown.
+   */
+  shore: SpotShore | null;
   /** Hours with the wind dead offshore: none unless offshore hours were allowed. */
   offshore_hours: number;
   /** The worst agreement of any hour; null when only one model covered it. */
@@ -1900,8 +1987,12 @@ export interface SpotSessions {
   spot: RidingSpot;
   /** Kilometres from `near`, as the crow flies, when a search gave one. */
   distance_km?: number;
-  /** The bearing the shore looks out to sea along, or null where unknown. */
+  /** The bearing the shore looks out to sea along, or null where there is none. */
   shore_facing_deg: number | null;
+  /** A beach, a spot on the water (no offshore filter applies) or a beach whose facing is unknown. */
+  shore_type: ShoreType;
+  /** The other spots within NEARBY_KM: often the same beach or water. */
+  nearby?: NearbySpot[];
   /** The winds the shore wants, as the spot page's header gives them. */
   best_directions: string[] | null;
   /** Hours earning at least `min_stars` for the rider, in sessions. */
@@ -2054,6 +2145,7 @@ export async function findSessions(
     }
     close();
     if (!sessions.length) continue;
+    const nearby = nearbySpots(spots, spot);
     const best = bestWindow(
       hours.map((h) => h.rating),
       options.minSessionHours,
@@ -2062,6 +2154,8 @@ export async function findSessions(
       spot,
       ...(near && { distance_km: distance.get(spot.id)! }),
       shore_facing_deg: facing,
+      shore_type: shoreType(spot.id),
+      ...(nearby.length && { nearby }),
       best_directions: bestDirections(facing),
       rideable_hours: sessions.reduce((sum, s) => sum + s.hours, 0),
       best_window: best
@@ -2200,13 +2294,15 @@ function session(
     ...(weakest?.reasons.length && { why_not_more_stars: weakest.reasons }),
     direction: compass(direction),
     direction_deg: direction,
-    shore: run.reduce<ShoreAngle | null>(
-      (most, { shore }) =>
-        shore !== null && (most === null || SEAWARD[shore] > SEAWARD[most])
-          ? shore
-          : most,
-      null,
-    ),
+    shore: isOnWater(spot.id)
+      ? "on-water"
+      : run.reduce<ShoreAngle | null>(
+          (most, { shore }) =>
+            shore !== null && (most === null || SEAWARD[shore] > SEAWARD[most])
+              ? shore
+              : most,
+          null,
+        ),
     offshore_hours: run.filter((r) => r.shore === "offshore").length,
     agreement: worst,
     models: Math.min(...run.map((r) => r.hour.models)),

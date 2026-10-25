@@ -152,6 +152,27 @@ describe("the MCP endpoint", () => {
     expect(unknown.text).toMatch(/list_spots/);
   });
 
+  it("lists which spots are on the water, and the spots close by", async () => {
+    const { call } = harness();
+    const dublin = (await call("list_spots", { county: "Dublin" })).json();
+    const byId = new Map(
+      dublin.spots.map((s: { id: string }) => [s.id, s] as const),
+    );
+    expect(byId.get("malahide-estuary")).toMatchObject({
+      shore_type: "on-water",
+      nearby: expect.arrayContaining([
+        expect.objectContaining({ id: "kilcrea" }),
+      ]),
+    });
+    expect(byId.get("kilcrea")).toMatchObject({ shore_type: "beach" });
+    const forecast = (
+      await call("get_spot_forecast", { spot: "malahide-estuary", hours: 3 })
+    ).json();
+    expect(forecast.shore_type).toBe("on-water");
+    expect(forecast.nearby[0].id).toBe("kilcrea");
+    expect(forecast.hours[0].shore).toBe("on-water");
+  });
+
   it("filters spots by county and says which counties exist", async () => {
     const { call } = harness();
     const kerry = (await call("list_spots", { county: "kerry" })).json();

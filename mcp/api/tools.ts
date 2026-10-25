@@ -18,6 +18,7 @@ import {
   findSessions,
   findSpot,
   forecastReach,
+  nearbySpots,
   loadSpots,
   localStamp,
   modelStatus,
@@ -30,6 +31,7 @@ import {
 } from "./forecast.js";
 import type { ForecastSource } from "./httpSource.js";
 import { riderOf, riderUsed, type RiderChoice } from "./rating.js";
+import { shoreType } from "../../force5/src/shoreFacing.js";
 import {
   DEFAULT_STARS_FROM,
   STARS_MODELS,
@@ -78,7 +80,7 @@ export const INSTRUCTIONS = `wingfoil.ie forecasts wind, waves and tides for win
 - Speeds are knots, directions are degrees the wind comes FROM, times are UTC with a \`local\` label in Irish time that ends in its zone, IST (UTC+1) or GMT (UTC+0). Quote the local time to people, and its zone around a clock change: the night the clocks go back has two 01:00s.
 - The forecast is one model's own, the one wingfoil.ie rates its stars from, never a blend of several: HARMONIE's (Met Éireann's 2.5 km model, the most accurate here) while it reaches the hour, about the next 60 hours, and ECMWF's past it, unless a caller passes \`model\` to choose another (ECMWF still takes over past the end of its run). \`lead\` says which model an hour is. \`agreement\` says how closely all the models agree, as context; \`confidence\` is the same but low wherever fewer than three models cover the hour (\`models\`), as happens a few days out. Hedge when confidence is low, say why (few models, or models disagreeing), and use by_model to explain a disagreement.
 - ${METHOD}
-- \`shore\` says how the wind meets the spot's beach: onshore, cross-on, cross, cross-off or offshore (the same rule wingfoil.ie's stars use). Offshore and cross-off wind carry a rider who falls away from the beach out to sea: always warn about them. find_wind leaves dead offshore hours out unless allow_offshore is set. A null shore means the beach's facing is unknown, so say offshore wind can't be ruled out there.
+- \`shore\` says how the wind meets the spot's beach: onshore, cross-on, cross, cross-off or offshore (the same rule wingfoil.ie's stars use). Offshore and cross-off wind carry a rider who falls away from the beach out to sea: always warn about them. find_wind leaves dead offshore hours out unless allow_offshore is set. Some spots are on the water (\`shore_type\` "on-water", e.g. Malahide Estuary): riders launch and ride in the middle of the water, so \`shore\` is "on-water", onshore and offshore don't apply and the offshore filter doesn't either; say so, and that the rider must judge the wind against the shore they launch from and the one it would blow them to. A null shore means a beach's facing is unknown, so say offshore wind can't be ruled out there. \`nearby\` names other spots within 1.5 km, often the same beach or water.
 - To answer "can I go?" and "when?", use the stars: each hour's \`rating\` in get_spot_forecast, and each find_wind session's, is wingfoil.ie's own rating for the rider, the same code and the same numbers as the spot page (stars 0–5; \`potential\` is what the wind alone is worth). Ask the person's level (beginner, intermediate or advanced) and weight if you don't know them and pass them as level and weight_kg; otherwise say the stars are for the site's default rider, \`rider.label\` ("Riding · ~80 kg"). Zero stars is a no: say why from \`why_no_stars\` (too light, too strong, gusts over your limit, offshore). \`best_windows\` gives each day's best stretch, ended by last light, with its tides: quote its local time and stars. \`best_directions\` are the winds the beach wants. Never rate an hour higher than the site does.
 - Gusts: \`gust_factor\` is gust ÷ mean; the stars call an hour gusty from 1.5 and very gusty from 1.8 (\`gustiness\`) and give no stars at all to a gust over the rider's limit (\`rider.gust_limit_kn\`), so find_wind never counts such an hour. Mention gusty sessions. When someone has a tighter gust limit, pass max_gust_kn or max_gust_factor.
 - Safety comes before stars: a thunder risk, an official warning, or offshore wind outweighs any rating.
@@ -167,7 +169,7 @@ export const listSpots = tool({
   name: "list_spots",
   title: "List riding spots",
   description:
-    "The wing foiling spots wingfoil.ie forecasts for, with county and coordinates. Optionally only one county.",
+    "The wing foiling spots wingfoil.ie forecasts for, with county and coordinates, whether each is a beach or a spot on the water (`shore_type`), and the other spots within 1.5 km of it (`nearby`). Optionally only one county.",
   inputSchema: {
     county: z
       .string()
@@ -185,7 +187,16 @@ export const listSpots = tool({
       return failure(
         `No spots in ${county}. Counties with spots: ${[...new Set(spots.map((s) => s.county))].sort().join(", ")}.`,
       );
-    return answer({ spots: list });
+    return answer({
+      spots: list.map((s) => {
+        const nearby = nearbySpots(spots, s);
+        return {
+          ...s,
+          shore_type: shoreType(s.id),
+          ...(nearby.length && { nearby }),
+        };
+      }),
+    });
   },
 });
 
@@ -313,10 +324,12 @@ export const getSpotForecast = tool({
     // The note beside the window it is about.
     const { spot: where, window: span, ...rest } = forecast;
     const { note } = about;
+    const nearby = nearbySpots(spots, match.spot);
     return answer({
       spot: where,
       window: span,
       ...(note && { note }),
+      ...(nearby.length && { nearby }),
       ...rest,
     });
   },
@@ -540,7 +553,7 @@ export const findWind = tool({
       method:
         "Every hour is rated in stars for `rider` as wingfoil.ie's spot page rates it (force5/src/stars.ts rateHour, on the one model's wind, gust and direction), and counts when it earns min_stars or more and is inside min_kn/max_kn, max_gust_kn and max_gust_factor where given. A gust over the rider's limit (`rider.gust_limit_kn`) leaves an hour no stars, so it never counts. " +
         "Counting hours in a row make a session; a session's `stars` is its weakest hour's and `best_stars` its best, `gust_factor` its highest gust ÷ mean and `gustiness` its gustiest hour by the stars' rule (gusty from 1.5, very gusty from 1.8). Each spot's `best_window` is the longest run at the highest stars any run reaches; spots rank by its stars, then by rideable_hours, then nearest. Sessions end by last light unless daylight_only is false. " +
-        "Hours with the wind dead offshore are left out unless allow_offshore; a session's `shore` is its most offshore hour's, null where the beach's facing is unknown. " +
+        "Hours with the wind dead offshore are left out unless allow_offshore; a session's `shore` is its most offshore hour's, \"on-water\" at a spot on the water (where the offshore filter doesn't apply), null where a beach's facing is unknown. " +
         "Each session's agreement, confidence and models are the worst of its hours, as context. " +
         METHOD,
     });

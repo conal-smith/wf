@@ -21,8 +21,10 @@ import {
   shoreOf,
   findSpot,
   hourEnsemble,
+  NEARBY_KM,
   daySun,
   dublinDate,
+  nearbySpots,
   hourWind,
   irishZone,
   loadSpots,
@@ -1637,9 +1639,110 @@ describe("the shore", () => {
       for (const s of result.sessions) {
         expect(s.offshore_hours).toBe(0);
         expect(s.shore).not.toBe("offshore");
-        if (result.shore_facing_deg === null) expect(s.shore).toBeNull();
+        if (result.shore_type === "on-water") expect(s.shore).toBe("on-water");
+        else if (result.shore_facing_deg === null) expect(s.shore).toBeNull();
       }
     }
+  });
+});
+
+describe("spots on the water", () => {
+  const source = fixtureSource();
+
+  it("says Malahide Estuary is on the water, every hour, and what that means", async () => {
+    const spot = (await loadSpots(source)).find(
+      (s) => s.id === "malahide-estuary",
+    )!;
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 24 }),
+      { now: FIXTURE_NOW, rider: riderOf() },
+    );
+    expect(forecast.shore_type).toBe("on-water");
+    expect(forecast.shore_facing_deg).toBeNull();
+    expect(forecast.best_directions).toBeNull();
+    expect(forecast.hours.every((h) => h.shore === "on-water")).toBe(true);
+    expect(forecast.shore_note).toMatch(/on the water/);
+    expect(forecast.shore_note).toMatch(/offshore filter doesn't apply/);
+    expect(forecast.shore_note).not.toMatch(/no shore|unknown|missing/i);
+    expect(forecast.units.shore).toMatch(/on-water/);
+    // The stars rate it on the wind alone, as the site does a spot with no facing.
+    for (const hour of forecast.hours.filter((h) => h.rating))
+      expect(hour.rating!.reasons.some((r) => /shore|offshore/i.test(r))).toBe(
+        false,
+      );
+  });
+
+  it("tells a beach whose facing is unknown apart from a spot on the water", async () => {
+    const spot = (await loadSpots(source)).find((s) => s.id === "bertra")!;
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 3 }),
+      { now: FIXTURE_NOW },
+    );
+    expect(forecast.shore_type).toBe("unknown");
+    expect(forecast.hours.every((h) => h.shore === null)).toBe(true);
+    expect(forecast.shore_note).toMatch(/can't be ruled out/);
+    const kilcrea = (await loadSpots(source)).find((s) => s.id === "kilcrea")!;
+    const beach = await spotForecast(
+      source,
+      kilcrea,
+      windowFor(FIXTURE_NOW, { hours: 3 }),
+      { now: FIXTURE_NOW },
+    );
+    expect(beach.shore_type).toBe("beach");
+    expect(beach.shore_note).toBeUndefined();
+  });
+
+  it("keeps a spot on the water in find_wind, the offshore filter not applying, with its neighbours", async () => {
+    const spots = await loadSpots(source);
+    const found = await findSessions(
+      source,
+      spots,
+      windowFor(FIXTURE_NOW, { hours: 48, stepHours: 1 }),
+      {
+        ...EVERY_HOUR,
+        daylightOnly: false,
+        minSessionHours: 1,
+        counties: ["Dublin"],
+        limit: 30,
+        now: FIXTURE_NOW,
+      },
+    );
+    const malahide = found.spots.find((r) => r.spot.id === "malahide-estuary")!;
+    expect(malahide.shore_type).toBe("on-water");
+    for (const s of malahide.sessions) {
+      expect(s.shore).toBe("on-water");
+      expect(s.offshore_hours).toBe(0);
+    }
+    expect(malahide.nearby!.map((n) => n.id)).toEqual(
+      expect.arrayContaining(["kilcrea", "malahide-estuary-south-park"]),
+    );
+    expect(malahide.nearby![0]).toMatchObject({
+      id: "kilcrea",
+      distance_km: 0.7,
+    });
+  });
+
+  it("names the spots close by", async () => {
+    const spots = await loadSpots(source);
+    const of = (id: string) =>
+      nearbySpots(
+        spots,
+        spots.find((s) => s.id === id)!,
+      ).map((n) => n.id);
+    expect(of("kilcrea")).toEqual([
+      "malahide-estuary",
+      "malahide-estuary-south-park",
+    ]);
+    expect(of("brandon")).toEqual([]);
+    for (const n of nearbySpots(
+      spots,
+      spots.find((s) => s.id === "keel")!,
+    ))
+      expect(n.distance_km).toBeLessThanOrEqual(NEARBY_KM);
   });
 });
 
