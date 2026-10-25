@@ -49,6 +49,11 @@ import {
 import { shoreFacing } from "../../force5/src/shoreFacing.js";
 import { shoreAngle, type ShoreAngle } from "../../force5/src/stars.js";
 import { isStale } from "../../force5/src/catalog.js";
+import {
+  presentWeather,
+  skyOf,
+  type WeatherIcon,
+} from "../../force5/src/presentWeather.js";
 import type { ForecastSource } from "./httpSource.js";
 
 const HOUR = 3600000;
@@ -1137,8 +1142,15 @@ export interface HourWeather {
   /** Where the interval does not end at this row's hour: when it does end. */
   rain_until?: string;
   cloud_pct: number | null;
-  /** The model's present-weather code (WMO 4677), where it publishes one. */
+  /** The model's present-weather code (WMO 4677, `ww`), where it publishes one. */
   weather_code: number | null;
+  /** What the code means, in the words of wingfoil.ie's sky glyph for it. */
+  description: string | null;
+  /**
+   * The sky glyph wingfoil.ie draws for the hour (force5/src/presentWeather.ts
+   * skyOf): the code's group, rain where a dry code has rain in the hour.
+   */
+  sky: WeatherIcon | null;
 }
 
 /** A rain total and the interval it covers, as one row carries it. */
@@ -1225,7 +1237,10 @@ function hourWeather(
       Math.abs(rain.until - time) > SLACK && { rain_until: iso(rain.until) }),
     cloud_pct: value("clct", 0),
     weather_code: value("ww", 0),
+    description: null,
+    sky: null,
   };
+  result.description = presentWeather(result.weather_code)?.description ?? null;
   return [
     result.air_c,
     result.rain_mm,
@@ -1463,6 +1478,13 @@ export const UNITS = {
   weather:
     "air_c, cloud_pct and weather_code are the weather model's nearest step, " +
     "`window.weather_step_hours` apart, so they repeat on the hours between",
+  weather_code:
+    "the model's WMO present-weather code (`ww`, WMO-No. 306 code table 4677), " +
+    "its own interpretation, never an observation. `description` is the " +
+    "code's meaning in the words of wingfoil.ie's sky glyph, and `sky` the " +
+    "glyph drawn for the hour: clear, partly, cloudy, fog, drizzle, rain, " +
+    "showers, thunder or snow, rain where a dry code has 0.3 mm or more in " +
+    "the hour's rain interval. Describe the sky from these, not from the bare code",
   time:
     "`time` is UTC (ISO 8601). Every `local` label, and sunrise, sunset, the " +
     "tides' and the sea temperature's times, is Irish time ending in its zone: " +
@@ -1516,6 +1538,14 @@ export async function spotForecast(
     if (memberLines.length) hour.ensemble = hourEnsemble(memberLines, time);
     return hour;
   });
+  // The sky as the spot page draws it, from each hour's share of the rain.
+  const rainEach = rainByHour(hours);
+  for (const hour of hours)
+    if (hour.weather)
+      hour.weather.sky = skyOf({
+        ...hour.weather,
+        rain_mm: rainEach.get(Date.parse(hour.time)) ?? null,
+      });
   const days = new Set(hours.map((h) => h.time.slice(0, 10)));
   const sun = [...days].map((day) => {
     const times = sunTimes(spot.lat, spot.lon, new Date(`${day}T12:00:00Z`));

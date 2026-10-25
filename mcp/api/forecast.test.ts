@@ -36,6 +36,7 @@ import {
 import { FIXTURE_NOW, fixtureSource } from "./testing";
 import { shoreFacing } from "../../force5/src/shoreFacing";
 import { shoreAngle } from "../../force5/src/stars";
+import { presentWeather, skyOf } from "../../force5/src/presentWeather";
 import { SOURCE_CACHE_LIMIT, cached } from "./httpSource";
 import { WAVE_SOURCE_PREFERENCE } from "../../force5/src/waves";
 import {
@@ -503,6 +504,8 @@ describe("rain", () => {
       skip?: number;
       /** Drop the stated intervals, so the gaps between steps say them. */
       unstated?: boolean;
+      /** Each step's present-weather code (default 61, slight rain). */
+      codes?: number[];
     } = {},
   ) {
     const totals = options.totals ?? TOTALS;
@@ -520,7 +523,12 @@ describe("rain", () => {
         ...(!options.unstated && {
           precipIntervalHours: k ? [3 * k - 3, 3 * k] : null,
         }),
-        values: { t2m: 10 + k, precip, clct: 40 + k, ww: 61 },
+        values: {
+          t2m: 10 + k,
+          precip,
+          clct: 40 + k,
+          ww: options.codes?.[k] ?? 61,
+        },
       }))
       .slice(options.skip ?? 0);
     const source = fixtureSource({
@@ -789,6 +797,42 @@ describe("rain", () => {
     expect(hour("2026-09-17T15:00:00.000Z")?.rain_mm).toBe(0.4);
     expect(hour("2026-09-17T17:00:00.000Z")?.rain_mm).toBe(0.9);
     expect(forecast.method).toMatch(/weather_after/);
+  });
+
+  it("says what each hour's weather code means, and the sky the site draws for it", async () => {
+    // Overcast steps, one of them over 2.4 mm of rain; fog; then a thunderstorm.
+    const forecast = await rainForecast(
+      { hours: 24, stepHours: 1 },
+      { codes: [3, 3, 3, 3, 3, 45, 95, 3, 0] },
+    );
+    const rain = rainByHour(forecast.hours);
+    for (const hour of forecast.hours) {
+      const w = hour.weather!;
+      expect(w.description).toBe(
+        presentWeather(w.weather_code)?.description ?? null,
+      );
+      expect(w.sky).toBe(
+        skyOf({ ...w, rain_mm: rain.get(Date.parse(hour.time)) ?? null }),
+      );
+    }
+    const at = (hhmm: string) =>
+      forecast.hours.find((h) => h.time.slice(11, 16) === hhmm)!.weather!;
+    // Overcast by its code, but rain by the rain in its interval.
+    expect(at("21:00")).toMatchObject({
+      weather_code: 3,
+      description: "Cloudy or overcast, clouds developing",
+      sky: "rain",
+    });
+    expect(at("03:00")).toMatchObject({ weather_code: 3, sky: "cloudy" });
+    expect(at("05:00")).toMatchObject({ weather_code: 3, sky: "rain" });
+    expect(at("09:00")).toMatchObject({ weather_code: 45, sky: "fog" });
+    expect(at("12:00")).toMatchObject({
+      weather_code: 95,
+      description: "Thunderstorm, slight or moderate",
+      sky: "thunder",
+    });
+    expect(forecast.units.weather_code).toMatch(/WMO.*4677/);
+    expect(forecast.units.weather_code).toMatch(/`ww`/);
   });
 
   it("tells an agent what a row's rain covers", async () => {
