@@ -178,7 +178,7 @@ class ShippedScheduleTest(unittest.TestCase):
                                       "harmonie-eps", "ecmwf-ens", "aifs", "gfs", "gefs", "arpege",
                                       "arome", "gfs-wave", "gfs-weather", "mi-swan", "currents", "ecmwf-wave", "tides",
                                       "sea-temperature", "blend", "blend-after-harmonie", "wind-obs",
-                                      "forecast-archive",
+                                      "warnings", "forecast-archive",
                                       "verify", "prune"])
         # The lagged HARMONIE ensemble ships disabled: it is heavy on Met Éireann's
         # bandwidth for a thin spread, so an operator enables it knowingly. The

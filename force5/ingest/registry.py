@@ -156,6 +156,14 @@ MODELS = {
     # `run` is the newest observation hour; the feeds lag the clock by about an hour.
     "wind-obs": {"script": "fetch_wind_obs.py", "manifest": "marine/wind-observations.json",
                  "kind": "observation", "maxAgeHours": 6},
+    # Met Éireann's weather warnings, land and marine, copied unaltered at :25 each
+    # hour. Not a forecast: `run` is the hour the feed was read in, so a file on
+    # time is at most about 1.5 h old; three hours lets one late or failed run
+    # pass. Past it the site and the MCP stop trusting the file
+    # (force5/src/warnings.ts WARNINGS_MAX_AGE_HOURS, which test_warnings.py holds
+    # equal to this); expired warnings drop out by their own expiry regardless.
+    "warnings": {"script": "fetch_warnings.py", "manifest": "marine/warnings.json",
+                 "kind": "warnings", "maxAgeHours": 3},
     # Not a model either: copies every wind run the bucket serves, sampled where we
     # observe, and the observations, into archive/ before the runs are deleted. The
     # pointer is only a summary of what it copied; `run` is the hour it ran.

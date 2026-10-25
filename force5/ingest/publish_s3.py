@@ -299,6 +299,7 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
     validator = {"tide": validate_tide_bundle,
                  "observation": validate_observation_bundle,
                  "archive": validate_archive_bundle,
+                 "warnings": validate_warnings_bundle,
                  "verification": validate_verification_bundle}[kind]
     return manifest, body, validator(public, model, manifest, run, now)
 
@@ -862,6 +863,65 @@ def validate_archive_bundle(public, model, manifest, run, now):
         raise ValueError("The archive summary's observation days are malformed")
     if manifest_urls(manifest):
         raise ValueError("The archive summary must not reference objects by url")
+    return []
+
+
+WARNING_LEVELS = ("yellow", "orange", "red")
+WARNING_TEXT = ("capId", "type", "severity", "certainty", "level", "issued", "updated",
+                "onset", "expiry", "headline", "description", "status")
+WARNING_REGION = re.compile(r"EI\d{2}|EI8\d{2}")
+
+
+def warning_time(value, label):
+    try:
+        at = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError(f"{label} is not a time") from error
+    if at.tzinfo is None:
+        raise ValueError(f"{label} has no time zone")
+    return at
+
+
+def validate_warnings_bundle(public, model, manifest, run, now):
+    """Met Éireann's warnings, copied as published (force5/ingest/fetch_warnings.py).
+
+    Every warning carries the fields the site and the MCP read, at a level they
+    show, with times that parse, and none had expired when the file was written:
+    Met Éireann's conditions ask for expired warnings to be removed. An empty list
+    is valid (no warnings), which is why the adapter fails rather than writes one
+    from a feed it cannot read. Attribution to Met Éireann is required.
+    """
+    generated_hour(manifest, run, "The warnings")
+    if manifest.get("schemaVersion") != 1:
+        raise ValueError("Unknown warnings schema")
+    for key in ("attribution", "licenseUrl", "sourceUrl"):
+        if not isinstance(manifest.get(key), str) or not manifest[key].strip():
+            raise ValueError(f"The warnings need their {key}")
+    if "Met Éireann" not in manifest["attribution"]:
+        raise ValueError("The warnings must credit Met Éireann")
+    warnings = manifest.get("warnings")
+    if not isinstance(warnings, list):
+        raise ValueError("The warnings file must list its warnings")
+    generated = warning_time(manifest["generatedAt"], "generatedAt")
+    for index, warning in enumerate(warnings):
+        label = f"Warning {index}"
+        if not isinstance(warning, dict) or not all(
+                isinstance(warning.get(field), str) for field in WARNING_TEXT):
+            raise ValueError(f"{label} is missing a field")
+        if warning["level"].strip().lower() not in WARNING_LEVELS:
+            raise ValueError(f"{label} has a level the site does not show")
+        onset = warning_time(warning["onset"], f"{label} onset")
+        expiry = warning_time(warning["expiry"], f"{label} expiry")
+        if expiry < onset:
+            raise ValueError(f"{label} expires before its onset")
+        if expiry <= generated:
+            raise ValueError(f"{label} had expired when the file was written")
+        regions = warning.get("regions")
+        if not isinstance(regions, list) or not regions or not all(
+                isinstance(code, str) and WARNING_REGION.fullmatch(code) for code in regions):
+            raise ValueError(f"{label} has no usable regions")
+    if manifest_urls(manifest):
+        raise ValueError("The warnings must not reference objects by url")
     return []
 
 

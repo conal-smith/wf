@@ -108,6 +108,7 @@ in UTC. The shipped schedule is:
 | `tides`           | 01:05 daily        | predictions, not a forecast cycle                     |
 | `sea-temperature` | every 3 h at :15   | Marine Institute observations, newest reading         |
 | `wind-obs`        | every hour at :50  | Met Éireann and buoy wind observations, last 72 h     |
+| `warnings`        | every hour at :25  | Met Éireann's weather warnings, copied unaltered      |
 | `forecast-archive`| every hour at :15  | copies served wind runs and observations to archive/  |
 | `verify`          | 07:25 daily        | model and blend scores (docs/VERIFICATION.md)         |
 | `prune`           | every hour at :10  | retention (see below)                                 |
