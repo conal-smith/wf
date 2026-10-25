@@ -205,6 +205,33 @@
           "$description": "The moon's pale fill, inside an ink outline only."
         }
       },
+      "stars": {
+        "1": {
+          "$type": "color",
+          "$value": "#e28bb3",
+          "$description": "1 star for this rider: the chart's magenta, paled. 2.1:1 on paper."
+        },
+        "2": {
+          "$type": "color",
+          "$value": "#d2609a",
+          "$description": "2 stars for this rider: the chart's magenta, paled. 3.1:1 on paper."
+        },
+        "3": {
+          "$type": "color",
+          "$value": "#bd3d84",
+          "$description": "3 stars for this rider: the chart's magenta, paled. 4.4:1 on paper."
+        },
+        "4": {
+          "$type": "color",
+          "$value": "#a01f6c",
+          "$description": "4 stars for this rider: the chart's magenta, deepened. 6.2:1 on paper."
+        },
+        "5": {
+          "$type": "color",
+          "$value": "#7c0f55",
+          "$description": "5 stars for this rider: the chart's magenta, deepened. 8.8:1 on paper."
+        }
+      },
       "wind": {
         "k00": {
           "$type": "color",
@@ -1526,6 +1553,68 @@
               "role": "data",
               "use": "Inside the moon's ink outline, for a clear or part-cloudy dark hour.",
               "doNotUse": "As text, or for anything but the weather's state."
+            }
+          }
+        }
+      },
+      "stars": {
+        "1": {
+          "$type": "color",
+          "$value": "{ref.color.stars.1}",
+          "$description": "1 star. --color-stars-1. Not re-themed.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "A rider's stars as colour, one to five, pale pink to deep magenta: a filled star, the line under a day's rideable hours (the spot finder's cards).",
+              "doNotUse": "As text, for the wind, a category or decoration; for no stars, which has no colour."
+            }
+          }
+        },
+        "2": {
+          "$type": "color",
+          "$value": "{ref.color.stars.2}",
+          "$description": "2 stars. --color-stars-2. Not re-themed.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "A rider's stars as colour, one to five, pale pink to deep magenta: a filled star, the line under a day's rideable hours (the spot finder's cards).",
+              "doNotUse": "As text, for the wind, a category or decoration; for no stars, which has no colour."
+            }
+          }
+        },
+        "3": {
+          "$type": "color",
+          "$value": "{ref.color.stars.3}",
+          "$description": "3 stars. --color-stars-3. Not re-themed.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "A rider's stars as colour, one to five, pale pink to deep magenta: a filled star, the line under a day's rideable hours (the spot finder's cards).",
+              "doNotUse": "As text, for the wind, a category or decoration; for no stars, which has no colour."
+            }
+          }
+        },
+        "4": {
+          "$type": "color",
+          "$value": "{ref.color.stars.4}",
+          "$description": "4 stars. --color-stars-4. Not re-themed.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "A rider's stars as colour, one to five, pale pink to deep magenta: a filled star, the line under a day's rideable hours (the spot finder's cards).",
+              "doNotUse": "As text, for the wind, a category or decoration; for no stars, which has no colour."
+            }
+          }
+        },
+        "5": {
+          "$type": "color",
+          "$value": "{ref.color.stars.5}",
+          "$description": "5 stars. --color-stars-5. Not re-themed.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "A rider's stars as colour, one to five, pale pink to deep magenta: a filled star, the line under a day's rideable hours (the spot finder's cards).",
+              "doNotUse": "As text, for the wind, a category or decoration; for no stars, which has no colour."
             }
           }
         }
@@ -3038,6 +3127,17 @@
           "com.sprintengine": {
             "role": "layout",
             "use": "`wide:`; where the headline steps up from title."
+          }
+        }
+      },
+      "cards": {
+        "$type": "dimension",
+        "$value": "73.75rem",
+        "$description": "--breakpoint-cards: 1180px, where two of the spot finder's cards have their room side by side.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layout",
+            "use": "`cards:`; the spot finder's grid of cards turns from one column to two."
           }
         }
       }

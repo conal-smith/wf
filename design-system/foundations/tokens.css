@@ -40,6 +40,11 @@
   --ref-color-weather-rain: #3a7fb0;
   --ref-color-weather-cloud: #d6d0c2;
   --ref-color-weather-night: #e7dcb4;
+  --ref-color-stars-1: #e28bb3;
+  --ref-color-stars-2: #d2609a;
+  --ref-color-stars-3: #bd3d84;
+  --ref-color-stars-4: #a01f6c;
+  --ref-color-stars-5: #7c0f55;
   --ref-color-wind-k00: #aacbea;
   --ref-color-wind-k05: #80aee0;
   --ref-color-wind-k09: #4f80c8;
@@ -198,6 +203,11 @@
   --sem-color-weather-rain: var(--ref-color-weather-rain);
   --sem-color-weather-cloud: var(--ref-color-weather-cloud);
   --sem-color-weather-night: var(--ref-color-weather-night);
+  --sem-color-stars-1: var(--ref-color-stars-1);
+  --sem-color-stars-2: var(--ref-color-stars-2);
+  --sem-color-stars-3: var(--ref-color-stars-3);
+  --sem-color-stars-4: var(--ref-color-stars-4);
+  --sem-color-stars-5: var(--ref-color-stars-5);
   --sem-color-wind-k00: var(--ref-color-wind-k00);
   --sem-color-wind-k05: var(--ref-color-wind-k05);
   --sem-color-wind-k09: var(--ref-color-wind-k09);
@@ -323,6 +333,7 @@
   --sem-grid-tiles: repeat(auto-fill, minmax(132px, 1fr));
   --sem-breakpoint-rail: 56.25rem;
   --sem-breakpoint-wide: 45rem;
+  --sem-breakpoint-cards: 73.75rem;
   --sem-duration-fast: var(--ref-duration-150);
   --sem-duration-base: var(--ref-duration-250);
   --sem-animate-pulse: pulse 1s ease-in-out infinite alternate;

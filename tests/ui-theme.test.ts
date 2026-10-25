@@ -112,6 +112,12 @@ const COLOURS: Record<string, string> = {
   "weather-rain": "#3a7fb0",
   "weather-cloud": "#d6d0c2",
   "weather-night": "#e7dcb4",
+  // A rider's stars as colour, one to five, and nothing else.
+  "stars-1": "#e28bb3",
+  "stars-2": "#d2609a",
+  "stars-3": "#bd3d84",
+  "stars-4": "#a01f6c",
+  "stars-5": "#7c0f55",
 };
 
 // Size, line height, then weight and tracking where the step has one.

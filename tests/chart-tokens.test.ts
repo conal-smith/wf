@@ -130,6 +130,42 @@ describe("the weather's colours", () => {
   });
 });
 
+describe("the stars' colours", () => {
+  // Read once the theme is compiled, in each test.
+  const stars = () => [1, 2, 3, 4, 5].map((n) => resolved(`stars-${n}`));
+
+  it("are the ruling's, pale pink to deep magenta", () => {
+    expect(stars()).toEqual([
+      "#e28bb3",
+      "#d2609a",
+      "#bd3d84",
+      "#a01f6c",
+      "#7c0f55",
+    ]);
+  });
+
+  it("darken with every star, each step plain against the last", () => {
+    const STARS = stars();
+    for (let i = 1; i < STARS.length; i++) {
+      expect(luminance(STARS[i]), `stars-${i + 1}`).toBeLessThan(
+        luminance(STARS[i - 1]),
+      );
+      expect(contrast(STARS[i], STARS[i - 1])).toBeGreaterThan(1.3);
+    }
+  });
+
+  it("show on paper from the first star", () => {
+    expect(contrast(stars()[0], resolved("ground"))).toBeGreaterThanOrEqual(2);
+  });
+
+  it("are not the wind's", () => {
+    const wind = css.match(/--color-wind-k\d\d: #[0-9a-f]{6}/g) ?? [];
+    expect(wind.length).toBeGreaterThan(10);
+    for (const star of stars())
+      expect(wind.some((w) => w.endsWith(star))).toBe(false);
+  });
+});
+
 describe("contrast, as the ruling records it", () => {
   const PRINCIPLES = resolve(ROOT, "docs/DESIGN_PRINCIPLES.md");
 

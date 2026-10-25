@@ -223,6 +223,20 @@
   --color-weather-cloud: #d6d0c2;
   --color-weather-night: #e7dcb4;
 
+  /* A rider's stars, one to five, as colour: pale pink to deep magenta, the
+     chart's own magenta paled and deepened (ruling of 2026-10-25). One hue,
+     lighter to darker as the stars go up, each step plain against the next,
+     and the one-star end still 2:1 on paper. They mean stars and nothing
+     else: never the wind's (whose colours mean knots), never a category, and
+     no stars has no colour at all. A fill, a line or a filled star, never
+     words. The spot finder's cards draw them (src/finder); the chart's and
+     the dock's stars stay ink for now. */
+  --color-stars-1: #e28bb3;
+  --color-stars-2: #d2609a;
+  --color-stars-3: #bd3d84;
+  --color-stars-4: #a01f6c;
+  --color-stars-5: #7c0f55;
+
   /* ---- type ------------------------------------------------------------ */
 
   /* Four faces, each with one job, self-hosted (ui/fonts.css):
@@ -390,6 +404,11 @@
      and `max-wide:`: the marketplace's header labels, its gutter, its filter
      row and its grid all turn here. 720px, in the same unit. */
   --breakpoint-wide: 45rem;
+
+  /* Where two of the spot finder's cards stand side by side, as `cards:`:
+     each card needs about 560px for today's hours and the five days to
+     read, so under 1180px of page there is one column. In the same unit. */
+  --breakpoint-cards: 73.75rem;
 
   /* ---- motion and layers ----------------------------------------------- */
 
