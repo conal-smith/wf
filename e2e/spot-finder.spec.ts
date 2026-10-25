@@ -71,7 +71,7 @@ const inOrder = (list: { best: number; day: number }[]) =>
 
 /** Today's hour columns on a card. */
 const hours = (page: Page, card = 0) =>
-  cards(page).nth(card).locator("[data-today-hours] [data-hour]");
+  cards(page).nth(card).locator("[data-day-hours] [data-hour]");
 
 /** Each card's rose: the bearing its wind comes from, or "" with none. */
 const roses = (page: Page) =>
@@ -152,12 +152,12 @@ test.describe("on a desktop", () => {
     await expect(card.locator("[data-last-light]")).toContainText(
       /^last light \d\d:\d\d$/,
     );
-    await expect(card.locator("[data-today-facts] [data-light]")).toContainText(
+    await expect(card.locator("[data-day-facts] [data-light]")).toContainText(
       /^light \d\d:\d\d–\d\d:\d\d$/,
     );
-    await expect(
-      card.locator("[data-today-hours] [data-wind-band]"),
-    ).toHaveCount(1);
+    await expect(card.locator("[data-day-hours] [data-wind-band]")).toHaveCount(
+      1,
+    );
   });
 
   test("the row scrolls with no bar, opening on now, and steps either way", async ({
@@ -254,6 +254,191 @@ test.describe("on a desktop", () => {
       .toBe(JSON.stringify(before));
   });
 
+  test("a day pressed is drawn hour by hour on every card, today among the others to come back to", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "dollymount", "keel"]);
+    await openFinder(page);
+    await rated(page);
+    const today = AFTERNOON.toISOString().slice(0, 10);
+    const days = (card: number) =>
+      cards(page).nth(card).locator("[data-next-days] [data-day]");
+    // An hour picked today, to see it put down with the day.
+    await hours(page)
+      .and(page.locator(":not([data-dark]):not([data-gone])"))
+      .nth(2)
+      .click();
+    await expect(page.locator("[data-picked-hour]")).toHaveCount(3);
+    // The second of the next days, pressed on the second card.
+    const date = (await days(1).nth(1).getAttribute("data-day"))!;
+    await days(1).nth(1).click();
+    await expect(page).toHaveURL(/\/spots$/);
+    for (let i = 0; i < 3; i++) {
+      const card = cards(page).nth(i);
+      await expect(card.locator("[data-day-shown]")).toHaveAttribute(
+        "data-day-shown",
+        date,
+      );
+      await expect(card.locator("[data-day-name]")).toHaveText(
+        /^[A-Z][a-z]{2} \d{1,2}$/,
+      );
+      // Today is among the five now, first, and the day chosen is not.
+      await expect(days(i)).toHaveCount(5);
+      await expect(days(i).first()).toHaveAttribute("data-day", today);
+      await expect(days(i).first()).toContainText("Today");
+      await expect(
+        card.locator(`[data-next-days] [data-day="${date}"]`),
+      ).toHaveCount(0);
+      await expect(card.getByText("Other days", { exact: true })).toBeVisible();
+    }
+    // The day's own hours: no now, none gone, light at either end; the
+    // hour picked today is put down, and the roses stand at the day's
+    // early afternoon, said on each picture.
+    const row = hours(page);
+    await expect(row.and(page.locator("[data-now]"))).toHaveCount(0);
+    await expect(row.and(page.locator("[data-gone]"))).toHaveCount(0);
+    await expect(row.first()).toHaveAttribute("data-dark", "true");
+    await expect(row.last()).toHaveAttribute("data-dark", "true");
+    await expect(page.locator("[data-picked-hour]")).toHaveCount(0);
+    await expect(page.locator("[data-rose-hour]").first()).toHaveText(
+      /^1[2-4]:00$/,
+    );
+    await expect(
+      cards(page).first().locator("[data-first-light]"),
+    ).toContainText(/^first light \d\d:\d\d$/);
+    // An hour picked on it is picked on every card.
+    const pick = row.and(page.locator(":not([data-dark])")).first();
+    const time = (await pick.getAttribute("data-hour"))!;
+    await pick.click();
+    await expect(
+      page.locator(`[data-hour="${time}"][aria-pressed="true"]`),
+    ).toHaveCount(3);
+    await expect(page.locator("[data-picked-hour]").first()).toHaveText(
+      /^\d\d:00$/,
+    );
+    // Today again, from the keys: back to now, the hour put down.
+    await days(2).first().focus();
+    await page.keyboard.press("Enter");
+    // The focus stays in the five, on the day that came back into them.
+    await expect(
+      cards(page).nth(2).locator(`[data-next-days] [data-day="${date}"]`),
+    ).toBeFocused();
+    for (let i = 0; i < 3; i++) {
+      await expect(
+        cards(page).nth(i).locator("[data-day-shown]"),
+      ).toHaveAttribute("data-day-shown", today);
+      await expect(cards(page).nth(i).locator("[data-day-name]")).toHaveText(
+        "Today",
+      );
+      await expect(days(i).first()).not.toHaveAttribute("data-day", today);
+    }
+    await expect(
+      page.locator("[data-picked-hour], [data-rose-hour]"),
+    ).toHaveCount(0);
+    await expect(
+      page.locator('[data-hour][data-now][aria-pressed="true"]'),
+    ).toHaveCount(3);
+  });
+
+  test("a day's drawing pressed is that day too", async ({ page }) => {
+    await star(page, ["brandon", "keel"]);
+    await openFinder(page);
+    await rated(page);
+    const band = cards(page).first().locator("[data-days-band]");
+    const box = (await band.boundingBox())!;
+    const date = await cards(page)
+      .first()
+      .locator("[data-next-days] [data-day]")
+      .nth(4)
+      .getAttribute("data-day");
+    await page.mouse.click(box.x + box.width * 0.9, box.y + box.height / 2);
+    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page.locator("[data-day-shown]")).toHaveCount(2);
+    for (const shown of await page.locator("[data-day-shown]").all())
+      await expect(shown).toHaveAttribute("data-day-shown", date!);
+  });
+
+  test("a mouse over a card's hours draws a dotted line at that time on every card", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "dollymount", "keel"]);
+    await openFinder(page);
+    await rated(page);
+    const lines = page.locator("[data-day-hours] [data-hover-line]");
+    await expect(lines.first()).toBeHidden();
+    // The middle of a lit hour on the first card: that hour, exactly.
+    const column = hours(page)
+      .and(page.locator(":not([data-dark]):not([data-gone])"))
+      .nth(1);
+    const time = (await column.getAttribute("data-hour"))!;
+    const clock = (await column.getAttribute("title"))!;
+    const box = (await column.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    // A line on every card's row, at the middle of that hour's column.
+    for (let i = 0; i < 3; i++) {
+      const card = cards(page).nth(i);
+      const line = card.locator("[data-day-hours] [data-hover-line]");
+      await expect(line).toBeVisible();
+      const at = (await card.locator(`[data-hour="${time}"]`).boundingBox())!;
+      const l = (await line.boundingBox())!;
+      expect(Math.abs(l.x - (at.x + at.width / 2))).toBeLessThan(2);
+    }
+    // The time, beside the pointer, on the card it is over and no other.
+    const tags = page.locator("[data-day-hours] [data-hover-time]");
+    await expect(tags.and(page.locator(":visible"))).toHaveCount(1);
+    await expect(
+      cards(page).first().locator("[data-day-hours] [data-hover-time]"),
+    ).toHaveText(clock);
+    // Off the row, the lines go.
+    await page.mouse.move(box.x + box.width / 2, 2);
+    await expect(lines.and(page.locator(":visible"))).toHaveCount(0);
+    // A mouse over a day of the next ones: a line on that day on every card,
+    // and on no card's row of hours.
+    const band = cards(page).nth(1).locator("[data-days-band]");
+    const b = (await band.boundingBox())!;
+    await page.mouse.move(b.x + b.width * 0.3, b.y + 30);
+    const dayLines = page.locator("[data-days-band] [data-hover-line]");
+    for (let i = 0; i < 3; i++) await expect(dayLines.nth(i)).toBeVisible();
+    await expect(lines.and(page.locator(":visible"))).toHaveCount(0);
+    // The same time: as near the same place as each place's own light lets
+    // it be (Kerry's day is a quarter of an hour behind Dublin's).
+    const xs = await dayLines.evaluateAll((els) =>
+      els.map(
+        (el) =>
+          el.querySelector("line")!.getBoundingClientRect().x -
+          el.closest("svg")!.getBoundingClientRect().x,
+      ),
+    );
+    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThan(6);
+    await expect(
+      cards(page).nth(1).locator("[data-days-band] [data-hover-time]"),
+    ).toBeVisible();
+    await expect(
+      cards(page).nth(0).locator("[data-days-band] [data-hover-time]"),
+    ).toBeHidden();
+    await page.mouse.move(b.x + b.width * 0.3, b.y - 200);
+    await expect(dayLines.first()).toBeHidden();
+  });
+
+  test("first light stays in the row's view as it scrolls, not cut off by its edge", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "keel"]);
+    await openFinder(page);
+    await rated(page);
+    const card = cards(page).first();
+    const scroller = card.locator("[data-hours-scroll]");
+    for (const left of [0, 40, 90, 10000]) {
+      await scroller.evaluate((el, left) => (el.scrollLeft = left), left);
+      const view = (await scroller.boundingBox())!;
+      const first = (await card.locator("[data-first-light]").boundingBox())!;
+      const last = (await card.locator("[data-last-light]").boundingBox())!;
+      expect(first.x).toBeGreaterThanOrEqual(view.x);
+      expect(last.x + last.width).toBeLessThanOrEqual(view.x + view.width);
+      expect(first.x + first.width).toBeLessThan(last.x);
+    }
+  });
+
   test("the picture opens the chart there, at the hour picked; the card opens the spot's page", async ({
     page,
   }) => {
@@ -262,9 +447,7 @@ test.describe("on a desktop", () => {
     await rated(page);
     const keel = cards(page).filter({ hasText: "Keel Beach" });
     const pick = keel
-      .locator(
-        "[data-today-hours] [data-hour]:not([data-dark]):not([data-gone])",
-      )
+      .locator("[data-day-hours] [data-hour]:not([data-dark]):not([data-gone])")
       .nth(2);
     const clock = (await pick.getAttribute("title"))!;
     await pick.click();
@@ -409,13 +592,13 @@ test.describe("on a desktop", () => {
     await openFinder(page);
     const brandon = cards(page).filter({ hasText: "Brandon Bay" });
     const keel = cards(page).filter({ hasText: "Keel Beach" });
-    const facts = brandon.locator("[data-today-facts] [data-tide-time]");
+    const facts = brandon.locator("[data-day-facts] [data-tide-time]");
     // The two in the row's hours; the low water at 22:40 is after it.
     await expect(facts).toHaveCount(2, { timeout: 30000 });
     await expect(facts.nth(0)).toHaveText(/^10:10 low water$/);
     await expect(facts.nth(1)).toHaveText(/^16:25 high water$/);
     // Under the hour each falls in.
-    const high = brandon.locator('[data-today-hours] [data-tide="high"]');
+    const high = brandon.locator('[data-day-hours] [data-tide="high"]');
     await expect(high).toContainText("16:25");
     const column = brandon.locator(
       `[data-hour="${Date.parse(`${day}T15:00:00Z`)}"]`,
@@ -569,6 +752,18 @@ test.describe("on a phone", () => {
     await expect(
       page.locator(`[data-hour="${time}"][aria-pressed="true"]`),
     ).toHaveCount(3);
+    // A finger has no hover: no line follows it.
+    await expect(
+      page.locator("[data-hover-line]").and(page.locator(":visible")),
+    ).toHaveCount(0);
+    // A day tapped is drawn hour by hour on every card.
+    const day = cards(page)
+      .first()
+      .locator("[data-next-days] [data-day]")
+      .nth(0);
+    const date = await day.getAttribute("data-day");
+    await day.tap();
+    await expect(page.locator(`[data-day-shown="${date}"]`)).toHaveCount(3);
     await expect(page).toHaveURL(/\/spots$/);
     // The next five days fit the card.
     const days = cards(page).first().locator("[data-days-band]");

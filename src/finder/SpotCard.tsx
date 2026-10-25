@@ -1,8 +1,8 @@
 /**
  * A place on the spot finder: its picture from above with the ride rose on
  * it, its name, how far it is and its county, and the star a rider keeps it
- * by; then today, hour by hour (src/finder/TodayHours.tsx), and the next
- * five days (src/finder/NextDays.tsx). The approved mock-up is
+ * by; then today (or the day chosen), hour by hour (src/finder/DayHours.tsx),
+ * and the other five of its six days (src/finder/NextDays.tsx). The approved mock-up is
  * backlog/mockups/2026-10-25-spot-list-cards.html, its "7e".
  *
  * Pressing the picture opens the chart at the place, at the hour the rose on
@@ -11,7 +11,7 @@
  * The picture is the spot page's own, cut from the chart's satellite
  * composites (spot/web/satellite.ts), loaded lazily as the card scrolls in;
  * the rose is the loupe's (force5/src/focus.ts), at the loupe's distance,
- * for the hour picked on today's row, or now.
+ * for the hour picked on the day's row, or the hour the day stands at.
  */
 import {
   useEffect,
@@ -39,17 +39,17 @@ import {
 import type { PlaceHour } from "../ratings";
 import { clock, type StripColumn } from "../strip";
 import WeatherGlyph from "../WeatherGlyph";
+import { DayHours } from "./DayHours";
 import {
   HOUR,
   middayColumn,
   type DayPlan,
-  type TodayRow,
+  type DayRow,
   type WeekBest,
 } from "./finder";
 import { NextDays } from "./NextDays";
 import { Rose } from "./Rose";
 import { TideMark } from "./marks";
-import { TodayHours } from "./TodayHours";
 import type { Readings } from "./useReadings";
 
 export const cardStyles = tv({
@@ -242,17 +242,17 @@ export function StarToggle({
 }
 
 /**
- * Today's line over its hours: the sky and the air, the sea, high and low
+ * The day's line over its hours: the sky and the air, the sea, high and low
  * water, and first and last light. A reading the place has none of is left
  * out, not written as a blank.
  */
-function TodayFacts({
-  today,
+function DayFacts({
+  day: today,
   readings,
   strip,
   now,
 }: {
-  today: TodayRow;
+  day: DayRow;
   readings: Readings;
   strip: readonly StripColumn[];
   now: number;
@@ -272,7 +272,7 @@ function TodayFacts({
     return time >= from && time < to;
   });
   return (
-    <span className={s.facts()} data-today-facts>
+    <span className={s.facts()} data-day-facts>
       {(sky || air !== null) && (
         <span className={s.fact()} data-air>
           {sky && <WeatherGlyph weather={sky} size={15} />}
@@ -312,13 +312,18 @@ export interface SpotCardProps {
   km: number | null;
   row: readonly PlaceHour[] | undefined;
   strip: readonly StripColumn[];
-  today: TodayRow | null;
-  /** Tomorrow and the four days after it. */
+  /** The day drawn hour by hour: today, or the one chosen. */
+  day: DayRow | null;
+  /** The day, as its heading says it ("Today", "Tue 28") and said in full. */
+  dayName: { short: string; long: string };
+  /** Whether the day is today (not one chosen). */
+  isToday: boolean;
+  /** The other five of the six days. */
   days: readonly (DayPlan | null)[];
   readings: Readings;
-  /** The hour picked on today's row, or null for now. */
+  /** The hour picked on the day's row, or null for the hour it stands at. */
   picked: number | null;
-  /** The hour ringed on today's row: the one picked, or the hour now. */
+  /** The hour ringed on the day's row: the one picked, or the one it stands at. */
   shown: number;
   /** The strip's column the picture's rose is for, or null with none. */
   roseAt: number | null;
@@ -330,6 +335,8 @@ export interface SpotCardProps {
   reducedMotion: boolean;
   onToggleStar: () => void;
   onPick: (time: number) => void;
+  /** Show a day hour by hour, on every card. */
+  onChooseDay: (date: string) => void;
   /** The chart, at this place, at the hour the rose shows. */
   onChart: () => void;
   /** Its place in the list. */
@@ -345,7 +352,9 @@ export function SpotCard(props: SpotCardProps) {
     km,
     row,
     strip,
-    today,
+    day,
+    dayName,
+    isToday,
     days,
     readings,
     picked,
@@ -359,6 +368,7 @@ export function SpotCard(props: SpotCardProps) {
     reducedMotion,
     onToggleStar,
     onPick,
+    onChooseDay,
     onChart,
     order,
     best,
@@ -407,9 +417,14 @@ export function SpotCard(props: SpotCardProps) {
             <Chip tone="glass" className={s.go()} aria-hidden="true">
               Chart
             </Chip>
-            {picked !== null && (
-              <Chip tone="glass" className={s.at()} data-picked-hour>
-                {clock(picked)}
+            {(picked !== null || !isToday) && (
+              <Chip
+                tone="glass"
+                className={s.at()}
+                data-picked-hour={picked !== null || undefined}
+                data-rose-hour
+              >
+                {clock(shown)}
               </Chip>
             )}
           </SpotPicture>
@@ -429,20 +444,22 @@ export function SpotCard(props: SpotCardProps) {
           className={s.star()}
         />
       </div>
-      {today && (
-        <section className={s.section()} aria-label="Today">
+      {day && (
+        <section
+          className={s.section()}
+          aria-label={dayName.long}
+          data-day-shown={day.date}
+        >
           <div className={s.heading()}>
-            <span className={s.kicker()}>Today</span>
-            <TodayFacts
-              today={today}
-              readings={readings}
-              strip={strip}
-              now={now}
-            />
+            <span className={s.kicker()} data-day-name>
+              {dayName.short}
+            </span>
+            <DayFacts day={day} readings={readings} strip={strip} now={now} />
           </div>
-          <TodayHours
+          <DayHours
             row={row}
-            today={today}
+            day={day}
+            name={dayName.long}
             readings={readings}
             facing={spot.facing ?? null}
             shown={shown}
@@ -451,11 +468,18 @@ export function SpotCard(props: SpotCardProps) {
             reducedMotion={reducedMotion}
             onPick={onPick}
             order={order}
+            hoverKey={spot.id}
           />
         </section>
       )}
-      <section className={s.section()} aria-label="Next 5 days" ref={next}>
-        <span className={s.kicker()}>Next 5 days</span>
+      <section
+        className={s.section()}
+        aria-label={isToday ? "Next 5 days" : "Other days"}
+        ref={next}
+      >
+        <span className={s.kicker()}>
+          {isToday ? "Next 5 days" : "Other days"}
+        </span>
         <NextDays
           row={row}
           strip={strip}
@@ -465,6 +489,8 @@ export function SpotCard(props: SpotCardProps) {
           units={units}
           now={now}
           width={nextSize?.width ?? null}
+          onChoose={onChooseDay}
+          hoverKey={`${spot.id}/days`}
         />
       </section>
     </article>

@@ -11,7 +11,9 @@ import {
   centredScroll,
   columnsByTime,
   dayLight,
+  dayOpening,
   dayPlan,
+  dayRow,
   distanceKm,
   listFor,
   middayColumn,
@@ -20,6 +22,8 @@ import {
   rankSpots,
   rideableRun,
   rowEnds,
+  rowPosition,
+  rowTime,
   shownColumn,
   starColour,
   steppedScroll,
@@ -191,6 +195,94 @@ describe("today's row of hours", () => {
   });
 });
 
+describe("a day chosen, hour by hour", () => {
+  const now = Date.parse("2026-10-25T13:20:00Z");
+  // Hourly for two days, then three-hourly.
+  const start = Date.parse("2026-10-25T00:00:00Z");
+  const strip = stripColumns(
+    [
+      ...Array.from({ length: 48 }, (_, i) => start + i * HOUR),
+      ...Array.from({ length: 40 }, (_, i) => start + (48 + i * 3) * HOUR),
+    ].map((t) => ({ validTime: new Date(t).toISOString(), model: "x" })),
+    now,
+  );
+
+  it("is a column an hour where the run is hourly, none now and none gone", () => {
+    const row = dayRow(strip, DUBLIN, "2026-10-26", now)!;
+    expect(row.date).toBe("2026-10-26");
+    const light = dayLight(DUBLIN, "2026-10-26")!;
+    expect(row.hours[0].time).toBeLessThan(light.firstLight);
+    expect(row.hours.at(-1)!.time).toBeGreaterThan(light.lastLight);
+    row.hours.forEach((h, i) => {
+      if (i) expect(h.time - row.hours[i - 1].time).toBe(HOUR);
+      expect(h.at).not.toBeNull();
+    });
+    expect(row.hours.some((h) => h.now || h.gone)).toBe(false);
+    expect(row.hours[0].dark && row.hours.at(-1)!.dark).toBe(true);
+  });
+
+  it("is the run's own steps where it is three-hourly, from the one before first light to the one after last", () => {
+    const row = dayRow(strip, DUBLIN, "2026-10-29", now)!;
+    const light = dayLight(DUBLIN, "2026-10-29")!;
+    // About 06:45 to 17:30: 06:00 to 18:00, three hours a column.
+    expect(row.hours.map((h) => irishHour(h.time))).toEqual([6, 9, 12, 15, 18]);
+    expect(row.hours.every((h) => h.at !== null)).toBe(true);
+    expect(row.hours[0].time).toBeLessThan(light.firstLight);
+    expect(row.hours.at(-1)!.time).toBeGreaterThan(light.lastLight);
+    expect(row.hours.map((h) => h.dark)).toEqual([
+      true,
+      false,
+      false,
+      false,
+      true,
+    ]);
+  });
+
+  it("keeps the hour now where the strip steps over it", () => {
+    // Fifteen and seventeen hundred, and the time now between them.
+    const late = Date.parse("2026-10-25T16:20:00Z");
+    const gap = stripColumns(
+      [15, 17, 18, 19].map((h) => ({
+        validTime: new Date(start + h * HOUR).toISOString(),
+        model: "x",
+      })),
+      late,
+    );
+    const row = dayRow(gap, DUBLIN, "2026-10-25", late)!;
+    const hours = row.hours.map((h) => irishHour(h.time));
+    expect(hours).toContain(16);
+    expect(row.hours.find((h) => h.now)!.at).toBeNull();
+    // The morning before the strip begins is kept, empty.
+    expect(hours.slice(0, 3)).toEqual([6, 7, 8]);
+  });
+
+  it("opens on the day's early afternoon", () => {
+    expect(irishHour(strip[dayOpening(strip, "2026-10-26", now)!].time)).toBe(
+      13,
+    );
+    expect(irishHour(strip[dayOpening(strip, "2026-10-29", now)!].time)).toBe(
+      12,
+    );
+    expect(dayOpening(strip, "2026-12-25", now)).toBeNull();
+  });
+
+  it("stands a time along its columns, and back", () => {
+    const h = (n: number) => start + n * HOUR;
+    // Hourly, then three-hourly.
+    const times = [h(6), h(7), h(8), h(11), h(14)];
+    expect(rowPosition(times, h(7))).toBe(1);
+    expect(rowPosition(times, h(7.5))).toBe(1.5);
+    expect(rowPosition(times, h(9.5))).toBe(2.5);
+    expect(rowPosition(times, h(14))).toBe(4);
+    // Past either end, an hour a column.
+    expect(rowPosition(times, h(5.5))).toBe(-0.5);
+    expect(rowPosition(times, h(14.5))).toBe(4.5);
+    for (const p of [-0.5, 0, 0.25, 1, 2.5, 3.75, 4, 4.5])
+      expect(rowPosition(times, rowTime(times, p))).toBeCloseTo(p, 9);
+    expect(rowPosition([], h(3))).toBe(0);
+  });
+});
+
 describe("the next days", () => {
   const now = Date.parse("2026-10-25T13:20:00Z");
   // Hourly for two days, then three-hourly.
@@ -345,6 +437,14 @@ describe("the hour picked", () => {
       Date.parse("2026-10-25T09:00:00Z"),
     );
     expect(pickHour(Date.parse("2026-10-25T13:00:00Z"), now)).toBeNull();
+  });
+
+  it("on a day chosen, is none again for the hour the day opens on", () => {
+    const opening = Date.parse("2026-10-27T13:00:00Z");
+    expect(pickHour(Date.parse("2026-10-27T13:00:00Z"), opening)).toBeNull();
+    expect(pickHour(Date.parse("2026-10-27T09:00:00Z"), opening)).toBe(
+      Date.parse("2026-10-27T09:00:00Z"),
+    );
   });
 
   it("turns every card's rose to its column, or the chart's opening one with none", () => {

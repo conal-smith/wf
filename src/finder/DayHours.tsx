@@ -1,19 +1,23 @@
 /**
- * Today on a card, an hour a column, from the hour before first light to the
- * hour after last light: the hour ("now" for this one, in the pen's red),
+ * A day on a card (today, or the day chosen from the next ones), an hour a
+ * column (a step of the run's, a few days out), from the hour before first
+ * light to the hour after last light: the hour ("now" for this one, in the pen's red),
  * the sky, the wind and its gust, the wind's arrow (red where it blows off
  * the beach), and the hour's five stars, the earned ones in the stars' own
  * colours. Behind the columns, faintly, the day's wind as a band in the
  * chart's colours for knots, the gusts paler over it, at the row's own
  * height. The hours gone are faded; the dark at either end is shaded, and
  * first and last light are named under it, with high and low water under
- * the hour each falls in.
+ * the hour each falls in. First and last light keep to the row's view as it
+ * scrolls, rather than being cut by its edge.
  *
  * The row is wider than the card: it scrolls sideways, with no bar, and
- * opens with the hour shown (now, until one is picked) in its middle. Its
- * edges fade where there is more, with a ‹ and a › to step through it.
- * Pressing an hour picks it for every card at once (src/finder/finder.ts
- * `pickHour`); pressing now goes back.
+ * opens with the hour shown (now, or the day's early afternoon, until one is
+ * picked) in its middle. Its edges fade where there is more, with a ‹ and a
+ * › to step through it. Pressing an hour picks it for every card at once
+ * (src/finder/finder.ts `pickHour`); pressing the hour the day stands at
+ * goes back. A mouse over the row draws a dotted line at its time on every
+ * card's row, and writes the time beside it here (src/finder/hover.ts).
  */
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -23,6 +27,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type PointerEvent,
 } from "react";
 import type { Units } from "../../force5/src/units";
 import { speedWords } from "../../force5/src/units";
@@ -35,14 +40,16 @@ import { clock, hourLabel } from "../strip";
 import WeatherGlyph from "../WeatherGlyph";
 import { windBand } from "./band";
 import {
-  HOUR,
   centredScroll,
   hourOf,
   rowEnds,
+  rowPosition,
+  rowTime,
   starsAt,
   steppedScroll,
-  type TodayRow,
+  type DayRow,
 } from "./finder";
+import { hovers, useHover, useHoverLine } from "./hover";
 import { ShoreArrow, Speed, TideMark, gustShown } from "./marks";
 import type { Readings } from "./useReadings";
 
@@ -81,8 +88,17 @@ const styles = tv({
     faded: "opacity-45",
     off: "opacity-35",
     tide: "pointer-events-none absolute flex -translate-x-1/2 items-center gap-0.5 font-mono text-eyebrow whitespace-nowrap text-ink-2",
-    light:
-      "pointer-events-none absolute font-mono text-eyebrow whitespace-nowrap text-ink-muted",
+    // First and last light, under the row from one to the other: each holds
+    // to the view's edge as the row scrolls, not cut off by it.
+    lights:
+      "pointer-events-none absolute flex justify-between gap-3 font-mono text-eyebrow whitespace-nowrap text-ink-muted",
+    light: "sticky",
+    // The time under a mouse, a dotted line on every card's row; the time
+    // written beside it on the row the mouse is over.
+    hoverLine:
+      "pointer-events-none absolute top-0 left-0 z-panel w-0 border-0 border-l border-dotted border-ink",
+    hoverTime:
+      "absolute top-0 left-1 rounded-control bg-inverse px-1 font-mono text-eyebrow leading-4 whitespace-nowrap text-ink-inverse",
     fade: "pointer-events-none absolute top-0 z-panel w-8.5 from-card to-transparent transition-opacity duration-fast",
     // Stood by its top, not pulled up by half: a pressed control nudges down
     // with a translate of its own, which would otherwise undo the other.
@@ -115,9 +131,10 @@ function hourWords(
   return parts.join(", ");
 }
 
-export function TodayHours({
+export function DayHours({
   row,
-  today,
+  day,
+  name,
   readings,
   facing,
   shown,
@@ -126,12 +143,15 @@ export function TodayHours({
   reducedMotion,
   onPick,
   order,
+  hoverKey,
 }: {
   row: readonly PlaceHour[] | undefined;
-  today: TodayRow;
+  day: DayRow;
+  /** The day, said: "Today", "Tuesday". */
+  name: string;
   readings: Readings;
   facing: number | null;
-  /** The hour ringed: the one picked, or the hour now. */
+  /** The hour ringed: the one picked, or the hour the day stands at. */
   shown: number;
   units: Units;
   phone: boolean;
@@ -139,10 +159,13 @@ export function TodayHours({
   onPick: (time: number) => void;
   /** The card's place in the list, which moves it in the page. */
   order: number;
+  /** The row's own key for the time hovered (its card's). */
+  hoverKey: string;
 }) {
   const s = styles();
   const id = useId().replace(/[^\w-]/g, "");
-  const { hours, firstLight, lastLight } = today;
+  const { hours, firstLight, lastLight } = day;
+  const times = useMemo(() => hours.map((h) => h.time), [hours]);
   // The room the row has, measured: a short October day on a wide card
   // spreads its hours across it rather than stopping short of the edge.
   const [view, setView] = useState(0);
@@ -153,7 +176,7 @@ export function TodayHours({
   const from = hours[0].time;
   const width = hours.length * cw;
   // Where a time stands along the row: an hour's middle at its column's.
-  const x = (time: number) => ((time - from) / HOUR) * cw + cw / 2;
+  const x = (time: number) => rowPosition(times, time) * cw + cw / 2;
 
   // The wind behind the hours: each hour the forecast has, at its middle,
   // out to the edges of the first and last of them and no further (the
@@ -179,11 +202,12 @@ export function TodayHours({
     () =>
       readings.tides.flatMap((event) => {
         const time = Date.parse(event.time);
-        return time >= from && time < hours[hours.length - 1].time + HOUR
-          ? [{ time, high: event.kind === "high" }]
+        const at = Math.floor(rowPosition(times, time));
+        return at >= 0 && at < hours.length
+          ? [{ time, high: event.kind === "high", at }]
           : [];
       }),
-    [readings.tides, from, hours],
+    [readings.tides, times],
   );
 
   /* ---- the scroll ---- */
@@ -209,7 +233,7 @@ export function TodayHours({
     if (!el) return;
     const index = Math.max(
       0,
-      Math.min(hours.length - 1, Math.round((hourOf(shown) - from) / HOUR)),
+      Math.min(hours.length - 1, Math.round(rowPosition(times, hourOf(shown)))),
     );
     const to = centredScroll(index * cw, cw, el.clientWidth, el.scrollWidth);
     // A smooth scroll says where it has got to as it goes (`measure`).
@@ -255,17 +279,53 @@ export function TodayHours({
   const darkBefore = Math.max(0, x(firstLight));
   const darkAfter = Math.min(width, x(lastLight));
 
+  /* ---- the time under a mouse ---- */
+  const hover = useHover();
+  const line = useRef<HTMLSpanElement>(null);
+  const tag = useRef<HTMLSpanElement>(null);
+  useHoverLine((at) => {
+    const el = line.current;
+    const label = tag.current;
+    if (!el || !label) return;
+    const position = at ? rowPosition(times, at.time) : NaN;
+    // Not on this row: another day's, or past its ends.
+    if (!(position >= -0.5 && position <= hours.length - 0.5)) {
+      el.hidden = true;
+      return;
+    }
+    const left = position * cw + cw / 2;
+    el.hidden = false;
+    el.style.transform = `translateX(${left.toFixed(1)}px)`;
+    label.hidden = at!.over !== hoverKey;
+    label.textContent = clock(at!.time);
+    // Beside the line, on whichever side has the room.
+    label.style.translate = left > width - 48 ? "calc(-100% - 8px) 0" : "";
+  });
+  const follow = (event: PointerEvent<HTMLDivElement>) => {
+    if (!hover || !hovers(event)) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    hover.set({
+      time: rowTime(times, (event.clientX - box.left - cw / 2) / cw),
+      over: hoverKey,
+    });
+  };
+
   return (
-    <div className={s.root()} data-today-hours>
+    <div className={s.root()} data-day-hours>
       <div
         ref={scroller}
         className={s.scroller()}
         onScroll={measure}
         role="group"
-        aria-label="Today's hours"
+        aria-label={`${name}'s hours`}
         data-hours-scroll
       >
-        <div className={s.track()} style={{ width }}>
+        <div
+          className={s.track()}
+          style={{ width }}
+          onPointerMove={follow}
+          onPointerLeave={() => hover?.set(null)}
+        >
           {darkBefore > 0 && (
             <span
               className={s.dark()}
@@ -425,7 +485,7 @@ export function TodayHours({
             <span
               key={tide.time}
               className={s.tide()}
-              style={{ left: x(hourOf(tide.time)), top: ROW_HEIGHT + 2 }}
+              style={{ left: tide.at * cw + cw / 2, top: ROW_HEIGHT + 2 }}
               title={`${tide.high ? "High" : "Low"} water ${clock(tide.time)}`}
               data-tide={tide.high ? "high" : "low"}
             >
@@ -437,24 +497,29 @@ export function TodayHours({
             </span>
           ))}
           <span
-            className={s.light()}
+            className={s.lights()}
             style={{
               left: Math.max(0, x(firstLight) + 3),
-              top: ROW_HEIGHT + 16,
-            }}
-            data-first-light
-          >
-            first light {clock(firstLight)}
-          </span>
-          <span
-            className={s.light()}
-            style={{
               right: Math.max(0, width - x(lastLight) + 3),
               top: ROW_HEIGHT + 16,
             }}
-            data-last-light
           >
-            last light {clock(lastLight)}
+            <span className={s.light({ className: "left-1" })} data-first-light>
+              first light {clock(firstLight)}
+            </span>
+            <span className={s.light({ className: "right-1" })} data-last-light>
+              last light {clock(lastLight)}
+            </span>
+          </span>
+          <span
+            ref={line}
+            className={s.hoverLine()}
+            style={{ height: ROW_HEIGHT }}
+            hidden
+            aria-hidden="true"
+            data-hover-line
+          >
+            <span ref={tag} className={s.hoverTime()} hidden data-hover-time />
           </span>
         </div>
       </div>
