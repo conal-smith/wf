@@ -1,9 +1,10 @@
 /**
  * The chart itself: MapLibre Native drawing the site's Admiralty style
  * (mapStyle.ts), and over its lines, every one a native layer on the GPU,
- * the satellite image, the foilable depth at the tide, the wind's wash or
- * arrows, the quiet round a focused spot, the spot lights, the tapped
- * point's pen mark and the rider's own position.
+ * the satellite image, the foilable depth at the tide, the coloured wind,
+ * Reduce Motion's still arrows for the particles, the quiet round a focused
+ * spot, the spot lights, the tapped point's pen mark and the rider's own
+ * position. The moving particles are drawn over it all (WindParticles.tsx).
  *
  * The chart's own layers (the depths, the names) are in the style; their
  * switches and the focus's quietening are written onto them by `<Layer>`s
@@ -57,9 +58,9 @@ interface Props {
   layers: MapLayers;
   lights: FeatureCollection<Point, LightProps>;
   wedge: FeatureCollection;
+  /** Still arrows in ink, Reduce Motion's stand-in for the particles, or null for none. */
   arrows: FeatureCollection<Point, ArrowProps> | null;
-  /** The arrows in ink (reduced motion's stand-in for the lines), else on the rider's scale. */
-  arrowsInk: boolean;
+  /** The coloured wind's image, or null while it is off. */
   wash: Wash | null;
   satellite: readonly (SatelliteLayer & { visible: boolean })[];
   foil: readonly (FoilLayer & { visible: boolean })[];
@@ -139,7 +140,6 @@ export const ChartMap = memo(function ChartMap({
   lights,
   wedge,
   arrows,
-  arrowsInk,
   wash,
   satellite,
   foil,
@@ -285,9 +285,8 @@ export const ChartMap = memo(function ChartMap({
                 "icon-ignore-placement": true,
               },
               paint: {
-                // Zoomed right in the depths take over: the colours go to ink (windLayer.ts).
-                "icon-color": arrowsInk ? colors.ink : ["step", ["zoom"], ["get", "c"], DEPTHS_ZOOM, colors.ink],
-                "icon-opacity": arrowsInk ? 0.55 : 0.9,
+                "icon-color": colors.ink,
+                "icon-opacity": 0.55,
               },
             })}
           />

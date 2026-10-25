@@ -1,7 +1,7 @@
 /**
- * The wind scale the wash and the arrows are drawn on (src/KnotScale.tsx): the
- * same for every rider, generated from PALETTE stop for stop, with its knots
- * under it.
+ * The wind scale the coloured wind is drawn on (src/KnotScale.tsx): the same
+ * for every rider, generated from PALETTE stop for stop, with its knots under
+ * it.
  */
 import { memo } from "react";
 import { StyleSheet, View } from "react-native";

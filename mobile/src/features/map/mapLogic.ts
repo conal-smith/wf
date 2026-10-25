@@ -197,7 +197,14 @@ export const IRELAND_BOUNDS: [number, number, number, number] = [
 
 /* ---- the rider's choices ------------------------------------------------- */
 
-export const WIND_KEY = "wingfoil.map.wind.v1";
+/** The wind's two layers, the coloured wind and the particles, as JSON (src/App.tsx). */
+export const WIND_KEY = "wingfoil.map.wind.v2";
+/**
+ * The wind's one style of three, as the chart kept it until 2026-10-25: read
+ * once into the two layers (windLogic.ts `readWind`) while there is nothing
+ * under the new key, and left where it is.
+ */
+export const OLD_WIND_KEY = "wingfoil.map.wind.v1";
 export const LAYERS_KEY = "wingfoil.map.layers.v1";
 
 /** Which parts of the chart are drawn (force5/src/WindMap.tsx `ChartLayers`). */

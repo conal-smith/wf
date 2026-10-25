@@ -16,14 +16,16 @@ import {
   TRAIL,
   type FieldMessage,
 } from "./particleSim";
+import { OLD_WIND_KEY, WIND_KEY } from "./mapLogic";
 import {
   arrowGrid,
+  DEFAULT_WIND,
   hexOf,
   paceOf,
-  parseWindStyle,
-  rgbOf,
+  readWind,
   screenField,
-  tonedColour,
+  switchWind,
+  WIND_LAYERS,
   washBox,
   washImage,
   waterMask,
@@ -32,21 +34,65 @@ import {
 const camera: Camera = { center: [-9, 53], zoom: 7, width: 200, height: 300 };
 /** A westerly of 8 m/s everywhere west of 0°. */
 const westerly = (_lat: number, lon: number) => (lon < 0 ? { u: 8, v: 0, gust: 11 } : null);
-const ink = rgbOf(colors.ink);
+/** A store holding what it is given, as the app's `store` does. */
+const storeOf = (saved: Record<string, string>) => ({
+  get: (key: string) => saved[key] ?? null,
+});
 
-describe("the wind's styles", () => {
-  it("keeps the stored style, or ink", () => {
-    expect(parseWindStyle("wash")).toBe("wash");
-    expect(parseWindStyle("arrows")).toBe("arrows");
-    expect(parseWindStyle("neon")).toBe("ink");
-    expect(parseWindStyle(null)).toBe("ink");
+describe("the wind's two layers", () => {
+  it("names them as the site does, the coloured wind first", () => {
+    expect(WIND_LAYERS.map((layer) => [layer.key, layer.name, layer.sub])).toEqual([
+      ["wash", "Coloured wind", "Speed as colour"],
+      ["particles", "Particles", "Lines moving with it"],
+    ]);
   });
 
-  it("turns colours to hex and back, and tones them toward the ink", () => {
+  it("switches each by itself: either, both or neither", () => {
+    const particles = { wash: false, particles: true };
+    const both = switchWind(particles, "wash", true);
+    expect(both).toEqual({ wash: true, particles: true });
+    const colour = switchWind(both, "particles", false);
+    expect(colour).toEqual({ wash: true, particles: false });
+    expect(switchWind(colour, "wash", false)).toEqual({ wash: false, particles: false });
+    // A new value every time, never the one switched.
+    expect(particles).toEqual({ wash: false, particles: true });
+  });
+
+  it("opens a first install on the particles alone", () => {
+    expect(DEFAULT_WIND).toEqual({ wash: false, particles: true });
+    expect(readWind(storeOf({}))).toEqual(DEFAULT_WIND);
+    expect(readWind(storeOf({}))).not.toBe(DEFAULT_WIND);
+  });
+
+  it("reads an older app's style into the two layers", () => {
+    expect(readWind(storeOf({ [OLD_WIND_KEY]: "ink" }))).toEqual({ wash: false, particles: true });
+    // The coloured wind is the colour alone now: its lines are a layer to add.
+    expect(readWind(storeOf({ [OLD_WIND_KEY]: "wash" }))).toEqual({ wash: true, particles: false });
+    expect(readWind(storeOf({ [OLD_WIND_KEY]: "arrows" }))).toEqual({ wash: true, particles: true });
+    expect(readWind(storeOf({ [OLD_WIND_KEY]: "neon" }))).toEqual(DEFAULT_WIND);
+    expect(readWind(storeOf({ [OLD_WIND_KEY]: "toString" }))).toEqual(DEFAULT_WIND);
+  });
+
+  it("keeps the layers once saved, over whatever the older key holds", () => {
+    const saved = (wash: boolean, particles: boolean) => JSON.stringify({ wash, particles });
+    for (const wash of [true, false])
+      for (const particles of [true, false])
+        expect(readWind(storeOf({ [WIND_KEY]: saved(wash, particles), [OLD_WIND_KEY]: "arrows" }))).toEqual({
+          wash,
+          particles,
+        });
+    // What it cannot read, it reads the older style for.
+    expect(readWind(storeOf({ [WIND_KEY]: "{not json", [OLD_WIND_KEY]: "wash" }))).toEqual({ wash: true, particles: false });
+    expect(readWind(storeOf({ [WIND_KEY]: '{"wash":"yes","particles":true}' }))).toEqual(DEFAULT_WIND);
+  });
+
+  it("keeps the keys apart, the older one under its own name", () => {
+    expect(WIND_KEY).toBe("wingfoil.map.wind.v2");
+    expect(OLD_WIND_KEY).toBe("wingfoil.map.wind.v1");
+  });
+
+  it("turns colours to hex", () => {
     expect(hexOf([26, 29, 33])).toBe(colors.ink);
-    expect(rgbOf(colors.ink)).toEqual([26, 29, 33]);
-    const t = tonedColour(20, ink);
-    expect(t.every((v) => v >= 0 && v <= 255)).toBe(true);
   });
 });
 
@@ -73,21 +119,18 @@ describe("the screen's field", () => {
   });
 });
 
-describe("the arrows", () => {
-  it("point downwind, coloured on the rider's scale", () => {
-    const grid = arrowGrid(camera, westerly, true, ink);
+describe("the still arrows", () => {
+  it("point downwind, sized by the speed", () => {
+    const grid = arrowGrid(camera, westerly);
     expect(grid.features.length).toBeGreaterThan(20);
     const a = grid.features[0].properties;
     // From the west, so pointing east.
-    expect(a.rot).toBe(90);
-    expect(a.kn).toBe(16);
-    expect(a.c).toBe(hexOf(tonedColour(8 * 1.94384449, ink)));
-    expect(arrowGrid(camera, westerly, false, ink).features[0].properties.c).toBe(colors.ink);
+    expect(a).toEqual({ rot: 90, kn: 16 });
   });
 
   it("leave out calm water and no water", () => {
-    expect(arrowGrid(camera, () => ({ u: 0.1, v: 0, gust: null }), true, ink).features).toHaveLength(0);
-    expect(arrowGrid(camera, () => null, true, ink).features).toHaveLength(0);
+    expect(arrowGrid(camera, () => ({ u: 0.1, v: 0, gust: null })).features).toHaveLength(0);
+    expect(arrowGrid(camera, () => null).features).toHaveLength(0);
   });
 });
 
