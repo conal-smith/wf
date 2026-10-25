@@ -18,8 +18,7 @@
       We work out the stars from those four numbers with our own model,
       gusts included. "Gusty wind: Not much / Some / A lot" goes;
     - under the slider, a thin read-only "what you'll see" strip of stars by
-      steady wind, and the wing size for the rider's weight on the same axis
-      (recommendedWing from the wing research, PR #211);
+      steady wind;
     - the shore web as the site has it. Offshore is never, locked in the
       middle: we don't recommend going out in an offshore wind.
       Cross-offshore −1 by default; cross, cross-on and onshore cost nothing;
@@ -27,10 +26,25 @@
       downwind, you lose ground), the default is straight across with "Not
       yet", and the course runs only a few degrees below across by default
       (10°), its downwind edge a second handle;
-    - wing sizes as the figure alone; "Reset to ours";
+    - "Reset to ours";
     - round three: no example week inside the wizard ("I don't want the
       examples like this in the customise wizard"); the steps alone;
     - laid out as the wizard: about you (weight), the wind, the shore, upwind.
+  Round four, the owner: "I don't love the layout in these screenshots
+  generally, how can we lay it out a bit better?"
+    - no wing sizes in the wizard at all (weight stays on step 1; it drives
+      wing sizes elsewhere later);
+    - step 3 is "Configure stars based on wind direction";
+    - one layout for every step: the title, one short line saying what to
+      do, the content, the foot. Where there is a picture, it is on the left
+      and the controls on the right, top-aligned and the same height; on a
+      phone the picture is on top;
+    - the wind: the stars strip folded into the slider, one axis (the track,
+      the stars under it, the knots once), zones named in place, no legend;
+    - the direction: one line of intro, compact rows the web's height;
+    - upwind: the three answers as one segmented choice across the top, the
+      picture left and the two angles right, no legend;
+    - "Reset to ours" only once something differs from ours.
   Round one's steer, still standing: no Learning / Riding / Advanced, no
   existing users; outline stars only for stars lost to the gusts or the shore
   angle; an orange or red warning replaces the stars; wings never cost a star.
@@ -97,13 +111,13 @@ h1, h2, h3, p, ul, ol { margin: 0; }
 .cw-prog { display: grid; grid-auto-columns: 1fr; grid-auto-flow: column; gap: 3px; height: 3px; margin-bottom: 4px; }
 .cw-prog i { background: #1a1d2121; }
 .cw-prog i.is-done { background: var(--color-ink); }
-.cw-body { padding: 18px 2px; }
-.cw-sub { max-width: 54ch; margin: -4px 0 16px; font: 15px/1.4 var(--font-body); color: var(--color-ink-2); }
+.cw-body { flex: 1; padding: 16px 2px 22px; }
+.cw-sub { margin: 0 0 18px; font: 15px/1.4 var(--font-body); color: var(--color-ink-2); }
 .cw-kick { font: 500 10px/1.4 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--color-ink-muted); }
 .cw-note { font: 13px/1.4 var(--font-body); color: var(--color-ink-muted); }
 .cw-foot { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--color-ink); }
 .cw-sp { flex: 1; }
-@container cw (max-width: 560px) { .cw-head h2 { font-size: 22px; } .cw-body { padding: 14px 0; } .cw-sub { font-size: 13px; } }
+@container cw (max-width: 560px) { .cw-head h2 { font-size: 22px; } .cw-body { padding: 14px 0 18px; } .cw-sub { font-size: 14px; margin-bottom: 14px; } }
 
 /* The kit's buttons: mono capitals; primary the ink pill, pill the ruled capsule, quiet. */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 18px; border: 1px solid transparent; border-radius: 9999px; background: none; font: 500 11px/1.2 var(--font-mono); letter-spacing: .09em; text-transform: uppercase; white-space: nowrap; }
@@ -118,19 +132,25 @@ h1, h2, h3, p, ul, ol { margin: 0; }
   .btn.quiet:not(:disabled):hover { color: var(--color-ink); }
 }
 
-/* ---- 1. about you ---- */
-.cw-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 0; border-bottom: 1px solid var(--color-line); }
-.cw-row > .cw-kick { width: 104px; }
+/* ---- 1. about you: the wizard's ruled rows ---- */
+.cw-rows { display: grid; border-top: 1px solid var(--color-line); }
+.cw-row { display: grid; grid-template-columns: 104px auto 1fr; align-items: center; gap: 10px 16px; min-height: 64px; padding: 10px 0; border-bottom: 1px solid var(--color-line); }
 .cw-stepper { display: inline-flex; align-items: center; gap: 8px; }
 .cw-stepper output { min-width: 64px; font: 600 19px/1 var(--font-mono); letter-spacing: -.02em; text-align: center; }
 .cw-stepper small { margin-left: 2px; font: 400 11px var(--font-mono); color: var(--color-ink-muted); letter-spacing: 0; }
-.wingtab { display: grid; grid-template-columns: repeat(6, auto); gap: 2px 16px; font-family: var(--font-mono); text-align: center; }
-.wingtab span { font: 500 10px var(--font-mono); color: var(--color-ink-muted); }
-.wingtab b { font: 600 15px var(--font-mono); }
-@container cw (max-width: 560px) { .cw-row > .cw-kick { width: 100%; } .wingtab { gap: 2px 12px; } }
+@container cw (max-width: 560px) { .cw-row { grid-template-columns: 1fr auto; } .cw-row > .cw-kick { grid-column: 1 / -1; } }
 
-/* ---- 2. the wind: the wizard's range, as it is ---- */
-.cw-range { position: relative; height: 92px; margin: 6px 14px 0; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+/* The kit's Segmented: a ruled capsule of choices, the one that is on in ink. */
+.seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--color-ink); border-radius: 9999px; }
+.seg button { height: 32px; padding: 0 12px; border: 0; border-radius: 9999px; background: none; font: 500 11px/1 var(--font-mono); letter-spacing: .09em; text-transform: uppercase; white-space: nowrap; color: var(--color-ink-2); }
+.seg button[aria-pressed="true"] { background: var(--color-ink) var(--gradient-ink); color: var(--color-ground); box-shadow: var(--shadow-control); }
+@media (hover: hover) and (pointer: fine) { .seg button[aria-pressed="false"]:hover { background: var(--color-sunken); color: var(--color-ink); } }
+.seg.is-wide { display: flex; width: 100%; }
+.seg.is-wide button { flex: 1; height: 40px; }
+@container cw (max-width: 560px) { .cw-row .seg { grid-column: 1 / -1; justify-self: start; } .cw-row .seg button { padding: 0 9px; } }
+
+/* ---- 2. the wind: one axis, the track, the stars it makes, the knots ---- */
+.cw-range { position: relative; height: 96px; margin: 0 14px; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
 .cw-track { position: absolute; top: 34px; right: 0; left: 0; height: 16px; overflow: hidden; border: 1px solid var(--color-ink); border-radius: 9999px; background: var(--color-card); }
 .cw-zone { position: absolute; top: 0; bottom: 0; }
 .is-ok { background: color-mix(in srgb, var(--color-ink) 20%, var(--color-card)); }
@@ -143,27 +163,21 @@ h1, h2, h3, p, ul, ol { margin: 0; }
 .cw-knob:active { cursor: grabbing; }
 .cw-knob.is-top { border-color: var(--color-pen-ink); color: var(--color-pen-ink); }
 .cw-knob::after { content: ""; position: absolute; inset: -9px -4px; }
-.cw-ticks { position: absolute; top: 62px; right: 0; left: 0; font: 500 10px var(--font-mono); color: var(--color-ink-muted); }
+/* The stars the handles make, steady wind, read-only, right under the track. */
+.strip { position: absolute; top: 56px; right: 0; left: 0; height: 13px; }
+.strip i { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; font: 600 9px/1 var(--font-mono); font-style: normal; }
+.strip .star { position: absolute; left: -14px; top: 1px; width: 11px; height: 11px; }
+.strip .none { position: absolute; top: 0; font: 500 9px/13px var(--font-mono); letter-spacing: .06em; color: var(--color-pen-ink); white-space: nowrap; }
+.cw-ticks { position: absolute; top: 80px; right: 0; left: 0; font: 500 10px var(--font-mono); color: var(--color-ink-muted); }
 .cw-ticks span { position: absolute; white-space: nowrap; transform: translateX(-50%); }
 .cw-ticks span::before { content: ""; position: absolute; top: -6px; left: 50%; height: 4px; border-left: 1px solid var(--color-ink); }
 .cw-ticks span:last-child { transform: translateX(-85%); }
 .cw-ticks span:last-child::before { left: 85%; }
-.cw-zones { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 14px 0; font: 500 11px var(--font-mono); color: var(--color-ink-2); }
-.cw-zones i { display: inline-block; width: 18px; height: 10px; margin-right: 6px; border: 1px solid var(--color-ink); vertical-align: -1px; }
-@container cw (max-width: 560px) { .cw-ticks span[data-odd="1"] { font-size: 0; } .wingrow b { font-size: 12px; } .cw-range, .cw-zones, .see { margin-left: 8px; margin-right: 8px; } .cw-knob { min-width: 30px; height: 26px; margin-top: 1px; padding: 0 4px; } }
+@container cw (max-width: 560px) { .cw-ticks span[data-odd="1"] { font-size: 0; } .cw-range { margin: 0 8px 0 18px; } .cw-knob { min-width: 30px; height: 26px; margin-top: 1px; padding: 0 4px; } }
 
-/* New: what you'll see, on the same scale. Read-only. */
-.see { position: relative; margin: 16px 14px 0; padding-top: 12px; border-top: 1px solid var(--color-line); }
-.see .cw-kick { display: block; margin-bottom: 4px; }
-.strip { position: relative; height: 16px; border-bottom: 1px solid var(--color-ink); }
-.strip i { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; font: 600 9px/1 var(--font-mono); font-style: normal; }
-.wingrow { position: relative; height: 18px; margin-bottom: 2px; }
-.wingrow b { position: absolute; top: 0; transform: translateX(-50%); font: 600 13px/18px var(--font-mono); }
-.see .gap { height: 10px; }
-
-/* ---- 3. stars by wind direction: the web, as it is ---- */
-.cw-shore { display: grid; grid-template-columns: 330px 1fr; align-items: start; gap: 20px; }
-@container cw (max-width: 560px) { .cw-shore { grid-template-columns: 1fr; } .cw-web { justify-self: center; max-width: 340px; } }
+/* ---- 3. the direction: the web, as it is, and compact rows its height ---- */
+.cw-shore { display: grid; grid-template-columns: 300px 1fr; align-items: stretch; gap: 22px; }
+@container cw (max-width: 560px) { .cw-shore { grid-template-columns: 1fr; gap: 14px; } .cw-web { justify-self: center; max-width: 340px; } }
 .cw-web { display: block; width: 100%; height: auto; border-radius: 14px; touch-action: none; user-select: none; -webkit-user-select: none; }
 .cw-web-sea { fill: var(--color-sea-3); }
 .cw-web-land { fill: var(--color-land); }
@@ -189,24 +203,23 @@ h1, h2, h3, p, ul, ol { margin: 0; }
 .cw-dot:focus-visible .cw-dot-ring { stroke: var(--color-focus); stroke-width: 2; }
 .cw-dot-face { fill: var(--color-ink); stroke: var(--color-ground); stroke-width: 2; }
 .cw-dot-face.is-never { fill: var(--color-pen); }
-.cw-lock { fill: none; stroke: var(--color-pen-ink); stroke-width: 1.2; stroke-linecap: round; }
-.cw-dirs { margin: 0; padding: 0; list-style: none; }
-.cw-dirs li { display: grid; grid-template-columns: 1fr auto; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--color-line); }
-.cw-dirs li:first-child { border-top: 2px solid var(--color-ink); }
-.cw-dirs b { font: 600 15px var(--font-display); }
+.cw-dirs { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border-top: 2px solid var(--color-ink); }
+.cw-dirs li { flex: 1; display: grid; grid-template-columns: 1fr auto; align-content: center; gap: 1px 10px; padding: 6px 0; border-bottom: 1px solid var(--color-line); }
+.cw-dirs b { font: 600 15px/1.2 var(--font-display); }
 .cw-cost { display: inline-flex; align-items: center; gap: 5px; font: 600 11px var(--font-mono); }
 .cw-cost.is-never { color: var(--color-pen-ink); }
 .cw-cost svg { width: 11px; height: 11px; }
-.cw-dirs small { grid-column: 1 / -1; font: 13px/1.35 var(--font-body); color: var(--color-ink-muted); }
+.cw-dirs small { grid-column: 1 / -1; font: 12.5px/1.3 var(--font-body); color: var(--color-ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cw-dirs li.is-locked small { color: var(--color-ink-2); }
+@container cw (max-width: 560px) { .cw-dirs li { padding: 7px 0; } }
 
-/* ---- 4. upwind: the wedge, as it is, with a downwind edge ---- */
+/* ---- 4. upwind: the answers across the top, the wedge left, the angles right ---- */
 .cw-hatch { stroke: var(--color-ink); stroke-width: .8; opacity: .55; }
 .cw-lab { font: 500 9px var(--font-mono); letter-spacing: .1em; fill: var(--color-ink-muted); }
 .cw-lab.is-strong { font-weight: 600; fill: var(--color-ink); }
 .cw-lab.halo { paint-order: stroke; stroke: var(--color-ground); stroke-width: 3px; stroke-linejoin: round; }
-.cw-up { display: grid; grid-template-columns: 320px 1fr; align-items: center; gap: 24px; }
-@container cw (max-width: 560px) { .cw-up { grid-template-columns: 1fr; } .cw-up-pic { justify-self: center; max-width: 300px; } }
+.cw-up { display: grid; grid-template-columns: 300px 1fr; align-items: center; gap: 22px; margin-top: 16px; }
+@container cw (max-width: 560px) { .cw-up { grid-template-columns: 1fr; gap: 6px; margin-top: 12px; } .cw-up-pic { justify-self: center; max-width: 300px; } }
 .cw-up-pic { display: block; width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
 .cw-up-face { fill: var(--color-sunken); stroke: var(--color-line); }
 .cw-up-nogo { stroke: var(--color-ink); stroke-dasharray: 3 3; }
@@ -224,71 +237,19 @@ h1, h2, h3, p, ul, ol { margin: 0; }
 @media (hover: hover) and (pointer: fine) { .cw-up-edge:hover .cw-up-edge-hit { fill: var(--color-line); } }
 .cw-up-edge-dot { fill: var(--color-ink); stroke: var(--color-ground); stroke-width: 2; }
 .cw-up-edge.is-down .cw-up-edge-dot { fill: var(--color-ground); stroke: var(--color-ink); stroke-width: 2; }
-.cw-up-answers { display: grid; border-top: 1px solid var(--color-ink); }
-.cw-up-answer { display: block; width: 100%; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--color-line); background: none; text-align: left; }
-.cw-up-answer[aria-pressed="true"] { background: var(--color-sunken); box-shadow: inset 3px 0 0 var(--color-ink); }
-.cw-up-answer b { display: block; font: 600 19px/1.2 var(--font-display); }
-.cw-up-answer span { font: 13px/1.4 var(--font-body); color: var(--color-ink-2); }
-.cw-into { display: flex; align-items: baseline; gap: 10px; margin: 18px 0 4px; }
-.cw-into output { font: 700 30px/1 var(--font-mono); letter-spacing: -.02em; }
+.cw-angles { display: grid; gap: 22px; }
+.cw-into { display: flex; align-items: baseline; gap: 10px; margin-bottom: 2px; }
+.cw-into output { font: 700 26px/1 var(--font-mono); letter-spacing: -.02em; min-width: 2.4ch; }
 .cw-into span { font: 500 11px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--color-ink-2); }
-.cw-into.is-second { margin-top: 14px; }
-.cw-into.is-second output { font-size: 22px; }
-.cw-slide { margin: 6px 11px 0; }
+.cw-slide { margin: 4px 11px 0; }
 .cw-slide-track { position: relative; height: 32px; touch-action: none; cursor: pointer; }
 .cw-slide-track::before, .cw-slide-fill { content: ""; position: absolute; top: 14px; left: 0; height: 4px; border-radius: 999px; }
 .cw-slide-track::before { right: 0; background: var(--color-line); }
 .cw-slide-fill { background: var(--color-ink); }
 .cw-slide-knob { position: absolute; top: 16px; width: 22px; height: 22px; border: 2px solid var(--color-ground); border-radius: 999px; background: var(--color-ink); box-shadow: var(--shadow-control); transform: translate(-50%, -50%); cursor: ew-resize; }
 .cw-slide-knob::after { content: ""; position: absolute; inset: -11px; }
-.is-second .cw-slide-knob, .cw-slide.is-second .cw-slide-knob { background: var(--color-ground); border: 2px solid var(--color-ink); }
+.cw-slide.is-second .cw-slide-knob { background: var(--color-ground); border: 2px solid var(--color-ink); }
 .cw-slide-ends { display: flex; justify-content: space-between; margin: 0 -11px; font: 500 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--color-ink-muted); }
-.cw-legend { display: grid; gap: 6px; margin: 16px 0 0; padding: 0; list-style: none; font: 13px var(--font-body); color: var(--color-ink-2); }
-.cw-legend i { display: inline-block; width: 18px; height: 10px; margin-right: 8px; border: 1px solid var(--color-ink); vertical-align: -1px; }
-.cw-legend .is-nogo { background: repeating-linear-gradient(45deg, var(--color-ink) 0 1px, var(--color-sunken) 1px 4px); }
-.cw-legend .is-out { background: var(--color-ground); border-width: 1.5px; }
-.cw-legend .is-drift { border-style: dotted; }
-
-/* ---- The week, re-rated live: the sample day's card, a week long ---- */
-.wk { margin-top: 22px; padding: 10px 10px 6px; border: 1px solid var(--color-ink); border-radius: 14px; box-shadow: var(--frame), var(--shadow-card); }
-.wk-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 6px; }
-.wk-h b { font: 600 15px var(--font-display); }
-.wk-h small { font: 500 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--color-ink-muted); }
-.wk-tally { margin-left: auto; display: flex; gap: 12px; align-items: center; font: 600 11px var(--font-mono); }
-.wk-tally i { font-style: normal; font-weight: 500; color: var(--color-ink-muted); }
-.wk-tally .chg { font-weight: 500; color: var(--color-ink-2); }
-.wk-grid { display: grid; grid-template-columns: 38px repeat(6, minmax(0, 1fr)); }
-.wk-th { padding: 0 0 3px; border-bottom: 1px solid var(--color-line); font: 500 10px var(--font-mono); color: var(--color-ink-muted); text-align: center; }
-.wk-day { display: grid; align-content: center; border-bottom: 1px solid var(--color-line); }
-.wk-day b { font: 500 10px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--color-ink-muted); }
-.wk-day span { font: 600 14px var(--font-mono); }
-.wk-hr { display: grid; justify-items: center; align-content: start; gap: 1px; padding: 5px 0 4px; border-bottom: 1px solid var(--color-line); min-width: 0; }
-.wk-hr .rose { width: 26px; height: 26px; margin-bottom: 1px; }
-.wk-hr .w { font: 600 15px/1.1 var(--font-mono); }
-.wk-hr .g { font: 500 10px/1.1 var(--font-mono); color: var(--color-ink-muted); }
-.wk-hr .st { margin-top: 3px; max-width: calc(100% - 6px); height: auto; }
-.wk-hr .wing { min-height: 13px; font: 500 11px/1.2 var(--font-mono); color: var(--color-ink-2); }
-.wk-hr.is-changed { animation: cw-changed .9s ease-out; }
-@keyframes cw-changed { from { background: var(--color-sunken); } }
-@media (prefers-reduced-motion: reduce) { .wk-hr.is-changed { animation: none; } }
-.wk-grid > .last { border-bottom: 0; }
-.wk-hr.warned { border-bottom: 0; padding-bottom: 0; }
-.wk-warn { grid-column: 2 / -1; padding: 2px 4px 7px; border-bottom: 1px solid var(--color-line); }
-.wk-warn div { display: flex; align-items: center; justify-content: center; gap: 8px; height: 24px; border-radius: 9999px; background: #e673222e; box-shadow: inset 0 0 0 1px var(--met-orange); font: 500 10px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
-.wk-key { display: flex; flex-wrap: wrap; gap: 3px 14px; margin-top: 6px; font: 500 10px var(--font-mono); color: var(--color-ink-muted); }
-.wk-key svg { vertical-align: -2px; margin-right: 4px; }
-@container cw (max-width: 560px) {
-  .wk { padding: 8px 4px 4px; margin-top: 18px; }
-  .wk-h { padding: 0 4px; }
-  .wk-tally { margin-left: 0; width: 100%; }
-  .wk-grid { grid-template-columns: 28px repeat(6, minmax(0, 1fr)); }
-  .wk-day b { font-size: 9px; letter-spacing: .04em; }
-  .wk-day span { font-size: 12px; }
-  .wk-hr .rose { width: 22px; height: 22px; }
-  .wk-hr .w { font-size: 13px; }
-  .wk-hr .wing { font-size: 10px; }
-  .wk-key { padding: 0 4px; }
-}
 
 /* ---- Notes for the owner, beside the dialog ---- */
 .notes { position: sticky; top: 64px; padding: 14px 16px; border: 1.5px dashed #1a1d2166; border-radius: 14px; background: var(--paper); font-size: 15px; display: grid; gap: 8px; }
@@ -347,10 +308,10 @@ h1, h2, h3, p, ul, ol { margin: 0; }
     <p><b>Defaults chosen:</b> 11 · 15–22 · 35. Too much at 35 puts one star at 30 and none from 32, as agreed; 36 or 37 would leave a star at 32–33. Too light at 11 matches 11–14 kn exactly. The only differences from the plan are at the very ends, in red: 10 kn steady (the plan's tail gave it a star; here, under <i>too light</i>, none) and a gust of exactly 36 (the plan gave one star; here a gust past <i>too much</i> is none).</p>
     <h3>For you to decide</h3>
     <ol>
-      <li><b>Should the upwind course move stars?</b> Here it only draws the rose in each hour. A rider who can't point upwind in a dead onshore wind can't get out; should that hour lose a star, or just show it in the rose?</li>
+      <li><b>Should the upwind course move stars?</b> Here it moves none. A rider who can't point upwind in a dead onshore wind can't get out; should that hour lose a star?</li>
       <li><b>The 10 kn hour.</b> Too light at 11 gives 10 kn nothing. Is that right, or should the default be 10 (which also lifts 11–13 kn a star)?</li>
       <li><b>Whole stars on the web.</b> The site's web moves in half stars; here it snaps to whole ones, as the stars are drawn whole. Keep half stars?</li>
-      <li><b>About you.</b> With the levels gone, step 1 is weight (and units, unchanged, not drawn). "Wings you own" said a star comes off when none suits; wings never cost a star now, so it is left out. Drop it, or keep it to pick your own wing in the hour?</li>
+      <li><b>About you.</b> With the levels gone, step 1 is weight and units (the units are drawn but do nothing in this mock-up). "Wings you own" said a star comes off when none suits; wings never cost a star now, so it is left out. Drop it, or keep it for picking your own wing elsewhere?</li>
       <li><b>Downwind edge range.</b> 0–45° below across, 10° by default. Right?</li>
     </ol>
   </div>
@@ -420,94 +381,19 @@ function planRate(mean, gust) {
   return { stars, lost: potential - stars };
 }
 
-// Recommended wing size (m²) for a steady wind (kn) and rider weight (kg).
-// Fitted to 9 brands' published wind ranges (backlog/research/2026-10-25-wing-sizes.json, PR #211).
-// Returns null when no sensible wing exists (too light or too strong).
-const WING_STEPS = [2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 8];
-function recommendedWing(windKn, weightKg = 75) {
-  if (!(windKn > 0) || windKn > 40) return null;
-  const raw = 64 * Math.pow(weightKg / 75, 0.46) / Math.pow(windKn, 0.9);
-  if (raw > 8.5 || raw < 1.75) return null;
-  let best = WING_STEPS[0];
-  for (const s of WING_STEPS) {
-    if (Math.abs(s - raw) <= Math.abs(best - raw)) best = s;
-  }
-  return best;
-}
-const wingText = (a) => (a == null ? "" : Number.isInteger(a) ? String(a) : a.toFixed(1));
-
 /* ---- Glyphs ---- */
 const SC = ["", "#e28bb3", "#d2609a", "#bd3d84", "#a01f6c", "#7c0f55"];
 const INK_ON = ["", "#1a1d21", "#1a1d21", "#fff", "#fff", "#fff"];
 const STAR_PATH = "M5 .6l1.3 2.9 3.1.3-2.4 2.1.7 3.1L5 7.4 2.3 9l.7-3.1L.6 3.8l3.1-.3z";
-const starG = (x, y, sz, fill, op = .55) =>
-  `<path d="${STAR_PATH}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${(sz / 10).toFixed(3)})" fill="${fill}" stroke="#1a1d21" stroke-opacity="${op}" stroke-width="${(10 / sz).toFixed(2)}" stroke-linejoin="round"/>`;
-/** Five places: the earned solid in their colour, the lost outlined, the rest a dot. */
-function starsSvg(n, lost = 0, sz = 9) {
-  const gap = sz * .15, w = 5 * sz + 4 * gap;
-  let g = "";
-  for (let i = 0; i < 5; i++) {
-    const x = i * (sz + gap);
-    if (i < n) g += starG(x, 0, sz, SC[n]);
-    else if (i < n + lost) g += starG(x, 0, sz, "none", .8);
-    else g += `<circle cx="${(x + sz / 2).toFixed(1)}" cy="${sz / 2}" r="${(sz * .09).toFixed(2)}" fill="#1a1d21" fill-opacity=".3"/>`;
-  }
-  const label = n || lost ? `${n} star${n === 1 ? "" : "s"}${lost ? `, ${lost} lost` : ""}` : "no stars";
-  return `<svg class="st" viewBox="-.5 -.5 ${(w + 1).toFixed(1)} ${sz + 1}" width="${(w + 1).toFixed(1)}" height="${sz + 1}" role="img" aria-label="${label}">${g}</svg>`;
-}
-
-/* ---- The made-up week at Dollymount (faces ESE, 120°) ---- */
-const FACING = 120;
-function shoreAngle(from) {
-  const off = Math.abs(((((from - FACING) % 360) + 540) % 360) - 180);
-  return off < 30 ? "onshore" : off < 70 ? "cross-on" : off < 110 ? "cross" : off < 150 ? "cross-off" : "offshore";
-}
-const SHORE_NAME = { onshore: "onshore", "cross-on": "cross-onshore", cross: "cross-shore", "cross-off": "cross-offshore", offshore: "offshore" };
-const HOURS = ["08", "10", "12", "14", "16", "18"];
-const WEEK = [
-  { d: "Sun", n: 25, h: [[12, 18], [14, 21], [17, 24], [19, 27], [20, 30], [18, 26]], dir: [225, 225, 222, 220, 220, 218] },
-  { d: "Mon", n: 26, h: [[20, 31], [22, 33], [24, 35], [25, 37], [23, 34], [21, 31]], dir: [245, 250, 258, 265, 272, 280] },
-  { d: "Tue", n: 27, h: [[16, 27], [18, 29], [19, 31], [17, 30], [15, 26], [14, 24]], dir: [190, 190, 195, 195, 200, 200], warn: "Orange · thunder" },
-  { d: "Wed", n: 28, h: [[20, 26], [18, 24], [16, 22], [15, 21], [14, 19], [12, 17]], dir: [5, 10, 15, 20, 25, 30] },
-  { d: "Thu", n: 29, h: [[9, 13], [11, 15], [12, 16], [13, 17], [12, 16], [10, 14]], dir: [90, 90, 92, 95, 95, 95] },
-  { d: "Fri", n: 30, h: [[15, 19], [16, 20], [18, 23], [21, 26], [23, 28], [24, 30]], dir: [115, 115, 118, 118, 120, 120] },
-  { d: "Sat", n: 31, h: [[16, 27], [18, 30], [20, 33], [21, 35], [19, 31], [17, 28]], dir: [190, 190, 192, 192, 195, 195] },
-];
-
-/**
- * An hour's rose, north up: the sea and the land either side of the beach,
- * the wind's arrow blowing downwind (the pen's red off the beach), and the
- * rider's two courses, from their highest heading to their deepest.
- */
-function roseSvg(from, offshore, into, down) {
-  const c = 12, r = 10.5;
-  const p = (h, rr = r) => [c + rr * Math.sin((h * Math.PI) / 180), c - rr * Math.cos((h * Math.PI) / 180)];
-  const f = (pt) => pt.map((n) => n.toFixed(2)).join(" ");
-  const [a, b] = [p(FACING - 90), p(FACING + 90)];
-  let g = `<circle cx="${c}" cy="${c}" r="${r}" fill="#ede3c8"/>`;
-  g += `<path d="M${f(a)}A${r} ${r} 0 0 1 ${f(b)}Z" fill="#dae8ea"/>`;
-  g += `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="#1a1d21" stroke-opacity=".4"/>`;
-  // The two courses, as a bezel on the rim: from the highest heading to the deepest.
-  const rc = r - 1.6;
-  for (const side of [1, -1]) {
-    let h1 = from + side * (90 - into), h2 = from + side * (90 + down);
-    if (h1 > h2) [h1, h2] = [h2, h1];
-    g += `<path d="M${f(p(h1, rc))}A${rc} ${rc} 0 ${h2 - h1 > 180 ? 1 : 0} 1 ${f(p(h2 + .01, rc))}" fill="none" stroke="#1a1d21" stroke-width="3.2" stroke-linecap="round"/>`;
-  }
-  const col = offshore ? "#d43a2c" : "#1a1d21";
-  const tail = p(from, r - 4), head = p(from + 180, r - 3.5), l = p(from + 180 - 32, r - 8), rr = p(from + 180 + 32, r - 8);
-  g += `<path d="M${f(tail)}L${f(head)}M${f(l)}L${f(head)}L${f(rr)}" fill="none" stroke="${col}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`;
-  return `<svg class="rose" viewBox="0 0 24 24" aria-hidden="true">${g}</svg>`;
-}
 
 /* ======================================================================
    The wizard's steps
    ====================================================================== */
 const STEPS = [
-  { id: "you", title: "About you" },
-  { id: "wind", title: "What wind suits you?" },
-  { id: "shore", title: "Stars by wind direction", sub: "How many stars should a spot lose when the wind blows onshore or along the beach? Drag a dot in to take stars off. A dot in the middle means no stars for that wind." },
-  { id: "upwind", title: "Can you ride upwind?" },
+  { id: "you", title: "About you", sub: "Your weight, and the units you read the wind in." },
+  { id: "wind", title: "What wind suits you?", sub: "Drag the handles to the wind you like. The stars under them follow." },
+  { id: "shore", title: "Configure stars based on wind direction", sub: "Drag a dot in to take stars off for that wind." },
+  { id: "upwind", title: "Can you ride upwind?", sub: "Pick the nearest answer, then set the two angles." },
 ];
 const q = new URLSearchParams(location.search);
 const UI = {
@@ -515,17 +401,16 @@ const UI = {
   device: q.get("device") === "phone" ? "phone" : "desktop",
 };
 if (!q.get("step")) UI.step = 1;
-let lastStars = null;                // the week's stars as last drawn, to flash what changes
 
-/* ---- 1. About you ---- */
+/* ---- 1. About you: weight and units, as the wizard has them ---- */
+const UNITS = ["kn", "m/s", "km/h", "mph", "Force"];
+let units = "kn";
 function youStep() {
-  const ws = [10, 15, 20, 25, 30, 35];
   return `<div class="cw-rows">
     <div class="cw-row"><span class="cw-kick">Weight</span>
-      <span class="cw-stepper"><button class="btn icon" data-weight="-5" aria-label="Lighter">−</button><output>${weight}<small>kg</small></output><button class="btn icon" data-weight="5" aria-label="Heavier">+</button></span>
-      <span class="cw-note">Sets your wing sizes.</span></div>
-    <div class="cw-row"><span class="cw-kick">Wing m²</span>
-      <span class="wingtab">${ws.map((k) => `<span>${k}${k === 35 ? " kn" : ""}</span>`).join("")}${ws.map((k) => `<b>${wingText(recommendedWing(k, weight)) || "–"}</b>`).join("")}</span></div>
+      <span class="cw-stepper"><button class="btn icon" data-weight="-5" aria-label="Lighter">−</button><output>${weight}<small>kg</small></output><button class="btn icon" data-weight="5" aria-label="Heavier">+</button></span></div>
+    <div class="cw-row"><span class="cw-kick">Wind in</span>
+      <span class="seg" role="group" aria-label="Wind units">${UNITS.map((u) => `<button data-units="${u}" aria-pressed="${u === units}">${u}</button>`).join("")}</span></div>
   </div>`;
 }
 
@@ -535,7 +420,7 @@ const HANDLE_NAMES = ["Too light below", "Sweet spot from", "Sweet spot to", "To
 function windStep() {
   const w = S.wind;
   const ticks = []; for (let k = 5; k <= SCALE_TO; k += 5) ticks.push(k);
-  // What you'll see: whole stars by steady wind, a run of the same colour at a time.
+  // The stars the four handles make, whole stars by steady wind, a run of one colour at a time.
   const runs = [];
   for (let k = 0; k <= SCALE_TO; k++) {
     const n = Math.round(windStars(k, w));
@@ -543,30 +428,23 @@ function windStep() {
   }
   const strip = runs.filter((r) => r.n).map((r) => {
     const l = pc(Math.max(0, r.from - .5)), rr = pc(Math.min(SCALE_TO, r.to + .5));
-    return `<i style="left:${l}%;width:${rr - l}%;background:${SC[r.n]};color:${INK_ON[r.n]}" data-w="${r.to - r.from + 1}">${r.n}</i>`;
+    return `<i style="left:${l}%;width:${rr - l}%;background:${SC[r.n]};color:${INK_ON[r.n]}">${r.n}</i>`;
   }).join("");
-  const wings = []; for (let k = 10; k <= 40; k += 5) wings.push(k);
+  const star = `<svg class="star" viewBox="-.5 -.5 11 11" aria-hidden="true"><path d="${STAR_PATH}" fill="${SC[5]}" stroke="#1a1d21" stroke-opacity=".55"/></svg>`;
   return `
     <div class="cw-range" id="range">
+      <span class="cw-rlab" data-lab="light">Too light</span>
+      <span class="cw-rlab is-mid" style="left:${(pc(w.sweetLow) + pc(w.sweetHigh)) / 2}%">Sweet spot</span>
+      <span class="cw-rlab is-top" data-lab="much">Too much, in gusts</span>
       <div class="cw-track">
         <i class="cw-zone is-ok" style="left:${pc(w.min)}%;width:${pc(w.sweetLow) - pc(w.min)}%"></i>
         <i class="cw-zone is-sweet" style="left:${pc(w.sweetLow)}%;width:${pc(w.sweetHigh) - pc(w.sweetLow)}%"></i>
         <i class="cw-zone is-ok" style="left:${pc(w.sweetHigh)}%;width:${pc(w.max) - pc(w.sweetHigh)}%"></i>
         <i class="cw-zone is-over" style="left:${pc(w.max)}%;right:0"></i>
       </div>
-      <span class="cw-rlab" data-lab="light">Too light</span>
-      <span class="cw-rlab is-mid" style="left:${(pc(w.sweetLow) + pc(w.sweetHigh)) / 2}%">Sweet spot</span>
-      <span class="cw-rlab is-top" data-lab="much">Too much, in gusts</span>
       ${WIND_KEYS.map((k, i) => `<span class="cw-knob${i === 3 ? " is-top" : ""}" role="slider" tabindex="0" data-knob="${k}" aria-label="${HANDLE_NAMES[i]}" aria-valuemin="2" aria-valuemax="${WIND_TOP}" aria-valuenow="${w[k]}" aria-valuetext="${w[k]} kn" style="left:${pc(w[k])}%">${w[k]}</span>`).join("")}
+      <div class="strip" id="strip" aria-label="Your stars by steady wind">${star}${strip}<span class="none" data-lab="none">no stars past here</span></div>
       <div class="cw-ticks" aria-hidden="true">${ticks.map((k, i) => `<span style="left:${pc(k)}%" data-odd="${(ticks.length - 1 - i) % 2}">${k}${k === SCALE_TO ? " kn" : ""}</span>`).join("")}</div>
-    </div>
-    <div class="cw-zones"><span><i class="is-ok"></i>rideable</span><span><i class="is-sweet"></i>best</span><span><i class="is-over"></i>a gust past here: no stars</span></div>
-    <div class="see" aria-label="What you'll see">
-      <span class="cw-kick">Stars, steady wind</span>
-      <div class="strip" id="strip">${strip}</div>
-      <div class="gap"></div>
-      <span class="cw-kick">Wing m² · ${weight} kg</span>
-      <div class="wingrow">${wings.map((k) => `<b style="left:${pc(k)}%" data-odd="${(k / 5) % 2}">${wingText(recommendedWing(k, weight))}</b>`).join("")}</div>
     </div>`;
 }
 
@@ -585,10 +463,10 @@ const f1 = (n) => n.toFixed(1);
 const DIRECTION_NAME = { onshore: "Onshore", crossOn: "Cross-onshore", cross: "Cross-shore", crossOff: "Cross-offshore", offshore: "Offshore" };
 const DIRECTION_SHORT = { onshore: "ON", crossOn: "X-ON", cross: "CROSS", crossOff: "X-OFF", offshore: "OFF" };
 const DIRECTION_LINE = {
-  onshore: "Blows straight in. Choppy getting out, but it brings you back.",
-  crossOn: "Blows in at an angle. The easiest wind to learn in.",
-  cross: "Blows along the beach. Ideal for most riders.",
-  crossOff: "Blows out at an angle. You drift away from the beach.",
+  onshore: "Blows straight in. Choppy out, but it brings you back.",
+  crossOn: "In at an angle. The easiest wind to learn in.",
+  cross: "Along the beach. Ideal for most riders.",
+  crossOff: "Out at an angle. You drift away from the beach.",
   offshore: "We don't recommend going out in an offshore wind.",
 };
 const SHORE_ORDER = ["onshore", "crossOn", "cross", "crossOff", "offshore"];
@@ -628,7 +506,7 @@ function shoreStep() {
   return `<div class="cw-shore">
     <svg class="cw-web" id="web" viewBox="-158 -140 316 284" role="group" aria-label="Stars by wind direction">${g}</svg>
     <ul class="cw-dirs">${SHORE_ORDER.map((key) => `<li class="${locked(key) ? "is-locked" : ""}"><b>${DIRECTION_NAME[key]}</b>
-      <span class="cw-cost${off[key] >= NEVER ? " is-never" : ""}">${locked(key) ? LOCK : ""}${costLabel(off[key])}</span>
+      <span class="cw-cost${off[key] >= NEVER ? " is-never" : ""}">${costLabel(off[key])}${locked(key) ? LOCK : ""}</span>
       <small>${DIRECTION_LINE[key]}</small></li>`).join("")}</ul>
   </div>`;
 }
@@ -668,7 +546,9 @@ function upwindStep() {
     const [x, y] = p(mid, wide ? r * .6 : r * .56);
     return `<text class="cw-lab is-strong${wide ? "" : " halo"}" x="${x.toFixed(1)}" y="${(y + (wide ? 3 : side ? -8 : 3)).toFixed(1)}" text-anchor="middle">RIDE</text>`;
   };
-  return `<div class="cw-up">
+  return `<div class="seg is-wide" role="group" aria-label="Can you ride upwind?">${UP_ANSWERS.map((a) =>
+      `<button data-into="${a.into}" aria-pressed="${S.into === a.into}" title="${a.line}">${a.name}</button>`).join("")}</div>
+  <div class="cw-up">
     <svg class="cw-up-pic" id="uppic" viewBox="${UP.vx} 0 ${UP.vw} ${UP.vh}" aria-hidden="true">
       <defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line class="cw-hatch" x1="0" y1="0" x2="0" y2="5"/></pattern></defs>
       <circle class="cw-up-face" cx="${cx}" cy="${cy}" r="${r}"/>
@@ -690,18 +570,11 @@ function upwindStep() {
       <path class="cw-up-board" d="M${cx} ${cy - 12}C${cx + 5} ${cy - 4} ${cx + 5} ${cy + 8} ${cx} ${cy + 12}C${cx - 5} ${cy + 8} ${cx - 5} ${cy - 4} ${cx} ${cy - 12}Z"/>
       ${handle(1, "down")}${handle(-1, "down")}${handle(1, "into")}${handle(-1, "into")}
     </svg>
-    <div>
-      <div class="cw-up-answers" role="group" aria-label="Can you ride upwind?">${UP_ANSWERS.map((a) =>
-        `<button class="cw-up-answer" data-into="${a.into}" aria-pressed="${S.into === a.into}"><b>${a.name}</b><span>${a.line}</span></button>`).join("")}</div>
-      <div class="cw-into"><output>${S.into}°</output><span>into the wind</span></div>
-      ${slider("into", S.into, UPWIND_MAX, "Degrees into the wind", "Straight across", `${UPWIND_MAX}° into it`)}
-      <div class="cw-into is-second"><output>${S.down}°</output><span>below across</span></div>
-      ${slider("down", S.down, DOWN_MAX, "Degrees below straight across", "Straight across", `${DOWN_MAX}° downwind`, true)}
-      <ul class="cw-legend">
-        <li><i class="is-nogo"></i>Can’t go: too close to the wind</li>
-        <li><i class="is-out"></i>Your course</li>
-        <li><i class="is-drift"></i>Drift: downwind, you lose ground</li>
-      </ul>
+    <div class="cw-angles">
+      <div><div class="cw-into"><output>${S.into}°</output><span>into the wind</span></div>
+      ${slider("into", S.into, UPWIND_MAX, "Degrees into the wind", "Straight across", `${UPWIND_MAX}° into it`)}</div>
+      <div><div class="cw-into"><output>${S.down}°</output><span>below across</span></div>
+      ${slider("down", S.down, DOWN_MAX, "Degrees below straight across", "Straight across", `${DOWN_MAX}° downwind`, true)}</div>
     </div>
   </div>`;
 }
@@ -713,62 +586,25 @@ function slider(key, value, max, label, from, to, second = false) {
   </div><div class="cw-slide-ends"><span>${from}</span><span>${to}</span></div></div>`;
 }
 
-/* ---- The week, under every step ---- */
-function weekCard() {
-  let h = `<div class="wk-th"></div>` + HOURS.map((t) => `<div class="wk-th">${t}</div>`).join("");
-  let ride = 0, five = 0, changed = 0;
-  const now = [];
-  WEEK.forEach((day, di) => {
-    const last = di === WEEK.length - 1 ? " last" : "";
-    h += `<div class="wk-day${last}"${day.warn ? ' style="grid-row: span 2"' : ""}><b>${day.d}</b><span>${day.n}</span></div>`;
-    day.h.forEach(([w, g], i) => {
-      const angle = shoreAngle(day.dir[i]);
-      const r = rate(w, g, S, angle, day.warn), o = rate(w, g, OURS, angle, day.warn);
-      if (r.stars) ride++; if (r.stars === 5) five++;
-      if (r.stars !== o.stars || r.lost !== o.lost) changed++;
-      const key = `${r.stars}/${r.lost}`; now.push(key);
-      const flash = lastStars && lastStars[now.length - 1] !== key ? " is-changed" : "";
-      const wing = day.warn || !r.stars ? null : recommendedWing(w, weight);
-      const why = day.warn ? day.warn : r.never ? `${SHORE_NAME[angle]}: no stars` : r.over ? "gust past too much: no stars" : r.lost ? `${r.lost} lost to gusts or shore` : "";
-      h += `<div class="wk-hr${last}${day.warn ? " warned" : ""}${flash}" title="${day.d} ${HOURS[i]}:00 · ${w} g${g} · ${SHORE_NAME[angle]} · ${r.stars} star${r.stars === 1 ? "" : "s"}${why ? ` (${why})` : ""}">
-        ${roseSvg(day.dir[i], angle === "offshore", S.into, S.down)}
-        <span class="w">${w}</span><span class="g">g${g}</span>
-        ${day.warn ? "" : `${starsSvg(r.stars, r.lost)}<span class="wing">${wingText(wing)}</span>`}</div>`;
-    });
-    if (day.warn) h += `<div class="wk-warn"><div><svg width="14" height="14" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2 16.5 15.5h-15z" fill="#e67322" stroke="#1a1d21" stroke-width="1.2" stroke-linejoin="round"/></svg>${day.warn}</div></div>`;
-  });
-  lastStars = now;
-  return `<div class="wk" aria-label="This week at Dollymount, rated for you">
-    <div class="wk-h"><b>Dollymount Strand</b><small>this week · faces ESE</small>
-      <span class="wk-tally"><span>${ride} h <i>rideable</i></span><span>${five} h ${starsSvg(5, 0, 7)}</span><span class="chg">${changed ? `${changed} hours change from ours` : "as ours"}</span></span></div>
-    <div class="wk-grid">${h}</div>
-    <div class="wk-key"><span>wind · gust · stars · wing m²</span><span><svg width="10" height="10" viewBox="-.5 -.5 11 11">${starG(0, 0, 10, "none", .8)}</svg>lost to gusts or shore</span><span>${roseSvg(270, false, 0, 10).replace('class="rose"', 'width="14" height="14"')}rose: sea, land, the wind, your course (the black arcs)</span></div>
-  </div>`;
-}
-
 /* ======================================================================
    Notes for the owner, by step
    ====================================================================== */
 const NOTES = {
   you: `<h3>What changed</h3><ul>
-    <li><b>No levels.</b> Learning / Riding / Advanced are gone: everyone starts from ours.</li>
-    <li><b>Weight sets the wing sizes</b> (the fitted <code>recommendedWing</code>, PR #211) and nothing else. Shown as the figure alone.</li>
-    <li>Units: unchanged, not drawn. "Wings you own": left out (see the questions below).</li></ul>`,
+    <li><b>Weight and units</b>, as the wizard has them. No levels.</li>
+    <li><b>No wing sizes in the wizard.</b> Weight drives them elsewhere on the site, later.</li></ul>`,
   wind: `<h3>What changed</h3><ul>
-    <li><b>The slider is as it is</b>: too light, the sweet spot, too much in gusts. Ours: 11 · 15–22 · 35.</li>
-    <li><b>No gust setting.</b> "Gusty wind: Not much / Some / A lot" is gone. Gusts are worked out from the four handles (read 5 kn lighter; past too much, none).</li>
-    <li><b>What you'll see</b>, under it on the same scale: the stars by steady wind, and the wing for your weight. Read-only; it moves with the handles.</li>
-</ul>`,
+    <li><b>One axis</b>: the track, then the stars it makes right under it (read-only, steady wind), then the knots once.</li>
+    <li>The zones are named in place; no legend row. "No stars past here" sits under the hatching.</li>
+    <li><b>No gust setting.</b> Ours: 11 · 15–22 · 35.</li></ul>`,
   shore: `<h3>What changed</h3><ul>
-    <li><b>The web as it is.</b></li>
-    <li><b>Offshore: never, locked</b> in the middle, with the reason in its row.</li>
-    <li><b>Cross-offshore −1</b> by default; cross, cross-on and onshore cost nothing.</li>
-    <li>Dots move a whole star at a time (the site's move half stars).</li></ul>`,
+    <li><b>New title</b>, and one line to say what to do.</li>
+    <li><b>Compact rows</b> the web's height: the name and its cost on one line, a short line under it.</li>
+    <li><b>Offshore: never, locked.</b> Cross-offshore −1. The rest cost nothing.</li></ul>`,
   upwind: `<h3>What changed</h3><ul>
-    <li><b>Default: straight across, "Not yet".</b></li>
-    <li><b>The course stops 10° below across</b> by default. Its downwind edge is a second handle (the white dots) and a second slider.</li>
-    <li><b>SLOW is now DRIFT</b>: "downwind, you lose ground". CAN'T GO stays.</li>
-    <li>It moves no stars.</li></ul>`,
+    <li><b>The three answers</b> are one segmented choice across the top.</li>
+    <li><b>The picture left, the two angles right.</b> No legend: the picture names CAN'T GO, RIDE and DRIFT.</li>
+    <li>Default: straight across, the course to 10° below. It moves no stars.</li></ul>`,
 };
 
 /* ======================================================================
@@ -777,7 +613,7 @@ const NOTES = {
 const cw = document.getElementById("cw");
 function render() {
   const st = STEPS[UI.step];
-  const own = JSON.stringify(S) !== JSON.stringify(OURS) || weight !== 80;
+  const own = JSON.stringify(S) !== JSON.stringify(OURS);   // the rating only: weight and units are not ours to reset
   const body = { you: youStep, wind: windStep, shore: shoreStep, upwind: upwindStep }[st.id]();
   const active = document.activeElement;
   const refocus = active && (active.dataset.knob || active.dataset.dot || active.dataset.slideKnob)
@@ -788,10 +624,10 @@ function render() {
     <div class="cw-body" data-step="${st.id}">${st.sub ? `<p class="cw-sub">${st.sub}</p>` : ""}${body}</div>
     <div class="cw-foot">
       <button class="btn quiet">Skip</button>
-      <button class="btn quiet" id="reset" ${own ? "" : "disabled"}>Reset to ours</button>
+      ${own ? `<button class="btn quiet" id="reset">Reset to ours</button>` : ""}
       <span class="cw-sp"></span>
       ${UI.step > 0 ? `<button class="btn pill" data-step="-1">Back</button>` : ""}
-      <button class="btn primary" data-step="1" ${UI.step === STEPS.length - 1 ? 'disabled title="Your spots and All set: as today"' : ""}>Next</button>
+      <button class="btn primary" data-step="1" ${UI.step === STEPS.length - 1 ? 'title="Then your spots and All set, as today"' : ""}>Next</button>
     </div>`;
   if (st.id === "wind") placeLabels();
   if (refocus) cw.querySelector(refocus)?.focus();
@@ -806,6 +642,8 @@ function placeLabels() {
   const light = range.querySelector('[data-lab="light"]'), much = range.querySelector('[data-lab="much"]');
   light.style.left = Math.max(0, x(S.wind.min) - 24 - light.offsetWidth) + "px";
   much.style.left = Math.min(x(S.wind.max) + 24, W - much.offsetWidth) + "px";
+  const none = range.querySelector('[data-lab="none"]');
+  none.style.left = Math.min(x(S.wind.max) + 6, W - none.offsetWidth) + "px";
   // A run in the strip shows its figure where there is room for it.
   for (const i of document.querySelectorAll("#strip i")) if (i.offsetWidth < 10) i.textContent = "";
 }
@@ -888,12 +726,13 @@ cw.addEventListener("keydown", (e) => {
 document.addEventListener("click", (e) => {
   const t = e.target.closest("button");
   if (!t) return;
-  if (t.dataset.go) { UI.step = STEPS.findIndex((s) => s.id === t.dataset.go); lastStars = null; render(); remember(); }
+  if (t.dataset.go) { UI.step = STEPS.findIndex((s) => s.id === t.dataset.go); render(); remember(); }
   else if (t.dataset.device) { UI.device = t.dataset.device; render(); remember(); }
-  else if (t.dataset.step) { UI.step = Math.max(0, Math.min(STEPS.length - 1, UI.step + +t.dataset.step)); lastStars = null; render(); remember(); }
+  else if (t.dataset.step) { UI.step = Math.max(0, Math.min(STEPS.length - 1, UI.step + +t.dataset.step)); render(); remember(); }
+  else if (t.dataset.units) { units = t.dataset.units; render(); }
   else if (t.dataset.weight) { weight = Math.max(40, Math.min(130, weight + +t.dataset.weight)); render(); }
   else if (t.dataset.into !== undefined) setAngle("into", +t.dataset.into);
-  else if (t.id === "reset") { S = clone(OURS); weight = 80; render(); }
+  else if (t.id === "reset") { S = clone(OURS); render(); }
 });
 function remember() {
   const p = new URLSearchParams();
