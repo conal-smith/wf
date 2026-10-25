@@ -183,15 +183,15 @@ export function NextDays({
                 : null;
             const lineColour = day.run ? starColour(day.run.stars) : null;
             // "15 g22" where a day has the room for it, "15" where not (a
-            // phone's fifth of a card): the mono face's advance is 0.6 of
-            // its 10px.
+            // phone's fifth of a card): set untracked, the mono face's
+            // advance is 0.6 of its 10px, and 2px is kept clear either side.
             const mean =
               peak?.windKn != null ? speedShort(peak.windKn, units) : "";
             const both = `${mean} g${peakGust === null ? "" : speedShort(peakGust, units)}`;
-            const gustFits = peakGust !== null && both.length * 6 <= dw - 2;
+            const gustFits = peakGust !== null && both.length * 6 + 4 <= dw;
             const label = {
               gust: gustFits,
-              width: (gustFits ? both.length : mean.length) * 6,
+              width: (gustFits ? both.length : mean.length) * 6 + 4,
             };
             return (
               <g key={plan.date} data-day-band={plan.date}>
@@ -259,7 +259,7 @@ export function NextDays({
                 />
                 {peak?.windKn != null && (
                   <text
-                    className="fill-ink font-mono text-eyebrow"
+                    className="fill-ink font-mono text-eyebrow tracking-normal"
                     x={Math.min(
                       x0 + dw - label.width / 2,
                       Math.max(x0 + label.width / 2, x(strip[day.peak!].time)),
@@ -323,7 +323,7 @@ export function NextDays({
                 })}
                 {day.sea && (
                   <text
-                    className="fill-ink-2 font-mono text-eyebrow"
+                    className="fill-ink-2 font-mono text-eyebrow tracking-normal"
                     x={x0 + dw / 2}
                     y={H - 3}
                     textAnchor="middle"
