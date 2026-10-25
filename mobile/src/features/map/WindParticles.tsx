@@ -1,14 +1,14 @@
 /**
- * The ink lines over the chart: a Skia canvas above the map whose picture is
+ * The particles, the wind's lines in ink over the chart: a Skia canvas above the map whose picture is
  * recorded on the UI thread every step (particleSim.ts), so React renders
  * nothing per frame. The JS thread only resamples the field when the camera
- * comes to rest or the hour changes (WindLayers.tsx) and posts it here.
+ * comes to rest or the hour changes (useWind.ts) and posts it here.
  *
  * While the camera moves the lines fade out rather than swim behind the map
  * (the native map's camera reaches JavaScript a frame or two late); they are
  * born again over the new view when it settles. The frame callback stops
- * whenever the lines are not shown: the camera moving, another style, the
- * screen out of focus, the app in the background, or reduced motion.
+ * whenever the lines are not shown: the camera moving, the Particles layer
+ * off, the screen out of focus, the app in the background, or reduced motion.
  *
  * The rings of the lights are cut out of the canvas, so the lines pass under
  * them as they do on the site, where the canvas sits under the markers.
@@ -72,7 +72,7 @@ interface Props {
   field: FieldMessage | null;
   /** The lights' centres on the screen, x then y, for the field's camera. */
   holes: number[];
-  /** Draw at all (style, focus, foreground, motion). */
+  /** Draw at all (the Particles layer on, focus, foreground, motion). */
   on: boolean;
   /** The camera is moving: fade out and rest. */
   moving: boolean;

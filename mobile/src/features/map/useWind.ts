@@ -1,8 +1,8 @@
 /**
  * The wind's pictures for the camera at rest (force5/src/windLayer.ts, for
  * the app): the tiles the view needs asked for, and once they are in, the
- * screen's field for the ink lines, the arrows' grid, or the wash's image,
- * whichever the style draws. Worked out on the JS thread when the camera
+ * screen's field for the particles (or Reduce Motion's still arrows) and
+ * the coloured wind's image, whichever layers are on. Worked out on the JS thread when the camera
  * settles, the hour changes or a tile lands; never per frame.
  */
 import { File, Paths } from "expo-file-system";
@@ -10,20 +10,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FeatureCollection, Point } from "geojson";
 import { setMapView } from "../../../../force5/src/tiledField";
 import type { Frame } from "../../../../force5/src/weather";
-import { colors } from "../../theme/tokens";
 import { mapViewOf, type Camera } from "./mapLogic";
 import type { FieldMessage } from "./particleSim";
 import { encodePng } from "./png";
 import {
   arrowGrid,
   DEPTHS_ZOOM,
-  rgbOf,
   screenField,
   washBox,
   washImage,
   waterMask,
   type ArrowProps,
-  type WindStyle,
 } from "./windLogic";
 
 /** Lines per thousand square points (windLayer.ts). */
@@ -71,7 +68,7 @@ export function useFrameTiles(frame: Frame | null, camera: Camera | null, onFail
 
 let fieldIds = 0;
 
-/** The screen's field for the ink lines, or null when no lines are drawn. */
+/** The screen's field for the particles, or null when none are drawn: nothing is worked out for them while they are off. */
 export function useParticleField(
   frame: Frame | null,
   camera: Camera | null,
@@ -97,19 +94,18 @@ export function useParticleField(
   }, [wanted, frame, camera, version]);
 }
 
-/** The arrows over the view, coloured on the wind scale or (`ink`) in ink. */
+/** The still arrows in ink over the view (Reduce Motion's particles), or null when they are not drawn. */
 export function useArrows(
   frame: Frame | null,
   camera: Camera | null,
   version: number,
-  mode: "colour" | "ink" | null,
+  on: boolean,
 ): FeatureCollection<Point, ArrowProps> | null {
   return useMemo(() => {
-    if (!mode || !frame || !camera || !camera.width) return null;
-    const ink = rgbOf(colors.ink);
-    return arrowGrid(camera, (lat, lon) => frame.field.sample(lat, lon), mode === "colour", ink);
+    if (!on || !frame || !camera || !camera.width) return null;
+    return arrowGrid(camera, (lat, lon) => frame.field.sample(lat, lon));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, frame, camera, version]);
+  }, [on, frame, camera, version]);
 }
 
 export interface Wash {
@@ -173,5 +169,3 @@ export function useWash(
   );
   return on ? wash : null;
 }
-
-export const showsLines = (style: WindStyle) => style === "ink" || style === "wash";
