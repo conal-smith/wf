@@ -25,8 +25,6 @@
  * wind's speed, the best, a warning), each from the theme.
  */
 import type { ReactNode } from "react";
-import { ChartGlyph as SetGlyph } from "../shared/web/ChartGlyph";
-import { chartMap, spotFinder } from "../shared/web/glyphSet";
 
 export { ChartGlyph } from "../shared/web/ChartGlyph";
 export * as glyphs from "../shared/web/glyphSet";
@@ -83,36 +81,12 @@ export function LayersGlyph(props: ChartGlyphProps) {
   );
 }
 
-/**
- * The spot finder, and the chart from it: the set's own (shared/web), which
- * the spot page's menu draws too.
- */
-export function FinderGlyph({ size, strokeWidth }: ChartGlyphProps) {
-  return <SetGlyph glyph={spotFinder} size={size} strokeWidth={strokeWidth} />;
-}
-export function ChartSheetGlyph({ size, strokeWidth }: ChartGlyphProps) {
-  return <SetGlyph glyph={chartMap} size={size} strokeWidth={strokeWidth} />;
-}
-
 /** Three rules, each with its stop where the rider set it: the options. */
 export function OptionsGlyph(props: ChartGlyphProps) {
   return (
     <Glyph {...props}>
       <path d="M3 6H21M3 12H21M3 18H21" strokeWidth={1} />
       <path d="M14.5 3.5V8.5M7.5 9.5V14.5M16.5 15.5V20.5" strokeWidth={2.4} />
-    </Glyph>
-  );
-}
-
-/** Three rules, each with a paper stop on it, set by hand: Customise. */
-export function CustomiseGlyph(props: ChartGlyphProps) {
-  return (
-    <Glyph {...props}>
-      <path d="M4 7h16M4 12h16M4 17h16" />
-      <path
-        d="M10.8 7a2.3 2.3 0 1 1-4.6 0a2.3 2.3 0 1 1 4.6 0M17.8 12a2.3 2.3 0 1 1-4.6 0a2.3 2.3 0 1 1 4.6 0M12.3 17a2.3 2.3 0 1 1-4.6 0a2.3 2.3 0 1 1 4.6 0"
-        style={{ fill: "var(--color-ground)" }}
-      />
     </Glyph>
   );
 }

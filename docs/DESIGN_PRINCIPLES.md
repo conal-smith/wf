@@ -636,6 +636,23 @@ view's edges as it scrolls rather than being cut off by them; and the rose's
 no-go is hatched in screen pixels over the picture, its washes kept light, so
 a picture under a small rose is not fogged.
 
+**2026-10-25 — One site menu, the same on every page.** "The menu for
+SpotFinder and for the main chart page is different. This menu should be the
+same across all pages." The menu opens on the site's navigation wherever it
+is opened, in one order and one wording: Chart, Spot finder, Customise, and
+after a gap the site's other sections (Use with AI; the marketplace and the
+community where they are on). "Wind map" was the chart a second time and is
+gone: the chart is the map. The page you are on is marked as the finder's
+menu marked it, italic and heavier on the second sheet with
+`aria-current="page"`; a spot's page and "How the stars work" are neither, so
+nothing is. What only one page has is set apart under the navigation, under
+the page's name in the mono label over an ink rule: on the chart, "This
+chart", with Layers, Display options, About the map and Take the tour. A page
+with nothing of its own has no such part. Customise from a page that is not
+the map's is the chart with the wizard open (`/?customise`); from a page over
+the map, the map as it was with the wizard over it (`force5/src/siteNav.ts`
+`SITE_NAV`, `force5/src/SiteMenu.tsx`).
+
 ---
 
 ## Still open

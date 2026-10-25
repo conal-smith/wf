@@ -27,10 +27,11 @@ const PANEL_TITLE: Record<Exclude<MapPanel, null>, string> = {
 };
 
 /**
- * The chart's own rows in the site menu (force5/src/SiteMenu.tsx), the one
- * way in to them: the layers, the display options, and what the map means.
- * Each row is named as the dialog it opens is titled. (The rider's spots are
- * the spot finder's Favourites now, a row of its own: src/App.tsx.)
+ * The chart's own rows in the site menu (force5/src/SiteMenu.tsx), under
+ * "This chart" below the site's navigation, the one way in to them: the
+ * layers, the display options, and what the map means. Each row is named as
+ * the dialog it opens is titled. (The spot finder and Customise are the
+ * navigation's, the same on every page: force5/src/siteNav.ts.)
  */
 export function chartTools(
   onOpen: (panel: Exclude<MapPanel, null>) => void,
