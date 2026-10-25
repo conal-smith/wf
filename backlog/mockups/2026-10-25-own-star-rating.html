@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock-up · Your star rating</title>
+<!--
+  A design exploration, not product code. Standalone; faces from node_modules.
+
+  The owner's steer (25 October 2026), on the first editor in the rating plan
+  (backlog/research/2026-10-25-star-rating-plan.html, PR #206), a mean × gust
+  grid with draggable tabs and ▲▼ on every changed cell:
+    - "I don't know how well that will work, just up and down arrows on every
+      cell. That's gonna just look so ugly. We need to think of a better
+      visualization or tool for people to change it."
+  And the model it edits, as agreed:
+    - one rating for everyone, "ours"; a rider makes their own from it. No
+      Learning / Riding / Advanced, no existing users, nothing to migrate;
+    - steady wind (the 10-minute mean): 5 stars at 15–22 kn, 4 at 23–25, 3 at
+      27, 2 at 28, 1 at 30, none from 32, ramping up from 9 kn below;
+    - gusts are read 5 kn lighter on the same scale, and the hour gets the
+      lower of the two;
+    - offshore: no stars, always, not a setting ("we don't recommend going
+      out in an offshore wind"). Cross-offshore costs 1 star (0–2). Cross-
+      shore and onshore cost nothing;
+    - an orange or red Met Éireann warning replaces the stars;
+    - outline stars are stars lost to the gusts or to cross-offshore, and
+      nothing else; wings never cost a star;
+    - the rider's weight gives a wing size an hour, written as the figure
+      alone ("4.5"), never a sentence.
+  Three editors for the same four numbers, switched at the top, each with the
+  same week re-rated live under it:
+    A  One wind ruler   the stars by steady wind as one shape on a knots
+                        axis, ours as a ghost, handles to drag, the gusts as
+                        the same shape moved right, the wing sizes below
+    B  By examples      eight typical hours; tap the stars you'd give and
+                        the rating fits itself to them
+    C  In a sentence    the four numbers written as two lines, each figure
+                        with − and +, the shape drawn under it
+  ?editor=ruler|examples|sentence  ?device=phone  ?compare=1  ?grid=1
+-->
+<style>
+@font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fraunces Variable"; font-style: italic; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-italic.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 500;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 600;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
+
+:root {
+  color-scheme: light;
+  --ground: #f3eee3; --paper: #fffdf6; --sunken: #ede6d6; --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b;
+  --line: #1a1d2133; --hair: #1a1d211f; --strong: #7c7b78;
+  --pen: #d43a2c; --pen-ink: #bf3125; --magenta: #b0186a; --warn: #b02a1f; --met-orange: #e67322;
+  --s1: #e28bb3; --s2: #d2609a; --s3: #bd3d84; --s4: #a01f6c; --s5: #7c0f55;
+  --display: "Fraunces Variable", Fraunces, Georgia, serif;
+  --body: "Newsreader Variable", Newsreader, Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --edge: inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142;
+  --card: var(--edge), 0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a;
+  --sheet: var(--edge), 0 1px 1px #1a1d211a, 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 15px; }
+body { margin: 0; background: #d9d4c7; color: var(--ink); font-family: var(--body); line-height: 1.4; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3, h4, p, ul, ol { margin: 0; }
+:focus-visible { outline: 2px solid var(--magenta); outline-offset: 2px; }
+
+/* ---- The mock-up's own bar ---- */
+.mockbar { position: sticky; top: 0; z-index: 40; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 16px; background: #1a1d21; color: #f3eee3; font: 500 11px var(--mono); letter-spacing: .06em; }
+.mockbar b { margin-right: 10px; text-transform: uppercase; letter-spacing: .14em; }
+.mockbar .gap { width: 12px; }
+.mockbar button { border: 1px solid #f3eee355; background: none; color: #f3eee3; border-radius: 99px; padding: 4px 10px; font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.mockbar button[aria-pressed="true"] { background: #f3eee3; color: #1a1d21; }
+@media (max-width: 520px) { .mockbar { padding: 8px 10px; gap: 5px; } .mockbar b { width: 100%; } .mockbar .gap { display: none; } .mockbar button { padding: 4px 8px; } }
+
+/* ---- The stage: the screen, and the notes beside it ---- */
+.stage { display: grid; grid-template-columns: minmax(0, 820px) 320px; gap: 24px; justify-content: center; align-items: start; padding: 26px 16px 18px; }
+.stage.phone { grid-template-columns: 390px 320px; }
+@media (max-width: 1200px) { .stage, .stage.phone { grid-template-columns: minmax(0, 820px); } .stage.phone { grid-template-columns: minmax(0, 390px); } }
+@media (max-width: 520px) { .stage { padding: 12px 0 16px; } .stage.phone { padding: 12px 0; } }
+
+.screen { container: screen / inline-size; background: var(--ground); border-radius: 18px; box-shadow: var(--sheet); padding: 20px 24px 18px; min-width: 0; }
+@media (max-width: 520px) { .screen { border-radius: 0; } }
+.screen > header { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+.screen > header h1 { font: 700 26px/1.1 var(--display); letter-spacing: -.02em; flex: 1; }
+.screen > header .x { width: 36px; height: 36px; border: 0; background: none; border-radius: 50%; font: 500 18px var(--mono); }
+.chip { display: inline-block; font: 500 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; padding: 3px 9px; border-radius: 99px; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--hair); white-space: nowrap; }
+.chip.own { background: var(--ink); color: var(--ground); box-shadow: none; }
+
+.sec { padding: 16px 0 14px; border-bottom: 1px solid var(--line); }
+.sec:last-of-type { border-bottom: 0; }
+.sec > h2 { display: flex; align-items: baseline; gap: 10px; font: 600 19px/1.2 var(--display); margin-bottom: 10px; }
+.sec > h2 small { margin-left: auto; font: 500 11px var(--mono); color: var(--muted); letter-spacing: .02em; text-align: right; }
+.eyebrow { font: 500 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.fig { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---- Steppers, the thumb's control ---- */
+.step { display: inline-flex; align-items: center; border-radius: 99px; box-shadow: inset 0 0 0 1px var(--strong); background: var(--paper); white-space: nowrap; }
+.step button { width: 40px; height: 40px; border: 0; background: none; font: 500 18px/1 var(--mono); border-radius: 50%; display: grid; place-items: center; }
+.step button:disabled { opacity: .25; cursor: default; }
+.step output { min-width: 46px; text-align: center; font: 600 15px var(--mono); font-variant-numeric: tabular-nums; }
+.step output small { font-weight: 500; font-size: 11px; color: var(--muted); margin-left: 1px; }
+@media (hover: hover) and (pointer: fine) { .step button:not(:disabled):hover { background: var(--sunken); } }
+@container screen (max-width: 560px) { .step button { width: 44px; height: 44px; } }
+
+/* ---- A · the ruler ---- */
+.ruler { position: relative; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.ruler svg { display: block; overflow: visible; }
+.knob { position: absolute; z-index: 2; display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 28px; min-width: 40px; padding: 0 9px; border: 0; border-radius: 99px;
+  background: var(--ink); color: var(--ground); font: 600 13px var(--mono); font-variant-numeric: tabular-nums; cursor: grab; touch-action: none; box-shadow: 0 1px 2px #1a1d2150; white-space: nowrap; }
+.knob small { font: 500 9px var(--mono); letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
+.knob::after { content: ""; position: absolute; inset: -9px -6px; }
+.knob:active { cursor: grabbing; }
+.knob.gust { background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink), 0 1px 2px #1a1d2133; }
+.knob.ro { cursor: default; background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 1px var(--strong); }
+.knob.ro::after { display: none; }
+@media (hover: hover) and (pointer: fine) { .knob:not(.ro):hover { background: var(--magenta); color: var(--paper); } .knob.gust:hover { box-shadow: inset 0 0 0 1.5px var(--magenta); background: var(--paper); color: var(--magenta); } }
+.kcap { position: absolute; z-index: 1; font: 500 9px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); white-space: nowrap; pointer-events: none; }
+@container screen (max-width: 560px) { .kcap { display: none; } }
+
+.key { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; font: 500 11px var(--mono); color: var(--muted); margin-top: 4px; }
+.key svg { vertical-align: middle; margin-right: 5px; }
+
+.thumbs { display: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; margin-top: 12px; }
+@container screen (max-width: 560px) { .thumbs { display: grid; } }
+.thumbs label { display: grid; gap: 4px; justify-items: start; }
+
+.gustline { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 18px; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--hair); }
+.gustline h3 { font: 600 16px var(--display); }
+.gustline .ctl { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.worked { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.picks { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.picks button { border: 0; border-radius: 99px; box-shadow: inset 0 0 0 1px var(--line); background: none; padding: 0 10px; height: 32px; font: 500 12px var(--mono); }
+.picks button[aria-pressed="true"] { background: var(--ink); color: var(--ground); box-shadow: none; }
+.sum { display: inline-flex; align-items: center; gap: 8px; font: 600 14px var(--mono); }
+.sum .arr { color: var(--muted); font-weight: 500; }
+.sum .read { font-weight: 500; color: var(--ink-2); }
+@container screen (max-width: 560px) {
+  .gustline { grid-template-columns: minmax(0, 1fr); }
+  .gustline h3, .gustline .ctl { display: none; }
+  .picks button { height: 36px; }
+}
+
+/* ---- B · by examples ---- */
+.exgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@container screen (max-width: 680px) { .exgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container screen (max-width: 440px) { .exgrid { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+.exc { background: var(--paper); border-radius: 10px; box-shadow: inset 0 0 0 1px var(--hair); padding: 8px 8px 6px; display: grid; gap: 2px; justify-items: center; }
+.exc.mine { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.exc .h { font: 600 18px var(--mono); font-variant-numeric: tabular-nums; }
+.exc .h small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+.exc .bar { width: 46px; height: 3px; border-radius: 2px; }
+.taps { display: flex; align-items: center; }
+.taps button { width: 30px; height: 40px; border: 0; background: none; padding: 0; display: grid; place-items: center; }
+.taps button.none { width: 26px; font: 500 13px var(--mono); color: var(--muted); }
+.taps svg { width: 20px; height: 20px; }
+.exc .gets { font: 500 11px var(--mono); color: var(--muted); min-height: 15px; display: inline-flex; gap: 4px; align-items: center; }
+@container screen (max-width: 440px) {
+  .exc { grid-template-columns: 74px minmax(0, 1fr); grid-template-rows: auto auto; justify-items: start; align-items: center; border-radius: 0; box-shadow: none; border-bottom: 1px solid var(--hair); background: none; padding: 4px 0; column-gap: 8px; }
+  .exc.mine { box-shadow: none; }
+  .exc .h { grid-row: 1 / 3; }
+  .exc .bar { display: none; }
+  .exc .gets { grid-column: 2; min-height: 0; }
+  .taps button { width: 40px; height: 44px; }
+  .taps button.none { width: 34px; }
+  .taps svg { width: 24px; height: 24px; }
+}
+.fitline { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 12px 0 6px; font: 500 12px var(--mono); color: var(--ink-2); }
+.fitline b { font-weight: 600; color: var(--ink); }
+
+/* ---- C · in a sentence ---- */
+.sentence { display: grid; gap: 8px; font: 400 22px/1.5 var(--body); margin-bottom: 12px; }
+.sentence p { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.sentence p > span { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.sentence .step { vertical-align: middle; }
+@container screen (max-width: 560px) { .sentence { font-size: 19px; } }
+
+/* ---- The other settings, a ruled list ---- */
+.rows { display: grid; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--hair); min-height: 56px; }
+.row:last-child { border-bottom: 0; }
+.row .what { font: 400 16px/1.25 var(--body); }
+.row .what small { display: block; font: 400 13px/1.3 var(--body); color: var(--muted); font-style: italic; }
+.row .fixed { display: inline-flex; align-items: center; gap: 8px; font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.row .lock { width: 12px; height: 12px; }
+.offarrow, .metmark { width: 18px; height: 18px; flex: none; }
+
+/* ---- The week ---- */
+.weekhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 8px; }
+.weekhead .spot { font: italic 600 17px var(--display); }
+.weekhead .spot small { font: 500 11px var(--mono); font-style: normal; color: var(--muted); margin-left: 6px; }
+.tally { display: flex; gap: 14px; font: 600 13px var(--mono); margin-left: auto; align-items: center; }
+.tally span { display: inline-flex; align-items: center; gap: 5px; }
+.tally i { font-style: normal; font-weight: 500; color: var(--muted); font-size: 11px; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 0; height: 32px; font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.toggle .sw { width: 30px; height: 18px; border-radius: 99px; box-shadow: inset 0 0 0 1.5px var(--ink); position: relative; }
+.toggle .sw::after { content: ""; position: absolute; left: 3px; top: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); transition: left .15s; }
+.toggle[aria-pressed="true"] .sw { background: var(--ink); }
+.toggle[aria-pressed="true"] .sw::after { left: 15px; background: var(--ground); }
+
+.week { display: grid; grid-template-columns: 44px repeat(6, minmax(0, 1fr)); background: var(--paper); border-radius: 14px; box-shadow: var(--card); padding: 6px 8px 4px; }
+.week .th { font: 500 10px var(--mono); color: var(--muted); text-align: center; padding: 2px 0 4px; border-bottom: 1px solid var(--line); }
+.week .th.key { text-align: left; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; overflow: visible; }
+.week .day { display: grid; align-content: center; border-bottom: 1px solid var(--hair); }
+.week .day b { font: 500 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.week .day span { font: 600 15px var(--mono); }
+.hr { display: grid; justify-items: center; align-content: center; gap: 1px; padding: 5px 1px 4px; border-bottom: 1px solid var(--hair); position: relative; min-width: 0; }
+.hr .w { font: 600 16px/1 var(--mono); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 3px; }
+.hr .w svg { width: 11px; height: 11px; }
+.hr .g { font: 500 10px/1.1 var(--mono); color: var(--muted); }
+.hr .wb { width: 60%; height: 3px; border-radius: 2px; margin: 2px 0 3px; }
+.hr .st { width: 52px; height: 10px; }
+.hr .wing { font: 500 11px/1.1 var(--mono); color: var(--ink-2); min-height: 12px; }
+.hr.diff::after { content: ""; position: absolute; inset: 1px 2px; border: 1.5px dashed var(--ink); border-radius: 8px; pointer-events: none; }
+.week .last { border-bottom: 0; }
+.hr.warned { border-bottom: 0; padding-bottom: 0; }
+.warnrow { grid-column: 2 / -1; padding: 2px 4px 7px; border-bottom: 1px solid var(--hair); }
+.warnband { display: flex; align-items: center; justify-content: center; gap: 8px; height: 26px; border-radius: 99px; background: #e673222e; box-shadow: inset 0 0 0 1px #e67322; font: 500 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+.weeknote { margin-top: 6px; font: 500 11px var(--mono); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.weeknote svg { vertical-align: -2px; margin-right: 4px; }
+@container screen (max-width: 560px) {
+  .week { grid-template-columns: 30px repeat(6, minmax(0, 1fr)); padding: 4px 4px 2px; }
+  .week .day span { font-size: 13px; }
+  .week .day b { font-size: 9px; letter-spacing: .06em; }
+  .week .th.key { font-size: 8px; letter-spacing: .04em; }
+  .hr .w { font-size: 14px; }
+  .hr .w svg { width: 9px; height: 9px; }
+  .hr .st { width: 44px; height: 9px; }
+  .hr .wing { font-size: 10px; }
+  .tally { margin-left: 0; width: 100%; }
+}
+
+/* ---- Every wind and gust ---- */
+details.every summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; font: 600 17px var(--display); min-height: 40px; }
+details.every summary::-webkit-details-marker { display: none; }
+details.every summary::before { content: "+"; font: 500 16px var(--mono); width: 20px; }
+details.every[open] summary::before { content: "−"; }
+details.every summary small { margin-left: auto; font: 500 11px var(--mono); color: var(--muted); }
+.gridwrap { background: var(--paper); border-radius: 14px; box-shadow: var(--card); padding: 10px; margin-top: 8px; }
+table.grid { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed; font-family: var(--mono); }
+table.grid th { font: 500 11px var(--mono); color: var(--muted); padding: 0 0 4px; }
+table.grid tbody th { text-align: right; padding: 0 8px 0 0; width: 42px; }
+table.grid thead th:first-child { width: 42px; font-size: 9px; text-align: right; padding-right: 8px; line-height: 1.15; }
+table.grid td { position: relative; height: 21px; text-align: center; font: 600 12px var(--mono); box-shadow: inset 0 0 0 1px var(--paper); background: #f7f3ea; color: #1a1d2155; }
+table.grid td.na { background: repeating-linear-gradient(135deg, transparent 0 4px, #1a1d2112 4px 5px); }
+table.grid td.s1 { background: var(--s1); color: var(--ink); }
+table.grid td.s2 { background: var(--s2); color: var(--ink); }
+table.grid td.s3 { background: var(--s3); color: #fff; }
+table.grid td.s4 { background: var(--s4); color: #fff; }
+table.grid td.s5 { background: var(--s5); color: #fff; }
+table.grid td sup { font-size: 8px; font-weight: 500; opacity: .85; margin-left: 1px; }
+table.grid td.ch::after { content: ""; position: absolute; inset: -1px; border: 0 solid var(--ink); pointer-events: none; z-index: 1; }
+table.grid td.et::after { border-top-width: 2.5px; } table.grid td.eb::after { border-bottom-width: 2.5px; }
+table.grid td.el::after { border-left-width: 2.5px; } table.grid td.er::after { border-right-width: 2.5px; }
+.gridkey { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font: 500 11px var(--mono); color: var(--muted); align-items: center; }
+.gridkey i { display: inline-block; width: 20px; height: 12px; vertical-align: -2px; margin-right: 4px; }
+@container screen (max-width: 560px) { table.grid td { height: 19px; font-size: 11px; } table.grid tbody th, table.grid thead th:first-child { width: 30px; padding-right: 4px; } }
+
+/* ---- The foot ---- */
+.screen > footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-top: 14px; border-top: 2px solid var(--ink); }
+.btn { height: 44px; padding: 0 20px; border-radius: 99px; font: 500 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; border: 1px solid var(--ink); background: none; }
+.btn.primary { background: var(--ink); color: var(--ground); }
+.btn:disabled { opacity: .35; cursor: default; }
+@media (hover: hover) and (pointer: fine) { .btn.primary:hover { background: var(--magenta); border-color: var(--magenta); } .btn:not(.primary):not(:disabled):hover { background: var(--sunken); } }
+
+/* ---- Notes for the owner, beside the screen ---- */
+.notes { position: sticky; top: 64px; background: var(--paper); border-radius: 14px; box-shadow: var(--card); padding: 16px 18px; font-size: 15px; display: grid; gap: 10px; }
+@media (max-width: 1200px) { .notes { position: static; } }
+@media (max-width: 520px) { .notes { margin: 0 12px; } }
+.notes h3 { font: italic 600 19px var(--display); }
+.notes ul { padding-left: 18px; display: grid; gap: 6px; color: var(--ink-2); }
+.notes b { color: var(--ink); }
+.notes .verdict { padding-top: 10px; border-top: 1px dashed var(--line); color: var(--ink-2); }
+
+.after { max-width: 1164px; margin: 0 auto 60px; padding: 0 16px; }
+.after .sheet { background: var(--ground); border-radius: 14px; box-shadow: var(--card); padding: 20px 24px; display: grid; gap: 14px; }
+@media (max-width: 520px) { .after { padding: 0 12px; } .after .sheet { padding: 16px; } }
+.after h2 { font: 700 24px var(--display); letter-spacing: -.01em; padding-bottom: 8px; border-bottom: 2px solid var(--ink); }
+.after h3 { font: 600 18px var(--display); }
+.after p, .after li { font-size: 16px; color: var(--ink-2); max-width: 78ch; }
+.after ol, .after ul { padding-left: 22px; display: grid; gap: 8px; }
+.after b { color: var(--ink); }
+.after code { font: 500 .85em var(--mono); background: var(--sunken); padding: 0 4px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<nav class="mockbar" aria-label="Mock-up">
+  <b>Mock-up · Your star rating</b>
+  <button data-editor="ruler">A · One wind ruler</button>
+  <button data-editor="examples">B · By examples</button>
+  <button data-editor="sentence">C · In a sentence</button>
+  <span class="gap"></span>
+  <button data-device="desktop">Desktop</button>
+  <button data-device="phone">Phone</button>
+</nav>
+
+<div class="stage" id="stage">
+  <section class="screen" aria-labelledby="title">
+    <header>
+      <h1 id="title">Your star rating</h1>
+      <span class="chip" id="whose">Ours</span>
+      <button class="x" aria-label="Close">×</button>
+    </header>
+
+    <div class="sec" id="editor"></div>
+
+    <div class="sec">
+      <div class="rows" id="rows"></div>
+    </div>
+
+    <div class="sec">
+      <div class="weekhead">
+        <span class="spot">Dollymount Strand<small>faces ESE</small></span>
+        <span class="tally" id="tally"></span>
+        <button class="toggle" id="compare" aria-pressed="false"><span class="sw"></span>Compare with ours</button>
+      </div>
+      <div class="week" id="week" role="table" aria-label="This week at Dollymount Strand, rated"></div>
+      <div class="weeknote" id="weeknote"></div>
+    </div>
+
+    <div class="sec">
+      <details class="every" id="every">
+        <summary>Every wind and gust <small>cross-shore</small></summary>
+        <div class="gridwrap"><table class="grid" id="grid"></table>
+          <div class="gridkey" id="gridkey"></div>
+        </div>
+      </details>
+    </div>
+
+    <footer>
+      <button class="btn" id="reset" disabled>Reset to ours</button>
+      <button class="btn primary">Done</button>
+    </footer>
+  </section>
+
+  <aside class="notes" id="notes" aria-label="Notes for the owner"></aside>
+</div>
+
+<div class="after">
+  <div class="sheet">
+    <h2>Which one</h2>
+    <p><b>A, the wind ruler.</b> It is the only one where the rating is something you can see whole: one shape on a knots axis, the same axis the wing sizes sit on, with ours as a ghost so a change reads as the gap between two outlines rather than as marks on a hundred cells. The gust rule stops being a sentence and becomes the same shape slid right by N knots, which you can drag. On a phone the handles still drag, and the four steppers under it do the same job for a thumb, so A on a phone is C with the picture kept.</p>
+    <p><b>B</b> is the friendliest first step but a poor editor: the fit is a black box, the rider can't see why tapping one card moves another, and some answers (15 g25 two stars, 20 g25 five) can't be fitted at all. Worth keeping as an optional "rate four hours" start that hands over to A. <b>C</b> is the plainest and the most thumb-friendly, but it hides the shape; it survives inside A as the phone's steppers.</p>
+    <p>The week under every editor is what makes any of them work: it is where a rider sees what their change means for their days. "Compare with ours" rings the hours that changed and nothing else; the every-combination grid stays folded away, and in compare mode outlines the region that changed instead of putting ▲▼ in each cell.</p>
+    <h3>For you to decide</h3>
+    <ol>
+      <li><b>Three handles or four?</b> Four stars end 3 kn after five does (or 2 kn before the stars run out), as in the plan. A fourth handle for "four stars to" is easy to add to the ruler, but every handle is one more thing to explain.</li>
+      <li><b>The light end.</b> The climb to five starts 6 kn below "five from" and is tied to it. Should "stars start" be its own handle, for riders who pump in 10 kn?</li>
+      <li><b>Weight moves the wing only.</b> Here weight changes the wing sizes and never the stars. Agreed?</li>
+      <li><b>Where the wing figure shows.</b> Under the ruler and under each hour, as "4.5". Should the chart's dock and the spot cards carry it too, and does it need "m²" anywhere but this screen's label?</li>
+      <li><b>Limits.</b> Gusts read 0–10 kn lighter; cross-offshore 0–2 stars; five stars from 10–25 kn; the stars run out at least 4 kn after five ends, at 40 kn at most. Right ranges?</li>
+      <li><b>Units.</b> Drawn in knots. A rider on mph or Beaufort would see the ruler in their unit (as the wizard's wind step does today).</li>
+      <li><b>Where it lives.</b> As a step in Customise in place of "What wind suits you?" and its gusty setting, or as its own screen reached from Customise and from the stars' "why" box?</li>
+    </ol>
+    <p style="font-size:14px;color:var(--muted)">Wing sizes here are a placeholder (<code>recommendedWing</code> in this file, marked as such) until the fitted function from the brands' charts lands.</p>
+  </div>
+</div>
+
+<script>
+/* ======================================================================
+   The model: "ours", and a rider's own from the same four numbers.
+   As the plan's (backlog/research/2026-10-25-star-rating-plan.html), with the
+   shore angle added: offshore is no stars, cross-offshore costs crossOff.
+   ====================================================================== */
+const OURS = { fiveFrom: 15, fiveTo: 22, noneFrom: 32, allow: 5, crossOff: 1 };
+const LIM = { fiveFrom: [10, 25], fiveTo: [11, 36], noneFrom: [15, 40], allow: [0, 10], crossOff: [0, 2] };
+const KEYS = ["fiveFrom", "fiveTo", "noneFrom", "allow", "crossOff"];
+const FROM = 5, TOP = 40;                         // the ruler's ends, in knots
+
+function curvePoints(s) {
+  const fourTo = Math.min(s.fiveTo + 3, s.noneFrom - 2);
+  return [[s.fiveFrom - 6, 0], [s.fiveFrom - 4, 1], [s.fiveFrom, 5], [s.fiveTo, 5], [s.fiveTo + 1, 4], [fourTo, 4], [s.noneFrom, 0]];
+}
+/** Stars for a steady wind, unrounded. */
+function windStars(x, s) {
+  const p = curvePoints(s);
+  if (x <= p[0][0]) return 0;
+  for (let i = 1; i < p.length; i++) {
+    const [x0, y0] = p[i - 1], [x1, y1] = p[i];
+    if (x <= x1) return x1 === x0 ? y1 : y0 + ((x - x0) / (x1 - x0)) * (y1 - y0);
+  }
+  return 0;
+}
+/** Stars a gust allows: read `allow` knots lighter on the same scale; it only bites on the strong side. */
+const gustStars = (g, s) => (g - s.allow > s.fiveTo ? windStars(g - s.allow, s) : 5);
+
+/**
+ * One hour. stars: solid. gustLost, shoreLost: the outlines. offshore and warning replace the stars.
+ */
+function rate(mean, gust, s, angle = "cross", warning = null) {
+  if (warning) return { stars: 0, gustLost: 0, shoreLost: 0, warning };
+  if (angle === "offshore") return { stars: 0, gustLost: 0, shoreLost: 0, offshore: true };
+  const floor = s.fiveFrom - 4;
+  const ride = mean >= floor || gust <= mean ? mean : Math.min(floor, mean + 0.3 * Math.min(gust - mean, mean));
+  const wind = windStars(ride, s), gs = gustStars(gust, s), potential = Math.round(wind);
+  if (gs < wind && Math.round(gs) === 0) return { stars: 0, gustLost: 0, shoreLost: 0, tooGusty: true };
+  const afterGust = Math.max(0, Math.min(potential, Math.round(Math.min(wind, gs))));
+  const stars = Math.max(0, afterGust - (angle === "cross-off" ? s.crossOff : 0));
+  return { stars, gustLost: potential - afterGust, shoreLost: afterGust - stars };
+}
+/** The ruler's step: whole stars for a whole knot of steady wind. */
+const stepStars = (k, s) => Math.round(windStars(k, s));
+
+/* ----------------------------------------------------------------------
+   PLACEHOLDER wing size. Not the real thing: another piece of work is
+   fitting recommendedWing(windKn, weightKg) to the brands' charts (Gong,
+   F-One, Duotone…). Swap that in here when it lands.
+     area = 4.5 × (weight / 80) × (20 / wind)^1.1, to the half m²,
+     held to 2.5–8 m², and none outside 10–35 kn.
+   ---------------------------------------------------------------------- */
+function recommendedWing(windKn, weightKg) {
+  if (windKn < 10 || windKn > 35) return null;
+  const area = 4.5 * (weightKg / 80) * Math.pow(20 / windKn, 1.1);
+  return Math.min(8, Math.max(2.5, Math.round(area * 2) / 2));
+}
+const wingText = (a) => (a == null ? "" : Number.isInteger(a) ? String(a) : a.toFixed(1));
+
+/* Wind colours: PALETTE in force5/src/weather.ts. Wind speed and nothing else. */
+const PALETTE = [[0, [170, 203, 234]], [5, [128, 174, 224]], [9, [79, 128, 200]], [10, [73, 168, 138]], [15, [76, 179, 90]], [20, [111, 191, 62]], [25, [181, 207, 58]], [30, [236, 210, 58]], [35, [242, 160, 58]], [40, [224, 90, 51]], [45, [200, 48, 74]], [50, [155, 47, 134]], [60, [90, 35, 104]], [65, [35, 22, 40]]];
+function windCss(knots) {
+  const k = Math.max(0, Math.min(65, knots));
+  let i = 1; while (i < PALETTE.length - 1 && k > PALETTE[i][0]) i++;
+  const [a, ca] = PALETTE[i - 1], [b, cb] = PALETTE[i];
+  return `rgb(${ca.map((v, c) => Math.round(v + ((cb[c] - v) * (k - a)) / (b - a))).join(" ")})`;
+}
+const SC = ["", "#e28bb3", "#d2609a", "#bd3d84", "#a01f6c", "#7c0f55"];
+
+/* ---- Glyphs ---- */
+const STAR_PATH = "M5 .6l1.3 2.9 3.1.3-2.4 2.1.7 3.1L5 7.4 2.3 9l.7-3.1L.6 3.8l3.1-.3z";
+const starG = (x, y, sz, fill, stroke = "#1a1d21", op = .55) =>
+  `<path d="${STAR_PATH}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${(sz / 10).toFixed(3)})" fill="${fill}" stroke="${stroke}" stroke-opacity="${op}" stroke-width="${(1 * 10 / sz).toFixed(2)}" stroke-linejoin="round"/>`;
+/** Five places: the earned solid in their colour, the lost outlined, the rest a dot. */
+function starsSvg(n, lost = 0, sz = 10, cls = "st") {
+  const gap = sz * .15, w = 5 * sz + 4 * gap;
+  let g = "";
+  for (let i = 0; i < 5; i++) {
+    const x = i * (sz + gap);
+    if (i < n) g += starG(x, 0, sz, SC[n]);
+    else if (i < n + lost) g += starG(x, 0, sz, "none", "#1a1d21", .8);
+    else g += `<circle cx="${(x + sz / 2).toFixed(1)}" cy="${sz / 2}" r="${(sz * .09).toFixed(2)}" fill="#1a1d21" fill-opacity=".3"/>`;
+  }
+  const label = n || lost ? `${n} star${n === 1 ? "" : "s"}${lost ? `, ${lost} lost` : ""}` : "no stars";
+  return `<svg class="${cls}" viewBox="-.5 -.5 ${(w + 1).toFixed(1)} ${sz + 1}" width="${(w + 1).toFixed(1)}" height="${sz + 1}" role="img" aria-label="${label}">${g}</svg>`;
+}
+/** The wind's arrow, blowing downwind; the pen's red when it blows off the beach. */
+const arrowSvg = (from, off) => `<svg viewBox="-6 -6 12 12" style="transform:rotate(${from + 180}deg)" aria-hidden="true"><path d="M0 5V-4.5M-3.2-1.4 0-4.8l3.2 3.4" fill="none" stroke="${off ? "#d43a2c" : "#1a1d21"}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+/* ---- The made-up week at Dollymount (faces ESE, 120°) ---- */
+const FACING = 120;
+function shoreAngle(from) {
+  const off = Math.abs(((((from - FACING) % 360) + 540) % 360) - 180);
+  return off < 30 ? "onshore" : off < 70 ? "cross-on" : off < 110 ? "cross" : off < 150 ? "cross-off" : "offshore";
+}
+const SHORE_NAME = { onshore: "onshore", "cross-on": "cross-onshore", cross: "cross-shore", "cross-off": "cross-offshore", offshore: "offshore" };
+const HOURS = ["08", "10", "12", "14", "16", "18"];
+const WEEK = [
+  { d: "Sun", n: 25, h: [[12, 18], [14, 21], [17, 24], [19, 27], [20, 30], [18, 26]], dir: [225, 225, 222, 220, 220, 218] },
+  { d: "Mon", n: 26, h: [[20, 31], [22, 33], [24, 35], [25, 37], [23, 34], [21, 31]], dir: [245, 250, 258, 265, 272, 280] },
+  { d: "Tue", n: 27, h: [[16, 27], [18, 29], [19, 31], [17, 30], [15, 26], [14, 24]], dir: [190, 190, 195, 195, 200, 200], warn: "Orange · thunder" },
+  { d: "Wed", n: 28, h: [[20, 26], [18, 24], [16, 22], [15, 21], [14, 19], [12, 17]], dir: [5, 10, 15, 20, 25, 30] },
+  { d: "Thu", n: 29, h: [[6, 9], [8, 11], [9, 13], [10, 14], [11, 15], [9, 13]], dir: [90, 90, 92, 95, 95, 95] },
+  { d: "Fri", n: 30, h: [[15, 19], [16, 20], [18, 23], [21, 26], [23, 28], [24, 30]], dir: [115, 115, 118, 118, 120, 120] },
+  { d: "Sat", n: 31, h: [[16, 27], [18, 30], [20, 33], [21, 35], [19, 31], [17, 28]], dir: [190, 190, 192, 192, 195, 195] },
+];
+const EXAMPLES = [[12, 18], [15, 25], [18, 22], [20, 25], [20, 30], [25, 30], [28, 35], [30, 35]];
+
+/* ======================================================================
+   State
+   ====================================================================== */
+const q = new URLSearchParams(location.search);
+let S = { ...OURS };
+let weight = 80;
+const UI = {
+  editor: ["ruler", "examples", "sentence"].includes(q.get("editor")) ? q.get("editor") : "ruler",
+  device: q.get("device") === "phone" ? "phone" : "desktop",
+  compare: q.get("compare") === "1",
+  ex: 4,                                          // the worked example: 20 g30
+};
+const mine = new Array(EXAMPLES.length).fill(null);   // B: the stars the rider gave each example
+if (q.get("grid") === "1") document.getElementById("every").open = true;
+
+const same = (a, b) => KEYS.every((k) => a[k] === b[k]);
+const sameShape = (a, b) => ["fiveFrom", "fiveTo", "noneFrom"].every((k) => a[k] === b[k]);
+/**
+ * The settings with one changed, the others pushed along to keep their order
+ * (five ends at least a knot after it starts, the stars run out at least 4 kn
+ * after that), or null where it can't go.
+ */
+function next(k, v, s = S) {
+  const [lo, hi] = LIM[k];
+  if (v < lo || v > hi) return null;
+  const n = { ...s, [k]: v };
+  if (k === "fiveFrom") { n.fiveTo = Math.max(n.fiveTo, v + 1); n.noneFrom = Math.max(n.noneFrom, n.fiveTo + 4); }
+  if (k === "fiveTo") { n.fiveFrom = Math.min(n.fiveFrom, v - 1); n.noneFrom = Math.max(n.noneFrom, v + 4); }
+  if (k === "noneFrom") { n.fiveTo = Math.min(n.fiveTo, v - 4); n.fiveFrom = Math.min(n.fiveFrom, n.fiveTo - 1); }
+  const ok = ["fiveFrom", "fiveTo", "noneFrom"].every((key) => n[key] >= LIM[key][0] && n[key] <= LIM[key][1]);
+  return ok ? n : null;
+}
+function set(k, v) {
+  // While dragging past a limit, stay at the nearest place it can go.
+  const dir = Math.sign(v - S[k]);
+  let n = next(k, v);
+  while (!n && v !== S[k]) { v -= dir; n = next(k, v); }
+  if (!n || same(n, S)) return;
+  S = n;
+  update();
+}
+
+/* ======================================================================
+   The ruler: stars by steady wind as one shape, ours a ghost, the gusts
+   the same shape slid right, the wing sizes on the same axis.
+   ====================================================================== */
+function makeRuler(host, editable) {
+  host.innerHTML = `<div class="ruler"><svg></svg></div>`;
+  const box = host.firstElementChild, svg = box.querySelector("svg");
+  const knobs = {}, caps = {};
+  const DEFS = [
+    ["fiveFrom", "From", "Five stars from"],
+    ["fiveTo", "To", "Five stars to"],
+    ["noneFrom", "None", "No stars from"],
+    ["allow", "", "Gusts read this much lighter"],
+  ];
+  for (const [k, cap, name] of DEFS) {
+    const b = document.createElement("button");
+    b.className = "knob" + (k === "allow" ? " gust" : "") + (editable ? "" : " ro");
+    b.type = "button";
+    if (editable) { b.setAttribute("role", "slider"); b.setAttribute("aria-label", name); }
+    else { b.tabIndex = -1; b.setAttribute("aria-hidden", "true"); }
+    box.appendChild(b); knobs[k] = b;
+    if (cap) { const c = document.createElement("span"); c.className = "kcap"; c.textContent = cap; box.appendChild(c); caps[k] = c; }
+  }
+  let G = null;                                    // the last geometry drawn
+
+  function draw() {
+    const W = Math.max(280, box.clientWidth), narrow = W < 520;
+    const padL = 22, padR = narrow ? 8 : 14, inner = W - padL - padR;
+    const u = narrow ? 20 : 26, top = narrow ? 40 : 54, base = top + 5 * u;
+    const X = (k) => padL + ((Math.max(FROM, Math.min(TOP, k)) - FROM) / (TOP - FROM)) * inner;
+    G = { X, padL, inner, u, top, base, narrow };
+    const H = base + 70;
+    svg.setAttribute("width", W); svg.setAttribute("height", H); svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    let g = "";
+    // Star levels.
+    for (let n = 1; n <= 5; n++) {
+      const y = base - n * u;
+      g += `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="#1a1d21" stroke-opacity="${n === 5 ? .14 : .08}"/>`;
+      g += `<text x="${padL - 6}" y="${y + u / 2 + 3.5}" text-anchor="end" font-family="IBM Plex Mono" font-size="10" fill="#5b5c5b">${n}</text>`;
+    }
+    g += starG(3, top - 15, 9, "#7c0f55");
+    // The rider's shape, a column a knot.
+    for (let k = FROM; k <= TOP; k++) {
+      const n = stepStars(k, S);
+      if (!n) continue;
+      const x0 = X(k - .5), x1 = X(k + .5);
+      g += `<rect x="${x0.toFixed(1)}" y="${base - n * u}" width="${(x1 - x0 + .6).toFixed(1)}" height="${n * u}" fill="${SC[n]}" shape-rendering="crispEdges"/>`;
+    }
+    // The plateau's name, inside it, where there is room.
+    const pw = X(S.fiveTo + .5) - X(S.fiveFrom - .5);
+    if (pw > 88) g += `<text x="${((X(S.fiveFrom - .5) + X(S.fiveTo + .5)) / 2).toFixed(1)}" y="${base - 5 * u + 15}" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" font-weight="500" letter-spacing="1.2" fill="#fffdf6" fill-opacity=".85">FIVE STARS</text>`;
+    // The gusts: the strong side of the same shape, slid right by `allow`.
+    const gd = stepPath((k) => (k - S.allow > S.fiveTo ? stepStars(k - S.allow, S) : 5), S.fiveTo + S.allow + 1, X, base, u);
+    if (gd) g += `<path d="${gd}" fill="none" stroke="#1a1d21" stroke-width="2" stroke-dasharray="0 4.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    // Ours, as a ghost, when the shape is not ours.
+    if (!sameShape(S, OURS)) g += `<path d="${stepPath((k) => stepStars(k, OURS), 0, X, base, u, true)}" fill="none" stroke="#1a1d21" stroke-opacity=".6" stroke-width="1.5" stroke-dasharray="5 3"/>`;
+    // The worked example: the wind's place on the shape, the gust's on the dotted line.
+    const [m, gu] = EXAMPLES[UI.ex];
+    const wy = base - stepStars(m, S) * u, gy = base - Math.round(gustStars(gu, S)) * u;
+    const lowY = Math.max(wy, gy);
+    g += `<line x1="${X(m)}" x2="${X(gu)}" y1="${lowY}" y2="${lowY}" stroke="#1a1d21" stroke-width="1" stroke-dasharray="2 2"/>`;
+    g += `<circle cx="${X(m)}" cy="${wy}" r="4.5" fill="#1a1d21" stroke="#fffdf6" stroke-width="1.5"/>`;
+    g += `<circle cx="${X(gu)}" cy="${gy}" r="4.5" fill="#fffdf6" stroke="#1a1d21" stroke-width="2"/>`;
+    // The axis: knots, in the wind's own colours.
+    let stops = "";
+    for (const [k] of PALETTE) if (k <= TOP) stops += `<stop offset="${(Math.max(0, k - FROM) / (TOP - FROM)).toFixed(3)}" stop-color="${windCss(k)}"/>`;
+    g += `<defs><linearGradient id="wg-${host.id}" x1="0" x2="1">${stops}</linearGradient></defs>`;
+    g += `<rect x="${padL}" y="${base + 1}" width="${inner}" height="6" fill="url(#wg-${host.id})"/>`;
+    g += `<line x1="${padL}" x2="${W - padR}" y1="${base + .5}" y2="${base + .5}" stroke="#1a1d21"/>`;
+    const every = narrow ? 10 : 5;
+    for (let k = FROM; k <= TOP; k += 5) {
+      g += `<line x1="${X(k)}" x2="${X(k)}" y1="${base + 7}" y2="${base + (k % every ? 10 : 12)}" stroke="#1a1d21" stroke-opacity=".6"/>`;
+      if (k % every === 0) g += `<text x="${X(k)}" y="${base + 24}" text-anchor="${k === TOP ? "end" : "middle"}" font-family="IBM Plex Mono" font-size="11" fill="#3b3c3e">${k}${k === TOP ? " kn" : ""}</text>`;
+    }
+    // The wing sizes on the same axis.
+    const wy0 = base + 44;
+    g += `<text x="${padL}" y="${wy0}" font-family="IBM Plex Mono" font-size="10" fill="#5b5c5b">wing m² · ${weight} kg</text>`;
+    // The wing for the rider's weight, under the knots it suits: a size at each of the axis's ticks.
+    for (let k = 10; k <= 35; k += 5)
+      g += `<text x="${X(k)}" y="${wy0 + 18}" text-anchor="middle" font-family="IBM Plex Mono" font-size="${narrow ? 12 : 13}" font-weight="600" fill="#1a1d21">${wingText(recommendedWing(k, weight))}</text>`;
+    svg.innerHTML = g;
+    place();
+  }
+
+  function place() {
+    if (!G) return;
+    const { X, top, base, u } = G;
+    const pos = {
+      fiveFrom: { x: X(S.fiveFrom - .5), y: top - 34, side: "left" },
+      fiveTo: { x: X(S.fiveTo + .5), y: top - 34, side: "right" },
+      noneFrom: { x: X(S.noneFrom - .5), y: base - 30, side: "right" },
+    };
+    const fourTo = Math.min(S.fiveTo + 3, S.noneFrom - 2);
+    const x25 = fourTo + (1.5 / 4) * (S.noneFrom - fourTo);      // where the shape is at two and a half stars
+    pos.allow = { x: X(x25 + S.allow + .5), y: base - 2.5 * u - 14, side: "right", pad: 6 };
+    for (const k of ["fiveFrom", "fiveTo", "noneFrom", "allow"]) {
+      const b = knobs[k], p = pos[k];
+      b.innerHTML = k === "allow" ? `<small>gust</small>−${S.allow}` : `${S[k]}`;
+      b.setAttribute("aria-valuenow", S[k]);
+      b.setAttribute("aria-valuetext", k === "allow" ? `${S.allow} knots lighter` : `${S[k]} knots`);
+      const w = b.offsetWidth;
+      const room = box.clientWidth - w;
+      b.style.left = Math.max(0, Math.min(room, p.side === "left" ? p.x - w - 2 : p.x + 2 + (p.pad || 0))) + "px";
+      b.style.top = p.y + "px";
+      if (caps[k]) { caps[k].style.left = (p.side === "left" ? p.x - w - 2 : p.x + 4) + "px"; caps[k].style.top = (p.y - 14) + "px"; }
+    }
+    // Keep the noneFrom caption off the gust knob.
+    if (caps.noneFrom) caps.noneFrom.style.top = (pos.noneFrom.y + 30) + "px", caps.noneFrom.style.display = "none";
+  }
+
+  if (editable) {
+    for (const k of ["fiveFrom", "fiveTo", "noneFrom", "allow"]) {
+      const b = knobs[k];
+      let start = null;
+      b.addEventListener("pointerdown", (e) => {
+        b.setPointerCapture(e.pointerId); b.focus(); e.preventDefault();
+        start = { x: e.clientX, v: S[k] };
+      });
+      b.addEventListener("pointermove", (e) => {
+        if (!b.hasPointerCapture(e.pointerId) || !G) return;
+        const perKn = G.inner / (TOP - FROM);
+        set(k, start.v + Math.round((e.clientX - start.x) / perKn));
+      });
+      b.addEventListener("pointerup", () => (start = null));
+      b.addEventListener("keydown", (e) => {
+        const d = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, PageDown: -5, PageUp: 5 }[e.key];
+        if (d) { e.preventDefault(); set(k, S[k] + d); }
+      });
+    }
+  }
+  const ro = new ResizeObserver(() => draw());
+  ro.observe(box);
+  return { draw, stop: () => ro.disconnect() };
+}
+
+/** A step outline over whole knots from `from` to the ruler's end; `closed` runs it down to the axis at both ends. */
+function stepPath(f, from, X, base, u, closed = false) {
+  let d = "", prev = null;
+  const start = Math.max(FROM, Math.ceil(from));
+  if (start > TOP) return "";
+  for (let k = start; k <= TOP; k++) {
+    const y = base - f(k) * u, x0 = X(k - .5), x1 = X(k + .5);
+    if (prev === null) d += closed ? `M${x0.toFixed(1)} ${base}V${y}` : `M${x0.toFixed(1)} ${y}`;
+    else if (y !== prev) d += `V${y}`;
+    d += `H${x1.toFixed(1)}`;
+    prev = y;
+  }
+  return d;
+}
+
+/* ======================================================================
+   The editors
+   ====================================================================== */
+const stepper = (k, unit = "", label = "", bare = false) => `<span class="step" role="group" aria-label="${label}">
+  <button type="button" data-k="${k}" data-d="-1" aria-label="Less">−</button>
+  <output data-v="${k}"${bare ? " data-bare" : ""}></output>
+  <button type="button" data-k="${k}" data-d="1" aria-label="More">+</button></span>`;
+
+function workedExample() {
+  return `<div class="worked">
+    <span class="picks" role="group" aria-label="An hour to try">${EXAMPLES.filter((_, i) => [1, 4, 6, 7].includes(i) || i === UI.ex).map(([m, g]) => {
+      const i = EXAMPLES.findIndex(([a, b]) => a === m && b === g);
+      return `<button type="button" data-ex="${i}" aria-pressed="${i === UI.ex}">${m} g${g}</button>`;
+    }).join("")}</span>
+    <span class="sum" id="sum"></span></div>`;
+}
+function sumHtml() {
+  const [m, g] = EXAMPLES[UI.ex], r = rate(m, g, S);
+  const read = g - S.allow;
+  return `${m} g${g} <span class="arr">→</span> <span class="read">gust read as ${read}</span> <span class="arr">→</span> ${starsSvg(r.stars, r.gustLost, 13)}`;
+}
+
+let ruler = null;
+function mountEditor() {
+  if (ruler) ruler.stop();
+  ruler = null;
+  const host = document.getElementById("editor");
+  if (UI.editor === "ruler") {
+    host.innerHTML = `
+      <h2>Stars by steady wind <small>drag the black tabs</small></h2>
+      <div id="rulerA"></div>
+      <div class="key">${keyHtml()}</div>
+      <div class="thumbs">
+        <label><span class="eyebrow">Five stars from</span>${stepper("fiveFrom", "kn", "Five stars from")}</label>
+        <label><span class="eyebrow">Five stars to</span>${stepper("fiveTo", "kn", "Five stars to")}</label>
+        <label><span class="eyebrow">No stars from</span>${stepper("noneFrom", "kn", "No stars from")}</label>
+        <label><span class="eyebrow">Gusts read lighter</span>${stepper("allow", "kn", "Gusts read lighter")}</label>
+      </div>
+      <div class="gustline">
+        <h3>Gusts read lighter by</h3>
+        <div class="ctl">${stepper("allow", "kn", "Gusts read lighter by")}</div>
+        ${workedExample()}
+      </div>`;
+    ruler = makeRuler(document.getElementById("rulerA"), true);
+  } else if (UI.editor === "examples") {
+    host.innerHTML = `
+      <h2>Rate these hours <small>tap the stars you'd give</small></h2>
+      <div class="exgrid" id="exgrid"></div>
+      <div class="fitline" id="fitline"></div>
+      <div id="rulerB"></div>
+      <div class="key">${keyHtml()}</div>`;
+    ruler = makeRuler(document.getElementById("rulerB"), false);
+  } else {
+    host.innerHTML = `
+      <div class="sentence">
+        <p><span>Five stars from ${stepper("fiveFrom", "kn", "Five stars from", true)}</span> <span>to ${stepper("fiveTo", "kn", "Five stars to", true)} knots.</span></p>
+        <p><span>None from ${stepper("noneFrom", "kn", "No stars from", true)} knots.</span></p>
+        <p><span>Gusts count ${stepper("allow", "kn", "Gusts count lighter by", true)}</span> <span>knots lighter.</span></p>
+      </div>
+      <div id="rulerC"></div>
+      <div class="key">${keyHtml()}</div>
+      <div class="gustline" style="grid-template-columns:minmax(0,1fr)">${workedExample()}</div>`;
+    ruler = makeRuler(document.getElementById("rulerC"), false);
+  }
+}
+function keyHtml() {
+  return `<span><svg width="22" height="8"><line x1="1" x2="21" y1="4" y2="4" stroke="#1a1d21" stroke-width="2" stroke-dasharray="0 4.5" stroke-linecap="round"/></svg>gusts</span>
+    <span><svg width="22" height="8"><line x1="0" x2="22" y1="4" y2="4" stroke="#1a1d21" stroke-opacity=".6" stroke-width="1.5" stroke-dasharray="5 3"/></svg>ours</span>
+    <span><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#1a1d21"/></svg>wind</span>
+    <span><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fffdf6" stroke="#1a1d21" stroke-width="2"/></svg>gust</span>`;
+}
+
+/* ---- B: fit the four numbers to the rider's stars ---- */
+function fit() {
+  const given = EXAMPLES.map((e, i) => [e, mine[i]]).filter(([, v]) => v !== null);
+  if (!given.length) { S = { ...S, fiveFrom: OURS.fiveFrom, fiveTo: OURS.fiveTo, noneFrom: OURS.noneFrom, allow: OURS.allow }; return; }
+  let best = null, bestErr = Infinity;
+  for (let ff = 10; ff <= 22; ff++)
+    for (let ft = ff + 1; ft <= 32; ft++)
+      for (let nf = ft + 4; nf <= 40; nf++)
+        for (let al = 0; al <= 10; al++) {
+          const s = { fiveFrom: ff, fiveTo: ft, noneFrom: nf, allow: al, crossOff: 0 };
+          let err = 0;
+          for (const [[m, g], v] of given) { const d = rate(m, g, s).stars - v; err += d * d; if (err > bestErr) break; }
+          // Of the settings that fit as well, the nearest to ours.
+          err += .002 * (Math.abs(ff - OURS.fiveFrom) + Math.abs(ft - OURS.fiveTo) + Math.abs(nf - OURS.noneFrom) + Math.abs(al - OURS.allow));
+          if (err < bestErr) { bestErr = err; best = s; }
+        }
+  S = { ...S, fiveFrom: best.fiveFrom, fiveTo: best.fiveTo, noneFrom: best.noneFrom, allow: best.allow };
+}
+function renderExamples() {
+  const host = document.getElementById("exgrid");
+  if (!host) return;
+  host.innerHTML = EXAMPLES.map(([m, g], i) => {
+    const r = rate(m, g, S), yours = mine[i], shown = yours ?? r.stars;
+    let taps = `<button type="button" class="none" data-tap="${i}" data-n="0" aria-label="No stars" aria-pressed="${yours === 0}">${yours === 0 ? "<b style='color:var(--ink)'>0</b>" : "0"}</button>`;
+    for (let n = 1; n <= 5; n++) {
+      const on = n <= shown, col = SC[shown];
+      taps += `<button type="button" data-tap="${i}" data-n="${n}" aria-label="${n} star${n > 1 ? "s" : ""}" aria-pressed="${yours === n}"><svg viewBox="-.5 -.5 11 11">${on ? starG(0, 0, 10, col, "#1a1d21", yours === null ? .3 : .6) : starG(0, 0, 10, "none", "#1a1d21", .35)}</svg></button>`;
+    }
+    const gets = yours !== null && r.stars !== yours ? `fits as ${starsSvg(r.stars, 0, 9)}` : yours === null ? "ours" : "";
+    return `<div class="exc${yours !== null ? " mine" : ""}" style="${yours === null ? "" : ""}">
+      <span class="h">${m}<small>g${g}</small></span>
+      <span class="bar" style="background:${windCss(m)}"></span>
+      <span class="taps" style="opacity:${yours === null ? .75 : 1}">${taps}</span>
+      <span class="gets">${gets}</span></div>`;
+  }).join("");
+  const n = mine.filter((v) => v !== null).length;
+  const ok = EXAMPLES.filter(([m, g], i) => mine[i] !== null && rate(m, g, S).stars === mine[i]).length;
+  document.getElementById("fitline").innerHTML = `<span>Five stars <b>${S.fiveFrom}–${S.fiveTo}</b> kn</span><span>none from <b>${S.noneFrom}</b></span><span>gusts read <b>${S.allow}</b> kn lighter</span>` +
+    (n ? `<span>fits <b>${ok} of ${n}</b></span>` : `<span>ours, until you tap</span>`);
+}
+
+/* ======================================================================
+   The other settings
+   ====================================================================== */
+function renderRows() {
+  const metMark = `<svg class="metmark" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2 16.5 15.5h-15z" fill="#e67322" stroke="#1a1d21" stroke-width="1" stroke-linejoin="round"/><path d="M9 7v4" stroke="#1a1d21" stroke-width="1.6" stroke-linecap="round"/><circle cx="9" cy="13.2" r=".9" fill="#1a1d21"/></svg>`;
+  document.getElementById("rows").innerHTML = `
+    <div class="row"><span class="what">Your weight<small>sets the wing sizes</small></span>${stepper("weight", "kg", "Your weight")}</div>
+    <div class="row"><span class="what">Cross-offshore</span>${stepper("crossOff", "", "Stars cross-offshore costs")}</div>
+    <div class="row"><span class="what">Offshore<small>We don't recommend going out in an offshore wind.</small></span><span class="fixed">${arrowSvg(300, true).replace("<svg", '<svg class="offarrow"')} No stars</span></div>
+    <div class="row"><span class="what">Orange or red warning</span><span class="fixed">${metMark} No stars</span></div>`;
+}
+
+/* ======================================================================
+   The week, re-rated as the rider changes things
+   ====================================================================== */
+function renderWeek() {
+  const host = document.getElementById("week");
+  let h = `<div class="th key" role="columnheader"></div>` + HOURS.map((t) => `<div class="th" role="columnheader">${t}</div>`).join("");
+  let rideable = 0, five = 0, oRide = 0, oFive = 0, changed = 0;
+  WEEK.forEach((day, di) => {
+    const last = di === WEEK.length - 1 ? " last" : "";
+    h += `<div class="day${last}" role="rowheader"${day.warn ? ' style="grid-row: span 2"' : ""}><b>${day.d}</b><span>${day.n}</span></div>`;
+    day.h.forEach(([w, g], i) => {
+      const angle = shoreAngle(day.dir[i]);
+      const r = rate(w, g, S, angle, day.warn), o = rate(w, g, OURS, angle, day.warn);
+      if (r.stars) rideable++; if (r.stars === 5) five++;
+      if (o.stars) oRide++; if (o.stars === 5) oFive++;
+      const diff = r.stars !== o.stars || r.gustLost + r.shoreLost !== o.gustLost + o.shoreLost;
+      if (diff) changed++;
+      const wing = day.warn || !r.stars ? null : recommendedWing(w, weight);
+      const why = day.warn ? day.warn : r.offshore ? "offshore: no stars" : r.tooGusty ? "gusts: no stars" :
+        [r.gustLost ? `−${r.gustLost} gusts` : "", r.shoreLost ? `−${r.shoreLost} cross-offshore` : ""].filter(Boolean).join(", ");
+      const title = `${day.d} ${HOURS[i]}:00 · ${w} g${g} · ${SHORE_NAME[angle]} · ${r.stars} star${r.stars === 1 ? "" : "s"}${why ? ` (${why})` : ""}${UI.compare && diff ? ` · ours ${o.stars}` : ""}`;
+      h += `<div class="hr${last}${day.warn ? " warned" : ""}${UI.compare && diff ? " diff" : ""}" role="cell" title="${title}">
+        <span class="w">${w}${arrowSvg(day.dir[i], angle === "offshore")}</span>
+        <span class="g">g${g}</span>
+        <span class="wb" style="background:${windCss(w)}"></span>
+        ${day.warn ? "" : `${starsSvg(r.stars, r.gustLost + r.shoreLost, 10)}<span class="wing">${wingText(wing)}</span>`}</div>`;
+    });
+    if (day.warn) h += `<div class="warnrow"><div class="warnband">${`<svg width="14" height="14" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2 16.5 15.5h-15z" fill="#e67322" stroke="#1a1d21" stroke-width="1.2" stroke-linejoin="round"/></svg>`}${day.warn}</div></div>`;
+  });
+  host.innerHTML = h;
+  host.querySelector(".th.key").textContent = "kn";
+  const diffShape = !same(S, OURS);
+  document.getElementById("tally").innerHTML =
+    `<span>${rideable} h <i>rideable</i></span><span>${five} h ${starsSvg(5, 0, 8)}</span>` +
+    (diffShape ? `<span><i>ours ${oRide} · ${oFive}</i></span>` : "");
+  document.getElementById("weeknote").innerHTML =
+    `<span>wind · gust · stars · wing m²</span>` +
+    `<span><svg width="11" height="11" viewBox="-.5 -.5 11 11">${starG(0, 0, 10, "none", "#1a1d21", .8)}</svg>lost to gusts or cross-offshore</span>` +
+    `<span><svg width="11" height="11" viewBox="-6 -6 12 12">${`<path d="M0 5V-4.5M-3.2-1.4 0-4.8l3.2 3.4" fill="none" stroke="#d43a2c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`}</svg>offshore</span>` +
+    (UI.compare ? `<span>${changed ? `${changed} hours ringed: not as ours` : "every hour as ours"}</span>` : "");
+}
+
+/* ======================================================================
+   Every wind and gust: the grid, quiet. Compare outlines the changed region.
+   ====================================================================== */
+const ROWS = []; for (let m = 8; m <= 35; m++) ROWS.push(m);
+const COLS = [10, 15, 20, 25, 30, 35, 40, 45];
+function renderGrid() {
+  const ch = ROWS.map((m) => COLS.map((g) => g >= m && rate(m, g, S).stars !== rate(m, g, OURS).stars));
+  let h = `<thead><tr><th scope="col">wind ↓<br>gust →</th>${COLS.map((g) => `<th scope="col">${g}</th>`).join("")}</tr></thead><tbody>`;
+  let n = 0;
+  ROWS.forEach((m, ri) => {
+    h += `<tr><th scope="row">${m}</th>`;
+    COLS.forEach((g, ci) => {
+      if (g < m) { h += `<td class="na"></td>`; return; }
+      const r = rate(m, g, S), out = r.gustLost;
+      let cls = `s${r.stars}`;
+      if (UI.compare && ch[ri][ci]) {
+        n++;
+        cls += " ch";
+        if (!(ch[ri - 1] && ch[ri - 1][ci])) cls += " et";
+        if (!(ch[ri + 1] && ch[ri + 1][ci])) cls += " eb";
+        if (!ch[ri][ci - 1]) cls += " el";
+        if (!ch[ri][ci + 1]) cls += " er";
+      }
+      h += `<td class="${cls}" title="${m} g${g}: ${r.stars} stars${out ? `, ${out} lost to gusts` : ""}${ch[ri][ci] ? ` (ours ${rate(m, g, OURS).stars})` : ""}">${r.stars}${out ? `<sup>+${out}</sup>` : ""}</td>`;
+    });
+    h += `</tr>`;
+  });
+  document.getElementById("grid").innerHTML = h + `</tbody>`;
+  document.getElementById("gridkey").innerHTML =
+    `<span>${[1, 2, 3, 4, 5].map((k) => `<i style="background:${SC[k]};width:12px;margin-right:1px"></i>`).join("")} stars</span><span>+n lost to gusts</span>` +
+    (UI.compare ? `<span><i style="box-shadow:inset 0 0 0 2px #1a1d21"></i>${n ? `inside the line: not as ours (${n})` : "all as ours"}</span>` : `<span>Compare with ours to outline what changed</span>`);
+}
+
+/* ======================================================================
+   Notes for the owner, by editor
+   ====================================================================== */
+const NOTES = {
+  ruler: `<h3>A · One wind ruler</h3><ul>
+    <li><b>One shape</b>: the stars by steady wind, a column a knot, in the stars' own colours. Drag where five starts, where it ends, and where the stars run out.</li>
+    <li><b>Ours stays as a dashed ghost</b>, so a change is the gap between two outlines. No marks on cells.</li>
+    <li><b>The gusts are the same shape slid right</b>, dotted. Drag the white "gust" tab, or use the stepper; the worked example draws the hour's wind (●) and gust (○) on it.</li>
+    <li><b>Wing sizes on the same axis</b>, for the rider's weight.</li>
+    <li>On a phone the tabs still drag, and four steppers under the ruler do the same.</li></ul>
+    <p class="verdict"><b>Recommended.</b> The model is visible whole, and a rider can see why 20 g30 is four stars.</p>`,
+  examples: `<h3>B · By examples</h3><ul>
+    <li><b>Eight typical hours</b>, faded at what ours gives them. Tap the stars you'd give; a ringed card is yours.</li>
+    <li><b>The rating fits itself</b> to your taps (the four numbers, nearest to ours that fit best), and draws the result on the ruler under them.</li>
+    <li>Where it can't match you, the card says what it fits as.</li></ul>
+    <p class="verdict">Friendly, but a black box: tapping one card moves others, and some answers can't be fitted. Better as an optional first step that hands over to A.</p>`,
+  sentence: `<h3>C · In a sentence</h3><ul>
+    <li><b>The four numbers as two lines</b>, each figure with − and +. Nothing to drag; easiest with a thumb.</li>
+    <li>The ruler underneath is drawn, not dragged: it shows the shape the sentence makes, with ours as a ghost.</li></ul>
+    <p class="verdict">Plainest, but the shape is secondary. Survives inside A as the phone's steppers.</p>`,
+};
+
+/* ======================================================================
+   Drawing everything
+   ====================================================================== */
+const SHOW = {
+  fiveFrom: (v) => `${v}<small>kn</small>`, fiveTo: (v) => `${v}<small>kn</small>`, noneFrom: (v) => `${v}<small>kn</small>`,
+  allow: (v) => `${v}<small>kn</small>`, crossOff: (v) => (v ? `−${v}<small>★</small>` : `0<small>★</small>`), weight: (v) => `${v}<small>kg</small>`,
+};
+function update() {
+  if (ruler) ruler.draw();
+  for (const o of document.querySelectorAll("output[data-v]")) {
+    const k = o.dataset.v, v = k === "weight" ? weight : S[k];
+    o.innerHTML = "bare" in o.dataset ? String(v) : SHOW[k](v);
+  }
+  for (const b of document.querySelectorAll(".step button[data-k]")) {
+    const k = b.dataset.k, d = +b.dataset.d;
+    b.disabled = k === "weight" ? weight + d * 5 < 40 || weight + d * 5 > 130 : !next(k, S[k] + d);
+  }
+  const sum = document.getElementById("sum"); if (sum) sum.innerHTML = sumHtml();
+  renderExamples();
+  renderWeek();
+  if (document.getElementById("every").open) renderGrid();
+  const own = !same(S, OURS);
+  const whose = document.getElementById("whose");
+  whose.textContent = own ? "Your own" : "Ours"; whose.classList.toggle("own", own);
+  document.getElementById("reset").disabled = !own && mine.every((v) => v === null);
+}
+function mount() {
+  document.querySelectorAll("[data-editor]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.editor === UI.editor));
+  document.querySelectorAll("[data-device]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.device === UI.device));
+  document.getElementById("stage").classList.toggle("phone", UI.device === "phone");
+  document.getElementById("notes").innerHTML = NOTES[UI.editor];
+  document.getElementById("compare").setAttribute("aria-pressed", UI.compare);
+  mountEditor();
+  renderRows();
+  update();
+}
+function remember() {
+  const p = new URLSearchParams();
+  if (UI.editor !== "ruler") p.set("editor", UI.editor);
+  if (UI.device !== "desktop") p.set("device", UI.device);
+  if (UI.compare) p.set("compare", "1");
+  if (document.getElementById("every").open) p.set("grid", "1");
+  history.replaceState(null, "", p.size ? `?${p}` : location.pathname);
+}
+
+/* ---- Events ---- */
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  if (t.dataset.editor) { UI.editor = t.dataset.editor; mount(); remember(); }
+  else if (t.dataset.device) { UI.device = t.dataset.device; mount(); remember(); }
+  else if (t.dataset.k) {
+    const k = t.dataset.k, d = +t.dataset.d;
+    if (k === "weight") { weight = Math.max(40, Math.min(130, weight + d * 5)); update(); }
+    else set(k, S[k] + d);
+  }
+  else if (t.dataset.ex) { UI.ex = +t.dataset.ex; mountEditor(); update(); }
+  else if (t.dataset.tap) {
+    const i = +t.dataset.tap, n = +t.dataset.n;
+    mine[i] = mine[i] === n ? null : n;          // a second tap on the same star gives it back to ours
+    fit(); update();
+  }
+  else if (t.id === "compare") { UI.compare = !UI.compare; t.setAttribute("aria-pressed", UI.compare); update(); remember(); }
+  else if (t.id === "reset") { S = { ...OURS }; mine.fill(null); update(); }
+});
+document.getElementById("every").addEventListener("toggle", () => { update(); remember(); });
+
+mount();
+document.fonts && document.fonts.ready.then(() => ruler && ruler.draw());
+</script>
+</body>
+</html>
