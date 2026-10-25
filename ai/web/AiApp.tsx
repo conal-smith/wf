@@ -24,6 +24,7 @@ import {
   type ReactNode,
 } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
+import { CHART_HREF } from "../../force5/src/siteNav";
 import { API_ROOT } from "../../shared/web/http";
 import { usePageTitle } from "../../shared/web/usePageTitle";
 import {
@@ -350,7 +351,7 @@ export default function AiApp() {
           </a>
           {/* The way back, as the spot pages give it. */}
           <span className={mastheadStyles().actions()}>
-            <Button variant="link" size="sm" href="/" data-back-to-map>
+            <Button variant="link" size="sm" href={CHART_HREF} data-back-to-map>
               <ArrowLeft size={13} strokeWidth={1.5} aria-hidden="true" />
               <span>Chart</span>
             </Button>
