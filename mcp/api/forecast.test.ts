@@ -556,6 +556,100 @@ describe("rain", () => {
   const sum = (values: (number | null | undefined)[]) =>
     values.reduce<number>((total, v) => total + (v ?? 0), 0);
 
+  /**
+   * ICON-EU's weather as it publishes now: a step every hour, each step's
+   * precip the rain in the hour ending at it, and its own temperature, cloud
+   * and code.
+   */
+  async function hourlyForecast(window: { hours: number; stepHours: number }) {
+    const inner = fixtureSource();
+    const pointer = (await inner.json(
+      "weather/icon-eu-weather.json",
+    )) as Record<string, unknown>;
+    const square = (await inner.json(SQUARE)) as {
+      spotSeries: Record<string, unknown>;
+    };
+    const steps = 25;
+    const series = Array.from({ length: steps }, (_, k) => ({
+      hour: k,
+      validTime: new Date(RUN + k * HOUR).toISOString(),
+      precipIntervalHours: k ? [k - 1, k] : null,
+      values: {
+        t2m: 10 + (k % 5),
+        precip: k ? (k % 4) / 10 : null,
+        clct: 50 + k,
+        ww: k % 2 ? 61 : 3,
+      },
+    }));
+    const { frameVariables: _, stepRanges: __, ...rest } = pointer;
+    const source = fixtureSource({
+      "weather/icon-eu-weather.json": {
+        ...rest,
+        stepHours: 1,
+        frames: [],
+        horizonHours: steps - 1,
+      },
+      [SQUARE]: {
+        ...square,
+        spotSeries: { ...square.spotSeries, dollymount: series },
+      },
+    });
+    const spot = findSpot(await loadSpots(source), "dollymount").spot!;
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, window),
+      { now: FIXTURE_NOW },
+    );
+    return { forecast, series };
+  }
+
+  it("reads hourly weather an hour at a time: each hour its own rain, air and sky", async () => {
+    const { forecast, series } = await hourlyForecast({
+      hours: 24,
+      stepHours: 1,
+    });
+    expect(forecast.window.weather_step_hours).toBe(1);
+    forecast.hours.forEach((hour, k) => {
+      const step = series[k].values;
+      expect(hour.weather).toMatchObject({
+        air_c: step.t2m,
+        cloud_pct: step.clct,
+        weather_code: step.ww,
+        // Each hour's own rain, the hour ending at it; none at the run's start.
+        rain_mm: step.precip,
+      });
+      if (k) expect(hour.weather!.rain_interval_hours).toBe(1);
+      expect(hour.weather!.rain_until).toBeUndefined();
+    });
+    // A rain code no longer sits beside a null rain: the hour has its own.
+    expect(
+      forecast.hours.filter(
+        (h) => h.weather!.weather_code === 61 && h.weather!.rain_mm === null,
+      ),
+    ).toEqual([]);
+    // Nothing tells an agent the weather is three-hourly.
+    expect(forecast.units.rain).not.toMatch(/\b3 for ICON-EU/);
+    expect(forecast.units.weather).toMatch(/more than an hour/);
+  });
+
+  it("adds hourly rain up into three-hourly rows", async () => {
+    const { forecast, series } = await hourlyForecast({
+      hours: 24,
+      stepHours: 3,
+    });
+    expect(forecast.window.weather_step_hours).toBe(1);
+    // Each row from the second on sums the three hours since the row before.
+    forecast.hours.slice(1).forEach((hour, i) => {
+      const k = 3 * (i + 1);
+      const total = series
+        .slice(k - 2, k + 1)
+        .reduce((sum, s) => sum + (s.values.precip ?? 0), 0);
+      expect(hour.weather!.rain_mm).toBeCloseTo(total, 5);
+      expect(hour.weather!.rain_interval_hours).toBe(3);
+    });
+  });
+
   it("gives each three-hour total once, at the hour its interval ends", async () => {
     const forecast = await rainForecast({ hours: 24, stepHours: 1 });
     expect(forecast.window.weather_step_hours).toBe(3);

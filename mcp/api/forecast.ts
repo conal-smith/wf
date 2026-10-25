@@ -463,7 +463,10 @@ interface VariableStep {
 interface VariablesManifest {
   variables: Record<string, { units?: string; label?: string }>;
   spotSeries: Record<string, unknown>;
-  /** The run's native cadence: ICON-EU weather publishes every 3 hours. */
+  /**
+   * The run's native cadence where it states one: ICON-EU weather publishes
+   * every hour; a run that states none is read from its steps' spacing.
+   */
   stepHours?: number;
 }
 
@@ -1166,14 +1169,16 @@ const SLACK = 60000;
 /**
  * The model's rain totals, each given to one row of the window so that adding
  * the rows up gives the rain and never more. A step's `precip` is the total
- * over the interval that ends at it (three hours for ICON-EU), so it belongs to
- * that interval and to no other hour: read into each of three hourly rows, as
- * the other weather fields are, it would say three times the rain. As in the
- * dock (src/strip.ts `rainColumns`), the last row inside an interval carries
- * it. Rows coarser than the steps can leave an interval with no row inside it,
- * which then goes to the first row after it, so a six-hourly row sums the two
- * intervals since the row before. An interval wholly before the first row or
- * after the last is outside the window and dropped.
+ * over the interval that ends at it: an hour for ICON-EU and GFS's first 120
+ * hours, where each interval is its own hourly row, and three for GFS past
+ * them. A three-hour total belongs to that interval and to no other hour:
+ * read into each of three hourly rows, as the other weather fields are, it
+ * would say three times the rain. As in the dock (src/strip.ts
+ * `rainColumns`), the last row inside an interval carries it. Rows coarser
+ * than the steps can leave an interval with no row inside it, which then
+ * goes to the first row after it, so a three-hourly row over hourly steps
+ * sums the three hours since the row before. An interval wholly before the
+ * first row or after the last is outside the window and dropped.
  */
 function rainRows(
   times: readonly number[],
@@ -1470,14 +1475,17 @@ export const UNITS = {
   temperature: "°C",
   rain:
     "mm: the weather model's own total over the `rain_interval_hours` " +
-    "(3 for ICON-EU and GFS) ending at that row's hour, or at `rain_until` where " +
-    "given. Each total is on one row only, with null on the interval's other " +
-    "hours, so adding rain_mm up over rows gives the rain in their intervals. " +
-    "A row further apart than the model's steps sums the intervals since the " +
-    "row before",
+    "ending at that row's hour, or at `rain_until` where given: 1 where the " +
+    "model steps hourly (ICON-EU, and GFS to +120 h), so each hourly row is " +
+    "its own hour's rain, and 3 where it steps three-hourly (GFS past +120 h). " +
+    "Each total is on one row only, with null on an interval's other hours, " +
+    "so adding rain_mm up over rows gives the rain in their intervals. A row " +
+    "further apart than the model's steps sums the intervals since the row before",
   weather:
     "air_c, cloud_pct and weather_code are the weather model's nearest step, " +
-    "`window.weather_step_hours` apart, so they repeat on the hours between",
+    "`window.weather_step_hours` apart (the first weather run's cadence: 1 " +
+    "for ICON-EU), so each hour has its own; where the steps are more than an " +
+    "hour apart they repeat on the hours between",
   weather_code:
     "the model's WMO present-weather code (`ww`, WMO-No. 306 code table 4677), " +
     "its own interpretation, never an observation. `description` is the " +
