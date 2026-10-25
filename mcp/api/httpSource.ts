@@ -59,8 +59,7 @@ export function cached(
   const inflight = new Map<string, Promise<unknown | null>>();
   const keep = (key: string, value: unknown | null) => {
     const at = now();
-    for (const [path, hit] of hits)
-      if (at - hit.at >= ttlMs) hits.delete(path);
+    for (const [path, hit] of hits) if (at - hit.at >= ttlMs) hits.delete(path);
     hits.delete(key);
     hits.set(key, { at, value });
     while (hits.size > SOURCE_CACHE_LIMIT)

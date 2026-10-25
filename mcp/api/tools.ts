@@ -9,7 +9,6 @@
  */
 import { z } from "zod";
 import {
-  GUSTY_SPREAD_KN,
   MAX_WINDOW_HOURS,
   METHOD,
   axis,
@@ -30,12 +29,21 @@ import {
   type Window,
 } from "./forecast.js";
 import type { ForecastSource } from "./httpSource.js";
+import { riderOf, riderUsed, type RiderChoice } from "./rating.js";
 import {
   DEFAULT_STARS_FROM,
   STARS_MODELS,
   leadFor,
   type StarsFrom,
 } from "../../force5/src/lead.js";
+import {
+  GUSTIES,
+  MAX_WEIGHT_KG,
+  MAX_WING_M2,
+  MIN_WEIGHT_KG,
+  MIN_WING_M2,
+  SKILLS,
+} from "../../force5/src/stars.js";
 
 export interface ToolDeps {
   source: ForecastSource;
@@ -71,7 +79,9 @@ export const INSTRUCTIONS = `wingfoil.ie forecasts wind, waves and tides for win
 - The forecast is one model's own, the one wingfoil.ie rates its stars from, never a blend of several: HARMONIE's (Met Éireann's 2.5 km model, the most accurate here) while it reaches the hour, about the next 60 hours, and ECMWF's past it, unless a caller passes \`model\` to choose another (ECMWF still takes over past the end of its run). \`lead\` says which model an hour is. \`agreement\` says how closely all the models agree, as context; \`confidence\` is the same but low wherever fewer than three models cover the hour (\`models\`), as happens a few days out. Hedge when confidence is low, say why (few models, or models disagreeing), and use by_model to explain a disagreement.
 - ${METHOD}
 - \`shore\` says how the wind meets the spot's beach: onshore, cross-on, cross, cross-off or offshore (the same rule wingfoil.ie's stars use). Offshore and cross-off wind carry a rider who falls away from the beach out to sea: always warn about them. find_wind leaves dead offshore hours out unless allow_offshore is set. A null shore means the beach's facing is unknown, so say offshore wind can't be ruled out there.
-- Point out sessions find_wind marks \`gusty\`. When someone has a gust limit, pass max_gust_kn (or max_gust_factor) so hours past it are left out.
+- To answer "can I go?" and "when?", use the stars: each hour's \`rating\` in get_spot_forecast, and each find_wind session's, is wingfoil.ie's own rating for the rider, the same code and the same numbers as the spot page (stars 0–5; \`potential\` is what the wind alone is worth). Ask the person's level (beginner, intermediate or advanced) and weight if you don't know them and pass them as level and weight_kg; otherwise say the stars are for the site's default rider, \`rider.label\` ("Riding · ~80 kg"). Zero stars is a no: say why from \`why_no_stars\` (too light, too strong, gusts over your limit, offshore). \`best_windows\` gives each day's best stretch, ended by last light, with its tides: quote its local time and stars. \`best_directions\` are the winds the beach wants. Never rate an hour higher than the site does.
+- Gusts: \`gust_factor\` is gust ÷ mean; the stars call an hour gusty from 1.5 and very gusty from 1.8 (\`gustiness\`) and give no stars at all to a gust over the rider's limit (\`rider.gust_limit_kn\`), so find_wind never counts such an hour. Mention gusty sessions. When someone has a tighter gust limit, pass max_gust_kn or max_gust_factor.
+- Safety comes before stars: a thunder risk, an official warning, or offshore wind outweighs any rating.
 - Light: a session ends by last light (civil dusk, in \`sun\`), not at sunset and never after dark; quote last light as the time to be off the water. find_wind's sessions already stop there.
 - Thunder: wherever an hour's \`thunder_risk\` is high or possible, tell the person to stay off the water then and in the hours either side (lightning strikes ahead of a storm), whatever the wind. Low is not a promise of no storm.
 - ${CARE}
@@ -189,6 +199,44 @@ const MODEL_ARGS = {
     ),
 };
 
+/** Who the stars are for, as a wingfoil.ie rider sets it (force5/src/stars.ts). */
+const RIDER_ARGS = {
+  level: z
+    .enum(SKILLS as [string, ...string[]])
+    .optional()
+    .describe(
+      "The rider's level, as wingfoil.ie rates for it: beginner (the site's 'Learning'), intermediate ('Riding', the default) or advanced.",
+    ),
+  weight_kg: z
+    .number()
+    .min(MIN_WEIGHT_KG)
+    .max(MAX_WEIGHT_KG)
+    .optional()
+    .describe(
+      "The rider's weight in kg (default: the site's estimate, 80 kg). Heavier riders need more wind.",
+    ),
+  gusty: z
+    .enum(GUSTIES as [string, ...string[]])
+    .optional()
+    .describe(
+      "How much gusty wind bothers the rider: little, some (default) or lots.",
+    ),
+  wings_m2: z
+    .array(z.number().min(MIN_WING_M2).max(MAX_WING_M2))
+    .max(8)
+    .optional()
+    .describe(
+      "Wing sizes the rider owns, m². Left out, the stars recommend a size.",
+    ),
+};
+
+const riderArg = (args: {
+  level?: string;
+  weight_kg?: number;
+  gusty?: string;
+  wings_m2?: number[];
+}) => riderOf(args as RiderChoice);
+
 const modelArg = (model: string | undefined): StarsFrom =>
   model ? leadFor(model) : DEFAULT_STARS_FROM;
 
@@ -196,7 +244,7 @@ export const getSpotForecast = tool({
   name: "get_spot_forecast",
   title: "Spot forecast",
   description:
-    "Hour-by-hour forecast for one spot: wind speed, gusts and direction from one weather model, the one wingfoil.ie rates its stars from (HARMONIE while it reaches the hour, then ECMWF, unless `model` names another, which ECMWF then follows), with the range across every model and how well they agree as context, how the wind meets the shore (onshore to offshore), plus waves, air temperature and how cold it feels in the mean wind (`feels_like_c`, a wind chill), rain, a thunder and lightning risk (`thunder_risk`), the sky in words (`description` and `sky`, as wingfoil.ie's sky glyph has it; `weather_code` is WMO 4677), how light each hour is (`light`: day, twilight or dark), each day's first light, sunrise, sunset and last light, high and low tides and the latest sea temperature. Rain is the weather model's own total over an interval (`rain_interval_hours`: an hour for ICON-EU, so each hourly row has its own hour's rain; three hours for GFS far ahead), given once on the row where its interval ends and null on any hours before it inside the interval, so add rain_mm up over the rows for a period's rain.",
+    "Hour-by-hour forecast for one spot, each hour rated in stars (0-5) for the rider exactly as wingfoil.ie's spot page rates it (level and weight_kg, default 'Riding · ~80 kg'), with why an hour has no stars, each day's best window and the winds the beach wants (`best_directions`): wind speed, gusts, gust factor and direction from one weather model, the one wingfoil.ie rates its stars from (HARMONIE while it reaches the hour, then ECMWF, unless `model` names another, which ECMWF then follows), with the range across every model and how well they agree as context, how the wind meets the shore (onshore to offshore), plus waves, air temperature and how cold it feels in the mean wind (`feels_like_c`, a wind chill), rain, a thunder and lightning risk (`thunder_risk`), the sky in words (`description` and `sky`, as wingfoil.ie's sky glyph has it; `weather_code` is WMO 4677), how light each hour is (`light`: day, twilight or dark), each day's first light, sunrise, sunset and last light, high and low tides and the latest sea temperature. Rain is the weather model's own total over an interval (`rain_interval_hours`: an hour for ICON-EU, so each hourly row has its own hour's rain; three hours for GFS far ahead), given once on the row where its interval ends and null on any hours before it inside the interval, so add rain_mm up over the rows for a period's rain.",
   inputSchema: {
     spot: z
       .string()
@@ -230,8 +278,10 @@ export const getSpotForecast = tool({
         "Also give each model's own wind at every hour, to explain disagreement.",
       ),
     ...MODEL_ARGS,
+    ...RIDER_ARGS,
   },
-  async run({ spot, from, hours, step_hours, per_model, model }, deps) {
+  async run(args, deps) {
+    const { spot, from, hours, step_hours, per_model, model } = args;
     const spots = await loadSpots(deps.source);
     const match = findSpot(spots, spot);
     if (!match.spot)
@@ -247,6 +297,7 @@ export const getSpotForecast = tool({
       perModel: per_model,
       now: at,
       from: models,
+      rider: riderArg(args),
     });
     // Only the headline's two models give an hour wind, as in find_wind.
     const reach = forecastReach(forecast.sources.wind, models);
@@ -275,20 +326,33 @@ export const findWind = tool({
   name: "find_wind",
   title: "Find wind",
   description:
-    "Rank spots by how many hours the wind will be in a range, grouped into sessions, on the one model wingfoil.ie rates its stars from (HARMONIE, then ECMWF, unless `model` names another, which ECMWF then follows), leaving out hours blowing dead offshore. Each session says how the wind meets the shore. Use this for 'where should I go this weekend?'.",
+    "Rank spots by their stars for a rider, wingfoil.ie's own rating (the same as each spot page's, for level and weight_kg, default the site's 'Riding · ~80 kg'), on the one model the stars come from (HARMONIE, then ECMWF, unless `model` names another, which ECMWF then follows). Hours earning min_stars or more (default 1) make sessions, ended by last light; hours gusting over the rider's limit never count, nor hours blowing dead offshore. Each session gives its stars, gust factor and how the wind meets the shore, and each spot its best window. Use this for 'where should I go this weekend?'.",
   inputSchema: {
+    min_stars: z
+      .number()
+      .int()
+      .min(1)
+      .max(5)
+      .optional()
+      .describe(
+        "The fewest stars an hour must earn for the rider to count (default 1), on wingfoil.ie's own rating.",
+      ),
     min_kn: z
       .number()
       .min(0)
       .max(60)
       .optional()
-      .describe("Lowest usable wind in knots (default 14)."),
+      .describe(
+        "Also leave out hours whose mean wind is under this many knots (default: the stars decide).",
+      ),
     max_kn: z
       .number()
       .min(0)
       .max(80)
       .optional()
-      .describe("Highest wind wanted in knots (default 30)."),
+      .describe(
+        "Also leave out hours whose mean wind is over this many knots (default: the stars decide).",
+      ),
     max_gust_kn: z
       .number()
       .min(0)
@@ -372,13 +436,21 @@ export const findWind = tool({
       .optional()
       .describe("How many spots to return (default 8)."),
     ...MODEL_ARGS,
+    ...RIDER_ARGS,
   },
   async run(args, deps) {
-    const minKnots = args.min_kn ?? 14;
-    const maxKnots = args.max_kn ?? 30;
-    if (maxKnots < minKnots) return failure("max_kn must be at least min_kn.");
-    if (args.max_gust_kn !== undefined && args.max_gust_kn < minKnots)
+    const minKnots = args.min_kn;
+    const maxKnots = args.max_kn;
+    if (minKnots !== undefined && maxKnots !== undefined && maxKnots < minKnots)
+      return failure("max_kn must be at least min_kn.");
+    if (
+      minKnots !== undefined &&
+      args.max_gust_kn !== undefined &&
+      args.max_gust_kn < minKnots
+    )
       return failure("max_gust_kn must be at least min_kn.");
+    const rider = riderArg(args);
+    const minStars = args.min_stars ?? 1;
     // Without near there is nothing to measure from, and all of Ireland
     // would come back looking as if it were within max_km.
     if (args.max_km !== undefined && args.near === undefined)
@@ -410,6 +482,8 @@ export const findWind = tool({
       stepHours: 1,
     });
     const found = await findSessions(deps.source, spots, window, {
+      rider,
+      minStars,
       minKnots,
       maxKnots,
       maxGustKnots: args.max_gust_kn,
@@ -447,7 +521,11 @@ export const findWind = tool({
         to: new Date(window.to).toISOString(),
       },
       ...(note && { note }),
-      wind_range_kn: [minKnots, maxKnots],
+      rider: riderUsed(rider),
+      min_stars: minStars,
+      ...((minKnots !== undefined || maxKnots !== undefined) && {
+        wind_range_kn: [minKnots ?? null, maxKnots ?? null],
+      }),
       ...(near && { near: { ...near.place, max_km: maxKm } }),
       ...(counties.length && { counties }),
       offshore_hours: args.allow_offshore ? "counted" : "left out",
@@ -460,8 +538,8 @@ export const findWind = tool({
       sources: found.sources,
       unavailable: found.unavailable,
       method:
-        "An hour counts when its wind is inside the range and its gust (the lead model's, else the top of every model's) is inside max_gust_kn and max_gust_factor. " +
-        `A session is \`gusty\` when some hour gusts ${GUSTY_SPREAD_KN} kn or more over its mean; \`gust_kn\` is its strongest gust. ` +
+        "Every hour is rated in stars for `rider` as wingfoil.ie's spot page rates it (force5/src/stars.ts rateHour, on the one model's wind, gust and direction), and counts when it earns min_stars or more and is inside min_kn/max_kn, max_gust_kn and max_gust_factor where given. A gust over the rider's limit (`rider.gust_limit_kn`) leaves an hour no stars, so it never counts. " +
+        "Counting hours in a row make a session; a session's `stars` is its weakest hour's and `best_stars` its best, `gust_factor` its highest gust ÷ mean and `gustiness` its gustiest hour by the stars' rule (gusty from 1.5, very gusty from 1.8). Each spot's `best_window` is the longest run at the highest stars any run reaches; spots rank by its stars, then by rideable_hours, then nearest. Sessions end by last light unless daylight_only is false. " +
         "Hours with the wind dead offshore are left out unless allow_offshore; a session's `shore` is its most offshore hour's, null where the beach's facing is unknown. " +
         "Each session's agreement, confidence and models are the worst of its hours, as context. " +
         METHOD,

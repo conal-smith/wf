@@ -50,7 +50,12 @@ import { shoreFacing } from "../../force5/src/shoreFacing.js";
 import {
   GUSTY_FROM,
   VERY_GUSTY_FROM,
+  bestWindow,
+  gustiness,
   shoreAngle,
+  type Gustiness,
+  type HourRating,
+  type Rider,
   type ShoreAngle,
 } from "../../force5/src/stars.js";
 import { gustFactor } from "../../force5/src/gustFactor.js";
@@ -68,6 +73,15 @@ import {
   type WeatherIcon,
 } from "../../force5/src/presentWeather.js";
 import type { ForecastSource } from "./httpSource.js";
+import {
+  NOT_RATED,
+  bestDirections,
+  hourStars,
+  rateWind,
+  riderUsed,
+  type HourStars,
+  type RiderUsed,
+} from "./rating.js";
 
 const HOUR = 3600000;
 /** Waves and weather are nearest-step, never interpolated (VARIABLE_MATCH_HOURS). */
@@ -1499,6 +1513,13 @@ export interface ForecastHour {
   weather?: HourWeather | null;
   /** Where an ensemble reaches the spot: the spread of its members. */
   ensemble?: HourEnsemble | null;
+  /**
+   * The hour's stars for `rider`, as the spot page shows them; null where the
+   * site does not rate the hour, `why_not_rated` saying why. Only where a
+   * rider was asked for.
+   */
+  rating?: HourStars | null;
+  why_not_rated?: string;
 }
 
 /** One Irish day's light at the spot, in Irish time with its zone. */
@@ -1513,10 +1534,31 @@ export interface DayLight {
   last_light: string | null;
 }
 
+export interface DayWindow {
+  /** The Irish calendar day, "2026-10-25". */
+  date: string;
+  window: (Session & { tides?: SpotTides["events"] }) | null;
+  /** Where there is no window, why. */
+  why_none?: string;
+}
+
 export interface SpotForecast {
   spot: RidingSpot;
   /** The bearing the shore looks out to sea along, or null where unknown. */
   shore_facing_deg?: number | null;
+  /**
+   * The winds the shore wants, as the spot page's header gives them ("ENE–ESE",
+   * "SSW–W"): cross-onshore and cross-shore. Null where there is no facing.
+   */
+  best_directions?: string[] | null;
+  /** Who the stars are for, where a rider was asked for. */
+  rider?: RiderUsed;
+  /**
+   * Each Irish day's best stretch for `rider`, summed up as find_wind's
+   * sessions are, with the tides inside it; null on a day where no two hours
+   * in a row earn a star.
+   */
+  best_windows?: DayWindow[];
   units: Record<string, string>;
   window: {
     from: string;
@@ -1636,6 +1678,8 @@ export async function spotForecast(
     now: number;
     /** The model the headline is, and the one past its run (default HARMONIE, then ECMWF). */
     from?: StarsFrom;
+    /** Rate every hour for this rider, as the spot page does, and pick each day's best window. */
+    rider?: Rider;
   },
 ): Promise<SpotForecast> {
   // Only the one square that holds the spot is read, of each model.
@@ -1688,6 +1732,12 @@ export async function spotForecast(
         ...hour.weather,
         rain_mm: rainEach.get(Date.parse(hour.time)) ?? null,
       });
+  const best = options.rider
+    ? rateForecast(lines, window, hours, spot, facing, tides, {
+        rider: options.rider,
+        from: options.from,
+      })
+    : null;
   const days = new Set(hours.map((h) => dublinDate(Date.parse(h.time))));
   const stamp = (time: number | null) =>
     time === null ? null : localStamp(time);
@@ -1704,6 +1754,9 @@ export async function spotForecast(
   return {
     spot,
     shore_facing_deg: facing,
+    best_directions: bestDirections(facing),
+    ...(options.rider && { rider: riderUsed(options.rider) }),
+    ...(best && { best_windows: best }),
     units: UNITS,
     window: {
       from: iso(window.from),
@@ -1734,6 +1787,73 @@ export async function spotForecast(
   };
 }
 
+/**
+ * The window rated for a rider as the spot page rates it, hour by hour
+ * whatever the rows' step: each row its stars (or why it has none), and each
+ * Irish day its best window, force5's `bestWindow` (the longest run of two
+ * hours or more at the highest rating any such run reaches, rated on its
+ * weakest hour) over that day's hours, ended by last light.
+ */
+function rateForecast(
+  lines: SpotWindLines["lines"],
+  window: Window,
+  rows: ForecastHour[],
+  spot: RidingSpot,
+  facing: number | null,
+  tides: SpotTides | { note: string } | null,
+  options: { rider: Rider; from?: StarsFrom },
+): DayWindow[] {
+  const { rider } = options;
+  for (const row of rows) {
+    const rating = rateWind(row.wind, row.daylight, facing, rider);
+    row.rating = rating && row.wind && hourStars(rating, row.wind, rider);
+    if (!row.rating)
+      row.why_not_rated = row.wind ? NOT_RATED.dark : NOT_RATED.noWind;
+  }
+  const hourly = axis({ ...window, stepHours: 1 }).map((time) => {
+    const wind = hourWind(lines, time, false, options.from);
+    return {
+      time,
+      wind,
+      shore: shoreOf(facing, wind),
+      rating: rateWind(wind, daylight(spot, time), facing, rider),
+    };
+  });
+  // An official warning (#173) lowers these ratings here, before any window
+  // is picked from them.
+  const events = tides && "events" in tides ? tides.events : [];
+  const days = new Map<string, typeof hourly>();
+  for (const hour of hourly) {
+    const date = dublinDate(hour.time);
+    days.set(date, [...(days.get(date) ?? []), hour]);
+  }
+  return [...days].map(([date, day]): DayWindow => {
+    const best = bestWindow(day.map((h) => h.rating));
+    if (!best)
+      return {
+        date,
+        window: null,
+        why_none: day.some((h) => h.rating)
+          ? "no two hours in a row earn a star for this rider"
+          : "no hour of the window on this day is rated: dark, or no wind forecast",
+      };
+    const run = day
+      .slice(best.from, best.to + 1)
+      .map((h) => ({ ...h, hour: h.wind! }));
+    const summary = session(run, spot, true, rider);
+    const from = Date.parse(summary.from);
+    const to = Date.parse(summary.to);
+    const inside = events.filter((e) => {
+      const t = Date.parse(e.time);
+      return t >= from && t <= to;
+    });
+    return {
+      date,
+      window: { ...summary, ...(inside.length && { tides: inside }) },
+    };
+  });
+}
+
 export interface Session {
   from: string;
   /** Its last hour's end, or last light where that comes first. */
@@ -1751,8 +1871,18 @@ export interface Session {
   gust_max_kn: number | null;
   /** The strongest headline gust (the lead model's, else every model's top). */
   gust_kn: number | null;
-  /** Some hour gusts GUSTY_SPREAD_KN or more over its mean wind. */
+  /** Its highest gust factor, gust ÷ mean, of the one model's own (`gust_kn`). */
+  gust_factor: number | null;
+  /** Its gustiest hour as the stars judge it: steady, gusty or very-gusty. */
+  gustiness: Gustiness;
+  /** Some hour is gusty or very gusty by the stars' rule (`gustiness`). */
   gusty: boolean;
+  /** Its weakest hour's stars for the rider: what it can be relied on for. */
+  stars: number | null;
+  /** Its best hour's stars. */
+  best_stars: number | null;
+  /** Why its weakest hour has no more stars, in the site's words. */
+  why_not_more_stars?: string[];
   direction: string;
   direction_deg: number;
   /** The most offshore of its hours; null where the shore's facing is unknown. */
@@ -1772,13 +1902,26 @@ export interface SpotSessions {
   distance_km?: number;
   /** The bearing the shore looks out to sea along, or null where unknown. */
   shore_facing_deg: number | null;
+  /** The winds the shore wants, as the spot page's header gives them. */
+  best_directions: string[] | null;
+  /** Hours earning at least `min_stars` for the rider, in sessions. */
   rideable_hours: number;
+  /**
+   * The best stretch of the search for the rider, force5's `bestWindow` over
+   * the hours that count, as the spots are ranked by; null with none.
+   */
+  best_window: Session | null;
   sessions: Session[];
 }
 
 export interface FindOptions {
-  minKnots: number;
-  maxKnots: number;
+  /** Who the stars are for: the site's default rider unless an agent says. */
+  rider: Rider;
+  /** The fewest stars an hour must earn to count (wingfoil.ie's rating). */
+  minStars: number;
+  /** Optionally also a mean wind range, knots, on top of the stars. */
+  minKnots?: number;
+  maxKnots?: number;
   /** An hour gusting over this many knots is not rideable. */
   maxGustKnots?: number;
   /** Nor one whose gust is more than this many times its mean wind. */
@@ -1803,14 +1946,6 @@ export interface FindOptions {
   from?: StarsFrom;
 }
 
-/**
- * How far over its mean an hour may gust before a search's session is flagged
- * `gusty`: a flag for the reader, apart from the stars, which judge gusty wind
- * by gust ÷ mean and take everything off a gust over the rider's limit
- * (force5/src/stars.ts, v6).
- */
-export const GUSTY_SPREAD_KN = 12;
-
 /** The gust a limit reads: the headline's, else the top of every model's. */
 const gustOf = (hour: HourWind) => hour.gust_kn ?? hour.gust_max_kn;
 
@@ -1828,13 +1963,16 @@ function gustWithin(hour: HourWind, options: FindOptions): boolean {
 }
 
 /**
- * Spots ranked by how many hours of the window the headline wind (one model's,
- * as the stars have it) sits inside the asked wind range, grouped into
- * sessions of consecutive hours. How far the other models agree is reported
- * beside each session, as the site shows it beside the stars, and decides
- * nothing (the ruling of 19 October 2026). With `near`, only spots within
- * `maxKm` are searched, each with its distance, and equal hours rank nearest
- * first.
+ * Spots ranked by their stars for a rider: every hour of the window rated as
+ * the spot page rates it (force5/src/stars.ts `rateHour` on the one model's
+ * wind, gust and direction), an hour counting when it earns `minStars` or
+ * more and passes the search's own limits, the hours that count grouped into
+ * sessions. A gust over the rider's limit leaves an hour no stars, so it never
+ * counts. Spots rank by their best window's stars, then by hours that count,
+ * then nearest first. How far the other models agree is reported beside each
+ * session, as the site shows it beside the stars, and decides nothing (the
+ * ruling of 19 October 2026). With `near`, only spots within `maxKm` are
+ * searched, each with its distance.
  */
 export async function findSessions(
   source: ForecastSource,
@@ -1877,37 +2015,69 @@ export async function findSessions(
     if (!lines.length) continue;
     const facing = shoreFacing(spot.id);
     const sessions: Session[] = [];
+    const hours: SessionHour[] = [];
     let run: SessionHour[] = [];
     const close = () => {
       if (run.length >= options.minSessionHours)
-        sessions.push(session(run, spot, options.daylightOnly));
+        sessions.push(session(run, spot, options.daylightOnly, options.rider));
       run = [];
     };
     for (const time of times) {
       const hour = hourWind(lines, time, false, options.from);
       const shore = shoreOf(facing, hour);
+      // Rated as on the site, sunrise to sunset; a search for dark hours
+      // rates them as though they were light.
+      const rating = rateWind(
+        hour,
+        !options.daylightOnly || daylight(spot, time),
+        facing,
+        options.rider,
+      );
+      // An official warning (#173) lowers `rating` here, before it counts.
       const good =
         hour !== null &&
-        hour.wind_kn >= options.minKnots &&
-        hour.wind_kn <= options.maxKnots &&
+        rating !== null &&
+        rating.stars >= options.minStars &&
+        (options.minKnots === undefined || hour.wind_kn >= options.minKnots) &&
+        (options.maxKnots === undefined || hour.wind_kn <= options.maxKnots) &&
         gustWithin(hour, options) &&
-        (options.allowOffshore || shore !== "offshore") &&
-        (!options.daylightOnly || daylight(spot, time));
-      if (good) run.push({ time, hour: hour!, shore });
+        (options.allowOffshore || shore !== "offshore");
+      const counted = {
+        time,
+        hour: hour!,
+        shore,
+        rating: good ? rating : null,
+      };
+      hours.push(counted);
+      if (good) run.push(counted);
       else close();
     }
     close();
-    if (sessions.length)
-      results.push({
-        spot,
-        ...(near && { distance_km: distance.get(spot.id)! }),
-        shore_facing_deg: facing,
-        rideable_hours: sessions.reduce((sum, s) => sum + s.hours, 0),
-        sessions,
-      });
+    if (!sessions.length) continue;
+    const best = bestWindow(
+      hours.map((h) => h.rating),
+      options.minSessionHours,
+    );
+    results.push({
+      spot,
+      ...(near && { distance_km: distance.get(spot.id)! }),
+      shore_facing_deg: facing,
+      best_directions: bestDirections(facing),
+      rideable_hours: sessions.reduce((sum, s) => sum + s.hours, 0),
+      best_window: best
+        ? session(
+            hours.slice(best.from, best.to + 1),
+            spot,
+            options.daylightOnly,
+            options.rider,
+          )
+        : null,
+      sessions,
+    });
   }
   results.sort(
     (a, b) =>
+      (b.best_window?.stars ?? 0) - (a.best_window?.stars ?? 0) ||
       b.rideable_hours - a.rideable_hours ||
       (a.distance_km ?? 0) - (b.distance_km ?? 0),
   );
@@ -1949,12 +2119,20 @@ interface SessionHour {
   time: number;
   hour: HourWind;
   shore: ShoreAngle | null;
+  rating: HourRating | null;
 }
+
+const GUSTINESS_RANK: Record<Gustiness, number> = {
+  steady: 0,
+  gusty: 1,
+  "very-gusty": 2,
+};
 
 function session(
   run: SessionHour[],
   spot: RidingSpot,
   byLastLight: boolean,
+  rider: Rider,
 ): Session {
   const speeds = run.map((r) => r.hour.wind_kn);
   const gusts = run.flatMap((r) =>
@@ -1978,6 +2156,16 @@ function session(
     if (a === null) return acc;
     return acc === null ? a : worse(acc, a);
   }, null);
+  const factors = run.flatMap((r) =>
+    r.hour.gust_factor == null ? [] : [r.hour.gust_factor],
+  );
+  const gustiest = run
+    .map((r) => gustiness(r.hour.wind_kn, r.hour.gust_kn, rider))
+    .reduce((a, b) => (GUSTINESS_RANK[b] > GUSTINESS_RANK[a] ? b : a));
+  const ratings = run.flatMap((r) => (r.rating ? [r.rating] : []));
+  const weakest = ratings.length
+    ? ratings.reduce((a, b) => (b.stars < a.stars ? b : a))
+    : null;
   const first = run[0].time;
   const last = run[run.length - 1].time;
   // Never past last light: an hour that starts before sunset is rated, but a
@@ -2002,10 +2190,14 @@ function session(
     max_kn: Math.max(...speeds),
     gust_max_kn: gusts.length ? Math.max(...gusts) : null,
     gust_kn: headlineGusts.length ? Math.max(...headlineGusts) : null,
-    gusty: run.some((r) => {
-      const gust = gustOf(r.hour);
-      return gust !== null && gust - r.hour.wind_kn >= GUSTY_SPREAD_KN;
-    }),
+    gust_factor: factors.length ? Math.max(...factors) : null,
+    gustiness: gustiest,
+    gusty: gustiest !== "steady",
+    stars: ratings.length ? weakest!.stars : null,
+    best_stars: ratings.length
+      ? Math.max(...ratings.map((r) => r.stars))
+      : null,
+    ...(weakest?.reasons.length && { why_not_more_stars: weakest.reasons }),
     direction: compass(direction),
     direction_deg: direction,
     shore: run.reduce<ShoreAngle | null>(

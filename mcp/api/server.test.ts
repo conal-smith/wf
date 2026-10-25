@@ -82,6 +82,66 @@ describe("the MCP endpoint", () => {
     expect(forecast.sources.wind.length).toBeGreaterThan(0);
   });
 
+  it("rates a spot's hours for the rider asked for, or the site's default", async () => {
+    const { call } = harness();
+    const plain = (
+      await call("get_spot_forecast", { spot: "dollymount", hours: 6 })
+    ).json();
+    expect(plain.rider.label).toBe("Riding · ~80 kg");
+    const first = plain.hours[0];
+    expect(
+      first.rating === null ? first.why_not_rated : first.rating.stars,
+    ).toEqual(expect.anything());
+    expect(plain.best_windows.length).toBeGreaterThan(0);
+    const heavy = (
+      await call("get_spot_forecast", {
+        spot: "dollymount",
+        hours: 6,
+        level: "advanced",
+        weight_kg: 95,
+        gusty: "lots",
+        wings_m2: [5, 3.5],
+      })
+    ).json();
+    expect(heavy.rider).toMatchObject({
+      label: "Advanced · 95 kg",
+      gusty: "lots",
+      wings_m2: [3.5, 5],
+    });
+    const bad = await call("get_spot_forecast", {
+      spot: "dollymount",
+      level: "expert",
+    });
+    expect(bad.isError).toBe(true);
+  });
+
+  it("ranks find_wind by the stars, and says for whom", async () => {
+    const { call } = harness();
+    const found = (
+      await call("find_wind", {
+        hours: 48,
+        level: "advanced",
+        gusty: "little",
+        counties: ["Dublin"],
+      })
+    ).json();
+    expect(found.rider.label).toBe("Advanced · ~80 kg");
+    expect(found.min_stars).toBe(1);
+    expect(found.wind_range_kn).toBeUndefined();
+    expect(found.spots.length).toBeGreaterThan(0);
+    for (const spot of found.spots)
+      for (const s of spot.sessions) {
+        expect(s.stars).toBeGreaterThanOrEqual(1);
+        expect(s.gust_factor).toEqual(expect.any(Number));
+      }
+    const best = found.spots.map(
+      (s: { best_window: { stars: number } }) => s.best_window.stars,
+    );
+    expect(best).toEqual([...best].sort((a, b) => b - a));
+    expect(found.method).toMatch(/rateHour/);
+    expect(found.method).not.toMatch(/12 kn/);
+  });
+
   it("asks which spot when a name is ambiguous or unknown", async () => {
     const { call } = harness();
     const ambiguous = await call("get_spot_forecast", { spot: "beach" });
