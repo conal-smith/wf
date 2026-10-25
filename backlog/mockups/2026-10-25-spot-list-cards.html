@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock-up · Spots, the list's cards</title>
+<!--
+  A design exploration, not product code. Standalone; faces from node_modules.
+  Satellite is Esri's World Imagery, fetched live; it needs a connection.
+
+  The owner's steer (25 October 2026), after 2026-10-25-spot-finder-ideas.html:
+    - a page of its own, not on the chart and not tied to it: press a card's
+      picture for the chart, anywhere else on the card for the spot page;
+    - no Best and Now lines, no reasons in words: the picture, then today,
+      then the next five days (today not among them);
+    - stars as colour along the time, and what is missing today: the wind's
+      direction, the weather, the waves, the tide;
+    - two columns on a desktop.
+  Four ways to draw a card, on one made-up Dublin week:
+    1  Ribbons    today and each day as a ribbon coloured by stars, arrows
+                  and the sky above it, the waves and the air beside
+    2  Bars       the wind as bars coloured by stars, the gust a faint dotted
+                  line over them, the tide behind
+    3  One chart  today and the five days on one chart: the wind's line with
+                  the area under it coloured by stars, the gust dotted, the
+                  tide behind, the sky and the arrows along it
+    4  Day tiles  six tiles, one a day: the sky, the air, the wind and its
+                  way, the waves, and the day's stars as a ribbon
+  ?design=1..4  ?device=phone  ?colour=ink
+-->
+<style>
+@font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 500;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 600;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
+
+:root {
+  --ground: #f3eee3; --paper: #fffdf6; --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b; --line: #1a1d2133;
+  --pen: #d43a2c; --pen-ink: #bf3125; --magenta: #b0186a; --sea: #8fb8d6;
+  --display: "Fraunces Variable", Fraunces, Georgia, serif;
+  --body: "Newsreader Variable", Newsreader, Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --edge: inset 0 0 0 2px #f4efe5, inset 0 0 0 3px #1a1d2142;
+  --float: var(--edge), 0 1px 1px #1a1d211a, 0 3px 6px -2px #1a1d211f, 0 14px 28px -12px #3c2d1466;
+  --card: var(--edge), 0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a;
+  --press: linear-gradient(180deg, #33373d, #15171a);
+  --hatch: repeating-linear-gradient(135deg, #1a1d2114 0 2px, transparent 2px 5px);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 14px; }
+body { margin: 0; background: #d9d4c7; color: var(--ink); font-family: var(--body); line-height: 1.35; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3, p { margin: 0; }
+.mockbar { position: sticky; top: 0; z-index: 40; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 16px; background: #1a1d21; color: #f3eee3; font: 500 11px var(--mono); letter-spacing: .08em; }
+.mockbar b { margin-right: 10px; text-transform: uppercase; letter-spacing: .14em; }
+.mockbar .gap { width: 14px; }
+.mockbar button { background: none; border: 1px solid #f3eee355; border-radius: 99px; padding: 3px 10px; text-transform: uppercase; letter-spacing: .1em; font-size: 10px; }
+.mockbar button[aria-pressed=true] { background: #f3eee3; color: #1a1d21; }
+.stage { display: flex; justify-content: center; padding: 24px 16px 32px; }
+.frame { background: var(--ground); position: relative; overflow: hidden; box-shadow: 0 20px 50px -20px #0007, 0 0 0 1px #1a1d2133; }
+.frame.desk { width: 1280px; height: 900px; border-radius: 10px; }
+.frame.phone { width: 390px; height: 844px; border-radius: 28px; }
+.why { max-width: 1280px; margin: 0 auto 60px; background: #fffdf6; border: 1px dashed #1a1d2166; border-radius: 12px; padding: 14px 18px; font-size: 15px; line-height: 1.5; }
+.why h4 { margin: 14px 0 6px; font: 600 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--magenta); }
+.why h4:first-child { margin-top: 0; }
+.why ul { margin: 0; padding-left: 18px; } .why li { margin: 5px 0; }
+
+.app { height: 100%; display: flex; flex-direction: column; position: relative; }
+.top { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 3px double var(--ink); background: var(--ground); }
+.word { font: 800 21px/1 var(--display); letter-spacing: -.03em; }
+.word i { font-weight: 400; font-style: italic; color: var(--magenta); }
+.top .sp { flex: 1; }
+.burger { width: 36px; height: 36px; flex: none; border: 1.5px solid var(--ink); border-radius: 99px; display: grid; place-items: center; background: linear-gradient(180deg, #fff, #f0eadd); box-shadow: inset 0 1px 0 #fff, 0 1px 2px #1a1d2126; }
+.seg { display: inline-flex; border: 1.5px solid var(--ink); border-radius: 99px; padding: 2px; background: var(--paper); flex: none; }
+.seg button { border: 0; background: none; border-radius: 99px; padding: 4px 12px; font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+.seg button[aria-pressed=true] { color: var(--ground); background: var(--press); }
+.list { flex: 1; min-height: 0; overflow: auto; padding: 14px 18px 40px; }
+.lhead { display: flex; align-items: center; gap: 12px; margin: 0 2px 12px; flex-wrap: wrap; }
+.lhead h2 { font: 700 22px/1.1 var(--display); letter-spacing: -.02em; }
+.lhead .sp { flex: 1; }
+.key { display: inline-flex; align-items: center; gap: 6px; font: 500 10px var(--mono); letter-spacing: .06em; color: var(--muted); text-transform: uppercase; }
+.key i { display: inline-block; width: 18px; height: 10px; border-radius: 3px; box-shadow: inset 0 0 0 1px #1a1d2122; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.phone .grid { grid-template-columns: minmax(0, 1fr); }
+.card { min-width: 0; }
+.phone .sec .lg { display: none; }
+
+/* ---- the card ----------------------------------------------------------- */
+.card { position: relative; padding: 10px 12px 12px; border-radius: 18px; background: var(--paper); border: 1px solid #1a1d2155; box-shadow: var(--card); cursor: pointer; transition: box-shadow .12s, transform .12s; }
+.card:hover { box-shadow: var(--float); transform: translateY(-1px); }
+.head { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.sat { position: relative; flex: none; width: 112px; aspect-ratio: 16 / 10; border-radius: 11px; overflow: hidden; border: 1px solid var(--ink); background: #33403f; padding: 0; }
+.sat .tiles { position: absolute; left: 0; top: 0; }
+.sat .tiles img { position: absolute; width: 256px; height: 256px; filter: saturate(.8) brightness(1.03); }
+.sat > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sat:hover { outline: 2px solid var(--ink); outline-offset: 1px; }
+.sat .go { position: absolute; left: 5px; bottom: 5px; padding: 1px 6px; border-radius: 99px; background: #1a1d21cc; color: #f3eee3; font: 500 8.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; opacity: 0; transition: opacity .12s; }
+.sat:hover .go { opacity: 1; }
+.head .nm { flex: 1; min-width: 0; }
+.head b { display: block; font: 600 18px/1.15 var(--display); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.head small { font: 500 11px var(--mono); color: var(--muted); }
+.fav { flex: none; align-self: flex-start; width: 30px; height: 30px; border-radius: 99px; border: 1px solid var(--ink); display: grid; place-items: center; background: linear-gradient(180deg, #fff, #f0eadd); padding: 0; }
+.sec { font: 600 9.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 1px 3px; }
+.sec .r { display: inline-flex; gap: 10px; align-items: center; font-weight: 500; letter-spacing: .04em; text-transform: none; font-size: 11px; color: var(--ink-2); }
+.sec .r span { display: inline-flex; align-items: center; gap: 3px; }
+.ribbon { position: relative; height: 14px; border-radius: 99px; box-shadow: inset 0 0 0 1px #1a1d2133; overflow: hidden; }
+.ribbon .past { position: absolute; left: 0; top: 0; bottom: 0; background: #fffdf6b3; }
+.nowm { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--pen); border-radius: 2px; box-shadow: 0 0 0 1px var(--paper); z-index: 2; }
+.row { display: flex; position: relative; height: 16px; }
+.row > * { position: absolute; transform: translateX(-50%); top: 0; }
+.ticks { position: relative; height: 12px; font: 500 9px var(--mono); color: var(--muted); }
+.ticks span { position: absolute; transform: translateX(-50%); top: 1px; }
+.mt { margin-top: 10px; }
+.days5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.dcol { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.dcol .dh { display: flex; justify-content: space-between; align-items: baseline; font: 600 9.5px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.dcol .dh small { font-weight: 600; display: inline-flex; align-items: center; gap: 1px; }
+.dcol .dw { display: flex; align-items: center; justify-content: space-between; font: 500 10.5px var(--mono); color: var(--ink-2); white-space: nowrap; }
+.dcol .dw span { display: inline-flex; align-items: center; gap: 2px; }
+.dcol .ribbon { height: 10px; border-radius: 5px; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.tiles6 { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.phone .tiles6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tile { border-radius: 12px; border: 1px solid #1a1d2140; background: var(--ground); padding: 6px 7px 7px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.tile.today { border-color: var(--ink); background: var(--paper); }
+.tile .dh { display: flex; justify-content: space-between; align-items: center; font: 600 9.5px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.tile .dh small { display: inline-flex; align-items: center; gap: 1px; font-weight: 600; }
+.tile .sky { display: flex; align-items: center; gap: 5px; font: 600 13px var(--mono); }
+.tile .kn { display: flex; align-items: center; gap: 3px; font: 600 12.5px var(--mono); white-space: nowrap; }
+.tile .kn small { font-weight: 500; color: var(--muted); font-size: 10px; }
+.tile .wv { font: 500 10.5px var(--mono); color: var(--ink-2); display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+.tile .ribbon { height: 8px; border-radius: 4px; margin-top: 2px; }
+.toast { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 30; padding: 10px 16px; border-radius: 99px; background: var(--press); color: var(--ground); font: 500 11px var(--mono); letter-spacing: .06em; box-shadow: 0 8px 20px -6px #000a; white-space: nowrap; }
+.phone .top { padding: 10px 12px; }
+.phone .list { padding: 10px 10px 80px; }
+.phone .lhead h2 { font-size: 19px; }
+.phone .sat { width: 96px; }
+.phone .days5 { gap: 4px; }
+.phone .dcol .dw { font-size: 9.5px; }
+</style>
+</head>
+<body>
+<div class="mockbar"><b>Mock-up · Spot cards</b>
+  <button data-design="1">1 · Ribbons</button><button data-design="2">2 · Bars</button><button data-design="3">3 · One chart</button><button data-design="4">4 · Day tiles</button>
+  <span class="gap"></span><button data-device="desk">Desktop</button><button data-device="phone">Phone</button>
+  <span class="gap"></span><button data-colour="colour">Stars: colour</button><button data-colour="ink">Stars: ink</button>
+</div>
+<div class="stage"><div class="frame" id="frame"></div></div>
+<div class="why" id="why"></div>
+<script>
+/* ---- stars as colour ----------------------------------------------------- */
+// Colour: pale sand for one star to a deep sea-green for five; no stars is blank (hatched).
+// Ink: the product's own star grid (darker ink, more stars), to compare.
+const STAR_COL = ["transparent", "#ece3b0", "#cfe08f", "#93cc76", "#4fa96a", "#20805b"];
+const STAR_INK = ["transparent", "#1a1d2121", "#1a1d2142", "#1a1d2166", "#1a1d218f", "#1a1d21b8"];
+const starFill = (n) => (S.colour === "ink" ? STAR_INK : STAR_COL)[Math.max(0, Math.min(5, n))];
+
+/* ---- the week: today is Sunday 25 October, 13:00 --------------------------- */
+const NOW = 13, LIGHT_FROM = 7, LIGHT_TO = 18;   // daylight 07:00–18:00 (sunset ~17:00, usable to ~17:40)
+const DAYS = [
+  { name: "Today", short: "Sun", from: 250, kn: [16, 19, 17], gf: 2.05, sky: ["showers", "showers", "partly", "partly"], air: [9, 11, 12, 11], wave: [.3, 4] },
+  { name: "Mon", short: "Mon", from: 135, kn: [9, 15, 12], gf: 1.45, sky: ["cloudy", "partly", "clear", "clear"], air: [8, 12, 13, 11], wave: [.8, 6] },
+  { name: "Tue", short: "Tue", from: 95, kn: [17, 24, 20], gf: 1.45, sky: ["rain", "rain", "showers", "cloudy"], air: [10, 11, 12, 11], wave: [1.7, 7] },
+  { name: "Wed", short: "Wed", from: 185, kn: [7, 12, 9], gf: 1.3, sky: ["fog", "cloudy", "partly", "partly"], air: [9, 13, 14, 12], wave: [.5, 5] },
+  { name: "Thu", short: "Thu", from: 45, kn: [11, 16, 13], gf: 1.35, sky: ["partly", "clear", "clear", "partly"], air: [6, 9, 10, 8], wave: [1.1, 6] },
+  { name: "Fri", short: "Fri", from: 300, kn: [13, 18, 15], gf: 1.6, sky: ["showers", "showers", "partly", "showers"], air: [7, 9, 9, 8], wave: [.4, 4] },
+];
+const meanAt = (d, h) => { const [m, p, e] = DAYS[d].kn; if (h <= 7) return m * .92; if (h >= 19) return e * .92;
+  return h <= 13 ? m + (p - m) * Math.sin((h - 7) / 6 * Math.PI / 2) : p + (e - p) * ((h - 13) / 6); };
+const fromAt = (d, h) => (DAYS[d].from + (h - 12) * 2.5 + 360) % 360;
+const skyAt = (d, h) => DAYS[d].sky[Math.max(0, Math.min(3, Math.floor((h - 6) / 3)))];
+const airAt = (d, h) => DAYS[d].air[Math.max(0, Math.min(3, Math.floor((h - 6) / 3)))];
+// Dublin's tide: high water 10:40 today, 12 h 25 min a cycle, 0.6–4.0 m.
+const tideAt = (d, h) => 2.3 + 1.7 * Math.cos(2 * Math.PI * (d * 24 + h - 10.67) / 12.42);
+
+/* ---- the spots ------------------------------------------------------------- */
+const HOME = [53.365, -6.2];
+const SPOTS = [
+  ["dollymount", "Dollymount Strand", "Dublin", 53.367, -6.145, 125, 1.0, .8], ["velvet", "Portmarnock, Velvet Strand", "Dublin", 53.418, -6.125, 95, 1.05, 1],
+  ["malahide", "Malahide Estuary", "Dublin", 53.452, -6.165, 70, .85, .15], ["sandymount", "Sandymount", "Dublin", 53.33, -6.205, 95, .9, .4],
+  ["skerries", "Skerries, South Strand", "Dublin", 53.578, -6.104, 100, 1.05, 1], ["bray", "Bray", "Wicklow", 53.2, -6.095, 95, 1.0, 1],
+  ["killiney", "Killiney", "Dublin", 53.258, -6.11, 100, 1.0, .9], ["greystones", "Greystones", "Wicklow", 53.145, -6.06, 100, 1.05, 1],
+].map(([id, name, county, lat, lon, facing, open, sea]) => ({ id, name, county, lat, lon, facing, open, sea,
+  km: Math.round(Math.hypot((lat - HOME[0]) * 111, (lon - HOME[1]) * 111 * Math.cos(53.4 * Math.PI / 180))) }));
+
+/* ---- the stars (stars.ts for "Riding · ~80 kg": 11 / 14–24 / gusts to 34) ---- */
+const BAND = [11, 14, 24, 34];
+const angleOff = (from, facing) => Math.abs(((from - facing) % 360 + 540) % 360 - 180);
+const shoreOf = (off) => off < 30 ? "on" : off < 70 ? "x-on" : off < 110 ? "cross" : off < 150 ? "x-off" : "off";
+const COST = { on: 0, "x-on": 0, cross: 0, "x-off": 1.5, off: 5 };
+function rate(spot, d, h) {
+  const mean = meanAt(d, h) * spot.open, gust = mean * DAYS[d].gf, from = fromAt(d, h), [lo, sLo, sHi, top] = BAND;
+  const shore = shoreOf(angleOff(from, spot.facing)), light = h >= LIGHT_FROM && h <= LIGHT_TO - 1;
+  let pot = mean < lo ? 0 : mean < sLo ? 1 + 3 * (mean - lo) / (sLo - lo) : mean <= sHi ? 5 : 4;
+  if (gust > top) pot = 0;
+  return { mean, gust, from, shore, light, stars: light ? Math.max(0, Math.round(pot - COST[shore])) : 0 };
+}
+const dayMax = (spot, d) => Math.max(0, ...hours(d).filter((h) => d || h >= NOW).map((h) => rate(spot, d, h).stars));
+const wave = (spot, d) => ({ m: Math.round(DAYS[d].wave[0] * spot.sea * 10) / 10, s: DAYS[d].wave[1] });
+function hours(d) { const a = []; for (let h = LIGHT_FROM; h < LIGHT_TO; h++) a.push(h); return a; }
+
+/* ---- state ------------------------------------------------------------------ */
+const params = new URLSearchParams(location.search);
+const S = { design: params.get("design") || "1", device: params.get("device") || "desk", colour: params.get("colour") || "colour",
+  scope: "near", sort: "today", starred: new Set(["velvet", "dollymount", "malahide", "skerries", "bray"]), toast: null };
+
+/* ---- glyphs -------------------------------------------------------------------- */
+const px = (lat, lon, z) => { const n = 2 ** z * 256, r = lat * Math.PI / 180; return [(lon + 180) / 360 * n, (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n]; };
+function satTiles(lat, lon, z, w, h) {
+  const [cx, cy] = px(lat, lon, z), ox = cx - w / 2, oy = cy - h / 2; let s = "";
+  for (let x = Math.floor(ox / 256); x <= Math.floor((ox + w) / 256); x++) for (let y = Math.floor(oy / 256); y <= Math.floor((oy + h) / 256); y++)
+    s += `<img alt="" loading="lazy" src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}" style="left:${x * 256 - ox}px;top:${y * 256 - oy}px">`;
+  return `<div class="tiles">${s}</div>`;
+}
+function rose(spot, from, w, h) {
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.3, up = 70, reach = 120;
+  const p = (a, r) => [cx + r * Math.sin(a * Math.PI / 180), cy - r * Math.cos(a * Math.PI / 180)];
+  const sector = (a1, a2, r) => { const [x1, y1] = p(a1, r), [x2, y2] = p(a2, r); return `M${cx} ${cy}L${x1} ${y1}A${r} ${r} 0 ${((a2 - a1) % 360 + 360) % 360 > 180 ? 1 : 0} 1 ${x2} ${y2}Z`; };
+  const off = (spot.facing + 180) % 360, arc = (a1, a2, r) => { const [x1, y1] = p(a1, r), [x2, y2] = p(a2, r); return `M${x1} ${y1}A${r} ${r} 0 0 1 ${x2} ${y2}`; };
+  const [nx, ny] = p(from, R + 11), [tx, ty] = p(from, R + 1);
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice"><circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#f3eee3" stroke-opacity=".8" stroke-width="3"/>
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#1a1d21" stroke-width="1.1"/><path d="${sector(from - up, from + up, R)}" fill="#f3eee3" fill-opacity=".25" stroke="#1a1d21" stroke-dasharray="3 2"/>
+    <path d="${sector(from + up, from + reach, R)}" fill="#fffdf6" fill-opacity=".5" stroke="#1a1d21" stroke-width="1.1"/><path d="${sector(from - reach, from - up, R)}" fill="#fffdf6" fill-opacity=".5" stroke="#1a1d21" stroke-width="1.1"/>
+    <path d="${arc(off - 30, off + 30, R + 3)}" fill="none" stroke="#d43a2c" stroke-width="3" stroke-linecap="round"/>
+    <path d="M${nx} ${ny}L${tx} ${ty}" stroke="#f3eee3" stroke-width="4.5" stroke-linecap="round"/><path d="M${nx} ${ny}L${tx} ${ty}" stroke="#1a1d21" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+}
+const STAR = (on, sz = 10, col = "#1a1d21") => `<svg viewBox="0 0 10 10" width="${sz}" height="${sz}"><path d="M5 .6l1.3 2.9 3.1.3-2.4 2.1.7 3.1L5 7.4 2.3 9l.7-3.1L.6 3.8l3.1-.3z" fill="${on ? col : "none"}" stroke="${col}" stroke-width=".8"/></svg>`;
+const FAV = (on) => `<svg viewBox="0 0 20 20" width="14" height="14"><path d="M10 1.8l2.5 5.4 5.9.6-4.4 4 1.3 5.8L10 14.6l-5.3 3 1.3-5.8-4.4-4 5.9-.6z" fill="${on ? "#d43a2c" : "none"}" stroke="#d43a2c" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+// The wind's arrow, pointing where it blows; the pen's red where it blows off the beach.
+function arrow(spot, from, sz = 13) {
+  const sh = shoreOf(angleOff(from, spot.facing)), off = sh === "off" || sh === "x-off";
+  return `<svg width="${sz}" height="${sz}" viewBox="-7 -7 14 14"><g transform="rotate(${from + 180})"><path d="M0 5.5V-5M-3 -2L0 -5.5L3 -2" fill="none" stroke="${off ? "#bf3125" : "#1a1d21"}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`;
+}
+const arrowG = (spot, from, x, y, sz = 12) => { const sh = shoreOf(angleOff(from, spot.facing)), off = sh === "off" || sh === "x-off";
+  return `<g transform="translate(${x} ${y}) scale(${sz / 14}) rotate(${from + 180})"><path d="M0 5.5V-5M-3 -2L0 -5.5L3 -2" fill="none" stroke="${off ? "#bf3125" : "#1a1d21"}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></g>`; };
+// The sky, as presentWeather.ts names it: clear, partly, cloudy, fog, rain, showers.
+function skyG(kind, x, y, s = 16) {
+  const k = s / 16, sun = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#f2bf45" stroke="#b9861a" stroke-width=".8"/>`;
+  const cloud = (dx = 0, dy = 0, f = "#fffdf6") => `<path d="M${3 + dx} ${12 + dy}a3 3 0 0 1 .6-5.9 4.2 4.2 0 0 1 8 1.1 2.4 2.4 0 0 1 .4 4.8z" fill="${f}" stroke="#1a1d21" stroke-width="1"/>`;
+  const drops = (n) => Array.from({ length: n }, (_, i) => `<path d="M${5 + i * 3} 13.6l-1 2.2" stroke="#3f7fc0" stroke-width="1.3" stroke-linecap="round"/>`).join("");
+  const body = {
+    clear: sun(8, 8, 4.2) + Array.from({ length: 8 }, (_, i) => { const a = i * Math.PI / 4; return `<path d="M${8 + 5.6 * Math.cos(a)} ${8 + 5.6 * Math.sin(a)}L${8 + 7.2 * Math.cos(a)} ${8 + 7.2 * Math.sin(a)}" stroke="#b9861a" stroke-width="1.1" stroke-linecap="round"/>`; }).join(""),
+    partly: sun(10.5, 5.5, 3.6) + cloud(-1, 1.5),
+    cloudy: cloud(1.5, -2.5, "#e4dfd3") + cloud(-1, 1),
+    fog: `<path d="M2 6h12M3 9h10M2 12h12" stroke="#5b5c5b" stroke-width="1.3" stroke-linecap="round"/>`,
+    rain: cloud(0, -2, "#e4dfd3") + drops(3),
+    showers: sun(11, 4.5, 3) + cloud(-1, -1) + drops(2),
+  }[kind];
+  return `<g transform="translate(${x - 8 * k} ${y - 8 * k}) scale(${k})">${body}</g>`;
+}
+const sky = (kind, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">${skyG(kind, s / 2, s / 2, s)}</svg>`;
+const WAVE = `<svg width="13" height="9" viewBox="0 0 13 9"><path d="M.5 6c1.5-3 3-3 4 0s2.5 3 4 0 2.5-3 4 0" fill="none" stroke="#2f6f9f" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+const AIR = `<svg width="8" height="12" viewBox="0 0 8 12"><path d="M3 1.5v6.2a2.2 2.2 0 1 0 2 0V1.5a1 1 0 0 0-2 0z" fill="none" stroke="#1a1d21" stroke-width="1"/><circle cx="4" cy="9.4" r="1.2" fill="#d43a2c"/></svg>`;
+const hh = (h) => String(h).padStart(2, "0");
+
+/* ---- the ribbon: stars along the time, as a gradient ------------------------ */
+function ribbonCss(spot, d) {
+  const hs = hours(d), n = hs.length;
+  const stops = hs.map((h, i) => `${starFill(rate(spot, d, h).stars)} ${((i + .5) / n * 100).toFixed(1)}%`).join(", ");
+  return `background: linear-gradient(90deg, ${stops}), var(--hatch);`;
+}
+const frac = (h) => (h - LIGHT_FROM) / (LIGHT_TO - LIGHT_FROM);
+function ribbon(spot, d, cls = "") {
+  return `<div class="ribbon ${cls}" style="${ribbonCss(spot, d)}">${d === 0 ? `<span class="past" style="width:${frac(NOW) * 100}%"></span><span class="nowm" style="left:${frac(NOW) * 100}%"></span>` : ""}</div>`;
+}
+const pct = (x) => `${(x * 100).toFixed(2)}%`;
+const peakHour = (spot, d) => hours(d).filter((h) => d || h >= NOW).reduce((a, h) => rate(spot, d, h).stars > rate(spot, d, a).stars || (rate(spot, d, h).stars === rate(spot, d, a).stars && rate(spot, d, h).mean > rate(spot, d, a).mean) ? h : a, d ? 13 : NOW);
+const maxStar = (n) => n ? `${STAR(true, 9)}${n}` : `<span style="color:var(--muted)">–</span>`;
+
+/* ---- 1 · ribbons ------------------------------------------------------------------ */
+function design1(spot) {
+  const hs = hours(0), w = wave(spot, 0);
+  const today = `<div class="sec"><span>Today</span><span class="r"><span>${AIR}${airAt(0, 14)}°</span><span>${WAVE}${w.m} m · ${w.s} s</span></span></div>
+    <div class="row">${[8, 11, 14, 17].map((h) => `<span style="left:${pct(frac(h + .5))};opacity:${h + 1 < NOW ? .45 : 1}">${sky(skyAt(0, h), 16)}</span>`).join("")}</div>
+    <div class="row" style="margin:2px 0">${hs.map((h) => `<span style="left:${pct(frac(h + .5))};opacity:${h + 1 < NOW ? .4 : 1}">${arrow(spot, fromAt(0, h), 12)}</span>`).join("")}</div>
+    ${ribbon(spot, 0)}
+    <div class="ticks">${[7, 10, 13, 16].map((h) => `<span style="left:${pct(frac(h))}">${hh(h)}</span>`).join("")}</div>`;
+  const five = `<div class="sec mt"><span>Next 5 days</span></div><div class="days5">${[1, 2, 3, 4, 5].map((d) => {
+    const ph = peakHour(spot, d), r = rate(spot, d, ph), wv = wave(spot, d);
+    return `<div class="dcol"><div class="dh"><span>${DAYS[d].short}</span><small>${maxStar(dayMax(spot, d))}</small></div>
+      <div class="dw"><span>${sky(skyAt(d, 13), 15)}${airAt(d, 13)}°</span><span>${arrow(spot, r.from, 12)}${Math.round(r.mean)}</span></div>
+      ${ribbon(spot, d)}<div class="dw"><span>${WAVE}${wv.m} m</span><span style="color:var(--muted)">g${Math.round(r.gust)}</span></div></div>`;
+  }).join("")}</div>`;
+  return today + five;
+}
+
+/* ---- the charts (2 and 3) ------------------------------------------------------- */
+const KMAX = 40;
+// One day's daylight as a strip of the chart, from x0, `dw` wide.
+function tidePath(d, x0, dw, y0, y1) {
+  const pts = []; for (let t = LIGHT_FROM; t <= LIGHT_TO; t += .25) pts.push([x0 + frac(t) * dw, y1 - (tideAt(d, t) - .4) / 4 * (y1 - y0)]);
+  return `M${x0} ${y1}L${pts.map((p) => p.map((v) => v.toFixed(1)).join(" ")).join("L")}L${x0 + dw} ${y1}Z`;
+}
+function design2(spot) {
+  const W = S.device === "phone" ? 344 : 580;
+  // Today: an hour a bar.
+  const H = 92, top = 22, base = 70, y = (kn) => base - Math.min(kn, KMAX) / KMAX * (base - top), hs = hours(0), bw = W / hs.length;
+  let g = `<path d="${tidePath(0, 0, W, top + 6, base)}" fill="#8fb8d6" fill-opacity=".15"/>`;
+  hs.forEach((h, i) => { const r = rate(spot, 0, h), x = i * bw, past = h + 1 <= NOW;
+    g += `<rect x="${x + 2}" y="${y(r.mean)}" width="${bw - 4}" height="${base - y(r.mean)}" rx="2" fill="${r.stars ? starFill(r.stars) : "url(#hx)"}" stroke="#1a1d2155" stroke-width=".8" opacity="${past ? .4 : 1}"/>`;
+    g += arrowG(spot, r.from, x + bw / 2, base + 10, 11);
+    if (h % 3 === 2) g += skyG(skyAt(0, h), x + bw / 2, 9, 15);
+  });
+  const gust = hs.map((h, i) => `${(i * bw + bw / 2).toFixed(1)} ${y(rate(spot, 0, h).gust).toFixed(1)}`).join("L");
+  g += `<path d="M${gust}" fill="none" stroke="#1a1d21" stroke-opacity=".45" stroke-width="1.2" stroke-dasharray="2 3"/>`;
+  [0, 3, 6, 9].forEach((i) => g += `<text x="${i * bw + bw / 2}" y="${H - 1}" text-anchor="middle" font-size="9" fill="#5b5c5b" font-family="IBM Plex Mono">${hh(hs[i])}</text>`);
+  const pk = peakHour(spot, 0), pr = rate(spot, 0, pk), pi = hs.indexOf(pk);
+  g += `<text x="${pi * bw + bw / 2}" y="${y(pr.mean) - 3}" text-anchor="middle" font-size="10" font-weight="600" font-family="IBM Plex Mono">${Math.round(pr.mean)}</text>`;
+  g += `<rect x="${frac(NOW) * W - 1}" y="${top - 4}" width="2" height="${base - top + 6}" fill="#d43a2c"/>`;
+  const w0 = wave(spot, 0);
+  const today = `<div class="sec"><span>Today · knots</span><span class="r"><span>${AIR}${airAt(0, 14)}°</span><span>${WAVE}${w0.m} m · ${w0.s} s</span></span></div>
+    <div class="chart"><svg viewBox="0 0 ${W} ${H}"><defs>${HATCH}</defs>${g}</svg></div>`;
+  // Five days: a bar every two hours, a day a panel.
+  const H2 = 96, t2 = 24, b2 = 70, y2 = (kn) => b2 - Math.min(kn, KMAX) / KMAX * (b2 - t2), gap = 6, dw = (W - gap * 4) / 5, slots = [8, 10, 12, 14, 16];
+  let g2 = "";
+  [1, 2, 3, 4, 5].forEach((d, k) => { const x0 = k * (dw + gap), sw = dw / slots.length;
+    g2 += `<path d="${tidePath(d, x0, dw, t2 + 6, b2)}" fill="#8fb8d6" fill-opacity=".15"/>`;
+    slots.forEach((h, i) => { const r = rate(spot, d, h);
+      g2 += `<rect x="${x0 + i * sw + 1}" y="${y2(r.mean)}" width="${sw - 2}" height="${b2 - y2(r.mean)}" rx="1.5" fill="${r.stars ? starFill(r.stars) : "url(#hx)"}" stroke="#1a1d2155" stroke-width=".7"/>`; });
+    g2 += `<path d="M${slots.map((h, i) => `${(x0 + i * sw + sw / 2).toFixed(1)} ${y2(rate(spot, d, h).gust).toFixed(1)}`).join("L")}" fill="none" stroke="#1a1d21" stroke-opacity=".45" stroke-width="1.1" stroke-dasharray="2 3"/>`;
+    g2 += skyG(skyAt(d, 13), x0 + dw - 9, 9, 15);
+    g2 += `<text x="${x0 + 1}" y="12" font-size="9.5" font-weight="600" font-family="IBM Plex Mono" letter-spacing=".6">${DAYS[d].short.toUpperCase()}</text>`;
+    [9, 15].forEach((h, i) => g2 += arrowG(spot, fromAt(d, h), x0 + dw * (i ? .72 : .28), b2 + 10, 11));
+    g2 += `<text x="${x0 + dw / 2}" y="${H2 - 1}" text-anchor="middle" font-size="9.5" font-family="IBM Plex Mono" fill="#3b3c3e">${wave(spot, d).m} m</text>`;
+  });
+  return today + `<div class="sec mt"><span>Next 5 days</span><span class="r lg"><span>bars: wind · dots: gust · blue: tide</span></span></div><div class="chart"><svg viewBox="0 0 ${W} ${H2}"><defs>${HATCH}</defs>${g2}</svg></div>`;
+}
+const HATCH = `<pattern id="hx" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="#fffdf6"/><line y2="4" stroke="#1a1d21" stroke-opacity=".18"/></pattern>`;
+function design3(spot) {
+  // Today and the next five days on one chart: daylight only, a day a panel.
+  const W = S.device === "phone" ? 344 : 580, H = 150, top = 30, base = 112, y = (kn) => base - Math.min(kn, KMAX) / KMAX * (base - top);
+  const gap = 5, dw = (W - gap * 5) / 6;
+  let defs = HATCH, g = "";
+  for (let d = 0; d < 6; d++) {
+    const x0 = d * (dw + gap), hs = [...hours(d), LIGHT_TO], X = (h) => x0 + frac(h) * dw;
+    const stops = hours(d).map((h, i) => `<stop offset="${((i + .5) / hours(d).length).toFixed(3)}" stop-color="${starFill(rate(spot, d, h).stars) === "transparent" ? "#fffdf6" : starFill(rate(spot, d, h).stars)}" stop-opacity="${rate(spot, d, h).stars ? 1 : 0}"/>`).join("");
+    defs += `<linearGradient id="st${spot.id}${d}" x1="${x0}" x2="${x0 + dw}" gradientUnits="userSpaceOnUse">${stops}</linearGradient>`;
+    g += `<rect x="${x0}" y="${top - 6}" width="${dw}" height="${base - top + 6}" rx="6" fill="#f3eee3" stroke="#1a1d2122"/>`;
+    g += `<path d="${tidePath(d, x0, dw, base - (base - top) * .5, base)}" fill="#8fb8d6" fill-opacity=".16"/>`;
+    const line = hs.map((h) => `${X(h).toFixed(1)} ${y(rate(spot, d, Math.min(h, LIGHT_TO - 1)).mean).toFixed(1)}`);
+    g += `<path d="M${x0} ${base}L${line.join("L")}L${x0 + dw} ${base}Z" fill="url(#st${spot.id}${d})" fill-opacity=".95"/>`;
+    g += `<path d="M${line.join("L")}" fill="none" stroke="#1a1d21" stroke-width="1.6" stroke-linejoin="round"/>`;
+    g += `<path d="M${hs.map((h) => `${X(h).toFixed(1)} ${y(rate(spot, d, Math.min(h, LIGHT_TO - 1)).gust).toFixed(1)}`).join("L")}" fill="none" stroke="#1a1d21" stroke-opacity=".4" stroke-width="1.2" stroke-dasharray="2 3"/>`;
+    g += `<text x="${x0 + 3}" y="${top - 12}" font-size="9.5" font-weight="600" font-family="IBM Plex Mono" letter-spacing=".6">${(d ? DAYS[d].short : "Today").toUpperCase()}</text>`;
+    g += skyG(skyAt(d, 13), x0 + dw - 9, top - 16, 15);
+    [9, 15].forEach((h) => g += arrowG(spot, fromAt(d, h), X(h + .5), base + 11, 11));
+    const pk = peakHour(spot, d), pr = rate(spot, d, pk);
+    g += `<text x="${X(pk + .5)}" y="${y(pr.mean) - 4}" text-anchor="middle" font-size="9.5" font-weight="600" font-family="IBM Plex Mono">${Math.round(pr.mean)}</text>`;
+    g += `<text x="${x0 + dw / 2}" y="${H - 6}" text-anchor="middle" font-size="9.5" font-family="IBM Plex Mono" fill="#3b3c3e">${wave(spot, d).m} m</text>`;
+    if (d === 0) g += `<rect x="${x0}" y="${top - 6}" width="${frac(NOW) * dw}" height="${base - top + 6}" fill="#fffdf6" fill-opacity=".6"/><rect x="${X(NOW) - 1}" y="${top - 8}" width="2" height="${base - top + 10}" fill="#d43a2c"/>`;
+  }
+  return `<div class="sec"><span>Today and the next 5 days</span><span class="r lg"><span>line: wind · dots: gust · colour: stars · blue: tide</span></span></div>
+    <div class="chart"><svg viewBox="0 0 ${W} ${H}"><defs>${defs}</defs>${g}</svg></div>`;
+}
+
+/* ---- 4 · day tiles ---------------------------------------------------------------- */
+function design4(spot) {
+  return `<div class="tiles6">${[0, 1, 2, 3, 4, 5].map((d) => {
+    const hs = hours(d).filter((h) => d || h >= NOW), ph = peakHour(spot, d), r = rate(spot, d, ph), wv = wave(spot, d);
+    const lo = Math.round(Math.min(...hs.map((h) => rate(spot, d, h).mean))), hi = Math.round(Math.max(...hs.map((h) => rate(spot, d, h).mean)));
+    const gmax = Math.round(Math.max(...hs.map((h) => rate(spot, d, h).gust)));
+    return `<div class="tile ${d ? "" : "today"}"><div class="dh"><span>${d ? DAYS[d].short : "Today"}</span><small>${maxStar(dayMax(spot, d))}</small></div>
+      <div class="sky">${sky(skyAt(d, d ? 13 : 14), 20)}<span>${airAt(d, 13)}°</span></div>
+      <div class="kn">${arrow(spot, r.from, 13)}${lo === hi ? lo : `${lo}–${hi}`}<small>g${gmax}</small></div>
+      <div class="wv">${WAVE}${wv.m} m · ${wv.s}s</div>${ribbon(spot, d)}</div>`;
+  }).join("")}</div>`;
+}
+
+/* ---- the page ---------------------------------------------------------------------- */
+const DESIGNS = { 1: design1, 2: design2, 3: design3, 4: design4 };
+function card(spot) {
+  const w = S.device === "phone" ? 96 : 112, h = Math.round(w * 10 / 16);
+  return `<div class="card" data-spot="${spot.id}" role="link" tabindex="0">
+    <div class="head"><button class="sat" data-chart="${spot.id}" aria-label="${spot.name} on the chart">${satTiles(spot.lat, spot.lon, 14, w, h)}${rose(spot, fromAt(0, NOW), w, h)}<span class="go">Chart</span></button>
+      <div class="nm"><b>${spot.name}</b><small>${spot.km} km · Co. ${spot.county}</small></div>
+      <button class="fav" data-fav="${spot.id}" aria-label="Star ${spot.name}">${FAV(S.starred.has(spot.id))}</button></div>
+    ${DESIGNS[S.design](spot)}</div>`;
+}
+function ranked() {
+  const pool = S.scope === "yours" ? SPOTS.filter((s) => S.starred.has(s.id)) : SPOTS;
+  const key = (s) => S.sort === "today" ? dayMax(s, 0) * 10 + Math.max(...[1, 2, 3, 4, 5].map((d) => dayMax(s, d))) : Math.max(...[1, 2, 3, 4, 5].map((d) => dayMax(s, d))) * 10 + dayMax(s, 1);
+  return pool.slice().sort((a, b) => key(b) - key(a) || a.km - b.km);
+}
+function render() {
+  const phone = S.device === "phone", el = document.getElementById("frame");
+  el.className = `frame ${phone ? "phone" : "desk"}`;
+  const key = [1, 2, 3, 4, 5].map((n) => `<i style="background:${starFill(n)}"></i>`).join("");
+  el.innerHTML = `<div class="app"><header class="top"><button class="burger" aria-label="Menu"><svg width="16" height="12"><path d="M0 1h16M0 6h16M0 11h16" stroke="#1a1d21" stroke-width="1.6"/></svg></button>
+      ${phone ? "" : `<span class="word">wingfoil<i>.ie</i></span>`}<span class="sp"></span>
+      <div class="seg">${[["yours", "Favourites"], ["near", "Near you"]].map(([k, n]) => `<button data-scope="${k}" aria-pressed="${S.scope === k}">${n}</button>`).join("")}</div></header>
+    <div class="list"><div class="lhead"><h2>Spots</h2>${phone ? "" : `<span class="key">stars ${STAR(true, 9)}1 ${key} 5 · blank: none</span>`}<span class="sp"></span>
+      <div class="seg">${[["today", "Today"], ["week", "This week"]].map(([k, n]) => `<button data-sort="${k}" aria-pressed="${S.sort === k}">${n}</button>`).join("")}</div></div>
+      <div class="grid">${ranked().map(card).join("")}</div></div>
+    ${S.toast ? `<div class="toast">${S.toast}</div>` : ""}</div>`;
+  bind(el);
+  for (const [k, v] of [["design", S.design], ["device", S.device], ["colour", S.colour]])
+    document.querySelectorAll(`.mockbar [data-${k}]`).forEach((b) => b.setAttribute("aria-pressed", b.dataset[k] === v));
+  document.getElementById("why").innerHTML = WHY[S.design] + COMMON;
+}
+function bind(el) {
+  const say = (t) => { S.toast = t; render(); clearTimeout(say.t); say.t = setTimeout(() => { S.toast = null; render(); }, 2200); };
+  el.querySelectorAll("[data-scope]").forEach((b) => b.onclick = () => { S.scope = b.dataset.scope; render(); });
+  el.querySelectorAll("[data-sort]").forEach((b) => b.onclick = () => { S.sort = b.dataset.sort; render(); });
+  el.querySelectorAll("[data-fav]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); const id = b.dataset.fav; S.starred.has(id) ? S.starred.delete(id) : S.starred.add(id); render(); });
+  el.querySelectorAll("[data-chart]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); say(`Opens ${SPOTS.find((s) => s.id === b.dataset.chart).name} on the chart`); });
+  el.querySelectorAll("[data-spot]").forEach((c) => c.onclick = () => say(`Opens the ${SPOTS.find((s) => s.id === c.dataset.spot).name} spot page`));
+}
+for (const k of ["design", "device", "colour"]) document.querySelectorAll(`.mockbar [data-${k}]`).forEach((b) => b.onclick = () => { S[k] = b.dataset[k]; render(); });
+
+const WHY = {
+  1: `<h4>1 · Ribbons</h4><ul><li><b>Today</b>: the sky every three hours, the wind's arrow every hour, and a ribbon of stars from 07:00 to 18:00, the hours gone faded and now marked. The air and the sea beside the heading.</li>
+    <li><b>Next 5 days</b>: a column a day: its best stars, the sky and the air at midday, the arrow and the knots at its best hour, the day's ribbon, the waves and the top gust.</li>
+    <li>The least drawing of the four: it reads as a strip of colour first, and the numbers are there for whoever looks.</li></ul>`,
+  2: `<h4>2 · Bars</h4><ul><li>The wind as <b>bars</b>, each filled with its stars; the <b>gust</b> a faint dotted line over them; the <b>tide</b> a pale blue wash behind; the arrows under the bars and the sky over them.</li>
+    <li>Today has a bar an hour, and its strongest hour labelled; the five days a bar every two hours, a panel a day, with the waves under each.</li>
+    <li>You see the wind building and dropping, and the gap between wind and gust (the reason a strong hour has no stars) without a word.</li></ul>`,
+  3: `<h4>3 · One chart</h4><ul><li>Today and the five days on <b>one chart</b>, daylight only, a panel a day: the wind as a line, the area under it <b>coloured by stars</b> (a gradient along the day), the gust dotted and faint, the tide behind.</li>
+    <li>Each day: its sky and its name over it, two arrows and the waves under it, the strongest hour's knots on the line.</li>
+    <li>The most information in the least room, closest to the chart's own look; the busiest of the four.</li></ul>`,
+  4: `<h4>4 · Day tiles</h4><ul><li><b>Six tiles</b>, today first: the day's best stars, the sky and the air, the wind's way and its range in knots with the top gust, the waves, and the day's stars as a ribbon.</li>
+    <li>Reads like a weather app's week: easiest to take in, but the hours within a day are only the ribbon.</li>
+    <li>Three by two on a phone.</li></ul>`,
+};
+const COMMON = `<h4>All four</h4><ul>
+  <li><b>A page of its own.</b> Nothing here is tied to the chart: press the <b>picture</b> for the chart at that spot, <b>anywhere else on the card</b> for the spot page.</li>
+  <li><b>Today, then the next five days</b> (today not among them). No Best line, no Now line, no reasons in words.</li>
+  <li><b>Stars are the colour</b>, along the time; blank is no stars. "Stars: ink" swaps to the product's ink scale. The <b>arrow</b> points where the wind blows, red where it blows off the beach.</li>
+  <li><b>Sky</b> as presentWeather.ts names it (clear, partly, cloudy, fog, rain, showers), the <b>air</b> temperature, the <b>waves</b> (height and period) and the <b>tide</b>: all data the site already has.</li>
+  <li>Two columns on a desktop, one on a phone. Ranked by today's best stars, or the week's.</li></ul>`;
+render();
+</script>
+</body>
+</html>
