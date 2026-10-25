@@ -1209,6 +1209,20 @@ describe("the chart's own primitives", () => {
     expect(narrow).not.toContain("<circle");
   });
 
+  it("StarGlyphs coloured fills the earned in their own colour and outlines the rest", () => {
+    const three = html(<StarGlyphs stars={3} potential={5} coloured />);
+    expect(three).toContain('aria-label="3 of 5 stars"');
+    expect(three.match(/<path/g)).toHaveLength(5);
+    expect(three.match(/fill-stars-3/g)).toHaveLength(3);
+    expect(three).not.toContain("<circle");
+    expect(three.match(/fill-none/g)).toHaveLength(2);
+    expect(html(<StarGlyphs stars={5} coloured />).match(/fill-stars-5/g)).toHaveLength(5);
+    const none = html(<StarGlyphs stars={0} coloured />);
+    expect(none).not.toMatch(/fill-stars-/);
+    expect(none.match(/stroke-ink\/25/g)).toHaveLength(5);
+    expect(html(<StarGlyphs stars={null} coloured />)).not.toContain("<path");
+  });
+
   // The dock's columns are 73px with 8px of padding a side: five stars at
   // its 10px must fit in what is left, or every column widens.
   it("StarGlyphs keeps five of the dock's 10px stars inside a column", () => {

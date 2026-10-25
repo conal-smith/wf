@@ -137,8 +137,8 @@ const Companion = lazy(() =>
 );
 // The account's copy of the rider, on a device that has signed in before.
 const AccountRider = lazy(() => import("../shared/web/AccountRider"));
-// The spot finder, at /spots: a page beside the chart, drawn from the chart's
-// own data, in a chunk of its own the first time it is opened.
+// The spot finder, at /spots: a page in the chart's place, drawn from the
+// chart's own rated hours, in a chunk of its own the first time it is opened.
 const SpotFinder = lazy(() => import("./finder/SpotFinder"));
 // Customise and the tour, each only when asked for; the tour's offer only on
 // a first visit (src/tourOffer.ts).
@@ -1704,8 +1704,9 @@ export default function App() {
   };
   const openChartRef = useRef(openChart);
   openChartRef.current = openChart;
-  /** The chart on a place, at the hour the finder chose (the same hour). */
-  const openInChart = (spot: Spot) => {
+  /** The chart on a place, at the hour the finder's card showed it. */
+  const openInChart = (spot: Spot, at: number | null) => {
+    if (at !== null) selectColumn(at);
     setPicked(null);
     setPoint(spot);
     setFocusId(spot.id);
@@ -1806,17 +1807,11 @@ export default function App() {
             hours={hours}
             version={version}
             strip={strip}
-            days={days}
-            selected={selected}
-            isNow={
-              !!strip.length && selected === openingColumn(strip, clockNow)
-            }
-            onSelect={selectColumn}
+            now={clockNow}
             starred={starred}
             onToggleStar={(id) => fav.toggle(id)}
             rider={rider}
             units={prefs.units}
-            frame={mapDraws ? frame : null}
             reducedMotion={reducedMotion}
             phone={phone}
             onWant={setFinderWant}

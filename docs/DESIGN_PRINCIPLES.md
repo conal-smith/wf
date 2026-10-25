@@ -585,6 +585,35 @@ eye. The app has the same two switches in its Layers sheet and reads its own
 older choice the same way; with Reduce Motion on, its particles are still
 arrows in ink.
 
+**2026-10-25 — The spot finder is a page of cards, and stars have colours of
+their own.** From the approved mock-up
+`backlog/mockups/2026-10-25-spot-list-cards.html`, its "7e" (after
+`2026-10-25-spot-finder-ideas.html`, #194 to #200). The finder at `/spots`
+(src/finder) is a page of its own: no map and no week's timeline at its head,
+and no longer tied to the chart's time (this supersedes the finder of
+2026-10-24, its map, its pins and its timeline). The head is the menu, the
+wordmark and a Favourites / Near you switch; no heading, no Today / This week,
+and no legend, the stars and the wind's colours being the site's own, said on
+the Info page. The cards are ranked by the most stars in today and the five
+days after it, the soonest, then the nearest; two columns from 1180px of page
+(`cards:`), one under it. A card is the place from above with the ride rose on
+it (pressed: the chart there, at the rose's hour; anywhere else on the card:
+the spot's page), its name, distance, county and star; then today, a row of
+hour columns from the hour before first light to the hour after last light
+(civil dawn and dusk), each the hour, the sky, the wind and gust, the arrow
+(the pen's red off the beach) and the hour's five stars, with the day's wind
+faintly behind in the chart's own colours for knots and the gusts paler over
+it. The row scrolls sideways with no bar, opens on now, fades at an edge with
+more and steps with ‹ ›; an hour pressed is picked on every card and turns
+every rose to it, and now goes back. The next five days are 6d's band:
+daylight only, the windiest hour labelled, a line under the rideable hours.
+**Stars as colour**: `stars-1` … `stars-5` (ui/theme.css), pale pink to deep
+magenta, the chart's magenta paled and deepened, one hue darker with each
+star and the one-star end 2:1 on paper; never the wind's colours, and no stars
+has none. `StarGlyphs coloured` draws them, the earned in their colour and the
+rest of the five outlined. For now only the finder's cards take them: the
+chart's and the dock's stars stay ink until the owner says otherwise.
+
 ---
 
 ## Still open

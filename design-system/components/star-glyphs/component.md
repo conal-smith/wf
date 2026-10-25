@@ -26,6 +26,10 @@ does not reach. The dark is not rated.
   `--magenta` (`sem.color.chart-magenta`, the best of the week, once).
 - Slots: five (the default, the chart's way) or potential (stops at the last
   outline, for a cell too narrow for five; the dark still takes five).
+- Coloured (`coloured`, the spot finder's cards only for now): the earned
+  stars filled in `sem.color.stars.1` … `sem.color.stars.5` by how many, with
+  a faint ink edge, and the rest of the five outlined in ink (fainter with
+  none); no potential, no dots.
 - Size: 9.5, 10 (the dock), 12 (the default), 14.
 
 ## States

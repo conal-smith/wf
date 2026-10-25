@@ -6,6 +6,10 @@ import { tv, type VariantProps } from "./tv";
  * small dot for each of the five it does not reach. Shape carries the
  * difference; the tone only repeats it. The dark is not rated: an empty slot
  * of the same width, so a row of hours stays in line.
+ *
+ * `coloured` is the spot finder's way (ruling of 2026-10-25): the stars an
+ * hour earns filled in the stars' own colours, by how many, and the rest of
+ * the five outlined. Opt in; every other star stays as the chart draws it.
  */
 export const starGlyphsStyles = tv({
   slots: {
@@ -13,6 +17,11 @@ export const starGlyphsStyles = tv({
     solid: "fill-current",
     faded: "fill-none stroke-current opacity-50",
     dot: "fill-current opacity-25",
+    // The coloured way: the earned stars in their colour with a faint ink
+    // edge, the rest of the five outlined in ink, fainter still with none.
+    earned: "stroke-ink/55",
+    rest: "fill-none stroke-ink/45",
+    none: "fill-none stroke-ink/25",
   },
   variants: {
     // Whatever the text around it is, by default.
@@ -25,6 +34,19 @@ export const starGlyphsStyles = tv({
     },
   },
 });
+
+/**
+ * The stars' own colours, by how many (ui/theme.css `stars-1` … `stars-5`):
+ * written out whole so the theme's scan finds each class.
+ */
+const STAR_FILL = [
+  "",
+  "fill-stars-1",
+  "fill-stars-2",
+  "fill-stars-3",
+  "fill-stars-4",
+  "fill-stars-5",
+] as const;
 
 /** The chart's star, a five-point at radius 5 round the origin. */
 const STAR =
@@ -53,6 +75,13 @@ export type StarGlyphsProps = VariantProps<typeof starGlyphsStyles> & {
    */
   slots?: "five" | "potential";
   /**
+   * The stars in their own colours, by how many the hour is worth (pale pink
+   * for one to deep magenta for five), and the rest of the five outlined in
+   * ink rather than dotted: the spot finder's cards, and only there for now.
+   * The potential is not drawn.
+   */
+  coloured?: boolean;
+  /**
    * What a screen reader hears. `starsLabel` by default. An empty string says
    * the words are already beside it (a button that names the day's stars):
    * the stars are then decoration, hidden, not an image with no name.
@@ -67,6 +96,7 @@ export function StarGlyphs({
   size = 12,
   slots = "five",
   tone,
+  coloured = false,
   label,
   className,
 }: StarGlyphsProps) {
@@ -74,8 +104,8 @@ export function StarGlyphs({
   // The mockup's 2px at 12px, and 1px at the dock's 10px, where five stars
   // and their gaps must stay inside a 73px column's padding.
   const gap = Math.max(1, Math.floor(size / 6));
-  const solid = stars ?? 0;
-  const pot = Math.max(potential ?? solid, solid);
+  const solid = Math.min(5, stars ?? 0);
+  const pot = coloured ? solid : Math.max(potential ?? solid, solid);
   const count = slots === "five" ? 5 : Math.max(pot, stars == null ? 5 : 1);
   const width = count * size + (count - 1) * gap;
   const k = size / 10.4;
@@ -87,12 +117,34 @@ export function StarGlyphs({
       viewBox={`0 0 ${width} ${size}`}
       {...(label === ""
         ? { "aria-hidden": true }
-        : { role: "img", "aria-label": label ?? starsLabel(stars, potential) })}
+        : {
+            role: "img",
+            "aria-label":
+              label ?? starsLabel(stars, coloured ? undefined : potential),
+          })}
     >
       {stars != null &&
         Array.from({ length: count }, (_, i) => {
           const x = i * (size + gap) + size / 2;
           const y = size / 2;
+          const at = `translate(${x} ${y + 0.4}) scale(${k})`;
+          if (coloured)
+            return (
+              <path
+                key={i}
+                className={
+                  i < solid
+                    ? `${STAR_FILL[solid]} ${styles.earned()}`
+                    : solid
+                      ? styles.rest()
+                      : styles.none()
+                }
+                d={STAR}
+                strokeWidth={0.9 / k}
+                strokeLinejoin="round"
+                transform={at}
+              />
+            );
           if (i < solid)
             return (
               <path

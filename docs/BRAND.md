@@ -68,10 +68,11 @@ of it.
 | `weather-sun` | `#e9b200` | The sun, a thunderbolt: the buoy's own yellow. A fill, never text. |
 | `weather-rain` | `#3a7fb0` | Rain: a drop, a shower's streaks, the rain row's tint. 3.75:1, a mark, never words. |
 | `weather-cloud`, `weather-night` | `#d6d0c2`, `#e7dcb4` | A cloud's grey and the moon's pale fill, inside an ink outline only. |
+| `stars-1` … `stars-5` | `#e28bb3` … `#7c0f55` | A rider's stars as colour, pale pink to deep magenta: a filled star, a day's rideable line. The spot finder only, for now. Never text, never the wind. |
 
 **Colour, only here.** The weather's state (sun, rain, cloud, night), the
-wind-speed scale, the chart's magenta for the best of something, and the warm
-red for a warning. Everything else is ink on paper. A glyph carries colour as
+wind-speed scale, a rider's stars on the spot finder's cards, the chart's
+magenta for the best of something, and the warm red for a warning. Everything else is ink on paper. A glyph carries colour as
 a chart draws a buoy: an ink outline, and the colour inside it.
 
 ## Type
@@ -215,8 +216,8 @@ the section's own, because each router takes a link over in its own way:
 - Don't round a box, or square a capsule.
 - Don't set sentences in the mono face, or figures in the body face.
 - Don't put a second filled action on a view.
-- Don't use the wind ramp for anything but wind speed, or the weather's
-  colours for anything but the weather.
+- Don't use the wind ramp for anything but wind speed, the weather's
+  colours for anything but the weather, or the stars' for anything but stars.
 
 ## For each section
 
