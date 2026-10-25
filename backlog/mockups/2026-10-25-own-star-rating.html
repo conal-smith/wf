@@ -45,6 +45,9 @@
     - upwind: the three answers as one segmented choice across the top, the
       picture left and the two angles right, no legend;
     - "Reset to ours" only once something differs from ours.
+  Approved (25 October 2026), with one last change: on step 1 the weight
+  and the units each centred, the label over the control, and "Wind in"
+  called "Units".
   Round one's steer, still standing: no Learning / Riding / Advanced, no
   existing users; outline stars only for stars lost to the gusts or the shore
   angle; an orange or red warning replaces the stars; wings never cost a star.
@@ -134,11 +137,10 @@ h1, h2, h3, p, ul, ol { margin: 0; }
 
 /* ---- 1. about you: the wizard's ruled rows ---- */
 .cw-rows { display: grid; border-top: 1px solid var(--color-line); }
-.cw-row { display: grid; grid-template-columns: 104px auto 1fr; align-items: center; gap: 10px 16px; min-height: 64px; padding: 10px 0; border-bottom: 1px solid var(--color-line); }
+.cw-row { display: grid; justify-items: center; gap: 10px; padding: 16px 0 18px; border-bottom: 1px solid var(--color-line); }
 .cw-stepper { display: inline-flex; align-items: center; gap: 8px; }
 .cw-stepper output { min-width: 64px; font: 600 19px/1 var(--font-mono); letter-spacing: -.02em; text-align: center; }
 .cw-stepper small { margin-left: 2px; font: 400 11px var(--font-mono); color: var(--color-ink-muted); letter-spacing: 0; }
-@container cw (max-width: 560px) { .cw-row { grid-template-columns: 1fr auto; } .cw-row > .cw-kick { grid-column: 1 / -1; } }
 
 /* The kit's Segmented: a ruled capsule of choices, the one that is on in ink. */
 .seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--color-ink); border-radius: 9999px; }
@@ -147,7 +149,7 @@ h1, h2, h3, p, ul, ol { margin: 0; }
 @media (hover: hover) and (pointer: fine) { .seg button[aria-pressed="false"]:hover { background: var(--color-sunken); color: var(--color-ink); } }
 .seg.is-wide { display: flex; width: 100%; }
 .seg.is-wide button { flex: 1; height: 40px; }
-@container cw (max-width: 560px) { .cw-row .seg { grid-column: 1 / -1; justify-self: start; } .cw-row .seg button { padding: 0 9px; } }
+@container cw (max-width: 560px) { .cw-row .seg button { padding: 0 9px; } }
 
 /* ---- 2. the wind: one axis, the track, the stars it makes, the knots ---- */
 .cw-range { position: relative; height: 96px; margin: 0 14px; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
@@ -409,8 +411,8 @@ function youStep() {
   return `<div class="cw-rows">
     <div class="cw-row"><span class="cw-kick">Weight</span>
       <span class="cw-stepper"><button class="btn icon" data-weight="-5" aria-label="Lighter">−</button><output>${weight}<small>kg</small></output><button class="btn icon" data-weight="5" aria-label="Heavier">+</button></span></div>
-    <div class="cw-row"><span class="cw-kick">Wind in</span>
-      <span class="seg" role="group" aria-label="Wind units">${UNITS.map((u) => `<button data-units="${u}" aria-pressed="${u === units}">${u}</button>`).join("")}</span></div>
+    <div class="cw-row"><span class="cw-kick">Units</span>
+      <span class="seg" role="group" aria-label="Units">${UNITS.map((u) => `<button data-units="${u}" aria-pressed="${u === units}">${u}</button>`).join("")}</span></div>
   </div>`;
 }
 
