@@ -656,6 +656,20 @@ Chart is always the chart (`/?chart`, and so is every way back named Chart)
 and Spot finder always the finder, whichever was open last; only the bare
 root, an address typed in, opens on the page the rider last had.
 
+**2026-10-25 — Today is kept whole, and yesterday is not.** The owner: "Keep
+the forecast for the full day so we don't just immediately discard it, but we
+do discard yesterday's forecast; we don't want to keep that. Somebody may want
+to go back and look at what the conditions were when they were wing foiling
+earlier." The dock and the spot finder's today run from Irish midnight, not from
+the newest HARMONIE run's first hour: each hourly blend keeps today's earlier
+hours from the blend before it, so each hour is the most recent run that
+covered it (`carryToday`, src/spotBlend.ts), and where no run is kept — the
+first run of a day, a rider who rates from another model — the long-range run's
+steps fill the morning rather than leaving it empty (`dockColumns`,
+force5/src/timeline.ts). Past hours stay drawn as past (the dock's faded
+`past` columns, the finder's faded gone hours). Nothing before today's
+midnight is kept (docs/LIVE_FORECAST_PIPELINE.md, "Today, kept whole").
+
 ---
 
 ## Still open

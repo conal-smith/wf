@@ -146,9 +146,10 @@ export interface DayRow {
  * Where the run is coarser than hourly (three-hourly a few days out) the row
  * is its steps, a column each, from the step before first light to the one
  * after last light: an hour between two steps has no column of its own and
- * is left out, not drawn empty. An hour before the strip begins (the
- * morning's, before today's run) has none either, and is kept, empty; and
- * so is the hour now, wherever it falls.
+ * is left out, not drawn empty. An hour before the strip begins has none
+ * either, and is kept, empty (rare since 25 October 2026: the strip begins
+ * at today's midnight, `dockColumns`); and so is the hour now, wherever it
+ * falls.
  */
 export function dayRow(
   strip: readonly Pick<StripColumn, "time">[],

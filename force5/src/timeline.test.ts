@@ -7,6 +7,7 @@ import {
   handedFrames,
   handoverModel,
   handoverStart,
+  irishMidnight,
   loadOrder,
   mapReach,
   modelStretches,
@@ -125,22 +126,111 @@ describe("dockColumns", () => {
     const columns = dockColumns([justLanded, ecmwf()], NOW);
     expect(Date.parse(columns[0].validTime)).toBeLessThanOrEqual(NOW);
     expect(owners(columns)).toEqual(["ecmwf", "harmonie", "ecmwf"]);
-    // And the head is only the gap: one ECMWF column, the last one at or before
-    // NOW, not the whole day ECMWF published before HARMONIE was initialised.
+    // And the head is the gap since Irish midnight (23:00 UTC in summer time,
+    // an hour before NOW): one ECMWF column, the last one at or before NOW,
+    // not the whole of yesterday ECMWF published before HARMONIE was
+    // initialised.
     expect(columns.slice(0, 2).map((column) => column.validTime)).toEqual([
       at("2026-09-14T00:00:00Z", 0),
       at("2026-09-14T00:00:00Z", 1),
     ]);
   });
 
-  it("adds no head when the near run already covers now", () => {
-    // The production case: HARMONIE is initialised a couple of hours before the
-    // clock while ECMWF started at 00 UTC. The axis must not open on ECMWF.
+  it("adds no head when the near run already reaches back to midnight", () => {
+    // HARMONIE's 18 UTC run began before Irish midnight (23:00 UTC in summer
+    // time), so today is HARMONIE's from its first hour: ECMWF adds nothing
+    // before it, and nothing at all from yesterday.
     const columns = dockColumns([harmonie(), ecmwf()], NOW);
     expect(columns[0].model).toBe("harmonie");
     expect(columns[0].validTime).toBe(at("2026-09-13T18:00:00Z", 0));
     expect(Date.parse(columns[0].validTime)).toBeLessThanOrEqual(NOW);
     expect(owners(columns)).toEqual(["harmonie", "ecmwf"]);
+  });
+
+  it("keeps today's morning from midnight, before the near run begins", () => {
+    // The ruling of 25 October 2026. 17:00 in Ireland, and the newest HARMONIE
+    // run began at 15 UTC: until then the morning stood empty, its hours
+    // dropped because no column owned them. ECMWF's steps since midnight now
+    // fill it, and the axis still crosses into HARMONIE where it begins.
+    const afternoon = Date.parse("2026-09-14T16:00:00Z");
+    const late = model("harmonie", {
+      runTime: "2026-09-14T15:00:00Z",
+      hours: every(60, 1),
+      km: 2,
+    });
+    const columns = dockColumns([late, ecmwf()], afternoon);
+    expect(owners(columns)).toEqual(["ecmwf", "harmonie", "ecmwf"]);
+    // Midnight in Ireland is 23:00 UTC; ECMWF's first step since is 00 UTC.
+    expect(columns.slice(0, 6)).toEqual(
+      [0, 3, 6, 9, 12]
+        .map((hour) => ({
+          validTime: at("2026-09-14T00:00:00Z", hour),
+          model: "ecmwf",
+        }))
+        .concat([
+          { validTime: at("2026-09-14T15:00:00Z", 0), model: "harmonie" },
+        ]),
+    );
+    // Yesterday's ECMWF steps (21 UTC on the 13th) are not kept.
+    expect(
+      columns.every(
+        (column) => Date.parse(column.validTime) >= irishMidnight(afternoon),
+      ),
+    ).toBe(true);
+  });
+
+  it("needs no long-range head where the near run carries today from midnight", () => {
+    // What the published blend gives: HARMONIE's newest run, with today's
+    // earlier hours carried forward from the runs before it
+    // (src/spotBlend.ts `carryToday`), one run on the axis from midnight.
+    const afternoon = Date.parse("2026-09-14T16:00:00Z");
+    const carried = model("harmonie", {
+      runTime: "2026-09-13T23:00:00Z",
+      hours: every(76, 1),
+      km: 2,
+    });
+    const columns = dockColumns([carried, ecmwf()], afternoon);
+    expect(owners(columns)).toEqual(["harmonie", "ecmwf"]);
+    expect(columns[0].validTime).toBe("2026-09-13T23:00:00.000Z");
+    const hourly = columns
+      .slice(0, 18)
+      .map((column) => new Date(column.validTime).getUTCHours());
+    expect(hourly).toEqual([23, ...Array.from({ length: 17 }, (_, i) => i)]);
+  });
+
+  it("starts today at Irish midnight on either side of a change of the clocks", () => {
+    // An hourly long-range run, so the hour either side of midnight shows.
+    const hourly = (runTime: string) =>
+      model("ecmwf", { runTime, hours: every(144, 1), km: 28 });
+    const near = (runTime: string) =>
+      model("harmonie", { runTime, hours: every(48, 1), km: 2 });
+    // 25 October 2026, the clocks go back at 01:00 UTC: the day began at
+    // 23:00 UTC on the 24th, in summer time, and is 25 hours long.
+    const back = dockColumns(
+      [near("2026-10-25T15:00:00Z"), hourly("2026-10-24T12:00:00Z")],
+      Date.parse("2026-10-25T16:00:00Z"),
+    );
+    expect(back[0].validTime).toBe("2026-10-24T23:00:00.000Z");
+    expect(back.findIndex((c) => c.model === "harmonie")).toBe(16);
+    // The day after, in winter time, begins at 00:00 UTC.
+    const after = dockColumns(
+      [near("2026-10-26T15:00:00Z"), hourly("2026-10-25T12:00:00Z")],
+      Date.parse("2026-10-26T16:00:00Z"),
+    );
+    expect(after[0].validTime).toBe("2026-10-26T00:00:00.000Z");
+    expect(after.findIndex((c) => c.model === "harmonie")).toBe(15);
+    // 29 March 2026, the clocks go forward at 01:00 UTC: the day began at
+    // 00:00 UTC, in winter time, and the next at 23:00 UTC that evening.
+    const forward = dockColumns(
+      [near("2026-03-29T15:00:00Z"), hourly("2026-03-28T12:00:00Z")],
+      Date.parse("2026-03-29T16:00:00Z"),
+    );
+    expect(forward[0].validTime).toBe("2026-03-29T00:00:00.000Z");
+    const next = dockColumns(
+      [near("2026-03-30T15:00:00Z"), hourly("2026-03-29T12:00:00Z")],
+      Date.parse("2026-03-30T16:00:00Z"),
+    );
+    expect(next[0].validTime).toBe("2026-03-29T23:00:00.000Z");
   });
 
   it("mixes one-, three- and six-hour cadences without losing a step", () => {
@@ -243,6 +333,31 @@ describe("dockColumns", () => {
 
   it("has no columns at all before the availability sweep answers", () => {
     expect(dockColumns([], NOW)).toEqual([]);
+  });
+});
+
+describe("irishMidnight", () => {
+  const midnight = (iso: string) =>
+    new Date(irishMidnight(Date.parse(iso))).toISOString();
+  it("is 23:00 UTC the evening before in summer time, 00:00 UTC in winter", () => {
+    expect(midnight("2026-07-01T12:00:00Z")).toBe("2026-06-30T23:00:00.000Z");
+    expect(midnight("2026-12-01T12:00:00Z")).toBe("2026-12-01T00:00:00.000Z");
+    // The first and last instants of a summer day.
+    expect(midnight("2026-06-30T23:00:00Z")).toBe("2026-06-30T23:00:00.000Z");
+    expect(midnight("2026-07-01T22:59:59Z")).toBe("2026-06-30T23:00:00.000Z");
+    expect(midnight("2026-07-01T23:00:00Z")).toBe("2026-07-01T23:00:00.000Z");
+  });
+  it("gives the day the clocks go back 25 hours, and the day they go forward 23", () => {
+    const length = (iso: string, nextIso: string) =>
+      (irishMidnight(Date.parse(nextIso)) - irishMidnight(Date.parse(iso))) /
+      HOUR;
+    expect(midnight("2026-10-25T00:30:00Z")).toBe("2026-10-24T23:00:00.000Z");
+    expect(midnight("2026-10-25T23:30:00Z")).toBe("2026-10-24T23:00:00.000Z");
+    expect(length("2026-10-25T12:00:00Z", "2026-10-26T12:00:00Z")).toBe(25);
+    expect(midnight("2026-03-29T00:30:00Z")).toBe("2026-03-29T00:00:00.000Z");
+    expect(midnight("2026-03-29T22:59:00Z")).toBe("2026-03-29T00:00:00.000Z");
+    expect(midnight("2026-03-29T23:00:00Z")).toBe("2026-03-29T23:00:00.000Z");
+    expect(length("2026-03-29T12:00:00Z", "2026-03-30T12:00:00Z")).toBe(23);
   });
 });
 
