@@ -182,7 +182,7 @@ class ShippedScheduleTest(unittest.TestCase):
                                       "verify", "prune"])
         # The lagged HARMONIE ensemble ships disabled: it is heavy on Met Éireann's
         # bandwidth for a thin spread, so an operator enables it knowingly. The
-        # other six are retired to keep downloads near 80 GB a month.
+        # other six were retired on 10 October 2026.
         self.assertEqual([job["id"] for job in jobs if not job["enabled"]],
                          ["harmonie-eps", "ecmwf-ens", "aifs", "gefs", "arpege", "arome",
                           "ecmwf-wave"])

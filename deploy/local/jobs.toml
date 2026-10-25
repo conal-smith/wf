@@ -67,7 +67,7 @@ hours = [8, 10]             # The 00 UTC run only (~7-9 h late); 10:35 is a retr
                             # skips the download once 08:35 has published. ~0.49 GB a day.
 minutes = [35]
 timeout_seconds = 3300
-enabled = false             # Retired to keep downloads near 80 GB a month.
+enabled = false             # Retired on 10 October 2026.
 
 [[jobs]]
 id = "aifs"
@@ -76,7 +76,7 @@ args = ["--ecmwf-source", "ecmwf"]
 hours = [0, 6, 12, 18]      # All four AIFS cycles, each published ~6 h after its
 minutes = [25]              # run time. ~92 MB, 61 frames, no gust field.
 timeout_seconds = 3300
-enabled = false             # Retired to keep downloads near 80 GB a month.
+enabled = false             # Retired on 10 October 2026.
 
 [[jobs]]
 id = "gfs"
@@ -93,7 +93,7 @@ hours = [5, 11, 17, 23]     # 00/06/12/18 UTC cycles plus ~5 h: the 0.25° membe
 minutes = [10]              # finish 4.5-6 h after run time. ~19 MB, 23-33 min from NOMADS;
                             # args = ["--noaa-source", "s3"] takes ~2.5 min for ~2.8 GB.
 timeout_seconds = 3300
-enabled = false             # Retired to keep downloads near 80 GB a month.
+enabled = false             # Retired on 10 October 2026.
 
 [[jobs]]
 id = "arpege"
@@ -102,7 +102,7 @@ args = ["--step", "3"]
 hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~4 h 50 m: the 0.1° surface
 minutes = [50]              # package completes 3–4.5 h after run time. ~35 MB per run.
 timeout_seconds = 3300
-enabled = false             # Retired to keep downloads near 80 GB a month.
+enabled = false             # Retired on 10 October 2026.
 
 [[jobs]]
 id = "arome"
@@ -111,7 +111,7 @@ args = ["--step", "3"]
 hours = [1, 4, 7, 10, 13, 16, 19, 22]   # Eight cycles a day, three-hourly, plus
 minutes = [55]                          # ~4 h 55 m. ~37 MB per run.
 timeout_seconds = 3300
-enabled = false             # Retired to keep downloads near 80 GB a month.
+enabled = false             # Retired on 10 October 2026.
 
 [[jobs]]
 id = "gfs-wave"
@@ -149,7 +149,7 @@ args = ["--ecmwf-source", "ecmwf"]
 hours = [8, 20]             # The 00/12 UTC wave stream, published ~8 h after the run.
 minutes = [45]              # ~715 MB with the period bands; the AWS mirror throttles.
 timeout_seconds = 3300
-enabled = false             # Retired to keep downloads near 80 GB a month.
+enabled = false             # Retired on 10 October 2026.
 
 [[jobs]]
 id = "tides"

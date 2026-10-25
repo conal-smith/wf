@@ -91,7 +91,7 @@ intervals at every hour.
 
 ### GEFS (ensemble)
 
-**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+**Retired** (10 October 2026): the job ships
 disabled and the site does not fetch it. The adapter below is unchanged; see
 `deploy/local/README.md` to bring it back.
 
@@ -177,7 +177,7 @@ hours later. Widen `maxAgeHours` before moving the slot later.
 
 ### ECMWF ENS (ensemble)
 
-**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+**Retired** (10 October 2026): the job ships
 disabled and the site does not fetch it. The adapter below is unchanged; see
 `deploy/local/README.md` to bring it back.
 
@@ -287,7 +287,7 @@ only to wind models and the importer defaulted to 3, so every rain figure was a
 three-hour total and the sky between steps a copy of the step's. Its registry age
 limit is 30 hours.
 
-Bandwidth is the operational constraint. DWD publishes one whole-Europe file per
+The download is the heavy part. DWD publishes one whole-Europe file per
 parameter per step with no server-side subsetting. Three-hourly, a run transferred
 **301 MB in 325 bz2 GRIB files** (the live 18 UTC run, 16 September 2026, 67 seconds
 end to end). Hourly it is **949 files, about 845 MB**: the thirteen files of one step
@@ -313,7 +313,7 @@ model SST **proxy** and must be labelled as one wherever it is shown.
 (`deploy/local/jobs.toml`, and `deploy/home-compute/home-compute.json` generated from
 it), ten minutes after ICON-EU wind's 03:30 slot so the two never share the worker
 lock. This page said 03/09/15/21 UTC until 24 October 2026; the deploy configs have
-run it once a day since the downloads were cut to about 80 GB a month. Running all
+run it once a day since 10 October 2026. Running all
 four cycles hourly would be about 100 GB a month for this job alone; a second slot for
 the 12 UTC cycle (about 15:40 UTC) would make the afternoon's rain six to twelve hours
 fresher for about 25 GB a month more. That is a proposal, not the schedule.
@@ -338,7 +338,7 @@ GFS's (05/11/17/23 UTC at :05, with a :35 retry); the registry's age limit is 14
 
 ### ARPEGE and AROME (Météo-France)
 
-**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+**Retired** (10 October 2026): the job ships
 disabled and the site does not fetch it. The adapter below is unchanged; see
 `deploy/local/README.md` to bring it back.
 
@@ -406,7 +406,7 @@ must not be compared with the instantaneous gusts GFS and GEFS publish.
 
 ### AIFS Single (ECMWF's AI model)
 
-**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+**Retired** (10 October 2026): the job ships
 disabled and the site does not fetch it. The adapter below is unchanged; see
 `deploy/local/README.md` to bring it back.
 
@@ -442,7 +442,7 @@ average.
 
 ### ECMWF wave stream
 
-**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+**Retired** (10 October 2026): the job ships
 disabled and the site does not fetch it. The adapter below is unchanged; see
 `deploy/local/README.md` to bring it back.
 
