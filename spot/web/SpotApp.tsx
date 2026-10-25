@@ -16,6 +16,7 @@ import { starsFromAt } from "../../force5/src/lead";
 import { loadPrefs, saveRider, withRiderModel } from "../../force5/src/prefs";
 import { isOnWater, shoreFacing } from "../../force5/src/shoreFacing";
 import {
+  CHART_HREF,
   STARS_HREF,
   isStarsPath,
   mapSpotHref,
@@ -177,7 +178,7 @@ function SpotRoute({ id }: { id: string | null }) {
 
   return (
     <SpotFrame
-      back={id ? mapSpotHref(id) : "/"}
+      back={id ? mapSpotHref(id) : CHART_HREF}
       actions={
         state.kind === "ready" && (
           <KeepButton id={state.spot.id} name={state.spot.name} />

@@ -541,6 +541,67 @@ test.describe("on a desktop", () => {
     ).toBe(true);
   });
 
+  /*
+   * The bare root opens on whichever page the rider last had; a link that
+   * says Chart or Spot finder is that page, whatever was last open.
+   */
+  test("the menu's Chart is always the chart, and its Spot finder the finder, from a page loaded alone", async ({
+    page,
+  }) => {
+    // The finder last open, then a spot's page from a shared link.
+    await openFinder(page);
+    await page.goto("/spot/brandon");
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await expect(siteRow(page, "Chart")).toHaveAttribute("href", "/?chart");
+    await siteRow(page, "Chart").click();
+    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(finder(page)).toHaveCount(0);
+    // The word has done its work and is gone from the address.
+    await expect(page).toHaveURL(/\/$/);
+
+    // The chart last open now: the spot's page's Spot finder is the finder.
+    await page.goto("/spot/brandon");
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await siteRow(page, "Spot finder").click();
+    await expect(finder(page)).toBeVisible({ timeout: 30000 });
+    await expect(page).toHaveURL(/\/spots$/);
+
+    // The finder last open again: the AI page's way back, named Chart, is
+    // the chart too.
+    await page.goto("/ai");
+    await page.locator("[data-back-to-map]").click();
+    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(finder(page)).toHaveCount(0);
+    await expect(page).toHaveURL(/\/$/);
+
+    // And the bare root still opens on the page last open.
+    await page.goto("/spots");
+    await expect(finder(page)).toBeVisible({ timeout: 30000 });
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/spots$/);
+    await expect(finder(page)).toBeVisible();
+  });
+
+  test("the menu's Chart from a spot's page over the finder is the chart", async ({
+    page,
+  }) => {
+    await star(page, ["brandon"]);
+    await openFinder(page);
+    await page.evaluate(() => ((window as { stayed?: boolean }).stayed = true));
+    await cards(page).getByRole("link", { name: "Brandon Bay" }).click();
+    await expect(page.locator(".map-under-page")).toHaveCount(1);
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await siteRow(page, "Chart").click();
+    await expect(page.locator(".map-under-page")).toHaveCount(0);
+    await expect(page.locator(".map-head")).toBeVisible();
+    await expect(finder(page)).toHaveCount(0);
+    await expect(page).toHaveURL(/\/$/);
+    // No page load: the map was kept under the page.
+    expect(
+      await page.evaluate(() => (window as { stayed?: boolean }).stayed),
+    ).toBe(true);
+  });
+
   test("the root opens on the page last open; a link that names one wins", async ({
     page,
   }) => {

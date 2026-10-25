@@ -15,7 +15,7 @@ import { starsFromAt, leadText, type StarsChoice } from "../../force5/src/lead";
 import { loadPrefs, saveRider } from "../../force5/src/prefs";
 import { onPrefsChange } from "../../shared/web/riderSync";
 import { shoreFacing } from "../../force5/src/shoreFacing";
-import { mapSpotHref, spotHref } from "../../force5/src/siteNav";
+import { CHART_HREF, mapSpotHref, spotHref } from "../../force5/src/siteNav";
 import {
   SKILLS,
   GUSTIES,
@@ -114,7 +114,7 @@ export default function StarsPage() {
   // Back to the spot the reader came from, or to the chart as it opens: the
   // worked example's place is not one to send them to.
   return (
-    <SpotFrame back={named ? mapSpotHref(named) : "/"}>
+    <SpotFrame back={named ? mapSpotHref(named) : CHART_HREF}>
       <main className={s.main()} ref={chartRef}>
         <Headline>
           How the stars <em className={h.soft()}>work</em>

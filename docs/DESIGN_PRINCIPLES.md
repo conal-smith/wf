@@ -629,7 +629,10 @@ chart", with Layers, Display options, About the map and Take the tour. A page
 with nothing of its own has no such part. Customise from a page that is not
 the map's is the chart with the wizard open (`/?customise`); from a page over
 the map, the map as it was with the wizard over it (`force5/src/siteNav.ts`
-`SITE_NAV`, `force5/src/SiteMenu.tsx`).
+`SITE_NAV`, `force5/src/SiteMenu.tsx`). The menu's rows say where they go:
+Chart is always the chart (`/?chart`, and so is every way back named Chart)
+and Spot finder always the finder, whichever was open last; only the bare
+root, an address typed in, opens on the page the rider last had.
 
 ---
 
