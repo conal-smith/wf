@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   APP_ROUTES,
+  CHART_HREF,
+  CUSTOMISE_HREF,
+  SITE_NAV,
   SITE_SECTIONS,
+  asksChart,
+  asksCustomise,
   siteSections,
   isFinderPath,
   isSpotPath,
@@ -126,6 +131,38 @@ describe("SITE_SECTIONS", () => {
       expect(isCommunityPath(section.href)).toBe(section.id === "community");
       expect(isAiPath(section.href)).toBe(section.id === "ai");
     }
+  });
+});
+
+describe("SITE_NAV", () => {
+  it("is the chart, the spot finder and Customise, in that order, on every page", () => {
+    expect(SITE_NAV).toEqual([
+      { id: "chart", href: "/?chart", label: "Chart" },
+      { id: "finder", href: "/spots", label: "Spot finder" },
+      { id: "customise", href: "/?customise", label: "Customise" },
+    ]);
+    // Each is the map's bundle's: none is split off.
+    for (const row of SITE_NAV)
+      expect(OWN_BUNDLE_PATHS.some((p) => p.test(row.href))).toBe(false);
+  });
+
+  it("names the chart with a word, so the root does not open on the finder", () => {
+    const at = (href: string) => new URL(href, "https://wingfoil.ie");
+    expect(CHART_HREF).toBe("/?chart");
+    expect(asksChart(at(CHART_HREF))).toBe(true);
+    expect(asksChart(at("/?spot=keel&chart"))).toBe(true);
+    expect(asksChart(at("/"))).toBe(false);
+    expect(asksChart(at("/?spot=chart"))).toBe(false);
+    expect(asksChart(at("/spots?chart"))).toBe(false);
+  });
+
+  it("asks the map for Customise with the word, and only on the chart's address", () => {
+    const at = (href: string) => new URL(href, "https://wingfoil.ie");
+    expect(asksCustomise(at(CUSTOMISE_HREF))).toBe(true);
+    expect(asksCustomise(at("/?spot=keel&customise"))).toBe(true);
+    expect(asksCustomise(at("/"))).toBe(false);
+    expect(asksCustomise(at("/?spot=customise"))).toBe(false);
+    expect(asksCustomise(at("/spots?customise"))).toBe(false);
   });
 });
 

@@ -8,10 +8,14 @@
  * backlog/mockups/2026-10-25-spot-list-cards.html, its "7e".
  *
  * A page of its own: no map and no timeline at its head, and not tied to the
- * chart's time. An hour picked on one card's today is picked on every card,
- * its rose turned to it; the picture opens the chart there, at that hour.
- * No legend: the stars and the wind's colours are the site's own, said once
- * on the Info page.
+ * chart's time. The cards keep one time between them, as a dashboard's
+ * charts do: a day pressed among the next ones is drawn hour by hour on
+ * every card in today's place (today goes among the others, to come back
+ * to); an hour picked on one card's day is picked on every card, its rose
+ * turned to it; and a mouse over a card's hours, or over a day, draws a
+ * dotted line at that time on every card (src/finder/hover.ts). The picture
+ * opens the chart there, at the hour its rose shows. No legend: the stars
+ * and the wind's colours are the site's own, said once on the Info page.
  *
  * A page of the map's bundle, drawn by src/App.tsx in the chart's place and
  * loaded as a chunk of its own the first time it is opened. Its wind and its
@@ -28,21 +32,29 @@ import { Segmented } from "../../ui/Segmented";
 import { Wordmark } from "../../ui/Wordmark";
 import { tv } from "../../ui/tv";
 import type { PlaceHour } from "../ratings";
-import { irishDate, openingColumn, type StripColumn } from "../strip";
+import {
+  dayLong,
+  dayShort,
+  irishDate,
+  openingColumn,
+  type StripColumn,
+} from "../strip";
 import {
   cardDates,
   columnsByTime,
+  dayOpening,
   dayPlan,
+  dayRow,
   hourOf,
   listFor,
   pickHour,
   rankSpots,
   shownColumn,
-  todayRow,
   weekBest,
   type Listed,
   type Scope,
 } from "./finder";
+import { HoverContext, hoverStore } from "./hover";
 import { useRiderPlace } from "./location";
 import { SpotCard } from "./SpotCard";
 import { useReadings } from "./useReadings";
@@ -115,11 +127,13 @@ export default function SpotFinder(props: FinderProps) {
   const [scope, setScope] = useState<Scope>("favourites");
   const [asked, setAsked] = useState(false);
   const place = useRiderPlace(asked);
-  // The hour picked on today's row, for every card; null is now.
+  // The day drawn hour by hour on every card; null is today.
+  const [chosen, setChosen] = useState<string | null>(null);
+  // The hour picked on that day's row, for every card; null is the hour the
+  // day stands at (now, today).
   const [picked, setPicked] = useState<number | null>(null);
-  // An hour picked yesterday is not one of today's to show.
-  const pick =
-    picked !== null && irishDate(picked) === irishDate(now) ? picked : null;
+  // The time under a mouse, shared by every card without drawing them again.
+  const [hover] = useState(hoverStore);
 
   const chooseScope = (next: Scope) => {
     if (next === "near") setAsked(true);
@@ -146,6 +160,15 @@ export default function SpotFinder(props: FinderProps) {
 
   const hourKey = hourOf(now);
   const dates = useMemo(() => cardDates(now), [hourKey]);
+  // A day chosen yesterday that is today now, or gone, is today again.
+  const day = chosen !== null && dates.includes(chosen) ? chosen : dates[0];
+  const isToday = day === dates[0];
+  // An hour picked on another day is not one of this day's to show.
+  const pick = picked !== null && irishDate(picked) === day ? picked : null;
+  const chooseDay = (date: string) => {
+    setChosen(date === dates[0] ? null : date);
+    setPicked(null);
+  };
   const byTime = useMemo(() => columnsByTime(strip), [strip]);
   const ranked: Listed[] = useMemo(
     () =>
@@ -163,24 +186,44 @@ export default function SpotFinder(props: FinderProps) {
   const axis = useMemo(() => strip.map((c) => c.validTime), [strip]);
   const readings = useReadings(listedSpots, axis);
 
-  // Today's row and the next five days, at each place's own light.
+  // The day's row and the other five days, at each place's own light.
   const plans = useMemo(
     () =>
       new Map(
         listedSpots.map((spot) => [
           spot.id,
           {
-            today: todayRow(strip, spot, now, byTime),
-            days: dates.slice(1).map((date) => dayPlan(strip, spot, date)),
+            day: dayRow(strip, spot, day, now, byTime),
+            days: dates
+              .filter((date) => date !== day)
+              .map((date) => dayPlan(strip, spot, date)),
           },
         ]),
       ),
-    [listedSpots, strip, byTime, dates, hourKey],
+    [listedSpots, strip, byTime, dates, day, hourKey],
   );
 
-  const opening = strip.length ? openingColumn(strip, now) : 0;
+  // Where the day stands with no hour picked: now, today, as the chart
+  // would open; a day chosen, its early afternoon.
+  const opening = isToday
+    ? strip.length
+      ? openingColumn(strip, now)
+      : null
+    : dayOpening(strip, day, now);
   const roseAt = shownColumn(strip, pick, opening, byTime);
-  const shown = pick ?? hourOf(now);
+  const noon = Date.parse(`${day}T12:00:00Z`);
+  const standing = isToday
+    ? hourOf(now)
+    : opening === null
+      ? noon
+      : strip[opening].time;
+  const shown = pick ?? standing;
+  const dayName = isToday
+    ? { short: "Today", long: "Today" }
+    : {
+        short: `${dayShort(noon)} ${Number(day.slice(8))}`,
+        long: `${dayLong(noon)} ${Number(day.slice(8))}`,
+      };
 
   return (
     <div className={s.root()} data-spot-finder data-scope={scope}>
@@ -202,45 +245,53 @@ export default function SpotFinder(props: FinderProps) {
         aria-busy={place.asking || undefined}
       >
         {ranked.length ? (
-          <ul className={s.cards()}>
-            {ranked.map((item, order) => {
-              const plan = plans.get(item.spot.id);
-              return (
-                <li key={item.spot.id} className="min-w-0">
-                  <SpotCard
-                    spot={item.spot}
-                    km={item.km}
-                    row={hours.get(item.spot.id)}
-                    strip={strip}
-                    today={plan?.today ?? null}
-                    days={plan?.days ?? []}
-                    readings={
-                      readings.get(item.spot.id) ?? {
-                        sky: [],
-                        air: [],
-                        sea: [],
-                        tides: [],
+          <HoverContext.Provider value={hover}>
+            <ul
+              className={s.cards()}
+              data-day-chosen={isToday ? undefined : day}
+            >
+              {ranked.map((item, order) => {
+                const plan = plans.get(item.spot.id);
+                return (
+                  <li key={item.spot.id} className="min-w-0">
+                    <SpotCard
+                      spot={item.spot}
+                      km={item.km}
+                      row={hours.get(item.spot.id)}
+                      strip={strip}
+                      day={plan?.day ?? null}
+                      dayName={dayName}
+                      isToday={isToday}
+                      days={plan?.days ?? []}
+                      readings={
+                        readings.get(item.spot.id) ?? {
+                          sky: [],
+                          air: [],
+                          sea: [],
+                          tides: [],
+                        }
                       }
-                    }
-                    picked={pick}
-                    shown={shown}
-                    roseAt={roseAt}
-                    now={now}
-                    rider={rider}
-                    units={units}
-                    starred={starred.includes(item.spot.id)}
-                    phone={phone}
-                    reducedMotion={reducedMotion}
-                    onToggleStar={() => onToggleStar(item.spot.id)}
-                    onPick={(time) => setPicked(pickHour(time, now))}
-                    onChart={() => onInChart(item.spot, roseAt)}
-                    order={order}
-                    best={item.best}
-                  />
-                </li>
-              );
-            })}
-          </ul>
+                      picked={pick}
+                      shown={shown}
+                      roseAt={roseAt}
+                      now={now}
+                      rider={rider}
+                      units={units}
+                      starred={starred.includes(item.spot.id)}
+                      phone={phone}
+                      reducedMotion={reducedMotion}
+                      onToggleStar={() => onToggleStar(item.spot.id)}
+                      onPick={(time) => setPicked(pickHour(time, standing))}
+                      onChooseDay={chooseDay}
+                      onChart={() => onInChart(item.spot, roseAt)}
+                      order={order}
+                      best={item.best}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          </HoverContext.Provider>
         ) : (
           <p className={s.empty()} data-finder-empty>
             {scope === "favourites"

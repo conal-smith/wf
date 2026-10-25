@@ -17,6 +17,11 @@ as the site is, so that a persistent work directory's own manifests are never
 overwritten. Without one they are the manifests already under public/. Either
 way the blend reads the squares through the site's own loader
 (force5/src/spotData.ts).
+
+Today's earlier hours are kept from the blend this one replaces (the ruling of
+25 October 2026, src/spotBlend.ts `carryToday`): with a bucket, the blend it
+serves, read with its squares into the scratch directory's `previous/`; without
+one, the blend already under public/.
 """
 import argparse
 import json
@@ -82,6 +87,42 @@ def read_bucket(s3, bucket, prefix, directory):
     return found
 
 
+# Where the blend the bucket serves is read to, apart from the wind pointers so
+# nothing takes it for an input: the blend this run replaces, which today's
+# earlier hours are kept from (src/spotBlend.ts `carryToday`).
+PREVIOUS = "previous"
+
+
+def read_previous_blend(s3, bucket, prefix, directory):
+    """Copy the blend the bucket serves, and its squares, under `directory`/previous.
+
+    Returns the path of its pointer there, or None: when the bucket serves none,
+    or it cannot be read whole, this blend starts today afresh, named in the log,
+    and still publishes. Squares first and the pointer last, as for the models.
+    """
+    prefix = object_prefix(prefix)
+    try:
+        manifest, _ = read_current(s3, bucket, prefix + MANIFESTS["blend"])
+        if manifest is None:
+            return None
+        if not isinstance(manifest, dict) or manifest.get("schemaVersion") != SCHEMA_VERSION:
+            raise ValueError("Not a run pointer")
+        relatives = [square_path(manifest, square)
+                     for square in square_index(manifest)["squares"]]
+        path = directory / PREVIOUS / MANIFESTS["blend"]
+        for relative in relatives:
+            target = path.parent / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            published = f"{Path(MANIFESTS['blend']).parent.as_posix()}/{relative}"
+            target.write_bytes(read_object(s3, bucket, prefix + published))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(manifest, separators=(",", ":")))
+        return path
+    except Exception as error:  # Never fatal: the blend is still worth publishing.
+        print(json.dumps({"event": "blend_previous_unread", "error": str(error)}), flush=True)
+        return None
+
+
 def builder():
     if BUNDLE.exists():
         return [shutil.which("node") or "node", str(BUNDLE)]
@@ -114,8 +155,13 @@ def main():
         if not found:
             raise RuntimeError("The bucket serves no wind manifests: nothing to blend")
         print(f"Blending what the bucket serves: {', '.join(found)}", flush=True)
+        # Always named, even where there is none: the bucket's blend is the one
+        # this replaces, never whatever a persistent work directory last wrote.
+        previous = (read_previous_blend(s3, args.bucket, args.prefix, Path(scratch))
+                    or Path(scratch) / PREVIOUS / MANIFESTS["blend"])
         timing.start("decode")
-        subprocess.run([*builder(), "--root", scratch, "--out", str(out), *catalogue],
+        subprocess.run([*builder(), "--root", scratch, "--out", str(out), *catalogue,
+                        "--previous", str(previous)],
                        check=True, cwd=PROJECT_ROOT)
 
 

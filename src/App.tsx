@@ -61,16 +61,19 @@ import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ForecastDock, { type DockView } from "./ForecastDock";
 import MapControls, { chartTools, type MapPanel } from "./MapControls";
 import MapHead from "./MapHead";
-import {
-  ChartSheetGlyph,
-  CustomiseGlyph,
-  FinderGlyph,
-  TourGlyph,
-} from "./chartGlyphs";
+import { TourGlyph } from "./chartGlyphs";
 import { tourOffered, tourSeen } from "./tourOffer";
-import { SiteMenu, type SiteMenuTool } from "../force5/src/SiteMenu";
-import { FINDER_HREF, isFinderPath, mapSpotHref } from "../force5/src/siteNav";
-import { followedLink } from "./PagesOverMap";
+import { SiteMenu } from "../force5/src/SiteMenu";
+import {
+  CHART_PARAM,
+  CUSTOMISE_PARAM,
+  FINDER_HREF,
+  asksChart,
+  asksCustomise,
+  isFinderPath,
+  mapSpotHref,
+} from "../force5/src/siteNav";
+import { CUSTOMISE_EVENT } from "./PagesOverMap";
 import {
   saveChartCentre,
   saveView,
@@ -376,8 +379,29 @@ export default function App() {
   const infoShown = useFadeOut(info);
   /** Customise, the tour, or the first visit's offer of it, over the chart. */
   const [guide, setGuide] = useState<"offer" | "tour" | "customise" | null>(
-    () => (tourOffered() ? "offer" : null),
+    () =>
+      asksCustomise(location) ? "customise" : tourOffered() ? "offer" : null,
   );
+  // Customise asked for by another page's menu: a page load to the chart
+  // with the word in its address (CUSTOMISE_HREF), which is open now and goes
+  // from the address; or a page over the map, which hands the reader back to
+  // it first (src/PagesOverMap.tsx). The explicit chart's word (CHART_HREF)
+  // goes the same way: it has done its work, keeping the root off the finder.
+  useEffect(() => {
+    if (asksCustomise(location) || asksChart(location)) {
+      const url = new URL(location.href);
+      url.searchParams.delete(CUSTOMISE_PARAM);
+      url.searchParams.delete(CHART_PARAM);
+      window.history.replaceState(
+        window.history.state,
+        "",
+        url.pathname + url.search + url.hash,
+      );
+    }
+    const ask = () => setGuide("customise");
+    window.addEventListener(CUSTOMISE_EVENT, ask);
+    return () => window.removeEventListener(CUSTOMISE_EVENT, ask);
+  }, []);
   /** Customise is kept while it fades out, once shut. */
   const customiseShown = useFadeOut(guide === "customise");
   const [view, setView] = useState<DockView>("table");
@@ -1714,74 +1738,28 @@ export default function App() {
     window.history.pushState({}, "", mapSpotHref(spot.id));
     setPage("chart");
   };
-  // On the finder, a link to the chart's own address (the site menu's Wind
-  // map) is the chart in its place, not a page load: the root would open on
-  // the finder again, the page the rider last had.
-  useEffect(() => {
-    if (page !== "finder") return;
-    const click = (event: MouseEvent) => {
-      const url = followedLink(event);
-      if (!url || url.pathname !== "/" || url.search) return;
-      event.preventDefault();
-      openChartRef.current();
-    };
-    document.addEventListener("click", click);
-    return () => document.removeEventListener("click", click);
-  }, [page]);
-
-  const finderTool: SiteMenuTool = {
-    id: "finder",
-    label: "Spot finder",
-    glyph: <FinderGlyph />,
-    href: FINDER_HREF,
-    onSelect: openFinder,
+  // The site menu's navigation, the same on both pages (Chart, Spot finder,
+  // Customise): each is this bundle's own, in place of a page load.
+  const menuGo = {
+    chart: () => openChartRef.current(),
+    finder: openFinder,
+    customise: () => setGuide("customise"),
   };
-  // The site menu is the one way in to the chart's own tools: Customise
-  // first, the spot finder after the layers, and the tour last.
-  const menuTools = useMemo(() => {
-    const [layers, ...rest] = chartTools(setPanel, setInfo);
-    return [
-      {
-        id: "customise",
-        label: "Customise",
-        glyph: <CustomiseGlyph />,
-        onSelect: () => setGuide("customise"),
-      },
-      layers,
-      finderTool,
-      ...rest,
+  // Under it, the chart's own tools, the menu the one way in to them: the
+  // layers, the display options, what the map means, and the tour last.
+  const menuTools = useMemo(
+    () => [
+      ...chartTools(setPanel, setInfo),
       {
         id: "tour",
         label: "Take the tour",
         glyph: <TourGlyph />,
         onSelect: () => setGuide("tour"),
       },
-    ];
-  }, []);
-  const finderMenu = (
-    <SiteMenu
-      current="map"
-      tools={{
-        title: "The chart",
-        items: [
-          {
-            id: "chart",
-            label: "Chart",
-            glyph: <ChartSheetGlyph />,
-            href: "/",
-            onSelect: () => openChartRef.current(),
-          },
-          { ...finderTool, current: true },
-          {
-            id: "customise",
-            label: "Customise",
-            glyph: <CustomiseGlyph />,
-            onSelect: () => setGuide("customise"),
-          },
-        ],
-      }}
-    />
+    ],
+    [],
   );
+  const finderMenu = <SiteMenu current="finder" go={menuGo} />;
   const leaveTour = () => {
     tourSeen();
     setGuide(null);
@@ -1828,6 +1806,7 @@ export default function App() {
               hourAt={hourAt}
               onPick={(spot) => selectSpot(spot)}
               tools={menuTools}
+              go={menuGo}
             />
             <MapControls
               onZoomIn={() => controls.current?.zoomIn()}

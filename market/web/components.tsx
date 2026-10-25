@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
+import { CHART_HREF } from "../../force5/src/siteNav";
 import { usePageTitle as useSitePageTitle } from "../../shared/web/usePageTitle";
 import {
   Avatar as KitAvatar,
@@ -932,7 +933,7 @@ export function MarketFooter() {
         <Link className={link} to={paths.sell()}>
           Sell your gear
         </Link>
-        <a className={link} href="/">
+        <a className={link} href={CHART_HREF}>
           Back to the wind map
         </a>
       </nav>

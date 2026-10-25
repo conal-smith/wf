@@ -1,4 +1,13 @@
-import { expect, SPOTS_KEY, test, type Page } from "./fixtures";
+import {
+  chartTools,
+  expect,
+  siteNav,
+  siteRow,
+  SITE_ROWS,
+  SPOTS_KEY,
+  test,
+  type Page,
+} from "./fixtures";
 import { SAMPLE_CLOCK } from "./columns";
 
 /**
@@ -71,7 +80,7 @@ const inOrder = (list: { best: number; day: number }[]) =>
 
 /** Today's hour columns on a card. */
 const hours = (page: Page, card = 0) =>
-  cards(page).nth(card).locator("[data-today-hours] [data-hour]");
+  cards(page).nth(card).locator("[data-day-hours] [data-hour]");
 
 /** Each card's rose: the bearing its wind comes from, or "" with none. */
 const roses = (page: Page) =>
@@ -128,8 +137,15 @@ test.describe("on a desktop", () => {
     await rated(page);
     const row = hours(page);
     const count = await row.count();
-    // Mid-September in Dublin: about 06:20 to 20:20, so 06:00 to 21:00.
-    expect(count).toBeGreaterThanOrEqual(15);
+    // Mid-September in Dublin: about 06:20 to 20:20, so 06:00 to 21:00, and
+    // now at 22:00. HARMONIE's sample run begins at 14:00: the morning before
+    // it is ECMWF's three-hourly steps (the ruling of 25 October 2026, today
+    // kept whole), a column each, with their wind.
+    expect(count).toBeGreaterThanOrEqual(12);
+    const winds = await row.evaluateAll((els) =>
+      els.map((el) => /\d/.test(el.textContent ?? "")),
+    );
+    expect(winds.every(Boolean)).toBe(true);
     await expect(row.first()).toHaveAttribute("data-dark", "true");
     await expect(row.last()).toHaveAttribute("data-dark", "true");
     await expect(row.nth(1)).not.toHaveAttribute("data-dark", "true");
@@ -152,17 +168,21 @@ test.describe("on a desktop", () => {
     await expect(card.locator("[data-last-light]")).toContainText(
       /^last light \d\d:\d\d$/,
     );
-    await expect(card.locator("[data-today-facts] [data-light]")).toContainText(
+    await expect(card.locator("[data-day-facts] [data-light]")).toContainText(
       /^light \d\d:\d\d–\d\d:\d\d$/,
     );
-    await expect(
-      card.locator("[data-today-hours] [data-wind-band]"),
-    ).toHaveCount(1);
+    await expect(card.locator("[data-day-hours] [data-wind-band]")).toHaveCount(
+      1,
+    );
   });
 
   test("the row scrolls with no bar, opening on now, and steps either way", async ({
     page,
   }) => {
+    // Two cards a row, each too narrow for the whole day: the sample's
+    // morning, before its HARMONIE run, is ECMWF's three-hourly steps, which
+    // leaves a row that only just fits a card at 1440 pixels.
+    await page.setViewportSize({ width: 1240, height: 900 });
     await star(page, ["brandon", "keel"]);
     await openFinder(page);
     await rated(page);
@@ -172,12 +192,21 @@ test.describe("on a desktop", () => {
       await scroller.evaluate((el) => getComputedStyle(el).scrollbarWidth),
     ).toBe("none");
     // Now stands in the middle of the view, or as near as the ends allow.
-    const middle = async () => {
-      const view = (await scroller.boundingBox())!;
-      const now = (await card.locator("[data-hour][data-now]").boundingBox())!;
-      return Math.abs(now.x + now.width / 2 - (view.x + view.width / 2));
-    };
-    expect(await middle()).toBeLessThan(60);
+    const centred = await scroller.evaluate((el) => {
+      const now = el
+        .querySelector("[data-hour][data-now]")!
+        .getBoundingClientRect();
+      const view = el.getBoundingClientRect();
+      const left = now.left - view.left + el.scrollLeft;
+      const max = Math.max(0, el.scrollWidth - el.clientWidth);
+      const want = Math.max(
+        0,
+        Math.min(max, left + now.width / 2 - el.clientWidth / 2),
+      );
+      return { at: el.scrollLeft, want, max };
+    });
+    expect(Math.abs(centred.at - centred.want)).toBeLessThan(2);
+    expect(centred.max).toBeGreaterThan(0);
     const left = () => scroller.evaluate((el) => el.scrollLeft);
     const later = card.getByRole("button", { name: "Later hours" });
     const earlier = card.getByRole("button", { name: "Earlier hours" });
@@ -254,6 +283,195 @@ test.describe("on a desktop", () => {
       .toBe(JSON.stringify(before));
   });
 
+  test("a day pressed is drawn hour by hour on every card, today among the others to come back to", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "dollymount", "keel"]);
+    await openFinder(page);
+    await rated(page);
+    const today = AFTERNOON.toISOString().slice(0, 10);
+    const days = (card: number) =>
+      cards(page).nth(card).locator("[data-next-days] [data-day]");
+    // An hour picked today, to see it put down with the day.
+    await hours(page)
+      .and(page.locator(":not([data-dark]):not([data-gone])"))
+      .nth(2)
+      .click();
+    await expect(page.locator("[data-picked-hour]")).toHaveCount(3);
+    // The second of the next days, pressed on the second card.
+    const date = (await days(1).nth(1).getAttribute("data-day"))!;
+    await days(1).nth(1).click();
+    await expect(page).toHaveURL(/\/spots$/);
+    for (let i = 0; i < 3; i++) {
+      const card = cards(page).nth(i);
+      await expect(card.locator("[data-day-shown]")).toHaveAttribute(
+        "data-day-shown",
+        date,
+      );
+      await expect(card.locator("[data-day-name]")).toHaveText(
+        /^[A-Z][a-z]{2} \d{1,2}$/,
+      );
+      // Today is among the five now, first, and the day chosen is not.
+      await expect(days(i)).toHaveCount(5);
+      await expect(days(i).first()).toHaveAttribute("data-day", today);
+      await expect(days(i).first()).toContainText("Today");
+      await expect(
+        card.locator(`[data-next-days] [data-day="${date}"]`),
+      ).toHaveCount(0);
+      await expect(card.getByText("Other days", { exact: true })).toBeVisible();
+    }
+    // The day's own hours: no now, none gone, light at either end; the
+    // hour picked today is put down, and the roses stand at the day's
+    // early afternoon, said on each picture.
+    const row = hours(page);
+    await expect(row.and(page.locator("[data-now]"))).toHaveCount(0);
+    await expect(row.and(page.locator("[data-gone]"))).toHaveCount(0);
+    await expect(row.first()).toHaveAttribute("data-dark", "true");
+    await expect(row.last()).toHaveAttribute("data-dark", "true");
+    await expect(page.locator("[data-picked-hour]")).toHaveCount(0);
+    await expect(page.locator("[data-rose-hour]").first()).toHaveText(
+      /^1[2-4]:00$/,
+    );
+    await expect(
+      cards(page).first().locator("[data-first-light]"),
+    ).toContainText(/^first light \d\d:\d\d$/);
+    // An hour picked on it is picked on every card.
+    const pick = row.and(page.locator(":not([data-dark])")).first();
+    const time = (await pick.getAttribute("data-hour"))!;
+    await pick.click();
+    await expect(
+      page.locator(`[data-hour="${time}"][aria-pressed="true"]`),
+    ).toHaveCount(3);
+    await expect(page.locator("[data-picked-hour]").first()).toHaveText(
+      /^\d\d:00$/,
+    );
+    // Today again, from the keys: back to now, the hour put down.
+    await days(2).first().focus();
+    await page.keyboard.press("Enter");
+    // The focus stays in the five, on the day that came back into them.
+    await expect(
+      cards(page).nth(2).locator(`[data-next-days] [data-day="${date}"]`),
+    ).toBeFocused();
+    for (let i = 0; i < 3; i++) {
+      await expect(
+        cards(page).nth(i).locator("[data-day-shown]"),
+      ).toHaveAttribute("data-day-shown", today);
+      await expect(cards(page).nth(i).locator("[data-day-name]")).toHaveText(
+        "Today",
+      );
+      await expect(days(i).first()).not.toHaveAttribute("data-day", today);
+    }
+    await expect(
+      page.locator("[data-picked-hour], [data-rose-hour]"),
+    ).toHaveCount(0);
+    await expect(
+      page.locator('[data-hour][data-now][aria-pressed="true"]'),
+    ).toHaveCount(3);
+  });
+
+  test("a day's drawing pressed is that day too", async ({ page }) => {
+    await star(page, ["brandon", "keel"]);
+    await openFinder(page);
+    await rated(page);
+    const band = cards(page).first().locator("[data-days-band]");
+    const box = (await band.boundingBox())!;
+    const date = await cards(page)
+      .first()
+      .locator("[data-next-days] [data-day]")
+      .nth(4)
+      .getAttribute("data-day");
+    await page.mouse.click(box.x + box.width * 0.9, box.y + box.height / 2);
+    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page.locator("[data-day-shown]")).toHaveCount(2);
+    for (const shown of await page.locator("[data-day-shown]").all())
+      await expect(shown).toHaveAttribute("data-day-shown", date!);
+  });
+
+  test("a mouse over a card's hours draws a dotted line at that time on every card", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "dollymount", "keel"]);
+    await openFinder(page);
+    await rated(page);
+    const lines = page.locator("[data-day-hours] [data-hover-line]");
+    await expect(lines.first()).toBeHidden();
+    // The middle of a lit hour on the first card: that hour, exactly.
+    const column = hours(page)
+      .and(page.locator(":not([data-dark]):not([data-gone])"))
+      .nth(1);
+    const time = (await column.getAttribute("data-hour"))!;
+    const clock = (await column.getAttribute("title"))!;
+    const box = (await column.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    // A line on every card's row, at the middle of that hour's column.
+    for (let i = 0; i < 3; i++) {
+      const card = cards(page).nth(i);
+      const line = card.locator("[data-day-hours] [data-hover-line]");
+      await expect(line).toBeVisible();
+      const at = (await card.locator(`[data-hour="${time}"]`).boundingBox())!;
+      const l = (await line.boundingBox())!;
+      expect(Math.abs(l.x - (at.x + at.width / 2))).toBeLessThan(2);
+    }
+    // The time, beside the pointer, on the card it is over and no other.
+    const tags = page.locator("[data-day-hours] [data-hover-time]");
+    await expect(tags.and(page.locator(":visible"))).toHaveCount(1);
+    await expect(
+      cards(page).first().locator("[data-day-hours] [data-hover-time]"),
+    ).toHaveText(clock);
+    // Off the row, the lines go.
+    await page.mouse.move(box.x + box.width / 2, 2);
+    await expect(lines.and(page.locator(":visible"))).toHaveCount(0);
+    // A mouse over a day of the next ones: a line on that day on every card,
+    // and on no card's row of hours.
+    const band = cards(page).nth(1).locator("[data-days-band]");
+    const b = (await band.boundingBox())!;
+    await page.mouse.move(b.x + b.width * 0.3, b.y + 30);
+    const dayLines = page.locator("[data-days-band] [data-hover-line]");
+    for (let i = 0; i < 3; i++) await expect(dayLines.nth(i)).toBeVisible();
+    await expect(lines.and(page.locator(":visible"))).toHaveCount(0);
+    // The same time: as near the same place as each place's own light lets
+    // it be (Kerry's day is a quarter of an hour behind Dublin's).
+    const xs = await dayLines.evaluateAll((els) =>
+      els.map(
+        (el) =>
+          el.querySelector("line")!.getBoundingClientRect().x -
+          el.closest("svg")!.getBoundingClientRect().x,
+      ),
+    );
+    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThan(6);
+    await expect(
+      cards(page).nth(1).locator("[data-days-band] [data-hover-time]"),
+    ).toBeVisible();
+    await expect(
+      cards(page).nth(0).locator("[data-days-band] [data-hover-time]"),
+    ).toBeHidden();
+    await page.mouse.move(b.x + b.width * 0.3, b.y - 200);
+    await expect(dayLines.first()).toBeHidden();
+  });
+
+  test("first light stays in the row's view as it scrolls, not cut off by its edge", async ({
+    page,
+  }) => {
+    // Two cards a row, each too narrow for the whole day: the sample's
+    // morning, before its HARMONIE run, is ECMWF's three-hourly steps, which
+    // leaves a row that only just fits a card at 1440 pixels.
+    await page.setViewportSize({ width: 1240, height: 900 });
+    await star(page, ["brandon", "keel"]);
+    await openFinder(page);
+    await rated(page);
+    const card = cards(page).first();
+    const scroller = card.locator("[data-hours-scroll]");
+    for (const left of [0, 40, 90, 10000]) {
+      await scroller.evaluate((el, left) => (el.scrollLeft = left), left);
+      const view = (await scroller.boundingBox())!;
+      const first = (await card.locator("[data-first-light]").boundingBox())!;
+      const last = (await card.locator("[data-last-light]").boundingBox())!;
+      expect(first.x).toBeGreaterThanOrEqual(view.x);
+      expect(last.x + last.width).toBeLessThanOrEqual(view.x + view.width);
+      expect(first.x + first.width).toBeLessThan(last.x);
+    }
+  });
+
   test("the picture opens the chart there, at the hour picked; the card opens the spot's page", async ({
     page,
   }) => {
@@ -262,9 +480,7 @@ test.describe("on a desktop", () => {
     await rated(page);
     const keel = cards(page).filter({ hasText: "Keel Beach" });
     const pick = keel
-      .locator(
-        "[data-today-hours] [data-hour]:not([data-dark]):not([data-gone])",
-      )
+      .locator("[data-day-hours] [data-hour]:not([data-dark]):not([data-gone])")
       .nth(2);
     const clock = (await pick.getAttribute("title"))!;
     await pick.click();
@@ -409,13 +625,13 @@ test.describe("on a desktop", () => {
     await openFinder(page);
     const brandon = cards(page).filter({ hasText: "Brandon Bay" });
     const keel = cards(page).filter({ hasText: "Keel Beach" });
-    const facts = brandon.locator("[data-today-facts] [data-tide-time]");
+    const facts = brandon.locator("[data-day-facts] [data-tide-time]");
     // The two in the row's hours; the low water at 22:40 is after it.
     await expect(facts).toHaveCount(2, { timeout: 30000 });
     await expect(facts.nth(0)).toHaveText(/^10:10 low water$/);
     await expect(facts.nth(1)).toHaveText(/^16:25 high water$/);
     // Under the hour each falls in.
-    const high = brandon.locator('[data-today-hours] [data-tide="high"]');
+    const high = brandon.locator('[data-day-hours] [data-tide="high"]');
     await expect(high).toContainText("16:25");
     const column = brandon.locator(
       `[data-hour="${Date.parse(`${day}T15:00:00Z`)}"]`,
@@ -433,19 +649,20 @@ test.describe("on a desktop", () => {
       timeout: 30000,
     });
     await page.getByRole("button", { name: "Site menu" }).click();
-    const tools = page.getByRole("group", { name: "The chart" });
-    const row = tools.getByRole("link", { name: "Spot finder" });
+    const row = siteRow(page, "Spot finder");
     await expect(row).toHaveAttribute("href", "/spots");
     await page.evaluate(() => ((window as { stayed?: boolean }).stayed = true));
-    const layers = (await tools
+    // In the navigation, between the chart and Customise, over the chart's
+    // own tools.
+    const chart = (await siteRow(page, "Chart").boundingBox())!;
+    const customise = (await siteRow(page, "Customise").boundingBox())!;
+    const layers = (await chartTools(page)
       .getByRole("button", { name: "Layers" })
       .boundingBox())!;
-    const options = (await tools
-      .getByRole("button", { name: "Display options" })
-      .boundingBox())!;
     const box = (await row.boundingBox())!;
-    expect(box.y).toBeGreaterThan(layers.y);
-    expect(box.y).toBeLessThan(options.y);
+    expect(box.y).toBeGreaterThan(chart.y);
+    expect(box.y).toBeLessThan(customise.y);
+    expect(customise.y).toBeLessThan(layers.y);
     await row.click();
     await expect(page).toHaveURL(/\/spots$/);
     await expect(finder(page)).toBeVisible();
@@ -453,33 +670,143 @@ test.describe("on a desktop", () => {
     expect(
       await page.evaluate(() => (window as { stayed?: boolean }).stayed),
     ).toBe(true);
-    // The finder's menu: the chart, and the finder marked as the page.
+    // The finder's menu: the same navigation, the finder marked as the page,
+    // and nothing of the chart's own.
     await page.getByRole("button", { name: "Site menu" }).click();
-    const own = page.getByRole("group", { name: "The chart" });
-    await expect(
-      own.getByRole("link", { name: "Spot finder" }),
-    ).toHaveAttribute("aria-current", "page");
-    await own.getByRole("link", { name: "Chart" }).click();
+    await expect(siteRow(page, "Spot finder")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(chartTools(page)).toHaveCount(0);
+    await siteRow(page, "Chart").click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator(".spot-marker")).toHaveCount(149);
-    // The site's Wind map from the finder is the chart, not the finder again.
+    expect(
+      await page.evaluate(() => (window as { stayed?: boolean }).stayed),
+    ).toBe(true);
+    // Customise from the finder opens over it, with no page load.
     await page.goBack();
     await expect(finder(page)).toBeVisible();
     await page.getByRole("button", { name: "Site menu" }).click();
-    await page.getByRole("link", { name: "Wind map" }).click();
+    await siteRow(page, "Customise").click();
+    await expect(page.getByRole("dialog", { name: "Customise" })).toBeVisible();
+    await expect(page).toHaveURL(/\/spots$/);
+  });
+
+  test("the spot page's menu is the same navigation, the finder and Customise in it", async ({
+    page,
+  }) => {
+    await page.goto("/spot/brandon");
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await expect(siteNav(page).getByRole("link")).toHaveText(SITE_ROWS);
+    // Neither of the menu's pages is this one, and it has no tools of its own.
+    await expect(siteNav(page).locator('[aria-current="page"]')).toHaveCount(0);
+    await expect(
+      page.getByRole("dialog", { name: "Site menu" }).getByRole("group"),
+    ).toHaveCount(0);
+    await expect(siteRow(page, "Customise")).toHaveAttribute(
+      "href",
+      "/?customise",
+    );
+    const row = siteRow(page, "Spot finder");
+    await expect(row).toHaveAttribute("href", "/spots");
+    await row.click();
+    await expect(finder(page)).toBeVisible({ timeout: 30000 });
+  });
+
+  test("Customise from a spot's page is the chart with the wizard open", async ({
+    page,
+  }) => {
+    // Loaded alone: a page load to the chart, the word gone from the address.
+    await page.goto("/spot/brandon");
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await siteRow(page, "Customise").click();
+    await expect(page.getByRole("dialog", { name: "Customise" })).toBeVisible({
+      timeout: 30000,
+    });
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator(".map-head")).toBeVisible();
   });
 
-  test("the spot page's menu has the finder too", async ({ page }) => {
+  test("Customise from a spot's page over the finder is the finder with the wizard open", async ({
+    page,
+  }) => {
+    await star(page, ["brandon"]);
+    await openFinder(page);
+    await page.evaluate(() => ((window as { stayed?: boolean }).stayed = true));
+    // The spot's page, over the finder (src/PagesOverMap.tsx).
+    await cards(page).getByRole("link", { name: "Brandon Bay" }).click();
+    await expect(page).toHaveURL(/\/spot\/brandon$/);
+    await expect(page.locator(".map-under-page")).toHaveCount(1);
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await siteRow(page, "Customise").click();
+    await expect(page.locator(".map-under-page")).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "Customise" })).toBeVisible();
+    await expect(page).toHaveURL(/\/spots$/);
+    expect(
+      await page.evaluate(() => (window as { stayed?: boolean }).stayed),
+    ).toBe(true);
+  });
+
+  /*
+   * The bare root opens on whichever page the rider last had; a link that
+   * says Chart or Spot finder is that page, whatever was last open.
+   */
+  test("the menu's Chart is always the chart, and its Spot finder the finder, from a page loaded alone", async ({
+    page,
+  }) => {
+    // The finder last open, then a spot's page from a shared link.
+    await openFinder(page);
     await page.goto("/spot/brandon");
     await page.getByRole("button", { name: "Site menu" }).click();
-    const row = page
-      .getByRole("group", { name: "The chart" })
-      .getByRole("link", { name: "Spot finder" });
-    await expect(row).toHaveAttribute("href", "/spots");
-    await row.click();
+    await expect(siteRow(page, "Chart")).toHaveAttribute("href", "/?chart");
+    await siteRow(page, "Chart").click();
+    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(finder(page)).toHaveCount(0);
+    // The word has done its work and is gone from the address.
+    await expect(page).toHaveURL(/\/$/);
+
+    // The chart last open now: the spot's page's Spot finder is the finder.
+    await page.goto("/spot/brandon");
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await siteRow(page, "Spot finder").click();
     await expect(finder(page)).toBeVisible({ timeout: 30000 });
+    await expect(page).toHaveURL(/\/spots$/);
+
+    // The finder last open again: the AI page's way back, named Chart, is
+    // the chart too.
+    await page.goto("/ai");
+    await page.locator("[data-back-to-map]").click();
+    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(finder(page)).toHaveCount(0);
+    await expect(page).toHaveURL(/\/$/);
+
+    // And the bare root still opens on the page last open.
+    await page.goto("/spots");
+    await expect(finder(page)).toBeVisible({ timeout: 30000 });
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/spots$/);
+    await expect(finder(page)).toBeVisible();
+  });
+
+  test("the menu's Chart from a spot's page over the finder is the chart", async ({
+    page,
+  }) => {
+    await star(page, ["brandon"]);
+    await openFinder(page);
+    await page.evaluate(() => ((window as { stayed?: boolean }).stayed = true));
+    await cards(page).getByRole("link", { name: "Brandon Bay" }).click();
+    await expect(page.locator(".map-under-page")).toHaveCount(1);
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await siteRow(page, "Chart").click();
+    await expect(page.locator(".map-under-page")).toHaveCount(0);
+    await expect(page.locator(".map-head")).toBeVisible();
+    await expect(finder(page)).toHaveCount(0);
+    await expect(page).toHaveURL(/\/$/);
+    // No page load: the map was kept under the page.
+    expect(
+      await page.evaluate(() => (window as { stayed?: boolean }).stayed),
+    ).toBe(true);
   });
 
   test("the root opens on the page last open; a link that names one wins", async ({
@@ -569,6 +896,18 @@ test.describe("on a phone", () => {
     await expect(
       page.locator(`[data-hour="${time}"][aria-pressed="true"]`),
     ).toHaveCount(3);
+    // A finger has no hover: no line follows it.
+    await expect(
+      page.locator("[data-hover-line]").and(page.locator(":visible")),
+    ).toHaveCount(0);
+    // A day tapped is drawn hour by hour on every card.
+    const day = cards(page)
+      .first()
+      .locator("[data-next-days] [data-day]")
+      .nth(0);
+    const date = await day.getAttribute("data-day");
+    await day.tap();
+    await expect(page.locator(`[data-day-shown="${date}"]`)).toHaveCount(3);
     await expect(page).toHaveURL(/\/spots$/);
     // The next five days fit the card.
     const days = cards(page).first().locator("[data-days-band]");

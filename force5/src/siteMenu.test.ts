@@ -11,7 +11,7 @@ import * as glyphs from "../../shared/web/glyphSet";
 import {
   DRAG,
   SiteMenu,
-  SiteSections,
+  SiteNav,
   dragCloses,
   siteMenuStyles,
 } from "./SiteMenu";
@@ -94,7 +94,7 @@ describe("on the chart", () => {
         .split(" ")
         .sort();
     const cases = [
-      [{ current: "map", size: "md", ground: "map" }, "md", "raised"],
+      [{ current: "chart", size: "md", ground: "map" }, "md", "raised"],
       [{ current: "market", size: "sm", ground: "content" }, "sm", "raised"],
     ] as const;
     for (const [props, size, variant] of cases) {
@@ -163,9 +163,7 @@ describe("on the chart", () => {
       for (const name of ["font-body", "border-b", "border-line", "h-touch"])
         expect(row, `${slot} ${name}`).toContain(name);
     }
-    expect(SOURCE).toContain(
-      "<ChartGlyph glyph={SECTION_GLYPH[section.id]} />",
-    );
+    expect(SOURCE).toContain("<ChartGlyph glyph={ROW_GLYPH[id]} />");
     expect(SOURCE).toContain(
       "<span className={styles.glyph()}>{tool.glyph}</span>",
     );
@@ -184,7 +182,7 @@ describe("on the chart", () => {
     expect(SOURCE).toContain('<Wordmark size="sm" />');
   });
 
-  it("sets the section you are in in the italic, heavier, on the second sheet", () => {
+  it("sets the page you are on in the italic, heavier, on the second sheet", () => {
     const here = siteMenuStyles({ current: true }).row().split(" ");
     for (const name of ["italic", "font-bold", "bg-sunken"])
       expect(here).toContain(name);
@@ -208,7 +206,7 @@ describe("on the chart", () => {
 
 describe("the markup", () => {
   it("draws nothing of the drawer until it is opened", () => {
-    const markup = html({ current: "map" });
+    const markup = html({ current: "chart" });
     expect(markup).not.toContain("<dialog");
     expect(markup).not.toContain("<nav");
   });
@@ -225,38 +223,98 @@ describe("the markup", () => {
   });
 });
 
-describe("the sections", () => {
-  const rows = (props: Parameters<typeof SiteSections>[0]) =>
-    renderToStaticMarkup(createElement(SiteSections, props));
+describe("the navigation", () => {
+  const rows = (props: Parameters<typeof SiteNav>[0]) =>
+    renderToStaticMarkup(createElement(SiteNav, props));
+  const names = (markup: string) =>
+    (markup.match(/<a [^>]*>[\s\S]*?<\/a>/g) ?? []).map((link) =>
+      link.replace(/<[^>]+>/g, ""),
+    );
+  const both = { market: true, community: true };
 
-  it("gives every section its glyph, the chart's and the AI's among them", () => {
-    const markup = rows({
-      current: "map",
-      features: { market: true, community: true },
-    });
-    const links = markup.match(/<a [^>]*>[\s\S]*?<\/a>/g) ?? [];
-    expect(links.map((link) => link.replace(/<[^>]+>/g, ""))).toEqual([
-      "Wind map",
+  it("is the chart, the spot finder and Customise, then the sections, each with its glyph", () => {
+    const markup = rows({ current: "chart", features: both });
+    expect(names(markup)).toEqual([
+      "Chart",
+      "Spot finder",
+      "Customise",
       "Marketplace",
       "Community",
       "Use with AI",
     ]);
+    const links = markup.match(/<a [^>]*>[\s\S]*?<\/a>/g) ?? [];
     for (const link of links) expect(link).toMatch(/<svg[^>]*class="g-set"/);
-    // The two drawn for the menu: the folded chart, and the bubble.
-    for (const glyph of [glyphs.windMap, glyphs.useWithAi]) {
-      const sheet = glyph[0];
-      expect("d" in sheet && markup.includes(`d="${sheet.d}"`)).toBe(true);
+    // The chart's folded sheet, the finder's loupe, Customise's stops and
+    // the AI's bubble.
+    for (const glyph of [
+      glyphs.windMap,
+      glyphs.spotFinder,
+      glyphs.customise,
+      glyphs.useWithAi,
+    ]) {
+      const path = glyph.find((part) => "d" in part);
+      const drawn = !!path && "d" in path && markup.includes(`d="${path.d}"`);
+      expect(drawn).toBe(true);
     }
-    expect(markup).toContain('aria-current="page"');
+    // Two lists: the navigation, and a gap before the sections.
+    expect(markup.match(/<ul /g)).toHaveLength(2);
+    // The map is the chart: there is no "Wind map" beside it.
+    expect(markup).not.toContain("Wind map");
+    expect(markup.match(/href="\/\?chart"/g)).toHaveLength(1);
+  });
+
+  /*
+   * The owner's ruling of 2026-10-25: the menu is the same on every page.
+   * The chart's and the spot finder's, a spot's page's, the AI page's and the
+   * marketplace's: the same rows in the same order, the page marked.
+   */
+  it("is the same on every page, with only the page you are on marked", () => {
+    const pages = [
+      "chart",
+      "finder",
+      "ai",
+      "market",
+      "community",
+      null,
+    ] as const;
+    const drawn = pages.map((current) => rows({ current, features: both }));
+    for (const markup of drawn) expect(names(markup)).toEqual(names(drawn[0]));
+    const marked = (markup: string) =>
+      [
+        ...markup.matchAll(/<a [^>]*aria-current="page"[^>]*>([\s\S]*?)<\/a>/g),
+      ].map((m) => m[1].replace(/<[^>]+>/g, ""));
+    expect(drawn.map(marked)).toEqual([
+      ["Chart"],
+      ["Spot finder"],
+      ["Use with AI"],
+      ["Marketplace"],
+      ["Community"],
+      [],
+    ]);
+  });
+
+  it("links each row where a page load takes it: the chart always the chart, Customise the chart with the wizard", () => {
+    const markup = rows({ current: null, features: both });
+    // Never the bare root, which opens on the page the rider last had.
+    expect(markup).not.toContain('href="/"');
+    for (const href of [
+      "/?chart",
+      "/spots",
+      "/?customise",
+      "/market",
+      "/community",
+      "/ai",
+    ])
+      expect(markup).toContain(`href="${href}"`);
   });
 
   it("draws nothing at all of the marketplace or the community when they are off", () => {
     const markup = rows({
-      current: "map",
+      current: "chart",
       features: { market: false, community: false },
     });
     expect(markup).not.toMatch(/Marketplace|Community|\/market|\/community/);
-    expect(markup.match(/<li>/g)).toHaveLength(2);
+    expect(markup.match(/<li>/g)).toHaveLength(4);
   });
 
   it("leaves them out as production builds it, with no feature switched on", () => {
@@ -271,6 +329,19 @@ describe("the sections", () => {
       "deploy/local/Dockerfile.web",
     ])
       expect(read(path), path).not.toMatch(/VITE_FEATURE_(MARKET|COMMUNITY)/);
+  });
+
+  it("sets the page's own tools apart under it, headed for the page", () => {
+    const nav = SOURCE.indexOf("<SiteNav");
+    const tools = SOURCE.indexOf("{toolItems.length > 0 && (");
+    expect(nav).toBeGreaterThan(0);
+    expect(tools).toBeGreaterThan(nav);
+    expect(SOURCE).toMatch(
+      /<h2 id=\{`\$\{drawerId\}-page`\} className=\{styles\.pageTitle\(\)\}>/,
+    );
+    const title = siteMenuStyles().pageTitle().split(" ");
+    for (const name of ["font-mono", "uppercase", "border-b", "border-ink"])
+      expect(title).toContain(name);
   });
 });
 

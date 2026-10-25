@@ -1,0 +1,1848 @@
+{
+ "title": "Recommended wing size from steady wind and rider weight",
+ "date": "2026-10-25",
+ "units": {
+  "wind": "knots (mean/steady wind, not gusts)",
+  "size": "m²",
+  "weight": "kg"
+ },
+ "model": {
+  "formula": "size_m2 = c * (weightKg / 75)^a / windKn^k, then rounded to the nearest common size step",
+  "constants": {
+   "c": 64.0,
+   "k": 0.9,
+   "a": 0.46,
+   "reference_kg": 75
+  },
+  "constants_unrounded": {
+   "c": 64.13,
+   "k": 0.901,
+   "a": 0.464
+  },
+  "fitted_to": "Mid-points (min+max)/2 of 141 published size/wind rows from 21 wing models across 9 brands, plus 8 points from published brand weight rules (Sroka, North). Open-ended ranges (e.g. \"35+\") excluded. Rows with no stated reference weight treated as 75 kg; Ozone as 80 kg; Gong bands as 60 / 75 / 92 kg.",
+  "why_midpoint": "Ozone is the only brand that marks a \"sweet spot\" inside its range; its sweet-spot centres sit within 0.1 kn of the range mid-points, so the mid-point is taken as the wind each size is designed for.",
+  "fit_quality": {
+   "mean_abs_err_m2": 0.31,
+   "rmse_m2": 0.44,
+   "share_within_half_m2": 0.75,
+   "share_within_1m2": 0.97,
+   "after_rounding_mean_abs_err_m2": 0.25,
+   "by_brand": {
+    "Gong": {
+     "points": 53,
+     "bias_m2": 0.14,
+     "mean_abs_err_m2": 0.25
+    },
+    "F-One": {
+     "points": 18,
+     "bias_m2": -0.5,
+     "mean_abs_err_m2": 0.5
+    },
+    "Duotone": {
+     "points": 20,
+     "bias_m2": 0.05,
+     "mean_abs_err_m2": 0.14
+    },
+    "Cabrinha": {
+     "points": 9,
+     "bias_m2": 0.07,
+     "mean_abs_err_m2": 0.3
+    },
+    "Armstrong": {
+     "points": 12,
+     "bias_m2": -0.02,
+     "mean_abs_err_m2": 0.63
+    },
+    "Slingshot": {
+     "points": 10,
+     "bias_m2": -0.21,
+     "mean_abs_err_m2": 0.32
+    },
+    "Sroka": {
+     "points": 7,
+     "bias_m2": -0.1,
+     "mean_abs_err_m2": 0.14
+    },
+    "North": {
+     "points": 6,
+     "bias_m2": -0.21,
+     "mean_abs_err_m2": 0.21
+    },
+    "Ozone": {
+     "points": 6,
+     "bias_m2": 0.54,
+     "mean_abs_err_m2": 0.54
+    }
+   },
+   "note": "bias = model minus brand at the brand's own range mid-point. Negative = that brand puts a bigger wing at that wind than the model (F-One, Armstrong and Slingshot rate their 3-4.5 m² sizes 3-5 kn windier than Duotone, Cabrinha and Sroka). Positive = brand suggests smaller (Ozone Wasp V3). Biggest single miss: Armstrong XPS Lightwind 8 m², rated 4-11 kn."
+  },
+  "weight_exponent_note": "a=0.46 comes mainly from Gong (the only brand with per-weight wind charts; a=0.38-0.50 depending on the kg assumed for its S and XL bands). Sroka and North Light Wind rules alone give about 0.55-0.7, and pure physics (constant lift per kg) would give 1.0. Heavier riders also ride bigger foils, which is why the published exponent is well under 1.",
+  "wind_exponent_note": "k=0.90, far from the 2 that lift-proportional-to-wind-squared would suggest: brands rate small wings for very wide ranges (riders tolerate being overpowered) and large wings for narrow light-wind ranges, so the mid-points fall slower than 1/V².",
+  "rounding": {
+   "steps_m2": [
+    2.0,
+    2.5,
+    3.0,
+    3.5,
+    4.0,
+    4.5,
+    5.0,
+    5.5,
+    6.0,
+    6.5,
+    7.0,
+    8.0
+   ],
+   "rule": "nearest step; ties go to the bigger wing",
+   "too_light": "raw size above 8.5 m² -> null (too light: no sensible wing; the biggest common wing is 8 m²)",
+   "too_strong": "raw size below 1.75 m², or steady wind above 40 kn -> null. The model never drops below 2 m² before about 49 kn, so the 40 kn cap does the work: it is where every brand's 2 m² range ends (Armstrong 42, Cabrinha/Duotone 45, Slingshot 50)."
+  },
+  "limits_by_weight": {
+   "60": {
+    "too_light_below_kn": 8.5,
+    "too_strong_from_kn": 40
+   },
+   "70": {
+    "too_light_below_kn": 9.5,
+    "too_strong_from_kn": 40
+   },
+   "80": {
+    "too_light_below_kn": 10.0,
+    "too_strong_from_kn": 40
+   },
+   "90": {
+    "too_light_below_kn": 10.5,
+    "too_strong_from_kn": 40
+   },
+   "100": {
+    "too_light_below_kn": 11.0,
+    "too_strong_from_kn": 40
+   },
+   "110": {
+    "too_light_below_kn": 11.5,
+    "too_strong_from_kn": 40
+   }
+  },
+  "caveats": [
+   "Brand charts assume an intermediate rider on a mid-sized foil. Gong: an 85 kg beginner needs 15-20 kn on a 5 m² to start, an experienced rider about 15 kn, an athletic pumper 12 kn.",
+   "Use the steady (mean) wind. In gusty conditions riders size for the lulls if light, the gusts if strong.",
+   "Model is fitted to all-round/freeride wings. Light-wind specialist wings (F-One Strike CWC, Armstrong XPS Lightwind, North Nova Light Wind) go 1-3 kn lower for the same size."
+  ]
+ },
+ "sizes_riders_buy": {
+  "steps_m2": [
+   2.0,
+   2.5,
+   3.0,
+   3.5,
+   4.0,
+   4.5,
+   5.0,
+   5.5,
+   6.0,
+   6.5,
+   7.0,
+   8.0
+  ],
+  "note": "Every brand with a chart sells 2.0-6.0 m² in 0.5 steps; most add 6.5; 7 and 8 m² are light-wind wings (F-One CWC to 9 m², Armstrong Lightwind 7/8, North Nova Light Wind 6/7/8). Gong advises at most 2 m² (ideally 1 m²) between wings in a quiver."
+ },
+ "lookup_table": {
+  "description": "Recommended size (m²) by rider weight (kg) and steady wind (kn); null = no sensible wing (too light).",
+  "table": {
+   "60": {
+    "10": 7.0,
+    "11": 6.5,
+    "12": 6.0,
+    "13": 5.5,
+    "14": 5.5,
+    "15": 5.0,
+    "16": 5.0,
+    "17": 4.5,
+    "18": 4.5,
+    "19": 4.0,
+    "20": 4.0,
+    "21": 3.5,
+    "22": 3.5,
+    "23": 3.5,
+    "24": 3.5,
+    "25": 3.0,
+    "26": 3.0,
+    "27": 3.0,
+    "28": 3.0,
+    "29": 3.0,
+    "30": 2.5,
+    "31": 2.5,
+    "32": 2.5,
+    "33": 2.5,
+    "34": 2.5,
+    "35": 2.5
+   },
+   "70": {
+    "10": 8.0,
+    "11": 7.0,
+    "12": 6.5,
+    "13": 6.0,
+    "14": 6.0,
+    "15": 5.5,
+    "16": 5.0,
+    "17": 5.0,
+    "18": 4.5,
+    "19": 4.5,
+    "20": 4.0,
+    "21": 4.0,
+    "22": 4.0,
+    "23": 3.5,
+    "24": 3.5,
+    "25": 3.5,
+    "26": 3.5,
+    "27": 3.0,
+    "28": 3.0,
+    "29": 3.0,
+    "30": 3.0,
+    "31": 3.0,
+    "32": 2.5,
+    "33": 2.5,
+    "34": 2.5,
+    "35": 2.5
+   },
+   "80": {
+    "10": 8.0,
+    "11": 8.0,
+    "12": 7.0,
+    "13": 6.5,
+    "14": 6.0,
+    "15": 6.0,
+    "16": 5.5,
+    "17": 5.0,
+    "18": 5.0,
+    "19": 4.5,
+    "20": 4.5,
+    "21": 4.5,
+    "22": 4.0,
+    "23": 4.0,
+    "24": 4.0,
+    "25": 3.5,
+    "26": 3.5,
+    "27": 3.5,
+    "28": 3.5,
+    "29": 3.0,
+    "30": 3.0,
+    "31": 3.0,
+    "32": 3.0,
+    "33": 3.0,
+    "34": 3.0,
+    "35": 2.5
+   },
+   "90": {
+    "10": null,
+    "11": 8.0,
+    "12": 7.0,
+    "13": 7.0,
+    "14": 6.5,
+    "15": 6.0,
+    "16": 5.5,
+    "17": 5.5,
+    "18": 5.0,
+    "19": 5.0,
+    "20": 4.5,
+    "21": 4.5,
+    "22": 4.5,
+    "23": 4.0,
+    "24": 4.0,
+    "25": 4.0,
+    "26": 3.5,
+    "27": 3.5,
+    "28": 3.5,
+    "29": 3.5,
+    "30": 3.5,
+    "31": 3.0,
+    "32": 3.0,
+    "33": 3.0,
+    "34": 3.0,
+    "35": 3.0
+   },
+   "100": {
+    "10": null,
+    "11": 8.0,
+    "12": 8.0,
+    "13": 7.0,
+    "14": 7.0,
+    "15": 6.5,
+    "16": 6.0,
+    "17": 5.5,
+    "18": 5.5,
+    "19": 5.0,
+    "20": 5.0,
+    "21": 4.5,
+    "22": 4.5,
+    "23": 4.5,
+    "24": 4.0,
+    "25": 4.0,
+    "26": 4.0,
+    "27": 4.0,
+    "28": 3.5,
+    "29": 3.5,
+    "30": 3.5,
+    "31": 3.5,
+    "32": 3.0,
+    "33": 3.0,
+    "34": 3.0,
+    "35": 3.0
+   },
+   "110": {
+    "10": null,
+    "11": null,
+    "12": 8.0,
+    "13": 8.0,
+    "14": 7.0,
+    "15": 6.5,
+    "16": 6.5,
+    "17": 6.0,
+    "18": 5.5,
+    "19": 5.5,
+    "20": 5.0,
+    "21": 5.0,
+    "22": 4.5,
+    "23": 4.5,
+    "24": 4.5,
+    "25": 4.0,
+    "26": 4.0,
+    "27": 4.0,
+    "28": 4.0,
+    "29": 3.5,
+    "30": 3.5,
+    "31": 3.5,
+    "32": 3.5,
+    "33": 3.5,
+    "34": 3.0,
+    "35": 3.0
+   }
+  }
+ },
+ "lookup_table_raw": {
+  "description": "Unrounded model output (m²).",
+  "table": {
+   "60": {
+    "10": 7.27,
+    "11": 6.67,
+    "12": 6.17,
+    "13": 5.74,
+    "14": 5.37,
+    "15": 5.05,
+    "16": 4.76,
+    "17": 4.51,
+    "18": 4.28,
+    "19": 4.08,
+    "20": 3.9,
+    "21": 3.73,
+    "22": 3.58,
+    "23": 3.44,
+    "24": 3.31,
+    "25": 3.19,
+    "26": 3.08,
+    "27": 2.97,
+    "28": 2.88,
+    "29": 2.79,
+    "30": 2.71,
+    "31": 2.63,
+    "32": 2.55,
+    "33": 2.48,
+    "34": 2.42,
+    "35": 2.35
+   },
+   "70": {
+    "10": 7.81,
+    "11": 7.16,
+    "12": 6.62,
+    "13": 6.16,
+    "14": 5.77,
+    "15": 5.42,
+    "16": 5.11,
+    "17": 4.84,
+    "18": 4.6,
+    "19": 4.38,
+    "20": 4.18,
+    "21": 4.0,
+    "22": 3.84,
+    "23": 3.69,
+    "24": 3.55,
+    "25": 3.42,
+    "26": 3.3,
+    "27": 3.19,
+    "28": 3.09,
+    "29": 2.99,
+    "30": 2.9,
+    "31": 2.82,
+    "32": 2.74,
+    "33": 2.67,
+    "34": 2.59,
+    "35": 2.53
+   },
+   "80": {
+    "10": 8.3,
+    "11": 7.62,
+    "12": 7.04,
+    "13": 6.55,
+    "14": 6.13,
+    "15": 5.76,
+    "16": 5.44,
+    "17": 5.15,
+    "18": 4.89,
+    "19": 4.66,
+    "20": 4.45,
+    "21": 4.26,
+    "22": 4.08,
+    "23": 3.92,
+    "24": 3.77,
+    "25": 3.64,
+    "26": 3.51,
+    "27": 3.4,
+    "28": 3.29,
+    "29": 3.18,
+    "30": 3.09,
+    "31": 3.0,
+    "32": 2.91,
+    "33": 2.83,
+    "34": 2.76,
+    "35": 2.69
+   },
+   "90": {
+    "10": 8.76,
+    "11": 8.04,
+    "12": 7.44,
+    "13": 6.92,
+    "14": 6.47,
+    "15": 6.08,
+    "16": 5.74,
+    "17": 5.43,
+    "18": 5.16,
+    "19": 4.92,
+    "20": 4.7,
+    "21": 4.49,
+    "22": 4.31,
+    "23": 4.14,
+    "24": 3.98,
+    "25": 3.84,
+    "26": 3.71,
+    "27": 3.58,
+    "28": 3.47,
+    "29": 3.36,
+    "30": 3.26,
+    "31": 3.17,
+    "32": 3.08,
+    "33": 2.99,
+    "34": 2.91,
+    "35": 2.84
+   },
+   "100": {
+    "10": 9.2,
+    "11": 8.44,
+    "12": 7.81,
+    "13": 7.26,
+    "14": 6.79,
+    "15": 6.39,
+    "16": 6.02,
+    "17": 5.7,
+    "18": 5.42,
+    "19": 5.16,
+    "20": 4.93,
+    "21": 4.72,
+    "22": 4.52,
+    "23": 4.35,
+    "24": 4.18,
+    "25": 4.03,
+    "26": 3.89,
+    "27": 3.76,
+    "28": 3.64,
+    "29": 3.53,
+    "30": 3.42,
+    "31": 3.32,
+    "32": 3.23,
+    "33": 3.14,
+    "34": 3.06,
+    "35": 2.98
+   },
+   "110": {
+    "10": 9.61,
+    "11": 8.82,
+    "12": 8.16,
+    "13": 7.59,
+    "14": 7.1,
+    "15": 6.67,
+    "16": 6.29,
+    "17": 5.96,
+    "18": 5.66,
+    "19": 5.39,
+    "20": 5.15,
+    "21": 4.93,
+    "22": 4.73,
+    "23": 4.54,
+    "24": 4.37,
+    "25": 4.21,
+    "26": 4.07,
+    "27": 3.93,
+    "28": 3.8,
+    "29": 3.69,
+    "30": 3.58,
+    "31": 3.47,
+    "32": 3.37,
+    "33": 3.28,
+    "34": 3.19,
+    "35": 3.11
+   }
+  }
+ },
+ "brand_spread_75kg": {
+  "description": "Size each brand implies for a 75 kg rider at a given wind (log-interpolated between its range mid-points; Gong M/L band; Ozone scaled from 80 kg).",
+  "by_wind_kn": {
+   "12": {
+    "model_75kg": 6.84,
+    "brand_min": 6.0,
+    "brand_max": 7.36,
+    "brands": {
+     "Gong Droid": 6.0,
+     "F-One Strike CWC": 7.36,
+     "Duotone Slick": 6.66,
+     "North Nova 2026": 7.0
+    }
+   },
+   "15": {
+    "model_75kg": 5.59,
+    "brand_min": 5.15,
+    "brand_max": 6.16,
+    "brands": {
+     "Gong Plus": 6.0,
+     "Gong Droid": 5.15,
+     "Gong Neutra": 5.32,
+     "F-One Strike V6": 6.0,
+     "F-One Swing V5": 6.0,
+     "Duotone Unit 2025/2026": 5.66,
+     "Duotone Slick": 5.66,
+     "Cabrinha Mantis 2027": 5.73,
+     "Armstrong A-Wing XPS Mk II": 6.16,
+     "Slingshot SlingWing V6": 6.09,
+     "Sroka Wing V4": 5.67,
+     "North Nova 2026": 5.85,
+     "Ozone Wasp V3": 5.2
+    }
+   },
+   "18": {
+    "model_75kg": 4.75,
+    "brand_min": 4.46,
+    "brand_max": 5.32,
+    "brands": {
+     "Gong Plus": 4.79,
+     "Gong Droid": 4.65,
+     "Gong Neutra": 4.82,
+     "F-One Strike V6": 5.29,
+     "F-One Swing V5": 5.29,
+     "Duotone Unit 2025/2026": 4.89,
+     "Duotone Slick": 4.89,
+     "Cabrinha Mantis 2027": 5.12,
+     "Armstrong A-Wing XPS Mk II": 5.32,
+     "Slingshot SlingWing V6": 5.24,
+     "Sroka Wing V4": 4.89,
+     "North Nova 2026": 5.02,
+     "Ozone Wasp V3": 4.46
+    }
+   },
+   "20": {
+    "model_75kg": 4.32,
+    "brand_min": 4.01,
+    "brand_max": 5.0,
+    "brands": {
+     "Gong Plus": 4.43,
+     "Gong Droid": 4.32,
+     "Gong Neutra": 4.5,
+     "F-One Strike V6": 4.92,
+     "F-One Swing V5": 4.92,
+     "Duotone Unit 2025/2026": 4.5,
+     "Duotone Slick": 4.5,
+     "Cabrinha Mantis 2027": 4.5,
+     "Armstrong A-Wing XPS Mk II": 5.0,
+     "Slingshot SlingWing V6": 4.74,
+     "Sroka Wing V4": 4.5,
+     "North Nova 2026": 4.58,
+     "Ozone Wasp V3": 4.01
+    }
+   },
+   "22": {
+    "model_75kg": 3.96,
+    "brand_min": 3.62,
+    "brand_max": 4.65,
+    "brands": {
+     "Gong Plus": 4.13,
+     "Gong Droid": 4.0,
+     "Gong Neutra": 4.15,
+     "F-One Strike V6": 4.63,
+     "F-One Swing V5": 4.63,
+     "Duotone Unit 2025/2026": 4.0,
+     "Duotone Slick": 4.0,
+     "Cabrinha Mantis 2027": 4.09,
+     "Armstrong A-Wing XPS Mk II": 4.65,
+     "Slingshot SlingWing V6": 4.29,
+     "Sroka Wing V4": 4.0,
+     "North Nova 2026": 4.2,
+     "Ozone Wasp V3": 3.62
+    }
+   },
+   "25": {
+    "model_75kg": 3.53,
+    "brand_min": 2.77,
+    "brand_max": 4.23,
+    "brands": {
+     "Gong Droid": 3.5,
+     "Gong Neutra": 3.65,
+     "F-One Strike V6": 4.23,
+     "F-One Swing V5": 4.15,
+     "Duotone Unit 2025/2026": 3.42,
+     "Duotone Slick": 3.56,
+     "Cabrinha Mantis 2027": 3.5,
+     "Armstrong A-Wing XPS Mk II": 4.15,
+     "Slingshot SlingWing V6": 3.8,
+     "Sroka Wing V4": 3.47,
+     "North Nova 2026": 3.65,
+     "Ozone Wasp V3": 2.77
+    }
+   },
+   "28": {
+    "model_75kg": 3.19,
+    "brand_min": 2.77,
+    "brand_max": 3.82,
+    "brands": {
+     "Gong Droid": 3.18,
+     "Gong Neutra": 3.28,
+     "F-One Strike V6": 3.82,
+     "F-One Swing V5": 3.65,
+     "Duotone Unit 2025/2026": 3.0,
+     "Duotone Slick": 3.2,
+     "Cabrinha Mantis 2027": 2.77,
+     "Armstrong A-Wing XPS Mk II": 3.5,
+     "Slingshot SlingWing V6": 3.42,
+     "Sroka Wing V4": 3.12
+    }
+   },
+   "30": {
+    "model_75kg": 3.0,
+    "brand_min": 2.5,
+    "brand_max": 3.5,
+    "brands": {
+     "Gong Droid": 3.0,
+     "Gong Neutra": 3.09,
+     "F-One Strike V6": 3.5,
+     "F-One Swing V5": 3.29,
+     "Duotone Unit 2025/2026": 2.7,
+     "Duotone Slick": 3.0,
+     "Cabrinha Mantis 2027": 2.5,
+     "Armstrong A-Wing XPS Mk II": 3.0,
+     "Slingshot SlingWing V6": 3.13,
+     "Sroka Wing V4": 2.93
+    }
+   }
+  }
+ },
+ "brand_data": [
+  {
+   "brand": "Gong",
+   "model": "Plus (Perf Series 2026), rider S under 65 kg",
+   "reference_rider_kg": 60,
+   "reference_note": "Gong band S: under 65 kg; 60 kg used as band centre for fitting",
+   "source_url": "https://www.gong-galaxy.com/en/products/gong-wing-plus-26",
+   "chart_image_url": "https://cdn.gong-galaxy.com/products/25-SIZE_CHART-2410-WING_2026-PERF_SERIES-PLUS-GONGWING.webp",
+   "read": "direct (size-chart image on the product page)",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 15,
+     "wind_max_kn": 25
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 10,
+     "wind_max_kn": 20
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 8,
+     "wind_max_kn": 18
+    }
+   ]
+  },
+  {
+   "brand": "Gong",
+   "model": "Plus (Perf Series 2026), rider M/L 65-85 kg",
+   "reference_rider_kg": 75,
+   "reference_note": "Gong band M/L: 65-85 kg; 75 kg used as band centre for fitting",
+   "source_url": "https://www.gong-galaxy.com/en/products/gong-wing-plus-26",
+   "chart_image_url": "https://cdn.gong-galaxy.com/products/25-SIZE_CHART-2410-WING_2026-PERF_SERIES-PLUS-GONGWING.webp",
+   "read": "direct (size-chart image on the product page)",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 18,
+     "wind_max_kn": 28
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 12,
+     "wind_max_kn": 22
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 10,
+     "wind_max_kn": 20
+    }
+   ]
+  },
+  {
+   "brand": "Gong",
+   "model": "Plus (Perf Series 2026), rider XL over 85 kg",
+   "reference_rider_kg": 92,
+   "reference_note": "Gong band XL: over 85 kg; 92 kg used as band centre for fitting",
+   "source_url": "https://www.gong-galaxy.com/en/products/gong-wing-plus-26",
+   "chart_image_url": "https://cdn.gong-galaxy.com/products/25-SIZE_CHART-2410-WING_2026-PERF_SERIES-PLUS-GONGWING.webp",
+   "read": "direct (size-chart image on the product page)",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 20,
+     "wind_max_kn": 30
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 14,
+     "wind_max_kn": 24
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 12,
+     "wind_max_kn": 22
+    }
+   ]
+  },
+  {
+   "brand": "Gong",
+   "model": "Droid (Perf Series 2026), rider S under 65 kg",
+   "reference_rider_kg": 60,
+   "reference_note": "Gong band S: under 65 kg; 60 kg used as band centre for fitting",
+   "source_url": "https://www.gong-galaxy.com/en/products/gong-wing-droid-26nhnb",
+   "chart_image_url": "https://cdn.gong-galaxy.com/products/25-SIZE_CHART-2410-WING_2026-PERF_SERIES-DROID-GONGWING.webp",
+   "read": "direct (size-chart image on the product page)",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 19,
+     "wind_max_kn": 29
+    },
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 16,
+     "wind_max_kn": 26
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 14,
+     "wind_max_kn": 24
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 12,
+     "wind_max_kn": 22
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 9,
+     "wind_max_kn": 19
+    },
+    {
+     "size_m2": 5.5,
+     "wind_min_kn": 7,
+     "wind_max_kn": 17
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 7,
+     "wind_max_kn": 16
+    },
+    {
+     "size_m2": 6.5,
+     "wind_min_kn": 7,
+     "wind_max_kn": 15
+    }
+   ]
+  },
+  {
+   "brand": "Gong",
+   "model": "Droid (Perf Series 2026), rider M/L 65-85 kg",
+   "reference_rider_kg": 75,
+   "reference_note": "Gong band M/L: 65-85 kg; 75 kg used as band centre for fitting",
+   "source_url": "https://www.gong-galaxy.com/en/products/gong-wing-droid-26nhnb",
+   "chart_image_url": "https://cdn.gong-galaxy.com/products/25-SIZE_CHART-2410-WING_2026-PERF_SERIES-DROID-GONGWING.webp",
+   "read": "direct (size-chart image on the product page)",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 25,
+     "wind_max_kn": 35
+    },
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 20,
+     "wind_max_kn": 30
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 17,
+     "wind_max_kn": 27
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 14,
+     "wind_max_kn": 24
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 11,
+     "wind_max_kn": 21
+    },
+    {
+     "size_m2": 5.5,
+     "wind_min_kn": 8,
+     "wind_max_kn": 18
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 7,
+     "wind_max_kn": 17
+    },
+    {
+     "size_m2": 6.5,
+     "wind_min_kn": 7,
+     "wind_max_kn": 16
+    }
+   ]
+  },
+  {
+   "brand": "Gong",
+   "model": "Droid (Perf Series 2026), rider XL over 85 kg",
+   "reference_rider_kg": 92,
+   "reference_note": "Gong band XL: over 85 kg; 92 kg used as band centre for fitting",
+   "source_url": "https://www.gong-galaxy.com/en/products/gong-wing-droid-26nhnb",
+   "chart_image_url": "https://cdn.gong-galaxy.com/products/25-SIZE_CHART-2410-WING_2026-PERF_SERIES-DROID-GONGWING.webp",
+   "read": "direct (size-chart image on the product page)",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 27,
+     "wind_max_kn": 37
+    },
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 24,
+     "wind_max_kn": 34
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 19,
+     "wind_max_kn": 29
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 16,
+     "wind_max_kn": 26
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 13,
+     "wind_max_kn": 23
+    },
+    {
+     "size_m2": 5.5,
+     "wind_min_kn": 9,
+     "wind_max_kn": 19
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 8,
+     "wind_max_kn": 18
+    },
+    {
+     "size_m2": 6.5,
+     "wind_min_kn": 7,
+     "wind_max_kn": 17
+    }
+   ]
+  },
+  {
+   "brand": "Gong",
+   "model": "Neutra (Perf Series 2026), rider S under 65 kg",
+   "reference_rider_kg": 60,
+   "reference_note": "Gong band S: under 65 kg; 60 kg used as band centre for fitting",
+   "source_url": "https://www.gong-galaxy.com/en/products/gong-wing-neutra-26nhnb",
+   "chart_image_url": "https://cdn.gong-galaxy.com/products/25-SIZE_CHART-2410-WING_2026-PERF_SERIES-NEUTRA-GONGWING.webp",
+   "read": "direct (size-chart image on the product page)",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 2.0,
+     "wind_min_kn": 30,
+     "wind_max_kn": null
+    },
+    {
+     "size_m2": 2.5,
+     "wind_min_kn": 25,
+     "wind_max_kn": 35
+    },
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 20,
+     "wind_max_kn": 30
+    },
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 17,
+     "wind_max_kn": 27
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 15,
+     "wind_max_kn": 25
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 13,
+     "wind_max_kn": 23
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 10,
+     "wind_max_kn": 20
+    },
+    {
+     "size_m2": 5.5,
+     "wind_min_kn": 8,
+     "wind_max_kn": 18
+    }
+   ]
+  },
+  {
+   "brand": "Gong",
+   "model": "Neutra (Perf Series 2026), rider M/L 65-85 kg",
+   "reference_rider_kg": 75,
+   "reference_note": "Gong band M/L: 65-85 kg; 75 kg used as band centre for fitting",
+   "source_url": "https://www.gong-galaxy.com/en/products/gong-wing-neutra-26nhnb",
+   "chart_image_url": "https://cdn.gong-galaxy.com/products/25-SIZE_CHART-2410-WING_2026-PERF_SERIES-NEUTRA-GONGWING.webp",
+   "read": "direct (size-chart image on the product page)",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 2.0,
+     "wind_min_kn": 35,
+     "wind_max_kn": null
+    },
+    {
+     "size_m2": 2.5,
+     "wind_min_kn": 30,
+     "wind_max_kn": 40
+    },
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 26,
+     "wind_max_kn": 36
+    },
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 21,
+     "wind_max_kn": 31
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 18,
+     "wind_max_kn": 28
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 15,
+     "wind_max_kn": 25
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 12,
+     "wind_max_kn": 22
+    },
+    {
+     "size_m2": 5.5,
+     "wind_min_kn": 9,
+     "wind_max_kn": 19
+    }
+   ]
+  },
+  {
+   "brand": "Gong",
+   "model": "Neutra (Perf Series 2026), rider XL over 85 kg",
+   "reference_rider_kg": 92,
+   "reference_note": "Gong band XL: over 85 kg; 92 kg used as band centre for fitting",
+   "source_url": "https://www.gong-galaxy.com/en/products/gong-wing-neutra-26nhnb",
+   "chart_image_url": "https://cdn.gong-galaxy.com/products/25-SIZE_CHART-2410-WING_2026-PERF_SERIES-NEUTRA-GONGWING.webp",
+   "read": "direct (size-chart image on the product page)",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 2.0,
+     "wind_min_kn": 35,
+     "wind_max_kn": null
+    },
+    {
+     "size_m2": 2.5,
+     "wind_min_kn": 30,
+     "wind_max_kn": null
+    },
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 28,
+     "wind_max_kn": 38
+    },
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 25,
+     "wind_max_kn": 35
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 20,
+     "wind_max_kn": 30
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 17,
+     "wind_max_kn": 27
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 14,
+     "wind_max_kn": 24
+    },
+    {
+     "size_m2": 5.5,
+     "wind_min_kn": 10,
+     "wind_max_kn": 20
+    }
+   ]
+  },
+  {
+   "brand": "F-One",
+   "model": "Strike V6",
+   "reference_rider_kg": 75,
+   "reference_note": "Not printed in the page table; a search excerpt of the F-One Strike CWC page says the ranges are guidelines for a 75 kg rider",
+   "source_url": "https://www.f-one.world/en/WING/wings/strike-6.html",
+   "read": "direct",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 2.0,
+     "wind_min_kn": 35,
+     "wind_max_kn": null
+    },
+    {
+     "size_m2": 2.5,
+     "wind_min_kn": 30,
+     "wind_max_kn": null
+    },
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 28,
+     "wind_max_kn": 38
+    },
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 25,
+     "wind_max_kn": 35
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 22,
+     "wind_max_kn": 32
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 18,
+     "wind_max_kn": 28
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 14,
+     "wind_max_kn": 25
+    },
+    {
+     "size_m2": 5.5,
+     "wind_min_kn": 12,
+     "wind_max_kn": 22
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 10,
+     "wind_max_kn": 20
+    }
+   ]
+  },
+  {
+   "brand": "F-One",
+   "model": "Strike CWC (light wind)",
+   "reference_rider_kg": 75,
+   "reference_note": "75 kg from a search excerpt, not seen on the fetched page",
+   "source_url": "https://www.f-one.world/en/WING/wings/strike-6-cwc.html",
+   "read": "direct",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 9,
+     "wind_max_kn": 20
+    },
+    {
+     "size_m2": 7.0,
+     "wind_min_kn": 8,
+     "wind_max_kn": 18
+    },
+    {
+     "size_m2": 8.0,
+     "wind_min_kn": 6,
+     "wind_max_kn": 15
+    },
+    {
+     "size_m2": 9.0,
+     "wind_min_kn": 6,
+     "wind_max_kn": 14
+    }
+   ]
+  },
+  {
+   "brand": "F-One",
+   "model": "Swing V5 (Origin V2 publishes the identical table; Strike QuadX is within 1 kn of Strike V6)",
+   "reference_rider_kg": 75,
+   "reference_note": "as Strike",
+   "source_url": "https://www.f-one.world/en/WING/wings/swing-v5.html",
+   "read": "direct",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 2.0,
+     "wind_min_kn": 35,
+     "wind_max_kn": null
+    },
+    {
+     "size_m2": 2.5,
+     "wind_min_kn": 30,
+     "wind_max_kn": null
+    },
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 28,
+     "wind_max_kn": 35
+    },
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 25,
+     "wind_max_kn": 33
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 22,
+     "wind_max_kn": 30
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 18,
+     "wind_max_kn": 28
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 14,
+     "wind_max_kn": 25
+    },
+    {
+     "size_m2": 5.5,
+     "wind_min_kn": 12,
+     "wind_max_kn": 22
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 10,
+     "wind_max_kn": 20
+    }
+   ]
+  },
+  {
+   "brand": "Duotone",
+   "model": "Unit 2025/2026",
+   "reference_rider_kg": null,
+   "reference_note": "No reference weight published",
+   "source_url": "https://isthmussailboards.com/2025-duotone-unit-wind-wing.html",
+   "source_url_alt": "https://www.mackiteboarding.com/2026-duotone-unit-wing/",
+   "read": "direct (retailer copies of the Duotone spec table; duotonesports.com renders the table client-side)",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 2.0,
+     "wind_min_kn": 27,
+     "wind_max_kn": 45
+    },
+    {
+     "size_m2": 2.5,
+     "wind_min_kn": 23,
+     "wind_max_kn": 40
+    },
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 19,
+     "wind_max_kn": 37
+    },
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 16,
+     "wind_max_kn": 33
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 14,
+     "wind_max_kn": 30
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 12,
+     "wind_max_kn": 28
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 10,
+     "wind_max_kn": 25
+    },
+    {
+     "size_m2": 5.5,
+     "wind_min_kn": 9,
+     "wind_max_kn": 22
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 8,
+     "wind_max_kn": 20
+    },
+    {
+     "size_m2": 6.5,
+     "wind_min_kn": 7,
+     "wind_max_kn": 18
+    }
+   ]
+  },
+  {
+   "brand": "Duotone",
+   "model": "Slick (year not stated by retailer)",
+   "reference_rider_kg": null,
+   "reference_note": "No reference weight published",
+   "source_url": "https://powerkiteshop.com/products/duotone-slick-sale",
+   "read": "excerpt (search result; page now redirects)",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 2.5,
+     "wind_min_kn": 25,
+     "wind_max_kn": 45
+    },
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 20,
+     "wind_max_kn": 40
+    },
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 16,
+     "wind_max_kn": 35
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 14,
+     "wind_max_kn": 30
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 12,
+     "wind_max_kn": 28
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 10,
+     "wind_max_kn": 25
+    },
+    {
+     "size_m2": 5.5,
+     "wind_min_kn": 9,
+     "wind_max_kn": 22
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 8,
+     "wind_max_kn": 20
+    },
+    {
+     "size_m2": 6.5,
+     "wind_min_kn": 7,
+     "wind_max_kn": 18
+    },
+    {
+     "size_m2": 7.0,
+     "wind_min_kn": 6,
+     "wind_max_kn": 16
+    }
+   ]
+  },
+  {
+   "brand": "Cabrinha",
+   "model": "Mantis 2027 (2025 Mantis V5 and 2026 Mantis publish the same ranges)",
+   "reference_rider_kg": 75,
+   "reference_note": "\"Wind Range in Knots (75kg rider)\"",
+   "source_url": "https://www.cabrinha.com/products/2027-mantis-wing",
+   "read": "direct",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 2.0,
+     "wind_min_kn": 25,
+     "wind_max_kn": 45
+    },
+    {
+     "size_m2": 2.5,
+     "wind_min_kn": 20,
+     "wind_max_kn": 40
+    },
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 17,
+     "wind_max_kn": 36
+    },
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 16,
+     "wind_max_kn": 34
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 15,
+     "wind_max_kn": 30
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 13,
+     "wind_max_kn": 27
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 11,
+     "wind_max_kn": 26
+    },
+    {
+     "size_m2": 5.5,
+     "wind_min_kn": 9,
+     "wind_max_kn": 24
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 7,
+     "wind_max_kn": 20
+    }
+   ]
+  },
+  {
+   "brand": "Cabrinha",
+   "model": "Vision V3 2025 (larger sizes)",
+   "reference_rider_kg": 75,
+   "reference_note": "\"75kg rider\" per search excerpt",
+   "source_url": "https://www.mackiteboarding.com/2025-cabrinha-vision-wing/",
+   "read": "excerpt",
+   "used_in_fit": false,
+   "notes": "Only the 6.5 and 8 m rows could be attributed with confidence from the excerpt; not used in the fit",
+   "sizes": [
+    {
+     "size_m2": 6.5,
+     "wind_min_kn": 6,
+     "wind_max_kn": 18
+    },
+    {
+     "size_m2": 8.0,
+     "wind_min_kn": 5,
+     "wind_max_kn": 17
+    }
+   ]
+  },
+  {
+   "brand": "Armstrong",
+   "model": "A-Wing XPS Mk II (X-Wing Performance 2026 publishes the same 2.5-6.5 ranges)",
+   "reference_rider_kg": 75,
+   "reference_note": "Not printed on the XPS Mk II page; the XPS Lightwind page and the X-Wing retailer copy both say 75 kg",
+   "source_url": "https://armstrongfoils.com/products/a-wing-xps-mk-ii",
+   "source_url_alt": "https://armstrongfoils.com/products/x-wing-performance-wing",
+   "read": "direct",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 2.0,
+     "wind_min_kn": 30,
+     "wind_max_kn": 42
+    },
+    {
+     "size_m2": 2.5,
+     "wind_min_kn": 26,
+     "wind_max_kn": 40
+    },
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 22,
+     "wind_max_kn": 38
+    },
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 20,
+     "wind_max_kn": 36
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 18,
+     "wind_max_kn": 34
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 16,
+     "wind_max_kn": 30
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 14,
+     "wind_max_kn": 26
+    },
+    {
+     "size_m2": 5.5,
+     "wind_min_kn": 12,
+     "wind_max_kn": 22
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 11,
+     "wind_max_kn": 20
+    },
+    {
+     "size_m2": 6.5,
+     "wind_min_kn": 10,
+     "wind_max_kn": 18
+    }
+   ]
+  },
+  {
+   "brand": "Armstrong",
+   "model": "A-Wing XPS Lightwind",
+   "reference_rider_kg": 75,
+   "reference_note": "\"*wind range based on 75kg rider\"",
+   "source_url": "https://armstrongfoils.com/products/a-wing-xps-lightwind-wing",
+   "read": "direct",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 7.0,
+     "wind_min_kn": 7,
+     "wind_max_kn": 15
+    },
+    {
+     "size_m2": 8.0,
+     "wind_min_kn": 4,
+     "wind_max_kn": 11
+    }
+   ]
+  },
+  {
+   "brand": "Slingshot",
+   "model": "SlingWing V6 (SlingWing NXT V2 publishes the same ranges)",
+   "reference_rider_kg": null,
+   "reference_note": "No reference weight; FAQ says choose by rider weight, foil, board and wind",
+   "source_url": "https://slingshotsports.com/products/slingwing-v6",
+   "read": "direct (spec chart served by the page's Kiwi size-chart widget)",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 2.0,
+     "wind_min_kn": 25,
+     "wind_max_kn": 50
+    },
+    {
+     "size_m2": 2.5,
+     "wind_min_kn": 25,
+     "wind_max_kn": 45
+    },
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 22,
+     "wind_max_kn": 40
+    },
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 20,
+     "wind_max_kn": 35
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 17,
+     "wind_max_kn": 30
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 15,
+     "wind_max_kn": 27
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 13,
+     "wind_max_kn": 25
+    },
+    {
+     "size_m2": 5.5,
+     "wind_min_kn": 11,
+     "wind_max_kn": 23
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 9,
+     "wind_max_kn": 22
+    },
+    {
+     "size_m2": 6.5,
+     "wind_min_kn": 7,
+     "wind_max_kn": 19
+    }
+   ]
+  },
+  {
+   "brand": "Sroka",
+   "model": "Wing V4",
+   "reference_rider_kg": 75,
+   "reference_note": "\"Estimation basée sur un rider de 75 kg avec un foil de taille moyenne\"",
+   "source_url": "https://srokacompany.com/products/wing-v4-sroka",
+   "read": "direct (French)",
+   "used_in_fit": true,
+   "sizes": [
+    {
+     "size_m2": 2.8,
+     "wind_min_kn": 23,
+     "wind_max_kn": 40
+    },
+    {
+     "size_m2": 3.4,
+     "wind_min_kn": 18,
+     "wind_max_kn": 33
+    },
+    {
+     "size_m2": 4.0,
+     "wind_min_kn": 14,
+     "wind_max_kn": 30
+    },
+    {
+     "size_m2": 4.5,
+     "wind_min_kn": 12,
+     "wind_max_kn": 28
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 10,
+     "wind_max_kn": 25
+    },
+    {
+     "size_m2": 6.0,
+     "wind_min_kn": 8,
+     "wind_max_kn": 20
+    },
+    {
+     "size_m2": 7.0,
+     "wind_min_kn": 7,
+     "wind_max_kn": 18
+    }
+   ]
+  },
+  {
+   "brand": "North",
+   "model": "Nova 2026",
+   "reference_rider_kg": 75,
+   "reference_note": "\"calculated on a 75kg rider of intermediate ability\" per a search excerpt of the retailer listing",
+   "source_url": "https://www.mackiteboarding.com/2026-North-Nova-Wing/",
+   "read": "direct (retailer copy; northactionsports.com renders the table client-side)",
+   "used_in_fit": true,
+   "notes": "3.5 m is published as 17-35+; 35 used as the top",
+   "sizes": [
+    {
+     "size_m2": 3.5,
+     "wind_min_kn": 17,
+     "wind_max_kn": 35
+    },
+    {
+     "size_m2": 4.2,
+     "wind_min_kn": 14,
+     "wind_max_kn": 30
+    },
+    {
+     "size_m2": 4.8,
+     "wind_min_kn": 12,
+     "wind_max_kn": 26
+    },
+    {
+     "size_m2": 5.4,
+     "wind_min_kn": 9,
+     "wind_max_kn": 24
+    },
+    {
+     "size_m2": 6.2,
+     "wind_min_kn": 8,
+     "wind_max_kn": 20
+    },
+    {
+     "size_m2": 7.0,
+     "wind_min_kn": 7,
+     "wind_max_kn": 17
+    }
+   ]
+  },
+  {
+   "brand": "Ozone",
+   "model": "Wasp V3 (2022)",
+   "reference_rider_kg": 80,
+   "reference_note": "\"Wind range is indicative only based on an average rider weight of 80kg\"",
+   "source_url": "https://ozonekites.com/app/uploads//2022/04/Wasp-V3-Info-PDF.pdf",
+   "read": "direct (bar chart in the PDF, read off the pixels to about 0.5 kn)",
+   "used_in_fit": true,
+   "notes": "Full bar = advanced range; the green \"sweet spot\" is listed separately. Older model; current Ozone wings not reachable (ozonekites.com returns 403 to scripts).",
+   "sizes": [
+    {
+     "size_m2": 2.4,
+     "wind_min_kn": 18.5,
+     "wind_max_kn": 35
+    },
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 16,
+     "wind_max_kn": 33
+    },
+    {
+     "size_m2": 3.6,
+     "wind_min_kn": 14.5,
+     "wind_max_kn": 31
+    },
+    {
+     "size_m2": 4.3,
+     "wind_min_kn": 10.5,
+     "wind_max_kn": 28
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 8.5,
+     "wind_max_kn": 24.5
+    },
+    {
+     "size_m2": 5.7,
+     "wind_min_kn": 6,
+     "wind_max_kn": 21.5
+    }
+   ],
+   "sweet_spot": [
+    {
+     "size_m2": 2.4,
+     "wind_min_kn": 22.5,
+     "wind_max_kn": 31
+    },
+    {
+     "size_m2": 3.0,
+     "wind_min_kn": 19.5,
+     "wind_max_kn": 28.5
+    },
+    {
+     "size_m2": 3.6,
+     "wind_min_kn": 18.5,
+     "wind_max_kn": 27
+    },
+    {
+     "size_m2": 4.3,
+     "wind_min_kn": 15,
+     "wind_max_kn": 24
+    },
+    {
+     "size_m2": 5.0,
+     "wind_min_kn": 12.5,
+     "wind_max_kn": 20.5
+    },
+    {
+     "size_m2": 5.7,
+     "wind_min_kn": 10,
+     "wind_max_kn": 18
+    }
+   ]
+  }
+ ],
+ "weight_rules": [
+  {
+   "brand": "Gong",
+   "rule": "Separate wind ranges per rider band: S (under 65 kg), M/L (65-85 kg), XL (over 85 kg). Going up one band shifts a size's range up about 2 kn on 5-6 m and 2-5 kn on 3-4 m.",
+   "source": "https://www.gong-galaxy.com/en/products/gong-wing-droid-26nhnb",
+   "read": "direct (image)"
+  },
+  {
+   "brand": "Gong",
+   "rule": "\"A rider weighing 85kg will need 15-20 knots with a 5m² wing to start flying at first. After about fifteen sessions ... 15 knots ... athletic ... 12 knots.\" Recommends a 5 m² first wing and at most 2 m² (ideally 1 m²) between wings.",
+   "source": "https://www.gong-galaxy.com/en/blogs/how-to/how-to-choose-your-wing-1",
+   "read": "direct"
+  },
+  {
+   "brand": "Sroka",
+   "rule": "\"If you want one wing for 12-20 knots, the 5 m² is recommended for an 80 kg rider. Lighter: 4.5 m². Heavier: 6 m².\" (translated)",
+   "source": "https://srokacompany.com/products/wing-v4-sroka",
+   "read": "direct (French)"
+  },
+  {
+   "brand": "Sroka",
+   "rule": "60-70 kg in 20-25 kn: 4.0 m². 75-85 kg in 15-20 kn: 5.0 m². 85+ kg or light wind: 5.5-6.0 m². (translated)",
+   "source": "https://srokacompany.com/products/wing-v4-elite",
+   "read": "direct (French)"
+  },
+  {
+   "brand": "North",
+   "rule": "Nova Light Wind: all sizes 6-16 kn; 6 m for riders under 60 kg, 7 m for 60-75 kg, 8 m for over 75 kg.",
+   "source": "https://northactionsports.com/products/nova-light-wind-wing",
+   "read": "excerpt"
+  },
+  {
+   "brand": "Cabrinha",
+   "rule": "Charts are for a 75 kg rider; lighter riders size down, heavier riders may size up (no number given).",
+   "source": "https://www.cabrinha.com/pages/wind-weight-chart-wings",
+   "read": "excerpt (page returns 404 to scripts)"
+  },
+  {
+   "brand": "Ozone",
+   "rule": "Wasp V2 copy: larger sizes (5 m, 6 m) for light wind and/or riders over 90 kg in 10-20 kn.",
+   "source": "https://powerkiteshop.com/ozone-wasp-v2.htm",
+   "read": "excerpt"
+  }
+ ],
+ "retailer_charts_for_cross_check": [
+  {
+   "name": "MacKite \"Wing Size Wind/Weight Chart\"",
+   "source": "https://mackiteboarding.com/2024-duotone-slick-wing",
+   "read": "direct",
+   "columns_kn": [
+    "Beginner 14-20",
+    "10-20",
+    "15-25",
+    "20-28",
+    "25-32",
+    "28-33"
+   ],
+   "rows": {
+    "225-250 lb (102-113 kg)": [
+     "7-8",
+     "7-8",
+     "6-7",
+     "5-6",
+     "4-5",
+     "3-4"
+    ],
+    "200-225 lb (91-102 kg)": [
+     "7-8",
+     "6-7",
+     "5-6",
+     "5-6",
+     "4-5",
+     "3-4"
+    ],
+    "175-200 lb (79-91 kg)": [
+     "6-7",
+     "5-7",
+     "5-6",
+     "4-5",
+     "3-4",
+     "2-3"
+    ],
+    "150-175 lb (68-79 kg)": [
+     "5-7",
+     "5-6",
+     "4-5",
+     "4-5",
+     "3-4",
+     "2-3"
+    ],
+    "125-150 lb (57-68 kg)": [
+     "4-6",
+     "4-5",
+     "4-5",
+     "3-4",
+     "2-3",
+     "2-3"
+    ]
+   }
+  },
+  {
+   "name": "Windance beginner wing size by wind",
+   "source": "https://www.windance.com/blogs/wing-foiling/wing-size-by-wind-chart",
+   "read": "direct",
+   "rows": {
+    "12-16 kn": {
+     "under 75 kg": "4.5-5.5",
+     "over 75 kg": "5-6.5"
+    },
+    "16-20 kn": {
+     "under 75 kg": "4-5",
+     "over 75 kg": "4.5-6"
+    },
+    "20-25 kn": {
+     "under 75 kg": "3-4.5",
+     "over 75 kg": "3.5-5"
+    },
+    "25+ kn": {
+     "under 75 kg": "2.5-3.5",
+     "over 75 kg": "3-4"
+    }
+   }
+  }
+ ],
+ "not_found": [
+  {
+   "brand": "Naish",
+   "model": "ADX 2025",
+   "note": "Official page lists sizes (2-7 m) with span and aspect ratio but no wind ranges.",
+   "source": "https://www.naish.com/products/adx-wingsurfer",
+   "read": "direct"
+  },
+  {
+   "brand": "Takuma",
+   "note": "No inflatable-wing wind chart found; takuma.com did not respond. Takuma is mainly a foil brand (Kujira front wings).",
+   "source": null,
+   "read": "n/a"
+  },
+  {
+   "brand": "AK Durable Supply",
+   "note": "Current akdurablesupplyco.com has no wing products; no Blaze/Vapor wind chart found.",
+   "source": "https://www.akdurablesupplyco.com/",
+   "read": "direct"
+  },
+  {
+   "brand": "Duotone",
+   "model": "Echo",
+   "note": "Official page has a Windrange (kts) column but fills it client-side; values not retrievable.",
+   "source": "https://www.duotonesports.com/en/products/foil-wing-echo-44200-3518",
+   "read": "direct (table empty)"
+  },
+  {
+   "brand": "Ozone",
+   "model": "current wings",
+   "note": "ozonekites.com returns 403; only the 2022 Wasp V3 PDF chart was readable.",
+   "source": "https://ozonekites.com",
+   "read": "n/a"
+  }
+ ]
+}

@@ -614,6 +614,62 @@ has none. `StarGlyphs coloured` draws them, the earned in their colour and the
 rest of the five outlined. For now only the finder's cards take them: the
 chart's and the dock's stars stay ink until the owner says otherwise.
 
+**2026-10-25 — The spot finder's cards keep one time between them.** The
+owner, after 7e: "effectively one time setting across all of the cards that
+keeps them all in sync and shows a little dotted line where I'm hovering",
+as a Grafana dashboard's charts share a crosshair. One day and one hour for
+the whole list. A day pressed among the next five (its name, a button, or its
+drawing) is drawn hour by hour on every card in today's place, headed with
+its name ("TUE 28"), first light to last, its hours a column each where the
+run is hourly and the run's own steps where it is three-hourly; the five
+below are then the other days in order, today among them as "Today" to come
+back to, under "Other days" (the six stay six, and a fifth of a phone's card
+is all a day has room for). With no hour picked a day chosen stands at its
+early afternoon, ringed, the roses turned to it and the hour on each
+picture; an hour picked is put down when the day changes. A mouse (or a pen)
+over a card's hours, or over a day's drawing, draws a thin dotted line at that
+time on the same day on every card, and the time beside it on the card it is
+over; it goes when the pointer leaves. A finger has no hover: a tap picks, as
+before. The line moves straight in the page once a frame (src/finder/hover.ts),
+never drawing a card again. Under the row, first and last light hold to the
+view's edges as it scrolls rather than being cut off by them; and the rose's
+no-go is hatched in screen pixels over the picture, its washes kept light, so
+a picture under a small rose is not fogged.
+
+**2026-10-25 — One site menu, the same on every page.** "The menu for
+SpotFinder and for the main chart page is different. This menu should be the
+same across all pages." The menu opens on the site's navigation wherever it
+is opened, in one order and one wording: Chart, Spot finder, Customise, and
+after a gap the site's other sections (Use with AI; the marketplace and the
+community where they are on). "Wind map" was the chart a second time and is
+gone: the chart is the map. The page you are on is marked as the finder's
+menu marked it, italic and heavier on the second sheet with
+`aria-current="page"`; a spot's page and "How the stars work" are neither, so
+nothing is. What only one page has is set apart under the navigation, under
+the page's name in the mono label over an ink rule: on the chart, "This
+chart", with Layers, Display options, About the map and Take the tour. A page
+with nothing of its own has no such part. Customise from a page that is not
+the map's is the chart with the wizard open (`/?customise`); from a page over
+the map, the map as it was with the wizard over it (`force5/src/siteNav.ts`
+`SITE_NAV`, `force5/src/SiteMenu.tsx`). The menu's rows say where they go:
+Chart is always the chart (`/?chart`, and so is every way back named Chart)
+and Spot finder always the finder, whichever was open last; only the bare
+root, an address typed in, opens on the page the rider last had.
+
+**2026-10-25 — Today is kept whole, and yesterday is not.** The owner: "Keep
+the forecast for the full day so we don't just immediately discard it, but we
+do discard yesterday's forecast; we don't want to keep that. Somebody may want
+to go back and look at what the conditions were when they were wing foiling
+earlier." The dock and the spot finder's today run from Irish midnight, not from
+the newest HARMONIE run's first hour: each hourly blend keeps today's earlier
+hours from the blend before it, so each hour is the most recent run that
+covered it (`carryToday`, src/spotBlend.ts), and where no run is kept — the
+first run of a day, a rider who rates from another model — the long-range run's
+steps fill the morning rather than leaving it empty (`dockColumns`,
+force5/src/timeline.ts). Past hours stay drawn as past (the dock's faded
+`past` columns, the finder's faded gone hours). Nothing before today's
+midnight is kept (docs/LIVE_FORECAST_PIPELINE.md, "Today, kept whole").
+
 ---
 
 ## Still open

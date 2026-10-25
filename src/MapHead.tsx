@@ -3,6 +3,7 @@ import { SearchField } from "../ui/SearchField";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { Wordmark } from "../ui/Wordmark";
 import { SiteMenu, type SiteMenuTool } from "../force5/src/SiteMenu";
+import type { SiteNavId } from "../force5/src/siteNav";
 import type { Spot } from "../force5/src/weather";
 import { hourWind, type PlaceHour } from "./ratings";
 
@@ -14,9 +15,9 @@ const fold = (s: string) =>
 
 /**
  * The chart's head, top left: the site menu, the name, and "Find a spot…",
- * whose list opens under the box as the reader types. The menu is the one way
- * in to the chart's own tools (the layers, the spot finder, the options and
- * what the map means), over the site's sections.
+ * whose list opens under the box as the reader types. The menu is the site's
+ * navigation, as on every page, and under it the one way in to the chart's
+ * own tools (the layers, the options, what the map means and the tour).
  */
 export default function MapHead({
   spots,
@@ -24,6 +25,7 @@ export default function MapHead({
   hourAt,
   onPick,
   tools,
+  go,
 }: {
   spots: readonly Spot[];
   starred: readonly string[];
@@ -31,6 +33,8 @@ export default function MapHead({
   hourAt: (id: string) => PlaceHour | null;
   onPick: (spot: Spot) => void;
   tools: readonly SiteMenuTool[];
+  /** The menu's navigation, in place of a page load (`SiteMenu`'s `go`). */
+  go: Partial<Record<SiteNavId, () => void>>;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -67,9 +71,10 @@ export default function MapHead({
   return (
     <header className="map-head chart-box">
       <SiteMenu
-        current="map"
+        current="chart"
+        go={go}
         size="sm"
-        tools={{ title: "The chart", items: tools }}
+        tools={{ title: "This chart", items: tools }}
       />
       <a className="map-brand" href="/" aria-label="wingfoil.ie, the chart">
         <Wordmark size="sm" />
