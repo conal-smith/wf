@@ -950,8 +950,9 @@ test("the head's chevron is the dock's one fold: the rows under the figures", as
   await expect(open).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(1);
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
-  // The waves, the sky, the air and the rain, a row each.
-  expect(await height()).toBeGreaterThanOrEqual(before + 80);
+  // The gust factor, the waves, the current, the sky, the air and the rain,
+  // a row each.
+  expect(await height()).toBeGreaterThanOrEqual(before + 120);
   await open.click();
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
@@ -1438,7 +1439,7 @@ test("waves, current, sky, air and rain are one tap away, and stay open", async 
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
   await expect(page.locator(".dock .dk-sea")).toHaveCount(0);
   await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
-  for (const row of ["waves", "current", "sky", "air", "rain"])
+  for (const row of ["gust", "waves", "current", "sky", "air", "rain"])
     await expect(page.locator(`.dock tr.tt-${row}`)).toHaveCount(1);
   // The sea is one value for the week, and is the spot page's to say: no
   // row for it here, and nothing in the head.
@@ -1515,6 +1516,71 @@ test("waves, current, sky, air and rain are one tap away, and stay open", async 
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
 });
 
+test("the gust factor heads the rows under the fold: each hour's gust over its wind", async ({
+  page,
+}) => {
+  await openDock(page);
+  await expect(page.locator(".dock tr.tt-gust")).toHaveCount(0);
+  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  const cells = page.locator(".dock tr.tt-gust td[data-i]");
+  await expect(cells).toHaveCount(sampleStrip.length);
+  // Named, with its threshold, in its glyph's title; its unit beside it.
+  await expect(
+    page.locator(
+      '.dk-labs .dk-glyph[title="Gust factor, gust ÷ wind (none under 5 kn)"]',
+    ),
+  ).toHaveCount(1);
+  // A factor to a tenth, a dash where the model gives no gust, or nothing in
+  // a near calm.
+  const read = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>(".dock tr.tt-gust td[data-i]")].map(
+      (td) => {
+        const wind = document.querySelector(
+          `.dock tr.tt-wind td[data-i="${td.dataset.i}"]`,
+        );
+        return {
+          factor: td.textContent ?? "",
+          kind: td.querySelector(".gust-cell")?.className ?? "",
+          kn: wind?.querySelector(".kn")?.textContent ?? "",
+          gust: (wind?.querySelector(".gu")?.textContent ?? "").replace(
+            /\D/g,
+            "",
+          ),
+        };
+      },
+    ),
+  );
+  for (const cell of read) expect(cell.factor).toMatch(/^(\d\.\d×|–|)$/);
+  const figures = read.filter((cell) => cell.factor.endsWith("×"));
+  expect(figures.length).toBeGreaterThan(0);
+  for (const { factor, kind, kn, gust } of figures) {
+    // The wind row's gust over its wind, give or take their rounding, and
+    // never under 1 (the sample's gust is now and then under its mean).
+    const f = parseFloat(factor);
+    const wind = Number(kn);
+    const g = Number(gust);
+    expect(Math.abs(f - Math.max(1, g / wind))).toBeLessThanOrEqual(
+      0.1 + (g / wind) * (0.5 / wind + 0.5 / g),
+    );
+    // Tinted as the stars read it: gusty from 1.5×, very gusty from 1.8×,
+    // and never where the wind is under the default rider's floor (11 kn).
+    if (kind.includes("is-very-gusty")) expect(f).toBeGreaterThanOrEqual(1.8);
+    else if (kind.includes("is-gusty")) {
+      expect(f).toBeGreaterThanOrEqual(1.5);
+      expect(f).toBeLessThan(1.8);
+    } else if (f >= 1.5) expect(wind).toBeLessThanOrEqual(11);
+  }
+  // A near calm has no factor, a wind no more than 5 kn.
+  for (const { kn } of read.filter((cell) => cell.factor === ""))
+    expect(Number(kn)).toBeLessThanOrEqual(5);
+  const tinted = page.locator(".dock tr.tt-gust .gust-cell.is-very-gusty");
+  if (await tinted.count())
+    await expect(tinted.first()).not.toHaveCSS(
+      "background-color",
+      "rgba(0, 0, 0, 0)",
+    );
+});
+
 test("on a phone, the rows under the tide keep their units beside their glyphs", async ({
   page,
 }) => {
@@ -1531,7 +1597,7 @@ test("on a phone, the rows under the tide keep their units beside their glyphs",
   // glyphs need none).
   await expect(page.locator(".dk-labs .dk-lab-wind small")).toBeVisible();
   const units = page.locator(".dk-labs .dk-unit");
-  await expect(units).toHaveText(["m", "°C", "mm/h"]);
+  await expect(units).toHaveText(["×", "m", "°C", "mm/h"]);
   // Each within the label column, clear of its glyph and of the hours.
   const column = (await page.locator(".dk-labs").boundingBox())!;
   for (const unit of await units.all()) {
@@ -2031,7 +2097,7 @@ test.describe("on a phone", () => {
     await expect(dock.locator("tr.tt-hour td.c-sel")).toHaveCount(1);
     await expect.poll(() => offCursor(page)).toBeLessThan(2);
     // A short quick flick is as good as a long pull: one snap down. Short is
-    // under half of the 100 px from full to half (five rows below the fold),
+    // under half of the 120 px from full to half (six rows below the fold),
     // so it is the flick's speed, not its length, that carries the sheet
     // there; on a slow runner the speed is read lower, and 30 px with it
     // fell short of the middle once the current's row made the gap 100.

@@ -83,11 +83,18 @@ import {
 import { pointSourceNote, type PointSources } from "../force5/src/pointSource";
 import type { Prefs } from "../force5/src/prefs";
 import {
+  gustiness,
   noStarsWhy,
   SHORE_LABEL,
   shoreAngle,
   starsText,
+  type Rider,
 } from "../force5/src/stars";
+import {
+  GUST_FACTOR_MIN_WIND_KN,
+  gustFactor,
+  gustFactorText,
+} from "../force5/src/gustFactor";
 import { dayNights } from "../force5/src/sun";
 import { daylightOn } from "./ratings";
 import {
@@ -155,7 +162,7 @@ interface Props {
    * none (src/pointSource.ts); null for a riding place.
    */
   pointSource?: PointSources<Spot> | null;
-  /** The waves, weather and sea rows, opened by the head's chevron. */
+  /** The gust factor, waves, weather and sea rows, opened by the head's chevron. */
   more: boolean;
   onMore: (more: boolean) => void;
   /** The wave and weather manifests, once the rows have been opened. */
@@ -174,6 +181,7 @@ const ROWS = {
   from: 20,
   wing: 20,
   blend: 100,
+  gust: 20,
   waves: 20,
   current: 20,
   sky: 20,
@@ -219,7 +227,7 @@ const tideBand = (
  * the station it was read at and how far off that is, where there is room
  * to say what a buoy 50 km out does and does not tell a rider.
  */
-const MORE_ROWS = ["waves", "current", "sky", "air", "rain"] as const;
+const MORE_ROWS = ["gust", "waves", "current", "sky", "air", "rain"] as const;
 type MoreRow = (typeof MORE_ROWS)[number];
 /** The height of the rows under the hours, as a spot's dock draws them. */
 const rowsUnderHours = (
@@ -238,6 +246,11 @@ const rowsUnderHours = (
  * wind's does, so a bare 0.7 or 12 says what it counts.
  */
 const MORE_LABEL: Record<MoreRow, [GlyphDef, string, string?]> = {
+  gust: [
+    glyphs.gust,
+    `Gust factor, gust ÷ wind (none under ${GUST_FACTOR_MIN_WIND_KN} kn)`,
+    "×",
+  ],
   waves: [glyphs.waves, "Waves, m (height) and s (period)", "m"],
   // The water's speed is in the wind's unit, the rider's: said under its
   // glyph as the wind's is, since "km/h" beside it would run into the hours.
@@ -296,6 +309,7 @@ const StripTable = memo(function StripTable({
   isPoint,
   pointNote,
   rated,
+  rider,
 }: {
   spot: Spot;
   columns: readonly StripColumn[];
@@ -316,6 +330,8 @@ const StripTable = memo(function StripTable({
   pointNote: string | null;
   /** Whether any hour is worth rating: else the stars and wing rows are left out. */
   rated: boolean;
+  /** Whose floor says whether a gusty hour costs stars: the gust factor's tint. */
+  rider: Rider;
 }) {
   const facing = spot.facing ?? null;
   const full = Math.max(...g.w, 0);
@@ -474,6 +490,7 @@ const StripTable = memo(function StripTable({
             )}
           </>
         )}
+        {more && <GustRow cells={cells} rider={rider} />}
         {more && (
           <MoreRows
             columns={columns}
@@ -673,13 +690,58 @@ function scrollsAlong(
   return false;
 }
 
+/**
+ * How gusty each hour is, as a figure: its gust over its mean (1.9×), from the
+ * same model's wind and gust the wind row prints, at night as well. The tint
+ * behind it is the stars' own reading (force5/src/stars.ts `gustiness`): a
+ * faint warm one where they call the hour gusty and take a star or two off,
+ * deeper where very gusty, and none under the rider's floor, where a gust is
+ * a chance to get up and costs nothing. The figure stays in ink. A near calm,
+ * under 5 kn of mean (force5/src/gustFactor.ts), has no factor and stands
+ * empty; an hour with no gust from its model has a dash.
+ */
+function GustRow({
+  cells,
+  rider,
+}: {
+  cells: (
+    key: string,
+    render: (hour: PlaceHour | undefined) => React.ReactNode,
+  ) => React.ReactNode;
+  rider: Rider;
+}) {
+  return (
+    <tr className="tt-more tt-gust">
+      {cells("gf", (hour) => {
+        if (!hour || hour.windKn === null || hour.gustKn === null) return "–";
+        const factor = gustFactor(hour.windKn, hour.gustKn);
+        if (factor === null) return null;
+        const kind = gustiness(hour.windKn, hour.gustKn, rider);
+        const text = gustFactorText(factor);
+        return (
+          <span
+            className={`gust-cell is-${kind}`}
+            title={`${text}: the gusts ${text.slice(0, -1)} times the wind${
+              kind === "steady"
+                ? ""
+                : `, ${kind === "gusty" ? "gusty" : "very gusty"} by your stars`
+            }`}
+          >
+            {text}
+          </span>
+        );
+      })}
+    </tr>
+  );
+}
+
 /** No hand-over: the current is one model's. */
 const NONE_HANDED: ReadonlySet<number> = new Set();
 
 /**
- * The rows below the fold: the waves, the current, the sky, the air and the
- * rain, one native step per column (a code or an amount does not survive
- * being interpolated).
+ * The rows below the fold, after the gust factor: the waves, the current,
+ * the sky, the air and the rain, one native step per column (a code or an
+ * amount does not survive being interpolated).
  */
 function MoreRows({
   columns,
@@ -763,7 +825,7 @@ function MoreRows({
       <>
         {span("waves", pointNote)}
         {currentRow}
-        {MORE_ROWS.slice(2).map((key) => (
+        {(["sky", "air", "rain"] as const).map((key) => (
           <tr className={`tt-more tt-${key}`} key={key}>
             <td colSpan={columns.length} className="d0" />
           </tr>
@@ -2045,6 +2107,7 @@ export default function ForecastDock(props: Props) {
               isPoint={isPoint}
               pointNote={pointNote}
               rated={rated}
+              rider={prefs.rider}
             />
             {/* Where the scroll comes to rest: one mark per hour, at the
                   scroll that puts it under the cursor. The hours' own cells

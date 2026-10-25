@@ -609,7 +609,8 @@ table.tt {
   height: 20px;
   font-size: 11px;
 }
-.tt tr.tt-waves td {
+/* The fold's first row, ruled off from the wind's. */
+.tt tr.tt-gust td {
   border-top: 1px solid var(--color-line);
 }
 /* One line across the hours (a row no model reaches, or why a point has
@@ -678,6 +679,23 @@ table.tt {
       color-mix(in srgb, var(--color-ink) 9%, transparent) 0 1px,
       transparent 1px 4px
     );
+}
+/* The gust factor (ForecastDock's GustRow): the figure in ink, and behind it
+   the gust's own warm (--color-gust, the candle's gust cap) where the stars
+   call the hour gusty, deeper where very gusty. A tint, as the rain's is: the
+   gust's orange is a mark's colour, too light for words on paper. */
+.gust-cell {
+  padding: 0 3px;
+}
+.gust-cell.is-steady {
+  color: var(--color-ink-muted);
+}
+.gust-cell.is-gusty {
+  background: color-mix(in srgb, var(--color-gust) 22%, transparent);
+}
+.gust-cell.is-very-gusty {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--color-gust) 45%, transparent);
 }
 /* An hour inside an interval whose total another column prints. */
 .rain-cell.is-part {
