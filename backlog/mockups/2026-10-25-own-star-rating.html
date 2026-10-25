@@ -27,8 +27,9 @@
       downwind, you lose ground), the default is straight across with "Not
       yet", and the course runs only a few degrees below across by default
       (10°), its downwind edge a second handle;
-    - the live week under each step, wing sizes as the figure alone; "Reset
-      to ours"; a quiet count of hours that change, no dashed boxes;
+    - wing sizes as the figure alone; "Reset to ours";
+    - round three: no example week inside the wizard ("I don't want the
+      examples like this in the customise wizard"); the steps alone;
     - laid out as the wizard: about you (weight), the wind, the shore, upwind.
   Round one's steer, still standing: no Learning / Riding / Advanced, no
   existing users; outline stars only for stars lost to the gusts or the shore
@@ -751,13 +752,13 @@ function weekCard() {
 const NOTES = {
   you: `<h3>What changed</h3><ul>
     <li><b>No levels.</b> Learning / Riding / Advanced are gone: everyone starts from ours.</li>
-    <li><b>Weight sets the wing sizes</b> (the fitted <code>recommendedWing</code>, PR #211) and nothing else. Shown as the figure alone, here and under each hour.</li>
+    <li><b>Weight sets the wing sizes</b> (the fitted <code>recommendedWing</code>, PR #211) and nothing else. Shown as the figure alone.</li>
     <li>Units: unchanged, not drawn. "Wings you own": left out (see the questions below).</li></ul>`,
   wind: `<h3>What changed</h3><ul>
     <li><b>The slider is as it is</b>: too light, the sweet spot, too much in gusts. Ours: 11 · 15–22 · 35.</li>
     <li><b>No gust setting.</b> "Gusty wind: Not much / Some / A lot" is gone. Gusts are worked out from the four handles (read 5 kn lighter; past too much, none).</li>
     <li><b>What you'll see</b>, under it on the same scale: the stars by steady wind, and the wing for your weight. Read-only; it moves with the handles.</li>
-    <li>The week below re-rates as you drag; an hour that changes flashes.</li></ul>`,
+</ul>`,
   shore: `<h3>What changed</h3><ul>
     <li><b>The web as it is.</b></li>
     <li><b>Offshore: never, locked</b> in the middle, with the reason in its row.</li>
@@ -767,7 +768,7 @@ const NOTES = {
     <li><b>Default: straight across, "Not yet".</b></li>
     <li><b>The course stops 10° below across</b> by default. Its downwind edge is a second handle (the white dots) and a second slider.</li>
     <li><b>SLOW is now DRIFT</b>: "downwind, you lose ground". CAN'T GO stays.</li>
-    <li>The course shows in each hour's rose in the week (sea blue, land buff). It moves no stars.</li></ul>`,
+    <li>It moves no stars.</li></ul>`,
 };
 
 /* ======================================================================
@@ -784,7 +785,7 @@ function render() {
   cw.innerHTML = `
     <div class="cw-head"><h2 id="cw-title">${st.title}</h2><span class="cw-count">${UI.step + 1} / 6</span><button class="cw-x" aria-label="Close">×</button></div>
     <div class="cw-prog" role="progressbar" aria-valuemin="1" aria-valuemax="6" aria-valuenow="${UI.step + 1}">${[0, 1, 2, 3, 4, 5].map((i) => `<i class="${i <= UI.step ? "is-done" : ""}"></i>`).join("")}</div>
-    <div class="cw-body" data-step="${st.id}">${st.sub ? `<p class="cw-sub">${st.sub}</p>` : ""}${body}${weekCard()}</div>
+    <div class="cw-body" data-step="${st.id}">${st.sub ? `<p class="cw-sub">${st.sub}</p>` : ""}${body}</div>
     <div class="cw-foot">
       <button class="btn quiet">Skip</button>
       <button class="btn quiet" id="reset" ${own ? "" : "disabled"}>Reset to ours</button>
