@@ -327,10 +327,15 @@ export function placeConsensus(
   return out;
 }
 
-/** Whether each axis time is in daylight at a place, as the dock decides it. */
+/**
+ * Whether each axis time is in daylight at a place, as the dock decides it:
+ * sunrise to sunset, or with `boundary: "civil"` first light to last light,
+ * civil dawn to civil dusk (force5/src/sun.ts).
+ */
 export function daylightOn(
   place: Pick<RatedPlace, "lat" | "lon">,
   axis: readonly string[],
+  options: { boundary?: "sun" | "civil" } = {},
 ): boolean[] {
   if (!axis.length) return [];
   const nights = dayNights(
@@ -338,6 +343,7 @@ export function daylightOn(
     place.lon,
     new Date(axis[0]),
     new Date(axis[axis.length - 1]),
+    options,
   );
   return axis.map((iso) => {
     const time = Date.parse(iso);

@@ -17,6 +17,7 @@ import { clock, dayShort } from "../src/strip";
 import { buildPyramid } from "../scripts/f5tile.mjs";
 import { readFileSync } from "node:fs";
 import { spotSquare } from "../force5/src/squares";
+import { dayNights } from "../force5/src/sun";
 
 const harmonie = readSample("harmonie");
 
@@ -424,6 +425,73 @@ test("a night hour is a column of its own: tapped, keyed and under the line", as
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
 });
 
+test("the night's hours can be left out, from last light to first, and stay so", async ({
+  page,
+}) => {
+  await openDock(page);
+  const hours = page.locator(".dock tr.tt-hour td[data-i]");
+  // Round the clock unless the reader says otherwise, the night hatched.
+  await expect(hours).toHaveCount(sampleStrip.length);
+  await expect(page.locator(".dock tr.tt-hour td.night").first()).toBeAttached();
+  await openFromMenu(page, "Display options");
+  const choice = page.getByRole("group", { name: "Hours in the forecast" });
+  await expect(
+    choice.getByRole("button", { name: "Day and night" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await choice.getByRole("button", { name: "First to last light" }).click();
+  await closePanel(page);
+  // Brandon's lit hours alone: from civil dawn to civil dusk, each day.
+  const nights = dayNights(
+    52.276,
+    -10.024,
+    new Date(sampleStrip[0].time),
+    new Date(sampleStrip.at(-1)!.time + 86400000),
+    { boundary: "civil" },
+  );
+  const lit = sampleStrip.filter(
+    (c) =>
+      !nights.some(
+        (night) =>
+          c.time >= night.from.getTime() && c.time < night.to.getTime(),
+      ),
+  );
+  expect(lit.length).toBeLessThan(sampleStrip.length);
+  await expect(hours).toHaveCount(lit.length);
+  expect((await hours.allTextContents()).map(Number)).toEqual(
+    lit.map((c) => c.hour),
+  );
+  // None of the small hours; the twilight after sunset stays, hatched.
+  expect(lit.some((c) => c.hour < 5)).toBe(false);
+  // The clock stands at 22:00 on the Sunday, after last light: the time
+  // moves on to Monday's first light, framed, and the map goes with it.
+  const morning = lit.findIndex((c) => c.date !== sampleStrip[0].date);
+  await expect(slider(page)).toHaveValue(String(morning));
+  await expect(slider(page)).toHaveAttribute(
+    "aria-valuetext",
+    new RegExp(`^Mon \\d{1,2} [A-Z][a-z]{2,3}, ${clock(lit[morning].time)}$`),
+  );
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  // A key back is Sunday's last light, not its night.
+  await slider(page).focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(slider(page)).toHaveAttribute(
+    "aria-valuetext",
+    new RegExp(`^Sun \\d{1,2} [A-Z][a-z]{2,3}, ${clock(lit[morning - 1].time)}$`),
+  );
+  // Kept on reload, for the next spot chosen.
+  await page.reload();
+  await chooseSpot(page, "brandon");
+  await expect(hours).toHaveCount(lit.length, { timeout: 30000 });
+  // And back round the clock.
+  await openFromMenu(page, "Display options");
+  await page
+    .getByRole("group", { name: "Hours in the forecast" })
+    .getByRole("button", { name: "Day and night" })
+    .click();
+  await closePanel(page);
+  await expect(hours).toHaveCount(sampleStrip.length);
+});
+
 test("the arrow keys step the hour as the page opens, with nothing clicked, and only as pressed", async ({
   page,
 }) => {
@@ -617,6 +685,7 @@ test("units and the blend's models are display options, kept on reload; the ride
   ).toHaveCount(0);
   await expect(options.getByRole("heading")).toHaveText([
     "Units",
+    "Hours",
     "Model",
     "Models in the blend",
   ]);

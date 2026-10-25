@@ -40,6 +40,12 @@ export type RowKey =
   | "sea"
   | "tide";
 export type ForecastView = "table" | "blend" | "candles";
+/**
+ * Which hours the dock shows: all of them, round the clock, or only those
+ * from first light to last light, civil dawn to civil dusk (force5/src/sun.ts).
+ */
+export type NightHours = "show" | "hide";
+export const NIGHT_HOURS: readonly NightHours[] = ["show", "hide"];
 
 export interface Prefs {
   rows: Record<RowKey, boolean>;
@@ -55,6 +61,11 @@ export interface Prefs {
   /** Models feeding the blend, separate from the single map model. */
   blendModels: string[];
   view: ForecastView;
+  /**
+   * Whether the dock shows the hours from last light to first light; "show"
+   * unless the reader has hidden them. Shown, they are hatched as dark.
+   */
+  nightHours: NightHours;
   /**
    * Who the stars are rated for: weight, level, the wings they own, their
    * own star rating, rating or kept, and the model the stars come from
@@ -145,6 +156,7 @@ export const defaultPrefs = (): Prefs => ({
   units: "kn",
   blendModels: windModels().map((model) => model.id),
   view: "blend",
+  nightHours: "show",
   rider: DEFAULT_RIDER,
   starsUpdatedAt: null,
   starsAccount: null,
@@ -406,6 +418,9 @@ export function loadPrefs(
         stored.view && VIEWS.includes(stored.view)
           ? stored.view
           : defaults.view,
+      nightHours: NIGHT_HOURS.includes(stored.nightHours as NightHours)
+        ? (stored.nightHours as NightHours)
+        : defaults.nightHours,
       rider: parseRider(rider),
       starsUpdatedAt: isoOrNull(stored.starsUpdatedAt),
       starsAccount:

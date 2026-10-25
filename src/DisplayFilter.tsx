@@ -3,7 +3,11 @@ import {
   modelHue,
   type ModelAvailability,
 } from "../force5/src/manifests";
-import { withRiderModel, type Prefs } from "../force5/src/prefs";
+import {
+  withRiderModel,
+  type NightHours,
+  type Prefs,
+} from "../force5/src/prefs";
 import {
   FALLBACK_MODEL,
   STARS_MODELS,
@@ -22,7 +26,8 @@ interface Props {
 }
 
 /**
- * The display options: the units, the model and the blend's models. The
+ * The display options: the units, the dock's hours, the model and the
+ * blend's models. The
  * rider's weight, level, wings and own star rating are set in Customise,
  * from the site menu, and nowhere else on the map. In a dialog over the
  * map, as the layers are, and shut the same ways (src/MapControls.tsx): its
@@ -67,6 +72,23 @@ export default function DisplayFilter({ prefs, onChange, models }: Props) {
           </button>
         ))}
       </div>
+      <h2>Hours</h2>
+      <div className="filter-model-choice">
+        <Segmented<NightHours>
+          aria-label="Hours in the forecast"
+          options={[
+            { value: "show", label: "Day and night" },
+            { value: "hide", label: "First to last light" },
+          ]}
+          value={prefs.nightHours}
+          onChange={(nightHours) => onChange({ ...prefs, nightHours })}
+        />
+      </div>
+      <p className="filter-note">
+        {prefs.nightHours === "hide"
+          ? "The forecast's hours run from first light to last light, when the sun is 6° below the horizon. The twilight either side of the night stays, hatched as dark."
+          : "The forecast's hours run round the clock, the night's hatched as dark."}
+      </p>
       <h2>Model</h2>
       <div className="filter-model-choice">
         <Segmented<string>

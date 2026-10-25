@@ -10,6 +10,8 @@ import {
   stripTrack,
   timeSpoken,
   rainColumns,
+  shownAt,
+  shownColumns,
 } from "./strip";
 
 const hours = (from: string, n: number, step = 1) =>
@@ -322,6 +324,60 @@ describe("rainColumns", () => {
       .map((step, k) => (k ? step : { ...step, precipIntervalHours: null }));
     const late = rainColumns([clock("06:00"), clock("09:00")], run);
     expect(late[1]).toMatchObject({ steps: [1, 2], hours: 2, own: true });
+  });
+
+  it("reads only a column's own hours where the night's are left out", () => {
+    // 03:00 and 04:00 hidden: 05:00 follows 02:00 on the dock, but its own
+    // hours start at the strip's column before it, 04:00.
+    const times = ["01:00", "02:00", "05:00"].map(clock);
+    expect(
+      rainColumns(times, hourly).map((c) => c && c.steps),
+    ).toEqual([[1], [2], [3, 4, 5]]);
+    const out = rainColumns(times, hourly, [
+      undefined,
+      undefined,
+      clock("04:00"),
+    ]);
+    expect(out.map((c) => c && [c.steps, c.hours])).toEqual([
+      [[1], 1],
+      [[2], 1],
+      [[5], 1],
+    ]);
+  });
+});
+
+describe("shownColumns", () => {
+  it("shows every column round the clock", () => {
+    expect(shownColumns(null)).toBeNull();
+  });
+
+  it("keeps the lit columns, by their place in the strip", () => {
+    expect(shownColumns([false, true, true, false, false, true])).toEqual([
+      1, 2, 5,
+    ]);
+  });
+
+  it("leaves the strip whole where every column is lit, or none is", () => {
+    expect(shownColumns([true, true])).toBeNull();
+    expect(shownColumns([false, false])).toBeNull();
+    expect(shownColumns([])).toBeNull();
+  });
+});
+
+describe("shownAt", () => {
+  const shown = [3, 4, 5, 15, 16];
+  it("finds a shown column's own place", () => {
+    expect(shownAt(shown, 3)).toBe(0);
+    expect(shownAt(shown, 16)).toBe(4);
+  });
+
+  it("takes a night's hour to the morning after it", () => {
+    expect(shownAt(shown, 0)).toBe(0);
+    expect(shownAt(shown, 9)).toBe(3);
+  });
+
+  it("takes an hour past the last shown to the last", () => {
+    expect(shownAt(shown, 20)).toBe(4);
   });
 });
 

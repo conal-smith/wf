@@ -44,6 +44,9 @@ import {
   dayShort,
   hourLabel,
   rainColumns,
+  shownAt,
+  shownColumns,
+  stripDays,
   stripGeometry,
   stripTrack,
   timeSpoken,
@@ -310,6 +313,7 @@ const StripTable = memo(function StripTable({
   pointNote,
   rated,
   rider,
+  starts,
 }: {
   spot: Spot;
   columns: readonly StripColumn[];
@@ -332,6 +336,8 @@ const StripTable = memo(function StripTable({
   rated: boolean;
   /** Whose floor says whether a gusty hour costs stars: the gust factor's tint. */
   rider: Rider;
+  /** Where each column's own hours start, when the night's are left out. */
+  starts: readonly (number | undefined)[] | null;
 }) {
   const facing = spot.facing ?? null;
   const full = Math.max(...g.w, 0);
@@ -502,6 +508,7 @@ const StripTable = memo(function StripTable({
             units={units}
             daylight={daylight}
             pointNote={pointNote}
+            starts={starts}
           />
         )}
       </tbody>
@@ -753,6 +760,7 @@ function MoreRows({
   units,
   daylight,
   pointNote,
+  starts,
 }: {
   columns: readonly StripColumn[];
   /** Whether each column is in daylight: the moon, not the sun, after dark. */
@@ -774,6 +782,8 @@ function MoreRows({
   units: Units;
   /** For a point that has no riding place near to read them from, why. */
   pointNote: string | null;
+  /** Where each column's own hours start, when the night's are left out. */
+  starts: readonly (number | undefined)[] | null;
 }) {
   const span = (key: string, text: string) => (
     <tr className={`tt-more tt-${key}`} key={key}>
@@ -851,6 +861,7 @@ function MoreRows({
     ? rainColumns(
         columns.map((c) => c.time),
         series,
+        starts ?? undefined,
       )
     : [];
   return (
@@ -1071,11 +1082,11 @@ const NO_MODELS: readonly ModelAvailability[] = [];
 export default function ForecastDock(props: Props) {
   const {
     spot,
-    columns,
-    days,
-    hours,
-    selected,
-    onSelect,
+    columns: strip,
+    days: stripDaysAll,
+    hours: stripHours,
+    selected: stripSelected,
+    onSelect: onSelectStrip,
     now,
     prefs,
     models,
@@ -1098,6 +1109,53 @@ export default function ForecastDock(props: Props) {
     layersOpen,
     onLayers,
   } = props;
+  // The night's hours, from last light to first light, left out where the
+  // reader has hidden them (Display options): the dock then shows the strip's
+  // lit columns alone, each day from its first light to its last, and reads
+  // and writes the time by the strip's own columns. Round the clock, as by
+  // default, every column is shown and nothing here changes a thing.
+  const stripAxis = useMemo(() => strip.map((c) => c.validTime), [strip]);
+  const shown = useMemo(() => {
+    if (prefs.nightHours !== "hide" || !stripAxis.length) return null;
+    // A day past the strip's end on the axis, so the night its last hour
+    // falls in is not cut short at that hour (`dayNights` clips to the axis).
+    const after = new Date(
+      Date.parse(stripAxis[stripAxis.length - 1]) + 86400000,
+    ).toISOString();
+    return shownColumns(
+      daylightOn(spot, [...stripAxis, after], { boundary: "civil" }).slice(
+        0,
+        -1,
+      ),
+    );
+  }, [prefs.nightHours, spot.lat, spot.lon, stripAxis]);
+  const columns = useMemo(
+    () => (shown ? shown.map((at) => strip[at]) : strip),
+    [shown, strip],
+  );
+  const days = useMemo(
+    () => (shown ? stripDays(columns) : stripDaysAll),
+    [shown, columns, stripDaysAll],
+  );
+  const hours = useMemo(
+    () => (shown && stripHours ? shown.map((at) => stripHours[at]) : stripHours),
+    [shown, stripHours],
+  );
+  /** Where each shown column's own hours start: its strip neighbour's time. */
+  const starts = useMemo(
+    () => shown?.map((at) => (at > 0 ? strip[at - 1].time : undefined)) ?? null,
+    [shown, strip],
+  );
+  const selected = shown ? shownAt(shown, stripSelected) : stripSelected;
+  const onSelect = (at: number, final: boolean) =>
+    onSelectStrip(shown ? (shown[at] ?? stripSelected) : at, final);
+  // A time in the hidden night (the page opened after dark, or the reader
+  // has just hidden it) moves on to the next first light, so the dock's
+  // frame and the map's hour agree.
+  useEffect(() => {
+    if (shown && shown[selected] !== stripSelected)
+      onSelectStrip(shown[selected], true);
+  }, [shown, selected, stripSelected]);
   const cw = phone ? 52 : 62;
   // A phone folds the label column away once the reader slides the hours,
   // for the room, and opens it again at the start of the week.
@@ -2108,6 +2166,7 @@ export default function ForecastDock(props: Props) {
               pointNote={pointNote}
               rated={rated}
               rider={prefs.rider}
+              starts={starts}
             />
             {/* Where the scroll comes to rest: one mark per hour, at the
                   scroll that puts it under the cursor. The hours' own cells

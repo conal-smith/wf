@@ -184,6 +184,28 @@ export function dayStep(
   return best;
 }
 
+/**
+ * The strip's columns the dock shows, by their place in the strip: with the
+ * night's hours left out, those `lit` (first light to last light at the
+ * place). Null where every column is shown: round the clock (`lit` null), or
+ * where none is lit, which leaves the strip whole rather than empty.
+ */
+export function shownColumns(lit: readonly boolean[] | null): number[] | null {
+  if (!lit) return null;
+  const shown = lit.flatMap((on, at) => (on ? [at] : []));
+  return shown.length && shown.length < lit.length ? shown : null;
+}
+
+/**
+ * Where a strip column stands among the shown ones: its own place, or for a
+ * hidden one the first shown after it (a night's hour goes to the morning),
+ * else the last.
+ */
+export function shownAt(shown: readonly number[], at: number): number {
+  const next = shown.findIndex((column) => column >= at);
+  return next < 0 ? shown.length - 1 : next;
+}
+
 /** Where each column sits along the strip, and how wide it is. */
 export interface StripGeometry {
   x: number[];
@@ -328,13 +350,20 @@ export function rainColumns(
     validTime: string;
     precipIntervalHours?: readonly [number, number] | null;
   }[],
+  /**
+   * Where each column's own hours start, where it is not the column before
+   * it: the strip's column before, when the night's hours are left out and
+   * the morning's first would otherwise add up the whole night's rain.
+   */
+  starts?: readonly (number | undefined)[],
 ): (RainColumn | null)[] {
   const intervals = rainIntervals(steps);
   const out: (RainColumn | null)[] = times.map((t, i) => {
     // The column's own hours: from the column before, or for the first, as
     // long as the gap to the next.
     const from =
-      i > 0 ? times[i - 1] : t - (times.length > 1 ? times[1] - t : 3600000);
+      starts?.[i] ??
+      (i > 0 ? times[i - 1] : t - (times.length > 1 ? times[1] - t : 3600000));
     const inside = stepsWithin(intervals, from, t);
     if (inside.length) {
       const last = inside[inside.length - 1];

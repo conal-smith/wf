@@ -258,6 +258,41 @@ describe("placeConsensus", () => {
   });
 });
 
+describe("daylightOn", () => {
+  const place = { lat: 52.27, lon: -10.02 };
+  // Brandon Bay on 5 October 2026: sunset about 18:10 UTC, last light (civil
+  // dusk) about 18:45 UTC; first light about 06:15 UTC, sunrise 06:50 UTC.
+  const axis = hourly("2026-10-05T00:00:00Z", 24);
+  const sun = daylightOn(place, axis);
+  const civil = daylightOn(place, axis, { boundary: "civil" });
+  const at = (h: number) => [sun[h], civil[h]];
+
+  it("is light from sunrise to sunset, by default", () => {
+    expect(at(12)).toEqual([true, true]);
+    expect(at(2)).toEqual([false, false]);
+    expect(at(22)).toEqual([false, false]);
+  });
+
+  it("is light from first to last light with the civil boundary", () => {
+    // 18:30 is after sunset but before last light: dark by the sun, lit by
+    // the civil boundary; 19:30 is dark by both.
+    const half = daylightOn(
+      place,
+      ["2026-10-05T18:30:00Z", "2026-10-05T19:30:00Z", "2026-10-05T22:00:00Z"],
+      { boundary: "civil" },
+    );
+    expect(half.slice(0, 2)).toEqual([true, false]);
+    expect(
+      daylightOn(place, ["2026-10-05T18:30:00Z", "2026-10-05T22:00:00Z"])[0],
+    ).toBe(false);
+    // Every hour lit by the sun is lit by the civil boundary too.
+    sun.forEach((lit, h) => lit && expect(civil[h]).toBe(true));
+    expect(civil.filter(Boolean).length).toBeGreaterThanOrEqual(
+      sun.filter(Boolean).length,
+    );
+  });
+});
+
 describe("placeHours", () => {
   it("rates daylight only, from the consensus in knots", () => {
     const m = windManifest({
