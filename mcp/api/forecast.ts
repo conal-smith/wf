@@ -47,7 +47,13 @@ import {
   type StarsFrom,
 } from "../../force5/src/lead.js";
 import { shoreFacing } from "../../force5/src/shoreFacing.js";
-import { shoreAngle, type ShoreAngle } from "../../force5/src/stars.js";
+import {
+  GUSTY_FROM,
+  VERY_GUSTY_FROM,
+  shoreAngle,
+  type ShoreAngle,
+} from "../../force5/src/stars.js";
+import { gustFactor } from "../../force5/src/gustFactor.js";
 import { isStale } from "../../force5/src/catalog.js";
 import { feelsLikeC } from "../../force5/src/feelsLike.js";
 import {
@@ -860,6 +866,13 @@ export interface HourWind {
    */
   gust_kn: number | null;
   gust_max_kn: number | null;
+  /**
+   * The headline gust over the headline wind (force5/src/gustFactor.ts), to
+   * two places: what the stars call gusty from 1.5 and very gusty from 1.8.
+   * Null without a gust. hourWind always gives it; an hour built elsewhere
+   * may not.
+   */
+  gust_factor?: number | null;
   /** The headline bearing: the lead model's. */
   direction_deg: number;
   direction: string;
@@ -977,6 +990,7 @@ export function hourWind(
     max_kn: round(speeds[speeds.length - 1]),
     gust_kn: lead.gust === null ? null : round(lead.gust * KNOTS),
     gust_max_kn: gusts.length ? round(gusts[gusts.length - 1]) : null,
+    gust_factor: null,
     direction_deg: direction,
     direction: compass(direction),
     agreement,
@@ -985,6 +999,8 @@ export function hourWind(
     lead: lead.id,
     gust_lead: lead.gust === null ? null : lead.id,
   };
+  const factor = gustFactor(hour.wind_kn, hour.gust_kn);
+  hour.gust_factor = factor === null ? null : round(factor, 2);
   if (perModel)
     hour.by_model = Object.fromEntries(
       samples.map((s) => [
@@ -1550,6 +1566,11 @@ export const METHOD =
 
 export const UNITS = {
   wind: "knots",
+  gust_factor:
+    "`gust_factor` is the hour's gust_kn over its wind_kn (one model's, the " +
+    "one the stars rate): wingfoil.ie's stars call an hour gusty from " +
+    `${GUSTY_FROM} and very gusty from ${VERY_GUSTY_FROM}, and take every ` +
+    "star off a gust over the rider's limit",
   direction: "degrees the wind or waves come FROM (0 = north)",
   waves: "metres (significant height), seconds (peak period)",
   temperature: "°C",

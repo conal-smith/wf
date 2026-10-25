@@ -1058,6 +1058,17 @@ describe("hourWind", () => {
     expect(hour.wind_kn).toBeCloseTo(9 * KNOTS, 1);
     expect(hour.gust_kn).toBeNull();
     expect(hour.gust_max_kn).toBeCloseTo(7 * KNOTS, 1);
+    // No gust of the one model's, so no factor either.
+    expect(hour.gust_factor).toBeNull();
+  });
+
+  it("gives the gust factor of the one model's own gust and wind", () => {
+    const harmonie = line("harmonie", { u: 8, v: 0, gust: 20 });
+    const hour = hourWind([harmonie, ...others], at, false)!;
+    expect(hour.gust_factor).toBe(
+      Math.round((hour.gust_kn! / hour.wind_kn) * 100) / 100,
+    );
+    expect(hour.gust_factor).toBeCloseTo(2.5, 1);
   });
 
   it("hands over to ECMWF alone past HARMONIE's run, and to nobody past both", () => {
