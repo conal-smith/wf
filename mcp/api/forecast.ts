@@ -51,6 +51,12 @@ import { shoreAngle, type ShoreAngle } from "../../force5/src/stars.js";
 import { isStale } from "../../force5/src/catalog.js";
 import { feelsLikeC } from "../../force5/src/feelsLike.js";
 import {
+  THUNDER_CAPE_DRY,
+  THUNDER_CAPE_WET,
+  thunderRisk,
+  type ThunderRisk,
+} from "../../force5/src/thunder.js";
+import {
   presentWeather,
   skyOf,
   type WeatherIcon,
@@ -1161,6 +1167,16 @@ export interface HourWeather {
    * skyOf): the code's group, rain where a dry code has rain in the hour.
    */
   sky: WeatherIcon | null;
+  /** The model's CAPE, J/kg: the energy showers can grow into storms on. */
+  cape_j_kg: number | null;
+  /**
+   * The risk of thunder and lightning (force5/src/thunder.ts): high where the
+   * code is a thunderstorm, possible on enough CAPE, else low; null where the
+   * model gives neither a code nor a CAPE. A safety flag, never an all-clear.
+   */
+  thunder_risk: ThunderRisk | null;
+  /** Why, where the risk is high or possible. */
+  thunder_why?: string;
 }
 
 /** A rain total and the interval it covers, as one row carries it. */
@@ -1252,8 +1268,15 @@ function hourWeather(
     weather_code: value("ww", 0),
     description: null,
     sky: null,
+    cape_j_kg: null,
+    thunder_risk: null,
   };
   result.description = presentWeather(result.weather_code)?.description ?? null;
+  const capeName = pick(source.manifest, ["cape", "cape_ml"]);
+  result.cape_j_kg = capeName ? value(capeName, 0) : null;
+  const thunder = thunderRisk(result.weather_code, result.cape_j_kg);
+  result.thunder_risk = thunder?.risk ?? null;
+  if (thunder?.why) result.thunder_why = thunder.why;
   return [
     result.air_c,
     result.rain_mm,
@@ -1494,6 +1517,16 @@ export const UNITS = {
     "`window.weather_step_hours` apart (the first weather run's cadence: 1 " +
     "for ICON-EU), so each hour has its own; where the steps are more than an " +
     "hour apart they repeat on the hours between",
+  thunder:
+    "`thunder_risk` is a safety flag from the weather model's own fields: " +
+    "high where its code is a thunderstorm (ww 13, 17, 29, 91–99; ICON-EU " +
+    "forecasts these, GFS's code never does), possible where CAPE is " +
+    `${THUNDER_CAPE_WET} J/kg or more with showers or rain in the code (ww 50–99) ` +
+    `or ${THUNDER_CAPE_DRY} J/kg or more under any sky, else low; null where the ` +
+    "model gives neither. Lightning strikes well ahead of a storm: tell a " +
+    "rider to stay off the water on a high or possible hour and the hours " +
+    "either side of it, and never read low as a promise of no storm. " +
+    "Met Éireann's warnings come first",
   feels_like:
     "°C: `feels_like_c` is worked out here, as no model publishes one: the " +
     "JAG/TI wind chill index (Environment Canada, US NWS, UK Met Office), " +

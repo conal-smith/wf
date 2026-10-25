@@ -38,6 +38,7 @@ import { shoreFacing } from "../../force5/src/shoreFacing";
 import { shoreAngle } from "../../force5/src/stars";
 import { presentWeather, skyOf } from "../../force5/src/presentWeather";
 import { feelsLikeC } from "../../force5/src/feelsLike";
+import { thunderRisk } from "../../force5/src/thunder";
 import { SOURCE_CACHE_LIMIT, cached } from "./httpSource";
 import { WAVE_SOURCE_PREFERENCE } from "../../force5/src/waves";
 import {
@@ -330,6 +331,14 @@ describe("spotForecast", () => {
     expect(forecast.units.feels_like).toMatch(/mean wind_kn at 10 m/);
   });
 
+  it("reads the CAPE and code each published weather square carries", async () => {
+    const forecast = await dollymount();
+    const weather = forecast.hours[0].weather!;
+    expect(weather.cape_j_kg).toEqual(expect.any(Number));
+    expect(weather.weather_code).toEqual(expect.any(Number));
+    expect(weather.thunder_risk).toEqual(expect.any(String));
+  });
+
   it("says where the water was read, how far off and when", async () => {
     const withSea = fixtureSource({
       "marine/sea-temperature.json": {
@@ -594,6 +603,7 @@ describe("rain", () => {
         precip: k ? (k % 4) / 10 : null,
         clct: 50 + k,
         ww: k % 2 ? 61 : 3,
+        cape: 50 * k,
       },
     }));
     const { frameVariables: _, stepRanges: __, ...rest } = pointer;
@@ -646,6 +656,45 @@ describe("rain", () => {
     // Nothing tells an agent the weather is three-hourly.
     expect(forecast.units.rain).not.toMatch(/\b3 for ICON-EU/);
     expect(forecast.units.weather).toMatch(/more than an hour/);
+  });
+
+  it("flags thunder from the published code and CAPE, hour by hour", async () => {
+    const { forecast, series } = await hourlyForecast({
+      hours: 24,
+      stepHours: 1,
+    });
+    forecast.hours.forEach((hour, k) => {
+      const { ww, cape } = series[k].values;
+      const expected = thunderRisk(ww, cape);
+      expect(hour.weather).toMatchObject({
+        cape_j_kg: cape,
+        thunder_risk: expected!.risk,
+      });
+      expect(hour.weather!.thunder_why).toBe(expected!.why ?? undefined);
+    });
+    const risks = forecast.hours.map((h) => h.weather!.thunder_risk);
+    // Rain with 300 J/kg from 07:00 UTC; 1000 J/kg under any sky from 14:00.
+    expect(risks.slice(0, 6)).toEqual(Array(6).fill("low"));
+    expect(risks[7]).toBe("possible");
+    expect(risks[8]).toBe("low");
+    expect(risks[20]).toBe("possible");
+    expect(forecast.units.thunder).toMatch(/91–99/);
+    expect(forecast.units.thunder).toMatch(/300 J\/kg/);
+  });
+
+  it("says thunder is high where the model's code is a thunderstorm", async () => {
+    const forecast = await rainForecast(
+      { hours: 24, stepHours: 1 },
+      { codes: [3, 3, 3, 3, 3, 45, 95, 3, 0] },
+    );
+    const at = (hhmm: string) =>
+      forecast.hours.find((h) => h.time.slice(11, 16) === hhmm)!.weather!;
+    expect(at("12:00")).toMatchObject({
+      thunder_risk: "high",
+      thunder_why: expect.stringMatching(/thunderstorm/i),
+    });
+    // These steps publish no CAPE: a quiet code is low, not unknown.
+    expect(at("09:00")).toMatchObject({ cape_j_kg: null, thunder_risk: "low" });
   });
 
   it("adds hourly rain up into three-hourly rows", async () => {

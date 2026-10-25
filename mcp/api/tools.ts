@@ -72,6 +72,7 @@ export const INSTRUCTIONS = `wingfoil.ie forecasts wind, waves and tides for win
 - ${METHOD}
 - \`shore\` says how the wind meets the spot's beach: onshore, cross-on, cross, cross-off or offshore (the same rule wingfoil.ie's stars use). Offshore and cross-off wind carry a rider who falls away from the beach out to sea: always warn about them. find_wind leaves dead offshore hours out unless allow_offshore is set. A null shore means the beach's facing is unknown, so say offshore wind can't be ruled out there.
 - Point out sessions find_wind marks \`gusty\`. When someone has a gust limit, pass max_gust_kn (or max_gust_factor) so hours past it are left out.
+- Thunder: wherever an hour's \`thunder_risk\` is high or possible, tell the person to stay off the water then and in the hours either side (lightning strikes ahead of a storm), whatever the wind. Low is not a promise of no storm.
 - ${CARE}
 - Credit the model providers named in \`sources\` when you share a forecast, and link people to https://wingfoil.ie for the map.`;
 
@@ -194,7 +195,7 @@ export const getSpotForecast = tool({
   name: "get_spot_forecast",
   title: "Spot forecast",
   description:
-    "Hour-by-hour forecast for one spot: wind speed, gusts and direction from one weather model, the one wingfoil.ie rates its stars from (HARMONIE while it reaches the hour, then ECMWF, unless `model` names another, which ECMWF then follows), with the range across every model and how well they agree as context, how the wind meets the shore (onshore to offshore), plus waves, air temperature and how cold it feels in the mean wind (`feels_like_c`, a wind chill), rain, the sky in words (`description` and `sky`, as wingfoil.ie's sky glyph has it; `weather_code` is WMO 4677), daylight, sunrise and sunset, high and low tides and the latest sea temperature. Rain is the weather model's own total over an interval (`rain_interval_hours`: an hour for ICON-EU, so each hourly row has its own hour's rain; three hours for GFS far ahead), given once on the row where its interval ends and null on any hours before it inside the interval, so add rain_mm up over the rows for a period's rain.",
+    "Hour-by-hour forecast for one spot: wind speed, gusts and direction from one weather model, the one wingfoil.ie rates its stars from (HARMONIE while it reaches the hour, then ECMWF, unless `model` names another, which ECMWF then follows), with the range across every model and how well they agree as context, how the wind meets the shore (onshore to offshore), plus waves, air temperature and how cold it feels in the mean wind (`feels_like_c`, a wind chill), rain, a thunder and lightning risk (`thunder_risk`), the sky in words (`description` and `sky`, as wingfoil.ie's sky glyph has it; `weather_code` is WMO 4677), daylight, sunrise and sunset, high and low tides and the latest sea temperature. Rain is the weather model's own total over an interval (`rain_interval_hours`: an hour for ICON-EU, so each hourly row has its own hour's rain; three hours for GFS far ahead), given once on the row where its interval ends and null on any hours before it inside the interval, so add rain_mm up over the rows for a period's rain.",
   inputSchema: {
     spot: z
       .string()
