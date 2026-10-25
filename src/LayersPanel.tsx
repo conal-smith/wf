@@ -39,7 +39,7 @@ export interface LayersPanelProps extends LayerChoices {
   currentsNote: string | null;
   /** Why the tidal depth is not drawn, while it is on: the chart is out too far. */
   foilNote: string | null;
-  /** Back to the defaults: ink wind, the chart and tidal depth, the range ring. */
+  /** Back to the defaults: particles, the chart, tidal depth, the range ring. */
   onReset: () => void;
 }
 
@@ -139,8 +139,8 @@ export default function LayersPanel({
   open,
   onClose,
   onInfo,
-  windStyle,
-  onWindStyle,
+  wind,
+  onWind,
   layers,
   onLayersChange,
   satellite,
@@ -160,7 +160,7 @@ export default function LayersPanel({
   // Under the tiles: what the colours mean while the wind is drawn in them,
   // and what a layer that is on cannot draw.
   const foot: Partial<Record<LayerGroup["id"], ReactNode>> = {
-    wind: windStyle !== "ink" && <KnotScale />,
+    wind: wind.wash && <KnotScale />,
     sea: ((layers.foil && foilNote) || layers.currents) && (
       <>
         {layers.foil && foilNote && (
@@ -203,8 +203,8 @@ export default function LayersPanel({
     ),
   };
   const groups: Group[] = layerGroups({
-    windStyle,
-    onWindStyle,
+    wind,
+    onWind,
     layers,
     onLayersChange,
     satellite,
@@ -222,7 +222,7 @@ export default function LayersPanel({
       actions={
         <>
           <span className="lp-default">
-            Ink wind, the chart, tidal depth, the range ring: the default.
+            Particles, the chart, tidal depth, the range ring: the default.
           </span>
           <Button variant="quiet" size="sm" onClick={onReset}>
             Reset

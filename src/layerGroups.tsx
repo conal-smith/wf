@@ -2,18 +2,17 @@ import type { ReactNode } from "react";
 import type { SatelliteOption } from "../force5/src/satellite";
 import type { ChartLayers } from "../force5/src/WindMap";
 import type { FocusStyle } from "../force5/src/focus";
-import type { WindStyle } from "../force5/src/windLayer";
+import type { WindLayers } from "../force5/src/windLayer";
 import {
-  ArrowsWindGlyph,
   ChartGlyph,
   glyphs,
   ColouredWindGlyph,
   CurrentsGlyph,
   HighTideGlyph,
-  InkWindGlyph,
   LoupeGlyph,
   LowTideGlyph,
   NamesGlyph,
+  ParticlesGlyph,
   RainGlyph,
   ReliefGlyph,
   RingGlyph,
@@ -28,8 +27,9 @@ import type { InfoSection } from "./mapInfoContext";
 
 /** What the chart draws, and the way to change each part of it. */
 export interface LayerChoices {
-  windStyle: WindStyle;
-  onWindStyle: (style: WindStyle) => void;
+  /** The wind's two layers, the coloured wind and the particles, each on or off. */
+  wind: WindLayers;
+  onWind: (wind: WindLayers) => void;
   layers: ChartLayers;
   onLayersChange: (layers: ChartLayers) => void;
   /** The satellite image under the chart: off, or which tide's. */
@@ -79,14 +79,14 @@ export interface LayerGroup {
  * Every layer the chart can draw, in the groups and the order the Layers
  * panel (src/LayersPanel.tsx) and the layers' rail (src/LayerRail.tsx) both
  * show them: the wind, the sea, the weather, the chart, the ground under it,
- * and what is drawn round the chosen spot. A layer added here is in both. In
- * the wind and round the spot one is always on, as a radio's choice is; a
- * satellite tide pressed again is no image; the rest each switch their own
- * part.
+ * and what is drawn round the chosen spot. A layer added here is in both.
+ * Round the spot one is always on, as a radio's choice is; a satellite tide
+ * pressed again is no image; the rest, the wind's two layers among them, each
+ * switch their own part.
  */
 export function layerGroups({
-  windStyle,
-  onWindStyle,
+  wind,
+  onWind,
   layers,
   onLayersChange,
   satellite,
@@ -94,19 +94,19 @@ export function layerGroups({
   focusStyle,
   onFocusStyle,
 }: LayerChoices): LayerGroup[] {
-  const wind = (
-    style: WindStyle,
+  const windPart = (
+    key: keyof WindLayers,
     name: string,
     sub: string,
     glyph: ReactNode,
   ): LayerTile => ({
-    id: `wind-${style}`,
+    id: `wind-${key}`,
     name,
     sub,
-    cut: style,
+    cut: key,
     glyph,
-    on: windStyle === style,
-    press: () => onWindStyle(style),
+    on: wind[key],
+    press: () => onWind({ ...wind, [key]: !wind[key] }),
   });
   const part = (
     key: keyof ChartLayers,
@@ -162,20 +162,19 @@ export function layerGroups({
       id: "wind",
       name: "Wind",
       glyph: <ChartGlyph glyph={glyphs.wind} size={14} />,
-      rule: "one at a time",
+      rule: "either, or both",
       tiles: [
-        wind("ink", "Ink", "Streaks, the default", <InkWindGlyph size={18} />),
-        wind(
+        windPart(
           "wash",
           "Coloured wind",
           "Speed as colour",
           <ColouredWindGlyph size={18} />,
         ),
-        wind(
-          "arrows",
-          "Coloured arrows",
-          "Speed and way",
-          <ArrowsWindGlyph size={18} />,
+        windPart(
+          "particles",
+          "Particles",
+          "Lines moving with it",
+          <ParticlesGlyph size={18} />,
         ),
       ],
     },
@@ -320,8 +319,7 @@ export interface RailItem {
  * The groups as the layers' rail draws them: a button a layer, with no
  * picture and no words under it. A group's "none of these" has no button of
  * its own there: pressing the layer that is on chooses it instead, as a
- * satellite tide pressed again is no image. A group of which one is always on
- * (the wind) keeps it on, as the panel does.
+ * satellite tide pressed again is no image.
  */
 export function railGroups(groups: LayerGroup[]) {
   return groups.map((group) => {

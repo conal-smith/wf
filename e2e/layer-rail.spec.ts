@@ -109,7 +109,7 @@ test("on a desktop, Layers opens the rail beside the zoom, clear of the dock, wi
   await closePanel(page);
 });
 
-test("the rail's switches: a part of the chart, the wind one at a time, one thing or nothing round the spot, one tide or none", async ({
+test("the rail's switches: a part of the chart, the wind's two layers each by itself, one thing or nothing round the spot, one tide or none", async ({
   page,
 }) => {
   await openDock(page, 1440, 900);
@@ -138,18 +138,28 @@ test("the rail's switches: a part of the chart, the wind one at a time, one thin
   await railButton(page, "Spot names").click();
   await expect(page.locator(".map-canvas")).not.toHaveClass(/no-names/);
 
-  // The wind, one at a time: pressed again, it stays.
+  // The wind's two layers, each on and off by itself: the coloured wind on
+  // leaves the particles on over it, and they go off and on alone.
   await railButton(page, "Coloured wind").click();
   await expect(railButton(page, "Coloured wind")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await expect(railButton(page, "Ink")).toHaveAttribute(
+  await expect(railButton(page, "Particles")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await railButton(page, "Particles").click();
+  await expect(railButton(page, "Particles")).toHaveAttribute(
     "aria-pressed",
     "false",
   );
-  await railButton(page, "Coloured wind").click();
   await expect(railButton(page, "Coloured wind")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await railButton(page, "Particles").click();
+  await expect(railButton(page, "Particles")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -234,24 +244,29 @@ test("the rail is a toolbar: one stop on Tab, the arrows walk it, Space switches
   await expect(rail(page)).toBeVisible();
   await expect(rail(page)).toHaveAttribute("aria-orientation", "vertical");
   await page.keyboard.press("Tab");
-  await expect(railButton(page, "Ink")).toBeFocused();
-  // Its name shows on the keys' focus too.
-  await expect(railButton(page, "Ink").locator(".lr-tip")).toBeVisible();
-  await page.keyboard.press("ArrowDown");
   await expect(railButton(page, "Coloured wind")).toBeFocused();
+  // Its name shows on the keys' focus too.
+  await expect(
+    railButton(page, "Coloured wind").locator(".lr-tip"),
+  ).toBeVisible();
+  await page.keyboard.press("ArrowDown");
+  await expect(railButton(page, "Particles")).toBeFocused();
   await page.keyboard.press("Space");
+  await expect(railButton(page, "Particles")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await page.keyboard.press("ArrowUp");
+  await expect(railButton(page, "Coloured wind")).toBeFocused();
+  await page.keyboard.press("Enter");
   await expect(railButton(page, "Coloured wind")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await page.keyboard.press("ArrowUp");
-  await expect(railButton(page, "Ink")).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect(railButton(page, "Ink")).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("End");
   await expect(railButton(page, "Range ring")).toBeFocused();
   await page.keyboard.press("Home");
-  await expect(railButton(page, "Ink")).toBeFocused();
+  await expect(railButton(page, "Coloured wind")).toBeFocused();
   // One stop: Tab leaves the rail, and Shift+Tab comes back to where it was.
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowDown");
@@ -260,7 +275,7 @@ test("the rail is a toolbar: one stop on Tab, the arrows walk it, Space switches
     await rail(page).evaluate((el) => el.contains(document.activeElement)),
   ).toBe(false);
   await page.keyboard.press("Shift+Tab");
-  await expect(railButton(page, "Coloured arrows")).toBeFocused();
+  await expect(railButton(page, "Tidal depth")).toBeFocused();
 });
 
 test("the dock's Layers opens the rail too; where the rail would run into the dock, Layers opens the panel", async ({

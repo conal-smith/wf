@@ -58,12 +58,20 @@ test("the chart's controls: zoom and Layers on the right, the layers from the me
   await expect(panel).toBeVisible();
   // Each layer a tile with a picture of it, a toggle under its group's name.
   const wind = panel.getByRole("group", { name: "Wind" });
-  await expect(wind.getByRole("button")).toHaveCount(3);
-  for (const [i, name] of ["Ink", "Coloured wind", "Coloured arrows"].entries())
+  // The wind in two layers, each its own switch: the particles alone at first.
+  await expect(wind.getByRole("button")).toHaveCount(2);
+  for (const [i, name] of ["Coloured wind", "Particles"].entries())
     await expect(wind.getByRole("button").nth(i)).toHaveAccessibleName(name);
-  await expect(layerTile(page, "Ink")).toHaveAttribute("aria-pressed", "true");
-  await expect(layerTile(page, "Ink")).toHaveAccessibleDescription(
-    "Streaks, the default",
+  await expect(layerTile(page, "Particles")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(layerTile(page, "Coloured wind")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await expect(layerTile(page, "Particles")).toHaveAccessibleDescription(
+    "Lines moving with it",
   );
   for (const group of [
     "Sea",
@@ -75,9 +83,8 @@ test("the chart's controls: zoom and Layers on the right, the layers from the me
     await expect(panel.getByRole("group", { name: group })).toBeVisible();
   // The knot scale is there while the wind is drawn in its colours.
   await expect(panel.locator(".knot-scale")).toHaveCount(0);
-  // The tiles take the keys: Tab reaches Ink first, Space presses it.
-  await page.keyboard.press("Tab");
-  await expect(layerTile(page, "Ink")).toBeFocused();
+  // The tiles take the keys: Tab reaches the coloured wind first, Space
+  // presses it, and the particles stay on over it.
   await page.keyboard.press("Tab");
   await expect(layerTile(page, "Coloured wind")).toBeFocused();
   await page.keyboard.press("Space");
@@ -85,11 +92,21 @@ test("the chart's controls: zoom and Layers on the right, the layers from the me
     "aria-pressed",
     "true",
   );
-  await expect(layerTile(page, "Ink")).toHaveAttribute("aria-pressed", "false");
+  await expect(layerTile(page, "Particles")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(panel.locator(".knot-scale")).toBeVisible();
   // Reset puts the defaults back.
   await page.getByRole("button", { name: "Reset", exact: true }).click();
-  await expect(layerTile(page, "Ink")).toHaveAttribute("aria-pressed", "true");
+  await expect(layerTile(page, "Particles")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(layerTile(page, "Coloured wind")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
   await expect(
     panel.getByRole("group", { name: "Weather model" }),
   ).toBeVisible();

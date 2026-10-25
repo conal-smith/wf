@@ -1,7 +1,7 @@
 /**
  * The Layers panel's pictures (src/LayersPanel.tsx): for each layer a small
  * square cut from the chart, a bit of coast drawn the way that layer draws
- * it. The ink streaks, the coloured wind, the tidal depth's bands, the
+ * it. The particles' streaks, the coloured wind, the tidal depth's bands, the
  * currents' arrows, a satellite photograph, a shower crossing the coast.
  *
  * Each picture is a few dozen SVG shapes, coloured with the theme's own
@@ -14,11 +14,10 @@
  */
 import type { CSSProperties, ReactNode } from "react";
 
-/** Which picture: a wind style, a chart part, a satellite tide, a focus. */
+/** Which picture: a wind layer, a chart part, a satellite tide, a focus. */
 export type CuttingId =
-  | "ink"
   | "wash"
-  | "arrows"
+  | "particles"
   | "foil"
   | "currents"
   | "rain"
@@ -207,62 +206,23 @@ function Figure({
   );
 }
 
-/** An arrow pointing up and to the right, `size` long, in the given colour. */
-function Arrow({
-  x,
-  y,
-  size,
-  colour,
-  turn = -45,
-}: {
-  x: number;
-  y: number;
-  size: number;
-  colour: string;
-  turn?: number;
-}) {
-  const s = size / 16;
-  return (
-    <path
-      transform={`translate(${x} ${y}) rotate(${turn}) scale(${s})`}
-      d="M0 -8L5 -2H2V8H-2V-2H-5Z"
-      style={{ fill: token(colour), stroke: token("color-ink") }}
-      strokeWidth={0.8 / s}
-      strokeLinejoin="round"
-    />
-  );
-}
-
 function cutting(id: CuttingId): ReactNode {
   switch (id) {
-    case "ink":
-      return (
-        <>
-          <Sea />
-          <Land />
-          <Streaks opacity={0.7} />
-        </>
-      );
     case "wash":
+      // The colour alone: the particles are a layer of their own.
       return (
         <>
           <Sea />
           <rect width="100" height="100" fill="url(#lp-wash)" opacity="0.8" />
           <Land />
-          <Streaks opacity={0.3} />
         </>
       );
-    case "arrows":
+    case "particles":
       return (
         <>
           <Sea />
           <Land />
-          <Arrow x={52} y={18} size={13} colour="color-wind-k10" />
-          <Arrow x={78} y={22} size={16} colour="color-wind-k15" />
-          <Arrow x={58} y={48} size={18} colour="color-wind-k20" />
-          <Arrow x={84} y={52} size={21} colour="color-wind-k25" />
-          <Arrow x={54} y={78} size={22} colour="color-wind-k30" />
-          <Arrow x={82} y={84} size={25} colour="color-wind-k35" />
+          <Streaks opacity={0.7} />
         </>
       );
     case "foil":

@@ -570,6 +570,18 @@ and keeps its order as spots are starred. The dialog keeps the name
 ui/Dialog.tsx), and the search in a box is a capsule (`shape="pill"` on
 ui/SearchField.tsx).
 
+**2026-10-25 — The wind in two layers, Coloured wind and Particles.** "Let's
+get rid of ink. So we should have colored wind and particles... two separate
+layers." The wind was one style of three (Ink, Coloured wind, Coloured
+arrows); it is two switches now, either, both or neither. Coloured wind is the
+speed as a wash on the sea and nothing more: it no longer draws the ink lines
+over itself. Particles are the moving lines, always in ink, so they read over
+the colour; the arrows tinted by speed are gone. A first visit has the
+particles alone, as the chart has always opened. A rider's older choice is
+read into the layers once (force5/src/windLayer.ts `parseWindLayers`): Ink is
+the particles, Coloured wind the colour alone, Coloured arrows both. The spot
+finder's map has the colour alone, so its pins are all that moves the eye.
+
 ---
 
 ## Still open

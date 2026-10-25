@@ -14,8 +14,8 @@ const LAYERS: ChartLayers = {
 
 function choices(over: Partial<LayerChoices> = {}): LayerChoices {
   return {
-    windStyle: "ink",
-    onWindStyle: vi.fn(),
+    wind: { wash: false, particles: true },
+    onWind: vi.fn(),
     layers: LAYERS,
     onLayersChange: vi.fn(),
     satellite: "off",
@@ -56,13 +56,31 @@ describe("railGroups", () => {
     });
   });
 
-  it("keeps the wind's one style on when it is pressed again", () => {
-    const set = choices({ windStyle: "wash" });
+  it("switches the wind's two layers each by itself, either, both or neither", () => {
+    const set = choices();
     const rail = railGroups(layerGroups(set));
+    expect(rail[0].items.map((entry) => [entry.name, entry.on])).toEqual([
+      ["Coloured wind", false],
+      ["Particles", true],
+    ]);
     item(rail, "wind-wash").press();
-    expect(set.onWindStyle).toHaveBeenLastCalledWith("wash");
-    item(rail, "wind-arrows").press();
-    expect(set.onWindStyle).toHaveBeenLastCalledWith("arrows");
+    expect(set.onWind).toHaveBeenLastCalledWith({
+      wash: true,
+      particles: true,
+    });
+    item(rail, "wind-particles").press();
+    expect(set.onWind).toHaveBeenLastCalledWith({
+      wash: false,
+      particles: false,
+    });
+    const both = choices({ wind: { wash: true, particles: true } });
+    const panel = layerGroups(both)[0];
+    expect(panel.tiles.every((tile) => tile.on)).toBe(true);
+    panel.tiles[0].press();
+    expect(both.onWind).toHaveBeenLastCalledWith({
+      wash: false,
+      particles: true,
+    });
   });
 
   it("chooses nothing round the spot when the one on is pressed again", () => {
