@@ -15,11 +15,12 @@ COPY alerts/ ./alerts/
 # The MCP server reuses the map's unit and sunrise maths and its shore rule,
 # and Gust (the companion) the star ratings and the shore facings; all
 # dependency-free. The model the stars come from (lead.ts) names its models
-# from the catalogue.
+# from the catalogue. Met Éireann's warnings (warnings.ts) read their area
+# table from data/locations.
 COPY force5/src/units.ts force5/src/sun.ts force5/src/stars.ts force5/src/weights.ts \
      force5/src/spotData.ts force5/src/squares.ts force5/src/lead.ts \
-     force5/src/catalog.ts force5/src/shoreFacing.ts ./force5/src/
-COPY data/locations/shore-facing.json ./data/locations/
+     force5/src/catalog.ts force5/src/shoreFacing.ts force5/src/warnings.ts ./force5/src/
+COPY data/locations/shore-facing.json data/locations/warning-areas.json ./data/locations/
 # Alerts rate the published catalogue's places (alerts/api/forecast.ts).
 COPY public/riding-locations.json ./public/
 RUN npx tsc -p market/api/tsconfig.json

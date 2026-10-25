@@ -268,8 +268,11 @@ export interface SpotRow {
   rating: HourRating | null;
   /** How the wind meets the shore, rated or not; null where unknown. */
   shore: ShoreAngle | null;
-  /** The Met Éireann warnings covering any of the row's hours, or null with none. */
-  warning: HourWarning | null;
+  /**
+   * The Met Éireann warnings covering any of the row's hours, or null with
+   * none. Optional: the app (mobile/) builds its rows itself, without them.
+   */
+  warning?: HourWarning | null;
 }
 
 /** Rate one forecast hour for a rider at a shore, from the one model's own wind. */

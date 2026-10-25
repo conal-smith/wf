@@ -124,9 +124,13 @@ class PublishTests(unittest.TestCase):
                     validate_bundle(self.public, "warnings", 6, now=NOW)
 
 
+SITE_RULE = ROOT / "force5" / "src" / "warnings.ts"
+
+
 class TimetableTests(unittest.TestCase):
+    @unittest.skipUnless(SITE_RULE.exists(), "force5/src is not in the worker image")
     def test_the_site_trusts_the_file_exactly_as_long_as_the_registry_does(self):
-        source = (ROOT / "force5" / "src" / "warnings.ts").read_text()
+        source = SITE_RULE.read_text()
         limit = re.search(r"WARNINGS_MAX_AGE_HOURS = (\d+);", source)
         self.assertEqual(int(limit.group(1)), MODELS["warnings"]["maxAgeHours"])
 
