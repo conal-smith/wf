@@ -4,7 +4,7 @@ import type { SatelliteOption } from "../force5/src/satellite";
 import type { SiteMenuTool } from "../force5/src/SiteMenu";
 import type { ChartLayers } from "../force5/src/WindMap";
 import type { FocusStyle } from "../force5/src/focus";
-import type { WindStyle } from "../force5/src/windLayer";
+import type { WindLayers } from "../force5/src/windLayer";
 import { useFadeOut } from "../ui/Backdrop";
 import { Dialog } from "../ui/Dialog";
 import { AboutGlyph, LayersGlyph, OptionsGlyph } from "./chartGlyphs";
@@ -76,8 +76,8 @@ export default function MapControls({
   onOpen,
   options,
   onInfo,
-  windStyle,
-  onWindStyle,
+  wind,
+  onWind,
   layers,
   onLayersChange,
   satellite,
@@ -117,8 +117,9 @@ export default function MapControls({
   options: (close: () => void) => ReactNode;
   /** The map's information, at the tidal depth's part from its "i". */
   onInfo: (at: InfoSection) => void;
-  windStyle: WindStyle;
-  onWindStyle: (style: WindStyle) => void;
+  /** The wind's two layers, the coloured wind and the particles, each on or off. */
+  wind: WindLayers;
+  onWind: (wind: WindLayers) => void;
   layers: ChartLayers;
   onLayersChange: (layers: ChartLayers) => void;
   /** The satellite image under the chart: off, or which tide's. */
@@ -188,8 +189,8 @@ export default function MapControls({
           onFits={onRailFits}
           layoutKey={layoutKey}
           groups={layerGroups({
-            windStyle,
-            onWindStyle,
+            wind,
+            onWind,
             layers,
             onLayersChange,
             satellite,
@@ -207,8 +208,8 @@ export default function MapControls({
             open={open === "layers"}
             onClose={close}
             onInfo={onInfo}
-            windStyle={windStyle}
-            onWindStyle={onWindStyle}
+            wind={wind}
+            onWind={onWind}
             layers={layers}
             onLayersChange={onLayersChange}
             satellite={satellite}

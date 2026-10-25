@@ -120,8 +120,8 @@ export const DEPTH_BY_ZOOM: Record<string, [string, ExpressionSpecification]> =
 /**
  * The coast's ink: as the chart draws it, and heavier under the coloured
  * wind (windLayer.ts), where a hairline is lost between the sea's strong
- * colour and the land's fainter one. The map switches between them with
- * the wind's style (WindMap.tsx).
+ * colour and the land's fainter one. The map switches between them as the
+ * coloured wind goes on and off (WindMap.tsx).
  */
 export const COAST_INK: Record<
   "chart" | "wash",

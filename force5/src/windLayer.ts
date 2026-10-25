@@ -1,14 +1,18 @@
 /**
- * The wind on the chart, three ways, and the moving arrows in all of them:
+ * The wind on the chart, in two layers, each on or off by itself:
  *
- *   ink      the arrows in ink, light air thin and pale, a breeze bolder
- *   arrows   the same arrows tinted by speed, on the wind scale (PALETTE)
- *   wash     the wind scale as a wash over the sea, with the ink arrows on it
+ *   wash       the coloured wind: the wind scale as a wash over the sea
+ *   particles  lines in ink drifting with the forecast, light air thin and
+ *              pale, a breeze bolder
  *
- * The arrows are particles drifting with the forecast on a canvas over the
- * map. Each keeps its last few positions and its trail is drawn fresh every
- * frame, older segments fainter (design/chart/chart-kit.js): fading the canvas
- * instead never quite reaches zero in 8-bit alpha and leaves a haze wherever
+ * Either, both or neither: the particles read over the colour, so a rider can
+ * have the wind's speed and its way at once. The coloured wind draws no lines
+ * of its own; with the particles off it is the colour alone.
+ *
+ * The particles drift with the forecast on a canvas over the map. Each keeps
+ * its last few positions and its trail is drawn fresh every frame, older
+ * segments fainter (design/chart/chart-kit.js): fading the canvas instead
+ * never quite reaches zero in 8-bit alpha and leaves a haze wherever
  * particles have been.
  *
  * A line lives for between four and ten seconds, a different span for each,
@@ -31,8 +35,7 @@
  * from the basemap's own water polygons; where those have not loaded yet the
  * land gets a fainter wash rather than none. It is as strong zoomed right in
  * as it is over the whole country: a rider who chose it is reading the wind
- * by it, at a spot as much as along the coast. The coloured arrows, though,
- * go to ink where the depths take over.
+ * by it, at a spot as much as along the coast.
  *
  * The field is a frame's `TiledField` (tiledField.ts). Each time the camera
  * settles, the layer says what it shows — the wash's box, a third of the view
@@ -46,8 +49,56 @@ import { setMapView, WASH_STEP, type MapView } from "./tiledField";
 import { KNOTS } from "./units";
 import { windColor, type Frame } from "./weather";
 
-export type WindStyle = "ink" | "arrows" | "wash";
-export const WIND_STYLES: readonly WindStyle[] = ["ink", "arrows", "wash"];
+/** The wind's two layers, each on or off. */
+export interface WindLayers {
+  /** The coloured wind: the speed as a wash over the sea. */
+  wash: boolean;
+  /** The particles: lines in ink moving with the wind. */
+  particles: boolean;
+}
+
+/** A first visit's wind: the particles alone, as the chart has always opened. */
+export const DEFAULT_WIND: WindLayers = { wash: false, particles: true };
+
+/**
+ * The wind as an older chart kept it, one style of three, in its two layers
+ * now. Ink was the particles alone. The coloured wind drew the ink lines over
+ * its colour, and is the colour alone now, the particles a layer of their own
+ * to add. The coloured arrows were the particles tinted by speed: a rider who
+ * chose them wanted the speed in colour and the way in lines, which is both.
+ */
+const FROM_STYLE: Record<string, WindLayers> = {
+  ink: { wash: false, particles: true },
+  wash: { wash: true, particles: false },
+  arrows: { wash: true, particles: true },
+};
+
+/**
+ * The rider's wind from the store: the two layers as saved, or else an older
+ * chart's style (`older`) read into them, or else the default.
+ */
+export function parseWindLayers(
+  saved: string | null,
+  older: string | null = null,
+): WindLayers {
+  if (saved) {
+    try {
+      const value = JSON.parse(saved);
+      if (
+        typeof value?.wash === "boolean" &&
+        typeof value?.particles === "boolean"
+      )
+        return { wash: value.wash, particles: value.particles };
+    } catch {
+      // Not ours: what an older store holds is read below.
+    }
+  }
+  return {
+    ...(older && Object.hasOwn(FROM_STYLE, older)
+      ? FROM_STYLE[older]
+      : DEFAULT_WIND),
+  };
+}
 
 const STEP = 10;
 const BUCKETS = 4;
@@ -67,19 +118,10 @@ const LIFE_SPAN = 180;
 /** Steps to fade in at birth and out at the end. */
 const FADE_IN = 12;
 const FADE_OUT = 16;
-/** Arrow colours, one per 3 kn up to 60, the last open-ended. */
-const BINS = 20;
+/** The ink's two strengths: light air, and a breeze over 7 m/s. */
+const INKS = 2;
 /** The wash's colours, one per half knot up to the scale's last stop. */
 const WASH_LUT = Array.from({ length: 131 }, (_, i) => windColor(i / 2));
-/**
- * The zoom where the depths take over. Zoomed right in, a rider is reading
- * how deep the water is, and the depth tints are at full strength from here
- * (chartStyle): the coloured arrows would clash with them, so they are drawn
- * in ink. The moving lines themselves stay at every zoom. The wash does not
- * give way: it was chosen to be read, and it lies over the tints, under the
- * contours, the soundings and the coast's ink, at every zoom.
- */
-const DEPTHS_ZOOM = 11;
 /**
  * Opacity of the wash over the sea, over land, and where the mask has not
  * reached yet. The sea all but the wind's own colour: at seven tenths the
@@ -107,7 +149,8 @@ export interface WindLayerOptions {
 
 export interface WindLayer {
   setFrame(frame: Frame | null): void;
-  setStyle(style: WindStyle): void;
+  /** Which of the wind's two layers are drawn. */
+  setWind(wind: WindLayers): void;
   setPaused(paused: boolean): void;
   /** Particles drawn in the last frame, for tests and the perf probe. */
   readonly drawn: number;
@@ -171,7 +214,8 @@ export function createWindLayer(
   let frame: Frame | null = null;
   /** Clears the canvas after a fade, should its transition never end. */
   let blankTimer = 0;
-  let style: WindStyle = "ink";
+  /** Nothing drawn until the map says what the rider has on. */
+  let shown: WindLayers = { wash: false, particles: false };
   let paused = false;
   let destroyed = false;
   let width = 0,
@@ -189,16 +233,6 @@ export function createWindLayer(
   const inks = [0.3, 0.5].map((a) =>
     Array.from({ length: LEVELS + 1 }, (_, l) => rgba(ink, (a * l) / LEVELS)),
   );
-  /** The coloured arrows' colour per speed bin, per level. */
-  const colours = Array.from({ length: BINS }, (_, b) => {
-    // Bins run 0–60 kn in 3 kn steps, the last one open-ended.
-    const rgb = windColor(b * 3 + 1.5);
-    // Darkened a touch toward the ink, so a pale blue still reads on paper.
-    const toned = rgb.map((v, i) => Math.round(v * 0.8 + ink[i] * 0.2));
-    return Array.from({ length: LEVELS + 1 }, (_, l) =>
-      rgba(toned, (0.9 * l) / LEVELS),
-    );
-  });
 
   // The canvas is carried with the camera between draws by a CSS transform
   // about its own top-left corner (carry, below).
@@ -221,8 +255,8 @@ export function createWindLayer(
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
   };
-  /** Speed colours, but for ink where the depths take over. */
-  const colouredNow = () => style === "arrows" && map.getZoom() < DEPTHS_ZOOM;
+  /** The particles are still: the rider's motion setting, or the layer off. */
+  const still = () => paused || !shown.particles;
 
   /* ---- the cloud ---- */
 
@@ -250,7 +284,7 @@ export function createWindLayer(
   /** The draw's runs, by bin and level: a particle's index times BUCKETS plus k. */
   let runs = new Uint32Array(0);
   let runKey = new Uint16Array(0);
-  const keyCount = new Uint32Array(BINS * LEVELS + 1);
+  const keyCount = new Uint32Array(INKS * LEVELS + 1);
 
   const grow = (n: number) => {
     if (n <= cap) return;
@@ -466,7 +500,7 @@ export function createWindLayer(
    * Every particle one step on, its trail with it. The dead are born again,
    * or let go while the cloud is larger than the view wants.
    */
-  const advance = (coloured: boolean, freshOnly = false) => {
+  const advance = (freshOnly = false) => {
     for (let i = 0; i < count; i++) {
       if (freshOnly && !fresh[i]) continue;
       if (age[i] >= life[i] || !held[i]) {
@@ -487,11 +521,7 @@ export function createWindLayer(
         if (at()) {
           vel[i * 2] = wind[0];
           vel[i * 2 + 1] = wind[1];
-          bin[i] = coloured
-            ? Math.min(BINS - 1, Math.floor((wind[2] * KNOTS) / 3))
-            : wind[2] > 7
-              ? 1
-              : 0;
+          bin[i] = wind[2] > 7 ? 1 : 0;
         } else {
           // Off the field: on the same heading, fading out.
           coast[i] = 1;
@@ -516,13 +546,13 @@ export function createWindLayer(
       Math.min(1, (age[i] + 1) / FADE_IN, (life[i] - age[i]) / FADE_OUT),
     );
 
-  /** The trails, one stroke per colour and alpha level in use. */
-  const draw = (coloured: boolean) => {
+  /** The trails, one stroke per ink and alpha level in use. */
+  const draw = () => {
     ctx.clearRect(0, 0, width, height);
     drawn = 0;
-    const keys = (coloured ? BINS : 2) * LEVELS;
+    const keys = INKS * LEVELS;
     keyCount.fill(0);
-    // Each trail's buckets, keyed by colour and level, then sorted by key so
+    // Each trail's buckets, keyed by ink and level, then sorted by key so
     // each stroke is one walk along its own runs.
     for (let i = 0; i < count; i++) {
       const n = held[i] - 1;
@@ -556,8 +586,8 @@ export function createWindLayer(
       if (to === from) continue;
       const b = Math.floor(key / LEVELS),
         level = (key % LEVELS) + 1;
-      ctx.lineWidth = coloured ? (b >= 3 ? 1.6 : 1.2) : b ? 1.4 : 1;
-      ctx.strokeStyle = coloured ? colours[b][level] : inks[b][level];
+      ctx.lineWidth = b ? 1.4 : 1;
+      ctx.strokeStyle = inks[b][level];
       ctx.beginPath();
       for (let j = from; j < to; j++) {
         const r = runs[j];
@@ -677,8 +707,7 @@ export function createWindLayer(
     // Run the newly born a trail's length before they are drawn, so a view
     // the camera has just arrived at fills with whole lines, fading in,
     // rather than dots growing their trails for most of a second.
-    const coloured = colouredNow();
-    for (let i = 0; i < TRAIL; i++) advance(coloured, true);
+    for (let i = 0; i < TRAIL; i++) advance(true);
     for (let i = 0; i < count; i++) if (fresh[i]) age[i] = 0;
   };
 
@@ -697,9 +726,8 @@ export function createWindLayer(
   const render = (now: number) => {
     last = now;
     follow();
-    const coloured = colouredNow();
-    advance(coloured);
-    draw(coloured);
+    advance();
+    draw();
     drawnAt = [
       map.unproject([0, 0]),
       map.unproject([width, 0]),
@@ -729,7 +757,7 @@ export function createWindLayer(
 
   const step = (now: number) => {
     raf = 0;
-    if (destroyed || paused || !frame || document.hidden) return;
+    if (destroyed || still() || !frame || document.hidden) return;
     raf = requestAnimationFrame(step);
     if (now - last < 30) return;
     // The field is resampled once the camera is still: per frame it is too
@@ -739,16 +767,27 @@ export function createWindLayer(
   };
 
   const restart = () => {
-    if (!raf && !destroyed && !paused) raf = requestAnimationFrame(step);
+    if (!raf && !destroyed && !still()) raf = requestAnimationFrame(step);
   };
   const resample = () => {
     stale = true;
     restart();
   };
+  /**
+   * Still (reduced motion, or the particles off), the loop stops and the
+   * canvas is cleared, so no line stands frozen on the chart; else it runs.
+   */
+  const move = () => {
+    if (!still()) return restart();
+    cancelAnimationFrame(raf);
+    raf = 0;
+    drawn = 0;
+    ctx.clearRect(0, 0, width, height);
+  };
 
   /**
    * The tiles the view needs, for the frame on screen: the field draws from
-   * what it holds meanwhile, and once they are in, the arrows' field and the
+   * what it holds meanwhile, and once they are in, the particles' field and the
    * wash are drawn again and the next hour's tiles for the same view follow.
    * A tile that fails leaves the coarser one drawn, and tells the caller
    * (`onTilesFailed`), which looks for a newer run; the frame's own load, the
@@ -831,7 +870,7 @@ export function createWindLayer(
   const paintWash = () => {
     washTimer = 0;
     if (destroyed) return;
-    const on = style === "wash" && !!frame;
+    const on = shown.wash && !!frame;
     if (map.getLayer("wind-wash"))
       map.setLayoutProperty("wind-wash", "visibility", on ? "visible" : "none");
     if (!on || !frame) return;
@@ -939,7 +978,7 @@ export function createWindLayer(
     }
   };
   const queueWash = (delay = 60) => {
-    if (style !== "wash") {
+    if (!shown.wash) {
       paintWash();
       return;
     }
@@ -953,7 +992,7 @@ export function createWindLayer(
   // The lines go with the map as it moves, in the same frame as it: drawn
   // when a step is due, carried as drawn until then.
   const onMove = () => {
-    if (destroyed || paused || !frame || !field || document.hidden) return;
+    if (destroyed || still() || !frame || !field || document.hidden) return;
     const now = performance.now();
     if (now - last >= 30) render(now);
     else carry();
@@ -964,7 +1003,7 @@ export function createWindLayer(
     queueWash();
   };
   const onIdle = () => {
-    if (style === "wash" && !washKey && retries < 3) queueWash(0);
+    if (shown.wash && !washKey && retries < 3) queueWash(0);
   };
   const onVisible = () => restart();
   map.on("move", onMove);
@@ -998,20 +1037,21 @@ export function createWindLayer(
       resample();
       queueWash(0);
     },
-    setStyle(next) {
-      style = next;
-      // Every style draws the arrows: only their colour changes.
-      restart();
-      washKey = "";
-      queueWash(0);
+    setWind(next) {
+      const washed = shown.wash;
+      shown = { ...next };
+      // The particles off go as reduced motion stills them: the loop stopped
+      // and the canvas cleared. Back on, they are drawn where the camera is,
+      // the field resampled if it has moved meanwhile.
+      move();
+      if (shown.wash !== washed) {
+        washKey = "";
+        queueWash(0);
+      }
     },
     setPaused(next) {
       paused = next;
-      if (paused) {
-        cancelAnimationFrame(raf);
-        raf = 0;
-        ctx.clearRect(0, 0, width, height);
-      } else restart();
+      move();
     },
     get drawn() {
       return drawn;

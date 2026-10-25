@@ -1,10 +1,11 @@
 /**
  * The finder's map: the chart (force5/src/WindMap.tsx) in a plain style, its
- * light base with the wind in ink at the chosen hour, as the chart's Ink
- * layer draws it, from the frame the chart has already loaded; and a pin
- * with its stars for each place on the list. A pin is an ink pill for four
- * or five stars, paper for one to three and dashed for none: shape and fill
- * for the reading, never a wind colour. Press one for its card on the map.
+ * light base under the coloured wind at the chosen hour and no particles, so
+ * the pins are all that moves the eye, from the frame the chart has already
+ * loaded; and a pin with its stars for each place on the list. A pin is an
+ * ink pill for four or five stars, paper for one to three and dashed for
+ * none: shape and fill for the reading, never a wind colour, which the sea
+ * under it is already. Press one for its card on the map.
  */
 import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, X } from "lucide-react";
@@ -12,6 +13,7 @@ import { WindMap } from "../../force5/src";
 import type { LightState } from "../../force5/src/lights";
 import type { Rider } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
+import type { WindLayers } from "../../force5/src/windLayer";
 import type { ChartLayers, MapControls } from "../../force5/src/WindMap";
 import { spotHref } from "../../force5/src/siteNav";
 import type { Frame, Spot } from "../../force5/src/weather";
@@ -39,6 +41,8 @@ const PLAIN: ChartLayers = {
   currents: false,
   rain: false,
 };
+/** The coloured wind alone: the speed on the sea, no lines over it. */
+const COLOUR_ONLY: WindLayers = { wash: true, particles: false };
 const NO_LIGHTS = new Map<string, LightState>();
 const NO_NAMES = new Set<string>();
 const NO_SPOTS: Spot[] = [];
@@ -224,7 +228,7 @@ export default function FinderMap({
         rose={null}
         mark={null}
         picked={null}
-        windStyle="ink"
+        wind={COLOUR_ONLY}
         layers={PLAIN}
         foil={null}
         reducedMotion={reducedMotion}

@@ -52,7 +52,11 @@ import { useRain } from "./useRain";
 import type { LightState } from "../force5/src/lights";
 import { speedWords } from "../force5/src/units";
 import { rideWedge } from "../force5/src/rideWedge";
-import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
+import {
+  DEFAULT_WIND,
+  parseWindLayers,
+  type WindLayers,
+} from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ForecastDock, { type DockView } from "./ForecastDock";
 import MapControls, { chartTools, type MapPanel } from "./MapControls";
@@ -178,7 +182,14 @@ import {
   type Spot,
 } from "../force5/src";
 
-const WIND_KEY = "wingfoil.map.wind.v1";
+/** The wind's two layers, the coloured wind and the particles, as JSON. */
+const WIND_KEY = "wingfoil.map.wind.v2";
+/**
+ * The wind's one style of three, as the chart kept it until 2026-10-25: read
+ * once into the two layers (windLayer.ts `parseWindLayers`) while there is
+ * nothing under the new key, and left where it is.
+ */
+const OLD_WIND_KEY = "wingfoil.map.wind.v1";
 const LAYERS_KEY = "wingfoil.map.layers.v1";
 const FOCUS_KEY = "wingfoil.map.focus.v1";
 const MORE_KEY = "wingfoil.map.more.v1";
@@ -370,10 +381,9 @@ export default function App() {
   /** Customise is kept while it fades out, once shut. */
   const customiseShown = useFadeOut(guide === "customise");
   const [view, setView] = useState<DockView>("table");
-  const [windStyle, setWindStyle] = useState<WindStyle>(() => {
-    const saved = store.get(WIND_KEY) as WindStyle | null;
-    return saved && WIND_STYLES.includes(saved) ? saved : "ink";
-  });
+  const [wind, setWind] = useState<WindLayers>(() =>
+    parseWindLayers(store.get(WIND_KEY), store.get(OLD_WIND_KEY)),
+  );
   const [layers, setLayers] = useState<MapLayers>(() => {
     try {
       // The LiDAR layer was taken off on 2026-10-24: a rider's stored choice
@@ -390,9 +400,9 @@ export default function App() {
       return DEFAULT_LAYERS;
     }
   });
-  const chooseWind = (style: WindStyle) => {
-    setWindStyle(style);
-    store.set(WIND_KEY, style);
+  const chooseWind = (next: WindLayers) => {
+    setWind(next);
+    store.set(WIND_KEY, JSON.stringify(next));
   };
   /** The mark round the chosen spot: the range ring unless the rider chose otherwise. */
   const [focusStyle, setFocusStyle] = useState<FocusStyle>(() => {
@@ -1846,8 +1856,8 @@ export default function App() {
                 </Suspense>
               )}
               onInfo={setInfo}
-              windStyle={windStyle}
-              onWindStyle={chooseWind}
+              wind={wind}
+              onWind={chooseWind}
               layers={layers}
               onLayersChange={(next) => chooseLayers({ ...layers, ...next })}
               satellite={layers.satellite}
@@ -1867,7 +1877,7 @@ export default function App() {
               currentsNote={currents.note}
               foilNote={foilFar ? FOIL_ZOOM_NOTE : null}
               onResetLayers={() => {
-                chooseWind("ink");
+                chooseWind(DEFAULT_WIND);
                 chooseLayers(DEFAULT_LAYERS);
                 chooseFocusStyle("ring");
               }}
@@ -1891,7 +1901,7 @@ export default function App() {
               picked={picked ? { lon: picked.lon, lat: picked.lat } : null}
               covered={() => !!document.querySelector(OVER_THE_CHART)}
               onPick={tapChart}
-              windStyle={windStyle}
+              wind={wind}
               layers={layers}
               foil={foilViews}
               currents={currents.features}

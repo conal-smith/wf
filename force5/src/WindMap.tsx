@@ -47,7 +47,7 @@ import {
   createWindLayer,
   viewOf,
   type WindLayer,
-  type WindStyle,
+  type WindLayers,
 } from "./windLayer";
 import type { Frame, Spot } from "./weather";
 import type { CurrentFeature } from "./currents";
@@ -147,7 +147,8 @@ type Props = {
   mark: { lon: number; lat: number } | null;
   /** A point tapped on the open map, marked where it was tapped. */
   picked: { lon: number; lat: number } | null;
-  windStyle: WindStyle;
+  /** The wind's two layers, the coloured wind and the particles, each on or off. */
+  wind: WindLayers;
   layers: ChartLayers;
   /** The foilable-depth areas to draw, or null to draw none. */
   foil: readonly FoilView[] | null;
@@ -658,7 +659,7 @@ export default function WindMap(props: Props) {
     rose,
     mark,
     picked,
-    windStyle,
+    wind,
     layers,
     foil,
     currents = null,
@@ -824,7 +825,7 @@ export default function WindMap(props: Props) {
     map.on("load", () => {
       clearTimeout(loadTimeout);
       // The plain style: the land in paper and the sea a pale wash, so the
-      // wind's ink and the page's own marks read first.
+      // wind and the page's own marks read first.
       if (latest.current.plain) {
         map.setPaintProperty("land", "background-color", colours.paper);
         const sea = getComputedStyle(document.documentElement)
@@ -975,17 +976,24 @@ export default function WindMap(props: Props) {
     };
   }, []);
 
-  // The wind: its frame, its style, the rider's colours, and motion.
+  // The wind: its frame, its layers, the rider's colours, and motion.
   useEffect(() => {
     windRef.current?.setFrame(frame);
   }, [ready, frame]);
+  const { wash, particles: lines } = wind;
   useEffect(() => {
-    windRef.current?.setStyle(windStyle);
-    particles.current?.setAttribute("data-wind-style", windStyle);
+    windRef.current?.setWind({ wash, particles: lines });
+    // What is drawn, for the specs: "wash particles", either, or "".
+    particles.current?.setAttribute(
+      "data-wind",
+      [wash && "wash", lines && "particles"].filter(Boolean).join(" "),
+    );
+  }, [ready, wash, lines]);
+  useEffect(() => {
     const map = mapRef.current;
     // The coast heavier over the coloured wind, so the shore stays drawn.
     if (ready && map?.getLayer("coast")) {
-      const coast = COAST_INK[windStyle === "wash" ? "wash" : "chart"];
+      const coast = COAST_INK[wash ? "wash" : "chart"];
       map.setPaintProperty("coast", "line-opacity", coast["line-opacity"]);
       map.setPaintProperty("coast", "line-width", coast["line-width"]);
     }
@@ -995,9 +1003,7 @@ export default function WindMap(props: Props) {
     const settle = () => {
       if (!map.getLayer("focus")) return;
       const under =
-        windStyle === "wash" && map.getLayer("wind-wash")
-          ? "wind-wash"
-          : "water-names";
+        wash && map.getLayer("wind-wash") ? "wind-wash" : "water-names";
       const order = map.getLayersOrder();
       const at = order.indexOf("focus");
       // Moving a layer is itself a style change: only when it is out of place.
@@ -1010,7 +1016,7 @@ export default function WindMap(props: Props) {
     return () => {
       map.off("styledata", settle);
     };
-  }, [ready, windStyle]);
+  }, [ready, wash]);
   useEffect(() => {
     windRef.current?.setPaused(reducedMotion);
   }, [ready, reducedMotion]);

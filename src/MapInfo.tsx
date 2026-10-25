@@ -26,14 +26,13 @@ import { windBand, type Rider } from "../force5/src/stars";
 import { windColor } from "../force5/src/weather";
 import {
   AboutGlyph,
-  ArrowsWindGlyph,
   ColouredWindGlyph,
   CurrentsGlyph,
   HighTideGlyph,
-  InkWindGlyph,
   LoupeGlyph,
   LowTideGlyph,
   NamesGlyph,
+  ParticlesGlyph,
   RainGlyph,
   ReliefGlyph,
   RingGlyph,
@@ -82,7 +81,7 @@ const PARTS: readonly Part[] = [
     id: "wind",
     name: "Wind & gusts",
     short: "Wind",
-    glyph: (size) => <InkWindGlyph size={size} />,
+    glyph: (size) => <ParticlesGlyph size={size} />,
   },
   {
     id: "blend",
@@ -634,7 +633,7 @@ function StarsPart({
 const modelName = (id: string) =>
   MODEL_CATALOG.find((entry) => entry.id === id)?.name ?? id.toUpperCase();
 
-/** The wind's colours, the three ways it is drawn, and its figures. */
+/** The wind's colours, its two layers, and its figures. */
 function WindPart() {
   return (
     <>
@@ -647,25 +646,20 @@ function WindPart() {
       </h4>
       <KnotScale />
       <h4>
-        Three ways to draw it <small>in Layers</small>
+        Two layers of it <small>in Layers, either or both</small>
       </h4>
-      <div className="mi-three">
+      <div className="mi-two">
         {(
           [
-            [
-              <InkWindGlyph size={40} />,
-              "Ink",
-              "The default: streaks along the wind, at the hour shown.",
-            ],
             [
               <ColouredWindGlyph size={40} />,
               "Coloured wind",
               "Its speed laid on the sea.",
             ],
             [
-              <ArrowsWindGlyph size={40} />,
-              "Coloured arrows",
-              "Its speed and its way at a glance.",
+              <ParticlesGlyph size={40} />,
+              "Particles",
+              "The default: lines moving with the wind, at the hour shown. Over the colour, its speed and its way at a glance.",
             ],
           ] as const
         ).map(([glyph, name, line]) => (

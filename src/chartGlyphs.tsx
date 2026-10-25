@@ -176,8 +176,8 @@ export function SourcesGlyph(props: ChartGlyphProps) {
 
 /* ---- the wind ---- */
 
-/** The wind in ink: the streaks the particles leave, one strong, one faint. */
-export function InkWindGlyph(props: ChartGlyphProps) {
+/** The particles: the streaks they leave in ink, one strong, one faint. */
+export function ParticlesGlyph(props: ChartGlyphProps) {
   return (
     <Glyph {...props}>
       <path d="M3 14C8 12.5 13 8.5 21 6.5" />
@@ -186,17 +186,6 @@ export function InkWindGlyph(props: ChartGlyphProps) {
         strokeWidth={1}
         strokeOpacity={0.5}
       />
-    </Glyph>
-  );
-}
-
-/** Arrows blowing downwind, longer as the wind is stronger. */
-export function ArrowsWindGlyph(props: ChartGlyphProps) {
-  return (
-    <Glyph {...props}>
-      <path d="M3 11L7.5 6.5M4.5 6.5H7.5V9.5" />
-      <path d="M11 12L19 4M15.5 4H19V7.5" />
-      <path d="M5 21L11 15M7.8 15H11V18.2" />
     </Glyph>
   );
 }

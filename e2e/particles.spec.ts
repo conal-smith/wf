@@ -164,7 +164,7 @@ test("dragging carries the arrows with the map and defers field rebuilds until i
   await expectResumed(page);
 });
 
-test("every wind style keeps the arrows drawing, in any order, and is remembered", async ({
+test("the wind's two layers: the particles on and off by themselves, over the coloured wind or not, and remembered", async ({
   page,
 }) => {
   await instrument(page);
@@ -172,38 +172,50 @@ test("every wind style keeps the arrows drawing, in any order, and is remembered
     timeout: 30000,
   });
   const canvas = page.locator(".particle-canvas");
-  await expect(canvas).toHaveAttribute("data-wind-style", "ink");
+  await expect(canvas).toHaveAttribute("data-wind", "particles");
   await expect.poll(() => inked(page)).toBeGreaterThan(100);
   await openFromMenu(page, "Layers");
   const panel = page.getByRole("group", { name: "Layers" });
-  for (const [name, style] of [
-    ["Coloured wind", "wash"],
-    ["Coloured arrows", "arrows"],
-    ["Ink", "ink"],
-    ["Coloured arrows", "arrows"],
-    ["Coloured wind", "wash"],
-    ["Ink", "ink"],
-  ]) {
-    await panel.getByRole("button", { name, exact: true }).click();
-    await expect(canvas).toHaveAttribute("data-wind-style", style);
-    // Fresh arrows in the new style, not what was left of the last one: the
-    // attribute is set once the layer has the style (WindMap.tsx), and each
-    // frame drawn after that clears the canvas and draws every line in it.
-    await expectResumed(page);
-    await expect
-      .poll(() => inked(page), { message: name })
-      .toBeGreaterThan(100);
-  }
-  await panel
-    .getByRole("button", { name: "Coloured wind", exact: true })
-    .click();
-  await page.reload();
-  // The style is read back as the page mounts, before the chart is up; the
-  // arrows then wait for the whole chart to load again, as they did the first
-  // time, and on a CI runner that has taken longer than five seconds.
-  await expect(canvas).toHaveAttribute("data-wind-style", "wash");
-  await firstStrokes(page);
+  const press = (name: string) =>
+    panel.getByRole("button", { name, exact: true }).click();
+  // The coloured wind under them: the particles keep drawing, in ink.
+  await press("Coloured wind");
+  await expect(canvas).toHaveAttribute("data-wind", "wash particles");
+  await expectResumed(page);
   await expect.poll(() => inked(page)).toBeGreaterThan(100);
+  expect(await tinted(page)).toBe(0);
+  // The particles off: the colour alone, nothing drawn and nothing worked.
+  await press("Particles");
+  await expect(canvas).toHaveAttribute("data-wind", "wash");
+  await expectIdle(page);
+  expect(await inked(page)).toBe(0);
+  // And back, over the colour, then alone.
+  await press("Particles");
+  await expect(canvas).toHaveAttribute("data-wind", "wash particles");
+  await expectResumed(page);
+  await expect.poll(() => inked(page)).toBeGreaterThan(100);
+  await press("Coloured wind");
+  await expect(canvas).toHaveAttribute("data-wind", "particles");
+  await expectResumed(page);
+  // Neither: the plain chart.
+  await press("Particles");
+  await expect(canvas).toHaveAttribute("data-wind", "");
+  await expectIdle(page);
+  expect(await inked(page)).toBe(0);
+  // The colour alone, kept: read back as the page mounts, and the particles
+  // stay still once the chart is up again.
+  await press("Coloured wind");
+  await expect(canvas).toHaveAttribute("data-wind", "wash");
+  expect(
+    await page.evaluate(() => localStorage.getItem("wingfoil.map.wind.v2")),
+  ).toBe(JSON.stringify({ wash: true, particles: false }));
+  await page.reload();
+  await expect(canvas).toHaveAttribute("data-wind", "wash");
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
+    timeout: 30000,
+  });
+  await expectIdle(page);
+  expect(await inked(page)).toBe(0);
 });
 
 /** Pixels the particle canvas has a clear colour on, rather than ink. */
@@ -224,29 +236,34 @@ const tinted = (page: Page) =>
     return count;
   });
 
-test("zoomed right in, the coloured arrows go to ink and keep moving", async ({
+test("an older chart's wind style is read into the two layers", async ({
   page,
 }) => {
-  // Seven zooms, each waited out: more than the default test time on CI.
-  test.slow();
-  await instrument(page);
+  await page.goto("/");
+  const canvas = page.locator(".particle-canvas");
+  await expect(canvas).toHaveAttribute("data-wind", "particles");
+  // Ink was the particles alone; the coloured wind is the colour alone now;
+  // the coloured arrows wanted the speed in colour and the way in lines.
+  for (const [style, wind] of [
+    ["ink", "particles"],
+    ["wash", "wash"],
+    ["arrows", "wash particles"],
+  ]) {
+    await page.evaluate((style) => {
+      localStorage.removeItem("wingfoil.map.wind.v2");
+      localStorage.setItem("wingfoil.map.wind.v1", style);
+    }, style);
+    await page.reload();
+    await expect(canvas, style).toHaveAttribute("data-wind", wind);
+  }
+  // The new key wins over the old one once the rider has chosen.
   await openFromMenu(page, "Layers");
   await page
     .getByRole("group", { name: "Layers" })
-    .getByRole("button", { name: "Coloured arrows", exact: true })
+    .getByRole("button", { name: "Particles", exact: true })
     .click();
+  await expect(canvas).toHaveAttribute("data-wind", "wash");
   await closePanel(page);
-  await expect.poll(() => tinted(page)).toBeGreaterThan(20);
-  // The depths take over from zoom 11 (windLayer.ts); the chart opens near 6.
-  // A press zooms one level on from wherever the camera has got to, so each
-  // waits for the last to finish. Under the pinned clock (fixtures.ts) the
-  // page gets a few animation frames a second, not sixty, and seven presses
-  // 400 ms apart ended anywhere from 10.4 to 11.4, still moving: coloured.
-  const zoomIn = page.getByRole("button", { name: "Zoom in", exact: true });
-  for (let i = 0; i < 7; i++) {
-    await cameraAtRest(page, () => zoomIn.click());
-  }
-  await expectResumed(page);
-  await expect.poll(() => inked(page)).toBeGreaterThan(100);
-  expect(await tinted(page)).toBe(0);
+  await page.reload();
+  await expect(canvas).toHaveAttribute("data-wind", "wash");
 });
