@@ -99,6 +99,9 @@ const COLOURS: Record<string, string> = {
   ok: "#2a7046",
   warn: "#b02a1f",
   "warn-ground": "#efd8cd",
+  "met-yellow": "#f0c419",
+  "met-orange": "#e67322",
+  "met-red": "#c3241c",
   now: "#b02a1f",
   // Two marks the palette does not move: the dashed line at the present hour,
   // and the gust cap on a candle. D12.
