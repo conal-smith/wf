@@ -1,9 +1,10 @@
 /**
- * Layers (src/MapControls.tsx): how the wind is drawn, which parts of the
- * chart, the satellite image under it at which tide, and the rider's model,
- * with its run: the one the map draws and the stars rate, the same choice as
- * Settings → Model (force5/src/lead.ts). Every choice is kept as the site
- * keeps it (wingfoil.map.wind.v1, wingfoil.map.layers.v1, and the model in
+ * Layers (src/MapControls.tsx): the wind's two layers, the coloured wind and
+ * the particles, either, both or neither; which parts of the chart, the
+ * satellite image under it at which tide, and the rider's model, with its
+ * run: the one the map draws and the stars rate, the same choice as Settings
+ * → Model (force5/src/lead.ts). Every choice is kept as the site keeps it
+ * (wingfoil.map.wind.v2, wingfoil.map.layers.v1, and the model in
  * force5.prefs.v1).
  */
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
@@ -20,13 +21,14 @@ import { MODEL_NOTE } from "../settings/settingsLogic";
 import { ChartSheet, SheetSection } from "./ChartSheet";
 import { KnotScale } from "./KnotScale";
 import { CHART_LABEL, type ChartLayers, type MapLayers } from "./mapLogic";
-import { WIND_LABEL, WIND_STYLES, type WindStyle } from "./windLogic";
+import { switchWind, WIND_LAYERS, type WindLayers } from "./windLogic";
 
 interface Props {
   sheetRef: Ref<BottomSheetModal>;
   onClose: () => void;
-  windStyle: WindStyle;
-  onWindStyle: (style: WindStyle) => void;
+  /** The wind's two layers, the coloured wind and the particles, each on or off. */
+  wind: WindLayers;
+  onWind: (wind: WindLayers) => void;
   layers: MapLayers;
   onLayers: (layers: MapLayers) => void;
   satelliteStation: SatelliteStation | null;
@@ -42,24 +44,49 @@ interface Props {
 }
 
 export const LayersSheet = memo(function LayersSheet(props: Props) {
-  const { layers, onLayers } = props;
+  const { wind, onWind, layers, onLayers } = props;
   const set = (key: keyof ChartLayers, value: boolean) => {
     tick();
     onLayers({ ...layers, [key]: value });
   };
+  const setWind = (key: keyof WindLayers, value: boolean) => {
+    tick();
+    onWind(switchWind(wind, key, value));
+  };
   return (
     <ChartSheet sheetRef={props.sheetRef} title="Layers" snapPoints={["72%", "94%"]} onClose={props.onClose}>
-      <SheetSection title="Wind">
-        <Segmented
-          accessibilityLabel="How the wind is drawn"
-          value={props.windStyle}
-          segments={WIND_STYLES.map((style) => ({ value: style, label: WIND_LABEL[style] }))}
-          onChange={props.onWindStyle}
-        />
-        <KnotScale faint={props.windStyle === "wash"} />
-        {props.reducedMotion && props.windStyle !== "arrows" ? (
+      <SheetSection
+        title="Wind"
+        aside={
+          <T variant="label" caps color="muted">
+            Either, or both
+          </T>
+        }
+      >
+        {WIND_LAYERS.map(({ key, name, sub }) => (
+          <View key={key} style={styles.switchRow}>
+            <View style={styles.flex}>
+              <T variant="body">{name}</T>
+              <T variant="caption" color="muted">
+                {sub}
+              </T>
+            </View>
+            <Switch
+              accessibilityLabel={name}
+              accessibilityHint={sub}
+              value={wind[key]}
+              onValueChange={(value) => setWind(key, value)}
+              trackColor={{ false: colors.sunken, true: colors.ink }}
+              thumbColor={colors.paper}
+              ios_backgroundColor={colors.sunken}
+            />
+          </View>
+        ))}
+        {/* What the colours mean, while the wind is drawn in them. */}
+        {wind.wash ? <KnotScale faint /> : null}
+        {props.reducedMotion && wind.particles ? (
           <T variant="caption" color="muted">
-            Reduce Motion is on: the wind is drawn as still arrows in ink.
+            Reduce Motion is on: the particles are drawn as still arrows in ink.
           </T>
         ) : null}
       </SheetSection>

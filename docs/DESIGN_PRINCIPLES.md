@@ -578,9 +578,12 @@ speed as a wash on the sea and nothing more: it no longer draws the ink lines
 over itself. Particles are the moving lines, always in ink, so they read over
 the colour; the arrows tinted by speed are gone. A first visit has the
 particles alone, as the chart has always opened. A rider's older choice is
-read into the layers once (force5/src/windLayer.ts `parseWindLayers`): Ink is
-the particles, Coloured wind the colour alone, Coloured arrows both. The spot
-finder's map has the colour alone, so its pins are all that moves the eye.
+read into the layers once (force5/src/windLayers.ts `parseWindLayers`): Ink
+is the particles, Coloured wind the colour alone, Coloured arrows both. The
+spot finder's map has the colour alone, so its pins are all that moves the
+eye. The app has the same two switches in its Layers sheet and reads its own
+older choice the same way; with Reduce Motion on, its particles are still
+arrows in ink.
 
 ---
 

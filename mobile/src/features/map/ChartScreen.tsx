@@ -1,6 +1,6 @@
 /**
  * The chart (the site's map, src/App.tsx, for a phone): every riding place as
- * a light at the hour chosen, the wind three ways, the depths, the satellite
+ * a light at the hour chosen, the wind in two layers, the depths, the satellite
  * and the foilable depth at the tide, "Find a spot…", where am I, and the
  * dock in a sheet under it all once a spot is open. Opens on the whole of
  * Ireland, the chart the full height, unless a spot is open; a link
@@ -75,8 +75,8 @@ import { PointSheet, type Picked } from "./PointSheet";
 import { foilArchiveUrl, useFoilIndex, useSatellite, useTides } from "./useChartLayers";
 import { useFoilProbe } from "./useFoilProbe";
 import { useMapModel } from "./useMapModel";
-import { showsLines, useArrows, useFrameTiles, useParticleField, useWash } from "./useWind";
-import { parseWindStyle, type WindStyle } from "./windLogic";
+import { useArrows, useFrameTiles, useParticleField, useWash } from "./useWind";
+import { readWind, type WindLayers } from "./windLogic";
 import { WindParticles } from "./WindParticles";
 
 const HEAD = hitTarget;
@@ -127,11 +127,11 @@ export default function ChartScreen() {
   const searchRef = useRef<TextInput>(null);
 
   /* ---- the rider's choices, kept as the site keeps them ---- */
-  const [windStyle, setWindStyle] = useState<WindStyle>(() => parseWindStyle(store.get(WIND_KEY)));
+  const [wind, setWind] = useState<WindLayers>(() => readWind(store));
   const [layers, setLayers] = useState<MapLayers>(() => parseLayers(store.get(LAYERS_KEY)));
-  const chooseWind = useCallback((style: WindStyle) => {
-    setWindStyle(style);
-    store.set(WIND_KEY, style);
+  const chooseWind = useCallback((next: WindLayers) => {
+    setWind(next);
+    store.set(WIND_KEY, JSON.stringify(next));
   }, []);
   const chooseLayers = useCallback((next: MapLayers) => {
     setLayers(next);
@@ -381,19 +381,17 @@ export default function ChartScreen() {
     : null;
   const tiles = useFrameTiles(model.frame, camera, model.recover);
   const animate = focused && appActive && !reducedMotion;
-  const linesWanted = animate && showsLines(windStyle);
+  // The particles off, their field is not worked out and their loop is
+  // stopped (WindParticles.tsx), not just hidden. With Reduce Motion on they
+  // are still arrows in ink instead.
+  const linesWanted = animate && wind.particles;
   const field = useParticleField(model.frame, camera, tiles, linesWanted);
-  const arrows = useArrows(
-    model.frame,
-    camera,
-    tiles,
-    windStyle === "arrows" ? "colour" : reducedMotion && windStyle === "ink" ? "ink" : null,
-  );
+  const arrows = useArrows(model.frame, camera, tiles, reducedMotion && wind.particles);
   const queryWater = useCallback(async () => {
     const found = (await mapRef.current?.queryRenderedFeatures({ layers: ["water"] })) ?? [];
     return found.map((f) => f.geometry).filter(Boolean);
   }, []);
-  const wash = useWash(model.frame, camera, tiles, windStyle === "wash" && focused, queryWater);
+  const wash = useWash(model.frame, camera, tiles, wind.wash && focused, queryWater);
 
   /* ---- the satellite, and the foilable depth at the hour's tide ---- */
   const satellite = useSatellite(layers.satellite, chartView);
@@ -556,7 +554,6 @@ export default function ChartScreen() {
         lights={lights}
         wedge={wedge}
         arrows={arrows}
-        arrowsInk={windStyle !== "arrows"}
         wash={wash}
         satellite={satelliteKept}
         foil={foilKept}
@@ -687,8 +684,8 @@ export default function ChartScreen() {
       <LayersSheet
         sheetRef={layersRef}
         onClose={() => layersRef.current?.dismiss()}
-        windStyle={windStyle}
-        onWindStyle={chooseWind}
+        wind={wind}
+        onWind={chooseWind}
         layers={layers}
         onLayers={chooseLayers}
         satelliteStation={satellite.station}

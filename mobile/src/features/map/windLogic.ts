@@ -1,39 +1,48 @@
 /**
- * The wind on the chart, three ways, as the site draws it
- * (force5/src/windLayer.ts):
+ * The wind on the chart, in two layers, each on or off by itself, as the site
+ * draws it (force5/src/windLayer.ts):
  *
- *   ink      lines drifting with the forecast, in ink: light air thin and pale
- *   arrows   arrows on the water tinted on the wind scale (PALETTE)
- *   wash     the wind scale as a wash over the sea, with the ink lines on it
+ *   wash       the coloured wind: the wind scale as a wash over the sea
+ *   particles  lines in ink drifting with the forecast, light air thin and
+ *              pale, a breeze bolder; with Reduce Motion on, still arrows in
+ *              ink instead
+ *
+ * Either, both or neither: the particles read over the colour. The coloured
+ * wind draws no lines of its own.
  *
  * Everything here is arithmetic over a sampler (`TiledField.sample`), so the
- * screen's field, the arrows' grid and the wash's pixels are tested in Node.
- * The lines themselves move in particleSim.ts, on the UI thread.
+ * screen's field, the still arrows' grid and the wash's pixels are tested in
+ * Node. The lines themselves move in particleSim.ts, on the UI thread.
  */
 import type { Feature, FeatureCollection, Point } from "geojson";
 import { WASH_STEP } from "../../../../force5/src/tiledField";
 import { KNOTS } from "../../../../force5/src/units";
-import { direction, windColor, type Grid, type Rgb, type Wind } from "../../../../force5/src/weather";
-import { metresPerPoint, unproject, type Camera } from "./mapLogic";
+import { direction, windColor, type Grid, type Wind } from "../../../../force5/src/weather";
+import { parseWindLayers, type WindLayers } from "../../../../force5/src/windLayers";
+import { metresPerPoint, OLD_WIND_KEY, unproject, WIND_KEY, type Camera } from "./mapLogic";
 
-export type WindStyle = "ink" | "arrows" | "wash";
-export const WIND_STYLES: readonly WindStyle[] = ["ink", "arrows", "wash"];
+export { DEFAULT_WIND, type WindLayers } from "../../../../force5/src/windLayers";
 
-/** The layers sheet's words for each (src/MapControls.tsx). */
-export const WIND_LABEL: Record<WindStyle, string> = {
-  ink: "Ink",
-  arrows: "Arrows",
-  wash: "Coloured wind",
-};
-
-/** The stored style, or ink for anything else (src/App.tsx). */
-export const parseWindStyle = (saved: string | null): WindStyle =>
-  saved && (WIND_STYLES as readonly string[]).includes(saved) ? (saved as WindStyle) : "ink";
+/** The wind's two layers in the order the layers sheet shows them, with its words (src/layerGroups.tsx). */
+export const WIND_LAYERS: readonly { key: keyof WindLayers; name: string; sub: string }[] = [
+  { key: "wash", name: "Coloured wind", sub: "Speed as colour" },
+  { key: "particles", name: "Particles", sub: "Lines moving with it" },
+];
 
 /**
- * The zoom where the depths take over: the wash has faded out by here and
- * the coloured arrows are drawn in ink (windLayer.ts DEPTHS_ZOOM).
+ * The rider's wind from the store (src/App.tsx): the two layers as saved, or
+ * else the one style an older app kept read into them (ink the particles
+ * alone, the coloured wind the colour alone, the arrows both), or else the
+ * particles alone. The older value is left where it is; once a layer is
+ * switched, the new key wins.
  */
+export const readWind = (store: { get(key: string): string | null }): WindLayers =>
+  parseWindLayers(store.get(WIND_KEY), store.get(OLD_WIND_KEY));
+
+/** One of the two layers switched, the other as it was. */
+export const switchWind = (wind: WindLayers, key: keyof WindLayers, on: boolean): WindLayers => ({ ...wind, [key]: on });
+
+/** The zoom where the depths take over: the wash has faded out by here, and the tints are read instead. */
 export const DEPTHS_ZOOM = 11;
 export const WASH_FADE = 0.5;
 const WASH_SEA = 0.72;
@@ -44,19 +53,6 @@ export type Sampler = (lat: number, lon: number) => Wind | null;
 
 export const hexOf = (rgb: readonly number[]) =>
   `#${((1 << 24) | (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]).toString(16).slice(1)}`;
-
-export const rgbOf = (hex: string): Rgb => {
-  const m = /^#?([0-9a-f]{6})/i.exec(hex.trim());
-  if (!m) return [26, 29, 33];
-  const n = parseInt(m[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-};
-
-/** A speed's colour on the wind scale, toned a fifth toward the ink so a pale blue reads on paper. */
-export function tonedColour(kn: number, ink: Rgb): Rgb {
-  const rgb = windColor(kn);
-  return [0, 1, 2].map((i) => Math.round(rgb[i] * 0.8 + ink[i] * 0.2)) as Rgb;
-}
 
 /* ---- the field the lines drift on ---------------------------------------- */
 
@@ -92,27 +88,20 @@ export function screenField(camera: Camera, sample: Sampler, step = 10): ScreenF
   return { w, h, step, data };
 }
 
-/* ---- the arrows ----------------------------------------------------------- */
+/* ---- the still arrows ----------------------------------------------------- */
 
 export interface ArrowProps {
   /** The bearing it points to, downwind. */
   rot: number;
-  /** Its colour on the wind scale, or ink. */
-  c: string;
   kn: number;
 }
 
 /**
- * Arrows on a grid over the view and a quarter of it past each edge, `gap`
- * points apart, each pointing downwind, sized and coloured by its speed.
+ * Reduce Motion's stand-in for the particles: arrows in ink on a grid over
+ * the view and a quarter of it past each edge, `gap` points apart, each
+ * pointing downwind, sized by its speed.
  */
-export function arrowGrid(
-  camera: Camera,
-  sample: Sampler,
-  coloured: boolean,
-  ink: Rgb,
-  gap = 46,
-): FeatureCollection<Point, ArrowProps> {
+export function arrowGrid(camera: Camera, sample: Sampler, gap = 46): FeatureCollection<Point, ArrowProps> {
   const features: Feature<Point, ArrowProps>[] = [];
   const mx = camera.width / 4;
   const my = camera.height / 4;
@@ -125,14 +114,12 @@ export function arrowGrid(
       if (!wind || !Number.isFinite(wind.u + wind.v)) continue;
       const ms = Math.hypot(wind.u, wind.v);
       if (ms < 0.3) continue;
-      const kn = ms * KNOTS;
       features.push({
         type: "Feature",
         geometry: { type: "Point", coordinates: [lon, lat] },
         properties: {
           rot: Math.round((direction(wind.u, wind.v) + 180) % 360),
-          c: hexOf(coloured ? tonedColour(kn, ink) : ink),
-          kn: Math.round(kn),
+          kn: Math.round(ms * KNOTS),
         },
       });
     }

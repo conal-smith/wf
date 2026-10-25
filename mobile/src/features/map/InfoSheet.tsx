@@ -248,7 +248,7 @@ export const InfoSheet = memo(function InfoSheet(props: Props) {
             </Svg>
           }
         >
-          Wind, at the hour shown
+          Particles: lines moving with the wind, at the hour shown
         </KeyRow>
         <KeyRow
           mark={
@@ -262,7 +262,7 @@ export const InfoSheet = memo(function InfoSheet(props: Props) {
           The pen: the spot you open, or a point you tap
         </KeyRow>
         <T variant="label" caps color="ink2">
-          Coloured wind and arrows
+          Coloured wind
         </T>
         <KnotScale />
         <View style={styles.tints} accessible accessibilityLabel="Depth tints, 0 to 50 metres and more">
