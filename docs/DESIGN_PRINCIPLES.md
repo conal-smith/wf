@@ -614,6 +614,28 @@ has none. `StarGlyphs coloured` draws them, the earned in their colour and the
 rest of the five outlined. For now only the finder's cards take them: the
 chart's and the dock's stars stay ink until the owner says otherwise.
 
+**2026-10-25 — The spot finder's cards keep one time between them.** The
+owner, after 7e: "effectively one time setting across all of the cards that
+keeps them all in sync and shows a little dotted line where I'm hovering",
+as a Grafana dashboard's charts share a crosshair. One day and one hour for
+the whole list. A day pressed among the next five (its name, a button, or its
+drawing) is drawn hour by hour on every card in today's place, headed with
+its name ("TUE 28"), first light to last, its hours a column each where the
+run is hourly and the run's own steps where it is three-hourly; the five
+below are then the other days in order, today among them as "Today" to come
+back to, under "Other days" (the six stay six, and a fifth of a phone's card
+is all a day has room for). With no hour picked a day chosen stands at its
+early afternoon, ringed, the roses turned to it and the hour on each
+picture; an hour picked is put down when the day changes. A mouse (or a pen)
+over a card's hours, or over a day's drawing, draws a thin dotted line at that
+time on the same day on every card, and the time beside it on the card it is
+over; it goes when the pointer leaves. A finger has no hover: a tap picks, as
+before. The line moves straight in the page once a frame (src/finder/hover.ts),
+never drawing a card again. Under the row, first and last light hold to the
+view's edges as it scrolls rather than being cut off by them; and the rose's
+no-go is hatched in screen pixels over the picture, its washes kept light, so
+a picture under a small rose is not fogged.
+
 **2026-10-25 — One site menu, the same on every page.** "The menu for
 SpotFinder and for the main chart page is different. This menu should be the
 same across all pages." The menu opens on the site's navigation wherever it

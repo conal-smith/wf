@@ -7,7 +7,12 @@
  * nautical mile or a kilometre, wherever the picture says that is.
  *
  * Drawn on paper's lines over the photograph, as the mockup draws it: no
- * words, which at this size would be most of it.
+ * words, which at this size would be most of it. The washes stay light, and
+ * the no-go's hatching is drawn in screen pixels, a line a pixel wide every
+ * few: at a card's size a hatch drawn to the rose's own scale is finer than
+ * a pixel and reads as haze, and a picture under a rose that is mostly
+ * no-go and tack out (an estuary of flat water) looked washed out beside
+ * one of beach and fields.
  */
 import { useId } from "react";
 import {
@@ -19,6 +24,9 @@ import {
 
 /** The drawing's own radius: the geometry is worked out at this, then scaled. */
 const R = 100;
+/** The no-go's hatching, in screen pixels: a line this wide, this far apart. */
+const HATCH_LINE = 1;
+const HATCH_GAP = 4;
 /** Room round the rim for the offshore arc and the needle. */
 const MARGIN = 26;
 const BOX = R + MARGIN;
@@ -58,6 +66,8 @@ export function Rose({
 }) {
   const hatch = `rose-${useId().replace(/[^\w-]/g, "")}`;
   const size = (2 * BOX * r) / R;
+  // The drawing's units in a screen pixel.
+  const px = R / Math.max(r, 1);
   const rose = loupe ? roseDrawing(loupe.rose, R, null) : null;
   const dial = loupe ? dialDrawing(loupe.rose.windFrom, loupe.facing, R) : null;
   return (
@@ -71,8 +81,8 @@ export function Rose({
       <defs>
         <pattern
           id={hatch}
-          width={7}
-          height={7}
+          width={HATCH_GAP * px}
+          height={HATCH_GAP * px}
           patternUnits="userSpaceOnUse"
           patternTransform="rotate(45)"
         >
@@ -81,9 +91,9 @@ export function Rose({
             x1={0}
             y1={0}
             x2={0}
-            y2={7}
-            strokeWidth={1.4}
-            strokeOpacity={0.75}
+            y2={HATCH_GAP * px}
+            strokeWidth={HATCH_LINE * px}
+            strokeOpacity={0.6}
           />
         </pattern>
       </defs>
@@ -96,7 +106,6 @@ export function Rose({
       <circle className="fill-none stroke-ink" r={R} strokeWidth={2.2} />
       {rose?.nogo && (
         <g data-rose-nogo>
-          <path className="fill-ground" d={rose.nogo.fill} fillOpacity={0.18} />
           <path d={rose.nogo.fill} fill={`url(#${hatch})`} />
           {rose.nogo.edges.map((e, i) => (
             <line
@@ -112,7 +121,7 @@ export function Rose({
       {rose?.fans.map((fan, i) => (
         <g key={i} data-rose-fan={fan.kind}>
           {fan.fill && (
-            <path className="fill-card" d={fan.fill} fillOpacity={0.5} />
+            <path className="fill-card" d={fan.fill} fillOpacity={0.3} />
           )}
           <path
             className="fill-none stroke-ink"

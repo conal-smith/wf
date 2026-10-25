@@ -1,9 +1,10 @@
 /**
  * The spot finder's arithmetic, apart from the page: which places it lists,
- * the six days each card covers, today's row of hours from first light to
- * last, the next five days' daylight, the best stars a place has in them and
- * the order that puts the places in, and the hour a rider picks. Pure, so it
- * is tested without a page; src/finder/SpotFinder.tsx draws it.
+ * the six days each card covers, a day's row of hours from first light to
+ * last and where a time stands along it, each day's daylight, the best stars
+ * a place has in them and the order that puts the places in, and the day
+ * and the hour a rider picks. Pure, so it is tested without a page;
+ * src/finder/SpotFinder.tsx draws it.
  *
  * The finder reads the chart's own table of rated hours (src/useRatings.ts)
  * on the chart's own strip of columns (src/strip.ts): a star here is the
@@ -114,9 +115,9 @@ export function columnsByTime(
 /** The top of the hour a time falls in. */
 export const hourOf = (time: number) => Math.floor(time / HOUR) * HOUR;
 
-/** One column of today's row: an hour, and the strip's column for it. */
-export interface TodayHour {
-  /** The top of the hour. */
+/** One column of a day's row: an hour, and the strip's column for it. */
+export interface RowHour {
+  /** The top of the hour (of the step, where the run is coarser). */
   time: number;
   /** Its column in the strip, or null where the forecast has none. */
   at: number | null;
@@ -128,43 +129,98 @@ export interface TodayHour {
   now: boolean;
 }
 
-export interface TodayRow {
+export interface DayRow {
+  date: string;
   firstLight: number;
   lastLight: number;
-  hours: TodayHour[];
+  hours: RowHour[];
 }
 
 /**
- * Today at a place, an hour a column: from the hour before first light to
+ * A day at a place, a column an hour: from the hour before first light to
  * the hour after last light (06:00 to 18:00 for an October light of 06:50 to
  * 17:33; 04:00 to 23:00 for June's 04:12 to 22:46), each with the strip's
  * column for it where there is one. The ends are the dark: shaded, and the
  * site rates no hour in it.
+ *
+ * Where the run is coarser than hourly (three-hourly a few days out) the row
+ * is its steps, a column each, from the step before first light to the one
+ * after last light: an hour between two steps has no column of its own and
+ * is left out, not drawn empty. An hour before the strip begins (the
+ * morning's, before today's run) has none either, and is kept, empty; and
+ * so is the hour now, wherever it falls.
  */
-export function todayRow(
+export function dayRow(
   strip: readonly Pick<StripColumn, "time">[],
   place: LatLon,
+  date: string,
   now: number,
   byTime: ReadonlyMap<number, number> = columnsByTime(strip),
-): TodayRow | null {
-  const light = dayLight(place, irishDate(now));
+): DayRow | null {
+  const light = dayLight(place, date);
   if (!light) return null;
   const { firstLight, lastLight } = light;
+  const start = strip.length ? strip[0].time : Infinity;
+  const end = strip.length ? strip[strip.length - 1].time : -Infinity;
   // The whole hour before first light, even when first light is on the hour,
-  // and the whole hour after last light.
-  const from = hourOf(firstLight - 1);
-  const to = hourOf(lastLight) + HOUR;
+  // and the whole hour after last light; out to the run's own step either
+  // side where it has none on the hour.
+  let from = hourOf(firstLight - 1);
+  let to = hourOf(lastLight) + HOUR;
+  if (!byTime.has(from) && from > start)
+    from = strip.reduce((t, c) => (c.time <= from ? c.time : t), from);
+  if (!byTime.has(to) && to < end)
+    to = strip.reduce((t, c) => (c.time >= to && c.time < t ? c.time : t), end);
   const current = hourOf(now);
-  const hours: TodayHour[] = [];
-  for (let time = from; time <= to; time += HOUR)
+  const hours: RowHour[] = [];
+  for (let time = from; time <= to; time += HOUR) {
+    const at = byTime.get(time) ?? null;
+    if (at === null && time >= start && time <= end && time !== current)
+      continue;
     hours.push({
       time,
-      at: byTime.get(time) ?? null,
+      at,
       dark: time < firstLight || time > lastLight,
       gone: time < current,
       now: time === current,
     });
-  return { firstLight, lastLight, hours };
+  }
+  return { date, firstLight, lastLight, hours };
+}
+
+/** Today at a place: its row of hours (`dayRow`). */
+export const todayRow = (
+  strip: readonly Pick<StripColumn, "time">[],
+  place: LatLon,
+  now: number,
+  byTime?: ReadonlyMap<number, number>,
+) => dayRow(strip, place, irishDate(now), now, byTime);
+
+/**
+ * Where a time stands along a row of columns, in columns from the first
+ * one's middle: each column's time at its middle, and a time between two
+ * columns the same share of the way between them (an hour a column where
+ * the run is hourly, three where it is three-hourly). Past either end, an
+ * hour a column.
+ */
+export function rowPosition(times: readonly number[], time: number): number {
+  const n = times.length;
+  if (!n) return 0;
+  if (time <= times[0]) return (time - times[0]) / HOUR;
+  for (let i = 1; i < n; i++)
+    if (time <= times[i])
+      return i - 1 + (time - times[i - 1]) / (times[i] - times[i - 1]);
+  return n - 1 + (time - times[n - 1]) / HOUR;
+}
+
+/** The time at a place along a row of columns: `rowPosition`, undone. */
+export function rowTime(times: readonly number[], position: number): number {
+  const n = times.length;
+  if (!n) return 0;
+  if (position <= 0) return times[0] + position * HOUR;
+  if (position >= n - 1) return times[n - 1] + (position - n + 1) * HOUR;
+  const i = Math.floor(position);
+  return times[i] + (position - i) * (times[i + 1] - times[i]);
 }
 
 /** One of the next days at a place: its light, and the strip's columns in it. */
@@ -337,22 +393,38 @@ export function rankSpots<S extends Spot>(
 /* ---- the hour picked -------------------------------------------------------- */
 
 /**
- * The hour picked after a press on one of today's: that hour, for every
- * card at once, or none again for the hour now (now is where the page
- * stands with none picked).
+ * The hour picked after a press on one of the day's: that hour, for every
+ * card at once, or none again for the hour the day stands at with none
+ * picked (now, today; on a day chosen, its early afternoon).
  */
-export const pickHour = (pressed: number, now: number): number | null =>
-  hourOf(pressed) === hourOf(now) ? null : hourOf(pressed);
+export const pickHour = (pressed: number, standing: number): number | null =>
+  hourOf(pressed) === hourOf(standing) ? null : hourOf(pressed);
+
+/**
+ * The strip's column a day chosen opens on, with no hour picked: its early
+ * afternoon (`middayColumn`), where the next days sum themselves up. Null
+ * for a day the strip has no column in.
+ */
+export function dayOpening(
+  strip: readonly Pick<StripColumn, "time" | "date">[],
+  date: string,
+  now: number,
+): number | null {
+  const columns: number[] = [];
+  strip.forEach((column, at) => column.date === date && columns.push(at));
+  return middayColumn(strip, columns, now);
+}
 
 /**
  * The strip's column a card's picture shows: the hour picked, or with none
- * the column the chart itself would open on now. Null where the strip has
- * no column for the hour picked.
+ * the column the day opens on (today, the one the chart itself would open
+ * on now; a day chosen, `dayOpening`). Null where the strip has no column
+ * for the hour picked.
  */
 export function shownColumn(
   strip: readonly Pick<StripColumn, "time">[],
   picked: number | null,
-  opening: number,
+  opening: number | null,
   byTime: ReadonlyMap<number, number> = columnsByTime(strip),
 ): number | null {
   if (picked === null) return strip.length ? opening : null;
