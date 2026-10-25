@@ -1262,6 +1262,10 @@ function hourWaves(source: SpotVariables, time: number): HourWaves | null {
   };
 }
 
+/**
+ * One hour's surface weather. spotForecast gives every field; an hour built
+ * elsewhere (the app's spot page) may give only the readings it has.
+ */
 export interface HourWeather {
   air_c: number | null;
   /**
@@ -1269,7 +1273,7 @@ export interface HourWeather {
    * the JAG/TI wind chill, never above air_c). Null without a wind or an air
    * temperature.
    */
-  feels_like_c: number | null;
+  feels_like_c?: number | null;
   /**
    * The model's rain total over the `rain_interval_hours` ending at this hour
    * (or at `rain_until`), on one row only; null on the interval's other hours.
@@ -1282,20 +1286,20 @@ export interface HourWeather {
   /** The model's present-weather code (WMO 4677, `ww`), where it publishes one. */
   weather_code: number | null;
   /** What the code means, in the words of wingfoil.ie's sky glyph for it. */
-  description: string | null;
+  description?: string | null;
   /**
    * The sky glyph wingfoil.ie draws for the hour (force5/src/presentWeather.ts
    * skyOf): the code's group, rain where a dry code has rain in the hour.
    */
-  sky: WeatherIcon | null;
+  sky?: WeatherIcon | null;
   /** The model's CAPE, J/kg: the energy showers can grow into storms on. */
-  cape_j_kg: number | null;
+  cape_j_kg?: number | null;
   /**
    * The risk of thunder and lightning (force5/src/thunder.ts): high where the
    * code is a thunderstorm, possible on enough CAPE, else low; null where the
    * model gives neither a code nor a CAPE. A safety flag, never an all-clear.
    */
-  thunder_risk: ThunderRisk | null;
+  thunder_risk?: ThunderRisk | null;
   /** Why, where the risk is high or possible. */
   thunder_why?: string;
 }
