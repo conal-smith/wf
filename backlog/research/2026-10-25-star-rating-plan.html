@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Plan · How many stars should wind and gusts get?</title>
+<title>Plan · One star rating for wind and gusts</title>
 <!--
   A plan for the owner to decide on, not product code. Standalone; faces from
   node_modules, every number embedded. "Today" is force5/src/stars.ts rateHour
-  as it stands on main at a0cbcba (Riding, 80 kg, gusty wind bothers you
-  "some", no shore angle). "Proposed" is the rule described on this page,
-  worked out by a small script for this page. Nothing in the rating changed.
+  on main at 2a0e72e (the default rider: Riding, 80 kg, gusty wind bothers
+  you "some", no shore angle). "Proposed" is the rule in the script at the foot
+  of this page, which also drives the editor. Nothing in the rating changed.
 -->
 <style>
 @font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
@@ -27,7 +27,7 @@
   color-scheme: light;
   --ground: #f3eee3; --paper: #fffdf6; --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b; --line: #1a1d2133; --hair: #1a1d211f;
   --pen: #d43a2c; --magenta: #b0186a;
-  --s1: #e28bb3; --s2: #d2609a; --s3: #bd3d84; --s4: #a01f6c; --s5: #7c0f55;
+  --s0: #f7f3ea; --s1: #e28bb3; --s2: #d2609a; --s3: #bd3d84; --s4: #a01f6c; --s5: #7c0f55;
   --display: "Fraunces Variable", Fraunces, Georgia, serif;
   --body: "Newsreader Variable", Newsreader, Georgia, serif;
   --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
@@ -39,11 +39,13 @@ html { font-size: 16px; }
 body { margin: 0; background: #d9d4c7; color: var(--ink); font-family: var(--body); line-height: 1.45; }
 h1, h2, h3, p, ul, ol { margin: 0; }
 a { color: var(--magenta); }
+button { font: inherit; color: inherit; cursor: pointer; }
 main { max-width: 1080px; margin: 0 auto; padding: 28px 16px 64px; display: grid; gap: 22px; }
 .sheet { background: var(--ground); border-radius: 10px; box-shadow: var(--card); padding: 22px 24px; }
+@media (max-width: 520px) { .sheet { padding: 18px 14px; } }
 .sheet h2 { font: italic 600 24px var(--display); margin-bottom: 10px; }
 .eyebrow { font: 600 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
-.lede { color: var(--ink-2); max-width: 68ch; }
+.lede { color: var(--ink-2); max-width: 70ch; }
 .mono { font-family: var(--mono); font-size: .86em; }
 
 header.top h1 { font: italic 650 36px/1.1 var(--display); margin: 6px 0 8px; }
@@ -53,24 +55,21 @@ ul.recs { list-style: none; padding: 0; display: grid; gap: 10px; }
 ul.recs li { position: relative; padding-left: 26px; font-size: 18px; }
 ul.recs li::before { content: "★"; position: absolute; left: 0; top: 0; color: var(--s4); }
 ul.recs b { font-weight: 650; }
-
 .terms { margin-top: 16px; padding: 10px 14px; border-radius: 8px; background: var(--paper); box-shadow: var(--card); font-size: 15px; color: var(--ink-2); }
 .terms b { color: var(--ink); }
 
-/* ---- The grid ---- */
+/* ---- Grids ---- */
 .grids { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 14px; }
 @media (max-width: 900px) { .grids { grid-template-columns: minmax(0, 1fr); } }
-.gridwrap { background: var(--paper); border-radius: 8px; box-shadow: var(--card); padding: 12px 12px 10px; overflow-x: auto; }
+.gridwrap { background: var(--paper); border-radius: 8px; box-shadow: var(--card); padding: 12px 12px 10px; }
 table.grid { border-collapse: separate; border-spacing: 3px; width: 100%; table-layout: fixed; font-family: var(--mono); }
 table.grid caption { text-align: left; font: italic 600 20px var(--display); padding: 0 2px 6px; }
-table.grid.proposed caption::after { content: "  ▲ ▼ = changed from today"; font: 500 11px var(--mono); color: var(--muted); font-style: normal; }
 table.grid th { font: 600 12px var(--mono); color: var(--muted); }
-table.grid thead th { padding-bottom: 2px; }
 table.grid tbody th { text-align: right; padding-right: 6px; width: 44px; }
 table.grid th.corner { width: 44px; font-size: 9px; line-height: 1.15; text-align: right; padding-right: 6px; font-weight: 500; }
 table.grid th.corner span { display: block; }
-table.grid td { position: relative; height: 36px; text-align: center; vertical-align: middle; border-radius: 4px;
-  font: 600 16px var(--mono); background: #f7f3ea; box-shadow: inset 0 0 0 1px var(--hair); color: #1a1d2166; }
+table.grid td { position: relative; height: 34px; text-align: center; vertical-align: middle; border-radius: 4px;
+  font: 600 16px var(--mono); background: var(--s0); box-shadow: inset 0 0 0 1px var(--hair); color: #1a1d2166; }
 table.grid td.na { background: repeating-linear-gradient(135deg, transparent 0 4px, #1a1d2112 4px 5px); box-shadow: none; }
 table.grid td.s1 { background: var(--s1); color: var(--ink); box-shadow: none; }
 table.grid td.s2 { background: var(--s2); color: var(--ink); box-shadow: none; }
@@ -80,21 +79,24 @@ table.grid td.s5 { background: var(--s5); color: #fff; box-shadow: none; }
 table.grid td sup { font-size: 10px; font-weight: 500; margin-left: 1px; opacity: .85; }
 table.grid td.ex { outline: 3px solid var(--ink); outline-offset: 1px; z-index: 1; }
 table.grid td .tag { position: absolute; left: -7px; top: -9px; width: 17px; height: 17px; border-radius: 50%;
-  background: var(--ink); color: var(--paper); font: 600 10px/17px var(--mono); text-align: center; }
+  background: var(--ink); color: var(--paper); font: 600 10px/17px var(--mono); text-align: center; z-index: 2; }
 table.grid td .d { position: absolute; right: 2px; bottom: 0; font: 600 9px var(--mono); font-style: normal; }
-table.grid td .d.up { color: inherit; }
 table.grid td .d.down { color: var(--pen); }
+table.grid td.s3 .d.down, table.grid td.s4 .d.down, table.grid td.s5 .d.down { color: #ffd3cc; }
 @media (max-width: 520px) {
+  .gridwrap { padding: 10px 6px 8px; }
   table.grid { border-spacing: 2px; }
   table.grid td { height: 30px; font-size: 13px; }
   table.grid td sup { font-size: 8px; }
-  table.grid tbody th, table.grid th.corner { width: 34px; padding-right: 3px; font-size: 10px; }
+  table.grid tbody th, table.grid th.corner { width: 32px; padding-right: 3px; font-size: 10px; }
   table.grid th.corner { font-size: 8px; }
   table.grid td .tag { left: -5px; top: -7px; width: 14px; height: 14px; font-size: 8px; line-height: 14px; }
 }
 .key { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; margin-top: 12px; font: 500 12px var(--mono); color: var(--muted); }
 .key .sw { display: inline-flex; gap: 2px; vertical-align: middle; margin-right: 4px; }
 .key .sw i { display: inline-block; width: 18px; height: 14px; border-radius: 3px; font: 600 9px/14px var(--mono); color: #fff; text-align: center; font-style: normal; }
+.check { margin-top: 12px; font-size: 16px; color: var(--ink-2); }
+.check b { color: var(--ink); }
 
 /* ---- Examples ---- */
 table.ex { border-collapse: collapse; width: 100%; margin-top: 16px; background: var(--paper); border-radius: 8px; box-shadow: var(--card); overflow: hidden; }
@@ -110,12 +112,53 @@ svg.stars { width: 92px; height: 18px; vertical-align: middle; overflow: visible
 svg.stars .o { fill: none; stroke: var(--ink); stroke-width: 1; opacity: .7; }
 svg.stars .dot { fill: var(--ink); opacity: .25; }
 @media (max-width: 600px) {
-  table.ex td.why { display: none; }
-  table.ex th.why { display: none; }
-  svg.stars { width: 76px; }
-  table.ex td.st { white-space: normal; }
+  table.ex td.why, table.ex th.why { display: none; }
   table.ex th, table.ex td { padding: 8px 6px; }
+  table.ex td.st { white-space: normal; }
+  svg.stars { width: 76px; }
 }
+
+/* ---- The editor ---- */
+.editor { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; margin-top: 14px; }
+@media (max-width: 860px) { .editor { grid-template-columns: minmax(0, 1fr); } .controls { order: -1; } }
+.board { position: relative; background: var(--paper); border-radius: 8px; box-shadow: var(--card); padding: 12px 12px 10px 86px; }
+@media (max-width: 520px) { .board { padding: 10px 6px 8px 64px; } }
+.board table.grid td { height: 22px; font-size: 12px; border-radius: 3px; }
+.board table.grid td sup { font-size: 8px; }
+.board table.grid tbody th { font-size: 10px; }
+.board table.grid td.ex { outline-width: 2px; }
+.board table.grid td .tag { width: 14px; height: 14px; font-size: 8px; line-height: 14px; left: -6px; top: -7px; }
+.rail { position: absolute; left: 10px; top: 0; bottom: 0; width: 62px; pointer-events: none; }
+@media (max-width: 520px) { .rail { left: 4px; width: 50px; } }
+.rail .bar { position: absolute; left: 8px; width: 8px; border-radius: 4px; }
+.pill { position: absolute; left: 0; transform: translateY(-50%); pointer-events: auto; touch-action: none; user-select: none;
+  display: flex; align-items: center; gap: 3px; padding: 2px 6px 2px 4px; border-radius: 99px; border: 0;
+  background: var(--ink); color: var(--paper); font: 600 10px/1.2 var(--mono); cursor: grab; white-space: nowrap; box-shadow: 0 1px 3px #1a1d2155; }
+.pill:active { cursor: grabbing; }
+.pill::after { content: ""; position: absolute; left: 100%; top: 50%; width: 14px; border-top: 1.5px dashed var(--ink); }
+.pill:focus-visible { outline: 2px solid var(--magenta); outline-offset: 2px; }
+@media (max-width: 520px) { .pill { font-size: 9px; padding: 2px 5px 2px 3px; } }
+.controls { background: var(--paper); border-radius: 8px; box-shadow: var(--card); padding: 14px 16px; display: grid; gap: 10px; }
+.controls h3 { font: italic 600 18px var(--display); }
+.ctl { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.ctl label { font-size: 16px; line-height: 1.2; }
+.ctl label small { display: block; font: 500 11px var(--mono); color: var(--muted); }
+.step { display: inline-flex; align-items: center; border-radius: 99px; box-shadow: inset 0 0 0 1px var(--line); background: var(--ground); }
+.step button { width: 34px; height: 34px; border: 0; background: none; font: 600 18px var(--mono); border-radius: 50%; }
+.step button:disabled { opacity: .3; cursor: default; }
+.step output { min-width: 52px; text-align: center; font: 600 14px var(--mono); }
+.controls input[type=range] { width: 100%; accent-color: var(--s4); }
+.controls .row2 { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.reset { border: 0; background: var(--ink); color: var(--paper); border-radius: 99px; padding: 7px 14px; font: 600 12px var(--mono); }
+.reset:disabled { opacity: .35; cursor: default; }
+.diffnote { font: 500 12px var(--mono); color: var(--muted); }
+.mine { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.mine span { background: var(--ground); border-radius: 6px; padding: 4px 6px; font: 600 12px var(--mono); text-align: center; }
+.mine span i { font-style: normal; font-weight: 500; color: var(--muted); }
+.mine span em { font-style: normal; font-size: 10px; }
+.mine span em.up { color: var(--s4); } .mine span em.down { color: var(--pen); }
+@media (max-width: 860px) { .mine { grid-template-columns: repeat(6, minmax(0, 1fr)); } .mine span { padding: 4px 2px; font-size: 11px; } }
+@media (max-width: 420px) { .mine { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 /* ---- Research ---- */
 ul.says { list-style: none; padding: 0; display: grid; gap: 12px; }
@@ -124,26 +167,26 @@ ul.says .q { font: 600 13px var(--mono); color: var(--s4); }
 ul.says p { font-size: 17px; }
 ul.says small { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
 @media (max-width: 600px) { ul.says li { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
-details.src { margin-top: 16px; }
-details.src summary { cursor: pointer; font: 600 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-ol.srcs { margin-top: 10px; padding-left: 22px; display: grid; gap: 6px; font-size: 15px; color: var(--ink-2); }
+.data { margin-top: 16px; background: var(--paper); border-radius: 8px; box-shadow: var(--card); padding: 14px 18px; }
+.data h3 { font: italic 600 18px var(--display); margin-bottom: 8px; }
+.data ul { padding-left: 20px; display: grid; gap: 8px; font-size: 17px; }
+.data .eg { font-family: var(--mono); font-size: .82em; background: var(--ground); padding: 0 4px; border-radius: 3px; white-space: nowrap; }
+details.src summary { cursor: pointer; font: italic 600 22px var(--display); }
+ol.srcs { margin-top: 12px; padding-left: 22px; display: grid; gap: 6px; font-size: 15px; color: var(--ink-2); }
 .str { display: inline-block; font: 600 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; margin-right: 6px; vertical-align: 1px; }
 .str.strong { background: var(--ink); color: var(--paper); }
 .str.medium { background: #1a1d2126; color: var(--ink); }
 .str.weak { box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); }
 
-/* ---- Outline star ---- */
 .outline { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: center; }
 @media (max-width: 760px) { .outline { grid-template-columns: minmax(0, 1fr); } }
 .outline p { font-size: 17px; max-width: 60ch; }
+.outline p + p { margin-top: 8px; }
 .card { background: var(--paper); border-radius: 8px; box-shadow: var(--card); padding: 14px 16px; }
 .card .hr { font: 600 14px var(--mono); }
 .card svg.stars { width: 150px; height: 28px; margin: 8px 0 6px; }
 .card .chip { display: inline-block; font: 500 12px var(--mono); padding: 2px 8px; border-radius: 99px; box-shadow: inset 0 0 0 1px var(--line); margin: 2px 4px 2px 0; }
-.card .tip { font-size: 14px; color: var(--ink-2); margin-top: 6px; }
-
-ul.plain { padding-left: 20px; display: grid; gap: 6px; font-size: 17px; }
-ul.plain li::marker { color: var(--muted); }
+.card .note { margin-top: 8px; font: 500 12px var(--mono); color: var(--ink-2); padding: 6px 8px; border-radius: 6px; background: var(--ground); }
 ol.decide { padding-left: 22px; display: grid; gap: 10px; font-size: 17px; }
 ol.decide b { font-weight: 650; }
 footer { font: 500 11px var(--mono); color: var(--muted); text-align: center; }
@@ -153,106 +196,275 @@ footer { font: 500 11px var(--mono); color: var(--muted); text-align: center; }
 <main>
 
 <header class="sheet top">
-  <div class="eyebrow">wingfoil.ie · plan · 25 October 2026</div>
-  <h1>How many stars should wind and gusts get?</h1>
-  <p>A plan for you to decide. Nothing in the app has changed. Every star on this page is for a <b>Riding</b> (intermediate) rider of 80&nbsp;kg, with no shore angle.</p>
+  <div class="eyebrow">wingfoil.ie · plan, second draft · 25 October 2026</div>
+  <h1>One star rating for wind and gusts</h1>
+  <p>A plan for you to decide. Nothing in the app has changed. "Today" below is the default rider on the site now (Riding, 80&nbsp;kg).</p>
 </header>
 
 <section class="sheet" id="recommend">
   <h2>The recommendation</h2>
   <ul class="recs">
-    <li><b>Five stars from 15 to 23&nbsp;kn of mean wind.</b> Four at 25, three at 28, two at 30, none from 35. More wind is not better.</li>
-    <li><b>Judge the gust by how strong it is, not by gust ÷ mean.</b> Take 5&nbsp;kn off the gust and rate it on the same scale as the mean. If that gives fewer stars, the hour gets that lower number. So 15&nbsp;g25 and 20&nbsp;g25 get five stars, and 20&nbsp;g30 gets four.</li>
-    <li><b>Outline stars, one per reason.</b> The solid stars are what the hour is worth for you. Each outline is a star lost to one named thing: gusts, cross-offshore or your wings. Tap or hover to see which.</li>
-    <li><b>Drop the "how much does gusty wind bother you" setting.</b> Everyone gets one rule, and your level and weight still move it.</li>
+    <li><b>One rating for everyone, "ours".</b> No more Learning, Riding and Advanced. Riders who want a different rating make their own from ours.</li>
+    <li><b>Five stars at 15–22&nbsp;kn, then a steep drop.</b> Four at 23–25, three at 27, two at 28, one at 30, none from 32. Most riders struggle above 25–28&nbsp;kn.</li>
+    <li><b>Gusts are read 5&nbsp;kn lighter on the same scale, and the hour gets the lower score.</b> 15&nbsp;g25 and 20&nbsp;g25 get five stars. 20&nbsp;g30 gets four. 22&nbsp;g35 gets one.</li>
+    <li><b>Outline stars only for gusts and the shore angle.</b> Your wings never cost a star; if they don't suit the hour, you get a note instead.</li>
+    <li><b>Drop the "how much does gusty wind bother you" setting.</b> The editor below replaces it.</li>
   </ul>
-  <p class="terms"><b>What the two numbers are.</b> <b>Wind</b> is the model's mean wind 10&nbsp;m above the surface, the same measure as a weather station's 10-minute average (your "persistent wind"). <b>Gust</b> is the strongest few-second gust the model expects at 10&nbsp;m in the hour up to that time.</p>
+  <p class="terms"><b>The two numbers.</b> The <b>wind</b> (steady wind) is the forecast's average wind, the 10-minute mean at 10&nbsp;m. The <b>gust</b> is the strongest few-second burst in the hour.</p>
 </section>
 
 <section class="sheet" id="grid">
-  <h2>Every mean and gust, today and proposed</h2>
-  <p class="lede">Rows are the mean wind and columns are the gust, both in knots. The big number is the solid stars, and <span class="mono">+n</span> is the outlined stars. A ringed cell is one of your examples. Hatched cells can't happen, because the gust is below the mean. Almost every change is up. The one down is 22 g30, from 5 to 4, because a 30 kn gust now costs a star at any five-star mean.</p>
+  <h2>Every wind and gust, today and proposed</h2>
+  <p class="lede">Rows are the steady wind and columns are the gust, in knots. The number is the solid stars, and <span class="mono">+n</span> is the outlined stars. Ringed cells are your examples. ▲▼ mark cells that changed from today.</p>
   <div class="grids">
-    <div class="gridwrap"><table class="grid today"><caption>Today</caption><thead><tr><th class="corner" scope="col"><span>mean ↓</span><span>gust →</span></th><th scope="col">10</th><th scope="col">15</th><th scope="col">20</th><th scope="col">25</th><th scope="col">30</th><th scope="col">35</th><th scope="col">40</th><th scope="col">45</th></tr></thead><tbody><tr><th scope="row">8</th><td class="s0" title="8 gusting 10: 0 stars" aria-label="8 gusting 10: 0 stars">0</td><td class="s1" title="8 gusting 15: 1 stars" aria-label="8 gusting 15: 1 stars">1</td><td class="s1" title="8 gusting 20: 1 stars" aria-label="8 gusting 20: 1 stars">1</td><td class="s1" title="8 gusting 25: 1 stars" aria-label="8 gusting 25: 1 stars">1</td><td class="s1" title="8 gusting 30: 1 stars" aria-label="8 gusting 30: 1 stars">1</td><td class="s0" title="8 gusting 35: 0 stars" aria-label="8 gusting 35: 0 stars">0</td><td class="s0" title="8 gusting 40: 0 stars" aria-label="8 gusting 40: 0 stars">0</td><td class="s0" title="8 gusting 45: 0 stars" aria-label="8 gusting 45: 0 stars">0</td></tr><tr><th scope="row">10</th><td class="s1" title="10 gusting 10: 1 stars" aria-label="10 gusting 10: 1 stars">1</td><td class="s1" title="10 gusting 15: 1 stars" aria-label="10 gusting 15: 1 stars">1</td><td class="s1" title="10 gusting 20: 1 stars" aria-label="10 gusting 20: 1 stars">1</td><td class="s1" title="10 gusting 25: 1 stars" aria-label="10 gusting 25: 1 stars">1</td><td class="s1" title="10 gusting 30: 1 stars" aria-label="10 gusting 30: 1 stars">1</td><td class="s0" title="10 gusting 35: 0 stars" aria-label="10 gusting 35: 0 stars">0</td><td class="s0" title="10 gusting 40: 0 stars" aria-label="10 gusting 40: 0 stars">0</td><td class="s0" title="10 gusting 45: 0 stars" aria-label="10 gusting 45: 0 stars">0</td></tr><tr><th scope="row">12</th><td class="na" aria-label="gust below mean"></td><td class="s2" title="12 gusting 15: 2 stars" aria-label="12 gusting 15: 2 stars">2</td><td class="s1" title="12 gusting 20: 1 stars, 1 outlined" aria-label="12 gusting 20: 1 stars, 1 outlined">1<sup>+1</sup></td><td class="s0" title="12 gusting 25: 0 stars, 2 outlined" aria-label="12 gusting 25: 0 stars, 2 outlined">0<sup>+2</sup></td><td class="s0" title="12 gusting 30: 0 stars, 2 outlined" aria-label="12 gusting 30: 0 stars, 2 outlined">0<sup>+2</sup></td><td class="s0" title="12 gusting 35: 0 stars" aria-label="12 gusting 35: 0 stars">0</td><td class="s0" title="12 gusting 40: 0 stars" aria-label="12 gusting 40: 0 stars">0</td><td class="s0" title="12 gusting 45: 0 stars" aria-label="12 gusting 45: 0 stars">0</td></tr><tr><th scope="row">15</th><td class="na" aria-label="gust below mean"></td><td class="s4" title="15 gusting 15: 4 stars" aria-label="15 gusting 15: 4 stars">4</td><td class="s4" title="15 gusting 20: 4 stars" aria-label="15 gusting 20: 4 stars">4</td><td class="s3 ex" title="15 gusting 25: 3 stars, 1 outlined" aria-label="15 gusting 25: 3 stars, 1 outlined"><b class="tag">A</b>3<sup>+1</sup></td><td class="s2" title="15 gusting 30: 2 stars, 2 outlined" aria-label="15 gusting 30: 2 stars, 2 outlined">2<sup>+2</sup></td><td class="s0" title="15 gusting 35: 0 stars" aria-label="15 gusting 35: 0 stars">0</td><td class="s0" title="15 gusting 40: 0 stars" aria-label="15 gusting 40: 0 stars">0</td><td class="s0" title="15 gusting 45: 0 stars" aria-label="15 gusting 45: 0 stars">0</td></tr><tr><th scope="row">18</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s5" title="18 gusting 20: 5 stars" aria-label="18 gusting 20: 5 stars">5</td><td class="s5" title="18 gusting 25: 5 stars" aria-label="18 gusting 25: 5 stars">5</td><td class="s4" title="18 gusting 30: 4 stars, 1 outlined" aria-label="18 gusting 30: 4 stars, 1 outlined">4<sup>+1</sup></td><td class="s0" title="18 gusting 35: 0 stars" aria-label="18 gusting 35: 0 stars">0</td><td class="s0" title="18 gusting 40: 0 stars" aria-label="18 gusting 40: 0 stars">0</td><td class="s0" title="18 gusting 45: 0 stars" aria-label="18 gusting 45: 0 stars">0</td></tr><tr><th scope="row">20</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s5" title="20 gusting 20: 5 stars" aria-label="20 gusting 20: 5 stars">5</td><td class="s5 ex" title="20 gusting 25: 5 stars" aria-label="20 gusting 25: 5 stars"><b class="tag">B</b>5</td><td class="s4 ex" title="20 gusting 30: 4 stars, 1 outlined" aria-label="20 gusting 30: 4 stars, 1 outlined"><b class="tag">C</b>4<sup>+1</sup></td><td class="s0" title="20 gusting 35: 0 stars" aria-label="20 gusting 35: 0 stars">0</td><td class="s0" title="20 gusting 40: 0 stars" aria-label="20 gusting 40: 0 stars">0</td><td class="s0" title="20 gusting 45: 0 stars" aria-label="20 gusting 45: 0 stars">0</td></tr><tr><th scope="row">22</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s5" title="22 gusting 25: 5 stars" aria-label="22 gusting 25: 5 stars">5</td><td class="s5" title="22 gusting 30: 5 stars" aria-label="22 gusting 30: 5 stars">5</td><td class="s0" title="22 gusting 35: 0 stars" aria-label="22 gusting 35: 0 stars">0</td><td class="s0" title="22 gusting 40: 0 stars" aria-label="22 gusting 40: 0 stars">0</td><td class="s0" title="22 gusting 45: 0 stars" aria-label="22 gusting 45: 0 stars">0</td></tr><tr><th scope="row">25</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s4" title="25 gusting 25: 4 stars" aria-label="25 gusting 25: 4 stars">4</td><td class="s4 ex" title="25 gusting 30: 4 stars" aria-label="25 gusting 30: 4 stars"><b class="tag">D</b>4</td><td class="s0" title="25 gusting 35: 0 stars" aria-label="25 gusting 35: 0 stars">0</td><td class="s0" title="25 gusting 40: 0 stars" aria-label="25 gusting 40: 0 stars">0</td><td class="s0" title="25 gusting 45: 0 stars" aria-label="25 gusting 45: 0 stars">0</td></tr><tr><th scope="row">28</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s3" title="28 gusting 30: 3 stars" aria-label="28 gusting 30: 3 stars">3</td><td class="s0" title="28 gusting 35: 0 stars" aria-label="28 gusting 35: 0 stars">0</td><td class="s0" title="28 gusting 40: 0 stars" aria-label="28 gusting 40: 0 stars">0</td><td class="s0" title="28 gusting 45: 0 stars" aria-label="28 gusting 45: 0 stars">0</td></tr><tr><th scope="row">30</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s2" title="30 gusting 30: 2 stars" aria-label="30 gusting 30: 2 stars">2</td><td class="s0 ex" title="30 gusting 35: 0 stars" aria-label="30 gusting 35: 0 stars"><b class="tag">E</b>0</td><td class="s0" title="30 gusting 40: 0 stars" aria-label="30 gusting 40: 0 stars">0</td><td class="s0" title="30 gusting 45: 0 stars" aria-label="30 gusting 45: 0 stars">0</td></tr><tr><th scope="row">32</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s0" title="32 gusting 35: 0 stars" aria-label="32 gusting 35: 0 stars">0</td><td class="s0" title="32 gusting 40: 0 stars" aria-label="32 gusting 40: 0 stars">0</td><td class="s0" title="32 gusting 45: 0 stars" aria-label="32 gusting 45: 0 stars">0</td></tr><tr><th scope="row">35</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s0" title="35 gusting 35: 0 stars" aria-label="35 gusting 35: 0 stars">0</td><td class="s0" title="35 gusting 40: 0 stars" aria-label="35 gusting 40: 0 stars">0</td><td class="s0" title="35 gusting 45: 0 stars" aria-label="35 gusting 45: 0 stars">0</td></tr></tbody></table></div>
-    <div class="gridwrap"><table class="grid proposed"><caption>Proposed</caption><thead><tr><th class="corner" scope="col"><span>mean ↓</span><span>gust →</span></th><th scope="col">10</th><th scope="col">15</th><th scope="col">20</th><th scope="col">25</th><th scope="col">30</th><th scope="col">35</th><th scope="col">40</th><th scope="col">45</th></tr></thead><tbody><tr><th scope="row">8</th><td class="s0" title="8 gusting 10: 0 stars" aria-label="8 gusting 10: 0 stars">0</td><td class="s1" title="8 gusting 15: 1 stars" aria-label="8 gusting 15: 1 stars">1</td><td class="s1" title="8 gusting 20: 1 stars" aria-label="8 gusting 20: 1 stars">1</td><td class="s1" title="8 gusting 25: 1 stars" aria-label="8 gusting 25: 1 stars">1</td><td class="s1" title="8 gusting 30: 1 stars" aria-label="8 gusting 30: 1 stars">1</td><td class="s1" title="8 gusting 35: 1 stars" aria-label="8 gusting 35: 1 stars">1<i class="d up">▲</i></td><td class="s0" title="8 gusting 40: 0 stars" aria-label="8 gusting 40: 0 stars">0</td><td class="s0" title="8 gusting 45: 0 stars" aria-label="8 gusting 45: 0 stars">0</td></tr><tr><th scope="row">10</th><td class="s1" title="10 gusting 10: 1 stars" aria-label="10 gusting 10: 1 stars">1</td><td class="s1" title="10 gusting 15: 1 stars" aria-label="10 gusting 15: 1 stars">1</td><td class="s1" title="10 gusting 20: 1 stars" aria-label="10 gusting 20: 1 stars">1</td><td class="s1" title="10 gusting 25: 1 stars" aria-label="10 gusting 25: 1 stars">1</td><td class="s1" title="10 gusting 30: 1 stars" aria-label="10 gusting 30: 1 stars">1</td><td class="s1" title="10 gusting 35: 1 stars" aria-label="10 gusting 35: 1 stars">1<i class="d up">▲</i></td><td class="s0" title="10 gusting 40: 0 stars" aria-label="10 gusting 40: 0 stars">0</td><td class="s0" title="10 gusting 45: 0 stars" aria-label="10 gusting 45: 0 stars">0</td></tr><tr><th scope="row">12</th><td class="na" aria-label="gust below mean"></td><td class="s2" title="12 gusting 15: 2 stars" aria-label="12 gusting 15: 2 stars">2</td><td class="s2" title="12 gusting 20: 2 stars" aria-label="12 gusting 20: 2 stars">2<i class="d up">▲</i></td><td class="s2" title="12 gusting 25: 2 stars" aria-label="12 gusting 25: 2 stars">2<i class="d up">▲</i></td><td class="s2" title="12 gusting 30: 2 stars" aria-label="12 gusting 30: 2 stars">2<i class="d up">▲</i></td><td class="s2" title="12 gusting 35: 2 stars" aria-label="12 gusting 35: 2 stars">2<i class="d up">▲</i></td><td class="s0" title="12 gusting 40: 0 stars" aria-label="12 gusting 40: 0 stars">0</td><td class="s0" title="12 gusting 45: 0 stars" aria-label="12 gusting 45: 0 stars">0</td></tr><tr><th scope="row">15</th><td class="na" aria-label="gust below mean"></td><td class="s5" title="15 gusting 15: 5 stars" aria-label="15 gusting 15: 5 stars">5<i class="d up">▲</i></td><td class="s5" title="15 gusting 20: 5 stars" aria-label="15 gusting 20: 5 stars">5<i class="d up">▲</i></td><td class="s5 ex" title="15 gusting 25: 5 stars" aria-label="15 gusting 25: 5 stars"><b class="tag">A</b>5<i class="d up">▲</i></td><td class="s4" title="15 gusting 30: 4 stars, 1 outlined" aria-label="15 gusting 30: 4 stars, 1 outlined">4<sup>+1</sup><i class="d up">▲</i></td><td class="s2" title="15 gusting 35: 2 stars, 3 outlined" aria-label="15 gusting 35: 2 stars, 3 outlined">2<sup>+3</sup><i class="d up">▲</i></td><td class="s0" title="15 gusting 40: 0 stars" aria-label="15 gusting 40: 0 stars">0</td><td class="s0" title="15 gusting 45: 0 stars" aria-label="15 gusting 45: 0 stars">0</td></tr><tr><th scope="row">18</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s5" title="18 gusting 20: 5 stars" aria-label="18 gusting 20: 5 stars">5</td><td class="s5" title="18 gusting 25: 5 stars" aria-label="18 gusting 25: 5 stars">5</td><td class="s4" title="18 gusting 30: 4 stars, 1 outlined" aria-label="18 gusting 30: 4 stars, 1 outlined">4<sup>+1</sup></td><td class="s2" title="18 gusting 35: 2 stars, 3 outlined" aria-label="18 gusting 35: 2 stars, 3 outlined">2<sup>+3</sup><i class="d up">▲</i></td><td class="s0" title="18 gusting 40: 0 stars" aria-label="18 gusting 40: 0 stars">0</td><td class="s0" title="18 gusting 45: 0 stars" aria-label="18 gusting 45: 0 stars">0</td></tr><tr><th scope="row">20</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s5" title="20 gusting 20: 5 stars" aria-label="20 gusting 20: 5 stars">5</td><td class="s5 ex" title="20 gusting 25: 5 stars" aria-label="20 gusting 25: 5 stars"><b class="tag">B</b>5</td><td class="s4 ex" title="20 gusting 30: 4 stars, 1 outlined" aria-label="20 gusting 30: 4 stars, 1 outlined"><b class="tag">C</b>4<sup>+1</sup></td><td class="s2" title="20 gusting 35: 2 stars, 3 outlined" aria-label="20 gusting 35: 2 stars, 3 outlined">2<sup>+3</sup><i class="d up">▲</i></td><td class="s0" title="20 gusting 40: 0 stars" aria-label="20 gusting 40: 0 stars">0</td><td class="s0" title="20 gusting 45: 0 stars" aria-label="20 gusting 45: 0 stars">0</td></tr><tr><th scope="row">22</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s5" title="22 gusting 25: 5 stars" aria-label="22 gusting 25: 5 stars">5</td><td class="s4" title="22 gusting 30: 4 stars, 1 outlined" aria-label="22 gusting 30: 4 stars, 1 outlined">4<sup>+1</sup><i class="d down">▼</i></td><td class="s2" title="22 gusting 35: 2 stars, 3 outlined" aria-label="22 gusting 35: 2 stars, 3 outlined">2<sup>+3</sup><i class="d up">▲</i></td><td class="s0" title="22 gusting 40: 0 stars" aria-label="22 gusting 40: 0 stars">0</td><td class="s0" title="22 gusting 45: 0 stars" aria-label="22 gusting 45: 0 stars">0</td></tr><tr><th scope="row">25</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s4" title="25 gusting 25: 4 stars" aria-label="25 gusting 25: 4 stars">4</td><td class="s4 ex" title="25 gusting 30: 4 stars" aria-label="25 gusting 30: 4 stars"><b class="tag">D</b>4</td><td class="s2" title="25 gusting 35: 2 stars, 2 outlined" aria-label="25 gusting 35: 2 stars, 2 outlined">2<sup>+2</sup><i class="d up">▲</i></td><td class="s0" title="25 gusting 40: 0 stars" aria-label="25 gusting 40: 0 stars">0</td><td class="s0" title="25 gusting 45: 0 stars" aria-label="25 gusting 45: 0 stars">0</td></tr><tr><th scope="row">28</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s3" title="28 gusting 30: 3 stars" aria-label="28 gusting 30: 3 stars">3</td><td class="s2" title="28 gusting 35: 2 stars, 1 outlined" aria-label="28 gusting 35: 2 stars, 1 outlined">2<sup>+1</sup><i class="d up">▲</i></td><td class="s0" title="28 gusting 40: 0 stars" aria-label="28 gusting 40: 0 stars">0</td><td class="s0" title="28 gusting 45: 0 stars" aria-label="28 gusting 45: 0 stars">0</td></tr><tr><th scope="row">30</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s2" title="30 gusting 30: 2 stars" aria-label="30 gusting 30: 2 stars">2</td><td class="s2 ex" title="30 gusting 35: 2 stars" aria-label="30 gusting 35: 2 stars"><b class="tag">E</b>2<i class="d up">▲</i></td><td class="s0" title="30 gusting 40: 0 stars" aria-label="30 gusting 40: 0 stars">0</td><td class="s0" title="30 gusting 45: 0 stars" aria-label="30 gusting 45: 0 stars">0</td></tr><tr><th scope="row">32</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s1" title="32 gusting 35: 1 stars" aria-label="32 gusting 35: 1 stars">1<i class="d up">▲</i></td><td class="s0" title="32 gusting 40: 0 stars" aria-label="32 gusting 40: 0 stars">0</td><td class="s0" title="32 gusting 45: 0 stars" aria-label="32 gusting 45: 0 stars">0</td></tr><tr><th scope="row">35</th><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="na" aria-label="gust below mean"></td><td class="s0" title="35 gusting 35: 0 stars" aria-label="35 gusting 35: 0 stars">0</td><td class="s0" title="35 gusting 40: 0 stars" aria-label="35 gusting 40: 0 stars">0</td><td class="s0" title="35 gusting 45: 0 stars" aria-label="35 gusting 45: 0 stars">0</td></tr></tbody></table></div>
+    <div class="gridwrap"><table class="grid today"><caption>Today</caption><thead><tr><th class="corner" scope="col"><span>mean ↓</span><span>gust →</span></th><th scope="col">10</th><th scope="col">15</th><th scope="col">20</th><th scope="col">25</th><th scope="col">30</th><th scope="col">35</th><th scope="col">40</th><th scope="col">45</th></tr></thead><tbody><tr><th scope="row">10</th><td class="s1" title="10 gusting 10: 1 stars" aria-label="10 gusting 10: 1 stars">1</td><td class="s1" title="10 gusting 15: 1 stars" aria-label="10 gusting 15: 1 stars">1</td><td class="s1" title="10 gusting 20: 1 stars" aria-label="10 gusting 20: 1 stars">1</td><td class="s1" title="10 gusting 25: 1 stars" aria-label="10 gusting 25: 1 stars">1</td><td class="s1" title="10 gusting 30: 1 stars" aria-label="10 gusting 30: 1 stars">1</td><td class="s0" title="10 gusting 35: 0 stars" aria-label="10 gusting 35: 0 stars">0</td><td class="s0" title="10 gusting 40: 0 stars" aria-label="10 gusting 40: 0 stars">0</td><td class="s0" title="10 gusting 45: 0 stars" aria-label="10 gusting 45: 0 stars">0</td></tr><tr><th scope="row">12</th><td class="na"></td><td class="s2" title="12 gusting 15: 2 stars" aria-label="12 gusting 15: 2 stars">2</td><td class="s1" title="12 gusting 20: 1 stars, 1 outlined" aria-label="12 gusting 20: 1 stars, 1 outlined">1<sup>+1</sup></td><td class="s0" title="12 gusting 25: 0 stars, 2 outlined" aria-label="12 gusting 25: 0 stars, 2 outlined">0<sup>+2</sup></td><td class="s0" title="12 gusting 30: 0 stars, 2 outlined" aria-label="12 gusting 30: 0 stars, 2 outlined">0<sup>+2</sup></td><td class="s0" title="12 gusting 35: 0 stars" aria-label="12 gusting 35: 0 stars">0</td><td class="s0" title="12 gusting 40: 0 stars" aria-label="12 gusting 40: 0 stars">0</td><td class="s0" title="12 gusting 45: 0 stars" aria-label="12 gusting 45: 0 stars">0</td></tr><tr><th scope="row">14</th><td class="na"></td><td class="s4" title="14 gusting 15: 4 stars" aria-label="14 gusting 15: 4 stars">4</td><td class="s4" title="14 gusting 20: 4 stars" aria-label="14 gusting 20: 4 stars">4</td><td class="s3" title="14 gusting 25: 3 stars, 1 outlined" aria-label="14 gusting 25: 3 stars, 1 outlined">3<sup>+1</sup></td><td class="s2" title="14 gusting 30: 2 stars, 2 outlined" aria-label="14 gusting 30: 2 stars, 2 outlined">2<sup>+2</sup></td><td class="s0" title="14 gusting 35: 0 stars" aria-label="14 gusting 35: 0 stars">0</td><td class="s0" title="14 gusting 40: 0 stars" aria-label="14 gusting 40: 0 stars">0</td><td class="s0" title="14 gusting 45: 0 stars" aria-label="14 gusting 45: 0 stars">0</td></tr><tr><th scope="row">15</th><td class="na"></td><td class="s4" title="15 gusting 15: 4 stars" aria-label="15 gusting 15: 4 stars">4</td><td class="s4" title="15 gusting 20: 4 stars" aria-label="15 gusting 20: 4 stars">4</td><td class="s3 ex" title="15 gusting 25: 3 stars, 1 outlined" aria-label="15 gusting 25: 3 stars, 1 outlined"><b class="tag">A</b>3<sup>+1</sup></td><td class="s2" title="15 gusting 30: 2 stars, 2 outlined" aria-label="15 gusting 30: 2 stars, 2 outlined">2<sup>+2</sup></td><td class="s0" title="15 gusting 35: 0 stars" aria-label="15 gusting 35: 0 stars">0</td><td class="s0" title="15 gusting 40: 0 stars" aria-label="15 gusting 40: 0 stars">0</td><td class="s0" title="15 gusting 45: 0 stars" aria-label="15 gusting 45: 0 stars">0</td></tr><tr><th scope="row">18</th><td class="na"></td><td class="na"></td><td class="s5" title="18 gusting 20: 5 stars" aria-label="18 gusting 20: 5 stars">5</td><td class="s5" title="18 gusting 25: 5 stars" aria-label="18 gusting 25: 5 stars">5</td><td class="s4" title="18 gusting 30: 4 stars, 1 outlined" aria-label="18 gusting 30: 4 stars, 1 outlined">4<sup>+1</sup></td><td class="s0" title="18 gusting 35: 0 stars" aria-label="18 gusting 35: 0 stars">0</td><td class="s0" title="18 gusting 40: 0 stars" aria-label="18 gusting 40: 0 stars">0</td><td class="s0" title="18 gusting 45: 0 stars" aria-label="18 gusting 45: 0 stars">0</td></tr><tr><th scope="row">20</th><td class="na"></td><td class="na"></td><td class="s5" title="20 gusting 20: 5 stars" aria-label="20 gusting 20: 5 stars">5</td><td class="s5 ex" title="20 gusting 25: 5 stars" aria-label="20 gusting 25: 5 stars"><b class="tag">B</b>5</td><td class="s4 ex" title="20 gusting 30: 4 stars, 1 outlined" aria-label="20 gusting 30: 4 stars, 1 outlined"><b class="tag">C</b>4<sup>+1</sup></td><td class="s0" title="20 gusting 35: 0 stars" aria-label="20 gusting 35: 0 stars">0</td><td class="s0" title="20 gusting 40: 0 stars" aria-label="20 gusting 40: 0 stars">0</td><td class="s0" title="20 gusting 45: 0 stars" aria-label="20 gusting 45: 0 stars">0</td></tr><tr><th scope="row">22</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="s5" title="22 gusting 25: 5 stars" aria-label="22 gusting 25: 5 stars">5</td><td class="s5" title="22 gusting 30: 5 stars" aria-label="22 gusting 30: 5 stars">5</td><td class="s0 ex" title="22 gusting 35: 0 stars" aria-label="22 gusting 35: 0 stars"><b class="tag">E</b>0</td><td class="s0" title="22 gusting 40: 0 stars" aria-label="22 gusting 40: 0 stars">0</td><td class="s0" title="22 gusting 45: 0 stars" aria-label="22 gusting 45: 0 stars">0</td></tr><tr><th scope="row">23</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="s4" title="23 gusting 25: 4 stars" aria-label="23 gusting 25: 4 stars">4</td><td class="s4" title="23 gusting 30: 4 stars" aria-label="23 gusting 30: 4 stars">4</td><td class="s0" title="23 gusting 35: 0 stars" aria-label="23 gusting 35: 0 stars">0</td><td class="s0" title="23 gusting 40: 0 stars" aria-label="23 gusting 40: 0 stars">0</td><td class="s0" title="23 gusting 45: 0 stars" aria-label="23 gusting 45: 0 stars">0</td></tr><tr><th scope="row">25</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="s4" title="25 gusting 25: 4 stars" aria-label="25 gusting 25: 4 stars">4</td><td class="s4 ex" title="25 gusting 30: 4 stars" aria-label="25 gusting 30: 4 stars"><b class="tag">D</b>4</td><td class="s0" title="25 gusting 35: 0 stars" aria-label="25 gusting 35: 0 stars">0</td><td class="s0" title="25 gusting 40: 0 stars" aria-label="25 gusting 40: 0 stars">0</td><td class="s0" title="25 gusting 45: 0 stars" aria-label="25 gusting 45: 0 stars">0</td></tr><tr><th scope="row">27</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="s3" title="27 gusting 30: 3 stars" aria-label="27 gusting 30: 3 stars">3</td><td class="s0" title="27 gusting 35: 0 stars" aria-label="27 gusting 35: 0 stars">0</td><td class="s0" title="27 gusting 40: 0 stars" aria-label="27 gusting 40: 0 stars">0</td><td class="s0" title="27 gusting 45: 0 stars" aria-label="27 gusting 45: 0 stars">0</td></tr><tr><th scope="row">28</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="s3" title="28 gusting 30: 3 stars" aria-label="28 gusting 30: 3 stars">3</td><td class="s0" title="28 gusting 35: 0 stars" aria-label="28 gusting 35: 0 stars">0</td><td class="s0" title="28 gusting 40: 0 stars" aria-label="28 gusting 40: 0 stars">0</td><td class="s0" title="28 gusting 45: 0 stars" aria-label="28 gusting 45: 0 stars">0</td></tr><tr><th scope="row">30</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="s2" title="30 gusting 30: 2 stars" aria-label="30 gusting 30: 2 stars">2</td><td class="s0 ex" title="30 gusting 35: 0 stars" aria-label="30 gusting 35: 0 stars"><b class="tag">F</b>0</td><td class="s0" title="30 gusting 40: 0 stars" aria-label="30 gusting 40: 0 stars">0</td><td class="s0" title="30 gusting 45: 0 stars" aria-label="30 gusting 45: 0 stars">0</td></tr><tr><th scope="row">32</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="s0" title="32 gusting 35: 0 stars" aria-label="32 gusting 35: 0 stars">0</td><td class="s0" title="32 gusting 40: 0 stars" aria-label="32 gusting 40: 0 stars">0</td><td class="s0" title="32 gusting 45: 0 stars" aria-label="32 gusting 45: 0 stars">0</td></tr><tr><th scope="row">35</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="s0" title="35 gusting 35: 0 stars" aria-label="35 gusting 35: 0 stars">0</td><td class="s0" title="35 gusting 40: 0 stars" aria-label="35 gusting 40: 0 stars">0</td><td class="s0" title="35 gusting 45: 0 stars" aria-label="35 gusting 45: 0 stars">0</td></tr></tbody></table></div>
+    <div class="gridwrap"><table class="grid proposed"><caption>Proposed (ours)</caption><thead><tr><th class="corner" scope="col"><span>mean ↓</span><span>gust →</span></th><th scope="col">10</th><th scope="col">15</th><th scope="col">20</th><th scope="col">25</th><th scope="col">30</th><th scope="col">35</th><th scope="col">40</th><th scope="col">45</th></tr></thead><tbody><tr><th scope="row">10</th><td class="s1" title="10 gusting 10: 1 stars" aria-label="10 gusting 10: 1 stars">1</td><td class="s1" title="10 gusting 15: 1 stars" aria-label="10 gusting 15: 1 stars">1</td><td class="s1" title="10 gusting 20: 1 stars" aria-label="10 gusting 20: 1 stars">1</td><td class="s1" title="10 gusting 25: 1 stars" aria-label="10 gusting 25: 1 stars">1</td><td class="s1" title="10 gusting 30: 1 stars" aria-label="10 gusting 30: 1 stars">1</td><td class="s1" title="10 gusting 35: 1 stars" aria-label="10 gusting 35: 1 stars">1<i class="d up">▲</i></td><td class="s0" title="10 gusting 40: 0 stars" aria-label="10 gusting 40: 0 stars">0</td><td class="s0" title="10 gusting 45: 0 stars" aria-label="10 gusting 45: 0 stars">0</td></tr><tr><th scope="row">12</th><td class="na"></td><td class="s2" title="12 gusting 15: 2 stars" aria-label="12 gusting 15: 2 stars">2</td><td class="s2" title="12 gusting 20: 2 stars" aria-label="12 gusting 20: 2 stars">2<i class="d up">▲</i></td><td class="s2" title="12 gusting 25: 2 stars" aria-label="12 gusting 25: 2 stars">2<i class="d up">▲</i></td><td class="s2" title="12 gusting 30: 2 stars" aria-label="12 gusting 30: 2 stars">2<i class="d up">▲</i></td><td class="s1" title="12 gusting 35: 1 stars, 1 outlined" aria-label="12 gusting 35: 1 stars, 1 outlined">1<sup>+1</sup><i class="d up">▲</i></td><td class="s0" title="12 gusting 40: 0 stars" aria-label="12 gusting 40: 0 stars">0</td><td class="s0" title="12 gusting 45: 0 stars" aria-label="12 gusting 45: 0 stars">0</td></tr><tr><th scope="row">14</th><td class="na"></td><td class="s4" title="14 gusting 15: 4 stars" aria-label="14 gusting 15: 4 stars">4</td><td class="s4" title="14 gusting 20: 4 stars" aria-label="14 gusting 20: 4 stars">4</td><td class="s4" title="14 gusting 25: 4 stars" aria-label="14 gusting 25: 4 stars">4<i class="d up">▲</i></td><td class="s4" title="14 gusting 30: 4 stars" aria-label="14 gusting 30: 4 stars">4<i class="d up">▲</i></td><td class="s1" title="14 gusting 35: 1 stars, 3 outlined" aria-label="14 gusting 35: 1 stars, 3 outlined">1<sup>+3</sup><i class="d up">▲</i></td><td class="s0" title="14 gusting 40: 0 stars" aria-label="14 gusting 40: 0 stars">0</td><td class="s0" title="14 gusting 45: 0 stars" aria-label="14 gusting 45: 0 stars">0</td></tr><tr><th scope="row">15</th><td class="na"></td><td class="s5" title="15 gusting 15: 5 stars" aria-label="15 gusting 15: 5 stars">5<i class="d up">▲</i></td><td class="s5" title="15 gusting 20: 5 stars" aria-label="15 gusting 20: 5 stars">5<i class="d up">▲</i></td><td class="s5 ex" title="15 gusting 25: 5 stars" aria-label="15 gusting 25: 5 stars"><b class="tag">A</b>5<i class="d up">▲</i></td><td class="s4" title="15 gusting 30: 4 stars, 1 outlined" aria-label="15 gusting 30: 4 stars, 1 outlined">4<sup>+1</sup><i class="d up">▲</i></td><td class="s1" title="15 gusting 35: 1 stars, 4 outlined" aria-label="15 gusting 35: 1 stars, 4 outlined">1<sup>+4</sup><i class="d up">▲</i></td><td class="s0" title="15 gusting 40: 0 stars" aria-label="15 gusting 40: 0 stars">0</td><td class="s0" title="15 gusting 45: 0 stars" aria-label="15 gusting 45: 0 stars">0</td></tr><tr><th scope="row">18</th><td class="na"></td><td class="na"></td><td class="s5" title="18 gusting 20: 5 stars" aria-label="18 gusting 20: 5 stars">5</td><td class="s5" title="18 gusting 25: 5 stars" aria-label="18 gusting 25: 5 stars">5</td><td class="s4" title="18 gusting 30: 4 stars, 1 outlined" aria-label="18 gusting 30: 4 stars, 1 outlined">4<sup>+1</sup></td><td class="s1" title="18 gusting 35: 1 stars, 4 outlined" aria-label="18 gusting 35: 1 stars, 4 outlined">1<sup>+4</sup><i class="d up">▲</i></td><td class="s0" title="18 gusting 40: 0 stars" aria-label="18 gusting 40: 0 stars">0</td><td class="s0" title="18 gusting 45: 0 stars" aria-label="18 gusting 45: 0 stars">0</td></tr><tr><th scope="row">20</th><td class="na"></td><td class="na"></td><td class="s5" title="20 gusting 20: 5 stars" aria-label="20 gusting 20: 5 stars">5</td><td class="s5 ex" title="20 gusting 25: 5 stars" aria-label="20 gusting 25: 5 stars"><b class="tag">B</b>5</td><td class="s4 ex" title="20 gusting 30: 4 stars, 1 outlined" aria-label="20 gusting 30: 4 stars, 1 outlined"><b class="tag">C</b>4<sup>+1</sup></td><td class="s1" title="20 gusting 35: 1 stars, 4 outlined" aria-label="20 gusting 35: 1 stars, 4 outlined">1<sup>+4</sup><i class="d up">▲</i></td><td class="s0" title="20 gusting 40: 0 stars" aria-label="20 gusting 40: 0 stars">0</td><td class="s0" title="20 gusting 45: 0 stars" aria-label="20 gusting 45: 0 stars">0</td></tr><tr><th scope="row">22</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="s5" title="22 gusting 25: 5 stars" aria-label="22 gusting 25: 5 stars">5</td><td class="s4" title="22 gusting 30: 4 stars, 1 outlined" aria-label="22 gusting 30: 4 stars, 1 outlined">4<sup>+1</sup><i class="d down">▼</i></td><td class="s1 ex" title="22 gusting 35: 1 stars, 4 outlined" aria-label="22 gusting 35: 1 stars, 4 outlined"><b class="tag">E</b>1<sup>+4</sup><i class="d up">▲</i></td><td class="s0" title="22 gusting 40: 0 stars" aria-label="22 gusting 40: 0 stars">0</td><td class="s0" title="22 gusting 45: 0 stars" aria-label="22 gusting 45: 0 stars">0</td></tr><tr><th scope="row">23</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="s4" title="23 gusting 25: 4 stars" aria-label="23 gusting 25: 4 stars">4</td><td class="s4" title="23 gusting 30: 4 stars" aria-label="23 gusting 30: 4 stars">4</td><td class="s1" title="23 gusting 35: 1 stars, 3 outlined" aria-label="23 gusting 35: 1 stars, 3 outlined">1<sup>+3</sup><i class="d up">▲</i></td><td class="s0" title="23 gusting 40: 0 stars" aria-label="23 gusting 40: 0 stars">0</td><td class="s0" title="23 gusting 45: 0 stars" aria-label="23 gusting 45: 0 stars">0</td></tr><tr><th scope="row">25</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="s4" title="25 gusting 25: 4 stars" aria-label="25 gusting 25: 4 stars">4</td><td class="s4 ex" title="25 gusting 30: 4 stars" aria-label="25 gusting 30: 4 stars"><b class="tag">D</b>4</td><td class="s1" title="25 gusting 35: 1 stars, 3 outlined" aria-label="25 gusting 35: 1 stars, 3 outlined">1<sup>+3</sup><i class="d up">▲</i></td><td class="s0" title="25 gusting 40: 0 stars" aria-label="25 gusting 40: 0 stars">0</td><td class="s0" title="25 gusting 45: 0 stars" aria-label="25 gusting 45: 0 stars">0</td></tr><tr><th scope="row">27</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="s3" title="27 gusting 30: 3 stars" aria-label="27 gusting 30: 3 stars">3</td><td class="s1" title="27 gusting 35: 1 stars, 2 outlined" aria-label="27 gusting 35: 1 stars, 2 outlined">1<sup>+2</sup><i class="d up">▲</i></td><td class="s0" title="27 gusting 40: 0 stars" aria-label="27 gusting 40: 0 stars">0</td><td class="s0" title="27 gusting 45: 0 stars" aria-label="27 gusting 45: 0 stars">0</td></tr><tr><th scope="row">28</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="s2" title="28 gusting 30: 2 stars" aria-label="28 gusting 30: 2 stars">2<i class="d down">▼</i></td><td class="s1" title="28 gusting 35: 1 stars, 1 outlined" aria-label="28 gusting 35: 1 stars, 1 outlined">1<sup>+1</sup><i class="d up">▲</i></td><td class="s0" title="28 gusting 40: 0 stars" aria-label="28 gusting 40: 0 stars">0</td><td class="s0" title="28 gusting 45: 0 stars" aria-label="28 gusting 45: 0 stars">0</td></tr><tr><th scope="row">30</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="s1" title="30 gusting 30: 1 stars" aria-label="30 gusting 30: 1 stars">1<i class="d down">▼</i></td><td class="s1 ex" title="30 gusting 35: 1 stars" aria-label="30 gusting 35: 1 stars"><b class="tag">F</b>1<i class="d up">▲</i></td><td class="s0" title="30 gusting 40: 0 stars" aria-label="30 gusting 40: 0 stars">0</td><td class="s0" title="30 gusting 45: 0 stars" aria-label="30 gusting 45: 0 stars">0</td></tr><tr><th scope="row">32</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="s0" title="32 gusting 35: 0 stars" aria-label="32 gusting 35: 0 stars">0</td><td class="s0" title="32 gusting 40: 0 stars" aria-label="32 gusting 40: 0 stars">0</td><td class="s0" title="32 gusting 45: 0 stars" aria-label="32 gusting 45: 0 stars">0</td></tr><tr><th scope="row">35</th><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="na"></td><td class="s0" title="35 gusting 35: 0 stars" aria-label="35 gusting 35: 0 stars">0</td><td class="s0" title="35 gusting 40: 0 stars" aria-label="35 gusting 40: 0 stars">0</td><td class="s0" title="35 gusting 45: 0 stars" aria-label="35 gusting 45: 0 stars">0</td></tr></tbody></table></div>
   </div>
   <div class="key">
-    <span><span class="sw"><i style="background:#f7f3ea;color:#1a1d2166;box-shadow:inset 0 0 0 1px #1a1d211f">0</i><i style="background:var(--s1);color:var(--ink)">1</i><i style="background:var(--s2);color:var(--ink)">2</i><i style="background:var(--s3)">3</i><i style="background:var(--s4)">4</i><i style="background:var(--s5)">5</i></span>solid stars</span>
+    <span><span class="sw"><i style="background:var(--s0);color:#1a1d2166;box-shadow:inset 0 0 0 1px #1a1d211f">0</i><i style="background:var(--s1);color:var(--ink)">1</i><i style="background:var(--s2);color:var(--ink)">2</i><i style="background:var(--s3)">3</i><i style="background:var(--s4)">4</i><i style="background:var(--s5)">5</i></span>solid stars</span>
     <span><b style="color:var(--ink)">+1</b> outlined</span>
-    <span>▲ ▼ changed from today</span>
+    <span>hatched: the gust can't be below the wind</span>
   </div>
+  <p class="check"><b>Strong wind now scores low.</b> A 30&nbsp;kn hour gets one star at most. Gusts of 35 cap any hour at one star, and gusts from 37 give none. Today a 30&nbsp;kn hour can show 2 stars, but any gust over 30 gives 0, even at 15&nbsp;kn. Three cells go down: 28&nbsp;g30 (3→2), 30&nbsp;g30 (2→1) and 22&nbsp;g30 (5→4).</p>
 
   <table class="ex" aria-label="Your examples, today and proposed">
-    <thead><tr><th>Your example</th><th>Today</th><th>Proposed</th><th class="why">Why it moves</th></tr></thead>
+    <thead><tr><th>Example</th><th>Today</th><th>Proposed</th><th class="why">Why</th></tr></thead>
     <tbody>
-      <tr><td class="hour"><span class="tagi">A</span>15 g25</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path transform="translate(9.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#bd3d84" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#bd3d84" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#bd3d84" stroke="#1a1d218c" stroke-width=".5"/><path class="o" transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/><circle class="dot" cx="83.0" cy="9" r="1.8"/></svg> 3</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="5 of 5 stars"><path transform="translate(9.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(83.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/></svg> 5</td><td class="why">Today 15 sits on the edge of the sweet spot (four stars), and 1.67× counts as "gusty", which costs one more. Proposed: 15 is in the five-star range, and a 25 kn gust costs nothing.</td></tr>
-      <tr><td class="hour"><span class="tagi">B</span>20 g25</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="5 of 5 stars"><path transform="translate(9.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(83.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/></svg> 5</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="5 of 5 stars"><path transform="translate(9.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(83.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/></svg> 5</td><td class="why">The same under both rules.</td></tr>
-      <tr><td class="hour"><span class="tagi">C</span>20 g30</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="4 of 5 stars, 5 on the wind alone"><path transform="translate(9.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path class="o" transform="translate(83.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/></svg> 4</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="4 of 5 stars, 5 on the wind alone"><path transform="translate(9.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path class="o" transform="translate(83.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/></svg> 4</td><td class="why">The same number for a different reason. Today it's the 1.5× ratio. Proposed: a 30 kn gust rates like a 25 kn mean, which gets four stars.</td></tr>
-      <tr><td class="hour"><span class="tagi">D</span>25 g30</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="4 of 5 stars"><path transform="translate(9.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><circle class="dot" cx="83.0" cy="9" r="1.8"/></svg> 4</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="4 of 5 stars"><path transform="translate(9.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><circle class="dot" cx="83.0" cy="9" r="1.8"/></svg> 4</td><td class="why">25 kn of mean wind is a four-star wind. A 30 kn gust is no worse than that, so the gust costs nothing.</td></tr>
-      <tr><td class="hour"><span class="tagi">E</span>30 g35</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="0 of 5 stars"><circle class="dot" cx="9.0" cy="9" r="1.8"/><circle class="dot" cx="27.5" cy="9" r="1.8"/><circle class="dot" cx="46.0" cy="9" r="1.8"/><circle class="dot" cx="64.5" cy="9" r="1.8"/><circle class="dot" cx="83.0" cy="9" r="1.8"/></svg> 0</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="2 of 5 stars"><path transform="translate(9.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#d2609a" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#d2609a" stroke="#1a1d218c" stroke-width=".5"/><circle class="dot" cx="46.0" cy="9" r="1.8"/><circle class="dot" cx="64.5" cy="9" r="1.8"/><circle class="dot" cx="83.0" cy="9" r="1.8"/></svg> 2</td><td class="why">Today any gust over 30 wipes the hour out, and a 30 kn mean always has one. Proposed: two stars, rideable but not good. With a 38 kn gust it's 1 solid and 1 outlined.</td></tr>
+      <tr><td class="hour"><span class="tagi">A</span>15 g25</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path transform="translate(9,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#bd3d84" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#bd3d84" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#bd3d84" stroke="#1a1d218c" stroke-width=".5"/><path class="o" transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/><circle class="dot" cx="83" cy="9" r="1.8"/></svg>3</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="5 of 5 stars"><path transform="translate(9,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(83,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/></svg>5</td><td class="why">15 is now inside the five-star range, and a 25&nbsp;kn gust costs nothing.</td></tr>
+      <tr><td class="hour"><span class="tagi">B</span>20 g25</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="5 of 5 stars"><path transform="translate(9,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(83,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/></svg>5</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="5 of 5 stars"><path transform="translate(9,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(83,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#7c0f55" stroke="#1a1d218c" stroke-width=".5"/></svg>5</td><td class="why">No change.</td></tr>
+      <tr><td class="hour"><span class="tagi">C</span>20 g30</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="4 of 5 stars, 5 on the wind alone"><path transform="translate(9,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path class="o" transform="translate(83,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/></svg>4</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="4 of 5 stars, 5 on the wind alone"><path transform="translate(9,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path class="o" transform="translate(83,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/></svg>4</td><td class="why">A 30&nbsp;kn gust is read as 25&nbsp;kn, which is four stars. The outline is "gusts".</td></tr>
+      <tr><td class="hour"><span class="tagi">D</span>25 g30</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="4 of 5 stars"><path transform="translate(9,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><circle class="dot" cx="83" cy="9" r="1.8"/></svg>4</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="4 of 5 stars"><path transform="translate(9,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#a01f6c" stroke="#1a1d218c" stroke-width=".5"/><circle class="dot" cx="83" cy="9" r="1.8"/></svg>4</td><td class="why">25&nbsp;kn of steady wind is already four stars, and the gust is no worse.</td></tr>
+      <tr><td class="hour"><span class="tagi">E</span>22 g35</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="0 of 5 stars"><circle class="dot" cx="9" cy="9" r="1.8"/><circle class="dot" cx="27.5" cy="9" r="1.8"/><circle class="dot" cx="46" cy="9" r="1.8"/><circle class="dot" cx="64.5" cy="9" r="1.8"/><circle class="dot" cx="83" cy="9" r="1.8"/></svg>0</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="1 of 5 stars, 5 on the wind alone"><path transform="translate(9,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#e28bb3" stroke="#1a1d218c" stroke-width=".5"/><path class="o" transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/><path class="o" transform="translate(46,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/><path class="o" transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/><path class="o" transform="translate(83,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/></svg>1</td><td class="why">A 35&nbsp;kn gust is read as 30&nbsp;kn, which is one star. Four outlines for the gusts (the first draft gave 2).</td></tr>
+      <tr><td class="hour"><span class="tagi">F</span>30 g35</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="0 of 5 stars"><circle class="dot" cx="9" cy="9" r="1.8"/><circle class="dot" cx="27.5" cy="9" r="1.8"/><circle class="dot" cx="46" cy="9" r="1.8"/><circle class="dot" cx="64.5" cy="9" r="1.8"/><circle class="dot" cx="83" cy="9" r="1.8"/></svg>0</td><td class="st"><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="1 of 5 stars"><path transform="translate(9,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#e28bb3" stroke="#1a1d218c" stroke-width=".5"/><circle class="dot" cx="27.5" cy="9" r="1.8"/><circle class="dot" cx="46" cy="9" r="1.8"/><circle class="dot" cx="64.5" cy="9" r="1.8"/><circle class="dot" cx="83" cy="9" r="1.8"/></svg>1</td><td class="why">Rideable, but only just. (The first draft gave 2.)</td></tr>
     </tbody>
   </table>
 </section>
 
-<section class="sheet" id="research">
-  <h2>What the research says</h2>
-  <ul class="says">
-    <li><span class="q">Sweet spot</span><p>About <b>14–20 kn</b> for most intermediates, and up to <b>25 kn</b> as they improve. No source calls 15–25 "the" range, but it's the band they all sit inside.<small>WindUp, MACkite, Nootica (14–20 / 16–20 / 15–20); FoilPlanet (intermediates 15–25).</small></p></li>
-    <li><span class="q">25 kn</span><p><b>Where it starts to get hard.</b> "Most recreational riders start struggling above 25–28 kt." A 5&nbsp;m wing tops out at 25&nbsp;kn on the brands' charts.<small>WindUp; F-One Strike V6 chart (5 m: 14–25 kn).</small></p></li>
-    <li><span class="q">30 kn</span><p><b>Rideable, but a limit, not a good day.</b> A sailing club stops all sailing when it is "consistently gusting over 30 knots". A school's wingfoil window ends at 30. A guide says 30+ "demand[s] specialized gear". A forum rider calls 30–40 "still totally possible to control but not much fun". The brands still sell 3&nbsp;m wings for 28–38&nbsp;kn.<small>Chew Valley Lake SC; Northern Kites; FoilPlanet; Seabreeze (excerpt); F-One.</small></p></li>
-    <li><span class="q">Gusts</span><p><b>Riders talk in knots and about the peak.</b> "15 to 20 with the sporadic gust to 25" is "more manageable than … gusts up to 30". Size your wing for the gust. 8–10&nbsp;kn over the mean means a stop-start session. The rules based on gust ÷ mean range from 1.2× to 2×, so there's no agreed ratio.<small>MACkite (kite coaching); WindUp; PR #202's survey of rules of thumb.</small></p></li>
-    <li><span class="q">Our data</span><p><b>Forecast gusts at our spots run high.</b> At sea a forecast gust is about 1.3× the mean. At the spots it's 1.6–1.9×, so <b>15 g25 is an ordinary forecast hour</b>. Against the stations, the model gets the gust's strength right but barely predicts gust ÷ mean.<small>Measured in PR #202: Irish buoys, Met Éireann stations, our own blend.</small></p></li>
-  </ul>
-  <p class="lede" style="margin-top:14px"><b>Gap or ratio?</b> Riders talk about the gap (under 5&nbsp;kn is clean, 10+ is "a rodeo"), not the ratio. But neither can be trusted in a forecast. The gust's own strength can. That's why the plan judges the gust on its own. <b>Is 15 g25 a five?</b> If you'd feel a 10&nbsp;kn gap on the water, the guides would lean to four. As a forecast at an Irish spot it's usually a smaller real gap, and both numbers are in range, so five is fair.</p>
-  <details class="src">
-    <summary>Sources, and how much to trust each</summary>
-    <ol class="srcs">
-      <li><span class="str strong">Measured</span>Our own forecasts, buoys and stations: <a href="2026-10-25-gusts.html">backlog/research/2026-10-25-gusts.html</a> (PR #202). These are real hours, but no anemometer on the water.</li>
-      <li><span class="str strong">Club rule</span>Chew Valley Lake SC, wing foiling guide: "upper wind limit … 30 knots", "consistently gusting over 30 knots … stop all sailing"; side-off "should be avoided". <a href="https://chewvalleysailing.org.uk/wp-content/uploads/documents/CVLSC-Wing-Foiling.pdf">PDF</a></li>
-      <li><span class="str strong">Brand chart</span>F-One Strike V6 wind ranges: 6 m 10–20, 5 m 14–25, 4.5 m 18–28, 4 m 22–32, 3 m 28–38 kn. <a href="https://www.mackiteboarding.com/2026-f-one-strike-v6-wing/">MACkite listing</a>. Shows what can be ridden, not what's fun.</li>
-      <li><span class="str medium">School</span>Northern Kites: "Wingfoiling: ~13–30 knots". <a href="https://www.northernkites.co.uk/pages/wingfoil-lessons">page</a></li>
-      <li><span class="str medium">School/shop</span>MACkite: "ideal wind speed lies between 16 to 20 knots". <a href="https://mackiteboarding.com/news/how-much-wind-for-wing-foiling-a-beginners-guide">guide</a>. Their kite coaching: 15–20 gusting 25 is "more manageable than 15 to 20 knots with gusts up to 30". <a href="https://www.mackiteboarding.com/kitesurfing-safely-in-gusty-conditions.htm">page</a></li>
-      <li><span class="str medium">Guide</span>WindUp: "14-20 knots is the sweet spot" for most intermediates; "start struggling above 25-28 kt"; "8-10 knots over the mean … stop-start"; "size for the gust". <a href="https://www.windup.live/blog/wind-speed-for-wing-foiling/">page</a></li>
-      <li><span class="str medium">Guide</span>FoilPlanet: intermediates "15 up to 25 knots"; 30+ "possible but demand specialized gear"; "consistent 15-knot winds provide better riding conditions than gusty 20-knot winds". <a href="https://foilpla.net/travel-tips/wing-foil-wind-range/">page</a></li>
-      <li><span class="str weak">Shop blog</span>Nootica: "15-20 knots. Beyond that, it can be problematic." <a href="https://www.nootica.com/webzine/choose-wing-foil-wing.html">page</a>. Sroka: wingfoiling over 30 knots "strongly discouraged" (search excerpt only; the page refused us). <a href="https://srokacompany.com/en/blogs/news/what-weather-conditions-are-best-for-wing-foiling">page</a></li>
-      <li><span class="str weak">Forum</span>Seabreeze, "WA storms": "solid 30 to 40 knots … a real pain trying to go upwind … still totally possible to control but not much fun" (search excerpt; the forum blocks fetching). <a href="https://classic.seabreeze.com.au/forums/Wing-Foiling/Wind-Wings/WA-storms-what-gear-are-you-riding-?page=1">thread</a></li>
-    </ol>
-  </details>
+<section class="sheet" id="editor">
+  <h2>Make your own: the grid is the editor</h2>
+  <p class="lede">A rider changes four settings, not a hundred cells, and the grid shows the result as they go. On a computer, drag the black tabs. On a phone, use the + and − buttons. ▲▼ mark cells that differ from ours. This mock-up works: try it.</p>
+  <div class="editor">
+    <div class="board" id="board">
+      <div class="rail" id="rail" aria-hidden="false"></div>
+      <table class="grid" id="edgrid"></table>
+    </div>
+    <div class="controls" id="controls">
+      <h3>Your rating</h3>
+      <div class="ctl"><label for="v-fiveFrom">Five stars from<small>where it gets good</small></label>
+        <span class="step"><button data-k="fiveFrom" data-d="-1" aria-label="Five stars from: less">−</button><output id="v-fiveFrom"></output><button data-k="fiveFrom" data-d="1" aria-label="Five stars from: more">+</button></span></div>
+      <div class="ctl"><label for="v-fiveTo">Five stars to<small>where it starts to be too much</small></label>
+        <span class="step"><button data-k="fiveTo" data-d="-1" aria-label="Five stars to: less">−</button><output id="v-fiveTo"></output><button data-k="fiveTo" data-d="1" aria-label="Five stars to: more">+</button></span></div>
+      <div class="ctl"><label for="v-noneFrom">No stars from<small>where the stars run out</small></label>
+        <span class="step"><button data-k="noneFrom" data-d="-1" aria-label="No stars from: less">−</button><output id="v-noneFrom"></output><button data-k="noneFrom" data-d="1" aria-label="No stars from: more">+</button></span></div>
+      <div class="ctl"><label for="v-allow">Gusts forgiven<small>a gust is read this much lighter</small></label>
+        <span class="step"><button data-k="allow" data-d="-1" aria-label="Gusts forgiven: less">−</button><output id="v-allow"></output><button data-k="allow" data-d="1" aria-label="Gusts forgiven: more">+</button></span></div>
+      <input type="range" id="allowRange" min="0" max="10" step="1" aria-label="Gusts forgiven, knots">
+      <div class="mine" id="mine" aria-live="polite"></div>
+      <div class="row2"><span class="diffnote" id="diffnote"></span><button class="reset" id="reset">Reset to ours</button></div>
+    </div>
+  </div>
 </section>
 
 <section class="sheet" id="outline">
   <h2>What an outline star means</h2>
   <div class="outline">
-    <p><b>The solid stars are what this hour is worth for you. Each outline is one star lost to one named thing</b>: the gusts, the shore angle (cross-offshore, offshore) or your wings being the wrong size. So solid plus outline is what the wind alone would give. Every outline has a reason you can tap or hover to see. Two things don't use outlines. An orange or red warning replaces the stars outright. If gusts alone take a whole hour to zero, it shows none, as ruled on 24 October.</p>
+    <div>
+      <p><b>The solid stars are what the hour is worth. Each outline is one star lost to one named thing: the gusts, or the shore angle (cross-offshore or offshore).</b> Tap or hover to see which. Solid plus outlines is what the steady wind alone would give.</p>
+      <p>Your wings never cost a star. If they don't suit the hour, a note says so. An orange or red warning replaces the stars. Gusts alone can still take an hour to zero, and then it shows no outlines.</p>
+    </div>
     <div class="card" aria-label="Example: 20 gusting 30, cross-offshore">
       <div class="hr">Sat 14:00 · 20 g30 · cross-offshore</div>
-      <div><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="3 of 5 stars, 5 on the wind alone"><path transform="translate(9.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#bd3d84" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#bd3d84" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#bd3d84" stroke="#1a1d218c" stroke-width=".5"/><path class="o" transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/><path class="o" transform="translate(83.0,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/></svg></div>
+      <div><svg class="stars" viewBox="0 0 92 18" role="img" aria-label="3 of 5 stars, 5 on the wind alone"><path transform="translate(9,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#bd3d84" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(27.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#bd3d84" stroke="#1a1d218c" stroke-width=".5"/><path transform="translate(46,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" fill="#bd3d84" stroke="#1a1d218c" stroke-width=".5"/><path class="o" transform="translate(64.5,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/><path class="o" transform="translate(83,9) scale(1.6)" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width=".7"/></svg></div>
       <div><span class="chip">−1 gusts to 30</span><span class="chip">−1 cross-offshore</span></div>
-      <p class="tip">3 of 5 stars. The wind alone gives 5: one is lost to the gusts and one to the cross-offshore wind.</p>
+      <div class="note">Bring your small wing: about 4.5 m² suits.</div>
     </div>
   </div>
 </section>
 
-<section class="sheet" id="setting">
-  <h2>Dropping the gust setting</h2>
-  <ul class="plain">
-    <li>Customise loses its "Gusty wind: How much does uneven wind bother you? Not much · Some · A lot" row. Today it decides what a gust ≥&nbsp;1.5× the mean costs (0, 1 or 2 stars) and one ≥&nbsp;1.8× (1, 2 or 3).</li>
-    <li>Riders on "Not much" or "A lot" move to the one rule. A rider who wants fewer stars in strong wind can lower their own rating's top.</li>
-    <li>Saved settings, alerts and the MCP and companion tools keep accepting the old value for a while and ignore it, so nothing breaks. The Stars pages (web and app) lose their gust-setting table.</li>
+<section class="sheet" id="research">
+  <h2>What the research says</h2>
+  <ul class="says">
+    <li><span class="q">Sweet spot</span><p>About <b>14–20&nbsp;kn</b> for most riders, and up to <b>25&nbsp;kn</b> as they improve.<small>WindUp, MACkite, Nootica (14–20 / 16–20 / 15–20); FoilPlanet (15–25).</small></p></li>
+    <li><span class="q">25 kn</span><p><b>Where it starts to get hard.</b> "Most recreational riders start struggling above 25–28 kt." A 5&nbsp;m wing tops out at 25&nbsp;kn.<small>WindUp; F-One Strike V6 chart.</small></p></li>
+    <li><span class="q">30 kn</span><p><b>A limit, not a good day.</b> One sailing club stops all sailing when it is "consistently gusting over 30 knots". One school's wing-foiling window ends at 30. A forum rider says 30–40&nbsp;kn is "possible to control but not much fun".<small>Chew Valley Lake SC; Northern Kites; Seabreeze (excerpt).</small></p></li>
+    <li><span class="q">Gusts</span><p><b>Riders judge the gust in knots: how strong it gets.</b> "15 to 20 with the sporadic gust to 25" is "more manageable than … gusts up to 30". Pick your wing size for the gusts.<small>MACkite; WindUp.</small></p></li>
   </ul>
+  <div class="data">
+    <h3>What our own data shows</h3>
+    <ul>
+      <li><b>At open sea</b>, the weather buoys measure gusts about 30% above the steady wind, and the forecasts agree: <span class="eg">20 kn steady, gusts about 26</span>.</li>
+      <li><b>At our coastal spots</b>, the forecasts put the gusts 60–90% above the steady wind (<span class="eg">15 kn steady, gusts 24–28</span>), because a coastal forecast point is partly over land. So 15&nbsp;g25 is a normal day there. In September and October, today's rule took a star off two riding hours in three for being "gusty". It took nearly all the rest (29%) to zero for gusts "over your limit".</li>
+      <li><b>We checked the forecasts against what was actually measured</b>: at four weather buoys, and hour by hour at three Met Éireann weather stations (Malin Head, Belmullet, Dublin Airport). The forecast gets the gust's size about right, as well as it gets the steady wind. But it can't tell which hours will be gustier than usual. So a rule based on the ratio is mostly guessing, and a rule based on the gust in knots is reliable.</li>
+    </ul>
+    <p class="lede" style="margin-top:8px;font-size:14px">From <a href="2026-10-25-gusts.html">the gust research</a> (PR #202). The buoys measured September and October 2026. The stations were checked hour by hour from September 2025 to March 2026.</p>
+  </div>
 </section>
 
 <section class="sheet" id="decide">
   <h2>For you to decide</h2>
   <ol class="decide">
-    <li><b>25 g30: four, or three plus an outline?</b> The 5&nbsp;kn allowance gives four. Any allowance small enough to make it three also drops 20 g30 to three. Only 4–5&nbsp;kn fits all your examples.</li>
-    <li><b>Where gusts end an hour.</b> Proposed for Riding: a 40&nbsp;kn gust is zero (today it's anything over 30). Or keep a hard line at 35.</li>
-    <li><b>The other levels.</b> Suggested: Learning gets five at 14–18 and none by 28. Advanced gets five at 15–26 and none by 38. Today Advanced gets five up to 26&nbsp;kn and three at 30.</li>
-    <li><b>Cross-offshore costs one whole star</b> for Riding (today 1.5). Offshore stays as heavy as it is.</li>
+    <li><b>Rider weight.</b> Today a heavier rider's scale moves up a little. Keep that, or leave it to each rider to adjust their own?</li>
+    <li><b>Riders on Learning or Advanced, or with their own rating today.</b> Suggested: Learning and Advanced riders move to ours, and an existing own rating is converted into the four settings.</li>
+    <li><b>Shore angle.</b> Suggested: cross-offshore costs 1 star and offshore costs 4, as Riding has today.</li>
+    <li><b>Should the editor go further?</b> Limits on the settings: five stars must last at least 1&nbsp;kn, and the stars must run out at least 4&nbsp;kn after five ends. Should we also offer a fifth setting for where four stars end? Today that's fixed at 3&nbsp;kn after five ends.</li>
   </ol>
 </section>
 
-<footer>Today = force5/src/stars.ts rateHour at main a0cbcba · Proposed = this page's rule · Riding, 80 kg, no shore angle</footer>
+<section class="sheet" id="sources">
+  <details class="src">
+    <summary>Sources, and how much to trust each</summary>
+    <ol class="srcs">
+      <li><span class="str strong">Measured</span>Our forecasts against buoys and stations: <a href="2026-10-25-gusts.html">backlog/research/2026-10-25-gusts.html</a> (PR #202). These are real hours, but no wind meter on the water at a spot.</li>
+      <li><span class="str strong">Club rule</span>Chew Valley Lake SC: "upper wind limit … 30 knots"; "consistently gusting over 30 knots … stop all sailing"; side-off "should be avoided". <a href="https://chewvalleysailing.org.uk/wp-content/uploads/documents/CVLSC-Wing-Foiling.pdf">PDF</a></li>
+      <li><span class="str strong">Brand chart</span>F-One Strike V6: 6 m 10–20, 5 m 14–25, 4.5 m 18–28, 4 m 22–32, 3 m 28–38 kn. <a href="https://www.mackiteboarding.com/2026-f-one-strike-v6-wing/">listing</a>. Shows what can be ridden, not what is fun.</li>
+      <li><span class="str medium">School</span>Northern Kites: "Wingfoiling: ~13–30 knots". <a href="https://www.northernkites.co.uk/pages/wingfoil-lessons">page</a></li>
+      <li><span class="str medium">School/shop</span>MACkite: "ideal wind speed lies between 16 to 20 knots" <a href="https://mackiteboarding.com/news/how-much-wind-for-wing-foiling-a-beginners-guide">guide</a>; kite coaching on gusts to 25 vs 30 <a href="https://www.mackiteboarding.com/kitesurfing-safely-in-gusty-conditions.htm">page</a></li>
+      <li><span class="str medium">Guide</span>WindUp: "14-20 knots is the sweet spot"; "start struggling above 25-28 kt"; "size for the gust". <a href="https://www.windup.live/blog/wind-speed-for-wing-foiling/">page</a></li>
+      <li><span class="str medium">Guide</span>FoilPlanet: intermediates "15 up to 25 knots"; 30+ "demand specialized gear". <a href="https://foilpla.net/travel-tips/wing-foil-wind-range/">page</a></li>
+      <li><span class="str weak">Shop blog</span>Nootica: "15-20 knots. Beyond that, it can be problematic." <a href="https://www.nootica.com/webzine/choose-wing-foil-wing.html">page</a></li>
+      <li><span class="str weak">Forum</span>Seabreeze, "WA storms": 30–40 kn "still totally possible to control but not much fun" (search excerpt only; the forum blocks fetching). <a href="https://classic.seabreeze.com.au/forums/Wing-Foiling/Wind-Wings/WA-storms-what-gear-are-you-riding-?page=1">thread</a></li>
+    </ol>
+  </details>
+</section>
+
+<footer>Today = force5/src/stars.ts rateHour at main 2a0e72e (Riding, 80 kg, no shore) · Proposed = the script below</footer>
 </main>
+<script>
+// The proposed standard rating ("ours"), and a rider's own from four handles.
+const OURS = { fiveFrom: 15, fiveTo: 22, noneFrom: 32, allow: 5 };
+function curvePoints(s) {
+  const fourTo = Math.min(s.fiveTo + 3, s.noneFrom - 2);
+  return [[s.fiveFrom - 6, 0], [s.fiveFrom - 4, 1], [s.fiveFrom, 5], [s.fiveTo, 5], [s.fiveTo + 1, 4], [fourTo, 4], [s.noneFrom, 0]];
+}
+function windStars(x, s) {
+  const p = curvePoints(s);
+  if (x <= p[0][0]) return 0;
+  for (let i = 1; i < p.length; i++) {
+    const [x0, y0] = p[i - 1], [x1, y1] = p[i];
+    if (x <= x1) return x1 === x0 ? y1 : y0 + ((x - x0) / (x1 - x0)) * (y1 - y0);
+  }
+  return 0;
+}
+function rate(mean, gust, s = OURS, shoreOff = 0) {
+  const floor = s.fiveFrom - 4;
+  const ride = mean >= floor || gust <= mean ? mean : Math.min(floor, mean + 0.3 * Math.min(gust - mean, mean));
+  const wind = windStars(ride, s);
+  const g = gust - s.allow;
+  const gustStars = g > s.fiveTo ? windStars(g, s) : 5;
+  const potential = Math.round(wind);
+  if (gustStars < wind && Math.round(gustStars) === 0) return { stars: 0, potential: 0, tooGusty: true };
+  const stars = Math.max(0, Math.min(potential, Math.round(Math.min(wind, gustStars) - shoreOff)));
+  return { stars, potential, tooGusty: false };
+}
+
+(() => {
+  const ROWS = []; for (let m = 8; m <= 35; m++) ROWS.push(m);
+  const COLS = [10, 15, 20, 25, 30, 35, 40, 45];
+  const EX = { "15/25": "A", "20/25": "B", "20/30": "C", "25/30": "D", "22/35": "E", "30/35": "F" };
+  const LIM = { fiveFrom: [10, 25], fiveTo: [11, 34], noneFrom: [15, 40], allow: [0, 10] };
+  let s = { ...OURS };
+  const grid = document.getElementById("edgrid"), rail = document.getElementById("rail"), board = document.getElementById("board");
+
+  // Keep the handles in order: five from < five to, and stars running out at least 4 kn after.
+  function ok(next) {
+    return next.fiveFrom >= LIM.fiveFrom[0] && next.fiveFrom <= LIM.fiveFrom[1] &&
+      next.fiveTo >= next.fiveFrom + 1 && next.noneFrom >= next.fiveTo + 4 && next.noneFrom <= LIM.noneFrom[1] &&
+      next.allow >= 0 && next.allow <= 10;
+  }
+  function set(k, v) { const next = { ...s, [k]: v }; if (ok(next)) { s = next; render(); return true; } return false; }
+
+  // The table, built once; its cells are refreshed on every change.
+  let h = `<thead><tr><th class="corner" scope="col"><span>wind ↓</span><span>gust →</span></th>`;
+  for (const g of COLS) h += `<th scope="col">${g}</th>`;
+  h += `</tr></thead><tbody>`;
+  for (const m of ROWS) {
+    h += `<tr data-m="${m}"><th scope="row">${m}</th>`;
+    for (const g of COLS) h += g < m ? `<td class="na"></td>` : `<td data-m="${m}" data-g="${g}"></td>`;
+    h += `</tr>`;
+  }
+  grid.innerHTML = h + `</tbody>`;
+  const cells = [...grid.querySelectorAll("td[data-g]")];
+
+  const PILLS = [["fiveFrom", "5★ from"], ["fiveTo", "5★ to"], ["noneFrom", "0★ from"]];
+  rail.innerHTML = `<div class="bar" id="bar"></div>` + PILLS.map(([k, t]) =>
+    `<button class="pill" data-k="${k}" role="slider" aria-label="${t}" aria-valuemin="${LIM[k][0]}" aria-valuemax="${LIM[k][1]}"><span>${t}</span><b></b></button>`).join("");
+  const bar = document.getElementById("bar");
+
+  function rowY(m) {
+    const row = grid.querySelector(`tr[data-m="${Math.max(8, Math.min(35, m))}"]`);
+    const b = board.getBoundingClientRect(), r = row.getBoundingClientRect();
+    return r.top - b.top + r.height / 2;
+  }
+  function place() {
+    for (const p of rail.querySelectorAll(".pill")) {
+      const k = p.dataset.k; p.style.top = rowY(s[k]) + "px";
+      p.querySelector("b").textContent = s[k]; p.setAttribute("aria-valuenow", s[k]);
+    }
+    // The rail's colour: the climb to five, five, and the taper.
+    const y0 = rowY(s.fiveFrom - 6), y1 = rowY(s.fiveFrom), y2 = rowY(s.fiveTo), y3 = rowY(s.noneFrom);
+    bar.style.top = Math.max(0, y0) + "px"; bar.style.height = Math.max(0, y3 - Math.max(0, y0)) + "px";
+    const tot = y3 - Math.max(0, y0), pc = (y) => ((y - Math.max(0, y0)) / tot * 100).toFixed(1) + "%";
+    bar.style.background = `linear-gradient(to bottom, var(--s0), var(--s1) ${pc(rowY(s.fiveFrom - 4))}, var(--s5) ${pc(y1)}, var(--s5) ${pc(y2)}, var(--s4) ${pc(y2 + 1)}, var(--s2) ${pc((y2 + y3) / 2)}, var(--s0))`;
+  }
+  function render() {
+    let changed = 0;
+    for (const c of cells) {
+      const m = +c.dataset.m, g = +c.dataset.g;
+      const r = rate(m, g, s), o = rate(m, g, OURS), out = r.potential - r.stars, ex = EX[`${m}/${g}`];
+      c.className = `s${r.stars}${ex ? " ex" : ""}`;
+      const d = r.stars === o.stars ? "" : `<i class="d ${r.stars > o.stars ? "up" : "down"}">${r.stars > o.stars ? "▲" : "▼"}</i>`;
+      if (d) changed++;
+      c.innerHTML = `${ex ? `<b class="tag">${ex}</b>` : ""}${r.stars}${out ? `<sup>+${out}</sup>` : ""}${d}`;
+      c.title = `${m} gusting ${g}: ${r.stars} stars${out ? `, ${out} outlined for gusts` : ""}${d ? ` (ours: ${o.stars})` : ""}`;
+    }
+    for (const k of Object.keys(OURS)) {
+      document.getElementById("v-" + k).textContent = s[k] + " kn";
+      for (const b of document.querySelectorAll(`.step button[data-k="${k}"]`)) {
+        const v = s[k] + +b.dataset.d; b.disabled = !ok({ ...s, [k]: v });
+      }
+    }
+    document.getElementById("allowRange").value = s.allow;
+    const same = Object.keys(OURS).every((k) => s[k] === OURS[k]);
+    document.getElementById("reset").disabled = same;
+    document.getElementById("diffnote").textContent = same ? "This is ours." : `${changed} cells differ from ours`;
+    document.getElementById("mine").innerHTML = Object.entries(EX).map(([key, t]) => {
+      const [m, g] = key.split("/").map(Number), r = rate(m, g, s), o = rate(m, g, OURS);
+      const d = r.stars === o.stars ? "" : `<em class="${r.stars > o.stars ? "up" : "down"}">${r.stars > o.stars ? "▲" : "▼"}</em>`;
+      return `<span><i>${t}</i> ${m}g${g} <b>${r.stars}★</b>${d}</span>`;
+    }).join("");
+    place();
+  }
+
+  // Steppers, the gust slider and Reset.
+  document.querySelectorAll(".step button").forEach((b) => b.addEventListener("click", () => set(b.dataset.k, s[b.dataset.k] + +b.dataset.d)));
+  document.getElementById("allowRange").addEventListener("input", (e) => set("allow", +e.target.value));
+  document.getElementById("reset").addEventListener("click", () => { s = { ...OURS }; render(); });
+
+  // Dragging a tab: the row under the pointer is the new value.
+  rail.querySelectorAll(".pill").forEach((p) => {
+    const k = p.dataset.k;
+    p.addEventListener("pointerdown", (e) => { p.setPointerCapture(e.pointerId); e.preventDefault(); });
+    p.addEventListener("pointermove", (e) => {
+      if (!p.hasPointerCapture(e.pointerId)) return;
+      let best = null, dist = Infinity;
+      for (const row of grid.querySelectorAll("tbody tr")) {
+        const r = row.getBoundingClientRect(), dd = Math.abs(e.clientY - (r.top + r.height / 2));
+        if (dd < dist) { dist = dd; best = +row.dataset.m; }
+      }
+      // Past the bottom of the grid, keep counting knots for the stars running out.
+      const last = grid.querySelector("tbody tr:last-child").getBoundingClientRect();
+      if (e.clientY > last.bottom) best = Math.min(LIM[k][1], 35 + Math.round((e.clientY - last.bottom) / last.height) + 1);
+      if (best !== null && best !== s[k]) set(k, best);
+    });
+    p.addEventListener("keydown", (e) => {
+      const d = e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : 0;
+      if (d) { e.preventDefault(); set(k, s[k] + d); }
+    });
+  });
+  addEventListener("resize", place);
+  document.fonts && document.fonts.ready.then(place);
+  render();
+})();
+</script>
 </body>
 </html>
