@@ -1348,6 +1348,21 @@ export default function ForecastDock(props: Props) {
   /** Whether the reader's own scroll is moving the strip, until it settles. */
   const sliding = useRef(false);
   /**
+   * The strip's size at its last scroll event, or at the reader's last touch
+   * of it. When its columns change under it (a model's run in or out, the
+   * clock passing an hour) the browser moves the strip itself: it re-snaps to
+   * the column it was snapped to, or stops short where the strip got shorter.
+   * A scroll that comes with a new size is that, never the reader's: read as
+   * theirs, it chose whatever hour the old place fell on in the new strip.
+   */
+  const scrolledSize = useRef("");
+  const sizeOf = (el: HTMLElement) => `${el.scrollWidth}x${el.clientWidth}`;
+  /** The reader has the strip: whatever it does next is theirs. */
+  const takeHold = () => {
+    programmatic.current = null;
+    if (wrap.current) scrolledSize.current = sizeOf(wrap.current);
+  };
+  /**
    * Whether a finger has been on the strip since the time last moved it: only
    * a slide folds the labels, never the browser settling the time's scroll
    * on an hour as the strip fills out.
@@ -1402,6 +1417,18 @@ export default function ForecastDock(props: Props) {
   const onScroll = () => {
     if (labelsFolded && wrap.current && wrap.current.scrollLeft < 1)
       setLabelsFolded(false);
+    // The browser fitting the strip to its new columns: put it back on the
+    // hour, which has not changed. Under the reader's own slide (the phone's
+    // labels folding away) the strip is theirs, and is read as ever.
+    if (wrap.current) {
+      const size = sizeOf(wrap.current);
+      const resized = !!scrolledSize.current && size !== scrolledSize.current;
+      scrolledSize.current = size;
+      if (resized && !sliding.current) {
+        scrollTo(selectedNow.current, false);
+        return;
+      }
+    }
     const going = programmatic.current;
     if (going) {
       const el = wrap.current;
@@ -2127,13 +2154,13 @@ export default function ForecastDock(props: Props) {
             className="tt-wrap"
             ref={wrap}
             tabIndex={0}
-            onWheel={() => (programmatic.current = null)}
-            onPointerDown={() => (programmatic.current = null)}
+            onWheel={takeHold}
+            onPointerDown={takeHold}
             onTouchStart={() => {
-              programmatic.current = null;
+              takeHold();
               touched.current = true;
             }}
-            onKeyDown={() => (programmatic.current = null)}
+            onKeyDown={takeHold}
             aria-label="The week hour by hour: scroll sideways to move through time"
             onScroll={onScroll}
             onClick={(event) => {

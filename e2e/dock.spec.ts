@@ -289,9 +289,9 @@ test("the strip and the slider move together, by swipe, wheel and key", async ({
   // A plain wheel, turned up or down, moves the hours sideways, eased over
   // a few frames rather than in one jump, and comes to rest on an hour.
   await wrap.hover();
-  // Counted in frames, so read at frame rate: the hours scrolled above have
-  // the chart drawing each one's wind, and on CI's software renderer a frame
-  // of that is a fifth of a second, the ease over in two or three of them.
+  // Read at frame rate: the hours scrolled above have the chart drawing each
+  // one's wind, and on CI's software renderer a frame of that is a fifth of a
+  // second, the ease over in two or three of them.
   await steadyFrames(page);
   const before = await wrap.evaluate((el) => el.scrollLeft);
   const frames = wrap.evaluate(
@@ -312,7 +312,12 @@ test("the strip and the slider move together, by swipe, wheel and key", async ({
   const between = new Set(
     path.filter((left) => left > before + 1 && left < Math.max(...path) - 1),
   );
-  expect(between.size).toBeGreaterThan(2);
+  // Eased, not jumped: a frame finds the strip part-way there. How many do is
+  // the frame rate's, not the ease's: it runs on time (src/wheelHours.ts), and
+  // the hours it passes have the chart drawing each one's wind, so on CI's
+  // renderer the frames slow down under it and catch two places on the way,
+  // where a laptop catches a dozen.
+  expect(between.size).toBeGreaterThan(0);
   await expect
     .poll(async () => Number(await slider(page).inputValue()))
     .toBeGreaterThan(scrolled);
