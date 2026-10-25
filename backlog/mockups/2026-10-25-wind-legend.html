@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock-up · A key for the coloured wind</title>
+<!--
+  A design exploration, not product code. Standalone; faces from node_modules.
+
+  The owner's steer (25 October 2026): the chart now has Coloured wind and
+  Particles as layers of their own, and the tidal depth and the currents have
+  keys; the coloured wind has none on the chart (only in the Layers panel and
+  About the map), so how does a rider know what a colour means?
+
+  Three ways to put its key on the chart, on a made-up south-west wind over
+  Dublin Bay, with the colours as force5/src/weather.ts PALETTE draws them:
+    1  Strip     a thin scale along the foot of the chart, above the timeline
+    2  Column    a short upright scale under the map's buttons
+    3  Steps     the colours as six named bands, not a ramp
+  Each can bracket the rider's own range (the star rating's), and each can
+  show the wind under the pointer on the key.
+  ?key=strip|column|steps  ?range=off  ?probe=off  ?device=phone
+-->
+<style>
+@font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fraunces Variable"; font-style: italic; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-italic.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 500;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 600;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
+
+:root {
+  --ground: #f3eee3; --paper: #fffdf6; --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b; --line: #1a1d2133;
+  --magenta: #b0186a; --halo: #f1efe6;
+  --display: "Fraunces Variable", Fraunces, Georgia, serif;
+  --body: "Newsreader Variable", Newsreader, Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --edge: inset 0 0 0 2px #f4efe5, inset 0 0 0 3px #1a1d2142;
+  --float: var(--edge), 0 1px 1px #1a1d211a, 0 3px 6px -2px #1a1d211f, 0 14px 28px -12px #3c2d1466;
+  --card: var(--edge), 0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 14px; }
+body { margin: 0; background: #d9d4c7; color: var(--ink); font-family: var(--body); line-height: 1.4; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3, p { margin: 0; }
+
+.mockbar { position: sticky; top: 0; z-index: 40; display: flex; flex-wrap: wrap; gap: 6px 4px; align-items: center; padding: 8px 16px; background: #1a1d21; color: #f3eee3; font: 500 11px var(--mono); letter-spacing: .06em; }
+.mockbar b { margin-right: 8px; text-transform: uppercase; letter-spacing: .14em; }
+.mockbar .gap { width: 14px; }
+.mockbar .lab { opacity: .6; margin-right: 2px; }
+.mockbar button { border: 1px solid #f3eee355; background: none; color: #f3eee3; border-radius: 4px; padding: 3px 8px; font: 500 11px var(--mono); }
+.mockbar button[aria-pressed="true"] { background: #f3eee3; color: #1a1d21; }
+
+main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 22px; }
+.sheet { background: var(--ground); border-radius: 10px; box-shadow: var(--card); padding: 20px 22px; }
+.sheet h2 { font: italic 600 22px var(--display); margin-bottom: 4px; }
+.sheet > p.lede { color: var(--ink-2); max-width: 72ch; margin-bottom: 16px; }
+.eyebrow { font: 600 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+/* ---- The chart ---- */
+.device { margin: 0 auto; }
+body.phone .device { width: 390px; }
+.chart { position: relative; height: 620px; border-radius: 10px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); background: #d5e6ea; cursor: crosshair; }
+body.phone .chart { height: 760px; }
+.chart canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* the map's own furniture, roughly */
+.ctrls { position: absolute; right: 12px; top: 12px; display: grid; gap: 6px; z-index: 3; }
+.ctrl { width: 36px; height: 36px; border-radius: 8px; background: var(--paper); box-shadow: var(--float); display: grid; place-items: center; font: 600 16px var(--mono); }
+.ctrl svg { width: 18px; height: 18px; fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.dock { position: absolute; left: 0; right: 0; bottom: 0; height: 118px; background: var(--ground); border-top: 1px solid var(--line); z-index: 3; padding: 10px 16px; }
+body.phone .dock { height: 170px; }
+.dock .row { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 2px; margin-top: 8px; }
+.dock .row span { height: 46px; border-radius: 3px; }
+.dock .hrs { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); font: 500 9px var(--mono); color: var(--muted); }
+.dock .hrs span:nth-child(odd) { visibility: hidden; }
+.dock .title { font: italic 600 15px var(--display); }
+.dock .title small { font: 500 10px var(--mono); color: var(--muted); font-style: normal; margin-left: 8px; }
+
+/* the probe: the wind under the pointer */
+.probe { position: absolute; z-index: 4; pointer-events: none; transform: translate(12px, -28px); padding: 3px 7px; border-radius: 6px; background: var(--paper); box-shadow: var(--float); font: 600 11px var(--mono); white-space: nowrap; display: none; }
+.probe i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; box-shadow: inset 0 0 0 1px #1a1d2140; }
+
+/* ---- Key 1: a strip along the foot ---- */
+.key { position: absolute; z-index: 3; }
+.key .frame { background: color-mix(in srgb, var(--paper) 90%, transparent); box-shadow: var(--float); border-radius: 8px; }
+.k-strip { left: 12px; bottom: 130px; width: min(440px, calc(100% - 24px)); }
+body.phone .k-strip { bottom: 182px; }
+.k-strip .frame { padding: 6px 10px 4px; }
+.k-strip .bar { position: relative; height: 10px; border-radius: 3px; box-shadow: inset 0 0 0 1px #1a1d2133; }
+.k-strip .ticks { position: relative; height: 14px; margin-right: 8px; font: 500 9px var(--mono); }
+.k-strip .ticks span { position: absolute; top: 2px; transform: translateX(-50%); }
+.k-strip .ticks i { position: absolute; right: 0; top: 1px; font: italic 10px var(--body); }
+.range { position: absolute; top: -5px; bottom: -5px; border: 1.5px solid var(--ink); border-radius: 4px; pointer-events: none; }
+.range b { position: absolute; bottom: 100%; left: 50%; transform: translate(-50%, -1px); font: 600 9px var(--mono); white-space: nowrap; background: var(--paper); padding: 0 4px; border-radius: 3px; }
+.caret { position: absolute; top: -7px; width: 0; height: 0; border: 5px solid transparent; border-top-color: var(--ink); transform: translateX(-5px); display: none; }
+.k-strip .head { display: flex; justify-content: space-between; font: 600 9px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 9px; }
+
+/* ---- Key 2: a column under the buttons ---- */
+.k-column { right: 12px; top: 140px; }
+.k-column .frame { padding: 8px 6px 8px 8px; display: flex; gap: 5px; }
+.k-column .bar { position: relative; width: 10px; height: 190px; border-radius: 3px; box-shadow: inset 0 0 0 1px #1a1d2133; }
+.k-column .ticks { position: relative; width: 18px; font: 500 9px var(--mono); }
+.k-column .ticks span { position: absolute; left: 0; transform: translateY(-50%); }
+.k-column .ticks i { position: absolute; left: 0; top: -15px; font: italic 10px var(--body); }
+.k-column .frame { padding-top: 20px; }
+.k-column .range { left: -5px; right: -5px; top: auto; bottom: auto; }
+.k-column .range b { left: auto; right: calc(100% + 4px); bottom: auto; top: 50%; transform: translateY(-50%); }
+.k-column .caret { top: auto; left: -9px; border-top-color: transparent; border-left-color: var(--ink); transform: translateY(-5px); }
+
+/* ---- Key 3: named steps ---- */
+.k-steps { left: 12px; bottom: 130px; right: 60px; }
+body.phone .k-steps { bottom: 182px; right: 12px; }
+.k-steps .frame { display: flex; flex-wrap: wrap; gap: 3px; padding: 5px; width: fit-content; max-width: 100%; }
+.k-steps .step { display: flex; align-items: center; gap: 5px; padding: 3px 7px 3px 4px; border-radius: 5px; font: 500 10px var(--mono); white-space: nowrap; }
+.k-steps .step i { width: 14px; height: 14px; border-radius: 3px; box-shadow: inset 0 0 0 1px #1a1d2133; }
+.k-steps .step b { font-weight: 600; }
+.k-steps .step.mine { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.k-steps .step.at { background: var(--ink); color: var(--ground); }
+
+.k-strip, .k-column, .k-steps { display: none; }
+body.key-strip .k-strip, body.key-column .k-column, body.key-steps .k-steps { display: block; }
+body.range-off .range, body.range-off .step.mine { box-shadow: none; }
+body.range-off .range { display: none; }
+
+.notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 860px) { .notes { grid-template-columns: minmax(0, 1fr); } }
+.note { background: var(--paper); border-radius: 8px; box-shadow: var(--card); padding: 12px 14px; }
+.note h3 { font: italic 600 16px var(--display); margin-bottom: 4px; }
+.note p { font-size: 13px; color: var(--ink-2); }
+.note p + p { margin-top: 6px; }
+ol.qs { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 76ch; }
+ol.qs b { font-family: var(--display); font-style: italic; }
+</style>
+</head>
+<body class="key-strip">
+
+<div class="mockbar" role="toolbar" aria-label="Mock-up options">
+  <b>Wind key</b>
+  <span class="lab">Key</span>
+  <button data-set="key" data-val="strip">1 Strip</button>
+  <button data-set="key" data-val="column">2 Column</button>
+  <button data-set="key" data-val="steps">3 Steps</button>
+  <span class="gap"></span>
+  <span class="lab">Your range</span>
+  <button data-set="range" data-val="on">On</button>
+  <button data-set="range" data-val="off">Off</button>
+  <span class="gap"></span>
+  <span class="lab">Pointer</span>
+  <button data-set="probe" data-val="on">Reads the wind</button>
+  <button data-set="probe" data-val="off">Off</button>
+  <span class="gap"></span>
+  <span class="lab">Device</span>
+  <button data-set="device" data-val="desktop">Desktop</button>
+  <button data-set="device" data-val="phone">Phone</button>
+</div>
+
+<main>
+  <section class="sheet">
+    <p class="eyebrow">The chart, with Coloured wind on</p>
+    <h2>What does this green mean?</h2>
+    <p class="lede">The tidal depth and the currents have keys. The coloured wind has a key only inside the Layers panel and on About the map, so on the chart itself the colours go unexplained. Here are three ways to keep the key on the chart while Coloured wind is on. Move the pointer over the sea: the key points at the wind under it.</p>
+    <div class="device">
+      <div class="chart" id="chart">
+        <canvas id="wash"></canvas>
+        <div class="ctrls" aria-hidden="true">
+          <div class="ctrl">+</div><div class="ctrl">−</div>
+          <div class="ctrl"><svg viewBox="0 0 20 20"><path d="M10 3 2 7l8 4 8-4-8-4ZM2 11l8 4 8-4"/></svg></div>
+        </div>
+        <div class="key k-strip" id="kStrip"><div class="frame">
+          <div class="head"><span>Wind, knots</span><span id="stripNow"></span></div>
+          <div class="bar" id="stripBar"><span class="caret" id="stripCaret"></span></div>
+          <div class="ticks" id="stripTicks"></div>
+        </div></div>
+        <div class="key k-column" id="kColumn"><div class="frame">
+          <div class="bar" id="colBar"><span class="caret" id="colCaret"></span></div>
+          <div class="ticks" id="colTicks"></div>
+        </div></div>
+        <div class="key k-steps" id="kSteps"><div class="frame" id="steps"></div></div>
+        <div class="probe" id="probe"></div>
+        <div class="dock" aria-hidden="true">
+          <div class="title">Dollymount <small>Sun 26 Oct · 14:00</small></div>
+          <div class="row" id="dockRow"></div>
+          <div class="hrs" id="dockHrs"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet">
+    <p class="eyebrow">The three</p>
+    <h2>How each one works</h2>
+    <div class="notes">
+      <div class="note"><h3>1 · Strip</h3><p>A thin scale above the timeline, 0 to 40 knots. It sits where the eye drops from the chart to the hours, and it reads left to right like the wind getting up.</p><p>It takes a little of the sea at the foot of the chart.</p></div>
+      <div class="note"><h3>2 · Column</h3><p>A short upright scale under the zoom and Layers buttons. It takes the least room and stays out of the way of the spots.</p><p>Its numbers are small, and it's narrow on a phone.</p></div>
+      <div class="note"><h3>3 · Steps</h3><p>Six named bands rather than a ramp: the easiest to read at a glance, and it says in words what each colour is good for.</p><p>The coloured wind itself is smooth, so the bands are a simplification.</p></div>
+    </div>
+  </section>
+
+  <section class="sheet">
+    <p class="eyebrow">Before we build it</p>
+    <h2>Questions for you</h2>
+    <ol class="qs">
+      <li><b>Which of the three?</b> My pick is <i>1 · Strip</i> with your range bracketed. It's clearest on both desktop and phone.</li>
+      <li><b>Your range on the key?</b> The bracket shows the winds your star rating likes (from Customise; 15–25 kn here, as in the rating plan). It ties the colours to the stars. It would follow whatever we settle in the rating plan.</li>
+      <li><b>The wind under the pointer?</b> On a desktop the key points at the wind under the mouse and a tag shows the knots. On a phone, a tap on the sea could do the same.</li>
+      <li><b>When does it show?</b> The proposal: only while Coloured wind is on, and not for Particles alone (particles show direction and movement, not a scale). It could also fold away with a tap.</li>
+      <li><b>The top of the scale.</b> The key in the Layers panel runs to 60 kn. On the chart, 0–40 kn gives the rideable winds more room. Stronger winds still show, at the end.</li>
+    </ol>
+  </section>
+</main>
+
+<script>
+// force5/src/weather.ts PALETTE, stop for stop.
+const PALETTE = [[0,[170,203,234]],[5,[128,174,224]],[9,[79,128,200]],[10,[73,168,138]],[15,[76,179,90]],[20,[111,191,62]],[25,[181,207,58]],[30,[236,210,58]],[35,[242,160,58]],[40,[224,90,51]],[45,[200,48,74]],[50,[155,47,134]],[60,[90,35,104]],[65,[35,22,40]]];
+function windColor(kn) {
+  const k = Math.max(0, Math.min(65, kn));
+  let i = 1;
+  while (i < PALETTE.length - 1 && k > PALETTE[i][0]) i++;
+  const [a, ca] = PALETTE[i - 1], [b, cb] = PALETTE[i];
+  return ca.map((v, c) => Math.round(v + ((cb[c] - v) * (k - a)) / (b - a)));
+}
+const css = (kn) => `rgb(${windColor(kn).join(" ")})`;
+const TOP = 40, RANGE = [15, 25];
+const STEPS = [
+  [0, 10, "Under 10", "too light"], [10, 15, "10–15", "light"], [15, 20, "15–20", "good"],
+  [20, 25, "20–25", "good"], [25, 30, "25–30", "strong"], [30, 99, "30+", "a lot"],
+];
+const state = { key: "strip", range: "on", probe: "on", device: "desktop" };
+
+/* A made-up south-west wind: stronger out to sea, lighter in the lee of the land. */
+const LAND = [[0,0],[470,0],[492,30],[515,62],[512,98],[498,128],[508,160],[530,178],[572,186],[606,206],[612,228],[590,246],[548,242],[512,250],[488,258],[470,268],[440,292],[420,312],[418,334],[438,352],[468,366],[496,380],[520,398],[540,424],[540,452],[530,478],[520,504],[532,536],[540,560],[0,560]];
+function windAt(x, y) {
+  const sea = 17 + (x - 450) * 0.028 + 3.2 * Math.sin(x / 95 + y / 140) + 2.4 * Math.cos(y / 70 - x / 210);
+  return Math.max(4, sea - (inLand(x, y) ? 6 + 4 * Math.sin(y / 50) : 0));
+}
+function inLand(x, y) {
+  let inside = false;
+  for (let i = 0, j = LAND.length - 1; i < LAND.length; j = i++) {
+    const [xi, yi] = LAND[i], [xj, yj] = LAND[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+let view = { k: 1, ox: 0, oy: 0 };
+function drawWash() {
+  const c = document.getElementById("wash"), box = c.parentElement;
+  const dpr = devicePixelRatio || 1, w = box.clientWidth, h = box.clientHeight;
+  c.width = w * dpr; c.height = h * dpr;
+  const g = c.getContext("2d"); g.scale(dpr, dpr);
+  // Fit the bay: the whole of it on a desktop, the coast a phone would see.
+  const phone = state.device === "phone";
+  view = phone ? { k: 1, ox: 556 - w / 2, oy: 20 } : { k: w / 900, ox: 0, oy: 0 };
+  const step = 6;
+  for (let sy = 0; sy < h; sy += step) for (let sx = 0; sx < w; sx += step) {
+    const x = sx / view.k + view.ox, y = sy / view.k + view.oy;
+    g.fillStyle = css(windAt(x, y)); g.globalAlpha = 0.92;
+    g.fillRect(sx, sy, step + .5, step + .5);
+  }
+  g.globalAlpha = 1;
+  g.beginPath();
+  LAND.forEach(([x, y], i) => { const px = (x - view.ox) * view.k, py = (y - view.oy) * view.k; i ? g.lineTo(px, py) : g.moveTo(px, py); });
+  g.closePath(); g.strokeStyle = "#1a1d2199"; g.lineWidth = 1.2; g.stroke();
+  g.fillStyle = "rgba(237, 227, 200, .78)"; g.fill();
+  g.font = "italic 600 12px 'Fraunces Variable', Georgia, serif"; g.fillStyle = "#1a1d21";
+  for (const [n, x, y] of [["Dollymount", 492, 280], ["Dún Laoghaire", 552, 404], ["Portmarnock", 520, 142]]) {
+    const px = (x - view.ox) * view.k, py = (y - view.oy) * view.k;
+    g.beginPath(); g.arc(px, py, 5, 0, 7); g.fillStyle = "#f3eee3"; g.fill(); g.strokeStyle = "#1a1d21"; g.lineWidth = 1.1; g.stroke();
+    g.fillStyle = "#1a1d21"; g.fillText(n, px + 9, py + 4);
+  }
+}
+
+/* The keys. */
+const gradient = (dir) => `linear-gradient(${dir}, ${Array.from({ length: 41 }, (_, i) => `${css(i)} ${(i / TOP) * 100}%`).join(", ")})`;
+function buildKeys() {
+  document.getElementById("stripBar").style.background = gradient("90deg");
+  document.getElementById("stripTicks").innerHTML = [0, 10, 15, 20, 25, 30, 40].map((kn) => `<span style="left:${(kn / TOP) * 100}%">${kn === 40 ? "40+" : kn}</span>`).join("");
+  document.getElementById("stripBar").insertAdjacentHTML("beforeend", `<span class="range" style="left:${(RANGE[0] / TOP) * 100}%;width:${((RANGE[1] - RANGE[0]) / TOP) * 100}%"><b>your range</b></span>`);
+  document.getElementById("colBar").style.background = gradient("0deg");
+  document.getElementById("colTicks").innerHTML = [0, 10, 20, 30, 40].map((kn) => `<span style="top:${100 - (kn / TOP) * 100}%">${kn}</span>`).join("") + "<i>kn</i>";
+  document.getElementById("colBar").insertAdjacentHTML("beforeend", `<span class="range" style="top:${100 - (RANGE[1] / TOP) * 100}%;height:${((RANGE[1] - RANGE[0]) / TOP) * 100}%"><b>yours</b></span>`);
+  document.getElementById("steps").innerHTML = STEPS.map(([lo, hi, label, word], i) =>
+    `<span class="step${lo >= RANGE[0] && hi <= RANGE[1] ? " mine" : ""}" data-i="${i}"><i style="background:${css(Math.min(lo + 2.5, 32))}"></i><b>${label}</b> ${word}</span>`).join("");
+  // the timeline's wind, coloured the same way
+  const hours = Array.from({ length: 24 }, (_, i) => 9 + 13 * Math.exp(-((i - 14) ** 2) / 30) + 2 * Math.sin(i));
+  document.getElementById("dockRow").innerHTML = hours.map((kn) => `<span style="background:${css(kn)}"></span>`).join("");
+  document.getElementById("dockHrs").innerHTML = hours.map((_, i) => `<span>${String(i).padStart(2, "0")}</span>`).join("");
+}
+
+/* The pointer reads the wind. */
+const chart = document.getElementById("chart");
+chart.addEventListener("pointermove", (e) => {
+  if (state.probe !== "on" || e.pointerType === "touch") return;
+  const r = chart.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
+  if (e.target.closest(".dock, .key, .ctrls")) return hideProbe();
+  const kn = windAt(sx / view.k + view.ox, sy / view.k + view.oy);
+  const p = document.getElementById("probe");
+  p.style.display = "block"; p.style.left = `${sx}px`; p.style.top = `${sy}px`;
+  p.innerHTML = `<i style="background:${css(kn)}"></i>${Math.round(kn)} kn`;
+  const f = Math.min(kn, TOP) / TOP;
+  const sc = document.getElementById("stripCaret"); sc.style.display = "block"; sc.style.left = `${f * 100}%`;
+  const cc = document.getElementById("colCaret"); cc.style.display = "block"; cc.style.top = `${(1 - f) * 100}%`;
+  document.getElementById("stripNow").textContent = `${Math.round(kn)} kn here`;
+  document.querySelectorAll(".step").forEach((s) => {
+    const [lo, hi] = STEPS[s.dataset.i]; s.classList.toggle("at", kn >= lo && kn < hi);
+  });
+});
+chart.addEventListener("pointerleave", hideProbe);
+function hideProbe() {
+  document.getElementById("probe").style.display = "none";
+  document.getElementById("stripCaret").style.display = "none";
+  document.getElementById("colCaret").style.display = "none";
+  document.getElementById("stripNow").textContent = "";
+  document.querySelectorAll(".step.at").forEach((s) => s.classList.remove("at"));
+}
+
+function apply() {
+  document.body.className = `key-${state.key}${state.range === "off" ? " range-off" : ""}${state.device === "phone" ? " phone" : ""}`;
+  document.querySelectorAll(".mockbar button").forEach((b) => b.setAttribute("aria-pressed", String(state[b.dataset.set] === b.dataset.val)));
+  if (state.probe !== "on") hideProbe();
+  drawWash();
+}
+const q = new URLSearchParams(location.search);
+for (const key of Object.keys(state)) if (q.get(key)) state[key] = q.get(key);
+document.querySelector(".mockbar").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-set]"); if (!b) return;
+  state[b.dataset.set] = b.dataset.val; apply();
+});
+addEventListener("resize", drawWash);
+buildKeys(); apply();
+</script>
+</body>
+</html>
