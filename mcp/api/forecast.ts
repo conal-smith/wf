@@ -49,6 +49,7 @@ import {
 import { shoreFacing } from "../../force5/src/shoreFacing.js";
 import { shoreAngle, type ShoreAngle } from "../../force5/src/stars.js";
 import { isStale } from "../../force5/src/catalog.js";
+import { feelsLikeC } from "../../force5/src/feelsLike.js";
 import {
   presentWeather,
   skyOf,
@@ -1137,6 +1138,12 @@ function hourWaves(source: SpotVariables, time: number): HourWaves | null {
 export interface HourWeather {
   air_c: number | null;
   /**
+   * How cold the air feels in the hour's mean wind (force5/src/feelsLike.ts:
+   * the JAG/TI wind chill, never above air_c). Null without a wind or an air
+   * temperature.
+   */
+  feels_like_c: number | null;
+  /**
    * The model's rain total over the `rain_interval_hours` ending at this hour
    * (or at `rain_until`), on one row only; null on the interval's other hours.
    */
@@ -1236,6 +1243,7 @@ function hourWeather(
   };
   const result: HourWeather = {
     air_c: value("t2m", 0),
+    feels_like_c: null,
     rain_mm: rain && round(rain.mm, 1),
     ...(rain && { rain_interval_hours: round(rain.hours, 2) }),
     ...(rain &&
@@ -1486,6 +1494,15 @@ export const UNITS = {
     "`window.weather_step_hours` apart (the first weather run's cadence: 1 " +
     "for ICON-EU), so each hour has its own; where the steps are more than an " +
     "hour apart they repeat on the hours between",
+  feels_like:
+    "°C: `feels_like_c` is worked out here, as no model publishes one: the " +
+    "JAG/TI wind chill index (Environment Canada, US NWS, UK Met Office), " +
+    "13.12 + 0.6215 T − 11.37 V^0.16 + 0.3965 T V^0.16, from air_c (T, at 2 m) " +
+    "and the hour's mean wind_kn at 10 m in km/h (V), never the gust. Designed " +
+    "for 10 °C and below; above that it is used as it stands but never above " +
+    "air_c, so its cooling fades out by about 20 °C. Below 3 kn it is air_c. " +
+    "For dry skin in shade: a wet rider loses heat much faster, so treat it " +
+    "as the warmest it will feel",
   weather_code:
     "the model's WMO present-weather code (`ww`, WMO-No. 306 code table 4677), " +
     "its own interpretation, never an observation. `description` is the " +
@@ -1541,8 +1558,15 @@ export async function spotForecast(
       shore: shoreOf(facing, wind),
     };
     if (waveSource) hour.waves = hourWaves(waveSource, time);
-    if (weatherSource)
+    if (weatherSource) {
       hour.weather = hourWeather(weatherSource, time, rain[row]);
+      // The mean wind the hour is rated on, never the gust.
+      if (hour.weather)
+        hour.weather.feels_like_c = feelsLikeC(
+          hour.weather.air_c,
+          wind?.wind_kn,
+        );
+    }
     if (memberLines.length) hour.ensemble = hourEnsemble(memberLines, time);
     return hour;
   });

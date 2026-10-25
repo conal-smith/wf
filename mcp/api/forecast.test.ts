@@ -37,6 +37,7 @@ import { FIXTURE_NOW, fixtureSource } from "./testing";
 import { shoreFacing } from "../../force5/src/shoreFacing";
 import { shoreAngle } from "../../force5/src/stars";
 import { presentWeather, skyOf } from "../../force5/src/presentWeather";
+import { feelsLikeC } from "../../force5/src/feelsLike";
 import { SOURCE_CACHE_LIMIT, cached } from "./httpSource";
 import { WAVE_SOURCE_PREFERENCE } from "../../force5/src/waves";
 import {
@@ -313,6 +314,20 @@ describe("spotForecast", () => {
     // No tide or sea-temperature bundle in the fixtures: said, not invented.
     expect(forecast.tides).toBeNull();
     expect(forecast.sea_temperature).toBeNull();
+  });
+
+  it("says how cold the air feels in the hour's mean wind", async () => {
+    const forecast = await dollymount();
+    const rows = forecast.hours.filter((h) => h.weather && h.wind);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const h of rows) {
+      expect(h.weather!.feels_like_c).toBe(
+        feelsLikeC(h.weather!.air_c, h.wind!.wind_kn),
+      );
+      expect(h.weather!.feels_like_c!).toBeLessThanOrEqual(h.weather!.air_c!);
+    }
+    expect(forecast.units.feels_like).toMatch(/JAG\/TI/);
+    expect(forecast.units.feels_like).toMatch(/mean wind_kn at 10 m/);
   });
 
   it("says where the water was read, how far off and when", async () => {
