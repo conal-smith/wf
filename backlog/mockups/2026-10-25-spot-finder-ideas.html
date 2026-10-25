@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock-up · Spot finder, three ideas</title>
+<!--
+  A design exploration, not product code. Standalone; faces from node_modules.
+  Satellite and base map are Esri's (World Imagery, Light Gray Canvas), fetched
+  live, standing in for the chart's own; it needs a connection.
+
+  The problem (owner, 25 October 2026): the spot finder brought a second kind
+  of map (a plain one with ink wind and pins) and a second timeline (a week's
+  bar to pick an hour) into a product that already has the chart and its own
+  time. And its bars are coloured by the mean wind alone, so a 19 kn hour
+  gusting 39 reads green while its stars are 0.
+
+  Three answers, one week of made-up Dublin wind, so they compare like for like:
+    A  a ranked list, no map and no timeline: each spot's next 24 hours and
+       next 5 days as two small bars, coloured by stars
+    B  the finder as a panel on the chart: one map, one timeline (the chart's)
+    C  A, with "Show on chart": the chart itself, the spots marked with their
+       best of the week, in place of the finder's own map
+  Every bar can be switched to today's wind-speed colours to compare.
+  ?idea=a|b|c  ?device=phone  ?bars=wind  ?menu=1
+-->
+<style>
+@font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 500;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 600;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
+
+:root {
+  --ground: #f3eee3; --paper: #fffdf6; --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b; --line: #1a1d2133;
+  --pen: #d43a2c; --pen-ink: #bf3125; --magenta: #b0186a;
+  --display: "Fraunces Variable", Fraunces, Georgia, serif;
+  --body: "Newsreader Variable", Newsreader, Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --edge: inset 0 0 0 2px #f4efe5, inset 0 0 0 3px #1a1d2142;
+  --float: var(--edge), 0 1px 1px #1a1d211a, 0 3px 6px -2px #1a1d211f, 0 14px 28px -12px #3c2d1466;
+  --card: var(--edge), 0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a;
+  --press: linear-gradient(180deg, #33373d, #15171a);
+  --hatch: repeating-linear-gradient(135deg, #1a1d2112 0 2px, transparent 2px 5px);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 14px; }
+body { margin: 0; background: #d9d4c7; color: var(--ink); font-family: var(--body); line-height: 1.35; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3, p { margin: 0; }
+
+.mockbar { position: sticky; top: 0; z-index: 40; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 16px; background: #1a1d21; color: #f3eee3; font: 500 11px var(--mono); letter-spacing: .08em; }
+.mockbar b { margin-right: 10px; text-transform: uppercase; letter-spacing: .14em; }
+.mockbar .gap { width: 14px; }
+.mockbar button { background: none; border: 1px solid #f3eee355; border-radius: 99px; padding: 3px 10px; text-transform: uppercase; letter-spacing: .1em; font-size: 10px; }
+.mockbar button[aria-pressed=true] { background: #f3eee3; color: #1a1d21; }
+.stage { display: flex; justify-content: center; padding: 24px 16px 32px; }
+.frame { background: var(--ground); position: relative; overflow: hidden; box-shadow: 0 20px 50px -20px #0007, 0 0 0 1px #1a1d2133; }
+.frame.desk { width: 1280px; height: 840px; border-radius: 10px; }
+.frame.phone { width: 390px; height: 844px; border-radius: 28px; }
+.why { max-width: 1280px; margin: 0 auto 60px; background: #fffdf6; border: 1px dashed #1a1d2166; border-radius: 12px; padding: 14px 18px; font-size: 15px; line-height: 1.5; }
+.why h4 { margin: 14px 0 6px; font: 600 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--magenta); }
+.why h4:first-child { margin-top: 0; }
+.why ul { margin: 0; padding-left: 18px; } .why li { margin: 5px 0; }
+
+/* ---- the page's frame ------------------------------------------------- */
+.app { height: 100%; display: flex; flex-direction: column; position: relative; }
+.top { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 3px double var(--ink); position: relative; z-index: 6; background: var(--ground); }
+.word { font: 800 21px/1 var(--display); letter-spacing: -.03em; }
+.word i { font-weight: 400; font-style: italic; color: var(--magenta); }
+.top .sp { flex: 1; }
+.top h1 { font: 700 19px/1 var(--display); letter-spacing: -.02em; }
+.burger { width: 36px; height: 36px; flex: none; border: 1.5px solid var(--ink); border-radius: 99px; display: grid; place-items: center;
+  background: linear-gradient(180deg, #fff, #f0eadd); box-shadow: inset 0 1px 0 #fff, 0 1px 2px #1a1d2126; }
+.seg { display: inline-flex; border: 1.5px solid var(--ink); border-radius: 99px; padding: 2px; background: var(--paper); box-shadow: inset 0 1px 2px #1a1d2114; flex: none; }
+.seg button { border: 0; background: none; border-radius: 99px; padding: 4px 12px; font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+.seg button[aria-pressed=true] { color: var(--ground); background: var(--press); box-shadow: inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150; }
+.pill { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 99px; border: 1.5px solid var(--ink); background: linear-gradient(180deg, #fff, #f0eadd);
+  font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; box-shadow: inset 0 1px 0 #fff, 0 1px 2px #1a1d2126; }
+.pill.p { background: var(--press); color: var(--ground); border-color: #000; box-shadow: inset 0 1px 0 #ffffff2e, 0 2px 6px -2px #1a1d2190; }
+
+/* ---- idea A: rows ------------------------------------------------------ */
+.list { flex: 1; min-height: 0; overflow: auto; padding: 14px 18px 40px; }
+.lhead { display: flex; align-items: baseline; gap: 10px; margin: 2px 2px 12px; }
+.lhead h2 { font: 700 21px/1.1 var(--display); letter-spacing: -.02em; }
+.lhead small { font: 500 12.5px var(--body); color: var(--muted); }
+.lhead .sp { flex: 1; }
+.rows { display: flex; flex-direction: column; gap: 10px; }
+.row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 470px; gap: 16px; align-items: center; padding: 10px; border-radius: 16px; background: var(--paper);
+  border: 1px solid #1a1d2155; box-shadow: var(--card); cursor: pointer; transition: transform .12s, box-shadow .12s; }
+.row:hover { transform: translateY(-1px); box-shadow: var(--float); }
+.thumb { position: relative; width: 150px; aspect-ratio: 16 / 10; border-radius: 11px; overflow: hidden; border: 1px solid var(--ink); background: #33403f; }
+.thumb .tiles { position: absolute; left: 0; top: 0; }
+.thumb .tiles img { position: absolute; width: 256px; height: 256px; filter: saturate(.8) brightness(1.03); }
+.thumb > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fav { position: absolute; right: 5px; top: 5px; width: 26px; height: 26px; border-radius: 99px; border: 1px solid var(--ink); display: grid; place-items: center; z-index: 2;
+  background: linear-gradient(180deg, #fff, #f0eadd); box-shadow: 0 2px 6px -2px #1a1d2160; padding: 0; }
+.info { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.info .nm { display: flex; align-items: baseline; gap: 8px; }
+.info .nm b { font: 600 17px/1.15 var(--display); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.info .nm small { font: 500 11px var(--mono); color: var(--muted); white-space: nowrap; }
+.line { display: flex; align-items: center; gap: 7px; font-size: 14px; white-space: nowrap; }
+.line .k { font: 600 9.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); width: 38px; flex: none; }
+.line .w { font: 600 13px var(--mono); display: inline-flex; align-items: center; gap: 3px; }
+.line .w small { font-weight: 500; font-size: 10.5px; color: var(--muted); }
+.line .no { color: var(--pen-ink); font-style: italic; overflow: hidden; text-overflow: ellipsis; }
+.line .t { font-weight: 600; }
+.line .st { display: inline-flex; gap: 1px; }
+.bars { display: flex; flex-direction: column; gap: 9px; }
+.bar { position: relative; }
+.bar .cap { display: flex; justify-content: space-between; font: 600 9px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 1px 3px; }
+.cells { position: relative; display: flex; height: 12px; border-radius: 99px; overflow: hidden; box-shadow: inset 0 0 0 1px #1a1d2133; background: var(--paper); }
+.cells i { display: block; height: 100%; }
+.cells i.dark { background: #1a1d2114 var(--hatch); }
+.cells i.zero { background-image: var(--hatch); }
+.cells .nowm { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--pen); border-radius: 2px; box-shadow: 0 0 0 1px var(--paper); }
+.week { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.week .cells { border-radius: 6px; height: 14px; }
+.week .d { display: flex; justify-content: space-between; align-items: center; font: 600 9.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); padding: 3px 2px 0; }
+.week .d small { font-weight: 500; color: var(--muted); display: inline-flex; align-items: center; gap: 2px; letter-spacing: 0; }
+.week .best .cells { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.ticks { display: flex; justify-content: space-between; font: 500 9px var(--mono); color: var(--muted); margin: 3px 1px 0; }
+
+/* ---- the chart (ideas B and C) ----------------------------------------- */
+.chart { position: absolute; inset: 0; overflow: hidden; background: #e9e7e1; }
+.chart .tiles { position: absolute; left: 0; top: 0; }
+.chart .tiles img { position: absolute; width: 256px; height: 256px; filter: sepia(.18) saturate(.9) brightness(1.02); }
+.chart canvas.wash { position: absolute; inset: 0; mix-blend-mode: multiply; opacity: .62; pointer-events: none; }
+.chart svg.ink { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.pin { position: absolute; transform: translate(-50%, -50%); border: 1px solid var(--ink); border-radius: 99px; padding: 3px 9px 3px 7px; display: inline-flex; align-items: center; gap: 3px;
+  font: 600 12px var(--mono); background: var(--paper); box-shadow: 0 1px 1px #1a1d211a, 0 3px 8px -2px #1a1d2150; z-index: 2; white-space: nowrap; transition: transform .1s; }
+.pin small { font: 500 10px var(--mono); color: var(--muted); margin-left: 2px; }
+.pin.top { background: var(--press); color: var(--ground); border-color: #000; }
+.pin.top small { color: #f3eee3bb; }
+.pin.zero { color: var(--muted); border-style: dashed; background: #fffdf6cc; font-weight: 500; }
+.pin.hl, .pin:hover { transform: translate(-50%, -50%) scale(1.14); z-index: 4; }
+.pin.hl:not(.top) { background: #fff; outline: 2px solid var(--ink); }
+.mapctl { position: absolute; right: 14px; top: 14px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 7; }
+.mapctl .box { border: 1px solid var(--ink); border-radius: 14px; background: linear-gradient(180deg, #f6f2e9, #f1ebdf); box-shadow: var(--float); padding: 3px; display: flex; flex-direction: column; }
+.mapctl .box button { width: 34px; height: 32px; border: 0; background: none; border-radius: 10px; font: 500 17px var(--mono); display: grid; place-items: center; }
+.mapctl .box button[aria-pressed=true] { background: var(--press); color: var(--ground); }
+.layers { width: 230px; padding: 6px; border: 1px solid var(--ink); border-radius: 16px; background: var(--ground); box-shadow: var(--edge), 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480; }
+.layers .h { font: 600 9.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding: 6px 8px 4px; }
+.layers button { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; border-radius: 11px; padding: 8px; text-align: left; }
+.layers button:hover { background: var(--paper); }
+.layers b { display: block; font: 600 14.5px var(--body); }
+.layers small { display: block; font: 500 12px var(--body); color: var(--muted); }
+.sw { flex: none; width: 34px; height: 20px; border-radius: 99px; border: 1.5px solid var(--ink); position: relative; background: var(--paper); margin-left: auto; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 99px; background: var(--ink); transition: left .12s; }
+.sw.on { background: var(--press); }
+.sw.on::after { left: 16px; background: var(--ground); }
+.chip { flex: none; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--ink); }
+/* the chart's own time, as a slim strip (stands for the chart's hour control) */
+.ctime { position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 6; padding: 8px 12px 6px; border-radius: 16px; border: 1px solid var(--ink); background: #f3eee3f2; box-shadow: var(--float); }
+.ctime .days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; cursor: pointer; }
+.ctime .cells { height: 10px; border-radius: 5px; }
+.ctime .d { font: 600 9.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); padding-top: 3px; }
+.ctime .nowm b { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font: 600 9.5px var(--mono); color: var(--pen-ink); background: var(--ground); padding: 0 3px; border-radius: 4px; white-space: nowrap; }
+.ctime .cells { overflow: visible; }
+/* idea B: the panel */
+.panel { position: absolute; left: 14px; top: 14px; bottom: 96px; width: 380px; z-index: 6; display: flex; flex-direction: column; border-radius: 18px; border: 1px solid var(--ink); background: var(--ground); box-shadow: var(--float); overflow: hidden; }
+.panel .ph { padding: 12px 14px 10px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.panel .ph h2 { font: 700 18px/1.1 var(--display); letter-spacing: -.02em; }
+.panel .ph h2 small { font: 500 12px var(--body); color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+.panel .pl { overflow: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.prow { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px; border-radius: 12px; background: var(--paper); border: 1px solid #1a1d2140; cursor: pointer; }
+.prow:hover, .prow.hl { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.prow .thumb { width: 64px; border-radius: 8px; }
+.prow b { display: block; font: 600 14.5px/1.15 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prow .sub { font: 500 12px var(--body); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prow .sub.no { color: var(--pen-ink); font-style: italic; }
+.prow .r { text-align: right; }
+.prow .r .w { font: 600 13px var(--mono); }
+.prow .r .w small { font-weight: 500; font-size: 10.5px; color: var(--muted); }
+/* the dock-ish spot bar: shows where Layers no longer sits */
+.spotbar { position: absolute; left: 50%; transform: translateX(-50%); bottom: 96px; z-index: 6; display: flex; align-items: center; gap: 4px; padding: 5px 6px 5px 14px; border-radius: 99px; border: 1px solid var(--ink); background: var(--ground); box-shadow: var(--float); white-space: nowrap; }
+.spotbar b { font: 700 18px var(--display); margin: 0 4px 0 6px; }
+.spotbar .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 6px; }
+.spotbar button { border: 0; background: none; font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; padding: 6px 8px; border-radius: 99px; }
+.pop { position: absolute; width: 340px; border-radius: 18px; border: 1px solid var(--ink); background: var(--ground); box-shadow: var(--edge), 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480; z-index: 8; padding: 10px 12px 12px; }
+.pop .x { position: absolute; right: 8px; top: 8px; width: 28px; height: 28px; border-radius: 99px; border: 1px solid var(--ink); background: linear-gradient(180deg, #fff, #f0eadd); font-size: 15px; padding: 0; }
+.pop .line { flex-wrap: wrap; white-space: normal; row-gap: 2px; }
+.pop h3 { font: 600 17px var(--display); margin: 0 30px 4px 0; }
+.pop .go { margin-top: 10px; display: flex; gap: 8px; }
+.pop .go .pill { flex: 1; justify-content: center; }
+.backchip { position: absolute; left: 14px; top: 14px; z-index: 7; }
+.legend { position: absolute; left: 14px; bottom: 96px; z-index: 6; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--ink); background: #f3eee3f0; box-shadow: var(--card); font: 500 11.5px var(--body); max-width: 300px; }
+.toast { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 30; padding: 10px 16px; border-radius: 99px; background: var(--press); color: var(--ground); font: 500 11px var(--mono); letter-spacing: .06em; box-shadow: 0 8px 20px -6px #000a; white-space: nowrap; }
+
+/* ---- the menu ---------------------------------------------------------- */
+.scrim { position: absolute; inset: 0; background: #1a1d2140; z-index: 20; }
+.drawer { position: absolute; left: 0; top: 0; bottom: 0; width: 300px; z-index: 21; background: var(--ground); border-right: 1px solid var(--ink); box-shadow: 10px 0 40px -10px #0006; display: flex; flex-direction: column; padding: 14px 10px; }
+.drawer .hd { display: flex; align-items: center; gap: 10px; padding: 0 6px 14px; border-bottom: 3px double var(--ink); margin-bottom: 8px; }
+.drawer a { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 12px; font: 600 16px var(--body); color: var(--ink); text-decoration: none; }
+.drawer a small { display: block; font: 500 12px var(--body); color: var(--muted); }
+.drawer a[aria-current] { background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.drawer .sp { flex: 1; }
+.drawer .foot { border-top: 1px solid var(--line); padding-top: 8px; }
+
+/* ---- phone ------------------------------------------------------------- */
+.phone .top { padding: 10px 12px; gap: 8px; }
+.phone .list { padding: 10px 10px 90px; }
+.phone .row { grid-template-columns: 92px minmax(0, 1fr); gap: 10px; padding: 8px; align-items: start; }
+.phone .row .thumb { width: 92px; }
+.phone .row .bars { grid-column: 1 / -1; }
+.phone .info .nm b { font-size: 15.5px; }
+.phone .line { font-size: 13px; }
+.phone .line .k { width: 32px; }
+.phone .line { flex-wrap: wrap; white-space: normal; row-gap: 1px; }
+.phone .line .no { white-space: nowrap; }
+.phone .lhead h2 { font-size: 18px; white-space: nowrap; }
+.phone .lhead small { display: none; }
+.phone .panel { left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 46%; border-radius: 20px 20px 0 0; border-bottom: 0; }
+.phone .panel .grab { width: 40px; height: 4px; border-radius: 4px; background: #1a1d2155; margin: 6px auto 0; }
+.phone .ctime { top: 64px; bottom: auto; left: 10px; right: 10px; }
+.phone .ctime .d small { display: none; }
+.phone .mapctl { top: 136px; right: 10px; }
+.phone .spotbar { display: none; }
+.phone .legend { display: none; }
+.phone .backchip { top: auto; bottom: 22px; left: 50%; transform: translateX(-50%); }
+.phone .pop { left: 10px !important; right: 10px; width: auto; top: auto !important; bottom: 76px; }
+.phone .drawer { width: 82%; }
+.floatbtn { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 9; }
+</style>
+</head>
+<body>
+<div class="mockbar"><b>Mock-up · Spot finder ideas</b>
+  <button data-idea="a">A · List</button><button data-idea="b">B · Panel on chart</button><button data-idea="c">C · List + chart</button>
+  <span class="gap"></span>
+  <button data-device="desk">Desktop</button><button data-device="phone">Phone</button>
+  <span class="gap"></span>
+  <button data-bars="stars">Bars: stars</button><button data-bars="wind">Bars: wind speed (today)</button>
+  <span class="gap"></span>
+  <button data-menu>Menu</button>
+</div>
+<div class="stage"><div class="frame" id="frame"></div></div>
+<div class="why" id="why"></div>
+<script>
+/* ---- the wind's colours (force5/src/weather.ts PALETTE) --------------- */
+const PALETTE = [[0, [170, 203, 234]], [5, [128, 174, 224]], [9, [79, 128, 200]], [10, [73, 168, 138]], [15, [76, 179, 90]], [20, [111, 191, 62]],
+  [25, [181, 207, 58]], [30, [236, 210, 58]], [35, [242, 160, 58]], [40, [224, 90, 51]], [45, [200, 48, 74]], [50, [155, 47, 134]], [60, [90, 35, 104]], [65, [35, 22, 40]]];
+function windRgb(kn) {
+  const k = Math.max(0, Math.min(65, kn)); let i = 1;
+  while (i < PALETTE.length - 1 && k > PALETTE[i][0]) i++;
+  const [a, ca] = PALETTE[i - 1], [b, cb] = PALETTE[i];
+  return ca.map((v, c) => Math.round(v + (cb[c] - v) * (k - a) / (b - a)));
+}
+const windCss = (kn) => `rgb(${windRgb(kn).join(",")})`;
+/* Stars as the product already draws them (design-system/patterns/your-stars.html):
+   ink, denser for more stars; none is blank. The wind's colours stay for knots. */
+const STAR_INK = [0, .13, .26, .4, .56, .72];
+const starCss = (n) => n <= 0 ? "transparent" : `rgba(26,29,33,${STAR_INK[n]})`;
+
+/* ---- the week: today is Sunday 25 October, 13:00 ---------------------- */
+const LIGHT = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];  // daylight hours (sunrise ~07:15, sunset ~17:00)
+const NOW = { day: 0, hour: 13 };
+const DAYS = [
+  { name: "Sun", date: 25, from: 250, kn: [16, 19, 17], gf: 2.05 },  // WSW, gusting hard: green by speed, 0 by stars
+  { name: "Mon", date: 26, from: 135, kn: [9, 15, 12], gf: 1.45 },  // SE: cross-on on the east coast, building to good by midday
+  { name: "Tue", date: 27, from: 95, kn: [17, 24, 20], gf: 1.45 },   // E: onshore, strong; gusts over the limit at the peak
+  { name: "Wed", date: 28, from: 185, kn: [7, 12, 9], gf: 1.3 },     // S: light, a star or two at best
+  { name: "Thu", date: 29, from: 45, kn: [11, 16, 13], gf: 1.35 },   // NE: good further north
+];
+const meanAt = (d, h) => { const [m, p, e] = DAYS[d].kn; if (h <= 7) return m * .9; if (h >= 19) return e * .9;
+  return h <= 13 ? m + (p - m) * Math.sin((h - 7) / 6 * Math.PI / 2) : p + (e - p) * ((h - 13) / 6); };
+
+/* ---- the spots: the way each beach faces (out to sea), how open it is, where -- */
+const HOME = [53.365, -6.2];   // Clontarf
+const SPOTS = [
+  ["skerries", "Skerries, South Strand", "Dublin", 53.578, -6.104, 100, 1.05], ["rush", "Rush South Beach", "Dublin", 53.52, -6.085, 95, 1.0],
+  ["portrane", "Portrane", "Dublin", 53.493, -6.104, 85, 1.0], ["donabate", "Donabate", "Dublin", 53.485, -6.127, 75, .95],
+  ["malahide", "Malahide Estuary", "Dublin", 53.452, -6.165, 70, .85], ["velvet", "Portmarnock, Velvet Strand", "Dublin", 53.418, -6.125, 95, 1.05],
+  ["dollymount", "Dollymount Strand", "Dublin", 53.367, -6.145, 125, 1.0], ["sandymount", "Sandymount", "Dublin", 53.33, -6.205, 95, .9],
+  ["seapoint", "Seapoint", "Dublin", 53.297, -6.159, 50, .95], ["killiney", "Killiney", "Dublin", 53.258, -6.11, 100, 1.0],
+  ["bray", "Bray", "Wicklow", 53.2, -6.095, 95, 1.0], ["greystones", "Greystones", "Wicklow", 53.145, -6.06, 100, 1.05],
+].map(([id, name, county, lat, lon, facing, open]) => ({ id, name, county, lat, lon, facing, open,
+  km: Math.round(Math.hypot((lat - HOME[0]) * 111, (lon - HOME[1]) * 111 * Math.cos(53.4 * Math.PI / 180))) }));
+
+/* ---- the stars, as stars.ts has them for "Riding · ~80 kg": 11 / 14–24 / gusts to 34 -- */
+const BAND = [11, 14, 24, 34];
+const angleOff = (from, facing) => Math.abs(((from - facing) % 360 + 540) % 360 - 180);  // 0 = straight onshore
+const shoreOf = (off) => off < 30 ? "on" : off < 70 ? "x-on" : off < 110 ? "cross" : off < 150 ? "x-off" : "off";
+const COST = { on: 0, "x-on": 0, cross: 0, "x-off": 1.5, off: 5 };
+function rate(spot, d, h) {
+  const mean = meanAt(d, h) * spot.open, gust = mean * DAYS[d].gf, [lo, sLo, sHi, top] = BAND;
+  const shore = shoreOf(angleOff(DAYS[d].from, spot.facing));
+  const light = h >= 7 && h <= 17;
+  let pot = mean < lo ? 0 : mean < sLo ? 1 + 3 * (mean - lo) / (sLo - lo) : mean <= sHi ? 5 : 4;
+  let why = mean < lo ? "too light for you" : "";
+  if (gust > top) { pot = 0; why = `gusts ${Math.round(gust)}, over your ${top}`; }
+  const stars = light ? Math.max(0, Math.round(pot - COST[shore])) : 0;
+  if (stars === 0 && !why) why = shore === "off" ? "offshore: blows you out to sea" : shore === "x-off" ? "cross-off" : "";
+  if (!light) why = "dark";
+  return { mean, gust, shore, stars, why, light };
+}
+// A day's best window: the longest run at the day's top stars (a run of one hour counts too).
+function dayBest(spot, d) {
+  const rs = LIGHT.map((h) => ({ h, ...rate(spot, d, h) })).filter((r) => d !== NOW.day || r.h >= NOW.hour);
+  const top = Math.max(0, ...rs.map((r) => r.stars));
+  if (!top) return { stars: 0, d };
+  let best = null, run = null;
+  for (const r of rs) {
+    if (r.stars === top) { run = run ? { ...run, to: r.h } : { from: r.h, to: r.h, r }; if (!best || run.to - run.from > best.to - best.from) best = { ...run }; }
+    else run = null;
+  }
+  return { stars: top, d, from: best.from, to: best.to + 1, r: best.r };
+}
+const weekBest = (spot) => DAYS.map((_, d) => dayBest(spot, d)).reduce((a, b) => b.stars > a.stars ? b : a);
+const nowOf = (spot) => rate(spot, NOW.day, NOW.hour);
+const hh = (h) => `${String(h).padStart(2, "0")}:00`;
+const dayName = (d) => d === 0 ? "Today" : d === 1 ? "Tomorrow" : `${DAYS[d].name} ${DAYS[d].date}`;
+
+/* ---- state ------------------------------------------------------------ */
+const params = new URLSearchParams(location.search);
+const S = { idea: params.get("idea") || "a", device: params.get("device") || "desk", bars: params.get("bars") || "stars",
+  menu: params.has("menu"), scope: "yours", sort: "week", starred: new Set(["velvet", "dollymount", "malahide", "skerries", "bray"]),
+  chartOn: false, wash: true, particles: true, layersOpen: false, at: { day: NOW.day, hour: NOW.hour }, open: null, hover: null, toast: null };
+
+/* ---- drawing helpers --------------------------------------------------- */
+const px = (lat, lon, z) => { const n = 2 ** z * 256, r = lat * Math.PI / 180; return [(lon + 180) / 360 * n, (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n]; };
+function tiles(lat, lon, z, w, h, kind) {
+  const [cx, cy] = px(lat, lon, z), ox = cx - w / 2, oy = cy - h / 2;
+  const url = kind === "sat" ? (x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`
+                             : (x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/${z}/${y}/${x}`;
+  let s = "";
+  for (let x = Math.floor(ox / 256); x <= Math.floor((ox + w) / 256); x++) for (let y = Math.floor(oy / 256); y <= Math.floor((oy + h) / 256); y++)
+    s += `<img alt="" loading="lazy" src="${url(x, y)}" style="left:${x * 256 - ox}px;top:${y * 256 - oy}px">`;
+  return { html: `<div class="tiles">${s}</div>`, at: (la, lo) => { const [x, y] = px(la, lo, z); return [x - ox, y - oy]; } };
+}
+function rose(spot, from, w, h) {
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.3, up = 70, reach = 120;
+  const p = (a, r) => [cx + r * Math.sin(a * Math.PI / 180), cy - r * Math.cos(a * Math.PI / 180)];
+  const sector = (a1, a2, r) => { const [x1, y1] = p(a1, r), [x2, y2] = p(a2, r); return `M${cx} ${cy}L${x1} ${y1}A${r} ${r} 0 ${((a2 - a1) % 360 + 360) % 360 > 180 ? 1 : 0} 1 ${x2} ${y2}Z`; };
+  const off = (spot.facing + 180) % 360;
+  const arc = (a1, a2, r) => { const [x1, y1] = p(a1, r), [x2, y2] = p(a2, r); return `M${x1} ${y1}A${r} ${r} 0 0 1 ${x2} ${y2}`; };
+  const [nx, ny] = p(from, R + 12), [tx, ty] = p(from, R + 1);
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice">
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#f3eee3" stroke-opacity=".8" stroke-width="3"/>
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#1a1d21" stroke-width="1.1"/>
+    <path d="${sector(from - up, from + up, R)}" fill="#f3eee3" fill-opacity=".25" stroke="#1a1d21" stroke-dasharray="3 2"/>
+    <path d="${sector(from + up, from + reach, R)}" fill="#fffdf6" fill-opacity=".5" stroke="#1a1d21" stroke-width="1.1"/>
+    <path d="${sector(from - reach, from - up, R)}" fill="#fffdf6" fill-opacity=".5" stroke="#1a1d21" stroke-width="1.1"/>
+    <path d="${arc(off - 30, off + 30, R + 3)}" fill="none" stroke="#d43a2c" stroke-width="3" stroke-linecap="round"/>
+    <path d="M${nx} ${ny}L${tx} ${ty}" stroke="#f3eee3" stroke-width="4.5" stroke-linecap="round"/><path d="M${nx} ${ny}L${tx} ${ty}" stroke="#1a1d21" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="2.6" fill="#1a1d21" stroke="#f3eee3" stroke-width="1.3"/></svg>`;
+}
+function thumb(spot, d, w) {
+  const h = Math.round(w * 10 / 16), t = tiles(spot.lat, spot.lon, 14, w, h, "sat");
+  return `<div class="thumb">${t.html}${rose(spot, DAYS[d].from, w, h)}</div>`;
+}
+const STAR = (on, sz = 11, col = "#1a1d21") => `<svg viewBox="0 0 10 10" width="${sz}" height="${sz}"><path d="M5 .6l1.3 2.9 3.1.3-2.4 2.1.7 3.1L5 7.4 2.3 9l.7-3.1L.6 3.8l3.1-.3z" fill="${on ? col : "none"}" stroke="${col}" stroke-width=".8"/></svg>`;
+const stars = (n, sz = 11) => `<span class="st">${Array.from({ length: 5 }, (_, k) => STAR(k < n, sz)).join("")}</span>`;
+const FAV = (on) => `<svg viewBox="0 0 20 20" width="14" height="14"><path d="M10 1.8l2.5 5.4 5.9.6-4.4 4 1.3 5.8L10 14.6l-5.3 3 1.3-5.8-4.4-4 5.9-.6z" fill="${on ? "#d43a2c" : "none"}" stroke="#d43a2c" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+const arrow = (from, off) => `<svg width="13" height="13" viewBox="-7 -7 14 14"><g transform="rotate(${from + 180})"><path d="M0 5.5V-5M-3 -2L0 -5.5L3 -2" fill="none" stroke="${off ? "#bf3125" : "#1a1d21"}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`;
+const gl = (body, sz = 18) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+const MAP_GLYPH = gl(`<path d="M3 6.5l5.5-2 7 2 5.5-2v13l-5.5 2-7-2-5.5 2z"/><path d="M8.5 4.5v13M15.5 6.5v13" stroke-width="1" stroke-opacity=".55"/>`, 15);
+const LIST_GLYPH = gl(`<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/>`, 15);
+const LAYERS_GLYPH = gl(`<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5" />`, 17);
+const GEAR = gl(`<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>`, 18);
+const BURGER = `<button class="burger" data-menu aria-label="Menu"><svg width="16" height="12"><path d="M0 1h16M0 6h16M0 11h16" stroke="#1a1d21" stroke-width="1.6"/></svg></button>`;
+
+/* A cell of a bar: stars in ink (or, to compare, today's colour for the mean wind). */
+function cell(spot, d, h, span = 1) {
+  const r = rate(spot, d, h);
+  if (!r.light) return `<i class="dark" style="flex:${span}" title="${DAYS[d].name} ${hh(h)} · dark"></i>`;
+  const bg = S.bars === "wind" ? windCss(r.mean) : starCss(r.stars);
+  return `<i class="${r.stars === 0 && S.bars !== "wind" ? "zero" : ""}" style="flex:${span};background-color:${bg}" title="${DAYS[d].name} ${hh(h)} · ${r.stars}★ · ${Math.round(r.mean)} g${Math.round(r.gust)}${r.why ? " · " + r.why : ""}"></i>`;
+}
+// The next 24 hours from now, hour by hour; night narrowed to a hatched band.
+function next24(spot) {
+  let s = "", run = 0;
+  const at = {};
+  for (let k = 0; k < 24; k++) {
+    const h = (NOW.hour + k) % 24, d = NOW.day + Math.floor((NOW.hour + k) / 24);
+    const span = h >= 7 && h <= 17 ? 1 : .22;
+    if (h === 18) at.dusk = run;
+    if (h === 7) at.dawn = run;
+    s += cell(spot, d, h, span); run += span;
+  }
+  const pos = (x) => `${(x / run * 100).toFixed(2)}%`;
+  return `<div class="bar"><div class="cap"><span>Next 24 hours</span><span>${S.bars === "wind" ? "wind speed" : "stars for you"}</span></div>
+    <div class="cells">${s}<span class="nowm" style="left:0"></span></div>
+    <div class="ticks" style="position:relative;height:12px"><span style="position:absolute;left:0">Now</span>
+      <span style="position:absolute;left:${pos(at.dusk)};transform:translateX(-50%)">18:00</span>
+      <span style="position:absolute;left:${pos(at.dawn)};transform:translateX(-50%)">07:00 Mon</span>
+      <span style="position:absolute;right:0">13:00</span></div></div>`;
+}
+function next5(spot) {
+  const wb = weekBest(spot);
+  return `<div class="bar"><div class="cap"><span>Next 5 days</span><span>daylight</span></div><div class="week">${DAYS.map((day, d) => {
+    const b = dayBest(spot, d);
+    return `<div class="${wb.stars && b.d === wb.d ? "best" : ""}"><div class="cells">${LIGHT.map((h) => cell(spot, d, h)).join("")}${d === NOW.day ? `<span class="nowm" style="left:${(NOW.hour - 7 + .5) / LIGHT.length * 100}%"></span>` : ""}</div>
+      <div class="d"><span>${d === 0 ? "Today" : day.name}</span><small>${b.stars ? `${STAR(true, 9)}${b.stars}` : "–"}</small></div></div>`;
+  }).join("")}</div></div>`;
+}
+function nowLine(spot) {
+  const r = nowOf(spot), off = r.shore.includes("off");
+  return `<div class="line"><span class="k">Now</span>${r.stars ? stars(r.stars) : stars(0)}<span class="w">${arrow(DAYS[NOW.day].from, off)}${Math.round(r.mean)}<small>g${Math.round(r.gust)}</small></span>${r.stars ? "" : `<span class="no">${r.why}</span>`}</div>`;
+}
+function bestLine(spot) {
+  const b = weekBest(spot);
+  if (!b.stars) return `<div class="line"><span class="k">Best</span><span class="no">Nothing rideable for you in 5 days</span></div>`;
+  const off = b.r.shore.includes("off");
+  return `<div class="line"><span class="k">Best</span>${stars(b.stars)}<span class="t">${dayName(b.d)} ${hh(b.from)}–${hh(b.to)}</span><span class="w">${arrow(DAYS[b.d].from, off)}${Math.round(b.r.mean)}<small>g${Math.round(b.r.gust)}</small></span></div>`;
+}
+
+/* ---- the list (ideas A and C) ------------------------------------------ */
+function pool() { return S.scope === "yours" ? SPOTS.filter((s) => S.starred.has(s.id)) : SPOTS; }
+function ranked() {
+  return pool().map((s) => ({ s, b: weekBest(s), n: nowOf(s) })).sort((p, q) => S.sort === "now"
+    ? q.n.stars - p.n.stars || q.b.stars - p.b.stars || p.s.km - q.s.km
+    : q.b.stars - p.b.stars || p.b.d - q.b.d || (p.b.from ?? 0) - (q.b.from ?? 0) || p.s.km - q.s.km);
+}
+function row({ s }) {
+  const phone = S.device === "phone";
+  return `<div class="row" data-open="${s.id}" role="button" tabindex="0">
+    <div style="position:relative">${thumb(s, weekBest(s).stars ? weekBest(s).d : 0, phone ? 92 : 150)}<button class="fav" data-fav="${s.id}" aria-label="Star ${s.name}">${FAV(S.starred.has(s.id))}</button></div>
+    <div class="info"><div class="nm"><b>${s.name}</b><small>${s.km} km</small></div>${bestLine(s)}${nowLine(s)}</div>
+    <div class="bars">${next24(s)}${next5(s)}</div></div>`;
+}
+function listPage() {
+  const phone = S.device === "phone", list = ranked();
+  const head = `<header class="top">${BURGER}${phone ? "" : `<span class="word">wingfoil<i>.ie</i></span>`}<span class="sp"></span>
+      <div class="seg">${[["yours", "Favourites"], ["near", "Near you"]].map(([k, n]) => `<button data-scope="${k}" aria-pressed="${S.scope === k}">${n}</button>`).join("")}</div>
+      ${S.idea === "c" && !phone ? `<button class="pill p" data-chart>${MAP_GLYPH} Show on chart</button>` : ""}</header>`;
+  return `<div class="app">${head}<div class="list">
+      <div class="lhead"><h2>${S.sort === "now" ? "Best right now" : "Best this week"}</h2><small>for Riding · ~80 kg</small><span class="sp"></span>
+        <div class="seg">${[["week", "This week"], ["now", "Now"]].map(([k, n]) => `<button data-sort="${k}" aria-pressed="${S.sort === k}">${n}</button>`).join("")}</div></div>
+      <div class="rows">${list.length ? list.map(row).join("") : `<p style="padding:20px">Star a spot and it shows here.</p>`}</div></div>
+    ${phone && S.idea === "c" ? `<button class="pill p floatbtn" data-chart>${MAP_GLYPH} Show on chart</button>` : ""}</div>`;
+}
+
+/* ---- the chart (ideas B and C): coloured wind and particles, two layers -- */
+function field(x, y, w, h) { return .85 + .22 * Math.sin(x / w * 5.1 + 1.3) * Math.cos(y / h * 3.7) + .12 * (x / w); }
+function drawWash(canvas, w, h, kn) {
+  canvas.width = Math.ceil(w / 6); canvas.height = Math.ceil(h / 6);
+  const c = canvas.getContext("2d"), img = c.createImageData(canvas.width, canvas.height);
+  for (let y = 0; y < canvas.height; y++) for (let x = 0; x < canvas.width; x++) {
+    const [r, g, b] = windRgb(kn * field(x * 6, y * 6, w, h)), i = (y * canvas.width + x) * 4;
+    img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = 255;
+  }
+  c.putImageData(img, 0, 0); canvas.style.width = `${w}px`; canvas.style.height = `${h}px`; canvas.style.imageRendering = "auto";
+}
+function particles(w, h, d, hr) {
+  const from = DAYS[d].from, kn = meanAt(d, hr), to = (from + 180) * Math.PI / 180, dx = Math.sin(to), dy = -Math.cos(to);
+  let s = "", seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let gx = 0; gx < w + 40; gx += 38) for (let gy = 0; gy < h + 40; gy += 26) {
+    const x = gx + rnd() * 22 - 11, y = gy + rnd() * 16 - 8, l = (6 + kn * field(x, y, w, h) * 1.1) * (.7 + rnd() * .6);
+    s += `<path d="M${(x - dx * l / 2).toFixed(1)} ${(y - dy * l / 2).toFixed(1)}l${(dx * l).toFixed(1)} ${(dy * l).toFixed(1)}"/>`;
+  }
+  return `<svg class="ink" viewBox="0 0 ${w} ${h}" fill="none" stroke="#1a1d21" stroke-opacity=".5" stroke-width="1.2" stroke-linecap="round">${s}</svg>`;
+}
+function layersMenu() {
+  if (!S.layersOpen) return "";
+  return `<div class="layers"><div class="h">Layers</div>
+    <button data-layer="wash"><span class="chip" style="background:linear-gradient(135deg,${windCss(8)},${windCss(18)},${windCss(30)})"></span><span><b>Coloured wind</b><small>The speed, as colour</small></span><span class="sw ${S.wash ? "on" : ""}"></span></button>
+    <button data-layer="particles"><span class="chip" style="background:var(--paper) url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2230%22 height=%2230%22><path d=%22M4 8l10 3M12 20l12 3M3 24l7 2M18 6l9 3%22 stroke=%22%231a1d21%22 stroke-opacity=%22.6%22 stroke-width=%221.3%22 stroke-linecap=%22round%22/></svg>')"></span><span><b>Particles</b><small>The flow, drawn moving</small></span><span class="sw ${S.particles ? "on" : ""}"></span></button>
+    <div class="h" style="padding-top:8px">…then the chart's other layers (rain, satellite, …)</div></div>`;
+}
+function timeStrip() {
+  return `<div class="ctime"><div class="days">${DAYS.map((day, d) => `<div data-day="${d}"><div class="cells">${LIGHT.map((h) =>
+      `<i style="flex:1;background:${windCss(meanAt(d, h))}"></i>`).join("")}${d === S.at.day ? `<span class="nowm" style="left:${(S.at.hour - 7 + .5) / LIGHT.length * 100}%"><b>${hh(S.at.hour)}</b></span>` : ""}</div>
+      <div class="d">${d === 0 ? "Sun 25" : `${day.name} ${day.date}`} <small style="color:var(--muted);font-weight:500">${d === S.at.day ? "· shown" : ""}</small></div></div>`).join("")}</div></div>`;
+}
+function chart(w, h, mode) {
+  // mode "hour": pins are each spot's stars at the chart's hour (idea B); "week": each spot's best of the week (idea C).
+  const t = tiles(53.37, -6.13, 10, w, h, "gray"), d = mode === "week" ? NOW.day : S.at.day, hr = mode === "week" ? NOW.hour : S.at.hour;
+  const pins = (mode === "week" ? ranked().map((x) => x.s) : pool()).map((s) => {
+    const [x, y] = t.at(s.lat, s.lon);
+    if (x < -20 || y < -20 || x > w + 20 || y > h + 20) return "";
+    const n = mode === "week" ? weekBest(s).stars : rate(s, d, hr).stars;
+    const tag = mode === "week" && n ? `<small>${DAYS[weekBest(s).d].name}</small>` : "";
+    return `<button class="pin ${n === 0 ? "zero" : n >= 4 ? "top" : ""} ${S.hover === s.id ? "hl" : ""}" data-pin="${s.id}" style="left:${x}px;top:${y}px">${STAR(true, 10, n >= 4 ? "#f3eee3" : "#1a1d21")}${n}${tag}</button>`;
+  }).join("");
+  let pop = "";
+  if (S.open && mode === "week") {
+    const s = SPOTS.find((x) => x.id === S.open), [x, y] = t.at(s.lat, s.lon), b = weekBest(s);
+    const left = Math.max(12, Math.min(w - 352, x - 170)), top = y > 330 ? y - 270 : y + 24;
+    pop = `<div class="pop" style="left:${left}px;top:${top}px"><button class="x" data-close>×</button><h3>${s.name}</h3>${bestLine(s)}${nowLine(s)}
+      <div style="margin-top:8px">${next5(s)}</div>
+      <div class="go"><button class="pill">Spot page</button><button class="pill p" data-go="${s.id}">${b.stars ? `Chart at ${DAYS[b.d].name} ${hh(b.from)}` : "Open on chart"}</button></div></div>`;
+  }
+  return `<div class="chart" id="chart">${t.html}<canvas class="wash" id="wash" style="${S.wash ? "" : "display:none"}"></canvas>${S.particles ? particles(w, h, d, hr) : ""}${pins}${pop}
+    <div class="mapctl"><div class="box"><button>+</button><button>−</button></div><div class="box"><button data-layers aria-pressed="${S.layersOpen}" aria-label="Layers">${LAYERS_GLYPH}</button></div>${layersMenu()}</div></div>`;
+}
+function panelPage() {
+  const phone = S.device === "phone", d = S.at.day, hr = S.at.hour;
+  const list = pool().map((s) => ({ s, r: rate(s, d, hr) })).sort((p, q) => q.r.stars - p.r.stars || q.r.mean - p.r.mean);
+  return `<div class="app"><header class="top">${BURGER}${phone ? "" : `<span class="word">wingfoil<i>.ie</i></span>`}<span class="sp"></span>
+      <div class="seg">${[["yours", "Favourites"], ["near", "Near you"]].map(([k, n]) => `<button data-scope="${k}" aria-pressed="${S.scope === k}">${n}</button>`).join("")}</div></header>
+    <div style="flex:1;position:relative" id="mapw"></div></div>`;
+}
+function panelOverlay() {
+  const d = S.at.day, hr = S.at.hour, phone = S.device === "phone";
+  const list = pool().map((s) => ({ s, r: rate(s, d, hr) })).sort((p, q) => q.r.stars - p.r.stars || q.r.mean - p.r.mean);
+  return `<div class="panel">${phone ? `<div class="grab"></div>` : ""}<div class="ph"><h2>Spots at ${d === 0 && hr === NOW.hour ? "now" : `${DAYS[d].name} ${hh(hr)}`}<small>the chart's hour</small></h2></div>
+    <div class="pl">${list.map(({ s, r }) => `<div class="prow ${S.hover === s.id ? "hl" : ""}" data-hover="${s.id}">${thumb(s, d, 64)}
+      <div style="min-width:0"><b>${s.name}</b><div class="sub ${r.stars ? "" : "no"}">${r.stars ? `${r.shore === "on" ? "onshore" : r.shore === "x-on" ? "cross-on" : r.shore}` : r.why || "no stars"}</div></div>
+      <div class="r">${stars(r.stars, 10)}<div class="w">${Math.round(r.mean)}<small> g${Math.round(r.gust)}</small></div></div></div>`).join("")}</div></div>`;
+}
+function chartPage() {
+  const phone = S.device === "phone";
+  return `<div class="app"><div style="flex:1;position:relative" id="mapw"></div>
+    <button class="pill backchip" data-list>${LIST_GLYPH} Back to the list</button></div>`;
+}
+
+/* ---- the menu ---------------------------------------------------------- */
+function menu() {
+  if (!S.menu) return "";
+  const cur = S.idea === "c" && S.chartOn ? "" : "finder";
+  return `<div class="scrim" data-menu></div><nav class="drawer"><div class="hd">${BURGER}<span class="word">wingfoil<i>.ie</i></span></div>
+    <a href="#" ${cur === "finder" ? 'aria-current="page"' : ""}><span>Spot finder<small>Where and when to go</small></span></a>
+    <a href="#"><span>Customise<small>Your level, weight and gear</small></span></a>
+    <a href="#"><span>Take the tour</span></a>
+    <span class="sp"></span>
+    <div class="foot"><a href="#">${GEAR}<span>Settings<small>Units, the dock's hours, the model</small></span></a></div></nav>`;
+}
+
+/* ---- render ------------------------------------------------------------ */
+function render() {
+  const phone = S.device === "phone", el = document.getElementById("frame");
+  el.className = `frame ${phone ? "phone" : "desk"}`;
+  const onChart = S.idea === "b" || (S.idea === "c" && S.chartOn);
+  el.innerHTML = (S.idea === "b" ? panelPage() : S.idea === "c" && S.chartOn ? chartPage() : listPage()) + menu() + (S.toast ? `<div class="toast">${S.toast}</div>` : "");
+  const mw = el.querySelector("#mapw");
+  if (mw) {
+    const r = mw.getBoundingClientRect(), w = Math.round(r.width), h = Math.round(r.height), mode = S.idea === "b" ? "hour" : "week";
+    mw.innerHTML = chart(w, h, mode) + (S.idea === "b" ? panelOverlay() + timeStrip() + (phone ? "" : `<div class="spotbar"><span>${FAV(true)}</span><b>Malahide Estuary</b>›<span class="sep"></span><button>⟿ Blend</button><button>⌄</button><button>×</button></div>`) : "")
+      + (S.idea === "c" ? `<div class="legend">Each spot's <b>best of the next 5 days</b>, for you: stars and the day. Press one for its week.</div>` : "");
+    const c = mw.querySelector("#wash");
+    if (c) drawWash(c, w, h, mode === "week" ? meanAt(NOW.day, NOW.hour) : meanAt(S.at.day, S.at.hour));
+  }
+  bind(el);
+  document.querySelectorAll("[data-idea]").forEach((b) => b.setAttribute("aria-pressed", S.idea === b.dataset.idea));
+  document.querySelectorAll("[data-device]").forEach((b) => b.setAttribute("aria-pressed", S.device === b.dataset.device));
+  document.querySelectorAll("[data-bars]").forEach((b) => b.setAttribute("aria-pressed", S.bars === b.dataset.bars));
+  document.querySelector(".mockbar [data-menu]").setAttribute("aria-pressed", S.menu);
+  document.getElementById("why").innerHTML = WHY[S.idea];
+}
+function bind(el) {
+  const on = (sel, f) => el.querySelectorAll(sel).forEach((b) => b.onclick = (e) => { e.stopPropagation(); f(b, e); render(); });
+  on("[data-scope]", (b) => { S.scope = b.dataset.scope; S.open = null; });
+  on("[data-sort]", (b) => { S.sort = b.dataset.sort; });
+  on("[data-fav]", (b) => { const id = b.dataset.fav; S.starred.has(id) ? S.starred.delete(id) : S.starred.add(id); });
+  on("[data-menu]", () => { S.menu = !S.menu; });
+  on("[data-chart]", () => { S.chartOn = true; S.open = null; S.toast = null; });
+  on("[data-list]", () => { S.chartOn = false; S.open = null; });
+  on("[data-layers]", () => { S.layersOpen = !S.layersOpen; });
+  on("[data-layer]", (b) => { S[b.dataset.layer] = !S[b.dataset.layer]; });
+  on("[data-close]", () => { S.open = null; });
+  on("[data-day]", (b, e) => { const r = b.querySelector(".cells").getBoundingClientRect(); S.at = { day: +b.dataset.day, hour: 7 + Math.max(0, Math.min(10, Math.floor((e.clientX - r.left) / r.width * 11))) }; });
+  on("[data-pin]", (b) => { if (S.idea === "c") S.open = b.dataset.pin; else S.hover = b.dataset.pin; });
+  on("[data-hover]", (b) => { S.hover = S.hover === b.dataset.hover ? null : b.dataset.hover; });
+  const say = (id) => { const s = SPOTS.find((x) => x.id === id), b = weekBest(s); S.toast = `Opens ${s.name} on the chart${b.stars ? ` at ${dayName(b.d)} ${hh(b.from)}` : ", now"}`; setTimeout(() => { S.toast = null; render(); }, 2600); };
+  on("[data-open]", (b) => say(b.dataset.open));
+  on("[data-go]", (b) => say(b.dataset.go));
+}
+document.querySelectorAll(".mockbar [data-idea]").forEach((b) => b.onclick = () => { S.idea = b.dataset.idea; S.chartOn = false; S.open = null; S.layersOpen = false; render(); });
+document.querySelectorAll(".mockbar [data-device]").forEach((b) => b.onclick = () => { S.device = b.dataset.device; render(); });
+document.querySelectorAll(".mockbar [data-bars]").forEach((b) => b.onclick = () => { S.bars = b.dataset.bars; render(); });
+document.querySelector(".mockbar [data-menu]").onclick = () => { S.menu = !S.menu; render(); };
+
+/* ---- the notes under each idea ----------------------------------------- */
+const COMMON = `<h4>In all three</h4><ul>
+  <li><b>Bars mean stars, not knots.</b> Ink, denser for more stars, as the product's own star grid draws them; hatched is no stars; the narrow hatched band is night. "Bars: wind speed (today)" shows the same week coloured as the finder colours it now: Sunday is green everywhere, at 19 kn gusting 39, and worth nothing.</li>
+  <li><b>Gusts without a gust bar.</b> A spot with no stars says why in the pen's red: "gusts 39, over your 34", "offshore", "too light for you".</li>
+  <li><b>The menu</b> (Menu above, or the round button): Spot finder, Customise, Take the tour, and <b>Settings</b> (was Display options) pinned to the foot. The wordmark takes you back to the chart.</li></ul>`;
+const WHY = {
+  a: `<h4>Idea A · a ranked list: no map, no timeline</h4><ul>
+    <li>No hour to pick: every spot is ranked by its <b>best window in the next 5 days</b> (stars, then soonest, then nearest). "Now" re-ranks by the stars this hour.</li>
+    <li>Each row: the picture with the ride rose, the <b>Best</b> line (when, stars, wind and gust) and the <b>Now</b> line; then two bars, the <b>next 24 hours</b> hour by hour and the <b>next 5 days</b> by daylight hour, the best day ringed.</li>
+    <li>Press a row and the spot opens <b>on the chart, at its best hour</b>: the chart stays the one map and the one timeline.</li>
+    <li>On a phone the bars go full width under the name.</li></ul>${COMMON}`,
+  b: `<h4>Idea B · the finder as a panel on the chart</h4><ul>
+    <li>The finder is a list over the chart, ranked by the stars at <b>the chart's own hour</b>: press along the strip at the foot (it stands in for the chart's time control) and the list and pins follow.</li>
+    <li>One map, one timeline, the pins on the real chart. But it is still "pick an hour, then compare", which is the part that feels heavy today, and the list covers a third of the chart.</li>
+    <li>Shows the agreed changes too: <b>Layers sits under + / −</b> (open it: Coloured wind and Particles, two switches that work together), and the spot bar no longer has a Layers button.</li>
+    <li>On a phone the list is a sheet over the chart's lower half.</li></ul>${COMMON}`,
+  c: `<h4>Idea C · the list, and "Show on chart"</h4><ul>
+    <li>Idea A, plus <b>Show on chart</b>: the finder's own map is gone, and the button opens the chart itself with each listed spot marked by its <b>best of the week</b> (stars and the day).</li>
+    <li>Press a pin for its week and a button to put the chart at that hour. "Back to the list" returns.</li>
+    <li>The chart here shows the new layers: open Layers under + / − and switch Coloured wind and Particles on and off, separately or together.</li></ul>${COMMON}`,
+};
+render();
+</script>
+</body>
+</html>
