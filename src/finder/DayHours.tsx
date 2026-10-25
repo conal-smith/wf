@@ -179,8 +179,8 @@ export function DayHours({
   const x = (time: number) => rowPosition(times, time) * cw + cw / 2;
 
   // The wind behind the hours: each hour the forecast has, at its middle,
-  // out to the edges of the first and last of them and no further (the
-  // morning's hours before a run began have no wind to draw).
+  // out to the edges of the first and last of them and no further (an hour
+  // the forecast has nothing for has no wind to draw).
   const band = useMemo(() => {
     const points = hours.flatMap((h) => {
       const hour = h.at === null ? null : row?.[h.at];

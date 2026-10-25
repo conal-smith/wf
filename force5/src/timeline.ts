@@ -33,6 +33,27 @@ export function framePosition(
   );
 }
 
+const IRISH_DATE = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Dublin",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/**
+ * The start of the Irish calendar day a time falls in: local midnight in
+ * Europe/Dublin, as a UTC instant. Ireland is an hour ahead of UTC or level
+ * with it, and changes its clocks at 01:00 UTC, never at midnight, so midnight
+ * is always one of two instants and always exists: 23:00 UTC the evening
+ * before in summer time, 00:00 UTC in winter. The day the clocks go back is
+ * 25 hours long and the day they go forward 23.
+ */
+export function irishMidnight(time: number): number {
+  const date = IRISH_DATE.format(new Date(time));
+  const utc = Date.parse(`${date}T00:00:00Z`);
+  return IRISH_DATE.format(new Date(utc - HOUR)) === date ? utc - HOUR : utc;
+}
+
 /** One dock column: a forecast time, and the run whose timeline publishes it. */
 export interface DockColumn {
   validTime: string;
@@ -87,19 +108,26 @@ interface Candidate {
  *
  * Two runs make the axis: the finest grid on offer carries the near term at its
  * own cadence, and the run that reaches furthest carries everything outside it —
- * the hours before it was initialised as well as the days after it ends. Only
- * two runs, because a third source would put two joins in a row where the
+ * today's hours before the near run begins as well as the days after it ends.
+ * Only two runs, because a third source would put two joins in a row where the
  * reader can least tell one model from the next.
  *
- * There is a head only when the near run does not yet cover now. A run is
- * published on the hour and covers nothing before it, so a finest run that has
- * only just landed would give an axis beginning in the future, with no column
- * for now and no Now line at all; in that case the long-range run fills the gap,
- * from the last time it publishes at or before now up to the near run's first.
- * Every other time — which in production is nearly always, HARMONIE's run having
- * started a couple of hours ago while ECMWF's started at 00 or 12 UTC — the axis
- * starts at the near run's first time, so the reader crosses one seam and not
- * two.
+ * Today is kept whole, from Irish midnight (`irishMidnight`; the ruling of 25
+ * October 2026): someone who rode this morning can look back at what the
+ * forecast said for it. The published blend carries today's earlier hours of
+ * the finest run forward from run to run (src/spotBlend.ts `carryToday`), so
+ * in production the near run normally reaches back to midnight and there is
+ * one seam, at its end. Where it does not — the first run of a day, a reader
+ * working the hours out from the models' own runs, which keep no earlier
+ * hours — the long-range run's own steps fill the morning up to the near run's
+ * first time, rather than the morning standing empty. Nothing before today's
+ * midnight is added: yesterday is not kept.
+ *
+ * A finest run that has only just landed (it is published on the hour and
+ * covers nothing before it) would otherwise give an axis beginning in the
+ * future, with no column for now and no Now line at all: the long-range run
+ * fills that gap too, from the last time it publishes at or before now, even
+ * when that is before midnight.
  *
  * A model counts unless its run has **expired** — its last forecast time is
  * already behind us. Being **stale** — older than its schedule allows
@@ -150,9 +178,10 @@ export function dockColumns(
       : far.times
           .filter((validTime) => keep(Date.parse(validTime)))
           .map((validTime) => ({ validTime, model: far.id }));
-  // The head starts at the last long-range time the clock has already passed,
-  // which is the column the Now line needs; everything earlier is yesterday.
-  const headStart =
+  // The head is today's long-range times before the near run begins, and at
+  // the least the last one the clock has already passed, which is the column
+  // the Now line needs when the near run has not reached now yet.
+  const nowColumn =
     near.first > now
       ? far.times.reduce(
           (start, validTime) =>
@@ -160,6 +189,7 @@ export function dockColumns(
           -Infinity,
         )
       : Infinity;
+  const headStart = Math.min(irishMidnight(now), nowColumn);
   return [
     ...outside((time) => time >= headStart && time < near.first),
     ...near.times.map((validTime) => ({ validTime, model: near.id })),

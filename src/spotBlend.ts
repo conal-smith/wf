@@ -29,6 +29,11 @@
  * same for any blend, and the blend's own chart reads the chosen models' squares
  * for the open spot alone, only while it is shown (src/ForecastDock.tsx).
  *
+ * Each blend keeps today's earlier hours from the one it replaces, from Irish
+ * midnight and never before it (`carryToday`, the ruling of 25 October 2026),
+ * so the dock and the spot finder show the whole of today and not only the
+ * newest HARMONIE run's hours.
+ *
  * Compatible both ways with the site before the ruling of 19 October 2026: the
  * schema stays 2 and the new keys (`lead` in the pointer and in each place) are
  * ones an older reader ignores, so the deployed site rates the new file as it
@@ -48,12 +53,17 @@ import {
   type SpotIndex,
 } from "../force5/src/spotData";
 import { rateHour, type Rider } from "../force5/src/stars";
-import { modelTimes, type ColumnModel } from "../force5/src/timeline";
+import {
+  irishMidnight,
+  modelTimes,
+  type ColumnModel,
+} from "../force5/src/timeline";
 import { KNOTS } from "../force5/src/units";
 import type { Manifest } from "../force5/src/weather";
 import { modelWeight } from "../force5/src/weights";
 import {
   DEFAULT_STARS_FROM,
+  leadOrder,
   sameStarsFrom,
   type StarsFrom,
 } from "../force5/src/lead";
@@ -111,7 +121,10 @@ export interface BlendSource {
   ensemble: boolean;
   /** What its line counts for on day 0 of its run (`modelWeight`); less or more later. */
   weight: number;
-  /** The times it publishes, as indices into `times`. Empty for an ensemble. */
+  /**
+   * The times it publishes, and today's earlier hours kept from its earlier
+   * runs (`carryToday`), as indices into `times`. Empty for an ensemble.
+   */
   columns: number[];
 }
 
@@ -145,7 +158,8 @@ interface BlendHead {
   generatedAt: string;
   coverage: { from: string; to: string };
   /**
-   * Every time any deterministic model publishes, sorted: the only times the
+   * Every time any deterministic model publishes, and today's earlier hours
+   * kept from the blend before (`carryToday`), sorted: the only times the
    * dock can make a column of (`dockColumns`).
    */
   times: string[];
@@ -266,6 +280,156 @@ export function buildSpotBlend(
     })),
     lead: { model: from.model, then: from.then },
     [BLEND_KEY]: spots,
+  };
+}
+
+/** What `carryToday` kept: the blend, and the times it carried forward. */
+export interface CarriedBlend {
+  blend: BlendRun;
+  /** The times some place's hour was carried forward to, sorted. */
+  carried: string[];
+}
+
+/**
+ * Today's earlier hours, kept when a new run replaces the one that had them
+ * (the ruling of 25 October 2026): "keep the forecast for the full day so we
+ * don't just immediately discard it, but we do discard yesterday's forecast".
+ *
+ * A HARMONIE run covers nothing before it was initialised, and the run it
+ * replaces is deleted an hour later, so a blend worked out at 21:00 from the
+ * 17 UTC run had nothing from HARMONIE for the morning and afternoon, and the
+ * dock and the spot finder showed today from 17:00. So each hourly blend reads
+ * the one published before it (`previous`) and keeps, for every place, each
+ * of today's hours that one rated from a model higher in the stars' order
+ * (`lead`: HARMONIE, then ECMWF) than this one can: the hours before the new
+ * lead run begins, where this blend has only ECMWF's steps or nothing. The
+ * previous blend had carried its own morning forward the same way, so the day
+ * fills hourly from Irish midnight with the most recent run that covered each
+ * hour: wind, gust, bearing, the agreement as it was then, and which model it
+ * was.
+ *
+ * Only today: an hour before Irish midnight (`irishMidnight` of `now`) is
+ * never carried, so yesterday's forecast goes with the first blend of the day.
+ * (The times before midnight a run still publishes of itself — ECMWF's run of
+ * yesterday noon begins at yesterday noon — are its own, as before, and the
+ * dock's strip, beginning at today, never shows them.)
+ * Only the hours before the new lead run's first time: from there on the new
+ * run is the newer word. Nothing is carried when the previous blend was built
+ * for another order of models, when this blend has no run of the lead model
+ * to say where carrying stops, or for a model this blend no longer reads.
+ * A carried hour is added to the columns of the model it came from, so the
+ * dock's near run reaches back to midnight (`dockColumns`); its `run` still
+ * names the newest run, the one the hours from now on are.
+ */
+export function carryToday(
+  blend: BlendRun,
+  previous: Pick<BlendRun, "times" | "sources" | "spotBlend" | "lead"> | null,
+  now = Date.parse(blend.generatedAt),
+): CarriedBlend {
+  const from = irishMidnight(now);
+  const code = new Map(blend.sources.map((source, i) => [source.id, i]));
+  const here = new Map(blend.times.map((time, i) => [Date.parse(time), i]));
+  // Each place's carried hours, by the previous blend's index of the time.
+  const keep = new Map<string, { from: number; model: string }[]>();
+  // The times carried, each spelled as the previous blend spelled it.
+  const times = new Map<number, string>();
+  const order = blend.lead ? leadOrder(blend.lead) : [];
+  const leadSource = blend.sources.find((source) => source.id === order[0]);
+  if (
+    previous &&
+    sameStarsFrom(previous.lead, blend.lead) &&
+    leadSource?.columns.length
+  ) {
+    const until = Math.min(
+      ...leadSource.columns.map((c) => Date.parse(blend.times[c])),
+    );
+    const rank = (model: string | null) => {
+      if (!model) return Infinity;
+      const at = order.indexOf(model);
+      return at < 0 ? order.length : at;
+    };
+    const modelOf = (
+      sources: readonly Pick<BlendSource, "id">[],
+      letter: string | undefined,
+    ) =>
+      !letter || letter === "-"
+        ? null
+        : (sources[parseInt(letter, 36)]?.id ?? null);
+    previous.times.forEach((time, i) => {
+      const t = Date.parse(time);
+      if (!(t >= from && t < until)) return;
+      for (const [id, spot] of Object.entries(blend.spotBlend)) {
+        const old = previous.spotBlend[id];
+        const model = modelOf(previous.sources, old?.lead?.[i]);
+        if (!old || model === null || !code.has(model)) continue;
+        const at = here.get(t);
+        const fresh =
+          at === undefined ? null : modelOf(blend.sources, spot.lead?.[at]);
+        if (rank(model) >= rank(fresh)) continue;
+        if (!keep.has(id)) keep.set(id, []);
+        keep.get(id)!.push({ from: i, model });
+        times.set(t, time);
+      }
+    });
+  }
+  if (!times.size) return { blend, carried: [] };
+  const spelled = new Map([
+    ...times,
+    ...blend.times.map((time) => [Date.parse(time), time] as const),
+  ]);
+  const all = [...spelled.keys()].sort((a, b) => a - b);
+  const to = new Map(all.map((t, i) => [t, i]));
+  // Each of the blend's own times in the longer list.
+  const moved = blend.times.map((time) => to.get(Date.parse(time))!);
+  const spread = <T>(values: readonly T[], empty: T): T[] => {
+    const out = new Array<T>(all.length).fill(empty);
+    values.forEach((value, i) => (out[moved[i]] = value));
+    return out;
+  };
+  const columns = blend.sources.map(
+    (source) => new Set(source.columns.map((c) => moved[c])),
+  );
+  const spots: BlendSpots = {};
+  for (const [id, spot] of Object.entries(blend.spotBlend)) {
+    const wind = spread(spot.wind, null);
+    const gust = spread(spot.gust, null);
+    const bearing = spread(spot.from, null);
+    const agreement = spread([...spot.agreement], "-");
+    const lead = spread(
+      [...(spot.lead ?? "-".repeat(blend.times.length))],
+      "-",
+    );
+    const old = previous?.spotBlend[id];
+    for (const { from: i, model } of keep.get(id) ?? []) {
+      const at = to.get(Date.parse(previous!.times[i]))!;
+      wind[at] = old!.wind[i];
+      gust[at] = old!.gust[i];
+      bearing[at] = old!.from[i];
+      agreement[at] = old!.agreement[i];
+      lead[at] = code.get(model)!.toString(36);
+      columns[code.get(model)!].add(at);
+    }
+    spots[id] = {
+      wind,
+      gust,
+      from: bearing,
+      agreement: agreement.join(""),
+      lead: lead.join(""),
+    };
+  }
+  const iso = all.map((t) => spelled.get(t)!);
+  return {
+    blend: {
+      ...blend,
+      times: iso,
+      coverage: { from: iso[0], to: iso[iso.length - 1] },
+      sources: blend.sources.map((source, i) => ({
+        ...source,
+        columns: [...columns[i]].sort((a, b) => a - b),
+      })),
+      [BLEND_KEY]: spots,
+    },
+    carried: [...times.keys()].sort((a, b) => a - b).map((t) => times.get(t)!),
   };
 }
 
