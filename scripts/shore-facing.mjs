@@ -115,9 +115,12 @@ function offset(lat, lon, bearing, metres) {
 
 // Hand corrections survive a rerun: they are the reason to rerun at all.
 const target = `${root}data/locations/shore-facing.json`;
-const overrides = existsSync(target)
-  ? (JSON.parse(readFileSync(target, "utf8")).overrides ?? {})
+const previous = existsSync(target)
+  ? JSON.parse(readFileSync(target, "utf8"))
   : {};
+const overrides = previous.overrides ?? {};
+// The spots on the water are the owner's word too, and survive the same way.
+const onWater = previous.onWater ?? [];
 
 const places = {};
 for (const spot of spots) {
@@ -150,8 +153,9 @@ writeFileSync(
     {
       schemaVersion: 1,
       method:
-        "Circular mean of water bearings sampled at 300 m, 700 m and 1.2 km every 5 degrees, from the basemap's vector tiles at zoom 13. `facing` is published only where `strength` (0 to 1) is at least 0.15; `bearing` is kept either way. A computed estimate, not a survey: check it against the beach before trusting an offshore call. `overrides` maps an id to a surveyed facing in degrees (or null to rate on the wind alone) and wins over the computed value.",
+        "Circular mean of water bearings sampled at 300 m, 700 m and 1.2 km every 5 degrees, from the basemap's vector tiles at zoom 13. `facing` is published only where `strength` (0 to 1) is at least 0.15; `bearing` is kept either way. A computed estimate, not a survey: check it against the beach before trusting an offshore call. `overrides` maps an id to a surveyed facing in degrees (or null to rate on the wind alone) and wins over the computed value. `onWater` lists the spots on the water, ridden in the middle of an estuary or lagoon rather than off one beach: the stars rate them on the wind alone, whatever was computed.",
       source: `${STYLE} (OpenStreetMap data, ODbL)`,
+      onWater,
       overrides,
       places,
     },

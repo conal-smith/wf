@@ -11,7 +11,6 @@ import {
 import {
   WAVE_MODELS,
   WEATHER_MODELS,
-  GUSTY_SPREAD_KN,
   WIND_MODELS,
   axis,
   confidenceOf,
@@ -22,17 +21,41 @@ import {
   shoreOf,
   findSpot,
   hourEnsemble,
+  NEARBY_KM,
+  daySun,
+  dublinDate,
+  nearbySpots,
   hourWind,
+  irishZone,
   loadSpots,
+  localSpan,
+  localStamp,
   modelStatus,
   rainByHour,
   spotForecast,
   windowFor,
+  type HourWind,
   type RidingSpot,
 } from "./forecast";
 import { FIXTURE_NOW, fixtureSource } from "./testing";
+import {
+  DEFAULT_RIDER,
+  GUSTY_FROM,
+  bestWindow,
+  rateHour,
+  type HourRating,
+} from "../../force5/src/stars";
+import { arcText, goodWindArcs } from "../../force5/src/windArcs";
+import { rateForecastHour } from "../../spot/web/spot";
+import { hourStars, rateWind, riderOf, riderUsed } from "./rating";
+
+/** Every hour the site rates counts, none or more stars, for the site's default rider. */
+const EVERY_HOUR = { rider: DEFAULT_RIDER, minStars: 0 };
 import { shoreFacing } from "../../force5/src/shoreFacing";
 import { shoreAngle } from "../../force5/src/stars";
+import { presentWeather, skyOf } from "../../force5/src/presentWeather";
+import { feelsLikeC } from "../../force5/src/feelsLike";
+import { thunderRisk } from "../../force5/src/thunder";
 import { SOURCE_CACHE_LIMIT, cached } from "./httpSource";
 import { WAVE_SOURCE_PREFERENCE } from "../../force5/src/waves";
 import {
@@ -156,6 +179,58 @@ describe("windowFor", () => {
   });
 });
 
+describe("Irish time", () => {
+  // Irish clocks go back at 01:00Z on Sunday 25 October 2026.
+  const at = (iso: string) => Date.parse(iso);
+
+  it("names the zone, so the two 01:00s the night the clocks go back differ", () => {
+    expect(localStamp(at("2026-10-25T00:00:00Z"))).toBe(
+      "Sun, 25 Oct, 01:00 IST",
+    );
+    expect(localStamp(at("2026-10-25T01:00:00Z"))).toBe(
+      "Sun, 25 Oct, 01:00 GMT",
+    );
+    expect(irishZone(at("2026-03-29T00:59:00Z"))).toBe("GMT");
+    expect(irishZone(at("2026-03-29T01:00:00Z"))).toBe("IST");
+  });
+
+  it("says a span's zone at both ends where the clocks change inside it, and the end's day where it is another", () => {
+    expect(
+      localSpan(at("2026-10-25T08:00:00Z"), at("2026-10-25T17:41:00Z")),
+    ).toBe("Sun, 25 Oct, 08:00 – 17:41 GMT");
+    expect(
+      localSpan(at("2026-10-24T23:00:00Z"), at("2026-10-25T02:00:00Z")),
+    ).toBe("Sun, 25 Oct, 00:00 IST – 02:00 GMT");
+    expect(
+      localSpan(at("2026-10-24T21:00:00Z"), at("2026-10-24T23:00:00Z")),
+    ).toBe("Sat, 24 Oct, 22:00 – 00:00 IST");
+    expect(
+      localSpan(at("2026-10-24T21:00:00Z"), at("2026-10-25T03:00:00Z")),
+    ).toBe("Sat, 24 Oct, 22:00 IST – Sun, 25 Oct, 03:00 GMT");
+  });
+
+  it("labels a forecast's rows across the change each with its own zone", async () => {
+    const source = fixtureSource();
+    const spot = findSpot(await loadSpots(source), "kilcrea").spot!;
+    const now = at("2026-10-24T22:00:00Z");
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(now, { hours: 5, stepHours: 1 }),
+      { now },
+    );
+    expect(forecast.hours.map((h) => [h.time.slice(11, 16), h.local])).toEqual([
+      ["22:00", "Sat, 24 Oct, 23:00 IST"],
+      ["23:00", "Sun, 25 Oct, 00:00 IST"],
+      ["00:00", "Sun, 25 Oct, 01:00 IST"],
+      ["01:00", "Sun, 25 Oct, 01:00 GMT"],
+      ["02:00", "Sun, 25 Oct, 02:00 GMT"],
+    ]);
+    expect(new Set(forecast.hours.map((h) => h.local)).size).toBe(5);
+    expect(forecast.units.time).toMatch(/IST.*GMT/);
+  });
+});
+
 describe("spotForecast", () => {
   const source = fixtureSource();
 
@@ -197,7 +272,7 @@ describe("spotForecast", () => {
     const forecast = await dollymount();
     const first = forecast.hours[0];
     expect(first.time).toBe("2026-09-16T18:00:00.000Z");
-    expect(first.local).toBe("Wed, 16 Sept, 19:00");
+    expect(first.local).toBe("Wed, 16 Sept, 19:00 IST");
 
     // The same hour straight from the fixture files, one model at a time.
     const valid = Date.parse("2026-09-16T18:00:00Z");
@@ -253,10 +328,32 @@ describe("spotForecast", () => {
     // 19:00 Irish time in mid-September is before sunset; 22:00 is after.
     // Six hours at three-hourly steps is two rows: the end is exclusive.
     expect(forecast.hours.map((h) => h.daylight)).toEqual([true, false]);
-    expect(forecast.sun[0].sunset).toMatch(/^Wed, 16 Sept, 19:\d\d$/);
+    expect(forecast.sun[0].sunset).toMatch(/^Wed, 16 Sept, 19:\d\d IST$/);
     // No tide or sea-temperature bundle in the fixtures: said, not invented.
     expect(forecast.tides).toBeNull();
     expect(forecast.sea_temperature).toBeNull();
+  });
+
+  it("says how cold the air feels in the hour's mean wind", async () => {
+    const forecast = await dollymount();
+    const rows = forecast.hours.filter((h) => h.weather && h.wind);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const h of rows) {
+      expect(h.weather!.feels_like_c).toBe(
+        feelsLikeC(h.weather!.air_c, h.wind!.wind_kn),
+      );
+      expect(h.weather!.feels_like_c!).toBeLessThanOrEqual(h.weather!.air_c!);
+    }
+    expect(forecast.units.feels_like).toMatch(/JAG\/TI/);
+    expect(forecast.units.feels_like).toMatch(/mean wind_kn at 10 m/);
+  });
+
+  it("reads the CAPE and code each published weather square carries", async () => {
+    const forecast = await dollymount();
+    const weather = forecast.hours[0].weather!;
+    expect(weather.cape_j_kg).toEqual(expect.any(Number));
+    expect(weather.weather_code).toEqual(expect.any(Number));
+    expect(weather.thunder_risk).toEqual(expect.any(String));
   });
 
   it("says where the water was read, how far off and when", async () => {
@@ -286,7 +383,7 @@ describe("spotForecast", () => {
     );
     expect(forecast.sea_temperature).toEqual({
       celsius: 14.5,
-      measured: "Wed, 16 Sept, 16:00",
+      measured: "Wed, 16 Sept, 16:00 IST",
       time: "2026-09-16T15:00:00.000Z",
       station: "M2",
       network: "buoy",
@@ -330,7 +427,7 @@ describe("spotForecast", () => {
       events: [
         {
           time: "2026-09-16T20:12:00.000Z",
-          local: "Wed, 16 Sept, 21:12",
+          local: "Wed, 16 Sept, 21:12 IST",
           tide: "low",
           height_m: 0.61,
         },
@@ -448,6 +545,8 @@ describe("rain", () => {
       skip?: number;
       /** Drop the stated intervals, so the gaps between steps say them. */
       unstated?: boolean;
+      /** Each step's present-weather code (default 61, slight rain). */
+      codes?: number[];
     } = {},
   ) {
     const totals = options.totals ?? TOTALS;
@@ -465,7 +564,12 @@ describe("rain", () => {
         ...(!options.unstated && {
           precipIntervalHours: k ? [3 * k - 3, 3 * k] : null,
         }),
-        values: { t2m: 10 + k, precip, clct: 40 + k, ww: 61 },
+        values: {
+          t2m: 10 + k,
+          precip,
+          clct: 40 + k,
+          ww: options.codes?.[k] ?? 61,
+        },
       }))
       .slice(options.skip ?? 0);
     const source = fixtureSource({
@@ -492,6 +596,140 @@ describe("rain", () => {
     ]);
   const sum = (values: (number | null | undefined)[]) =>
     values.reduce<number>((total, v) => total + (v ?? 0), 0);
+
+  /**
+   * ICON-EU's weather as it publishes now: a step every hour, each step's
+   * precip the rain in the hour ending at it, and its own temperature, cloud
+   * and code.
+   */
+  async function hourlyForecast(window: { hours: number; stepHours: number }) {
+    const inner = fixtureSource();
+    const pointer = (await inner.json(
+      "weather/icon-eu-weather.json",
+    )) as Record<string, unknown>;
+    const square = (await inner.json(SQUARE)) as {
+      spotSeries: Record<string, unknown>;
+    };
+    const steps = 25;
+    const series = Array.from({ length: steps }, (_, k) => ({
+      hour: k,
+      validTime: new Date(RUN + k * HOUR).toISOString(),
+      precipIntervalHours: k ? [k - 1, k] : null,
+      values: {
+        t2m: 10 + (k % 5),
+        precip: k ? (k % 4) / 10 : null,
+        clct: 50 + k,
+        ww: k % 2 ? 61 : 3,
+        cape: 50 * k,
+      },
+    }));
+    const { frameVariables: _, stepRanges: __, ...rest } = pointer;
+    const source = fixtureSource({
+      "weather/icon-eu-weather.json": {
+        ...rest,
+        stepHours: 1,
+        frames: [],
+        horizonHours: steps - 1,
+      },
+      [SQUARE]: {
+        ...square,
+        spotSeries: { ...square.spotSeries, dollymount: series },
+      },
+    });
+    const spot = findSpot(await loadSpots(source), "dollymount").spot!;
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, window),
+      { now: FIXTURE_NOW },
+    );
+    return { forecast, series };
+  }
+
+  it("reads hourly weather an hour at a time: each hour its own rain, air and sky", async () => {
+    const { forecast, series } = await hourlyForecast({
+      hours: 24,
+      stepHours: 1,
+    });
+    expect(forecast.window.weather_step_hours).toBe(1);
+    forecast.hours.forEach((hour, k) => {
+      const step = series[k].values;
+      expect(hour.weather).toMatchObject({
+        air_c: step.t2m,
+        cloud_pct: step.clct,
+        weather_code: step.ww,
+        // Each hour's own rain, the hour ending at it; none at the run's start.
+        rain_mm: step.precip,
+      });
+      if (k) expect(hour.weather!.rain_interval_hours).toBe(1);
+      expect(hour.weather!.rain_until).toBeUndefined();
+    });
+    // A rain code no longer sits beside a null rain: the hour has its own.
+    expect(
+      forecast.hours.filter(
+        (h) => h.weather!.weather_code === 61 && h.weather!.rain_mm === null,
+      ),
+    ).toEqual([]);
+    // Nothing tells an agent the weather is three-hourly.
+    expect(forecast.units.rain).not.toMatch(/\b3 for ICON-EU/);
+    expect(forecast.units.weather).toMatch(/more than an hour/);
+  });
+
+  it("flags thunder from the published code and CAPE, hour by hour", async () => {
+    const { forecast, series } = await hourlyForecast({
+      hours: 24,
+      stepHours: 1,
+    });
+    forecast.hours.forEach((hour, k) => {
+      const { ww, cape } = series[k].values;
+      const expected = thunderRisk(ww, cape);
+      expect(hour.weather).toMatchObject({
+        cape_j_kg: cape,
+        thunder_risk: expected!.risk,
+      });
+      expect(hour.weather!.thunder_why).toBe(expected!.why ?? undefined);
+    });
+    const risks = forecast.hours.map((h) => h.weather!.thunder_risk);
+    // Rain with 300 J/kg from 07:00 UTC; 1000 J/kg under any sky from 14:00.
+    expect(risks.slice(0, 6)).toEqual(Array(6).fill("low"));
+    expect(risks[7]).toBe("possible");
+    expect(risks[8]).toBe("low");
+    expect(risks[20]).toBe("possible");
+    expect(forecast.units.thunder).toMatch(/91–99/);
+    expect(forecast.units.thunder).toMatch(/300 J\/kg/);
+  });
+
+  it("says thunder is high where the model's code is a thunderstorm", async () => {
+    const forecast = await rainForecast(
+      { hours: 24, stepHours: 1 },
+      { codes: [3, 3, 3, 3, 3, 45, 95, 3, 0] },
+    );
+    const at = (hhmm: string) =>
+      forecast.hours.find((h) => h.time.slice(11, 16) === hhmm)!.weather!;
+    expect(at("12:00")).toMatchObject({
+      thunder_risk: "high",
+      thunder_why: expect.stringMatching(/thunderstorm/i),
+    });
+    // These steps publish no CAPE: a quiet code is low, not unknown.
+    expect(at("09:00")).toMatchObject({ cape_j_kg: null, thunder_risk: "low" });
+  });
+
+  it("adds hourly rain up into three-hourly rows", async () => {
+    const { forecast, series } = await hourlyForecast({
+      hours: 24,
+      stepHours: 3,
+    });
+    expect(forecast.window.weather_step_hours).toBe(1);
+    // Each row from the second on sums the three hours since the row before.
+    forecast.hours.slice(1).forEach((hour, i) => {
+      const k = 3 * (i + 1);
+      const total = series
+        .slice(k - 2, k + 1)
+        .reduce((sum, s) => sum + (s.values.precip ?? 0), 0);
+      expect(hour.weather!.rain_mm).toBeCloseTo(total, 5);
+      expect(hour.weather!.rain_interval_hours).toBe(3);
+    });
+  });
 
   it("gives each three-hour total once, at the hour its interval ends", async () => {
     const forecast = await rainForecast({ hours: 24, stepHours: 1 });
@@ -736,6 +974,42 @@ describe("rain", () => {
     expect(forecast.method).toMatch(/weather_after/);
   });
 
+  it("says what each hour's weather code means, and the sky the site draws for it", async () => {
+    // Overcast steps, one of them over 2.4 mm of rain; fog; then a thunderstorm.
+    const forecast = await rainForecast(
+      { hours: 24, stepHours: 1 },
+      { codes: [3, 3, 3, 3, 3, 45, 95, 3, 0] },
+    );
+    const rain = rainByHour(forecast.hours);
+    for (const hour of forecast.hours) {
+      const w = hour.weather!;
+      expect(w.description).toBe(
+        presentWeather(w.weather_code)?.description ?? null,
+      );
+      expect(w.sky).toBe(
+        skyOf({ ...w, rain_mm: rain.get(Date.parse(hour.time)) ?? null }),
+      );
+    }
+    const at = (hhmm: string) =>
+      forecast.hours.find((h) => h.time.slice(11, 16) === hhmm)!.weather!;
+    // Overcast by its code, but rain by the rain in its interval.
+    expect(at("21:00")).toMatchObject({
+      weather_code: 3,
+      description: "Cloudy or overcast, clouds developing",
+      sky: "rain",
+    });
+    expect(at("03:00")).toMatchObject({ weather_code: 3, sky: "cloudy" });
+    expect(at("05:00")).toMatchObject({ weather_code: 3, sky: "rain" });
+    expect(at("09:00")).toMatchObject({ weather_code: 45, sky: "fog" });
+    expect(at("12:00")).toMatchObject({
+      weather_code: 95,
+      description: "Thunderstorm, slight or moderate",
+      sky: "thunder",
+    });
+    expect(forecast.units.weather_code).toMatch(/WMO.*4677/);
+    expect(forecast.units.weather_code).toMatch(/`ww`/);
+  });
+
   it("tells an agent what a row's rain covers", async () => {
     const forecast = await rainForecast({ hours: 3, stepHours: 1 });
     expect(forecast.units.rain).toMatch(/rain_interval_hours/);
@@ -799,6 +1073,17 @@ describe("hourWind", () => {
     expect(hour.wind_kn).toBeCloseTo(9 * KNOTS, 1);
     expect(hour.gust_kn).toBeNull();
     expect(hour.gust_max_kn).toBeCloseTo(7 * KNOTS, 1);
+    // No gust of the one model's, so no factor either.
+    expect(hour.gust_factor).toBeNull();
+  });
+
+  it("gives the gust factor of the one model's own gust and wind", () => {
+    const harmonie = line("harmonie", { u: 8, v: 0, gust: 20 });
+    const hour = hourWind([harmonie, ...others], at, false)!;
+    expect(hour.gust_factor).toBe(
+      Math.round((hour.gust_kn! / hour.wind_kn) * 100) / 100,
+    );
+    expect(hour.gust_factor).toBeCloseTo(2.5, 1);
   });
 
   it("hands over to ECMWF alone past HARMONIE's run, and to nobody past both", () => {
@@ -918,14 +1203,165 @@ describe("confidenceOf", () => {
   });
 });
 
+describe("the stars", () => {
+  const source = fixtureSource();
+  const forecastFor = async (
+    id: string,
+    rider = riderOf(),
+    stepHours = 1,
+    hours = 48,
+  ) => {
+    const spot = (await loadSpots(source)).find((s) => s.id === id)!;
+    return spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, { hours, stepHours }),
+      { now: FIXTURE_NOW, rider },
+    );
+  };
+
+  it("rates every hour with the site's own rateHour, as the spot page does", async () => {
+    for (const [id, rider] of [
+      ["brandon", riderOf()],
+      ["dollymount", riderOf({ level: "advanced", gusty: "little" })],
+      ["kilcrea", riderOf({ level: "beginner", weight_kg: 60 })],
+      ["malahide-estuary", riderOf({ level: "advanced", wings_m2: [4, 6] })],
+    ] as const) {
+      const forecast = await forecastFor(id, rider);
+      const facing = shoreFacing(id);
+      let rated = 0;
+      for (const hour of forecast.hours) {
+        // The spot page's own call, on the same hour.
+        const site = rateForecastHour(hour, facing, rider);
+        const direct = hour.wind
+          ? rateHour(
+              {
+                windKn: hour.wind.wind_kn,
+                gustKn: hour.wind.gust_kn,
+                from: hour.wind.direction_deg,
+                daylight: hour.daylight,
+              },
+              { facing },
+              rider,
+            )
+          : null;
+        expect(site).toEqual(direct);
+        if (!site) {
+          expect(hour.rating).toBeNull();
+          expect(hour.why_not_rated).toMatch(/^not rated/);
+          continue;
+        }
+        rated++;
+        expect(hour.rating).toMatchObject({
+          stars: site.stars,
+          potential: site.potential,
+          reasons: site.reasons,
+          session: site.session,
+          wing_m2: site.wing.recommended,
+        });
+        expect(hour.rating!.why_no_stars === null).toBe(site.stars > 0);
+      }
+      expect(rated, id).toBeGreaterThan(0);
+    }
+  });
+
+  it("rates three-hourly rows the same as the hours they stand on", async () => {
+    const hourly = await forecastFor("brandon", riderOf(), 1);
+    const coarse = await forecastFor("brandon", riderOf(), 3);
+    for (const row of coarse.hours) {
+      const same = hourly.hours.find((h) => h.time === row.time)!;
+      expect(row.rating).toEqual(same.rating);
+    }
+    expect(coarse.best_windows).toEqual(hourly.best_windows);
+  });
+
+  it("takes every star off an hour gusting over the rider's limit, and says so", () => {
+    // Kilcrea, Sat 24 Oct 2026 at 17:00 (#177): 20.5 kn gusting 49.6.
+    const wind = {
+      wind_kn: 20.5,
+      gust_kn: 49.6,
+      direction_deg: 250,
+    } as HourWind;
+    const rider = riderOf();
+    const rating = rateWind(wind, true, shoreFacing("kilcrea"), rider)!;
+    const stars = hourStars(rating, wind, rider);
+    expect(stars).toMatchObject({
+      stars: 0,
+      potential: 0,
+      why_no_stars: "gusts over your limit",
+      gustiness: "very-gusty",
+    });
+    expect(rateWind(wind, false, 163, rider)).toBeNull();
+  });
+
+  it("says who the stars are for, as the spot page does", async () => {
+    const forecast = await forecastFor("kilcrea");
+    expect(forecast.rider).toMatchObject({
+      label: "Riding · ~80 kg",
+      level: "intermediate",
+      weight_kg: 80,
+      weight_assumed: true,
+      gusty: "some",
+      gust_limit_kn: 30,
+      wind_band_kn: { min: 11, sweet_low: 14, sweet_high: 24, max: 30 },
+    });
+    expect(
+      riderUsed(riderOf({ level: "beginner", weight_kg: 95 })),
+    ).toMatchObject({ label: "Learning · 95 kg", weight_assumed: false });
+  });
+
+  it("gives the winds the beach wants, as the spot page's header says them", async () => {
+    // wingfoil.ie/spot/kilcrea: "best ENE–ESE, SSW–W".
+    expect((await forecastFor("kilcrea")).best_directions).toEqual([
+      "ENE–ESE",
+      "SSW–W",
+    ]);
+    expect((await forecastFor("brandon")).best_directions!.join(", ")).toBe(
+      goodWindArcs(shoreFacing("brandon")!).map(arcText).join(", "),
+    );
+  });
+
+  it("picks each Irish day's best window from the hours' stars, ended by last light", async () => {
+    const rider = riderOf({ level: "advanced", gusty: "little" });
+    const forecast = await forecastFor("dollymount", rider, 1, 72);
+    const days = forecast.best_windows!;
+    expect(days.map((d) => d.date)).toEqual(forecast.sun.map((d) => d.date));
+    const withWindow = days.filter((d) => d.window);
+    expect(withWindow.length).toBeGreaterThan(0);
+    for (const day of days) {
+      const hours = forecast.hours.filter(
+        (h) => dublinDate(Date.parse(h.time)) === day.date,
+      );
+      const best = bestWindow(
+        hours.map((h) =>
+          h.rating ? ({ stars: h.rating.stars } as HourRating) : null,
+        ),
+      );
+      if (!best) {
+        expect(day.window).toBeNull();
+        expect(day.why_none).toEqual(expect.any(String));
+        continue;
+      }
+      const w = day.window!;
+      expect(w.from).toBe(hours[best.from].time);
+      expect(w.stars).toBe(best.stars);
+      expect(w.hours).toBe(best.to - best.from + 1);
+      const sun = forecast.sun.find((d) => d.date === day.date)!;
+      expect(Date.parse(w.to)).toBeLessThanOrEqual(
+        daySun(forecast.spot, day.date).lastLight!,
+      );
+      expect(sun.last_light).not.toBeNull();
+    }
+  });
+});
+
 describe("findSessions", () => {
   it("ranks spots by hours in the range and groups them into sessions", async () => {
     const source = fixtureSource();
     const spots = await loadSpots(source);
     const window = windowFor(FIXTURE_NOW, { hours: 12, stepHours: 1 });
     const all = await findSessions(source, spots, window, {
-      minKnots: 0,
-      maxKnots: 80,
+      ...EVERY_HOUR,
       daylightOnly: false,
       minSessionHours: 1,
       limit: 30,
@@ -947,8 +1383,7 @@ describe("findSessions", () => {
     expect(hours).toEqual([...hours].sort((a, b) => b - a));
 
     const dark = await findSessions(source, spots, window, {
-      minKnots: 0,
-      maxKnots: 80,
+      ...EVERY_HOUR,
       daylightOnly: true,
       minSessionHours: 2,
       counties: ["Dublin"],
@@ -964,14 +1399,113 @@ describe("findSessions", () => {
   });
 });
 
+describe("light", () => {
+  it("says how light each row is, and each Irish day's first and last light", async () => {
+    const source = fixtureSource();
+    const spot = findSpot(await loadSpots(source), "kilcrea").spot!;
+    const now = Date.parse("2026-10-24T22:00:00Z");
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(now, { hours: 30, stepHours: 1 }),
+      { now },
+    );
+    // Keyed by Irish day, each in Irish time with its zone.
+    expect(forecast.sun.map((d) => d.date)).toEqual([
+      "2026-10-24",
+      "2026-10-25",
+      "2026-10-26",
+    ]);
+    const sunday = forecast.sun[1];
+    expect(sunday.first_light).toMatch(/^Sun, 25 Oct, 0[67]:\d\d GMT$/);
+    expect(sunday.sunset).toMatch(/^Sun, 25 Oct, 17:0\d GMT$/);
+    expect(sunday.last_light).toMatch(/^Sun, 25 Oct, 17:[34]\d GMT$/);
+    const day = daySun(spot, "2026-10-25");
+    expect(day.firstLight!).toBeLessThan(day.sunrise!);
+    expect(day.lastLight! - day.sunset!).toBeGreaterThan(30 * 60000);
+    for (const hour of forecast.hours) {
+      const t = Date.parse(hour.time);
+      const { firstLight, sunrise, sunset, lastLight } = daySun(
+        spot,
+        dublinDate(t),
+      );
+      const expected =
+        t >= sunrise! && t <= sunset!
+          ? "day"
+          : t >= firstLight! && t <= lastLight!
+            ? "twilight"
+            : "dark";
+      expect(hour.light, hour.local).toBe(expected);
+      expect(hour.daylight).toBe(expected === "day");
+    }
+    // 17:00 GMT on Sunday starts before sunset; 18:00 is dark already.
+    const at = (local: string) =>
+      forecast.hours.find((h) => h.local === local)!;
+    expect(at("Sun, 25 Oct, 17:00 GMT").light).toBe("day");
+    expect(at("Sun, 25 Oct, 18:00 GMT").light).toBe("dark");
+    expect(at("Sun, 25 Oct, 07:00 GMT").light).toBe("twilight");
+    expect(forecast.units.light).toMatch(/last light/);
+  });
+
+  const sessions = async (daylightOnly: boolean) => {
+    const source = fixtureSource();
+    const spots = await loadSpots(source);
+    // Late September, when the sun sets just after an hour starts.
+    const now = Date.parse("2026-09-24T00:00:00Z");
+    const found = await findSessions(
+      source,
+      spots,
+      windowFor(now, { hours: 72, stepHours: 1 }),
+      {
+        ...EVERY_HOUR,
+        allowOffshore: true,
+        daylightOnly,
+        minSessionHours: 1,
+        counties: ["Dublin"],
+        limit: 30,
+        now,
+      },
+    );
+    return found.spots.flatMap((r) =>
+      r.sessions.map((s) => ({ spot: r.spot, ...s })),
+    );
+  };
+
+  it("ends find_wind's sessions by last light", async () => {
+    const all = await sessions(true);
+    expect(all.length).toBeGreaterThan(0);
+    for (const s of all) {
+      const end = Date.parse(s.to);
+      const { lastLight } = daySun(s.spot, s.to.slice(0, 10));
+      expect(end).toBeLessThanOrEqual(lastLight!);
+      expect(s.dark_hours).toBeUndefined();
+    }
+    const clipped = all.filter((s) => s.ends_at_last_light);
+    expect(clipped.length).toBeGreaterThan(0);
+    for (const s of clipped) {
+      expect(Date.parse(s.to)).toBe(
+        daySun(s.spot, s.to.slice(0, 10)).lastLight,
+      );
+      expect(s.local.endsWith(localStamp(Date.parse(s.to)).slice(-9))).toBe(
+        true,
+      );
+    }
+  });
+
+  it("lets find_wind run past last light when asked, and counts the dark hours", async () => {
+    const all = await sessions(false);
+    expect(all.some((s) => (s.dark_hours ?? 0) > 0)).toBe(true);
+    expect(all.some((s) => s.ends_at_last_light)).toBe(false);
+  });
+});
+
 describe("findSessions' gust limits", () => {
   const search = async (limits: object) => {
     const source = fixtureSource();
     const spots = await loadSpots(source);
     const window = windowFor(FIXTURE_NOW, { hours: 48, stepHours: 1 });
     return findSessions(source, spots, window, {
-      minKnots: 0,
-      maxKnots: 80,
+      ...EVERY_HOUR,
       daylightOnly: false,
       minSessionHours: 1,
       limit: 30,
@@ -1005,21 +1539,42 @@ describe("findSessions' gust limits", () => {
     expect(hours(steady)).toBeLessThan(hours(await search({})));
   });
 
-  it("flags a session whose gusts run 12 kn or more over the mean", async () => {
-    const sessions = (await search({})).spots.flatMap((r) => r.sessions);
+  it("gives each session its highest gust factor and its gustiest hour by the stars' rule", async () => {
+    const found = await search({});
+    const sessions = found.spots.flatMap((r) => r.sessions);
     // The fixtures' whole two days gust to about 30 kn over a 12 kn mean.
     expect(sessions.length).toBeGreaterThan(0);
     for (const s of sessions) {
-      expect(s.gusty).toBe(true);
-      expect(s.gust_kn! - s.min_kn).toBeGreaterThanOrEqual(GUSTY_SPREAD_KN);
+      expect(s.gust_factor!).toBeGreaterThanOrEqual(GUSTY_FROM);
+      expect(s.gust_factor!).toBeGreaterThanOrEqual(
+        s.gust_kn! / s.max_kn - 0.01,
+      );
+      expect(s.gusty).toBe(s.gustiness !== "steady");
     }
-    // Under a 25 kn limit some sessions stay within 12 kn of every hour's mean.
-    const calm = (await search({ maxGustKnots: 25 })).spots.flatMap(
-      (r) => r.sessions,
-    );
-    expect(calm.some((s) => !s.gusty)).toBe(true);
-    for (const s of calm.filter((s) => !s.gusty))
-      expect(s.gust_kn! - s.max_kn).toBeLessThan(GUSTY_SPREAD_KN);
+    expect(sessions.some((s) => s.gustiness === "very-gusty")).toBe(true);
+  });
+
+  it("never counts an hour gusting over the rider's limit, however it is asked", async () => {
+    // A light rider's limit is under the fixtures' 30 kn gusts.
+    const rider = riderOf({
+      level: "advanced",
+      weight_kg: 40,
+      gusty: "little",
+    });
+    const limit = riderUsed(rider).gust_limit_kn;
+    expect(limit).toBeLessThan(30);
+    const all = await search({ rider, minStars: 1 });
+    const sessions = all.spots.flatMap((r) => r.sessions);
+    expect(sessions.length).toBeGreaterThan(0);
+    for (const s of sessions) {
+      expect(s.gust_kn!).toBeLessThanOrEqual(limit);
+      expect(s.stars!).toBeGreaterThanOrEqual(1);
+    }
+    // The same search for the hours alone, stars or none, finds the gusty ones.
+    const every = await search({ rider, minStars: 0 });
+    expect(
+      every.spots.flatMap((r) => r.sessions).some((s) => s.gust_kn! > limit),
+    ).toBe(true);
   });
 });
 
@@ -1029,8 +1584,7 @@ describe("the shore", () => {
     const spots = await loadSpots(source);
     const window = windowFor(FIXTURE_NOW, { hours: 48, stepHours: 1 });
     return findSessions(source, spots, window, {
-      minKnots: 0,
-      maxKnots: 80,
+      ...EVERY_HOUR,
       daylightOnly: false,
       minSessionHours: 1,
       limit: 30,
@@ -1085,9 +1639,110 @@ describe("the shore", () => {
       for (const s of result.sessions) {
         expect(s.offshore_hours).toBe(0);
         expect(s.shore).not.toBe("offshore");
-        if (result.shore_facing_deg === null) expect(s.shore).toBeNull();
+        if (result.shore_type === "on-water") expect(s.shore).toBe("on-water");
+        else if (result.shore_facing_deg === null) expect(s.shore).toBeNull();
       }
     }
+  });
+});
+
+describe("spots on the water", () => {
+  const source = fixtureSource();
+
+  it("says Malahide Estuary is on the water, every hour, and what that means", async () => {
+    const spot = (await loadSpots(source)).find(
+      (s) => s.id === "malahide-estuary",
+    )!;
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 24 }),
+      { now: FIXTURE_NOW, rider: riderOf() },
+    );
+    expect(forecast.shore_type).toBe("on-water");
+    expect(forecast.shore_facing_deg).toBeNull();
+    expect(forecast.best_directions).toBeNull();
+    expect(forecast.hours.every((h) => h.shore === "on-water")).toBe(true);
+    expect(forecast.shore_note).toMatch(/on the water/);
+    expect(forecast.shore_note).toMatch(/offshore filter doesn't apply/);
+    expect(forecast.shore_note).not.toMatch(/no shore|unknown|missing/i);
+    expect(forecast.units.shore).toMatch(/on-water/);
+    // The stars rate it on the wind alone, as the site does a spot with no facing.
+    for (const hour of forecast.hours.filter((h) => h.rating))
+      expect(hour.rating!.reasons.some((r) => /shore|offshore/i.test(r))).toBe(
+        false,
+      );
+  });
+
+  it("tells a beach whose facing is unknown apart from a spot on the water", async () => {
+    const spot = (await loadSpots(source)).find((s) => s.id === "bertra")!;
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 3 }),
+      { now: FIXTURE_NOW },
+    );
+    expect(forecast.shore_type).toBe("unknown");
+    expect(forecast.hours.every((h) => h.shore === null)).toBe(true);
+    expect(forecast.shore_note).toMatch(/can't be ruled out/);
+    const kilcrea = (await loadSpots(source)).find((s) => s.id === "kilcrea")!;
+    const beach = await spotForecast(
+      source,
+      kilcrea,
+      windowFor(FIXTURE_NOW, { hours: 3 }),
+      { now: FIXTURE_NOW },
+    );
+    expect(beach.shore_type).toBe("beach");
+    expect(beach.shore_note).toBeUndefined();
+  });
+
+  it("keeps a spot on the water in find_wind, the offshore filter not applying, with its neighbours", async () => {
+    const spots = await loadSpots(source);
+    const found = await findSessions(
+      source,
+      spots,
+      windowFor(FIXTURE_NOW, { hours: 48, stepHours: 1 }),
+      {
+        ...EVERY_HOUR,
+        daylightOnly: false,
+        minSessionHours: 1,
+        counties: ["Dublin"],
+        limit: 30,
+        now: FIXTURE_NOW,
+      },
+    );
+    const malahide = found.spots.find((r) => r.spot.id === "malahide-estuary")!;
+    expect(malahide.shore_type).toBe("on-water");
+    for (const s of malahide.sessions) {
+      expect(s.shore).toBe("on-water");
+      expect(s.offshore_hours).toBe(0);
+    }
+    expect(malahide.nearby!.map((n) => n.id)).toEqual(
+      expect.arrayContaining(["kilcrea", "malahide-estuary-south-park"]),
+    );
+    expect(malahide.nearby![0]).toMatchObject({
+      id: "kilcrea",
+      distance_km: 0.7,
+    });
+  });
+
+  it("names the spots close by", async () => {
+    const spots = await loadSpots(source);
+    const of = (id: string) =>
+      nearbySpots(
+        spots,
+        spots.find((s) => s.id === id)!,
+      ).map((n) => n.id);
+    expect(of("kilcrea")).toEqual([
+      "malahide-estuary",
+      "malahide-estuary-south-park",
+    ]);
+    expect(of("brandon")).toEqual([]);
+    for (const n of nearbySpots(
+      spots,
+      spots.find((s) => s.id === "keel")!,
+    ))
+      expect(n.distance_km).toBeLessThanOrEqual(NEARBY_KM);
   });
 });
 
@@ -1097,8 +1752,7 @@ describe("near and counties", () => {
     const spots = await loadSpots(source);
     const window = windowFor(FIXTURE_NOW, { hours: 12, stepHours: 1 });
     const found = await findSessions(source, spots, window, {
-      minKnots: 0,
-      maxKnots: 80,
+      ...EVERY_HOUR,
       daylightOnly: false,
       minSessionHours: 1,
       limit: 30,
@@ -1187,7 +1841,11 @@ describe("near and counties", () => {
       expect(r.distance_km).toBeLessThanOrEqual(40);
       expect(r.distance_km).toBeCloseTo(distanceKm(near, r.spot), 0);
       const next = found.spots[i + 1];
-      if (next && next.rideable_hours === r.rideable_hours)
+      if (
+        next &&
+        next.rideable_hours === r.rideable_hours &&
+        next.best_window?.stars === r.best_window?.stars
+      )
         expect(next.distance_km!).toBeGreaterThanOrEqual(r.distance_km!);
     }
     // Without near, no distances.
@@ -1218,8 +1876,7 @@ describe("how far the forecast reaches", () => {
       await loadSpots(source),
       windowFor(FIXTURE_NOW, { hours: 6 }),
       {
-        minKnots: 0,
-        maxKnots: 80,
+        ...EVERY_HOUR,
         daylightOnly: false,
         minSessionHours: 1,
         counties: ["Dublin"],
@@ -1373,8 +2030,7 @@ describe("which spot squares are read", () => {
     const spots = await loadSpots(source);
     const dublin = spots.filter((s) => s.county === "Dublin");
     await findSessions(source, spots, windowFor(FIXTURE_NOW, { hours: 6 }), {
-      minKnots: 0,
-      maxKnots: 80,
+      ...EVERY_HOUR,
       daylightOnly: false,
       minSessionHours: 1,
       counties: ["Dublin"],

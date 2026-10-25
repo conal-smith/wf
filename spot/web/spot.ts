@@ -7,6 +7,7 @@
  */
 import { handovers, modelName, type StarsFrom } from "../../force5/src/lead";
 import {
+  SHORE_LABEL,
   rateHour,
   windBand,
   shoreAngle,
@@ -14,7 +15,14 @@ import {
   type Rider,
   type ShoreAngle,
 } from "../../force5/src/stars";
+import { isOnWater, shoreFacing } from "../../force5/src/shoreFacing";
 import { sunTimes } from "../../force5/src/sun";
+import {
+  arcText,
+  goodWindArcs,
+  windArcs,
+  type WindArc,
+} from "../../force5/src/windArcs";
 import {
   KNOTS,
   beaufort,
@@ -123,6 +131,9 @@ export function dayNames(date: string, now: number): DayNames {
 
 // ---- compass ----------------------------------------------------------------
 
+// The winds a shore wants are force5's, which the forecast server reads too.
+export { goodWindArcs, windArcs, type WindArc };
+
 const COMPASS = [
   "N",
   "NNE",
@@ -144,56 +155,6 @@ const COMPASS = [
 export const compass = (degrees: number) =>
   COMPASS[((Math.round(degrees / 22.5) % 16) + 16) % 16];
 
-export interface WindArc {
-  /** Compass points at either end, inclusive, clockwise. */
-  from: string;
-  to: string;
-  /** Bearings of the same ends, for the dial. */
-  fromDeg: number;
-  toDeg: number;
-}
-
-/**
- * The runs of compass points, clockwise, whose wind meets the shore at one of
- * `angles`: the arcs the dial paints and the words the header says.
- */
-export function windArcs(
-  facing: number,
-  angles: readonly ShoreAngle[],
-): WindArc[] {
-  const good = COMPASS.map((_, i) =>
-    angles.includes(shoreAngle(i * 22.5, facing)),
-  );
-  if (good.every(Boolean))
-    return [{ from: "N", to: "NNW", fromDeg: 0, toDeg: 337.5 }];
-  // Start just after a point that is out, so no arc is cut in two at north.
-  const start = good.findIndex((ok) => !ok);
-  const arcs: WindArc[] = [];
-  let open: number | null = null;
-  for (let step = 1; step <= 16; step++) {
-    const i = (start + step) % 16;
-    if (good[i] && open === null) open = i;
-    if ((!good[i] || step === 16) && open !== null) {
-      const last = good[i] ? i : (i + 15) % 16;
-      arcs.push({
-        from: COMPASS[open],
-        to: COMPASS[last],
-        fromDeg: open * 22.5,
-        toDeg: last * 22.5,
-      });
-      open = null;
-    }
-  }
-  return arcs;
-}
-
-/** What the wind wants to be at this shore: cross and cross-on. */
-export const goodWindArcs = (facing: number) =>
-  windArcs(facing, ["cross-on", "cross"]);
-
-const arcText = (arc: WindArc) =>
-  arc.from === arc.to ? arc.from : `${arc.from}–${arc.to}`;
-
 /**
  * "Faces WNW · best in SSW–WSW or NNW–NE winds": the shore in one line, from
  * the same angles the stars rate it on. Null where the facing is not known.
@@ -206,6 +167,40 @@ export function shoreSummary(facing: number | null): string | null {
     : "";
   return `Faces ${compass(facing)}${best}`;
 }
+
+/** What the header says where a beach's facing is not known. */
+export const FACING_UNKNOWN = "Facing unknown: rated on the wind alone";
+
+/**
+ * What a spot's header says of its shore: the facing and the winds it wants,
+ * or that the facing is unknown. A spot on the water (force5/src/shoreFacing.ts
+ * `onWater`, Malahide Estuary) says nothing there, and looks like any other
+ * spot: null.
+ */
+export type ShoreHeading =
+  | { kind: "facing"; facing: number; best: string[] }
+  | { kind: "unknown"; text: string };
+
+export function shoreHeading(id: string): ShoreHeading | null {
+  if (isOnWater(id)) return null;
+  const facing = shoreFacing(id);
+  if (facing === null) return { kind: "unknown", text: FACING_UNKNOWN };
+  return { kind: "facing", facing, best: goodWindArcs(facing).map(arcText) };
+}
+
+/**
+ * What an hour's card says of the shore: the angle, or that the facing is
+ * unknown; nothing at a spot on the water.
+ */
+export const shoreWords = (
+  shore: ShoreAngle | null,
+  onWater: boolean,
+): string | null =>
+  shore
+    ? SHORE_LABEL[shore]
+    : onWater
+      ? null
+      : "facing unknown: the wind alone";
 
 // ---- wind -------------------------------------------------------------------
 

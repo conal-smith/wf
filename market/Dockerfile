@@ -12,14 +12,17 @@ COPY community/ ./community/
 COPY mcp/ ./mcp/
 COPY companion/ ./companion/
 COPY alerts/ ./alerts/
-# The MCP server reuses the map's unit and sunrise maths and its shore rule,
-# and Gust (the companion) the star ratings and the shore facings; all
-# dependency-free. The model the stars come from (lead.ts) names its models
-# from the catalogue. Met Éireann's warnings (warnings.ts) read their area
-# table from data/locations.
+# The MCP server reuses the map's unit and sunrise maths, its shore rule and
+# star ratings, the winds a shore wants, the weather-code table, and the gust
+# factor, feels-like and thunder helpers; Gust (the companion) the star
+# ratings and the shore facings; all dependency-free. The model the stars come
+# from (lead.ts) names its models from the catalogue. Met Éireann's warnings
+# (warnings.ts) read their area table from data/locations.
 COPY force5/src/units.ts force5/src/sun.ts force5/src/stars.ts force5/src/weights.ts \
      force5/src/spotData.ts force5/src/squares.ts force5/src/lead.ts \
-     force5/src/catalog.ts force5/src/shoreFacing.ts force5/src/warnings.ts ./force5/src/
+     force5/src/catalog.ts force5/src/shoreFacing.ts force5/src/windArcs.ts \
+     force5/src/presentWeather.ts force5/src/gustFactor.ts \
+     force5/src/feelsLike.ts force5/src/thunder.ts force5/src/warnings.ts ./force5/src/
 COPY data/locations/shore-facing.json data/locations/warning-areas.json ./data/locations/
 # Alerts rate the published catalogue's places (alerts/api/forecast.ts).
 COPY public/riding-locations.json ./public/

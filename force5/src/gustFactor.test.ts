@@ -4,7 +4,7 @@ import {
   gustFactor,
   gustFactorText,
 } from "./gustFactor";
-import { GUSTY_FROM, VERY_GUSTY_FROM } from "./stars";
+import { DEFAULT_RIDER, GUSTY_FROM, VERY_GUSTY_FROM, gustiness } from "./stars";
 
 describe("gustFactor", () => {
   it("is the gust over the mean", () => {
@@ -27,6 +27,12 @@ describe("gustFactor", () => {
     expect(gustFactor(2, 5)).toBeNull();
     expect(gustFactor(4.9, 9)).toBeNull();
     expect(gustFactor(5, 9)).toBeCloseTo(1.8);
+  });
+
+  it("is what the stars call gusty by", () => {
+    // 15 kn is over an 80 kg intermediate's floor, so gustiness reads the factor.
+    expect(gustiness(15, 15 * GUSTY_FROM, DEFAULT_RIDER)).toBe("gusty");
+    expect(gustFactor(15, 15 * GUSTY_FROM)).toBe(GUSTY_FROM);
   });
 
   it("reads a gust under the mean as none over it", () => {

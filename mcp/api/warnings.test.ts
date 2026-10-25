@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_RIDER } from "../../force5/src/stars";
 import { WARNINGS_URL, type MetWarning } from "../../force5/src/warnings";
 import {
   findSessions,
@@ -9,6 +10,7 @@ import {
 } from "./forecast";
 import { FIXTURE_NOW, fixtureSource } from "./testing";
 import { INSTRUCTIONS, findWind, getSpotForecast, listSpots } from "./tools";
+import { NOT_RATED } from "./rating";
 import { ratingUnderWarnings } from "./warnings";
 
 const HOUR = 3600000;
@@ -149,6 +151,31 @@ describe("get_spot_forecast's warnings", () => {
     ]);
   });
 
+  it("gives no stars to an hour under orange, and says why", async () => {
+    const answer = value<{
+      hours: {
+        time: string;
+        rating?: unknown;
+        why_not_rated?: string;
+        warning?: { replaces_rating: boolean } | null;
+      }[];
+    }>(
+      await getSpotForecast.run(
+        { spot: "dollymount", hours: 7, level: "intermediate" },
+        deps([warning({}), yellowMarine]),
+      ),
+    );
+    const under = answer.hours.filter((h) => h.warning?.replaces_rating);
+    expect(under).toHaveLength(3);
+    for (const hour of under) {
+      expect(hour.rating).toBeNull();
+      expect(hour.why_not_rated).toBe(NOT_RATED.warning);
+    }
+    expect(
+      answer.hours.filter((h) => h.why_not_rated === NOT_RATED.warning),
+    ).toHaveLength(3);
+  });
+
   it("says nothing on the hours of a spot with no warning", async () => {
     const spots = await loadSpots(fixtureSource());
     const brandon = findSpot(spots, "brandon").spot!;
@@ -202,9 +229,10 @@ describe("get_spot_forecast's warnings", () => {
 });
 
 describe("find_wind under warnings", () => {
+  // Every hour the site rates counts, none or more stars.
   const options = {
-    minKnots: 0,
-    maxKnots: 80,
+    rider: DEFAULT_RIDER,
+    minStars: 0,
     daylightOnly: false,
     minSessionHours: 1,
     counties: ["Dublin"],

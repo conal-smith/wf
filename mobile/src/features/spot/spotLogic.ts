@@ -7,7 +7,7 @@
  * site's own page arithmetic takes (spot/web/spot.ts: the days, the folds of
  * night, the light) and reuses it as it stands.
  */
-import { shoreAngle } from "../../../../force5/src/stars";
+import { SHORE_LABEL, shoreAngle, type ShoreAngle } from "../../../../force5/src/stars";
 import { eventsBetween, tideAt, type TideCurve } from "../../../../force5/src/tides";
 import { compass } from "../../../../force5/src/weather";
 import type { ForecastHour } from "../../../../mcp/api/forecast";
@@ -25,11 +25,48 @@ import {
   dublinMidnight,
   groupDays,
   nextMidnight,
+  shoreHeading,
   type DaySun,
   type SpotDay,
   type SpotRow,
 } from "../../../../spot/web/spot";
+import { isOnWater } from "../../../../force5/src/shoreFacing";
 import type { MoreCells, RainCell, SkyCell, WaveCell } from "../dock/dockLogic";
+
+/**
+ * The spot screen's line under its name: the shore as the site's header says
+ * it (spot/web/spot.ts `shoreHeading`), the county and the sea, each only
+ * where there is one. A spot on the water says nothing of its shore, as on
+ * the site, so its line starts at the county.
+ */
+export function headerLine(
+  id: string,
+  county: string | null | undefined,
+  seaC: number | null,
+): string {
+  const heading = shoreHeading(id);
+  const shore =
+    heading?.kind === "facing"
+      ? `Faces ${compass(heading.facing)} ${Math.round(heading.facing)}°${
+          heading.best.length ? ` · best ${heading.best.join(", ")}` : ""
+        }`
+      : heading?.kind === "unknown"
+        ? heading.text
+        : null;
+  return [shore, county || null, seaC === null ? null : `Sea ${seaC.toFixed(1)}°`]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** An hour's caption of the shore: its angle, "facing unknown", or nothing on the water. */
+export function hourShoreCaption(
+  id: string,
+  shore: ShoreAngle | null,
+  facing: number | null,
+): string {
+  if (shore) return SHORE_LABEL[shore];
+  return facing === null && !isOnWater(id) ? "facing unknown" : "";
+}
 
 /** One row of the page: the site's SpotRow, and what the app knows beside it. */
 export interface PageRow extends SpotRow {

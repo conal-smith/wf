@@ -7,7 +7,7 @@
  */
 import type { HourWeather } from "../../mcp/api/forecast";
 import { SHORE_LABEL, shoreAngle } from "../../force5/src/stars";
-import { presentWeather, type WeatherIcon } from "../../force5/src/surface";
+import { presentWeather, skyOf } from "../../force5/src/presentWeather";
 import { ChartGlyph } from "../../shared/web/ChartGlyph";
 import { skyGlyph } from "../../shared/web/glyphSet";
 import { BeaufortGlyph } from "../../ui/BeaufortGlyph";
@@ -138,29 +138,6 @@ export function FacingGlyph({
       </g>
     </svg>
   );
-}
-
-/**
- * The sky as a present-weather group, from the model's code, or from its
- * cloud and rain where it gives no code. A clear or cloudy code over rain the
- * model still counts is rain.
- */
-export function skyOf(weather: HourWeather): WeatherIcon | null {
-  const present = presentWeather(weather.weather_code);
-  const raining = (weather.rain_mm ?? 0) >= 0.3;
-  if (present) {
-    const { icon } = present;
-    if (raining && (icon === "clear" || icon === "partly" || icon === "cloudy"))
-      return "rain";
-    return icon;
-  }
-  if (raining) return "rain";
-  if (weather.cloud_pct === null) return null;
-  return weather.cloud_pct < 25
-    ? "clear"
-    : weather.cloud_pct < 70
-      ? "partly"
-      : "cloudy";
 }
 
 /**

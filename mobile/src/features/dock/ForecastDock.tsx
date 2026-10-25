@@ -37,6 +37,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import Svg from "react-native-svg";
 import { modelName } from "../../../../force5/src/lead";
 import { modelEntry } from "../../../../force5/src/manifests";
+import { isOnWater } from "../../../../force5/src/shoreFacing";
 import { dayNights } from "../../../../force5/src/sun";
 import { tideAt } from "../../../../force5/src/tides";
 import { unitLabel } from "../../../../force5/src/units";
@@ -327,6 +328,7 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
   /* ---- why these stars ---- */
   const [tip, setTip] = useState<number | null>(null);
   const band = useMemo(() => bandKnots(forecast.rider), [forecast.rider]);
+  const onWater = spot ? isOnWater(spot.id) : false;
   const explanation = useMemo<HourExplanation | null>(() => {
     const hour = tip === null ? null : hours?.[tip];
     const column = tip === null ? null : strip[tip];
@@ -342,9 +344,10 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
       riderText: riderWords(forecast.rider),
       sweet: { low: band.sweetLow, high: band.sweetHigh },
       facingKnown: (spot?.facing ?? null) !== null,
+      onWater,
       model: hour.model,
     };
-  }, [tip, hours, strip, units, forecast.rider, band, spot?.facing]);
+  }, [tip, hours, strip, units, forecast.rider, band, spot?.facing, onWater]);
   const onStars = useCallback((column: number) => {
     tick();
     setTip(column);

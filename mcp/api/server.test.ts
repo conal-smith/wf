@@ -82,6 +82,66 @@ describe("the MCP endpoint", () => {
     expect(forecast.sources.wind.length).toBeGreaterThan(0);
   });
 
+  it("rates a spot's hours for the rider asked for, or the site's default", async () => {
+    const { call } = harness();
+    const plain = (
+      await call("get_spot_forecast", { spot: "dollymount", hours: 6 })
+    ).json();
+    expect(plain.rider.label).toBe("Riding · ~80 kg");
+    const first = plain.hours[0];
+    expect(
+      first.rating === null ? first.why_not_rated : first.rating.stars,
+    ).toEqual(expect.anything());
+    expect(plain.best_windows.length).toBeGreaterThan(0);
+    const heavy = (
+      await call("get_spot_forecast", {
+        spot: "dollymount",
+        hours: 6,
+        level: "advanced",
+        weight_kg: 95,
+        gusty: "lots",
+        wings_m2: [5, 3.5],
+      })
+    ).json();
+    expect(heavy.rider).toMatchObject({
+      label: "Advanced · 95 kg",
+      gusty: "lots",
+      wings_m2: [3.5, 5],
+    });
+    const bad = await call("get_spot_forecast", {
+      spot: "dollymount",
+      level: "expert",
+    });
+    expect(bad.isError).toBe(true);
+  });
+
+  it("ranks find_wind by the stars, and says for whom", async () => {
+    const { call } = harness();
+    const found = (
+      await call("find_wind", {
+        hours: 48,
+        level: "advanced",
+        gusty: "little",
+        counties: ["Dublin"],
+      })
+    ).json();
+    expect(found.rider.label).toBe("Advanced · ~80 kg");
+    expect(found.min_stars).toBe(1);
+    expect(found.wind_range_kn).toBeUndefined();
+    expect(found.spots.length).toBeGreaterThan(0);
+    for (const spot of found.spots)
+      for (const s of spot.sessions) {
+        expect(s.stars).toBeGreaterThanOrEqual(1);
+        expect(s.gust_factor).toEqual(expect.any(Number));
+      }
+    const best = found.spots.map(
+      (s: { best_window: { stars: number } }) => s.best_window.stars,
+    );
+    expect(best).toEqual([...best].sort((a, b) => b - a));
+    expect(found.method).toMatch(/rateHour/);
+    expect(found.method).not.toMatch(/12 kn/);
+  });
+
   it("asks which spot when a name is ambiguous or unknown", async () => {
     const { call } = harness();
     const ambiguous = await call("get_spot_forecast", { spot: "beach" });
@@ -90,6 +150,27 @@ describe("the MCP endpoint", () => {
     const unknown = await call("get_spot_forecast", { spot: "Timbuktu" });
     expect(unknown.isError).toBe(true);
     expect(unknown.text).toMatch(/list_spots/);
+  });
+
+  it("lists which spots are on the water, and the spots close by", async () => {
+    const { call } = harness();
+    const dublin = (await call("list_spots", { county: "Dublin" })).json();
+    const byId = new Map(
+      dublin.spots.map((s: { id: string }) => [s.id, s] as const),
+    );
+    expect(byId.get("malahide-estuary")).toMatchObject({
+      shore_type: "on-water",
+      nearby: expect.arrayContaining([
+        expect.objectContaining({ id: "kilcrea" }),
+      ]),
+    });
+    expect(byId.get("kilcrea")).toMatchObject({ shore_type: "beach" });
+    const forecast = (
+      await call("get_spot_forecast", { spot: "malahide-estuary", hours: 3 })
+    ).json();
+    expect(forecast.shore_type).toBe("on-water");
+    expect(forecast.nearby[0].id).toBe("kilcrea");
+    expect(forecast.hours[0].shore).toBe("on-water");
   });
 
   it("filters spots by county and says which counties exist", async () => {
@@ -117,7 +198,7 @@ describe("the MCP endpoint", () => {
     ).json();
     expect(found.spots.length).toBeLessThanOrEqual(3);
     expect(found.spots[0].sessions[0].local).toMatch(
-      /Sept, \d\d:\d\d – \d\d:\d\d$/,
+      /Sept, \d\d:\d\d – (\w+, \d+ Sept, )?\d\d:\d\d IST$/,
     );
     expect(found.sources.map((s: { id: string }) => s.id).sort()).toEqual([
       "ecmwf",
@@ -266,7 +347,7 @@ describe("the MCP endpoint", () => {
     const beyond = await call("find_wind", { from: "2026-10-01T00:00:00Z" });
     expect(beyond.isError).toBe(true);
     expect(beyond.text).toMatch(
-      /does not reach .*: it ends Mon, 28 Sept, 01:00 \(2026-09-28T00:00:00.000Z\), the last hour ECMWF covers/,
+      /does not reach .*: it ends Mon, 28 Sept, 01:00 IST \(2026-09-28T00:00:00.000Z\), the last hour ECMWF covers/,
     );
     const part = (
       await call("find_wind", { from: "2026-09-27T00:00:00Z", hours: 48 })
@@ -291,7 +372,7 @@ describe("the MCP endpoint", () => {
     });
     expect(beyond.isError).toBe(true);
     expect(beyond.text).toMatch(
-      /^The forecast does not reach Thu, 1 Oct, 01:00 yet: it ends Mon, 28 Sept, 01:00 \(2026-09-28T00:00:00.000Z\), the last hour ECMWF covers\. Ask for a time before then, or ask again nearer the time\.$/,
+      /^The forecast does not reach Thu, 1 Oct, 01:00 IST yet: it ends Mon, 28 Sept, 01:00 IST \(2026-09-28T00:00:00.000Z\), the last hour ECMWF covers\. Ask for a time before then, or ask again nearer the time\.$/,
     );
     const part = (
       await call("get_spot_forecast", {
@@ -334,7 +415,7 @@ describe("the MCP endpoint", () => {
       const answer = (await call(name, args)).json();
       expect(answer.window.from).toBe("2026-09-16T18:00:00.000Z");
       expect(answer.note).toBe(
-        "from was in the past, so the window starts at the current hour, Wed, 16 Sept, 19:00 (2026-09-16T18:00:00.000Z); earlier hours aren't available.",
+        "from was in the past, so the window starts at the current hour, Wed, 16 Sept, 19:00 IST (2026-09-16T18:00:00.000Z); earlier hours aren't available.",
       );
     }
     // Earlier in the current hour is still the current hour: nothing moved.

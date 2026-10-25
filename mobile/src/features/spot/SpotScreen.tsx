@@ -22,7 +22,7 @@ import {
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { starsFromAt, type StarsFrom } from "../../../../force5/src/lead";
-import { SHORE_LABEL } from "../../../../force5/src/stars";
+import { isOnWater } from "../../../../force5/src/shoreFacing";
 import { compass } from "../../../../force5/src/weather";
 import {
   HOUR,
@@ -33,7 +33,6 @@ import {
   dayNames,
   dublinDate,
   foldText,
-  goodWindArcs,
   gustJumps,
   windSay,
 } from "../../../../spot/web/spot";
@@ -57,6 +56,8 @@ import { riderWords } from "../settings/settingsLogic";
 import { DayTide } from "./DayTide";
 import {
   dayItems,
+  headerLine,
+  hourShoreCaption,
   pageDays,
   pageRows,
   parseTimeParam,
@@ -208,10 +209,11 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
             riderText: riderWords(forecast.rider),
             sweet: { low: band.sweetLow, high: band.sweetHigh },
             facingKnown: facing !== null,
+            onWater: isOnWater(spot.id),
             model: tip.place.model,
           }
         : null,
-    [tip, now, units, forecast.rider, band, facing],
+    [tip, now, units, forecast.rider, band, facing, spot.id],
   );
 
   const share = useCallback(() => {
@@ -241,7 +243,6 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
     [selectTime, strip],
   );
 
-  const arcs = facing === null ? [] : goodWindArcs(facing);
   const sea = marine.sea.observed;
   const nowHour = Math.floor(now / HOUR) * HOUR;
   const contentWidth = width - space.lg * 2;
@@ -250,15 +251,7 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
     <View style={styles.top}>
       <View style={styles.meta}>
         <T variant="label" caps color="muted">
-          {facing !== null
-            ? `Faces ${compass(facing)} ${Math.round(facing)}°${
-                arcs.length
-                  ? ` · best ${arcs.map((a) => (a.from === a.to ? a.from : `${a.from}–${a.to}`)).join(", ")}`
-                  : ""
-              }`
-            : "Facing unknown: rated on the wind alone"}
-          {spot.county ? ` · ${spot.county}` : ""}
-          {sea ? ` · Sea ${sea.latest.value.toFixed(1)}°` : ""}
+          {headerLine(spot.id, spot.county, sea ? sea.latest.value : null)}
         </T>
       </View>
       <RiderLine />
@@ -335,6 +328,7 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
         item={item}
         units={units}
         facing={facing}
+        spotId={spot.id}
         nowHour={nowHour}
         open={rowOpen(item.row.time)}
         reading={hourReading(strip[item.row.column], item.row.place, units)}
@@ -503,6 +497,7 @@ const HourRow = memo(function HourRow({
   item,
   units,
   facing,
+  spotId,
   nowHour,
   open,
   reading,
@@ -513,6 +508,7 @@ const HourRow = memo(function HourRow({
   item: Extract<DayItem, { kind: "row" }>;
   units: import("../../../../force5/src/units").Units;
   facing: number | null;
+  spotId: string;
   nowHour: number;
   open: boolean;
   reading: string;
@@ -651,11 +647,7 @@ const HourRow = memo(function HourRow({
           <View style={styles.moreFacts}>
             {place.from !== null ? (
               <T variant="caption" color="muted">
-                {row.shore
-                  ? SHORE_LABEL[row.shore]
-                  : facing === null
-                    ? "facing unknown"
-                    : ""}
+                {hourShoreCaption(spotId, row.shore, facing)}
               </T>
             ) : null}
             <T variant="caption" color="muted">

@@ -16,6 +16,8 @@ import {
   shareContent,
   tideCeiling,
   tideWords,
+  headerLine,
+  hourShoreCaption,
 } from "./spotLogic";
 
 const HOUR = 3600000;
@@ -130,5 +132,27 @@ describe("share", () => {
     const s = shareContent("Inch Strand", "inch");
     expect(s.url).toBe("https://wingfoil.ie/spot/inch");
     expect(s.message).toBe("Inch Strand wing foil forecast https://wingfoil.ie/spot/inch");
+  });
+});
+
+describe("the spot's shore", () => {
+  it("gives a beach its facing and the winds it wants, as the site does", () => {
+    expect(headerLine("kilcrea", "Dublin", 12.34)).toBe(
+      "Faces SSE 163° · best ENE–ESE, SSW–W · Dublin · Sea 12.3°",
+    );
+    expect(hourShoreCaption("kilcrea", "cross", 163)).toBe("cross-shore");
+  });
+
+  it("says nothing of the shore at a spot on the water, like any other spot", () => {
+    expect(headerLine("malahide-estuary", "Dublin", null)).toBe("Dublin");
+    expect(headerLine("malahide-estuary", "Dublin", 14.5)).toBe("Dublin · Sea 14.5°");
+    expect(hourShoreCaption("malahide-estuary", null, null)).toBe("");
+  });
+
+  it("still says a beach's facing is unknown where it is", () => {
+    expect(headerLine("bertra", "Mayo", null)).toBe(
+      "Facing unknown: rated on the wind alone · Mayo",
+    );
+    expect(hourShoreCaption("bertra", null, null)).toBe("facing unknown");
   });
 });
