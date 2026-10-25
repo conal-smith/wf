@@ -29,7 +29,8 @@ class AIFSGribTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
 
-    def grib(self, params=(165, 166), changes=None, name="wind.grib2", local=True):
+    def grib(self, params=(165, 166), changes=None, name="wind.grib2", local=True,
+             values=(1, 2, 3, 4)):
         """Two 2 × 2 AIFS wind messages over the north-east Atlantic.
 
         `local=False` writes them without ECMWF's local definition section, which is
@@ -57,7 +58,7 @@ class AIFSGribTests(unittest.TestCase):
                                 "uvRelativeToGrid": 0, **(changes or {})}
                     for key, value in metadata.items():
                         ec.codes_set(handle, key, value)
-                    ec.codes_set_values(handle, [1, 2, 3, 4])
+                    ec.codes_set_values(handle, list(values))
                     ec.codes_write(handle, stream)
                 finally:
                     ec.codes_release(handle)
@@ -69,6 +70,20 @@ class AIFSGribTests(unittest.TestCase):
         self.assertEqual(layout[2]["west"], -8)
         self.assertEqual(layout[2]["north"], 54.25)
         self.assertEqual((layout[2]["dx"], layout[2]["dy"]), (0.25, 0.25))
+
+    def test_keeps_the_shared_box_where_the_ifs_control_reaches_further(self):
+        """fetch_ecmwf.BBOX is the control's alone: the AI model's crop is the shared one."""
+        width, height = 201, 121  # 40°W–10°E, 70°N–40°N at 0.25°
+        path = self.grib(changes={"Ni": width, "Nj": height,
+                                  "latitudeOfFirstGridPointInDegrees": 70,
+                                  "latitudeOfLastGridPointInDegrees": 40,
+                                  "longitudeOfFirstGridPointInDegrees": 320,
+                                  "longitudeOfLastGridPointInDegrees": 10},
+                         values=[5] * (width * height))
+        _, layout = decode_wind(path, "2026091600", 150)
+        grid = layout[2]
+        self.assertEqual((grid["west"], grid["south"], grid["east"], grid["north"]),
+                         (-18.0, 48.0, 2.0, 59.0))
 
     def test_refuses_the_ifs_control_under_the_ai_model_id(self):
         """AIFS and IFS share centre and dataType; the MARS class separates them."""

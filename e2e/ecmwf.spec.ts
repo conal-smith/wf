@@ -122,3 +122,54 @@ test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", as
     await page.getByRole("button", { name: "Dismiss" }).click();
   }
 });
+
+test("the chart pans out over the Atlantic as far as ECMWF reaches, and a smaller model there draws nothing, without failing", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
+    timeout: 30000,
+  });
+  await openFromMenu(page, "Layers");
+  await page.locator('[data-model="ecmwf"]').click();
+  await closePanel(page);
+  await expect(page.locator(".map-model")).toContainText("ECMWF");
+  // Out as far as the chart goes, then west as far as it goes, by the keys
+  // the chart's canvas takes.
+  const zoomOut = page.getByRole("button", { name: "Zoom out", exact: true });
+  for (let i = 0; i < 4; i++) {
+    await zoomOut.click();
+    await page.waitForTimeout(400);
+  }
+  await page.locator(".maplibregl-canvas").focus();
+  for (let i = 0; i < 16; i++) {
+    await page.keyboard.press("ArrowLeft");
+    await page.waitForTimeout(150);
+  }
+  // The neatline names the meridians at least 400 px in from either edge
+  // (force5/src/neatline.ts). The chart used to stop at 18° W, which kept
+  // every label east of about 12° W; ECMWF's box reaches 30° W.
+  const westmost = () =>
+    page
+      .locator(".nl-t")
+      .allTextContents()
+      .then((labels) =>
+        Math.max(
+          ...labels
+            .filter((label) => label.endsWith("W"))
+            .map((label) => parseInt(label, 10)),
+        ),
+      );
+  await expect.poll(westmost, { timeout: 10000 }).toBeGreaterThanOrEqual(20);
+  await expect(page.locator(".frame-status.is-error")).toHaveCount(0);
+  // HARMONIE out here: its box is behind the view, so it draws nothing in
+  // most of it, and says nothing is wrong.
+  await openFromMenu(page, "Layers");
+  await page.locator('[data-model="harmonie"]').click();
+  await closePanel(page);
+  await expect(page.locator(".map-model")).toContainText("HARMONIE");
+  await page.waitForTimeout(1500);
+  await expect(page.locator(".frame-status.is-error")).toHaveCount(0);
+  expect(await westmost()).toBeGreaterThanOrEqual(20);
+});

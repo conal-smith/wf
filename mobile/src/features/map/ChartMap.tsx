@@ -28,11 +28,11 @@ import {
 import type { FeatureCollection, Point } from "geojson";
 import { memo, useMemo, type Ref } from "react";
 import { StyleSheet, View, type NativeSyntheticEvent } from "react-native";
-import { CHART_LAYERS, PLACE_CLASSES } from "../../../../force5/src/chartStyle";
+import { CHART_LAYERS, CHART_MIN_ZOOM, PLACE_CLASSES } from "../../../../force5/src/chartStyle";
 import { colors } from "../../theme/tokens";
 import type { FoilLayer } from "./foilLogic";
 import { labelLayers, lightLayers, wedgeLayer, type LightProps } from "./lightsLogic";
-import { focusFeatures, IRELAND_BOUNDS, type MapLayers } from "./mapLogic";
+import { CHART_PAN_BOUNDS, focusFeatures, IRELAND_BOUNDS, type MapLayers } from "./mapLogic";
 import { appChartStyle } from "./mapStyle";
 import { chartIcons } from "./sdfIcons";
 import type { SatelliteLayer } from "./useChartLayers";
@@ -193,9 +193,9 @@ export const ChartMap = memo(function ChartMap({
         <Camera
           ref={cameraRef}
           initialViewState={{ bounds: IRELAND_BOUNDS, padding: padding }}
-          minZoom={4.5}
+          minZoom={CHART_MIN_ZOOM}
           maxZoom={14}
-          maxBounds={[-18, 47, 2, 60]}
+          maxBounds={CHART_PAN_BOUNDS}
         />
         <Images images={icons} />
         <ChartOverrides layers={layers} focus={focus} />

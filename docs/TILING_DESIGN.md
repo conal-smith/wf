@@ -67,12 +67,15 @@ the one below, until a single tile covers the model's whole domain.
 
 Tiles per frame for today's boxes, on the global lattice of decision 2:
 
-| Level | Cell size | HARMONIE (0.025° × 0.02°) | ICON-EU (0.0625°) | ECMWF / GFS (0.25°) |
-|---|---|---|---|---|
-| 0, native | 1× | ~2 km, 3×3 tiles | ~7 km, 3×3 tiles | 2 tiles (the box crosses a tile edge at 58° N) |
-| 1 | 2× | 2×2 | 2×2 | 1 |
-| 2 | 4× | 1 | 2 | — |
-| 3 | 8× | — | 1 | — |
+| Level | Cell size | HARMONIE (0.025° × 0.02°) | ICON-EU (0.0625°) | GFS (0.25°) | ECMWF (0.25°) |
+|---|---|---|---|---|---|
+| 0, native | 1× | ~2 km, 3×3 tiles | ~7 km, 3×3 tiles | 2 tiles (the box crosses a tile edge at 58° N) | 2×2 (its wider box crosses 20° W too) |
+| 1 | 2× | 2×2 | 2×2 | 1 | 1 |
+| 2 | 4× | 1 | 2 | — | — |
+| 3 | 8× | — | 1 | — | — |
+
+(ECMWF's column is for its own box, 30°W–2°E, 44–62°N, since 25 October 2026:
+see "As built: ECMWF's Atlantic box". Until then it shared GFS's.)
 
 Why not Web Mercator tiles:
 
@@ -121,7 +124,7 @@ publish already does:
 
 - HARMONIE −10.9 / 55.7 at 0.025 / 0.02
 - ICON-EU −18 / 59 at 0.0625
-- ECMWF and GFS at 0.25
+- ECMWF −30 / 62 and GFS −18 / 59 at 0.25
 
 The validator will enforce it.
 
@@ -751,3 +754,31 @@ readers, and at the three implementations side by side. What changed:
   time, longitudes past ±180°, non-ASCII digits in a square's name, and when a frameless
   run's horizon is worked out. tests/fixtures/squares.json, superseded.json and
   run-digest.json hold the edge cases.
+
+## As built: ECMWF's Atlantic box
+
+ECMWF IFS crops its own box, 30°W–2°E, 44–62°N (`fetch_ecmwf.BBOX`), where every
+other model keeps the shared 18°W–2°E, 48–59°N or less, so a rider on ECMWF can see
+a storm out in the Atlantic days before it arrives. The lattice made this a matter of
+more tiles and nothing else (decision 2): the box gains tiles x = 4 at level 0, west of
+20° W, and still fits one overview tile at level 1, so no key, URL or reader changed.
+The chart's pan limit (`CHART_BOUNDS`, force5/src/chartStyle.ts) is drawn round the box,
+and a model with a smaller one draws nothing past its own edge.
+
+Measured on the real 00 UTC run of 25 October 2026, one download cropped both ways,
+brotli at quality 9 (gzip in brackets), mean over its 85 frames:
+
+| | 81 × 45 (before) | 129 × 73 (after) |
+|---|---|---|
+| Level 0 (5, 1): Ireland, 58° N southwards | 9.0 KB (10.9) | 12.8 KB (14.9) |
+| Level 0 (5, 0): north of 58° N | 1.2 KB (2.6) | 3.8 KB (5.4) |
+| Level 0 (4, 0) and (4, 1): west of 20° W | — | 1.8 + 6.0 KB (3.2 + 7.4) |
+| Level 1 overview, every hour on screen | 3.2 KB (4.8) | 6.9 KB (8.7) |
+| An Irish view, the hour on screen (its native tile and the overview) | 12.2 KB | 19.7 KB |
+| The whole box, the hour on screen | 13.4 KB | 31.3 KB |
+| A run, every tile | 1.17 MB, 255 tiles | 2.72 MB, 425 tiles |
+| The same frame as JSON, as before tiles | 58 KB, 15.6 KB gzipped | 150 KB, 38.3 KB gzipped |
+
+The download is unchanged, 164 MB a run: every field is fetched whole from the global
+grid. The spot squares came out byte for byte the same, and so did every native cell
+inside the old box.

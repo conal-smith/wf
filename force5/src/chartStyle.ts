@@ -38,6 +38,24 @@ export const IRELAND: [[number, number], [number, number]] = [
   [-5.42, 55.42],
 ];
 
+/**
+ * How far the chart pans, west-south, east-north: ECMWF IFS's crop, the widest
+ * any model publishes (30°W–2°E, 44–62°N, force5/ingest/fetch_ecmwf.py BBOX),
+ * and a degree more north and south, so a rider on ECMWF can look out over the
+ * Atlantic at what is coming. A model with a smaller box draws nothing past
+ * its edge (windLayer.ts): the chart is plain there, not wrong.
+ */
+export const CHART_BOUNDS: [[number, number], [number, number]] = [
+  [-30, 43],
+  [2, 63],
+];
+/**
+ * The furthest out the chart zooms. On a phone CHART_BOUNDS stops it first,
+ * at about 4.1, with the whole height of the box on screen; on a desktop the
+ * box's width does, at about 5.
+ */
+export const CHART_MIN_ZOOM = 4;
+
 const FONT = ["Noto Sans Italic"];
 const FONT_UP = ["Noto Sans Regular"];
 /** The upright face, for a layer of the map's own that prints figures (currentsLayer.ts). */
