@@ -7,7 +7,7 @@
  * the screen is Web Mercator scaled and shifted: 512 points a world at zoom
  * 0, as MapLibre counts it on both platforms.
  */
-import { IRELAND } from "../../../../force5/src/chartStyle";
+import { CHART_BOUNDS, IRELAND } from "../../../../force5/src/chartStyle";
 import { parseSatelliteOption, type SatelliteOption } from "../../../../force5/src/satellite";
 import type { ViewBounds } from "../../../../force5/src/squares";
 import type { MapView } from "../../../../force5/src/tiledField";
@@ -178,6 +178,14 @@ export function flightMs(from: Camera, to: { center: [number, number]; zoom: num
   const climb = Math.abs(to.zoom - from.zoom);
   return Math.round(Math.min(1600, 450 + 300 * Math.min(climb, 3) + 500 * Math.min(across, 1.5)));
 }
+
+/** The site's CHART_BOUNDS, as MapLibre React Native's [west, south, east, north]. */
+export const CHART_PAN_BOUNDS: [number, number, number, number] = [
+  CHART_BOUNDS[0][0],
+  CHART_BOUNDS[0][1],
+  CHART_BOUNDS[1][0],
+  CHART_BOUNDS[1][1],
+];
 
 /** IRELAND as MapLibre React Native's [west, south, east, north]. */
 export const IRELAND_BOUNDS: [number, number, number, number] = [

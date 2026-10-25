@@ -28,6 +28,9 @@ import {
   type HourRating,
   type Rider,
 } from "../force5/src/stars";
+// Only a type: the blend bundles this module, and the warnings (with their
+// area table) are applied apart from it, in src/warnHours.ts.
+import type { WarningLevel } from "../force5/src/warnings";
 
 /** What one place is rated as: where it is and which way its shore faces. */
 export interface RatedPlace {
@@ -35,6 +38,15 @@ export interface RatedPlace {
   lat: number;
   lon: number;
   facing: number | null;
+  /** Its county, for the Met Éireann warnings it is in (force5/src/warnings.ts). */
+  county?: string;
+}
+
+/** The Met Éireann warnings over a column, at their highest level. */
+export interface PlaceHourWarning {
+  level: WarningLevel;
+  /** Orange or red: the warning stands in place of the column's stars. */
+  replacesRating: boolean;
 }
 
 /** One column at one place. Speeds in knots; the bearing is where it blows from. */
@@ -48,6 +60,8 @@ export interface PlaceHour {
   rating: HourRating | null;
   /** The one model the wind, the gust, the bearing and so the stars are; null where none is. */
   model: string | null;
+  /** Met Éireann warnings over the column; absent or null with none. */
+  warning?: PlaceHourWarning | null;
 }
 
 const HOUR = 3600000;
@@ -327,10 +341,15 @@ export function placeConsensus(
   return out;
 }
 
-/** Whether each axis time is in daylight at a place, as the dock decides it. */
+/**
+ * Whether each axis time is in daylight at a place, as the dock decides it:
+ * sunrise to sunset, or with `boundary: "civil"` first light to last light,
+ * civil dawn to civil dusk (force5/src/sun.ts).
+ */
 export function daylightOn(
   place: Pick<RatedPlace, "lat" | "lon">,
   axis: readonly string[],
+  options: { boundary?: "sun" | "civil" } = {},
 ): boolean[] {
   if (!axis.length) return [];
   const nights = dayNights(
@@ -338,6 +357,7 @@ export function daylightOn(
     place.lon,
     new Date(axis[0]),
     new Date(axis[axis.length - 1]),
+    options,
   );
   return axis.map((iso) => {
     const time = Date.parse(iso);

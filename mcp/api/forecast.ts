@@ -87,6 +87,17 @@ import {
   type HourStars,
   type RiderUsed,
 } from "./rating.js";
+import {
+  hourWarning,
+  loadWarnings,
+  placeWarnings,
+  ratingUnderWarnings,
+  warningsAcross,
+  warningsAnswer,
+  type HourWarning,
+  type PlaceWarnings,
+  type WarningsAnswer,
+} from "./warnings.js";
 
 const HOUR = 3600000;
 /** Waves and weather are nearest-step, never interpolated (VARIABLE_MATCH_HOURS). */
@@ -1588,6 +1599,12 @@ export interface ForecastHour {
    */
   rating?: HourStars | null;
   why_not_rated?: string;
+  /**
+   * The Met Éireann warnings covering the hour, on every hour when the spot has
+   * any (null on an hour none covers); absent when it has none. Orange or red
+   * (`replaces_rating`): no rating, never rideable.
+   */
+  warning?: HourWarning | null;
 }
 
 /** One Irish day's light at the spot, in Irish time with its zone. */
@@ -1645,6 +1662,8 @@ export interface SpotForecast {
   sun: DayLight[];
   tides: SpotTides | { note: string } | null;
   sea_temperature: SpotSea | null;
+  /** Met Éireann's warnings for the spot, in force or still to come (mcp/api/warnings.ts). */
+  warnings: WarningsAnswer;
   sources: {
     wind: ModelRun[];
     wind_outside_domain: string[];
@@ -1768,13 +1787,15 @@ export async function spotForecast(
 ): Promise<SpotForecast> {
   // Only the one square that holds the spot is read, of each model.
   const square = [spotSquare(spot.lat, spot.lon)];
-  const [wind, waves, weather, tides, sea] = await Promise.all([
+  const [wind, waves, weather, tides, sea, warned] = await Promise.all([
     loadWind(source, options.now, square),
     loadWaves(source, options.now, square),
     loadWeather(source, options.now, square),
     spotTides(source, spot.id, window),
     spotSea(source, spot.id),
+    loadWarnings(source),
   ]);
+  const warnings = placeWarnings(warned, spot, options.now);
   const { lines, outside } = spotWindLines(wind.loaded, spot.id);
   const memberLines = spotMemberLines(wind.loaded, spot.id);
   const waveSource = handedSource(waves.loaded, spot.id, ["swh"]);
@@ -1807,6 +1828,8 @@ export async function spotForecast(
         );
     }
     if (memberLines.length) hour.ensemble = hourEnsemble(memberLines, time);
+    if (warnings.warnings.length)
+      hour.warning = hourWarning(warnings, time, window.stepHours);
     return hour;
   });
   // The sky as the spot page draws it, from each hour's share of the rain.
@@ -1822,6 +1845,7 @@ export async function spotForecast(
     ? rateForecast(lines, window, hours, spot, facing, tides, {
         rider: options.rider,
         from: options.from,
+        warnings,
       })
     : null;
   const days = new Set(hours.map((h) => dublinDate(Date.parse(h.time))));
@@ -1856,6 +1880,7 @@ export async function spotForecast(
     sun,
     tides,
     sea_temperature: sea,
+    warnings: warningsAnswer(warnings, options.now, spot),
     sources: {
       wind: lines.map((l) => l.run),
       wind_outside_domain: outside,
@@ -1889,14 +1914,21 @@ function rateForecast(
   spot: RidingSpot,
   facing: number | null,
   tides: SpotTides | { note: string } | null,
-  options: { rider: Rider; from?: StarsFrom },
+  options: { rider: Rider; from?: StarsFrom; warnings: PlaceWarnings },
 ): DayWindow[] {
-  const { rider } = options;
+  const { rider, warnings } = options;
   for (const row of rows) {
-    const rating = rateWind(row.wind, row.daylight, facing, rider);
+    const rating = ratingUnderWarnings(
+      rateWind(row.wind, row.daylight, facing, rider),
+      row.warning,
+    );
     row.rating = rating && row.wind && hourStars(rating, row.wind, rider);
     if (!row.rating)
-      row.why_not_rated = row.wind ? NOT_RATED.dark : NOT_RATED.noWind;
+      row.why_not_rated = row.warning?.replaces_rating
+        ? NOT_RATED.warning
+        : row.wind
+          ? NOT_RATED.dark
+          : NOT_RATED.noWind;
   }
   const hourly = axis({ ...window, stepHours: 1 }).map((time) => {
     const wind = hourWind(lines, time, false, options.from);
@@ -1904,11 +1936,14 @@ function rateForecast(
       time,
       wind,
       shore: shoreOf(facing, wind),
-      rating: rateWind(wind, daylight(spot, time), facing, rider),
+      // An orange or red warning leaves the hour unrated, before any window
+      // is picked.
+      rating: ratingUnderWarnings(
+        rateWind(wind, daylight(spot, time), facing, rider),
+        hourWarning(warnings, time),
+      ),
     };
   });
-  // An official warning (#173) lowers these ratings here, before any window
-  // is picked from them.
   const events = tides && "events" in tides ? tides.events : [];
   const days = new Map<string, typeof hourly>();
   for (const hour of hourly) {
@@ -1923,7 +1958,7 @@ function rateForecast(
         window: null,
         why_none: day.some((h) => h.rating)
           ? "no two hours in a row earn a star for this rider"
-          : "no hour of the window on this day is rated: dark, or no wind forecast",
+          : "no hour of the window on this day is rated: dark, no wind forecast, or an orange or red warning",
       };
     const run = day
       .slice(best.from, best.to + 1)
@@ -2007,6 +2042,8 @@ export interface SpotSessions {
    */
   best_window: Session | null;
   sessions: Session[];
+  /** Ids of the Met Éireann warnings in force at the spot during the search. */
+  warnings?: string[];
 }
 
 export interface FindOptions {
@@ -2079,6 +2116,8 @@ export async function findSessions(
   searched: number;
   sources: ModelRun[];
   unavailable: Unavailable[];
+  /** Every Met Éireann warning in force at a searched spot during the window. */
+  warnings: WarningsAnswer;
   /**
    * The last hour the models the ranking reads (the stars' model and the one
    * after it) reach, and which of them reaches it, or null when neither is
@@ -2102,13 +2141,25 @@ export async function findSessions(
   );
   // The squares of the places searched: every square for all of Ireland,
   // fewer for a county or a radius.
-  const wind = await loadWind(source, options.now, squaresFor(pool));
+  const [wind, warned] = await Promise.all([
+    loadWind(source, options.now, squaresFor(pool)),
+    loadWarnings(source),
+  ]);
   const times = axis({ ...window, stepHours: 1 });
+  const warnings = warningsAcross(warned, pool, options.now, {
+    from: window.from,
+    to: times.at(-1)! + HOUR,
+  });
   const results: SpotSessions[] = [];
   for (const spot of pool) {
     const { lines } = spotWindLines(wind.loaded, spot.id);
     if (!lines.length) continue;
     const facing = shoreFacing(spot.id);
+    const spotWarnings: PlaceWarnings = {
+      status: warnings.answer.status,
+      checkedAt: warnings.answer.checked_at,
+      warnings: warnings.bySpot.get(spot.id) ?? [],
+    };
     const sessions: Session[] = [];
     const hours: SessionHour[] = [];
     let run: SessionHour[] = [];
@@ -2122,13 +2173,16 @@ export async function findSessions(
       const shore = shoreOf(facing, hour);
       // Rated as on the site, sunrise to sunset; a search for dark hours
       // rates them as though they were light.
-      const rating = rateWind(
-        hour,
-        !options.daylightOnly || daylight(spot, time),
-        facing,
-        options.rider,
+      // An orange or red warning leaves the hour unrated, so it never counts.
+      const rating = ratingUnderWarnings(
+        rateWind(
+          hour,
+          !options.daylightOnly || daylight(spot, time),
+          facing,
+          options.rider,
+        ),
+        hourWarning(spotWarnings, time),
       );
-      // An official warning (#173) lowers `rating` here, before it counts.
       const good =
         hour !== null &&
         rating !== null &&
@@ -2171,6 +2225,9 @@ export async function findSessions(
           )
         : null,
       sessions,
+      ...(spotWarnings.warnings.length && {
+        warnings: spotWarnings.warnings.map((w) => w.warning.capId),
+      }),
     });
   }
   results.sort(
@@ -2185,6 +2242,7 @@ export async function findSessions(
     searched: pool.length,
     sources: runs,
     unavailable: wind.unavailable,
+    warnings: warnings.answer,
     reach: forecastReach(runs, options.from),
   };
 }

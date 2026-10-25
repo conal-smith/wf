@@ -17,6 +17,7 @@ import { clock, dayShort } from "../src/strip";
 import { buildPyramid } from "../scripts/f5tile.mjs";
 import { readFileSync } from "node:fs";
 import { spotSquare } from "../force5/src/squares";
+import { dayNights } from "../force5/src/sun";
 
 const harmonie = readSample("harmonie");
 
@@ -288,9 +289,9 @@ test("the strip and the slider move together, by swipe, wheel and key", async ({
   // A plain wheel, turned up or down, moves the hours sideways, eased over
   // a few frames rather than in one jump, and comes to rest on an hour.
   await wrap.hover();
-  // Counted in frames, so read at frame rate: the hours scrolled above have
-  // the chart drawing each one's wind, and on CI's software renderer a frame
-  // of that is a fifth of a second, the ease over in two or three of them.
+  // Read at frame rate: the hours scrolled above have the chart drawing each
+  // one's wind, and on CI's software renderer a frame of that is a fifth of a
+  // second, the ease over in two or three of them.
   await steadyFrames(page);
   const before = await wrap.evaluate((el) => el.scrollLeft);
   const frames = wrap.evaluate(
@@ -311,7 +312,12 @@ test("the strip and the slider move together, by swipe, wheel and key", async ({
   const between = new Set(
     path.filter((left) => left > before + 1 && left < Math.max(...path) - 1),
   );
-  expect(between.size).toBeGreaterThan(2);
+  // Eased, not jumped: a frame finds the strip part-way there. How many do is
+  // the frame rate's, not the ease's: it runs on time (src/wheelHours.ts), and
+  // the hours it passes have the chart drawing each one's wind, so on CI's
+  // renderer the frames slow down under it and catch two places on the way,
+  // where a laptop catches a dozen.
+  expect(between.size).toBeGreaterThan(0);
   await expect
     .poll(async () => Number(await slider(page).inputValue()))
     .toBeGreaterThan(scrolled);
@@ -422,6 +428,73 @@ test("a night hour is a column of its own: tapped, keyed and under the line", as
     /^Mon \d{1,2} [A-Z][a-z]{2,3}, 04:00$/,
   );
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
+});
+
+test("the night's hours can be left out, from last light to first, and stay so", async ({
+  page,
+}) => {
+  await openDock(page);
+  const hours = page.locator(".dock tr.tt-hour td[data-i]");
+  // Round the clock unless the reader says otherwise, the night hatched.
+  await expect(hours).toHaveCount(sampleStrip.length);
+  await expect(page.locator(".dock tr.tt-hour td.night").first()).toBeAttached();
+  await openFromMenu(page, "Display options");
+  const choice = page.getByRole("group", { name: "Hours in the forecast" });
+  await expect(
+    choice.getByRole("button", { name: "Day and night" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await choice.getByRole("button", { name: "First to last light" }).click();
+  await closePanel(page);
+  // Brandon's lit hours alone: from civil dawn to civil dusk, each day.
+  const nights = dayNights(
+    52.276,
+    -10.024,
+    new Date(sampleStrip[0].time),
+    new Date(sampleStrip.at(-1)!.time + 86400000),
+    { boundary: "civil" },
+  );
+  const lit = sampleStrip.filter(
+    (c) =>
+      !nights.some(
+        (night) =>
+          c.time >= night.from.getTime() && c.time < night.to.getTime(),
+      ),
+  );
+  expect(lit.length).toBeLessThan(sampleStrip.length);
+  await expect(hours).toHaveCount(lit.length);
+  expect((await hours.allTextContents()).map(Number)).toEqual(
+    lit.map((c) => c.hour),
+  );
+  // None of the small hours; the twilight after sunset stays, hatched.
+  expect(lit.some((c) => c.hour < 5)).toBe(false);
+  // The clock stands at 22:00 on the Sunday, after last light: the time
+  // moves on to Monday's first light, framed, and the map goes with it.
+  const morning = lit.findIndex((c) => c.date !== sampleStrip[0].date);
+  await expect(slider(page)).toHaveValue(String(morning));
+  await expect(slider(page)).toHaveAttribute(
+    "aria-valuetext",
+    new RegExp(`^Mon \\d{1,2} [A-Z][a-z]{2,3}, ${clock(lit[morning].time)}$`),
+  );
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  // A key back is Sunday's last light, not its night.
+  await slider(page).focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(slider(page)).toHaveAttribute(
+    "aria-valuetext",
+    new RegExp(`^Sun \\d{1,2} [A-Z][a-z]{2,3}, ${clock(lit[morning - 1].time)}$`),
+  );
+  // Kept on reload, for the next spot chosen.
+  await page.reload();
+  await chooseSpot(page, "brandon");
+  await expect(hours).toHaveCount(lit.length, { timeout: 30000 });
+  // And back round the clock.
+  await openFromMenu(page, "Display options");
+  await page
+    .getByRole("group", { name: "Hours in the forecast" })
+    .getByRole("button", { name: "Day and night" })
+    .click();
+  await closePanel(page);
+  await expect(hours).toHaveCount(sampleStrip.length);
 });
 
 test("the arrow keys step the hour as the page opens, with nothing clicked, and only as pressed", async ({
@@ -617,6 +690,7 @@ test("units and the blend's models are display options, kept on reload; the ride
   ).toHaveCount(0);
   await expect(options.getByRole("heading")).toHaveText([
     "Units",
+    "Hours",
     "Model",
     "Models in the blend",
   ]);
@@ -950,8 +1024,9 @@ test("the head's chevron is the dock's one fold: the rows under the figures", as
   await expect(open).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(1);
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
-  // The waves, the sky, the air and the rain, a row each.
-  expect(await height()).toBeGreaterThanOrEqual(before + 80);
+  // The gust factor, the waves, the current, the sky, the air and the rain,
+  // a row each.
+  expect(await height()).toBeGreaterThanOrEqual(before + 120);
   await open.click();
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
@@ -1438,7 +1513,7 @@ test("waves, current, sky, air and rain are one tap away, and stay open", async 
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
   await expect(page.locator(".dock .dk-sea")).toHaveCount(0);
   await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
-  for (const row of ["waves", "current", "sky", "air", "rain"])
+  for (const row of ["gust", "waves", "current", "sky", "air", "rain"])
     await expect(page.locator(`.dock tr.tt-${row}`)).toHaveCount(1);
   // The sea is one value for the week, and is the spot page's to say: no
   // row for it here, and nothing in the head.
@@ -1515,6 +1590,71 @@ test("waves, current, sky, air and rain are one tap away, and stay open", async 
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
 });
 
+test("the gust factor heads the rows under the fold: each hour's gust over its wind", async ({
+  page,
+}) => {
+  await openDock(page);
+  await expect(page.locator(".dock tr.tt-gust")).toHaveCount(0);
+  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  const cells = page.locator(".dock tr.tt-gust td[data-i]");
+  await expect(cells).toHaveCount(sampleStrip.length);
+  // Named, with its threshold, in its glyph's title; its unit beside it.
+  await expect(
+    page.locator(
+      '.dk-labs .dk-glyph[title="Gust factor, gust ÷ wind (none under 5 kn)"]',
+    ),
+  ).toHaveCount(1);
+  // A factor to a tenth, a dash where the model gives no gust, or nothing in
+  // a near calm.
+  const read = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>(".dock tr.tt-gust td[data-i]")].map(
+      (td) => {
+        const wind = document.querySelector(
+          `.dock tr.tt-wind td[data-i="${td.dataset.i}"]`,
+        );
+        return {
+          factor: td.textContent ?? "",
+          kind: td.querySelector(".gust-cell")?.className ?? "",
+          kn: wind?.querySelector(".kn")?.textContent ?? "",
+          gust: (wind?.querySelector(".gu")?.textContent ?? "").replace(
+            /\D/g,
+            "",
+          ),
+        };
+      },
+    ),
+  );
+  for (const cell of read) expect(cell.factor).toMatch(/^(\d\.\d×|–|)$/);
+  const figures = read.filter((cell) => cell.factor.endsWith("×"));
+  expect(figures.length).toBeGreaterThan(0);
+  for (const { factor, kind, kn, gust } of figures) {
+    // The wind row's gust over its wind, give or take their rounding, and
+    // never under 1 (the sample's gust is now and then under its mean).
+    const f = parseFloat(factor);
+    const wind = Number(kn);
+    const g = Number(gust);
+    expect(Math.abs(f - Math.max(1, g / wind))).toBeLessThanOrEqual(
+      0.1 + (g / wind) * (0.5 / wind + 0.5 / g),
+    );
+    // Tinted as the stars read it: gusty from 1.5×, very gusty from 1.8×,
+    // and never where the wind is under the default rider's floor (11 kn).
+    if (kind.includes("is-very-gusty")) expect(f).toBeGreaterThanOrEqual(1.8);
+    else if (kind.includes("is-gusty")) {
+      expect(f).toBeGreaterThanOrEqual(1.5);
+      expect(f).toBeLessThan(1.8);
+    } else if (f >= 1.5) expect(wind).toBeLessThanOrEqual(11);
+  }
+  // A near calm has no factor, a wind no more than 5 kn.
+  for (const { kn } of read.filter((cell) => cell.factor === ""))
+    expect(Number(kn)).toBeLessThanOrEqual(5);
+  const tinted = page.locator(".dock tr.tt-gust .gust-cell.is-very-gusty");
+  if (await tinted.count())
+    await expect(tinted.first()).not.toHaveCSS(
+      "background-color",
+      "rgba(0, 0, 0, 0)",
+    );
+});
+
 test("on a phone, the rows under the tide keep their units beside their glyphs", async ({
   page,
 }) => {
@@ -1531,7 +1671,7 @@ test("on a phone, the rows under the tide keep their units beside their glyphs",
   // glyphs need none).
   await expect(page.locator(".dk-labs .dk-lab-wind small")).toBeVisible();
   const units = page.locator(".dk-labs .dk-unit");
-  await expect(units).toHaveText(["m", "°C", "mm/h"]);
+  await expect(units).toHaveText(["×", "m", "°C", "mm/h"]);
   // Each within the label column, clear of its glyph and of the hours.
   const column = (await page.locator(".dk-labs").boundingBox())!;
   for (const unit of await units.all()) {
@@ -2031,7 +2171,7 @@ test.describe("on a phone", () => {
     await expect(dock.locator("tr.tt-hour td.c-sel")).toHaveCount(1);
     await expect.poll(() => offCursor(page)).toBeLessThan(2);
     // A short quick flick is as good as a long pull: one snap down. Short is
-    // under half of the 100 px from full to half (five rows below the fold),
+    // under half of the 120 px from full to half (six rows below the fold),
     // so it is the flick's speed, not its length, that carries the sheet
     // there; on a slow runner the speed is read lower, and 30 px with it
     // fell short of the middle once the current's row made the gap 100.

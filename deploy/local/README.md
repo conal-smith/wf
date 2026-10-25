@@ -108,15 +108,15 @@ in UTC. The shipped schedule is:
 | `tides`           | 01:05 daily        | predictions, not a forecast cycle                     |
 | `sea-temperature` | every 3 h at :15   | Marine Institute observations, newest reading         |
 | `wind-obs`        | every hour at :50  | Met Éireann and buoy wind observations, last 72 h     |
+| `warnings`        | every hour at :25  | Met Éireann's weather warnings, copied unaltered      |
 | `forecast-archive`| every hour at :15  | copies served wind runs and observations to archive/  |
 | `verify`          | 07:25 daily        | model and blend scores (docs/VERIFICATION.md)         |
 | `prune`           | every hour at :10  | retention (see below)                                 |
 
-Six models are **retired** to keep the home connection's downloads near 80 GB a
-month: the ECMWF ensemble, AIFS, GEFS, ARPEGE, AROME and ECMWF waves. Their jobs
-ship disabled and `force5/src/catalog.ts` marks them `retired`, so the site,
-the blend, the verification replica and the forecast server neither fetch nor list
-them. Their adapters are unchanged: to bring one back, enable its job, clear
+Six models were **retired** on 10 October 2026: the ECMWF ensemble, AIFS, GEFS,
+ARPEGE, AROME and ECMWF waves. Their jobs ship disabled and `force5/src/catalog.ts`
+marks them `retired`, so the site, the blend, the verification replica and the
+forecast server neither fetch nor list them. Their adapters are unchanged: to bring one back, enable its job, clear
 `retired`, and add it back to `MAP_MODEL_IDS`, `consensus.BLEND_MODELS` and the
 forecast server's lists as the tests direct.
 
@@ -135,7 +135,7 @@ already published download nothing):
 
 ICON-EU weather and GFS weather went hourly on 24 October 2026, so the dock's rain is
 each hour's own and the map has a Rain layer: about 17 GB a month more than the
-~75 GB before, over the ~80 GB target. `--step 3` in the `icon-eu-weather` job's
+~75 GB before. `--step 3` in the `icon-eu-weather` job's
 `args` takes it back to ~300 MB a run (and three-hour rain).
 
 Edit the file, then check and apply it:

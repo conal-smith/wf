@@ -32,8 +32,11 @@ that resolution alone determines accuracy. Ensemble probabilities are future wor
    requests, bounded retries; cached GRIBs are revalidated and repaired if corrupt.
 2. **Validate and crop:** reject wrong provider/control product, parameter, run,
    lead/valid time, vector orientation, unit, grid, missing component and implausible
-   values. Reuse the existing regular-grid decoder. Crop west −18°, south 48°,
-   east 2°, north 59°: 81 × 45 cells. Do not spatially downscale the input.
+   values. Reuse the existing regular-grid decoder. Crop west −30°, south 44°,
+   east 2°, north 62°: 129 × 73 cells, ECMWF's own box, wider into the Atlantic
+   than the −18°/48°/2°/59° (81 × 45) the other models share and this model used
+   until 25 October 2026 (LIVE_FORECAST_PIPELINE.md). Do not spatially downscale
+   the input.
 3. **Publish:** write content-addressed frame JSONs and named-spot summaries;
    write `weather/ecmwf.json` last. The Docker worker validates the complete
    cadence again, uploads immutable objects, then atomically advances the S3

@@ -160,6 +160,8 @@ import {
 import { freshwaterSpots, tideAt } from "../force5/src/tides";
 import { nearestSpotOnWater } from "../force5/src/pointSource";
 import { FEATURES } from "../shared/web/features";
+import { useWarnings } from "./useWarnings";
+import { placeWarnings } from "../force5/src/warnings";
 import { favourites } from "../shared/web/favourites";
 import {
   compass,
@@ -950,6 +952,7 @@ export default function App() {
         lat: s.lat,
         lon: s.lon,
         facing: s.facing ?? null,
+        county: s.county,
       })),
     [spots],
   );
@@ -975,6 +978,7 @@ export default function App() {
   // `rated.squares` is what was read, not what was asked: a square some model
   // could not read keeps its places pending, and the rest are rated.
   const rated = useSpotSquaresState(windOnly, ownSquares, true);
+  const warnings = useWarnings();
   const { hours, version } = useRatings(
     rated.models,
     prefs.blendModels,
@@ -988,6 +992,7 @@ export default function App() {
       : rated.squares === ALL_SQUARES
         ? null
         : (rated.squares ?? []),
+    warnings,
   );
   const lights = useMemo(() => {
     const out = new Map<string, LightState>();
@@ -1500,6 +1505,15 @@ export default function App() {
 
   /** With no spot chosen there is no dock, and nothing at the chart's foot. */
   const dockOpen = opened && !!dockSpot && strip.length > 0;
+  // The riding place's Met Éireann warnings, for the dock's strip: the same
+  // file and rule its stars were worked out with (src/useRatings.ts).
+  const dockWarnings = useMemo(
+    () =>
+      dockSpot && !picked
+        ? placeWarnings(warnings, dockSpot, clockNow).warnings
+        : [],
+    [warnings, dockSpot, picked, clockNow],
+  );
 
   const pointHours: PlaceHour[] | undefined = picked
     ? pickedHours
@@ -1996,6 +2010,7 @@ export default function App() {
                     !!dockSpot && !picked && starred.includes(dockSpot.id)
                   }
                   onToggleStar={() => dockSpot && fav.toggle(dockSpot.id)}
+                  warnings={dockWarnings}
                   tide={tide.tide}
                   onClose={closeDock}
                   phone={phone}

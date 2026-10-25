@@ -6,7 +6,9 @@ import { beaufortPath } from "../../ui/beaufortPath";
 import { loopPath } from "../../ui/penPaths";
 import {
   BATHY_PATH,
+  CHART_BOUNDS,
   CHART_LAYERS,
+  CHART_MIN_ZOOM,
   COAST_INK,
   IRELAND,
   PLACE_CLASSES,
@@ -718,12 +720,9 @@ export default function WindMap(props: Props) {
         style: chartStyle(colours, archiveUrl(bathy)),
         bounds: IRELAND,
         fitBoundsOptions: { padding: 20 },
-        minZoom: 4.5,
+        minZoom: CHART_MIN_ZOOM,
         maxZoom: 14,
-        maxBounds: [
-          [-18, 47],
-          [2, 60],
-        ],
+        maxBounds: CHART_BOUNDS,
         pitchWithRotate: false,
         dragRotate: false,
         touchPitch: false,

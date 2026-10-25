@@ -177,6 +177,7 @@ describe("display preferences", () => {
       ...defaultPrefs(),
       units: "km/h",
       view: "candles",
+      nightHours: "hide",
       blendModels: ["ecmwf", "gfs"],
       rows: { ...defaultPrefs().rows, gust: true, tide: false },
     };
@@ -220,6 +221,17 @@ describe("display preferences", () => {
     expect(loadPrefs(only).blendModels).toEqual(
       windModels().map((model) => model.id),
     );
+  });
+  it("shows the night's hours unless the reader has hidden them", () => {
+    expect(defaultPrefs().nightHours).toBe("show");
+    const stored = (nightHours: unknown) =>
+      loadPrefs(fakeStorage({ [PREFS_KEY]: JSON.stringify({ nightHours }) }))
+        .nightHours;
+    expect(stored("hide")).toBe("hide");
+    expect(stored("show")).toBe("show");
+    expect(stored(undefined)).toBe("show");
+    expect(stored(false)).toBe("show");
+    expect(stored("dark")).toBe("show");
   });
   it("merges partial and unknown stored values over the defaults", () => {
     const storage = fakeStorage({

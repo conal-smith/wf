@@ -119,7 +119,11 @@ describe("the Pages worker", () => {
     };
     expect(body.result.content[0].text).toContain("Dollymount");
     expect(asked).toContain("/riding-locations.json");
-    expect(data).not.toHaveBeenCalled();
+    // Of the forecast base, list_spots reads only Met Éireann's warnings.
+    expect(data.mock.calls.map((call) => String(call[0]))).toEqual([
+      "https://data.example/marine/warnings.json",
+    ]);
+    data.mockClear();
 
     await worker.fetch(
       rpc("tools/call", { name: "forecast_sources", arguments: {} }),

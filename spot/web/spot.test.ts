@@ -22,6 +22,7 @@ import {
   nextMidnight,
   placeChanges,
   rowHours,
+  rowWarning,
   shadeBands,
   shoreSummary,
   skyStopsOn,
@@ -201,6 +202,70 @@ describe("rows", () => {
     expect(rows[0].shore).toBe("cross-on");
     expect(rows[1].rating).toBeNull();
     expect(rows[1].shore).toBe("cross-on");
+  });
+});
+
+describe("Met Éireann warnings on the rows", () => {
+  const now = Date.parse("2026-10-09T06:00:00Z");
+  const warned = (
+    iso: string,
+    level: "yellow" | "orange" | "red" | null,
+  ): ForecastHour => ({
+    ...hour(iso, 16, true, 225),
+    ...(level && {
+      warning: { level, ids: [level], replaces_rating: level !== "yellow" },
+    }),
+  });
+
+  it("takes the stars away under orange and red, and keeps them under yellow", () => {
+    const rows = spotRows(
+      [
+        warned("2026-10-09T11:00:00Z", null),
+        warned("2026-10-09T12:00:00Z", "yellow"),
+        warned("2026-10-09T13:00:00Z", "orange"),
+        warned("2026-10-09T14:00:00Z", "red"),
+      ],
+      now,
+      270,
+      DEFAULT_RIDER,
+    );
+    const stars = rows[0].rating!.stars;
+    expect(stars).toBeGreaterThan(0);
+    expect(rows.map((row) => row.rating?.stars ?? null)).toEqual([
+      stars,
+      stars,
+      null,
+      null,
+    ]);
+    expect(rows.map((row) => row.warning?.level ?? null)).toEqual([
+      null,
+      "yellow",
+      "orange",
+      "red",
+    ]);
+  });
+
+  it("gives a three-hour row every warning over its three hours", () => {
+    const byTime = new Map(
+      [
+        warned("2026-10-12T09:00:00Z", "yellow"),
+        warned("2026-10-12T10:00:00Z", null),
+        warned("2026-10-12T11:00:00Z", "orange"),
+        warned("2026-10-12T12:00:00Z", null),
+      ].map((h) => [Date.parse(h.time), h]),
+    );
+    const at = Date.parse("2026-10-12T09:00:00Z");
+    expect(rowWarning(byTime, at, 3)).toEqual({
+      level: "orange",
+      ids: ["yellow", "orange"],
+      replaces_rating: true,
+    });
+    expect(rowWarning(byTime, at, 1)).toEqual({
+      level: "yellow",
+      ids: ["yellow"],
+      replaces_rating: false,
+    });
+    expect(rowWarning(byTime, at + HOUR, 1)).toBeNull();
   });
 });
 

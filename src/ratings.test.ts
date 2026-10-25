@@ -28,7 +28,11 @@ import {
   placeConsensus,
   placeHours,
   pointHours,
+  type PlaceHour,
 } from "./ratings";
+import { warnHours } from "./warnHours";
+import type { HourRating } from "../force5/src/stars";
+import type { PlaceWarning } from "../force5/src/warnings";
 import { readWindRun } from "../tests/bundles";
 
 /** The bundled sample wind runs, each with every spot square merged in. */
@@ -258,6 +262,41 @@ describe("placeConsensus", () => {
   });
 });
 
+describe("daylightOn", () => {
+  const place = { lat: 52.27, lon: -10.02 };
+  // Brandon Bay on 5 October 2026: sunset about 18:10 UTC, last light (civil
+  // dusk) about 18:45 UTC; first light about 06:15 UTC, sunrise 06:50 UTC.
+  const axis = hourly("2026-10-05T00:00:00Z", 24);
+  const sun = daylightOn(place, axis);
+  const civil = daylightOn(place, axis, { boundary: "civil" });
+  const at = (h: number) => [sun[h], civil[h]];
+
+  it("is light from sunrise to sunset, by default", () => {
+    expect(at(12)).toEqual([true, true]);
+    expect(at(2)).toEqual([false, false]);
+    expect(at(22)).toEqual([false, false]);
+  });
+
+  it("is light from first to last light with the civil boundary", () => {
+    // 18:30 is after sunset but before last light: dark by the sun, lit by
+    // the civil boundary; 19:30 is dark by both.
+    const half = daylightOn(
+      place,
+      ["2026-10-05T18:30:00Z", "2026-10-05T19:30:00Z", "2026-10-05T22:00:00Z"],
+      { boundary: "civil" },
+    );
+    expect(half.slice(0, 2)).toEqual([true, false]);
+    expect(
+      daylightOn(place, ["2026-10-05T18:30:00Z", "2026-10-05T22:00:00Z"])[0],
+    ).toBe(false);
+    // Every hour lit by the sun is lit by the civil boundary too.
+    sun.forEach((lit, h) => lit && expect(civil[h]).toBe(true));
+    expect(civil.filter(Boolean).length).toBeGreaterThanOrEqual(
+      sun.filter(Boolean).length,
+    );
+  });
+});
+
 describe("placeHours", () => {
   it("rates daylight only, from the consensus in knots", () => {
     const m = windManifest({
@@ -432,5 +471,59 @@ describe("an hour, in a line", () => {
     expect(hourWind(hour)).toBe("SW 18g24");
     expect(hourWind({ ...hour, gustKn: null, from: null })).toBe("18");
     expect(hourWind({ ...hour, windKn: null })).toBe("");
+  });
+});
+
+describe("warnHours", () => {
+  const axis = [
+    "2026-10-25T10:00:00Z",
+    "2026-10-25T11:00:00Z",
+    "2026-10-25T12:00:00Z",
+    "2026-10-25T15:00:00Z",
+  ];
+  const rated = { stars: 4, potential: 4 } as HourRating;
+  const row = (): PlaceHour => ({
+    windKn: 18,
+    gustKn: 24,
+    from: 250,
+    agreement: "high",
+    daylight: true,
+    rating: rated,
+    model: "harmonie",
+  });
+  const warning = (
+    level: "yellow" | "orange",
+    onset: string,
+    expiry: string,
+  ): PlaceWarning =>
+    ({
+      level,
+      onset: Date.parse(onset),
+      expiry: Date.parse(expiry),
+      marine: false,
+      areas: ["EI07"],
+      warning: {} as PlaceWarning["warning"],
+    }) as PlaceWarning;
+
+  it("leaves the rows alone with no warnings", () => {
+    const rows = axis.map(row);
+    expect(warnHours(rows, axis, [])).toBe(rows);
+  });
+
+  it("takes the stars from the columns an orange warning covers, and names a yellow one", () => {
+    const out = warnHours(axis.map(row), axis, [
+      warning("yellow", "2026-10-25T09:00:00Z", "2026-10-25T11:00:00Z"),
+      // From 13:00: inside the 12:00 column, which runs to 15:00.
+      warning("orange", "2026-10-25T13:00:00Z", "2026-10-25T16:00:00Z"),
+    ]);
+    expect(out.map((h) => h.rating)).toEqual([rated, rated, null, null]);
+    expect(out.map((h) => h.warning ?? null)).toEqual([
+      { level: "yellow", replacesRating: false },
+      null,
+      { level: "orange", replacesRating: true },
+      { level: "orange", replacesRating: true },
+    ]);
+    // The wind is still there to read under the warning.
+    expect(out[2].windKn).toBe(18);
   });
 });

@@ -77,6 +77,20 @@ whole run about 7 h 35 m after its run time (since 19 October 2026; before, the 
 run alone, with `--ecmwf-cycle 00`). See the
 [ECMWF specification](ECMWF_15_DAY_PLAN.md) for source, contract and acceptance tests.
 
+ECMWF's crop is its own and the widest on the map: **30°W–2°E, 44–62°N**, 129 × 73
+cells (`fetch_ecmwf.BBOX`), where every other model crops to the shared 18°W–2°E,
+48–59°N (`fetch_forecast.BBOX`, 81 × 45 at 0.25°; HARMONIE and the regional models
+are smaller still). Fifteen days is long enough for a storm to cross the Atlantic, and
+a rider on ECMWF can see it coming only where the grid reaches; the chart pans as far
+as this box (`CHART_BOUNDS`, force5/src/chartStyle.ts), and a model with a smaller box
+draws nothing past its own edge. Each field is downloaded whole, so the wider crop costs
+no more download. It costs larger tiles: four native tiles and one overview a frame
+instead of two and one, 2.7 MB of brotli a run instead of 1.2 MB, and an Irish view
+reads about 20 KB for the hour on screen instead of about 12 KB (measured on the 00 UTC
+run of 25 October 2026). The spot series are the same 0.25° points either side of each
+spot, so the dock, the blend, verification, the forecast server and the MCP read
+identical values. The bundle prefix went from `360h-v2` to `360h-v3` with it.
+
 GFS is supported the same way: `--models gfs` imports NOAA's public-domain 0.25°
 deterministic run. The worker's `--step` selects the horizon GFS actually
 publishes at that cadence: `--step 3` gives 0–240 h (81 frames) and `--step 1`
@@ -91,7 +105,7 @@ intervals at every hour.
 
 ### GEFS (ensemble)
 
-**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+**Retired** (10 October 2026): the job ships
 disabled and the site does not fetch it. The adapter below is unchanged; see
 `deploy/local/README.md` to bring it back.
 
@@ -177,7 +191,7 @@ hours later. Widen `maxAgeHours` before moving the slot later.
 
 ### ECMWF ENS (ensemble)
 
-**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+**Retired** (10 October 2026): the job ships
 disabled and the site does not fetch it. The adapter below is unchanged; see
 `deploy/local/README.md` to bring it back.
 
@@ -193,7 +207,7 @@ stops, and `--cycle 0` makes discovery look for the 00 UTC run only, so the
 service downloads one ensemble a day. Gusts are kept.
 
 With `--from-hour 0` the ensemble **mean** is also published as map frames, with
-the same Ireland crop and frame contract as the control product, and a
+the shared Ireland crop (not the control's wider Atlantic one) and the control's frame contract, and a
 single-entry `stepRanges` ladder. A later start publishes no frames, no
 `stepRanges` and no `gustMissingHours`: it is a chart-only ensemble, which the
 publisher and the site both accept. Per-spot member series live in the
@@ -287,7 +301,7 @@ only to wind models and the importer defaulted to 3, so every rain figure was a
 three-hour total and the sky between steps a copy of the step's. Its registry age
 limit is 30 hours.
 
-Bandwidth is the operational constraint. DWD publishes one whole-Europe file per
+The download is the heavy part. DWD publishes one whole-Europe file per
 parameter per step with no server-side subsetting. Three-hourly, a run transferred
 **301 MB in 325 bz2 GRIB files** (the live 18 UTC run, 16 September 2026, 67 seconds
 end to end). Hourly it is **949 files, about 845 MB**: the thirteen files of one step
@@ -313,7 +327,7 @@ model SST **proxy** and must be labelled as one wherever it is shown.
 (`deploy/local/jobs.toml`, and `deploy/home-compute/home-compute.json` generated from
 it), ten minutes after ICON-EU wind's 03:30 slot so the two never share the worker
 lock. This page said 03/09/15/21 UTC until 24 October 2026; the deploy configs have
-run it once a day since the downloads were cut to about 80 GB a month. Running all
+run it once a day since 10 October 2026. Running all
 four cycles hourly would be about 100 GB a month for this job alone; a second slot for
 the 12 UTC cycle (about 15:40 UTC) would make the afternoon's rain six to twelve hours
 fresher for about 25 GB a month more. That is a proposal, not the schedule.
@@ -338,7 +352,7 @@ GFS's (05/11/17/23 UTC at :05, with a :35 retry); the registry's age limit is 14
 
 ### ARPEGE and AROME (Météo-France)
 
-**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+**Retired** (10 October 2026): the job ships
 disabled and the site does not fetch it. The adapter below is unchanged; see
 `deploy/local/README.md` to bring it back.
 
@@ -406,15 +420,15 @@ must not be compared with the instantaneous gusts GFS and GEFS publish.
 
 ### AIFS Single (ECMWF's AI model)
 
-**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+**Retired** (10 October 2026): the job ships
 disabled and the site does not fetch it. The adapter below is unchanged; see
 `deploy/local/README.md` to bring it back.
 
 `--models aifs` runs `fetch_aifs.py`, which imports ECMWF's operational machine-learned
 deterministic forecast (`model="aifs-single"`, MARS class `ai`) from the same public
 0.25° open data as the IFS control, with no API key. It publishes
-`weather/aifs.json`: 61 frames in uniform 6-hour steps to +360 h, on the same
-81 × 45 Ireland/Atlantic crop as `ecmwf`. The registry marks it `workerStep: False`, so
+`weather/aifs.json`: 61 frames in uniform 6-hour steps to +360 h, on the shared
+81 × 45 Ireland/Atlantic crop (`ecmwf`'s own reaches further west, north and south). The registry marks it `workerStep: False`, so
 the worker never forces its 1/3-hour `--step` on a source whose only cadence is six
 hours; it does pass `--ecmwf-source`, like the other three ECMWF adapters.
 
@@ -442,7 +456,7 @@ average.
 
 ### ECMWF wave stream
 
-**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+**Retired** (10 October 2026): the job ships
 disabled and the site does not fetch it. The adapter below is unchanged; see
 `deploy/local/README.md` to bring it back.
 
@@ -450,7 +464,7 @@ disabled and the site does not fetch it. The adapter below is unchanged; see
 same open data — the WAM ocean wave model coupled to IFS — and publishes the
 `kind: "wave"` bundle `weather/ecmwf-wave.json`. The 00 and 12 UTC cycles run to +360 h
 on exactly the wind control's ladder (3-hourly to +144 h, then 6-hourly), 85 frames of
-ten variables at native 0.25° on the same crop as `ecmwf`. `cadence.expected_hours` now
+ten variables at native 0.25° on the shared 81 × 45 crop, not the wind control's wider one. `cadence.expected_hours` now
 holds both `ecmwf` and `ecmwf-wave` to that ladder, whole or stopped early but never
 resampled, so a truncated or interpolated cadence cannot publish under either id.
 
@@ -835,6 +849,35 @@ publishes `verify/scores.json`. `archive/` is outside every data root and every 
 path refuses it by name. Everything about it — sources, licences, the scores and what
 they cannot say — is in [VERIFICATION.md](VERIFICATION.md).
 
+### Met Éireann's weather warnings
+
+The `warnings` job (`fetch_warnings.py`) copies Met Éireann's open warnings feed,
+`https://www.met.ie/Open_Data/json/warning_ALL.json` (every land and marine warning in
+force or still to come; format: Met Éireann's *Warning RSS/CAP/JSON Description*, June
+2020), to `marine/warnings.json`, at :25 every hour. The map's dock and
+lights, the spot page and the MCP server all read that one file through
+`force5/src/warnings.ts`, which holds the rule they share: an orange or red warning
+covering an hour stands in place of its stars, and no tool calls the hour rideable; a
+yellow one is shown beside them.
+
+- **Unaltered.** Each warning is copied exactly as published (CC BY 4.0 with Met
+  Éireann's conditions: credit Met Éireann; never change a warning's issue time, onset,
+  expiry, area, description, severity, certainty, event or headline; keep current and
+  remove expired ones). The job leaves out warnings already expired, and fails rather
+  than publish anything from a feed whose shape it does not know: an empty list means
+  "no warnings", which a broken feed must never say. `validate_warnings_bundle` checks
+  the same before upload.
+- **Fresh, or not shown.** `run` is the hour the feed was read in. The readers drop a
+  warning at its own expiry whatever the file's age, and stop trusting a file older than
+  `maxAgeHours` (3, `WARNINGS_MAX_AGE_HOURS` in `force5/src/warnings.ts`; a test holds
+  them equal): the site then shows only its link to Met Éireann's warnings, and the MCP
+  says they could not be checked. A warning issued, upgraded or lifted takes up to about
+  an hour to show; the link to met.ie is there for the latest.
+- **Where a warning applies.** Land warnings name counties, marine ones the coastal
+  stretches between headlands; `data/locations/warning-areas.json` says which of each
+  every riding place takes, and why (its `method`).
+- **Cost.** One small request an hour; about 135 MB peak with the worker, like `wind-obs`.
+
 ### Deleting what is superseded
 
 A run directory is deleted once nothing can still want it, and not at the moment its
@@ -1067,7 +1110,7 @@ weather/harmonie-RUN-60h-v2-HASH8/t/1/26/6/000.bin           an overview tile, 2
 weather/harmonie-RUN-60h-v2-HASH8/spots/n52w008.json         every spot's series in one 2° square
 weather/latest.json                                         ICON-EU's pointer
 weather/icon-eu-RUN-72h-v1-HASH8/t/LEVEL/X/Y/HOUR.bin       ICON-EU's tiles
-weather/ecmwf.json, weather/ecmwf-RUN-360h-v2-HASH8/        ECMWF wind + gust
+weather/ecmwf.json, weather/ecmwf-RUN-360h-v3-HASH8/        ECMWF wind + gust, 30°W–2°E, 44–62°N
 weather/gfs.json, weather/gfs-RUN-240h-v1-HASH8/            GFS wind + instantaneous gust
 weather/gefs.json, weather/gefs-RUN-240h-v1-HASH8/          GEFS: mean frames, members in the squares
 weather/ecmwf-ens.json, weather/ecmwf-ens-RUN-144h-25m-v1-HASH8/  ECMWF ENS, likewise

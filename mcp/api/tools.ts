@@ -32,6 +32,7 @@ import {
 import type { ForecastSource } from "./httpSource.js";
 import { riderOf, riderUsed, type RiderChoice } from "./rating.js";
 import { shoreType } from "../../force5/src/shoreFacing.js";
+import { loadWarnings, warningsAcross } from "./warnings.js";
 import {
   DEFAULT_STARS_FROM,
   STARS_MODELS,
@@ -80,6 +81,7 @@ export const INSTRUCTIONS = `wingfoil.ie forecasts wind, waves and tides for win
 - Speeds are knots, directions are degrees the wind comes FROM, times are UTC with a \`local\` label in Irish time that ends in its zone, IST (UTC+1) or GMT (UTC+0). Quote the local time to people, and its zone around a clock change: the night the clocks go back has two 01:00s.
 - The forecast is one model's own, the one wingfoil.ie rates its stars from, never a blend of several: HARMONIE's (Met Éireann's 2.5 km model, the most accurate here) while it reaches the hour, about the next 60 hours, and ECMWF's past it, unless a caller passes \`model\` to choose another (ECMWF still takes over past the end of its run). \`lead\` says which model an hour is. \`agreement\` says how closely all the models agree, as context; \`confidence\` is the same but low wherever fewer than three models cover the hour (\`models\`), as happens a few days out. Hedge when confidence is low, say why (few models, or models disagreeing), and use by_model to explain a disagreement.
 - ${METHOD}
+- Met Éireann's official warnings: every tool gives \`warnings\` (yellow, orange or red; wind, weather or marine; headline, description and validity exactly as Met Éireann issued them), and get_spot_forecast marks each hour a warning covers (\`warning\`). Check them before answering "can I go?". An orange or red warning covering an hour replaces its rating (\`replaces_rating\`): never call such an hour good or rideable, and find_wind leaves it out of every session. A yellow warning leaves the forecast as it is, since some (rain, fog) matter little on the water, but always mention it. When \`warnings.status\` is not "current" the warnings could not be checked: say so and send people to https://www.met.ie/warnings. Credit Met Éireann for any warning you pass on.
 - \`shore\` says how the wind meets the spot's beach: onshore, cross-on, cross, cross-off or offshore (the same rule wingfoil.ie's stars use). Offshore and cross-off wind carry a rider who falls away from the beach out to sea: always warn about them. find_wind leaves dead offshore hours out unless allow_offshore is set. Some spots are on the water (\`shore_type\` "on-water", e.g. Malahide Estuary): riders launch and ride in the middle of the water, so \`shore\` is "on-water", onshore and offshore don't apply and the offshore filter doesn't either; say so, and that the rider must judge the wind against the shore they launch from and the one it would blow them to. A null shore means a beach's facing is unknown, so say offshore wind can't be ruled out there. \`nearby\` names other spots within 1.5 km, often the same beach or water.
 - To answer "can I go?" and "when?", use the stars: each hour's \`rating\` in get_spot_forecast, and each find_wind session's, is wingfoil.ie's own rating for the rider, the same code and the same numbers as the spot page (stars 0–5; \`potential\` is what the wind alone is worth). Ask the person's level (beginner, intermediate or advanced) and weight if you don't know them and pass them as level and weight_kg; otherwise say the stars are for the site's default rider, \`rider.label\` ("Riding · ~80 kg"). Zero stars is a no: say why from \`why_no_stars\` (too light, too strong, gusts over your limit, offshore). \`best_windows\` gives each day's best stretch, ended by last light, with its tides: quote its local time and stars. \`best_directions\` are the winds the beach wants. Never rate an hour higher than the site does.
 - Gusts: \`gust_factor\` is gust ÷ mean; the stars call an hour gusty from 1.5 and very gusty from 1.8 (\`gustiness\`) and give no stars at all to a gust over the rider's limit (\`rider.gust_limit_kn\`), so find_wind never counts such an hour. Mention gusty sessions. When someone has a tighter gust limit, pass max_gust_kn or max_gust_factor.
@@ -169,7 +171,7 @@ export const listSpots = tool({
   name: "list_spots",
   title: "List riding spots",
   description:
-    "The wing foiling spots wingfoil.ie forecasts for, with county and coordinates, whether each is a beach or a spot on the water (`shore_type`), and the other spots within 1.5 km of it (`nearby`). Optionally only one county.",
+    "The wing foiling spots wingfoil.ie forecasts for, with county and coordinates, whether each is a beach or a spot on the water (`shore_type`), and the other spots within 1.5 km of it (`nearby`). Optionally only one county. `warnings` lists Met Éireann's official warnings in force or still to come at any of them, and each spot with one names them by id in its own `warnings`.",
   inputSchema: {
     county: z
       .string()
@@ -187,15 +189,23 @@ export const listSpots = tool({
       return failure(
         `No spots in ${county}. Counties with spots: ${[...new Set(spots.map((s) => s.county))].sort().join(", ")}.`,
       );
+    const warned = warningsAcross(
+      await loadWarnings(deps.source),
+      list,
+      (deps.now ?? Date.now)(),
+    );
     return answer({
       spots: list.map((s) => {
         const nearby = nearbySpots(spots, s);
+        const ids = warned.bySpot.get(s.id)?.map((w) => w.warning.capId);
         return {
           ...s,
           shore_type: shoreType(s.id),
           ...(nearby.length && { nearby }),
+          ...(ids && { warnings: ids }),
         };
       }),
+      warnings: warned.answer,
     });
   },
 });
@@ -255,7 +265,7 @@ export const getSpotForecast = tool({
   name: "get_spot_forecast",
   title: "Spot forecast",
   description:
-    "Hour-by-hour forecast for one spot, each hour rated in stars (0-5) for the rider exactly as wingfoil.ie's spot page rates it (level and weight_kg, default 'Riding · ~80 kg'), with why an hour has no stars, each day's best window and the winds the beach wants (`best_directions`): wind speed, gusts, gust factor and direction from one weather model, the one wingfoil.ie rates its stars from (HARMONIE while it reaches the hour, then ECMWF, unless `model` names another, which ECMWF then follows), with the range across every model and how well they agree as context, how the wind meets the shore (onshore to offshore), plus waves, air temperature and how cold it feels in the mean wind (`feels_like_c`, a wind chill), rain, a thunder and lightning risk (`thunder_risk`), the sky in words (`description` and `sky`, as wingfoil.ie's sky glyph has it; `weather_code` is WMO 4677), how light each hour is (`light`: day, twilight or dark), each day's first light, sunrise, sunset and last light, high and low tides and the latest sea temperature. Rain is the weather model's own total over an interval (`rain_interval_hours`: an hour for ICON-EU, so each hourly row has its own hour's rain; three hours for GFS far ahead), given once on the row where its interval ends and null on any hours before it inside the interval, so add rain_mm up over the rows for a period's rain.",
+    "Hour-by-hour forecast for one spot, each hour rated in stars (0-5) for the rider exactly as wingfoil.ie's spot page rates it (level and weight_kg, default 'Riding · ~80 kg'), with why an hour has no stars, each day's best window and the winds the beach wants (`best_directions`): wind speed, gusts, gust factor and direction from one weather model, the one wingfoil.ie rates its stars from (HARMONIE while it reaches the hour, then ECMWF, unless `model` names another, which ECMWF then follows), with the range across every model and how well they agree as context, how the wind meets the shore (onshore to offshore), plus waves, air temperature and how cold it feels in the mean wind (`feels_like_c`, a wind chill), rain, a thunder and lightning risk (`thunder_risk`), the sky in words (`description` and `sky`, as wingfoil.ie's sky glyph has it; `weather_code` is WMO 4677), how light each hour is (`light`: day, twilight or dark), each day's first light, sunrise, sunset and last light, high and low tides and the latest sea temperature, and Met Éireann's official warnings for the spot (`warnings`, and `warning` on each hour one covers: under orange or red the hour has no stars and is never rideable). Rain is the weather model's own total over an interval (`rain_interval_hours`: an hour for ICON-EU, so each hourly row has its own hour's rain; three hours for GFS far ahead), given once on the row where its interval ends and null on any hours before it inside the interval, so add rain_mm up over the rows for a period's rain.",
   inputSchema: {
     spot: z
       .string()
@@ -339,7 +349,7 @@ export const findWind = tool({
   name: "find_wind",
   title: "Find wind",
   description:
-    "Rank spots by their stars for a rider, wingfoil.ie's own rating (the same as each spot page's, for level and weight_kg, default the site's 'Riding · ~80 kg'), on the one model the stars come from (HARMONIE, then ECMWF, unless `model` names another, which ECMWF then follows). Hours earning min_stars or more (default 1) make sessions, ended by last light; hours gusting over the rider's limit never count, nor hours blowing dead offshore. Each session gives its stars, gust factor and how the wind meets the shore, and each spot its best window. Use this for 'where should I go this weekend?'.",
+    "Rank spots by their stars for a rider, wingfoil.ie's own rating (the same as each spot page's, for level and weight_kg, default the site's 'Riding · ~80 kg'), on the one model the stars come from (HARMONIE, then ECMWF, unless `model` names another, which ECMWF then follows). Hours earning min_stars or more (default 1) make sessions, ended by last light; hours gusting over the rider's limit never count, nor hours blowing dead offshore, nor hours under a Met Éireann orange or red warning (`warnings` lists every warning in force at a searched spot during the window). Each session gives its stars, gust factor and how the wind meets the shore, and each spot its best window. Use this for 'where should I go this weekend?'.",
   inputSchema: {
     min_stars: z
       .number()
@@ -548,6 +558,7 @@ export const findWind = tool({
       }),
       searched_spots: found.searched,
       spots: found.spots,
+      warnings: found.warnings,
       sources: found.sources,
       unavailable: found.unavailable,
       method:
@@ -555,6 +566,7 @@ export const findWind = tool({
         "Counting hours in a row make a session; a session's `stars` is its weakest hour's and `best_stars` its best, `gust_factor` its highest gust ÷ mean and `gustiness` its gustiest hour by the stars' rule (gusty from 1.5, very gusty from 1.8). Each spot's `best_window` is the longest run at the highest stars any run reaches; spots rank by its stars, then by rideable_hours, then nearest. Sessions end by last light unless daylight_only is false. " +
         "Hours with the wind dead offshore are left out unless allow_offshore; a session's `shore` is its most offshore hour's, \"on-water\" at a spot on the water (where the offshore filter doesn't apply), null where a beach's facing is unknown. " +
         "Each session's agreement, confidence and models are the worst of its hours, as context. " +
+        "An hour under a Met Éireann orange or red warning is never counted; a yellow one changes nothing but is listed in `warnings`. " +
         METHOD,
     });
   },
