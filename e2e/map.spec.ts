@@ -386,15 +386,20 @@ test("switches the map's model from the layers and keeps the hour", async ({
 }) => {
   await openChart(page);
   const slider = page.getByRole("slider", { name: "Forecast time" });
-  await slider.fill("3");
+  // An hour inside HARMONIE's run, three after its first: today's morning
+  // before it is ECMWF's steps (the ruling of 25 October 2026).
+  const hour = String(
+    sampleStrip.findIndex((column) => column.model === "harmonie") + 3,
+  );
+  await slider.fill(hour);
   await chooseModel(page, "icon-eu");
   await expectModel(page, "icon-eu");
   await expect(page.locator(".map-model")).toContainText(manifest.modelName);
-  await expect(slider).toHaveValue("3");
+  await expect(slider).toHaveValue(hour);
   await chooseModel(page, "harmonie");
   await expectModel(page, "harmonie");
   await expect(page.locator(".map-model")).toContainText(harmonie.modelName);
-  await expect(slider).toHaveValue("3");
+  await expect(slider).toHaveValue(hour);
 });
 
 test("a failed or mislabelled model download leaves the old model on the map", async ({
