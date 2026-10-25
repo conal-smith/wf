@@ -106,10 +106,11 @@ export function isSpotPath(pathname: string): boolean {
 }
 
 /**
- * The spot finder, `/spots` and anything under it: the riding places rated for the
- * rider at one hour, listed beside a plain map. A page of the map's own bundle,
- * drawn by src/App.tsx beside the chart from the same data, so it is not
- * split off and is not in OWN_BUNDLE_PATHS.
+ * The spot finder, `/spots` and anything under it: the rider's riding places as
+ * cards, the best of their week first, each with today hour by hour and the
+ * next five days. A page of the map's own bundle, drawn by src/App.tsx in the
+ * chart's place from the same data, so it is not split off and is not in
+ * OWN_BUNDLE_PATHS.
  */
 export const FINDER_HREF = "/spots";
 

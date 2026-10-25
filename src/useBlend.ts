@@ -358,6 +358,47 @@ export function useSpotTide(spotId: string | undefined): TideState {
 }
 
 /**
+ * The tide for each of a list of spots (the spot finder's cards): its
+ * nearest station's curve, or null where it has none (no station near
+ * enough, a lake, or the predictions not published). One manifest and one
+ * file a station, shared with the dock's own reads; a spot whose curve is
+ * still coming is simply not in the answer yet.
+ */
+export function useSpotsTides(
+  spotIds: readonly string[],
+): ReadonlyMap<string, SpotTide | null> {
+  const key = [...new Set(spotIds)].sort().join(",");
+  const [tides, setTides] = useState<ReadonlyMap<string, SpotTide | null>>(
+    () => new Map(),
+  );
+  useEffect(() => {
+    if (!key) return;
+    const controller = new AbortController();
+    const ids = key.split(",");
+    tideManifest(controller.signal)
+      .then((manifest) =>
+        Promise.all(
+          ids.map((id) =>
+            spotTide(manifest, id, controller.signal).then(
+              (tide) => [id, tide] as const,
+              () => [id, null] as const,
+            ),
+          ),
+        ),
+      )
+      .then((found) => {
+        if (controller.signal.aborted) return;
+        setTides((was) => new Map([...was, ...found]));
+      })
+      // No manifest is no tides: a card leaves its tide out, as it does for
+      // a spot with no station.
+      .catch(() => {});
+    return () => controller.abort();
+  }, [key]);
+  return tides;
+}
+
+/**
  * A tapped point's tide: the nearest station's, within the limit the tide
  * publisher links spots to stations by; beyond it, or on a lake, the reason.
  */

@@ -477,7 +477,7 @@ export const search: GlyphDef = [
   { d: "M15 15l5.5 5.5" },
 ];
 export const close: GlyphDef = [{ d: "M6 6l12 12M18 6 6 18" }];
-/** The spot finder: a loupe over a star, the places rated at an hour. */
+/** The spot finder: a loupe over a star, the places rated for the rider. */
 export const spotFinder: GlyphDef = [
   { cx: 10.5, cy: 10.5, r: 7 },
   { d: "M15.6 15.6l5.4 5.4", width: 2.2 },

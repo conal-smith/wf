@@ -195,14 +195,6 @@ type Props = {
    * page can say it is loading.
    */
   onSatelliteLoading?: (loading: boolean) => void;
-  /**
-   * The chart in a plain style, for a page with a map beside it (the spot
-   * finder, src/finder): no neatline round it, and only what the page asks
-   * for of the rest (it passes no lights, and the layers it wants).
-   */
-  plain?: boolean;
-  /** What the map is called to a screen reader: the chart's own by default. */
-  label?: string;
 };
 
 /** The satellite image's opacity, once its tiles are in. */
@@ -668,7 +660,6 @@ export default function WindMap(props: Props) {
     reducedMotion,
     bottomInset,
     phone,
-    plain = false,
   } = props;
   const container = useRef<HTMLDivElement>(null);
   const particles = useRef<HTMLCanvasElement | null>(null);
@@ -824,16 +815,6 @@ export default function WindMap(props: Props) {
     });
     map.on("load", () => {
       clearTimeout(loadTimeout);
-      // The plain style: the land in paper and the sea a pale wash, so the
-      // wind and the page's own marks read first.
-      if (latest.current.plain) {
-        map.setPaintProperty("land", "background-color", colours.paper);
-        const sea = getComputedStyle(document.documentElement)
-          .getPropertyValue("--color-basemap-water")
-          .trim();
-        if (sea && map.getLayer("water"))
-          map.setPaintProperty("water", "fill-color", sea);
-      }
       // The light wash beyond the loupe or the range ring: paper over the
       // depths, the contours and the coast, under the wind and the lights.
       map.addSource("focus", {
@@ -1637,13 +1618,11 @@ export default function WindMap(props: Props) {
     <>
       <div
         ref={container}
-        className={plain ? "map-canvas is-plain" : "map-canvas"}
+        className="map-canvas"
         role="region"
-        aria-label={
-          props.label ?? "Chart of Ireland's coast with the wing foil forecast"
-        }
+        aria-label="Chart of Ireland's coast with the wing foil forecast"
       />
-      {!plain && <svg ref={neat} className="map-neat" aria-hidden="true" />}
+      <svg ref={neat} className="map-neat" aria-hidden="true" />
       {!ready && !error && (
         <div className="map-loading" role="status">
           Drawing the chart…

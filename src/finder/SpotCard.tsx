@@ -1,11 +1,17 @@
 /**
- * A place on the spot finder's list, and the same place in the card a pin
- * opens on its map: its picture from above with the ride rose on it, its
- * stars, its wind and the chosen day's wind as a bar, the hour marked.
+ * A place on the spot finder: its picture from above with the ride rose on
+ * it, its name, how far it is and its county, and the star a rider keeps it
+ * by; then today, hour by hour (src/finder/TodayHours.tsx), and the next
+ * five days (src/finder/NextDays.tsx). The approved mock-up is
+ * backlog/mockups/2026-10-25-spot-list-cards.html, its "7e".
+ *
+ * Pressing the picture opens the chart at the place, at the hour the rose on
+ * it shows; pressing anywhere else on the card opens the place's own page.
  *
  * The picture is the spot page's own, cut from the chart's satellite
  * composites (spot/web/satellite.ts), loaded lazily as the card scrolls in;
- * the rose is the loupe's (force5/src/focus.ts), at the loupe's distance.
+ * the rose is the loupe's (force5/src/focus.ts), at the loupe's distance,
+ * for the hour picked on today's row, or now.
  */
 import {
   useEffect,
@@ -15,20 +21,15 @@ import {
   type ReactNode,
 } from "react";
 import { loupeRose, roseScale } from "../../force5/src/focus";
-import { shoreAngle, type Rider } from "../../force5/src/stars";
-import {
-  beaufort,
-  isForce,
-  speedShort,
-  speedWords,
-  type Units,
-} from "../../force5/src/units";
-import { compass, windCss, type Spot } from "../../force5/src/weather";
-import { BeaufortGlyph } from "../../ui/BeaufortGlyph";
+import { spotHref } from "../../force5/src/siteNav";
+import type { Rider } from "../../force5/src/stars";
+import type { Units } from "../../force5/src/units";
+import type { Spot } from "../../force5/src/weather";
+import { ChartGlyph } from "../../shared/web/ChartGlyph";
+import { waves as wavesGlyph } from "../../shared/web/glyphSet";
 import { Button } from "../../ui/Button";
 import { Chip } from "../../ui/Chip";
-import { StarGlyphs } from "../../ui/StarGlyphs";
-import { tv } from "../../ui/tv";
+import { MONO_LABEL, tv } from "../../ui/tv";
 import {
   inFrame,
   loadSpotPictures,
@@ -36,37 +37,59 @@ import {
   type SpotPictures,
 } from "../../spot/web/satellite";
 import type { PlaceHour } from "../ratings";
-import type { TimelineHour } from "./finder";
+import { clock, type StripColumn } from "../strip";
+import WeatherGlyph from "../WeatherGlyph";
+import {
+  HOUR,
+  middayColumn,
+  type DayPlan,
+  type TodayRow,
+  type WeekBest,
+} from "./finder";
+import { NextDays } from "./NextDays";
 import { Rose } from "./Rose";
+import { TideMark } from "./marks";
+import { TodayHours } from "./TodayHours";
+import type { Readings } from "./useReadings";
 
 export const cardStyles = tv({
   slots: {
-    card: "group/card relative flex cursor-pointer flex-col",
-    // A box on the page: the ink rule, a box's corner, a card's contact
-    // shadow; lifted a little under the pointer, or when its pin is.
-    picture: "relative aspect-16/10 overflow-hidden bg-sea-1",
-    // On the list, a box of its own; in a pin's card, the card is the box.
-    framed: [
-      "rounded-surface border border-ink shadow-card",
+    // A box on the page: the ink rule, its hairline, a card's contact
+    // shadow; lifted a little under the pointer.
+    card: [
+      "group/card relative flex min-w-0 cursor-pointer flex-col gap-2.5 rounded-surface border border-ink bg-card px-3 pt-2.5 pb-3 inset-shadow-frame shadow-card",
       "transition duration-fast motion-reduce:transition-none",
-      "group-hover/card:-translate-y-0.5 group-hover/card:shadow-float",
-      "group-data-lit/card:-translate-y-0.5 group-data-lit/card:shadow-float",
+      "hover:-translate-y-px hover:shadow-float",
     ],
-    image: "absolute inset-0 block size-full object-cover",
-    // The hairline inside the rule, over the picture's edge.
-    rule: "pointer-events-none absolute inset-0 rounded-surface inset-shadow-frame",
-    badge: "absolute top-2 left-2 z-popover px-2 py-1 shadow-marker",
-    star: "absolute top-2 right-2 z-popover",
-    meta: "flex items-baseline gap-2 px-1 pt-2",
-    // The name is the card's press for the keys and a screen reader; a
-    // pointer can press anywhere on the card.
-    name: [
-      "h-auto min-h-0 min-w-0 flex-1 justify-start overflow-hidden rounded-control p-0",
-      "font-display text-prose font-semibold tracking-normal text-ink normal-case",
+    head: "flex items-center gap-3",
+    // The picture is the chart's press: a small box of its own.
+    pictureButton: [
+      "group/pic relative block h-auto w-24 shrink-0 overflow-visible rounded-control border-0 p-0 wide:w-28",
       "not-disabled:hover:bg-transparent pointer-coarse:min-h-0",
     ],
-    nameText: "truncate",
-    bar: "relative mx-1 mt-1.5 flex h-2.5 overflow-visible rounded-full bg-sunken inset-ring inset-ring-line",
+    picture: "relative aspect-16/10 overflow-hidden bg-sea-1",
+    framed:
+      "rounded-control border border-ink group-hover/pic:outline-2 group-hover/pic:outline-offset-1 group-hover/pic:outline-ink",
+    image: "absolute inset-0 block size-full object-cover",
+    go: "pointer-events-none absolute bottom-1 left-1 px-1.5 py-0 text-eyebrow uppercase opacity-0 transition-opacity duration-fast group-hover/pic:opacity-100",
+    at: "pointer-events-none absolute right-1 bottom-1 px-1.5 py-0 text-eyebrow font-semibold",
+    names: "flex min-w-0 flex-1 flex-col gap-0.5",
+    name: "m-0 truncate font-display text-lead text-ink",
+    nameLink:
+      "rounded-control text-ink no-underline not-disabled:hover:text-chart-magenta",
+    meta: "font-mono text-caption text-ink-muted",
+    star: "self-start",
+    section: "flex flex-col gap-1",
+    heading: [
+      "flex items-center justify-between gap-x-2 gap-y-0.5",
+      "max-wide:flex-wrap",
+    ],
+    kicker: [MONO_LABEL, "font-semibold text-ink"],
+    facts: [
+      "flex items-center gap-x-2.5 gap-y-0.5 font-mono text-caption text-ink-2",
+      "max-wide:flex-wrap",
+    ],
+    fact: "inline-flex items-center gap-1 whitespace-nowrap",
   },
 });
 
@@ -84,7 +107,7 @@ function useSpotPictures(): SpotPictures | null {
 }
 
 /** An element's size, kept current; null until it is measured. */
-function useSize<T extends HTMLElement>() {
+export function useSize<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const [size, setSize] = useState<{ width: number; height: number } | null>(
     null,
@@ -117,15 +140,14 @@ export function SpotPicture({
   hour,
   rider,
   units,
-  flat = false,
+  className,
   children,
 }: {
   spot: Spot;
   hour: PlaceHour | null;
   rider: Rider;
   units: Units;
-  /** In a card that is itself the box: no frame of its own. */
-  flat?: boolean;
+  className?: string;
   children?: ReactNode;
 }) {
   const s = cardStyles();
@@ -151,8 +173,10 @@ export function SpotPicture({
       : null;
   return (
     <div
-      className={flat ? s.picture() : `${s.picture()} ${s.framed()}`}
+      className={s.picture({ className })}
       ref={ref}
+      data-spot-picture
+      data-rose-from={loupe ? Math.round(loupe.rose.windFrom) : undefined}
     >
       {shown && (
         <img
@@ -174,28 +198,12 @@ export function SpotPicture({
           y={place ? place.y : size.height / 2}
         />
       )}
-      {!flat && <span className={s.rule()} aria-hidden="true" />}
       {children}
     </div>
   );
 }
 
-/** The hour's stars on the picture, once it is rated; nothing until then. */
-export function StarsBadge({ hour }: { hour: PlaceHour | null }) {
-  if (!hour) return null;
-  const stars = hour.rating ? hour.rating.stars : null;
-  return (
-    <Chip
-      tone="glass"
-      className={cardStyles().badge()}
-      data-stars={stars ?? "dark"}
-    >
-      <StarGlyphs stars={stars} size={11} />
-    </Chip>
-  );
-}
-
-/** The red star a rider keeps a place with, on its picture. */
+/** The red star a rider keeps a place with. */
 export function StarToggle({
   spot,
   on,
@@ -213,7 +221,7 @@ export function StarToggle({
       size="sm"
       icon
       pressed={on ? "worded" : false}
-      className={className ?? cardStyles().star()}
+      className={className}
       aria-label={`Star ${spot.name}`}
       title={on ? "Starred" : "Star"}
       onClick={(event) => {
@@ -233,171 +241,232 @@ export function StarToggle({
   );
 }
 
-/** "SW 16 g22": the wind as an arrow blowing downwind, in the rider's units. */
-export function WindReading({
-  hour,
-  facing,
-  units,
+/**
+ * Today's line over its hours: the sky and the air, the sea, high and low
+ * water, and first and last light. A reading the place has none of is left
+ * out, not written as a blank.
+ */
+function TodayFacts({
+  today,
+  readings,
+  strip,
+  now,
 }: {
-  hour: PlaceHour | null;
-  facing: number | null;
-  units: Units;
+  today: TodayRow;
+  readings: Readings;
+  strip: readonly StripColumn[];
+  now: number;
 }) {
-  if (!hour || hour.windKn === null) return null;
-  const { windKn, gustKn, from } = hour;
-  const force = isForce(units);
-  const gust =
-    gustKn !== null &&
-    gustKn > windKn &&
-    !(force && beaufort(gustKn) <= beaufort(windKn))
-      ? gustKn
-      : null;
-  const off =
-    from !== null && facing !== null
-      ? ["offshore", "cross-off"].includes(shoreAngle(from, facing))
-      : false;
-  const words = `${from === null ? "" : `${compass(from)} `}${speedWords(windKn, units)}${
-    gust === null ? "" : `, gusts ${speedWords(gust, units)}`
-  }`;
+  const s = cardStyles();
+  const lit = today.hours.flatMap((h) =>
+    h.at !== null && !h.dark ? [h.at] : [],
+  );
+  const at = middayColumn(strip, lit, now);
+  const sky = at === null ? null : (readings.sky[at] ?? null);
+  const air = at === null ? null : (readings.air[at] ?? null);
+  const sea = at === null ? null : (readings.sea[at] ?? null);
+  const from = today.hours[0].time;
+  const to = today.hours[today.hours.length - 1].time + HOUR;
+  const tides = readings.tides.filter((event) => {
+    const time = Date.parse(event.time);
+    return time >= from && time < to;
+  });
   return (
-    <span
-      className="inline-flex shrink-0 items-center gap-1 font-mono text-body font-semibold whitespace-nowrap text-ink"
-      role="img"
-      aria-label={words}
-      data-wind
-    >
-      {from !== null && (
-        <svg width={13} height={13} viewBox="-7 -7 14 14" aria-hidden="true">
-          <g transform={`rotate(${Math.round(from + 180)})`}>
-            <path
-              className={off ? "fill-none stroke-pen" : "fill-none stroke-ink"}
-              d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8"
-              strokeWidth={1.6}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </g>
-        </svg>
+    <span className={s.facts()} data-today-facts>
+      {(sky || air !== null) && (
+        <span className={s.fact()} data-air>
+          {sky && <WeatherGlyph weather={sky} size={15} />}
+          {air !== null && `${Math.round(air)}°`}
+        </span>
       )}
-      {force ? (
-        <BeaufortGlyph force={beaufort(windKn)} size={14} label="" />
-      ) : (
-        speedShort(windKn, units)
+      {sea && (
+        <span className={s.fact()} data-sea>
+          <ChartGlyph glyph={wavesGlyph} size={13} className="text-depth" />
+          {sea.height.toFixed(1)} m
+          {sea.period !== null && ` · ${Math.round(sea.period)} s`}
+        </span>
       )}
-      {gust !== null && (
-        <small className="text-caption font-medium text-ink-muted">
-          g
-          {force ? (
-            <BeaufortGlyph force={beaufort(gust)} size={10} label="" />
-          ) : (
-            speedShort(gust, units)
-          )}
-        </small>
-      )}
+      {tides.map((event) => (
+        <span
+          key={event.time}
+          className={s.fact()}
+          title={`${event.kind === "high" ? "High" : "Low"} water`}
+          data-tide-time={event.kind}
+        >
+          <TideMark high={event.kind === "high"} />
+          {clock(Date.parse(event.time))}
+          <span className="sr-only">
+            {event.kind === "high" ? " high water" : " low water"}
+          </span>
+        </span>
+      ))}
+      <span className={s.fact()} data-light>
+        light {clock(today.firstLight)}–{clock(today.lastLight)}
+      </span>
     </span>
   );
 }
 
-/** The chosen day's wind at the place, hour by hour, the chosen hour marked. */
-export function DayBar({
-  day,
-  row,
-  selected,
-  className,
-}: {
-  day: readonly TimelineHour[];
-  row: readonly PlaceHour[] | undefined;
-  selected: number;
-  className?: string;
-}) {
-  const s = cardStyles();
-  const width = day.reduce((sum, h) => sum + h.span, 0);
-  let run = 0;
-  let mark: number | null = null;
-  for (const h of day) {
-    if (h.at === selected) mark = (run + h.span / 2) / width;
-    run += h.span;
-  }
-  return (
-    <div className={s.bar({ className })} aria-hidden="true" data-day-bar>
-      {day.map((h, i) => {
-        const kn = row?.[h.at]?.windKn ?? null;
-        return (
-          <i
-            key={h.at}
-            className={`block h-full ${i === 0 ? "rounded-l-full" : ""} ${i === day.length - 1 ? "rounded-r-full" : ""}`}
-            style={{
-              flexGrow: h.span,
-              background: kn === null ? undefined : windCss(kn),
-            }}
-          />
-        );
-      })}
-      {mark !== null && (
-        <span
-          className="absolute -top-0.5 -bottom-0.5 w-0.5 -translate-x-1/2 rounded-full bg-pen"
-          style={{ left: `${mark * 100}%` }}
-          data-day-mark
-        />
-      )}
-    </div>
-  );
-}
-
-/** A card on the list. */
-export function SpotCard({
-  spot,
-  hour,
-  row,
-  day,
-  selected,
-  rider,
-  units,
-  starred,
-  lit,
-  onToggleStar,
-  onOpen,
-  onHover,
-}: {
+export interface SpotCardProps {
   spot: Spot;
-  hour: PlaceHour | null;
+  km: number | null;
   row: readonly PlaceHour[] | undefined;
-  day: readonly TimelineHour[];
-  selected: number;
+  strip: readonly StripColumn[];
+  today: TodayRow | null;
+  /** Tomorrow and the four days after it. */
+  days: readonly (DayPlan | null)[];
+  readings: Readings;
+  /** The hour picked on today's row, or null for now. */
+  picked: number | null;
+  /** The hour ringed on today's row: the one picked, or the hour now. */
+  shown: number;
+  /** The strip's column the picture's rose is for, or null with none. */
+  roseAt: number | null;
+  now: number;
   rider: Rider;
   units: Units;
   starred: boolean;
-  /** Its pin is under the pointer. */
-  lit: boolean;
+  phone: boolean;
+  reducedMotion: boolean;
   onToggleStar: () => void;
-  onOpen: () => void;
-  onHover: (on: boolean) => void;
-}) {
+  onPick: (time: number) => void;
+  /** The chart, at this place, at the hour the rose shows. */
+  onChart: () => void;
+  /** Its place in the list. */
+  order: number;
+  /** Its best of the six days, which put it there. */
+  best: WeekBest;
+}
+
+/** A card on the list. */
+export function SpotCard(props: SpotCardProps) {
+  const {
+    spot,
+    km,
+    row,
+    strip,
+    today,
+    days,
+    readings,
+    picked,
+    shown,
+    roseAt,
+    now,
+    rider,
+    units,
+    starred,
+    phone,
+    reducedMotion,
+    onToggleStar,
+    onPick,
+    onChart,
+    order,
+    best,
+  } = props;
   const s = cardStyles();
+  const [next, nextSize] = useSize<HTMLElement>();
+  const href = spotHref(spot.id);
+  const where = [
+    km === null ? null : km < 0.5 ? "under 1 km" : `${Math.round(km)} km`,
+    spot.county ? `Co. ${spot.county}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <article
       className={s.card()}
       data-spot-card={spot.id}
-      data-lit={lit || undefined}
-      onPointerEnter={(e) => e.pointerType === "mouse" && onHover(true)}
-      onPointerLeave={(e) => e.pointerType === "mouse" && onHover(false)}
-      onClick={(e) => {
-        if (!(e.target as Element).closest("button, a")) onOpen();
+      data-best={best.stars}
+      data-best-day={best.day ?? undefined}
+      aria-label={spot.name}
+      onClick={(event) => {
+        if ((event.target as Element).closest("button, a")) return;
+        // A press that was a drag across today's hours is not a press.
+        if (window.getSelection()?.toString()) return;
+        window.location.assign(href);
       }}
     >
-      <SpotPicture spot={spot} hour={hour} rider={rider} units={units}>
-        <StarsBadge hour={hour} />
-        <StarToggle spot={spot} on={starred} onToggle={onToggleStar} />
-      </SpotPicture>
-      <div className={s.meta()}>
-        <h3 className="m-0 flex min-w-0 flex-1">
-          <Button variant="quiet" className={s.name()} onClick={onOpen}>
-            <span className={s.nameText()}>{spot.name}</span>
-          </Button>
-        </h3>
-        <WindReading hour={hour} facing={spot.facing ?? null} units={units} />
+      <div className={s.head()}>
+        <Button
+          variant="quiet"
+          className={s.pictureButton()}
+          aria-label={`${spot.name} on the chart`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onChart();
+          }}
+          data-to-chart
+        >
+          <SpotPicture
+            spot={spot}
+            hour={roseAt === null ? null : (row?.[roseAt] ?? null)}
+            rider={rider}
+            units={units}
+            className={s.framed()}
+          >
+            <Chip tone="glass" className={s.go()} aria-hidden="true">
+              Chart
+            </Chip>
+            {picked !== null && (
+              <Chip tone="glass" className={s.at()} data-picked-hour>
+                {clock(picked)}
+              </Chip>
+            )}
+          </SpotPicture>
+        </Button>
+        <div className={s.names()}>
+          <h3 className={s.name()}>
+            <a className={s.nameLink()} href={href}>
+              {spot.name}
+            </a>
+          </h3>
+          {where && <span className={s.meta()}>{where}</span>}
+        </div>
+        <StarToggle
+          spot={spot}
+          on={starred}
+          onToggle={onToggleStar}
+          className={s.star()}
+        />
       </div>
-      <DayBar day={day} row={row} selected={selected} />
+      {today && (
+        <section className={s.section()} aria-label="Today">
+          <div className={s.heading()}>
+            <span className={s.kicker()}>Today</span>
+            <TodayFacts
+              today={today}
+              readings={readings}
+              strip={strip}
+              now={now}
+            />
+          </div>
+          <TodayHours
+            row={row}
+            today={today}
+            readings={readings}
+            facing={spot.facing ?? null}
+            shown={shown}
+            units={units}
+            phone={phone}
+            reducedMotion={reducedMotion}
+            onPick={onPick}
+            order={order}
+          />
+        </section>
+      )}
+      <section className={s.section()} aria-label="Next 5 days" ref={next}>
+        <span className={s.kicker()}>Next 5 days</span>
+        <NextDays
+          row={row}
+          strip={strip}
+          plans={days}
+          readings={readings}
+          facing={spot.facing ?? null}
+          units={units}
+          now={now}
+          width={nextSize?.width ?? null}
+        />
+      </section>
     </article>
   );
 }
