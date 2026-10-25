@@ -28,7 +28,11 @@ import {
   placeConsensus,
   placeHours,
   pointHours,
+  type PlaceHour,
 } from "./ratings";
+import { warnHours } from "./warnHours";
+import type { HourRating } from "../force5/src/stars";
+import type { PlaceWarning } from "../force5/src/warnings";
 import { readWindRun } from "../tests/bundles";
 
 /** The bundled sample wind runs, each with every spot square merged in. */
@@ -432,5 +436,59 @@ describe("an hour, in a line", () => {
     expect(hourWind(hour)).toBe("SW 18g24");
     expect(hourWind({ ...hour, gustKn: null, from: null })).toBe("18");
     expect(hourWind({ ...hour, windKn: null })).toBe("");
+  });
+});
+
+describe("warnHours", () => {
+  const axis = [
+    "2026-10-25T10:00:00Z",
+    "2026-10-25T11:00:00Z",
+    "2026-10-25T12:00:00Z",
+    "2026-10-25T15:00:00Z",
+  ];
+  const rated = { stars: 4, potential: 4 } as HourRating;
+  const row = (): PlaceHour => ({
+    windKn: 18,
+    gustKn: 24,
+    from: 250,
+    agreement: "high",
+    daylight: true,
+    rating: rated,
+    model: "harmonie",
+  });
+  const warning = (
+    level: "yellow" | "orange",
+    onset: string,
+    expiry: string,
+  ): PlaceWarning =>
+    ({
+      level,
+      onset: Date.parse(onset),
+      expiry: Date.parse(expiry),
+      marine: false,
+      areas: ["EI07"],
+      warning: {} as PlaceWarning["warning"],
+    }) as PlaceWarning;
+
+  it("leaves the rows alone with no warnings", () => {
+    const rows = axis.map(row);
+    expect(warnHours(rows, axis, [])).toBe(rows);
+  });
+
+  it("takes the stars from the columns an orange warning covers, and names a yellow one", () => {
+    const out = warnHours(axis.map(row), axis, [
+      warning("yellow", "2026-10-25T09:00:00Z", "2026-10-25T11:00:00Z"),
+      // From 13:00: inside the 12:00 column, which runs to 15:00.
+      warning("orange", "2026-10-25T13:00:00Z", "2026-10-25T16:00:00Z"),
+    ]);
+    expect(out.map((h) => h.rating)).toEqual([rated, rated, null, null]);
+    expect(out.map((h) => h.warning ?? null)).toEqual([
+      { level: "yellow", replacesRating: false },
+      null,
+      { level: "orange", replacesRating: true },
+      { level: "orange", replacesRating: true },
+    ]);
+    // The wind is still there to read under the warning.
+    expect(out[2].windKn).toBe(18);
   });
 });

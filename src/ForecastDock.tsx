@@ -105,6 +105,8 @@ import {
 } from "../force5/src/units";
 import { compass, type Spot } from "../force5/src/weather";
 import { spotHref } from "../force5/src/siteNav";
+import { LEVEL_LABEL, type PlaceWarning } from "../force5/src/warnings";
+import DockWarnings, { WarnMark } from "./DockWarnings";
 import {
   handovers,
   leadOrder,
@@ -164,6 +166,8 @@ interface Props {
   layersOpen: boolean;
   /** Layers: the rail on a desktop, the panel on a phone (src/App.tsx). */
   onLayers: () => void;
+  /** Met Éireann's warnings for the riding place, in force or still to come. */
+  warnings?: readonly PlaceWarning[];
 }
 
 const ROWS = {
@@ -405,23 +409,41 @@ const StripTable = memo(function StripTable({
         {!isPoint && rated && (
           <tr className="tt-stars">
             {cells("s", (hour, column, at) =>
-              hour?.rating ? (
-                // Just the stars: a card on hover covered the chart for
-                // a reading the head and the ? already give.
-                <StarGlyphs
-                  className="hour-stars"
-                  stars={hour.rating.stars}
-                  potential={hour.rating.potential}
-                  size={starSize(g.w[at], full)}
-                  slots="potential"
-                  label={`${clock(column.time)}: ${
-                    hour.rating.potential
-                      ? starsText(hour.rating)
-                      : ["No stars", noStarsWhy(hour.rating)]
-                          .filter(Boolean)
-                          .join(", ")
-                  }${hour.model ? `, from ${modelName(hour.model)}` : ""}`}
+              hour?.warning?.replacesRating ? (
+                // Orange or red: the warning stands where the stars were.
+                <WarnMark
+                  level={hour.warning.level}
+                  label={`${clock(column.time)}: no stars, ${LEVEL_LABEL[hour.warning.level]} Met Éireann warning`}
                 />
+              ) : hour?.rating || hour?.warning ? (
+                <>
+                  {/* Just the stars: a card on hover covered the chart for
+                    a reading the head and the ? already give. */}
+                  {hour.rating && (
+                    <StarGlyphs
+                      className="hour-stars"
+                      stars={hour.rating!.stars}
+                      potential={hour.rating!.potential}
+                      size={starSize(g.w[at], full)}
+                      slots="potential"
+                      label={`${clock(column.time)}: ${
+                        hour.rating.potential
+                          ? starsText(hour.rating)
+                          : ["No stars", noStarsWhy(hour.rating)]
+                              .filter(Boolean)
+                              .join(", ")
+                      }${hour.model ? `, from ${modelName(hour.model)}` : ""}${
+                        hour.warning
+                          ? `; ${LEVEL_LABEL[hour.warning.level]} Met Éireann warning`
+                          : ""
+                      }`}
+                    />
+                  )}
+                  {/* Yellow: its mark beside the stars it leaves alone. */}
+                  {hour.warning && (
+                    <WarnMark level={hour.warning.level} bar />
+                  )}
+                </>
               ) : null,
             )}
           </tr>
@@ -1035,6 +1057,7 @@ export default function ForecastDock(props: Props) {
     marine,
     layersOpen,
     onLayers,
+    warnings = [],
   } = props;
   const cw = phone ? 52 : 62;
   // A phone folds the label column away once the reader slides the hours,
@@ -1108,7 +1131,9 @@ export default function ForecastDock(props: Props) {
   );
   // A week with no hour worth rating, a calm one or one still being rated
   // at night, leaves out the stars and the wing rather than draw them empty.
-  const rated = !hours || hours.some((hour) => !!hour?.rating?.potential);
+  const rated =
+    !hours ||
+    hours.some((hour) => !!hour?.rating?.potential || !!hour?.warning);
   // The one model each hour's stars come from (force5/src/lead.ts): the one
   // that rates the hour in hand, named in the head, and where the stars hand
   // over from one model to the next, marked on the hours. A point has no stars.
@@ -1867,6 +1892,8 @@ export default function ForecastDock(props: Props) {
           </button>
         </div>
       )}
+
+      {!isPoint && <DockWarnings spotId={spot.id} warnings={warnings} />}
 
       <div className="dk-body" id="dk-body" ref={bodyRef}>
         <div
