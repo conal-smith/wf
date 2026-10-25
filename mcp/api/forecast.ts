@@ -143,9 +143,73 @@ const localFormat = new Intl.DateTimeFormat("en-IE", {
   minute: "2-digit",
   hour12: false,
 });
-/** "Wed, 16 Sept, 19:00" in Irish time, for an agent to repeat verbatim. */
+/** "Wed, 16 Sept, 19:00" in Irish time: the site's own label, with no zone. */
 export const localTime = (millis: number) =>
   localFormat.format(new Date(millis));
+
+const offsetFormat = new Intl.DateTimeFormat("en-IE", {
+  timeZone: TIME_ZONE,
+  timeZoneName: "longOffset",
+});
+const clockFormat = new Intl.DateTimeFormat("en-GB", {
+  timeZone: TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+const dateFormat = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+/** "2026-10-25": the Irish calendar day an instant falls on. */
+export const dublinDate = (millis: number) =>
+  dateFormat.format(new Date(millis));
+
+/**
+ * The zone Irish clocks are on at an instant: "IST" (Irish Standard Time,
+ * UTC+1, from the last Sunday of March) or "GMT" (UTC+0, from the last Sunday
+ * of October). Read from the offset rather than from a locale's own
+ * abbreviation, which differs between runtimes.
+ */
+export function irishZone(millis: number): string {
+  const name =
+    offsetFormat
+      .formatToParts(new Date(millis))
+      .find((part) => part.type === "timeZoneName")?.value ?? "GMT";
+  const offset = /([+-]\d{2}):?(\d{2})?/.exec(name);
+  if (!offset) return "GMT";
+  const hm = `${offset[1]}:${offset[2] ?? "00"}`;
+  return hm === "+01:00" ? "IST" : hm === "+00:00" ? "GMT" : `UTC${hm}`;
+}
+
+/**
+ * "Sun, 25 Oct, 01:00 IST": Irish time with its zone, for an agent to repeat
+ * verbatim. The night the clocks go back has two 01:00s, an hour apart, and
+ * the zone is what tells them apart (01:00 IST, then 01:00 GMT).
+ */
+export const localStamp = (millis: number) =>
+  `${localTime(millis)} ${irishZone(millis)}`;
+
+/**
+ * A stretch of Irish time in one label: "Sun, 25 Oct, 08:00 – 17:41 GMT".
+ * The zone is said at both ends where the clocks change inside it, and the
+ * end's day where it falls on another.
+ */
+export function localSpan(from: number, to: number): string {
+  const zoneFrom = irishZone(from);
+  const zoneTo = irishZone(to);
+  const start =
+    zoneFrom === zoneTo ? localTime(from) : `${localTime(from)} ${zoneFrom}`;
+  // An end at midnight closes the day it started on.
+  const sameDay =
+    dublinDate(from) === dublinDate(to) ||
+    (dublinDate(from) === dublinDate(to - 1) &&
+      clockFormat.format(new Date(to)) === "00:00");
+  const end = sameDay ? clockFormat.format(new Date(to)) : localTime(to);
+  return `${start} – ${end} ${zoneTo}`;
+}
 const iso = (millis: number) => new Date(millis).toISOString();
 
 export type { Agreement, ShoreAngle };
@@ -1254,7 +1318,7 @@ async function spotTides(
     return [
       {
         time: iso(time),
-        local: localTime(time),
+        local: localStamp(time),
         tide: e.kind,
         height_m: round(e.height, 2),
       },
@@ -1274,7 +1338,7 @@ async function spotTides(
 
 export interface SpotSea {
   celsius: number;
-  /** When it was read, in Irish time ("Wed, 16 Sept, 21:12"). */
+  /** When it was read, in Irish time with its zone ("Wed, 16 Sept, 21:12 IST"). */
   measured: string;
   /** The same instant as an ISO time, to say how long ago it was. */
   time: string;
@@ -1307,7 +1371,7 @@ async function spotSea(
     : null;
   return {
     celsius: round(latest.value),
-    measured: localTime(time),
+    measured: localStamp(time),
     time: iso(time),
     station: isObject(station)
       ? (text(station.name) ?? spot.station)
@@ -1399,7 +1463,12 @@ export const UNITS = {
   weather:
     "air_c, cloud_pct and weather_code are the weather model's nearest step, " +
     "`window.weather_step_hours` apart, so they repeat on the hours between",
-  time: "UTC ISO time, with `local` in Europe/Dublin",
+  time:
+    "`time` is UTC (ISO 8601). Every `local` label, and sunrise, sunset, the " +
+    "tides' and the sea temperature's times, is Irish time ending in its zone: " +
+    "IST (Irish Standard Time, UTC+1, late March to late October) or GMT " +
+    "(UTC+0). Quote the zone around a clock change: the night the clocks go " +
+    "back has 01:00 IST and then 01:00 GMT, two different hours",
 };
 
 export async function spotForecast(
@@ -1436,7 +1505,7 @@ export async function spotForecast(
     const wind = hourWind(lines, time, options.perModel ?? false, options.from);
     const hour: ForecastHour = {
       time: iso(time),
-      local: localTime(time),
+      local: localStamp(time),
       daylight: daylight(spot, time),
       wind,
       shore: shoreOf(facing, wind),
@@ -1452,8 +1521,8 @@ export async function spotForecast(
     const times = sunTimes(spot.lat, spot.lon, new Date(`${day}T12:00:00Z`));
     return {
       date: day,
-      sunrise: times.sunrise ? localTime(times.sunrise.getTime()) : null,
-      sunset: times.sunset ? localTime(times.sunset.getTime()) : null,
+      sunrise: times.sunrise ? localStamp(times.sunrise.getTime()) : null,
+      sunset: times.sunset ? localStamp(times.sunset.getTime()) : null,
     };
   });
   return {
@@ -1722,9 +1791,7 @@ function session(run: SessionHour[]): Session {
   return {
     from: iso(first),
     to: iso(last + HOUR),
-    local: `${localTime(first)} – ${localTime(last + HOUR)
-      .split(", ")
-      .pop()}`,
+    local: localSpan(first, last + HOUR),
     hours: run.length,
     wind_kn: round(speeds.reduce((a, b) => a + b, 0) / speeds.length),
     min_kn: Math.min(...speeds),

@@ -23,7 +23,10 @@ import {
   findSpot,
   hourEnsemble,
   hourWind,
+  irishZone,
   loadSpots,
+  localSpan,
+  localStamp,
   modelStatus,
   rainByHour,
   spotForecast,
@@ -156,6 +159,58 @@ describe("windowFor", () => {
   });
 });
 
+describe("Irish time", () => {
+  // Irish clocks go back at 01:00Z on Sunday 25 October 2026.
+  const at = (iso: string) => Date.parse(iso);
+
+  it("names the zone, so the two 01:00s the night the clocks go back differ", () => {
+    expect(localStamp(at("2026-10-25T00:00:00Z"))).toBe(
+      "Sun, 25 Oct, 01:00 IST",
+    );
+    expect(localStamp(at("2026-10-25T01:00:00Z"))).toBe(
+      "Sun, 25 Oct, 01:00 GMT",
+    );
+    expect(irishZone(at("2026-03-29T00:59:00Z"))).toBe("GMT");
+    expect(irishZone(at("2026-03-29T01:00:00Z"))).toBe("IST");
+  });
+
+  it("says a span's zone at both ends where the clocks change inside it, and the end's day where it is another", () => {
+    expect(
+      localSpan(at("2026-10-25T08:00:00Z"), at("2026-10-25T17:41:00Z")),
+    ).toBe("Sun, 25 Oct, 08:00 – 17:41 GMT");
+    expect(
+      localSpan(at("2026-10-24T23:00:00Z"), at("2026-10-25T02:00:00Z")),
+    ).toBe("Sun, 25 Oct, 00:00 IST – 02:00 GMT");
+    expect(
+      localSpan(at("2026-10-24T21:00:00Z"), at("2026-10-24T23:00:00Z")),
+    ).toBe("Sat, 24 Oct, 22:00 – 00:00 IST");
+    expect(
+      localSpan(at("2026-10-24T21:00:00Z"), at("2026-10-25T03:00:00Z")),
+    ).toBe("Sat, 24 Oct, 22:00 IST – Sun, 25 Oct, 03:00 GMT");
+  });
+
+  it("labels a forecast's rows across the change each with its own zone", async () => {
+    const source = fixtureSource();
+    const spot = findSpot(await loadSpots(source), "kilcrea").spot!;
+    const now = at("2026-10-24T22:00:00Z");
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(now, { hours: 5, stepHours: 1 }),
+      { now },
+    );
+    expect(forecast.hours.map((h) => [h.time.slice(11, 16), h.local])).toEqual([
+      ["22:00", "Sat, 24 Oct, 23:00 IST"],
+      ["23:00", "Sun, 25 Oct, 00:00 IST"],
+      ["00:00", "Sun, 25 Oct, 01:00 IST"],
+      ["01:00", "Sun, 25 Oct, 01:00 GMT"],
+      ["02:00", "Sun, 25 Oct, 02:00 GMT"],
+    ]);
+    expect(new Set(forecast.hours.map((h) => h.local)).size).toBe(5);
+    expect(forecast.units.time).toMatch(/IST.*GMT/);
+  });
+});
+
 describe("spotForecast", () => {
   const source = fixtureSource();
 
@@ -197,7 +252,7 @@ describe("spotForecast", () => {
     const forecast = await dollymount();
     const first = forecast.hours[0];
     expect(first.time).toBe("2026-09-16T18:00:00.000Z");
-    expect(first.local).toBe("Wed, 16 Sept, 19:00");
+    expect(first.local).toBe("Wed, 16 Sept, 19:00 IST");
 
     // The same hour straight from the fixture files, one model at a time.
     const valid = Date.parse("2026-09-16T18:00:00Z");
@@ -253,7 +308,7 @@ describe("spotForecast", () => {
     // 19:00 Irish time in mid-September is before sunset; 22:00 is after.
     // Six hours at three-hourly steps is two rows: the end is exclusive.
     expect(forecast.hours.map((h) => h.daylight)).toEqual([true, false]);
-    expect(forecast.sun[0].sunset).toMatch(/^Wed, 16 Sept, 19:\d\d$/);
+    expect(forecast.sun[0].sunset).toMatch(/^Wed, 16 Sept, 19:\d\d IST$/);
     // No tide or sea-temperature bundle in the fixtures: said, not invented.
     expect(forecast.tides).toBeNull();
     expect(forecast.sea_temperature).toBeNull();
@@ -286,7 +341,7 @@ describe("spotForecast", () => {
     );
     expect(forecast.sea_temperature).toEqual({
       celsius: 14.5,
-      measured: "Wed, 16 Sept, 16:00",
+      measured: "Wed, 16 Sept, 16:00 IST",
       time: "2026-09-16T15:00:00.000Z",
       station: "M2",
       network: "buoy",
@@ -330,7 +385,7 @@ describe("spotForecast", () => {
       events: [
         {
           time: "2026-09-16T20:12:00.000Z",
-          local: "Wed, 16 Sept, 21:12",
+          local: "Wed, 16 Sept, 21:12 IST",
           tide: "low",
           height_m: 0.61,
         },

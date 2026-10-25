@@ -20,7 +20,7 @@ import {
   findSpot,
   forecastReach,
   loadSpots,
-  localTime,
+  localStamp,
   modelStatus,
   spotForecast,
   windowFor,
@@ -67,7 +67,7 @@ export const INSTRUCTIONS = `wingfoil.ie forecasts wind, waves and tides for win
 
 - Start with list_spots or find_wind to learn spot ids; get_spot_forecast accepts an id, a name or part of one.
 - Before recommending spots, ask where the person is based (or use their location if you have it) and pass find_wind near ({ lat, lon } for a town, or a county or spot) with max_km, or the counties they'd travel to. Searching all of Ireland suits only someone willing to travel anywhere.
-- Speeds are knots, directions are degrees the wind comes FROM, times are UTC with a \`local\` Europe/Dublin label. Quote the local time to people.
+- Speeds are knots, directions are degrees the wind comes FROM, times are UTC with a \`local\` label in Irish time that ends in its zone, IST (UTC+1) or GMT (UTC+0). Quote the local time to people, and its zone around a clock change: the night the clocks go back has two 01:00s.
 - The forecast is one model's own, the one wingfoil.ie rates its stars from, never a blend of several: HARMONIE's (Met Éireann's 2.5 km model, the most accurate here) while it reaches the hour, about the next 60 hours, and ECMWF's past it, unless a caller passes \`model\` to choose another (ECMWF still takes over past the end of its run). \`lead\` says which model an hour is. \`agreement\` says how closely all the models agree, as context; \`confidence\` is the same but low wherever fewer than three models cover the hour (\`models\`), as happens a few days out. Hedge when confidence is low, say why (few models, or models disagreeing), and use by_model to explain a disagreement.
 - ${METHOD}
 - \`shore\` says how the wind meets the spot's beach: onshore, cross-on, cross, cross-off or offshore (the same rule wingfoil.ie's stars use). Offshore and cross-off wind carry a rider who falls away from the beach out to sea: always warn about them. find_wind leaves dead offshore hours out unless allow_offshore is set. A null shore means the beach's facing is unknown, so say offshore wind can't be ruled out there.
@@ -118,7 +118,7 @@ const MAX_KM = 600;
 const HOUR = 3600000;
 
 const timeOf = (millis: number) =>
-  `${localTime(millis)} (${new Date(millis).toISOString()})`;
+  `${localStamp(millis)} (${new Date(millis).toISOString()})`;
 
 /**
  * What an answer must say about its window, since both tools quietly move or
@@ -136,7 +136,7 @@ function aboutWindow(
   const ends = `${timeOf(reach.time)}, the last hour ${reach.model} covers`;
   if (reach.time < window.from)
     return {
-      error: `The forecast does not reach ${localTime(window.from)} yet: it ends ${ends}. ${words.before}, or ask again nearer the time.`,
+      error: `The forecast does not reach ${localStamp(window.from)} yet: it ends ${ends}. ${words.before}, or ask again nearer the time.`,
     };
   const notes: string[] = [];
   // windowFor starts no earlier than the current hour.
@@ -229,10 +229,7 @@ export const getSpotForecast = tool({
       ),
     ...MODEL_ARGS,
   },
-  async run(
-    { spot, from, hours, step_hours, per_model, model },
-    deps,
-  ) {
+  async run({ spot, from, hours, step_hours, per_model, model }, deps) {
     const spots = await loadSpots(deps.source);
     const match = findSpot(spots, spot);
     if (!match.spot)

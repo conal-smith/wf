@@ -117,7 +117,7 @@ describe("the MCP endpoint", () => {
     ).json();
     expect(found.spots.length).toBeLessThanOrEqual(3);
     expect(found.spots[0].sessions[0].local).toMatch(
-      /Sept, \d\d:\d\d – \d\d:\d\d$/,
+      /Sept, \d\d:\d\d – (\w+, \d+ Sept, )?\d\d:\d\d IST$/,
     );
     expect(found.sources.map((s: { id: string }) => s.id).sort()).toEqual([
       "ecmwf",
@@ -266,7 +266,7 @@ describe("the MCP endpoint", () => {
     const beyond = await call("find_wind", { from: "2026-10-01T00:00:00Z" });
     expect(beyond.isError).toBe(true);
     expect(beyond.text).toMatch(
-      /does not reach .*: it ends Mon, 28 Sept, 01:00 \(2026-09-28T00:00:00.000Z\), the last hour ECMWF covers/,
+      /does not reach .*: it ends Mon, 28 Sept, 01:00 IST \(2026-09-28T00:00:00.000Z\), the last hour ECMWF covers/,
     );
     const part = (
       await call("find_wind", { from: "2026-09-27T00:00:00Z", hours: 48 })
@@ -291,7 +291,7 @@ describe("the MCP endpoint", () => {
     });
     expect(beyond.isError).toBe(true);
     expect(beyond.text).toMatch(
-      /^The forecast does not reach Thu, 1 Oct, 01:00 yet: it ends Mon, 28 Sept, 01:00 \(2026-09-28T00:00:00.000Z\), the last hour ECMWF covers\. Ask for a time before then, or ask again nearer the time\.$/,
+      /^The forecast does not reach Thu, 1 Oct, 01:00 IST yet: it ends Mon, 28 Sept, 01:00 IST \(2026-09-28T00:00:00.000Z\), the last hour ECMWF covers\. Ask for a time before then, or ask again nearer the time\.$/,
     );
     const part = (
       await call("get_spot_forecast", {
@@ -334,7 +334,7 @@ describe("the MCP endpoint", () => {
       const answer = (await call(name, args)).json();
       expect(answer.window.from).toBe("2026-09-16T18:00:00.000Z");
       expect(answer.note).toBe(
-        "from was in the past, so the window starts at the current hour, Wed, 16 Sept, 19:00 (2026-09-16T18:00:00.000Z); earlier hours aren't available.",
+        "from was in the past, so the window starts at the current hour, Wed, 16 Sept, 19:00 IST (2026-09-16T18:00:00.000Z); earlier hours aren't available.",
       );
     }
     // Earlier in the current hour is still the current hour: nothing moved.
