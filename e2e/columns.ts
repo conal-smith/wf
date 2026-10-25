@@ -1,5 +1,6 @@
 import { readSample } from "./sample";
 import { stripColumns } from "../src/strip";
+import { irishMidnight } from "../force5/src/timeline";
 
 interface Bundle {
   runTime: string;
@@ -25,25 +26,29 @@ export const SAMPLE_CLOCK = new Date(
 
 /**
  * The axis `dockColumns` builds from two runs: the near one's own times, with
- * the far one's after them. There is a head before them only when the near run
- * has not started yet — and the sample HARMONIE run started eight hours before
- * `SAMPLE_CLOCK`, so here there is none. Written out rather than imported, so a
+ * the far one's after them, and before them the far one's times since Irish
+ * midnight (the ruling of 25 October 2026: today is kept whole). The sample
+ * HARMONIE run started at 13 UTC, so at `SAMPLE_CLOCK` the head is ECMWF's
+ * steps of the morning, 00 to 12 UTC. Written out rather than imported, so a
  * spec states the expectation instead of re-deriving it.
  */
 const join = (near: Bundle, far: Bundle, now = SAMPLE_CLOCK.getTime()) => {
   const first = Date.parse(near.frames[0].validTime);
   const last = Date.parse(near.frames.at(-1)!.validTime);
   const times = far.frames.map((frame) => frame.validTime);
-  // The head runs from the last far time the clock has already passed up to
-  // (not including) the near run's first, and only when that first is ahead.
-  const from =
+  // The head runs from today's midnight — or, when the near run has not
+  // started yet, from the last far time the clock has already passed, if that
+  // is earlier — up to (not including) the near run's first.
+  const from = Math.min(
+    irishMidnight(now),
     first > now
       ? times.reduce(
           (start, validTime) =>
             Date.parse(validTime) <= now ? Date.parse(validTime) : start,
           -Infinity,
         )
-      : Infinity;
+      : Infinity,
+  );
   const outside = (keep: (time: number) => boolean) =>
     times.filter((validTime) => keep(Date.parse(validTime)));
   return [
@@ -54,9 +59,9 @@ const join = (near: Bundle, far: Bundle, now = SAMPLE_CLOCK.getTime()) => {
 };
 
 /**
- * The dock's columns for the sample set at `SAMPLE_CLOCK`: HARMONIE's own
- * hourly times — the finest grid published — then ECMWF's from the first one
- * past them, because it reaches furthest.
+ * The dock's columns for the sample set at `SAMPLE_CLOCK`: ECMWF's steps of
+ * the morning, then HARMONIE's own hourly times — the finest grid published —
+ * then ECMWF's from the first one past them, because it reaches furthest.
  */
 export const sampleColumns = join(harmonie, ecmwf);
 

@@ -231,6 +231,37 @@ class ReadBucketTests(unittest.TestCase):
                          [("blend_input_refused", "ecmwf")])
         self.assertIn("schemaVersion 1", refused[0]["error"])
 
+    def test_reads_the_blend_it_replaces_apart_from_the_wind_pointers(self):
+        s3 = FakeS3()
+        base = "blend-2026091400-3h-v2-0a0b0c0d/"
+        served = dict(pointer("blend", ["n52w010"]), base=base)
+        served["spots"]["keys"] = ["spotBlend"]
+        s3.seed("forecast/" + MANIFESTS["blend"], json.dumps(served).encode())
+        s3.objects[f"forecast/weather/{base}spots/n52w010.json"] = {
+            "Body": gzip.compress(json.dumps({"square": "n52w010"}).encode()),
+            "ContentEncoding": "gzip", "ETag": '"x"'}
+        with tempfile.TemporaryDirectory() as directory:
+            path = fetch_blend.read_previous_blend(s3, "bucket", "forecast", Path(directory))
+            self.assertEqual(path, Path(directory) / "previous" / MANIFESTS["blend"])
+            self.assertEqual(json.loads(path.read_text()), served)
+            square = path.parent / base / "spots" / "n52w010.json"
+            self.assertEqual(json.loads(square.read_text()), {"square": "n52w010"})
+            # Not where the wind pointers go, so it is never read as an input.
+            self.assertFalse((Path(directory) / MANIFESTS["blend"]).exists())
+
+    def test_starts_today_afresh_when_the_blend_it_replaces_cannot_be_read(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertIsNone(fetch_blend.read_previous_blend(
+                FakeS3(), "bucket", "forecast", Path(directory)))
+            # A pointer whose squares are gone: named in the log, never fatal.
+            s3 = FakeS3()
+            served = dict(pointer("blend", ["n52w010"]), base="blend-2026091400-3h-v2-0a0b0c0d/")
+            s3.seed("forecast/" + MANIFESTS["blend"], json.dumps(served).encode())
+            with contextlib.redirect_stdout(io.StringIO()) as log:
+                self.assertIsNone(fetch_blend.read_previous_blend(
+                    s3, "bucket", "forecast", Path(directory)))
+            self.assertEqual(json.loads(log.getvalue())["event"], "blend_previous_unread")
+
 
 if __name__ == "__main__":
     unittest.main()

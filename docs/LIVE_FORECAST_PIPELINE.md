@@ -825,6 +825,42 @@ pointer `weather/blend.json` (about 1 kB compressed) and a run directory beside 
   replaced for the grace period, like any model's.
 - **Its run** is the hour it was worked out, so the hourly job (`:05`, after HARMONIE's
   `:45` slot) publishes a new one each hour; `maxAgeHours` is 3.
+- **Today, kept whole** (the ruling of 25 October 2026). A HARMONIE run covers nothing
+  before it was initialised, and the run it replaced is deleted an hour after the swap,
+  so a blend worked out in the evening from the 17 UTC run had nothing from HARMONIE
+  for the morning and afternoon, and the dock and the spot finder showed today from
+  17:00. Each blend now reads the blend it replaces and keeps, place by place, each of
+  today's hours from Irish midnight (Europe/Dublin; 23:00 UTC the evening before in
+  summer time) that the earlier blend rated from a model higher in the stars' order
+  (HARMONIE, then ECMWF) than the new one can — in practice the hours before the new
+  HARMONIE run begins, where the new blend has only ECMWF's three-hourly steps or
+  nothing. Since that blend had kept its own morning the same way, today fills hourly
+  from midnight, each hour from the most recent run that covered it: wind, gust,
+  bearing, the agreement as it was then, and which model it was (`carryToday` in
+  `src/spotBlend.ts`). A carried hour is added to that model's `columns`, so the dock's
+  near run reaches back to midnight; the source's `run` still names the newest run.
+  **Yesterday is not kept**: nothing before today's Irish midnight is ever carried, so
+  the first blend after midnight starts the day afresh. Nothing is carried from a blend
+  built for another order of models, when the new blend has no HARMONIE run, or for a
+  model it no longer reads. The format is unchanged (schema 2; the carried hours are
+  more `times`, and the worker's `validate_blend_bundle` already allows them), so a
+  site from before reads it as it reads any blend. With a bucket, `fetch_blend.py`
+  reads the blend the bucket serves and its squares into the scratch directory's
+  `previous/` and names it to `build.ts` (`--previous`); without one, `build.ts` reads
+  the blend already at `--out`. A blend it cannot read is named in the log
+  (`blend_previous_unread`, or "today's earlier hours not kept") and the job still
+  publishes, starting today afresh. **What it costs:** measured on 25 October 2026's
+  21 UTC blend with 17 hours carried, the ten squares grew from 99.6 kB to 107.1 kB
+  gzipped (+7.5 kB, 7.5 %; the pointer +41 bytes) where ICON-EU's hourly times were
+  already in the blend, and by +10.2 kB gzipped (pointer +430 bytes) where they were
+  not. A whole day carried (24 hours) is at most about 15 kB gzipped across all ten
+  squares, around 1.5 kB a square: one run directory in the bucket at a time, plus the
+  one in its grace period, and a reader fetches only the squares in view. The job
+  makes eleven more reads of the bucket a run (the pointer and ten squares).
+  The models' own runs, and so the Blend chart's lines and a rider who rates from
+  another model (worked out in the browser from the models' squares), keep no earlier
+  hours: there the dock fills today's morning with the long-range run's steps
+  (`dockColumns`).
 - **The browser** reads the pointer when the map mounts and revalidates it every five
   minutes. The lights read only the squares in view — the map's bounds grown by a
   third on every side, recomputed when the camera settles, at most 36 squares, the

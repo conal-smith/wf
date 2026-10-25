@@ -121,6 +121,25 @@ export function isFinderPath(pathname: string): boolean {
 }
 
 /**
+ * The chart, always: the menu's Chart and every way back named Chart. The
+ * bare root opens on whichever of the chart and the spot finder the rider
+ * last had (src/lastView.ts), which is right for an address typed in and
+ * wrong for a link that says "Chart"; a link with anything in its query is
+ * followed as it is, so this one is the chart. The map takes the word out of
+ * the address once it is open (src/App.tsx), and a page over the map brings
+ * the chart up in the map's place (src/PagesOverMap.tsx).
+ */
+export const CHART_PARAM = "chart";
+export const CHART_HREF = `/?${CHART_PARAM}`;
+
+/** Whether an address on this origin is the explicit chart, `CHART_HREF`. */
+export function asksChart(url: { pathname: string; search: string }) {
+  return (
+    url.pathname === "/" && new URLSearchParams(url.search).has(CHART_PARAM)
+  );
+}
+
+/**
  * Customise, from a page that is not the map's: the chart, opened with the
  * wizard over it. The map reads the word once and takes it out of the
  * address (src/App.tsx); a page drawn over the map hands it back to the map
@@ -150,7 +169,7 @@ export const SITE_NAV: readonly {
   href: string;
   label: string;
 }[] = [
-  { id: "chart", href: "/", label: "Chart" },
+  { id: "chart", href: CHART_HREF, label: "Chart" },
   { id: "finder", href: FINDER_HREF, label: "Spot finder" },
   { id: "customise", href: CUSTOMISE_HREF, label: "Customise" },
 ];

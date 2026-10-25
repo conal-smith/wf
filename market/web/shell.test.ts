@@ -859,7 +859,7 @@ describe("S6: the footer", () => {
     expect(out).toContain(`© ${new Date().getFullYear()} wingfoil.ie`);
     expect(out).toMatch(/<nav class="[^"]*" aria-label="Footer">/);
     const hrefs = [...out.matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1]);
-    expect(hrefs).toEqual(["/market", "/market/sell", "/"]);
+    expect(hrefs).toEqual(["/market", "/market/sell", "/?chart"]);
     // A list of nothing but links needs no underlines.
     expect(out).toContain("no-underline");
   });

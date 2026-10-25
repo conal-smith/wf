@@ -13,14 +13,16 @@
  * as before, and a link to the marketplace, the community or the map on
  * another spot (`/?spot=…`) is still a page load. The map is the chart or the
  * spot finder (/spots), whichever the page opened over; a link to the finder
- * from a page over the chart brings the finder up in its place (and one to
- * the chart from a page over the finder, the chart), and the site
- * menu's Customise (`/?customise`) is the way back with the wizard open over
- * whichever it is.
+ * from a page over the chart brings the finder up in its place, and one to
+ * the explicit chart (`/?chart`, the menu's Chart) from a page over the
+ * finder brings the chart up in its place; a bare `/` is the map as it was.
+ * The site menu's Customise (`/?customise`) is the way back with the wizard
+ * open over whichever it is.
  */
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import {
   FINDER_HREF,
+  asksChart,
   asksCustomise,
   isAiPath,
   isFinderPath,
@@ -116,18 +118,17 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
         window.history.pushState(null, "", FINDER_HREF);
         setOver(null);
         window.dispatchEvent(new PopStateEvent("popstate"));
-      } else if (
-        over &&
-        url.pathname === "/" &&
-        !url.search &&
-        isFinderPath(mapPath.current)
-      ) {
-        // The chart from a page over the finder (the menu's Chart, a way
-        // back named Chart): the chart in the finder's place, as above.
+      } else if (over && asksChart(url)) {
+        // The chart (the menu's Chart, a way back named Chart): the map as
+        // it was if it is the chart, or the chart in the finder's place, as
+        // above.
         event.preventDefault();
-        window.history.pushState(null, "", "/");
-        setOver(null);
-        window.dispatchEvent(new PopStateEvent("popstate"));
+        if (!isFinderPath(mapPath.current)) back();
+        else {
+          window.history.pushState(null, "", "/");
+          setOver(null);
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        }
       } else if (over && asksCustomise(url)) {
         event.preventDefault();
         customise.current = true;

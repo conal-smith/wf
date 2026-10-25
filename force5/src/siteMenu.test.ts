@@ -260,7 +260,7 @@ describe("the navigation", () => {
     expect(markup.match(/<ul /g)).toHaveLength(2);
     // The map is the chart: there is no "Wind map" beside it.
     expect(markup).not.toContain("Wind map");
-    expect(markup.match(/href="\/"/g)).toHaveLength(1);
+    expect(markup.match(/href="\/\?chart"/g)).toHaveLength(1);
   });
 
   /*
@@ -293,10 +293,12 @@ describe("the navigation", () => {
     ]);
   });
 
-  it("links each row where a page load takes it, Customise to the chart with the wizard", () => {
+  it("links each row where a page load takes it: the chart always the chart, Customise the chart with the wizard", () => {
     const markup = rows({ current: null, features: both });
+    // Never the bare root, which opens on the page the rider last had.
+    expect(markup).not.toContain('href="/"');
     for (const href of [
-      "/",
+      "/?chart",
       "/spots",
       "/?customise",
       "/market",

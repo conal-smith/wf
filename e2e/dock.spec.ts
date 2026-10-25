@@ -1123,6 +1123,10 @@ test("on a phone the labels fold away as the reader slides the hours, and open a
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
 });
 
+/** The strip's first HARMONIE column, after today's ECMWF morning. */
+const firstHarmonie = () =>
+  sampleStrip.findIndex((column) => column.model === "harmonie");
+
 /** The particle canvas's pixels with anything drawn in them. */
 const inked = (page: Page) =>
   page.locator(".particle-canvas").evaluate((canvas: HTMLCanvasElement) => {
@@ -1144,10 +1148,16 @@ test("an hour past the map's model hands the map to the run that reaches it", as
   await expect.poll(() => inked(page), { timeout: 20000 }).toBeGreaterThan(0);
   // The strip's last day: far past HARMONIE, inside ECMWF's run.
   const far = sampleStrip.length - 4;
+  // An hour inside HARMONIE's run: today's morning before it is ECMWF's.
+  const near = String(firstHarmonie() + 2);
   await slider(page).fill(String(far));
   // The map draws ECMWF there, the run the dock's columns come from, and says
   // so where it names its model: from ECMWF's first hour past HARMONIE's last.
-  const seam = sampleStrip.find((column) => column.model === "ecmwf")!;
+  // The first ECMWF column past HARMONIE's last: today's morning before
+  // HARMONIE's run is ECMWF's too (the ruling of 25 October 2026).
+  const seam = sampleStrip[
+    sampleStrip.findLastIndex((column) => column.model === "harmonie") + 1
+  ];
   const from = `${dayShort(seam.time)} ${clock(seam.time)}`;
   // The sample's ECMWF run is more than eighteen hours old at the sample
   // clock, and the label says so of whichever run it is drawing.
@@ -1179,14 +1189,14 @@ test("an hour past the map's model hands the map to the run that reaches it", as
     if (/\/weather\/(harmonie|ecmwf)\.json/.test(request.url()))
       manifests.push(request.url());
   });
-  await slider(page).fill("2");
+  await slider(page).fill(near);
   await expect(label).toHaveText("HARMONIE");
   await expect(canvas).not.toHaveClass(/is-blank/);
   await expect.poll(() => inked(page), { timeout: 20000 }).toBeGreaterThan(0);
   await slider(page).fill(String(far));
   await expect(label).toHaveText(handedOver);
   await expect.poll(() => inked(page), { timeout: 20000 }).toBeGreaterThan(0);
-  await slider(page).fill("2");
+  await slider(page).fill(near);
   await expect(label).toHaveText("HARMONIE");
   await slider(page).fill(String(far));
   await expect(label).toHaveText(handedOver);
@@ -1501,7 +1511,9 @@ test("the strip runs fifteen days, the coarser far ones in narrower columns", as
     .locator(".dock tr.tt-hour td[data-i]")
     .evaluateAll((tds) => tds.map((td) => td.getBoundingClientRect().width));
   expect(Math.min(...widths)).toBeLessThan(Math.max(...widths));
-  expect(widths[0]).toBeCloseTo(Math.max(...widths), 0);
+  // An hourly column is a full one; today's morning before HARMONIE's run is
+  // ECMWF's three-hourly steps, narrower like the far days.
+  expect(widths[firstHarmonie()]).toBeCloseTo(Math.max(...widths), 0);
 });
 
 test("waves, current, sky, air and rain are one tap away, and stay open", async ({

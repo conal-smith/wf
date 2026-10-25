@@ -137,8 +137,15 @@ test.describe("on a desktop", () => {
     await rated(page);
     const row = hours(page);
     const count = await row.count();
-    // Mid-September in Dublin: about 06:20 to 20:20, so 06:00 to 21:00.
-    expect(count).toBeGreaterThanOrEqual(15);
+    // Mid-September in Dublin: about 06:20 to 20:20, so 06:00 to 21:00, and
+    // now at 22:00. HARMONIE's sample run begins at 14:00: the morning before
+    // it is ECMWF's three-hourly steps (the ruling of 25 October 2026, today
+    // kept whole), a column each, with their wind.
+    expect(count).toBeGreaterThanOrEqual(12);
+    const winds = await row.evaluateAll((els) =>
+      els.map((el) => /\d/.test(el.textContent ?? "")),
+    );
+    expect(winds.every(Boolean)).toBe(true);
     await expect(row.first()).toHaveAttribute("data-dark", "true");
     await expect(row.last()).toHaveAttribute("data-dark", "true");
     await expect(row.nth(1)).not.toHaveAttribute("data-dark", "true");
@@ -172,6 +179,10 @@ test.describe("on a desktop", () => {
   test("the row scrolls with no bar, opening on now, and steps either way", async ({
     page,
   }) => {
+    // Two cards a row, each too narrow for the whole day: the sample's
+    // morning, before its HARMONIE run, is ECMWF's three-hourly steps, which
+    // leaves a row that only just fits a card at 1440 pixels.
+    await page.setViewportSize({ width: 1240, height: 900 });
     await star(page, ["brandon", "keel"]);
     await openFinder(page);
     await rated(page);
@@ -181,12 +192,21 @@ test.describe("on a desktop", () => {
       await scroller.evaluate((el) => getComputedStyle(el).scrollbarWidth),
     ).toBe("none");
     // Now stands in the middle of the view, or as near as the ends allow.
-    const middle = async () => {
-      const view = (await scroller.boundingBox())!;
-      const now = (await card.locator("[data-hour][data-now]").boundingBox())!;
-      return Math.abs(now.x + now.width / 2 - (view.x + view.width / 2));
-    };
-    expect(await middle()).toBeLessThan(60);
+    const centred = await scroller.evaluate((el) => {
+      const now = el
+        .querySelector("[data-hour][data-now]")!
+        .getBoundingClientRect();
+      const view = el.getBoundingClientRect();
+      const left = now.left - view.left + el.scrollLeft;
+      const max = Math.max(0, el.scrollWidth - el.clientWidth);
+      const want = Math.max(
+        0,
+        Math.min(max, left + now.width / 2 - el.clientWidth / 2),
+      );
+      return { at: el.scrollLeft, want, max };
+    });
+    expect(Math.abs(centred.at - centred.want)).toBeLessThan(2);
+    expect(centred.max).toBeGreaterThan(0);
     const left = () => scroller.evaluate((el) => el.scrollLeft);
     const later = card.getByRole("button", { name: "Later hours" });
     const earlier = card.getByRole("button", { name: "Earlier hours" });
@@ -432,6 +452,10 @@ test.describe("on a desktop", () => {
   test("first light stays in the row's view as it scrolls, not cut off by its edge", async ({
     page,
   }) => {
+    // Two cards a row, each too narrow for the whole day: the sample's
+    // morning, before its HARMONIE run, is ECMWF's three-hourly steps, which
+    // leaves a row that only just fits a card at 1440 pixels.
+    await page.setViewportSize({ width: 1240, height: 900 });
     await star(page, ["brandon", "keel"]);
     await openFinder(page);
     await rated(page);
@@ -719,6 +743,67 @@ test.describe("on a desktop", () => {
     await expect(page.locator(".map-under-page")).toHaveCount(0);
     await expect(page.getByRole("dialog", { name: "Customise" })).toBeVisible();
     await expect(page).toHaveURL(/\/spots$/);
+    expect(
+      await page.evaluate(() => (window as { stayed?: boolean }).stayed),
+    ).toBe(true);
+  });
+
+  /*
+   * The bare root opens on whichever page the rider last had; a link that
+   * says Chart or Spot finder is that page, whatever was last open.
+   */
+  test("the menu's Chart is always the chart, and its Spot finder the finder, from a page loaded alone", async ({
+    page,
+  }) => {
+    // The finder last open, then a spot's page from a shared link.
+    await openFinder(page);
+    await page.goto("/spot/brandon");
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await expect(siteRow(page, "Chart")).toHaveAttribute("href", "/?chart");
+    await siteRow(page, "Chart").click();
+    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(finder(page)).toHaveCount(0);
+    // The word has done its work and is gone from the address.
+    await expect(page).toHaveURL(/\/$/);
+
+    // The chart last open now: the spot's page's Spot finder is the finder.
+    await page.goto("/spot/brandon");
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await siteRow(page, "Spot finder").click();
+    await expect(finder(page)).toBeVisible({ timeout: 30000 });
+    await expect(page).toHaveURL(/\/spots$/);
+
+    // The finder last open again: the AI page's way back, named Chart, is
+    // the chart too.
+    await page.goto("/ai");
+    await page.locator("[data-back-to-map]").click();
+    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(finder(page)).toHaveCount(0);
+    await expect(page).toHaveURL(/\/$/);
+
+    // And the bare root still opens on the page last open.
+    await page.goto("/spots");
+    await expect(finder(page)).toBeVisible({ timeout: 30000 });
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/spots$/);
+    await expect(finder(page)).toBeVisible();
+  });
+
+  test("the menu's Chart from a spot's page over the finder is the chart", async ({
+    page,
+  }) => {
+    await star(page, ["brandon"]);
+    await openFinder(page);
+    await page.evaluate(() => ((window as { stayed?: boolean }).stayed = true));
+    await cards(page).getByRole("link", { name: "Brandon Bay" }).click();
+    await expect(page.locator(".map-under-page")).toHaveCount(1);
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await siteRow(page, "Chart").click();
+    await expect(page.locator(".map-under-page")).toHaveCount(0);
+    await expect(page.locator(".map-head")).toBeVisible();
+    await expect(finder(page)).toHaveCount(0);
+    await expect(page).toHaveURL(/\/$/);
+    // No page load: the map was kept under the page.
     expect(
       await page.evaluate(() => (window as { stayed?: boolean }).stayed),
     ).toBe(true);
