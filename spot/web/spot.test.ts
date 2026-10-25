@@ -36,6 +36,9 @@ import {
   windWords,
   type TideTurn,
   type SpotDay,
+  FACING_UNKNOWN,
+  shoreHeading,
+  shoreWords,
 } from "./spot";
 
 const wind = (knots: number, deg = 270, gust: number | null = null) =>
@@ -429,9 +432,7 @@ describe("the one model the stars come from", () => {
       DEFAULT_RIDER,
     );
     expect(dayLeads(later, from)).toEqual(["harmonie", "ecmwf"]);
-    expect(dayLeadText(dayLeads(later, from))).toBe(
-      "HARMONIE, then ECMWF",
-    );
+    expect(dayLeadText(dayLeads(later, from))).toBe("HARMONIE, then ECMWF");
     expect(dayLeads(later.slice(1), from)).toEqual(["ecmwf"]);
     // A rider who chose ECMWF needs no saying of it.
     expect(dayLeads(later.slice(1), { model: "ecmwf", then: "ecmwf" })).toEqual(
@@ -472,5 +473,31 @@ describe("where the sky stops", () => {
     expect(skyStopsOn([day("2026-10-20", 24), day("2026-10-21", 24)])).toBe(
       null,
     );
+  });
+});
+
+describe("the header's shore", () => {
+  it("gives a beach its facing and the winds it wants", () => {
+    expect(shoreHeading("kilcrea")).toEqual({
+      kind: "facing",
+      facing: 163,
+      best: ["ENE–ESE", "SSW–W"],
+    });
+  });
+
+  it("says nothing of the shore at a spot on the water, like any other spot", () => {
+    expect(shoreHeading("malahide-estuary")).toBeNull();
+    expect(shoreWords(null, true)).toBeNull();
+  });
+
+  it("still says a beach's facing is unknown where it is", () => {
+    for (const id of ["bertra", "rossbeigh", "fi-white-strand-doonbeg"])
+      expect(shoreHeading(id), id).toEqual({
+        kind: "unknown",
+        text: FACING_UNKNOWN,
+      });
+    expect(FACING_UNKNOWN).toBe("Facing unknown: rated on the wind alone");
+    expect(shoreWords(null, false)).toBe("facing unknown: the wind alone");
+    expect(shoreWords("cross-off", false)).toBe("cross-offshore");
   });
 });

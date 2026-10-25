@@ -20,11 +20,7 @@
 import { Fragment, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { modelName, type StarsFrom } from "../../force5/src/lead";
-import {
-  SHORE_LABEL,
-  starsText,
-  type HourRating,
-} from "../../force5/src/stars";
+import { starsText, type HourRating } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
 import { Figure, RatingTip, StarGlyphs } from "../../ui";
 import { MONO_LABEL, RING, tv } from "../../ui/tv";
@@ -49,6 +45,7 @@ import {
   gustJumps,
   handoverWords,
   placeChanges,
+  shoreWords,
   skyEnd,
   gustShown,
   windIn,
@@ -147,6 +144,8 @@ export interface DaySectionProps {
   riderText: string;
   band: Band;
   facing: number | null;
+  /** A spot on the water: an hour's card says nothing of the shore. */
+  onWater?: boolean;
   turns: readonly TideTurn[];
   sun: DaySun;
   tideCeiling: number;
@@ -286,6 +285,7 @@ function DayBody({
   riderText,
   band,
   facing,
+  onWater = false,
   turns,
   sun,
   tideCeiling,
@@ -434,6 +434,7 @@ function DayBody({
                 riderText={riderText}
                 band={band}
                 facing={facing}
+                onWater={onWater}
                 date={names.short}
                 starsFrom={starsFrom}
               />
@@ -662,6 +663,7 @@ function HourTip({
   riderText,
   band,
   facing,
+  onWater,
   date,
   starsFrom,
 }: {
@@ -670,6 +672,7 @@ function HourTip({
   riderText: string;
   band: Band;
   facing: number | null;
+  onWater: boolean;
   date: string;
   starsFrom: StarsFrom;
 }) {
@@ -708,9 +711,7 @@ function HourTip({
             {facing !== null && (
               <ShoreGlyph from={wind.direction_deg} facing={facing} size={15} />
             )}
-            {row.shore
-              ? SHORE_LABEL[row.shore]
-              : "facing unknown: the wind alone"}
+            {shoreWords(row.shore, onWater)}
           </li>
           {rating?.reasons.map((reason) => (
             <li key={reason} className={s.tipReason()}>

@@ -13,12 +13,8 @@
 import { MapPin, RefreshCw } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { starsFromAt } from "../../force5/src/lead";
-import {
-  loadPrefs,
-  saveRider,
-  withRiderModel,
-} from "../../force5/src/prefs";
-import { shoreFacing } from "../../force5/src/shoreFacing";
+import { loadPrefs, saveRider, withRiderModel } from "../../force5/src/prefs";
+import { isOnWater, shoreFacing } from "../../force5/src/shoreFacing";
 import {
   STARS_HREF,
   isStarsPath,
@@ -68,9 +64,9 @@ import {
   compass,
   daySun,
   dublinDate,
-  goodWindArcs,
   groupDays,
   leadChanges,
+  shoreHeading,
   skyStopsOn,
   spotRows,
   tideTurns,
@@ -441,7 +437,7 @@ function SpotPage({
   }, [days.length]);
 
   const shown = current ?? days[0]?.day.date ?? "";
-  const arcs = facing === null ? [] : goodWindArcs(facing);
+  const heading = shoreHeading(spot.id);
   const sea = forecast.sea_temperature;
   const riderText = riderWords(rider);
   const picture = useSpotPicture(spot);
@@ -450,32 +446,24 @@ function SpotPage({
     <main className={s.main()} ref={mainRef}>
       <Headline>{spot.name}</Headline>
       <p className={s.meta()}>
-        {facing !== null ? (
+        {heading?.kind === "facing" && (
           <span className={s.metaItem()} data-shore-summary>
-            <FacingGlyph facing={facing} />
+            <FacingGlyph facing={heading.facing} />
             <span>
-              Faces <b className={s.strong()}>{compass(facing)}</b>{" "}
-              {Math.round(facing)}°
+              Faces <b className={s.strong()}>{compass(heading.facing)}</b>{" "}
+              {Math.round(heading.facing)}°
             </span>
-            {arcs.length > 0 && (
-              <span>
-                · best{" "}
-                {arcs
-                  .map((arc) =>
-                    arc.from === arc.to ? arc.from : `${arc.from}–${arc.to}`,
-                  )
-                  .join(", ")}
-              </span>
+            {heading.best.length > 0 && (
+              <span>· best {heading.best.join(", ")}</span>
             )}
           </span>
-        ) : (
-          <span data-shore-summary>
-            Facing unknown: rated on the wind alone
-          </span>
+        )}
+        {heading?.kind === "unknown" && (
+          <span data-shore-summary>{heading.text}</span>
         )}
         {spot.county && (
           <span className={s.metaItem()}>
-            <Dot />
+            {heading && <Dot />}
             {spot.county}
           </span>
         )}
@@ -502,6 +490,7 @@ function SpotPage({
             riderText={riderText}
             band={band}
             facing={facing}
+            onWater={isOnWater(spot.id)}
             turns={turns}
             sun={sun}
             tideCeiling={ceiling}

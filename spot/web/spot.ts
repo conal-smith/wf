@@ -7,6 +7,7 @@
  */
 import { handovers, modelName, type StarsFrom } from "../../force5/src/lead";
 import {
+  SHORE_LABEL,
   rateHour,
   windBand,
   shoreAngle,
@@ -14,6 +15,7 @@ import {
   type Rider,
   type ShoreAngle,
 } from "../../force5/src/stars";
+import { isOnWater, shoreFacing } from "../../force5/src/shoreFacing";
 import { sunTimes } from "../../force5/src/sun";
 import {
   arcText,
@@ -163,6 +165,40 @@ export function shoreSummary(facing: number | null): string | null {
     : "";
   return `Faces ${compass(facing)}${best}`;
 }
+
+/** What the header says where a beach's facing is not known. */
+export const FACING_UNKNOWN = "Facing unknown: rated on the wind alone";
+
+/**
+ * What a spot's header says of its shore: the facing and the winds it wants,
+ * or that the facing is unknown. A spot on the water (force5/src/shoreFacing.ts
+ * `onWater`, Malahide Estuary) says nothing there, and looks like any other
+ * spot: null.
+ */
+export type ShoreHeading =
+  | { kind: "facing"; facing: number; best: string[] }
+  | { kind: "unknown"; text: string };
+
+export function shoreHeading(id: string): ShoreHeading | null {
+  if (isOnWater(id)) return null;
+  const facing = shoreFacing(id);
+  if (facing === null) return { kind: "unknown", text: FACING_UNKNOWN };
+  return { kind: "facing", facing, best: goodWindArcs(facing).map(arcText) };
+}
+
+/**
+ * What an hour's card says of the shore: the angle, or that the facing is
+ * unknown; nothing at a spot on the water.
+ */
+export const shoreWords = (
+  shore: ShoreAngle | null,
+  onWater: boolean,
+): string | null =>
+  shore
+    ? SHORE_LABEL[shore]
+    : onWater
+      ? null
+      : "facing unknown: the wind alone";
 
 // ---- wind -------------------------------------------------------------------
 
