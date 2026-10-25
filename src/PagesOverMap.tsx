@@ -13,11 +13,15 @@
  * as before, and a link to the marketplace, the community or the map on
  * another spot (`/?spot=…`) is still a page load. The map is the chart or the
  * spot finder (/spots), whichever the page opened over; a link to the finder
- * from a page over the chart brings the finder up in its place.
+ * from a page over the chart brings the finder up in its place (and one to
+ * the chart from a page over the finder, the chart), and the site
+ * menu's Customise (`/?customise`) is the way back with the wizard open over
+ * whichever it is.
  */
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import {
   FINDER_HREF,
+  asksCustomise,
   isAiPath,
   isFinderPath,
   isSpotPath,
@@ -25,6 +29,12 @@ import {
 
 const AiApp = React.lazy(() => import("../ai/web/AiApp"));
 const SpotApp = React.lazy(() => import("../spot/web/SpotApp"));
+
+/**
+ * Said on the window once a page over the map has handed the reader back to
+ * it for Customise: the map (src/App.tsx) opens the wizard.
+ */
+export const CUSTOMISE_EVENT = "wingfoil:customise";
 
 /** The paths drawn over the map when a link from it asks for one. */
 export const isOverPath = (pathname: string) =>
@@ -70,6 +80,9 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
   // And its path: the chart's `/`, or the spot finder's.
   const mapPath = useRef(window.location.pathname);
   const page = useRef<HTMLDivElement>(null);
+  // Customise was asked for from a page over the map: once the map is back
+  // and no longer inert, it opens the wizard.
+  const customise = useRef(false);
 
   useEffect(() => {
     const back = () => {
@@ -106,6 +119,22 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
       } else if (
         over &&
         url.pathname === "/" &&
+        !url.search &&
+        isFinderPath(mapPath.current)
+      ) {
+        // The chart from a page over the finder (the menu's Chart, a way
+        // back named Chart): the chart in the finder's place, as above.
+        event.preventDefault();
+        window.history.pushState(null, "", "/");
+        setOver(null);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      } else if (over && asksCustomise(url)) {
+        event.preventDefault();
+        customise.current = true;
+        back();
+      } else if (
+        over &&
+        url.pathname === "/" &&
         (!url.search || url.search === mapSearch.current)
       ) {
         event.preventDefault();
@@ -132,6 +161,12 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
       window.removeEventListener("keydown", escape, true);
       window.removeEventListener("popstate", pop);
     };
+  }, [over]);
+
+  useEffect(() => {
+    if (over || !customise.current) return;
+    customise.current = false;
+    window.dispatchEvent(new Event(CUSTOMISE_EVENT));
   }, [over]);
 
   const path = over ? new URL(over, window.location.origin).pathname : "";

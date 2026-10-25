@@ -147,7 +147,7 @@ export default function Gallery() {
   return (
     <main className="grid min-h-dvh content-start gap-10 bg-ground paper-grain px-safe-6 pb-16 font-body text-prose text-ink max-wide:gap-8 max-wide:px-safe-3">
       <Masthead>
-        <SiteMenu current="map" size="sm" ground="content" />
+        <SiteMenu current={null} size="sm" ground="content" />
         <a href="/ui" className={mastheadStyles().brand()}>
           <MastheadMark section="Kit" />
         </a>

@@ -192,8 +192,9 @@ export async function closePanel(page: Page) {
 
 /**
  * The chart's own tools that open over it, each a row of the site menu's:
- * Customise, the ones src/MapControls.tsx `chartTools` lists, and the tour
- * (src/App.tsx). The spot finder is a page, and its row a link.
+ * Customise, in the site's navigation (a link, the map's own way to it), and
+ * under it, in "This chart", the ones src/MapControls.tsx `chartTools` lists
+ * and the tour (src/App.tsx).
  */
 export type ChartTool =
   | "Customise"
@@ -204,9 +205,35 @@ export type ChartTool =
 
 /** A chart tool's row in the site menu, while the menu is open. */
 export const menuRow = (page: Page, name: ChartTool) =>
-  page
-    .getByRole("group", { name: "The chart" })
-    .getByRole("button", { name, exact: true });
+  name === "Customise"
+    ? siteRow(page, name)
+    : chartTools(page).getByRole("button", { name, exact: true });
+
+/**
+ * The site's navigation, the same on every page (force5/src/siteNav.ts
+ * SITE_NAV): the chart, the spot finder and Customise, then the sections, the
+ * marketplace and the community switched on in this suite's build.
+ */
+export const SITE_ROWS = [
+  "Chart",
+  "Spot finder",
+  "Customise",
+  "Marketplace",
+  "Community",
+  "Use with AI",
+];
+
+/** The site's navigation in the open menu: the same on every page. */
+export const siteNav = (page: Page) =>
+  page.getByRole("navigation", { name: "Site" });
+
+/** A row of the site's navigation, by its name. */
+export const siteRow = (page: Page, name: string) =>
+  siteNav(page).getByRole("link", { name, exact: true });
+
+/** The chart's own part of the open menu, under the navigation. */
+export const chartTools = (page: Page) =>
+  page.getByRole("group", { name: "This chart" });
 
 /**
  * Open the site menu, a drawer from the left (force5/src/SiteMenu.tsx), and

@@ -18,8 +18,15 @@
  * The menu is a drawer from the left (owner's ruling of 2026-10-24, the mockup
  * `backlog/mockups/2026-10-24-your-spots-home.html`): a modal <dialog> over
  * the kit's backdrop, so the focus is trapped in it and the page behind is
- * inert, with the page's own tools and then the site's sections, each with
- * its glyph in the margin. A finger can push it back off to the left.
+ * inert, with the site's navigation, the same on every page, and under it the
+ * page's own tools, each row with its glyph in the margin. A finger can push
+ * it back off to the left.
+ *
+ * The navigation is the chart, the spot finder and Customise, then the
+ * site's other sections (owner's ruling of 2026-10-25): one menu, in one
+ * order, wherever it is opened. What only one page has (the chart's layers,
+ * say) is set apart under it, headed for the page, and a page with nothing of
+ * its own has no such part.
  */
 import { Menu, X } from "lucide-react";
 import {
@@ -28,24 +35,33 @@ import {
   useId,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { useFadeOut } from "../../ui/Backdrop";
 import { Button } from "../../ui/Button";
 import { backdropPress, onBackdrop } from "../../ui/Dialog";
-import { RING, tv } from "../../ui/tv";
+import { MONO_LABEL, RING, tv } from "../../ui/tv";
 import { Wordmark } from "../../ui/Wordmark";
 import { ChartGlyph } from "../../shared/web/ChartGlyph";
 import { FEATURES, type SiteFeatures } from "../../shared/web/features";
 import {
   community,
+  customise,
   market,
+  spotFinder,
   useWithAi,
   windMap,
   type GlyphDef,
 } from "../../shared/web/glyphSet";
-import { siteSections, type SiteSectionId } from "./siteNav";
+import {
+  SITE_NAV,
+  siteSections,
+  type SiteNavId,
+  type SitePageId,
+  type SiteSectionId,
+} from "./siteNav";
 
 /*
  * The one hook left on the menu, and it draws nothing: e2e/site-menu.spec.ts
@@ -53,9 +69,11 @@ import { siteSections, type SiteSectionId } from "./siteNav";
  */
 const HOOK = "f5-site-menu";
 
-/** Each section's glyph, beside its name in the drawer. */
-const SECTION_GLYPH: Record<SiteSectionId, GlyphDef> = {
-  map: windMap,
+/** Each row's glyph, beside its name in the drawer. */
+const ROW_GLYPH: Record<SiteNavId | Exclude<SiteSectionId, "map">, GlyphDef> = {
+  chart: windMap,
+  finder: spotFinder,
+  customise,
   market,
   community,
   ai: useWithAi,
@@ -103,8 +121,18 @@ export const siteMenuStyles = tv({
     // The close button and the nameplate, over the broadsheet's heavy rule.
     head: "flex items-center gap-3 border-b-2 border-ink pb-2.5",
     list: "m-0 mt-2.5 flex list-none flex-col p-0",
-    // The site's sections, a gap under the page's own tools.
-    sections: "mt-4",
+    // The site's other sections, a gap under the navigation.
+    sections: "mt-6",
+    /*
+     * The page's own tools, set apart under the site's rows: a wider gap, and
+     * the page named in the mono label over a rule in ink, as a broadsheet
+     * heads a column. `border-0` first: the site has no reset.
+     */
+    page: "mt-7",
+    pageTitle: [
+      "m-0 border-0 border-b border-ink pb-1.5 text-ink-muted",
+      MONO_LABEL,
+    ],
     /*
      * A row is a name on a hairline, the height of touch, with its glyph in
      * the margin: the index of a broadsheet, not a list of buttons. It goes
@@ -140,7 +168,7 @@ export const siteMenuStyles = tv({
       content: {},
     },
     /*
-     * The section you are in: set in the italic, heavier, on the paper's
+     * The page you are on: set in the italic, heavier, on the paper's
      * second sheet, so the state is not said by colour alone. The
      * machine-readable half is `aria-current="page"`.
      */
@@ -193,53 +221,90 @@ export function dragCloses(
   return drag.dx < -DRAG.CLOSE_AT || (flick && drag.dx < -2 * DRAG.SLOP);
 }
 
+/** A plain press: not one for a new tab or window, nor a middle click. */
+const plainPress = (event: ReactMouseEvent) =>
+  event.button === 0 &&
+  !event.metaKey &&
+  !event.ctrlKey &&
+  !event.shiftKey &&
+  !event.altKey;
+
 /**
- * The site's sections, each a link with its glyph in the margin, the one you
- * are in marked. Only the sections switched on in this build are drawn: with
+ * The site's navigation, the same rows in the same order on every page: the
+ * chart, the spot finder and Customise, then a gap and the site's other
+ * sections. Each is a link with its glyph in the margin, and the page you are
+ * on is marked. Only the sections switched on in this build are drawn: with
  * the marketplace or the community off (as production has them,
  * shared/web/features.ts), nothing of it is.
  */
-export function SiteSections({
+export function SiteNav({
   current,
+  go = {},
   features = FEATURES,
-  className,
   first,
   onFollow,
 }: {
-  current: SiteSectionId;
+  current: SitePageId | null;
+  /**
+   * The map's own way to a row, in place of the page load, where the page
+   * has one: the chart and the spot finder are one bundle, and Customise is
+   * a dialog of theirs. A press for a new tab is still the browser's.
+   */
+  go?: Partial<Record<SiteNavId, () => void>>;
   features?: Pick<SiteFeatures, "market" | "community">;
-  className?: string;
   /** Handed the first row, for the drawer to focus as it opens. */
   first?: (el: HTMLAnchorElement | null) => void;
   /** Following a row: the drawer shuts. */
   onFollow?: () => void;
 }) {
   const styles = siteMenuStyles();
+  const row = (
+    {
+      id,
+      href,
+      label,
+    }: { id: keyof typeof ROW_GLYPH; href: string; label: string },
+    index: number,
+  ) => {
+    const here = id === current;
+    const own = go[id as SiteNavId];
+    return (
+      <li key={id}>
+        <a
+          ref={index === 0 ? first : undefined}
+          className={styles.row({ current: here })}
+          href={href}
+          aria-current={here ? "page" : undefined}
+          // Following a row closes the menu: the map, kept under the page the
+          // row opens (src/PagesOverMap.tsx), comes back with its menu shut.
+          // The page you are on is not opened again, only the menu shut.
+          onClick={(event) => {
+            if (plainPress(event) && (here || own)) {
+              event.preventDefault();
+              onFollow?.();
+              if (!here) own?.();
+              return;
+            }
+            onFollow?.();
+          }}
+        >
+          <span className={styles.glyph()}>
+            <ChartGlyph glyph={ROW_GLYPH[id]} />
+          </span>
+          {label}
+        </a>
+      </li>
+    );
+  };
+  // The map is the chart, in the navigation: it is not a section again.
+  const sections = siteSections(features).flatMap((section) =>
+    section.id === "map" ? [] : [{ ...section, id: section.id }],
+  );
   return (
-    <nav aria-label="Site" className={className}>
-      <ul className={styles.list()}>
-        {siteSections(features).map((section, index) => {
-          const here = section.id === current;
-          return (
-            <li key={section.id}>
-              <a
-                ref={index === 0 ? first : undefined}
-                className={styles.row({ current: here })}
-                href={section.href}
-                aria-current={here ? "page" : undefined}
-                // Following a row closes the menu: the map, kept under the
-                // page the row opens (src/PagesOverMap.tsx), comes back with
-                // its menu shut.
-                onClick={onFollow}
-              >
-                <span className={styles.glyph()}>
-                  <ChartGlyph glyph={SECTION_GLYPH[section.id]} />
-                </span>
-                {section.label}
-              </a>
-            </li>
-          );
-        })}
+    <nav aria-label="Site">
+      <ul className={styles.list()}>{SITE_NAV.map(row)}</ul>
+      <ul className={styles.list({ className: styles.sections() })}>
+        {sections.map((section) => row(section, -1))}
       </ul>
     </nav>
   );
@@ -247,11 +312,14 @@ export function SiteSections({
 
 export function SiteMenu({
   /**
-   * The section this app is. Named by the caller rather than read from the URL
-   * during render: each app already knows which one it is, and deriving it here
-   * would make the menu depend on the location twice over.
+   * The page this is, of the navigation's and the sections', or null for a
+   * page that is neither (a spot's). Named by the caller rather than read from
+   * the URL during render: each app already knows which one it is, and
+   * deriving it here would make the menu depend on the location twice over.
    */
   current,
+  /** The page's own way to a row of the navigation (`SiteNav`'s `go`). */
+  go,
   /** The trigger's control height, so it sits in scale with its neighbours. */
   size = "md",
   /**
@@ -262,17 +330,18 @@ export function SiteMenu({
    */
   ground = "map",
   /**
-   * The page's own tools, over the sections: on the map, Customise, its
-   * layers, the spot finder, the display options, what the map means and the
-   * tour. The menu is the one way in to them, so they come first. Each opens
-   * a dialog of the page's, which hands the focus back to the trigger when it
-   * shuts, or is a link to a page (`href`).
+   * The page's own tools, under the navigation and headed with `title`: on
+   * the chart, its layers, the display options, what the map means and the
+   * tour. The menu is the one way in to them. Each opens a dialog of the
+   * page's, which hands the focus back to the trigger when it shuts, or is a
+   * link to a page (`href`).
    */
   tools,
   /** Which sections are switched on: the build's, unless a test says. */
   features = FEATURES,
 }: {
-  current: SiteSectionId;
+  current: SitePageId | null;
+  go?: Partial<Record<SiteNavId, () => void>>;
   size?: "sm" | "md";
   ground?: "map" | "content";
   tools?: { title: string; items: readonly SiteMenuTool[] };
@@ -475,32 +544,34 @@ export function SiteMenu({
             </Button>
             <Wordmark size="sm" />
           </div>
+          <SiteNav
+            current={current}
+            go={go}
+            features={features}
+            first={(el) => {
+              firstRow.current = el;
+            }}
+            onFollow={close}
+          />
           {toolItems.length > 0 && (
-            <div role="group" aria-label={tools?.title}>
+            <div
+              role="group"
+              aria-labelledby={`${drawerId}-page`}
+              className={styles.page()}
+            >
+              <h2 id={`${drawerId}-page`} className={styles.pageTitle()}>
+                {tools?.title}
+              </h2>
               <ul className={styles.list()}>
-                {toolItems.map((tool, index) => (
+                {toolItems.map((tool) => (
                   <li key={tool.id}>
                     {tool.href !== undefined ? (
                       <a
-                        ref={
-                          index === 0
-                            ? (el: HTMLAnchorElement | null) => {
-                                firstRow.current = el;
-                              }
-                            : undefined
-                        }
                         className={styles.row({ current: !!tool.current })}
                         href={tool.href}
                         aria-current={tool.current ? "page" : undefined}
                         onClick={(event) => {
-                          if (
-                            !tool.onSelect ||
-                            event.button !== 0 ||
-                            event.metaKey ||
-                            event.ctrlKey ||
-                            event.shiftKey ||
-                            event.altKey
-                          ) {
+                          if (!tool.onSelect || !plainPress(event)) {
                             close();
                             return;
                           }
@@ -514,13 +585,6 @@ export function SiteMenu({
                       </a>
                     ) : (
                       <Button
-                        ref={
-                          index === 0
-                            ? (el: HTMLButtonElement | null) => {
-                                firstRow.current = el;
-                              }
-                            : undefined
-                        }
                         variant="quiet"
                         className={styles.tool()}
                         aria-haspopup="dialog"
@@ -538,19 +602,6 @@ export function SiteMenu({
               </ul>
             </div>
           )}
-          <SiteSections
-            current={current}
-            features={features}
-            className={toolItems.length > 0 ? styles.sections() : undefined}
-            first={
-              toolItems.length === 0
-                ? (el) => {
-                    firstRow.current = el;
-                  }
-                : undefined
-            }
-            onFollow={close}
-          />
           <span aria-hidden="true" className={styles.grip()} />
         </dialog>
       )}

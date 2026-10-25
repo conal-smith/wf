@@ -390,7 +390,7 @@ async function openFromMenuRow(page: Page, name: "Take the tour") {
   const menu = page.getByRole("button", { name: "Site menu" });
   if ((await menu.getAttribute("aria-expanded")) !== "true") await menu.click();
   await page
-    .getByRole("group", { name: "The chart" })
+    .getByRole("group", { name: "This chart" })
     .getByRole("button", { name, exact: true })
     .click();
 }

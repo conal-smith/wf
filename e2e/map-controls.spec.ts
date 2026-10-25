@@ -1,10 +1,13 @@
 import {
+  chartTools,
   expect,
   layerTile,
   menuRow,
   openFromMenu,
   openMenu,
   setLayer,
+  siteNav,
+  siteRow,
   test,
 } from "./fixtures";
 
@@ -38,20 +41,25 @@ test("the chart's controls: zoom and Layers on the right, the layers from the me
   const menu = page.getByRole("button", { name: "Site menu" });
   await menu.focus();
   await page.keyboard.press("Enter");
-  await expect(menuRow(page, "Customise")).toBeFocused();
-  await expect(
-    page.getByRole("group", { name: "The chart" }).getByRole("button"),
-  ).toHaveText([
+  // The site's navigation first, its first row focused; the chart's own
+  // tools under it.
+  await expect(siteRow(page, "Chart")).toBeFocused();
+  await expect(siteNav(page).getByRole("link")).toHaveText([
+    "Chart",
+    "Spot finder",
     "Customise",
+    "Marketplace",
+    "Community",
+    "Use with AI",
+  ]);
+  await expect(chartTools(page).getByRole("button")).toHaveText([
     "Layers",
     "Display options",
     "About the map",
     "Take the tour",
   ]);
-  await expect(
-    page.getByRole("group", { name: "The chart" }).getByRole("link"),
-  ).toHaveText(["Spot finder"]);
-  await page.keyboard.press("Tab");
+  await expect(chartTools(page).getByRole("link")).toHaveCount(0);
+  for (let i = 0; i < 6; i++) await page.keyboard.press("Tab");
   await expect(menuRow(page, "Layers")).toBeFocused();
   await page.keyboard.press("Enter");
   const panel = page.getByRole("group", { name: "Layers" });
@@ -232,7 +240,7 @@ test("the map's information is one dialog over the dimmed chart: from the menu a
 });
 
 for (const width of [390, 1440]) {
-  test(`the spot finder is in the menu under the layers, in place of your spots, at ${width}px`, async ({
+  test(`the spot finder is in the menu's navigation, over the chart's own tools, at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 });
@@ -242,14 +250,15 @@ for (const width of [390, 1440]) {
     });
     const menu = page.getByRole("button", { name: "Site menu" });
     await openMenu(page);
-    const tools = page.getByRole("group", { name: "The chart" });
-    const finder = tools.getByRole("link", { name: "Spot finder" });
-    const l = (await menuRow(page, "Layers").boundingBox())!;
+    const finder = siteRow(page, "Spot finder");
+    const c = (await siteRow(page, "Chart").boundingBox())!;
     const f = (await finder.boundingBox())!;
-    const o = (await menuRow(page, "Display options").boundingBox())!;
+    const u = (await menuRow(page, "Customise").boundingBox())!;
+    const l = (await menuRow(page, "Layers").boundingBox())!;
     expect(f.x).toBe(l.x);
-    expect(f.y).toBeGreaterThan(l.y);
-    expect(o.y).toBeGreaterThan(f.y);
+    expect(f.y).toBeGreaterThan(c.y);
+    expect(u.y).toBeGreaterThan(f.y);
+    expect(l.y).toBeGreaterThan(u.y);
     await finder.click();
     await expect(menu).toHaveAttribute("aria-expanded", "false");
     await expect(page).toHaveURL(/\/spots$/);

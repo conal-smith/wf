@@ -1,4 +1,13 @@
-import { expect, SPOTS_KEY, test, type Page } from "./fixtures";
+import {
+  chartTools,
+  expect,
+  siteNav,
+  siteRow,
+  SITE_ROWS,
+  SPOTS_KEY,
+  test,
+  type Page,
+} from "./fixtures";
 import { SAMPLE_CLOCK } from "./columns";
 
 /**
@@ -433,19 +442,20 @@ test.describe("on a desktop", () => {
       timeout: 30000,
     });
     await page.getByRole("button", { name: "Site menu" }).click();
-    const tools = page.getByRole("group", { name: "The chart" });
-    const row = tools.getByRole("link", { name: "Spot finder" });
+    const row = siteRow(page, "Spot finder");
     await expect(row).toHaveAttribute("href", "/spots");
     await page.evaluate(() => ((window as { stayed?: boolean }).stayed = true));
-    const layers = (await tools
+    // In the navigation, between the chart and Customise, over the chart's
+    // own tools.
+    const chart = (await siteRow(page, "Chart").boundingBox())!;
+    const customise = (await siteRow(page, "Customise").boundingBox())!;
+    const layers = (await chartTools(page)
       .getByRole("button", { name: "Layers" })
       .boundingBox())!;
-    const options = (await tools
-      .getByRole("button", { name: "Display options" })
-      .boundingBox())!;
     const box = (await row.boundingBox())!;
-    expect(box.y).toBeGreaterThan(layers.y);
-    expect(box.y).toBeLessThan(options.y);
+    expect(box.y).toBeGreaterThan(chart.y);
+    expect(box.y).toBeLessThan(customise.y);
+    expect(customise.y).toBeLessThan(layers.y);
     await row.click();
     await expect(page).toHaveURL(/\/spots$/);
     await expect(finder(page)).toBeVisible();
@@ -453,33 +463,82 @@ test.describe("on a desktop", () => {
     expect(
       await page.evaluate(() => (window as { stayed?: boolean }).stayed),
     ).toBe(true);
-    // The finder's menu: the chart, and the finder marked as the page.
+    // The finder's menu: the same navigation, the finder marked as the page,
+    // and nothing of the chart's own.
     await page.getByRole("button", { name: "Site menu" }).click();
-    const own = page.getByRole("group", { name: "The chart" });
-    await expect(
-      own.getByRole("link", { name: "Spot finder" }),
-    ).toHaveAttribute("aria-current", "page");
-    await own.getByRole("link", { name: "Chart" }).click();
+    await expect(siteRow(page, "Spot finder")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(chartTools(page)).toHaveCount(0);
+    await siteRow(page, "Chart").click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator(".spot-marker")).toHaveCount(149);
-    // The site's Wind map from the finder is the chart, not the finder again.
+    expect(
+      await page.evaluate(() => (window as { stayed?: boolean }).stayed),
+    ).toBe(true);
+    // Customise from the finder opens over it, with no page load.
     await page.goBack();
     await expect(finder(page)).toBeVisible();
     await page.getByRole("button", { name: "Site menu" }).click();
-    await page.getByRole("link", { name: "Wind map" }).click();
+    await siteRow(page, "Customise").click();
+    await expect(page.getByRole("dialog", { name: "Customise" })).toBeVisible();
+    await expect(page).toHaveURL(/\/spots$/);
+  });
+
+  test("the spot page's menu is the same navigation, the finder and Customise in it", async ({
+    page,
+  }) => {
+    await page.goto("/spot/brandon");
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await expect(siteNav(page).getByRole("link")).toHaveText(SITE_ROWS);
+    // Neither of the menu's pages is this one, and it has no tools of its own.
+    await expect(siteNav(page).locator('[aria-current="page"]')).toHaveCount(0);
+    await expect(
+      page.getByRole("dialog", { name: "Site menu" }).getByRole("group"),
+    ).toHaveCount(0);
+    await expect(siteRow(page, "Customise")).toHaveAttribute(
+      "href",
+      "/?customise",
+    );
+    const row = siteRow(page, "Spot finder");
+    await expect(row).toHaveAttribute("href", "/spots");
+    await row.click();
+    await expect(finder(page)).toBeVisible({ timeout: 30000 });
+  });
+
+  test("Customise from a spot's page is the chart with the wizard open", async ({
+    page,
+  }) => {
+    // Loaded alone: a page load to the chart, the word gone from the address.
+    await page.goto("/spot/brandon");
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await siteRow(page, "Customise").click();
+    await expect(page.getByRole("dialog", { name: "Customise" })).toBeVisible({
+      timeout: 30000,
+    });
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator(".map-head")).toBeVisible();
   });
 
-  test("the spot page's menu has the finder too", async ({ page }) => {
-    await page.goto("/spot/brandon");
+  test("Customise from a spot's page over the finder is the finder with the wizard open", async ({
+    page,
+  }) => {
+    await star(page, ["brandon"]);
+    await openFinder(page);
+    await page.evaluate(() => ((window as { stayed?: boolean }).stayed = true));
+    // The spot's page, over the finder (src/PagesOverMap.tsx).
+    await cards(page).getByRole("link", { name: "Brandon Bay" }).click();
+    await expect(page).toHaveURL(/\/spot\/brandon$/);
+    await expect(page.locator(".map-under-page")).toHaveCount(1);
     await page.getByRole("button", { name: "Site menu" }).click();
-    const row = page
-      .getByRole("group", { name: "The chart" })
-      .getByRole("link", { name: "Spot finder" });
-    await expect(row).toHaveAttribute("href", "/spots");
-    await row.click();
-    await expect(finder(page)).toBeVisible({ timeout: 30000 });
+    await siteRow(page, "Customise").click();
+    await expect(page.locator(".map-under-page")).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "Customise" })).toBeVisible();
+    await expect(page).toHaveURL(/\/spots$/);
+    expect(
+      await page.evaluate(() => (window as { stayed?: boolean }).stayed),
+    ).toBe(true);
   });
 
   test("the root opens on the page last open; a link that names one wins", async ({

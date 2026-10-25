@@ -1,4 +1,11 @@
-import { expect, menuRow, test, type Page } from "./fixtures";
+import {
+  chartTools,
+  expect,
+  menuRow,
+  SITE_ROWS,
+  test,
+  type Page,
+} from "./fixtures";
 
 /**
  * The one menu that crosses between the three apps on this origin.
@@ -11,14 +18,14 @@ import { expect, menuRow, test, type Page } from "./fixtures";
 const trigger = (page: Page) => page.getByRole("button", { name: "Site menu" });
 const panel = (page: Page) => page.getByRole("navigation", { name: "Site" });
 const row = (page: Page, name: string) =>
-  panel(page).getByRole("link", { name });
+  panel(page).getByRole("link", { name, exact: true });
 /**
  * The marketplace's header pill: the one box inside its banner, which is
  * Tailwind now and carries no class name worth writing down.
  */
 const headerBar = (page: Page) => page.getByRole("banner").locator("> div");
 // The same rows in the same order, whichever bundle drew them.
-const SECTIONS = ["Wind map", "Marketplace", "Community", "Use with AI"];
+const SECTIONS = SITE_ROWS;
 
 test("on the map the menu opens by keyboard and Escape closes only the menu", async ({
   page,
@@ -42,10 +49,10 @@ test("on the map the menu opens by keyboard and Escape closes only the menu", as
   await expect(trigger(page)).toHaveAttribute("aria-controls", /.+/);
   await expect(panel(page)).toBeVisible();
   await expect(panel(page).getByRole("link")).toHaveText(SECTIONS);
-  // On the map the chart's own tools come first, over the sections, and the
-  // first of them takes the focus.
-  await expect(menuRow(page, "Customise")).toBeFocused();
-  await expect(row(page, "Wind map")).toHaveAttribute("aria-current", "page");
+  // The site's navigation comes first, as on every page, and its first row
+  // takes the focus; the chart is the page.
+  await expect(row(page, "Chart")).toBeFocused();
+  await expect(row(page, "Chart")).toHaveAttribute("aria-current", "page");
   await expect(row(page, "Marketplace")).toHaveAttribute("href", "/market");
   await expect(row(page, "Marketplace")).not.toHaveAttribute(
     "aria-current",
@@ -65,6 +72,47 @@ test("on the map the menu opens by keyboard and Escape closes only the menu", as
   // A second Escape, with the menu closed, reaches the map as it always did.
   await page.keyboard.press("Escape");
   await expect(page.locator(".app-shell.is-focus")).toHaveCount(0);
+});
+
+/**
+ * The owner's ruling of 2026-10-25: one menu, the same on every page. The
+ * chart's and the spot finder's navigation are the same rows in the same
+ * order, each marking its own page; what is only the chart's is set apart
+ * under it, and the finder, with nothing of its own, has no such part.
+ */
+test("the menu's navigation is the same on the chart and on the spots page", async ({
+  page,
+}) => {
+  const read = async () => {
+    await trigger(page).click();
+    await settled(page);
+    const rows = await panel(page).getByRole("link").allTextContents();
+    const marked = await panel(page)
+      .locator('[aria-current="page"]')
+      .allTextContents();
+    const own = await drawer(page).getByRole("group").count();
+    await page.keyboard.press("Escape");
+    await expect(drawer(page)).toHaveCount(0);
+    return { rows, marked, own };
+  };
+  await page.goto("/");
+  await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+  const chart = await read();
+  await page.goto("/spots");
+  await expect(page.locator("[data-spot-finder]")).toBeVisible({
+    timeout: 30000,
+  });
+  const spots = await read();
+  expect(chart.rows).toEqual(SECTIONS);
+  expect(spots.rows).toEqual(chart.rows);
+  expect(chart.marked).toEqual(["Chart"]);
+  expect(spots.marked).toEqual(["Spot finder"]);
+  // The chart's own tools, under the navigation; none on the finder.
+  expect(chart.own).toBe(1);
+  expect(spots.own).toBe(0);
+  // "Wind map" was the chart a second time: it is gone.
+  await trigger(page).click();
+  await expect(drawer(page)).not.toContainText("Wind map");
 });
 
 /** The drawer itself: the modal the trigger opens. */
@@ -99,17 +147,19 @@ test("the menu is a drawer from the left, over the dimmed map, with a glyph on e
     drawer(page).getByRole("button", { name: "Close menu" }),
   ).toBeVisible();
   await expect(drawer(page)).toContainText("wingfoil.ie");
-  // The chart's tools, then the sections, each with its glyph in the margin.
+  // The site's navigation and sections, then the chart's own tools under
+  // their heading, each row with its glyph in the margin.
   const rows = drawer(page).locator("li > :is(a, button)");
   await expect(rows).toHaveText([
-    "Customise",
+    ...SECTIONS,
     "Layers",
-    "Spot finder",
     "Display options",
     "About the map",
     "Take the tour",
-    ...SECTIONS,
   ]);
+  await expect(
+    chartTools(page).getByRole("heading", { name: "This chart" }),
+  ).toBeVisible();
   for (const row of await rows.all())
     await expect(row.locator("svg")).toHaveCount(1);
   // The Almanac signs it no longer.
@@ -156,7 +206,7 @@ test("the focus stays in the drawer while it is open", async ({ page }) => {
   await page.goto("/");
   await trigger(page).focus();
   await page.keyboard.press("Enter");
-  await expect(menuRow(page, "Customise")).toBeFocused();
+  await expect(row(page, "Chart")).toBeFocused();
   // Round the whole drawer and more: the focus never leaves it.
   for (const key of [
     ...Array(14).fill("Tab"),
@@ -304,12 +354,9 @@ test("the menu carries the reader between the map and the marketplace", async ({
     "aria-current",
     "page",
   );
-  await expect(row(page, "Wind map")).not.toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  await expect(row(page, "Chart")).not.toHaveAttribute("aria-current", "page");
 
-  await row(page, "Wind map").click();
+  await row(page, "Chart").click();
   await page.waitForURL((url) => url.pathname === "/");
   await expect(page.locator(".map-head")).toBeVisible();
   await expect(trigger(page)).toBeVisible();
@@ -329,7 +376,7 @@ test("a direct load of a marketplace URL renders the marketplace and its menu", 
     "aria-current",
     "page",
   );
-  await expect(row(page, "Wind map")).toHaveAttribute("href", "/");
+  await expect(row(page, "Chart")).toHaveAttribute("href", "/");
 });
 
 test("the menu carries the reader into the community and back out of it", async ({
@@ -351,7 +398,7 @@ test("the menu carries the reader into the community and back out of it", async 
   ]);
   await expect(row(page, "Marketplace")).toHaveAttribute("href", "/market");
 
-  await row(page, "Wind map").click();
+  await row(page, "Chart").click();
   await page.waitForURL((url) => url.pathname === "/");
   await expect(page.locator(".map-head")).toBeVisible();
 });
