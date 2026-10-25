@@ -163,6 +163,20 @@ reads "Gusts over your limit", and an hour with no stars says "gusts over your
 limit" (`noStarsWhy`; the session is `too-gusty`, or `too-strong` where the
 mean is too strong on its own).
 
+### Met Éireann warnings (`applyWarnings`, force5/src/warnings.ts)
+
+After the stars are worked out, Met Éireann's warnings for the place have the
+last word (the owner's ruling of 25 October 2026). An hour an **orange or red**
+warning covers, wind, weather or marine, has no rating at all: the warning's
+mark stands where its stars were, on the spot page and in the dock, its light
+and the finder count it as nothing, and the MCP never calls it rideable. A
+**yellow** warning leaves the stars as they are and is shown beside them:
+some yellow warnings (rain, fog) say little about the wind on the water. The
+same function applies it everywhere, so the site and an agent always agree.
+Which counties and coastal stretches each place takes its warnings from is in
+`data/locations/warning-areas.json`; the warnings themselves are copied hourly,
+unaltered, by the `warnings` job (docs/LIVE_FORECAST_PIPELINE.md).
+
 ### Gusty wind (`gustiness`, `gustyCost`)
 
 How gusty an hour is, is its gust over its mean, counted only when the mean is
