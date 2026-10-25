@@ -2,6 +2,12 @@
 
 Uses public HTTP range downloads via ECMWF's client; no API key. The final
 manifest is written only after all 85 frames have passed GRIB validation.
+
+Its crop is its own, `BBOX` below, wider than the box the other models share
+(fetch_forecast.BBOX): fifteen days is long enough for a storm to cross the
+Atlantic, and the chart can show it coming only where the grid reaches. Each
+field is downloaded whole (global, by HTTP range per field), so a wider crop
+costs no more download, only larger tiles.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -21,6 +27,11 @@ from rundir import write_run
 import timing
 
 SOURCE_URL = "https://www.ecmwf.int/en/forecasts/datasets/open-data"
+# West, south, east, north. About 12° more of the Atlantic west of Ireland than the
+# shared box (-18, 48, 2, 59), and 3-4° more to the north and south: in whole degrees,
+# so the edges sit on the 0.25° lattice (f5tile.lattice_origin). The chart's panning
+# limit (force5/src/chartStyle.ts, CHART_BOUNDS) is drawn round this box.
+BBOX = (-30.0, 44.0, 2.0, 62.0)
 # The oldest run this imports: the limit the worker validates it against and
 # status.py reads. Fetched once a day, a 00 UTC run is the newest for about 33 h
 # before the next morning's replaces it, so 24 would refuse a run still in service.
@@ -87,7 +98,7 @@ def decode_wind(path, run, hour, layout=None):
             except Exception:
                 ec.codes_release(handle)
                 raise
-            fields[field], layout, _ = decode_handle(handle, field, run, hour, layout)
+            fields[field], layout, _ = decode_handle(handle, field, run, hour, layout, bbox=BBOX)
     if set(fields) != {"u", "v"}:
         raise ValueError("Missing ECMWF wind component")
     if layout[2]["dx"] != 0.25 or layout[2]["dy"] != 0.25:
@@ -171,7 +182,9 @@ def main():
                                                  **cycle).strftime("%Y%m%d%H")
     run_time = run_datetime(run)
     output = ROOT / "public" / "weather"
-    prefix = f"ecmwf-{run}-360h-v2"
+    # v3: the wider crop. A run a v2 attempt left on disk is downloaded again
+    # rather than published at the old size (fetch_forecast.already_published).
+    prefix = f"ecmwf-{run}-360h-v3"
     published = already_published(output / "ecmwf.json", run, prefix) if not args.run else False
     if published == PUBLISHED_IN_BUCKET:
         # Before the age check: the run the site already serves is never news,
@@ -246,7 +259,7 @@ def main():
         "spotForecasts": spot_forecasts,
         "gustAvailable": True, "gustMissingHours": [0],
         "gustDescription": "Scalar maximum 10 m gust over the source GRIB interval ending at each forecast time. Intervals may be 1, 3 or 6 hours and need not equal the spacing between displayed columns. Initialization (+0h) has no preceding forecast gust period and is shown as unavailable, not zero.",
-        "processing": "Cropped from the public 0.25° regular grid, without downscaling. Source steps are 3-hourly to +144h, then 6-hourly to +360h; no hourly forecasts are invented. Week two is a planning outlook, not a precise local wind prediction.",
+        "processing": f"Cropped to {-BBOX[0]:g}°W–{BBOX[2]:g}°E, {BBOX[1]:g}–{BBOX[3]:g}°N from the public 0.25° regular grid, without downscaling. Source steps are 3-hourly to +144h, then 6-hourly to +360h; no hourly forecasts are invented. Week two is a planning outlook, not a precise local wind prediction.",
         "sourceUrl": SOURCE_URL,
         "attribution": f"© {run_time.year} European Centre for Medium-Range Weather Forecasts (ECMWF). This service is based on data and products of the European Centre for Medium-Range Weather Forecasts (ECMWF). Data cropped and processed by Force5 under CC BY 4.0. ECMWF provides no warranty and accepts no liability for errors, availability or consequences of use; it does not endorse Force5.",
         "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",

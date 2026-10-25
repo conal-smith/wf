@@ -35,7 +35,10 @@ RIDING_LOCATIONS_FILE = PROJECT_ROOT / "public" / "riding-locations.json"
 ORIGINAL_SPOTS_FILE = PROJECT_ROOT / "public" / "spots.json"
 BASE = "https://opendata.dwd.de/weather/nwp/icon-eu/grib"
 PARAMS = {"u": "u_10m", "v": "v_10m", "gust": "vmax_10m"}
-BBOX = (-18.0, 48.0, 2.0, 59.0)  # Ireland + Atlantic buffer, west/south/east/north
+# Ireland + Atlantic buffer, west/south/east/north: the crop every adapter that
+# decodes through `decode_handle` publishes, unless it passes its own `bbox`
+# (ECMWF IFS does: fetch_ecmwf.BBOX reaches further into the Atlantic).
+BBOX = (-18.0, 48.0, 2.0, 59.0)
 KEYS = ["Ni", "Nj", "latitudeOfFirstGridPointInDegrees", "longitudeOfFirstGridPointInDegrees",
         "iDirectionIncrementInDegrees", "jDirectionIncrementInDegrees", "jScansPositively",
         "iScansNegatively", "jPointsAreConsecutive", "alternativeRowScanning"]
@@ -148,17 +151,21 @@ def decode(path, field, run, hour, layout=None):
     return decode_handle(handle, field, run, hour, layout)
 
 
-def decode_handle(handle, field, run, hour, layout=None, validate=validate_metadata, convert=None):
+def decode_handle(handle, field, run, hour, layout=None, validate=validate_metadata, convert=None,
+                  bbox=BBOX):
     """Validate/crop a regular earth-relative GRIB; takes ownership of handle.
 
     `validate` lets another provider apply its own parameter/level/step rules.
     `convert` lets a non-wind field publish its own units, range check and
-    rounding; without it the values are wind in m/s, rounded to 0.01 m/s."""
+    rounding; without it the values are wind in m/s, rounded to 0.01 m/s.
+    `bbox` (west, south, east, north) is the crop, the shared BBOX unless the
+    adapter has its own; it is read only when `layout` is None, since a layout
+    already carries the cells its crop chose."""
     with timing.phase("decode"):
-        return _decode_handle(handle, field, run, hour, layout, validate, convert)
+        return _decode_handle(handle, field, run, hour, layout, validate, convert, bbox)
 
 
-def _decode_handle(handle, field, run, hour, layout, validate, convert):
+def _decode_handle(handle, field, run, hour, layout, validate, convert, bbox):
     try:
         # ecCodes represents zero-length steps in minutes unless explicitly normalised.
         ec.codes_set(handle, "stepUnits", 1)
@@ -169,7 +176,7 @@ def _decode_handle(handle, field, run, hour, layout, validate, convert):
         if layout is None:
             lats = ec.codes_get_array(handle, "latitudes")
             lons = (ec.codes_get_array(handle, "longitudes") + 180) % 360 - 180
-            west, south, east, north = BBOX
+            west, south, east, north = bbox
             selected = np.flatnonzero((lats >= south) & (lats <= north) & (lons >= west) & (lons <= east))
             selected = selected[np.lexsort((lons[selected], -lats[selected]))]
             xs = np.unique(lons[selected])

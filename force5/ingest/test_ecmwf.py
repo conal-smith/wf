@@ -8,7 +8,10 @@ from unittest.mock import patch
 import eccodes as ec
 
 from cadence import ECMWF_HOURS, ECMWF_RANGES, expected_hours
-from fetch_ecmwf import decode_wind, decode_gust, download_gust, gust_parameter, run_datetime, main, ForecastSession
+import f5tile
+import fetch_forecast
+from fetch_ecmwf import BBOX, decode_wind, decode_gust, download_gust, gust_parameter, run_datetime, main, ForecastSession
+from fetch_forecast import load_spots, sample
 from publish_s3 import publish
 from test_publish_s3 import FakeS3
 from runfixtures import TINY_GRID, publish_whole
@@ -20,7 +23,7 @@ class ECMWFTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
 
-    def grib(self, params=(165, 166), changes=None):
+    def grib(self, params=(165, 166), changes=None, values=(1, 2, 3, 4)):
         path = self.root / "wind.grib2"
         with path.open("wb") as stream:
             for param in params:
@@ -38,7 +41,7 @@ class ECMWFTests(unittest.TestCase):
                                 "uvRelativeToGrid": 0, **(changes or {})}
                     for key, value in metadata.items():
                         ec.codes_set(handle, key, value)
-                    ec.codes_set_values(handle, [1, 2, 3, 4])
+                    ec.codes_set_values(handle, list(values))
                     ec.codes_write(handle, stream)
                 finally:
                     ec.codes_release(handle)
@@ -70,6 +73,61 @@ class ECMWFTests(unittest.TestCase):
         self.assertEqual(fields, {"u": [1, 2, 3, 4], "v": [1, 2, 3, 4]})
         self.assertEqual(layout[2]["west"], -8)
         self.assertEqual(layout[2]["north"], 54.25)
+
+    def wide_grib(self):
+        """Wind on the 0.25° lattice from 40°W to 10°E and 70°N to 40°N: more than any crop."""
+        width, height = 201, 121
+        values = [round((index % width) * 0.03 - (index // width) * 0.05 + 4, 2)
+                  for index in range(width * height)]
+        return self.grib(changes={"Ni": width, "Nj": height,
+                                  "latitudeOfFirstGridPointInDegrees": 70,
+                                  "latitudeOfLastGridPointInDegrees": 40,
+                                  "longitudeOfFirstGridPointInDegrees": 320,
+                                  "longitudeOfLastGridPointInDegrees": 10}, values=values)
+
+    def test_the_control_crops_its_own_box_further_into_the_atlantic(self):
+        _, layout = decode_wind(self.wide_grib(), "2026091300", 150)
+        grid = layout[2]
+        self.assertEqual(BBOX, (-30.0, 44.0, 2.0, 62.0))
+        self.assertEqual((grid["west"], grid["south"], grid["east"], grid["north"]), BBOX)
+        self.assertEqual((grid["width"], grid["height"]), (129, 73))
+
+    def test_the_other_models_keep_the_shared_box(self):
+        """The helper's default is still the shared crop every other adapter publishes."""
+        self.assertEqual(fetch_forecast.BBOX, (-18.0, 48.0, 2.0, 59.0))
+        with self.wide_grib().open("rb") as stream:
+            handle = ec.codes_grib_new_from_file(stream)
+        _, layout, _ = fetch_forecast.decode_handle(handle, "u", "2026091300", 150)
+        grid = layout[2]
+        self.assertEqual((grid["west"], grid["south"], grid["east"], grid["north"]),
+                         fetch_forecast.BBOX)
+        self.assertEqual((grid["width"], grid["height"]), (81, 45))
+
+    def test_widening_the_box_changes_no_spot_value(self):
+        """The same 0.25° points either side of a spot, so the same bilinear answer."""
+        path = self.wide_grib()
+        wide, layout = decode_wind(path, "2026091300", 150)
+        with path.open("rb") as stream:
+            handle = ec.codes_grib_new_from_file(stream)
+        shared, shared_layout, _ = fetch_forecast.decode_handle(handle, "u", "2026091300", 150)
+        spots = load_spots()
+        for spot in spots:
+            with self.subTest(spot=spot["id"]):
+                value = sample(layout[2], wide["u"], spot["lon"], spot["lat"])
+                self.assertIsNotNone(value)
+                self.assertEqual(value, sample(shared_layout[2], shared, spot["lon"], spot["lat"]))
+
+    def test_the_wider_box_sits_on_the_tile_lattice(self):
+        """Whole 0.25° cells from -180°/90°, holding the shared box: four native tiles, one overview."""
+        west, south, east, north = BBOX
+        shared = fetch_forecast.BBOX
+        self.assertTrue(west <= shared[0] and south <= shared[1]
+                        and east >= shared[2] and north >= shared[3])
+        grid = {"west": west, "north": north, "dx": 0.25, "dy": 0.25,
+                "width": round((east - west) / 0.25) + 1, "height": round((north - south) / 0.25) + 1}
+        self.assertEqual(f5tile.lattice_origin(grid), (600, 112))
+        self.assertEqual([(level["x"], level["y"]) for level in f5tile.levels(grid)],
+                         [([4, 5], [0, 1]), ([2, 2], [0, 0])])
 
     def test_reject_missing_duplicate_and_wrong_fields(self):
         for params in [(165,), (165, 165), (165, 167)]:
