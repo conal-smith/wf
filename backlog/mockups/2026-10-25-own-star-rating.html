@@ -27,7 +27,9 @@
     - outline stars are stars lost to the gusts or to cross-offshore, and
       nothing else; wings never cost a star;
     - the rider's weight gives a wing size an hour, written as the figure
-      alone ("4.5"), never a sentence.
+      alone ("4.5"), never a sentence. The size is recommendedWing from the
+      wing research (PR #211, backlog/research/2026-10-25-wing-sizes.md),
+      fitted to nine brands' published wind ranges.
   Three editors for the same four numbers, switched at the top, each with the
   same week re-rated live under it:
     A  One wind ruler   the stars by steady wind as one shape on a knots
@@ -359,7 +361,7 @@ table.grid td.el::after { border-left-width: 2.5px; } table.grid td.er::after { 
       <li><b>Units.</b> Drawn in knots. A rider on mph or Beaufort would see the ruler in their unit (as the wizard's wind step does today).</li>
       <li><b>Where it lives.</b> As a step in Customise in place of "What wind suits you?" and its gusty setting, or as its own screen reached from Customise and from the stars' "why" box?</li>
     </ol>
-    <p style="font-size:14px;color:var(--muted)">Wing sizes here are a placeholder (<code>recommendedWing</code> in this file, marked as such) until the fitted function from the brands' charts lands.</p>
+    <p style="font-size:14px;color:var(--muted)">Wing sizes are the fitted <code>recommendedWing</code> from the wing research (PR #211, <code>backlog/research/2026-10-25-wing-sizes.md</code>): nine brands' published wind ranges, by steady wind and rider weight.</p>
   </div>
 </div>
 
@@ -408,17 +410,21 @@ function rate(mean, gust, s, angle = "cross", warning = null) {
 /** The ruler's step: whole stars for a whole knot of steady wind. */
 const stepStars = (k, s) => Math.round(windStars(k, s));
 
-/* ----------------------------------------------------------------------
-   PLACEHOLDER wing size. Not the real thing: another piece of work is
-   fitting recommendedWing(windKn, weightKg) to the brands' charts (Gong,
-   F-One, Duotone…). Swap that in here when it lands.
-     area = 4.5 × (weight / 80) × (20 / wind)^1.1, to the half m²,
-     held to 2.5–8 m², and none outside 10–35 kn.
-   ---------------------------------------------------------------------- */
-function recommendedWing(windKn, weightKg) {
-  if (windKn < 10 || windKn > 35) return null;
-  const area = 4.5 * (weightKg / 80) * Math.pow(20 / windKn, 1.1);
-  return Math.min(8, Math.max(2.5, Math.round(area * 2) / 2));
+/* The wing size, from the wing research (PR #211, backlog/research/2026-10-25-wing-sizes.md),
+   copied verbatim; the wing row under the ruler and the week write nothing where it is null. */
+// Recommended wing size (m²) for a steady wind (kn) and rider weight (kg).
+// Fitted to 9 brands' published wind ranges (backlog/research/2026-10-25-wing-sizes.json, PR #211).
+// Returns null when no sensible wing exists (too light or too strong).
+const WING_STEPS = [2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 8];
+function recommendedWing(windKn, weightKg = 75) {
+  if (!(windKn > 0) || windKn > 40) return null;
+  const raw = 64 * Math.pow(weightKg / 75, 0.46) / Math.pow(windKn, 0.9);
+  if (raw > 8.5 || raw < 1.75) return null;
+  let best = WING_STEPS[0];
+  for (const s of WING_STEPS) {
+    if (Math.abs(s - raw) <= Math.abs(best - raw)) best = s;
+  }
+  return best;
 }
 const wingText = (a) => (a == null ? "" : Number.isInteger(a) ? String(a) : a.toFixed(1));
 
