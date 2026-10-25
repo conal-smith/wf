@@ -65,8 +65,10 @@ import { TourGlyph } from "./chartGlyphs";
 import { tourOffered, tourSeen } from "./tourOffer";
 import { SiteMenu } from "../force5/src/SiteMenu";
 import {
+  CHART_PARAM,
   CUSTOMISE_PARAM,
   FINDER_HREF,
+  asksChart,
   asksCustomise,
   isFinderPath,
   mapSpotHref,
@@ -383,11 +385,13 @@ export default function App() {
   // Customise asked for by another page's menu: a page load to the chart
   // with the word in its address (CUSTOMISE_HREF), which is open now and goes
   // from the address; or a page over the map, which hands the reader back to
-  // it first (src/PagesOverMap.tsx).
+  // it first (src/PagesOverMap.tsx). The explicit chart's word (CHART_HREF)
+  // goes the same way: it has done its work, keeping the root off the finder.
   useEffect(() => {
-    if (asksCustomise(location)) {
+    if (asksCustomise(location) || asksChart(location)) {
       const url = new URL(location.href);
       url.searchParams.delete(CUSTOMISE_PARAM);
+      url.searchParams.delete(CHART_PARAM);
       window.history.replaceState(
         window.history.state,
         "",

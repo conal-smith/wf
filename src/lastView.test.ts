@@ -37,6 +37,8 @@ describe("the last view", () => {
 
   it("lets a link that says where to go win", () => {
     expect(openingPath("/", "?spot=keel", "finder")).toBeNull();
+    // The menu's Chart, and every way back named Chart (CHART_HREF).
+    expect(openingPath("/", "?chart", "finder")).toBeNull();
     expect(openingPath("/spots", "", "chart")).toBeNull();
     expect(openingPath("/spot/keel", "", "finder")).toBeNull();
   });

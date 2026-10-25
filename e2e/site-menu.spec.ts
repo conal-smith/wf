@@ -376,7 +376,7 @@ test("a direct load of a marketplace URL renders the marketplace and its menu", 
     "aria-current",
     "page",
   );
-  await expect(row(page, "Chart")).toHaveAttribute("href", "/");
+  await expect(row(page, "Chart")).toHaveAttribute("href", "/?chart");
 });
 
 test("the menu carries the reader into the community and back out of it", async ({
