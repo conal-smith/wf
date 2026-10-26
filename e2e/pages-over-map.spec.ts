@@ -80,9 +80,11 @@ test("over the home page, the way back is the list, and the chart from there is 
   // The menu's Chart, from a page over the list: the full chart in the
   // list's place, and the same map.
   await openAi(page);
+  await page.getByRole("button", { name: "Site menu" }).click();
   await page
+    .getByRole("navigation", { name: "Site" })
     .getByRole("link", { name: "Chart" })
-    .dispatchEvent("click", { button: 0 });
+    .click();
   await expect(page).toHaveURL(/\/\?map$/);
   await expect(page.locator(".map-under-page")).toHaveCount(0);
   await expect(page.locator(".map-head")).toBeVisible();
