@@ -1,0 +1,1094 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock-up · The Spot finder with the chart beside it</title>
+<!--
+  A design mock-up for the owner to review, not product code. Standalone: the
+  faces come from node_modules, the pictures from the folder beside this file.
+
+  The owner's steer (26 October 2026): the Spot finder becomes the home page.
+  The cards stay exactly as they are. On a wide screen the real chart sits on
+  the right, the full height under the header, zoomed to the spots on the list
+  (near you, or your favourites), with your location as a blue dot. Hovering a
+  card brings the map to that spot and its light turns black. An expand button
+  makes the chart full screen: that is the way into the chart. On a phone, the
+  list only, with the black Map button at the foot to switch to the map.
+  Owner's second steer: a spot pressed on the full chart opens the chart's own
+  forecast dock along the foot (src/ForecastDock.tsx), not a card; the dock is
+  never in the side panel; the black button rides just above the dock.
+
+  The map is the real chart, photographed: two screenshots of the running app
+  (Ireland and Britain at zoom 7, the Dublin coast at zoom 10, the chart's own lights and
+  buttons hidden), placed by the chart's own Web Mercator maths, with the
+  lights drawn over them as src/map.css draws them. The forecast in the cards
+  is made up, on the approved 7e model (2026-10-25-spot-list-cards.html).
+
+  ?embed=1   the page alone, without the mock-up's bar and notes
+  #chart     open on the full chart
+-->
+<style>
+@font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fraunces Variable"; font-style: italic; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-italic.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 400;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 500;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 600;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
+
+/* ui/theme.css, the tokens this page uses */
+:root {
+  --ground: #f3eee3; --card: #f3eee3; --sunken: #ede6d6; --glass: #f3eee3eb; --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b;
+  --line: #1a1d2133; --pen: #d43a2c; --pen-ink: #bf3125; --magenta: #b0186a; --sea-1: #a9cbd8; --halo: #f1efe6; --you: #1f6fe0;
+  --display: "Fraunces Variable", Fraunces, Georgia, serif;
+  --body: "Newsreader Variable", Newsreader, Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --frame: inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142;
+  --sh-card: 0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a;
+  --sh-float: 0 1px 1px #1a1d211a, 0 3px 6px -2px #1a1d211f, 0 14px 28px -12px #3c2d1466;
+  --sh-sheet: 0 1px 1px #1a1d211a, 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480;
+  --sh-control: inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150;
+  --sh-raised: inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126;
+  --g-ink: linear-gradient(180deg, #33373d, #15171a);
+  --g-raised: linear-gradient(180deg, #ffffff, #f0eadd);
+  --g-float: linear-gradient(180deg, #f6f2e9, #f1ebdf);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --bar-h: 42px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 14px; }
+body { margin: 0; background: #d9d4c7; color: var(--ink); font-family: var(--body); line-height: 1.35; }
+button { font: inherit; color: inherit; }
+h1, h2, h3, h4, p { margin: 0; }
+
+/* ---- the mock-up's own bar and notes (not part of the design) ---- */
+.mockbar { position: sticky; top: 0; z-index: 100; height: var(--bar-h); display: flex; gap: 6px; align-items: center; padding: 0 14px; background: #1a1d21; color: #f3eee3;
+  font: 500 11px var(--mono); letter-spacing: .06em; white-space: nowrap; overflow-x: auto; }
+.mockbar b { margin-right: 8px; text-transform: uppercase; letter-spacing: .12em; }
+.mockbar .gap { width: 12px; flex: none; }
+.mockbar button, .mockbar a { background: none; border: 1px solid #f3eee355; border-radius: 99px; padding: 3px 10px; font-size: 10.5px; letter-spacing: .06em; cursor: pointer; color: #f3eee3; text-decoration: none; }
+.mockbar button[aria-pressed=true] { background: #f3eee3; color: #1a1d21; }
+.mockbar .note { color: #f3eee399; }
+.stage { display: flex; justify-content: center; }
+body.preview .stage { padding: 20px 16px 28px; overflow-x: auto; justify-content: safe center; }
+body.embed .mockbar, body.embed .notes { display: none; }
+.notes { max-width: 1100px; margin: 28px auto 60px; background: #fffdf6; border: 1px dashed #1a1d2166; border-radius: 12px; padding: 16px 22px 20px; font-size: 16px; line-height: 1.5; }
+.notes h2 { font: 700 22px/1.2 var(--display); margin-bottom: 6px; }
+.notes h3 { margin: 18px 0 6px; font: 600 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--magenta); }
+.notes ul { margin: 0; padding-left: 20px; } .notes li { margin: 5px 0; }
+.notes code { font: 500 13px var(--mono); background: #f3eee3; padding: 0 4px; border-radius: 4px; }
+
+/* ---- the page ---- */
+.app { position: relative; overflow: hidden; display: flex; flex-direction: column; background-color: var(--ground); background-image: var(--grain);
+  font-family: var(--body); color: var(--ink); -webkit-font-smoothing: antialiased; container-type: size; }
+body.fit .app { width: 100%; height: calc(100vh - var(--bar-h)); }
+body.embed .app { width: 100%; height: 100vh; }
+body.preview .app { flex: none; box-shadow: 0 20px 50px -20px #0007, 0 0 0 1px #1a1d2133; border-radius: 10px; }
+body.preview .app[data-layout=phone] { border-radius: 28px; }
+
+/* the header: src/finder/SpotFinder.tsx, as it is */
+.fhead { position: relative; z-index: 30; flex: none; display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 3px double var(--ink); background-color: var(--ground); background-image: var(--grain); }
+.fhead .lead { flex: 1; display: flex; align-items: center; gap: 12px; }
+.round { flex: none; width: 40px; height: 40px; padding: 0; border-radius: 99px; border: 1px solid var(--ink); background: var(--g-raised); box-shadow: var(--sh-raised); display: grid; place-items: center; cursor: pointer; }
+.round:hover { background: var(--g-ink); color: var(--ground); box-shadow: var(--sh-control); }
+.word { display: inline-block; font: 800 19px/1 var(--display); font-variation-settings: "opsz" 144; letter-spacing: -.025em; white-space: nowrap; }
+.word i { font-weight: 400; letter-spacing: 0; color: var(--magenta); }
+.seg { display: inline-flex; flex: none; border: 1px solid var(--ink); border-radius: 99px; background: var(--card); }
+.seg button { height: 30px; padding: 0 12px; border: 0; border-radius: 99px; background: none; font: 500 11px/1.2 var(--mono); letter-spacing: .09em; text-transform: uppercase; white-space: nowrap; cursor: pointer; }
+.seg button:hover { background: var(--sunken); }
+.seg button[aria-pressed=true] { background: var(--g-ink); color: var(--ground); font-weight: 600; box-shadow: var(--sh-control); }
+.app[data-layout=phone] .fhead { gap: 8px; padding: 10px 12px; }
+.app[data-layout=phone] .fhead .word { display: none; }
+
+.fbody { position: relative; flex: 1; min-height: 0; display: flex; }
+.list { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 14px 18px 40px; }
+.side { flex: none; width: calc(var(--mapw, 0px) + 12px); }
+.app:not([data-layout=split]) .side { display: none; }
+.app:not([data-layout=split]) .list { padding-bottom: 90px; }
+.app[data-layout=phone] .list { padding: 10px 10px 90px; scrollbar-width: none; scrollbar-gutter: auto; }
+.app[data-layout=phone] .list::-webkit-scrollbar { display: none; }
+.cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; align-items: start; grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr)); }
+.empty { padding: 32px 4px; font-size: 15px; color: var(--ink-2); }
+
+/* ---- the card: src/finder/SpotCard.tsx, DayHours.tsx, NextDays.tsx, as they are ---- */
+.card { position: relative; display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 10px 12px 12px; border: 1px solid var(--ink); border-radius: 14px;
+  background: var(--card); box-shadow: var(--frame), var(--sh-card); cursor: pointer; outline: 2px solid transparent; outline-offset: 2px;
+  transition: transform .12s, box-shadow .12s, outline-color .12s; }
+.card:hover { transform: translateY(-1px); box-shadow: var(--frame), var(--sh-float); }
+.card.lit { outline-color: var(--ink); box-shadow: var(--frame), var(--sh-float); }
+.card.flash { animation: flash 1.4s var(--ease); }
+@keyframes flash { 0%, 40% { outline-color: var(--magenta); outline-offset: 4px; } 100% { outline-color: transparent; outline-offset: 2px; } }
+.head { display: flex; align-items: center; gap: 12px; }
+.pic { position: relative; flex: none; width: 112px; padding: 0; border: 0; background: none; border-radius: 10px; cursor: pointer; }
+.app[data-layout=phone] .pic { width: 96px; }
+.picbox { position: relative; display: block; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 10px; border: 1px solid var(--ink); background: var(--sea-1); }
+.pic:hover .picbox { outline: 2px solid var(--ink); outline-offset: 1px; }
+.picbox img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.picbox svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pic .go { position: absolute; left: 4px; bottom: 4px; padding: 0 6px; border-radius: 99px; border: 1px solid var(--ink); background: var(--glass); font: 500 10px/1.5 var(--mono); letter-spacing: .14em; text-transform: uppercase; opacity: 0; transition: opacity .12s; }
+.pic:hover .go { opacity: 1; }
+.nm { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.nm h3 { font: 600 19px/1.2 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nm h3 a { color: inherit; text-decoration: none; } .nm h3 a:hover { color: var(--magenta); }
+.nm .sub { font: 400 11px/1.4 var(--mono); color: var(--muted); }
+.fav { flex: none; align-self: flex-start; width: 30px; height: 30px; padding: 0; border-radius: 99px; border: 1px solid var(--ink); background: var(--g-raised); box-shadow: var(--sh-raised); display: grid; place-items: center; cursor: pointer; }
+.fav:hover { background: var(--g-ink); box-shadow: var(--sh-control); }
+.sec { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sech { display: flex; align-items: center; justify-content: space-between; gap: 2px 8px; }
+.app[data-layout=phone] .sech { flex-wrap: wrap; }
+.eyebrow { font: 600 10px/1.3 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink); }
+.facts { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 2px 10px; font: 400 11px/1.4 var(--mono); color: var(--ink-2); }
+.facts span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.hoursw { position: relative; }
+.track .cut small.r { transform: translateX(-100%); }
+.hours { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; margin: 0 -2px; padding: 0 2px 32px; }
+.hours::-webkit-scrollbar { display: none; }
+.track { position: relative; display: flex; }
+.track .dark { position: absolute; top: 0; height: 100px; border-radius: 10px; pointer-events: none; background: repeating-linear-gradient(135deg, #1a1d210f 0 3px, transparent 3px 7px), #1a1d2112; }
+.track .band { position: absolute; top: 0; left: 0; opacity: .4; pointer-events: none; }
+.track .cut { position: absolute; top: 0; width: 0; height: 100px; pointer-events: none; }
+.track .cut small { position: absolute; top: 116px; left: 0; font: 400 11px/1.2 var(--mono); letter-spacing: .09em; color: var(--ink-2); white-space: nowrap; }
+.hc { position: relative; z-index: 1; flex: none; height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; padding: 4px 2px 6px;
+  border: 0; border-radius: 10px; background: none; color: var(--ink); font-family: var(--mono); cursor: pointer; }
+.hc:hover { background: #ede6d6b3; }
+.hc + .hc::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 8px; border-left: 1px solid #1a1d2114; }
+.hc .t { font: 500 10px/1.3 var(--mono); letter-spacing: .14em; color: var(--muted); }
+.hc .sky { height: 16px; display: flex; align-items: center; }
+.hc b { font: 600 13px/1 var(--mono); }
+.hc small { height: 14px; font: 500 10px/1.3 var(--mono); color: var(--muted); }
+.hc .st { margin-top: auto; height: 10px; display: flex; align-items: center; }
+.hc.gone > * { opacity: .45; }
+.hc.off > * { opacity: .35; }
+.hc.now .t { color: var(--pen-ink); font-weight: 600; opacity: 1; }
+.hc.now::after { content: ""; position: absolute; top: 0; left: 50%; width: 2px; height: 5px; margin-left: -1px; background: var(--pen); border-radius: 2px; }
+.hc.sel { box-shadow: inset 0 0 0 2px var(--ink); }
+.navb { position: absolute; top: 50px; z-index: 3; width: 30px; height: 30px; margin-top: -15px; padding: 0 0 2px; border-radius: 99px; border: 1px solid var(--ink); background: var(--g-raised); box-shadow: var(--sh-raised);
+  font: 500 17px/1 var(--mono); cursor: pointer; }
+.navb.l { left: -6px; } .navb.r { right: -6px; }
+.hoursw.atstart .navb.l, .hoursw.atend .navb.r, .hoursw.fits .navb { display: none; }
+.chart svg { display: block; overflow: visible; }
+
+/* ---- the chart: the real chart, photographed, with its lights drawn over it ---- */
+.map { position: absolute; z-index: 20; overflow: hidden; background: #f3f1ea; border: 1px solid var(--ink); border-radius: 18px; box-shadow: var(--sh-float);
+  top: 0; left: 0; right: 0; bottom: 0; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
+  transition: top .45s var(--ease), left .45s var(--ease), right .45s var(--ease), bottom .45s var(--ease), border-radius .45s var(--ease), border-color .45s, opacity .22s, visibility 0s; }
+.map.dragging { cursor: grabbing; }
+.app[data-layout=split][data-view=list] .map { top: calc(var(--head-h, 66px) + 12px); right: 12px; bottom: 12px; left: calc(100% - var(--mapw, 500px) - 12px); }
+.app[data-view=chart] .map { z-index: 40; border-radius: 0; border-color: transparent; box-shadow: none; }
+.app:not([data-layout=split])[data-view=list] .map { opacity: 0; visibility: hidden; transition: opacity .22s, visibility 0s .22s; }
+.app.no-anim .map { transition: none !important; }
+.layer { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; will-change: transform; -webkit-user-drag: none; }
+.layer.detail { -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent), linear-gradient(180deg, transparent, #000 5%, #000 95%, transparent);
+  -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent), linear-gradient(180deg, transparent, #000 5%, #000 95%, transparent); mask-composite: intersect; }
+.lights { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+/* src/map.css .lt, as the chart draws a spot */
+.lt { position: absolute; left: 0; top: 0; width: 20px; height: 20px; margin: -10px 0 0 -10px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; pointer-events: auto; transition: opacity .18s; }
+.lt::before { content: ""; position: absolute; left: 50%; top: 50%; width: 32px; height: 32px; border-radius: 50%; transform: translate(-50%, -50%); }
+.lt svg { position: absolute; left: -20px; top: -20px; width: 60px; height: 60px; overflow: visible; pointer-events: none; transition: transform .2s; }
+.lt-arrow { fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.lt-ring { fill: var(--ground); stroke: var(--ink); stroke-width: 1.1; transition: fill .15s, stroke .15s; }
+.lt-n { font: 600 9.5px var(--mono); fill: var(--ink); }
+.lt.s0 .lt-ring { stroke: #1a1d2180; stroke-dasharray: 2 1.6; }
+.lt.s0 .lt-n { fill: #1a1d2180; font-weight: 500; }
+.lt.s3 .lt-ring, .lt.s4 .lt-ring { fill: var(--ink); }
+.lt.s3 .lt-n, .lt.s4 .lt-n { fill: var(--ground); }
+.lt.s5 .lt-ring { fill: var(--magenta); stroke: var(--magenta); }
+.lt.s5 .lt-n { fill: var(--ground); }
+.lt.off .lt-arrow { stroke: var(--pen); }
+.lt-lab { position: absolute; left: 19px; top: -4px; display: none; white-space: nowrap; pointer-events: none; line-height: 1.05; text-align: left; color: var(--ink);
+  text-shadow: 0 0 2px var(--halo), 0 0 3px var(--halo), 0 0 5px var(--halo), 0 0 8px var(--halo); }
+.lt-lab b { display: block; font: italic 600 12px var(--display); }
+.lt-lab i { font: 500 10px var(--mono); font-style: normal; color: var(--magenta); }
+.lights.named .lt .lt-lab { display: block; }
+.lights.lo .lt svg { transform: scale(.74); }
+.lights.has-lit .lt:not(.lit) { opacity: .45; }
+.lt.lit { z-index: 5; opacity: 1; }
+.lt.lit svg, .lights.lo .lt.lit svg { transform: scale(1.6); filter: drop-shadow(0 2px 3px #1a1d2166); }
+.lt.lit .lt-ring { fill: var(--ink); stroke: var(--ink); stroke-dasharray: none; }
+.lt.lit .lt-n { fill: var(--ground); }
+.lt.lit .lt-lab { display: block; left: 26px; top: -10px; padding: 4px 9px 5px; border-radius: 10px; background: var(--g-ink); color: var(--ground); text-shadow: none; box-shadow: var(--sh-sheet); }
+.lt.lit .lt-lab i { color: #f2a7cf; }
+.you { position: absolute; left: 0; top: 0; z-index: 4; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--you); border: 2.5px solid #fff; box-shadow: 0 1px 4px #0006; pointer-events: auto; }
+.you::after { content: ""; position: absolute; inset: -11px; border-radius: 50%; background: #1f6fe033; animation: pulse 2.6s ease-out infinite; }
+@keyframes pulse { 0% { transform: scale(.4); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .you::after { animation: none; } .map { transition-duration: 0s !important; } }
+
+/* the map's controls: a window onto the chart */
+.mapui { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+.mapui > * { pointer-events: auto; }
+.floatbox { border: 1px solid var(--ink); background-color: #f4efe5; background-image: var(--grain), var(--g-float); box-shadow: var(--frame), var(--sh-float); }
+.expand { position: absolute; left: 12px; top: 12px; display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px 0 11px; border-radius: 99px;
+  font: 500 11px/1 var(--mono); letter-spacing: .09em; text-transform: uppercase; cursor: pointer; }
+.expand:hover { background: var(--g-ink); color: var(--ground); border-color: #000; box-shadow: var(--sh-control), var(--sh-float); }
+.zoombox { position: absolute; right: 12px; top: 12px; display: flex; flex-direction: column; padding: 3px; border-radius: 14px; }
+.zoombox button { width: 32px; height: 30px; padding: 0; border: 0; border-radius: 10px; background: none; display: grid; place-items: center; cursor: pointer; }
+.zoombox button:hover { background: var(--sunken); }
+.zoombox hr { margin: 3px 6px; border: 0; border-top: 1px solid var(--line); }
+.when { position: absolute; left: 12px; bottom: 12px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--ink); background: var(--glass); font: 500 10px/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.chartonly { display: none !important; }
+.app[data-view=chart] .chartonly { display: flex !important; }
+.app[data-view=chart] .listonly { display: none !important; }
+.app:not([data-layout=split])[data-view=list] .zoombox { display: none !important; }
+/* the chart's own frame and search box, as the chart has them full screen */
+.neat { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.neat i { position: absolute; background: repeating-linear-gradient(90deg, var(--ink) 0 52px, #f4efe5 52px 104px); box-shadow: 0 0 0 1px var(--ink); }
+.neat i:nth-child(1) { left: 0; right: 0; top: 0; height: 6px; } .neat i:nth-child(2) { left: 0; right: 0; bottom: 0; height: 6px; }
+.neat i:nth-child(3), .neat i:nth-child(4) { top: 0; bottom: 0; width: 6px; background: repeating-linear-gradient(180deg, var(--ink) 0 52px, #f4efe5 52px 104px); }
+.neat i:nth-child(3) { left: 0; } .neat i:nth-child(4) { right: 0; }
+.chead { position: absolute; left: 18px; top: 18px; width: 360px; height: 56px; align-items: center; gap: 12px; padding: 0 12px 0 8px; border-radius: 14px; }
+.chead .round { width: 36px; height: 36px; }
+.chead .find { flex: 1; display: flex; align-items: center; gap: 7px; font: italic 400 15px var(--body); color: var(--muted); }
+.app[data-layout=phone] .chead { left: 11px; right: 56px; top: 11px; width: auto; height: 54px; }
+.app[data-layout=phone] .chead .word { display: none; }
+.app[data-view=chart] .zoombox { top: 18px; right: 18px; }
+/* a phone's chart: the search box, and the zoom and layers beside it at the top right, as the chart has them */
+.app[data-layout=phone][data-view=chart] .zoombox { top: 11px; right: 5px; }
+.app[data-layout=phone] #collapse, .app[data-layout=phone] #collapse + hr { display: none !important; }
+.credit { position: absolute; left: 16px; bottom: var(--credit-b, 16px); align-items: center; transition: bottom .3s var(--ease); gap: 8px; font: 500 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.credit b { width: 20px; height: 20px; border-radius: 99px; background: var(--ink); color: var(--ground); display: grid; place-items: center; font: 600 11px var(--body); letter-spacing: 0; }
+
+/* the black button at the foot: Map / List */
+.toggle { position: absolute; left: 50%; bottom: var(--toggle-b, 18px); z-index: 60; transition: bottom .3s var(--ease), background .12s; transform: translateX(-50%); display: none; align-items: center; gap: 7px; height: 40px; padding: 0 18px;
+  border-radius: 99px; border: 1px solid #000; background: var(--g-ink); color: var(--ground); font: 500 11px/1 var(--mono); letter-spacing: .09em; text-transform: uppercase;
+  box-shadow: var(--sh-control), var(--sh-sheet); cursor: pointer; }
+.toggle:hover { background: #33373d; }
+.app:not([data-layout=split]) .toggle, .app[data-view=chart] .toggle { display: inline-flex; }
+
+/* ---- the forecast dock (src/ForecastDock.tsx, src/dock.css), only on the full chart ----
+   A spot pressed on the full chart opens the chart's own dock along the foot, as today. */
+.dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 7; height: var(--dock-h, 130px); padding: 4px 0 0 16px; cursor: default;
+  background: var(--ground); border: 1px solid var(--ink); border-bottom: 0; border-radius: 18px 18px 0 0; box-shadow: var(--frame), 0 -6px 14px -6px #1a1d2124, 0 -20px 40px -18px #3c2d1466;
+  transition: height .3s var(--ease), transform .3s var(--ease), visibility 0s; }
+.dock.closed { transform: translateY(calc(100% + 70px)); visibility: hidden; transition: height .3s var(--ease), transform .3s var(--ease), visibility 0s .3s; }
+.dk-tools { position: absolute; right: 12px; bottom: calc(100% + 10px); display: flex; align-items: stretch; gap: 2px; padding: 3px; border-radius: 14px; }
+.dk-id { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 0 10px 0 4px; border-right: 1px solid var(--line); }
+.dk-name { display: inline-flex; align-items: center; min-width: 0; padding: 0; border: 0; background: none; color: var(--ink); text-align: left; font: 600 17px/1.15 var(--display); letter-spacing: -.01em; white-space: nowrap; cursor: pointer; }
+.dk-name:hover span { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.dk-star { flex: none; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 10px; background: none; display: grid; place-items: center; cursor: pointer; }
+.dk-tool { height: 30px; min-width: 32px; padding: 0 8px; border: 0; border-radius: 10px; background: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  font: 500 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); cursor: pointer; }
+.dk-tool:hover, .dk-star:hover { background: var(--sunken); }
+.dk-head { display: none; }
+.dk-scroll { position: relative; height: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; }
+.dk-scroll::-webkit-scrollbar { display: none; }
+.dk-track { position: relative; width: max-content; }
+.tt { border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+.tt td, .tt th { box-sizing: border-box; width: var(--cw); min-width: var(--cw); max-width: var(--cw); height: 20px; padding: 0; text-align: center; vertical-align: middle; font: 400 12px var(--mono); white-space: nowrap; color: var(--ink); }
+.tt .lab { position: sticky; left: 0; z-index: 3; width: 46px; min-width: 46px; max-width: 46px; background: var(--ground); text-align: left; color: var(--ink-2); font-size: 10px; line-height: 1; }
+.tt .lab svg { display: block; }
+.tt .lab small { position: absolute; left: 19px; top: 50%; transform: translateY(-50%); font: 400 10px var(--mono); }
+.tt tr.wind .lab small { left: 2px; top: auto; bottom: -9px; transform: none; }
+.tt tr.stars > * { height: 18px; } .tt tr.wind > * { height: 22px; } .tt tr.from > * { height: 18px; } .tt tr.more > * { height: 20px; }
+.tt tr.day th { height: 24px; text-align: left; font: 700 15px var(--display); letter-spacing: -.01em; overflow: visible; }
+.tt tr.day th.name { padding-left: 8px; }
+.tt tr.hour td { height: 22px; border-bottom: 1px solid var(--ink); color: var(--muted); }
+.tt tr.hour td.lite { color: var(--ink); font-weight: 600; }
+.tt tr.hour td.sel { color: var(--pen-ink); font-weight: 600; }
+.tt tr.stars td { height: 18px; }
+.tt tr.stars td i { color: #1a1d2166; font-style: normal; }
+.tt tr.wind td b { font: 600 13px var(--mono); }
+.tt tr.wind td small { margin-left: 3px; font: 400 11px var(--mono); color: var(--muted); }
+.tt tr.from td { height: 18px; }
+.tt tr.wing td { height: 22px; font-weight: 600; }
+.tt tr.more td { color: var(--ink); }
+.tt tr.more.first td { border-top: 1px solid #1a1d2133; }
+.tt tr.more td.dash { color: var(--muted); }
+.tt td .gf { padding: 1px 4px; border-radius: 3px; background: #f6dfc9; }
+.tt td.old > * , .tt td.old { color: #1a1d2170; }
+.tt td.old svg { opacity: .5; }
+.tt td.night { background-image: repeating-linear-gradient(135deg, #1a1d2112 0 1px, transparent 1px 7px); }
+.tt tr.hour td.night { font-weight: 400; }
+.tt td.mid, .tt th.mid { border-left: 1.5px solid var(--ink); }
+.tt td.cut { border-left: 1.5px dashed #1a1d21b3; }
+.tt td.pick { cursor: pointer; }
+.tt td.pick:hover { background-color: #ede6d6aa; }
+.tt-pen { position: absolute; top: 26px; pointer-events: none; overflow: visible; z-index: 2; }
+/* the dock's top edge: drag it up for more rows, down for fewer, and down again to close (the chart's own sheet does this on a phone) */
+.dk-edge { position: absolute; left: 0; right: 0; top: -8px; height: 18px; z-index: 4; cursor: ns-resize; touch-action: none; }
+.dk-edge .dk-grip { top: 9px; opacity: .55; }
+.dk-edge:hover .dk-grip { opacity: 1; }
+.app.dock-drag .dock, .app.dock-drag .toggle, .app.dock-drag .credit { transition: none !important; }
+/* a phone's dock is the chart's bottom sheet: a grip, then its head, then the hours */
+.app[data-layout=phone] .dock { padding: 0 0 0 10px; }
+.app[data-layout=phone] .dk-tools { display: none; }
+.app[data-layout=phone] .dock { display: flex; flex-direction: column; }
+.app[data-layout=phone] .dk-head { position: relative; flex: none; display: flex; align-items: center; gap: 2px; min-height: 44px; padding: 12px 6px 2px 0; touch-action: none; cursor: grab; }
+.dk-grip { position: absolute; left: 50%; top: 4px; width: 38px; height: 4px; margin-left: -19px; border: 0; border-radius: 4px; background: #1a1d2140; padding: 0; cursor: pointer; }
+.dk-head .dk-name { flex: 1; font-size: 19px; white-space: normal; }
+.app[data-layout=phone] .dk-scroll { flex: 1; min-height: 0; height: auto; }
+.app[data-layout=phone] .tt .lab { width: 38px; min-width: 38px; max-width: 38px; }
+.app[data-layout=phone] .tt tr.day th { height: 20px; font-size: 14px; }
+/* the chosen spot on the chart: its name and wind in the pen's red, the pen's loop round it, the range ring */
+.lt.sel { z-index: 6; }
+.lt.sel .lt-lab { display: block; }
+.lt.sel .lt-lab i { color: var(--pen-ink); }
+.lt-loop { position: absolute; left: -24px; top: -20px; width: 52px; height: 42px; overflow: visible; pointer-events: none; }
+.ring { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; }
+.ring svg { position: absolute; overflow: visible; }
+.toast { position: absolute; left: 50%; bottom: 72px; z-index: 70; transform: translateX(-50%); padding: 10px 16px; border-radius: 99px; background: var(--g-ink); color: var(--ground);
+  font: 500 11px var(--mono); letter-spacing: .04em; box-shadow: 0 8px 20px -6px #000a; white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.toast[hidden] { display: none; }
+</style>
+</head>
+<body class="fit">
+<div class="mockbar" id="mockbar"><b>Mock-up · Spot finder with the chart</b>
+  <span class="note">Preview at:</span>
+  <button data-preview="fit">This window</button><button data-preview="1440">1440</button><button data-preview="1100">1100</button><button data-preview="900">900</button><button data-preview="390">Phone 390</button>
+  <span class="gap"></span><a href="#notes" id="tonotes">Notes and what to try ↓</a>
+</div>
+
+<div class="stage" id="stage">
+<div class="app" id="app" data-layout="split" data-view="list">
+  <header class="fhead" id="fhead">
+    <span class="lead"><button class="round" aria-label="Site menu" data-say="This opens the site menu.">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16"/></svg></button>
+      <span class="word">wingfoil<i>.ie</i></span></span>
+    <div class="seg" role="group" aria-label="Which spots"><button data-scope="favourites">Favourites</button><button data-scope="near">Near you</button></div>
+  </header>
+  <div class="fbody">
+    <section class="list" id="list" aria-label="Spots"><ul class="cards" id="cards"></ul></section>
+    <div class="side" aria-hidden="true"></div>
+  </div>
+
+  <div class="map" id="map" role="region" aria-label="The chart, zoomed to the spots on the list">
+    <img class="layer" id="l-ireland" src="2026-10-26-spot-finder-chart/chart-ireland.webp" width="2800" height="2400" alt="" draggable="false">
+    <img class="layer detail" id="l-dublin" src="2026-10-26-spot-finder-chart/chart-dublin.webp" width="2000" height="1600" alt="" draggable="false">
+    <div class="lights" id="lights"></div>
+    <div class="neat chartonly" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="mapui">
+      <button class="expand floatbox listonly" id="expand" title="Open the full chart">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M21 3l-7 7M3 21l7-7M9 21H3v-6"/></svg>
+        Full chart</button>
+      <div class="chead floatbox chartonly">
+        <button class="round" aria-label="Site menu" data-say="This opens the site menu.">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16"/></svg></button>
+        <span class="word">wingfoil<i>.ie</i></span>
+        <span class="find"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>Find a spot…</span>
+      </div>
+      <div class="zoombox floatbox" role="group" aria-label="Map controls">
+        <button class="chartonly" id="collapse" title="Back to the list" aria-label="Back to the list">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 10 7-7M20 10h-6V4M3 21l7-7M4 14h6v6"/></svg></button>
+        <hr class="chartonly">
+        <button data-zoom="1" aria-label="Zoom in"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button>
+        <button data-zoom="-1" aria-label="Zoom out"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+        <hr class="chartonly">
+        <button class="chartonly" aria-label="Chart layers" data-say="This opens the chart's layers, as it does now."><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg></button>
+      </div>
+      <span class="when listonly" id="when">Stars at 14:00 today</span>
+      <span class="credit chartonly"><b>i</b>Harmonie</span>
+    </div>
+    <div class="dock closed" id="dock" role="region" aria-label="Forecast for the chosen spot"></div>
+  </div>
+
+  <button class="toggle" id="toggle" data-map-toggle></button>
+  <div class="toast" id="toast" role="status" hidden></div>
+</div>
+</div>
+
+<div class="notes" id="notes">
+  <h2>The Spot finder, with the chart beside it</h2>
+  <p>The Spot finder becomes the home page. The cards are the ones on /spots today, unchanged. On a wide screen the real chart sits on the right, the full height of the page under the header, zoomed to the spots on the list. The expand button opens the chart full screen, and that is how you get into the chart. On a phone you see the list, with a black Map button at the bottom to switch between the list and the map.</p>
+
+  <h3>What to try</h3>
+  <ul>
+    <li><b>Hover a card.</b> Its spot on the map turns black and shows its name. The map never zooms on a hover. If the spot is already well inside the map, nothing else moves. If it is near the edge or off the map, the map pans quickly to put it in the middle, at the same zoom. Leaving the list leaves the map where it is. Only first load and switching Favourites / Near you fit the map to the spots.</li>
+    <li><b>Hover a spot on the map.</b> Its card is outlined in the list. Click a spot on the map beside the list to scroll the list to its card. The map beside the list never opens the forecast dock.</li>
+    <li><b>Switch between Favourites and Near you.</b> The map shows only the spots on the list, and zooms to fit them. The blue dot is you.</li>
+    <li><b>Press Full chart</b> (top left of the map). The map grows to fill the screen and becomes the chart, with its own search box, zoom and layers buttons (on a phone too) and every spot. Press the black List button, the collapse button (top right), Escape or the browser's Back button to return to the list.</li>
+    <li>On the full chart, <b>click a spot</b>. The chart's forecast dock opens along the bottom, as it does on the chart today, and the spot gets the chart's red pen loop and range ring. There is no card over the map: to see the card, go back to the list.</li>
+    <li>The dock's top row is simpler: the star, the spot's name in full (press it for the spot page), a Blend button and one arrow. <b>The arrow closes the dock.</b> There is no × and no Layers button in the dock: Layers is with the zoom buttons.</li>
+    <li><b>Drag the dock's top edge up</b> for more rows, and down for fewer. Drag it down again to close it. On a phone, drag the sheet the same way. A tap on the grip also shows more or fewer rows.</li>
+    <li>With the dock open, the <b>black List button moves up</b> to sit just above it, moves with it as you drag, and drops back down when the dock closes.</li>
+    <li>Click an hour in the dock to pick it. The stars on the map follow.</li>
+    <li><b>Press a card's picture</b> to open the full chart at that spot, with its dock open.</li>
+    <li><b>Pick an hour</b> on any card. Every card and every spot on the map shows the stars for that hour.</li>
+    <li><b>Drag and scroll the map</b> to move and zoom it.</li>
+    <li><b>Change the width</b> with the buttons in the black bar, or by resizing the window. From 1100 pixels wide the map sits beside the list. Below that the map is hidden and the black Map button appears, as on Airbnb. Under 720 pixels it is the phone layout.</li>
+  </ul>
+
+  <h3>What is real and what is not</h3>
+  <ul>
+    <li>The map is two screenshots of the real chart running on this branch (Ireland, and the Dublin coast in more detail), placed with the same map maths the chart uses. The spots and the blue dot are drawn on top so they can respond to the mouse. They are drawn the way the chart draws its spots.</li>
+    <li>Only the Dublin coast has the detailed picture, so zooming in elsewhere looks soft. In the real build it is the live chart, sharp at every zoom.</li>
+    <li>The forecast dock is rebuilt in HTML from the real one (src/ForecastDock.tsx and src/dock.css, checked against screenshots of the running app at 1440 and 390), with the same made-up forecast as the cards.</li>
+    <li>The cards are drawn the way src/finder/SpotCard.tsx draws them, with a made-up forecast. The real Near you list has every spot within 30 km (23 from this location). The mock-up shows the 12 nearest so the file stays small.</li>
+  </ul>
+
+  <h3>How it would be built</h3>
+  <ul>
+    <li><b>One chart, moved, not two.</b> The page that draws the chart (src/App.tsx) would draw the finder and one <code>WindMap</code> together. The map sits in a box that is either the panel on the right or the whole screen. Expanding changes the box's size and calls <code>map.resize()</code> once at the end of the animation. The map is never unmounted, so it keeps its style, tiles, forecast frames and wind particles, and the browser keeps one WebGL context instead of two.</li>
+    <li><b>Panel and full chart differ only in what the map is given.</b> In the panel: only the listed spots as lights, no loupe or dock, the hour picked on the cards, and the map fitted to the list. Full screen: every spot, the dock, the search box and the layers, exactly as the chart is today. The finder already gets the chart's rated hours from App, so nothing new has to be loaded.</li>
+    <li><b>The dock is the chart's own,</b> with the simpler top row above. The same change would be made to the chart's existing dock (src/ForecastDock.tsx), since it is the same component. It only appears when the chart is full screen, never in the side panel. The List button would sit inside the dock's own layout, as the dock's tools and the chart's small print already do, so it moves with the dock's top edge in the same frame and can never cover it.</li>
+    <li><b>Hover.</b> A card passes its spot's id to the lights (a class toggled in force5/src/lights.ts, no React re-render) and, only if the spot is near the edge or off the map, calls <code>easeTo</code> with the current zoom after a short delay, so scrolling past cards does not throw the map around.</li>
+    <li><b>Addresses.</b> <code>/</code> becomes the finder. The full chart is the same page with <code>?map</code> in the address (pushed to history, so Back returns to the list). Existing links keep working: <code>/?spot=keel</code> opens the full chart on Keel, and <code>/spots</code> redirects to <code>/</code>. The "open the page you used last" memory in src/lastView.ts could then remember whether the chart was open.</li>
+    <li><b>Phone.</b> The map is not created until the Map button is first pressed, as the old finder did. After that it is kept, hidden, and resized when shown again.</li>
+  </ul>
+
+  <h3>Risks</h3>
+  <ul>
+    <li><b>Speed on a laptop.</b> A WebGL map with moving wind particles next to a long list of SVG-heavy cards. Scrolling the list while the particles animate could stutter on older machines. Ways round it: fewer particles in the panel, pause them while the list scrolls, and only draw the cards near the screen.</li>
+    <li><b>The expand animation.</b> Resizing a WebGL canvas every frame is costly. Better to animate the box with a transform or clip and resize the map once at the end.</li>
+    <li><b>Phone memory.</b> The map, its forecast frames and 20 or more cards with pictures in one page. iOS Safari reloads tabs that use too much memory. Creating the map only when asked, and dropping it after a long time hidden, keeps that down.</li>
+    <li><b>Hover moving the map</b> can still feel busy when the spots are far apart (Favourites across Ireland). It only pans for spots near the edge, never zooms, and should be tried in real use. It is easy to switch to "light up only, do not move".</li>
+    <li><b>The bottom of the full chart is busy:</b> the dock, its tools on the right, the small print on the left and the List button in the middle. Where the window is too narrow for the button between them, the mock-up lifts the button above the dock's tools. The real build should check this at every width.</li>
+    <li>The chart's first load gets heavier for people who only wanted the list. The panel should wait until the cards are drawn before it asks for the map.</li>
+  </ul>
+</div>
+
+<script>
+/* =========================================================================
+   The forecast and the stars: the 7e mock-up's model (2026-10-25-spot-list-cards.html)
+   ========================================================================= */
+const WIND = [[0, [170, 203, 234]], [5, [128, 174, 224]], [9, [79, 128, 200]], [10, [73, 168, 138]], [15, [76, 179, 90]], [20, [111, 191, 62]],
+  [25, [181, 207, 58]], [30, [236, 210, 58]], [35, [242, 160, 58]], [40, [224, 90, 51]], [45, [200, 48, 74]], [50, [155, 47, 134]], [60, [90, 35, 104]], [65, [35, 22, 40]]];
+function windCss(kn) {
+  const k = Math.max(0, Math.min(65, kn)); let i = 1;
+  while (i < WIND.length - 1 && k > WIND[i][0]) i++;
+  const [a, ca] = WIND[i - 1], [b, cb] = WIND[i];
+  return `rgb(${ca.map((v, c) => Math.round(v + (cb[c] - v) * (k - a) / (b - a))).join(",")})`;
+}
+const STARS = ["#e28bb3", "#d2609a", "#bd3d84", "#a01f6c", "#7c0f55"];   // --color-stars-1..5
+const starFill = (n) => n <= 0 ? "#ddd7ca" : STARS[Math.min(5, n) - 1];
+
+// Today is Monday 26 October 2026, 14:00. First and last light in Dublin, after the clocks went back.
+const NOW = 14, LIGHT_FROM = 7, LIGHT_TO = 18, FIRST = 6 + 41 / 60, LAST = 17 + 31 / 60;
+const DAYS = [
+  { short: "Mon", from: 250, kn: [16, 19, 17], gf: 2.05, sky: ["showers", "showers", "partly", "partly"], air: [9, 11, 12, 11], wave: [.3, 4] },
+  { short: "Tue", from: 135, kn: [9, 15, 12], gf: 1.45, sky: ["cloudy", "partly", "clear", "clear"], air: [8, 12, 13, 11], wave: [.8, 6] },
+  { short: "Wed", from: 95, kn: [17, 24, 20], gf: 1.45, sky: ["rain", "rain", "showers", "cloudy"], air: [10, 11, 12, 11], wave: [1.7, 7] },
+  { short: "Thu", from: 185, kn: [7, 12, 9], gf: 1.3, sky: ["fog", "cloudy", "partly", "partly"], air: [9, 13, 14, 12], wave: [.5, 5] },
+  { short: "Fri", from: 45, kn: [11, 16, 13], gf: 1.35, sky: ["partly", "clear", "clear", "partly"], air: [6, 9, 10, 8], wave: [1.1, 6] },
+  { short: "Sat", from: 300, kn: [13, 18, 15], gf: 1.6, sky: ["showers", "showers", "partly", "showers"], air: [7, 9, 9, 8], wave: [.4, 4] },
+];
+const meanAt = (d, h) => { const [m, p, e] = DAYS[d].kn; if (h <= 7) return m * .92; if (h >= 19) return e * .92;
+  return h <= 13 ? m + (p - m) * Math.sin((h - 7) / 6 * Math.PI / 2) : p + (e - p) * ((h - 13) / 6); };
+const fromAt = (d, h) => (d === 0 && h > 11 ? DAYS[0].from - (h - 11) * 24 : DAYS[d].from + (h - 12) * 2.5 + 360) % 360;
+const gfAt = (d, h) => d === 0 && h > 11 ? Math.max(1.35, DAYS[0].gf - (h - 11) * .2) : DAYS[d].gf;
+const skyAt = (d, h) => DAYS[d].sky[Math.max(0, Math.min(3, Math.floor((h - 6) / 3)))];
+const airAt = (d, h) => DAYS[d].air[Math.max(0, Math.min(3, Math.floor((h - 6) / 3)))];
+const tideAt = (d, h) => 2.3 + 1.7 * Math.cos(2 * Math.PI * (d * 24 + h - 10.67) / 12.42);
+const BAND = [11, 14, 24, 34];
+const angleOff = (from, facing) => Math.abs(((from - facing) % 360 + 540) % 360 - 180);
+const shoreOf = (off) => off < 30 ? "on" : off < 70 ? "x-on" : off < 110 ? "cross" : off < 150 ? "x-off" : "off";
+const COST = { on: 0, "x-on": 0, cross: 0, "x-off": 1.5, off: 5 };
+function rate(spot, d, h) {
+  const mean = meanAt(d, h) * spot.open, gust = mean * gfAt(d, h), from = fromAt(d, h), [lo, sLo, sHi, top] = BAND;
+  const shore = shoreOf(angleOff(from, spot.facing)), light = h >= LIGHT_FROM && h <= LIGHT_TO - 1;
+  let pot = mean < lo ? 0 : mean < sLo ? 1 + 3 * (mean - lo) / (sLo - lo) : mean <= sHi ? 5 : 4;
+  if (gust > top) pot = 0;
+  return { mean, gust, from, shore, light, stars: light ? Math.max(0, Math.round(pot - COST[shore])) : 0 };
+}
+const hours = () => { const a = []; for (let h = LIGHT_FROM; h < LIGHT_TO; h++) a.push(h); return a; };
+const dayMax = (spot, d) => Math.max(0, ...hours().filter((h) => d || h >= NOW).map((h) => rate(spot, d, h).stars));
+const wave = (spot, d) => ({ m: Math.round(DAYS[d].wave[0] * spot.sea * 10) / 10, s: DAYS[d].wave[1] });
+const hh = (h) => String(h).padStart(2, "0");
+const clk = (t) => `${hh(Math.floor(t))}:${String(Math.round((t % 1) * 60) % 60).padStart(2, "0")}`;
+const COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+const compass = (deg) => COMPASS[Math.round(((deg % 360) + 360) % 360 / 22.5) % 16];
+
+/* =========================================================================
+   The places
+   ========================================================================= */
+const RIDER = { lat: 53.362, lon: -6.235 };       // the rider, in Clontarf: the blue dot
+const kmFrom = (s) => Math.round(Math.hypot((s.lat - RIDER.lat) * 111.2, (s.lon - RIDER.lon) * 111.2 * Math.cos(RIDER.lat * Math.PI / 180)));
+// The places with a picture beside this file: [id, name, county, lat, lon, facing, open, sea]
+const CARDED = [
+  ["sandymount", "Sandymount Strand", "Dublin", 53.329, -6.2084, 100, .95, .5], ["poolbeg", "Poolbeg", "Dublin", 53.3372, -6.19, 120, 1.0, .6],
+  ["dollymount", "Dollymount", "Dublin", 53.3676, -6.1447, 125, 1.0, .8], ["seapoint", "Seapoint", "Dublin", 53.2973, -6.1589, 40, .95, .7],
+  ["dun-laoghaire", "Dún Laoghaire Harbour", "Dublin", 53.2976, -6.1369, 60, .85, .3], ["bull-island-north", "North Bull Island — Sutton end", "Dublin", 53.3827, -6.1126, 160, 1.0, .7],
+  ["burrow-beach", "Burrow Beach — Sutton", "Dublin", 53.3933, -6.1026, 10, .95, .8], ["portmarnock", "Portmarnock — Velvet Strand", "Dublin", 53.4313, -6.1239, 95, 1.05, 1],
+  ["low-rock", "Low Rock — Malahide", "Dublin", 53.4486, -6.1358, 90, 1.0, .9], ["killiney", "Killiney Beach", "Dublin", 53.2589, -6.1114, 100, 1.0, .9],
+  ["malahide-estuary", "Malahide Estuary", "Dublin", 53.4633, -6.1731, 60, .85, .15], ["bray", "Bray Beach", "Wicklow", 53.2025, -6.0966, 95, 1.0, 1],
+  ["brandon", "Brandon Bay", "Kerry", 52.276, -10.024, 10, 1.1, 1.4], ["keel", "Keel Beach", "Mayo", 53.971, -10.067, 200, 1.1, 1.5],
+  ["rosslare", "Rosslare Strand", "Wexford", 52.2889, -6.39, 110, 1.0, .8], ["downings", "Downings — Trá Beg", "Donegal", 55.193, -7.8367, 300, 1.05, 1.2],
+].map(([id, name, county, lat, lon, facing, open, sea]) => ({ id, name, county, lat, lon, facing, open, sea, pic: true }));
+const NEAR_IDS = CARDED.slice(0, 12).map((s) => s.id);
+// Every spot the chart has (public/riding-locations.json): the lights on the full chart.
+const ALL_RAW = [["brandon","Brandon Bay","Kerry",52.276,-10.024],["dollymount","Dollymount","Dublin",53.3676,-6.1447],["rusheen","Rusheen Bay","Galway",53.251,-9.121],["keel","Keel Beach","Mayo",53.971,-10.067],["inchydoney","Inchydoney","Cork",51.596,-8.867],["rossnowlagh","Rossnowlagh","Donegal",54.559,-8.21],["tramore","Tramore","Waterford",52.154,-7.136],["ballyholme","Ballyholme","Down",54.67,-5.645],["fi-blackrock-beach","Blackrock Beach","Louth",53.9612,-6.3666],["fi-seancheibh-an-spideil","Seanchéibh an Spidéil","Galway",53.2431,-9.3056],["fi-fanore-beach","Fanore Beach","Clare",53.1178,-9.2889],["fi-grange-beach","Grange Beach","Wexford",52.1982,-6.8298],["fi-maharees-beach","Maharees Beach","Kerry",52.2892,-10.0313],["fi-mountshannon-lough-derg","Mountshannon, Lough Derg","Clare",52.9317,-8.4298],["fi-pollan-bay","Pollan Bay","Donegal",55.2999,-7.38],["fi-tullan-strand","Tullan Strand","Donegal",54.4907,-8.2669],["fi-white-strand-doonbeg","White Strand Doonbeg","Clare",52.748,-9.5513],["fi-lahinch-beach","Lahinch Beach","Clare",52.9336,-9.3478],["kilcrea","Kilcrea — Malahide Estuary","Dublin",53.4691,-6.1755],["newtownards","Newtownards — Strangford Lough","Down",54.5601,-5.6277],["web-mulranny-murrivaugh","Mulranny / Murrivaugh Beach","Mayo",53.8999,-9.7642],["web-drum-beach","Drum Beach","Mayo",54.1915,-10.0861],["web-cross-beach-belmullet","Cross Beach — Belmullet","Mayo",54.2073,-10.0827],["web-benone-strand","Benone Strand","Derry",55.168,-6.8395],["web-magheraroarty","Magheraroarty","Donegal",55.151,-8.1514],["doogort","Doogort — Achill","Mayo",54.0117,-10.0234],["dooniver","Dooniver Beach — Achill","Mayo",54.0074,-9.94],["keel-lake","Keel Lake — Achill","Mayo",53.9826,-10.0643],["aghleam","Aghleam","Mayo",54.1166,-10.0933],["belmullet","Belmullet","Mayo",54.2234,-9.9919],["elly-beach","Elly Beach","Mayo",54.1579,-10.085],["trawmore-bay","Trawmore Bay — Claggan","Mayo",54.1827,-9.9524],["bertra","Bertra Beach","Mayo",53.7943,-9.6549],["carrownisky","Carrownisky Strand","Mayo",53.7481,-9.8996],["dogs-bay","Dog's Bay & Gurteen — Roundstone","Galway",53.3778,-9.9649],["spanish-point","Spanish Point","Clare",52.8402,-9.4337],["easkey","Easkey","Sligo",54.292,-8.9563],["enniscrone","Enniscrone","Sligo",54.2099,-9.1185],["dunmoran","Dunmoran Strand","Sligo",54.2638,-8.7316],["strandhill","Strandhill","Sligo",54.2728,-8.607],["rosses-point","Rosses Point","Sligo",54.3151,-8.5716],["lissadell","Lissadell","Sligo",54.3437,-8.5797],["streedagh","Streedagh Beach","Sligo",54.4044,-8.5584],["portnoo","Portnoo","Donegal",54.8435,-8.4451],["bloody-foreland","Bloody Foreland","Donegal",55.1585,-8.2851],["dunfanaghy","Dunfanaghy Lagoon","Donegal",55.1845,-7.9516],["downings","Downings — Trá Beg","Donegal",55.193,-7.8367],["portsalon","Portsalon — Ballymastocker Bay","Donegal",55.1942,-7.6161],["portstewart","Portstewart Strand","Derry",55.1689,-6.7461],["whiterocks","Whiterocks","Antrim",55.2075,-6.6331],["portballintrae","Bushfoot — Portballintrae","Antrim",55.2159,-6.5476],["browns-bay","Browns Bay — Larne","Antrim",54.8543,-5.7663],["lough-neagh-antrim","Lough Neagh — Antrim","Antrim",54.7161,-6.2409],["oxford-island","Lough Neagh — Oxford Island","Armagh",54.4894,-6.3669],["millisle","Millisle","Down",54.6076,-5.5253],["kearney","Kearney","Down",54.3848,-5.4725],["newcastle","Newcastle — Dundrum Bay","Down",54.2097,-5.8857],["cranfield","Cranfield","Down",54.0231,-6.0631],["warrenpoint","Warrenpoint","Down",54.0993,-6.2555],["carlingford","Carlingford","Louth",54.0517,-6.192],["greenore","Greenore","Louth",54.0348,-6.1323],["giles-quay","Gyles Quay","Louth",53.9853,-6.2386],["annagassan","Annagassan","Louth",53.8894,-6.3547],["clogherhead","Clogherhead","Louth",53.7997,-6.2447],["termonfeckin","Termonfeckin","Louth",53.7588,-6.2496],["bettystown","Bettystown","Meath",53.6984,-6.2433],["laytown","Laytown","Meath",53.6816,-6.2374],["gormanston","Gormanston","Meath",53.6427,-6.2174],["skerries","Skerries","Dublin",53.5829,-6.1067],["rush-north","Rush North Beach","Dublin",53.5246,-6.085],["rush-south","Rush South Beach","Dublin",53.5112,-6.1055],["donabate","Donabate","Dublin",53.4762,-6.1183],["low-rock","Low Rock — Malahide","Dublin",53.4486,-6.1358],["portmarnock","Portmarnock — Velvet Strand","Dublin",53.4313,-6.1239],["burrow-beach","Burrow Beach — Sutton","Dublin",53.3933,-6.1026],["bull-island-north","North Bull Island — Sutton end","Dublin",53.3827,-6.1126],["poolbeg","Poolbeg","Dublin",53.3372,-6.19],["sandymount","Sandymount Strand","Dublin",53.329,-6.2084],["seapoint","Seapoint","Dublin",53.2973,-6.1589],["killiney","Killiney Beach","Dublin",53.2589,-6.1114],["bray","Bray Beach","Wicklow",53.2025,-6.0966],["greystones","Greystones","Wicklow",53.1443,-6.059],["brittas-bay","Brittas Bay","Wicklow",52.8864,-6.0546],["kilmuckridge","Kilmuckridge","Wexford",52.5138,-6.2387],["curracloe","Curracloe","Wexford",52.3867,-6.3634],["the-burrow","The Burrow — Rosslare","Wexford",52.2991,-6.3903],["rosslare","Rosslare Strand","Wexford",52.2889,-6.39],["st-margarets","St Margaret's Beach","Wexford",52.203,-6.3502],["ladys-island-lake","Lady's Island Lake","Wexford",52.2008,-6.3906],["kilmore-quay","Kilmore Quay","Wexford",52.1719,-6.5883],["cullenstown","Cullenstown","Wexford",52.2159,-6.7207],["duncannon","Duncannon","Wexford",52.2197,-6.929],["dungarvan","Dungarvan","Waterford",52.0852,-7.6109],["red-barn","Red Barn — Youghal","Cork",51.9491,-7.8424],["ballycotton","Ballycotton — Ballynamona","Cork",51.8384,-8.0227],["cobh","Cobh — Cork Harbour","Cork",51.8502,-8.2917],["cork-harbour","Cork Harbour — lower","Cork",51.8048,-8.296],["garrettstown","Garrettstown","Cork",51.6431,-8.5804],["coolmaine","Coolmaine","Cork",51.6413,-8.6734],["owenahincha","Owenahincha","Cork",51.566,-9.0002],["glandore","Glandore Harbour","Cork",51.561,-9.125],["schull","Schull","Cork",51.5222,-9.5292],["bantry-bay","Bantry Bay","Cork",51.6801,-9.4609],["waterville","Waterville — Ballinskelligs Bay","Kerry",51.8268,-10.1731],["rossbeigh","Rossbeigh","Kerry",52.0694,-9.9732],["inch","Inch Beach","Kerry",52.1236,-9.9666],["ventry","Ventry","Kerry",52.1326,-10.3605],["smerwick","Smerwick Harbour","Kerry",52.1941,-10.3799],["fermoyle","Fermoyle","Kerry",52.2435,-10.1246],["gowlane","Gowlane","Kerry",52.2481,-10.0855],["stradbally","Stradbally — Castlegregory","Kerry",52.253,-10.0739],["aughacasla","Aughacasla","Kerry",52.2385,-9.9705],["scraggane","Scraggane Bay","Kerry",52.3084,-10.0265],["garrywilliam-point","Garrywilliam Point","Kerry",52.3066,-10.0597],["banna","Banna Strand","Kerry",52.3363,-9.838],["mullaghmore","Mullaghmore","Sligo",54.4664,-8.4479],["aghada","Aghada — Cork Harbour","Cork",51.8451,-8.2098],["annascaul","Annascaul river mouth","Kerry",52.1365,-10.0503],["blessington","Blessington Lakes","Wicklow",53.1327,-6.4826],["broadmeadows-south","Broadmeadows Estuary — south shore","Dublin",53.4556,-6.1671],["bunbeg","Bunbeg Beach","Donegal",55.0648,-8.3089],["cahore","Cahore","Wexford",52.5608,-6.1955],["carrickfinn","Carrickfinn Beach","Donegal",55.0453,-8.3464],["clonea","Clonea Strand","Waterford",52.0953,-7.5416],["cunnamore","Cunnamore Pier","Cork",51.5039,-9.4248],["dooey","Dooey Beach","Donegal",54.8525,-8.4],["dun-laoghaire","Dún Laoghaire Harbour","Dublin",53.2976,-6.1369],["dunmore-east","Dunmore East","Waterford",52.1514,-6.9871],["east-ferry","East Ferry — Cork Harbour","Cork",51.8695,-8.2043],["glin","Glin — Shannon Estuary","Limerick",52.5886,-9.2939],["liscannor","Liscannor","Clare",52.9419,-9.3747],["mannin-bay","Mannin Bay","Galway",53.4428,-10.0638],["marble-hill","Marble Hill","Donegal",55.1773,-7.8998],["mountcharles","Mountcharles Pier","Donegal",54.6506,-8.2083],["murvagh","Murvagh Beach","Donegal",54.6049,-8.1634],["oysterhaven","Oysterhaven","Cork",51.6959,-8.4506],["portrush","Portrush","Antrim",55.2023,-6.6565],["tracht","Traught Beach — Kinvara","Galway",53.1718,-8.9866],["tyrella","Tyrella","Down",54.2507,-5.7462],["lough-derg-killaloe","Lough Derg — Killaloe","Clare",52.8398,-8.4679],["white-strand-kerry","White Strand — Cahersiveen","Kerry",51.943,-10.2749],["ballyhornan","Ballyhornan","Down",54.3017,-5.5518],["benderg-bay","Benderg Bay","Down",54.312,-5.5356],["killard","Killard","Down",54.3201,-5.5411],["malahide-estuary","Malahide Estuary","Dublin",53.4633,-6.1731],["portrane","Portrane","Dublin",53.4952,-6.1095],["donabate-north-beach","Donabate North Beach","Dublin",53.4819,-6.1119],["malahide-estuary-south-park","Malahide Estuary — South Park","Dublin",53.459,-6.1828],["skerries-south-strand","Skerries — South Strand","Dublin",53.5822,-6.104]];
+const hash = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0); };
+const SPOTS = new Map(CARDED.map((s) => [s.id, s]));
+for (const [id, name, county, lat, lon] of ALL_RAW) if (!SPOTS.has(id)) {
+  const k = hash(id);
+  SPOTS.set(id, { id, name, county, lat, lon, facing: k % 360, open: .85 + (k >> 9) % 25 / 100, sea: .4 + (k >> 5) % 10 / 10, pic: false });
+}
+for (const s of SPOTS.values()) s.km = kmFrom(s);
+
+/* =========================================================================
+   State
+   ========================================================================= */
+const Q = new URLSearchParams(location.search);
+const S = { scope: "near", starred: new Set(["dollymount", "portmarnock", "brandon", "keel", "rosslare", "downings"]), hour: NOW,
+  view: location.hash === "#chart" ? "chart" : "list", layout: "split", lit: null, sel: null, day: 0, rows: false };
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = (id) => document.getElementById(id);
+const app = $("app"), list = $("list"), cardsEl = $("cards"), mapEl = $("map"), lightsEl = $("lights"), dockEl = $("dock"), toggle = $("toggle"), toast = $("toast");
+
+function listed() {
+  const pool = S.scope === "near" ? NEAR_IDS.map((id) => SPOTS.get(id)) : [...S.starred].map((id) => SPOTS.get(id)).filter(Boolean);
+  const key = (s) => { const m = [0, 1, 2, 3, 4, 5].map((d) => dayMax(s, d)), top = Math.max(...m); return top * 10 - m.indexOf(top); };
+  return pool.slice().sort((a, b) => key(b) - key(a) || a.km - b.km);
+}
+
+/* =========================================================================
+   Glyphs
+   ========================================================================= */
+const STAR_PATH = "M5 .6l1.3 2.9 3.1.3-2.4 2.1.7 3.1L5 7.4 2.3 9l.7-3.1L.6 3.8l3.1-.3z";
+const starAt = (x, y, sz, fill) => `<path d="${STAR_PATH}" transform="translate(${(x - sz / 2).toFixed(1)} ${(y - sz / 2).toFixed(1)}) scale(${(sz / 10).toFixed(3)})" fill="${fill}" stroke="#1a1d21" stroke-opacity=".55" stroke-width="${(.9 * 10 / sz).toFixed(2)}" stroke-linejoin="round"/>`;
+function starRowG(cx, cy, n, sz) {
+  const gap = sz * .12, w = 5 * sz + 4 * gap, x0 = cx - w / 2;
+  return [0, 1, 2, 3, 4].map((i) => i < n ? starAt(x0 + i * (sz + gap) + sz / 2, cy, sz, starFill(n))
+    : `<path d="${STAR_PATH}" transform="translate(${(x0 + i * (sz + gap)).toFixed(1)} ${(cy - sz / 2).toFixed(1)}) scale(${(sz / 10).toFixed(3)})" fill="none" stroke="#1a1d21" stroke-opacity="${n ? .45 : .22}" stroke-width="${(.9 * 10 / sz).toFixed(2)}" stroke-linejoin="round"/>`).join("");
+}
+const starRowHtml = (n, sz) => { const w = 5 * sz + 4 * sz * .12; return `<svg width="${w.toFixed(1)}" height="${sz}" viewBox="0 0 ${w.toFixed(1)} ${sz}" aria-hidden="true">${starRowG(w / 2, sz / 2, n, sz)}</svg>`; };
+const FAV = (on) => `<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.8l2.5 5.4 5.9.6-4.4 4 1.3 5.8L10 14.6l-5.3 3 1.3-5.8-4.4-4 5.9-.6z" fill="${on ? "#d43a2c" : "none"}" stroke="#d43a2c" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+function arrow(spot, from, sz = 12) {
+  const sh = shoreOf(angleOff(from, spot.facing)), off = sh === "off" || sh === "x-off";
+  return `<svg width="${sz}" height="${sz}" viewBox="-7 -7 14 14" aria-hidden="true" style="overflow:visible"><g transform="rotate(${from + 180})"><path d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" fill="none" stroke="${off ? "#d43a2c" : "#1a1d21"}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`;
+}
+const arrowG = (spot, from, x, y, sz = 12) => { const sh = shoreOf(angleOff(from, spot.facing)), off = sh === "off" || sh === "x-off";
+  return `<g transform="translate(${x} ${y}) scale(${sz / 14}) rotate(${from + 180})"><path d="M0 5.5V-5M-3 -2L0 -5.5L3 -2" fill="none" stroke="${off ? "#d43a2c" : "#1a1d21"}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></g>`; };
+function skyG(kind, x, y, s = 16) {
+  const k = s / 16, sun = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#f2bf45" stroke="#b9861a" stroke-width=".8"/>`;
+  const cloud = (dx = 0, dy = 0, f = "#fffdf6") => `<path d="M${3 + dx} ${12 + dy}a3 3 0 0 1 .6-5.9 4.2 4.2 0 0 1 8 1.1 2.4 2.4 0 0 1 .4 4.8z" fill="${f}" stroke="#1a1d21" stroke-width="1"/>`;
+  const drops = (n) => Array.from({ length: n }, (_, i) => `<path d="M${5 + i * 3} 13.6l-1 2.2" stroke="#3f7fc0" stroke-width="1.3" stroke-linecap="round"/>`).join("");
+  const body = {
+    clear: sun(8, 8, 4.2) + Array.from({ length: 8 }, (_, i) => { const a = i * Math.PI / 4; return `<path d="M${8 + 5.6 * Math.cos(a)} ${8 + 5.6 * Math.sin(a)}L${8 + 7.2 * Math.cos(a)} ${8 + 7.2 * Math.sin(a)}" stroke="#b9861a" stroke-width="1.1" stroke-linecap="round"/>`; }).join(""),
+    partly: sun(10.5, 5.5, 3.6) + cloud(-1, 1.5), cloudy: cloud(1.5, -2.5, "#e4dfd3") + cloud(-1, 1),
+    fog: `<path d="M2 6h12M3 9h10M2 12h12" stroke="#5b5c5b" stroke-width="1.3" stroke-linecap="round"/>`,
+    rain: cloud(0, -2, "#e4dfd3") + drops(3), showers: sun(11, 4.5, 3) + cloud(-1, -1) + drops(2),
+  }[kind];
+  return `<g transform="translate(${x - 8 * k} ${y - 8 * k}) scale(${k})">${body}</g>`;
+}
+const sky = (kind, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" aria-hidden="true">${skyG(kind, s / 2, s / 2, s)}</svg>`;
+const WAVE = `<svg width="13" height="9" viewBox="0 0 13 9" aria-hidden="true"><path d="M.5 6c1.5-3 3-3 4 0s2.5 3 4 0 2.5-3 4 0" fill="none" stroke="#2f6f9f" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+const AIR = `<svg width="8" height="12" viewBox="0 0 8 12" aria-hidden="true"><path d="M3 1.5v6.2a2.2 2.2 0 1 0 2 0V1.5a1 1 0 0 0-2 0z" fill="none" stroke="#1a1d21" stroke-width="1"/><circle cx="4" cy="9.4" r="1.2" fill="#d43a2c"/></svg>`;
+const TIDE_UP = `<svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M4.5 1v7M1.5 4l3-3 3 3" fill="none" stroke="#2f6f9f" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const TIDE_DOWN = `<svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M4.5 8V1M1.5 5l3 3 3-3" fill="none" stroke="#2f6f9f" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+// The ride rose on the picture, as the card draws it: the rim, the land side hatched, offshore in the pen's red, the wind's arrow in its colour.
+function rose(spot, r, w, h) {
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) * .37, id = `h-${spot.id}-${w}`;
+  const p = (a, rr) => [cx + rr * Math.sin(a * Math.PI / 180), cy - rr * Math.cos(a * Math.PI / 180)];
+  const land = (spot.facing + 180) % 360;
+  const sector = (a1, a2, rr) => { const [x1, y1] = p(a1, rr), [x2, y2] = p(a2, rr); return `M${cx} ${cy}L${x1.toFixed(1)} ${y1.toFixed(1)}A${rr} ${rr} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}Z`; };
+  const arc = (a1, a2, rr) => { const [x1, y1] = p(a1, rr), [x2, y2] = p(a2, rr); return `M${x1.toFixed(1)} ${y1.toFixed(1)}A${rr} ${rr} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`; };
+  const [ax, ay] = p(r.from, R + 7), [bx, by] = p(r.from - 9, R + 13), [qx, qy] = p(r.from + 9, R + 13), [dx, dy] = p(r.from, R * .95);
+  return `<svg viewBox="0 0 ${w} ${h}" aria-hidden="true"><defs><pattern id="${id}" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line y2="4" stroke="#f3eee3" stroke-opacity=".7" stroke-width="1"/></pattern></defs>
+    <path d="${sector(land - 90, land, R)}" fill="url(#${id})"/><path d="${sector(land, land + 90, R)}" fill="url(#${id})"/>
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#f3eee3" stroke-opacity=".8" stroke-width="2.4"/><circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#1a1d21" stroke-width=".9"/>
+    <path d="M${cx} ${cy}L${dx.toFixed(1)} ${dy.toFixed(1)}" stroke="#f3eee3" stroke-width="1" stroke-dasharray="2 2"/>
+    <path d="${arc(land - 28, land + 28, R + 3)}" fill="none" stroke="#d43a2c" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M${ax.toFixed(1)} ${ay.toFixed(1)}L${bx.toFixed(1)} ${by.toFixed(1)}L${qx.toFixed(1)} ${qy.toFixed(1)}Z" fill="${windCss(r.mean)}" stroke="#1a1d21" stroke-width=".9" stroke-linejoin="round"/>
+    <circle cx="${cx}" cy="${cy}" r="2" fill="#1a1d21" stroke="#f3eee3" stroke-width="1"/></svg>`;
+}
+
+/* =========================================================================
+   The card (src/finder/SpotCard.tsx): today hour by hour, then the next five days
+   ========================================================================= */
+function tideTurns(d) {
+  const out = []; let prev = tideAt(d, 0), rising = tideAt(d, .02) > prev;
+  for (let t = .02; t < 24; t += .02) { const v = tideAt(d, t), up = v > prev; if (up !== rising) out.push({ t: t - .02, high: rising }); rising = up; prev = v; }
+  return out;
+}
+function todayHead(spot) {
+  const w = wave(spot, 0), turns = tideTurns(0).filter((x) => x.t >= 6 && x.t <= 20);
+  return `<div class="sech"><span class="eyebrow">Today</span><span class="facts">
+    <span>${sky(skyAt(0, 14), 15)}${airAt(0, 14)}°</span><span>${WAVE}${w.m} m · ${w.s} s</span>
+    ${turns.map((x) => `<span>${x.high ? TIDE_UP : TIDE_DOWN}${clk(x.t)}</span>`).join("")}
+    <span>light ${clk(FIRST)}–${clk(LAST)}</span></span></div>`;
+}
+// Today as a row of hours from the hour before first light to the hour after last; the columns spread to fill the card,
+// and scroll sideways where they cannot (DayHours.tsx: 54px a column at least, 50 on a phone).
+function todayStrip(spot, inner, phone) {
+  const h0 = Math.floor(FIRST), h1 = Math.ceil(LAST), cols = [];
+  for (let h = h0; h <= h1; h++) cols.push(h);
+  const cw = Math.max(phone ? 50 : 54, Math.floor(inner / cols.length)), W = cols.length * cw, X = (t) => (t - h0) * cw + cw / 2, BH = 100;
+  const top = 10, base = BH - 2, y = (kn) => base - Math.min(kn, 45) / 45 * (base - top), uid = `${spot.id}${inner}`;
+  const stops = (f, o) => cols.map((h, i) => `<stop offset="${((i + .5) / cols.length).toFixed(3)}" stop-color="${windCss(f(h))}" stop-opacity="${o}"/>`).join("");
+  const pts = (f) => [[0, f(cols[0])], ...cols.map((h) => [X(h), f(h)]), [W, f(cols[cols.length - 1])]], P = (a) => a.map(([u, v]) => `${u.toFixed(1)} ${v.toFixed(1)}`).join("L");
+  const mean = (h) => y(rate(spot, 0, h).mean), gust = (h) => y(rate(spot, 0, h).gust);
+  const band = `<svg class="band" width="${W}" height="${BH}" viewBox="0 0 ${W} ${BH}" aria-hidden="true"><defs><linearGradient id="sb${uid}m" x2="${W}" gradientUnits="userSpaceOnUse">${stops((h) => rate(spot, 0, h).mean, 1)}</linearGradient><linearGradient id="sb${uid}g" x2="${W}" gradientUnits="userSpaceOnUse">${stops((h) => rate(spot, 0, h).gust, .5)}</linearGradient></defs>
+    <path d="M${P(pts(gust))}L${P(pts(mean).reverse())}Z" fill="url(#sb${uid}g)"/><path d="M0 ${base}L${P(pts(mean))}L${W} ${base}Z" fill="url(#sb${uid}m)"/>
+    <path d="M${P(pts(gust))}" fill="none" stroke="#1a1d21" stroke-opacity=".28" stroke-dasharray="2 2"/><path d="M${P(pts(mean))}" fill="none" stroke="#1a1d21" stroke-opacity=".7" stroke-width="1.2"/></svg>`;
+  const shade = (a, b) => `<span class="dark" style="left:${a}px;width:${b - a}px"></span>`;
+  const cut = (t, label, right) => `<span class="cut" style="left:${X(t)}px"><small class="${right ? "r" : ""}">${label} ${clk(t)}</small></span>`;
+  const marks = shade(0, X(FIRST)) + shade(X(LAST), W) + cut(FIRST, "first light") + cut(LAST, "last light", true);
+  const fits = W <= inner + 2;
+  return `<div class="hoursw ${fits ? "fits" : ""}" data-stripw><div class="hours" data-strip role="group" aria-label="Today's hours"><div class="track" style="width:${W}px">${marks}${band}${cols.map((h) => {
+    const r = rate(spot, 0, h), dark = h < FIRST || h > LAST;
+    return `<button class="hc ${dark ? "off" : ""} ${h < NOW ? "gone" : ""} ${h === NOW ? "now" : ""} ${h === S.hour && !S.day ? "sel" : ""}" data-hour="${h}" style="width:${cw}px" aria-pressed="${h === S.hour && !S.day}"
+      aria-label="${hh(h)}:00, ${compass(r.from)} ${Math.round(r.mean)} knots, gusts ${Math.round(r.gust)} knots${dark ? "" : `, ${r.stars} of 5 stars`}">
+      <span class="t">${h === NOW ? "now" : hh(h)}</span><span class="sky">${sky(skyAt(0, h), 16)}</span>
+      <b>${Math.round(r.mean)}</b><small>g${Math.round(r.gust)}</small>${arrow(spot, r.from, 12)}
+      <span class="st">${dark ? "" : starRowHtml(r.stars, 7.5)}</span></button>`; }).join("")}</div></div>
+    <button class="navb l" data-nav="-1" aria-label="Earlier hours">‹</button><button class="navb r" data-nav="1" aria-label="Later hours">›</button></div>`;
+}
+function bestRun(spot, d, hs) {
+  const st = hs.map((h) => rate(spot, d, h).stars), top = Math.max(0, ...st);
+  if (!top) return null;
+  let i = st.indexOf(top), a = i, b = i;
+  while (a > 0 && st[a - 1] > 0) a--; while (b < st.length - 1 && st[b + 1] > 0) b++;
+  return { from: hs[a], to: hs[b], top };
+}
+// The next five days (NextDays.tsx): a day a fifth of the card, its name and best stars, the sky and the air,
+// the wind band in the chart's colours with the gusts paler over it, a line under the rideable hours, the arrows, the waves.
+function nextDays(spot, W) {
+  const gap = 7, days = [1, 2, 3, 4, 5], H = 140, top = 46, base = H - 34, kmax = 45;
+  const n = LIGHT_TO - LIGHT_FROM, sw = (W - gap * 4) / 5, unit = sw / n, y = (kn) => base - Math.min(kn, kmax) / kmax * (base - top);
+  let g = "", defs = "";
+  [10, 20, 30].forEach((k) => g += `<line x1="0" x2="${W}" y1="${y(k)}" y2="${y(k)}" stroke="#1a1d21" stroke-opacity=".08"/>`);
+  days.forEach((d, k) => {
+    const sx = k * (sw + gap), hs = hours(), X = (h) => sx + (h - LIGHT_FROM) * unit, run = bestRun(spot, d, hs);
+    g += `<text x="${sx + 1}" y="11" font-size="10" font-weight="600" font-family="IBM Plex Mono" letter-spacing="1.4">${DAYS[d].short.toUpperCase()}</text>`;
+    const sz = Math.max(5, Math.min(9, (sw - 34) / 5.5)); g += starRowG(sx + 32 + (5 * sz + 4 * sz * .12) / 2, 7.5, run ? run.top : 0, sz);
+    g += skyG(skyAt(d, 13), sx + 8, 25, 15) + `<text x="${sx + 18}" y="29" font-size="11" font-family="IBM Plex Mono" fill="#3b3c3e">${airAt(d, 13)}°</text>`;
+    const id = `wb${spot.id}${d}${W}`, stops = (f, o) => hs.map((h, i) => `<stop offset="${((i + .5) / n).toFixed(3)}" stop-color="${windCss(f(h))}" stop-opacity="${o}"/>`).join("");
+    defs += `<linearGradient id="${id}m" x1="${sx}" x2="${sx + sw}" gradientUnits="userSpaceOnUse">${stops((h) => rate(spot, d, h).mean, 1)}</linearGradient>`;
+    defs += `<linearGradient id="${id}g" x1="${sx}" x2="${sx + sw}" gradientUnits="userSpaceOnUse">${stops((h) => rate(spot, d, h).gust, .5)}</linearGradient>`;
+    const pts = (f) => [[sx, f(hs[0])], ...hs.map((h) => [X(h) + unit / 2, f(h)]), [sx + sw, f(hs[hs.length - 1])]];
+    const path = (f) => pts(f).map(([a, b]) => `${a.toFixed(1)} ${b.toFixed(1)}`).join("L");
+    const mean = (h) => y(rate(spot, d, h).mean), gust = (h) => y(rate(spot, d, h).gust);
+    const meanR = pts(mean).slice().reverse().map(([a, b]) => `${a.toFixed(1)} ${b.toFixed(1)}`).join("L");
+    g += `<path d="M${path(gust)}L${meanR}Z" fill="url(#${id}g)"/><path d="M${sx} ${base}L${path(mean)}L${sx + sw} ${base}Z" fill="url(#${id}m)"/>`;
+    g += `<path d="M${path(gust)}" fill="none" stroke="#1a1d21" stroke-opacity=".28" stroke-width="1" stroke-dasharray="2 2"/><path d="M${path(mean)}" fill="none" stroke="#1a1d21" stroke-opacity=".75" stroke-width="1.2" stroke-linejoin="round"/>`;
+    g += `<line x1="${sx}" x2="${sx + sw}" y1="${base + .5}" y2="${base + .5}" stroke="#1a1d2166"/>`;
+    const pk = hs.reduce((a, h) => rate(spot, d, h).mean > rate(spot, d, a).mean ? h : a, hs[0]), pr = rate(spot, d, pk);
+    const lx = Math.min(sx + sw - 18, Math.max(sx + 18, X(pk) + unit / 2)), gusty = pr.gust > pr.mean * 1.5;
+    g += `<text x="${lx}" y="${Math.max(top - 4, y(pr.gust) - 4)}" text-anchor="middle" font-size="10.5" font-family="IBM Plex Mono"><tspan font-weight="600">${Math.round(pr.mean)}</tspan>${gusty ? `<tspan fill="#5b5c5b" font-size="10"> g${Math.round(pr.gust)}</tspan>` : ""}</text>`;
+    if (run) g += `<line x1="${X(run.from) + 1}" x2="${X(run.to) + unit - 1}" y1="${base + 4}" y2="${base + 4}" stroke="${starFill(run.top)}" stroke-width="3" stroke-linecap="round"/>`;
+    const step = Math.max(3, Math.ceil(16 / unit));
+    hs.filter((h, i) => i % step === Math.floor(step / 2)).forEach((h) => g += arrowG(spot, fromAt(d, h), X(h) + unit / 2, base + 15, 11));
+    g += `<text x="${sx + sw / 2}" y="${H - 3}" text-anchor="middle" font-size="10" font-family="IBM Plex Mono" fill="#2f6f9f">${wave(spot, d).m} m</text>`;
+    if (k < 4) g += `<line x1="${sx + sw + gap / 2}" x2="${sx + sw + gap / 2}" y1="${top}" y2="${base}" stroke="#1a1d2122" stroke-dasharray="1 3"/>`;
+  });
+  return `<div class="chart"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${spot.name}: the next five days"><defs>${defs}</defs>${g}</svg></div>`;
+}
+function card(spot, width, phone, pinned = false) {
+  const inner = Math.floor(width - 26), pw = phone ? 96 : 112, ph = pw * 10 / 16, r = rate(spot, 0, S.day ? NOW : S.hour);
+  return `<article class="card ${S.lit === spot.id && !pinned ? "lit" : ""}" data-card="${spot.id}" aria-label="${spot.name}">
+    <div class="head"><button class="pic" data-pic="${spot.id}" aria-label="${spot.name} on the chart"><span class="picbox">${spot.pic ? `<img src="2026-10-26-spot-finder-chart/sat/${spot.id}.webp" alt="" loading="lazy">` : ""}${rose(spot, r, pw, ph)}</span><span class="go">Chart</span></button>
+      <div class="nm"><h3><a href="#" data-page="${spot.id}">${spot.name}</a></h3><span class="sub">${spot.km} km · Co. ${spot.county}</span></div>
+      <button class="fav" data-fav="${spot.id}" aria-pressed="${S.starred.has(spot.id)}" aria-label="Star ${spot.name}">${FAV(S.starred.has(spot.id))}</button></div>
+    <section class="sec" aria-label="Today">${todayHead(spot)}${todayStrip(spot, inner, phone)}</section>
+    <section class="sec" aria-label="Next 5 days"><span class="eyebrow">Next 5 days</span>${nextDays(spot, inner)}</section></article>`;
+}
+
+/* =========================================================================
+   The list
+   ========================================================================= */
+function renderList() {
+  const items = listed(), phone = S.layout === "phone";
+  const padX = phone ? 20 : 36, avail = list.clientWidth - padX, cols = avail >= 1134 ? 2 : 1, colW = (avail - (cols - 1) * 14) / cols;
+  cardsEl.style.setProperty("--cols", cols);
+  const keep = list.scrollTop;
+  cardsEl.innerHTML = items.length ? items.map((s) => `<li>${card(s, colW, phone)}</li>`).join("")
+    : `<li class="empty">${S.scope === "favourites" ? "Star a spot and it shows here." : "No spots within 30 km."}</li>`;
+  list.scrollTop = keep;
+  wireCards(cardsEl);
+  document.querySelectorAll("[data-scope]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.scope === S.scope));
+  list.setAttribute("aria-label", S.scope === "near" ? "Spots near you" : "Favourites");
+}
+function wireCards(root) {
+  root.querySelectorAll("[data-stripw]").forEach((w) => {
+    const r = w.querySelector("[data-strip]"), ends = () => { w.classList.toggle("atstart", r.scrollLeft < 4); w.classList.toggle("atend", r.scrollLeft + r.clientWidth > r.scrollWidth - 4); };
+    const c = r.querySelector(".hc.sel"); if (c) r.scrollLeft = c.offsetLeft + c.offsetWidth / 2 - r.clientWidth / 2;
+    ends(); r.onscroll = ends;
+  });
+  root.querySelectorAll("[data-nav]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); const r = b.parentElement.querySelector("[data-strip]"); r.scrollBy({ left: +b.dataset.nav * r.clientWidth * .6, behavior: reduced ? "auto" : "smooth" }); });
+  root.querySelectorAll("[data-hour]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); const h = +b.dataset.hour; S.hour = S.hour === h && !S.day ? NOW : h; S.day = 0; refreshHour(); });
+  root.querySelectorAll("[data-fav]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); const id = b.dataset.fav;
+    S.starred.has(id) ? S.starred.delete(id) : S.starred.add(id);
+    say(S.starred.has(id) ? `${SPOTS.get(id).name} is in your favourites.` : `${SPOTS.get(id).name} is no longer a favourite.`);
+    renderList(); if (S.sel) renderDock(); if (S.scope === "favourites") { renderLights(); fitList(); } });
+  root.querySelectorAll("[data-pic]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); openChartAt(b.dataset.pic); });
+  root.querySelectorAll("[data-page]").forEach((a) => a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); say(`This opens the ${SPOTS.get(a.dataset.page).name} spot page.`); });
+  root.querySelectorAll("[data-card]").forEach((c) => {
+    c.onclick = () => say(`This opens the ${SPOTS.get(c.dataset.card).name} spot page.`);
+    if (root === cardsEl) { c.onmouseenter = () => hoverCard(c.dataset.card); c.onmouseleave = () => hoverCard(null); }
+  });
+}
+function refreshHour() {
+  renderList(); if (S.sel) renderDock(); renderLights();
+  $("when").textContent = S.day ? `Stars at ${hh(S.hour)}:00 ${DAYS[S.day].short === "Tue" ? "tomorrow" : "on " + DAYS[S.day].short}` : `Stars at ${hh(S.hour)}:00 today`;
+}
+
+/* =========================================================================
+   The map: Web Mercator, as MapLibre has it (512px tiles)
+   ========================================================================= */
+const TS = 512;
+const world = (lon, lat, z) => { const n = TS * 2 ** z, r = lat * Math.PI / 180; return [(lon + 180) / 360 * n, (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n]; };
+const unworld = (x, y, z) => { const n = TS * 2 ** z; return [x / n * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI]; };
+// The two photographs of the chart, and where the chart stood when each was taken.
+const LAYERS = [
+  { el: $("l-ireland"), lon: -7.6, lat: 53.6, z: 7, w: 2800, h: 2400 },
+  { el: $("l-dublin"), lon: -6.2, lat: 53.33, z: 10, w: 2000, h: 1600 },
+];
+for (const L of LAYERS) { const c = world(L.lon, L.lat, L.z); L.tl = [c[0] - L.w / 2, c[1] - L.h / 2]; }
+const DETAIL = (() => { const L = LAYERS[1], [w0, n0] = unworld(L.tl[0], L.tl[1], L.z), [e0, s0] = unworld(L.tl[0] + L.w, L.tl[1] + L.h, L.z); return { w0, e0, n0, s0 }; })();
+const inDetail = (lon, lat) => lon > DETAIL.w0 + .08 && lon < DETAIL.e0 - .08 && lat < DETAIL.n0 - .05 && lat > DETAIL.s0 + .05;
+const maxZoomAt = (lon, lat) => inDetail(lon, lat) ? 12.4 : 8.6;
+let V = { lon: -8, lat: 53.4, zoom: 7 };
+let markers = [];
+const size = () => [mapEl.clientWidth, mapEl.clientHeight];
+
+function draw() {
+  const [W, H] = size();
+  for (const L of LAYERS) {
+    const s = 2 ** (V.zoom - L.z), C = world(V.lon, V.lat, L.z);
+    L.el.style.transform = `translate(${((L.tl[0] - C[0]) * s + W / 2).toFixed(1)}px,${((L.tl[1] - C[1]) * s + H / 2).toFixed(1)}px) scale(${s.toFixed(4)})`;
+  }
+  LAYERS[1].el.style.opacity = Math.max(0, Math.min(1, (V.zoom - 8.4) / .7));
+  const C = world(V.lon, V.lat, V.zoom);
+  for (const m of markers) { const p = world(m.lon, m.lat, V.zoom); m.el.style.transform = `translate(${(p[0] - C[0] + W / 2).toFixed(1)}px,${(p[1] - C[1] + H / 2).toFixed(1)}px)`; if (m.ring) drawRing(m); }
+  lightsEl.classList.toggle("lo", V.zoom < 8);
+  lightsEl.classList.toggle("named", S.view === "chart" && V.zoom >= 11.5);
+}
+// The range ring round the chosen spot, as the chart draws it: 5 nautical miles (3 on a phone), ticked at the four points.
+function drawRing(m) {
+  const nm = S.layout === "phone" ? 3 : 5, mpp = 40075016.686 * Math.cos(m.lat * Math.PI / 180) / (TS * 2 ** V.zoom), r = nm * 1852 / mpp, svg = m.el.firstChild;
+  const t = (a) => { const x = Math.sin(a), y = -Math.cos(a); return `M${(x * (r - 7)).toFixed(1)} ${(y * (r - 7)).toFixed(1)}L${(x * (r + 7)).toFixed(1)} ${(y * (r + 7)).toFixed(1)}`; };
+  svg.setAttribute("style", `left:${-r - 40}px;top:${-r - 40}px;width:${2 * r + 80}px;height:${2 * r + 80}px`);
+  svg.setAttribute("viewBox", `${-r - 40} ${-r - 40} ${2 * r + 80} ${2 * r + 80}`);
+  const lx = r * .72 + 8, ly = -r * .72;
+  svg.innerHTML = `<circle r="${r.toFixed(1)}" fill="none" stroke="#1a1d21" stroke-width="1.3" stroke-dasharray="6 5"/><path d="${[0, 1, 2, 3].map((k) => t(k * Math.PI / 2)).join("")}" stroke="#1a1d21" stroke-width="1.3"/>
+    <text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-family="IBM Plex Mono" font-size="11" font-weight="600" letter-spacing="1" stroke="#f1efe6" stroke-width="3" paint-order="stroke" fill="#1a1d21">${nm} NM</text>`;
+}
+let anim = 0;
+function flyTo(t, ms = 550) {
+  cancelAnimationFrame(anim);
+  const from = { ...V }, a = world(from.lon, from.lat, 0), b = world(t.lon, t.lat, 0), t0 = performance.now();
+  if (reduced) ms = 0;
+  const step = (now) => {
+    const k = ms ? Math.min(1, (now - t0) / ms) : 1, e = 1 - (1 - k) ** 3;
+    const [lon, lat] = unworld(a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e, 0);
+    V = { lon, lat, zoom: from.zoom + (t.zoom - from.zoom) * e }; draw();
+    if (k < 1) anim = requestAnimationFrame(step);
+  };
+  anim = requestAnimationFrame(step);
+}
+function fitOf(points, pad = 64) {
+  const [W, H] = size(), ps = points.map((p) => world(p.lon, p.lat, 0));
+  const xs = ps.map((p) => p[0]), ys = ps.map((p) => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const padX = Math.min(pad, W / 4), padY = Math.min(pad, H / 4);
+  let zoom = Math.log2(Math.min((W - 2 * padX) / Math.max(x1 - x0, 1e-4), (H - 2 * padY) / Math.max(y1 - y0, 1e-4)));
+  const [lon, lat] = unworld((x0 + x1) / 2, (y0 + y1) / 2, 0);
+  zoom = Math.max(6.2, Math.min(zoom, Math.min(11.4, maxZoomAt(lon, lat))));
+  return { lon, lat, zoom };
+}
+function listFit() {
+  const pts = listed().map((s) => ({ lon: s.lon, lat: s.lat }));
+  if (S.scope === "near") pts.push(RIDER);
+  return pts.length ? fitOf(pts, S.view === "chart" ? 90 : 64) : { lon: RIDER.lon, lat: RIDER.lat, zoom: 10 };
+}
+const fitList = (ms = 650) => flyTo(listFit(), ms);
+// Through the box's own animation (the expand), the map is drawn again each frame at the size it has.
+function follow(ms = 520) { const t0 = performance.now(); const tick = (t) => { draw(); if (t - t0 < ms) requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
+
+const LOOP = `<svg class="lt-loop" viewBox="-26 -21 52 42" aria-hidden="true"><path d="M-6 -15C6 -18 19 -13 21 -3C23 7 12 15 -1 15C-14 15 -22 8 -21 -1C-20 -9 -12 -14 -2 -15.5C4 -16 9 -15 12 -13" fill="none" stroke="#d43a2c" stroke-width="2" stroke-linecap="round" stroke-opacity=".9"/><path d="M8 -16.5l7 2.5" stroke="#d43a2c" stroke-width="5" stroke-linecap="round" stroke-opacity=".35"/></svg>`;
+function lightHtml(s) {
+  const r = rate(s, S.day, S.hour), off = r.shore === "off" || r.shore === "x-off", sel = S.sel === s.id && S.view === "chart";
+  return `<button class="lt s${r.stars} ${off ? "off" : ""} ${S.lit === s.id ? "lit" : ""} ${sel ? "sel" : ""}" data-lt="${s.id}" aria-label="${s.name}: ${r.stars} of 5 stars">${sel ? LOOP : ""}
+    <svg viewBox="-30 -30 60 60" aria-hidden="true"><g transform="rotate(${Math.round(r.from + 180)})"><path class="lt-arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6"/></g><circle class="lt-ring" r="7.6"/><text class="lt-n" y="3.4" text-anchor="middle">${r.stars}</text></svg>
+    <span class="lt-lab" aria-hidden="true"><b>${s.name}</b><i>${compass(r.from)} ${Math.round(r.mean)}${sel && off ? " · offshore" : ""}</i></span></button>`;
+}
+function renderLights() {
+  const shown = S.view === "chart" ? [...SPOTS.values()] : listed();
+  // the listed ones last, so they stand over their neighbours
+  const ids = new Set(listed().map((s) => s.id)), order = shown.slice().sort((a, b) => ids.has(a.id) - ids.has(b.id));
+  const ring = S.sel && S.view === "chart" ? `<span class="ring" id="ring"><svg aria-hidden="true"></svg></span>` : "";
+  lightsEl.innerHTML = ring + order.map(lightHtml).join("") + `<span class="you" title="You are here" aria-label="You are here" role="img"></span>`;
+  lightsEl.classList.toggle("has-lit", !!S.lit);
+  markers = [...lightsEl.querySelectorAll("[data-lt]")].map((el) => { const s = SPOTS.get(el.dataset.lt); return { el, lon: s.lon, lat: s.lat }; });
+  markers.push({ el: lightsEl.querySelector(".you"), lon: RIDER.lon, lat: RIDER.lat });
+  if (ring) { const s = SPOTS.get(S.sel); markers.push({ el: $("ring"), lon: s.lon, lat: s.lat, ring: true }); }
+  lightsEl.querySelectorAll("[data-lt]").forEach((el) => {
+    el.onmouseenter = () => light(el.dataset.lt);
+    el.onmouseleave = () => light(null);
+    el.onclick = (e) => { e.stopPropagation(); if (dragged) return; pressLight(el.dataset.lt); };
+  });
+  draw();
+}
+// One spot lit, on the map and in the list, without drawing either again.
+function light(id) {
+  S.lit = id;
+  lightsEl.classList.toggle("has-lit", !!id);
+  lightsEl.querySelectorAll("[data-lt]").forEach((el) => el.classList.toggle("lit", el.dataset.lt === id));
+  cardsEl.querySelectorAll("[data-card]").forEach((c) => c.classList.toggle("lit", c.dataset.card === id));
+}
+let hoverT = 0, backT = 0;
+function hoverCard(id) {
+  light(id);
+  if (S.layout !== "split" || S.view !== "list") return;
+  clearTimeout(hoverT); clearTimeout(backT);
+  // The zoom is never changed by a hover. A spot already well inside the map only lights up; one near the
+  // edge or off it brings a quick pan, at the same zoom, that puts it in the middle.
+  if (id) hoverT = setTimeout(() => { const s = SPOTS.get(id);
+    if (!comfortable(s)) flyTo({ lon: s.lon, lat: s.lat, zoom: V.zoom }, 250); }, 120);
+}
+function comfortable(s) {
+  const [W, H] = size(), C = world(V.lon, V.lat, V.zoom), p = world(s.lon, s.lat, V.zoom);
+  const x = p[0] - C[0] + W / 2, y = p[1] - C[1] + H / 2, mx = Math.max(70, W * .18), my = Math.max(70, H * .18);
+  return x > mx && x < W - mx && y > my && y < H - my;
+}
+// Leaving the list leaves the map where it is.
+function pressLight(id) {
+  if (S.view === "chart") { selectSpot(id); return; }
+  const c = cardsEl.querySelector(`[data-card="${id}"]`);
+  if (c) { c.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" }); c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash"); }
+}
+
+/* =========================================================================
+   The forecast dock (src/ForecastDock.tsx): the chosen spot's hours along the foot of the full chart
+   ========================================================================= */
+// Folded and with more rows; a phone's sheet adds its head, which grows when a long name takes two lines.
+let headH = 44;
+const dockSizes = () => S.layout === "phone" ? [headH + 100, headH + 100 + 22 + 120] : [130, 250];
+const dockHeight = () => S.sel && S.view === "chart" ? dockSizes()[S.rows ? 1 : 0] : 0;
+const DAY_NAME = ["Mon 26", "Tue 27", "Wed 28"];
+const ICON = {
+  wind: `<svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M1 3h9a2 2 0 1 0-2-2M1 6h12a2 2 0 1 1-2 2M1 9h6"/></svg>`,
+  from: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M5.5 10.5l5-5M7 5.5h3.5V9"/></svg>`,
+  wing: `<svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12C3 6 8 2 14 2C13 8 9 12 2 12zM2 12l7-6"/></svg>`,
+  gust: `<svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke-width="1.2" stroke-linecap="round"><path d="M1 3h7M1 6h9M1 9h7" stroke="#1a1d21"/><path d="M12 2l2-1M12 6h3M12 10l2 1" stroke="#e0703a"/></svg>`,
+  waves: `<svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M1 4c2-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0M1 8c2-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0"/></svg>`,
+  current: `<svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 11L14 2M10 2h4v3M1 7l5-3"/></svg>`,
+  air: `<svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 2v8.5a2.6 2.6 0 1 0 2 0V2a1 1 0 0 0-2 0z"/><circle cx="5" cy="12.6" r="1.4" fill="currentColor"/></svg>`,
+  rain: `<svg width="12" height="16" viewBox="0 0 12 16"><path d="M6 1.5C4 5 2 7.5 2 10.2a4 4 0 0 0 8 0C10 7.5 8 5 6 1.5z" fill="#2f7fc0"/></svg>`,
+};
+const CHEV_DOWN = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>`;
+const BLEND = `<svg width="18" height="12" viewBox="0 0 18 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h7M8 6c3 0 4-4 8-4M8 6c3 0 4 4 8 4"/></svg>`;
+function dockCols() {
+  const cols = [{ d: 0, h: NOW - 6, old: true }, { d: 0, h: NOW - 3, old: true }, { d: 0, h: NOW - 1, old: true, cut: true }];
+  for (let h = NOW; h < 24; h++) cols.push({ d: 0, h });
+  for (let d = 1; d <= 2; d++) for (let h = 0; h < 24; h++) cols.push({ d, h, mid: h === 0 });
+  return cols;
+}
+// A hand-drawn box round the chosen hour, and the pen's line down it.
+function penBox(w, h) {
+  const j = (v) => (v + (Math.sin(v * 7.3) * 1.6)).toFixed(1);
+  return `<path d="M${j(8)} ${j(3)}C${j(w * .4)} ${j(-1)} ${j(w * .7)} ${j(2)} ${w - 7} 1.5C${w + 1} 1 ${w + 1.5} 8 ${w} ${j(20)}C${w - 1} ${h * .5} ${w + 1} ${h * .8} ${w - 1} ${h - 6}C${w - 2} ${h + 1} ${w - 9} ${h} ${w * .5} ${h + .5}C${w * .3} ${h + 1} 6 ${h} 3 ${h - 4}C0 ${h - 12} 2 ${h * .6} 1.5 ${h * .4}C1 16 0 5 9 2.5L${w * .55} 0"
+    fill="none" stroke="#d43a2c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-opacity=".88"/>
+    <path d="M${w * .52} -2C${w * .5} ${h * .4} ${w * .53} ${h * .7} ${w * .51} ${h + 2}" fill="none" stroke="#d43a2c" stroke-width="1.6" stroke-linecap="round" stroke-opacity=".85"/>`;
+}
+function renderDock() {
+  const s = S.sel && SPOTS.get(S.sel), on = !!s && S.view === "chart", phone = S.layout === "phone";
+  dockEl.classList.toggle("closed", !on); dockEl.classList.toggle("open", S.rows);
+  if (!on) { app.style.setProperty("--dock-h", `${dockSizes()[0]}px`); placeFloat(); return; }
+  const keep = dockEl.querySelector(".dk-scroll")?.scrollLeft ?? 0;
+  const cw = phone ? 52 : 62, cols = dockCols(), lab = phone ? 38 : 46;
+  const night = (h) => h < Math.ceil(FIRST) || h > Math.floor(LAST);
+  const cls = (c, extra = "") => `${c.old ? "old" : ""} ${night(c.h) ? "night" : ""} ${c.mid ? "mid" : ""} ${c.cut ? "cut" : ""} ${extra}`;
+  const R = cols.map((c) => rate(s, c.d, c.h)), selIdx = cols.findIndex((c) => !c.old && c.d === S.day && c.h === S.hour);
+  const cell = (fn, rowExtra = "") => cols.map((c, i) => `<td class="${cls(c, rowExtra)} pick" data-dk="${c.d}:${c.h}">${fn(c, R[i])}</td>`).join("");
+  const stars = (c, r) => night(c.h) ? "" : !r.stars ? `<i>·</i>` : c.old ? starRowHtml(r.stars, 8) : `<span style="letter-spacing:-.5px;font-size:13px">${"★".repeat(r.stars)}</span>`;
+  const off = (r) => r.shore === "off" || r.shore === "x-off";
+  const wing = (c, r) => !night(c.h) && r.stars ? (Math.max(3, Math.min(8, Math.round(110 / r.mean * 2) / 2))).toString() : "";
+  const dash = `<span style="color:var(--muted)">–</span>`;
+  const current = (c) => { const v = Math.abs(Math.sin(2 * Math.PI * (c.d * 24 + c.h - 7.6) / 12.42)) * 1.2 + .2, up = Math.cos(2 * Math.PI * (c.d * 24 + c.h - 7.6) / 12.42) > 0;
+    return `<span style="color:#2f6f9f">${up ? "↗" : "↙"}</span>${v.toFixed(1)}`; };
+  const rain = (c) => { const k = skyAt(c.d, Math.min(17, Math.max(7, c.h))); return k === "rain" ? (c.h % 3 ? "0.6" : "1.2") : k === "showers" && c.h % 4 === 1 ? "0.3" : dash; };
+  const more = `
+    <tr class="more first"><th class="lab">${ICON.gust}</th>${cell((c, r) => { const g = r.gust / r.mean; return g >= 1.5 ? `<span class="gf">${g.toFixed(1)}×</span>` : `${g.toFixed(1)}×`; })}</tr>
+    <tr class="more"><th class="lab">${ICON.waves}<small>m</small></th>${cell((c) => wave(s, c.d).m.toFixed(1))}</tr>
+    <tr class="more"><th class="lab">${ICON.current}<small>kn</small></th>${cell(current)}</tr>
+    <tr class="more"><th class="lab">${sky("partly", 16)}</th>${cell((c) => night(c.h) && c.h % 3 ? "" : sky(skyAt(c.d, Math.min(17, Math.max(7, c.h))), 15))}</tr>
+    <tr class="more"><th class="lab">${ICON.air}<small>°C</small></th>${cell((c) => String(airAt(c.d, Math.min(17, Math.max(7, c.h))) - (night(c.h) ? 3 : 0)))}</tr>
+    <tr class="more"><th class="lab">${ICON.rain}<small>mm/h</small></th>${cell(rain)}</tr>`;
+  const dayRow = cols.map((c, i) => i === 0 || c.mid ? `<th class="${c.mid ? "mid" : ""} name">${DAY_NAME[c.d]}</th>` : "<th></th>").join("");
+  const tools = `<button class="dk-star" data-dkfav aria-pressed="${S.starred.has(s.id)}" aria-label="Star ${s.name}">${FAV(S.starred.has(s.id))}</button>
+    <button class="dk-name" data-dkpage title="Open the ${s.name} spot page">${s.name}</button>`;
+  const buttons = `<button class="dk-tool" data-say="This opens the Blend view, as it does now." aria-label="Blend" title="Blend">${BLEND}</button>
+    <button class="dk-tool" data-dkclose aria-label="Close the forecast" title="Close">${CHEV_DOWN}</button>`;
+  const grip = `<button class="dk-grip" data-dkrows aria-label="${S.rows ? "Show fewer rows" : "Show more rows"}" title="Drag up for more rows"></button>`;
+  const penH = 18 + 22 + 18 + 22 + 120;
+  dockEl.innerHTML = `${phone ? `<div class="dk-head">${grip}${tools}${buttons}</div>`
+      : `<div class="dk-edge">${grip}</div><div class="dk-tools floatbox"><div class="dk-id">${tools}</div>${buttons}</div>`}
+    <div class="dk-scroll"><div class="dk-track" style="--cw:${cw}px">
+      <table class="tt" aria-label="${s.name}, hour by hour"><tbody>
+        <tr class="day"><th class="lab"></th>${dayRow}</tr>
+        <tr class="hour"><th class="lab"></th>${cols.map((c, i) => `<td class="${cls(c, !c.old && !night(c.h) ? "lite" : "")} ${i === selIdx ? "sel" : ""} pick" data-dk="${c.d}:${c.h}">${hh(c.h)}</td>`).join("")}</tr>
+        <tr class="stars"><th class="lab"></th>${cell(stars)}</tr>
+        <tr class="wind"><th class="lab">${ICON.wind}<small>kn</small></th>${cell((c, r) => `<b>${Math.round(r.mean)}</b>${r.gust / r.mean >= 1.5 ? `<small>g${Math.round(r.gust)}</small>` : ""}`)}</tr>
+        <tr class="from"><th class="lab">${ICON.from}</th>${cell((c, r) => arrow(s, r.from, 13))}</tr>
+        <tr class="wing"><th class="lab">${ICON.wing}</th>${cell(wing)}</tr>
+        ${more}
+      </tbody></table>
+      ${selIdx >= 0 ? `<svg class="tt-pen" style="left:${lab + selIdx * cw - 3}px;width:${cw + 6}px;height:${penH + 22}px;top:${phone ? 20 : 24}px" viewBox="0 0 ${cw + 6} ${penH + 22}" aria-hidden="true">${penBox(cw + 6, penH + 20)}</svg>` : ""}
+    </div></div>`;
+  const sc = dockEl.querySelector(".dk-scroll"); sc.scrollLeft = keep;
+  dockEl.querySelectorAll("[data-dk]").forEach((td) => td.onclick = () => { const [d, h] = td.dataset.dk.split(":").map(Number); S.day = d; S.hour = h; refreshHour(); });
+  // the grip from the keys: more rows or fewer (a pointer drags it, or taps it, below)
+  dockEl.querySelectorAll("[data-dkrows]").forEach((b) => b.onclick = (e) => { if (e.detail === 0) { S.rows = !S.rows; renderDock(); } });
+  wireDockDrag(dockEl.querySelector(phone ? ".dk-head" : ".dk-edge"));
+  dockEl.querySelector("[data-dkclose]").onclick = () => closeDock();
+  dockEl.querySelector("[data-dkfav]").onclick = () => { const id = s.id; S.starred.has(id) ? S.starred.delete(id) : S.starred.add(id); renderDock(); renderList();
+    say(S.starred.has(id) ? `${s.name} is in your favourites.` : `${s.name} is no longer a favourite.`); };
+  dockEl.querySelector("[data-dkpage]").onclick = () => say(`This opens the ${s.name} spot page.`);
+  dockEl.querySelectorAll("[data-say]").forEach((b) => b.onclick = () => say(b.dataset.say));
+  if (phone) headH = dockEl.querySelector(".dk-head").offsetHeight;
+  app.style.setProperty("--dock-h", `${dockHeight()}px`);
+  placeFloat();
+}
+// Drag the dock's top edge (a phone's sheet by its head): up for more rows, down for fewer, down again to close.
+// A tap on the grip does the same as a short drag up or down.
+function wireDockDrag(handle) {
+  handle.onpointerdown = (e) => {
+    if (e.button !== 0) return;
+    const y0 = e.clientY, h0 = dockHeight(), [fold, open] = dockSizes(), onGrip = !!e.target.closest(".dk-grip");
+    let moved = false;
+    app.classList.add("dock-drag");
+    const move = (ev) => { if (ev.pointerId !== e.pointerId) return; const dy = ev.clientY - y0;
+      if (!moved && Math.abs(dy) > 4) moved = true;
+      if (!moved) return;
+      ev.preventDefault();
+      const h = Math.max(fold * .35, Math.min(open + 24, h0 - dy)); app.style.setProperty("--dock-h", `${h}px`); placeFloat(h); };
+    const up = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
+      removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up);
+      app.classList.remove("dock-drag");
+      const dy = ev.clientY - y0;
+      if (!moved) { if (onGrip) { S.rows = !S.rows; renderDock(); } return; }
+      // a drag that ends over the name or a button is not a press of it
+      const swallow = (c) => { c.stopPropagation(); c.preventDefault(); };
+      addEventListener("click", swallow, { capture: true, once: true });
+      setTimeout(() => removeEventListener("click", swallow, true), 60);
+      if (dy < -30) S.rows = true;
+      else if (dy > 30) { if (S.rows && h0 - dy > fold - 40) S.rows = false; else { closeDock(); return; } }
+      renderDock();
+    };
+    addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
+  };
+}
+// The black List button, the small print and the toast stand just above the dock while it is open, and move with it.
+function placeFloat(live) {
+  const h = live ?? dockHeight();
+  let lift = h ? h + 12 : 18;
+  if (h && S.layout !== "phone") {
+    const tools = dockEl.querySelector(".dk-tools"), W = app.clientWidth, bw = toggle.offsetWidth || 110;
+    // where the dock's tools would meet the button, the button stands over them
+    if (tools && W - 12 - tools.offsetWidth < W / 2 + bw / 2 + 10) lift = h + 10 + tools.offsetHeight + 12;
+  }
+  app.style.setProperty("--toggle-b", `${lift}px`);
+  app.style.setProperty("--credit-b", `${h ? h + 12 : 16}px`);
+  toast.style.bottom = `${lift + 54}px`;
+}
+function selectSpot(id) {
+  const first = !S.sel;
+  S.sel = id; light(null); renderLights(); renderDock();
+  const s = SPOTS.get(id), zoom = Math.min(maxZoomAt(s.lon, s.lat), Math.max(V.zoom, 10.6));
+  // the spot in the middle of the chart left above the dock
+  const p = world(s.lon, s.lat, zoom), [lon, lat] = unworld(p[0], p[1] + dockHeight() / 2, zoom);
+  flyTo({ lon, lat, zoom }, first ? 650 : 450);
+}
+function closeDock() { S.sel = null; S.rows = false; renderLights(); renderDock(); }
+
+/* =========================================================================
+   List and chart: the expand, the black button, and the address
+   ========================================================================= */
+const GLYPH_MAP = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>`;
+const GLYPH_LIST = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01M3 12h.01M3 19h.01M8 5h13M8 12h13M8 19h13"/></svg>`;
+function setView(view, { push = true, focus = null } = {}) {
+  if (view === S.view) return;
+  const wasSplit = S.layout === "split";
+  S.view = view; app.dataset.view = view;
+  if (push) { if (view === "chart") history.pushState({ view }, "", "#chart"); else if (location.hash === "#chart") history.back(); }
+  clearTimeout(hoverT); clearTimeout(backT);
+  if (view === "list") { S.sel = null; S.rows = false; if (S.day) { S.day = 0; S.hour = NOW; refreshHour(); } renderDock(); }
+  light(null);
+  renderLights(); renderToggle();
+  if (wasSplit) { follow(); setTimeout(() => focus ? flyTo(focus, 650) : view === "list" ? fitList(600) : null, focus ? 0 : 480); }
+  else requestAnimationFrame(() => { if (focus) V = { ...focus }; else V = listFit(); draw(); });
+}
+// A card's picture: the full chart on that spot, its dock open, as "In the chart" does now.
+function openChartAt(id) {
+  const wasSplit = S.layout === "split" && S.view === "list";
+  if (S.view !== "chart") setView("chart", { focus: { ...V } });
+  setTimeout(() => selectSpot(id), wasSplit ? 470 : 40);
+}
+function renderToggle() {
+  toggle.innerHTML = S.view === "chart" ? `${GLYPH_LIST} List` : `${GLYPH_MAP} Map`;
+  toggle.setAttribute("aria-label", S.view === "chart" ? "Show the list" : "Show the map");
+}
+toggle.onclick = () => setView(S.view === "chart" ? "list" : "chart");
+$("expand").onclick = (e) => { e.stopPropagation(); setView("chart"); };
+$("collapse").onclick = (e) => { e.stopPropagation(); setView("list"); };
+addEventListener("popstate", () => setView(location.hash === "#chart" ? "chart" : "list", { push: false }));
+addEventListener("keydown", (e) => { if (e.key !== "Escape") return; if (S.sel) closeDock(); else if (S.view === "chart") setView("list"); });
+document.querySelectorAll("[data-scope]").forEach((b) => b.onclick = () => { if (S.scope === b.dataset.scope) return; S.scope = b.dataset.scope; list.scrollTop = 0; renderList(); renderLights(); fitList(); });
+document.querySelectorAll("[data-zoom]").forEach((b) => b.onclick = (e) => { e.stopPropagation();
+  flyTo({ ...V, zoom: Math.max(6.2, Math.min(maxZoomAt(V.lon, V.lat), Math.round(V.zoom * 2) / 2 + +b.dataset.zoom)) }, 300); });
+document.querySelectorAll("[data-say]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); say(b.dataset.say); });
+
+/* dragging and scrolling the map */
+let drag = null, dragged = false;
+mapEl.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || e.target.closest(".mapui button, .chead, .dock")) return;
+  cancelAnimationFrame(anim); clearTimeout(backT); clearTimeout(hoverT);
+  drag = { x: e.clientX, y: e.clientY, c: world(V.lon, V.lat, V.zoom), id: e.pointerId }; dragged = false;
+});
+addEventListener("pointermove", (e) => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!dragged && Math.hypot(dx, dy) < 4) return;
+  if (!dragged) { dragged = true; mapEl.classList.add("dragging"); mapEl.setPointerCapture?.(drag.id); }
+  const [lon, lat] = unworld(drag.c[0] - dx, drag.c[1] - dy, V.zoom); V = { ...V, lon, lat }; draw();
+});
+addEventListener("pointerup", () => { if (!drag) return; drag = null; mapEl.classList.remove("dragging"); setTimeout(() => dragged = false, 0); });
+mapEl.addEventListener("wheel", (e) => {
+  if (e.target.closest(".dock")) return;
+  e.preventDefault(); cancelAnimationFrame(anim); clearTimeout(backT);
+  const rect = mapEl.getBoundingClientRect(), [W, H] = size(), mx = e.clientX - rect.left - W / 2, my = e.clientY - rect.top - H / 2;
+  const C = world(V.lon, V.lat, V.zoom), at = unworld(C[0] + mx, C[1] + my, V.zoom);
+  const zoom = Math.max(6.2, Math.min(maxZoomAt(V.lon, V.lat), V.zoom - e.deltaY * (e.ctrlKey ? .01 : .0025)));
+  const P = world(at[0], at[1], zoom), [lon, lat] = unworld(P[0] - mx, P[1] - my, zoom);
+  V = { lon, lat, zoom }; draw();
+}, { passive: false });
+
+function say(text) { toast.textContent = text; toast.hidden = false; clearTimeout(say.t); say.t = setTimeout(() => toast.hidden = true, 2400); }
+
+/* =========================================================================
+   The page's own width decides its layout (not the window's)
+   ========================================================================= */
+function layoutFor(w) { return w >= 1100 ? "split" : w >= 720 ? "narrow" : "phone"; }
+let lastListW = 0;
+function relayout() {
+  const w = app.clientWidth, layout = layoutFor(w), changed = layout !== S.layout;
+  if (changed) { app.classList.add("no-anim"); S.layout = layout; app.dataset.layout = layout; requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove("no-anim"))); }
+  app.style.setProperty("--mapw", `${Math.round(Math.max(440, Math.min(720, w * .4)))}px`);
+  app.style.setProperty("--head-h", `${$("fhead").offsetHeight}px`);
+  if (changed || Math.abs(list.clientWidth - lastListW) > 1) { lastListW = list.clientWidth; renderList(); }
+  if (changed && S.sel) renderLights();
+  renderDock();
+  draw();
+}
+let roT = 0;
+const ro = new ResizeObserver(() => { cancelAnimationFrame(roT); roT = requestAnimationFrame(relayout); });
+ro.observe(app); ro.observe(list);
+
+/* the mock-up's preview sizes */
+const PREVIEW = { 1440: [1440, 900], 1100: [1100, 860], 900: [900, 860], 390: [390, 844] };
+function preview(p) {
+  document.body.classList.toggle("fit", p === "fit"); document.body.classList.toggle("preview", p !== "fit");
+  const [w, h] = PREVIEW[p] || ["", ""];
+  app.style.width = w ? `${w}px` : ""; app.style.height = h ? `${h}px` : "";
+  document.querySelectorAll("[data-preview]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.preview === p));
+}
+document.querySelectorAll("[data-preview]").forEach((b) => b.onclick = () => preview(b.dataset.preview));
+if (Q.has("embed")) { document.body.classList.remove("fit"); document.body.classList.add("embed"); }
+else preview(PREVIEW[Q.get("preview")] ? Q.get("preview") : "fit");
+
+/* first draw */
+app.dataset.view = S.view;
+S.layout = layoutFor(app.clientWidth); app.dataset.layout = S.layout;
+relayout(); renderList(); renderLights(); renderToggle(); renderDock();
+V = listFit(); draw();
+</script>
+</body>
+</html>
