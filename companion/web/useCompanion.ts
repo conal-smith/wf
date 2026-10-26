@@ -248,5 +248,5 @@ export function useCompanion(
 export type Companion = ReturnType<typeof useCompanion>;
 
 function defaultRider(): RiderContext {
-  return { weightKg: null, skill: "intermediate", wings: [] };
+  return { weightKg: null, wings: [] };
 }

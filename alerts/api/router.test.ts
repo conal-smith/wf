@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createLimiter } from "../../community/api/limits";
-import { CUSTOM_RATING_VERSION, DEFAULT_RIDER, standardRating, type CustomRating } from "../../force5/src/stars";
+import { DEFAULT_RIDER, oursCopy, type CustomRating } from "../../force5/src/stars";
 import { RULE_DEFAULTS, type AlertRule, type DeviceRegistration, type PreviewPayload, type Registered } from "../shared/protocol";
 import { memoryAlertsRepo } from "./repo-memory";
 import { ALERTS_RATES, createAlertsRouter, type AlertsDeps } from "./router";
@@ -110,29 +110,36 @@ describe("devices", () => {
     const put = await call(
       "PUT",
       "/devices/me",
-      { expoPushToken: "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]", rider: { weightKg: 90, skill: "advanced", wings: [4, 5.5] }, quietHours: false },
+      { expoPushToken: "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]", rider: { weightKg: 90, wings: [4, 5.5], upwind: 20, downwind: 15 }, quietHours: false },
       b.auth,
     );
     expect(put.status).toBe(200);
-    expect(await put.json()).toMatchObject({ hasPushToken: true, quietHours: false, rider: { weightKg: 90 } });
+    expect(await put.json()).toMatchObject({ hasPushToken: true, quietHours: false, rider: { weightKg: 90, upwind: 20, downwind: 15 } });
     expect((await repo.getDevice(a.device.id))!.expoPushToken).toBeNull();
-    expect((await call("PUT", "/devices/me", { rider: { weightKg: 500, skill: "x", wings: [] } }, b.auth)).status).toBe(400);
+    expect((await call("PUT", "/devices/me", { rider: { weightKg: 500, wings: [] } }, b.auth)).status).toBe(400);
   });
 
-  it("keeps the rider's own star rating, clamped, and refuses one it cannot read", async () => {
+  it("keeps the rider's own star rating, clamped, and rates an old one on ours", async () => {
     const { register, call } = setup();
     const { auth } = await register();
-    const custom: CustomRating = { ...standardRating(DEFAULT_RIDER), wind: { min: 20, sweetLow: 18, sweetHigh: 18, max: 10 } };
+    const custom: CustomRating = { ...oursCopy(), wind: { min: 20, sweetLow: 18, sweetHigh: 18, max: 10 } };
     const put = await call("PUT", "/devices/me", { rider: { ...DEFAULT_RIDER, custom } }, auth);
     expect(put.status).toBe(200);
     expect(((await put.json()) as { rider: { custom: CustomRating } }).rider.custom.wind).toEqual({ min: 20, sweetLow: 21, sweetHigh: 22, max: 23 });
-    // A phone from before v6 sends its version 1 rating, gust curve and all: read without the curve.
-    const v1 = await call("PUT", "/devices/me", { rider: { ...DEFAULT_RIDER, custom: { ...custom, version: 1, gust: { fine: 24, worst: 30, most: 3 } } } }, auth);
-    expect(v1.status).toBe(200);
-    expect(((await v1.json()) as { rider: { custom: CustomRating } }).rider.custom).toEqual({ ...custom, wind: { min: 20, sweetLow: 21, sweetHigh: 22, max: 23 } });
-    const bad = await call("PUT", "/devices/me", { rider: { ...DEFAULT_RIDER, custom: { ...custom, version: 9 } } }, auth);
-    expect(bad.status).toBe(400);
-    expect(((await bad.json()) as { details: Record<string, string> }).details).toHaveProperty(["rider.custom"]);
+    // A phone from before 25 October 2026 sends its level, its gust setting
+    // and a version 2 rating made from the level: taken, and rated on ours.
+    const old = {
+      weightKg: 80,
+      skill: "advanced",
+      gusty: "lots",
+      wings: [],
+      custom: { ...custom, version: 2, base: "advanced" },
+    };
+    const v2 = await call("PUT", "/devices/me", { rider: old }, auth);
+    expect(v2.status).toBe(200);
+    expect(((await v2.json()) as { rider: unknown }).rider).toEqual({ weightKg: 80, wings: [], custom: null });
+    const registered = await register({ rider: old as never, installationId: "install-old-phone" });
+    expect(registered.device.rider).toEqual({ weightKg: 80, wings: [], custom: null });
     const cleared = await call("PUT", "/devices/me", { rider: { ...DEFAULT_RIDER, custom: null } }, auth);
     expect(((await cleared.json()) as { rider: { custom?: unknown } }).rider.custom ?? null).toBeNull();
   });
@@ -193,10 +200,10 @@ describe("preview", () => {
   it("rates with the rider's own star rating when they have one", async () => {
     const { register, call } = setup();
     // Brandon's Saturday is cross-shore: a rider whose rating takes all five
-    // stars off for that has no window, one who takes none has the level's.
+    // stars off for that has no window, one who takes none has ours.
     const own = (cross: number): CustomRating => {
-      const base = standardRating(DEFAULT_RIDER);
-      return { ...base, version: CUSTOM_RATING_VERSION, direction: { ...base.direction, cross } };
+      const base = oursCopy();
+      return { ...base, direction: { ...base.direction, cross } };
     };
     const windows = async (custom: CustomRating | null) => {
       const { auth } = await register({ rider: { ...DEFAULT_RIDER, custom }, installationId: `install-${custom?.direction.cross ?? "x"}-device` });

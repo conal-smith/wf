@@ -62,11 +62,9 @@ describe("server-sent events", () => {
 
 describe("riderSummary", () => {
   it("says what a proposal card says", () => {
-    expect(
-      riderSummary({ weightKg: 85, skill: "intermediate", wings: [4, 5, 6] }),
-    ).toBe("85 kg · Riding · 4/5/6 m");
-    expect(riderSummary({ weightKg: null, skill: "beginner", wings: [] })).toBe(
-      "80 kg (assumed) · Learning",
+    expect(riderSummary({ weightKg: 85, wings: [4, 5, 6] })).toBe(
+      "85 kg · 4/5/6 m",
     );
+    expect(riderSummary({ weightKg: null, wings: [] })).toBe("80 kg (assumed)");
   });
 });

@@ -592,7 +592,7 @@ export function RangeDetail({
           stars from it. The others never change the stars.
         </p>
       )}
-      <p className={s.note()}>Rated for {riderText}.</p>
+      <p className={s.note()}>Stars: {riderText}.</p>
     </div>
   );
 }

@@ -233,14 +233,15 @@ test("on a phone the rose fits above the dock, and stays readable zoomed out or 
   expect(pinned!.x + pinned!.width).toBeLessThanOrEqual(390);
 });
 
-test("degrees into the wind: set in Customise, they move the no-go, and are kept", async ({
+test("degrees into the wind and below across: set in Customise, they move the course, and are kept", async ({
   page,
 }) => {
   await open(page, "dollymount");
   await firstHour(page, "CROSS");
   const bearings = async () => (await labels(page)).filter((w) => /°$/.test(w));
-  const riding = await bearings();
-  expect(riding).toHaveLength(2);
+  // Ours: straight across the wind, the course to 10° below it.
+  const ours = await bearings();
+  expect(ours).toHaveLength(2);
   // Past the course, downwind, is drawn faintly along the rim.
   await expect(rose(page).locator(".map-rose-slow")).toHaveCount(1);
 
@@ -261,34 +262,42 @@ test("degrees into the wind: set in Customise, they move the no-go, and are kept
     return wizard;
   };
   const wizard = await upwind();
-  await expect(wizard.locator("[data-upwind] output")).toHaveText("20°");
+  await expect(wizard.locator("[data-upwind] output")).toHaveText("0°");
+  await expect(wizard.locator("[data-downwind] output")).toHaveText("10°");
   await wizard
     .getByRole("group", { name: "Can you ride upwind?" })
-    .getByRole("button", { name: /^Not yet/ })
+    .getByRole("button", { name: "Yes" })
     .click();
+  const down = wizard.getByRole("slider", {
+    name: "Degrees below straight across",
+  });
+  await down.focus();
+  await down.press("PageUp");
+  await down.press("PageUp");
+  await expect(wizard.locator("[data-downwind] output")).toHaveText("20°");
   await wizard.getByRole("button", { name: "Skip", exact: true }).click();
   await wizard.getByRole("button", { name: "Show me the chart" }).click();
   await expect(wizard).toHaveCount(0);
 
-  // Straight across the wind: each course's upwind edge drops 20°, to 90°
-  // off the wind, and its deep edge stays at 120°.
-  await expect.poll(bearings).not.toEqual(riding);
-  const across = await bearings();
+  // 20° into the wind and 20° below across: each course widens from 10° to 40°.
+  await expect.poll(bearings).not.toEqual(ours);
+  const wider = await bearings();
   const span = (b: string) => {
     const [from, to] = b.replace("°", "").split("–").map(Number);
     return (to - from + 360) % 360;
   };
   for (let i = 0; i < 2; i++)
-    expect(span(across[i])).toBeLessThan(span(riding[i]));
+    expect(span(wider[i])).toBeGreaterThan(span(ours[i]));
 
-  // Kept on the device, with the weight and the level.
-  expect(
-    await page.evaluate(
-      () => JSON.parse(localStorage.getItem("force5.prefs.v1")!).rider.upwind,
-    ),
-  ).toBe(0);
+  // Kept on the device, with the weight.
+  const rider = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("force5.prefs.v1")!).rider,
+  );
+  expect(rider.upwind).toBe(20);
+  expect(rider.downwind).toBe(20);
   await page.reload();
   await expect(page.locator(".map-loupe-foot")).toBeVisible({ timeout: 30000 });
   const again = await upwind();
-  await expect(again.locator("[data-upwind] output")).toHaveText("0°");
+  await expect(again.locator("[data-upwind] output")).toHaveText("20°");
+  await expect(again.locator("[data-downwind] output")).toHaveText("20°");
 });

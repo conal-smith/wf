@@ -388,15 +388,16 @@ function MapKey({ scale }: { scale: string }) {
           Struck through in red. Not safe.
         </Key>
         <Key mark={<KeyLight stars={3} arrow cross />} name="Cross-offshore">
-          A red arrow. Fine at an angle; not for learners.
+          A red arrow. One star off, unless you set it otherwise.
         </Key>
         <Key mark={<KeyLight stars={4} arrow />} name="The arrow">
           Stars at the hour shown; the arrow blows downwind.
         </Key>
         <Key mark={<KeyLight stars={4} arrow wedge />} name="The wedge">
           On the spot you open, with the range ring or no mark: the headings you
-          can hold out to sea at your level in this wind. The longer it is, the
-          better powered you are; it pulses faster with more stars.
+          can hold out to sea in this wind, as far up and down the wind as you
+          say you ride. The longer it is, the better powered you are; it pulses
+          faster with more stars.
         </Key>
       </ul>
       <h4>
@@ -419,7 +420,7 @@ function MapKey({ scale }: { scale: string }) {
           </li>
           <li>
             <i className="mi-sw-slow" aria-hidden="true" />
-            Downwind: possible, but slow
+            Downwind of your course: you drift, losing ground
           </li>
           <li>
             <i className="mi-sw-off" aria-hidden="true" />
@@ -437,10 +438,10 @@ function MapKey({ scale }: { scale: string }) {
       <p className="mi-sm">
         About the headings you can hold in this hour&rsquo;s wind, out to sea
         and home, and the way you drift if you fall, dotted. How far into the
-        wind you can ride (in Customise) decides how wide the no-go is. Its
-        rim is half a nautical mile (or a kilometre) away. Round the chosen
-        spot is a range ring unless you choose the loupe, or nothing,
-        in Layers.
+        wind you can ride, and how far below across your course runs (both in
+        Customise), decide how wide the no-go and the course are. Its rim is
+        half a nautical mile (or a kilometre) away. Round the chosen spot is a
+        range ring unless you choose the loupe, or nothing, in Layers.
       </p>
       <h4>
         The depths <small>metres below chart datum</small>
@@ -482,9 +483,7 @@ function MapKey({ scale }: { scale: string }) {
 function RainPart({ on, line }: { on: boolean; line: string | null }) {
   return (
     <>
-      <p className="mi-lede">
-        Where it rains in the hour shown, and how hard.
-      </p>
+      <p className="mi-lede">Where it rains in the hour shown, and how hard.</p>
       <h4>
         The colours <small>rain in the hour</small>
       </h4>
@@ -497,8 +496,8 @@ function RainPart({ on, line }: { on: boolean; line: string | null }) {
       <p>
         From DWD&rsquo;s ICON-EU model: about 6.5 km, hourly, for three days
         from its run. Dry is left clear. At a three-hour column the blues are
-        the mean of its hours. A shower a few kilometres across can be missed
-        or put in the wrong place.
+        the mean of its hours. A shower a few kilometres across can be missed or
+        put in the wrong place.
       </p>
       <p className="ip-small">
         Weather data: Deutscher Wetterdienst (DWD) ICON-EU open data, CC BY 4.0.
@@ -567,9 +566,14 @@ function StarsPart({
         </span>
       </div>
       <p className="mi-sm">
-        The shore is the wind&rsquo;s angle to the beach: offshore costs the
-        most. If you list your wings, a star comes off when none of them suits
-        the wind.
+        The wind alone is the steady wind against four numbers: too light, the
+        sweet spot and too much. None under too light, then a star a knot up to
+        four, five through the sweet spot, and fewer past it: one star 5 kn
+        under too much, none 3 kn under it. A gust is read 5 kn lighter and
+        costs a star when that is worth less; a gust past too much leaves no
+        stars at all. The shore is the wind&rsquo;s angle to the beach:
+        cross-offshore costs a star, and offshore is never. An orange or red Met
+        Éireann warning stands in place of the stars.
       </p>
       <h4>
         Reading them <small>solid, outlined, dots</small>
@@ -585,8 +589,8 @@ function StarsPart({
           mark={<StarGlyphs stars={3} potential={5} size={10} />}
           name="Outlined"
         >
-          What the wind speed alone would have earned, before anything was taken
-          off.
+          Stars lost to the gusts or to the wind&rsquo;s direction: what the
+          steady wind alone would have earned.
         </Key>
         <Key
           mark={<StarGlyphs stars={1} potential={2} size={10} />}
@@ -607,14 +611,17 @@ function StarsPart({
       <h4>
         Rated for you <small>in Customise</small>
       </h4>
-      <p className="mi-fig">Rated for {riderLine(rider)}</p>
+      <p className="mi-fig">Stars: {riderLine(rider)}</p>
       <p className="mi-fig">
-        Rides {Math.round(band.min)}–{Math.round(band.max)} kn · no stars for
+        Stars from {Math.round(band.min)} kn · five at{" "}
+        {Math.round(band.sweetLow)}–{Math.round(band.sweetHigh)} kn · none for
         gusts over {Math.round(band.max)} kn
       </p>
       <p className="mi-sm">
-        Your level, weight, wings, wind and shore are in Customise, in the menu
-        at the top left; your model is in Display options there.
+        Everyone starts from ours (11 · 15–22 · 35 kn). Your own four numbers,
+        the shore and how you ride upwind are in Customise, in the menu at the
+        top left; your model is in Display options there. Your weight and wings
+        never change the stars.
       </p>
       <a
         className="mi-more"

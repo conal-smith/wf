@@ -279,12 +279,13 @@ describe("S4: the stars, as the dock and the spot page rate an hour", () => {
     expect(outlook(steady, DAY0 + 2 * HOUR).now).toBeNull();
   });
 
-  it("takes the shore into account: an offshore wind is capped", () => {
+  it("takes the shore into account: an offshore wind has no stars, not even outlined", () => {
     const steady = Array(24).fill(16);
-    // Faces east, the wind is from the west: offshore.
+    // Faces east, the wind is from the west: offshore, never.
     const off = outlook(steady, DAY0 + 12 * HOUR, 90);
-    expect(off.now?.stars).toBeLessThanOrEqual(1);
-    expect(off.now?.potential).toBeGreaterThanOrEqual(4);
+    expect(off.now).toEqual({ stars: 0, potential: 0 });
+    // Faces west: the same wind onshore earns its stars.
+    expect(outlook(steady, DAY0 + 12 * HOUR, 270).now?.stars).toBe(5);
   });
 
   it("is nothing without a run to rate", () => {

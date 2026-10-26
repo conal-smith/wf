@@ -8,13 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronRight,
-  Layers3,
-  X,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, Layers3, X } from "lucide-react";
 import { Button } from "../ui/Button";
 import { framePath, stemPath, type KeepOut } from "../ui/penPaths";
 import { BeaufortGlyph } from "../ui/BeaufortGlyph";
@@ -86,7 +80,10 @@ import {
 import { pointSourceNote, type PointSources } from "../force5/src/pointSource";
 import type { Prefs } from "../force5/src/prefs";
 import {
-  gustiness,
+  gustStars,
+  gustsOverLimit,
+  windBand,
+  windStars,
   noStarsWhy,
   SHORE_LABEL,
   shoreAngle,
@@ -100,10 +97,7 @@ import {
 } from "../force5/src/gustFactor";
 import { dayNights } from "../force5/src/sun";
 import { daylightOn } from "./ratings";
-import {
-  tideAt,
-  type SpotTide,
-} from "../force5/src/tides";
+import { tideAt, type SpotTide } from "../force5/src/tides";
 import {
   beaufort,
   convert,
@@ -338,7 +332,7 @@ const StripTable = memo(function StripTable({
   pointNote: string | null;
   /** Whether any hour is worth rating: else the stars and wing rows are left out. */
   rated: boolean;
-  /** Whose floor says whether a gusty hour costs stars: the gust factor's tint. */
+  /** Whose four numbers say whether a gust costs stars: the gust factor's tint. */
   rider: Rider;
   /** Where each column's own hours start, when the night's are left out. */
   starts: readonly (number | undefined)[] | null;
@@ -462,9 +456,7 @@ const StripTable = memo(function StripTable({
                     />
                   )}
                   {/* Yellow: its mark beside the stars it leaves alone. */}
-                  {hour.warning && (
-                    <WarnMark level={hour.warning.level} bar />
-                  )}
+                  {hour.warning && <WarnMark level={hour.warning.level} bar />}
                 </>
               ) : null,
             )}
@@ -489,10 +481,7 @@ const StripTable = memo(function StripTable({
                         isForce(units) &&
                         beaufort(hour.gustKn) <= beaufort(hour.windKn)
                       ) && (
-                        <span className="gu">
-                          {" "}
-                          g{speed(hour.gustKn, true)}
-                        </span>
+                        <span className="gu"> g{speed(hour.gustKn, true)}</span>
                       )}
                   </>
                 ) : (
@@ -721,13 +710,14 @@ function scrollsAlong(
 
 /**
  * How gusty each hour is, as a figure: its gust over its mean (1.9×), from the
- * same model's wind and gust the wind row prints, at night as well. The tint
- * behind it is the stars' own reading (force5/src/stars.ts `gustiness`): a
- * faint warm one where they call the hour gusty and take a star or two off,
- * deeper where very gusty, and none under the rider's floor, where a gust is
- * a chance to get up and costs nothing. The figure stays in ink. A near calm,
- * under 5 kn of mean (force5/src/gustFactor.ts), has no factor and stands
- * empty; an hour with no gust from its model has a dash.
+ * same model's wind and gust the wind row prints, at night as well. The
+ * figure is never a cost: the stars judge a gust by its strength in knots
+ * (force5/src/stars.ts). The tint behind it is the stars' own reading of
+ * that: a faint warm one where the gust, read 5 kn lighter, costs the hour a
+ * star or more (`gustStars`), deeper where it is past the rider's too much
+ * and leaves no stars. The figure stays in ink. A near calm, under 5 kn of
+ * mean (force5/src/gustFactor.ts), has no factor and stands empty; an hour
+ * with no gust from its model has a dash.
  */
 function GustRow({
   cells,
@@ -739,21 +729,30 @@ function GustRow({
   ) => React.ReactNode;
   rider: Rider;
 }) {
+  const band = windBand(rider);
   return (
     <tr className="tt-more tt-gust">
       {cells("gf", (hour) => {
         if (!hour || hour.windKn === null || hour.gustKn === null) return "–";
         const factor = gustFactor(hour.windKn, hour.gustKn);
         if (factor === null) return null;
-        const kind = gustiness(hour.windKn, hour.gustKn, rider);
+        const wind = windStars(hour.windKn, band);
+        const kind = gustsOverLimit(hour.gustKn, rider)
+          ? "over"
+          : Math.round(Math.min(wind, gustStars(hour.gustKn, band))) <
+              Math.round(wind)
+            ? "costs"
+            : "fine";
         const text = gustFactorText(factor);
         return (
           <span
             className={`gust-cell is-${kind}`}
             title={`${text}: the gusts ${text.slice(0, -1)} times the wind${
-              kind === "steady"
-                ? ""
-                : `, ${kind === "gusty" ? "gusty" : "very gusty"} by your stars`
+              kind === "over"
+                ? ", past your too much: no stars"
+                : kind === "costs"
+                  ? ", strong enough to cost a star"
+                  : ""
             }`}
           >
             {text}
@@ -1009,9 +1008,7 @@ function MoreRows({
                     } as React.CSSProperties
                   }
                   title={`${amount} mm in ${hours} to ${clock(covered.end)}${
-                    covered.hours > 1 && total >= 0.05
-                      ? `, ${figure} mm/h`
-                      : ""
+                    covered.hours > 1 && total >= 0.05 ? `, ${figure} mm/h` : ""
                   }${own ? "" : ", printed at the last column it covers"}${by(series[covered.step])}`}
                 >
                   {own ? figure : "·"}
@@ -1161,7 +1158,8 @@ export default function ForecastDock(props: Props) {
     [shown, columns, stripDaysAll],
   );
   const hours = useMemo(
-    () => (shown && stripHours ? shown.map((at) => stripHours[at]) : stripHours),
+    () =>
+      shown && stripHours ? shown.map((at) => stripHours[at]) : stripHours,
     [shown, stripHours],
   );
   /** Where each shown column's own hours start: its strip neighbour's time. */

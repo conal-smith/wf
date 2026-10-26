@@ -1,7 +1,12 @@
 // Display preferences for the forecast dock. Persistence is best effort:
 // private browsing, blocked storage and quota errors must never break the page.
 import { isUnits, type Units } from "./units";
-import { UPWIND_DEFAULT, clampUpwind } from "./rideWedge";
+import {
+  DOWNWIND_DEFAULT,
+  UPWIND_DEFAULT,
+  clampDownwind,
+  clampUpwind,
+} from "./rideWedge";
 import { parseStarsChoice, withModel, type StarsChoice } from "./lead";
 import { modelEntry, windModels } from "./manifests";
 import {
@@ -10,14 +15,10 @@ import {
   MAX_WING_M2,
   MIN_WEIGHT_KG,
   MIN_WING_M2,
-  GUSTIES,
-  SKILLS,
+  isOurs,
   parseCustomRating,
-  rateOn,
   type CustomRating,
-  type Gusty,
   type Rider,
-  type StarsOn,
 } from "./stars";
 
 export type RowKey =
@@ -67,14 +68,15 @@ export interface Prefs {
    */
   nightHours: NightHours;
   /**
-   * Who the stars are rated for: weight, level, the wings they own, their
-   * own star rating, rating or kept, and the model the stars come from
-   * (stars.ts `Rider`, lead.ts `StarsChoice`).
+   * Who the stars are rated for: weight, the wings they own, how far up and
+   * down the wind they ride, their own star rating (none while ours rates),
+   * and the model the stars come from (stars.ts `Rider`, lead.ts
+   * `StarsChoice`).
    */
   rider: Rider;
   /**
-   * When the rider last saved or deleted their own star rating on this
-   * device, or went on or off it, ISO; null if never. A signed-in rider's
+   * When the rider last saved their own star rating on this device, or went
+   * back to ours, ISO; null if never. A signed-in rider's
    * device and account copies are compared on it, the newer winning
    * (shared/web/riderSync.ts).
    */
@@ -107,15 +109,17 @@ export const VIEWS: readonly ForecastView[] = ["table", "blend", "candles"];
 export const PREFS_KEY = "force5.prefs.v1";
 /**
  * The shape stored under PREFS_KEY, written with it as `version`.
- *   1 (no `version`)  `rider.custom` was the rider's own star rating, always
- *                     in use while it was there
- *   2                 the rider's own rating may also be kept while a level
- *                     rates (`rider.keptCustom`)
- * A version 1 rider's `custom` is theirs saved and in use, as it is read in
- * version 2, so it comes over as it is and only a `keptCustom` it never
- * wrote is left out.
+ *   1 (no `version`)  the rider had a level (Learning, Riding, Advanced), and
+ *                     `rider.custom` was their own rating, always in use
+ *   2                 their own rating could also be kept while a level rated
+ *                     (`rider.keptCustom`)
+ *   3                 one rating, ours, unless the rider has their own
+ *                     (25 October 2026)
+ * Before version 3 the rider's own rating and how far into the wind they
+ * rode belonged to their level, so they are not read: the rider starts from
+ * ours. Their weight, wings and model come over as they are.
  */
-export const PREFS_VERSION = 2;
+export const PREFS_VERSION = 3;
 
 /**
  * Per-model wind and gust rows start off: the blend replaces them by default.
@@ -163,8 +167,8 @@ export const defaultPrefs = (): Prefs => ({
 });
 
 /**
- * The rider's own star rating saved, and rating from now on; or deleted with
- * null, and the level rates. Stamped now, as `withStarsOn` is: the two ways a
+ * The rider's own star rating saved, and rating from now on; or, with null
+ * or ours as it stands, gone, and ours rates. Stamped now: the one way a
  * device changes what the account keeps, so the stamp it compares is always
  * the moment of the change.
  */
@@ -173,27 +177,14 @@ export function withCustomStars(
   custom: CustomRating | null,
   now: Date = new Date(),
 ): Prefs {
-  const { custom: _old, keptCustom: _kept, ...rider } = prefs.rider;
+  const { custom: _old, ...rider } = prefs.rider;
   return stamped(
-    { ...prefs, rider: custom ? { ...rider, custom } : rider },
+    {
+      ...prefs,
+      rider: custom && !isOurs(custom) ? { ...rider, custom } : rider,
+    },
     now,
   );
-}
-
-/**
- * The level pill: rated on a level, or on the rider's own rating ("custom"),
- * which is kept either way. Stamped only when the rider goes on or off their
- * own rating, which the account keeps; a level alone is this device's.
- */
-export function withStarsOn(
-  prefs: Prefs,
-  on: StarsOn,
-  now: Date = new Date(),
-): Prefs {
-  const next = { ...prefs, rider: rateOn(prefs.rider, on) };
-  return !!next.rider.custom === !!prefs.rider.custom
-    ? next
-    : stamped(next, now);
 }
 
 const stamped = (prefs: Prefs, now: Date): Prefs => ({
@@ -258,23 +249,19 @@ function mergeRows(value: unknown, defaults: Record<RowKey, boolean>) {
 /**
  * A stored rider, field by field: a weight or a wing outside what a person or a
  * wing can be is dropped rather than rated, and a missing weight stays missing so
- * the dock can say the stars assume the estimate. A custom star rating, rating
- * or kept, goes through its own validation (stars.ts `parseCustomRating`); one
- * that does not pass, or was stored in another version, is left out and the
- * level rates. Given both, the one rating wins and the kept one is dropped.
- * How far into the wind the rider rides is kept only when it is not their
- * level's own; a rider stored before 24 October 2026 with a `pointing` has it
- * read as degrees (`withUpwind`).
- * How much gusty wind bothers them is kept only when it is not "some".
+ * the dock can say the stars assume the estimate. Their own star rating goes
+ * through its own validation (stars.ts `parseCustomRating`); one that does
+ * not pass, or was stored in another version (a level's, from before 25
+ * October 2026), is left out and ours rates. How far up and down the wind
+ * they ride is kept only when it is not ours. Anything else stored on the
+ * rider (the old level, gusty wind, a kept rating) is ignored.
  */
 export function parseRider(value: unknown): Rider {
   if (!value || typeof value !== "object") return DEFAULT_RIDER;
   const raw = value as Record<string, unknown>;
   const weight = raw.weightKg;
   const wings = Array.isArray(raw.wings) ? raw.wings : [];
-  const skill = SKILLS.includes(raw.skill as Rider["skill"])
-    ? (raw.skill as Rider["skill"])
-    : DEFAULT_RIDER.skill;
+  const custom = parseCustomRating(raw.custom);
   return {
     weightKg:
       typeof weight === "number" &&
@@ -282,9 +269,8 @@ export function parseRider(value: unknown): Rider {
       weight <= MAX_WEIGHT_KG
         ? Math.round(weight)
         : null,
-    skill,
-    ...withUpwind(skill, raw.upwind, raw.pointing),
-    ...withGusty(raw.gusty),
+    ...withAngle("upwind", raw.upwind, UPWIND_DEFAULT, clampUpwind),
+    ...withAngle("downwind", raw.downwind, DOWNWIND_DEFAULT, clampDownwind),
     wings: [
       ...new Set(
         wings.filter(
@@ -295,50 +281,26 @@ export function parseRider(value: unknown): Rider {
         ),
       ),
     ].sort((a, b) => a - b),
-    ...withCustom(
-      parseCustomRating(raw.custom),
-      parseCustomRating(raw.keptCustom),
-    ),
+    ...(custom && !isOurs(custom) ? { custom } : {}),
     ...withStarsChoice(parseStarsChoice(raw.starsFrom)),
   };
 }
 
 /**
- * Before 24 October 2026 a rider said how high they pointed in three words,
- * against their level: typical was the level's, cautious about 10° lower and
- * sharp about 10° higher. Read as degrees into the wind from the level's own.
+ * A rider carries an angle only when it is a number of degrees that is not
+ * ours, so a default rider stays as it always was. Out of range it is held
+ * to the end it passed.
  */
-const OLD_POINTING: Record<string, number> = {
-  cautious: -10,
-  typical: 0,
-  sharp: 10,
-};
-
-/**
- * A rider carries `upwind` only when it is a number of degrees that is not
- * their level's own, so a default rider stays as it always was and follows
- * their level when it changes. Out of 0–45 it is held to the end it passed.
- */
-function withUpwind(
-  skill: Rider["skill"],
-  upwind: unknown,
-  pointing: unknown,
-): Pick<Rider, "upwind"> {
-  const level = UPWIND_DEFAULT[skill];
-  const deg =
-    typeof upwind === "number" && Number.isFinite(upwind)
-      ? clampUpwind(upwind)
-      : typeof pointing === "string" && Object.hasOwn(OLD_POINTING, pointing)
-        ? clampUpwind(level + OLD_POINTING[pointing])
-        : level;
-  return deg === level ? {} : { upwind: deg };
+function withAngle<K extends "upwind" | "downwind">(
+  key: K,
+  value: unknown,
+  ours: number,
+  clampTo: (deg: number) => number,
+): Partial<Pick<Rider, K>> {
+  if (typeof value !== "number" || !Number.isFinite(value)) return {};
+  const deg = clampTo(value);
+  return deg === ours ? {} : ({ [key]: deg } as Partial<Pick<Rider, K>>);
 }
-
-/** A rider carries `gusty` only when it is known and not "some", so a default rider stays as it always was. */
-const withGusty = (value: unknown): Pick<Rider, "gusty"> =>
-  GUSTIES.includes(value as Gusty) && value !== "some"
-    ? { gusty: value as Gusty }
-    : {};
 
 /** A rider carries `starsFrom` only when it is not the default, so a default rider stays as it always was. */
 const withStarsChoice = (
@@ -353,13 +315,6 @@ export function withRiderModel(rider: Rider, model: string): Rider {
   const { starsFrom: _old, ...rest } = rider;
   return { ...rest, ...withStarsChoice(withModel(model)) };
 }
-
-/** A rider carries `custom` or `keptCustom` only when there is one, so a standard rider stays as it always was. */
-const withCustom = (
-  custom: CustomRating | null,
-  kept: CustomRating | null,
-): Pick<Rider, "custom" | "keptCustom"> =>
-  custom ? { custom } : kept ? { keptCustom: kept } : {};
 
 /** Stored preferences merged over the defaults; anything invalid is ignored. */
 export function loadPrefs(
@@ -379,13 +334,19 @@ export function loadPrefs(
       version?: unknown;
     };
     if (!stored || typeof stored !== "object") return defaults;
-    // Version 1 never kept a rating aside: its `custom` is saved and in use.
+    // Before version 3 the rating and the angles were a level's: the rider
+    // starts again from ours, keeping their weight, wings and model.
     const rider =
       stored.version === PREFS_VERSION ||
       !stored.rider ||
       typeof stored.rider !== "object"
         ? stored.rider
-        : { ...stored.rider, keptCustom: undefined };
+        : {
+            ...stored.rider,
+            custom: undefined,
+            upwind: undefined,
+            downwind: undefined,
+          };
     // The models there were to choose from when the list was saved. One that
     // has been published since is not one the reader left out: it joins the
     // blend as it would for anyone else. A list saved before this was recorded
@@ -452,25 +413,22 @@ export function savePrefs(
 }
 
 /**
- * A change of weight, level or wings, saved over what is stored now, so a
- * change made in another tab or adopted from the account is not undone. The
- * rider's own star rating, rating or kept, is the stored one: it changes only
- * through `withCustomStars` and `withStarsOn`.
+ * A change of weight, wings, angles or model, saved over what is stored now,
+ * so a change made in another tab or adopted from the account is not undone.
+ * The rider's own star rating is the stored one: it changes only through
+ * `withCustomStars`.
  */
 export function saveRider(
   rider: Rider,
   storage: PrefsStorage | null = browserStorage(),
 ): Prefs {
   const stored = loadPrefs(storage);
-  const { custom: _ignored, keptCustom: _kept, ...fields } = rider;
+  const { custom: _ignored, ...fields } = rider;
   const next: Prefs = {
     ...stored,
     rider: {
       ...fields,
       ...(stored.rider.custom ? { custom: stored.rider.custom } : {}),
-      ...(stored.rider.keptCustom
-        ? { keptCustom: stored.rider.keptCustom }
-        : {}),
     },
   };
   savePrefs(next, storage);

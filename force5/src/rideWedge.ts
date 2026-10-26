@@ -2,30 +2,21 @@
  * The wedge a light shows, and the rose the loupe draws: the headings this
  * rider can hold, at this hour's wind.
  *
- * One number says how high a rider goes: degrees into the wind, counted from
- * straight across it (`Rider.upwind`). 0° is the least: everyone is taken to
- * ride straight across the wind and hold their ground. 45° is about the most
- * a very good rider points (Duotone's academy, AFS and Wing Daily all teach
- * about 45° off the wind). Each level starts somewhere sensible, Learning at
- * 0°, Riding at 20° and Advanced at 35°, and the rider moves it in Customise.
- * The owner ruled (24 October 2026, docs/RIDE_ROSE.md) that it is one angle
- * in every wind: how powered the hour is does not move the no-go.
- *
- * The no-go is 90° less that number either side of the wind. The course runs
- * from its edge to about 120° off the wind; past that, downwind, is possible
- * but slow, and the rose draws it faintly rather than as part of the course.
- * The wind's side, whether the hour is rideable at all and how well powered,
- * still comes from the rider's own band and rideable wind (./stars), so the
+ * Two numbers say where a rider can go, both set in Customise ("Can you ride
+ * upwind?"). How high: degrees into the wind, counted from straight across
+ * it (`Rider.upwind`), 0° unless they say otherwise ("Not yet": straight
+ * across the wind, holding their ground), up to 45°, about the most a very
+ * good rider points (Duotone's academy, AFS and Wing Daily all teach about
+ * 45° off the wind). How deep: degrees below straight across that the course
+ * runs to (`Rider.downwind`), 10° unless they say otherwise, up to 45°; past
+ * it they drift and lose ground, and the rose draws it faintly rather than as
+ * part of the course. The owner ruled (24 October 2026, docs/RIDE_ROSE.md)
+ * that it is one course in every wind: how powered the hour is does not move
+ * it. The wind's side, whether the hour is rideable at all and how well
+ * powered, still comes from the rider's four wind numbers (./stars), so the
  * wedge and the stars agree on what the hour is. None of it moves a star.
  */
-import {
-  rideableWind,
-  shoreAngle,
-  windBand,
-  type Rider,
-  type ShoreAngle,
-  type Skill,
-} from "./stars";
+import { shoreAngle, windBand, type Rider, type ShoreAngle } from "./stars.js";
 
 /** Degrees off the true wind: [highest upwind, deepest downwind]. */
 type Range = readonly [number, number];
@@ -33,32 +24,45 @@ type Range = readonly [number, number];
 /** The most a rider can say they go into the wind: about a very good rider's. */
 export const UPWIND_MAX = 45;
 
-/** Where each level starts, in degrees into the wind past straight across it. */
-export const UPWIND_DEFAULT: Record<Skill, number> = {
-  beginner: 0,
-  intermediate: 20,
-  advanced: 35,
-};
+/** Ours: straight across the wind ("Not yet"). */
+export const UPWIND_DEFAULT = 0;
 
-/** The deepest heading the course runs to, off the wind; past it is slow. */
-export const COURSE_DEEP = 120;
+/** The most a rider can say their course runs below straight across. */
+export const DOWNWIND_MAX = 45;
+
+/** Ours: the course runs to 10° below straight across; past it, they lose ground. */
+export const DOWNWIND_DEFAULT = 10;
 
 /** A whole number of degrees between 0 and UPWIND_MAX. */
 export const clampUpwind = (deg: number): number =>
   Math.min(UPWIND_MAX, Math.max(0, Math.round(deg)));
 
-/** How far into the wind the rider rides: their own number, else their level's. */
-export const upwindOf = (rider: Pick<Rider, "skill" | "upwind">): number =>
-  rider.upwind === undefined
-    ? UPWIND_DEFAULT[rider.skill]
-    : clampUpwind(rider.upwind);
+/** A whole number of degrees between 0 and DOWNWIND_MAX. */
+export const clampDownwind = (deg: number): number =>
+  Math.min(DOWNWIND_MAX, Math.max(0, Math.round(deg)));
+
+/** How far into the wind the rider rides: their own number, else ours. */
+export const upwindOf = (rider: Pick<Rider, "upwind">): number =>
+  typeof rider.upwind === "number" && Number.isFinite(rider.upwind)
+    ? clampUpwind(rider.upwind)
+    : UPWIND_DEFAULT;
+
+/** How far below straight across the course runs: their own number, else ours. */
+export const downwindOf = (rider: Pick<Rider, "downwind">): number =>
+  typeof rider.downwind === "number" && Number.isFinite(rider.downwind)
+    ? clampDownwind(rider.downwind)
+    : DOWNWIND_DEFAULT;
 
 /**
  * The no-go's half-angle, in degrees off the true wind: the highest heading
  * the rider holds, in every wind.
  */
-export const upwindAngle = (rider: Pick<Rider, "skill" | "upwind">): number =>
+export const upwindAngle = (rider: Pick<Rider, "upwind">): number =>
   90 - upwindOf(rider);
+
+/** The deepest heading the course runs to, off the true wind; past it they drift. */
+export const courseDeep = (rider: Pick<Rider, "downwind">): number =>
+  90 + downwindOf(rider);
 
 export type WedgeState = "building" | "sweet" | "overpowered" | "over";
 
@@ -88,7 +92,7 @@ export function rideRange(
 ): { range: Range; power: number; state: WedgeState } | null {
   const band = windBand(rider);
   if (!(rideKn >= band.min)) return null;
-  const range: Range = [upwindAngle(rider), COURSE_DEEP];
+  const range: Range = [upwindAngle(rider), courseDeep(rider)];
   if (rideKn < band.sweetLow) {
     const t = ease((rideKn - band.min) / (band.sweetLow - band.min));
     return { range, power: lerp(0.45, 1, t), state: "building" };
@@ -128,12 +132,13 @@ function clipToSea(
 export function rideWedge(
   rider: Rider,
   windKn: number | null,
-  gustKn: number | null,
+  /** The hour's gust: it moves neither the wedge nor the stars' side of it. */
+  _gustKn: number | null,
   windFrom: number | null,
   facing: number | null,
 ): Wedge | null {
   if (windKn === null || windFrom === null || facing === null) return null;
-  const ride = rideRange(rider, rideableWind(windKn, gustKn, rider));
+  const ride = rideRange(rider, windKn);
   if (!ride) return null;
   const [up, down] = ride.range;
   const tacks = [
@@ -170,9 +175,9 @@ export interface Rose {
   shore: ShoreAngle | null;
   /** The headings too close to the wind to hold, or null when nothing is drawn. */
   nogo: Span | null;
-  /** The reaches either side of the no-go: the course, to COURSE_DEEP off the wind. */
+  /** The reaches either side of the no-go: the course, to `courseDeep` off the wind. */
   reaches: RoseReach[];
-  /** Downwind of the course: possible but slow, drawn faintly. Null when nothing is drawn. */
+  /** Downwind of the course: they drift and lose ground, drawn faintly. Null when nothing is drawn. */
   slow: Span | null;
   /** Straight downwind: where a rider off the foil drifts, or null. */
   drift: number | null;
@@ -207,7 +212,7 @@ export function rideRose(
   },
   facing: number | null,
 ): Rose | null {
-  const { windKn, gustKn, from } = hour;
+  const { windKn, from } = hour;
   if (windKn === null || from === null) return null;
   const shore = facing === null ? null : shoreAngle(from, facing);
   const bare: Rose = {
@@ -220,7 +225,7 @@ export function rideRose(
     driftOut: false,
   };
   if (!hour.daylight) return bare;
-  const ride = rideRange(rider, rideableWind(windKn, gustKn, rider));
+  const ride = rideRange(rider, windKn);
   if (!ride) return bare;
   const [up, down] = ride.range;
   const tacks = [span(from + up, from + down), span(from - down, from - up)];

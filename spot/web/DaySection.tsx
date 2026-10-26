@@ -146,7 +146,7 @@ export interface DaySectionProps {
   now: number;
   units: Units;
   unitText: string;
-  /** "Riding · ~80 kg": who the stars are for. */
+  /** "Ours · ~80 kg": whose stars, and the weight the wings are sized for. */
   riderText: string;
   band: Band;
   facing: number | null;
@@ -618,7 +618,7 @@ function DayBody({
     <>
       <table className={s.table()}>
         <caption className="sr-only">
-          {spotName}, {names.full}: by the hour, rated for {riderText}. Wind in{" "}
+          {spotName}, {names.full}: by the hour. Stars: {riderText}. Wind in{" "}
           {unitText}, gusts raised. Times are Irish.
         </caption>
         {/* Heads only over hours: a day already dark has just its fold,
@@ -785,7 +785,7 @@ function HourTip({
       )}
       <p className={s.tipFoot()}>
         <span>
-          Rated for {riderText} · best {band.sweetLow}–{band.sweetHigh} kn
+          Stars: {riderText} · best {band.sweetLow}–{band.sweetHigh} kn
         </span>
         <a className={s.tipLink()} href={STARS_HREF}>
           How?

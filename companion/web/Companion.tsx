@@ -48,7 +48,7 @@ function openMapAt(action: MapAction) {
 
 /**
  * The same validation and storage the dock's Display options use. Gust
- * proposes a weight, level and wings; the rider's own star rating stays.
+ * proposes a weight and wings; the rider's own star rating stays.
  */
 function saveToPrefs(rider: RiderContext) {
   saveRider(parseRider({ ...loadPrefs().rider, ...rider }));

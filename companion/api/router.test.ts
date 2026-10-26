@@ -189,11 +189,11 @@ describe("POST /chat", () => {
     ],
     ["no context", { messages: [{ role: "user", text: "hi" }] }],
     [
-      "an unknown level",
+      "wings that are not sizes",
       body({
         context: {
           ...context,
-          rider: { weightKg: 80, skill: "pro" as never, wings: [] },
+          rider: { weightKg: 80, wings: "big" as never },
         },
       }),
     ],
@@ -201,6 +201,38 @@ describe("POST /chat", () => {
     const response = await post(router(), "/chat", payload);
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ code: "invalid" });
+  });
+
+  it("takes an older browser's level, gust setting and old rating, and answers", async () => {
+    // As a page from before 25 October 2026 sends its rider.
+    const rider = {
+      weightKg: 80,
+      skill: "pro",
+      gusty: "lots",
+      wings: [5],
+      custom: {
+        version: 2,
+        base: "advanced",
+        wind: { min: 9, sweetLow: 13, sweetHigh: 26, max: 35 },
+        direction: {
+          onshore: 0,
+          crossOn: 0,
+          cross: 0,
+          crossOff: 1,
+          offshore: 3,
+        },
+      },
+    } as never;
+    const response = await post(
+      router(),
+      "/chat",
+      body({ context: { ...context, rider } }),
+    );
+    expect(response.status).toBe(200);
+    const got = await events(response);
+    expect(got.at(-1)).toEqual({ event: "done", data: {} });
+    const card = got.find((e) => e.event === "card");
+    if (card) expect(card.data.rider).toMatchObject({ own: false });
   });
 
   it("refuses a body over the size limit", async () => {

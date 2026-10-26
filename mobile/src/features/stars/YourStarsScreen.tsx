@@ -1,91 +1,93 @@
 /**
- * "Your star rating" (design-system/patterns/your-stars.html, and the site's
- * spot/web/YourStarsDialog.tsx): a rider sets their own stars. Start from a
- * level; drag the four wind handles, the top one the most you can hold,
- * gusts included; drag each direction's dot in and out on the beach, offshore
- * up over the sea and onshore down over the land; and see it all together,
- * and against the level, before saving.
+ * "Your stars": the app's Customise, the web wizard's steps 2–4
+ * (src/Customise.tsx, as approved in the mock-up of 25 October 2026). The
+ * rider's weight and units, the wizard's first step, are in Settings.
  *
- * A modal of its own: each opening starts again from what is saved (the
- * rider's own rating, whether it rates now or is kept while a level does, else
- * the level picked), so Cancel (or the back button) keeps nothing. Save puts
- * the rating in use; Delete, for one already saved, leaves the level.
- * Everything is kept in knots, as the rating is, and drawn in the rider's
- * unit. The arithmetic is the site's (spot/web/yourStars.ts,
- * force5/src/stars.ts); the touch is yourStarsLogic.ts.
+ *   What wind suits you?   four handles on one axis (too light, the sweet
+ *                          spot's two ends, too much in gusts) with the stars
+ *                          they make by steady wind right under the track,
+ *                          read-only, and the knots once;
+ *   Configure stars based  the shore web: a dot in for a star off, in whole
+ *   on wind direction      stars; offshore locked at never;
+ *   Can you ride upwind?   Not yet / A little / Yes across the top, the
+ *                          picture (CAN'T GO, RIDE, DRIFT) and two angles:
+ *                          into the wind, and below across.
  *
- * Nothing here traps the page's scroll: a scale's handles move on a sideways
- * drag only, a dot only once a drag starts on it, and the grid reads a tap.
+ * A modal of its own, Cancel in its head: each opening starts again from
+ * what is saved (the rider's own, else ours), so Cancel keeps nothing; Back
+ * and Next walk the steps, and Save, on the last, keeps them. "Reset to ours" shows
+ * once anything differs from ours. Save keeps a rating and an angle only
+ * while it is not ours (yourStarsLogic.ts `withYourStars`). Everything is
+ * kept in knots, as the rating is, and drawn in the rider's unit. The
+ * arithmetic is the site's (spot/web/yourStars.ts, force5/src/stars.ts); the
+ * touch and the words are yourStarsLogic.ts.
+ *
+ * Nothing here traps the page's scroll: the scales move on a sideways drag
+ * only, and a dot or a handle on a picture only once a drag starts on it.
  */
 import { Stack, router } from "expo-router";
-import { memo, useDeferredValue, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { StyleSheet, View, useWindowDimensions } from "react-native";
 import { Gesture, GestureDetector, ScrollView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, {
-  Circle,
-  Defs,
-  Line,
-  LinearGradient,
-  Path,
-  Polygon,
-  Polyline,
-  Rect,
-  Stop,
-  Text as SvgText,
-} from "react-native-svg";
+import Svg, { Circle, ClipPath, Defs, G, Line, Path, Pattern, Polygon, Rect, Text as SvgText } from "react-native-svg";
+import { NEVER, type CustomRating, type DirectionKey } from "../../../../force5/src/stars";
 import {
-  SKILLS,
-  SKILL_LABEL,
-  savedCustom,
-  standardRating,
-  windScore,
-  type CustomRating,
-  type DirectionKey,
-  type Rider,
-  type Skill,
-} from "../../../../force5/src/stars";
-import {
-  DIRECTION_KEYS,
   DIRECTION_NAME,
-  DIRECTION_WORD,
-  EXAMPLES,
-  GRID_STEP,
-  GUST_TOP,
-  SHADE,
   WEB_DIRS,
   WEB_R,
   WIND_KEYS,
   WIND_TOP,
-  breakdown,
-  gridStars,
-  halfStars,
+  costLabel,
+  forceTicks,
   moveWind,
   moveWindForce,
   offAt,
-  onLevel,
   polar,
-  rateExample,
-  setDirection,
   said,
+  setDirection,
+  shoreLocked,
   shown,
-  sliceAt,
+  starRuns,
   stepped,
   unitScale,
   webRadius,
-  withRating,
   type UnitScale,
+  type WindKey,
 } from "../../../../spot/web/yourStars";
 import { Button } from "../../components/Button";
 import { done, tick } from "../../components/haptics";
-import { Rule } from "../../components/Rule";
 import { Segmented } from "../../components/Segmented";
-import { Stars } from "../../components/Stars";
 import { T } from "../../components/Text";
 import { usePrefs } from "../../data/prefs";
-import { colors, fonts, hitTarget, radius, space, windScale, withAlpha } from "../../theme/tokens";
-import { StepButton } from "../settings/RiderFields";
-import { GRID, dotAt, grabHandle, gridPick, knAtX } from "./yourStarsLogic";
+import { colors, fonts, hitTarget, radius, space, starColors, withAlpha } from "../../theme/tokens";
+import { STAR } from "./StarRating";
+import {
+  DIRECTION_LINE,
+  DIRECTION_SHORT,
+  DOWNWIND_MAX,
+  SCALE_TO,
+  SHORE_ORDER,
+  STEPS,
+  UP,
+  UPWIND_MAX,
+  UP_ANSWERS,
+  answerOf,
+  degAtX,
+  differsFromOurs,
+  dotAt,
+  edgeAngle,
+  edgeAt,
+  grabHandle,
+  knAtX,
+  offWind,
+  oursStars,
+  stripWords,
+  upPoint,
+  windLabels,
+  yourStarsOf,
+  type YourStars,
+} from "./yourStarsLogic";
 
 /** A ref to the value as last rendered, for callbacks that run later. */
 function useLatest<T>(value: T) {
@@ -96,114 +98,97 @@ function useLatest<T>(value: T) {
   return ref;
 }
 
-/** Room right of a curve for its star figures. */
-const AXIS_RIGHT = space["3xl"];
 /** Half a touch target: a finger this close to a handle or a dot has it. */
 const REACH = hitTarget / 2;
 
 export function YourStarsScreen() {
-  const { prefs, setCustomStars } = usePrefs();
+  const { prefs, setYourStars } = usePrefs();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const inner = width - space.lg * 2;
   const unit = useMemo(() => unitScale(prefs.units), [prefs.units]);
-  // The rider as they were when the screen opened: Cancel keeps nothing.
-  const [rider] = useState<Rider>(prefs.rider);
-  const [draft, setDraft] = useState<CustomRating>(() => savedCustom(rider) ?? standardRating(rider));
-  // The grid and the examples rate hundreds of hours: they follow a drag a
-  // frame behind rather than holding it up.
-  const later = useDeferredValue(draft);
-
-  const level = standardRating(rider, draft.base);
-  const baseName = SKILL_LABEL[draft.base];
+  // What was saved when the screen opened: Cancel keeps nothing.
+  const [draft, setDraft] = useState<YourStars>(() => yourStarsOf(prefs.rider, prefs.units));
+  const [step, setStep] = useState(0);
+  const scroll = useRef<ScrollView>(null);
+  const st = STEPS[step];
+  const last = step === STEPS.length - 1;
+  const go = (to: number) => {
+    setStep(to);
+    scroll.current?.scrollTo({ y: 0, animated: false });
+  };
+  const setRating = (change: (rating: CustomRating) => CustomRating) =>
+    setDraft((d) => ({ ...d, rating: change(d.rating) }));
 
   return (
     <View style={styles.root}>
-      <Stack.Screen options={{ title: "Your star rating" }} />
+      <Stack.Screen
+        options={{
+          title: "Your stars",
+          headerLeft: () => <Button label="Cancel" kind="quiet" size="sm" onPress={() => router.back()} />,
+        }}
+      />
       <ScrollView
+        ref={scroll}
         style={styles.root}
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
       >
-        <View style={styles.block}>
-          <T variant="eyebrow" caps color="muted" accessibilityRole="header">
-            Start from
+        <View style={styles.head}>
+          <T variant="lead" accessibilityRole="header" style={styles.flex}>
+            {st.title}
           </T>
-          <Segmented<Skill>
-            value={draft.base}
-            accessibilityLabel="Start from"
-            segments={SKILLS.map((skill) => ({ value: skill, label: SKILL_LABEL[skill] }))}
-            onChange={(skill) => setDraft(standardRating(rider, skill))}
-          />
+          <T variant="eyebrow" color="muted" accessibilityLabel={`Step ${step + 1} of ${STEPS.length}`}>
+            {step + 1} / {STEPS.length}
+          </T>
         </View>
-
-        <Block title="Wind speed: stars">
-          <Curve yours={draft} level={level} unit={unit} width={inner} />
-          <Legend name={baseName} />
-          <Handles
-            keys={WIND_KEYS}
-            values={draft.wind}
-            top={WIND_TOP}
+        <View style={styles.progress} accessible={false}>
+          {STEPS.map((s, i) => (
+            <View key={s.id} style={[styles.bar, i <= step && styles.barDone]} />
+          ))}
+        </View>
+        <T variant="body" color="ink2" style={styles.sub}>
+          {st.sub}
+        </T>
+        {st.id === "wind" ? (
+          <WindStep
+            rating={draft.rating}
             unit={unit}
-            scale="wind"
-            width={inner - AXIS_RIGHT}
-            labels={{
-              min: "Minimum wind speed",
-              sweetLow: "Ideal wind speed from",
-              sweetHigh: "Ideal wind speed to",
-              max: "Maximum wind speed",
-            }}
-            spans={[
-              ["min", "sweetLow", "edge"],
-              ["sweetLow", "sweetHigh", "fill"],
-              ["sweetHigh", "max", "edge"],
-            ]}
-            onMove={(key, kn) => setDraft((d) => (unit.force ? moveWindForce : moveWind)(d, key, kn))}
+            width={inner}
+            onMove={(key, kn) => setRating((r) => (unit.force ? moveWindForce : moveWind)(r, key, kn))}
           />
-          <View style={styles.figs}>
-            <Fig name="Minimum" kn={draft.wind.min} unit={unit} />
-            <Fig name="Ideal from" kn={draft.wind.sweetLow} unit={unit} />
-            <Fig name="Ideal to" kn={draft.wind.sweetHigh} unit={unit} />
-            <Fig name="Maximum" kn={draft.wind.max} unit={unit} />
-          </View>
-        </Block>
-
-        <Block title="Wind direction: stars taken off">
-          <DirectionWeb
-            rating={draft}
-            width={Math.min(inner, 384)}
-            onChange={(key, off) => setDraft((d) => setDirection(d, key, off))}
+        ) : st.id === "shore" ? (
+          <ShoreStep
+            rating={draft.rating}
+            width={inner}
+            onChange={(key, off) => setRating((r) => setDirection(r, key, off))}
           />
-        </Block>
-
-        <Block title="Together: wind speed, gusts and direction">
-          <Together rider={withRating(rider, later)} unit={unit} width={inner} />
-        </Block>
-
-        <Block title="Examples">
-          <Examples rider={rider} rating={later} unit={unit} />
-        </Block>
+        ) : (
+          <UpwindStep
+            yours={draft}
+            width={inner}
+            onChange={(change) => setDraft((d) => ({ ...d, ...change }))}
+          />
+        )}
       </ScrollView>
       <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, space.md) }]}>
-        {savedCustom(rider) ? (
+        {differsFromOurs(draft, prefs.units) ? (
           <Button
-            label="Delete"
+            label="Reset to ours"
             kind="quiet"
             size="sm"
-            style={styles.delete}
-            onPress={() => {
-              setCustomStars(null);
-              router.back();
-            }}
+            style={styles.reset}
+            onPress={() => setDraft(oursStars(prefs.units))}
           />
         ) : null}
-        <Button label="Cancel" kind="pill" onPress={() => router.back()} />
+        {step ? <Button label="Back" kind="pill" onPress={() => go(step - 1)} /> : null}
         <Button
-          label="Save"
+          label={last ? "Save" : "Next"}
           kind="primary"
           onPress={() => {
+            if (!last) return go(step + 1);
             done();
-            setCustomStars(draft);
+            setYourStars(draft);
             router.back();
           }}
         />
@@ -212,163 +197,61 @@ export function YourStarsScreen() {
   );
 }
 
-function Block({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <>
-      <Rule />
-      <View style={styles.block}>
-        <T variant="eyebrow" caps accessibilityRole="header">
-          {title}
-        </T>
-        {children}
-      </View>
-    </>
-  );
-}
+/* ------------------------------------------------------------ the wind */
 
-function Legend({ name }: { name: string }) {
-  return (
-    <View style={styles.legend} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <View style={styles.legendItem}>
-        <Svg width={20} height={4}>
-          <Line x1={0} x2={20} y1={2} y2={2} stroke={colors.ink} strokeWidth={2} />
-        </Svg>
-        <T variant="label" caps color="muted">
-          Yours
-        </T>
-      </View>
-      <View style={styles.legendItem}>
-        <Svg width={20} height={4}>
-          <Line x1={0} x2={20} y1={2} y2={2} stroke={colors.lineStrong} strokeWidth={1.25} strokeDasharray="3 3" />
-        </Svg>
-        <T variant="label" caps color="muted">
-          {name}
-        </T>
-      </View>
-    </View>
-  );
-}
+const mono = { fontFamily: fonts.monoMedium } as const;
+/** IBM Plex Mono sets every character 0.6 em wide: a label's width without measuring it. */
+const textWidth = (text: string, size: number, spacing: number) => text.length * (size * 0.6 + spacing);
 
-function Fig({ name, kn, unit }: { name: string; kn: number; unit: UnitScale }) {
-  return (
-    <View style={styles.fig} accessible accessibilityLabel={`${name}: ${said(kn, unit)}`}>
-      <T variant="eyebrow" caps color="muted">
-        {name}
-      </T>
-      <T variant="figure" tabular>
-        {shown(kn, unit)}{" "}
-        <T variant="label" color="muted">
-          {unit.label}
-        </T>
-      </T>
-    </View>
-  );
-}
-
-const axisText = { fontFamily: fonts.mono, fontSize: 10, fill: colors.muted } as const;
-
-/** An axis along the bottom in the rider's unit, every tick of it. */
-function XAxis({ topKn, y, plot, unit }: { topKn: number; y: number; plot: number; unit: UnitScale }) {
-  const top = topKn * unit.perKn;
-  const labels = [];
-  for (let v = 0; v <= top + 1e-6; v += unit.tick) {
-    const x = (v / top) * plot;
-    const end = x > plot - 20;
-    labels.push(
-      <SvgText key={v} {...axisText} x={end ? plot : x} y={y} textAnchor={v ? (end ? "end" : "middle") : "start"}>
-        {`${v}${end ? ` ${unit.label}` : ""}`}
-      </SvgText>,
-    );
-  }
-  return <>{labels}</>;
-}
-
-const line = (top: number, X: (kn: number) => number, Y: (kn: number) => number) => {
-  const points: string[] = [];
-  for (let kn = 0; kn <= top; kn += 0.25) points.push(`${X(kn).toFixed(1)},${Y(kn).toFixed(1)}`);
-  return points.join(" ");
+/** The slider's frame, in points: room left of the axis for the strip's star, and the rows from the top. */
+const RANGE = { left: 18, right: 8, height: 96, track: 34, trackH: 16, strip: 56, stripH: 13, ticks: 76 } as const;
+const LABEL = { size: 10, spacing: 1 } as const;
+const NAMES = { light: "TOO LIGHT", sweet: "SWEET SPOT", much: "TOO MUCH, IN GUSTS", none: "no stars past here" };
+const HANDLE_NAMES: Record<WindKey, string> = {
+  min: "Too light below",
+  sweetLow: "Sweet spot from",
+  sweetHigh: "Sweet spot to",
+  max: "Too much, in gusts",
 };
 
-/** Stars for each wind speed, 0 to 40 kn: theirs solid, the level's dashed. */
-const Curve = memo(function Curve({
-  yours,
-  level,
-  unit,
-  width,
-}: {
-  yours: CustomRating;
-  level: CustomRating;
-  unit: UnitScale;
-  width: number;
-}) {
-  const plot = width - AXIS_RIGHT;
-  const top = WIND_TOP;
-  const X = (kn: number) => (kn / top) * plot;
-  const Y = (stars: number) => 74 - (stars / 5) * 64;
-  const of = (r: CustomRating) => line(top, X, (kn) => Y(windScore(kn, r.wind)));
-  const mine = of(yours);
-  const rows = [1, 2, 3, 4, 5];
-  const floor = 74;
-  return (
-    <View
-      accessible
-      accessibilityRole="image"
-      accessibilityLabel="Stars for each wind speed, yours against the level you started from"
-    >
-      <Svg width={width} height={92}>
-        {rows.map((n) => (
-          <Line key={`l${n}`} x1={0} x2={plot} y1={Y(n)} y2={Y(n)} stroke={colors.line} strokeWidth={1} />
-        ))}
-        {rows.map((n) => (
-          <SvgText key={`t${n}`} {...axisText} x={plot + 4} y={Y(n) + 3}>
-            {`${n}★`}
-          </SvgText>
-        ))}
-        <Polygon points={`0,${floor} ${mine} ${plot},${floor}`} fill={colors.sunken} />
-        <Polyline points={of(level)} fill="none" stroke={colors.lineStrong} strokeWidth={1.25} strokeDasharray="3 3" />
-        <Polyline points={mine} fill="none" stroke={colors.ink} strokeWidth={2} strokeLinejoin="round" />
-        <XAxis topKn={top} y={90} plot={plot} unit={unit} />
-      </Svg>
-    </View>
-  );
-});
+/** The axis's ticks in the rider's unit: every tick of it, or every other force. */
+function ticksOf(unit: UnitScale): { kn: number; label: string }[] {
+  if (unit.force)
+    return forceTicks(1, SCALE_TO).map((t) => ({ kn: t.kn, label: t.force % 2 ? "" : `F${t.force}` }));
+  const out = [];
+  const top = SCALE_TO * unit.perKn;
+  for (let v = unit.tick; v <= top + 1e-6; v += unit.tick) out.push({ kn: v / unit.perKn, label: String(v) });
+  return out;
+}
 
 /**
- * A scale of handles, each a control of its own: a sideways drag anywhere
+ * "What wind suits you?": the track and its four handles, the stars they make
+ * by steady wind right under it, and the knots once. A sideways drag anywhere
  * along it takes the nearest handle, a tap brings the nearest there, and a
- * screen reader's swipe up or down moves it a step of the rider's unit.
+ * screen reader's swipe up or down moves one a step of the rider's unit.
  */
-function Handles<K extends string>({
-  keys,
-  values,
-  top,
+function WindStep({
+  rating,
   unit,
-  scale,
   width,
-  labels,
-  spans,
   onMove,
 }: {
-  keys: readonly K[];
-  values: Record<K, number>;
-  top: number;
+  rating: CustomRating;
   unit: UnitScale;
-  scale: "wind" | "gust";
   width: number;
-  labels: Record<K, string>;
-  spans: [K, K, "fill" | "edge"][];
-  onMove: (key: K, kn: number) => void;
+  onMove: (key: WindKey, kn: number) => void;
 }) {
-  const perKn = width / top;
-  // The gestures read the values as they are now, and keep the drag's own
-  // state where a new render cannot reset it.
-  const now = useLatest({ values, onMove });
-  const [drag] = useState(() => ({ held: null as K | null, from: 0, last: null as number | null }));
+  const w = rating.wind;
+  const W = width - RANGE.left - RANGE.right;
+  const perKn = W / SCALE_TO;
+  const X = (kn: number) => RANGE.left + Math.min(kn, SCALE_TO) * perKn;
+  const now = useLatest({ values: w, onMove });
+  const [drag] = useState(() => ({ held: null as WindKey | null, from: 0, last: null as number | null }));
   /* eslint-disable react-hooks/immutability --
      a gesture's callbacks run as the finger moves, never while rendering. */
   const gesture = useMemo(() => {
-    const at = (x: number) => knAtX(x, width, top, unit);
-    const move = (key: K, kn: number) => {
+    const at = (x: number) => knAtX(x - RANGE.left, W, SCALE_TO, unit);
+    const move = (key: WindKey, kn: number) => {
       if (kn !== drag.last) tick();
       drag.last = kn;
       now.current.onMove(key, kn);
@@ -386,7 +269,7 @@ function Handles<K extends string>({
         const dx = e.x - drag.from;
         // The handle is taken once the finger has said which way it goes.
         if (!drag.held && dx) {
-          drag.held = grabHandle(keys, now.current.values, at(drag.from), dx, (REACH * 0.75) / perKn);
+          drag.held = grabHandle(WIND_KEYS, now.current.values, at(drag.from), dx, (REACH * 0.75) / perKn);
           drag.last = now.current.values[drag.held];
         }
         if (drag.held) move(drag.held, at(e.x));
@@ -399,57 +282,149 @@ function Handles<K extends string>({
       .maxDistance(10)
       .onEnd((e, ok) => {
         if (!ok) return;
-        const key = grabHandle(keys, now.current.values, at(e.x), 0, 0);
+        const key = grabHandle(WIND_KEYS, now.current.values, at(e.x), 0, 0);
         drag.last = now.current.values[key];
         move(key, at(e.x));
       });
     return Gesture.Exclusive(pan, tap);
-  }, [keys, width, top, unit, perKn, now, drag]);
+  }, [W, unit, perKn, now, drag]);
   /* eslint-enable react-hooks/immutability */
 
-  const stops = windScale.filter(([kn]) => kn % 5 === 0 && kn <= top);
+  const runs = useMemo(() => starRuns(w, SCALE_TO), [w]);
+  const label = (text: string) => textWidth(text, LABEL.size, LABEL.spacing);
+  const noneSize = textWidth(NAMES.none, 9, 0.5);
+  const at = windLabels(width, X(w.min), X(w.max), {
+    light: label(NAMES.light),
+    much: label(NAMES.much),
+    none: noneSize,
+  });
+  const ticks = ticksOf(unit);
+  const { track, trackH, strip, stripH } = RANGE;
+  const ink = (n: number) => (n <= 2 ? colors.ink : colors.inkInverse);
+
   return (
     <GestureDetector gesture={gesture}>
-      <View style={[styles.band, { width }]}>
-        <Svg width={width} height={4} style={styles.scale}>
+      <View style={[styles.range, { width }]}>
+        <Svg width={width} height={RANGE.height} accessible={false}>
           <Defs>
-            <LinearGradient id={`scale-${scale}`} x1="0" x2="1" y1="0" y2="0">
-              {stops.map(([kn, color]) => (
-                <Stop key={kn} offset={kn / top} stopColor={color} />
-              ))}
-            </LinearGradient>
+            <ClipPath id="track">
+              <Rect x={RANGE.left} y={track} width={W} height={trackH} rx={trackH / 2} />
+            </ClipPath>
+            <Pattern id="over" width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <Line x1={0} y1={0} x2={0} y2={5} stroke={colors.pen} strokeWidth={1.5} />
+            </Pattern>
           </Defs>
-          <Rect width={width} height={4} fill={`url(#scale-${scale})`} />
-        </Svg>
-        {spans.map(([from, to, kind]) => (
-          <View
-            key={`${from}-${to}`}
-            style={[
-              styles.span,
-              kind === "edge" && styles.edge,
-              { left: values[from] * perKn, width: (values[to] - values[from]) * perKn },
-            ]}
+          <SvgText {...mono} x={at.light} y={14} fontSize={LABEL.size} letterSpacing={LABEL.spacing} fill={colors.muted}>
+            {NAMES.light}
+          </SvgText>
+          <SvgText
+            {...mono}
+            x={(X(w.sweetLow) + X(w.sweetHigh)) / 2}
+            y={14}
+            textAnchor="middle"
+            fontSize={LABEL.size}
+            letterSpacing={LABEL.spacing}
+            fill={colors.muted}
+          >
+            {NAMES.sweet}
+          </SvgText>
+          <SvgText {...mono} x={at.much} y={14} fontSize={LABEL.size} letterSpacing={LABEL.spacing} fill={colors.penInk}>
+            {NAMES.much}
+          </SvgText>
+          <G clipPath="url(#track)">
+            <Rect x={RANGE.left} y={track} width={W} height={trackH} fill={colors.paper} />
+            <Rect x={X(w.min)} y={track} width={X(w.sweetLow) - X(w.min)} height={trackH} fill={withAlpha(colors.ink, 0.2)} />
+            <Rect x={X(w.sweetLow)} y={track} width={X(w.sweetHigh) - X(w.sweetLow)} height={trackH} fill={colors.ink} />
+            <Rect x={X(w.sweetHigh)} y={track} width={X(w.max) - X(w.sweetHigh)} height={trackH} fill={withAlpha(colors.ink, 0.2)} />
+            <Rect x={X(w.max)} y={track} width={RANGE.left + W - X(w.max)} height={trackH} fill="url(#over)" />
+          </G>
+          <Rect x={RANGE.left} y={track} width={W} height={trackH} rx={trackH / 2} fill="none" stroke={colors.ink} />
+          {/* The stars the handles make, by steady wind: read-only, right under the track. */}
+          <Path
+            d={STAR}
+            transform={`translate(${RANGE.left - 8.5} ${strip + stripH / 2}) scale(1.1)`}
+            fill={starColors[5]}
+            stroke={colors.ink}
+            strokeOpacity={0.55}
+            strokeWidth={0.8}
           />
-        ))}
-        {keys.map((k) => (
+          {runs
+            .filter((r) => r.stars)
+            .map((r) => {
+              const x = X(Math.max(0, r.from - 0.5));
+              const x2 = X(Math.min(SCALE_TO, r.to + 0.5));
+              return (
+                <G key={r.from}>
+                  <Rect x={x} y={strip} width={x2 - x} height={stripH} fill={starColors[r.stars]} />
+                  {x2 - x >= 10 ? (
+                    <SvgText
+                      fontFamily={fonts.monoBold}
+                      x={(x + x2) / 2}
+                      y={strip + 9.5}
+                      textAnchor="middle"
+                      fontSize={9}
+                      fill={ink(r.stars)}
+                    >
+                      {String(r.stars)}
+                    </SvgText>
+                  ) : null}
+                </G>
+              );
+            })}
+          <SvgText {...mono} x={at.none} y={strip + 9.5} fontSize={9} letterSpacing={0.5} fill={colors.penInk}>
+            {NAMES.none}
+          </SvgText>
+          {ticks.map((t, i) => {
+            const x = X(t.kn);
+            const end = i === ticks.length - 1;
+            return (
+              <G key={t.kn}>
+                <Line x1={x} x2={x} y1={RANGE.ticks - 6} y2={RANGE.ticks - 2} stroke={colors.ink} />
+                {t.label ? (
+                  <SvgText
+                    {...mono}
+                    x={end ? Math.min(x + 6, width) : x}
+                    y={RANGE.ticks + 10}
+                    textAnchor={end ? "end" : "middle"}
+                    fontSize={10}
+                    fill={colors.muted}
+                  >
+                    {end && !unit.force ? `${t.label} ${unit.label}` : t.label}
+                  </SvgText>
+                ) : null}
+              </G>
+            );
+          })}
+        </Svg>
+        <View
+          style={[styles.strip, { left: RANGE.left, top: strip, width: W }]}
+          accessible
+          accessibilityLabel={stripWords(runs, unit)}
+          pointerEvents="none"
+        />
+        {WIND_KEYS.map((k, i) => (
           <View
             key={k}
             accessible
             accessibilityRole="adjustable"
-            accessibilityLabel={labels[k]}
+            accessibilityLabel={HANDLE_NAMES[k]}
             accessibilityValue={{
               min: 0,
-              max: Number((top * unit.perKn).toFixed(unit.dp)),
-              now: Number(shown(values[k], unit)),
-              text: said(values[k], unit),
+              max: Number((WIND_TOP * unit.perKn).toFixed(unit.dp)),
+              now: Number(shown(w[k], unit)),
+              text: said(w[k], unit),
             }}
             accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
             onAccessibilityAction={(e) =>
-              onMove(k, stepped(values[k], e.nativeEvent.actionName === "increment" ? 1 : -1, unit))
+              onMove(k, stepped(w[k], e.nativeEvent.actionName === "increment" ? 1 : -1, unit))
             }
-            style={[styles.handle, { left: values[k] * perKn - REACH }]}
+            style={[styles.handle, { left: X(w[k]) - REACH, top: track + trackH / 2 - REACH }]}
           >
-            <View style={styles.thumb} />
+            <View style={[styles.knob, i === 3 && styles.knobTop]}>
+              <T variant="label" tabular color={i === 3 ? "penInk" : "ink"} style={styles.knobText}>
+                {shown(w[k], unit)}
+              </T>
+            </View>
           </View>
         ))}
       </View>
@@ -457,33 +432,31 @@ function Handles<K extends string>({
   );
 }
 
-/** Where a direction's slices run, either side of the beach. */
-const arcs = (d: (typeof WEB_DIRS)[number]) =>
-  d.from === 0
-    ? [[-30, 30]]
-    : d.to === 180
-      ? [[150, 210]]
-      : [
-          [d.from, d.to],
-          [-d.to, -d.from],
-        ];
-const f = (n: number) => n.toFixed(1);
-const wedge = (a1: number, a2: number) => {
-  const [x1, y1] = polar(a1, WEB_R);
-  const [x2, y2] = polar(a2, WEB_R);
-  return `M0,0 L${f(x1)},${f(y1)} A${WEB_R},${WEB_R} 0 0 1 ${f(x2)},${f(y2)}Z`;
+/* ----------------------------------------------------------- the shore */
+
+/** The web's frame, in its own units: the sea above the beach, the land below. */
+const WEB_BOX = { x: -158, y: -140, w: 316, h: 284 } as const;
+const f1 = (n: number) => n.toFixed(1);
+/** Every dot's place round the web, both sides for the four that come from either. */
+const SPOKES = WEB_DIRS.flatMap((d) => d.at.map((a) => ({ key: d.key, a })));
+const RING = [...SPOKES].sort((p, q) => ((p.a + 360) % 360) - ((q.a + 360) % 360));
+/** The way the wind blows, an arrowhead past the rim. */
+const arrow = (a: number) => {
+  const [tx, ty] = polar(a, WEB_R + 1);
+  const [hx, hy] = polar(a, WEB_R + 12);
+  const [lx, ly] = polar(a - 3.5, WEB_R + 7);
+  const [rx, ry] = polar(a + 3.5, WEB_R + 7);
+  return `M${f1(tx)} ${f1(ty)}L${f1(hx)} ${f1(hy)}M${f1(lx)} ${f1(ly)}L${f1(hx)} ${f1(hy)}L${f1(rx)} ${f1(ry)}`;
 };
-/** The web's frame, in its own units: the rim, and room round it for the names. */
-const WEB_BOX = { x: -180, y: -128, w: 360, h: 256 } as const;
-const webText = { fontFamily: fonts.mono } as const;
 
 /**
- * The beach from above, sea up and land down, and a dot for each way the wind
- * can blow, drawn where it blows to: on the rim it takes nothing off, at the
- * middle all five stars, in half stars. Drag a dot; tap a slice to bring its
- * dot to the top; the picked one has − and + under the web.
+ * "Configure stars based on wind direction": the beach from above, sea up and
+ * land down, a dot for each way the wind blows, drawn where it blows to: on
+ * the rim it takes nothing off, at the middle all five stars, in whole stars.
+ * Offshore is locked at never. Beside it (under it, on a phone), each way of
+ * wind and what it costs.
  */
-function DirectionWeb({
+function ShoreStep({
   rating,
   width,
   onChange,
@@ -492,33 +465,32 @@ function DirectionWeb({
   width: number;
   onChange: (key: DirectionKey, off: number) => void;
 }) {
-  const [picked, setPicked] = useState<DirectionKey>("crossOff");
   const off = rating.direction;
-  const s = width / WEB_BOX.w;
+  const webWidth = Math.min(width, 340);
+  const s = webWidth / WEB_BOX.w;
   const height = WEB_BOX.h * s;
-  const now = useLatest({ off, picked, onChange });
+  const now = useLatest({ off, onChange });
   const [drag] = useState(() => ({
     held: null as DirectionKey | null,
     start: [0, 0] as [number, number],
     last: null as number | null,
   }));
 
-  /* eslint-disable react-hooks/immutability -- as Handles' */
+  /* eslint-disable react-hooks/immutability -- as WindStep's */
   const gesture = useMemo(() => {
     const toWeb = (x: number, y: number): [number, number] => [x / s + WEB_BOX.x, y / s + WEB_BOX.y];
     // Claimed only once a drag starts on a dot: anywhere else, and anything
     // that is not yet a drag, is the page's to scroll.
-    const pan = Gesture.Pan()
+    return Gesture.Pan()
       .runOnJS(true)
       .manualActivation(true)
       .onTouchesDown((e, manager) => {
         const touch = e.changedTouches[0];
         const [x, y] = toWeb(touch.x, touch.y);
-        drag.held = dotAt(x, y, now.current.off, now.current.picked, REACH / s);
+        drag.held = dotAt(x, y, now.current.off, REACH / s);
         if (!drag.held) return manager.fail();
         drag.start = [touch.x, touch.y];
         drag.last = now.current.off[drag.held];
-        setPicked(drag.held);
       })
       .onTouchesMove((e, manager) => {
         const touch = e.changedTouches[0];
@@ -528,7 +500,7 @@ function DirectionWeb({
       .onUpdate((e) => {
         if (!drag.held) return;
         const [x, y] = toWeb(e.x, e.y);
-        const next = Math.round(offAt(x, y) * 2) / 2;
+        const next = Math.round(offAt(x, y));
         if (next !== drag.last) {
           tick();
           drag.last = next;
@@ -538,451 +510,585 @@ function DirectionWeb({
       .onFinalize(() => {
         drag.held = null;
       });
-    // A tap on a dot or its slice brings that direction to the top, and changes nothing.
-    const tap = Gesture.Tap()
-      .runOnJS(true)
-      .maxDistance(10)
-      .onEnd((e, ok) => {
-        if (!ok) return;
-        const [x, y] = toWeb(e.x, e.y);
-        const key = dotAt(x, y, now.current.off, now.current.picked, REACH / s) ?? sliceAt(x, y);
-        if (key && key !== now.current.picked) {
-          tick();
-          setPicked(key);
-        }
-      });
-    return Gesture.Simultaneous(pan, tap);
   }, [s, now, drag]);
   /* eslint-enable react-hooks/immutability */
 
-  const ring = [0, 50, 90, 130, 180, -130, -90, -50].map((a) => {
-    const d = WEB_DIRS.find((x) => x.at.includes(a))!;
-    return polar(a, webRadius(off[d.key]));
-  });
-  const picks = WEB_DIRS.find((d) => d.key === picked)!;
-  const step = (key: DirectionKey, by: number) => {
-    tick();
-    setPicked(key);
-    onChange(key, off[key] + by);
-  };
-
+  const R = WEB_R;
   return (
-    <>
+    <View style={styles.shore}>
       <GestureDetector gesture={gesture}>
-        <View style={[styles.web, { width, height }]}>
-          <Svg
-            width={width}
-            height={height}
-            viewBox={`${WEB_BOX.x} ${WEB_BOX.y} ${WEB_BOX.w} ${WEB_BOX.h}`}
-            accessible={false}
-          >
-            <Path d={`M${-WEB_R},0 A${WEB_R},${WEB_R} 0 0 1 ${WEB_R},0Z`} fill={colors.depth} opacity={0.22} />
-            <Path d={`M${WEB_R},0 A${WEB_R},${WEB_R} 0 0 1 ${-WEB_R},0Z`} fill={colors.land} opacity={0.7} />
-            {WEB_DIRS.flatMap((d) =>
-              arcs(d).map(([a1, a2]) => (
-                <Path
-                  key={`${d.key}${a1}`}
-                  d={wedge(a1, a2)}
-                  fill={d.key === picked ? withAlpha(colors.ink, 0.08) : "transparent"}
-                />
-              )),
-            )}
-            {[1, 2, 3, 4].map((n) => (
-              <Circle key={n} r={webRadius(n)} fill="none" stroke={colors.ink} strokeOpacity={0.18} strokeWidth={0.5} />
-            ))}
-            {[30, 70, 110, 150].flatMap((a) =>
-              [a, -a].map((aa) => {
-                const [x, y] = polar(aa, WEB_R);
-                return (
-                  <Line key={aa} x1={0} y1={0} x2={f(x)} y2={f(y)} stroke={colors.ink} strokeOpacity={0.12} strokeWidth={0.5} />
-                );
-              }),
-            )}
-            {[1, 2, 3, 4].map((n) => {
-              const [x, y] = polar(-30, webRadius(n));
-              return (
-                <SvgText key={n} {...webText} x={f(x - 2)} y={f(y - 2)} textAnchor="end" fontSize={7} fill={colors.muted}>
-                  {`−${n}`}
-                </SvgText>
-              );
-            })}
-            <Circle r={WEB_R} fill="none" stroke={colors.ink} strokeWidth={1} />
-            <Line x1={-WEB_R - 8} x2={WEB_R + 8} y1={0} y2={0} stroke={colors.ink} strokeWidth={2} />
-            <SvgText {...webText} x={-WEB_R + 14} y={-8} fontSize={7.5} letterSpacing={0.6} fill={colors.muted}>
+        <View style={[styles.web, { width: webWidth, height }]}>
+          <Svg width={webWidth} height={height} viewBox={`${WEB_BOX.x} ${WEB_BOX.y} ${WEB_BOX.w} ${WEB_BOX.h}`} accessible={false}>
+            <Rect x={-158} y={-140} width={316} height={140} fill={colors.sea} />
+            <Rect x={-158} y={0} width={316} height={144} fill={colors.land} />
+            <Line x1={-158} x2={158} y1={0} y2={0} stroke={colors.ink} strokeWidth={1.5} />
+            <SvgText {...mono} x={-150} y={-128} fontSize={9} letterSpacing={1.3} fill={colors.muted}>
               SEA
             </SvgText>
-            <SvgText {...webText} x={-WEB_R + 14} y={15} fontSize={7.5} letterSpacing={0.6} fill={colors.muted}>
+            <SvgText {...mono} x={-150} y={138} fontSize={9} letterSpacing={1.3} fill={colors.muted}>
               LAND
             </SvgText>
-            <Polygon
-              points={ring.map(([x, y]) => `${f(x)},${f(y)}`).join(" ")}
-              fill={withAlpha(colors.ink, 0.07)}
-              stroke={colors.ink}
-              strokeWidth={1.25}
-              strokeLinejoin="round"
-            />
-            {/* Names round the outside: once, on the right, for the four that come from either side. */}
-            {WEB_DIRS.map((d) => {
-              const a = d.at[0];
-              const [x, y] = polar(a, WEB_R + 12);
-              const name = DIRECTION_NAME[d.key].toUpperCase();
-              const ends = a === 0 || a === 180;
+            <Circle r={R} fill={colors.paper} fillOpacity={0.55} stroke={colors.ink} />
+            {[1, 2, 3, 4].map((n) => (
+              <Circle key={n} r={webRadius(n)} fill="none" stroke={withAlpha(colors.ink, 0.13)} />
+            ))}
+            <SvgText {...mono} x={4} y={-R + 10} fontSize={7} fill={colors.muted}>
+              0★
+            </SvgText>
+            <SvgText {...mono} x={4} y={f1(-webRadius(2) + 9)} fontSize={7} fill={colors.muted}>
+              −2★
+            </SvgText>
+            {SPOKES.map(({ key, a }) => {
+              const [x, y] = polar(a, R);
+              const danger = key === "offshore" || key === "crossOff";
+              const side = Math.abs(a) === 90;
+              const [lx, ly] = polar(a, side ? R + 4 : R + 19);
               return (
-                <SvgText
-                  key={d.key}
-                  {...webText}
-                  x={ends ? 0 : f(x)}
-                  y={f(a === 0 ? y - 2 : a === 180 ? y + 9 : a === 90 ? y - 5 : y + 3)}
-                  textAnchor={ends ? "middle" : "start"}
-                  fontSize={8}
-                  letterSpacing={0.5}
-                  fill={colors.ink2}
-                >
-                  {name}
-                </SvgText>
+                <G key={`${key}${a}`}>
+                  <Line x1={0} y1={0} x2={f1(x)} y2={f1(y)} stroke={withAlpha(colors.ink, 0.27)} />
+                  <Path
+                    d={arrow(a)}
+                    fill="none"
+                    stroke={danger ? colors.pen : colors.ink}
+                    strokeWidth={1.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <SvgText
+                    {...mono}
+                    x={f1(lx)}
+                    y={f1(side ? 14 : ly + 3)}
+                    textAnchor={a === 90 ? "start" : a === -90 ? "end" : "middle"}
+                    fontSize={8.5}
+                    letterSpacing={0.5}
+                    fill={danger ? colors.penInk : colors.ink2}
+                  >
+                    {DIRECTION_SHORT[key]}
+                  </SvgText>
+                </G>
               );
             })}
-            {WEB_DIRS.flatMap((d) =>
-              d.at.map((a) => {
-                const [x, y] = polar(a, webRadius(off[d.key]));
-                const on = d.key === picked;
-                return (
-                  <Circle
-                    key={`${d.key}${a}`}
-                    cx={f(x)}
-                    cy={f(y)}
-                    r={on ? 5.5 : 4.5}
-                    fill={on ? colors.ink : colors.paper}
-                    stroke={colors.ink}
-                    strokeWidth={1.5}
-                  />
-                );
-              }),
-            )}
-            {picks.at.map((a) => {
-              const [x, y] = polar(a, webRadius(off[picked]));
-              return <Circle key={`top${a}`} cx={f(x)} cy={f(y)} r={5.5} fill={colors.ink} stroke={colors.ink} strokeWidth={1.5} />;
+            <Polygon
+              points={RING.map(({ key, a }) => polar(a, webRadius(off[key])).map(f1).join(",")).join(" ")}
+              fill={withAlpha(colors.ink, 0.13)}
+              stroke={colors.ink}
+              strokeWidth={1.5}
+              strokeLinejoin="round"
+            />
+            <Circle r={9} fill={colors.paper} stroke={colors.pen} />
+            <SvgText {...mono} y={2.2} textAnchor="middle" fontSize={5.5} fill={colors.penInk}>
+              NEVER
+            </SvgText>
+            {SPOKES.map(({ key, a }) => {
+              const [x, y] = polar(a, webRadius(off[key]));
+              return (
+                <Circle
+                  key={`dot${key}${a}`}
+                  cx={f1(x)}
+                  cy={f1(y)}
+                  r={6.5}
+                  fill={off[key] >= NEVER ? colors.pen : colors.ink}
+                  stroke={colors.paper}
+                  strokeWidth={2}
+                />
+              );
             })}
+            <SvgText {...mono} x={0} y={138} textAnchor="middle" fontSize={9} letterSpacing={1.3} fill={colors.muted}>
+              ARROWS: THE WAY THE WIND BLOWS
+            </SvgText>
           </Svg>
-          {/* Each direction once to a screen reader, where its dot is: swipe up for half a star less off. */}
+          {/* Each direction once to a screen reader, where its dot is: swipe up for a star less off. */}
           {WEB_DIRS.map((d) => {
             const [x, y] = polar(d.at[0], webRadius(off[d.key]));
-            return (
+            const locked = shoreLocked(d.key);
+            const place = { left: (x - WEB_BOX.x) * s - REACH, top: (y - WEB_BOX.y) * s - REACH };
+            return locked ? (
+              <View
+                key={d.key}
+                accessible
+                accessibilityLabel={`${DIRECTION_NAME[d.key]}: never, locked`}
+                style={[styles.dot, place]}
+              />
+            ) : (
               <View
                 key={d.key}
                 accessible
                 accessibilityRole="adjustable"
                 accessibilityLabel={`${DIRECTION_NAME[d.key]}: stars taken off`}
-                accessibilityValue={{ text: `${halfStars(off[d.key])} stars` }}
+                accessibilityValue={{ min: 0, max: NEVER, now: off[d.key], text: costLabel(off[d.key]) }}
                 accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
-                onAccessibilityAction={(e) => step(d.key, e.nativeEvent.actionName === "increment" ? -0.5 : 0.5)}
-                onAccessibilityTap={() => setPicked(d.key)}
-                style={[styles.dot, { left: (x - WEB_BOX.x) * s - REACH, top: (y - WEB_BOX.y) * s - REACH }]}
+                onAccessibilityAction={(e) => {
+                  tick();
+                  onChange(d.key, off[d.key] + (e.nativeEvent.actionName === "increment" ? -1 : 1));
+                }}
+                style={[styles.dot, place]}
               />
             );
           })}
         </View>
       </GestureDetector>
-      <View style={styles.picked}>
-        <T variant="label" caps>
-          {DIRECTION_NAME[picked]}
-        </T>
-        <StepButton
-          label="−"
-          a11y={`${DIRECTION_NAME[picked]}: take off half a star more`}
-          disabled={off[picked] >= 5}
-          onPress={() => step(picked, 0.5)}
-        />
-        <T
-          variant="figure"
-          tabular
-          align="center"
-          style={styles.pickedValue}
-          accessibilityLabel={`${DIRECTION_NAME[picked]}: ${halfStars(off[picked])} stars`}
-        >
-          {halfStars(off[picked])}★
-        </T>
-        <StepButton
-          label="+"
-          a11y={`${DIRECTION_NAME[picked]}: take off half a star less`}
-          disabled={off[picked] <= 0}
-          onPress={() => step(picked, -0.5)}
-        />
-      </View>
-    </>
-  );
-}
-
-/** The squares of one shade as a path: hundreds of squares, drawn as a few paths. */
-function squares(cells: (number | null)[][], X: (kn: number) => number, Y: (kn: number) => number) {
-  const paths = new Map<number | null, string>();
-  cells.forEach((column, i) =>
-    column.forEach((stars, j) => {
-      const x = X(i * GRID_STEP);
-      const y = Y((j + 1) * GRID_STEP);
-      const w = X((i + 1) * GRID_STEP) - x + (stars === null ? 0 : 0.3);
-      const h = Y(j * GRID_STEP) - y + (stars === null ? 0 : 0.3);
-      paths.set(stars, `${paths.get(stars) ?? ""}M${f(x)} ${f(y)}h${f(w)}v${f(h)}h${f(-w)}Z`);
-    }),
-  );
-  return paths;
-}
-
-/** Every wind and gust for one direction, shaded by the stars, with a readout of the square tapped. */
-const Together = memo(function Together({ rider, unit, width }: { rider: Rider; unit: UnitScale; width: number }) {
-  const [dir, setDir] = useState<DirectionKey>("crossOn");
-  const [pick, setPick] = useState<[number, number]>([18, 27]);
-  const cells = useMemo(() => gridStars(rider, dir), [rider, dir]);
-  const { left, width: w, height: h } = GRID;
-  const X = (kn: number) => left + (kn / WIND_TOP) * w;
-  const Y = (kn: number) => h - (kn / GUST_TOP) * h;
-  const paths = useMemo(() => squares(cells, X, Y), [cells]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [pw, pg] = pick;
-  const { rating, wind, over, gusts, direction } = breakdown(rider, pw, pg, dir);
-  const topW = WIND_TOP * unit.perKn;
-  const topG = GUST_TOP * unit.perKn;
-  const s = width / 400;
-  const height = 278 * s;
-
-  const gesture = useMemo(() => {
-    const at = (x: number, y: number) => setPick(gridPick(x / s, y / s - 18));
-    const tap = Gesture.Tap()
-      .runOnJS(true)
-      .maxDistance(10)
-      .onEnd((e, ok) => ok && at(e.x, e.y));
-    // Held a moment, a finger can run over the squares; a drag straight
-    // away is the page's scroll.
-    const scrub = Gesture.Pan()
-      .runOnJS(true)
-      .activateAfterLongPress(250)
-      .onStart((e) => at(e.x, e.y))
-      .onUpdate((e) => at(e.x, e.y));
-    return Gesture.Simultaneous(tap, scrub);
-  }, [s]);
-
-  const sx = left + ((Math.floor(pw / GRID_STEP) * GRID_STEP) / WIND_TOP) * w;
-  const sy = h - (((Math.floor(pg / GRID_STEP) + 1) * GRID_STEP) / GUST_TOP) * h;
-  const why = over
-    ? ", gusts over your limit"
-    : [gusts ? `, gusty ${halfStars(gusts)}` : "", direction ? `, direction ${halfStars(direction)}` : ""].join("");
-  const axes = [];
-  for (let v = 0; v <= topW + 1e-6; v += unit.tick)
-    axes.push(
-      <SvgText key={`w${v}`} {...axisText} x={left + (v / topW) * w} y={h + 14} textAnchor="middle">
-        {String(v)}
-      </SvgText>,
-    );
-  for (let v = unit.tick; v <= topG + 1e-6; v += unit.tick)
-    axes.push(
-      <SvgText key={`g${v}`} {...axisText} x={left - 4} y={h - (v / topG) * h + 3} textAnchor="end">
-        {String(v)}
-      </SvgText>,
-    );
-
-  return (
-    <>
-      <T variant="body">For wind that is</T>
-      <View style={styles.dirs} accessibilityRole="radiogroup" accessibilityLabel="Show the stars for wind that is">
-        {DIRECTION_KEYS.map((key) => {
-          const on = key === dir;
+      <View style={styles.dirs}>
+        {SHORE_ORDER.map((key) => {
+          const locked = shoreLocked(key);
+          const never = off[key] >= NEVER;
           return (
-            <Pressable
+            <View
               key={key}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: on }}
-              accessibilityLabel={DIRECTION_NAME[key]}
-              hitSlop={space.xs}
-              onPress={() => {
-                if (on) return;
-                tick();
-                setDir(key);
-              }}
-              style={({ pressed }) => [styles.chip, on && styles.chipOn, pressed && !on && styles.chipPressed]}
+              style={styles.dir}
+              accessible
+              accessibilityLabel={`${DIRECTION_NAME[key]}: ${costLabel(off[key])}${locked ? ", locked" : ""}. ${DIRECTION_LINE[key]}`}
             >
-              <T variant="label" caps color={on ? "inkInverse" : "ink2"}>
-                {DIRECTION_NAME[key].toLowerCase()}
+              <View style={styles.dirHead}>
+                <T variant="body" style={styles.dirName}>
+                  {DIRECTION_NAME[key]}
+                </T>
+                <View style={styles.cost}>
+                  <T variant="label" tabular color={never ? "penInk" : "ink"} style={styles.costText}>
+                    {costLabel(off[key])}
+                  </T>
+                  {locked ? <Lock /> : null}
+                </View>
+              </View>
+              <T variant="caption" color={locked ? "ink2" : "muted"}>
+                {DIRECTION_LINE[key]}
               </T>
-            </Pressable>
+            </View>
           );
         })}
       </View>
-      <GestureDetector gesture={gesture}>
-        <View
-          accessible
-          accessibilityRole="image"
-          accessibilityLabel="Stars for every wind speed and gust: darker is more stars"
-        >
-          <Svg width={width} height={height} viewBox="0 -18 400 278">
-            {[...paths].map(([stars, d]) => (
-              <Path
-                key={String(stars)}
-                d={d}
-                fill={stars === null ? colors.sunken : colors.ink}
-                opacity={stars === null ? 1 : SHADE[stars]}
-              />
-            ))}
-            {axes}
-            <SvgText {...axisText} x={left + w} y={h + 28} textAnchor="end">
-              {`wind speed, ${unit.label} →`}
-            </SvgText>
-            <SvgText {...axisText} x={0} y={-8} textAnchor="start">
-              {`gusts, ${unit.label} ↑`}
-            </SvgText>
-            <Rect
-              x={sx}
-              y={sy}
-              width={(GRID_STEP / WIND_TOP) * w}
-              height={(GRID_STEP / GUST_TOP) * h}
-              fill="none"
-              stroke={colors.magenta}
-              strokeWidth={2}
-            />
-          </Svg>
-        </View>
-      </GestureDetector>
-      <View style={styles.key} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        <T variant="label" caps color="muted">
-          Blank: no stars ·
-        </T>
-        <T variant="label" color="muted">
-          1★
-        </T>
-        {SHADE.slice(1).map((o) => (
-          <View key={o} style={[styles.swatch, { opacity: o }]} />
-        ))}
-        <T variant="label" color="muted">
-          5★
-        </T>
-      </View>
-      <View style={styles.readout} accessible accessibilityLiveRegion="polite">
-        <T variant="figureSm" tabular>
-          {shown(pw, unit)} gusting {shown(pg, unit)} {unit.label}
-        </T>
-        <Stars stars={rating.stars} potential={rating.potential} size={12} />
-        <T variant="caption" color="muted" style={styles.why}>
-          wind {Number(wind.toFixed(1))}★{why}
-        </T>
-      </View>
-    </>
-  );
-});
-
-/** The examples' hours, on the level the rating started from and on the rating. */
-const Examples = memo(function Examples({
-  rider,
-  rating,
-  unit,
-}: {
-  rider: Rider;
-  rating: CustomRating;
-  unit: UnitScale;
-}) {
-  const yours = withRating(rider, rating);
-  const theirs = onLevel(rider, rating);
-  const baseName = SKILL_LABEL[rating.base];
-  return (
-    <View>
-      <View style={[styles.tr, styles.th]}>
-        <T variant="eyebrow" caps color="muted" style={styles.forecast}>
-          Forecast, {unit.label}
-        </T>
-        <T variant="eyebrow" caps color="muted" style={styles.starsCell}>
-          {baseName}
-        </T>
-        <T variant="eyebrow" caps color="muted" style={styles.starsCell}>
-          Yours
-        </T>
-      </View>
-      {EXAMPLES.map(([wind, gust, dir]) => {
-        const o = rateExample(theirs, wind, gust, dir);
-        const y = rateExample(yours, wind, gust, dir);
-        const text = `${shown(wind, unit)} gusting ${shown(gust, unit)}${dir === "crossOn" ? "" : `, ${DIRECTION_WORD[dir]}`}`;
-        return (
-          <View
-            key={`${wind}-${gust}-${dir}`}
-            style={styles.tr}
-            accessible
-            accessibilityLabel={`${text} ${unit.label}: ${baseName} ${o.stars} stars, yours ${y.stars}`}
-          >
-            <T variant="figureSm" tabular style={[styles.forecast, o.stars !== y.stars && styles.moved]}>
-              {text}
-            </T>
-            <View style={styles.starsCell}>
-              <Stars stars={o.stars} potential={o.potential} size={12} />
-            </View>
-            <View style={styles.starsCell}>
-              <Stars stars={y.stars} potential={y.potential} size={12} />
-            </View>
-          </View>
-        );
-      })}
     </View>
   );
-});
+}
+
+function Lock() {
+  return (
+    <Svg width={11} height={11} viewBox="0 0 12 12" accessible={false}>
+      <Rect x={2.5} y={5.5} width={7} height={5} rx={1} fill={colors.penInk} />
+      <Path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke={colors.penInk} strokeWidth={1.3} />
+    </Svg>
+  );
+}
+
+/* ---------------------------------------------------------- the upwind */
+
+/**
+ * "Can you ride upwind?": the three answers across the top, the picture (a
+ * handle each side for each angle, dragged round the circle), and the two
+ * angles as sliders: into the wind, and below straight across. They move no
+ * stars; the loupe and the light's wedge follow them.
+ */
+function UpwindStep({
+  yours,
+  width,
+  onChange,
+}: {
+  yours: YourStars;
+  width: number;
+  onChange: (change: Partial<Pick<YourStars, "upwind" | "downwind">>) => void;
+}) {
+  const answer = answerOf(yours.upwind);
+  const picWidth = Math.min(width, 300);
+  const s = picWidth / UP.vw;
+  const now = useLatest({ yours, onChange });
+  const [drag] = useState(() => ({ held: null as "upwind" | "downwind" | null, last: null as number | null }));
+
+  /* eslint-disable react-hooks/immutability -- as WindStep's */
+  const gesture = useMemo(() => {
+    const toPic = (x: number, y: number): [number, number] => [x / s + UP.vx, y / s];
+    return Gesture.Pan()
+      .runOnJS(true)
+      .manualActivation(true)
+      .onTouchesDown((e, manager) => {
+        const touch = e.changedTouches[0];
+        const [x, y] = toPic(touch.x, touch.y);
+        drag.held = edgeAt(x, y, now.current.yours, REACH / s);
+        if (!drag.held) return manager.fail();
+        drag.last = now.current.yours[drag.held];
+        manager.activate();
+      })
+      .onTouchesUp((_e, manager) => manager.end())
+      .onUpdate((e) => {
+        if (!drag.held) return;
+        const [x, y] = toPic(e.x, e.y);
+        const next = edgeAngle(drag.held, offWind(x, y));
+        if (next !== drag.last) {
+          tick();
+          drag.last = next;
+          now.current.onChange(drag.held === "upwind" ? { upwind: next } : { downwind: next });
+        }
+      })
+      .onFinalize(() => {
+        drag.held = null;
+      });
+  }, [s, now, drag]);
+  /* eslint-enable react-hooks/immutability */
+
+  return (
+    <View style={styles.upwind}>
+      <Segmented<string>
+        wide
+        value={answer ? String(answer.into) : ""}
+        accessibilityLabel="Can you ride upwind?"
+        segments={UP_ANSWERS.map((a) => ({
+          value: String(a.into),
+          label: a.name,
+          accessibilityLabel: `${a.name}: ${a.line}`,
+        }))}
+        onChange={(v) => onChange({ upwind: Number(v) })}
+      />
+      <T variant="caption" color="muted" style={styles.answerLine}>
+        {answer ? answer.line : `Your own: ${yours.upwind}° into the wind.`}
+      </T>
+      <GestureDetector gesture={gesture}>
+        <View style={[styles.pic, { width: picWidth, height: UP.vh * s }]}>
+          <UpwindPicture upwind={yours.upwind} downwind={yours.downwind} width={picWidth} />
+        </View>
+      </GestureDetector>
+      <View style={styles.angles}>
+        <AngleSlider
+          value={yours.upwind}
+          max={UPWIND_MAX}
+          word="into the wind"
+          label="Degrees into the wind"
+          ends={["Straight across", `${UPWIND_MAX}° into it`]}
+          width={width}
+          onChange={(upwind) => onChange({ upwind })}
+        />
+        <AngleSlider
+          second
+          value={yours.downwind}
+          max={DOWNWIND_MAX}
+          word="below across"
+          label="Degrees below straight across"
+          ends={["Straight across", `${DOWNWIND_MAX}° downwind`]}
+          width={width}
+          onChange={(downwind) => onChange({ downwind })}
+        />
+      </View>
+    </View>
+  );
+}
+
+const lab = { ...mono, fontSize: 9, letterSpacing: 0.9 } as const;
+const strong = { fontFamily: fonts.monoBold, fontSize: 9, letterSpacing: 0.9 } as const;
+
+/** The course round the wind, as the approved mock-up draws it: CAN'T GO, RIDE, DRIFT. */
+function UpwindPicture({ upwind, downwind, width }: { upwind: number; downwind: number; width: number }) {
+  const { cx, cy, r, vx, vw, vh } = UP;
+  const up = 90 - upwind;
+  const deep = 90 + downwind;
+  const xy = (a: number, rr: number) => upPoint(a, rr).map(f1).join(" ");
+  const sector = (a1: number, a2: number, rr: number) =>
+    `M${cx} ${cy}L${xy(a1, rr)}A${rr} ${rr} 0 ${a2 - a1 > 180 ? 1 : 0} 1 ${xy(a2, rr)}Z`;
+  const angle = (side: number) => {
+    const rr = r * 0.82;
+    const parts = [];
+    if (upwind) {
+      const [x1, y1] = upPoint(side * 90, rr);
+      const [x2, y2] = upPoint(side * up, rr);
+      const [lx, ly] = upPoint(side * (up - 9), r + 14);
+      parts.push(
+        <Path
+          key={`u${side}`}
+          d={`M${f1(x1)} ${f1(y1)}A${rr} ${rr} 0 0 ${side > 0 ? 0 : 1} ${f1(x2)} ${f1(y2)}`}
+          fill="none"
+          stroke={colors.magenta}
+          strokeWidth={2}
+        />,
+        <SvgText
+          key={`ut${side}`}
+          fontFamily={fonts.monoBold}
+          fontSize={11}
+          x={f1(lx)}
+          y={f1(ly + 4)}
+          textAnchor={side > 0 ? "start" : "end"}
+          fill={colors.magenta}
+        >
+          {`${upwind}°`}
+        </SvgText>,
+      );
+    }
+    if (downwind) {
+      const [x1, y1] = upPoint(side * 90, rr);
+      const [x2, y2] = upPoint(side * deep, rr);
+      const [lx, ly] = upPoint(side * (deep + 9), r + 14);
+      parts.push(
+        <Path
+          key={`d${side}`}
+          d={`M${f1(x1)} ${f1(y1)}A${rr} ${rr} 0 0 ${side > 0 ? 1 : 0} ${f1(x2)} ${f1(y2)}`}
+          fill="none"
+          stroke={colors.ink}
+          strokeWidth={1.5}
+        />,
+        <SvgText
+          key={`dt${side}`}
+          fontFamily={fonts.monoBold}
+          fontSize={11}
+          x={f1(lx)}
+          y={f1(ly + 8)}
+          textAnchor={side > 0 ? "start" : "end"}
+          fill={colors.ink}
+        >
+          {`${downwind}°`}
+        </SvgText>,
+      );
+    }
+    return parts;
+  };
+  const ride = (side: number) => {
+    const wide = deep - up >= 30;
+    const [x, y] = upPoint((side * (up + deep)) / 2, wide ? r * 0.6 : r * 0.56);
+    const at = { x: f1(x), y: f1(y + (wide ? 3 : -8)), textAnchor: "middle" as const };
+    // On a narrow course the word sits over the lines: a halo of paper under it.
+    return (
+      <G key={`ride${side}`}>
+        {wide ? null : (
+          <SvgText {...strong} {...at} fill={colors.paper} stroke={colors.paper} strokeWidth={3} strokeLinejoin="round">
+            RIDE
+          </SvgText>
+        )}
+        <SvgText {...strong} {...at} fill={colors.ink}>
+          RIDE
+        </SvgText>
+      </G>
+    );
+  };
+  const handle = (side: number, kind: "upwind" | "downwind") => {
+    const [x, y] = upPoint(side * (kind === "upwind" ? up : deep), r);
+    return (
+      <Circle
+        key={`${kind}${side}`}
+        cx={f1(x)}
+        cy={f1(y)}
+        r={7}
+        fill={kind === "upwind" ? colors.ink : colors.paper}
+        stroke={kind === "upwind" ? colors.paper : colors.ink}
+        strokeWidth={2}
+      />
+    );
+  };
+  return (
+    <Svg
+      width={width}
+      height={(width * vh) / vw}
+      viewBox={`${vx} 0 ${vw} ${vh}`}
+      accessible
+      accessibilityLabel={`The way you ride round the wind: you can't go within ${up}° of it, you ride from ${upwind}° into the wind to ${downwind}° below straight across, and further down you drift and lose ground.`}
+    >
+      <Defs>
+        <Pattern id="hatch" width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <Line x1={0} y1={0} x2={0} y2={5} stroke={colors.ink} strokeWidth={0.8} strokeOpacity={0.55} />
+        </Pattern>
+      </Defs>
+      <Circle cx={cx} cy={cy} r={r} fill={colors.sunken} stroke={colors.line} />
+      <Path d={sector(-up, up, r)} fill="url(#hatch)" stroke={colors.ink} strokeDasharray="3 3" />
+      {deep - up > 0.5 ? (
+        <>
+          <Path d={sector(up, deep, r)} fill={colors.paper} stroke={colors.ink} strokeWidth={1.5} strokeLinejoin="round" />
+          <Path d={sector(-deep, -up, r)} fill={colors.paper} stroke={colors.ink} strokeWidth={1.5} strokeLinejoin="round" />
+        </>
+      ) : (
+        <Path d={`M${cx} ${cy}L${xy(up, r)}M${cx} ${cy}L${xy(-up, r)}`} stroke={colors.ink} strokeWidth={1.5} />
+      )}
+      <Path d={sector(deep, 360 - deep, r)} fill="none" stroke={colors.ink} strokeDasharray="2 3" strokeOpacity={0.6} />
+      <Line x1={cx - r - 8} x2={cx + r + 8} y1={cy} y2={cy} stroke={colors.ink} strokeOpacity={0.4} strokeDasharray="1 3" />
+      <SvgText {...lab} x={cx + r + 10} y={cy + 3} fill={colors.muted}>
+        ACROSS
+      </SvgText>
+      <SvgText {...lab} x={cx - r - 10} y={cy + 3} textAnchor="end" fill={colors.muted}>
+        ACROSS
+      </SvgText>
+      <SvgText {...strong} x={cx} y={cy - r * 0.5} textAnchor="middle" fill={colors.ink}>
+        CAN’T GO
+      </SvgText>
+      {ride(1)}
+      {ride(-1)}
+      <SvgText {...strong} x={cx} y={cy + r * 0.55} textAnchor="middle" fill={colors.ink}>
+        DRIFT
+      </SvgText>
+      <SvgText {...lab} x={cx} y={cy + r * 0.55 + 12} textAnchor="middle" fill={colors.muted}>
+        YOU LOSE GROUND
+      </SvgText>
+      {angle(1)}
+      {angle(-1)}
+      <Path d={`M${cx} 6V${cy - r - 12}`} stroke={colors.ink} strokeWidth={2.5} />
+      <Path d={`M${cx - 6} ${cy - r - 14}L${cx + 6} ${cy - r - 14}L${cx} ${cy - r - 3}Z`} fill={colors.ink} />
+      <SvgText {...strong} x={cx + 10} y={18} fill={colors.ink}>
+        WIND
+      </SvgText>
+      <Path
+        d={`M${cx} ${cy - 12}C${cx + 5} ${cy - 4} ${cx + 5} ${cy + 8} ${cx} ${cy + 12}C${cx - 5} ${cy + 8} ${cx - 5} ${cy - 4} ${cx} ${cy - 12}Z`}
+        fill={colors.ink}
+      />
+      {handle(1, "downwind")}
+      {handle(-1, "downwind")}
+      {handle(1, "upwind")}
+      {handle(-1, "upwind")}
+    </Svg>
+  );
+}
+
+const KNOB = 22;
+
+/** One angle: the figure, what it is, and a slider from 0 to `max` in whole degrees. */
+function AngleSlider({
+  value,
+  max,
+  word,
+  label,
+  ends,
+  width,
+  second,
+  onChange,
+}: {
+  value: number;
+  max: number;
+  word: string;
+  label: string;
+  ends: [string, string];
+  width: number;
+  second?: boolean;
+  onChange: (deg: number) => void;
+}) {
+  const track = width - KNOB;
+  const now = useLatest({ value, onChange });
+  /* eslint-disable react-hooks/immutability -- as WindStep's */
+  const gesture = useMemo(() => {
+    const set = (x: number) => {
+      const next = degAtX(x - KNOB / 2, track, max);
+      if (next === now.current.value) return;
+      tick();
+      now.current.value = next;
+      now.current.onChange(next);
+    };
+    const pan = Gesture.Pan()
+      .runOnJS(true)
+      .activeOffsetX([-6, 6])
+      .failOffsetY([-12, 12])
+      .onUpdate((e) => set(e.x));
+    const tap = Gesture.Tap()
+      .runOnJS(true)
+      .maxDistance(10)
+      .onEnd((e, ok) => ok && set(e.x));
+    return Gesture.Exclusive(pan, tap);
+  }, [track, max, now]);
+  /* eslint-enable react-hooks/immutability */
+  const x = (value / max) * track;
+  return (
+    <View>
+      <View style={styles.angleHead}>
+        <T variant="figure" tabular style={styles.angleFigure}>
+          {value}°
+        </T>
+        <T variant="label" caps color="ink2">
+          {word}
+        </T>
+      </View>
+      <GestureDetector gesture={gesture}>
+        <View
+          style={[styles.slider, { width }]}
+          accessible
+          accessibilityRole="adjustable"
+          accessibilityLabel={label}
+          accessibilityValue={{ min: 0, max, now: value, text: `${value}°` }}
+          accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+          onAccessibilityAction={(e) =>
+            onChange(Math.max(0, Math.min(max, value + (e.nativeEvent.actionName === "increment" ? 1 : -1))))
+          }
+        >
+          <View style={[styles.rail, { left: KNOB / 2, width: track }]} />
+          <View style={[styles.rail, styles.railOn, { left: KNOB / 2, width: x }]} />
+          <View style={[styles.sliderKnob, second && styles.sliderKnobSecond, { left: x }]} />
+        </View>
+      </GestureDetector>
+      <View style={styles.ends} accessible={false}>
+        <T variant="eyebrow" caps color="muted">
+          {ends[0]}
+        </T>
+        <T variant="eyebrow" caps color="muted">
+          {ends[1]}
+        </T>
+      </View>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
-  content: { paddingHorizontal: space.lg, paddingBottom: space["2xl"] },
-  block: { gap: space.sm, paddingVertical: space.lg },
-  legend: { flexDirection: "row", gap: space.lg },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: space.xs },
-  figs: { flexDirection: "row", flexWrap: "wrap", rowGap: space.sm },
-  fig: { width: "50%", gap: space["2xs"] },
-  band: { height: hitTarget, justifyContent: "center" },
-  scale: { position: "absolute", left: 0, opacity: 0.35 },
-  span: { position: "absolute", height: 4, backgroundColor: colors.ink },
-  edge: { opacity: 0.35 },
+  content: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space["2xl"] },
+  flex: { flex: 1 },
+  head: { flexDirection: "row", alignItems: "baseline", gap: space.md, paddingBottom: space.md },
+  progress: { flexDirection: "row", gap: space["2xs"], height: 3 },
+  bar: { flex: 1, backgroundColor: withAlpha(colors.ink, 0.13) },
+  barDone: { backgroundColor: colors.ink },
+  sub: { paddingTop: space.lg, paddingBottom: space.lg },
+  range: { height: RANGE.height },
+  strip: { position: "absolute", height: RANGE.stripH },
   handle: {
     position: "absolute",
-    top: 0,
     width: hitTarget,
     height: hitTarget,
     alignItems: "center",
     justifyContent: "center",
   },
-  thumb: {
-    width: 11,
-    height: 22,
+  knob: {
+    minWidth: 30,
+    height: 26,
+    paddingHorizontal: space.xs,
     borderRadius: radius.pill,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.ink,
     backgroundColor: colors.paper,
-  },
-  web: { alignSelf: "center" },
-  dot: { position: "absolute", width: hitTarget, height: hitTarget },
-  picked: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.md },
-  pickedValue: { minWidth: space["4xl"] + space.md },
-  dirs: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-  chip: {
-    minHeight: hitTarget - space.sm,
-    paddingHorizontal: space.md,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
     alignItems: "center",
     justifyContent: "center",
   },
-  chipOn: { backgroundColor: colors.ink, borderColor: colors.ink },
-  chipPressed: { backgroundColor: colors.sunken },
-  key: { flexDirection: "row", alignItems: "center", gap: space.xs, flexWrap: "wrap" },
-  swatch: { width: space.lg, height: space.md, backgroundColor: colors.ink },
-  readout: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: space.sm, minHeight: hitTarget },
-  why: { fontFamily: fonts.bodyItalic },
-  tr: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.sm,
-    paddingVertical: space.xs + space["2xs"],
+  knobTop: { borderColor: colors.penInk },
+  knobText: { fontFamily: fonts.monoBold, letterSpacing: 0 },
+  shore: { gap: space.md },
+  web: { alignSelf: "center" },
+  dot: { position: "absolute", width: hitTarget, height: hitTarget },
+  dirs: { borderTopWidth: 2, borderTopColor: colors.ink },
+  dir: {
+    gap: space["2xs"],
+    paddingVertical: space.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.line,
   },
-  th: { borderBottomWidth: 1, borderBottomColor: colors.ink },
-  forecast: { flex: 1 },
-  starsCell: { width: space["4xl"] * 2 - space.md },
-  moved: { fontFamily: fonts.monoBold },
+  dirHead: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  dirName: { flex: 1, fontFamily: fonts.displayBold },
+  cost: { flexDirection: "row", alignItems: "center", gap: space.xs },
+  costText: { fontFamily: fonts.monoBold },
+  upwind: { gap: space.sm },
+  answerLine: { fontFamily: fonts.bodyItalic, minHeight: hitTarget / 2 },
+  pic: { alignSelf: "center" },
+  angles: { gap: space.xl, paddingTop: space.sm },
+  angleHead: { flexDirection: "row", alignItems: "baseline", gap: space.sm },
+  angleFigure: { minWidth: space["4xl"] },
+  slider: { height: hitTarget, justifyContent: "center" },
+  rail: {
+    position: "absolute",
+    top: hitTarget / 2 - 2,
+    height: 4,
+    borderRadius: radius.pill,
+    backgroundColor: colors.line,
+  },
+  railOn: { backgroundColor: colors.ink },
+  sliderKnob: {
+    position: "absolute",
+    top: (hitTarget - KNOB) / 2,
+    width: KNOB,
+    height: KNOB,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    borderColor: colors.paper,
+    backgroundColor: colors.ink,
+  },
+  sliderKnobSecond: { borderColor: colors.ink, backgroundColor: colors.paper },
+  ends: { flexDirection: "row", justifyContent: "space-between" },
   actions: {
     flexDirection: "row",
     justifyContent: "flex-end",
+    alignItems: "center",
     gap: space.md,
     paddingHorizontal: space.lg,
     paddingTop: space.md,
@@ -990,5 +1096,5 @@ const styles = StyleSheet.create({
     borderTopColor: colors.ink,
     backgroundColor: colors.paper,
   },
-  delete: { marginRight: "auto", alignSelf: "center" },
+  reset: { marginRight: "auto" },
 });

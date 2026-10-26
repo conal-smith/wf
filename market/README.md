@@ -175,11 +175,16 @@ you are in. Every write route answers 403 `suspended` while the caller's
 It also serves `GET /api/me/rider` and `PUT /api/me/rider`
 (`site/api/riders.ts`): what the account keeps of the rider so it follows
 them across devices, for now their own star rating, `{ customStars,
-keptStars, updatedAt }` (the rating in use, and one kept aside while a level
-rates), in the `rider_profiles` table (migrations 0005 and 0006). A `PUT` is kept
-only when its `updatedAt` is newer than the stored one, and none is taken as
-newer than the moment it arrives; the answer is what is kept after. These two
-are not behind a suspension: nobody else sees them.
+updatedAt }` (a version 3 rating, or null while ours rates), in the
+`rider_profiles` table (migrations 0005 and 0006; its `kept_stars` column, a
+rating kept aside while a level rated until 25 October 2026, is written null
+and never read). A `PUT` is kept only when its `updatedAt` is newer than the
+stored one, and none is taken as newer than the moment it arrives; the answer
+is what is kept after. A page from before 25 October 2026 may still send
+`keptStars`, which is dropped, or a rating made from a level (version 1 or 2):
+that write is answered 200 with what is kept, and changes nothing, and a
+stored rating of that kind reads as null. These two are not behind a
+suspension: nobody else sees them.
 
 The same process also serves the app's star-condition alerts under
 `/api/alerts` when `FEATURE_ALERTS=1`, and evaluates them where

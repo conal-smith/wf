@@ -1,8 +1,10 @@
 /**
- * The arithmetic behind "Your star rating" (YourStarsDialog.tsx), kept apart
+ * The arithmetic behind the rider's own stars — Customise's "What wind suits
+ * you?" and "Configure stars based on wind direction" on the site
+ * (src/Customise.tsx) and in the app (mobile/src/features/stars) — kept apart
  * from the drawing so it can be tested: the rider's units and the handles'
- * steps in them, the handles kept in order, and every star the dialog shows,
- * read from the rating itself (force5/src/stars.ts) rather than restated.
+ * steps in them, the handles kept in order, and every star they show, read
+ * from the rating itself (force5/src/stars.ts) rather than restated.
  *
  * Everything is held in knots, as the rating is, and shown in the rider's
  * unit; a handle snaps to a whole unit (half a metre per second), and is kept
@@ -12,19 +14,17 @@
 import {
   CUSTOM_LIMITS,
   DIRECTION_KEYS,
-  directionCosts,
-  gustiness,
-  gustsOverLimit,
-  gustyCost,
+  NEVER,
+  oursCopy,
   parseCustomRating,
+  sameCustomRating,
   rateHour,
-  rideableWind,
-  windBand,
-  windScore,
+  windStars,
   type CustomRating,
   type DirectionKey,
   type HourRating,
   type Rider,
+  type WindBand,
 } from "../../force5/src/stars";
 import {
   BEAUFORT_KN,
@@ -108,7 +108,7 @@ export const WIND_KEYS: readonly WindKey[] = [
   "sweetHigh",
   "max",
 ];
-/** The ends of the wind scale and of the "Together" grid's gusts, in knots. */
+/** The ends of the wind scale and of the grid's gusts, in knots. */
 export const WIND_TOP = CUSTOM_LIMITS.windTopKn;
 export const GUST_TOP = 50;
 
@@ -191,26 +191,57 @@ export function moveWindForce(
 export const inForces = (rating: CustomRating): CustomRating =>
   forceBand(rating);
 
-/** Stars off for one direction, in half stars from 0 to 5. */
+/**
+ * Whether a rating is ours: as it stands, or, in Force, as ours is set in
+ * whole forces. Then no rating of the rider's own is kept.
+ */
+export const ratingIsOurs = (custom: CustomRating, units: Units) =>
+  sameCustomRating(custom, oursCopy()) ||
+  (units === "bft" && sameCustomRating(custom, inForces(oursCopy())));
+
+/** Offshore is never, for everyone: no dot moves it (the owner's ruling, 25 October 2026). */
+export const shoreLocked = (key: DirectionKey) => key === "offshore";
+
+/** Stars off for one direction, in whole stars from 0 to 5; offshore stays never. */
 export function setDirection(
   rating: CustomRating,
   key: DirectionKey,
   off: number,
 ): CustomRating {
+  if (shoreLocked(key)) return rating;
   return safe({
     ...rating,
     direction: {
       ...rating.direction,
-      [key]: clamp(Math.round(off * 2) / 2, 0, 5),
+      [key]: clamp(Math.round(off), 0, NEVER),
     },
   });
 }
 
 const safe = (rating: CustomRating) => parseCustomRating(rating) ?? rating;
 
-/** "−2½", "−3", "0": stars off as the dialog sets them. */
-export const halfStars = (off: number) =>
-  off ? `−${Math.floor(off) || ""}${off % 1 ? "½" : ""}` : "0";
+/** What a way of wind costs, as the wizard says it: "no cost", "−1★", "never". */
+export const costLabel = (off: number) =>
+  off >= NEVER ? "never" : off <= 0 ? "no cost" : `−${off}★`;
+
+/**
+ * The stars the four handles make by steady wind, whole stars, as runs of
+ * one count at a time from 0 to `to` knots: the read-only strip under the
+ * slider. A run's `from`–`to` are whole knots, both in it.
+ */
+export function starRuns(
+  wind: WindBand,
+  to = 50,
+): { stars: number; from: number; to: number }[] {
+  const runs: { stars: number; from: number; to: number }[] = [];
+  for (let kn = 0; kn <= to; kn++) {
+    const stars = Math.round(windStars(kn, wind));
+    const last = runs[runs.length - 1];
+    if (last && last.stars === stars) last.to = kn;
+    else runs.push({ stars, from: kn, to: kn });
+  }
+  return runs;
+}
 
 /** The bearings a west-facing beach sees each way of wind from. */
 const FACING = 270;
@@ -223,9 +254,8 @@ export const FROM: Record<DirectionKey, number> = {
 };
 
 /**
- * An hour of `windKn` gusting `gustKn` from `dir`, rated for this rider:
- * daylight, and no wing to fit, so only the wind, the gusts and the
- * direction speak.
+ * An hour of `windKn` gusting `gustKn` from `dir`, rated for this rider in
+ * daylight: only the wind, the gusts and the direction speak.
  */
 export function rateExample(
   rider: Rider,
@@ -241,38 +271,8 @@ export function rateExample(
       daylight: true,
     },
     { facing: FACING },
-    { ...rider, wings: [] },
+    rider,
   )!;
-}
-
-/** The rider rated on a custom rating, and on the level it started from. */
-export const withRating = (rider: Rider, custom: CustomRating): Rider => ({
-  ...rider,
-  custom,
-});
-export const onLevel = (rider: Rider, custom: CustomRating): Rider => ({
-  ...rider,
-  skill: custom.base,
-  custom: null,
-});
-
-/**
- * What the readout says of an hour: its wind, and what came off: the gusty
- * wind's stars, the direction's, or all of them for a gust over the limit.
- */
-export function breakdown(
-  rider: Rider,
-  windKn: number,
-  gustKn: number,
-  dir: DirectionKey,
-) {
-  const rating = rateExample(rider, windKn, gustKn, dir);
-  const r = { ...rider, wings: [] };
-  const wind = windScore(rideableWind(windKn, gustKn, r), windBand(r));
-  const over = gustsOverLimit(gustKn, r);
-  const gusts = over ? 0 : gustyCost(r, gustiness(windKn, gustKn, r));
-  const direction = over ? 0 : directionCosts(r)[dir];
-  return { rating, wind, over, gusts, direction };
 }
 
 /** The examples' hours: [wind, gust, direction], cross-onshore unless named. */
@@ -336,7 +336,7 @@ export const polar = (a: number, r: number): [number, number] => [
 /** How far out a dot sits for its stars off: on the rim none, at the beach all five. */
 export const webRadius = (off: number) => WEB_R * (1 - off / 5);
 
-/** Stars off for a dot dragged to (x, y), unrounded: `setDirection` makes half stars of it. */
+/** Stars off for a dot dragged to (x, y), unrounded: `setDirection` makes whole stars of it. */
 export const offAt = (x: number, y: number) =>
   (1 - Math.min(Math.hypot(x, y), WEB_R) / WEB_R) * 5;
 
@@ -348,10 +348,10 @@ export function sliceAt(x: number, y: number): DirectionKey | null {
   return WEB_DIRS.find((d) => off <= d.to)?.key ?? "onshore";
 }
 
-/** Shade of a "Together" square for 0–5 stars, as the pattern's key draws them. */
+/** Shade of a grid square for 0–5 stars, as the pattern's key draws them. */
 export const SHADE = [0, 0.08, 0.25, 0.45, 0.65, 0.85] as const;
 
-/** Knots a square of the "Together" grid. */
+/** Knots a square of the grid. */
 export const GRID_STEP = 2;
 
 /**

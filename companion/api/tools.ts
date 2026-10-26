@@ -19,8 +19,6 @@ import {
   MIN_WEIGHT_KG,
   MIN_WING_M2,
   SHORE_LABEL,
-  GUSTIES,
-  SKILLS,
   bestWindow,
   parseCustomRating,
   pickWing,
@@ -50,8 +48,8 @@ import type { ForecastSource } from "../../mcp/api/source.js";
 import { parseStarsChoice, starsFromAt } from "../../force5/src/lead.js";
 import { squaresFor } from "../../force5/src/spotData.js";
 import {
-  SKILL_LABEL,
   riderSummary,
+  starsName,
   type Card,
   type ChatContext,
   type MapAction,
@@ -95,7 +93,12 @@ export interface CompanionTool {
   run(input: unknown, ctx: ToolContext): Promise<ToolOutcome>;
 }
 
-/** The rider in the request, made safe: anything out of range is the estimate. */
+/**
+ * The rider in the request, made safe: anything out of range is the
+ * estimate, and a rating this site does not read (one made from a level,
+ * before 25 October 2026) is none, so ours rates. A level or gust setting an
+ * older browser sends is not read.
+ */
 export function riderFrom(context: RiderContext | null): Rider {
   if (!context) return DEFAULT_RIDER;
   const weight = context.weightKg;
@@ -108,26 +111,20 @@ export function riderFrom(context: RiderContext | null): Rider {
       weight <= MAX_WEIGHT_KG
         ? Math.round(weight)
         : null,
-    skill: SKILLS.includes(context.skill) ? context.skill : "intermediate",
     wings: [
       ...new Set(
         context.wings.filter((w) => w >= MIN_WING_M2 && w <= MAX_WING_M2),
       ),
     ].sort((a, b) => a - b),
     ...(custom ? { custom } : {}),
-    ...(context.gusty &&
-    GUSTIES.includes(context.gusty) &&
-    context.gusty !== "some"
-      ? { gusty: context.gusty }
-      : {}),
     ...(starsFrom ? { starsFrom } : {}),
   };
 }
 
 const riderForModel = (rider: Rider) => ({
+  stars: starsName(Boolean(rider.custom)),
   weight_kg: rider.weightKg ?? ESTIMATE_WEIGHT_KG,
   weight_assumed: rider.weightKg === null,
-  level: SKILL_LABEL[rider.skill],
   wings_m2: rider.wings,
 });
 
@@ -296,7 +293,7 @@ function card(rating: SpotRating, rider: Rider): SpotCardData {
     rider: {
       weightKg: rider.weightKg ?? ESTIMATE_WEIGHT_KG,
       assumed: rider.weightKg === null,
-      skill: rider.skill,
+      own: Boolean(rider.custom),
     },
     note: rating.best
       ? null
@@ -784,19 +781,13 @@ const proposeRiderProfile = tool({
   definition: {
     name: "propose_rider_profile",
     description:
-      "Propose saving the rider's profile (weight, level, the wings they own), which the stars and wing sizes are rated for. The rider sees a card and must tap Confirm; nothing is saved until they do. Call it when the rider tells you their weight, level or wings, or asks to set up their profile and has given at least one of them. Fields left null keep their current value.",
+      "Propose saving the rider's profile (weight and the wings they own), which the wing sizes are picked for; neither changes the stars. The rider sees a card and must tap Confirm; nothing is saved until they do. Call it when the rider tells you their weight or wings, or asks to set up their profile and has given at least one of them. Fields left null keep their current value.",
     input_schema: {
       type: "object",
       properties: {
         weight_kg: nullable({
           type: "number",
           description: "Body weight in kg, 30-160.",
-        }),
-        level: nullable({
-          type: "string",
-          enum: ["beginner", "intermediate", "advanced"],
-          description:
-            "beginner = Learning (still getting up on the foil), intermediate = Riding, advanced = Advanced.",
         }),
         wings_m2: nullable({
           type: "array",
@@ -805,17 +796,16 @@ const proposeRiderProfile = tool({
             "Every wing size the rider owns, in m² (1.5-10), e.g. [4, 5, 6].",
         }),
       },
-      required: ["weight_kg", "level", "wings_m2"],
+      required: ["weight_kg", "wings_m2"],
       additionalProperties: false,
     },
   },
   schema: z.object({
     weight_kg: z.number().nullable(),
-    level: z.enum(["beginner", "intermediate", "advanced"]).nullable(),
     wings_m2: z.array(z.number()).max(12).nullable(),
   }),
   label: () => "Preparing your rider profile",
-  async run({ weight_kg, level, wings_m2 }, ctx) {
+  async run({ weight_kg, wings_m2 }, ctx) {
     if (
       weight_kg !== null &&
       (weight_kg < MIN_WEIGHT_KG || weight_kg > MAX_WEIGHT_KG)
@@ -831,7 +821,6 @@ const proposeRiderProfile = tool({
     const current = ctx.rider;
     const rider: RiderContext = {
       weightKg: weight_kg === null ? current.weightKg : Math.round(weight_kg),
-      skill: level ?? current.skill,
       wings:
         wings_m2 === null
           ? current.wings
@@ -848,7 +837,6 @@ const proposeRiderProfile = tool({
       result: {
         proposed: {
           weight_kg: rider.weightKg,
-          level: rider.skill,
           wings_m2: rider.wings,
         },
         status: "Shown to the rider with Confirm and Not now. Not saved yet.",

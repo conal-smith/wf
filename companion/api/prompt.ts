@@ -8,7 +8,8 @@
  */
 import { ESTIMATE_WEIGHT_KG } from "../../force5/src/stars.js";
 import { localTime } from "../../mcp/api/forecast.js";
-import { SKILL_LABEL, type ChatContext } from "../shared/protocol.js";
+import { STARS_IN_WORDS } from "../../mcp/api/tools.js";
+import type { ChatContext } from "../shared/protocol.js";
 import { clockTime, dublinDate, longDay } from "./time.js";
 
 export const SYSTEM = `You are Gust, the wing-foiling buddy built into wingfoil.ie, a wind forecast map for Ireland (Republic and Northern Ireland). You help riders work out where and when to go wing foiling, and with what wing.
@@ -23,8 +24,8 @@ How you work
 - The app draws tool results as cards: a spot card shows the best window's stars, wind, gusts, direction, wing and the other windows. Don't recite what a card shows. Add the judgement around it: which to pick and why, what to watch out for, what to bring.
 - One spot ("is Brandon on this weekend?", "what wing should I take?"): get_spot_forecast. Comparing places ("where's best tomorrow?"): find_sessions. A place you don't have an id for: list_spots. The rider's selected spot in the context has its id.
 - Dates: the context gives today's date in Ireland. Work out "tomorrow", "Saturday" or "this weekend" from it and pass YYYY-MM-DD; a weekend is the Saturday with days 2.
-- Stars (0-5) are rated for the rider in the context: the wind for their weight and level, less what the shore angle and gusty wind take away; an hour whose gust is over the top of the rider's range gets no stars. They come from one model's forecast, the model the rider picked (HARMONIE unless they picked another), and ECMWF's past the end of its run; how far the other models agree never changes them. why_not_more_stars says what cost stars; use it to explain.
-- If the rider's weight is not set, the ratings assume ${ESTIMATE_WEIGHT_KG} kg. Say so once, briefly, the first time it matters, and offer to set up their profile.
+- Stars (0-5) are wingfoil.ie's rating, ours, the same for everyone, unless the rider has made their own in Customise on the site (the context says which). ${STARS_IN_WORDS} A rider's own stars move those four numbers and what each way of wind costs; the rest is the same. The stars come from one model's forecast, the model the rider picked (HARMONIE unless they picked another), and ECMWF's past the end of its run; how far the other models agree never changes them. why_not_more_stars says what cost stars; use it to explain.
+- If the rider's weight is not set, the wing sizes assume ${ESTIMATE_WEIGHT_KG} kg. Say so once, briefly, the first time a wing matters, and offer to set up their profile.
 - Wings: quote the tool's wing_m2, and own_wing_m2 (which of their own wings to take) when it is there.
 - show_on_map moves the rider's map. Call it only when the rider asks to see something on the map. Never move the map unasked.
 - propose_rider_profile only proposes: the rider has to tap Confirm on the card. After proposing, say in one sentence what you prepared. Never say it is saved.
@@ -78,13 +79,17 @@ export function renderContext(context: ChatContext, serverNow: number): string {
       `The map's timeline is at ${localTime(time)} (${relative(time, now)}).`,
     );
   const rider = context.rider;
-  if (!rider || rider.weightKg === null)
-    lines.push(
-      `Rider profile: weight not set (ratings assume ${ESTIMATE_WEIGHT_KG} kg), level ${SKILL_LABEL[rider?.skill ?? "intermediate"]}, ${rider?.wings.length ? `wings ${rider.wings.join(", ")} m²` : "no wings listed"}.`,
-    );
-  else
-    lines.push(
-      `Rider profile: ${rider.weightKg} kg, level ${SKILL_LABEL[rider.skill]}, ${rider.wings.length ? `wings ${rider.wings.join(", ")} m²` : "no wings listed"}.`,
-    );
+  const own = rider?.custom?.wind;
+  const stars = own
+    ? `stars their own (too light ${own.min} kn, sweet spot ${own.sweetLow}–${own.sweetHigh} kn, too much ${own.max} kn)`
+    : "stars ours";
+  const wings = rider?.wings.length
+    ? `wings ${rider.wings.join(", ")} m²`
+    : "no wings listed";
+  lines.push(
+    !rider || rider.weightKg === null
+      ? `Rider profile: weight not set (wing sizes assume ${ESTIMATE_WEIGHT_KG} kg), ${stars}, ${wings}.`
+      : `Rider profile: ${rider.weightKg} kg, ${stars}, ${wings}.`,
+  );
   return `<app_context>\n${lines.join("\n")}\n</app_context>`;
 }

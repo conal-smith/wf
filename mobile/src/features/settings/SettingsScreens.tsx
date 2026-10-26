@@ -20,7 +20,7 @@ import { useForecast } from "../../data/forecast";
 import { usePrefs } from "../../data/prefs";
 import { colors, fonts, hitTarget, space } from "../../theme/tokens";
 import { DOCK_ROWS, dockRowOn } from "../dock/dockLogic";
-import { CustomiseLink, LevelSwitch, WeightField, WingChips, useRider } from "./RiderFields";
+import { CustomiseLink, WeightField, WingChips, useRider } from "./RiderFields";
 import { SettingsPage, openLink } from "./SettingsPage";
 import {
   CREDITS,
@@ -28,8 +28,8 @@ import {
   SOURCE_CODE_URL,
   modelRows,
   modelStarsLine,
-  riderWords,
   runText,
+  starsName,
   toggleBlendModel,
 } from "./settingsLogic";
 
@@ -38,21 +38,18 @@ export function RiderScreen() {
   const band = bandKnots(rider);
   return (
     <SettingsPage title="Your riding">
-      <ListSection title="Level">
+      <ListSection title="Your stars">
         <View style={styles.block}>
-          <View>
-            <LevelSwitch />
-            <CustomiseLink />
-          </View>
           <T variant="body" color="ink2">
-            {riderWords(rider)}: below {band.min} kn you cannot stay up for long; {band.sweetLow}–{band.sweetHigh} kn
-            is the sweet spot; a gust over {band.max} kn leaves the hour no stars.
+            {starsName(rider)}: under {band.min} kn is too light; {band.sweetLow}–{band.sweetHigh} kn is the sweet
+            spot; a gust over {band.max} kn leaves the hour no stars.
           </T>
+          <CustomiseLink />
         </View>
       </ListSection>
       <ListSection
         title="Weight"
-        footer={`Heavier riders need more wind. Until you set it, the stars assume ${ESTIMATE_WEIGHT_KG} kg.`}
+        footer={`Your weight picks the wing size we suggest; it never changes the stars. Until you set it, we assume ${ESTIMATE_WEIGHT_KG} kg.`}
       >
         <View style={styles.block}>
           <WeightField rider={rider} onChange={change} />
@@ -60,7 +57,7 @@ export function RiderScreen() {
       </ListSection>
       <ListSection
         title="Wings you own, m²"
-        footer="With none chosen, each hour suggests the size a rider like you would take. With your wings, it picks the smallest one big enough, and an hour none of them suits loses a star."
+        footer="With none chosen, each hour suggests the size a rider like you would take. With your wings, it picks the smallest one big enough. Wings never change the stars."
       >
         <View style={styles.block}>
           <WingChips rider={rider} onChange={change} />

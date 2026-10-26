@@ -53,12 +53,9 @@ import {
   type ShoreType,
 } from "../../force5/src/shoreFacing.js";
 import {
-  GUSTY_FROM,
-  VERY_GUSTY_FROM,
+  GUST_EASE_KN,
   bestWindow,
-  gustiness,
   shoreAngle,
-  type Gustiness,
   type HourRating,
   type Rider,
   type ShoreAngle,
@@ -954,7 +951,7 @@ export interface HourWind {
   gust_max_kn: number | null;
   /**
    * The headline gust over the headline wind (force5/src/gustFactor.ts), to
-   * two places: what the stars call gusty from 1.5 and very gusty from 1.8.
+   * two places. Context only: the stars read the gust itself, not this.
    * Null without a gust. hourWind always gives it; an hour built elsewhere
    * may not.
    */
@@ -1713,9 +1710,10 @@ export const UNITS = {
     "null and offshore wind can't be ruled out",
   gust_factor:
     "`gust_factor` is the hour's gust_kn over its wind_kn (one model's, the " +
-    "one the stars rate): wingfoil.ie's stars call an hour gusty from " +
-    `${GUSTY_FROM} and very gusty from ${VERY_GUSTY_FROM}, and take every ` +
-    "star off a gust over the rider's limit",
+    "one the stars rate), as context: the stars read the gust itself, not " +
+    "the factor. A gust past too much (`rider.gust_limit_kn`) leaves the " +
+    `hour no stars; any other gust is read ${GUST_EASE_KN} kn lighter, and where that is ` +
+    "worth fewer stars than the mean wind the hour takes the lower",
   direction: "degrees the wind or waves come FROM (0 = north)",
   waves: "metres (significant height), seconds (peak period)",
   temperature: "°C",
@@ -1922,7 +1920,7 @@ function rateForecast(
       rateWind(row.wind, row.daylight, facing, rider),
       row.warning,
     );
-    row.rating = rating && row.wind && hourStars(rating, row.wind, rider);
+    row.rating = rating && hourStars(rating);
     if (!row.rating)
       row.why_not_rated = row.warning?.replaces_rating
         ? NOT_RATED.warning
@@ -1963,7 +1961,7 @@ function rateForecast(
     const run = day
       .slice(best.from, best.to + 1)
       .map((h) => ({ ...h, hour: h.wind! }));
-    const summary = session(run, spot, true, rider);
+    const summary = session(run, spot, true);
     const from = Date.parse(summary.from);
     const to = Date.parse(summary.to);
     const inside = events.filter((e) => {
@@ -1996,10 +1994,6 @@ export interface Session {
   gust_kn: number | null;
   /** Its highest gust factor, gust ÷ mean, of the one model's own (`gust_kn`). */
   gust_factor: number | null;
-  /** Its gustiest hour as the stars judge it: steady, gusty or very-gusty. */
-  gustiness: Gustiness;
-  /** Some hour is gusty or very gusty by the stars' rule (`gustiness`). */
-  gusty: boolean;
   /** Its weakest hour's stars for the rider: what it can be relied on for. */
   stars: number | null;
   /** Its best hour's stars. */
@@ -2165,7 +2159,7 @@ export async function findSessions(
     let run: SessionHour[] = [];
     const close = () => {
       if (run.length >= options.minSessionHours)
-        sessions.push(session(run, spot, options.daylightOnly, options.rider));
+        sessions.push(session(run, spot, options.daylightOnly));
       run = [];
     };
     for (const time of times) {
@@ -2221,7 +2215,6 @@ export async function findSessions(
             hours.slice(best.from, best.to + 1),
             spot,
             options.daylightOnly,
-            options.rider,
           )
         : null,
       sessions,
@@ -2278,17 +2271,10 @@ interface SessionHour {
   rating: HourRating | null;
 }
 
-const GUSTINESS_RANK: Record<Gustiness, number> = {
-  steady: 0,
-  gusty: 1,
-  "very-gusty": 2,
-};
-
 function session(
   run: SessionHour[],
   spot: RidingSpot,
   byLastLight: boolean,
-  rider: Rider,
 ): Session {
   const speeds = run.map((r) => r.hour.wind_kn);
   const gusts = run.flatMap((r) =>
@@ -2315,9 +2301,6 @@ function session(
   const factors = run.flatMap((r) =>
     r.hour.gust_factor == null ? [] : [r.hour.gust_factor],
   );
-  const gustiest = run
-    .map((r) => gustiness(r.hour.wind_kn, r.hour.gust_kn, rider))
-    .reduce((a, b) => (GUSTINESS_RANK[b] > GUSTINESS_RANK[a] ? b : a));
   const ratings = run.flatMap((r) => (r.rating ? [r.rating] : []));
   const weakest = ratings.length
     ? ratings.reduce((a, b) => (b.stars < a.stars ? b : a))
@@ -2347,8 +2330,6 @@ function session(
     gust_max_kn: gusts.length ? Math.max(...gusts) : null,
     gust_kn: headlineGusts.length ? Math.max(...headlineGusts) : null,
     gust_factor: factors.length ? Math.max(...factors) : null,
-    gustiness: gustiest,
-    gusty: gustiest !== "steady",
     stars: ratings.length ? weakest!.stars : null,
     best_stars: ratings.length
       ? Math.max(...ratings.map((r) => r.stars))

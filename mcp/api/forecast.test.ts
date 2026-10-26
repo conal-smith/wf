@@ -40,14 +40,31 @@ import {
 import { FIXTURE_NOW, fixtureSource } from "./testing";
 import {
   DEFAULT_RIDER,
-  GUSTY_FROM,
   bestWindow,
+  parseCustomRating,
   rateHour,
   type HourRating,
+  type Rider,
 } from "../../force5/src/stars";
 import { arcText, goodWindArcs } from "../../force5/src/windArcs";
 import { rateForecastHour } from "../../spot/web/spot";
-import { hourStars, rateWind, riderOf, riderUsed } from "./rating";
+import {
+  hourStars,
+  rateWind,
+  riderOf,
+  riderUsed,
+  type RiderChoice,
+} from "./rating";
+
+/** A rider who made the stars their own: a lighter sweet spot, and gusts past 25 kn too much. */
+const OWN_STARS: Rider = {
+  ...riderOf(),
+  custom: parseCustomRating({
+    version: 3,
+    wind: { min: 8, sweetLow: 10, sweetHigh: 16, max: 25 },
+    direction: { onshore: 0, crossOn: 1, cross: 0, crossOff: 2 },
+  }),
+};
 
 /** Every hour the site rates counts, none or more stars, for the site's default rider. */
 const EVERY_HOUR = { rider: DEFAULT_RIDER, minStars: 0 };
@@ -1223,9 +1240,9 @@ describe("the stars", () => {
   it("rates every hour with the site's own rateHour, as the spot page does", async () => {
     for (const [id, rider] of [
       ["brandon", riderOf()],
-      ["dollymount", riderOf({ level: "advanced", gusty: "little" })],
-      ["kilcrea", riderOf({ level: "beginner", weight_kg: 60 })],
-      ["malahide-estuary", riderOf({ level: "advanced", wings_m2: [4, 6] })],
+      ["dollymount", OWN_STARS],
+      ["kilcrea", riderOf({ weight_kg: 60 })],
+      ["malahide-estuary", riderOf({ wings_m2: [4, 6] })],
     ] as const) {
       const forecast = await forecastFor(id, rider);
       const facing = shoreFacing(id);
@@ -1284,30 +1301,51 @@ describe("the stars", () => {
     } as HourWind;
     const rider = riderOf();
     const rating = rateWind(wind, true, shoreFacing("kilcrea"), rider)!;
-    const stars = hourStars(rating, wind, rider);
+    const stars = hourStars(rating);
     expect(stars).toMatchObject({
       stars: 0,
       potential: 0,
       why_no_stars: "gusts over your limit",
-      gustiness: "very-gusty",
     });
+    expect(stars).not.toHaveProperty("gustiness");
     expect(rateWind(wind, false, 163, rider)).toBeNull();
   });
 
   it("says who the stars are for, as the spot page does", async () => {
     const forecast = await forecastFor("kilcrea");
-    expect(forecast.rider).toMatchObject({
-      label: "Riding · ~80 kg",
-      level: "intermediate",
+    expect(forecast.rider).toEqual({
+      label: "Ours · ~80 kg",
+      rating: "ours",
       weight_kg: 80,
       weight_assumed: true,
-      gusty: "some",
-      gust_limit_kn: 30,
-      wind_band_kn: { min: 11, sweet_low: 14, sweet_high: 24, max: 30 },
+      wings_m2: [],
+      gust_limit_kn: 35,
+      wind_band_kn: { min: 11, sweet_low: 15, sweet_high: 22, max: 35 },
     });
-    expect(
-      riderUsed(riderOf({ level: "beginner", weight_kg: 95 })),
-    ).toMatchObject({ label: "Learning · 95 kg", weight_assumed: false });
+    // The weight is the rider's, and moves no number the stars come from.
+    expect(riderUsed(riderOf({ weight_kg: 95 }))).toMatchObject({
+      label: "Ours · 95 kg",
+      weight_assumed: false,
+      wind_band_kn: forecast.rider!.wind_band_kn,
+    });
+    expect(riderUsed(OWN_STARS)).toMatchObject({
+      label: "Your own stars · ~80 kg",
+      rating: "own",
+      gust_limit_kn: 25,
+      wind_band_kn: { min: 8, sweet_low: 10, sweet_high: 16, max: 25 },
+    });
+  });
+
+  it("takes an old agent's level and gust setting, and rates on ours all the same", async () => {
+    // Before 25 October 2026 an agent could pass a level and a gust setting.
+    const old = { level: "advanced", gusty: "little" } as RiderChoice;
+    expect(riderOf(old)).toEqual(riderOf());
+    expect(riderOf({ ...old, weight_kg: 95 })).toEqual(
+      riderOf({ weight_kg: 95 }),
+    );
+    expect((await forecastFor("kilcrea", riderOf(old))).hours).toEqual(
+      (await forecastFor("kilcrea")).hours,
+    );
   });
 
   it("gives the winds the beach wants, as the spot page's header says them", async () => {
@@ -1322,8 +1360,7 @@ describe("the stars", () => {
   });
 
   it("picks each Irish day's best window from the hours' stars, ended by last light", async () => {
-    const rider = riderOf({ level: "advanced", gusty: "little" });
-    const forecast = await forecastFor("dollymount", rider, 1, 72);
+    const forecast = await forecastFor("dollymount", OWN_STARS, 1, 72);
     const days = forecast.best_windows!;
     expect(days.map((d) => d.date)).toEqual(forecast.sun.map((d) => d.date));
     const withWindow = days.filter((d) => d.window);
@@ -1539,28 +1576,24 @@ describe("findSessions' gust limits", () => {
     expect(hours(steady)).toBeLessThan(hours(await search({})));
   });
 
-  it("gives each session its highest gust factor and its gustiest hour by the stars' rule", async () => {
+  it("gives each session its highest gust factor, as context", async () => {
     const found = await search({});
     const sessions = found.spots.flatMap((r) => r.sessions);
     // The fixtures' whole two days gust to about 30 kn over a 12 kn mean.
     expect(sessions.length).toBeGreaterThan(0);
     for (const s of sessions) {
-      expect(s.gust_factor!).toBeGreaterThanOrEqual(GUSTY_FROM);
       expect(s.gust_factor!).toBeGreaterThanOrEqual(
         s.gust_kn! / s.max_kn - 0.01,
       );
-      expect(s.gusty).toBe(s.gustiness !== "steady");
+      // No gust setting, and no star penalty by gust factor, since 25 October 2026.
+      expect(s).not.toHaveProperty("gustiness");
+      expect(s).not.toHaveProperty("gusty");
     }
-    expect(sessions.some((s) => s.gustiness === "very-gusty")).toBe(true);
   });
 
   it("never counts an hour gusting over the rider's limit, however it is asked", async () => {
-    // A light rider's limit is under the fixtures' 30 kn gusts.
-    const rider = riderOf({
-      level: "advanced",
-      weight_kg: 40,
-      gusty: "little",
-    });
+    // A rider whose own too much is under the fixtures' 30 kn gusts.
+    const rider = OWN_STARS;
     const limit = riderUsed(rider).gust_limit_kn;
     expect(limit).toBeLessThan(30);
     const all = await search({ rider, minStars: 1 });

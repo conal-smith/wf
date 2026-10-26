@@ -11,8 +11,8 @@
  * `lead`): HARMONIE's own wind, gust and bearing while it reaches the hour,
  * ECMWF's past it, which of the two each hour is (`lead` in each place), and how
  * far all the models agree, as context. It does not keep stars: those are the
- * reader's own (weight, level, wings), and rating an hour is arithmetic the
- * browser does in microseconds.
+ * reader's own (ours, or their own four numbers), and rating an hour is
+ * arithmetic the browser does in microseconds.
  *
  * It is published as a run, the way the models are (docs/TILING_DESIGN.md,
  * decision 6): the pointer `weather/blend.json` holds the times, the models it

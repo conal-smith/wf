@@ -414,8 +414,8 @@ export function placeHours(
 /**
  * The light's verdict on an hour's shore, for a wind that blows out from the
  * beach: struck through where the rider's rating takes three stars or more off
- * for it (a true offshore on a level's rating, and a cross-offshore for a
- * learner), and otherwise a quieter mark.
+ * for it (offshore always, never being five; a cross-offshore only where the
+ * rider has set it so), and otherwise a quieter mark.
  */
 export function offshoreMark(
   rating: HourRating | null,

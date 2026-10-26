@@ -95,6 +95,24 @@ very good", and asked for it to be configurable. That became **Pointing
 upwind** (cautious, typical, sharp) in the display options. On 24 October 2026
 it became one number, below.
 
+### Two angles, ours to start (25 October 2026)
+
+With the levels gone (docs/STAR_RATINGS.md, v7), the course is two numbers,
+both set in Customise's "Can you ride upwind?" and neither moving a star:
+
+- **Degrees into the wind** (`Rider.upwind`, `upwindOf`): ours is 0°,
+  straight across, "Not yet" (A little 5°, Yes 20°, up to 45°).
+- **Degrees below straight across** that the course runs to
+  (`Rider.downwind`, `downwindOf`, `courseDeep` = 90° plus it): ours is 10°,
+  from 0° to 45°. Past it the rider drifts and loses ground: the wizard's
+  picture says DRIFT, "you lose ground" (it said SLOW); the loupe still draws
+  it faintly along the rim.
+
+So ours runs from 90° to 100° off the wind. The no-go and the course below
+replace the levels' starts (0°, 20°, 35° into the wind, and a course to 120°
+off it), which are kept below as the history of the rule. A rider stored
+before 25 October 2026 starts again from ours (`PREFS_VERSION` 3).
+
 ### Degrees into the wind: the rule (24 October 2026)
 
 The rider says how far into the wind they ride, in degrees counted from
@@ -112,7 +130,8 @@ The owner ruled:
   light's wedge is drawn, from the rider's band in `stars.ts`.
 - **The no-go half-angle is 90° less the number**, either side of the wind.
 - **The course runs from the no-go's edge to about 120° off the wind**
-  (`COURSE_DEEP`). Past that, downwind, is possible but slow: the rose draws
+  (`COURSE_DEEP`; since 25 October 2026 the rider's own `courseDeep`, 100° for
+  ours, above). Past that, downwind, is possible but slow: the rose draws
   it faintly (SLOW), not as part of the course, and the light's wedge leaves
   it out.
 - **It never moves a star.** The stars rate the wind and how it meets the

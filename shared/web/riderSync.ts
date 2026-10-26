@@ -1,11 +1,11 @@
 /**
  * A signed-in rider's own star rating, kept on the device (force5.prefs.v1)
  * and with their account (GET and PUT /api/me/rider), so it follows them
- * from device to device: the rating, and whether it rates or is kept while a
- * level does. Each copy carries the moment it was saved, deleted, or switched
- * on or off;
- * when the two differ the newer wins, whichever side it is on, and the
- * account itself never takes a write older than what it keeps.
+ * from device to device. Each copy carries the moment it was saved, or
+ * deleted for ours; when the two differ the newer wins, whichever side it is
+ * on, and the account itself never takes a write older than what it keeps.
+ * A rating from before 25 October 2026, made from a level, is not read on
+ * either side: it is none, and ours rates.
  *
  * No React and no identity provider here: `shared/web/useRiderSync.tsx` runs it
  * for whoever is signed in, and the pages hear of an adopted rating through
@@ -15,6 +15,7 @@ import {
   PREFS_KEY,
   loadPrefs,
   savePrefs,
+  withCustomStars,
   type Prefs,
   type PrefsStorage,
 } from "../../force5/src/prefs";
@@ -87,10 +88,9 @@ export type Reconciled =
 
 const time = (iso: string | null) => (iso === null ? null : Date.parse(iso));
 
-/** Whether the account's copy and the device's rate, and keep, the same. */
+/** Whether the account's copy and the device's rate the same. */
 const sameStars = (profile: RiderProfile, rider: Rider) =>
-  sameCustomRating(profile.customStars, rider.custom) &&
-  sameCustomRating(profile.keptStars ?? null, rider.keptCustom);
+  sameCustomRating(parseCustomRating(profile.customStars), rider.custom);
 
 /**
  * Which way a device's copy and its account's go. `account` is who is signed
@@ -114,7 +114,6 @@ export function reconcile(
       kind: "push",
       input: {
         customStars: prefs.rider.custom ?? null,
-        keptStars: prefs.rider.keptCustom ?? null,
         updatedAt: prefs.starsUpdatedAt!,
       },
     };
@@ -122,25 +121,18 @@ export function reconcile(
 }
 
 /**
- * The account's copy, taken as this device's, and matched with that account.
- * An account written only by devices from before `keptStars` has none: its
- * rating is saved and in use, or there is none.
+ * The account's copy, taken as this device's, and matched with that account:
+ * its rating, through `withCustomStars` (none, or ours as it stands, is
+ * ours), stamped with the account's moment rather than now. Anything else
+ * an account from before 25 October 2026 answers (`keptStars`) is not read.
  */
 export function adopt(
   prefs: Prefs,
   profile: RiderProfile,
   account: string,
 ): Prefs {
-  const { custom: _was, keptCustom: _kept, ...rider } = prefs.rider;
-  const custom = parseCustomRating(profile.customStars);
-  const kept = custom ? null : parseCustomRating(profile.keptStars);
   return {
-    ...prefs,
-    rider: custom
-      ? { ...rider, custom }
-      : kept
-        ? { ...rider, keptCustom: kept }
-        : rider,
+    ...withCustomStars(prefs, parseCustomRating(profile.customStars)),
     starsUpdatedAt: profile.updatedAt,
     starsAccount: account,
   };
@@ -194,9 +186,7 @@ export async function syncRider(
   const now = loadPrefs(storage);
   if (now.starsUpdatedAt !== before.starsUpdatedAt) return false;
   const next = adopt(now, kept, account);
-  const changed =
-    !sameCustomRating(next.rider.custom, now.rider.custom) ||
-    !sameCustomRating(next.rider.keptCustom, now.rider.keptCustom);
+  const changed = !sameCustomRating(next.rider.custom, now.rider.custom);
   savePrefs(next, storage);
   // Said even when the rating is the same: a page holding the preferences
   // in its state must not write back the stamps this round replaced.

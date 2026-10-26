@@ -1,187 +1,140 @@
 /**
  * The arithmetic behind "Customise" (src/Customise.tsx), kept apart from the
  * drawing so it can be tested: the draft the wizard edits, read from the same
- * preferences Display options and "Your star rating" write, and written back
- * through the same functions (force5/src/prefs.ts), so the lights, the dock
- * and every other page rate the hours as the wizard left them.
+ * preferences the rest of the site reads, and written back through the same
+ * functions (force5/src/prefs.ts), so the lights, the dock and every other
+ * page rate the hours as the wizard left them.
  *
- * The wizard's wind and shore are a custom star rating
- * (force5/src/stars.ts `CustomRating`): the band and the stars each way of
- * wind takes off. Left as the level has them, the level rates and no custom
- * rating is saved; changed, they are the rider's own. How much gusty wind
- * bothers the rider is theirs whatever rates, so it is kept on the rider, as
- * how far into the wind they ride is.
+ * Everyone starts from ours (force5/src/stars.ts `OURS`). The wizard's wind
+ * and shore are the rider's own rating; left as ours, none is kept and ours
+ * rates. How far up and down the wind they ride is kept on the rider; it
+ * moves no star. Weight and units are the rider's too, and never make the
+ * rating differ from ours.
  */
+import { parseRider, withCustomStars, type Prefs } from "../force5/src/prefs";
 import {
-  parseRider,
-  withCustomStars,
-  withStarsOn,
-  type Prefs,
-} from "../force5/src/prefs";
-import { UPWIND_DEFAULT, upwindOf } from "../force5/src/rideWedge";
+  DOWNWIND_DEFAULT,
+  UPWIND_DEFAULT,
+  clampDownwind,
+  clampUpwind,
+  downwindOf,
+  upwindOf,
+} from "../force5/src/rideWedge";
 import {
-  DEFAULT_RIDER,
-  gustsOverLimit,
+  oursCopy,
   rateHour,
-  ratingLevel,
   sameCustomRating,
-  standardRating,
   type CustomRating,
   type DirectionKey,
-  type Gusty,
   type HourRating,
   type Rider,
-  type ShoreAngle,
-  type Skill,
 } from "../force5/src/stars";
 import type { Units } from "../force5/src/units";
-import { inForces, setDirection } from "../spot/web/yourStars";
+import { inForces, ratingIsOurs, setDirection } from "../spot/web/yourStars";
 import type { PlaceHour } from "./ratings";
 
 /** What the wizard is setting, until "Show me the chart" saves it. */
 export interface Draft {
-  skill: Skill;
   weightKg: number | null;
-  /** Degrees into the wind, past straight across it: the level's until changed. */
-  upwind: number;
-  /** How much gusty wind bothers them. */
-  gusty: Gusty;
-  /** The wind band and the shore: the level's until changed. */
-  custom: CustomRating;
   units: Units;
-  /** The wings the rider owns, in m²: a star comes off where none suits. */
-  wings: number[];
+  /** The four wind numbers and the shore: ours until changed. */
+  custom: CustomRating;
+  /** Degrees into the wind, past straight across it: ours, 0, until changed. */
+  upwind: number;
+  /** Degrees below straight across the course runs to: ours, 10, until changed. */
+  downwind: number;
   /** The rider's spots, most recently starred first. */
   starred: string[];
 }
 
-/**
- * The draft as the rider stands now: their own rating if it rates (at the
- * level it started from), else their level's.
- */
+/** The draft as the rider stands now: their own rating if they have one, else ours. */
 export function draftOf(prefs: Prefs, starred: readonly string[]): Draft {
   const rider = prefs.rider;
-  const skill = ratingLevel(rider);
   return inUnits({
-    skill,
     weightKg: rider.weightKg,
-    upwind: upwindOf({ skill, upwind: rider.upwind }),
-    gusty: rider.gusty ?? "some",
-    custom: rider.custom
-      ? lockShore(rider.custom)
-      : levelRating(skill, rider.weightKg),
     units: prefs.units,
-    wings: [...rider.wings],
+    custom: rider.custom
+      ? { ...rider.custom, wind: { ...rider.custom.wind } }
+      : oursCopy(),
+    upwind: upwindOf(rider),
+    downwind: downwindOf(rider),
     starred: [...starred],
   });
 }
 
 /**
- * The draft as its units show it: in Force, the band and the gusts on whole
+ * The draft as its units show it: in Force, the four numbers on whole
  * forces (yourStars.ts `inForces`), as the handles stand.
  */
 export const inUnits = (draft: Draft): Draft =>
   draft.units === "bft" ? { ...draft, custom: inForces(draft.custom) } : draft;
 
-/**
- * Whether the draft's wind, gusts and shore are its level's: as the level
- * has them, or, in Force, as the level's are set in whole forces.
- */
-export function onItsLevel(draft: Draft): boolean {
-  const custom = { ...draft.custom, base: draft.skill };
-  const level = levelRating(draft.skill, draft.weightKg);
-  return (
-    sameCustomRating(custom, level) ||
-    (draft.units === "bft" && sameCustomRating(custom, inForces(level)))
-  );
-}
-
-/** A level's own band and shore for a rider of this weight. */
-export const levelRating = (skill: Skill, weightKg: number | null) =>
-  lockShore(standardRating({ ...DEFAULT_RIDER, skill, weightKg }, skill));
+/** Whether a rating is ours (yourStars.ts `ratingIsOurs`). */
+export { ratingIsOurs };
 
 /**
- * A new level or weight: the wind and the shore start again from that
- * level's, as Display options' level does. A new level starts the
- * degrees into the wind again from its own too; a new weight leaves them.
+ * Whether anything the rating or the course is made of differs from ours:
+ * then "Reset to ours" shows. Weight and units are the rider's own, never
+ * ours to reset.
  */
-export const withLevel = (
-  draft: Draft,
-  skill: Skill,
-  weightKg: number | null,
-): Draft =>
+export const differsFromOurs = (draft: Draft) =>
+  !ratingIsOurs(draft.custom, draft.units) ||
+  draft.upwind !== UPWIND_DEFAULT ||
+  draft.downwind !== DOWNWIND_DEFAULT;
+
+/** "Reset to ours": the wind, the shore and the course as ours, weight and units as they are. */
+export const resetToOurs = (draft: Draft): Draft =>
   inUnits({
     ...draft,
-    skill,
-    weightKg,
-    upwind: skill === draft.skill ? draft.upwind : UPWIND_DEFAULT[skill],
-    custom: levelRating(skill, weightKg),
+    custom: oursCopy(),
+    upwind: UPWIND_DEFAULT,
+    downwind: DOWNWIND_DEFAULT,
   });
 
-/** The rider the draft rates as: the custom rating in use, the rest as it is. */
+/** The rider the draft rates as. */
 export const draftRider = (draft: Draft, rider: Rider): Rider => ({
   ...rider,
-  skill: draft.skill,
   weightKg: draft.weightKg,
   upwind: draft.upwind,
-  gusty: draft.gusty,
-  wings: draft.wings,
-  custom: draft.custom,
-  keptCustom: null,
+  downwind: draft.downwind,
+  custom: ratingIsOurs(draft.custom, draft.units) ? null : draft.custom,
 });
-
-/**
- * The wings typed into "Wings you own": every number in it, "4, 5.5" or
- * "4 and 5.5m", made safe as a stored rider's are (`parseRider`).
- */
-export const parseWings = (text: string): number[] =>
-  parseRider({
-    ...DEFAULT_RIDER,
-    wings: (text.match(/\d+(?:\.\d+)?/g) ?? []).map(Number),
-  }).wings;
 
 /* ---- the shore ---- */
 
-/** Never: five off leaves no star in any wind, the web's middle. */
-export const NEVER = 5;
-
-/** Offshore is never for a learner: the wizard holds it there. */
-export const shoreLocked = (skill: Skill, key: DirectionKey) =>
-  skill === "beginner" && key === "offshore";
-
-function lockShore(rating: CustomRating): CustomRating {
-  return rating.base === "beginner"
-    ? { ...rating, direction: { ...rating.direction, offshore: NEVER } }
-    : rating;
-}
-
 /**
- * The stars a way of wind takes off, as a dot on the web sets them: in half
- * stars from none to never (yourStars.ts `setDirection`). A learner's
- * offshore stays at never.
+ * The stars a way of wind takes off, as a dot on the web sets them: in whole
+ * stars from none to never (yourStars.ts `setDirection`). Offshore stays at
+ * never.
  */
 export function withShore(draft: Draft, key: DirectionKey, off: number): Draft {
-  if (shoreLocked(draft.skill, key)) return draft;
   const custom = setDirection(draft.custom, key, off);
   return custom.direction[key] === draft.custom.direction[key]
     ? draft
     : { ...draft, custom };
 }
 
-/** What a way of wind costs, as the wizard says it: "no cost", "−1.5★", "never". */
-export const costLabel = (off: number) =>
-  off >= NEVER ? "never" : off <= 0 ? "no cost" : `−${off}★`;
+/* ---- the course ---- */
+
+/** Degrees into the wind, held to 0–45 whole degrees. */
+export const withUpwind = (draft: Draft, deg: number): Draft => {
+  const upwind = clampUpwind(deg);
+  return upwind === draft.upwind ? draft : { ...draft, upwind };
+};
+
+/** Degrees below straight across, held to 0–45 whole degrees. */
+export const withDownwind = (draft: Draft, deg: number): Draft => {
+  const downwind = clampDownwind(deg);
+  return downwind === draft.downwind ? draft : { ...draft, downwind };
+};
 
 /* ---- saving ---- */
 
 /**
- * The preferences with the draft saved: the rider's level, weight, degrees
- * into the wind and gusty wind, the units, and either the level rating (the
- * draft's wind and shore left as the level has them, the rider's own rating
- * kept aside) or
- * the draft as the rider's own rating. Through the same functions Display
- * options and "Your star rating" save with, so the account's copy is stamped
- * the same way.
+ * The preferences with the draft saved: the rider's weight and angles, the
+ * units, and either no rating of their own (the draft's wind and shore left
+ * as ours) or the draft as their own. Through `withCustomStars`, so the
+ * account's copy is stamped only when the rating itself changes.
  */
 export function applyDraft(
   prefs: Prefs,
@@ -190,16 +143,13 @@ export function applyDraft(
 ): Prefs {
   const rider = parseRider({
     ...prefs.rider,
-    skill: draft.skill,
     weightKg: draft.weightKg,
     upwind: draft.upwind,
-    gusty: draft.gusty,
-    wings: draft.wings,
+    downwind: draft.downwind,
   });
   const next: Prefs = { ...prefs, units: draft.units, rider };
-  const custom = { ...draft.custom, base: draft.skill };
-  if (onItsLevel(draft)) return withStarsOn(next, draft.skill, now);
-  if (sameCustomRating(custom, prefs.rider.custom)) return next;
+  const custom = ratingIsOurs(draft.custom, draft.units) ? null : draft.custom;
+  if (sameCustomRating(custom, prefs.rider.custom ?? null)) return next;
   return withCustomStars(next, custom, now);
 }
 
@@ -318,53 +268,6 @@ export function sampleDay(
       from: rows[i].from,
     })),
   };
-}
-
-/** The shore angle's key in a custom rating. */
-const DIRECTION_OF: Record<ShoreAngle, DirectionKey> = {
-  onshore: "onshore",
-  "cross-on": "crossOn",
-  cross: "cross",
-  "cross-off": "crossOff",
-  offshore: "offshore",
-};
-
-/** The word under an hour for the way of wind that cost it a star. */
-export const SHORE_WORD: Record<DirectionKey, string> = {
-  onshore: "onshore",
-  crossOn: "x-on",
-  cross: "cross",
-  crossOff: "x-off",
-  offshore: "offshore",
-};
-
-/**
- * Why a sample hour has fewer stars than its wind is worth, as the hour says
- * it under its stars: a gust over the rider's top ("too strong", the gust in
- * red), a way of wind they never ride, gusty wind (the gust in orange), or a
- * way of wind that took a star off. Each only when it moved a star, as the
- * reasons in force5/src/stars.ts are.
- */
-export function hourWhy(
-  hour: SampleHour,
-  rating: HourRating,
-  rider: Rider,
-): { gust: "over" | "gusty" | null; word: string } {
-  if (gustsOverLimit(hour.gustKn, rider))
-    return { gust: "over", word: "too strong" };
-  const key = rating.shore ? DIRECTION_OF[rating.shore] : null;
-  const costs = rider.custom?.direction;
-  // The stars this hour would have with the shore costing nothing.
-  const free =
-    key && costs?.[key]
-      ? rateHour({ ...hour, daylight: true }, { facing: null }, rider)!.stars
-      : rating.stars;
-  const shore = key !== null && free > rating.stars;
-  const gusty = rating.reasons.some((r) => /^(Very gusty|Gusty)$/.test(r));
-  if (shore && costs![key!] >= NEVER)
-    return { gust: gusty ? "gusty" : null, word: SHORE_WORD[key!] };
-  if (gusty) return { gust: "gusty", word: "gusty" };
-  return { gust: null, word: shore ? SHORE_WORD[key!] : "" };
 }
 
 /* ---- the rider's spots ---- */

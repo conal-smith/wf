@@ -3,7 +3,7 @@ import * as install from "../../../../ai/web/install";
 import { windModels, type ModelAvailability } from "../../../../force5/src/manifests";
 import { parseStarsChoice } from "../../../../force5/src/lead";
 import { loadPrefs, withRiderModel } from "../../../../force5/src/prefs";
-import { DEFAULT_RIDER, rateOn, standardRating } from "../../../../force5/src/stars";
+import { DEFAULT_RIDER, oursCopy } from "../../../../force5/src/stars";
 import {
   changeRider,
   claudeCodeLine,
@@ -22,46 +22,43 @@ import {
   parseWings,
   riderSummary,
   riderWords,
-  starsOnSegments,
+  starsName,
   toggleBlendModel,
   toggleWing,
   WING_SIZES,
 } from "./settingsLogic";
 
 describe("the rider", () => {
-  it("says who the stars are for, as the site does", () => {
-    expect(riderWords(DEFAULT_RIDER)).toBe("Riding · ~80 kg");
-    expect(riderSummary({ weightKg: 72, skill: "beginner", wings: [4, 5.5] })).toBe(
-      "Learning · 72 kg · 4, 5.5 m²",
-    );
-  });
+  const own = () => {
+    const custom = oursCopy();
+    custom.wind.sweetHigh = 25;
+    return custom;
+  };
 
-  it("names a rider's own stars where the level was, only while they rate", () => {
-    const custom = { ...DEFAULT_RIDER, custom: standardRating(DEFAULT_RIDER, "advanced") };
-    expect(riderWords(custom)).toBe("Custom stars · ~80 kg");
-    // Kept aside while a level rates: the level is who the stars are for.
-    const kept = rateOn(custom, "beginner");
-    expect(riderWords(kept)).toBe("Learning · ~80 kg");
-    // A rider stored before custom ratings, or deleted: the level.
-    expect(riderWords({ ...DEFAULT_RIDER, custom: null })).toBe("Riding · ~80 kg");
-  });
-
-  it("offers Custom on the level pill once the rider has a rating of their own, in use or kept", () => {
-    const levels = ["beginner", "intermediate", "advanced"];
-    expect(starsOnSegments(DEFAULT_RIDER).map((s) => s.value)).toEqual(levels);
+  it("says who the stars are for: ours, and the weight", () => {
+    expect(riderWords(DEFAULT_RIDER)).toBe("Ours · ~80 kg");
+    expect(riderSummary({ weightKg: 72, wings: [4, 5.5] })).toBe("Ours · 72 kg · 4, 5.5 m²");
+    expect(starsName(DEFAULT_RIDER)).toBe("Ours");
     expect(customiseText(DEFAULT_RIDER)).toBe("Customise");
-    const custom = { ...DEFAULT_RIDER, custom: standardRating(DEFAULT_RIDER, "advanced") };
-    for (const rider of [custom, rateOn(custom, "advanced")]) {
-      expect(starsOnSegments(rider).map((s) => s.value)).toEqual([...levels, "custom"]);
-      expect(starsOnSegments(rider).at(-1)?.label).toBe("Custom");
-      expect(customiseText(rider)).toBe("Edit custom");
-    }
   });
 
-  it("keeps the rider's own stars through a change of weight, level or wings", () => {
-    const custom = standardRating(DEFAULT_RIDER, "advanced");
-    const changed = changeRider({ ...DEFAULT_RIDER, custom }, { weightKg: 90, skill: "beginner" });
-    expect(changed.custom).toEqual(custom);
+  it("names a rider's own stars once they have made them their own", () => {
+    const rider = { ...DEFAULT_RIDER, weightKg: 80, custom: own() };
+    expect(riderWords(rider)).toBe("Your own stars · 80 kg");
+    expect(customiseText(rider)).toBe("Edit your stars");
+    // Deleted, or stored before there were any: ours.
+    expect(riderWords({ ...DEFAULT_RIDER, custom: null })).toBe("Ours · ~80 kg");
+  });
+
+  it("keeps the rider's own stars and angles through a change of weight or wings", () => {
+    const rider = { ...DEFAULT_RIDER, custom: own(), upwind: 20 };
+    const changed = changeRider(rider, { weightKg: 90, wings: [5] });
+    expect(changed).toEqual({ ...rider, weightKg: 90, wings: [5] });
+  });
+
+  it("drops an old level and gust setting rather than keeping them", () => {
+    const old = { ...DEFAULT_RIDER, skill: "beginner", gusty: "a-lot" } as unknown as Partial<typeof DEFAULT_RIDER>;
+    expect(changeRider(DEFAULT_RIDER, old)).toEqual(DEFAULT_RIDER);
   });
 
   it("takes only what a person and a wing can be", () => {

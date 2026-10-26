@@ -28,7 +28,7 @@ export function MoreScreen() {
       <ScreenTitle title="More" kicker="wingfoil.ie" />
 
       <ListSection title="Your riding" footer="The stars on the chart, the dock and every spot are rated for this rider.">
-        <ListRow label="Rider" value={riderSummary(prefs.rider)} onPress={go("/settings/rider")} hint="Level, weight and wings" />
+        <ListRow label="Rider" value={riderSummary(prefs.rider)} onPress={go("/settings/rider")} hint="Your stars, weight and wings" />
       </ListSection>
 
       <ListSection title="The forecast" footer="The chart, the wind and the stars are your model's forecast. The blend gives the agreement beside them.">

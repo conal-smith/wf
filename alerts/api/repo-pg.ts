@@ -5,7 +5,8 @@
  */
 import type { JSONValue } from "postgres";
 import type { Db } from "../../market/api/src/db.js";
-import type { AlertRule, AppVariant, NoticeKind, Platform, Rider } from "../shared/protocol.js";
+import type { AlertRule, AppVariant, NoticeKind, Platform } from "../shared/protocol.js";
+import { storedRider } from "../shared/schema.js";
 import {
   DEVICE_TTL_DAYS,
   TICKET_TTL_MS,
@@ -26,7 +27,7 @@ interface DeviceRecord {
   app_variant: AppVariant;
   app_version: string;
   timezone: string;
-  rider: Rider;
+  rider: unknown;
   quiet_hours: boolean;
   app_updates: boolean;
   rules: AlertRule[];
@@ -45,7 +46,7 @@ const device = (r: DeviceRecord): DeviceRow => ({
   appVariant: r.app_variant,
   appVersion: r.app_version,
   timezone: r.timezone,
-  rider: r.rider,
+  rider: storedRider(r.rider),
   quietHours: r.quiet_hours,
   appUpdates: r.app_updates,
   rules: r.rules,

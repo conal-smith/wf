@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_RIDER,
-  standardRating,
+  oursCopy,
+  type CustomRating,
   type Rider,
 } from "../../force5/src/stars";
 import { FIXTURE_NOW, fixtureSource } from "../../mcp/api/testing";
 import { shoreFacing as mapFacing } from "../../src/locations";
-import type { ChatContext } from "../shared/protocol";
+import type { ChatContext, RiderContext } from "../shared/protocol";
 import { ratedSpots, shoreFacing } from "./spots";
 import { dublinDayStart } from "./time";
 import {
@@ -76,19 +77,17 @@ describe("shore facing", () => {
 describe("riderFrom", () => {
   it("keeps what a person can be and drops the rest", () => {
     expect(riderFrom(null)).toEqual(DEFAULT_RIDER);
-    expect(
-      riderFrom({ weightKg: 84.6, skill: "advanced", wings: [6, 4, 4, 42] }),
-    ).toEqual({
+    expect(riderFrom({ weightKg: 84.6, wings: [6, 4, 4, 42] })).toEqual({
       weightKg: 85,
-      skill: "advanced",
       wings: [4, 6],
     });
-    expect(
-      riderFrom({ weightKg: 900, skill: "beginner", wings: [] }).weightKg,
-    ).toBeNull();
+    expect(riderFrom({ weightKg: 900, wings: [] }).weightKg).toBeNull();
   });
   it("carries the rider's own star rating, made safe, so Gust rates with it", () => {
-    const custom = standardRating(DEFAULT_RIDER, "advanced");
+    const custom: CustomRating = {
+      ...oursCopy(),
+      wind: { min: 9, sweetLow: 13, sweetHigh: 26, max: 35 },
+    };
     expect(riderFrom({ ...DEFAULT_RIDER, custom }).custom).toEqual(custom);
     expect(
       riderFrom({
@@ -100,11 +99,26 @@ describe("riderFrom", () => {
       DEFAULT_RIDER,
     );
   });
-  it("carries how much gusty wind bothers the rider, some left out", () => {
-    expect(riderFrom({ ...DEFAULT_RIDER, gusty: "lots" }).gusty).toBe("lots");
-    expect(riderFrom({ ...DEFAULT_RIDER, gusty: "some" })).toEqual(
-      DEFAULT_RIDER,
-    );
+  it("takes an older browser's level, gust setting and old rating, and rates it on ours", () => {
+    const old = {
+      weightKg: 85,
+      skill: "advanced",
+      gusty: "lots",
+      wings: [5],
+      custom: {
+        version: 2,
+        base: "advanced",
+        wind: { min: 9, sweetLow: 13, sweetHigh: 26, max: 35 },
+        direction: {
+          onshore: 0,
+          crossOn: 0,
+          cross: 0,
+          crossOff: 1,
+          offshore: 3,
+        },
+      },
+    } as unknown as RiderContext;
+    expect(riderFrom(old)).toEqual({ weightKg: 85, wings: [5] });
   });
 });
 
@@ -135,9 +149,9 @@ describe("get_spot_forecast", () => {
       shore_facing_deg: 101,
     });
     expect(result.rider).toEqual({
+      stars: "Ours",
       weight_kg: 80,
       weight_assumed: true,
-      level: "Riding",
       wings_m2: [],
     });
     expect(result.daylight_hours.length).toBeGreaterThan(0);
@@ -158,7 +172,7 @@ describe("get_spot_forecast", () => {
     expect(card.rider).toEqual({
       weightKg: 80,
       assumed: true,
-      skill: "intermediate",
+      own: false,
     });
     if (card.best) {
       expect(card.best.stars).toBeGreaterThanOrEqual(1);
@@ -175,12 +189,26 @@ describe("get_spot_forecast", () => {
     const out = await run(
       "get_spot_forecast",
       { spot: "Brandon Bay", date: null, days: null },
-      ctx({ weightKg: 90, skill: "advanced", wings: [3, 4.5, 6] }),
+      ctx({ weightKg: 90, wings: [3, 4.5, 6] }),
     );
     const result = out.result as any;
     expect(result.rider.weight_assumed).toBe(false);
     const hour = result.daylight_hours.find((h: any) => h.own_wing_m2 !== null);
     expect([3, 4.5, 6]).toContain(hour.own_wing_m2);
+  });
+
+  it("says when the stars are the rider's own", async () => {
+    const custom = {
+      ...oursCopy(),
+      wind: { min: 8, sweetLow: 10, sweetHigh: 16, max: 25 },
+    };
+    const out = await run(
+      "get_spot_forecast",
+      { spot: "brandon", date: null, days: null },
+      ctx({ ...DEFAULT_RIDER, custom }),
+    );
+    expect((out.result as any).rider.stars).toBe("Your own stars");
+    expect(out.cards![0].rider).toMatchObject({ own: true });
   });
 
   it("asks which spot when a name is ambiguous, and refuses a day that has gone", async () => {
@@ -318,13 +346,13 @@ describe("propose_rider_profile", () => {
   it("proposes, merging over the current profile, and saves nothing", async () => {
     const out = await run(
       "propose_rider_profile",
-      { weight_kg: 85.2, level: null, wings_m2: [6, 4, 5, 5.2] },
-      ctx({ weightKg: null, skill: "advanced", wings: [] }),
+      { weight_kg: 85.2, wings_m2: [6, 4, 5, 5.2] },
+      ctx({ weightKg: null, wings: [] }),
     );
     expect(out.proposal).toEqual({
       id: "id-1",
-      rider: { weightKg: 85, skill: "advanced", wings: [4, 5, 6] },
-      summary: "Save 85 kg · Advanced · 4/5/6 m?",
+      rider: { weightKg: 85, wings: [4, 5, 6] },
+      summary: "Save 85 kg · 4/5/6 m?",
     });
     expect(JSON.stringify(out.result)).toMatch(/Not saved yet/);
   });
@@ -334,7 +362,6 @@ describe("propose_rider_profile", () => {
       (
         await run("propose_rider_profile", {
           weight_kg: 12,
-          level: null,
           wings_m2: null,
         })
       ).isError,
@@ -343,7 +370,6 @@ describe("propose_rider_profile", () => {
       (
         await run("propose_rider_profile", {
           weight_kg: null,
-          level: null,
           wings_m2: [25],
         })
       ).isError,

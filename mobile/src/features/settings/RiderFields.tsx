@@ -1,19 +1,20 @@
 /**
- * Who the stars are rated for: the level pill (the three levels, and Custom
- * once the rider has a rating of their own), the weight, and the wings in the
- * bag. The same rider as the site's (force5.prefs.v1, read and written
- * through `parseRider`), so a change here is the rider the chart, the dock
- * and the spot page rate for at once.
+ * Who the stars are rated for: ours, or the rider's own once they have made
+ * them their own in "Your stars" (stars/YourStarsScreen.tsx), the weight and
+ * the wings in the bag. The same rider as the site's (force5.prefs.v1, read
+ * and written through `parseRider`), so a change here is the rider the chart,
+ * the dock and the spot page rate for at once. The weight and the wings pick
+ * the wing size beside the stars; they never move a star.
  *
- * `compact` is the spot page's line (spot/web/RiderSwitch.tsx): the pill, and
- * the weight and wings behind a fold that opens in place.
+ * `compact` is the spot page's line (spot/web/RiderSwitch.tsx): whose stars,
+ * the way into "Your stars", and the weight and wings behind a fold that
+ * opens in place.
  */
 import { useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
-import { ESTIMATE_WEIGHT_KG, starsOn, type Rider, type StarsOn } from "../../../../force5/src/stars";
+import { ESTIMATE_WEIGHT_KG, type Rider } from "../../../../force5/src/stars";
 import { Chevron } from "../../components/Glyphs";
 import { tick } from "../../components/haptics";
-import { Segmented } from "../../components/Segmented";
 import { T } from "../../components/Text";
 import { usePrefs } from "../../data/prefs";
 import { openYourStars } from "../stars/StarRating";
@@ -24,7 +25,7 @@ import {
   changeRider,
   customiseText,
   parseWeight,
-  starsOnSegments,
+  starsName,
   toggleWing,
   weightText,
 } from "./settingsLogic";
@@ -35,20 +36,7 @@ export function useRider(): [Rider, (change: Partial<Rider>) => void] {
   return [prefs.rider, (change) => save((rider) => changeRider(rider, change))];
 }
 
-/** The level pill: a level, or Custom, the rider's own rating kept whichever rates (`withStarsOn`). */
-export function LevelSwitch() {
-  const { prefs, setStarsOn } = usePrefs();
-  return (
-    <Segmented<StarsOn>
-      value={starsOn(prefs.rider)}
-      accessibilityLabel="Riding level"
-      segments={starsOnSegments(prefs.rider)}
-      onChange={setStarsOn}
-    />
-  );
-}
-
-/** Under the pill: "Customise" from the level picked, or "Edit custom", in use or kept. */
+/** The way into "Your stars": "Customise" from ours, or "Edit your stars". */
 export function CustomiseLink() {
   const { prefs } = usePrefs();
   const label = customiseText(prefs.rider);
@@ -92,7 +80,7 @@ export function WeightField({ rider, onChange }: { rider: Rider; onChange: (chan
         keyboardType="number-pad"
         returnKeyType="done"
         maxLength={3}
-        accessibilityLabel={`Weight in kilograms${rider.weightKg === null ? `, not set: the stars assume ${ESTIMATE_WEIGHT_KG}` : ""}`}
+        accessibilityLabel={`Weight in kilograms${rider.weightKg === null ? `, not set: the wing sizes assume ${ESTIMATE_WEIGHT_KG}` : ""}`}
         style={styles.input}
         maxFontSizeMultiplier={1.6}
       />
@@ -103,7 +91,7 @@ export function WeightField({ rider, onChange }: { rider: Rider; onChange: (chan
       {rider.weightKg !== null && (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Clear the weight: rate for the estimate, ${ESTIMATE_WEIGHT_KG} kilograms`}
+          accessibilityLabel={`Clear the weight: size the wings for the estimate, ${ESTIMATE_WEIGHT_KG} kilograms`}
           onPress={() => {
             tick();
             setText("");
@@ -174,7 +162,7 @@ export function WingChips({ rider, onChange }: { rider: Rider; onChange: (change
   );
 }
 
-/** The spot page's line: the level, and the weight and wings behind a fold. */
+/** The spot page's line: whose stars, the way to make them your own, and the weight and wings behind a fold. */
 export function RiderLine() {
   const [rider, change] = useRider();
   const [open, setOpen] = useState(false);
@@ -182,9 +170,12 @@ export function RiderLine() {
     <View style={styles.line}>
       <View style={styles.lineRow}>
         <T variant="eyebrow" caps color="muted">
-          Rated for
+          Rated on
         </T>
-        <LevelSwitch />
+        <T variant="label" caps>
+          {starsName(rider)}
+        </T>
+        <CustomiseLink />
       </View>
       <Pressable
         accessibilityRole="button"
@@ -214,7 +205,7 @@ export function RiderLine() {
           </T>
           <WingChips rider={rider} onChange={change} />
           <T variant="caption" color="muted" style={styles.note}>
-            Kept on this phone; the chart and every spot rate for it.
+            Kept on this phone. Your weight and wings pick the wing size; they never change the stars.
           </T>
         </View>
       )}

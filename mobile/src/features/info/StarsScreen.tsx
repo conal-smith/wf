@@ -1,48 +1,29 @@
 /**
- * "How the stars work" (spot/web/StarsPage.tsx): the rating in figures, for
- * the rider the app is set to. The wind you can ride, what it is worth against
- * your band, the five ways the wind meets a beach and what each costs, the
- * rest that takes stars off, the wing, and one hour of the live forecast worked
- * through line by line (spot/web/ledger.ts, tested against the rating itself).
+ * "How the stars work" (spot/web/StarsPage.tsx): the rating in plain words and
+ * figures, for the rider the app is set to. Everyone starts from ours; the
+ * four numbers on the wind that make the stars, how a gust is read, the five
+ * ways the wind meets a beach and what each costs, what never moves a star,
+ * the wing, and one hour of the live forecast worked through line by line
+ * (spot/web/ledger.ts, tested against the rating itself).
  */
 import { Stack, router } from "expo-router";
 import { useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import Svg, { Circle, Line, Path, Rect, Text as SvgText } from "react-native-svg";
 import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from "react-native";
-import Svg, {
-  Circle,
-  Line,
-  Path,
-  Rect,
-  Text as SvgText,
-} from "react-native-svg";
-import {
-  GUSTIES,
-  GUSTY_FROM,
-  GUSTY_LABEL,
-  GUSTY_OFF,
-  SKILLS,
-  VERY_GUSTY_FROM,
+  GUST_EASE_KN,
   directionCosts,
-  rateOn,
-  rideableWind,
-  savedCustom,
   starsText,
   windBand,
-  windScore,
+  windStars,
   type DirectionKey,
   type Rider,
-  type Skill,
 } from "../../../../force5/src/stars";
 import { leadText, starsFromAt } from "../../../../force5/src/lead";
 import { compass } from "../../../../force5/src/weather";
 import type { Ledger } from "../../../../spot/web/ledger";
 import { clock, dayNames, dublinDate } from "../../../../spot/web/spot";
+import { costLabel, rateExample } from "../../../../spot/web/yourStars";
 import { Rule } from "../../components/Rule";
 import { Stars } from "../../components/Stars";
 import { T } from "../../components/Text";
@@ -50,38 +31,31 @@ import { useFavourites } from "../../data/favourites";
 import { useForecast } from "../../data/forecast";
 import { spotById } from "../../data/spots";
 import { colors, fonts, hitTarget, space, withAlpha } from "../../theme/tokens";
-import { RiderLine, useRider } from "../settings/RiderFields";
-import { SKILL_LABEL, riderWords } from "../settings/settingsLogic";
-import { workedHour } from "./infoLogic";
+import { CustomiseLink, RiderLine, useRider } from "../settings/RiderFields";
+import { riderWords, starsName } from "../settings/settingsLogic";
+import { AGREED_HOURS, hourName, workedHour } from "./infoLogic";
 
 export function StarsScreen() {
   const [rider] = useRider();
   const { width } = useWindowDimensions();
   const inner = width - space.lg * 2;
+  const band = windBand(rider);
+  const k = (kn: number) => Math.round(kn);
   return (
     <>
-      <Stack.Screen
-        options={{ title: "How the stars work", headerLargeTitleEnabled: true }}
-      />
-      <ScrollView
-        style={styles.root}
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.content}
-      >
+      <Stack.Screen options={{ title: "How the stars work", headerLargeTitleEnabled: true }} />
+      <ScrollView style={styles.root} contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
         <T variant="prose" color="ink2" style={styles.deck}>
-          We rate every daylight hour out of five stars. The rating depends on
-          your level and your weight, so set those first.
+          We rate every daylight hour out of five stars. Everyone starts from ours; in Customise you can make them
+          your own.
         </T>
         <RiderLine />
         <View style={styles.key}>
           <KeyLine mark={<Stars stars={3} potential={5} size={14} />}>
-            Solid stars are the rating. Outlined stars are what the wind speed
-            alone would have earned, before anything was taken off.
+            Solid stars are the rating. Outlined stars are stars the hour lost to the gusts or the shore, and
+            nothing else.
           </KeyLine>
-          <KeyLine mark={<Stars stars={1} potential={2} size={14} />}>
-            A dot is a star out of reach: not even the wind speed alone would
-            have earned it.
-          </KeyLine>
+          <KeyLine mark={<Stars stars={2} size={14} />}>A dot is a star the steady wind never earned.</KeyLine>
           <KeyLine
             mark={
               <T variant="label" caps color="muted">
@@ -89,102 +63,70 @@ export function StarsScreen() {
               </T>
             }
           >
-            Hours in the dark are not rated: from sunset to sunrise they are
-            folded away, and draw no stars.
+            Hours in the dark are not rated: from sunset to sunrise they are folded away, and draw no stars.
           </KeyLine>
         </View>
 
-        <Section n={1} title="The steady wind," soft="not the gusts">
+        <Section n={1} title="Four numbers" soft="for the wind">
           <P>
-            The stars rate the steady wind, the average: it is what holds you up
-            on the foil, and what decides whether a session is on. Below your
-            minimum a gust is a chance to get up, so it can lift the hour to
-            your minimum, worth a star, and no further. Above it, gusty wind
-            takes stars off, and a gust over your maximum leaves the hour none
-            (section 4).
+            The stars come from four numbers you can move in Customise: too light ({k(band.min)} kn), the sweet
+            spot ({k(band.sweetLow)}–{k(band.sweetHigh)} kn) and too much, in gusts ({k(band.max)} kn).
           </P>
           <P>
-            Learners get the smallest boost, because they still drop off the
-            foil in the lulls.
-          </P>
-          {(
-            [
-              [9, 17],
-              [12, 20],
-              [18, 27],
-            ] as const
-          ).map(([w, g]) => (
-            <T key={w} variant="prose" color="ink2">
-              {w} knots gusting {g} is rated as{" "}
-              <T variant="figureSm" tabular>
-                {rideableWind(w, g, rider).toFixed(1)} knots
-              </T>
-            </T>
-          ))}
-        </Section>
-
-        <Section n={2} title="How much wind" soft="suits you">
-          <P>
-            Each level has its own range. Below the minimum you cannot stay up
-            on the foil for long. In the middle of the sweet spot the hour gets
-            five stars. The maximum is the most you can hold, gusts included.
+            Steady wind under too light gets no stars. At too light it gets one star, then a star a knot up to four;
+            five through the sweet spot; then fewer, down to one star {GUST_EASE_KN} kn under too much and none 3 kn
+            under it.
           </P>
           <ScoreChart rider={rider} width={inner} />
           <BandTable rider={rider} />
+          <CustomiseLink />
+        </Section>
+
+        <Section n={2} title="Gusts," soft="read lighter">
+          <P>
+            A gust past too much means no stars, not even outlined ones. Otherwise the gust is read {GUST_EASE_KN} kn
+            lighter, and if that is worth fewer stars the hour takes the lower; those stars show as outlines.
+          </P>
+          <AgreedTable rider={rider} />
         </Section>
 
         <Section n={3} title="Wind" soft="direction">
           <P>
-            What matters is the angle between the wind and the beach. Onshore
-            wind blows straight in from the sea. Offshore wind blows straight
-            out to sea, and that is the dangerous one: if you fall or break
-            something, it carries you away from land.
+            What matters is the angle between the wind and the beach. Onshore wind blows straight in from the sea.
+            Offshore wind blows straight out to sea: if you fall or break something, it carries you away from land.
           </P>
           <Sectors width={Math.min(380, inner)} />
           <ShoreTable rider={rider} />
           <P>
-            Cross-offshore costs learners the most, because a learner drifts
-            downwind and ends up further out. An advanced rider can get back
-            upwind, so it costs them least. Offshore costs the most stars of
-            all.
+            Offshore is never: we don&rsquo;t recommend going out in an offshore wind, and no setting changes that.
+            Cross-offshore costs one star unless you change it in Customise; the rest cost nothing. Stars come off
+            whole.
           </P>
         </Section>
 
-        <Section n={4} title="What else" soft="takes stars off">
+        <Section n={4} title="What never" soft="changes the stars">
           <P>
-            Gusts over your maximum. The hour gets no stars at all, not even
-            outlined ones.
+            Your weight and your wings: they pick the wing size shown beside the stars. How far upwind you ride: it
+            moves the wedge on the chart, not the stars.
           </P>
           <P>
-            Gusty wind. An hour is gusty when its gusts are {GUSTY_FROM} times
-            the average or more, and very gusty from {VERY_GUSTY_FROM} times.
-            How many stars that costs depends on how much gusty wind bothers
-            you. Below your minimum it costs nothing.
-          </P>
-          <GustyTable rider={rider} />
-          <OtherTable />
-          <P>
-            Every hour is rated from one model&rsquo;s own forecast, the model
-            you see on the chart: {leadText(starsFromAt(rider.starsFrom))} for
-            you, as the run reaches the hour. Whether the other models agree is
-            shown beside the stars, and never changes them.
+            Every hour is rated from one model&rsquo;s own forecast, the model you see on the chart:{" "}
+            {leadText(starsFromAt(rider.starsFrom))} for you, as the run reaches the hour. Whether the other models
+            agree is shown beside the stars, and never changes them.
           </P>
           <T variant="body" color="muted" style={styles.italic}>
-            Tap an hour&rsquo;s stars, in the dock or on a spot&rsquo;s page, to
-            see what it lost, and why.
+            Tap an hour&rsquo;s stars, in the dock or on a spot&rsquo;s page, to see what it lost, and why.
           </T>
         </Section>
 
         <Section n={5} title="Which" soft="wing">
           <P>
-            We suggest a wing size for every hour. For an 80 kg rider that is
-            about 5.5 m² at 15 knots, 4.5 m² at 20 knots and 3 m² at 30 knots.
-            Learners get a size bigger, advanced riders a little smaller.
+            We suggest a wing size for every hour. For an 80 kg rider that is about 5.5 m² at 15 knots, 4.5 m² at 20
+            knots and 3 m² at 30 knots; heavier riders a size bigger, lighter riders smaller.
           </P>
           <P>
-            If you have told us which wings you own, we pick the smallest one
-            that is big enough. If none of them suits the wind, the hour loses a
-            star.
+            If you have told us which wings you own, we pick the smallest one that is big enough. The wing never
+            changes the stars.
           </P>
         </Section>
 
@@ -194,7 +136,7 @@ export function StarsScreen() {
         </Section>
 
         <T variant="caption" color="muted" style={styles.italic}>
-          wingfoil.ie star rating, version 6.
+          wingfoil.ie star rating, version 7.
         </T>
       </ScrollView>
     </>
@@ -207,13 +149,7 @@ const P = ({ children }: { children: React.ReactNode }) => (
   </T>
 );
 
-function KeyLine({
-  mark,
-  children,
-}: {
-  mark: React.ReactNode;
-  children: React.ReactNode;
-}) {
+function KeyLine({ mark, children }: { mark: React.ReactNode; children: React.ReactNode }) {
   return (
     <View style={styles.keyLine}>
       <View style={styles.keyMark}>{mark}</View>
@@ -224,17 +160,7 @@ function KeyLine({
   );
 }
 
-function Section({
-  n,
-  title,
-  soft,
-  children,
-}: {
-  n: number;
-  title: string;
-  soft: string;
-  children: React.ReactNode;
-}) {
+function Section({ n, title, soft, children }: { n: number; title: string; soft: string; children: React.ReactNode }) {
   return (
     <View style={styles.section}>
       <Rule strong />
@@ -249,7 +175,7 @@ function Section({
 /** About how wide a character of the chart's mono is, at its size. */
 const EYEBROW_CHAR = 6.4;
 
-/** Stars on the wind alone, against the wind you can ride: tap along it to read a speed. */
+/** Stars for a steady wind, from the rider's four numbers: tap along it to read a speed. */
 function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
   const band = windBand(rider);
   const W = width;
@@ -261,18 +187,18 @@ function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
   const [hover, setHover] = useState<number | null>(null);
   let path = "";
   for (let k = 0; k <= 40; k += 0.25)
-    path += `${path ? "L" : "M"}${X(k).toFixed(1)} ${Y(windScore(k, band)).toFixed(1)}`;
-  const quarter = (band.sweetHigh - band.sweetLow) / 4;
-  const label = `Stars on the wind alone for ${riderWords(rider)}: none below ${Math.round(band.min - 2)} knots, five from ${Math.round(
-    band.sweetLow + quarter,
-  )} to ${Math.round(band.sweetHigh - quarter)}, two at ${Math.round(band.max)}, none past ${Math.round(band.max + 6)}.`;
+    path += `${path ? "L" : "M"}${X(k).toFixed(1)} ${Y(windStars(k, band)).toFixed(1)}`;
+  const r = (kn: number) => Math.round(kn);
+  const label = `Stars for a steady wind, ${starsName(rider).toLowerCase()}: none under ${r(band.min)} knots, one at ${r(
+    band.min,
+  )}, five from ${r(band.sweetLow)} to ${r(band.sweetHigh)}, one at ${r(band.max - 5)}, none from ${r(band.max - 3)}.`;
   const mono = { fontFamily: fonts.monoMedium, fontSize: 10 };
-  // The floor, the sweet spot and the ceiling are named in one row over the
-  // plot, where the curve never reaches (spot/web/StarsPage.tsx): the floor's
-  // name ends at its line and the ceiling's starts at its own, each kept
-  // inside the chart, and the sweet spot's sits between them, clear of both.
-  const minText = `min ${Math.round(band.min)}`;
-  const maxText = `max ${Math.round(band.max)}`;
+  // Too light, the sweet spot and too much are named in one row over the
+  // plot, where the curve never reaches (spot/web/StarsPage.tsx): too light's
+  // name ends at its line and too much's starts at its own, each kept inside
+  // the chart, and the sweet spot's sits between them, clear of both.
+  const minText = `too light ${r(band.min)}`;
+  const maxText = `too much ${r(band.max)}`;
   const textWidth = (text: string) => text.length * EYEBROW_CHAR;
   const minEnd = Math.max(X(0) + textWidth(minText), X(band.min) - 4);
   const maxStart = Math.min(W - 2 - textWidth(maxText), X(band.max) + 4);
@@ -280,26 +206,16 @@ function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
   const names = {
     min: minEnd,
     max: maxStart,
-    sweet: Math.min(
-      Math.max((X(band.sweetLow) + X(band.sweetHigh)) / 2, minEnd + 8 + half),
-      maxStart - 8 - half,
-    ),
+    sweet: Math.min(Math.max((X(band.sweetLow) + X(band.sweetHigh)) / 2, minEnd + 8 + half), maxStart - 8 - half),
   };
+  const at = (x: number) => Math.round(((x - left) / (W - left - right)) * 40);
   return (
     <View
       onStartShouldSetResponder={() => true}
       onMoveShouldSetResponder={() => true}
-      onResponderGrant={(e) =>
-        setHover(
-          Math.round(
-            ((e.nativeEvent.locationX - left) / (W - left - right)) * 40,
-          ),
-        )
-      }
+      onResponderGrant={(e) => setHover(at(e.nativeEvent.locationX))}
       onResponderMove={(e) => {
-        const k = Math.round(
-          ((e.nativeEvent.locationX - left) / (W - left - right)) * 40,
-        );
+        const k = at(e.nativeEvent.locationX);
         setHover(k < 0 || k > 40 ? null : k);
       }}
       accessible
@@ -315,24 +231,10 @@ function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
           fill={withAlpha(colors.magenta, 0.08)}
         />
         {[0, 1, 2, 3, 4, 5].map((n) => (
-          <Line
-            key={n}
-            x1={X(0)}
-            x2={X(40)}
-            y1={Y(n)}
-            y2={Y(n)}
-            stroke={withAlpha(colors.ink, 0.1)}
-          />
+          <Line key={n} x1={X(0)} x2={X(40)} y1={Y(n)} y2={Y(n)} stroke={withAlpha(colors.ink, 0.1)} />
         ))}
         {[0, 1, 2, 3, 4, 5].map((n) => (
-          <SvgText
-            key={`t${n}`}
-            x={X(0) - 6}
-            y={Y(n) + 3}
-            textAnchor="end"
-            fill={colors.muted}
-            {...mono}
-          >
+          <SvgText key={`t${n}`} x={X(0) - 6} y={Y(n) + 3} textAnchor="end" fill={colors.muted} {...mono}>
             {`${n}★`}
           </SvgText>
         ))}
@@ -360,22 +262,10 @@ function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
             strokeDasharray="3 3"
           />
         ))}
-        <SvgText
-          x={names.min}
-          y={Y(5) - 5}
-          textAnchor="end"
-          fill={colors.magenta}
-          {...mono}
-        >
+        <SvgText x={names.min} y={Y(5) - 5} textAnchor="end" fill={colors.magenta} {...mono}>
           {minText}
         </SvgText>
-        <SvgText
-          x={names.sweet}
-          y={Y(5) - 5}
-          textAnchor="middle"
-          fill={colors.magenta}
-          {...mono}
-        >
+        <SvgText x={names.sweet} y={Y(5) - 5} textAnchor="middle" fill={colors.magenta} {...mono}>
           sweet spot
         </SvgText>
         <SvgText x={names.max} y={Y(5) - 5} fill={colors.magenta} {...mono}>
@@ -383,19 +273,8 @@ function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
         </SvgText>
         {hover !== null && hover >= 0 && hover <= 40 && (
           <>
-            <Line
-              x1={X(hover)}
-              x2={X(hover)}
-              y1={Y(5)}
-              y2={Y(0)}
-              stroke={colors.muted}
-            />
-            <Circle
-              cx={X(hover)}
-              cy={Y(windScore(hover, band))}
-              r={3}
-              fill={colors.ink}
-            />
+            <Line x1={X(hover)} x2={X(hover)} y1={Y(5)} y2={Y(0)} stroke={colors.muted} />
+            <Circle cx={X(hover)} cy={Y(windStars(hover, band))} r={3} fill={colors.ink} />
             <SvgText
               x={X(hover) > W - 120 ? X(hover) - 6 : X(hover) + 6}
               y={Y(0) - 6}
@@ -404,7 +283,7 @@ function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
               fontFamily={fonts.monoBold}
               fontSize={12}
             >
-              {`${hover} kn → ${windScore(hover, band).toFixed(1)}★`}
+              {`${hover} kn → ${Math.round(windStars(hover, band))}★`}
             </SvgText>
           </>
         )}
@@ -469,63 +348,85 @@ function Table({
   );
 }
 
+/** Ours, and the rider's own beside it once they have one. */
+type Column = "ours" | "yours";
+const columns = (rider: Rider): Column[] => (rider.custom ? ["ours", "yours"] : ["ours"]);
+const columnRider = (rider: Rider, column: Column): Rider =>
+  column === "yours" ? rider : { ...rider, custom: null };
+const COLUMN_NAME: Record<Column, string> = { ours: "Ours", yours: "Yours" };
+/** The column the rider is rated on, 1-based after the label. */
+const youColumn = (rider: Rider) => (rider.custom ? 2 : 1);
+
 function BandTable({ rider }: { rider: Rider }) {
   const cols = columns(rider);
+  const bands = cols.map((column) => windBand(columnRider(rider, column)));
+  const r = (kn: number) => String(Math.round(kn));
   return (
     <>
       <Table
-        head={["Level", "Minimum", "Sweet spot", "Maximum"]}
-        rows={cols.map((column) => {
-          const band = windBand(columnRider(rider, column));
-          return [
-            (column === "yours" ? "Your own" : SKILL_LABEL[column]) +
-              (isYou(rider, column) ? " · you" : ""),
-            String(Math.round(band.min)),
-            `${Math.round(band.sweetLow)}–${Math.round(band.sweetHigh)}`,
-            String(Math.round(band.max)),
-          ];
-        })}
-        you={{ row: cols.findIndex((column) => isYou(rider, column)) }}
+        head={["Knots", ...cols.map((c) => COLUMN_NAME[c])]}
+        rows={[
+          ["Too light, under", ...bands.map((b) => r(b.min))],
+          ["Sweet spot", ...bands.map((b) => `${r(b.sweetLow)}–${r(b.sweetHigh)}`)],
+          ["Too much, in gusts", ...bands.map((b) => r(b.max))],
+        ]}
+        you={{ column: youColumn(rider) }}
       />
       <T variant="caption" color="muted">
-        In knots, for someone who weighs {rider.weightKg ?? 80} kg. Heavier
-        riders need more wind, lighter riders less.
+        Your weight never changes them: move them in Customise if the wind suits you differently.
       </T>
     </>
   );
 }
 
-/** A level's own rating for this rider's weight, without their custom one. */
-const standard = (rider: Rider, skill: Skill): Rider => ({
-  ...rider,
-  skill,
-  custom: null,
-  keptCustom: null,
-});
-
-/** The levels as columns, and the rider's own after them when they have one, rating or kept. */
-type Column = Skill | "yours";
-const columns = (rider: Rider): Column[] => [
-  ...SKILLS,
-  ...(savedCustom(rider) ? (["yours"] as const) : []),
-];
-const columnRider = (rider: Rider, column: Column) =>
-  column === "yours" ? rateOn(rider, "custom") : standard(rider, column);
-const isYou = (rider: Rider, column: Column) =>
-  column === (rider.custom ? "yours" : rider.skill);
-const columnName = (column: Column) =>
-  column === "yours" ? "Yours" : SKILL_LABEL[column];
-
-/**
- * Stars off as the tables set them: "−1½ stars", "none". A non-breaking
- * space holds each figure to its word, so a narrow column never ends a line
- * on "−1".
- */
-function starsOff(off: number): string {
-  if (!off) return "none";
-  const whole = Math.floor(off);
-  const figure = `−${whole || ""}${off % 1 ? "½" : ""}`;
-  return `${figure}\u00a0star${off === 1 ? "" : "s"}`;
+/** The agreed hours, cross-shore, rated on ours and on the rider's own beside it. */
+function AgreedTable({ rider }: { rider: Rider }) {
+  const cols = columns(rider);
+  return (
+    <View style={styles.table}>
+      <View style={[styles.tr, styles.th]}>
+        <T variant="eyebrow" caps color="muted" style={styles.tdFirst}>
+          Hour, kn
+        </T>
+        {cols.map((column, i) => (
+          <T
+            key={column}
+            variant="eyebrow"
+            caps
+            color="muted"
+            style={[styles.td, youColumn(rider) === i + 1 && styles.you]}
+          >
+            {COLUMN_NAME[column]}
+          </T>
+        ))}
+      </View>
+      {AGREED_HOURS.map(([wind, gust]) => {
+        const rated = cols.map((column) => rateExample(columnRider(rider, column), wind, gust, "cross"));
+        return (
+          <View
+            key={`${wind}-${gust}`}
+            style={styles.tr}
+            accessible
+            accessibilityLabel={`${hourName(wind, gust)}: ${rated
+              .map((h, i) => `${COLUMN_NAME[cols[i]]} ${starsText(h)}`)
+              .join(", ")}`}
+          >
+            <T variant="figureSm" tabular style={styles.tdFirst}>
+              {hourName(wind, gust)}
+            </T>
+            {rated.map((h, i) => (
+              <View key={cols[i]} style={[styles.td, youColumn(rider) === i + 1 && styles.you]}>
+                <Stars stars={h.stars} potential={h.potential} size={12} />
+              </View>
+            ))}
+          </View>
+        );
+      })}
+      <T variant="caption" color="muted" style={styles.note}>
+        Cross-shore. Solid stars, then the outlines the gusts took.
+      </T>
+    </View>
+  );
 }
 
 const SECTORS = [
@@ -685,46 +586,12 @@ function ShoreTable({ rider }: { rider: Rider }) {
   const cols = columns(rider);
   return (
     <Table
-      head={["Wind", ...cols.map(columnName)]}
+      head={["Wind", ...cols.map((c) => COLUMN_NAME[c])]}
       rows={SECTORS.map((s) => [
         `${s.words} ${s.from}–${s.to}°`,
-        ...cols.map((column) =>
-          starsOff(directionCosts(columnRider(rider, column))[s.key]),
-        ),
+        ...cols.map((column) => costLabel(directionCosts(columnRider(rider, column))[s.key])),
       ])}
-      you={{ column: cols.findIndex((column) => isYou(rider, column)) + 1 }}
-    />
-  );
-}
-
-/** Stars off for gusty wind, by how much it bothers the rider: theirs marked. */
-function GustyTable({ rider }: { rider: Rider }) {
-  const theirs = rider.gusty ?? "some";
-  return (
-    <Table
-      head={["Gusts", ...GUSTIES.map((gusty) => GUSTY_LABEL[gusty])]}
-      rows={(
-        [
-          ["gusty", `${GUSTY_FROM} times the average or more`],
-          ["very-gusty", `${VERY_GUSTY_FROM} times or more`],
-        ] as const
-      ).map(([kind, what]) => [
-        what,
-        ...GUSTIES.map((gusty) => starsOff(GUSTY_OFF[gusty][kind])),
-      ])}
-      you={{ column: GUSTIES.indexOf(theirs) + 1 }}
-    />
-  );
-}
-
-/** The rest, the same for every level. */
-function OtherTable() {
-  return (
-    <Table
-      head={["If", "Every level"]}
-      rows={[
-        ["None of your wings suits the wind", "−1\u00a0star"],
-      ]}
+      you={{ column: youColumn(rider) }}
     />
   );
 }
@@ -853,6 +720,7 @@ const styles = StyleSheet.create({
   right: { flex: 1, textAlign: "right" },
   you: { backgroundColor: withAlpha(colors.magenta, 0.07) },
   total: { borderTopWidth: 2, borderTopColor: colors.ink },
+  note: { paddingTop: space.sm },
   exampleLink: {
     flexDirection: "row",
     alignItems: "center",

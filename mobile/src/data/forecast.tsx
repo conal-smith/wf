@@ -28,7 +28,7 @@ import { AppState } from "react-native";
 import type { ModelAvailability } from "../../../force5/src/manifests";
 import { squaresToRead, type ViewBounds } from "../../../force5/src/squares";
 import { starsFromAt } from "../../../force5/src/lead";
-import { ratedRider, type Rider } from "../../../force5/src/stars";
+import type { Rider } from "../../../force5/src/stars";
 import { dockColumns, type ColumnModel } from "../../../force5/src/timeline";
 import type { Spot } from "../../../force5/src/weather";
 import type { PlaceHour, RatedPlace } from "../../../src/ratings";
@@ -65,7 +65,7 @@ export interface Forecast {
   hours: ReadonlyMap<string, PlaceHour[]>;
   /** Bumps whenever `hours` gains rows (the map's lights redraw on it). */
   version: number;
-  /** Who the hours are rated for, as a rating reads them (stars.ts `ratedRider`). */
+  /** Who the hours are rated for: the rider as the prefs keep them. */
   rider: Rider;
   /** The published blend with the squares read so far, or null. */
   published: LoadedBlend | null;
@@ -113,9 +113,8 @@ function useClock(): number {
 
 export function ForecastProvider({ children }: { children: ReactNode }) {
   const { prefs } = usePrefs();
-  // Rated with the rating in use: one of the rider's own kept aside while a
-  // level rates neither rates nor, when it alone changes, re-rates the table.
-  const riderKey = JSON.stringify(ratedRider(prefs.rider));
+  // Re-rated only when the rider changes, not each time the prefs are read.
+  const riderKey = JSON.stringify(prefs.rider);
   const rider = useMemo(() => JSON.parse(riderKey) as Rider, [riderKey]);
   const { store, starred, frequent } = useFavourites();
   const now = useClock();

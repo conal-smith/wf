@@ -15,12 +15,14 @@ interface Props<V extends string> {
   segments: readonly Segment<V>[];
   onChange: (value: V) => void;
   accessibilityLabel: string;
+  /** Across the whole width, the choices sharing it evenly. */
+  wide?: boolean;
 }
 
 /** A row of choices, one pressed: the pressed one is the ink capsule. */
-function SegmentedInner<V extends string>({ value, segments, onChange, accessibilityLabel }: Props<V>) {
+function SegmentedInner<V extends string>({ value, segments, onChange, accessibilityLabel, wide }: Props<V>) {
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={accessibilityLabel} style={styles.row}>
+    <View accessibilityRole="radiogroup" accessibilityLabel={accessibilityLabel} style={[styles.row, wide && styles.wide]}>
       {segments.map((s) => {
         const on = s.value === value;
         return (
@@ -34,7 +36,7 @@ function SegmentedInner<V extends string>({ value, segments, onChange, accessibi
               tick();
               onChange(s.value);
             }}
-            style={[styles.segment, on && styles.on]}
+            style={[styles.segment, wide && styles.share, on && styles.on]}
           >
             <T variant="label" caps color={on ? "inkInverse" : "ink2"}>
               {s.label}
@@ -64,5 +66,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  wide: { alignSelf: "stretch" },
+  share: { flex: 1 },
   on: { backgroundColor: colors.ink },
 });

@@ -126,7 +126,7 @@ test("a spot page is the week day by day: hours in figures, the tide and the lig
   await stars.hover();
   const tip = page.getByRole("tooltip");
   await expect(tip).toBeVisible();
-  await expect(tip).toContainText("Rated for Riding");
+  await expect(tip).toContainText("Stars: Ours · ~80 kg");
   await expect(tip.getByRole("link", { name: "How?" })).toHaveAttribute(
     "href",
     "/stars",
@@ -206,49 +206,87 @@ test("a spot page is the week day by day: hours in figures, the tide and the lig
   expect(errors).toEqual([]);
 });
 
-test("the rider switch re-rates every hour, and is the map's rider too", async ({
+test("the rider switch keeps the map's rider, whose weight never moves a star", async ({
   page,
 }) => {
   await page.goto("/spot/brandon");
   await expect(page.locator("[data-stars]").first()).toBeAttached({
     timeout: 30000,
   });
+  // No levels: the stars are ours, and Customise is the way to make them
+  // the rider's own.
+  await expect(page.getByRole("group", { name: "Riding level" })).toHaveCount(
+    0,
+  );
+  await expect(page.locator("[data-stars-whose]")).toHaveText("Ours");
+  await expect(page.locator("[data-customise-link]")).toHaveAttribute(
+    "href",
+    "/?customise",
+  );
   const summary = page.locator("[data-rider-summary]");
   await expect(summary).toHaveText("~80 kg");
-  const level = page.getByRole("group", { name: "Riding level" });
-  await expect(level.getByRole("button", { name: "Riding" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  const riding = await ratings(page);
-  await level.getByRole("button", { name: "Learning" }).click();
-  await expect.poll(() => ratings(page)).not.toBe(riding);
-  const learning = await ratings(page);
-  await level.getByRole("button", { name: "Advanced" }).click();
-  await expect.poll(() => ratings(page)).not.toBe(learning);
+  const ours = await ratings(page);
 
-  // The weight and wings fold behind the one line until asked for. A heavier
-  // rider needs more wind: the stars move again, and the estimate mark goes.
-  const advanced = await ratings(page);
+  // The weight and wings fold behind the one line until asked for. A
+  // heavier rider gets a bigger wing, and the same stars.
   await expect(page.locator('[data-rider="weight"]')).toHaveCount(0);
   await page.locator("[data-rider-chip]").click();
   await page.locator('[data-rider="weight"]').fill("110");
   await expect(summary).toHaveText("110 kg");
-  await expect.poll(() => ratings(page)).not.toBe(advanced);
+  await page.locator('[data-rider="wings"]').fill("3");
+  await expect(page.locator("[data-rider-chip]")).toContainText("3 m²");
+  expect(await ratings(page)).toBe(ours);
 
   // Saved where the map's Display options keep the rider.
   const stored = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("force5.prefs.v1") ?? "{}"),
   );
-  expect(stored.rider).toEqual({
-    weightKg: 110,
-    skill: "advanced",
-    wings: [],
-  });
+  expect(stored.rider).toEqual({ weightKg: 110, wings: [3] });
   await page.reload();
   await expect(page.locator("[data-rider-summary]")).toHaveText("110 kg", {
     timeout: 30000,
   });
+});
+
+test("the rider's own stars, from Customise, re-rate every hour", async ({
+  page,
+}) => {
+  await page.goto("/spot/brandon");
+  await expect(page.locator("[data-stars]").first()).toBeAttached({
+    timeout: 30000,
+  });
+  const ours = await ratings(page);
+  // As Customise stores them: a rider who wants more wind, and never rides
+  // cross-offshore.
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "force5.prefs.v1",
+      JSON.stringify({
+        version: 3,
+        rider: {
+          weightKg: null,
+          wings: [],
+          custom: {
+            version: 3,
+            wind: { min: 16, sweetLow: 20, sweetHigh: 28, max: 38 },
+            direction: {
+              onshore: 0,
+              crossOn: 0,
+              cross: 0,
+              crossOff: 5,
+              offshore: 5,
+            },
+          },
+        },
+      }),
+    ),
+  );
+  await page.reload();
+  await expect(page.locator("[data-stars-whose]")).toHaveText("Your own", {
+    timeout: 30000,
+  });
+  await expect(page.locator("[data-stars]").first()).toBeAttached();
+  await expect.poll(() => ratings(page)).not.toBe(ours);
 });
 
 test("a star keeps the place where the map keeps it, and opening it counts", async ({
@@ -365,7 +403,7 @@ test("on a phone the week and the first day are on the first screen, and far day
   expect(Math.abs(top)).toBeLessThan(2);
 });
 
-test("How the stars work draws the bands, the shore sectors and a live hour worked through", async ({
+test("How the stars work draws the four numbers, the gusts, the shore sectors and a live hour worked through", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -379,34 +417,65 @@ test("How the stars work draws the bands, the shore sectors and a live hour work
     "href",
     "/?spot=brandon",
   );
-  await expect(page.locator("[data-band-table]")).toContainText("14–24");
+  // Ours, the only stars there are until the rider makes their own.
+  const band = page.locator('[data-band-table] [data-band="ours"]');
+  await expect(band).toContainText("11");
+  await expect(band).toContainText("15–22");
+  await expect(band).toContainText("35");
+  await expect(band).toContainText("you");
+  await expect(page.locator('[data-band="own"]')).toHaveCount(0);
+  await expect(page.locator("[data-score-chart]")).toBeVisible();
+  // The hours the stars were agreed on, worked out live: solid, and
+  // outlined for what the gusts took.
+  const agreed: [string, number, number][] = [
+    ["15 kn gusting 25", 5, 5],
+    ["20 kn gusting 25", 5, 5],
+    ["20 kn gusting 30", 4, 5],
+    ["25 kn gusting 30", 4, 4],
+    ["30 kn, steady", 1, 1],
+    ["22 kn gusting 35", 1, 5],
+    ["32 kn or more, steady", 0, 0],
+    ["10 kn, steady", 0, 0],
+  ];
+  const gusts = page.locator("[data-gust-table]");
+  for (const [what, stars, potential] of agreed) {
+    const cell = gusts
+      .locator("tr", { hasText: what })
+      .locator('[data-rated="ours"]');
+    await expect(cell, what).toHaveAttribute(
+      "data-example-stars",
+      String(stars),
+    );
+    await expect(cell, what).toHaveAttribute(
+      "data-example-potential",
+      String(potential),
+    );
+  }
   await expect(page.locator("[data-sectors]")).toBeVisible();
   const shore = page.locator("[data-shore-table]");
   for (const range of ["0–30°", "30–70°", "70–110°", "110–150°", "150–180°"])
     await expect(shore).toContainText(range);
-  // Offshore takes stars off as every other direction does.
-  await expect(shore.locator("tr", { hasText: "150–180°" })).toContainText(
-    "−4\u00a0stars",
-  );
-  // Gusty wind costs a star by default, two when very gusty.
-  const gusty = page.locator("[data-gusty-table]");
-  await expect(gusty.locator("tr", { hasText: "1.5 times" })).toContainText(
+  // Cross-offshore costs a star; offshore is never.
+  await expect(shore.locator("tr", { hasText: "110–150°" })).toContainText(
     "−1\u00a0star",
   );
-  await expect(gusty.locator("tr", { hasText: "1.8 times" })).toContainText(
-    "−2\u00a0stars",
+  await expect(shore.locator("tr", { hasText: "150–180°" })).toContainText(
+    "never",
   );
-  const ledger = page.locator("[data-ledger]");
-  await expect(ledger).toContainText("is rated as");
-  await expect(ledger).toContainText(/Rating.*, so \d solid/);
-  // The rider is the page's: a learner's sweet spot is marked as theirs.
-  await page
-    .getByRole("group", { name: "Riding level" })
-    .getByRole("button", { name: "Learning" })
-    .click();
+  await expect(shore.locator("tr", { hasText: "0–30°" })).toContainText("none");
+  // No levels, no gusty-wind setting, no wing that costs a star.
+  await expect(page.locator("main")).not.toContainText(
+    /Learning|Advanced|very gusty|loses a star/,
+  );
+  await expect(page.locator("[data-other-table]")).toContainText(
+    "Your weight, or your wings",
+  );
   await expect(
-    page.locator("[data-band-table] tr", { hasText: "Learning" }),
-  ).toContainText("you");
+    page.locator("main [data-customise-link]").first(),
+  ).toHaveAttribute("href", "/?customise");
+  const ledger = page.locator("[data-ledger]");
+  await expect(ledger).toContainText("Steady wind");
+  await expect(ledger).toContainText(/Rating(no stars|\d solid)/);
   expect(errors).toEqual([]);
 });
 

@@ -1,7 +1,7 @@
 # Star ratings and wing sizes
 
-Every forecast hour at a riding place gets a rating out of five, for the rider in
-Display options, and the wing that rating assumes. The point is the glance: a
+Every forecast hour at a riding place gets a rating out of five, on ours or on
+the rider's own (set in Customise), and a wing size beside it. The point is the glance: a
 row of five solid stars on Thursday afternoon says "go" faster than three rows
 of numbers do, and a light, steady day says "drills" instead of "nothing".
 
@@ -48,7 +48,7 @@ same choice, and the map moves to it. The map opens on it (`storedMapModel` in
 `force5/src/boot.ts`), so a rider on HARMONIE downloads nothing new. A choice
 saved before 23 October keeps its model; what it said for after the run's end
 (`then`) and for spots of their own (`spots`) is dropped (`parseStarsChoice`).
-Like the weight and the level it stays on the device; only a rider's own star
+Like the weight it stays on the device; only a rider's own star
 rating is kept with their account. The app's alerts get it with the rest of
 the rider when the phone registers.
 
@@ -73,95 +73,102 @@ dock's head names the model whose forecast the hour in hand is ("★ HARMONIE",
 hours (`handoverModel` in `force5/src/timeline.ts`) and its label says so. The spot page puts a handover row in the day's
 table, names the model on the day's header and in each hour's card.
 
-## Two numbers per hour
+## One rating, ours, made your own (v7, 25 October 2026)
 
-|               | What it is                                                 | Drawn as              |
-| ------------- | ---------------------------------------------------------- | --------------------- |
-| **Potential** | What the wind alone is worth to this rider                 | faded (outline) stars |
-| **Stars**     | What is left once the spot and the forecast have their say | solid stars           |
+**The owner's ruling, 25 October 2026: one rating, no levels.** Learning,
+Riding and Advanced are gone everywhere. Everyone is rated on ours; a rider
+who wants something else moves four numbers in Customise
+(`backlog/mockups/2026-10-25-own-star-rating.html`, approved; the plan before
+it, `backlog/research/2026-10-25-star-rating-plan.html`). The rider never sees
+a gust setting: the rest is our model.
 
-Stars never exceed potential, so the faded stars are always the upside a
-kinder direction or a steadier breeze would have given. An hour whose gust is
-over the rider's limit has neither: no stars are drawn at all.
-Solid and faded differ by shape (filled against outline) as well as by tone.
+| The four numbers (`WindBand`) | Ours  | What it does                                   |
+| ----------------------------- | ----- | ---------------------------------------------- |
+| Too light (`min`)             | 11 kn | no stars below it; one star at it              |
+| Sweet spot from (`sweetLow`)  | 15 kn | five stars from here…                          |
+| Sweet spot to (`sweetHigh`)   | 22 kn | …to here                                       |
+| Too much, in gusts (`max`)    | 35 kn | a gust past it leaves the hour no stars at all |
 
-### Rideable wind: the steady wind, lifted only to the floor
+### Two numbers per hour
 
-The steady wind, the mean, is what holds a rider on the foil and what decides
-whether a session is on, so it is what the stars rate. Below the rider's floor
-a gust is still a chance to get up, so there it may lift the hour, and only as
-far as the floor:
+|               | What it is                                               | Drawn as       |
+| ------------- | -------------------------------------------------------- | -------------- |
+| **Potential** | What the steady wind alone is worth                      | outlined stars |
+| **Stars**     | What is left once the gusts and the shore have their say | solid stars    |
 
-```
-rideable = mean                                              at or above the floor
-rideable = min(floor, mean + share × min(gust − mean, mean))  below it
-```
+Stars never exceed potential. The outlined stars between them stand for one
+thing only: stars lost to the gusts or to the shore angle (`HourRating.lost`
+says which). Solid and outlined differ by shape as well as by tone.
 
-where the share is 0.2 learning, 0.3 riding and 0.35 advanced. A light day with
-big gusts is worth a star at most, a chance to get up; it is never rated as a
-windier day than it is. A 9 kn mean gusting 17 is rated as 11 kn (the floor)
-for an intermediate, one star; 12 gusting 20 as 12, two. The lift stays inside
-the rating: no page names it as a wind of its own.
+### The steady wind (`windStars`)
 
-### Potential: the rideable wind against the rider's band
+The steady wind, the mean, is what holds a rider on the foil, so it is what
+the stars rate; a gust never lifts a light hour. From the four numbers:
 
-Each level has a band of wind, in knots, for an 80 kg rider. The top is the
-most the rider can hold, gusts included (below):
+- none below too light;
+- one star at too light, climbing a star a knot (evenly, on a wider gap) to
+  four just short of the sweet spot;
+- five through the sweet spot;
+- then four for up to three knots, down to one star at too much − 5 and none
+  from too much − 3.
 
-| Level    | Floor | Sweet spot | Ceiling |
-| -------- | ----- | ---------- | ------- |
-| Learning | 13    | 15–20      | 24      |
-| Riding   | 11    | 14–24      | 30      |
-| Advanced | 8     | 13–28      | 35      |
+Ours by steady wind: 10 kn none, 11 one, 12 two, 13 three, 14 four, 15–22
+five, 23–25 four, 26–27 three, 28–29 two, 30–31 one, 32 and over none.
+Exactly the mock-up's function; `force5/src/stars.test.ts` holds the rating to
+a copy of it for every wind and gust, ours and others.
 
-"Nobody goes out in 40; 30 is about the max, maybe 35 for very advanced" (the
-owner, 24 October 2026).
+### The gusts (`gustStars`, `gustsOverLimit`)
 
-A heavier rider needs more wind to get going — a wing's power rises with the
-square of the wind, so the floor moves with the square root of the weight — and
-holds a little more at the top (fourth root). Five stars sit in the middle half
-of the sweet spot; four at its edges; one to four ramps up from the floor; two
-at the ceiling, falling to none six knots past it.
+A gust past too much leaves the hour no stars, outlined ones too: "Gusts over
+your limit" (the session `too-gusty`, or `too-strong` where the mean is too
+strong on its own). Otherwise the gust is read `GUST_EASE_KN` (5 kn) lighter
+on the same scale, and the hour takes the lower of the two; the stars that
+costs are outlined, and the reason says "Gusts: 1 star off." Riders judge a
+gust by how strong it is, not by its ratio to the mean, so there is no
+gust-factor penalty and no "how much does gusty wind bother you" setting
+any more. The dock's gust factor row is a figure to read, tinted only where
+the gust, so read, costs a star or is past too much.
 
-### Stars: what the spot takes away
+The agreed table (ours, cross-shore), asserted in `stars.test.ts`:
 
-```
-stars = round(wind − gusty − direction − wing), from 0 to potential
-```
+| Hour       | Stars         |
+| ---------- | ------------- |
+| 15 gust 25 | 5             |
+| 20 gust 25 | 5             |
+| 20 gust 30 | 4, 1 outlined |
+| 25 gust 30 | 4             |
+| 30 steady  | 1             |
+| 22 gust 35 | 1, 4 outlined |
+| 32+ steady | 0             |
+| 10 steady  | 0             |
 
-and no stars, potential too, when the hour's gust is over the top of the
-rider's band. Each deduction is a sentence in the cell's tooltip when it costs
-a whole star, so a rider can argue with it.
+It differs from the plan's draft only at the ends: 10 kn steady (the plan's
+tail gave it a star; under too light, none) and a gust of 36 (past too much,
+none).
 
-| Condition                                                                       | Learning | Riding | Advanced |
-| ------------------------------------------------------------------------------- | -------- | ------ | -------- |
-| A gust over your limit, the top of your band (below)                            | all      | all    | all      |
-| Onshore (wind within 30° of straight onshore)                                   | —        | —      | —        |
-| Cross-onshore                                                                   | —        | —      | —        |
-| Cross-shore                                                                     | —        | —      | —        |
-| Cross-offshore                                                                  | −3       | −1.5   | −1       |
-| Offshore (wind within 30° of straight off the beach)                            | −5       | −4     | −4       |
-| Gusty or very gusty, by how much it bothers you (below)                         | to −3    | to −3  | to −3    |
-| The models disagree (shown beside the stars, never counted, since v5)           | —        | —      | —        |
-| Your wings don't fit (biggest < 75% or smallest > 135% of the recommended size) | −1       | −1     | −1       |
+### The shore (`directionCosts`)
 
-Offshore is a deduction like the others, not a cap: the faded stars still say
-what the wind is worth, and a rider's own rating may set it as they like.
-Cross-shore never costs a star: "it's perfect conditions".
+Whole stars off for each way the wind meets the beach, taken after the gusts:
 
-Gusty wind and the direction are named in the reasons only when they cost a
-whole star.
+| Way of wind    | Ours  | The rider may set |
+| -------------- | ----- | ----------------- |
+| Onshore        | —     | 0–5               |
+| Cross-onshore  | —     | 0–5               |
+| Cross-shore    | —     | 0–5               |
+| Cross-offshore | −1    | 0–5               |
+| Offshore       | never | never, locked     |
 
-### Gusts over your limit (`gustsOverLimit`)
+Offshore is never for everyone: no stars, outlined ones too, and "We don't
+recommend going out in an offshore wind." Any way of wind set to five is
+never too (session `never-shore`).
 
-The top of the rider's band, `max`, is the most they can hold, gusts
-included: 24, 30 and 35 kn at 80 kg, moving with weight by the fourth root of
-weight / 80, or their own figure in a rating of their own. An hour whose gust
-is over it gets no stars and no potential, so nothing is drawn, not even
-outline stars: a kinder direction would not make it rideable. The reason
-reads "Gusts over your limit", and an hour with no stars says "gusts over your
-limit" (`noStarsWhy`; the session is `too-gusty`, or `too-strong` where the
-mean is too strong on its own).
+### What never moves a star
+
+Weight and wings (a wing size is still shown, `wingSize`, from the weight
+alone), how far up and down the wind the rider rides (it draws the loupe and
+the light's wedge, docs/RIDE_ROSE.md), the models' agreement, and a yellow
+warning. An **orange or red** Met Éireann warning replaces the stars outright
+(below).
 
 ### Met Éireann warnings (`applyWarnings`, force5/src/warnings.ts)
 
@@ -177,80 +184,38 @@ Which counties and coastal stretches each place takes its warnings from is in
 `data/locations/warning-areas.json`; the warnings themselves are copied hourly,
 unaltered, by the `warnings` job (docs/LIVE_FORECAST_PIPELINE.md).
 
-### Gusty wind (`gustiness`, `gustyCost`)
-
-How gusty an hour is, is its gust over its mean, counted only when the mean is
-at or above the rider's floor (below it a gust is a chance to get up):
-
-| Gust ÷ mean | The hour is |
-| ----------- | ----------- |
-| under 1.5   | steady      |
-| 1.5 or more | gusty       |
-| 1.8 or more | very gusty  |
-
-What that costs is the rider's choice, "Gusty wind: how much uneven wind
-bothers you" in Customise (`Rider.gusty`, "some" unless they pick another):
-
-| Gusty wind bothers you | Steady | Gusty | Very gusty |
-| ---------------------- | ------ | ----- | ---------- |
-| Not much (`little`)    | —      | —     | −1         |
-| Some (`some`)          | —      | −1    | −2         |
-| A lot (`lots`)         | —      | −2    | −3         |
-
-The stars lost show as outline stars, as any other cost does, and the reason
-says "Gusty" or "Very gusty" when it moved a star.
-
-The owner's calibration of v6, for Riding at 80 kg, gusty wind "some",
-cross-onshore, no wings listed (`force5/src/stars.test.ts` asserts every line,
-with the other two levels):
-
-| Wind       | v5  | v6  | Why                                              |
-| ---------- | --- | --- | ------------------------------------------------ |
-| 9 gust 17  | 1   | 1   | under the floor: the gusts are a chance, no more |
-| 12 gust 20 | 2   | 1   | gusty (1.67): one off                            |
-| 15 gust 20 | 4   | 4   | steady (1.33)                                    |
-| 15 gust 27 | 4   | 2   | very gusty (1.8): two off                        |
-| 18 gust 24 | 5   | 5   | steady                                           |
-| 18 gust 27 | 5   | 4   | gusty (1.5): one off                             |
-| 22 gust 32 | 4   | 0   | a gust over 30: no stars                         |
-| 25 gust 33 | 3   | 0   | a gust over 30: no stars                         |
-| 25 gust 38 | 2   | 0   | a gust over 30: no stars                         |
-
-v6, solid out of outlined. Learning: 12g20 1/1, 15g20 and 15g22 4/4, 18g24
-5/5, and none for 15g27, 18g27, 22g32 or 25g38 (gusts over 24). Advanced: 9g17
-0/2 and 10g16 1/2 (over its 8 kn floor, and gusty), 12g20 2/3, 15g27 3/5, 18g27
-4/5, 22g32 and 25g33 5/5, 25g38 none (a gust over 35).
-
 ### A rider's own rating (`CustomRating`)
 
-A rider can set their own stars ("Customise" or "Edit custom" under the level
-pill in Display options, or the "Custom stars" chip in the dock): the four
-wind handles, the top one their limit for gusts, and the stars each direction
-takes off, starting from a level. The app has the same dialog as a screen of its own
-(`mobile/src/features/stars`), from the same link under the pill in More ›
-Rider and the chip in the dock, on the site's arithmetic
-(`spot/web/yourStars.ts`).
-
 ```ts
-{ version: 2, base: Skill,
-  wind: { min, sweetLow, sweetHigh, max },        // knots
-  direction: { onshore, crossOn, cross, crossOff, offshore } } // stars off
+{ version: 3,
+  wind: { min, sweetLow, sweetHigh, max },                        // knots
+  direction: { onshore, crossOn, cross, crossOff, offshore } }    // whole stars off; offshore 5
 ```
 
-It rides on the rider (`Rider.custom`), so every page and service that rates
-for a rider (`rateHour`) uses it. It replaces the level's band and direction
-costs, with no weight scaling; `base` keeps the level's share of a gust below
-the floor and its wing sizes. How much gusty wind bothers the rider is not in
-it: it is the rider's whatever rates (`Rider.gusty`, kept on the device as
-how far into the wind they ride is, and sent with the rider to the alerts and
-to Gust).
-`parseCustomRating` is the one place it is made safe, whoever wrote it: a
-version 1 rating, from before v6, is read as version 2 with its gust curve
-left behind, so nobody loses their wind and directions; any other version or
-a missing number drops it; knots are held to the tenth, the wind handles in
-order a knot apart within 2–40 kn, and every star figure 0–5 in half stars. `standardRating(rider, level)` is a level's own rating for that
-rider's weight, where "Start from" begins, so saving it unchanged rates as the
-level does.
+Made in Customise (src/Customise.tsx on the site, mobile/src/features/stars
+in the app, on the same arithmetic, `spot/web/yourStars.ts`). Left as ours, no
+rating is kept (`isOurs`), and "Reset to ours" shows only once something
+differs from ours. It rides on the rider (`Rider.custom`), so every page and
+service that rates (`rateHour`) uses it. `parseCustomRating` is the one place
+it is made safe, whoever wrote it: only version 3 is read — a level's rating
+from before 25 October 2026 (versions 1 and 2, with a `base` level) is
+ignored, and the rider is on ours; a missing number drops it; knots are held
+to the tenth, the four numbers in order a knot apart within 2–40 kn, every
+direction to whole stars 0–5, and offshore to never whatever was sent.
+
+### Why v7 (25 October 2026)
+
+The owner's rulings. One rating instead of three levels, so nobody has to
+guess which they are; the four numbers the rider already drags are all they
+set. The steep fall past the sweet spot follows the research (most riders
+struggle above 25–28 kn; 30 is a limit, not a good day; the plan's sources),
+and reading a gust 5 kn lighter keeps an ordinary coastal 15 gusting 25 at
+five stars while 20 gusting 30 loses one. The gust-factor penalty went: our
+own check of the forecasts against buoys and stations (PR #202) found the
+models get a gust's size right but not which hours are gustier than usual,
+so a ratio rule was mostly guessing. Wings never cost a star; weight no
+longer moves the band. Stored settings from before (levels, gusty wind, a
+kept rating, a version 1 or 2 rating) are read without fault and ignored.
 
 ### Why v6 (24 October 2026)
 
@@ -367,53 +332,49 @@ Fitted to published size charts: an 80 kg rider on 5.5 m² at 15 knots, 4.5 m²
 at 20 and 3 m² at 30.
 
 ```
-size = 5.5 × (weight / 80)^0.8 × (15 / wind)^0.85 × level
+size = 5.5 × (weight / 80)^0.8 × (15 / wind)^0.85
 ```
 
-where the level factor is 1.1 learning, 1 riding and 0.92 advanced; rounded to
-the half metre and held between 2 and 8 m². With a quiver listed, the rider's
-own wing is the smallest that is not much smaller than the recommendation
-(≥ 90%), because a wing a touch big still works in the lulls.
+rounded to the half metre and held between 2 and 8 m². With a quiver listed,
+the rider's own wing is the smallest that is not much smaller than the
+recommendation (≥ 90%), because a wing a touch big still works in the lulls.
+It never moves a star.
 
 ### Sessions
 
-Each rated hour is also sorted by its rideable wind against the band (too
-light, floor to sweet spot, sweet spot, powered, overpowered, too strong) or
-as offshore. The kinds have no names on the page: the stars and the figures
-speak for the hour. Only an hour with no stars says why, where the wind alone
-does: "too light", "too strong" or "offshore" (`noStarsWhy`).
+Each rated hour is also sorted by its steady wind against the four numbers
+(too light, drills, cruising, powered, overpowered, too strong) or as
+too gusty, offshore, or a way of wind the rider never rides. The kinds have
+no names on the page: the stars and the figures speak for the hour. Only an
+hour with no stars says why: "too light", "too strong", "gusts over your
+limit", "offshore" or the way of wind (`noStarsWhy`).
 
 ## The rider
 
-Weight, level, wings, how much gusty wind bothers the rider (`gusty`, absent
-while it is "some") and any custom rating live in the display preferences
-(`force5.prefs.v1`), validated field by field on load: a weight outside
-30–160 kg or a wing outside 1.5–10 m² is dropped rather than rated, and a
-custom rating goes through `parseCustomRating`. Until a weight is given the
-stars assume 80 kg, and the row label says `~80 kg` so it is obvious.
+Weight, wings, how far up and down the wind the rider rides (`upwind`,
+`downwind`, kept only when not ours: 0° and 10°) and any rating of their own
+live in the display preferences (`force5.prefs.v1`, version 3), validated
+field by field on load: a weight outside 30–160 kg or a wing outside 1.5–10 m²
+is dropped rather than used, and a rating goes through `parseCustomRating`.
+Preferences stored before version 3 keep their weight, wings and model, and
+start from ours: their level, gusty wind, angles and rating belonged to the
+levels. Until a weight is given the wing sizes assume 80 kg.
 
-A rider's own rating is saved, which puts it in use, or deleted through
-`withCustomStars`. The level pill (Learning, Riding, Advanced, and Custom once
-there is a rating of their own) goes through `withStarsOn`: picking a level
-keeps the rating aside (`rider.keptCustom`) so Custom can be picked again, and
-only the rating in use (`rider.custom`) rates, here, in the alerts and in
-Gust. Both stamp the moment the rating is saved, deleted, or goes on or off
-(`starsUpdatedAt`). Preferences from before the kept rating (no `version`, or
-version 1) read a rider's `custom` as saved and in use. For a signed-in rider it is also kept with
-their account (`GET`/`PUT /api/me/rider`, `site/api/riders.ts`, the
-`rider_profiles` table), so it follows them across devices:
-`shared/web/riderSync.ts` compares the device's copy with the account's when
-the page knows who is signed in and after every change on the device, and the
-newer wins, a deletion included. The account keeps the rating in use as
-`customStars` and one kept aside as `keptStars`, so a device from before the
-kept rating reads only what it should rate with, and its `PUT` without
-`keptStars` means what it meant then: saved and in use, or deleted. A copy last matched with another account on a
-shared device is never sent to the next one who signs in. The community and
-the marketplace run it inside their sign-in; the map and the spot pages load
-it on their own (`shared/web/AccountRider.tsx`), only on a device that has
-signed in before, so nobody else downloads the identity provider. The app has
-no sign-in yet, so its rating stays on the phone; it reaches the alerts server
-with the rest of the rider when the phone registers.
+A rider's own rating is saved, or gone back to ours, through
+`withCustomStars`, which stamps the moment (`starsUpdatedAt`). For a
+signed-in rider it is also kept with their account (`GET`/`PUT
+/api/me/rider`, `site/api/riders.ts`, the `rider_profiles` table), so it
+follows them across devices: `shared/web/riderSync.ts` compares the device's
+copy with the account's when the page knows who is signed in and after every
+change on the device, and the newer wins, going back to ours included. An old
+rating the account still holds from before 25 October 2026 reads as none. A
+copy last matched with another account on a shared device is never sent to
+the next one who signs in. The community and the marketplace run it inside
+their sign-in; the map and the spot pages load it on their own
+(`shared/web/AccountRider.tsx`), only on a device that has signed in before,
+so nobody else downloads the identity provider. The app has no sign-in yet, so
+its rating stays on the phone; it reaches the alerts server with the rest of
+the rider when the phone registers.
 
 ## In the dock
 
@@ -460,11 +421,9 @@ an assistant would be given. The dock follows the same rule from the same
 - **The tide and the light** under each day: a 24-hour curve with the night
   and twilight behind it, then the high and low waters and first light to last
   light as two small tables.
-- **Rate for** (Learning / Riding / Advanced, with weight and wings behind a
-  fold) writes the same `rider` in `force5.prefs.v1` as the dock's Display
-  options, through the same `parseRider` validation, and re-rates the page
-  live. How much gusty wind bothers the rider is set in Customise on the map,
-  and the page reads it from the same rider.
+- **Stars:** "Ours" or "Your own", with a way to Customise, and the weight
+  and wings behind a fold, written to the same `rider` in `force5.prefs.v1`
+  through the same `parseRider` validation (neither moves a star).
 
 ### The members' spread
 
