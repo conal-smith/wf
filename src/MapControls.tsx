@@ -68,7 +68,7 @@ export function chartTools(
  * the site menu (`chartTools`), one at a time in a dialog over the
  * dimmed map, as the map's information is. They close on their X, on Escape
  * or on a tap on the backdrop, and the focus goes back to where it was when
- * they opened: the menu's trigger, Layers, or the dock's button.
+ * they opened: the menu's trigger, or Layers.
  */
 export default function MapControls({
   onZoomIn,

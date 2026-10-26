@@ -1989,8 +1989,6 @@ export default function App() {
                   onSelect={(at) => selectColumn(at)}
                   now={clockNow}
                   prefs={prefs}
-                  layersOpen={desktop && railOpen && railFits}
-                  onLayers={pressLayers}
                   models={models}
                   onWantModels={() => setWantModels(true)}
                   starred={
