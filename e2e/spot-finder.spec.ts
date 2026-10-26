@@ -15,11 +15,38 @@ import { SAMPLE_CLOCK } from "./columns";
  * the best of the six days first, each with its picture and rose, today hour
  * by hour from first light to last, and the next five days. No timeline, not
  * tied to the chart's time; on a wide screen the chart stands beside it
- * (e2e/home-chart.spec.ts). Favourites by default, every place near the rider
- * on asking.
+ * (e2e/home-chart.spec.ts). Favourites once the rider has starred a place,
+ * else every place near the rider; either on asking.
  */
 
 const DUBLIN = { latitude: 53.35, longitude: -6.26 };
+/** The middle of Ireland, with no spot within 30 km. */
+const ATHLONE = { latitude: 53.42, longitude: -7.94 };
+const LOCATION_KEY = "wingfoil.finder.location.v1";
+
+/**
+ * A browser that asks where the rider is and has not been answered: the
+ * answer comes when the test calls `window.answerWhere()`.
+ */
+const unanswered = (page: Page, at: { latitude: number; longitude: number }) =>
+  page.addInitScript((at) => {
+    const waiting: PositionCallback[] = [];
+    const w = window as unknown as { answerWhere: () => void };
+    w.answerWhere = () =>
+      waiting.splice(0).forEach((ok) =>
+        ok({
+          coords: { ...at, accuracy: 10 },
+          timestamp: Date.now(),
+        } as unknown as GeolocationPosition),
+      );
+    Object.defineProperty(navigator, "geolocation", {
+      value: {
+        getCurrentPosition: (ok: PositionCallback) => waiting.push(ok),
+        watchPosition: () => 0,
+        clearWatch: () => {},
+      },
+    });
+  }, at);
 
 /**
  * Half past one in the afternoon, Irish time, on the sample's day: inside
@@ -531,12 +558,139 @@ test.describe("on a desktop", () => {
     expect(stored.starred).toEqual(["brandon", "dollymount"]);
   });
 
-  test("with no favourites, says how to have some", async ({ page }) => {
+  test("a first visit, with no favourites, opens on Near you; Favourites says how to have some", async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(["geolocation"]);
+    await context.setGeolocation(DUBLIN);
     await openFinder(page);
+    await expect(finder(page)).toHaveAttribute("data-scope", "near");
+    await expect(
+      scope(page).getByRole("button", { name: "Near you" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    // The browser was asked, and said where the rider is.
+    await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
+      timeout: 30000,
+    });
+    await expect(cards(page).first()).toContainText(/\d+ km · Co\. /);
+    await expect(page.locator("[data-finder-note]")).toHaveCount(0);
+    await scope(page).getByRole("button", { name: "Favourites" }).click();
     await expect(page.locator("[data-finder-empty]")).toHaveText(
       "Star a spot and it shows here.",
     );
     await expect(cards(page)).toHaveCount(0);
+  });
+
+  test("a first visit with the location refused lists the spots nearest the middle of Ireland, and never asks again", async ({
+    page,
+  }) => {
+    // No permission: the browser says no.
+    await openFinder(page);
+    await expect(finder(page)).toHaveAttribute("data-scope", "near");
+    await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
+    await expect(page.locator("[data-finder-note]")).toHaveText(
+      "We don’t know where you are, so these are the spots nearest the middle of Ireland.",
+    );
+    await expect(page.locator("[data-finder-empty]")).toHaveCount(0);
+    // No distance from a place the rider is not at.
+    await expect(cards(page).filter({ hasText: / km · / })).toHaveCount(0);
+    await expect
+      .poll(() =>
+        page.evaluate((key) => localStorage.getItem(key), LOCATION_KEY),
+      )
+      .toBe(JSON.stringify({ refused: true }));
+    // Back again: the same list, and the browser is not asked.
+    await page.addInitScript(() => {
+      const w = window as unknown as { asked: number };
+      w.asked = 0;
+      const geo = navigator.geolocation;
+      const ask = geo.getCurrentPosition.bind(geo);
+      geo.getCurrentPosition = (...args) => {
+        w.asked++;
+        ask(...args);
+      };
+    });
+    await page.reload();
+    await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
+    expect(
+      await page.evaluate(() => (window as unknown as { asked: number }).asked),
+    ).toBe(0);
+  });
+
+  test("while the browser is asked, says so; the rider's answer lists the spots round them", async ({
+    page,
+  }) => {
+    await unanswered(page, DUBLIN);
+    await openFinder(page);
+    await expect(page.locator("[data-finder-empty]")).toHaveText(
+      "Finding spots near you…",
+    );
+    await expect(cards(page)).toHaveCount(0);
+    await page.evaluate(() =>
+      (window as unknown as { answerWhere: () => void }).answerWhere(),
+    );
+    await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
+      timeout: 30000,
+    });
+    await expect(page.locator("[data-finder-empty]")).toHaveCount(0);
+  });
+
+  test("a browser that never answers: after a few seconds, the spots nearest the middle of Ireland", async ({
+    page,
+  }) => {
+    await unanswered(page, DUBLIN);
+    await openFinder(page);
+    await expect(page.locator("[data-finder-empty]")).toHaveText(
+      "Finding spots near you…",
+    );
+    await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
+    await expect(page.locator("[data-finder-note]")).toBeVisible();
+    // A late answer still brings the spots round the rider.
+    await page.evaluate(() =>
+      (window as unknown as { answerWhere: () => void }).answerWhere(),
+    );
+    await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
+      timeout: 30000,
+    });
+    await expect(page.locator("[data-finder-note]")).toHaveCount(0);
+  });
+
+  test("a rider with nothing within 30 km is told so", async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(["geolocation"]);
+    await context.setGeolocation(ATHLONE);
+    await openFinder(page);
+    await expect(page.locator("[data-finder-empty]")).toHaveText(
+      "No spots within 30 km of you.",
+      { timeout: 30000 },
+    );
+    await expect(cards(page)).toHaveCount(0);
+  });
+
+  test("with favourites, opens on them and does not ask where the rider is", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as { asked: number };
+      w.asked = 0;
+      Object.defineProperty(navigator, "geolocation", {
+        value: {
+          getCurrentPosition: () => w.asked++,
+          watchPosition: () => 0,
+          clearWatch: () => {},
+        },
+      });
+    });
+    await star(page, ["brandon"]);
+    await openFinder(page);
+    await expect(finder(page)).toHaveAttribute("data-scope", "favourites");
+    await expect(cards(page)).toHaveCount(1);
+    expect(
+      await page.evaluate(() => (window as unknown as { asked: number }).asked),
+    ).toBe(0);
   });
 
   test("near you lists the places round the rider, nearest first among equals", async ({
@@ -569,6 +723,7 @@ test.describe("on a desktop", () => {
   test("near you, refused, looks round where the chart was, and never asks again", async ({
     page,
   }) => {
+    await star(page, ["brandon"]);
     // No permission: the browser says no.
     await page.addInitScript(() =>
       localStorage.setItem(
@@ -581,6 +736,10 @@ test.describe("on a desktop", () => {
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
     });
+    await expect(cards(page)).toHaveCount(12);
+    await expect(page.locator("[data-finder-note]")).toHaveText(
+      "We don’t know where you are, so these are the spots nearest the part of the chart you last looked at.",
+    );
     await expect
       .poll(() =>
         page.evaluate(() =>
@@ -919,19 +1078,29 @@ test.describe("on a phone", () => {
     expect(box.x + box.width).toBeLessThanOrEqual(a.x + a.width);
   });
 
-  test("Near you on a phone, and an empty favourites", async ({
+  test("a first visit on a phone opens on Near you; Favourites is empty", async ({
     page,
     context,
   }) => {
     await context.grantPermissions(["geolocation"]);
     await context.setGeolocation(DUBLIN);
     await openFinder(page);
+    await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
+      timeout: 30000,
+    });
+    await scope(page).getByRole("button", { name: "Favourites" }).tap();
     await expect(page.locator("[data-finder-empty]")).toHaveText(
       "Star a spot and it shows here.",
     );
     await scope(page).getByRole("button", { name: "Near you" }).tap();
-    await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
-      timeout: 30000,
-    });
+    await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1);
+  });
+
+  test("a first visit on a phone with the location refused still lists spots", async ({
+    page,
+  }) => {
+    await openFinder(page);
+    await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
+    await expect(page.locator("[data-finder-note]")).toBeVisible();
   });
 });

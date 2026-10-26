@@ -1,6 +1,8 @@
 /**
  * The spot finder, the home page at /: where is good for this rider this week. The
- * places (their favourites, or every one round them) as cards, the best
+ * places (their favourites, or every one round them: it opens on the
+ * favourites once there are some, else on the places round the rider, so a
+ * first visit is never empty) as cards, the best
  * first: the most stars in today and the five days after it, the soonest,
  * then the nearest. Each card is the place from above with the ride rose on
  * it, today hour by hour from first light to last, and the next five days
@@ -51,6 +53,7 @@ import {
   dayRow,
   hourOf,
   listFor,
+  openingScope,
   pickHour,
   rankSpots,
   shownColumn,
@@ -79,6 +82,9 @@ const styles = tv({
     cards:
       "m-0 grid list-none grid-cols-1 items-start gap-3.5 p-0 cards:grid-cols-2",
     empty: "py-8 text-prose text-ink-2",
+    // Above the cards: where "near you" is measured from, when that is not
+    // the rider.
+    note: "m-0 pb-3 text-prose text-ink-2",
   },
 });
 
@@ -118,6 +124,12 @@ export interface FinderProps {
   onInChart: (spot: Spot, at: number | null) => void;
   /** The site menu, with its rows for this page. */
   menu: ReactNode;
+  /**
+   * The list is on the screen, not waiting under the full chart. The tab it
+   * opens on is chosen, and the browser asked where the rider is, only once
+   * it is.
+   */
+  onScreen?: boolean;
 }
 
 export default function SpotFinder(props: FinderProps) {
@@ -141,11 +153,21 @@ export default function SpotFinder(props: FinderProps) {
     onShown,
     onPlace,
     headRef,
+    onScreen = true,
   } = props;
   const s = styles();
-  const [scope, setScope] = useState<Scope>("favourites");
+  // The tab, once the list has been on the screen; until then the one it
+  // would open on: Favourites with a place starred, else Near you.
+  const [kept, setScope] = useState<Scope | null>(null);
+  const scope = kept ?? openingScope(starred);
   const [asked, setAsked] = useState(false);
-  const place = useRiderPlace(asked);
+  // Near you asks where the rider is, chosen or opened on.
+  const place = useRiderPlace(asked || (onScreen && scope === "near"));
+  useEffect(() => {
+    if (!onScreen || kept !== null) return;
+    setScope(scope);
+    if (scope === "near") setAsked(true);
+  }, [onScreen, kept, scope]);
   // The day drawn hour by hour on every card; null is today.
   const [chosen, setChosen] = useState<string | null>(null);
   // The hour picked on that day's row, for every card; null is the hour the
@@ -160,17 +182,14 @@ export default function SpotFinder(props: FinderProps) {
   };
 
   // Where "near you" and the distances are measured from: the rider's
-  // place once the browser has said, else where the chart was last centred.
+  // place once the browser has said. Without it, the places nearest where
+  // the chart was last centred, or the middle of Ireland, with no distances;
+  // and none while the browser is first asked.
   const known = place.source === "rider";
+  const waiting = scope === "near" && place.asking;
   const listed = useMemo(
-    () =>
-      listFor(
-        scope,
-        spots,
-        starred,
-        scope === "near" || known ? place.at : null,
-      ),
-    [scope, spots, starred, place.at, known],
+    () => (waiting ? [] : listFor(scope, spots, starred, place.at, known)),
+    [scope, spots, starred, place.at, known, waiting],
   );
 
   const wanted = listed.map((l) => l.spot.id);
@@ -275,9 +294,16 @@ export default function SpotFinder(props: FinderProps) {
         <section
           className={s.list({ class: beside ? undefined : s.alone() })}
           aria-label={scope === "near" ? "Spots near you" : "Favourites"}
-          aria-busy={place.asking || undefined}
+          aria-busy={waiting || undefined}
           data-finder-list
         >
+          {scope === "near" && !known && !waiting && ranked.length > 0 && (
+            <p className={s.note()} data-finder-note>
+              {place.source === "chart"
+                ? "We don’t know where you are, so these are the spots nearest the part of the chart you last looked at."
+                : "We don’t know where you are, so these are the spots nearest the middle of Ireland."}
+            </p>
+          )}
           {ranked.length ? (
             <HoverContext.Provider value={hover}>
               <ul
@@ -338,9 +364,11 @@ export default function SpotFinder(props: FinderProps) {
             <p className={s.empty()} data-finder-empty>
               {scope === "favourites"
                 ? "Star a spot and it shows here."
-                : place.asking
-                  ? ""
-                  : "No spots within 30 km."}
+                : waiting
+                  ? "Finding spots near you…"
+                  : known
+                    ? "No spots within 30 km of you."
+                    : ""}
             </p>
           )}
         </section>

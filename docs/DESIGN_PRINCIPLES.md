@@ -770,6 +770,20 @@ last had: it is always the list (this replaces that part of the rulings of
 home page), Chart (the full chart) and Settings, in that order; Settings
 from another page is the home page with Settings open.
 
+**2026-10-26 — A first visit opens on Near you, and it is never empty.**
+The home page opened on Favourites, and a first-time visitor has none: the
+front page said only "Star a spot and it shows here." beside an empty map.
+The finder now opens on Favourites once the rider has starred a spot, and on
+Near you before that. Opening on Near you asks the browser where the rider
+is, once, as choosing it does; a no is kept and never asked again. While the
+browser is asked the list says "Finding spots near you…". Round the rider's
+own place Near you is every spot within 30 km, as before, and says "No spots
+within 30 km of you." when there are none. Without the rider's place (a no,
+no answer within a few seconds, or no location in the browser) it lists the
+12 spots nearest where the chart was last looked at, or the middle of
+Ireland, however far, with no distances on the cards and one line above them
+saying so. The chart beside the list is fitted to whatever it shows.
+
 ---
 
 ## Still open
