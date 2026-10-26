@@ -303,8 +303,11 @@ async function loadOnce(
   if (path === home) {
     await listReady(page);
     listAt = await page.evaluate(() => performance.now());
-    if (!profile.isMobile) {
-      await panelReady(page).catch(() => {});
+    // The chart beside the list, where the page draws one.
+    if (
+      await page.evaluate(() => !!document.querySelector("[data-beside-chart]"))
+    ) {
+      await panelReady(page);
       panelAt = await page.evaluate(() => performance.now());
     }
     readyAt = panelAt ?? listAt;

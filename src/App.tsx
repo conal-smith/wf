@@ -535,6 +535,11 @@ export default function App() {
     const handle = idle(() => setGustDue(true), { timeout: 3000 });
     return () => cancel(handle);
   }, [mapReady, gustDue]);
+  // The list under the full chart: drawn at once on the home page, and on a
+  // link to the chart once the chart is up and the page has a moment, so
+  // its pictures and readings never hold the chart back. Kept once drawn.
+  const finderSeen = useRef(false);
+  if (page === "finder" || gustDue) finderSeen.current = true;
 
   const dock = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(110);
@@ -1498,6 +1503,8 @@ export default function App() {
   } | null>(null);
   /** The chart shrinking back beside the list. */
   const closing = useRef<Animation | null>(null);
+  /** The list showing under the full chart as it shrinks back beside it. */
+  const [revealing, setRevealing] = useState(false);
   /** Where the middle of the panel stood on the full chart, coming back. */
   const backTo = useRef<{ lng: number; lat: number } | null>(null);
   const motionRef = useRef(reducedMotion);
@@ -1509,6 +1516,7 @@ export default function App() {
       closing.current.cancel();
       closing.current = null;
       backTo.current = null;
+      setRevealing(false);
       return;
     }
     if (pageRef.current === "chart") return;
@@ -1549,6 +1557,7 @@ export default function App() {
       },
     );
     closing.current = shrink;
+    setRevealing(true);
     shrink.finished.then(
       () => {
         if (closing.current === shrink) setPage("finder");
@@ -1600,6 +1609,7 @@ export default function App() {
     // it, then fits the places on the list.
     closing.current?.cancel();
     closing.current = null;
+    setRevealing(false);
     const middle = backTo.current;
     backTo.current = null;
     if (!middle || !map) return;
@@ -2242,32 +2252,35 @@ export default function App() {
             was, for the way back to it. */}
           <div
             className="finder-under"
+            data-shown={!onChart || revealing || undefined}
             inert={onChart || undefined}
             aria-hidden={onChart || undefined}
           >
-            <Suspense fallback={null}>
-              <SpotFinder
-                spots={spots}
-                hours={hours}
-                version={version}
-                strip={strip}
-                now={clockNow}
-                starred={starred}
-                onToggleStar={onToggleStar}
-                rider={rider}
-                units={prefs.units}
-                reducedMotion={reducedMotion}
-                phone={phone}
-                onWant={onWant}
-                onInChart={onInChart}
-                menu={finderMenu}
-                beside={split}
-                onHover={hoverCard}
-                onShown={setFinderShown}
-                onPlace={setRiderAt}
-                headRef={onFinderHead}
-              />
-            </Suspense>
+            {finderSeen.current && (
+              <Suspense fallback={null}>
+                <SpotFinder
+                  spots={spots}
+                  hours={hours}
+                  version={version}
+                  strip={strip}
+                  now={clockNow}
+                  starred={starred}
+                  onToggleStar={onToggleStar}
+                  rider={rider}
+                  units={prefs.units}
+                  reducedMotion={reducedMotion}
+                  phone={phone}
+                  onWant={onWant}
+                  onInChart={onInChart}
+                  menu={finderMenu}
+                  beside={split}
+                  onHover={hoverCard}
+                  onShown={setFinderShown}
+                  onPlace={setRiderAt}
+                  headRef={onFinderHead}
+                />
+              </Suspense>
+            )}
             {!onChart && listButton}
           </div>
           <main

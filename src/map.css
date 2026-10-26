@@ -1390,6 +1390,13 @@
 .workspace[data-chart="panel"] .map-neat {
   display: none;
 }
+/* Under the full chart the list is out of sight as well as out of reach, so
+   nothing in it moves the page while it waits; it stays drawn while the chart
+   opens out over it and shows again as the chart shrinks back. */
+.finder-under:not([data-shown]) {
+  visibility: hidden;
+  transition: visibility 0s 420ms;
+}
 /* The room the chart stands in, beside the list. */
 .finder-side {
   flex: none;
