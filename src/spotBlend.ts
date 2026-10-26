@@ -11,8 +11,8 @@
  * `lead`): HARMONIE's own wind, gust and bearing while it reaches the hour,
  * ECMWF's past it, which of the two each hour is (`lead` in each place), and how
  * far all the models agree, as context. It does not keep stars: those are the
- * reader's own (ours, or their own four numbers), and rating an hour is arithmetic the
- * browser does in microseconds.
+ * reader's own (ours, or their own four numbers), and rating an hour is
+ * arithmetic the browser does in microseconds.
  *
  * It is published as a run, the way the models are (docs/TILING_DESIGN.md,
  * decision 6): the pointer `weather/blend.json` holds the times, the models it
@@ -438,9 +438,7 @@ export function carryToday(
  * `blend-<run>-<hours>h-v2`, the hours from the hour it was worked out to its
  * last time.
  */
-export function blendPrefix(
-  blend: Pick<BlendHead, "run" | "runTime" | "coverage">,
-): string {
+export function blendPrefix(blend: Pick<BlendHead, "run" | "runTime" | "coverage">): string {
   const reach = Math.max(
     0,
     Math.ceil(
@@ -493,9 +491,7 @@ export function parseSpotBlend(body: unknown): SpotBlend {
     throw new Error(`The blend's squares must carry ${BLEND_KEY} alone.`);
   const inline = SPOT_KEYS.filter((key) => key in body);
   if (inline.length)
-    throw new Error(
-      "The blend's places belong in its squares, not its pointer.",
-    );
+    throw new Error("The blend's places belong in its squares, not its pointer.");
   return body as unknown as SpotBlend;
 }
 
@@ -581,10 +577,7 @@ export function blendColumnModels(
 const positions = new WeakMap<readonly string[], Map<number, number>>();
 
 /** Where each axis time sits in the blend's times, or -1 where it has none. */
-function columnsOf(
-  times: readonly string[],
-  axis: readonly string[],
-): number[] {
+function columnsOf(times: readonly string[], axis: readonly string[]): number[] {
   let at = positions.get(times);
   if (!at) {
     at = new Map(times.map((time, i) => [Date.parse(time), i]));

@@ -82,11 +82,19 @@ export interface CustomRating {
   direction: DirectionCosts;
 }
 
-/** Ours: what everyone is rated on until they make it their own. */
-export const OURS: CustomRating = Object.freeze({
+/**
+ * Ours: what everyone is rated on until they make it their own. Marked pure
+ * so a bundle that never rates (the forecast worker's blend job) leaves it out.
+ */
+export const OURS: CustomRating = /* @__PURE__ */ Object.freeze({
   version: CUSTOM_RATING_VERSION,
-  wind: Object.freeze({ min: 11, sweetLow: 15, sweetHigh: 22, max: 35 }),
-  direction: Object.freeze({
+  wind: /* @__PURE__ */ Object.freeze({
+    min: 11,
+    sweetLow: 15,
+    sweetHigh: 22,
+    max: 35,
+  }),
+  direction: /* @__PURE__ */ Object.freeze({
     onshore: 0,
     crossOn: 0,
     cross: 0,

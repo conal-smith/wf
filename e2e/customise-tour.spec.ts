@@ -105,7 +105,10 @@ test("Customise walks through the rider's settings and saves them, and the light
   await expect(strip).toHaveText(["1", "2", "3", "4", "5", "4", "3", "2", "1"]);
   await expect(wizard.getByText("no stars past here")).toBeVisible();
   await floor.focus();
+  // A handle stops a knot short of the next: 11 up five is 14, not 16.
   await page.keyboard.press("PageUp");
+  await expect(floor).toHaveAttribute("aria-valuetext", "14 kn");
+  await page.keyboard.press("ArrowLeft");
   await expect(floor).toHaveAttribute("aria-valuetext", "13 kn");
   // The strip follows: one star from 13, then a climb to four under 15.
   await expect(strip.first()).toHaveText("1");
