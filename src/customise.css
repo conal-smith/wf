@@ -12,7 +12,8 @@
   gap: 0;
   width: calc(100% - 32px);
   max-width: 680px;
-  min-height: min(560px, calc(100dvh - 32px));
+  /* Each step its own height, as the mockup has it: a floor left the wind
+     step a slider over an empty half. */
   max-height: min(860px, calc(100dvh - 32px));
   padding: 20px 26px 16px;
 }
