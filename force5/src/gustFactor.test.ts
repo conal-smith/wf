@@ -4,7 +4,6 @@ import {
   gustFactor,
   gustFactorText,
 } from "./gustFactor";
-import { DEFAULT_RIDER, GUSTY_FROM, VERY_GUSTY_FROM, gustiness } from "./stars";
 
 describe("gustFactor", () => {
   it("is the gust over the mean", () => {
@@ -29,12 +28,6 @@ describe("gustFactor", () => {
     expect(gustFactor(5, 9)).toBeCloseTo(1.8);
   });
 
-  it("is what the stars call gusty by", () => {
-    // 15 kn is over an 80 kg intermediate's floor, so gustiness reads the factor.
-    expect(gustiness(15, 15 * GUSTY_FROM, DEFAULT_RIDER)).toBe("gusty");
-    expect(gustFactor(15, 15 * GUSTY_FROM)).toBe(GUSTY_FROM);
-  });
-
   it("reads a gust under the mean as none over it", () => {
     expect(gustFactor(15, 13)).toBe(1);
   });
@@ -47,11 +40,11 @@ describe("gustFactorText", () => {
     expect(gustFactorText(2.25)).toBe("2.2×");
   });
 
-  it("cuts rather than rounds, so it agrees with the stars' thresholds", () => {
-    expect(gustFactorText(GUSTY_FROM - 0.001)).toBe("1.4×");
-    expect(gustFactorText(GUSTY_FROM)).toBe("1.5×");
-    expect(gustFactorText(VERY_GUSTY_FROM - 0.001)).toBe("1.7×");
-    expect(gustFactorText(VERY_GUSTY_FROM)).toBe("1.8×");
+  it("cuts rather than rounds, so a figure never reads higher than it is", () => {
+    expect(gustFactorText(1.499)).toBe("1.4×");
+    expect(gustFactorText(1.5)).toBe("1.5×");
+    expect(gustFactorText(1.799)).toBe("1.7×");
+    expect(gustFactorText(1.8)).toBe("1.8×");
     // As the factor is worked out from knots: 18 over 10.
     expect(gustFactorText(gustFactor(10, 18)!)).toBe("1.8×");
     expect(gustFactorText(gustFactor(10, 15)!)).toBe("1.5×");

@@ -57,11 +57,6 @@ function pickTool(text: string, spot: string | null): FakeBlock {
       name: "propose_rider_profile",
       input: {
         weight_kg: kg ? Number(kg) : 85,
-        level: /learn|beginner/.test(ask)
-          ? "beginner"
-          : /advanced/.test(ask)
-            ? "advanced"
-            : "intermediate",
         wings_m2: wings.length ? wings : [4, 5, 6],
       },
     };

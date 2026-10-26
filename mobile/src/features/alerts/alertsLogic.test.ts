@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { RULE_DEFAULTS, type AlertMatch } from "../../../../alerts/shared/protocol";
-import { defaultPrefs, withCustomStars, withStarsOn } from "../../../../force5/src/prefs";
-import { DEFAULT_RIDER, ratedRider, standardRating } from "../../../../force5/src/stars";
+import { defaultPrefs, withCustomStars } from "../../../../force5/src/prefs";
+import { DEFAULT_RIDER, oursCopy } from "../../../../force5/src/stars";
+import { withYourStars } from "../stars/yourStarsLogic";
 import {
   deviceFingerprint,
   draftProblem,
@@ -158,7 +159,9 @@ describe("the lines on the screen", () => {
     // The device's fields carry the whole rider (sync.ts), so the alerts
     // server rates with the rider's own stars once the phone has them.
     const standard = { rider: DEFAULT_RIDER, quietHours: true };
-    const prefs = withCustomStars(defaultPrefs(), standardRating(DEFAULT_RIDER, "beginner"));
+    const mine = oursCopy();
+    mine.wind.max = 30;
+    const prefs = withCustomStars(defaultPrefs(), mine);
     const own = { rider: prefs.rider, quietHours: true };
     expect(deviceFingerprint(own)).not.toBe(deviceFingerprint(standard));
     expect(JSON.parse(deviceFingerprint(own))).toContainEqual(["rider", prefs.rider]);
@@ -166,17 +169,14 @@ describe("the lines on the screen", () => {
     expect(deviceFingerprint({ rider: reset.rider, quietHours: true })).toBe(deviceFingerprint(standard));
   });
 
-  it("sends a level, not a rating of the rider's own kept aside while the level rates", () => {
-    // sync.ts sends `ratedRider`: the alerts rate as the phone does.
-    const own = withCustomStars(defaultPrefs(), standardRating(DEFAULT_RIDER, "beginner"));
-    const kept = withStarsOn(own, "intermediate");
-    expect(kept.rider.keptCustom).toBeTruthy();
-    const standard = { rider: DEFAULT_RIDER, quietHours: true };
-    expect(deviceFingerprint({ rider: ratedRider(kept.rider), quietHours: true })).toBe(deviceFingerprint(standard));
-    // Back on their own: sent again, as it was.
-    const back = withStarsOn(kept, "custom");
-    expect(deviceFingerprint({ rider: ratedRider(back.rider), quietHours: true })).toBe(
-      deviceFingerprint({ rider: ratedRider(own.rider), quietHours: true }),
+  it("sends the new rider: no level and no gust setting, the angles only when they are not ours", () => {
+    const ours = withYourStars(defaultPrefs(), { rating: oursCopy(), upwind: 0, downwind: 10 });
+    expect(ours.rider).toEqual(DEFAULT_RIDER);
+    const sent = withYourStars(defaultPrefs(), { rating: oursCopy(), upwind: 20, downwind: 15 }).rider;
+    expect(sent).toEqual({ ...DEFAULT_RIDER, upwind: 20, downwind: 15 });
+    for (const old of ["skill", "gusty", "keptCustom"]) expect(sent).not.toHaveProperty(old);
+    expect(deviceFingerprint({ rider: sent, quietHours: true })).not.toBe(
+      deviceFingerprint({ rider: DEFAULT_RIDER, quietHours: true }),
     );
   });
 });

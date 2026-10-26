@@ -70,7 +70,7 @@ test("a profile is only saved when the rider confirms it", async ({ page }) => {
   const card = panel(page).getByRole("article", {
     name: "Rider profile proposal",
   });
-  await expect(card).toContainText("Save 85 kg · Riding · 4/5/6 m?");
+  await expect(card).toContainText("Save 85 kg · 4/5/6 m?");
   const stored = () =>
     page.evaluate(
       () =>
@@ -80,10 +80,9 @@ test("a profile is only saved when the rider confirms it", async ({ page }) => {
   expect(await stored()).toBeNull();
 
   await card.getByRole("button", { name: "Confirm" }).click();
-  await expect(card).toContainText("Saved: 85 kg · Riding · 4/5/6 m");
+  await expect(card).toContainText("Saved: 85 kg · 4/5/6 m");
   expect(await stored()).toEqual({
     weightKg: 85,
-    skill: "intermediate",
     wings: [4, 5, 6],
   });
 });

@@ -82,12 +82,12 @@ describe("the MCP endpoint", () => {
     expect(forecast.sources.wind.length).toBeGreaterThan(0);
   });
 
-  it("rates a spot's hours for the rider asked for, or the site's default", async () => {
+  it("rates a spot's hours on ours, with the rider's weight and wings for the wing", async () => {
     const { call } = harness();
     const plain = (
       await call("get_spot_forecast", { spot: "dollymount", hours: 6 })
     ).json();
-    expect(plain.rider.label).toBe("Riding · ~80 kg");
+    expect(plain.rider.label).toBe("Ours · ~80 kg");
     const first = plain.hours[0];
     expect(
       first.rating === null ? first.why_not_rated : first.rating.stars,
@@ -97,22 +97,54 @@ describe("the MCP endpoint", () => {
       await call("get_spot_forecast", {
         spot: "dollymount",
         hours: 6,
-        level: "advanced",
         weight_kg: 95,
-        gusty: "lots",
         wings_m2: [5, 3.5],
       })
     ).json();
     expect(heavy.rider).toMatchObject({
-      label: "Advanced · 95 kg",
-      gusty: "lots",
+      label: "Ours · 95 kg",
       wings_m2: [3.5, 5],
     });
+    // The weight and wings never move a star.
+    const stars = (f: { hours: { rating: { stars: number } | null }[] }) =>
+      f.hours.map((h) => h.rating?.stars ?? null);
+    expect(stars(heavy)).toEqual(stars(plain));
     const bad = await call("get_spot_forecast", {
       spot: "dollymount",
-      level: "expert",
+      weight_kg: 400,
     });
     expect(bad.isError).toBe(true);
+  });
+
+  it("takes the level and gust setting an old agent sends, and ignores them", async () => {
+    const { call, rpc } = harness();
+    const tools = (await rpc("tools/list")).result!.tools as {
+      inputSchema: { properties?: object };
+    }[];
+    for (const tool of tools) {
+      expect(tool.inputSchema.properties ?? {}).not.toHaveProperty("level");
+      expect(tool.inputSchema.properties ?? {}).not.toHaveProperty("gusty");
+    }
+    const plain = await call("get_spot_forecast", {
+      spot: "dollymount",
+      hours: 6,
+    });
+    const old = await call("get_spot_forecast", {
+      spot: "dollymount",
+      hours: 6,
+      level: "expert",
+      gusty: "lots",
+    });
+    expect(old.isError).toBe(false);
+    expect(old.json()).toEqual(plain.json());
+    const found = await call("find_wind", {
+      hours: 48,
+      level: "beginner",
+      gusty: "little",
+      counties: ["Dublin"],
+    });
+    expect(found.isError).toBe(false);
+    expect(found.json().rider).not.toHaveProperty("level");
   });
 
   it("ranks find_wind by the stars, and says for whom", async () => {
@@ -120,12 +152,10 @@ describe("the MCP endpoint", () => {
     const found = (
       await call("find_wind", {
         hours: 48,
-        level: "advanced",
-        gusty: "little",
         counties: ["Dublin"],
       })
     ).json();
-    expect(found.rider.label).toBe("Advanced · ~80 kg");
+    expect(found.rider.label).toBe("Ours · ~80 kg");
     expect(found.min_stars).toBe(1);
     expect(found.wind_range_kn).toBeUndefined();
     expect(found.spots.length).toBeGreaterThan(0);
@@ -204,7 +234,7 @@ describe("the MCP endpoint", () => {
       "ecmwf",
       "gfs",
     ]);
-    expect(typeof found.spots[0].sessions[0].gusty).toBe("boolean");
+    expect(found.spots[0].sessions[0].gust_factor).toEqual(expect.any(Number));
     expect(found.offshore_hours).toBe("left out");
     expect("shore" in found.spots[0].sessions[0]).toBe(true);
     const nearby = (

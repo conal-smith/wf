@@ -138,7 +138,12 @@ export async function setRider(page: Page, rider: Record<string, unknown>) {
     const prefs = JSON.parse(localStorage.getItem(key) ?? "{}");
     localStorage.setItem(
       key,
-      JSON.stringify({ ...prefs, rider: { ...prefs.rider, ...rider } }),
+      // Written as the current shape, so a rating of the rider's own is read.
+      JSON.stringify({
+        version: 3,
+        ...prefs,
+        rider: { ...prefs.rider, ...rider },
+      }),
     );
     dispatchEvent(new CustomEvent("wingfoil:prefs", { detail: "device" }));
   }, rider);

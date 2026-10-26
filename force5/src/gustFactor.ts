@@ -1,8 +1,9 @@
 /**
  * The gust factor: an hour's gust over its mean wind, how gusty it will be.
- * 1.3× is an ordinary riding day (the models' gust is the hour's strongest);
- * the stars call an hour gusty from 1.5× and very gusty from 1.8×
- * (force5/src/stars.ts, `gustiness`).
+ * 1.3× is an ordinary riding day (the models' gust is the hour's strongest).
+ * It is a figure to read, never a cost: the stars judge a gust by its
+ * strength in knots, not by the ratio (force5/src/stars.ts, since 25
+ * October 2026).
  *
  * In a near calm the ratio says nothing: a 2 kn mean gusting 5 is "2.5×" and
  * no rider would call it gusty. Under `GUST_FACTOR_MIN_WIND_KN` of mean wind
@@ -37,8 +38,8 @@ export function gustFactor(
 }
 
 /**
- * "1.9×": the factor to a tenth, cut rather than rounded, so a figure that
- * reads 1.5× is never one the stars still call steady (1.49 reads "1.4×").
+ * "1.9×": the factor to a tenth, cut rather than rounded, so a figure never
+ * reads higher than it is (1.49 reads "1.4×").
  */
 export const gustFactorText = (factor: number) =>
   `${(Math.floor(factor * 10 + 1e-9) / 10).toFixed(1)}×`;

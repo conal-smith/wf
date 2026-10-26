@@ -25,9 +25,9 @@ interface Props {
 }
 
 export const STARS_HELP =
-  "How good each hour looks for wing foiling, out of five. Solid stars are what the hour is worth here; faded ones are what the wind alone would give if the direction or the gusts had been kinder. Each hour is one model's forecast, the model you picked in Display options, and ECMWF's past the end of its run, where a dashed line marks the change; the other models never change a star. Rated for the rider in Display options.";
+  "How good each hour looks for wing foiling, out of five, from the steady wind against four numbers: too light, the sweet spot and too much (ours unless you set your own in Customise). Solid stars are what the hour is worth here; outlined ones are stars lost to the gusts or to the wind's direction. Each hour is one model's forecast, the model you picked, and ECMWF's past the end of its run, where a dashed line marks the change; the other models never change a star.";
 export const WING_HELP =
-  "The wing size the stars assume for that hour, in square metres: your own wing where you have listed them, otherwise what a rider of your weight and level would usually take.";
+  "A wing size for that hour, in square metres: your own wing where you have listed them, otherwise what a rider of your weight would usually take. It never changes the stars.";
 
 /**
  * Solid stars, then faded ones, told apart by shape as well as by tone: the
@@ -128,11 +128,9 @@ export default function StarsRows({
   showWing,
 }: Props) {
   const weight = rider.weightKg ?? ESTIMATE_WEIGHT_KG;
-  const help = `${STARS_HELP} Now: ${weight} kg${
+  const help = `${STARS_HELP} Now: ${rider.custom ? "your own stars" : "ours"}; wings for ${weight} kg${
     rider.weightKg === null ? " (an estimate until you set yours)" : ""
-  }, ${rider.skill}${
-    rider.wings.length ? `, wings ${rider.wings.join(", ")} m²` : ""
-  }.${
+  }${rider.wings.length ? `, yours ${rider.wings.join(", ")} m²` : ""}.${
     facing === null
       ? " This spot's shore direction is not known well enough, so the wind direction is not rated here."
       : ` The shore is taken to face ${Math.round(facing)}°, estimated from the map.`

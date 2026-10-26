@@ -233,7 +233,7 @@ export const InfoSheet = memo(function InfoSheet(props: Props) {
       <SheetSection title="Map key" aside={<T variant="figureSm" color="muted">{props.scale}</T>}>
         <KeyRow mark={<KeyLight stars={4} arrow />}>Stars at the hour shown; the arrow blows downwind.</KeyRow>
         <KeyRow mark={<KeyLight stars={4} wedge />}>
-          Wedge, on the spot you open: the headings you can hold out to sea at your level in this wind. Longer the better powered.
+          Wedge, on the spot you open: the headings you can hold out to sea in this wind, as far upwind as you ride. Longer the better powered.
         </KeyRow>
         <KeyRow mark={<KeyLight stars={5} />}>Five stars, in magenta</KeyRow>
         <KeyRow mark={<KeyLight stars={2} />}>One or two stars: a plain ring</KeyRow>
@@ -293,12 +293,12 @@ export const InfoSheet = memo(function InfoSheet(props: Props) {
 
       <SheetSection title="Star ratings">
         <KeyRow mark={<Stars stars={3} potential={5} size={11} />}>
-          Solid stars are the rating. Outlined stars are what the wind speed alone would have earned, before anything was taken off.
+          Solid stars are the rating. Outlined stars are stars lost to the gusts or the shore.
         </KeyRow>
         <KeyRow mark={<Stars stars={1} potential={2} size={11} />}>
-          A dot is a star out of reach: not even the wind speed alone would have earned it.
+          A dot is a star the steady wind never earned.
         </KeyRow>
-        <T variant="body">Dark hours aren’t rated. Your weight and level are in Settings.</T>
+        <T variant="body">Dark hours aren’t rated. Customise your stars in Settings.</T>
         <T variant="figureSm">Rated for {riderLine(props.rider)}</T>
         <Button
           label="How the stars work"

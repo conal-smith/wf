@@ -43,7 +43,7 @@ function Routes() {
       {/* Cancel or Save closes it: a swipe down would lose the edits without a word. */}
       <Stack.Screen
         name="your-stars"
-        options={{ presentation: "modal", title: "Your star rating", gestureEnabled: false }}
+        options={{ presentation: "modal", title: "Your stars", gestureEnabled: false }}
       />
     </Stack>
   );

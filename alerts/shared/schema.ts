@@ -6,12 +6,11 @@
  */
 import { z } from "zod";
 import {
-  GUSTIES,
+  DEFAULT_RIDER,
   MAX_WEIGHT_KG,
   MAX_WING_M2,
   MIN_WEIGHT_KG,
   MIN_WING_M2,
-  SKILLS,
 } from "../../force5/src/stars.js";
 import {
   LIMITS,
@@ -41,19 +40,47 @@ const starsChoiceSchema = z
   .refine((choice) => Object.keys(choice.spots ?? {}).length <= 200, "Too many spots.")
   .transform((choice) => parseStarsChoice(choice));
 
+/**
+ * How far into the wind, or below straight across it, a rider rides: whole
+ * degrees, 0–45, held to that range rather than refused. The same as
+ * force5/src/rideWedge.ts `clampUpwind` and `clampDownwind` (schema.test.ts
+ * holds them together), repeated because that module is the browser's and
+ * does not load on the server.
+ */
+export const ANGLE_MAX = 45;
+const degrees = z
+  .number()
+  .finite()
+  .transform((deg) => Math.min(ANGLE_MAX, Math.max(0, Math.round(deg))));
+
+// An app from before 25 October 2026 also sends its level (`skill`), how
+// much gusty wind bothers it (`gusty`) and a rating kept aside (`keptCustom`):
+// no longer settings, they are not in the schema, so they are taken and
+// dropped. Its own rating, made from a level (version 1 or 2), reads as none
+// (`customRatingSchema`), and ours rates.
 export const riderSchema = z.object({
   weightKg: z.number().min(MIN_WEIGHT_KG).max(MAX_WEIGHT_KG).nullable(),
-  skill: z.enum(SKILLS as [Rider["skill"], ...Rider["skill"][]]),
+  // How far into the wind, and below straight across it, they ride: neither
+  // moves a star. Left out, ours.
+  upwind: degrees.optional(),
+  downwind: degrees.optional(),
   wings: z.array(z.number().min(MIN_WING_M2).max(MAX_WING_M2)).max(12),
   // The rider's own star rating, which the server then rates with.
-  custom: customRatingSchema.nullable().optional(),
-  // How much gusty wind bothers them; left out by an app from before v6 of
-  // the stars, and then "some", as it is on the phone.
-  gusty: z.enum(GUSTIES as [Rider["gusty"] & string, ...(Rider["gusty"] & string)[]]).optional(),
+  custom: customRatingSchema.optional(),
   // The one model the rider picked (force5/src/lead.ts), checked again by
   // `parseStarsChoice` so a model no longer published is the default.
   starsFrom: starsChoiceSchema.optional(),
 }) satisfies z.ZodType<Rider>;
+
+/**
+ * A rider as a device's row keeps it, read again through `riderSchema`: a
+ * row written by an app from before 25 October 2026 may hold a level and a
+ * rating made from it, and is rated on ours. Never throws.
+ */
+export function storedRider(value: unknown): Rider {
+  const read = riderSchema.safeParse(value);
+  return read.success ? read.data : DEFAULT_RIDER;
+}
 
 /** A place id as the catalogue writes them: `brandon`, `fi-inchydoney-east-beach`. */
 const spotId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/, "Not a spot id.");

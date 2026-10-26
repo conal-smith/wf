@@ -373,9 +373,15 @@ test("only offshore is struck through; a learner's cross-offshore is too", async
   const crossOff = await page
     .locator(".spot-marker.xoff")
     .evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.spotId));
-  // The rider is learning, as Customise saves one: every cross-offshore
-  // hour is struck as well.
-  await setRider(page, { skill: "beginner" });
+  // A rider whose own stars take three off cross-offshore, as Customise
+  // saves them: every cross-offshore hour is struck as well.
+  await setRider(page, {
+    custom: {
+      version: 3,
+      wind: { min: 11, sweetLow: 15, sweetHigh: 22, max: 35 },
+      direction: { onshore: 0, crossOn: 0, cross: 0, crossOff: 3, offshore: 5 },
+    },
+  });
   await expect(page.locator(".spot-marker.xoff")).toHaveCount(0);
   for (const id of crossOff)
     await expect(page.locator(`[data-spot-id="${id}"]`)).toHaveClass(/\boff\b/);

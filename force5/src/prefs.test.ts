@@ -11,12 +11,18 @@ import {
   saveRider,
   withCustomStars,
   withRiderModel,
-  withStarsOn,
   type Prefs,
   type PrefsStorage,
 } from "./prefs";
 import { windModels } from "./manifests";
-import { DEFAULT_RIDER, standardRating } from "./stars";
+import { DEFAULT_RIDER, OURS, oursCopy, type CustomRating } from "./stars";
+
+/** A rider's own rating: ours with a few numbers moved. */
+const mine = (max = 30): CustomRating => ({
+  ...oursCopy(),
+  wind: { ...OURS.wind, max },
+  direction: { ...OURS.direction, onshore: 1 },
+});
 
 const fakeStorage = (initial: Record<string, string> = {}) => {
   const data = new Map(Object.entries(initial));
@@ -64,104 +70,60 @@ describe("display preferences", () => {
     expect(prefs.blendModels).not.toContain("ecmwf-ens");
     expect(prefs.blendModels).not.toContain("ukv");
   });
-  it("rates for the estimated rider until the reader says otherwise", () => {
+  it("rates for the estimated rider, on ours, until the reader says otherwise", () => {
     expect(defaultPrefs().rider).toEqual({
       weightKg: null,
-      skill: "intermediate",
       wings: [],
     });
   });
   it("keeps a stored rider only where each field is a real person's or a real wing's", () => {
-    expect(
-      parseRider({ weightKg: 72.4, skill: "advanced", wings: [6, 4, 4, 5.5] }),
-    ).toEqual({ weightKg: 72, skill: "advanced", wings: [4, 5.5, 6] });
-    expect(
-      parseRider({ weightKg: 900, skill: "pro", wings: [0.2, "5", 30, 3] }),
-    ).toEqual({ weightKg: null, skill: "intermediate", wings: [3] });
+    expect(parseRider({ weightKg: 72.4, wings: [6, 4, 4, 5.5] })).toEqual({
+      weightKg: 72,
+      wings: [4, 5.5, 6],
+    });
+    expect(parseRider({ weightKg: 900, wings: [0.2, "5", 30, 3] })).toEqual({
+      weightKg: null,
+      wings: [3],
+    });
     expect(parseRider("heavy")).toEqual(defaultPrefs().rider);
   });
-  it("keeps the degrees into the wind only when they are not the level's own", () => {
-    const base = { weightKg: null, skill: "intermediate", wings: [] };
+  it("ignores what the rider used to carry: a level, gusty wind, a kept rating, a pointing", () => {
+    expect(
+      parseRider({
+        weightKg: 70,
+        skill: "advanced",
+        gusty: "lots",
+        keptCustom: mine(),
+        pointing: "sharp",
+        wings: [],
+      }),
+    ).toEqual({ weightKg: 70, wings: [] });
+  });
+  it("keeps the degrees into the wind only when they are not ours, 0°", () => {
+    const base = { weightKg: null, wings: [] };
     expect(parseRider({ ...base, upwind: 30 }).upwind).toBe(30);
-    expect(parseRider({ ...base, upwind: 0 }).upwind).toBe(0);
-    // Riding starts at 20°: that is no number of the rider's own.
-    expect(parseRider({ ...base, upwind: 20 })).toEqual(base);
-    expect(parseRider({ ...base, skill: "beginner", upwind: 0 })).toEqual({
-      ...base,
-      skill: "beginner",
-    });
+    expect(parseRider({ ...base, upwind: 0 })).toEqual(base);
     // Whole degrees, held to 0–45; anything else is not a number of degrees.
     expect(parseRider({ ...base, upwind: 12.4 }).upwind).toBe(12);
     expect(parseRider({ ...base, upwind: 60 }).upwind).toBe(45);
-    expect(parseRider({ ...base, upwind: -5 }).upwind).toBe(0);
+    expect(parseRider({ ...base, upwind: -5 })).toEqual(base);
     expect(parseRider({ ...base, upwind: "30" })).toEqual(base);
     expect(parseRider({ ...base, upwind: Number.NaN })).toEqual(base);
-    // Kept on the device, as the weight and the level are.
+    // Kept on the device, as the weight is.
     const storage = fakeStorage();
     saveRider(parseRider({ ...base, upwind: 27 }), storage);
     expect(loadPrefs(storage).rider.upwind).toBe(27);
   });
-  it("reads a pointing stored before 24 October 2026 as degrees from the level's own", () => {
-    const at = (skill: string, pointing: unknown) =>
-      parseRider({ weightKg: null, skill, wings: [], pointing });
-    // Typical is the level's own, and so absent.
-    for (const skill of ["beginner", "intermediate", "advanced"])
-      expect(at(skill, "typical")).not.toHaveProperty("upwind");
-    // Cautious is 10° less, never under 0°; sharp 10° more, never over 45°.
-    expect(at("intermediate", "cautious").upwind).toBe(10);
-    expect(at("intermediate", "sharp").upwind).toBe(30);
-    expect(at("advanced", "cautious").upwind).toBe(25);
-    expect(at("advanced", "sharp").upwind).toBe(45);
-    expect(at("beginner", "cautious")).not.toHaveProperty("upwind");
-    expect(at("beginner", "sharp").upwind).toBe(10);
-    // Nothing that was not one of the three words.
-    expect(at("intermediate", "very")).not.toHaveProperty("upwind");
-    expect(at("intermediate", "toString")).not.toHaveProperty("upwind");
-    expect(at("intermediate", 10)).not.toHaveProperty("upwind");
-    // The old word is not kept, and a number stored since wins over it.
-    expect(at("intermediate", "sharp")).not.toHaveProperty("pointing");
-    expect(
-      parseRider({
-        weightKg: null,
-        skill: "intermediate",
-        wings: [],
-        pointing: "sharp",
-        upwind: 5,
-      }).upwind,
-    ).toBe(5);
-  });
-  it("migrates a stored pointing as the prefs load", () => {
+  it("keeps the degrees below across only when they are not ours, 10°", () => {
+    const base = { weightKg: null, wings: [] };
+    expect(parseRider({ ...base, downwind: 30 }).downwind).toBe(30);
+    expect(parseRider({ ...base, downwind: 0 }).downwind).toBe(0);
+    expect(parseRider({ ...base, downwind: 10 })).toEqual(base);
+    expect(parseRider({ ...base, downwind: 70 }).downwind).toBe(45);
+    expect(parseRider({ ...base, downwind: "5" })).toEqual(base);
     const storage = fakeStorage();
-    storage.setItem(
-      PREFS_KEY,
-      JSON.stringify({
-        version: PREFS_VERSION,
-        rider: {
-          weightKg: 80,
-          skill: "advanced",
-          wings: [],
-          pointing: "cautious",
-        },
-      }),
-    );
-    expect(loadPrefs(storage).rider).toEqual({
-      weightKg: 80,
-      skill: "advanced",
-      wings: [],
-      upwind: 25,
-    });
-  });
-  it("keeps how much gusty wind bothers the rider only when it is not some", () => {
-    const base = { weightKg: null, skill: "intermediate", wings: [] };
-    expect(parseRider({ ...base, gusty: "lots" }).gusty).toBe("lots");
-    expect(parseRider({ ...base, gusty: "little" }).gusty).toBe("little");
-    // Some is the default, and anything else is not an answer at all.
-    expect(parseRider({ ...base, gusty: "some" })).toEqual(base);
-    expect(parseRider({ ...base, gusty: "very" })).toEqual(base);
-    expect(parseRider({ ...base, gusty: 2 })).toEqual(base);
-    const storage = fakeStorage();
-    saveRider(parseRider({ ...base, gusty: "lots" }), storage);
-    expect(loadPrefs(storage).rider.gusty).toBe("lots");
+    saveRider(parseRider({ ...base, downwind: 25 }), storage);
+    expect(loadPrefs(storage).rider.downwind).toBe(25);
   });
   it("starts with no row touched by hand", () => {
     expect(defaultPrefs().touchedRows).toEqual([]);
@@ -303,16 +265,19 @@ describe("display preferences", () => {
 
   it("keeps the rider's own star rating, stamped, through storage", () => {
     const storage = fakeStorage();
-    const own = standardRating(DEFAULT_RIDER, "advanced");
+    const own = mine();
     const at = new Date("2026-10-18T10:00:00Z");
     const saved = withCustomStars(defaultPrefs(), own, at);
     expect(saved.rider.custom).toEqual(own);
     expect(saved.starsUpdatedAt).toBe("2026-10-18T10:00:00.000Z");
     savePrefs(saved, storage);
+    expect(JSON.parse(storage.data.get(PREFS_KEY)!).version).toBe(
+      PREFS_VERSION,
+    );
     const loaded = loadPrefs(storage);
     expect(loaded.rider.custom).toEqual(own);
     expect(loaded.starsUpdatedAt).toBe("2026-10-18T10:00:00.000Z");
-    // A reset is a change too, stamped, and leaves no custom field behind.
+    // Back to ours is a change too, stamped, and leaves no custom field behind.
     const reset = withCustomStars(
       loaded,
       null,
@@ -320,142 +285,91 @@ describe("display preferences", () => {
     );
     expect("custom" in reset.rider).toBe(false);
     expect(reset.starsUpdatedAt).toBe("2026-10-18T11:00:00.000Z");
+    // So is saving ours as it stands: nothing of their own is kept.
+    expect("custom" in withCustomStars(loaded, oursCopy()).rider).toBe(false);
   });
 
-  it("reads preferences saved before custom stars as the standard rating", () => {
-    const storage = fakeStorage({
-      [PREFS_KEY]: JSON.stringify({
-        units: "mph",
-        rider: { weightKg: 90, skill: "beginner", wings: [5] },
-      }),
-    });
-    const loaded = loadPrefs(storage);
-    expect(loaded.rider).toEqual({
-      weightKg: 90,
-      skill: "beginner",
-      wings: [5],
-    });
-    expect(loaded.starsUpdatedAt).toBeNull();
-    expect(loaded.starsAccount).toBeNull();
+  it("starts everyone stored before 25 October 2026 from ours, keeping weight, wings and model", () => {
+    const old = (version: number | undefined) =>
+      loadPrefs(
+        fakeStorage({
+          [PREFS_KEY]: JSON.stringify({
+            version,
+            units: "mph",
+            rider: {
+              weightKg: 90,
+              skill: "beginner",
+              gusty: "lots",
+              wings: [5],
+              upwind: 30,
+              starsFrom: { model: "gfs" },
+              custom: {
+                version: 2,
+                base: "beginner",
+                wind: { min: 13, sweetLow: 15, sweetHigh: 20, max: 24 },
+                direction: {
+                  onshore: 0,
+                  crossOn: 0,
+                  cross: 0,
+                  crossOff: 3,
+                  offshore: 5,
+                },
+              },
+              keptCustom: mine(),
+            },
+          }),
+        }),
+      );
+    for (const version of [undefined, 1, 2]) {
+      const loaded = old(version);
+      expect(loaded.units).toBe("mph");
+      expect(loaded.rider).toEqual({
+        weightKg: 90,
+        wings: [5],
+        starsFrom: { model: "gfs" },
+      });
+    }
   });
 
   it("drops a stored star rating it cannot read, or from another version, and clamps the rest", () => {
-    const own = standardRating(DEFAULT_RIDER);
+    const own = mine();
     const load = (custom: unknown) =>
       loadPrefs(
         fakeStorage({
           [PREFS_KEY]: JSON.stringify({
+            version: PREFS_VERSION,
             rider: { ...DEFAULT_RIDER, custom },
             starsUpdatedAt: "not a time",
           }),
         }),
       );
-    expect(load({ ...own, version: 3 }).rider.custom).toBeUndefined();
+    expect(load(own).rider.custom).toEqual(own);
+    expect(load({ ...own, version: 2 }).rider.custom).toBeUndefined();
     expect(load({ ...own, wind: null }).rider.custom).toBeUndefined();
     expect(load("custom").rider.custom).toBeUndefined();
     expect(
-      load({ ...own, direction: { ...own.direction, offshore: 11 } }).rider
-        .custom!.direction.offshore,
+      load({ ...own, direction: { ...own.direction, crossOff: 11 } }).rider
+        .custom!.direction.crossOff,
     ).toBe(5);
+    // Ours, stored as their own, is no rating of their own.
+    expect(load(oursCopy()).rider.custom).toBeUndefined();
     expect(load(own).starsUpdatedAt).toBeNull();
   });
 
-  it("keeps the rider's own rating while a level rates, and goes back to it", () => {
+  it("keeps the stored rating through a change of weight, wings or angles", () => {
+    const own = mine();
     const storage = fakeStorage();
-    const own = standardRating(DEFAULT_RIDER, "advanced");
-    const saved = withCustomStars(
-      defaultPrefs(),
-      own,
-      new Date("2026-10-18T10:00:00Z"),
-    );
-    // A level picked: it rates, the rating is kept, and the change stamped.
-    const level = withStarsOn(
-      saved,
-      "beginner",
-      new Date("2026-10-18T11:00:00Z"),
-    );
-    expect(level.rider).toEqual({
-      ...DEFAULT_RIDER,
-      skill: "beginner",
-      keptCustom: own,
-    });
-    expect(level.starsUpdatedAt).toBe("2026-10-18T11:00:00.000Z");
-    savePrefs(level, storage);
-    expect(JSON.parse(storage.data.get(PREFS_KEY)!).version).toBe(
-      PREFS_VERSION,
-    );
-    expect(loadPrefs(storage).rider).toEqual(level.rider);
-    // Another level: still off the rider's own, so nothing for the account.
-    const other = withStarsOn(
-      level,
-      "advanced",
-      new Date("2026-10-18T12:00:00Z"),
-    );
-    expect(other.rider.keptCustom).toEqual(own);
-    expect(other.starsUpdatedAt).toBe(level.starsUpdatedAt);
-    // Custom again: the same rating rates, the level stays as it was.
-    const back = withStarsOn(other, "custom", new Date("2026-10-18T13:00:00Z"));
-    expect(back.rider).toEqual({
-      ...DEFAULT_RIDER,
-      skill: "advanced",
-      custom: own,
-    });
-    expect(back.starsUpdatedAt).toBe("2026-10-18T13:00:00.000Z");
-    // Custom with none saved changes nothing.
-    expect(withStarsOn(defaultPrefs(), "custom").rider).toEqual(DEFAULT_RIDER);
-    // Saving makes it rate; deleting leaves neither behind.
-    const edited = standardRating(DEFAULT_RIDER, "beginner");
-    expect(withCustomStars(level, edited).rider).toEqual({
-      ...DEFAULT_RIDER,
-      skill: "beginner",
-      custom: edited,
-    });
-    const gone = withCustomStars(level, null);
-    expect("custom" in gone.rider || "keptCustom" in gone.rider).toBe(false);
-  });
-
-  it("keeps the stored rating, rating or kept, through a change of weight, level or wings", () => {
-    const own = standardRating(DEFAULT_RIDER, "advanced");
-    const storage = fakeStorage();
-    savePrefs(
-      withStarsOn(withCustomStars(defaultPrefs(), own), "beginner"),
+    savePrefs(withCustomStars(defaultPrefs(), own), storage);
+    const next = saveRider(
+      { ...DEFAULT_RIDER, weightKg: 70, upwind: 15 },
       storage,
     );
-    const next = saveRider({ ...DEFAULT_RIDER, weightKg: 70 }, storage);
     expect(next.rider).toEqual({
       ...DEFAULT_RIDER,
       weightKg: 70,
-      keptCustom: own,
-    });
-  });
-
-  it("reads a version 1 rider's own rating as saved and in use", () => {
-    const own = standardRating(DEFAULT_RIDER, "advanced");
-    const v1 = (rider: object) =>
-      loadPrefs(
-        fakeStorage({
-          [PREFS_KEY]: JSON.stringify({
-            rider: { ...DEFAULT_RIDER, ...rider },
-            starsUpdatedAt: "2026-10-18T10:00:00.000Z",
-          }),
-        }),
-      );
-    expect(v1({ custom: own }).rider).toEqual({
-      ...DEFAULT_RIDER,
+      upwind: 15,
       custom: own,
     });
-    // Version 1 never wrote a kept rating: one there is not read.
-    expect(v1({ keptCustom: own }).rider).toEqual(DEFAULT_RIDER);
-    // Version 2: both read, and never both at once.
-    const v2 = loadPrefs(
-      fakeStorage({
-        [PREFS_KEY]: JSON.stringify({
-          version: 2,
-          rider: { ...DEFAULT_RIDER, custom: own, keptCustom: own },
-        }),
-      }),
-    );
-    expect(v2.rider).toEqual({ ...DEFAULT_RIDER, custom: own });
   });
 });
 

@@ -15,7 +15,8 @@ import {
   type ModelClient,
 } from "./agent";
 import { fakeClient, fakeStream, type FakeBlock } from "./fake";
-import { SYSTEM } from "./prompt";
+import { SYSTEM, renderContext } from "./prompt";
+import { oursCopy } from "../../force5/src/stars";
 
 const NOW = new Date(FIXTURE_NOW).toISOString();
 const request = (
@@ -103,6 +104,32 @@ describe("the request", () => {
     expect(SYSTEM).not.toMatch(/20\d\d-\d\d-\d\d|app_context|\$\{/);
   });
 
+  it("tells Gust how the stars come, with no levels and no gust setting", () => {
+    expect(SYSTEM).toMatch(/too light \(11 kn\), the sweet spot \(15–22 kn\)/);
+    expect(SYSTEM).toMatch(/weight and wings never change the stars/);
+    expect(SYSTEM).not.toMatch(/\blevel\b|gusty wind take/);
+  });
+
+  it("says whose stars the rider is rated on", () => {
+    const own = {
+      ...oursCopy(),
+      wind: { min: 8, sweetLow: 10, sweetHigh: 16, max: 25 },
+    };
+    expect(
+      renderContext(
+        {
+          spot: null,
+          time: null,
+          rider: { weightKg: 85, wings: [5], custom: own },
+          now: NOW,
+        },
+        FIXTURE_NOW,
+      ),
+    ).toMatch(
+      "Rider profile: 85 kg, stars their own (too light 8 kn, sweet spot 10–16 kn, too much 25 kn), wings 5 m².",
+    );
+  });
+
   it("puts each message's context after it, as a system message, only where one may go", () => {
     const req: ChatRequest = {
       messages: [
@@ -136,7 +163,9 @@ describe("the request", () => {
       /Selected spot on the map: Brandon Bay \(id brandon\)/,
     );
     expect(last).toMatch(/Wednesday 16 September 2026 \(2026-09-16\)/);
-    expect(last).toMatch(/weight not set \(ratings assume 80 kg\)/);
+    expect(last).toMatch(
+      /weight not set \(wing sizes assume 80 kg\), stars ours, no wings listed/,
+    );
     expect(last).toMatch(/timeline is at Thu, 17 Sept, 13:00 \(tomorrow\)/);
     // Replaying the same history renders the same bytes: the prefix caches.
     expect(buildMessages(req, FIXTURE_NOW + 60000)).toEqual(messages);
@@ -235,7 +264,7 @@ describe("a turn", () => {
             type: "tool_use",
             id: "b",
             name: "propose_rider_profile",
-            input: { weight_kg: 70, level: "beginner", wings_m2: [5] },
+            input: { weight_kg: 70, wings_m2: [5] },
           },
         ],
         stop: "tool_use",
@@ -249,7 +278,7 @@ describe("a turn", () => {
     });
     expect(events.find((e) => e.event === "proposal")!.data).toMatchObject({
       id: "p1",
-      rider: { weightKg: 70, skill: "beginner", wings: [5] },
+      rider: { weightKg: 70, wings: [5] },
     });
   });
 

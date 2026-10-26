@@ -31,10 +31,14 @@ mobile/src/features/alerts/   the app's side (sync, permission, preview)
 
 ## How it works
 
-**The stars are the rider's.** A rating depends on weight, level and wings,
-or the rider's own star rating where they set one (docs/STAR_RATINGS.md), so
-each phone registers with its rider and the server rates for that rider. Riders who share settings share the work: each place is
-rated once per rider per run.
+**The stars are the rider's.** Every rider is rated on ours unless they made
+their own star rating in Customise (docs/STAR_RATINGS.md), and the wing beside
+the stars depends on their weight and wings, so each phone registers with its
+rider and the server rates for that rider. An app from before 25 October 2026
+also sends a level and a gust setting, which are dropped, and perhaps a rating
+made from its level (version 1 or 2), which reads as none: ours rates.
+Riders who share settings share the work: each place is rated once per rider
+per run.
 
 **The forecast is the published blend**, `weather/blend.json` and its 2° spot
 squares, rebuilt hourly — the same file the map's lights come from, read from
@@ -190,8 +194,9 @@ Kept per phone, with no name, email or account:
 - a random device id and a SHA-256 of its secret;
 - the app's random installation id, the Expo push token (cleared when Expo
   says the app is gone), platform, build variant, app version and time zone;
-- the rider as the app sends it (weight if given, level, wing sizes, and
-  their own star rating if they set one) and the two preferences;
+- the rider as the app sends it (weight if given, wing sizes, how far up and
+  down the wind they ride, the model their stars come from, and their own
+  star rating if they set one) and the two preferences;
 - the rules (spot ids, stars, days, hours);
 - per window told: rule, spot, day, the window's times and stars; notifications
   waiting to go; Expo ticket ids for a day.

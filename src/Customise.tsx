@@ -1,25 +1,24 @@
 /**
  * "Customise": the site menu's first row, a wizard that walks a rider through
  * the settings the stars are rated on, as the owner approved it in the mockup
- * backlog/mockups/2026-10-24-customise-wizard.html: how they ride (level,
- * weight, wings and units), the wind that suits them and how much gusty wind
- * bothers them, on a real day re-rated as they change them, the stars each way
- * of wind takes off, how far into the wind they ride, their spots, and the lot
- * together.
+ * backlog/mockups/2026-10-25-own-star-rating.html: about them (weight and
+ * units), the wind that suits them (four numbers, with the stars they make
+ * under the slider), the stars each way of wind takes off, how far up and
+ * down the wind they ride, their spots, and the lot together.
  *
- * One title per step, in the dialog's head, with how far through it is and a
- * thin bar under it. The words say what each thing is, plainly.
+ * Everyone starts from ours; "Reset to ours" shows once anything the stars
+ * or the course are made of differs from it. Every step is the same: a
+ * title, one short line saying what to do, the content (a picture left and
+ * its controls right on a desktop, stacked on a phone), and the foot.
  *
  * Its own chunk, fetched when it is opened. It edits a draft and saves it on
  * the last step through src/customiseDraft.ts, into the preferences the
- * stars, Display options and the spot page read: closing it any other way
- * keeps nothing.
+ * stars and every page read: closing it any other way keeps nothing.
  */
 import "./customise.css";
 import {
-  useEffect,
-  useId,
   useLayoutEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -27,21 +26,8 @@ import {
   type ReactNode,
 } from "react";
 import type { Prefs } from "../force5/src/prefs";
-import {
-  COURSE_DEEP,
-  UPWIND_MAX,
-  clampUpwind,
-  upwindAngle,
-} from "../force5/src/rideWedge";
-import {
-  GUSTIES,
-  GUSTY_LABEL,
-  SKILLS,
-  SKILL_LABEL,
-  type DirectionKey,
-  type Gusty,
-  type Skill,
-} from "../force5/src/stars";
+import { DOWNWIND_MAX, UPWIND_MAX } from "../force5/src/rideWedge";
+import { NEVER, type DirectionKey } from "../force5/src/stars";
 import { UNITS, beaufort, forceKn, type Units } from "../force5/src/units";
 import type { Spot } from "../force5/src/weather";
 import { BeaufortGlyph } from "../ui/BeaufortGlyph";
@@ -50,12 +36,12 @@ import { Dialog } from "../ui/Dialog";
 import { SearchField } from "../ui/SearchField";
 import { Segmented } from "../ui/Segmented";
 import { StarGlyphs } from "../ui/StarGlyphs";
-import { TextInput } from "../ui/TextInput";
 import {
   WEB_DIRS,
   WEB_R,
   WIND_KEYS,
   WIND_TOP,
+  costLabel,
   forceTicks,
   knotsOf,
   moveWind,
@@ -63,29 +49,28 @@ import {
   offAt,
   polar,
   said,
+  shoreLocked,
   shown,
+  starRuns,
   stepped,
   unitScale,
   webRadius,
   type UnitScale,
 } from "../spot/web/yourStars";
 import {
-  NEVER,
   applyDraft,
-  costLabel,
+  differsFromOurs,
   draftOf,
   draftRider,
-  hourWhy,
   inUnits,
-  levelRating,
   nearest,
-  parseWings,
   rateSample,
+  resetToOurs,
   sampleDay,
-  shoreLocked,
   spotChanges,
-  withLevel,
+  withDownwind,
   withShore,
+  withUpwind,
   type Draft,
   type Origin,
   type SampleDay,
@@ -95,24 +80,31 @@ import type { PlaceHour } from "./ratings";
 import { clock, dayLong } from "./strip";
 
 const STEPS = [
-  { id: "you", title: "How do you ride?" },
-  { id: "wind", title: "What wind suits you?" },
+  {
+    id: "you",
+    title: "About you",
+    sub: "Your weight, and the units you read the wind in.",
+  },
+  {
+    id: "wind",
+    title: "What wind suits you?",
+    sub: "Drag the handles to the wind you like. The stars under them follow.",
+  },
   {
     id: "shore",
-    title: "Stars by wind direction",
-    sub: "How many stars should a spot lose when the wind blows offshore, onshore or along the beach? Drag a dot in to take stars off. A dot in the middle means no stars for that wind.",
+    title: "Configure stars based on wind direction",
+    sub: "Drag a dot in to take stars off for that wind.",
   },
-  { id: "upwind", title: "Can you ride upwind?" },
+  {
+    id: "upwind",
+    title: "Can you ride upwind?",
+    sub: "Pick the nearest answer, then set the two angles.",
+  },
   { id: "spots", title: "Your spots" },
   { id: "done", title: "All set" },
 ] as const;
 export type CustomiseStep = (typeof STEPS)[number]["id"];
 
-const LEVEL_LINE: Record<Skill, string> = {
-  beginner: "Still getting up on the foil.",
-  intermediate: "Riding both ways, starting to gybe.",
-  advanced: "Light-wind pumping, happy in strong wind too.",
-};
 /** The five ways of wind, onshore first, as the shore step lists them. */
 const SHORE_ORDER: readonly DirectionKey[] = [
   "onshore",
@@ -129,11 +121,11 @@ const DIRECTION_NAME: Record<DirectionKey, string> = {
   offshore: "Offshore",
 };
 const DIRECTION_LINE: Record<DirectionKey, string> = {
-  onshore: "Blows straight in. Choppy getting out, but it brings you back.",
-  crossOn: "Blows in at an angle. The easiest wind to learn in.",
-  cross: "Blows along the beach. Ideal for most riders.",
-  crossOff: "Blows out at an angle. You drift away from the beach.",
-  offshore: "Blows straight out to sea. If you fall, you drift away.",
+  onshore: "Blows straight in. Choppy out, but it brings you back.",
+  crossOn: "In at an angle. The easiest wind to learn in.",
+  cross: "Along the beach. Ideal for most riders.",
+  crossOff: "Out at an angle. You drift away from the beach.",
+  offshore: "We don't recommend going out in an offshore wind.",
 };
 /** The web's short names, at the end of each spoke. */
 const DIRECTION_SHORT: Record<DirectionKey, string> = {
@@ -184,7 +176,7 @@ export default function Customise({
     () => new Map(spots.map((s) => [s.id, s] as const)),
     [spots],
   );
-  // The day is chosen once, as the wizard opens: the hours it shows stay put while the rider drags.
+  // The day "All set" shows is chosen once, as the wizard opens.
   const [day] = useState(() => sampleDay(hours, times, byId, prefer));
   const step = STEPS[at];
   const last = at === STEPS.length - 1;
@@ -223,6 +215,16 @@ export default function Customise({
               Skip
             </Button>
           )}
+          {differsFromOurs(draft) && (
+            <Button
+              variant="quiet"
+              className="cw-skip"
+              data-reset
+              onClick={() => setDraft(resetToOurs(draft))}
+            >
+              Reset to ours
+            </Button>
+          )}
           <span className="cw-sp" />
           {at > 0 && (
             <Button variant="pill" onClick={() => go(at - 1)}>
@@ -257,17 +259,25 @@ export default function Customise({
           <YouStep draft={draft} setDraft={setDraft} unit={unit} />
         )}
         {step.id === "wind" && (
-          <WindStep
-            draft={draft}
-            setDraft={setDraft}
+          <WindRange
+            wind={draft.custom.wind}
+            units={draft.units}
             unit={unit}
-            day={day}
-            rider={rider}
+            onMove={(i, kn) =>
+              setDraft({
+                ...draft,
+                custom: (unit.force ? moveWindForce : moveWind)(
+                  draft.custom,
+                  WIND_KEYS[i],
+                  kn,
+                ),
+              })
+            }
           />
         )}
         {step.id === "shore" && <ShoreStep draft={draft} setDraft={setDraft} />}
         {step.id === "upwind" && (
-          <PointingStep draft={draft} setDraft={setDraft} />
+          <UpwindStep draft={draft} setDraft={setDraft} />
         )}
         {step.id === "spots" && (
           <SpotsStep
@@ -328,186 +338,71 @@ function Speed({
   );
 }
 
-/* ---- 1. how they ride ---- */
+/* ---- 1. about you ---- */
 
+/** Weight and units, each centred, its name over it. Neither moves a star. */
 function YouStep({ draft, setDraft, unit }: StepProps & { unit: UnitScale }) {
   const weight = draft.weightKg ?? 80;
-  const wingsId = useId();
-  // The field keeps what is being typed ("5." on the way to "5.5"); the
-  // draft holds only what parses.
-  const [wingsText, setWingsText] = useState(draft.wings.join(", "));
   return (
-    <>
-      <div className="cw-levels" role="group" aria-label="Riding level">
-        {SKILLS.map((skill) => {
-          const w = levelRating(skill, draft.weightKg).wind;
-          return (
-            <Button
-              key={skill}
-              variant="quiet"
-              className="cw-level"
-              pressed={draft.skill === skill}
-              onClick={() => setDraft(withLevel(draft, skill, draft.weightKg))}
-            >
-              <b>{SKILL_LABEL[skill]}</b>
-              <span>{LEVEL_LINE[skill]}</span>
-              <small>
-                <Speed kn={w.min} unit={unit} size={15} />–
-                <Speed kn={w.max} unit={unit} size={15} />
-                {unit.force ? "" : ` ${unit.label}`}
-              </small>
-            </Button>
-          );
-        })}
-      </div>
-      <div className="cw-rows">
-        <div className="cw-row">
-          <span className="cw-kick">Weight</span>
-          <span className="cw-stepper">
-            <Button
-              variant="pill"
-              size="sm"
-              icon
-              aria-label="Lighter"
-              onClick={() =>
-                setDraft(
-                  withLevel(draft, draft.skill, Math.max(40, weight - 5)),
-                )
-              }
-            >
-              −
-            </Button>
-            <output aria-live="polite">
-              {weight}
-              <small>kg</small>
-            </output>
-            <Button
-              variant="pill"
-              size="sm"
-              icon
-              aria-label="Heavier"
-              onClick={() =>
-                setDraft(
-                  withLevel(draft, draft.skill, Math.min(140, weight + 5)),
-                )
-              }
-            >
-              +
-            </Button>
-          </span>
-          <span className="cw-note">Heavier riders need more wind.</span>
-        </div>
-        <div className="cw-row">
-          <label className="cw-kick" htmlFor={wingsId}>
-            Wings you own
-          </label>
-          <span className="cw-wings">
-            <TextInput
-              id={wingsId}
-              inputMode="decimal"
-              data-rider="wings"
-              placeholder="e.g. 4, 5.5"
-              value={wingsText}
-              onChange={(event) => {
-                setWingsText(event.target.value);
-                setDraft({ ...draft, wings: parseWings(event.target.value) });
-              }}
-            />
-            <small>m²</small>
-          </span>
-          <span className="cw-note">
-            Optional. A star comes off when none suits the wind.
-          </span>
-        </div>
-        <div className="cw-row">
-          <span className="cw-kick">Wind in</span>
-          <Segmented<Units>
-            aria-label="Wind units"
-            options={UNITS.map((u) => ({ value: u.id, label: u.label }))}
-            value={draft.units}
-            onChange={(units) => setDraft(inUnits({ ...draft, units }))}
-          />
-          {unit.force && (
-            // The old charts' notation, with the knots each force runs over.
-            <ul className="cw-bf-key" aria-label="The forces in knots">
-              {Array.from({ length: 10 }, (_, i) => i + 1).map((force) => (
-                <li key={force}>
-                  <BeaufortGlyph force={force} size={16} />
-                  <small>
-                    {forceKn(force, "first")}–{forceKn(force, "last")} kn
-                  </small>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-    </>
-  );
-}
-
-/* ---- 2. the wind and gusty wind ---- */
-
-function WindStep({
-  draft,
-  setDraft,
-  unit,
-  day,
-  rider,
-}: StepProps & {
-  unit: UnitScale;
-  day: SampleDay | null;
-  rider: DraftRider;
-}) {
-  return (
-    <>
-      <WindRange
-        wind={draft.custom.wind}
-        units={draft.units}
-        unit={unit}
-        onMove={(i, kn) =>
-          setDraft({
-            ...draft,
-            custom: (unit.force ? moveWindForce : moveWind)(
-              draft.custom,
-              WIND_KEYS[i],
-              kn,
-            ),
-          })
-        }
-      />
-      <div className="cw-zones">
-        <span>
-          <i className="is-ok" />
-          rideable
-        </span>
-        <span>
-          <i className="is-sweet" />
-          best
-        </span>
-        <span>
-          <i className="is-over" />a gust past here: no stars
+    <div className="cw-rows">
+      <div className="cw-row">
+        <span className="cw-kick">Weight</span>
+        <span className="cw-stepper">
+          <Button
+            variant="pill"
+            size="sm"
+            icon
+            aria-label="Lighter"
+            onClick={() =>
+              setDraft({ ...draft, weightKg: Math.max(40, weight - 5) })
+            }
+          >
+            −
+          </Button>
+          <output aria-live="polite">
+            {weight}
+            <small>kg</small>
+          </output>
+          <Button
+            variant="pill"
+            size="sm"
+            icon
+            aria-label="Heavier"
+            onClick={() =>
+              setDraft({ ...draft, weightKg: Math.min(140, weight + 5) })
+            }
+          >
+            +
+          </Button>
         </span>
       </div>
-      <div className="cw-gusty">
-        <h3>Gusty wind</h3>
-        <p>
-          How much does uneven wind bother you? Stars it costs are shown hollow.
-        </p>
-        <Segmented<Gusty>
-          aria-label="Gusty wind"
-          options={GUSTIES.map((gusty) => ({
-            value: gusty,
-            label: GUSTY_LABEL[gusty],
-          }))}
-          value={draft.gusty}
-          onChange={(gusty) => setDraft({ ...draft, gusty })}
+      <div className="cw-row">
+        <span className="cw-kick">Units</span>
+        <Segmented<Units>
+          aria-label="Units"
+          options={UNITS.map((u) => ({ value: u.id, label: u.label }))}
+          value={draft.units}
+          onChange={(units) => setDraft(inUnits({ ...draft, units }))}
         />
+        {unit.force && (
+          // The old charts' notation, with the knots each force runs over.
+          <ul className="cw-bf-key" aria-label="The forces in knots">
+            {Array.from({ length: 10 }, (_, i) => i + 1).map((force) => (
+              <li key={force}>
+                <BeaufortGlyph force={force} size={16} />
+                <small>
+                  {forceKn(force, "first")}–{forceKn(force, "last")} kn
+                </small>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-      <SampleDayCard day={day} rider={rider} unit={unit} />
-    </>
+    </div>
   );
 }
+
+/* ---- 2. the wind ---- */
 
 /** The wind scale's ends, in knots: past the highest top a handle can reach. */
 const SCALE_FROM = 0;
@@ -526,13 +421,17 @@ const HANDLE_NAMES = [
   "Sweet spot to",
   "Too much, in gusts",
 ];
+/** The chart's star, a five-point at radius 5 round the origin. */
+const STAR_PATH =
+  "M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z";
 
 /**
- * The rider's band on a scale in knots, shown in their unit: too light, the
- * sweet spot, and the top, which a gust may not pass (hatched in the pen's
- * red past it). Four handles, dragged or moved a step at a time from the
- * keyboard; where they may go is yourStars.ts's (`moveWind`), which keeps
- * them a knot apart.
+ * One axis: the rider's four numbers on a scale in knots, shown in their
+ * unit (too light, the sweet spot, and too much, which a gust may not pass,
+ * hatched in the pen's red past it); right under the track, read-only, the
+ * stars those numbers make by steady wind; then the figures, once. Four
+ * handles, dragged or moved a step at a time from the keyboard; where they
+ * may go is yourStars.ts's (`moveWind`), which keeps them a knot apart.
  */
 function WindRange({
   wind,
@@ -548,8 +447,9 @@ function WindRange({
   const host = useRef<HTMLDivElement>(null);
   const light = useRef<HTMLSpanElement>(null);
   const much = useRef<HTMLSpanElement>(null);
+  const none = useRef<HTMLSpanElement>(null);
   const [width, setWidth] = useState(0);
-  const [labels, setLabels] = useState({ light: 70, much: 130 });
+  const [labels, setLabels] = useState({ light: 70, much: 130, none: 110 });
   useLayoutEffect(() => {
     const el = host.current!;
     const seen = new ResizeObserver(() => setWidth(el.clientWidth));
@@ -562,8 +462,13 @@ function WindRange({
     const next = {
       light: light.current?.offsetWidth ?? 0,
       much: much.current?.offsetWidth ?? 0,
+      none: none.current?.offsetWidth ?? 0,
     };
-    if (next.light !== labels.light || next.much !== labels.much)
+    if (
+      next.light !== labels.light ||
+      next.much !== labels.much ||
+      next.none !== labels.none
+    )
       setLabels(next);
   });
   const pc = (kn: number) =>
@@ -596,6 +501,10 @@ function WindRange({
   // On a narrow scale, every other tick is labelled, so the figures never touch.
   const sparse = width > 0 && width / ticks.length < 44;
   const muchLeft = Math.min(x(wind.max) + 24, width - labels.much);
+  const noneLeft = Math.min(x(wind.max) + 6, width - labels.none);
+  // The stars by steady wind, a run of one count at a time, each run from
+  // half a knot before its first to half a knot past its last.
+  const runs = starRuns(wind, SCALE_TO).filter((r) => r.stars);
   return (
     <div className="cw-range" ref={host}>
       <div className="cw-track">
@@ -677,6 +586,33 @@ function WindRange({
           <Speed kn={v} unit={unit} size={13} />
         </span>
       ))}
+      <div
+        className="cw-strip"
+        data-star-strip
+        role="img"
+        aria-label={`Your stars by steady wind: none below ${said(wind.min, unit)}, five from ${said(wind.sweetLow, unit)} to ${said(wind.sweetHigh, unit)}, none past ${said(wind.max - 3, unit)}.`}
+      >
+        <svg className="cw-strip-star" viewBox="-5.5 -5.5 11 11" aria-hidden>
+          <path d={STAR_PATH} />
+        </svg>
+        {runs.map((r) => {
+          const left = pc(Math.max(0, r.from - 0.5));
+          const right = pc(Math.min(SCALE_TO, r.to + 0.5));
+          return (
+            <i
+              key={r.from}
+              className={`cw-strip-run is-s${r.stars}`}
+              data-stars={r.stars}
+              style={{ left: `${left}%`, width: `${right - left}%` }}
+            >
+              {((right - left) / 100) * width >= 10 ? r.stars : ""}
+            </i>
+          );
+        })}
+        <span className="cw-strip-none" ref={none} style={{ left: noneLeft }}>
+          no stars past here
+        </span>
+      </div>
       <div className="cw-ticks" aria-hidden="true">
         {ticks.map((t, i) => (
           <span key={t.kn} style={{ left: `${pc(t.kn)}%` }}>
@@ -690,81 +626,43 @@ function WindRange({
 }
 
 /**
- * A real day at a real spot, rated for the draft: the stars move as the rider
- * drags. Under each hour, the gust (red over the rider's top, orange where it
- * is gusty) and, where something took stars off, the word for it. On the
- * last step, the hours, the wind and the stars alone.
+ * A real day at a real spot, rated for the draft, on "All set": the hours,
+ * the wind and the stars alone.
  */
 function SampleDayCard({
   day,
   rider,
   unit,
-  forYou = false,
 }: {
   day: SampleDay | null;
   rider: DraftRider;
   unit: UnitScale;
-  forYou?: boolean;
 }) {
-  const before = useRef<number[]>([]);
-  const ratings = day ? rateSample(day, rider) : [];
-  const stars = ratings.map((r) => r.stars);
-  const was = before.current;
-  // Nine hours across a phone leave each one a finger's width: smaller stars.
-  const small = window.matchMedia("(max-width: 719px)").matches;
-  useEffect(() => {
-    before.current = stars;
-  });
   if (!day)
     return <p className="cw-note">No forecast in hand yet to try it on.</p>;
+  const ratings = rateSample(day, rider);
+  // Nine hours across a phone leave each one a finger's width: smaller stars.
+  const small = window.matchMedia("(max-width: 719px)").matches;
   return (
     <div className="cw-day" data-sample>
       <div className="cw-day-h">
         <b>
-          {dayLong(day.hours[0].time)} at {day.spot.name}
-          {forYou ? ", for you" : ""}
+          {dayLong(day.hours[0].time)} at {day.spot.name}, for you
         </b>
-        {!forYou && <span className="cw-kick">wind · gust · stars</span>}
       </div>
       <div className="cw-hours">
         {day.hours.map((hour, i) => {
           const rating = ratings[i];
-          const why = hourWhy(hour, rating, rider);
           return (
-            <div
-              // Keyed on the stars too, so each change draws in again.
-              key={`${hour.time}-${stars[i]}`}
-              className={
-                !forYou && was.length && was[i] !== stars[i]
-                  ? "is-changed"
-                  : undefined
-              }
-            >
+            <div key={hour.time}>
               <span className="cw-t">{clock(hour.time)}</span>
               <span className="cw-w">
                 <Speed kn={hour.windKn} unit={unit} size={small ? 13 : 16} />
               </span>
-              {!forYou && (
-                <span
-                  className={`cw-g${why.gust ? ` is-${why.gust}` : ""}`}
-                  data-gust={why.gust ?? undefined}
-                >
-                  {hour.gustKn === null ? (
-                    ""
-                  ) : unit.force ? (
-                    <>
-                      g{" "}
-                      <BeaufortGlyph force={beaufort(hour.gustKn)} size={10} />
-                    </>
-                  ) : (
-                    `g${shown(hour.gustKn, unit)}`
-                  )}
-                </span>
-              )}
               <span className="cw-s">
                 {rating.potential ? (
                   <StarGlyphs
-                    stars={stars[i]}
+                    stars={rating.stars}
                     potential={rating.potential}
                     slots="potential"
                     size={small ? 6 : 9}
@@ -773,7 +671,6 @@ function SampleDayCard({
                   <span aria-label="No stars">–</span>
                 )}
               </span>
-              {!forYou && <span className="cw-why">{why.word}</span>}
             </div>
           );
         })}
@@ -784,28 +681,44 @@ function SampleDayCard({
 
 /* ---- 3. stars by wind direction ---- */
 
+/** The padlock beside offshore's "never": no dot moves it. */
+function Lock() {
+  return (
+    <svg className="cw-lock" viewBox="0 0 12 12" aria-hidden="true">
+      <rect x="2.5" y="5.5" width="7" height="5" rx="1" />
+      <path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" />
+    </svg>
+  );
+}
+
 function ShoreStep({ draft, setDraft }: StepProps) {
   const off = draft.custom.direction;
   return (
     <div className="cw-shore">
       <ShoreWeb
         off={off}
-        locked={(key) => shoreLocked(draft.skill, key)}
         onChange={(key, value) => setDraft(withShore(draft, key, value))}
       />
       <ul className="cw-dirs">
-        {SHORE_ORDER.map((key) => (
-          <li key={key} data-direction={key}>
-            <b>{DIRECTION_NAME[key]}</b>
-            <span className={`cw-cost${off[key] >= NEVER ? " is-never" : ""}`}>
-              {costLabel(off[key])}
-            </span>
-            <small>
-              {DIRECTION_LINE[key]}
-              {shoreLocked(draft.skill, key) ? " Never for a learner." : ""}
-            </small>
-          </li>
-        ))}
+        {SHORE_ORDER.map((key) => {
+          const lock = shoreLocked(key);
+          return (
+            <li
+              key={key}
+              data-direction={key}
+              className={lock ? "is-locked" : undefined}
+            >
+              <b>{DIRECTION_NAME[key]}</b>
+              <span
+                className={`cw-cost${off[key] >= NEVER ? " is-never" : ""}`}
+              >
+                {costLabel(off[key])}
+                {lock && <Lock />}
+              </span>
+              <small>{DIRECTION_LINE[key]}</small>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -823,17 +736,16 @@ const f1 = (n: number) => n.toFixed(1);
  * The beach from above, sea up and land down (spot/web/yourStars.ts's web),
  * and a spoke for each way of wind, its arrow pointing the way the wind
  * blows: offshore out over the sea, onshore in over the land. The dot on a
- * spoke is what that wind costs: on the rim nothing, a star a ring, in the
- * middle never. The two sides are one setting, so a dot moves its mirror.
- * Each dot is a slider for the keyboard.
+ * spoke is what that wind costs, in whole stars: on the rim nothing, a star
+ * a ring, in the middle never. Offshore sits in the middle, locked. The two
+ * sides are one setting, so a dot moves its mirror. Each dot is a slider for
+ * the keyboard.
  */
 function ShoreWeb({
   off,
-  locked,
   onChange,
 }: {
   off: Record<DirectionKey, number>;
-  locked: (key: DirectionKey) => boolean;
   onChange: (key: DirectionKey, off: number) => void;
 }) {
   const svg = useRef<SVGSVGElement>(null);
@@ -852,7 +764,7 @@ function ShoreWeb({
       (
         event.currentTarget.closest("[data-dot]") as SVGGElement | null
       )?.focus?.();
-      if (locked(key)) return;
+      if (shoreLocked(key)) return;
       dragging.current = key;
       svg.current!.setPointerCapture(event.pointerId);
     };
@@ -945,7 +857,7 @@ function ShoreWeb({
         const [x, y] = polar(a, webRadius(off[key]));
         const first = WEB_DIRS.find((d) => d.key === key)!.at[0] === a;
         const never = off[key] >= NEVER;
-        const lock = locked(key);
+        const lock = shoreLocked(key);
         const dot = (
           <>
             <circle className="cw-dot-hit" cx={f1(x)} cy={f1(y)} r="14" />
@@ -963,7 +875,7 @@ function ShoreWeb({
             key={`d${a}`}
             className={`cw-dot${lock ? " is-locked" : ""}`}
             data-dot={key}
-            tabIndex={0}
+            tabIndex={lock ? -1 : 0}
             role="slider"
             aria-label={`${DIRECTION_NAME[key]}: stars taken off`}
             aria-valuemin={0}
@@ -975,10 +887,10 @@ function ShoreWeb({
             onKeyDown={(event) => {
               const to = (
                 {
-                  ArrowUp: off[key] + 0.5,
-                  ArrowRight: off[key] + 0.5,
-                  ArrowDown: off[key] - 0.5,
-                  ArrowLeft: off[key] - 0.5,
+                  ArrowUp: off[key] + 1,
+                  ArrowRight: off[key] + 1,
+                  ArrowDown: off[key] - 1,
+                  ArrowLeft: off[key] - 1,
                   Home: 0,
                   End: NEVER,
                 } as Record<string, number>
@@ -1013,7 +925,7 @@ function ShoreWeb({
 
 /**
  * The three quick answers, in degrees into the wind past straight across it
- * (force5/src/rideWedge.ts `upwindOf`). The slider and the picture's handles
+ * (force5/src/rideWedge.ts `upwindOf`). The sliders and the picture's handles
  * fine-tune from there.
  */
 const UP_ANSWERS = [
@@ -1026,30 +938,33 @@ const UP_ANSWERS = [
   { into: 20, name: "Yes", line: "I can work my way upwind." },
 ] as const;
 
-/** How the summary and the slider say a number of degrees into the wind. */
-const intoWords = (into: number) =>
-  into ? `${into}° into the wind` : "straight across the wind";
+/** How the summary says the two angles. */
+const courseWords = (into: number, down: number) =>
+  `${into ? `${into}° into the wind` : "straight across the wind"} · course to ${down ? `${down}° below across` : "straight across"}`;
 
 /** The upwind picture's frame: the board at the middle, the wind from the top. */
 const UP = { cx: 150, cy: 168, r: 118, vx: -36, vw: 372, vh: 310 };
 
 /**
- * "Can you ride upwind?": one number, degrees into the wind counted from
- * straight across it, used in every wind. The picture draws it as the loupe
- * will: the no-go hatched into the wind, the two courses to about 120° off
- * it, the slow water downwind faint, and the angle in magenta. Answered with
- * a quick answer, the slider, or a handle on the course's edge.
+ * "Can you ride upwind?": the three answers across the top, then the picture
+ * left and the two angles right. Degrees into the wind (counted from
+ * straight across it) and degrees below across that the course runs to,
+ * used in every wind and moving no star. The picture draws them as the
+ * loupe will: the no-go hatched into the wind (CAN'T GO), the two courses
+ * (RIDE), and past the course downwind DRIFT, where they lose ground; each
+ * angle has a handle on the course's edge as well as its slider.
  */
-function PointingStep({ draft, setDraft }: StepProps) {
+function UpwindStep({ draft, setDraft }: StepProps) {
   const id = useId().replace(/[^\w-]/g, "");
   const svg = useRef<SVGSVGElement>(null);
   const into = draft.upwind;
-  const set = (deg: number) => {
-    const next = clampUpwind(deg);
-    if (next !== draft.upwind) setDraft({ ...draft, upwind: next });
-  };
+  const down = draft.downwind;
+  // The latest draft, for a drag that outlives the render it began in.
+  const latest = useRef(draft);
+  latest.current = draft;
   const { cx, cy, r } = UP;
-  const up = upwindAngle({ skill: draft.skill, upwind: into });
+  const up = 90 - into;
+  const deep = 90 + down;
   /** A point `rr` out on a heading `a` degrees off the wind, clockwise from the top. */
   const p = (a: number, rr: number): [number, number] => [
     cx + rr * Math.sin((a * Math.PI) / 180),
@@ -1061,36 +976,40 @@ function PointingStep({ draft, setDraft }: StepProps) {
       .join(" ");
   const sector = (a1: number, a2: number, rr: number) =>
     `M${cx} ${cy}L${xy(a1, rr)}A${rr} ${rr} 0 ${a2 - a1 > 180 ? 1 : 0} 1 ${xy(a2, rr)}Z`;
-  // The latest `set`, for a drag that outlives the render it began in.
-  const setLatest = useRef(set);
-  setLatest.current = set;
-  /** Dragging an edge: the degrees into the wind for the pointer, either side. */
-  const grab = (event: ReactPointerEvent<SVGGElement>) => {
-    event.preventDefault();
-    const move = (m: PointerEvent) => {
-      const box = svg.current?.getBoundingClientRect();
-      if (!box) return;
-      const k = UP.vw / box.width;
-      const x = Math.abs((m.clientX - box.left) * k + UP.vx - cx);
-      const y = (m.clientY - box.top) * k - cy;
-      setLatest.current(90 - (Math.atan2(x, -y) * 180) / Math.PI);
+  /** Dragging an edge: its angle for the pointer, either side. */
+  const grab =
+    (kind: "into" | "down") => (event: ReactPointerEvent<SVGGElement>) => {
+      event.preventDefault();
+      const move = (m: PointerEvent) => {
+        const box = svg.current?.getBoundingClientRect();
+        if (!box) return;
+        const k = UP.vw / box.width;
+        const x = Math.abs((m.clientX - box.left) * k + UP.vx - cx);
+        const y = (m.clientY - box.top) * k - cy;
+        // Degrees off the wind, 0 to 180.
+        const off = (Math.atan2(x, -y) * 180) / Math.PI;
+        setDraft(
+          kind === "into"
+            ? withUpwind(latest.current, 90 - off)
+            : withDownwind(latest.current, off - 90),
+        );
+      };
+      const end = () => {
+        removeEventListener("pointermove", move);
+        removeEventListener("pointerup", end);
+        removeEventListener("pointercancel", end);
+      };
+      addEventListener("pointermove", move);
+      addEventListener("pointerup", end);
+      addEventListener("pointercancel", end);
     };
-    const up = () => {
-      removeEventListener("pointermove", move);
-      removeEventListener("pointerup", up);
-      removeEventListener("pointercancel", up);
-    };
-    addEventListener("pointermove", move);
-    addEventListener("pointerup", up);
-    addEventListener("pointercancel", up);
-  };
-  const handle = (side: 1 | -1) => {
-    const [x, y] = p(side * up, r);
+  const handle = (side: 1 | -1, kind: "into" | "down") => {
+    const [x, y] = p(side * (kind === "into" ? up : deep), r);
     return (
       <g
-        className="cw-up-edge"
-        data-edge={side > 0 ? "right" : "left"}
-        onPointerDown={grab}
+        className={`cw-up-edge${kind === "down" ? " is-down" : ""}`}
+        data-edge={`${kind}-${side > 0 ? "right" : "left"}`}
+        onPointerDown={grab(kind)}
       >
         <circle cx={x} cy={y} r="16" className="cw-up-edge-hit" />
         <circle cx={x} cy={y} r="7" className="cw-up-edge-dot" />
@@ -1098,173 +1017,245 @@ function PointingStep({ draft, setDraft }: StepProps) {
     );
   };
   const angle = (side: 1 | -1) => {
-    if (!into) return null;
     const rr = r * 0.82;
     const [x1, y1] = p(side * 90, rr);
-    const [x2, y2] = p(side * up, rr);
-    const [lx, ly] = p(side * (up - 9), r + 14);
-    return (
-      <g>
+    const out: ReactNode[] = [];
+    if (into) {
+      const [x2, y2] = p(side * up, rr);
+      const [lx, ly] = p(side * (up - 9), r + 14);
+      out.push(
         <path
+          key="ia"
           className="cw-up-angle"
           d={`M${x1.toFixed(1)} ${y1.toFixed(1)}A${rr} ${rr} 0 0 ${side > 0 ? 0 : 1} ${x2.toFixed(1)} ${y2.toFixed(1)}`}
-        />
+        />,
         <text
+          key="id"
           className="cw-up-deg"
           x={lx}
           y={ly + 4}
           textAnchor={side > 0 ? "start" : "end"}
         >
           {into}°
-        </text>
-      </g>
+        </text>,
+      );
+    }
+    if (down) {
+      const [x2, y2] = p(side * deep, rr);
+      const [lx, ly] = p(side * (deep + 9), r + 14);
+      out.push(
+        <path
+          key="da"
+          className="cw-up-angle is-down"
+          d={`M${x1.toFixed(1)} ${y1.toFixed(1)}A${rr} ${rr} 0 0 ${side > 0 ? 1 : 0} ${x2.toFixed(1)} ${y2.toFixed(1)}`}
+        />,
+        <text
+          key="dd"
+          className="cw-up-deg is-down"
+          x={lx}
+          y={ly + 8}
+          textAnchor={side > 0 ? "start" : "end"}
+        >
+          {down}°
+        </text>,
+      );
+    }
+    return <g key={side}>{out}</g>;
+  };
+  /** RIDE in each course: inside it when it is wide, haloed over its edge when not. */
+  const rideLabel = (side: 1 | -1) => {
+    const wide = deep - up >= 30;
+    const [x, y] = p((side * (up + deep)) / 2, wide ? r * 0.6 : r * 0.56);
+    return (
+      <text
+        key={side}
+        className={`cw-lab is-strong${wide ? "" : " is-halo"}`}
+        x={x.toFixed(1)}
+        y={(y + (wide ? 3 : -8)).toFixed(1)}
+        textAnchor="middle"
+      >
+        RIDE
+      </text>
     );
   };
+  const answer = UP_ANSWERS.find((a) => a.into === into);
   return (
-    <div className="cw-up">
-      <svg
-        ref={svg}
-        className="cw-up-pic"
-        viewBox={`${UP.vx} 0 ${UP.vw} ${UP.vh}`}
-        aria-hidden="true"
-      >
-        <defs>
-          <pattern
-            id={`${id}h`}
-            width="5"
-            height="5"
-            patternUnits="userSpaceOnUse"
-            patternTransform="rotate(45)"
+    <>
+      <Segmented<string>
+        aria-label="Can you ride upwind?"
+        className="cw-up-answers"
+        options={UP_ANSWERS.map((a) => ({
+          value: String(a.into),
+          label: <span title={a.line}>{a.name}</span>,
+        }))}
+        value={answer ? String(answer.into) : ""}
+        onChange={(value) => setDraft(withUpwind(draft, Number(value)))}
+      />
+      <div className="cw-up">
+        <svg
+          ref={svg}
+          className="cw-up-pic"
+          viewBox={`${UP.vx} 0 ${UP.vw} ${UP.vh}`}
+          aria-hidden="true"
+        >
+          <defs>
+            <pattern
+              id={`${id}h`}
+              width="5"
+              height="5"
+              patternUnits="userSpaceOnUse"
+              patternTransform="rotate(45)"
+            >
+              <line className="cw-hatch" x1="0" y1="0" x2="0" y2="5" />
+            </pattern>
+          </defs>
+          <circle className="cw-up-face" cx={cx} cy={cy} r={r} />
+          <path
+            className="cw-up-nogo"
+            d={sector(-up, up, r)}
+            style={{ fill: `url(#${id}h)` }}
+          />
+          {deep - up > 0.5 ? (
+            <>
+              <path className="cw-up-course" d={sector(up, deep, r)} />
+              <path className="cw-up-course" d={sector(-deep, -up, r)} />
+            </>
+          ) : (
+            <path
+              className="cw-up-course"
+              d={`M${cx} ${cy}L${xy(up, r)}M${cx} ${cy}L${xy(-up, r)}`}
+            />
+          )}
+          <path className="cw-up-drift" d={sector(deep, 360 - deep, r)} />
+          <line
+            className="cw-up-across"
+            x1={cx - r - 8}
+            x2={cx + r + 8}
+            y1={cy}
+            y2={cy}
+          />
+          <text className="cw-lab" x={cx + r + 10} y={cy + 3}>
+            ACROSS
+          </text>
+          <text className="cw-lab" x={cx - r - 10} y={cy + 3} textAnchor="end">
+            ACROSS
+          </text>
+          <text
+            className="cw-lab is-strong"
+            x={cx}
+            y={cy - r * 0.5}
+            textAnchor="middle"
           >
-            <line className="cw-hatch" x1="0" y1="0" x2="0" y2="5" />
-          </pattern>
-        </defs>
-        <circle className="cw-up-face" cx={cx} cy={cy} r={r} />
-        <path
-          className="cw-up-nogo"
-          d={sector(-up, up, r)}
-          style={{ fill: `url(#${id}h)` }}
-        />
-        <path className="cw-up-course" d={sector(up, COURSE_DEEP, r)} />
-        <path className="cw-up-course" d={sector(-COURSE_DEEP, -up, r)} />
-        <path
-          className="cw-up-slow"
-          d={sector(COURSE_DEEP, 360 - COURSE_DEEP, r)}
-        />
-        <line
-          className="cw-up-across"
-          x1={cx - r - 8}
-          x2={cx + r + 8}
-          y1={cy}
-          y2={cy}
-        />
-        <text className="cw-lab" x={cx + r + 10} y={cy + 3}>
-          ACROSS
-        </text>
-        <text className="cw-lab" x={cx - r - 10} y={cy + 3} textAnchor="end">
-          ACROSS
-        </text>
-        <text
-          className="cw-lab is-strong"
-          x={cx}
-          y={cy - r * 0.5}
-          textAnchor="middle"
-        >
-          CAN&rsquo;T GO
-        </text>
-        {([-1, 1] as const).map((side) => {
-          const [x, y] = p((side * (up + COURSE_DEEP)) / 2, r * 0.6);
-          return (
-            <text
-              key={side}
-              className="cw-lab is-strong"
-              x={x}
-              y={y + 3}
-              textAnchor="middle"
-            >
-              RIDE
-            </text>
-          );
-        })}
-        <text className="cw-lab" x={cx} y={cy + r * 0.62} textAnchor="middle">
-          SLOW
-        </text>
-        {angle(1)}
-        {angle(-1)}
-        <path className="cw-up-wind" d={`M${cx} 6V${cy - r - 12}`} />
-        <path
-          className="cw-up-wind-head"
-          d={`M${cx - 6} ${cy - r - 14}L${cx + 6} ${cy - r - 14}L${cx} ${cy - r - 3}Z`}
-        />
-        <text className="cw-lab is-strong" x={cx + 10} y="18">
-          WIND
-        </text>
-        <path
-          className="cw-up-board"
-          d={`M${cx} ${cy - 12}C${cx + 5} ${cy - 4} ${cx + 5} ${cy + 8} ${cx} ${cy + 12}C${cx - 5} ${cy + 8} ${cx - 5} ${cy - 4} ${cx} ${cy - 12}Z`}
-        />
-        {handle(1)}
-        {handle(-1)}
-      </svg>
-      <div>
-        <div
-          className="cw-up-answers"
-          role="group"
-          aria-label="Can you ride upwind?"
-        >
-          {UP_ANSWERS.map((a) => (
-            <Button
-              key={a.into}
-              variant="quiet"
-              className="cw-up-answer"
-              pressed={into === a.into}
-              onClick={() => set(a.into)}
-            >
-              <b>{a.name}</b>
-              <span>{a.line}</span>
-            </Button>
-          ))}
+            CAN&rsquo;T GO
+          </text>
+          {rideLabel(1)}
+          {rideLabel(-1)}
+          <text
+            className="cw-lab is-strong"
+            x={cx}
+            y={cy + r * 0.55}
+            textAnchor="middle"
+          >
+            DRIFT
+          </text>
+          <text
+            className="cw-lab"
+            x={cx}
+            y={cy + r * 0.55 + 12}
+            textAnchor="middle"
+          >
+            YOU LOSE GROUND
+          </text>
+          {angle(1)}
+          {angle(-1)}
+          <path className="cw-up-wind" d={`M${cx} 6V${cy - r - 12}`} />
+          <path
+            className="cw-up-wind-head"
+            d={`M${cx - 6} ${cy - r - 14}L${cx + 6} ${cy - r - 14}L${cx} ${cy - r - 3}Z`}
+          />
+          <text className="cw-lab is-strong" x={cx + 10} y="18">
+            WIND
+          </text>
+          <path
+            className="cw-up-board"
+            d={`M${cx} ${cy - 12}C${cx + 5} ${cy - 4} ${cx + 5} ${cy + 8} ${cx} ${cy + 12}C${cx - 5} ${cy + 8} ${cx - 5} ${cy - 4} ${cx} ${cy - 12}Z`}
+          />
+          {handle(1, "down")}
+          {handle(-1, "down")}
+          {handle(1, "into")}
+          {handle(-1, "into")}
+        </svg>
+        <div className="cw-angles">
+          <div>
+            <div className="cw-into" data-upwind>
+              <output>{into}°</output>
+              <span>into the wind</span>
+            </div>
+            <AngleSlider
+              value={into}
+              max={UPWIND_MAX}
+              label="Degrees into the wind"
+              words={(v) =>
+                v ? `${v}° into the wind` : "straight across the wind"
+              }
+              from="Straight across"
+              to={`${UPWIND_MAX}° into it`}
+              onChange={(deg) => setDraft(withUpwind(draft, deg))}
+            />
+          </div>
+          <div>
+            <div className="cw-into" data-downwind>
+              <output>{down}°</output>
+              <span>below across</span>
+            </div>
+            <AngleSlider
+              value={down}
+              max={DOWNWIND_MAX}
+              second
+              label="Degrees below straight across"
+              words={(v) =>
+                v ? `${v}° below straight across` : "straight across"
+              }
+              from="Straight across"
+              to={`${DOWNWIND_MAX}° downwind`}
+              onChange={(deg) => setDraft(withDownwind(draft, deg))}
+            />
+          </div>
         </div>
-        <div className="cw-into" data-upwind>
-          <output>{into}°</output>
-          <span>into the wind</span>
-        </div>
-        <IntoSlider value={into} onChange={set} />
-        <ul className="cw-legend">
-          <li>
-            <i className="is-nogo" />
-            Can&rsquo;t go: too close to the wind
-          </li>
-          <li>
-            <i className="is-out" />
-            Your course
-          </li>
-          <li>
-            <i className="is-slow" />
-            Downwind: possible, but slow
-          </li>
-        </ul>
       </div>
-    </div>
+    </>
   );
 }
 
-/** Degrees into the wind, 0 to UPWIND_MAX: dragged, or a degree at a time from the keyboard. */
-function IntoSlider({
+/** Degrees, 0 to `max`: dragged, or a degree at a time from the keyboard. */
+function AngleSlider({
   value,
+  max,
+  label,
+  words,
+  from,
+  to,
+  second = false,
   onChange,
 }: {
   value: number;
+  max: number;
+  label: string;
+  words: (value: number) => string;
+  from: string;
+  to: string;
+  /** The course's downwind edge: a hollow knob, as its handle in the picture. */
+  second?: boolean;
   onChange: (deg: number) => void;
 }) {
   const track = useRef<HTMLDivElement>(null);
   const at = (clientX: number) => {
     const box = track.current!.getBoundingClientRect();
-    return ((clientX - box.left) / box.width) * UPWIND_MAX;
+    return ((clientX - box.left) / box.width) * max;
   };
-  const left = `${(value / UPWIND_MAX) * 100}%`;
+  const left = `${(value / max) * 100}%`;
   return (
-    <div className="cw-slide">
+    <div className={`cw-slide${second ? " is-second" : ""}`}>
       <div
         className="cw-slide-track"
         ref={track}
@@ -1285,11 +1276,11 @@ function IntoSlider({
         <span
           role="slider"
           tabIndex={0}
-          aria-label="Degrees into the wind"
+          aria-label={label}
           aria-valuemin={0}
-          aria-valuemax={UPWIND_MAX}
+          aria-valuemax={max}
           aria-valuenow={value}
-          aria-valuetext={intoWords(value)}
+          aria-valuetext={words(value)}
           className="cw-slide-knob"
           style={{ left }}
           onKeyDown={(event) => {
@@ -1301,8 +1292,8 @@ function IntoSlider({
                 ArrowUp: 1,
                 PageDown: -5,
                 PageUp: 5,
-                Home: -UPWIND_MAX,
-                End: UPWIND_MAX,
+                Home: -max,
+                End: max,
               } as Record<string, number>
             )[event.key];
             if (!by) return;
@@ -1312,8 +1303,8 @@ function IntoSlider({
         />
       </div>
       <div className="cw-slide-ends">
-        <span>Straight across</span>
-        <span>{UPWIND_MAX}° into it</span>
+        <span>{from}</span>
+        <span>{to}</span>
       </div>
     </div>
   );
@@ -1483,10 +1474,7 @@ function Done({
       "You",
       "you",
       <>
-        {SKILL_LABEL[draft.skill]} · {draft.weightKg ?? 80} kg
-        {draft.wings.length
-          ? ` · wings ${draft.wings.join(", ")} m²`
-          : ""} · {unit.label.toLowerCase()}
+        {draft.weightKg ?? 80} kg · {unit.label.toLowerCase()}
       </>,
     ],
     [
@@ -1495,26 +1483,25 @@ function Done({
       <>
         {span(w.min, w.max, unit)}
         {unit.force ? "" : ` ${unit.label}`} · best{" "}
-        {span(w.sweetLow, w.sweetHigh, unit)} · gusty:{" "}
-        {GUSTY_LABEL[draft.gusty].toLowerCase()}
+        {span(w.sweetLow, w.sweetHigh, unit)}
+        {differsFromOurs({ ...draft, upwind: 0, downwind: 10 })
+          ? ""
+          : " · ours"}
       </>,
     ],
     [
       "Shore",
       "shore",
-      costs.length
-        ? costs.map((key, i) => (
-            <span key={key}>
-              {i ? " · " : ""}
-              <span className={off[key] >= NEVER ? "is-never" : undefined}>
-                {DIRECTION_NAME[key].toLowerCase()}{" "}
-                {off[key] >= NEVER ? "never" : `−${off[key]}★`}
-              </span>
-            </span>
-          ))
-        : "any direction",
+      costs.map((key, i) => (
+        <span key={key}>
+          {i ? " · " : ""}
+          <span className={off[key] >= NEVER ? "is-never" : undefined}>
+            {DIRECTION_NAME[key].toLowerCase()} {costLabel(off[key])}
+          </span>
+        </span>
+      )),
     ],
-    ["Upwind", "upwind", intoWords(draft.upwind)],
+    ["Upwind", "upwind", courseWords(draft.upwind, draft.downwind)],
     [
       "Spots",
       "spots",
@@ -1543,7 +1530,7 @@ function Done({
           </li>
         ))}
       </ul>
-      <SampleDayCard day={day} rider={rider} unit={unit} forYou />
+      <SampleDayCard day={day} rider={rider} unit={unit} />
     </>
   );
 }

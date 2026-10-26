@@ -187,14 +187,13 @@ export function blendHours(blend: Blend, place: Place, rider: Rider): RatedColum
   });
 }
 
+/** What moves a rider's ratings: the wing is the weight's and the quiver's, the stars the rating's and the model's. */
 export const riderKey = (rider: Rider) =>
   JSON.stringify([
     rider.weightKg,
-    rider.skill,
     [...rider.wings].sort((a, b) => a - b),
     rider.custom ?? null,
     rider.starsFrom ?? null,
-    rider.gusty ?? "some",
   ]);
 
 /** Every live wind model with the spot squares of every place: what a rider rated apart is read from. */

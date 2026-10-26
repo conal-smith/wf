@@ -44,7 +44,7 @@ const card = (stars: number): SpotCardData => ({
     agreement: "high",
   },
   windows: [],
-  rider: { weightKg: 80, assumed: true, skill: "intermediate" },
+  rider: { weightKg: 80, assumed: true, own: false },
   note: null,
 });
 
@@ -135,7 +135,7 @@ describe("the chat reducer", () => {
   it("records a proposal's answer", () => {
     const proposal = {
       id: "p1",
-      rider: { weightKg: 85, skill: "intermediate" as const, wings: [5] },
+      rider: { weightKg: 85, wings: [5] },
       summary: "Save?",
     };
     let state = play(

@@ -48,6 +48,20 @@ export const colors = {
 
 export type ColorName = keyof typeof colors;
 
+/**
+ * A rider's stars, one to five, as colour (ui/theme.css --color-stars-*):
+ * pale pink to deep magenta. Index 0, no stars, has none. Figures on the
+ * first two are ink, on the rest paper.
+ */
+export const starColors: readonly string[] = [
+  "transparent",
+  c("color-stars-1"),
+  c("color-stars-2"),
+  c("color-stars-3"),
+  c("color-stars-4"),
+  c("color-stars-5"),
+];
+
 /** The wind scale, knots → ink, for wind speed and nothing else. */
 export const windScale: readonly [number, string][] = [
   [0, c("color-wind-k00")],

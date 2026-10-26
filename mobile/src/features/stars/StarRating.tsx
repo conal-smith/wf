@@ -1,7 +1,8 @@
 /**
- * The ways into "Your star rating" (YourStarsScreen.tsx): `openYourStars`,
- * from the link under the rider's level pill (settings/RiderFields.tsx), and
- * the chip a rider's own stars put in the forecast's head while they rate.
+ * The ways into "Your stars" (YourStarsScreen.tsx): `openYourStars`, from
+ * "Customise" in the rider's settings and on the spot page
+ * (settings/RiderFields.tsx), and the chip a rider's own stars put in the
+ * forecast's head.
  */
 import { router } from "expo-router";
 import { memo } from "react";
@@ -17,14 +18,14 @@ export const openYourStars = () => router.push("/your-stars" as never);
 export const STAR =
   "M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z";
 
-/** "★ Custom stars": said once, where the stars are read, and the way to change them. Only while the rider's own rating rates. */
+/** "★ Your own stars": said once, where the stars are read, and the way to change them. Only once the rider has their own. */
 export const CustomStarsChip = memo(function CustomStarsChip() {
   const { prefs } = usePrefs();
   if (!prefs.rider.custom) return null;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Custom star rating: edit"
+      accessibilityLabel="Your own stars: edit"
       hitSlop={(hitTarget - controlHeight.sm) / 2}
       onPress={() => {
         tick();
@@ -36,7 +37,7 @@ export const CustomStarsChip = memo(function CustomStarsChip() {
         <Path d={STAR} fill={colors.ink} />
       </Svg>
       <T variant="label" caps>
-        Custom stars
+        Your own stars
       </T>
     </Pressable>
   );

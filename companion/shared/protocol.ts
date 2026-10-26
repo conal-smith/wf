@@ -17,7 +17,7 @@
  *   done      the end of the turn
  */
 
-import type { CustomRating, Gusty } from "../../force5/src/stars.js";
+import type { CustomRating } from "../../force5/src/stars.js";
 import type { StarsChoice } from "../../force5/src/lead.js";
 
 export const COMPANION_NAME = "Gust";
@@ -47,25 +47,24 @@ export interface CompanionStatus {
   resumes: string | null;
 }
 
-export type Skill = "beginner" | "intermediate" | "advanced";
+/**
+ * Whose stars a rider is rated on, in the site's words: ours, unless they
+ * made their own in Customise.
+ */
+export const starsName = (own: boolean) => (own ? "Your own stars" : "Ours");
 
-/** The rider's own words for a level, as the dock's Display options write them. */
-export const SKILL_LABEL: Record<Skill, string> = {
-  beginner: "Learning",
-  intermediate: "Riding",
-  advanced: "Advanced",
-};
-
+/**
+ * The rider, as the page holds it (force5/src/stars.ts `Rider`). A browser
+ * from before 25 October 2026 also sends its level (`skill`) and how much
+ * gusty wind bothers it (`gusty`): the server takes and drops them.
+ */
 export interface RiderContext {
-  /** Kilograms, or null when the rider has not said (ratings assume 80 kg). */
+  /** Kilograms, or null when the rider has not said (wing sizes assume 80 kg). Never moves a star. */
   weightKg: number | null;
-  skill: Skill;
-  /** Wing sizes owned, in square metres. */
+  /** Wing sizes owned, in square metres. Never moves a star. */
   wings: number[];
-  /** The rider's own star rating, which Gust then rates with. */
+  /** The rider's own star rating, which Gust then rates with; absent or null, ours. */
   custom?: CustomRating | null;
-  /** How much gusty wind bothers them; left out, "some". */
-  gusty?: Gusty;
   /** The one model the rider picked, which their stars rate (ECMWF past its run). */
   starsFrom?: StarsChoice;
 }
@@ -123,7 +122,12 @@ export interface SpotCardData {
   best: WindowSummary | null;
   /** The other good windows in the search, earliest first. */
   windows: WindowChip[];
-  rider: { weightKg: number; assumed: boolean; skill: Skill };
+  /**
+   * Who the stars are for: the weight the wing is sized for, and whether the
+   * rider's own stars rated it (`own`), or ours. A card from before 25
+   * October 2026 has a level instead and no `own`: it reads as ours.
+   */
+  rider: { weightKg: number; assumed: boolean; own?: boolean };
   /** Why there is no best window, when there is none. */
   note: string | null;
 }
@@ -138,7 +142,7 @@ export type MapAction =
 export interface ProfileProposal {
   id: string;
   rider: RiderContext;
-  /** "Save 85 kg · Riding · 4/5/6 m?" */
+  /** "Save 85 kg · 4/5/6 m?" */
   summary: string;
 }
 
@@ -184,7 +188,6 @@ const EVENT_NAMES: readonly ServerEventName[] = [
 export function riderSummary(rider: RiderContext): string {
   const parts = [
     rider.weightKg === null ? "80 kg (assumed)" : `${rider.weightKg} kg`,
-    SKILL_LABEL[rider.skill],
   ];
   if (rider.wings.length) parts.push(`${rider.wings.join("/")} m`);
   return parts.join(" · ");

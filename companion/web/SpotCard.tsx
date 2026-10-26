@@ -3,13 +3,13 @@ import { ArrowDown, ArrowUpRight, MapPin, TriangleAlert } from "lucide-react";
 import { Button, Figure, Kicker, StarGlyphs } from "../../ui";
 import { MONO_LABEL } from "../../ui/tv";
 import {
-  SKILL_LABEL,
+  starsName,
   type MapAction,
   type SpotCardData,
   type WindowChip,
 } from "../shared/protocol";
 
-/** Solid stars for the rating, outlines for what a kinder day would add. */
+/** Solid stars for the rating, outlines for the stars the gusts or the shore took. */
 export function Stars({
   stars,
   potential = stars,
@@ -210,8 +210,8 @@ export function SpotCard({ card, onShow, compact = false }: SpotCardProps) {
           <ArrowUpRight size={13} strokeWidth={1.5} aria-hidden="true" />
         </Button>
         <span className="ml-auto font-mono text-caption text-ink-muted tabular-nums">
-          {card.rider.weightKg} kg{card.rider.assumed ? " (assumed)" : ""} ·{" "}
-          {SKILL_LABEL[card.rider.skill]}
+          {starsName(card.rider.own === true)} · {card.rider.weightKg} kg
+          {card.rider.assumed ? " (assumed)" : ""}
         </span>
       </footer>
     </article>

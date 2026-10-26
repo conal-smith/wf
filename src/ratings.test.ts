@@ -7,7 +7,7 @@ import {
   perModelLines,
 } from "../force5/src/blend";
 import { spotSeries } from "../force5/src/series";
-import { DEFAULT_RIDER, rateHour } from "../force5/src/stars";
+import { DEFAULT_RIDER, oursCopy, rateHour } from "../force5/src/stars";
 import { parseRider } from "../force5/src/prefs";
 import { ensembleManifest, windManifest } from "../force5/src/testing";
 import type { Manifest } from "../force5/src/weather";
@@ -145,7 +145,12 @@ describe("placeConsensus", () => {
       hours: [0, 3, 6, 12],
       wind: (h) => ({ u: -1 + h / 3, v: 4 - h, gust: h % 2 ? null : 9 }),
     });
-    same([a, b], ["harmonie", "ecmwf"], "brandon", hourly("2026-09-13T23:00:00Z", 16));
+    same(
+      [a, b],
+      ["harmonie", "ecmwf"],
+      "brandon",
+      hourly("2026-09-13T23:00:00Z", 16),
+    );
   });
 
   it("counts an ensemble once, as its member mean", () => {
@@ -153,9 +158,18 @@ describe("placeConsensus", () => {
     const ens = ensembleManifest({
       hours: [0, 6],
       members: 5,
-      member: (m, h) => ({ u: m - 2, v: h / 2 + m, gust: m === 3 ? null : h + 4 }),
+      member: (m, h) => ({
+        u: m - 2,
+        v: h / 2 + m,
+        gust: m === 3 ? null : h + 4,
+      }),
     });
-    same([det, ens], ["harmonie", "ecmwf-ens"], "brandon", hourly("2026-09-14T00:00:00Z", 8));
+    same(
+      [det, ens],
+      ["harmonie", "ecmwf-ens"],
+      "brandon",
+      hourly("2026-09-14T00:00:00Z", 8),
+    );
   });
 
   it("matches the blend when the models count for different weights", () => {
@@ -233,7 +247,12 @@ describe("placeConsensus", () => {
     expect(c.model[10]).toBeNull();
     expect(c.median[10]).toBeNull();
     // Leaving HARMONIE out of the blend changes the agreement, not the hours.
-    const without = placeConsensus(manifests, ["ecmwf", ...others], "brandon", axis);
+    const without = placeConsensus(
+      manifests,
+      ["ecmwf", ...others],
+      "brandon",
+      axis,
+    );
     expect(without.median).toEqual(c.median);
     expect(without.model).toEqual(c.model);
     // A rider who picked GFS gets GFS's own, then ECMWF's.
@@ -248,7 +267,12 @@ describe("placeConsensus", () => {
 
   it("leaves a model out where it publishes nothing for the place", () => {
     const m = windManifest({ model: "harmonie", spotId: "elsewhere" });
-    const out = placeConsensus([m], ["harmonie"], "brandon", hourly("2026-09-14T00:00:00Z", 3));
+    const out = placeConsensus(
+      [m],
+      ["harmonie"],
+      "brandon",
+      hourly("2026-09-14T00:00:00Z", 3),
+    );
     expect(out.median).toEqual([null, null, null]);
   });
 
@@ -317,7 +341,13 @@ describe("placeHours", () => {
     expect(noon.windKn).toBeCloseTo(7 * 1.94384449, 6);
     expect(noon.rating).toEqual(
       rateHour(
-        { windKn: noon.windKn, gustKn: noon.gustKn, from: noon.from, agreement: "high", daylight: true },
+        {
+          windKn: noon.windKn,
+          gustKn: noon.gustKn,
+          from: noon.from,
+          agreement: "high",
+          daylight: true,
+        },
         { facing: 270 },
         DEFAULT_RIDER,
       ),
@@ -333,30 +363,44 @@ describe("placeHours", () => {
         hours: Array.from({ length: 24 }, (_, i) => i),
         wind: () => ({ u, v: 0, gust: null }),
       });
-    const manifests = [steady("harmonie", -7), steady("gfs", -4), steady("ecmwf", -5)];
+    const manifests = [
+      steady("harmonie", -7),
+      steady("gfs", -4),
+      steady("ecmwf", -5),
+    ];
     const ids = ["harmonie", "gfs", "ecmwf"];
     const axis = hourly("2026-10-05T12:00:00Z", 1);
     const place = { id: "brandon", lat: 52.27, lon: -10.02, facing: 270 };
     const rider = parseRider({
       ...DEFAULT_RIDER,
-      starsFrom: { model: "gfs", then: "harmonie", spots: { brandon: "ecmwf" } },
+      starsFrom: {
+        model: "gfs",
+        then: "harmonie",
+        spots: { brandon: "ecmwf" },
+      },
     });
     const hour = placeHours(manifests, ids, place, axis, rider)[0];
     expect(hour.model).toBe("gfs");
     expect(hour.windKn).toBeCloseTo(4 * 1.94384449, 6);
     // The default rider: HARMONIE.
-    expect(placeHours(manifests, ids, place, axis, DEFAULT_RIDER)[0].model).toBe("harmonie");
+    expect(
+      placeHours(manifests, ids, place, axis, DEFAULT_RIDER)[0].model,
+    ).toBe("harmonie");
   });
 });
 
 describe("offshoreMark", () => {
   const rated = (shore: "offshore" | "cross-off" | "cross") =>
     ({ shore }) as Parameters<typeof offshoreMark>[0];
-  it("strikes only a true offshore, and cross-offshore for a learner", () => {
+  it("strikes a true offshore, and cross-offshore only where the rider's own takes three off", () => {
     expect(offshoreMark(rated("offshore"), DEFAULT_RIDER)).toBe("struck");
     expect(offshoreMark(rated("cross-off"), DEFAULT_RIDER)).toBe("cross-off");
+    const own = {
+      ...oursCopy(),
+      direction: { ...oursCopy().direction, crossOff: 3 },
+    };
     expect(
-      offshoreMark(rated("cross-off"), { ...DEFAULT_RIDER, skill: "beginner" }),
+      offshoreMark(rated("cross-off"), { ...DEFAULT_RIDER, custom: own }),
     ).toBe("struck");
     expect(offshoreMark(rated("cross"), DEFAULT_RIDER)).toBe(null);
     expect(offshoreMark(null, DEFAULT_RIDER)).toBe(null);
@@ -367,7 +411,9 @@ describe("pointHours", () => {
   it("reads the sampled frames between their steps, and rates the wind alone", () => {
     const frames = [0, 1, 2, 3].map((h) => ({
       hour: h,
-      validTime: new Date(Date.parse("2026-10-05T11:00:00Z") + h * 3600000).toISOString(),
+      validTime: new Date(
+        Date.parse("2026-10-05T11:00:00Z") + h * 3600000,
+      ).toISOString(),
     }));
     const values = [
       { u: -6, v: 0, gust: 9 },
@@ -375,7 +421,11 @@ describe("pointHours", () => {
       { u: -8, v: 0, gust: 11 },
       { u: -8, v: 0, gust: 11 },
     ];
-    const axis = ["2026-10-05T11:00:00Z", "2026-10-05T12:30:00Z", "2026-10-05T20:00:00Z"];
+    const axis = [
+      "2026-10-05T11:00:00Z",
+      "2026-10-05T12:30:00Z",
+      "2026-10-05T20:00:00Z",
+    ];
     const out = pointHours(frames, values, { lat: 53, lon: -8 }, axis);
     expect(out[0].windKn).toBeCloseTo(6 * 1.94384449, 6);
     // Halfway from 11:00 to 13:00, across the hour not sampled yet.

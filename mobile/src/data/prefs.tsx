@@ -4,33 +4,25 @@
  * localStorage (storage.ts). One provider, so every screen reads one value.
  *
  * The rider changes the site's ways: weight and wings through `saveRider`,
- * which keeps the stored star rating; the level pill through `withStarsOn`,
- * which keeps the rider's own rating as they go on or off it; and that rating
- * itself only through `withCustomStars`. The last two stamp when what the
- * account keeps has changed. The rider's one model (the chart's, the dock's
- * and the stars'), through `withRiderModel` (`setModel`).
+ * which keeps the stored star rating; their own stars and how far up and down
+ * the wind they ride, all set in "Your stars", through `setYourStars`, which
+ * keeps a rating only while it is not ours and an angle only while it is not
+ * ours (yourStarsLogic.ts `withYourStars`), and stamps when what the account
+ * keeps has changed. The rider's one model (the chart's, the dock's and the
+ * stars'), through `withRiderModel` (`setModel`).
  */
 import { createContext, use, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
-import {
-  loadPrefs,
-  saveRider,
-  savePrefs,
-  withCustomStars,
-  withRiderModel,
-  withStarsOn,
-  type Prefs,
-} from "../../../force5/src/prefs";
-import type { CustomRating, Rider, StarsOn } from "../../../force5/src/stars";
+import { loadPrefs, saveRider, savePrefs, withRiderModel, type Prefs } from "../../../force5/src/prefs";
+import type { Rider } from "../../../force5/src/stars";
+import { withYourStars, type YourStars } from "../features/stars/yourStarsLogic";
 
 interface PrefsValue {
   prefs: Prefs;
   update: (change: (prefs: Prefs) => Prefs) => void;
   /** A new weight or wings; the rider's own star rating stays as stored. */
   changeRider: (change: (rider: Rider) => Rider) => void;
-  /** The level pill: a level, or the rider's own rating, which is kept either way. */
-  setStarsOn: (on: StarsOn) => void;
-  /** The rider's own star rating saved and rating, or deleted with null. */
-  setCustomStars: (custom: CustomRating | null) => void;
+  /** "Your stars" saved: the rider's own rating, or ours, and how far up and down the wind they ride. */
+  setYourStars: (yours: YourStars) => void;
   /** The rider's model: the one the chart draws, the dock gives and the stars rate. */
   setModel: (model: string) => void;
 }
@@ -58,18 +50,14 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     (change: (rider: Rider) => Rider) => take(saveRider(change(current.current.rider))),
     [take],
   );
-  const setStarsOn = useCallback((on: StarsOn) => update((p) => withStarsOn(p, on)), [update]);
-  const setCustomStars = useCallback(
-    (custom: CustomRating | null) => update((p) => withCustomStars(p, custom)),
-    [update],
-  );
+  const setYourStars = useCallback((yours: YourStars) => update((p) => withYourStars(p, yours)), [update]);
   const setModel = useCallback(
     (model: string) => update((p) => ({ ...p, rider: withRiderModel(p.rider, model) })),
     [update],
   );
   const value = useMemo(
-    () => ({ prefs, update, changeRider, setStarsOn, setCustomStars, setModel }),
-    [prefs, update, changeRider, setStarsOn, setCustomStars, setModel],
+    () => ({ prefs, update, changeRider, setYourStars, setModel }),
+    [prefs, update, changeRider, setYourStars, setModel],
   );
   return <PrefsContext value={value}>{children}</PrefsContext>;
 }

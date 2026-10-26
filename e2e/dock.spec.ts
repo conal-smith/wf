@@ -437,7 +437,9 @@ test("the night's hours can be left out, from last light to first, and stay so",
   const hours = page.locator(".dock tr.tt-hour td[data-i]");
   // Round the clock unless the reader says otherwise, the night hatched.
   await expect(hours).toHaveCount(sampleStrip.length);
-  await expect(page.locator(".dock tr.tt-hour td.night").first()).toBeAttached();
+  await expect(
+    page.locator(".dock tr.tt-hour td.night").first(),
+  ).toBeAttached();
   await openFromMenu(page, "Display options");
   const choice = page.getByRole("group", { name: "Hours in the forecast" });
   await expect(
@@ -481,7 +483,9 @@ test("the night's hours can be left out, from last light to first, and stay so",
   await page.keyboard.press("ArrowLeft");
   await expect(slider(page)).toHaveAttribute(
     "aria-valuetext",
-    new RegExp(`^Sun \\d{1,2} [A-Z][a-z]{2,3}, ${clock(lit[morning - 1].time)}$`),
+    new RegExp(
+      `^Sun \\d{1,2} [A-Z][a-z]{2,3}, ${clock(lit[morning - 1].time)}$`,
+    ),
   );
   // Kept on reload, for the next spot chosen.
   await page.reload();
@@ -657,10 +661,7 @@ test("a starred spot is kept on this device: the dock and the spot finder's favo
   await page.reload();
   await expect(cards).toHaveCount(1, { timeout: 30000 });
   // And unstarring it there takes it off.
-  await cards
-    .first()
-    .getByRole("button", { name: "Star Brandon Bay" })
-    .click();
+  await cards.first().getByRole("button", { name: "Star Brandon Bay" }).click();
   await expect(page.locator("[data-finder-empty]")).toHaveText(
     "Star a spot and it shows here.",
   );
@@ -698,10 +699,9 @@ test("units and the blend's models are display options, kept on reload; the ride
   await page.locator('input[data-model-toggle="gfs"]').uncheck();
   await closePanel(page);
   await expect(page.locator(".dk-labs")).toContainText("m/s");
-  // A heavier learner, as Customise saves one, takes a bigger wing for the
+  // A heavier rider, as Customise saves one, takes a bigger wing for the
   // same wind, hour by hour.
-  await setRider(page, { weightKg: 100, skill: "beginner" });
-  // A heavier learner takes a bigger wing for the same wind, hour by hour.
+  await setRider(page, { weightKg: 100 });
   await expect
     .poll(async () => {
       const after = await wing();
@@ -896,7 +896,9 @@ test("one model to pick and no fallback to set, and a blend of the rider's own t
   await expect(panel.getByRole("group", { name: /ends$/ })).toHaveCount(0);
   await expect(panel.getByRole("group", { name: /^Stars at/ })).toHaveCount(0);
   await expect(
-    panel.getByRole("group", { name: "Model", exact: true }).getByRole("button"),
+    panel
+      .getByRole("group", { name: "Model", exact: true })
+      .getByRole("button"),
   ).toHaveText(["HARMONIE", "ICON-EU", "ECMWF", "GFS"]);
   // A blend of the rider's own: GFS and ICON-EU left out.
   for (const id of ["gfs", "icon-eu"]) {
@@ -938,12 +940,7 @@ test("the display options open over the dimmed map from the site menu, one panel
   await page.keyboard.press("Enter");
   await expect(
     page.getByRole("group", { name: "This chart" }).getByRole("button"),
-  ).toHaveText([
-    "Layers",
-    "Display options",
-    "About the map",
-    "Take the tour",
-  ]);
+  ).toHaveText(["Layers", "Display options", "About the map", "Take the tour"]);
   // Past the site's six rows (the navigation and the sections) and Layers.
   for (let i = 0; i < 7; i++) await page.keyboard.press("Tab");
   await expect(menuRow(page, "Display options")).toBeFocused();
@@ -1155,9 +1152,10 @@ test("an hour past the map's model hands the map to the run that reaches it", as
   // so where it names its model: from ECMWF's first hour past HARMONIE's last.
   // The first ECMWF column past HARMONIE's last: today's morning before
   // HARMONIE's run is ECMWF's too (the ruling of 25 October 2026).
-  const seam = sampleStrip[
-    sampleStrip.findLastIndex((column) => column.model === "harmonie") + 1
-  ];
+  const seam =
+    sampleStrip[
+      sampleStrip.findLastIndex((column) => column.model === "harmonie") + 1
+    ];
   const from = `${dayShort(seam.time)} ${clock(seam.time)}`;
   // The sample's ECMWF run is more than eighteen hours old at the sample
   // clock, and the label says so of whichever run it is drawing.
@@ -1617,22 +1615,22 @@ test("the gust factor heads the rows under the fold: each hour's gust over its w
   // A factor to a tenth, a dash where the model gives no gust, or nothing in
   // a near calm.
   const read = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>(".dock tr.tt-gust td[data-i]")].map(
-      (td) => {
-        const wind = document.querySelector(
-          `.dock tr.tt-wind td[data-i="${td.dataset.i}"]`,
-        );
-        return {
-          factor: td.textContent ?? "",
-          kind: td.querySelector(".gust-cell")?.className ?? "",
-          kn: wind?.querySelector(".kn")?.textContent ?? "",
-          gust: (wind?.querySelector(".gu")?.textContent ?? "").replace(
-            /\D/g,
-            "",
-          ),
-        };
-      },
-    ),
+    [
+      ...document.querySelectorAll<HTMLElement>(".dock tr.tt-gust td[data-i]"),
+    ].map((td) => {
+      const wind = document.querySelector(
+        `.dock tr.tt-wind td[data-i="${td.dataset.i}"]`,
+      );
+      return {
+        factor: td.textContent ?? "",
+        kind: td.querySelector(".gust-cell")?.className ?? "",
+        kn: wind?.querySelector(".kn")?.textContent ?? "",
+        gust: (wind?.querySelector(".gu")?.textContent ?? "").replace(
+          /\D/g,
+          "",
+        ),
+      };
+    }),
   );
   for (const cell of read) expect(cell.factor).toMatch(/^(\d\.\d×|–|)$/);
   const figures = read.filter((cell) => cell.factor.endsWith("×"));
@@ -1646,18 +1644,21 @@ test("the gust factor heads the rows under the fold: each hour's gust over its w
     expect(Math.abs(f - Math.max(1, g / wind))).toBeLessThanOrEqual(
       0.1 + (g / wind) * (0.5 / wind + 0.5 / g),
     );
-    // Tinted as the stars read it: gusty from 1.5×, very gusty from 1.8×,
-    // and never where the wind is under the default rider's floor (11 kn).
-    if (kind.includes("is-very-gusty")) expect(f).toBeGreaterThanOrEqual(1.8);
-    else if (kind.includes("is-gusty")) {
-      expect(f).toBeGreaterThanOrEqual(1.5);
-      expect(f).toBeLessThan(1.8);
-    } else if (f >= 1.5) expect(wind).toBeLessThanOrEqual(11);
+    // Tinted as the stars read the gust, in knots, not the factor: past
+    // ours' too much (35 kn) no stars, and read 5 kn lighter a gust costs
+    // a star only past the sweet spot's top (22 kn), so from about 28 kn
+    // (and not always then: a light hour has fewer stars to lose); give or
+    // take the wind row's rounding.
+    if (kind.includes("is-over")) expect(g).toBeGreaterThanOrEqual(35);
+    else if (kind.includes("is-costs")) expect(g).toBeGreaterThanOrEqual(27);
+    else expect(g).toBeLessThanOrEqual(36);
   }
   // A near calm has no factor, a wind no more than 5 kn.
   for (const { kn } of read.filter((cell) => cell.factor === ""))
     expect(Number(kn)).toBeLessThanOrEqual(5);
-  const tinted = page.locator(".dock tr.tt-gust .gust-cell.is-very-gusty");
+  const tinted = page.locator(
+    ".dock tr.tt-gust .gust-cell:is(.is-costs, .is-over)",
+  );
   if (await tinted.count())
     await expect(tinted.first()).not.toHaveCSS(
       "background-color",

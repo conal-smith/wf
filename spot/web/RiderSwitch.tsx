@@ -1,11 +1,11 @@
 /**
- * Who the stars are rated for, in one line: the level as three choices, a
- * fourth for the rider's own stars once they have them,
- * the weight and wings behind a fold that opens in place, and the rider's
- * model behind another. The same rider as
- * the dock's Display options, read and written through the same preference
- * (force5.prefs.v1) and the same validation, so a change here is the rider the
- * map rates for too.
+ * Who the stars are rated for, in one line: whose stars they are (ours, or
+ * the rider's own) with the way to Customise, where they are changed; the
+ * weight and wings behind a fold that opens in place, which size the wing
+ * and never move a star; and the rider's model behind another. The same
+ * rider as the dock's Display options, read and written through the same
+ * preference (force5.prefs.v1) and the same validation, so a change here is
+ * the rider the map rates for too.
  *
  * The stars come from one model, the one the rider picks to see (HARMONIE
  * unless they pick another), and ECMWF's past the end of its run, with no
@@ -18,35 +18,23 @@ import {
   chosenModel,
   modelName,
 } from "../../force5/src/lead";
-import {
-  loadPrefs,
-  parseRider,
-  savePrefs,
-  withRiderModel,
-  withStarsOn,
-} from "../../force5/src/prefs";
+import { parseRider, withRiderModel } from "../../force5/src/prefs";
+import { CUSTOMISE_HREF } from "../../force5/src/siteNav";
 import {
   ESTIMATE_WEIGHT_KG,
   MAX_WEIGHT_KG,
   MIN_WEIGHT_KG,
-  SKILLS,
-  SKILL_LABEL,
-  savedCustom,
-  starsOn,
   type Rider,
-  type StarsOn,
 } from "../../force5/src/stars";
-import { announcePrefs } from "../../shared/web/riderSync";
 import { Button, Kicker, Segmented, TextInput } from "../../ui";
 import { MONO_LABEL, RING, tv } from "../../ui/tv";
-
-export { SKILL_LABEL };
 
 const styles = tv({
   slots: {
     base: "flex flex-col gap-2",
     line: "flex flex-wrap items-center gap-x-3 gap-y-2",
     kicker: "max-sm:sr-only",
+    whose: "font-body text-body text-ink",
     more: [
       "inline-flex min-h-control-sm cursor-pointer items-center gap-1 rounded-full border-0 bg-transparent px-1 text-ink tabular-nums",
       "underline decoration-line-strong underline-offset-4 pointer-coarse:min-h-touch",
@@ -68,9 +56,13 @@ const styles = tv({
 export const weightText = (rider: Rider) =>
   `${rider.weightKg === null ? "~" : ""}${rider.weightKg ?? ESTIMATE_WEIGHT_KG} kg`;
 
-/** "Riding · ~80 kg", or "Custom stars · ~80 kg": who the stars are for, in the page's words. */
+/** "Ours", or "Your own": whose stars rate the hours, after "Stars". */
+export const starsWhose = (rider: Pick<Rider, "custom">) =>
+  rider.custom ? "Your own" : "Ours";
+
+/** "Ours · ~80 kg", or "Your own · 80 kg": who the stars are for, after "Stars:". */
 export const riderWords = (rider: Rider) =>
-  `${rider.custom ? "Custom stars" : SKILL_LABEL[rider.skill]} · ${weightText(rider)}`;
+  `${starsWhose(rider)} · ${weightText(rider)}`;
 
 export function RiderSwitch({
   rider,
@@ -94,35 +86,24 @@ export function RiderSwitch({
   const [wings, setWings] = useState(rider.wings.join(", "));
   const set = (change: Partial<Rider>) =>
     onChange(parseRider({ ...rider, ...change }));
-  // A level, or the rider's own stars: kept as Display options keep it, and
-  // told to the account when it goes on or off their own.
-  const choose = (on: StarsOn) => {
-    const before = loadPrefs();
-    const next = withStarsOn(before, on);
-    savePrefs(next);
-    if (next.starsUpdatedAt !== before.starsUpdatedAt) announcePrefs("device");
-    onChange(next.rider);
-  };
   return (
     <div className={s.base()} role="group" aria-labelledby={`${panel}-for`}>
       <div className={s.line()}>
         <Kicker as="span" id={`${panel}-for`} className={s.kicker()}>
-          Rated for
+          Stars
         </Kicker>
-        <Segmented<StarsOn>
-          aria-label="Riding level"
-          value={starsOn(rider)}
-          onChange={choose}
-          options={[
-            ...SKILLS.map((skill) => ({
-              value: skill as StarsOn,
-              label: SKILL_LABEL[skill],
-            })),
-            ...(savedCustom(rider)
-              ? [{ value: "custom" as StarsOn, label: "Custom" }]
-              : []),
-          ]}
-        />
+        {/* Whose stars, and the way to change them: Customise, on the map. */}
+        <span className={s.whose()} data-stars-whose>
+          {starsWhose(rider)}
+        </span>
+        <Button
+          variant="link"
+          size="sm"
+          href={CUSTOMISE_HREF}
+          data-customise-link
+        >
+          Customise
+        </Button>
         <button
           type="button"
           className={s.more()}
@@ -171,8 +152,8 @@ export function RiderSwitch({
             {model === FALLBACK_MODEL
               ? ", "
               : `, and ${modelName(FALLBACK_MODEL)}'s past the end of its run, `}
-            here and on the map. The other models are shown beside it, and
-            never change the stars.
+            here and on the map. The other models are shown beside it, and never
+            change the stars.
           </p>
         </div>
       )}
@@ -215,7 +196,10 @@ export function RiderSwitch({
               />
             </label>
           </div>
-          <p className={s.note()}>Kept on this device, and on the map too.</p>
+          <p className={s.note()}>
+            They size the wing for each hour and never change the stars. Kept on
+            this device, and on the map too.
+          </p>
         </div>
       )}
     </div>

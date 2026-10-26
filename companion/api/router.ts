@@ -72,12 +72,13 @@ export const COMPANION_RATES = {
   report: [],
 };
 
+// A browser from before 25 October 2026 also sends its level (`skill`) and
+// how much gusty wind bothers it (`gusty`): not in the schema, so taken and
+// dropped. Its rating, made from a level, reads as none, and ours rates.
 const riderSchema = z.object({
   weightKg: z.number().min(0).max(500).nullable(),
-  skill: z.enum(["beginner", "intermediate", "advanced"]),
   wings: z.array(z.number().min(0).max(50)).max(12),
-  custom: customRatingSchema.nullable().optional(),
-  gusty: z.enum(["little", "some", "lots"]).optional(),
+  custom: customRatingSchema.optional(),
 });
 
 const contextSchema = z.object({

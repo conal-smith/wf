@@ -37,9 +37,7 @@ export interface RidersRepo {
 export function memoryRidersRepo(users: UsersRepo): RidersRepo {
   const kept = new Map<string, RiderProfile>();
   const get = async (id: string): Promise<RiderProfile> =>
-    structuredClone(
-      kept.get(id) ?? { customStars: null, keptStars: null, updatedAt: null },
-    );
+    structuredClone(kept.get(id) ?? { customStars: null, updatedAt: null });
   return {
     get,
     async put(id, input) {
@@ -74,6 +72,10 @@ export function createRiderRouter(people: People, riders: RidersRepo) {
     async (c) => {
       const input = riderProfileInputSchema.parse(await c.req.json());
       const user = await ensureUser(people, c.var.userId!);
+      // A rating this site no longer reads, from a page older than the
+      // ratings of 25 October 2026: let go, and the account answers what it
+      // keeps.
+      if (!input) return c.json(await riders.get(user.id));
       const updatedAt = new Date(
         Math.min(Date.parse(input.updatedAt), Date.now()),
       ).toISOString();

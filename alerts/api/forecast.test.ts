@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import base from "../../public/spots.json";
-import { DEFAULT_RIDER, standardRating, type Rider } from "../../force5/src/stars";
+import { DEFAULT_RIDER, oursCopy, type Rider } from "../../force5/src/stars";
 import type { Spot } from "../../force5/src/weather";
 import { ridingLocations } from "../../src/locations";
 import { daylightOn, type RatedPlace } from "../../src/ratings";
@@ -34,18 +34,16 @@ import { blendFiles, blendSource } from "./testing";
 
 const riders: Rider[] = [
   DEFAULT_RIDER,
-  { weightKg: 95, skill: "beginner", wings: [5] },
-  { weightKg: 60, skill: "advanced", wings: [3, 4.5] },
+  { weightKg: 95, wings: [5] },
+  { weightKg: 60, wings: [3, 4.5], upwind: 30, downwind: 20 },
   {
     weightKg: 70,
-    skill: "intermediate",
     wings: [],
     custom: {
-      ...standardRating(DEFAULT_RIDER, "beginner"),
+      ...oursCopy(),
       wind: { min: 15, sweetLow: 18, sweetHigh: 23, max: 27 },
     },
   },
-  { weightKg: 80, skill: "intermediate", wings: [], gusty: "lots" },
 ];
 
 /** Two days of everything: calm to a gale, every direction, every agreement. */
@@ -132,9 +130,11 @@ describe("the blend, as the service reads it", () => {
     const ratings = ratingCache(blend);
     const a = ratings({ ...DEFAULT_RIDER })("brandon");
     expect(ratings({ ...DEFAULT_RIDER })("brandon")).toBe(a);
-    expect(ratings({ weightKg: 70, skill: "advanced", wings: [] })("brandon")).not.toBe(a);
+    expect(ratings({ weightKg: 70, wings: [] })("brandon")).not.toBe(a);
+    // How far up and down the wind they ride moves nothing rated.
+    expect(ratings({ ...DEFAULT_RIDER, upwind: 30, downwind: 20 })("brandon")).toBe(a);
     // A rider's own rating is a rider of its own.
-    const own = { ...DEFAULT_RIDER, custom: standardRating(DEFAULT_RIDER, "advanced") };
+    const own = { ...DEFAULT_RIDER, custom: { ...oursCopy(), wind: { min: 9, sweetLow: 13, sweetHigh: 26, max: 35 } } };
     expect(ratings(own)("brandon")).not.toBe(a);
     expect(ratings({ ...own })("brandon")).toBe(ratings(own)("brandon"));
     expect(ratings(DEFAULT_RIDER)("keel")).toBeNull();

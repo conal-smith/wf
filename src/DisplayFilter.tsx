@@ -28,7 +28,7 @@ interface Props {
 /**
  * The display options: the units, the dock's hours, the model and the
  * blend's models. The
- * rider's weight, level, wings and own star rating are set in Customise,
+ * rider's weight and own star rating are set in Customise,
  * from the site menu, and nowhere else on the map. In a dialog over the
  * map, as the layers are, and shut the same ways (src/MapControls.tsx): its
  * X, Escape or a tap on the backdrop.
@@ -113,9 +113,9 @@ export default function DisplayFilter({ prefs, onChange, models }: Props) {
       </p>
       <h2>Models in the blend</h2>
       <p className="filter-note">
-        The blend chart draws every model ticked here, and they say how far
-        the forecast agrees. The stars stay {modelName(model)}&rsquo;s whatever
-        you tick.
+        The blend chart draws every model ticked here, and they say how far the
+        forecast agrees. The stars stay {modelName(model)}&rsquo;s whatever you
+        tick.
       </p>
       <div className="filter-models">
         {models.map((model) => (

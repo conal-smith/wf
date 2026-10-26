@@ -670,6 +670,29 @@ force5/src/timeline.ts). Past hours stay drawn as past (the dock's faded
 `past` columns, the finder's faded gone hours). Nothing before today's
 midnight is kept (docs/LIVE_FORECAST_PIPELINE.md, "Today, kept whole").
 
+**2026-10-25 — One star rating, ours, made your own in four numbers.** From
+the approved mock-up `backlog/mockups/2026-10-25-own-star-rating.html` and the
+plan `backlog/research/2026-10-25-star-rating-plan.html`. There are no levels
+(Learning, Riding, Advanced) anywhere: everyone starts from ours, and a rider
+makes it their own in Customise. They set four numbers on "What wind suits
+you?" — too light, the sweet spot's two ends, too much in gusts (ours 11 ·
+15–22 · 35 kn) — and our model does the rest: a star a knot from too light,
+five through the sweet spot, one star 5 kn under too much and none 3 kn under
+it; a gust past too much is no stars, and otherwise is read 5 kn lighter, the
+hour taking the lower. There is no gust setting and no gust-factor penalty.
+Offshore is never, locked, with "We don't recommend going out in an offshore
+wind."; cross-offshore costs a star by default, and the web moves in whole
+stars. "Can you ride upwind?" starts at "Not yet", straight across, with the
+course's downwind edge a second angle (10° below across); past it the picture
+says DRIFT, "you lose ground"; it moves no star. Wings and weight never cost a
+star. Outline stars mean only stars lost to the gusts or the shore; an orange
+or red warning still replaces the stars. Every step of the wizard is a title,
+one short line, the content and the foot; a picture left and its controls
+right on a desktop, stacked on a phone; the wind's stars sit read-only under
+the slider's track on the same axis, with no legend; "Reset to ours" shows
+only once something differs from ours (weight and units aside). Old stored
+settings are read without fault and start from ours (docs/STAR_RATINGS.md).
+
 ---
 
 ## Still open

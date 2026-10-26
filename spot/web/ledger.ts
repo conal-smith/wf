@@ -1,33 +1,34 @@
 /**
- * One hour's stars worked through line by line, for "How the stars work": the
- * rideable wind, what it is worth on its own, and each thing the spot and the
- * wind take off, down to the solid stars, or none at all for a gust over the
- * rider's limit. It restates rateHour's
+ * One hour's stars worked through line by line, for "How the stars work":
+ * whose four numbers rate it, what the steady wind is worth on them, what the
+ * gusts and the shore take off, down to the solid stars, or none at all for a
+ * gust past too much or a wind the rider never rides. It restates rateHour's
  * arithmetic (force5/src/stars.ts) so every step can be shown with its
- * figures; ledger.test.ts holds the two to the same answer for every level,
- * shore, gust and agreement, so they cannot drift apart unnoticed. The
- * models' agreement is a line of its own, and takes nothing off.
+ * figures; ledger.test.ts holds the two to the same answer for every wind,
+ * gust, shore and agreement, ours and a rider's own, so they cannot drift
+ * apart unnoticed. The models' agreement is a line of its own, and takes
+ * nothing off; so is the wing, which never moves a star.
  */
 import {
+  GUST_EASE_KN,
+  NEVER,
   SHORE_LABEL,
-  SKILL_LABEL,
   directionCost,
-  gustiness,
+  gustStars,
   gustsOverLimit,
-  gustyCost,
   rateHour,
-  rideableWind,
   shoreAngle,
   windBand,
-  windScore,
+  windStars,
   type Agreement,
   type HourRating,
   type Rider,
+  type WindBand,
 } from "../../force5/src/stars";
 
 export interface LedgerLine {
   what: string;
-  /** The figure, as the page sets it: "−1.5", "4.06 → 4★ faded". */
+  /** The figure, as the page sets it: "−1", "4.6, so 5", "4 solid, 1 outlined". */
   figure: string;
   /** The running total after this line, where it moves. */
   total?: boolean;
@@ -48,15 +49,19 @@ export interface LedgerHour {
   agreement: Agreement | null;
 }
 
-const GUSTINESS_WORD = {
-  steady: "steady",
-  gusty: "gusty",
-  "very-gusty": "very gusty",
-} as const;
-
-const minus = (value: number) =>
-  value === 0 ? "none" : `−${Number(value.toFixed(2))}`;
+const minus = (value: number) => (value === 0 ? "none" : `−${value}`);
 const one = (value: number) => value.toFixed(1);
+const knots = (value: number) => String(Number(value.toFixed(1)));
+
+/** "11 · 15–22 · 35 kn": the four numbers, as Customise's slider has them. */
+export const fourNumbers = (band: WindBand) =>
+  `${knots(band.min)} · ${knots(band.sweetLow)}–${knots(band.sweetHigh)} · ${knots(band.max)} kn`;
+
+/** The stars an hour comes to, as the ledger's total says them. */
+const totalText = (stars: number, potential: number) =>
+  potential > stars
+    ? `${stars} solid, ${potential - stars} outlined`
+    : `${stars} solid`;
 
 /** Null in the dark or without wind, as rateHour is. */
 export function ledger(
@@ -68,73 +73,72 @@ export function ledger(
   if (!rating) return null;
   const band = windBand(rider);
   const { windKn, gustKn } = hour;
-  const lines: LedgerLine[] = [];
+  const wing = {
+    what: "Wing, which never moves a star",
+    figure: `${rating.wing.own ?? rating.wing.recommended} m²`,
+  };
+  const lines: LedgerLine[] = [
+    {
+      what: rider.custom ? "Your own stars" : "Ours",
+      figure: fourNumbers(band),
+    },
+  ];
+  const none = (line: LedgerLine): Ledger => {
+    lines.push(line, { what: "Rating", figure: "no stars", total: true }, wing);
+    return { lines, stars: 0, potential: 0, rating };
+  };
 
-  if (rider.custom)
-    lines.push({
-      what: `Your own star rating, started from ${SKILL_LABEL[rider.custom.base]}`,
-      figure: "custom",
-    });
+  const angle = facing === null ? null : shoreAngle(hour.from, facing);
+  const cost = angle ? directionCost(rider, angle) : 0;
+  const shoreLine = (figure: string): LedgerLine => {
+    const off = Math.round(
+      Math.abs(((((hour.from - facing!) % 360) + 540) % 360) - 180),
+    );
+    return {
+      what: `Wind ${SHORE_LABEL[angle!]}, ${off}° from straight onshore`,
+      figure,
+    };
+  };
 
-  const ride = rideableWind(windKn, gustKn, rider);
-  if (gustKn !== null && gustKn > windKn) {
-    lines.push({
-      what: `${one(windKn)} kn gusting ${one(gustKn)} is rated as`,
-      figure: `${one(ride)} kn`,
-    });
-  } else
-    lines.push({
-      what: `${one(windKn)} kn with no gusts is rated as`,
-      figure: `${one(ride)} kn`,
-    });
+  // A wind the rider never rides, offshore always: no stars, not even
+  // outlined ones, whatever the wind.
+  if (angle && cost >= NEVER) return none(shoreLine("never"));
 
-  const base = windScore(ride, band);
-  const limit = Math.round(band.max);
-
-  // A gust over the rider's limit: no stars, faded ones too, whatever else.
-  if (gustsOverLimit(gustKn, rider)) {
-    lines.push({
-      what: `Gusts to ${one(gustKn!)} kn, over your ${limit} kn limit`,
+  // A gust past too much: no stars, not even outlined ones.
+  if (gustsOverLimit(gustKn, rider))
+    return none({
+      what: `Gusts to ${one(gustKn!)} kn, past too much (${knots(band.max)} kn)`,
       figure: "no stars",
     });
-    lines.push({ what: "Rating", figure: "0, so 0 solid", total: true });
-    lines.push({
-      what: "Wing",
-      figure: `${rating.wing.own ?? rating.wing.recommended} m²`,
-    });
-    return { lines, stars: 0, potential: 0, rating };
-  }
 
-  const potential = Math.round(base);
+  const wind = windStars(windKn, band);
+  const potential = Math.round(wind);
   lines.push({
-    what: "Stars for that wind",
-    figure: `${base.toFixed(1)}, so ${potential} outlined`,
+    what: `Steady wind ${one(windKn)} kn`,
+    figure: `${wind.toFixed(1)}, so ${potential}`,
   });
 
-  const kind = gustiness(windKn, gustKn, rider);
-  const gusts = gustyCost(rider, kind);
-  const factor = gustKn === null ? "" : (gustKn / windKn).toFixed(2);
+  const gust = gustStars(gustKn, band);
+  // A gust so strong it leaves nothing, read lighter or not: no stars.
+  if (gust < wind && Math.round(gust) === 0)
+    return none({
+      what: `Gusts to ${one(gustKn!)} kn: nothing left`,
+      figure: "no stars",
+    });
+  const afterGust = Math.min(
+    potential,
+    Math.max(0, Math.round(Math.min(wind, gust))),
+  );
   lines.push({
     what:
       gustKn === null
         ? "No gusts forecast"
-        : windKn < band.min
-          ? `Gusts to ${one(gustKn)} kn: under your floor, gusty wind costs nothing`
-          : `Gusts to ${one(gustKn)} kn, ${factor} times the wind: ${GUSTINESS_WORD[kind]}`,
-    figure: minus(gusts),
+        : `Gusts to ${one(gustKn)} kn, read ${GUST_EASE_KN} kn lighter: ${one(gustKn - GUST_EASE_KN)} kn`,
+    figure: minus(potential - afterGust),
   });
 
-  const angle = facing === null ? null : shoreAngle(hour.from, facing);
-  const direction = angle ? directionCost(rider, angle) : 0;
-  if (angle) {
-    const off = Math.round(
-      Math.abs(((((hour.from - facing!) % 360) + 540) % 360) - 180),
-    );
-    lines.push({
-      what: `Wind ${SHORE_LABEL[angle].toLowerCase()}, ${off}° from straight onshore`,
-      figure: minus(direction),
-    });
-  } else
+  if (angle) lines.push(shoreLine(minus(cost)));
+  else
     lines.push({
       what: "We don't know which way this beach faces",
       figure: "none",
@@ -152,24 +156,13 @@ export function ledger(
       figure: "none",
     });
 
-  const quiver = rating.wing.fit === "fits" ? 0 : 1;
-  if (quiver)
-    lines.push({
-      what: `None of your wings suits it: about ${rating.wing.recommended} m² would`,
-      figure: "−1",
-    });
-
-  // Taken off in rateHour's order, so the two round alike.
-  const score = base - direction - gusts - quiver;
-  const stars = Math.min(potential, Math.max(0, Math.round(score)));
+  // Taken off in rateHour's order: the gusts, then the shore.
+  const stars = Math.max(0, afterGust - cost);
   lines.push({
     what: "Rating",
-    figure: `${Math.max(0, score).toFixed(1)}, so ${stars} solid`,
+    figure: totalText(stars, potential),
     total: true,
   });
-  lines.push({
-    what: "Wing",
-    figure: `${rating.wing.own ?? rating.wing.recommended} m²`,
-  });
+  lines.push(wing);
   return { lines, stars, potential, rating };
 }

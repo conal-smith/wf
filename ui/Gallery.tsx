@@ -809,7 +809,7 @@ export default function Gallery() {
                     stars: 3,
                   },
                 ],
-                rider: { weightKg: 80, assumed: true, skill: "intermediate" },
+                rider: { weightKg: 80, assumed: true, own: false },
                 note: null,
               }}
             />

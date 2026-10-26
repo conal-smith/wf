@@ -1,6 +1,6 @@
 /**
  * The stars, as the forecast server gives them: wingfoil.ie's own rating of an
- * hour (force5/src/stars.ts `rateHour`, stars v6), called on the same numbers
+ * hour (force5/src/stars.ts `rateHour`, the one rating of 25 October 2026), called on the same numbers
  * the spot page rates (spot/web/spot.ts `rateForecastHour`): the one model's
  * mean wind, gust and direction of the hour, sunrise to sunset, against the
  * spot's shore. Nothing here rates anything itself; it says who the stars are
@@ -12,65 +12,64 @@
  * from the ratings after any such step.
  */
 import {
-  DEFAULT_RIDER,
   ESTIMATE_WEIGHT_KG,
-  SKILL_LABEL,
-  gustiness,
   noStarsWhy,
   rateHour,
   windBand,
-  type Gustiness,
-  type Gusty,
   type HourRating,
   type Rider,
   type SessionKind,
-  type Skill,
 } from "../../force5/src/stars.js";
 import { arcText, goodWindArcs } from "../../force5/src/windArcs.js";
 import type { HourWind } from "./forecast.js";
 
-/** Who an agent says the rider is; anything left out is the site's default. */
+/**
+ * Who an agent says the rider is; anything left out is the site's default.
+ * Neither moves a star: everyone is rated on ours, and the weight and wings
+ * only pick the wing shown beside the stars. The level and gust setting an
+ * agent may still send from before 25 October 2026 (`level`, `gusty`) are
+ * not read.
+ */
 export interface RiderChoice {
-  /** beginner ("Learning"), intermediate ("Riding", the default) or advanced. */
-  level?: Skill;
   /** Kilograms; left out, the site's estimate of 80 kg. */
   weight_kg?: number;
-  /** How much gusty wind bothers them: little, some (the default) or lots. */
-  gusty?: Gusty;
   /** Wing sizes they own, m²; left out, the rating recommends a size. */
   wings_m2?: readonly number[];
 }
 
-/** The rider as the stars read them: the site's default rider unless told. */
+/** The rider as the stars read them: ours, with the weight and wings told. */
 export function riderOf(choice: RiderChoice = {}): Rider {
   return {
     weightKg:
       choice.weight_kg === undefined ? null : Math.round(choice.weight_kg),
-    skill: choice.level ?? DEFAULT_RIDER.skill,
     wings: [...new Set(choice.wings_m2 ?? [])].sort((a, b) => a - b),
-    ...(choice.gusty && choice.gusty !== "some" && { gusty: choice.gusty }),
   };
 }
 
+/** Whose stars an hour is rated on, in the site's words. */
+export const ratingName = (rider: Pick<Rider, "custom">) =>
+  rider.custom ? "Your own stars" : "Ours";
+
 export interface RiderUsed {
-  /** Who the stars are for, as the spot page says it: "Riding · ~80 kg". */
+  /** Who the stars are for, as the site says it: "Ours · ~80 kg". */
   label: string;
-  level: Skill;
-  /** The level in the site's words: Learning, Riding or Advanced. */
-  level_label: string;
+  /** "ours" for wingfoil.ie's rating, "own" for a rider's own stars. */
+  rating: "ours" | "own";
   weight_kg: number;
   /** The site's estimate, not a weight the rider gave. */
   weight_assumed: boolean;
-  gusty: Gusty;
   wings_m2: number[];
-  /** The mean wind the stars want, for this level and weight, knots. */
+  /**
+   * The four numbers the stars come from, knots: too light (one star),
+   * the sweet spot's two ends (five stars) and too much, in gusts.
+   */
   wind_band_kn: {
     min: number;
     sweet_low: number;
     sweet_high: number;
     max: number;
   };
-  /** A gust over this leaves the hour no stars at all: the top of the band. */
+  /** A gust over this leaves the hour no stars at all: too much, the top of the band. */
   gust_limit_kn: number;
 }
 
@@ -81,12 +80,10 @@ export function riderUsed(rider: Rider): RiderUsed {
   const weight = rider.weightKg ?? ESTIMATE_WEIGHT_KG;
   const assumed = rider.weightKg === null;
   return {
-    label: `${SKILL_LABEL[rider.skill]} · ${assumed ? "~" : ""}${weight} kg`,
-    level: rider.skill,
-    level_label: SKILL_LABEL[rider.skill],
+    label: `${ratingName(rider)} · ${assumed ? "~" : ""}${weight} kg`,
+    rating: rider.custom ? "own" : "ours",
     weight_kg: weight,
     weight_assumed: assumed,
-    gusty: rider.gusty ?? "some",
     wings_m2: [...rider.wings],
     wind_band_kn: {
       min: tenth(band.min),
@@ -133,8 +130,6 @@ export interface HourStars {
   reasons: string[];
   /** What kind of session the wind makes for this rider. */
   session: SessionKind;
-  /** By gust ÷ mean, as the stars judge it (steady, gusty, very-gusty). */
-  gustiness: Gustiness;
   /** The wing size the rating recommends, m². */
   wing_m2: number;
   /** Which of the rider's own wings to take, where they gave their wings. */
@@ -151,18 +146,13 @@ function whyNone(rating: HourRating): string {
   );
 }
 
-export function hourStars(
-  rating: HourRating,
-  wind: HourWind,
-  rider: Rider,
-): HourStars {
+export function hourStars(rating: HourRating): HourStars {
   return {
     stars: rating.stars,
     potential: rating.potential,
     why_no_stars: rating.stars === 0 ? whyNone(rating) : null,
     reasons: rating.reasons,
     session: rating.session,
-    gustiness: gustiness(wind.wind_kn, wind.gust_kn, rider),
     wing_m2: rating.wing.recommended,
     ...(rating.wing.own !== null && { own_wing_m2: rating.wing.own }),
   };

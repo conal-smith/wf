@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_RIDER, rateHour } from "../../../../force5/src/stars";
+import { rateExample } from "../../../../spot/web/yourStars";
 import type { Spot } from "../../../../force5/src/weather";
 import type { PlaceHour } from "../../../../src/ratings";
-import { workedHour } from "./infoLogic";
+import { AGREED_HOURS, hourName, workedHour } from "./infoLogic";
 
 const NOW = Date.parse("2026-10-17T09:00:00Z");
 const strip = Array.from({ length: 72 }, (_, i) => ({ time: NOW + (i - 2) * 3600000 }));
@@ -26,5 +27,24 @@ describe("the worked example", () => {
     const row = strip.map((_, i) => (i < 2 ? hour(18, 225) : hour(18, 225, false)));
     expect(workedHour(["inch"], new Map([["inch", row]]), strip, DEFAULT_RIDER, () => spot, NOW)).toBeNull();
     expect(workedHour(["inch"], new Map(), strip, DEFAULT_RIDER, () => spot, NOW)).toBeNull();
+  });
+});
+
+describe("the agreed table", () => {
+  it("rates ours as agreed: solid stars, then the outlines the gusts took", () => {
+    const got = AGREED_HOURS.map(([wind, gust]) => {
+      const h = rateExample(DEFAULT_RIDER, wind, gust, "cross");
+      return [hourName(wind, gust), h.stars, h.potential - h.stars];
+    });
+    expect(got).toEqual([
+      ["15 gusting 25", 5, 0],
+      ["20 gusting 25", 5, 0],
+      ["20 gusting 30", 4, 1],
+      ["25 gusting 30", 4, 0],
+      ["30 steady", 1, 0],
+      ["22 gusting 35", 1, 4],
+      ["32 steady", 0, 0],
+      ["10 steady", 0, 0],
+    ]);
   });
 });

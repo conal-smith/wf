@@ -681,19 +681,20 @@ table.tt {
     );
 }
 /* The gust factor (ForecastDock's GustRow): the figure in ink, and behind it
-   the gust's own warm (--color-gust, the candle's gust cap) where the stars
-   call the hour gusty, deeper where very gusty. A tint, as the rain's is: the
+   the gust's own warm (--color-gust, the candle's gust cap) where the gust
+   costs the hour a star, deeper where it is past the rider's too much. A
+   tint, as the rain's is: the
    gust's orange is a mark's colour, too light for words on paper. */
 .gust-cell {
   padding: 0 3px;
 }
-.gust-cell.is-steady {
+.gust-cell.is-fine {
   color: var(--color-ink-muted);
 }
-.gust-cell.is-gusty {
+.gust-cell.is-costs {
   background: color-mix(in srgb, var(--color-gust) 22%, transparent);
 }
-.gust-cell.is-very-gusty {
+.gust-cell.is-over {
   font-weight: 600;
   background: color-mix(in srgb, var(--color-gust) 45%, transparent);
 }

@@ -29,38 +29,27 @@ import {
   MAX_WING_M2,
   MIN_WEIGHT_KG,
   MIN_WING_M2,
-  SKILL_LABEL,
-  SKILLS,
-  savedCustom,
   type Rider,
-  type StarsOn,
 } from "../../../../force5/src/stars";
-
-/** The site's names for the levels (force5/src/stars.ts). */
-export { SKILL_LABEL };
 
 /** "~80 kg" until a weight is given. */
 export const weightText = (rider: Rider) =>
   `${rider.weightKg === null ? "~" : ""}${rider.weightKg ?? ESTIMATE_WEIGHT_KG} kg`;
 
+/** Whose stars rate: "Ours", or "Your own stars" once the rider has made them their own in Customise. */
+export const starsName = (rider: Pick<Rider, "custom">) => (rider.custom ? "Your own stars" : "Ours");
+
 /**
- * "Riding · ~80 kg", or "Custom stars · ~80 kg" while the rider's own rating
- * rates: who the stars are for (spot/web/RiderSwitch.tsx). A rating kept
- * aside while a level rates is not who they are for.
+ * "Ours · ~80 kg", or "Your own stars · 80 kg": who the stars are for
+ * (spot/web/RiderSwitch.tsx). The weight never moves a star; it is said
+ * because it sizes the wing.
  */
-export const riderWords = (rider: Rider) =>
-  `${rider.custom ? "Custom stars" : SKILL_LABEL[rider.skill]} · ${weightText(rider)}`;
+export const riderWords = (rider: Rider) => `${starsName(rider)} · ${weightText(rider)}`;
 
-/** The level pill's choices: the levels, and Custom once the rider has a rating of their own. */
-export const starsOnSegments = (rider: Rider): { value: StarsOn; label: string }[] => [
-  ...SKILLS.map((skill) => ({ value: skill, label: SKILL_LABEL[skill] })),
-  ...(savedCustom(rider) ? [{ value: "custom" as const, label: "Custom" }] : []),
-];
+/** The way into "Your stars": a new rating from ours, or the rider's own to edit. */
+export const customiseText = (rider: Pick<Rider, "custom">) => (rider.custom ? "Edit your stars" : "Customise");
 
-/** The way into "Your star rating" under the pill: a new rating from the level, or the rider's own. */
-export const customiseText = (rider: Rider) => (savedCustom(rider) ? "Edit custom" : "Customise");
-
-/** "Riding · ~80 kg · 4, 5.5 m²": the More tab's summary. */
+/** "Ours · ~80 kg · 4, 5.5 m²": the More tab's summary. */
 export const riderSummary = (rider: Rider) =>
   `${riderWords(rider)}${rider.wings.length ? ` · ${rider.wings.join(", ")} m²` : ""}`;
 

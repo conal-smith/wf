@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   CUSTOM_RATING_VERSION,
   DEFAULT_RIDER,
+  NEVER,
+  OURS,
   shoreAngle,
-  standardRating,
   type CustomRating,
 } from "../../force5/src/stars";
 import { UNITS } from "../../force5/src/units";
@@ -13,16 +14,14 @@ import {
   FROM,
   GUST_TOP,
   WIND_TOP,
-  breakdown,
+  costLabel,
   forceBand,
   forceTicks,
   gridStars,
-  halfStars,
   knotsOf,
   moveWind,
   moveWindForce,
   offAt,
-  onLevel,
   polar,
   sliceAt,
   WEB_DIRS,
@@ -31,18 +30,18 @@ import {
   rateExample,
   said,
   setDirection,
+  shoreLocked,
   shown,
+  starRuns,
   stepped,
   unitScale,
-  withRating,
 } from "./yourStars";
 
-// The mockup's desktop rider: about 20 knots, and nothing over 27.
+// A rider who likes about 20 knots, and nothing over 27.
 const MOCKUP: CustomRating = {
   version: CUSTOM_RATING_VERSION,
-  base: "intermediate",
   wind: { min: 15, sweetLow: 18, sweetHigh: 23, max: 27 },
-  direction: { onshore: 0.5, crossOn: 0, cross: 0, crossOff: 2.5, offshore: 4 },
+  direction: { onshore: 1, crossOn: 0, cross: 0, crossOff: 3, offshore: NEVER },
 };
 
 describe("units", () => {
@@ -87,20 +86,49 @@ describe("the handles", () => {
     expect(moveWind(MOCKUP, "min", 0).wind.min).toBe(2);
     expect(moveWind(MOCKUP, "max", 99).wind.max).toBe(WIND_TOP);
   });
-  it("set a direction in half stars, offshore as freely as any", () => {
-    expect(setDirection(MOCKUP, "offshore", 0).direction.offshore).toBe(0);
-    expect(setDirection(MOCKUP, "offshore", 5.4).direction.offshore).toBe(5);
-    expect(setDirection(MOCKUP, "cross", 1.3).direction.cross).toBe(1.5);
+  it("set a direction in whole stars; offshore stays never", () => {
+    expect(shoreLocked("offshore")).toBe(true);
+    expect(shoreLocked("crossOff")).toBe(false);
+    expect(setDirection(MOCKUP, "offshore", 0).direction.offshore).toBe(NEVER);
+    expect(setDirection(MOCKUP, "cross", 1.3).direction.cross).toBe(1);
+    expect(setDirection(MOCKUP, "cross", 1.6).direction.cross).toBe(2);
+    expect(setDirection(MOCKUP, "crossOff", 9).direction.crossOff).toBe(NEVER);
     expect(setDirection(MOCKUP, "onshore", -1).direction.onshore).toBe(0);
   });
-  it("names stars off as the dialog does", () => {
-    expect([0, 0.5, 1, 2.5, 3].map(halfStars)).toEqual([
-      "0",
-      "−½",
-      "−1",
-      "−2½",
-      "−3",
+  it("name what a direction costs as the wizard does", () => {
+    expect([0, 1, 3, NEVER].map(costLabel)).toEqual([
+      "no cost",
+      "−1★",
+      "−3★",
+      "never",
     ]);
+  });
+});
+
+describe("the star strip", () => {
+  it("runs ours' whole stars by steady wind, from none to five and back", () => {
+    expect(starRuns(OURS.wind)).toEqual([
+      { stars: 0, from: 0, to: 10 },
+      { stars: 1, from: 11, to: 11 },
+      { stars: 2, from: 12, to: 12 },
+      { stars: 3, from: 13, to: 13 },
+      { stars: 4, from: 14, to: 14 },
+      { stars: 5, from: 15, to: 22 },
+      { stars: 4, from: 23, to: 25 },
+      { stars: 3, from: 26, to: 27 },
+      { stars: 2, from: 28, to: 29 },
+      { stars: 1, from: 30, to: 31 },
+      { stars: 0, from: 32, to: 50 },
+    ]);
+  });
+  it("follows the handles", () => {
+    const runs = starRuns(MOCKUP.wind);
+    expect(runs.find((r) => r.stars === 5)).toEqual({
+      stars: 5,
+      from: 18,
+      to: 23,
+    });
+    expect(runs.at(-1)).toEqual({ stars: 0, from: 24, to: 50 });
   });
 });
 
@@ -117,47 +145,22 @@ describe("the examples", () => {
         }[key],
       );
   });
-  it("give the mockup's stars, the level's against the rider's own", () => {
-    const rider = { ...DEFAULT_RIDER, wings: [3] };
-    const stars = (r: typeof rider) =>
-      EXAMPLES.map(([w, g, d]) => rateExample(r, w, g, d).stars);
-    expect(stars(onLevel(rider, MOCKUP))).toEqual([
-      1, 1, 4, 2, 5, 4, 0, 0, 5, 4, 1,
-    ]);
-    expect(stars(withRating(rider, MOCKUP))).toEqual([
-      0, 1, 1, 0, 4, 3, 0, 0, 4, 2, 0,
-    ]);
-    const learning = standardRating(rider, "beginner");
-    expect(stars(onLevel(rider, learning))).toEqual(
-      stars(withRating(rider, learning)),
+  it("rate an hour for the rider, gusts and direction speaking", () => {
+    const rider = { ...DEFAULT_RIDER, custom: MOCKUP };
+    const stars = EXAMPLES.map(
+      ([w, g, d]) => rateExample(rider, w, g, d).stars,
     );
-    expect(stars(onLevel(rider, learning))).toEqual([
-      0, 1, 4, 0, 5, 0, 0, 0, 5, 2, 0,
-    ]);
-  });
-  it("break an hour down as the readout says it", () => {
-    const riding = withRating(DEFAULT_RIDER, standardRating(DEFAULT_RIDER));
-    // Very gusty: two off a 4.4.
-    expect(breakdown(riding, 15, 27, "crossOn")).toMatchObject({
-      rating: { stars: 2, potential: 4 },
-      wind: 4.4,
-      over: false,
-      gusts: 2,
-      direction: 0,
-    });
-    // A gust over 30: nothing else counts.
-    expect(breakdown(riding, 22, 32, "crossOff")).toMatchObject({
-      rating: { stars: 0, potential: 0 },
-      over: true,
-      gusts: 0,
-      direction: 0,
-    });
+    expect(stars).toEqual([0, 0, 1, 1, 5, 5, 0, 0, 4, 2, 0]);
+    const ours = EXAMPLES.map(
+      ([w, g, d]) => rateExample(DEFAULT_RIDER, w, g, d).stars,
+    );
+    expect(ours).toEqual([0, 2, 5, 5, 5, 5, 3, 2, 5, 4, 0]);
   });
 });
 
 describe("the grid", () => {
   it("rates every wind and gust two knots a square, blank under the wind", () => {
-    const grid = gridStars(withRating(DEFAULT_RIDER, MOCKUP), "crossOn");
+    const grid = gridStars({ ...DEFAULT_RIDER, custom: MOCKUP }, "crossOn");
     expect(grid).toHaveLength(WIND_TOP / 2);
     expect(grid[0]).toHaveLength(GUST_TOP / 2);
     // 18–20 kn gusting 24–26 kn is steady and in the sweet spot; gusting
@@ -230,20 +233,22 @@ describe("Force: the handles on whole forces", () => {
     expect(f[1]).toBeGreaterThan(f[0]);
     expect(f[2]).toBeGreaterThanOrEqual(f[1]);
     expect(f[3]).toBeGreaterThan(f[2]);
-    // Every level, every weight: in order, on the scale, on a force's edge.
-    for (const skill of ["beginner", "intermediate", "advanced"] as const)
-      for (const weightKg of [50, 80, 120]) {
-        const set = forceBand(
-          standardRating({ ...DEFAULT_RIDER, skill, weightKg }, skill),
-        );
-        const [a, b, c, d] = forces(set);
-        expect(a).toBeGreaterThanOrEqual(2);
-        expect(b).toBeGreaterThan(a);
-        expect(c).toBeGreaterThanOrEqual(b);
-        expect(d).toBeGreaterThan(c);
-        expect(set.wind.max).toBeLessThanOrEqual(WIND_TOP);
-        expect(forceBand(set)).toEqual(set);
-      }
+    // Ours and some riders' own: in order, on the scale, on a force's edge.
+    for (const wind of [
+      OURS.wind,
+      MOCKUP.wind,
+      { min: 8, sweetLow: 12, sweetHigh: 28, max: 38 },
+      { min: 3, sweetLow: 4, sweetHigh: 5, max: 6 },
+    ]) {
+      const set = forceBand({ ...MOCKUP, wind });
+      const [a, b, c, d] = forces(set);
+      expect(a).toBeGreaterThanOrEqual(2);
+      expect(b).toBeGreaterThan(a);
+      expect(c).toBeGreaterThanOrEqual(b);
+      expect(d).toBeGreaterThan(c);
+      expect(set.wind.max).toBeLessThanOrEqual(WIND_TOP);
+      expect(forceBand(set)).toEqual(set);
+    }
   });
 
   const LEARNING: CustomRating = {

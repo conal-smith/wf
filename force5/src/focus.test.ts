@@ -131,7 +131,8 @@ describe("the mark round the chosen spot", () => {
 
 // Dollymount: the beach looks out to the south-east, 125°.
 const DOLLYMOUNT = 125;
-const rider = { ...DEFAULT_RIDER };
+// A rider 20° into the wind, the course to 30° below across: wide enough to label.
+const rider = { ...DEFAULT_RIDER, upwind: 20, downwind: 30 };
 const day = { windKn: 16, gustKn: 22, daylight: true };
 
 describe("the ride rose's geometry", () => {

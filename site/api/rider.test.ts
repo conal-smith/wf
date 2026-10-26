@@ -8,11 +8,7 @@
  */
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-  DEFAULT_RIDER,
-  standardRating,
-  type CustomRating,
-} from "../../force5/src/stars";
+import { oursCopy, type CustomRating } from "../../force5/src/stars";
 import { migrate, type Db } from "../../market/api/src/db";
 import { newId } from "../../market/api/src/ids";
 import { createApp } from "../../market/api/src/app";
@@ -27,10 +23,20 @@ import { memoryRidersRepo, type RidersRepo } from "./riders";
 import { pgRidersRepo } from "./riders-pg";
 import type { RiderProfile } from "../shared/rider";
 
-const OWN: CustomRating = standardRating(DEFAULT_RIDER, "advanced");
+const OWN: CustomRating = {
+  ...oursCopy(),
+  wind: { min: 9, sweetLow: 13, sweetHigh: 26, max: 35 },
+};
 const OTHER: CustomRating = {
   ...OWN,
-  direction: { ...OWN.direction, offshore: 0 },
+  direction: { ...OWN.direction, crossOff: 2 },
+};
+/** A rating as a device from before 25 October 2026 wrote it: version 2, made from a level. */
+const OLD = {
+  version: 2,
+  base: "advanced",
+  wind: { min: 9, sweetLow: 13, sweetHigh: 26, max: 35 },
+  direction: { onshore: 0.5, crossOn: 0, cross: 0, crossOff: 1, offshore: 3 },
 };
 
 function contract(
@@ -58,7 +64,6 @@ function contract(
     it("keeps nothing until the rider sets something", async () => {
       expect(await riders.get(await someone())).toEqual({
         customStars: null,
-        keptStars: null,
         updatedAt: null,
       });
     });
@@ -67,7 +72,7 @@ function contract(
       const id = await someone();
       const at = "2026-10-18T10:00:00.000Z";
       expect(await riders.put(id, { customStars: OWN, updatedAt: at })).toEqual(
-        { customStars: OWN, keptStars: null, updatedAt: at },
+        { customStars: OWN, updatedAt: at },
       );
       const reset = "2026-10-18T11:00:00.000Z";
       expect(
@@ -75,10 +80,9 @@ function contract(
           customStars: null,
           updatedAt: reset,
         }),
-      ).toEqual({ customStars: null, keptStars: null, updatedAt: reset });
+      ).toEqual({ customStars: null, updatedAt: reset });
       expect(await riders.get(id)).toEqual({
         customStars: null,
-        keptStars: null,
         updatedAt: reset,
       });
     });
@@ -95,7 +99,6 @@ function contract(
       });
       expect(stale).toEqual({
         customStars: OWN,
-        keptStars: null,
         updatedAt: "2026-10-18T12:00:00.000Z",
       });
       // The same moment again is not newer either.
@@ -107,49 +110,6 @@ function contract(
           })
         ).customStars,
       ).toEqual(OWN);
-    });
-
-    it("keeps a rating aside while a level rates, and a write from before that as it meant", async () => {
-      const id = await someone();
-      expect(
-        await riders.put(id, {
-          customStars: null,
-          keptStars: OWN,
-          updatedAt: "2026-10-18T10:00:00.000Z",
-        }),
-      ).toEqual({
-        customStars: null,
-        keptStars: OWN,
-        updatedAt: "2026-10-18T10:00:00.000Z",
-      });
-      // Never both: the one that rates wins.
-      expect(
-        await riders.put(id, {
-          customStars: OTHER,
-          keptStars: OWN,
-          updatedAt: "2026-10-18T11:00:00.000Z",
-        }),
-      ).toEqual({
-        customStars: OTHER,
-        keptStars: null,
-        updatedAt: "2026-10-18T11:00:00.000Z",
-      });
-      // An older device knows only `customStars`: its null deletes what is kept.
-      await riders.put(id, {
-        customStars: null,
-        keptStars: OWN,
-        updatedAt: "2026-10-18T12:00:00.000Z",
-      });
-      expect(
-        await riders.put(id, {
-          customStars: null,
-          updatedAt: "2026-10-18T13:00:00.000Z",
-        }),
-      ).toEqual({
-        customStars: null,
-        keptStars: null,
-        updatedAt: "2026-10-18T13:00:00.000Z",
-      });
     });
 
     it("keeps each rider's own", async () => {
@@ -194,6 +154,25 @@ describe.skipIf(!url)("Postgres", () => {
     users: pgUsersRepo(sql),
     riders: pgRidersRepo(sql),
   }));
+
+  it("reads a rating kept from before version 3, or kept aside for a level, as none", async () => {
+    const users = pgUsersRepo(sql);
+    const riders = pgRidersRepo(sql);
+    const id = "dev_old_rating";
+    await users.insertUser({
+      id,
+      handle: "old-rating",
+      displayName: "Old rating",
+      avatarUrl: null,
+    });
+    await sql`
+      insert into rider_profiles (user_id, custom_stars, kept_stars, updated_at)
+      values (${id}, ${sql.json(OLD)}, ${sql.json(OLD)}, '2026-10-18T10:00:00Z')`;
+    expect(await riders.get(id)).toEqual({
+      customStars: null,
+      updatedAt: "2026-10-18T10:00:00.000Z",
+    });
+  });
 
   it("goes with the person", async () => {
     const users = pgUsersRepo(sql);
@@ -259,7 +238,7 @@ describe("GET and PUT /api/me/rider", () => {
     const res = await call("GET", undefined, "niamh");
     expect(res).toEqual({
       status: 200,
-      body: { customStars: null, keptStars: null, updatedAt: null },
+      body: { customStars: null, updatedAt: null },
     });
     expect(await users.getUser("dev_niamh")).not.toBeNull();
   });
@@ -272,7 +251,6 @@ describe("GET and PUT /api/me/rider", () => {
     expect(put.status).toBe(200);
     expect(put.body as RiderProfile).toEqual({
       customStars: OWN,
-      keptStars: null,
       updatedAt: "2026-10-18T10:00:00.000Z",
     });
     const older = await call("PUT", {
@@ -299,15 +277,51 @@ describe("GET and PUT /api/me/rider", () => {
       sweetHigh: 32,
       max: 33,
     });
+    // Offshore is never, whatever was sent.
+    expect(put.body.customStars.direction.offshore).toBe(5);
     for (const body of [
-      {
-        customStars: { ...OWN, version: 7 },
-        updatedAt: "2026-10-18T12:00:00Z",
-      },
+      { customStars: "five stars", updatedAt: "2026-10-18T12:00:00Z" },
       { customStars: OWN, updatedAt: "yesterday" },
       { customStars: OWN },
     ])
       expect((await call("PUT", body, "ciara")).status).toBe(400);
+  });
+
+  it("takes what a page from before 25 October 2026 sends, and lets its old rating go", async () => {
+    const at = (h: number) => `2026-10-18T${h}:00:00.000Z`;
+    await call("PUT", { customStars: OWN, updatedAt: at(10) }, "eoin");
+    // Its version 2 rating, made from a level, and one kept aside: not
+    // refused, but not kept either, so the newer rating made since stands.
+    const old = await call(
+      "PUT",
+      { customStars: OLD, keptStars: OLD, updatedAt: at(11) },
+      "eoin",
+    );
+    expect(old).toEqual({
+      status: 200,
+      body: { customStars: OWN, updatedAt: at(10) },
+    });
+    // A rating of its own kept aside while a level rated is dropped, and
+    // its null is the reset it always was.
+    const level = await call(
+      "PUT",
+      { customStars: null, keptStars: OLD, updatedAt: at(12) },
+      "eoin",
+    );
+    expect(level).toEqual({
+      status: 200,
+      body: { customStars: null, updatedAt: at(12) },
+    });
+    // And `keptStars` beside a rating that reads is dropped.
+    const both = await call(
+      "PUT",
+      { customStars: OTHER, keptStars: OWN, updatedAt: at(13) },
+      "eoin",
+    );
+    expect(both.body).toEqual({ customStars: OTHER, updatedAt: at(13) });
+    expect((await call("GET", undefined, "eoin")).body).not.toHaveProperty(
+      "keptStars",
+    );
   });
 
   it("takes no write as newer than the moment it arrives", async () => {
