@@ -192,6 +192,23 @@ export const css = {
   "map-rain-light": "rgba(64, 128, 186, 0.32)",
   "map-rain-moderate": "rgba(38, 98, 170, 0.52)",
   "map-rain-heavy": "rgba(24, 58, 140, 0.74)",
+  "container-ai": "600px",
+  "text-ai-intro": "19px",
+  "text-ai-intro--line-height": "1.4",
+  "text-ai-intro-sm": "17px",
+  "text-ai-intro-sm--line-height": "1.4",
+  "text-ai-name": "21px",
+  "text-ai-name--line-height": "1.2",
+  "text-ai-name--font-weight": "600",
+  "text-ai-name--letter-spacing": "-0.01em",
+  "text-ai-name-sm": "19px",
+  "text-ai-name-sm--line-height": "1.2",
+  "text-ai-name-sm--font-weight": "600",
+  "text-ai-name-sm--letter-spacing": "-0.01em",
+  "text-ai-line": "16px",
+  "text-ai-line--line-height": "1.35",
+  "text-ai-line-sm": "15px",
+  "text-ai-line-sm--line-height": "1.35",
 } as const;
 
 export type CssToken = keyof typeof css;

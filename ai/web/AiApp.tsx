@@ -3,9 +3,9 @@
  * `src/main.tsx` lazy-loads it for /ai, so neither the map nor the other
  * sections pay for it.
  *
- * The mock-up the owner approved in PR 236 (2026-10-26-ai-page.html on
- * agent/ai-page-mockup): the spot finder's header, one line, then a list of
- * the apps, each its name and one button. The button does what
+ * The approved mock-up is backlog/mockups/2026-10-26-ai-page.html (PR 236):
+ * the spot finder's header, one line, then a list of the apps, each its name
+ * and one button. The button does what
  * ai/web/install.ts says for that app on this device: Claude opens with the
  * address filled in; the others copy the address and open the app's page for
  * it, and then the row says the one thing left to do. The last row copies

@@ -795,8 +795,8 @@
 }
 
 /* ==== ai =================================================================
-   The AI page (ai/web/AiApp.tsx), as the mock-up approved in PR 236 sets
-   it (2026-10-26-ai-page.html on agent/ai-page-mockup): a short column of
+   The AI page (ai/web/AiApp.tsx), as its approved mock-up sets it
+   (backlog/mockups/2026-10-26-ai-page.html): a short column of
    apps, each named a little larger than a card's name, under one line a
    little larger than prose. Each step carries a phone's smaller size
    beside it, as `-sm`. */
