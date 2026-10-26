@@ -47,7 +47,7 @@ test("the chart's controls: zoom and Layers on the right, the layers from the me
   await expect(siteNav(page).getByRole("link")).toHaveText([
     "Chart",
     "Spot finder",
-    "Customise",
+    "Settings",
     "Marketplace",
     "Community",
     "Use with AI",
@@ -253,7 +253,7 @@ for (const width of [390, 1440]) {
     const finder = siteRow(page, "Spot finder");
     const c = (await siteRow(page, "Chart").boundingBox())!;
     const f = (await finder.boundingBox())!;
-    const u = (await menuRow(page, "Customise").boundingBox())!;
+    const u = (await menuRow(page, "Settings").boundingBox())!;
     const l = (await menuRow(page, "Layers").boundingBox())!;
     expect(f.x).toBe(l.x);
     expect(f.y).toBeGreaterThan(c.y);

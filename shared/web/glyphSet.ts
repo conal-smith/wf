@@ -460,7 +460,8 @@ export const buoy: GlyphDef = [
 /* ---- the app: ink only ---- */
 
 export const menu: GlyphDef = [{ d: "M4 7h16M4 12h16M4 17h16" }];
-export const customise: GlyphDef = [
+/** Settings: three sliders, each with its knob. */
+export const settings: GlyphDef = [
   { d: "M4 7h16M4 12h16M4 17h16" },
   { cx: 8.5, cy: 7, r: 2.3, fill: "paper" },
   { cx: 15.5, cy: 12, r: 2.3, fill: "paper" },

@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   APP_ROUTES,
   CHART_HREF,
-  CUSTOMISE_HREF,
+  SETTINGS_HREF,
   SITE_NAV,
   SITE_SECTIONS,
   asksChart,
-  asksCustomise,
+  asksSettings,
   siteSections,
   isFinderPath,
   isSpotPath,
@@ -135,11 +135,11 @@ describe("SITE_SECTIONS", () => {
 });
 
 describe("SITE_NAV", () => {
-  it("is the chart, the spot finder and Customise, in that order, on every page", () => {
+  it("is the chart, the spot finder and Settings, in that order, on every page", () => {
     expect(SITE_NAV).toEqual([
       { id: "chart", href: "/?chart", label: "Chart" },
       { id: "finder", href: "/spots", label: "Spot finder" },
-      { id: "customise", href: "/?customise", label: "Customise" },
+      { id: "settings", href: "/?settings", label: "Settings" },
     ]);
     // Each is the map's bundle's: none is split off.
     for (const row of SITE_NAV)
@@ -156,13 +156,21 @@ describe("SITE_NAV", () => {
     expect(asksChart(at("/spots?chart"))).toBe(false);
   });
 
-  it("asks the map for Customise with the word, and only on the chart's address", () => {
+  it("asks the map for Settings with the word, and only on the chart's address", () => {
     const at = (href: string) => new URL(href, "https://wingfoil.ie");
-    expect(asksCustomise(at(CUSTOMISE_HREF))).toBe(true);
-    expect(asksCustomise(at("/?spot=keel&customise"))).toBe(true);
-    expect(asksCustomise(at("/"))).toBe(false);
-    expect(asksCustomise(at("/?spot=customise"))).toBe(false);
-    expect(asksCustomise(at("/spots?customise"))).toBe(false);
+    expect(SETTINGS_HREF).toBe("/?settings");
+    expect(asksSettings(at(SETTINGS_HREF))).toBe(true);
+    expect(asksSettings(at("/?spot=keel&settings"))).toBe(true);
+    expect(asksSettings(at("/"))).toBe(false);
+    expect(asksSettings(at("/?spot=settings"))).toBe(false);
+    expect(asksSettings(at("/spots?settings"))).toBe(false);
+  });
+
+  it("still reads Settings' old word, Customise's, in links already out there", () => {
+    const at = (href: string) => new URL(href, "https://wingfoil.ie");
+    expect(asksSettings(at("/?customise"))).toBe(true);
+    expect(asksSettings(at("/?spot=keel&customise"))).toBe(true);
+    expect(asksSettings(at("/spots?customise"))).toBe(false);
   });
 });
 

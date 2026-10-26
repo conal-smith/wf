@@ -667,7 +667,7 @@ test("a starred spot is kept on this device: the dock and the spot finder's favo
   );
 });
 
-test("units and the blend's models are display options, kept on reload; the rider is Customise's", async ({
+test("units and the blend's models are display options, kept on reload; the rider is Settings'", async ({
   page,
 }) => {
   await openDock(page);
@@ -678,16 +678,16 @@ test("units and the blend's models are display options, kept on reload; the ride
   await openFromMenu(page, "Display options");
   const options = page.locator("#map-options");
   // No weight, no level and no way to the rider's own stars: those are
-  // Customise's, from the site menu.
+  // Settings', from the site menu.
   await expect(options.locator('[data-rider="weight"]')).toHaveCount(0);
-  // Nor the wings: those are Customise's first step now.
+  // Nor the wings.
   await expect(options.locator('[data-rider="wings"]')).toHaveCount(0);
   await expect(options.getByText("Wings you own")).toHaveCount(0);
   await expect(
     options.getByRole("group", { name: "Riding level" }),
   ).toHaveCount(0);
   await expect(
-    options.getByRole("button", { name: /^(Customise|Edit custom)$/ }),
+    options.getByRole("button", { name: /^(Customise|Settings|Edit custom)$/ }),
   ).toHaveCount(0);
   await expect(options.getByRole("heading")).toHaveText([
     "Units",
@@ -699,7 +699,7 @@ test("units and the blend's models are display options, kept on reload; the ride
   await page.locator('input[data-model-toggle="gfs"]').uncheck();
   await closePanel(page);
   await expect(page.locator(".dk-labs")).toContainText("m/s");
-  // A heavier rider, as Customise saves one, takes a bigger wing for the
+  // A heavier rider, as Settings saves one, takes a bigger wing for the
   // same wind, hour by hour.
   await setRider(page, { weightKg: 100 });
   await expect

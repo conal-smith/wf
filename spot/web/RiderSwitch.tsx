@@ -1,6 +1,6 @@
 /**
  * Who the stars are rated for, in one line: whose stars they are (ours, or
- * the rider's own) with the way to Customise, where they are changed; the
+ * the rider's own) with the way to Settings, where they are changed; the
  * weight and wings behind a fold that opens in place, which size the wing
  * and never move a star; and the rider's model behind another. The same
  * rider as the dock's Display options, read and written through the same
@@ -19,7 +19,7 @@ import {
   modelName,
 } from "../../force5/src/lead";
 import { parseRider, withRiderModel } from "../../force5/src/prefs";
-import { CUSTOMISE_HREF } from "../../force5/src/siteNav";
+import { SETTINGS_HREF } from "../../force5/src/siteNav";
 import {
   ESTIMATE_WEIGHT_KG,
   MAX_WEIGHT_KG,
@@ -92,17 +92,17 @@ export function RiderSwitch({
         <Kicker as="span" id={`${panel}-for`} className={s.kicker()}>
           Stars
         </Kicker>
-        {/* Whose stars, and the way to change them: Customise, on the map. */}
+        {/* Whose stars, and the way to change them: Settings, on the map. */}
         <span className={s.whose()} data-stars-whose>
           {starsWhose(rider)}
         </span>
         <Button
           variant="link"
           size="sm"
-          href={CUSTOMISE_HREF}
-          data-customise-link
+          href={SETTINGS_HREF}
+          data-settings-link
         >
-          Customise
+          Settings
         </Button>
         <button
           type="button"

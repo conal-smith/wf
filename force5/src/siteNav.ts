@@ -140,28 +140,32 @@ export function asksChart(url: { pathname: string; search: string }) {
 }
 
 /**
- * Customise, from a page that is not the map's: the chart, opened with the
- * wizard over it. The map reads the word once and takes it out of the
- * address (src/App.tsx); a page drawn over the map hands it back to the map
- * instead of loading it (src/PagesOverMap.tsx).
+ * Settings, from a page that is not the map's: the chart, opened with the
+ * Settings dialog over it. The map reads the word once and takes it out of
+ * the address (src/App.tsx); a page drawn over the map hands it back to the
+ * map instead of loading it (src/PagesOverMap.tsx). Settings was "Customise"
+ * until 26 October 2026, and `/?customise`, in links already out there, is
+ * read the same.
  */
-export const CUSTOMISE_PARAM = "customise";
-export const CUSTOMISE_HREF = `/?${CUSTOMISE_PARAM}`;
+export const SETTINGS_PARAM = "settings";
+export const SETTINGS_HREF = `/?${SETTINGS_PARAM}`;
+/** Settings' word before 26 October 2026, still read. */
+export const OLD_SETTINGS_PARAM = "customise";
 
-/** Whether an address on this origin asks the map for Customise. */
-export function asksCustomise(url: { pathname: string; search: string }) {
-  return (
-    url.pathname === "/" && new URLSearchParams(url.search).has(CUSTOMISE_PARAM)
-  );
+/** Whether an address on this origin asks the map for Settings. */
+export function asksSettings(url: { pathname: string; search: string }) {
+  if (url.pathname !== "/") return false;
+  const query = new URLSearchParams(url.search);
+  return query.has(SETTINGS_PARAM) || query.has(OLD_SETTINGS_PARAM);
 }
 
 /** The site menu's rows that are the same on every page. */
-export type SiteNavId = "chart" | "finder" | "customise";
+export type SiteNavId = "chart" | "finder" | "settings";
 
 /**
  * The site's navigation, the first rows of the menu on every page, in this
  * order (owner's ruling of 2026-10-25): the chart, the spot finder, and
- * Customise. The chart is the map section's own page, so the sections under
+ * Settings. The chart is the map section's own page, so the sections under
  * these leave the map out: it is here, once, as the chart.
  */
 export const SITE_NAV: readonly {
@@ -171,7 +175,7 @@ export const SITE_NAV: readonly {
 }[] = [
   { id: "chart", href: CHART_HREF, label: "Chart" },
   { id: "finder", href: FINDER_HREF, label: "Spot finder" },
-  { id: "customise", href: CUSTOMISE_HREF, label: "Customise" },
+  { id: "settings", href: SETTINGS_HREF, label: "Settings" },
 ];
 
 /**
@@ -179,7 +183,7 @@ export const SITE_NAV: readonly {
  * of the sections', or none (a spot's page, "How the stars work").
  */
 export type SitePageId =
-  Exclude<SiteNavId, "customise"> | Exclude<SiteSectionId, "map">;
+  Exclude<SiteNavId, "settings"> | Exclude<SiteSectionId, "map">;
 
 /**
  * Every path that `src/main.tsx` splits off from the map: everything else is

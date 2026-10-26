@@ -42,7 +42,7 @@ inert. Its buttons are the Button component's classes.
   own Cancel does without it.
 - **Named** (`label`) — a dialog whose title changes under it, as a wizard's
   steps are each titled by their own question, takes a name of its own
-  (`aria-label`, "Customise") in place of `aria-labelledby`, so it is the same
+  (`aria-label`) in place of `aria-labelledby`, so it is the same
   dialog to a screen reader from step to step.
 - **ConfirmDialog** — no close button; Cancel (`.wf-button--pill`) then the
   destructive answer (`.wf-button--danger`), named for what it does ("Remove

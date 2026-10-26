@@ -639,7 +639,7 @@ a picture under a small rose is not fogged.
 **2026-10-25 — One site menu, the same on every page.** "The menu for
 SpotFinder and for the main chart page is different. This menu should be the
 same across all pages." The menu opens on the site's navigation wherever it
-is opened, in one order and one wording: Chart, Spot finder, Customise, and
+is opened, in one order and one wording: Chart, Spot finder, Settings, and
 after a gap the site's other sections (Use with AI; the marketplace and the
 community where they are on). "Wind map" was the chart a second time and is
 gone: the chart is the map. The page you are on is marked as the finder's
@@ -648,9 +648,9 @@ menu marked it, italic and heavier on the second sheet with
 nothing is. What only one page has is set apart under the navigation, under
 the page's name in the mono label over an ink rule: on the chart, "This
 chart", with Layers, Display options, About the map and Take the tour. A page
-with nothing of its own has no such part. Customise from a page that is not
-the map's is the chart with the wizard open (`/?customise`); from a page over
-the map, the map as it was with the wizard over it (`force5/src/siteNav.ts`
+with nothing of its own has no such part. Settings from a page that is not
+the map's is the chart with Settings open (`/?settings`); from a page over
+the map, the map as it was with Settings over it (`force5/src/siteNav.ts`
 `SITE_NAV`, `force5/src/SiteMenu.tsx`). The menu's rows say where they go:
 Chart is always the chart (`/?chart`, and so is every way back named Chart)
 and Spot finder always the finder, whichever was open last; only the bare
@@ -674,8 +674,7 @@ midnight is kept (docs/LIVE_FORECAST_PIPELINE.md, "Today, kept whole").
 the approved mock-up `backlog/mockups/2026-10-25-own-star-rating.html` and the
 plan `backlog/research/2026-10-25-star-rating-plan.html`. There are no levels
 (Learning, Riding, Advanced) anywhere: everyone starts from ours, and a rider
-makes it their own in Customise. They set four numbers on "What wind suits
-you?" — too light, the sweet spot's two ends, too much in gusts (ours 11 ·
+makes it their own in Settings. They set four numbers under "Wind strength" — too light, the sweet spot's two ends, too much in gusts (ours 11 ·
 15–22 · 35 kn) — and our model does the rest: a star a knot from too light,
 five through the sweet spot, one star 5 kn under too much and none 3 kn under
 it; a gust past too much is no stars, and otherwise is read 5 kn lighter, the
@@ -703,6 +702,25 @@ rules 7 and 8 now say so: every sentence is everyday English a newcomer reads
 once, and the puffin stays as a picture but nothing is signed "the Almanac".
 This is the second time the owner has asked (see 2026-10-24, "It reads like
 cryptic riddles"), so it is a rule for every page, not a fix for one.
+
+**2026-10-26 — Settings, one dialog on one page.** "What we should have is a
+settings page and then settings brings up a modal with all the configuration
+that you can do... one modal, so people don't have to keep clicking through
+this thing. And we don't need to have the favourites in there." The menu's
+Customise is Settings now, with the same sliders glyph, and it opens one
+dialog (src/Settings.tsx) in four parts, each a heading and one plain line of
+help: About you (weight and units), Wind strength (the four handles and the
+stars under them), Wind direction (the web and its list) and Riding upwind
+(the three answers, the picture and the two angles). The wizard's steps, its
+"n / 6", its spots step and its summary with the sample day are gone. On a
+desktop the four sit two by two, About you beside Wind strength and Wind
+direction beside Riding upwind; under 1000px wide they are one column, and on
+a phone the dialog is the whole screen and scrolls. It edits a draft: Save keeps it, and Cancel,
+the close button, Escape and the backdrop keep nothing; "Reset to ours"
+stays in the foot. `/?settings` opens it from another page, and the old
+`/?customise` still does. Every word is everyday English a newcomer reads
+once: "1 star off" and "No stars" rather than "−1★" and "never", "Too strong
+in gusts", and "ONSHORE", "CROSS-ON" on the web rather than "ON", "X-ON".
 
 ---
 

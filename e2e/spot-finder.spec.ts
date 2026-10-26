@@ -652,17 +652,17 @@ test.describe("on a desktop", () => {
     const row = siteRow(page, "Spot finder");
     await expect(row).toHaveAttribute("href", "/spots");
     await page.evaluate(() => ((window as { stayed?: boolean }).stayed = true));
-    // In the navigation, between the chart and Customise, over the chart's
+    // In the navigation, between the chart and Settings, over the chart's
     // own tools.
     const chart = (await siteRow(page, "Chart").boundingBox())!;
-    const customise = (await siteRow(page, "Customise").boundingBox())!;
+    const settings = (await siteRow(page, "Settings").boundingBox())!;
     const layers = (await chartTools(page)
       .getByRole("button", { name: "Layers" })
       .boundingBox())!;
     const box = (await row.boundingBox())!;
     expect(box.y).toBeGreaterThan(chart.y);
-    expect(box.y).toBeLessThan(customise.y);
-    expect(customise.y).toBeLessThan(layers.y);
+    expect(box.y).toBeLessThan(settings.y);
+    expect(settings.y).toBeLessThan(layers.y);
     await row.click();
     await expect(page).toHaveURL(/\/spots$/);
     await expect(finder(page)).toBeVisible();
@@ -684,16 +684,16 @@ test.describe("on a desktop", () => {
     expect(
       await page.evaluate(() => (window as { stayed?: boolean }).stayed),
     ).toBe(true);
-    // Customise from the finder opens over it, with no page load.
+    // Settings from the finder opens over it, with no page load.
     await page.goBack();
     await expect(finder(page)).toBeVisible();
     await page.getByRole("button", { name: "Site menu" }).click();
-    await siteRow(page, "Customise").click();
-    await expect(page.getByRole("dialog", { name: "Customise" })).toBeVisible();
+    await siteRow(page, "Settings").click();
+    await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
     await expect(page).toHaveURL(/\/spots$/);
   });
 
-  test("the spot page's menu is the same navigation, the finder and Customise in it", async ({
+  test("the spot page's menu is the same navigation, the finder and Settings in it", async ({
     page,
   }) => {
     await page.goto("/spot/brandon");
@@ -704,9 +704,9 @@ test.describe("on a desktop", () => {
     await expect(
       page.getByRole("dialog", { name: "Site menu" }).getByRole("group"),
     ).toHaveCount(0);
-    await expect(siteRow(page, "Customise")).toHaveAttribute(
+    await expect(siteRow(page, "Settings")).toHaveAttribute(
       "href",
-      "/?customise",
+      "/?settings",
     );
     const row = siteRow(page, "Spot finder");
     await expect(row).toHaveAttribute("href", "/spots");
@@ -714,21 +714,31 @@ test.describe("on a desktop", () => {
     await expect(finder(page)).toBeVisible({ timeout: 30000 });
   });
 
-  test("Customise from a spot's page is the chart with the wizard open", async ({
+  test("Settings from a spot's page is the chart with Settings open", async ({
     page,
   }) => {
     // Loaded alone: a page load to the chart, the word gone from the address.
     await page.goto("/spot/brandon");
     await page.getByRole("button", { name: "Site menu" }).click();
-    await siteRow(page, "Customise").click();
-    await expect(page.getByRole("dialog", { name: "Customise" })).toBeVisible({
+    await siteRow(page, "Settings").click();
+    await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible({
       timeout: 30000,
     });
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator(".map-head")).toBeVisible();
   });
 
-  test("Customise from a spot's page over the finder is the finder with the wizard open", async ({
+  test("an old link to Customise opens Settings on the chart", async ({
+    page,
+  }) => {
+    await page.goto("/?customise");
+    await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(page).toHaveURL(/\/$/);
+  });
+
+  test("Settings from a spot's page over the finder is the finder with Settings open", async ({
     page,
   }) => {
     await star(page, ["brandon"]);
@@ -739,9 +749,9 @@ test.describe("on a desktop", () => {
     await expect(page).toHaveURL(/\/spot\/brandon$/);
     await expect(page.locator(".map-under-page")).toHaveCount(1);
     await page.getByRole("button", { name: "Site menu" }).click();
-    await siteRow(page, "Customise").click();
+    await siteRow(page, "Settings").click();
     await expect(page.locator(".map-under-page")).toHaveCount(0);
-    await expect(page.getByRole("dialog", { name: "Customise" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
     await expect(page).toHaveURL(/\/spots$/);
     expect(
       await page.evaluate(() => (window as { stayed?: boolean }).stayed),

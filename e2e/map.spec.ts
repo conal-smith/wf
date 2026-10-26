@@ -373,7 +373,7 @@ test("only offshore is struck through; a learner's cross-offshore is too", async
   const crossOff = await page
     .locator(".spot-marker.xoff")
     .evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.spotId));
-  // A rider whose own stars take three off cross-offshore, as Customise
+  // A rider whose own stars take three off cross-offshore, as Settings
   // saves them: every cross-offshore hour is struck as well.
   await setRider(page, {
     custom: {

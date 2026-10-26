@@ -2,7 +2,7 @@
  * "How the stars work", at /stars: the rating in figures, for the rider the
  * page is set to. The one model the stars come from, the rider's choice, and
  * the others as context only; the four numbers the stars come from (ours, or
- * the rider's own from Customise) and what a steady wind is worth on them;
+ * the rider's own from Settings) and what a steady wind is worth on them;
  * the gusts, read lighter; the five ways the wind meets a beach and what each
  * costs; the warnings that replace the stars; the dark; the wing; and one
  * hour from the live forecast worked through line by line. The arithmetic is
@@ -19,7 +19,7 @@ import { onPrefsChange } from "../../shared/web/riderSync";
 import { shoreFacing } from "../../force5/src/shoreFacing";
 import {
   CHART_HREF,
-  CUSTOMISE_HREF,
+  SETTINGS_HREF,
   mapSpotHref,
   spotHref,
 } from "../../force5/src/siteNav";
@@ -113,9 +113,9 @@ export default function StarsPage() {
   const named = new URLSearchParams(window.location.search).get("spot");
   const spotId = named ?? DEFAULT_SPOT;
   const [chartRef, width] = useWidth<HTMLElement>(640);
-  const customise = (
-    <a className={s.link()} href={CUSTOMISE_HREF} data-customise-link>
-      Customise
+  const settings = (
+    <a className={s.link()} href={SETTINGS_HREF} data-settings-link>
+      Settings
     </a>
   );
 
@@ -129,7 +129,7 @@ export default function StarsPage() {
         </Headline>
         <p className={s.deck()}>
           We rate every daylight hour out of five stars, from four numbers:
-          ours, unless you have made them your own in Customise, from the site
+          ours, unless you have made them your own in Settings, from the site
           menu.
         </p>
         <RiderSwitch rider={rider} onChange={changeRider} />
@@ -211,7 +211,7 @@ export default function StarsPage() {
             The stars come from four numbers: too light, the two ends of the
             sweet spot, and too much, in gusts. Ours are {OURS.wind.min},{" "}
             {OURS.wind.sweetLow}&ndash;{OURS.wind.sweetHigh} and {OURS.wind.max}{" "}
-            knots, and everyone starts from them. Move them in {customise}, from
+            knots, and everyone starts from them. Move them in {settings}, from
             the site menu, and the stars are your own.
           </p>
           <BandTable rider={rider} />
@@ -256,7 +256,7 @@ export default function StarsPage() {
             Cross-offshore takes a star off unless you say otherwise: a drift
             downwind takes you out, not in. Offshore is never: no stars in any
             wind, for everyone, because we don&rsquo;t recommend going out in
-            it. The rest cost nothing unless you set them to in {customise}.
+            it. The rest cost nothing unless you set them to in {settings}.
             Stars the shore takes off are drawn as outlines.
           </p>
         </section>

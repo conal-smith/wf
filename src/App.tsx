@@ -66,14 +66,15 @@ import { tourOffered, tourSeen } from "./tourOffer";
 import { SiteMenu } from "../force5/src/SiteMenu";
 import {
   CHART_PARAM,
-  CUSTOMISE_PARAM,
   FINDER_HREF,
+  OLD_SETTINGS_PARAM,
+  SETTINGS_PARAM,
   asksChart,
-  asksCustomise,
+  asksSettings,
   isFinderPath,
   mapSpotHref,
 } from "../force5/src/siteNav";
-import { CUSTOMISE_EVENT } from "./PagesOverMap";
+import { SETTINGS_EVENT } from "./PagesOverMap";
 import {
   saveChartCentre,
   saveView,
@@ -143,9 +144,9 @@ const AccountRider = lazy(() => import("../shared/web/AccountRider"));
 // The spot finder, at /spots: a page in the chart's place, drawn from the
 // chart's own rated hours, in a chunk of its own the first time it is opened.
 const SpotFinder = lazy(() => import("./finder/SpotFinder"));
-// Customise and the tour, each only when asked for; the tour's offer only on
+// Settings and the tour, each only when asked for; the tour's offer only on
 // a first visit (src/tourOffer.ts).
-const Customise = lazy(() => import("./Customise"));
+const Settings = lazy(() => import("./Settings"));
 const Tour = lazy(() => import("./Tour"));
 const TourPrompt = lazy(() => import("./TourPrompt"));
 import type { MapAction } from "../companion/shared/protocol";
@@ -377,20 +378,22 @@ export default function App() {
   const [info, setInfo] = useState<InfoSection | null>(null);
   /** The part it is drawn at: kept while it fades out, once shut. */
   const infoShown = useFadeOut(info);
-  /** Customise, the tour, or the first visit's offer of it, over the chart. */
-  const [guide, setGuide] = useState<"offer" | "tour" | "customise" | null>(
+  /** Settings, the tour, or the first visit's offer of it, over the chart. */
+  const [guide, setGuide] = useState<"offer" | "tour" | "settings" | null>(
     () =>
-      asksCustomise(location) ? "customise" : tourOffered() ? "offer" : null,
+      asksSettings(location) ? "settings" : tourOffered() ? "offer" : null,
   );
-  // Customise asked for by another page's menu: a page load to the chart
-  // with the word in its address (CUSTOMISE_HREF), which is open now and goes
+  // Settings asked for by another page's menu: a page load to the chart
+  // with the word in its address (SETTINGS_HREF, or the old /?customise),
+  // which is open now and goes
   // from the address; or a page over the map, which hands the reader back to
   // it first (src/PagesOverMap.tsx). The explicit chart's word (CHART_HREF)
   // goes the same way: it has done its work, keeping the root off the finder.
   useEffect(() => {
-    if (asksCustomise(location) || asksChart(location)) {
+    if (asksSettings(location) || asksChart(location)) {
       const url = new URL(location.href);
-      url.searchParams.delete(CUSTOMISE_PARAM);
+      url.searchParams.delete(SETTINGS_PARAM);
+      url.searchParams.delete(OLD_SETTINGS_PARAM);
       url.searchParams.delete(CHART_PARAM);
       window.history.replaceState(
         window.history.state,
@@ -398,12 +401,12 @@ export default function App() {
         url.pathname + url.search + url.hash,
       );
     }
-    const ask = () => setGuide("customise");
-    window.addEventListener(CUSTOMISE_EVENT, ask);
-    return () => window.removeEventListener(CUSTOMISE_EVENT, ask);
+    const ask = () => setGuide("settings");
+    window.addEventListener(SETTINGS_EVENT, ask);
+    return () => window.removeEventListener(SETTINGS_EVENT, ask);
   }, []);
-  /** Customise is kept while it fades out, once shut. */
-  const customiseShown = useFadeOut(guide === "customise");
+  /** Settings is kept while it fades out, once shut. */
+  const settingsShown = useFadeOut(guide === "settings");
   const [view, setView] = useState<DockView>("table");
   const [wind, setWind] = useState<WindLayers>(() =>
     parseWindLayers(store.get(WIND_KEY), store.get(OLD_WIND_KEY)),
@@ -1739,11 +1742,11 @@ export default function App() {
     setPage("chart");
   };
   // The site menu's navigation, the same on both pages (Chart, Spot finder,
-  // Customise): each is this bundle's own, in place of a page load.
+  // Settings): each is this bundle's own, in place of a page load.
   const menuGo = {
     chart: () => openChartRef.current(),
     finder: openFinder,
-    customise: () => setGuide("customise"),
+    settings: () => setGuide("settings"),
   };
   // Under it, the chart's own tools, the menu the one way in to them: the
   // layers, the display options, what the map means, and the tour last.
@@ -2018,29 +2021,22 @@ export default function App() {
           <AccountRider />
         </Suspense>
       )}
-      {customiseShown && (
+      {settingsShown && (
         <Suspense fallback={null}>
-          <Customise
-            open={guide === "customise"}
+          <Settings
+            open={guide === "settings"}
             prefs={prefs}
-            starred={starred}
-            spots={spots}
-            hours={hours}
-            times={strip.map((c) => c.time)}
-            prefer={first}
-            centre={controls.current?.map.getCenter() ?? null}
             onClose={() => setGuide(null)}
-            onSave={(next, toggle) => {
+            onSave={(next) => {
               changePrefs(next);
               if (next.starsUpdatedAt !== prefs.starsUpdatedAt)
                 announcePrefs("device");
-              toggle.forEach((id) => fav.toggle(id));
               setGuide(null);
             }}
           />
         </Suspense>
       )}
-      {guide && guide !== "customise" && (
+      {guide && guide !== "settings" && (
         <Suspense fallback={null}>
           {guide === "tour" ? (
             <Tour
@@ -2058,7 +2054,7 @@ export default function App() {
               onPanel={setPanel}
               onEnd={(customise) => {
                 tourSeen();
-                setGuide(customise ? "customise" : null);
+                setGuide(customise ? "settings" : null);
               }}
             />
           ) : (

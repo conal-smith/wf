@@ -1,86 +1,70 @@
-/* "Customise" (src/Customise.tsx): in its own chunk with the wizard, drawn
-   from the theme's tokens as the rest of the map's sheets are, to the mockup
-   backlog/mockups/2026-10-25-own-star-rating.html (round four: every step a
-   title, one line, the content, the foot; a picture left and its controls
-   right on a desktop, stacked on a phone). The kit's dialog is the
-   box: its head holds the step's one title, how far through it is and the
-   close; a thin bar of segments under it; the step scrolls between the head
-   and the foot, which keep still. */
-.cw[open] {
+/* "Settings" (src/Settings.tsx): in its own chunk with the dialog, drawn from
+   the theme's tokens as the rest of the map's sheets are. The kit's dialog is
+   the box: its head holds the title and the close; the four parts scroll
+   between the head and the foot, which keep still. On a desktop they sit two
+   by two; under 1000px wide they are one column, and on a phone the dialog
+   is the whole screen. */
+.st[open] {
   display: flex;
   flex-direction: column;
   gap: 0;
   width: calc(100% - 32px);
-  max-width: 680px;
-  /* Each step its own height, as the mockup has it: a floor left the wind
-     step a slider over an empty half. */
-  max-height: min(860px, calc(100dvh - 32px));
+  max-width: 1080px;
+  max-height: calc(100dvh - 32px);
   padding: 20px 26px 16px;
 }
-/* The head: the title, "n / 6" and the close, with no rule under it; the
-   progress is the rule. */
-.cw > div:first-child {
+/* The head: the title and the close, over the ink rule. */
+.st > div:first-child {
   align-items: center;
   gap: 14px;
   padding: 2px 0 12px;
-  border-bottom: 0;
 }
-.cw > div:first-child h2 {
+.st > div:first-child h2 {
   font: var(--text-title--font-weight) 26px / 1.1 var(--font-display);
   letter-spacing: -0.02em;
 }
-.cw-count {
-  font: 500 var(--text-caption) var(--font-mono);
-  letter-spacing: 0.1em;
-  white-space: nowrap;
-  color: var(--color-ink-muted);
-}
-.cw > div:nth-child(2) {
+.st > div:nth-child(2) {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 0;
   min-height: 0;
 }
-.cw-prog {
-  display: grid;
-  grid-auto-columns: 1fr;
-  grid-auto-flow: column;
-  gap: 3px;
-  height: 3px;
-  margin-bottom: 4px;
-}
-.cw-prog i {
-  background: color-mix(in srgb, var(--color-ink) 13%, transparent);
-}
-.cw-prog i.is-done {
-  background: var(--color-ink);
-}
-.cw-body {
+.st-body {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 18px 2px;
+  padding: 0 2px;
   overscroll-behavior: contain;
 }
-.cw-sub {
-  max-width: 54ch;
-  margin: -4px 0 16px;
-  font: var(--text-prose) / 1.4 var(--font-body);
+/* Each part: a heading, one line of help, then its controls, a hairline
+   between them. */
+.st-part {
+  padding: 14px 0 18px;
+  border-top: 1px solid var(--color-line);
+}
+.st-part:first-child {
+  border-top: 0;
+}
+.st-h {
+  margin: 0;
+  font: 600 19px / 1.2 var(--font-display);
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+.st-help {
+  max-width: 60ch;
+  margin: 4px 0 14px;
+  font: var(--text-body) / 1.4 var(--font-body);
   color: var(--color-ink-2);
 }
-.cw-kick {
+.st-kick {
   font: 500 var(--text-eyebrow) / 1.4 var(--font-mono);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-ink-muted);
 }
-.cw-note {
-  margin: 0;
-  font: var(--text-body) / 1.4 var(--font-body);
-  color: var(--color-ink-muted);
-}
-.cw-foot {
+.st-foot {
   display: flex;
   flex: 1;
   align-items: center;
@@ -88,62 +72,58 @@
   padding-top: 12px;
   border-top: 1px solid var(--color-ink);
 }
-.cw > div:last-child {
+.st > div:last-child {
   margin-top: 0;
 }
-.cw .cw-skip {
+.st .st-reset {
   padding: 0 6px;
   color: var(--color-ink-muted);
 }
-.cw-sp {
+.st-sp {
   flex: 1;
 }
-.cw .cw-link {
-  font-size: var(--text-caption);
-  letter-spacing: 0.08em;
-}
 
-/* ---- 1. about you: each row centred, its name over its control ---- */
-.cw-rows {
-  display: grid;
-  border-top: 1px solid var(--color-line);
+/* ---- 1. about you: the weight and the units side by side, each its name
+   over it ---- */
+.st-rows {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 16px 48px;
 }
-.cw-row {
+.st-row {
   display: grid;
-  justify-items: center;
-  gap: 10px;
-  padding: 16px 0 18px;
-  border-bottom: 1px solid var(--color-line);
+  justify-items: start;
+  gap: 8px;
 }
-.cw-stepper {
+.st-stepper {
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
-.cw-stepper output {
+.st-stepper output {
   min-width: 64px;
   font: 600 var(--text-figure) / 1 var(--font-mono);
   letter-spacing: -0.02em;
   text-align: center;
 }
-.cw-stepper small {
+.st-stepper small {
   margin-left: 2px;
   font: 400 var(--text-caption) var(--font-mono);
   letter-spacing: 0;
   color: var(--color-ink-muted);
 }
 /* In Force, the forces and the knots each runs over. */
-.cw-bf-key {
+.st-bf-key {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   gap: 10px 14px;
-  margin: 0;
+  margin: 4px 0 0;
   padding: 0;
   list-style: none;
   font: 600 var(--text-body) / 1 var(--font-mono);
 }
-.cw-bf-key small {
+.st-bf-key small {
   display: block;
   margin-top: 3px;
   font: 500 var(--text-eyebrow) / 1 var(--font-mono);
@@ -154,14 +134,14 @@
 }
 
 /* ---- 2. the wind ---- */
-.cw-range {
+.st-range {
   position: relative;
   height: 96px;
   margin: 0 14px;
   user-select: none;
   touch-action: pan-y;
 }
-.cw-track {
+.st-track {
   position: absolute;
   top: 34px;
   right: 0;
@@ -172,26 +152,26 @@
   border-radius: var(--radius-pill);
   background: var(--color-card);
 }
-.cw-zone {
+.st-zone {
   position: absolute;
   top: 0;
   bottom: 0;
 }
-.cw-zone.is-ok {
+.st-zone.is-ok {
   background: color-mix(in srgb, var(--color-ink) 20%, var(--color-card));
 }
-.cw-zone.is-sweet {
+.st-zone.is-sweet {
   background: var(--color-ink);
 }
 /* Past the top: a gust here and the hour has no stars. */
-.cw-zone.is-over {
+.st-zone.is-over {
   background: repeating-linear-gradient(
     -45deg,
     var(--color-pen) 0 1.5px,
     transparent 1.5px 5px
   );
 }
-.cw-rlab {
+.st-rlab {
   position: absolute;
   top: 4px;
   font: 500 var(--text-eyebrow) var(--font-mono);
@@ -200,13 +180,13 @@
   white-space: nowrap;
   color: var(--color-ink-muted);
 }
-.cw-rlab.is-mid {
+.st-rlab.is-mid {
   transform: translateX(-50%);
 }
-.cw-rlab.is-top {
+.st-rlab.is-top {
   color: var(--color-pen-ink);
 }
-.cw-knob {
+.st-knob {
   position: absolute;
   top: 28px;
   z-index: 1;
@@ -226,33 +206,33 @@
   cursor: grab;
   touch-action: none;
 }
-.cw-knob:active {
+.st-knob:active {
   cursor: grabbing;
 }
-.cw-knob.is-top {
+.st-knob.is-top {
   border-color: var(--color-pen-ink);
   color: var(--color-pen-ink);
 }
 /* A finger's target round the drawn knob. */
-.cw-knob::after {
+.st-knob::after {
   content: "";
   position: absolute;
   inset: -9px -4px;
 }
-.cw-knob:focus-visible {
+.st-knob:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
 /* The stars the handles make, by steady wind: read-only, right under the
    track, on its axis, each run in the stars' own colour with its count. */
-.cw-strip {
+.st-strip {
   position: absolute;
   top: 56px;
   right: 0;
   left: 0;
   height: 13px;
 }
-.cw-strip-star {
+.st-strip-star {
   position: absolute;
   top: 1px;
   left: -14px;
@@ -262,7 +242,7 @@
   stroke: color-mix(in srgb, var(--color-ink) 55%, transparent);
   stroke-width: 0.8;
 }
-.cw-strip-run {
+.st-strip-run {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -272,24 +252,24 @@
   font-style: normal;
   color: var(--color-ground);
 }
-.cw-strip-run.is-s1 {
+.st-strip-run.is-s1 {
   background: var(--color-stars-1);
   color: var(--color-ink);
 }
-.cw-strip-run.is-s2 {
+.st-strip-run.is-s2 {
   background: var(--color-stars-2);
   color: var(--color-ink);
 }
-.cw-strip-run.is-s3 {
+.st-strip-run.is-s3 {
   background: var(--color-stars-3);
 }
-.cw-strip-run.is-s4 {
+.st-strip-run.is-s4 {
   background: var(--color-stars-4);
 }
-.cw-strip-run.is-s5 {
+.st-strip-run.is-s5 {
   background: var(--color-stars-5);
 }
-.cw-strip-none {
+.st-strip-none {
   position: absolute;
   top: 0;
   font: 500 9px / 13px var(--font-mono);
@@ -297,7 +277,7 @@
   white-space: nowrap;
   color: var(--color-pen-ink);
 }
-.cw-ticks {
+.st-ticks {
   position: absolute;
   top: 80px;
   right: 0;
@@ -305,12 +285,12 @@
   font: 500 var(--text-eyebrow) var(--font-mono);
   color: var(--color-ink-muted);
 }
-.cw-ticks span {
+.st-ticks span {
   position: absolute;
   white-space: nowrap;
   transform: translateX(-50%);
 }
-.cw-ticks span::before {
+.st-ticks span::before {
   content: "";
   position: absolute;
   top: -6px;
@@ -318,179 +298,125 @@
   height: 4px;
   border-left: 1px solid var(--color-ink);
 }
-.cw-ticks span:last-child {
+.st-ticks span:last-child {
   transform: translateX(-85%);
 }
-.cw-ticks span:last-child::before {
+.st-ticks span:last-child::before {
   left: 85%;
 }
-/* The sample day: a card in the dialog, the ink rule and its hairline, a
-   box's corner and a contact shadow. */
-.cw-day {
-  margin-top: 20px;
-  padding: 10px 12px 8px;
-  border: 1px solid var(--color-ink);
-  border-radius: var(--radius-surface);
-  box-shadow: var(--inset-shadow-frame), var(--shadow-card);
-}
-.cw-day-h {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-  margin-bottom: 6px;
-}
-.cw-day-h b {
-  font: 600 var(--text-prose) var(--font-display);
-}
-.cw-hours {
-  display: grid;
-  grid-template-columns: repeat(9, minmax(0, 1fr));
-  text-align: center;
-  font-family: var(--font-mono);
-}
-.cw-hours > div {
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  gap: 2px;
-  min-width: 0;
-  padding: 2px 0;
-}
-.cw-t {
-  font: 500 var(--text-eyebrow) var(--font-mono);
-  color: var(--color-ink-muted);
-}
-.cw-w {
-  display: inline-flex;
-  margin-top: 2px;
-  font: 600 var(--text-prose) / 1.2 var(--font-mono);
-}
-.cw-s {
-  display: flex;
-  justify-content: center;
-  min-height: 13px;
-  margin-top: 4px;
-  font: 500 var(--text-eyebrow) var(--font-mono);
-  color: var(--color-ink-muted);
-}
 /* ---- 3. stars by wind direction ---- */
-.cw-shore {
+.st-shore {
   display: grid;
   grid-template-columns: 300px 1fr;
   align-items: stretch;
   gap: 22px;
 }
-.cw-web {
+.st-web {
   display: block;
+  align-self: start;
   width: 100%;
   height: auto;
   border-radius: var(--radius-surface);
   touch-action: none;
   user-select: none;
 }
-.cw-web-sea {
+.st-web-sea {
   fill: var(--color-sea-3);
 }
-.cw-web-land {
+.st-web-land {
   fill: var(--color-land);
 }
-.cw-web-beach {
+.st-web-beach {
   stroke: var(--color-ink);
   stroke-width: 1.5;
 }
-.cw-web-word {
+.st-web-word {
   font: 500 9px var(--font-mono);
   letter-spacing: 0.14em;
   fill: var(--color-ink-muted);
 }
-.cw-web-rim {
+.st-web-rim {
   fill: var(--color-ground);
   fill-opacity: 0.55;
   stroke: var(--color-ink);
 }
-.cw-web-ring {
+.st-web-ring {
   fill: none;
   stroke: color-mix(in srgb, var(--color-ink) 13%, transparent);
 }
-.cw-web-step {
+.st-web-step {
   font: 500 7px var(--font-mono);
   fill: var(--color-ink-muted);
 }
-.cw-web-spoke {
+.st-web-spoke {
   stroke: color-mix(in srgb, var(--color-ink) 27%, transparent);
 }
-.cw-web-arrow {
+.st-web-arrow {
   fill: none;
   stroke: var(--color-ink);
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.cw-web-arrow.is-danger {
+.st-web-arrow.is-danger {
   stroke: var(--color-pen);
 }
-.cw-web-name {
+.st-web-name {
   font: 500 8.5px var(--font-mono);
   letter-spacing: 0.06em;
   fill: var(--color-ink-2);
 }
-.cw-web-name.is-danger {
+.st-web-name.is-danger {
   fill: var(--color-pen-ink);
 }
-.cw-web-shape {
+.st-web-shape {
   fill: color-mix(in srgb, var(--color-ink) 13%, transparent);
   stroke: var(--color-ink);
   stroke-width: 1.5;
   stroke-linejoin: round;
 }
-.cw-web-never {
+.st-web-never {
   fill: var(--color-ground);
   stroke: var(--color-pen);
 }
-.cw-web-never-word {
-  font: 500 5.5px var(--font-mono);
-  fill: var(--color-pen-ink);
-}
-.cw-dot {
+.st-dot {
   cursor: grab;
   outline: none;
 }
-.cw-dot:active {
+.st-dot:active {
   cursor: grabbing;
 }
-.cw-dot.is-locked {
+.st-dot.is-locked {
   cursor: not-allowed;
 }
-.cw-dot-hit {
+.st-dot-hit {
   fill: transparent;
 }
 @media (hover: hover) and (pointer: fine) {
-  .cw-dot:not(.is-locked):hover .cw-dot-hit {
+  .st-dot:not(.is-locked):hover .st-dot-hit {
     fill: color-mix(in srgb, var(--color-ink) 7%, transparent);
   }
 }
-.cw-dot-ring {
+.st-dot-ring {
   fill: none;
   stroke: none;
 }
 /* The one focus ring, drawn round the dot: an outline does not follow a circle. */
-.cw-dot:focus-visible .cw-dot-ring {
+.st-dot:focus-visible .st-dot-ring {
   stroke: var(--color-focus);
   stroke-width: 2;
 }
-.cw-dot-face {
+.st-dot-face {
   fill: var(--color-ink);
   stroke: var(--color-ground);
   stroke-width: 2;
 }
-.cw-dot-face.is-never {
+.st-dot-face.is-never {
   fill: var(--color-pen);
 }
 /* Compact rows, together the web's height: the name and its cost on one
    line, a short line under it. */
-.cw-dirs {
+.st-dirs {
   display: flex;
   flex-direction: column;
   margin: 0;
@@ -498,7 +424,7 @@
   list-style: none;
   border-top: 2px solid var(--color-ink);
 }
-.cw-dirs li {
+.st-dirs li {
   display: grid;
   flex: 1;
   grid-template-columns: 1fr auto;
@@ -507,192 +433,192 @@
   padding: 6px 0;
   border-bottom: 1px solid var(--color-line);
 }
-.cw-dirs b {
+.st-dirs li:last-child {
+  border-bottom: 0;
+}
+.st-dirs b {
   font: 600 var(--text-prose) / 1.2 var(--font-display);
 }
-.cw-cost {
+.st-cost {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   font: 600 var(--text-caption) var(--font-mono);
 }
-.cw-cost.is-never {
+.st-cost.is-never {
   color: var(--color-pen-ink);
 }
-.cw-lock {
+.st-lock {
   width: 11px;
   height: 11px;
 }
-.cw-lock rect {
+.st-lock rect {
   fill: var(--color-pen-ink);
 }
-.cw-lock path {
+.st-lock path {
   fill: none;
   stroke: var(--color-pen-ink);
   stroke-width: 1.3;
 }
-.cw-dirs small {
+.st-dirs small {
   grid-column: 1 / -1;
-  overflow: hidden;
   font: var(--text-body) / 1.3 var(--font-body);
-  white-space: nowrap;
-  text-overflow: ellipsis;
   color: var(--color-ink-muted);
 }
-.cw-dirs li.is-locked small {
+.st-dirs li.is-locked small {
   color: var(--color-ink-2);
 }
 
 /* ---- 4. upwind ---- */
-.cw-hatch {
+.st-hatch {
   stroke: var(--color-ink);
   stroke-width: 0.8;
   opacity: 0.55;
 }
-.cw-lab {
+.st-lab {
   font: 500 9px var(--font-mono);
   letter-spacing: 0.1em;
   fill: var(--color-ink-muted);
 }
-.cw-lab.is-strong {
+.st-lab.is-strong {
   font-weight: 600;
   fill: var(--color-ink);
 }
-.cw-lab.is-halo {
+.st-lab.is-halo {
   paint-order: stroke;
   stroke: var(--color-ground);
   stroke-width: 3px;
   stroke-linejoin: round;
 }
 /* The three answers, one capsule across the top. */
-.cw .cw-up-answers {
+.st .st-up-answers {
   display: flex;
   width: 100%;
 }
-.cw .cw-up-answers > button {
+.st .st-up-answers > button {
   flex: 1;
   height: 40px;
 }
-.cw-up {
+.st-up {
   display: grid;
   grid-template-columns: 300px 1fr;
   align-items: center;
   gap: 22px;
   margin-top: 16px;
 }
-.cw-up-pic {
+.st-up-pic {
   display: block;
   width: 100%;
   touch-action: none;
   user-select: none;
 }
-.cw-up-face {
+.st-up-face {
   fill: var(--color-sunken);
   stroke: var(--color-line);
 }
-.cw-up-nogo {
+.st-up-nogo {
   stroke: var(--color-ink);
   stroke-dasharray: 3 3;
 }
-.cw-up-course {
+.st-up-course {
   fill: var(--color-ground);
   stroke: var(--color-ink);
   stroke-width: 1.5;
   stroke-linejoin: round;
 }
 /* Downwind of the course: they drift and lose ground, drawn faintly. */
-.cw-up-drift {
+.st-up-drift {
   fill: none;
   stroke: var(--color-ink);
   stroke-dasharray: 2 3;
   stroke-opacity: 0.6;
 }
-.cw-up-across {
+.st-up-across {
   stroke: var(--color-ink);
   stroke-opacity: 0.4;
   stroke-dasharray: 1 3;
 }
-.cw-up-angle {
+.st-up-angle {
   fill: none;
   stroke: var(--color-chart-magenta);
   stroke-width: 2;
 }
-.cw-up-deg {
+.st-up-deg {
   font: 600 11px var(--font-mono);
   fill: var(--color-chart-magenta);
 }
 /* The course's downwind edge, in ink: the second angle. */
-.cw-up-angle.is-down {
+.st-up-angle.is-down {
   stroke: var(--color-ink);
   stroke-width: 1.5;
 }
-.cw-up-deg.is-down {
+.st-up-deg.is-down {
   fill: var(--color-ink);
 }
-.cw-up-wind {
+.st-up-wind {
   stroke: var(--color-ink);
   stroke-width: 2.5;
 }
-.cw-up-wind-head,
-.cw-up-board {
+.st-up-wind-head,
+.st-up-board {
   fill: var(--color-ink);
 }
-.cw-up-edge {
+.st-up-edge {
   cursor: grab;
   touch-action: none;
 }
-.cw-up-edge:active {
+.st-up-edge:active {
   cursor: grabbing;
 }
-.cw-up-edge-hit {
+.st-up-edge-hit {
   fill: transparent;
 }
 @media (hover: hover) and (pointer: fine) {
-  .cw-up-edge:hover .cw-up-edge-hit {
+  .st-up-edge:hover .st-up-edge-hit {
     fill: var(--color-line);
   }
 }
-.cw-up-edge-dot {
+.st-up-edge-dot {
   fill: var(--color-ink);
   stroke: var(--color-ground);
   stroke-width: 2;
 }
-.cw-up-edge.is-down .cw-up-edge-dot {
+.st-up-edge.is-down .st-up-edge-dot {
   fill: var(--color-ground);
   stroke: var(--color-ink);
 }
-.cw-angles {
+.st-angles {
   display: grid;
   gap: 22px;
 }
-.cw-into {
+.st-into {
   display: flex;
   align-items: baseline;
   gap: 10px;
   margin-bottom: 2px;
 }
-.cw-into output {
+.st-into output {
   min-width: 2.4ch;
   font: 700 26px / 1 var(--font-mono);
   letter-spacing: -0.02em;
 }
-.cw-into span {
+.st-into span {
   font: 500 var(--text-label) var(--font-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-ink-2);
 }
-.cw-slide {
+.st-slide {
   margin: 4px 11px 0;
 }
-.cw-slide-track {
+.st-slide-track {
   position: relative;
   height: 32px;
   touch-action: none;
   cursor: pointer;
 }
-.cw-slide-track::before,
-.cw-slide-fill {
+.st-slide-track::before,
+.st-slide-fill {
   content: "";
   position: absolute;
   top: 14px;
@@ -700,14 +626,14 @@
   height: 4px;
   border-radius: 999px;
 }
-.cw-slide-track::before {
+.st-slide-track::before {
   right: 0;
   background: var(--color-line);
 }
-.cw-slide-fill {
+.st-slide-fill {
   background: var(--color-ink);
 }
-.cw-slide-knob {
+.st-slide-knob {
   position: absolute;
   top: 16px;
   width: 22px;
@@ -720,20 +646,20 @@
   cursor: ew-resize;
 }
 /* A finger's target round the drawn knob. */
-.cw-slide.is-second .cw-slide-knob {
+.st-slide.is-second .st-slide-knob {
   border-color: var(--color-ink);
   background: var(--color-ground);
 }
-.cw-slide-knob::after {
+.st-slide-knob::after {
   content: "";
   position: absolute;
   inset: -11px;
 }
-.cw-slide-knob:focus-visible {
+.st-slide-knob:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
-.cw-slide-ends {
+.st-slide-ends {
   display: flex;
   justify-content: space-between;
   margin: 0 -11px;
@@ -742,79 +668,37 @@
   text-transform: uppercase;
   color: var(--color-ink-muted);
 }
-/* ---- 5. the rider's spots ---- */
-.cw-near {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px 12px;
-  margin-top: 14px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--color-ink);
+.st-ask {
+  display: block;
+  margin-bottom: 6px;
 }
-.cw-spots > .cw-note {
-  margin-top: 6px;
-}
-.cw-spot-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.cw-spot-list li {
-  display: grid;
-  grid-template-columns: 28px 1fr auto;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 4px 0;
-  border-bottom: 1px solid var(--color-line);
-}
-.cw-spot-name b {
-  font: 500 var(--text-prose) / 1.25 var(--font-body);
-}
-.cw-spot-name small {
-  margin-left: 8px;
-  font: 500 var(--text-eyebrow) var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--color-ink-muted);
-}
-.cw-km {
-  font: 500 var(--text-caption) var(--font-mono);
-  text-align: right;
-  color: var(--color-ink-muted);
+.st-answer {
+  margin: 8px 0 0;
+  font: var(--text-body) / 1.4 var(--font-body);
+  color: var(--color-ink-2);
 }
 
-/* ---- 6. all set ---- */
-.cw-sum {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.cw-sum li {
-  display: grid;
-  grid-template-columns: 84px 1fr auto;
-  align-items: baseline;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--color-line);
-}
-.cw-sum li:first-child {
-  border-top: 1px solid var(--color-line);
-}
-.cw-val {
-  font: 500 var(--text-body) / 1.45 var(--font-mono);
-  color: var(--color-ink);
-}
-.cw-val .is-never {
-  color: var(--color-pen-ink);
+/* ---- a desktop: two by two, about you beside the wind strength, the wind
+   direction beside riding upwind ---- */
+@media (min-width: 1000px) {
+  .st-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 40px;
+  }
+  .st-part:nth-child(2) {
+    border-top: 0;
+  }
+  .st-shore,
+  .st-up {
+    grid-template-columns: 220px 1fr;
+    gap: 18px;
+  }
 }
 
-/* ---- a phone: the wizard is the screen, and each step one column ---- */
+/* ---- a phone: the dialog is the screen, and every part one column ---- */
 @media (max-width: 719px) {
-  .cw[open] {
+  .st[open] {
     width: 100%;
     max-width: none;
     height: 100dvh;
@@ -824,55 +708,42 @@
     border-radius: 0;
     padding: 12px 16px;
   }
-  .cw > div:first-child h2 {
+  .st > div:first-child h2 {
     font-size: 22px;
   }
-  .cw-body {
-    padding: 14px 0;
+  .st-body {
+    padding: 0;
   }
-  .cw-sub {
-    font-size: var(--text-body);
-  }
-  .cw-row .cw-kick + [role="group"] button {
+  .st-row .st-kick + [role="group"] button {
     padding: 0 9px;
   }
-  .cw-range {
+  .st-range {
     margin: 0 8px 0 18px;
   }
-  .cw-knob {
+  .st-knob {
     min-width: 30px;
     height: 26px;
     margin-top: 1px;
     padding: 0 4px;
   }
-  .cw-day {
-    padding: 8px 6px 6px;
-  }
-  .cw-w {
-    font-size: var(--text-body);
-  }
-  .cw-shore {
+  .st-shore {
     grid-template-columns: 1fr;
     gap: 14px;
   }
-  .cw-up {
+  .st-up {
     grid-template-columns: 1fr;
     gap: 6px;
     margin-top: 12px;
   }
-  .cw-dirs li {
+  .st-dirs li {
     padding: 7px 0;
   }
-  .cw-web {
+  .st-web {
     justify-self: center;
     max-width: 340px;
   }
-  .cw-up-pic {
+  .st-up-pic {
     justify-self: center;
     max-width: 300px;
-  }
-  .cw-sum li {
-    grid-template-columns: 64px 1fr auto;
-    gap: 8px;
   }
 }

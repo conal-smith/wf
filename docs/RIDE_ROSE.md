@@ -98,7 +98,7 @@ it became one number, below.
 ### Two angles, ours to start (25 October 2026)
 
 With the levels gone (docs/STAR_RATINGS.md, v7), the course is two numbers,
-both set in Customise's "Can you ride upwind?" and neither moving a star:
+both set in Settings' "Can you ride upwind?" and neither moving a star:
 
 - **Degrees into the wind** (`Rider.upwind`, `upwindOf`): ours is 0°,
   straight across, "Not yet" (A little 5°, Yes 20°, up to 45°).
@@ -137,7 +137,7 @@ The owner ruled:
 - **It never moves a star.** The stars rate the wind and how it meets the
   beach, not the heading.
 
-Each level starts somewhere sensible, and the rider moves it in Customise
+Each level starts somewhere sensible, and the rider moves it in Settings
 ("Can you ride upwind?": Not yet 0°, A little 5°, Yes 20°, then a slider from
 0° to 45° or a handle on the picture's edge):
 
@@ -150,7 +150,7 @@ Each level starts somewhere sensible, and the rider moves it in Customise
 It is kept on the device with the weight and the level (`parseRider` in
 `force5/src/prefs.ts`), as a whole number of degrees held to 0–45, and absent
 while it is the level's own, so a rider who never set it follows their level.
-Customise is the only place to set it: the display options' control went with
+Settings is the only place to set it: the display options' control went with
 the three words. The mobile app reads it through the light's wedge but has no
 control for it yet.
 
