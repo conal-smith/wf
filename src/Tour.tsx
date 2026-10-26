@@ -1,7 +1,7 @@
 /**
  * The tour: seven cards, each with the pen's ring round the real thing on
  * the chart it is about (the lights, a spot's hours, sliding them, the loupe,
- * the blend, the menu, the layers), and a last card that offers Customise.
+ * the blend, the menu, the layers), and a last card that offers Settings.
  * Back, Next, Skip tour, and Escape leaves. Its own chunk, fetched when the
  * tour is taken, from the first visit's offer or the site menu.
  *
@@ -117,8 +117,8 @@ interface Step {
 const STEPS: Step[] = [
   {
     id: "lights",
-    title: "The lights",
-    body: "Each light is a beach. Its figure is the stars it’s worth to you, at the hour shown.",
+    title: "Spots on the map",
+    body: "Each circle on the map is a place to ride. The number inside is how good the riding is there, from 0 to 5 stars, and the arrow shows which way the wind is blowing.",
     prep: (p) => p.spot && p.onSpot(null),
     target: (t) => {
       const light =
@@ -133,8 +133,8 @@ const STEPS: Step[] = [
   },
   {
     id: "dock",
-    title: "Tap a light",
-    body: "Its hours open here: the stars, the wind and gust, where it’s from, the sky.",
+    title: "A spot’s forecast",
+    body: "Tap any spot to see its forecast hour by hour: the stars, the wind speed and gusts, which way the wind is blowing, and the size of wing to use.",
     prep: (p, t) => {
       const id = p.spot ?? t.light;
       if (id) p.onSpot(id);
@@ -147,8 +147,8 @@ const STEPS: Step[] = [
   },
   {
     id: "hours",
-    title: "Slide the hours",
-    body: "Drag sideways, or tap an hour. The whole chart moves with you.",
+    title: "Pick a time",
+    body: "Tap an hour, or slide the hours sideways, to pick a time. The whole map then shows the wind and stars for that time.",
     target: () =>
       clip(
         pad(union(TARGETS.hours.map((s) => box(document.querySelector(s)))), 2),
@@ -157,16 +157,16 @@ const STEPS: Step[] = [
   },
   {
     id: "loupe",
-    title: "The loupe",
-    body: "The headings you can hold, here and now. Hatched is too close to the wind; red on the rim is offshore.",
+    title: "Which ways you can ride",
+    body: "This compass shows which directions you can ride from the spot at the time you picked. You can’t ride towards the striped part, because it is too close to where the wind comes from. Red on the edge means the wind is blowing out to sea.",
     prep: (p) => p.onFocusStyle("loupe"),
     target: () =>
       pad(union(TARGETS.loupe.map((s) => box(document.querySelector(s)))), 6),
   },
   {
     id: "blend",
-    title: "The blend",
-    body: "Every model’s wind, laid over each other. Bunched strands agree; spread ones don’t. Your stars stay your model’s own.",
+    title: "Compare forecasts",
+    body: "The Blend button shows the wind from several different weather forecasts on one chart. When the lines are close together, the forecasts agree. When they are far apart, the forecast is less certain.",
     prep: (p) => p.onView("blend"),
     target: () => {
       const chart =
@@ -178,21 +178,21 @@ const STEPS: Step[] = [
   },
   {
     id: "menu",
-    title: "Everything else",
-    body: "The menu: the spot finder, Customise, the layers, the key, and this tour again.",
+    title: "The menu",
+    body: "The menu has the spot finder, which lists the best places to ride this week. It also has Settings, map layers, a guide to the map, and this tour.",
     target: () => pad(box(document.querySelector(TARGETS.menu)), 4),
   },
   {
     id: "layers",
-    title: "Layers, if you want them",
-    body: "Tidal depth, currents, satellite at low tide. Only want the wind? You’ll never need to open this.",
+    title: "Map layers",
+    body: "Here you can add more to the map, such as water depth, tidal currents, rain and satellite photos. You can also choose which forecast the map and the stars use. You don’t need any of this to see the wind and stars.",
     prep: (p) => p.onPanel("layers"),
     target: () => pad(box(document.querySelector(TARGETS.layers)), 4),
   },
   {
     id: "end",
-    title: "That’s the chart",
-    body: "Set the stars to how you ride? Two minutes.",
+    title: "That’s the end of the tour",
+    body: "You can make the stars match how you ride. In Settings, set your weight, the units for wind speed, the wind you like, which wind directions work for you, and how far upwind you ride.",
     final: true,
   },
 ];
@@ -367,9 +367,7 @@ export default function Tour(props: TourProps) {
       >
         <div className="tour-k">
           <span>
-            {step.final
-              ? "The tour · done"
-              : `The tour · ${at + 1} of ${COUNT}`}
+            {step.final ? "Tour finished" : `Step ${at + 1} of ${COUNT}`}
           </span>
           <Button
             variant="quiet"
@@ -387,7 +385,6 @@ export default function Tour(props: TourProps) {
           </div>
           <Puffin size={step.final ? 66 : 46} bob />
         </div>
-        {step.final && <p className="tour-sign">— The Almanac</p>}
         <div className="tour-foot">
           {!step.final && (
             <span className="tour-dots" aria-hidden="true">
@@ -413,7 +410,7 @@ export default function Tour(props: TourProps) {
                 size="sm"
                 onClick={() => end(true)}
               >
-                Customise
+                Open Settings
               </Button>
             </>
           ) : (
