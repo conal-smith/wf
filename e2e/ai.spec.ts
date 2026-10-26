@@ -1,9 +1,9 @@
 import { expect, test, type Page } from "./fixtures";
 
 /**
- * The AI page (/ai): a tile for every assistant, each with its own Add and
- * Ask, and the last one used remembered, which fills its button and is where
- * the example questions open. The links themselves are tested in
+ * The AI page (/ai): the spot finder's header, one line, and a row for each
+ * app with one button that adds wingfoil.ie to it, then a row that copies the
+ * address for any other. The links themselves are tested in
  * ai/web/install.test.ts; this is that the page wires them up.
  */
 
@@ -12,163 +12,103 @@ const IPHONE =
 const ANDROID =
   "Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36";
 
-const tile = (page: Page, assistant: string) =>
-  page.locator(`[data-assistant="${assistant}"]`);
-const add = (page: Page, assistant: string) =>
-  page.locator(`[data-add="${assistant}"]`);
-const ask = (page: Page, assistant: string) =>
-  page.locator(`[data-ask="${assistant}"]`);
-const firstQuestion = (page: Page) =>
-  page.getByRole("link", { name: /^Ask [\w ]+: When's the next good session/ });
-/** The one filled button on the page is the kit's primary, on the accent. */
-const filled = /(^|\s)bg-accent(\s|$)/;
+const button = (page: Page, app: string) => page.locator(`[data-app="${app}"]`);
+const lines = (page: Page) => page.locator("[data-line]");
 
-test("a tile for every assistant, and the last one used is kept", async ({
-  page,
-  context,
-}) => {
+test("one line, then a row and one button for each app", async ({ page }) => {
   await page.goto("/ai");
-  await expect(
-    page.getByRole("heading", { level: 1, name: "Ask your AI." }),
-  ).toBeVisible();
-
-  // The apps that take the server first, then the ones that can only be asked.
-  await expect(page.locator("[data-assistant]")).toHaveCount(8);
-  await expect(page.locator("[data-assistant] h3")).toHaveText([
+  await expect(page.locator("main p").first()).toHaveText(
+    "wingfoil.ie is fully compatible with your bots. Click below to add your favourite bot.",
+  );
+  await expect(page.locator("main h2")).toHaveText([
     "ChatGPT",
     "Claude",
     "Grok",
     "Perplexity",
     "Le Chat",
-    "Meta AI",
-    "Gemini",
-    "Copilot",
+    "Another app",
   ]);
-  for (const a of ["meta", "gemini", "copilot"]) {
-    await expect(add(page, a)).toHaveCount(0);
-    await expect(tile(page, a)).toContainText(
-      "Can't read wingfoil.ie's live data",
-    );
-  }
+  await expect(page.locator("[data-app]")).toHaveText([
+    "Add to ChatGPT",
+    "Add to Claude",
+    "Add to Grok",
+    "Add to Perplexity",
+    "Add to Le Chat",
+    "Copy address",
+  ]);
+  // The header is the spot finder's: the menu and the wordmark, nothing else.
+  await expect(
+    page.getByRole("banner").getByRole("button", { name: "Site menu" }),
+  ).toBeVisible();
+  await expect(page.getByRole("banner")).toHaveText("wingfoil.ie");
+  await expect(lines(page)).toHaveCount(0);
 
-  // Claude to begin with: its Add is the one filled button, its connector
-  // dialog filled in, in a new tab, and the questions open in Claude.
-  await expect(page.locator(".bg-accent")).toHaveCount(1);
-  await expect(add(page, "claude")).toHaveClass(filled);
-  await expect(add(page, "claude")).toHaveAttribute(
+  // Claude opens its connector dialog filled in, in a new tab.
+  await expect(button(page, "claude")).toHaveAttribute(
     "href",
     /^https:\/\/claude\.ai\/customize\/connectors\?modal=add-custom-connector&/,
   );
-  await expect(add(page, "claude")).toHaveAttribute("target", "_blank");
-  await expect(add(page, "chatgpt")).toHaveAttribute(
+  await expect(button(page, "claude")).toHaveAttribute("target", "_blank");
+  await expect(button(page, "chatgpt")).toHaveAttribute(
     "href",
     "https://chatgpt.com/plugins",
   );
-  await expect(firstQuestion(page)).toHaveAttribute(
+  await expect(button(page, "grok")).toHaveAttribute(
     "href",
-    /^https:\/\/claude\.ai\/new\?q=When%27s\+the\+next\+good\+session/,
+    "https://grok.com/connectors",
   );
-
-  // Asking Grok from its tile makes it the one the questions open in.
-  await page.route("https://grok.com/**", (route) => route.abort());
-  await expect(ask(page, "grok")).toHaveAttribute(
+  await expect(button(page, "perplexity")).toHaveAttribute(
     "href",
-    /^https:\/\/grok\.com\/\?q=When%27s/,
+    "https://www.perplexity.ai/computer/plugins",
   );
-  const [tab] = await Promise.all([
-    context.waitForEvent("page"),
-    ask(page, "grok").click(),
-  ]);
-  await tab.close();
-  await expect(add(page, "grok")).toHaveClass(filled);
-  await expect(add(page, "claude")).not.toHaveClass(filled);
-  await expect(firstQuestion(page)).toHaveAttribute(
+  await expect(button(page, "lechat")).toHaveAttribute(
     "href",
-    /^https:\/\/grok\.com\/\?q=/,
+    "https://chat.mistral.ai/",
   );
-  await expect(page.locator("[data-ask-note]")).toContainText(
-    "which may ask it straight away",
-  );
-
-  // Kept for the next visit.
-  await page.reload();
-  await expect(add(page, "grok")).toHaveClass(filled);
-
-  // An app that can only be asked has its Ask filled when it is the one used.
-  await page.route("https://gemini.google.com/**", (route) => route.abort());
-  const [gemini] = await Promise.all([
-    context.waitForEvent("page"),
-    ask(page, "gemini").click(),
-  ]);
-  await gemini.close();
-  await expect(ask(page, "gemini")).toHaveClass(filled);
-  await expect(page.locator(".bg-accent")).toHaveCount(1);
-  await expect(page.locator("[data-add-note]")).toContainText(
-    "Gemini can't take wingfoil.ie",
-  );
-
-  // The editors and terminals are offered on a computer.
-  await expect(
-    page.getByRole("heading", { name: "Coding agents" }),
-  ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Add to Cursor" })).toBeVisible();
 });
 
-test("every copy says Copied, on the button and to a screen reader", async ({
+test("a button that copies the address says where to paste it", async ({
   page,
   context,
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/ai");
   const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
-  const address = page.getByRole("button", {
-    name: "Copy the server address",
-  });
 
-  // The glyph-only buttons: a "Copied" tag in sight, and the same in a live
-  // region beside each.
-  await address.click();
-  await expect(address.locator("..")).toContainText("Copied");
-  await expect(
-    page.getByRole("status").filter({ hasText: "Copied the server address" }),
-  ).toHaveCount(1);
-  expect(await clipboard()).toMatch(/\/api\/mcp$/);
-
-  const question = page
-    .getByRole("button", { name: "Copy the question" })
-    .first();
-  await question.click();
-  await expect(question.locator("..")).toContainText("Copied");
-  expect(await clipboard()).toMatch(/^When's the next good session/);
-
-  // The worded ones say it in place.
-  const command = page.getByRole("button", {
-    name: "Copy the Claude Code command",
-  });
-  await command.click();
-  await expect(command).toHaveText(/Copied/);
-  await expect(
-    page
-      .getByRole("status")
-      .filter({ hasText: "Copied the Claude Code command" }),
-  ).toHaveCount(1);
-
-  // Adding to Grok copies the address on the way and says so under the
-  // tiles, after the tab it opens is long gone.
+  // Adding to Grok copies the address on the way and says so on its row,
+  // after the tab it opens is long gone.
   await page.route("https://grok.com/**", (route) => route.abort());
-  await page.evaluate(() => navigator.clipboard.writeText(""));
   const [tab] = await Promise.all([
     context.waitForEvent("page"),
-    add(page, "grok").click(),
+    button(page, "grok").click(),
   ]);
   await tab.close();
   expect(await clipboard()).toMatch(/\/api\/mcp$/);
-  await expect(page.locator("[data-add-note]")).toHaveText(
-    /^Address copied\. In Grok's connectors/,
+  await expect(lines(page)).toHaveCount(1);
+  await expect(page.locator("li", { has: button(page, "grok") })).toContainText(
+    "Address copied. Paste it in Grok.",
   );
-  await page.waitForTimeout(2000);
-  await expect(page.locator("[data-add-note]")).toHaveText(/^Address copied/);
-  await expect(add(page, "grok")).toHaveText(/^Add$/);
+  await expect(
+    page.getByRole("status").filter({ hasText: "Paste it in Grok." }),
+  ).toHaveCount(1);
+
+  // Another app: the address, and the one line, on its own row only.
+  await page.evaluate(() => navigator.clipboard.writeText(""));
+  await button(page, "other").click();
+  expect(await clipboard()).toMatch(/\/api\/mcp$/);
+  await expect(lines(page)).toHaveCount(1);
+  await expect(
+    page.locator("li", { has: button(page, "other") }),
+  ).toContainText("Address copied. Paste it in your app.");
+
+  // Claude is filled in for the rider: nothing is left to say.
+  await page.route("https://claude.ai/**", (route) => route.abort());
+  const [claude] = await Promise.all([
+    context.waitForEvent("page"),
+    button(page, "claude").click(),
+  ]);
+  await claude.close();
+  await expect(lines(page)).toHaveCount(0);
 });
 
 test.describe("on an iPhone", () => {
@@ -179,52 +119,28 @@ test.describe("on an iPhone", () => {
     userAgent: IPHONE,
   });
 
-  test("lays the tiles two across, and hands every link to the app", async ({
+  test("hands every link to the app, in the same tab, and fits the phone", async ({
     page,
   }) => {
     await page.goto("/ai");
-    await expect(add(page, "chatgpt")).toBeVisible();
-    await expect(firstQuestion(page)).toBeVisible();
-
-    // Two across: ChatGPT and Claude side by side, Grok under ChatGPT.
-    const box = async (a: string) => (await tile(page, a).boundingBox())!;
-    const [chatgpt, claude, grok] = await Promise.all(
-      ["chatgpt", "claude", "grok"].map(box),
-    );
-    expect(Math.abs(chatgpt.y - claude.y)).toBeLessThan(1);
-    expect(claude.x).toBeGreaterThan(chatgpt.x);
-    expect(Math.abs(grok.x - chatgpt.x)).toBeLessThan(1);
-    expect(grok.y).toBeGreaterThan(chatgpt.y);
-
-    // ChatGPT opens its plugins in the app now, rather than only copying,
-    // and says where it can be done for sure.
-    await expect(add(page, "chatgpt")).toHaveAttribute(
+    await expect(button(page, "chatgpt")).toBeVisible();
+    await expect(button(page, "chatgpt")).toHaveAttribute(
       "href",
       "https://chatgpt.com/plugins",
     );
-    await expect(tile(page, "chatgpt")).toContainText("Best on a computer");
-
     // Followed in the same tab, which is what opens the app rather than a
     // browser tab.
-    await expect(add(page, "chatgpt")).not.toHaveAttribute("target", /.*/);
-    await expect(ask(page, "claude")).not.toHaveAttribute("target", /.*/);
-    await expect(firstQuestion(page)).not.toHaveAttribute("target", /.*/);
+    await expect(button(page, "chatgpt")).not.toHaveAttribute("target", /.*/);
+    await expect(button(page, "claude")).not.toHaveAttribute("target", /.*/);
 
-    // The coding agents are there to copy for a computer; their one-click
-    // links, which open an editor this phone has not got, are not.
-    await expect(
-      page.getByRole("heading", { name: "Coding agents" }),
-    ).toBeVisible();
-    await expect(page.getByText("These run on a computer.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Add to Cursor" })).toHaveCount(
-      0,
-    );
-    await expect(
-      page.getByRole("button", { name: "Copy the Claude Code command" }),
-    ).toBeVisible();
-
-    // The address breaks only after a slash.
-    await expect(page.locator("code wbr")).not.toHaveCount(0);
+    // Each name and its button share a line, every button the same width.
+    const boxes = await page
+      .locator("[data-app]")
+      .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+    expect(new Set(boxes).size).toBe(1);
+    const name = (await page.locator("main h2").first().boundingBox())!;
+    const add = (await button(page, "chatgpt").boundingBox())!;
+    expect(add.y).toBeLessThan(name.y + name.height);
 
     // Nothing on the page is wider than the phone.
     const wide = await page.evaluate(
@@ -246,22 +162,22 @@ test.describe("on Android", () => {
     page,
   }) => {
     await page.goto("/ai");
-    await expect(add(page, "chatgpt")).toHaveAttribute(
+    await expect(button(page, "chatgpt")).toHaveAttribute(
       "href",
       "intent://chatgpt.com/plugins#Intent;scheme=https;package=com.openai.chatgpt;S.browser_fallback_url=https%3A%2F%2Fchatgpt.com%2Fplugins;end",
     );
-    await expect(add(page, "claude")).toHaveAttribute(
+    await expect(button(page, "claude")).toHaveAttribute(
       "href",
       /^intent:\/\/claude\.ai\/customize\/connectors\?.+;package=com\.anthropic\.claude;/,
     );
-    await expect(ask(page, "grok")).toHaveAttribute(
+    await expect(button(page, "grok")).toHaveAttribute(
       "href",
-      /^intent:\/\/grok\.com\/\?q=.+;package=ai\.x\.grok;/,
+      /^intent:\/\/grok\.com\/connectors#.+;package=ai\.x\.grok;/,
     );
     // An app whose maker hands it no such link opens on the web.
-    await expect(ask(page, "gemini")).toHaveAttribute(
+    await expect(button(page, "lechat")).toHaveAttribute(
       "href",
-      "https://gemini.google.com/app",
+      "https://chat.mistral.ai/",
     );
   });
 });

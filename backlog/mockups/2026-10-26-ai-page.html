@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock-up · The AI page</title>
+<!--
+  A design exploration, not product code. Standalone; faces from node_modules.
+
+  Round two (26 October 2026). The owner, on round one ("far too much text"):
+    - the one list (round one's A), and nothing else: the Spot finder's
+      header, then the apps, each its name and ONE button;
+    - no headline, intro, facts, example chat, headings, subtitles, plan
+      notes, example questions, or note about the apps that can't take it;
+    - ChatGPT, Claude, Grok, Perplexity, Le Chat. Meta AI, Gemini and Copilot
+      dropped without a word. Last row "Another app", which copies the address;
+    - every button "Add to <app>", all the same. Once pressed, at most one
+      short line on that row, and only where the rider has something left to
+      do ("Address copied. Paste it in ChatGPT."). Claude: nothing, it opens
+      filled in;
+    - no logos: none drawn here would be the app's own, so the name alone.
+  What each button does is ai/web/install.ts as it is.
+  ?device=phone
+-->
+<style>
+@font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fraunces Variable"; font-style: italic; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-italic.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 500;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+
+/* The theme's values (ui/theme.css). */
+:root {
+  color-scheme: light;
+  --ground: #f3eee3; --card: #f3eee3; --sunken: #ede6d6;
+  --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b; --line: #1a1d2133;
+  --magenta: #b0186a; --focus: #b0186a;
+  --display: "Fraunces Variable", Fraunces, Georgia, "Times New Roman", serif;
+  --body: "Newsreader Variable", Newsreader, Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --shadow-raised: inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126;
+  --shadow-control: inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150;
+  --gradient-raised: linear-gradient(180deg, #ffffff, #f0eadd);
+  --gradient-ink: linear-gradient(180deg, #33373d, #15171a);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #d9d4c7; color: var(--ink); font-family: var(--body); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, p, ul { margin: 0; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---- The preview switch: a thin bar outside the page ---- */
+.mockbar { display: flex; justify-content: flex-end; gap: 4px; padding: 4px 10px; background: #1a1d21; }
+.mockbar button { border: 0; background: none; color: #f3eee3aa; border-radius: 99px; padding: 2px 9px; font: 500 10px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.mockbar button[aria-pressed="true"] { background: #f3eee3; color: #1a1d21; }
+
+/* The page: full width, or a phone's 390 in the middle. Its breakpoints are
+   container queries on it, so both read the same. */
+.frame { container: page / inline-size; margin: 0 auto; background: var(--ground) var(--grain); min-height: calc(100dvh - 26px); }
+.frame.is-phone { width: 390px; margin: 20px auto; min-height: 844px; border: 1px solid var(--ink); box-shadow: 0 24px 48px -16px #3c2d1480; }
+
+/* ==== The header: the Spot finder's (src/finder/SpotFinder.tsx), measured
+   off /spots. Flex, gap 12, padding 12 18, a 3px double ink rule under it,
+   plain paper; under 720 gap 8, padding 10 12. The menu: Button icon
+   variant="raised" size md, 40px round. The name: Wordmark size="sm". ==== */
+.hd { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 18px; border: 0; border-bottom: 3px double var(--ink); background: var(--ground); }
+.hd-lead { display: flex; flex: 1; align-items: center; gap: 12px; }
+.menu { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 1px solid var(--ink); border-radius: 9999px; background: var(--card) var(--gradient-raised); box-shadow: var(--shadow-raised); color: var(--ink); transition: background-color .12s, color .12s; }
+.menu svg { width: 18px; height: 18px; }
+.wordmark { display: inline-block; font-family: var(--display); font-size: 19px; line-height: 1.2; font-weight: 800; letter-spacing: -.025em; white-space: nowrap; color: var(--ink); font-variation-settings: "opsz" 144; }
+.wordmark i { font-weight: 400; letter-spacing: normal; color: var(--magenta); }
+@media (hover: hover) and (pointer: fine) {
+  .menu:hover { background: var(--ink) var(--gradient-ink); color: var(--ground); box-shadow: var(--shadow-control); }
+}
+@container page (max-width: 719px) {
+  .hd { gap: 8px; padding: 10px 12px; }
+  .hd-lead { gap: 8px; }
+}
+
+/* ==== The list: each app its name and one button, on a hairline ==== */
+.pg { max-width: 600px; margin: 0 auto; padding: 40px 24px 72px; }
+@container page (max-width: 719px) { .pg { padding: 18px 14px 56px; } }
+
+.intro { margin: 0 0 22px; font-size: 19px; line-height: 1.4; color: var(--ink-2); text-wrap: pretty; }
+@container page (max-width: 719px) { .intro { font-size: 17px; margin-bottom: 16px; } }
+.apps { margin: 0; padding: 0; list-style: none; }
+.app { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 16px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.app:first-child { border-top: 1px solid var(--line); }
+.app h2 { font: 600 21px/1.2 var(--display); letter-spacing: -.01em; }
+.app.other h2 { font-style: italic; font-weight: 500; }
+.app p { grid-column: 1 / -1; padding-top: 8px; font-size: 16px; line-height: 1.35; color: var(--ink-2); }
+.app p[hidden] { display: none; }
+@container page (max-width: 719px) { .app { padding: 12px 0; } .app h2 { font-size: 19px; } .app p { font-size: 15px; } }
+
+/* The kit's ruled pill (Button variant="pill"), one width for all. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 210px; height: 44px; padding: 0 16px; border: 1px solid var(--ink); border-radius: 9999px; background: var(--card) var(--gradient-raised); box-shadow: var(--shadow-raised); font: 500 11px/1.2 var(--mono); letter-spacing: .09em; text-transform: uppercase; white-space: nowrap; color: var(--ink); transition: background-color .12s, color .12s; }
+.btn svg { width: 14px; height: 14px; flex: none; }
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover { background: var(--ink) var(--gradient-ink); color: var(--ground); box-shadow: var(--shadow-control); }
+}
+@container page (max-width: 719px) { .btn { width: 196px; } }
+
+/* What the real page would do now, said by the mock-up only. */
+.toast { position: fixed; left: 50%; bottom: 20px; z-index: 50; max-width: min(92vw, 480px); padding: 8px 14px; border-radius: 10px; background: #1a1d21; color: #f3eee3; font: 500 11px/1.4 var(--mono); letter-spacing: .04em; transform: translate(-50%, 12px); opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+
+<div class="mockbar" role="toolbar" aria-label="Preview">
+  <button type="button" data-device="full" aria-pressed="true">Desktop</button>
+  <button type="button" data-device="phone" aria-pressed="false">Phone</button>
+</div>
+
+<div class="frame" id="frame">
+  <header class="hd">
+    <span class="hd-lead">
+      <button type="button" class="menu" aria-label="Site menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></svg>
+      </button>
+      <span class="wordmark">wingfoil<i>.ie</i></span>
+    </span>
+  </header>
+
+  <main class="pg">
+    <h1 class="sr-only">Add wingfoil.ie to your AI app</h1>
+    <p class="intro">wingfoil.ie is fully compatible with your bots. Click below to add your favourite bot.</p>
+    <ul class="apps" id="apps"></ul>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  const ADDRESS = "https://wingfoil.ie/api/mcp";
+  // What each button does today (ai/web/install.ts): Claude opens with the
+  // address filled in; the others copy it and open the app's settings.
+  const APPS = [
+    { id: "chatgpt", name: "ChatGPT", copies: true },
+    { id: "claude", name: "Claude", copies: false },
+    { id: "grok", name: "Grok", copies: true },
+    { id: "perplexity", name: "Perplexity", copies: true },
+    { id: "lechat", name: "Le Chat", copies: true },
+    { id: "other", name: "Another app", copies: true, label: "Copy address", line: "Address copied. Paste it in your app." },
+  ];
+  const OUT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>';
+  const COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+
+  const list = document.getElementById("apps");
+  list.innerHTML = APPS.map((a) => `
+    <li class="app${a.id === "other" ? " other" : ""}">
+      <h2>${a.name}</h2>
+      <button type="button" class="btn" data-app="${a.id}">${a.label || `Add to ${a.name}`}${a.id === "other" ? COPY : OUT}</button>
+      <p role="status" hidden></p>
+    </li>`).join("");
+
+  // The clipboard may be refused (a file:// page, a frame without focus).
+  const copy = (text) => { try { navigator.clipboard?.writeText(text).catch(() => {}); } catch (_) { /* none */ } };
+  let timer;
+  const toast = (text) => {
+    const t = document.getElementById("toast");
+    t.textContent = text;
+    t.classList.add("on");
+    clearTimeout(timer);
+    timer = setTimeout(() => t.classList.remove("on"), 2600);
+  };
+
+  list.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-app]");
+    if (!b) return;
+    const app = APPS.find((a) => a.id === b.dataset.app);
+    list.querySelectorAll("p").forEach((p) => { p.hidden = true; });
+    if (app.copies) {
+      copy(ADDRESS);
+      const p = b.parentElement.querySelector("p");
+      p.textContent = app.line || `Address copied. Paste it in ${app.name}.`;
+      p.hidden = false;
+    }
+    if (app.id !== "other") toast(`Mock-up: ${app.name} would open in a new tab${app.copies ? "" : ", with wingfoil.ie filled in"}.`);
+  });
+
+  const frame = document.getElementById("frame");
+  const setDevice = (d) => {
+    frame.classList.toggle("is-phone", d === "phone");
+    document.querySelectorAll("[data-device]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.device === d)));
+    history.replaceState(null, "", d === "phone" ? "?device=phone" : location.pathname);
+  };
+  document.querySelectorAll("[data-device]").forEach((b) => b.addEventListener("click", () => setDevice(b.dataset.device)));
+  setDevice(new URLSearchParams(location.search).get("device") === "phone" ? "phone" : "full");
+})();
+</script>
+</body>
+</html>

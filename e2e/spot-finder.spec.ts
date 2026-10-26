@@ -780,9 +780,10 @@ test.describe("on a desktop", () => {
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator(".map-head")).toHaveCount(0);
 
-    // The AI page's way back, named Chart, is the chart too.
+    // The AI page's menu's Chart is the chart too.
     await page.goto("/ai");
-    await page.locator("[data-back-to-map]").click();
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await siteRow(page, "Chart").click();
     await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
     await expect(page).toHaveURL(/\/\?map$/);
   });
