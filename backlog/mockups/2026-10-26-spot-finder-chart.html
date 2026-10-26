@@ -394,7 +394,7 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
 
   <h3>What to try</h3>
   <ul>
-    <li><b>Hover a card.</b> Its spot on the map turns black and shows its name, and the map moves to it. Move off the list and the map goes back to show all the spots.</li>
+    <li><b>Hover a card.</b> Its spot on the map turns black and shows its name. The map never zooms on a hover. If the spot is already well inside the map, nothing else moves. If it is near the edge or off the map, the map pans quickly to put it in the middle, at the same zoom. Leaving the list leaves the map where it is. Only first load and switching Favourites / Near you fit the map to the spots.</li>
     <li><b>Hover a spot on the map.</b> Its card is outlined in the list. Click a spot on the map beside the list to scroll the list to its card. The map beside the list never opens the forecast dock.</li>
     <li><b>Switch between Favourites and Near you.</b> The map shows only the spots on the list, and zooms to fit them. The blue dot is you.</li>
     <li><b>Press Full chart</b> (top left of the map). The map grows to fill the screen and becomes the chart, with its own search box, controls and every spot. Press the black List button, the collapse button (top right), Escape or the browser's Back button to return to the list.</li>
@@ -420,7 +420,7 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
     <li><b>One chart, moved, not two.</b> The page that draws the chart (src/App.tsx) would draw the finder and one <code>WindMap</code> together. The map sits in a box that is either the panel on the right or the whole screen. Expanding changes the box's size and calls <code>map.resize()</code> once at the end of the animation. The map is never unmounted, so it keeps its style, tiles, forecast frames and wind particles, and the browser keeps one WebGL context instead of two.</li>
     <li><b>Panel and full chart differ only in what the map is given.</b> In the panel: only the listed spots as lights, no loupe or dock, the hour picked on the cards, and the map fitted to the list. Full screen: every spot, the dock, the search box and the layers, exactly as the chart is today. The finder already gets the chart's rated hours from App, so nothing new has to be loaded.</li>
     <li><b>The dock stays as it is.</b> It only appears when the chart is full screen, never in the side panel. The List button would sit inside the dock's own layout, as the dock's tools and the chart's small print already do, so it moves with the dock's top edge in the same frame and can never cover it.</li>
-    <li><b>Hover.</b> A card passes its spot's id to the lights (a class toggled in force5/src/lights.ts, no React re-render) and calls <code>easeTo</code> on the map after a short delay, so scrolling past cards does not throw the map around.</li>
+    <li><b>Hover.</b> A card passes its spot's id to the lights (a class toggled in force5/src/lights.ts, no React re-render) and, only if the spot is near the edge or off the map, calls <code>easeTo</code> with the current zoom after a short delay, so scrolling past cards does not throw the map around.</li>
     <li><b>Addresses.</b> <code>/</code> becomes the finder. The full chart is the same page with <code>?map</code> in the address (pushed to history, so Back returns to the list). Existing links keep working: <code>/?spot=keel</code> opens the full chart on Keel, and <code>/spots</code> redirects to <code>/</code>. The "open the page you used last" memory in src/lastView.ts could then remember whether the chart was open.</li>
     <li><b>Phone.</b> The map is not created until the Map button is first pressed, as the old finder did. After that it is kept, hidden, and resized when shown again.</li>
   </ul>
@@ -430,7 +430,7 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
     <li><b>Speed on a laptop.</b> A WebGL map with moving wind particles next to a long list of SVG-heavy cards. Scrolling the list while the particles animate could stutter on older machines. Ways round it: fewer particles in the panel, pause them while the list scrolls, and only draw the cards near the screen.</li>
     <li><b>The expand animation.</b> Resizing a WebGL canvas every frame is costly. Better to animate the box with a transform or clip and resize the map once at the end.</li>
     <li><b>Phone memory.</b> The map, its forecast frames and 20 or more cards with pictures in one page. iOS Safari reloads tabs that use too much memory. Creating the map only when asked, and dropping it after a long time hidden, keeps that down.</li>
-    <li><b>Hover moving the map</b> can feel busy. The delay, and returning to the whole list when the mouse leaves, should be tried with real use. It is easy to switch to "light up only, do not move".</li>
+    <li><b>Hover moving the map</b> can still feel busy when the spots are far apart (Favourites across Ireland). It only pans for spots near the edge, never zooms, and should be tried in real use. It is easy to switch to "light up only, do not move".</li>
     <li><b>The bottom of the full chart is busy:</b> the dock, its tools on the right, the small print on the left and the List button in the middle. Where the window is too narrow for the button between them, the mock-up lifts the button above the dock's tools. The real build should check this at every width.</li>
     <li>The chart's first load gets heavier for people who only wanted the list. The panel should wait until the cards are drawn before it asks for the map.</li>
   </ul>
@@ -821,10 +821,17 @@ function hoverCard(id) {
   light(id);
   if (S.layout !== "split" || S.view !== "list") return;
   clearTimeout(hoverT); clearTimeout(backT);
-  if (id) hoverT = setTimeout(() => { const s = SPOTS.get(id), f = listFit();
-    flyTo({ lon: s.lon, lat: s.lat, zoom: Math.min(maxZoomAt(s.lon, s.lat), f.zoom + .6, 10.7) }, 520); }, 140);
+  // The zoom is never changed by a hover. A spot already well inside the map only lights up; one near the
+  // edge or off it brings a quick pan, at the same zoom, that puts it in the middle.
+  if (id) hoverT = setTimeout(() => { const s = SPOTS.get(id);
+    if (!comfortable(s)) flyTo({ lon: s.lon, lat: s.lat, zoom: V.zoom }, 250); }, 120);
 }
-list.addEventListener("mouseleave", () => { if (S.layout !== "split" || S.view !== "list") return; clearTimeout(hoverT); clearTimeout(backT); backT = setTimeout(() => fitList(600), 450); });
+function comfortable(s) {
+  const [W, H] = size(), C = world(V.lon, V.lat, V.zoom), p = world(s.lon, s.lat, V.zoom);
+  const x = p[0] - C[0] + W / 2, y = p[1] - C[1] + H / 2, mx = Math.max(70, W * .18), my = Math.max(70, H * .18);
+  return x > mx && x < W - mx && y > my && y < H - my;
+}
+// Leaving the list leaves the map where it is.
 function pressLight(id) {
   if (S.view === "chart") { selectSpot(id); return; }
   const c = cardsEl.querySelector(`[data-card="${id}"]`);
