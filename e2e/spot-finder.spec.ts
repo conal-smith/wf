@@ -783,10 +783,11 @@ test.describe("on a desktop", () => {
     await expect(finder(page)).toBeVisible({ timeout: 30000 });
     await expect(page).toHaveURL(/\/spots$/);
 
-    // The finder last open again: the AI page's way back, named Chart, is
-    // the chart too.
+    // The finder last open again: the AI page's menu's Chart is the chart
+    // too.
     await page.goto("/ai");
-    await page.locator("[data-back-to-map]").click();
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await siteRow(page, "Chart").click();
     await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
     await expect(finder(page)).toHaveCount(0);
     await expect(page).toHaveURL(/\/$/);

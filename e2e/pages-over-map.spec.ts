@@ -51,9 +51,13 @@ test("the AI page opens over the map, and every way back keeps the map", async (
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator(".map-under-page")).toHaveCount(0);
 
-  // The page's own link to the chart.
+  // The page's own menu, its Chart.
   await openAi(page);
-  await page.locator('a[href="/"]:visible').first().click();
+  await page.getByRole("button", { name: "Site menu" }).click();
+  await page
+    .getByRole("navigation", { name: "Site" })
+    .getByRole("link", { name: "Chart" })
+    .click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator(".map-under-page")).toHaveCount(0);
 
@@ -91,7 +95,10 @@ test("the map's site menu is closed when the reader comes back from the AI page"
   await expect(page).toHaveURL(/\/ai$/);
   await expect(page.locator(".map-under-page")).toHaveCount(1);
 
+  // The AI page's own menu, its Chart: the way back to the map.
+  await page.getByRole("button", { name: "Site menu" }).click();
   await page
+    .getByRole("navigation", { name: "Site" })
     .getByRole("link", { name: "Chart" })
     .dispatchEvent("click", { button: 0 });
   await expect(page.locator(".map-under-page")).toHaveCount(0);
