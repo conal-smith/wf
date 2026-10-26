@@ -33,9 +33,9 @@ talk.
 
 ## Usage
 
-- One puffin on a view at most, beside the pen's note or the menu's line in
-  the Almanac's voice.
-  joke.
+- One puffin on a view at most, as a picture. No words are signed by or
+  credited to "the Almanac"; the copy beside him is plain English
+  (docs/BRAND.md, rule 7).
 - On the proposed night chart his paper and ink trade places with the page's.
 
 ## Accessibility

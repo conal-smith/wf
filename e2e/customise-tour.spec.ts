@@ -403,10 +403,13 @@ test("the tour is offered on a first visit, can be skipped, and is not offered a
   await page.clock.setFixedTime(AFTERNOON);
   await page.goto("/");
   await expect(prompt(page)).toBeVisible({ timeout: 30000 });
+  await expect(prompt(page)).toContainText(
+    "Take a 30-second tour of how the site works.",
+  );
   await prompt(page).getByRole("button", { name: "Take the tour" }).click();
   await expect(prompt(page)).toHaveCount(0);
-  await expect(card(page)).toContainText("The tour · 1 of 7");
-  await expect(card(page)).toContainText("The lights");
+  await expect(card(page)).toContainText("Step 1 of 7");
+  await expect(card(page)).toContainText("Spots on the map");
   // The pen's ring is round a light.
   await expect(page.locator(".tour-ring path")).toBeVisible();
   await card(page).getByRole("button", { name: "Next" }).click();
@@ -471,14 +474,12 @@ test("No thanks is never asked again; Escape leaves the tour; the menu replays i
       .getByRole("button", { name: i === steps.length - 1 ? "Finish" : "Next" })
       .click();
   }
-  await expect(card(page)).toContainText("That’s the chart");
+  await expect(card(page)).toContainText("That’s the end of the tour");
+  await expect(card(page)).not.toContainText("Almanac");
   await expect(
     page.getByRole("dialog", { name: "Layers", exact: true }),
   ).toHaveCount(0);
-  // The tour's last card names Settings (once its words say so).
-  await card(page)
-    .getByRole("button", { name: /^(Customise|Settings)$/ })
-    .click();
+  await card(page).getByRole("button", { name: "Open Settings" }).click();
   await expect(card(page)).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
 });
