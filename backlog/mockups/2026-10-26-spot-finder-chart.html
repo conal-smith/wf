@@ -15,6 +15,9 @@
   card brings the map to that spot and its light turns black. An expand button
   makes the chart full screen: that is the way into the chart. On a phone, the
   list only, with the black Map button at the foot to switch to the map.
+  Owner's second steer: a spot pressed on the full chart opens the chart's own
+  forecast dock along the foot (src/ForecastDock.tsx), not a card; the dock is
+  never in the side panel; the black button rides just above the dock.
 
   The map is the real chart, photographed: two screenshots of the running app
   (Ireland and Britain at zoom 7, the Dublin coast at zoom 10, the chart's own lights and
@@ -245,23 +248,86 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
 .app[data-layout=phone] .chead { left: 12px; right: 12px; top: 14px; width: auto; }
 .app[data-layout=phone] .chead .word { display: none; }
 .app[data-view=chart] .zoombox { top: 18px; right: 18px; }
-.credit { position: absolute; left: 16px; bottom: 16px; align-items: center; gap: 8px; font: 500 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.credit { position: absolute; left: 16px; bottom: var(--credit-b, 16px); align-items: center; transition: bottom .3s var(--ease); gap: 8px; font: 500 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
 .credit b { width: 20px; height: 20px; border-radius: 99px; background: var(--ink); color: var(--ground); display: grid; place-items: center; font: 600 11px var(--body); letter-spacing: 0; }
-.app[data-layout=phone] .credit { display: none !important; }
 
 /* the black button at the foot: Map / List */
-.toggle { position: absolute; left: 50%; bottom: 18px; z-index: 60; transform: translateX(-50%); display: none; align-items: center; gap: 7px; height: 40px; padding: 0 18px;
+.toggle { position: absolute; left: 50%; bottom: var(--toggle-b, 18px); z-index: 60; transition: bottom .3s var(--ease), background .12s; transform: translateX(-50%); display: none; align-items: center; gap: 7px; height: 40px; padding: 0 18px;
   border-radius: 99px; border: 1px solid #000; background: var(--g-ink); color: var(--ground); font: 500 11px/1 var(--mono); letter-spacing: .09em; text-transform: uppercase;
   box-shadow: var(--sh-control), var(--sh-sheet); cursor: pointer; }
 .toggle:hover { background: #33373d; }
 .app:not([data-layout=split]) .toggle, .app[data-view=chart] .toggle { display: inline-flex; }
 
-/* a spot pressed on the full chart: its card, over the chart */
-.pincard { position: absolute; z-index: 45; left: 16px; bottom: 72px; width: min(600px, calc(100% - 32px)); max-height: calc(100% - 160px); overflow: auto; border-radius: 15px; box-shadow: var(--sh-sheet); }
-.pincard[hidden] { display: none; }
-.pincard .card { cursor: pointer; }
-.pincard .x { position: absolute; right: 50px; top: 10px; z-index: 2; }
-.app[data-layout=phone] .pincard { left: 8px; right: 8px; width: auto; bottom: 70px; }
+/* ---- the forecast dock (src/ForecastDock.tsx, src/dock.css), only on the full chart ----
+   A spot pressed on the full chart opens the chart's own dock along the foot, as today. */
+.dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 7; height: var(--dock-h, 130px); padding: 4px 0 0 16px; cursor: default;
+  background: var(--ground); border: 1px solid var(--ink); border-bottom: 0; border-radius: 18px 18px 0 0; box-shadow: var(--frame), 0 -6px 14px -6px #1a1d2124, 0 -20px 40px -18px #3c2d1466;
+  transition: height .3s var(--ease), transform .3s var(--ease), visibility 0s; }
+.dock.closed { transform: translateY(calc(100% + 70px)); visibility: hidden; transition: height .3s var(--ease), transform .3s var(--ease), visibility 0s .3s; }
+.dk-tools { position: absolute; right: 12px; bottom: calc(100% + 10px); display: flex; align-items: stretch; gap: 2px; padding: 3px; border-radius: 14px; }
+.dk-id { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 0 10px 0 4px; border-right: 1px solid var(--line); }
+.dk-name { display: inline-flex; align-items: center; gap: 3px; min-width: 0; max-width: 34vw; padding: 0; border: 0; background: none; font: 600 17px var(--display); letter-spacing: -.01em; white-space: nowrap; cursor: pointer; }
+.dk-name span { overflow: hidden; text-overflow: ellipsis; }
+.dk-name:hover span { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.dk-name svg { flex: none; color: var(--muted); }
+.dk-star { flex: none; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 10px; background: none; display: grid; place-items: center; cursor: pointer; }
+.dk-tool { height: 30px; min-width: 32px; padding: 0 8px; border: 0; border-radius: 10px; background: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  font: 500 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); cursor: pointer; }
+.dk-tool:hover, .dk-star:hover { background: var(--sunken); }
+.dk-head { display: none; }
+.dk-scroll { position: relative; height: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; }
+.dk-scroll::-webkit-scrollbar { display: none; }
+.dk-track { position: relative; width: max-content; }
+.tt { border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+.tt td, .tt th { box-sizing: border-box; width: var(--cw); min-width: var(--cw); max-width: var(--cw); height: 20px; padding: 0; text-align: center; vertical-align: middle; font: 400 12px var(--mono); white-space: nowrap; color: var(--ink); }
+.tt .lab { position: sticky; left: 0; z-index: 3; width: 46px; min-width: 46px; max-width: 46px; background: var(--ground); text-align: left; color: var(--ink-2); font-size: 10px; line-height: 1; }
+.tt .lab svg { display: block; }
+.tt .lab small { position: absolute; left: 19px; top: 50%; transform: translateY(-50%); font: 400 10px var(--mono); }
+.tt tr.wind .lab small { left: 2px; top: auto; bottom: -9px; transform: none; }
+.tt tr.stars > * { height: 18px; } .tt tr.wind > * { height: 22px; } .tt tr.from > * { height: 18px; } .tt tr.more > * { height: 20px; }
+.tt tr.day th { height: 24px; text-align: left; font: 700 15px var(--display); letter-spacing: -.01em; overflow: visible; }
+.tt tr.day th.name { padding-left: 8px; }
+.tt tr.hour td { height: 22px; border-bottom: 1px solid var(--ink); color: var(--muted); }
+.tt tr.hour td.lite { color: var(--ink); font-weight: 600; }
+.tt tr.hour td.sel { color: var(--pen-ink); font-weight: 600; }
+.tt tr.stars td { height: 18px; }
+.tt tr.stars td i { color: #1a1d2166; font-style: normal; }
+.tt tr.wind td b { font: 600 13px var(--mono); }
+.tt tr.wind td small { margin-left: 3px; font: 400 11px var(--mono); color: var(--muted); }
+.tt tr.from td { height: 18px; }
+.tt tr.wing td { height: 22px; font-weight: 600; }
+.tt tr.more td { color: var(--ink); }
+.tt tr.more.first td { border-top: 1px solid #1a1d2133; }
+.tt tr.more td.dash { color: var(--muted); }
+.tt td .gf { padding: 1px 4px; border-radius: 3px; background: #f6dfc9; }
+.tt td.old > * , .tt td.old { color: #1a1d2170; }
+.tt td.old svg { opacity: .5; }
+.tt td.night { background-image: repeating-linear-gradient(135deg, #1a1d2112 0 1px, transparent 1px 7px); }
+.tt tr.hour td.night { font-weight: 400; }
+.tt td.mid, .tt th.mid { border-left: 1.5px solid var(--ink); }
+.tt td.cut { border-left: 1.5px dashed #1a1d21b3; }
+.tt td.pick { cursor: pointer; }
+.tt td.pick:hover { background-color: #ede6d6aa; }
+.tt-pen { position: absolute; top: 26px; pointer-events: none; overflow: visible; z-index: 2; }
+.dock .chev { transition: transform .2s; }
+.dock.open .chev { transform: rotate(180deg); }
+/* a phone's dock is the chart's bottom sheet: a grip, then its head, then the hours */
+.app[data-layout=phone] .dock { padding: 0 0 0 10px; }
+.app[data-layout=phone] .dk-tools { display: none; }
+.app[data-layout=phone] .dk-head { position: relative; display: flex; align-items: center; gap: 2px; height: 44px; padding: 8px 6px 0 0; }
+.dk-grip { position: absolute; left: 50%; top: 4px; width: 38px; height: 4px; margin-left: -19px; border: 0; border-radius: 4px; background: #1a1d2140; padding: 0; cursor: pointer; }
+.dk-head .dk-name { font-size: 19px; max-width: 46vw; }
+.dk-head .sp { flex: 1; }
+.app[data-layout=phone] .dk-scroll { height: calc(100% - 44px); }
+.app[data-layout=phone] .tt .lab { width: 38px; min-width: 38px; max-width: 38px; }
+.app[data-layout=phone] .tt tr.day th { height: 20px; font-size: 14px; }
+/* the chosen spot on the chart: its name and wind in the pen's red, the pen's loop round it, the range ring */
+.lt.sel { z-index: 6; }
+.lt.sel .lt-lab { display: block; }
+.lt.sel .lt-lab i { color: var(--pen-ink); }
+.lt-loop { position: absolute; left: -24px; top: -20px; width: 52px; height: 42px; overflow: visible; pointer-events: none; }
+.ring { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; }
+.ring svg { position: absolute; overflow: visible; }
 .toast { position: absolute; left: 50%; bottom: 72px; z-index: 70; transform: translateX(-50%); padding: 10px 16px; border-radius: 99px; background: var(--g-ink); color: var(--ground);
   font: 500 11px var(--mono); letter-spacing: .04em; box-shadow: 0 8px 20px -6px #000a; white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .toast[hidden] { display: none; }
@@ -314,9 +380,9 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
       <span class="when listonly" id="when">Stars at 14:00 today</span>
       <span class="credit chartonly"><b>i</b>Harmonie</span>
     </div>
+    <div class="dock closed" id="dock" role="region" aria-label="Forecast for the chosen spot"></div>
   </div>
 
-  <div class="pincard" id="pincard" hidden></div>
   <button class="toggle" id="toggle" data-map-toggle></button>
   <div class="toast" id="toast" role="status" hidden></div>
 </div>
@@ -329,11 +395,13 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
   <h3>What to try</h3>
   <ul>
     <li><b>Hover a card.</b> Its spot on the map turns black and shows its name, and the map moves to it. Move off the list and the map goes back to show all the spots.</li>
-    <li><b>Hover a spot on the map.</b> Its card is outlined in the list. Click a spot on the map to scroll the list to its card.</li>
+    <li><b>Hover a spot on the map.</b> Its card is outlined in the list. Click a spot on the map beside the list to scroll the list to its card. The map beside the list never opens the forecast dock.</li>
     <li><b>Switch between Favourites and Near you.</b> The map shows only the spots on the list, and zooms to fit them. The blue dot is you.</li>
     <li><b>Press Full chart</b> (top left of the map). The map grows to fill the screen and becomes the chart, with its own search box, controls and every spot. Press the black List button, the collapse button (top right), Escape or the browser's Back button to return to the list.</li>
-    <li>On the full chart, <b>click a spot</b> to see its card over the chart.</li>
-    <li><b>Press a card's picture</b> to open the full chart at that spot, as the picture does now.</li>
+    <li>On the full chart, <b>click a spot</b>. The chart's forecast dock opens along the bottom, as it does on the chart today, and the spot gets the chart's red pen loop and range ring. There is no card over the map: to see the card, go back to the list.</li>
+    <li>With the dock open, the <b>black List button moves up</b> to sit just above it, and moves back down when the dock closes (the × on the dock, or Escape). Press the arrow on the dock for more rows; the button moves with it. On a phone the dock is the chart's bottom sheet, and the List button sits above it.</li>
+    <li>Click an hour in the dock to pick it. The stars on the map follow.</li>
+    <li><b>Press a card's picture</b> to open the full chart at that spot, with its dock open.</li>
     <li><b>Pick an hour</b> on any card. Every card and every spot on the map shows the stars for that hour.</li>
     <li><b>Drag and scroll the map</b> to move and zoom it.</li>
     <li><b>Change the width</b> with the buttons in the black bar, or by resizing the window. From 1100 pixels wide the map sits beside the list. Below that the map is hidden and the black Map button appears, as on Airbnb. Under 720 pixels it is the phone layout.</li>
@@ -343,6 +411,7 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
   <ul>
     <li>The map is two screenshots of the real chart running on this branch (Ireland, and the Dublin coast in more detail), placed with the same map maths the chart uses. The spots and the blue dot are drawn on top so they can respond to the mouse. They are drawn the way the chart draws its spots.</li>
     <li>Only the Dublin coast has the detailed picture, so zooming in elsewhere looks soft. In the real build it is the live chart, sharp at every zoom.</li>
+    <li>The forecast dock is rebuilt in HTML from the real one (src/ForecastDock.tsx and src/dock.css, checked against screenshots of the running app at 1440 and 390), with the same made-up forecast as the cards. On a phone, tap the grip or the arrow to raise the sheet instead of dragging it.</li>
     <li>The cards are drawn the way src/finder/SpotCard.tsx draws them, with a made-up forecast. The real Near you list has every spot within 30 km (23 from this location). The mock-up shows the 12 nearest so the file stays small.</li>
   </ul>
 
@@ -350,6 +419,7 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
   <ul>
     <li><b>One chart, moved, not two.</b> The page that draws the chart (src/App.tsx) would draw the finder and one <code>WindMap</code> together. The map sits in a box that is either the panel on the right or the whole screen. Expanding changes the box's size and calls <code>map.resize()</code> once at the end of the animation. The map is never unmounted, so it keeps its style, tiles, forecast frames and wind particles, and the browser keeps one WebGL context instead of two.</li>
     <li><b>Panel and full chart differ only in what the map is given.</b> In the panel: only the listed spots as lights, no loupe or dock, the hour picked on the cards, and the map fitted to the list. Full screen: every spot, the dock, the search box and the layers, exactly as the chart is today. The finder already gets the chart's rated hours from App, so nothing new has to be loaded.</li>
+    <li><b>The dock stays as it is.</b> It only appears when the chart is full screen, never in the side panel. The List button would sit inside the dock's own layout, as the dock's tools and the chart's small print already do, so it moves with the dock's top edge in the same frame and can never cover it.</li>
     <li><b>Hover.</b> A card passes its spot's id to the lights (a class toggled in force5/src/lights.ts, no React re-render) and calls <code>easeTo</code> on the map after a short delay, so scrolling past cards does not throw the map around.</li>
     <li><b>Addresses.</b> <code>/</code> becomes the finder. The full chart is the same page with <code>?map</code> in the address (pushed to history, so Back returns to the list). Existing links keep working: <code>/?spot=keel</code> opens the full chart on Keel, and <code>/spots</code> redirects to <code>/</code>. The "open the page you used last" memory in src/lastView.ts could then remember whether the chart was open.</li>
     <li><b>Phone.</b> The map is not created until the Map button is first pressed, as the old finder did. After that it is kept, hidden, and resized when shown again.</li>
@@ -361,6 +431,7 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
     <li><b>The expand animation.</b> Resizing a WebGL canvas every frame is costly. Better to animate the box with a transform or clip and resize the map once at the end.</li>
     <li><b>Phone memory.</b> The map, its forecast frames and 20 or more cards with pictures in one page. iOS Safari reloads tabs that use too much memory. Creating the map only when asked, and dropping it after a long time hidden, keeps that down.</li>
     <li><b>Hover moving the map</b> can feel busy. The delay, and returning to the whole list when the mouse leaves, should be tried with real use. It is easy to switch to "light up only, do not move".</li>
+    <li><b>The bottom of the full chart is busy:</b> the dock, its tools on the right, the small print on the left and the List button in the middle. Where the window is too narrow for the button between them, the mock-up lifts the button above the dock's tools. The real build should check this at every width.</li>
     <li>The chart's first load gets heavier for people who only wanted the list. The panel should wait until the cards are drawn before it asks for the map.</li>
   </ul>
 </div>
@@ -448,10 +519,10 @@ for (const s of SPOTS.values()) s.km = kmFrom(s);
    ========================================================================= */
 const Q = new URLSearchParams(location.search);
 const S = { scope: "near", starred: new Set(["dollymount", "portmarnock", "brandon", "keel", "rosslare", "downings"]), hour: NOW,
-  view: location.hash === "#chart" ? "chart" : "list", layout: "split", lit: null, open: null };
+  view: location.hash === "#chart" ? "chart" : "list", layout: "split", lit: null, sel: null, day: 0, rows: false };
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
-const app = $("app"), list = $("list"), cardsEl = $("cards"), mapEl = $("map"), lightsEl = $("lights"), pincard = $("pincard"), toggle = $("toggle"), toast = $("toast");
+const app = $("app"), list = $("list"), cardsEl = $("cards"), mapEl = $("map"), lightsEl = $("lights"), dockEl = $("dock"), toggle = $("toggle"), toast = $("toast");
 
 function listed() {
   const pool = S.scope === "near" ? NEAR_IDS.map((id) => SPOTS.get(id)) : [...S.starred].map((id) => SPOTS.get(id)).filter(Boolean);
@@ -545,7 +616,7 @@ function todayStrip(spot, inner, phone) {
   const fits = W <= inner + 2;
   return `<div class="hoursw ${fits ? "fits" : ""}" data-stripw><div class="hours" data-strip role="group" aria-label="Today's hours"><div class="track" style="width:${W}px">${marks}${band}${cols.map((h) => {
     const r = rate(spot, 0, h), dark = h < FIRST || h > LAST;
-    return `<button class="hc ${dark ? "off" : ""} ${h < NOW ? "gone" : ""} ${h === NOW ? "now" : ""} ${h === S.hour ? "sel" : ""}" data-hour="${h}" style="width:${cw}px" aria-pressed="${h === S.hour}"
+    return `<button class="hc ${dark ? "off" : ""} ${h < NOW ? "gone" : ""} ${h === NOW ? "now" : ""} ${h === S.hour && !S.day ? "sel" : ""}" data-hour="${h}" style="width:${cw}px" aria-pressed="${h === S.hour && !S.day}"
       aria-label="${hh(h)}:00, ${compass(r.from)} ${Math.round(r.mean)} knots, gusts ${Math.round(r.gust)} knots${dark ? "" : `, ${r.stars} of 5 stars`}">
       <span class="t">${h === NOW ? "now" : hh(h)}</span><span class="sky">${sky(skyAt(0, h), 16)}</span>
       <b>${Math.round(r.mean)}</b><small>g${Math.round(r.gust)}</small>${arrow(spot, r.from, 12)}
@@ -593,7 +664,7 @@ function nextDays(spot, W) {
   return `<div class="chart"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${spot.name}: the next five days"><defs>${defs}</defs>${g}</svg></div>`;
 }
 function card(spot, width, phone, pinned = false) {
-  const inner = Math.floor(width - 26), pw = phone ? 96 : 112, ph = pw * 10 / 16, r = rate(spot, 0, S.hour);
+  const inner = Math.floor(width - 26), pw = phone ? 96 : 112, ph = pw * 10 / 16, r = rate(spot, 0, S.day ? NOW : S.hour);
   return `<article class="card ${S.lit === spot.id && !pinned ? "lit" : ""}" data-card="${spot.id}" aria-label="${spot.name}">
     <div class="head"><button class="pic" data-pic="${spot.id}" aria-label="${spot.name} on the chart"><span class="picbox">${spot.pic ? `<img src="2026-10-26-spot-finder-chart/sat/${spot.id}.webp" alt="" loading="lazy">` : ""}${rose(spot, r, pw, ph)}</span><span class="go">Chart</span></button>
       <div class="nm"><h3><a href="#" data-page="${spot.id}">${spot.name}</a></h3><span class="sub">${spot.km} km · Co. ${spot.county}</span></div>
@@ -624,11 +695,11 @@ function wireCards(root) {
     ends(); r.onscroll = ends;
   });
   root.querySelectorAll("[data-nav]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); const r = b.parentElement.querySelector("[data-strip]"); r.scrollBy({ left: +b.dataset.nav * r.clientWidth * .6, behavior: reduced ? "auto" : "smooth" }); });
-  root.querySelectorAll("[data-hour]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); const h = +b.dataset.hour; S.hour = S.hour === h ? NOW : h; refreshHour(); });
+  root.querySelectorAll("[data-hour]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); const h = +b.dataset.hour; S.hour = S.hour === h && !S.day ? NOW : h; S.day = 0; refreshHour(); });
   root.querySelectorAll("[data-fav]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); const id = b.dataset.fav;
     S.starred.has(id) ? S.starred.delete(id) : S.starred.add(id);
     say(S.starred.has(id) ? `${SPOTS.get(id).name} is in your favourites.` : `${SPOTS.get(id).name} is no longer a favourite.`);
-    renderList(); if (S.open) renderPin(); if (S.scope === "favourites") { renderLights(); fitList(); } });
+    renderList(); if (S.sel) renderDock(); if (S.scope === "favourites") { renderLights(); fitList(); } });
   root.querySelectorAll("[data-pic]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); openChartAt(b.dataset.pic); });
   root.querySelectorAll("[data-page]").forEach((a) => a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); say(`This opens the ${SPOTS.get(a.dataset.page).name} spot page.`); });
   root.querySelectorAll("[data-card]").forEach((c) => {
@@ -637,8 +708,8 @@ function wireCards(root) {
   });
 }
 function refreshHour() {
-  renderList(); if (S.open) renderPin(); renderLights();
-  $("when").textContent = S.hour === NOW ? "Stars at 14:00 today" : `Stars at ${hh(S.hour)}:00 today`;
+  renderList(); if (S.sel) renderDock(); renderLights();
+  $("when").textContent = S.day ? `Stars at ${hh(S.hour)}:00 ${DAYS[S.day].short === "Tue" ? "tomorrow" : "on " + DAYS[S.day].short}` : `Stars at ${hh(S.hour)}:00 today`;
 }
 
 /* =========================================================================
@@ -668,9 +739,19 @@ function draw() {
   }
   LAYERS[1].el.style.opacity = Math.max(0, Math.min(1, (V.zoom - 8.4) / .7));
   const C = world(V.lon, V.lat, V.zoom);
-  for (const m of markers) { const p = world(m.lon, m.lat, V.zoom); m.el.style.transform = `translate(${(p[0] - C[0] + W / 2).toFixed(1)}px,${(p[1] - C[1] + H / 2).toFixed(1)}px)`; }
+  for (const m of markers) { const p = world(m.lon, m.lat, V.zoom); m.el.style.transform = `translate(${(p[0] - C[0] + W / 2).toFixed(1)}px,${(p[1] - C[1] + H / 2).toFixed(1)}px)`; if (m.ring) drawRing(m); }
   lightsEl.classList.toggle("lo", V.zoom < 8);
-  lightsEl.classList.toggle("named", S.view === "chart" && V.zoom >= 10.6);
+  lightsEl.classList.toggle("named", S.view === "chart" && V.zoom >= 11.5);
+}
+// The range ring round the chosen spot, as the chart draws it: 5 nautical miles (3 on a phone), ticked at the four points.
+function drawRing(m) {
+  const nm = S.layout === "phone" ? 3 : 5, mpp = 40075016.686 * Math.cos(m.lat * Math.PI / 180) / (TS * 2 ** V.zoom), r = nm * 1852 / mpp, svg = m.el.firstChild;
+  const t = (a) => { const x = Math.sin(a), y = -Math.cos(a); return `M${(x * (r - 7)).toFixed(1)} ${(y * (r - 7)).toFixed(1)}L${(x * (r + 7)).toFixed(1)} ${(y * (r + 7)).toFixed(1)}`; };
+  svg.setAttribute("style", `left:${-r - 40}px;top:${-r - 40}px;width:${2 * r + 80}px;height:${2 * r + 80}px`);
+  svg.setAttribute("viewBox", `${-r - 40} ${-r - 40} ${2 * r + 80} ${2 * r + 80}`);
+  const lx = r * .72 + 8, ly = -r * .72;
+  svg.innerHTML = `<circle r="${r.toFixed(1)}" fill="none" stroke="#1a1d21" stroke-width="1.3" stroke-dasharray="6 5"/><path d="${[0, 1, 2, 3].map((k) => t(k * Math.PI / 2)).join("")}" stroke="#1a1d21" stroke-width="1.3"/>
+    <text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-family="IBM Plex Mono" font-size="11" font-weight="600" letter-spacing="1" stroke="#f1efe6" stroke-width="3" paint-order="stroke" fill="#1a1d21">${nm} NM</text>`;
 }
 let anim = 0;
 function flyTo(t, ms = 550) {
@@ -704,20 +785,23 @@ const fitList = (ms = 650) => flyTo(listFit(), ms);
 // Through the box's own animation (the expand), the map is drawn again each frame at the size it has.
 function follow(ms = 520) { const t0 = performance.now(); const tick = (t) => { draw(); if (t - t0 < ms) requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
 
+const LOOP = `<svg class="lt-loop" viewBox="-26 -21 52 42" aria-hidden="true"><path d="M-6 -15C6 -18 19 -13 21 -3C23 7 12 15 -1 15C-14 15 -22 8 -21 -1C-20 -9 -12 -14 -2 -15.5C4 -16 9 -15 12 -13" fill="none" stroke="#d43a2c" stroke-width="2" stroke-linecap="round" stroke-opacity=".9"/><path d="M8 -16.5l7 2.5" stroke="#d43a2c" stroke-width="5" stroke-linecap="round" stroke-opacity=".35"/></svg>`;
 function lightHtml(s) {
-  const r = rate(s, 0, S.hour), off = r.shore === "off" || r.shore === "x-off";
-  return `<button class="lt s${r.stars} ${off ? "off" : ""} ${S.lit === s.id ? "lit" : ""}" data-lt="${s.id}" aria-label="${s.name}: ${r.stars} of 5 stars">
+  const r = rate(s, S.day, S.hour), off = r.shore === "off" || r.shore === "x-off", sel = S.sel === s.id && S.view === "chart";
+  return `<button class="lt s${r.stars} ${off ? "off" : ""} ${S.lit === s.id ? "lit" : ""} ${sel ? "sel" : ""}" data-lt="${s.id}" aria-label="${s.name}: ${r.stars} of 5 stars">${sel ? LOOP : ""}
     <svg viewBox="-30 -30 60 60" aria-hidden="true"><g transform="rotate(${Math.round(r.from + 180)})"><path class="lt-arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6"/></g><circle class="lt-ring" r="7.6"/><text class="lt-n" y="3.4" text-anchor="middle">${r.stars}</text></svg>
-    <span class="lt-lab" aria-hidden="true"><b>${s.name}</b><i>${compass(r.from)} ${Math.round(r.mean)}</i></span></button>`;
+    <span class="lt-lab" aria-hidden="true"><b>${s.name}</b><i>${compass(r.from)} ${Math.round(r.mean)}${sel && off ? " · offshore" : ""}</i></span></button>`;
 }
 function renderLights() {
   const shown = S.view === "chart" ? [...SPOTS.values()] : listed();
   // the listed ones last, so they stand over their neighbours
   const ids = new Set(listed().map((s) => s.id)), order = shown.slice().sort((a, b) => ids.has(a.id) - ids.has(b.id));
-  lightsEl.innerHTML = order.map(lightHtml).join("") + `<span class="you" title="You are here" aria-label="You are here" role="img"></span>`;
+  const ring = S.sel && S.view === "chart" ? `<span class="ring" id="ring"><svg aria-hidden="true"></svg></span>` : "";
+  lightsEl.innerHTML = ring + order.map(lightHtml).join("") + `<span class="you" title="You are here" aria-label="You are here" role="img"></span>`;
   lightsEl.classList.toggle("has-lit", !!S.lit);
   markers = [...lightsEl.querySelectorAll("[data-lt]")].map((el) => { const s = SPOTS.get(el.dataset.lt); return { el, lon: s.lon, lat: s.lat }; });
   markers.push({ el: lightsEl.querySelector(".you"), lon: RIDER.lon, lat: RIDER.lat });
+  if (ring) { const s = SPOTS.get(S.sel); markers.push({ el: $("ring"), lon: s.lon, lat: s.lat, ring: true }); }
   lightsEl.querySelectorAll("[data-lt]").forEach((el) => {
     el.onmouseenter = () => light(el.dataset.lt);
     el.onmouseleave = () => light(null);
@@ -742,20 +826,124 @@ function hoverCard(id) {
 }
 list.addEventListener("mouseleave", () => { if (S.layout !== "split" || S.view !== "list") return; clearTimeout(hoverT); clearTimeout(backT); backT = setTimeout(() => fitList(600), 450); });
 function pressLight(id) {
-  if (S.view === "chart") { S.open = id; renderPin(); return; }
+  if (S.view === "chart") { selectSpot(id); return; }
   const c = cardsEl.querySelector(`[data-card="${id}"]`);
   if (c) { c.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" }); c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash"); }
 }
-function renderPin() {
-  if (!S.open || S.view !== "chart") { pincard.hidden = true; pincard.innerHTML = ""; return; }
-  const s = SPOTS.get(S.open), phone = S.layout === "phone";
-  pincard.hidden = false;
-  const w = phone ? mapEl.clientWidth - 16 : Math.min(600, mapEl.clientWidth - 32);
-  pincard.innerHTML = card(s, w, phone, true) + `<button class="round x" aria-label="Close" style="width:30px;height:30px">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
-  wireCards(pincard);
-  pincard.querySelector(".x").onclick = (e) => { e.stopPropagation(); S.open = null; renderPin(); };
+
+/* =========================================================================
+   The forecast dock (src/ForecastDock.tsx): the chosen spot's hours along the foot of the full chart
+   ========================================================================= */
+const DOCK_H = { desk: [130, 250], phone: [144, 286] };
+const dockHeight = () => S.sel && S.view === "chart" ? DOCK_H[S.layout === "phone" ? "phone" : "desk"][S.rows ? 1 : 0] : 0;
+const DAY_NAME = ["Mon 26", "Tue 27", "Wed 28"];
+const ICON = {
+  wind: `<svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M1 3h9a2 2 0 1 0-2-2M1 6h12a2 2 0 1 1-2 2M1 9h6"/></svg>`,
+  from: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M5.5 10.5l5-5M7 5.5h3.5V9"/></svg>`,
+  wing: `<svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12C3 6 8 2 14 2C13 8 9 12 2 12zM2 12l7-6"/></svg>`,
+  gust: `<svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke-width="1.2" stroke-linecap="round"><path d="M1 3h7M1 6h9M1 9h7" stroke="#1a1d21"/><path d="M12 2l2-1M12 6h3M12 10l2 1" stroke="#e0703a"/></svg>`,
+  waves: `<svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M1 4c2-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0M1 8c2-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0"/></svg>`,
+  current: `<svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 11L14 2M10 2h4v3M1 7l5-3"/></svg>`,
+  air: `<svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 2v8.5a2.6 2.6 0 1 0 2 0V2a1 1 0 0 0-2 0z"/><circle cx="5" cy="12.6" r="1.4" fill="currentColor"/></svg>`,
+  rain: `<svg width="12" height="16" viewBox="0 0 12 16"><path d="M6 1.5C4 5 2 7.5 2 10.2a4 4 0 0 0 8 0C10 7.5 8 5 6 1.5z" fill="#2f7fc0"/></svg>`,
+};
+const CHEV_UP = `<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>`;
+const CLOSE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
+const LAYERS3 = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/></svg>`;
+const BLEND = `<svg width="18" height="12" viewBox="0 0 18 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h7M8 6c3 0 4-4 8-4M8 6c3 0 4 4 8 4"/></svg>`;
+const CHEV_R = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>`;
+function dockCols() {
+  const cols = [{ d: 0, h: NOW - 6, old: true }, { d: 0, h: NOW - 3, old: true }, { d: 0, h: NOW - 1, old: true, cut: true }];
+  for (let h = NOW; h < 24; h++) cols.push({ d: 0, h });
+  for (let d = 1; d <= 2; d++) for (let h = 0; h < 24; h++) cols.push({ d, h, mid: h === 0 });
+  return cols;
 }
+// A hand-drawn box round the chosen hour, and the pen's line down it.
+function penBox(w, h) {
+  const j = (v) => (v + (Math.sin(v * 7.3) * 1.6)).toFixed(1);
+  return `<path d="M${j(8)} ${j(3)}C${j(w * .4)} ${j(-1)} ${j(w * .7)} ${j(2)} ${w - 7} 1.5C${w + 1} 1 ${w + 1.5} 8 ${w} ${j(20)}C${w - 1} ${h * .5} ${w + 1} ${h * .8} ${w - 1} ${h - 6}C${w - 2} ${h + 1} ${w - 9} ${h} ${w * .5} ${h + .5}C${w * .3} ${h + 1} 6 ${h} 3 ${h - 4}C0 ${h - 12} 2 ${h * .6} 1.5 ${h * .4}C1 16 0 5 9 2.5L${w * .55} 0"
+    fill="none" stroke="#d43a2c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-opacity=".88"/>
+    <path d="M${w * .52} -2C${w * .5} ${h * .4} ${w * .53} ${h * .7} ${w * .51} ${h + 2}" fill="none" stroke="#d43a2c" stroke-width="1.6" stroke-linecap="round" stroke-opacity=".85"/>`;
+}
+function renderDock() {
+  const s = S.sel && SPOTS.get(S.sel), on = !!s && S.view === "chart", phone = S.layout === "phone";
+  dockEl.classList.toggle("closed", !on); dockEl.classList.toggle("open", S.rows);
+  app.style.setProperty("--dock-h", `${dockHeight() || DOCK_H[phone ? "phone" : "desk"][0]}px`);
+  if (!on) { placeFloat(); return; }
+  const keep = dockEl.querySelector(".dk-scroll")?.scrollLeft ?? 0;
+  const cw = phone ? 52 : 62, cols = dockCols(), lab = phone ? 38 : 46;
+  const night = (h) => h < Math.ceil(FIRST) || h > Math.floor(LAST);
+  const cls = (c, extra = "") => `${c.old ? "old" : ""} ${night(c.h) ? "night" : ""} ${c.mid ? "mid" : ""} ${c.cut ? "cut" : ""} ${extra}`;
+  const R = cols.map((c) => rate(s, c.d, c.h)), selIdx = cols.findIndex((c) => !c.old && c.d === S.day && c.h === S.hour);
+  const cell = (fn, rowExtra = "") => cols.map((c, i) => `<td class="${cls(c, rowExtra)} pick" data-dk="${c.d}:${c.h}">${fn(c, R[i])}</td>`).join("");
+  const stars = (c, r) => night(c.h) ? "" : !r.stars ? `<i>·</i>` : c.old ? starRowHtml(r.stars, 8) : `<span style="letter-spacing:-.5px;font-size:13px">${"★".repeat(r.stars)}</span>`;
+  const off = (r) => r.shore === "off" || r.shore === "x-off";
+  const wing = (c, r) => !night(c.h) && r.stars ? (Math.max(3, Math.min(8, Math.round(110 / r.mean * 2) / 2))).toString() : "";
+  const dash = `<span style="color:var(--muted)">–</span>`;
+  const current = (c) => { const v = Math.abs(Math.sin(2 * Math.PI * (c.d * 24 + c.h - 7.6) / 12.42)) * 1.2 + .2, up = Math.cos(2 * Math.PI * (c.d * 24 + c.h - 7.6) / 12.42) > 0;
+    return `<span style="color:#2f6f9f">${up ? "↗" : "↙"}</span>${v.toFixed(1)}`; };
+  const rain = (c) => { const k = skyAt(c.d, Math.min(17, Math.max(7, c.h))); return k === "rain" ? (c.h % 3 ? "0.6" : "1.2") : k === "showers" && c.h % 4 === 1 ? "0.3" : dash; };
+  const more = !S.rows ? "" : `
+    <tr class="more first"><th class="lab">${ICON.gust}</th>${cell((c, r) => { const g = r.gust / r.mean; return g >= 1.5 ? `<span class="gf">${g.toFixed(1)}×</span>` : `${g.toFixed(1)}×`; })}</tr>
+    <tr class="more"><th class="lab">${ICON.waves}<small>m</small></th>${cell((c) => wave(s, c.d).m.toFixed(1))}</tr>
+    <tr class="more"><th class="lab">${ICON.current}<small>kn</small></th>${cell(current)}</tr>
+    <tr class="more"><th class="lab">${sky("partly", 16)}</th>${cell((c) => night(c.h) && c.h % 3 ? "" : sky(skyAt(c.d, Math.min(17, Math.max(7, c.h))), 15))}</tr>
+    <tr class="more"><th class="lab">${ICON.air}<small>°C</small></th>${cell((c) => String(airAt(c.d, Math.min(17, Math.max(7, c.h))) - (night(c.h) ? 3 : 0)))}</tr>
+    <tr class="more"><th class="lab">${ICON.rain}<small>mm/h</small></th>${cell(rain)}</tr>`;
+  const dayRow = cols.map((c, i) => i === 0 || c.mid ? `<th class="${c.mid ? "mid" : ""} name">${DAY_NAME[c.d]}</th>` : "<th></th>").join("");
+  const tools = `<button class="dk-star" data-dkfav aria-pressed="${S.starred.has(s.id)}" aria-label="Star ${s.name}">${FAV(S.starred.has(s.id))}</button>
+    <button class="dk-name" data-dkpage><span>${s.name}</span>${CHEV_R}</button>`;
+  const buttons = `<button class="dk-tool" data-say="This opens the chart's layers, as it does now." aria-label="Layers">${LAYERS3}${phone ? "" : "Layers"}</button>
+    <button class="dk-tool" data-say="This opens the Blend view, as it does now." aria-label="Blend">${BLEND}Blend</button>
+    <button class="dk-tool" data-dkrows aria-label="${S.rows ? "Fewer rows" : "More rows"}">${CHEV_UP}</button>
+    <button class="dk-tool" data-dkclose aria-label="Close">${CLOSE}</button>`;
+  const penH = 18 + 22 + 18 + (phone && !S.rows ? 0 : 22) + (S.rows ? 120 : 0);
+  dockEl.innerHTML = `${phone ? `<div class="dk-head"><button class="dk-grip" data-dkrows aria-label="${S.rows ? "Lower the sheet" : "Raise the sheet"}"></button>${tools}<span class="sp"></span>${buttons}</div>`
+      : `<div class="dk-tools floatbox"><div class="dk-id">${tools}</div>${buttons}</div>`}
+    <div class="dk-scroll"><div class="dk-track" style="--cw:${cw}px">
+      <table class="tt" aria-label="${s.name}, hour by hour"><tbody>
+        <tr class="day"><th class="lab"></th>${dayRow}</tr>
+        <tr class="hour"><th class="lab"></th>${cols.map((c, i) => `<td class="${cls(c, !c.old && !night(c.h) ? "lite" : "")} ${i === selIdx ? "sel" : ""} pick" data-dk="${c.d}:${c.h}">${hh(c.h)}</td>`).join("")}</tr>
+        <tr class="stars"><th class="lab"></th>${cell(stars)}</tr>
+        <tr class="wind"><th class="lab">${ICON.wind}<small>kn</small></th>${cell((c, r) => `<b>${Math.round(r.mean)}</b>${r.gust / r.mean >= 1.5 ? `<small>g${Math.round(r.gust)}</small>` : ""}`)}</tr>
+        <tr class="from"><th class="lab">${ICON.from}</th>${cell((c, r) => arrow(s, r.from, 13))}</tr>
+        ${phone && !S.rows ? "" : `<tr class="wing"><th class="lab">${ICON.wing}</th>${cell(wing)}</tr>`}
+        ${more}
+      </tbody></table>
+      ${selIdx >= 0 ? `<svg class="tt-pen" style="left:${lab + selIdx * cw - 3}px;width:${cw + 6}px;height:${penH + 22}px;top:${phone ? 20 : 24}px" viewBox="0 0 ${cw + 6} ${penH + 22}" aria-hidden="true">${penBox(cw + 6, penH + 20)}</svg>` : ""}
+    </div></div>`;
+  const sc = dockEl.querySelector(".dk-scroll"); sc.scrollLeft = keep;
+  dockEl.querySelectorAll("[data-dk]").forEach((td) => td.onclick = () => { const [d, h] = td.dataset.dk.split(":").map(Number); S.day = d; S.hour = h; refreshHour(); });
+  dockEl.querySelectorAll("[data-dkrows]").forEach((b) => b.onclick = () => { S.rows = !S.rows; renderDock(); });
+  dockEl.querySelector("[data-dkclose]").onclick = () => closeDock();
+  dockEl.querySelector("[data-dkfav]").onclick = () => { const id = s.id; S.starred.has(id) ? S.starred.delete(id) : S.starred.add(id); renderDock(); renderList();
+    say(S.starred.has(id) ? `${s.name} is in your favourites.` : `${s.name} is no longer a favourite.`); };
+  dockEl.querySelector("[data-dkpage]").onclick = () => say(`This opens the ${s.name} spot page.`);
+  dockEl.querySelectorAll("[data-say]").forEach((b) => b.onclick = () => say(b.dataset.say));
+  placeFloat();
+}
+// The black List button, the small print and the toast stand just above the dock while it is open, and move with it.
+function placeFloat() {
+  const h = dockHeight();
+  let lift = h ? h + 12 : 18;
+  if (h && S.layout !== "phone") {
+    const tools = dockEl.querySelector(".dk-tools"), W = app.clientWidth, bw = toggle.offsetWidth || 110;
+    // where the dock's tools would meet the button, the button stands over them
+    if (tools && W - 12 - tools.offsetWidth < W / 2 + bw / 2 + 10) lift = h + 10 + tools.offsetHeight + 12;
+  }
+  app.style.setProperty("--toggle-b", `${lift}px`);
+  app.style.setProperty("--credit-b", `${h ? h + 12 : 16}px`);
+  toast.style.bottom = `${lift + 54}px`;
+}
+function selectSpot(id) {
+  const first = !S.sel;
+  S.sel = id; light(null); renderLights(); renderDock();
+  const s = SPOTS.get(id), zoom = Math.min(maxZoomAt(s.lon, s.lat), Math.max(V.zoom, 10.6));
+  // the spot in the middle of the chart left above the dock
+  const p = world(s.lon, s.lat, zoom), [lon, lat] = unworld(p[0], p[1] + dockHeight() / 2, zoom);
+  flyTo({ lon, lat, zoom }, first ? 650 : 450);
+}
+function closeDock() { S.sel = null; S.rows = false; renderLights(); renderDock(); }
 
 /* =========================================================================
    List and chart: the expand, the black button, and the address
@@ -768,17 +956,17 @@ function setView(view, { push = true, focus = null } = {}) {
   S.view = view; app.dataset.view = view;
   if (push) { if (view === "chart") history.pushState({ view }, "", "#chart"); else if (location.hash === "#chart") history.back(); }
   clearTimeout(hoverT); clearTimeout(backT);
-  if (view === "list") { S.open = null; renderPin(); }
+  if (view === "list") { S.sel = null; S.rows = false; if (S.day) { S.day = 0; S.hour = NOW; refreshHour(); } renderDock(); }
   light(null);
   renderLights(); renderToggle();
   if (wasSplit) { follow(); setTimeout(() => focus ? flyTo(focus, 650) : view === "list" ? fitList(600) : null, focus ? 0 : 480); }
   else requestAnimationFrame(() => { if (focus) V = { ...focus }; else V = listFit(); draw(); });
 }
+// A card's picture: the full chart on that spot, its dock open, as "In the chart" does now.
 function openChartAt(id) {
-  const s = SPOTS.get(id);
-  const focus = { lon: s.lon, lat: s.lat, zoom: Math.min(maxZoomAt(s.lon, s.lat), 10.6) };
-  if (S.view === "chart") flyTo(focus); else setView("chart", { focus });
-  S.open = id; setTimeout(renderPin, S.layout === "split" ? 460 : 30);
+  const wasSplit = S.layout === "split" && S.view === "list";
+  if (S.view !== "chart") setView("chart", { focus: { ...V } });
+  setTimeout(() => selectSpot(id), wasSplit ? 470 : 40);
 }
 function renderToggle() {
   toggle.innerHTML = S.view === "chart" ? `${GLYPH_LIST} List` : `${GLYPH_MAP} Map`;
@@ -788,7 +976,7 @@ toggle.onclick = () => setView(S.view === "chart" ? "list" : "chart");
 $("expand").onclick = (e) => { e.stopPropagation(); setView("chart"); };
 $("collapse").onclick = (e) => { e.stopPropagation(); setView("list"); };
 addEventListener("popstate", () => setView(location.hash === "#chart" ? "chart" : "list", { push: false }));
-addEventListener("keydown", (e) => { if (e.key !== "Escape") return; if (S.open) { S.open = null; renderPin(); } else if (S.view === "chart") setView("list"); });
+addEventListener("keydown", (e) => { if (e.key !== "Escape") return; if (S.sel) closeDock(); else if (S.view === "chart") setView("list"); });
 document.querySelectorAll("[data-scope]").forEach((b) => b.onclick = () => { if (S.scope === b.dataset.scope) return; S.scope = b.dataset.scope; list.scrollTop = 0; renderList(); renderLights(); fitList(); });
 document.querySelectorAll("[data-zoom]").forEach((b) => b.onclick = (e) => { e.stopPropagation();
   flyTo({ ...V, zoom: Math.max(6.2, Math.min(maxZoomAt(V.lon, V.lat), Math.round(V.zoom * 2) / 2 + +b.dataset.zoom)) }, 300); });
@@ -797,7 +985,7 @@ document.querySelectorAll("[data-say]").forEach((b) => b.onclick = (e) => { e.st
 /* dragging and scrolling the map */
 let drag = null, dragged = false;
 mapEl.addEventListener("pointerdown", (e) => {
-  if (e.button !== 0 || e.target.closest(".mapui button, .chead, .pincard")) return;
+  if (e.button !== 0 || e.target.closest(".mapui button, .chead, .dock")) return;
   cancelAnimationFrame(anim); clearTimeout(backT); clearTimeout(hoverT);
   drag = { x: e.clientX, y: e.clientY, c: world(V.lon, V.lat, V.zoom), id: e.pointerId }; dragged = false;
 });
@@ -810,6 +998,7 @@ addEventListener("pointermove", (e) => {
 });
 addEventListener("pointerup", () => { if (!drag) return; drag = null; mapEl.classList.remove("dragging"); setTimeout(() => dragged = false, 0); });
 mapEl.addEventListener("wheel", (e) => {
+  if (e.target.closest(".dock")) return;
   e.preventDefault(); cancelAnimationFrame(anim); clearTimeout(backT);
   const rect = mapEl.getBoundingClientRect(), [W, H] = size(), mx = e.clientX - rect.left - W / 2, my = e.clientY - rect.top - H / 2;
   const C = world(V.lon, V.lat, V.zoom), at = unworld(C[0] + mx, C[1] + my, V.zoom);
@@ -817,7 +1006,6 @@ mapEl.addEventListener("wheel", (e) => {
   const P = world(at[0], at[1], zoom), [lon, lat] = unworld(P[0] - mx, P[1] - my, zoom);
   V = { lon, lat, zoom }; draw();
 }, { passive: false });
-mapEl.addEventListener("click", (e) => { if (!dragged && S.open && !e.target.closest(".lt, .pincard")) { S.open = null; renderPin(); } });
 
 function say(text) { toast.textContent = text; toast.hidden = false; clearTimeout(say.t); say.t = setTimeout(() => toast.hidden = true, 2400); }
 
@@ -831,7 +1019,9 @@ function relayout() {
   if (changed) { app.classList.add("no-anim"); S.layout = layout; app.dataset.layout = layout; requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove("no-anim"))); }
   app.style.setProperty("--mapw", `${Math.round(Math.max(440, Math.min(720, w * .4)))}px`);
   app.style.setProperty("--head-h", `${$("fhead").offsetHeight}px`);
-  if (changed || Math.abs(list.clientWidth - lastListW) > 1) { lastListW = list.clientWidth; renderList(); if (S.open) renderPin(); }
+  if (changed || Math.abs(list.clientWidth - lastListW) > 1) { lastListW = list.clientWidth; renderList(); }
+  if (changed && S.sel) renderLights();
+  renderDock();
   draw();
 }
 let roT = 0;
@@ -853,7 +1043,7 @@ else preview(PREVIEW[Q.get("preview")] ? Q.get("preview") : "fit");
 /* first draw */
 app.dataset.view = S.view;
 S.layout = layoutFor(app.clientWidth); app.dataset.layout = S.layout;
-relayout(); renderList(); renderLights(); renderToggle();
+relayout(); renderList(); renderLights(); renderToggle(); renderDock();
 V = listFit(); draw();
 </script>
 </body>
