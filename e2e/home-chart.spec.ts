@@ -123,10 +123,15 @@ test.describe("on a wide screen", () => {
       () => document.querySelector(".map-canvas")?.className ?? "",
     );
     await page.mouse.move(5, 5);
-    // And a light under the pointer outlines its card.
+    // And a light under the pointer outlines its card, once the chart is at
+    // rest (through a move its lights are drawn, not buttons).
+    await expect(page.locator(".map-lights.is-moving")).toHaveCount(0);
+    await page.waitForTimeout(400);
+    await expect(page.locator(".map-lights.is-moving")).toHaveCount(0);
     await page.locator('.spot-marker[data-spot-id="dollymount"]').hover();
-    await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveClass(
-      /\bis-lit\b/,
+    await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveAttribute(
+      "data-lit",
+      "",
     );
     expect(
       await page.evaluate(

@@ -1755,9 +1755,10 @@ export default function App() {
   const hoverLight = (spot: Spot | null) => {
     if (pageRef.current !== "finder") return;
     document
-      .querySelectorAll("[data-spot-card].is-lit")
-      .forEach((el) => el.classList.remove("is-lit"));
-    if (spot) cardOf(spot.id)?.classList.add("is-lit");
+      .querySelectorAll("[data-spot-card][data-lit]")
+      .forEach((el) => el.removeAttribute("data-lit"));
+    // An attribute React does not write, so a card drawn again keeps it.
+    if (spot) cardOf(spot.id)?.setAttribute("data-lit", "");
     controls.current?.light(spot?.id ?? null);
   };
   /** A light pressed beside the list: the list scrolls to its card. */

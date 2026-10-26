@@ -1414,7 +1414,7 @@
 }
 /* A light under the pointer outlines its place's card; one pressed brings
    the card into view, its outline drawn in for a moment. */
-[data-spot-card].is-lit {
+[data-spot-card][data-lit] {
   outline: 2px solid var(--color-ink);
   outline-offset: 2px;
   box-shadow: var(--inset-shadow-frame), var(--shadow-float);
