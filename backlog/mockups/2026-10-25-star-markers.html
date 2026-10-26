@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock-up · Stars as the chart's lights</title>
+<!--
+  A design exploration, not product code. Standalone; faces from node_modules.
+
+  The owner's steer (25 October 2026), while settling the spots page (7e):
+    - the coloured stars on the map's spots, in place of today's circle with
+      a number in it;
+    - no stars: just a circle;
+    - four stars: a star within a star;
+    - five stars: a star with a circle round it, fully black;
+    - standardise the stars everywhere on the site, the Info page explains them;
+    - a bit of fun: four starts pulsing, five really pumps.
+  Today's lights are drawn as force5/src/lights.ts and src/map.css draw them,
+  so the two can be compared on one made-up Dublin hour (21 kn south-west).
+  ?view=today  ?five=nest|solid|disc  ?four=single|nest  ?ramp=light|spots
+  ?pulse=off|five  ?under=wind  ?zoom=out
+
+  Second round (25 October 2026), the owner's steer on the first:
+    - keep the stars magenta; five like before, the only one in the full,
+      deep chart magenta;
+    - one to four on the gradient;
+    - the four's star within a star may be better than the five's disc;
+    - a hollow star can't mean one star: an outline already means a star the
+      hour would have had but for something (see the rating plan).
+-->
+<style>
+@font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fraunces Variable"; font-style: italic; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-italic.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 500;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 600;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
+
+:root {
+  --ground: #f3eee3; --paper: #fffdf6; --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b; --line: #1a1d2133;
+  --pen: #d43a2c; --pen-ink: #bf3125; --magenta: #b0186a; --sea: #d5e6ea; --land: #ede3c8; --halo: #f1efe6;
+  --s1: #e28bb3; --s2: #d2609a; --s3: #bd3d84; --s4: #a01f6c; --s5: #7c0f55;
+  --display: "Fraunces Variable", Fraunces, Georgia, serif;
+  --body: "Newsreader Variable", Newsreader, Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --edge: inset 0 0 0 2px #f4efe5, inset 0 0 0 3px #1a1d2142;
+  --card: var(--edge), 0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 14px; }
+body { margin: 0; background: #d9d4c7; color: var(--ink); font-family: var(--body); line-height: 1.4; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3, p { margin: 0; }
+
+.mockbar { position: sticky; top: 0; z-index: 40; display: flex; flex-wrap: wrap; gap: 6px 4px; align-items: center; padding: 8px 16px; background: #1a1d21; color: #f3eee3; font: 500 11px var(--mono); letter-spacing: .06em; }
+.mockbar b { margin-right: 8px; text-transform: uppercase; letter-spacing: .14em; }
+.mockbar .gap { width: 14px; }
+.mockbar .lab { opacity: .6; margin-right: 2px; }
+.mockbar button { border: 1px solid #f3eee355; background: none; color: #f3eee3; border-radius: 4px; padding: 3px 8px; font: 500 11px var(--mono); }
+.mockbar button[aria-pressed="true"] { background: #f3eee3; color: #1a1d21; }
+
+main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 22px; }
+.sheet { background: var(--ground); border-radius: 10px; box-shadow: var(--card); padding: 20px 22px; }
+.sheet h2 { font: italic 600 22px var(--display); margin-bottom: 4px; }
+.sheet > p.lede { color: var(--ink-2); max-width: 70ch; margin-bottom: 16px; }
+.eyebrow { font: 600 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+/* ---- The ladder: today against proposed ---- */
+.ladder { display: grid; grid-template-columns: 110px repeat(10, minmax(0, 1fr)); align-items: center; row-gap: 6px; }
+.ladder .h { font: 600 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); text-align: center; padding-bottom: 4px; border-bottom: 1px solid var(--line); line-height: 1.25; }
+.ladder .h:first-child { text-align: left; }
+.ladder .rowlab { font: italic 600 15px var(--display); }
+.ladder .rowlab small { display: block; font: 500 10px var(--mono); color: var(--muted); font-style: normal; }
+.ladder .cell { display: grid; place-items: center; height: 76px; }
+.ladder .cell svg { width: 80px; height: 80px; overflow: visible; }
+.tall { display: none; grid-template-columns: minmax(0, 1fr) 72px 72px; align-items: center; }
+.tall .h { font: 600 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); text-align: center; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.tall .name { font: italic 600 14px var(--display); padding: 0 4px; }
+.tall .cell { display: grid; place-items: center; height: 64px; }
+.tall .cell svg { width: 72px; height: 72px; overflow: visible; }
+.tall .new { background: #fffdf6; }
+.scale-note { margin-top: 10px; font: 500 11px var(--mono); color: var(--muted); }
+.ladder .new { background: #fffdf6; }
+.ladder .new.first { border-radius: 8px 0 0 8px; }
+.ladder .new.last { border-radius: 0 8px 8px 0; }
+@media (max-width: 960px) {
+  .ladder .cell svg { width: 60px; height: 60px; }
+  .ladder .h { font-size: 9px; letter-spacing: 0; }
+}
+@media (max-width: 760px) {
+  .ladder { display: none; }
+  .tall { display: grid; }
+}
+
+/* ---- The marks themselves ---- */
+.arrow { fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.arrow.pen { stroke: var(--pen); }
+.arrow.faint { stroke: #1a1d21a6; }
+.edge { stroke: #1a1d218c; stroke-width: .9; stroke-linejoin: round; }
+
+/* today's, after src/map.css */
+.t-ring { fill: var(--ground); stroke: var(--ink); stroke-width: 1.1; }
+.t-n { font: 600 9.5px var(--mono); fill: var(--ink); }
+
+/* The pulses: transform and opacity only, for the compositor. */
+.pump, .halo { transform-box: fill-box; transform-origin: center; }
+body:not(.pulse-off) .m4 .pump { animation: breathe 2.4s ease-in-out infinite; }
+body:not(.pulse-off) .m4 .halo { animation: ripple 2.4s ease-out infinite; }
+body:not(.pulse-off) .m5 .pump { animation: heartbeat 1.05s ease-in-out infinite; }
+body:not(.pulse-off) .m5 .halo { animation: ripple 1.05s ease-out infinite; }
+body.pulse-five .m4 .pump, body.pulse-five .m4 .halo { animation: none !important; }
+.halo { opacity: 0; }
+@keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.09); } }
+@keyframes heartbeat {
+  0% { transform: scale(1); } 12% { transform: scale(1.2); } 24% { transform: scale(1); }
+  36% { transform: scale(1.13); } 52%, 100% { transform: scale(1); }
+}
+@keyframes ripple { 0% { transform: scale(.9); opacity: .55; } 100% { transform: scale(1.9); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .pump, .halo { animation: none !important; }
+}
+
+/* ---- The chart ---- */
+.mapwrap { position: relative; border-radius: 8px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); aspect-ratio: 900 / 560; background: var(--sea); }
+@media (max-width: 760px) { .mapwrap { aspect-ratio: auto; height: 540px; } }
+.mapwrap > svg.base { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wash { opacity: 0; transition: opacity .3s; }
+body.under-wind .wash { opacity: .92; }
+.lights { position: absolute; inset: 0; }
+.lt { position: absolute; width: 0; height: 0; }
+.lt svg { position: absolute; left: -30px; top: -30px; width: 60px; height: 60px; overflow: visible; transition: transform .3s; }
+body.zoom-out .lt svg { transform: scale(.66); }
+.lt .lab { position: absolute; left: 15px; top: -9px; white-space: nowrap; line-height: 1.05; text-shadow: 0 0 2px var(--halo), 0 0 3px var(--halo), 0 0 5px var(--halo), 0 0 8px var(--halo); pointer-events: none; }
+.lt .lab b { display: block; font: italic 600 12px var(--display); }
+.lt .lab i { font: 500 10px var(--mono); font-style: normal; color: var(--magenta); }
+.lt .lab i.pen { color: var(--pen-ink); }
+.lt .lab i.muted { color: var(--muted); }
+body.zoom-out .lt .lab { display: none; }
+.mapcap { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font: 500 11px var(--mono); color: var(--muted); }
+
+/* ---- Everywhere else ---- */
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.tile { background: var(--paper); border-radius: 8px; box-shadow: var(--card); padding: 14px 16px; }
+.tile h3 { font: italic 600 16px var(--display); margin-bottom: 2px; }
+.tile .note { color: var(--ink-2); font-size: 13px; margin: 2px 0 12px; }
+.pair { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px 10px; align-items: center; }
+.pair .eyebrow { font-size: 9px; }
+.hours { display: flex; gap: 2px; }
+.hours .hr { flex: 1; min-width: 0; text-align: center; padding: 5px 0 4px; border-radius: 4px; background: #1a1d210a; }
+.hours .hr .t { display: block; font: 500 10px var(--mono); color: var(--muted); }
+.hours .hr svg { display: block; margin: 4px auto 0; max-width: 88%; height: auto; }
+.hours .hr.sel { background: var(--ink); }
+.hours .hr.sel .t { color: var(--ground); }
+.hours .hr.pick { background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.hours .hr.pick .t { color: var(--ink); font-weight: 600; }
+.badge { display: flex; align-items: center; gap: 12px; }
+.badge svg { width: 54px; height: 54px; overflow: visible; flex: none; }
+.badge .name { font: italic 600 22px var(--display); line-height: 1.1; }
+.badge .sub { font: 500 11px var(--mono); color: var(--muted); }
+.key { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 2px 10px; align-items: center; }
+.key svg { width: 44px; height: 44px; overflow: visible; }
+.key p { font-size: 13px; }
+.key p b { font-family: var(--display); font-style: italic; }
+
+ol.qs { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 76ch; }
+ol.qs b { font-family: var(--display); font-style: italic; }
+</style>
+</head>
+<body>
+
+<div class="mockbar" role="toolbar" aria-label="Mock-up options">
+  <b>Star lights</b>
+  <span class="lab">Map</span>
+  <button data-set="view" data-val="new" aria-pressed="true">Proposed</button>
+  <button data-set="view" data-val="today">Today</button>
+  <span class="gap"></span>
+  <span class="lab">Four</span>
+  <button data-set="four" data-val="single">Star</button>
+  <button data-set="four" data-val="nest">Star in a star</button>
+  <span class="gap"></span>
+  <span class="lab">Five</span>
+  <button data-set="five" data-val="nest">Star in a star</button>
+  <button data-set="five" data-val="solid">Solid</button>
+  <button data-set="five" data-val="disc">Black disc</button>
+  <span class="gap"></span>
+  <span class="lab">1–4</span>
+  <button data-set="ramp" data-val="light">Lighter</button>
+  <button data-set="ramp" data-val="spots">As on the spots page</button>
+  <span class="gap"></span>
+  <span class="lab">Pulse</span>
+  <button data-set="pulse" data-val="both" aria-pressed="true">4 &amp; 5</button>
+  <button data-set="pulse" data-val="five">5 only</button>
+  <button data-set="pulse" data-val="off">Off</button>
+  <span class="gap"></span>
+  <span class="lab">Under</span>
+  <button data-set="under" data-val="plain" aria-pressed="true">Plain chart</button>
+  <button data-set="under" data-val="wind">Coloured wind</button>
+  <span class="gap"></span>
+  <span class="lab">Zoom</span>
+  <button data-set="zoom" data-val="in" aria-pressed="true">Coast</button>
+  <button data-set="zoom" data-val="out">Zoomed out</button>
+</div>
+
+<main>
+
+  <section class="sheet">
+    <p class="eyebrow">1 · The ladder</p>
+    <h2>One light for each number of stars</h2>
+    <p class="lede">Today's chart writes the number in a ring. The proposal draws the star itself. One to four stars are on the pink gradient, and the star grows a little with each. Five is the only one in the full chart magenta, as five was before, drawn as a star within a star. A plain circle means no stars. The short arrow still blows downwind. Dark hours, pending ratings and offshore spots keep today's meaning.</p>
+    <div class="ladder" id="ladder"></div>
+    <div class="tall" id="tall"></div>
+    <p class="scale-note">Drawn a third larger than on the chart. The chart below shows them at their real size.</p>
+  </section>
+
+  <section class="sheet">
+    <p class="eyebrow">2 · On the chart</p>
+    <h2>Dublin at 14:00, 21 kn south-west</h2>
+    <p class="lede">Use the bar at the top to switch between today's lights and the proposed ones, put the Coloured wind layer underneath, and zoom out to see them at the size they take across the whole country. The good spots should jump out before you read a single name.</p>
+    <div class="mapwrap">
+      <svg class="base" id="base" viewBox="0 0 900 560" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <linearGradient id="windwash" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="rgb(76 179 90)"/>
+            <stop offset=".45" stop-color="rgb(111 191 62)"/>
+            <stop offset=".75" stop-color="rgb(160 202 60)"/>
+            <stop offset="1" stop-color="rgb(181 207 58)"/>
+          </linearGradient>
+          <pattern id="contour" width="900" height="560" patternUnits="userSpaceOnUse">
+            <path d="M600 0 C 620 120, 680 200, 660 330 S 640 480, 700 560" fill="none" stroke="#a9cbd8" stroke-width="1"/>
+            <path d="M720 0 C 740 140, 790 240, 770 360 S 770 480, 820 560" fill="none" stroke="#a9cbd8" stroke-width="1"/>
+          </pattern>
+        </defs>
+        <rect width="900" height="560" fill="#d5e6ea"/>
+        <rect width="900" height="560" fill="url(#contour)"/>
+        <path fill="#ede3c8" stroke="#1a1d2155" stroke-width="1" d="M0 0 L470 0 L492 30 L515 62 L512 98 L498 128 L508 160 L530 178 L572 186 L606 206 L612 228 L590 246 L548 242 L512 250 L488 258 L470 268 L440 292 L420 312 L418 334 L438 352 L468 366 L496 380 L520 398 L540 424 L540 452 L530 478 L520 504 L532 536 L540 560 L0 560 Z"/>
+        <path fill="#e2d7b6" d="M470 268 L498 262 L520 258 L506 270 L478 276 Z"/>
+        <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#5b5c5b" letter-spacing="1.2">
+          <text x="250" y="200">FINGAL</text>
+          <text x="300" y="330">DUBLIN</text>
+          <text x="330" y="470">WICKLOW</text>
+          <text x="690" y="300" fill="#5b7f8c" font-style="italic" font-family="Fraunces Variable, Georgia, serif" font-size="15" letter-spacing="0">Irish Sea</text>
+        </g>
+        <rect class="wash" width="900" height="560" fill="url(#windwash)"/>
+      </svg>
+      <div class="lights" id="lights"></div>
+    </div>
+    <div class="mapcap" id="mapcap"></div>
+  </section>
+
+  <section class="sheet">
+    <p class="eyebrow">3 · Everywhere else</p>
+    <h2>The same stars on every page</h2>
+    <p class="lede">The site draws stars in four places. Each should use the same colours and the same light. The Info page's key is the only place that explains them.</p>
+    <div class="grid2">
+      <div class="tile">
+        <h3>The chart's hour row</h3>
+        <p class="note">Each hour's stars under the timeline. Today they are ink, with an outline for what the wind alone would give.</p>
+        <div class="pair">
+          <span class="eyebrow">Today</span><div class="hours" id="dockToday"></div>
+          <span class="eyebrow">Proposed</span><div class="hours" id="dockNew"></div>
+        </div>
+      </div>
+      <div class="tile">
+        <h3>A spot page's heading</h3>
+        <p class="note">The spot's light for the chosen hour sits beside its name, so the page and the chart match.</p>
+        <div class="badge" id="badge"></div>
+      </div>
+      <div class="tile">
+        <h3>The spots page</h3>
+        <p class="note">Live today (7e): coloured stars, with the rest of the five outlined. With the lighter gradient, one to four get paler and five turns the chart magenta, the same as everywhere else.</p>
+        <div class="pair">
+          <span class="eyebrow">Today</span><div class="hours" id="cards"></div>
+        </div>
+      </div>
+      <div class="tile">
+        <h3>The Info page's key</h3>
+        <p class="note">This is the one place that explains the lights. The map and the spots page have no legend.</p>
+        <div class="key" id="key"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet">
+    <p class="eyebrow">4 · Before we build it</p>
+    <h2>Questions for you</h2>
+    <ol class="qs">
+      <li><b>The gradient.</b> For five to stand apart in the full magenta, one to four need to be lighter than they are on the spots page today. The spots page would change to match. Compare them with <i>1–4</i> in the bar.</li>
+      <li><b>Five's shape.</b> <i>Star in a star</i> (the shape you liked on four), <i>Solid</i> (the same, filled), or the first round's <i>Black disc</i>.</li>
+      <li><b>Four's shape.</b> A plain star, so only five has the special shape, or a star in a star too, so four and five both stand out.</li>
+      <li><b>Can you tell one, two and three apart?</b> The star grows a little with each one as well as deepening. Is that enough, or should they carry the number?</li>
+      <li><b>No hollow star for one.</b> An outline already means a star the hour lost to something (gusts, a cross-offshore wind…). The rating plan defines it.</li>
+      <li><b>How much motion?</b> The proposal: four breathes slowly, five pumps like a heartbeat. With lots of good spots on a windy day, the chart could get busy. <i>5 only</i> keeps the movement for the best. Motion stops for anyone with reduced motion turned on, and while the map is being dragged.</li>
+      <li><b>The open spot's wedge.</b> Today the selected spot shows a pulsing wedge of the headings you can hold. The plan is to keep it, pulsing behind the new light.</li>
+      <li><b>The app.</b> The phone app's map would get the same lights in the same release.</li>
+    </ol>
+  </section>
+
+</main>
+
+<script>
+// One to four on the gradient; five the chart's own magenta, as before.
+const RAMPS = {
+  light: ["", "#eeb3cf", "#e290b9", "#d56ba1", "#c54689", "#b0186a"],
+  spots: ["", "#e28bb3", "#d2609a", "#bd3d84", "#a01f6c", "#b0186a"],
+};
+const COL = new Proxy([], { get: (_, i) => RAMPS[state.ramp][i] });
+const STAR = "M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z";
+const star = (r, attrs, dy = 0) => `<path d="${STAR}" transform="translate(0 ${dy}) scale(${r / 5})" ${attrs}/>`;
+const state = { view: "new", four: "single", five: "nest", ramp: "light", pulse: "both", under: "plain", zoom: "in" };
+
+/** The downwind arrow, starting `from` units out from the centre. */
+function arrow(deg, start, cls = "") {
+  const tip = start + 11;
+  return `<g transform="rotate(${deg})"><path class="arrow ${cls}" d="M0 ${-start}V${-tip}M-3.4 ${-tip + 4}L0 ${-tip - .5}L3.4 ${-tip + 4}"/></g>`;
+}
+
+/** Today's light, as force5/src/lights.ts and src/map.css draw it. */
+function todayLight(k) {
+  const { n, kind, to } = k;
+  let ring = `class="t-ring"`, text = `class="t-n"`, arrowCls = "", strike = "";
+  if (kind === "dark") ring = `class="t-ring" style="fill:color-mix(in srgb,#1a1d21 22%,#f3eee3);stroke:#1a1d21bf"`, arrowCls = "faint";
+  else if (kind === "pending") ring = `class="t-ring" style="stroke:#1a1d2180;stroke-dasharray:1 2"`, arrowCls = "faint";
+  else if (kind === "off") {
+    ring = `class="t-ring" style="stroke:var(--pen)"`; text = `class="t-n" style="fill:var(--pen)"`; arrowCls = "pen";
+    strike = `<line x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" stroke="var(--pen)" stroke-width="1.6" stroke-linecap="round"/>`;
+  } else if (n === 0) ring = `class="t-ring" style="stroke:#1a1d2180;stroke-dasharray:2 1.6"`, text = `class="t-n" style="fill:#1a1d2180;font-weight:500"`;
+  else if (n >= 3 && n <= 4) ring = `class="t-ring" style="fill:var(--ink)"`, text = `class="t-n" style="fill:var(--ground)"`;
+  else if (n === 5) ring = `class="t-ring" style="fill:var(--magenta);stroke:var(--magenta)"`, text = `class="t-n" style="fill:var(--ground)"`;
+  if (kind === "xoff") arrowCls = "pen";
+  const fig = kind === "dark" || kind === "pending" ? "" : n;
+  return `<svg viewBox="-30 -30 60 60" aria-hidden="true">${to == null ? "" : arrow(to, 9.6, arrowCls)}<circle ${ring} r="7.6"/>${strike}<text ${text} y="3.4" text-anchor="middle">${fig}</text></svg>`;
+}
+
+/** A star within a star: an outline round a filled one, in one colour. */
+function nested(colour, r, width = 1.5) {
+  return `${star(r, `class="halo" fill="none" stroke="${colour}" stroke-width="1.4" vector-effect="non-scaling-stroke"`)}
+    <g class="pump">${star(r, `fill="var(--ground)" stroke="${colour}" stroke-width="${width}" stroke-linejoin="round" vector-effect="non-scaling-stroke"`)}
+    ${star(r * .55, `fill="${colour}" stroke="#1a1d2166" stroke-width=".8" vector-effect="non-scaling-stroke"`, 0.6)}</g>`;
+}
+
+/** The proposed light. */
+function newLight(k) {
+  const { n, kind, to } = k;
+  const five = state.five;
+  let body = "", reach = 8, arrowCls = "", cls = "";
+  if (kind === "dark") {
+    body = `<circle r="6.4" fill="color-mix(in srgb,#1a1d21 22%,#f3eee3)" stroke="#1a1d21bf" stroke-width="1.1"/>`; arrowCls = "faint"; reach = 7.6;
+  } else if (kind === "pending") {
+    body = `<circle r="6.4" fill="var(--ground)" stroke="#1a1d2180" stroke-width="1.1" stroke-dasharray="1 2"/>`; arrowCls = "faint"; reach = 7.6;
+  } else if (kind === "off") {
+    body = `<circle r="6.4" fill="var(--ground)" stroke="var(--pen)" stroke-width="1.2"/><line x1="-4.6" y1="4.6" x2="4.6" y2="-4.6" stroke="var(--pen)" stroke-width="1.6" stroke-linecap="round"/>`;
+    arrowCls = "pen"; reach = 7.6;
+  } else if (n === 0) {
+    body = `<circle r="5.6" fill="var(--ground)" stroke="#1a1d21a6" stroke-width="1.1"/>`; reach = 7;
+  } else if (n <= 3) {
+    const r = [0, 7.6, 8.6, 9.6][n];
+    body = star(r, `fill="${COL[n]}" class="edge" vector-effect="non-scaling-stroke"`); reach = r * .82 + 2;
+  } else if (n === 4 && state.four === "single") {
+    cls = "m4";
+    body = `${star(10.6, `class="halo" fill="none" stroke="${COL[4]}" stroke-width="1.4" vector-effect="non-scaling-stroke"`)}
+      <g class="pump">${star(10.6, `fill="${COL[4]}" class="edge" vector-effect="non-scaling-stroke"`)}</g>`;
+    reach = 10.6 * .82 + 2;
+  } else if (n === 4) {
+    cls = "m4";
+    body = nested(COL[4], 13.5);
+    reach = 12.5;
+  } else if (five === "disc") {
+    cls = "m5";
+    body = `<circle class="halo" r="11.5" fill="none" stroke="var(--ink)" stroke-width="1.6"/>
+      <g class="pump"><circle r="11.5" fill="var(--ink)"/>${star(8.6, `fill="var(--ground)"`, 0.5)}</g>`;
+    reach = 12.5;
+  } else {
+    cls = "m5";
+    body = five === "solid"
+      ? `${star(14.5, `class="halo" fill="none" stroke="${COL[5]}" stroke-width="1.5" vector-effect="non-scaling-stroke"`)}
+        <g class="pump">${star(14.5, `fill="${COL[5]}" class="edge" vector-effect="non-scaling-stroke"`)}
+        ${star(6.6, `fill="var(--ground)"`, 0.7)}</g>`
+      : nested(COL[5], 14.5, 2.2);
+    reach = 13.5;
+  }
+  if (kind === "xoff") arrowCls = "pen";
+  return `<svg viewBox="-30 -30 60 60" aria-hidden="true" class="${cls}">${to == null ? "" : arrow(to, reach, arrowCls)}${body}</svg>`;
+}
+const light = (k) => (state.view === "today" ? todayLight(k) : newLight(k));
+
+/* 1 · The ladder: always both rows. */
+const LADDER = [
+  { h: "No stars", n: 0 }, { h: "1 star", n: 1 }, { h: "2 stars", n: 2 }, { h: "3 stars", n: 3 },
+  { h: "4 stars", n: 4 }, { h: "5 stars", n: 5 }, { h: "Dark", n: null, kind: "dark" },
+  { h: "Working it out", n: null, kind: "pending" }, { h: "Offshore", n: 3, kind: "off" }, { h: "Cross-off", n: 3, kind: "xoff" },
+];
+function drawLadder() {
+  const to = 45;
+  let html = `<div class="h">&nbsp;</div>` + LADDER.map((l) => `<div class="h">${l.h}</div>`).join("");
+  html += `<div class="rowlab">Today<small>ring + number</small></div>` + LADDER.map((l) => `<div class="cell">${todayLight({ ...l, to })}</div>`).join("");
+  html += `<div class="rowlab">Proposed<small>the star itself</small></div>` +
+    LADDER.map((l, i) => `<div class="cell new${i === 0 ? " first" : ""}${i === LADDER.length - 1 ? " last" : ""}">${newLight({ ...l, to })}</div>`).join("");
+  document.getElementById("ladder").innerHTML = html;
+  document.getElementById("tall").innerHTML =
+    `<div class="h">&nbsp;</div><div class="h">Today</div><div class="h">Proposed</div>` +
+    LADDER.map((l) => `<div class="name">${l.h}</div><div class="cell">${todayLight({ ...l, to })}</div><div class="cell new">${newLight({ ...l, to })}</div>`).join("");
+}
+
+/* 2 · The chart. Wind from 225°, so the arrows point to 45°. */
+const SPOTS = [
+  { name: "Rush", x: 532, y: 64, n: 2, kn: 14 },
+  { name: "Malahide", x: 518, y: 106, n: 3, kn: 17 },
+  { name: "Portmarnock", x: 520, y: 142, n: 4, kn: 19 },
+  { name: "Burrow Beach", x: 566, y: 178, n: 3, kn: 18 },
+  { name: "Sutton", x: 540, y: 252, n: 0, kn: 11 },
+  { name: "Dollymount", x: 486, y: 284, n: 5, kn: 21 },
+  { name: "Sandymount", x: 436, y: 320, n: 3, kind: "off", kn: 19, note: "offshore" },
+  { name: "Seapoint", x: 488, y: 369, n: 4, kn: 20 },
+  { name: "Dún Laoghaire", x: 552, y: 404, n: 5, kn: 22 },
+  { name: "Killiney", x: 552, y: 446, n: 1, kind: "xoff", kn: 15, note: "cross-off" },
+  { name: "Bray", x: 538, y: 516, n: 2, kn: 16 },
+];
+function drawMap() {
+  // Wide: the whole bay, scaled. Narrow: a phone's crop of it at full size,
+  // as the chart would show it, centred on the coast.
+  const box = document.querySelector(".mapwrap");
+  const w = box.clientWidth, narrow = w < 700;
+  const k = narrow ? 1 : w / 900;
+  const vx = narrow ? 556 - w / 2 : 0, vy = narrow ? 30 : 0;
+  document.getElementById("base").setAttribute("viewBox", narrow ? `${vx} ${vy} ${w} ${box.clientHeight}` : "0 0 900 560");
+  document.getElementById("lights").innerHTML = SPOTS.map((s) => {
+    const sub = s.note ? `<i class="${s.kind === "off" ? "pen" : "muted"}">${s.kn} kn · ${s.note}</i>` : `<i>${s.kn} kn SW</i>`;
+    return `<div class="lt" style="left:${(s.x - vx) * k}px;top:${(s.y - vy) * k}px">${light({ ...s, to: 45 })}<span class="lab"><b>${s.name}</b>${sub}</span></div>`;
+  }).join("");
+  const counts = [0, 0, 0, 0, 0, 0];
+  SPOTS.forEach((s) => { if (!s.kind || s.kind === "xoff") counts[s.n]++; });
+  document.getElementById("mapcap").innerHTML =
+    `<span>${state.view === "today" ? "Today's lights" : "Proposed lights"}</span>` +
+    `<span>${counts[5]} at five · ${counts[4]} at four · ${counts[3] + counts[2] + counts[1]} at one to three · ${counts[0]} at none · 1 offshore</span>`;
+}
+
+/* 3 · Everywhere else. */
+const HOURS = [["10", 2, 3], ["11", 3, 3], ["12", 4, 4], ["13", 5, 5], ["14", 5, 5], ["15", 4, 5], ["16", 3, 3], ["17", 1, 2]];
+function glyphRow(stars, potential, how, size = 8, sel = false) {
+  const gap = size + 1.6;
+  let out = "";
+  for (let i = 0; i < 5; i++) {
+    const cx = i * gap + size / 2, cy = size / 2;
+    const t = `transform="translate(${cx} ${cy}) scale(${size / 10})"`;
+    const ink = sel ? "var(--ground)" : "var(--ink)";
+    if (how === "today") {
+      if (i < stars) out += `<path d="${STAR}" ${t} fill="${ink}"/>`;
+      else if (i < potential) out += `<path d="${STAR}" ${t} fill="none" stroke="${ink}" stroke-opacity=".5" stroke-width="1.6"/>`;
+      else out += `<circle cx="${cx}" cy="${cy}" r="${size / 9}" fill="${ink}" opacity=".25"/>`;
+    } else {
+      if (i < stars) out += `<path d="${STAR}" ${t} fill="${COL[stars]}" stroke="#1a1d218c" stroke-width="1.2"/>`;
+      else out += `<path d="${STAR}" ${t} fill="none" stroke="${sel ? "#f3eee380" : "#1a1d2173"}" stroke-width="1.4"/>`;
+    }
+  }
+  return `<svg width="${5 * gap}" height="${size}" viewBox="0 0 ${5 * gap} ${size}" overflow="visible" aria-hidden="true">${out}</svg>`;
+}
+function drawElsewhere() {
+  const row = (how, size) => HOURS.map(([t, s, p], i) =>
+    `<div class="hr${i === 4 ? " sel" : ""}"><span class="t">${t}</span>${glyphRow(s, p, how, size, i === 4 && how === "today")}</div>`).join("");
+  document.getElementById("dockToday").innerHTML = row("today", 6);
+  document.getElementById("dockNew").innerHTML = HOURS.map(([t, s], i) =>
+    `<div class="hr${i === 4 ? " pick" : ""}"><span class="t">${t}</span>${glyphRow(s, s, "new", 6)}</div>`).join("");
+  document.getElementById("cards").innerHTML = HOURS.map(([t, s]) =>
+    `<div class="hr"><span class="t">${t}</span>${glyphRow(s, s, "new", 6)}</div>`).join("");
+  document.getElementById("badge").innerHTML =
+    `${newLight({ n: 5, to: 45 })}<div><div class="name">Dollymount</div><div class="sub">5 stars at 14:00 · 21 kn SW, gusts 26</div>${glyphRow(5, 5, "new", 11)}</div>`;
+  const KEY = [
+    [{ n: 5, to: 45 }, "<b>Five stars.</b> As good as it gets for you."],
+    [{ n: 4, to: 45 }, "<b>Four stars.</b> A great session."],
+    [{ n: 3, to: 45 }, "<b>One to three stars.</b> Rideable. The star is deeper and bigger the better it is."],
+    [{ n: 0, to: 45 }, "<b>No stars.</b> Not enough wind for you, or too much."],
+    [{ n: 3, kind: "off", to: 45 }, "<b>Offshore.</b> The wind blows out to sea. Don't go."],
+    [{ n: 3, kind: "xoff", to: 45 }, "<b>Red arrow.</b> Cross-offshore: take care."],
+    [{ n: null, kind: "dark", to: 45 }, "<b>Grey.</b> Dark at this hour, so not rated."],
+  ];
+  document.getElementById("key").innerHTML = KEY.map(([k, words]) => `${newLight(k)}<p>${words}</p>`).join("");
+}
+
+function apply() {
+  document.body.classList.toggle("pulse-off", state.pulse === "off");
+  document.body.classList.toggle("pulse-five", state.pulse === "five");
+  document.body.classList.toggle("under-wind", state.under === "wind");
+  document.body.classList.toggle("zoom-out", state.zoom === "out");
+  document.querySelectorAll(".mockbar button").forEach((b) =>
+    b.setAttribute("aria-pressed", String(state[b.dataset.set] === b.dataset.val)));
+  drawLadder(); drawMap(); drawElsewhere();
+}
+const q = new URLSearchParams(location.search);
+for (const key of Object.keys(state)) if (q.get(key)) state[key] = q.get(key);
+document.querySelector(".mockbar").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-set]");
+  if (!b) return;
+  state[b.dataset.set] = b.dataset.val;
+  apply();
+});
+addEventListener("resize", drawMap);
+apply();
+</script>
+</body>
+</html>
