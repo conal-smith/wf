@@ -43,7 +43,7 @@ test("a phone showing all of Ireland asks for overview tiles only, and a bay for
   ).toEqual([0, 1, 2]);
   await page.setViewportSize({ width: 390, height: 844 });
   const asked = tilesAsked(page);
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
@@ -90,7 +90,7 @@ test("a desktop showing all of Ireland asks for the native tiles and never an ab
   page,
 }) => {
   const asked = tilesAsked(page);
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
@@ -117,7 +117,7 @@ test("the first frame the page asks for is the one it opens on", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   const asked = tilesAsked(page);
   await page.clock.install({ time: SAMPLE_CLOCK });
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });

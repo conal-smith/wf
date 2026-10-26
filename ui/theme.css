@@ -760,6 +760,9 @@
   --map-tide: #3f6e7e;
   /* The paper a label is haloed in over the chart. */
   --map-halo: #f1efe6;
+  /* The rider's own place on the chart, the blue every map draws "you are
+     here" in: a dot, never words, and never a wind or a rating. */
+  --map-you: #1f6fe0;
   /* Foilable depth at the selected tide (force5/src/foilDepth.ts): the
      water coloured by how deep it is now, as the satellite height map of the
      foreshore reads. Nearly white at the tide's edge, through a light sea

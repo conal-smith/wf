@@ -12,7 +12,7 @@ const launcher = (page: Page) =>
 
 /** The chart, and Gust in his corner: he comes once the chart is drawn. */
 async function openMap(page: Page) {
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 20000,
   });
@@ -182,7 +182,7 @@ test("gone from the map once the month's budget is spent", async ({ page }) => {
       },
     }),
   );
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 20000,
   });

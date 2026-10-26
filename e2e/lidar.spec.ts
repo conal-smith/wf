@@ -22,7 +22,7 @@ test("the LiDAR layer is gone, and a rider who had it on reads none of it", asyn
       JSON.stringify({ lidar: true }),
     ),
   );
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });

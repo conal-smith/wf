@@ -6,7 +6,7 @@ import {
   APP_ROUTES,
   isAiPath,
   isCommunityPath,
-  isFinderPath,
+  isOldFinderPath,
   isMarketPath,
   isSpotPath,
 } from "../force5/src/siteNav";
@@ -44,7 +44,7 @@ describe("the SPA fallback", () => {
           isCommunityPath(path) ||
           isAiPath(path) ||
           isSpotPath(path) ||
-          isFinderPath(path),
+          isOldFinderPath(path),
         from,
       ).toBe(true);
     }

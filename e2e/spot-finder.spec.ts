@@ -11,11 +11,12 @@ import {
 import { SAMPLE_CLOCK } from "./columns";
 
 /**
- * The spot finder, at /spots (src/finder): the rider's places as cards, the
- * best of the six days first, each with its picture and rose, today hour by
- * hour from first light to last, and the next five days. A page of its own:
- * no map, no timeline, not tied to the chart's time. Favourites by default,
- * every place near the rider on asking.
+ * The spot finder, the home page (src/finder): the rider's places as cards,
+ * the best of the six days first, each with its picture and rose, today hour
+ * by hour from first light to last, and the next five days. No timeline, not
+ * tied to the chart's time; on a wide screen the chart stands beside it
+ * (e2e/home-chart.spec.ts). Favourites by default, every place near the rider
+ * on asking.
  */
 
 const DUBLIN = { latitude: 53.35, longitude: -6.26 };
@@ -43,7 +44,7 @@ const cards = (page: Page) => page.locator("[data-spot-card]");
 const scope = (page: Page) => page.getByRole("group", { name: "Which spots" });
 
 /** The finder up in the afternoon, its places rated. */
-async function openFinder(page: Page, path = "/spots") {
+async function openFinder(page: Page, path = "/") {
   await page.clock.setFixedTime(AFTERNOON);
   await page.goto(path);
   await expect(finder(page)).toBeVisible({ timeout: 30000 });
@@ -93,31 +94,34 @@ const roses = (page: Page) =>
 test.describe("on a desktop", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("opens on Favourites, the best of the week first, two cards a row", async ({
+  test("opens on Favourites, the best of the week first, one card a row beside the chart", async ({
     page,
   }) => {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await star(page, ["brandon", "dollymount", "keel", "tramore"]);
     await openFinder(page);
-    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page).toHaveURL(/\/$/);
     // The head: the menu, the wordmark and the switch, and nothing else.
     await expect(
       scope(page).getByRole("button", { name: "Favourites" }),
     ).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("heading", { name: "Spots" })).toHaveCount(0);
     await expect(page.getByRole("slider")).toHaveCount(0);
-    await expect(page.locator(".maplibregl-map")).toHaveCount(0);
     await expect(cards(page)).toHaveCount(4);
     expect(inOrder(await rated(page))).toBe(true);
-    // Two columns: side by side, each wide enough for its hours.
+    // One column beside the chart, each card wide enough for its hours.
     const [a, b] = [
       (await cards(page).nth(0).boundingBox())!,
       (await cards(page).nth(1).boundingBox())!,
     ];
-    expect(b.y).toBe(a.y);
-    expect(b.x).toBeGreaterThan(a.x + a.width);
+    expect(b.x).toBe(a.x);
+    expect(b.y).toBeGreaterThan(a.y + a.height);
     expect(a.width).toBeGreaterThan(560);
+    const chart = (await page
+      .getByRole("region", { name: "The chart, at the spots on the list" })
+      .boundingBox())!;
+    expect(chart.x).toBeGreaterThan(a.x + a.width);
     // Each card: its name and county, today and the next five days.
     const brandon = cards(page).filter({ hasText: "Brandon Bay" });
     await expect(brandon).toContainText("Co. Kerry");
@@ -179,10 +183,10 @@ test.describe("on a desktop", () => {
   test("the row scrolls with no bar, opening on now, and steps either way", async ({
     page,
   }) => {
-    // Two cards a row, each too narrow for the whole day: the sample's
+    // A card too narrow for the whole day, beside the chart: the sample's
     // morning, before its HARMONIE run, is ECMWF's three-hourly steps, which
-    // leaves a row that only just fits a card at 1440 pixels.
-    await page.setViewportSize({ width: 1240, height: 900 });
+    // leaves a row that only just fits a wider card.
+    await page.setViewportSize({ width: 1100, height: 900 });
     await star(page, ["brandon", "keel"]);
     await openFinder(page);
     await rated(page);
@@ -237,7 +241,7 @@ test.describe("on a desktop", () => {
     await expect(earlier).toBeHidden();
     expect(await left()).toBe(0);
     // A step is not a press on the card.
-    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page).toHaveURL(/\/$/);
   });
 
   test("an hour picked is picked on every card, the roses turned to it; now goes back", async ({
@@ -255,7 +259,7 @@ test.describe("on a desktop", () => {
     const time = await pick.getAttribute("data-hour");
     const clock = (await pick.getAttribute("title"))!;
     await pick.click();
-    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page).toHaveURL(/\/$/);
     // Ringed on every card, and said on every picture.
     for (let i = 0; i < 3; i++) {
       await expect(
@@ -301,7 +305,7 @@ test.describe("on a desktop", () => {
     // The second of the next days, pressed on the second card.
     const date = (await days(1).nth(1).getAttribute("data-day"))!;
     await days(1).nth(1).click();
-    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page).toHaveURL(/\/$/);
     for (let i = 0; i < 3; i++) {
       const card = cards(page).nth(i);
       await expect(card.locator("[data-day-shown]")).toHaveAttribute(
@@ -381,7 +385,7 @@ test.describe("on a desktop", () => {
       .nth(4)
       .getAttribute("data-day");
     await page.mouse.click(box.x + box.width * 0.9, box.y + box.height / 2);
-    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page).toHaveURL(/\/$/);
     await expect(page.locator("[data-day-shown]")).toHaveCount(2);
     for (const shown of await page.locator("[data-day-shown]").all())
       await expect(shown).toHaveAttribute("data-day-shown", date!);
@@ -452,10 +456,10 @@ test.describe("on a desktop", () => {
   test("first light stays in the row's view as it scrolls, not cut off by its edge", async ({
     page,
   }) => {
-    // Two cards a row, each too narrow for the whole day: the sample's
+    // A card too narrow for the whole day, beside the chart: the sample's
     // morning, before its HARMONIE run, is ECMWF's three-hourly steps, which
-    // leaves a row that only just fits a card at 1440 pixels.
-    await page.setViewportSize({ width: 1240, height: 900 });
+    // leaves a row that only just fits a wider card.
+    await page.setViewportSize({ width: 1100, height: 900 });
     await star(page, ["brandon", "keel"]);
     await openFinder(page);
     await rated(page);
@@ -502,7 +506,7 @@ test.describe("on a desktop", () => {
       .click();
     await expect(page).toHaveURL(/\/spot\/brandon$/);
     await page.goBack();
-    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page).toHaveURL(/\/$/);
     await expect(finder(page)).toBeVisible();
     // Its name is a link to the same page, for the keys.
     await expect(
@@ -519,7 +523,7 @@ test.describe("on a desktop", () => {
       .getByRole("button", { name: "Star Keel Beach" })
       .click();
     await expect(cards(page)).toHaveCount(2);
-    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page).toHaveURL(/\/$/);
     const stored = await page.evaluate(
       (key) => JSON.parse(localStorage.getItem(key) ?? "{}"),
       SPOTS_KEY,
@@ -641,18 +645,18 @@ test.describe("on a desktop", () => {
     await expect(keel.locator("[data-tide-time], [data-tide]")).toHaveCount(0);
   });
 
-  test("is in the site menu, and the chart is in its menu", async ({
+  test("is in the site menu, the home page, and the chart is in its menu", async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("/?map");
     await expect(page.locator(".spot-marker")).toHaveCount(149, {
       timeout: 30000,
     });
     await page.getByRole("button", { name: "Site menu" }).click();
     const row = siteRow(page, "Spot finder");
-    await expect(row).toHaveAttribute("href", "/spots");
+    await expect(row).toHaveAttribute("href", "/");
     await page.evaluate(() => ((window as { stayed?: boolean }).stayed = true));
-    // In the navigation, between the chart and Settings, over the chart's
+    // First in the navigation, over the chart and Settings, over the chart's
     // own tools.
     const chart = (await siteRow(page, "Chart").boundingBox())!;
     const settings = (await siteRow(page, "Settings").boundingBox())!;
@@ -660,11 +664,11 @@ test.describe("on a desktop", () => {
       .getByRole("button", { name: "Layers" })
       .boundingBox())!;
     const box = (await row.boundingBox())!;
-    expect(box.y).toBeGreaterThan(chart.y);
-    expect(box.y).toBeLessThan(settings.y);
+    expect(box.y).toBeLessThan(chart.y);
+    expect(chart.y).toBeLessThan(settings.y);
     expect(settings.y).toBeLessThan(layers.y);
     await row.click();
-    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page).toHaveURL(/\/$/);
     await expect(finder(page)).toBeVisible();
     // No page load: the chart's own data, and its lights, wait behind it.
     expect(
@@ -679,7 +683,7 @@ test.describe("on a desktop", () => {
     );
     await expect(chartTools(page)).toHaveCount(0);
     await siteRow(page, "Chart").click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/\?map$/);
     await expect(page.locator(".spot-marker")).toHaveCount(149);
     expect(
       await page.evaluate(() => (window as { stayed?: boolean }).stayed),
@@ -690,7 +694,7 @@ test.describe("on a desktop", () => {
     await page.getByRole("button", { name: "Site menu" }).click();
     await siteRow(page, "Settings").click();
     await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
-    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page).toHaveURL(/\/$/);
   });
 
   test("the spot page's menu is the same navigation, the finder and Settings in it", async ({
@@ -709,15 +713,16 @@ test.describe("on a desktop", () => {
       "/?settings",
     );
     const row = siteRow(page, "Spot finder");
-    await expect(row).toHaveAttribute("href", "/spots");
+    await expect(row).toHaveAttribute("href", "/");
     await row.click();
     await expect(finder(page)).toBeVisible({ timeout: 30000 });
   });
 
-  test("Settings from a spot's page is the chart with Settings open", async ({
+  test("Settings from a spot's page is the home page with Settings open", async ({
     page,
   }) => {
-    // Loaded alone: a page load to the chart, the word gone from the address.
+    // Loaded alone: a page load to the home page, the word gone from the
+    // address.
     await page.goto("/spot/brandon");
     await page.getByRole("button", { name: "Site menu" }).click();
     await siteRow(page, "Settings").click();
@@ -725,10 +730,10 @@ test.describe("on a desktop", () => {
       timeout: 30000,
     });
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.locator(".map-head")).toBeVisible();
+    await expect(finder(page)).toBeVisible();
   });
 
-  test("an old link to Customise opens Settings on the chart", async ({
+  test("an old link to Customise opens Settings on the home page", async ({
     page,
   }) => {
     await page.goto("/?customise");
@@ -752,52 +757,35 @@ test.describe("on a desktop", () => {
     await siteRow(page, "Settings").click();
     await expect(page.locator(".map-under-page")).toHaveCount(0);
     await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
-    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page).toHaveURL(/\/$/);
     expect(
       await page.evaluate(() => (window as { stayed?: boolean }).stayed),
     ).toBe(true);
   });
 
-  /*
-   * The bare root opens on whichever page the rider last had; a link that
-   * says Chart or Spot finder is that page, whatever was last open.
-   */
-  test("the menu's Chart is always the chart, and its Spot finder the finder, from a page loaded alone", async ({
+  test("the menu's Chart is always the full chart, and its Spot finder the home page, from a page loaded alone", async ({
     page,
   }) => {
-    // The finder last open, then a spot's page from a shared link.
-    await openFinder(page);
     await page.goto("/spot/brandon");
     await page.getByRole("button", { name: "Site menu" }).click();
-    await expect(siteRow(page, "Chart")).toHaveAttribute("href", "/?chart");
+    await expect(siteRow(page, "Chart")).toHaveAttribute("href", "/?map");
     await siteRow(page, "Chart").click();
     await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
-    await expect(finder(page)).toHaveCount(0);
-    // The word has done its work and is gone from the address.
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/\?map$/);
 
-    // The chart last open now: the spot's page's Spot finder is the finder.
     await page.goto("/spot/brandon");
     await page.getByRole("button", { name: "Site menu" }).click();
     await siteRow(page, "Spot finder").click();
     await expect(finder(page)).toBeVisible({ timeout: 30000 });
-    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator(".map-head")).toHaveCount(0);
 
-    // The finder last open again: the AI page's menu's Chart is the chart
-    // too.
+    // The AI page's menu's Chart is the chart too.
     await page.goto("/ai");
     await page.getByRole("button", { name: "Site menu" }).click();
     await siteRow(page, "Chart").click();
     await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
-    await expect(finder(page)).toHaveCount(0);
-    await expect(page).toHaveURL(/\/$/);
-
-    // And the bare root still opens on the page last open.
-    await page.goto("/spots");
-    await expect(finder(page)).toBeVisible({ timeout: 30000 });
-    await page.goto("/");
-    await expect(page).toHaveURL(/\/spots$/);
-    await expect(finder(page)).toBeVisible();
+    await expect(page).toHaveURL(/\/\?map$/);
   });
 
   test("the menu's Chart from a spot's page over the finder is the chart", async ({
@@ -812,31 +800,36 @@ test.describe("on a desktop", () => {
     await siteRow(page, "Chart").click();
     await expect(page.locator(".map-under-page")).toHaveCount(0);
     await expect(page.locator(".map-head")).toBeVisible();
-    await expect(finder(page)).toHaveCount(0);
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/\?map$/);
     // No page load: the map was kept under the page.
     expect(
       await page.evaluate(() => (window as { stayed?: boolean }).stayed),
     ).toBe(true);
   });
 
-  test("the root opens on the page last open; a link that names one wins", async ({
+  test("the root is always the home page; the old addresses are put right", async ({
     page,
   }) => {
-    await openFinder(page);
+    // The full chart last open makes no difference to the root.
+    await page.goto("/?map");
+    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
     await page.goto("/");
-    await expect(page).toHaveURL(/\/spots$/);
-    await expect(finder(page)).toBeVisible();
-    // A link to a spot on the chart is the chart.
+    await expect(finder(page)).toBeVisible({ timeout: 30000 });
+    await expect(page.locator(".map-head")).toHaveCount(0);
+    // The spot finder's old address is the home page.
+    await page.goto("/spots");
+    await expect(page).toHaveURL(/\/$/);
+    await expect(finder(page)).toBeVisible({ timeout: 30000 });
+    // The chart's old word is the full chart's new one.
+    await page.goto("/?chart");
+    await expect(page).toHaveURL(/\/\?map$/);
+    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    // A link to a spot on the chart is the full chart on it, with its dock.
     await page.goto("/?spot=brandon");
     await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay", {
       timeout: 30000,
     });
-    // And the chart is now the one last open.
-    await page.goto("/");
-    await expect(page).toHaveURL(/\/$/);
     await expect(page.locator(".map-head")).toBeVisible();
-    await expect(finder(page)).toHaveCount(0);
   });
 });
 
@@ -919,7 +912,7 @@ test.describe("on a phone", () => {
     const date = await day.getAttribute("data-day");
     await day.tap();
     await expect(page.locator(`[data-day-shown="${date}"]`)).toHaveCount(3);
-    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page).toHaveURL(/\/$/);
     // The next five days fit the card.
     const days = cards(page).first().locator("[data-days-band]");
     const box = (await days.boundingBox())!;

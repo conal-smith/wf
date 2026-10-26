@@ -30,6 +30,14 @@
  * The forecast in public/weather is whatever run was last ingested, so the
  * page's clock can be started inside that run (`--clock`); otherwise it would
  * time the "every run has expired" notice.
+ *
+ * The home page is the spot finder's list, with the chart beside it on a
+ * wide screen (since 26 October 2026): its loads are timed to the list
+ * ("list ready", the cards on the page) and, on a desktop, to the chart
+ * beside it. The chart's own loads open on a spot (`/?spot=brandon`), the
+ * full chart with its dock. A rider with five favourites is put on the
+ * device first, so the list has cards. `--home /spots` times the list on a
+ * build from before, when the root was the chart.
  */
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -46,6 +54,11 @@ const shots = option("shots", "");
 const runs = Number(option("runs", 3));
 const clock = option("clock", "");
 const only = option("only", "");
+const home = option("home", "/");
+/** The full chart, on a spot, with its dock. */
+const CHART = "/?spot=brandon";
+/** The rider's favourites, so the home page has cards to draw. */
+const FAVOURITES = ["brandon", "dollymount", "keel", "rosslare", "seapoint"];
 
 const PROFILES = {
   desktop: {
@@ -166,6 +179,27 @@ async function mapReady(page) {
   );
 }
 
+/** The list is ready when its cards are on the page. */
+async function listReady(page) {
+  await page.waitForFunction(
+    () => document.querySelectorAll("[data-spot-card]").length > 0,
+    null,
+    { timeout: 90000, polling: 50 },
+  );
+}
+
+/** The chart beside the list is ready when the listed places are lit on it. */
+async function panelReady(page) {
+  await page.waitForFunction(
+    () =>
+      !!document.querySelector(".maplibregl-canvas") &&
+      document.querySelectorAll(".spot-marker").length > 0 &&
+      !document.querySelector(".spot-marker.pending"),
+    null,
+    { timeout: 90000, polling: 50 },
+  );
+}
+
 /** The dock is ready when its days and its stars row are on the page. */
 async function dockReady(page) {
   await page.waitForFunction(
@@ -232,6 +266,13 @@ async function newContext(browser, profile) {
   const { network, cpu, ...device } = profile;
   const context = await browser.newContext({ ...device, locale: "en-IE" });
   await context.addInitScript(OBSERVERS);
+  await context.addInitScript((ids) => {
+    if (!localStorage.getItem("wingfoil.spots.v1"))
+      localStorage.setItem(
+        "wingfoil.spots.v1",
+        JSON.stringify({ starred: ids, visits: {} }),
+      );
+  }, FAVOURITES);
   if (clock) await context.addInitScript(SHIFT_CLOCK, Date.parse(clock));
   return context;
 }
@@ -249,14 +290,28 @@ async function loadOnce(
   if (warm) {
     // Prime the HTTP cache with one full visit, then measure the return.
     await page.goto(base + path, { waitUntil: "load" });
-    if (path === "/") await mapReady(page);
+    if (path === CHART) await mapReady(page);
+    else if (path === home) await listReady(page);
     await page.waitForTimeout(1500);
   }
   const start = Date.now();
   await page.goto(base + path, { waitUntil: "commit" });
   let readyAt = null;
   let dockAt = null;
-  if (path === "/") {
+  let listAt = null;
+  let panelAt = null;
+  if (path === home) {
+    await listReady(page);
+    listAt = await page.evaluate(() => performance.now());
+    // The chart beside the list, where the page draws one.
+    if (
+      await page.evaluate(() => !!document.querySelector("[data-beside-chart]"))
+    ) {
+      await panelReady(page);
+      panelAt = await page.evaluate(() => performance.now());
+    }
+    readyAt = panelAt ?? listAt;
+  } else if (path === CHART) {
     await Promise.all([
       mapReady(page).then(async () => {
         readyAt = await page.evaluate(() => performance.now());
@@ -276,6 +331,8 @@ async function loadOnce(
   const metrics = await collect(page, readyAt);
   metrics.mapReady = readyAt;
   metrics.dockReady = dockAt;
+  metrics.listReady = listAt;
+  metrics.panelReady = panelAt;
   metrics.wall = Date.now() - start;
   if (shot) {
     await mkdir(dirname(shot), { recursive: true });
@@ -290,7 +347,7 @@ async function interactions(browser, profileName, shotDir) {
   const profile = PROFILES[profileName];
   const context = await newContext(browser, profile);
   const page = await context.newPage();
-  await page.goto(base + "/");
+  await page.goto(base + CHART);
   await mapReady(page);
   await dockReady(page);
   await page.waitForTimeout(2500);
@@ -453,10 +510,14 @@ const report = {
   interactions: {},
 };
 const SCENARIOS = [
-  ["map:desktop:cold", "desktop", "/", false],
-  ["map:desktop:warm", "desktop", "/", true],
-  ["map:mobile:cold", "mobile", "/", false],
-  ["map:mobile:warm", "mobile", "/", true],
+  ["home:desktop:cold", "desktop", home, false],
+  ["home:desktop:warm", "desktop", home, true],
+  ["home:mobile:cold", "mobile", home, false],
+  ["home:mobile:warm", "mobile", home, true],
+  ["map:desktop:cold", "desktop", CHART, false],
+  ["map:desktop:warm", "desktop", CHART, true],
+  ["map:mobile:cold", "mobile", CHART, false],
+  ["map:mobile:warm", "mobile", CHART, true],
   ["market:desktop:cold", "desktop", "/market", false],
   ["community:desktop:cold", "desktop", "/community", false],
   ["ai:desktop:cold", "desktop", "/ai", false],

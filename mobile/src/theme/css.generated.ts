@@ -180,6 +180,7 @@ export const css = {
   "map-wetland": "#c9d3b2",
   "map-tide": "#3f6e7e",
   "map-halo": "#f1efe6",
+  "map-you": "#1f6fe0",
   "map-foil-edge": "rgba(214, 238, 243, 1)",
   "map-foil-shallow": "rgba(150, 214, 232, 1)",
   "map-foil-enough": "rgba(30, 128, 176, 1)",

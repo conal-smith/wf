@@ -11,21 +11,21 @@
  *
  * Only links are taken over: a page loaded at /ai or /spot/… is drawn alone,
  * as before, and a link to the marketplace, the community or the map on
- * another spot (`/?spot=…`) is still a page load. The map is the chart or the
- * spot finder (/spots), whichever the page opened over; a link to the finder
- * from a page over the chart brings the finder up in its place, and one to
- * the explicit chart (`/?chart`, the menu's Chart) from a page over the
- * finder brings the chart up in its place; a bare `/` is the map as it was.
- * The site menu's Settings (`/?settings`) is the way back with Settings
- * open over whichever it is.
+ * another spot (`/?spot=…`) is still a page load. The map is the spot finder
+ * (`/`) or the full chart (`/?map`, `/?spot=…`), whichever the page opened
+ * over; a link to the one it was is the way back to it as it was, and a link
+ * to the other brings that one up in the map's place. The site menu's
+ * Settings (`/?settings`) is the way back with Settings open over whichever
+ * it is.
  */
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import {
+  CHART_HREF,
   FINDER_HREF,
   asksChart,
   asksSettings,
   isAiPath,
-  isFinderPath,
+  isChartAddress,
   isSpotPath,
 } from "../force5/src/siteNav";
 
@@ -79,8 +79,6 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
   // The map's own query when the first page opened over it: a link back to
   // the map with another (`/?spot=…`) is a page load, as the map reads it once.
   const mapSearch = useRef(window.location.search);
-  // And its path: the chart's `/`, or the spot finder's.
-  const mapPath = useRef(window.location.pathname);
   const page = useRef<HTMLDivElement>(null);
   // Settings was asked for from a page over the map: once the map is back
   // and no longer inert, it opens Settings.
@@ -91,7 +89,7 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
       const pages = depth();
       if (pages) window.history.go(-pages);
       else {
-        window.history.pushState(null, "", mapPath.current + mapSearch.current);
+        window.history.pushState(null, "", "/" + mapSearch.current);
         setOver(null);
       }
     };
@@ -100,10 +98,7 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
       if (!url) return;
       if (isOverPath(url.pathname)) {
         event.preventDefault();
-        if (!depth()) {
-          mapSearch.current = window.location.search;
-          mapPath.current = window.location.pathname;
-        }
+        if (!depth()) mapSearch.current = window.location.search;
         // Whatever on the map had focus (the site menu's row) lets go, and the
         // menu closes behind it as it does when focus leaves.
         if (document.activeElement instanceof HTMLElement)
@@ -111,21 +106,22 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
         window.history.pushState({ overMap: depth() + 1 }, "", url);
         window.scrollTo(0, 0);
         setOver(here());
-      } else if (over && isFinderPath(url.pathname)) {
-        // The finder, in the map's place: the map hears of it as it hears
-        // Back and Forward.
+      } else if (
+        over &&
+        ((url.pathname === "/" && !url.search) || asksChart(url))
+      ) {
+        // The spot finder or the full chart (the menu's rows, a way back
+        // named Chart): the map as it was if it is that one, or that one in
+        // its place, the map hearing of it as it hears Back and Forward.
         event.preventDefault();
-        window.history.pushState(null, "", FINDER_HREF);
-        setOver(null);
-        window.dispatchEvent(new PopStateEvent("popstate"));
-      } else if (over && asksChart(url)) {
-        // The chart (the menu's Chart, a way back named Chart): the map as
-        // it was if it is the chart, or the chart in the finder's place, as
-        // above.
-        event.preventDefault();
-        if (!isFinderPath(mapPath.current)) back();
+        const chart = asksChart(url);
+        const was = isChartAddress({
+          pathname: "/",
+          search: mapSearch.current,
+        });
+        if (chart === was) back();
         else {
-          window.history.pushState(null, "", "/");
+          window.history.pushState(null, "", chart ? CHART_HREF : FINDER_HREF);
           setOver(null);
           window.dispatchEvent(new PopStateEvent("popstate"));
         }

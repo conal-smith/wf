@@ -47,7 +47,7 @@ async function instrument(page: Page) {
       },
     });
   });
-  await page.goto("/");
+  await page.goto("/?map");
   await firstStrokes(page);
 }
 
@@ -239,7 +239,7 @@ const tinted = (page: Page) =>
 test("an older chart's wind style is read into the two layers", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?map");
   const canvas = page.locator(".particle-canvas");
   await expect(canvas).toHaveAttribute("data-wind", "particles");
   // Ink was the particles alone; the coloured wind is the colour alone now;

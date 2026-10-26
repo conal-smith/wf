@@ -3,7 +3,7 @@ import { SearchField } from "../ui/SearchField";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { Wordmark } from "../ui/Wordmark";
 import { SiteMenu, type SiteMenuTool } from "../force5/src/SiteMenu";
-import type { SiteNavId } from "../force5/src/siteNav";
+import { FINDER_HREF, type SiteNavId } from "../force5/src/siteNav";
 import type { Spot } from "../force5/src/weather";
 import { hourWind, type PlaceHour } from "./ratings";
 
@@ -76,7 +76,17 @@ export default function MapHead({
         size="sm"
         tools={{ title: "This chart", items: tools }}
       />
-      <a className="map-brand" href="/" aria-label="wingfoil.ie, the chart">
+      <a
+        className="map-brand"
+        href={FINDER_HREF}
+        aria-label="wingfoil.ie, the home page"
+        onClick={(event) => {
+          if (!go.finder || event.metaKey || event.ctrlKey || event.shiftKey)
+            return;
+          event.preventDefault();
+          go.finder();
+        }}
+      >
         <Wordmark size="sm" />
       </a>
       <div className="find">

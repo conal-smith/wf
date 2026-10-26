@@ -1,5 +1,5 @@
 /**
- * The spot finder, at /spots: where is good for this rider this week. The
+ * The spot finder, the home page at /: where is good for this rider this week. The
  * places (their favourites, or every one round them) as cards, the best
  * first: the most stars in today and the five days after it, the soonest,
  * then the nearest. Each card is the place from above with the ride rose on
@@ -7,8 +7,12 @@
  * (src/finder/SpotCard.tsx). The approved design is
  * backlog/mockups/2026-10-25-spot-list-cards.html, its "7e".
  *
- * A page of its own: no map and no timeline at its head, and not tied to the
- * chart's time. The cards keep one time between them, as a dashboard's
+ * The home page (since 26 October 2026). On a wide screen the chart stands
+ * beside the list, drawn by src/App.tsx over the room the list leaves it
+ * (`beside`); the list tells it which places it shows, at which hour, which
+ * card is under the pointer and where the rider is. Under that width the
+ * list is alone, with a button to the chart. No timeline at its head, and
+ * not tied to the chart's time. The cards keep one time between them, as a dashboard's
  * charts do: a day pressed among the next ones is drawn hour by hour on
  * every card in today's place (today goes among the others, to come back
  * to); an hour picked on one card's day is picked on every card, its rose
@@ -17,8 +21,8 @@
  * opens the chart there, at the hour its rose shows. No legend: the stars
  * and the wind's colours are the site's own, said once on the Info page.
  *
- * A page of the map's bundle, drawn by src/App.tsx in the chart's place and
- * loaded as a chunk of its own the first time it is opened. Its wind and its
+ * A page of the map's bundle, drawn by src/App.tsx under the chart and
+ * loaded as a chunk of its own. Its wind and its
  * stars are the chart's own rated hours, handed in; the places it lists are
  * handed back (`onWant`), so the chart reads their squares and rates them
  * first. Their sky, air, sea and tide it reads itself, as the dock reads a
@@ -54,6 +58,8 @@ import {
   type Listed,
   type Scope,
 } from "./finder";
+
+export type { Scope };
 import { HoverContext, hoverStore } from "./hover";
 import { useRiderPlace } from "./location";
 import { SpotCard } from "./SpotCard";
@@ -62,10 +68,13 @@ import { useReadings } from "./useReadings";
 const styles = tv({
   slots: {
     root: "fixed inset-0 flex flex-col bg-ground paper-grain font-body text-ink antialiased",
+    body: "flex min-h-0 flex-1",
     list: [
-      "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4.5 pt-3.5 pb-10",
+      "min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-4.5 pt-3.5 pb-10",
       "max-wide:px-2.5 max-wide:pt-2.5 max-wide:pb-20",
     ],
+    // Under the chart's width, room at the foot for the button to the map.
+    alone: "pb-24 max-wide:pb-24",
     // One column, two where each card has its room (`cards:`, 1180px).
     cards:
       "m-0 grid list-none grid-cols-1 items-start gap-3.5 p-0 cards:grid-cols-2",
@@ -93,8 +102,18 @@ export interface FinderProps {
   units: Units;
   reducedMotion: boolean;
   phone: boolean;
-  /** The places the finder needs rated: its list's. */
-  onWant: (ids: readonly string[]) => void;
+  /** The places the finder lists, which it needs rated, and which list. */
+  onWant: (ids: readonly string[], scope: Scope) => void;
+  /** The chart stands beside the list, in the room it leaves on the right. */
+  beside?: boolean;
+  /** A mouse comes onto a place's card, or leaves it (null). */
+  onHover?: (id: string | null) => void;
+  /** The time every card shows, as it changes. */
+  onShown?: (time: number) => void;
+  /** Where the rider is, once their browser has said; else null. */
+  onPlace?: (at: { lat: number; lon: number } | null) => void;
+  /** The head, for the chart beside the list to stand under it. */
+  headRef?: (el: HTMLElement | null) => void;
   /** The chart, on a place, at a column of the strip (null: as it is). */
   onInChart: (spot: Spot, at: number | null) => void;
   /** The site menu, with its rows for this page. */
@@ -117,6 +136,11 @@ export default function SpotFinder(props: FinderProps) {
     onWant,
     onInChart,
     menu,
+    beside = false,
+    onHover,
+    onShown,
+    onPlace,
+    headRef,
   } = props;
   const s = styles();
   const [scope, setScope] = useState<Scope>("favourites");
@@ -151,7 +175,18 @@ export default function SpotFinder(props: FinderProps) {
 
   const wanted = listed.map((l) => l.spot.id);
   const wantKey = wanted.join(",");
-  useEffect(() => onWant(wanted), [wantKey]);
+  useEffect(() => onWant(wanted, scope), [wantKey, scope]);
+  const placeLat = known ? place.at.lat : null;
+  const placeLon = known ? place.at.lon : null;
+  useEffect(
+    () =>
+      onPlace?.(
+        placeLat === null || placeLon === null
+          ? null
+          : { lat: placeLat, lon: placeLon },
+      ),
+    [placeLat, placeLon],
+  );
 
   const hourKey = hourOf(now);
   const dates = useMemo(() => cardDates(now), [hourKey]);
@@ -213,6 +248,7 @@ export default function SpotFinder(props: FinderProps) {
       ? noon
       : strip[opening].time;
   const shown = pick ?? standing;
+  useEffect(() => onShown?.(shown), [shown]);
   const dayName = isToday
     ? { short: "Today", long: "Today" }
     : {
@@ -221,8 +257,13 @@ export default function SpotFinder(props: FinderProps) {
       };
 
   return (
-    <div className={s.root()} data-spot-finder data-scope={scope}>
-      <PageHeader menu={menu} wordmark={!phone}>
+    <div
+      className={s.root()}
+      data-spot-finder
+      data-scope={scope}
+      data-beside-chart={beside || undefined}
+    >
+      <PageHeader menu={menu} wordmark={!phone} headRef={headRef}>
         <Segmented
           aria-label="Which spots"
           options={SCOPES}
@@ -230,69 +271,82 @@ export default function SpotFinder(props: FinderProps) {
           onChange={chooseScope}
         />
       </PageHeader>
-      <section
-        className={s.list()}
-        aria-label={scope === "near" ? "Spots near you" : "Favourites"}
-        aria-busy={place.asking || undefined}
-      >
-        {ranked.length ? (
-          <HoverContext.Provider value={hover}>
-            <ul
-              className={s.cards()}
-              data-day-chosen={isToday ? undefined : day}
-            >
-              {ranked.map((item, order) => {
-                const plan = plans.get(item.spot.id);
-                return (
-                  <li key={item.spot.id} className="min-w-0">
-                    <SpotCard
-                      spot={item.spot}
-                      km={item.km}
-                      row={hours.get(item.spot.id)}
-                      strip={strip}
-                      day={plan?.day ?? null}
-                      dayName={dayName}
-                      isToday={isToday}
-                      days={plan?.days ?? []}
-                      readings={
-                        readings.get(item.spot.id) ?? {
-                          sky: [],
-                          air: [],
-                          sea: [],
-                          tides: [],
-                        }
+      <div className={s.body()}>
+        <section
+          className={s.list({ class: beside ? undefined : s.alone() })}
+          aria-label={scope === "near" ? "Spots near you" : "Favourites"}
+          aria-busy={place.asking || undefined}
+          data-finder-list
+        >
+          {ranked.length ? (
+            <HoverContext.Provider value={hover}>
+              <ul
+                className={s.cards()}
+                data-finder-cards
+                data-day-chosen={isToday ? undefined : day}
+              >
+                {ranked.map((item, order) => {
+                  const plan = plans.get(item.spot.id);
+                  return (
+                    <li
+                      key={item.spot.id}
+                      className="min-w-0"
+                      onMouseEnter={
+                        onHover ? () => onHover(item.spot.id) : undefined
                       }
-                      picked={pick}
-                      shown={shown}
-                      roseAt={roseAt}
-                      now={now}
-                      rider={rider}
-                      units={units}
-                      starred={starred.includes(item.spot.id)}
-                      phone={phone}
-                      reducedMotion={reducedMotion}
-                      onToggleStar={() => onToggleStar(item.spot.id)}
-                      onPick={(time) => setPicked(pickHour(time, standing))}
-                      onChooseDay={chooseDay}
-                      onChart={() => onInChart(item.spot, roseAt)}
-                      order={order}
-                      best={item.best}
-                    />
-                  </li>
-                );
-              })}
-            </ul>
-          </HoverContext.Provider>
-        ) : (
-          <p className={s.empty()} data-finder-empty>
-            {scope === "favourites"
-              ? "Star a spot and it shows here."
-              : place.asking
-                ? ""
-                : "No spots within 30 km."}
-          </p>
-        )}
-      </section>
+                      onMouseLeave={onHover ? () => onHover(null) : undefined}
+                    >
+                      <SpotCard
+                        spot={item.spot}
+                        km={item.km}
+                        row={hours.get(item.spot.id)}
+                        strip={strip}
+                        day={plan?.day ?? null}
+                        dayName={dayName}
+                        isToday={isToday}
+                        days={plan?.days ?? []}
+                        readings={
+                          readings.get(item.spot.id) ?? {
+                            sky: [],
+                            air: [],
+                            sea: [],
+                            tides: [],
+                          }
+                        }
+                        picked={pick}
+                        shown={shown}
+                        roseAt={roseAt}
+                        now={now}
+                        rider={rider}
+                        units={units}
+                        starred={starred.includes(item.spot.id)}
+                        phone={phone}
+                        reducedMotion={reducedMotion}
+                        onToggleStar={() => onToggleStar(item.spot.id)}
+                        onPick={(time) => setPicked(pickHour(time, standing))}
+                        onChooseDay={chooseDay}
+                        onChart={() => onInChart(item.spot, roseAt)}
+                        order={order}
+                        best={item.best}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </HoverContext.Provider>
+          ) : (
+            <p className={s.empty()} data-finder-empty>
+              {scope === "favourites"
+                ? "Star a spot and it shows here."
+                : place.asking
+                  ? ""
+                  : "No spots within 30 km."}
+            </p>
+          )}
+        </section>
+        {/* The room the chart stands in beside the list (src/App.tsx). */}
+        {beside && <div className="finder-side" aria-hidden="true" />}
+      </div>
     </div>
   );
 }

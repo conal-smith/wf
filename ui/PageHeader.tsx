@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { tv } from "./tv";
 import { Wordmark } from "./Wordmark";
 
@@ -34,6 +34,8 @@ export interface PageHeaderProps {
   className?: string;
   /** The page's own control, set right. */
   children?: ReactNode;
+  /** The header itself, for a page that lays something out under it. */
+  headRef?: Ref<HTMLElement>;
 }
 
 export function PageHeader({
@@ -41,10 +43,11 @@ export function PageHeader({
   wordmark = true,
   className,
   children,
+  headRef,
 }: PageHeaderProps) {
   const styles = pageHeaderStyles();
   return (
-    <header className={styles.base({ className })}>
+    <header className={styles.base({ className })} ref={headRef}>
       <span className={styles.lead()}>
         {menu}
         {wordmark && <Wordmark size="sm" />}
