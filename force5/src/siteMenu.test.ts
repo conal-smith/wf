@@ -232,24 +232,24 @@ describe("the navigation", () => {
     );
   const both = { market: true, community: true };
 
-  it("is the chart, the spot finder and Customise, then the sections, each with its glyph", () => {
+  it("is the chart, the spot finder and Settings, then the sections, each with its glyph", () => {
     const markup = rows({ current: "chart", features: both });
     expect(names(markup)).toEqual([
       "Chart",
       "Spot finder",
-      "Customise",
+      "Settings",
       "Marketplace",
       "Community",
       "Use with AI",
     ]);
     const links = markup.match(/<a [^>]*>[\s\S]*?<\/a>/g) ?? [];
     for (const link of links) expect(link).toMatch(/<svg[^>]*class="g-set"/);
-    // The chart's folded sheet, the finder's loupe, Customise's stops and
+    // The chart's folded sheet, the finder's loupe, Settings' sliders and
     // the AI's bubble.
     for (const glyph of [
       glyphs.windMap,
       glyphs.spotFinder,
-      glyphs.customise,
+      glyphs.settings,
       glyphs.useWithAi,
     ]) {
       const path = glyph.find((part) => "d" in part);
@@ -293,14 +293,14 @@ describe("the navigation", () => {
     ]);
   });
 
-  it("links each row where a page load takes it: the chart always the chart, Customise the chart with the wizard", () => {
+  it("links each row where a page load takes it: the chart always the chart, Settings the chart with Settings open", () => {
     const markup = rows({ current: null, features: both });
     // Never the bare root, which opens on the page the rider last had.
     expect(markup).not.toContain('href="/"');
     for (const href of [
       "/?chart",
       "/spots",
-      "/?customise",
+      "/?settings",
       "/market",
       "/community",
       "/ai",

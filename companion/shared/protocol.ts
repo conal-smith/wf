@@ -49,7 +49,7 @@ export interface CompanionStatus {
 
 /**
  * Whose stars a rider is rated on, in the site's words: ours, unless they
- * made their own in Customise.
+ * made their own in Settings.
  */
 export const starsName = (own: boolean) => (own ? "Your own stars" : "Ours");
 

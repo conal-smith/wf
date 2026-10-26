@@ -29,7 +29,7 @@ the body face's italic, the magnifier ahead of it.
   normal weight on every pointer.
 - **Pill** (`--pill`, `shape="pill"`) — a capsule (`sem.radius.pill`) ruled
   all round in a `sem.rule.hairline` of `sem.color.ink`, `sem.space.step` ×
-  3.5 either side, for a search inside a box (Customise's "Your spots"),
+  3.5 either side, for a search inside a box,
   where a lone rule under the words would read as a divider. Combines with
   the sizes; the hover takes the whole border to `sem.color.chart-magenta`.
 

@@ -1,7 +1,7 @@
 # Star ratings and wing sizes
 
 Every forecast hour at a riding place gets a rating out of five, on ours or on
-the rider's own (set in Customise), and a wing size beside it. The point is the glance: a
+the rider's own (set in Settings), and a wing size beside it. The point is the glance: a
 row of five solid stars on Thursday afternoon says "go" faster than three rows
 of numbers do, and a light, steady day says "drills" instead of "nothing".
 
@@ -77,7 +77,7 @@ table, names the model on the day's header and in each hour's card.
 
 **The owner's ruling, 25 October 2026: one rating, no levels.** Learning,
 Riding and Advanced are gone everywhere. Everyone is rated on ours; a rider
-who wants something else moves four numbers in Customise
+who wants something else moves four numbers in Settings
 (`backlog/mockups/2026-10-25-own-star-rating.html`, approved; the plan before
 it, `backlog/research/2026-10-25-star-rating-plan.html`). The rider never sees
 a gust setting: the rest is our model.
@@ -192,7 +192,7 @@ unaltered, by the `warnings` job (docs/LIVE_FORECAST_PIPELINE.md).
   direction: { onshore, crossOn, cross, crossOff, offshore } }    // whole stars off; offshore 5
 ```
 
-Made in Customise (src/Customise.tsx on the site, mobile/src/features/stars
+Made in Settings (src/Settings.tsx on the site, mobile/src/features/stars
 in the app, on the same arithmetic, `spot/web/yourStars.ts`). Left as ours, no
 rating is kept (`isOurs`), and "Reset to ours" shows only once something
 differs from ours. It rides on the rider (`Rider.custom`), so every page and
@@ -421,7 +421,7 @@ an assistant would be given. The dock follows the same rule from the same
 - **The tide and the light** under each day: a 24-hour curve with the night
   and twilight behind it, then the high and low waters and first light to last
   light as two small tables.
-- **Stars:** "Ours" or "Your own", with a way to Customise, and the weight
+- **Stars:** "Ours" or "Your own", with a way to Settings, and the weight
   and wings behind a fold, written to the same `rider` in `force5.prefs.v1`
   through the same `parseRider` validation (neither moves a star).
 

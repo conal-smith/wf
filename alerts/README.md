@@ -32,7 +32,7 @@ mobile/src/features/alerts/   the app's side (sync, permission, preview)
 ## How it works
 
 **The stars are the rider's.** Every rider is rated on ours unless they made
-their own star rating in Customise (docs/STAR_RATINGS.md), and the wing beside
+their own star rating in Settings (docs/STAR_RATINGS.md), and the wing beside
 the stars depends on their weight and wings, so each phone registers with its
 rider and the server rates for that rider. An app from before 25 October 2026
 also sends a level and a gust setting, which are dropped, and perhaps a rating

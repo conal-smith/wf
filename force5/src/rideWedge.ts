@@ -2,7 +2,7 @@
  * The wedge a light shows, and the rose the loupe draws: the headings this
  * rider can hold, at this hour's wind.
  *
- * Two numbers say where a rider can go, both set in Customise ("Can you ride
+ * Two numbers say where a rider can go, both set in Settings ("Can you ride
  * upwind?"). How high: degrees into the wind, counted from straight across
  * it (`Rider.upwind`), 0° unless they say otherwise ("Not yet": straight
  * across the wind, holding their ground), up to 45°, about the most a very

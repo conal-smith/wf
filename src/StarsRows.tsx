@@ -25,7 +25,7 @@ interface Props {
 }
 
 export const STARS_HELP =
-  "How good each hour looks for wing foiling, out of five, from the steady wind against four numbers: too light, the sweet spot and too much (ours unless you set your own in Customise). Solid stars are what the hour is worth here; outlined ones are stars lost to the gusts or to the wind's direction. Each hour is one model's forecast, the model you picked, and ECMWF's past the end of its run, where a dashed line marks the change; the other models never change a star.";
+  "How good each hour looks for wing foiling, out of five, from the steady wind against four numbers: too light, the sweet spot and too much (ours unless you set your own in Settings). Solid stars are what the hour is worth here; outlined ones are stars lost to the gusts or to the wind's direction. Each hour is one model's forecast, the model you picked, and ECMWF's past the end of its run, where a dashed line marks the change; the other models never change a star.";
 export const WING_HELP =
   "A wing size for that hour, in square metres: your own wing where you have listed them, otherwise what a rider of your weight would usually take. It never changes the stars.";
 

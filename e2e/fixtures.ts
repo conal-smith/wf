@@ -129,7 +129,7 @@ export async function backToIreland(page: Page) {
 }
 
 /**
- * Change the stored rider in the page and say so, as Customise does on Save:
+ * Change the stored rider in the page and say so, as Settings does on Save:
  * the display options no longer set the rider's weight or level.
  */
 export async function setRider(page: Page, rider: Record<string, unknown>) {
@@ -197,32 +197,28 @@ export async function closePanel(page: Page) {
 
 /**
  * The chart's own tools that open over it, each a row of the site menu's:
- * Customise, in the site's navigation (a link, the map's own way to it), and
+ * Settings, in the site's navigation (a link, the map's own way to it), and
  * under it, in "This chart", the ones src/MapControls.tsx `chartTools` lists
  * and the tour (src/App.tsx).
  */
 export type ChartTool =
-  | "Customise"
-  | "Layers"
-  | "Display options"
-  | "About the map"
-  | "Take the tour";
+  "Settings" | "Layers" | "Display options" | "About the map" | "Take the tour";
 
 /** A chart tool's row in the site menu, while the menu is open. */
 export const menuRow = (page: Page, name: ChartTool) =>
-  name === "Customise"
+  name === "Settings"
     ? siteRow(page, name)
     : chartTools(page).getByRole("button", { name, exact: true });
 
 /**
  * The site's navigation, the same on every page (force5/src/siteNav.ts
- * SITE_NAV): the chart, the spot finder and Customise, then the sections, the
+ * SITE_NAV): the chart, the spot finder and Settings, then the sections, the
  * marketplace and the community switched on in this suite's build.
  */
 export const SITE_ROWS = [
   "Chart",
   "Spot finder",
-  "Customise",
+  "Settings",
   "Marketplace",
   "Community",
   "Use with AI",

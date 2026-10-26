@@ -1,7 +1,7 @@
 /**
- * The arithmetic behind the rider's own stars — Customise's "What wind suits
- * you?" and "Configure stars based on wind direction" on the site
- * (src/Customise.tsx) and in the app (mobile/src/features/stars) — kept apart
+ * The arithmetic behind the rider's own stars — Settings' "Wind strength"
+ * and "Wind direction" on the site
+ * (src/Settings.tsx) and in the app (mobile/src/features/stars) — kept apart
  * from the drawing so it can be tested: the rider's units and the handles'
  * steps in them, the handles kept in order, and every star they show, read
  * from the rating itself (force5/src/stars.ts) rather than restated.
