@@ -6,6 +6,8 @@ import { clock, irishHour, stripColumns } from "../strip";
 import { BAND_TOP_KN, windBand } from "./band";
 import {
   HOUR,
+  IRELAND_CENTRE,
+  NEAREST_COUNT,
   bestStars,
   cardDates,
   centredScroll,
@@ -18,6 +20,8 @@ import {
   listFor,
   middayColumn,
   nearSpots,
+  nearestSpots,
+  openingScope,
   pickHour,
   rankSpots,
   rideableRun,
@@ -100,6 +104,50 @@ describe("near you", () => {
   it("is empty with no idea where the rider is", () => {
     expect(listFor("near", SPOTS, [], null)).toEqual([]);
   });
+
+  it("round the rider's own place, is every place within 30 km, each with its distance", () => {
+    const list = listFor("near", SPOTS, [], DUBLIN, true);
+    expect(list.map((l) => l.spot.id)).toEqual([
+      "dollymount",
+      "velvet",
+      "bray",
+    ]);
+    expect(list.every((l) => l.km !== null && l.km <= 30)).toBe(true);
+  });
+
+  it("round a place that is not the rider's, is the nearest however far, with no distances", () => {
+    // The middle of Ireland has nothing within 30 km.
+    expect(nearSpots(SPOTS, IRELAND_CENTRE)).toEqual([]);
+    const list = listFor("near", SPOTS, [], IRELAND_CENTRE, false);
+    expect(list.map((l) => l.spot.id)).toEqual(
+      nearestSpots(SPOTS, IRELAND_CENTRE).map((n) => n.spot.id),
+    );
+    expect(list).toHaveLength(SPOTS.length);
+    expect(list.every((l) => l.km === null)).toBe(true);
+  });
+
+  it("the nearest are a dozen at most, nearest first", () => {
+    const many = Array.from({ length: 30 }, (_, i) =>
+      spot(`s${i}`, 51.5 + i * 0.1, -9),
+    );
+    const nearest = nearestSpots(many, { lat: 51.5, lon: -9 });
+    expect(NEAREST_COUNT).toBe(12);
+    expect(nearest).toHaveLength(12);
+    expect(nearest.map((n) => n.spot.id)).toEqual(
+      many.slice(0, 12).map((s) => s.id),
+    );
+    expect(nearestSpots(many, { lat: 51.5, lon: -9 }, 3)).toHaveLength(3);
+  });
+});
+
+describe("the tab the finder opens on", () => {
+  it("is Favourites once a place is starred", () => {
+    expect(openingScope(["brandon"])).toBe("favourites");
+  });
+
+  it("is Near you on a first visit, with nothing starred", () => {
+    expect(openingScope([])).toBe("near");
+  });
 });
 
 describe("favourites", () => {
@@ -117,6 +165,11 @@ describe("favourites", () => {
   it("say how far each is once the rider is placed", () => {
     const [first] = listFor("favourites", SPOTS, ["velvet"], DUBLIN);
     expect(first.km).toBeGreaterThan(5);
+  });
+
+  it("say no distance from a place the rider is not at", () => {
+    const [first] = listFor("favourites", SPOTS, ["velvet"], DUBLIN, false);
+    expect(first.km).toBeNull();
   });
 });
 

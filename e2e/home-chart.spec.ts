@@ -44,6 +44,24 @@ const kept = (page: Page) =>
         .kept === "1",
   );
 
+/** How many of the chart's lights stand inside the box beside the list. */
+const lightsInside = async (page: Page) => {
+  const box = (await panel(page).boundingBox())!;
+  const at = await lights(page).evaluateAll((els) =>
+    els.map((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    }),
+  );
+  return at.filter(
+    (p) =>
+      p.x >= box.x &&
+      p.x <= box.x + box.width &&
+      p.y >= box.y &&
+      p.y <= box.y + box.height,
+  ).length;
+};
+
 /** The home page at 1440, its favourites listed and the chart beside them. */
 async function openHome(page: Page, ids = ["brandon", "dollymount", "keel"]) {
   await star(page, ids);
@@ -294,6 +312,43 @@ test.describe("on a wide screen", () => {
       page.locator('.spot-marker[data-spot-id="brandon"]'),
     ).toHaveCount(0);
     await expect(page.getByRole("img", { name: "You are here" })).toBeVisible();
+  });
+});
+
+test.describe("a first visit, with no favourites", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("location allowed: Near you lists the spots round the rider, and the chart beside it is fitted to them, with the blue dot", async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(["geolocation"]);
+    await context.setGeolocation(DUBLIN);
+    await page.goto("/");
+    await expect(finder(page)).toHaveAttribute("data-scope", "near");
+    await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
+      timeout: 30000,
+    });
+    const listed = await cards(page).count();
+    expect(listed).toBeGreaterThan(3);
+    await expect(lights(page)).toHaveCount(listed, { timeout: 30000 });
+    await expect(page.getByRole("img", { name: "You are here" })).toBeVisible();
+    // Fitted to the list: every light inside the box beside it.
+    await expect.poll(() => lightsInside(page)).toBe(listed);
+  });
+
+  test("location refused: Near you lists the spots nearest the middle of Ireland, and the chart beside it is fitted to them", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect(finder(page)).toHaveAttribute("data-scope", "near");
+    await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
+    await expect(page.locator("[data-finder-note]")).toBeVisible();
+    await expect(lights(page)).toHaveCount(12, { timeout: 30000 });
+    await expect(page.getByRole("img", { name: "You are here" })).toHaveCount(
+      0,
+    );
+    await expect.poll(() => lightsInside(page)).toBe(12);
   });
 });
 

@@ -18,11 +18,18 @@ import type { PlaceHour } from "../ratings";
 import { irishDate, irishHour, type StripColumn } from "../strip";
 import type { LatLon } from "../lastView";
 
-/** Favourites (the default) or every place round the rider. */
+/** Favourites or every place round the rider. */
 export type Scope = "favourites" | "near";
 
-/** How far "near you" reaches. */
+/** How far "near you" reaches, round the rider's own place. */
 export const NEAR_KM = 30;
+
+/**
+ * How many places "near you" lists round a place that is not the rider's
+ * own (where the chart was last, or the middle of Ireland): the nearest,
+ * however far, so the list is never empty. The approved mock-up's count.
+ */
+export const NEAREST_COUNT = 12;
 
 /** Today and the five days after it: what a card covers. */
 export const CARD_DAYS = 6;
@@ -57,18 +64,50 @@ export function nearSpots<S extends Spot>(
     .sort((a, b) => a.km - b.km);
 }
 
-/** The places the finder lists for a scope, before they are ranked. */
+/** The `count` places nearest a point, however far, nearest first. */
+export function nearestSpots<S extends Spot>(
+  spots: readonly S[],
+  at: LatLon,
+  count = NEAREST_COUNT,
+): { spot: S; km: number }[] {
+  return spots
+    .map((spot) => ({ spot, km: distanceKm(at, spot) }))
+    .sort((a, b) => a.km - b.km)
+    .slice(0, count);
+}
+
+/**
+ * The tab the finder opens on: the rider's favourites once they have
+ * starred a place; before that, the places round them, so a first visit
+ * is never an empty page.
+ */
+export const openingScope = (starred: readonly string[]): Scope =>
+  starred.length ? "favourites" : "near";
+
+/**
+ * The places the finder lists for a scope, before they are ranked. `own` is
+ * whether `at` is the rider's own place: round it, "near you" is every place
+ * within NEAR_KM and each card says how far it is; round any other place it
+ * is the nearest few, however far, and no card gives a distance from a
+ * place the rider is not at.
+ */
 export function listFor<S extends Spot>(
   scope: Scope,
   spots: readonly S[],
   starred: readonly string[],
   at: LatLon | null,
+  own = true,
 ): { spot: S; km: number | null }[] {
-  if (scope === "near") return at ? nearSpots(spots, at) : [];
+  if (scope === "near") {
+    if (!at) return [];
+    return own
+      ? nearSpots(spots, at)
+      : nearestSpots(spots, at).map(({ spot }) => ({ spot, km: null }));
+  }
   const byId = new Map(spots.map((s) => [s.id, s] as const));
   return starred.flatMap((id) => {
     const spot = byId.get(id);
-    return spot ? [{ spot, km: at ? distanceKm(at, spot) : null }] : [];
+    return spot ? [{ spot, km: at && own ? distanceKm(at, spot) : null }] : [];
   });
 }
 

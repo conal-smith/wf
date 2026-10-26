@@ -2279,6 +2279,7 @@ export default function App() {
                   onShown={setFinderShown}
                   onPlace={setRiderAt}
                   headRef={onFinderHead}
+                  onScreen={!onChart}
                 />
               </Suspense>
             )}
