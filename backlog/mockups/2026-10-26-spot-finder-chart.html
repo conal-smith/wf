@@ -235,7 +235,7 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
 .chartonly { display: none !important; }
 .app[data-view=chart] .chartonly { display: flex !important; }
 .app[data-view=chart] .listonly { display: none !important; }
-.app:not([data-layout=split]) .zoombox { display: none !important; }
+.app:not([data-layout=split])[data-view=list] .zoombox { display: none !important; }
 /* the chart's own frame and search box, as the chart has them full screen */
 .neat { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
 .neat i { position: absolute; background: repeating-linear-gradient(90deg, var(--ink) 0 52px, #f4efe5 52px 104px); box-shadow: 0 0 0 1px var(--ink); }
@@ -245,9 +245,12 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
 .chead { position: absolute; left: 18px; top: 18px; width: 360px; height: 56px; align-items: center; gap: 12px; padding: 0 12px 0 8px; border-radius: 14px; }
 .chead .round { width: 36px; height: 36px; }
 .chead .find { flex: 1; display: flex; align-items: center; gap: 7px; font: italic 400 15px var(--body); color: var(--muted); }
-.app[data-layout=phone] .chead { left: 12px; right: 12px; top: 14px; width: auto; }
+.app[data-layout=phone] .chead { left: 11px; right: 56px; top: 11px; width: auto; height: 54px; }
 .app[data-layout=phone] .chead .word { display: none; }
 .app[data-view=chart] .zoombox { top: 18px; right: 18px; }
+/* a phone's chart: the search box, and the zoom and layers beside it at the top right, as the chart has them */
+.app[data-layout=phone][data-view=chart] .zoombox { top: 11px; right: 5px; }
+.app[data-layout=phone] #collapse, .app[data-layout=phone] #collapse + hr { display: none !important; }
 .credit { position: absolute; left: 16px; bottom: var(--credit-b, 16px); align-items: center; transition: bottom .3s var(--ease); gap: 8px; font: 500 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
 .credit b { width: 20px; height: 20px; border-radius: 99px; background: var(--ink); color: var(--ground); display: grid; place-items: center; font: 600 11px var(--body); letter-spacing: 0; }
 
@@ -266,10 +269,8 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
 .dock.closed { transform: translateY(calc(100% + 70px)); visibility: hidden; transition: height .3s var(--ease), transform .3s var(--ease), visibility 0s .3s; }
 .dk-tools { position: absolute; right: 12px; bottom: calc(100% + 10px); display: flex; align-items: stretch; gap: 2px; padding: 3px; border-radius: 14px; }
 .dk-id { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 0 10px 0 4px; border-right: 1px solid var(--line); }
-.dk-name { display: inline-flex; align-items: center; gap: 3px; min-width: 0; max-width: 34vw; padding: 0; border: 0; background: none; font: 600 17px var(--display); letter-spacing: -.01em; white-space: nowrap; cursor: pointer; }
-.dk-name span { overflow: hidden; text-overflow: ellipsis; }
+.dk-name { display: inline-flex; align-items: center; min-width: 0; padding: 0; border: 0; background: none; color: var(--ink); text-align: left; font: 600 17px/1.15 var(--display); letter-spacing: -.01em; white-space: nowrap; cursor: pointer; }
 .dk-name:hover span { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
-.dk-name svg { flex: none; color: var(--muted); }
 .dk-star { flex: none; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 10px; background: none; display: grid; place-items: center; cursor: pointer; }
 .dk-tool { height: 30px; min-width: 32px; padding: 0 8px; border: 0; border-radius: 10px; background: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
   font: 500 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); cursor: pointer; }
@@ -309,16 +310,19 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
 .tt td.pick { cursor: pointer; }
 .tt td.pick:hover { background-color: #ede6d6aa; }
 .tt-pen { position: absolute; top: 26px; pointer-events: none; overflow: visible; z-index: 2; }
-.dock .chev { transition: transform .2s; }
-.dock.open .chev { transform: rotate(180deg); }
+/* the dock's top edge: drag it up for more rows, down for fewer, and down again to close (the chart's own sheet does this on a phone) */
+.dk-edge { position: absolute; left: 0; right: 0; top: -8px; height: 18px; z-index: 4; cursor: ns-resize; touch-action: none; }
+.dk-edge .dk-grip { top: 9px; opacity: .55; }
+.dk-edge:hover .dk-grip { opacity: 1; }
+.app.dock-drag .dock, .app.dock-drag .toggle, .app.dock-drag .credit { transition: none !important; }
 /* a phone's dock is the chart's bottom sheet: a grip, then its head, then the hours */
 .app[data-layout=phone] .dock { padding: 0 0 0 10px; }
 .app[data-layout=phone] .dk-tools { display: none; }
-.app[data-layout=phone] .dk-head { position: relative; display: flex; align-items: center; gap: 2px; height: 44px; padding: 8px 6px 0 0; }
+.app[data-layout=phone] .dock { display: flex; flex-direction: column; }
+.app[data-layout=phone] .dk-head { position: relative; flex: none; display: flex; align-items: center; gap: 2px; min-height: 44px; padding: 12px 6px 2px 0; touch-action: none; cursor: grab; }
 .dk-grip { position: absolute; left: 50%; top: 4px; width: 38px; height: 4px; margin-left: -19px; border: 0; border-radius: 4px; background: #1a1d2140; padding: 0; cursor: pointer; }
-.dk-head .dk-name { font-size: 19px; max-width: 46vw; }
-.dk-head .sp { flex: 1; }
-.app[data-layout=phone] .dk-scroll { height: calc(100% - 44px); }
+.dk-head .dk-name { flex: 1; font-size: 19px; white-space: normal; }
+.app[data-layout=phone] .dk-scroll { flex: 1; min-height: 0; height: auto; }
 .app[data-layout=phone] .tt .lab { width: 38px; min-width: 38px; max-width: 38px; }
 .app[data-layout=phone] .tt tr.day th { height: 20px; font-size: 14px; }
 /* the chosen spot on the chart: its name and wind in the pen's red, the pen's loop round it, the range ring */
@@ -397,9 +401,11 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
     <li><b>Hover a card.</b> Its spot on the map turns black and shows its name. The map never zooms on a hover. If the spot is already well inside the map, nothing else moves. If it is near the edge or off the map, the map pans quickly to put it in the middle, at the same zoom. Leaving the list leaves the map where it is. Only first load and switching Favourites / Near you fit the map to the spots.</li>
     <li><b>Hover a spot on the map.</b> Its card is outlined in the list. Click a spot on the map beside the list to scroll the list to its card. The map beside the list never opens the forecast dock.</li>
     <li><b>Switch between Favourites and Near you.</b> The map shows only the spots on the list, and zooms to fit them. The blue dot is you.</li>
-    <li><b>Press Full chart</b> (top left of the map). The map grows to fill the screen and becomes the chart, with its own search box, controls and every spot. Press the black List button, the collapse button (top right), Escape or the browser's Back button to return to the list.</li>
+    <li><b>Press Full chart</b> (top left of the map). The map grows to fill the screen and becomes the chart, with its own search box, zoom and layers buttons (on a phone too) and every spot. Press the black List button, the collapse button (top right), Escape or the browser's Back button to return to the list.</li>
     <li>On the full chart, <b>click a spot</b>. The chart's forecast dock opens along the bottom, as it does on the chart today, and the spot gets the chart's red pen loop and range ring. There is no card over the map: to see the card, go back to the list.</li>
-    <li>With the dock open, the <b>black List button moves up</b> to sit just above it, and moves back down when the dock closes (the × on the dock, or Escape). Press the arrow on the dock for more rows; the button moves with it. On a phone the dock is the chart's bottom sheet, and the List button sits above it.</li>
+    <li>The dock's top row is simpler: the star, the spot's name in full (press it for the spot page), a Blend button and one arrow. <b>The arrow closes the dock.</b> There is no × and no Layers button in the dock: Layers is with the zoom buttons.</li>
+    <li><b>Drag the dock's top edge up</b> for more rows, and down for fewer. Drag it down again to close it. On a phone, drag the sheet the same way. A tap on the grip also shows more or fewer rows.</li>
+    <li>With the dock open, the <b>black List button moves up</b> to sit just above it, moves with it as you drag, and drops back down when the dock closes.</li>
     <li>Click an hour in the dock to pick it. The stars on the map follow.</li>
     <li><b>Press a card's picture</b> to open the full chart at that spot, with its dock open.</li>
     <li><b>Pick an hour</b> on any card. Every card and every spot on the map shows the stars for that hour.</li>
@@ -411,7 +417,7 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
   <ul>
     <li>The map is two screenshots of the real chart running on this branch (Ireland, and the Dublin coast in more detail), placed with the same map maths the chart uses. The spots and the blue dot are drawn on top so they can respond to the mouse. They are drawn the way the chart draws its spots.</li>
     <li>Only the Dublin coast has the detailed picture, so zooming in elsewhere looks soft. In the real build it is the live chart, sharp at every zoom.</li>
-    <li>The forecast dock is rebuilt in HTML from the real one (src/ForecastDock.tsx and src/dock.css, checked against screenshots of the running app at 1440 and 390), with the same made-up forecast as the cards. On a phone, tap the grip or the arrow to raise the sheet instead of dragging it.</li>
+    <li>The forecast dock is rebuilt in HTML from the real one (src/ForecastDock.tsx and src/dock.css, checked against screenshots of the running app at 1440 and 390), with the same made-up forecast as the cards.</li>
     <li>The cards are drawn the way src/finder/SpotCard.tsx draws them, with a made-up forecast. The real Near you list has every spot within 30 km (23 from this location). The mock-up shows the 12 nearest so the file stays small.</li>
   </ul>
 
@@ -419,7 +425,7 @@ body.preview .app[data-layout=phone] { border-radius: 28px; }
   <ul>
     <li><b>One chart, moved, not two.</b> The page that draws the chart (src/App.tsx) would draw the finder and one <code>WindMap</code> together. The map sits in a box that is either the panel on the right or the whole screen. Expanding changes the box's size and calls <code>map.resize()</code> once at the end of the animation. The map is never unmounted, so it keeps its style, tiles, forecast frames and wind particles, and the browser keeps one WebGL context instead of two.</li>
     <li><b>Panel and full chart differ only in what the map is given.</b> In the panel: only the listed spots as lights, no loupe or dock, the hour picked on the cards, and the map fitted to the list. Full screen: every spot, the dock, the search box and the layers, exactly as the chart is today. The finder already gets the chart's rated hours from App, so nothing new has to be loaded.</li>
-    <li><b>The dock stays as it is.</b> It only appears when the chart is full screen, never in the side panel. The List button would sit inside the dock's own layout, as the dock's tools and the chart's small print already do, so it moves with the dock's top edge in the same frame and can never cover it.</li>
+    <li><b>The dock is the chart's own,</b> with the simpler top row above. The same change would be made to the chart's existing dock (src/ForecastDock.tsx), since it is the same component. It only appears when the chart is full screen, never in the side panel. The List button would sit inside the dock's own layout, as the dock's tools and the chart's small print already do, so it moves with the dock's top edge in the same frame and can never cover it.</li>
     <li><b>Hover.</b> A card passes its spot's id to the lights (a class toggled in force5/src/lights.ts, no React re-render) and, only if the spot is near the edge or off the map, calls <code>easeTo</code> with the current zoom after a short delay, so scrolling past cards does not throw the map around.</li>
     <li><b>Addresses.</b> <code>/</code> becomes the finder. The full chart is the same page with <code>?map</code> in the address (pushed to history, so Back returns to the list). Existing links keep working: <code>/?spot=keel</code> opens the full chart on Keel, and <code>/spots</code> redirects to <code>/</code>. The "open the page you used last" memory in src/lastView.ts could then remember whether the chart was open.</li>
     <li><b>Phone.</b> The map is not created until the Map button is first pressed, as the old finder did. After that it is kept, hidden, and resized when shown again.</li>
@@ -841,8 +847,10 @@ function pressLight(id) {
 /* =========================================================================
    The forecast dock (src/ForecastDock.tsx): the chosen spot's hours along the foot of the full chart
    ========================================================================= */
-const DOCK_H = { desk: [130, 250], phone: [144, 286] };
-const dockHeight = () => S.sel && S.view === "chart" ? DOCK_H[S.layout === "phone" ? "phone" : "desk"][S.rows ? 1 : 0] : 0;
+// Folded and with more rows; a phone's sheet adds its head, which grows when a long name takes two lines.
+let headH = 44;
+const dockSizes = () => S.layout === "phone" ? [headH + 100, headH + 100 + 22 + 120] : [130, 250];
+const dockHeight = () => S.sel && S.view === "chart" ? dockSizes()[S.rows ? 1 : 0] : 0;
 const DAY_NAME = ["Mon 26", "Tue 27", "Wed 28"];
 const ICON = {
   wind: `<svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M1 3h9a2 2 0 1 0-2-2M1 6h12a2 2 0 1 1-2 2M1 9h6"/></svg>`,
@@ -854,11 +862,8 @@ const ICON = {
   air: `<svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 2v8.5a2.6 2.6 0 1 0 2 0V2a1 1 0 0 0-2 0z"/><circle cx="5" cy="12.6" r="1.4" fill="currentColor"/></svg>`,
   rain: `<svg width="12" height="16" viewBox="0 0 12 16"><path d="M6 1.5C4 5 2 7.5 2 10.2a4 4 0 0 0 8 0C10 7.5 8 5 6 1.5z" fill="#2f7fc0"/></svg>`,
 };
-const CHEV_UP = `<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>`;
-const CLOSE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
-const LAYERS3 = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/></svg>`;
+const CHEV_DOWN = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>`;
 const BLEND = `<svg width="18" height="12" viewBox="0 0 18 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h7M8 6c3 0 4-4 8-4M8 6c3 0 4 4 8 4"/></svg>`;
-const CHEV_R = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>`;
 function dockCols() {
   const cols = [{ d: 0, h: NOW - 6, old: true }, { d: 0, h: NOW - 3, old: true }, { d: 0, h: NOW - 1, old: true, cut: true }];
   for (let h = NOW; h < 24; h++) cols.push({ d: 0, h });
@@ -875,8 +880,7 @@ function penBox(w, h) {
 function renderDock() {
   const s = S.sel && SPOTS.get(S.sel), on = !!s && S.view === "chart", phone = S.layout === "phone";
   dockEl.classList.toggle("closed", !on); dockEl.classList.toggle("open", S.rows);
-  app.style.setProperty("--dock-h", `${dockHeight() || DOCK_H[phone ? "phone" : "desk"][0]}px`);
-  if (!on) { placeFloat(); return; }
+  if (!on) { app.style.setProperty("--dock-h", `${dockSizes()[0]}px`); placeFloat(); return; }
   const keep = dockEl.querySelector(".dk-scroll")?.scrollLeft ?? 0;
   const cw = phone ? 52 : 62, cols = dockCols(), lab = phone ? 38 : 46;
   const night = (h) => h < Math.ceil(FIRST) || h > Math.floor(LAST);
@@ -890,7 +894,7 @@ function renderDock() {
   const current = (c) => { const v = Math.abs(Math.sin(2 * Math.PI * (c.d * 24 + c.h - 7.6) / 12.42)) * 1.2 + .2, up = Math.cos(2 * Math.PI * (c.d * 24 + c.h - 7.6) / 12.42) > 0;
     return `<span style="color:#2f6f9f">${up ? "↗" : "↙"}</span>${v.toFixed(1)}`; };
   const rain = (c) => { const k = skyAt(c.d, Math.min(17, Math.max(7, c.h))); return k === "rain" ? (c.h % 3 ? "0.6" : "1.2") : k === "showers" && c.h % 4 === 1 ? "0.3" : dash; };
-  const more = !S.rows ? "" : `
+  const more = `
     <tr class="more first"><th class="lab">${ICON.gust}</th>${cell((c, r) => { const g = r.gust / r.mean; return g >= 1.5 ? `<span class="gf">${g.toFixed(1)}×</span>` : `${g.toFixed(1)}×`; })}</tr>
     <tr class="more"><th class="lab">${ICON.waves}<small>m</small></th>${cell((c) => wave(s, c.d).m.toFixed(1))}</tr>
     <tr class="more"><th class="lab">${ICON.current}<small>kn</small></th>${cell(current)}</tr>
@@ -899,14 +903,13 @@ function renderDock() {
     <tr class="more"><th class="lab">${ICON.rain}<small>mm/h</small></th>${cell(rain)}</tr>`;
   const dayRow = cols.map((c, i) => i === 0 || c.mid ? `<th class="${c.mid ? "mid" : ""} name">${DAY_NAME[c.d]}</th>` : "<th></th>").join("");
   const tools = `<button class="dk-star" data-dkfav aria-pressed="${S.starred.has(s.id)}" aria-label="Star ${s.name}">${FAV(S.starred.has(s.id))}</button>
-    <button class="dk-name" data-dkpage><span>${s.name}</span>${CHEV_R}</button>`;
-  const buttons = `<button class="dk-tool" data-say="This opens the chart's layers, as it does now." aria-label="Layers">${LAYERS3}${phone ? "" : "Layers"}</button>
-    <button class="dk-tool" data-say="This opens the Blend view, as it does now." aria-label="Blend">${BLEND}Blend</button>
-    <button class="dk-tool" data-dkrows aria-label="${S.rows ? "Fewer rows" : "More rows"}">${CHEV_UP}</button>
-    <button class="dk-tool" data-dkclose aria-label="Close">${CLOSE}</button>`;
-  const penH = 18 + 22 + 18 + (phone && !S.rows ? 0 : 22) + (S.rows ? 120 : 0);
-  dockEl.innerHTML = `${phone ? `<div class="dk-head"><button class="dk-grip" data-dkrows aria-label="${S.rows ? "Lower the sheet" : "Raise the sheet"}"></button>${tools}<span class="sp"></span>${buttons}</div>`
-      : `<div class="dk-tools floatbox"><div class="dk-id">${tools}</div>${buttons}</div>`}
+    <button class="dk-name" data-dkpage title="Open the ${s.name} spot page">${s.name}</button>`;
+  const buttons = `<button class="dk-tool" data-say="This opens the Blend view, as it does now." aria-label="Blend" title="Blend">${BLEND}</button>
+    <button class="dk-tool" data-dkclose aria-label="Close the forecast" title="Close">${CHEV_DOWN}</button>`;
+  const grip = `<button class="dk-grip" data-dkrows aria-label="${S.rows ? "Show fewer rows" : "Show more rows"}" title="Drag up for more rows"></button>`;
+  const penH = 18 + 22 + 18 + 22 + 120;
+  dockEl.innerHTML = `${phone ? `<div class="dk-head">${grip}${tools}${buttons}</div>`
+      : `<div class="dk-edge">${grip}</div><div class="dk-tools floatbox"><div class="dk-id">${tools}</div>${buttons}</div>`}
     <div class="dk-scroll"><div class="dk-track" style="--cw:${cw}px">
       <table class="tt" aria-label="${s.name}, hour by hour"><tbody>
         <tr class="day"><th class="lab"></th>${dayRow}</tr>
@@ -914,24 +917,58 @@ function renderDock() {
         <tr class="stars"><th class="lab"></th>${cell(stars)}</tr>
         <tr class="wind"><th class="lab">${ICON.wind}<small>kn</small></th>${cell((c, r) => `<b>${Math.round(r.mean)}</b>${r.gust / r.mean >= 1.5 ? `<small>g${Math.round(r.gust)}</small>` : ""}`)}</tr>
         <tr class="from"><th class="lab">${ICON.from}</th>${cell((c, r) => arrow(s, r.from, 13))}</tr>
-        ${phone && !S.rows ? "" : `<tr class="wing"><th class="lab">${ICON.wing}</th>${cell(wing)}</tr>`}
+        <tr class="wing"><th class="lab">${ICON.wing}</th>${cell(wing)}</tr>
         ${more}
       </tbody></table>
       ${selIdx >= 0 ? `<svg class="tt-pen" style="left:${lab + selIdx * cw - 3}px;width:${cw + 6}px;height:${penH + 22}px;top:${phone ? 20 : 24}px" viewBox="0 0 ${cw + 6} ${penH + 22}" aria-hidden="true">${penBox(cw + 6, penH + 20)}</svg>` : ""}
     </div></div>`;
   const sc = dockEl.querySelector(".dk-scroll"); sc.scrollLeft = keep;
   dockEl.querySelectorAll("[data-dk]").forEach((td) => td.onclick = () => { const [d, h] = td.dataset.dk.split(":").map(Number); S.day = d; S.hour = h; refreshHour(); });
-  dockEl.querySelectorAll("[data-dkrows]").forEach((b) => b.onclick = () => { S.rows = !S.rows; renderDock(); });
+  // the grip from the keys: more rows or fewer (a pointer drags it, or taps it, below)
+  dockEl.querySelectorAll("[data-dkrows]").forEach((b) => b.onclick = (e) => { if (e.detail === 0) { S.rows = !S.rows; renderDock(); } });
+  wireDockDrag(dockEl.querySelector(phone ? ".dk-head" : ".dk-edge"));
   dockEl.querySelector("[data-dkclose]").onclick = () => closeDock();
   dockEl.querySelector("[data-dkfav]").onclick = () => { const id = s.id; S.starred.has(id) ? S.starred.delete(id) : S.starred.add(id); renderDock(); renderList();
     say(S.starred.has(id) ? `${s.name} is in your favourites.` : `${s.name} is no longer a favourite.`); };
   dockEl.querySelector("[data-dkpage]").onclick = () => say(`This opens the ${s.name} spot page.`);
   dockEl.querySelectorAll("[data-say]").forEach((b) => b.onclick = () => say(b.dataset.say));
+  if (phone) headH = dockEl.querySelector(".dk-head").offsetHeight;
+  app.style.setProperty("--dock-h", `${dockHeight()}px`);
   placeFloat();
 }
+// Drag the dock's top edge (a phone's sheet by its head): up for more rows, down for fewer, down again to close.
+// A tap on the grip does the same as a short drag up or down.
+function wireDockDrag(handle) {
+  handle.onpointerdown = (e) => {
+    if (e.button !== 0) return;
+    const y0 = e.clientY, h0 = dockHeight(), [fold, open] = dockSizes(), onGrip = !!e.target.closest(".dk-grip");
+    let moved = false;
+    app.classList.add("dock-drag");
+    const move = (ev) => { if (ev.pointerId !== e.pointerId) return; const dy = ev.clientY - y0;
+      if (!moved && Math.abs(dy) > 4) moved = true;
+      if (!moved) return;
+      ev.preventDefault();
+      const h = Math.max(fold * .35, Math.min(open + 24, h0 - dy)); app.style.setProperty("--dock-h", `${h}px`); placeFloat(h); };
+    const up = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
+      removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up);
+      app.classList.remove("dock-drag");
+      const dy = ev.clientY - y0;
+      if (!moved) { if (onGrip) { S.rows = !S.rows; renderDock(); } return; }
+      // a drag that ends over the name or a button is not a press of it
+      const swallow = (c) => { c.stopPropagation(); c.preventDefault(); };
+      addEventListener("click", swallow, { capture: true, once: true });
+      setTimeout(() => removeEventListener("click", swallow, true), 60);
+      if (dy < -30) S.rows = true;
+      else if (dy > 30) { if (S.rows && h0 - dy > fold - 40) S.rows = false; else { closeDock(); return; } }
+      renderDock();
+    };
+    addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
+  };
+}
 // The black List button, the small print and the toast stand just above the dock while it is open, and move with it.
-function placeFloat() {
-  const h = dockHeight();
+function placeFloat(live) {
+  const h = live ?? dockHeight();
   let lift = h ? h + 12 : 18;
   if (h && S.layout !== "phone") {
     const tools = dockEl.querySelector(".dk-tools"), W = app.clientWidth, bw = toggle.offsetWidth || 110;
