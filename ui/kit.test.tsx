@@ -20,6 +20,7 @@ import { kickerStyles } from "./Kicker";
 import { linkStyles } from "./Link";
 import { mastheadStyles } from "./Masthead";
 import { noticeStyles } from "./Notice";
+import { pageHeaderStyles } from "./PageHeader";
 import { pagerStyles } from "./Pager";
 import { paneStyles } from "./Pane";
 import { penNoteStyles, penStyles } from "./Pen";
@@ -100,6 +101,7 @@ const RECIPES = {
   linkStyles,
   mastheadStyles,
   noticeStyles,
+  pageHeaderStyles,
   pagerStyles,
   paneStyles,
   penNoteStyles,
@@ -198,7 +200,7 @@ describe("the kit is styled only from the theme", () => {
 });
 
 describe("S2: what ui/ exports", () => {
-  it("is the thirty-six components, by name", () => {
+  it("is the thirty-seven components, by name", () => {
     const components = Object.keys(kit).filter((name) => /^[A-Z]/.test(name));
     expect(components.sort()).toEqual(
       [
@@ -220,6 +222,7 @@ describe("S2: what ui/ exports", () => {
         "Masthead",
         "MastheadMark",
         "Notice",
+        "PageHeader",
         "Pager",
         "Pane",
         "PenLoop",

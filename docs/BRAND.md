@@ -265,7 +265,8 @@ menu sets it: italic, heavier, on `sunken`); threads are sections under a
 rule rather than cards, with the opening post the one `Pane`; names in the
 display face, times and counts in the mono face. Avatars are monograms.
 
-**Everyone.** The AI page and the spot page are on the masthead already but
-otherwise untouched. `community/web/components/Composer.tsx` still sets its
+**Everyone.** The spot page is on the masthead already but otherwise
+untouched. The AI page has the spot finder's header (`PageHeader`) over a
+list of the apps, one button each. `community/web/components/Composer.tsx` still sets its
 field at `pointer-coarse:text-lead` (19px, fine, but `text-input` is the
 step for it now).

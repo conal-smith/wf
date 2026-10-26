@@ -40,6 +40,11 @@ export {
   type MastheadProps,
 } from "./Masthead";
 export { Notice, type NoticeProps } from "./Notice";
+export {
+  PageHeader,
+  pageHeaderStyles,
+  type PageHeaderProps,
+} from "./PageHeader";
 export { Pager, type PagerProps } from "./Pager";
 export { Pane, type PaneProps } from "./Pane";
 export {
