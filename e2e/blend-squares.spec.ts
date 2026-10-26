@@ -11,6 +11,9 @@ const SQUARE = /\/weather\/blend-[^/]+\/spots\/([ns]\d{2}[ew]\d{3})\.json$/;
 test("the lights read the blend's squares in view, and nothing where the blend has none", async ({
   page,
 }) => {
+  // Its poll alone may take 30 s of the 45 s a test has: on a loaded runner
+  // the page's own start left too little, so it gets the slow budget.
+  test.slow();
   const pointer = readSample("blend");
   const squares: string[] = [];
   const pointers: unknown[] = [];

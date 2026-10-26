@@ -1033,7 +1033,11 @@ test("the blend draws every model that covers the spot, on the strip's hours", a
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
 });
 
-test("the dock's top edge is its one fold: its grip, the keys and a drag show more rows or fewer, and down again closes it", async ({
+// The dock's top edge is its one fold: its grip, the keys and a drag show
+// more rows or fewer, and down again closes it. Three tests, each in its own
+// time: as one it outran the timeout on a loaded nightly runner.
+
+test("the dock's top edge is its one fold: a click on its grip shows more rows, and again fewer", async ({
   page,
 }) => {
   await openDock(page);
@@ -1047,7 +1051,6 @@ test("the dock's top edge is its one fold: its grip, the keys and a drag show mo
   await expect(dock.locator(".dk-grab")).toHaveCount(0);
   const height = async () => (await dock.boundingBox())!.height;
   const before = await height();
-  // A click on the grip.
   await grip.click();
   const fewer = dock.getByRole("button", { name: "Show fewer rows" });
   await expect(fewer).toHaveAttribute("aria-expanded", "true");
@@ -1058,13 +1061,25 @@ test("the dock's top edge is its one fold: its grip, the keys and a drag show mo
   expect(await height()).toBeGreaterThanOrEqual(before + 120);
   await fewer.click();
   await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
-  // The keys: Up for more, Down for fewer.
-  await grip.focus();
+});
+
+test("the dock's top edge is its one fold: on its grip, Up shows more rows and Down fewer", async ({
+  page,
+}) => {
+  await openDock(page);
+  const dock = page.locator(".dock");
+  await dock.getByRole("button", { name: "Show more rows" }).focus();
   await page.keyboard.press("ArrowUp");
   await expect(dock.locator("tr.tt-waves")).toHaveCount(1);
   await page.keyboard.press("ArrowDown");
   await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
-  // A drag of the top edge: up for more, down for fewer, down again to close.
+});
+
+test("the dock's top edge is its one fold: a drag up shows more rows, down fewer, and down again closes it", async ({
+  page,
+}) => {
+  await openDock(page);
+  const dock = page.locator(".dock");
   const drag = async (dy: number) => {
     const box = (await dock.locator(".dk-edge").boundingBox())!;
     const x = box.x + box.width / 4;
@@ -2236,12 +2251,12 @@ test.describe("on a phone", () => {
     // The hour is where it was: a drag up the hours is not a slide of them.
     await expect(dock.locator("tr.tt-hour td.c-sel")).toHaveCount(1);
     await expect.poll(() => offCursor(page)).toBeLessThan(2);
-    // A short quick flick is as good as a long pull: one snap down. Short is
-    // under half of the 120 px from full to half (six rows below the fold),
-    // so it is the flick's speed, not its length, that carries the sheet
-    // there; on a slow runner the speed is read lower, and 30 px with it
-    // fell short of the middle once the current's row made the gap 100.
-    await swipe(page, head, 0, 45, 3);
+    // Down one snap, from full to half. The pull is past the middle of the
+    // 100-120 px between them, so it lands on half whether the runner reads
+    // it as a flick or as a slow drag: on a loaded runner a short flick's
+    // speed was read too low and it fell back to full. That a flick, however
+    // short, moves one snap is src/sheetSnap.test.ts's to say.
+    await swipe(page, head, 0, 75, 3);
     await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
     await expect(dock).not.toHaveClass(/is-peek/);
     // Down twice more: peek, then closed, the chart alone at the bare link.
