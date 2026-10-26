@@ -28,7 +28,7 @@ const harmonie = readSample<{
  * squares in view (src/spotBlend.ts), so the far ones may stay pending there,
  * depending on whether the squares or the flight come first.
  */
-async function openMap(page: Page, path = "/") {
+async function openMap(page: Page, path = "/?map") {
   await page.goto(path);
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
@@ -265,7 +265,7 @@ test("the spot chosen is in the link, by search or light, and Back steps through
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openMap(page);
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/\?map$/);
   await findSpot(page, "Keel");
   await expect(dockName(page)).toHaveText("Keel Beach");
   await expect(page).toHaveURL(/\/\?spot=keel$/);
@@ -277,7 +277,7 @@ test("the spot chosen is in the link, by search or light, and Back steps through
   await expect(page).toHaveURL(/\/\?spot=keel$/);
   await expect(dockName(page)).toHaveText("Keel Beach");
   await page.goBack();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/\?map$/);
   await expect(page.locator(".dock")).toHaveCount(0);
   await page.goForward();
   await expect(dockName(page)).toHaveText("Keel Beach");
@@ -297,7 +297,7 @@ test("Back lets go of a tap on the chart still waiting to pick a point: the char
     .locator(".dock")
     .getByRole("button", { name: "Close the forecast for Tramore" })
     .click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/\?map$/);
   await expect(page.locator(".dock")).toHaveCount(0);
   await page.goBack();
   await expect(page).toHaveURL(/\/\?spot=tramore$/);
@@ -308,7 +308,7 @@ test("Back lets go of a tap on the chart still waiting to pick a point: the char
   await page.mouse.click(open.x, open.y);
   await page.goBack();
   await page.waitForTimeout(800);
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/\?map$/);
   await expect(page.locator(".dock")).toHaveCount(0);
   expect(await page.evaluate(() => history.state)).toBeNull();
 });
@@ -357,7 +357,7 @@ test("a spot in the link opens on it, focused; a remembered one waits to be chos
   await expect(dockName(page)).toHaveText("Keel Beach");
   await expect(page.locator(".map-canvas")).toHaveClass(/is-focus/);
   // Opening a link is not choosing, and the remembered spot opens nothing.
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });

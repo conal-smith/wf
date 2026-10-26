@@ -6,6 +6,7 @@ import "./dock.css";
 import "./panels.css";
 import {
   lazy,
+  memo,
   startTransition,
   Suspense,
   useCallback,
@@ -16,8 +17,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { X } from "lucide-react";
-import { WindMap } from "../force5/src";
+import { List as ListGlyph, Map as MapGlyph, Maximize2, X } from "lucide-react";
+import { Button } from "../ui/Button";
 import type {
   ChartLayers,
   FoilView,
@@ -65,21 +66,17 @@ import { TourGlyph } from "./chartGlyphs";
 import { tourOffered, tourSeen } from "./tourOffer";
 import { SiteMenu } from "../force5/src/SiteMenu";
 import {
-  CHART_PARAM,
-  CUSTOMISE_PARAM,
+  CHART_HREF,
   FINDER_HREF,
-  asksChart,
-  asksCustomise,
-  isFinderPath,
+  OLD_SETTINGS_PARAM,
+  SETTINGS_PARAM,
+  asksSettings,
+  isChartAddress,
   mapSpotHref,
+  tidySearch,
 } from "../force5/src/siteNav";
-import { CUSTOMISE_EVENT } from "./PagesOverMap";
-import {
-  saveChartCentre,
-  saveView,
-  viewOfPath,
-  type MapView,
-} from "./lastView";
+import { SETTINGS_EVENT } from "./PagesOverMap";
+import { saveChartCentre } from "./lastView";
 import { InfoPop } from "./InfoPop";
 import useRunRefresh, {
   loadNewerRun,
@@ -107,7 +104,9 @@ import {
 } from "./ratings";
 import {
   clock,
+  dayLong,
   dayShort,
+  irishDate,
   nearestColumn,
   openingColumn,
   stripColumns,
@@ -115,6 +114,14 @@ import {
 } from "./strip";
 import { ridingLocations } from "./locations";
 import { openingSpot, spotAddress } from "./openingSpot";
+import {
+  clipTo,
+  fitPadding,
+  inView,
+  panelRect,
+  spotsBounds,
+  type Rect,
+} from "./chartPanel";
 import { storedMapModel, takeEarly } from "../force5/src/boot";
 import {
   loadManifest,
@@ -140,12 +147,22 @@ const Companion = lazy(() =>
 );
 // The account's copy of the rider, on a device that has signed in before.
 const AccountRider = lazy(() => import("../shared/web/AccountRider"));
-// The spot finder, at /spots: a page in the chart's place, drawn from the
-// chart's own rated hours, in a chunk of its own the first time it is opened.
-const SpotFinder = lazy(() => import("./finder/SpotFinder"));
-// Customise and the tour, each only when asked for; the tour's offer only on
+// The spot finder, the home page, drawn from the chart's own rated hours, in
+// a chunk of its own.
+// Drawn again only when what it is given changes: not with every move of the
+// chart beside it, nor every frame it loads.
+const SpotFinder = lazy(() =>
+  import("./finder/SpotFinder").then((m) => ({ default: memo(m.default) })),
+);
+// The chart itself, and MapLibre with it: a chunk of its own, so the list
+// on the home page is drawn before the map is downloaded and read. An
+// address that opens on the full chart asks for it at once.
+const loadWindMap = () => import("../force5/src/WindMap");
+const WindMap = lazy(loadWindMap);
+if (isChartAddress(window.location)) void loadWindMap();
+// Settings and the tour, each only when asked for; the tour's offer only on
 // a first visit (src/tourOffer.ts).
-const Customise = lazy(() => import("./Customise"));
+const Settings = lazy(() => import("./Settings"));
 const Tour = lazy(() => import("./Tour"));
 const TourPrompt = lazy(() => import("./TourPrompt"));
 import type { MapAction } from "../companion/shared/protocol";
@@ -172,18 +189,20 @@ import { placeWarnings } from "../force5/src/warnings";
 import { favourites } from "../shared/web/favourites";
 import {
   compass,
-  defaultPrefs,
   freshness,
-  loadFrame,
-  loadPrefs,
   nearestFrame,
-  savePrefs,
   timeLabel,
   type Frame,
   type Manifest,
-  type Prefs,
   type Spot,
-} from "../force5/src";
+} from "../force5/src/weather";
+import { loadFrame } from "../force5/src/tiledField";
+import {
+  defaultPrefs,
+  loadPrefs,
+  savePrefs,
+  type Prefs,
+} from "../force5/src/prefs";
 
 /** The wind's two layers, the coloured wind and the particles, as JSON. */
 const WIND_KEY = "wingfoil.map.wind.v2";
@@ -231,9 +250,14 @@ interface Picked {
 const degrees = (lat: number, lon: number) =>
   `${Math.abs(lat).toFixed(2)}° ${lat < 0 ? "S" : "N"}, ${Math.abs(lon).toFixed(2)}° ${lon < 0 ? "W" : "E"}`;
 const PHONE = "(max-width: 720px)";
+/** Beside the list a light's name shows under the pointer, not for a star. */
+const NO_NAMES: ReadonlySet<string> = new Set();
+/** Room for the chart beside the spot finder's list, as the home page has it. */
+const SPLIT = "(min-width: 1100px)";
+/** How long the chart takes to open out from beside the list, or back. */
+const OPEN_MS = 420;
 /** Room, and a fine pointer, for the layers' rail (src/LayerRail.tsx). */
 const DESKTOP = "(hover: hover) and (pointer: fine) and (min-width: 721px)";
-const NONE: readonly string[] = [];
 
 const store = {
   get(key: string): string | null {
@@ -306,18 +330,61 @@ function useThrottled<T>(value: T, ms: number): T {
   return out;
 }
 
+/** The spot finder, the home page, or the full chart opened over it. */
+type Page = "finder" | "chart";
+
+/** The state of a history entry: how many steps on from the list it is. */
+interface ListEntry {
+  fromList?: number;
+}
+
 export default function App() {
   /**
-   * The chart, or the spot finder beside it (/spots): one app, one set of
-   * data, either page drawn from it. Which one was last open is kept on this
-   * device, and the site's root opens on it (src/lastView.ts, src/main.tsx).
+   * The spot finder, the home page, with the chart beside it on a wide
+   * screen; or the full chart, the same chart opened out over the whole
+   * screen (`/?map`, or a spot's `/?spot=keel`). One app, one set of data,
+   * and one map, which is never taken down once it is made: the panel
+   * beside the list and the full chart are the same map in a bigger box.
    */
-  const [page, setPage] = useState<MapView>(() =>
-    viewOfPath(window.location.pathname),
+  const [page, setPage] = useState<Page>(() =>
+    isChartAddress(window.location) ? "chart" : "finder",
   );
-  useEffect(() => saveView(page), [page]);
+  const pageRef = useRef(page);
+  pageRef.current = page;
+  /** Room for the chart beside the list. */
+  const split = useMedia(SPLIT);
+  const splitRef = useRef(split);
+  splitRef.current = split;
+  /**
+   * Whether the map is made. Beside the list, once the list is drawn and the
+   * page has a moment; under that width, the first time the chart is opened.
+   * Once made it is kept.
+   */
+  const [mapWanted, setMapWanted] = useState(page === "chart");
+  const [finderDrawn, setFinderDrawn] = useState(false);
+  /** The map is made, and knows what it shows (force5/src/WindMap.tsx). */
+  const [mapMade, setMapMade] = useState(false);
+  useEffect(() => {
+    if (mapWanted) return;
+    if (page === "chart") return setMapWanted(true);
+    if (!split || !finderDrawn) return;
+    const idle =
+      window.requestIdleCallback ??
+      ((f: () => void) => window.setTimeout(f, 300));
+    const cancel = window.cancelIdleCallback ?? window.clearTimeout;
+    const handle = idle(() => setMapWanted(true), { timeout: 1500 });
+    return () => cancel(handle);
+  }, [mapWanted, page, split, finderDrawn]);
   /** The places the spot finder lists, which it needs rated first. */
   const [finderWant, setFinderWant] = useState<readonly string[]>([]);
+  /** Which list it is (Favourites, Near you), for the chart beside it to fit. */
+  const [finderScope, setFinderScope] = useState<string>("");
+  /** The time the cards show, which the lights beside them show too. */
+  const [finderShown, setFinderShown] = useState<number | null>(null);
+  /** Where the rider is, once their browser has said: the blue dot. */
+  const [riderAt, setRiderAt] = useState<{ lat: number; lon: number } | null>(
+    null,
+  );
   const [prefs, setPrefs] = useState<Prefs>(defaultPrefs);
   useEffect(() => setPrefs(loadPrefs()), []);
   // A rating adopted from the account, or changed in another tab.
@@ -377,33 +444,32 @@ export default function App() {
   const [info, setInfo] = useState<InfoSection | null>(null);
   /** The part it is drawn at: kept while it fades out, once shut. */
   const infoShown = useFadeOut(info);
-  /** Customise, the tour, or the first visit's offer of it, over the chart. */
-  const [guide, setGuide] = useState<"offer" | "tour" | "customise" | null>(
+  /** Settings, the tour, or the first visit's offer of it, over the chart. */
+  const [guide, setGuide] = useState<"offer" | "tour" | "settings" | null>(
     () =>
-      asksCustomise(location) ? "customise" : tourOffered() ? "offer" : null,
+      asksSettings(location) ? "settings" : tourOffered() ? "offer" : null,
   );
-  // Customise asked for by another page's menu: a page load to the chart
-  // with the word in its address (CUSTOMISE_HREF), which is open now and goes
-  // from the address; or a page over the map, which hands the reader back to
-  // it first (src/PagesOverMap.tsx). The explicit chart's word (CHART_HREF)
-  // goes the same way: it has done its work, keeping the root off the finder.
+  // Settings asked for by another page's menu: a page load to the home page
+  // with the word in its address (SETTINGS_HREF, or the old /?customise),
+  // which is open now and goes from the address; or a page over the map,
+  // which hands the reader back to it first (src/PagesOverMap.tsx).
   useEffect(() => {
-    if (asksCustomise(location) || asksChart(location)) {
+    if (asksSettings(location)) {
       const url = new URL(location.href);
-      url.searchParams.delete(CUSTOMISE_PARAM);
-      url.searchParams.delete(CHART_PARAM);
+      url.searchParams.delete(SETTINGS_PARAM);
+      url.searchParams.delete(OLD_SETTINGS_PARAM);
       window.history.replaceState(
         window.history.state,
         "",
-        url.pathname + url.search + url.hash,
+        url.pathname + tidySearch(url.searchParams) + url.hash,
       );
     }
-    const ask = () => setGuide("customise");
-    window.addEventListener(CUSTOMISE_EVENT, ask);
-    return () => window.removeEventListener(CUSTOMISE_EVENT, ask);
+    const ask = () => setGuide("settings");
+    window.addEventListener(SETTINGS_EVENT, ask);
+    return () => window.removeEventListener(SETTINGS_EVENT, ask);
   }, []);
-  /** Customise is kept while it fades out, once shut. */
-  const customiseShown = useFadeOut(guide === "customise");
+  /** Settings is kept while it fades out, once shut. */
+  const settingsShown = useFadeOut(guide === "settings");
   const [view, setView] = useState<DockView>("table");
   const [wind, setWind] = useState<WindLayers>(() =>
     parseWindLayers(store.get(WIND_KEY), store.get(OLD_WIND_KEY)),
@@ -469,6 +535,11 @@ export default function App() {
     const handle = idle(() => setGustDue(true), { timeout: 3000 });
     return () => cancel(handle);
   }, [mapReady, gustDue]);
+  // The list under the full chart: drawn at once on the home page, and on a
+  // link to the chart once the chart is up and the page has a moment, so
+  // its pictures and readings never hold the chart back. Kept once drawn.
+  const finderSeen = useRef(false);
+  if (page === "finder" || gustDue) finderSeen.current = true;
 
   const dock = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(110);
@@ -600,9 +671,9 @@ export default function App() {
   // The lights read the spot squares in view, once the camera settles, and
   // the open spot's and the reader's own wherever they are: never every place.
   const mapView = useViewBounds(mapReady ? controls.current?.map : null);
-  // With no spot open, that is the squares in view and the reader's own; on
-  // the spot finder, the places it lists too.
-  const finderIds = page === "finder" ? finderWant : NONE;
+  // With no spot open, that is the squares in view and the reader's own, and
+  // the places the spot finder lists.
+  const finderIds = finderWant;
   const ownPlaces = useMemo(() => {
     const ids = new Set([
       ...(point ? [point.id] : []),
@@ -826,8 +897,10 @@ export default function App() {
   const painted = paintedIndex >= 0 && paintedIndex === requestedIndex;
   useEffect(() => {
     // No frame before the page knows its opening time: one asked for sooner
-    // (the run's first, and its prefetch) would only be thrown away.
-    if (!mapRun || pendingModel || !mapTime) return;
+    // (the run's first, and its prefetch) would only be thrown away. And
+    // none before there is a map to draw it, with its view (a phone on the
+    // list has none): before that, a frame is read for the whole grid.
+    if (!mapRun || pendingModel || !mapTime || !mapMade) return;
     // Only when there is one: on every hour, a render queued for nothing.
     if (frameError) setFrameError("");
     if (painted) return;
@@ -867,6 +940,7 @@ export default function App() {
     pendingModel,
     !mapTime,
     painted,
+    mapMade,
   ]);
 
   /**
@@ -1028,6 +1102,16 @@ export default function App() {
         : (rated.squares ?? []),
     warnings,
   );
+  // Beside the list, the lights are at the hour the cards show; on the full
+  // chart, at the chart's own.
+  const panelAt = useMemo(
+    () =>
+      finderShown === null || !strip.length
+        ? selected
+        : nearestColumn(strip, finderShown),
+    [strip, finderShown, selected],
+  );
+  const lightAt = page === "chart" ? selected : panelAt;
   const lights = useMemo(() => {
     const out = new Map<string, LightState>();
     // The riding wedge is the open spot's alone: on every light at once it
@@ -1037,7 +1121,7 @@ export default function App() {
     const loupeOn = focusStyle === "loupe" && !!open && focusId === open;
     for (const spot of spots) {
       const row = hours.get(spot.id);
-      const hour = row?.[selected];
+      const hour = row?.[lightAt];
       out.set(spot.id, {
         pending: !row,
         stars: hour?.rating ? hour.rating.stars : null,
@@ -1063,7 +1147,7 @@ export default function App() {
     spots,
     hours,
     version,
-    selected,
+    lightAt,
     rider,
     picked,
     point?.id,
@@ -1072,12 +1156,13 @@ export default function App() {
   ]);
   const named = useMemo(() => new Set(starred), [starred]);
   const column = strip[selected];
+  const lightColumn = strip[lightAt];
   const lightLabel = useCallback(
     (spot: Spot, s: LightState | undefined) =>
       `${spot.name}${spot.county ? `, ${spot.county}` : ""}${
         !s || s.pending
           ? ""
-          : `: ${column ? clock(column.time) : ""} ${
+          : `: ${lightColumn ? clock(lightColumn.time) : ""} ${
               s.dark || s.stars === null
                 ? "dark"
                 : `${s.stars} star${s.stars === 1 ? "" : "s"}`
@@ -1089,7 +1174,7 @@ export default function App() {
                   : ""
             }`
       }`,
-    [column?.time, prefs.units],
+    [lightColumn?.time, prefs.units],
   );
 
   /* ---- the satellite image under the chart ---- */
@@ -1299,20 +1384,32 @@ export default function App() {
    * Each spot chosen is a step in the page's history, with the spot in its
    * link (`/?spot=keel`, src/openingSpot.ts): the link can be shared, Back
    * goes to the spot before or, from the first, closes the dock, and Forward
-   * comes back. A tapped point is a step too, with no spot in the link, and
-   * the point in the entry's state; a tap after a tap only moves it.
+   * comes back. A tapped point is a step too, with the full chart's own link
+   * (`/?map`), and the point in the entry's state; a tap after a tap only
+   * moves it. Each step counts how far it is from the list the chart was
+   * opened from, if it was (`fromList`), so the List button goes back to it.
    */
   const remember = (id: string | null, at?: TappedAt) => {
     const href = spotAddress(location.href, id);
-    const state: MapEntry = at ? { mapPoint: at } : {};
-    const here = window.history.state as MapEntry | null;
-    if (at && here?.mapPoint) window.history.replaceState(state, "", href);
+    const here = window.history.state as (MapEntry & ListEntry) | null;
+    const steps = here?.fromList;
+    const state: MapEntry & ListEntry = at ? { mapPoint: at } : {};
+    if (at && here?.mapPoint)
+      window.history.replaceState(
+        steps ? { ...state, fromList: steps } : state,
+        "",
+        href,
+      );
     else if (
       at ||
       here?.mapPoint ||
       href !== location.pathname + location.search + location.hash
     )
-      window.history.pushState(state, "", href);
+      window.history.pushState(
+        steps ? { ...state, fromList: steps + 1 } : state,
+        "",
+        href,
+      );
   };
   const selectSpot = (spot: Spot, fly = true) => {
     showSpot(spot, fly);
@@ -1347,8 +1444,13 @@ export default function App() {
    * A tap on the open chart. With a spot or point chosen it lets go of it,
    * as Escape does, and moves nothing: the dock keeps it until another is
    * chosen or it is closed (#109). With none, it picks the point tapped.
+   * Beside the list the chart picks nothing: it has no dock there.
    */
-  const tapChart = (at: TappedAt) => (focusId ? clearFocus() : pickPoint(at));
+  const tapChart = (at: TappedAt) => {
+    if (pageRef.current !== "chart") return;
+    if (focusId) clearFocus();
+    else pickPoint(at);
+  };
   const hideDock = () => {
     setPicked(null);
     setPoint(null);
@@ -1362,19 +1464,177 @@ export default function App() {
     hideDock();
     remember(null);
   };
-  // Back and Forward through the spots and points chosen: the dock follows
-  // the link. An entry that already shows what the dock shows changes
-  // nothing (the way back from a page over the map lands on one), so the
-  // chart is not flown anywhere it was not.
-  const popped = useRef(() => {});
-  popped.current = () => {
-    // Between the chart and the spot finder, as the link says.
-    if (isFinderPath(location.pathname)) {
-      setPage("finder");
+
+  /* ---- the list and the full chart ---- */
+  // On a wide screen the chart stands beside the list, in the room the list
+  // leaves it under its head (src/chartPanel.ts); opened out, it is the same
+  // map in a box the size of the screen, drawn as the chart was before it
+  // had a list. The box grows, or shrinks back, under a clip that moves with
+  // the compositor, and the map takes its new size once: at the start going
+  // out, at the end coming back.
+  const workspace = useRef<HTMLElement>(null);
+  const [finderHead, setFinderHead] = useState<HTMLElement | null>(null);
+  const [panelBox, setPanelBox] = useState<Rect | null>(null);
+  useLayoutEffect(() => {
+    if (!finderHead) return;
+    const measure = () =>
+      setPanelBox(
+        panelRect(
+          window.innerWidth,
+          window.innerHeight,
+          finderHead.getBoundingClientRect().bottom,
+        ),
+      );
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(finderHead);
+    window.addEventListener("resize", measure);
+    return () => {
+      watch.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [finderHead]);
+  const panelRef = useRef(panelBox);
+  panelRef.current = panelBox;
+  /** The panel the chart is opening out from, and its middle, until the next layout. */
+  const opening = useRef<{
+    from: Rect;
+    middle: { lng: number; lat: number };
+  } | null>(null);
+  /** The chart shrinking back beside the list. */
+  const closing = useRef<Animation | null>(null);
+  /** The list showing under the full chart as it shrinks back beside it. */
+  const [revealing, setRevealing] = useState(false);
+  /** Where the middle of the panel stood on the full chart, coming back. */
+  const backTo = useRef<{ lng: number; lat: number } | null>(null);
+  const motionRef = useRef(reducedMotion);
+  motionRef.current = reducedMotion;
+  /** The full chart, out of the list: grown from beside it on a wide screen. */
+  const toChart = () => {
+    // Asked for again while it shrinks back: it stays as it is.
+    if (closing.current) {
+      closing.current.cancel();
+      closing.current = null;
+      backTo.current = null;
+      setRevealing(false);
       return;
     }
-    if (location.pathname !== "/") return;
+    if (pageRef.current === "chart") return;
+    const from = panelRef.current;
+    const map = controls.current?.map;
+    if (splitRef.current && map && from) {
+      const { lng, lat } = map.getCenter();
+      opening.current = { from, middle: { lng, lat } };
+    }
     setPage("chart");
+  };
+  /** The list, the chart beside it again on a wide screen. No dock there. */
+  const toList = () => {
+    if (pageRef.current !== "chart" || closing.current) return;
+    hideDock();
+    setPanel(null);
+    const el = workspace.current;
+    const map = controls.current?.map;
+    const to = panelRef.current;
+    if (!splitRef.current || !el || !map || !to) return setPage("finder");
+    const middle = map.unproject([
+      to.left + to.width / 2,
+      to.top + to.height / 2,
+    ]);
+    backTo.current = { lng: middle.lng, lat: middle.lat };
+    if (motionRef.current || !el.animate) return setPage("finder");
+    const shrink = el.animate(
+      [
+        { clipPath: "inset(0px 0px 0px 0px round 0px)" },
+        {
+          clipPath: clipTo(to, window.innerWidth, window.innerHeight, 18),
+        },
+      ],
+      {
+        duration: OPEN_MS,
+        easing: "cubic-bezier(0.2, 0.7, 0.2, 1)",
+        fill: "forwards",
+      },
+    );
+    closing.current = shrink;
+    setRevealing(true);
+    shrink.finished.then(
+      () => {
+        if (closing.current === shrink) setPage("finder");
+      },
+      () => {},
+    );
+  };
+  useLayoutEffect(() => {
+    const el = workspace.current;
+    const map = controls.current?.map;
+    if (page === "chart") {
+      const open = opening.current;
+      opening.current = null;
+      if (!open || !el || !map) return;
+      const { from, middle } = open;
+      // As the map takes the whole screen, what was in the panel stays where
+      // it was, and glides to the middle of the screen as the box opens
+      // round it.
+      const shift = () => {
+        map.panBy(
+          [
+            window.innerWidth / 2 - (from.left + from.width / 2),
+            window.innerHeight / 2 - (from.top + from.height / 2),
+          ],
+          { duration: 0 },
+        );
+        map.easeTo({
+          center: middle,
+          duration: motionRef.current ? 0 : OPEN_MS,
+          easing: (t) => 1 - (1 - t) ** 3,
+        });
+      };
+      map.once("resize", shift);
+      window.setTimeout(() => map.off("resize", shift), OPEN_MS);
+      if (motionRef.current || !el.animate) return;
+      el.animate(
+        [
+          {
+            clipPath: clipTo(from, window.innerWidth, window.innerHeight, 18),
+          },
+          { clipPath: "inset(0px 0px 0px 0px round 0px)" },
+        ],
+        { duration: OPEN_MS, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" },
+      );
+      return;
+    }
+    // Back beside the list: the clip goes as the box takes the panel's size,
+    // in the same frame, and the map, resized, stands where the panel showed
+    // it, then fits the places on the list.
+    closing.current?.cancel();
+    closing.current = null;
+    setRevealing(false);
+    const middle = backTo.current;
+    backTo.current = null;
+    if (!middle || !map) return;
+    fitted.current = fitKey;
+    const settle = () => {
+      map.jumpTo({ center: middle });
+      fitList(600);
+    };
+    map.once("resize", settle);
+    window.setTimeout(() => map.off("resize", settle), 200);
+  }, [page]);
+
+  // Back and Forward through the spots and points chosen: the dock follows
+  // the link, and between the list and the full chart, the page does. An
+  // entry that already shows what the dock shows changes nothing (the way
+  // back from a page over the map lands on one), so the chart is not flown
+  // anywhere it was not.
+  const popped = useRef(() => {});
+  popped.current = () => {
+    if (location.pathname !== "/") return;
+    if (!isChartAddress(location)) {
+      toList();
+      return;
+    }
+    toChart();
     const at = (window.history.state as MapEntry | null)?.mapPoint;
     if (at) {
       if (picked?.lon !== at.lon || picked?.lat !== at.lat) showPoint(at);
@@ -1390,25 +1650,20 @@ export default function App() {
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);
   }, []);
-  // Where the chart stood, kept while the spot finder is open in its place:
-  // coming back, it stands there again rather than on the whole of Ireland.
-  const camera = useRef<{ center: [number, number]; zoom: number } | null>(
-    null,
-  );
   useEffect(() => {
     if (!mapReady) return;
     const map = controls.current?.map;
-    if (camera.current && map) map.jumpTo(camera.current);
-    else controls.current?.fitIreland(0);
+    // The full chart opens on the whole of Ireland; beside the list, the
+    // chart is fitted to the places on it (below).
+    if (pageRef.current === "chart") controls.current?.fitIreland(0);
     if (!map) return;
     const update = (moved?: unknown) => {
       const c = map.getCenter();
-      // The finder's "near you" falls back on where the chart was centred;
-      // the whole of Ireland as it opens is nowhere in particular.
-      if (moved) {
-        camera.current = { center: [c.lng, c.lat], zoom: map.getZoom() };
+      // The finder's "near you" falls back on where the full chart was
+      // centred; the whole of Ireland as it opens is nowhere in particular,
+      // and the chart beside the list is wherever the list put it.
+      if (moved && pageRef.current === "chart")
         saveChartCentre({ lat: c.lat, lon: c.lng });
-      }
       const mpp =
         (40075016.686 * Math.cos((c.lat * Math.PI) / 180)) /
         (512 * 2 ** map.getZoom());
@@ -1439,19 +1694,133 @@ export default function App() {
       controls.current?.flyTo(point);
   }, [mapReady]);
 
+  /* ---- the chart beside the list ---- */
+  /** The places on the list, the only lights the chart beside it shows. */
+  const listedSpots = useMemo(() => {
+    const ids = new Set(finderWant);
+    return spots.filter((spot) => ids.has(spot.id));
+  }, [spots, finderWant]);
+  /**
+   * The chart beside the list is fitted to the places on it as it first
+   * shows them, and again when the list changes between Favourites and Near
+   * you, or the rider's place comes in: never on a hover.
+   */
+  const fitKey = `${finderScope}|${riderAt ? "rider" : ""}`;
+  const fitted = useRef<string | null>(null);
+  const fitList = (duration: number) => {
+    const map = controls.current?.map;
+    const bounds = spotsBounds(listedSpots);
+    if (!map || !bounds) return;
+    map.fitBounds(bounds, {
+      padding: fitPadding,
+      maxZoom: 11,
+      duration: reducedMotion ? 0 : duration,
+    });
+  };
+  useEffect(() => {
+    if (!mapReady || page !== "finder" || !split || !listedSpots.length) return;
+    if (fitted.current === fitKey) return;
+    const first = fitted.current === null;
+    fitted.current = fitKey;
+    fitList(first ? 0 : 600);
+  }, [mapReady, page, split, fitKey, listedSpots]);
+  /** A card under the pointer: its light lit, and brought into view if it is not. */
+  const hoverTimer = useRef(0);
+  const hoverCard = useCallback(
+    (id: string | null) => {
+      controls.current?.light(id);
+      window.clearTimeout(hoverTimer.current);
+      if (!id || pageRef.current !== "finder" || !splitRef.current) return;
+      // A moment's wait, so the pointer passing over the cards on its way
+      // does not throw the chart about; the zoom is never changed.
+      hoverTimer.current = window.setTimeout(() => {
+        const map = controls.current?.map;
+        const spot = spotById.get(id);
+        if (!map || !spot) return;
+        const at = map.project([spot.lon, spot.lat]);
+        const box = map.getContainer();
+        if (inView(at.x, at.y, box.clientWidth, box.clientHeight)) return;
+        map.easeTo({
+          center: [spot.lon, spot.lat],
+          duration: motionRef.current ? 0 : 250,
+        });
+      }, 120);
+    },
+    [spots],
+  );
+  useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
+  const cardOf = (id: string) =>
+    document.querySelector<HTMLElement>(`[data-spot-card="${CSS.escape(id)}"]`);
+  /** A light under the pointer beside the list: its card is outlined. */
+  const hoverLight = (spot: Spot | null) => {
+    if (pageRef.current !== "finder") return;
+    document
+      .querySelectorAll("[data-spot-card][data-lit]")
+      .forEach((el) => el.removeAttribute("data-lit"));
+    // An attribute React does not write, so a card drawn again keeps it.
+    if (spot) cardOf(spot.id)?.setAttribute("data-lit", "");
+    controls.current?.light(spot?.id ?? null);
+  };
+  /** A light pressed beside the list: the list scrolls to its card. */
+  const showCard = (spot: Spot) => {
+    const card = cardOf(spot.id);
+    if (!card) return;
+    card.scrollIntoView({
+      block: "center",
+      behavior: reducedMotion ? "auto" : "smooth",
+    });
+    card.classList.remove("is-flash");
+    void card.offsetWidth;
+    card.classList.add("is-flash");
+  };
+  // The wind's particles hold still while the list scrolls beside them, so
+  // the page's frames are the list's, and run again once it stops.
+  useEffect(() => {
+    if (!mapReady) return;
+    let timer = 0;
+    const scrolled = (event: Event) => {
+      if (
+        pageRef.current !== "finder" ||
+        !(event.target instanceof Element) ||
+        !event.target.closest("[data-spot-finder]")
+      )
+        return;
+      controls.current?.pauseWind(true);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => controls.current?.pauseWind(false), 200);
+    };
+    document.addEventListener("scroll", scrolled, {
+      capture: true,
+      passive: true,
+    });
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("scroll", scrolled, { capture: true });
+      controls.current?.pauseWind(false);
+    };
+  }, [mapReady]);
+
   // Escape is a tap on the open chart from the keys: it shuts what is open
   // over the chart first (the site menu and the search take theirs before
-  // it reaches here), and lets go of the spot or point chosen after.
+  // it reaches here), then lets go of the spot or point chosen, then closes
+  // the dock, and then, from the full chart, goes back to the list.
+  const escaped = useRef(() => {});
+  escaped.current = () => {
+    if (panel) setPanel(null);
+    else if (pageRef.current !== "chart") return;
+    else if (focusId) clearFocus();
+    else if (dockOpen) closeDock();
+    else openList();
+  };
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || document.querySelector("dialog[open]"))
         return;
-      if (panel) setPanel(null);
-      else clearFocus();
+      escaped.current();
     };
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
-  }, [panel]);
+  }, []);
 
   /* ---- Gust moving the map, at the rider's ask ---- */
   const highlightTimer = useRef<number | undefined>(undefined);
@@ -1537,8 +1906,11 @@ export default function App() {
       }
     : point;
 
-  /** With no spot chosen there is no dock, and nothing at the chart's foot. */
-  const dockOpen = opened && !!dockSpot && strip.length > 0;
+  /**
+   * With no spot chosen there is no dock, and nothing at the chart's foot;
+   * and there is none beside the list, only on the full chart.
+   */
+  const dockOpen = opened && !!dockSpot && strip.length > 0 && page === "chart";
   // The riding place's Met Éireann warnings, for the dock's strip: the same
   // file and rule its stars were worked out with (src/useRatings.ts).
   const dockWarnings = useMemo(
@@ -1711,40 +2083,73 @@ export default function App() {
         ? frameError
         : null;
 
-  /* ---- the chart and the spot finder, one in the other's place ---- */
-  const openFinder = () => {
-    if (!isFinderPath(location.pathname))
-      window.history.pushState({}, "", FINDER_HREF);
-    setPage("finder");
-  };
-  /** Back to the chart as it was: the spot in the dock, if one is. */
+  /* ---- the ways between the list and the full chart ---- */
+  /**
+   * The full chart, from the list: the Full chart button, the Map button,
+   * the menu's Chart. A step in the history, so Back is the list again. It
+   * opens at the hour the cards showed, as the lights beside them did.
+   */
   const openChart = () => {
+    if (pageRef.current === "chart") return;
+    if (panelAt !== selected) selectColumn(panelAt);
     window.history.pushState(
-      {},
+      { fromList: 1 } satisfies ListEntry,
       "",
-      point && !picked ? mapSpotHref(point.id) : "/",
+      CHART_HREF,
     );
-    setPage("chart");
+    toChart();
   };
+  /**
+   * The list, from the full chart: the List button, the collapse, Escape,
+   * the menu's Spot finder. Back through the steps taken since the list,
+   * where the chart was opened from it; else a step on to it.
+   */
+  const openList = () => {
+    if (pageRef.current !== "chart") return;
+    const steps = (window.history.state as ListEntry | null)?.fromList;
+    if (steps) {
+      window.history.go(-steps);
+      return;
+    }
+    window.history.pushState({}, "", FINDER_HREF);
+    toList();
+  };
+  const openListRef = useRef(openList);
+  openListRef.current = openList;
   const openChartRef = useRef(openChart);
   openChartRef.current = openChart;
-  /** The chart on a place, at the hour the finder's card showed it. */
+  /** A card's picture: the full chart on its place, at the hour its rose showed, with its dock. */
   const openInChart = (spot: Spot, at: number | null) => {
     if (at !== null) selectColumn(at);
     setPicked(null);
     setPoint(spot);
     setFocusId(spot.id);
     fav.visit(spot.id);
-    window.history.pushState({}, "", mapSpotHref(spot.id));
-    setPage("chart");
+    window.history.pushState(
+      { fromList: 1 } satisfies ListEntry,
+      "",
+      mapSpotHref(spot.id),
+    );
+    const grown = pageRef.current === "finder" && splitRef.current;
+    toChart();
+    // Flown to once the chart has opened out; a map made just now flies
+    // there as it comes up (above).
+    if (controls.current)
+      window.setTimeout(
+        () => controls.current?.flyTo(spot),
+        grown && !reducedMotion ? OPEN_MS : 0,
+      );
   };
-  // The site menu's navigation, the same on both pages (Chart, Spot finder,
-  // Customise): each is this bundle's own, in place of a page load.
-  const menuGo = {
-    chart: () => openChartRef.current(),
-    finder: openFinder,
-    customise: () => setGuide("customise"),
-  };
+  // The site menu's navigation, the same on both (Spot finder, Chart,
+  // Settings): each is this bundle's own, in place of a page load.
+  const menuGo = useMemo(
+    () => ({
+      chart: () => openChartRef.current(),
+      finder: () => openListRef.current(),
+      settings: () => setGuide("settings"),
+    }),
+    [],
+  );
   // Under it, the chart's own tools, the menu the one way in to them: the
   // layers, the display options, what the map means, and the tour last.
   const menuTools = useMemo(
@@ -1759,16 +2164,80 @@ export default function App() {
     ],
     [],
   );
-  const finderMenu = <SiteMenu current="finder" go={menuGo} />;
+  const finderMenu = useMemo(
+    () => <SiteMenu current="finder" go={menuGo} />,
+    [menuGo],
+  );
+  const openInChartRef = useRef(openInChart);
+  openInChartRef.current = openInChart;
+  const onInChart = useCallback(
+    (spot: Spot, at: number | null) => openInChartRef.current(spot, at),
+    [],
+  );
+  const onToggleStar = useCallback((id: string) => fav.toggle(id), [fav]);
+  const onWant = useCallback((ids: readonly string[], scope: string) => {
+    setFinderWant(ids);
+    setFinderScope(scope);
+  }, []);
+  const onFinderHead = useCallback((el: HTMLElement | null) => {
+    setFinderHead(el);
+    if (el) setFinderDrawn(true);
+  }, []);
+  /** The button between the list and the full chart, at the foot. */
+  const onChart = page === "chart";
+  const listButton = (onChart || !split) && (
+    <Button
+      variant="primary"
+      size="md"
+      className="list-toggle"
+      onClick={onChart ? openList : openChart}
+      data-map-toggle
+    >
+      {onChart ? (
+        <>
+          <ListGlyph size={15} strokeWidth={1.75} aria-hidden="true" /> List
+        </>
+      ) : (
+        <>
+          <MapGlyph size={15} strokeWidth={1.75} aria-hidden="true" /> Map
+        </>
+      )}
+    </Button>
+  );
+  /** The hour the lights beside the list show, as the cards say it. */
+  const panelWhen =
+    lightColumn &&
+    `Stars at ${clock(lightColumn.time)} ${
+      irishDate(lightColumn.time) === irishDate(clockNow)
+        ? "today"
+        : `on ${dayLong(lightColumn.time)}`
+    }`;
   const leaveTour = () => {
     tourSeen();
     setGuide(null);
   };
 
+  /**
+   * Where the chart is: opened out over the whole screen, standing beside
+   * the list, or (under the width for that) out of sight behind it.
+   */
+  const mode = onChart ? "full" : split && panelBox ? "panel" : "hidden";
   const shell = (
     <div
       className={`app-shell${phone ? " is-phone" : ""}${focusId ? " is-focus" : ""}`}
-      style={{ "--dock-height": `${dockHeight}px` } as React.CSSProperties}
+      data-view={page}
+      data-chart={mode}
+      style={
+        {
+          "--dock-height": `${dockHeight}px`,
+          ...(panelBox && {
+            "--panel-top": `${panelBox.top}px`,
+            "--panel-left": `${panelBox.left}px`,
+            "--panel-width": `${panelBox.width}px`,
+            "--panel-height": `${panelBox.height}px`,
+          }),
+        } as React.CSSProperties
+      }
     >
       {error ? (
         <main className="fatal-error chart-box">
@@ -1778,269 +2247,390 @@ export default function App() {
             Try again
           </button>
         </main>
-      ) : page === "finder" ? (
-        <Suspense fallback={null}>
-          <SpotFinder
-            spots={spots}
-            hours={hours}
-            version={version}
-            strip={strip}
-            now={clockNow}
-            starred={starred}
-            onToggleStar={(id) => fav.toggle(id)}
-            rider={rider}
-            units={prefs.units}
-            reducedMotion={reducedMotion}
-            phone={phone}
-            onWant={setFinderWant}
-            onInChart={openInChart}
-            menu={finderMenu}
-          />
-        </Suspense>
       ) : (
-        <main className="workspace">
-          <section className="map-panel" aria-label="Wind chart">
-            <MapHead
-              spots={spots}
-              starred={starred}
-              hourAt={hourAt}
-              onPick={(spot) => selectSpot(spot)}
-              tools={menuTools}
-              go={menuGo}
-            />
-            <MapControls
-              onZoomIn={() => controls.current?.zoomIn()}
-              onZoomOut={() => controls.current?.zoomOut()}
-              open={panel}
-              onOpen={setPanel}
-              desktop={desktop}
-              rail={desktop && railOpen && railFits}
-              onLayers={pressLayers}
-              onRailFits={setRailFits}
-              layoutKey={`${dockOpen ? dockHeight : 0}`}
-              options={() => (
-                <Suspense fallback={null}>
-                  <DisplayFilter
-                    prefs={prefs}
-                    onChange={changePrefs}
-                    models={models.filter(
-                      (model) => model.entry.kind === "wind",
+        <>
+          {/* The list, always there: under the full chart it waits, as it
+            was, for the way back to it. */}
+          <div
+            className="finder-under"
+            data-shown={!onChart || revealing || undefined}
+            inert={onChart || undefined}
+            aria-hidden={onChart || undefined}
+          >
+            {finderSeen.current && (
+              <Suspense fallback={null}>
+                <SpotFinder
+                  spots={spots}
+                  hours={hours}
+                  version={version}
+                  strip={strip}
+                  now={clockNow}
+                  starred={starred}
+                  onToggleStar={onToggleStar}
+                  rider={rider}
+                  units={prefs.units}
+                  reducedMotion={reducedMotion}
+                  phone={phone}
+                  onWant={onWant}
+                  onInChart={onInChart}
+                  menu={finderMenu}
+                  beside={split}
+                  onHover={hoverCard}
+                  onShown={setFinderShown}
+                  onPlace={setRiderAt}
+                  headRef={onFinderHead}
+                />
+              </Suspense>
+            )}
+            {!onChart && listButton}
+          </div>
+          <main
+            className="workspace"
+            ref={workspace}
+            data-chart={mode}
+            inert={mode === "hidden" || undefined}
+            aria-hidden={mode === "hidden" || undefined}
+          >
+            <section
+              className="map-panel"
+              aria-label={
+                onChart ? "Wind chart" : "The chart, at the spots on the list"
+              }
+            >
+              {!onChart && (
+                <div className="panel-tools">
+                  <Button
+                    variant="pill"
+                    size="sm"
+                    className="panel-open"
+                    onClick={openChart}
+                    title="Open the full chart"
+                    data-open-chart
+                  >
+                    <Maximize2
+                      size={15}
+                      strokeWidth={1.75}
+                      aria-hidden="true"
+                    />
+                    Full chart
+                  </Button>
+                  <div
+                    className="zbox chart-box"
+                    role="group"
+                    aria-label="Zoom"
+                  >
+                    <Button
+                      variant="quiet"
+                      size="sm"
+                      icon
+                      aria-label="Zoom in"
+                      title="Zoom in"
+                      onClick={() => controls.current?.zoomIn()}
+                    >
+                      +
+                    </Button>
+                    <Button
+                      variant="quiet"
+                      size="sm"
+                      icon
+                      aria-label="Zoom out"
+                      title="Zoom out"
+                      onClick={() => controls.current?.zoomOut()}
+                    >
+                      −
+                    </Button>
+                  </div>
+                  {panelWhen && (
+                    <span className="panel-when" data-panel-when>
+                      {panelWhen}
+                    </span>
+                  )}
+                </div>
+              )}
+              {onChart && (
+                <>
+                  <MapHead
+                    spots={spots}
+                    starred={starred}
+                    hourAt={hourAt}
+                    onPick={(spot) => selectSpot(spot)}
+                    tools={menuTools}
+                    go={menuGo}
+                  />
+                  <MapControls
+                    onZoomIn={() => controls.current?.zoomIn()}
+                    onZoomOut={() => controls.current?.zoomOut()}
+                    open={panel}
+                    onOpen={setPanel}
+                    desktop={desktop}
+                    rail={desktop && railOpen && railFits}
+                    onLayers={pressLayers}
+                    onRailFits={setRailFits}
+                    layoutKey={`${dockOpen ? dockHeight : 0}`}
+                    onCollapse={split ? openList : undefined}
+                    options={() => (
+                      <Suspense fallback={null}>
+                        <DisplayFilter
+                          prefs={prefs}
+                          onChange={changePrefs}
+                          models={models.filter(
+                            (model) => model.entry.kind === "wind",
+                          )}
+                        />
+                      </Suspense>
                     )}
+                    onInfo={setInfo}
+                    wind={wind}
+                    onWind={chooseWind}
+                    layers={layers}
+                    onLayersChange={(next) =>
+                      chooseLayers({ ...layers, ...next })
+                    }
+                    satellite={layers.satellite}
+                    onSatellite={chooseSatellite}
+                    focusStyle={focusStyle}
+                    onFocusStyle={chooseFocusStyle}
+                    satelliteTides={satellite.station}
+                    satelliteLoading={satelliteLoading}
+                    model={manifest?.model}
+                    modelNote={
+                      reachNote && mapColumn
+                        ? handoverName
+                          ? `${reachNote}: ${handoverName} is on the map at ${dayShort(mapColumn.time)} ${clock(mapColumn.time)}, and ${manifest?.modelName} comes back within its own hours.`
+                          : `${reachNote}: no wind on the map at ${dayShort(mapColumn.time)} ${clock(mapColumn.time)}.${reachable && reachable.id !== manifest?.model ? ` ${reachable.name} reaches it.` : ""}`
+                        : null
+                    }
+                    currentsNote={currents.note}
+                    foilNote={foilFar ? FOIL_ZOOM_NOTE : null}
+                    onResetLayers={() => {
+                      chooseWind(DEFAULT_WIND);
+                      chooseLayers(DEFAULT_LAYERS);
+                      chooseFocusStyle("ring");
+                    }}
+                    modelDisabled={!frame || !!pendingModel}
+                    onModel={(id) => pickRiderModel(id)}
+                  />
+                </>
+              )}
+              {/* After the boxes: the keys reach the menu, the search and the
+                controls before the lights. One map, made once and never
+                taken down: beside the list it shows the list's places
+                alone, at the cards' hour, with no loupe and no dock. */}
+              {mapWanted && (
+                <Suspense fallback={null}>
+                  <WindMap
+                    frame={mapDraws ? frame : null}
+                    spots={onChart ? spots : listedSpots}
+                    lights={lights}
+                    named={onChart ? named : NO_NAMES}
+                    lightLabel={lightLabel}
+                    selectedId={onChart && !picked ? (point?.id ?? null) : null}
+                    focus={
+                      onChart && focusAt
+                        ? { lon: focusAt.lon, lat: focusAt.lat }
+                        : null
+                    }
+                    focusStyle={focusStyle}
+                    units={prefs.units}
+                    rose={onChart ? rose : null}
+                    mark={
+                      onChart && focusAt
+                        ? { lon: focusAt.lon, lat: focusAt.lat }
+                        : null
+                    }
+                    picked={
+                      onChart && picked
+                        ? { lon: picked.lon, lat: picked.lat }
+                        : null
+                    }
+                    you={
+                      riderAt ? { lon: riderAt.lon, lat: riderAt.lat } : null
+                    }
+                    covered={() => !!document.querySelector(OVER_THE_CHART)}
+                    onPick={tapChart}
+                    wind={wind}
+                    layers={layers}
+                    foil={foilViews}
+                    currents={currents.features}
+                    rain={rain.view}
+                    satellite={satellite.image}
+                    reducedMotion={reducedMotion}
+                    bottomInset={dockOpen ? dockHeight : 0}
+                    phone={phone}
+                    onSelect={(spot) =>
+                      pageRef.current === "chart"
+                        ? selectSpot(spot)
+                        : showCard(spot)
+                    }
+                    onHoverSpot={hoverLight}
+                    onMade={() => setMapMade(true)}
+                    onReady={(c) => {
+                      controls.current = c;
+                      setMapReady(!!c);
+                    }}
+                    onTilesFailed={(failed) =>
+                      recoverRun(failed.model, failed.run)
+                    }
+                    onSatelliteLoading={setSatelliteLoading}
                   />
                 </Suspense>
               )}
-              onInfo={setInfo}
-              wind={wind}
-              onWind={chooseWind}
-              layers={layers}
-              onLayersChange={(next) => chooseLayers({ ...layers, ...next })}
-              satellite={layers.satellite}
-              onSatellite={chooseSatellite}
-              focusStyle={focusStyle}
-              onFocusStyle={chooseFocusStyle}
-              satelliteTides={satellite.station}
-              satelliteLoading={satelliteLoading}
-              model={manifest?.model}
-              modelNote={
-                reachNote && mapColumn
-                  ? handoverName
-                    ? `${reachNote}: ${handoverName} is on the map at ${dayShort(mapColumn.time)} ${clock(mapColumn.time)}, and ${manifest?.modelName} comes back within its own hours.`
-                    : `${reachNote}: no wind on the map at ${dayShort(mapColumn.time)} ${clock(mapColumn.time)}.${reachable && reachable.id !== manifest?.model ? ` ${reachable.name} reaches it.` : ""}`
-                  : null
-              }
-              currentsNote={currents.note}
-              foilNote={foilFar ? FOIL_ZOOM_NOTE : null}
-              onResetLayers={() => {
-                chooseWind(DEFAULT_WIND);
-                chooseLayers(DEFAULT_LAYERS);
-                chooseFocusStyle("ring");
-              }}
-              modelDisabled={!frame || !!pendingModel}
-              onModel={(id) => pickRiderModel(id)}
-            />
-            {/* After the boxes: the keys reach the menu, the search and the
-                controls before the lights. */}
-            <WindMap
-              frame={mapDraws ? frame : null}
-              spots={spots}
-              lights={lights}
-              named={named}
-              lightLabel={lightLabel}
-              selectedId={picked ? null : (point?.id ?? null)}
-              focus={focusAt ? { lon: focusAt.lon, lat: focusAt.lat } : null}
-              focusStyle={focusStyle}
-              units={prefs.units}
-              rose={rose}
-              mark={focusAt ? { lon: focusAt.lon, lat: focusAt.lat } : null}
-              picked={picked ? { lon: picked.lon, lat: picked.lat } : null}
-              covered={() => !!document.querySelector(OVER_THE_CHART)}
-              onPick={tapChart}
-              wind={wind}
-              layers={layers}
-              foil={foilViews}
-              currents={currents.features}
-              rain={rain.view}
-              satellite={satellite.image}
-              reducedMotion={reducedMotion}
-              bottomInset={dockHeight}
-              phone={phone}
-              onSelect={(spot) => selectSpot(spot)}
-              onReady={(c) => {
-                controls.current = c;
-                setMapReady(!!c);
-              }}
-              onTilesFailed={(failed) => recoverRun(failed.model, failed.run)}
-              onSatelliteLoading={setSatelliteLoading}
-            />
-            {(status || (loading && frame)) && (
-              <div
-                className={`frame-status chart-box${modelError || frameError ? " is-error" : ""}`}
-                role="status"
-              >
-                <span>
-                  {status ??
-                    `Loading ${mapRun && mapTime && !handoverDue ? timeLabel(mapRun.frames[requestedIndex].validTime) : "wind"}…`}
-                </span>
-                {pendingModel && (
-                  <button
-                    onClick={() => {
-                      modelRequest.current?.abort();
-                      setPendingModel(null);
-                      if (manifest) stayOn(manifest.model);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                )}
-                {frameError && !pendingModel && (
-                  <button onClick={() => setRetry((v) => v + 1)}>Retry</button>
-                )}
-                {(modelError || modelNotice) && (
-                  <button
-                    aria-label="Dismiss"
-                    onClick={() => {
-                      setModelError("");
-                      setModelNotice("");
-                    }}
-                  >
-                    <X size={13} aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-            )}
-            <div
-              className={`map-footer${dockOpen ? "" : " is-bare"}`}
-              ref={dock}
-            >
-              {/* The small print rides on the dock's top edge, in the dock's
-                  own layout: never a frame behind it (map.css). */}
-              <div className="map-print">
-                <InfoPop label="Sources and small print" wide>
-                  {sources}
-                </InfoPop>
-                <span
-                  className="map-model"
-                  data-run-state={staleness}
-                  data-reach={
-                    handoverName ? "handover" : reachNote ? "beyond" : undefined
-                  }
+              {onChart && (status || (loading && frame)) && (
+                <div
+                  className={`frame-status chart-box${modelError || frameError ? " is-error" : ""}`}
+                  role="status"
                 >
-                  {handoverName ? (
-                    // "ECMWF on the map from Sat 09:00"; on a phone, where
-                    // the spot's tools stand beside it, "ECMWF from Sat 09:00".
-                    <>
-                      {handoverName}
-                      <span className="map-model-more"> on the map</span>
-                      {` ${beyond?.side === "before" ? "until" : "from"} ${handoverWhen}`}
-                    </>
-                  ) : reachNote ? (
-                    <>
-                      {reachNote}
-                      <span className="map-model-more"> · no wind drawn</span>
-                    </>
-                  ) : (
-                    (manifest?.modelName ?? "")
+                  <span>
+                    {status ??
+                      `Loading ${mapRun && mapTime && !handoverDue ? timeLabel(mapRun.frames[requestedIndex].validTime) : "wind"}…`}
+                  </span>
+                  {pendingModel && (
+                    <button
+                      onClick={() => {
+                        modelRequest.current?.abort();
+                        setPendingModel(null);
+                        if (manifest) stayOn(manifest.model);
+                      }}
+                    >
+                      Cancel
+                    </button>
                   )}
-                  {staleness === "expired"
-                    ? " · archived"
-                    : staleness === "stale"
-                      ? " · older run"
-                      : ""}
-                </span>
-              </div>
-              {/* With no spot chosen there is no dock: the chart has the
-                  screen, at the hour the page opened on. */}
-              {dockOpen && dockSpot && (
-                <ForecastDock
-                  spot={dockSpot}
-                  isPoint={!!picked}
-                  pointSource={pointSource}
-                  pointPending={!!picked && series.pending}
-                  more={more}
-                  onMore={chooseMore}
-                  marine={marine}
-                  columns={strip}
-                  days={days}
-                  hours={pointHours}
-                  selected={selected}
-                  onSelect={(at) => selectColumn(at)}
-                  now={clockNow}
-                  prefs={prefs}
-                  layersOpen={desktop && railOpen && railFits}
-                  onLayers={pressLayers}
-                  models={models}
-                  onWantModels={() => setWantModels(true)}
-                  starred={
-                    !!dockSpot && !picked && starred.includes(dockSpot.id)
-                  }
-                  onToggleStar={() => dockSpot && fav.toggle(dockSpot.id)}
-                  warnings={dockWarnings}
-                  tide={tide.tide}
-                  onClose={closeDock}
-                  phone={phone}
-                  view={picked ? "table" : view}
-                  onView={setView}
-                  reducedMotion={reducedMotion}
-                  reachable={reachable}
-                  onShowOnMap={() =>
-                    reachable && column
-                      ? pickRiderModel(reachable.id, column.validTime)
-                      : undefined
-                  }
-                />
+                  {frameError && !pendingModel && (
+                    <button onClick={() => setRetry((v) => v + 1)}>
+                      Retry
+                    </button>
+                  )}
+                  {(modelError || modelNotice) && (
+                    <button
+                      aria-label="Dismiss"
+                      onClick={() => {
+                        setModelError("");
+                        setModelNotice("");
+                      }}
+                    >
+                      <X size={13} aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
               )}
-            </div>
-          </section>
-        </main>
+              {onChart && (
+                <div
+                  className={`map-footer${dockOpen ? "" : " is-bare"}`}
+                  ref={dock}
+                >
+                  {/* The small print rides on the dock's top edge, in the dock's
+                  own layout: never a frame behind it (map.css). */}
+                  <div className="map-print">
+                    <InfoPop label="Sources and small print" wide>
+                      {sources}
+                    </InfoPop>
+                    <span
+                      className="map-model"
+                      data-run-state={staleness}
+                      data-reach={
+                        handoverName
+                          ? "handover"
+                          : reachNote
+                            ? "beyond"
+                            : undefined
+                      }
+                    >
+                      {handoverName ? (
+                        // "ECMWF on the map from Sat 09:00"; on a phone, where
+                        // the spot's tools stand beside it, "ECMWF from Sat 09:00".
+                        <>
+                          {handoverName}
+                          <span className="map-model-more"> on the map</span>
+                          {` ${beyond?.side === "before" ? "until" : "from"} ${handoverWhen}`}
+                        </>
+                      ) : reachNote ? (
+                        <>
+                          {reachNote}
+                          <span className="map-model-more">
+                            {" "}
+                            · no wind drawn
+                          </span>
+                        </>
+                      ) : (
+                        (manifest?.modelName ?? "")
+                      )}
+                      {staleness === "expired"
+                        ? " · archived"
+                        : staleness === "stale"
+                          ? " · older run"
+                          : ""}
+                    </span>
+                  </div>
+                  {/* With no spot chosen there is no dock: the chart has the
+                  screen, at the hour the page opened on. */}
+                  {dockOpen && dockSpot && (
+                    <ForecastDock
+                      spot={dockSpot}
+                      isPoint={!!picked}
+                      pointSource={pointSource}
+                      pointPending={!!picked && series.pending}
+                      more={more}
+                      onMore={chooseMore}
+                      marine={marine}
+                      columns={strip}
+                      days={days}
+                      hours={pointHours}
+                      selected={selected}
+                      onSelect={(at) => selectColumn(at)}
+                      now={clockNow}
+                      prefs={prefs}
+                      models={models}
+                      onWantModels={() => setWantModels(true)}
+                      starred={
+                        !!dockSpot && !picked && starred.includes(dockSpot.id)
+                      }
+                      onToggleStar={() => dockSpot && fav.toggle(dockSpot.id)}
+                      warnings={dockWarnings}
+                      tide={tide.tide}
+                      onClose={closeDock}
+                      phone={phone}
+                      view={picked ? "table" : view}
+                      onView={setView}
+                      reducedMotion={reducedMotion}
+                      reachable={reachable}
+                      onShowOnMap={() =>
+                        reachable && column
+                          ? pickRiderModel(reachable.id, column.validTime)
+                          : undefined
+                      }
+                      float={listButton}
+                    />
+                  )}
+                  {/* The List button, at the foot with no dock, and with one
+                  just above it, inside its layout, so it moves with it. */}
+                  {!dockOpen && listButton}
+                </div>
+              )}
+            </section>
+          </main>
+        </>
       )}
       {syncAccount && (
         <Suspense fallback={null}>
           <AccountRider />
         </Suspense>
       )}
-      {customiseShown && (
+      {settingsShown && (
         <Suspense fallback={null}>
-          <Customise
-            open={guide === "customise"}
+          <Settings
+            open={guide === "settings"}
             prefs={prefs}
-            starred={starred}
-            spots={spots}
-            hours={hours}
-            times={strip.map((c) => c.time)}
-            prefer={first}
-            centre={controls.current?.map.getCenter() ?? null}
             onClose={() => setGuide(null)}
-            onSave={(next, toggle) => {
+            onSave={(next) => {
               changePrefs(next);
               if (next.starsUpdatedAt !== prefs.starsUpdatedAt)
                 announcePrefs("device");
-              toggle.forEach((id) => fav.toggle(id));
               setGuide(null);
             }}
           />
         </Suspense>
       )}
-      {guide && guide !== "customise" && (
+      {guide && guide !== "settings" && (
         <Suspense fallback={null}>
           {guide === "tour" ? (
             <Tour
@@ -2058,11 +2648,12 @@ export default function App() {
               onPanel={setPanel}
               onEnd={(customise) => {
                 tourSeen();
-                setGuide(customise ? "customise" : null);
+                setGuide(customise ? "settings" : null);
               }}
             />
           ) : (
             mapReady &&
+            onChart &&
             !dockOpen && (
               <TourPrompt onTour={() => setGuide("tour")} onNo={leaveTour} />
             )

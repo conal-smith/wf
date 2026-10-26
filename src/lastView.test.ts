@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  chartCentre,
-  openingPath,
-  saveChartCentre,
-  saveView,
-  storedView,
-  viewOfPath,
-} from "./lastView";
+import { chartCentre, openingPath, saveChartCentre } from "./lastView";
 
 const memory = () => {
   const data = new Map<string, string>();
@@ -16,41 +9,30 @@ const memory = () => {
   };
 };
 
-describe("the last view", () => {
-  it("is kept on the device, and nothing else reads as one", () => {
-    const store = memory();
-    expect(storedView(store)).toBeNull();
-    saveView("finder", store);
-    expect(storedView(store)).toBe("finder");
-    saveView("chart", store);
-    expect(storedView(store)).toBe("chart");
-    store.setItem("wingfoil.view.v1", "dock");
-    expect(storedView(store)).toBeNull();
+describe("the opening address", () => {
+  it("leaves the root, the full chart and a spot's chart as they are", () => {
+    expect(openingPath("/", "")).toBeNull();
+    expect(openingPath("/", "?map")).toBeNull();
+    expect(openingPath("/", "?spot=keel")).toBeNull();
+    expect(openingPath("/", "?settings")).toBeNull();
+    expect(openingPath("/spot/keel", "")).toBeNull();
   });
 
-  it("opens the root on the spot finder when that was the last one open", () => {
-    expect(openingPath("/", "", "finder")).toBe("/spots");
-    expect(openingPath("/", "?", "finder")).toBe("/spots");
-    expect(openingPath("/", "", "chart")).toBeNull();
-    expect(openingPath("/", "", null)).toBeNull();
+  it("sends the spot finder's old address on to the root, with its query", () => {
+    expect(openingPath("/spots", "")).toBe("/");
+    expect(openingPath("/spots/", "?")).toBe("/");
+    expect(openingPath("/spots", "?settings")).toBe("/?settings");
   });
 
-  it("lets a link that says where to go win", () => {
-    expect(openingPath("/", "?spot=keel", "finder")).toBeNull();
-    // The menu's Chart, and every way back named Chart (CHART_HREF).
-    expect(openingPath("/", "?chart", "finder")).toBeNull();
-    expect(openingPath("/spots", "", "chart")).toBeNull();
-    expect(openingPath("/spot/keel", "", "finder")).toBeNull();
+  it("reads the full chart's old word as the new one", () => {
+    expect(openingPath("/", "?chart")).toBe("/?map");
+    expect(openingPath("/", "?chart&settings")).toBe("/?map&settings=");
+    expect(openingPath("/", "?spot=keel&chart")).toBe("/?spot=keel");
   });
+});
 
-  it("knows which page a path draws", () => {
-    expect(viewOfPath("/spots")).toBe("finder");
-    expect(viewOfPath("/spots/")).toBe("finder");
-    expect(viewOfPath("/")).toBe("chart");
-    expect(viewOfPath("/spot/keel")).toBe("chart");
-  });
-
-  it("keeps where the chart was centred, and nothing broken", () => {
+describe("the chart's centre", () => {
+  it("is kept, and nothing broken", () => {
     const store = memory();
     expect(chartCentre(store)).toBeNull();
     saveChartCentre({ lat: 53.412345678, lon: -6.123456789 }, store);

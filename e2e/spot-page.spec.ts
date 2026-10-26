@@ -213,15 +213,15 @@ test("the rider switch keeps the map's rider, whose weight never moves a star", 
   await expect(page.locator("[data-stars]").first()).toBeAttached({
     timeout: 30000,
   });
-  // No levels: the stars are ours, and Customise is the way to make them
+  // No levels: the stars are ours, and Settings is the way to make them
   // the rider's own.
   await expect(page.getByRole("group", { name: "Riding level" })).toHaveCount(
     0,
   );
   await expect(page.locator("[data-stars-whose]")).toHaveText("Ours");
-  await expect(page.locator("[data-customise-link]")).toHaveAttribute(
+  await expect(page.locator("[data-settings-link]")).toHaveAttribute(
     "href",
-    "/?customise",
+    "/?settings",
   );
   const summary = page.locator("[data-rider-summary]");
   await expect(summary).toHaveText("~80 kg");
@@ -248,7 +248,7 @@ test("the rider switch keeps the map's rider, whose weight never moves a star", 
   });
 });
 
-test("the rider's own stars, from Customise, re-rate every hour", async ({
+test("the rider's own stars, from Settings, re-rate every hour", async ({
   page,
 }) => {
   await page.goto("/spot/brandon");
@@ -256,7 +256,7 @@ test("the rider's own stars, from Customise, re-rate every hour", async ({
     timeout: 30000,
   });
   const ours = await ratings(page);
-  // As Customise stores them: a rider who wants more wind, and never rides
+  // As Settings stores them: a rider who wants more wind, and never rides
   // cross-offshore.
   await page.evaluate(() =>
     localStorage.setItem(
@@ -471,8 +471,8 @@ test("How the stars work draws the four numbers, the gusts, the shore sectors an
     "Your weight, or your wings",
   );
   await expect(
-    page.locator("main [data-customise-link]").first(),
-  ).toHaveAttribute("href", "/?customise");
+    page.locator("main [data-settings-link]").first(),
+  ).toHaveAttribute("href", "/?settings");
   const ledger = page.locator("[data-ledger]");
   await expect(ledger).toContainText("Steady wind");
   await expect(ledger).toContainText(/Rating(no stars|\d solid)/);

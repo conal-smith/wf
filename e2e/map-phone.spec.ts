@@ -42,7 +42,7 @@ test("a phone opens on the whole island, every light in view, and keeps them thr
 }) => {
   // A last visit in the north-west, which once opened the chart there.
   await rememberSpot(page, "keel");
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });

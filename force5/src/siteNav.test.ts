@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   APP_ROUTES,
   CHART_HREF,
-  CUSTOMISE_HREF,
+  SETTINGS_HREF,
   SITE_NAV,
   SITE_SECTIONS,
   asksChart,
-  asksCustomise,
+  asksSettings,
   siteSections,
-  isFinderPath,
+  chartAddress,
+  isChartAddress,
+  isOldFinderPath,
   isSpotPath,
   isStarsPath,
   mapSpotHref,
@@ -135,34 +137,63 @@ describe("SITE_SECTIONS", () => {
 });
 
 describe("SITE_NAV", () => {
-  it("is the chart, the spot finder and Customise, in that order, on every page", () => {
+  it("is the spot finder, the chart and Settings, in that order, on every page", () => {
     expect(SITE_NAV).toEqual([
-      { id: "chart", href: "/?chart", label: "Chart" },
-      { id: "finder", href: "/spots", label: "Spot finder" },
-      { id: "customise", href: "/?customise", label: "Customise" },
+      { id: "finder", href: "/", label: "Spot finder" },
+      { id: "chart", href: "/?map", label: "Chart" },
+      { id: "settings", href: "/?settings", label: "Settings" },
     ]);
     // Each is the map's bundle's: none is split off.
     for (const row of SITE_NAV)
       expect(OWN_BUNDLE_PATHS.some((p) => p.test(row.href))).toBe(false);
   });
 
-  it("names the chart with a word, so the root does not open on the finder", () => {
+  it("names the full chart with a word, and still reads the old one", () => {
     const at = (href: string) => new URL(href, "https://wingfoil.ie");
-    expect(CHART_HREF).toBe("/?chart");
+    expect(CHART_HREF).toBe("/?map");
     expect(asksChart(at(CHART_HREF))).toBe(true);
-    expect(asksChart(at("/?spot=keel&chart"))).toBe(true);
+    expect(asksChart(at("/?chart"))).toBe(true);
+    expect(asksChart(at("/?spot=keel&map"))).toBe(true);
     expect(asksChart(at("/"))).toBe(false);
-    expect(asksChart(at("/?spot=chart"))).toBe(false);
-    expect(asksChart(at("/spots?chart"))).toBe(false);
+    expect(asksChart(at("/?spot=map"))).toBe(false);
+    expect(asksChart(at("/spots?map"))).toBe(false);
   });
 
-  it("asks the map for Customise with the word, and only on the chart's address", () => {
+  it("knows the full chart's addresses: its word, or a spot", () => {
     const at = (href: string) => new URL(href, "https://wingfoil.ie");
-    expect(asksCustomise(at(CUSTOMISE_HREF))).toBe(true);
-    expect(asksCustomise(at("/?spot=keel&customise"))).toBe(true);
-    expect(asksCustomise(at("/"))).toBe(false);
-    expect(asksCustomise(at("/?spot=customise"))).toBe(false);
-    expect(asksCustomise(at("/spots?customise"))).toBe(false);
+    expect(isChartAddress(at("/?map"))).toBe(true);
+    expect(isChartAddress(at("/?spot=keel"))).toBe(true);
+    expect(isChartAddress(at("/"))).toBe(false);
+    expect(isChartAddress(at("/?settings"))).toBe(false);
+    expect(isChartAddress(at("/spot/keel"))).toBe(false);
+  });
+
+  it("writes the full chart's address with a spot, or with its word for none", () => {
+    expect(chartAddress("https://wingfoil.ie/?map", "keel")).toBe(
+      "/?spot=keel",
+    );
+    expect(chartAddress("https://wingfoil.ie/?spot=keel", null)).toBe("/?map");
+    expect(chartAddress("https://wingfoil.ie/?chart", null)).toBe("/?map");
+    expect(chartAddress("https://wingfoil.ie/?map&x=1#k", null)).toBe(
+      "/?map&x=1#k",
+    );
+  });
+
+  it("asks the map for Settings with the word, and only on the chart's address", () => {
+    const at = (href: string) => new URL(href, "https://wingfoil.ie");
+    expect(SETTINGS_HREF).toBe("/?settings");
+    expect(asksSettings(at(SETTINGS_HREF))).toBe(true);
+    expect(asksSettings(at("/?spot=keel&settings"))).toBe(true);
+    expect(asksSettings(at("/"))).toBe(false);
+    expect(asksSettings(at("/?spot=settings"))).toBe(false);
+    expect(asksSettings(at("/spots?settings"))).toBe(false);
+  });
+
+  it("still reads Settings' old word, Customise's, in links already out there", () => {
+    const at = (href: string) => new URL(href, "https://wingfoil.ie");
+    expect(asksSettings(at("/?customise"))).toBe(true);
+    expect(asksSettings(at("/?spot=keel&customise"))).toBe(true);
+    expect(asksSettings(at("/spots?customise"))).toBe(false);
   });
 });
 
@@ -270,13 +301,13 @@ describe("APP_ROUTES", () => {
   });
 });
 
-describe("isFinderPath", () => {
-  it("is /spots and under it, and not a spot's page", () => {
-    expect(isFinderPath("/spots")).toBe(true);
-    expect(isFinderPath("/spots/")).toBe(true);
-    expect(isFinderPath("/spot")).toBe(false);
-    expect(isFinderPath("/spot/keel")).toBe(false);
-    expect(isFinderPath("/spotsx")).toBe(false);
+describe("isOldFinderPath", () => {
+  it("is /spots and under it, the spot finder's old address, and not a spot's page", () => {
+    expect(isOldFinderPath("/spots")).toBe(true);
+    expect(isOldFinderPath("/spots/")).toBe(true);
+    expect(isOldFinderPath("/spot")).toBe(false);
+    expect(isOldFinderPath("/spot/keel")).toBe(false);
+    expect(isOldFinderPath("/spotsx")).toBe(false);
     expect(isSpotPath("/spots")).toBe(false);
   });
 });

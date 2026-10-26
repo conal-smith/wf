@@ -1,20 +1,24 @@
 /**
- * Which of the map's two pages the rider last had open, the chart or the spot
- * finder, kept on this device: the site's root opens on that one. A link that
- * says where to go wins (`/spots`, `/?spot=keel`, a spot's page), and so does
- * any query on the root, which is the chart's to read.
+ * Where the site's root opens, and where the chart was last centred.
  *
- * Also where the chart was last centred, which the spot finder falls back on
- * for "near you" when the browser will not say where the rider is.
+ * The root is the spot finder (since 26 October 2026), with the chart beside
+ * it on a wide screen; the full chart is the root with `?map`, or with a spot
+ * (`/?spot=keel`). Two old addresses are still answered: `/spots`, the
+ * finder's own until then, is the root, and `/?chart`, the full chart's word,
+ * is `/?map`. Both are put right in the address before the map reads it.
+ *
+ * Where the chart was last centred is what the spot finder falls back on for
+ * "near you" when the browser will not say where the rider is.
  *
  * Small and free of the map: src/main.tsx reads it before the map's chunk is
  * asked for.
  */
-import { FINDER_HREF, isFinderPath } from "../force5/src/siteNav";
+import {
+  MAP_PARAM,
+  OLD_CHART_PARAM,
+  isOldFinderPath,
+} from "../force5/src/siteNav";
 
-export type MapView = "chart" | "finder";
-
-export const VIEW_KEY = "wingfoil.view.v1";
 export const CHART_CENTRE_KEY = "wingfoil.map.centre.v1";
 
 type Store = Pick<Storage, "getItem" | "setItem">;
@@ -39,35 +43,24 @@ const write = (storage: Store | null, key: string, value: string) => {
   try {
     storage?.setItem(key, value);
   } catch {
-    // Best effort: the page still opens on the chart.
+    // Best effort: the finder falls back on the whole of Ireland.
   }
 };
 
-/** The page a path draws. */
-export const viewOfPath = (pathname: string): MapView =>
-  isFinderPath(pathname) ? "finder" : "chart";
-
-/** The view kept on this device, or null for none. */
-export function storedView(storage: Store | null = device()): MapView | null {
-  const v = read(storage, VIEW_KEY);
-  return v === "chart" || v === "finder" ? v : null;
-}
-
-export function saveView(view: MapView, storage: Store | null = device()) {
-  write(storage, VIEW_KEY, view);
-}
-
 /**
- * Where the root should open instead, or null to stay: the spot finder's
- * path when that is what the rider had last and the link names nothing.
+ * The address an old one is now, or null to stay: `/spots` (and under it)
+ * is the root, with its query; `?chart` on the root is `?map`.
  */
-export function openingPath(
-  pathname: string,
-  search: string,
-  stored: MapView | null,
-): string | null {
-  if (pathname !== "/" || (search && search !== "?")) return null;
-  return stored === "finder" ? FINDER_HREF : null;
+export function openingPath(pathname: string, search: string): string | null {
+  if (isOldFinderPath(pathname)) return "/" + (search === "?" ? "" : search);
+  if (pathname !== "/") return null;
+  const query = new URLSearchParams(search);
+  if (!query.has(OLD_CHART_PARAM)) return null;
+  query.delete(OLD_CHART_PARAM);
+  query.delete(MAP_PARAM);
+  const rest = query.toString();
+  if (query.has("spot")) return `/?${rest}`;
+  return `/?${MAP_PARAM}${rest ? `&${rest}` : ""}`;
 }
 
 export interface LatLon {

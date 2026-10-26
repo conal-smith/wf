@@ -51,7 +51,7 @@ test("on the map the menu opens by keyboard and Escape closes only the menu", as
   await expect(panel(page).getByRole("link")).toHaveText(SECTIONS);
   // The site's navigation comes first, as on every page, and its first row
   // takes the focus; the chart is the page.
-  await expect(row(page, "Chart")).toBeFocused();
+  await expect(row(page, "Spot finder")).toBeFocused();
   await expect(row(page, "Chart")).toHaveAttribute("aria-current", "page");
   await expect(row(page, "Marketplace")).toHaveAttribute("href", "/market");
   await expect(row(page, "Marketplace")).not.toHaveAttribute(
@@ -80,7 +80,7 @@ test("on the map the menu opens by keyboard and Escape closes only the menu", as
  * order, each marking its own page; what is only the chart's is set apart
  * under it, and the finder, with nothing of its own, has no such part.
  */
-test("the menu's navigation is the same on the chart and on the spots page", async ({
+test("the menu's navigation is the same on the full chart and on the home page's list", async ({
   page,
 }) => {
   const read = async () => {
@@ -95,10 +95,10 @@ test("the menu's navigation is the same on the chart and on the spots page", asy
     await expect(drawer(page)).toHaveCount(0);
     return { rows, marked, own };
   };
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
   const chart = await read();
-  await page.goto("/spots");
+  await page.goto("/");
   await expect(page.locator("[data-spot-finder]")).toBeVisible({
     timeout: 30000,
   });
@@ -128,7 +128,7 @@ async function settled(page: Page) {
 test("the menu is a drawer from the left, over the dimmed map, with a glyph on every row", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?map");
   await trigger(page).click();
   const box = await settled(page);
   // The left edge, the screen's full height, and clear of the right of it.
@@ -175,7 +175,7 @@ test("the menu is a drawer from the left, over the dimmed map, with a glyph on e
 test("the drawer closes on Escape, on its X and on the backdrop, the focus back on the trigger", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?map");
   // Escape.
   await trigger(page).click();
   await settled(page);
@@ -203,10 +203,10 @@ test("the drawer closes on Escape, on its X and on the backdrop, the focus back 
 });
 
 test("the focus stays in the drawer while it is open", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?map");
   await trigger(page).focus();
   await page.keyboard.press("Enter");
-  await expect(row(page, "Chart")).toBeFocused();
+  await expect(row(page, "Spot finder")).toBeFocused();
   // Round the whole drawer and more: the focus never leaves it.
   for (const key of [
     ...Array(14).fill("Tab"),
@@ -229,7 +229,7 @@ test("the focus stays in the drawer while it is open", async ({ page }) => {
 test("a drag to the left puts the drawer away, and a short one springs back", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?map");
   await trigger(page).click();
   const box = await settled(page);
   // From the drawer's own paper, under its rows.
@@ -262,7 +262,7 @@ test("a drag to the left puts the drawer away, and a short one springs back", as
 test("a drag that starts on a row is the drawer's, and a tap on a row still presses it", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?map");
   await trigger(page).click();
   await settled(page);
 
@@ -294,7 +294,7 @@ test("a drag that starts on a row is the drawer's, and a tap on a row still pres
 test("a fast flick puts the drawer away short of the line", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?map");
   await trigger(page).click();
   const box = await settled(page);
   await drawer(page).evaluate(
@@ -326,7 +326,7 @@ test("a fast flick puts the drawer away short of the line", async ({
 test("the menu carries the reader between the map and the marketplace", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?map");
   await trigger(page).click();
   await row(page, "Marketplace").click();
 
@@ -376,7 +376,7 @@ test("a direct load of a marketplace URL renders the marketplace and its menu", 
     "aria-current",
     "page",
   );
-  await expect(row(page, "Chart")).toHaveAttribute("href", "/?chart");
+  await expect(row(page, "Chart")).toHaveAttribute("href", "/?map");
 });
 
 test("the menu carries the reader into the community and back out of it", async ({
@@ -419,7 +419,7 @@ test("at 390px the menu shares the header row without wrapping or scrolling", as
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/?map");
   const overflow = () =>
     page.evaluate(
       () =>
@@ -538,7 +538,7 @@ test.describe("on a coarse pointer", () => {
   test("the map's trigger does not reach over the name beside it", async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("/?map");
     expect(
       await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches),
     ).toBe(true);

@@ -1,4 +1,11 @@
-import { expect, openFromMenu, setLayer, test, type Page } from "./fixtures";
+import {
+  expect,
+  moreRows,
+  openFromMenu,
+  setLayer,
+  test,
+  type Page,
+} from "./fixtures";
 import { sampleStrip } from "./columns";
 
 /**
@@ -36,7 +43,7 @@ test("the rain layer is off at first and nothing of it is loaded", async ({
   page,
 }) => {
   const asked = watch(page);
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });
@@ -113,7 +120,7 @@ test("its part of About the map says what the hour shows", async ({ page }) => {
       JSON.stringify({ rain: true }),
     ),
   );
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });
@@ -142,7 +149,7 @@ test("with no rain published the page still works, and says so", async ({
       JSON.stringify({ rain: true }),
     ),
   );
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });
@@ -163,7 +170,7 @@ test("the dock's rain row is per hour: each hourly column its own, a three-hour 
   await expect(page.locator(".dock tr.tt-wind")).toBeVisible({
     timeout: 30000,
   });
-  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  await moreRows(page);
   await expect(
     page.locator('.dk-labs .dk-glyph[title="Rain, mm per hour"]'),
   ).toHaveCount(1);

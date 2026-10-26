@@ -41,7 +41,7 @@ test("through a move the lights are drawn on a canvas, and the buttons come back
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });

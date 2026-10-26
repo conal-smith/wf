@@ -106,11 +106,6 @@ dialog[open]:has(> .tour) {
   flex: 1;
   min-width: 0;
 }
-.tour-sign {
-  margin: 6px 0 0;
-  font: italic var(--text-body) var(--font-body);
-  color: var(--color-ink-muted);
-}
 .tour-foot {
   display: flex;
   align-items: center;

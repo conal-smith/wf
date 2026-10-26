@@ -106,72 +106,124 @@ export function isSpotPath(pathname: string): boolean {
 }
 
 /**
- * The spot finder, `/spots` and anything under it: the rider's riding places as
- * cards, the best of their week first, each with today hour by hour and the
- * next five days. A page of the map's own bundle, drawn by src/App.tsx in the
- * chart's place from the same data, so it is not split off and is not in
- * OWN_BUNDLE_PATHS.
+ * The spot finder, the home page: the rider's riding places as cards, the
+ * best of their week first, each with today hour by hour and the next five
+ * days, with the chart beside them on a wide screen. Since 26 October 2026 it
+ * is the site's root; it was at `/spots` before, and that address is still
+ * read and sent on to the root (`OLD_FINDER_HREF`, src/lastView.ts).
  */
-export const FINDER_HREF = "/spots";
+export const FINDER_HREF = "/";
 
-const FINDER_PATH = /^\/spots(\/|$)/;
+/** The spot finder's address until 26 October 2026, still answered. */
+export const OLD_FINDER_HREF = "/spots";
 
-export function isFinderPath(pathname: string): boolean {
-  return FINDER_PATH.test(pathname);
+const OLD_FINDER_PATH = /^\/spots(\/|$)/;
+
+/** `/spots` and under it: the spot finder's old address. */
+export function isOldFinderPath(pathname: string): boolean {
+  return OLD_FINDER_PATH.test(pathname);
 }
 
 /**
- * The chart, always: the menu's Chart and every way back named Chart. The
- * bare root opens on whichever of the chart and the spot finder the rider
- * last had (src/lastView.ts), which is right for an address typed in and
- * wrong for a link that says "Chart"; a link with anything in its query is
- * followed as it is, so this one is the chart. The map takes the word out of
- * the address once it is open (src/App.tsx), and a page over the map brings
- * the chart up in the map's place (src/PagesOverMap.tsx).
+ * The full chart: the menu's Chart and every way back named Chart. It is the
+ * home page with the chart opened over the list to the whole screen
+ * (src/App.tsx), and so is any address on the root that names a spot
+ * (`/?spot=keel`, the chart open on Keel). `/?chart`, the chart's word until
+ * 26 October 2026, is read as this one.
  */
-export const CHART_PARAM = "chart";
-export const CHART_HREF = `/?${CHART_PARAM}`;
+export const MAP_PARAM = "map";
+export const CHART_HREF = `/?${MAP_PARAM}`;
+/** The full chart's word before 26 October 2026, still read. */
+export const OLD_CHART_PARAM = "chart";
 
-/** Whether an address on this origin is the explicit chart, `CHART_HREF`. */
+/** Whether an address on this origin asks for the full chart by name. */
 export function asksChart(url: { pathname: string; search: string }) {
+  if (url.pathname !== "/") return false;
+  const query = new URLSearchParams(url.search);
+  return query.has(MAP_PARAM) || query.has(OLD_CHART_PARAM);
+}
+
+/**
+ * Whether an address is the full chart: asked for by name, or on a spot.
+ * Anything else on the root is the spot finder.
+ */
+export function isChartAddress(url: { pathname: string; search: string }) {
   return (
-    url.pathname === "/" && new URLSearchParams(url.search).has(CHART_PARAM)
+    asksChart(url) ||
+    (url.pathname === "/" && new URLSearchParams(url.search).has("spot"))
   );
 }
 
 /**
- * Customise, from a page that is not the map's: the chart, opened with the
- * wizard over it. The map reads the word once and takes it out of the
- * address (src/App.tsx); a page drawn over the map hands it back to the map
- * instead of loading it (src/PagesOverMap.tsx).
+ * The full chart's address with `id` as its spot, or with none, the rest of
+ * the address kept as it was: `/?spot=keel` with a spot (a spot names the
+ * chart by itself), and `/?map` without one, so letting go of a spot never
+ * leaves the chart's address for the list's.
  */
-export const CUSTOMISE_PARAM = "customise";
-export const CUSTOMISE_HREF = `/?${CUSTOMISE_PARAM}`;
+export function chartAddress(href: string, id: string | null): string {
+  const url = new URL(href);
+  const query = url.searchParams;
+  query.delete(OLD_CHART_PARAM);
+  if (id) {
+    query.delete(MAP_PARAM);
+    query.set("spot", id);
+  } else {
+    query.delete("spot");
+    if (!query.has(MAP_PARAM)) query.set(MAP_PARAM, "");
+  }
+  return url.pathname + tidySearch(query) + url.hash;
+}
 
-/** Whether an address on this origin asks the map for Customise. */
-export function asksCustomise(url: { pathname: string; search: string }) {
-  return (
-    url.pathname === "/" && new URLSearchParams(url.search).has(CUSTOMISE_PARAM)
-  );
+/**
+ * A query as an address writes it, with the full chart's word bare (`?map`,
+ * not `?map=`), or "" for none.
+ */
+export function tidySearch(query: URLSearchParams): string {
+  const text = query
+    .toString()
+    .replace(new RegExp(`(^|&)${MAP_PARAM}=(?=&|$)`), `$1${MAP_PARAM}`);
+  return text ? `?${text}` : "";
+}
+
+/**
+ * Settings, from a page that is not the map's: the home page, opened with
+ * the Settings dialog over it. The map reads the word once and takes it out of
+ * the address (src/App.tsx); a page drawn over the map hands it back to the
+ * map instead of loading it (src/PagesOverMap.tsx). Settings was "Customise"
+ * until 26 October 2026, and `/?customise`, in links already out there, is
+ * read the same.
+ */
+export const SETTINGS_PARAM = "settings";
+export const SETTINGS_HREF = `/?${SETTINGS_PARAM}`;
+/** Settings' word before 26 October 2026, still read. */
+export const OLD_SETTINGS_PARAM = "customise";
+
+/** Whether an address on this origin asks the map for Settings. */
+export function asksSettings(url: { pathname: string; search: string }) {
+  if (url.pathname !== "/") return false;
+  const query = new URLSearchParams(url.search);
+  return query.has(SETTINGS_PARAM) || query.has(OLD_SETTINGS_PARAM);
 }
 
 /** The site menu's rows that are the same on every page. */
-export type SiteNavId = "chart" | "finder" | "customise";
+export type SiteNavId = "chart" | "finder" | "settings";
 
 /**
  * The site's navigation, the first rows of the menu on every page, in this
- * order (owner's ruling of 2026-10-25): the chart, the spot finder, and
- * Customise. The chart is the map section's own page, so the sections under
- * these leave the map out: it is here, once, as the chart.
+ * order: the spot finder, which is the home page, the full chart, and
+ * Settings (the owner's ruling of 2026-10-25, with the finder first since it
+ * became the home page on 2026-10-26). The chart is the map section's own
+ * page, so the sections under these leave the map out: it is here, once, as
+ * the chart.
  */
 export const SITE_NAV: readonly {
   id: SiteNavId;
   href: string;
   label: string;
 }[] = [
-  { id: "chart", href: CHART_HREF, label: "Chart" },
   { id: "finder", href: FINDER_HREF, label: "Spot finder" },
-  { id: "customise", href: CUSTOMISE_HREF, label: "Customise" },
+  { id: "chart", href: CHART_HREF, label: "Chart" },
+  { id: "settings", href: SETTINGS_HREF, label: "Settings" },
 ];
 
 /**
@@ -179,7 +231,7 @@ export const SITE_NAV: readonly {
  * of the sections', or none (a spot's page, "How the stars work").
  */
 export type SitePageId =
-  Exclude<SiteNavId, "customise"> | Exclude<SiteSectionId, "map">;
+  Exclude<SiteNavId, "settings"> | Exclude<SiteSectionId, "map">;
 
 /**
  * Every path that `src/main.tsx` splits off from the map: everything else is
@@ -236,5 +288,5 @@ export const APP_ROUTES: readonly string[] = [
   ),
   "/spot",
   STARS_HREF,
-  FINDER_HREF,
+  OLD_FINDER_HREF,
 ];

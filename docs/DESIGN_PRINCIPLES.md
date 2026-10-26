@@ -639,7 +639,7 @@ a picture under a small rose is not fogged.
 **2026-10-25 — One site menu, the same on every page.** "The menu for
 SpotFinder and for the main chart page is different. This menu should be the
 same across all pages." The menu opens on the site's navigation wherever it
-is opened, in one order and one wording: Chart, Spot finder, Customise, and
+is opened, in one order and one wording: Chart, Spot finder, Settings, and
 after a gap the site's other sections (Use with AI; the marketplace and the
 community where they are on). "Wind map" was the chart a second time and is
 gone: the chart is the map. The page you are on is marked as the finder's
@@ -648,9 +648,9 @@ menu marked it, italic and heavier on the second sheet with
 nothing is. What only one page has is set apart under the navigation, under
 the page's name in the mono label over an ink rule: on the chart, "This
 chart", with Layers, Display options, About the map and Take the tour. A page
-with nothing of its own has no such part. Customise from a page that is not
-the map's is the chart with the wizard open (`/?customise`); from a page over
-the map, the map as it was with the wizard over it (`force5/src/siteNav.ts`
+with nothing of its own has no such part. Settings from a page that is not
+the map's is the chart with Settings open (`/?settings`); from a page over
+the map, the map as it was with Settings over it (`force5/src/siteNav.ts`
 `SITE_NAV`, `force5/src/SiteMenu.tsx`). The menu's rows say where they go:
 Chart is always the chart (`/?chart`, and so is every way back named Chart)
 and Spot finder always the finder, whichever was open last; only the bare
@@ -674,8 +674,7 @@ midnight is kept (docs/LIVE_FORECAST_PIPELINE.md, "Today, kept whole").
 the approved mock-up `backlog/mockups/2026-10-25-own-star-rating.html` and the
 plan `backlog/research/2026-10-25-star-rating-plan.html`. There are no levels
 (Learning, Riding, Advanced) anywhere: everyone starts from ours, and a rider
-makes it their own in Customise. They set four numbers on "What wind suits
-you?" — too light, the sweet spot's two ends, too much in gusts (ours 11 ·
+makes it their own in Settings. They set four numbers under "Wind strength" — too light, the sweet spot's two ends, too much in gusts (ours 11 ·
 15–22 · 35 kn) — and our model does the rest: a star a knot from too light,
 five through the sweet spot, one star 5 kn under too much and none 3 kn under
 it; a gust past too much is no stars, and otherwise is read 5 kn lighter, the
@@ -692,6 +691,84 @@ right on a desktop, stacked on a phone; the wind's stars sit read-only under
 the slider's track on the same axis, with no legend; "Reset to ours" shows
 only once something differs from ours (weight and units aside). Old stored
 settings are read without fault and start from ours (docs/STAR_RATINGS.md).
+
+**2026-10-26 — Plain, clear English everywhere, and no Almanac in the words.**
+The owner, on the tour: "very, very bad copy. It doesn't make sense … we don't
+need cryptic language or puns, just state things plain and simple." And on its
+first line, "A 30-second tour of the chart, from the Almanac": the Almanac
+confuses a rider trying to learn the site. "Take a 30-second tour of how the
+site works" is the model: "exactly the type of language we want." BRAND.md's
+rules 7 and 8 now say so: every sentence is everyday English a newcomer reads
+once, and the puffin stays as a picture but nothing is signed "the Almanac".
+This is the second time the owner has asked (see 2026-10-24, "It reads like
+cryptic riddles"), so it is a rule for every page, not a fix for one.
+
+**2026-10-26 — Settings, one dialog on one page.** "What we should have is a
+settings page and then settings brings up a modal with all the configuration
+that you can do... one modal, so people don't have to keep clicking through
+this thing. And we don't need to have the favourites in there." The menu's
+Customise is Settings now, with the same sliders glyph, and it opens one
+dialog (src/Settings.tsx) in four parts, each a heading and one plain line of
+help: About you (weight and units), Wind strength (the four handles and the
+stars under them), Wind direction (the web and its list) and Riding upwind
+(the three answers, the picture and the two angles). The wizard's steps, its
+"n / 6", its spots step and its summary with the sample day are gone. On a
+desktop the four sit two by two, About you beside Wind strength and Wind
+direction beside Riding upwind; under 1000px wide they are one column, and on
+a phone the dialog is the whole screen and scrolls. It edits a draft: Save keeps it, and Cancel,
+the close button, Escape and the backdrop keep nothing; "Reset to ours"
+stays in the foot. `/?settings` opens it from another page, and the old
+`/?customise` still does. Every word is everyday English a newcomer reads
+once: "1 star off" and "No stars" rather than "−1★" and "never", "Too strong
+in gusts", and "ONSHORE", "CROSS-ON" on the web rather than "ON", "X-ON".
+
+**2026-10-26 — The dock's top row: the star, the name, Blend and one
+arrow.** From the approved mock-up
+`backlog/mockups/2026-10-26-spot-finder-chart.html` (#238). Everywhere the
+dock appears (src/ForecastDock.tsx), its top row is the star, the spot's name
+in full, the Blend glyph and a downward arrow that closes the dock. The name
+is no longer cut short: a long one goes over two lines, and it is still the
+way to the spot's page, with no chevron after it. Blend is its glyph alone,
+named "Blend" for a screen reader and in its tooltip. The × is gone (the
+arrow does what it did), and so is the dock's Layers button: Layers is with
+the zoom buttons, as it always was. The dock's rows are unchanged. There is
+no separate button for more rows: on a wide screen the dock's top edge is
+dragged up for more rows, down for fewer and down again to close the dock,
+and a small faint grip in the middle of that edge is a button for a click
+and the keys (Up for more, Down for fewer). On a phone the sheet is swiped
+as before, and swiped down from its head alone it closes.
+
+**2026-10-26 — The spot finder is the home page, with the chart beside it.**
+From the approved mock-up `backlog/mockups/2026-10-26-spot-finder-chart.html`
+(#238). The site's root (`/`) is the spot finder: its cards as they were,
+and, from 1100 pixels wide, the real chart beside them in a box on the right,
+the full height of the page under the head. The chart there shows only the
+listed spots' lights (Favourites or Near you, as the switch says), at the
+hour the cards show, with the rider's place as a blue dot; it is fitted to
+the list as the page opens and when the switch changes, and at no other
+time. A card under the pointer turns its light black, with its name; if the
+spot is near the edge or off the chart, the chart moves to put it in the
+middle at the same zoom, and otherwise nothing moves. A light under the
+pointer outlines its card, and a press on one scrolls the list to its card.
+There is no dock and no loupe beside the list. "Full chart" opens the chart
+to the whole screen, and that is the chart as it was before: every spot,
+search, the zoom and Layers, and the dock along the foot when a spot is
+pressed. It is the same map in a bigger box, never made twice (src/App.tsx):
+the box grows under a clip and the map takes its new size once. Its address
+is `/?map`, pushed, so Back is the list again; a spot's link (`/?spot=keel`)
+opens it on that spot with its dock, as it always did, and a card's picture
+does the same. A black List button at the foot goes back to the list,
+riding just above the dock while it is open (inside the dock's own layout,
+lifted over the spot's tools where the window is too narrow for both), and
+so do Escape and the collapse button above the zoom. Under 1100 pixels the
+list is alone, with a black Map button at the foot that opens the full chart
+and is List there; on a phone the map is made the first time it is asked
+for and kept. The old addresses are put right: `/spots` is the root, and
+`/?chart` is `/?map`. The root no longer opens on whichever page the rider
+last had: it is always the list (this replaces that part of the rulings of
+2026-10-24 and 2026-10-25). The site menu's navigation is Spot finder (the
+home page), Chart (the full chart) and Settings, in that order; Settings
+from another page is the home page with Settings open.
 
 ---
 

@@ -18,7 +18,7 @@ async function inForce(page: Page) {
   await page.addInitScript(() =>
     localStorage.setItem("wingfoil.map.focus.v1", "loupe"),
   );
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
     timeout: 30000,
   });

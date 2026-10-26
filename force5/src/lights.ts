@@ -143,6 +143,12 @@ export interface Lights {
     units: Units,
   ): void;
   element(id: string): HTMLButtonElement | undefined;
+  /**
+   * One light lit, as a card for its place is under the pointer beside the
+   * chart: drawn in ink and larger, with its name, the others fainter. Null
+   * puts it out. A class on the light, so nothing is drawn again but it.
+   */
+  light(id: string | null): void;
   destroy(): void;
 }
 
@@ -150,6 +156,8 @@ export function createLights(
   map: maplibregl.Map,
   spots: readonly Spot[],
   onSelect: (spot: Spot) => void,
+  /** A mouse comes onto a light (its place), or leaves it (null). */
+  onHover?: (spot: Spot | null) => void,
 ): Lights {
   const entries = new Map<string, Entry>();
   /**
@@ -315,6 +323,7 @@ export function createLights(
   /** A light the rider is at: pointed at, open, on the keys, or pulsing. */
   const isLive = ({ el, pulse }: Entry) =>
     el.classList.contains("sel") ||
+    el.classList.contains("lit") ||
     el.classList.contains("gust-highlight") ||
     el === document.activeElement ||
     el.matches(":hover") ||
@@ -471,6 +480,14 @@ export function createLights(
     });
     // As MapLibre's markers do: a press on a light neither drags it as an
     // image nor moves the focus.
+    if (onHover) {
+      el.addEventListener("pointerenter", (event) => {
+        if (event.pointerType === "mouse") onHover(spot);
+      });
+      el.addEventListener("pointerleave", (event) => {
+        if (event.pointerType === "mouse") onHover(null);
+      });
+    }
     el.addEventListener("dragstart", (event) => event.preventDefault());
     el.addEventListener("mousedown", (event) => event.preventDefault());
     layer.appendChild(el);
@@ -577,6 +594,17 @@ export function createLights(
       if (dirty) queue();
     },
     element: (id) => entries.get(id)?.el,
+    light(id) {
+      // Its look through a move changes with it (./lightsCanvas); its name
+      // shows whatever the layout of the names, from the stylesheet.
+      for (const [key, entry] of entries) {
+        const on = key === id;
+        if (entry.el.classList.contains("lit") === on) continue;
+        entry.el.classList.toggle("lit", on);
+        entry.rev++;
+      }
+      layer.classList.toggle("has-lit", id !== null && entries.has(id));
+    },
     destroy() {
       cancelAnimationFrame(queued);
       classes.disconnect();

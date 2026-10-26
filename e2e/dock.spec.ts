@@ -4,6 +4,7 @@ import {
   closePanel,
   expect,
   menuRow,
+  moreRows,
   openFromMenu,
   setRider,
   steadyFrames,
@@ -88,7 +89,7 @@ async function withTides(page: Page) {
 async function openDock(page: Page, width = 1440, height = 900) {
   await withTides(page);
   await page.setViewportSize({ width, height });
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
@@ -584,11 +585,11 @@ test("the spot's tools stand on the chart over the dock, and no day is rated", a
 }) => {
   await openDock(page);
   // No county, no compass, no line of the day's best, no small print, no
-  // play, no water, no model: the star, the name (the way to the spot's
-  // page), the blend, the fold and the close, in a box on the chart at the
-  // dock's top edge. The dock under it is its rows.
+  // play, no water, no model, no layers: the star, the name in full (the
+  // way to the spot's page), the blend's glyph and the close, in a box on
+  // the chart at the dock's top edge. The dock under it is its rows.
   const tools = page.getByRole("group", { name: "This spot" });
-  await expect(tools).toHaveText(/^Brandon BayLayersBlend$/);
+  await expect(tools).toHaveText(/^Brandon Bay$/);
   const box = (await tools.boundingBox())!;
   const dock = (await page.locator(".dock").boundingBox())!;
   expect(box.y + box.height).toBeLessThanOrEqual(dock.y);
@@ -599,15 +600,24 @@ test("the spot's tools stand on the chart over the dock, and no day is rated", a
   ).toHaveCount(0);
   for (const name of [
     "Star Brandon Bay",
-    "Layers",
     "Blend",
-    "Show waves, sky and sea",
+    "Close the forecast for Brandon Bay",
   ])
     await expect(tools.getByRole("button", { name })).toBeVisible();
+  await expect(tools.getByRole("button")).toHaveCount(3);
+  await expect(tools.getByRole("button", { name: "Layers" })).toHaveCount(0);
+  await expect(tools.getByRole("button", { name: "Blend" })).toHaveAttribute(
+    "title",
+    "Blend",
+  );
   await expect(tools.getByRole("button", { name: "Blend" })).toHaveAttribute(
     "aria-pressed",
     "false",
   );
+  // The fold is the dock's top edge, its grip in the middle of it.
+  await expect(
+    page.locator(".dock").getByRole("button", { name: "Show more rows" }),
+  ).toBeVisible();
   await expect(
     tools.getByRole("button", { name: /Play forecast|Pause forecast/ }),
   ).toHaveCount(0);
@@ -626,7 +636,29 @@ test("the spot's tools stand on the chart over the dock, and no day is rated", a
   await expect(name).toHaveAttribute("href", "/spot/brandon");
   await expect(tools.locator(".dk-name a")).toHaveCount(1);
   await expect(tools.locator("a")).toHaveCount(1);
+  // And no chevron after it.
+  await expect(tools.locator(".dk-name svg")).toHaveCount(0);
 });
+
+for (const width of [1440, 390])
+  test(`a long name is shown in full, over two lines where it needs them, with no chevron after it, at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/?spot=broadmeadows-south");
+    const name = page.locator(".dock .dk-name");
+    await expect(name).toHaveText("Broadmeadows Estuary — south shore", {
+      timeout: 30000,
+    });
+    await expect(name.locator("svg")).toHaveCount(0);
+    // Nothing of it cut off: the box is as wide as what is written in it.
+    expect(
+      await name.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+    ).toBe(true);
+    const box = (await name.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+  });
 
 test("a starred spot is kept on this device: the dock and the spot finder's favourites agree", async ({
   page,
@@ -667,7 +699,7 @@ test("a starred spot is kept on this device: the dock and the spot finder's favo
   );
 });
 
-test("units and the blend's models are display options, kept on reload; the rider is Customise's", async ({
+test("units and the blend's models are display options, kept on reload; the rider is Settings'", async ({
   page,
 }) => {
   await openDock(page);
@@ -678,16 +710,16 @@ test("units and the blend's models are display options, kept on reload; the ride
   await openFromMenu(page, "Display options");
   const options = page.locator("#map-options");
   // No weight, no level and no way to the rider's own stars: those are
-  // Customise's, from the site menu.
+  // Settings', from the site menu.
   await expect(options.locator('[data-rider="weight"]')).toHaveCount(0);
-  // Nor the wings: those are Customise's first step now.
+  // Nor the wings.
   await expect(options.locator('[data-rider="wings"]')).toHaveCount(0);
   await expect(options.getByText("Wings you own")).toHaveCount(0);
   await expect(
     options.getByRole("group", { name: "Riding level" }),
   ).toHaveCount(0);
   await expect(
-    options.getByRole("button", { name: /^(Customise|Edit custom)$/ }),
+    options.getByRole("button", { name: /^(Customise|Settings|Edit custom)$/ }),
   ).toHaveCount(0);
   await expect(options.getByRole("heading")).toHaveText([
     "Units",
@@ -699,7 +731,7 @@ test("units and the blend's models are display options, kept on reload; the ride
   await page.locator('input[data-model-toggle="gfs"]').uncheck();
   await closePanel(page);
   await expect(page.locator(".dk-labs")).toContainText("m/s");
-  // A heavier rider, as Customise saves one, takes a bigger wing for the
+  // A heavier rider, as Settings saves one, takes a bigger wing for the
   // same wind, hour by hour.
   await setRider(page, { weightKg: 100 });
   await expect
@@ -931,7 +963,12 @@ test("the display options open over the dimmed map from the site menu, one panel
   const names = await page
     .locator(".zbox button")
     .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-  expect(names).toEqual(["Zoom in", "Zoom out", "Layers"]);
+  expect(names).toEqual([
+    "Back to the list",
+    "Zoom in",
+    "Zoom out",
+    "Layers",
+  ]);
   await expect(page.locator(".dock").getByLabel("Display options")).toHaveCount(
     0,
   );
@@ -996,35 +1033,59 @@ test("the blend draws every model that covers the spot, on the strip's hours", a
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
 });
 
-test("the head's chevron is the dock's one fold: the rows under the figures", async ({
+test("the dock's top edge is its one fold: its grip, the keys and a drag show more rows or fewer, and down again closes it", async ({
   page,
 }) => {
   await openDock(page);
-  const chevron = page
-    .locator(".dock .dk-tools")
-    .getByRole("button", { name: "Show waves, sky and sea" });
-  await expect(chevron).toHaveAttribute("aria-expanded", "false");
-  // No folding the hours away, and no handle to do it with.
+  const dock = page.locator(".dock");
+  const grip = dock.getByRole("button", { name: "Show more rows" });
+  await expect(grip).toHaveAttribute("aria-expanded", "false");
+  // No chevron among the tools, and no handle of a sheet.
   await expect(
-    page.getByRole("button", { name: /(Fold|Open) the hours/ }),
+    dock.locator(".dk-tools").getByRole("button", { name: /rows|waves/ }),
   ).toHaveCount(0);
-  await expect(page.locator(".dock-grab")).toHaveCount(0);
-  const height = async () =>
-    (await page.locator(".dock").boundingBox())!.height;
+  await expect(dock.locator(".dk-grab")).toHaveCount(0);
+  const height = async () => (await dock.boundingBox())!.height;
   const before = await height();
-  await chevron.click();
-  const open = page
-    .locator(".dock .dk-tools")
-    .getByRole("button", { name: "Hide waves, sky and sea" });
-  await expect(open).toHaveAttribute("aria-expanded", "true");
-  await expect(page.locator(".dock tr.tt-waves")).toHaveCount(1);
-  await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
+  // A click on the grip.
+  await grip.click();
+  const fewer = dock.getByRole("button", { name: "Show fewer rows" });
+  await expect(fewer).toHaveAttribute("aria-expanded", "true");
+  await expect(dock.locator("tr.tt-waves")).toHaveCount(1);
+  await expect(dock.locator("tr.tt-stars")).toBeVisible();
   // The gust factor, the waves, the current, the sky, the air and the rain,
   // a row each.
   expect(await height()).toBeGreaterThanOrEqual(before + 120);
-  await open.click();
-  await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
-  await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
+  await fewer.click();
+  await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
+  // The keys: Up for more, Down for fewer.
+  await grip.focus();
+  await page.keyboard.press("ArrowUp");
+  await expect(dock.locator("tr.tt-waves")).toHaveCount(1);
+  await page.keyboard.press("ArrowDown");
+  await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
+  // A drag of the top edge: up for more, down for fewer, down again to close.
+  const drag = async (dy: number) => {
+    const box = (await dock.locator(".dk-edge").boundingBox())!;
+    const x = box.x + box.width / 4;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y + dy / 2, { steps: 4 });
+    await page.mouse.move(x, y + dy, { steps: 4 });
+    await page.mouse.up();
+  };
+  await drag(-80);
+  await expect(dock.locator("tr.tt-waves")).toHaveCount(1);
+  await drag(80);
+  await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
+  await expect(dock).toBeVisible();
+  // A short drag is neither.
+  await drag(12);
+  await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
+  await expect(dock).toBeVisible();
+  await drag(80);
+  await expect(dock).toHaveCount(0);
 });
 
 test("on a phone the dock is a sheet: its head in it, then its hours, under a sixth of the screen", async ({
@@ -1056,12 +1117,11 @@ test("on a phone the dock is a sheet: its head in it, then its hours, under a si
   await expect(page.locator(".dock .dk-fold")).toHaveCount(0);
   for (const name of [
     "Star Brandon Bay",
-    "Layers",
     "Blend",
-    "Show waves, sky and sea",
     "Close the forecast for Brandon Bay",
   ])
     await expect(tools.getByRole("button", { name })).toBeVisible();
+  await expect(tools.getByRole("button", { name: "Layers" })).toHaveCount(0);
   // The blend's glyph switches the view, and back.
   const blend = tools.getByRole("button", { name: "Blend" });
   await blend.click();
@@ -1520,7 +1580,7 @@ test("waves, current, sky, air and rain are one tap away, and stay open", async 
   await openDock(page);
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
   await expect(page.locator(".dock .dk-sea")).toHaveCount(0);
-  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  await moreRows(page);
   for (const row of ["gust", "waves", "current", "sky", "air", "rain"])
     await expect(page.locator(`.dock tr.tt-${row}`)).toHaveCount(1);
   // The sea is one value for the week, and is the spot page's to say: no
@@ -1594,7 +1654,7 @@ test("waves, current, sky, air and rain are one tap away, and stay open", async 
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(1, {
     timeout: 30000,
   });
-  await page.getByRole("button", { name: "Hide waves, sky and sea" }).click();
+  await page.getByRole("button", { name: "Show fewer rows" }).click();
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
 });
 
@@ -1603,7 +1663,7 @@ test("the gust factor heads the rows under the fold: each hour's gust over its w
 }) => {
   await openDock(page);
   await expect(page.locator(".dock tr.tt-gust")).toHaveCount(0);
-  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  await moreRows(page);
   const cells = page.locator(".dock tr.tt-gust td[data-i]");
   await expect(cells).toHaveCount(sampleStrip.length);
   // Named, with its threshold, in its glyph's title; its unit beside it.
@@ -1675,7 +1735,7 @@ test("on a phone, the rows under the tide keep their units beside their glyphs",
   await expect(page.locator(".dock tr.tt-wind")).toBeVisible({
     timeout: 30000,
   });
-  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  await moreRows(page);
   await expect(page.locator(".dock tr.tt-rain")).toHaveCount(1);
   // A bare 0.5, 12° or 0 says nothing: each figure's unit is on the screen,
   // the wind's under its glyph and the others' beside theirs (the sky's
@@ -1715,7 +1775,7 @@ test("a spot's current is its own published series, and says so once when there 
   await openDock(page);
   // Nothing of the currents until the rows below the fold are open.
   expect(asked).toEqual([]);
-  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  await moreRows(page);
   const row = page.locator(".dock tr.tt-current");
   await expect
     .poll(() => row.locator(".current-cell b").count(), { timeout: 20000 })
@@ -1783,7 +1843,7 @@ for (const width of [390, 1440])
     await expect(dock.locator("tr.tt-wind")).toBeVisible({ timeout: 30000 });
     // Nowhere in the dock, with the rows open or shut: on a phone its
     // "14.5 °C · 46 km" was the most central thing on the screen.
-    await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+    await moreRows(page);
     await expect(dock.locator("tr.tt-rain")).toHaveCount(1);
     await page.waitForTimeout(500);
     await expect(dock.locator(".dk-sea")).toHaveCount(0);
@@ -2011,7 +2071,7 @@ test("a point tapped off Dublin Bay reads wind, waves, weather and its nearest s
   );
   await expect(dock.locator("tr.tt-wind td.c-sel .kn")).toHaveText(/^\d+$/);
   // The waves and the weather, a riding place's on the bay, said whose.
-  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  await moreRows(page);
   await expect(dock.locator(".dk-lent")).toHaveText(
     /^Waves, weather and sea from .+, \d+\.\d km$/,
   );
@@ -2043,7 +2103,7 @@ test("a point tapped off Dublin Bay reads wind, waves, weather and its nearest s
   // And the dock closes from its own button, leaving the chart alone.
   await dock.getByRole("button", { name: /^Close the forecast for / }).click();
   await expect(dock).toHaveCount(0);
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/\?map$/);
   // A step in the history like a choice: Back opens it again.
   await page.goBack();
   await expect(dock.locator(".dk-tools")).toContainText(
@@ -2053,7 +2113,7 @@ test("a point tapped off Dublin Bay reads wind, waves, weather and its nearest s
   expect(errors).toEqual([]);
 });
 
-test("the blend and the fold stay under the pointer from the first click, so every click is theirs, not the chart's", async ({
+test("the blend stays under the pointer from the first click, so every click is its own, not the chart's", async ({
   page,
 }) => {
   // The desktop the blend was found moving on (#91).
@@ -2065,10 +2125,7 @@ test("the blend and the fold stay under the pointer from the first click, so eve
     const [t, d] = await Promise.all([tools.boundingBox(), dock.boundingBox()]);
     return d!.y - (t!.y + t!.height);
   };
-  for (const [name, state] of [
-    ["Blend", "aria-pressed"],
-    [/waves, sky and sea/, "aria-expanded"],
-  ] as const) {
+  for (const [name, state] of [["Blend", "aria-pressed"]] as const) {
     const button = tools.getByRole("button", { name });
     // Where it stands before the first click, which changes the dock's
     // height and once moved the tools with its top edge: three clicks there,
@@ -2160,7 +2217,6 @@ test.describe("on a phone", () => {
     const dock = page.locator(".dock");
     const head = dock.locator(".dk-tools");
     const wrap = dock.locator(".tt-wrap");
-    const more = dock.getByRole("button", { name: /waves, sky and sea/ });
     const height = async () => (await dock.boundingBox())!.height;
     const half = await height();
     // Down: the hours tuck away under the screen's foot, the head stays.
@@ -2177,7 +2233,6 @@ test.describe("on a phone", () => {
     await expect.poll(height).toBeCloseTo(half, 0);
     await swipe(page, wrap, 0, -90);
     await expect(dock.locator("tr.tt-waves")).toHaveCount(1);
-    await expect(more).toHaveAttribute("aria-expanded", "true");
     // The hour is where it was: a drag up the hours is not a slide of them.
     await expect(dock.locator("tr.tt-hour td.c-sel")).toHaveCount(1);
     await expect.poll(() => offCursor(page)).toBeLessThan(2);
@@ -2194,7 +2249,7 @@ test.describe("on a phone", () => {
     await expect(dock).toHaveClass(/is-peek/);
     await swipe(page, head, 0, 90);
     await expect(dock).toHaveCount(0);
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/\?map$/);
   });
 
   test("a sideways swipe on the hours is still theirs, and a drag never presses a button", async ({

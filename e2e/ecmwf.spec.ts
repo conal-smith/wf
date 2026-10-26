@@ -127,7 +127,7 @@ test("the chart pans out over the Atlantic as far as ECMWF reaches, and a smalle
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });

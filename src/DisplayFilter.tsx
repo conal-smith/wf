@@ -28,7 +28,7 @@ interface Props {
 /**
  * The display options: the units, the dock's hours, the model and the
  * blend's models. The
- * rider's weight and own star rating are set in Customise,
+ * rider's weight and own star rating are set in Settings,
  * from the site menu, and nowhere else on the map. In a dialog over the
  * map, as the layers are, and shut the same ways (src/MapControls.tsx): its
  * X, Escape or a tap on the backdrop.

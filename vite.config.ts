@@ -39,6 +39,11 @@ const marketApi = process.env.MARKET_API_PROXY ?? "http://127.0.0.1:8787";
  * the entry. They are the same URLs, with the same `crossorigin`, that Vite's
  * own preload asks for when the import runs, so nothing is fetched twice.
  * The map's own first requests start from the entry (force5/src/boot.ts).
+ *
+ * The chart itself (force5/src/WindMap.tsx and MapLibre) is a chunk of its
+ * own that the home page's list does not wait for: it is preloaded too, but
+ * only on an address that opens on the full chart (`/?map`, `/?spot=…`, the
+ * old `/?chart`), where it is wanted at once.
  */
 function preloadTheMap(): Plugin {
   let base = "/";
@@ -79,22 +84,42 @@ function preloadTheMap(): Plugin {
         const wanted = new Set<string>();
         reach(app, wanted);
         const files = [...wanted].filter((name) => !loaded.has(name));
-        const css = files.flatMap((name) => [
-          ...(byName.get(name)?.viteMetadata?.importedCss ?? []),
-        ]);
-        const urls = [...files, ...css].map((name) => `${base}${name}`);
+        const urlsOf = (names: string[]) =>
+          [
+            ...names,
+            ...names.flatMap((name) => [
+              ...(byName.get(name)?.viteMetadata?.importedCss ?? []),
+            ]),
+          ].map((name) => `${base}${name}`);
+        const urls = urlsOf(files);
+        const chart = chunks.find(
+          (c) =>
+            c.isDynamicEntry &&
+            c.moduleIds.some((id) => id.endsWith("/force5/src/WindMap.tsx")),
+        );
+        const chartFiles: string[] = [];
+        if (chart) {
+          const drawn = new Set<string>();
+          reach(chart, drawn);
+          for (const name of drawn)
+            if (!loaded.has(name) && !wanted.has(name)) chartFiles.push(name);
+        }
         const paths = OWN_BUNDLE_PATHS.map((p) => p.toString()).join(",");
+        const preload =
+          `function(u){` +
+          `var l=document.createElement("link");` +
+          `l.crossOrigin="";l.href=u;` +
+          `if(/\\.css$/.test(u)){l.rel="preload";l.as="style"}else l.rel="modulepreload";` +
+          `document.head.appendChild(l)}`;
         return [
           {
             tag: "script",
             injectTo: "head",
             children:
-              `if(![${paths}].some(function(p){return p.test(location.pathname)}))` +
-              `${JSON.stringify(urls)}.forEach(function(u){` +
-              `var l=document.createElement("link");` +
-              `l.crossOrigin="";l.href=u;` +
-              `if(/\\.css$/.test(u)){l.rel="preload";l.as="style"}else l.rel="modulepreload";` +
-              `document.head.appendChild(l)})`,
+              `if(![${paths}].some(function(p){return p.test(location.pathname)})){` +
+              `${JSON.stringify(urls)}.forEach(${preload});` +
+              `if(location.pathname==="/"&&/[?&](map|chart|spot)(=|&|$)/.test(location.search))` +
+              `${JSON.stringify(urlsOf(chartFiles))}.forEach(${preload})}`,
           },
         ];
       },

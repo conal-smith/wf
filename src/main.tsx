@@ -16,7 +16,7 @@ import {
   isSpotPath,
   isSwitchedOffPath,
 } from "../force5/src/siteNav";
-import { openingPath, storedView } from "./lastView";
+import { openingPath } from "./lastView";
 
 // A section switched off in this build (shared/web/features.ts) is not there.
 // The host answers its paths with the app all the same (public/_redirects), so
@@ -30,13 +30,10 @@ if (isSwitchedOffPath(window.location.pathname, FEATURES))
     "/" + window.location.search + window.location.hash,
   );
 
-// The site's root opens on the page the rider last had open, the chart or
-// the spot finder (src/lastView.ts); a link that names anything is followed.
-const opening = openingPath(
-  window.location.pathname,
-  window.location.search,
-  storedView(),
-);
+// The site's root is the spot finder, and the full chart is the root with
+// `?map` or a spot. The finder's old address, /spots, and the chart's old
+// word, `?chart`, are put right before the map reads them (src/lastView.ts).
+const opening = openingPath(window.location.pathname, window.location.search);
 if (opening)
   window.history.replaceState(null, "", opening + window.location.hash);
 

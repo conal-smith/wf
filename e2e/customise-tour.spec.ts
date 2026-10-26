@@ -2,8 +2,8 @@ import { SAMPLE_CLOCK } from "./columns";
 import { expect, openFromMenu, test, type Page } from "./fixtures";
 
 /**
- * Customise (src/Customise.tsx) and the tour (src/Tour.tsx): the wizard
- * saves to the settings the stars are rated on, so the lights and the dock
+ * Settings (src/Settings.tsx) and the tour (src/Tour.tsx): Settings saves
+ * to the preferences the stars are rated on, so the lights and the dock
  * re-rate as it closes; the tour is offered once, on a first visit, can be
  * skipped, and is never offered again.
  *
@@ -32,7 +32,7 @@ const dockStars = (page: Page) =>
     .locator(".dock tr.tt-stars td[data-i]")
     .evaluateAll((cells) => cells.map((cell) => cell.innerHTML).join("|"));
 
-test("Customise walks through the rider's settings and saves them, and the lights and the dock re-rate", async ({
+test("Settings holds the rider's settings on one page and saves them, and the lights and the dock re-rate", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -48,62 +48,72 @@ test("Customise walks through the rider's settings and saves them, and the light
   const lightsBefore = await lightStars(page);
   const dockBefore = await dockStars(page);
 
-  await openFromMenu(page, "Customise");
-  const wizard = page.getByRole("dialog", { name: "Customise" });
-  const next = wizard.getByRole("button", { name: "Next", exact: true });
-  const count = wizard.locator(".cw-count");
-  // One title a step, in the head, with how far through it is; no step labels.
-  const title = (name: string, n: number) =>
-    Promise.all([
-      expect(wizard.getByRole("heading", { name, exact: true })).toBeVisible(),
-      expect(count).toHaveText(`${n} / 6`),
-    ]);
-
-  // 1. About you: the weight and the units, each centred; no levels, no wings.
-  await title("About you", 1);
+  await openFromMenu(page, "Settings");
+  const settings = page.getByRole("dialog", { name: "Settings" });
   await expect(
-    wizard.getByText("Your weight, and the units you read the wind in."),
+    settings.getByRole("heading", { name: "Settings", exact: true }),
   ).toBeVisible();
-  await expect(wizard.getByRole("button", { name: /^Riding/ })).toHaveCount(0);
-  await expect(wizard.getByLabel("Wings you own")).toHaveCount(0);
+  // One page, in four parts: no steps, no spots, no summary.
+  await expect(settings.locator(".st-h")).toHaveText([
+    "About you",
+    "Wind strength",
+    "Wind direction",
+    "Riding upwind",
+  ]);
+  for (const name of ["Next", "Back", "Skip"])
+    await expect(
+      settings.getByRole("button", { name, exact: true }),
+    ).toHaveCount(0);
+  await expect(settings.getByRole("progressbar")).toHaveCount(0);
+  await expect(settings.getByText("Your spots")).toHaveCount(0);
+  await expect(settings.getByLabel("Find a spot")).toHaveCount(0);
+  await expect(settings.locator("[data-sample]")).toHaveCount(0);
+
+  // About you: the weight and the units; no levels, no wings.
   await expect(
-    wizard.getByRole("group", { name: "Units" }).getByRole("button", {
-      name: "kn",
+    settings.getByText("Your weight helps us suggest the right wing size."),
+  ).toBeVisible();
+  await expect(settings.getByRole("button", { name: /^Riding/ })).toHaveCount(
+    0,
+  );
+  await expect(settings.getByLabel("Wings you own")).toHaveCount(0);
+  await expect(
+    settings.getByRole("group", { name: "Units" }).getByRole("button", {
+      name: "Knots",
       exact: true,
     }),
   ).toHaveAttribute("aria-pressed", "true");
-  await expect(wizard.locator(".cw-row .cw-kick")).toHaveText([
+  await expect(settings.locator(".st-row .st-kick")).toHaveText([
     "Weight",
     "Units",
   ]);
   // Everything is ours to start: nothing to reset.
-  const reset = wizard.getByRole("button", { name: "Reset to ours" });
+  const reset = settings.getByRole("button", { name: "Reset to ours" });
   await expect(reset).toHaveCount(0);
-  await wizard.getByRole("button", { name: "Heavier" }).click();
+  await settings.getByRole("button", { name: "Heavier" }).click();
   // Weight is the rider's own, never ours to reset.
   await expect(reset).toHaveCount(0);
-  await next.click();
 
-  // 2. The wind: four handles, ours 11 · 15–22 · 35, and the stars they make
-  // right under the track; no gust setting and no sample day.
-  await title("What wind suits you?", 2);
-  const floor = wizard.getByRole("slider", { name: "Too light below" });
-  const much = wizard.getByRole("slider", { name: "Too much, in gusts" });
+  // The wind: four handles, ours 11 · 15–22 · 35, and the stars they make
+  // right under the track; no gust setting.
+  const floor = settings.getByRole("slider", { name: "Too light below" });
+  const much = settings.getByRole("slider", {
+    name: "Too strong in gusts above",
+  });
   await expect(floor).toHaveAttribute("aria-valuetext", "11 kn");
   await expect(
-    wizard.getByRole("slider", { name: "Sweet spot from" }),
+    settings.getByRole("slider", { name: "Sweet spot from" }),
   ).toHaveAttribute("aria-valuetext", "15 kn");
   await expect(
-    wizard.getByRole("slider", { name: "Sweet spot to" }),
+    settings.getByRole("slider", { name: "Sweet spot to" }),
   ).toHaveAttribute("aria-valuetext", "22 kn");
   await expect(much).toHaveAttribute("aria-valuetext", "35 kn");
-  await expect(wizard.locator("[data-sample]")).toHaveCount(0);
-  await expect(wizard.getByRole("group", { name: "Gusty wind" })).toHaveCount(
+  await expect(settings.getByRole("group", { name: "Gusty wind" })).toHaveCount(
     0,
   );
-  const strip = wizard.locator("[data-star-strip] [data-stars]");
+  const strip = settings.locator("[data-star-strip] [data-stars]");
   await expect(strip).toHaveText(["1", "2", "3", "4", "5", "4", "3", "2", "1"]);
-  await expect(wizard.getByText("no stars past here")).toBeVisible();
+  await expect(settings.getByText("no stars past here")).toBeVisible();
   await floor.focus();
   // A handle stops a knot short of the next: 11 up five is 14, not 16.
   await page.keyboard.press("PageUp");
@@ -113,29 +123,35 @@ test("Customise walks through the rider's settings and saves them, and the light
   // The strip follows: one star from 13, then a climb to four under 15.
   await expect(strip.first()).toHaveText("1");
   await expect(
-    wizard.locator('[data-star-strip] [data-stars="4"]').first(),
+    settings.locator('[data-star-strip] [data-stars="4"]').first(),
   ).toBeVisible();
   await expect(reset).toBeVisible();
-  await next.click();
 
-  // 3. Stars by wind direction: whole stars, a dot dragged to the middle is
-  // never, each dot is a slider from the keyboard, and offshore is locked.
-  await title("Configure stars based on wind direction", 3);
+  // Stars by wind direction: whole stars, a dot dragged to the middle is
+  // no stars, each dot is a slider from the keyboard, and offshore is locked.
   const dot = (name: string) =>
-    wizard.getByRole("slider", {
+    settings.getByRole("slider", {
       name: `${name}: stars taken off`,
       exact: true,
     });
-  await expect(dot("Cross-shore")).toHaveAttribute("aria-valuetext", "no cost");
-  await expect(dot("Cross-offshore")).toHaveAttribute("aria-valuetext", "−1★");
-  await expect(dot("Offshore")).toHaveAttribute("aria-valuetext", "never");
-  await expect(dot("Offshore")).toHaveAttribute("aria-readonly", "true");
-  await expect(wizard.locator('[data-direction="offshore"]')).toContainText(
-    "We don't recommend going out in an offshore wind.",
+  await expect(dot("Cross-shore")).toHaveAttribute(
+    "aria-valuetext",
+    "Full stars",
   );
-  const web = await wizard.locator("[data-direction-web]").boundingBox();
-  const offDot = await wizard
-    .locator('[data-dot="crossOff"] .cw-dot-face')
+  await expect(dot("Cross-offshore")).toHaveAttribute(
+    "aria-valuetext",
+    "1 star off",
+  );
+  await expect(dot("Offshore")).toHaveAttribute("aria-valuetext", "No stars");
+  await expect(dot("Offshore")).toHaveAttribute("aria-readonly", "true");
+  await expect(settings.locator('[data-direction="offshore"]')).toContainText(
+    "We don't recommend going out in it.",
+  );
+  const webBox = settings.locator("[data-direction-web]");
+  await webBox.scrollIntoViewIfNeeded();
+  const web = await webBox.boundingBox();
+  const offDot = await settings
+    .locator('[data-dot="crossOff"] .st-dot-face')
     .first()
     .boundingBox();
   await page.mouse.move(
@@ -152,69 +168,78 @@ test("Customise walks through the rider's settings and saves them, and the light
   await page.mouse.up();
   await expect(dot("Cross-offshore")).toHaveAttribute(
     "aria-valuetext",
-    "never",
+    "No stars",
   );
-  await expect(wizard.locator('[data-direction="crossOff"]')).toContainText(
-    "never",
+  await expect(settings.locator('[data-direction="crossOff"]')).toContainText(
+    "No stars",
   );
-  // Offshore cannot be dragged or keyed off never.
+  // Offshore cannot be dragged or keyed off no stars.
   await dot("Offshore").focus();
   await page.keyboard.press("Home");
-  await expect(dot("Offshore")).toHaveAttribute("aria-valuetext", "never");
+  await expect(dot("Offshore")).toHaveAttribute("aria-valuetext", "No stars");
   for (const name of ["Onshore", "Cross-shore"]) {
     await dot(name).focus();
     await page.keyboard.press("End");
-    await expect(dot(name)).toHaveAttribute("aria-valuetext", "never");
+    await expect(dot(name)).toHaveAttribute("aria-valuetext", "No stars");
   }
   await dot("Cross-onshore").focus();
   await page.keyboard.press("ArrowUp");
-  await expect(dot("Cross-onshore")).toHaveAttribute("aria-valuetext", "−1★");
+  await expect(dot("Cross-onshore")).toHaveAttribute(
+    "aria-valuetext",
+    "1 star off",
+  );
   await page.keyboard.press("ArrowDown");
   await expect(dot("Cross-onshore")).toHaveAttribute(
     "aria-valuetext",
-    "no cost",
+    "Full stars",
   );
 
-  // Back and on again keeps what was set.
-  await wizard.getByRole("button", { name: "Back" }).click();
-  await expect(floor).toHaveAttribute("aria-valuetext", "13 kn");
-  await next.click();
-  await next.click();
-
-  // 4. Upwind: straight across and Not yet to start, the course to 10°
-  // below across; two angles, each a slider and a handle on the picture.
-  await title("Can you ride upwind?", 4);
-  const answers = wizard.getByRole("group", { name: "Can you ride upwind?" });
-  const into = wizard.locator("[data-upwind] output");
-  const below = wizard.locator("[data-downwind] output");
+  // Upwind: straight across and Not yet to start, the course to 10°
+  // downwind; two angles, each a slider and a handle on the picture.
+  const answers = settings.getByRole("group", { name: "Can you ride upwind?" });
+  const into = settings.locator("[data-upwind] output");
+  const below = settings.locator("[data-downwind] output");
   await expect(into).toHaveText("0°");
   await expect(below).toHaveText("10°");
   await expect(
     answers.getByRole("button", { name: "Not yet" }),
   ).toHaveAttribute("aria-pressed", "true");
-  await expect(wizard.locator(".cw-up-pic")).toContainText("DRIFT");
-  await expect(wizard.locator(".cw-up-pic")).toContainText("YOU LOSE GROUND");
-  await expect(wizard.locator(".cw-up-pic")).not.toContainText("SLOW");
-  // Straight across: no magenta angle, only the course's 10° below.
-  await expect(wizard.locator(".cw-up-deg:not(.is-down)")).toHaveCount(0);
-  await expect(wizard.locator(".cw-up-deg.is-down")).toHaveText(["10°", "10°"]);
+  await expect(settings.locator("[data-answer]")).toHaveText(
+    "I can ride across the wind without losing ground.",
+  );
+  await expect(settings.locator(".st-up-pic")).toContainText("DRIFT");
+  await expect(settings.locator(".st-up-pic")).toContainText("YOU LOSE GROUND");
+  await expect(settings.locator(".st-up-pic")).not.toContainText("SLOW");
+  // Straight across: no magenta angle, only the course's 10° downwind.
+  await expect(settings.locator(".st-up-deg:not(.is-down)")).toHaveCount(0);
+  await expect(settings.locator(".st-up-deg.is-down")).toHaveText([
+    "10°",
+    "10°",
+  ]);
   await answers.getByRole("button", { name: "Yes" }).click();
   await expect(into).toHaveText("20°");
-  await expect(wizard.locator(".cw-up-deg:not(.is-down)")).toHaveText([
+  await expect(settings.locator("[data-answer]")).toHaveText(
+    "I can ride upwind with no trouble.",
+  );
+  await expect(settings.locator(".st-up-deg:not(.is-down)")).toHaveText([
     "20°",
     "20°",
   ]);
   await answers.getByRole("button", { name: "Not yet" }).click();
-  const slide = wizard.getByRole("slider", { name: "Degrees into the wind" });
+  const slide = settings.getByRole("slider", {
+    name: "How far upwind you can ride",
+  });
   await expect(slide).toHaveAttribute(
     "aria-valuetext",
     "straight across the wind",
   );
   // The course's upwind edge on the picture is a handle: dragged to 60° off
   // the wind, it is 30° into it.
-  const pic = await wizard.locator(".cw-up-pic").boundingBox();
-  const edge = await wizard
-    .locator('[data-edge="into-right"] .cw-up-edge-dot')
+  const picBox = settings.locator(".st-up-pic");
+  await picBox.scrollIntoViewIfNeeded();
+  const pic = await picBox.boundingBox();
+  const edge = await settings
+    .locator('[data-edge="into-right"] .st-up-edge-dot')
     .boundingBox();
   const k = pic!.width / 372;
   const [cx, cy] = [pic!.x + 186 * k, pic!.y + 168 * k];
@@ -231,51 +256,17 @@ test("Customise walks through the rider's settings and saves them, and the light
   await slide.press("ArrowLeft");
   await slide.press("ArrowLeft");
   await expect(into).toHaveText("28°");
-  await expect(slide).toHaveAttribute("aria-valuetext", "28° into the wind");
-  const down = wizard.getByRole("slider", {
-    name: "Degrees below straight across",
+  await expect(slide).toHaveAttribute("aria-valuetext", "28° upwind");
+  const down = settings.getByRole("slider", {
+    name: "How far downwind you will ride",
   });
   await down.focus();
   await down.press("PageUp");
   await expect(below).toHaveText("15°");
-  await next.click();
+  await expect(down).toHaveAttribute("aria-valuetext", "15° downwind");
 
-  // 5. Your spots: nearest to where the map is, and starring moves nothing.
-  await title("Your spots", 5);
-  await expect(wizard.locator("[data-near]")).toContainText(
-    "Nearest to where the map is · ",
-  );
-  await expect(
-    wizard.getByRole("button", { name: "Use my location" }),
-  ).toBeVisible();
-  const names = () =>
-    wizard.locator(".cw-spot-list .cw-spot-name b").allTextContents();
-  const order = await names();
-  const third = wizard.locator(".cw-spot-list li").nth(2).getByRole("button");
-  await third.click();
-  await expect(third).toHaveAttribute("aria-pressed", "true");
-  expect(await names()).toEqual(order);
-  await next.click();
-
-  // 6. All set: the lot, each with a way back to it, and the day for you.
-  await title("All set", 6);
-  await expect(wizard.locator("[data-sample]")).toBeVisible();
-  await expect(wizard.locator('[data-sum="upwind"]')).toContainText(
-    "28° into the wind · course to 15° below across",
-  );
-  await expect(wizard.locator('[data-sum="wind"]')).toContainText(
-    "13–35 kn · best 15–22",
-  );
-  await expect(wizard.locator('[data-sum="you"]')).toContainText("85 kg");
-  await expect(wizard.locator('[data-sum="spots"]')).toContainText(order[2]);
-  await expect(wizard.getByRole("button", { name: "Skip" })).toHaveCount(0);
-  await wizard.getByRole("button", { name: "Change shore" }).click();
-  await title("Configure stars based on wind direction", 3);
-  // Skip goes to the end, keeping what was set.
-  await wizard.getByRole("button", { name: "Skip" }).click();
-  await title("All set", 6);
-  await wizard.getByRole("button", { name: "Show me the chart" }).click();
-  await expect(wizard).toHaveCount(0);
+  await settings.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(settings).toHaveCount(0);
 
   // Saved where the dock and every page read the rider.
   const rider = await page.evaluate(
@@ -306,28 +297,36 @@ test("Customise walks through the rider's settings and saves them, and the light
     .toBeGreaterThan(lightsBefore[0]);
   await expect.poll(() => dockStars(page)).not.toBe(dockBefore);
 
-  // Re-entered, it starts from what was saved; Escape keeps nothing new.
-  await openFromMenu(page, "Customise");
-  await next.click();
+  const storedMin = () =>
+    page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("force5.prefs.v1")!).rider.custom.wind
+          .min,
+    );
+  // Opened again, it starts from what was saved; Escape keeps nothing new,
+  // and nor does Cancel.
+  await openFromMenu(page, "Settings");
   await expect(floor).toHaveAttribute("aria-valuetext", "13 kn");
   await floor.focus();
   await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("Escape");
-  await expect(wizard).toHaveCount(0);
-  expect(
-    await page.evaluate(
-      () =>
-        JSON.parse(localStorage.getItem("force5.prefs.v1")!).rider.custom.wind
-          .min,
-    ),
-  ).toBe(13);
+  await expect(settings).toHaveCount(0);
+  expect(await storedMin()).toBe(13);
+  await openFromMenu(page, "Settings");
+  await expect(floor).toHaveAttribute("aria-valuetext", "13 kn");
+  await floor.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(floor).toHaveAttribute("aria-valuetext", "12 kn");
+  await settings.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(settings).toHaveCount(0);
+  expect(await storedMin()).toBe(13);
 
   // Reset to ours, saved, leaves no rating of their own; weight stays.
-  await openFromMenu(page, "Customise");
+  await openFromMenu(page, "Settings");
   await reset.click();
   await expect(reset).toHaveCount(0);
-  await wizard.getByRole("button", { name: "Skip" }).click();
-  await wizard.getByRole("button", { name: "Show me the chart" }).click();
+  await settings.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(settings).toHaveCount(0);
   const after = await page.evaluate(
     () => JSON.parse(localStorage.getItem("force5.prefs.v1")!).rider,
   );
@@ -338,7 +337,7 @@ test("Customise walks through the rider's settings and saves them, and the light
   expect(errors).toEqual([]);
 });
 
-test("Customise starts from ours over settings stored before 25 October 2026, without a fault", async ({
+test("Settings starts from ours over settings stored before 25 October 2026, without a fault", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -375,15 +374,14 @@ test("Customise starts from ours over settings stored before 25 October 2026, wi
   await expect(
     page.locator(".dock tr.tt-stars td[data-i]").first(),
   ).toBeAttached({ timeout: 30000 });
-  await openFromMenu(page, "Customise");
-  const wizard = page.getByRole("dialog", { name: "Customise" });
-  await expect(wizard.locator(".cw-stepper output")).toContainText("90");
+  await openFromMenu(page, "Settings");
+  const settings = page.getByRole("dialog", { name: "Settings" });
+  await expect(settings.locator(".st-stepper output")).toContainText("90");
   await expect(
-    wizard.getByRole("button", { name: "Reset to ours" }),
+    settings.getByRole("button", { name: "Reset to ours" }),
   ).toHaveCount(0);
-  await wizard.getByRole("button", { name: "Next", exact: true }).click();
   await expect(
-    wizard.getByRole("slider", { name: "Too light below" }),
+    settings.getByRole("slider", { name: "Too light below" }),
   ).toHaveAttribute("aria-valuetext", "11 kn");
   expect(errors).toEqual([]);
 });
@@ -403,12 +401,15 @@ test("the tour is offered on a first visit, can be skipped, and is not offered a
     TOUR_TEST_KEY,
   );
   await page.clock.setFixedTime(AFTERNOON);
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(prompt(page)).toBeVisible({ timeout: 30000 });
+  await expect(prompt(page)).toContainText(
+    "Take a 30-second tour of how the site works.",
+  );
   await prompt(page).getByRole("button", { name: "Take the tour" }).click();
   await expect(prompt(page)).toHaveCount(0);
-  await expect(card(page)).toContainText("The tour · 1 of 7");
-  await expect(card(page)).toContainText("The lights");
+  await expect(card(page)).toContainText("Step 1 of 7");
+  await expect(card(page)).toContainText("Spots on the map");
   // The pen's ring is round a light.
   await expect(page.locator(".tour-ring path")).toBeVisible();
   await card(page).getByRole("button", { name: "Next" }).click();
@@ -433,7 +434,7 @@ test("the tour is offered on a first visit, can be skipped, and is not offered a
   await expect(card(page)).toHaveCount(0);
 });
 
-test("No thanks is never asked again; Escape leaves the tour; the menu replays it to the end, and on to Customise", async ({
+test("No thanks is never asked again; Escape leaves the tour; the menu replays it to the end, and on to Settings", async ({
   page,
 }) => {
   await page.addInitScript(
@@ -441,7 +442,7 @@ test("No thanks is never asked again; Escape leaves the tour; the menu replays i
     TOUR_TEST_KEY,
   );
   await page.clock.setFixedTime(AFTERNOON);
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(prompt(page)).toBeVisible({ timeout: 30000 });
   await prompt(page).getByRole("button", { name: "No thanks" }).click();
   await expect(prompt(page)).toHaveCount(0);
@@ -473,19 +474,20 @@ test("No thanks is never asked again; Escape leaves the tour; the menu replays i
       .getByRole("button", { name: i === steps.length - 1 ? "Finish" : "Next" })
       .click();
   }
-  await expect(card(page)).toContainText("That’s the chart");
+  await expect(card(page)).toContainText("That’s the end of the tour");
+  await expect(card(page)).not.toContainText("Almanac");
   await expect(
     page.getByRole("dialog", { name: "Layers", exact: true }),
   ).toHaveCount(0);
-  await card(page).getByRole("button", { name: "Customise" }).click();
+  await card(page).getByRole("button", { name: "Open Settings" }).click();
   await expect(card(page)).toHaveCount(0);
-  await expect(page.getByRole("dialog", { name: "Customise" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
 });
 
 test("a browser that says it is automated is never offered the tour", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?map");
   await mapUp(page);
   await page.waitForTimeout(500);
   await expect(prompt(page)).toHaveCount(0);

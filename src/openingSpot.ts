@@ -1,4 +1,5 @@
 import type { Spot } from "../force5/src/weather";
+import { chartAddress } from "../force5/src/siteNav";
 import { spotFromSearch } from "./locations";
 
 /**
@@ -17,14 +18,10 @@ export function openingSpot(
 }
 
 /**
- * The map's address with `id` as its spot, or with none: each spot chosen,
- * from its light, the search or the list, is written into the link
- * (`/?spot=keel`), so it can be shared and Back goes to the one before. The
- * rest of the address is kept as it was.
+ * The full chart's address with `id` as its spot, or with none: each spot
+ * chosen, from its light, the search or the list, is written into the link
+ * (`/?spot=keel`), so it can be shared and Back goes to the one before. With
+ * none it is the full chart's own (`/?map`), never the list's bare root. The
+ * rest of the address is kept as it was (force5/src/siteNav.ts).
  */
-export function spotAddress(href: string, id: string | null): string {
-  const url = new URL(href);
-  if (id) url.searchParams.set("spot", id);
-  else url.searchParams.delete("spot");
-  return url.pathname + url.search + url.hash;
-}
+export const spotAddress = chartAddress;

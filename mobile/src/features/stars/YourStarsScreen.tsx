@@ -1,6 +1,6 @@
 /**
- * "Your stars": the app's Customise, the web wizard's steps 2–4
- * (src/Customise.tsx, as approved in the mock-up of 25 October 2026). The
+ * "Your stars": the app's Customise, the site's Settings parts 2–4
+ * (src/Settings.tsx; first a wizard, as approved in the mock-up of 25 October 2026). The
  * rider's weight and units, the wizard's first step, are in Settings.
  *
  *   What wind suits you?   four handles on one axis (too light, the sweet

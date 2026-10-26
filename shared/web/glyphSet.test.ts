@@ -106,7 +106,7 @@ describe("the glyph set", () => {
       );
     for (const name of [
       "menu",
-      "customise",
+      "settings",
       "tour",
       "search",
       "close",

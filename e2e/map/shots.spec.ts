@@ -1,6 +1,7 @@
 import {
   closePanel,
   expect,
+  moreRows,
   openFromMenu,
   rememberSpot,
   SPOTS_KEY,
@@ -76,7 +77,7 @@ async function gustArrived(page: Page) {
 }
 
 /** The chart, open and drawn: every light placed and rated, nothing loading. */
-async function openMap(page: Page, path = "/") {
+async function openMap(page: Page, path = "/?map") {
   await hideBasemap(page);
   await page.goto(path);
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
@@ -207,9 +208,7 @@ for (const { width, height } of [
     test("the dock's waves, sky and sea", async ({ page }) => {
       await openMap(page);
       await pick(page, "Brandon Bay");
-      await page
-        .getByRole("button", { name: "Show waves, sky and sea" })
-        .click();
+      await moreRows(page);
       await expect(page.locator(".dock tr.tt-rain")).toHaveCount(1);
       // Inside the sample's weather run, which starts three days on.
       const noon = sampleStrip.findIndex(
@@ -309,7 +308,7 @@ for (const { width, height } of [
       await page.route("https://tiles.openfreemap.org/planet", (route) =>
         route.fulfill({ status: 503, body: "Unavailable" }),
       );
-      await page.goto("/");
+      await page.goto("/?map");
       await expect(page.locator(".map-error")).toBeVisible({ timeout: 30000 });
       await shoot(page, "error", width);
     });
@@ -317,7 +316,7 @@ for (const { width, height } of [
     test("expired snapshot", async ({ page }) => {
       await page.clock.setFixedTime(new Date("2030-01-01T12:00:00Z"));
       await hideBasemap(page);
-      await page.goto("/");
+      await page.goto("/?map");
       await expect(page.locator(".map-model")).toContainText("archived", {
         timeout: 30000,
       });

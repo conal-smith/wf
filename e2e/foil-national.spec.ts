@@ -290,7 +290,7 @@ test("over the whole chart nothing of it is fetched, and Layers says to zoom in"
   );
   await page.emulateMedia({ reducedMotion: "reduce" });
   // The layer is on by default: nothing stored.
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });

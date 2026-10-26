@@ -74,7 +74,10 @@ export async function chooseSpot(page: Page, id = "brandon") {
  * spec that reads every light, or times the hours over the whole chart.
  */
 export async function backToIreland(page: Page) {
-  await page.keyboard.press("Escape");
+  // Escape lets go of the chart's focus on the spot; pressed again, it would
+  // close the dock, and then go back to the list.
+  if (await page.locator(".map-canvas.is-focus").count())
+    await page.keyboard.press("Escape");
   await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
   // Out a step at a time until every light is on the chart, each step read
   // once the camera rests: through a move the lights are drawn on a canvas,
@@ -129,7 +132,7 @@ export async function backToIreland(page: Page) {
 }
 
 /**
- * Change the stored rider in the page and say so, as Customise does on Save:
+ * Change the stored rider in the page and say so, as Settings does on Save:
  * the display options no longer set the rider's weight or level.
  */
 export async function setRider(page: Page, rider: Record<string, unknown>) {
@@ -197,32 +200,28 @@ export async function closePanel(page: Page) {
 
 /**
  * The chart's own tools that open over it, each a row of the site menu's:
- * Customise, in the site's navigation (a link, the map's own way to it), and
+ * Settings, in the site's navigation (a link, the map's own way to it), and
  * under it, in "This chart", the ones src/MapControls.tsx `chartTools` lists
  * and the tour (src/App.tsx).
  */
 export type ChartTool =
-  | "Customise"
-  | "Layers"
-  | "Display options"
-  | "About the map"
-  | "Take the tour";
+  "Settings" | "Layers" | "Display options" | "About the map" | "Take the tour";
 
 /** A chart tool's row in the site menu, while the menu is open. */
 export const menuRow = (page: Page, name: ChartTool) =>
-  name === "Customise"
+  name === "Settings"
     ? siteRow(page, name)
     : chartTools(page).getByRole("button", { name, exact: true });
 
 /**
  * The site's navigation, the same on every page (force5/src/siteNav.ts
- * SITE_NAV): the chart, the spot finder and Customise, then the sections, the
+ * SITE_NAV): the chart, the spot finder and Settings, then the sections, the
  * marketplace and the community switched on in this suite's build.
  */
 export const SITE_ROWS = [
-  "Chart",
   "Spot finder",
-  "Customise",
+  "Chart",
+  "Settings",
   "Marketplace",
   "Community",
   "Use with AI",
@@ -283,4 +282,19 @@ export async function setLayer(page: Page, name: string, on: boolean) {
   if ((await tile.getAttribute("aria-pressed")) !== String(on))
     await tile.click();
   await expect(tile).toHaveAttribute("aria-pressed", String(on));
+}
+
+/**
+ * The dock's rows under the fold (the gust factor, the waves, the current,
+ * the sky, the air and the rain). On a wide screen, the grip on the dock's
+ * top edge; on a phone's sheet, its handle stepped up a height, as a swipe
+ * up does.
+ */
+export async function moreRows(page: Page) {
+  const dock = page.locator(".dock");
+  await expect(dock).toBeVisible();
+  const grip = dock.getByRole("button", { name: "Show more rows" });
+  if (await grip.count()) return grip.click();
+  await dock.locator(".dk-grab").focus();
+  await page.keyboard.press("ArrowUp");
 }

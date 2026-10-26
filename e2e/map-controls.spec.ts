@@ -15,7 +15,7 @@ test("the chart's controls: zoom and Layers on the right, the layers from the me
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
@@ -43,11 +43,11 @@ test("the chart's controls: zoom and Layers on the right, the layers from the me
   await page.keyboard.press("Enter");
   // The site's navigation first, its first row focused; the chart's own
   // tools under it.
-  await expect(siteRow(page, "Chart")).toBeFocused();
+  await expect(siteRow(page, "Spot finder")).toBeFocused();
   await expect(siteNav(page).getByRole("link")).toHaveText([
-    "Chart",
     "Spot finder",
-    "Customise",
+    "Chart",
+    "Settings",
     "Marketplace",
     "Community",
     "Use with AI",
@@ -244,7 +244,7 @@ for (const width of [390, 1440]) {
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 });
-    await page.goto("/");
+    await page.goto("/?map");
     await expect(page.locator(".spot-marker")).toHaveCount(149, {
       timeout: 30000,
     });
@@ -253,15 +253,15 @@ for (const width of [390, 1440]) {
     const finder = siteRow(page, "Spot finder");
     const c = (await siteRow(page, "Chart").boundingBox())!;
     const f = (await finder.boundingBox())!;
-    const u = (await menuRow(page, "Customise").boundingBox())!;
+    const u = (await menuRow(page, "Settings").boundingBox())!;
     const l = (await menuRow(page, "Layers").boundingBox())!;
     expect(f.x).toBe(l.x);
-    expect(f.y).toBeGreaterThan(c.y);
-    expect(u.y).toBeGreaterThan(f.y);
+    expect(c.y).toBeGreaterThan(f.y);
+    expect(u.y).toBeGreaterThan(c.y);
     expect(l.y).toBeGreaterThan(u.y);
     await finder.click();
     await expect(menu).toHaveAttribute("aria-expanded", "false");
-    await expect(page).toHaveURL(/\/spots$/);
+    await expect(page).toHaveURL(/\/$/);
     await expect(page.locator("[data-spot-finder]")).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),

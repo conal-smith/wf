@@ -233,7 +233,7 @@ test("on a phone the rose fits above the dock, and stays readable zoomed out or 
   expect(pinned!.x + pinned!.width).toBeLessThanOrEqual(390);
 });
 
-test("degrees into the wind and below across: set in Customise, they move the course, and are kept", async ({
+test("degrees into the wind and below across: set in Settings, they move the course, and are kept", async ({
   page,
 }) => {
   await open(page, "dollymount");
@@ -245,21 +245,19 @@ test("degrees into the wind and below across: set in Customise, they move the co
   // Past the course, downwind, is drawn faintly along the rim.
   await expect(rose(page).locator(".map-rose-slow")).toHaveCount(1);
 
-  // Display options no longer carry it: Customise is where the rider says.
+  // Display options no longer carry it: Settings is where the rider says.
   await openFromMenu(page, "Display options");
   await expect(page.getByText("Pointing upwind")).toHaveCount(0);
   await closePanel(page);
 
   const upwind = async () => {
-    await openFromMenu(page, "Customise");
-    const wizard = page.getByRole("dialog", { name: "Customise" });
-    // The fourth of its six steps.
-    for (let i = 0; i < 3; i++)
-      await wizard.getByRole("button", { name: "Next", exact: true }).click();
+    await openFromMenu(page, "Settings");
+    const settings = page.getByRole("dialog", { name: "Settings" });
+    // The last of its four parts, on the one page.
     await expect(
-      wizard.getByRole("heading", { name: "Can you ride upwind?" }),
+      settings.getByRole("heading", { name: "Riding upwind" }),
     ).toBeVisible();
-    return wizard;
+    return settings;
   };
   const wizard = await upwind();
   await expect(wizard.locator("[data-upwind] output")).toHaveText("0°");
@@ -269,14 +267,13 @@ test("degrees into the wind and below across: set in Customise, they move the co
     .getByRole("button", { name: "Yes" })
     .click();
   const down = wizard.getByRole("slider", {
-    name: "Degrees below straight across",
+    name: "How far downwind you will ride",
   });
   await down.focus();
   await down.press("PageUp");
   await down.press("PageUp");
   await expect(wizard.locator("[data-downwind] output")).toHaveText("20°");
-  await wizard.getByRole("button", { name: "Skip", exact: true }).click();
-  await wizard.getByRole("button", { name: "Show me the chart" }).click();
+  await wizard.getByRole("button", { name: "Save", exact: true }).click();
   await expect(wizard).toHaveCount(0);
 
   // 20° into the wind and 20° below across: each course widens from 10° to 40°.
