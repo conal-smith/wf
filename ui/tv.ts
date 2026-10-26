@@ -25,6 +25,13 @@ export const THEME_NAMES = {
     "title",
     "headline",
     "reading",
+    // The AI page's own (ui/theme.css, under its banner).
+    "ai-intro",
+    "ai-intro-sm",
+    "ai-name",
+    "ai-name-sm",
+    "ai-line",
+    "ai-line-sm",
   ],
   // The four faces. Without them the merge reads `font-display` as nothing it
   // knows, and `font-body` beside a caller's `font-mono` would keep both.
@@ -33,7 +40,15 @@ export const THEME_NAMES = {
   shadow: ["card", "float", "sheet", "dock", "marker", "control", "raised"],
   "inset-shadow": ["frame"],
   blur: ["glass", "scrim"],
-  container: ["dialog", "dialog-wide", "reading", "measure", "page", "form"],
+  container: [
+    "dialog",
+    "dialog-wide",
+    "reading",
+    "measure",
+    "page",
+    "form",
+    "ai",
+  ],
   spacing: ["control-sm", "control-md", "control-lg", "touch"],
   animate: ["pulse", "dialog-in", "scrim-in", "menu-in", "ink", "bob"],
   "transition-duration": ["fast", "base"],

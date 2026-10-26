@@ -53,7 +53,7 @@ const minus = (value: number) => (value === 0 ? "none" : `−${value}`);
 const one = (value: number) => value.toFixed(1);
 const knots = (value: number) => String(Number(value.toFixed(1)));
 
-/** "11 · 15–22 · 35 kn": the four numbers, as Customise's slider has them. */
+/** "11 · 15–22 · 35 kn": the four numbers, as Settings' slider has them. */
 export const fourNumbers = (band: WindBand) =>
   `${knots(band.min)} · ${knots(band.sweetLow)}–${knots(band.sweetHigh)} · ${knots(band.max)} kn`;
 

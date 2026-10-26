@@ -30,7 +30,7 @@ export default function TourPrompt({
       <Puffin size={70} bob />
       <div>
         <h3 id="tour-prompt-t">New here?</h3>
-        <p>A 30-second tour of the chart, from the Almanac.</p>
+        <p>Take a 30-second tour of how the site works.</p>
         <div className="tour-acts">
           <Button variant="primary" onClick={onTour}>
             Take the tour

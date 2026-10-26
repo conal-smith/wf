@@ -7,7 +7,7 @@
 // (the ruling of 19 October 2026, docs/STAR_RATINGS.md).
 //
 // One rating, ours, for everyone (the owner's ruling of 25 October 2026). A
-// rider may make it their own in Customise by moving four numbers on the
+// rider may make it their own in Settings by moving four numbers on the
 // "What wind suits you?" slider and the stars each way of wind takes off;
 // the rest is our model, the same for everyone:
 //

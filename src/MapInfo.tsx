@@ -439,9 +439,9 @@ function MapKey({ scale }: { scale: string }) {
         About the headings you can hold in this hour&rsquo;s wind, out to sea
         and home, and the way you drift if you fall, dotted. How far into the
         wind you can ride, and how far below across your course runs (both in
-        Customise), decide how wide the no-go and the course are. Its rim is
-        half a nautical mile (or a kilometre) away. Round the chosen spot is a
-        range ring unless you choose the loupe, or nothing, in Layers.
+        Settings), decide how wide the no-go and the course are. Its rim is half
+        a nautical mile (or a kilometre) away. Round the chosen spot is a range
+        ring unless you choose the loupe, or nothing, in Layers.
       </p>
       <h4>
         The depths <small>metres below chart datum</small>
@@ -609,7 +609,7 @@ function StarsPart({
         </Key>
       </ul>
       <h4>
-        Rated for you <small>in Customise</small>
+        Rated for you <small>in Settings</small>
       </h4>
       <p className="mi-fig">Stars: {riderLine(rider)}</p>
       <p className="mi-fig">
@@ -619,7 +619,7 @@ function StarsPart({
       </p>
       <p className="mi-sm">
         Everyone starts from ours (11 · 15–22 · 35 kn). Your own four numbers,
-        the shore and how you ride upwind are in Customise, in the menu at the
+        the shore and how you ride upwind are in Settings, in the menu at the
         top left; your model is in Display options there. Your weight and wings
         never change the stars.
       </p>

@@ -2,8 +2,8 @@ import { expect, test } from "./fixtures";
 
 /**
  * A rider's own stars, as the stars' page says them. They are made and
- * changed in Customise, from the site menu (e2e/customise-tour.spec.ts);
- * here they are stored as Customise stores them, and read back.
+ * changed in Settings, from the site menu (e2e/customise-tour.spec.ts);
+ * here they are stored as Settings stores them, and read back.
  *
  * Since 25 October 2026 there is one rating, ours, unless the rider has
  * their own (version 3). A rating stored before then belonged to a level
@@ -11,7 +11,7 @@ import { expect, test } from "./fixtures";
  * and nothing breaks.
  */
 
-/** Stars a rider made their own in Customise: four numbers and the shore. */
+/** Stars a rider made their own in Settings: four numbers and the shore. */
 const OWN = {
   version: 3,
   wind: { min: 13, sweetLow: 16, sweetHigh: 20, max: 28 },

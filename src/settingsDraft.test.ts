@@ -19,18 +19,13 @@ import {
   draftOf,
   draftRider,
   inUnits,
-  nearest,
-  rateSample,
+  offWords,
   ratingIsOurs,
   resetToOurs,
-  sampleDay,
-  spotChanges,
   withDownwind,
   withShore,
   withUpwind,
-  type SampleDay,
-} from "./customiseDraft";
-import type { PlaceHour } from "./ratings";
+} from "./settingsDraft";
 import { offerTour, TOUR_KEY, TOUR_TEST_KEY } from "./tourOffer";
 
 const NOW = new Date("2026-10-23T12:00:00Z");
@@ -48,30 +43,29 @@ const own = (wind: Partial<CustomRating["wind"]> = {}): CustomRating => ({
 
 describe("the draft", () => {
   it("starts everyone from ours: 11 · 15–22 · 35, straight across, the course to 10° below", () => {
-    const draft = draftOf(prefs({ weightKg: 95 }), ["a"]);
+    const draft = draftOf(prefs({ weightKg: 95 }));
     expect(draft.custom).toEqual(oursCopy());
     expect(draft.upwind).toBe(0);
     expect(draft.downwind).toBe(10);
     expect(draft.weightKg).toBe(95);
-    expect(draft.starred).toEqual(["a"]);
     expect(differsFromOurs(draft)).toBe(false);
   });
   it("starts from the rider's own rating and angles, when they have them", () => {
     const mine = own({ min: 9, sweetLow: 12, sweetHigh: 26, max: 33 });
-    const draft = draftOf(prefs({ custom: mine, upwind: 5, downwind: 30 }), []);
+    const draft = draftOf(prefs({ custom: mine, upwind: 5, downwind: 30 }));
     expect(draft.custom).toEqual(mine);
     expect(draft.upwind).toBe(5);
     expect(draft.downwind).toBe(30);
     expect(differsFromOurs(draft)).toBe(true);
   });
   it("never moves the rating with the weight", () => {
-    const draft = draftOf(prefs(), []);
-    expect(draftOf(prefs({ weightKg: 120 }), []).custom).toEqual(draft.custom);
+    const draft = draftOf(prefs());
+    expect(draftOf(prefs({ weightKg: 120 })).custom).toEqual(draft.custom);
   });
 });
 
 describe("reset to ours", () => {
-  const draft = draftOf(prefs(), []);
+  const draft = draftOf(prefs());
   it("shows once the wind, the shore or either angle differs from ours", () => {
     expect(differsFromOurs({ ...draft, custom: own({ max: 30 }) })).toBe(true);
     expect(differsFromOurs(withShore(draft, "onshore", 1))).toBe(true);
@@ -102,7 +96,7 @@ describe("reset to ours", () => {
 });
 
 describe("the shore", () => {
-  const draft = draftOf(prefs(), []);
+  const draft = draftOf(prefs());
   it("sets a way of wind in whole stars, from none to never, as a dot is dragged", () => {
     expect(withShore(draft, "cross", 1.3).custom.direction.cross).toBe(1);
     expect(withShore(draft, "cross", 7).custom.direction.cross).toBe(NEVER);
@@ -121,8 +115,20 @@ describe("the shore", () => {
   });
 });
 
+describe("what a wind direction costs, in words", () => {
+  it("says full stars, the stars off, or no stars", () => {
+    expect([0, 1, 2, 4, NEVER].map(offWords)).toEqual([
+      "Full stars",
+      "1 star off",
+      "2 stars off",
+      "4 stars off",
+      "No stars",
+    ]);
+  });
+});
+
 describe("the course", () => {
-  const draft = draftOf(prefs(), []);
+  const draft = draftOf(prefs());
   it("holds both angles to whole degrees, 0–45", () => {
     expect(withUpwind(draft, 12.4).upwind).toBe(12);
     expect(withUpwind(draft, 60).upwind).toBe(45);
@@ -142,28 +148,14 @@ describe("the course", () => {
   });
 });
 
-describe("the spots near", () => {
-  const places = [
-    { id: "far", lat: 52.2, lon: -10.0 },
-    { id: "near", lat: 53.45, lon: -6.15 },
-    { id: "nearer", lat: 53.44, lon: -6.16 },
-  ];
-  it("lists the nearest first with their distances, whatever is starred", () => {
-    const list = nearest(places, { lat: 53.44, lng: -6.16 }, 2);
-    expect(list.map((x) => x.place.id)).toEqual(["nearer", "near"]);
-    expect(list[0].km).toBe(0);
-    expect(Math.round(list[1].km)).toBe(1);
-  });
-});
-
 describe("saving", () => {
   it("saves no angles while they are ours", () => {
     const before = prefs({ upwind: 30, downwind: 20 });
-    const back = { ...draftOf(before, []), upwind: 0, downwind: 10 };
+    const back = { ...draftOf(before), upwind: 0, downwind: 10 };
     const rider = applyDraft(before, back, NOW).rider;
     expect(rider).not.toHaveProperty("upwind");
     expect(rider).not.toHaveProperty("downwind");
-    const mine = { ...draftOf(before, []), upwind: 5, downwind: 0 };
+    const mine = { ...draftOf(before), upwind: 5, downwind: 0 };
     expect(applyDraft(before, mine, NOW).rider).toMatchObject({
       upwind: 5,
       downwind: 0,
@@ -172,7 +164,7 @@ describe("saving", () => {
   it("saves no rating of the rider's own, and stamps nothing, while the wind and shore are ours", () => {
     const before = prefs({ wings: [4] });
     const draft = {
-      ...withUpwind(draftOf(before, []), 45),
+      ...withUpwind(draftOf(before), 45),
       weightKg: 70,
       units: "km/h" as const,
     };
@@ -183,7 +175,7 @@ describe("saving", () => {
   });
   it("saves a changed wind or shore as the rider's own rating, stamped, which the stars then rate with", () => {
     const before = prefs();
-    const draft = draftOf(before, []);
+    const draft = draftOf(before);
     const changed = {
       ...draft,
       custom: own({ min: 6, sweetLow: 8, sweetHigh: 12, max: 15 }),
@@ -214,14 +206,14 @@ describe("saving", () => {
       ...prefs({ custom: mine }),
       starsUpdatedAt: "2026-10-01T00:00:00.000Z",
     };
-    expect(applyDraft(before, draftOf(before, []), NOW)).toEqual(before);
-    const reset = applyDraft(before, resetToOurs(draftOf(before, [])), NOW);
+    expect(applyDraft(before, draftOf(before), NOW)).toEqual(before);
+    const reset = applyDraft(before, resetToOurs(draftOf(before)), NOW);
     expect(reset.rider.custom).toBeUndefined();
     expect(reset.starsUpdatedAt).toBe(NOW.toISOString());
   });
   it("in Force, sets the four numbers on whole forces and still saves ours as ours", () => {
     const before = { ...prefs(), units: "bft" as const };
-    const draft = draftOf(before, []);
+    const draft = draftOf(before);
     // Ours' 11/15/22/35 kn on a force's edge: F4 / F5–F6 / F8.
     expect(draft.custom.wind.min % 1).toBe(0);
     expect(ratingIsOurs(draft.custom, "bft")).toBe(true);
@@ -230,80 +222,6 @@ describe("saving", () => {
     expect(next.rider.custom).toBeUndefined();
     // In knots, the same numbers are the rider's own.
     expect(ratingIsOurs(draft.custom, "kn")).toBe(false);
-  });
-  it("names the spots starred and unstarred", () => {
-    expect(spotChanges(["a", "b"], ["c", "a"])).toEqual(["c", "b"]);
-  });
-});
-
-describe("the sample day", () => {
-  const H = 3600000;
-  const day0 = Date.parse("2026-10-24T00:00:00Z");
-  const times = Array.from({ length: 48 }, (_, i) => day0 + i * H);
-  const row = (kn: (i: number) => number): PlaceHour[] =>
-    times.map((t, i) => {
-      const hour = new Date(t).getUTCHours();
-      return {
-        windKn: kn(i),
-        gustKn: kn(i) + 6,
-        from: 225,
-        agreement: null,
-        daylight: hour >= 7 && hour < 19,
-        rating: null,
-        model: "harmonie",
-      };
-    });
-  const places = new Map([
-    ["calm", { id: "calm", name: "Calm", facing: 270 }],
-    ["breezy", { id: "breezy", name: "Breezy", facing: 270 }],
-  ]);
-  const hours = new Map([
-    ["calm", row(() => 3)],
-    // Light on the first day, a riding wind on the second.
-    ["breezy", row((i) => (i < 24 ? 4 : 16))],
-  ]);
-  it("takes the liveliest day at the liveliest place, from the morning, nine hours", () => {
-    const day = sampleDay(hours, times, places, [])!;
-    expect(day.spot.name).toBe("Breezy");
-    expect(day.hours).toHaveLength(9);
-    expect(new Date(day.hours[0].time).getUTCHours()).toBe(8);
-    expect(day.hours[0].windKn).toBe(16);
-  });
-  it("takes the rider's own spot first, whatever its wind", () => {
-    expect(sampleDay(hours, times, places, ["nowhere", "calm"])!.spot.id).toBe(
-      "calm",
-    );
-    expect(sampleDay(new Map(), times, places, ["calm"])).toBeNull();
-  });
-  it("never mixes three-hourly columns in with the hours", () => {
-    // Hourly on the first day, three-hourly on the second, windier.
-    const at = [
-      ...Array.from({ length: 24 }, (_, i) => day0 + i * H),
-      ...Array.from({ length: 8 }, (_, i) => day0 + (24 + i * 3) * H),
-    ];
-    const rows = at.map((t, i): PlaceHour => {
-      const hour = new Date(t).getUTCHours();
-      const kn = i < 24 ? 10 : 18;
-      return {
-        windKn: kn,
-        gustKn: kn + 6,
-        from: 225,
-        agreement: null,
-        daylight: hour >= 7 && hour < 19,
-        rating: null,
-        model: "harmonie",
-      };
-    });
-    const day = sampleDay(new Map([["breezy", rows]]), at, places, [])!;
-    expect(day.hours.map((h) => h.time - day.hours[0].time)).toEqual(
-      Array.from({ length: 9 }, (_, i) => i * H),
-    );
-  });
-  it("rates every hour of it for the rider", () => {
-    const day: SampleDay = sampleDay(hours, times, places, [])!;
-    const ratings = rateSample(day, prefs().rider);
-    expect(ratings).toHaveLength(9);
-    expect(ratings.every((r) => r.stars >= 4)).toBe(true);
   });
 });
 

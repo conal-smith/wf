@@ -37,9 +37,17 @@ of it.
 6. **Rules, not surfaces.** One paper. Things are set apart by an ink rule
    round them or under them, not by a lighter card on a darker ground. Most
    of a page is sections under a heavy rule; boxes are for what stands alone.
-7. **The Almanac is the house voice**, and the puffin signs it. It speaks in
-   the pen's notes and in the odd line of small print, plainly and briefly,
-   in British and Irish spelling. One puffin on a view at most.
+7. **Plain, clear English.** Every word is written for a rider with no
+   technical knowledge who is learning the site. Say what a thing is and
+   what it does, in full everyday sentences: "Take a 30-second tour of how
+   the site works." No riddles, puns, wordplay, metaphors, clipped or
+   poetic phrasing, and no jargon a newcomer would not know (no "MCP",
+   "server", "blend", "model run" in a sentence a rider reads). Read every
+   line aloud: if it needs a second read, rewrite it plainer. British and
+   Irish spelling.
+8. **The puffin is a picture, not a speaker.** It may sit on a view, one at
+   most, but no words are signed by or credited to "the Almanac", and the
+   name is not used in anything a rider reads.
 
 ## Palette
 
@@ -257,7 +265,8 @@ menu sets it: italic, heavier, on `sunken`); threads are sections under a
 rule rather than cards, with the opening post the one `Pane`; names in the
 display face, times and counts in the mono face. Avatars are monograms.
 
-**Everyone.** The AI page and the spot page are on the masthead already but
-otherwise untouched. `community/web/components/Composer.tsx` still sets its
+**Everyone.** The spot page is on the masthead already but otherwise
+untouched. The AI page has the spot finder's header (`PageHeader`) over a
+list of the apps, one button each. `community/web/components/Composer.tsx` still sets its
 field at `pointer-coarse:text-lead` (19px, fine, but `text-input` is the
 step for it now).

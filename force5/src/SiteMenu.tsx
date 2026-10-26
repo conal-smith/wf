@@ -22,7 +22,7 @@
  * page's own tools, each row with its glyph in the margin. A finger can push
  * it back off to the left.
  *
- * The navigation is the chart, the spot finder and Customise, then the
+ * The navigation is the chart, the spot finder and Settings, then the
  * site's other sections (owner's ruling of 2026-10-25): one menu, in one
  * order, wherever it is opened. What only one page has (the chart's layers,
  * say) is set apart under it, headed for the page, and a page with nothing of
@@ -48,8 +48,8 @@ import { ChartGlyph } from "../../shared/web/ChartGlyph";
 import { FEATURES, type SiteFeatures } from "../../shared/web/features";
 import {
   community,
-  customise,
   market,
+  settings,
   spotFinder,
   useWithAi,
   windMap,
@@ -73,7 +73,7 @@ const HOOK = "f5-site-menu";
 const ROW_GLYPH: Record<SiteNavId | Exclude<SiteSectionId, "map">, GlyphDef> = {
   chart: windMap,
   finder: spotFinder,
-  customise,
+  settings,
   market,
   community,
   ai: useWithAi,
@@ -231,7 +231,7 @@ const plainPress = (event: ReactMouseEvent) =>
 
 /**
  * The site's navigation, the same rows in the same order on every page: the
- * chart, the spot finder and Customise, then a gap and the site's other
+ * chart, the spot finder and Settings, then a gap and the site's other
  * sections. Each is a link with its glyph in the margin, and the page you are
  * on is marked. Only the sections switched on in this build are drawn: with
  * the marketplace or the community off (as production has them,
@@ -247,7 +247,7 @@ export function SiteNav({
   current: SitePageId | null;
   /**
    * The map's own way to a row, in place of the page load, where the page
-   * has one: the chart and the spot finder are one bundle, and Customise is
+   * has one: the chart and the spot finder are one bundle, and Settings is
    * a dialog of theirs. A press for a new tab is still the browser's.
    */
   go?: Partial<Record<SiteNavId, () => void>>;

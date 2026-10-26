@@ -43,7 +43,7 @@ const clamp = (x: number, low: number, high: number) => Math.min(high, Math.max(
 
 export type StepId = "wind" | "shore" | "upwind";
 
-/** The web wizard's steps 2–4 (src/Customise.tsx): the weight and the units are in Settings. */
+/** The site's Settings parts 2–4 (src/Settings.tsx): the weight and the units are in the app's Settings. */
 export const STEPS: readonly { id: StepId; title: string; sub: string }[] = [
   {
     id: "wind",
@@ -109,7 +109,7 @@ export const differsFromOurs = (yours: YourStars, units: Units) =>
  * ours (`parseRider`), and the rating only while it is not ours
  * (`withCustomStars`), so a rider who puts everything back is as they always
  * were. The account's copy is stamped only when the rating itself changes,
- * as the site's wizard does (src/customiseDraft.ts `applyDraft`).
+ * as the site's Settings does (src/settingsDraft.ts `applyDraft`).
  */
 export function withYourStars(prefs: Prefs, yours: YourStars, now: Date = new Date()): Prefs {
   const rider = parseRider({ ...prefs.rider, upwind: yours.upwind, downwind: yours.downwind });

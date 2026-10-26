@@ -16,14 +16,14 @@
  * from a page over the chart brings the finder up in its place, and one to
  * the explicit chart (`/?chart`, the menu's Chart) from a page over the
  * finder brings the chart up in its place; a bare `/` is the map as it was.
- * The site menu's Customise (`/?customise`) is the way back with the wizard
+ * The site menu's Settings (`/?settings`) is the way back with Settings
  * open over whichever it is.
  */
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import {
   FINDER_HREF,
   asksChart,
-  asksCustomise,
+  asksSettings,
   isAiPath,
   isFinderPath,
   isSpotPath,
@@ -34,9 +34,9 @@ const SpotApp = React.lazy(() => import("../spot/web/SpotApp"));
 
 /**
  * Said on the window once a page over the map has handed the reader back to
- * it for Customise: the map (src/App.tsx) opens the wizard.
+ * it for Settings: the map (src/App.tsx) opens the Settings dialog.
  */
-export const CUSTOMISE_EVENT = "wingfoil:customise";
+export const SETTINGS_EVENT = "wingfoil:settings";
 
 /** The paths drawn over the map when a link from it asks for one. */
 export const isOverPath = (pathname: string) =>
@@ -82,9 +82,9 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
   // And its path: the chart's `/`, or the spot finder's.
   const mapPath = useRef(window.location.pathname);
   const page = useRef<HTMLDivElement>(null);
-  // Customise was asked for from a page over the map: once the map is back
-  // and no longer inert, it opens the wizard.
-  const customise = useRef(false);
+  // Settings was asked for from a page over the map: once the map is back
+  // and no longer inert, it opens Settings.
+  const settings = useRef(false);
 
   useEffect(() => {
     const back = () => {
@@ -129,9 +129,9 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
           setOver(null);
           window.dispatchEvent(new PopStateEvent("popstate"));
         }
-      } else if (over && asksCustomise(url)) {
+      } else if (over && asksSettings(url)) {
         event.preventDefault();
-        customise.current = true;
+        settings.current = true;
         back();
       } else if (
         over &&
@@ -165,9 +165,9 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
   }, [over]);
 
   useEffect(() => {
-    if (over || !customise.current) return;
-    customise.current = false;
-    window.dispatchEvent(new Event(CUSTOMISE_EVENT));
+    if (over || !settings.current) return;
+    settings.current = false;
+    window.dispatchEvent(new Event(SETTINGS_EVENT));
   }, [over]);
 
   const path = over ? new URL(over, window.location.origin).pathname : "";

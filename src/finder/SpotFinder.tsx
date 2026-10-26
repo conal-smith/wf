@@ -28,8 +28,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Rider } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
 import type { Spot } from "../../force5/src/weather";
+import { PageHeader } from "../../ui/PageHeader";
 import { Segmented } from "../../ui/Segmented";
-import { Wordmark } from "../../ui/Wordmark";
 import { tv } from "../../ui/tv";
 import type { PlaceHour } from "../ratings";
 import {
@@ -62,11 +62,6 @@ import { useReadings } from "./useReadings";
 const styles = tv({
   slots: {
     root: "fixed inset-0 flex flex-col bg-ground paper-grain font-body text-ink antialiased",
-    head: [
-      "relative z-header flex items-center gap-3 border-0 border-b-3 border-double border-ink bg-ground px-4.5 py-3",
-      "max-wide:gap-2 max-wide:px-3 max-wide:py-2.5",
-    ],
-    lead: "flex flex-1 items-center gap-3",
     list: [
       "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4.5 pt-3.5 pb-10",
       "max-wide:px-2.5 max-wide:pt-2.5 max-wide:pb-20",
@@ -227,18 +222,14 @@ export default function SpotFinder(props: FinderProps) {
 
   return (
     <div className={s.root()} data-spot-finder data-scope={scope}>
-      <header className={s.head()}>
-        <span className={s.lead()}>
-          {menu}
-          {!phone && <Wordmark size="sm" />}
-        </span>
+      <PageHeader menu={menu} wordmark={!phone}>
         <Segmented
           aria-label="Which spots"
           options={SCOPES}
           value={scope}
           onChange={chooseScope}
         />
-      </header>
+      </PageHeader>
       <section
         className={s.list()}
         aria-label={scope === "near" ? "Spots near you" : "Favourites"}
