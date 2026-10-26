@@ -87,6 +87,8 @@ h1, h2, p, ul { margin: 0; }
 .pg { max-width: 600px; margin: 0 auto; padding: 40px 24px 72px; }
 @container page (max-width: 719px) { .pg { padding: 18px 14px 56px; } }
 
+.intro { margin: 0 0 22px; font-size: 19px; line-height: 1.4; color: var(--ink-2); text-wrap: pretty; }
+@container page (max-width: 719px) { .intro { font-size: 17px; margin-bottom: 16px; } }
 .apps { margin: 0; padding: 0; list-style: none; }
 .app { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 16px; padding: 14px 0; border-bottom: 1px solid var(--line); }
 .app:first-child { border-top: 1px solid var(--line); }
@@ -128,6 +130,7 @@ h1, h2, p, ul { margin: 0; }
 
   <main class="pg">
     <h1 class="sr-only">Add wingfoil.ie to your AI app</h1>
+    <p class="intro">wingfoil.ie works with your AI app. Find yours below and press Add.</p>
     <ul class="apps" id="apps"></ul>
   </main>
 </div>
