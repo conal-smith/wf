@@ -722,6 +722,22 @@ stays in the foot. `/?settings` opens it from another page, and the old
 once: "1 star off" and "No stars" rather than "−1★" and "never", "Too strong
 in gusts", and "ONSHORE", "CROSS-ON" on the web rather than "ON", "X-ON".
 
+**2026-10-26 — The dock's top row: the star, the name, Blend and one
+arrow.** From the approved mock-up
+`backlog/mockups/2026-10-26-spot-finder-chart.html` (#238). Everywhere the
+dock appears (src/ForecastDock.tsx), its top row is the star, the spot's name
+in full, the Blend glyph and a downward arrow that closes the dock. The name
+is no longer cut short: a long one goes over two lines, and it is still the
+way to the spot's page, with no chevron after it. Blend is its glyph alone,
+named "Blend" for a screen reader and in its tooltip. The × is gone (the
+arrow does what it did), and so is the dock's Layers button: Layers is with
+the zoom buttons, as it always was. The dock's rows are unchanged. There is
+no separate button for more rows: on a wide screen the dock's top edge is
+dragged up for more rows, down for fewer and down again to close the dock,
+and a small faint grip in the middle of that edge is a button for a click
+and the keys (Up for more, Down for fewer). On a phone the sheet is swiped
+as before, and swiped down from its head alone it closes.
+
 ---
 
 ## Still open

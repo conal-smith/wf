@@ -8,14 +8,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { ArrowDown, ArrowUp, ChevronRight, Layers3, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, Layers3 } from "lucide-react";
 import { Button } from "../ui/Button";
 import { framePath, stemPath, type KeepOut } from "../ui/penPaths";
 import { BeaufortGlyph } from "../ui/BeaufortGlyph";
 import { StarGlyphs } from "../ui/StarGlyphs";
 // Only when asked for: the chart's Blend view.
 const BlendChart = lazy(() => import("./BlendChart"));
-import { ChartGlyph, LayersGlyph, glyphs } from "./chartGlyphs";
+import { ChartGlyph, glyphs } from "./chartGlyphs";
 import type { GlyphDef } from "../shared/web/glyphSet";
 import { StarToggle, WindArrow } from "./glyphs";
 import {
@@ -161,18 +161,17 @@ interface Props {
    * none (src/pointSource.ts); null for a riding place.
    */
   pointSource?: PointSources<Spot> | null;
-  /** The gust factor, waves, weather and sea rows, opened by the head's chevron. */
+  /** The gust factor, waves, weather and sea rows: the dock's top edge pulled up. */
   more: boolean;
   onMore: (more: boolean) => void;
   /** The wave and weather manifests, once the rows have been opened. */
   marine: readonly ModelAvailability[];
-  /** The layers' rail is open beside the zoom (src/LayerRail.tsx). */
-  layersOpen: boolean;
-  /** Layers: the rail on a desktop, the panel on a phone (src/App.tsx). */
-  onLayers: () => void;
   /** Met Éireann's warnings for the riding place, in force or still to come. */
   warnings?: readonly PlaceWarning[];
 }
+
+/** How far the dock's top edge is dragged, in px, to change its rows or close it. */
+const EDGE_PULL = 30;
 
 const ROWS = {
   day: 20,
@@ -1125,8 +1124,6 @@ export default function ForecastDock(props: Props) {
     more,
     onMore,
     marine,
-    layersOpen,
-    onLayers,
     warnings = [],
   } = props;
   // The night's hours, from last light to first light, left out where the
@@ -1833,6 +1830,81 @@ export default function ForecastDock(props: Props) {
     };
   }, [phone]);
 
+  /* ---- a wide screen's dock: its top edge, dragged up and down ---- */
+  // Up for more rows, down for fewer, and down again, from fewer, to close
+  // the dock. The dock follows the pointer while it is held (on elastic
+  // upwards, as there is nothing above its rows to show yet) and settles
+  // when it is let go. A press on the grip without a drag is the grip's own
+  // click, which shows more rows or fewer.
+  const edgeRef = useRef<HTMLDivElement>(null);
+  const edgeState = useRef({ more, onMore, goTo });
+  edgeState.current = { more, onMore, goTo };
+  useEffect(() => {
+    const edge = edgeRef.current;
+    const el = dockRef.current;
+    if (phone || !edge || !el) return;
+    let drag: { id: number; y: number; on: boolean } | null = null;
+    /** When the last drag let go: the click that follows it is not a press. */
+    let dropped = -Infinity;
+    // The pointer leaves the thin edge at once, so it is followed on the
+    // window from the press; captured only once it is a drag, so a press
+    // and let go on the grip is still the grip's click.
+    const down = (event: PointerEvent) => {
+      if (drag || !event.isPrimary || event.button !== 0) return;
+      drag = { id: event.pointerId, y: event.clientY, on: false };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", up);
+    };
+    const move = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const dy = event.clientY - drag.y;
+      if (!drag.on) {
+        if (Math.abs(dy) < SLOP) return;
+        drag.on = true;
+        edge.setPointerCapture(event.pointerId);
+        el.classList.add("is-moving");
+        el.style.transition = "none";
+      }
+      event.preventDefault();
+      offset.current = follow(dy, 0, Infinity);
+      el.style.translate = `0 ${offset.current}px`;
+    };
+    const up = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const { on, y } = drag;
+      drag = null;
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      if (!on) return;
+      dropped = event.timeStamp;
+      const dy = event.type === "pointercancel" ? 0 : event.clientY - y;
+      const { more: open, onMore: show, goTo: to } = edgeState.current;
+      if (dy >= EDGE_PULL && !open) return to("close");
+      glide(el, offset.current);
+      if (dy <= -EDGE_PULL && !open) show(true);
+      else if (dy >= EDGE_PULL && open) show(false);
+    };
+    const click = (event: MouseEvent) => {
+      if (event.timeStamp - dropped > 400) return;
+      dropped = -Infinity;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    edge.addEventListener("pointerdown", down);
+    window.addEventListener("click", click, true);
+    return () => {
+      edge.removeEventListener("pointerdown", down);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      window.removeEventListener("click", click, true);
+      el.classList.remove("is-moving");
+      el.style.translate = el.style.transition = "";
+    };
+  }, [phone]);
+
   const tideTop = rows.day + rows.hour;
   const tideHeight = tideBand(rows, view, isPoint, rated);
 
@@ -1865,13 +1937,38 @@ export default function ForecastDock(props: Props) {
           }}
         />
       )}
-      {/* The spot's name, its star, whose forecast the stars are, the switch
-          to the blend, the fold and the close. On a wide screen they stand on
-          the chart just above the dock's top edge, in a box like the map's
-          own controls, so the dock is no taller than its rows; on a phone
-          they are the head of its sheet. The name is the way to the spot's
-          own page, as a place's name is on any map: its water, its tides and
-          its days in full are there. */}
+      {/* On a wide screen, the dock's top edge: drag it up for more rows,
+          down for fewer, and down again to close the dock. The faint grip in
+          its middle is a button too, for a click and the keys: a press shows
+          more rows or fewer, and Up and Down do the same. */}
+      {!phone && (
+        <div className="dk-edge" ref={edgeRef}>
+          <Button
+            variant="quiet"
+            size="sm"
+            icon
+            className="dk-grip"
+            aria-label={more ? "Show fewer rows" : "Show more rows"}
+            aria-expanded={more}
+            aria-controls="dk-body"
+            title="Drag up for more rows, down for fewer"
+            onClick={() => onMore(!more)}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+              event.preventDefault();
+              event.stopPropagation();
+              onMore(event.key === "ArrowUp");
+            }}
+          />
+        </div>
+      )}
+      {/* The spot's star, its name, the switch to the blend and the close.
+          On a wide screen they stand on the chart just above the dock's top
+          edge, in a box like the map's own controls, so the dock is no
+          taller than its rows; on a phone they are the head of its sheet.
+          The name is the way to the spot's own page, as a place's name is on
+          any map: its water, its tides and its days in full are there. It is
+          shown in full, over two lines where it needs them. */}
       <div
         ref={toolsRef}
         id="dk-tools"
@@ -1898,13 +1995,7 @@ export default function ForecastDock(props: Props) {
                 title={`${spot.name}'s own page: the days in full, the tides and the water`}
                 data-spot-page-link
               >
-                <span>{spot.name}</span>
-                <ChevronRight
-                  className="dk-name-go"
-                  size={phone ? 15 : 16}
-                  strokeWidth={1.6}
-                  aria-hidden="true"
-                />
+                {spot.name}
               </a>
             )}
           </h2>
@@ -1920,31 +2011,16 @@ export default function ForecastDock(props: Props) {
             </span>
           )}
         </div>
-        {/* The chart's layers, from the forecast in hand: the rail beside
-            the zoom on a desktop, the panel on a phone. */}
-        <Button
-          variant="quiet"
-          size="sm"
-          className="dk-tool dk-layers"
-          aria-label="Layers"
-          title="Layers"
-          aria-expanded={layersOpen}
-          onClick={onLayers}
-        >
-          <LayersGlyph size={16} />
-          <span className="dk-tool-word" aria-hidden="true">
-            Layers
-          </span>
-        </Button>
-        {/* The table or every model's wind drawn as a chart: its glyph and
-            its name, on while the blend is shown. A point has no blend. */}
+        {/* The table or every model's wind drawn as a chart: its glyph
+            alone, on while the blend is shown. A point has no blend. */}
         {!isPoint && (
           <Button
             variant="quiet"
             size="sm"
+            icon
             className="dk-tool dk-view"
             aria-label="Blend"
-            title={view === "blend" ? "Back to the table" : "The models' blend"}
+            title="Blend"
             pressed={view === "blend"}
             onClick={(event) => {
               hold(event);
@@ -1952,42 +2028,11 @@ export default function ForecastDock(props: Props) {
             }}
           >
             <ChartGlyph glyph={glyphs.blend} size={17} />
-            <span className="dk-view-word" aria-hidden="true">
-              Blend
-            </span>
           </Button>
         )}
-        {/* The dock's one fold: the waves, the sky, the air, the rain and
-            the sea, under the rows that are always there. Up to open, as a
-            sheet along the foot of the screen grows upwards. */}
-        <Button
-          variant="quiet"
-          size="sm"
-          icon
-          className="dk-tool dk-chev"
-          aria-label={
-            more ? "Hide waves, sky and sea" : "Show waves, sky and sea"
-          }
-          title={more ? "Fewer rows" : "More rows"}
-          aria-expanded={more}
-          onClick={(event) => {
-            hold(event);
-            onMore(!more);
-          }}
-        >
-          <svg width="14" height="9" viewBox="0 0 14 9" aria-hidden="true">
-            <path
-              d={more ? "M1 1.5L7 7.5L13 1.5" : "M1 7.5L7 1.5L13 7.5"}
-              fill="none"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </Button>
-        {/* Done with this place: the dock goes, and the chart has the screen
-            (Escape, or a tap on the open chart, only lets go of the chart's
-            focus on it). */}
+        {/* Done with this place: the dock goes down off the screen, and the
+            chart has it (Escape, or a tap on the open chart, only lets go of
+            the chart's focus on it). */}
         <Button
           variant="quiet"
           size="sm"
@@ -1995,9 +2040,9 @@ export default function ForecastDock(props: Props) {
           className="dk-tool dk-close"
           aria-label={`Close the forecast for ${spot.name}`}
           title="Close"
-          onClick={onClose}
+          onClick={() => goTo("close")}
         >
-          <X size={16} strokeWidth={1.4} aria-hidden="true" />
+          <ChevronDown size={18} strokeWidth={1.6} aria-hidden="true" />
         </Button>
       </div>
 

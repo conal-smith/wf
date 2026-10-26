@@ -1,6 +1,7 @@
 import {
   closePanel,
   expect,
+  moreRows,
   openFromMenu,
   rememberSpot,
   SPOTS_KEY,
@@ -207,9 +208,7 @@ for (const { width, height } of [
     test("the dock's waves, sky and sea", async ({ page }) => {
       await openMap(page);
       await pick(page, "Brandon Bay");
-      await page
-        .getByRole("button", { name: "Show waves, sky and sea" })
-        .click();
+      await moreRows(page);
       await expect(page.locator(".dock tr.tt-rain")).toHaveCount(1);
       // Inside the sample's weather run, which starts three days on.
       const noon = sampleStrip.findIndex(

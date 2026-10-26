@@ -1,4 +1,11 @@
-import { expect, openFromMenu, setLayer, test, type Page } from "./fixtures";
+import {
+  expect,
+  moreRows,
+  openFromMenu,
+  setLayer,
+  test,
+  type Page,
+} from "./fixtures";
 import { sampleStrip } from "./columns";
 
 /**
@@ -163,7 +170,7 @@ test("the dock's rain row is per hour: each hourly column its own, a three-hour 
   await expect(page.locator(".dock tr.tt-wind")).toBeVisible({
     timeout: 30000,
   });
-  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  await moreRows(page);
   await expect(
     page.locator('.dk-labs .dk-glyph[title="Rain, mm per hour"]'),
   ).toHaveCount(1);

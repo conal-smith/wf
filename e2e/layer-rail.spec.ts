@@ -2,6 +2,7 @@ import {
   closePanel,
   expect,
   layerTile,
+  moreRows,
   openFromMenu,
   test,
   type Page,
@@ -21,10 +22,6 @@ const rail = (page: Page) =>
 const zoomLayers = (page: Page) =>
   page
     .getByRole("group", { name: "Map controls" })
-    .getByRole("button", { name: "Layers", exact: true });
-const dockLayers = (page: Page) =>
-  page
-    .getByRole("group", { name: "This spot" })
     .getByRole("button", { name: "Layers", exact: true });
 const railButton = (page: Page, name: string) =>
   rail(page).getByRole("button", { name, exact: true });
@@ -60,7 +57,6 @@ test("on a desktop, Layers opens the rail beside the zoom, clear of the dock, wi
   await zoomLayers(page).click();
   await expect(rail(page)).toBeVisible();
   await expect(zoomLayers(page)).toHaveAttribute("aria-expanded", "true");
-  await expect(dockLayers(page)).toHaveAttribute("aria-expanded", "true");
   // To the left of the zoom, at its top, with no panel open, and clear of
   // the spot's tools and the dock below it.
   const zbox = (await page.locator(".zbox").boundingBox())!;
@@ -278,22 +274,27 @@ test("the rail is a toolbar: one stop on Tab, the arrows walk it, Space switches
   await expect(railButton(page, "Tidal depth")).toBeFocused();
 });
 
-test("the dock's Layers opens the rail too; where the rail would run into the dock, Layers opens the panel", async ({
+test("the dock has no Layers of its own; where the rail would run into the dock, Layers opens the panel", async ({
   page,
 }) => {
   await openDock(page, 1280, 720);
-  await dockLayers(page).click();
+  await expect(
+    page
+      .getByRole("group", { name: "This spot" })
+      .getByRole("button", { name: "Layers" }),
+  ).toHaveCount(0);
+  await zoomLayers(page).click();
   await expect(rail(page)).toBeVisible();
   const box = (await rail(page).boundingBox())!;
   const tools = (await page.locator("#dk-tools").boundingBox())!;
   expect(box.y + box.height).toBeLessThan(tools.y);
-  await dockLayers(page).click();
+  await zoomLayers(page).click();
   await expect(rail(page)).toHaveCount(0);
-  await dockLayers(page).click();
+  await zoomLayers(page).click();
   await expect(rail(page)).toBeVisible();
   // The waves, sky and sea open: the dock is too tall for the rail beside it,
   // so it goes, and Layers opens the panel.
-  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  await moreRows(page);
   await page.mouse.move(400, 300);
   await expect(rail(page)).toHaveCount(0);
   await expect(zoomLayers(page)).toHaveAttribute("aria-expanded", "false");
@@ -316,7 +317,7 @@ test.describe("on a phone", () => {
     hasTouch: true,
   });
 
-  test("Layers opens the panel, from the zoom and from the dock, and there is no rail", async ({
+  test("Layers opens the panel from the zoom, and there is no rail", async ({
     page,
   }) => {
     await page.addInitScript((key) => localStorage.setItem(key, "1"), RAIL_KEY);
@@ -327,9 +328,7 @@ test.describe("on a phone", () => {
     await expect(page.locator(".lr")).toHaveCount(0);
     await zoomLayers(page).click();
     await expect(page.getByRole("dialog", { name: "Layers" })).toBeVisible();
-    await closePanel(page);
-    await dockLayers(page).click();
-    await expect(page.getByRole("dialog", { name: "Layers" })).toBeVisible();
     await expect(page.locator(".lr")).toHaveCount(0);
+    await closePanel(page);
   });
 });

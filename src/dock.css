@@ -19,7 +19,7 @@
 }
 
 /* ---------- the spot's tools, on the chart over the dock ---------- */
-/* The name, the star, the blend, the fold and the close, in a box like
+/* The star, the name, the blend and the close, in a box like
    the map's controls (map.css `.zbox`), standing on the dock's top edge at
    the right as the small print stands at the left: inside the dock's own
    layout, so it moves with the dock's edge in the same frame. */
@@ -28,7 +28,7 @@
   right: 12px;
   bottom: calc(100% + 10px);
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 2px;
   max-width: calc(100% - 24px);
   padding: 3px;
@@ -39,6 +39,7 @@
   display: flex;
   gap: 6px;
   align-items: center;
+  align-self: stretch;
   min-width: 0;
   padding: 0 10px 0 6px;
 }
@@ -46,14 +47,13 @@
 .dk-tools.chart-box > .dk-id {
   border-right: 1px solid var(--color-line);
 }
+/* The name in full: a long one goes over two lines rather than being cut. */
 .dk-name {
   margin: 0;
   max-width: 34vw;
-  overflow: hidden;
-  font: 600 17px var(--font-display);
+  font: 600 17px/1.15 var(--font-display);
   letter-spacing: -0.01em;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow-wrap: break-word;
 }
 .dk-coords {
   font: 500 10px var(--font-mono);
@@ -62,23 +62,11 @@
   color: var(--color-ink-muted);
 }
 /* The name is the way to the spot's own page, where its water, its tides and
-   its days in full are: a chevron after it, as a place in a list has. */
+   its days in full are. */
 .dk-name a {
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
   color: inherit;
   text-decoration: none;
   border-radius: var(--radius-control);
-}
-.dk-name a > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.dk-name-go {
-  flex: none;
-  color: var(--color-ink-muted);
 }
 @media (hover: hover) and (pointer: fine) {
   .dk-name a:hover {
@@ -113,25 +101,70 @@
   outline: 2px solid var(--color-focus);
   outline-offset: -2px;
 }
-.dk-tools .dk-layers {
-  width: auto;
-  gap: 4px;
-  padding: 0 8px;
-  font-size: 10px;
+/* The dock's top edge, on a wide screen: a strip along it that is dragged up
+   for more rows and down for fewer or to close, and in its middle a small,
+   faint grip that a click or the keys press for more or fewer rows. */
+.dk-edge {
+  position: absolute;
+  top: -8px;
+  left: 18px;
+  right: 18px;
+  z-index: 2;
+  height: 16px;
+  cursor: ns-resize;
+  touch-action: none;
 }
-.dk-tools .dk-view {
-  width: auto;
-  gap: 4px;
-  padding: 0 8px;
+/* The kit's quiet button, drawn as a grip: a short, faint bar. */
+.dock .dk-grip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 64px;
+  min-width: 0;
+  height: 16px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  box-shadow: none;
+  translate: -50% 0;
+  cursor: ns-resize;
 }
-.dk-view-word {
-  font: 500 10px var(--font-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
+.dk-grip::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  width: 34px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-ink-muted);
+  opacity: 0.4;
+  translate: -50% 0;
 }
-.dk-chev svg {
-  stroke: currentColor;
+@media (hover: hover) and (pointer: fine) {
+  .dk-edge:hover .dk-grip::after {
+    opacity: 0.85;
+  }
+}
+.dk-grip:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+.dk-grip:focus-visible::after {
+  opacity: 0.85;
+}
+/* Paper under the dock while it is pulled up past its height, or glides
+   to a new one, so the chart is never seen through the gap. */
+.dock.is-moving::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 100vh;
+  background: var(--color-ground);
 }
 .tt-wrap:focus-visible,
 .dock:has(.dk-time:focus-visible) .tt-wrap {
@@ -468,17 +501,6 @@ table.tt {
     padding: 7px 8px calc(1px + env(safe-area-inset-bottom));
     touch-action: pan-x;
   }
-  /* Paper under the sheet while it is pulled up past its height, or glides
-     to a new one, so the chart is never seen through the gap. */
-  .dock.is-moving::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 100%;
-    height: 100vh;
-    background: var(--color-ground);
-  }
   /* The kit's quiet button, drawn as a sheet's handle: a short bar. Low,
      so it takes no row of its own; a finger drags the sheet anywhere, and
      the press is for a keyboard and a screen reader as much as a finger. */
@@ -532,8 +554,7 @@ table.tt {
     max-width: none;
     font-size: 16px;
   }
-  .dk-tools .dk-coords,
-  .dk-tools .dk-tool-word {
+  .dk-tools .dk-coords {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -547,13 +568,6 @@ table.tt {
     height: 30px;
     min-height: 30px;
     border-left: 0;
-  }
-  .dk-tools .dk-layers {
-    padding: 0;
-  }
-  .dk-tools .dk-view {
-    width: auto;
-    padding: 0 6px;
   }
   /* Peek: the head alone, the hours tucked under the screen's foot. The
      tools for the hours go with them; the name and the close stay. */

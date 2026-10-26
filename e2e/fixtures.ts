@@ -280,3 +280,18 @@ export async function setLayer(page: Page, name: string, on: boolean) {
     await tile.click();
   await expect(tile).toHaveAttribute("aria-pressed", String(on));
 }
+
+/**
+ * The dock's rows under the fold (the gust factor, the waves, the current,
+ * the sky, the air and the rain). On a wide screen, the grip on the dock's
+ * top edge; on a phone's sheet, its handle stepped up a height, as a swipe
+ * up does.
+ */
+export async function moreRows(page: Page) {
+  const dock = page.locator(".dock");
+  await expect(dock).toBeVisible();
+  const grip = dock.getByRole("button", { name: "Show more rows" });
+  if (await grip.count()) return grip.click();
+  await dock.locator(".dk-grab").focus();
+  await page.keyboard.press("ArrowUp");
+}
