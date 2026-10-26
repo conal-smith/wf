@@ -1033,7 +1033,11 @@ test("the blend draws every model that covers the spot, on the strip's hours", a
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
 });
 
-test("the dock's top edge is its one fold: its grip, the keys and a drag show more rows or fewer, and down again closes it", async ({
+// The dock's top edge is its one fold: its grip, the keys and a drag show
+// more rows or fewer, and down again closes it. Three tests, each in its own
+// time: as one it outran the timeout on a loaded nightly runner.
+
+test("the dock's top edge is its one fold: a click on its grip shows more rows, and again fewer", async ({
   page,
 }) => {
   await openDock(page);
@@ -1047,7 +1051,6 @@ test("the dock's top edge is its one fold: its grip, the keys and a drag show mo
   await expect(dock.locator(".dk-grab")).toHaveCount(0);
   const height = async () => (await dock.boundingBox())!.height;
   const before = await height();
-  // A click on the grip.
   await grip.click();
   const fewer = dock.getByRole("button", { name: "Show fewer rows" });
   await expect(fewer).toHaveAttribute("aria-expanded", "true");
@@ -1058,13 +1061,25 @@ test("the dock's top edge is its one fold: its grip, the keys and a drag show mo
   expect(await height()).toBeGreaterThanOrEqual(before + 120);
   await fewer.click();
   await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
-  // The keys: Up for more, Down for fewer.
-  await grip.focus();
+});
+
+test("the dock's top edge is its one fold: on its grip, Up shows more rows and Down fewer", async ({
+  page,
+}) => {
+  await openDock(page);
+  const dock = page.locator(".dock");
+  await dock.getByRole("button", { name: "Show more rows" }).focus();
   await page.keyboard.press("ArrowUp");
   await expect(dock.locator("tr.tt-waves")).toHaveCount(1);
   await page.keyboard.press("ArrowDown");
   await expect(dock.locator("tr.tt-waves")).toHaveCount(0);
-  // A drag of the top edge: up for more, down for fewer, down again to close.
+});
+
+test("the dock's top edge is its one fold: a drag up shows more rows, down fewer, and down again closes it", async ({
+  page,
+}) => {
+  await openDock(page);
+  const dock = page.locator(".dock");
   const drag = async (dy: number) => {
     const box = (await dock.locator(".dk-edge").boundingBox())!;
     const x = box.x + box.width / 4;
