@@ -693,6 +693,17 @@ the slider's track on the same axis, with no legend; "Reset to ours" shows
 only once something differs from ours (weight and units aside). Old stored
 settings are read without fault and start from ours (docs/STAR_RATINGS.md).
 
+**2026-10-26 — Plain, clear English everywhere, and no Almanac in the words.**
+The owner, on the tour: "very, very bad copy. It doesn't make sense … we don't
+need cryptic language or puns, just state things plain and simple." And on its
+first line, "A 30-second tour of the chart, from the Almanac": the Almanac
+confuses a rider trying to learn the site. "Take a 30-second tour of how the
+site works" is the model: "exactly the type of language we want." BRAND.md's
+rules 7 and 8 now say so: every sentence is everyday English a newcomer reads
+once, and the puffin stays as a picture but nothing is signed "the Almanac".
+This is the second time the owner has asked (see 2026-10-24, "It reads like
+cryptic riddles"), so it is a rule for every page, not a fix for one.
+
 ---
 
 ## Still open

@@ -144,9 +144,11 @@ A view says what it has to in figures, a few words of mono label, and a line or
 two of sentences at most. If a sentence can be a figure, make it one: `14 g22 ·
 WSW · 6.5 m`, not "fourteen knots gusting twenty-two". A figure leads, its unit
 small after it, a gust raised over the mean (`Figure`). Labels name a thing in
-a word or two and never say a sentence. The Almanac (the house voice) speaks in
-the pen's notes and the odd line of small print, plainly, in British and Irish
-spelling; the puffin signs it, one a view at most.
+a word or two and never say a sentence. Every sentence is plain, clear,
+everyday English for a rider with no technical knowledge: no riddles, puns or
+jargon, nothing that needs a second read ("Take a 30-second tour of how the
+site works."), in British and Irish spelling. The puffin is a picture, one a
+view at most; nothing is signed "the Almanac".
 
 ## Mobile first
 
