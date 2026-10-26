@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock-up · The AI page, redesigned</title>
+<!--
+  A design exploration, not product code. Standalone; faces from node_modules.
+
+  The owner, on /ai as it is (ai/web/AiApp.tsx, 26 October 2026):
+    - the header must be the Spot finder's (src/finder/SpotFinder.tsx): the
+      round menu button, the small wordmark beside it, the double rule under
+      it, the same padding. No "| AI", no "← Chart";
+    - no coding agents at all: "We're dealing with users who just want to use
+      Grok and ChatGPT and those types of things";
+    - no "1" and "2" steps; a better layout and look; plain English, no puns,
+      no riddles, no jargon ("MCP", "server");
+    - the buttons were confusing: why is only Claude's Add filled in, and what
+      does Ask do? So one clear action per app, a line saying what it will do,
+      the same weight for every app, and the questions shown apart, as things
+      to try once wingfoil.ie is added;
+    - good at 1280 and at 390.
+  What each app can do is ai/web/install.ts as of today: only Claude opens with
+  the address filled in; ChatGPT, Grok, Perplexity and Le Chat need it pasted
+  (the page copies it first); Meta AI, Gemini and Copilot can't add it at all.
+
+  Two layouts, B the recommendation:
+    B  Pick your app   one app at a time: choose it, then one button, what to
+                       press once you are there, and the questions for it
+    A  One list        every app in one ruled list, the same button on each,
+                       the questions in a column beside it to copy
+  ?layout=a|b  ?device=phone  ?app=chatgpt|claude|grok|perplexity|lechat|other
+-->
+<style>
+@font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fraunces Variable"; font-style: italic; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-italic.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: italic; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-italic.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 500;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 600;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
+
+/* The theme's values (ui/theme.css). */
+:root {
+  color-scheme: light;
+  --ground: #f3eee3; --card: #f3eee3; --sunken: #ede6d6; --paper: #fffdf6;
+  --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b; --line: #1a1d2133; --line-strong: #7c7b78;
+  --pen: #d43a2c; --magenta: #b0186a; --focus: #b0186a; --warn: #b02a1f; --warn-ground: #efd8cd;
+  --display: "Fraunces Variable", Fraunces, Georgia, "Times New Roman", serif;
+  --body: "Newsreader Variable", Newsreader, Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --frame: inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142;
+  --shadow-card: 0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a;
+  --shadow-raised: inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126;
+  --shadow-control: inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150;
+  --gradient-raised: linear-gradient(180deg, #ffffff, #f0eadd);
+  --gradient-ink: linear-gradient(180deg, #33373d, #15171a);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #d9d4c7; color: var(--ink); font-family: var(--body); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3, p, ul, ol { margin: 0; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---- The mock-up's bar, not the page ---- */
+.mockbar { position: sticky; top: 0; z-index: 40; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 16px; background: #1a1d21; color: #f3eee3; font: 500 11px var(--mono); letter-spacing: .06em; }
+.mockbar b { margin-right: 10px; text-transform: uppercase; letter-spacing: .14em; }
+.mockbar .gap { width: 14px; }
+.mockbar span { opacity: .7; margin-right: 2px; }
+.mockbar button { border: 1px solid #f3eee355; background: none; color: #f3eee3; border-radius: 99px; padding: 4px 10px; font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.mockbar button[aria-pressed="true"] { background: #f3eee3; color: #1a1d21; }
+@media (max-width: 520px) { .mockbar { padding: 8px 10px; gap: 5px; } .mockbar b { width: 100%; } .mockbar .gap { display: none; } .mockbar button { padding: 4px 8px; } }
+
+/* The page's box: full width, or a phone's 390 in the middle. The page's
+   own breakpoints are container queries on it, so both read the same. */
+.frame { container: page / inline-size; margin: 0 auto; background: var(--ground) var(--grain); min-height: calc(100dvh - 37px); }
+.frame.is-phone { width: 390px; margin: 24px auto; min-height: 844px; border: 1px solid var(--ink); box-shadow: 0 24px 48px -16px #3c2d1480; }
+
+/* ==== The header: the Spot finder's, measured off /spots ====
+   header: flex, centred, gap 12, padding 12 18, a 3px double ink rule
+   under it, the plain paper (no grain); under 720 gap 8, padding 10 12.
+   The menu: Button icon variant="raised" size md, 40px round, ink rule,
+   the raised sheen and shadow, lucide's menu at 18. The name: Wordmark
+   size="sm", Fraunces 19 / 800 / −0.025em at the display cut, ".ie" in the
+   light italic and the chart's magenta. */
+.hd { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 18px; border: 0; border-bottom: 3px double var(--ink); background: var(--ground); }
+.hd-lead { display: flex; flex: 1; align-items: center; gap: 12px; }
+.menu { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 1px solid var(--ink); border-radius: 9999px; background: var(--card) var(--gradient-raised); box-shadow: var(--shadow-raised); color: var(--ink); transition: background-color .12s, color .12s; }
+.menu svg { width: 18px; height: 18px; }
+.wordmark { display: inline-block; font-family: var(--display); font-size: 19px; line-height: 1.2; font-weight: 800; letter-spacing: -.025em; white-space: nowrap; color: var(--ink); font-variation-settings: "opsz" 144; }
+.wordmark i { font-weight: 400; letter-spacing: normal; color: var(--magenta); }
+@media (hover: hover) and (pointer: fine) {
+  .menu:hover { background: var(--ink) var(--gradient-ink); color: var(--ground); box-shadow: var(--shadow-control); }
+}
+@container page (max-width: 719px) {
+  .hd { gap: 8px; padding: 10px 12px; }
+  .hd-lead { gap: 8px; }
+}
+
+/* ==== The page ==== */
+.pg { max-width: 1200px; margin: 0 auto; padding: 40px 24px 72px; }
+@container page (max-width: 719px) { .pg { padding: 22px 14px 56px; } }
+
+.kicker { font: 500 10px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.label { font: 500 11px/1.2 var(--mono); letter-spacing: .09em; text-transform: uppercase; }
+
+/* The opening: what it is, on the left; an example of it, on the right. */
+.hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 56px; align-items: center; padding-bottom: 40px; }
+.hero-text { display: grid; gap: 14px; }
+.hero h1 { font: 700 44px/1 var(--display); letter-spacing: -.035em; font-variation-settings: "opsz" 144; text-wrap: balance; }
+.hero h1 .ul { position: relative; white-space: nowrap; }
+.hero h1 .ul svg { position: absolute; left: -2%; right: -2%; bottom: -10px; width: 104%; height: 14px; overflow: visible; }
+.hero .lead { max-width: 33em; font-size: 18px; line-height: 1.45; color: var(--ink-2); text-wrap: pretty; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 18px; padding-top: 4px; color: var(--ink); }
+.facts li { display: inline-flex; align-items: center; gap: 6px; list-style: none; }
+.facts svg { width: 14px; height: 14px; color: var(--magenta); }
+.facts { padding-left: 0; }
+
+/* The example: a chat, drawn in the site's paper, not in any app's colours. */
+.chat { display: grid; gap: 12px; padding: 18px 18px 14px; border: 1px solid var(--ink); border-radius: 14px; background: var(--card) var(--grain); box-shadow: var(--frame), var(--shadow-card); }
+.chat-you { justify-self: end; max-width: 86%; padding: 10px 14px; border-radius: 16px 16px 4px 16px; background: var(--ink) var(--gradient-ink); color: var(--ground); font-size: 16px; line-height: 1.35; }
+.chat-ai { display: grid; gap: 6px; max-width: 94%; }
+.chat-ai .who { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.chat-ai .who i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--magenta); }
+.chat-ai p { padding: 10px 14px; border: 1px solid var(--line); border-radius: 16px 16px 16px 4px; background: var(--paper); font-size: 16px; line-height: 1.4; }
+.chat-ai b { font-weight: 600; }
+.chat-cap { padding-top: 2px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 13px; color: var(--muted); font-style: italic; }
+
+@container page (max-width: 899px) {
+  .hero { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .chat { max-width: 520px; }
+}
+@container page (max-width: 719px) {
+  .hero { padding-bottom: 28px; gap: 20px; }
+  .hero h1 { font-size: 34px; letter-spacing: -.03em; }
+  .hero .lead { font-size: 16px; }
+  .chat { padding: 14px 14px 12px; }
+  .chat-you, .chat-ai p { font-size: 15px; }
+}
+
+/* A section under a heavy rule, as the broadsheet heads one. */
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--ink); }
+.sec-head h2 { font: 600 24px/1.15 var(--display); letter-spacing: -.015em; }
+.sec-sub { margin-top: 10px; font-size: 16px; line-height: 1.45; color: var(--ink-2); max-width: 40em; }
+@container page (max-width: 719px) { .sec-head h2 { font-size: 21px; } .sec-sub { font-size: 15px; } }
+
+/* The kit's buttons: mono capitals. primary the ink pill, pill the ruled one. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border: 1px solid transparent; border-radius: 9999px; background: none; font: 500 11px/1.2 var(--mono); letter-spacing: .09em; text-transform: uppercase; white-space: nowrap; text-decoration: none; color: var(--ink); transition: background-color .12s, color .12s, border-color .12s; }
+.btn svg { width: 15px; height: 15px; flex: none; }
+.btn.lg { height: 48px; padding: 0 24px; font-size: 12px; }
+.btn.primary { background: var(--ink) var(--gradient-ink); border-color: var(--ink); color: var(--ground); box-shadow: var(--shadow-control); }
+.btn.pill { border-color: var(--ink); background: var(--card) var(--gradient-raised); box-shadow: var(--shadow-raised); }
+.btn.quiet { height: 32px; padding: 0 8px; color: var(--muted); }
+@media (hover: hover) and (pointer: fine) {
+  .btn.primary:hover { background: var(--magenta); border-color: var(--magenta); }
+  .btn.pill:hover { background: var(--ink) var(--gradient-ink); color: var(--ground); box-shadow: var(--shadow-control); }
+  .btn.quiet:hover { color: var(--ink); }
+}
+
+/* The address, and what it is for. */
+.addr { display: grid; gap: 6px; }
+.addr-row { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--paper); }
+.addr-row code { flex: 1; min-width: 0; font: 500 14px/1.3 var(--mono); letter-spacing: 0; overflow-wrap: normal; }
+@container page (max-width: 719px) { .addr-row code { font-size: 13px; } }
+.addr p { font-size: 14px; line-height: 1.4; color: var(--muted); }
+
+.small { font-size: 14px; line-height: 1.45; color: var(--muted); }
+
+/* The questions: each a line in the body's italic, ruled under. */
+.qs { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.q { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+.q-text { flex: 1; min-width: 0; padding: 12px 0; font-size: 17px; line-height: 1.35; font-style: italic; text-wrap: pretty; }
+a.q-text, button.q-text { display: flex; align-items: center; justify-content: space-between; gap: 14px; border: 0; background: none; text-align: left; text-decoration: none; border-radius: 10px; }
+.q-go { flex: none; display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-style: normal; }
+.q-go svg { width: 15px; height: 15px; }
+@media (hover: hover) and (pointer: fine) { a.q-text:hover, button.q-text:hover, a.q-text:hover .q-go { color: var(--magenta); } }
+@container page (max-width: 719px) { .q-text { font-size: 16px; } }
+
+/* ==== B: pick your app ==== */
+.b { display: grid; gap: 18px; }
+.apps { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; }
+.apps legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.app { display: inline-flex; align-items: center; justify-content: center; min-width: 120px; height: 48px; padding: 0 20px; border: 1px solid var(--ink); border-radius: 9999px; background: var(--card); font: 600 17px/1 var(--display); letter-spacing: -.01em; color: var(--ink); transition: background-color .12s, color .12s; }
+.app[aria-checked="true"] { background: var(--ink) var(--gradient-ink); color: var(--ground); box-shadow: var(--shadow-control); }
+.app.other { font: italic 400 17px/1 var(--display); }
+@media (hover: hover) and (pointer: fine) { .app[aria-checked="false"]:hover { background: var(--sunken); } }
+@container page (max-width: 719px) {
+  .apps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .app { min-width: 0; height: 46px; padding: 0 6px; font-size: 15px; }
+  .app.other { font-size: 15px; }
+}
+
+/* The app's sheet: adding on the left, asking on the right. */
+.sheet { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--ink); border-radius: 14px; background: var(--card) var(--grain); box-shadow: var(--frame), var(--shadow-card); }
+.sheet > section { display: grid; align-content: start; gap: 16px; padding: 26px 28px 28px; }
+.sheet > section + section { border-left: 1px solid var(--line); }
+.sheet h3 { font: 600 21px/1.15 var(--display); letter-spacing: -.01em; }
+.sheet .say { font-size: 16px; line-height: 1.45; color: var(--ink-2); text-wrap: pretty; }
+.plan { display: inline-flex; align-items: center; gap: 6px; justify-self: start; height: 24px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9999px; background: var(--sunken); color: var(--ink-2); font: 500 10px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+.go { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.done { display: none; align-items: center; gap: 6px; color: #2a7046; font: 500 11px/1.2 var(--mono); letter-spacing: .09em; text-transform: uppercase; }
+.done.on { display: inline-flex; }
+.done svg { width: 14px; height: 14px; }
+/* What to press once there: the words on that app's screen, in bold. */
+.there { display: grid; gap: 8px; padding: 14px 16px; border-left: 3px solid var(--ink); background: var(--sunken); border-radius: 0 10px 10px 0; }
+.there .kicker { color: var(--ink-2); }
+.there ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.there li { display: flex; gap: 10px; font-size: 16px; line-height: 1.35; }
+.there li::before { content: ""; flex: none; width: 6px; height: 6px; margin-top: 8px; border-radius: 50%; background: var(--ink); }
+.there b { font-weight: 650; }
+.aside-note { font-size: 14px; line-height: 1.45; color: var(--muted); }
+.warn { display: grid; gap: 10px; padding: 14px 16px; border-left: 3px solid var(--ink); background: var(--sunken); border-radius: 0 10px 10px 0; font-size: 16px; line-height: 1.45; }
+.sheet.is-other { grid-template-columns: minmax(0, 1fr); }
+.sheet.is-other > section + section { display: none; }
+@container page (max-width: 899px) {
+  .sheet { grid-template-columns: minmax(0, 1fr); }
+  .sheet > section + section { border-left: 0; border-top: 1px solid var(--line); }
+}
+@container page (max-width: 719px) {
+  .sheet > section { padding: 18px 16px 20px; gap: 14px; }
+  .sheet h3 { font-size: 19px; }
+  .sheet .say, .there li, .warn { font-size: 15px; }
+  .go .btn { width: 100%; }
+}
+
+/* ==== A: one list ==== */
+.a { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 0; align-items: stretch; }
+.a-col { display: grid; gap: 18px; align-content: start; padding-right: 44px; }
+.a-col + .a-col { padding: 0 0 0 44px; border-left: 1px solid var(--line); }
+.list { margin: 0; padding: 0; list-style: none; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 20px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.row h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font: 600 19px/1.2 var(--display); }
+.row h3 small { font: 500 10px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.row p { grid-column: 1; font-size: 15px; line-height: 1.4; color: var(--ink-2); text-wrap: pretty; }
+.row p b { font-weight: 650; color: var(--ink); }
+.row .btn { grid-column: 2; grid-row: 1 / span 2; min-width: 190px; }
+.row .done { grid-column: 1 / -1; }
+@container page (max-width: 899px) {
+  .a { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .a-col, .a-col + .a-col { padding: 0; border-left: 0; }
+}
+@container page (max-width: 719px) {
+  .row { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 14px 0 16px; }
+  .row .btn { grid-column: 1; grid-row: auto; width: 100%; margin-top: 6px; }
+}
+
+.layout-a .b, .layout-b .a { display: none; }
+
+/* A word that something happened, as the real page would leave the site. */
+.toast { position: fixed; left: 50%; bottom: 24px; z-index: 50; max-width: min(92vw, 560px); padding: 10px 16px; border-radius: 12px; background: var(--ink); color: var(--ground); font-size: 15px; line-height: 1.35; box-shadow: 0 6px 18px -6px #1a1d2188; transform: translate(-50%, 16px); opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.toast .label { color: #f3eee3aa; display: block; margin-bottom: 3px; font-size: 10px; }
+
+/* ---- The review notes, outside the page ---- */
+.notes { max-width: 860px; margin: 32px auto 48px; padding: 18px 22px; border: 1.5px dashed #1a1d2166; border-radius: 14px; background: var(--paper); font-size: 15px; line-height: 1.45; }
+.notes h2 { font: 500 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--magenta); margin-bottom: 10px; }
+.notes ul { padding-left: 18px; display: grid; gap: 7px; color: var(--ink-2); }
+.notes b { color: var(--ink); }
+@media (max-width: 600px) { .notes { margin: 24px 10px 40px; padding: 14px 16px; } }
+</style>
+</head>
+<body>
+
+<div class="mockbar" role="toolbar" aria-label="Mock-up controls">
+  <b>Mock-up · /ai</b>
+  <span>Layout</span>
+  <button type="button" data-layout="b" aria-pressed="true">B · Pick your app (recommended)</button>
+  <button type="button" data-layout="a" aria-pressed="false">A · One list</button>
+  <i class="gap"></i>
+  <span>Frame</span>
+  <button type="button" data-device="full" aria-pressed="true">Full width</button>
+  <button type="button" data-device="phone" aria-pressed="false">Phone 390</button>
+</div>
+
+<div class="frame layout-b" id="frame">
+  <header class="hd">
+    <span class="hd-lead">
+      <button type="button" class="menu" aria-label="Site menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></svg>
+      </button>
+      <span class="wordmark">wingfoil<i>.ie</i></span>
+    </span>
+  </header>
+
+  <main class="pg">
+    <div class="hero">
+      <div class="hero-text">
+        <p class="kicker">wingfoil.ie in your AI app</p>
+        <h1>Ask your AI about the <span class="ul">wind.<svg viewBox="0 0 100 14" preserveAspectRatio="none" aria-hidden="true"><path d="M2 9 C 22 4, 52 4, 98 7" fill="none" stroke="#d43a2c" stroke-width="2.6" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg></span></h1>
+        <p class="lead">wingfoil.ie is built to work inside the AI apps you already use. Add it once, and your AI can read our live forecast for spots all around Ireland, so you can ask about the wind, the tide and where to go in your own words.</p>
+        <ul class="facts label">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Free</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>No account needed</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>About a minute to set up</li>
+        </ul>
+      </div>
+      <figure class="chat" style="margin:0" aria-label="An example question and answer">
+        <p class="chat-you">When's the next good session after work near me?</p>
+        <div class="chat-ai">
+          <span class="who label"><i></i>Your AI, using wingfoil.ie</span>
+          <p><b>Thursday looks best.</b> Dollymount from 5pm to 8pm: 16 knots gusting 21 from the south-west, side-shore, with the tide coming in. Wednesday is too light, and Friday is too gusty.</p>
+        </div>
+        <figcaption class="chat-cap">This is an example. Your AI uses our live forecast to answer.</figcaption>
+      </figure>
+    </div>
+
+    <!-- ======== B: pick your app ======== -->
+    <div class="b">
+      <div>
+        <div class="sec-head"><h2>Which AI app do you use?</h2></div>
+        <p class="sec-sub">Choose your app and we'll show you how to add wingfoil.ie to it. You only need to do this once.</p>
+      </div>
+      <fieldset class="apps" role="radiogroup" aria-label="Your AI app" id="apps">
+        <legend>Your AI app</legend>
+      </fieldset>
+      <div class="sheet" id="sheet">
+        <section aria-labelledby="add-h">
+          <h3 id="add-h"></h3>
+          <span class="plan" id="plan" hidden></span>
+          <p class="say" id="say"></p>
+          <div class="there" id="there">
+            <p class="kicker" id="there-k"></p>
+            <ol id="steps"></ol>
+          </div>
+          <div class="go">
+            <button type="button" class="btn primary lg" id="add"></button>
+            <span class="done" id="done" role="status"></span>
+          </div>
+          <p class="aside-note" id="aside"></p>
+          <div class="addr">
+            <span class="kicker">The address</span>
+            <div class="addr-row">
+              <code>https://<wbr>wingfoil.ie/<wbr>api/<wbr>mcp</code>
+              <button type="button" class="btn quiet" data-copy-address>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>Copy</button>
+            </div>
+            <p id="addr-p"></p>
+          </div>
+        </section>
+        <section aria-labelledby="ask-h">
+          <h3 id="ask-h"></h3>
+          <p class="say" id="ask-say"></p>
+          <ul class="qs" id="qs-b"></ul>
+        </section>
+      </div>
+    </div>
+
+    <!-- ======== A: one list ======== -->
+    <div class="a">
+      <div class="a-col">
+        <div>
+          <div class="sec-head"><h2>Add wingfoil.ie to your AI app</h2></div>
+          <p class="sec-sub">Press the button for the app you use. It opens that app, and the line beside it says what to press once you're there. You only need to do this once.</p>
+        </div>
+        <ul class="list" id="list"></ul>
+        <div class="addr">
+          <span class="kicker">The address</span>
+          <div class="addr-row">
+            <code>https://<wbr>wingfoil.ie/<wbr>api/<wbr>mcp</code>
+            <button type="button" class="btn quiet" data-copy-address>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>Copy</button>
+          </div>
+          <p>This is how your AI app finds wingfoil.ie. The buttons above copy it for you; it's here in case you need it again.</p>
+        </div>
+        <p class="small"><b style="color:var(--ink-2)">Using Gemini, Meta AI or Copilot?</b> They don't let you add outside services like wingfoil.ie yet (Gemini allows it in the US only), so they can't see our forecast. You can still ask them questions, but they won't have our forecast, so their answers won't be up to date.</p>
+      </div>
+      <div class="a-col">
+        <div>
+          <div class="sec-head"><h2>Then try asking</h2></div>
+          <p class="sec-sub">Once wingfoil.ie is added, start a new chat and ask in your own words. Some ideas, to copy and paste:</p>
+        </div>
+        <ul class="qs" id="qs-a"></ul>
+        <p class="small">If the answer doesn't mention wingfoil.ie or today's forecast, wingfoil.ie hasn't been added yet. Try the button for your app again.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<section class="notes" aria-label="Notes for the owner">
+  <h2>What to look at</h2>
+  <ul>
+    <li><b>The header is the Spot finder's</b>, measured off /spots: the 40px round menu button, the small wordmark (19px) beside it, the double rule under it and the same padding (12/18, 10/12 on a phone). "| AI" and "← Chart" are gone. One difference: /spots hides the wordmark on a phone to make room for Favourites / Near you; this page has nothing on the right, so the wordmark stays. Say if you'd rather it went.</li>
+    <li><b>No coding agents</b>, and no numbered steps. The page reads top to bottom: what it is, which app you use, what to press, then what to ask.</li>
+    <li><b>One button per app, the same for every app</b>: "Add to ChatGPT", "Add to Claude" and so on. In B it is the page's one filled button and only the chosen app's is shown; in A every app has the same ruled button. Under it, in plain words, what happens when you press it, and a shaded box with the exact words you'll see in that app, in bold.</li>
+    <li><b>No more "Ask" button per app.</b> The questions are shown apart, as things to try once wingfoil.ie is added. In B they open in the chosen app (and say so, and that it only works once it's added); in A they are copied, to paste into whichever app you added.</li>
+    <li><b>Gemini, Meta AI and Copilot</b> can't add wingfoil.ie at all. In B they sit behind "Another app", which says so plainly; in A they are a single line under the list.</li>
+    <li><b>The example chat</b> beside the headline shows what you get, so nobody has to understand "connectors" to see the point. Its forecast is made up.</li>
+    <li><b>Words.</b> "Address" for the link, "add" for connecting. "MCP" only appears where the app itself uses it on its own button (ChatGPT, Perplexity, Le Chat), in bold as a word to look for.</li>
+    <li><b>Why B.</b> A rider uses one app. Choosing it first means the page then shows one button and one short set of instructions, so there's nothing to compare and nothing to wonder about. A is quicker to scan but is back to eight-ish buttons on one screen.</li>
+  </ul>
+</section>
+
+<script>
+(() => {
+  const ADDRESS = "https://wingfoil.ie/api/mcp";
+  const APPS = [
+    { id: "chatgpt", name: "ChatGPT", plan: "Only on some plans",
+      say: "We'll copy the address for you and open ChatGPT's settings in a new tab.",
+      steps: ["Press <b>+</b>", "Choose <b>Add custom MCP server</b>", "Paste the address", "Choose <b>No authentication</b>, then save"],
+      aside: "This is easiest on a computer, because the phone app may not show this option. If you can't see it at all, your ChatGPT plan may not include it.",
+      list: "Opens ChatGPT's settings. Press <b>+</b>, choose <b>Add custom MCP server</b> and paste the address. Easiest on a computer.",
+      ask: "Each question opens a new ChatGPT chat and asks it straight away.",
+      copies: true },
+    { id: "claude", name: "Claude", plan: null,
+      say: "Opens Claude with wingfoil.ie already filled in. Nothing to copy or paste.",
+      steps: ["Press <b>Add</b>"],
+      aside: "Add it once, on a computer or a phone, and it works in Claude wherever you're signed in.",
+      list: "Opens Claude with wingfoil.ie already filled in. Then press <b>Add</b>.",
+      ask: "Each question opens a new Claude chat with the question typed in. Press send.",
+      copies: false },
+    { id: "grok", name: "Grok", plan: null,
+      say: "We'll copy the address for you and open Grok's connectors in a new tab.",
+      steps: ["Press <b>New Connector</b>", "Choose <b>Custom</b>", "Paste the address"],
+      aside: "",
+      list: "Opens Grok's connectors. Press <b>New Connector</b>, choose <b>Custom</b> and paste the address.",
+      ask: "Each question opens a new Grok chat with the question in it. We also copy it, in case you need to paste it.",
+      copies: true },
+    { id: "perplexity", name: "Perplexity", plan: "Pro and Max plans",
+      say: "We'll copy the address for you and open Perplexity's settings in a new tab.",
+      steps: ["Press <b>Add custom</b>, then <b>Connector</b>", "Choose <b>Add MCP connector</b>, then <b>Remote</b>", "Paste the address", "Set authentication to <b>None</b>"],
+      aside: "Works best on a computer.",
+      list: "Opens Perplexity's settings. Press <b>Add custom</b>, choose <b>Remote</b> and paste the address.",
+      ask: "Each question opens Perplexity and asks it straight away.",
+      copies: true },
+    { id: "lechat", name: "Le Chat", plan: null,
+      say: "We'll copy the address for you and open Le Chat in a new tab.",
+      steps: ["Open <b>Context</b>, then <b>Connectors</b>", "Press <b>Add Connector</b>, then <b>Custom MCP Connector</b>", "Call it <b>wingfoil</b> and paste the address"],
+      aside: "",
+      list: "Opens Le Chat. Go to <b>Context</b>, then <b>Connectors</b>, add a custom one and paste the address.",
+      ask: "Le Chat can't take a question from a link, so each one is copied and Le Chat opens. Paste it in.",
+      copies: true },
+  ];
+  const QUESTIONS = [
+    "When's the next good session after work near me?",
+    "Where's the best wing foiling in Ireland this Saturday, in daylight?",
+    "Is Brandon Bay worth the drive tomorrow afternoon? Do the forecasts agree?",
+    "What's the tide doing at Dollymount when the wind picks up?",
+  ];
+  const ICON = {
+    out: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+  };
+  const $ = (id) => document.getElementById(id);
+  const frame = $("frame");
+  const params = new URLSearchParams(location.search);
+  const state = {
+    layout: params.get("layout") === "a" ? "a" : "b",
+    device: params.get("device") === "phone" ? "phone" : "full",
+    app: [...APPS.map((a) => a.id), "other"].includes(params.get("app")) ? params.get("app") : "chatgpt",
+  };
+
+  // The clipboard may be refused (a file:// page, a frame without focus):
+  // the mock-up says what would have happened either way.
+  const copy = (text) => { try { navigator.clipboard?.writeText(text).catch(() => {}); } catch (_) { /* no clipboard */ } };
+  let toastTimer;
+  const toast = (title, text) => {
+    const t = $("toast");
+    t.innerHTML = `<span class="label">${title}</span>${text}`;
+    t.classList.add("on");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("on"), 3200);
+  };
+
+  /* ---- B ---- */
+  const appsEl = $("apps");
+  [...APPS, { id: "other", name: "Another app" }].forEach((a) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "app" + (a.id === "other" ? " other" : "");
+    b.setAttribute("role", "radio"); b.dataset.app = a.id; b.textContent = a.name;
+    b.addEventListener("click", () => { state.app = a.id; render(); });
+    appsEl.appendChild(b);
+  });
+  appsEl.addEventListener("keydown", (e) => {
+    if (!["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(e.key)) return;
+    const ids = [...APPS.map((a) => a.id), "other"];
+    const i = ids.indexOf(state.app) + (e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1);
+    state.app = ids[(i + ids.length) % ids.length];
+    render();
+    appsEl.querySelector(`[data-app="${state.app}"]`).focus();
+    e.preventDefault();
+  });
+
+  const OTHER_HTML = `
+    <h3>Gemini, Meta AI, Copilot and others</h3>
+    <div class="warn"><p>These apps don't let you add outside services like wingfoil.ie yet (Gemini allows it in the US only), so they can't see our forecast.</p>
+    <p>You can still ask them questions, but they won't have our forecast, so their answers about the wind and tide won't be up to date.</p></div>
+    <p class="say">If you also have ChatGPT, Claude, Grok, Perplexity or Le Chat, choose that one above. We'll add more apps here when they allow it.</p>`;
+  const sheet = $("sheet");
+  const addSection = sheet.querySelector("section");
+  const addTemplate = addSection.innerHTML;
+
+  function renderB() {
+    appsEl.querySelectorAll(".app").forEach((b) => {
+      const on = b.dataset.app === state.app;
+      b.setAttribute("aria-checked", String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+    const app = APPS.find((a) => a.id === state.app);
+    sheet.classList.toggle("is-other", !app);
+    if (!app) { addSection.innerHTML = OTHER_HTML; return; }
+    if (!$("add")) { addSection.innerHTML = addTemplate; wireAddressCopy(addSection); }
+    $("add-h").textContent = `Add wingfoil.ie to ${app.name}`;
+    $("plan").hidden = !app.plan; $("plan").textContent = app.plan || "";
+    $("say").textContent = app.say;
+    $("there-k").textContent = `Then, in ${app.name}`;
+    $("steps").innerHTML = app.steps.map((s) => `<li><span>${s}</span></li>`).join("");
+    $("add").innerHTML = `Add to ${app.name}${ICON.out}`;
+    $("add").onclick = () => {
+      if (app.copies) copy(ADDRESS);
+      const done = $("done");
+      done.innerHTML = app.copies ? `${ICON.check}Address copied` : "";
+      done.classList.toggle("on", app.copies);
+      toast("In the real page", app.copies
+        ? `The address is copied, and ${app.name} opens in a new tab. Paste it where the steps say.`
+        : `Claude opens in a new tab with wingfoil.ie filled in. Press Add.`);
+    };
+    $("done").classList.remove("on");
+    $("aside").textContent = app.aside; $("aside").hidden = !app.aside;
+    $("addr-p").textContent = app.copies
+      ? "This is how your AI app finds wingfoil.ie. The button above copies it for you; it's here in case you need it again."
+      : "This is how your AI app finds wingfoil.ie. Claude fills it in for you; it's here in case you ever need it.";
+    $("ask-h").textContent = `Then try asking ${app.name}`;
+    $("ask-say").textContent = `${app.ask} This only works once you've added wingfoil.ie.`;
+    $("qs-b").innerHTML = QUESTIONS.map((q, i) =>
+      `<li class="q"><a class="q-text" href="#" data-q="${i}"><span>“${q}”</span><span class="q-go label">Ask${ICON.out}</span></a></li>`).join("");
+    $("qs-b").querySelectorAll("a").forEach((a) => a.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (app.id !== "chatgpt" && app.id !== "perplexity") copy(QUESTIONS[a.dataset.q]);
+      toast("In the real page", app.id === "lechat"
+        ? "The question is copied and Le Chat opens in a new tab. Paste it in."
+        : `A new ${app.name} chat opens in a new tab with this question.`);
+    }));
+  }
+
+  /* ---- A ---- */
+  $("list").innerHTML = APPS.map((a) => `
+    <li class="row">
+      <h3>${a.name}${a.plan ? `<small>${a.plan}</small>` : ""}</h3>
+      <p>${a.list}</p>
+      <button type="button" class="btn pill" data-add="${a.id}">Add to ${a.name}${ICON.out}</button>
+      <span class="done" role="status"></span>
+    </li>`).join("");
+  $("list").querySelectorAll("[data-add]").forEach((b) => b.addEventListener("click", () => {
+    const app = APPS.find((a) => a.id === b.dataset.add);
+    if (app.copies) copy(ADDRESS);
+    $("list").querySelectorAll(".done").forEach((d) => d.classList.remove("on"));
+    const done = b.parentElement.querySelector(".done");
+    if (app.copies) { done.innerHTML = `${ICON.check}Address copied. Now paste it in ${app.name}`; done.classList.add("on"); }
+    toast("In the real page", app.copies
+      ? `The address is copied, and ${app.name} opens in a new tab.`
+      : "Claude opens in a new tab with wingfoil.ie filled in. Press Add.");
+  }));
+  $("qs-a").innerHTML = QUESTIONS.map((q, i) =>
+    `<li class="q"><button type="button" class="q-text" data-q="${i}"><span>“${q}”</span><span class="q-go label">${ICON.copy}<span>Copy</span></span></button></li>`).join("");
+  $("qs-a").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    copy(QUESTIONS[b.dataset.q]);
+    const label = b.querySelector(".q-go span");
+    label.textContent = "Copied";
+    setTimeout(() => { label.textContent = "Copy"; }, 1600);
+  }));
+
+  function wireAddressCopy(root) {
+    root.querySelectorAll("[data-copy-address]").forEach((b) => b.addEventListener("click", () => {
+      copy(ADDRESS);
+      b.lastChild.textContent = "Copied";
+      setTimeout(() => { b.lastChild.textContent = "Copy"; }, 1600);
+    }));
+  }
+  wireAddressCopy(document);
+
+  /* ---- The mock-up's bar ---- */
+  function render() {
+    frame.classList.toggle("layout-a", state.layout === "a");
+    frame.classList.toggle("layout-b", state.layout === "b");
+    frame.classList.toggle("is-phone", state.device === "phone");
+    document.querySelectorAll("[data-layout]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.layout === state.layout)));
+    document.querySelectorAll("[data-device]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.device === state.device)));
+    renderB();
+    const q = new URLSearchParams();
+    if (state.layout === "a") q.set("layout", "a");
+    if (state.device === "phone") q.set("device", "phone");
+    if (state.layout === "b" && state.app !== "chatgpt") q.set("app", state.app);
+    history.replaceState(null, "", q.toString() ? `?${q}` : location.pathname);
+  }
+  document.querySelectorAll("[data-layout]").forEach((b) => b.addEventListener("click", () => { state.layout = b.dataset.layout; render(); }));
+  document.querySelectorAll("[data-device]").forEach((b) => b.addEventListener("click", () => { state.device = b.dataset.device; render(); }));
+  render();
+})();
+</script>
+</body>
+</html>
