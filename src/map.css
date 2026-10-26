@@ -16,9 +16,12 @@
 }
 
 .app-shell,
-.workspace,
-.map-panel {
+.workspace {
   position: fixed;
+  inset: 0;
+}
+.map-panel {
+  position: absolute;
   inset: 0;
 }
 .map-canvas {
@@ -777,6 +780,81 @@
 .map-canvas.is-focus .lt:not(.sel) .lt-lab {
   display: none;
 }
+/* A card for this place under the pointer, beside the chart: its light in
+   ink, larger, with its name on an ink label, and the others fainter. */
+.map-lights.has-lit .lt:not(.lit) {
+  opacity: 0.45;
+}
+.map-canvas .lt.lit {
+  z-index: 6;
+}
+.lt.lit svg,
+.map-canvas.z-lo .lt.lit svg {
+  transform: scale(1.6);
+  filter: drop-shadow(
+    0 2px 3px color-mix(in srgb, var(--color-ink) 40%, transparent)
+  );
+}
+.lt.lit .lt-ring {
+  fill: var(--color-ink);
+  stroke: var(--color-ink);
+  stroke-dasharray: none;
+}
+.lt.lit .lt-n {
+  fill: var(--color-ink-inverse);
+}
+.map-canvas .lt.lit .lt-lab,
+.map-canvas.is-focus .lt.lit .lt-lab,
+.map-canvas.no-names .lt.lit .lt-lab,
+.map-canvas .lt.lit.lab-hide .lt-lab {
+  display: block;
+  left: 26px;
+  right: auto;
+  top: -10px;
+  padding: 4px 9px 5px;
+  border-radius: var(--radius-control);
+  background: var(--color-ink) var(--gradient-ink);
+  color: var(--color-ink-inverse);
+  text-align: left;
+  text-shadow: none;
+  box-shadow: var(--shadow-sheet);
+}
+.lt.lit .lt-lab i {
+  color: var(--color-ink-inverse);
+}
+/* The rider, where their browser says they are: a blue dot with a slow ring,
+   as every map draws "you are here". */
+.map-you {
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid var(--color-ink-inverse);
+  border-radius: 50%;
+  background: var(--map-you);
+  box-shadow: var(--shadow-marker);
+}
+.map-you::after {
+  content: "";
+  position: absolute;
+  inset: -11px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--map-you) 20%, transparent);
+  animation: you-pulse 2.6s ease-out infinite;
+}
+@keyframes you-pulse {
+  from {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-you::after {
+    animation: none;
+  }
+}
 /* Gust pointing at a few places: a ring that breathes for a moment. */
 .lt.gust-highlight svg {
   filter: drop-shadow(0 0 4px var(--color-chart-magenta));
@@ -1286,4 +1364,147 @@
     linear-gradient(var(--color-ink), var(--color-ink)) center / 100% 1.5px
       no-repeat;
   pointer-events: none;
+}
+
+/* ---------- the home page: the spot finder, and the chart beside it ---------- */
+/* The full chart over the list, the chart beside it, or (under the width
+   for that) the list alone, the chart out of sight behind it (src/App.tsx).
+   The chart is one map in all three: only its box changes. */
+.workspace[data-chart="panel"] {
+  top: var(--panel-top);
+  left: var(--panel-left);
+  right: auto;
+  bottom: auto;
+  width: var(--panel-width);
+  height: var(--panel-height);
+  overflow: hidden;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--radius-dialog);
+  box-shadow: var(--shadow-float);
+}
+.workspace[data-chart="hidden"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+/* Beside the list the chart is a window onto it, in a box: no neatline. */
+.workspace[data-chart="panel"] .map-neat {
+  display: none;
+}
+/* The room the chart stands in, beside the list. */
+.finder-side {
+  flex: none;
+  width: calc(var(--panel-width) + 12px);
+}
+/* One card a row beside the chart, two where the list still has a card's
+   room for each (src/finder/SpotFinder.tsx). */
+[data-beside-chart] [data-finder-cards] {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 1920px) {
+  [data-beside-chart] [data-finder-cards] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* A light under the pointer outlines its place's card; one pressed brings
+   the card into view, its outline drawn in for a moment. */
+[data-spot-card].is-lit {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+  box-shadow: var(--inset-shadow-frame), var(--shadow-float);
+}
+[data-spot-card].is-flash {
+  animation: card-flash 1.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes card-flash {
+  0%,
+  40% {
+    outline: 2px solid var(--color-chart-magenta);
+    outline-offset: 4px;
+  }
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-spot-card].is-flash {
+    animation: none;
+  }
+}
+/* The chart beside the list: Full chart at the top left, the zoom at the
+   top right, and the hour its lights are at, at the foot. */
+.panel-tools {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+.panel-tools > * {
+  pointer-events: auto;
+}
+.panel-tools .panel-open {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  gap: 7px;
+  box-shadow: var(--inset-shadow-frame), var(--shadow-float);
+}
+.panel-tools .zbox {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.panel-when {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 3px 10px;
+  border: 1px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-ground);
+  font: 500 10px/1.5 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+/* The black button between the list and the full chart: at the foot of the
+   list, or of the full chart; with the dock open, just above its top edge,
+   in its own layout (src/ForecastDock.tsx), so it moves with it. */
+.list-toggle {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 30;
+  gap: 7px;
+  translate: -50% 0;
+  box-shadow: var(--shadow-control), var(--shadow-sheet);
+}
+.map-footer .list-toggle {
+  position: absolute;
+  bottom: calc(100% + 18px);
+}
+.dk-float {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  z-index: 1;
+  translate: -50% 0;
+}
+.dk-float .list-toggle {
+  position: static;
+  translate: none;
+}
+/* Where the window is too narrow for it between the small print and the
+   spot's tools, it stands over the tools. */
+.dk-float.is-lifted {
+  bottom: calc(100% + 22px + var(--tools-height));
+}
+/* Over the chip that offers another model on the map, when there is one. */
+.dock:has(.map-reach) .dk-float {
+  bottom: calc(100% + 52px);
+}
+@media (max-width: 720px) {
+  .dock:has(.map-reach) .dk-float {
+    bottom: calc(100% + 94px);
+  }
 }

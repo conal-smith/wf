@@ -5,7 +5,7 @@ for (const width of [390, 1440]) {
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 });
-    await page.goto("/");
+    await page.goto("/?map");
     await expect(page.locator(".spot-marker")).toHaveCount(149, {
       timeout: 30000,
     });

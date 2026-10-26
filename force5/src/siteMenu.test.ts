@@ -232,11 +232,11 @@ describe("the navigation", () => {
     );
   const both = { market: true, community: true };
 
-  it("is the chart, the spot finder and Settings, then the sections, each with its glyph", () => {
+  it("is the spot finder, the chart and Settings, then the sections, each with its glyph", () => {
     const markup = rows({ current: "chart", features: both });
     expect(names(markup)).toEqual([
-      "Chart",
       "Spot finder",
+      "Chart",
       "Settings",
       "Marketplace",
       "Community",
@@ -260,7 +260,7 @@ describe("the navigation", () => {
     expect(markup.match(/<ul /g)).toHaveLength(2);
     // The map is the chart: there is no "Wind map" beside it.
     expect(markup).not.toContain("Wind map");
-    expect(markup.match(/href="\/\?chart"/g)).toHaveLength(1);
+    expect(markup.match(/href="\/\?map"/g)).toHaveLength(1);
   });
 
   /*
@@ -293,13 +293,11 @@ describe("the navigation", () => {
     ]);
   });
 
-  it("links each row where a page load takes it: the chart always the chart, Settings the chart with Settings open", () => {
+  it("links each row where a page load takes it: the spot finder the home page, the chart the full chart, Settings the home page with Settings open", () => {
     const markup = rows({ current: null, features: both });
-    // Never the bare root, which opens on the page the rider last had.
-    expect(markup).not.toContain('href="/"');
     for (const href of [
-      "/?chart",
-      "/spots",
+      "/",
+      "/?map",
       "/?settings",
       "/market",
       "/community",

@@ -36,7 +36,7 @@ export async function openChart(
   spot: string | null = "brandon",
 ) {
   await page.setViewportSize({ width, height });
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
@@ -514,15 +514,15 @@ test("a missing snapshot is actionable, and an expired one is labelled", async (
   await page.route("**/weather/harmonie.json", (route) =>
     route.fulfill({ status: 404, body: "Missing" }),
   );
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.getByRole("alert")).toContainText(
     "npm run weather:refresh",
   );
   await page.unroute("**/weather/harmonie.json");
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".map-model")).toHaveText(harmonie.modelName);
   await page.clock.install({ time: new Date("2030-01-01T12:00:00Z") });
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".map-model")).toContainText("archived");
 });
 
@@ -637,7 +637,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
 
   // Kept for the next visit, which opens on the chart alone: at `/`, as the
   // reload of a chosen spot's own link (`/?spot=brandon`) opens on it.
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
@@ -940,7 +940,7 @@ for (const device of [
 
       // With nothing chosen, the same: the panel shuts and no point is
       // picked, nor a light under the dimmed map round it.
-      await page.goto("/");
+      await page.goto("/?map");
       await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
         timeout: 30000,
       });
@@ -950,7 +950,7 @@ for (const device of [
         await expect(page.locator(".dock")).toHaveCount(0);
         await expect(page.locator(".pick-mark")).toHaveCount(0);
         await expect(page.locator(".spot-marker.sel")).toHaveCount(0);
-        await expect(page).toHaveURL(/\/$/);
+        await expect(page).toHaveURL(/\/\?map$/);
       };
       await openFromMenu(page, "Layers");
       await press(page, await backdrop(page));

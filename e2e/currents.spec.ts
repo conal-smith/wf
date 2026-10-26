@@ -28,7 +28,7 @@ test("the currents layer is off at first and nothing of it is loaded", async ({
   page,
 }) => {
   const asked = watch(page);
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });
@@ -47,7 +47,7 @@ test("turned on, it reads the run and keeps the rider's choice", async ({
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const asked = watch(page);
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });
@@ -95,7 +95,7 @@ test("with no current forecast published the page still works, and says so", asy
       JSON.stringify({ currents: true }),
     ),
   );
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });

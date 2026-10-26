@@ -89,7 +89,7 @@ async function withTides(page: Page) {
 async function openDock(page: Page, width = 1440, height = 900) {
   await withTides(page);
   await page.setViewportSize({ width, height });
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
@@ -963,7 +963,12 @@ test("the display options open over the dimmed map from the site menu, one panel
   const names = await page
     .locator(".zbox button")
     .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-  expect(names).toEqual(["Zoom in", "Zoom out", "Layers"]);
+  expect(names).toEqual([
+    "Back to the list",
+    "Zoom in",
+    "Zoom out",
+    "Layers",
+  ]);
   await expect(page.locator(".dock").getByLabel("Display options")).toHaveCount(
     0,
   );
@@ -2098,7 +2103,7 @@ test("a point tapped off Dublin Bay reads wind, waves, weather and its nearest s
   // And the dock closes from its own button, leaving the chart alone.
   await dock.getByRole("button", { name: /^Close the forecast for / }).click();
   await expect(dock).toHaveCount(0);
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/\?map$/);
   // A step in the history like a choice: Back opens it again.
   await page.goBack();
   await expect(dock.locator(".dk-tools")).toContainText(
@@ -2244,7 +2249,7 @@ test.describe("on a phone", () => {
     await expect(dock).toHaveClass(/is-peek/);
     await swipe(page, head, 0, 90);
     await expect(dock).toHaveCount(0);
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/\?map$/);
   });
 
   test("a sideways swipe on the hours is still theirs, and a drag never presses a button", async ({

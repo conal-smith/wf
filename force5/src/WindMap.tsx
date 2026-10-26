@@ -124,6 +124,14 @@ export interface MapControls {
   fitIreland(duration?: number): void;
   zoomIn(): void;
   zoomOut(): void;
+  /** One light lit (a card for its place under the pointer), or none. */
+  light(id: string | null): void;
+  /**
+   * Hold the wind's particles still for a while (true) or let them run again
+   * (false): beside a list that is scrolling, the page's frames are the
+   * list's. The rider's own ask for less motion holds them still whatever.
+   */
+  pauseWind(still: boolean): void;
   map: maplibregl.Map;
 }
 
@@ -169,6 +177,10 @@ type Props = {
   bottomInset: number;
   phone: boolean;
   onSelect: (spot: Spot) => void;
+  /** A mouse comes onto a light (its place), or leaves it (null). */
+  onHoverSpot?: (spot: Spot | null) => void;
+  /** Where the rider is, drawn as a blue dot, or null where it is not known. */
+  you?: { lon: number; lat: number } | null;
   /**
    * Whether a panel or a menu is open over the chart, and shuts on a press
    * away from it: a press on the chart then only shuts it, and picks and
@@ -187,6 +199,11 @@ type Props = {
     lake: boolean;
   }) => void;
   onReady: (controls: MapControls | null) => void;
+  /**
+   * The map is made and knows its view, before its style has loaded: a frame
+   * asked for from now on is read for that view, not the whole grid.
+   */
+  onMade?: () => void;
   /** A tile the frame on screen needs could not be read (windLayer.ts). */
   onTilesFailed?: (frame: Frame) => void;
   /**
@@ -660,6 +677,7 @@ export default function WindMap(props: Props) {
     reducedMotion,
     bottomInset,
     phone,
+    you = null,
   } = props;
   const container = useRef<HTMLDivElement>(null);
   const particles = useRef<HTMLCanvasElement | null>(null);
@@ -669,6 +687,10 @@ export default function WindMap(props: Props) {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const windRef = useRef<WindLayer | null>(null);
   const lightsRef = useRef<Lights | null>(null);
+  /** The light lit, kept for a new set of lights. */
+  const lit = useRef<string | null>(null);
+  /** The particles held still beside a scrolling list. */
+  const still = useRef(false);
   const latest = useRef(props);
   latest.current = props;
   const [ready, setReady] = useState(false);
@@ -735,6 +757,7 @@ export default function WindMap(props: Props) {
     // What the map shows, before it has loaded: the first frame's tiles are
     // asked for while the basemap is still on its way.
     setMapView(viewOf(map));
+    latest.current.onMade?.();
     // The wind's canvas, the loupe's sheet and the pen's go inside the map,
     // over its canvas and, by z-index (src/map.css), the first two under the
     // lights and the pen over them.
@@ -931,6 +954,14 @@ export default function WindMap(props: Props) {
         },
         zoomIn: () => map.zoomIn(),
         zoomOut: () => map.zoomOut(),
+        light(id) {
+          lit.current = id;
+          lightsRef.current?.light(id);
+        },
+        pauseWind(on) {
+          still.current = on;
+          windRef.current?.setPaused(latest.current.reducedMotion || on);
+        },
       });
     });
     const resize = new ResizeObserver(() => map.resize());
@@ -999,7 +1030,7 @@ export default function WindMap(props: Props) {
     };
   }, [ready, wash]);
   useEffect(() => {
-    windRef.current?.setPaused(reducedMotion);
+    windRef.current?.setPaused(reducedMotion || still.current);
   }, [ready, reducedMotion]);
 
   // The chart's own layers, from the layers panel.
@@ -1239,9 +1270,13 @@ export default function WindMap(props: Props) {
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map || !spots.length) return;
-    lightsRef.current = createLights(map, spots, (spot) =>
-      latest.current.onSelect(spot),
+    lightsRef.current = createLights(
+      map,
+      spots,
+      (spot) => latest.current.onSelect(spot),
+      (spot) => latest.current.onHoverSpot?.(spot),
     );
+    lightsRef.current.light(lit.current);
     return () => {
       lightsRef.current?.destroy();
       lightsRef.current = null;
@@ -1256,6 +1291,24 @@ export default function WindMap(props: Props) {
       units,
     );
   }, [ready, spots, lights, selectedId, named, units, props.lightLabel]);
+
+  // The rider, where the browser has said they are: a blue dot, as maps
+  // draw "you are here", with a slow ring round it.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !you) return;
+    const el = document.createElement("div");
+    el.className = "map-you";
+    el.setAttribute("role", "img");
+    el.setAttribute("aria-label", "You are here");
+    el.title = "You are here";
+    const marker = new maplibregl.Marker({ element: el })
+      .setLngLat([you.lon, you.lat])
+      .addTo(map);
+    return () => {
+      marker.remove();
+    };
+  }, [ready, you?.lon, you?.lat]);
 
   // Focus: a loupe laid on the chart round the chosen spot, or a range ring,
   // with a light wash of paper beyond it; or, as the rider chooses, nothing.

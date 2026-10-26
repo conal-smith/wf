@@ -2,6 +2,7 @@ import {
   lazy,
   memo,
   Suspense,
+  type ReactNode,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -168,6 +169,11 @@ interface Props {
   marine: readonly ModelAvailability[];
   /** Met Éireann's warnings for the riding place, in force or still to come. */
   warnings?: readonly PlaceWarning[];
+  /**
+   * What stands over the middle of the dock's top edge, in its own layout so
+   * it moves with the edge (the full chart's List button), or nothing.
+   */
+  float?: ReactNode;
 }
 
 /** How far the dock's top edge is dragged, in px, to change its rows or close it. */
@@ -1125,6 +1131,7 @@ export default function ForecastDock(props: Props) {
     onMore,
     marine,
     warnings = [],
+    float = null,
   } = props;
   // The night's hours, from last light to first light, left out where the
   // reader has hidden them (Display options): the dock then shows the strip's
@@ -1905,6 +1912,34 @@ export default function ForecastDock(props: Props) {
     };
   }, [phone]);
 
+  // The float over the top edge, lifted over the tools where they would meet.
+  const floatRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const box = floatRef.current;
+    const tools = toolsRef.current;
+    const el = dockRef.current;
+    if (!box || !tools || !el || phone) return;
+    const place = () => {
+      box.classList.remove("is-lifted");
+      const a = box.getBoundingClientRect();
+      const b = tools.getBoundingClientRect();
+      const meet =
+        a.right + 10 > b.left &&
+        a.left < b.right &&
+        a.bottom > b.top &&
+        a.top < b.bottom;
+      if (meet) {
+        box.style.setProperty("--tools-height", `${b.height}px`);
+        box.classList.add("is-lifted");
+      }
+    };
+    place();
+    const watch = new ResizeObserver(place);
+    watch.observe(el);
+    watch.observe(tools);
+    return () => watch.disconnect();
+  }, [phone, !!float]);
+
   const tideTop = rows.day + rows.hour;
   const tideHeight = tideBand(rows, view, isPoint, rated);
 
@@ -2045,6 +2080,15 @@ export default function ForecastDock(props: Props) {
           <ChevronDown size={18} strokeWidth={1.6} aria-hidden="true" />
         </Button>
       </div>
+
+      {/* Over the middle of the top edge, and moving with it: lifted over
+          the spot's tools where the window is too narrow for both side by
+          side, so it never covers them. */}
+      {float && (
+        <div className="dk-float" ref={floatRef}>
+          {float}
+        </div>
+      )}
 
       {/* The time, for a keyboard and a screen reader: the hours scrolling
           through the pen's frame are the slider a finger and a mouse use, and

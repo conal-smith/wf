@@ -738,6 +738,38 @@ and a small faint grip in the middle of that edge is a button for a click
 and the keys (Up for more, Down for fewer). On a phone the sheet is swiped
 as before, and swiped down from its head alone it closes.
 
+**2026-10-26 — The spot finder is the home page, with the chart beside it.**
+From the approved mock-up `backlog/mockups/2026-10-26-spot-finder-chart.html`
+(#238). The site's root (`/`) is the spot finder: its cards as they were,
+and, from 1100 pixels wide, the real chart beside them in a box on the right,
+the full height of the page under the head. The chart there shows only the
+listed spots' lights (Favourites or Near you, as the switch says), at the
+hour the cards show, with the rider's place as a blue dot; it is fitted to
+the list as the page opens and when the switch changes, and at no other
+time. A card under the pointer turns its light black, with its name; if the
+spot is near the edge or off the chart, the chart moves to put it in the
+middle at the same zoom, and otherwise nothing moves. A light under the
+pointer outlines its card, and a press on one scrolls the list to its card.
+There is no dock and no loupe beside the list. "Full chart" opens the chart
+to the whole screen, and that is the chart as it was before: every spot,
+search, the zoom and Layers, and the dock along the foot when a spot is
+pressed. It is the same map in a bigger box, never made twice (src/App.tsx):
+the box grows under a clip and the map takes its new size once. Its address
+is `/?map`, pushed, so Back is the list again; a spot's link (`/?spot=keel`)
+opens it on that spot with its dock, as it always did, and a card's picture
+does the same. A black List button at the foot goes back to the list,
+riding just above the dock while it is open (inside the dock's own layout,
+lifted over the spot's tools where the window is too narrow for both), and
+so do Escape and the collapse button above the zoom. Under 1100 pixels the
+list is alone, with a black Map button at the foot that opens the full chart
+and is List there; on a phone the map is made the first time it is asked
+for and kept. The old addresses are put right: `/spots` is the root, and
+`/?chart` is `/?map`. The root no longer opens on whichever page the rider
+last had: it is always the list (this replaces that part of the rulings of
+2026-10-24 and 2026-10-25). The site menu's navigation is Spot finder (the
+home page), Chart (the full chart) and Settings, in that order; Settings
+from another page is the home page with Settings open.
+
 ---
 
 ## Still open

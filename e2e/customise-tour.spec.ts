@@ -401,7 +401,7 @@ test("the tour is offered on a first visit, can be skipped, and is not offered a
     TOUR_TEST_KEY,
   );
   await page.clock.setFixedTime(AFTERNOON);
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(prompt(page)).toBeVisible({ timeout: 30000 });
   await expect(prompt(page)).toContainText(
     "Take a 30-second tour of how the site works.",
@@ -442,7 +442,7 @@ test("No thanks is never asked again; Escape leaves the tour; the menu replays i
     TOUR_TEST_KEY,
   );
   await page.clock.setFixedTime(AFTERNOON);
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(prompt(page)).toBeVisible({ timeout: 30000 });
   await prompt(page).getByRole("button", { name: "No thanks" }).click();
   await expect(prompt(page)).toHaveCount(0);
@@ -487,7 +487,7 @@ test("No thanks is never asked again; Escape leaves the tour; the menu replays i
 test("a browser that says it is automated is never offered the tour", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?map");
   await mapUp(page);
   await page.waitForTimeout(500);
   await expect(prompt(page)).toHaveCount(0);

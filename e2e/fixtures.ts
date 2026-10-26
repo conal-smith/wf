@@ -74,7 +74,10 @@ export async function chooseSpot(page: Page, id = "brandon") {
  * spec that reads every light, or times the hours over the whole chart.
  */
 export async function backToIreland(page: Page) {
-  await page.keyboard.press("Escape");
+  // Escape lets go of the chart's focus on the spot; pressed again, it would
+  // close the dock, and then go back to the list.
+  if (await page.locator(".map-canvas.is-focus").count())
+    await page.keyboard.press("Escape");
   await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
   // Out a step at a time until every light is on the chart, each step read
   // once the camera rests: through a move the lights are drawn on a canvas,
@@ -216,8 +219,8 @@ export const menuRow = (page: Page, name: ChartTool) =>
  * marketplace and the community switched on in this suite's build.
  */
 export const SITE_ROWS = [
-  "Chart",
   "Spot finder",
+  "Chart",
   "Settings",
   "Marketplace",
   "Community",

@@ -32,7 +32,7 @@ async function openAi(page: Page) {
 test("the AI page opens over the map, and every way back keeps the map", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".maplibregl-canvas")).toBeVisible({
     timeout: 30000,
   });
@@ -41,23 +41,47 @@ test("the AI page opens over the map, and every way back keeps the map", async (
   // Back.
   await openAi(page);
   await page.goBack();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/\?map$/);
   await expect(page.locator(".map-under-page")).toHaveCount(0);
   await expect(page.locator(".maplibregl-canvas")).toBeVisible();
 
   // Escape.
   await openAi(page);
   await page.keyboard.press("Escape");
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/\?map$/);
   await expect(page.locator(".map-under-page")).toHaveCount(0);
 
   // The page's own link to the chart.
   await openAi(page);
-  await page.locator('a[href="/"]:visible').first().click();
-  await expect(page).toHaveURL(/\/$/);
+  await page.locator("a[data-back-to-map]:visible").first().click();
+  await expect(page).toHaveURL(/\/\?map$/);
   await expect(page.locator(".map-under-page")).toHaveCount(0);
 
   // A page load would have drawn a new canvas, without the mark.
+  expect(await kept(page)).toBe(true);
+});
+
+test("over the home page, the way back is the list, and the chart from there is the same map opened out", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".maplibregl-canvas")).toBeVisible({
+    timeout: 30000,
+  });
+  await mark(page);
+  await openAi(page);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator("[data-spot-finder]")).toBeVisible();
+  // The menu's Chart, from a page over the list: the full chart in the
+  // list's place, and the same map.
+  await openAi(page);
+  await page
+    .getByRole("link", { name: "Chart" })
+    .dispatchEvent("click", { button: 0 });
+  await expect(page).toHaveURL(/\/\?map$/);
+  await expect(page.locator(".map-under-page")).toHaveCount(0);
+  await expect(page.locator(".map-head")).toBeVisible();
   expect(await kept(page)).toBe(true);
 });
 
@@ -70,7 +94,7 @@ test("a page loaded at /ai is drawn alone, as before", async ({ page }) => {
 test("the map's site menu is closed when the reader comes back from the AI page", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".maplibregl-canvas")).toBeVisible({
     timeout: 30000,
   });
@@ -108,7 +132,7 @@ test("the map's site menu is closed when the reader comes back from the AI page"
 test("Escape on the AI page closes its site menu, and only that", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page.locator(".maplibregl-canvas")).toBeVisible({
     timeout: 30000,
   });
@@ -125,5 +149,5 @@ test("Escape on the AI page closes its site menu, and only that", async ({
 
   // Closed, Escape is the way back again.
   await page.keyboard.press("Escape");
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/\?map$/);
 });

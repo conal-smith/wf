@@ -107,7 +107,7 @@ test("the map asks for its model and its places once each, early", async ({
     held = false;
     await route.continue();
   });
-  await page.goto("/");
+  await page.goto("/?map");
   await mapReady(page);
   expect(whileHeld).toContain("/weather/harmonie.json");
   expect(whileHeld).toContain("/spots.json");
@@ -123,7 +123,7 @@ test("MapLibre and React are cached apart from the map's own code", async ({
   page,
 }) => {
   const responses = record(page);
-  await page.goto("/");
+  await page.goto("/?map");
   await mapReady(page);
   const scripts = responses.filter((r) => r.type === "script");
   const named = (pattern: RegExp) =>
@@ -154,7 +154,7 @@ test("the map fills in without moving the page", async ({ page }) => {
           (window as unknown as { __cls: number }).__cls += entry.value;
     }).observe({ type: "layout-shift", buffered: true });
   });
-  await page.goto("/");
+  await page.goto("/?map");
   await mapReady(page);
   await page.waitForTimeout(2000);
   const cls = await page.evaluate(
@@ -180,7 +180,7 @@ test("stepping through the forecast answers within an interaction budget", async
       durationThreshold: 16,
     } as PerformanceObserverInit);
   });
-  await page.goto("/");
+  await page.goto("/?map");
   await mapReady(page);
   // Over the whole chart, as this budget was set: the tap that opened the
   // dock flew the chart in to the spot, and a step there redraws its

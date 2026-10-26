@@ -1,4 +1,6 @@
 import { lazy, Suspense, type ReactNode } from "react";
+import { Minimize2 } from "lucide-react";
+import { Button } from "../ui/Button";
 import type { ModelId } from "../force5/src/models";
 import type { SatelliteOption } from "../force5/src/satellite";
 import type { SiteMenuTool } from "../force5/src/SiteMenu";
@@ -99,7 +101,13 @@ export default function MapControls({
   onLayers,
   onRailFits,
   layoutKey,
+  onCollapse,
 }: {
+  /**
+   * Back to the list, the chart beside it again: on a wide screen, where
+   * the chart was opened out from beside the list. None on a phone.
+   */
+  onCollapse?: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   open: MapPanel;
@@ -154,6 +162,22 @@ export default function MapControls({
   return (
     <div className="map-ctrl">
       <div className="zbox chart-box" role="group" aria-label="Map controls">
+        {onCollapse && (
+          <>
+            <Button
+              variant="quiet"
+              size="sm"
+              icon
+              aria-label="Back to the list"
+              title="Back to the list"
+              onClick={onCollapse}
+              data-collapse-chart
+            >
+              <Minimize2 size={16} strokeWidth={1.75} aria-hidden="true" />
+            </Button>
+            <span className="zbox-rule" aria-hidden="true" />
+          </>
+        )}
         <button
           type="button"
           aria-label="Zoom in"

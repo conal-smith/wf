@@ -35,11 +35,12 @@ describe("spotAddress", () => {
     );
   });
 
-  it("and leaves it out for none, keeping the rest of the address", () => {
-    expect(spotAddress("https://wingfoil.ie/?spot=keel", null)).toBe("/");
+  it("and, for none, is the full chart's own, keeping the rest of the address", () => {
+    expect(spotAddress("https://wingfoil.ie/?spot=keel", null)).toBe("/?map");
     expect(spotAddress("https://wingfoil.ie/?x=1&spot=keel#k", null)).toBe(
-      "/?x=1#k",
+      "/?x=1&map#k",
     );
+    expect(spotAddress("https://wingfoil.ie/?map", "keel")).toBe("/?spot=keel");
     expect(spotAddress("https://wingfoil.ie/?x=1", "a b")).toBe(
       "/?x=1&spot=a+b",
     );

@@ -26,7 +26,7 @@ test("the chart draws every riding place and reads this deployment's forecast", 
   page,
 }) => {
   const errors = pageErrors(page);
-  await page.goto("/");
+  await page.goto("/?map");
   await expect(page).toHaveTitle(/wingfoil\.ie/);
   await expect(page.locator(".maplibregl-canvas")).toBeVisible({
     timeout: 30000,
