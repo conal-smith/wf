@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock-up · Your stars, from what you like</title>
+<!--
+  A design exploration, not product code. Standalone; faces from node_modules.
+
+  Round two (25 October 2026). The owner, on round one (three editors for the
+  rating: a wind ruler with tabs, tune by examples, a sentence):
+    - simpler, and built on the controls Customise already has
+      (src/Customise.tsx): "What wind suits you?", the shore-angle web and
+      "Can you ride upwind?";
+    - no model editor and no gust setting at all. The rider only says what
+      they like on the existing slider: too light (stars start), the sweet
+      spot's two ends, and too much, in gusts ("a gust past here: no stars").
+      We work out the stars from those four numbers with our own model,
+      gusts included. "Gusty wind: Not much / Some / A lot" goes;
+    - under the slider, a thin read-only "what you'll see" strip of stars by
+      steady wind;
+    - the shore web as the site has it. Offshore is never, locked in the
+      middle: we don't recommend going out in an offshore wind.
+      Cross-offshore −1 by default; cross, cross-on and onshore cost nothing;
+    - "Can you ride upwind?" as it is, but "SLOW" says what it means (DRIFT:
+      downwind, you lose ground), the default is straight across with "Not
+      yet", and the course runs only a few degrees below across by default
+      (10°), its downwind edge a second handle;
+    - "Reset to ours";
+    - round three: no example week inside the wizard ("I don't want the
+      examples like this in the customise wizard"); the steps alone;
+    - laid out as the wizard: about you (weight), the wind, the shore, upwind.
+  Round four, the owner: "I don't love the layout in these screenshots
+  generally, how can we lay it out a bit better?"
+    - no wing sizes in the wizard at all (weight stays on step 1; it drives
+      wing sizes elsewhere later);
+    - step 3 is "Configure stars based on wind direction";
+    - one layout for every step: the title, one short line saying what to
+      do, the content, the foot. Where there is a picture, it is on the left
+      and the controls on the right, top-aligned and the same height; on a
+      phone the picture is on top;
+    - the wind: the stars strip folded into the slider, one axis (the track,
+      the stars under it, the knots once), zones named in place, no legend;
+    - the direction: one line of intro, compact rows the web's height;
+    - upwind: the three answers as one segmented choice across the top, the
+      picture left and the two angles right, no legend;
+    - "Reset to ours" only once something differs from ours.
+  Approved (25 October 2026), with one last change: on step 1 the weight
+  and the units each centred, the label over the control, and "Wind in"
+  called "Units".
+  Round one's steer, still standing: no Learning / Riding / Advanced, no
+  existing users; outline stars only for stars lost to the gusts or the shore
+  angle; an orange or red warning replaces the stars; wings never cost a star.
+  ?step=you|wind|shore|upwind  ?device=phone
+-->
+<style>
+@font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fraunces Variable"; font-style: italic; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-italic.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 500;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 600;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
+
+/* The theme's values (ui/theme.css), under the names the wizard's CSS uses. */
+:root {
+  color-scheme: light;
+  --color-ground: #f3eee3; --color-card: #f3eee3; --color-sunken: #ede6d6; --paper: #fffdf6;
+  --color-ink: #1a1d21; --color-ink-2: #3b3c3e; --color-ink-muted: #5b5c5b; --color-line: #1a1d2133;
+  --color-pen: #d43a2c; --color-pen-ink: #bf3125; --color-chart-magenta: #b0186a; --color-focus: #b0186a;
+  --color-sea-3: #dae8ea; --color-land: #ede3c8; --met-orange: #e67322;
+  --s1: #e28bb3; --s2: #d2609a; --s3: #bd3d84; --s4: #a01f6c; --s5: #7c0f55;
+  --font-display: "Fraunces Variable", Fraunces, Georgia, serif;
+  --font-body: "Newsreader Variable", Newsreader, Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --frame: inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142;
+  --shadow-card: 0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a;
+  --shadow-sheet: 0 1px 1px #1a1d211a, 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480;
+  --shadow-raised: inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126;
+  --shadow-control: inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150;
+  --gradient-raised: linear-gradient(180deg, #ffffff, #f0eadd);
+  --gradient-ink: linear-gradient(180deg, #33373d, #15171a);
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: #d9d4c7; color: var(--color-ink); font-family: var(--font-body); line-height: 1.4; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3, p, ul, ol { margin: 0; }
+:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+/* ---- The mock-up's bar ---- */
+.mockbar { position: sticky; top: 0; z-index: 40; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 16px; background: #1a1d21; color: #f3eee3; font: 500 11px var(--font-mono); letter-spacing: .06em; }
+.mockbar b { margin-right: 10px; text-transform: uppercase; letter-spacing: .14em; }
+.mockbar .gap { width: 12px; }
+.mockbar button { border: 1px solid #f3eee355; background: none; color: #f3eee3; border-radius: 99px; padding: 4px 10px; font: 500 11px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+.mockbar button[aria-pressed="true"] { background: #f3eee3; color: #1a1d21; }
+@media (max-width: 520px) { .mockbar { padding: 8px 10px; gap: 5px; } .mockbar b { width: 100%; } .mockbar .gap { display: none; } .mockbar button { padding: 4px 8px; } }
+
+.stage { display: grid; grid-template-columns: minmax(0, 680px) 300px; gap: 24px; justify-content: center; align-items: start; padding: 28px 16px 20px; }
+.stage.phone { grid-template-columns: 390px 300px; }
+@media (max-width: 1060px) { .stage { grid-template-columns: minmax(0, 680px); } .stage.phone { grid-template-columns: minmax(0, 390px); } }
+@media (max-width: 719px) { .stage, .stage.phone { padding: 0 0 16px; } }
+
+/* ---- The dialog, as ui/Dialog draws it with src/customise.css ---- */
+.cw { container: cw / inline-size; display: flex; flex-direction: column; min-width: 0; padding: 20px 26px 16px; border: 1px solid var(--color-ink); border-radius: 18px; background: var(--color-card); box-shadow: var(--frame), var(--shadow-sheet); }
+.stage.phone .cw { border-radius: 0; padding: 12px 16px; }
+@media (max-width: 719px) { .cw { border-radius: 0; padding: 12px 16px; border-width: 0 0 1px; } }
+.cw-head { display: flex; align-items: center; gap: 14px; padding: 2px 0 12px; }
+.cw-head h2 { flex: 1; font: 700 26px/1.1 var(--font-display); letter-spacing: -.02em; }
+.cw-count { font: 500 11px var(--font-mono); letter-spacing: .1em; white-space: nowrap; color: var(--color-ink-muted); }
+.cw-x { width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; font: 400 20px/1 var(--font-mono); }
+.cw-prog { display: grid; grid-auto-columns: 1fr; grid-auto-flow: column; gap: 3px; height: 3px; margin-bottom: 4px; }
+.cw-prog i { background: #1a1d2121; }
+.cw-prog i.is-done { background: var(--color-ink); }
+.cw-body { flex: 1; padding: 16px 2px 22px; }
+.cw-sub { margin: 0 0 18px; font: 15px/1.4 var(--font-body); color: var(--color-ink-2); }
+.cw-kick { font: 500 10px/1.4 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--color-ink-muted); }
+.cw-note { font: 13px/1.4 var(--font-body); color: var(--color-ink-muted); }
+.cw-foot { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--color-ink); }
+.cw-sp { flex: 1; }
+@container cw (max-width: 560px) { .cw-head h2 { font-size: 22px; } .cw-body { padding: 14px 0 18px; } .cw-sub { font-size: 14px; margin-bottom: 14px; } }
+
+/* The kit's buttons: mono capitals; primary the ink pill, pill the ruled capsule, quiet. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 18px; border: 1px solid transparent; border-radius: 9999px; background: none; font: 500 11px/1.2 var(--font-mono); letter-spacing: .09em; text-transform: uppercase; white-space: nowrap; }
+.btn.primary { background: var(--color-ink) var(--gradient-ink); border-color: var(--color-ink); color: var(--color-ground); box-shadow: var(--shadow-control); }
+.btn.pill { border-color: var(--color-ink); background: var(--color-card); }
+.btn.quiet { padding: 0 6px; color: var(--color-ink-muted); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.icon { width: 30px; height: 30px; padding: 0; border-color: var(--color-ink); background: var(--color-card); font-size: 15px; }
+@media (hover: hover) and (pointer: fine) {
+  .btn.primary:not(:disabled):hover { background: var(--color-chart-magenta); border-color: var(--color-chart-magenta); }
+  .btn.pill:not(:disabled):hover, .btn.icon:not(:disabled):hover { background: var(--color-ink); color: var(--color-ground); }
+  .btn.quiet:not(:disabled):hover { color: var(--color-ink); }
+}
+
+/* ---- 1. about you: the wizard's ruled rows ---- */
+.cw-rows { display: grid; border-top: 1px solid var(--color-line); }
+.cw-row { display: grid; justify-items: center; gap: 10px; padding: 16px 0 18px; border-bottom: 1px solid var(--color-line); }
+.cw-stepper { display: inline-flex; align-items: center; gap: 8px; }
+.cw-stepper output { min-width: 64px; font: 600 19px/1 var(--font-mono); letter-spacing: -.02em; text-align: center; }
+.cw-stepper small { margin-left: 2px; font: 400 11px var(--font-mono); color: var(--color-ink-muted); letter-spacing: 0; }
+
+/* The kit's Segmented: a ruled capsule of choices, the one that is on in ink. */
+.seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--color-ink); border-radius: 9999px; }
+.seg button { height: 32px; padding: 0 12px; border: 0; border-radius: 9999px; background: none; font: 500 11px/1 var(--font-mono); letter-spacing: .09em; text-transform: uppercase; white-space: nowrap; color: var(--color-ink-2); }
+.seg button[aria-pressed="true"] { background: var(--color-ink) var(--gradient-ink); color: var(--color-ground); box-shadow: var(--shadow-control); }
+@media (hover: hover) and (pointer: fine) { .seg button[aria-pressed="false"]:hover { background: var(--color-sunken); color: var(--color-ink); } }
+.seg.is-wide { display: flex; width: 100%; }
+.seg.is-wide button { flex: 1; height: 40px; }
+@container cw (max-width: 560px) { .cw-row .seg button { padding: 0 9px; } }
+
+/* ---- 2. the wind: one axis, the track, the stars it makes, the knots ---- */
+.cw-range { position: relative; height: 96px; margin: 0 14px; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+.cw-track { position: absolute; top: 34px; right: 0; left: 0; height: 16px; overflow: hidden; border: 1px solid var(--color-ink); border-radius: 9999px; background: var(--color-card); }
+.cw-zone { position: absolute; top: 0; bottom: 0; }
+.is-ok { background: color-mix(in srgb, var(--color-ink) 20%, var(--color-card)); }
+.is-sweet { background: var(--color-ink); }
+.is-over { background: repeating-linear-gradient(-45deg, var(--color-pen) 0 1.5px, transparent 1.5px 5px); }
+.cw-rlab { position: absolute; top: 4px; font: 500 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; color: var(--color-ink-muted); }
+.cw-rlab.is-mid { transform: translateX(-50%); }
+.cw-rlab.is-top { color: var(--color-pen-ink); }
+.cw-knob { position: absolute; top: 28px; z-index: 1; display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 28px; padding: 0 6px; border: 1.5px solid var(--color-ink); border-radius: 9999px; background: var(--color-ground) var(--gradient-raised); box-shadow: var(--shadow-raised); font: 600 11px/1 var(--font-mono); transform: translateX(-50%); cursor: grab; touch-action: none; }
+.cw-knob:active { cursor: grabbing; }
+.cw-knob.is-top { border-color: var(--color-pen-ink); color: var(--color-pen-ink); }
+.cw-knob::after { content: ""; position: absolute; inset: -9px -4px; }
+/* The stars the handles make, steady wind, read-only, right under the track. */
+.strip { position: absolute; top: 56px; right: 0; left: 0; height: 13px; }
+.strip i { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; font: 600 9px/1 var(--font-mono); font-style: normal; }
+.strip .star { position: absolute; left: -14px; top: 1px; width: 11px; height: 11px; }
+.strip .none { position: absolute; top: 0; font: 500 9px/13px var(--font-mono); letter-spacing: .06em; color: var(--color-pen-ink); white-space: nowrap; }
+.cw-ticks { position: absolute; top: 80px; right: 0; left: 0; font: 500 10px var(--font-mono); color: var(--color-ink-muted); }
+.cw-ticks span { position: absolute; white-space: nowrap; transform: translateX(-50%); }
+.cw-ticks span::before { content: ""; position: absolute; top: -6px; left: 50%; height: 4px; border-left: 1px solid var(--color-ink); }
+.cw-ticks span:last-child { transform: translateX(-85%); }
+.cw-ticks span:last-child::before { left: 85%; }
+@container cw (max-width: 560px) { .cw-ticks span[data-odd="1"] { font-size: 0; } .cw-range { margin: 0 8px 0 18px; } .cw-knob { min-width: 30px; height: 26px; margin-top: 1px; padding: 0 4px; } }
+
+/* ---- 3. the direction: the web, as it is, and compact rows its height ---- */
+.cw-shore { display: grid; grid-template-columns: 300px 1fr; align-items: stretch; gap: 22px; }
+@container cw (max-width: 560px) { .cw-shore { grid-template-columns: 1fr; gap: 14px; } .cw-web { justify-self: center; max-width: 340px; } }
+.cw-web { display: block; width: 100%; height: auto; border-radius: 14px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.cw-web-sea { fill: var(--color-sea-3); }
+.cw-web-land { fill: var(--color-land); }
+.cw-web-beach { stroke: var(--color-ink); stroke-width: 1.5; }
+.cw-web-word { font: 500 9px var(--font-mono); letter-spacing: .14em; fill: var(--color-ink-muted); }
+.cw-web-rim { fill: var(--color-ground); fill-opacity: .55; stroke: var(--color-ink); }
+.cw-web-ring { fill: none; stroke: #1a1d2121; }
+.cw-web-step { font: 500 7px var(--font-mono); fill: var(--color-ink-muted); }
+.cw-web-spoke { stroke: #1a1d2145; }
+.cw-web-arrow { fill: none; stroke: var(--color-ink); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.cw-web-arrow.is-danger { stroke: var(--color-pen); }
+.cw-web-name { font: 500 8.5px var(--font-mono); letter-spacing: .06em; fill: var(--color-ink-2); }
+.cw-web-name.is-danger { fill: var(--color-pen-ink); }
+.cw-web-shape { fill: #1a1d2121; stroke: var(--color-ink); stroke-width: 1.5; stroke-linejoin: round; }
+.cw-web-never { fill: var(--color-ground); stroke: var(--color-pen); }
+.cw-web-never-word { font: 500 5.5px var(--font-mono); fill: var(--color-pen-ink); }
+.cw-dot { cursor: grab; outline: none; touch-action: none; }
+.cw-dot:active { cursor: grabbing; }
+.cw-dot.is-locked { cursor: not-allowed; }
+.cw-dot-hit { fill: transparent; }
+@media (hover: hover) and (pointer: fine) { .cw-dot:not(.is-locked):hover .cw-dot-hit { fill: #1a1d2112; } }
+.cw-dot-ring { fill: none; stroke: none; }
+.cw-dot:focus-visible .cw-dot-ring { stroke: var(--color-focus); stroke-width: 2; }
+.cw-dot-face { fill: var(--color-ink); stroke: var(--color-ground); stroke-width: 2; }
+.cw-dot-face.is-never { fill: var(--color-pen); }
+.cw-dirs { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border-top: 2px solid var(--color-ink); }
+.cw-dirs li { flex: 1; display: grid; grid-template-columns: 1fr auto; align-content: center; gap: 1px 10px; padding: 6px 0; border-bottom: 1px solid var(--color-line); }
+.cw-dirs b { font: 600 15px/1.2 var(--font-display); }
+.cw-cost { display: inline-flex; align-items: center; gap: 5px; font: 600 11px var(--font-mono); }
+.cw-cost.is-never { color: var(--color-pen-ink); }
+.cw-cost svg { width: 11px; height: 11px; }
+.cw-dirs small { grid-column: 1 / -1; font: 12.5px/1.3 var(--font-body); color: var(--color-ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cw-dirs li.is-locked small { color: var(--color-ink-2); }
+@container cw (max-width: 560px) { .cw-dirs li { padding: 7px 0; } }
+
+/* ---- 4. upwind: the answers across the top, the wedge left, the angles right ---- */
+.cw-hatch { stroke: var(--color-ink); stroke-width: .8; opacity: .55; }
+.cw-lab { font: 500 9px var(--font-mono); letter-spacing: .1em; fill: var(--color-ink-muted); }
+.cw-lab.is-strong { font-weight: 600; fill: var(--color-ink); }
+.cw-lab.halo { paint-order: stroke; stroke: var(--color-ground); stroke-width: 3px; stroke-linejoin: round; }
+.cw-up { display: grid; grid-template-columns: 300px 1fr; align-items: center; gap: 22px; margin-top: 16px; }
+@container cw (max-width: 560px) { .cw-up { grid-template-columns: 1fr; gap: 6px; margin-top: 12px; } .cw-up-pic { justify-self: center; max-width: 300px; } }
+.cw-up-pic { display: block; width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+.cw-up-face { fill: var(--color-sunken); stroke: var(--color-line); }
+.cw-up-nogo { stroke: var(--color-ink); stroke-dasharray: 3 3; }
+.cw-up-course { fill: var(--color-ground); stroke: var(--color-ink); stroke-width: 1.5; stroke-linejoin: round; }
+.cw-up-drift { fill: none; stroke: var(--color-ink); stroke-dasharray: 2 3; stroke-opacity: .6; }
+.cw-up-across { stroke: var(--color-ink); stroke-opacity: .4; stroke-dasharray: 1 3; }
+.cw-up-angle { fill: none; stroke: var(--color-chart-magenta); stroke-width: 2; }
+.cw-up-deg { font: 600 11px var(--font-mono); fill: var(--color-chart-magenta); }
+.cw-up-angle.is-down { stroke: var(--color-ink); stroke-width: 1.5; }
+.cw-up-deg.is-down { fill: var(--color-ink); }
+.cw-up-wind { stroke: var(--color-ink); stroke-width: 2.5; }
+.cw-up-wind-head, .cw-up-board { fill: var(--color-ink); }
+.cw-up-edge { cursor: grab; touch-action: none; }
+.cw-up-edge-hit { fill: transparent; }
+@media (hover: hover) and (pointer: fine) { .cw-up-edge:hover .cw-up-edge-hit { fill: var(--color-line); } }
+.cw-up-edge-dot { fill: var(--color-ink); stroke: var(--color-ground); stroke-width: 2; }
+.cw-up-edge.is-down .cw-up-edge-dot { fill: var(--color-ground); stroke: var(--color-ink); stroke-width: 2; }
+.cw-angles { display: grid; gap: 22px; }
+.cw-into { display: flex; align-items: baseline; gap: 10px; margin-bottom: 2px; }
+.cw-into output { font: 700 26px/1 var(--font-mono); letter-spacing: -.02em; min-width: 2.4ch; }
+.cw-into span { font: 500 11px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--color-ink-2); }
+.cw-slide { margin: 4px 11px 0; }
+.cw-slide-track { position: relative; height: 32px; touch-action: none; cursor: pointer; }
+.cw-slide-track::before, .cw-slide-fill { content: ""; position: absolute; top: 14px; left: 0; height: 4px; border-radius: 999px; }
+.cw-slide-track::before { right: 0; background: var(--color-line); }
+.cw-slide-fill { background: var(--color-ink); }
+.cw-slide-knob { position: absolute; top: 16px; width: 22px; height: 22px; border: 2px solid var(--color-ground); border-radius: 999px; background: var(--color-ink); box-shadow: var(--shadow-control); transform: translate(-50%, -50%); cursor: ew-resize; }
+.cw-slide-knob::after { content: ""; position: absolute; inset: -11px; }
+.cw-slide.is-second .cw-slide-knob { background: var(--color-ground); border: 2px solid var(--color-ink); }
+.cw-slide-ends { display: flex; justify-content: space-between; margin: 0 -11px; font: 500 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--color-ink-muted); }
+
+/* ---- Notes for the owner, beside the dialog ---- */
+.notes { position: sticky; top: 64px; padding: 14px 16px; border: 1.5px dashed #1a1d2166; border-radius: 14px; background: var(--paper); font-size: 15px; display: grid; gap: 8px; }
+@media (max-width: 1060px) { .notes { position: static; margin: 0 12px; } }
+.notes h3 { font: 500 10px var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--color-chart-magenta); }
+.notes ul { padding-left: 18px; display: grid; gap: 6px; color: var(--color-ink-2); }
+.notes b { color: var(--color-ink); }
+
+.after { max-width: 1004px; margin: 8px auto 60px; padding: 0 16px; }
+.after .sheet { background: var(--color-ground); border: 1px solid var(--color-ink); border-radius: 14px; box-shadow: var(--frame), var(--shadow-card); padding: 20px 24px; display: grid; gap: 14px; }
+@media (max-width: 719px) { .after { padding: 0 12px; } .after .sheet { padding: 16px; } }
+.after h2 { font: 700 24px var(--font-display); letter-spacing: -.01em; padding-bottom: 8px; border-bottom: 2px solid var(--color-ink); }
+.after h3 { font: 600 18px var(--font-display); }
+.after p, .after li { font-size: 16px; color: var(--color-ink-2); max-width: 78ch; }
+.after ol, .after ul { padding-left: 22px; display: grid; gap: 8px; }
+.after b { color: var(--color-ink); }
+.after code { font: 500 .85em var(--font-mono); background: var(--color-sunken); padding: 0 4px; border-radius: 3px; }
+.chk { overflow-x: auto; }
+.chk table { border-collapse: collapse; font: 500 12px var(--font-mono); }
+.chk th, .chk td { padding: 5px 10px 5px 0; border-bottom: 1px solid var(--color-line); text-align: left; white-space: nowrap; }
+.chk th { font-weight: 500; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-ink-muted); }
+.chk td.diff { color: var(--color-pen-ink); font-weight: 600; }
+.chk .steady td, .chk .steady th { padding: 3px 0; min-width: 22px; text-align: center; }
+.chk .steady th:first-child, .chk .steady td:first-child { width: auto; text-align: left; padding-right: 10px; }
+</style>
+</head>
+<body>
+
+<nav class="mockbar" aria-label="Mock-up">
+  <b>Mock-up · Your stars</b>
+  <button data-go="you">1 · About you</button>
+  <button data-go="wind">2 · Wind</button>
+  <button data-go="shore">3 · Shore</button>
+  <button data-go="upwind">4 · Upwind</button>
+  <span class="gap"></span>
+  <button data-device="desktop">Desktop</button>
+  <button data-device="phone">Phone</button>
+</nav>
+
+<div class="stage" id="stage">
+  <section class="cw" id="cw" role="dialog" aria-modal="false" aria-labelledby="cw-title"></section>
+  <aside class="notes" id="notes" aria-label="Notes for the owner"></aside>
+</div>
+
+<div class="after">
+  <div class="sheet">
+    <h2>How the stars come from four numbers</h2>
+    <p>The rider never sees a gust setting. From the slider's four handles, with the gust read 5 kn lighter than it is (fixed, ours):</p>
+    <ul>
+      <li><b>Steady wind</b>: none below <i>too light</i>; one star at <i>too light</i>, climbing a star a knot to four just below the sweet spot; five through the sweet spot; then four for three knots, down to one star at <i>too much</i> − 5 and none from <i>too much</i> − 3.</li>
+      <li><b>Gusts</b>: a gust past <i>too much</i> is no stars. Otherwise the gust is read 5 kn lighter on the same scale and the hour takes the lower of the two; the stars it costs are outlined.</li>
+      <li><b>Shore</b>: what the web says, taken off after; offshore is always none.</li>
+    </ul>
+    <h3>Against the agreed table (ours: too light 11, sweet 15–22, too much 35)</h3>
+    <div class="chk" id="check"></div>
+    <p><b>Defaults chosen:</b> 11 · 15–22 · 35. Too much at 35 puts one star at 30 and none from 32, as agreed; 36 or 37 would leave a star at 32–33. Too light at 11 matches 11–14 kn exactly. The only differences from the plan are at the very ends, in red: 10 kn steady (the plan's tail gave it a star; here, under <i>too light</i>, none) and a gust of exactly 36 (the plan gave one star; here a gust past <i>too much</i> is none).</p>
+    <h3>For you to decide</h3>
+    <ol>
+      <li><b>Should the upwind course move stars?</b> Here it moves none. A rider who can't point upwind in a dead onshore wind can't get out; should that hour lose a star?</li>
+      <li><b>The 10 kn hour.</b> Too light at 11 gives 10 kn nothing. Is that right, or should the default be 10 (which also lifts 11–13 kn a star)?</li>
+      <li><b>Whole stars on the web.</b> The site's web moves in half stars; here it snaps to whole ones, as the stars are drawn whole. Keep half stars?</li>
+      <li><b>About you.</b> With the levels gone, step 1 is weight and units (the units are drawn but do nothing in this mock-up). "Wings you own" said a star comes off when none suits; wings never cost a star now, so it is left out. Drop it, or keep it for picking your own wing elsewhere?</li>
+      <li><b>Downwind edge range.</b> 0–45° below across, 10° by default. Right?</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+/* ======================================================================
+   Ours: the four handles everyone starts from, the shore, the angles.
+   ====================================================================== */
+const NEVER = 5;
+const GUST_EASE = 5;                 // a gust is read this much lighter: ours, never shown
+const OURS = {
+  wind: { min: 11, sweetLow: 15, sweetHigh: 22, max: 35 },
+  off: { onshore: 0, crossOn: 0, cross: 0, crossOff: 1, offshore: NEVER },
+  into: 0,                           // degrees into the wind past straight across
+  down: 10,                          // degrees below straight across the course runs to
+};
+const clone = (o) => JSON.parse(JSON.stringify(o));
+let S = clone(OURS);
+let weight = 80;
+const WIND_KEYS = ["min", "sweetLow", "sweetHigh", "max"];
+const SCALE_TO = 50, WIND_TOP = 40, UPWIND_MAX = 45, DOWN_MAX = 45;
+
+/** Stars for a steady wind, unrounded, from the four handles. */
+function windStars(x, w) {
+  if (x < w.min) return 0;
+  if (x < w.sweetLow) return Math.min(4, 1 + (4 * (x - w.min)) / Math.max(1, w.sweetLow - w.min));
+  if (x <= w.sweetHigh) return 5;
+  const one = w.max - 5, zero = w.max - 3;
+  let pts;
+  if (one <= w.sweetHigh + 1) pts = [[w.sweetHigh, 5], [Math.max(zero, w.sweetHigh + 1), 0]];
+  else {
+    const fourTo = Math.max(w.sweetHigh + 1, Math.min(w.sweetHigh + 3, one - 1));
+    pts = [[w.sweetHigh, 5], [w.sweetHigh + 1, 4], [fourTo, 4], [one, 1], [zero, 0]];
+  }
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+    if (x <= x1) return x1 === x0 ? y1 : y0 + ((x - x0) / (x1 - x0)) * (y1 - y0);
+  }
+  return 0;
+}
+const SHORE_KEY = { onshore: "onshore", "cross-on": "crossOn", cross: "cross", "cross-off": "crossOff", offshore: "offshore" };
+
+/** One hour: solid stars, and the outlined ones lost to the gusts and to the shore. */
+function rate(mean, gust, s, angle = "cross", warn = null) {
+  if (warn) return { stars: 0, lost: 0, warn };
+  const cost = s.off[SHORE_KEY[angle]];
+  if (angle === "offshore" || cost >= NEVER) return { stars: 0, lost: 0, never: true };
+  if (gust > s.wind.max) return { stars: 0, lost: 0, over: true };
+  const wind = windStars(mean, s.wind), potential = Math.round(wind);
+  const g = gust - GUST_EASE, gs = g > s.wind.sweetHigh ? windStars(g, s.wind) : 5;
+  if (gs < wind && Math.round(gs) === 0) return { stars: 0, lost: 0, over: true };
+  const afterGust = Math.max(0, Math.min(potential, Math.round(Math.min(wind, gs))));
+  const stars = Math.max(0, afterGust - cost);
+  return { stars, lost: potential - stars };
+}
+
+/* The plan's "ours" (PR #206), only to check the four handles against it. */
+function planRate(mean, gust) {
+  const s = { fiveFrom: 15, fiveTo: 22, noneFrom: 32, allow: 5 };
+  const pts = [[9, 0], [11, 1], [15, 5], [22, 5], [23, 4], [25, 4], [32, 0]];
+  const ws = (x) => { if (x <= 9) return 0; for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; if (x <= x1) return y0 + ((x - x0) / (x1 - x0)) * (y1 - y0); } return 0; };
+  const floor = 11, ride = mean >= floor || gust <= mean ? mean : Math.min(floor, mean + 0.3 * Math.min(gust - mean, mean));
+  const wind = ws(ride), g = gust - s.allow, gs = g > s.fiveTo ? ws(g) : 5, potential = Math.round(wind);
+  if (gs < wind && Math.round(gs) === 0) return { stars: 0, lost: 0 };
+  const stars = Math.max(0, Math.min(potential, Math.round(Math.min(wind, gs))));
+  return { stars, lost: potential - stars };
+}
+
+/* ---- Glyphs ---- */
+const SC = ["", "#e28bb3", "#d2609a", "#bd3d84", "#a01f6c", "#7c0f55"];
+const INK_ON = ["", "#1a1d21", "#1a1d21", "#fff", "#fff", "#fff"];
+const STAR_PATH = "M5 .6l1.3 2.9 3.1.3-2.4 2.1.7 3.1L5 7.4 2.3 9l.7-3.1L.6 3.8l3.1-.3z";
+
+/* ======================================================================
+   The wizard's steps
+   ====================================================================== */
+const STEPS = [
+  { id: "you", title: "About you", sub: "Your weight, and the units you read the wind in." },
+  { id: "wind", title: "What wind suits you?", sub: "Drag the handles to the wind you like. The stars under them follow." },
+  { id: "shore", title: "Configure stars based on wind direction", sub: "Drag a dot in to take stars off for that wind." },
+  { id: "upwind", title: "Can you ride upwind?", sub: "Pick the nearest answer, then set the two angles." },
+];
+const q = new URLSearchParams(location.search);
+const UI = {
+  step: Math.max(0, STEPS.findIndex((s) => s.id === q.get("step"))),
+  device: q.get("device") === "phone" ? "phone" : "desktop",
+};
+if (!q.get("step")) UI.step = 1;
+
+/* ---- 1. About you: weight and units, as the wizard has them ---- */
+const UNITS = ["kn", "m/s", "km/h", "mph", "Force"];
+let units = "kn";
+function youStep() {
+  return `<div class="cw-rows">
+    <div class="cw-row"><span class="cw-kick">Weight</span>
+      <span class="cw-stepper"><button class="btn icon" data-weight="-5" aria-label="Lighter">−</button><output>${weight}<small>kg</small></output><button class="btn icon" data-weight="5" aria-label="Heavier">+</button></span></div>
+    <div class="cw-row"><span class="cw-kick">Units</span>
+      <span class="seg" role="group" aria-label="Units">${UNITS.map((u) => `<button data-units="${u}" aria-pressed="${u === units}">${u}</button>`).join("")}</span></div>
+  </div>`;
+}
+
+/* ---- 2. What wind suits you? ---- */
+const pc = (kn) => (Math.min(kn, SCALE_TO) / SCALE_TO) * 100;
+const HANDLE_NAMES = ["Too light below", "Sweet spot from", "Sweet spot to", "Too much, in gusts"];
+function windStep() {
+  const w = S.wind;
+  const ticks = []; for (let k = 5; k <= SCALE_TO; k += 5) ticks.push(k);
+  // The stars the four handles make, whole stars by steady wind, a run of one colour at a time.
+  const runs = [];
+  for (let k = 0; k <= SCALE_TO; k++) {
+    const n = Math.round(windStars(k, w));
+    if (runs.length && runs.at(-1).n === n) runs.at(-1).to = k; else runs.push({ n, from: k, to: k });
+  }
+  const strip = runs.filter((r) => r.n).map((r) => {
+    const l = pc(Math.max(0, r.from - .5)), rr = pc(Math.min(SCALE_TO, r.to + .5));
+    return `<i style="left:${l}%;width:${rr - l}%;background:${SC[r.n]};color:${INK_ON[r.n]}">${r.n}</i>`;
+  }).join("");
+  const star = `<svg class="star" viewBox="-.5 -.5 11 11" aria-hidden="true"><path d="${STAR_PATH}" fill="${SC[5]}" stroke="#1a1d21" stroke-opacity=".55"/></svg>`;
+  return `
+    <div class="cw-range" id="range">
+      <span class="cw-rlab" data-lab="light">Too light</span>
+      <span class="cw-rlab is-mid" style="left:${(pc(w.sweetLow) + pc(w.sweetHigh)) / 2}%">Sweet spot</span>
+      <span class="cw-rlab is-top" data-lab="much">Too much, in gusts</span>
+      <div class="cw-track">
+        <i class="cw-zone is-ok" style="left:${pc(w.min)}%;width:${pc(w.sweetLow) - pc(w.min)}%"></i>
+        <i class="cw-zone is-sweet" style="left:${pc(w.sweetLow)}%;width:${pc(w.sweetHigh) - pc(w.sweetLow)}%"></i>
+        <i class="cw-zone is-ok" style="left:${pc(w.sweetHigh)}%;width:${pc(w.max) - pc(w.sweetHigh)}%"></i>
+        <i class="cw-zone is-over" style="left:${pc(w.max)}%;right:0"></i>
+      </div>
+      ${WIND_KEYS.map((k, i) => `<span class="cw-knob${i === 3 ? " is-top" : ""}" role="slider" tabindex="0" data-knob="${k}" aria-label="${HANDLE_NAMES[i]}" aria-valuemin="2" aria-valuemax="${WIND_TOP}" aria-valuenow="${w[k]}" aria-valuetext="${w[k]} kn" style="left:${pc(w[k])}%">${w[k]}</span>`).join("")}
+      <div class="strip" id="strip" aria-label="Your stars by steady wind">${star}${strip}<span class="none" data-lab="none">no stars past here</span></div>
+      <div class="cw-ticks" aria-hidden="true">${ticks.map((k, i) => `<span style="left:${pc(k)}%" data-odd="${(ticks.length - 1 - i) % 2}">${k}${k === SCALE_TO ? " kn" : ""}</span>`).join("")}</div>
+    </div>`;
+}
+
+/* ---- 3. Stars by wind direction: the web ---- */
+const WEB_DIRS = [
+  { key: "offshore", at: [0] }, { key: "crossOff", at: [50, -50] }, { key: "cross", at: [90, -90] },
+  { key: "crossOn", at: [130, -130] }, { key: "onshore", at: [180] },
+];
+const WEB_R = 100;
+const polar = (a, r) => [r * Math.sin((a * Math.PI) / 180), -r * Math.cos((a * Math.PI) / 180)];
+const webRadius = (off) => WEB_R * (1 - off / 5);
+const offAt = (x, y) => (1 - Math.min(Math.hypot(x, y), WEB_R) / WEB_R) * 5;
+const SPOKES = WEB_DIRS.flatMap((d) => d.at.map((a) => ({ key: d.key, a })));
+const RING = [...SPOKES].sort((p, q) => ((p.a + 360) % 360) - ((q.a + 360) % 360));
+const f1 = (n) => n.toFixed(1);
+const DIRECTION_NAME = { onshore: "Onshore", crossOn: "Cross-onshore", cross: "Cross-shore", crossOff: "Cross-offshore", offshore: "Offshore" };
+const DIRECTION_SHORT = { onshore: "ON", crossOn: "X-ON", cross: "CROSS", crossOff: "X-OFF", offshore: "OFF" };
+const DIRECTION_LINE = {
+  onshore: "Blows straight in. Choppy out, but it brings you back.",
+  crossOn: "In at an angle. The easiest wind to learn in.",
+  cross: "Along the beach. Ideal for most riders.",
+  crossOff: "Out at an angle. You drift away from the beach.",
+  offshore: "We don't recommend going out in an offshore wind.",
+};
+const SHORE_ORDER = ["onshore", "crossOn", "cross", "crossOff", "offshore"];
+const locked = (key) => key === "offshore";
+const costLabel = (off) => (off >= NEVER ? "never" : off <= 0 ? "no cost" : `−${off}★`);
+const LOCK = `<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2.5" y="5.5" width="7" height="5" rx="1" fill="#bf3125"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke="#bf3125" stroke-width="1.3"/></svg>`;
+
+function shoreStep() {
+  const off = S.off, R = WEB_R;
+  const arrow = (a) => {
+    const [tx, ty] = polar(a, R + 1), [hx, hy] = polar(a, R + 12), [lx, ly] = polar(a - 3.5, R + 7), [rx, ry] = polar(a + 3.5, R + 7);
+    return `M${f1(tx)} ${f1(ty)}L${f1(hx)} ${f1(hy)}M${f1(lx)} ${f1(ly)}L${f1(hx)} ${f1(hy)}L${f1(rx)} ${f1(ry)}`;
+  };
+  let g = `<rect class="cw-web-sea" x="-158" y="-140" width="316" height="140"/><rect class="cw-web-land" x="-158" y="0" width="316" height="144"/>
+    <line class="cw-web-beach" x1="-158" x2="158" y1="0" y2="0"/>
+    <text class="cw-web-word" x="-150" y="-128">SEA</text><text class="cw-web-word" x="-150" y="138">LAND</text>
+    <circle class="cw-web-rim" r="${R}"/>${[1, 2, 3, 4].map((n) => `<circle class="cw-web-ring" r="${webRadius(n)}"/>`).join("")}
+    <text class="cw-web-step" x="4" y="${-R + 10}">0★</text><text class="cw-web-step" x="4" y="${f1(-webRadius(2) + 9)}">−2★</text>`;
+  for (const { key, a } of SPOKES) {
+    const [x, y] = polar(a, R), danger = key === "offshore" || key === "crossOff", side = Math.abs(a) === 90;
+    const [lx, ly] = polar(a, side ? R + 4 : R + 19);
+    g += `<line class="cw-web-spoke" x2="${f1(x)}" y2="${f1(y)}"/><path class="cw-web-arrow${danger ? " is-danger" : ""}" d="${arrow(a)}"/>
+      <text class="cw-web-name${danger ? " is-danger" : ""}" x="${f1(lx)}" y="${f1(side ? 14 : ly + 3)}" text-anchor="${a === 90 ? "start" : a === -90 ? "end" : "middle"}">${DIRECTION_SHORT[key]}</text>`;
+  }
+  g += `<polygon class="cw-web-shape" points="${RING.map(({ key, a }) => polar(a, webRadius(off[key])).map(f1).join(",")).join(" ")}"/>`;
+  g += `<circle class="cw-web-never" r="9"/><text class="cw-web-never-word" y="2.2" text-anchor="middle">NEVER</text>`;
+  for (const { key, a } of SPOKES) {
+    const [x, y] = polar(a, webRadius(off[key])), first = WEB_DIRS.find((d) => d.key === key).at[0] === a;
+    const lock = locked(key), never = off[key] >= NEVER;
+    const dot = `<circle class="cw-dot-hit" cx="${f1(x)}" cy="${f1(y)}" r="14"/><circle class="cw-dot-ring" cx="${f1(x)}" cy="${f1(y)}" r="10"/>
+      <circle class="cw-dot-face${never ? " is-never" : ""}" cx="${f1(x)}" cy="${f1(y)}" r="6.5"/>`;
+    g += first
+      ? `<g class="cw-dot${lock ? " is-locked" : ""}" data-dot="${key}" tabindex="${lock ? -1 : 0}" role="slider" aria-label="${DIRECTION_NAME[key]}: stars taken off" aria-valuemin="0" aria-valuemax="${NEVER}" aria-valuenow="${off[key]}" aria-valuetext="${costLabel(off[key])}"${lock ? ' aria-readonly="true"' : ""}>${dot}</g>`
+      : `<g class="cw-dot${lock ? " is-locked" : ""}" data-dot="${key}" aria-hidden="true">${dot}</g>`;
+  }
+  g += `<text class="cw-web-word" x="0" y="138" text-anchor="middle">ARROWS: THE WAY THE WIND BLOWS</text>`;
+  return `<div class="cw-shore">
+    <svg class="cw-web" id="web" viewBox="-158 -140 316 284" role="group" aria-label="Stars by wind direction">${g}</svg>
+    <ul class="cw-dirs">${SHORE_ORDER.map((key) => `<li class="${locked(key) ? "is-locked" : ""}"><b>${DIRECTION_NAME[key]}</b>
+      <span class="cw-cost${off[key] >= NEVER ? " is-never" : ""}">${costLabel(off[key])}${locked(key) ? LOCK : ""}</span>
+      <small>${DIRECTION_LINE[key]}</small></li>`).join("")}</ul>
+  </div>`;
+}
+
+/* ---- 4. Can you ride upwind? ---- */
+const UP_ANSWERS = [
+  { into: 0, name: "Not yet", line: "I can ride straight across the wind and hold my ground." },
+  { into: 5, name: "A little", line: "I gain a bit of ground on each tack." },
+  { into: 20, name: "Yes", line: "I can work my way upwind." },
+];
+const UP = { cx: 150, cy: 168, r: 118, vx: -36, vw: 372, vh: 310 };
+function upwindStep() {
+  const { cx, cy, r } = UP, up = 90 - S.into, deep = 90 + S.down;
+  const p = (a, rr) => [cx + rr * Math.sin((a * Math.PI) / 180), cy - rr * Math.cos((a * Math.PI) / 180)];
+  const xy = (a, rr) => p(a, rr).map((n) => n.toFixed(1)).join(" ");
+  const sector = (a1, a2, rr) => `M${cx} ${cy}L${xy(a1, rr)}A${rr} ${rr} 0 ${a2 - a1 > 180 ? 1 : 0} 1 ${xy(a2, rr)}Z`;
+  const handle = (side, kind) => {
+    const [x, y] = p(side * (kind === "into" ? up : deep), r);
+    return `<g class="cw-up-edge${kind === "down" ? " is-down" : ""}" data-edge="${kind}"><circle cx="${x}" cy="${y}" r="16" class="cw-up-edge-hit"/><circle cx="${x}" cy="${y}" r="7" class="cw-up-edge-dot"/></g>`;
+  };
+  const angle = (side) => {
+    let s = "";
+    if (S.into) {
+      const rr = r * .82, [x1, y1] = p(side * 90, rr), [x2, y2] = p(side * up, rr), [lx, ly] = p(side * (up - 9), r + 14);
+      s += `<path class="cw-up-angle" d="M${x1.toFixed(1)} ${y1.toFixed(1)}A${rr} ${rr} 0 0 ${side > 0 ? 0 : 1} ${x2.toFixed(1)} ${y2.toFixed(1)}"/>
+        <text class="cw-up-deg" x="${lx}" y="${ly + 4}" text-anchor="${side > 0 ? "start" : "end"}">${S.into}°</text>`;
+    }
+    if (S.down) {
+      const rr = r * .82, [x1, y1] = p(side * 90, rr), [x2, y2] = p(side * deep, rr), [lx, ly] = p(side * (deep + 9), r + 14);
+      s += `<path class="cw-up-angle is-down" d="M${x1.toFixed(1)} ${y1.toFixed(1)}A${rr} ${rr} 0 0 ${side > 0 ? 1 : 0} ${x2.toFixed(1)} ${y2.toFixed(1)}"/>
+        <text class="cw-up-deg is-down" x="${lx}" y="${ly + 8}" text-anchor="${side > 0 ? "start" : "end"}">${S.down}°</text>`;
+    }
+    return s;
+  };
+  const rideLab = (side) => {
+    const mid = side * (up + deep) / 2, wide = deep - up >= 30;
+    const [x, y] = p(mid, wide ? r * .6 : r * .56);
+    return `<text class="cw-lab is-strong${wide ? "" : " halo"}" x="${x.toFixed(1)}" y="${(y + (wide ? 3 : side ? -8 : 3)).toFixed(1)}" text-anchor="middle">RIDE</text>`;
+  };
+  return `<div class="seg is-wide" role="group" aria-label="Can you ride upwind?">${UP_ANSWERS.map((a) =>
+      `<button data-into="${a.into}" aria-pressed="${S.into === a.into}" title="${a.line}">${a.name}</button>`).join("")}</div>
+  <div class="cw-up">
+    <svg class="cw-up-pic" id="uppic" viewBox="${UP.vx} 0 ${UP.vw} ${UP.vh}" aria-hidden="true">
+      <defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line class="cw-hatch" x1="0" y1="0" x2="0" y2="5"/></pattern></defs>
+      <circle class="cw-up-face" cx="${cx}" cy="${cy}" r="${r}"/>
+      <path class="cw-up-nogo" d="${sector(-up, up, r)}" style="fill:url(#hatch)"/>
+      ${deep - up > .5 ? `<path class="cw-up-course" d="${sector(up, deep, r)}"/><path class="cw-up-course" d="${sector(-deep, -up, r)}"/>`
+        : `<path class="cw-up-course" d="M${cx} ${cy}L${xy(up, r)}M${cx} ${cy}L${xy(-up, r)}"/>`}
+      <path class="cw-up-drift" d="${sector(deep, 360 - deep, r)}"/>
+      <line class="cw-up-across" x1="${cx - r - 8}" x2="${cx + r + 8}" y1="${cy}" y2="${cy}"/>
+      <text class="cw-lab" x="${cx + r + 10}" y="${cy + 3}">ACROSS</text>
+      <text class="cw-lab" x="${cx - r - 10}" y="${cy + 3}" text-anchor="end">ACROSS</text>
+      <text class="cw-lab is-strong" x="${cx}" y="${cy - r * .5}" text-anchor="middle">CAN’T GO</text>
+      ${rideLab(1)}${rideLab(-1)}
+      <text class="cw-lab is-strong" x="${cx}" y="${cy + r * .55}" text-anchor="middle">DRIFT</text>
+      <text class="cw-lab" x="${cx}" y="${cy + r * .55 + 12}" text-anchor="middle">YOU LOSE GROUND</text>
+      ${angle(1)}${angle(-1)}
+      <path class="cw-up-wind" d="M${cx} 6V${cy - r - 12}"/>
+      <path class="cw-up-wind-head" d="M${cx - 6} ${cy - r - 14}L${cx + 6} ${cy - r - 14}L${cx} ${cy - r - 3}Z"/>
+      <text class="cw-lab is-strong" x="${cx + 10}" y="18">WIND</text>
+      <path class="cw-up-board" d="M${cx} ${cy - 12}C${cx + 5} ${cy - 4} ${cx + 5} ${cy + 8} ${cx} ${cy + 12}C${cx - 5} ${cy + 8} ${cx - 5} ${cy - 4} ${cx} ${cy - 12}Z"/>
+      ${handle(1, "down")}${handle(-1, "down")}${handle(1, "into")}${handle(-1, "into")}
+    </svg>
+    <div class="cw-angles">
+      <div><div class="cw-into"><output>${S.into}°</output><span>into the wind</span></div>
+      ${slider("into", S.into, UPWIND_MAX, "Degrees into the wind", "Straight across", `${UPWIND_MAX}° into it`)}</div>
+      <div><div class="cw-into"><output>${S.down}°</output><span>below across</span></div>
+      ${slider("down", S.down, DOWN_MAX, "Degrees below straight across", "Straight across", `${DOWN_MAX}° downwind`, true)}</div>
+    </div>
+  </div>`;
+}
+function slider(key, value, max, label, from, to, second = false) {
+  const left = `${(value / max) * 100}%`;
+  return `<div class="cw-slide${second ? " is-second" : ""}"><div class="cw-slide-track" data-slide="${key}">
+    <i class="cw-slide-fill" style="width:${left}"></i>
+    <span class="cw-slide-knob" role="slider" tabindex="0" data-slide-knob="${key}" aria-label="${label}" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${value}" aria-valuetext="${value}°" style="left:${left}"></span>
+  </div><div class="cw-slide-ends"><span>${from}</span><span>${to}</span></div></div>`;
+}
+
+/* ======================================================================
+   Notes for the owner, by step
+   ====================================================================== */
+const NOTES = {
+  you: `<h3>What changed</h3><ul>
+    <li><b>Weight and units</b>, as the wizard has them. No levels.</li>
+    <li><b>No wing sizes in the wizard.</b> Weight drives them elsewhere on the site, later.</li></ul>`,
+  wind: `<h3>What changed</h3><ul>
+    <li><b>One axis</b>: the track, then the stars it makes right under it (read-only, steady wind), then the knots once.</li>
+    <li>The zones are named in place; no legend row. "No stars past here" sits under the hatching.</li>
+    <li><b>No gust setting.</b> Ours: 11 · 15–22 · 35.</li></ul>`,
+  shore: `<h3>What changed</h3><ul>
+    <li><b>New title</b>, and one line to say what to do.</li>
+    <li><b>Compact rows</b> the web's height: the name and its cost on one line, a short line under it.</li>
+    <li><b>Offshore: never, locked.</b> Cross-offshore −1. The rest cost nothing.</li></ul>`,
+  upwind: `<h3>What changed</h3><ul>
+    <li><b>The three answers</b> are one segmented choice across the top.</li>
+    <li><b>The picture left, the two angles right.</b> No legend: the picture names CAN'T GO, RIDE and DRIFT.</li>
+    <li>Default: straight across, the course to 10° below. It moves no stars.</li></ul>`,
+};
+
+/* ======================================================================
+   Drawing
+   ====================================================================== */
+const cw = document.getElementById("cw");
+function render() {
+  const st = STEPS[UI.step];
+  const own = JSON.stringify(S) !== JSON.stringify(OURS);   // the rating only: weight and units are not ours to reset
+  const body = { you: youStep, wind: windStep, shore: shoreStep, upwind: upwindStep }[st.id]();
+  const active = document.activeElement;
+  const refocus = active && (active.dataset.knob || active.dataset.dot || active.dataset.slideKnob)
+    ? (active.dataset.knob ? `[data-knob="${active.dataset.knob}"]` : active.dataset.dot ? `[data-dot="${active.dataset.dot}"][role=slider]` : `[data-slide-knob="${active.dataset.slideKnob}"]`) : null;
+  cw.innerHTML = `
+    <div class="cw-head"><h2 id="cw-title">${st.title}</h2><span class="cw-count">${UI.step + 1} / 6</span><button class="cw-x" aria-label="Close">×</button></div>
+    <div class="cw-prog" role="progressbar" aria-valuemin="1" aria-valuemax="6" aria-valuenow="${UI.step + 1}">${[0, 1, 2, 3, 4, 5].map((i) => `<i class="${i <= UI.step ? "is-done" : ""}"></i>`).join("")}</div>
+    <div class="cw-body" data-step="${st.id}">${st.sub ? `<p class="cw-sub">${st.sub}</p>` : ""}${body}</div>
+    <div class="cw-foot">
+      <button class="btn quiet">Skip</button>
+      ${own ? `<button class="btn quiet" id="reset">Reset to ours</button>` : ""}
+      <span class="cw-sp"></span>
+      ${UI.step > 0 ? `<button class="btn pill" data-step="-1">Back</button>` : ""}
+      <button class="btn primary" data-step="1" ${UI.step === STEPS.length - 1 ? 'title="Then your spots and All set, as today"' : ""}>Next</button>
+    </div>`;
+  if (st.id === "wind") placeLabels();
+  if (refocus) cw.querySelector(refocus)?.focus();
+  document.querySelectorAll("[data-go]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.go === st.id));
+  document.querySelectorAll("[data-device]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.device === UI.device));
+  document.getElementById("stage").classList.toggle("phone", UI.device === "phone");
+  document.getElementById("notes").innerHTML = NOTES[st.id];
+}
+/** The range's end labels: too light ends short of its handle, too much starts past its own. */
+function placeLabels() {
+  const range = document.getElementById("range"), W = range.clientWidth, x = (kn) => (pc(kn) / 100) * W;
+  const light = range.querySelector('[data-lab="light"]'), much = range.querySelector('[data-lab="much"]');
+  light.style.left = Math.max(0, x(S.wind.min) - 24 - light.offsetWidth) + "px";
+  much.style.left = Math.min(x(S.wind.max) + 24, W - much.offsetWidth) + "px";
+  const none = range.querySelector('[data-lab="none"]');
+  none.style.left = Math.min(x(S.wind.max) + 6, W - none.offsetWidth) + "px";
+  // A run in the strip shows its figure where there is room for it.
+  for (const i of document.querySelectorAll("#strip i")) if (i.offsetWidth < 10) i.textContent = "";
+}
+
+/* ---- Moving things ---- */
+function moveWind(key, kn) {
+  const i = WIND_KEYS.indexOf(key), w = S.wind;
+  const below = i > 0 ? w[WIND_KEYS[i - 1]] + 1 : 2;
+  const above = i < 3 ? w[WIND_KEYS[i + 1]] - 1 : WIND_TOP;
+  const v = Math.max(below, Math.min(above, Math.round(kn)));
+  if (v === w[key]) return;
+  S.wind = { ...w, [key]: v };
+  render();
+}
+function setOff(key, v) {
+  if (locked(key)) return;
+  v = Math.max(0, Math.min(NEVER, Math.round(v)));
+  if (v === S.off[key]) return;
+  S.off = { ...S.off, [key]: v };
+  render();
+}
+function setAngle(key, v) {
+  v = Math.max(0, Math.min(key === "into" ? UPWIND_MAX : DOWN_MAX, Math.round(v)));
+  if (v === S[key]) return;
+  S[key] = v;
+  render();
+}
+
+/*
+ * A drag outlives the elements it began on (each move draws the step again),
+ * so the pointer is held by the stage, which stays, and every move reads the
+ * fresh drawing's geometry.
+ */
+let drag = null;
+const stage = document.getElementById("stage");
+cw.addEventListener("pointerdown", (e) => {
+  const knob = e.target.closest("[data-knob]"), dot = e.target.closest("[data-dot]"), edge = e.target.closest("[data-edge]"), track = e.target.closest("[data-slide]");
+  if (knob) drag = { kind: "wind", key: knob.dataset.knob };
+  else if (dot) { if (locked(dot.dataset.dot)) return; drag = { kind: "dot", key: dot.dataset.dot }; }
+  else if (edge) drag = { kind: "edge", key: edge.dataset.edge };
+  else if (track) drag = { kind: "slide", key: track.dataset.slide };
+  else return;
+  e.preventDefault();
+  stage.setPointerCapture(e.pointerId);
+  dragTo(e);
+});
+stage.addEventListener("pointermove", (e) => { if (drag) dragTo(e); });
+const end = () => (drag = null);
+stage.addEventListener("pointerup", end);
+stage.addEventListener("pointercancel", end);
+function dragTo(e) {
+  if (drag.kind === "wind") {
+    const box = document.getElementById("range").getBoundingClientRect();
+    moveWind(drag.key, ((e.clientX - box.left) / box.width) * SCALE_TO);
+  } else if (drag.kind === "dot") {
+    const el = document.getElementById("web"), pt = el.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(el.getScreenCTM().inverse());
+    setOff(drag.key, offAt(p.x, p.y));
+  } else if (drag.kind === "edge") {
+    const box = document.getElementById("uppic").getBoundingClientRect(), k = UP.vw / box.width;
+    const x = Math.abs((e.clientX - box.left) * k + UP.vx - UP.cx), y = (e.clientY - box.top) * k - UP.cy;
+    const off = (Math.atan2(x, -y) * 180) / Math.PI;          // degrees off the wind, 0 to 180
+    if (drag.key === "into") setAngle("into", 90 - off); else setAngle("down", off - 90);
+  } else {
+    const track = cw.querySelector(`[data-slide="${drag.key}"]`).getBoundingClientRect();
+    setAngle(drag.key, ((e.clientX - track.left) / track.width) * (drag.key === "into" ? UPWIND_MAX : DOWN_MAX));
+  }
+}
+
+/* ---- Keys, clicks ---- */
+cw.addEventListener("keydown", (e) => {
+  const by = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, PageDown: -5, PageUp: 5 }[e.key];
+  if (!by) return;
+  const t = e.target;
+  if (t.dataset.knob) { e.preventDefault(); moveWind(t.dataset.knob, S.wind[t.dataset.knob] + by); }
+  else if (t.dataset.dot) { e.preventDefault(); setOff(t.dataset.dot, S.off[t.dataset.dot] + Math.sign(by)); }
+  else if (t.dataset.slideKnob) { e.preventDefault(); setAngle(t.dataset.slideKnob, S[t.dataset.slideKnob] + by); }
+});
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  if (t.dataset.go) { UI.step = STEPS.findIndex((s) => s.id === t.dataset.go); render(); remember(); }
+  else if (t.dataset.device) { UI.device = t.dataset.device; render(); remember(); }
+  else if (t.dataset.step) { UI.step = Math.max(0, Math.min(STEPS.length - 1, UI.step + +t.dataset.step)); render(); remember(); }
+  else if (t.dataset.units) { units = t.dataset.units; render(); }
+  else if (t.dataset.weight) { weight = Math.max(40, Math.min(130, weight + +t.dataset.weight)); render(); }
+  else if (t.dataset.into !== undefined) setAngle("into", +t.dataset.into);
+  else if (t.id === "reset") { S = clone(OURS); render(); }
+});
+function remember() {
+  const p = new URLSearchParams();
+  p.set("step", STEPS[UI.step].id);
+  if (UI.device !== "desktop") p.set("device", UI.device);
+  history.replaceState(null, "", `?${p}`);
+}
+addEventListener("resize", () => STEPS[UI.step].id === "wind" && placeLabels());
+
+/* ---- The check against the agreed table ---- */
+(function check() {
+  const hours = [[15, 25], [20, 25], [20, 30], [25, 30], [30, 30], [30, 35], [22, 35], [28, 35], [20, 36], [10, 14]];
+  const cell = (r) => `${r.stars}${r.lost ? ` +${r.lost}` : ""}`;
+  let h = `<table><tr><th>Hour</th>${hours.map(([m, g]) => `<th>${m} g${g}</th>`).join("")}</tr>`;
+  h += `<tr><th>Agreed</th>${hours.map(([m, g]) => `<td>${cell(planRate(m, g))}</td>`).join("")}</tr>`;
+  h += `<tr><th>Here</th>${hours.map(([m, g]) => { const a = planRate(m, g), b = rate(m, g, OURS); return `<td class="${a.stars !== b.stars || a.lost !== b.lost ? "diff" : ""}">${cell(b)}</td>`; }).join("")}</tr></table>`;
+  const ks = []; for (let k = 9; k <= 33; k++) ks.push(k);
+  h += `<table class="steady" style="margin-top:10px"><tr><th>Steady kn</th>${ks.map((k) => `<th>${k}</th>`).join("")}</tr>`;
+  h += `<tr><th>Agreed</th>${ks.map((k) => `<td>${planRate(k, k).stars}</td>`).join("")}</tr>`;
+  h += `<tr><th>Here</th>${ks.map((k) => { const b = rate(k, k, OURS).stars; return `<td class="${b !== planRate(k, k).stars ? "diff" : ""}">${b}</td>`; }).join("")}</tr></table>`;
+  document.getElementById("check").innerHTML = h + `<p class="cw-note" style="margin-top:6px">Solid stars, then +outlined. Cross-shore, no warning.</p>`;
+})();
+
+render();
+document.fonts && document.fonts.ready.then(() => STEPS[UI.step].id === "wind" && placeLabels());
+</script>
+</body>
+</html>
