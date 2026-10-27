@@ -7,9 +7,11 @@
  * from the rating itself (force5/src/stars.ts) rather than restated.
  *
  * Everything is held in knots, as the rating is, and shown in the rider's
- * unit; a handle snaps to a whole unit (half a metre per second), and is kept
- * to the tenth of a knot, which shows again as the figure it was set to. In
- * Force a handle snaps to a whole force instead: see `moveWindForce`.
+ * unit as a whole figure, the way a forecast in that unit reads ("6 m/s",
+ * not "5.7"); a handle snaps to a whole unit, and is kept to the tenth of a
+ * knot, which shows again as the figure it was set to. A number the rider
+ * has not moved is kept as it was, and only shown rounded. In Force a handle
+ * snaps to a whole force instead: see `moveWindForce`.
  */
 import {
   CUSTOM_LIMITS,
@@ -55,7 +57,7 @@ const STEPS: Record<Units, { step: number; dp: number; tick: number }> = {
   kn: { step: 1, dp: 0, tick: 10 },
   mph: { step: 1, dp: 0, tick: 10 },
   "km/h": { step: 1, dp: 0, tick: 20 },
-  "m/s": { step: 0.5, dp: 1, tick: 5 },
+  "m/s": { step: 1, dp: 0, tick: 5 },
   bft: { step: 1, dp: 0, tick: 10 },
 };
 
@@ -68,7 +70,7 @@ export function unitScale(units: Units): UnitScale {
   };
 }
 
-/** Knots as the rider reads them: "15", or "7.5" in metres per second, or the force, "5". */
+/** Knots as the rider reads them: "15", or "8" in metres per second, or the force, "5". */
 export const shown = (kn: number, unit: UnitScale) =>
   unit.force ? String(beaufort(kn)) : (kn * unit.perKn).toFixed(unit.dp);
 
@@ -136,6 +138,42 @@ export function moveWind(
     Math.max(below, 2 + i),
     Math.min(above, WIND_TOP - (3 - i)),
   );
+  return safe({ ...rating, wind: { ...rating.wind, [key]: value } });
+}
+
+/**
+ * One handle moved in the rider's unit (not Force): to a whole figure in it,
+ * the nearest to `kn`, and never closer to a neighbour than the knot
+ * `moveWind` keeps, rounded out to the next whole figure, so no two handles
+ * ever show the same figure ("6 m/s" twice). The neighbours are read as they
+ * stand, whole or not.
+ */
+export function moveWindIn(
+  rating: CustomRating,
+  key: WindKey,
+  kn: number,
+  units: Units,
+): CustomRating {
+  if (units === "bft") return moveWindForce(rating, key, kn);
+  const { perKn } = unitScale(units);
+  const i = WIND_KEYS.indexOf(key);
+  const { apartKn } = CUSTOM_LIMITS;
+  // The same bounds as moveWind's, in knots, then inward to whole figures; a
+  // hair's tolerance so a bound already on a whole figure stays on it.
+  const below = Math.max(
+    i > 0 ? rating.wind[WIND_KEYS[i - 1]] + apartKn : 2 + i,
+    2 + i,
+  );
+  const above = Math.min(
+    i < 3 ? rating.wind[WIND_KEYS[i + 1]] - apartKn : WIND_TOP - (3 - i),
+    WIND_TOP - (3 - i),
+  );
+  const low = Math.ceil(below * perKn - 1e-6);
+  const high = Math.floor(above * perKn + 1e-6);
+  // No whole figure fits between the neighbours: the handle stays put.
+  if (low > high) return rating;
+  const figure = clamp(Math.round(kn * perKn), low, high);
+  const value = Math.round((figure / perKn) * 10) / 10;
   return safe({ ...rating, wind: { ...rating.wind, [key]: value } });
 }
 

@@ -21,6 +21,7 @@ import {
   knotsOf,
   moveWind,
   moveWindForce,
+  moveWindIn,
   offAt,
   polar,
   sliceAt,
@@ -58,18 +59,98 @@ describe("units", () => {
     }
   });
   it("snaps a figure between steps to the nearest", () => {
-    expect(knotsOf(7.3, unitScale("m/s"))).toBe(knotsOf(7.5, unitScale("m/s")));
+    expect(knotsOf(7.3, unitScale("m/s"))).toBe(knotsOf(7, unitScale("m/s")));
     expect(knotsOf(14.6, unitScale("kn"))).toBe(15);
     expect(shown(15, unitScale("mph"))).toBe("17");
     expect(shown(15, unitScale("km/h"))).toBe("28");
-    expect(shown(15, unitScale("m/s"))).toBe("7.7");
+    expect(shown(15, unitScale("m/s"))).toBe("8");
+  });
+  it("shows ours as whole figures in every unit, as a forecast in it reads (issue 231)", () => {
+    const figures = (units: (typeof UNITS)[number]["id"]) =>
+      [
+        OURS.wind.min,
+        OURS.wind.sweetLow,
+        OURS.wind.sweetHigh,
+        OURS.wind.max,
+      ].map((kn) => shown(kn, unitScale(units)));
+    // Not 5.7, 7.7, 11.3 and 18.0.
+    expect(figures("m/s")).toEqual(["6", "8", "11", "18"]);
+    expect(figures("km/h")).toEqual(["20", "28", "41", "65"]);
+    expect(figures("mph")).toEqual(["13", "17", "25", "40"]);
+    expect(figures("kn")).toEqual(["11", "15", "22", "35"]);
+    expect(said(OURS.wind.min, unitScale("m/s"))).toBe("6 m/s");
   });
   it("steps a handle one unit at a time", () => {
     const mph = unitScale("mph");
     expect(shown(stepped(knotsOf(20, mph), 1, mph), mph)).toBe("21");
     expect(shown(stepped(knotsOf(20, mph), -1, mph), mph)).toBe("19");
     const ms = unitScale("m/s");
-    expect(shown(stepped(knotsOf(7.5, ms), 1, ms), ms)).toBe("8.0");
+    expect(shown(stepped(knotsOf(7, ms), 1, ms), ms)).toBe("8");
+    // From a number set in knots, a step is from the figure it shows.
+    expect(shown(stepped(OURS.wind.min, 1, ms), ms)).toBe("7");
+  });
+});
+
+describe("moveWindIn: a handle moved in the rider's unit", () => {
+  const ours = (): CustomRating => ({
+    ...OURS,
+    wind: { ...OURS.wind },
+    direction: { ...OURS.direction },
+  });
+  const nonForce = UNITS.filter((u) => u.id !== "bft").map((u) => u.id);
+  it("lands on a whole figure, and leaves the others as they were", () => {
+    for (const units of nonForce) {
+      const unit = unitScale(units);
+      for (let kn = 0; kn <= 50; kn += 0.37) {
+        const moved = moveWindIn(ours(), "sweetLow", kn, units);
+        const figure = moved.wind.sweetLow * unit.perKn;
+        // Kept to the tenth of a knot: within a tenth of a km/h of the figure.
+        expect(
+          Math.abs(figure - Math.round(figure)),
+          `${kn} kn in ${units}`,
+        ).toBeLessThan(0.1);
+        expect(moved.wind.min).toBe(OURS.wind.min);
+        expect(moved.wind.sweetHigh).toBe(OURS.wind.sweetHigh);
+        expect(moved.wind.max).toBe(OURS.wind.max);
+      }
+    }
+  });
+  it("stops on a whole figure short of a neighbour, never on the same figure", () => {
+    for (const units of nonForce) {
+      const unit = unitScale(units);
+      // Pushed as far down as it goes, onto too light (11 kn, "6" in m/s).
+      const moved = moveWindIn(ours(), "sweetLow", 0, units);
+      expect(moved.wind.sweetLow - moved.wind.min).toBeGreaterThanOrEqual(1);
+      expect(shown(moved.wind.sweetLow, unit)).not.toBe(
+        shown(moved.wind.min, unit),
+      );
+      expect(Number(shown(moved.wind.sweetLow, unit))).toBeCloseTo(
+        moved.wind.sweetLow * unit.perKn,
+        1,
+      );
+    }
+    // 11 kn is 5.66 m/s; a knot on is 6.17, so the next whole figure is 7.
+    expect(
+      shown(
+        moveWindIn(ours(), "sweetLow", 0, "m/s").wind.sweetLow,
+        unitScale("m/s"),
+      ),
+    ).toBe("7");
+  });
+  it("keeps the band's ends: 2 kn at the bottom, 40 kn at the top", () => {
+    for (const units of nonForce) {
+      expect(
+        moveWindIn(ours(), "min", 0, units).wind.min,
+      ).toBeGreaterThanOrEqual(2);
+      expect(moveWindIn(ours(), "max", 99, units).wind.max).toBeLessThanOrEqual(
+        WIND_TOP,
+      );
+    }
+  });
+  it("is moveWindForce in Force", () => {
+    expect(moveWindIn(ours(), "max", 30, "bft")).toEqual(
+      moveWindForce(ours(), "max", 30),
+    );
   });
 });
 

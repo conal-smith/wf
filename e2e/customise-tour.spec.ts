@@ -108,6 +108,16 @@ test("Settings holds the rider's settings on one page and saves them, and the li
     settings.getByRole("slider", { name: "Sweet spot to" }),
   ).toHaveAttribute("aria-valuetext", "22 kn");
   await expect(much).toHaveAttribute("aria-valuetext", "35 kn");
+  // In metres per second the four read as whole figures, 6 · 8–11 · 18,
+  // not the knots converted (5.7 · 7.7–11.3 · 18.0), and back in knots they
+  // are as they were.
+  const units = settings.getByRole("group", { name: "Units" });
+  await units.getByRole("button", { name: "m/s", exact: true }).click();
+  await expect(floor).toHaveAttribute("aria-valuetext", "6 m/s");
+  await expect(settings.locator(".st-knob")).toHaveText(["6", "8", "11", "18"]);
+  await units.getByRole("button", { name: "Knots", exact: true }).click();
+  await expect(floor).toHaveAttribute("aria-valuetext", "11 kn");
+  await expect(much).toHaveAttribute("aria-valuetext", "35 kn");
   await expect(settings.getByRole("group", { name: "Gusty wind" })).toHaveCount(
     0,
   );
