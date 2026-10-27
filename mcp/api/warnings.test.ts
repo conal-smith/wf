@@ -102,7 +102,8 @@ describe("get_spot_forecast's warnings", () => {
     ]);
     const orange = answer.warnings.items[0];
     expect(orange).toMatchObject({
-      id: "2.49.0.1.372.0.orange",
+      id: "w1",
+      cap_id: "2.49.0.1.372.0.orange",
       headline: "Status Orange - Wind warning for Dublin",
       onset: at(2),
       expiry: at(5),
@@ -128,6 +129,7 @@ describe("get_spot_forecast's warnings", () => {
           replaces_rating: boolean;
         } | null;
       }[];
+      warnings: { items: { id: string; cap_id: string }[] };
     }>(
       await getSpotForecast.run(
         { spot: "dollymount", hours: 7 },
@@ -138,16 +140,21 @@ describe("get_spot_forecast's warnings", () => {
       (Date.parse(h.time) - FIXTURE_NOW) / HOUR,
       h.warning?.level,
       h.warning?.replaces_rating,
-      h.warning?.ids.length,
+      h.warning?.ids,
+    ]);
+    // An hour names its warnings by their short ids in `warnings.items`.
+    expect(answer.warnings.items.map((w) => [w.id, w.cap_id])).toEqual([
+      ["w1", "2.49.0.1.372.0.orange"],
+      ["w2", "2.49.0.1.372.0.yellow"],
     ]);
     expect(marks).toEqual([
-      [0, "yellow", false, 1],
-      [1, "yellow", false, 1],
-      [2, "orange", true, 2],
-      [3, "orange", true, 2],
-      [4, "orange", true, 2],
-      [5, "yellow", false, 1],
-      [6, "yellow", false, 1],
+      [0, "yellow", false, ["w2"]],
+      [1, "yellow", false, ["w2"]],
+      [2, "orange", true, ["w1", "w2"]],
+      [3, "orange", true, ["w1", "w2"]],
+      [4, "orange", true, ["w1", "w2"]],
+      [5, "yellow", false, ["w2"]],
+      [6, "yellow", false, ["w2"]],
     ]);
   });
 
@@ -299,7 +306,7 @@ describe("find_wind under warnings", () => {
     const answer = value<{
       warnings: {
         status: string;
-        items: { id: string; areas: string[] }[];
+        items: { id: string; cap_id: string; areas: string[] }[];
         rule: string;
       };
       method: string;
@@ -316,9 +323,9 @@ describe("find_wind under warnings", () => {
       ),
     );
     expect(answer.warnings.status).toBe("current");
-    expect(answer.warnings.items.map((w) => w.id)).toEqual([
-      "2.49.0.1.372.0.orange",
-      "2.49.0.1.372.0.yellow",
+    expect(answer.warnings.items.map((w) => [w.id, w.cap_id])).toEqual([
+      ["w1", "2.49.0.1.372.0.orange"],
+      ["w2", "2.49.0.1.372.0.yellow"],
     ]);
     expect(answer.warnings.items[1].areas).toEqual([
       "Carlingford Lough to Howth Head",
@@ -326,7 +333,7 @@ describe("find_wind under warnings", () => {
       "Wicklow Head to Carnsore Point",
     ]);
     expect(answer.warnings.rule).toMatch(/orange or red/);
-    expect(answer.method).toMatch(/orange or red warning is never counted/);
+    expect(answer).not.toHaveProperty("method");
   });
 });
 
@@ -334,16 +341,17 @@ describe("list_spots' warnings", () => {
   it("names each spot's warnings and lists each warning once", async () => {
     const answer = value<{
       spots: { id: string; warnings?: string[] }[];
-      warnings: { items: { id: string }[] };
+      warnings: { items: { id: string; cap_id: string }[] };
     }>(await listSpots.run({}, deps([warning({}), yellowMarine])));
     const byId = new Map(answer.spots.map((s) => [s.id, s.warnings]));
-    expect(byId.get("dollymount")).toEqual([
-      "2.49.0.1.372.0.orange",
-      "2.49.0.1.372.0.yellow",
+    expect(answer.warnings.items).toEqual([
+      expect.objectContaining({ id: "w1", cap_id: "2.49.0.1.372.0.orange" }),
+      expect.objectContaining({ id: "w2", cap_id: "2.49.0.1.372.0.yellow" }),
     ]);
-    expect(byId.get("rosslare")).toEqual(["2.49.0.1.372.0.yellow"]);
+    // Each spot names its warnings by their short ids in this answer.
+    expect(byId.get("dollymount")).toEqual(["w1", "w2"]);
+    expect(byId.get("rosslare")).toEqual(["w2"]);
     expect(byId.get("brandon")).toBeUndefined();
-    expect(answer.warnings.items).toHaveLength(2);
   });
 });
 

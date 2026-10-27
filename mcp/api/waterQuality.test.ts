@@ -236,6 +236,7 @@ describe("find_wind under bathing water notices", () => {
           max_kn: 80,
           daylight_only: false,
           hours: 8,
+          explain: true,
         },
         deps(file()),
       ),

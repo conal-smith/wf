@@ -76,13 +76,15 @@ test("a spot page lists its bathing water notice, which stands in for the stars"
   await expect(items.first()).toHaveAttribute("data-water-notice", "replaces");
   await expect(items.first()).toContainText("Bathing is prohibited");
   await expect(items.first()).toContainText(
+    /From Mon 14 Sept?, expected to last 5 days, until lifted/i,
+  );
+  // The cause, the bathing water and the council's notice, folded under it.
+  await items.first().locator("summary").click();
+  await expect(items.first()).toContainText(
     "Water quality deteriorated due to suspected storm water overflow",
   );
   await expect(items.first()).toContainText(
-    /From Mon 14 Sept?, expected to last 5 days, until lifted/i,
-  );
-  await expect(items.first()).toContainText(
-    /Portmarnock, Velvet Strand Beach, 0\.2 km/i,
+    "Portmarnock, Velvet Strand Beach, 0.2 km away",
   );
   await expect(
     items.first().getByRole("link", { name: "The council’s notice" }),

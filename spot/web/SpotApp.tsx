@@ -85,7 +85,13 @@ import { WeekStrip } from "./WeekStrip";
 
 const styles = tv({
   slots: {
-    main: "flex flex-col gap-4 pt-4 pb-12 max-sm:pt-3",
+    main: "relative flex flex-col gap-4 pt-4 pb-12 max-sm:pt-3",
+    // Met Éireann's warnings and the bathing water notices. Where the page
+    // has a margin as wide as the list, they stand in it, beside the name and
+    // the picture: there they add nothing above the forecast, which then
+    // starts where it would with none at all.
+    notices:
+      "flex flex-col gap-4 xl:absolute xl:top-4 xl:left-full xl:ml-6 xl:w-56",
     // The facts are kept apart by points (Dot), so the gap between them is
     // the point's own spacing either side.
     meta: [
@@ -473,8 +479,15 @@ function SpotPage({
           </span>
         )}
       </p>
-      <WarningsPanel warnings={forecast.warnings} />
-      <WaterQualityPanel water={forecast.water_quality} />
+      {((forecast.warnings.status === "current" &&
+        forecast.warnings.items.length > 0) ||
+        (forecast.water_quality.status === "current" &&
+          forecast.water_quality.items.length > 0)) && (
+        <div className={s.notices()}>
+          <WarningsPanel warnings={forecast.warnings} />
+          <WaterQualityPanel water={forecast.water_quality} />
+        </div>
+      )}
       {sea && <WaterLine sea={sea} now={now} />}
       {picture && (
         <SpotSatellite picture={picture} name={spot.name} facing={facing} />

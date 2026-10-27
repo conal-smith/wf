@@ -1,12 +1,15 @@
 /**
  * Met Éireann's warnings on a spot's page: every one in force or still to
- * come at the place, its level, kind, headline and validity as Met Éireann
- * issued them, under the place's name; and the mark that stands in an hour's
- * stars under orange or red, or beside them under yellow (force5/src/warnings.ts
+ * come at the place, under the place's name, a line each: its level, its
+ * headline and its validity, with Met Éireann's kind, areas and words folded
+ * under it. What a warning does to the stars is said once, under the list.
+ * A stormy day can bring four or five, and the forecast they bear on must
+ * still be on the first screen (issue 219). The mark stands in an hour's stars
+ * under orange or red, or beside them under yellow (force5/src/warnings.ts
  * has the rule, the MCP's `spotForecast` the warnings). Nothing here is shown
  * when the warnings could not be checked: the footer's link to met.ie stays.
  */
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ChevronRight } from "lucide-react";
 import {
   LEVEL_LABEL,
   MET_WARNINGS_PAGE,
@@ -16,23 +19,36 @@ import {
 } from "../../force5/src/warnings";
 import type { WarningItem, WarningsAnswer } from "../../mcp/api/warnings";
 import { Kicker } from "../../ui";
-import { MONO_LABEL, tv } from "../../ui/tv";
+import { MONO_LABEL, RING, tv } from "../../ui/tv";
 
 const styles = tv({
   slots: {
-    section: "flex flex-col gap-2",
-    list: "m-0 flex list-none flex-col gap-2 p-0",
-    item: "flex flex-col gap-1 border-0 border-l-3 py-1 pl-3",
-    title: "flex flex-wrap items-center gap-x-2 gap-y-1",
-    kind: "font-body text-prose font-semibold text-ink",
-    headline: "m-0 font-body text-prose text-ink",
-    when: ["m-0 text-ink-2", MONO_LABEL],
+    // In the column on a phone and a narrow screen, a line a warning. Where
+    // the page has a margin, the list stands in it with the bathing water
+    // notices (SpotApp's `notices`).
+    section: "flex flex-col gap-1.5",
+    list: "m-0 flex list-none flex-col gap-1 p-0",
+    item: "border-0 border-l-3 pl-1.5",
+    summary: [
+      "flex cursor-pointer list-none items-start gap-x-1 rounded-control py-0.5",
+      // ui-lint-allow: Safari draws a summary's triangle unless this hides it; the chevron is ours.
+      "[&::-webkit-details-marker]:hidden",
+      RING,
+    ],
+    chevron:
+      "mt-1 shrink-0 text-ink-muted transition-transform group-open/warning:rotate-90 motion-reduce:transition-none",
+    // The mark, the headline and when, run together as words are, so a
+    // headline too long for the line wraps under its mark.
+    text: "min-w-0 font-body text-body",
+    mark: "mr-2 inline-flex align-middle",
+    headline: "mr-2 font-semibold text-ink",
+    when: ["inline-block text-ink-2", MONO_LABEL],
+    time: "whitespace-nowrap",
     now: "text-now",
-    rule: "m-0 font-body text-body text-ink-2 italic",
-    more: "font-body text-body text-ink-2",
-    summary: "cursor-pointer text-ink underline underline-offset-4",
-    line: "m-0 mt-1",
-    credit: "m-0 font-body text-caption text-ink-muted",
+    more: "flex flex-col gap-1 pt-0.5 pb-1.5 pl-5 font-body text-body text-ink-2",
+    kind: "m-0 text-ink",
+    line: "m-0",
+    note: "m-0 font-body text-caption text-ink-muted",
     link: "rounded-control text-ink underline underline-offset-4 hover:text-chart-magenta",
   },
   variants: {
@@ -93,11 +109,42 @@ const when = (item: WarningItem) =>
     expiry: Date.parse(item.expiry),
   });
 
+/**
+ * Met Éireann's headline without the "Status Yellow - " it opens with: the
+ * mark beside it already says the level, in its colour. A headline that names
+ * another level than its own, or nothing after it, is left as issued.
+ */
+export function headlineText(
+  item: Pick<WarningItem, "level" | "headline">,
+): string {
+  const status = new RegExp(`^\\s*status\\s+${item.level}\\s*[-–—:]\\s*`, "i");
+  const rest = item.headline.replace(status, "");
+  return rest.trim() ? rest : item.headline;
+}
+
 /** "Orange wind warning", "Yellow small craft warning (marine)". */
 export const warningName = (
   item: Pick<WarningItem, "level" | "type" | "marine">,
 ) =>
   `${LEVEL_LABEL[item.level]} ${warningKind(item).toLowerCase()} warning${item.marine ? " (marine)" : ""}`;
+
+/**
+ * What the warnings listed do to the stars, said once for all of them: a
+ * yellow leaves the stars, an orange or red takes them.
+ */
+export function ruleText(
+  items: readonly Pick<WarningItem, "replaces_ratings">[],
+) {
+  const stays = items.some((item) => !item.replaces_ratings);
+  const takes = items.some((item) => item.replaces_ratings);
+  return [
+    stays &&
+      "Yellow: the stars still show beside it; see whether it bears on the water.",
+    takes && "Orange and red: no stars for the hours they cover.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
 /** The warnings under the place's name. Null with none, or none checked. */
 export function WarningsPanel({ warnings }: { warnings: WarningsAnswer }) {
@@ -122,42 +169,57 @@ export function WarningsPanel({ warnings }: { warnings: WarningsAnswer }) {
               className={styles({ level: item.level }).item()}
               data-warning={item.level}
             >
-              <div className={s.title()}>
-                <WarningMark level={item.level} />
-                <span className={s.kind()}>
-                  {warningKind(item)} warning
-                  {item.marine ? " (marine)" : ""}
-                </span>
-              </div>
-              <p className={s.headline()}>{item.headline}</p>
-              <p className={s.when()}>
-                <time dateTime={item.onset}>{onset}</time> –{" "}
-                <time dateTime={item.expiry}>{expiry}</time>
-                {item.in_force_now && <span className={s.now()}> · now</span>}
-              </p>
-              <p className={s.rule()}>
-                {item.replaces_ratings
-                  ? "No stars for the hours it covers."
-                  : "The stars still show beside it: see whether it bears on the water."}
-              </p>
-              {item.description && (
-                <details className={s.more()}>
-                  <summary className={s.summary()}>
-                    What Met Éireann says
-                  </summary>
-                  {item.description.split("\n").map((line, index) => (
-                    <p key={index} className={s.line()}>
-                      {line}
-                    </p>
-                  ))}
-                </details>
-              )}
+              <details className="group/warning">
+                <summary className={s.summary()}>
+                  <ChevronRight
+                    size={14}
+                    strokeWidth={1.75}
+                    className={s.chevron()}
+                    aria-hidden="true"
+                  />
+                  <span className={s.text()}>
+                    <span className={s.mark()}>
+                      <WarningMark level={item.level} />
+                    </span>
+                    <span className={s.headline()} data-warning-headline>
+                      {headlineText(item)}
+                    </span>
+                    <span className={s.when()}>
+                      <time className={s.time()} dateTime={item.onset}>
+                        {onset}
+                      </time>{" "}
+                      –{" "}
+                      <time className={s.time()} dateTime={item.expiry}>
+                        {expiry}
+                      </time>
+                      {item.in_force_now && (
+                        <span className={s.now()}> · now</span>
+                      )}
+                    </span>
+                  </span>
+                </summary>
+                <div className={s.more()}>
+                  <p className={s.kind()}>
+                    {warningKind(item)} warning
+                    {item.marine ? " (marine)" : ""}
+                    {item.areas.length > 0 && `: ${item.areas.join(", ")}`}
+                  </p>
+                  {item.description
+                    .split("\n")
+                    .filter((line) => line.trim())
+                    .map((line, index) => (
+                      <p key={index} className={s.line()}>
+                        {line}
+                      </p>
+                    ))}
+                </div>
+              </details>
             </li>
           );
         })}
       </ul>
-      <p className={s.credit()}>
-        Issued by Met Éireann, shown as issued (CC BY 4.0).{" "}
+      <p className={s.note()} data-warnings-rule>
+        {ruleText(warnings.items)} Issued by Met Éireann (CC BY 4.0).{" "}
         <a className={s.link()} href={MET_WARNINGS_PAGE}>
           The latest at met.ie
         </a>

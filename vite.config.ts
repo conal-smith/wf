@@ -1,10 +1,16 @@
-import { createReadStream, existsSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Connect, type Plugin, type Rollup } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { OWN_BUNDLE_PATHS } from "./force5/src/siteNav";
+import {
+  MISSING_SPOT,
+  isMissingSpot,
+  withHead,
+  type HeadSpot,
+} from "./mcp/pages/head";
 
 /**
  * The e2e build is a site of its own, served from a scratch tree.
@@ -203,10 +209,63 @@ function staticData(): Plugin {
   };
 }
 
+/**
+ * A spot page for a place that does not exist, answered 404 by the preview
+ * server as the Pages worker answers it in production (mcp/pages/worker.ts),
+ * so the e2e suite sees the status a rider and a crawler get. Vite's own
+ * single-page fallback would answer it 200. The body is the app all the same,
+ * which says what was not found.
+ */
+function missingSpots(): Plugin {
+  let outDir = "dist";
+  return {
+    name: "wingfoil:missing-spots",
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const path = (req.url ?? "").split("?")[0];
+        if (
+          (req.method !== "GET" && req.method !== "HEAD") ||
+          !path.startsWith("/spot/")
+        )
+          return next();
+        let spots: Map<string, HeadSpot>;
+        try {
+          const list = JSON.parse(
+            readFileSync(join(outDir, "riding-locations.json"), "utf8"),
+          ) as HeadSpot[];
+          spots = new Map(list.map((spot) => [spot.id, spot]));
+        } catch {
+          return next();
+        }
+        if (!isMissingSpot(path, spots)) return next();
+        res.statusCode = 404;
+        res.setHeader("content-type", "text/html; charset=utf-8");
+        res.setHeader("x-robots-tag", "noindex");
+        if (req.method === "HEAD") return res.end();
+        res.end(
+          withHead(
+            readFileSync(join(outDir, "index.html"), "utf8"),
+            MISSING_SPOT,
+          ),
+        );
+      });
+    },
+  };
+}
+
 // Tailwind is configured in CSS, not here: ui/theme.css is the theme and the
 // list of directories scanned for class names. There is no tailwind.config.js.
 export default defineConfig({
-  plugins: [react(), tailwindcss(), preloadTheMap(), staticData()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    preloadTheMap(),
+    staticData(),
+    missingSpots(),
+  ],
   publicDir: e2e ? ".e2e/public" : "public",
   build: {
     outDir: e2e ? ".e2e/dist" : "dist",

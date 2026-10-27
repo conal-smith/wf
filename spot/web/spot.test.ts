@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_RIDER, type Rider } from "../../force5/src/stars";
-import type { ForecastHour, HourWind } from "../../mcp/api/forecast";
+import {
+  irishZone,
+  type ForecastHour,
+  type HourWind,
+} from "../../mcp/api/forecast";
 import {
   HOUR,
   clock,
+  clockZone,
   compass,
   darkRuns,
   dayLeadText,
@@ -17,6 +22,7 @@ import {
   groupDays,
   gustJumps,
   handoverWords,
+  hoursZone,
   leadChanges,
   meanBearing,
   nextMidnight,
@@ -90,6 +96,45 @@ describe("Irish time", () => {
     expect(nextMidnight("2026-10-25") - dublinMidnight("2026-10-25")).toBe(
       25 * HOUR,
     );
+  });
+
+  it("names the zone the clocks are on, across both changes", () => {
+    const at = (iso: string) => Date.parse(iso);
+    // The clocks go back at 01:00 UTC on Sun 25 Oct 2026: 01:59 IST, then
+    // 01:00 GMT.
+    expect(clockZone(at("2026-10-25T00:59:00Z"))).toBe("IST");
+    expect(clockZone(at("2026-10-25T01:00:00Z"))).toBe("GMT");
+    expect(clockZone(at("2026-10-26T13:00:00Z"))).toBe("GMT");
+    expect(clockZone(at("2027-01-15T12:00:00Z"))).toBe("GMT");
+    // And forward at 01:00 UTC on Sun 28 Mar 2027.
+    expect(clockZone(at("2027-03-28T00:59:00Z"))).toBe("GMT");
+    expect(clockZone(at("2027-03-28T01:00:00Z"))).toBe("IST");
+    expect(clockZone(at("2026-07-11T12:00:00Z"))).toBe("IST");
+    // Every hour for a year agrees with the MCP's label for it.
+    for (
+      let t = at("2026-03-01T00:00:00Z");
+      t < at("2027-04-01T00:00:00Z");
+      t += HOUR
+    )
+      expect(clockZone(t)).toBe(irishZone(t));
+  });
+
+  it("names a day's hours by the zone most of them are on", () => {
+    const hours = (date: string) =>
+      Array.from(
+        { length: (nextMidnight(date) - dublinMidnight(date)) / HOUR },
+        (_, i) => dublinMidnight(date) + i * HOUR,
+      );
+    expect(hoursZone(hours("2026-10-24"))).toBe("IST");
+    // The day the clocks go back: two hours of IST, then twenty-three of GMT.
+    const back = hours("2026-10-25");
+    expect(back).toHaveLength(25);
+    expect(back.filter((t) => clockZone(t) === "IST")).toHaveLength(2);
+    expect(hoursZone(back)).toBe("GMT");
+    expect(hoursZone(hours("2026-10-26"))).toBe("GMT");
+    // The day they go forward: one hour of GMT, then IST.
+    expect(hoursZone(hours("2027-03-28"))).toBe("IST");
+    expect(hoursZone(hours("2027-03-27"))).toBe("GMT");
   });
 
   it("names today and tomorrow, then the weekday", () => {

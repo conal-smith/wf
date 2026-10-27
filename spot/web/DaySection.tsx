@@ -36,6 +36,7 @@ import {
 import {
   HOUR,
   clock,
+  clockZone,
   compass,
   darkRuns,
   dayLeadText,
@@ -44,6 +45,7 @@ import {
   foldText,
   gustJumps,
   handoverWords,
+  hoursZone,
   placeChanges,
   shoreWords,
   skyEnd,
@@ -88,6 +90,7 @@ const styles = tv({
     row: "border-b border-line align-middle",
     cell: "h-10 px-1 whitespace-nowrap wide:h-9",
     time: "w-8 font-mono text-body font-semibold text-ink",
+    rowZone: ["block font-normal text-ink-muted", MONO_LABEL],
     now: "text-now",
     stars: "w-16",
     // A yellow warning's mark rides beside the stars it leaves alone.
@@ -318,6 +321,10 @@ function DayBody({
   const [showNight, setShowNight] = useState(false);
   const { before, light, after } = darkRuns(day.rows);
   const nowHour = Math.floor(now / HOUR) * HOUR;
+  // The clock the hours are on, over their column: GMT in winter, IST in
+  // summer. The night the clocks change has an hour or two on the other,
+  // each labelled with its own.
+  const zone = hoursZone(day.rows.map((row) => row.time));
 
   const fold = (rows: SpotRow[], edge: "before" | "after") =>
     rows.length > 0 && (
@@ -446,6 +453,9 @@ function DayBody({
         >
           {clock(row.time).slice(0, 2)}
           <span className="sr-only">:00</span>
+          {clockZone(row.time) !== zone && (
+            <span className={s.rowZone()}> {clockZone(row.time)}</span>
+          )}
         </th>
         <td
           className={s.cell({ className: s.stars() })}
@@ -649,7 +659,7 @@ function DayBody({
       <table className={s.table()}>
         <caption className="sr-only">
           {spotName}, {names.full}: by the hour. Stars: {riderText}. Wind in{" "}
-          {unitText}, gusts raised. Times are Irish.
+          {unitText}, gusts raised. Times are Irish, {zone}.
         </caption>
         {/* Heads only over hours: a day already dark has just its fold,
               and heads over no rows, sized by their own words, would not
@@ -657,8 +667,8 @@ function DayBody({
         {drawn.length > 0 && (
           <thead>
             <tr>
-              <th scope="col" className={s.th()}>
-                IST
+              <th scope="col" className={s.th()} data-zone={zone}>
+                {zone}
               </th>
               <th scope="col" className={s.th()}>
                 <a href={STARS_HREF} className={s.tipLink()}>

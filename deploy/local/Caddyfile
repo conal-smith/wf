@@ -61,6 +61,25 @@
 		}
 	}
 
+	# A riding place's page for a place that does not exist: the app, which
+	# says so, answered 404 as the Pages worker answers it in production
+	# (mcp/pages/worker.ts), so a crawler or link checker does not keep it.
+	# spot-paths.caddy, written beside this file when the image is built
+	# (scripts/caddy-spot-paths.mjs), names every place's page.
+	@missingSpot {
+		path_regexp ^/spot/[^/]+/?$
+		import spot-paths.caddy
+	}
+	handle @missingSpot {
+		root * /srv
+		header Cache-Control "max-age=0, must-revalidate"
+		header X-Robots-Tag noindex
+		rewrite * /index.html
+		file_server {
+			status 404
+		}
+	}
+
 	handle {
 		root * /srv
 		# Vite emits content-hashed asset names, including MapLibre's ES module worker.

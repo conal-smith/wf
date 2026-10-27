@@ -557,6 +557,13 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [modelNotice]);
   useEffect(() => () => modelRequest.current?.abort(), []);
+  // A link to a spot that is not on the map (`/?spot=does-not-exist`): the
+  // chart opens as it would with none, and says so until dismissed or a
+  // spot is chosen, so the rider knows the link was wrong (#225).
+  const [missingSpot, setMissingSpot] = useState<string | null>(null);
+  useEffect(() => {
+    if (point) setMissingSpot(null);
+  }, [point]);
 
   /* ---- the rider's spots ---- */
   const fav = favourites();
@@ -623,6 +630,8 @@ export default function App() {
         // spot waits for the reader to tap it.
         const linked = openingSpot(location.search, places);
         setPoint(linked);
+        const asked = new URLSearchParams(location.search).get("spot");
+        if (asked && !linked) setMissingSpot(asked);
         setOpened(true);
         if (linked) setFocusId(linked.id);
       })
@@ -2087,13 +2096,17 @@ export default function App() {
     </>
   );
 
+  const missingStatus =
+    missingSpot === null
+      ? null
+      : `Spot not found: “${missingSpot}”.`;
   const status = pendingModel
     ? `Loading ${MODELS.find((m) => m.id === pendingModel)?.name}…`
     : modelError || modelNotice
       ? modelError || modelNotice
       : frameError
         ? frameError
-        : null;
+        : missingStatus;
 
   /* ---- the ways between the list and the full chart ---- */
   /**
@@ -2513,12 +2526,15 @@ export default function App() {
                       Retry
                     </button>
                   )}
-                  {(modelError || modelNotice) && (
+                  {(modelError ||
+                    modelNotice ||
+                    (missingStatus !== null && status === missingStatus)) && (
                     <button
                       aria-label="Dismiss"
                       onClick={() => {
                         setModelError("");
                         setModelNotice("");
+                        setMissingSpot(null);
                       }}
                     >
                       <X size={13} aria-hidden="true" />
