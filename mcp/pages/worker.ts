@@ -18,12 +18,21 @@
  *
  * It also answers the spot pages, /stars and /ai, with index.html under their
  * own title and description (head.ts), so a search engine finds each spot by
- * its name; `_routes.json` names those paths too.
+ * its name; `_routes.json` names those paths too. A spot page for a place
+ * that does not exist is index.html too, for the app to say so, but answered
+ * 404: `_redirects` alone would have answered it 200.
  */
 import { Hono } from "hono";
 import { httpSource, type ForecastSource } from "../api/httpSource.js";
 import { createMcpRouter } from "../api/server.js";
-import { isPagePath, pageHead, withHead, type HeadSpot } from "./head.js";
+import {
+  MISSING_SPOT,
+  isMissingSpot,
+  isPagePath,
+  pageHead,
+  withHead,
+  type HeadSpot,
+} from "./head.js";
 
 /** The binding Pages gives an advanced-mode worker for the static files. */
 interface Env {
@@ -97,7 +106,8 @@ function spotsFor(origin: string, env: Env) {
 /**
  * A page with a head of its own: index.html, as `_redirects` would have
  * served it, with that head in place of the map's. Its status and headers are
- * index.html's, less a length the rewrite has changed.
+ * index.html's, less a length the rewrite has changed; a spot no place has is
+ * a 404, kept out of search.
  */
 async function withPageHead(
   request: Request,
@@ -106,19 +116,21 @@ async function withPageHead(
   if (request.method !== "GET" && request.method !== "HEAD") return null;
   const url = new URL(request.url);
   if (!isPagePath(url.pathname)) return null;
-  const head = pageHead(
-    url.pathname,
-    await spotsFor(url.origin, env).catch(() => new Map()),
+  const spots = await spotsFor(url.origin, env).catch(
+    () => new Map<string, HeadSpot>(),
   );
+  const missing = isMissingSpot(url.pathname, spots);
+  const head = missing ? MISSING_SPOT : pageHead(url.pathname, spots);
   if (!head) return null;
   const index = await env.ASSETS.fetch(new URL("/", url.origin).href);
   if (!index.ok) return null;
   const headers = new Headers(index.headers);
   headers.delete("content-length");
   headers.delete("etag");
+  if (missing) headers.set("X-Robots-Tag", "noindex");
   const html = withHead(await index.text(), head);
   return new Response(request.method === "HEAD" ? null : html, {
-    status: index.status,
+    status: missing ? 404 : index.status,
     headers,
   });
 }
