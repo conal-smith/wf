@@ -78,12 +78,20 @@ import StarsPage from "./StarsPage";
 import { useSpotForecast } from "./useSpotForecast";
 import { useWidth } from "./useWidth";
 import { WarningsPanel } from "./Warnings";
+import { WaterQualityPanel } from "./WaterQuality";
+import { BEACHES_PAGE } from "../../force5/src/waterQuality";
 import { MET_WARNINGS_PAGE } from "../../force5/src/warnings";
 import { WeekStrip } from "./WeekStrip";
 
 const styles = tv({
   slots: {
     main: "relative flex flex-col gap-4 pt-4 pb-12 max-sm:pt-3",
+    // Met Éireann's warnings and the bathing water notices. Where the page
+    // has a margin as wide as the list, they stand in it, beside the name and
+    // the picture: there they add nothing above the forecast, which then
+    // starts where it would with none at all.
+    notices:
+      "flex flex-col gap-4 xl:absolute xl:top-4 xl:left-full xl:ml-6 xl:w-56",
     // The facts are kept apart by points (Dot), so the gap between them is
     // the point's own spacing either side.
     meta: [
@@ -471,7 +479,15 @@ function SpotPage({
           </span>
         )}
       </p>
-      <WarningsPanel warnings={forecast.warnings} />
+      {((forecast.warnings.status === "current" &&
+        forecast.warnings.items.length > 0) ||
+        (forecast.water_quality.status === "current" &&
+          forecast.water_quality.items.length > 0)) && (
+        <div className={s.notices()}>
+          <WarningsPanel warnings={forecast.warnings} />
+          <WaterQualityPanel water={forecast.water_quality} />
+        </div>
+      )}
       {sea && <WaterLine sea={sea} now={now} />}
       {picture && (
         <SpotSatellite picture={picture} name={spot.name} facing={facing} />
@@ -511,6 +527,7 @@ function SpotPage({
             skyStops={day.date === skyStops}
             rain={rain}
             warnings={forecast.warnings}
+            water={forecast.water_quality}
           />
         ))}
       </div>
@@ -641,6 +658,15 @@ function SourcesFooter({
             met.ie/warnings
           </a>
           .
+        </li>
+        <li data-water-quality-source>
+          Bathing water notices: the EPA,{" "}
+          <a className={s.link()} href={BEACHES_PAGE}>
+            beaches.ie
+          </a>
+          .
+          {forecast.water_quality.status === "not-monitored" &&
+            " No bathing water is monitored near here."}
         </li>
         {picture && (
           <li data-satellite-source>

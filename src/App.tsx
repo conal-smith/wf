@@ -183,6 +183,8 @@ import { nearestSpotOnWater } from "../force5/src/pointSource";
 import { FEATURES } from "../shared/web/features";
 import { useWarnings } from "./useWarnings";
 import { placeWarnings } from "../force5/src/warnings";
+import { useWaterQuality } from "./useWaterQuality";
+import { spotWaterQuality } from "../force5/src/waterQuality";
 import { favourites } from "../shared/web/favourites";
 import {
   compass,
@@ -1105,6 +1107,7 @@ export default function App() {
   // could not read keeps its places pending, and the rest are rated.
   const rated = useSpotSquaresState(windOnly, ownSquares, true);
   const warnings = useWarnings();
+  const water = useWaterQuality();
   const { hours, version } = useRatings(
     rated.models,
     prefs.blendModels,
@@ -1119,6 +1122,7 @@ export default function App() {
         ? null
         : (rated.squares ?? []),
     warnings,
+    water,
   );
   // Beside the list, the lights are at the hour the cards show; on the full
   // chart, at the chart's own.
@@ -1948,6 +1952,14 @@ export default function App() {
         : [],
     [warnings, dockSpot, picked, clockNow],
   );
+  // And its bathing water notices, the same way.
+  const dockWater = useMemo(
+    () =>
+      dockSpot && !picked
+        ? spotWaterQuality(water, dockSpot.id, clockNow).notices
+        : [],
+    [water, dockSpot, picked, clockNow],
+  );
 
   const pointHours: PlaceHour[] | undefined = picked
     ? pickedHours
@@ -2656,6 +2668,7 @@ export default function App() {
                       }
                       onToggleStar={() => dockSpot && fav.toggle(dockSpot.id)}
                       warnings={dockWarnings}
+                      water={dockWater}
                       tide={tide.tide}
                       onClose={closeDock}
                       phone={phone}

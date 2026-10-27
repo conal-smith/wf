@@ -24,11 +24,9 @@ import { MONO_LABEL, RING, tv } from "../../ui/tv";
 const styles = tv({
   slots: {
     // In the column on a phone and a narrow screen, a line a warning. Where
-    // the page has a margin as wide as the list, the list stands in it,
-    // beside the name and the picture: there it adds nothing above the
-    // forecast, which then starts where it would with no warnings at all.
-    section:
-      "flex flex-col gap-1.5 xl:absolute xl:top-4 xl:left-full xl:ml-6 xl:w-56",
+    // the page has a margin, the list stands in it with the bathing water
+    // notices (SpotApp's `notices`).
+    section: "flex flex-col gap-1.5",
     list: "m-0 flex list-none flex-col gap-1 p-0",
     item: "border-0 border-l-3 pl-1.5",
     summary: [

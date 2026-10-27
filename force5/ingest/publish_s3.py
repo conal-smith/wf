@@ -300,6 +300,7 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
                  "observation": validate_observation_bundle,
                  "archive": validate_archive_bundle,
                  "warnings": validate_warnings_bundle,
+                 "water-quality": validate_water_quality_bundle,
                  "verification": validate_verification_bundle}[kind]
     return manifest, body, validator(public, model, manifest, run, now)
 
@@ -922,6 +923,57 @@ def validate_warnings_bundle(public, model, manifest, run, now):
             raise ValueError(f"{label} has no usable regions")
     if manifest_urls(manifest):
         raise ValueError("The warnings must not reference objects by url")
+    return []
+
+
+WATER_NOTICE_KINDS = ("prohibition", "advice-against", "restriction", "prior-warning",
+                      "all-season")
+
+
+def validate_water_quality_bundle(public, model, manifest, run, now):
+    """The EPA's bathing water notices (force5/ingest/fetch_water_quality.py).
+
+    Every notice names its bathing water and is of a kind the site's rule knows,
+    with times that parse where it has them, and none had ended when the file was
+    written. Each riding place's bathing waters carry a distance. An empty list is
+    valid (no notices), which is why the adapter fails rather than writes one from
+    an API it cannot read. Attribution to the EPA is required.
+    """
+    generated_hour(manifest, run, "The water quality notices")
+    if manifest.get("schemaVersion") != 1:
+        raise ValueError("Unknown water quality schema")
+    for key in ("attribution", "licenseUrl", "sourceUrl"):
+        if not isinstance(manifest.get(key), str) or not manifest[key].strip():
+            raise ValueError(f"The water quality notices need their {key}")
+    if "Environmental Protection Agency" not in manifest["attribution"]:
+        raise ValueError("The water quality notices must credit the EPA")
+    if not isinstance(manifest.get("maxDistanceKm"), (int, float)):
+        raise ValueError("The water quality notices need their maxDistanceKm")
+    notices, spots = manifest.get("notices"), manifest.get("spots")
+    if not isinstance(notices, list) or not isinstance(spots, dict):
+        raise ValueError("The water quality file must list its notices and spots")
+    generated = warning_time(manifest["generatedAt"], "generatedAt")
+    for index, notice in enumerate(notices):
+        label = f"Notice {index}"
+        if not isinstance(notice, dict) or not all(
+                isinstance(notice.get(field), str) and notice[field].strip()
+                for field in ("id", "water", "beach")):
+            raise ValueError(f"{label} is missing a field")
+        if notice.get("kind") not in WATER_NOTICE_KINDS:
+            raise ValueError(f"{label} has a kind the site does not know")
+        start = warning_time(notice["from"], f"{label} from") if notice.get("from") else None
+        end = warning_time(notice["until"], f"{label} until") if notice.get("until") else None
+        if start and end and end < start:
+            raise ValueError(f"{label} ends before it starts")
+        if end and end <= generated:
+            raise ValueError(f"{label} had ended when the file was written")
+    for spot, near in spots.items():
+        if not isinstance(near, list) or not all(
+                isinstance(w, dict) and isinstance(w.get("water"), str)
+                and isinstance(w.get("km"), (int, float)) for w in near):
+            raise ValueError(f"The bathing waters near {spot} are malformed")
+    if manifest_urls(manifest):
+        raise ValueError("The water quality notices must not reference objects by url")
     return []
 
 

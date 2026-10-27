@@ -324,6 +324,21 @@ class OtherBundles(unittest.TestCase):
     def test_the_warnings_are_monitored(self):
         self.assertIn("warnings", dict(monitor.load_live_models()))
 
+    def test_the_bathing_water_notices_are_aged_by_the_hour_they_were_read(self):
+        domain = Domain({})
+        domain.put_json("marine/water-quality.json", {
+            "schemaVersion": 1, "kind": "water-quality", "model": "water-quality",
+            "run": "2026101114", "runTime": "2026-10-11T14:00:00Z",
+            "generatedAt": "2026-10-11T14:40:09Z", "maxDistanceKm": 1.5,
+            "notices": [], "spots": {}})
+        row = check(domain, "water-quality")
+        self.assertEqual((row["limitHours"], codes(row)), (4.0, []))
+        row = check(domain, "water-quality", now=NOW + timedelta(hours=3))
+        self.assertEqual(codes(row), ["stale"])
+
+    def test_the_bathing_water_notices_are_monitored(self):
+        self.assertIn("water-quality", dict(monitor.load_live_models()))
+
 
 class Site(unittest.TestCase):
     SITE = "https://site.example.com/"

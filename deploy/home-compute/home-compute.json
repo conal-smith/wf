@@ -1414,6 +1414,63 @@
       }
     },
     {
+      "id": "water-quality",
+      "description": "EPA bathing water notices near the riding places",
+      "schedule": {
+        "at": {
+          "minutes": [
+            40
+          ]
+        },
+        "timezone": "UTC"
+      },
+      "labels": {
+        "application": "wingfoil",
+        "models": "water-quality"
+      },
+      "task": {
+        "image": "${WINGFOIL_IMAGE}",
+        "requiredEnv": [
+          "S3_BUCKET",
+          "S3_ENDPOINT_URL",
+          "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY",
+          "FORCE5_SIDECARS"
+        ],
+        "passEnv": [
+          "S3_PREFIX",
+          "AWS_REGION",
+          "ECMWF_SOURCE",
+          "FORCE5_BROTLI_QUALITY"
+        ],
+        "resources": {
+          "cpu": "1",
+          "memory": "512Mb",
+          "disk": "2Gb"
+        },
+        "network": {
+          "type": "Full"
+        },
+        "timeouts": {
+          "queueSeconds": 3600,
+          "totalSeconds": 4500
+        },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
+        "parameters": [
+          "--models",
+          "water-quality"
+        ],
+        "report": {
+          "format": "json-lines",
+          "trackEvent": "forecast_complete",
+          "trackBy": "model"
+        }
+      }
+    },
+    {
       "id": "forecast-archive",
       "description": "Archive every served wind run and the observations",
       "schedule": {

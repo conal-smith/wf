@@ -250,8 +250,8 @@ changes the monitor with it: every model of an enabled worker job in
 `deploy/local/jobs.toml`, plus any the site lists (`force5/src/catalog.ts`),
 minus every model the site calls `retired` or `planned`. Today that is HARMONIE,
 ICON-EU, ICON-EU weather, ECMWF, GFS, GFS-Wave, MI SWAN, tides, sea temperature,
-the blend, wind observations, the weather warnings, the forecast archive and the
-verification scores.
+the blend, wind observations, the weather warnings, the bathing water notices, the
+forecast archive and the verification scores.
 
 **What it checks**, per model:
 
