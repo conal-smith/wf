@@ -5,7 +5,9 @@ import { Wordmark } from "./Wordmark";
 /*
  * The head of a page that is a tool rather than a read: the round site menu,
  * the small wordmark, and the page's own control set right, over the
- * broadsheet's double rule. Plain paper, the width of the screen. The spot
+ * broadsheet's double rule. The wordmark is there at every width, a phone's
+ * included, as it is on the chart's head and a spot's page: the page always
+ * says whose site it is. Plain paper, the width of the screen. The spot
  * finder (src/finder/SpotFinder.tsx) and the AI page (ai/web/AiApp.tsx) share
  * it, so the two stay the same.
  *
@@ -29,8 +31,6 @@ export const pageHeaderStyles = tv({
 export interface PageHeaderProps {
   /** The site menu, its trigger first in the row. */
   menu: ReactNode;
-  /** The wordmark beside it: a page whose controls need the room on a phone leaves it out. */
-  wordmark?: boolean;
   className?: string;
   /** The page's own control, set right. */
   children?: ReactNode;
@@ -40,7 +40,6 @@ export interface PageHeaderProps {
 
 export function PageHeader({
   menu,
-  wordmark = true,
   className,
   children,
   headRef,
@@ -50,7 +49,7 @@ export function PageHeader({
     <header className={styles.base({ className })} ref={headRef}>
       <span className={styles.lead()}>
         {menu}
-        {wordmark && <Wordmark size="sm" />}
+        <Wordmark size="sm" />
       </span>
       {children}
     </header>

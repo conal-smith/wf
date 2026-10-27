@@ -467,6 +467,16 @@ const WEATHER_VARIABLES = {
     decimals: 1,
     spec: { base: 14.6, amp: 3.1, gx: 0.14, gy: 0.18, period: 24, phase: 0.33 },
   },
+  // A place's own, never a cell's (force5/ingest/rain_chance.py): in the
+  // series only, worked out here from the rain where the place is. Last, so
+  // that the variables before it keep their seeds and their sample values.
+  pop: {
+    units: "%",
+    label: "Chance of rain",
+    description:
+      "Share of the cells within 25 km of the place with 0.1 mm or more in the interval ending at this hour; null at initialization (synthetic)",
+    decimals: 0,
+  },
 };
 /**
  * Present weather is a code table, so it is picked from a fixed rota rather
@@ -976,6 +986,13 @@ function weatherBundle(model, spots, runMs, grid) {
     const value = (name, x, y, code) => {
       const variable = WEATHER_VARIABLES[name];
       if (name === "ww") return code;
+      if (name === "pop")
+        return index === 0
+          ? null
+          : Math.max(
+              0,
+              Math.min(100, Math.round(planeAt(planes.precip, x, y) * 60)),
+            );
       if (variable.differenced && index === 0) return null;
       return round(planeAt(planes[name], x, y), variable.decimals);
     };

@@ -17,6 +17,7 @@ import type { Spot } from "../../force5/src/weather";
 import type { PlaceHour } from "../ratings";
 import { irishDate, irishHour, type StripColumn } from "../strip";
 import type { LatLon } from "../lastView";
+import { tidySearch } from "../../force5/src/siteNav";
 
 /** Favourites or every place round the rider. */
 export type Scope = "favourites" | "near";
@@ -83,6 +84,32 @@ export function nearestSpots<S extends Spot>(
  */
 export const openingScope = (starred: readonly string[]): Scope =>
   starred.length ? "favourites" : "near";
+
+/**
+ * The tab in the finder's address, so Favourites and Near you can be linked
+ * to, kept and reloaded: `/?tab=favourites`, `/?tab=near`. A bare `/` opens
+ * on `openingScope`, and the address names a tab only once one is chosen.
+ */
+export const TAB_PARAM = "tab";
+
+/** The tab an address names, or null for none (or one there is not). */
+export function scopeInAddress(search: string): Scope | null {
+  const tab = new URLSearchParams(search).get(TAB_PARAM);
+  return tab === "favourites" || tab === "near" ? tab : null;
+}
+
+/** The address with `scope` as its tab, the rest of it kept as it was. */
+export function scopeAddress(href: string, scope: Scope): string {
+  const url = new URL(href);
+  url.searchParams.set(TAB_PARAM, scope);
+  return url.pathname + tidySearch(url.searchParams) + url.hash;
+}
+
+/**
+ * How many places a search by name lists: the best matches, as many as
+ * "near you" lists round a place that is not the rider's.
+ */
+export const FOUND_COUNT = NEAREST_COUNT;
 
 /**
  * The places the finder lists for a scope, before they are ranked. `own` is
