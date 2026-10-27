@@ -34,6 +34,7 @@ import {
   dublinDate,
   foldText,
   gustJumps,
+  hoursZone,
   windSay,
 } from "../../../../spot/web/spot";
 import { Button } from "../../components/Button";
@@ -469,7 +470,7 @@ const DayHeader = memo(function DayHeader({
           importantForAccessibility="no-hide-descendants"
         >
           <T variant="eyebrow" caps color="muted" style={styles.cTime}>
-            IST
+            {hoursZone(entry.day.rows.map((r) => r.time))}
           </T>
           <T variant="eyebrow" caps color="muted" style={styles.cStars}>
             Stars

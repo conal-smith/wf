@@ -13,6 +13,8 @@
 # The run layout the blend job publishes its spot squares in.
 !scripts/
 !scripts/runs.mjs
+# The site image's list of spot pages for its Caddyfile.
+!scripts/caddy-spot-paths.mjs
 !deploy/
 !deploy/local/
 !deploy/local/jobs.toml
