@@ -14,6 +14,12 @@
  * after one place, or with nothing starred yet, has it in a few letters.
  * The tab is in the address (`/?tab=favourites`, finder.ts `TAB_PARAM`)
  * once one is chosen, so either can be linked to, kept and reloaded.
+ * Beside it, the list's order (the best of the week, the nearest, A to Z),
+ * the fewest stars a place is to have, and the model the stars are rated
+ * from, the rider's own, as the spot page and the display options set it.
+ * Near you never asks the browser where the rider is unasked: without
+ * their place it says why it is wanted, with a "Use my location" button,
+ * over the spots nearest where the chart was, which give no distances.
  *
  * The home page (since 26 October 2026). On a wide screen the chart stands
  * beside the list, drawn by src/App.tsx over the room the list leaves it
@@ -40,11 +46,14 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Rider } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
 import type { Spot } from "../../force5/src/weather";
+import { modelName, STARS_MODELS } from "../../force5/src/lead";
 import { isChartAddress } from "../../force5/src/siteNav";
+import { Button } from "../../ui/Button";
 import { Link } from "../../ui/Link";
 import { PageHeader } from "../../ui/PageHeader";
 import { SearchField } from "../../ui/SearchField";
 import { Segmented } from "../../ui/Segmented";
+import { Select } from "../../ui/Select";
 import { tv } from "../../ui/tv";
 import type { PlaceHour } from "../ratings";
 import { findSpots } from "../spotSearch";
@@ -66,19 +75,22 @@ import {
   hourOf,
   listFor,
   openingScope,
+  orderSpots,
   pickHour,
   rankSpots,
   scopeAddress,
   scopeInAddress,
   shownColumn,
   weekBest,
+  withStars,
   type Listed,
+  type Order,
   type Scope,
 } from "./finder";
 
 export type { Scope };
 import { HoverContext, hoverStore } from "./hover";
-import { useRiderPlace } from "./location";
+import { knownBefore, useRiderPlace } from "./location";
 import { CardSkeleton, SpotCard } from "./SpotCard";
 import { useReadings } from "./useReadings";
 
@@ -92,9 +104,17 @@ const styles = tv({
     ],
     // Under the chart's width, room at the foot for the button to the map.
     alone: "pb-24 max-wide:pb-24",
-    // Find a spot by name, over the cards: a rule to write on, as the
-    // chart's, no wider than a line of reading.
-    find: "mb-3.5 max-w-reading max-wide:mb-2.5",
+    // Over the cards: find a spot by name, on a rule to write on as the
+    // chart's, and the list's order, its stars and its model beside it,
+    // under it where there is not the room.
+    tools:
+      "mb-3.5 flex flex-wrap items-center gap-x-3 gap-y-2 max-wide:mb-2.5 max-wide:gap-x-2",
+    find: "min-w-0 flex-1 basis-60 max-w-reading max-wide:max-w-none max-wide:basis-full",
+    // A phone's three share a row under the search.
+    pick: "w-auto max-wide:flex-auto",
+    // Near you without the rider's place: why it is wanted, and the one
+    // way to give it.
+    ask: "m-0 mb-3.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-prose text-ink-2",
     // One column, two where each card has its room (`cards:`, 1180px).
     cards:
       "m-0 grid list-none grid-cols-1 items-start gap-3.5 p-0 cards:grid-cols-2",
@@ -145,6 +165,10 @@ export interface FinderProps {
   onInChart: (spot: Spot, at: number | null) => void;
   /** The site menu, with its rows for this page. */
   menu: ReactNode;
+  /** The model the stars are rated from, the rider's own, as on the spot page. */
+  model: string;
+  /** The rider picks another: theirs from now on, everywhere. */
+  onModel: (id: string) => void;
   /**
    * The list is on the screen, not waiting under the full chart. The tab it
    * opens on is chosen, and the browser asked where the rider is, only once
@@ -175,6 +199,8 @@ export default function SpotFinder(props: FinderProps) {
     onPlace,
     headRef,
     onScreen = true,
+    model,
+    onModel,
   } = props;
   const s = styles();
   // The tab: the one the address names, else, once the list has been on
@@ -186,13 +212,15 @@ export default function SpotFinder(props: FinderProps) {
   const scope = kept ?? openingScope(starred);
   // Whether the address is to name the tab: one was chosen, or named.
   const [named, setNamed] = useState(() => kept !== null);
+  // The browser is asked where the rider is only when they press "Use my
+  // location", under the line that says why; a place kept from an earlier
+  // yes is read again quietly on Near you.
   const [asked, setAsked] = useState(false);
-  // Near you asks where the rider is, chosen or opened on.
-  const place = useRiderPlace(asked || (onScreen && scope === "near"));
+  const place = useRiderPlace(
+    asked || (onScreen && scope === "near" && knownBefore()),
+  );
   useEffect(() => {
-    if (!onScreen) return;
-    if (kept === null) setScope(scope);
-    if (scope === "near") setAsked(true);
+    if (onScreen && kept === null) setScope(scope);
   }, [onScreen, kept, scope]);
   // The tab in the address, in place: the list's own address, never the
   // full chart's over it. Again as the list comes back on the screen, whose
@@ -228,8 +256,11 @@ export default function SpotFinder(props: FinderProps) {
   // The time under a mouse, shared by every card without drawing them again.
   const [hover] = useState(hoverStore);
 
+  // The list's order, and the fewest stars a place has in its six days.
+  const [order, setOrder] = useState<Order>("best");
+  const [fewest, setFewest] = useState(0);
+
   const chooseScope = (next: Scope) => {
-    if (next === "near") setAsked(true);
     setScope(next);
     setNamed(true);
     setQuery("");
@@ -299,8 +330,24 @@ export default function SpotFinder(props: FinderProps) {
       km,
       best: weekBest(hours.get(spot.id), strip, dates, now),
     }));
-    return searching ? rated : rankSpots(rated);
-  }, [listed, searching, hours, version, strip, dates, hourKey]);
+    // Nearest first means nothing without the rider's place.
+    const by = order === "near" && !known ? "best" : order;
+    return withStars(
+      orderSpots(searching ? rated : rankSpots(rated), by),
+      fewest,
+    );
+  }, [
+    listed,
+    searching,
+    order,
+    known,
+    fewest,
+    hours,
+    version,
+    strip,
+    dates,
+    hourKey,
+  ]);
 
   const listedSpots = useMemo(() => listed.map((l) => l.spot), [listed]);
   const axis = useMemo(() => strip.map((c) => c.validTime), [strip]);
@@ -374,27 +421,84 @@ export default function SpotFinder(props: FinderProps) {
           aria-busy={waiting || placesDue || undefined}
           data-finder-list
         >
-          <SearchField
-            size="md"
-            className={s.find()}
-            aria-label="Find a spot"
-            placeholder="Find a spot…"
-            autoComplete="off"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && query) {
-                setQuery("");
-                event.stopPropagation();
-              }
-            }}
-            data-finder-find
-          />
+          <div className={s.tools()}>
+            <SearchField
+              size="md"
+              className={s.find()}
+              aria-label="Find a spot"
+              placeholder="Find a spot…"
+              autoComplete="off"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && query) {
+                  setQuery("");
+                  event.stopPropagation();
+                }
+              }}
+              data-finder-find
+            />
+            <Select
+              className={s.pick()}
+              aria-label="Order"
+              value={order === "near" && !known ? "best" : order}
+              onChange={(event) => setOrder(event.target.value as Order)}
+              data-finder-order
+            >
+              <option value="best">Best first</option>
+              {known && <option value="near">Nearest</option>}
+              <option value="name">A to Z</option>
+            </Select>
+            <Select
+              className={s.pick()}
+              aria-label="Stars in the next six days"
+              active={fewest > 0}
+              value={fewest}
+              onChange={(event) => setFewest(Number(event.target.value))}
+              data-finder-stars
+            >
+              <option value={0}>Any stars</option>
+              <option value={3}>3+ stars</option>
+              <option value={4}>4+ stars</option>
+              <option value={5}>5 stars</option>
+            </Select>
+            <Select
+              className={s.pick()}
+              aria-label="Model for the stars"
+              value={model}
+              onChange={(event) => onModel(event.target.value)}
+              data-finder-model
+            >
+              {STARS_MODELS.map((id) => (
+                <option key={id} value={id}>
+                  {modelName(id)}
+                </option>
+              ))}
+            </Select>
+          </div>
           {!searching &&
             scope === "near" &&
             !known &&
             !waiting &&
-            ranked.length > 0 && (
+            !place.refused &&
+            place.locates && (
+              <p className={s.ask()} data-finder-ask>
+                <span>
+                  Near you lists the spots within 30 km of where you are. To
+                  find them, your browser will ask to share your location.
+                </span>
+                <Button variant="pill" onClick={() => setAsked(true)}>
+                  Use my location
+                </Button>
+              </p>
+            )}
+          {!searching &&
+            scope === "near" &&
+            !known &&
+            !waiting &&
+            // Over the cards' shapes as well, so it does not push them
+            // down when they land.
+            (ranked.length > 0 || placesDue) && (
               <p className={s.note()} data-finder-note>
                 {place.source === "chart"
                   ? "We don’t know where you are, so these are the spots nearest the part of the chart you last looked at."
@@ -478,7 +582,13 @@ export default function SpotFinder(props: FinderProps) {
             </HoverContext.Provider>
           ) : (
             <p className={s.empty()} data-finder-empty>
-              {searching ? (
+              {listed.length && fewest > 0 ? (
+                fewest === 5 ? (
+                  "No spot on this list has 5 stars in the next six days."
+                ) : (
+                  `No spot on this list has ${fewest} stars or more in the next six days.`
+                )
+              ) : searching ? (
                 "No spot by that name."
               ) : scope === "favourites" ? (
                 <>

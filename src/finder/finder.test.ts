@@ -22,6 +22,7 @@ import {
   nearSpots,
   nearestSpots,
   openingScope,
+  orderSpots,
   pickHour,
   rankSpots,
   rideableRun,
@@ -36,6 +37,7 @@ import {
   todayRow,
   weekBest,
   windiest,
+  withStars,
   type Listed,
 } from "./finder";
 
@@ -613,5 +615,43 @@ describe("the wind band", () => {
 
   it("draws nothing with no wind", () => {
     expect(windBand([], box)).toBeNull();
+  });
+});
+
+describe("the list's order and its stars", () => {
+  const item = (
+    id: string,
+    name: string,
+    km: number | null,
+    stars: number,
+  ): Listed => ({
+    spot: { ...spot(id, 53, -9), name },
+    km,
+    best: { stars, day: stars > 0 ? 0 : null },
+  });
+  const list = [
+    item("b", "Brandon Bay", 40, 5),
+    item("k", "Keel Beach", null, 3),
+    item("d", "Dollymount", 4, 4),
+    item("u", "Unrated", 10, -1),
+  ];
+  const ids = (l: Listed[]) => l.map((x) => x.spot.id);
+
+  it("keeps the ranking for the best first", () => {
+    expect(ids(orderSpots(list, "best"))).toEqual(["b", "k", "d", "u"]);
+  });
+
+  it("puts the nearest first, a place with no distance last", () => {
+    expect(ids(orderSpots(list, "near"))).toEqual(["d", "u", "b", "k"]);
+  });
+
+  it("puts the names A to Z", () => {
+    expect(ids(orderSpots(list, "name"))).toEqual(["b", "d", "k", "u"]);
+  });
+
+  it("keeps the places with at least so many stars, and none not rated yet", () => {
+    expect(ids(withStars(list, 0))).toEqual(["b", "k", "d", "u"]);
+    expect(ids(withStars(list, 4))).toEqual(["b", "d"]);
+    expect(ids(withStars(list, 5))).toEqual(["b"]);
   });
 });
