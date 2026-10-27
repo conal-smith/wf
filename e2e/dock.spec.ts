@@ -963,12 +963,7 @@ test("the display options open over the dimmed map from the site menu, one panel
   const names = await page
     .locator(".zbox button")
     .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-  expect(names).toEqual([
-    "Back to the list",
-    "Zoom in",
-    "Zoom out",
-    "Layers",
-  ]);
+  expect(names).toEqual(["Back to the list", "Zoom in", "Zoom out", "Layers"]);
   await expect(page.locator(".dock").getByLabel("Display options")).toHaveCount(
     0,
   );
@@ -1103,7 +1098,7 @@ test("the dock's top edge is its one fold: a drag up shows more rows, down fewer
   await expect(dock).toHaveCount(0);
 });
 
-test("on a phone the dock is a sheet: its head in it, then its hours, under a sixth of the screen", async ({
+test("on a phone the dock is a sheet: its head in it, then its hours, under a fifth of the screen", async ({
   page,
 }) => {
   await withTides(page);
@@ -1113,7 +1108,9 @@ test("on a phone the dock is a sheet: its head in it, then its hours, under a si
     timeout: 30000,
   });
   const dock = (await page.locator(".dock").boundingBox())!;
-  expect(dock.height).toBeLessThan(844 / 6);
+  // A fifth, not the sixth it was: its rows named in words and its figures
+  // at the body's size, to be read at arm's length (#221), take 30 px more.
+  expect(dock.height).toBeLessThan(844 / 5);
   // The head is the sheet's own top, under its handle: nothing of the
   // spot's stands on the chart over it, and the hours are under the head.
   const tools = page.getByRole("group", { name: "This spot" });
@@ -1154,7 +1151,7 @@ test("on a phone the dock is a sheet: its head in it, then its hours, under a si
   ).toBe(true);
 });
 
-test("on a phone the labels fold away as the reader slides the hours, and open at the start", async ({
+test("on a phone each row is named in a word, and the names stand while the reader slides the hours", async ({
   page,
 }) => {
   await withTides(page);
@@ -1163,15 +1160,23 @@ test("on a phone the labels fold away as the reader slides the hours, and open a
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
     timeout: 30000,
   });
-  const grid = page.locator(".dock .dk-grid");
+  const labels = page.locator(".dock .dk-labs");
   const wrap = page.locator(".dock .tt-wrap");
-  // Opened on the hour by the time, not by the reader: the labels stand.
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
-  await expect(grid).not.toHaveClass(/is-folded/);
-  expect((await page.locator(".dock .dk-labs").boundingBox())!.width).toBe(28);
-  // A finger on the strip, and the strip slid under it, folds them: the
-  // hours take their column and stay where the finger has them. The snap
-  // is held off, so where the slide stops is the slide's alone.
+  // A word a row, in the mono label at its floor, and the figures at the
+  // body's size: a glyph alone and 8px type did not read at arm's length.
+  await expect(labels.locator(".dk-word")).toHaveText(["Wind", "Dir", "Wing"]);
+  await expect(labels.locator(".dk-word").first()).toHaveCSS(
+    "font-size",
+    "10px",
+  );
+  await expect(page.locator(".dock tr.tt-hour td[data-i]").first()).toHaveCSS(
+    "font-size",
+    "13px",
+  );
+  expect((await labels.boundingBox())!.width).toBe(52);
+  // A finger on the strip, and the strip slid under it: the names stay
+  // where they are, and the hours slide under the finger beside them.
   const at = await page
     .locator(".dock tr.tt-hour td.c-sel")
     .getAttribute("data-i");
@@ -1182,16 +1187,14 @@ test("on a phone the labels fold away as the reader slides the hours, and open a
     el.dispatchEvent(new Event("touchstart", { bubbles: true }));
     el.scrollLeft += 160;
   });
-  await expect(grid).toHaveClass(/is-folded/);
+  await expect
+    .poll(async () => (await hour.boundingBox())!.x)
+    .toBeLessThan(was - 150);
+  await expect(labels.locator(".dk-word").first()).toBeVisible();
+  expect((await labels.boundingBox())!.width).toBe(52);
   const dock = (await page.locator(".dock").boundingBox())!;
-  expect((await wrap.boundingBox())!.x - dock.x).toBeLessThan(10);
-  expect(Math.abs((await hour.boundingBox())!.x - (was - 160))).toBeLessThan(2);
+  expect((await wrap.boundingBox())!.x - dock.x).toBeGreaterThanOrEqual(52);
   await wrap.evaluate((el) => (el.style.scrollSnapType = ""));
-  await expect.poll(() => offCursor(page)).toBeLessThan(2);
-  // Slid back to the start of the week, they open again.
-  await slider(page).press("Home");
-  await expect.poll(() => wrap.evaluate((el) => el.scrollLeft)).toBe(0);
-  await expect(grid).not.toHaveClass(/is-folded/);
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
 });
 
@@ -1741,7 +1744,7 @@ test("the gust factor heads the rows under the fold: each hour's gust over its w
     );
 });
 
-test("on a phone, the rows under the tide keep their units beside their glyphs", async ({
+test("on a phone, the rows under the tide are named in words, each with its unit under its name", async ({
   page,
 }) => {
   await withTides(page);
@@ -1752,29 +1755,54 @@ test("on a phone, the rows under the tide keep their units beside their glyphs",
   });
   await moreRows(page);
   await expect(page.locator(".dock tr.tt-rain")).toHaveCount(1);
-  // A bare 0.5, 12° or 0 says nothing: each figure's unit is on the screen,
-  // the wind's under its glyph and the others' beside theirs (the sky's
-  // glyphs need none).
+  // Each row says what it is, the gust factor, the waves, the current and
+  // the sky among them, and a bare 0.5, 12° or 0 says its unit too (the
+  // sky's glyphs need none).
+  await expect(page.locator(".dk-labs .dk-word")).toHaveText([
+    "Wind",
+    "Dir",
+    "Wing",
+    "Gust",
+    "Waves",
+    "Current",
+    "Sky",
+    "Air",
+    "Rain",
+  ]);
   await expect(page.locator(".dk-labs .dk-lab-wind small")).toBeVisible();
   const units = page.locator(".dk-labs .dk-unit");
-  await expect(units).toHaveText(["×", "m", "°C", "mm/h"]);
-  // Each within the label column, clear of its glyph and of the hours.
+  await expect(units).toHaveText(["m²", "×", "m", "°C", "mm/h"]);
+  // Each under its name, within the label column and clear of the hours.
   const column = (await page.locator(".dk-labs").boundingBox())!;
   for (const unit of await units.all()) {
     await expect(unit).toBeVisible();
     const box = (await unit.boundingBox())!;
-    const glyph = (await unit
+    const word = (await unit
       .locator("xpath=preceding-sibling::*[1]")
       .boundingBox())!;
-    expect(box.x).toBeGreaterThanOrEqual(glyph.x + glyph.width);
+    expect(box.y).toBeGreaterThanOrEqual(word.y + word.height - 1);
     expect(box.x + box.width).toBeLessThanOrEqual(column.x + column.width);
   }
-  // The current's unit is the wind's, the rider's, so it stands under its
-  // glyph as the wind's does: "km/h" beside it would run into the hours.
-  const flow = page.locator(".dk-labs .dk-lab-stack small");
+  for (const word of await page.locator(".dk-labs .dk-word").all()) {
+    const box = (await word.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(column.x + column.width);
+  }
+  // The current's unit is the wind's, the rider's, under its name as the
+  // wind's is.
+  const flow = page.locator(".dk-labs .dk-lab-stack small:not(.dk-unit)");
   await expect(flow).toHaveText("kn");
-  const box = (await flow.boundingBox())!;
-  expect(box.x + box.width).toBeLessThanOrEqual(column.x + column.width);
+  // Each name level with its row's figures.
+  for (const row of ["gust", "waves", "rain"]) {
+    const cell = (await page
+      .locator(`.dock tr.tt-${row} td[data-i]`)
+      .first()
+      .boundingBox())!;
+    const name = (await page
+      .locator(".dk-labs .dk-word", { hasText: new RegExp(`^${row}$`, "i") })
+      .boundingBox())!;
+    expect(name.y).toBeGreaterThanOrEqual(cell.y - 1);
+    expect(name.y + name.height).toBeLessThanOrEqual(cell.y + cell.height + 1);
+  }
 });
 
 test("a spot's current is its own published series, and says so once when there is none", async ({

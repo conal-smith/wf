@@ -53,15 +53,12 @@ import { useRain } from "./useRain";
 import type { LightState } from "../force5/src/lights";
 import { speedWords } from "../force5/src/units";
 import { rideWedge } from "../force5/src/rideWedge";
-import {
-  DEFAULT_WIND,
-  parseWindLayers,
-  type WindLayers,
-} from "../force5/src/windLayer";
+import { parseWindLayers, type WindLayers } from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ForecastDock, { type DockView } from "./ForecastDock";
 import MapControls, { chartTools, type MapPanel } from "./MapControls";
 import MapHead from "./MapHead";
+import { LAYER_DEFAULTS } from "./layerGroups";
 import { TourGlyph } from "./chartGlyphs";
 import { tourOffered, tourSeen } from "./tourOffer";
 import { SiteMenu } from "../force5/src/SiteMenu";
@@ -279,17 +276,10 @@ const store = {
 /** The chart's switches and, in the same store, the satellite's choice. */
 type MapLayers = ChartLayers & { satellite: SatelliteOption };
 
+/** The chart's defaults (src/layerGroups.tsx), which the Layers panel names. */
 const DEFAULT_LAYERS: MapLayers = {
-  tints: true,
-  soundings: true,
-  relief: true,
-  names: true,
-  foil: true,
-  // Off by default: nothing of it is read until a rider asks for it.
-  currents: false,
-  // Off too, and nothing of it read until asked for.
-  rain: false,
-  satellite: "off",
+  ...LAYER_DEFAULTS.layers,
+  satellite: LAYER_DEFAULTS.satellite,
 };
 
 function useMedia(query: string) {
@@ -497,7 +487,7 @@ export default function App() {
   /** The mark round the chosen spot: the range ring unless the rider chose otherwise. */
   const [focusStyle, setFocusStyle] = useState<FocusStyle>(() => {
     const saved = store.get(FOCUS_KEY);
-    return isFocusStyle(saved) ? saved : "ring";
+    return isFocusStyle(saved) ? saved : LAYER_DEFAULTS.focusStyle;
   });
   const chooseFocusStyle = (style: FocusStyle) => {
     setFocusStyle(style);
@@ -2045,8 +2035,8 @@ export default function App() {
         </li>
         {layers.rain && (
           <li>
-            Rain: Deutscher Wetterdienst&rsquo;s ICON-EU model (CC BY 4.0),
-            the rain in each hour
+            Rain: Deutscher Wetterdienst&rsquo;s ICON-EU model (CC BY 4.0), the
+            rain in each hour
           </li>
         )}
         {layers.currents && (
@@ -2404,9 +2394,9 @@ export default function App() {
                     currentsNote={currents.note}
                     foilNote={foilFar ? FOIL_ZOOM_NOTE : null}
                     onResetLayers={() => {
-                      chooseWind(DEFAULT_WIND);
+                      chooseWind(LAYER_DEFAULTS.wind);
                       chooseLayers(DEFAULT_LAYERS);
-                      chooseFocusStyle("ring");
+                      chooseFocusStyle(LAYER_DEFAULTS.focusStyle);
                     }}
                     modelDisabled={!frame || !!pendingModel}
                     onModel={(id) => pickRiderModel(id)}

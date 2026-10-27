@@ -3,6 +3,7 @@ import type { SatelliteOption } from "../force5/src/satellite";
 import type { ChartLayers } from "../force5/src/WindMap";
 import type { FocusStyle } from "../force5/src/focus";
 import type { WindLayers } from "../force5/src/windLayer";
+import { DEFAULT_WIND } from "../force5/src/windLayers";
 import {
   ChartGlyph,
   glyphs,
@@ -39,6 +40,34 @@ export interface LayerChoices {
   focusStyle: FocusStyle;
   onFocusStyle: (style: FocusStyle) => void;
 }
+
+/**
+ * The chart a first visit opens on, and what the Layers panel's Reset puts
+ * back (src/App.tsx): the particles, tidal depth, the whole chart and the
+ * range ring. The panel's foot names them from here (`defaultLayersLine`),
+ * so what it says is the default cannot drift from what Reset does.
+ */
+export const LAYER_DEFAULTS: {
+  wind: WindLayers;
+  layers: ChartLayers;
+  satellite: SatelliteOption;
+  focusStyle: FocusStyle;
+} = {
+  wind: DEFAULT_WIND,
+  layers: {
+    tints: true,
+    soundings: true,
+    relief: true,
+    names: true,
+    foil: true,
+    // Off by default: nothing of it is read until a rider asks for it.
+    currents: false,
+    // Off too, and nothing of it read until asked for.
+    rain: false,
+  },
+  satellite: "off",
+  focusStyle: "ring",
+};
 
 /** One layer: its name, its glyph, whether it is on, and its switch. */
 export interface LayerTile {
@@ -338,4 +367,58 @@ export function railGroups(groups: LayerGroup[]) {
         })),
     };
   });
+}
+
+/** The choices as they are, against the defaults: the layers alone, not their switches. */
+export function isDefaultLayers({
+  wind,
+  layers,
+  satellite,
+  focusStyle,
+}: Pick<LayerChoices, "wind" | "layers" | "satellite" | "focusStyle">) {
+  const d = LAYER_DEFAULTS;
+  return (
+    wind.wash === d.wind.wash &&
+    wind.particles === d.wind.particles &&
+    (Object.keys(d.layers) as (keyof ChartLayers)[]).every(
+      (key) => !!layers[key] === d.layers[key],
+    ) &&
+    satellite === d.satellite &&
+    focusStyle === d.focusStyle
+  );
+}
+
+/**
+ * The default layers in words, read off the panel's own tiles as they stand
+ * at the defaults, in the panel's order: a group whose every layer is on by
+ * its group's name ("the chart"), any other by its layers' names.
+ */
+export function defaultLayerNames(): string[] {
+  const none = () => {};
+  const groups = layerGroups({
+    ...LAYER_DEFAULTS,
+    onWind: none,
+    onLayersChange: none,
+    onSatellite: none,
+    onFocusStyle: none,
+  });
+  return groups.flatMap((group) => {
+    const tiles = group.tiles.filter((tile) => !tile.none);
+    const on = tiles.filter((tile) => tile.on);
+    if (on.length > 1 && on.length === tiles.length)
+      return [`the ${group.name.toLowerCase()}`];
+    return on.map((tile) => tile.name.toLowerCase());
+  });
+}
+
+/**
+ * The Layers panel's foot: the defaults by name, said as what is on when
+ * the chart is at them, and otherwise as what Reset puts back, so a rider
+ * with other layers on never reads it as a list of what is on now.
+ */
+export function defaultLayersLine(atDefault: boolean): string {
+  const names = defaultLayerNames().join(", ");
+  return atDefault
+    ? `The default layers are on: ${names}.`
+    : `Reset for the default: ${names}.`;
 }
