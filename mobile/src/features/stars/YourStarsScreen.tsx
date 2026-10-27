@@ -28,10 +28,29 @@
 import { Stack, router } from "expo-router";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View, useWindowDimensions } from "react-native";
-import { Gesture, GestureDetector, ScrollView } from "react-native-gesture-handler";
+import {
+  Gesture,
+  GestureDetector,
+  ScrollView,
+} from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, ClipPath, Defs, G, Line, Path, Pattern, Polygon, Rect, Text as SvgText } from "react-native-svg";
-import { NEVER, type CustomRating, type DirectionKey } from "../../../../force5/src/stars";
+import Svg, {
+  Circle,
+  ClipPath,
+  Defs,
+  G,
+  Line,
+  Path,
+  Pattern,
+  Polygon,
+  Rect,
+  Text as SvgText,
+} from "react-native-svg";
+import {
+  NEVER,
+  type CustomRating,
+  type DirectionKey,
+} from "../../../../force5/src/stars";
 import {
   DIRECTION_NAME,
   WEB_DIRS,
@@ -40,8 +59,7 @@ import {
   WIND_TOP,
   costLabel,
   forceTicks,
-  moveWind,
-  moveWindForce,
+  moveWindIn,
   offAt,
   polar,
   said,
@@ -60,7 +78,15 @@ import { done, tick } from "../../components/haptics";
 import { Segmented } from "../../components/Segmented";
 import { T } from "../../components/Text";
 import { usePrefs } from "../../data/prefs";
-import { colors, fonts, hitTarget, radius, space, starColors, withAlpha } from "../../theme/tokens";
+import {
+  colors,
+  fonts,
+  hitTarget,
+  radius,
+  space,
+  starColors,
+  withAlpha,
+} from "../../theme/tokens";
 import { STAR } from "./StarRating";
 import {
   DIRECTION_LINE,
@@ -108,7 +134,9 @@ export function YourStarsScreen() {
   const inner = width - space.lg * 2;
   const unit = useMemo(() => unitScale(prefs.units), [prefs.units]);
   // What was saved when the screen opened: Cancel keeps nothing.
-  const [draft, setDraft] = useState<YourStars>(() => yourStarsOf(prefs.rider, prefs.units));
+  const [draft, setDraft] = useState<YourStars>(() =>
+    yourStarsOf(prefs.rider, prefs.units),
+  );
   const [step, setStep] = useState(0);
   const scroll = useRef<ScrollView>(null);
   const st = STEPS[step];
@@ -125,7 +153,14 @@ export function YourStarsScreen() {
       <Stack.Screen
         options={{
           title: "Your stars",
-          headerLeft: () => <Button label="Cancel" kind="quiet" size="sm" onPress={() => router.back()} />,
+          headerLeft: () => (
+            <Button
+              label="Cancel"
+              kind="quiet"
+              size="sm"
+              onPress={() => router.back()}
+            />
+          ),
         }}
       />
       <ScrollView
@@ -138,13 +173,20 @@ export function YourStarsScreen() {
           <T variant="lead" accessibilityRole="header" style={styles.flex}>
             {st.title}
           </T>
-          <T variant="eyebrow" color="muted" accessibilityLabel={`Step ${step + 1} of ${STEPS.length}`}>
+          <T
+            variant="eyebrow"
+            color="muted"
+            accessibilityLabel={`Step ${step + 1} of ${STEPS.length}`}
+          >
             {step + 1} / {STEPS.length}
           </T>
         </View>
         <View style={styles.progress} accessible={false}>
           {STEPS.map((s, i) => (
-            <View key={s.id} style={[styles.bar, i <= step && styles.barDone]} />
+            <View
+              key={s.id}
+              style={[styles.bar, i <= step && styles.barDone]}
+            />
           ))}
         </View>
         <T variant="body" color="ink2" style={styles.sub}>
@@ -155,7 +197,9 @@ export function YourStarsScreen() {
             rating={draft.rating}
             unit={unit}
             width={inner}
-            onMove={(key, kn) => setRating((r) => (unit.force ? moveWindForce : moveWind)(r, key, kn))}
+            onMove={(key, kn) =>
+              setRating((r) => moveWindIn(r, key, kn, prefs.units))
+            }
           />
         ) : st.id === "shore" ? (
           <ShoreStep
@@ -171,7 +215,12 @@ export function YourStarsScreen() {
           />
         )}
       </ScrollView>
-      <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, space.md) }]}>
+      <View
+        style={[
+          styles.actions,
+          { paddingBottom: Math.max(insets.bottom, space.md) },
+        ]}
+      >
         {differsFromOurs(draft, prefs.units) ? (
           <Button
             label="Reset to ours"
@@ -181,7 +230,9 @@ export function YourStarsScreen() {
             onPress={() => setDraft(oursStars(prefs.units))}
           />
         ) : null}
-        {step ? <Button label="Back" kind="pill" onPress={() => go(step - 1)} /> : null}
+        {step ? (
+          <Button label="Back" kind="pill" onPress={() => go(step - 1)} />
+        ) : null}
         <Button
           label={last ? "Save" : "Next"}
           kind="primary"
@@ -201,12 +252,27 @@ export function YourStarsScreen() {
 
 const mono = { fontFamily: fonts.monoMedium } as const;
 /** IBM Plex Mono sets every character 0.6 em wide: a label's width without measuring it. */
-const textWidth = (text: string, size: number, spacing: number) => text.length * (size * 0.6 + spacing);
+const textWidth = (text: string, size: number, spacing: number) =>
+  text.length * (size * 0.6 + spacing);
 
 /** The slider's frame, in points: room left of the axis for the strip's star, and the rows from the top. */
-const RANGE = { left: 18, right: 8, height: 96, track: 34, trackH: 16, strip: 56, stripH: 13, ticks: 76 } as const;
+const RANGE = {
+  left: 18,
+  right: 8,
+  height: 96,
+  track: 34,
+  trackH: 16,
+  strip: 56,
+  stripH: 13,
+  ticks: 76,
+} as const;
 const LABEL = { size: 10, spacing: 1 } as const;
-const NAMES = { light: "TOO LIGHT", sweet: "SWEET SPOT", much: "TOO MUCH, IN GUSTS", none: "no stars past here" };
+const NAMES = {
+  light: "TOO LIGHT",
+  sweet: "SWEET SPOT",
+  much: "TOO MUCH, IN GUSTS",
+  none: "no stars past here",
+};
 const HANDLE_NAMES: Record<WindKey, string> = {
   min: "Too light below",
   sweetLow: "Sweet spot from",
@@ -217,10 +283,14 @@ const HANDLE_NAMES: Record<WindKey, string> = {
 /** The axis's ticks in the rider's unit: every tick of it, or every other force. */
 function ticksOf(unit: UnitScale): { kn: number; label: string }[] {
   if (unit.force)
-    return forceTicks(1, SCALE_TO).map((t) => ({ kn: t.kn, label: t.force % 2 ? "" : `F${t.force}` }));
+    return forceTicks(1, SCALE_TO).map((t) => ({
+      kn: t.kn,
+      label: t.force % 2 ? "" : `F${t.force}`,
+    }));
   const out = [];
   const top = SCALE_TO * unit.perKn;
-  for (let v = unit.tick; v <= top + 1e-6; v += unit.tick) out.push({ kn: v / unit.perKn, label: String(v) });
+  for (let v = unit.tick; v <= top + 1e-6; v += unit.tick)
+    out.push({ kn: v / unit.perKn, label: String(v) });
   return out;
 }
 
@@ -246,7 +316,11 @@ function WindStep({
   const perKn = W / SCALE_TO;
   const X = (kn: number) => RANGE.left + Math.min(kn, SCALE_TO) * perKn;
   const now = useLatest({ values: w, onMove });
-  const [drag] = useState(() => ({ held: null as WindKey | null, from: 0, last: null as number | null }));
+  const [drag] = useState(() => ({
+    held: null as WindKey | null,
+    from: 0,
+    last: null as number | null,
+  }));
   /* eslint-disable react-hooks/immutability --
      a gesture's callbacks run as the finger moves, never while rendering. */
   const gesture = useMemo(() => {
@@ -269,7 +343,13 @@ function WindStep({
         const dx = e.x - drag.from;
         // The handle is taken once the finger has said which way it goes.
         if (!drag.held && dx) {
-          drag.held = grabHandle(WIND_KEYS, now.current.values, at(drag.from), dx, (REACH * 0.75) / perKn);
+          drag.held = grabHandle(
+            WIND_KEYS,
+            now.current.values,
+            at(drag.from),
+            dx,
+            (REACH * 0.75) / perKn,
+          );
           drag.last = now.current.values[drag.held];
         }
         if (drag.held) move(drag.held, at(e.x));
@@ -308,13 +388,39 @@ function WindStep({
         <Svg width={width} height={RANGE.height} accessible={false}>
           <Defs>
             <ClipPath id="track">
-              <Rect x={RANGE.left} y={track} width={W} height={trackH} rx={trackH / 2} />
+              <Rect
+                x={RANGE.left}
+                y={track}
+                width={W}
+                height={trackH}
+                rx={trackH / 2}
+              />
             </ClipPath>
-            <Pattern id="over" width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <Line x1={0} y1={0} x2={0} y2={5} stroke={colors.pen} strokeWidth={1.5} />
+            <Pattern
+              id="over"
+              width={5}
+              height={5}
+              patternUnits="userSpaceOnUse"
+              patternTransform="rotate(45)"
+            >
+              <Line
+                x1={0}
+                y1={0}
+                x2={0}
+                y2={5}
+                stroke={colors.pen}
+                strokeWidth={1.5}
+              />
             </Pattern>
           </Defs>
-          <SvgText {...mono} x={at.light} y={14} fontSize={LABEL.size} letterSpacing={LABEL.spacing} fill={colors.muted}>
+          <SvgText
+            {...mono}
+            x={at.light}
+            y={14}
+            fontSize={LABEL.size}
+            letterSpacing={LABEL.spacing}
+            fill={colors.muted}
+          >
             {NAMES.light}
           </SvgText>
           <SvgText
@@ -328,17 +434,62 @@ function WindStep({
           >
             {NAMES.sweet}
           </SvgText>
-          <SvgText {...mono} x={at.much} y={14} fontSize={LABEL.size} letterSpacing={LABEL.spacing} fill={colors.penInk}>
+          <SvgText
+            {...mono}
+            x={at.much}
+            y={14}
+            fontSize={LABEL.size}
+            letterSpacing={LABEL.spacing}
+            fill={colors.penInk}
+          >
             {NAMES.much}
           </SvgText>
           <G clipPath="url(#track)">
-            <Rect x={RANGE.left} y={track} width={W} height={trackH} fill={colors.paper} />
-            <Rect x={X(w.min)} y={track} width={X(w.sweetLow) - X(w.min)} height={trackH} fill={withAlpha(colors.ink, 0.2)} />
-            <Rect x={X(w.sweetLow)} y={track} width={X(w.sweetHigh) - X(w.sweetLow)} height={trackH} fill={colors.ink} />
-            <Rect x={X(w.sweetHigh)} y={track} width={X(w.max) - X(w.sweetHigh)} height={trackH} fill={withAlpha(colors.ink, 0.2)} />
-            <Rect x={X(w.max)} y={track} width={RANGE.left + W - X(w.max)} height={trackH} fill="url(#over)" />
+            <Rect
+              x={RANGE.left}
+              y={track}
+              width={W}
+              height={trackH}
+              fill={colors.paper}
+            />
+            <Rect
+              x={X(w.min)}
+              y={track}
+              width={X(w.sweetLow) - X(w.min)}
+              height={trackH}
+              fill={withAlpha(colors.ink, 0.2)}
+            />
+            <Rect
+              x={X(w.sweetLow)}
+              y={track}
+              width={X(w.sweetHigh) - X(w.sweetLow)}
+              height={trackH}
+              fill={colors.ink}
+            />
+            <Rect
+              x={X(w.sweetHigh)}
+              y={track}
+              width={X(w.max) - X(w.sweetHigh)}
+              height={trackH}
+              fill={withAlpha(colors.ink, 0.2)}
+            />
+            <Rect
+              x={X(w.max)}
+              y={track}
+              width={RANGE.left + W - X(w.max)}
+              height={trackH}
+              fill="url(#over)"
+            />
           </G>
-          <Rect x={RANGE.left} y={track} width={W} height={trackH} rx={trackH / 2} fill="none" stroke={colors.ink} />
+          <Rect
+            x={RANGE.left}
+            y={track}
+            width={W}
+            height={trackH}
+            rx={trackH / 2}
+            fill="none"
+            stroke={colors.ink}
+          />
           {/* The stars the handles make, by steady wind: read-only, right under the track. */}
           <Path
             d={STAR}
@@ -355,7 +506,13 @@ function WindStep({
               const x2 = X(Math.min(SCALE_TO, r.to + 0.5));
               return (
                 <G key={r.from}>
-                  <Rect x={x} y={strip} width={x2 - x} height={stripH} fill={starColors[r.stars]} />
+                  <Rect
+                    x={x}
+                    y={strip}
+                    width={x2 - x}
+                    height={stripH}
+                    fill={starColors[r.stars]}
+                  />
                   {x2 - x >= 10 ? (
                     <SvgText
                       fontFamily={fonts.monoBold}
@@ -371,7 +528,14 @@ function WindStep({
                 </G>
               );
             })}
-          <SvgText {...mono} x={at.none} y={strip + 9.5} fontSize={9} letterSpacing={0.5} fill={colors.penInk}>
+          <SvgText
+            {...mono}
+            x={at.none}
+            y={strip + 9.5}
+            fontSize={9}
+            letterSpacing={0.5}
+            fill={colors.penInk}
+          >
             {NAMES.none}
           </SvgText>
           {ticks.map((t, i) => {
@@ -379,7 +543,13 @@ function WindStep({
             const end = i === ticks.length - 1;
             return (
               <G key={t.kn}>
-                <Line x1={x} x2={x} y1={RANGE.ticks - 6} y2={RANGE.ticks - 2} stroke={colors.ink} />
+                <Line
+                  x1={x}
+                  x2={x}
+                  y1={RANGE.ticks - 6}
+                  y2={RANGE.ticks - 2}
+                  stroke={colors.ink}
+                />
                 {t.label ? (
                   <SvgText
                     {...mono}
@@ -414,14 +584,32 @@ function WindStep({
               now: Number(shown(w[k], unit)),
               text: said(w[k], unit),
             }}
-            accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+            accessibilityActions={[
+              { name: "increment" },
+              { name: "decrement" },
+            ]}
             onAccessibilityAction={(e) =>
-              onMove(k, stepped(w[k], e.nativeEvent.actionName === "increment" ? 1 : -1, unit))
+              onMove(
+                k,
+                stepped(
+                  w[k],
+                  e.nativeEvent.actionName === "increment" ? 1 : -1,
+                  unit,
+                ),
+              )
             }
-            style={[styles.handle, { left: X(w[k]) - REACH, top: track + trackH / 2 - REACH }]}
+            style={[
+              styles.handle,
+              { left: X(w[k]) - REACH, top: track + trackH / 2 - REACH },
+            ]}
           >
             <View style={[styles.knob, i === 3 && styles.knobTop]}>
-              <T variant="label" tabular color={i === 3 ? "penInk" : "ink"} style={styles.knobText}>
+              <T
+                variant="label"
+                tabular
+                color={i === 3 ? "penInk" : "ink"}
+                style={styles.knobText}
+              >
                 {shown(w[k], unit)}
               </T>
             </View>
@@ -439,7 +627,9 @@ const WEB_BOX = { x: -158, y: -140, w: 316, h: 284 } as const;
 const f1 = (n: number) => n.toFixed(1);
 /** Every dot's place round the web, both sides for the four that come from either. */
 const SPOKES = WEB_DIRS.flatMap((d) => d.at.map((a) => ({ key: d.key, a })));
-const RING = [...SPOKES].sort((p, q) => ((p.a + 360) % 360) - ((q.a + 360) % 360));
+const RING = [...SPOKES].sort(
+  (p, q) => ((p.a + 360) % 360) - ((q.a + 360) % 360),
+);
 /** The way the wind blows, an arrowhead past the rim. */
 const arrow = (a: number) => {
   const [tx, ty] = polar(a, WEB_R + 1);
@@ -478,7 +668,10 @@ function ShoreStep({
 
   /* eslint-disable react-hooks/immutability -- as WindStep's */
   const gesture = useMemo(() => {
-    const toWeb = (x: number, y: number): [number, number] => [x / s + WEB_BOX.x, y / s + WEB_BOX.y];
+    const toWeb = (x: number, y: number): [number, number] => [
+      x / s + WEB_BOX.x,
+      y / s + WEB_BOX.y,
+    ];
     // Claimed only once a drag starts on a dot: anywhere else, and anything
     // that is not yet a drag, is the page's to scroll.
     return Gesture.Pan()
@@ -494,7 +687,11 @@ function ShoreStep({
       })
       .onTouchesMove((e, manager) => {
         const touch = e.changedTouches[0];
-        if (drag.held && Math.hypot(touch.x - drag.start[0], touch.y - drag.start[1]) > 3) manager.activate();
+        if (
+          drag.held &&
+          Math.hypot(touch.x - drag.start[0], touch.y - drag.start[1]) > 3
+        )
+          manager.activate();
       })
       .onTouchesUp((_e, manager) => manager.end())
       .onUpdate((e) => {
@@ -518,24 +715,78 @@ function ShoreStep({
     <View style={styles.shore}>
       <GestureDetector gesture={gesture}>
         <View style={[styles.web, { width: webWidth, height }]}>
-          <Svg width={webWidth} height={height} viewBox={`${WEB_BOX.x} ${WEB_BOX.y} ${WEB_BOX.w} ${WEB_BOX.h}`} accessible={false}>
-            <Rect x={-158} y={-140} width={316} height={140} fill={colors.sea} />
+          <Svg
+            width={webWidth}
+            height={height}
+            viewBox={`${WEB_BOX.x} ${WEB_BOX.y} ${WEB_BOX.w} ${WEB_BOX.h}`}
+            accessible={false}
+          >
+            <Rect
+              x={-158}
+              y={-140}
+              width={316}
+              height={140}
+              fill={colors.sea}
+            />
             <Rect x={-158} y={0} width={316} height={144} fill={colors.land} />
-            <Line x1={-158} x2={158} y1={0} y2={0} stroke={colors.ink} strokeWidth={1.5} />
-            <SvgText {...mono} x={-150} y={-128} fontSize={9} letterSpacing={1.3} fill={colors.muted}>
+            <Line
+              x1={-158}
+              x2={158}
+              y1={0}
+              y2={0}
+              stroke={colors.ink}
+              strokeWidth={1.5}
+            />
+            <SvgText
+              {...mono}
+              x={-150}
+              y={-128}
+              fontSize={9}
+              letterSpacing={1.3}
+              fill={colors.muted}
+            >
               SEA
             </SvgText>
-            <SvgText {...mono} x={-150} y={138} fontSize={9} letterSpacing={1.3} fill={colors.muted}>
+            <SvgText
+              {...mono}
+              x={-150}
+              y={138}
+              fontSize={9}
+              letterSpacing={1.3}
+              fill={colors.muted}
+            >
               LAND
             </SvgText>
-            <Circle r={R} fill={colors.paper} fillOpacity={0.55} stroke={colors.ink} />
+            <Circle
+              r={R}
+              fill={colors.paper}
+              fillOpacity={0.55}
+              stroke={colors.ink}
+            />
             {[1, 2, 3, 4].map((n) => (
-              <Circle key={n} r={webRadius(n)} fill="none" stroke={withAlpha(colors.ink, 0.13)} />
+              <Circle
+                key={n}
+                r={webRadius(n)}
+                fill="none"
+                stroke={withAlpha(colors.ink, 0.13)}
+              />
             ))}
-            <SvgText {...mono} x={4} y={-R + 10} fontSize={7} fill={colors.muted}>
+            <SvgText
+              {...mono}
+              x={4}
+              y={-R + 10}
+              fontSize={7}
+              fill={colors.muted}
+            >
               0★
             </SvgText>
-            <SvgText {...mono} x={4} y={f1(-webRadius(2) + 9)} fontSize={7} fill={colors.muted}>
+            <SvgText
+              {...mono}
+              x={4}
+              y={f1(-webRadius(2) + 9)}
+              fontSize={7}
+              fill={colors.muted}
+            >
               −2★
             </SvgText>
             {SPOKES.map(({ key, a }) => {
@@ -545,7 +796,13 @@ function ShoreStep({
               const [lx, ly] = polar(a, side ? R + 4 : R + 19);
               return (
                 <G key={`${key}${a}`}>
-                  <Line x1={0} y1={0} x2={f1(x)} y2={f1(y)} stroke={withAlpha(colors.ink, 0.27)} />
+                  <Line
+                    x1={0}
+                    y1={0}
+                    x2={f1(x)}
+                    y2={f1(y)}
+                    stroke={withAlpha(colors.ink, 0.27)}
+                  />
                   <Path
                     d={arrow(a)}
                     fill="none"
@@ -558,7 +815,9 @@ function ShoreStep({
                     {...mono}
                     x={f1(lx)}
                     y={f1(side ? 14 : ly + 3)}
-                    textAnchor={a === 90 ? "start" : a === -90 ? "end" : "middle"}
+                    textAnchor={
+                      a === 90 ? "start" : a === -90 ? "end" : "middle"
+                    }
                     fontSize={8.5}
                     letterSpacing={0.5}
                     fill={danger ? colors.penInk : colors.ink2}
@@ -569,14 +828,22 @@ function ShoreStep({
               );
             })}
             <Polygon
-              points={RING.map(({ key, a }) => polar(a, webRadius(off[key])).map(f1).join(",")).join(" ")}
+              points={RING.map(({ key, a }) =>
+                polar(a, webRadius(off[key])).map(f1).join(","),
+              ).join(" ")}
               fill={withAlpha(colors.ink, 0.13)}
               stroke={colors.ink}
               strokeWidth={1.5}
               strokeLinejoin="round"
             />
             <Circle r={9} fill={colors.paper} stroke={colors.pen} />
-            <SvgText {...mono} y={2.2} textAnchor="middle" fontSize={5.5} fill={colors.penInk}>
+            <SvgText
+              {...mono}
+              y={2.2}
+              textAnchor="middle"
+              fontSize={5.5}
+              fill={colors.penInk}
+            >
               NEVER
             </SvgText>
             {SPOKES.map(({ key, a }) => {
@@ -593,7 +860,15 @@ function ShoreStep({
                 />
               );
             })}
-            <SvgText {...mono} x={0} y={138} textAnchor="middle" fontSize={9} letterSpacing={1.3} fill={colors.muted}>
+            <SvgText
+              {...mono}
+              x={0}
+              y={138}
+              textAnchor="middle"
+              fontSize={9}
+              letterSpacing={1.3}
+              fill={colors.muted}
+            >
               ARROWS: THE WAY THE WIND BLOWS
             </SvgText>
           </Svg>
@@ -601,7 +876,10 @@ function ShoreStep({
           {WEB_DIRS.map((d) => {
             const [x, y] = polar(d.at[0], webRadius(off[d.key]));
             const locked = shoreLocked(d.key);
-            const place = { left: (x - WEB_BOX.x) * s - REACH, top: (y - WEB_BOX.y) * s - REACH };
+            const place = {
+              left: (x - WEB_BOX.x) * s - REACH,
+              top: (y - WEB_BOX.y) * s - REACH,
+            };
             return locked ? (
               <View
                 key={d.key}
@@ -615,11 +893,23 @@ function ShoreStep({
                 accessible
                 accessibilityRole="adjustable"
                 accessibilityLabel={`${DIRECTION_NAME[d.key]}: stars taken off`}
-                accessibilityValue={{ min: 0, max: NEVER, now: off[d.key], text: costLabel(off[d.key]) }}
-                accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+                accessibilityValue={{
+                  min: 0,
+                  max: NEVER,
+                  now: off[d.key],
+                  text: costLabel(off[d.key]),
+                }}
+                accessibilityActions={[
+                  { name: "increment" },
+                  { name: "decrement" },
+                ]}
                 onAccessibilityAction={(e) => {
                   tick();
-                  onChange(d.key, off[d.key] + (e.nativeEvent.actionName === "increment" ? -1 : 1));
+                  onChange(
+                    d.key,
+                    off[d.key] +
+                      (e.nativeEvent.actionName === "increment" ? -1 : 1),
+                  );
                 }}
                 style={[styles.dot, place]}
               />
@@ -643,7 +933,12 @@ function ShoreStep({
                   {DIRECTION_NAME[key]}
                 </T>
                 <View style={styles.cost}>
-                  <T variant="label" tabular color={never ? "penInk" : "ink"} style={styles.costText}>
+                  <T
+                    variant="label"
+                    tabular
+                    color={never ? "penInk" : "ink"}
+                    style={styles.costText}
+                  >
                     {costLabel(off[key])}
                   </T>
                   {locked ? <Lock /> : null}
@@ -664,7 +959,12 @@ function Lock() {
   return (
     <Svg width={11} height={11} viewBox="0 0 12 12" accessible={false}>
       <Rect x={2.5} y={5.5} width={7} height={5} rx={1} fill={colors.penInk} />
-      <Path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke={colors.penInk} strokeWidth={1.3} />
+      <Path
+        d="M4 5.5V4a2 2 0 0 1 4 0v1.5"
+        fill="none"
+        stroke={colors.penInk}
+        strokeWidth={1.3}
+      />
     </Svg>
   );
 }
@@ -690,11 +990,17 @@ function UpwindStep({
   const picWidth = Math.min(width, 300);
   const s = picWidth / UP.vw;
   const now = useLatest({ yours, onChange });
-  const [drag] = useState(() => ({ held: null as "upwind" | "downwind" | null, last: null as number | null }));
+  const [drag] = useState(() => ({
+    held: null as "upwind" | "downwind" | null,
+    last: null as number | null,
+  }));
 
   /* eslint-disable react-hooks/immutability -- as WindStep's */
   const gesture = useMemo(() => {
-    const toPic = (x: number, y: number): [number, number] => [x / s + UP.vx, y / s];
+    const toPic = (x: number, y: number): [number, number] => [
+      x / s + UP.vx,
+      y / s,
+    ];
     return Gesture.Pan()
       .runOnJS(true)
       .manualActivation(true)
@@ -714,7 +1020,9 @@ function UpwindStep({
         if (next !== drag.last) {
           tick();
           drag.last = next;
-          now.current.onChange(drag.held === "upwind" ? { upwind: next } : { downwind: next });
+          now.current.onChange(
+            drag.held === "upwind" ? { upwind: next } : { downwind: next },
+          );
         }
       })
       .onFinalize(() => {
@@ -741,7 +1049,11 @@ function UpwindStep({
       </T>
       <GestureDetector gesture={gesture}>
         <View style={[styles.pic, { width: picWidth, height: UP.vh * s }]}>
-          <UpwindPicture upwind={yours.upwind} downwind={yours.downwind} width={picWidth} />
+          <UpwindPicture
+            upwind={yours.upwind}
+            downwind={yours.downwind}
+            width={picWidth}
+          />
         </View>
       </GestureDetector>
       <View style={styles.angles}>
@@ -770,10 +1082,22 @@ function UpwindStep({
 }
 
 const lab = { ...mono, fontSize: 9, letterSpacing: 0.9 } as const;
-const strong = { fontFamily: fonts.monoBold, fontSize: 9, letterSpacing: 0.9 } as const;
+const strong = {
+  fontFamily: fonts.monoBold,
+  fontSize: 9,
+  letterSpacing: 0.9,
+} as const;
 
 /** The course round the wind, as the approved mock-up draws it: CAN'T GO, RIDE, DRIFT. */
-function UpwindPicture({ upwind, downwind, width }: { upwind: number; downwind: number; width: number }) {
+function UpwindPicture({
+  upwind,
+  downwind,
+  width,
+}: {
+  upwind: number;
+  downwind: number;
+  width: number;
+}) {
   const { cx, cy, r, vx, vw, vh } = UP;
   const up = 90 - upwind;
   const deep = 90 + downwind;
@@ -838,12 +1162,23 @@ function UpwindPicture({ upwind, downwind, width }: { upwind: number; downwind: 
   const ride = (side: number) => {
     const wide = deep - up >= 30;
     const [x, y] = upPoint((side * (up + deep)) / 2, wide ? r * 0.6 : r * 0.56);
-    const at = { x: f1(x), y: f1(y + (wide ? 3 : -8)), textAnchor: "middle" as const };
+    const at = {
+      x: f1(x),
+      y: f1(y + (wide ? 3 : -8)),
+      textAnchor: "middle" as const,
+    };
     // On a narrow course the word sits over the lines: a halo of paper under it.
     return (
       <G key={`ride${side}`}>
         {wide ? null : (
-          <SvgText {...strong} {...at} fill={colors.paper} stroke={colors.paper} strokeWidth={3} strokeLinejoin="round">
+          <SvgText
+            {...strong}
+            {...at}
+            fill={colors.paper}
+            stroke={colors.paper}
+            strokeWidth={3}
+            strokeLinejoin="round"
+          >
             RIDE
           </SvgText>
         )}
@@ -876,43 +1211,123 @@ function UpwindPicture({ upwind, downwind, width }: { upwind: number; downwind: 
       accessibilityLabel={`The way you ride round the wind: you can't go within ${up}° of it, you ride from ${upwind}° into the wind to ${downwind}° below straight across, and further down you drift and lose ground.`}
     >
       <Defs>
-        <Pattern id="hatch" width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <Line x1={0} y1={0} x2={0} y2={5} stroke={colors.ink} strokeWidth={0.8} strokeOpacity={0.55} />
+        <Pattern
+          id="hatch"
+          width={5}
+          height={5}
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(45)"
+        >
+          <Line
+            x1={0}
+            y1={0}
+            x2={0}
+            y2={5}
+            stroke={colors.ink}
+            strokeWidth={0.8}
+            strokeOpacity={0.55}
+          />
         </Pattern>
       </Defs>
       <Circle cx={cx} cy={cy} r={r} fill={colors.sunken} stroke={colors.line} />
-      <Path d={sector(-up, up, r)} fill="url(#hatch)" stroke={colors.ink} strokeDasharray="3 3" />
+      <Path
+        d={sector(-up, up, r)}
+        fill="url(#hatch)"
+        stroke={colors.ink}
+        strokeDasharray="3 3"
+      />
       {deep - up > 0.5 ? (
         <>
-          <Path d={sector(up, deep, r)} fill={colors.paper} stroke={colors.ink} strokeWidth={1.5} strokeLinejoin="round" />
-          <Path d={sector(-deep, -up, r)} fill={colors.paper} stroke={colors.ink} strokeWidth={1.5} strokeLinejoin="round" />
+          <Path
+            d={sector(up, deep, r)}
+            fill={colors.paper}
+            stroke={colors.ink}
+            strokeWidth={1.5}
+            strokeLinejoin="round"
+          />
+          <Path
+            d={sector(-deep, -up, r)}
+            fill={colors.paper}
+            stroke={colors.ink}
+            strokeWidth={1.5}
+            strokeLinejoin="round"
+          />
         </>
       ) : (
-        <Path d={`M${cx} ${cy}L${xy(up, r)}M${cx} ${cy}L${xy(-up, r)}`} stroke={colors.ink} strokeWidth={1.5} />
+        <Path
+          d={`M${cx} ${cy}L${xy(up, r)}M${cx} ${cy}L${xy(-up, r)}`}
+          stroke={colors.ink}
+          strokeWidth={1.5}
+        />
       )}
-      <Path d={sector(deep, 360 - deep, r)} fill="none" stroke={colors.ink} strokeDasharray="2 3" strokeOpacity={0.6} />
-      <Line x1={cx - r - 8} x2={cx + r + 8} y1={cy} y2={cy} stroke={colors.ink} strokeOpacity={0.4} strokeDasharray="1 3" />
+      <Path
+        d={sector(deep, 360 - deep, r)}
+        fill="none"
+        stroke={colors.ink}
+        strokeDasharray="2 3"
+        strokeOpacity={0.6}
+      />
+      <Line
+        x1={cx - r - 8}
+        x2={cx + r + 8}
+        y1={cy}
+        y2={cy}
+        stroke={colors.ink}
+        strokeOpacity={0.4}
+        strokeDasharray="1 3"
+      />
       <SvgText {...lab} x={cx + r + 10} y={cy + 3} fill={colors.muted}>
         ACROSS
       </SvgText>
-      <SvgText {...lab} x={cx - r - 10} y={cy + 3} textAnchor="end" fill={colors.muted}>
+      <SvgText
+        {...lab}
+        x={cx - r - 10}
+        y={cy + 3}
+        textAnchor="end"
+        fill={colors.muted}
+      >
         ACROSS
       </SvgText>
-      <SvgText {...strong} x={cx} y={cy - r * 0.5} textAnchor="middle" fill={colors.ink}>
+      <SvgText
+        {...strong}
+        x={cx}
+        y={cy - r * 0.5}
+        textAnchor="middle"
+        fill={colors.ink}
+      >
         CAN’T GO
       </SvgText>
       {ride(1)}
       {ride(-1)}
-      <SvgText {...strong} x={cx} y={cy + r * 0.55} textAnchor="middle" fill={colors.ink}>
+      <SvgText
+        {...strong}
+        x={cx}
+        y={cy + r * 0.55}
+        textAnchor="middle"
+        fill={colors.ink}
+      >
         DRIFT
       </SvgText>
-      <SvgText {...lab} x={cx} y={cy + r * 0.55 + 12} textAnchor="middle" fill={colors.muted}>
+      <SvgText
+        {...lab}
+        x={cx}
+        y={cy + r * 0.55 + 12}
+        textAnchor="middle"
+        fill={colors.muted}
+      >
         YOU LOSE GROUND
       </SvgText>
       {angle(1)}
       {angle(-1)}
-      <Path d={`M${cx} 6V${cy - r - 12}`} stroke={colors.ink} strokeWidth={2.5} />
-      <Path d={`M${cx - 6} ${cy - r - 14}L${cx + 6} ${cy - r - 14}L${cx} ${cy - r - 3}Z`} fill={colors.ink} />
+      <Path
+        d={`M${cx} 6V${cy - r - 12}`}
+        stroke={colors.ink}
+        strokeWidth={2.5}
+      />
+      <Path
+        d={`M${cx - 6} ${cy - r - 14}L${cx + 6} ${cy - r - 14}L${cx} ${cy - r - 3}Z`}
+        fill={colors.ink}
+      />
       <SvgText {...strong} x={cx + 10} y={18} fill={colors.ink}>
         WIND
       </SvgText>
@@ -993,12 +1408,28 @@ function AngleSlider({
           accessibilityValue={{ min: 0, max, now: value, text: `${value}°` }}
           accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
           onAccessibilityAction={(e) =>
-            onChange(Math.max(0, Math.min(max, value + (e.nativeEvent.actionName === "increment" ? 1 : -1))))
+            onChange(
+              Math.max(
+                0,
+                Math.min(
+                  max,
+                  value + (e.nativeEvent.actionName === "increment" ? 1 : -1),
+                ),
+              ),
+            )
           }
         >
           <View style={[styles.rail, { left: KNOB / 2, width: track }]} />
-          <View style={[styles.rail, styles.railOn, { left: KNOB / 2, width: x }]} />
-          <View style={[styles.sliderKnob, second && styles.sliderKnobSecond, { left: x }]} />
+          <View
+            style={[styles.rail, styles.railOn, { left: KNOB / 2, width: x }]}
+          />
+          <View
+            style={[
+              styles.sliderKnob,
+              second && styles.sliderKnobSecond,
+              { left: x },
+            ]}
+          />
         </View>
       </GestureDetector>
       <View style={styles.ends} accessible={false}>
@@ -1015,9 +1446,18 @@ function AngleSlider({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
-  content: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space["2xl"] },
+  content: {
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
+    paddingBottom: space["2xl"],
+  },
   flex: { flex: 1 },
-  head: { flexDirection: "row", alignItems: "baseline", gap: space.md, paddingBottom: space.md },
+  head: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: space.md,
+    paddingBottom: space.md,
+  },
   progress: { flexDirection: "row", gap: space["2xs"], height: 3 },
   bar: { flex: 1, backgroundColor: withAlpha(colors.ink, 0.13) },
   barDone: { backgroundColor: colors.ink },
