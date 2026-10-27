@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import { pageHead, withHead } from "./head";
+import { isMissingSpot, pageHead, withHead } from "./head";
 import { forecastBase } from "./worker";
 
 const INDEX = `<html><head>
@@ -217,20 +217,42 @@ describe("the pages with heads of their own", () => {
     expect(await head.text()).toBe("");
   });
 
-  it("leaves an unknown spot, the map and the files to the static site", async () => {
+  it("answers a spot no place has 404, with the app to say so", async () => {
+    const { env } = site();
+    for (const path of [
+      "/spot/nonexistent-spot",
+      "/spot/brandon-bay",
+      "/spot/nowhere/",
+      "/spot/%E0%A4%A",
+    ]) {
+      const res = await worker.fetch(get(path), env);
+      expect(res.status, path).toBe(404);
+      expect(res.headers.get("x-robots-tag")).toBe("noindex");
+      expect(res.headers.get("content-type")).toMatch(/text\/html/);
+      const page = await res.text();
+      expect(page).toContain(
+        "<title>Spot not found — wingfoil.ie Wind map</title>",
+      );
+      // The app itself, which says what was not found and what was meant.
+      expect(page.slice(page.indexOf("</head>"))).toBe(
+        html.slice(html.indexOf("</head>")),
+      );
+    }
+    const head = await worker.fetch(get("/spot/nowhere", "HEAD"), env);
+    expect(head.status).toBe(404);
+    expect(await head.text()).toBe("");
+    // A place that is there, and the list of them all, are pages.
+    expect((await worker.fetch(get("/spot/brandon"), env)).status).toBe(200);
+    expect((await worker.fetch(get("/spot/brandon/"), env)).status).toBe(200);
+  });
+
+  it("leaves the list of places, the map and the files to the static site", async () => {
     const { env, asked } = site();
-    await worker.fetch(get("/spot/nowhere"), env);
+    await worker.fetch(get("/spot"), env);
+    await worker.fetch(get("/spot/"), env);
     await worker.fetch(get("/"), env);
     await worker.fetch(get("/spots.json"), env);
-    await worker.fetch(get("/spot/%E0%A4%A"), env);
-    // The places are read once, for the first spot path, and kept.
-    expect(asked).toEqual([
-      "/riding-locations.json",
-      "/spot/nowhere",
-      "/",
-      "/spots.json",
-      "/spot/%E0%A4%A",
-    ]);
+    expect(asked).toEqual(["/spot", "/spot/", "/", "/spots.json"]);
   });
 });
 
@@ -255,9 +277,15 @@ describe("a spot page whose places cannot be read", () => {
     const page = () =>
       worker.fetch(new Request("https://wingfoil.test/spot/kilcrea"), env);
     expect(await (await page()).text()).toContain("<title>Map</title>");
+    // Nor is a spot not found while the places cannot be read.
+    const unknown = await worker.fetch(
+      new Request("https://wingfoil.test/spot/nowhere"),
+      env,
+    );
+    expect(unknown.status).toBe(200);
     up = true;
     expect(await (await page()).text()).toContain("<title>Kilcrea wing foil");
-    expect(asked.filter((p) => p === "/riding-locations.json")).toHaveLength(2);
+    expect(asked.filter((p) => p === "/riding-locations.json")).toHaveLength(3);
   });
 });
 
@@ -281,5 +309,20 @@ describe("withHead", () => {
     expect(pageHead("/spot/brandon/extra", spots)).toBeNull();
     expect(pageHead("/market", spots)).toBeNull();
     expect(pageHead("/spot/brandon", spots)?.description).not.toContain("Co.");
+  });
+
+  it("finds a spot page no place has, and only that", () => {
+    const spots = new Map([
+      ["brandon", { id: "brandon", name: "Brandon Bay" }],
+    ]);
+    expect(isMissingSpot("/spot/brandon-bay", spots)).toBe(true);
+    expect(isMissingSpot("/spot/%E0%A4%A", spots)).toBe(true);
+    expect(isMissingSpot("/spot/brandon", spots)).toBe(false);
+    expect(isMissingSpot("/spot/brandon/", spots)).toBe(false);
+    expect(isMissingSpot("/spot", spots)).toBe(false);
+    expect(isMissingSpot("/spot/", spots)).toBe(false);
+    expect(isMissingSpot("/nope", spots)).toBe(false);
+    // Places that could not be read leave every spot a page.
+    expect(isMissingSpot("/spot/brandon-bay", new Map())).toBe(false);
   });
 });

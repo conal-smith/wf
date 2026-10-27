@@ -10,10 +10,11 @@ RUN npm ci
 # .dockerignore allowlist decides what that is; CI builds this image on every
 # change, so a section the allowlist misses fails there rather than at release.
 COPY . .
-RUN npm run build
+RUN npm run build && node scripts/caddy-spot-paths.mjs spot-paths.caddy
 
 FROM caddy:2-alpine
 COPY deploy/local/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/spot-paths.caddy /etc/caddy/spot-paths.caddy
 COPY --from=build /app/dist /srv
 # The volume is created from these directories, so the non-root worker (uid 10001)
 # can write to /data whichever service mounts it first.

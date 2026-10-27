@@ -83,7 +83,7 @@ import { WeekStrip } from "./WeekStrip";
 
 const styles = tv({
   slots: {
-    main: "flex flex-col gap-4 pt-4 pb-12 max-sm:pt-3",
+    main: "relative flex flex-col gap-4 pt-4 pb-12 max-sm:pt-3",
     // The facts are kept apart by points (Dot), so the gap between them is
     // the point's own spacing either side.
     meta: [
