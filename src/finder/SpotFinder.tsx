@@ -9,6 +9,12 @@
  * (src/finder/SpotCard.tsx). The approved design is
  * backlog/mockups/2026-10-25-spot-list-cards.html, its "7e".
  *
+ * Over the cards, "Find a spot…": a name typed lists the places it names,
+ * from every place and not only the tab's, best match first, so a rider
+ * after one place, or with nothing starred yet, has it in a few letters.
+ * The tab is in the address (`/?tab=favourites`, finder.ts `TAB_PARAM`)
+ * once one is chosen, so either can be linked to, kept and reloaded.
+ *
  * The home page (since 26 October 2026). On a wide screen the chart stands
  * beside the list, drawn by src/App.tsx over the room the list leaves it
  * (`beside`); the list tells it which places it shows, at which hour, which
@@ -34,10 +40,14 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Rider } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
 import type { Spot } from "../../force5/src/weather";
+import { isChartAddress } from "../../force5/src/siteNav";
+import { Link } from "../../ui/Link";
 import { PageHeader } from "../../ui/PageHeader";
+import { SearchField } from "../../ui/SearchField";
 import { Segmented } from "../../ui/Segmented";
 import { tv } from "../../ui/tv";
 import type { PlaceHour } from "../ratings";
+import { findSpots } from "../spotSearch";
 import {
   dayLong,
   dayShort,
@@ -51,11 +61,15 @@ import {
   dayOpening,
   dayPlan,
   dayRow,
+  distanceKm,
+  FOUND_COUNT,
   hourOf,
   listFor,
   openingScope,
   pickHour,
   rankSpots,
+  scopeAddress,
+  scopeInAddress,
   shownColumn,
   weekBest,
   type Listed,
@@ -78,6 +92,9 @@ const styles = tv({
     ],
     // Under the chart's width, room at the foot for the button to the map.
     alone: "pb-24 max-wide:pb-24",
+    // Find a spot by name, over the cards: a rule to write on, as the
+    // chart's, no wider than a line of reading.
+    find: "mb-3.5 max-w-reading max-wide:mb-2.5",
     // One column, two where each card has its room (`cards:`, 1180px).
     cards:
       "m-0 grid list-none grid-cols-1 items-start gap-3.5 p-0 cards:grid-cols-2",
@@ -108,8 +125,12 @@ export interface FinderProps {
   units: Units;
   reducedMotion: boolean;
   phone: boolean;
-  /** The places the finder lists, which it needs rated, and which list. */
-  onWant: (ids: readonly string[], scope: Scope) => void;
+  /**
+   * The places the finder lists, which it needs rated, and which list:
+   * the tab, or a search (`find:` and the words), so the chart beside it is
+   * fitted again when the list is another.
+   */
+  onWant: (ids: readonly string[], list: string) => void;
   /** The chart stands beside the list, in the room it leaves on the right. */
   beside?: boolean;
   /** A mouse comes onto a place's card, or leaves it (null). */
@@ -156,18 +177,49 @@ export default function SpotFinder(props: FinderProps) {
     onScreen = true,
   } = props;
   const s = styles();
-  // The tab, once the list has been on the screen; until then the one it
-  // would open on: Favourites with a place starred, else Near you.
-  const [kept, setScope] = useState<Scope | null>(null);
+  // The tab: the one the address names, else, once the list has been on
+  // the screen, the one it opened on; until then the one it would open on:
+  // Favourites with a place starred, else Near you.
+  const [kept, setScope] = useState<Scope | null>(() =>
+    scopeInAddress(location.search),
+  );
   const scope = kept ?? openingScope(starred);
+  // Whether the address is to name the tab: one was chosen, or named.
+  const [named, setNamed] = useState(() => kept !== null);
   const [asked, setAsked] = useState(false);
   // Near you asks where the rider is, chosen or opened on.
   const place = useRiderPlace(asked || (onScreen && scope === "near"));
   useEffect(() => {
-    if (!onScreen || kept !== null) return;
-    setScope(scope);
+    if (!onScreen) return;
+    if (kept === null) setScope(scope);
     if (scope === "near") setAsked(true);
   }, [onScreen, kept, scope]);
+  // The tab in the address, in place: the list's own address, never the
+  // full chart's over it. Again as the list comes back on the screen, whose
+  // address may have been written without it (the menu's Spot finder).
+  useEffect(() => {
+    if (!onScreen || !named) return;
+    const url = window.location;
+    if (url.pathname !== "/" || isChartAddress(url)) return;
+    if (scopeInAddress(url.search) === scope) return;
+    window.history.replaceState(
+      window.history.state,
+      "",
+      scopeAddress(url.href, scope),
+    );
+  }, [onScreen, named, scope]);
+  // Back or Forward to a list whose address names the other tab.
+  useEffect(() => {
+    const pop = () => {
+      const tab = scopeInAddress(window.location.search);
+      if (tab) setScope(tab);
+    };
+    window.addEventListener("popstate", pop);
+    return () => window.removeEventListener("popstate", pop);
+  }, []);
+  // A spot's name typed over the cards.
+  const [query, setQuery] = useState("");
+  const searching = query.trim().length > 0;
   // The day drawn hour by hour on every card; null is today.
   const [chosen, setChosen] = useState<string | null>(null);
   // The hour picked on that day's row, for every card; null is the hour the
@@ -179,6 +231,8 @@ export default function SpotFinder(props: FinderProps) {
   const chooseScope = (next: Scope) => {
     if (next === "near") setAsked(true);
     setScope(next);
+    setNamed(true);
+    setQuery("");
   };
 
   // Where "near you" and the distances are measured from: the rider's
@@ -186,15 +240,26 @@ export default function SpotFinder(props: FinderProps) {
   // the chart was last centred, or the middle of Ireland, with no distances;
   // and none while the browser is first asked.
   const known = place.source === "rider";
-  const waiting = scope === "near" && place.asking;
+  const waiting = !searching && scope === "near" && place.asking;
   const listed = useMemo(
-    () => (waiting ? [] : listFor(scope, spots, starred, place.at, known)),
-    [scope, spots, starred, place.at, known, waiting],
+    () =>
+      searching
+        ? findSpots(spots, query, starred)
+            .slice(0, FOUND_COUNT)
+            .map((spot) => ({
+              spot,
+              km: known ? distanceKm(place.at, spot) : null,
+            }))
+        : waiting
+          ? []
+          : listFor(scope, spots, starred, place.at, known),
+    [scope, spots, starred, place.at, known, waiting, searching, query],
   );
 
   const wanted = listed.map((l) => l.spot.id);
   const wantKey = wanted.join(",");
-  useEffect(() => onWant(wanted, scope), [wantKey, scope]);
+  const listKey = searching ? `find:${query.trim()}` : scope;
+  useEffect(() => onWant(wanted, listKey), [wantKey, listKey]);
   const placeLat = known ? place.at.lat : null;
   const placeLon = known ? place.at.lon : null;
   useEffect(
@@ -219,17 +284,16 @@ export default function SpotFinder(props: FinderProps) {
     setPicked(null);
   };
   const byTime = useMemo(() => columnsByTime(strip), [strip]);
-  const ranked: Listed[] = useMemo(
-    () =>
-      rankSpots(
-        listed.map(({ spot, km }) => ({
-          spot,
-          km,
-          best: weekBest(hours.get(spot.id), strip, dates, now),
-        })),
-      ),
-    [listed, hours, version, strip, dates, hourKey],
-  );
+  // A search's places stay in the order they match the words; a tab's are
+  // the best of the week first.
+  const ranked: Listed[] = useMemo(() => {
+    const rated = listed.map(({ spot, km }) => ({
+      spot,
+      km,
+      best: weekBest(hours.get(spot.id), strip, dates, now),
+    }));
+    return searching ? rated : rankSpots(rated);
+  }, [listed, searching, hours, version, strip, dates, hourKey]);
 
   const listedSpots = useMemo(() => listed.map((l) => l.spot), [listed]);
   const axis = useMemo(() => strip.map((c) => c.validTime), [strip]);
@@ -282,7 +346,7 @@ export default function SpotFinder(props: FinderProps) {
       data-scope={scope}
       data-beside-chart={beside || undefined}
     >
-      <PageHeader menu={menu} wordmark={!phone} headRef={headRef}>
+      <PageHeader menu={menu} headRef={headRef}>
         <Segmented
           aria-label="Which spots"
           options={SCOPES}
@@ -293,17 +357,43 @@ export default function SpotFinder(props: FinderProps) {
       <div className={s.body()}>
         <section
           className={s.list({ class: beside ? undefined : s.alone() })}
-          aria-label={scope === "near" ? "Spots near you" : "Favourites"}
+          aria-label={
+            searching
+              ? "Spots found"
+              : scope === "near"
+                ? "Spots near you"
+                : "Favourites"
+          }
           aria-busy={waiting || undefined}
           data-finder-list
         >
-          {scope === "near" && !known && !waiting && ranked.length > 0 && (
-            <p className={s.note()} data-finder-note>
-              {place.source === "chart"
-                ? "We don’t know where you are, so these are the spots nearest the part of the chart you last looked at."
-                : "We don’t know where you are, so these are the spots nearest the middle of Ireland."}
-            </p>
-          )}
+          <SearchField
+            size="md"
+            className={s.find()}
+            aria-label="Find a spot"
+            placeholder="Find a spot…"
+            autoComplete="off"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && query) {
+                setQuery("");
+                event.stopPropagation();
+              }
+            }}
+            data-finder-find
+          />
+          {!searching &&
+            scope === "near" &&
+            !known &&
+            !waiting &&
+            ranked.length > 0 && (
+              <p className={s.note()} data-finder-note>
+                {place.source === "chart"
+                  ? "We don’t know where you are, so these are the spots nearest the part of the chart you last looked at."
+                  : "We don’t know where you are, so these are the spots nearest the middle of Ireland."}
+              </p>
+            )}
           {ranked.length ? (
             <HoverContext.Provider value={hover}>
               <ul
@@ -362,13 +452,31 @@ export default function SpotFinder(props: FinderProps) {
             </HoverContext.Provider>
           ) : (
             <p className={s.empty()} data-finder-empty>
-              {scope === "favourites"
-                ? "Star a spot and it shows here."
-                : waiting
-                  ? "Finding spots near you…"
-                  : known
-                    ? "No spots within 30 km of you."
-                    : ""}
+              {searching ? (
+                "No spot by that name."
+              ) : scope === "favourites" ? (
+                <>
+                  Star a spot and it shows here. Find one by name above, see the{" "}
+                  <Link
+                    href={scopeAddress(window.location.href, "near")}
+                    onClick={(event) => {
+                      if (event.metaKey || event.ctrlKey || event.shiftKey)
+                        return;
+                      event.preventDefault();
+                      chooseScope("near");
+                    }}
+                  >
+                    spots near you
+                  </Link>
+                  , or <Link href="/spot">browse every spot</Link>.
+                </>
+              ) : waiting ? (
+                "Finding spots near you…"
+              ) : known ? (
+                "No spots within 30 km of you."
+              ) : (
+                ""
+              )}
             </p>
           )}
         </section>
