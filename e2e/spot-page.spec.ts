@@ -316,17 +316,44 @@ test("a star keeps the place where the map keeps it, and opening it counts", asy
 test("an unknown spot says so and offers what it may have meant", async ({
   page,
 }) => {
-  await page.goto("/spot/brandon-bay");
+  // Answered 404, as any address with nothing behind it is, so a crawler or
+  // a link checker does not keep it; the page is the app all the same.
+  const missing = await page.goto("/spot/brandon-bay");
+  expect(missing?.status()).toBe(404);
   await expect(page.getByText("No riding place at this address")).toBeVisible({
     timeout: 30000,
   });
   await expect(page.getByText("“brandon-bay”")).toBeVisible();
   await expect(page.locator('a[href="/spot/brandon"]')).toBeVisible();
-  await page.goto("/spot");
+  expect((await page.request.get("/spot/nonexistent-spot")).status()).toBe(404);
+  expect((await page.request.get("/spot/brandon")).status()).toBe(200);
+  const index = await page.goto("/spot");
+  expect(index?.status()).toBe(200);
   await expect(
     page.getByRole("heading", { level: 1, name: "Spot forecasts" }),
   ).toBeVisible({ timeout: 30000 });
   await expect(page.locator('a[href^="/spot/"]')).toHaveCount(149);
+});
+
+test("the time column names the clock its hours are on", async ({ page }) => {
+  await page.goto("/spot/brandon");
+  // The sample is September's: Irish Standard Time. GMT from the last Sunday
+  // of October is spot/web/spot.test.ts's to show.
+  const zone = page.locator("thead th[data-zone]").first();
+  await expect(zone).toHaveText("IST", { timeout: 30000 });
+  await expect(zone).toHaveAttribute("data-zone", "IST");
+});
+
+test("a map link to a spot that does not exist says so", async ({ page }) => {
+  await page.goto("/?spot=does-not-exist");
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
+    timeout: 30000,
+  });
+  const status = page.locator(".frame-status");
+  await expect(status).toContainText("Spot not found: “does-not-exist”.");
+  await expect(page.locator(".dock .dk-name")).toHaveCount(0);
+  await status.getByRole("button", { name: "Dismiss" }).click();
+  await expect(status).toHaveCount(0);
 });
 
 test("the map's dock opens the spot page, for the spot it opens on and one chosen", async ({
