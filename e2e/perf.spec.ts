@@ -207,3 +207,40 @@ test("stepping through the forecast answers within an interaction budget", async
   // threshold for a good interaction is 200 ms on a real one.
   expect(Math.max(...durations)).toBeLessThan(500);
 });
+
+test("a light pressed is marked at once, and the dock waits for that to be painted", async ({
+  page,
+}) => {
+  await page.goto("/?map");
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
+    timeout: 30000,
+  });
+  await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
+    timeout: 30000,
+  });
+  // Read in the task after the tap's: the light already drawn as the open
+  // spot's, and nothing of the dock or the flight yet. Drawn in the tap's
+  // own task, they held its answer back by 300 to 600 ms (#250).
+  const straight = await page.evaluate(async () => {
+    const light = document.querySelector<HTMLElement>(
+      '.spot-marker[data-spot-id="dollymount"]',
+    )!;
+    light.click();
+    await new Promise((done) => setTimeout(done));
+    return {
+      marked: light.classList.contains("sel"),
+      dock: !!document.querySelector(".dock"),
+      address: location.search,
+    };
+  });
+  expect(straight).toEqual({ marked: true, dock: false, address: "?map" });
+  await expect(page.locator(".dock")).toHaveAttribute(
+    "aria-label",
+    "Forecast for Dollymount",
+    { timeout: 30000 },
+  );
+  await expect(page).toHaveURL(/\?spot=dollymount$/);
+  await expect(
+    page.locator('.spot-marker[data-spot-id="dollymount"]'),
+  ).toHaveClass(/\bsel\b/);
+});
