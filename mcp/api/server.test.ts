@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import { createMcpRouter } from "./server";
+import { UNITS_BRIEF } from "./tools";
 import { FIXTURE_NOW, fixtureSource } from "./testing";
 
 function harness() {
@@ -80,6 +81,75 @@ describe("the MCP endpoint", () => {
     expect(forecast.hours).toHaveLength(6);
     expect(forecast.hours[0].wind.wind_kn).toEqual(expect.any(Number));
     expect(forecast.sources.wind.length).toBeGreaterThan(0);
+  });
+
+  it("takes a spot's id in any letter case, as the rider wrote it", async () => {
+    const { call } = harness();
+    for (const [typed, id] of [
+      ["Rosslare", "rosslare"],
+      ["ROSSLARE", "rosslare"],
+      ["Inch", "inch"],
+      ["inch", "inch"],
+    ]) {
+      const answer = await call("get_spot_forecast", { spot: typed, hours: 1 });
+      expect(answer.isError).toBe(false);
+      expect(answer.json().spot.id).toBe(id);
+    }
+    // Part of a name is still a question for the rider.
+    const part = await call("get_spot_forecast", { spot: "Ross", hours: 1 });
+    expect(part.isError).toBe(true);
+    expect(part.text).toMatch(/could be any of/);
+  });
+
+  it("answers one hour small, and gives the notes that never change only when asked", async () => {
+    const { call } = harness();
+    const ask = { spot: "dollymount", hours: 1 };
+    const compact = await call("get_spot_forecast", ask);
+    const brief = compact.json();
+    expect(compact.text.length).toBeLessThan(6000);
+    expect(brief.hours).toHaveLength(1);
+    expect(brief).not.toHaveProperty("method");
+    expect(brief.units).toEqual(UNITS_BRIEF);
+    expect(brief.units.more).toMatch(/explain: true/);
+    expect(brief.sources.wind[0]).toMatchObject({
+      id: expect.any(String),
+      provider: expect.any(String),
+      run_time: expect.any(String),
+    });
+    expect(brief.sources.wind[0]).not.toHaveProperty("attribution");
+    // No warnings to apply it to, so no rule; the warnings' status always.
+    expect(brief.warnings).not.toHaveProperty("rule");
+    expect(brief.warnings.status).toEqual(expect.any(String));
+    expect(brief.warnings.attribution).toMatch(/Met Éireann/);
+
+    const explained = await call("get_spot_forecast", {
+      ...ask,
+      explain: true,
+    });
+    const full = explained.json();
+    expect(full.method).toMatch(/never a blend/);
+    expect(full.units.feels_like).toMatch(/JAG\/TI/);
+    expect(full.units.gust_factor).toMatch(/why_no_gust_factor/);
+    expect(full.sources.wind[0].attribution).toEqual(expect.any(String));
+    expect(full.warnings.rule).toMatch(/orange or red/);
+    expect(explained.text.length - compact.text.length).toBeGreaterThan(5000);
+    // The forecast itself is the same either way.
+    expect(full.hours).toEqual(brief.hours);
+  });
+
+  it("says in every tool's description how big its answer is", async () => {
+    const { rpc } = harness();
+    const tools = (await rpc("tools/list")).result!.tools as {
+      name: string;
+      description: string;
+      inputSchema: { properties?: Record<string, unknown> };
+    }[];
+    for (const tool of tools)
+      expect(tool.description).toMatch(/Answer size: about \d/);
+    const explains = tools
+      .filter((t) => "explain" in (t.inputSchema.properties ?? {}))
+      .map((t) => t.name);
+    expect(explains).toEqual(["get_spot_forecast", "find_wind"]);
   });
 
   it("rates a spot's hours on ours, with the rider's weight and wings for the wing", async () => {
@@ -168,8 +238,20 @@ describe("the MCP endpoint", () => {
       (s: { best_window: { stars: number } }) => s.best_window.stars,
     );
     expect(best).toEqual([...best].sort((a, b) => b - a));
-    expect(found.method).toMatch(/rateHour/);
-    expect(found.method).not.toMatch(/12 kn/);
+    // The method is the same on every call, so it waits for explain.
+    expect(found).not.toHaveProperty("method");
+    const explained = (
+      await call("find_wind", {
+        hours: 48,
+        counties: ["Dublin"],
+        explain: true,
+      })
+    ).json();
+    expect(explained.method).toMatch(/rateHour/);
+    expect(explained.method).not.toMatch(/12 kn/);
+    expect(explained.method).toMatch(
+      /max_gust_factor lets those hours through/,
+    );
   });
 
   it("asks which spot when a name is ambiguous or unknown", async () => {

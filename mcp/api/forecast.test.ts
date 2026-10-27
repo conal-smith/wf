@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { MODEL_CATALOG } from "../../force5/src/manifests";
 import { KNOTS } from "../../force5/src/units";
+import { GUST_FACTOR_MIN_WIND_KN } from "../../force5/src/gustFactor";
 import {
   agreementFrom,
   leadHours,
@@ -33,6 +34,7 @@ import {
   modelStatus,
   rainByHour,
   spotForecast,
+  UNITS,
   windowFor,
   type HourWind,
   type RidingSpot,
@@ -147,6 +149,49 @@ describe("findSpot", () => {
     expect(id("Rusheen")).toBe("rusheen");
     expect(id("the Dollymount strand")).toBe("dollymount");
     expect(findSpot(spots, "Achill")).toEqual({ spot: null, candidates: [] });
+  });
+
+  it("takes an id or a whole name in any letter case", () => {
+    const wexford: RidingSpot[] = [
+      {
+        id: "the-burrow",
+        name: "The Burrow — Rosslare",
+        county: "Wexford",
+        lat: 52.27,
+        lon: -6.38,
+      },
+      {
+        id: "rosslare",
+        name: "Rosslare Strand",
+        county: "Wexford",
+        lat: 52.27,
+        lon: -6.37,
+      },
+      { id: "inch", name: "Inch Beach", county: "Kerry", lat: 52.1, lon: -9.9 },
+      {
+        id: "inchydoney",
+        name: "Inchydoney",
+        county: "Cork",
+        lat: 51.6,
+        lon: -8.9,
+      },
+    ];
+    const one = (query: string) => findSpot(wexford, query).spot?.id ?? null;
+    for (const query of ["rosslare", "Rosslare", "ROSSLARE", " Rosslare "])
+      expect(one(query)).toBe("rosslare");
+    for (const query of ["inch", "Inch", "INCH"])
+      expect(one(query)).toBe("inch");
+    expect(one("The-Burrow")).toBe("the-burrow");
+    for (const query of ["inch beach", "Inch Beach", "INCH BEACH"])
+      expect(one(query)).toBe("inch");
+    // Part of a name is still ambiguous whatever its case.
+    for (const query of ["Ross", "ross"]) {
+      const match = findSpot(wexford, query);
+      expect(!match.spot && match.candidates.map((s) => s.id)).toEqual([
+        "the-burrow",
+        "rosslare",
+      ]);
+    }
   });
 
   it("offers the candidates instead of guessing", () => {
@@ -1281,8 +1326,32 @@ describe("hourWind", () => {
     expect(hour.wind_kn).toBeCloseTo(9 * KNOTS, 1);
     expect(hour.gust_kn).toBeNull();
     expect(hour.gust_max_kn).toBeCloseTo(7 * KNOTS, 1);
-    // No gust of the one model's, so no factor either.
+    // No gust of the one model's, so no factor either, and nothing to explain.
     expect(hour.gust_factor).toBeNull();
+    expect(hour).not.toHaveProperty("why_no_gust_factor");
+  });
+
+  it("gives no gust factor in a near calm, as the site does, and says why", () => {
+    // 2 m/s is 3.9 kn, under the 5 kn the site gives a factor from.
+    const harmonie = line("harmonie", { u: 2, v: 0, gust: 5 });
+    const hour = hourWind([harmonie, ...others], at, false)!;
+    expect(hour.wind_kn).toBeLessThan(GUST_FACTOR_MIN_WIND_KN);
+    expect(hour.gust_kn).toBeCloseTo(5 * KNOTS, 1);
+    expect(hour.gust_factor).toBeNull();
+    expect(hour.why_no_gust_factor).toBe("mean wind under 5 kn");
+    expect(UNITS.gust_factor).toMatch(/under 5 kn/);
+    expect(UNITS.gust_factor).toMatch(/why_no_gust_factor/);
+    expect(UNITS.gust_factor).toMatch(
+      /max_gust_factor lets those hours through/,
+    );
+    // From 5 kn the factor is there, and no reason beside it.
+    const windy = hourWind(
+      [line("harmonie", { u: 8, v: 0, gust: 12 }), ...others],
+      at,
+      false,
+    )!;
+    expect(windy.gust_factor).toEqual(expect.any(Number));
+    expect(windy).not.toHaveProperty("why_no_gust_factor");
   });
 
   it("gives the gust factor of the one model's own gust and wind", () => {
@@ -1759,8 +1828,20 @@ describe("findSessions' gust limits", () => {
 
   it("leaves out hours gusting more than max_gust_factor times the mean", async () => {
     const steady = await search({ maxGustFactor: 1.6 });
-    for (const s of steady.spots.flatMap((r) => r.sessions))
+    const sessions = steady.spots.flatMap((r) => r.sessions);
+    // Every hour of these is at 5 kn or more, where an hour has a factor.
+    const windy = sessions.filter((s) => s.min_kn >= GUST_FACTOR_MIN_WIND_KN);
+    expect(windy.length).toBeGreaterThan(0);
+    for (const s of windy)
       expect(s.gust_kn!).toBeLessThanOrEqual(1.6 * s.max_kn + 0.1);
+    // Under 5 kn there is no factor, so the limit lets a near calm through
+    // (only this search's zero stars counts one: no such hour earns a star).
+    expect(
+      sessions.some(
+        (s) =>
+          s.max_kn < GUST_FACTOR_MIN_WIND_KN && s.gust_kn! > 1.6 * s.max_kn,
+      ),
+    ).toBe(true);
     const hours = (r: typeof steady) =>
       r.spots.reduce((sum, s) => sum + s.rideable_hours, 0);
     expect(hours(steady)).toBeGreaterThan(0);
