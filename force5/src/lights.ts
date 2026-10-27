@@ -27,9 +27,16 @@
  *
  * The names beside the lights are laid out once the camera rests: see
  * `placeLabels`.
+ *
+ * To the keys the lights are one stop (a roving tab stop, as the layers'
+ * rail is): Tab comes to one light, the open spot's or the last the keys
+ * were on, else the first in view; the arrows go to the nearest light that
+ * way (./lightHit `nextLight`), Enter opens it, and Escape leaves for the
+ * chart itself. A hundred and more stops had put the dock beyond a hundred
+ * and fifty presses of Tab (#222).
  */
 import type * as maplibregl from "maplibre-gl";
-import { nearestLight } from "./lightHit";
+import { nearestLight, nextLight, type Way } from "./lightHit";
 import { drawLights, lookOf, type Drawn, type Look } from "./lightsCanvas";
 import type { Wedge } from "./rideWedge";
 import { speedShort, type Units } from "./units";
@@ -143,6 +150,11 @@ export interface Lights {
     units: Units,
   ): void;
   element(id: string): HTMLButtonElement | undefined;
+  /**
+   * A light pressed, drawn as the open one at once: the page's own update,
+   * the dock and the flight follow once that has been painted (#250).
+   */
+  choose(id: string): void;
   /**
    * One light lit, as a card for its place is under the pointer beside the
    * chart: drawn in ink and larger, with its name, the others fainter. Null
@@ -301,6 +313,8 @@ export function createLights(
   // on through a move goes under it, so a light kept a button stays on top.
   const layer = document.createElement("div");
   layer.className = "map-lights";
+  layer.setAttribute("role", "group");
+  layer.setAttribute("aria-label", "Spots on the chart");
   const canvas = document.createElement("canvas");
   canvas.className = "lights-canvas";
   canvas.setAttribute("aria-hidden", "true");
@@ -403,7 +417,70 @@ export function createLights(
     }
     origin = map.unproject([0, 0]);
     restZoom = map.getZoom();
+    rove();
   };
+  /** Whether a light stands on the screen, as the camera last rested. */
+  const inView = ({ x, y }: Entry) =>
+    x >= 0 && x <= boxW && y >= 0 && y <= boxH;
+  /**
+   * The one light Tab stops on: the one the keys are on, else the open
+   * spot's, else the last the keys were on, while each is in view; else the
+   * first in view, else the first.
+   */
+  let stop: Entry | undefined;
+  const rove = (to?: Entry) => {
+    const all = [...entries.values()];
+    const next =
+      to ??
+      all.find((entry) => entry.el === document.activeElement) ??
+      [all.find((entry) => entry.el.classList.contains("sel")), stop].find(
+        (entry) => entry && inView(entry),
+      ) ??
+      all.find(inView) ??
+      all[0];
+    if (next === stop) return;
+    if (stop) stop.el.tabIndex = -1;
+    stop = next;
+    if (stop) stop.el.tabIndex = 0;
+  };
+  /** The arrows walk the lights in view; Escape leaves them for the chart. */
+  const ARROWS: Record<string, Way> = {
+    ArrowLeft: "left",
+    ArrowRight: "right",
+    ArrowUp: "up",
+    ArrowDown: "down",
+  };
+  const onKey = (event: KeyboardEvent) => {
+    const from = [...entries.values()].find((e) => e.el === event.target);
+    if (!from || event.altKey || event.ctrlKey || event.metaKey) return;
+    const way = ARROWS[event.key];
+    if (!way && event.key !== "Escape") return;
+    // Not the chart's own: it pans on the arrows, and the page lets go of
+    // the spot on Escape.
+    event.preventDefault();
+    event.stopPropagation();
+    if (!way) {
+      map.getCanvas().focus();
+      return;
+    }
+    const shown = [...entries].filter(([, e]) => e === from || inView(e));
+    const id = nextLight(
+      shown.map(([id, { x, y }]) => ({ id, x, y })),
+      { id: from.el.dataset.spotId!, x: from.x, y: from.y },
+      way,
+    );
+    const to = id ? entries.get(id) : undefined;
+    if (!to) return;
+    rove(to);
+    to.el.focus({ preventScroll: true });
+  };
+  layer.addEventListener("keydown", onKey);
+  // Wherever the keys or a click put the focus among them, Tab comes back to.
+  const onFocus = (event: FocusEvent) => {
+    const at = [...entries.values()].find((e) => e.el === event.target);
+    if (at) rove(at);
+  };
+  layer.addEventListener("focusin", onFocus);
   /**
    * The map's box, read when it is resized: read as a move begins, it laid
    * the page out again then and there.
@@ -472,6 +549,7 @@ export function createLights(
     // Before the marker is made: it adds classes of its own to the element.
     el.className = "spot-marker lt pending";
     el.dataset.spotId = spot.id;
+    el.tabIndex = -1;
     el.innerHTML = `<span class="lt-pulse" aria-hidden="true"><svg class="lt-wedge" viewBox="-30 -30 60 60"><path/></svg></span>${LIGHT_SVG}<span class="lt-lab" aria-hidden="true"><b></b><i></i></span>`;
     el.querySelector(".lt-lab b")!.textContent = spot.name;
     el.addEventListener("click", (event) => {
@@ -592,8 +670,25 @@ export function createLights(
           el.setAttribute("aria-label", name);
       }
       if (dirty) queue();
+      rove();
     },
     element: (id) => entries.get(id)?.el,
+    choose(id) {
+      const chosen = entries.get(id);
+      if (!chosen) return;
+      for (const entry of [...entries.values()].filter(
+        (e) => e === chosen || e.el.classList.contains("sel"),
+      )) {
+        const on = entry === chosen;
+        entry.el.classList.toggle("sel", on);
+        entry.el.classList.toggle("active", on);
+        // Written again in full by the next update, whatever it says.
+        entry.key = "";
+        entry.rev++;
+      }
+      dirty = true;
+      queue();
+    },
     light(id) {
       // Its look through a move changes with it (./lightsCanvas); its name
       // shows whatever the layout of the names, from the stylesheet.
@@ -615,6 +710,8 @@ export function createLights(
       map.off("moveend", end);
       map.off("resize", resized);
       window.removeEventListener("click", tapped, true);
+      layer.removeEventListener("keydown", onKey);
+      layer.removeEventListener("focusin", onFocus);
       layer.remove();
       canvas.remove();
       entries.clear();

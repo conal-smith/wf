@@ -15,6 +15,26 @@
   white-space: nowrap;
 }
 
+/* The skip link (src/App.tsx): the first stop for the keys, kept for a
+   screen reader as .sr-only keeps text, and over everything at the top left
+   once the keys come to it. */
+.skip-link:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.skip-link:focus {
+  position: fixed;
+  top: calc(var(--spacing) * 3);
+  left: calc(var(--spacing) * 3);
+  z-index: var(--z-index-dialog);
+}
+
 .app-shell,
 .workspace {
   position: fixed;
@@ -750,6 +770,12 @@
   outline: 2px solid var(--color-focus);
   outline-offset: 6px;
 }
+/* The light the keys are on, over its neighbours and named on its label,
+   as a light under the pointer beside the list is (below): walking the
+   lights with the arrows, the name says where the keys are. */
+.map-canvas .lt:focus-visible {
+  z-index: 6;
+}
 /* Over their neighbours. Every marker is lifted to 3 by the rule at the head
    of the file, which outweighs a bare `.lt.sel` written later only by coming
    first: the open spot sat at 2, under the rings next to it, which cut its
@@ -806,7 +832,11 @@
 .map-canvas .lt.lit .lt-lab,
 .map-canvas.is-focus .lt.lit .lt-lab,
 .map-canvas.no-names .lt.lit .lt-lab,
-.map-canvas .lt.lit.lab-hide .lt-lab {
+.map-canvas .lt.lit.lab-hide .lt-lab,
+.map-canvas .lt:focus-visible .lt-lab,
+.map-canvas.is-focus .lt:focus-visible .lt-lab,
+.map-canvas.no-names .lt:focus-visible .lt-lab,
+.map-canvas .lt.lab-hide:focus-visible .lt-lab {
   display: block;
   left: 26px;
   right: auto;
@@ -819,8 +849,15 @@
   text-shadow: none;
   box-shadow: var(--shadow-sheet);
 }
-.lt.lit .lt-lab i {
+.lt.lit .lt-lab i,
+.lt:focus-visible .lt-lab i {
   color: var(--color-ink-inverse);
+}
+/* Where the skip link puts the focus (src/App.tsx): the list or the dock. */
+[data-finder-list]:focus-visible,
+.dock:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
 }
 /* The rider, where their browser says they are: a blue dot with a slow ring,
    as every map draws "you are here". */

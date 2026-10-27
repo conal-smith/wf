@@ -127,6 +127,11 @@ export interface MapControls {
   /** One light lit (a card for its place under the pointer), or none. */
   light(id: string | null): void;
   /**
+   * A light pressed, drawn as the open spot's at once, before the page has
+   * drawn the dock for it (./lights `choose`).
+   */
+  choose(id: string): void;
+  /**
    * Hold the wind's particles still for a while (true) or let them run again
    * (false): beside a list that is scrolling, the page's frames are the
    * list's. The rider's own ask for less motion holds them still whatever.
@@ -958,6 +963,7 @@ export default function WindMap(props: Props) {
           lit.current = id;
           lightsRef.current?.light(id);
         },
+        choose: (id) => lightsRef.current?.choose(id),
         pauseWind(on) {
           still.current = on;
           windRef.current?.setPaused(latest.current.reducedMotion || on);
