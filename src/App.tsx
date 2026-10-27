@@ -2054,8 +2054,8 @@ export default function App() {
         </li>
         {layers.rain && (
           <li>
-            Rain: Deutscher Wetterdienst&rsquo;s ICON-EU model (CC BY 4.0),
-            the rain in each hour
+            Rain: Deutscher Wetterdienst&rsquo;s ICON-EU model (CC BY 4.0), the
+            rain in each hour
           </li>
         )}
         {layers.currents && (
@@ -2188,6 +2188,17 @@ export default function App() {
     [],
   );
   const onToggleStar = useCallback((id: string) => fav.toggle(id), [fav]);
+  // A model picked on the list: the rider's from now on, as from the
+  // display options or the spot page, and the map moves to it (above).
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
+  const onFinderModel = useCallback((id: string) => {
+    const was = prefsRef.current;
+    if (chosenModel(was.rider.starsFrom) === id) return;
+    const next = { ...was, rider: withRiderModel(was.rider, id) };
+    setPrefs(next);
+    savePrefs(next);
+  }, []);
   const onWant = useCallback((ids: readonly string[], scope: string) => {
     setFinderWant(ids);
     setFinderScope(scope);
@@ -2293,6 +2304,8 @@ export default function App() {
                   onPlace={setRiderAt}
                   headRef={onFinderHead}
                   onScreen={!onChart}
+                  model={riderModel}
+                  onModel={onFinderModel}
                 />
               </Suspense>
             )}

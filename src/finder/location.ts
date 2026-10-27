@@ -1,7 +1,7 @@
 /**
- * Where the rider is, for "near you": the browser is asked once, the first
- * time the finder shows it (on a first visit, with nothing starred, it opens
- * on it; else when the rider chooses it). A yes is kept on this device and the place is
+ * Where the rider is, for "near you": the browser is asked once, when the
+ * rider presses "Use my location" under the line that says why it is
+ * wanted, never on its own. A yes is kept on this device and the place is
  * read again quietly on later visits (the browser does not ask twice); a no
  * is kept too, and the browser is never asked again. Without a place, the
  * finder looks round where the chart was last centred (src/lastView.ts).
@@ -42,20 +42,32 @@ export interface RiderPlace {
   source: PlaceSource;
   /** The browser is being asked. */
   asking: boolean;
+  /** The browser said no before, and is not asked again. */
+  refused: boolean;
+  /** The browser can say where the rider is at all. */
+  locates: boolean;
 }
 
-const fallback = (): RiderPlace => {
+type Place = Pick<RiderPlace, "at" | "source">;
+
+const fallback = (): Place => {
   const chart = chartCentre();
   return chart
-    ? { at: chart, source: "chart", asking: false }
-    : { at: IRELAND_CENTRE, source: "ireland", asking: false };
+    ? { at: chart, source: "chart" }
+    : { at: IRELAND_CENTRE, source: "ireland" };
 };
 
-const initial = (): RiderPlace => {
+const initial = (): Place => {
   const answer = stored();
   return answer && "at" in answer
-    ? { at: answer.at, source: "rider", asking: false }
+    ? { at: answer.at, source: "rider" }
     : fallback();
+};
+
+/** Whether the rider's place was kept from an earlier yes. */
+export const knownBefore = (): boolean => {
+  const answer = stored();
+  return answer !== null && "at" in answer;
 };
 
 const geolocation = () =>
@@ -71,12 +83,13 @@ export const ASK_WAIT_MS = 8000;
 
 /**
  * The rider's place. `ask` is whether the browser may be asked now (the
- * finder shows "near you"): once, unless it said no before. `asking` is true
+ * rider pressed "Use my location", or said yes before and is on Near you):
+ * once, unless it said no before. `asking` is true
  * from the first render that may ask, so the finder never shows the places
  * round another place before the browser has had its chance to answer.
  */
 export function useRiderPlace(ask: boolean): RiderPlace {
-  const [place, setPlace] = useState<RiderPlace>(initial);
+  const [place, setPlace] = useState<Place>(initial);
   // The browser has answered, or the finder has stopped waiting on it.
   const [settled, setSettled] = useState(false);
   useEffect(() => {
@@ -100,7 +113,7 @@ export function useRiderPlace(ask: boolean): RiderPlace {
         keep({ at });
         window.clearTimeout(wait);
         if (!live) return;
-        setPlace({ at, source: "rider", asking: false });
+        setPlace({ at, source: "rider" });
         setSettled(true);
       },
       (error) => {
@@ -118,6 +131,12 @@ export function useRiderPlace(ask: boolean): RiderPlace {
     };
   }, [ask]);
   // Never asked before, and about to be or being asked.
-  const asking = ask && !settled && geolocation() !== null && stored() === null;
-  return { ...place, asking };
+  const kept = stored();
+  const asking = ask && !settled && geolocation() !== null && kept === null;
+  return {
+    ...place,
+    asking,
+    refused: kept !== null && "refused" in kept,
+    locates: geolocation() !== null,
+  };
 }
