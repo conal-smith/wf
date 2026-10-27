@@ -14,6 +14,8 @@
  * Its own chunk, fetched when it is opened. It edits a draft, and Save keeps
  * it through src/settingsDraft.ts, into the preferences the stars and every
  * page read: Cancel, the close button, Escape and the backdrop keep nothing.
+ * Once something has changed, each of those asks first, so nothing the rider
+ * set is thrown away without their saying so (issue 218).
  */
 import "./settings.css";
 import {
@@ -30,8 +32,10 @@ import { NEVER, type DirectionKey } from "../force5/src/stars";
 import { UNITS, beaufort, forceKn, type Units } from "../force5/src/units";
 import { BeaufortGlyph } from "../ui/BeaufortGlyph";
 import { Button } from "../ui/Button";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { Dialog } from "../ui/Dialog";
 import { Segmented } from "../ui/Segmented";
+import { TextInput } from "../ui/TextInput";
 import {
   WEB_DIRS,
   WEB_R,
@@ -54,10 +58,13 @@ import {
 import {
   applyDraft,
   differsFromOurs,
+  draftChanged,
   draftOf,
   inUnits,
   offWords,
   resetToOurs,
+  wingsIn,
+  wingsText,
   withDownwind,
   withShore,
   withUpwind,
@@ -68,11 +75,11 @@ import {
 const PARTS = {
   you: {
     title: "About you",
-    help: "Your weight helps us suggest the right wing size.",
+    help: "Your weight and wings help us suggest the right wing for each hour.",
   },
   wind: {
     title: "Wind strength",
-    help: "Drag the handles to the wind you like. The stars underneath show how we will rate each wind speed.",
+    help: "Drag the handles to the wind you like. The stars underneath show how we will rate each wind speed. A gust past the last handle means no stars.",
   },
   shore: {
     title: "Wind direction",
@@ -119,7 +126,10 @@ export interface SettingsProps {
   /** False while it fades out, once shut (ui/Backdrop.tsx `useFadeOut`). */
   open: boolean;
   prefs: Prefs;
-  /** Shut, keeping nothing: Cancel, the close button, Escape, the backdrop. */
+  /**
+   * Shut, keeping nothing: Cancel, the close button, Escape, the backdrop;
+   * once something has changed, only after "Discard".
+   */
   onClose: () => void;
   /** Save: the preferences to keep. */
   onSave: (prefs: Prefs) => void;
@@ -131,7 +141,13 @@ export default function Settings({
   onClose,
   onSave,
 }: SettingsProps) {
-  const [draft, setDraft] = useState<Draft>(() => draftOf(prefs));
+  // What it opened on, to tell whether closing would throw anything away.
+  const [start] = useState<Draft>(() => draftOf(prefs));
+  const [draft, setDraft] = useState<Draft>(start);
+  // "Discard your changes?", asked by a way out other than Save.
+  const [asking, setAsking] = useState(false);
+  const leave = () =>
+    draftChanged(draft, start) ? setAsking(true) : onClose();
   const unit = unitScale(draft.units);
   const id = useId();
   const part = (key: keyof typeof PARTS, children: ReactNode) => (
@@ -149,56 +165,79 @@ export default function Settings({
   );
 
   return (
-    <Dialog
-      open={open}
-      size="wide"
-      title="Settings"
-      className="st"
-      onClose={onClose}
-      actions={
-        <div className="st-foot">
-          {differsFromOurs(draft) && (
-            <Button
-              variant="quiet"
-              className="st-reset"
-              onClick={() => setDraft(resetToOurs(draft))}
-            >
-              Reset to ours
+    <>
+      <Dialog
+        open={open}
+        size="wide"
+        title="Settings"
+        className="st"
+        onClose={leave}
+        actions={
+          <div className="st-foot">
+            {differsFromOurs(draft) && (
+              <Button
+                variant="quiet"
+                className="st-reset"
+                onClick={() => setDraft(resetToOurs(draft))}
+              >
+                Reset to ours
+              </Button>
+            )}
+            <span className="st-sp" />
+            <Button variant="pill" onClick={leave}>
+              Cancel
             </Button>
+            <Button
+              variant="primary"
+              onClick={() => onSave(applyDraft(prefs, draft))}
+            >
+              Save
+            </Button>
+          </div>
+        }
+      >
+        <div className="st-body">
+          {part(
+            "you",
+            <YouPart draft={draft} setDraft={setDraft} unit={unit} />,
           )}
-          <span className="st-sp" />
-          <Button variant="pill" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => onSave(applyDraft(prefs, draft))}
-          >
-            Save
-          </Button>
+          {part(
+            "wind",
+            <WindRange
+              wind={draft.custom.wind}
+              units={draft.units}
+              unit={unit}
+              onMove={(i, kn) =>
+                setDraft({
+                  ...draft,
+                  custom: moveWindIn(
+                    draft.custom,
+                    WIND_KEYS[i],
+                    kn,
+                    draft.units,
+                  ),
+                })
+              }
+            />,
+          )}
+          {part("shore", <ShorePart draft={draft} setDraft={setDraft} />)}
+          {part("upwind", <UpwindPart draft={draft} setDraft={setDraft} />)}
         </div>
-      }
-    >
-      <div className="st-body">
-        {part("you", <YouPart draft={draft} setDraft={setDraft} unit={unit} />)}
-        {part(
-          "wind",
-          <WindRange
-            wind={draft.custom.wind}
-            units={draft.units}
-            unit={unit}
-            onMove={(i, kn) =>
-              setDraft({
-                ...draft,
-                custom: moveWindIn(draft.custom, WIND_KEYS[i], kn, draft.units),
-              })
-            }
-          />,
-        )}
-        {part("shore", <ShorePart draft={draft} setDraft={setDraft} />)}
-        {part("upwind", <UpwindPart draft={draft} setDraft={setDraft} />)}
-      </div>
-    </Dialog>
+      </Dialog>
+      <ConfirmDialog
+        open={open && asking}
+        title="Discard your changes?"
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        onCancel={() => setAsking(false)}
+        onConfirm={() => {
+          setAsking(false);
+          onClose();
+        }}
+      >
+        You have changed your settings but not saved them.
+      </ConfirmDialog>
+    </>
   );
 }
 
@@ -230,11 +269,14 @@ function Speed({
 const UNIT_NAME: Partial<Record<Units, string>> = { kn: "Knots" };
 
 /**
- * Weight and units, side by side on a desktop, each its name over it.
- * Neither moves a star.
+ * Weight, units and wings, side by side on a desktop, each its name over it.
+ * None moves a star.
  */
 function YouPart({ draft, setDraft, unit }: PartProps & { unit: UnitScale }) {
   const weight = draft.weightKg ?? 80;
+  // The field keeps what is being typed ("5." on the way to "5.5"); the
+  // draft only ever holds the wings it reads (settingsDraft.ts `wingsIn`).
+  const [wings, setWings] = useState(() => wingsText(draft.wings));
   return (
     <div className="st-rows">
       <div className="st-row">
@@ -293,6 +335,23 @@ function YouPart({ draft, setDraft, unit }: PartProps & { unit: UnitScale }) {
           </ul>
         )}
       </div>
+      <label className="st-row st-wings">
+        <span className="st-kick">Your wings</span>
+        <span className="st-wings-field">
+          <TextInput
+            type="text"
+            inputMode="decimal"
+            data-wings
+            placeholder="e.g. 4, 5.5"
+            value={wings}
+            onChange={(event) => {
+              setWings(event.target.value);
+              setDraft({ ...draft, wings: wingsIn(event.target.value) });
+            }}
+          />
+          <small>m²</small>
+        </span>
+      </label>
     </div>
   );
 }

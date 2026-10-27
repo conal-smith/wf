@@ -722,6 +722,22 @@ stays in the foot. `/?settings` opens it from another page, and the old
 once: "1 star off" and "No stars" rather than "−1★" and "never", "Too strong
 in gusts", and "ONSHORE", "CROSS-ON" on the web rather than "ON", "X-ON".
 
+**2026-10-27 — Settings asks before it throws a change away, and takes the
+wings.** Closing Settings with the weight and units just changed lost them
+without a word (#218). Save still keeps the draft and Cancel, the close
+button, Escape and the backdrop still keep nothing, but once anything in
+the draft differs from what the dialog opened on, each of them first asks
+"Discard your changes?" (`ui/ConfirmDialog`: Keep editing, which has the
+focus, and Discard, the warm fill). Unchanged, they close at once. About you
+takes the rider's wings (#233): "Your wings", sizes in m² typed as the spot
+page's field takes them ("4, 5.5"), the same `rider.wings` the dock, the
+spot page and Gust read and the MCP takes as `wings_m2`, to say which of
+them to take; they never move a star. Wind strength says what the top
+handle is: "A gust past the last handle means no stars", the gust limit
+the rating and the MCP's `rider.gust_limit_kn` already read. There is still
+no gust-factor setting (the ruling of 2026-10-25 stands). At 1280×800 the
+dialog still fits without scrolling.
+
 **2026-10-26 — The dock's top row: the star, the name, Blend and one
 arrow.** From the approved mock-up
 `backlog/mockups/2026-10-26-spot-finder-chart.html` (#238). Everywhere the

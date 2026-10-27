@@ -83,8 +83,8 @@
   flex: 1;
 }
 
-/* ---- 1. about you: the weight and the units side by side, each its name
-   over it ---- */
+/* ---- 1. about you: the weight, the units and the wings side by side,
+   each its name over it ---- */
 .st-rows {
   display: flex;
   flex-wrap: wrap;
@@ -111,6 +111,26 @@
   margin-left: 2px;
   font: 400 var(--text-caption) var(--font-mono);
   letter-spacing: 0;
+  color: var(--color-ink-muted);
+}
+/* The wings: a row of its own under the two, its name beside the field to
+   keep the dialog's height, and "m²" after it as "kg" is. */
+.st-row.st-wings {
+  display: flex;
+  flex-basis: 100%;
+  align-items: center;
+  gap: 16px;
+}
+.st-wings-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.st-wings-field > :first-child {
+  width: 160px;
+}
+.st-wings-field small {
+  font: 400 var(--text-caption) var(--font-mono);
   color: var(--color-ink-muted);
 }
 /* In Force, the forces and the knots each runs over. */

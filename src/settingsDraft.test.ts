@@ -16,12 +16,15 @@ import {
 import {
   applyDraft,
   differsFromOurs,
+  draftChanged,
   draftOf,
   draftRider,
   inUnits,
   offWords,
   ratingIsOurs,
   resetToOurs,
+  wingsIn,
+  wingsText,
   withDownwind,
   withShore,
   withUpwind,
@@ -222,6 +225,55 @@ describe("saving", () => {
     expect(next.rider.custom).toBeUndefined();
     // In knots, the same numbers are the rider's own.
     expect(ratingIsOurs(draft.custom, "kn")).toBe(false);
+  });
+});
+
+describe("the wings", () => {
+  it("reads every size in what was typed, as the spot page does, each once, smallest first", () => {
+    expect(wingsIn("5.5, 4")).toEqual([4, 5.5]);
+    expect(wingsIn("4 5.5 m² 4")).toEqual([4, 5.5]);
+    expect(wingsIn("5.")).toEqual([5]);
+    expect(wingsIn("")).toEqual([]);
+  });
+  it("keeps only what can be a wing, 1.5–10 m²", () => {
+    expect(wingsIn("1, 3, 25")).toEqual([3]);
+  });
+  it("shows them back as they are kept", () => {
+    expect(wingsText([4, 5.5])).toBe("4, 5.5");
+  });
+  it("starts from the rider's wings, saves them, and never moves a star", () => {
+    const start = prefs({ wings: [5] });
+    const draft = { ...draftOf(start), wings: [3.5, 5] };
+    expect(draftOf(start).wings).toEqual([5]);
+    const saved = applyDraft(start, draft, NOW);
+    expect(saved.rider.wings).toEqual([3.5, 5]);
+    expect(saved.rider.custom).toBeUndefined();
+    expect(saved.starsUpdatedAt).toBe(start.starsUpdatedAt);
+    expect(differsFromOurs(draft)).toBe(false);
+    const rider = draftRider(draft, start.rider);
+    expect(rider.wings).toEqual([3.5, 5]);
+    expect(rate(rider, 18).stars).toBe(rate(start.rider, 18).stars);
+    expect(rate(rider, 18).wing.own).not.toBeNull();
+  });
+});
+
+describe("closing without Save", () => {
+  it("has nothing to throw away while the draft is as it opened", () => {
+    const start = draftOf(prefs());
+    expect(draftChanged(start, draftOf(prefs()))).toBe(false);
+  });
+  it("has something to throw away once the weight, units, wings or the rating change", () => {
+    const start = draftOf(prefs());
+    expect(draftChanged({ ...start, weightKg: 85 }, start)).toBe(true);
+    expect(draftChanged({ ...start, units: "m/s" }, start)).toBe(true);
+    expect(draftChanged({ ...start, wings: [5] }, start)).toBe(true);
+    expect(draftChanged(withUpwind(start, 5), start)).toBe(true);
+    expect(draftChanged(withShore(start, "cross", 2), start)).toBe(true);
+  });
+  it("has nothing to throw away once a change is put back", () => {
+    const start = draftOf(prefs());
+    const back = withUpwind(withUpwind(start, 5), start.upwind);
+    expect(draftChanged(back, start)).toBe(false);
   });
 });
 

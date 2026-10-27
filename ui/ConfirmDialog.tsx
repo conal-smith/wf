@@ -7,6 +7,8 @@ export interface ConfirmDialogProps {
   title: string;
   children?: ReactNode;
   confirmLabel: string;
+  /** The answer that keeps things as they are: "Cancel" unless it says more. */
+  cancelLabel?: string;
   /** The confirmed work is under way: both answers wait, and so does Escape. */
   busy?: boolean;
   onConfirm: () => void;
@@ -23,6 +25,7 @@ export function ConfirmDialog({
   title,
   children,
   confirmLabel,
+  cancelLabel = "Cancel",
   busy = false,
   onConfirm,
   onCancel,
@@ -37,7 +40,7 @@ export function ConfirmDialog({
       actions={
         <>
           <Button variant="pill" disabled={busy} onClick={onCancel}>
-            Cancel
+            {cancelLabel}
           </Button>
           <Button variant="danger" disabled={busy} onClick={onConfirm}>
             {confirmLabel}
