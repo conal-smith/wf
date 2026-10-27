@@ -390,6 +390,15 @@ const WEATHER_VARIABLES = {
     minimum: 0,
     differenced: true,
   },
+  // A place's own, never a cell's (force5/ingest/rain_chance.py): in the
+  // series only, worked out here from the rain where the place is.
+  pop: {
+    units: "%",
+    label: "Chance of rain",
+    description:
+      "Share of the cells within 25 km of the place with 0.1 mm or more in the interval ending at this hour; null at initialization (synthetic)",
+    decimals: 0,
+  },
   clct: {
     units: "%",
     label: "Total cloud",
@@ -976,6 +985,13 @@ function weatherBundle(model, spots, runMs, grid) {
     const value = (name, x, y, code) => {
       const variable = WEATHER_VARIABLES[name];
       if (name === "ww") return code;
+      if (name === "pop")
+        return index === 0
+          ? null
+          : Math.max(
+              0,
+              Math.min(100, Math.round(planeAt(planes.precip, x, y) * 60)),
+            );
       if (variable.differenced && index === 0) return null;
       return round(planeAt(planes[name], x, y), variable.decimals);
     };

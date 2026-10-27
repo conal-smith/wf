@@ -156,7 +156,8 @@ class GfsWeatherTests(unittest.TestCase):
         initial = derive(start, None)
         self.assertIsNone(initial["tp"])
         self.assertIsNone(initial["precip"])
-        self.assertEqual(set(initial), set(VARIABLES))
+        # Every grid; the chance of rain is a place's own, worked out per place.
+        self.assertEqual(set(initial), set(VARIABLES) - {"pop"})
         self.assertEqual(initial["ww"], [61] * 4)         # 1.8 mm/h of rain.
 
     # --- source addressing ------------------------------------------------
@@ -249,6 +250,10 @@ class GfsWeatherTests(unittest.TestCase):
                          [None, [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]])
         self.assertEqual([step["values"]["precip"] for step in series],
                          [None, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        # The chance of rain over the same hour, from every cell around the place.
+        self.assertEqual([step["values"]["pop"] for step in series],
+                         [None, 100, 0, 0, 0, 0, 0])
+        self.assertIn("neighbourhood", manifest["rainChanceNote"])
         self.assertEqual(series[1]["values"]["ww"], 61)
         self.assertEqual(series[1]["values"]["t2m"], 10.0)
         self.assertIn("derived", manifest["presentWeatherNote"])
@@ -288,6 +293,8 @@ class GfsWeatherTests(unittest.TestCase):
                          [[118, 119], [119, 120], [120, 123], [123, 126]])
         # Half a millimetre an hour: an hour's worth to +120 h, three hours' after.
         self.assertEqual([step["values"]["precip"] for step in series[119:]], [0.5, 0.5, 1.5, 1.5])
+        # And the chance of rain over the same three hours.
+        self.assertEqual([step["values"]["pop"] for step in series[119:]], [100] * 4)
         validate_bundle(self.root / "public", "gfs-weather",
                         max_age_hours=MODELS["gfs-weather"]["maxAgeHours"])
 

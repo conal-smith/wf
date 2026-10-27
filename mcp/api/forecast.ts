@@ -1290,7 +1290,16 @@ export interface HourWeather {
   rain_interval_hours?: number;
   /** Where the interval does not end at this row's hour: when it does end. */
   rain_until?: string;
+  /**
+   * The chance of rain, whole per cent, over the same interval as rain_mm and
+   * on the same row (`rainChances`); absent where no model publishes one.
+   */
+  rain_chance_pct?: number | null;
   cloud_pct: number | null;
+  /** The model's visibility at the hour, km; absent where it publishes none. */
+  visibility_km?: number | null;
+  /** That visibility in a rider's words (`visibilityOf`). */
+  visibility?: Visibility | null;
   /** The model's present-weather code (WMO 4677, `ww`), where it publishes one. */
   weather_code: number | null;
   /** What the code means, in the words of wingfoil.ie's sky glyph for it. */
@@ -1317,7 +1326,83 @@ interface RainTotal {
   mm: number;
   hours: number;
   until: number;
+  /** The highest chance of rain of the intervals it sums, where one is known. */
+  chance?: number;
 }
+
+/**
+ * Visibility in a rider's words, on the public scale: fog under 1 km (the
+ * WMO's own definition of fog), poor to 4 km, moderate to 10 km, good beyond.
+ */
+export type Visibility = "fog" | "poor" | "moderate" | "good";
+export const VISIBILITY_KM: readonly [Visibility, number][] = [
+  ["fog", 1],
+  ["poor", 4],
+  ["moderate", 10],
+];
+const VISIBILITY_ORDER: readonly Visibility[] = [
+  "fog",
+  "poor",
+  "moderate",
+  "good",
+];
+
+/**
+ * The hour's visibility from the model's own figure, or where it gives none,
+ * fog from a fog code (ww 40–49, WMO 4677) and nothing otherwise: a dry code
+ * says nothing about haze or spray, so it is never read as good.
+ */
+export function visibilityOf(
+  km: number | null,
+  code: number | null,
+): Visibility | null {
+  if (km !== null)
+    return VISIBILITY_KM.find(([, below]) => km < below)?.[0] ?? "good";
+  return code !== null && code >= 40 && code <= 49 ? "fog" : null;
+}
+
+/** The worst of several hours' visibility, or null where none is known. */
+function worstVisibility(
+  values: readonly (Visibility | null | undefined)[],
+): Visibility | null {
+  const known = values.filter((v): v is Visibility => !!v);
+  return known.length
+    ? VISIBILITY_ORDER[
+        Math.min(...known.map((v) => VISIBILITY_ORDER.indexOf(v)))
+      ]
+    : null;
+}
+
+/**
+ * The chance of rain at each of the spot's weather steps, keyed by the step's
+ * time and interval (`chanceKey`). Each weather model publishes its own
+ * (`pop`, force5/ingest/rain_chance.py): the share of its cells within 25 km
+ * of the spot with 0.1 mm or more in the step's interval, which allows for
+ * where its showers fall. Averaged here over every model whose step at that
+ * time covers an interval as long (ICON-EU and GFS both, hour by hour, while
+ * ICON-EU reaches; GFS alone after it), so that two models disagreeing about
+ * whether it rains at all meet halfway.
+ */
+function rainChances(
+  loaded: readonly Loaded<VariablesManifest>[],
+  spotId: string,
+): Map<string, number> {
+  const all = new Map<string, number[]>();
+  for (const { manifest } of loaded)
+    for (const step of variableSteps(manifest, spotId) ?? []) {
+      const chance = step.values.pop;
+      if (!finite(chance) || !step.precipHours) continue;
+      const key = chanceKey(step.time, step.precipHours);
+      all.set(key, [...(all.get(key) ?? []), chance]);
+    }
+  return new Map(
+    [...all].map(([key, chances]) => [
+      key,
+      Math.round(chances.reduce((sum, c) => sum + c, 0) / chances.length),
+    ]),
+  );
+}
+const chanceKey = (time: number, hours: number) => `${time}/${hours}`;
 
 /** A minute: rows and steps both fall on the hour, so this is only rounding. */
 const SLACK = 60000;
@@ -1340,6 +1425,7 @@ function rainRows(
   times: readonly number[],
   steps: readonly VariableStep[],
   stepHours: number | null,
+  chances: ReadonlyMap<string, number> = new Map(),
 ): (RainTotal | null)[] {
   const rows: (RainTotal | null)[] = times.map(() => null);
   steps.forEach((step, k) => {
@@ -1361,13 +1447,19 @@ function rainRows(
       if (row < 0) return;
     }
     const total = rows[row];
+    const chance = chances.get(chanceKey(end, hours));
+    const highest =
+      chance === undefined
+        ? total?.chance
+        : Math.max(chance, total?.chance ?? 0);
     rows[row] = total
       ? {
           mm: total.mm + mm,
           hours: total.hours + hours,
           until: Math.max(total.until, end),
+          ...(highest !== undefined && { chance: highest }),
         }
-      : { mm, hours, until: end };
+      : { mm, hours, until: end, ...(chance !== undefined && { chance }) };
   });
   return rows;
 }
@@ -1390,6 +1482,10 @@ function hourWeather(
     const v = step?.values[name];
     return finite(v) ? round(v, places) : null;
   };
+  // Tenths of a kilometre only where they matter, under 10 km.
+  const km = value("vis", 1);
+  const visibilityKm = km !== null && km >= 10 ? Math.round(km) : km;
+  const visibility = visibilityOf(visibilityKm, value("ww", 0));
   const result: HourWeather = {
     air_c: value("t2m", 0),
     feels_like_c: null,
@@ -1397,7 +1493,10 @@ function hourWeather(
     ...(rain && { rain_interval_hours: round(rain.hours, 2) }),
     ...(rain &&
       Math.abs(rain.until - time) > SLACK && { rain_until: iso(rain.until) }),
+    ...(rain?.chance !== undefined && { rain_chance_pct: rain.chance }),
     cloud_pct: value("clct", 0),
+    ...(pick(source.manifest, ["vis"]) && { visibility_km: visibilityKm }),
+    ...(visibility && { visibility }),
     weather_code: value("ww", 0),
     description: null,
     sky: null,
@@ -1725,11 +1824,39 @@ export const UNITS = {
     "Each total is on one row only, with null on an interval's other hours, " +
     "so adding rain_mm up over rows gives the rain in their intervals. A row " +
     "further apart than the model's steps sums the intervals since the row before",
+  rain_chance:
+    "`rain_chance_pct`: the chance of rain, whole per cent, over the same " +
+    "interval as rain_mm and on the same row. It is a spatial chance from " +
+    "deterministic models, not an ensemble's chance (no ensemble with rain " +
+    "runs here): it allows for where a model's rain falls and for two " +
+    "models disagreeing, not for every way a forecast can go wrong, so it " +
+    "can read surer than it is. Each weather model gives the " +
+    "share of its grid cells within 25 km of the spot with 0.1 mm or more in " +
+    "the interval (a neighbourhood probability: a model's showers are right " +
+    "in kind but rarely to the kilometre), and this is the mean over the " +
+    "weather models that reach the interval: ICON-EU and GFS for about the " +
+    "first three days, GFS alone after. So rain_mm can be 0 with a chance of " +
+    "40: the model's own shower missed the spot by a few km. A row summing " +
+    "several intervals, and a session, gives the highest chance of any of " +
+    "them, so rain at some time in it is at least that likely. Model output, " +
+    "not calibrated against observations. In words, as the US National " +
+    "Weather Service puts it: under 20 dry, 20 a slight chance, 30–50 a " +
+    "chance, 60–70 likely, 80 and over rain",
   weather:
     "air_c, cloud_pct and weather_code are the weather model's nearest step, " +
     "`window.weather_step_hours` apart (the first weather run's cadence: 1 " +
     "for ICON-EU), so each hour has its own; where the steps are more than an " +
     "hour apart they repeat on the hours between",
+  visibility:
+    "`visibility_km` is the weather model's own near-surface visibility at " +
+    "the hour, km, and `visibility` the same in a rider's words: fog under " +
+    `${VISIBILITY_KM[0][1]} km, poor under ${VISIBILITY_KM[1][1]} km, ` +
+    `moderate under ${VISIBILITY_KM[2][1]} km, good beyond. Where a model ` +
+    "gives no figure, a fog code (weather_code 40–49) still says fog. In fog " +
+    "or poor visibility boats and people on the shore may not see a rider, " +
+    "and a rider can lose sight of the shore and of channel markers: say so. " +
+    "A session's is its worst hour's. Models forecast fog poorly, so it is a " +
+    "guide, never a promise of clear air",
   thunder:
     "`thunder_risk` is a safety flag from the weather model's own fields: " +
     "high where its code is a thunderstorm (ww 13, 17, 29, 91–99; ICON-EU " +
@@ -1797,13 +1924,14 @@ export async function spotForecast(
   const { lines, outside } = spotWindLines(wind.loaded, spot.id);
   const memberLines = spotMemberLines(wind.loaded, spot.id);
   const waveSource = handedSource(waves.loaded, spot.id, ["swh"]);
-  const weatherSource = handedSource(weather.loaded, spot.id, ["t2m"]);
+  const sky = spotSky(weather.loaded, spot.id);
+  const weatherSource = sky?.source ?? null;
   const facing = shoreFacing(spot.id);
   const kind = shoreType(spot.id);
   const times = axis(window);
   const weatherStep = weatherSource && weatherStepHours(weatherSource);
-  const rain = weatherSource
-    ? rainRows(times, weatherSource.steps, weatherStep)
+  const rain = sky
+    ? rainRows(times, sky.source.steps, weatherStep, sky.chances)
     : [];
   const hours = times.map((time, row): ForecastHour => {
     const wind = hourWind(lines, time, options.perModel ?? false, options.from);
@@ -1844,6 +1972,7 @@ export async function spotForecast(
         rider: options.rider,
         from: options.from,
         warnings,
+        sky,
       })
     : null;
   const days = new Set(hours.map((h) => dublinDate(Date.parse(h.time))));
@@ -1912,7 +2041,12 @@ function rateForecast(
   spot: RidingSpot,
   facing: number | null,
   tides: SpotTides | { note: string } | null,
-  options: { rider: Rider; from?: StarsFrom; warnings: PlaceWarnings },
+  options: {
+    rider: Rider;
+    from?: StarsFrom;
+    warnings: PlaceWarnings;
+    sky?: SpotSky | null;
+  },
 ): DayWindow[] {
   const { rider, warnings } = options;
   for (const row of rows) {
@@ -1961,7 +2095,7 @@ function rateForecast(
     const run = day
       .slice(best.from, best.to + 1)
       .map((h) => ({ ...h, hour: h.wind! }));
-    const summary = session(run, spot, true);
+    const summary = session(run, spot, true, options.sky);
     const from = Date.parse(summary.from);
     const to = Date.parse(summary.to);
     const inside = events.filter((e) => {
@@ -2015,6 +2149,69 @@ export interface Session {
   models: number;
   /** The worst confidence of any hour: low wherever fewer than three models cover it. */
   confidence: Agreement;
+  /**
+   * The highest chance of rain of any weather interval it overlaps, whole per
+   * cent: the chance of rain at some time in it is at least this.
+   */
+  rain_chance_pct?: number;
+  /** The worst visibility of its hours. */
+  visibility?: Visibility;
+}
+
+/** The spot's weather as a session reads it: its steps and their chances of rain. */
+interface SpotSky {
+  source: SpotVariables;
+  chances: ReadonlyMap<string, number>;
+}
+
+function spotSky(
+  loaded: readonly Loaded<VariablesManifest>[],
+  spotId: string,
+): SpotSky | null {
+  const source = handedSource([...loaded], spotId, ["t2m"]);
+  return source && { source, chances: rainChances(loaded, spotId) };
+}
+
+/**
+ * A session's weather, where a weather model reaches it: the highest chance
+ * of rain of the intervals that overlap it, and the worst visibility of the
+ * steps inside it (or the nearest step, where none is).
+ */
+function sessionWeather(
+  sky: SpotSky | null,
+  from: number,
+  to: number,
+): Pick<Session, "rain_chance_pct" | "visibility"> {
+  if (!sky) return {};
+  let chance: number | undefined;
+  const inside: VariableStep[] = [];
+  for (const step of sky.source.steps) {
+    const hours = step.precipHours;
+    if (
+      hours &&
+      step.time > from + SLACK &&
+      step.time - hours * HOUR < to - SLACK
+    ) {
+      const c = sky.chances.get(chanceKey(step.time, hours));
+      if (c !== undefined) chance = Math.max(c, chance ?? 0);
+    }
+    if (step.time >= from - SLACK && step.time <= to + SLACK) inside.push(step);
+  }
+  const nearest = inside.length ? inside : [stepAt(sky.source.steps, from)];
+  const visibility = worstVisibility(
+    nearest.map(
+      (step) =>
+        step &&
+        visibilityOf(
+          finite(step.values.vis) ? step.values.vis : null,
+          finite(step.values.ww) ? step.values.ww : null,
+        ),
+    ),
+  );
+  return {
+    ...(chance !== undefined && { rain_chance_pct: chance }),
+    ...(visibility && { visibility }),
+  };
 }
 export interface SpotSessions {
   spot: RidingSpot;
@@ -2135,8 +2332,9 @@ export async function findSessions(
   );
   // The squares of the places searched: every square for all of Ireland,
   // fewer for a county or a radius.
-  const [wind, warned] = await Promise.all([
+  const [wind, weather, warned] = await Promise.all([
     loadWind(source, options.now, squaresFor(pool)),
+    loadWeather(source, options.now, squaresFor(pool)),
     loadWarnings(source),
   ]);
   const times = axis({ ...window, stepHours: 1 });
@@ -2149,6 +2347,7 @@ export async function findSessions(
     const { lines } = spotWindLines(wind.loaded, spot.id);
     if (!lines.length) continue;
     const facing = shoreFacing(spot.id);
+    const sky = spotSky(weather.loaded, spot.id);
     const spotWarnings: PlaceWarnings = {
       status: warnings.answer.status,
       checkedAt: warnings.answer.checked_at,
@@ -2159,7 +2358,7 @@ export async function findSessions(
     let run: SessionHour[] = [];
     const close = () => {
       if (run.length >= options.minSessionHours)
-        sessions.push(session(run, spot, options.daylightOnly));
+        sessions.push(session(run, spot, options.daylightOnly, sky));
       run = [];
     };
     for (const time of times) {
@@ -2215,6 +2414,7 @@ export async function findSessions(
             hours.slice(best.from, best.to + 1),
             spot,
             options.daylightOnly,
+            sky,
           )
         : null,
       sessions,
@@ -2233,8 +2433,9 @@ export async function findSessions(
   return {
     spots: results.slice(0, options.limit),
     searched: pool.length,
-    sources: runs,
-    unavailable: wind.unavailable,
+    // The weather runs too, for the sessions' rain and visibility.
+    sources: [...runs, ...weather.loaded.map((l) => l.run)],
+    unavailable: [...wind.unavailable, ...weather.unavailable],
     warnings: warnings.answer,
     reach: forecastReach(runs, options.from),
   };
@@ -2275,6 +2476,7 @@ function session(
   run: SessionHour[],
   spot: RidingSpot,
   byLastLight: boolean,
+  sky: SpotSky | null = null,
 ): Session {
   const speeds = run.map((r) => r.hour.wind_kn);
   const gusts = run.flatMap((r) =>
@@ -2355,6 +2557,7 @@ function session(
           r.hour.confidence ?? confidenceOf(r.hour.agreement, r.hour.models),
       )
       .reduce(worse),
+    ...sessionWeather(sky, first, end),
   };
 }
 

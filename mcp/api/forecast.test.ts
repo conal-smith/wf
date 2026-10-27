@@ -1027,6 +1027,197 @@ describe("rain", () => {
     expect(forecast.units.weather_code).toMatch(/`ww`/);
   });
 
+  /**
+   * ICON-EU hourly to 12:00 on the 17th and GFS hourly a little past it, each
+   * with its own chance of rain, visibility and code at every hour: what
+   * `chance(k)`, `vis(k)` and `code(k)` say for the k-th hour of the run.
+   */
+  async function twoModelForecast(
+    window: { hours: number; stepHours: number },
+    icon: {
+      chance: (k: number) => number | null;
+      vis?: (k: number) => number | null;
+      code?: (k: number) => number;
+    },
+    gfs: { chance: (k: number) => number | null },
+    options: { rider?: Rider } = {},
+  ) {
+    const inner = fixtureSource();
+    const pointer = (await inner.json(
+      "weather/icon-eu-weather.json",
+    )) as Record<string, unknown>;
+    const square = (await inner.json(SQUARE)) as {
+      spotSeries: Record<string, unknown>;
+    };
+    const hourly = (
+      count: number,
+      values: (k: number) => Record<string, number | null>,
+    ) =>
+      Array.from({ length: count }, (_, k) => ({
+        hour: k,
+        validTime: new Date(RUN + k * HOUR).toISOString(),
+        precipIntervalHours: k ? [k - 1, k] : null,
+        values: { t2m: 10, precip: k ? 0 : null, clct: 50, ...values(k) },
+      }));
+    const { frameVariables: _, stepRanges: __, ...rest } = pointer;
+    const frameless = (hours: number) => ({
+      ...rest,
+      stepHours: 1,
+      frames: [],
+      horizonHours: hours,
+    });
+    const GFS = "gfs-weather-2026091618-24h-v1-0a1b2c3d/";
+    const source = fixtureSource({
+      "weather/icon-eu-weather.json": frameless(18),
+      [SQUARE]: {
+        ...square,
+        spotSeries: {
+          ...square.spotSeries,
+          dollymount: hourly(19, (k) => ({
+            pop: k ? icon.chance(k) : null,
+            ww: icon.code?.(k) ?? 3,
+            ...(icon.vis && { vis: icon.vis(k) }),
+          })),
+        },
+      },
+      "weather/gfs-weather.json": {
+        ...frameless(24),
+        model: "gfs-weather",
+        modelName: "GFS weather",
+        base: GFS,
+      },
+      [`weather/${GFS}spots/n52w008.json`]: {
+        ...square,
+        model: "gfs-weather",
+        spotSeries: {
+          dollymount: hourly(25, (k) => ({
+            pop: k ? gfs.chance(k) : null,
+            ww: 3,
+            vis: 30,
+          })),
+        },
+      },
+    });
+    const spot = findSpot(await loadSpots(source), "dollymount").spot!;
+    return spotForecast(source, spot, windowFor(FIXTURE_NOW, window), {
+      now: FIXTURE_NOW,
+      ...options,
+    });
+  }
+  const hourAt = (
+    forecast: Awaited<ReturnType<typeof spotForecast>>,
+    iso: string,
+  ) => forecast.hours.find((h) => h.time === iso)?.weather;
+
+  it("gives each row the chance of rain over its interval, the mean of the models that reach it", async () => {
+    const forecast = await twoModelForecast(
+      { hours: 24, stepHours: 1 },
+      { chance: (k) => (k === 3 ? 60 : 10) },
+      { chance: (k) => (k === 3 ? 20 : k > 18 ? 70 : 0) },
+    );
+    // Both models while ICON-EU reaches: (60 + 20) / 2, and (10 + 0) / 2.
+    expect(hourAt(forecast, "2026-09-16T21:00:00.000Z")).toMatchObject({
+      rain_mm: 0,
+      rain_interval_hours: 1,
+      rain_chance_pct: 40,
+    });
+    expect(hourAt(forecast, "2026-09-16T22:00:00.000Z")?.rain_chance_pct).toBe(
+      5,
+    );
+    // Past ICON-EU's last step, GFS's own.
+    expect(hourAt(forecast, "2026-09-17T13:00:00.000Z")?.rain_chance_pct).toBe(
+      70,
+    );
+    expect(forecast.units.rain_chance).toMatch(/25 km/);
+    expect(forecast.units.rain_chance).toMatch(/0\.1 mm/);
+  });
+
+  it("gives a row that sums several intervals the highest of their chances", async () => {
+    const forecast = await twoModelForecast(
+      { hours: 12, stepHours: 3 },
+      { chance: (k) => (k === 2 ? 80 : 20) },
+      { chance: (k) => (k === 2 ? 40 : 20) },
+    );
+    // 21:00 sums the hours ending at 19:00, 20:00 and 21:00: 20, 60 and 20.
+    expect(hourAt(forecast, "2026-09-16T21:00:00.000Z")).toMatchObject({
+      rain_interval_hours: 3,
+      rain_chance_pct: 60,
+    });
+  });
+
+  it("leaves the chance out where no model publishes one", async () => {
+    const forecast = await rainForecast({ hours: 6, stepHours: 1 });
+    for (const hour of forecast.hours)
+      expect(hour.weather).not.toHaveProperty("rain_chance_pct");
+  });
+
+  it("gives each hour its visibility, in km and in a rider's words", async () => {
+    const vis = [null, 0.4, 0.92, 1, 2.46, 4, 9.94, 10, 24.4, 61];
+    const forecast = await twoModelForecast(
+      { hours: 10, stepHours: 1 },
+      { chance: () => 0, vis: (k) => (k < vis.length ? vis[k] : 30) },
+      { chance: () => 0 },
+    );
+    expect(
+      forecast.hours.map((h) => [
+        h.weather?.visibility_km,
+        h.weather?.visibility,
+      ]),
+    ).toEqual([
+      [null, undefined],
+      [0.4, "fog"],
+      [0.9, "fog"],
+      [1, "poor"],
+      [2.5, "poor"],
+      [4, "moderate"],
+      [9.9, "moderate"],
+      [10, "good"],
+      [24, "good"],
+      [61, "good"],
+    ]);
+    expect(forecast.units.visibility).toMatch(/fog under 1 km/);
+  });
+
+  it("says fog from a fog code where the model has no visibility for the hour, and nothing from a dry code", async () => {
+    const forecast = await twoModelForecast(
+      { hours: 4, stepHours: 1 },
+      { chance: () => 0, code: (k) => (k === 2 ? 45 : 3) },
+      { chance: () => 0 },
+    );
+    const at = (hhmm: string) =>
+      forecast.hours.find((h) => h.time.slice(11, 16) === hhmm)!.weather!;
+    expect(at("20:00").visibility).toBe("fog");
+    expect(at("20:00").visibility_km).toBeNull();
+    expect(at("19:00")).not.toHaveProperty("visibility");
+  });
+
+  it("gives each best window its highest chance of rain and its worst visibility", async () => {
+    const forecast = await twoModelForecast(
+      { hours: 24, stepHours: 1 },
+      { chance: (k) => k * 2, vis: (k) => (k === 14 ? 3 : 20) },
+      { chance: (k) => k * 2 },
+      { rider: EVERY_HOUR.rider },
+    );
+    const windows = forecast.best_windows!.flatMap((d) =>
+      d.window ? [d.window] : [],
+    );
+    expect(windows.length).toBeGreaterThan(0);
+    expect(windows.some((w) => w.rain_chance_pct !== undefined)).toBe(true);
+    for (const window of windows) {
+      const from = Date.parse(window.from);
+      const to = Date.parse(window.to);
+      const run = forecast.hours.filter((h) => {
+        const t = Date.parse(h.time);
+        return t > from && t <= to && h.weather?.rain_chance_pct != null;
+      });
+      if (!run.length) continue;
+      expect(window.rain_chance_pct).toBe(
+        Math.max(...run.map((h) => h.weather!.rain_chance_pct!)),
+      );
+      expect(window.visibility).toBeDefined();
+    }
+  });
+
   it("tells an agent what a row's rain covers", async () => {
     const forecast = await rainForecast({ hours: 3, stepHours: 1 });
     expect(forecast.units.rain).toMatch(/rain_interval_hours/);
