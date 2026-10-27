@@ -67,6 +67,9 @@ const star = (page: Page, ids: string[]) =>
   );
 
 const finder = (page: Page) => page.locator("[data-spot-finder]");
+/** "Use my location": the one way the browser is asked where the rider is. */
+const useMyLocation = (page: Page) =>
+  page.getByRole("button", { name: "Use my location" }).click();
 const cards = (page: Page) => page.locator("[data-spot-card]");
 const scope = (page: Page) => page.getByRole("group", { name: "Which spots" });
 
@@ -592,10 +595,19 @@ test.describe("on a desktop", () => {
     await expect(
       scope(page).getByRole("button", { name: "Near you" }),
     ).toHaveAttribute("aria-pressed", "true");
-    // The browser was asked, and said where the rider is.
+    // Not asked yet: told why the place is wanted, and the spots nearest the
+    // middle of Ireland meanwhile, with no distance that is not the rider's.
+    await expect(page.locator("[data-finder-ask]")).toContainText(
+      "Near you lists the spots within 30 km of where you are.",
+    );
+    await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
+    await expect(cards(page).filter({ hasText: / km · / })).toHaveCount(0);
+    // Asked on the rider's word, and the browser said where they are.
+    await useMyLocation(page);
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
     });
+    await expect(page.locator("[data-finder-ask]")).toHaveCount(0);
     await expect(cards(page).first()).toContainText(/\d+ km · Co\. /);
     await expect(page.locator("[data-finder-note]")).toHaveCount(0);
     await scope(page).getByRole("button", { name: "Favourites" }).click();
@@ -682,13 +694,81 @@ test.describe("on a desktop", () => {
     await expect(find).toHaveValue("");
   });
 
-  test("a first visit with the location refused lists the spots nearest the middle of Ireland, and never asks again", async ({
+  test("Near you never asks the browser unasked: only Use my location does", async ({
     page,
   }) => {
-    // No permission: the browser says no.
+    await unanswered(page, DUBLIN);
+    await page.addInitScript(() => {
+      const w = window as unknown as { asked: number };
+      w.asked = 0;
+      const geo = navigator.geolocation;
+      const ask = geo.getCurrentPosition.bind(geo);
+      geo.getCurrentPosition = (...args) => {
+        w.asked++;
+        ask(...args);
+      };
+    });
+    const asked = () =>
+      page.evaluate(() => (window as unknown as { asked: number }).asked);
     await openFinder(page);
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
     await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
+    await scope(page).getByRole("button", { name: "Favourites" }).click();
+    await scope(page).getByRole("button", { name: "Near you" }).click();
+    expect(await asked()).toBe(0);
+    await useMyLocation(page);
+    expect(await asked()).toBe(1);
+  });
+
+  test("the list put in order, by its stars, and rated from another model", async ({
+    page,
+  }) => {
+    await star(page, ["tramore", "brandon", "keel", "dollymount"]);
+    await openFinder(page);
+    await rated(page);
+    // A to Z.
+    await page.getByRole("combobox", { name: "Order" }).selectOption("name");
+    const names = await cards(page).evaluateAll((els) =>
+      els.map((el) => el.querySelector("h3")?.textContent?.trim() ?? ""),
+    );
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+    // Nearest needs the rider's place, which this browser has not given.
+    await expect(
+      page.getByRole("combobox", { name: "Order" }).locator("option"),
+    ).toHaveText(["Best first", "A to Z"]);
+    // Only the places with five stars in their six days, or a line saying
+    // there are none.
+    await page
+      .getByRole("combobox", { name: "Stars in the next six days" })
+      .selectOption("5");
+    const best = await cards(page).evaluateAll((els) =>
+      els.map((el) => Number(el.getAttribute("data-best"))),
+    );
+    if (best.length) expect(best.every((n) => n === 5)).toBe(true);
+    else
+      await expect(page.locator("[data-finder-empty]")).toHaveText(
+        "No spot on this list has 5 stars in the next six days.",
+      );
+    // The model: the rider's own, kept, as the spot page sets it.
+    await page
+      .getByRole("combobox", { name: "Model for the stars" })
+      .selectOption("ecmwf");
+    await expect
+      .poll(() =>
+        page.evaluate(() => localStorage.getItem("force5.prefs.v1") ?? ""),
+      )
+      .toContain("ecmwf");
+  });
+
+  test("a first visit with the location refused lists the spots nearest the middle of Ireland, and never asks again", async ({
+    page,
+  }) => {
+    // No permission: the browser says no, once asked.
+    await openFinder(page);
+    await expect(finder(page)).toHaveAttribute("data-scope", "near");
+    await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
+    await useMyLocation(page);
+    await expect(page.locator("[data-finder-ask]")).toHaveCount(0);
     await expect(page.locator("[data-finder-note]")).toHaveText(
       "We don’t know where you are, so these are the spots nearest the middle of Ireland.",
     );
@@ -723,6 +803,7 @@ test.describe("on a desktop", () => {
   }) => {
     await unanswered(page, DUBLIN);
     await openFinder(page);
+    await useMyLocation(page);
     await expect(page.locator("[data-finder-empty]")).toHaveText(
       "Finding spots near you…",
     );
@@ -741,6 +822,7 @@ test.describe("on a desktop", () => {
   }) => {
     await unanswered(page, DUBLIN);
     await openFinder(page);
+    await useMyLocation(page);
     await expect(page.locator("[data-finder-empty]")).toHaveText(
       "Finding spots near you…",
     );
@@ -763,6 +845,7 @@ test.describe("on a desktop", () => {
     await context.grantPermissions(["geolocation"]);
     await context.setGeolocation(ATHLONE);
     await openFinder(page);
+    await useMyLocation(page);
     await expect(page.locator("[data-finder-empty]")).toHaveText(
       "No spots within 30 km of you.",
       { timeout: 30000 },
@@ -806,6 +889,7 @@ test.describe("on a desktop", () => {
     await expect(
       scope(page).getByRole("button", { name: "Near you" }),
     ).toHaveAttribute("aria-pressed", "true");
+    await useMyLocation(page);
     // Dublin's beaches, and not Brandon, the far side of the country.
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
@@ -833,6 +917,7 @@ test.describe("on a desktop", () => {
     );
     await openFinder(page);
     await scope(page).getByRole("button", { name: "Near you" }).click();
+    await useMyLocation(page);
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
     });
@@ -1207,6 +1292,7 @@ test.describe("on a phone", () => {
     await context.grantPermissions(["geolocation"]);
     await context.setGeolocation(DUBLIN);
     await openFinder(page);
+    await page.getByRole("button", { name: "Use my location" }).tap();
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
     });

@@ -457,6 +457,42 @@ export function rankSpots<S extends Spot>(
     .map(({ item }) => item);
 }
 
+/** How the rider has the list put in order: the best of the week first, the nearest, or by name. */
+export type Order = "best" | "near" | "name";
+
+/**
+ * A ranked list put in the rider's order. The best first is the ranking as
+ * it stands (or a search's own order); the nearest needs the rider's place,
+ * and a place with no distance goes last; by name is A to Z.
+ */
+export function orderSpots<S extends Spot>(
+  list: readonly Listed<S>[],
+  order: Order,
+): Listed<S>[] {
+  if (order === "best") return [...list];
+  return list
+    .map((item, at) => ({ item, at }))
+    .sort((a, b) =>
+      order === "near"
+        ? (a.item.km ?? Infinity) - (b.item.km ?? Infinity) || a.at - b.at
+        : a.item.spot.name.localeCompare(b.item.spot.name, "en-IE"),
+    )
+    .map(({ item }) => item);
+}
+
+/**
+ * The places with at least `stars` stars somewhere in their six days; every
+ * place for none. A place not rated yet has none to show, and waits until
+ * its stars are in.
+ */
+export function withStars<S extends Spot>(
+  list: readonly Listed<S>[],
+  stars: number,
+): Listed<S>[] {
+  if (stars <= 0) return [...list];
+  return list.filter((item) => item.best.stars >= stars);
+}
+
 /* ---- the hour picked -------------------------------------------------------- */
 
 /**
