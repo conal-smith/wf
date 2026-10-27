@@ -914,6 +914,39 @@ yellow one is shown beside them.
   every riding place takes, and why (its `method`).
 - **Cost.** One small request an hour; about 135 MB peak with the worker, like `wind-obs`.
 
+### The EPA's bathing water notices
+
+The `water-quality` job (`fetch_water_quality.py`) reads the EPA's open Bathing Water
+API (`https://data.epa.ie/bw/api/v1`, documented at `/bw/swagger/v1/swagger.json`;
+CC BY 4.0), the data behind beaches.ie, at :40 every hour, and publishes
+`marine/water-quality.json`: every bathing water notice whose restriction still stands
+(a prohibition, an advice against bathing or a prior warning, with its cause as the
+council wrote it: a storm water or sewage overflow, an algal bloom, heavy rain
+expected), each bathing water's all-season restriction, and for each riding place the
+bathing waters within 1.5 km. The spot page, the dock and lights and the MCP server read
+it through `force5/src/waterQuality.ts`, which holds the rule: a prohibition or an
+advice against bathing covering an hour stands in place of its stars, as an orange
+warning does; a prior warning or an all-season restriction is shown beside them.
+
+- **Two datasets.** `alerts` lists every open incident, with
+  `has_bathing_restriction_in_place`; the API keeps an incident listed for months after
+  its restriction is lifted, so only those still `Yes` are published. `locations`
+  gives each bathing water's Irish Grid reference (converted to WGS84 with pyproj, to
+  within metres of beaches.ie's own placing) and any all-season restriction.
+- **Unaltered, and fresh or not shown.** Notices are published as the EPA has them; an
+  incident's dates have no time or zone, so `from` and `until` are the start of its
+  first Irish day and the end of its last, and one with no end stays until lifted. As
+  with the warnings, an API the job cannot read fails it, and the readers stop trusting
+  a file older than `maxAgeHours` (3, `WATER_QUALITY_MAX_AGE_HOURS`).
+- **Coverage.** About 80 of the 149 riding places have a bathing water within 1.5 km
+  (`NOT_THE_SAME_WATER` drops a lake's sea beach). The EPA monitors bathing waters in
+  the Republic only, mainly in the bathing season (1 June to 15 September), so most of
+  the year there is little to say, and a place with no bathing water near is "not
+  monitored", never "clean". Northern Ireland has no such feed (DAERA's dashboard is not
+  live), nor do Uisce Éireann's overflows.
+- **Cost.** Two requests an hour (about 760 kB); about 155 MB peak with the worker,
+  pyproj most of it.
+
 ### Deleting what is superseded
 
 A run directory is deleted once nothing can still want it, and not at the moment its

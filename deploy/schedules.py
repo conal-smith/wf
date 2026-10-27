@@ -56,6 +56,7 @@ DESCRIPTIONS = {
     "blend": "Every spot's wind blend, for the map's stars",
     "wind-obs": "Wind observations (Met Éireann stations, Marine Institute buoys)",
     "warnings": "Met Éireann weather warnings, land and marine",
+    "water-quality": "EPA bathing water notices near the riding places",
     "forecast-archive": "Archive every served wind run and the observations",
     "verify": "Score every model and the blend against the observations",
 }
@@ -98,7 +99,7 @@ RESOURCES = {
     "gfs-weather": MODEL,
     "ecmwf-ens": ENSEMBLE, "ecmwf-wave": ENSEMBLE, "harmonie-eps": ENSEMBLE, "gefs": ENSEMBLE,
     "tides": FEED, "sea-temperature": FEED, "blend": FEED, "wind-obs": FEED,
-    "warnings": FEED,
+    "warnings": FEED, "water-quality": FEED,
     "mi-swan": FEED, "currents": FEED,
     # The archive decodes a new run's frames one at a time into Python lists, and
     # verification holds sixteen days of archived runs while it scores a day.
@@ -109,12 +110,14 @@ RESOURCES = {
 # adapter's peak RSS, natively on macOS, which read 10-25% above the same adapters
 # in the Linux image. HARMONIE and ICON-EU are full hourly runs decoded from cached
 # GRIB, ECMWF its whole 85-frame run from cache, verification a 30-day archive.
-# Currents were measured on 22 October 2026 the same way: 168 MB for the adapter.
+# Currents were measured on 22 October 2026 the same way: 168 MB for the adapter;
+# the bathing water notices on 27 October 2026: 80 MB, most of it pyproj.
 MEASURED_PEAK_MB = {
     "harmonie": 290, "icon-eu": 335, "ecmwf": 315, "gfs-wave": 360,
     "icon-eu-weather": 225, "gfs": 230, "verify": 225, "gfs-weather": 355,
     "mi-swan": 190, "currents": 240, "blend": 185, "forecast-archive": 140,
     "tides": 135, "sea-temperature": 135, "wind-obs": 135, "warnings": 135,
+    "water-quality": 155,
 }
 # A ceiling an edit may not go below: an OOM kill stops a model without a word.
 MIN_HEADROOM = 1.5

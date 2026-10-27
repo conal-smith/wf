@@ -161,6 +161,7 @@ repository's `.venv` and a scratch `FORCE5_WORK_DIR`, never with a bucket:
 | `forecast-archive` | 512 MB | 140 | 1.4 | archiving four new runs at once from that copy |
 | `tides`, `sea-temperature`, `wind-obs` | 512 MB | 135 | 0.2-0.4 | live runs |
 | `warnings` | 512 MB | 135 | 0.1 | the adapter's 62 MB measured natively on a live run (25 October 2026), plus the worker |
+| `water-quality` | 512 MB | 155 | 0.3 | the adapter's 80 MB measured natively on a live run (27 October 2026), most of it pyproj, plus the worker |
 | `prune` (bucket sweep) | 512 MB | under 100 | - | the local sweep; the bucket listing adds little |
 
 The peak is the worker with its S3 client (72 MB) plus the adapter's own peak, which
