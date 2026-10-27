@@ -314,7 +314,14 @@ export interface CarriedBlend {
  * yesterday noon begins at yesterday noon — are its own, as before, and the
  * dock's strip, beginning at today, never shows them.)
  * Only the hours before the new lead run's first time: from there on the new
- * run is the newer word. Nothing is carried when the previous blend was built
+ * run is the newer word. But for its first time itself: a HARMONIE run's gust
+ * is the most over the hour before, so its initialisation has a wind and no
+ * gust (`gustMissingHours`), and kept as it was, that hour went on through
+ * every later blend of the day with no gust (issue #244: 03, 06, 09, 14 and
+ * 17 by the evening of 27 October). So an hour of today with a wind and no
+ * gust keeps the previous blend's hour instead, where that had both from a
+ * model as high in the order: the earlier run's wind, gust and bearing
+ * together, never one run's wind with another's gust. Nothing is carried when the previous blend was built
  * for another order of models, when this blend has no run of the lead model
  * to say where carrying stops, or for a model this blend no longer reads.
  * A carried hour is added to the columns of the model it came from, so the
@@ -357,7 +364,7 @@ export function carryToday(
         : (sources[parseInt(letter, 36)]?.id ?? null);
     previous.times.forEach((time, i) => {
       const t = Date.parse(time);
-      if (!(t >= from && t < until)) return;
+      if (!(t >= from)) return;
       for (const [id, spot] of Object.entries(blend.spotBlend)) {
         const old = previous.spotBlend[id];
         const model = modelOf(previous.sources, old?.lead?.[i]);
@@ -365,7 +372,19 @@ export function carryToday(
         const at = here.get(t);
         const fresh =
           at === undefined ? null : modelOf(blend.sources, spot.lead?.[at]);
-        if (rank(model) >= rank(fresh)) continue;
+        // A run's first hour, which has a wind and no gust, gives way to the
+        // same model's earlier run that had both.
+        const gustless =
+          at !== undefined &&
+          spot.wind[at] !== null &&
+          spot.gust[at] === null &&
+          old.wind[i] !== null &&
+          old.gust[i] !== null;
+        if (
+          !(t < until && rank(model) < rank(fresh)) &&
+          !(gustless && rank(model) <= rank(fresh))
+        )
+          continue;
         if (!keep.has(id)) keep.set(id, []);
         keep.get(id)!.push({ from: i, model });
         times.set(t, time);

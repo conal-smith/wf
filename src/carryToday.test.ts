@@ -261,3 +261,91 @@ describe("carryToday", () => {
     ]);
   });
 });
+
+describe("carryToday and HARMONIE's first hour", () => {
+  // As Met Éireann publishes it: a run's gust is the most over the hour
+  // before each time, so its first time, its initialisation, has none
+  // (force5/ingest/fetch_harmonie.py, `gustMissingHours`).
+  const published = (runTime: string, knots: number) =>
+    windManifest({
+      model: "harmonie",
+      runTime,
+      hours: hourly(48),
+      wind: (h) => ({
+        u: 4 + knots + h / 10,
+        v: 1,
+        gust: h === 0 ? null : 8 + knots,
+      }),
+      extra: { resolutionKm: 2, gustMissingHours: [0] },
+    });
+  const DAY = "2026-10-27T00:00:00.000Z";
+  const at = (hours: number) => utc(DAY, hours);
+  // 27 October 2026 as the bucket served it: the runs the hourly blends read
+  // through the day, each a few hours after it began.
+  const runs: [built: number, run: number][] = [
+    [-2, -3],
+    [5, 3],
+    [8, 6],
+    [11, 9],
+    [16.75, 14],
+    [19.75, 17],
+    [20, 17],
+  ];
+  const ecmwf27 = ecmwf("2026-10-27T00:00:00.000Z");
+  const day = runs.reduce<BlendRun | null>(
+    (previous, [built, run]) =>
+      carryToday(
+        blendOf([published(at(run), run + 3), ecmwf27], at(built)),
+        previous,
+      ).blend,
+    null,
+  )!;
+  const today = day.times.filter((time) => time >= DAY && time < at(24));
+  const gaps = (blend: BlendRun) =>
+    today.filter((time) => {
+      const i = blend.times.indexOf(time);
+      const spot = blend.spotBlend.brandon;
+      return spot.wind[i] !== null && spot.gust[i] === null;
+    });
+
+  it("gives every hour of today with a wind a gust, as the run before had", () => {
+    // Before, each run's first hour was kept without its gust, and every
+    // blend after it carried the gap on: 03, 06, 09, 14 and 17 by 20:00.
+    expect(gaps(day)).toEqual([]);
+    for (const time of today)
+      if (time < at(21)) expect(modelAt(day, time)).toBe("harmonie");
+  });
+
+  it("keeps the earlier run's whole hour there, its wind with its gust", () => {
+    // 17:00 is the 14 UTC run's three hours ahead, not the 17 UTC run's
+    // initialisation: one run's wind, gust and bearing, never a mixture.
+    const i = day.times.indexOf(at(17));
+    const fourteen = blendOf([published(at(14), 17), ecmwf27], at(16.75));
+    const j = fourteen.times.indexOf(at(17));
+    expect(day.spotBlend.brandon.wind[i]).toBe(
+      fourteen.spotBlend.brandon.wind[j],
+    );
+    expect(day.spotBlend.brandon.gust[i]).toBe(
+      fourteen.spotBlend.brandon.gust[j],
+    );
+    expect(day.spotBlend.brandon.from[i]).toBe(
+      fourteen.spotBlend.brandon.from[j],
+    );
+    // After it, the 17 UTC run is the word.
+    const seventeen = blendOf([published(at(17), 20), ecmwf27], at(20));
+    expect(windAt(day, at(18))).toBe(windAt(seventeen, at(18)));
+    expect(() => checkBlendSpots(day, day.spotBlend)).not.toThrow();
+  });
+
+  it("leaves the hour without a gust where no earlier blend had one", () => {
+    // The first blend there is, with nothing before it: the run's first hour
+    // says it has no gust rather than borrowing another model's.
+    const alone = carryToday(
+      blendOf([published(at(17), 20), ecmwf27], at(20)),
+      null,
+    ).blend;
+    const i = alone.times.indexOf(at(17));
+    expect(alone.spotBlend.brandon.wind[i]).not.toBeNull();
+    expect(alone.spotBlend.brandon.gust[i]).toBeNull();
+  });
+});

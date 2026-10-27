@@ -480,6 +480,28 @@ test.describe("on a desktop", () => {
     await expect(dayLines.first()).toBeHidden();
   });
 
+  test("an hour with a wind and no gust says so, rather than looking calm", async ({
+    page,
+  }) => {
+    // The sample's HARMONIE publishes no gust (scripts/sample-weather.mjs), so
+    // its afternoon hours are a wind with no gust; the morning's ECMWF steps
+    // have theirs. (In production it is a run's first hour: issue #244.)
+    await star(page, ["dollymount"]);
+    await openFinder(page);
+    await rated(page);
+    const row = hours(page);
+    const gustless = row.filter({ has: page.locator("[data-no-gust]") });
+    expect(await gustless.count()).toBeGreaterThan(0);
+    await expect(gustless.first().locator("[data-no-gust]")).toHaveText("g–");
+    await expect(gustless.first()).toHaveAttribute(
+      "aria-label",
+      /knots, no gust forecast/,
+    );
+    // Only where the gust is missing: ECMWF's morning keeps its own.
+    expect(await gustless.count()).toBeLessThan(await row.count());
+    await expect(row.nth(1).locator("[data-no-gust]")).toHaveCount(0);
+  });
+
   test("first light stays in the row's view as it scrolls, not cut off by its edge", async ({
     page,
   }) => {
