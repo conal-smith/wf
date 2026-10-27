@@ -30,7 +30,8 @@ import {
   pointHours,
   type PlaceHour,
 } from "./ratings";
-import { warnHours } from "./warnHours";
+import { warnHours, waterHours } from "./warnHours";
+import type { SpotNotice } from "../force5/src/waterQuality";
 import type { HourRating } from "../force5/src/stars";
 import type { PlaceWarning } from "../force5/src/warnings";
 import { readWindRun } from "../tests/bundles";
@@ -574,6 +575,50 @@ describe("warnHours", () => {
       { level: "orange", replacesRating: true },
     ]);
     // The wind is still there to read under the warning.
+    expect(out[2].windKn).toBe(18);
+  });
+});
+
+describe("waterHours", () => {
+  const axis = [
+    "2026-09-14T10:00:00Z",
+    "2026-09-14T11:00:00Z",
+    "2026-09-14T12:00:00Z",
+  ];
+  const rated = { stars: 4, potential: 4 } as HourRating;
+  const row = (): PlaceHour => ({
+    windKn: 18,
+    gustKn: 24,
+    from: 250,
+    agreement: "high",
+    daylight: true,
+    rating: rated,
+    model: "harmonie",
+  });
+  const notice = (
+    replacesStars: boolean,
+    from: number,
+    until: number,
+  ): SpotNotice =>
+    ({ replacesStars, from, until, km: 0.2, notice: {} }) as SpotNotice;
+
+  it("leaves the rows alone with no notices", () => {
+    const rows = axis.map(row);
+    expect(waterHours(rows, axis, [])).toBe(rows);
+  });
+
+  it("takes the stars under a prohibition and marks a prior warning", () => {
+    const out = waterHours(axis.map(row), axis, [
+      notice(false, -Infinity, Date.parse("2026-09-14T11:00:00Z")),
+      // Open until lifted, from 12:00.
+      notice(true, Date.parse("2026-09-14T12:00:00Z"), Infinity),
+    ]);
+    expect(out.map((h) => h.rating)).toEqual([rated, rated, null]);
+    expect(out.map((h) => h.water ?? null)).toEqual([
+      { replacesRating: false },
+      null,
+      { replacesRating: true },
+    ]);
     expect(out[2].windKn).toBe(18);
   });
 });

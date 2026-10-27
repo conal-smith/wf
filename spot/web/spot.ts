@@ -32,7 +32,9 @@ import {
 } from "../../force5/src/units";
 import type { ForecastHour, SpotForecast } from "../../mcp/api/forecast";
 import { applyWarnings } from "../../force5/src/warnings";
+import { applyWaterQuality } from "../../force5/src/waterQuality";
 import type { HourWarning } from "../../mcp/api/warnings";
+import type { HourWater } from "../../mcp/api/waterQuality";
 
 export const HOUR = 3600000;
 export const TIME_ZONE = "Europe/Dublin";
@@ -258,7 +260,8 @@ export interface SpotRow {
   hour: ForecastHour;
   /**
    * Null in the dark, with no wind reading, or where an orange or red Met
-   * Éireann warning stands in place of the stars (`warning`).
+   * Éireann warning (`warning`), or a prohibition or advice against bathing
+   * (`water`), stands in place of the stars.
    */
   rating: HourRating | null;
   /** How the wind meets the shore, rated or not; null where unknown. */
@@ -268,6 +271,8 @@ export interface SpotRow {
    * none. Optional: the app (mobile/) builds its rows itself, without them.
    */
   warning?: HourWarning | null;
+  /** The bathing water notices covering any of the row's hours, or null with none. */
+  water?: HourWater | null;
 }
 
 /** Rate one forecast hour for a rider at a shore, from the one model's own wind. */
@@ -331,6 +336,23 @@ export function rowWarning(
   };
 }
 
+/** The bathing water notices covering a row: every hour it stands for. Null with none. */
+export function rowWater(
+  byTime: ReadonlyMap<number, ForecastHour>,
+  time: number,
+  step: number,
+): HourWater | null {
+  const covering = Array.from(
+    { length: step },
+    (_, i) => byTime.get(time + i * HOUR)?.water ?? null,
+  ).filter((w): w is HourWater => w !== null);
+  if (!covering.length) return null;
+  return {
+    ids: [...new Set(covering.flatMap((w) => w.ids))],
+    replaces_rating: covering.some((w) => w.replaces_rating),
+  };
+}
+
 export function spotRows(
   hours: readonly ForecastHour[],
   now: number,
@@ -340,20 +362,26 @@ export function spotRows(
   const byTime = new Map(hours.map((hour) => [Date.parse(hour.time), hour]));
   return rowHours(hours, now).map(({ hour, time, step }) => {
     const warning = rowWarning(byTime, time, step);
+    const water = rowWater(byTime, time, step);
     return {
       time,
       step,
       hour,
-      // The one rule the map and the MCP share: under orange or red, no stars.
-      rating: applyWarnings(
-        rateForecastHour(hour, facing, rider),
-        warning ? [warning] : [],
+      // The rules the map and the MCP share: under orange or red, or a
+      // notice against bathing, no stars.
+      rating: applyWaterQuality(
+        applyWarnings(
+          rateForecastHour(hour, facing, rider),
+          warning ? [warning] : [],
+        ).rating,
+        water ? [{ replacesStars: water.replaces_rating }] : [],
       ).rating,
       shore:
         facing === null || !hour.wind
           ? null
           : shoreAngle(hour.wind.direction_deg, facing),
       warning,
+      water,
     };
   });
 }

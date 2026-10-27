@@ -58,6 +58,7 @@ import { RiderSwitch, riderWords } from "./RiderSwitch";
 import { HOUR, clock, dayNames, dublinDate } from "./spot";
 import { useWidth } from "./useWidth";
 import { WarningMark } from "./Warnings";
+import { WaterMark } from "./WaterQuality";
 
 const styles = tv({
   slots: {
@@ -160,6 +161,15 @@ export default function StarsPage() {
             <span className="col-span-2">
               An orange or red Met &Eacute;ireann warning replaces the stars for
               the hours it covers.
+            </span>
+          </li>
+          <li className={s.glyph()}>
+            <span className={s.glyphMark()}>
+              <WaterMark />
+            </span>
+            <span className="col-span-2">
+              So does a bathing water prohibition or advice against bathing
+              from the EPA, at a beach near the spot.
             </span>
           </li>
           <li className={s.glyph()}>
@@ -881,6 +891,11 @@ function OtherTable() {
   const rows: [string, string][] = [
     ["An orange or red Met Éireann warning", "replaced by the warning"],
     ["A yellow warning", "shown, nothing off"],
+    [
+      "A bathing water prohibition or advice against bathing",
+      "replaced by the notice",
+    ],
+    ["Any other bathing water notice", "shown, nothing off"],
     ["The models disagree", "nothing"],
     ["How far upwind you can ride", "nothing"],
     ["Your weight, or your wings", "nothing"],

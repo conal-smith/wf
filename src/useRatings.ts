@@ -9,8 +9,13 @@ import {
   warningsStatus,
   type WarningsManifest,
 } from "../force5/src/warnings";
+import {
+  spotWaterQuality,
+  waterQualityStatus,
+  type WaterQualityManifest,
+} from "../force5/src/waterQuality";
 import { placeHours, type PlaceHour, type RatedPlace } from "./ratings";
-import { warnHours } from "./warnHours";
+import { warnHours, waterHours } from "./warnHours";
 import { spotBlendHours, type BlendRun } from "./spotBlend";
 
 /** Places worked out per slice of main-thread time, and how long a slice may run. */
@@ -33,6 +38,8 @@ export interface RatingSource {
   known: ReadonlySet<string> | null;
   /** Met Éireann's warnings, applied to every place's columns; null with none to trust. */
   warnings?: WarningsManifest | null;
+  /** The EPA's bathing water notices, applied the same way; null with none to trust. */
+  water?: WaterQualityManifest | null;
 }
 
 /**
@@ -54,7 +61,14 @@ export function ratePlace(
   place: RatedPlace,
   axis: readonly string[],
   rider: Rider,
-  { published, manifests, blendModels, known, warnings = null }: RatingSource,
+  {
+    published,
+    manifests,
+    blendModels,
+    known,
+    warnings = null,
+    water = null,
+  }: RatingSource,
 ): PlaceHour[] | null {
   const square = spotSquare(place.lat, place.lon);
   if (known && !known.has(square)) return null;
@@ -63,20 +77,30 @@ export function ratePlace(
     : manifests.length
       ? placeHours(manifests, blendModels, place, axis, rider)
       : null;
-  if (!rows || !warnings) return rows;
-  // Orange and red stand in place of the stars, for the light, the dock and
-  // the finder alike (force5/src/warnings.ts).
-  const { warnings: mine } = placeWarnings(
-    warnings,
-    {
-      id: place.id,
-      county: place.county ?? "",
-      lat: place.lat,
-      lon: place.lon,
-    },
-    Date.now(),
-  );
-  return warnHours(rows, axis, mine);
+  if (!rows) return rows;
+  // Orange and red, and a notice against bathing, stand in place of the
+  // stars, for the light, the dock and the finder alike
+  // (force5/src/warnings.ts, force5/src/waterQuality.ts).
+  const now = Date.now();
+  const warned = warnings
+    ? warnHours(
+        rows,
+        axis,
+        placeWarnings(
+          warnings,
+          {
+            id: place.id,
+            county: place.county ?? "",
+            lat: place.lat,
+            lon: place.lon,
+          },
+          now,
+        ).warnings,
+      )
+    : rows;
+  return water
+    ? waterHours(warned, axis, spotWaterQuality(water, place.id, now).notices)
+    : warned;
 }
 
 /**
@@ -111,6 +135,7 @@ export function useRatings(
   published: PublishedHours | null = null,
   loaded: readonly string[] | null = null,
   warnings: WarningsManifest | null = null,
+  water: WaterQualityManifest | null = null,
 ): { hours: ReadonlyMap<string, PlaceHour[]>; version: number } {
   const manifests = useMemo<Manifest[]>(
     () =>
@@ -143,6 +168,11 @@ export function useRatings(
     warnings && warningsStatus(warnings, Date.now()) === "current"
       ? warnings
       : null;
+  // And the same for the bathing water notices.
+  const trustedWater =
+    water && waterQualityStatus(water, Date.now()) === "current"
+      ? water
+      : null;
   const hoursFor = (place: RatedPlace) =>
     ratePlace(place, axis, rider, {
       published,
@@ -150,6 +180,7 @@ export function useRatings(
       blendModels,
       known,
       warnings: trusted,
+      water: trustedWater,
     });
 
   // The runs the rows are worked out from: the published blend's sources,
@@ -161,6 +192,7 @@ export function useRatings(
       : []),
     // New warnings are worked in as a new run is: the rows in hand stay up.
     `warnings@${trusted?.generatedAt ?? ""}`,
+    `water@${trustedWater?.generatedAt ?? ""}`,
   ].join(",");
 
   // What the table was last worked out for, apart from its source.

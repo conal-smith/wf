@@ -61,6 +61,8 @@ import { STARS_HREF } from "../../force5/src/siteNav";
 import { LEVEL_LABEL } from "../../force5/src/warnings";
 import type { WarningsAnswer } from "../../mcp/api/warnings";
 import { WarningMark, warningName } from "./Warnings";
+import type { WaterAnswer } from "../../mcp/api/waterQuality";
+import { WaterMark, noticeWords } from "./WaterQuality";
 import { rangeKeyWords } from "./TableKey";
 
 const styles = tv({
@@ -178,6 +180,8 @@ export interface DaySectionProps {
   rain: ReadonlyMap<number, number>;
   /** Met Éireann's warnings for the place, which the rows' `warning` name by id. */
   warnings?: WarningsAnswer;
+  /** The bathing water notices near the place, which the rows' `water` name by id. */
+  water?: WaterAnswer;
 }
 
 /** The theme's `wide` breakpoint (ui/theme.css), where the rows get shorter. */
@@ -307,6 +311,7 @@ function DayBody({
   skyStops,
   rain,
   warnings,
+  water,
 }: DaySectionProps) {
   const s = styles();
   const names = dayNames(day.date, now);
@@ -413,6 +418,16 @@ function DayBody({
           .filter((item) => item !== undefined)
       : [];
     const warnedWords = warned.map(warningName).join("; ");
+    // And the bathing water notices over it.
+    const wateredWords = (row.water?.ids ?? [])
+      .map((id) => water?.items.find((item) => item.id === id))
+      .filter((item) => item !== undefined)
+      .map(noticeWords)
+      .join("; ");
+    const waterWords = wateredWords || "Bathing water notice";
+    // An orange or red warning stands in the stars first, then a notice.
+    const waterStands =
+      !row.warning?.replaces_rating && !!row.water?.replaces_rating;
     return (
       <tr
         key={row.time}
@@ -436,17 +451,26 @@ function DayBody({
           className={s.cell({ className: s.stars() })}
           data-stars={rating ? rating.stars : undefined}
           data-hour-warning={row.warning?.level}
+          data-hour-water={
+            row.water
+              ? row.water.replaces_rating
+                ? "replaces"
+                : "beside"
+              : undefined
+          }
         >
           <RatingTip
             label={`${clock(row.time)}: ${
               row.warning?.replaces_rating
                 ? `no stars: ${warnedWords || `${LEVEL_LABEL[row.warning.level]} warning`}`
-                : rating
-                  ? starsText(rating)
-                  : hour.daylight
-                    ? "no wind reading"
-                    : "dark, not rated"
-            }${row.warning && !row.warning.replaces_rating ? `; ${warnedWords || "Yellow warning"}` : ""}`}
+                : waterStands
+                  ? `no stars: ${waterWords}`
+                  : rating
+                    ? starsText(rating)
+                    : hour.daylight
+                      ? "no wind reading"
+                      : "dark, not rated"
+            }${row.warning && !row.warning.replaces_rating ? `; ${warnedWords || "Yellow warning"}` : ""}${row.water && !waterStands ? `; ${waterWords}` : ""}`}
             detail={
               <HourTip
                 row={row}
@@ -458,12 +482,17 @@ function DayBody({
                 date={names.short}
                 starsFrom={starsFrom}
                 warned={warnedWords}
+                watered={waterWords}
               />
             }
           >
             {row.warning?.replaces_rating ? (
               // Orange or red: the warning stands where the stars were.
               <WarningMark level={row.warning.level} />
+            ) : waterStands ? (
+              // A prohibition or advice against bathing: the notice stands
+              // where the stars were.
+              <WaterMark />
             ) : (
               <span className={s.starsWarned()}>
                 <StarGlyphs
@@ -472,6 +501,7 @@ function DayBody({
                   size={9.5}
                 />
                 {row.warning && <WarningMark level={row.warning.level} dot />}
+                {row.water && <WaterMark dot />}
               </span>
             )}
           </RatingTip>
@@ -696,6 +726,7 @@ function HourTip({
   date,
   starsFrom,
   warned = "",
+  watered = "",
 }: {
   row: SpotRow;
   units: Units;
@@ -707,6 +738,8 @@ function HourTip({
   starsFrom: StarsFrom;
   /** The Met Éireann warnings over the hour, named. */
   warned?: string;
+  /** The bathing water notices over the hour, named. */
+  watered?: string;
 }) {
   const s = styles();
   const { hour, rating } = row;
@@ -719,6 +752,8 @@ function HourTip({
         </span>
         {row.warning?.replaces_rating ? (
           <WarningMark level={row.warning.level} />
+        ) : row.water?.replaces_rating ? (
+          <WaterMark />
         ) : (
           <StarGlyphs
             stars={rating ? rating.stars : null}
@@ -738,10 +773,23 @@ function HourTip({
           </span>
         </p>
       )}
+      {row.water && (
+        <p className={s.tipWarning()} data-tip-water>
+          <WaterMark dot />
+          <span>
+            {watered || "Bathing water notice"}
+            {row.water.replaces_rating
+              ? ": no stars while it stands."
+              : ": the stars stand beside it."}
+          </span>
+        </p>
+      )}
       <p className={s.tipVerdict()}>
         {row.warning?.replaces_rating
           ? "Met Éireann warning."
-          : verdict(rating, hour.daylight)}
+          : row.water?.replaces_rating
+            ? "Bathing water notice."
+            : verdict(rating, hour.daylight)}
       </p>
       {wind && (
         <span className={s.tipFrom()} data-tip-from>

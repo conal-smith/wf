@@ -1,13 +1,18 @@
 /**
- * Met Éireann's warnings on the map's table of hours (src/useRatings.ts), apart
- * from src/ratings.ts, which the blend job bundles without the warnings' area
- * table (force5/Dockerfile copies no data/).
+ * Met Éireann's warnings and the EPA's bathing water notices on the map's table
+ * of hours (src/useRatings.ts), apart from src/ratings.ts, which the blend job
+ * bundles without the warnings' area table (force5/Dockerfile copies no data/).
  */
 import {
   applyWarnings,
   warningsDuring,
   type PlaceWarning,
 } from "../force5/src/warnings";
+import {
+  applyWaterQuality,
+  noticesDuring,
+  type SpotNotice,
+} from "../force5/src/waterQuality";
 import type { PlaceHour } from "./ratings";
 
 const HOUR = 3600000;
@@ -36,5 +41,28 @@ export function warnHours(
       rating,
       warning: { level: level!, replacesRating: withheld },
     };
+  });
+}
+
+/**
+ * A place's columns with the bathing water notices at it applied, by the rule
+ * the spot page and the MCP share (force5/src/waterQuality.ts): under a
+ * prohibition or advice against bathing a column has no rating, under any
+ * other notice it keeps it, and either way it is marked.
+ */
+export function waterHours(
+  rows: PlaceHour[],
+  axis: readonly string[],
+  notices: readonly SpotNotice[],
+): PlaceHour[] {
+  if (!notices.length) return rows;
+  return rows.map((row, i) => {
+    const from = Date.parse(axis[i]);
+    const next = i + 1 < axis.length ? Date.parse(axis[i + 1]) : NaN;
+    const to = next > from ? next : from + HOUR;
+    const covering = noticesDuring(notices, from, to);
+    if (!covering.length) return row;
+    const { rating, withheld } = applyWaterQuality(row.rating, covering);
+    return { ...row, rating, water: { replacesRating: withheld } };
   });
 }

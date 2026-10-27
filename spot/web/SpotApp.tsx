@@ -78,6 +78,8 @@ import StarsPage from "./StarsPage";
 import { useSpotForecast } from "./useSpotForecast";
 import { useWidth } from "./useWidth";
 import { WarningsPanel } from "./Warnings";
+import { WaterQualityPanel } from "./WaterQuality";
+import { BEACHES_PAGE } from "../../force5/src/waterQuality";
 import { MET_WARNINGS_PAGE } from "../../force5/src/warnings";
 import { WeekStrip } from "./WeekStrip";
 
@@ -472,6 +474,7 @@ function SpotPage({
         )}
       </p>
       <WarningsPanel warnings={forecast.warnings} />
+      <WaterQualityPanel water={forecast.water_quality} />
       {sea && <WaterLine sea={sea} now={now} />}
       {picture && (
         <SpotSatellite picture={picture} name={spot.name} facing={facing} />
@@ -511,6 +514,7 @@ function SpotPage({
             skyStops={day.date === skyStops}
             rain={rain}
             warnings={forecast.warnings}
+            water={forecast.water_quality}
           />
         ))}
       </div>
@@ -641,6 +645,15 @@ function SourcesFooter({
             met.ie/warnings
           </a>
           .
+        </li>
+        <li data-water-quality-source>
+          Bathing water notices: the EPA,{" "}
+          <a className={s.link()} href={BEACHES_PAGE}>
+            beaches.ie
+          </a>
+          .
+          {forecast.water_quality.status === "not-monitored" &&
+            " No bathing water is monitored near here."}
         </li>
         {picture && (
           <li data-satellite-source>

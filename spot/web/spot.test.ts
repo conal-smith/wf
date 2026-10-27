@@ -23,6 +23,7 @@ import {
   placeChanges,
   rowHours,
   rowWarning,
+  rowWater,
   shadeBands,
   shoreSummary,
   skyStopsOn,
@@ -266,6 +267,60 @@ describe("Met Éireann warnings on the rows", () => {
       replaces_rating: false,
     });
     expect(rowWarning(byTime, at + HOUR, 1)).toBeNull();
+  });
+});
+
+describe("bathing water notices on the rows", () => {
+  const now = Date.parse("2026-10-09T06:00:00Z");
+  const watered = (
+    iso: string,
+    replaces: boolean | null,
+  ): ForecastHour => ({
+    ...hour(iso, 16, true, 225),
+    ...(replaces !== null && {
+      water: { ids: [replaces ? "ban" : "may"], replaces_rating: replaces },
+    }),
+  });
+
+  it("takes the stars under a prohibition, and keeps them beside any other notice", () => {
+    const rows = spotRows(
+      [
+        watered("2026-10-09T11:00:00Z", null),
+        watered("2026-10-09T12:00:00Z", false),
+        watered("2026-10-09T13:00:00Z", true),
+      ],
+      now,
+      270,
+      DEFAULT_RIDER,
+    );
+    const stars = rows[0].rating!.stars;
+    expect(stars).toBeGreaterThan(0);
+    expect(rows.map((row) => row.rating?.stars ?? null)).toEqual([
+      stars,
+      stars,
+      null,
+    ]);
+    expect(rows.map((row) => row.water?.replaces_rating ?? null)).toEqual([
+      null,
+      false,
+      true,
+    ]);
+  });
+
+  it("gives a three-hour row every notice over its three hours", () => {
+    const byTime = new Map(
+      [
+        watered("2026-10-12T09:00:00Z", false),
+        watered("2026-10-12T10:00:00Z", null),
+        watered("2026-10-12T11:00:00Z", true),
+      ].map((h) => [Date.parse(h.time), h]),
+    );
+    const at = Date.parse("2026-10-12T09:00:00Z");
+    expect(rowWater(byTime, at, 3)).toEqual({
+      ids: ["may", "ban"],
+      replaces_rating: true,
+    });
+    expect(rowWater(byTime, at + HOUR, 1)).toBeNull();
   });
 });
 

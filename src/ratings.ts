@@ -49,6 +49,12 @@ export interface PlaceHourWarning {
   replacesRating: boolean;
 }
 
+/** The bathing water notices over a column (force5/src/waterQuality.ts). */
+export interface PlaceHourWater {
+  /** A prohibition or advice against bathing: the notice stands in place of the stars. */
+  replacesRating: boolean;
+}
+
 /** One column at one place. Speeds in knots; the bearing is where it blows from. */
 export interface PlaceHour {
   windKn: number | null;
@@ -62,6 +68,8 @@ export interface PlaceHour {
   model: string | null;
   /** Met Éireann warnings over the column; absent or null with none. */
   warning?: PlaceHourWarning | null;
+  /** Bathing water notices over the column; absent or null with none. */
+  water?: PlaceHourWater | null;
 }
 
 const HOUR = 3600000;
