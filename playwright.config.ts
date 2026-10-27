@@ -9,7 +9,7 @@ const port = Number(process.env.PREVIEW_PORT || 4173);
 const apiPort = Number(process.env.PORT || 8797);
 const api = `http://127.0.0.1:${apiPort}`;
 
-/** The one spec written for a phone; every other spec is the desktop's. */
+/** The one spec written for a phone; every other spec is the desktop's, the smoke's aside. */
 const PHONE = /community\/phone\.spec\.ts$/;
 /**
  * The map's visual baseline. It sets its own viewports and writes committed
@@ -25,6 +25,17 @@ const MARKET_SHOTS = /market\/shots\.spec\.ts$/;
  * clock (playwright.smoke.config.ts), never this config's frozen sample.
  */
 const SMOKE = /smoke\//;
+/**
+ * The quick end-to-end gate (e2e/sample-smoke): a dozen cheap looks at the main
+ * pages, desktop and phone, against this config's sample and with the basemap
+ * answered empty, run alone by `npm run test:smoke`. The deployed-site suite
+ * above runs beside it, so it is known to pass before a release leans on it.
+ * Its tests are independent, so they run in parallel (`--workers` in the
+ * script; the rest of the suite stays one at a time). The full suite,
+ * `npm run test:e2e`, is the desktop and phone projects.
+ */
+const SAMPLE_SMOKE = /sample-smoke\//;
+const DEPLOYED_SMOKE = /smoke\/site\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -42,7 +53,15 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "desktop", testIgnore: [PHONE, MAP_SHOTS, MARKET_SHOTS, SMOKE] },
+    {
+      name: "desktop",
+      testIgnore: [PHONE, MAP_SHOTS, MARKET_SHOTS, SMOKE, SAMPLE_SMOKE],
+    },
+    {
+      name: "smoke",
+      testMatch: [SAMPLE_SMOKE, DEPLOYED_SMOKE],
+      fullyParallel: true,
+    },
     ...(process.env.MAP_SHOTS
       ? [{ name: "map-shots", testMatch: MAP_SHOTS }]
       : []),
