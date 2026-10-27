@@ -39,8 +39,7 @@ import {
   WIND_TOP,
   forceTicks,
   knotsOf,
-  moveWind,
-  moveWindForce,
+  moveWindIn,
   offAt,
   polar,
   said,
@@ -191,11 +190,7 @@ export default function Settings({
             onMove={(i, kn) =>
               setDraft({
                 ...draft,
-                custom: (unit.force ? moveWindForce : moveWind)(
-                  draft.custom,
-                  WIND_KEYS[i],
-                  kn,
-                ),
+                custom: moveWindIn(draft.custom, WIND_KEYS[i], kn, draft.units),
               })
             }
           />,
@@ -331,7 +326,8 @@ const STAR_PATH =
  * hatched in the pen's red past it); right under the track, read-only, the
  * stars those numbers make by steady wind; then the figures, once. Four
  * handles, dragged or moved a step at a time from the keyboard; where they
- * may go is yourStars.ts's (`moveWind`), which keeps them a knot apart.
+ * may go is yourStars.ts's (`moveWindIn`), which keeps them a knot apart
+ * and on whole figures of the rider's unit.
  */
 function WindRange({
   wind,
