@@ -282,6 +282,25 @@ const DEFAULT_LAYERS: MapLayers = {
   satellite: LAYER_DEFAULTS.satellite,
 };
 
+/**
+ * Runs `then` once the next frame is painted: a frame's own callbacks run
+ * before its paint, and a task queued from one runs after it.
+ */
+const afterPaint = (then: () => void) =>
+  requestAnimationFrame(() => window.setTimeout(then));
+
+/**
+ * The first stop for the keys on the list and the chart, out of sight until
+ * it has the focus: past the menu and the chart's lights to what the page is
+ * for (#222). On the full chart, the forecast in the dock, or with none open
+ * the search, which finds a spot by its name without the chart.
+ */
+const SKIP = {
+  list: { label: "Skip to the spots", to: "[data-finder-list]" },
+  dock: { label: "Skip to the forecast", to: ".dock" },
+  search: { label: "Skip to the search", to: '.map-head [role="combobox"]' },
+};
+
 function useMedia(query: string) {
   const [match, setMatch] = useState(() => window.matchMedia(query).matches);
   useEffect(() => {
@@ -1410,6 +1429,16 @@ export default function App() {
         href,
       );
   };
+  /**
+   * A light pressed on the full chart. It is drawn as the open spot's at once,
+   * and the dock, the flight and the step in the history wait until that is
+   * painted, the dock drawn as a transition: drawn in the tap's own task, they
+   * held its answer back by a third of a second and more (#250).
+   */
+  const openLight = (spot: Spot) => {
+    controls.current?.choose(spot.id);
+    afterPaint(() => startTransition(() => selectSpot(spot)));
+  };
   const selectSpot = (spot: Spot, fly = true) => {
     showSpot(spot, fly);
     fav.visit(spot.id);
@@ -2236,6 +2265,15 @@ export default function App() {
    * the list, or (under the width for that) out of sight behind it.
    */
   const mode = onChart ? "full" : split && panelBox ? "panel" : "hidden";
+  const skip = !onChart ? SKIP.list : dockOpen ? SKIP.dock : SKIP.search;
+  const skipTo = (event: React.MouseEvent) => {
+    event.preventDefault();
+    const to = document.querySelector<HTMLElement>(skip.to);
+    if (!to) return;
+    // A box the keys do not stop on still takes the focus from here.
+    if (!to.hasAttribute("tabindex") && to.tabIndex < 0) to.tabIndex = -1;
+    to.focus();
+  };
   const shell = (
     <div
       className={`app-shell${phone ? " is-phone" : ""}${focusId ? " is-focus" : ""}`}
@@ -2253,6 +2291,18 @@ export default function App() {
         } as React.CSSProperties
       }
     >
+      {!error && (
+        <Button
+          variant="raised"
+          size="sm"
+          href="#"
+          className="skip-link"
+          data-skip-link
+          onClick={skipTo}
+        >
+          {skip.label}
+        </Button>
+      )}
       {error ? (
         <main className="fatal-error chart-box">
           <h1>The forecast isn’t ready yet.</h1>
@@ -2476,7 +2526,7 @@ export default function App() {
                     phone={phone}
                     onSelect={(spot) =>
                       pageRef.current === "chart"
-                        ? selectSpot(spot)
+                        ? openLight(spot)
                         : showCard(spot)
                     }
                     onHoverSpot={hoverLight}
