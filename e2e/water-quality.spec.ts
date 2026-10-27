@@ -30,7 +30,9 @@ const published = JSON.parse(
 
 /** The file as the hourly job left it: read at :40 of the hour before the clock. */
 function fresh() {
-  const runTime = new Date(Math.floor(clock / HOUR) * HOUR - HOUR).toISOString();
+  const runTime = new Date(
+    Math.floor(clock / HOUR) * HOUR - HOUR,
+  ).toISOString();
   return {
     ...published,
     run: runTime.slice(0, 13).replace(/[-T]/g, ""),
@@ -40,8 +42,7 @@ function fresh() {
       ...n,
       // 14 Sept 2025 is a Sunday, 14 Sept 2026 a Monday: a year is 365 days.
       from: n.from && new Date(Date.parse(n.from) + 365 * DAY).toISOString(),
-      until:
-        n.until && new Date(Date.parse(n.until) + 365 * DAY).toISOString(),
+      until: n.until && new Date(Date.parse(n.until) + 365 * DAY).toISOString(),
     })),
   };
 }
@@ -156,8 +157,28 @@ test("the dock names the spot's notice and marks its hours", async ({
     })
     .toBeGreaterThan(0);
   await expect(
-    stars
-      .getByRole("img", { name: /no stars, bathing water notice/ })
-      .first(),
+    stars.getByRole("img", { name: /no stars, bathing water notice/ }).first(),
   ).toBeAttached();
+});
+
+test("on a phone the dock's strip names the notice, and opens to it in full", async ({
+  page,
+}) => {
+  await withNotices(page, fresh());
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto("/?spot=portmarnock");
+  const strip = page.locator("[data-dock-warnings]");
+  await expect(strip).toBeVisible({ timeout: 30000 });
+  const summary = strip.getByRole("button", {
+    name: "Bathing water notice: Bathing is prohibited",
+  });
+  await expect(summary).toBeVisible();
+  await expect(summary.locator('[data-water-mark="replaces"]')).toBeVisible();
+  await expect(strip.locator("[data-water-notice]")).toBeHidden();
+  await summary.click();
+  await expect(strip.locator("[data-water-notice]")).toBeVisible();
+  await expect(strip.locator("[data-water-notice]")).toHaveAttribute(
+    "href",
+    "/spot/portmarnock#water-quality",
+  );
 });

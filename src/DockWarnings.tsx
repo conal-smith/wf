@@ -187,14 +187,21 @@ export default function DockWarnings({
   ];
   const total = warnings.length + water.length;
   const many = total > 1;
+  const plural = (count: number, word: string) =>
+    `${count} ${word}${count === 1 ? "" : "s"}`;
+  // "3 warnings", "2 water notices", "2 warnings, 1 water notice".
   const counted = [
-    warnings.length &&
-      `${warnings.length} warning${warnings.length > 1 ? "s" : ""}`,
-    water.length &&
-      `${water.length} water notice${water.length > 1 ? "s" : ""}`,
+    warnings.length && plural(warnings.length, "warning"),
+    water.length && plural(water.length, "water notice"),
   ]
     .filter(Boolean)
     .join(", ");
+  const said = [
+    warnings.length && plural(warnings.length, "Met Éireann warning"),
+    water.length && plural(water.length, "bathing water notice"),
+  ]
+    .filter(Boolean)
+    .join(" and ");
   return (
     <div
       className={`dk-warnings is-folding${open ? " is-open" : ""}`}
@@ -210,7 +217,7 @@ export default function DockWarnings({
         aria-controls={listId}
         aria-label={
           many
-            ? `${counted}: ${kinds.join(", ")}`
+            ? `${said}: ${kinds.join(", ")}`
             : top
               ? `Met Éireann warning: ${warningKind(top.warning)}`
               : `Bathing water notice: ${noticeName(notice.notice)}`
