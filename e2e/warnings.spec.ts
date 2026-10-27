@@ -112,32 +112,44 @@ test("a spot page lists its warnings, and orange and red stand in for the stars"
   await expect(
     panel.getByRole("heading", { name: "Met Éireann warnings" }),
   ).toBeVisible();
-  // Highest level first, each with its kind, Met Éireann's headline as
-  // issued, and its validity in Irish time.
+  // Highest level first, a line each: its level, Met Éireann's headline
+  // without the "Status Red - " its mark already says, and its validity in
+  // Irish time. Its kind and Met Éireann's words fold underneath.
   await expect(panel.locator("[data-warning]")).toHaveCount(3);
   const items = panel.locator("[data-warning]");
+  const headlines = panel.locator("[data-warning-headline]");
   await expect(items.nth(0)).toHaveAttribute("data-warning", "red");
-  await expect(items.nth(0)).toContainText("Violent storm warning (marine)");
-  await expect(items.nth(0)).toContainText(
-    "Status Red - Marine Violent Storm warning from Valentia to Loop Head",
+  await expect(headlines.nth(0)).toHaveText(
+    "Marine Violent Storm warning from Valentia to Loop Head",
   );
   await expect(items.nth(1)).toHaveAttribute("data-warning", "orange");
-  await expect(items.nth(1)).toContainText(
-    "Status Orange - Wind warning for Kerry",
-  );
+  await expect(headlines.nth(1)).toHaveText("Wind warning for Kerry");
   await expect(items.nth(1)).toContainText(
     /Mon 14 Sept? 13:00 – Mon 14 Sept? 16:00/,
   );
-  await expect(items.nth(1)).toContainText("No stars for the hours it covers.");
   await expect(items.nth(2)).toHaveAttribute("data-warning", "yellow");
-  await expect(items.nth(2)).toContainText("The stars still show beside it");
+  await expect(headlines.nth(2)).toHaveText(
+    "Small Craft warning for all coasts of Ireland",
+  );
   await expect(items.nth(1).locator("time").first()).toHaveAttribute(
     "datetime",
     tomorrow(12),
   );
-  // The description, every word kept, folded underneath.
-  await items.nth(1).getByText("What Met Éireann says").click();
-  await expect(items.nth(1)).toContainText("• Large coastal waves");
+  // What a warning does to the stars, said once for the list.
+  const rule = panel.locator("[data-warnings-rule]");
+  await expect(rule).toContainText(
+    "Yellow: the stars still show beside it; see whether it bears on the water.",
+  );
+  await expect(rule).toContainText(
+    "Orange and red: no stars for the hours they cover.",
+  );
+  await expect(panel.getByText(/stars still show/)).toHaveCount(1);
+  // The kind and the description, every word kept, folded underneath.
+  const words = items.nth(1).getByText("• Large coastal waves");
+  await expect(words).toBeHidden();
+  await items.nth(1).locator("summary").click();
+  await expect(items.nth(1).getByText(/^Wind warning: /)).toBeVisible();
+  await expect(words).toBeVisible();
   await expect(
     panel.getByRole("link", { name: "The latest at met.ie" }),
   ).toHaveAttribute("href", "https://www.met.ie/warnings");
@@ -193,6 +205,106 @@ test("a spot page lists its warnings, and orange and red stand in for the stars"
     "Weather warnings: Met Éireann",
   );
 });
+
+/** Four yellow warnings, as Brandon had on 26 Oct 2026 (#219). */
+const FOUR = [
+  warning({
+    capId: "test.coasts",
+    type: "small-craft",
+    level: "yellow",
+    headline: "Small Craft warning for all coasts of Ireland",
+    onset: at(-2),
+    expiry: tomorrow(18),
+    regions: ["EI816", "EI817", "EI818"],
+  }),
+  warning({
+    capId: "test.wind",
+    level: "yellow",
+    headline: "Status Yellow - Wind warning for Kerry, Clare, Galway",
+    onset: tomorrow(10),
+    expiry: tomorrow(16),
+    regions: ["EI11"],
+  }),
+  warning({
+    capId: "test.west",
+    type: "small-craft",
+    level: "yellow",
+    headline:
+      "Small Craft warning from Mizen Head to Slyne Head to Bloody Foreland",
+    onset: tomorrow(22),
+    expiry: at(27 + 31),
+    regions: ["EI817"],
+  }),
+  warning({
+    capId: "test.rain",
+    type: "Rain",
+    level: "yellow",
+    headline: "Status Yellow - Rain warning for Cork, Kerry",
+    onset: at(27 + 34),
+    expiry: at(27 + 46),
+    regions: ["EI11"],
+  }),
+];
+
+for (const { width, height } of [
+  { width: 1280, height: 800 },
+  { width: 1024, height: 768 },
+  { width: 390, height: 844 },
+])
+  test(`four warnings leave the forecast where it was, at ${width}x${height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await withWarnings(page, { ...fresh(), warnings: FOUR });
+    await page.goto("/spot/brandon");
+    await expect(heading(page)).toBeVisible({ timeout: 30000 });
+
+    const panel = page.locator("[data-warnings]");
+    const items = panel.locator("[data-warning]");
+    await expect(items).toHaveCount(4);
+    // Each says its own content once: no level twice, no shared sentence
+    // under every one, and Met Éireann's words folded until asked for.
+    for (const name of [
+      "Wind warning for Kerry, Clare, Galway",
+      "Rain warning for Cork, Kerry",
+    ])
+      await expect(
+        panel.locator("[data-warning-headline]").filter({ hasText: name }),
+      ).toHaveText(name);
+    await expect(panel).not.toContainText("Status Yellow");
+    await expect(panel.getByText(/stars still show/)).toHaveCount(1);
+    for (const summary of await items.locator("summary").all())
+      await expect(summary).toBeVisible();
+    // Every warning is on the first screen, whole.
+    for (const item of await items.all()) {
+      const box = (await item.boundingBox())!;
+      expect(box.y + box.height).toBeLessThanOrEqual(height);
+      expect(box.x + box.width).toBeLessThanOrEqual(width);
+    }
+
+    const days = page.locator("[data-day]").first();
+    const without = async () => {
+      await page.unroute("**/marine/warnings.json");
+      await withWarnings(page, { ...fresh(), warnings: [] });
+      await page.reload();
+      await expect(heading(page)).toBeVisible({ timeout: 30000 });
+      await expect(panel).toHaveCount(0);
+      return (await days.boundingBox())!.y;
+    };
+    const withFour = (await days.boundingBox())!.y;
+    if (width >= 1280) {
+      // A screen with a margin: the list stands in it, and the forecast
+      // starts where it would with no warnings at all, on the first screen.
+      expect(withFour).toBeLessThan(height);
+      await shot(page, "spot-page-four-warnings");
+      expect(Math.abs(withFour - (await without()))).toBeLessThanOrEqual(1);
+    } else {
+      // In the column, a line or two each: four push the forecast down by
+      // less than the picture's height.
+      await shot(page, `spot-page-four-warnings-${width}`);
+      expect(withFour - (await without())).toBeLessThan(height / 2);
+    }
+  });
 
 test("a warnings file too old to trust shows nothing but the link to met.ie", async ({
   page,
