@@ -312,11 +312,14 @@ describe("the MCP endpoint", () => {
     expect(found.spots[0].sessions[0].local).toMatch(
       /Sept, \d\d:\d\d – (\w+, \d+ Sept, )?\d\d:\d\d IST$/,
     );
+    // The wind models, and the weather model the sessions' rain and visibility come from.
     expect(found.sources.map((s: { id: string }) => s.id).sort()).toEqual([
       "ecmwf",
       "gfs",
+      "icon-eu-weather",
     ]);
     expect(found.spots[0].sessions[0].gust_factor).toEqual(expect.any(Number));
+    expect(found.spots[0].sessions[0].visibility).toEqual(expect.any(String));
     expect(found.offshore_hours).toBe("left out");
     expect("shore" in found.spots[0].sessions[0]).toBe(true);
     const nearby = (

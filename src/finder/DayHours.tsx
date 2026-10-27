@@ -139,6 +139,12 @@ const styles = tv({
   },
 });
 
+/**
+ * An hour whose model gives a wind and no gust: a dash where the gust goes,
+ * as in the dock's table, so it never reads as a calm hour.
+ */
+const NO_GUST = "no gust forecast";
+
 /** "14:00, SW 19 knots, gusts 39, 4 of 5 stars": an hour, said. */
 function hourWords(
   time: number,
@@ -151,7 +157,11 @@ function hourWords(
     const gust = gustShown(hour.windKn, hour.gustKn, units);
     parts.push(
       `${hour.from === null ? "" : `${compass(hour.from)} `}${speedWords(hour.windKn, units)}${
-        gust === null ? "" : `, gusts ${speedWords(gust, units)}`
+        hour.gustKn === null
+          ? `, ${NO_GUST}`
+          : gust === null
+            ? ""
+            : `, gusts ${speedWords(gust, units)}`
       }`,
     );
   }
@@ -526,12 +536,18 @@ export function DayHours({
                     <b className={s.knots({ className: dim })}>
                       <Speed knots={hour.windKn} units={units} size={14} />
                     </b>
-                    <small className={s.gust({ className: dim })}>
-                      {gust !== null && (
-                        <>
-                          g<Speed knots={gust} units={units} size={10} />
-                        </>
-                      )}
+                    <small
+                      className={s.gust({ className: dim })}
+                      title={hour.gustKn === null ? NO_GUST : undefined}
+                      data-no-gust={hour.gustKn === null || undefined}
+                    >
+                      {hour.gustKn === null
+                        ? "g–"
+                        : gust !== null && (
+                            <>
+                              g<Speed knots={gust} units={units} size={10} />
+                            </>
+                          )}
                     </small>
                     <span className={fade}>
                       {hour.from !== null && (

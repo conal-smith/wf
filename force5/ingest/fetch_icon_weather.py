@@ -12,7 +12,9 @@ a three-hour total.
 Units are converted and rounded once, here, so nothing downstream has to guess:
 °C, mm, %, hPa, km, J/kg. `tp` is DWD's precipitation accumulated since
 initialization and `precip` the amount in the interval ending at the step,
-differenced from it and null at hour 0. `ww` is a WMO present-weather code, not
+differenced from it and null at hour 0. `pop` is the chance of rain over the
+same interval, a place's own and never a cell's: the share of the cells around
+the place that are wet (rain_chance.py). `ww` is a WMO present-weather code, not
 a measurement: it is sampled nearest-neighbour and never interpolated or
 averaged. `tg` is the model's ground/skin temperature, which over sea only
 approximates SST; it is published as a labelled proxy, not as an SST product.
@@ -29,6 +31,7 @@ import numpy as np
 
 from fetch_forecast import (BASE, ROOT, decode_handle, get, listing, load_spots,
                             published_in_bucket, sample, spots_file, write_json)
+import rain_chance
 from registry import UNCHANGED_EXIT
 from rundir import frame_name, write_run
 import timing
@@ -75,6 +78,9 @@ VARIABLES = {
                "units": "mm", "label": "Precipitation",
                "description": "Precipitation in the interval ending at this hour, differenced from "
                               "the TOT_PREC accumulation; null at initialization, which has no interval"},
+    # A place's own, never a cell's: worked out from `precip` around each place
+    # (rain_chance.py) and published in the series only.
+    "pop": {"directory": None, **rain_chance.VARIABLE},
     "clct": {"directory": "clct", "category": 6, "number": 1, "level": 0,
              "levels": ("surface",), "sourceUnits": ("%",), "stepType": "instant",
              "decimals": 0, "range": (0.0, 100.0), "slack": 1.0,
@@ -286,6 +292,7 @@ def manifest_for(run, run_time, args, grid, frames, series):
         # carries every variable (docs/TILING_DESIGN.md, "As built: the Rain layer").
         "frameVariables": list(FRAME_VARIABLES),
         "frames": frames, "horizonHours": args.hours, "spotSeries": series,
+        "rainChanceNote": rain_chance.NOTE,
         "precipitationNote": (
             "tp is the model's own accumulation since initialization; precip is the amount in the "
             f"{args.step}-hour interval ending at each step, obtained by differencing it, clamped at "
@@ -306,9 +313,10 @@ def manifest_for(run, run_time, args, grid, frames, series):
             "grid, rows north-to-south and columns west-to-east. Values are converted to the published "
             "units and rounded once (0.1 °C, whole per cent, 0.1 hPa, 0.1 km, 0.1 mm, whole J/kg) and "
             "clipped into their plausible range; a value outside it fails the run. precip is derived by "
-            "differencing tot_prec. Each frame carries precip alone, on the whole crop, for the "
+            "differencing tot_prec, and pop from precip around each place (see rainChanceNote). "
+            "Each frame carries precip alone, on the whole crop, for the "
             "map; spotSeries carries every variable at every published hour, "
-            "bilinearly sampled except ww, which is read from the containing cell. "
+            "bilinearly sampled except ww, which is read from the containing cell, and pop. "
             "No hour is interpolated: only native forecast steps are published."),
         "sourceUrl": BASE + "/",
         "attribution": "Weather data: Deutscher Wetterdienst (DWD) ICON-EU open data, licensed CC BY "
@@ -371,6 +379,9 @@ def main(argv=None):
         if grid is None:
             # The shared crop names one unit for a wind grid; a weather frame has many.
             grid = {key: value for key, value in layout[2].items() if key != "units"}
+            # The cells around each place, for its chance of rain: the crop never moves.
+            around = {spot["id"]: rain_chance.neighbourhood(grid, spot["lon"], spot["lat"])
+                      for spot in spots}
         interval = None if hour == 0 else [hour - args.step, hour]
         fields["precip"] = None if previous_tp is None else derive_precip(fields["tp"], previous_tp)
         previous_tp = fields["tp"]
@@ -381,12 +392,13 @@ def main(argv=None):
         published += size
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
                        "precipIntervalHours": interval})
+        precip = None if fields["precip"] is None else np.asarray(fields["precip"], dtype=float)
         for spot in spots:
+            sampled = {name: None if values is None else sample_variable(
+                grid, values, spot["lon"], spot["lat"], name) for name, values in fields.items()}
+            sampled["pop"] = rain_chance.chance(precip, around[spot["id"]])
             series[spot["id"]].append({"hour": hour, "validTime": valid,
-                                       "precipIntervalHours": interval,
-                                       "values": {name: None if values is None else sample_variable(
-                                           grid, values, spot["lon"], spot["lat"], name)
-                                           for name, values in fields.items()}})
+                                       "precipIntervalHours": interval, "values": sampled})
         print(f"  +{hour:03d}h — {grid['width']} × {grid['height']} sampled, "
               f"rain frame {size / 1e3:.0f} KB", flush=True)
     manifest = manifest_for(run, run_time, args, grid, frames, series)
