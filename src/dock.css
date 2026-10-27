@@ -213,11 +213,6 @@
   position: relative;
   display: grid;
 }
-/* A phone's labels, folded away while the reader slides the hours. */
-.dk-grid.is-folded .dk-labs {
-  overflow: hidden;
-  visibility: hidden;
-}
 .dk-labs div {
   display: flex;
   align-items: center;
@@ -579,32 +574,70 @@ table.tt {
   .dock.is-peek .dk-tools > :not(.dk-id, .dk-close) {
     display: none;
   }
-  /* The label column is 28px: a glyph and its unit drawn closer, so "mm"
-     and "°C" end inside it rather than over the hours. */
+  /* The label column is 52px, and stands while the hours slide: each row's
+     name in the mono label at its floor (10px), its unit under it. */
   .dk-labs div {
-    gap: 1px;
-    font-size: 8.5px;
-    letter-spacing: 0.06em;
+    gap: 0;
+    font-size: var(--text-eyebrow);
+    letter-spacing: 0.04em;
   }
-  /* Every row as tight as its figures allow (ForecastDock's PHONE_ROWS). */
+  .dk-labs .dk-lab-wind,
+  .dk-labs .dk-lab-stack {
+    align-items: flex-start;
+    line-height: 11px;
+  }
+  .dk-word {
+    font-weight: 600;
+  }
+  .dk-labs small,
+  .dk-labs small.dk-unit {
+    font-size: var(--text-eyebrow);
+    line-height: 11px;
+    opacity: 1;
+  }
+  /* The figures at the body's size, the wind's a step over it, the gust at
+     the caption's: read at arm's length on a beach, and "25 g32" still
+     inside its column. */
+  .tt td {
+    font-size: var(--text-body);
+  }
+  .tt .kn {
+    font-size: 14px;
+  }
+  .tt .gu {
+    font-size: var(--text-caption);
+  }
+  .tt tr.tt-wing td {
+    font-size: var(--text-body);
+  }
+  .tt tr.tt-hour td.c-sel {
+    font-size: var(--text-body);
+  }
+  .tt tr.tt-day td > span {
+    font-size: var(--text-caption);
+  }
+  /* Every row as tight as its figures and its label allow (ForecastDock's
+     PHONE_ROWS). */
   .tt tr.tt-day td {
-    height: 16px;
+    height: 18px;
   }
   .tt tr.tt-day td b {
-    font-size: 12px;
+    font-size: var(--text-body);
   }
   .tt tr.tt-hour td {
-    height: 16px;
+    height: 18px;
   }
   .tt tr.tt-stars td {
-    height: 14px;
+    height: 15px;
   }
   .tt tr.tt-wind td {
-    height: 17px;
+    height: 24px;
   }
-  .tt tr.tt-from td,
+  .tt tr.tt-from td {
+    height: 18px;
+  }
   .tt tr.tt-wing td {
-    height: 15px;
+    height: 22px;
   }
   /* A glyph's row no taller than the glyph: the line box round the stars and
      the arrow would otherwise stand a pixel or two over the row's height,
@@ -717,6 +750,15 @@ table.tt {
   color: var(--color-ink-muted);
 }
 @media (max-width: 720px) {
+  /* Each row under the fold tall enough for its name over its unit
+     (ForecastDock's PHONE_ROWS), its figures at the body's size. */
+  .tt tr.tt-more td {
+    height: 22px;
+    font-size: var(--text-body);
+  }
+  .tt tr.tt-sky td {
+    height: 20px;
+  }
   /* The period is in the cell's title on a phone: the height and the arrow fit. */
   .wave-cell small {
     display: none;
@@ -803,4 +845,77 @@ table.tt {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-ink-muted);
+}
+/* A phone's strip (DockWarnings' `phone`): one line, the highest level's tag,
+   how many and their kinds, cut short with an ellipsis where the screen ends,
+   and a press opens every warning under it, each over as many lines as it
+   takes. The line is the kit's quiet button, as wide as the sheet. */
+.dk-warnings.is-folding {
+  display: block;
+  padding: 0 2px;
+  overflow: visible;
+}
+.dock .dk-warnings-sum {
+  display: flex;
+  justify-content: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 0 4px;
+  border-radius: var(--radius-control);
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: left;
+  color: var(--color-ink);
+}
+.dk-warnings-count {
+  flex: none;
+  font-weight: 600;
+}
+.dk-warnings-kinds {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-ink-2);
+}
+.dk-warnings-chev {
+  flex: none;
+  color: var(--color-ink-muted);
+  transition: rotate var(--transition-duration-fast) ease;
+}
+.dk-warnings.is-open .dk-warnings-chev {
+  rotate: 180deg;
+}
+.dk-warnings-list {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px;
+  padding: 2px 4px 8px;
+}
+.dk-warnings-list[hidden] {
+  display: none;
+}
+/* Each warning its tag, then its kind and its validity, wrapping under the
+   kind rather than running off the screen; the tags in one column. */
+.dk-warnings-list .dk-warning {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: baseline;
+  column-gap: 6px;
+  white-space: normal;
+}
+.dk-warnings-list .dk-warning-when {
+  grid-column: 2;
+}
+.dk-warnings-list .dk-warnings-by {
+  grid-column: 1 / -1;
+  margin-left: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dk-warnings-chev {
+    transition: none;
+  }
 }

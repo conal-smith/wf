@@ -784,6 +784,42 @@ no answer within a few seconds, or no location in the browser) it lists the
 Ireland, however far, with no distances on the cards and one line above them
 saying so. The chart beside the list is fitted to whatever it shows.
 
+**2026-10-27 — The finder finds, sorts and filters, and asks for the
+location only when the rider says so** (#246, #228, #229, #248; PRs #255
+and #257). The head keeps the wordmark at every width, as the chart's and a
+spot page's do. Over the cards is "Find a spot…", the chart's own search: a
+name typed lists the places it names from every spot, not only the tab's.
+Beside it are three selects: the order (best first; nearest, once the
+rider's place is known; A to Z), the fewest stars in the six days (any, 3+,
+4+, 5), and the model the stars are rated from. The model is the rider's
+own, the one the display options and the spot page set. The tab is in the
+address once one is chosen (`/?tab=favourites`, `/?tab=near`). An empty
+Favourites points to the search, Near you and every spot's page. Near you
+no longer asks the browser as it opens (this replaces that part of the
+ruling above). Without the rider's place it says why the place is wanted,
+with a "Use my location" button, over the spots nearest where the chart
+was, which give no distances. A place kept from an earlier yes is still
+read again quietly, and a no is still never asked again.
+
+**2026-10-27 — A phone's sheet names its rows in words, at the type floor.**
+On a phone the dock's rows were glyphs alone, labels at 8.5px and units at
+8px, figures at 11px (#221): a rider at arm's length on a beach could not
+read them, nor tell the gust factor from the tide. Each row is now named in
+the mono label at its floor (10px, `eyebrow`), its unit under it ("Wind kn",
+"Waves m", "Current kn", "Rain mm/h"), in a 52px column that stands while the
+hours slide (it no longer folds away). The figures are at `body` (13px), the
+wind at 14px and its gust at `caption`; "25 g32" still fits a column. A wide
+screen keeps its glyphs. The warnings strip on a phone is one line, the
+highest level's tag, "3 warnings" and their kinds, cut with an ellipsis, and
+a press opens every warning in full, one under the other (#220): a strip
+that scrolled sideways showed one half-sentence and hid a gale warning past
+the screen's edge. The phone's Layers sheet is half the screen, its tiles
+scrolling inside it, with no wash or blur over the chart above, so each
+layer is seen to change as it is pressed; its foot names the defaults from
+`LAYER_DEFAULTS` (src/layerGroups.tsx), which Reset also uses, as "The
+default layers are on: …" at them and "Reset for the default: …" otherwise
+(#227).
+
 ---
 
 ## Still open
