@@ -27,7 +27,8 @@ fetches real runs.
 npm test           # unit tests
 npm run build      # type-check and build
 npm run ui:lint    # design-system and UI rules
-npm run test:e2e   # Playwright
+npm run test:smoke # Playwright smoke suite, a dozen quick looks
+npm run test:e2e   # the full Playwright suite
 ```
 
 ## Docs
