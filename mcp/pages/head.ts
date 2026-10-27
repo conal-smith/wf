@@ -42,6 +42,34 @@ export const isPagePath = (pathname: string) =>
   /^\/(spot\/[^/]+|stars|ai)\/?$/.test(pathname);
 
 /**
+ * Whether `pathname` is the page of a riding place `spots` does not hold:
+ * /spot/<id> for an id no place has, or one that does not decode. The app
+ * says so on the page, with the places it might have meant; the address
+ * answers 404 as any other with nothing behind it does, so a search engine
+ * or a link checker does not keep it (#225). /spot, the list of every place,
+ * is not one, and nor is any spot while the places are unknown (none read).
+ */
+export function isMissingSpot(
+  pathname: string,
+  spots: ReadonlyMap<string, HeadSpot>,
+): boolean {
+  const id = SPOT.exec(pathname)?.[1];
+  if (id === undefined || !spots.size) return false;
+  try {
+    return !spots.has(decodeURIComponent(id));
+  } catch {
+    return true;
+  }
+}
+
+/** The head of a spot page with no place behind it, as the app titles it. */
+export const MISSING_SPOT: PageHead = {
+  title: pageTitle("Spot not found", "Wind map"),
+  description: "No riding place has this address on wingfoil.ie.",
+  url: `${SITE}/spot`,
+};
+
+/**
  * The head for `pathname`, or null where the map's own (index.html) stands:
  * the map, an unknown spot, and every path not named here.
  */
