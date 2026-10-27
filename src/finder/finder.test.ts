@@ -28,6 +28,8 @@ import {
   rowEnds,
   rowPosition,
   rowTime,
+  scopeAddress,
+  scopeInAddress,
   shownColumn,
   starColour,
   steppedScroll,
@@ -147,6 +149,23 @@ describe("the tab the finder opens on", () => {
 
   it("is Near you on a first visit, with nothing starred", () => {
     expect(openingScope([])).toBe("near");
+  });
+});
+
+describe("the tab in the address", () => {
+  it("is read from ?tab=, and nothing else is a tab", () => {
+    expect(scopeInAddress("?tab=favourites")).toBe("favourites");
+    expect(scopeInAddress("?tab=near&settings")).toBe("near");
+    expect(scopeInAddress("")).toBeNull();
+    expect(scopeInAddress("?tab=all")).toBeNull();
+    expect(scopeInAddress("?map")).toBeNull();
+  });
+
+  it("is written in, the rest of the address kept", () => {
+    expect(scopeAddress("https://wingfoil.ie/", "near")).toBe("/?tab=near");
+    expect(
+      scopeAddress("https://wingfoil.ie/?tab=near&x=1#top", "favourites"),
+    ).toBe("/?tab=favourites&x=1#top");
   });
 });
 
