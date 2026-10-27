@@ -163,6 +163,7 @@ export const NOT_RATED = {
   dark: "not rated: wingfoil.ie rates the hours from sunrise to sunset",
   noWind: "not rated: no forecast of this hour's wind",
   warning: "not rated: a Met Éireann orange or red warning covers this hour",
+  water: "not rated: a bathing water prohibition or advice against bathing covers this hour",
 } as const;
 
 /**
