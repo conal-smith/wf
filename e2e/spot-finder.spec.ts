@@ -153,6 +153,8 @@ test.describe("on a desktop", () => {
     const brandon = cards(page).filter({ hasText: "Brandon Bay" });
     await expect(brandon).toContainText("Co. Kerry");
     await expect(brandon.getByText("Today", { exact: true })).toBeVisible();
+    // The five under it are "Other days", as they are with a day chosen.
+    await expect(brandon.locator("[data-other-days]")).toHaveText("Other days");
     await expect(brandon.locator("[data-next-days] [data-day]")).toHaveCount(5);
     await expect(
       brandon.locator("[data-days-band] [data-day-band]"),
@@ -210,10 +212,11 @@ test.describe("on a desktop", () => {
   test("the row scrolls with no bar, opening on now, and steps either way", async ({
     page,
   }) => {
-    // A card too narrow for the whole day, beside the chart: the sample's
-    // morning, before its HARMONIE run, is ECMWF's three-hourly steps, which
-    // leaves a row that only just fits a wider card.
-    await page.setViewportSize({ width: 1100, height: 900 });
+    // A card too narrow for the whole day: the sample's morning, before its
+    // HARMONIE run, is ECMWF's three-hourly steps, which leaves a row that
+    // a card beside the chart now draws whole, a little tighter (a day that
+    // nearly fits is not scrolled), so the list stands alone and narrow.
+    await page.setViewportSize({ width: 480, height: 900 });
     await star(page, ["brandon", "keel"]);
     await openFinder(page);
     await rated(page);
@@ -400,6 +403,116 @@ test.describe("on a desktop", () => {
     ).toHaveCount(3);
   });
 
+  test("a day that nearly fits is drawn whole, its first and last hours clear of the edges", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "keel"]);
+    await openFinder(page);
+    await rated(page);
+    const card = cards(page).first();
+    await card.locator("[data-next-days] [data-day]").nth(1).click();
+    const scroller = card.locator("[data-hours-scroll]");
+    const row = card.locator("[data-day-hours] [data-hour]");
+    await expect(row.first()).toHaveAttribute("data-dark", "true");
+    // No more to either side, so no fade and no step over the ends.
+    const [scroll, view] = await scroller.evaluate((el) => [
+      el.scrollWidth,
+      el.clientWidth,
+    ]);
+    expect(scroll - view).toBeLessThanOrEqual(4);
+    await expect(
+      card.getByRole("button", { name: "Earlier hours" }),
+    ).toBeHidden();
+    await expect(
+      card.getByRole("button", { name: "Later hours" }),
+    ).toBeHidden();
+    const box = (await scroller.boundingBox())!;
+    for (const hour of [row.first(), row.last()]) {
+      const at = (await hour.boundingBox())!;
+      expect(at.x).toBeGreaterThanOrEqual(box.x - 1);
+      expect(at.x + at.width).toBeLessThanOrEqual(box.x + box.width + 1);
+    }
+  });
+
+  test("a gone or dark hour's figures are not faded with it", async ({
+    page,
+  }) => {
+    await star(page, ["dollymount"]);
+    await openFinder(page);
+    await rated(page);
+    // Every hour's words, and how faded each is, all the way up.
+    const words = await hours(page).evaluateAll((els) =>
+      els.flatMap((el) =>
+        [...el.querySelectorAll("b, small")].map((word) => {
+          let opacity = 1;
+          for (let e: Element | null = word; e && e !== el.parentElement;)
+            ((opacity *= Number(getComputedStyle(e).opacity)),
+              (e = e.parentElement));
+          return {
+            dim: el.hasAttribute("data-gone") || el.hasAttribute("data-dark"),
+            opacity,
+            colour: getComputedStyle(word).color,
+          };
+        }),
+      ),
+    );
+    expect(words.some((w) => w.dim)).toBe(true);
+    for (const word of words) expect(word.opacity).toBe(1);
+    // ink-2 on a gone or dark hour, ink on the others (ui/theme.css).
+    const ink2 = "rgb(59, 60, 62)";
+    const ink = "rgb(26, 29, 33)";
+    for (const word of words) expect(word.colour).toBe(word.dim ? ink2 : ink);
+  });
+
+  test("while the places and their hours load, the cards hold their shape and say so", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "dollymount"]);
+    // The places held back, then the forecast's squares, as on a slow line.
+    let places!: () => void;
+    const placesHeld = new Promise<void>((done) => (places = done));
+    await page.route("**/spots.json", async (route) => {
+      await placesHeld;
+      await route.continue();
+    });
+    let squares!: () => void;
+    const squaresHeld = new Promise<void>((done) => (squares = done));
+    await page.route(/\/weather\/(blend|[^/]+\/spots\/)/, async (route) => {
+      await squaresHeld;
+      await route.continue();
+    });
+    await page.clock.setFixedTime(AFTERNOON);
+    await page.goto("/");
+    const list = page.locator("[data-finder-list]");
+    const ghosts = page.locator("[data-card-skeleton]");
+    await expect(ghosts).toHaveCount(2);
+    await expect(ghosts.first()).toContainText("Loading the spots…");
+    await expect(list).toHaveAttribute("aria-busy", "true");
+    await expect(page.locator("[data-finder-empty]")).toHaveCount(0);
+    const ghost = (await ghosts.first().boundingBox())!;
+    places();
+    await expect(cards(page)).toHaveCount(2);
+    await expect(ghosts).toHaveCount(0);
+    // The card stands where its shape stood, as tall.
+    const card = (await cards(page).first().boundingBox())!;
+    expect(Math.abs(card.y - ghost.y)).toBeLessThan(2);
+    expect(Math.abs(card.height - ghost.height)).toBeLessThan(2);
+    // Its hours not worked out yet: the shapes of their figures, said.
+    const hoursDue = cards(page).first().locator("[data-day-hours]");
+    await expect(hoursDue).toHaveAttribute("data-pending", "true");
+    await expect(hoursDue.locator("[data-pending-words]")).toHaveText(
+      "Loading the forecast…",
+    );
+    await expect(
+      cards(page).first().locator("[data-next-days] [data-stars]"),
+    ).toHaveCount(0);
+    squares();
+    await rated(page);
+    await expect(page.locator("[data-day-hours][data-pending]")).toHaveCount(0);
+    const rated_ = (await cards(page).first().boundingBox())!;
+    expect(Math.abs(rated_.height - card.height)).toBeLessThan(2);
+  });
+
   test("a day's drawing pressed is that day too", async ({ page }) => {
     await star(page, ["brandon", "keel"]);
     await openFinder(page);
@@ -483,10 +596,11 @@ test.describe("on a desktop", () => {
   test("first light stays in the row's view as it scrolls, not cut off by its edge", async ({
     page,
   }) => {
-    // A card too narrow for the whole day, beside the chart: the sample's
-    // morning, before its HARMONIE run, is ECMWF's three-hourly steps, which
-    // leaves a row that only just fits a wider card.
-    await page.setViewportSize({ width: 1100, height: 900 });
+    // A card too narrow for the whole day: the sample's morning, before its
+    // HARMONIE run, is ECMWF's three-hourly steps, which leaves a row that
+    // a card beside the chart now draws whole, a little tighter (a day that
+    // nearly fits is not scrolled), so the list stands alone and narrow.
+    await page.setViewportSize({ width: 480, height: 900 });
     await star(page, ["brandon", "keel"]);
     await openFinder(page);
     await rated(page);

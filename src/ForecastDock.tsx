@@ -11,6 +11,7 @@ import {
 } from "react";
 import { ArrowDown, ArrowUp, ChevronDown, Layers3 } from "lucide-react";
 import { Button } from "../ui/Button";
+import { Skeleton } from "../ui/Skeleton";
 import { framePath, stemPath, type KeepOut } from "../ui/penPaths";
 import { BeaufortGlyph } from "../ui/BeaufortGlyph";
 import { StarGlyphs } from "../ui/StarGlyphs";
@@ -389,7 +390,11 @@ const StripTable = memo(function StripTable({
       knotsIn(kn, units)
     );
   return (
-    <table className="tt" style={{ width: g.total }}>
+    <table
+      className="tt"
+      style={{ width: g.total }}
+      aria-busy={hours === undefined || undefined}
+    >
       <colgroup>
         {columns.map((c, at) => (
           <col key={c.validTime} style={{ width: g.w[at] }} />
@@ -489,6 +494,10 @@ const StripTable = memo(function StripTable({
                         <span className="gu"> g{speed(hour.gustKn, true)}</span>
                       )}
                   </>
+                ) : hours === undefined ? (
+                  // The place's hours still being worked out: the shape of
+                  // a figure, not a dash that reads as no forecast.
+                  <Skeleton className="mx-auto w-5" />
                 ) : (
                   "–"
                 ),

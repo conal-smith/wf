@@ -65,7 +65,7 @@ import {
 export type { Scope };
 import { HoverContext, hoverStore } from "./hover";
 import { useRiderPlace } from "./location";
-import { SpotCard } from "./SpotCard";
+import { CardSkeleton, SpotCard } from "./SpotCard";
 import { useReadings } from "./useReadings";
 
 const styles = tv({
@@ -187,6 +187,11 @@ export default function SpotFinder(props: FinderProps) {
   // and none while the browser is first asked.
   const known = place.source === "rider";
   const waiting = scope === "near" && place.asking;
+  // The places themselves not read yet (src/App.tsx reads them with the
+  // forecast's first manifest): the shapes of the cards to come, not the
+  // empty list's words.
+  const placesDue =
+    spots.length === 0 && !waiting && (scope === "near" || starred.length > 0);
   const listed = useMemo(
     () => (waiting ? [] : listFor(scope, spots, starred, place.at, known)),
     [scope, spots, starred, place.at, known, waiting],
@@ -294,7 +299,7 @@ export default function SpotFinder(props: FinderProps) {
         <section
           className={s.list({ class: beside ? undefined : s.alone() })}
           aria-label={scope === "near" ? "Spots near you" : "Favourites"}
-          aria-busy={waiting || undefined}
+          aria-busy={waiting || placesDue || undefined}
           data-finder-list
         >
           {scope === "near" && !known && !waiting && ranked.length > 0 && (
@@ -304,7 +309,24 @@ export default function SpotFinder(props: FinderProps) {
                 : "We don’t know where you are, so these are the spots nearest the middle of Ireland."}
             </p>
           )}
-          {ranked.length ? (
+          {placesDue ? (
+            <div className={s.cards()} data-finder-loading>
+              {Array.from(
+                {
+                  length: Math.min(
+                    4,
+                    scope === "near" ? 4 : Math.max(1, starred.length),
+                  ),
+                },
+                (_, k) => (
+                  <CardSkeleton
+                    key={k}
+                    words={k === 0 ? "Loading the spots…" : undefined}
+                  />
+                ),
+              )}
+            </div>
+          ) : ranked.length ? (
             <HoverContext.Provider value={hover}>
               <ul
                 className={s.cards()}
