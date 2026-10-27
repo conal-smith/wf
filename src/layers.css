@@ -303,17 +303,25 @@ dialog.layers-dialog > div:last-child:not(:nth-child(2)) {
 }
 
 /* ---- on a phone: a sheet that slides up from the foot, three across ---- */
+/* Half the screen, its tiles scrolling inside it, and the chart above it
+   left clear, with no wash or blur: the rider sees each layer come and go
+   as they press it. A press on the chart still closes the sheet. */
 @media (max-width: 720px) {
   dialog.layers-dialog {
     inset: auto 0 0;
     width: 100%;
     max-width: none;
-    height: 76dvh;
+    height: 50dvh;
     padding-bottom: env(safe-area-inset-bottom);
     /* The rule runs round the rounded top and down the sides, so it does
        not thin out into the corners. */
     border-width: 1px 1px 0;
     border-radius: var(--radius-dialog) var(--radius-dialog) 0 0;
+  }
+  dialog.layers-dialog::backdrop {
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
   dialog.layers-dialog[open] {
     animation: lp-sheet-in 250ms cubic-bezier(0.2, 0.8, 0.2, 1) both;

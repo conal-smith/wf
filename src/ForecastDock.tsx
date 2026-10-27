@@ -199,20 +199,27 @@ const ROWS = {
 };
 type Rows = typeof ROWS;
 /**
- * A phone's: every row as tight as its figures allow, and tightest the ones
- * that stand blank through the night and on a calm day (the stars and the
- * wing). The dock is a strip along the foot of the chart,
- * and every pixel of it is one the chart does not have. dock.css sets the
- * same heights on the cells.
+ * A phone's: every row as tight as its figures and its label allow, and
+ * tightest the ones that stand blank through the night and on a calm day
+ * (the stars). A row whose label has its unit under its name stands two
+ * lines of the mono label tall. The dock is a strip along the foot of the
+ * chart, and every pixel of it is one the chart does not have. dock.css
+ * sets the same heights on the cells.
  */
 const PHONE_ROWS: Rows = {
   ...ROWS,
-  day: 16,
-  hour: 16,
-  stars: 14,
-  wind: 17,
-  from: 15,
-  wing: 15,
+  day: 18,
+  hour: 18,
+  stars: 15,
+  wind: 24,
+  from: 18,
+  wing: 22,
+  gust: 22,
+  waves: 22,
+  current: 22,
+  sky: 20,
+  air: 22,
+  rain: 22,
 };
 /**
  * The rows the tide is drawn behind, under the hours. The stars head both
@@ -268,10 +275,37 @@ const MORE_LABEL: Record<MoreRow, [GlyphDef, string, string?]> = {
   air: [glyphs.air, "Air, °C", "°C"],
   rain: [glyphs.drop, "Rain, mm per hour", "mm/h"],
 };
-/** The glyph set's (shared/web/glyphSet.ts): ink, with the weather's colour inside. */
-const RowLabel = ({ glyph, title }: { glyph: GlyphDef; title: string }) => (
-  <span className="dk-glyph" title={title}>
-    <ChartGlyph glyph={glyph} size={14} />
+/**
+ * Each row's name in a word, as a phone writes it in the label column: a
+ * glyph alone, at a phone's size and at arm's length, did not say what the
+ * figures beside it were (#221). The longest, "Current", fits the column.
+ */
+const ROW_WORD: Record<"wind" | "from" | "wing" | MoreRow, string> = {
+  wind: "Wind",
+  from: "Dir",
+  wing: "Wing",
+  gust: "Gust",
+  waves: "Waves",
+  current: "Current",
+  sky: "Sky",
+  air: "Air",
+  rain: "Rain",
+};
+/**
+ * The glyph set's (shared/web/glyphSet.ts): ink, with the weather's colour
+ * inside; on a phone, the row's name in the mono label instead (`word`).
+ */
+const RowLabel = ({
+  glyph,
+  title,
+  word,
+}: {
+  glyph: GlyphDef;
+  title: string;
+  word?: string;
+}) => (
+  <span className={word ? "dk-glyph dk-word" : "dk-glyph"} title={title}>
+    {word ?? <ChartGlyph glyph={glyph} size={14} />}
   </span>
 );
 /**
@@ -1194,11 +1228,10 @@ export default function ForecastDock(props: Props) {
       onSelectStrip(shown[selected], true);
   }, [shown, selected, stripSelected]);
   const cw = phone ? 52 : 62;
-  // A phone folds the label column away once the reader slides the hours,
-  // for the room, and opens it again at the start of the week.
-  const [labelsFolded, setLabelsFolded] = useState(false);
-  const labels = phone ? 28 : 32;
-  const label = phone && labelsFolded ? 0 : labels;
+  // A phone's label column holds each row's name in a word, and stands
+  // while the hours slide under it: a row read later in the week says what
+  // it is as well as the first hour's does.
+  const label = phone ? 52 : 32;
   const rows = phone ? PHONE_ROWS : ROWS;
   // A phone keeps its coarse columns nearly whole: "15 g17" has to fit.
   const g = useMemo(
@@ -1378,12 +1411,6 @@ export default function ForecastDock(props: Props) {
     programmatic.current = null;
     if (wrap.current) scrolledSize.current = sizeOf(wrap.current);
   };
-  /**
-   * Whether a finger has been on the strip since the time last moved it: only
-   * a slide folds the labels, never the browser settling the time's scroll
-   * on an hour as the strip fills out.
-   */
-  const touched = useRef(false);
   const scrollTo = (index: number, smooth: boolean) => {
     const el = wrap.current;
     if (!el) return;
@@ -1402,7 +1429,6 @@ export default function ForecastDock(props: Props) {
     wheeling.current?.letGo();
     clearTimeout(scrollEnd.current);
     sliding.current = false;
-    touched.current = false;
     programmatic.current = { left: reach, until: performance.now() + 1500 };
     el.scrollTo({ left, behavior: animate ? "smooth" : "auto" });
   };
@@ -1412,8 +1438,8 @@ export default function ForecastDock(props: Props) {
   // to it.
   const selectedNow = useRef(selected);
   selectedNow.current = selected;
-  // A strip that changes shape under the reader's own slide (the phone's
-  // labels folding away) is left where their finger has it.
+  // A strip that changes shape under the reader's own slide is left where
+  // their finger has it.
   const scrolledOn = useRef(track);
   useLayoutEffect(() => {
     const fromStrip = fromScroll.current === selected;
@@ -1431,11 +1457,9 @@ export default function ForecastDock(props: Props) {
   }, [placeKey]);
 
   const onScroll = () => {
-    if (labelsFolded && wrap.current && wrap.current.scrollLeft < 1)
-      setLabelsFolded(false);
     // The browser fitting the strip to its new columns: put it back on the
-    // hour, which has not changed. Under the reader's own slide (the phone's
-    // labels folding away) the strip is theirs, and is read as ever.
+    // hour, which has not changed. Under the reader's own slide the strip is
+    // theirs, and is read as ever.
     if (wrap.current) {
       const size = sizeOf(wrap.current);
       const resized = !!scrolledSize.current && size !== scrolledSize.current;
@@ -1463,10 +1487,6 @@ export default function ForecastDock(props: Props) {
       // from it then, and read the strip as it is now, not as it was.
       if (!el || programmatic.current) return;
       sliding.current = true;
-      // Far enough from the start that the hours given back to the strip
-      // still leave it short of the start, which would open the labels again.
-      if (phone && touched.current && el.scrollLeft > labels)
-        setLabelsFolded(true);
       const { g, track } = shape.current;
       const i = columnAtX(g, track.timeAt(el.scrollLeft));
       if (i !== selectedNow.current) fromScroll.current = i;
@@ -1485,17 +1505,6 @@ export default function ForecastDock(props: Props) {
     },
     [],
   );
-  // The labels folded away, the strip widens to the left over their column:
-  // scrolled back by as much, the hours stay under the reader's finger, the
-  // hours behind the labels come into view, and the strip's new shape is
-  // read before the scroll this sends.
-  useLayoutEffect(() => {
-    const el = wrap.current;
-    if (!el || !labelsFolded) return;
-    el.scrollLeft -= labels;
-    setWrapWidth(el.clientWidth);
-  }, [labelsFolded]);
-
   // The wheel moves the hours: the dock scrolls one way only, so an up or
   // down turn of a mouse wheel or a trackpad goes through time without Shift
   // (src/wheelHours.ts). A sideways swipe, and a phone's, are the browser's.
@@ -1759,7 +1768,7 @@ export default function ForecastDock(props: Props) {
     return {
       peek: head,
       half,
-      full: half + MORE_ROWS.reduce((h, k) => h + ROWS[k], 0),
+      full: half + MORE_ROWS.reduce((h, k) => h + rows[k], 0),
     };
   };
   const sheet = useRef({ snap, heights, goTo });
@@ -1802,9 +1811,6 @@ export default function ForecastDock(props: Props) {
           return;
         }
         drag.on = true;
-        // The finger is the sheet's, not the strip's: the hours re-settling
-        // as the sheet changes height are not the reader sliding them.
-        touched.current = false;
         el.setPointerCapture(event.pointerId);
         el.classList.add("is-moving");
         el.style.transition = "none";
@@ -2142,12 +2148,17 @@ export default function ForecastDock(props: Props) {
       )}
 
       {!isPoint && (
-        <DockWarnings spotId={spot.id} warnings={warnings} water={water} />
+        <DockWarnings
+          spotId={spot.id}
+          warnings={warnings}
+          water={water}
+          phone={phone}
+        />
       )}
 
       <div className="dk-body" id="dk-body" ref={bodyRef}>
         <div
-          className={`dk-grid${label ? "" : " is-folded"}`}
+          className="dk-grid"
           style={{ gridTemplateColumns: `${label}px minmax(0, 1fr)` }}
         >
           <div className="dk-labs">
@@ -2191,6 +2202,7 @@ export default function ForecastDock(props: Props) {
                   <RowLabel
                     glyph={glyphs.wind}
                     title={`Wind and gust, ${unitLabel(prefs.units)}`}
+                    word={phone ? ROW_WORD.wind : undefined}
                   />
                   <small>{unitLabel(prefs.units)}</small>
                 </div>
@@ -2198,11 +2210,21 @@ export default function ForecastDock(props: Props) {
                   <RowLabel
                     glyph={glyphs.direction}
                     title="Where the wind goes"
+                    word={phone ? ROW_WORD.from : undefined}
                   />
                 </div>
                 {!isPoint && rated && (
-                  <div aria-hidden="true" style={{ height: rows.wing }}>
-                    <RowLabel glyph={glyphs.wing} title="Wing, m²" />
+                  <div
+                    aria-hidden="true"
+                    className={phone ? "dk-lab-stack" : undefined}
+                    style={{ height: rows.wing }}
+                  >
+                    <RowLabel
+                      glyph={glyphs.wing}
+                      title="Wing, m²"
+                      word={phone ? ROW_WORD.wing : undefined}
+                    />
+                    {phone && <small className="dk-unit">m²</small>}
                   </div>
                 )}
               </>
@@ -2214,11 +2236,12 @@ export default function ForecastDock(props: Props) {
                     key={key}
                     aria-hidden="true"
                     className="dk-lab-stack"
-                    style={{ height: ROWS[key] }}
+                    style={{ height: rows[key] }}
                   >
                     <RowLabel
                       glyph={MORE_LABEL[key][0]}
                       title={`Current, ${currentUnits(prefs.units)}, and where it runs to`}
+                      word={phone ? ROW_WORD.current : undefined}
                     />
                     <small>{currentUnits(prefs.units)}</small>
                   </div>
@@ -2226,17 +2249,23 @@ export default function ForecastDock(props: Props) {
                   <div
                     key={key}
                     aria-hidden="true"
-                    style={{ height: ROWS[key] }}
+                    className={phone ? "dk-lab-stack" : undefined}
+                    style={{ height: rows[key] }}
                   >
                     <RowLabel
                       glyph={MORE_LABEL[key][0]}
                       title={MORE_LABEL[key][1]}
+                      word={phone ? ROW_WORD[key] : undefined}
                     />
                     {MORE_LABEL[key][2] && (
-                      // A rate's unit stands in two lines, "mm" over "/h", so
-                      // it keeps to the label column's width on a phone.
+                      // Beside a glyph, a rate's unit stands in two lines,
+                      // "mm" over "/h", so it keeps to the label column's
+                      // width; under a phone's word it has the width.
                       <small className="dk-unit">
-                        {MORE_LABEL[key][2].split(/(?=\/)/).map((part, i) =>
+                        {(phone
+                          ? [MORE_LABEL[key][2]]
+                          : MORE_LABEL[key][2].split(/(?=\/)/)
+                        ).map((part, i) =>
                           i ? (
                             <span key={part}>
                               <br />
@@ -2259,10 +2288,7 @@ export default function ForecastDock(props: Props) {
             tabIndex={0}
             onWheel={takeHold}
             onPointerDown={takeHold}
-            onTouchStart={() => {
-              takeHold();
-              touched.current = true;
-            }}
+            onTouchStart={takeHold}
             onKeyDown={takeHold}
             aria-label="The week hour by hour: scroll sideways to move through time"
             onScroll={onScroll}

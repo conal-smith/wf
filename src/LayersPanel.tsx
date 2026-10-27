@@ -12,6 +12,8 @@ import { KnotScale } from "./KnotScale";
 import { RainScale } from "./RainScale";
 import { Cutting, CuttingDefs } from "./layerCuttings";
 import {
+  defaultLayersLine,
+  isDefaultLayers,
   layerGroups,
   type LayerChoices,
   type LayerGroup,
@@ -39,7 +41,7 @@ export interface LayersPanelProps extends LayerChoices {
   currentsNote: string | null;
   /** Why the tidal depth is not drawn, while it is on: the chart is out too far. */
   foilNote: string | null;
-  /** Back to the defaults: particles, the chart, tidal depth, the range ring. */
+  /** Back to the defaults (src/layerGroups.tsx `LAYER_DEFAULTS`). */
   onReset: () => void;
 }
 
@@ -221,8 +223,12 @@ export default function LayersPanel({
       onClose={onClose}
       actions={
         <>
-          <span className="lp-default">
-            Particles, the chart, tidal depth, the range ring: the default.
+          {/* The defaults by name, from the layers themselves: as what is
+              on while the chart is at them, else as what Reset puts back. */}
+          <span className="lp-default" data-layers-default>
+            {defaultLayersLine(
+              isDefaultLayers({ wind, layers, satellite, focusStyle }),
+            )}
           </span>
           <Button variant="quiet" size="sm" onClick={onReset}>
             Reset
