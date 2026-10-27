@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # The self-hosted site image (deploy/local/Dockerfile.web), started and asked the
 # questions deploy/local/README.md promises it answers: the health check, the app
-# shell on every client-side route, the content-hashed assets, and a 404 -- not
-# the app's HTML -- for forecast data that has not been published.
+# shell on every client-side route, the content-hashed assets, a 404 for a spot
+# page with no place behind it, and a 404 -- not the app's HTML -- for forecast
+# data that has not been published.
 #
 #   scripts/release/web-image-smoke.sh ghcr.io/sprintengine/wingfoil-web@sha256:...
 set -euo pipefail
@@ -32,6 +33,13 @@ for route in / /spot /spot/brandon /stars /market /community /ai; do
   curl -fsS "$BASE$route" | grep -q '<div id="root">' || fail "$route did not serve the app shell"
 done
 [ "$(header / Cache-Control)" = "max-age=0, must-revalidate" ] || fail "/ is cacheable"
+
+# A spot page with no place behind it is the app, which says so, but a 404.
+for route in /spot/nonexistent-spot /spot/brandon-bay; do
+  [ "$(status "$route")" = 404 ] || fail "$route is not 404"
+  curl -sS "$BASE$route" | grep -q '<div id="root">' || fail "$route did not serve the app shell"
+done
+[ "$(status /spot/brandon/)" = 200 ] || fail "/spot/brandon/ is not 200"
 
 asset="$(curl -fsS "$BASE/" | grep -oE '/assets/[^"]+\.js' | head -n 1)"
 [ -n "$asset" ] || fail "the app shell names no script"

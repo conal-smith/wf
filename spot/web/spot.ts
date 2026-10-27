@@ -79,6 +79,32 @@ export function dublinMinutes(time: number): number {
 }
 
 /**
+ * The zone Irish clocks are on at an instant, as the times on the page are
+ * read: "IST" (Irish Standard Time, UTC+1) from the last Sunday of March,
+ * "GMT" from the last Sunday of October, as the MCP labels them
+ * (mcp/api/forecast.ts `irishZone`). Found from the Irish clock against
+ * UTC's rather than from a zone name, which runtimes, the app's among them,
+ * do not all give.
+ */
+export function clockZone(time: number): "IST" | "GMT" {
+  const at = new Date(time);
+  const utc = at.getUTCHours() * 60 + at.getUTCMinutes();
+  return (dublinMinutes(time) - utc + 24 * 60) % (24 * 60) === 60
+    ? "IST"
+    : "GMT";
+}
+
+/**
+ * The zone a run of hours is shown in: the one most of them are on. Only the
+ * two nights a year the clocks change have hours on both, and those are
+ * dark; an hour on the other is labelled with its own (`clockZone`).
+ */
+export function hoursZone(times: readonly number[]): "IST" | "GMT" {
+  const ist = times.filter((time) => clockZone(time) === "IST").length;
+  return ist * 2 > times.length ? "IST" : "GMT";
+}
+
+/**
  * The instant an Irish calendar day starts. Found by walking the hours around
  * UTC midnight rather than by assuming an offset, so the two days a year the
  * clocks change come out right too.
