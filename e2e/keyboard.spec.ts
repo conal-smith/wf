@@ -9,14 +9,19 @@ import { expect, test, type Page } from "./fixtures";
  * light, the dock lay a hundred and fifty presses of Tab from the top.
  */
 
-/** Every light rated, the chart at rest. */
-async function lightsUp(page: Page, count = 149) {
-  await expect(page.locator(".spot-marker")).toHaveCount(count, {
+/**
+ * Every light made, and with `rated`, rated: over the whole of Ireland. On a
+ * spot the chart is flown in to, the lights out of view wait for their
+ * ratings until they come into it.
+ */
+async function lightsUp(page: Page, rated = true) {
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
-  await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
-    timeout: 30000,
-  });
+  if (rated)
+    await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
+      timeout: 30000,
+    });
 }
 
 /** What has the focus: a light, the dock, the skip link, or something else. */
@@ -53,7 +58,7 @@ test("the first stop skips to the forecast, and the lights are one stop on the w
   page,
 }) => {
   await page.goto("/?spot=brandon");
-  await lightsUp(page);
+  await lightsUp(page, false);
   await expect(page.locator(".dock")).toBeVisible({ timeout: 30000 });
 
   // Out of sight until the keys come to it, and then the first stop.
@@ -70,7 +75,7 @@ test("the first stop skips to the forecast, and the lights are one stop on the w
 
   // Without it, the forecast is a dozen presses from the top, past one light.
   await page.reload();
-  await lightsUp(page);
+  await lightsUp(page, false);
   await expect(page.locator(".dock")).toBeVisible({ timeout: 30000 });
   const way = await tabsUntil(page, (at) => at.dock);
   expect(way.lights).toBe(1);
