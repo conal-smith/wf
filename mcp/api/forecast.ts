@@ -60,7 +60,10 @@ import {
   type Rider,
   type ShoreAngle,
 } from "../../force5/src/stars.js";
-import { gustFactor } from "../../force5/src/gustFactor.js";
+import {
+  GUST_FACTOR_MIN_WIND_KN,
+  gustFactor,
+} from "../../force5/src/gustFactor.js";
 import { isStale } from "../../force5/src/catalog.js";
 import { feelsLikeC } from "../../force5/src/feelsLike.js";
 import {
@@ -383,8 +386,10 @@ export type SpotMatch =
 
 /**
  * A spot from what an agent typed: its id, its name, part of its name, or a
- * county. Anything short of one clear answer returns the candidates, so the
- * agent can ask its user rather than guess.
+ * county, in any letter case: "Rosslare" is the id rosslare as surely as
+ * "rosslare" is, not a part of The Burrow — Rosslare's name too. Anything
+ * short of one clear answer returns the candidates, so the agent can ask its
+ * user rather than guess.
  */
 export function findSpot(
   spots: readonly RidingSpot[],
@@ -392,7 +397,8 @@ export function findSpot(
 ): SpotMatch {
   const q = fold(query);
   if (!q) return { spot: null, candidates: [...spots] };
-  const byId = spots.find((s) => s.id === query.trim());
+  const id = query.trim().toLowerCase();
+  const byId = spots.find((s) => s.id.toLowerCase() === id);
   if (byId) return { spot: byId };
   const exact = spots.filter((s) => fold(s.name) === q);
   if (exact.length === 1) return { spot: exact[0] };
@@ -952,10 +958,15 @@ export interface HourWind {
   /**
    * The headline gust over the headline wind (force5/src/gustFactor.ts), to
    * two places. Context only: the stars read the gust itself, not this.
-   * Null without a gust. hourWind always gives it; an hour built elsewhere
-   * may not.
+   * Null without a gust, and under `GUST_FACTOR_MIN_WIND_KN` of mean wind,
+   * as on the site. hourWind always gives it; an hour built elsewhere may not.
    */
   gust_factor?: number | null;
+  /**
+   * Why `gust_factor` is null on an hour that has a gust, so an agent never
+   * reads a missing factor as a steady wind or a failure. Absent otherwise.
+   */
+  why_no_gust_factor?: string;
   /** The headline bearing: the lead model's. */
   direction_deg: number;
   direction: string;
@@ -1084,6 +1095,8 @@ export function hourWind(
   };
   const factor = gustFactor(hour.wind_kn, hour.gust_kn);
   hour.gust_factor = factor === null ? null : round(factor, 2);
+  if (factor === null && hour.gust_kn !== null)
+    hour.why_no_gust_factor = NO_GUST_FACTOR;
   if (perModel)
     hour.by_model = Object.fromEntries(
       samples.map((s) => [
@@ -1675,6 +1688,21 @@ export interface SpotForecast {
   method: string;
 }
 
+/** Why an hour with a gust has no gust factor, on the hour itself. */
+export const NO_GUST_FACTOR = `mean wind under ${GUST_FACTOR_MIN_WIND_KN} kn`;
+
+/**
+ * When there is no gust factor, and what find_wind's max_gust_factor does
+ * then: the site's own rule (force5/src/gustFactor.ts), in words.
+ */
+export const GUST_FACTOR_RULE =
+  "`gust_factor` is null without a gust, and under " +
+  `${GUST_FACTOR_MIN_WIND_KN} kn of mean wind, as on wingfoil.ie: there a knot ` +
+  "of gust moves the ratio too far to mean anything. Such an hour with a " +
+  `gust says so in \`why_no_gust_factor\` ("${NO_GUST_FACTOR}"): read its ` +
+  "gust in knots. find_wind's max_gust_factor lets those hours through; " +
+  "they earn no stars, so never count";
+
 export const METHOD =
   "Wind, gust and direction are one model's own forecast, never a blend of " +
   "several: HARMONIE's while it reaches the hour (about 60 hours ahead), and " +
@@ -1713,7 +1741,8 @@ export const UNITS = {
     "one the stars rate), as context: the stars read the gust itself, not " +
     "the factor. A gust past too much (`rider.gust_limit_kn`) leaves the " +
     `hour no stars; any other gust is read ${GUST_EASE_KN} kn lighter, and where that is ` +
-    "worth fewer stars than the mean wind the hour takes the lower",
+    "worth fewer stars than the mean wind the hour takes the lower. " +
+    GUST_FACTOR_RULE,
   direction: "degrees the wind or waves come FROM (0 = north)",
   waves: "metres (significant height), seconds (peak period)",
   temperature: "°C",
@@ -2081,10 +2110,13 @@ function gustWithin(hour: HourWind, options: FindOptions): boolean {
   if (gust === null) return true;
   if (options.maxGustKnots !== undefined && gust > options.maxGustKnots)
     return false;
+  // The factor by the site's rule: none in a near calm, so max_gust_factor
+  // passes such an hour, which earns no stars and never counts anyway.
+  const factor = gustFactor(hour.wind_kn, gust);
   return (
     options.maxGustFactor === undefined ||
-    hour.wind_kn <= 0 ||
-    gust / hour.wind_kn <= options.maxGustFactor
+    factor === null ||
+    factor <= options.maxGustFactor
   );
 }
 
