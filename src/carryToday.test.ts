@@ -337,6 +337,73 @@ describe("carryToday and HARMONIE's first hour", () => {
     expect(() => checkBlendSpots(day, day.spotBlend)).not.toThrow();
   });
 
+  it("keeps a run with no gusts at all as it is past its first hour", () => {
+    // A HARMONIE run published without its gust fields: only the hour it was
+    // initialised gives way; every hour after it is its own, gustless, and
+    // never an older run's standing in for the outage.
+    const gustless = windManifest({
+      model: "harmonie",
+      runTime: at(17),
+      hours: hourly(48),
+      wind: (h) => ({ u: 30 + h / 10, v: 1, gust: null }),
+      extra: { resolutionKm: 2 },
+    });
+    const before = blendOf([published(at(14), 17), ecmwf27], at(16.75));
+    const { blend, carried } = carryToday(
+      blendOf([gustless, ecmwf27], at(20)),
+      before,
+    );
+    expect(carried).toContain(at(17));
+    expect(carried.every((t) => t <= at(17))).toBe(true);
+    const spot = blend.spotBlend.brandon;
+    const i = blend.times.indexOf(at(17));
+    expect(spot.gust[i]).toBe(
+      before.spotBlend.brandon.gust[before.times.indexOf(at(17))],
+    );
+    for (const hours of [1, 2, 5, 12, 30]) {
+      const j = blend.times.indexOf(at(17 + hours));
+      expect(modelAt(blend, at(17 + hours))).toBe("harmonie");
+      expect(spot.gust[j]).toBeNull();
+      // Its own wind, not the 14 UTC run's.
+      expect(spot.wind[j]).not.toBe(
+        before.spotBlend.brandon.wind[before.times.indexOf(at(17 + hours))],
+      );
+    }
+  });
+
+  it("treats ECMWF's first step the same where ECMWF rates the hour", () => {
+    // Before HARMONIE's run begins, the hours are ECMWF's. Its 12 UTC run's
+    // first step has no gust either; the 00 UTC run's step there had one.
+    const ecmwfRun = (runTime: string, u: number) =>
+      windManifest({
+        model: "ecmwf",
+        runTime,
+        hours: Array.from({ length: 41 }, (_, i) => i * 3),
+        wind: (h) => ({ u, v: 6 - h / 30, gust: h === 0 ? null : 12 }),
+        extra: { resolutionKm: null },
+      });
+    const before = blendOf(
+      [published(at(15), 18), ecmwfRun(at(0), -3)],
+      at(17),
+    );
+    const noon = ecmwfRun(at(12), 2);
+    const { blend } = carryToday(
+      blendOf([published(at(18), 21), noon], at(21)),
+      before,
+    );
+    const spot = blend.spotBlend.brandon;
+    const i = blend.times.indexOf(at(12));
+    expect(modelAt(blend, at(12))).toBe("ecmwf");
+    expect(spot.gust[i]).not.toBeNull();
+    expect(spot.wind[i]).toBe(windAt(before, at(12)));
+    // Past its first step, the 12 UTC run is the word: its own wind.
+    const later = blendOf([published(at(18), 21), noon], at(21));
+    for (const time of [at(24 + 12), at(24 + 15)]) {
+      expect(windAt(blend, time)).toBe(windAt(later, time));
+      expect(modelAt(blend, time)).toBe(modelAt(later, time));
+    }
+  });
+
   it("leaves the hour without a gust where no earlier blend had one", () => {
     // The first blend there is, with nothing before it: the run's first hour
     // says it has no gust rather than borrowing another model's.
