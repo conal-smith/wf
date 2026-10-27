@@ -396,6 +396,26 @@ class BundleTests(unittest.TestCase):
         self.assertEqual([step["precipIntervalHours"] for step in series],
                          [None, [0, 3], [3, 6]])
 
+    def test_the_chance_of_rain_is_the_share_of_wet_cells_around_the_place(self):
+        # A shower over one cell of the four, all of them within 25 km of brandon,
+        # then rain everywhere, then none.
+        totals = {0: [0.0] * 4, 1: [0.0, 0.0, 0.0, 0.6], 2: [0.4, 0.4, 0.4, 1.0],
+                  3: [0.4, 0.4, 0.4, 1.0]}
+
+        def shower(path, field, run, hour, layout=None):
+            values, layout, metadata = self.fake_decode(path, field, run, hour, layout)
+            return (totals[hour] if field == "tp" else values), layout, metadata
+        manifest = self.run_main(decode=shower, hours=3, step=1)
+        series = manifest["spotSeries"]["brandon"]
+        self.assertEqual([step["values"]["pop"] for step in series], [None, 25, 100, 0])
+        # brandon's own cell was dry in the shower: its rain says 0, its chance 25%.
+        self.assertEqual(series[1]["values"]["precip"], 0.0)
+        self.assertIsNone(manifest["spotSeries"]["faraway"][1]["values"]["pop"])
+        self.assertEqual(manifest["variables"]["pop"]["units"], "%")
+        self.assertIn("25 km", manifest["rainChanceNote"])
+        # The chance is a place's own: no frame carries it.
+        self.assertNotIn("pop", self.frame(manifest, 1))
+
     def test_every_variable_is_sampled_for_every_spot_including_one_off_the_grid(self):
         manifest = self.run_main()
         for spot, expected in (("brandon", 14.2), ("faraway", None)):
