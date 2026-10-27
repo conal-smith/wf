@@ -8,7 +8,7 @@ only the Ireland/Atlantic subregion (about 100 KB a step for every field read);
 Open Data bucket through their `.idx` sidecar.
 
 It publishes a `kind: "weather"` bundle in ICON-EU weather's own names (t2m,
-td2m, rh2m, tp, precip, clct, clcl, clcm, clch, pmsl, vis, cape, ww, tg), so
+td2m, rh2m, tp, precip, pop, clct, clcl, clcm, clch, pmsl, vis, cape, ww, tg), so
 the dock reads either the same way, with a precomputed series per riding
 location and no map frames (docs/TILING_DESIGN.md). Steps are GFS's own:
 hourly to +120 h, so the dock's rain is each hour's own there, and
@@ -17,7 +17,8 @@ three-hourly beyond, declared as a `stepRanges` ladder.
 Units are converted and rounded once, here: °C, mm, %, hPa, km, J/kg. `tp` is
 GFS's precipitation accumulated since initialization and `precip` the amount
 in the interval ending at the step, differenced from it; GFS publishes no
-accumulation at hour 0, so both are null there. `ww` is a WMO present-weather
+accumulation at hour 0, so both are null there. `pop` is the chance of rain over
+the same interval, from the cells around each place (rain_chance.py). `ww` is a WMO present-weather
 code DERIVED here, because GFS publishes none: from GFS's own categorical
 precipitation type and rate at the hour, its visibility and its total cloud
 (`present_weather`). `tg` is GFS's surface temperature, over sea a proxy for
@@ -38,6 +39,7 @@ import fetch_gfs
 from fetch_gfs import discover, get, run_datetime
 from fetch_forecast import (BBOX, ROOT, decode_handle, load_spots, published_in_bucket, sample,
                             spots_file)
+import rain_chance
 from registry import MODELS, UNCHANGED_EXIT
 from rundir import write_run
 import timing
@@ -83,6 +85,9 @@ VARIABLES = {
                "units": "mm", "label": "Precipitation",
                "description": "Precipitation in the interval ending at this hour, differenced from "
                               "the APCP accumulation; null at initialization, which has no interval"},
+    # A place's own, never a cell's: worked out from `precip` around each place
+    # (rain_chance.py) and published in the series only.
+    "pop": {"grib": None, **rain_chance.VARIABLE},
     "clct": {"grib": (6, 1, "atmosphere", 0), "sourceUnits": ("%",),
              "decimals": 0, "range": (0.0, 100.0), "slack": 1.0,
              "units": "%", "label": "Total cloud",
@@ -424,6 +429,7 @@ def manifest_for(run, run_time, args, grid, series):
         # No map frames: nothing reads a weather grid, and the spot series is the
         # product (docs/TILING_DESIGN.md). The horizon is stated instead.
         "frames": [], "horizonHours": args.hours, "spotSeries": series,
+        "rainChanceNote": rain_chance.NOTE,
         "precipitationNote": (
             "tp is GFS's own accumulation since initialization (APCP), which GFS does not publish at "
             "hour 0; precip is the amount in the interval ending at each step, an hour long to "
@@ -447,8 +453,9 @@ def manifest_for(run, run_time, args, grid, series):
             "0.1 km, 0.1 mm, whole J/kg) and clipped into their plausible range; a value outside it "
             "fails the run. precip is derived by differencing APCP, and ww from the precipitation "
             "rate and type, visibility and total cloud (see presentWeatherNote); neither the rate nor "
-            "the types are published. spotSeries carries every variable at every published hour, "
-            "bilinearly sampled except ww, which is read from the containing cell. No hour is "
+            "the types are published; pop is worked out from precip around each place (see "
+            "rainChanceNote). spotSeries carries every variable at every published hour, "
+            "bilinearly sampled except ww, which is read from the containing cell, and pop. No hour is "
             "interpolated: only native forecast steps are published."),
         "sourceUrl": SOURCE_URL,
         "attribution": "Weather data: NOAA/NCEP Global Forecast System (GFS), a work of the US "
@@ -508,6 +515,8 @@ def main(argv=None):
     # The shared crop names one unit for a wind grid; a weather grid has many.
     grid = {key: value for key, value in decoded[0][1][2].items() if key != "units"}
     series = {spot["id"]: [] for spot in spots}
+    # The cells around each place, for its chance of rain: the crop never moves.
+    around = {spot["id"]: rain_chance.neighbourhood(grid, spot["lon"], spot["lat"]) for spot in spots}
     previous_tp, previous_hour = None, None
     for hour in hours:
         fields, layout = decoded[hour]
@@ -518,12 +527,13 @@ def main(argv=None):
         interval = None if previous_hour is None else [previous_hour, hour]
         previous_hour = hour
         valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
+        precip = None if published["precip"] is None else np.asarray(published["precip"], dtype=float)
         for spot in spots:
+            sampled = {name: None if values is None else sample_variable(
+                grid, values, spot["lon"], spot["lat"], name) for name, values in published.items()}
+            sampled["pop"] = rain_chance.chance(precip, around[spot["id"]])
             series[spot["id"]].append({"hour": hour, "validTime": valid,
-                                       "precipIntervalHours": interval,
-                                       "values": {name: None if values is None else sample_variable(
-                                           grid, values, spot["lon"], spot["lat"], name)
-                                           for name, values in published.items()}})
+                                       "precipIntervalHours": interval, "values": sampled})
     manifest = manifest_for(run, run_time, args, grid, series)
     # Only this final operation advances the published snapshot.
     write_run(output, f"{MODEL}.json", manifest, prefix, spots)
