@@ -111,7 +111,8 @@ import {
 import { compass, type Spot } from "../force5/src/weather";
 import { spotHref } from "../force5/src/siteNav";
 import { LEVEL_LABEL, type PlaceWarning } from "../force5/src/warnings";
-import DockWarnings, { WarnMark } from "./DockWarnings";
+import DockWarnings, { WarnMark, WaterMark } from "./DockWarnings";
+import type { SpotNotice } from "../force5/src/waterQuality";
 import {
   handovers,
   leadOrder,
@@ -169,6 +170,8 @@ interface Props {
   marine: readonly ModelAvailability[];
   /** Met Éireann's warnings for the riding place, in force or still to come. */
   warnings?: readonly PlaceWarning[];
+  /** The bathing water notices near the riding place, standing or still to come. */
+  water?: readonly SpotNotice[];
   /**
    * What stands over the middle of the dock's top edge, in its own layout so
    * it moves with the edge (the full chart's List button), or nothing.
@@ -470,7 +473,13 @@ const StripTable = memo(function StripTable({
                   level={hour.warning.level}
                   label={`${clock(column.time)}: no stars, ${LEVEL_LABEL[hour.warning.level]} Met Éireann warning`}
                 />
-              ) : hour?.rating || hour?.warning ? (
+              ) : hour?.water?.replacesRating ? (
+                // A prohibition or advice against bathing: the notice
+                // stands where the stars were.
+                <WaterMark
+                  label={`${clock(column.time)}: no stars, bathing water notice`}
+                />
+              ) : hour?.rating || hour?.warning || hour?.water ? (
                 <>
                   {/* Just the stars: a card on hover covered the chart for
                     a reading the head and the ? already give. */}
@@ -491,11 +500,13 @@ const StripTable = memo(function StripTable({
                         hour.warning
                           ? `; ${LEVEL_LABEL[hour.warning.level]} Met Éireann warning`
                           : ""
-                      }`}
+                      }${hour.water ? "; bathing water notice" : ""}`}
                     />
                   )}
                   {/* Yellow: its mark beside the stars it leaves alone. */}
                   {hour.warning && <WarnMark level={hour.warning.level} bar />}
+                  {/* A notice that leaves the stars: its bar under them. */}
+                  {hour.water && <WaterMark bar />}
                 </>
               ) : null,
             )}
@@ -1165,6 +1176,7 @@ export default function ForecastDock(props: Props) {
     onMore,
     marine,
     warnings = [],
+    water = [],
     float = null,
   } = props;
   // The night's hours, from last light to first light, left out where the
@@ -1288,7 +1300,9 @@ export default function ForecastDock(props: Props) {
   // at night, leaves out the stars and the wing rather than draw them empty.
   const rated =
     !hours ||
-    hours.some((hour) => !!hour?.rating?.potential || !!hour?.warning);
+    hours.some(
+      (hour) => !!hour?.rating?.potential || !!hour?.warning || !!hour?.water,
+    );
   // The one model each hour's stars come from (force5/src/lead.ts): the one
   // that rates the hour in hand, named in the head, and where the stars hand
   // over from one model to the next, marked on the hours. A point has no stars.
@@ -2134,7 +2148,12 @@ export default function ForecastDock(props: Props) {
       )}
 
       {!isPoint && (
-        <DockWarnings spotId={spot.id} warnings={warnings} phone={phone} />
+        <DockWarnings
+          spotId={spot.id}
+          warnings={warnings}
+          water={water}
+          phone={phone}
+        />
       )}
 
       <div className="dk-body" id="dk-body" ref={bodyRef}>

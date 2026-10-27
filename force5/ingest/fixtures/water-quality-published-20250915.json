@@ -1,0 +1,303 @@
+{
+ "schemaVersion": 1,
+ "kind": "water-quality",
+ "model": "water-quality",
+ "modelName": "EPA bathing water notices",
+ "provider": "Environmental Protection Agency",
+ "run": "2025091513",
+ "runTime": "2025-09-15T13:00:00Z",
+ "generatedAt": "2025-09-15T13:30:00Z",
+ "sourceUrl": "https://data.epa.ie/bw/api/v1/alerts",
+ "locationsUrl": "https://data.epa.ie/bw/api/v1/locations",
+ "page": "https://www.beaches.ie",
+ "licence": "CC BY 4.0",
+ "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+ "attribution": "Bathing water notices from the Environmental Protection Agency (EPA), beaches.ie, licensed under CC BY 4.0, published unaltered.",
+ "maxDistanceKm": 1.5,
+ "notices": [
+  {
+   "id": "BWI002046",
+   "water": "IEEABWC070_0000_0200",
+   "beach": "Portmarnock, Velvet Strand Beach",
+   "county": "Dublin",
+   "authority": "Fingal County Council",
+   "kind": "prohibition",
+   "restriction": "Bathing is prohibited",
+   "description": "Water quality deteriorated due to suspected storm water overflow",
+   "start": "2025-09-14T00:00:00",
+   "expectedDays": 5,
+   "end": null,
+   "from": "2025-09-13T23:00:00Z",
+   "until": null,
+   "notice": "https://www.beaches.ie/wp-content/files//notice/4f7e4dff-48b5-4677-b15f-e38dc0022eea.pdf",
+   "updated": "2025-09-15T13:19:05"
+  },
+  {
+   "id": "BWI002044",
+   "water": "IEWEBWT170_0700_0200",
+   "beach": "Ballyloughane Beach",
+   "county": "Galway",
+   "authority": "Galway City Council",
+   "kind": "prior-warning",
+   "restriction": "Prior Warning bathing water quality may be affected",
+   "description": "Risk of deterioration in water quality due to expected heavy rainfall",
+   "start": "2025-09-12T00:00:00",
+   "expectedDays": 4,
+   "end": null,
+   "from": "2025-09-11T23:00:00Z",
+   "until": null,
+   "notice": "https://www.beaches.ie/wp-content/files//notice/e0559efe-8368-4900-ad96-bd92c9772e81.pdf",
+   "updated": "2025-09-15T12:06:53"
+  },
+  {
+   "id": "BWI002045",
+   "water": "IESEBWC140_0000_0100",
+   "beach": "Clonea Beach",
+   "county": "Waterford",
+   "authority": "Waterford City & County Council",
+   "kind": "prohibition",
+   "restriction": "Bathing is temporarily prohibited",
+   "description": "Water quality deteriorated due to suspected storm water overflow",
+   "start": "2025-09-08T00:00:00",
+   "expectedDays": 5,
+   "end": null,
+   "from": "2025-09-07T23:00:00Z",
+   "until": null,
+   "notice": "https://www.beaches.ie/wp-content/files//notice/d9ca0920-6ab8-440f-a3de-e915cb9ac2ce.pdf",
+   "updated": "2025-09-15T11:15:58"
+  },
+  {
+   "id": "BWI002043",
+   "water": "IEWEBWT170_0700_0100",
+   "beach": "Grattan Road Beach",
+   "county": "Galway",
+   "authority": "Galway City Council",
+   "kind": "prior-warning",
+   "restriction": "Prior Warning bathing water quality may be affected",
+   "description": "Risk of deterioration in water quality due to expected heavy rainfall",
+   "start": "2025-09-12T00:00:00",
+   "expectedDays": 4,
+   "end": null,
+   "from": "2025-09-11T23:00:00Z",
+   "until": null,
+   "notice": "https://www.beaches.ie/wp-content/files//notice/ab772816-4c20-4ca5-bdee-296dbcbca7e0.pdf",
+   "updated": "2025-09-13T15:14:37"
+  },
+  {
+   "id": "BWI002036",
+   "water": "IESHBWC060_0000_0100",
+   "beach": "Cappagh Pier, Kilrush",
+   "county": "Clare",
+   "authority": "Clare County Council",
+   "kind": "prior-warning",
+   "restriction": "Prior Warning bathing water quality may be affected",
+   "description": "Risk of deterioration in water quality due to expected heavy rainfall",
+   "start": "2025-09-11T00:00:00",
+   "expectedDays": 6,
+   "end": null,
+   "from": "2025-09-10T23:00:00Z",
+   "until": null,
+   "notice": "https://www.beaches.ie/wp-content/files//notice/5badd65d-918c-4029-869b-37200427d2a2.pdf",
+   "updated": "2025-09-10T10:15:41"
+  },
+  {
+   "id": "BWI002037",
+   "water": "IESHBWC070_0000_0200",
+   "beach": "White Strand, Miltown Malbay",
+   "county": "Clare",
+   "authority": "Clare County Council",
+   "kind": "prior-warning",
+   "restriction": "Prior Warning bathing water quality may be affected",
+   "description": "Risk of deterioration in water quality due to expected heavy rainfall",
+   "start": "2025-09-11T00:00:00",
+   "expectedDays": 6,
+   "end": null,
+   "from": "2025-09-10T23:00:00Z",
+   "until": null,
+   "notice": "https://www.beaches.ie/wp-content/files//notice/6ad6693d-c124-4c7f-8b87-0da67fdb7bfe.pdf",
+   "updated": "2025-09-10T10:15:41"
+  },
+  {
+   "id": "BWI002038",
+   "water": "IESHBWC070_0000_0300",
+   "beach": "Spanish Point",
+   "county": "Clare",
+   "authority": "Clare County Council",
+   "kind": "prior-warning",
+   "restriction": "Prior Warning bathing water quality may be affected",
+   "description": "Risk of deterioration in water quality due to expected heavy rainfall",
+   "start": "2025-09-11T00:00:00",
+   "expectedDays": 6,
+   "end": null,
+   "from": "2025-09-10T23:00:00Z",
+   "until": null,
+   "notice": "https://www.beaches.ie/wp-content/files//notice/671d9dde-a2ca-4d38-bc48-408a3c301376.pdf",
+   "updated": "2025-09-10T10:15:41"
+  },
+  {
+   "id": "BWI002039",
+   "water": "IESHBWC070_0000_0400",
+   "beach": "Kilkee",
+   "county": "Clare",
+   "authority": "Clare County Council",
+   "kind": "prior-warning",
+   "restriction": "Prior Warning bathing water quality may be affected",
+   "description": "Risk of deterioration in water quality due to expected heavy rainfall",
+   "start": "2025-09-11T00:00:00",
+   "expectedDays": 6,
+   "end": null,
+   "from": "2025-09-10T23:00:00Z",
+   "until": null,
+   "notice": "https://www.beaches.ie/wp-content/files//notice/04f33543-34e6-4368-a957-5d36530a69e5.pdf",
+   "updated": "2025-09-10T10:15:41"
+  },
+  {
+   "id": "BWI002040",
+   "water": "IESHBWC080_0000_0100",
+   "beach": "White Strand, Doonbeg",
+   "county": "Clare",
+   "authority": "Clare County Council",
+   "kind": "prior-warning",
+   "restriction": "Prior Warning bathing water quality may be affected",
+   "description": "Risk of deterioration in water quality due to expected heavy rainfall",
+   "start": "2025-09-11T00:00:00",
+   "expectedDays": 6,
+   "end": null,
+   "from": "2025-09-10T23:00:00Z",
+   "until": null,
+   "notice": "https://www.beaches.ie/wp-content/files//notice/5bcee71e-3828-4ca4-ae7f-66040abbdc81.pdf",
+   "updated": "2025-09-10T10:15:41"
+  },
+  {
+   "id": "BWI002041",
+   "water": "IESHBWC100_0000_0100",
+   "beach": "Lahinch",
+   "county": "Clare",
+   "authority": "Clare County Council",
+   "kind": "prior-warning",
+   "restriction": "Prior Warning bathing water quality may be affected",
+   "description": "Risk of deterioration in water quality due to expected heavy rainfall",
+   "start": "2025-09-11T00:00:00",
+   "expectedDays": 6,
+   "end": null,
+   "from": "2025-09-10T23:00:00Z",
+   "until": null,
+   "notice": "https://www.beaches.ie/wp-content/files//notice/e504a80d-6fbe-43e3-90ec-1f229e178346.pdf",
+   "updated": "2025-09-10T10:15:41"
+  },
+  {
+   "id": "BWI001992",
+   "water": "IESHBWL25_191a_0100",
+   "beach": "Bathing Place at Portumna",
+   "county": "Galway",
+   "authority": "Galway County Council",
+   "kind": "advice-against",
+   "restriction": "Bathing is advised against",
+   "description": "Water quality affected due to the presence of algal bloom",
+   "start": "2025-08-13T00:00:00",
+   "expectedDays": 30,
+   "end": null,
+   "from": "2025-08-12T23:00:00Z",
+   "until": null,
+   "notice": "https://www.beaches.ie/wp-content/files//notice/1aec981b-475a-4ae4-b95d-5572ab22279d.pdf",
+   "updated": "2025-08-20T11:06:39"
+  },
+  {
+   "id": "season-IEEABWC090_0000_0060",
+   "water": "IEEABWC090_0000_0060",
+   "beach": "Dun Laoghaire Baths",
+   "county": "Dublin",
+   "authority": "Dun Laoghaire Rathdown County Council",
+   "kind": "all-season",
+   "restriction": null,
+   "description": "Water quality classification Poor. DLR are committed to maintaining the classification of the Dun Laoghaire Baths at a compliant level and are implementing a plan to rectify the situation that has resulted in the Poor classification for DLB.",
+   "start": null,
+   "expectedDays": null,
+   "end": null,
+   "from": null,
+   "until": null,
+   "notice": null,
+   "updated": "2026-04-08T16:04:27"
+  }
+ ],
+ "spots": {
+  "portmarnock": [
+   {
+    "water": "IEEABWC070_0000_0200",
+    "name": "Portmarnock, Velvet Strand Beach",
+    "km": 0.21
+   }
+  ],
+  "dollymount": [
+   {
+    "water": "IEEABWC090_0000_0400",
+    "name": "Dollymount Strand",
+    "km": 0.29
+   }
+  ],
+  "sandymount": [
+   {
+    "water": "IEEABWC090_0000_0300",
+    "name": "Sandymount Strand",
+    "km": 0.43
+   },
+   {
+    "water": "BPNBF070000020002",
+    "name": "Merrion Strand",
+    "km": 1.44
+   }
+  ],
+  "seapoint": [
+   {
+    "water": "IEEABWC090_0000_0100",
+    "name": "Seapoint",
+    "km": 0.05
+   },
+   {
+    "water": "BPNBF100000070001",
+    "name": "Blackrock Baths",
+    "km": 1.37
+   }
+  ],
+  "dun-laoghaire": [
+   {
+    "water": "IEEABWC090_0000_0060",
+    "name": "Dun Laoghaire Baths",
+    "km": 0.92
+   },
+   {
+    "water": "IEEABWC090_0000_0100",
+    "name": "Seapoint",
+    "km": 1.45
+   }
+  ],
+  "spanish-point": [
+   {
+    "water": "IESHBWC070_0000_0300",
+    "name": "Spanish Point",
+    "km": 0.23
+   }
+  ],
+  "fi-lahinch-beach": [
+   {
+    "water": "IESHBWC100_0000_0100",
+    "name": "Lahinch",
+    "km": 0.13
+   }
+  ],
+  "clonea": [
+   {
+    "water": "IESEBWC140_0000_0100",
+    "name": "Clonea Beach",
+    "km": 0.16
+   }
+  ],
+  "brandon": [
+   {
+    "water": "IESHBWC040_0000_0400",
+    "name": "Maharabeg",
+    "km": 0.01
+   }
+  ]
+ }
+}

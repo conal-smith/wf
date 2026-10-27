@@ -164,6 +164,15 @@ MODELS = {
     # equal to this); expired warnings drop out by their own expiry regardless.
     "warnings": {"script": "fetch_warnings.py", "manifest": "marine/warnings.json",
                  "kind": "warnings", "maxAgeHours": 3},
+    # The EPA's bathing water notices (prohibitions, advice against bathing, prior
+    # warnings) with the bathing waters near each riding place, read at :40 each
+    # hour. Like the warnings, `run` is the hour the API was read in and three
+    # hours lets one late or failed run pass; past it the site and the MCP stop
+    # trusting the file (force5/src/waterQuality.ts WATER_QUALITY_MAX_AGE_HOURS,
+    # which test_water_quality.py holds equal to this).
+    "water-quality": {"script": "fetch_water_quality.py",
+                      "manifest": "marine/water-quality.json",
+                      "kind": "water-quality", "maxAgeHours": 3},
     # Not a model either: copies every wind run the bucket serves, sampled where we
     # observe, and the observations, into archive/ before the runs are deleted. The
     # pointer is only a summary of what it copied; `run` is the hour it ran.

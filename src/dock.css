@@ -804,6 +804,32 @@ table.tt {
 .warn-mark.lv-red {
   color: var(--color-ink-inverse);
 }
+/* A bathing water notice (src/DockWarnings.tsx): the same tag in the theme's
+   warn where a prohibition or advice against bathing takes the stars, and a
+   bar of it under the stars any other notice leaves alone. */
+.water-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 3px;
+  border: 1px solid var(--color-warn);
+  border-radius: 4px;
+  background: var(--color-warn-ground);
+  font: 600 9px/1 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-warn);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.water-bar {
+  display: block;
+  width: 70%;
+  height: 3px;
+  margin: 1px auto 0;
+  border-radius: 2px;
+  background: var(--color-warn);
+}
 /* The strip along the top of the dock: one link a warning, to the spot's page,
    and Met Éireann's name after them. It scrolls sideways rather than wrap. */
 .dk-warnings {

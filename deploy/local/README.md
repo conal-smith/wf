@@ -109,6 +109,7 @@ in UTC. The shipped schedule is:
 | `sea-temperature` | every 3 h at :15   | Marine Institute observations, newest reading         |
 | `wind-obs`        | every hour at :50  | Met Éireann and buoy wind observations, last 72 h     |
 | `warnings`        | every hour at :25  | Met Éireann's weather warnings, copied unaltered      |
+| `water-quality`   | every hour at :40  | the EPA's bathing water notices near riding places    |
 | `forecast-archive`| every hour at :15  | copies served wind runs and observations to archive/  |
 | `verify`          | 07:25 daily        | model and blend scores (docs/VERIFICATION.md)         |
 | `prune`           | every hour at :10  | retention (see below)                                 |

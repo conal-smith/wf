@@ -651,12 +651,12 @@ class PublishedRunContractTests(unittest.TestCase):
 
     def test_every_forecast_skips_a_published_run(self):
         # Tides and observations have no provider run to compare; see the registry.
-        # The blend, the archive, the verification and the warnings are not
-        # forecasts: their run is the hour they ran.
+        # The blend, the archive, the verification, the warnings and the bathing
+        # water notices are not forecasts: their run is the hour they ran.
         self.assertEqual(sorted(model for model, entry in MODELS.items()
                                 if not entry.get("readsPublishedRun")),
                          ["blend", "forecast-archive", "sea-temperature", "tides", "verify",
-                          "warnings", "wind-obs"])
+                          "warnings", "water-quality", "wind-obs"])
 
 
 

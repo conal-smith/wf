@@ -191,6 +191,12 @@ minutes = [25]              # Hourly: Met Éireann's warnings, copied unaltered.
 timeout_seconds = 300       # shared only with the daily verify. One small request.
 
 [[jobs]]
+id = "water-quality"
+models = ["water-quality"]
+minutes = [40]              # Hourly: the EPA's bathing water notices, as councils post
+timeout_seconds = 300       # them. :40 is shared only with the daily ICON-EU weather.
+
+[[jobs]]
 id = "forecast-archive"
 models = ["forecast-archive"]
 minutes = [15]              # Hourly, after the blend: copies every run being served into

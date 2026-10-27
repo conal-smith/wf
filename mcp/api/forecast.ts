@@ -98,6 +98,19 @@ import {
   type PlaceWarnings,
   type WarningsAnswer,
 } from "./warnings.js";
+import {
+  hourWater,
+  loadWaterQuality,
+  ratingUnderWater,
+  waterAcross,
+  waterAnswer,
+  type HourWater,
+  type WaterAnswer,
+} from "./waterQuality.js";
+import {
+  spotWaterQuality,
+  type SpotWaterQuality,
+} from "../../force5/src/waterQuality.js";
 
 const HOUR = 3600000;
 /** Waves and weather are nearest-step, never interpolated (VARIABLE_MATCH_HOURS). */
@@ -1714,6 +1727,11 @@ export interface ForecastHour {
    * (`replaces_rating`): no rating, never rideable.
    */
   warning?: HourWarning | null;
+  /**
+   * The bathing water notices covering the hour (mcp/api/waterQuality.ts);
+   * absent where none does. `replaces_rating`: no rating, never rideable.
+   */
+  water?: HourWater;
 }
 
 /** One Irish day's light at the spot, in Irish time with its zone. */
@@ -1773,6 +1791,8 @@ export interface SpotForecast {
   sea_temperature: SpotSea | null;
   /** Met Éireann's warnings for the spot, in force or still to come (mcp/api/warnings.ts). */
   warnings: WarningsAnswer;
+  /** The EPA's bathing water notices near the spot (mcp/api/waterQuality.ts). */
+  water_quality: WaterAnswer;
   sources: {
     wind: ModelRun[];
     wind_outside_domain: string[];
@@ -1941,15 +1961,18 @@ export async function spotForecast(
 ): Promise<SpotForecast> {
   // Only the one square that holds the spot is read, of each model.
   const square = [spotSquare(spot.lat, spot.lon)];
-  const [wind, waves, weather, tides, sea, warned] = await Promise.all([
-    loadWind(source, options.now, square),
-    loadWaves(source, options.now, square),
-    loadWeather(source, options.now, square),
-    spotTides(source, spot.id, window),
-    spotSea(source, spot.id),
-    loadWarnings(source),
-  ]);
+  const [wind, waves, weather, tides, sea, warned, notices] =
+    await Promise.all([
+      loadWind(source, options.now, square),
+      loadWaves(source, options.now, square),
+      loadWeather(source, options.now, square),
+      spotTides(source, spot.id, window),
+      spotSea(source, spot.id),
+      loadWarnings(source),
+      loadWaterQuality(source),
+    ]);
   const warnings = placeWarnings(warned, spot, options.now);
+  const water = spotWaterQuality(notices, spot.id, options.now);
   const { lines, outside } = spotWindLines(wind.loaded, spot.id);
   const memberLines = spotMemberLines(wind.loaded, spot.id);
   const waveSource = handedSource(waves.loaded, spot.id, ["swh"]);
@@ -1985,6 +2008,8 @@ export async function spotForecast(
     if (memberLines.length) hour.ensemble = hourEnsemble(memberLines, time);
     if (warnings.warnings.length)
       hour.warning = hourWarning(warnings, time, window.stepHours);
+    const covered = hourWater(water, time, window.stepHours);
+    if (covered) hour.water = covered;
     return hour;
   });
   // The sky as the spot page draws it, from each hour's share of the rain.
@@ -2001,6 +2026,7 @@ export async function spotForecast(
         rider: options.rider,
         from: options.from,
         warnings,
+        water,
         sky,
       })
     : null;
@@ -2037,6 +2063,7 @@ export async function spotForecast(
     tides,
     sea_temperature: sea,
     warnings: warningsAnswer(warnings, options.now, spot),
+    water_quality: waterAnswer(water, options.now),
     sources: {
       wind: lines.map((l) => l.run),
       wind_outside_domain: outside,
@@ -2074,20 +2101,26 @@ function rateForecast(
     rider: Rider;
     from?: StarsFrom;
     warnings: PlaceWarnings;
+    water: SpotWaterQuality;
     sky?: SpotSky | null;
   },
 ): DayWindow[] {
-  const { rider, warnings } = options;
+  const { rider, warnings, water } = options;
   for (const row of rows) {
-    const rating = ratingUnderWarnings(
-      rateWind(row.wind, row.daylight, facing, rider),
-      row.warning,
+    const rating = ratingUnderWater(
+      ratingUnderWarnings(
+        rateWind(row.wind, row.daylight, facing, rider),
+        row.warning,
+      ),
+      row.water,
     );
     row.rating = rating && hourStars(rating);
     if (!row.rating)
       row.why_not_rated = row.warning?.replaces_rating
         ? NOT_RATED.warning
-        : row.wind
+        : row.water?.replaces_rating
+          ? NOT_RATED.water
+          : row.wind
           ? NOT_RATED.dark
           : NOT_RATED.noWind;
   }
@@ -2097,11 +2130,14 @@ function rateForecast(
       time,
       wind,
       shore: shoreOf(facing, wind),
-      // An orange or red warning leaves the hour unrated, before any window
-      // is picked.
-      rating: ratingUnderWarnings(
-        rateWind(wind, daylight(spot, time), facing, rider),
-        hourWarning(warnings, time),
+      // An orange or red warning, or a notice against bathing, leaves the
+      // hour unrated, before any window is picked.
+      rating: ratingUnderWater(
+        ratingUnderWarnings(
+          rateWind(wind, daylight(spot, time), facing, rider),
+          hourWarning(warnings, time),
+        ),
+        hourWater(water, time),
       ),
     };
   });
@@ -2119,7 +2155,7 @@ function rateForecast(
         window: null,
         why_none: day.some((h) => h.rating)
           ? "no two hours in a row earn a star for this rider"
-          : "no hour of the window on this day is rated: dark, no wind forecast, or an orange or red warning",
+          : "no hour of the window on this day is rated: dark, no wind forecast, an orange or red warning, or a bathing water notice",
       };
     const run = day
       .slice(best.from, best.to + 1)
@@ -2264,6 +2300,8 @@ export interface SpotSessions {
   sessions: Session[];
   /** Ids of the Met Éireann warnings in force at the spot during the search. */
   warnings?: string[];
+  /** Ids of the bathing water notices standing at the spot during the search. */
+  water_notices?: string[];
 }
 
 export interface FindOptions {
@@ -2341,6 +2379,8 @@ export async function findSessions(
   unavailable: Unavailable[];
   /** Every Met Éireann warning in force at a searched spot during the window. */
   warnings: WarningsAnswer;
+  /** Every bathing water notice standing at a searched spot during the window. */
+  water_quality: WaterAnswer;
   /**
    * The last hour the models the ranking reads (the stars' model and the one
    * after it) reach, and which of them reaches it, or null when neither is
@@ -2364,16 +2404,21 @@ export async function findSessions(
   );
   // The squares of the places searched: every square for all of Ireland,
   // fewer for a county or a radius.
-  const [wind, weather, warned] = await Promise.all([
+  const [wind, weather, warned, notices] = await Promise.all([
     loadWind(source, options.now, squaresFor(pool)),
     loadWeather(source, options.now, squaresFor(pool)),
     loadWarnings(source),
+    loadWaterQuality(source),
   ]);
   const times = axis({ ...window, stepHours: 1 });
-  const warnings = warningsAcross(warned, pool, options.now, {
-    from: window.from,
-    to: times.at(-1)! + HOUR,
-  });
+  const during = { from: window.from, to: times.at(-1)! + HOUR };
+  const warnings = warningsAcross(warned, pool, options.now, during);
+  const water = waterAcross(
+    notices,
+    pool.map((s) => s.id),
+    options.now,
+    during,
+  );
   const results: SpotSessions[] = [];
   for (const spot of pool) {
     const { lines } = spotWindLines(wind.loaded, spot.id);
@@ -2385,6 +2430,7 @@ export async function findSessions(
       checkedAt: warnings.answer.checked_at,
       warnings: warnings.bySpot.get(spot.id) ?? [],
     };
+    const spotWater = { notices: water.bySpot.get(spot.id) ?? [] };
     const sessions: Session[] = [];
     const hours: SessionHour[] = [];
     let run: SessionHour[] = [];
@@ -2398,15 +2444,19 @@ export async function findSessions(
       const shore = shoreOf(facing, hour);
       // Rated as on the site, sunrise to sunset; a search for dark hours
       // rates them as though they were light.
-      // An orange or red warning leaves the hour unrated, so it never counts.
-      const rating = ratingUnderWarnings(
-        rateWind(
-          hour,
-          !options.daylightOnly || daylight(spot, time),
-          facing,
-          options.rider,
+      // An orange or red warning, or a notice against bathing, leaves the
+      // hour unrated, so it never counts.
+      const rating = ratingUnderWater(
+        ratingUnderWarnings(
+          rateWind(
+            hour,
+            !options.daylightOnly || daylight(spot, time),
+            facing,
+            options.rider,
+          ),
+          hourWarning(spotWarnings, time),
         ),
-        hourWarning(spotWarnings, time),
+        hourWater(spotWater, time),
       );
       const good =
         hour !== null &&
@@ -2453,6 +2503,9 @@ export async function findSessions(
       ...(spotWarnings.warnings.length && {
         warnings: spotWarnings.warnings.map((w) => w.warning.capId),
       }),
+      ...(spotWater.notices.length && {
+        water_notices: spotWater.notices.map((n) => n.notice.id),
+      }),
     });
   }
   results.sort(
@@ -2469,6 +2522,7 @@ export async function findSessions(
     sources: [...runs, ...weather.loaded.map((l) => l.run)],
     unavailable: [...wind.unavailable, ...weather.unavailable],
     warnings: warnings.answer,
+    water_quality: water.answer,
     reach: forecastReach(runs, options.from),
   };
 }
