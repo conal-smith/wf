@@ -784,6 +784,23 @@ no answer within a few seconds, or no location in the browser) it lists the
 Ireland, however far, with no distances on the cards and one line above them
 saying so. The chart beside the list is fitted to whatever it shows.
 
+**2026-10-27 — The finder finds, sorts and filters, and asks for the
+location only when the rider says so** (#246, #228, #229, #248; PRs #255
+and #257). The head keeps the wordmark at every width, as the chart's and a
+spot page's do. Over the cards is "Find a spot…", the chart's own search: a
+name typed lists the places it names from every spot, not only the tab's.
+Beside it are three selects: the order (best first; nearest, once the
+rider's place is known; A to Z), the fewest stars in the six days (any, 3+,
+4+, 5), and the model the stars are rated from. The model is the rider's
+own, the one the display options and the spot page set. The tab is in the
+address once one is chosen (`/?tab=favourites`, `/?tab=near`). An empty
+Favourites points to the search, Near you and every spot's page. Near you
+no longer asks the browser as it opens (this replaces that part of the
+ruling above). Without the rider's place it says why the place is wanted,
+with a "Use my location" button, over the spots nearest where the chart
+was, which give no distances. A place kept from an earlier yes is still
+read again quietly, and a no is still never asked again.
+
 ---
 
 ## Still open
