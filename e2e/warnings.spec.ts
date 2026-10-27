@@ -322,6 +322,50 @@ test("a warnings file too old to trust shows nothing but the link to met.ie", as
   ).toHaveAttribute("href", "https://www.met.ie/warnings");
 });
 
+test("on a phone the dock's strip says how many warnings there are, and opens to each in full", async ({
+  page,
+}) => {
+  await withWarnings(page, fresh());
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto("/?spot=brandon");
+  const strip = page.locator("[data-dock-warnings]");
+  await expect(strip).toBeVisible({ timeout: 30000 });
+  // One line: the highest level's tag, how many and their kinds, cut short
+  // inside the screen rather than run off it.
+  const summary = strip.getByRole("button", {
+    name: "3 Met Éireann warnings: Violent storm, Wind, Small craft",
+  });
+  await expect(summary).toBeVisible();
+  await expect(summary).toHaveAttribute("aria-expanded", "false");
+  await expect(summary.locator('[data-warning-mark="red"]')).toBeVisible();
+  await expect(summary).toContainText("3 warnings");
+  const kinds = summary.locator(".dk-warnings-kinds");
+  await expect(kinds).toHaveCSS("text-overflow", "ellipsis");
+  const edge = (el: Element) => el.getBoundingClientRect().right;
+  expect(await summary.evaluate(edge)).toBeLessThanOrEqual(393);
+  await expect(strip.locator("[data-warning]").first()).toBeHidden();
+  // Pressed, every warning under it, each over as many lines as it needs and
+  // all of it on the screen; pressed again, folded.
+  await summary.click();
+  await expect(summary).toHaveAttribute("aria-expanded", "true");
+  const items = strip.locator("[data-warning]");
+  await expect(items).toHaveCount(3);
+  for (const item of await items.all()) {
+    await expect(item).toBeVisible();
+    expect(await item.evaluate(edge)).toBeLessThanOrEqual(393);
+    expect(await item.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+      true,
+    );
+  }
+  await expect(items.nth(1)).toContainText(
+    /Wind\s*Mon 14 Sept? 13:00 – Mon 14 Sept? 16:00/,
+  );
+  await expect(items.nth(1)).toHaveAttribute("href", "/spot/brandon#warnings");
+  await shot(page, "dock-warnings-phone");
+  await summary.click();
+  await expect(items.first()).toBeHidden();
+});
+
 test("the dock names the spot's warnings and marks their hours", async ({
   page,
 }) => {

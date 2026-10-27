@@ -331,4 +331,42 @@ test.describe("on a phone", () => {
     await expect(page.locator(".lr")).toHaveCount(0);
     await closePanel(page);
   });
+
+  test("the panel is half the screen over a clear chart, and its foot names the defaults as they are", async ({
+    page,
+  }) => {
+    await page.goto("/?map");
+    await zoomLayers(page).click();
+    const panel = page.locator("dialog.layers-dialog");
+    await expect(panel).toBeVisible();
+    // Half the screen at most, so the chart above it is seen to change as a
+    // layer is pressed, with no wash or blur over it.
+    await expect
+      .poll(async () => (await panel.boundingBox())!.y, { timeout: 5000 })
+      .toBeGreaterThanOrEqual(844 / 2 - 2);
+    expect(
+      await panel.evaluate((el) => {
+        const backdrop = getComputedStyle(el, "::backdrop");
+        return [backdrop.backgroundColor, backdrop.backdropFilter];
+      }),
+    ).toEqual(["rgba(0, 0, 0, 0)", "none"]);
+    // The foot names the defaults from the layers themselves: as what is on
+    // at first, and as what Reset puts back once the rider has others.
+    const foot = panel.locator("[data-layers-default]");
+    await expect(foot).toHaveText(
+      "The default layers are on: particles, tidal depth, the chart, range ring.",
+    );
+    await layerTile(page, "Coloured wind").click();
+    await layerTile(page, "Particles").click();
+    await expect(foot).toHaveText(
+      "Reset for the default: particles, tidal depth, the chart, range ring.",
+    );
+    await page.getByRole("button", { name: "Reset", exact: true }).click();
+    await expect(layerTile(page, "Particles")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(foot).toHaveText(/^The default layers are on: /);
+    await closePanel(page);
+  });
 });
