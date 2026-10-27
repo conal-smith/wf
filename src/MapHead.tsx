@@ -6,12 +6,7 @@ import { SiteMenu, type SiteMenuTool } from "../force5/src/SiteMenu";
 import { FINDER_HREF, type SiteNavId } from "../force5/src/siteNav";
 import type { Spot } from "../force5/src/weather";
 import { hourWind, type PlaceHour } from "./ratings";
-
-const fold = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+import { findSpots } from "./spotSearch";
 
 /**
  * The chart's head, top left: the site menu, the name, and "Find a spot…",
@@ -43,24 +38,10 @@ export default function MapHead({
   /** The list closes a moment after the field loses focus, so a tap on it lands. */
   const closing = useRef(0);
   const list = useId();
-  const hits = useMemo(() => {
-    const q = fold(query.trim());
-    if (!q) return [];
-    return spots
-      .filter(
-        (s) =>
-          fold(s.name).includes(q) ||
-          fold(s.county ?? "").startsWith(q) ||
-          (s.aliases ?? []).some((a) => fold(a).includes(q)),
-      )
-      .sort(
-        (a, b) =>
-          Number(fold(b.name).startsWith(q)) - Number(fold(a.name).startsWith(q)) ||
-          Number(starred.includes(b.id)) - Number(starred.includes(a.id)) ||
-          a.name.localeCompare(b.name),
-      )
-      .slice(0, 9);
-  }, [query, spots, starred]);
+  const hits = useMemo(
+    () => findSpots(spots, query, starred).slice(0, 9),
+    [query, spots, starred],
+  );
   const pick = (spot: Spot) => {
     setQuery("");
     setOpen(false);

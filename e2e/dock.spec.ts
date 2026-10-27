@@ -694,7 +694,7 @@ test("a starred spot is kept on this device: the dock and the spot finder's favo
   await expect(cards).toHaveCount(1, { timeout: 30000 });
   // And unstarring it there takes it off.
   await cards.first().getByRole("button", { name: "Star Brandon Bay" }).click();
-  await expect(page.locator("[data-finder-empty]")).toHaveText(
+  await expect(page.locator("[data-finder-empty]")).toContainText(
     "Star a spot and it shows here.",
   );
 });

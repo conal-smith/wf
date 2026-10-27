@@ -455,6 +455,7 @@ test.describe("on a desktop", () => {
     // A mouse over a day of the next ones: a line on that day on every card,
     // and on no card's row of hours.
     const band = cards(page).nth(1).locator("[data-days-band]");
+    await band.scrollIntoViewIfNeeded();
     const b = (await band.boundingBox())!;
     await page.mouse.move(b.x + b.width * 0.3, b.y + 30);
     const dayLines = page.locator("[data-days-band] [data-hover-line]");
@@ -478,6 +479,28 @@ test.describe("on a desktop", () => {
     ).toBeHidden();
     await page.mouse.move(b.x + b.width * 0.3, b.y - 200);
     await expect(dayLines.first()).toBeHidden();
+  });
+
+  test("an hour with a wind and no gust says so, rather than looking calm", async ({
+    page,
+  }) => {
+    // The sample's HARMONIE publishes no gust (scripts/sample-weather.mjs), so
+    // its afternoon hours are a wind with no gust; the morning's ECMWF steps
+    // have theirs. (In production it is a run's first hour: issue #244.)
+    await star(page, ["dollymount"]);
+    await openFinder(page);
+    await rated(page);
+    const row = hours(page);
+    const gustless = row.filter({ has: page.locator("[data-no-gust]") });
+    expect(await gustless.count()).toBeGreaterThan(0);
+    await expect(gustless.first().locator("[data-no-gust]")).toHaveText("g–");
+    await expect(gustless.first()).toHaveAttribute(
+      "aria-label",
+      /knots, no gust forecast/,
+    );
+    // Only where the gust is missing: ECMWF's morning keeps its own.
+    expect(await gustless.count()).toBeLessThan(await row.count());
+    await expect(row.nth(1).locator("[data-no-gust]")).toHaveCount(0);
   });
 
   test("first light stays in the row's view as it scrolls, not cut off by its edge", async ({
@@ -576,10 +599,87 @@ test.describe("on a desktop", () => {
     await expect(cards(page).first()).toContainText(/\d+ km · Co\. /);
     await expect(page.locator("[data-finder-note]")).toHaveCount(0);
     await scope(page).getByRole("button", { name: "Favourites" }).click();
-    await expect(page.locator("[data-finder-empty]")).toHaveText(
-      "Star a spot and it shows here.",
-    );
+    const empty = page.locator("[data-finder-empty]");
+    await expect(empty).toContainText("Star a spot and it shows here.");
     await expect(cards(page)).toHaveCount(0);
+    // And a way from it to a spot to star: a search above, Near you, or
+    // every spot's page.
+    await expect(
+      page.getByRole("searchbox", { name: "Find a spot" }),
+    ).toBeVisible();
+    await expect(
+      empty.getByRole("link", { name: "browse every spot" }),
+    ).toHaveAttribute("href", "/spot");
+    await empty.getByRole("link", { name: "spots near you" }).click();
+    await expect(finder(page)).toHaveAttribute("data-scope", "near");
+    await expect(page).toHaveURL(/\/\?tab=near$/);
+    await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1);
+  });
+
+  test("the tab is in the address: chosen, reloaded, linked to, and kept through the full chart", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "dollymount"]);
+    await openFinder(page);
+    // A bare root opens as it always did, and names no tab.
+    await expect(finder(page)).toHaveAttribute("data-scope", "favourites");
+    await expect(page).toHaveURL(/\/$/);
+    await scope(page).getByRole("button", { name: "Near you" }).click();
+    await expect(page).toHaveURL(/\/\?tab=near$/);
+    await page.reload();
+    await expect(finder(page)).toHaveAttribute("data-scope", "near");
+    await expect(
+      scope(page).getByRole("button", { name: "Near you" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    // Through the full chart and back, the address still names it.
+    await page.getByRole("button", { name: "Full chart" }).click();
+    await expect(page).toHaveURL(/\/\?map$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/\?tab=near$/);
+    await expect(finder(page)).toHaveAttribute("data-scope", "near");
+    // A link to the other tab opens on it.
+    await openFinder(page, "/?tab=favourites");
+    await expect(finder(page)).toHaveAttribute("data-scope", "favourites");
+    await expect(cards(page)).toHaveCount(2);
+    // So does the old address, sent on to the root.
+    await openFinder(page, "/spots?tab=near");
+    await expect(page).toHaveURL(/\/\?tab=near$/);
+    await expect(finder(page)).toHaveAttribute("data-scope", "near");
+  });
+
+  test("a spot is found by name, from every spot, and Escape goes back to the tab", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "dollymount"]);
+    await openFinder(page);
+    await expect(cards(page)).toHaveCount(2);
+    const find = page.getByRole("searchbox", { name: "Find a spot" });
+    await find.fill("keel");
+    await expect(cards(page).first()).toHaveAttribute("data-spot-card", "keel");
+    // The places the words name, not the tab's.
+    await expect(
+      page.locator('[data-spot-card="brandon"], [data-spot-card="dollymount"]'),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("region", { name: "Spots found" }),
+    ).toBeVisible();
+    // Accents and case are let go of, and a name's start comes first.
+    await find.fill("BRAND");
+    await expect(cards(page).first()).toHaveAttribute(
+      "data-spot-card",
+      "brandon",
+    );
+    await find.fill("no such place");
+    await expect(page.locator("[data-finder-empty]")).toHaveText(
+      "No spot by that name.",
+    );
+    await find.press("Escape");
+    await expect(find).toHaveValue("");
+    await expect(cards(page)).toHaveCount(2);
+    // A tab chosen puts the words down.
+    await find.fill("keel");
+    await scope(page).getByRole("button", { name: "Near you" }).click();
+    await expect(find).toHaveValue("");
   });
 
   test("a first visit with the location refused lists the spots nearest the middle of Ireland, and never asks again", async ({
@@ -1023,6 +1123,28 @@ test.describe("on a phone", () => {
     hasTouch: true,
   });
 
+  test("the head keeps the wordmark beside the menu and the switch", async ({
+    page,
+  }) => {
+    await star(page, ["brandon"]);
+    await openFinder(page);
+    const head = finder(page).locator("header");
+    const mark = head.getByText("wingfoil.ie");
+    await expect(mark).toBeVisible();
+    const [menu, name, tabs] = [
+      (await head.getByRole("button").first().boundingBox())!,
+      (await mark.boundingBox())!,
+      (await scope(page).boundingBox())!,
+    ];
+    // In one row, side by side, and all on the screen.
+    expect(name.x).toBeGreaterThanOrEqual(menu.x + menu.width);
+    expect(tabs.x).toBeGreaterThanOrEqual(name.x + name.width);
+    expect(tabs.x + tabs.width).toBeLessThanOrEqual(390);
+    expect(
+      Math.abs(name.y + name.height / 2 - (tabs.y + tabs.height / 2)),
+    ).toBeLessThan(4);
+  });
+
   test("one column, no wider than the screen, today swiped and an hour tapped", async ({
     page,
   }) => {
@@ -1089,7 +1211,7 @@ test.describe("on a phone", () => {
       timeout: 30000,
     });
     await scope(page).getByRole("button", { name: "Favourites" }).tap();
-    await expect(page.locator("[data-finder-empty]")).toHaveText(
+    await expect(page.locator("[data-finder-empty]")).toContainText(
       "Star a spot and it shows here.",
     );
     await scope(page).getByRole("button", { name: "Near you" }).tap();
