@@ -141,6 +141,10 @@ async function choose(page: Page, name: "Off" | "High tide" | "Low tide") {
 test("the satellite image draws at high and at low tide in the Malahide estuary, and is kept", async ({
   page,
 }) => {
+  // Photographs of the chart, each waiting for it to settle, and a
+  // reload: on a loaded runner its last steps ran past 45 s, though no step
+  // hung, as the blend squares' and the dock's long tests do.
+  test.slow();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const reads = new Map<string, number[]>();

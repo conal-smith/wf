@@ -801,6 +801,25 @@ with a "Use my location" button, over the spots nearest where the chart
 was, which give no distances. A place kept from an earlier yes is still
 read again quietly, and a no is still never asked again.
 
+**2026-10-27 — A phone's sheet names its rows in words, at the type floor.**
+On a phone the dock's rows were glyphs alone, labels at 8.5px and units at
+8px, figures at 11px (#221): a rider at arm's length on a beach could not
+read them, nor tell the gust factor from the tide. Each row is now named in
+the mono label at its floor (10px, `eyebrow`), its unit under it ("Wind kn",
+"Waves m", "Current kn", "Rain mm/h"), in a 52px column that stands while the
+hours slide (it no longer folds away). The figures are at `body` (13px), the
+wind at 14px and its gust at `caption`; "25 g32" still fits a column. A wide
+screen keeps its glyphs. The warnings strip on a phone is one line, the
+highest level's tag, "3 warnings" and their kinds, cut with an ellipsis, and
+a press opens every warning in full, one under the other (#220): a strip
+that scrolled sideways showed one half-sentence and hid a gale warning past
+the screen's edge. The phone's Layers sheet is half the screen, its tiles
+scrolling inside it, with no wash or blur over the chart above, so each
+layer is seen to change as it is pressed; its foot names the defaults from
+`LAYER_DEFAULTS` (src/layerGroups.tsx), which Reset also uses, as "The
+default layers are on: …" at them and "Reset for the default: …" otherwise
+(#227).
+
 ---
 
 ## Still open
