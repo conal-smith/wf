@@ -106,7 +106,9 @@ import { useReadings } from "./useReadings";
 
 const styles = tv({
   slots: {
-    root: "flex flex-col bg-ground paper-grain font-body text-ink antialiased",
+    // The page is the paper's well, so the cards stand off it a shade
+    // lighter (owner's ruling of 2026-10-28); the head stays on the paper.
+    root: "flex flex-col bg-sunken paper-grain font-body text-ink antialiased",
     // Beside the chart the list scrolls in its own box, under a head that
     // stays. Alone, it scrolls the page itself, the head held at the top: a
     // phone's browser then folds its bars away as the reader scrolls, as it

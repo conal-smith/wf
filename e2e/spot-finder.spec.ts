@@ -159,8 +159,13 @@ test.describe("on a desktop", () => {
     const brandon = cards(page).filter({ hasText: "Brandon Bay" });
     await expect(brandon).toContainText("Co. Kerry");
     await expect(brandon.getByText("Today", { exact: true })).toBeVisible();
-    // The five under it are "Other days", as they are with a day chosen.
-    await expect(brandon.locator("[data-other-days]")).toHaveText("Other days");
+    // The five under it are "Other days" to a screen reader, as they are
+    // with a day chosen; the card itself has no heading over them.
+    await expect(
+      brandon.getByRole("region", { name: "Other days" }),
+    ).toBeVisible();
+    await expect(brandon.locator("[data-other-days]")).toHaveCount(0);
+    await expect(brandon.locator("[data-day-card]")).toHaveCount(5);
     await expect(brandon.locator("[data-next-days] [data-day]")).toHaveCount(5);
     await expect(
       brandon.locator("[data-days-band] [data-day-band]"),
@@ -195,21 +200,24 @@ test.describe("on a desktop", () => {
     await expect(now).toContainText("now");
     await expect(now).toHaveAttribute("aria-pressed", "true");
     await expect(row.first()).toHaveAttribute("data-gone", "true");
-    // A rated hour has its five stars; the dark has none.
-    const lit = row.and(page.locator("[data-stars]")).first();
-    await expect(lit.locator("svg[aria-hidden] path")).not.toHaveCount(0);
-    await expect(row.first().locator("[class*=fill-stars]")).toHaveCount(0);
-    // First and last light are named under the row; the wind lies behind it.
+    // The stars are one line along the foot of the hours, a colour stop
+    // an hour, the stars' own where an hour has some; the dark has none.
     const card = cards(page).first();
-    await expect(card.locator("[data-first-light]")).toContainText(
-      /^first light \d\d:\d\d$/,
-    );
-    await expect(card.locator("[data-last-light]")).toContainText(
-      /^last light \d\d:\d\d$/,
-    );
-    await expect(card.locator("[data-day-facts] [data-light]")).toContainText(
-      /^light \d\d:\d\d–\d\d:\d\d$/,
-    );
+    const line = card.locator("[data-day-hours] [data-stars-line]");
+    await expect(line).toHaveCount(1);
+    await expect(line.locator("stop")).toHaveCount(count);
+    const colours = await line
+      .locator("stop")
+      .evaluateAll((els) =>
+        els.map((el) => (el as SVGElement).style.stopColor),
+      );
+    expect(colours[0]).toBe("var(--color-line)");
+    // No first and last light, nor high and low water, under the row or
+    // over it (the owner's ruling of 2026-10-28); the wind lies behind it.
+    await expect(
+      card.locator("[data-first-light], [data-last-light]"),
+    ).toHaveCount(0);
+    await expect(card.locator("[data-day-facts] [data-light]")).toHaveCount(0);
     await expect(card.locator("[data-day-hours] [data-wind-band]")).toHaveCount(
       1,
     );
@@ -358,7 +366,9 @@ test.describe("on a desktop", () => {
       await expect(
         card.locator(`[data-next-days] [data-day="${date}"]`),
       ).toHaveCount(0);
-      await expect(card.getByText("Other days", { exact: true })).toBeVisible();
+      await expect(
+        card.getByRole("region", { name: "Other days" }),
+      ).toBeVisible();
     }
     // The day's own hours: no now, none gone, light at either end; the
     // hour picked today is put down, and the roses stand at the day's
@@ -372,9 +382,6 @@ test.describe("on a desktop", () => {
     await expect(page.locator("[data-rose-hour]").first()).toHaveText(
       /^1[2-4]:00$/,
     );
-    await expect(
-      cards(page).first().locator("[data-first-light]"),
-    ).toContainText(/^first light \d\d:\d\d$/);
     // An hour picked on it is picked on every card.
     const pick = row.and(page.locator(":not([data-dark])")).first();
     const time = (await pick.getAttribute("data-hour"))!;
@@ -620,30 +627,6 @@ test.describe("on a desktop", () => {
     // Only where the gust is missing: ECMWF's morning keeps its own.
     expect(await gustless.count()).toBeLessThan(await row.count());
     await expect(row.nth(1).locator("[data-no-gust]")).toHaveCount(0);
-  });
-
-  test("first light stays in the row's view as it scrolls, not cut off by its edge", async ({
-    page,
-  }) => {
-    // A card too narrow for the whole day: the sample's morning, before its
-    // HARMONIE run, is ECMWF's three-hourly steps, which leaves a row that
-    // a card beside the chart now draws whole, a little tighter (a day that
-    // nearly fits is not scrolled), so the list stands alone and narrow.
-    await page.setViewportSize({ width: 480, height: 900 });
-    await star(page, ["brandon", "keel"]);
-    await openFinder(page);
-    await rated(page);
-    const card = cards(page).first();
-    const scroller = card.locator("[data-hours-scroll]");
-    for (const left of [0, 40, 90, 10000]) {
-      await scroller.evaluate((el, left) => (el.scrollLeft = left), left);
-      const view = (await scroller.boundingBox())!;
-      const first = (await card.locator("[data-first-light]").boundingBox())!;
-      const last = (await card.locator("[data-last-light]").boundingBox())!;
-      expect(first.x).toBeGreaterThanOrEqual(view.x);
-      expect(last.x + last.width).toBeLessThanOrEqual(view.x + view.width);
-      expect(first.x + first.width).toBeLessThan(last.x);
-    }
   });
 
   test("the picture opens the chart there, at the hour picked; the card opens the spot's page", async ({
@@ -1072,7 +1055,7 @@ test.describe("on a desktop", () => {
       .toBe(JSON.stringify({ refused: true }));
   });
 
-  test("high and low water are on a card whose place has a tide, and left off one that has none", async ({
+  test("high and low water are left off the cards, a place with a tide or without (the owner's ruling of 2026-10-28)", async ({
     page,
   }) => {
     // Brandon's station has published turns today; Keel has none.
@@ -1111,19 +1094,13 @@ test.describe("on a desktop", () => {
     await openFinder(page);
     const brandon = cards(page).filter({ hasText: "Brandon Bay" });
     const keel = cards(page).filter({ hasText: "Keel Beach" });
-    const facts = brandon.locator("[data-day-facts] [data-tide-time]");
-    // The two in the row's hours; the low water at 22:40 is after it.
-    await expect(facts).toHaveCount(2, { timeout: 30000 });
-    await expect(facts.nth(0)).toHaveText(/^10:10 low water$/);
-    await expect(facts.nth(1)).toHaveText(/^16:25 high water$/);
-    // Under the hour each falls in.
-    const high = brandon.locator('[data-day-hours] [data-tide="high"]');
-    await expect(high).toContainText("16:25");
-    const column = brandon.locator(
-      `[data-hour="${Date.parse(`${day}T15:00:00Z`)}"]`,
+    await rated(page);
+    await expect(
+      brandon.locator("[data-day-hours] [data-hour]"),
+    ).not.toHaveCount(0);
+    await expect(brandon.locator("[data-tide-time], [data-tide]")).toHaveCount(
+      0,
     );
-    const [h, c] = [(await high.boundingBox())!, (await column.boundingBox())!];
-    expect(Math.abs(h.x + h.width / 2 - (c.x + c.width / 2))).toBeLessThan(2);
     await expect(keel.locator("[data-tide-time], [data-tide]")).toHaveCount(0);
   });
 
