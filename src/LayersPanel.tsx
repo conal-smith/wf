@@ -134,7 +134,7 @@ function TileGroup({
  * Opened from the site menu, and from Layers under the zoom and in the dock
  * where there is no room for the rail (src/MapControls.tsx), and only then
  * loaded: this file, its pictures and its stylesheet are a chunk of their
- * own. On a phone the dialog is a sheet that slides up from the foot, three
+ * own. On a phone the dialog is a modal in the middle of the screen, three
  * tiles across.
  */
 export default function LayersPanel({

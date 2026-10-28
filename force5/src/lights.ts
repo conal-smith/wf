@@ -1,8 +1,8 @@
 /**
  * The spots as a chart's lights: a figure in a ring, the selected hour's
- * stars, with a short arrow blowing downwind. Ink at three and four stars,
- * magenta at five, a plain ring at one and two, dashed at none, faint in the
- * dark. A true offshore hour is struck through in the pen; a cross-offshore
+ * stars, with a short arrow blowing downwind. Filled in the stars' own pink
+ * to purple from one star to five (src/map.css), dashed at none, faint in
+ * the dark. A true offshore hour is struck through in the pen; a cross-offshore
  * one keeps its stars and gets a red arrow instead (and is struck for a
  * learner: the caller decides, through `mark`).
  *
@@ -108,7 +108,8 @@ const PLACE_LAYERS = ["places", "places-near", "water-names"];
 function labelRank(el: HTMLElement): number {
   if (el.classList.contains("sel")) return 100;
   const named = el.classList.contains("named") ? 50 : 0;
-  for (let n = 5; n >= 0; n--) if (el.classList.contains(`s${n}`)) return named + n;
+  for (let n = 5; n >= 0; n--)
+    if (el.classList.contains(`s${n}`)) return named + n;
   return named - 1;
 }
 
@@ -247,7 +248,11 @@ export function createLights(
     for (const { el, ring, lab, rank } of shown) {
       // The same name on the light's other side: mirrored about its centre.
       const cx = (ring.left + ring.right) / 2;
-      const left = { ...lab, left: 2 * cx - lab.right, right: 2 * cx - lab.left };
+      const left = {
+        ...lab,
+        left: 2 * cx - lab.right,
+        right: 2 * cx - lab.left,
+      };
       if (free(el, lab)) placed.push(lab);
       else if (free(el, left)) {
         el.classList.add("lab-left");
@@ -266,13 +271,14 @@ export function createLights(
   };
   let queued = 0;
   const queue = () => {
-    if (!queued) queued = requestAnimationFrame(() => {
-      queued = 0;
-      // Laid out where the buttons stand, once the camera rests: through a
-      // move they stand where it last did.
-      if (moving) return;
-      placeLabels();
-    });
+    if (!queued)
+      queued = requestAnimationFrame(() => {
+        queued = 0;
+        // Laid out where the buttons stand, once the camera rests: through a
+        // move they stand where it last did.
+        if (moving) return;
+        placeLabels();
+      });
   };
   map.on("moveend", queue);
   map.on("idle", queue);
@@ -402,10 +408,9 @@ export function createLights(
     }
     const named = (e: Entry) => e.el.classList.contains("named");
     const all = [...looks.keys()];
-    drawn = [
-      ...all.filter((e) => !named(e)),
-      ...all.filter(named),
-    ].map((e) => ({ x: e.x, y: e.y, look: looks.get(e)! }));
+    drawn = [...all.filter((e) => !named(e)), ...all.filter(named)].map(
+      (e) => ({ x: e.x, y: e.y, look: looks.get(e)! }),
+    );
   };
   /** Each light at its place on the screen, with the camera at rest. */
   const place = () => {
@@ -525,8 +530,7 @@ export function createLights(
     const k = 2 ** (map.getZoom() - restZoom);
     drawLights(canvas, drawn, k, at.x, at.y, dpr());
     for (const { el, x, y } of live) moveTo(el, k * x + at.x, k * y + at.y);
-    for (const { el, x, y } of waiting)
-      moveTo(el, k * x + at.x, k * y + at.y);
+    for (const { el, x, y } of waiting) moveTo(el, k * x + at.x, k * y + at.y);
   };
   /** At rest: the buttons back, where the camera has them. */
   const end = () => {
@@ -630,7 +634,11 @@ export function createLights(
         entry.rev++;
         const { el } = entry;
         const level =
-          !s || s.pending ? "pending" : s.dark || s.stars === null ? "dark" : `s${s.stars}`;
+          !s || s.pending
+            ? "pending"
+            : s.dark || s.stars === null
+              ? "dark"
+              : `s${s.stars}`;
         const want = new Set([
           level,
           ...(s?.mark === "struck" ? ["off"] : []),
