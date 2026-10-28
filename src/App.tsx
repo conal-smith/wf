@@ -2116,9 +2116,7 @@ export default function App() {
   );
 
   const missingStatus =
-    missingSpot === null
-      ? null
-      : `Spot not found: “${missingSpot}”.`;
+    missingSpot === null ? null : `Spot not found: “${missingSpot}”.`;
   const status = pendingModel
     ? `Loading ${MODELS.find((m) => m.id === pendingModel)?.name}…`
     : modelError || modelNotice
@@ -2240,6 +2238,24 @@ export default function App() {
   }, []);
   /** The button between the list and the full chart, at the foot. */
   const onChart = page === "chart";
+  // Alone, the list scrolls the page (src/finder/SpotFinder.tsx), and under
+  // the full chart it is out of the page's length (src/map.css): how far
+  // down it was is kept while it is in the page, and given back to it when
+  // it is again.
+  const finderUnder = useRef<HTMLDivElement>(null);
+  const listScroll = useRef(0);
+  useEffect(() => {
+    const keep = () => {
+      const el = finderUnder.current;
+      if (el && getComputedStyle(el).position !== "fixed")
+        listScroll.current = window.scrollY;
+    };
+    window.addEventListener("scroll", keep, { passive: true });
+    return () => window.removeEventListener("scroll", keep);
+  }, []);
+  useLayoutEffect(() => {
+    if (!onChart && listScroll.current) window.scrollTo(0, listScroll.current);
+  }, [onChart]);
   const listButton = (onChart || !split) && (
     <Button
       variant="primary"
@@ -2329,6 +2345,7 @@ export default function App() {
             was, for the way back to it. */}
           <div
             className="finder-under"
+            ref={finderUnder}
             data-shown={!onChart || revealing || undefined}
             inert={onChart || undefined}
             aria-hidden={onChart || undefined}

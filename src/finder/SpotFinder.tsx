@@ -96,14 +96,24 @@ import { useReadings } from "./useReadings";
 
 const styles = tv({
   slots: {
-    root: "fixed inset-0 flex flex-col bg-ground paper-grain font-body text-ink antialiased",
+    root: "flex flex-col bg-ground paper-grain font-body text-ink antialiased",
+    // Beside the chart the list scrolls in its own box, under a head that
+    // stays. Alone, it scrolls the page itself, the head held at the top: a
+    // phone's browser then folds its bars away as the reader scrolls, as it
+    // never does for a box of its own, and nothing at the foot of the
+    // screen (the button to the map) waits under them.
+    split: "fixed inset-0",
+    page: "relative min-h-dvh",
     body: "flex min-h-0 flex-1",
     list: [
-      "min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-4.5 pt-3.5 pb-10",
+      "min-h-0 min-w-0 flex-1 px-4.5 pt-3.5 pb-10",
       "max-wide:px-2.5 max-wide:pt-2.5 max-wide:pb-20",
     ],
+    scroller: "overflow-y-auto overscroll-contain",
     // Under the chart's width, room at the foot for the button to the map.
     alone: "pb-24 max-wide:pb-24",
+    // The head, held at the top of the page as it scrolls.
+    head: "sticky top-0",
     // Over the cards: find a spot by name, on a rule to write on as the
     // chart's, and the list's order, its stars and its model beside it,
     // under it where there is not the room.
@@ -395,12 +405,16 @@ export default function SpotFinder(props: FinderProps) {
 
   return (
     <div
-      className={s.root()}
+      className={s.root({ class: beside ? s.split() : s.page() })}
       data-spot-finder
       data-scope={scope}
       data-beside-chart={beside || undefined}
     >
-      <PageHeader menu={menu} headRef={headRef}>
+      <PageHeader
+        menu={menu}
+        headRef={headRef}
+        className={beside ? undefined : s.head()}
+      >
         <Segmented
           aria-label="Which spots"
           options={SCOPES}
@@ -410,7 +424,7 @@ export default function SpotFinder(props: FinderProps) {
       </PageHeader>
       <div className={s.body()}>
         <section
-          className={s.list({ class: beside ? undefined : s.alone() })}
+          className={s.list({ class: beside ? s.scroller() : s.alone() })}
           aria-label={
             searching
               ? "Spots found"
