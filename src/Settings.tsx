@@ -1,9 +1,11 @@
 /**
  * "Settings": the site menu's third row, one dialog with everything a rider
  * sets about themselves, on one page, in four parts: about them (weight and
- * units), the wind strength that suits them (four handles, with the stars
- * they make under the slider), the stars each wind direction takes off, and
- * how far up and down the wind they ride. It took the place of a six-step
+ * units), the wind strength that suits them (two handles, too light and too
+ * strong, with the stars they make under the slider), the stars each wind
+ * direction takes off, and how far up and down the wind they ride (two
+ * handles on a circle). Every handle wears the same dashed ring, which says
+ * it can be dragged (the owner's ruling of 2026-10-28). It took the place of a six-step
  * wizard (owner's ruling of 2026-10-26: "one modal, so people don't have to
  * keep clicking through"); the controls and pictures are the wizard's.
  *
@@ -22,6 +24,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
@@ -36,11 +39,11 @@ import { Segmented } from "../ui/Segmented";
 import {
   WEB_DIRS,
   WEB_R,
-  WIND_KEYS,
+  WIND_ENDS,
   WIND_TOP,
   forceTicks,
   knotsOf,
-  moveWindIn,
+  moveWindEnd,
   offAt,
   polar,
   said,
@@ -73,15 +76,15 @@ const PARTS = {
   },
   wind: {
     title: "Wind strength",
-    help: "Drag the handles to the wind you like. The stars underneath show how we will rate each wind speed.",
+    help: "Drag the two ringed handles to where the wind gets too light and too strong for you. The stars underneath show how we will rate each wind speed: best in the middle.",
   },
   shore: {
     title: "Wind direction",
-    help: "Some winds are harder or less safe. Drag a dot towards the middle to take stars off for that wind.",
+    help: "Some winds are harder or less safe. Drag a ringed dot towards the middle to take stars off for that wind.",
   },
   upwind: {
     title: "Riding upwind",
-    help: "This shows where you can ride on the map. It does not change your stars.",
+    help: "This shows where you can ride on the map. It does not change your stars. Drag the ringed handles on the circle.",
   },
 } as const;
 
@@ -201,10 +204,10 @@ export default function Settings({
             wind={draft.custom.wind}
             units={draft.units}
             unit={unit}
-            onMove={(i, kn) =>
+            onMove={(key, kn) =>
               setDraft({
                 ...draft,
-                custom: moveWindIn(draft.custom, WIND_KEYS[i], kn, draft.units),
+                custom: moveWindEnd(draft.custom, key, kn, draft.units),
               })
             }
           />,
@@ -364,24 +367,22 @@ const TICK: Record<Units, number> = {
   "m/s": 5,
   bft: 1,
 };
-const HANDLE_NAMES = [
-  "Too light below",
-  "Sweet spot from",
-  "Sweet spot to",
-  "Too strong in gusts above",
-];
+const HANDLE_NAMES = {
+  min: "Too light below",
+  max: "Too strong in gusts above",
+} as const;
 /** The chart's star, a five-point at radius 5 round the origin. */
 const STAR_PATH =
   "M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z";
 
 /**
- * One axis: the rider's four numbers on a scale in knots, shown in their
- * unit (too light, the sweet spot, and too much, which a gust may not pass,
- * hatched in the pen's red past it); right under the track, read-only, the
- * stars those numbers make by steady wind; then the figures, once. Four
- * handles, dragged or moved a step at a time from the keyboard; where they
- * may go is yourStars.ts's (`moveWindIn`), which keeps them a knot apart
- * and on whole figures of the rider's unit.
+ * One axis: the rider's two ends on a scale in knots, shown in their unit
+ * (too light, and too much, which a gust may not pass, hatched in the pen's
+ * red past it), and the sweet spot worked out between them; right under the
+ * track, read-only, the stars those make by steady wind; then the figures,
+ * once. Two handles, dragged or moved a step at a time from the keyboard;
+ * where they may go, and the sweet spot, are yourStars.ts's
+ * (`moveWindEnd`), on whole figures of the rider's unit.
  */
 function WindRange({
   wind,
@@ -392,7 +393,7 @@ function WindRange({
   wind: Draft["custom"]["wind"];
   units: Units;
   unit: UnitScale;
-  onMove: (i: number, kn: number) => void;
+  onMove: (key: "min" | "max", kn: number) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const light = useRef<HTMLSpanElement>(null);
@@ -430,7 +431,6 @@ function WindRange({
       SCALE_FROM + ((clientX - box.left) / box.width) * (SCALE_TO - SCALE_FROM)
     );
   };
-  const values = WIND_KEYS.map((k) => wind[k]);
   const ticks = unit.force
     ? forceTicks(SCALE_FROM + 1, SCALE_TO).map(({ kn, force }) => ({
         kn,
@@ -496,46 +496,49 @@ function WindRange({
       <span className="st-rlab is-top" ref={much} style={{ left: muchLeft }}>
         Too strong in gusts
       </span>
-      {values.map((v, i) => (
-        <span
-          key={i}
-          role="slider"
-          tabIndex={0}
-          aria-label={HANDLE_NAMES[i]}
-          aria-valuemin={2}
-          aria-valuemax={WIND_TOP}
-          aria-valuenow={v}
-          aria-valuetext={said(v, unit)}
-          className={`st-knob${i === 3 ? " is-top" : ""}`}
-          style={{ left: x(v) }}
-          onPointerDown={(event) => {
-            event.preventDefault();
-            event.currentTarget.setPointerCapture(event.pointerId);
-            event.currentTarget.focus();
-          }}
-          onPointerMove={(event) => {
-            if (event.currentTarget.hasPointerCapture(event.pointerId))
-              onMove(i, knotsOf(at(event.clientX) * unit.perKn, unit));
-          }}
-          onKeyDown={(event) => {
-            const by = (
-              {
-                ArrowLeft: -1,
-                ArrowDown: -1,
-                ArrowRight: 1,
-                ArrowUp: 1,
-                PageDown: -5,
-                PageUp: 5,
-              } as Record<string, number>
-            )[event.key];
-            if (!by) return;
-            event.preventDefault();
-            onMove(i, stepped(v, by, unit));
-          }}
-        >
-          <Speed kn={v} unit={unit} size={13} />
-        </span>
-      ))}
+      {WIND_ENDS.map((key) => {
+        const v = wind[key];
+        return (
+          <span
+            key={key}
+            role="slider"
+            tabIndex={0}
+            aria-label={HANDLE_NAMES[key]}
+            aria-valuemin={2}
+            aria-valuemax={WIND_TOP}
+            aria-valuenow={v}
+            aria-valuetext={said(v, unit)}
+            className={`st-knob st-grab${key === "max" ? " is-top" : ""}`}
+            style={{ left: x(v) }}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.currentTarget.setPointerCapture(event.pointerId);
+              event.currentTarget.focus();
+            }}
+            onPointerMove={(event) => {
+              if (event.currentTarget.hasPointerCapture(event.pointerId))
+                onMove(key, knotsOf(at(event.clientX) * unit.perKn, unit));
+            }}
+            onKeyDown={(event) => {
+              const by = (
+                {
+                  ArrowLeft: -1,
+                  ArrowDown: -1,
+                  ArrowRight: 1,
+                  ArrowUp: 1,
+                  PageDown: -5,
+                  PageUp: 5,
+                } as Record<string, number>
+              )[event.key];
+              if (!by) return;
+              event.preventDefault();
+              onMove(key, stepped(v, by, unit));
+            }}
+          >
+            <Speed kn={v} unit={unit} size={13} />
+          </span>
+        );
+      })}
       <div
         className="st-strip"
         data-star-strip
@@ -760,6 +763,9 @@ function ShoreWeb({
           <>
             <circle className="st-dot-hit" cx={f1(x)} cy={f1(y)} r="14" />
             <circle className="st-dot-ring" cx={f1(x)} cy={f1(y)} r="10" />
+            {!lock && (
+              <circle className="st-grab-ring" cx={f1(x)} cy={f1(y)} r="12.5" />
+            )}
             <circle
               className={`st-dot-face${never ? " is-never" : ""}`}
               cx={f1(x)}
@@ -823,8 +829,8 @@ function ShoreWeb({
 
 /**
  * The three quick answers, in degrees into the wind past straight across it
- * (force5/src/rideWedge.ts `upwindOf`). The sliders and the picture's handles
- * fine-tune from there.
+ * (force5/src/rideWedge.ts `upwindOf`). The picture's handles fine-tune
+ * from there.
  */
 const UP_ANSWERS = [
   {
@@ -845,12 +851,15 @@ const UP = { cx: 150, cy: 168, r: 118, vx: -36, vw: 372, vh: 310 };
 
 /**
  * "Can you ride upwind?": the three answers across the top, the chosen one's
- * line under them, then the picture left and the two angles right. Degrees into the wind (counted from
- * straight across it) and degrees below across that the course runs to,
- * used in every wind and moving no star. The picture draws them as the
- * loupe will: the no-go hatched into the wind (CAN'T RIDE HERE), the two courses
- * (RIDE), and past the course downwind DRIFT, where they lose ground; each
- * angle has a handle on the course's edge as well as its slider.
+ * line under them, then the picture, the width of the part, and the two
+ * angles said under it. Degrees into the wind (counted from straight across
+ * it) and degrees below across that the course runs to, used in every wind
+ * and moving no star. The picture draws them as the loupe will: the no-go
+ * hatched into the wind (CAN'T RIDE HERE), the two courses (RIDE), and past
+ * the course downwind DRIFT, where they lose ground. Each angle is set by
+ * its handles on the course's edges, dragged round the circle, or a degree
+ * at a time from the keyboard on the right-hand one (the owner's ruling of
+ * 2026-10-28 took the two sliders away for them).
  */
 function UpwindPart({ draft, setDraft }: PartProps) {
   const id = useId().replace(/[^\w-]/g, "");
@@ -902,16 +911,59 @@ function UpwindPart({ draft, setDraft }: PartProps) {
       addEventListener("pointerup", end);
       addEventListener("pointercancel", end);
     };
+  /** The keys for an angle: a degree, five, or to either end. */
+  const keyed = (kind: "into" | "down", event: ReactKeyboardEvent) => {
+    const value = kind === "into" ? into : down;
+    const max = kind === "into" ? UPWIND_MAX : DOWNWIND_MAX;
+    const to = (
+      {
+        ArrowLeft: value - 1,
+        ArrowDown: value - 1,
+        ArrowRight: value + 1,
+        ArrowUp: value + 1,
+        PageDown: value - 5,
+        PageUp: value + 5,
+        Home: 0,
+        End: max,
+      } as Record<string, number>
+    )[event.key];
+    if (to === undefined) return;
+    event.preventDefault();
+    setDraft(kind === "into" ? withUpwind(draft, to) : withDownwind(draft, to));
+  };
   const handle = (side: 1 | -1, kind: "into" | "down") => {
     const [x, y] = p(side * (kind === "into" ? up : deep), r);
+    const value = kind === "into" ? into : down;
+    // The right-hand handle of each pair is the slider; its mirror is the
+    // same angle, for a pointer only.
+    const slider =
+      side > 0
+        ? {
+            role: "slider",
+            tabIndex: 0,
+            "aria-label":
+              kind === "into"
+                ? "How far upwind you can ride"
+                : "How far downwind you will ride",
+            "aria-valuemin": 0,
+            "aria-valuemax": kind === "into" ? UPWIND_MAX : DOWNWIND_MAX,
+            "aria-valuenow": value,
+            "aria-valuetext": value
+              ? `${value}° ${kind === "into" ? "upwind" : "downwind"}`
+              : "straight across the wind",
+            onKeyDown: (event: ReactKeyboardEvent) => keyed(kind, event),
+          }
+        : { "aria-hidden": true };
     return (
       <g
         className={`st-up-edge${kind === "down" ? " is-down" : ""}`}
         data-edge={`${kind}-${side > 0 ? "right" : "left"}`}
         onPointerDown={grab(kind)}
+        {...slider}
       >
-        <circle cx={x} cy={y} r="16" className="st-up-edge-hit" />
-        <circle cx={x} cy={y} r="7" className="st-up-edge-dot" />
+        <circle cx={x} cy={y} r="18" className="st-up-edge-hit" />
+        <circle cx={x} cy={y} r="12.5" className="st-grab-ring" />
+        <circle cx={x} cy={y} r="7.5" className="st-up-edge-dot" />
       </g>
     );
   };
@@ -999,7 +1051,8 @@ function UpwindPart({ draft, setDraft }: PartProps) {
           ref={svg}
           className="st-up-pic"
           viewBox={`${UP.vx} 0 ${UP.vw} ${UP.vh}`}
-          aria-hidden="true"
+          role="group"
+          aria-label="Your courses across the wind"
         >
           <defs>
             <pattern
@@ -1037,10 +1090,12 @@ function UpwindPart({ draft, setDraft }: PartProps) {
             y1={cy}
             y2={cy}
           />
-          <text className="st-lab" x={cx + r + 10} y={cy + 3}>
+          {/* Clear of the handles' rings, which stand on the line when the
+            rider rides straight across. */}
+          <text className="st-lab" x={cx + r + 22} y={cy + 3}>
             ACROSS
           </text>
-          <text className="st-lab" x={cx - r - 10} y={cy + 3} textAnchor="end">
+          <text className="st-lab" x={cx - r - 22} y={cy + 3} textAnchor="end">
             ACROSS
           </text>
           <text
@@ -1089,122 +1144,16 @@ function UpwindPart({ draft, setDraft }: PartProps) {
           {handle(-1, "into")}
         </svg>
         <div className="st-angles">
-          <div>
-            <div className="st-into" data-upwind>
-              <output>{into}°</output>
-              <span>upwind</span>
-            </div>
-            <AngleSlider
-              value={into}
-              max={UPWIND_MAX}
-              label="How far upwind you can ride"
-              words={(v) => (v ? `${v}° upwind` : "straight across the wind")}
-              from="Straight across"
-              to={`${UPWIND_MAX}° upwind`}
-              onChange={(deg) => setDraft(withUpwind(draft, deg))}
-            />
+          <div className="st-into" data-upwind>
+            <output>{into}°</output>
+            <span>upwind</span>
           </div>
-          <div>
-            <div className="st-into" data-downwind>
-              <output>{down}°</output>
-              <span>downwind</span>
-            </div>
-            <AngleSlider
-              value={down}
-              max={DOWNWIND_MAX}
-              second
-              label="How far downwind you will ride"
-              words={(v) => (v ? `${v}° downwind` : "straight across the wind")}
-              from="Straight across"
-              to={`${DOWNWIND_MAX}° downwind`}
-              onChange={(deg) => setDraft(withDownwind(draft, deg))}
-            />
+          <div className="st-into is-down" data-downwind>
+            <output>{down}°</output>
+            <span>downwind</span>
           </div>
         </div>
       </div>
     </>
-  );
-}
-
-/** Degrees, 0 to `max`: dragged, or a degree at a time from the keyboard. */
-function AngleSlider({
-  value,
-  max,
-  label,
-  words,
-  from,
-  to,
-  second = false,
-  onChange,
-}: {
-  value: number;
-  max: number;
-  label: string;
-  words: (value: number) => string;
-  from: string;
-  to: string;
-  /** The course's downwind edge: a hollow knob, as its handle in the picture. */
-  second?: boolean;
-  onChange: (deg: number) => void;
-}) {
-  const track = useRef<HTMLDivElement>(null);
-  const at = (clientX: number) => {
-    const box = track.current!.getBoundingClientRect();
-    return ((clientX - box.left) / box.width) * max;
-  };
-  const left = `${(value / max) * 100}%`;
-  return (
-    <div className={`st-slide${second ? " is-second" : ""}`}>
-      <div
-        className="st-slide-track"
-        ref={track}
-        onPointerDown={(event) => {
-          event.preventDefault();
-          event.currentTarget.setPointerCapture(event.pointerId);
-          onChange(at(event.clientX));
-          (
-            event.currentTarget.querySelector("[role=slider]") as HTMLElement
-          ).focus();
-        }}
-        onPointerMove={(event) => {
-          if (event.currentTarget.hasPointerCapture(event.pointerId))
-            onChange(at(event.clientX));
-        }}
-      >
-        <i className="st-slide-fill" style={{ width: left }} />
-        <span
-          role="slider"
-          tabIndex={0}
-          aria-label={label}
-          aria-valuemin={0}
-          aria-valuemax={max}
-          aria-valuenow={value}
-          aria-valuetext={words(value)}
-          className="st-slide-knob"
-          style={{ left }}
-          onKeyDown={(event) => {
-            const by = (
-              {
-                ArrowLeft: -1,
-                ArrowDown: -1,
-                ArrowRight: 1,
-                ArrowUp: 1,
-                PageDown: -5,
-                PageUp: 5,
-                Home: -max,
-                End: max,
-              } as Record<string, number>
-            )[event.key];
-            if (!by) return;
-            event.preventDefault();
-            onChange(value + by);
-          }}
-        />
-      </div>
-      <div className="st-slide-ends">
-        <span>{from}</span>
-        <span>{to}</span>
-      </div>
-    </div>
   );
 }

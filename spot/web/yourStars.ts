@@ -177,6 +177,78 @@ export function moveWindIn(
   return safe({ ...rating, wind: { ...rating.wind, [key]: value } });
 }
 
+/**
+ * The two ends the site's Settings sets (the owner's ruling of 2026-10-28:
+ * "just have the user set the minimum and the maximum"): too light, and
+ * too strong in gusts. The sweet spot between them is worked out, so the
+ * stars climb from one at too light to five, hold, and fall away before too
+ * much, a bell over the rider's range.
+ */
+export const WIND_ENDS: readonly ("min" | "max")[] = ["min", "max"];
+/**
+ * Where the sweet spot stands between the two ends, as shares of the range:
+ * ours, 11 to 35 kn, has it from 15 to 22, as it always was.
+ */
+const SWEET_FROM = 0.17;
+const SWEET_TO = 0.46;
+/** The fewest knots between the ends, for a sweet spot to fit between them. */
+export const ENDS_APART = 6;
+
+/** The sweet spot for two ends, in knots, before it is put on whole figures. */
+export function sweetBetween(min: number, max: number) {
+  const span = max - min;
+  return {
+    sweetLow: min + SWEET_FROM * span,
+    sweetHigh: min + SWEET_TO * span,
+  };
+}
+
+/**
+ * One end moved, the sweet spot worked out again between the two: the end
+ * on a whole figure of the rider's unit (a whole force in Force), kept
+ * `ENDS_APART` knots from the other and inside the scale.
+ */
+export function moveWindEnd(
+  rating: CustomRating,
+  key: "min" | "max",
+  kn: number,
+  units: Units,
+): CustomRating {
+  const w = rating.wind;
+  const below = key === "min" ? 2 : w.min + ENDS_APART;
+  const above = key === "min" ? w.max - ENDS_APART : WIND_TOP;
+  if (units === "bft") {
+    const force = clamp(beaufort(kn), beaufort(below), beaufort(above));
+    const end = forceKn(force, key === "min" ? "first" : "last");
+    const min = key === "min" ? end : w.min;
+    const max = key === "max" ? end : w.max;
+    return forceBand({
+      ...rating,
+      wind: { min, ...sweetBetween(min, max), max },
+    });
+  }
+  const { perKn } = unitScale(units);
+  const low = Math.ceil(below * perKn - 1e-6);
+  const high = Math.floor(above * perKn + 1e-6);
+  if (low > high) return rating;
+  const whole = (knots: number) =>
+    Math.round((Math.round(knots * perKn) / perKn) * 10) / 10;
+  const end =
+    Math.round((clamp(Math.round(kn * perKn), low, high) / perKn) * 10) / 10;
+  const min = key === "min" ? end : w.min;
+  const max = key === "max" ? end : w.max;
+  const sweet = sweetBetween(min, max);
+  return safe({
+    ...rating,
+    wind: {
+      min,
+      sweetLow: whole(sweet.sweetLow),
+      sweetHigh: whole(sweet.sweetHigh),
+      max,
+    },
+  });
+}
+
 /*
  * In Force, the band is set in whole forces: the lower two handles on a
  * force's first knot, the upper two on its last, and each on a force of its

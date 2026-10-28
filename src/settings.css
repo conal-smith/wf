@@ -230,6 +230,49 @@
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
+/* Every handle Settings has, the wind's knobs, the direction web's dots and
+   the upwind circle's edges, wears the same dashed ring in the chart's
+   magenta: it says the thing in it can be dragged (owner's ruling of
+   2026-10-28). Under the pointer or while it is held, the ring is whole. */
+.st-grab {
+  outline: 1.5px dashed var(--color-chart-magenta);
+  outline-offset: 3px;
+}
+.st-grab:active,
+.st-grab:focus-visible {
+  outline-style: solid;
+}
+@media (hover: hover) and (pointer: fine) {
+  .st-grab:hover {
+    outline-style: solid;
+  }
+}
+.st-grab-ring {
+  fill: none;
+  stroke: var(--color-chart-magenta);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2.4;
+  pointer-events: none;
+}
+.st-dot:active .st-grab-ring,
+.st-up-edge:active .st-grab-ring {
+  stroke-dasharray: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .st-dot:hover .st-grab-ring,
+  .st-up-edge:hover .st-grab-ring {
+    stroke-dasharray: none;
+  }
+}
+/* The upwind edges' focus: the ring drawn whole in the focus colour. */
+.st-up-edge:focus {
+  outline: none;
+}
+.st-up-edge:focus-visible .st-grab-ring {
+  stroke: var(--color-focus);
+  stroke-width: 2.5;
+  stroke-dasharray: none;
+}
 /* The stars the handles make, by steady wind: read-only, right under the
    track, on its axis, each run in the stars' own colour with its count. */
 .st-strip {
@@ -508,16 +551,18 @@
   flex: 1;
   height: 40px;
 }
+/* The picture, the part's width (up to a size a hand can work round), and
+   the two angles said under it. */
 .st-up {
   display: grid;
-  grid-template-columns: 300px 1fr;
-  align-items: center;
-  gap: 22px;
+  justify-items: center;
+  gap: 8px;
   margin-top: 16px;
 }
 .st-up-pic {
   display: block;
   width: 100%;
+  max-width: 460px;
   touch-action: pan-y;
   user-select: none;
 }
@@ -597,8 +642,9 @@
   stroke: var(--color-ink);
 }
 .st-angles {
-  display: grid;
-  gap: 22px;
+  display: flex;
+  justify-content: center;
+  gap: 28px;
 }
 .st-into {
   display: flex;
@@ -616,67 +662,6 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-ink-2);
-}
-.st-slide {
-  margin: 4px 11px 0;
-}
-.st-slide-track {
-  position: relative;
-  height: 32px;
-  /* Across, it is the slider's; up and down, the page scrolls. */
-  touch-action: pan-y;
-  cursor: pointer;
-}
-.st-slide-track::before,
-.st-slide-fill {
-  content: "";
-  position: absolute;
-  top: 14px;
-  left: 0;
-  height: 4px;
-  border-radius: 999px;
-}
-.st-slide-track::before {
-  right: 0;
-  background: var(--color-line);
-}
-.st-slide-fill {
-  background: var(--color-ink);
-}
-.st-slide-knob {
-  position: absolute;
-  top: 16px;
-  width: 22px;
-  height: 22px;
-  border: 2px solid var(--color-ground);
-  border-radius: 999px;
-  background: var(--color-ink);
-  box-shadow: var(--shadow-control);
-  transform: translate(-50%, -50%);
-  cursor: ew-resize;
-}
-/* A finger's target round the drawn knob. */
-.st-slide.is-second .st-slide-knob {
-  border-color: var(--color-ink);
-  background: var(--color-ground);
-}
-.st-slide-knob::after {
-  content: "";
-  position: absolute;
-  inset: -11px;
-}
-.st-slide-knob:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
-}
-.st-slide-ends {
-  display: flex;
-  justify-content: space-between;
-  margin: 0 -11px;
-  font: 500 var(--text-eyebrow) var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
 }
 .st-ask {
   display: block;
@@ -699,8 +684,7 @@
   .st-part:nth-child(2) {
     border-top: 0;
   }
-  .st-shore,
-  .st-up {
+  .st-shore {
     grid-template-columns: 220px 1fr;
     gap: 18px;
   }
@@ -743,7 +727,6 @@
     gap: 14px;
   }
   .st-up {
-    grid-template-columns: 1fr;
     gap: 6px;
     margin-top: 12px;
   }
@@ -755,7 +738,6 @@
     max-width: 340px;
   }
   .st-up-pic {
-    justify-self: center;
-    max-width: 300px;
+    max-width: none;
   }
 }
