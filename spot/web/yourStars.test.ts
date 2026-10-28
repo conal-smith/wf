@@ -4,12 +4,14 @@ import {
   DEFAULT_RIDER,
   NEVER,
   OURS,
+  oursCopy,
   shoreAngle,
   type CustomRating,
 } from "../../force5/src/stars";
-import { UNITS } from "../../force5/src/units";
+import { UNITS, beaufort } from "../../force5/src/units";
 import {
   DIRECTION_KEYS,
+  ENDS_APART,
   EXAMPLES,
   FROM,
   GUST_TOP,
@@ -21,6 +23,7 @@ import {
   knotsOf,
   moveWind,
   moveWindForce,
+  moveWindEnd,
   moveWindIn,
   offAt,
   polar,
@@ -377,5 +380,43 @@ describe("Force: the handles on whole forces", () => {
     expect(forceTicks(10, GUST_TOP).map((t) => t.force)).toEqual([
       4, 5, 6, 7, 8, 9, 10,
     ]);
+  });
+});
+
+describe("the two ends of the wind, the sweet spot worked out between them", () => {
+  it("leaves ours as it is: 11 and 35 make 15 to 22", () => {
+    const at = moveWindEnd(oursCopy(), "min", 11, "kn");
+    expect(at.wind).toEqual({ min: 11, sweetLow: 15, sweetHigh: 22, max: 35 });
+  });
+  it("moves the sweet spot with either end, on whole figures", () => {
+    expect(moveWindEnd(oursCopy(), "min", 15, "kn").wind).toEqual({
+      min: 15,
+      sweetLow: 18,
+      sweetHigh: 24,
+      max: 35,
+    });
+    expect(moveWindEnd(oursCopy(), "max", 25, "kn").wind).toEqual({
+      min: 11,
+      sweetLow: 13,
+      sweetHigh: 17,
+      max: 25,
+    });
+  });
+  it("keeps the ends apart and on the scale", () => {
+    const low = moveWindEnd(oursCopy(), "max", 0, "kn").wind;
+    expect(low.max).toBe(11 + ENDS_APART);
+    expect(low.min).toBeLessThan(low.sweetLow);
+    expect(low.sweetLow).toBeLessThan(low.sweetHigh);
+    expect(low.sweetHigh).toBeLessThan(low.max);
+    expect(moveWindEnd(oursCopy(), "max", 99, "kn").wind.max).toBe(WIND_TOP);
+    expect(moveWindEnd(oursCopy(), "min", 0, "kn").wind.min).toBe(2);
+  });
+  it("shows whole figures in the rider's unit, and whole forces in Force", () => {
+    const ms = moveWindEnd(oursCopy(), "min", 8 / 0.514444, "m/s").wind;
+    const per = 0.514444;
+    for (const kn of Object.values(ms))
+      expect(Math.abs(kn * per - Math.round(kn * per))).toBeLessThan(0.06);
+    const bft = moveWindEnd(oursCopy(), "max", 30, "bft").wind;
+    expect(new Set(Object.values(bft).map(beaufort)).size).toBeGreaterThan(2);
   });
 });

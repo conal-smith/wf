@@ -4,9 +4,12 @@
  * chosen). Each day's name with its best stars as a row of five, its sky and
  * its air, then its wind from first light to last as a band in the chart's
  * colours for knots, the gusts paler over it and the windiest hour written
- * over it ("15 g22"). A short line in the best stars' colour runs under the
- * hours worth riding, the wind's arrow stands under it every few hours (as
- * far apart as the room allows) and the sea's height under that. Daylight only: each day stops at
+ * over it ("15 g22"). Under the hours a line in the stars' own pinks and
+ * purples runs from first light to last, each hour's colour its stars, as
+ * the line along the foot of the day above does; the wind's arrow stands
+ * under it every few hours (as far apart as the room allows) and the sea's
+ * height under that. Each day is a card of its own, faintly, so its name,
+ * sky and air read as one with its wind. Daylight only: each day stops at
  * last light, and a long June day is drawn in the same room as October's.
  *
  * Pressing a day (its name, or its drawing) shows it hour by hour, on every
@@ -37,6 +40,7 @@ import {
   middayColumn,
   rideableRun,
   starColour,
+  starsAt,
   windiest,
   type DayPlan,
 } from "./finder";
@@ -44,12 +48,15 @@ import { hovers, useHover, useHoverLine } from "./hover";
 import { ARROW_PATH, gustShown, offshore } from "./marks";
 import type { Readings } from "./useReadings";
 
-/** Room between two days. */
-const GAP = 6;
+/** Room between two days, and how far a day's card stands out round it. */
+const GAP = 10;
+const CARD_OUT = 3;
 /** The drawing's height, and where its parts stand down it. */
 const H = 86;
 const TOP = 16;
 const BASE = 54;
+/** The stars' line under the hours: its thickness. */
+const STARS_LINE = 4;
 /** The fewest pixels between two of a day's arrows. */
 const ARROW_ROOM = 16;
 /** The hovered time's label: "14:20" in the mono face's 6px advance, and room. */
@@ -62,8 +69,10 @@ const HELD = 3 * HOUR;
 
 const styles = tv({
   slots: {
-    root: "flex flex-col gap-1",
-    heads: "grid grid-cols-5 gap-1.5",
+    root: "relative flex flex-col gap-0.5 py-1",
+    // Behind each day, its card: the paper's well, a hairline round it.
+    card: "pointer-events-none absolute inset-y-0 rounded-control border border-line/60 bg-sunken/70",
+    heads: "relative grid grid-cols-5",
     head: "flex min-w-0 flex-col gap-0.5",
     // A day is a press: it shows the day hour by hour above.
     pick: [
@@ -72,7 +81,7 @@ const styles = tv({
     ],
     name: "flex items-center gap-1 font-mono text-eyebrow font-semibold whitespace-nowrap text-ink uppercase",
     sky: "flex h-4 items-center gap-1 font-mono text-caption whitespace-nowrap text-ink-2",
-    drawing: "block cursor-pointer overflow-visible",
+    drawing: "relative block cursor-pointer overflow-visible",
     // While the place's hours are worked out: the shape of the stars, and
     // of the wind under them.
     pendingStars: "h-1.5 w-10",
@@ -217,7 +226,23 @@ export function NextDays({
 
   return (
     <div className={s.root()} ref={root} data-next-days>
-      <div className={s.heads()}>
+      {width !== null &&
+        days.map(
+          (day, k) =>
+            day && (
+              <span
+                key={day.plan.date}
+                className={s.card()}
+                style={{
+                  left: k * (dw + GAP) - CARD_OUT,
+                  width: dw + 2 * CARD_OUT,
+                }}
+                aria-hidden="true"
+                data-day-card
+              />
+            ),
+        )}
+      <div className={s.heads()} style={{ columnGap: GAP }}>
         {days.map((day, k) =>
           day ? (
             <Button
@@ -323,19 +348,6 @@ export function NextDays({
               },
             );
             const gradient = `${id}-${k}`;
-            // How long a column stands for: to the next one, an hour at the end.
-            const half = (at: number) => {
-              const i = plan.columns.indexOf(at);
-              const next = plan.columns[i + 1];
-              return (
-                ((next === undefined
-                  ? HOUR
-                  : strip[next].time - strip[at].time) /
-                  2 /
-                  HOUR) *
-                perHour
-              );
-            };
             // The arrows, as far apart as the room says.
             const room = Math.max(ARROW_ROOM, 3 * perHour);
             const arrows: number[] = [];
@@ -353,7 +365,6 @@ export function NextDays({
               peak?.windKn != null
                 ? gustShown(peak.windKn, peak.gustKn, units)
                 : null;
-            const lineColour = day.run ? starColour(day.run.stars) : null;
             // "15 g22" where a day has the room for it, "15" where not (a
             // phone's fifth of a card): set untracked, the mono face's
             // advance is 0.6 of its 10px, and 2px is kept clear either side.
@@ -464,23 +475,42 @@ export function NextDays({
                     )}
                   </text>
                 )}
-                {day.run && lineColour && (
-                  <line
-                    x1={Math.max(
-                      x0 + 1,
-                      x(strip[day.run.from].time) - half(day.run.from),
-                    )}
-                    x2={Math.min(
-                      x0 + dw - 1,
-                      x(strip[day.run.to].time) + half(day.run.to),
-                    )}
-                    y1={BASE + 3.5}
-                    y2={BASE + 3.5}
-                    stroke={lineColour}
-                    strokeWidth={3}
-                    strokeLinecap="round"
-                    data-rideable={day.run.stars}
-                  />
+                {!pending && (
+                  <>
+                    <defs>
+                      <linearGradient
+                        id={`${gradient}s`}
+                        x1={x0}
+                        x2={x0 + dw}
+                        gradientUnits="userSpaceOnUse"
+                      >
+                        {plan.columns.map((at) => (
+                          <stop
+                            key={at}
+                            offset={Math.min(
+                              1,
+                              Math.max(0, (x(strip[at].time) - x0) / dw),
+                            )}
+                            style={{
+                              stopColor:
+                                starColour(starsAt(row?.[at] ?? null)) ??
+                                "var(--color-line)",
+                            }}
+                          />
+                        ))}
+                      </linearGradient>
+                    </defs>
+                    <rect
+                      x={x0 + 1}
+                      y={BASE + 2}
+                      width={dw - 2}
+                      height={STARS_LINE}
+                      rx={STARS_LINE / 2}
+                      fill={`url(#${gradient}s)`}
+                      data-stars-line
+                      data-rideable={day.run?.stars}
+                    />
+                  </>
                 )}
                 {arrows.map((at) => {
                   const from = row![at]!.from!;
@@ -512,17 +542,6 @@ export function NextDays({
                   >
                     {day.sea.height.toFixed(1)} m
                   </text>
-                )}
-                {k < days.length - 1 && (
-                  <line
-                    className="stroke-ink"
-                    x1={x0 + dw + GAP / 2}
-                    x2={x0 + dw + GAP / 2}
-                    y1={TOP}
-                    y2={BASE}
-                    strokeOpacity={0.15}
-                    strokeDasharray="1 3"
-                  />
                 )}
               </g>
             );

@@ -42,13 +42,23 @@
  * first. Their sky, air, sea and tide it reads itself, as the dock reads a
  * place's (src/finder/useReadings.ts).
  */
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Funnel, Search } from "lucide-react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Rider } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
 import type { Spot } from "../../force5/src/weather";
 import { modelName, STARS_MODELS } from "../../force5/src/lead";
 import { isChartAddress } from "../../force5/src/siteNav";
 import { Button } from "../../ui/Button";
+import { Dialog } from "../../ui/Dialog";
+import { Field } from "../../ui/Field";
 import { Link } from "../../ui/Link";
 import { PageHeader } from "../../ui/PageHeader";
 import { SearchField } from "../../ui/SearchField";
@@ -96,7 +106,9 @@ import { useReadings } from "./useReadings";
 
 const styles = tv({
   slots: {
-    root: "flex flex-col bg-ground paper-grain font-body text-ink antialiased",
+    // The page is the paper's well, so the cards stand off it a shade
+    // lighter (owner's ruling of 2026-10-28); the head stays on the paper.
+    root: "flex flex-col bg-sunken paper-grain font-body text-ink antialiased",
     // Beside the chart the list scrolls in its own box, under a head that
     // stays. Alone, it scrolls the page itself, the head held at the top: a
     // phone's browser then folds its bars away as the reader scrolls, as it
@@ -114,14 +126,23 @@ const styles = tv({
     alone: "pb-24 max-wide:pb-24",
     // The head, held at the top of the page as it scrolls.
     head: "sticky top-0",
-    // Over the cards: find a spot by name, on a rule to write on as the
-    // chart's, and the list's order, its stars and its model beside it,
-    // under it where there is not the room.
-    tools:
-      "mb-3.5 flex flex-wrap items-center gap-x-3 gap-y-2 max-wide:mb-2.5 max-wide:gap-x-2",
-    find: "min-w-0 flex-1 basis-60 max-w-reading max-wide:max-w-none max-wide:basis-full",
-    // A phone's three share a row under the search.
-    pick: "w-auto max-wide:flex-auto",
+    // In the head: which spots, and the magnifier that opens the search.
+    switches: "flex items-center gap-2",
+    // A search or a filter at work: a dot on the magnifier, said in its name.
+    searchButton: "relative",
+    searchDot:
+      "pointer-events-none absolute -top-0.5 -right-0.5 size-2.5 rounded-full border border-card bg-pen",
+    // The search, over the page: a spot's name on a rule to write on, as the
+    // chart's, then the filters under their funnel.
+    find: "w-full",
+    filters: "grid gap-3",
+    filtersHead:
+      "flex items-center gap-1.5 border-0 border-t border-line pt-3 font-mono text-eyebrow font-semibold tracking-eyebrow text-ink uppercase",
+    // Over the cards while a search or a filter is at work: what it is,
+    // and the way back to the whole tab.
+    using:
+      "mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-prose text-ink-2 max-wide:mb-2.5",
+    usingWords: "min-w-0 flex-1",
     // Near you without the rider's place: why it is wanted, and the one
     // way to give it.
     ask: "m-0 mb-3.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-prose text-ink-2",
@@ -137,7 +158,7 @@ const styles = tv({
 
 const SCOPES = [
   { value: "favourites", label: "Favourites" },
-  { value: "near", label: "Near you" },
+  { value: "near", label: "Nearby" },
 ] as const;
 
 export interface FinderProps {
@@ -255,8 +276,15 @@ export default function SpotFinder(props: FinderProps) {
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);
   }, []);
-  // A spot's name typed over the cards.
+  // A spot's name typed in the search, and the search open over the page.
   const [query, setQuery] = useState("");
+  const [finding, setFinding] = useState(false);
+  // The search's field takes the focus as it opens: the dialog's own first
+  // stop is its close, and a rider opens it to type a name.
+  const findField = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (finding) findField.current?.focus();
+  }, [finding]);
   const searching = query.trim().length > 0;
   // The day drawn hour by hour on every card; null is today.
   const [chosen, setChosen] = useState<string | null>(null);
@@ -281,6 +309,26 @@ export default function SpotFinder(props: FinderProps) {
   // the chart was last centred, or the middle of Ireland, with no distances;
   // and none while the browser is first asked.
   const known = place.source === "rider";
+  // A search or a filter at work on the tab's list (an order counts, a
+  // nearest first without the rider's place being the best first): said
+  // over the cards with the way back to the whole of it, and by a dot on
+  // the magnifier in the head.
+  const ordered = order === "near" && !known ? "best" : order;
+  const narrowing = searching || fewest > 0 || ordered !== "best";
+  const narrowingWords = [
+    searching && `Spots named “${query.trim()}”`,
+    fewest > 0 && (fewest === 5 ? "5 stars" : `${fewest}+ stars`),
+    ordered === "near" && "Nearest first",
+    ordered === "name" && "A to Z",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const clearNarrowing = () => {
+    setQuery("");
+    setFewest(0);
+    setOrder("best");
+  };
+  const filtersId = useId();
   const waiting = !searching && scope === "near" && place.asking;
   // The places themselves not read yet (src/App.tsx reads them with the
   // forecast's first manifest): the shapes of the cards to come, not the
@@ -415,47 +463,87 @@ export default function SpotFinder(props: FinderProps) {
         headRef={headRef}
         className={beside ? undefined : s.head()}
       >
-        <Segmented
-          aria-label="Which spots"
-          options={SCOPES}
-          value={scope}
-          onChange={chooseScope}
-        />
+        <div className={s.switches()}>
+          <Segmented
+            aria-label="Which spots"
+            size="sm"
+            options={SCOPES}
+            value={scope}
+            onChange={chooseScope}
+          />
+          <Button
+            variant="raised"
+            size="sm"
+            icon
+            className={s.searchButton()}
+            aria-label={
+              narrowing
+                ? "Find a spot and filter (in use)"
+                : "Find a spot and filter"
+            }
+            aria-haspopup="dialog"
+            title="Find a spot"
+            onClick={() => setFinding(true)}
+            data-finder-search
+          >
+            <Search size={15} strokeWidth={1.75} aria-hidden="true" />
+            {narrowing && <span className={s.searchDot()} aria-hidden="true" />}
+          </Button>
+        </div>
       </PageHeader>
-      <div className={s.body()}>
-        <section
-          className={s.list({ class: beside ? s.scroller() : s.alone() })}
-          aria-label={
-            searching
-              ? "Spots found"
-              : scope === "near"
-                ? "Spots near you"
-                : "Favourites"
-          }
-          aria-busy={waiting || placesDue || undefined}
-          data-finder-list
-        >
-          <div className={s.tools()}>
-            <SearchField
-              size="md"
-              className={s.find()}
-              aria-label="Find a spot"
-              placeholder="Find a spot…"
-              autoComplete="off"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape" && query) {
-                  setQuery("");
-                  event.stopPropagation();
-                }
-              }}
-              data-finder-find
-            />
+      <Dialog
+        open={finding}
+        title="Find a spot"
+        onClose={() => setFinding(false)}
+        actions={
+          <>
+            {narrowing && (
+              <Button variant="quiet" onClick={clearNarrowing}>
+                Clear
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              onClick={() => setFinding(false)}
+              data-finder-show
+            >
+              {placesDue || waiting
+                ? "Show spots"
+                : ranked.length === 1
+                  ? "Show 1 spot"
+                  : `Show ${ranked.length} spots`}
+            </Button>
+          </>
+        }
+      >
+        <SearchField
+          size="md"
+          className={s.find()}
+          aria-label="Find a spot"
+          placeholder="A spot’s name…"
+          autoComplete="off"
+          enterKeyHint="search"
+          ref={findField}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            // Enter shows the spots. Held, or the focus handed back to the
+            // magnifier takes the same key and opens the search again.
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            setFinding(false);
+          }}
+          data-finder-find
+        />
+        <div className={s.filters()} role="group" aria-labelledby={filtersId}>
+          <span className={s.filtersHead()} id={filtersId}>
+            <Funnel size={13} strokeWidth={1.75} aria-hidden="true" />
+            Filters
+          </span>
+          <Field label="Order" htmlFor={`${filtersId}order`}>
             <Select
-              className={s.pick()}
-              aria-label="Order"
-              value={order === "near" && !known ? "best" : order}
+              id={`${filtersId}order`}
+              value={ordered}
               onChange={(event) => setOrder(event.target.value as Order)}
               data-finder-order
             >
@@ -463,9 +551,13 @@ export default function SpotFinder(props: FinderProps) {
               {known && <option value="near">Nearest</option>}
               <option value="name">A to Z</option>
             </Select>
+          </Field>
+          <Field
+            label="Stars in the next six days"
+            htmlFor={`${filtersId}stars`}
+          >
             <Select
-              className={s.pick()}
-              aria-label="Stars in the next six days"
+              id={`${filtersId}stars`}
               active={fewest > 0}
               value={fewest}
               onChange={(event) => setFewest(Number(event.target.value))}
@@ -476,9 +568,10 @@ export default function SpotFinder(props: FinderProps) {
               <option value={4}>4+ stars</option>
               <option value={5}>5 stars</option>
             </Select>
+          </Field>
+          <Field label="Model for the stars" htmlFor={`${filtersId}model`}>
             <Select
-              className={s.pick()}
-              aria-label="Model for the stars"
+              id={`${filtersId}model`}
               value={model}
               onChange={(event) => onModel(event.target.value)}
               data-finder-model
@@ -489,7 +582,30 @@ export default function SpotFinder(props: FinderProps) {
                 </option>
               ))}
             </Select>
-          </div>
+          </Field>
+        </div>
+      </Dialog>
+      <div className={s.body()}>
+        <section
+          className={s.list({ class: beside ? s.scroller() : s.alone() })}
+          aria-label={
+            searching
+              ? "Spots found"
+              : scope === "near"
+                ? "Spots nearby"
+                : "Favourites"
+          }
+          aria-busy={waiting || placesDue || undefined}
+          data-finder-list
+        >
+          {narrowing && (
+            <p className={s.using()} data-finder-using>
+              <span className={s.usingWords()}>{narrowingWords}</span>
+              <Button variant="quiet" size="sm" onClick={clearNarrowing}>
+                Clear
+              </Button>
+            </p>
+          )}
           {!searching &&
             scope === "near" &&
             !known &&
@@ -498,8 +614,8 @@ export default function SpotFinder(props: FinderProps) {
             place.locates && (
               <p className={s.ask()} data-finder-ask>
                 <span>
-                  Near you lists the spots within 30 km of where you are. To
-                  find them, your browser will ask to share your location.
+                  Nearby lists the spots within 30 km of where you are. To find
+                  them, your browser will ask to share your location.
                 </span>
                 <Button variant="pill" onClick={() => setAsked(true)}>
                   Use my location
@@ -606,7 +722,8 @@ export default function SpotFinder(props: FinderProps) {
                 "No spot by that name."
               ) : scope === "favourites" ? (
                 <>
-                  Star a spot and it shows here. Find one by name above, see the{" "}
+                  Star a spot and it shows here. Find one by name with the
+                  search above, see the{" "}
                   <Link
                     href={scopeAddress(window.location.href, "near")}
                     onClick={(event) => {
@@ -616,12 +733,12 @@ export default function SpotFinder(props: FinderProps) {
                       chooseScope("near");
                     }}
                   >
-                    spots near you
+                    spots nearby
                   </Link>
                   , or <Link href="/spot">browse every spot</Link>.
                 </>
               ) : waiting ? (
-                "Finding spots near you…"
+                "Finding spots nearby…"
               ) : known ? (
                 "No spots within 30 km of you."
               ) : (
