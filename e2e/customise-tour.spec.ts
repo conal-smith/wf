@@ -69,14 +69,15 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   await expect(settings.getByLabel("Find a spot")).toHaveCount(0);
   await expect(settings.locator("[data-sample]")).toHaveCount(0);
 
-  // About you: the weight and the units; no levels, no wings.
+  // About you: the weight, the units and the wings; no levels.
   await expect(
-    settings.getByText("Your weight helps us suggest the right wing size."),
+    settings.getByText(
+      "Your weight and wings help us suggest the right wing for each hour.",
+    ),
   ).toBeVisible();
   await expect(settings.getByRole("button", { name: /^Riding/ })).toHaveCount(
     0,
   );
-  await expect(settings.getByLabel("Wings you own")).toHaveCount(0);
   await expect(
     settings.getByRole("group", { name: "Units" }).getByRole("button", {
       name: "Knots",
@@ -86,7 +87,12 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   await expect(settings.locator(".st-row .st-kick")).toHaveText([
     "Weight",
     "Units",
+    "Your wings",
   ]);
+  // The wings, read as the spot page reads its own field.
+  const wings = settings.getByRole("textbox", { name: "Your wings" });
+  await expect(wings).toHaveValue("");
+  await wings.fill("5.5, 4");
   // Everything is ours to start: nothing to reset.
   const reset = settings.getByRole("button", { name: "Reset to ours" });
   await expect(reset).toHaveCount(0);
@@ -285,6 +291,7 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   expect(rider.upwind).toBe(28);
   expect(rider.downwind).toBe(15);
   expect(rider.weightKg).toBe(85);
+  expect(rider.wings).toEqual([4, 5.5]);
   expect(rider).not.toHaveProperty("skill");
   expect(rider).not.toHaveProperty("gusty");
   expect(rider.custom.version).toBe(3);
@@ -313,13 +320,30 @@ test("Settings holds the rider's settings on one page and saves them, and the li
         JSON.parse(localStorage.getItem("force5.prefs.v1")!).rider.custom.wind
           .min,
     );
-  // Opened again, it starts from what was saved; Escape keeps nothing new,
-  // and nor does Cancel.
+  // Opened again, it starts from what was saved. Unchanged, Escape closes
+  // it at once. Changed, Escape, the close button and Cancel each ask
+  // first: Keep editing goes back to it as it was left, Discard keeps
+  // nothing new.
+  const discard = page.getByRole("dialog", { name: "Discard your changes?" });
   await openFromMenu(page, "Settings");
   await expect(floor).toHaveAttribute("aria-valuetext", "13 kn");
+  await expect(wings).toHaveValue("4, 5.5");
+  await page.keyboard.press("Escape");
+  await expect(settings).toHaveCount(0);
+  await expect(discard).toHaveCount(0);
+  await openFromMenu(page, "Settings");
   await floor.focus();
   await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("Escape");
+  await expect(discard).toBeVisible();
+  await expect(
+    discard.getByRole("button", { name: "Keep editing" }),
+  ).toBeFocused();
+  await discard.getByRole("button", { name: "Keep editing" }).click();
+  await expect(discard).toHaveCount(0);
+  await expect(floor).toHaveAttribute("aria-valuetext", "12 kn");
+  await settings.getByRole("button", { name: "Close", exact: true }).click();
+  await discard.getByRole("button", { name: "Discard" }).click();
   await expect(settings).toHaveCount(0);
   expect(await storedMin()).toBe(13);
   await openFromMenu(page, "Settings");
@@ -328,6 +352,7 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   await page.keyboard.press("ArrowLeft");
   await expect(floor).toHaveAttribute("aria-valuetext", "12 kn");
   await settings.getByRole("button", { name: "Cancel", exact: true }).click();
+  await discard.getByRole("button", { name: "Discard" }).click();
   await expect(settings).toHaveCount(0);
   expect(await storedMin()).toBe(13);
 

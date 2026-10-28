@@ -8,8 +8,8 @@
  * Everyone starts from ours (force5/src/stars.ts `OURS`). The dialog's wind
  * and shore are the rider's own rating; left as ours, none is kept and ours
  * rates. How far up and down the wind they ride is kept on the rider; it
- * moves no star. Weight and units are the rider's too, and never make the
- * rating differ from ours.
+ * moves no star. Weight, wings and units are the rider's too, and never
+ * make the rating differ from ours.
  */
 import { parseRider, withCustomStars, type Prefs } from "../force5/src/prefs";
 import {
@@ -34,6 +34,12 @@ import { inForces, ratingIsOurs, setDirection } from "../spot/web/yourStars";
 /** What Settings is setting, until Save keeps it. */
 export interface Draft {
   weightKg: number | null;
+  /**
+   * The wings the rider owns, m², smallest first: which of them to take is
+   * said beside the stars (force5/src/stars.ts `pickWing`), as the spot page's
+   * wings and the MCP's `wings_m2` say it. They never move a star.
+   */
+  wings: number[];
   units: Units;
   /** The four wind numbers and the shore: ours until changed. */
   custom: CustomRating;
@@ -48,6 +54,7 @@ export function draftOf(prefs: Prefs): Draft {
   const rider = prefs.rider;
   return inUnits({
     weightKg: rider.weightKg,
+    wings: [...rider.wings],
     units: prefs.units,
     custom: rider.custom
       ? { ...rider.custom, wind: { ...rider.custom.wind } }
@@ -90,10 +97,32 @@ export const resetToOurs = (draft: Draft): Draft =>
 export const draftRider = (draft: Draft, rider: Rider): Rider => ({
   ...rider,
   weightKg: draft.weightKg,
+  wings: draft.wings,
   upwind: draft.upwind,
   downwind: draft.downwind,
   custom: ratingIsOurs(draft.custom, draft.units) ? null : draft.custom,
 });
+
+/**
+ * Whether the draft is not what the dialog opened on: then closing without
+ * Save asks first (issue 218), since what was changed would be thrown away.
+ */
+export const draftChanged = (draft: Draft, start: Draft) =>
+  JSON.stringify(draft) !== JSON.stringify(start);
+
+/* ---- the wings ---- */
+
+/**
+ * The wings in what the rider typed, as the spot page reads its own field
+ * (spot/web/RiderSwitch.tsx): every number in it, kept only where it is a
+ * wing (force5/src/prefs.ts `parseRider`, 1.5–10 m²), each once, smallest
+ * first. "4, 5.5" and "4 5.5 m²" are both 4 and 5.5.
+ */
+export const wingsIn = (text: string): number[] =>
+  parseRider({ wings: (text.match(/\d+(?:\.\d+)?/g) ?? []).map(Number) }).wings;
+
+/** The wings as the field shows them: "4, 5.5". */
+export const wingsText = (wings: readonly number[]) => wings.join(", ");
 
 /* ---- the shore ---- */
 
@@ -147,6 +176,7 @@ export function applyDraft(
   const rider = parseRider({
     ...prefs.rider,
     weightKg: draft.weightKg,
+    wings: draft.wings,
     upwind: draft.upwind,
     downwind: draft.downwind,
   });
