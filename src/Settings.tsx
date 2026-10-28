@@ -17,6 +17,7 @@
  */
 import "./settings.css";
 import {
+  useEffect,
   useId,
   useLayoutEffect,
   useRef,
@@ -148,6 +149,29 @@ export default function Settings({
     </section>
   );
 
+  // On a phone the dialog is the screen, and a browser's bars may stand
+  // over its foot: Save goes up in the head, by the close (which is
+  // Cancel), and "Reset to ours" at the end of the parts.
+  const phone = usePhone();
+  const reset = differsFromOurs(draft) && (
+    <Button
+      variant="quiet"
+      className="st-reset"
+      onClick={() => setDraft(resetToOurs(draft))}
+    >
+      Reset to ours
+    </Button>
+  );
+  const save = (
+    <Button
+      variant="primary"
+      size={phone ? "sm" : undefined}
+      onClick={() => onSave(applyDraft(prefs, draft))}
+    >
+      Save
+    </Button>
+  );
+
   return (
     <Dialog
       open={open}
@@ -155,28 +179,18 @@ export default function Settings({
       title="Settings"
       className="st"
       onClose={onClose}
+      aside={phone ? save : undefined}
       actions={
-        <div className="st-foot">
-          {differsFromOurs(draft) && (
-            <Button
-              variant="quiet"
-              className="st-reset"
-              onClick={() => setDraft(resetToOurs(draft))}
-            >
-              Reset to ours
+        phone ? undefined : (
+          <div className="st-foot">
+            {reset}
+            <span className="st-sp" />
+            <Button variant="pill" onClick={onClose}>
+              Cancel
             </Button>
-          )}
-          <span className="st-sp" />
-          <Button variant="pill" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => onSave(applyDraft(prefs, draft))}
-          >
-            Save
-          </Button>
-        </div>
+            {save}
+          </div>
+        )
       }
     >
       <div className="st-body">
@@ -197,12 +211,52 @@ export default function Settings({
         )}
         {part("shore", <ShorePart draft={draft} setDraft={setDraft} />)}
         {part("upwind", <UpwindPart draft={draft} setDraft={setDraft} />)}
+        {phone && reset && <div className="st-end">{reset}</div>}
       </div>
     </Dialog>
   );
 }
 
+/** The width under which the dialog is the whole screen (src/settings.css). */
+const PHONE_QUERY = "(max-width: 719px)";
+
+function usePhone(): boolean {
+  const [phone, setPhone] = useState(
+    () => window.matchMedia(PHONE_QUERY).matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia(PHONE_QUERY);
+    const change = () => setPhone(media.matches);
+    media.addEventListener("change", change);
+    return () => media.removeEventListener("change", change);
+  }, []);
+  return phone;
+}
+
 type PartProps = { draft: Draft; setDraft: (draft: Draft) => void };
+
+/**
+ * A picture with handles in it scrolls the page under a finger, as the
+ * page's words do (`touch-action: pan-y` on it, src/settings.css): only a
+ * touch that lands on a handle is held for the handle, which a touch-action
+ * of its own cannot say inside an SVG in every browser. Its pointer events
+ * still come, so the drag is the handle's own as with a mouse.
+ */
+function useHandleTouch(
+  host: { current: SVGElement | null },
+  handle: string,
+): void {
+  useEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    const hold = (event: Event) => {
+      if ((event.target as Element | null)?.closest?.(handle))
+        event.preventDefault();
+    };
+    el.addEventListener("touchstart", hold, { passive: false });
+    return () => el.removeEventListener("touchstart", hold);
+  }, [host, handle]);
+}
 
 /**
  * A speed as a figure: the number, or in Force the old charts' glyph beside
@@ -591,6 +645,7 @@ function ShoreWeb({
   onChange: (key: DirectionKey, off: number) => void;
 }) {
   const svg = useRef<SVGSVGElement>(null);
+  useHandleTouch(svg, "[data-dot]");
   const dragging = useRef<DirectionKey | null>(null);
   const R = WEB_R;
   const at = (event: { clientX: number; clientY: number }) => {
@@ -800,6 +855,7 @@ const UP = { cx: 150, cy: 168, r: 118, vx: -36, vw: 372, vh: 310 };
 function UpwindPart({ draft, setDraft }: PartProps) {
   const id = useId().replace(/[^\w-]/g, "");
   const svg = useRef<SVGSVGElement>(null);
+  useHandleTouch(svg, "[data-edge]");
   const into = draft.upwind;
   const down = draft.downwind;
   // The latest draft, for a drag that outlives the render it began in.

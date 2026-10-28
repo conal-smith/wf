@@ -18,7 +18,13 @@
  * Settings (`/?settings`) is the way back with Settings open over whichever
  * it is.
  */
-import React, { Suspense, useEffect, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   CHART_HREF,
   FINDER_HREF,
@@ -83,6 +89,15 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
   // Settings was asked for from a page over the map: once the map is back
   // and no longer inert, it opens Settings.
   const settings = useRef(false);
+  // How far down the map's page was (the spot finder scrolls it on a
+  // phone) when the first page opened over it, given back on the way back.
+  const mapScroll = useRef(0);
+  useLayoutEffect(() => {
+    if (!over && mapScroll.current) {
+      window.scrollTo(0, mapScroll.current);
+      mapScroll.current = 0;
+    }
+  }, [over]);
 
   useEffect(() => {
     const back = () => {
@@ -98,7 +113,10 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
       if (!url) return;
       if (isOverPath(url.pathname)) {
         event.preventDefault();
-        if (!depth()) mapSearch.current = window.location.search;
+        if (!depth()) {
+          mapSearch.current = window.location.search;
+          mapScroll.current = window.scrollY;
+        }
         // Whatever on the map had focus (the site menu's row) lets go, and the
         // menu closes behind it as it does when focus leaves.
         if (document.activeElement instanceof HTMLElement)

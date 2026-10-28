@@ -82,6 +82,13 @@
 .st-sp {
   flex: 1;
 }
+/* A phone's "Reset to ours", after the last part. */
+.st-end {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 18px;
+  border-top: 1px solid var(--color-line);
+}
 
 /* ---- 1. about you: the weight and the units side by side, each its name
    over it ---- */
@@ -317,7 +324,9 @@
   width: 100%;
   height: auto;
   border-radius: var(--radius-surface);
-  touch-action: none;
+  /* A finger scrolls the page over it; one on a dot drags the dot
+     (src/Settings.tsx `useHandleTouch`). */
+  touch-action: pan-y;
   user-select: none;
 }
 .st-web-sea {
@@ -509,7 +518,7 @@
 .st-up-pic {
   display: block;
   width: 100%;
-  touch-action: none;
+  touch-action: pan-y;
   user-select: none;
 }
 .st-up-face {
@@ -614,7 +623,8 @@
 .st-slide-track {
   position: relative;
   height: 32px;
-  touch-action: none;
+  /* Across, it is the slider's; up and down, the page scrolls. */
+  touch-action: pan-y;
   cursor: pointer;
 }
 .st-slide-track::before,
@@ -711,8 +721,10 @@
   .st > div:first-child h2 {
     font-size: 22px;
   }
+  /* Room past the last part, so it scrolls clear of a browser's bars
+     where they stand over the foot of the screen. */
   .st-body {
-    padding: 0;
+    padding: 0 0 96px;
   }
   .st-row .st-kick + [role="group"] button {
     padding: 0 9px;

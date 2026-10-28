@@ -40,6 +40,18 @@
   position: fixed;
   inset: 0;
 }
+/* The list alone, the chart out of sight behind it: the list scrolls the
+   page (src/finder/SpotFinder.tsx), so the shell is as long as it is. Under
+   a page opened over the map it is fixed again, out of that page's way. */
+.app-shell[data-chart="hidden"] {
+  position: relative;
+  inset: auto;
+  min-height: 100dvh;
+}
+.map-under-page .app-shell[data-chart="hidden"] {
+  position: fixed;
+  inset: 0;
+}
 .map-panel {
   position: absolute;
   inset: 0;
@@ -1433,6 +1445,16 @@
 .finder-under:not([data-shown]) {
   visibility: hidden;
   transition: visibility 0s 420ms;
+}
+/* Alone, the list scrolls the page (src/finder/SpotFinder.tsx). Under the
+   full chart, or a page opened over the map, it is out of the page's
+   length, so nothing scrolls under them; where it was is kept for its
+   return (src/App.tsx, src/PagesOverMap.tsx). */
+.finder-under:not([data-shown]),
+.map-under-page .finder-under {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
 }
 /* The room the chart stands in, beside the list. */
 .finder-side {
