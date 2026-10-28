@@ -72,6 +72,9 @@ const useMyLocation = (page: Page) =>
   page.getByRole("button", { name: "Use my location" }).click();
 const cards = (page: Page) => page.locator("[data-spot-card]");
 const scope = (page: Page) => page.getByRole("group", { name: "Which spots" });
+/** The magnifier in the head, which opens the search and its filters. */
+const findButton = (page: Page) =>
+  page.getByRole("button", { name: /^Find a spot and filter/ });
 
 /** The finder up in the afternoon, its places rated. */
 async function openFinder(page: Page, path = "/") {
@@ -698,7 +701,7 @@ test.describe("on a desktop", () => {
     expect(stored.starred).toEqual(["brandon", "dollymount"]);
   });
 
-  test("a first visit, with no favourites, opens on Near you; Favourites says how to have some", async ({
+  test("a first visit, with no favourites, opens on Nearby; Favourites says how to have some", async ({
     page,
     context,
   }) => {
@@ -707,12 +710,12 @@ test.describe("on a desktop", () => {
     await openFinder(page);
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
     await expect(
-      scope(page).getByRole("button", { name: "Near you" }),
+      scope(page).getByRole("button", { name: "Nearby" }),
     ).toHaveAttribute("aria-pressed", "true");
     // Not asked yet: told why the place is wanted, and the spots nearest the
     // middle of Ireland meanwhile, with no distance that is not the rider's.
     await expect(page.locator("[data-finder-ask]")).toContainText(
-      "Near you lists the spots within 30 km of where you are.",
+      "Nearby lists the spots within 30 km of where you are.",
     );
     await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
     await expect(cards(page).filter({ hasText: / km · / })).toHaveCount(0);
@@ -728,15 +731,13 @@ test.describe("on a desktop", () => {
     const empty = page.locator("[data-finder-empty]");
     await expect(empty).toContainText("Star a spot and it shows here.");
     await expect(cards(page)).toHaveCount(0);
-    // And a way from it to a spot to star: a search above, Near you, or
-    // every spot's page.
-    await expect(
-      page.getByRole("searchbox", { name: "Find a spot" }),
-    ).toBeVisible();
+    // And a way from it to a spot to star: the search in the head, Nearby,
+    // or every spot's page.
+    await expect(findButton(page)).toBeVisible();
     await expect(
       empty.getByRole("link", { name: "browse every spot" }),
     ).toHaveAttribute("href", "/spot");
-    await empty.getByRole("link", { name: "spots near you" }).click();
+    await empty.getByRole("link", { name: "spots nearby" }).click();
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
     await expect(page).toHaveURL(/\/\?tab=near$/);
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1);
@@ -750,12 +751,12 @@ test.describe("on a desktop", () => {
     // A bare root opens as it always did, and names no tab.
     await expect(finder(page)).toHaveAttribute("data-scope", "favourites");
     await expect(page).toHaveURL(/\/$/);
-    await scope(page).getByRole("button", { name: "Near you" }).click();
+    await scope(page).getByRole("button", { name: "Nearby" }).click();
     await expect(page).toHaveURL(/\/\?tab=near$/);
     await page.reload();
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
     await expect(
-      scope(page).getByRole("button", { name: "Near you" }),
+      scope(page).getByRole("button", { name: "Nearby" }),
     ).toHaveAttribute("aria-pressed", "true");
     // Through the full chart and back, the address still names it.
     await page.getByRole("button", { name: "Full chart" }).click();
@@ -773,14 +774,23 @@ test.describe("on a desktop", () => {
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
   });
 
-  test("a spot is found by name, from every spot, and Escape goes back to the tab", async ({
+  test("a spot is found by name, from every spot, in the search in the head; Clear goes back to the tab", async ({
     page,
   }) => {
     await star(page, ["brandon", "dollymount"]);
     await openFinder(page);
     await expect(cards(page)).toHaveCount(2);
     const find = page.getByRole("searchbox", { name: "Find a spot" });
-    await find.fill("keel");
+    const search = async (words: string) => {
+      await findButton(page).click();
+      await expect(find).toBeFocused();
+      await find.fill(words);
+      await find.press("Enter");
+      await expect(
+        page.getByRole("dialog", { name: "Find a spot" }),
+      ).toHaveCount(0);
+    };
+    await search("keel");
     await expect(cards(page).first()).toHaveAttribute("data-spot-card", "keel");
     // The places the words name, not the tab's.
     await expect(
@@ -789,26 +799,37 @@ test.describe("on a desktop", () => {
     await expect(
       page.getByRole("region", { name: "Spots found" }),
     ).toBeVisible();
+    // Said over the cards, and on the magnifier.
+    await expect(page.locator("[data-finder-using]")).toHaveText(
+      /Spots named “keel”/,
+    );
+    await expect(findButton(page)).toHaveAccessibleName(
+      "Find a spot and filter (in use)",
+    );
     // Accents and case are let go of, and a name's start comes first.
-    await find.fill("BRAND");
+    await search("BRAND");
     await expect(cards(page).first()).toHaveAttribute(
       "data-spot-card",
       "brandon",
     );
-    await find.fill("no such place");
+    await search("no such place");
     await expect(page.locator("[data-finder-empty]")).toHaveText(
       "No spot by that name.",
     );
-    await find.press("Escape");
-    await expect(find).toHaveValue("");
+    await page
+      .locator("[data-finder-using]")
+      .getByRole("button", { name: "Clear" })
+      .click();
     await expect(cards(page)).toHaveCount(2);
+    await expect(page.locator("[data-finder-using]")).toHaveCount(0);
     // A tab chosen puts the words down.
-    await find.fill("keel");
-    await scope(page).getByRole("button", { name: "Near you" }).click();
+    await search("keel");
+    await scope(page).getByRole("button", { name: "Nearby" }).click();
+    await findButton(page).click();
     await expect(find).toHaveValue("");
   });
 
-  test("Near you never asks the browser unasked: only Use my location does", async ({
+  test("Nearby never asks the browser unasked: only Use my location does", async ({
     page,
   }) => {
     await unanswered(page, DUBLIN);
@@ -828,7 +849,7 @@ test.describe("on a desktop", () => {
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
     await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
     await scope(page).getByRole("button", { name: "Favourites" }).click();
-    await scope(page).getByRole("button", { name: "Near you" }).click();
+    await scope(page).getByRole("button", { name: "Nearby" }).click();
     expect(await asked()).toBe(0);
     await useMyLocation(page);
     expect(await asked()).toBe(1);
@@ -840,6 +861,9 @@ test.describe("on a desktop", () => {
     await star(page, ["tramore", "brandon", "keel", "dollymount"]);
     await openFinder(page);
     await rated(page);
+    // The filters are in the search, under its funnel; the list behind it
+    // follows them as they are set.
+    await findButton(page).click();
     // A to Z.
     await page.getByRole("combobox", { name: "Order" }).selectOption("name");
     const names = await cards(page).evaluateAll((els) =>
@@ -919,7 +943,7 @@ test.describe("on a desktop", () => {
     await openFinder(page);
     await useMyLocation(page);
     await expect(page.locator("[data-finder-empty]")).toHaveText(
-      "Finding spots near you…",
+      "Finding spots nearby…",
     );
     await expect(cards(page)).toHaveCount(0);
     await page.evaluate(() =>
@@ -938,7 +962,7 @@ test.describe("on a desktop", () => {
     await openFinder(page);
     await useMyLocation(page);
     await expect(page.locator("[data-finder-empty]")).toHaveText(
-      "Finding spots near you…",
+      "Finding spots nearby…",
     );
     await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
     await expect(page.locator("[data-finder-note]")).toBeVisible();
@@ -990,7 +1014,7 @@ test.describe("on a desktop", () => {
     ).toBe(0);
   });
 
-  test("near you lists the places round the rider, nearest first among equals", async ({
+  test("nearby lists the places round the rider, nearest first among equals", async ({
     page,
     context,
   }) => {
@@ -998,10 +1022,10 @@ test.describe("on a desktop", () => {
     await context.setGeolocation(DUBLIN);
     await star(page, ["brandon"]);
     await openFinder(page);
-    await scope(page).getByRole("button", { name: "Near you" }).click();
+    await scope(page).getByRole("button", { name: "Nearby" }).click();
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
     await expect(
-      scope(page).getByRole("button", { name: "Near you" }),
+      scope(page).getByRole("button", { name: "Nearby" }),
     ).toHaveAttribute("aria-pressed", "true");
     await useMyLocation(page);
     // Dublin's beaches, and not Brandon, the far side of the country.
@@ -1018,7 +1042,7 @@ test.describe("on a desktop", () => {
     expect(kept.at.lat).toBeCloseTo(DUBLIN.latitude, 3);
   });
 
-  test("near you, refused, looks round where the chart was, and never asks again", async ({
+  test("nearby, refused, looks round where the chart was, and never asks again", async ({
     page,
   }) => {
     await star(page, ["brandon"]);
@@ -1030,7 +1054,7 @@ test.describe("on a desktop", () => {
       ),
     );
     await openFinder(page);
-    await scope(page).getByRole("button", { name: "Near you" }).click();
+    await scope(page).getByRole("button", { name: "Nearby" }).click();
     await useMyLocation(page);
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
@@ -1399,7 +1423,7 @@ test.describe("on a phone", () => {
     expect(box.x + box.width).toBeLessThanOrEqual(a.x + a.width);
   });
 
-  test("a first visit on a phone opens on Near you; Favourites is empty", async ({
+  test("a first visit on a phone opens on Nearby; Favourites is empty", async ({
     page,
     context,
   }) => {
@@ -1414,7 +1438,7 @@ test.describe("on a phone", () => {
     await expect(page.locator("[data-finder-empty]")).toContainText(
       "Star a spot and it shows here.",
     );
-    await scope(page).getByRole("button", { name: "Near you" }).tap();
+    await scope(page).getByRole("button", { name: "Nearby" }).tap();
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1);
   });
 

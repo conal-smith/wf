@@ -101,3 +101,22 @@
 .wf-segmented--stack .wf-segmented__item:last-child {
   border-bottom-width: 0;
 }
+
+/* ---- small: a switch in a crowded head ---- */
+.wf-segmented--sm .wf-segmented__item {
+  position: relative;
+  padding: 0 var(--sem-space-x2);
+  font-size: var(--sem-font-size-eyebrow);
+}
+/* It keeps its height under a finger; the press reaches a touch's height
+ * through a band laid across it. */
+@media (pointer: coarse) {
+  .wf-segmented--sm .wf-segmented__item {
+    min-height: 0;
+  }
+  .wf-segmented--sm .wf-segmented__item::before {
+    content: "";
+    position: absolute;
+    inset: calc((var(--sem-size-control-sm) - var(--sem-size-touch)) / 2) 0;
+  }
+}

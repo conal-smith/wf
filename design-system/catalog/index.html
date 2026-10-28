@@ -2972,6 +2972,25 @@ code {
   border-bottom-width: 0;
 }
 
+/* ---- small: a switch in a crowded head ---- */
+.wf-segmented--sm .wf-segmented__item {
+  position: relative;
+  padding: 0 var(--sem-space-x2);
+  font-size: var(--sem-font-size-eyebrow);
+}
+/* It keeps its height under a finger; the press reaches a touch's height
+ * through a band laid across it. */
+@media (pointer: coarse) {
+  .wf-segmented--sm .wf-segmented__item {
+    min-height: 0;
+  }
+  .wf-segmented--sm .wf-segmented__item::before {
+    content: "";
+    position: absolute;
+    inset: calc((var(--sem-size-control-sm) - var(--sem-size-touch)) / 2) 0;
+  }
+}
+
 /* components/select/component.css */
 /* Select — ui/Select.tsx, controlStyles({ kind: "select" }), rendered in CSS.
  * Consumes --sem-* only.
@@ -8376,7 +8395,7 @@ code {
 <p><strong>Tap targets.</strong> Nothing pressed is shorter than <code>sem.size.touch</code> (44px) on a coarse pointer. A control drawn smaller grows its hit area instead.</p>
 <p><strong>Contrast.</strong> <code>sem.color.ink-muted</code> is the floor for words. <code>line-strong</code> and <code>ink-disabled</code> are a stroke's 3:1, never text. The pen's marks are <code>pen</code>, its words <code>pen-ink</code>.</p>
 <h4>Little text, figures over prose</h4>
-<p>A view says what it has to in figures, a few words of mono label, and a line or two of sentences at most. If a sentence can be a figure, make it one: <code>14 g22 · WSW · 6.5 m</code>, not &quot;fourteen knots gusting twenty-two&quot;. A figure leads, its unit small after it, a gust raised over the mean (<code>Figure</code>). Labels name a thing in a word or two and never say a sentence. The Almanac (the house voice) speaks in the pen's notes and the odd line of small print, plainly, in British and Irish spelling; the puffin signs it, one a view at most.</p>
+<p>A view says what it has to in figures, a few words of mono label, and a line or two of sentences at most. If a sentence can be a figure, make it one: <code>14 g22 · WSW · 6.5 m</code>, not &quot;fourteen knots gusting twenty-two&quot;. A figure leads, its unit small after it, a gust raised over the mean (<code>Figure</code>). Labels name a thing in a word or two and never say a sentence. Every sentence is plain, clear, everyday English for a rider with no technical knowledge: no riddles, puns or jargon, nothing that needs a second read (&quot;Take a 30-second tour of how the site works.&quot;), in British and Irish spelling. The puffin is a picture, one a view at most; nothing is signed &quot;the Almanac&quot;.</p>
 <h4>Mobile first</h4>
 <p>Draw at 390×844 first, then let it open at 720 (<code>sem.breakpoint.wide</code>) and 900 (<code>sem.breakpoint.rail</code>). The dock, the popup and the spot page are phone layouts that widen, not desktop layouts that shrink. Demos and patterns in this bundle are drawn at phone width unless they say otherwise.</p>
 <h4>Don't</h4>
@@ -14659,7 +14678,7 @@ code {
 <h4>States</h4>
 <ul><li>Bobbing, or held still for a reader who asks for less motion.</li></ul>
 <h4>Usage</h4>
-<ul><li>One puffin on a view at most, beside the pen's note or the menu's line in the Almanac's voice. joke.</li><li>On the proposed night chart his paper and ink trade places with the page's.</li></ul>
+<ul><li>One puffin on a view at most, as a picture. No words are signed by or credited to &quot;the Almanac&quot;; the copy beside him is plain English (docs/BRAND.md, rule 7).</li><li>On the proposed night chart his paper and ink trade places with the page's.</li></ul>
 <h4>Accessibility</h4>
 <ul><li>Decorative: <code>aria-hidden=&quot;true&quot;</code>, <code>focusable=&quot;false&quot;</code>.</li><li>Where he stands for something, <code>role=&quot;img&quot;</code> with an <code>aria-label</code> (&quot;The Almanac&quot;).</li><li>The bob stops under <code>prefers-reduced-motion: reduce</code>.</li></ul>
 </div>
@@ -15803,9 +15822,9 @@ code {
 <h4>Anatomy</h4>
 <ul><li>Group: <code>.wf-segmented</code> on a <code>role=&quot;group&quot;</code> with an <code>aria-label</code> — an inline row in a <code>sem.rule.hairline</code> capsule (<code>sem.radius.full</code>) of <code>sem.color.ink</code>, on <code>sem.color.card</code>.</li><li>Item: <code>.wf-segmented__item</code>, a <code>&lt;button type=&quot;button&quot;&gt;</code> with <code>aria-pressed</code> — <code>sem.size.control.sm</code> tall, <code>sem.space.x3</code> across, <code>sem.space.x1</code> between an icon and the words, itself a capsule so the filled one sits round inside the rule. IBM Plex Mono at <code>sem.font.size.label</code>, <code>sem.font.weight.label</code>, tracked <code>sem.font.tracking.label</code>, uppercase, <code>sem.color.ink</code>.</li></ul>
 <h4>Variants</h4>
-<ul><li><strong>Row</strong> (the default) — the capsule, as the dock's switch.</li><li><strong>Stack</strong> (<code>.wf-segmented--stack</code>) — a column of choices: the group becomes a box ruled in ink (<code>sem.radius.surface</code>), clipping its square rows to its corner, its items <code>sem.size.control.md</code> tall rows, <code>sem.space.x4</code> across, words to the left, divided by <code>sem.rule.hairline</code> in <code>sem.color.line</code> (none under the last). One row filled.</li></ul>
+<ul><li><strong>Row</strong> (the default) — the capsule, as the dock's switch.</li><li><strong>Stack</strong> (<code>.wf-segmented--stack</code>) — a column of choices: the group becomes a box ruled in ink (<code>sem.radius.surface</code>), clipping its square rows to its corner, its items <code>sem.size.control.md</code> tall rows, <code>sem.space.x4</code> across, words to the left, divided by <code>sem.rule.hairline</code> in <code>sem.color.line</code> (none under the last). One row filled.</li><li><strong>Small</strong> (<code>.wf-segmented--sm</code>) — a switch in a crowded head (the spot finder's, on a phone): still <code>sem.size.control.sm</code> tall, <code>sem.space.x2</code> across, the words at <code>sem.font.size.eyebrow</code>. On a coarse pointer it keeps its height, and the press reaches a <code>sem.size.touch</code> height through an invisible band laid across it, so nothing around it moves.</li></ul>
 <h4>States</h4>
-<ul><li>On (<code>aria-pressed=&quot;true&quot;</code>): filled in <code>sem.color.inverse</code>, words in <code>sem.color.ink-inverse</code> and <code>sem.font.weight.semibold</code> — filled and heavier, never colour alone. It stays filled under the pointer.</li><li>Hover: <code>sem.color.sunken</code> under an item that is off (<code>.is-hover</code> in the demo).</li><li>Focus: <code>:focus-visible</code> draws the one ring on the item — <code>sem.ring.width</code> of <code>sem.color.focus</code>, <code>sem.ring.offset</code> clear (<code>.is-focus</code> in the demo).</li><li>Disabled: <code>sem.color.ink-disabled</code> words, default cursor, no fade, no hover.</li><li>Coarse pointer: an item is never shorter than <code>sem.size.touch</code>.</li></ul>
+<ul><li>On (<code>aria-pressed=&quot;true&quot;</code>): filled in <code>sem.color.inverse</code>, words in <code>sem.color.ink-inverse</code> and <code>sem.font.weight.semibold</code> — filled and heavier, never colour alone. It stays filled under the pointer.</li><li>Hover: <code>sem.color.sunken</code> under an item that is off (<code>.is-hover</code> in the demo).</li><li>Focus: <code>:focus-visible</code> draws the one ring on the item — <code>sem.ring.width</code> of <code>sem.color.focus</code>, <code>sem.ring.offset</code> clear (<code>.is-focus</code> in the demo).</li><li>Disabled: <code>sem.color.ink-disabled</code> words, default cursor, no fade, no hover.</li><li>Coarse pointer: an item is never shorter than <code>sem.size.touch</code> (the small one's press is, through its band).</li></ul>
 <h4>Usage</h4>
 <ul><li>Two to four short choices, all in view, exactly one on: how to show the hours (TABLE | RIBBON), how to draw the wind.</li><li>Name each choice in a word; the group's <code>aria-label</code> says what is being chosen (&quot;Show the hours as&quot;).</li><li>Not an action: pressing an item changes the view, never sends anything. The view's one filled action is still the ink pill beside it.</li><li>Use the stack in a narrow panel, or when the words are longer than a word.</li></ul>
 <h4>Accessibility</h4>
@@ -15914,6 +15933,25 @@ code {
 }
 .wf-segmented--stack .wf-segmented__item:last-child {
   border-bottom-width: 0;
+}
+
+/* ---- small: a switch in a crowded head ---- */
+.wf-segmented--sm .wf-segmented__item {
+  position: relative;
+  padding: 0 var(--sem-space-x2);
+  font-size: var(--sem-font-size-eyebrow);
+}
+/* It keeps its height under a finger; the press reaches a touch's height
+ * through a band laid across it. */
+@media (pointer: coarse) {
+  .wf-segmented--sm .wf-segmented__item {
+    min-height: 0;
+  }
+  .wf-segmented--sm .wf-segmented__item::before {
+    content: &quot;&quot;;
+    position: absolute;
+    inset: calc((var(--sem-size-control-sm) - var(--sem-size-touch)) / 2) 0;
+  }
 }
 </code></pre></details>
 <details class="catalog-source"><summary>components/segmented/component.html (demo)</summary><pre><code>&lt;!doctype html&gt;
