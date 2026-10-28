@@ -1,9 +1,12 @@
 /**
- * A place on the spot finder: its picture from above with the ride rose on
- * it, its name, how far it is and its county, and the star a rider keeps it
- * by; then today (or the day chosen), hour by hour (src/finder/DayHours.tsx),
- * and the other five of its six days (src/finder/NextDays.tsx). The approved mock-up is
- * backlog/mockups/2026-10-25-spot-list-cards.html, its "7e".
+ * A place on the spot finder: its name, how far it is and its county on one
+ * line with the star a rider keeps it by; under them its picture from above,
+ * the card's width, with the ride rose on it; then today (or the day
+ * chosen), hour by hour (src/finder/DayHours.tsx), and the other five of its
+ * six days (src/finder/NextDays.tsx). The approved mock-up was
+ * backlog/mockups/2026-10-25-spot-list-cards.html, its "7e"; the picture
+ * went to the card's width, and the name over it, on the owner's ruling of
+ * 2026-10-28 (it was too small to read the place from).
  *
  * Pressing the picture opens the chart at the place, at the hour the rose on
  * it shows; pressing anywhere else on the card opens the place's own page.
@@ -42,7 +45,6 @@ import { clock, type StripColumn } from "../strip";
 import WeatherGlyph from "../WeatherGlyph";
 import { DayHours } from "./DayHours";
 import {
-  HOUR,
   middayColumn,
   type DayPlan,
   type DayRow,
@@ -50,7 +52,6 @@ import {
 } from "./finder";
 import { NextDays } from "./NextDays";
 import { Rose } from "./Rose";
-import { TideMark } from "./marks";
 import type { Readings } from "./useReadings";
 
 export const cardStyles = tv({
@@ -62,23 +63,24 @@ export const cardStyles = tv({
       "transition duration-fast motion-reduce:transition-none",
       "hover:-translate-y-px hover:shadow-float",
     ],
-    head: "flex items-center gap-3",
-    // The picture is the chart's press: a small box of its own.
+    head: "flex items-center gap-2",
+    // The picture is the chart's press: the card's width, under the name.
     pictureButton: [
-      "group/pic relative block h-auto w-24 shrink-0 overflow-visible rounded-control border-0 p-0 wide:w-28",
+      "group/pic relative block h-auto w-full overflow-visible rounded-control border-0 p-0",
       "not-disabled:hover:bg-transparent pointer-coarse:min-h-0",
     ],
-    picture: "relative aspect-16/10 overflow-hidden bg-sea-1",
+    picture: "relative aspect-2/1 overflow-hidden bg-sea-1 wide:aspect-5/2",
     framed:
       "rounded-control border border-ink group-hover/pic:outline-2 group-hover/pic:outline-offset-1 group-hover/pic:outline-ink",
     image: "absolute inset-0 block size-full object-cover",
     go: "pointer-events-none absolute bottom-1 left-1 px-1.5 py-0 text-eyebrow uppercase opacity-0 transition-opacity duration-fast group-hover/pic:opacity-100",
     at: "pointer-events-none absolute right-1 bottom-1 px-1.5 py-0 text-eyebrow font-semibold",
-    names: "flex min-w-0 flex-1 flex-col gap-0.5",
-    name: "m-0 truncate font-display text-lead text-ink",
+    // The name and where it is, on one line: the name gives way first.
+    names: "flex min-w-0 flex-1 items-baseline gap-2",
+    name: "m-0 min-w-0 truncate font-display text-lead text-ink",
     nameLink:
       "rounded-control text-ink no-underline not-disabled:hover:text-chart-magenta",
-    meta: "font-mono text-caption text-ink-muted",
+    meta: "shrink-0 font-mono text-caption whitespace-nowrap text-ink-muted",
     star: "self-start",
     section: "flex flex-col gap-1",
     heading: [
@@ -95,13 +97,15 @@ export const cardStyles = tv({
     fact: "inline-flex items-center gap-1 whitespace-nowrap",
     // A card while the places are read: the shapes of its parts, each the
     // height the card's own will be, so nothing moves when it lands.
-    ghostPicture: "aspect-16/10 min-h-0 w-24 shrink-0 wide:w-28",
+    ghostPicture: "aspect-2/1 min-h-0 w-full wide:aspect-5/2",
     ghostName: "h-4 w-40 max-w-full",
     ghostWords: "m-0 font-body text-prose text-ink-muted italic",
     ghostMeta: "w-24",
+    // The star's room, as the star button stands (a touch's size under a finger).
+    ghostStar: "size-control-sm shrink-0 pointer-coarse:size-touch",
     ghostFacts: "h-5 w-32",
-    ghostHours: "mb-8 min-h-25",
-    ghostDays: "min-h-31.25",
+    ghostHours: "mb-1 min-h-25",
+    ghostDays: "min-h-32.75",
   },
 });
 
@@ -254,9 +258,10 @@ export function StarToggle({
 }
 
 /**
- * The day's line over its hours: the sky and the air, the sea, high and low
- * water, and first and last light. A reading the place has none of is left
- * out, not written as a blank.
+ * The day's line over its hours: the sky and the air, and the sea. A reading
+ * the place has none of is left out, not written as a blank. (High and low
+ * water and first and last light were taken off the card on the owner's
+ * ruling of 2026-10-28: the dark at either end of the hours says the light.)
  */
 function DayFacts({
   day: today,
@@ -277,12 +282,6 @@ function DayFacts({
   const sky = at === null ? null : (readings.sky[at] ?? null);
   const air = at === null ? null : (readings.air[at] ?? null);
   const sea = at === null ? null : (readings.sea[at] ?? null);
-  const from = today.hours[0].time;
-  const to = today.hours[today.hours.length - 1].time + HOUR;
-  const tides = readings.tides.filter((event) => {
-    const time = Date.parse(event.time);
-    return time >= from && time < to;
-  });
   return (
     <span className={s.facts()} data-day-facts>
       {(sky || air !== null) && (
@@ -298,23 +297,6 @@ function DayFacts({
           {sea.period !== null && ` · ${Math.round(sea.period)} s`}
         </span>
       )}
-      {tides.map((event) => (
-        <span
-          key={event.time}
-          className={s.fact()}
-          title={`${event.kind === "high" ? "High" : "Low"} water`}
-          data-tide-time={event.kind}
-        >
-          <TideMark high={event.kind === "high"} />
-          {clock(Date.parse(event.time))}
-          <span className="sr-only">
-            {event.kind === "high" ? " high water" : " low water"}
-          </span>
-        </span>
-      ))}
-      <span className={s.fact()} data-light>
-        light {clock(today.firstLight)}–{clock(today.lastLight)}
-      </span>
     </span>
   );
 }
@@ -409,38 +391,6 @@ export function SpotCard(props: SpotCardProps) {
       }}
     >
       <div className={s.head()}>
-        <Button
-          variant="quiet"
-          className={s.pictureButton()}
-          aria-label={`${spot.name} on the chart`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onChart();
-          }}
-          data-to-chart
-        >
-          <SpotPicture
-            spot={spot}
-            hour={roseAt === null ? null : (row?.[roseAt] ?? null)}
-            rider={rider}
-            units={units}
-            className={s.framed()}
-          >
-            <Chip tone="glass" className={s.go()} aria-hidden="true">
-              Chart
-            </Chip>
-            {(picked !== null || !isToday) && (
-              <Chip
-                tone="glass"
-                className={s.at()}
-                data-picked-hour={picked !== null || undefined}
-                data-rose-hour
-              >
-                {clock(shown)}
-              </Chip>
-            )}
-          </SpotPicture>
-        </Button>
         <div className={s.names()}>
           <h3 className={s.name()}>
             <a className={s.nameLink()} href={href}>
@@ -456,6 +406,38 @@ export function SpotCard(props: SpotCardProps) {
           className={s.star()}
         />
       </div>
+      <Button
+        variant="quiet"
+        className={s.pictureButton()}
+        aria-label={`${spot.name} on the chart`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onChart();
+        }}
+        data-to-chart
+      >
+        <SpotPicture
+          spot={spot}
+          hour={roseAt === null ? null : (row?.[roseAt] ?? null)}
+          rider={rider}
+          units={units}
+          className={s.framed()}
+        >
+          <Chip tone="glass" className={s.go()} aria-hidden="true">
+            Chart
+          </Chip>
+          {(picked !== null || !isToday) && (
+            <Chip
+              tone="glass"
+              className={s.at()}
+              data-picked-hour={picked !== null || undefined}
+              data-rose-hour
+            >
+              {clock(shown)}
+            </Chip>
+          )}
+        </SpotPicture>
+      </Button>
       {day && (
         <section
           className={s.section()}
@@ -486,16 +468,14 @@ export function SpotCard(props: SpotCardProps) {
         </section>
       )}
       {/* The six days but the one above, today among them when another is
-        chosen: "Other days" whichever it is, as the list says. */}
+        chosen: "Other days" to a screen reader, and no heading on the card,
+        where it is plain what they are. */}
       <section
         className={s.section()}
         aria-label="Other days"
         aria-busy={row === undefined || undefined}
         ref={next}
       >
-        <span className={s.kicker()} data-other-days>
-          Other days
-        </span>
         <NextDays
           row={row}
           strip={strip}
@@ -527,7 +507,6 @@ export function CardSkeleton({ words }: { words?: string }) {
       data-card-skeleton
     >
       <div className={s.head()}>
-        <Skeleton shape="block" className={s.ghostPicture()} />
         <div className={s.names()}>
           {words ? (
             <p className={s.ghostWords()}>{words}</p>
@@ -536,7 +515,9 @@ export function CardSkeleton({ words }: { words?: string }) {
           )}
           <Skeleton className={s.ghostMeta()} />
         </div>
+        <Skeleton shape="circle" className={s.ghostStar()} />
       </div>
+      <Skeleton shape="block" className={s.ghostPicture()} />
       <div className={s.section()}>
         <div className={s.heading()}>
           <span className={s.kicker()}>Today</span>
@@ -545,7 +526,6 @@ export function CardSkeleton({ words }: { words?: string }) {
         <Skeleton shape="block" className={s.ghostHours()} />
       </div>
       <div className={s.section()}>
-        <span className={s.kicker()}>Other days</span>
         <Skeleton shape="block" className={s.ghostDays()} />
       </div>
     </div>

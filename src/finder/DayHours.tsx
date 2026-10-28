@@ -3,13 +3,14 @@
  * column (a step of the run's, a few days out), from the hour before first
  * light to the hour after last light: the hour ("now" for this one, in the pen's red),
  * the sky, the wind and its gust, the wind's arrow (red where it blows off
- * the beach), and the hour's five stars, the earned ones in the stars' own
- * colours. Behind the columns, faintly, the day's wind as a band in the
- * chart's colours for knots, the gusts paler over it, at the row's own
- * height. The hours gone are faded; the dark at either end is shaded, and
- * first and last light are named under it, with high and low water under
- * the hour each falls in. First and last light keep to the row's view as it
- * scrolls, rather than being cut by its edge.
+ * the beach). Along their foot, the day's stars as one line in the stars'
+ * own pinks and purples, running from hour to hour, as the other days'
+ * lines do (src/finder/NextDays.tsx): the colour is the stars, at a glance.
+ * Behind the columns, faintly, the day's wind as a band in the chart's
+ * colours for knots, the gusts paler over it, at the row's own height. The
+ * hours gone are faded; the dark at either end is shaded. (First and last
+ * light, and high and low water, were named under the row until the
+ * owner's ruling of 2026-10-28 took them off the card.)
  *
  * The row is wider than the card: it scrolls sideways, with no bar, and
  * opens with the hour shown (now, or the day's early afternoon, until one is
@@ -34,7 +35,7 @@ import { speedWords } from "../../force5/src/units";
 import { compass } from "../../force5/src/weather";
 import { Button } from "../../ui/Button";
 import { Skeleton } from "../../ui/Skeleton";
-import { StarGlyphs, starsLabel } from "../../ui/StarGlyphs";
+import { starsLabel } from "../../ui/StarGlyphs";
 import { tv } from "../../ui/tv";
 import type { PlaceHour } from "../ratings";
 import { clock, hourLabel } from "../strip";
@@ -46,33 +47,37 @@ import {
   rowEnds,
   rowPosition,
   rowTime,
+  starColour,
   starsAt,
   steppedScroll,
   type DayRow,
 } from "./finder";
 import { hovers, useHover, useHoverLine } from "./hover";
-import { ShoreArrow, Speed, TideMark, gustShown } from "./marks";
+import { ShoreArrow, Speed, gustShown } from "./marks";
 import type { Readings } from "./useReadings";
 
 /** An hour's width, on a desktop and on a phone. */
 const COLUMN = { wide: 54, phone: 50 };
 /**
  * The narrowest an hour may be drawn so the whole day fits the row: room for
- * its five stars (StarGlyphs at 7.5, 41.5px) inside the column's padding. A
- * row that would scroll by less than a column is drawn this tight instead,
- * so no first or last hour sits under an edge's fade and its ‹ or ›.
+ * its figures inside the column's padding. A row that would scroll by less
+ * than a column is drawn this tight instead, so no first or last hour sits
+ * under an edge's fade and its ‹ or ›.
  */
 const TIGHT = 46;
 /** The columns' height, which the band behind them shares. */
 const ROW_HEIGHT = 100;
 /** The ‹ and ›: a small control's height (ui/theme.css `control-sm`). */
 const NAV = 30;
+/** The stars' line along the foot of the hours: its thickness, and its room under it. */
+const STARS_LINE = 5;
+const STARS_BELOW = 4;
 
 const styles = tv({
   slots: {
     root: "relative",
     scroller:
-      "scrollbar-none -mx-0.5 overflow-x-auto overscroll-x-contain px-0.5 pb-8",
+      "scrollbar-none -mx-0.5 overflow-x-auto overscroll-x-contain px-0.5 pb-1",
     track: "relative flex",
     band: "pointer-events-none absolute top-0 left-0 opacity-40",
     dark: "pointer-events-none absolute top-0 hatch rounded-control bg-ink/7",
@@ -103,7 +108,6 @@ const styles = tv({
     // While the hour's wind is being worked out: the shapes of its figures.
     pending: "h-2.5 w-5",
     pendingGust: "h-2 w-4",
-    pendingStars: "h-1.5 w-10",
     // What the shapes are waiting for, said once over the row's middle: it
     // takes no room, so nothing moves when it goes.
     pendingWords: [
@@ -111,16 +115,12 @@ const styles = tv({
       "font-body text-caption text-ink-muted italic",
     ],
     pendingTag: "rounded-control bg-card px-2 py-0.5",
-    // Where there is no gust worth a figure, its room stays.
-    stars: "mt-auto flex h-2.5 items-center",
+    // The day's stars along the foot of the hours, under the presses.
+    stars: "pointer-events-none absolute left-0",
+    pendingLine: "absolute flex",
+    pendingBar: "h-1.25 w-full rounded-full",
     faded: "opacity-45",
     off: "opacity-35",
-    tide: "pointer-events-none absolute flex -translate-x-1/2 items-center gap-0.5 font-mono text-eyebrow whitespace-nowrap text-ink-2",
-    // First and last light, under the row from one to the other: each holds
-    // to the view's edge as the row scrolls, not cut off by it.
-    lights:
-      "pointer-events-none absolute flex justify-between gap-3 font-mono text-eyebrow whitespace-nowrap text-ink-muted",
-    light: "sticky",
     // The time under a mouse, a dotted line on every card's row; the time
     // written beside it on the row the mouse is over.
     hoverLine:
@@ -238,19 +238,6 @@ export function DayHours({
       base: ROW_HEIGHT - 2,
     });
   }, [row, hours, width, cw]);
-
-  // High and low water, under the hour each falls in.
-  const tides = useMemo(
-    () =>
-      readings.tides.flatMap((event) => {
-        const time = Date.parse(event.time);
-        const at = Math.floor(rowPosition(times, time));
-        return at >= 0 && at < hours.length
-          ? [{ time, high: event.kind === "high", at }]
-          : [];
-      }),
-    [readings.tides, times],
-  );
 
   /* ---- the scroll ---- */
   const scroller = useRef<HTMLDivElement>(null);
@@ -480,6 +467,58 @@ export function DayHours({
               aria-hidden="true"
             />
           )}
+          {pending ? (
+            <span
+              className={s.pendingLine()}
+              style={{
+                left: 4,
+                width: width - 8,
+                top: ROW_HEIGHT - STARS_LINE - STARS_BELOW,
+              }}
+            >
+              <Skeleton className={s.pendingBar()} />
+            </span>
+          ) : (
+            <svg
+              className={s.stars()}
+              width={width}
+              height={STARS_LINE}
+              style={{ top: ROW_HEIGHT - STARS_LINE - STARS_BELOW }}
+              aria-hidden="true"
+              data-stars-line
+            >
+              <defs>
+                <linearGradient
+                  id={`${id}s`}
+                  x1={0}
+                  x2={width}
+                  gradientUnits="userSpaceOnUse"
+                >
+                  {hours.map((h) => {
+                    const hour = h.at === null ? null : (row?.[h.at] ?? null);
+                    return (
+                      <stop
+                        key={h.time}
+                        offset={x(h.time) / width}
+                        style={{
+                          stopColor:
+                            (!h.dark && starColour(starsAt(hour))) ||
+                            "var(--color-line)",
+                        }}
+                      />
+                    );
+                  })}
+                </linearGradient>
+              </defs>
+              <rect
+                x={4}
+                width={width - 8}
+                height={STARS_LINE}
+                rx={STARS_LINE / 2}
+                fill={`url(#${id}s)`}
+              />
+            </svg>
+          )}
           {hours.map((h) => {
             const hour = h.at === null ? null : (row?.[h.at] ?? null);
             const sky = h.at === null ? null : readings.sky[h.at];
@@ -565,53 +604,9 @@ export function DayHours({
                     <Skeleton className={s.pendingGust()} />
                   </>
                 ) : null}
-                <span className={s.stars({ className: fade })}>
-                  {!h.dark && pending ? (
-                    <Skeleton className={s.pendingStars()} />
-                  ) : (
-                    !h.dark && (
-                      <StarGlyphs
-                        stars={starsAt(hour)}
-                        coloured
-                        size={7.5}
-                        label=""
-                      />
-                    )
-                  )}
-                </span>
               </Button>
             );
           })}
-          {tides.map((tide) => (
-            <span
-              key={tide.time}
-              className={s.tide()}
-              style={{ left: tide.at * cw + cw / 2, top: ROW_HEIGHT + 2 }}
-              title={`${tide.high ? "High" : "Low"} water ${clock(tide.time)}`}
-              data-tide={tide.high ? "high" : "low"}
-            >
-              <TideMark high={tide.high} />
-              {clock(tide.time)}
-              <span className="sr-only">
-                {tide.high ? " high water" : " low water"}
-              </span>
-            </span>
-          ))}
-          <span
-            className={s.lights()}
-            style={{
-              left: Math.max(0, x(firstLight) + 3),
-              right: Math.max(0, width - x(lastLight) + 3),
-              top: ROW_HEIGHT + 16,
-            }}
-          >
-            <span className={s.light({ className: "left-1" })} data-first-light>
-              first light {clock(firstLight)}
-            </span>
-            <span className={s.light({ className: "right-1" })} data-last-light>
-              last light {clock(lastLight)}
-            </span>
-          </span>
           <span
             ref={line}
             className={s.hoverLine()}
