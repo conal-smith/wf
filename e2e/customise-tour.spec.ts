@@ -94,27 +94,24 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   // Weight is the rider's own, never ours to reset.
   await expect(reset).toHaveCount(0);
 
-  // The wind: four handles, ours 11 · 15–22 · 35, and the stars they make
-  // right under the track; no gust setting.
+  // The wind: two handles, ours 11 and 35, the sweet spot (15–22) worked
+  // out between them, and the stars they make right under the track; no
+  // gust setting.
   const floor = settings.getByRole("slider", { name: "Too light below" });
   const much = settings.getByRole("slider", {
     name: "Too strong in gusts above",
   });
   await expect(floor).toHaveAttribute("aria-valuetext", "11 kn");
-  await expect(
-    settings.getByRole("slider", { name: "Sweet spot from" }),
-  ).toHaveAttribute("aria-valuetext", "15 kn");
-  await expect(
-    settings.getByRole("slider", { name: "Sweet spot to" }),
-  ).toHaveAttribute("aria-valuetext", "22 kn");
   await expect(much).toHaveAttribute("aria-valuetext", "35 kn");
-  // In metres per second the four read as whole figures, 6 · 8–11 · 18,
-  // not the knots converted (5.7 · 7.7–11.3 · 18.0), and back in knots they
-  // are as they were.
+  await expect(settings.locator(".st-knob")).toHaveCount(2);
+  // Each handle wears the ring that says it can be dragged.
+  await expect(settings.locator(".st-knob.st-grab")).toHaveCount(2);
+  // In metres per second the two read as whole figures, 6 and 18, not the
+  // knots converted (5.7 and 18.0), and back in knots they are as they were.
   const units = settings.getByRole("group", { name: "Units" });
   await units.getByRole("button", { name: "m/s", exact: true }).click();
   await expect(floor).toHaveAttribute("aria-valuetext", "6 m/s");
-  await expect(settings.locator(".st-knob")).toHaveText(["6", "8", "11", "18"]);
+  await expect(settings.locator(".st-knob")).toHaveText(["6", "18"]);
   await units.getByRole("button", { name: "Knots", exact: true }).click();
   await expect(floor).toHaveAttribute("aria-valuetext", "11 kn");
   await expect(much).toHaveAttribute("aria-valuetext", "35 kn");
@@ -125,12 +122,12 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   await expect(strip).toHaveText(["1", "2", "3", "4", "5", "4", "3", "2", "1"]);
   await expect(settings.getByText("no stars past here")).toBeVisible();
   await floor.focus();
-  // A handle stops a knot short of the next: 11 up five is 14, not 16.
+  // Too light up five is 16, and the sweet spot moves up with it.
   await page.keyboard.press("PageUp");
-  await expect(floor).toHaveAttribute("aria-valuetext", "14 kn");
+  await expect(floor).toHaveAttribute("aria-valuetext", "16 kn");
   await page.keyboard.press("ArrowLeft");
-  await expect(floor).toHaveAttribute("aria-valuetext", "13 kn");
-  // The strip follows: one star from 13, then a climb to four under 15.
+  await expect(floor).toHaveAttribute("aria-valuetext", "15 kn");
+  // The strip follows: one star from 15, then a climb to four under 18.
   await expect(strip.first()).toHaveText("1");
   await expect(
     settings.locator('[data-star-strip] [data-stars="4"]').first(),
@@ -205,7 +202,8 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   );
 
   // Upwind: straight across and Not yet to start, the course to 10°
-  // downwind; two angles, each a slider and a handle on the picture.
+  // downwind; two angles, each set by its handles on the picture (the
+  // right-hand one a slider from the keyboard), and no sliders beside it.
   const answers = settings.getByRole("group", { name: "Can you ride upwind?" });
   const into = settings.locator("[data-upwind] output");
   const below = settings.locator("[data-downwind] output");
@@ -220,6 +218,8 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   await expect(settings.locator(".st-up-pic")).toContainText("DRIFT");
   await expect(settings.locator(".st-up-pic")).toContainText("YOU LOSE GROUND");
   await expect(settings.locator(".st-up-pic")).not.toContainText("SLOW");
+  await expect(settings.locator(".st-slide")).toHaveCount(0);
+  await expect(settings.locator(".st-up-pic .st-grab-ring")).toHaveCount(4);
   // Straight across: no magenta angle, only the course's 10° downwind.
   await expect(settings.locator(".st-up-deg:not(.is-down)")).toHaveCount(0);
   await expect(settings.locator(".st-up-deg.is-down")).toHaveText([
@@ -289,9 +289,9 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   expect(rider).not.toHaveProperty("gusty");
   expect(rider.custom.version).toBe(3);
   expect(rider.custom.wind).toEqual({
-    min: 13,
-    sweetLow: 15,
-    sweetHigh: 22,
+    min: 15,
+    sweetLow: 18,
+    sweetHigh: 24,
     max: 35,
   });
   expect(rider.custom.direction).toEqual({
@@ -316,20 +316,20 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   // Opened again, it starts from what was saved; Escape keeps nothing new,
   // and nor does Cancel.
   await openFromMenu(page, "Settings");
-  await expect(floor).toHaveAttribute("aria-valuetext", "13 kn");
+  await expect(floor).toHaveAttribute("aria-valuetext", "15 kn");
   await floor.focus();
   await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("Escape");
   await expect(settings).toHaveCount(0);
-  expect(await storedMin()).toBe(13);
+  expect(await storedMin()).toBe(15);
   await openFromMenu(page, "Settings");
-  await expect(floor).toHaveAttribute("aria-valuetext", "13 kn");
+  await expect(floor).toHaveAttribute("aria-valuetext", "15 kn");
   await floor.focus();
   await page.keyboard.press("ArrowLeft");
-  await expect(floor).toHaveAttribute("aria-valuetext", "12 kn");
+  await expect(floor).toHaveAttribute("aria-valuetext", "14 kn");
   await settings.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(settings).toHaveCount(0);
-  expect(await storedMin()).toBe(13);
+  expect(await storedMin()).toBe(15);
 
   // Reset to ours, saved, leaves no rating of their own; weight stays.
   await openFromMenu(page, "Settings");
