@@ -820,6 +820,24 @@ layer is seen to change as it is pressed; its foot names the defaults from
 default layers are on: …" at them and "Reset for the default: …" otherwise
 (#227).
 
+**2026-10-27 — The finder's hours keep their words readable, and its cards
+hold their shape while they load** (#245, #247, #249). A gone hour and a dark
+one were faded whole, their figures with them: a gust came to 1.9:1 on a gone
+hour and 1.6:1 on the hatched dusk. Now only the marks fade (the sky, the
+arrow, the stars); the band behind the gone and dark hours is paled under a
+veil of paper, and their hour, wind and gust are set in `ink-2`, the live
+hours' gust in `ink` (ink-muted over a wind's colour was 3.7:1). Measured over
+the band, every state is 5.8:1 or better. A day that would scroll by less
+than a column is drawn a little tighter (to 46 px an hour, its five stars'
+room) so it fits, rather than leaving its first and last hours under the
+edges' fade and their ‹ ›. The five days under a card are headed "Other
+days" whichever day is drawn above them, as the list itself is. While the
+places are read, the list is the cards' shapes, each the height a card will
+be, the first saying "Loading the spots…"; while a place's hours are worked
+out, its columns, stars and days are the shapes of their figures, with
+"Loading the forecast…" over the row's middle, and the dock's wind row the
+same, not dashes that read as no forecast (ui/Skeleton).
+
 ---
 
 ## Still open

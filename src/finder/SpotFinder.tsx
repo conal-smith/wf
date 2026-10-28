@@ -91,7 +91,7 @@ import {
 export type { Scope };
 import { HoverContext, hoverStore } from "./hover";
 import { knownBefore, useRiderPlace } from "./location";
-import { SpotCard } from "./SpotCard";
+import { CardSkeleton, SpotCard } from "./SpotCard";
 import { useReadings } from "./useReadings";
 
 const styles = tv({
@@ -272,6 +272,13 @@ export default function SpotFinder(props: FinderProps) {
   // and none while the browser is first asked.
   const known = place.source === "rider";
   const waiting = !searching && scope === "near" && place.asking;
+  // The places themselves not read yet (src/App.tsx reads them with the
+  // forecast's first manifest): the shapes of the cards to come, not the
+  // empty list's words.
+  const placesDue =
+    spots.length === 0 &&
+    !waiting &&
+    (searching || scope === "near" || starred.length > 0);
   const listed = useMemo(
     () =>
       searching
@@ -411,7 +418,7 @@ export default function SpotFinder(props: FinderProps) {
                 ? "Spots near you"
                 : "Favourites"
           }
-          aria-busy={waiting || undefined}
+          aria-busy={waiting || placesDue || undefined}
           data-finder-list
         >
           <div className={s.tools()}>
@@ -489,14 +496,35 @@ export default function SpotFinder(props: FinderProps) {
             scope === "near" &&
             !known &&
             !waiting &&
-            ranked.length > 0 && (
+            // Over the cards' shapes as well, so it does not push them
+            // down when they land.
+            (ranked.length > 0 || placesDue) && (
               <p className={s.note()} data-finder-note>
                 {place.source === "chart"
                   ? "We don’t know where you are, so these are the spots nearest the part of the chart you last looked at."
                   : "We don’t know where you are, so these are the spots nearest the middle of Ireland."}
               </p>
             )}
-          {ranked.length ? (
+          {placesDue ? (
+            <div className={s.cards()} data-finder-loading>
+              {Array.from(
+                {
+                  length: Math.min(
+                    4,
+                    scope === "near" || searching
+                      ? 4
+                      : Math.max(1, starred.length),
+                  ),
+                },
+                (_, k) => (
+                  <CardSkeleton
+                    key={k}
+                    words={k === 0 ? "Loading the spots…" : undefined}
+                  />
+                ),
+              )}
+            </div>
+          ) : ranked.length ? (
             <HoverContext.Provider value={hover}>
               <ul
                 className={s.cards()}

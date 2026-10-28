@@ -1440,12 +1440,15 @@
   width: calc(var(--panel-width) + 12px);
 }
 /* One card a row beside the chart, two where the list still has a card's
-   room for each (src/finder/SpotFinder.tsx). */
-[data-beside-chart] [data-finder-cards] {
+   room for each (src/finder/SpotFinder.tsx); the cards' shapes while the
+   places are read stand as the cards will. */
+[data-beside-chart] [data-finder-cards],
+[data-beside-chart] [data-finder-loading] {
   grid-template-columns: minmax(0, 1fr);
 }
 @media (min-width: 1920px) {
-  [data-beside-chart] [data-finder-cards] {
+  [data-beside-chart] [data-finder-cards],
+  [data-beside-chart] [data-finder-loading] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

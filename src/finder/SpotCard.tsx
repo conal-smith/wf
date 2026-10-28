@@ -29,6 +29,7 @@ import { ChartGlyph } from "../../shared/web/ChartGlyph";
 import { waves as wavesGlyph } from "../../shared/web/glyphSet";
 import { Button } from "../../ui/Button";
 import { Chip } from "../../ui/Chip";
+import { Skeleton } from "../../ui/Skeleton";
 import { MONO_LABEL, tv } from "../../ui/tv";
 import {
   inFrame,
@@ -85,11 +86,22 @@ export const cardStyles = tv({
       "max-wide:flex-wrap",
     ],
     kicker: [MONO_LABEL, "font-semibold text-ink"],
+    // As tall as the sky's glyph before it comes, so the hours under the
+    // line do not move down when it does.
     facts: [
-      "flex items-center gap-x-2.5 gap-y-0.5 font-mono text-caption text-ink-2",
+      "flex min-h-5 items-center gap-x-2.5 gap-y-0.5 font-mono text-caption text-ink-2",
       "max-wide:flex-wrap",
     ],
     fact: "inline-flex items-center gap-1 whitespace-nowrap",
+    // A card while the places are read: the shapes of its parts, each the
+    // height the card's own will be, so nothing moves when it lands.
+    ghostPicture: "aspect-16/10 min-h-0 w-24 shrink-0 wide:w-28",
+    ghostName: "h-4 w-40 max-w-full",
+    ghostWords: "m-0 font-body text-prose text-ink-muted italic",
+    ghostMeta: "w-24",
+    ghostFacts: "h-5 w-32",
+    ghostHours: "mb-8 min-h-25",
+    ghostDays: "min-h-31.25",
   },
 });
 
@@ -448,6 +460,7 @@ export function SpotCard(props: SpotCardProps) {
         <section
           className={s.section()}
           aria-label={dayName.long}
+          aria-busy={row === undefined || undefined}
           data-day-shown={day.date}
         >
           <div className={s.heading()}>
@@ -472,13 +485,16 @@ export function SpotCard(props: SpotCardProps) {
           />
         </section>
       )}
+      {/* The six days but the one above, today among them when another is
+        chosen: "Other days" whichever it is, as the list says. */}
       <section
         className={s.section()}
-        aria-label={isToday ? "Next 5 days" : "Other days"}
+        aria-label="Other days"
+        aria-busy={row === undefined || undefined}
         ref={next}
       >
-        <span className={s.kicker()}>
-          {isToday ? "Next 5 days" : "Other days"}
+        <span className={s.kicker()} data-other-days>
+          Other days
         </span>
         <NextDays
           row={row}
@@ -494,5 +510,44 @@ export function SpotCard(props: SpotCardProps) {
         />
       </section>
     </article>
+  );
+}
+
+/**
+ * A card's shape while the places themselves are read, with what is loading
+ * said on the first (`words`). It is hidden from a screen reader: the list
+ * that holds it says it is busy.
+ */
+export function CardSkeleton({ words }: { words?: string }) {
+  const s = cardStyles();
+  return (
+    <div
+      className={s.card({ className: "cursor-default" })}
+      aria-hidden="true"
+      data-card-skeleton
+    >
+      <div className={s.head()}>
+        <Skeleton shape="block" className={s.ghostPicture()} />
+        <div className={s.names()}>
+          {words ? (
+            <p className={s.ghostWords()}>{words}</p>
+          ) : (
+            <Skeleton className={s.ghostName()} />
+          )}
+          <Skeleton className={s.ghostMeta()} />
+        </div>
+      </div>
+      <div className={s.section()}>
+        <div className={s.heading()}>
+          <span className={s.kicker()}>Today</span>
+          <Skeleton className={s.ghostFacts()} />
+        </div>
+        <Skeleton shape="block" className={s.ghostHours()} />
+      </div>
+      <div className={s.section()}>
+        <span className={s.kicker()}>Other days</span>
+        <Skeleton shape="block" className={s.ghostDays()} />
+      </div>
+    </div>
   );
 }

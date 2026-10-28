@@ -18,6 +18,7 @@ import { useEffect, useId, useRef, type MouseEvent } from "react";
 import type { Units } from "../../force5/src/units";
 import { speedShort } from "../../force5/src/units";
 import { Button } from "../../ui/Button";
+import { Skeleton } from "../../ui/Skeleton";
 import { StarGlyphs } from "../../ui/StarGlyphs";
 import { tv } from "../../ui/tv";
 import type { PlaceHour } from "../ratings";
@@ -72,6 +73,10 @@ const styles = tv({
     name: "flex items-center gap-1 font-mono text-eyebrow font-semibold whitespace-nowrap text-ink uppercase",
     sky: "flex h-4 items-center gap-1 font-mono text-caption whitespace-nowrap text-ink-2",
     drawing: "block cursor-pointer overflow-visible",
+    // While the place's hours are worked out: the shape of the stars, and
+    // of the wind under them.
+    pendingStars: "h-1.5 w-10",
+    pendingBand: "animate-pulse fill-line motion-reduce:animate-none",
   },
 });
 
@@ -104,6 +109,8 @@ export function NextDays({
 }) {
   const s = styles();
   const id = useId().replace(/[^\w-]/g, "");
+  // The place's hours not yet worked out (src/useRatings.ts).
+  const pending = row === undefined;
   const dw = width ? (width - GAP * (plans.length - 1)) / plans.length : 0;
   const today = irishDate(now);
   // Which day a point across the drawing is in, and the time there: null in
@@ -217,10 +224,14 @@ export function NextDays({
               key={day.plan.date}
               variant="quiet"
               className={s.pick()}
-              aria-label={`${day.said}, at best ${day.best} of 5 stars`}
+              aria-label={
+                pending
+                  ? day.said
+                  : `${day.said}, at best ${day.best} of 5 stars`
+              }
               title={`${day.said}, hour by hour`}
               data-day={day.plan.date}
-              data-stars={day.best}
+              data-stars={pending ? undefined : day.best}
               onClick={(event) => {
                 event.stopPropagation();
                 refocus.current =
@@ -234,12 +245,16 @@ export function NextDays({
                 })}
               >
                 {day.name}
-                <StarGlyphs
-                  stars={day.best}
-                  coloured
-                  size={starRow(day.name).size}
-                  label=""
-                />
+                {pending ? (
+                  <Skeleton className={s.pendingStars()} />
+                ) : (
+                  <StarGlyphs
+                    stars={day.best}
+                    coloured
+                    size={starRow(day.name).size}
+                    label=""
+                  />
+                )}
               </span>
               <span className={s.sky()}>
                 {day.sky && <WeatherGlyph weather={day.sky} size={15} />}
@@ -352,6 +367,16 @@ export function NextDays({
             };
             return (
               <g key={plan.date} data-day-band={plan.date}>
+                {pending && (
+                  <rect
+                    className={s.pendingBand()}
+                    x={x0}
+                    y={(TOP + BASE) / 2}
+                    width={dw}
+                    height={BASE - (TOP + BASE) / 2}
+                    rx={3}
+                  />
+                )}
                 {band && (
                   <>
                     <defs>

@@ -33,6 +33,7 @@ import type { Units } from "../../force5/src/units";
 import { speedWords } from "../../force5/src/units";
 import { compass } from "../../force5/src/weather";
 import { Button } from "../../ui/Button";
+import { Skeleton } from "../../ui/Skeleton";
 import { StarGlyphs, starsLabel } from "../../ui/StarGlyphs";
 import { tv } from "../../ui/tv";
 import type { PlaceHour } from "../ratings";
@@ -55,6 +56,13 @@ import type { Readings } from "./useReadings";
 
 /** An hour's width, on a desktop and on a phone. */
 const COLUMN = { wide: 54, phone: 50 };
+/**
+ * The narrowest an hour may be drawn so the whole day fits the row: room for
+ * its five stars (StarGlyphs at 7.5, 41.5px) inside the column's padding. A
+ * row that would scroll by less than a column is drawn this tight instead,
+ * so no first or last hour sits under an edge's fade and its ‹ or ›.
+ */
+const TIGHT = 46;
 /** The columns' height, which the band behind them shares. */
 const ROW_HEIGHT = 100;
 /** The ‹ and ›: a small control's height (ui/theme.css `control-sm`). */
@@ -68,6 +76,10 @@ const styles = tv({
     track: "relative flex",
     band: "pointer-events-none absolute top-0 left-0 opacity-40",
     dark: "pointer-events-none absolute top-0 hatch rounded-control bg-ink/7",
+    // Over the band where the hours are gone or dark: it pales the wind's
+    // colours there, so the figures over them keep their contrast (4.5:1 in
+    // ink-2 over any wind) rather than being faded with them.
+    veil: "pointer-events-none absolute top-0 bg-card/50",
     hour: [
       "relative z-popover h-25 shrink-0 flex-col items-center justify-start gap-0.5 rounded-control border-0 px-0.5 pt-1 pb-1.5",
       "font-mono tracking-normal text-ink normal-case",
@@ -82,7 +94,23 @@ const styles = tv({
       "absolute top-0 left-1/2 h-1.5 w-0.5 -translate-x-1/2 rounded-full bg-pen",
     sky: "flex h-4 items-center justify-center",
     knots: "text-body leading-none font-semibold",
-    gust: "h-3.5 text-eyebrow leading-none text-ink-muted",
+    // Ink over the band: 10px over a wind's colour at 40% is under 4.5:1 in
+    // anything lighter (ink-muted came to 3.7:1 over 9 kn's blue).
+    gust: "h-3.5 text-eyebrow leading-none text-ink",
+    // A gone or dark hour's figures and hour: a step lighter, over the veil,
+    // never faded by opacity (that took a gust to 1.7:1).
+    dim: "text-ink-2",
+    // While the hour's wind is being worked out: the shapes of its figures.
+    pending: "h-2.5 w-5",
+    pendingGust: "h-2 w-4",
+    pendingStars: "h-1.5 w-10",
+    // What the shapes are waiting for, said once over the row's middle: it
+    // takes no room, so nothing moves when it goes.
+    pendingWords: [
+      "pointer-events-none absolute inset-x-0 z-panel flex justify-center",
+      "font-body text-caption text-ink-muted italic",
+    ],
+    pendingTag: "rounded-control bg-card px-2 py-0.5",
     // Where there is no gust worth a figure, its room stays.
     stars: "mt-auto flex h-2.5 items-center",
     faded: "opacity-45",
@@ -175,13 +203,17 @@ export function DayHours({
   const s = styles();
   const id = useId().replace(/[^\w-]/g, "");
   const { hours, firstLight, lastLight } = day;
+  // The place's hours not yet worked out (src/useRatings.ts): the shapes of
+  // the figures hold their room until they come.
+  const pending = row === undefined;
   const times = useMemo(() => hours.map((h) => h.time), [hours]);
   // The room the row has, measured: a short October day on a wide card
   // spreads its hours across it rather than stopping short of the edge.
   const [view, setView] = useState(0);
+  const fit = Math.floor(view / hours.length);
   const cw = Math.max(
-    phone ? COLUMN.phone : COLUMN.wide,
-    Math.floor(view / hours.length),
+    fit >= TIGHT ? TIGHT : phone ? COLUMN.phone : COLUMN.wide,
+    fit,
   );
   const from = hours[0].time;
   const width = hours.length * cw;
@@ -245,7 +277,18 @@ export function DayHours({
       0,
       Math.min(hours.length - 1, Math.round(rowPosition(times, hourOf(shown)))),
     );
-    const to = centredScroll(index * cw, cw, el.clientWidth, el.scrollWidth);
+    // From the scroller's edge: the hours stand in from it by its padding.
+    const inset = parseFloat(getComputedStyle(el).paddingLeft) || 0;
+    const to = centredScroll(
+      inset + index * cw,
+      cw,
+      el.clientWidth,
+      el.scrollWidth,
+    );
+    // The ends where it is going: a row that has come to fit its view does
+    // not scroll at all, and so never says so (`measure`), which left a ›
+    // over its last hour.
+    setEnds(rowEnds(to, el.clientWidth, el.scrollWidth));
     // A smooth scroll says where it has got to as it goes (`measure`).
     if (smooth && !reducedMotion) {
       el.scrollTo({ left: to, behavior: "smooth" });
@@ -253,7 +296,6 @@ export function DayHours({
     }
     el.scrollLeft = to;
     left.current = to;
-    setEnds(rowEnds(to, el.clientWidth, el.scrollWidth));
   };
   // Open with the hour shown in the middle, before the first paint, at the
   // width the row has.
@@ -288,6 +330,12 @@ export function DayHours({
 
   const darkBefore = Math.max(0, x(firstLight));
   const darkAfter = Math.min(width, x(lastLight));
+  // The hours gone, to the edge of the first that is not.
+  const goneTo = hours.findIndex((h) => !h.gone);
+  const veilBefore = Math.max(
+    darkBefore,
+    (goneTo < 0 ? hours.length : goneTo) * cw,
+  );
 
   /* ---- the time under a mouse ---- */
   const hover = useHover();
@@ -321,7 +369,11 @@ export function DayHours({
   };
 
   return (
-    <div className={s.root()} data-day-hours>
+    <div
+      className={s.root()}
+      data-day-hours
+      data-pending={pending || undefined}
+    >
       <div
         ref={scroller}
         className={s.scroller()}
@@ -336,24 +388,6 @@ export function DayHours({
           onPointerMove={follow}
           onPointerLeave={() => hover?.set(null)}
         >
-          {darkBefore > 0 && (
-            <span
-              className={s.dark()}
-              style={{ left: 0, width: darkBefore, height: ROW_HEIGHT }}
-              aria-hidden="true"
-            />
-          )}
-          {darkAfter < width && (
-            <span
-              className={s.dark()}
-              style={{
-                left: darkAfter,
-                width: width - darkAfter,
-                height: ROW_HEIGHT,
-              }}
-              aria-hidden="true"
-            />
-          )}
           {band && (
             <svg
               className={s.band()}
@@ -408,6 +442,44 @@ export function DayHours({
               />
             </svg>
           )}
+          {/* The hours gone and the dark, over the band: paled, then the
+            dark shaded. */}
+          {veilBefore > 0 && (
+            <span
+              className={s.veil()}
+              style={{ left: 0, width: veilBefore, height: ROW_HEIGHT }}
+              aria-hidden="true"
+            />
+          )}
+          {darkAfter < width && (
+            <span
+              className={s.veil()}
+              style={{
+                left: darkAfter,
+                width: width - darkAfter,
+                height: ROW_HEIGHT,
+              }}
+              aria-hidden="true"
+            />
+          )}
+          {darkBefore > 0 && (
+            <span
+              className={s.dark()}
+              style={{ left: 0, width: darkBefore, height: ROW_HEIGHT }}
+              aria-hidden="true"
+            />
+          )}
+          {darkAfter < width && (
+            <span
+              className={s.dark()}
+              style={{
+                left: darkAfter,
+                width: width - darkAfter,
+                height: ROW_HEIGHT,
+              }}
+              aria-hidden="true"
+            />
+          )}
           {hours.map((h) => {
             const hour = h.at === null ? null : (row?.[h.at] ?? null);
             const sky = h.at === null ? null : readings.sky[h.at];
@@ -416,7 +488,9 @@ export function DayHours({
               hour?.windKn != null
                 ? gustShown(hour.windKn, hour.gustKn, units)
                 : null;
+            // The marks fade with the hour; its words are set a step lighter.
             const fade = h.dark ? s.off() : h.gone ? s.faded() : undefined;
+            const dim = h.dark || h.gone ? s.dim() : undefined;
             return (
               <Button
                 key={h.time}
@@ -441,7 +515,9 @@ export function DayHours({
                 {h.now && <span className={s.nowTick()} aria-hidden="true" />}
                 <span
                   className={
-                    h.now ? s.nowLabel() : s.label({ className: fade })
+                    h.now
+                      ? s.nowLabel()
+                      : s.label({ className: h.dark ? s.dim() : undefined })
                   }
                 >
                   {h.now ? "now" : hourLabel(h.time)}
@@ -457,11 +533,11 @@ export function DayHours({
                 </span>
                 {hour?.windKn != null ? (
                   <>
-                    <b className={s.knots({ className: fade })}>
+                    <b className={s.knots({ className: dim })}>
                       <Speed knots={hour.windKn} units={units} size={14} />
                     </b>
                     <small
-                      className={s.gust({ className: fade })}
+                      className={s.gust({ className: dim })}
                       title={hour.gustKn === null ? NO_GUST : undefined}
                       data-no-gust={hour.gustKn === null || undefined}
                     >
@@ -483,15 +559,24 @@ export function DayHours({
                       )}
                     </span>
                   </>
+                ) : pending && !h.dark ? (
+                  <>
+                    <Skeleton className={s.pending()} />
+                    <Skeleton className={s.pendingGust()} />
+                  </>
                 ) : null}
                 <span className={s.stars({ className: fade })}>
-                  {!h.dark && (
-                    <StarGlyphs
-                      stars={starsAt(hour)}
-                      coloured
-                      size={7.5}
-                      label=""
-                    />
+                  {!h.dark && pending ? (
+                    <Skeleton className={s.pendingStars()} />
+                  ) : (
+                    !h.dark && (
+                      <StarGlyphs
+                        stars={starsAt(hour)}
+                        coloured
+                        size={7.5}
+                        label=""
+                      />
+                    )
                   )}
                 </span>
               </Button>
@@ -539,6 +624,15 @@ export function DayHours({
           </span>
         </div>
       </div>
+      {pending && (
+        <span
+          className={s.pendingWords()}
+          style={{ top: ROW_HEIGHT / 2 - 10 }}
+          data-pending-words
+        >
+          <span className={s.pendingTag()}>Loading the forecast…</span>
+        </span>
+      )}
       <span
         className={s.fade({ className: "left-0 bg-linear-to-r" })}
         style={{ height: ROW_HEIGHT, opacity: ends.before ? 1 : 0 }}
