@@ -25,6 +25,11 @@ words in mono capitals, the one that is on filled in ink.
   `sem.size.control.md` tall rows, `sem.space.x4` across, words to the left,
   divided by `sem.rule.hairline` in `sem.color.line` (none under the last).
   One row filled.
+- **Small** (`.wf-segmented--sm`) — a switch in a crowded head (the spot
+  finder's, on a phone): still `sem.size.control.sm` tall, `sem.space.x2`
+  across, the words at `sem.font.size.eyebrow`. On a coarse pointer it keeps
+  its height, and the press reaches a `sem.size.touch` height through an
+  invisible band laid across it, so nothing around it moves.
 
 ## States
 
@@ -37,7 +42,8 @@ words in mono capitals, the one that is on filled in ink.
   of `sem.color.focus`, `sem.ring.offset` clear (`.is-focus` in the demo).
 - Disabled: `sem.color.ink-disabled` words, default cursor, no fade, no
   hover.
-- Coarse pointer: an item is never shorter than `sem.size.touch`.
+- Coarse pointer: an item is never shorter than `sem.size.touch` (the
+  small one's press is, through its band).
 
 ## Usage
 

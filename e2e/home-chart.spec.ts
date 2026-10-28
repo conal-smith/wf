@@ -292,7 +292,7 @@ test.describe("on a wide screen", () => {
     await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
   });
 
-  test("Near you lists the spots round the rider; the chart beside it shows the rider as a blue dot", async ({
+  test("Nearby lists the spots round the rider; the chart beside it shows the rider as a blue dot", async ({
     page,
     context,
   }) => {
@@ -301,7 +301,7 @@ test.describe("on a wide screen", () => {
     await openHome(page, ["brandon"]);
     await page
       .getByRole("group", { name: "Which spots" })
-      .getByRole("button", { name: "Near you" })
+      .getByRole("button", { name: "Nearby" })
       .click();
     await page.getByRole("button", { name: "Use my location" }).click();
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
@@ -319,7 +319,7 @@ test.describe("on a wide screen", () => {
 test.describe("a first visit, with no favourites", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("location allowed: Near you lists the spots round the rider, and the chart beside it is fitted to them, with the blue dot", async ({
+  test("location allowed: Nearby lists the spots round the rider, and the chart beside it is fitted to them, with the blue dot", async ({
     page,
     context,
   }) => {
@@ -339,7 +339,7 @@ test.describe("a first visit, with no favourites", () => {
     await expect.poll(() => lightsInside(page)).toBe(listed);
   });
 
-  test("location refused: Near you lists the spots nearest the middle of Ireland, and the chart beside it is fitted to them", async ({
+  test("location refused: Nearby lists the spots nearest the middle of Ireland, and the chart beside it is fitted to them", async ({
     page,
   }) => {
     await page.goto("/");

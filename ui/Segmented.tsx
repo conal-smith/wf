@@ -29,7 +29,21 @@ export const segmentedStyles = tv({
         item: "h-control-md justify-start rounded-none border-b border-line px-4 last:border-b-0 aria-pressed:shadow-none",
       },
     },
+    // A switch in a crowded head (the spot finder's, on a phone): the
+    // eyebrow's size and half the room across. It stays a control's height
+    // on a touch screen too, and the press reaches past it to a touch's
+    // height through a band laid across it, so nothing around it moves.
+    size: {
+      md: {},
+      sm: {
+        item: [
+          "relative px-2 text-eyebrow",
+          "pointer-coarse:min-h-0 pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:-inset-y-1.75",
+        ],
+      },
+    },
   },
+  defaultVariants: { size: "md" },
 });
 
 export interface SegmentedOption<T extends string> {
@@ -55,10 +69,11 @@ export function Segmented<T extends string>({
   value,
   onChange,
   stack,
+  size,
   className,
   "aria-label": label,
 }: SegmentedProps<T>) {
-  const styles = segmentedStyles({ stack });
+  const styles = segmentedStyles({ stack, size });
   return (
     <div role="group" aria-label={label} className={styles.base({ className })}>
       {options.map((option) => (
