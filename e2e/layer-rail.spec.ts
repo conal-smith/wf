@@ -332,24 +332,27 @@ test.describe("on a phone", () => {
     await closePanel(page);
   });
 
-  test("the panel is half the screen over a clear chart, and its foot names the defaults as they are", async ({
+  test("the panel is a modal in the middle of the screen, and its foot names the defaults as they are", async ({
     page,
   }) => {
     await page.goto("/?map");
     await zoomLayers(page).click();
     const panel = page.locator("dialog.layers-dialog");
     await expect(panel).toBeVisible();
-    // Half the screen at most, so the chart above it is seen to change as a
-    // layer is pressed, with no wash or blur over it.
+    // A modal in the middle of the screen (the owner's ruling of
+    // 2026-10-28), not a sheet from the foot over the dock's own: as far
+    // from the top as from the foot, clear of both.
     await expect
-      .poll(async () => (await panel.boundingBox())!.y, { timeout: 5000 })
-      .toBeGreaterThanOrEqual(844 / 2 - 2);
-    expect(
-      await panel.evaluate((el) => {
-        const backdrop = getComputedStyle(el, "::backdrop");
-        return [backdrop.backgroundColor, backdrop.backdropFilter];
-      }),
-    ).toEqual(["rgba(0, 0, 0, 0)", "none"]);
+      .poll(
+        async () => {
+          const box = (await panel.boundingBox())!;
+          return Math.abs(box.y - (844 - box.y - box.height));
+        },
+        { timeout: 5000 },
+      )
+      .toBeLessThan(2);
+    const box = (await panel.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(60);
     // The foot names the defaults from the layers themselves: as what is on
     // at first, and as what Reset puts back once the rider has others.
     const foot = panel.locator("[data-layers-default]");

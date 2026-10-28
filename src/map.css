@@ -672,24 +672,40 @@
   fill: color-mix(in srgb, var(--color-ink) 50%, transparent);
   font-weight: 500;
 }
-.lt.s3 .lt-ring,
-.lt.s4 .lt-ring,
-.lt-key.s3 .lt-ring,
-.lt-key.s4 .lt-ring {
-  fill: var(--color-ink);
+/* One to five stars: the ring filled in the stars' own pink to purple
+   (--color-stars-1…5, as the cards' lines and the dock's stars), the figure
+   in ink on the two pinks and in paper on the three purples (the owner's
+   ruling of 2026-10-28, where it was a plain ring, then ink, then magenta). */
+.lt.s1 .lt-ring,
+.lt-key.s1 .lt-ring {
+  fill: var(--color-stars-1);
+  stroke: var(--color-stars-2);
 }
-.lt.s3 .lt-n,
-.lt.s4 .lt-n,
-.lt-key.s3 .lt-n,
-.lt-key.s4 .lt-n {
-  fill: var(--color-ground);
+.lt.s2 .lt-ring,
+.lt-key.s2 .lt-ring {
+  fill: var(--color-stars-2);
+  stroke: var(--color-stars-3);
+}
+.lt.s3 .lt-ring,
+.lt-key.s3 .lt-ring {
+  fill: var(--color-stars-3);
+  stroke: var(--color-stars-4);
+}
+.lt.s4 .lt-ring,
+.lt-key.s4 .lt-ring {
+  fill: var(--color-stars-4);
+  stroke: var(--color-stars-5);
 }
 .lt.s5 .lt-ring,
 .lt-key.s5 .lt-ring {
-  fill: var(--color-chart-magenta);
-  stroke: var(--color-chart-magenta);
+  fill: var(--color-stars-5);
+  stroke: var(--color-ink);
 }
+.lt.s3 .lt-n,
+.lt.s4 .lt-n,
 .lt.s5 .lt-n,
+.lt-key.s3 .lt-n,
+.lt-key.s4 .lt-n,
 .lt-key.s5 .lt-n {
   fill: var(--color-ground);
 }
