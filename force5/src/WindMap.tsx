@@ -3,7 +3,6 @@ import * as maplibregl from "maplibre-gl";
 import type { ExpressionSpecification, GeoJSONSource } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { beaufortPath } from "../../ui/beaufortPath";
-import { loopPath } from "../../ui/penPaths";
 import {
   BATHY_PATH,
   CHART_BOUNDS,
@@ -156,8 +155,6 @@ type Props = {
   units: Units;
   /** The loupe's ride rose for the dock's hour at the focus, or null with no wind to show. */
   rose: LoupeRose | null;
-  /** Where the pen rings: the chosen spot or point. */
-  mark: { lon: number; lat: number } | null;
   /** A point tapped on the open map, marked where it was tapped. */
   picked: { lon: number; lat: number } | null;
   /** The wind's two layers, the coloured wind and the particles, each on or off. */
@@ -671,7 +668,6 @@ export default function WindMap(props: Props) {
     focusStyle,
     units,
     rose,
-    mark,
     picked,
     wind,
     layers,
@@ -687,7 +683,6 @@ export default function WindMap(props: Props) {
   const container = useRef<HTMLDivElement>(null);
   const particles = useRef<HTMLCanvasElement | null>(null);
   const neat = useRef<SVGSVGElement>(null);
-  const pen = useRef<SVGSVGElement | null>(null);
   const glass = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const windRef = useRef<WindLayer | null>(null);
@@ -763,9 +758,8 @@ export default function WindMap(props: Props) {
     // asked for while the basemap is still on its way.
     setMapView(viewOf(map));
     latest.current.onMade?.();
-    // The wind's canvas, the loupe's sheet and the pen's go inside the map,
-    // over its canvas and, by z-index (src/map.css), the first two under the
-    // lights and the pen over them.
+    // The wind's canvas and the loupe's sheet go inside the map, over its
+    // canvas and, by z-index (src/map.css), under the lights.
     const canvasBox = map.getCanvasContainer();
     const canvas = document.createElement("canvas");
     canvas.className = "particle-canvas";
@@ -773,13 +767,9 @@ export default function WindMap(props: Props) {
     const lens = document.createElement("div");
     lens.className = "map-focus";
     lens.setAttribute("aria-hidden", "true");
-    const sheet = document.createElementNS(SVG, "svg");
-    sheet.setAttribute("class", "map-pen");
-    sheet.setAttribute("aria-hidden", "true");
-    canvasBox.after(canvas, lens, sheet);
+    canvasBox.after(canvas, lens);
     particles.current = canvas;
     glass.current = lens;
-    pen.current = sheet;
     map.touchZoomRotate.disableRotation();
     map.keyboard.disableRotation();
     const loadTimeout = window.setTimeout(
@@ -988,7 +978,6 @@ export default function WindMap(props: Props) {
       // Ours, not the map's: it leaves them in the container otherwise.
       canvas.remove();
       lens.remove();
-      sheet.remove();
       map.remove();
       mapRef.current = null;
     };
@@ -1593,21 +1582,10 @@ export default function WindMap(props: Props) {
   const roseKey = rose ? JSON.stringify(rose) : "";
   useEffect(() => redrawRose.current(), [roseKey]);
 
-  // The neatline, and the pen's loop, follow the map as it moves.
+  // The neatline follows the map as it moves.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
-    const spot = mark;
-    const svg = pen.current;
-    let path: SVGPathElement | null = null;
-    if (svg) {
-      svg.replaceChildren();
-      if (spot)
-        path = svgEl(svg, "path", {
-          class: "map-pen-loop",
-          pathLength: "1",
-        }) as SVGPathElement;
-    }
     let raf = 0;
     // The map's size, read when it changes: read on every frame of a move,
     // it laid the page out again under the lights just moved.
@@ -1631,15 +1609,7 @@ export default function WindMap(props: Props) {
           clearBottom: phone ? 84 : 36,
         });
     };
-    // The loop rings the spot in the glass: moved in the same frame as the
-    // chart, as the focus is.
-    const loop = () => {
-      if (!spot || !path) return;
-      const q = map.project([spot.lon, spot.lat]);
-      path.setAttribute("d", loopPath(q.x, q.y, 24, 18, 7));
-    };
     const queue = () => {
-      loop();
       if (!raf) raf = requestAnimationFrame(place);
     };
     const resized = () => {
@@ -1648,7 +1618,6 @@ export default function WindMap(props: Props) {
     };
     measure();
     place();
-    loop();
     map.on("move", queue);
     map.on("resize", resized);
     return () => {
@@ -1656,7 +1625,7 @@ export default function WindMap(props: Props) {
       map.off("move", queue);
       map.off("resize", resized);
     };
-  }, [ready, mark?.lon, mark?.lat, bottomInset, phone]);
+  }, [ready, bottomInset, phone]);
 
   // The point tapped on the open map, marked where it was.
   useEffect(() => {

@@ -178,14 +178,14 @@ test.describe("on a phone", () => {
 async function expectHourUnderCursor(page: Page) {
   const slider = page.getByRole("slider", { name: "Forecast time" });
   // The scroll against the one that brings the selected hour to the
-  // strip's middle (its snap mark), and the pen's frame against its column.
+  // strip's middle (its snap mark), and the card against its column.
   const offCursor = () =>
     page.evaluate(() => {
       const wrap = document.querySelector<HTMLElement>(".dock .tt-wrap");
       const cell = document.querySelector<HTMLElement>(
         ".dock tr.tt-hour td.c-sel",
       );
-      const frame = document.querySelector(".dock .pen-frame");
+      const frame = document.querySelector(".dock .tt-card");
       if (!wrap || !cell || !frame) return Infinity;
       const snap =
         wrap.querySelectorAll<HTMLElement>(".tt-snaps i")[

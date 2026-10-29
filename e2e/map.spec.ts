@@ -181,9 +181,12 @@ test("finding a spot flies there and focuses it, with no box over the map; Escap
         .evaluate((el) => Number(getComputedStyle(el).opacity)),
     )
     .toBe(1);
-  // The pen rings it and writes nothing beside it: the dock has the hour.
-  await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(1);
-  await expect(page.locator(".map-pen text")).toHaveCount(0);
+  // Its light is lifted off the chart, and nothing is written beside it:
+  // the dock has the hour.
+  await expect(page.locator('[data-spot-id="dollymount"]')).toHaveClass(
+    /\bsel\b/,
+  );
+  await expect(page.locator(".map-pen")).toHaveCount(0);
   // A range ring is drawn round it, by default, under the lights.
   await expect(page.locator(".map-focus")).toHaveAttribute(
     "data-focus",
@@ -617,12 +620,12 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   await expect(focus).toHaveAttribute("data-focus", "ring");
   await expect(focus.locator(".map-loupe-rim")).toHaveCount(0);
   await expect(focus.locator(".map-range-label")).toHaveText(/^[\d.]+ NM$/);
-  // Nothing at all: the ring that is on, pressed again.
+  // Nothing at all: the ring that is on, pressed again. The lifted light
+  // alone marks the spot.
   await choice.getByRole("button", { name: "Range ring" }).click();
   await expect(focus).toHaveAttribute("data-focus", "off");
   await expect(focus.locator("*")).toHaveCount(0);
-  await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(1);
-  await expect(map).toHaveClass(/is-focus/);
+  await expect(page.locator(".map-canvas.is-focus .lt.sel")).toHaveCount(1);
   await closeLayers(page);
 
   // Kept for the next visit, which opens on the chart alone: at `/`, as the
@@ -982,7 +985,7 @@ for (const device of [
       await expect(dockName(page)).toHaveText("Keel Beach");
       await expect(page).toHaveURL(/\/\?spot=keel$/);
       await expect(page.locator(".pick-mark")).toHaveCount(0);
-      await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(0);
+      await expect(page.locator(".map-canvas.is-focus .lt.sel")).toHaveCount(0);
 
       // With nothing chosen, the next press picks the point.
       await press(page, at);

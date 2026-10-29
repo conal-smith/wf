@@ -1,0 +1,41 @@
+/* Lift — ui/Lift.tsx (liftStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * The one thing on a view that matters, lifted off the page on raised paper:
+ * a few words (.wf-lift), or a card laid under a run of the strip's columns
+ * (.wf-lift-card), which a pattern places and sizes. The card goes under the
+ * figures it lifts: its table is isolated, and the card sits at z-index -1
+ * inside it. Nothing about it is pressed: it is a mark, not a control. */
+
+.wf-lift {
+  position: relative;
+  display: inline-block;
+  padding: var(--sem-space-x0-5) var(--sem-space-x1-5);
+  border-radius: var(--sem-radius-control);
+  background-color: var(--sem-color-card);
+  background-image: var(--sem-texture-grain), var(--sem-gradient-float);
+  background-repeat: repeat, no-repeat;
+  box-shadow: var(--sem-shadow-float);
+  transform: translateY(-1px);
+}
+
+.wf-lift-card {
+  position: absolute;
+  z-index: -1;
+  border-radius: var(--sem-radius-control);
+  background-color: var(--sem-color-card);
+  background-image: var(--sem-gradient-raised);
+  box-shadow: var(--sem-shadow-raised), var(--sem-shadow-float);
+  pointer-events: none;
+}
+/* The ink tab at its foot. */
+.wf-lift-card::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: var(--sem-space-x1);
+  width: var(--sem-space-x4);
+  height: calc(var(--sem-space-step) * 0.75);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-ink);
+  transform: translateX(-50%);
+}
