@@ -17,7 +17,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
-import { Avatar, Button, PenLoop } from "../../../ui";
+import { Avatar, Button, Lift } from "../../../ui";
 import { HOVER, MONO_LABEL, NO_RING, RING_WITHIN, tv } from "../../../ui/tv";
 import { LIMITS, type Member, type Message } from "../../shared/types";
 import {
@@ -38,7 +38,7 @@ export const composerStyles = tv({
     replying: "flex min-w-0 items-center gap-2 pl-1 text-body text-ink-muted",
     replyingLabel: ["shrink-0", MONO_LABEL],
     // Clear of the words either side by the loop's own reach.
-    loop: "mx-3 shrink-0",
+    lift: "mx-1 shrink-0",
     replyingName: "font-display font-semibold text-ink",
     replyingLine: "min-w-0 flex-1 truncate italic",
     // The field: a box ruled in ink to write in, as the kit's fields are.
@@ -331,11 +331,11 @@ export function Composer({
       {replyingTo && (
         <div className={styles.replying()}>
           <span className={styles.replyingLabel()}>Replying to</span>
-          <PenLoop seed={5} className={styles.loop()}>
+          <Lift className={styles.lift()}>
             <span className={styles.replyingName()}>
               {replyingTo.author.displayName}
             </span>
-          </PenLoop>
+          </Lift>
           <span className={styles.replyingLine()}>{firstLine(replyingTo)}</span>
           <Button
             size="sm"

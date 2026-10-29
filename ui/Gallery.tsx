@@ -33,6 +33,7 @@ import {
   Headline,
   headlineStyles,
   Kicker,
+  Lift,
   Link,
   Masthead,
   MastheadMark,
@@ -40,7 +41,6 @@ import {
   Notice,
   Pager,
   Pane,
-  PenLoop,
   PenNote,
   PenStrike,
   PenUnderline,
@@ -280,9 +280,9 @@ export default function Gallery() {
       </Section>
 
       <Section title="The pen and the Almanac">
-        <Row label="a loop, an underline, a strike: one mark a view">
+        <Row label="a lift, an underline, a strike: one mark a view">
           <span className="font-mono text-figure">
-            <PenLoop>13 g22</PenLoop>
+            <Lift>13 g22</Lift>
           </span>
           <span className="font-display text-lead">
             <PenUnderline>Four stars</PenUnderline>

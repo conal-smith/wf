@@ -18,9 +18,19 @@ import { createPortal } from "react-dom";
 import type { FocusStyle } from "../force5/src/focus";
 import { Button } from "../ui/Button";
 import { Puffin } from "../ui/Puffin";
-import { framePath, loopPath } from "../ui/penPaths";
 import type { DockView } from "./ForecastDock";
 import type { MapPanel } from "./MapControls";
+
+/** A box with rounded corners of radius `r`, as one SVG path. */
+function roundBox(x: number, y: number, w: number, h: number, r: number) {
+  r = Math.min(r, w / 2, h / 2);
+  return (
+    `M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}` +
+    `V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}` +
+    `H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}` +
+    `V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z`
+  );
+}
 
 interface Box {
   x: number;
@@ -323,7 +333,6 @@ export default function Tour(props: TourProps) {
     w: Math.ceil(ring.w),
     h: Math.ceil(ring.h),
   };
-  const big = t && (t.w > 160 || t.h > 160);
   return createPortal(
     <div className="tour" data-step={step.id}>
       {/* The site's backdrop round the target (ui/Backdrop.tsx), with a hole cut
@@ -342,18 +351,7 @@ export default function Tour(props: TourProps) {
         <svg className="tour-ring" width={W} height={H} aria-hidden="true">
           <path
             key={step.id}
-            pathLength={1}
-            d={
-              big
-                ? framePath(t.x - 3, t.y - 3, t.w + 6, t.h + 6, 8, at + 2)
-                : loopPath(
-                    t.x + t.w / 2,
-                    t.y + t.h / 2,
-                    t.w / 2 + 12,
-                    t.h / 2 + 10,
-                    at + 3,
-                  )
-            }
+            d={roundBox(t.x - 5, t.y - 5, t.w + 10, t.h + 10, 14)}
           />
         </svg>
       )}

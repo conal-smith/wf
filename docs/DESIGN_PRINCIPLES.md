@@ -46,9 +46,10 @@ never used to make something stand out.
 
 ## The pen rule
 
-**The red pen marks the one thing that matters, and nothing else.** A loop
-round the chosen spot or hour, a line at the time now, a strike through a spot
-that is offshore. One mark on a view, two at most. It marks; it does not
+**The one thing that matters is lifted, and nothing else.** The chosen hour on
+a raised card, the open spot's light lifted off the chart, a red line at the
+time now, a strike through a spot that is offshore. One mark on a view, two at
+most. Nothing is circled or framed by hand (see 2026-10-29). It marks; it does not
 write a verdict beside the mark (the information rule). It is never a fill,
 never a control, never a status: a warning is `warn`, a different red that
 means degraded. The pen's strokes are `pen`; its handwriting is `pen-ink`,
@@ -61,7 +62,7 @@ page show the wind, the stars, the hours, the figures and plain labels, and
 leave the reading of them to the rider. No verdict or advice in the house
 voice: not "Go after lunch: four stars on a 5 m", not "Go 13–16, shallow after
 3", in the pen's hand or in type. Highlighting the key hours is fine (the
-stars, the pen's frame round the chosen hour, the line at now, a tint), and so
+stars, the card under the chosen hour, the line at now, a tint), and so
 is a label that says what a figure is ("14.4 °C, M3 weather buoy, 50 km from
 here").
 
@@ -837,6 +838,22 @@ be, the first saying "Loading the spots…"; while a place's hours are worked
 out, its columns, stars and days are the shapes of their figures, with
 "Loading the forecast…" over the row's middle, and the dock's wind row the
 same, not dashes that read as no forecast (ui/Skeleton).
+
+**2026-10-29 — The red pen no longer circles: the one thing is lifted.** The
+owner: "I don't like the red pen circling stuff anymore… change it for a
+modern approach", and of three options (backlog/mockups/2026-10-29-pen-
+alternatives.html) chose C, the lifted card. The dock's chosen hour stands on
+a raised paper card under its figures, with an ink tab at its foot, springing
+from hour to hour (`.tt-card`); its hour is set in ink, a size up. The line at
+now is straight and red, fading down the hours; the model's handover is a
+straight dashed rule. The open spot's light is lifted off the chart and
+enlarged, its shadow left on the water where the spot is, in place of the
+pen's loop. The tour rings its target in a clean paper ring that springs in.
+`PenLoop` and the hand-drawn geometry (`loopPath`, `framePath`, `stemPath`,
+`arrowPath`) are gone; `Lift` sets a few words on raised paper where a loop
+was (a reply's name, a count of new posts, "new" on a listing). The pen's
+strike through what is off, its underline and its handwriting stay. The
+phone app (`mobile/`) still draws its own loop and follows separately.
 
 ---
 

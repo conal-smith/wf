@@ -32,11 +32,13 @@ something, once**: a five-star light, the spot in view, a quantity's bar
 pointer. And it is **the focus ring** (`sem.color.focus`): 2px, 2px clear, the
 same on every control.
 
-**The red pen** (`sem.color.pen`, its words `sem.color.pen-ink`) marks **the one
-thing that matters in a view**: a loop round the best hour, an underline under
-the word that carries the note, a strike through what is off (offshore, sold),
-and the note itself in Kalam. One mark on a view, two at most. It is never a
-fill, never a control, never a status, never emphasis.
+**The one thing that matters in a view is lifted** on raised paper
+(`Lift`: `sem.color.card`, `sem.gradient.float`, `sem.shadow.float`): the
+chosen hour, the open spot. Nothing is circled or framed by hand. **The red
+pen** (`sem.color.pen`, its words `sem.color.pen-ink`) rules the line at now,
+an underline under the word that carries the note, a strike through what is
+off (offshore, sold), and the note itself in Kalam. One mark on a view, two at
+most. Neither is ever a control, a status or emphasis.
 
 **Warm is not an accent.** `sem.color.warn`, `sem.color.now` and
 `sem.color.warn-ground` mean *this instant* or *this is degraded*, and nothing

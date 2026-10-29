@@ -12,7 +12,6 @@ import {
 import { ArrowDown, ArrowUp, ChevronDown, Layers3 } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Skeleton } from "../ui/Skeleton";
-import { framePath, stemPath, type KeepOut } from "../ui/penPaths";
 import { BeaufortGlyph } from "../ui/BeaufortGlyph";
 import { StarGlyphs } from "../ui/StarGlyphs";
 // Only when asked for: the chart's Blend view.
@@ -637,7 +636,6 @@ function HandoverMark({
   const column = columns[handover.at];
   if (!column) return null;
   const x = g.x[handover.at];
-  const seed = Math.floor(column.time / 3600000);
   return (
     <svg
       className="tt-under"
@@ -649,13 +647,13 @@ function HandoverMark({
       {/* Named for a pointer that rests on it: the dock's head no longer
           says the model, so the line does, quietly. */}
       <title>{`${modelName(handover.to)} from ${dayShort(column.time)} ${clock(column.time)}`}</title>
-      <path className="pen-handover" d={stemPath(x, top, height - 2, seed)} />
+      <path className="pen-handover" d={`M${x} ${top}V${height - 2}`} />
     </svg>
   );
 }
 
 /**
- * Now, as the red pen marks it: a line down the hours at the time, drawn
+ * Now: a red line down the hours at the time, fading as it goes down, drawn
  * under the table so the figures it passes stay on top of it. The line is
  * the mark, with no words written by it: the hours over it say the time.
  */
@@ -685,7 +683,6 @@ function NowMark({
     [columns, now, g],
   );
   if (x === null) return null;
-  const seed = Math.floor(now / 60000);
   return (
     <svg
       className="tt-under"
@@ -694,49 +691,21 @@ function NowMark({
       aria-hidden="true"
       data-now={clock(now)}
     >
-      <path className="pen-now" d={stemPath(x, top - 1, height - 2, seed)} />
+      {/* In the strip's own pixels: a line has no width to fade across. */}
+      <linearGradient
+        id="now-fade"
+        gradientUnits="userSpaceOnUse"
+        x1="0"
+        y1={top}
+        x2="0"
+        y2={height}
+      >
+        <stop offset="0" className="now-from" />
+        <stop offset="1" className="now-to" />
+      </linearGradient>
+      <path className="pen-now" d={`M${x} ${top - 1}V${height - 2}`} />
     </svg>
   );
-}
-
-/**
- * Boxes, in the pen layer's own pixels, of what the frame round the chosen
- * hour must not cross: the tide's times and turns, which are placed freely
- * and straddle the hours, and any figure or glyph in the column or its
- * neighbours that reaches into the pen's lane along a border (on a phone,
- * five star places fill a column edge to edge).
- */
-function keepOut(
-  wrap: HTMLElement,
-  pen: SVGSVGElement,
-  g: StripGeometry,
-  at: number,
-): KeepOut[] {
-  const origin = pen.getBoundingClientRect();
-  const lanes = [g.x[at], g.x[at] + g.w[at]];
-  const out: KeepOut[] = [];
-  const add = (el: Element, pad: number) => {
-    const b = el.getBoundingClientRect();
-    if (!b.width) return;
-    out.push({
-      x: b.left - origin.left - pad,
-      y: b.top - origin.top - pad,
-      w: b.width + pad * 2,
-      h: b.height + pad * 2,
-    });
-  };
-  for (let k = at - 1; k <= at + 1; k++)
-    wrap
-      .querySelectorAll(
-        `td[data-i="${k}"] svg, td[data-i="${k}"] b, td[data-i="${k}"] span:not(:has(*))`,
-      )
-      .forEach((el) => {
-        const b = el.getBoundingClientRect();
-        const left = b.left - origin.left;
-        const right = b.right - origin.left;
-        if (lanes.some((x) => left < x + 2.5 && right > x - 2.5)) add(el, 1.5);
-      });
-  return out;
 }
 
 /**
@@ -1255,7 +1224,7 @@ export default function ForecastDock(props: Props) {
   // The scroll that brings each hour to the strip's cursor, and where that
   // point stands at a scroll: still in the middle through the week, walking
   // out to the ends so the first hour sits against the labels (see
-  // `stripTrack`). It is not drawn: the pen's frame marks the hour there.
+  // `stripTrack`). It is not drawn: the card under it marks the hour there.
   const track = useMemo(() => stripTrack(g, wrapWidth), [g, wrapWidth]);
   const shape = useRef({ g, track });
   shape.current = { g, track };
@@ -1562,16 +1531,13 @@ export default function ForecastDock(props: Props) {
   }, []);
 
   // The selected column, marked in place rather than by re-rendering the
-  // table, and the pen's frame round it: twice round, on the column's own
-  // border so it hides none of its figures, lifting over any that reach the
-  // border. A new hour is drawn in as a hand would draw it; while the hours
-  // are run through, each is simply there, and the pen catches up when they
-  // stop.
+  // table, and the card lifted under it: under the column's figures, from its
+  // hour down, sliding from the last hour chosen to the next on a spring
+  // (src/dock.css .tt-card), or simply there for a reader who asks for less
+  // motion.
   const tableHeight =
     rows.day + rows.hour + rowsUnderHours(rows, view, isPoint, rated, more);
-  const pen = useRef<SVGSVGElement>(null);
-  const frames = useRef<(SVGPathElement | null)[]>([]);
-  const framed = useRef({ at: -1, when: 0 });
+  const card = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = wrap.current;
     if (!el) return;
@@ -1581,37 +1547,14 @@ export default function ForecastDock(props: Props) {
     el.querySelectorAll(`td[data-i="${selected}"]`).forEach((td) =>
       td.classList.add("c-sel"),
     );
-    const [first, second] = frames.current;
-    if (!pen.current || !first || !second || g.w[selected] === undefined)
-      return;
-    const keep = view === "blend" ? [] : keepOut(el, pen.current, g, selected);
-    const x = g.x[selected] + 1;
-    const w = g.w[selected] - 2;
-    const y = rows.day - 1;
-    const h = tableHeight + 1.5 - y;
-    first.setAttribute("d", framePath(x, y, w, h, 6, selected + 3, keep));
-    second.setAttribute(
-      "d",
-      framePath(x - 1.1, y - 0.4, w + 2.2, h + 1.4, 8, selected + 41, keep),
-    );
-    const moved = framed.current.at !== selected;
-    const at = performance.now();
-    const quick = at - framed.current.when < 250;
-    if (moved) framed.current = { at: selected, when: at };
-    if (!moved || reducedMotion || !first.animate) return;
-    for (const [path, delay] of [
-      [first, 0],
-      [second, 380],
-    ] as const) {
-      path.getAnimations().forEach((a) => a.cancel());
-      if (!quick)
-        path.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], {
-          duration: 600,
-          delay,
-          easing: "cubic-bezier(0.5, 0.1, 0.3, 1)",
-          fill: "backwards",
-        });
-    }
+    const lift = card.current;
+    if (!lift || g.w[selected] === undefined) return;
+    const placed = lift.style.width !== "";
+    lift.style.transition = placed ? "" : "none";
+    lift.style.transform = `translateX(${g.x[selected]}px)`;
+    lift.style.width = `${g.w[selected]}px`;
+    lift.style.top = `${rows.day}px`;
+    lift.style.height = `${tableHeight - rows.day + 2}px`;
   });
 
   // The tools stand on the dock's top edge, so the blend (taller than the
@@ -1767,7 +1710,7 @@ export default function ForecastDock(props: Props) {
     const head =
       (dockRef.current?.offsetHeight ?? 0) -
       (bodyRef.current?.offsetHeight ?? 0);
-    // The strip's rows, and the room under them for the pen's frame.
+    // The strip's rows, and the room under them for the chosen hour's card.
     const half =
       head +
       rows.day +
@@ -2308,6 +2251,9 @@ export default function ForecastDock(props: Props) {
               if (td) onSelect(Number(td.dataset.i), true);
             }}
           >
+            {/* The chosen hour's card, under the tide, the line at now
+                and the figures: placed by the effect above. */}
+            <div ref={card} className="tt-card" aria-hidden="true" />
             {/* The tide, faint behind the rows of figures and under the
                 line at now, which crosses it. Not behind the blend, where
                 its curve would read as one more model's line. */}
@@ -2369,24 +2315,6 @@ export default function ForecastDock(props: Props) {
                 <i key={c.validTime} style={{ left: track.scrollFor(i) }} />
               ))}
             </div>
-            <svg
-              ref={pen}
-              className="tt-pen"
-              width={g.total}
-              height={tableHeight}
-              aria-hidden="true"
-            >
-              <path
-                ref={(el) => void (frames.current[0] = el)}
-                className="pen-frame"
-                pathLength={1}
-              />
-              <path
-                ref={(el) => void (frames.current[1] = el)}
-                className="pen-frame is-second"
-                pathLength={1}
-              />
-            </svg>
           </div>
         </div>
       </div>

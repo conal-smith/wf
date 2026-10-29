@@ -7,7 +7,7 @@ import { SearchX } from "lucide-react";
 import { useMemo } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
-import { Button, Empty, PenLoop, Puffin } from "../../../ui";
+import { Button, Empty, Lift, Puffin } from "../../../ui";
 import { tv } from "../../../ui/tv";
 import { NewThread, NewThreadPill } from "../components/NewThreadDialog";
 import { PageHead, dateline } from "../components/PageHead";
@@ -100,9 +100,9 @@ export function Home({ channels, onPosted, pathname, search }: HomeProps) {
             {!q && members}
             {!q && members && fresh && " · "}
             {fresh && (
-              <PenLoop seed={7}>
+              <Lift>
                 <span className={styles.fresh()}>{fresh}</span>
-              </PenLoop>
+              </Lift>
             )}
           </>
         }

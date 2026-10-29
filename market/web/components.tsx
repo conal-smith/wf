@@ -23,7 +23,7 @@ import {
   Chip,
   Empty,
   Figure,
-  PenLoop,
+  Lift,
   PenNote,
   PenStrike,
   Puffin,
@@ -620,11 +620,11 @@ export function ListingCard({
         <div className={styles.head()}>
           <Price listing={listing} />
           {fresh && (
-            <PenLoop className={styles.fresh()} seed={7}>
+            <Lift className={styles.fresh()}>
               <PenNote as="span" size="sm">
                 new
               </PenNote>
-            </PenLoop>
+            </Lift>
           )}
         </div>
         <h3 className={styles.title()}>{listing.title}</h3>

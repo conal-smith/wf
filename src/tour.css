@@ -66,13 +66,24 @@ dialog[open]:has(> .tour) {
   inset: 0;
   overflow: visible;
 }
+/* A clean paper ring round the target, a little out from it, springing in
+   from a little larger at each step. */
 .tour-ring path {
   fill: none;
-  stroke: var(--color-pen);
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-dasharray: 1;
-  animation: var(--animate-ink);
+  stroke: var(--color-ground);
+  stroke-width: 2.5;
+  filter: drop-shadow(
+    0 4px 10px color-mix(in srgb, var(--color-ink) 45%, transparent)
+  );
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tour-ring-in 420ms cubic-bezier(0.34, 1.36, 0.5, 1) both;
+}
+@keyframes tour-ring-in {
+  from {
+    opacity: 0;
+    transform: scale(1.08);
+  }
 }
 .tour-card {
   position: absolute;
