@@ -806,6 +806,8 @@ code {
 #ds-view-component-hour-cell:checked ~ .ds-catalog #component-hour-cell { display: block; }
 #ds-view-component-kicker:checked ~ .ds-catalog #components { display: block; }
 #ds-view-component-kicker:checked ~ .ds-catalog #component-kicker { display: block; }
+#ds-view-component-lift:checked ~ .ds-catalog #components { display: block; }
+#ds-view-component-lift:checked ~ .ds-catalog #component-lift { display: block; }
 #ds-view-component-link:checked ~ .ds-catalog #components { display: block; }
 #ds-view-component-link:checked ~ .ds-catalog #component-link { display: block; }
 #ds-view-component-masthead:checked ~ .ds-catalog #components { display: block; }
@@ -816,8 +818,6 @@ code {
 #ds-view-component-pager:checked ~ .ds-catalog #component-pager { display: block; }
 #ds-view-component-pane:checked ~ .ds-catalog #components { display: block; }
 #ds-view-component-pane:checked ~ .ds-catalog #component-pane { display: block; }
-#ds-view-component-pen-loop:checked ~ .ds-catalog #components { display: block; }
-#ds-view-component-pen-loop:checked ~ .ds-catalog #component-pen-loop { display: block; }
 #ds-view-component-pen-note:checked ~ .ds-catalog #components { display: block; }
 #ds-view-component-pen-note:checked ~ .ds-catalog #component-pen-note { display: block; }
 #ds-view-component-pen-strike:checked ~ .ds-catalog #components { display: block; }
@@ -882,6 +882,8 @@ code {
 #ds-view-component-hour-cell:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-component-hour-cell"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
 #ds-view-component-kicker:checked ~ .ds-catalog .catalog-nav label[for="ds-view-component-kicker"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
 #ds-view-component-kicker:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-component-kicker"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
+#ds-view-component-lift:checked ~ .ds-catalog .catalog-nav label[for="ds-view-component-lift"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
+#ds-view-component-lift:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-component-lift"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
 #ds-view-component-link:checked ~ .ds-catalog .catalog-nav label[for="ds-view-component-link"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
 #ds-view-component-link:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-component-link"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
 #ds-view-component-masthead:checked ~ .ds-catalog .catalog-nav label[for="ds-view-component-masthead"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
@@ -892,8 +894,6 @@ code {
 #ds-view-component-pager:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-component-pager"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
 #ds-view-component-pane:checked ~ .ds-catalog .catalog-nav label[for="ds-view-component-pane"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
 #ds-view-component-pane:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-component-pane"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
-#ds-view-component-pen-loop:checked ~ .ds-catalog .catalog-nav label[for="ds-view-component-pen-loop"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
-#ds-view-component-pen-loop:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-component-pen-loop"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
 #ds-view-component-pen-note:checked ~ .ds-catalog .catalog-nav label[for="ds-view-component-pen-note"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
 #ds-view-component-pen-note:focus-visible ~ .ds-catalog .catalog-nav label[for="ds-view-component-pen-note"] { outline: 2px solid var(--sem-color-accent-hover, #275842); outline-offset: 2px; }
 #ds-view-component-pen-strike:checked ~ .ds-catalog .catalog-nav label[for="ds-view-component-pen-strike"] { color: var(--sem-color-accent-primary, #2f6a4a); font-weight: var(--sem-font-weight-emphasis, 600); box-shadow: inset 2px 0 0 currentColor; }
@@ -2105,6 +2105,49 @@ code {
   color: var(--sem-color-pen-ink);
 }
 
+/* components/lift/component.css */
+/* Lift — ui/Lift.tsx (liftStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * The one thing on a view that matters, lifted off the page on raised paper:
+ * a few words (.wf-lift), or a card laid under a run of the strip's columns
+ * (.wf-lift-card), which a pattern places and sizes. The card goes under the
+ * figures it lifts: its table is isolated, and the card sits at z-index -1
+ * inside it. Nothing about it is pressed: it is a mark, not a control. */
+
+.wf-lift {
+  position: relative;
+  display: inline-block;
+  padding: var(--sem-space-x0-5) var(--sem-space-x1-5);
+  border-radius: var(--sem-radius-control);
+  background-color: var(--sem-color-card);
+  background-image: var(--sem-texture-grain), var(--sem-gradient-float);
+  background-repeat: repeat, no-repeat;
+  box-shadow: var(--sem-shadow-float);
+  transform: translateY(-1px);
+}
+
+.wf-lift-card {
+  position: absolute;
+  z-index: -1;
+  border-radius: var(--sem-radius-control);
+  background-color: var(--sem-color-card);
+  background-image: var(--sem-gradient-raised);
+  box-shadow: var(--sem-shadow-raised), var(--sem-shadow-float);
+  pointer-events: none;
+}
+/* The ink tab at its foot. */
+.wf-lift-card::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: var(--sem-space-x1);
+  width: var(--sem-space-x4);
+  height: calc(var(--sem-space-step) * 0.75);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-ink);
+  transform: translateX(-50%);
+}
+
 /* components/link/component.css */
 /* Link — ui/Link.tsx (linkStyles), rendered in CSS. Consumes --sem-* only.
  *
@@ -2399,61 +2442,6 @@ code {
 @media (max-width: 719.98px) {
   .wf-pane--standing {
     padding: var(--sem-space-x5);
-  }
-}
-
-/* components/pen-loop/component.css */
-/* PenLoop — ui/Pen.tsx (penStyles: wrap, loop, stroke) with ui/penPaths.ts
- * (loopPath), rendered in CSS. Consumes --sem-* only.
- *
- * The red pen's loop round the one thing on a view that matters: the best
- * hour, the best window. A wobbly ring that overshoots its own start, seeded
- * so the same hand draws the same loop every time, drawn in once as a hand
- * would and simply there for a reader who asks for less motion.
- *
- * The SVG stands clear of the words by 12px across and 8px down
- * (-inset-x-3 -inset-y-2); its viewBox is the box plus that pad, so one user
- * unit is one pixel, and the path is loopPath(w / 2, h / 2, box.w / 2 + 7,
- * box.h / 2 + 6, seed). The path carries pathLength="1" and
- * stroke-dasharray="1", so the ink keyframes draw it whatever its length. */
-
-.wf-pen-loop {
-  position: relative;
-  display: inline-block;
-}
-
-.wf-pen-loop__mark {
-  position: absolute;
-  top: calc(var(--sem-space-x2) * -1);
-  right: calc(var(--sem-space-x3) * -1);
-  bottom: calc(var(--sem-space-x2) * -1);
-  left: calc(var(--sem-space-x3) * -1);
-  overflow: visible;
-  pointer-events: none;
-}
-
-.wf-pen-loop__stroke {
-  fill: none;
-  stroke: var(--sem-color-pen);
-  /* stroke-2: two user units, which are pixels here */
-  stroke-width: var(--sem-rule-heavy);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: var(--sem-opacity-pen);
-  animation: var(--sem-animate-ink);
-}
-@media (prefers-reduced-motion: reduce) {
-  .wf-pen-loop__stroke {
-    animation: none;
-  }
-}
-
-@keyframes ink {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
   }
 }
 
@@ -3390,6 +3378,26 @@ code {
 /* ---- selected, and the field round it ---- */
 .wf-spot-light--sel {
   z-index: 2;
+}
+/* The selected light lifted off the chart, its shadow left on the water
+   where the spot is (src/map.css .lt.sel). */
+.wf-spot-light--sel .wf-spot-light__glyph {
+  transform: translateY(calc(var(--sem-space-x1-5) * -1)) scale(1.3);
+}
+.wf-spot-light--sel::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: -1;
+  width: calc(var(--sem-space-step) * 5.5);
+  height: var(--sem-space-x2);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-ink);
+  opacity: var(--sem-opacity-dot);
+  filter: blur(2px);
+  transform: translate(-50%, 2px);
+  pointer-events: none;
 }
 /* A field in focus: the selected light stands, the others dim and lose their names. */
 .wf-spot-light-field--focus .wf-spot-light:not(.wf-spot-light--sel) .wf-spot-light__glyph {
@@ -4639,6 +4647,80 @@ code {
         display: grid;
         gap: var(--sem-space-x1);
       }
+.ds-embed-component-lift {
+        margin: 0;
+      }
+.ds-embed-component-lift .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+.ds-embed-component-lift .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+.ds-embed-component-lift .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+.ds-embed-component-lift .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+.ds-embed-component-lift .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+.ds-embed-component-lift .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+.ds-embed-component-lift .demo__caption {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+        font-variant-numeric: tabular-nums;
+        color: var(--sem-color-ink-muted);
+      }
+.ds-embed-component-lift .demo__row--marked {
+        padding: var(--sem-space-x3);
+      }
+.ds-embed-component-lift .demo__hours {
+        position: relative;
+        isolation: isolate;
+        display: grid;
+        grid-template-columns: repeat(5, calc(var(--sem-space-step) * 12));
+        font-family: var(--sem-font-family-mono);
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+      }
+.ds-embed-component-lift .demo__hours span {
+        display: grid;
+        gap: var(--sem-space-x1);
+        padding: var(--sem-space-x2) 0 var(--sem-space-x4);
+      }
+.ds-embed-component-lift .demo__hours .wf-lift-card {
+        top: 0;
+        bottom: 0;
+        left: calc(var(--sem-space-step) * 24);
+        width: calc(var(--sem-space-step) * 12);
+      }
 .ds-embed-component-link {
         margin: 0;
       }
@@ -4902,61 +4984,6 @@ code {
         justify-content: space-between;
         padding: var(--sem-space-x1-5) 0;
         border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
-      }
-.ds-embed-component-pen-loop {
-        margin: 0;
-      }
-.ds-embed-component-pen-loop .demo {
-        padding: var(--sem-space-x5);
-        background-color: var(--sem-color-ground);
-        background-image: var(--sem-texture-grain);
-        color: var(--sem-color-ink);
-        font-family: var(--sem-font-family-body);
-        font-size: var(--sem-font-size-prose);
-        line-height: var(--sem-font-line-prose);
-      }
-.ds-embed-component-pen-loop .demo + .demo {
-        border-top: var(--sem-rule-double) double var(--sem-color-ink);
-      }
-.ds-embed-component-pen-loop .demo__head {
-        margin: 0 0 var(--sem-space-x3);
-        padding-bottom: var(--sem-space-x1);
-        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
-        font-family: var(--sem-font-family-display);
-        font-size: var(--sem-font-size-lead);
-        line-height: var(--sem-font-line-lead);
-        font-weight: var(--sem-font-weight-lead);
-      }
-.ds-embed-component-pen-loop .demo__label {
-        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-eyebrow);
-        line-height: var(--sem-font-line-eyebrow);
-        font-weight: var(--sem-font-weight-eyebrow);
-        letter-spacing: var(--sem-font-tracking-eyebrow);
-        text-transform: uppercase;
-        color: var(--sem-color-ink-muted);
-      }
-.ds-embed-component-pen-loop .demo__row {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: var(--sem-space-x3);
-      }
-.ds-embed-component-pen-loop .demo__map {
-        padding: var(--sem-space-x3);
-        background: var(--sem-color-sea-3);
-      }
-.ds-embed-component-pen-loop .demo__caption {
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-caption);
-        line-height: var(--sem-font-line-caption);
-        font-variant-numeric: tabular-nums;
-        color: var(--sem-color-ink-muted);
-      }
-.ds-embed-component-pen-loop .demo__row--marked {
-        padding: var(--sem-space-x3) var(--sem-space-x3) var(--sem-space-x2);
-        gap: var(--sem-space-x8);
       }
 .ds-embed-component-pen-note {
         margin: 0;
@@ -6254,15 +6281,14 @@ code {
 .ds-embed-pattern-dock .dock__hours {
         margin-top: var(--sem-space-x0-5);
       }
-.ds-embed-pattern-dock .dock__loop {
-        position: absolute;
+.ds-embed-pattern-dock .dock__hours table {
+        isolation: isolate;
+      }
+.ds-embed-pattern-dock .dock__lift {
         top: calc(var(--sem-space-x3) * -1);
         left: calc(var(--sem-space-x3) * -1);
-        z-index: 2;
-        overflow: visible;
-        pointer-events: none;
       }
-.ds-embed-pattern-dock .dock__loop--wide {
+.ds-embed-pattern-dock .dock__lift--wide {
         display: none;
       }
 .ds-embed-pattern-dock .dock__tide-cell {
@@ -6351,10 +6377,10 @@ code {
 .ds-embed-pattern-dock .dock__sn {
           display: none;
         }
-.ds-embed-pattern-dock .dock__loop--phone {
+.ds-embed-pattern-dock .dock__lift--phone {
           display: none;
         }
-.ds-embed-pattern-dock .dock__loop--wide {
+.ds-embed-pattern-dock .dock__lift--wide {
           display: block;
         }
 }
@@ -6729,15 +6755,14 @@ code {
 .ds-embed-pattern-spot-day .sd__wide {
         display: none;
       }
-.ds-embed-pattern-spot-day .sd__loop {
-        position: absolute;
+.ds-embed-pattern-spot-day .sd__rows {
+        isolation: isolate;
+      }
+.ds-embed-pattern-spot-day .sd__lift {
         top: calc(var(--sem-space-x2) * -1);
         left: calc(var(--sem-space-x3) * -1);
-        z-index: 2;
-        overflow: visible;
-        pointer-events: none;
       }
-.ds-embed-pattern-spot-day .sd__loop--wide {
+.ds-embed-pattern-spot-day .sd__lift--wide {
         display: none;
       }
 .ds-embed-pattern-spot-day .sd__tide {
@@ -6853,10 +6878,10 @@ code {
 .ds-embed-pattern-spot-day .sd__rows td {
           height: calc(var(--sem-space-step) * 8.5);
         }
-.ds-embed-pattern-spot-day .sd__loop--phone {
+.ds-embed-pattern-spot-day .sd__lift--phone {
           display: none;
         }
-.ds-embed-pattern-spot-day .sd__loop--wide {
+.ds-embed-pattern-spot-day .sd__lift--wide {
           display: block;
         }
 }
@@ -7001,14 +7026,6 @@ code {
         width: var(--sem-space-x5);
         height: var(--sem-space-x5);
         margin-top: var(--sem-space-x5);
-      }
-.ds-embed-pattern-spot-popup .pop__loop {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        overflow: visible;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
       }
 .ds-embed-pattern-spot-popup .pop__note {
         position: absolute;
@@ -7809,12 +7826,12 @@ code {
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-headline" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-hour-cell" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-kicker" />
+<input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-lift" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-link" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-masthead" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-notice" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-pager" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-pane" />
-<input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-pen-loop" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-pen-note" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-pen-strike" />
 <input type="radio" name="ds-view" class="ds-view-switch" id="ds-view-component-pen-underline" />
@@ -7870,12 +7887,12 @@ code {
 <label class="catalog-nav-item" for="ds-view-component-headline">Headline</label>
 <label class="catalog-nav-item" for="ds-view-component-hour-cell">Hour cell</label>
 <label class="catalog-nav-item" for="ds-view-component-kicker">Kicker</label>
+<label class="catalog-nav-item" for="ds-view-component-lift">Lift</label>
 <label class="catalog-nav-item" for="ds-view-component-link">Link</label>
 <label class="catalog-nav-item" for="ds-view-component-masthead">Masthead</label>
 <label class="catalog-nav-item" for="ds-view-component-notice">Notice</label>
 <label class="catalog-nav-item" for="ds-view-component-pager">Pager</label>
 <label class="catalog-nav-item" for="ds-view-component-pane">Pane</label>
-<label class="catalog-nav-item" for="ds-view-component-pen-loop">PenLoop</label>
 <label class="catalog-nav-item" for="ds-view-component-pen-note">PenNote</label>
 <label class="catalog-nav-item" for="ds-view-component-pen-strike">PenStrike</label>
 <label class="catalog-nav-item" for="ds-view-component-pen-underline">PenUnderline</label>
@@ -8288,10 +8305,6 @@ code {
 <figure class="catalog-glyph"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round">
   <path d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z" />
 </svg><figcaption>favourite-star</figcaption></figure>
-<figure class="catalog-glyph"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 32" width="48" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <!-- loopPath(24, 16, 19, 11, seed 3) from ui/penPaths.ts: a ring that overshoots its own start. -->
-  <path d="M28.1 27.3 L24.9 27.4 L21.8 27.3 L18.7 27.1 L15.6 26.5 L13.2 25.3 L11.5 23.7 L10.1 22.2 L8.5 20.8 L6.7 19.5 L5.2 17.9 L4.7 16.1 L4.8 14.3 L5.2 12.5 L5.6 10.7 L6.7 8.8 L8.8 7.3 L11.8 6.4 L15.0 5.9 L18.0 5.5 L20.8 4.9 L23.8 4.6 L26.8 4.7 L29.6 5.2 L32.4 5.8 L35.4 6.3 L38.6 7.0 L41.4 8.2 L43.0 9.9 L43.6 11.8 L43.8 13.7 L44.0 15.5 L43.8 17.3 L42.7 19.0 L40.8 20.5 L38.8 21.7 L37.0 23.1 L35.4 24.7 L33.2 26.2 L30.2 27.1 L26.9 27.4 L23.5 27.4 L20.2 27.3 L16.8 26.9 L13.8 26.0 L11.6 24.5 L10.0 22.8 L8.5 21.2 L6.6 19.8" />
-</svg><figcaption>pen-loop</figcaption></figure>
 <figure class="catalog-glyph"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 130" width="52" height="57" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round">
   <!-- The Almanac's bird (ui/Puffin.tsx) in one ink: the paper of his face and
        belly is cut out of the ink, the beak, feet and rock are drawn in line. -->
@@ -8376,7 +8389,7 @@ code {
 <h4>The accent rule</h4>
 <p><strong>One filled action per view.</strong> <code>sem.color.accent.primary</code> is the filled action: the ink pill, magenta under the pointer (<code>sem.color.accent.hover</code>). A view has one, or none. Everything else that can be pressed is quiet, ruled in ink, or a link. A destructive confirmation is a dialog of its own, and its one filled button is the warm <code>danger</code> pill.</p>
 <p><strong>The chart's magenta</strong> (<code>sem.color.chart-magenta</code>) marks <strong>the best of something, once</strong>: a five-star light, the spot in view, a quantity's bar (<code>sem.color.wash</code>, drawn faint), <code>.ie</code> in the wordmark, a link under the pointer. And it is <strong>the focus ring</strong> (<code>sem.color.focus</code>): 2px, 2px clear, the same on every control.</p>
-<p><strong>The red pen</strong> (<code>sem.color.pen</code>, its words <code>sem.color.pen-ink</code>) marks <strong>the one thing that matters in a view</strong>: a loop round the best hour, an underline under the word that carries the note, a strike through what is off (offshore, sold), and the note itself in Kalam. One mark on a view, two at most. It is never a fill, never a control, never a status, never emphasis.</p>
+<p><strong>The one thing that matters in a view is lifted</strong> on raised paper (<code>Lift</code>: <code>sem.color.card</code>, <code>sem.gradient.float</code>, <code>sem.shadow.float</code>): the chosen hour, the open spot. Nothing is circled or framed by hand. <strong>The red pen</strong> (<code>sem.color.pen</code>, its words <code>sem.color.pen-ink</code>) rules the line at now, an underline under the word that carries the note, a strike through what is off (offshore, sold), and the note itself in Kalam. One mark on a view, two at most. Neither is ever a control, a status or emphasis.</p>
 <p><strong>Warm is not an accent.</strong> <code>sem.color.warn</code>, <code>sem.color.now</code> and <code>sem.color.warn-ground</code> mean *this instant* or *this is degraded*, and nothing else. The warm red is not the pen's red.</p>
 <p><strong>Wind colours mean wind speed.</strong> The fourteen <code>sem.color.wind.*</code> stops are speed bands and nothing else, the same for every rider, and they do not re-theme: 35 knots is the same colour on any paper, night included.</p>
 <h4>What structure is made of</h4>
@@ -12310,6 +12323,224 @@ code {
 &lt;/html&gt;
 </code></pre></details>
 </div>
+<div id="component-lift" class="catalog-view catalog-component">
+<h3>Lift</h3>
+<div class="catalog-component-grid">
+<div class="catalog-stage ds-embed-component-lift">
+<section class="demo" data-mode="light">
+      <h2 class="demo__head">Lift</h2>
+
+      <p class="demo__label">Round a few words</p>
+      <div class="demo__row demo__row--marked">
+        <span class="wf-figure"><span class="wf-figure__value">€140</span></span>
+        <span class="wf-lift"><span class="wf-pen-note wf-pen-note--sm">new</span></span>
+        <span class="demo__caption">Replying to</span>
+        <span class="wf-lift">Aoife</span>
+      </div>
+
+      <p class="demo__label">Under the chosen hour</p>
+      <div class="demo__row demo__row--marked">
+        <div class="demo__hours">
+          <span class="wf-lift-card" aria-hidden="true"></span>
+          <span>12:00<b>15</b></span>
+          <span>13:00<b>17</b></span>
+          <span>14:00<b>18</b></span>
+          <span>15:00<b>16</b></span>
+          <span>16:00<b>13</b></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Lift · night chart (proposed)</h2>
+      <div class="demo__row demo__row--marked">
+        <span class="wf-lift"><span class="wf-pen-note wf-pen-note--sm">new</span></span>
+      </div>
+    </section>
+</div>
+<div class="catalog-doc">
+<p>The one thing on a view that matters, lifted off the page on raised paper (<code>ui/Lift.tsx</code> <code>Lift</code>): a reply's name, a count of new posts, &quot;new&quot; on a listing. The dock's chosen hour stands on the same card (<code>src/dock.css</code> <code>.tt-card</code>), and the chart lifts the open spot's light (<code>src/map.css</code> <code>.lt.sel</code>, here <code>wf-spot-light--sel</code>).</p>
+<h4>Anatomy</h4>
+<ul><li>Words: <code>.wf-lift</code> — an inline-block round them, <code>sem.space.x0-5</code> by <code>sem.space.x1-5</code> in, <code>sem.radius.control</code> round, <code>sem.color.card</code> under the grain and <code>sem.gradient.float</code>, <code>sem.shadow.float</code> under it, a pixel up.</li><li>Card: <code>.wf-lift-card</code> — laid absolutely under a run of columns, which the pattern places and sizes; <code>sem.gradient.raised</code> with <code>sem.shadow.raised</code> and <code>sem.shadow.float</code>, and an ink tab at its foot. It sits at z-index -1 inside its isolated table, so the figures stay over it.</li></ul>
+<h4>Variants</h4>
+<ul><li>None. It takes the size of what it lifts.</li></ul>
+<h4>States</h4>
+<ul><li>Moving: the dock's card springs from hour to hour on its transform, and the chart's light springs up when the spot is opened. Under reduced motion each is simply there.</li></ul>
+<h4>Usage</h4>
+<ul><li>One lift on a view, two at most, on the thing that matters: the chosen hour, the open spot.</li><li>Nothing is circled or framed by hand any more (2026-10-29).</li><li>Never a control: nothing about it is pressed, and it takes no focus.</li></ul>
+<h4>Accessibility</h4>
+<ul><li>The card is <code>aria-hidden</code>; the words it lifts are read as they are, and say the same thing without it.</li><li>Its edge is a shadow, not a colour: it is decoration over words that are already there.</li></ul>
+</div>
+</div>
+<details class="catalog-source"><summary>components/lift/component.css</summary><pre><code>/* Lift — ui/Lift.tsx (liftStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * The one thing on a view that matters, lifted off the page on raised paper:
+ * a few words (.wf-lift), or a card laid under a run of the strip's columns
+ * (.wf-lift-card), which a pattern places and sizes. The card goes under the
+ * figures it lifts: its table is isolated, and the card sits at z-index -1
+ * inside it. Nothing about it is pressed: it is a mark, not a control. */
+
+.wf-lift {
+  position: relative;
+  display: inline-block;
+  padding: var(--sem-space-x0-5) var(--sem-space-x1-5);
+  border-radius: var(--sem-radius-control);
+  background-color: var(--sem-color-card);
+  background-image: var(--sem-texture-grain), var(--sem-gradient-float);
+  background-repeat: repeat, no-repeat;
+  box-shadow: var(--sem-shadow-float);
+  transform: translateY(-1px);
+}
+
+.wf-lift-card {
+  position: absolute;
+  z-index: -1;
+  border-radius: var(--sem-radius-control);
+  background-color: var(--sem-color-card);
+  background-image: var(--sem-gradient-raised);
+  box-shadow: var(--sem-shadow-raised), var(--sem-shadow-float);
+  pointer-events: none;
+}
+/* The ink tab at its foot. */
+.wf-lift-card::after {
+  content: &quot;&quot;;
+  position: absolute;
+  left: 50%;
+  bottom: var(--sem-space-x1);
+  width: var(--sem-space-x4);
+  height: calc(var(--sem-space-step) * 0.75);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-ink);
+  transform: translateX(-50%);
+}
+</code></pre></details>
+<details class="catalog-source"><summary>components/lift/component.html (demo)</summary><pre><code>&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+  &lt;head&gt;
+    &lt;meta charset=&quot;utf-8&quot; /&gt;
+    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot; /&gt;
+    &lt;title&gt;Lift — wingfoil-chart&lt;/title&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../../foundations/tokens.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../figure/component.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../pen-note/component.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;component.css&quot; /&gt;
+    &lt;style&gt;
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    &lt;/style&gt;
+    &lt;style&gt;
+      /* Demo only: the words the marks and labels sit in. */
+      .demo__caption {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+        font-variant-numeric: tabular-nums;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row--marked {
+        padding: var(--sem-space-x3);
+      }
+      /* Demo only: a run of hours, the chosen one lifted on its card. */
+      .demo__hours {
+        position: relative;
+        isolation: isolate;
+        display: grid;
+        grid-template-columns: repeat(5, calc(var(--sem-space-step) * 12));
+        font-family: var(--sem-font-family-mono);
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+      }
+      .demo__hours span {
+        display: grid;
+        gap: var(--sem-space-x1);
+        padding: var(--sem-space-x2) 0 var(--sem-space-x4);
+      }
+      .demo__hours .wf-lift-card {
+        top: 0;
+        bottom: 0;
+        left: calc(var(--sem-space-step) * 24);
+        width: calc(var(--sem-space-step) * 12);
+      }
+    &lt;/style&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;section class=&quot;demo&quot; data-mode=&quot;light&quot;&gt;
+      &lt;h2 class=&quot;demo__head&quot;&gt;Lift&lt;/h2&gt;
+
+      &lt;p class=&quot;demo__label&quot;&gt;Round a few words&lt;/p&gt;
+      &lt;div class=&quot;demo__row demo__row--marked&quot;&gt;
+        &lt;span class=&quot;wf-figure&quot;&gt;&lt;span class=&quot;wf-figure__value&quot;&gt;€140&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;wf-lift&quot;&gt;&lt;span class=&quot;wf-pen-note wf-pen-note--sm&quot;&gt;new&lt;/span&gt;&lt;/span&gt;
+        &lt;span class=&quot;demo__caption&quot;&gt;Replying to&lt;/span&gt;
+        &lt;span class=&quot;wf-lift&quot;&gt;Aoife&lt;/span&gt;
+      &lt;/div&gt;
+
+      &lt;p class=&quot;demo__label&quot;&gt;Under the chosen hour&lt;/p&gt;
+      &lt;div class=&quot;demo__row demo__row--marked&quot;&gt;
+        &lt;div class=&quot;demo__hours&quot;&gt;
+          &lt;span class=&quot;wf-lift-card&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;
+          &lt;span&gt;12:00&lt;b&gt;15&lt;/b&gt;&lt;/span&gt;
+          &lt;span&gt;13:00&lt;b&gt;17&lt;/b&gt;&lt;/span&gt;
+          &lt;span&gt;14:00&lt;b&gt;18&lt;/b&gt;&lt;/span&gt;
+          &lt;span&gt;15:00&lt;b&gt;16&lt;/b&gt;&lt;/span&gt;
+          &lt;span&gt;16:00&lt;b&gt;13&lt;/b&gt;&lt;/span&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+
+    &lt;section class=&quot;demo&quot; data-mode=&quot;dark&quot;&gt;
+      &lt;h2 class=&quot;demo__head&quot;&gt;Lift · night chart (proposed)&lt;/h2&gt;
+      &lt;div class=&quot;demo__row demo__row--marked&quot;&gt;
+        &lt;span class=&quot;wf-lift&quot;&gt;&lt;span class=&quot;wf-pen-note wf-pen-note--sm&quot;&gt;new&lt;/span&gt;&lt;/span&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</code></pre></details>
+</div>
 <div id="component-link" class="catalog-view catalog-component">
 <h3>Link</h3>
 <div class="catalog-component-grid">
@@ -13630,216 +13861,6 @@ code {
         &lt;div class=&quot;wf-pane wf-pane--standing wf-pane--double&quot;&gt;
           &lt;h3 class=&quot;demo__name&quot;&gt;Donabate&lt;/h3&gt;
         &lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/section&gt;
-  &lt;/body&gt;
-&lt;/html&gt;
-</code></pre></details>
-</div>
-<div id="component-pen-loop" class="catalog-view catalog-component">
-<h3>PenLoop</h3>
-<div class="catalog-component-grid">
-<div class="catalog-stage ds-embed-component-pen-loop">
-<section class="demo" data-mode="light">
-      <h2 class="demo__head">PenLoop</h2>
-
-      <p class="demo__label">Round the best window</p>
-      <div class="demo__row demo__row--marked">
-        <span class="demo__caption">Best today</span>
-        <span class="wf-pen-loop"><span class="wf-figure" role="img" aria-label="13:00 to 16:00"><span class="wf-figure__value">13:00–16:00</span></span><svg class="wf-pen-loop__mark" viewBox="0 0 145 40" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M87.0 38.5 L75.8 38.6 L64.7 38.5 L53.5 38.2 L42.8 37.2 L34.0 35.3 L27.9 32.7 L23.1 30.1 L17.4 27.9 L10.9 25.7 L5.7 23.1 L3.8 20.2 L4.4 17.3 L5.7 14.3 L7.3 11.3 L11.0 8.2 L18.5 5.7 L29.2 4.2 L40.6 3.5 L51.1 2.8 L61.1 1.9 L71.6 1.3 L82.3 1.5 L92.5 2.4 L102.4 3.3 L113.2 4.1 L124.5 5.2 L134.2 7.2 L140.0 10.0 L142.1 13.1 L142.9 16.2 L143.5 19.2 L142.8 22.1 L138.9 24.9 L132.2 27.3 L124.9 29.4 L118.8 31.6 L112.9 34.2 L105.0 36.6 L94.5 38.1 L82.7 38.6 L70.8 38.6 L59.0 38.4 L47.1 37.9 L36.4 36.4 L28.3 33.9 L22.7 31.1 L17.4 28.6 L10.8 26.2" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
-      </div>
-
-      <p class="demo__label">Round the hour's reading</p>
-      <div class="demo__row demo__row--marked">
-        <span class="wf-pen-loop"><span class="wf-figure" role="img" aria-label="13 knots gusting 22"><span class="wf-figure__value">13</span><span class="wf-figure__sup">22</span></span><svg class="wf-pen-loop__mark" viewBox="0 0 61 40" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M36.0 38.5 L31.8 38.6 L27.6 38.5 L23.3 38.2 L19.3 37.2 L16.0 35.3 L13.7 32.7 L11.8 30.1 L9.7 27.9 L7.2 25.7 L5.3 23.1 L4.5 20.2 L4.8 17.3 L5.3 14.3 L5.9 11.3 L7.3 8.2 L10.1 5.7 L14.2 4.2 L18.4 3.5 L22.4 2.8 L26.2 1.9 L30.2 1.3 L34.2 1.5 L38.0 2.4 L41.8 3.3 L45.9 4.1 L50.2 5.2 L53.8 7.2 L56.0 10.0 L56.8 13.1 L57.1 16.2 L57.3 19.2 L57.1 22.1 L55.6 24.9 L53.0 27.3 L50.3 29.4 L48.0 31.6 L45.8 34.2 L42.8 36.6 L38.8 38.1 L34.4 38.6 L29.9 38.6 L25.4 38.4 L20.9 37.9 L16.8 36.4 L13.8 33.9 L11.7 31.1 L9.7 28.6 L7.2 26.2" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
-        <span class="demo__caption">WSW · 6 m</span>
-      </div>
-
-      <p class="demo__label">The hand · seed 3 (default), 7, 11</p>
-      <div class="demo__row demo__row--marked">
-        <span class="wf-pen-loop"><span class="wf-figure"><span class="wf-figure__value">13:00</span></span><svg class="wf-pen-loop__mark" viewBox="0 0 79 40" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M46.9 38.5 L41.2 38.6 L35.5 38.5 L29.8 38.2 L24.3 37.2 L19.8 35.3 L16.7 32.7 L14.2 30.1 L11.3 27.9 L8.0 25.7 L5.4 23.1 L4.4 20.2 L4.7 17.3 L5.4 14.3 L6.2 11.3 L8.0 8.2 L11.9 5.7 L17.4 4.2 L23.2 3.5 L28.5 2.8 L33.7 1.9 L39.1 1.3 L44.5 1.5 L49.7 2.4 L54.8 3.3 L60.3 4.1 L66.1 5.2 L71.1 7.2 L74.0 10.0 L75.1 13.1 L75.5 16.2 L75.8 19.2 L75.4 22.1 L73.5 24.9 L70.0 27.3 L66.3 29.4 L63.2 31.6 L60.2 34.2 L56.1 36.6 L50.8 38.1 L44.7 38.6 L38.7 38.6 L32.6 38.4 L26.5 37.9 L21.0 36.4 L16.9 33.9 L14.1 31.1 L11.3 28.6 L7.9 26.2" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
-        <span class="wf-pen-loop"><span class="wf-figure"><span class="wf-figure__value">13:00</span></span><svg class="wf-pen-loop__mark" viewBox="0 0 79 40" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M8.5 13.5 L10.2 11.0 L13.1 8.8 L16.5 6.9 L20.0 4.9 L23.8 2.8 L28.3 1.0 L33.8 0.2 L39.4 0.6 L44.5 1.6 L49.3 2.7 L54.0 3.6 L58.5 4.8 L62.5 6.4 L65.4 8.5 L67.8 10.7 L70.5 12.9 L73.7 15.1 L76.5 17.6 L77.7 20.5 L76.8 23.4 L74.3 26.0 L71.5 28.4 L68.6 30.8 L65.2 32.9 L60.7 34.5 L55.5 35.3 L50.3 35.6 L45.5 36.0 L40.7 36.9 L35.5 37.7 L29.9 37.8 L24.5 37.0 L19.7 35.5 L15.2 33.9 L10.7 32.1 L6.6 29.9 L4.0 27.2 L3.5 24.1 L4.4 21.1 L5.4 18.4 L5.8 15.7 L6.0 13.0 L7.2 10.2 L9.8 7.7 L13.3 5.6 L17.0 3.5 L20.9 1.2 L25.4 -0.9" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
-        <span class="wf-pen-loop"><span class="wf-figure"><span class="wf-figure__value">13:00</span></span><svg class="wf-pen-loop__mark" viewBox="0 0 79 40" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M67.6 10.0 L70.2 12.2 L72.2 14.7 L72.8 17.3 L72.1 19.9 L71.1 22.4 L70.7 24.9 L70.5 27.7 L69.5 30.5 L66.6 33.0 L62.3 34.8 L57.4 36.1 L52.4 37.3 L47.3 38.3 L41.9 38.7 L36.4 38.1 L31.5 36.7 L27.2 35.2 L22.8 34.0 L18.0 33.1 L13.2 31.7 L9.3 29.7 L6.6 27.2 L4.7 24.5 L2.8 21.8 L1.3 18.8 L1.2 15.8 L3.3 12.9 L7.2 10.6 L11.5 8.6 L15.2 6.7 L18.7 4.7 L22.7 2.9 L27.5 1.7 L32.7 1.1 L37.9 0.6 L43.3 0.0 L49.2 -0.5 L55.2 -0.2 L60.5 1.2 L64.5 3.6 L67.5 6.2 L70.3 8.6 L73.0 11.1 L74.8 13.8 L75.0 16.6 L74.1 19.3 L73.1 22.0 L72.8 24.7" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
-      </div>
-    </section>
-
-    <section class="demo" data-mode="dark">
-      <h2 class="demo__head">PenLoop · night chart (proposed)</h2>
-      <div class="demo__row demo__row--marked">
-        <span class="demo__caption">Best today</span>
-        <span class="wf-pen-loop"><span class="wf-figure" role="img" aria-label="13:00 to 16:00"><span class="wf-figure__value">13:00–16:00</span></span><svg class="wf-pen-loop__mark" viewBox="0 0 145 40" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M87.0 38.5 L75.8 38.6 L64.7 38.5 L53.5 38.2 L42.8 37.2 L34.0 35.3 L27.9 32.7 L23.1 30.1 L17.4 27.9 L10.9 25.7 L5.7 23.1 L3.8 20.2 L4.4 17.3 L5.7 14.3 L7.3 11.3 L11.0 8.2 L18.5 5.7 L29.2 4.2 L40.6 3.5 L51.1 2.8 L61.1 1.9 L71.6 1.3 L82.3 1.5 L92.5 2.4 L102.4 3.3 L113.2 4.1 L124.5 5.2 L134.2 7.2 L140.0 10.0 L142.1 13.1 L142.9 16.2 L143.5 19.2 L142.8 22.1 L138.9 24.9 L132.2 27.3 L124.9 29.4 L118.8 31.6 L112.9 34.2 L105.0 36.6 L94.5 38.1 L82.7 38.6 L70.8 38.6 L59.0 38.4 L47.1 37.9 L36.4 36.4 L28.3 33.9 L22.7 31.1 L17.4 28.6 L10.8 26.2" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
-      </div>
-    </section>
-</div>
-<div class="catalog-doc">
-<p>The red pen's loop round the one thing on a view that matters (<code>ui/Pen.tsx</code> <code>PenLoop</code>, <code>ui/penPaths.ts</code> <code>loopPath</code>): somebody with the forecast in front of them, circling the hour worth going for.</p>
-<h4>Anatomy</h4>
-<ul><li>Wrap: <code>.wf-pen-loop</code> — an inline-block round the words, positioned.</li><li>Mark: <code>.wf-pen-loop__mark</code> — an SVG laid absolutely 12px out across and 8px out down (<code>sem.space.x3</code>, <code>sem.space.x2</code>), its viewBox the words' box plus that pad, so one unit is one pixel; <code>aria-hidden</code>, no pointer events.</li><li>Stroke: <code>.wf-pen-loop__stroke</code> — <code>loopPath(w / 2, h / 2, box.w / 2 + 7, box.h / 2 + 6, seed)</code>: a wobbly ring that runs a little past a full turn and grows as it goes, so its end crosses its start. No fill, <code>sem.color.pen</code>, <code>sem.rule.heavy</code> wide, round caps and joins, at <code>sem.opacity.pen</code>.</li></ul>
-<h4>Variants</h4>
-<ul><li>Seed: which hand. The same seed draws the same loop every time; 3 is the default.</li></ul>
-<h4>States</h4>
-<ul><li>Drawing in: the path carries <code>pathLength=&quot;1&quot;</code> and <code>stroke-dasharray=&quot;1&quot;</code>, and <code>sem.animate.ink</code> runs its dash offset from 1 to 0 once.</li><li>Reduced motion: no animation; the loop is simply there.</li></ul>
-<h4>Usage</h4>
-<ul><li>One mark on a view, two at most, and on the thing that matters: the best window, the best hour.</li><li>Never a fill, a control, a status or emphasis.</li><li>The demo draws the paths statically for its words' measured boxes; the product measures the box and redraws on resize.</li></ul>
-<h4>Accessibility</h4>
-<ul><li>Decoration over words that already say the same thing: the looped hour is also the best window in the text beside it. The mark is <code>aria-hidden</code> and <code>focusable=&quot;false&quot;</code>.</li><li>The pen is a stroke (4.1:1), not words.</li></ul>
-</div>
-</div>
-<details class="catalog-source"><summary>components/pen-loop/component.css</summary><pre><code>/* PenLoop — ui/Pen.tsx (penStyles: wrap, loop, stroke) with ui/penPaths.ts
- * (loopPath), rendered in CSS. Consumes --sem-* only.
- *
- * The red pen's loop round the one thing on a view that matters: the best
- * hour, the best window. A wobbly ring that overshoots its own start, seeded
- * so the same hand draws the same loop every time, drawn in once as a hand
- * would and simply there for a reader who asks for less motion.
- *
- * The SVG stands clear of the words by 12px across and 8px down
- * (-inset-x-3 -inset-y-2); its viewBox is the box plus that pad, so one user
- * unit is one pixel, and the path is loopPath(w / 2, h / 2, box.w / 2 + 7,
- * box.h / 2 + 6, seed). The path carries pathLength=&quot;1&quot; and
- * stroke-dasharray=&quot;1&quot;, so the ink keyframes draw it whatever its length. */
-
-.wf-pen-loop {
-  position: relative;
-  display: inline-block;
-}
-
-.wf-pen-loop__mark {
-  position: absolute;
-  top: calc(var(--sem-space-x2) * -1);
-  right: calc(var(--sem-space-x3) * -1);
-  bottom: calc(var(--sem-space-x2) * -1);
-  left: calc(var(--sem-space-x3) * -1);
-  overflow: visible;
-  pointer-events: none;
-}
-
-.wf-pen-loop__stroke {
-  fill: none;
-  stroke: var(--sem-color-pen);
-  /* stroke-2: two user units, which are pixels here */
-  stroke-width: var(--sem-rule-heavy);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: var(--sem-opacity-pen);
-  animation: var(--sem-animate-ink);
-}
-@media (prefers-reduced-motion: reduce) {
-  .wf-pen-loop__stroke {
-    animation: none;
-  }
-}
-
-@keyframes ink {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-</code></pre></details>
-<details class="catalog-source"><summary>components/pen-loop/component.html (demo)</summary><pre><code>&lt;!doctype html&gt;
-&lt;html lang=&quot;en&quot;&gt;
-  &lt;head&gt;
-    &lt;meta charset=&quot;utf-8&quot; /&gt;
-    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot; /&gt;
-    &lt;title&gt;PenLoop — wingfoil-chart&lt;/title&gt;
-    &lt;link rel=&quot;stylesheet&quot; href=&quot;../../foundations/tokens.css&quot; /&gt;
-    &lt;link rel=&quot;stylesheet&quot; href=&quot;../figure/component.css&quot; /&gt;
-    &lt;link rel=&quot;stylesheet&quot; href=&quot;component.css&quot; /&gt;
-    &lt;style&gt;
-      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
-      body {
-        margin: 0;
-      }
-      .demo {
-        padding: var(--sem-space-x5);
-        background-color: var(--sem-color-ground);
-        background-image: var(--sem-texture-grain);
-        color: var(--sem-color-ink);
-        font-family: var(--sem-font-family-body);
-        font-size: var(--sem-font-size-prose);
-        line-height: var(--sem-font-line-prose);
-      }
-      .demo + .demo {
-        border-top: var(--sem-rule-double) double var(--sem-color-ink);
-      }
-      .demo__head {
-        margin: 0 0 var(--sem-space-x3);
-        padding-bottom: var(--sem-space-x1);
-        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
-        font-family: var(--sem-font-family-display);
-        font-size: var(--sem-font-size-lead);
-        line-height: var(--sem-font-line-lead);
-        font-weight: var(--sem-font-weight-lead);
-      }
-      .demo__label {
-        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-eyebrow);
-        line-height: var(--sem-font-line-eyebrow);
-        font-weight: var(--sem-font-weight-eyebrow);
-        letter-spacing: var(--sem-font-tracking-eyebrow);
-        text-transform: uppercase;
-        color: var(--sem-color-ink-muted);
-      }
-      .demo__row {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: var(--sem-space-x3);
-      }
-      .demo__map {
-        padding: var(--sem-space-x3);
-        background: var(--sem-color-sea-3);
-      }
-    &lt;/style&gt;
-    &lt;style&gt;
-      /* Demo only: the words the marks and labels sit in. */
-      .demo__caption {
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-caption);
-        line-height: var(--sem-font-line-caption);
-        font-variant-numeric: tabular-nums;
-        color: var(--sem-color-ink-muted);
-      }
-      /* Room round the words for the marks, which stand clear of them. */
-      .demo__row--marked {
-        padding: var(--sem-space-x3) var(--sem-space-x3) var(--sem-space-x2);
-        gap: var(--sem-space-x8);
-      }
-    &lt;/style&gt;
-  &lt;/head&gt;
-  &lt;body&gt;
-    &lt;section class=&quot;demo&quot; data-mode=&quot;light&quot;&gt;
-      &lt;h2 class=&quot;demo__head&quot;&gt;PenLoop&lt;/h2&gt;
-
-      &lt;p class=&quot;demo__label&quot;&gt;Round the best window&lt;/p&gt;
-      &lt;div class=&quot;demo__row demo__row--marked&quot;&gt;
-        &lt;span class=&quot;demo__caption&quot;&gt;Best today&lt;/span&gt;
-        &lt;span class=&quot;wf-pen-loop&quot;&gt;&lt;span class=&quot;wf-figure&quot; role=&quot;img&quot; aria-label=&quot;13:00 to 16:00&quot;&gt;&lt;span class=&quot;wf-figure__value&quot;&gt;13:00–16:00&lt;/span&gt;&lt;/span&gt;&lt;svg class=&quot;wf-pen-loop__mark&quot; viewBox=&quot;0 0 145 40&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path class=&quot;wf-pen-loop__stroke&quot; d=&quot;M87.0 38.5 L75.8 38.6 L64.7 38.5 L53.5 38.2 L42.8 37.2 L34.0 35.3 L27.9 32.7 L23.1 30.1 L17.4 27.9 L10.9 25.7 L5.7 23.1 L3.8 20.2 L4.4 17.3 L5.7 14.3 L7.3 11.3 L11.0 8.2 L18.5 5.7 L29.2 4.2 L40.6 3.5 L51.1 2.8 L61.1 1.9 L71.6 1.3 L82.3 1.5 L92.5 2.4 L102.4 3.3 L113.2 4.1 L124.5 5.2 L134.2 7.2 L140.0 10.0 L142.1 13.1 L142.9 16.2 L143.5 19.2 L142.8 22.1 L138.9 24.9 L132.2 27.3 L124.9 29.4 L118.8 31.6 L112.9 34.2 L105.0 36.6 L94.5 38.1 L82.7 38.6 L70.8 38.6 L59.0 38.4 L47.1 37.9 L36.4 36.4 L28.3 33.9 L22.7 31.1 L17.4 28.6 L10.8 26.2&quot; pathLength=&quot;1&quot; stroke-dasharray=&quot;1&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; /&gt;&lt;/svg&gt;&lt;/span&gt;
-      &lt;/div&gt;
-
-      &lt;p class=&quot;demo__label&quot;&gt;Round the hour's reading&lt;/p&gt;
-      &lt;div class=&quot;demo__row demo__row--marked&quot;&gt;
-        &lt;span class=&quot;wf-pen-loop&quot;&gt;&lt;span class=&quot;wf-figure&quot; role=&quot;img&quot; aria-label=&quot;13 knots gusting 22&quot;&gt;&lt;span class=&quot;wf-figure__value&quot;&gt;13&lt;/span&gt;&lt;span class=&quot;wf-figure__sup&quot;&gt;22&lt;/span&gt;&lt;/span&gt;&lt;svg class=&quot;wf-pen-loop__mark&quot; viewBox=&quot;0 0 61 40&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path class=&quot;wf-pen-loop__stroke&quot; d=&quot;M36.0 38.5 L31.8 38.6 L27.6 38.5 L23.3 38.2 L19.3 37.2 L16.0 35.3 L13.7 32.7 L11.8 30.1 L9.7 27.9 L7.2 25.7 L5.3 23.1 L4.5 20.2 L4.8 17.3 L5.3 14.3 L5.9 11.3 L7.3 8.2 L10.1 5.7 L14.2 4.2 L18.4 3.5 L22.4 2.8 L26.2 1.9 L30.2 1.3 L34.2 1.5 L38.0 2.4 L41.8 3.3 L45.9 4.1 L50.2 5.2 L53.8 7.2 L56.0 10.0 L56.8 13.1 L57.1 16.2 L57.3 19.2 L57.1 22.1 L55.6 24.9 L53.0 27.3 L50.3 29.4 L48.0 31.6 L45.8 34.2 L42.8 36.6 L38.8 38.1 L34.4 38.6 L29.9 38.6 L25.4 38.4 L20.9 37.9 L16.8 36.4 L13.8 33.9 L11.7 31.1 L9.7 28.6 L7.2 26.2&quot; pathLength=&quot;1&quot; stroke-dasharray=&quot;1&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; /&gt;&lt;/svg&gt;&lt;/span&gt;
-        &lt;span class=&quot;demo__caption&quot;&gt;WSW · 6 m&lt;/span&gt;
-      &lt;/div&gt;
-
-      &lt;p class=&quot;demo__label&quot;&gt;The hand · seed 3 (default), 7, 11&lt;/p&gt;
-      &lt;div class=&quot;demo__row demo__row--marked&quot;&gt;
-        &lt;span class=&quot;wf-pen-loop&quot;&gt;&lt;span class=&quot;wf-figure&quot;&gt;&lt;span class=&quot;wf-figure__value&quot;&gt;13:00&lt;/span&gt;&lt;/span&gt;&lt;svg class=&quot;wf-pen-loop__mark&quot; viewBox=&quot;0 0 79 40&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path class=&quot;wf-pen-loop__stroke&quot; d=&quot;M46.9 38.5 L41.2 38.6 L35.5 38.5 L29.8 38.2 L24.3 37.2 L19.8 35.3 L16.7 32.7 L14.2 30.1 L11.3 27.9 L8.0 25.7 L5.4 23.1 L4.4 20.2 L4.7 17.3 L5.4 14.3 L6.2 11.3 L8.0 8.2 L11.9 5.7 L17.4 4.2 L23.2 3.5 L28.5 2.8 L33.7 1.9 L39.1 1.3 L44.5 1.5 L49.7 2.4 L54.8 3.3 L60.3 4.1 L66.1 5.2 L71.1 7.2 L74.0 10.0 L75.1 13.1 L75.5 16.2 L75.8 19.2 L75.4 22.1 L73.5 24.9 L70.0 27.3 L66.3 29.4 L63.2 31.6 L60.2 34.2 L56.1 36.6 L50.8 38.1 L44.7 38.6 L38.7 38.6 L32.6 38.4 L26.5 37.9 L21.0 36.4 L16.9 33.9 L14.1 31.1 L11.3 28.6 L7.9 26.2&quot; pathLength=&quot;1&quot; stroke-dasharray=&quot;1&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; /&gt;&lt;/svg&gt;&lt;/span&gt;
-        &lt;span class=&quot;wf-pen-loop&quot;&gt;&lt;span class=&quot;wf-figure&quot;&gt;&lt;span class=&quot;wf-figure__value&quot;&gt;13:00&lt;/span&gt;&lt;/span&gt;&lt;svg class=&quot;wf-pen-loop__mark&quot; viewBox=&quot;0 0 79 40&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path class=&quot;wf-pen-loop__stroke&quot; d=&quot;M8.5 13.5 L10.2 11.0 L13.1 8.8 L16.5 6.9 L20.0 4.9 L23.8 2.8 L28.3 1.0 L33.8 0.2 L39.4 0.6 L44.5 1.6 L49.3 2.7 L54.0 3.6 L58.5 4.8 L62.5 6.4 L65.4 8.5 L67.8 10.7 L70.5 12.9 L73.7 15.1 L76.5 17.6 L77.7 20.5 L76.8 23.4 L74.3 26.0 L71.5 28.4 L68.6 30.8 L65.2 32.9 L60.7 34.5 L55.5 35.3 L50.3 35.6 L45.5 36.0 L40.7 36.9 L35.5 37.7 L29.9 37.8 L24.5 37.0 L19.7 35.5 L15.2 33.9 L10.7 32.1 L6.6 29.9 L4.0 27.2 L3.5 24.1 L4.4 21.1 L5.4 18.4 L5.8 15.7 L6.0 13.0 L7.2 10.2 L9.8 7.7 L13.3 5.6 L17.0 3.5 L20.9 1.2 L25.4 -0.9&quot; pathLength=&quot;1&quot; stroke-dasharray=&quot;1&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; /&gt;&lt;/svg&gt;&lt;/span&gt;
-        &lt;span class=&quot;wf-pen-loop&quot;&gt;&lt;span class=&quot;wf-figure&quot;&gt;&lt;span class=&quot;wf-figure__value&quot;&gt;13:00&lt;/span&gt;&lt;/span&gt;&lt;svg class=&quot;wf-pen-loop__mark&quot; viewBox=&quot;0 0 79 40&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path class=&quot;wf-pen-loop__stroke&quot; d=&quot;M67.6 10.0 L70.2 12.2 L72.2 14.7 L72.8 17.3 L72.1 19.9 L71.1 22.4 L70.7 24.9 L70.5 27.7 L69.5 30.5 L66.6 33.0 L62.3 34.8 L57.4 36.1 L52.4 37.3 L47.3 38.3 L41.9 38.7 L36.4 38.1 L31.5 36.7 L27.2 35.2 L22.8 34.0 L18.0 33.1 L13.2 31.7 L9.3 29.7 L6.6 27.2 L4.7 24.5 L2.8 21.8 L1.3 18.8 L1.2 15.8 L3.3 12.9 L7.2 10.6 L11.5 8.6 L15.2 6.7 L18.7 4.7 L22.7 2.9 L27.5 1.7 L32.7 1.1 L37.9 0.6 L43.3 0.0 L49.2 -0.5 L55.2 -0.2 L60.5 1.2 L64.5 3.6 L67.5 6.2 L70.3 8.6 L73.0 11.1 L74.8 13.8 L75.0 16.6 L74.1 19.3 L73.1 22.0 L72.8 24.7&quot; pathLength=&quot;1&quot; stroke-dasharray=&quot;1&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; /&gt;&lt;/svg&gt;&lt;/span&gt;
-      &lt;/div&gt;
-    &lt;/section&gt;
-
-    &lt;section class=&quot;demo&quot; data-mode=&quot;dark&quot;&gt;
-      &lt;h2 class=&quot;demo__head&quot;&gt;PenLoop · night chart (proposed)&lt;/h2&gt;
-      &lt;div class=&quot;demo__row demo__row--marked&quot;&gt;
-        &lt;span class=&quot;demo__caption&quot;&gt;Best today&lt;/span&gt;
-        &lt;span class=&quot;wf-pen-loop&quot;&gt;&lt;span class=&quot;wf-figure&quot; role=&quot;img&quot; aria-label=&quot;13:00 to 16:00&quot;&gt;&lt;span class=&quot;wf-figure__value&quot;&gt;13:00–16:00&lt;/span&gt;&lt;/span&gt;&lt;svg class=&quot;wf-pen-loop__mark&quot; viewBox=&quot;0 0 145 40&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path class=&quot;wf-pen-loop__stroke&quot; d=&quot;M87.0 38.5 L75.8 38.6 L64.7 38.5 L53.5 38.2 L42.8 37.2 L34.0 35.3 L27.9 32.7 L23.1 30.1 L17.4 27.9 L10.9 25.7 L5.7 23.1 L3.8 20.2 L4.4 17.3 L5.7 14.3 L7.3 11.3 L11.0 8.2 L18.5 5.7 L29.2 4.2 L40.6 3.5 L51.1 2.8 L61.1 1.9 L71.6 1.3 L82.3 1.5 L92.5 2.4 L102.4 3.3 L113.2 4.1 L124.5 5.2 L134.2 7.2 L140.0 10.0 L142.1 13.1 L142.9 16.2 L143.5 19.2 L142.8 22.1 L138.9 24.9 L132.2 27.3 L124.9 29.4 L118.8 31.6 L112.9 34.2 L105.0 36.6 L94.5 38.1 L82.7 38.6 L70.8 38.6 L59.0 38.4 L47.1 37.9 L36.4 36.4 L28.3 33.9 L22.7 31.1 L17.4 28.6 L10.8 26.2&quot; pathLength=&quot;1&quot; stroke-dasharray=&quot;1&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; /&gt;&lt;/svg&gt;&lt;/span&gt;
       &lt;/div&gt;
     &lt;/section&gt;
   &lt;/body&gt;
@@ -17334,6 +17355,26 @@ code {
 .wf-spot-light--sel {
   z-index: 2;
 }
+/* The selected light lifted off the chart, its shadow left on the water
+   where the spot is (src/map.css .lt.sel). */
+.wf-spot-light--sel .wf-spot-light__glyph {
+  transform: translateY(calc(var(--sem-space-x1-5) * -1)) scale(1.3);
+}
+.wf-spot-light--sel::after {
+  content: &quot;&quot;;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: -1;
+  width: calc(var(--sem-space-step) * 5.5);
+  height: var(--sem-space-x2);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-ink);
+  opacity: var(--sem-opacity-dot);
+  filter: blur(2px);
+  transform: translate(-50%, 2px);
+  pointer-events: none;
+}
 /* A field in focus: the selected light stands, the others dim and lose their names. */
 .wf-spot-light-field--focus .wf-spot-light:not(.wf-spot-light--sel) .wf-spot-light__glyph {
   opacity: var(--sem-opacity-dot);
@@ -19560,7 +19601,7 @@ code {
             </tr>
             <tr class="wf-hour-cell__row wf-hour-cell__row--stars">
               <th class="wf-hour-cell__label" scope="row">Stars</th>
-              <td class="wf-hour-cell wf-hour-cell--past"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="5 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(46.75 5.15) scale(0.9135)" /></svg></td><td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars, 5 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(46.75 5.15) scale(0.9135)" /></svg><svg class="dock__loop dock__loop--phone" width="232" height="64" viewBox="0 0 232 64" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M21.4 20.4 L29.1 16.7 L40.6 13.7 L53.3 11.0 L66.3 8.0 L81.1 5.2 L98.8 3.4 L117.9 3.6 L135.7 5.2 L151.7 7.2 L167.0 9.0 L182.1 10.9 L194.7 13.7 L203.6 17.1 L210.4 20.7 L218.4 24.2 L228.1 27.8 L235.4 32.0 L235.7 36.5 L228.8 40.7 L218.4 44.4 L207.6 47.9 L195.8 51.2 L181.0 53.7 L163.2 55.0 L145.2 55.2 L128.4 55.4 L111.8 56.3 L93.7 57.1 L74.8 56.9 L57.5 55.2 L42.3 52.6 L27.8 49.7 L13.6 46.5 L2.6 42.6 L-1.5 38.0 L1.2 33.4 L6.5 29.1 L10.1 25.0 L12.3 20.9 L17.0 16.7 L26.6 13.0 L39.5 9.9 L53.1 7.0 L67.3 3.8 L84.0 1.0 L103.7 -0.3 L123.8 0.4 L142.1 2.4" pathLength="1" stroke-dasharray="1" /></svg><svg class="dock__loop dock__loop--wide" width="272" height="64" viewBox="0 0 272 64" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M24.2 20.4 L33.3 16.7 L46.9 13.7 L61.9 11.0 L77.2 8.0 L94.7 5.2 L115.7 3.4 L138.2 3.6 L159.3 5.2 L178.1 7.2 L196.3 9.0 L214.1 10.9 L229.1 13.7 L239.5 17.1 L247.5 20.7 L257.0 24.2 L268.5 27.8 L277.1 32.0 L277.5 36.5 L269.3 40.7 L257.0 44.4 L244.2 47.9 L230.3 51.2 L212.8 53.7 L191.8 55.0 L170.5 55.2 L150.7 55.4 L131.0 56.3 L109.6 57.1 L87.4 56.9 L66.8 55.2 L48.9 52.6 L31.8 49.7 L15.0 46.5 L2.0 42.6 L-2.9 38.0 L0.4 33.4 L6.6 29.1 L10.8 25.0 L13.4 20.9 L19.0 16.7 L30.4 13.0 L45.6 9.9 L61.7 7.0 L78.5 3.8 L98.2 1.0 L121.4 -0.3 L145.2 0.4 L166.9 2.4" pathLength="1" stroke-dasharray="1" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(25.75 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="1 of 5 stars, 2 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(15.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="25.75" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell wf-hour-cell--night"></td><td class="wf-hour-cell wf-hour-cell--night wf-hour-cell--day-start"></td>
+              <td class="wf-hour-cell wf-hour-cell--past"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="5 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(46.75 5.15) scale(0.9135)" /></svg></td><td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars, 5 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(46.75 5.15) scale(0.9135)" /></svg><span class="wf-lift-card dock__lift dock__lift--phone" style="width: 232px; height: 64px" aria-hidden="true"></span><span class="wf-lift-card dock__lift dock__lift--wide" style="width: 272px; height: 64px" aria-hidden="true"></span></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(25.75 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="1 of 5 stars, 2 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(15.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="25.75" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell wf-hour-cell--night"></td><td class="wf-hour-cell wf-hour-cell--night wf-hour-cell--day-start"></td>
             </tr>
             <tr class="wf-hour-cell__row wf-hour-cell__row--wind">
               <th class="wf-hour-cell__label" scope="row">Wind<span class="wf-hour-cell__unit">kn</span></th>
@@ -19598,7 +19639,7 @@ code {
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/wind-figure/component.css&quot; /&gt;
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/hour-cell/component.css&quot; /&gt;
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/tide-label/component.css&quot; /&gt;
-    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/pen-loop/component.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/lift/component.css&quot; /&gt;
     &lt;style&gt;
       /* The page: one sheet of paper with its grain; a mono label names each instance. */
       body {
@@ -19861,19 +19902,18 @@ code {
         white-space: nowrap;
       }
 
-      /* ---- the hours: the hour-cell table, the pen's loop round the best run ---- */
+      /* ---- the hours: the hour-cell table, the best run lifted on a card ---- */
       .dock__hours {
         margin-top: var(--sem-space-x0-5);
       }
-      .dock__loop {
-        position: absolute;
+      .dock__hours table {
+        isolation: isolate;
+      }
+      .dock__lift {
         top: calc(var(--sem-space-x3) * -1);
         left: calc(var(--sem-space-x3) * -1);
-        z-index: 2;
-        overflow: visible;
-        pointer-events: none;
       }
-      .dock__loop--wide {
+      .dock__lift--wide {
         display: none;
       }
 
@@ -19968,10 +20008,10 @@ code {
         .dock__sn {
           display: none;
         }
-        .dock__loop--phone {
+        .dock__lift--phone {
           display: none;
         }
-        .dock__loop--wide {
+        .dock__lift--wide {
           display: block;
         }
       }
@@ -20036,7 +20076,7 @@ code {
             &lt;/tr&gt;
             &lt;tr class=&quot;wf-hour-cell__row wf-hour-cell__row--stars&quot;&gt;
               &lt;th class=&quot;wf-hour-cell__label&quot; scope=&quot;row&quot;&gt;Stars&lt;/th&gt;
-              &lt;td class=&quot;wf-hour-cell wf-hour-cell--past&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;5 of 5 stars&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(36.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(46.75 5.15) scale(0.9135)&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell wf-hour-cell--sel wf-hour-cell--now&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;4 of 5 stars, 5 on the wind alone&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(36.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star wf-hour-cell__star--faded&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; stroke-width=&quot;1.04&quot; transform=&quot;translate(46.75 5.15) scale(0.9135)&quot; /&gt;&lt;/svg&gt;&lt;svg class=&quot;dock__loop dock__loop--phone&quot; width=&quot;232&quot; height=&quot;64&quot; viewBox=&quot;0 0 232 64&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path class=&quot;wf-pen-loop__stroke&quot; d=&quot;M21.4 20.4 L29.1 16.7 L40.6 13.7 L53.3 11.0 L66.3 8.0 L81.1 5.2 L98.8 3.4 L117.9 3.6 L135.7 5.2 L151.7 7.2 L167.0 9.0 L182.1 10.9 L194.7 13.7 L203.6 17.1 L210.4 20.7 L218.4 24.2 L228.1 27.8 L235.4 32.0 L235.7 36.5 L228.8 40.7 L218.4 44.4 L207.6 47.9 L195.8 51.2 L181.0 53.7 L163.2 55.0 L145.2 55.2 L128.4 55.4 L111.8 56.3 L93.7 57.1 L74.8 56.9 L57.5 55.2 L42.3 52.6 L27.8 49.7 L13.6 46.5 L2.6 42.6 L-1.5 38.0 L1.2 33.4 L6.5 29.1 L10.1 25.0 L12.3 20.9 L17.0 16.7 L26.6 13.0 L39.5 9.9 L53.1 7.0 L67.3 3.8 L84.0 1.0 L103.7 -0.3 L123.8 0.4 L142.1 2.4&quot; pathLength=&quot;1&quot; stroke-dasharray=&quot;1&quot; /&gt;&lt;/svg&gt;&lt;svg class=&quot;dock__loop dock__loop--wide&quot; width=&quot;272&quot; height=&quot;64&quot; viewBox=&quot;0 0 272 64&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path class=&quot;wf-pen-loop__stroke&quot; d=&quot;M24.2 20.4 L33.3 16.7 L46.9 13.7 L61.9 11.0 L77.2 8.0 L94.7 5.2 L115.7 3.4 L138.2 3.6 L159.3 5.2 L178.1 7.2 L196.3 9.0 L214.1 10.9 L229.1 13.7 L239.5 17.1 L247.5 20.7 L257.0 24.2 L268.5 27.8 L277.1 32.0 L277.5 36.5 L269.3 40.7 L257.0 44.4 L244.2 47.9 L230.3 51.2 L212.8 53.7 L191.8 55.0 L170.5 55.2 L150.7 55.4 L131.0 56.3 L109.6 57.1 L87.4 56.9 L66.8 55.2 L48.9 52.6 L31.8 49.7 L15.0 46.5 L2.0 42.6 L-2.9 38.0 L0.4 33.4 L6.6 29.1 L10.8 25.0 L13.4 20.9 L19.0 16.7 L30.4 13.0 L45.6 9.9 L61.7 7.0 L78.5 3.8 L98.2 1.0 L121.4 -0.3 L145.2 0.4 L166.9 2.4&quot; pathLength=&quot;1&quot; stroke-dasharray=&quot;1&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;4 of 5 stars&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(36.25 5.15) scale(0.9135)&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;46.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;4 of 5 stars&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(36.25 5.15) scale(0.9135)&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;46.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;4 of 5 stars&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(36.25 5.15) scale(0.9135)&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;46.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;3 of 5 stars, 4 on the wind alone&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star wf-hour-cell__star--faded&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; stroke-width=&quot;1.04&quot; transform=&quot;translate(36.25 5.15) scale(0.9135)&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;46.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;2 of 5 stars, 3 on the wind alone&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star wf-hour-cell__star--faded&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; stroke-width=&quot;1.04&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;36.25&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;46.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;1 of 5 stars, 2 on the wind alone&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star wf-hour-cell__star--faded&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; stroke-width=&quot;1.04&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;25.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;36.25&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;46.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell wf-hour-cell--night&quot;&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell wf-hour-cell--night wf-hour-cell--day-start&quot;&gt;&lt;/td&gt;
+              &lt;td class=&quot;wf-hour-cell wf-hour-cell--past&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;5 of 5 stars&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(36.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(46.75 5.15) scale(0.9135)&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell wf-hour-cell--sel wf-hour-cell--now&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;4 of 5 stars, 5 on the wind alone&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(36.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star wf-hour-cell__star--faded&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; stroke-width=&quot;1.04&quot; transform=&quot;translate(46.75 5.15) scale(0.9135)&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;wf-lift-card dock__lift dock__lift--phone&quot; style=&quot;width: 232px; height: 64px&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;&lt;span class=&quot;wf-lift-card dock__lift dock__lift--wide&quot; style=&quot;width: 272px; height: 64px&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;4 of 5 stars&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(36.25 5.15) scale(0.9135)&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;46.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;4 of 5 stars&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(36.25 5.15) scale(0.9135)&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;46.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;4 of 5 stars&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(36.25 5.15) scale(0.9135)&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;46.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;3 of 5 stars, 4 on the wind alone&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star wf-hour-cell__star--faded&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; stroke-width=&quot;1.04&quot; transform=&quot;translate(36.25 5.15) scale(0.9135)&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;46.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;2 of 5 stars, 3 on the wind alone&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star wf-hour-cell__star--faded&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; stroke-width=&quot;1.04&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;36.25&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;46.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell&quot;&gt;&lt;svg class=&quot;wf-hour-cell__stars&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;1 of 5 stars, 2 on the wind alone&quot;&gt;&lt;path class=&quot;wf-hour-cell__star&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-hour-cell__star wf-hour-cell__star--faded&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; stroke-width=&quot;1.04&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;25.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;36.25&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;circle class=&quot;wf-hour-cell__star wf-hour-cell__star--dot&quot; cx=&quot;46.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell wf-hour-cell--night&quot;&gt;&lt;/td&gt;&lt;td class=&quot;wf-hour-cell wf-hour-cell--night wf-hour-cell--day-start&quot;&gt;&lt;/td&gt;
             &lt;/tr&gt;
             &lt;tr class=&quot;wf-hour-cell__row wf-hour-cell__row--wind&quot;&gt;
               &lt;th class=&quot;wf-hour-cell__label&quot; scope=&quot;row&quot;&gt;Wind&lt;span class=&quot;wf-hour-cell__unit&quot;&gt;kn&lt;/span&gt;&lt;/th&gt;
@@ -20080,7 +20120,7 @@ code {
         <span class="wf-kicker lc__kicker"><span class="lc__where"><span class="lc__sr">In </span>Lahinch, Clare</span><span>1d</span></span>
         <span class="lc__media"><span class="lc__photo lc__photo--2" role="presentation"></span></span>
         <span class="lc__body">
-          <span class="lc__head"><span class="wf-figure" role="img" aria-label="140 euro"><span class="wf-figure__value">€140</span></span><span class="wf-pen-loop lc__fresh"><span class="wf-pen-note wf-pen-note--sm">new</span><svg class="wf-pen-loop__mark" viewBox="0 0 50 34" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M7.0 11.6 L8.0 9.5 L9.7 7.7 L11.7 6.1 L13.7 4.4 L15.9 2.6 L18.5 1.2 L21.7 0.5 L24.9 0.8 L27.9 1.7 L30.7 2.6 L33.4 3.4 L36.0 4.3 L38.3 5.7 L40.0 7.4 L41.4 9.3 L42.9 11.1 L44.8 12.9 L46.5 15.0 L47.2 17.4 L46.6 19.8 L45.2 22.0 L43.5 24.0 L41.9 26.0 L39.9 27.8 L37.3 29.1 L34.3 29.8 L31.3 30.0 L28.5 30.4 L25.7 31.0 L22.7 31.7 L19.4 31.9 L16.3 31.2 L13.5 30.0 L10.9 28.5 L8.3 27.0 L5.9 25.2 L4.4 23.0 L4.1 20.4 L4.6 17.9 L5.2 15.7 L5.4 13.4 L5.6 11.1 L6.3 8.8 L7.8 6.8 L9.8 5.0 L12.0 3.2 L14.2 1.4 L16.8 -0.4" pathLength="1" stroke-dasharray="1" /></svg></span></span>
+          <span class="lc__head"><span class="wf-figure" role="img" aria-label="140 euro"><span class="wf-figure__value">€140</span></span><span class="wf-lift lc__fresh"><span class="wf-pen-note wf-pen-note--sm">new</span></span></span>
           <span class="lc__title" role="heading" aria-level="3">Impact vest and quick-release harness</span>
           <span class="lc__meta"><span class="wf-kicker lc__condition">Like new</span><span title="Seller rated 4.8"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="4.8 out of 5"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(14.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(24.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(44.5 4.9) scale(0.8654)" /></svg></span></span>
         </span>
@@ -20135,7 +20175,7 @@ code {
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/chip/component.css&quot; /&gt;
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/figure/component.css&quot; /&gt;
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/star-glyphs/component.css&quot; /&gt;
-    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/pen-loop/component.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/lift/component.css&quot; /&gt;
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/pen-note/component.css&quot; /&gt;
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/pen-strike/component.css&quot; /&gt;
     &lt;style&gt;
@@ -20366,7 +20406,7 @@ code {
         &lt;span class=&quot;wf-kicker lc__kicker&quot;&gt;&lt;span class=&quot;lc__where&quot;&gt;&lt;span class=&quot;lc__sr&quot;&gt;In &lt;/span&gt;Lahinch, Clare&lt;/span&gt;&lt;span&gt;1d&lt;/span&gt;&lt;/span&gt;
         &lt;span class=&quot;lc__media&quot;&gt;&lt;span class=&quot;lc__photo lc__photo--2&quot; role=&quot;presentation&quot;&gt;&lt;/span&gt;&lt;/span&gt;
         &lt;span class=&quot;lc__body&quot;&gt;
-          &lt;span class=&quot;lc__head&quot;&gt;&lt;span class=&quot;wf-figure&quot; role=&quot;img&quot; aria-label=&quot;140 euro&quot;&gt;&lt;span class=&quot;wf-figure__value&quot;&gt;€140&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;wf-pen-loop lc__fresh&quot;&gt;&lt;span class=&quot;wf-pen-note wf-pen-note--sm&quot;&gt;new&lt;/span&gt;&lt;svg class=&quot;wf-pen-loop__mark&quot; viewBox=&quot;0 0 50 34&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path class=&quot;wf-pen-loop__stroke&quot; d=&quot;M7.0 11.6 L8.0 9.5 L9.7 7.7 L11.7 6.1 L13.7 4.4 L15.9 2.6 L18.5 1.2 L21.7 0.5 L24.9 0.8 L27.9 1.7 L30.7 2.6 L33.4 3.4 L36.0 4.3 L38.3 5.7 L40.0 7.4 L41.4 9.3 L42.9 11.1 L44.8 12.9 L46.5 15.0 L47.2 17.4 L46.6 19.8 L45.2 22.0 L43.5 24.0 L41.9 26.0 L39.9 27.8 L37.3 29.1 L34.3 29.8 L31.3 30.0 L28.5 30.4 L25.7 31.0 L22.7 31.7 L19.4 31.9 L16.3 31.2 L13.5 30.0 L10.9 28.5 L8.3 27.0 L5.9 25.2 L4.4 23.0 L4.1 20.4 L4.6 17.9 L5.2 15.7 L5.4 13.4 L5.6 11.1 L6.3 8.8 L7.8 6.8 L9.8 5.0 L12.0 3.2 L14.2 1.4 L16.8 -0.4&quot; pathLength=&quot;1&quot; stroke-dasharray=&quot;1&quot; /&gt;&lt;/svg&gt;&lt;/span&gt;&lt;/span&gt;
+          &lt;span class=&quot;lc__head&quot;&gt;&lt;span class=&quot;wf-figure&quot; role=&quot;img&quot; aria-label=&quot;140 euro&quot;&gt;&lt;span class=&quot;wf-figure__value&quot;&gt;€140&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;wf-lift lc__fresh&quot;&gt;&lt;span class=&quot;wf-pen-note wf-pen-note--sm&quot;&gt;new&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
           &lt;span class=&quot;lc__title&quot; role=&quot;heading&quot; aria-level=&quot;3&quot;&gt;Impact vest and quick-release harness&lt;/span&gt;
           &lt;span class=&quot;lc__meta&quot;&gt;&lt;span class=&quot;wf-kicker lc__condition&quot;&gt;Like new&lt;/span&gt;&lt;span title=&quot;Seller rated 4.8&quot;&gt;&lt;svg class=&quot;wf-star-glyphs wf-star-glyphs--ink&quot; width=&quot;49&quot; height=&quot;9&quot; viewBox=&quot;0 0 49 9&quot; role=&quot;img&quot; aria-label=&quot;4.8 out of 5&quot;&gt;&lt;path class=&quot;wf-star-glyphs__solid&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.5 4.9) scale(0.8654)&quot; /&gt;&lt;path class=&quot;wf-star-glyphs__solid&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(14.5 4.9) scale(0.8654)&quot; /&gt;&lt;path class=&quot;wf-star-glyphs__solid&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(24.5 4.9) scale(0.8654)&quot; /&gt;&lt;path class=&quot;wf-star-glyphs__solid&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(34.5 4.9) scale(0.8654)&quot; /&gt;&lt;path class=&quot;wf-star-glyphs__solid&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(44.5 4.9) scale(0.8654)&quot; /&gt;&lt;/svg&gt;&lt;/span&gt;&lt;/span&gt;
         &lt;/span&gt;
@@ -20521,7 +20561,7 @@ code {
               <td><svg class="sd__sky" viewBox="-9 -9 18 18" role="img" aria-label="cloud"><path class="sd__sky-cloud" transform="translate(0 0) scale(1)" d="M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z" /></svg><span class="sd__air">13°</span></td>
             </tr>
             <tr class="sd__row sd__row--sel" tabindex="0" aria-current="time">
-              <td class="sd__t">18<svg class="sd__loop sd__loop--phone" width="114" height="92" viewBox="0 0 114 92" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M17.5 19.3 L22.5 14.2 L28.7 10.3 L35.2 6.7 L41.9 2.7 L49.5 -1.0 L57.9 -2.8 L66.5 -1.6 L74.1 1.9 L80.7 6.1 L87.1 10.0 L93.3 14.0 L98.5 18.9 L101.8 24.9 L103.7 31.2 L105.8 37.2 L108.9 43.4 L111.7 50.4 L112.1 57.7 L109.1 64.6 L103.9 70.4 L98.0 75.5 L92.1 80.5 L85.4 84.7 L77.5 87.2 L69.0 87.4 L61.0 86.4 L53.4 85.8 L45.6 86.2 L37.1 86.3 L28.8 84.5 L21.6 80.6 L15.6 75.4 L9.9 69.9 L4.3 64.0 L0.2 57.2 L-0.8 49.6 L1.5 42.1 L5.2 35.3 L8.4 29.1 L10.8 22.6 L13.7 16.0 L18.6 10.3 L25.0 5.8 L31.9 2.0 L39.0 -2.2 L46.8 -6.4 L55.6 -9.0 L64.9 -8.5" pathLength="1" stroke-dasharray="1" /></svg><svg class="sd__loop sd__loop--wide" width="114" height="84" viewBox="0 0 114 84" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M17.5 17.8 L22.5 13.1 L28.7 9.5 L35.2 6.3 L41.9 2.6 L49.5 -0.8 L57.9 -2.4 L66.5 -1.3 L74.1 1.9 L80.7 5.7 L87.1 9.3 L93.3 12.9 L98.5 17.4 L101.8 22.8 L103.7 28.5 L105.8 34.0 L108.9 39.7 L111.7 46.0 L112.1 52.7 L109.1 58.9 L103.9 64.2 L98.0 68.9 L92.1 73.3 L85.4 77.2 L77.5 79.5 L69.0 79.6 L61.0 78.7 L53.4 78.2 L45.6 78.5 L37.1 78.6 L28.8 77.0 L21.6 73.4 L15.6 68.7 L9.9 63.7 L4.3 58.4 L0.2 52.2 L-0.8 45.3 L1.5 38.5 L5.2 32.3 L8.4 26.6 L10.8 20.7 L13.7 14.8 L18.6 9.5 L25.0 5.5 L31.9 2.0 L39.0 -1.8 L46.8 -5.6 L55.6 -8.0 L64.9 -7.6" pathLength="1" stroke-dasharray="1" /></svg></td>
+              <td class="sd__t">18<span class="wf-lift-card sd__lift sd__lift--phone" style="width: 114px; height: 92px" aria-hidden="true"></span><span class="wf-lift-card sd__lift sd__lift--wide" style="width: 114px; height: 84px" aria-hidden="true"></span></td>
               <td><svg class="wf-star-glyphs wf-star-glyphs--ink" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-star-glyphs__dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
               <td><span class="wf-wind-figure" role="img" aria-label="13 knots gusting 19"><span class="wf-wind-figure__value">13</span><span class="wf-wind-figure__sup">19</span></span></td>
               <td><span class="wf-wind-figure sd__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span></span></td>
@@ -20589,7 +20629,7 @@ code {
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/figure/component.css&quot; /&gt;
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/tide-label/component.css&quot; /&gt;
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/kicker/component.css&quot; /&gt;
-    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/pen-loop/component.css&quot; /&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/lift/component.css&quot; /&gt;
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/pen-note/component.css&quot; /&gt;
     &lt;style&gt;
       /* The page: one sheet of paper with its grain; a mono label names each instance. */
@@ -20785,15 +20825,14 @@ code {
       .sd__wide {
         display: none;
       }
-      .sd__loop {
-        position: absolute;
+      .sd__rows {
+        isolation: isolate;
+      }
+      .sd__lift {
         top: calc(var(--sem-space-x2) * -1);
         left: calc(var(--sem-space-x3) * -1);
-        z-index: 2;
-        overflow: visible;
-        pointer-events: none;
       }
-      .sd__loop--wide {
+      .sd__lift--wide {
         display: none;
       }
 
@@ -20916,10 +20955,10 @@ code {
         .sd__rows td {
           height: calc(var(--sem-space-step) * 8.5);
         }
-        .sd__loop--phone {
+        .sd__lift--phone {
           display: none;
         }
-        .sd__loop--wide {
+        .sd__lift--wide {
           display: block;
         }
       }
@@ -21032,7 +21071,7 @@ code {
               &lt;td&gt;&lt;svg class=&quot;sd__sky&quot; viewBox=&quot;-9 -9 18 18&quot; role=&quot;img&quot; aria-label=&quot;cloud&quot;&gt;&lt;path class=&quot;sd__sky-cloud&quot; transform=&quot;translate(0 0) scale(1)&quot; d=&quot;M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z&quot; /&gt;&lt;/svg&gt;&lt;span class=&quot;sd__air&quot;&gt;13°&lt;/span&gt;&lt;/td&gt;
             &lt;/tr&gt;
             &lt;tr class=&quot;sd__row sd__row--sel&quot; tabindex=&quot;0&quot; aria-current=&quot;time&quot;&gt;
-              &lt;td class=&quot;sd__t&quot;&gt;18&lt;svg class=&quot;sd__loop sd__loop--phone&quot; width=&quot;114&quot; height=&quot;92&quot; viewBox=&quot;0 0 114 92&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path class=&quot;wf-pen-loop__stroke&quot; d=&quot;M17.5 19.3 L22.5 14.2 L28.7 10.3 L35.2 6.7 L41.9 2.7 L49.5 -1.0 L57.9 -2.8 L66.5 -1.6 L74.1 1.9 L80.7 6.1 L87.1 10.0 L93.3 14.0 L98.5 18.9 L101.8 24.9 L103.7 31.2 L105.8 37.2 L108.9 43.4 L111.7 50.4 L112.1 57.7 L109.1 64.6 L103.9 70.4 L98.0 75.5 L92.1 80.5 L85.4 84.7 L77.5 87.2 L69.0 87.4 L61.0 86.4 L53.4 85.8 L45.6 86.2 L37.1 86.3 L28.8 84.5 L21.6 80.6 L15.6 75.4 L9.9 69.9 L4.3 64.0 L0.2 57.2 L-0.8 49.6 L1.5 42.1 L5.2 35.3 L8.4 29.1 L10.8 22.6 L13.7 16.0 L18.6 10.3 L25.0 5.8 L31.9 2.0 L39.0 -2.2 L46.8 -6.4 L55.6 -9.0 L64.9 -8.5&quot; pathLength=&quot;1&quot; stroke-dasharray=&quot;1&quot; /&gt;&lt;/svg&gt;&lt;svg class=&quot;sd__loop sd__loop--wide&quot; width=&quot;114&quot; height=&quot;84&quot; viewBox=&quot;0 0 114 84&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path class=&quot;wf-pen-loop__stroke&quot; d=&quot;M17.5 17.8 L22.5 13.1 L28.7 9.5 L35.2 6.3 L41.9 2.6 L49.5 -0.8 L57.9 -2.4 L66.5 -1.3 L74.1 1.9 L80.7 5.7 L87.1 9.3 L93.3 12.9 L98.5 17.4 L101.8 22.8 L103.7 28.5 L105.8 34.0 L108.9 39.7 L111.7 46.0 L112.1 52.7 L109.1 58.9 L103.9 64.2 L98.0 68.9 L92.1 73.3 L85.4 77.2 L77.5 79.5 L69.0 79.6 L61.0 78.7 L53.4 78.2 L45.6 78.5 L37.1 78.6 L28.8 77.0 L21.6 73.4 L15.6 68.7 L9.9 63.7 L4.3 58.4 L0.2 52.2 L-0.8 45.3 L1.5 38.5 L5.2 32.3 L8.4 26.6 L10.8 20.7 L13.7 14.8 L18.6 9.5 L25.0 5.5 L31.9 2.0 L39.0 -1.8 L46.8 -5.6 L55.6 -8.0 L64.9 -7.6&quot; pathLength=&quot;1&quot; stroke-dasharray=&quot;1&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;
+              &lt;td class=&quot;sd__t&quot;&gt;18&lt;span class=&quot;wf-lift-card sd__lift sd__lift--phone&quot; style=&quot;width: 114px; height: 92px&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;&lt;span class=&quot;wf-lift-card sd__lift sd__lift--wide&quot; style=&quot;width: 114px; height: 84px&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;&lt;/td&gt;
               &lt;td&gt;&lt;svg class=&quot;wf-star-glyphs wf-star-glyphs--ink&quot; width=&quot;51.5&quot; height=&quot;9.5&quot; viewBox=&quot;0 0 51.5 9.5&quot; role=&quot;img&quot; aria-label=&quot;4 of 5 stars&quot;&gt;&lt;path class=&quot;wf-star-glyphs__solid&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(4.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-star-glyphs__solid&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(15.25 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-star-glyphs__solid&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(25.75 5.15) scale(0.9135)&quot; /&gt;&lt;path class=&quot;wf-star-glyphs__solid&quot; d=&quot;M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z&quot; transform=&quot;translate(36.25 5.15) scale(0.9135)&quot; /&gt;&lt;circle class=&quot;wf-star-glyphs__dot&quot; cx=&quot;46.75&quot; cy=&quot;4.75&quot; r=&quot;0.665&quot; /&gt;&lt;/svg&gt;&lt;/td&gt;
               &lt;td&gt;&lt;span class=&quot;wf-wind-figure&quot; role=&quot;img&quot; aria-label=&quot;13 knots gusting 19&quot;&gt;&lt;span class=&quot;wf-wind-figure__value&quot;&gt;13&lt;/span&gt;&lt;span class=&quot;wf-wind-figure__sup&quot;&gt;19&lt;/span&gt;&lt;/span&gt;&lt;/td&gt;
               &lt;td&gt;&lt;span class=&quot;wf-wind-figure sd__from&quot;&gt;&lt;svg class=&quot;wf-wind-figure__arrow&quot; viewBox=&quot;-7 -7 14 14&quot; aria-hidden=&quot;true&quot; style=&quot;--from: 0deg&quot;&gt;&lt;g class=&quot;wf-wind-figure__arrow-turn&quot;&gt;&lt;path class=&quot;wf-wind-figure__arrow-path&quot; d=&quot;M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8&quot; /&gt;&lt;/g&gt;&lt;/svg&gt;&lt;span class=&quot;wf-wind-figure__point&quot;&gt;N&lt;/span&gt;&lt;/span&gt;&lt;/td&gt;
@@ -21120,7 +21159,6 @@ code {
             <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">3</text></svg>
             <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Dollymount</span><span class="wf-spot-light__line">3★ W 13 · cross-off</span></span>
           </button>
-          <svg class="pop__loop" width="76" height="60" viewBox="0 0 76 60" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M15.6 25.2 L16.4 22.5 L18.2 20.2 L20.4 18.1 L22.6 15.9 L25.1 13.6 L28.2 11.7 L32.0 10.7 L36.0 10.9 L39.8 11.7 L43.3 12.6 L46.7 13.3 L50.1 14.3 L53.0 15.9 L55.2 17.9 L57.2 20.1 L59.4 22.1 L62.0 24.2 L64.1 26.8 L64.8 29.7 L64.1 32.6 L62.5 35.3 L60.7 37.8 L58.8 40.3 L56.3 42.4 L53.1 43.9 L49.4 44.7 L45.9 45.2 L42.6 46.0 L39.1 47.2 L35.3 48.0 L31.3 47.9 L27.6 46.9 L24.2 45.4 L20.8 43.8 L17.5 42.0 L14.9 39.6 L13.6 36.7 L13.7 33.6 L14.1 30.7 L14.2 28.0 L14.0 25.3 L14.3 22.4 L15.6 19.7 L17.8 17.3 L20.2 15.1 L22.6 12.7 L25.5 10.3 L29.1 8.6" pathLength="1" stroke-dasharray="1" /></svg>
           <div class="pop__note"><p class="wf-pen-note">3★ 08–17, 6 m</p></div>
         </div>
       </div>
@@ -21141,8 +21179,7 @@ code {
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/wind-figure/component.css&quot; /&gt;
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/tide-label/component.css&quot; /&gt;
     &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/spot-light/component.css&quot; /&gt;
-    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/pen-loop/component.css&quot; /&gt;
-    &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/pen-note/component.css&quot; /&gt;
+        &lt;link rel=&quot;stylesheet&quot; href=&quot;../components/pen-note/component.css&quot; /&gt;
     &lt;style&gt;
       /* The page: one sheet of paper with its grain; a mono label names each instance. */
       body {
@@ -21290,20 +21327,12 @@ code {
         margin-top: var(--sem-space-x2);
       }
 
-      /* ---- the light it points at, the pen's loop round it and its note ---- */
+      /* ---- the light it points at, lifted (spot-light --sel), and its note ---- */
       .pop__spot {
         position: relative;
         width: var(--sem-space-x5);
         height: var(--sem-space-x5);
         margin-top: var(--sem-space-x5);
-      }
-      .pop__loop {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        overflow: visible;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
       }
       .pop__note {
         position: absolute;
@@ -21344,7 +21373,6 @@ code {
             &lt;svg class=&quot;wf-spot-light__glyph&quot; viewBox=&quot;-30 -30 60 60&quot; aria-hidden=&quot;true&quot;&gt;&lt;g class=&quot;wf-spot-light__wind&quot;&gt;&lt;path class=&quot;wf-spot-light__arrow&quot; d=&quot;M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6&quot; /&gt;&lt;/g&gt;&lt;circle class=&quot;wf-spot-light__ring&quot; r=&quot;7.6&quot; /&gt;&lt;line class=&quot;wf-spot-light__strike&quot; x1=&quot;-5.6&quot; y1=&quot;5.6&quot; x2=&quot;5.6&quot; y2=&quot;-5.6&quot; /&gt;&lt;text class=&quot;wf-spot-light__n&quot; y=&quot;3.4&quot; text-anchor=&quot;middle&quot;&gt;3&lt;/text&gt;&lt;/svg&gt;
             &lt;span class=&quot;wf-spot-light__label&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;wf-spot-light__name&quot;&gt;Dollymount&lt;/span&gt;&lt;span class=&quot;wf-spot-light__line&quot;&gt;3★ W 13 · cross-off&lt;/span&gt;&lt;/span&gt;
           &lt;/button&gt;
-          &lt;svg class=&quot;pop__loop&quot; width=&quot;76&quot; height=&quot;60&quot; viewBox=&quot;0 0 76 60&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path class=&quot;wf-pen-loop__stroke&quot; d=&quot;M15.6 25.2 L16.4 22.5 L18.2 20.2 L20.4 18.1 L22.6 15.9 L25.1 13.6 L28.2 11.7 L32.0 10.7 L36.0 10.9 L39.8 11.7 L43.3 12.6 L46.7 13.3 L50.1 14.3 L53.0 15.9 L55.2 17.9 L57.2 20.1 L59.4 22.1 L62.0 24.2 L64.1 26.8 L64.8 29.7 L64.1 32.6 L62.5 35.3 L60.7 37.8 L58.8 40.3 L56.3 42.4 L53.1 43.9 L49.4 44.7 L45.9 45.2 L42.6 46.0 L39.1 47.2 L35.3 48.0 L31.3 47.9 L27.6 46.9 L24.2 45.4 L20.8 43.8 L17.5 42.0 L14.9 39.6 L13.6 36.7 L13.7 33.6 L14.1 30.7 L14.2 28.0 L14.0 25.3 L14.3 22.4 L15.6 19.7 L17.8 17.3 L20.2 15.1 L22.6 12.7 L25.5 10.3 L29.1 8.6&quot; pathLength=&quot;1&quot; stroke-dasharray=&quot;1&quot; /&gt;&lt;/svg&gt;
           &lt;div class=&quot;pop__note&quot;&gt;&lt;p class=&quot;wf-pen-note&quot;&gt;3★ 08–17, 6 m&lt;/p&gt;&lt;/div&gt;
         &lt;/div&gt;
       &lt;/div&gt;

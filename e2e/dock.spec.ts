@@ -111,7 +111,7 @@ const slider = (page: Page) =>
 /**
  * How far, in pixels, the selected hour is from where the strip stands: the
  * scroll against the one that brings that hour to the strip's middle (its
- * snap mark), and the pen's frame against the hour's own column.
+ * snap mark), and the card against the hour's own column.
  */
 async function offCursor(page: Page) {
   return page.evaluate(() => {
@@ -119,7 +119,7 @@ async function offCursor(page: Page) {
     const cell = document.querySelector<HTMLElement>(
       ".dock tr.tt-hour td.c-sel",
     );
-    const frame = document.querySelector(".dock .pen-frame");
+    const frame = document.querySelector(".dock .tt-card");
     if (!wrap || !cell || !frame) return Infinity;
     const snap =
       wrap.querySelectorAll<HTMLElement>(".tt-snaps i")[Number(cell.dataset.i)];
@@ -622,15 +622,13 @@ test("the spot's tools stand on the chart over the dock, and no day is rated", a
     tools.getByRole("button", { name: /Play forecast|Pause forecast/ }),
   ).toHaveCount(0);
   // No day is rated: a day's heading is its name and date, with no stars
-  // and no best stretch, and the pen loops no day's best. The hours carry
-  // the stars.
+  // and no best stretch. The hours carry the stars.
   await expect(page.locator(".dock tr.tt-day svg")).toHaveCount(0);
   await expect(page.locator(".dock tr.tt-day")).not.toContainText("best");
   await expect(page.locator(".dock tr.tt-day td").first()).not.toHaveAttribute(
     "title",
     /star/,
   );
-  await expect(page.locator(".dock .tt-pen .pen-loop")).toHaveCount(0);
   // The name is the link: there is no glyph of its own for the page.
   const name = tools.getByRole("link", { name: "Brandon Bay, spot page" });
   await expect(name).toHaveAttribute("href", "/spot/brandon");

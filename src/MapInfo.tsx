@@ -869,8 +869,8 @@ function AboutPart() {
       </h4>
       <p>
         An Admiralty chart crossed with a broadsheet&rsquo;s weather column:
-        paper, ink, the chart&rsquo;s magenta for the best, and a red pen that
-        rings the hour you are reading.
+        paper, ink, the chart&rsquo;s magenta for the best, and the hour you are
+        reading lifted off the page on a card.
       </p>
     </>
   );

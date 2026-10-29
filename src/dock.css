@@ -1,7 +1,7 @@
 /*
  * The dock: the chosen spot's week as one strip of hours, scrolled by hand or
- * stepped from the keys, the chosen hour framed by the red pen and the time
- * now ruled down it. A sheet standing on the foot of the screen (mixed and
+ * stepped from the keys, the chosen hour lifted on a card and the time now
+ * ruled down it in red. A sheet standing on the foot of the screen (mixed and
  * rounded, 2026-10-24): flat paper, the ink rule and its hairline round the
  * top and sides, a sheet's corner at the top, and the sheet's stacked shadow
  * cast upward over the chart. The day rules inside it stay square. Figures
@@ -268,7 +268,7 @@
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
-  /* Room for the foot of the pen's frame, which overflow-y would clip. */
+  /* Room for the foot of the chosen hour's card, which overflow-y would clip. */
   padding-bottom: 5px;
 }
 .tt-wrap::-webkit-scrollbar {
@@ -377,12 +377,12 @@ table.tt {
 .tt td.past {
   opacity: 0.42;
 }
-/* The chosen hour, written in the pen's ink: the pen's frame (.pen-frame)
-   is the rest of the mark, and nothing is filled. */
+/* The chosen hour, written a little larger on its card (.tt-card), which is
+   the rest of the mark. */
 .tt tr.tt-hour td.c-sel {
   font-size: 12px;
-  font-weight: 600;
-  color: var(--color-pen-ink);
+  font-weight: 650;
+  color: var(--color-ink);
 }
 .tt tr.tt-stars td .hour-stars {
   vertical-align: middle;
@@ -436,28 +436,40 @@ table.tt {
   stroke-width: 1.2;
   opacity: 0.5;
 }
-.tt-pen {
+/* The chosen hour's card: raised paper under the column's figures, from its
+   hour down, with an ink tab at its foot. It springs from hour to hour
+   (ForecastDock places it with a transform, so the move is the
+   compositor's). */
+.tt-card {
   position: absolute;
   left: 0;
   top: 0;
-  overflow: visible;
+  border-radius: var(--radius-control);
+  background: var(--color-card) var(--gradient-raised);
+  box-shadow:
+    var(--shadow-raised),
+    0 10px 22px -10px color-mix(in srgb, var(--color-ink) 45%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-ink) 12%, transparent);
   pointer-events: none;
+  transition:
+    transform 0.42s cubic-bezier(0.34, 1.36, 0.5, 1),
+    width 0.2s ease-out;
 }
-/* The red pen on the hours (ui/penPaths.ts): twice round the chosen hour,
-   on its border, and a line down the hours at the time now. The frame is drawn in by ForecastDock, which
-   holds it for a reader who asks for less motion. */
-.pen-frame {
-  fill: none;
-  stroke: var(--color-pen);
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 1;
-  opacity: 0.88;
+.tt-card::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 16px;
+  height: 3px;
+  margin-left: -8px;
+  border-radius: 3px;
+  background: var(--color-ink);
 }
-.pen-frame.is-second {
-  stroke-width: 1.4;
-  opacity: 0.62;
+@media (prefers-reduced-motion: reduce) {
+  .tt-card {
+    transition: none;
+  }
 }
 .tt-under {
   position: absolute;
@@ -466,16 +478,21 @@ table.tt {
   overflow: visible;
   pointer-events: none;
 }
-/* The time now, ruled down the hours in the red pen, and where the stars hand
-   over to the next model, dashed in ink: lines only, with no words written
-   by them. */
+/* The time now, a red line down the hours fading as it goes, and where the
+   stars hand over to the next model, dashed in ink: lines only, with no
+   words written by them. */
 .pen-now {
   fill: none;
-  stroke: var(--color-pen);
-  stroke-width: 1.6;
+  stroke: url(#now-fade);
+  stroke-width: 2;
   stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0.9;
+}
+.now-from {
+  stop-color: var(--color-pen);
+}
+.now-to {
+  stop-color: var(--color-pen);
+  stop-opacity: 0.1;
 }
 .pen-handover {
   fill: none;

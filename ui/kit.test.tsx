@@ -24,14 +24,8 @@ import { pageHeaderStyles } from "./PageHeader";
 import { pagerStyles } from "./Pager";
 import { paneStyles } from "./Pane";
 import { penNoteStyles, penStyles } from "./Pen";
-import {
-  arrowPath,
-  framePath,
-  loopPath,
-  stemPath,
-  strikePath,
-  underlinePath,
-} from "./penPaths";
+import { strikePath, underlinePath } from "./penPaths";
+import { liftStyles } from "./Lift";
 import { puffinStyles } from "./Puffin";
 import { ratingTipStyles } from "./RatingTip";
 import { searchFieldStyles } from "./SearchField";
@@ -61,14 +55,15 @@ const {
   Figure,
   Headline,
   Kicker,
+  Lift,
   Link,
   Masthead,
   MastheadMark,
   Notice,
   Pager,
   Pane,
-  PenLoop,
   PenNote,
+  PenStrike,
   Puffin,
   SearchField,
   SectionHeading,
@@ -98,6 +93,7 @@ const RECIPES = {
   figureStyles,
   headlineStyles,
   kickerStyles,
+  liftStyles,
   linkStyles,
   mastheadStyles,
   noticeStyles,
@@ -218,6 +214,7 @@ describe("S2: what ui/ exports", () => {
         "Figure",
         "Headline",
         "Kicker",
+        "Lift",
         "Link",
         "Masthead",
         "MastheadMark",
@@ -225,7 +222,6 @@ describe("S2: what ui/ exports", () => {
         "PageHeader",
         "Pager",
         "Pane",
-        "PenLoop",
         "PenNote",
         "PenStrike",
         "PenUnderline",
@@ -1247,59 +1243,27 @@ describe("the chart's own primitives", () => {
     );
   });
 
-  it("the pen draws a loop that overshoots its start, the same each time", () => {
-    const d = loopPath(50, 30, 40, 20, 3);
-    expect(d).toBe(loopPath(50, 30, 40, 20, 3));
-    expect(d).not.toBe(loopPath(50, 30, 40, 20, 4));
-    expect(d.startsWith("M")).toBe(true);
-    expect(d.split(" L")).toHaveLength(49);
+  it("the pen's strokes are the same each time", () => {
     expect(underlinePath(0, 3, 100)).toBe("M0.0 3.0 q50.0 -4 100.0 1");
     expect(strikePath(100, 10)).toMatch(/^M4\.0 7\.2 L96\.0 3\.0$/);
-  });
-
-  it("the pen frames a box on its line, hiding nothing in it, and lifts over what it must not cross", () => {
-    const points = (d: string) =>
-      [...d.matchAll(/([\d.-]+) ([\d.-]+)/g)].map((m) => [+m[1], +m[2]]);
-    const d = framePath(10, 20, 60, 200, 6, 5);
-    expect(d).toBe(framePath(10, 20, 60, 200, 6, 5));
-    expect(d).not.toBe(framePath(10, 20, 60, 200, 6, 6));
-    // One stroke, round and on past its start.
-    expect(d.match(/M/g)).toHaveLength(1);
-    for (const [x, y] of points(d)) {
-      // Along the sides, on the box's line, never inside it beyond the
-      // pen's width, nor far out of it.
-      if (y > 28 && y < 212) {
-        expect(x > 10 + 1.5 && x < 70 - 1.5).toBe(false);
-        expect(Math.min(Math.abs(x - 10), Math.abs(x - 70))).toBeLessThan(4.5);
-      }
-      expect(x).toBeGreaterThan(10 - 5);
-      expect(x).toBeLessThan(70 + 5);
-    }
-    // A figure on the right-hand edge: the pen lifts over it.
-    const lifted = framePath(10, 20, 60, 200, 6, 5, [
-      { x: 65, y: 100, w: 10, h: 12 },
-    ]);
-    expect(lifted.match(/M/g)).toHaveLength(2);
-    for (const [x, y] of points(lifted))
-      expect(x >= 65 && x <= 75 && y >= 100 && y <= 112).toBe(false);
-    // The line at now, and its arrow, are as repeatable.
-    expect(stemPath(40, 0, 100, 2)).toBe(stemPath(40, 0, 100, 2));
-    for (const [x] of points(stemPath(40, 0, 100, 2)))
-      expect(Math.abs(x - 40)).toBeLessThan(2);
-    const arrow = arrowPath(40, 18, 1, 3);
-    expect(arrow.from.x).toBeGreaterThan(40);
-    expect(arrow.from.y).toBeLessThan(18);
-    expect(arrowPath(40, 18, -1, 3).from.x).toBeLessThan(40);
   });
 
   it("the pen's marks are decoration, drawn in once and held for less motion", () => {
     const stroke = penStyles().stroke().split(" ");
     for (const name of ["stroke-pen", "animate-ink", "motion-reduce:animate-none"])
       expect(stroke).toContain(name);
-    // Not laid out on the server: the loop is drawn round a measured box.
-    expect(html(<PenLoop>13:00</PenLoop>)).toBe(
-      '<span class="relative inline-block">13:00</span>',
+    // Not laid out on the server: the strike is drawn over a measured box.
+    expect(html(<PenStrike>Brandon</PenStrike>)).toBe(
+      '<span class="relative inline-block">Brandon</span>',
     );
+  });
+
+  it("a lift sets its words on raised paper, and is no control", () => {
+    const markup = html(<Lift>13:00</Lift>);
+    expect(markup).toBe(`<span class="${liftStyles()}">13:00</span>`);
+    for (const name of ["paper-float", "shadow-float", "rounded-control"])
+      expect(liftStyles().split(" ")).toContain(name);
+    expect(markup).not.toMatch(/role=|tabindex/);
   });
 
   it("the pen's note is the hand, in the pen's ink that reads", () => {

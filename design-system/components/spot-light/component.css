@@ -216,6 +216,26 @@
 .wf-spot-light--sel {
   z-index: 2;
 }
+/* The selected light lifted off the chart, its shadow left on the water
+   where the spot is (src/map.css .lt.sel). */
+.wf-spot-light--sel .wf-spot-light__glyph {
+  transform: translateY(calc(var(--sem-space-x1-5) * -1)) scale(1.3);
+}
+.wf-spot-light--sel::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: -1;
+  width: calc(var(--sem-space-step) * 5.5);
+  height: var(--sem-space-x2);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-ink);
+  opacity: var(--sem-opacity-dot);
+  filter: blur(2px);
+  transform: translate(-50%, 2px);
+  pointer-events: none;
+}
 /* A field in focus: the selected light stands, the others dim and lose their names. */
 .wf-spot-light-field--focus .wf-spot-light:not(.wf-spot-light--sel) .wf-spot-light__glyph {
   opacity: var(--sem-opacity-dot);

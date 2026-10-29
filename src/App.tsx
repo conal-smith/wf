@@ -2529,11 +2529,6 @@ export default function App() {
                     focusStyle={focusStyle}
                     units={prefs.units}
                     rose={onChart ? rose : null}
-                    mark={
-                      onChart && focusAt
-                        ? { lon: focusAt.lon, lat: focusAt.lat }
-                        : null
-                    }
                     picked={
                       onChart && picked
                         ? { lon: picked.lon, lat: picked.lat }

@@ -7,7 +7,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { loopPath, strikePath, underlinePath } from "./penPaths";
+import { strikePath, underlinePath } from "./penPaths";
 import { tv, type VariantProps } from "./tv";
 
 /*
@@ -24,8 +24,6 @@ import { tv, type VariantProps } from "./tv";
 export const penStyles = tv({
   slots: {
     wrap: "relative inline-block",
-    // The loop stands clear of the words by a little more across than down.
-    loop: "pointer-events-none absolute -inset-x-3 -inset-y-2 overflow-visible",
     // Tucked up under the words: a line box hangs below the letters.
     under:
       "pointer-events-none absolute inset-x-0 top-full h-2 -translate-y-1 overflow-visible",
@@ -68,14 +66,8 @@ function useBox(ref: RefObject<HTMLElement | null>) {
   return box;
 }
 
-/** The loop's pad, in px: what `-inset-x-3 -inset-y-2` puts round the words. */
-const PAD_X = 12;
-const PAD_Y = 8;
-
 interface MarkProps {
   children: ReactNode;
-  /** Which hand: the same seed draws the same loop every time. */
-  seed?: number;
   className?: string;
 }
 
@@ -90,32 +82,6 @@ function Stroke({ d }: { d: string }) {
       strokeLinecap="round"
       strokeLinejoin="round"
     />
-  );
-}
-
-/** A loop drawn round its children: the one thing on the view that matters. */
-export function PenLoop({ children, seed = 3, className }: MarkProps) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const box = useBox(ref);
-  const styles = penStyles();
-  const w = box ? box.w + PAD_X * 2 : 0;
-  const h = box ? box.h + PAD_Y * 2 : 0;
-  return (
-    <span ref={ref} className={styles.wrap({ className })}>
-      {children}
-      {box && (
-        <svg
-          className={styles.loop()}
-          viewBox={`0 0 ${w} ${h}`}
-          aria-hidden="true"
-          focusable="false"
-        >
-          <Stroke
-            d={loopPath(w / 2, h / 2, box.w / 2 + 7, box.h / 2 + 6, seed)}
-          />
-        </svg>
-      )}
-    </span>
   );
 }
 

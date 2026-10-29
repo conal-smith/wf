@@ -13,8 +13,7 @@
     <link rel="stylesheet" href="../components/wind-figure/component.css" />
     <link rel="stylesheet" href="../components/tide-label/component.css" />
     <link rel="stylesheet" href="../components/spot-light/component.css" />
-    <link rel="stylesheet" href="../components/pen-loop/component.css" />
-    <link rel="stylesheet" href="../components/pen-note/component.css" />
+        <link rel="stylesheet" href="../components/pen-note/component.css" />
     <style>
       /* The page: one sheet of paper with its grain; a mono label names each instance. */
       body {
@@ -162,20 +161,12 @@
         margin-top: var(--sem-space-x2);
       }
 
-      /* ---- the light it points at, the pen's loop round it and its note ---- */
+      /* ---- the light it points at, lifted (spot-light --sel), and its note ---- */
       .pop__spot {
         position: relative;
         width: var(--sem-space-x5);
         height: var(--sem-space-x5);
         margin-top: var(--sem-space-x5);
-      }
-      .pop__loop {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        overflow: visible;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
       }
       .pop__note {
         position: absolute;
@@ -216,7 +207,6 @@
             <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">3</text></svg>
             <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Dollymount</span><span class="wf-spot-light__line">3★ W 13 · cross-off</span></span>
           </button>
-          <svg class="pop__loop" width="76" height="60" viewBox="0 0 76 60" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M15.6 25.2 L16.4 22.5 L18.2 20.2 L20.4 18.1 L22.6 15.9 L25.1 13.6 L28.2 11.7 L32.0 10.7 L36.0 10.9 L39.8 11.7 L43.3 12.6 L46.7 13.3 L50.1 14.3 L53.0 15.9 L55.2 17.9 L57.2 20.1 L59.4 22.1 L62.0 24.2 L64.1 26.8 L64.8 29.7 L64.1 32.6 L62.5 35.3 L60.7 37.8 L58.8 40.3 L56.3 42.4 L53.1 43.9 L49.4 44.7 L45.9 45.2 L42.6 46.0 L39.1 47.2 L35.3 48.0 L31.3 47.9 L27.6 46.9 L24.2 45.4 L20.8 43.8 L17.5 42.0 L14.9 39.6 L13.6 36.7 L13.7 33.6 L14.1 30.7 L14.2 28.0 L14.0 25.3 L14.3 22.4 L15.6 19.7 L17.8 17.3 L20.2 15.1 L22.6 12.7 L25.5 10.3 L29.1 8.6" pathLength="1" stroke-dasharray="1" /></svg>
           <div class="pop__note"><p class="wf-pen-note">3★ 08–17, 6 m</p></div>
         </div>
       </div>

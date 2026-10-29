@@ -1,8 +1,8 @@
 # The chart: wingfoil.ie's brand
 
 An Admiralty chart crossed with an old broadsheet weather report. Paper and
-ink, the chart's magenta, and a red pen that circles the one hour worth going
-for and writes why in the margin. The owner's words: "original… unique… keeps
+ink, the chart's magenta, and the one hour worth going for lifted off the page
+on a raised paper card. The owner's words: "original… unique… keeps
 that kind of look and feel of old kind of weather report."
 
 **The reference is the mockup**, `design/chart/1-the-chart.html` in the
@@ -27,11 +27,13 @@ of it.
 3. **Mobile first.** Draw it at 390×844 first, then let it open out at 720
    (`wide:`) and 900 (`rail:`). Nothing pressed is shorter than 44px on a
    finger. A field is 16px on a touch device.
-4. **The pen is for the one thing that matters.** One mark on a view, two at
-   most: a loop round the chosen spot or hour, a line at now, a strike
-   through what is off. It marks and does not comment: no verdict beside the
-   mark ("Go 13:00–16:00" is not written; see the information rule in
-   DESIGN_PRINCIPLES.md). The pen is never a fill, a control or a status.
+4. **The lift is for the one thing that matters.** One mark on a view, two at
+   most: the chosen hour on a raised card, the open spot's light lifted off
+   the chart, a few words on raised paper (`Lift`). The time now is a red
+   line, and what is off is struck through in the pen. Nothing is circled or
+   framed by hand. A mark does not comment: no verdict beside it ("Go
+   13:00–16:00" is not written; see the information rule in
+   DESIGN_PRINCIPLES.md). It is never a control or a status.
 5. **One filled action per view.** The ink pill (`Button variant="primary"`),
    magenta under the pointer. Everything else is ruled in ink, or quiet.
 6. **Rules, not surfaces.** One paper. Things are set apart by an ink rule
@@ -62,7 +64,7 @@ of it.
 | `line` | ink at 20% | The hairline between rows. |
 | `line-strong`, `ink-disabled` | `#7c7b78` | A field's box, a disabled icon. Strokes only, 3.7:1. |
 | `chart-magenta` | `#b0186a` | The best of something (a five-star light, the selected spot), a quantity's bar (`wash`), the focus ring, the filled action hovered. |
-| `pen` | `#d43a2c` | The pen's strokes: loops, underlines, strikes. 4.1:1, a mark. |
+| `pen` | `#d43a2c` | The pen's strokes: the line at now, underlines, strikes. 4.1:1, a mark. |
 | `pen-ink` | `#bf3125` | The pen's handwriting. 4.9:1, reads as words. |
 | `warn`, `now` / `warn-ground` | `#b02a1f` / `#efd8cd` | Degraded, an error, the present instant. Not the pen. |
 | `ok` | `#2a7046` | One liveness mark. |
@@ -177,9 +179,10 @@ exports its recipe (`buttonStyles`, …) for a link a router owns.
 | `StarGlyphs` | Solid, faded (the wind alone), dots to five; `null` is the dark | `stars`, `potential`, `size`, `slots` five/potential, `tone` ink/inverse/magenta, `label`. |
 | `BeaufortGlyph` | A wind in Force as the old charts drew it: a staff with a half feather a force, a pennant for ten, the force's number beside it | `force`, `size` (17 by a table's figure, 10 for a gust written small), `bare` (no number), `label` ("Force 5" by default). `beaufortPath` is its geometry, for any SVG (the loupe's foot box). |
 | `RatingTip` | An hour's stars as a button; hover, focus or tap opens the chart's box saying why | `label`, `detail`, `size` md (the spot page) / sm (the map's dock and card). The one explanation on the site. |
-| `PenLoop`, `PenUnderline`, `PenStrike` | The pen's marks round their children, drawn in once | Decoration (`aria-hidden`): say the same thing in words. `seed` picks the hand. |
+| `Lift` | Its children on a raised paper card: the one thing on the view that matters | A mark, not a control. One a view, two at most. |
+| `PenUnderline`, `PenStrike` | The pen's marks under or through their children, drawn in once | Decoration (`aria-hidden`): say the same thing in words. |
 | `PenNote` | The pen's handwriting | `size` sm/md, `as`. |
-| `loopPath`, `underlinePath`, `strikePath`, `framePath`, `stemPath`, `arrowPath` | The pen's geometry, for any SVG (the map's overlay; the dock's frame round the chosen hour, its line at now and the arrow to it) | Pure functions, seeded: the same seed draws the same hand. |
+| `underlinePath`, `strikePath` | The pen's geometry, for any SVG | Pure functions. |
 | `Puffin` | The Almanac's bird | `size`, `bob`, `title` (decorative without). |
 
 **The masthead.** Every page that is read starts with it; the brand link is
@@ -218,8 +221,8 @@ the section's own, because each router takes a link over in its own way:
 ### Don't
 
 - Don't write a colour, a px or a font name outside `ui/theme.css`.
-- Don't use the pen for emphasis, status or decoration; don't put two loops
-  on a view.
+- Don't use the pen or a lift for emphasis, status or decoration; don't lift
+  more than two things on a view, and don't circle or frame anything by hand.
 - Don't lay a translucent or blurred panel over the map; it is paper.
 - Don't round a box, or square a capsule.
 - Don't set sentences in the mono face, or figures in the body face.
@@ -240,8 +243,10 @@ are new tokens for the chart-kit's bathymetry. The top-left is the mockup's
 head: the menu, the wordmark (`Wordmark size="sm"`), and "Find a spot…" as a
 `SearchField`. Spot lights are the mockup's `.lt`: a figure in a ring (ink at
 3–4 stars, magenta at 5, dashed at none, struck through in the pen when
-offshore). In the dock the pen goes twice round the chosen hour and rules a
-line at the time now, with nothing written by it; the dock's tools (the star,
+offshore); the open spot's light is lifted off the chart on a spring, its
+shadow left where the spot is. In the dock the chosen hour stands on a raised
+card that springs from hour to hour, and a red line fades down the hours at
+the time now, with nothing written by it; the dock's tools (the star,
 the name that opens the spot's page, the blend, the fold, the close) stand on
 the chart in a box like the map's controls, and on a phone are the head of
 the dock's sheet. `StarGlyphs` in `src/StarsRows.tsx` already draws through the kit;
