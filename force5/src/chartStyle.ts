@@ -137,7 +137,7 @@ export const COAST_INK: Record<
   },
 };
 
-/** The layers each switch in the layers panel turns on and off. */
+/** The layers each switch on the layers' rail turns on and off. */
 export const CHART_LAYERS = {
   tints: ["bands"],
   soundings: ["contours", "contours-dashed", "contour-labels", "soundings"],

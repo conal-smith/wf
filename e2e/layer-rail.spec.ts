@@ -1,18 +1,10 @@
-import {
-  closePanel,
-  expect,
-  layerTile,
-  moreRows,
-  openFromMenu,
-  test,
-  type Page,
-} from "./fixtures";
+import { expect, moreRows, test, type Page } from "./fixtures";
 
 /**
- * The layers' rail (src/LayerRail.tsx): on a desktop, Layers under the zoom
- * opens a column of round switches beside it, one a layer, in the Layers
- * panel's groups (src/layerGroups.tsx). On a phone, or where the rail would
- * run into the dock, Layers opens the panel instead.
+ * The layers' rail (src/LayerRail.tsx), the one way to the layers: Layers
+ * under the zoom opens a column of round switches beside it, one a layer, in
+ * the groups of src/layerGroups.tsx, on a desktop and on a phone. There is no
+ * panel behind it; where it would run into the dock it scrolls.
  */
 
 const RAIL_KEY = "wingfoil.map.rail.v1";
@@ -47,7 +39,7 @@ const groupsOf = (box: ReturnType<typeof rail>) =>
       ]),
     );
 
-test("on a desktop, Layers opens the rail beside the zoom, clear of the dock, with the Layers panel's groups and layers", async ({
+test("on a desktop, Layers opens the rail beside the zoom, clear of the dock, with every layer in its group", async ({
   page,
 }) => {
   await openDock(page, 1440, 900);
@@ -77,32 +69,16 @@ test("on a desktop, Layers opens the rail beside the zoom, clear of the dock, wi
     ),
   );
 
-  // The panel's groups and layers, in its order, from the same list: its
-  // "Nothing" round the spot is the layer that is on, pressed again.
-  const ours = await groupsOf(rail(page));
-  await openFromMenu(page, "Layers");
-  const panel = await page
-    .getByRole("group", { name: "Layers", exact: true })
-    .locator(".lp-tiles")
-    .evaluateAll((groups) =>
-      groups.map((group) => [
-        group.closest("section")!.querySelector("h3")!.textContent,
-        [...group.querySelectorAll(".lp-press")]
-          .map((button) => button.querySelector(".lp-name")!.firstChild!)
-          .map((name) => name.textContent)
-          .filter((name) => name !== "Nothing"),
-      ]),
-    );
-  expect(ours).toEqual(panel);
-  expect(ours.map(([name]) => name)).toEqual([
-    "Wind",
-    "Sea",
-    "Weather",
-    "Chart",
-    "Ground",
-    "Round your spot",
+  // Every layer, in its group, in order. "Nothing" round the spot is the
+  // layer that is on, pressed again, so it has no switch of its own.
+  expect(await groupsOf(rail(page))).toEqual([
+    ["Wind", ["Coloured wind", "Particles"]],
+    ["Sea", ["Tidal depth", "Currents"]],
+    ["Weather", ["Rain"]],
+    ["Chart", ["Depth tints", "Contours", "Land relief", "Spot names"]],
+    ["Ground", ["Satellite, high tide", "Satellite, low tide"]],
+    ["Round your spot", ["Loupe", "Range ring"]],
   ]);
-  await closePanel(page);
 });
 
 test("the rail's switches: a part of the chart, the wind's two layers each by itself, one thing or nothing round the spot, one tide or none", async ({
@@ -111,7 +87,6 @@ test("the rail's switches: a part of the chart, the wind's two layers each by it
   await openDock(page, 1440, 900);
   await zoomLayers(page).click();
   await expect(rail(page)).toBeVisible();
-  const box = (await rail(page).boundingBox())!;
 
   // A part of the chart, on and off.
   await expect(railButton(page, "Spot names")).toHaveAttribute(
@@ -130,7 +105,8 @@ test("the rail's switches: a part of the chart, the wind's two layers each by it
   await expect(tip).toBeVisible();
   await expect(tip).toHaveText("Spot names · off");
   const at = (await tip.boundingBox())!;
-  expect(at.x + at.width).toBeLessThanOrEqual(box.x);
+  const button = (await railButton(page, "Spot names").boundingBox())!;
+  expect(at.x + at.width).toBeLessThanOrEqual(button.x);
   await railButton(page, "Spot names").click();
   await expect(page.locator(".map-canvas")).not.toHaveClass(/no-names/);
 
@@ -160,7 +136,7 @@ test("the rail's switches: a part of the chart, the wind's two layers each by it
     "true",
   );
   // Round the spot, one or nothing: the loupe for the ring, then pressed
-  // again, nothing, as the panel's "Nothing" is.
+  // again, nothing.
   await expect(railButton(page, "Range ring")).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -179,16 +155,11 @@ test("the rail's switches: a part of the chart, the wind's two layers each by it
     "aria-pressed",
     "false",
   );
-  await openFromMenu(page, "Layers");
-  await expect(layerTile(page, "Nothing")).toHaveAttribute(
+  await expect(railButton(page, "Range ring")).toHaveAttribute(
     "aria-pressed",
-    "true",
+    "false",
   );
-  await expect(layerTile(page, "Coloured wind")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await closePanel(page);
+  await expect(page.locator(".map-focus")).toHaveAttribute("data-focus", "off");
   // The satellite, one tide or none.
   const high = railButton(page, "Satellite, high tide");
   const low = railButton(page, "Satellite, low tide");
@@ -274,7 +245,7 @@ test("the rail is a toolbar: one stop on Tab, the arrows walk it, Space switches
   await expect(railButton(page, "Tidal depth")).toBeFocused();
 });
 
-test("the dock has no Layers of its own; where the rail would run into the dock, Layers opens the panel", async ({
+test("the dock has no Layers of its own; where the rail would run into the dock, it scrolls above it", async ({
   page,
 }) => {
   await openDock(page, 1280, 720);
@@ -285,29 +256,32 @@ test("the dock has no Layers of its own; where the rail would run into the dock,
   ).toHaveCount(0);
   await zoomLayers(page).click();
   await expect(rail(page)).toBeVisible();
-  const box = (await rail(page).boundingBox())!;
-  const tools = (await page.locator("#dk-tools").boundingBox())!;
-  expect(box.y + box.height).toBeLessThan(tools.y);
+  const clear = async () => {
+    const box = (await rail(page).boundingBox())!;
+    const tools = (await page.locator("#dk-tools").boundingBox())!;
+    expect(box.y + box.height).toBeLessThan(tools.y);
+  };
+  await clear();
   await zoomLayers(page).click();
   await expect(rail(page)).toHaveCount(0);
   await zoomLayers(page).click();
   await expect(rail(page)).toBeVisible();
-  // The waves, sky and sea open: the dock is too tall for the rail beside it,
-  // so it goes, and Layers opens the panel.
+  // The waves, sky and sea open: the dock is too tall for the whole rail
+  // beside it, so it stays, shorter, and scrolls to its last layer.
   await moreRows(page);
   await page.mouse.move(400, 300);
-  await expect(rail(page)).toHaveCount(0);
-  await expect(zoomLayers(page)).toHaveAttribute("aria-expanded", "false");
-  await zoomLayers(page).click();
-  await expect(page.getByRole("dialog", { name: "Layers" })).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "Layers" })).toHaveCount(0);
-  await expect(zoomLayers(page)).toBeFocused();
-  // Still open as far as the device knows: back once the dock has gone.
-  await page
-    .getByRole("button", { name: "Close the forecast for Brandon Bay" })
-    .click();
   await expect(rail(page)).toBeVisible();
+  await expect(zoomLayers(page)).toHaveAttribute("aria-expanded", "true");
+  await expect
+    .poll(() =>
+      rail(page).evaluate((el) => el.scrollHeight > el.clientHeight + 4),
+    )
+    .toBe(true);
+  await clear();
+  await railButton(page, "Range ring").scrollIntoViewIfNeeded();
+  await expect(railButton(page, "Range ring")).toBeInViewport();
+  await clear();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 test.describe("on a phone", () => {
@@ -317,59 +291,42 @@ test.describe("on a phone", () => {
     hasTouch: true,
   });
 
-  test("Layers opens the panel from the zoom, and there is no rail", async ({
+  test("Layers opens the rail from the zoom, clear of the dock, and a tap says what it switched", async ({
     page,
   }) => {
-    await page.addInitScript((key) => localStorage.setItem(key, "1"), RAIL_KEY);
     await page.goto("/?spot=brandon");
     await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible({
       timeout: 30000,
     });
-    await expect(page.locator(".lr")).toHaveCount(0);
-    await zoomLayers(page).click();
-    await expect(page.getByRole("dialog", { name: "Layers" })).toBeVisible();
-    await expect(page.locator(".lr")).toHaveCount(0);
-    await closePanel(page);
-  });
-
-  test("the panel is a modal in the middle of the screen, and its foot names the defaults as they are", async ({
-    page,
-  }) => {
-    await page.goto("/?map");
-    await zoomLayers(page).click();
-    const panel = page.locator("dialog.layers-dialog");
-    await expect(panel).toBeVisible();
-    // A modal in the middle of the screen (the owner's ruling of
-    // 2026-10-28), not a sheet from the foot over the dock's own: as far
-    // from the top as from the foot, clear of both.
-    await expect
-      .poll(
-        async () => {
-          const box = (await panel.boundingBox())!;
-          return Math.abs(box.y - (844 - box.y - box.height));
-        },
-        { timeout: 5000 },
-      )
-      .toBeLessThan(2);
-    const box = (await panel.boundingBox())!;
-    expect(box.y).toBeGreaterThanOrEqual(60);
-    // The foot names the defaults from the layers themselves: as what is on
-    // at first, and as what Reset puts back once the rider has others.
-    const foot = panel.locator("[data-layers-default]");
-    await expect(foot).toHaveText(
-      "The default layers are on: particles, tidal depth, the chart, range ring.",
-    );
-    await layerTile(page, "Coloured wind").click();
-    await layerTile(page, "Particles").click();
-    await expect(foot).toHaveText(
-      "Reset for the default: particles, tidal depth, the chart, range ring.",
-    );
-    await page.getByRole("button", { name: "Reset", exact: true }).click();
-    await expect(layerTile(page, "Particles")).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    await expect(foot).toHaveText(/^The default layers are on: /);
-    await closePanel(page);
+    await expect(rail(page)).toHaveCount(0);
+    await zoomLayers(page).tap();
+    await expect(rail(page)).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    // Under the zoom, down the right edge, clear of the head beside it, and
+    // above the dock's sheet, scrolling where it must.
+    const zbox = (await page.locator(".zbox").boundingBox())!;
+    const box = (await rail(page).boundingBox())!;
+    const sheet = (await page.locator(".map-footer").boundingBox())!;
+    const head = (await page.locator(".map-head").boundingBox())!;
+    expect(Math.abs(box.x + box.width - (zbox.x + zbox.width))).toBeLessThan(2);
+    expect(box.y).toBeGreaterThanOrEqual(zbox.y + zbox.height);
+    expect(box.y + box.height).toBeLessThanOrEqual(sheet.y);
+    const first = (await railButton(page, "Coloured wind").boundingBox())!;
+    expect(first.y).toBeGreaterThanOrEqual(head.y + head.height);
+    // A finger has no pointer to rest on it: a tap names the layer, and
+    // whether it is on now, for a moment.
+    const names = railButton(page, "Spot names");
+    await names.tap();
+    await expect(names).toHaveAttribute("aria-pressed", "false");
+    const tip = names.locator(".lr-tip");
+    const shown = () =>
+      tip.evaluate((el) => Number(getComputedStyle(el).opacity));
+    await expect(tip).toHaveText("Spot names · off");
+    await expect.poll(shown).toBe(1);
+    await expect.poll(shown, { timeout: 3000 }).toBe(0);
+    await expect(page.locator(".map-canvas")).toHaveClass(/no-names/);
+    // And Layers shuts it.
+    await zoomLayers(page).tap();
+    await expect(rail(page)).toHaveCount(0);
   });
 });

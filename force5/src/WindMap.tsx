@@ -1028,7 +1028,7 @@ export default function WindMap(props: Props) {
     windRef.current?.setPaused(reducedMotion || still.current);
   }, [ready, reducedMotion]);
 
-  // The chart's own layers, from the layers panel.
+  // The chart's own layers, from the layers' rail.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;

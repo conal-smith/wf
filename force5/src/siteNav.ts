@@ -198,40 +198,80 @@ export const SETTINGS_HREF = `/?${SETTINGS_PARAM}`;
 /** Settings' word before 26 October 2026, still read. */
 export const OLD_SETTINGS_PARAM = "customise";
 
+/**
+ * What a menu row on another page asks the map to open, as Settings does:
+ * Settings, the display options, what the map means, or the tour. Each is a
+ * word on the home page's address (`/?options`), read once by the map and
+ * taken out of it (src/App.tsx), which opens the chart first where the thing
+ * asked for is the chart's.
+ */
+export type MapAsk = "settings" | "options" | "about" | "tour";
+export const MAP_ASKS: readonly MapAsk[] = [
+  "settings",
+  "options",
+  "about",
+  "tour",
+];
+/** The address on another page that asks the map for `ask`. */
+export const askHref = (ask: MapAsk) => `/?${ask}`;
+
+/** What an address on this origin asks the map to open, if anything. */
+export function mapAsk(url: {
+  pathname: string;
+  search: string;
+}): MapAsk | null {
+  if (url.pathname !== "/") return null;
+  const query = new URLSearchParams(url.search);
+  if (query.has(OLD_SETTINGS_PARAM)) return "settings";
+  return MAP_ASKS.find((ask) => query.has(ask)) ?? null;
+}
+
 /** Whether an address on this origin asks the map for Settings. */
 export function asksSettings(url: { pathname: string; search: string }) {
-  if (url.pathname !== "/") return false;
-  const query = new URLSearchParams(url.search);
-  return query.has(SETTINGS_PARAM) || query.has(OLD_SETTINGS_PARAM);
+  return mapAsk(url) === "settings";
 }
 
 /** The site menu's rows that are the same on every page. */
-export type SiteNavId = "chart" | "finder" | "settings";
+export type SiteNavId =
+  "chart" | "finder" | "settings" | "options" | "about" | "tour";
 
-/**
- * The site's navigation, the first rows of the menu on every page, in this
- * order: the spot finder, which is the home page, the full chart, and
- * Settings (the owner's ruling of 2026-10-25, with the finder first since it
- * became the home page on 2026-10-26). The chart is the map section's own
- * page, so the sections under these leave the map out: it is here, once, as
- * the chart.
- */
-export const SITE_NAV: readonly {
+export interface SiteNavRow {
   id: SiteNavId;
   href: string;
   label: string;
-}[] = [
-  { id: "finder", href: FINDER_HREF, label: "Spot finder" },
-  { id: "chart", href: CHART_HREF, label: "Chart" },
-  { id: "settings", href: SETTINGS_HREF, label: "Settings" },
+}
+
+/**
+ * The site's navigation, the same menu on every page, in groups set apart
+ * by a gap (the owner's ruling of 2026-10-29): the chart and the spot
+ * finder; Settings and the display options; About and the tour. The site's
+ * other sections follow, Use with AI last of all. The chart is the map
+ * section's own page, so the sections under these leave the map out: it is
+ * here, once, as the chart.
+ */
+export const SITE_NAV_GROUPS: readonly (readonly SiteNavRow[])[] = [
+  [
+    { id: "chart", href: CHART_HREF, label: "Chart" },
+    { id: "finder", href: FINDER_HREF, label: "Spot finder" },
+  ],
+  [
+    { id: "settings", href: SETTINGS_HREF, label: "Settings" },
+    { id: "options", href: askHref("options"), label: "Display options" },
+  ],
+  [
+    { id: "about", href: askHref("about"), label: "About" },
+    { id: "tour", href: askHref("tour"), label: "Take the tour" },
+  ],
 ];
+
+/** Every row of the navigation, in order. */
+export const SITE_NAV: readonly SiteNavRow[] = SITE_NAV_GROUPS.flat();
 
 /**
  * The page the menu marks as the one you are on: one of the navigation's or
  * of the sections', or none (a spot's page, "How the stars work").
  */
-export type SitePageId =
-  Exclude<SiteNavId, "settings"> | Exclude<SiteSectionId, "map">;
+export type SitePageId = "chart" | "finder" | Exclude<SiteSectionId, "map">;
 
 /**
  * Every path that `src/main.tsx` splits off from the map: everything else is

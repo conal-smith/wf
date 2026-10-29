@@ -2,7 +2,7 @@ import { useId, useMemo, useRef, useState } from "react";
 import { SearchField } from "../ui/SearchField";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { Wordmark } from "../ui/Wordmark";
-import { SiteMenu, type SiteMenuTool } from "../force5/src/SiteMenu";
+import { SiteMenu } from "../force5/src/SiteMenu";
 import { FINDER_HREF, type SiteNavId } from "../force5/src/siteNav";
 import type { Spot } from "../force5/src/weather";
 import { hourWind, type PlaceHour } from "./ratings";
@@ -11,15 +11,13 @@ import { findSpots } from "./spotSearch";
 /**
  * The chart's head, top left: the site menu, the name, and "Find a spot…",
  * whose list opens under the box as the reader types. The menu is the site's
- * navigation, as on every page, and under it the one way in to the chart's
- * own tools (the layers, the options, what the map means and the tour).
+ * navigation, as on every page.
  */
 export default function MapHead({
   spots,
   starred,
   hourAt,
   onPick,
-  tools,
   go,
 }: {
   spots: readonly Spot[];
@@ -27,7 +25,6 @@ export default function MapHead({
   /** A place's rated hour at the time the map shows, where there is one. */
   hourAt: (id: string) => PlaceHour | null;
   onPick: (spot: Spot) => void;
-  tools: readonly SiteMenuTool[];
   /** The menu's navigation, in place of a page load (`SiteMenu`'s `go`). */
   go: Partial<Record<SiteNavId, () => void>>;
 }) {
@@ -51,12 +48,7 @@ export default function MapHead({
   const showing = open && query.trim().length > 0;
   return (
     <header className="map-head chart-box">
-      <SiteMenu
-        current="chart"
-        go={go}
-        size="sm"
-        tools={{ title: "This chart", items: tools }}
-      />
+      <SiteMenu current="chart" go={go} size="sm" />
       <a
         className="map-brand"
         href={FINDER_HREF}

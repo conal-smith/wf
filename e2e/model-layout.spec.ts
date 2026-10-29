@@ -1,4 +1,4 @@
-import { closePanel, expect, openFromMenu, test, type Page } from "./fixtures";
+import { chooseModel, expect, test, type Page } from "./fixtures";
 
 /** Where the dock and the boxes over the chart stand, to a tenth of a pixel. */
 const geometry = (page: Page) =>
@@ -32,13 +32,7 @@ for (const width of [320, 390, 820, 1440]) {
     await page.evaluate(() => document.fonts.ready);
     const baseline = await geometry(page);
     for (const model of ["icon-eu", "ecmwf", "harmonie"]) {
-      await openFromMenu(page, "Layers");
-      await page.locator(`[data-model="${model}"]`).click();
-      await expect(page.locator(`[data-model="${model}"]`)).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
-      await closePanel(page);
+      await chooseModel(page, model);
       await expect.poll(() => geometry(page)).toEqual(baseline);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),

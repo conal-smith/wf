@@ -1,5 +1,6 @@
 import { expect, test as base, type Page } from "@playwright/test";
 import { SAMPLE_CLOCK } from "./columns";
+import { modelName } from "../force5/src/lead";
 
 /**
  * Every e2e test runs at `SAMPLE_CLOCK` unless it says otherwise.
@@ -187,8 +188,8 @@ export async function steadyFrames(page: Page) {
 }
 
 /**
- * Shut the map's open panel (the layers or the display options)
- * on its dialog's X. It is modal, so the button it opened from is behind it.
+ * Shut the map's open panel (the display options) on its dialog's X. It is
+ * modal, so what it opened from is behind it.
  */
 export async function closePanel(page: Page) {
   await page
@@ -199,29 +200,36 @@ export async function closePanel(page: Page) {
 }
 
 /**
- * The chart's own tools that open over it, each a row of the site menu's:
- * Settings, in the site's navigation (a link, the map's own way to it), and
- * under it, in "This chart", the ones src/MapControls.tsx `chartTools` lists
- * and the tour (src/App.tsx).
+ * What the site menu opens over the chart, each a row of its navigation
+ * (force5/src/siteNav.ts SITE_NAV_GROUPS), and the layers, which are the
+ * rail beside the zoom (src/LayerRail.tsx) rather than a row.
  */
 export type ChartTool =
-  "Settings" | "Layers" | "Display options" | "About the map" | "Take the tour";
+  "Settings" | "Layers" | "Display options" | "About" | "Take the tour";
 
-/** A chart tool's row in the site menu, while the menu is open. */
-export const menuRow = (page: Page, name: ChartTool) =>
-  name === "Settings"
-    ? siteRow(page, name)
-    : chartTools(page).getByRole("button", { name, exact: true });
+/** The dialog each row opens, by its title. */
+const DIALOG_TITLE: Partial<Record<ChartTool, string>> = {
+  "Display options": "Display options",
+  About: "About the map",
+};
+
+/** A row of the site menu that opens something over the chart, while it is open. */
+export const menuRow = (page: Page, name: Exclude<ChartTool, "Layers">) =>
+  siteRow(page, name);
 
 /**
  * The site's navigation, the same on every page (force5/src/siteNav.ts
- * SITE_NAV): the chart, the spot finder and Settings, then the sections, the
- * marketplace and the community switched on in this suite's build.
+ * SITE_NAV_GROUPS): the chart and the spot finder, Settings and the display
+ * options, About and the tour, then the sections, the marketplace and the
+ * community switched on in this suite's build, and Use with AI last.
  */
 export const SITE_ROWS = [
-  "Spot finder",
   "Chart",
+  "Spot finder",
   "Settings",
+  "Display options",
+  "About",
+  "Take the tour",
   "Marketplace",
   "Community",
   "Use with AI",
@@ -234,10 +242,6 @@ export const siteNav = (page: Page) =>
 /** A row of the site's navigation, by its name. */
 export const siteRow = (page: Page, name: string) =>
   siteNav(page).getByRole("link", { name, exact: true });
-
-/** The chart's own part of the open menu, under the navigation. */
-export const chartTools = (page: Page) =>
-  page.getByRole("group", { name: "This chart" });
 
 /**
  * Open the site menu, a drawer from the left (force5/src/SiteMenu.tsx), and
@@ -252,36 +256,78 @@ export async function openMenu(page: Page) {
   return drawer;
 }
 
-/**
- * Open the layers, the display options or the map's information
- * as a rider does: from the site menu, the one way in to them.
- */
-export async function openFromMenu(page: Page, name: ChartTool) {
-  const menu = page.getByRole("button", { name: "Site menu" });
-  if ((await menu.getAttribute("aria-expanded")) !== "true") await menu.click();
-  await menuRow(page, name).click();
-  // Each dialog is titled as its row is named.
-  await expect(page.getByRole("dialog", { name })).toBeVisible();
+/** The Layers button under the zoom, which opens and shuts the rail. */
+export const layersButton = (page: Page) =>
+  page.locator(".zbox").getByRole("button", { name: "Layers", exact: true });
+
+/** The layers' rail beside the zoom (src/LayerRail.tsx). */
+export const layersRail = (page: Page) =>
+  page.getByRole("toolbar", { name: "Layers", exact: true });
+
+/** Open the layers' rail, from the Layers button, if it is not open. */
+export async function openLayers(page: Page) {
+  const button = layersButton(page);
+  if ((await button.getAttribute("aria-expanded")) !== "true")
+    await button.click();
+  await expect(layersRail(page)).toBeVisible();
+}
+
+/** Shut the layers' rail, from the Layers button, if it is open. */
+export async function closeLayers(page: Page) {
+  const button = layersButton(page);
+  if ((await button.getAttribute("aria-expanded")) === "true")
+    await button.click();
+  await expect(layersRail(page)).toBeHidden();
 }
 
 /**
- * A tile in the open Layers panel (src/LayersPanel.tsx), by its name: each is
- * a toggle button, its state in `aria-pressed`.
+ * Open the layers, the display options, the map's information, Settings or
+ * the tour as a rider does: the layers from the Layers button by the zoom,
+ * the rest from the site menu.
  */
-export const layerTile = (page: Page, name: string) =>
-  page
-    .getByRole("group", { name: "Layers" })
-    .getByRole("button", { name, exact: true });
+export async function openFromMenu(page: Page, name: ChartTool) {
+  if (name === "Layers") return openLayers(page);
+  await openMenu(page);
+  await menuRow(page, name).click();
+  const title = DIALOG_TITLE[name];
+  if (title)
+    await expect(page.getByRole("dialog", { name: title })).toBeVisible();
+}
 
 /**
- * Turn a tile on or off, as `check()` and `uncheck()` did a checkbox: pressed
- * only if it is not already as asked, and then it must be.
+ * A layer's button on the rail, by its name: each is a toggle button, its
+ * state in `aria-pressed`.
+ */
+export const layerTile = (page: Page, name: string) =>
+  layersRail(page).getByRole("button", { name, exact: true });
+
+/**
+ * Turn a layer on or off, as `check()` and `uncheck()` did a checkbox:
+ * pressed only if it is not already as asked, and then it must be.
  */
 export async function setLayer(page: Page, name: string, on: boolean) {
+  await openLayers(page);
   const tile = layerTile(page, name);
   if ((await tile.getAttribute("aria-pressed")) !== String(on))
     await tile.click();
   await expect(tile).toHaveAttribute("aria-pressed", String(on));
+}
+
+/** The display options' choice of model, by a model's id. */
+export const modelChoice = (page: Page, id: string) =>
+  page
+    .getByRole("group", { name: "Model", exact: true })
+    .getByRole("button", { name: modelName(id), exact: true });
+
+/**
+ * Ask for a model the map draws and the stars rate, from the display options,
+ * shut after. Asked, not had: a run that cannot be read leaves the rider on
+ * the one they had.
+ */
+export async function chooseModel(page: Page, id: string) {
+  await openFromMenu(page, "Display options");
+  await modelChoice(page, id).click();
+  await closePanel(page);
 }
 
 /**

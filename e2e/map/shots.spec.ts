@@ -1,6 +1,8 @@
 import {
   closePanel,
   expect,
+  layersRail,
+  modelChoice,
   moreRows,
   openFromMenu,
   rememberSpot,
@@ -182,10 +184,10 @@ for (const { width, height } of [
       await shoot(page, "search", width);
     });
 
-    test("layers panel", async ({ page }) => {
+    test("layers rail", async ({ page }) => {
       await openMap(page);
       await openFromMenu(page, "Layers");
-      await expect(page.getByRole("group", { name: "Layers" })).toBeVisible();
+      await expect(layersRail(page)).toBeVisible();
       await shoot(page, "layers", width);
     });
 
@@ -278,7 +280,7 @@ for (const { width, height } of [
 
     test("the key", async ({ page }) => {
       await openMap(page);
-      await openFromMenu(page, "About the map");
+      await openFromMenu(page, "About");
       await expect(page.locator(".map-info .key")).toBeVisible();
       await shoot(page, "key", width);
     });
@@ -328,8 +330,8 @@ for (const { width, height } of [
     test("model switch loading", async ({ page }) => {
       await openMap(page);
       await page.route("**/weather/icon-eu-*/t/**", () => {});
-      await openFromMenu(page, "Layers");
-      await page.locator('[data-model="icon-eu"]').click();
+      await openFromMenu(page, "Display options");
+      await modelChoice(page, "icon-eu").click();
       await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
       await closePanel(page);
       await shoot(page, "model-loading", width);
@@ -340,8 +342,8 @@ for (const { width, height } of [
         route.fulfill({ status: 503, body: "Unavailable" }),
       );
       await openMap(page);
-      await openFromMenu(page, "Layers");
-      await page.locator('[data-model="icon-eu"]').click();
+      await openFromMenu(page, "Display options");
+      await modelChoice(page, "icon-eu").click();
       await expect(page.locator(".frame-status.is-error")).toBeVisible();
       await closePanel(page);
       await shoot(page, "warning", width);

@@ -1,5 +1,12 @@
 import { SAMPLE_CLOCK } from "./columns";
-import { expect, openFromMenu, test, type Page } from "./fixtures";
+import {
+  expect,
+  layersRail,
+  openFromMenu,
+  siteRow,
+  test,
+  type Page,
+} from "./fixtures";
 
 /**
  * Settings (src/Settings.tsx) and the tour (src/Tour.tsx): Settings saves
@@ -476,19 +483,16 @@ test("No thanks is never asked again; Escape leaves the tour; the menu replays i
     await expect(page.locator(".tour-ring path")).toBeVisible({
       timeout: 15000,
     });
-    if (id === "layers")
-      await expect(
-        page.getByRole("dialog", { name: "Layers", exact: true }),
-      ).toBeVisible();
+    // The layers' card opens the rail by the zoom, and rings it.
+    if (id === "layers") await expect(layersRail(page)).toBeVisible();
     await card(page)
       .getByRole("button", { name: i === steps.length - 1 ? "Finish" : "Next" })
       .click();
   }
   await expect(card(page)).toContainText("That’s the end of the tour");
   await expect(card(page)).not.toContainText("Almanac");
-  await expect(
-    page.getByRole("dialog", { name: "Layers", exact: true }),
-  ).toHaveCount(0);
+  // Shut again, as it was before the tour.
+  await expect(layersRail(page)).toBeHidden();
   await card(page).getByRole("button", { name: "Open Settings" }).click();
   await expect(card(page)).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
@@ -507,8 +511,5 @@ test("a browser that says it is automated is never offered the tour", async ({
 async function openFromMenuRow(page: Page, name: "Take the tour") {
   const menu = page.getByRole("button", { name: "Site menu" });
   if ((await menu.getAttribute("aria-expanded")) !== "true") await menu.click();
-  await page
-    .getByRole("group", { name: "This chart" })
-    .getByRole("button", { name, exact: true })
-    .click();
+  await siteRow(page, name).click();
 }

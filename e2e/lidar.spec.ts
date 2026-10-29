@@ -1,9 +1,9 @@
-import { expect, openFromMenu, test } from "./fixtures";
+import { expect, layersRail, openFromMenu, test } from "./fixtures";
 
 /**
  * The LiDAR layer is off since 2026-10-24 (scripts/lidar/README.md): it
  * covered four stretches of the coast and looked broken everywhere else. No
- * entry in Layers, no part in "About the map", nothing of it served or asked
+ * button on the layers' rail, no part in "About the map", nothing of it served or asked
  * for, even by a rider whose stored layers still say it is on.
  */
 test("the LiDAR layer is gone, and a rider who had it on reads none of it", async ({
@@ -27,14 +27,11 @@ test("the LiDAR layer is gone, and a rider who had it on reads none of it", asyn
     timeout: 30000,
   });
   await openFromMenu(page, "Layers");
-  const panel = page.getByRole("group", { name: "Layers" });
-  await expect(panel.locator('[data-layer="currents"]')).toBeVisible();
-  await expect(panel.locator('[data-layer="lidar"]')).toHaveCount(0);
-  // Nor in the desktop's rail of the layers beside the zoom.
-  await expect(page.locator('[data-layer="lidar"]')).toHaveCount(0);
-  await expect(panel).not.toContainText("LiDAR");
-  await page.keyboard.press("Escape");
-  await openFromMenu(page, "About the map");
+  const rail = layersRail(page);
+  await expect(rail.locator('[data-rail-layer="currents"]')).toBeVisible();
+  await expect(rail.locator('[data-rail-layer="lidar"]')).toHaveCount(0);
+  await expect(rail).not.toContainText("LiDAR");
+  await openFromMenu(page, "About");
   const info = page.getByRole("dialog", { name: "About the map" });
   await expect(info.getByRole("tab", { name: "Currents" })).toBeVisible();
   await expect(info.getByRole("tab", { name: /LiDAR/ })).toHaveCount(0);

@@ -1108,10 +1108,9 @@
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;
 }
-/* The layers (layers.css, with their own chunk) and the display
-   options (panels.css), one at a time in the kit's dialog over the dimmed map
+/* The display options (panels.css), in the kit's dialog over the dimmed map
    (src/MapControls.tsx). The dialog scrolls a tall panel; its body's prose
-   sizes give way to the panels' own. */
+   sizes give way to the panel's own. */
 .map-panel-dialog {
   max-width: 380px;
 }
@@ -1406,9 +1405,14 @@
     padding: 5px 8px 5px 5px;
     gap: 8px;
   }
+  /* The layers' rail stands under the zoom, down the right edge: beside
+     it, it would run over the head. */
   .map-ctrl {
     top: 10px;
     right: 10px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
   }
   .zbox button {
     width: 30px;

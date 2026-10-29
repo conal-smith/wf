@@ -1,5 +1,4 @@
 import {
-  chartTools,
   expect,
   siteNav,
   siteRow,
@@ -1115,17 +1114,15 @@ test.describe("on a desktop", () => {
     const row = siteRow(page, "Spot finder");
     await expect(row).toHaveAttribute("href", "/");
     await page.evaluate(() => ((window as { stayed?: boolean }).stayed = true));
-    // First in the navigation, over the chart and Settings, over the chart's
-    // own tools.
+    // Second in the navigation, under the chart and over Settings and the
+    // display options.
     const chart = (await siteRow(page, "Chart").boundingBox())!;
     const settings = (await siteRow(page, "Settings").boundingBox())!;
-    const layers = (await chartTools(page)
-      .getByRole("button", { name: "Layers" })
-      .boundingBox())!;
+    const options = (await siteRow(page, "Display options").boundingBox())!;
     const box = (await row.boundingBox())!;
-    expect(box.y).toBeLessThan(chart.y);
-    expect(chart.y).toBeLessThan(settings.y);
-    expect(settings.y).toBeLessThan(layers.y);
+    expect(chart.y).toBeLessThan(box.y);
+    expect(box.y).toBeLessThan(settings.y);
+    expect(settings.y).toBeLessThan(options.y);
     await row.click();
     await expect(page).toHaveURL(/\/$/);
     await expect(finder(page)).toBeVisible();
@@ -1133,14 +1130,13 @@ test.describe("on a desktop", () => {
     expect(
       await page.evaluate(() => (window as { stayed?: boolean }).stayed),
     ).toBe(true);
-    // The finder's menu: the same navigation, the finder marked as the page,
-    // and nothing of the chart's own.
+    // The finder's menu: the same navigation, the finder marked as the page.
     await page.getByRole("button", { name: "Site menu" }).click();
     await expect(siteRow(page, "Spot finder")).toHaveAttribute(
       "aria-current",
       "page",
     );
-    await expect(chartTools(page)).toHaveCount(0);
+    await expect(siteRow(page, "Display options")).toBeVisible();
     await siteRow(page, "Chart").click();
     await expect(page).toHaveURL(/\/\?map$/);
     await expect(page.locator(".spot-marker")).toHaveCount(149);

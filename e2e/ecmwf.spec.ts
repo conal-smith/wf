@@ -1,4 +1,11 @@
-import { closePanel, expect, openFromMenu, test } from "./fixtures";
+import {
+  chooseModel,
+  closePanel,
+  expect,
+  modelChoice,
+  openFromMenu,
+  test,
+} from "./fixtures";
 import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleColumnsWithoutEcmwf, stripAt } from "./columns";
 
@@ -16,13 +23,7 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
     timeout: 30000,
   });
   await expect(page.locator(".map-loading")).toHaveCount(0);
-  await openFromMenu(page, "Layers");
-  await page.locator('[data-model="ecmwf"]').click();
-  await expect(page.locator('[data-model="ecmwf"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await closePanel(page);
+  await chooseModel(page, "ecmwf");
   await expect(page.locator(".map-model")).toContainText("ECMWF");
   // Hourly where HARMONIE reaches, ECMWF's own three- and six-hourly steps after.
   const strip = stripAt(clock);
@@ -63,13 +64,7 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   );
   // Back to HARMONIE: it does not reach the hour, so the map hands it to
   // ECMWF, says so, and keeps HARMONIE as the reader's choice.
-  await openFromMenu(page, "Layers");
-  await page.locator('[data-model="harmonie"]').click();
-  await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await closePanel(page);
+  await chooseModel(page, "harmonie");
   await expect(slider).toHaveValue(String(strip.length - 1));
   await expect(page.locator(".map-model")).toHaveAttribute(
     "data-reach",
@@ -111,10 +106,10 @@ test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", as
   );
   for (const next of [null, { ...ecmwf, model: "wrong" }]) {
     body = next;
-    await openFromMenu(page, "Layers");
-    await page.locator('[data-model="ecmwf"]').click();
+    await openFromMenu(page, "Display options");
+    await modelChoice(page, "ecmwf").click();
     await expect(page.locator(".frame-status.is-error")).toBeVisible();
-    await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
+    await expect(modelChoice(page, "harmonie")).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -131,9 +126,7 @@ test("the chart pans out over the Atlantic as far as ECMWF reaches, and a smalle
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
-  await openFromMenu(page, "Layers");
-  await page.locator('[data-model="ecmwf"]').click();
-  await closePanel(page);
+  await chooseModel(page, "ecmwf");
   await expect(page.locator(".map-model")).toContainText("ECMWF");
   // Out as far as the chart goes, then west as far as it goes, by the keys
   // the chart's canvas takes.
@@ -165,9 +158,7 @@ test("the chart pans out over the Atlantic as far as ECMWF reaches, and a smalle
   await expect(page.locator(".frame-status.is-error")).toHaveCount(0);
   // HARMONIE out here: its box is behind the view, so it draws nothing in
   // most of it, and says nothing is wrong.
-  await openFromMenu(page, "Layers");
-  await page.locator('[data-model="harmonie"]').click();
-  await closePanel(page);
+  await chooseModel(page, "harmonie");
   await expect(page.locator(".map-model")).toContainText("HARMONIE");
   await page.waitForTimeout(1500);
   await expect(page.locator(".frame-status.is-error")).toHaveCount(0);

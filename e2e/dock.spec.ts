@@ -4,6 +4,7 @@ import {
   closePanel,
   expect,
   menuRow,
+  modelChoice,
   moreRows,
   openFromMenu,
   setRider,
@@ -571,7 +572,7 @@ test("the stars open nothing on hover, and their explanation is the map's i", as
   await expect(
     page.locator(".dock").getByRole("button", { name: "How the stars work" }),
   ).toHaveCount(0);
-  await openFromMenu(page, "About the map");
+  await openFromMenu(page, "About");
   const info = page.getByRole("dialog", { name: "About the map" });
   await info.getByRole("tab", { name: "Stars" }).click();
   await expect(info.locator("#map-info-stars")).toBeInViewport();
@@ -957,7 +958,7 @@ test("the display options open over the dimmed map from the site menu, one panel
   const trigger = page.getByRole("button", { name: "Site menu" });
   const panel = page.locator("#map-options");
   // The map's controls are zoom and the layers; the options are in the
-  // menu, in the chart's own part, over the map's information.
+  // menu, beside Settings.
   const names = await page
     .locator(".zbox button")
     .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
@@ -968,11 +969,8 @@ test("the display options open over the dimmed map from the site menu, one panel
   // From the keyboard: open, into it, and Escape hands focus back.
   await trigger.focus();
   await page.keyboard.press("Enter");
-  await expect(
-    page.getByRole("group", { name: "This chart" }).getByRole("button"),
-  ).toHaveText(["Layers", "Display options", "About the map", "Take the tour"]);
-  // Past the site's six rows (the navigation and the sections) and Layers.
-  for (let i = 0; i < 7; i++) await page.keyboard.press("Tab");
+  // Past the chart, the spot finder and Settings.
+  for (let i = 0; i < 3; i++) await page.keyboard.press("Tab");
   await expect(menuRow(page, "Display options")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(panel).toBeVisible();
@@ -1246,14 +1244,11 @@ test("an hour past the map's model hands the map to the run that reaches it", as
   await expect(
     page.getByRole("button", { name: /Show ECMWF on the map/ }),
   ).toHaveCount(0);
-  // The reader's choice is still HARMONIE, and the layers say what is drawn.
-  await openFromMenu(page, "Layers");
-  await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
+  // The reader's choice is still HARMONIE.
+  await openFromMenu(page, "Display options");
+  await expect(modelChoice(page, "harmonie")).toHaveAttribute(
     "aria-pressed",
     "true",
-  );
-  await expect(page.locator("#map-layers .models-note")).toHaveText(
-    /^HARMONIE ends \w{3} \d\d:\d\d: ECMWF is on the map at \w{3} \d\d:\d\d, and HARMONIE comes back within its own hours\.$/,
   );
   await closePanel(page);
   // Back and forth across the seam: both runs are in hand, so no manifest is

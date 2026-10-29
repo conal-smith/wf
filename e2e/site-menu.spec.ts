@@ -1,6 +1,6 @@
 import {
-  chartTools,
   expect,
+  layersRail,
   menuRow,
   SITE_ROWS,
   test,
@@ -49,9 +49,9 @@ test("on the map the menu opens by keyboard and Escape closes only the menu", as
   await expect(trigger(page)).toHaveAttribute("aria-controls", /.+/);
   await expect(panel(page)).toBeVisible();
   await expect(panel(page).getByRole("link")).toHaveText(SECTIONS);
-  // The site's navigation comes first, as on every page, and its first row
-  // takes the focus; the chart is the page.
-  await expect(row(page, "Spot finder")).toBeFocused();
+  // The site's navigation, as on every page, and its first row takes the
+  // focus; the chart is the page.
+  await expect(row(page, "Chart")).toBeFocused();
   await expect(row(page, "Chart")).toHaveAttribute("aria-current", "page");
   await expect(row(page, "Marketplace")).toHaveAttribute("href", "/market");
   await expect(row(page, "Marketplace")).not.toHaveAttribute(
@@ -75,10 +75,9 @@ test("on the map the menu opens by keyboard and Escape closes only the menu", as
 });
 
 /**
- * The owner's ruling of 2026-10-25: one menu, the same on every page. The
- * chart's and the spot finder's navigation are the same rows in the same
- * order, each marking its own page; what is only the chart's is set apart
- * under it, and the finder, with nothing of its own, has no such part.
+ * The owner's ruling of 2026-10-29: one menu, the same on every page, in its
+ * groups. The chart's and the spot finder's are the same rows in the same
+ * order, each marking its own page, and neither has a part of its own.
  */
 test("the menu's navigation is the same on the full chart and on the home page's list", async ({
   page,
@@ -91,9 +90,10 @@ test("the menu's navigation is the same on the full chart and on the home page's
       .locator('[aria-current="page"]')
       .allTextContents();
     const own = await drawer(page).getByRole("group").count();
+    const lists = await panel(page).locator("ul").count();
     await page.keyboard.press("Escape");
     await expect(drawer(page)).toHaveCount(0);
-    return { rows, marked, own };
+    return { rows, marked, own, lists };
   };
   await page.goto("/?map");
   await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
@@ -107,9 +107,11 @@ test("the menu's navigation is the same on the full chart and on the home page's
   expect(spots.rows).toEqual(chart.rows);
   expect(chart.marked).toEqual(["Chart"]);
   expect(spots.marked).toEqual(["Spot finder"]);
-  // The chart's own tools, under the navigation; none on the finder.
-  expect(chart.own).toBe(1);
+  // No part of a page's own on either, and the same four groups.
+  expect(chart.own).toBe(0);
   expect(spots.own).toBe(0);
+  expect(chart.lists).toBe(4);
+  expect(spots.lists).toBe(4);
   // "Wind map" was the chart a second time: it is gone.
   await trigger(page).click();
   await expect(drawer(page)).not.toContainText("Wind map");
@@ -147,19 +149,10 @@ test("the menu is a drawer from the left, over the dimmed map, with a glyph on e
     drawer(page).getByRole("button", { name: "Close menu" }),
   ).toBeVisible();
   await expect(drawer(page)).toContainText("wingfoil.ie");
-  // The site's navigation and sections, then the chart's own tools under
-  // their heading, each row with its glyph in the margin.
+  // The site's navigation and sections, and nothing else: no Layers, which
+  // is the rail by the zoom. Each row has its glyph in the margin.
   const rows = drawer(page).locator("li > :is(a, button)");
-  await expect(rows).toHaveText([
-    ...SECTIONS,
-    "Layers",
-    "Display options",
-    "About the map",
-    "Take the tour",
-  ]);
-  await expect(
-    chartTools(page).getByRole("heading", { name: "This chart" }),
-  ).toBeVisible();
+  await expect(rows).toHaveText(SECTIONS);
   for (const row of await rows.all())
     await expect(row.locator("svg")).toHaveCount(1);
   // The Almanac signs it no longer.
@@ -206,7 +199,7 @@ test("the focus stays in the drawer while it is open", async ({ page }) => {
   await page.goto("/?map");
   await trigger(page).focus();
   await page.keyboard.press("Enter");
-  await expect(row(page, "Spot finder")).toBeFocused();
+  await expect(row(page, "Chart")).toBeFocused();
   // Round the whole drawer and more: the focus never leaves it.
   for (const key of [
     ...Array(14).fill("Tab"),
@@ -268,22 +261,28 @@ test("a drag that starts on a row is the drawer's, and a tap on a row still pres
 
   // Past the line, from the middle of a row: the drawer goes, the row's
   // dialog does not open.
-  const layers = (await menuRow(page, "Layers").boundingBox())!;
-  const x = layers.x + layers.width / 2;
-  const y = layers.y + layers.height / 2;
+  const options = (await menuRow(page, "Display options").boundingBox())!;
+  const x = options.x + options.width / 2;
+  const y = options.y + options.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x - 120, y, { steps: 12 });
   await page.mouse.up();
   await expect(drawer(page)).toHaveCount(0);
   await page.waitForTimeout(300);
-  await expect(page.getByRole("dialog", { name: "Layers" })).toHaveCount(0);
+  await expect(
+    page.getByRole("dialog", { name: "Display options" }),
+  ).toHaveCount(0);
 
   // And a tap on a row is still a press of it.
   await trigger(page).click();
   await settled(page);
-  await menuRow(page, "Layers").click();
-  await expect(page.getByRole("dialog", { name: "Layers" })).toBeVisible();
+  await menuRow(page, "Display options").click();
+  await expect(
+    page.getByRole("dialog", { name: "Display options" }),
+  ).toBeVisible();
+  // And the layers are not in the menu: they are the rail by the zoom.
+  await expect(layersRail(page)).toBeHidden();
 });
 
 /**
@@ -583,4 +582,49 @@ test.describe("on a coarse pointer", () => {
     expect(top).toBeGreaterThanOrEqual(bar.y - 0.5);
     expect(top + grown.height).toBeLessThanOrEqual(bar.y + bar.height + 0.5);
   });
+});
+
+/**
+ * The owner's ruling of 2026-10-29: the same menu on every page, so the
+ * display options, About and the tour are rows on a page that is not the
+ * chart's too. From there each is the home page's address with a word on it
+ * (force5/src/siteNav.ts `askHref`), which the map answers and takes away.
+ */
+test("the display options, About and the tour open over the map from another page's menu", async ({
+  page,
+}) => {
+  // The AI page, loaded by itself: its own bundle, so each row is a page load.
+  await page.goto("/ai");
+  await trigger(page).click();
+  await expect(panel(page).getByRole("link")).toHaveText(SECTIONS);
+  await expect(row(page, "Display options")).toHaveAttribute(
+    "href",
+    "/?options",
+  );
+  await row(page, "Display options").click();
+  // The display options are the chart's: it opens, with them over it.
+  await expect(
+    page.getByRole("dialog", { name: "Display options" }),
+  ).toBeVisible({ timeout: 30000 });
+  await expect(page).toHaveURL(/\/\?map$/);
+  await page.keyboard.press("Escape");
+
+  // About, from the AI page again: the map's information over the list.
+  await page.goto("/ai");
+  await trigger(page).click();
+  await row(page, "About").click();
+  await expect(page.getByRole("dialog", { name: "About the map" })).toBeVisible(
+    { timeout: 30000 },
+  );
+  await expect(page).toHaveURL(/\/$/);
+  await page.keyboard.press("Escape");
+
+  // The tour, from the spot finder's own menu: no page load, the chart opens
+  // under its first card.
+  await trigger(page).click();
+  await row(page, "Take the tour").click();
+  await expect(page.locator(".tour")).toHaveAttribute("data-step", "lights", {
+    timeout: 30000,
+  });
+  await expect(page).toHaveURL(/\/\?map$/);
 });

@@ -56,23 +56,24 @@ import { rideWedge } from "../force5/src/rideWedge";
 import { parseWindLayers, type WindLayers } from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ForecastDock, { type DockView } from "./ForecastDock";
-import MapControls, { chartTools, type MapPanel } from "./MapControls";
+import MapControls, { type MapPanel } from "./MapControls";
 import MapHead from "./MapHead";
 import { LAYER_DEFAULTS } from "./layerGroups";
-import { TourGlyph } from "./chartGlyphs";
 import { tourOffered, tourSeen } from "./tourOffer";
 import { SiteMenu } from "../force5/src/SiteMenu";
 import {
   CHART_HREF,
   FINDER_HREF,
+  MAP_ASKS,
   OLD_SETTINGS_PARAM,
-  SETTINGS_PARAM,
   asksSettings,
   isChartAddress,
+  mapAsk,
+  type MapAsk,
   mapSpotHref,
   tidySearch,
 } from "../force5/src/siteNav";
-import { SETTINGS_EVENT } from "./PagesOverMap";
+import { MAP_ASK_EVENT } from "./PagesOverMap";
 import { saveChartCentre } from "./lastView";
 import { InfoPop } from "./InfoPop";
 import useRunRefresh, {
@@ -255,8 +256,6 @@ const NO_NAMES: ReadonlySet<string> = new Set();
 const SPLIT = "(min-width: 1100px)";
 /** How long the chart takes to open out from beside the list, or back. */
 const OPEN_MS = 420;
-/** Room, and a fine pointer, for the layers' rail (src/LayerRail.tsx). */
-const DESKTOP = "(hover: hover) and (pointer: fine) and (min-width: 721px)";
 
 const store = {
   get(key: string): string | null {
@@ -278,7 +277,7 @@ const store = {
 /** The chart's switches and, in the same store, the satellite's choice. */
 type MapLayers = ChartLayers & { satellite: SatelliteOption };
 
-/** The chart's defaults (src/layerGroups.tsx), which the Layers panel names. */
+/** The chart's defaults (src/layerGroups.tsx). */
 const DEFAULT_LAYERS: MapLayers = {
   ...LAYER_DEFAULTS.layers,
   satellite: LAYER_DEFAULTS.satellite,
@@ -438,16 +437,12 @@ export default function App() {
     setMore(next);
     store.set(MORE_KEY, next ? "1" : "0");
   };
-  /** The layers or the display options, in a dialog over the map. */
+  /** The display options, in a dialog over the map. */
   const [panel, setPanel] = useState<MapPanel>(null);
-  // The layers' rail: on a desktop, where it fits above the dock, Layers
-  // opens and shuts it, and this device keeps it as it was left; else
-  // Layers opens the panel.
-  const desktop = useMedia(DESKTOP);
+  // The layers' rail, the one way to the layers: Layers opens and shuts it,
+  // and this device keeps it as it was left.
   const [railOpen, setRailOpen] = useState(() => store.get(RAIL_KEY) === "1");
-  const [railFits, setRailFits] = useState(true);
   const pressLayers = () => {
-    if (!desktop || !railFits) return setPanel("layers");
     setRailOpen(!railOpen);
     store.set(RAIL_KEY, railOpen ? "0" : "1");
   };
@@ -460,25 +455,6 @@ export default function App() {
     () =>
       asksSettings(location) ? "settings" : tourOffered() ? "offer" : null,
   );
-  // Settings asked for by another page's menu: a page load to the home page
-  // with the word in its address (SETTINGS_HREF, or the old /?customise),
-  // which is open now and goes from the address; or a page over the map,
-  // which hands the reader back to it first (src/PagesOverMap.tsx).
-  useEffect(() => {
-    if (asksSettings(location)) {
-      const url = new URL(location.href);
-      url.searchParams.delete(SETTINGS_PARAM);
-      url.searchParams.delete(OLD_SETTINGS_PARAM);
-      window.history.replaceState(
-        window.history.state,
-        "",
-        url.pathname + tidySearch(url.searchParams) + url.hash,
-      );
-    }
-    const ask = () => setGuide("settings");
-    window.addEventListener(SETTINGS_EVENT, ask);
-    return () => window.removeEventListener(SETTINGS_EVENT, ask);
-  }, []);
   /** Settings is kept while it fades out, once shut. */
   const settingsShown = useFadeOut(guide === "settings");
   const [view, setView] = useState<DockView>("table");
@@ -1202,10 +1178,8 @@ export default function App() {
   /* ---- the satellite image under the chart ---- */
   // Its index and code load the first time an image is chosen; then only the
   // areas in view are drawn. The station nearest the map's centre gives the
-  // panel and the key the tide each image was taken at.
+  // key the tide each image was taken at.
   const satellite = useSatellite(layers.satellite, chartView);
-  // The chosen tide's image is drawn whole once its tiles are in (WindMap).
-  const [satelliteLoading, setSatelliteLoading] = useState(false);
   const chooseSatellite = (option: SatelliteOption) =>
     chooseLayers({ ...layers, satellite: option });
 
@@ -2182,30 +2156,54 @@ export default function App() {
         grown && !reducedMotion ? OPEN_MS : 0,
       );
   };
-  // The site menu's navigation, the same on both (Spot finder, Chart,
-  // Settings): each is this bundle's own, in place of a page load.
+  /**
+   * What the menu asks the map to open: Settings over whichever page it is,
+   * what the map means, and on the full chart the display options or the
+   * tour, which are the chart's.
+   */
+  const answer = useCallback((ask: MapAsk) => {
+    if (ask === "settings") return setGuide("settings");
+    if (ask === "about") return setInfo("key");
+    openChartRef.current();
+    if (ask === "options") setPanel("options");
+    else setGuide("tour");
+  }, []);
+  // The site menu's navigation, the same on both and on every page: each row
+  // is this bundle's own, in place of a page load.
   const menuGo = useMemo(
     () => ({
       chart: () => openChartRef.current(),
       finder: () => openListRef.current(),
-      settings: () => setGuide("settings"),
+      settings: () => answer("settings"),
+      options: () => answer("options"),
+      about: () => answer("about"),
+      tour: () => answer("tour"),
     }),
-    [],
+    [answer],
   );
-  // Under it, the chart's own tools, the menu the one way in to them: the
-  // layers, the display options, what the map means, and the tour last.
-  const menuTools = useMemo(
-    () => [
-      ...chartTools(setPanel, setInfo),
-      {
-        id: "tour",
-        label: "Take the tour",
-        glyph: <TourGlyph />,
-        onSelect: () => setGuide("tour"),
-      },
-    ],
-    [],
-  );
+  // Asked for by another page's menu: a page load to the home page with the
+  // word in its address (`/?options`, SETTINGS_HREF, the old /?customise),
+  // answered now and taken out of the address; or a page over the map, which
+  // hands the reader back to it first (src/PagesOverMap.tsx). Settings is
+  // open already, from the first render.
+  useEffect(() => {
+    const asked = mapAsk(location);
+    if (asked) {
+      const url = new URL(location.href);
+      for (const word of [...MAP_ASKS, OLD_SETTINGS_PARAM])
+        url.searchParams.delete(word);
+      window.history.replaceState(
+        window.history.state,
+        "",
+        url.pathname + tidySearch(url.searchParams) + url.hash,
+      );
+      if (asked !== "settings") answer(asked);
+    }
+    const heard = (event: Event) =>
+      answer((event as CustomEvent<MapAsk>).detail);
+    window.addEventListener(MAP_ASK_EVENT, heard);
+    return () => window.removeEventListener(MAP_ASK_EVENT, heard);
+  }, [answer]);
   const finderMenu = useMemo(
     () => <SiteMenu current="finder" go={menuGo} />,
     [menuGo],
@@ -2450,7 +2448,6 @@ export default function App() {
                     starred={starred}
                     hourAt={hourAt}
                     onPick={(spot) => selectSpot(spot)}
-                    tools={menuTools}
                     go={menuGo}
                   />
                   <MapControls
@@ -2458,10 +2455,12 @@ export default function App() {
                     onZoomOut={() => controls.current?.zoomOut()}
                     open={panel}
                     onOpen={setPanel}
-                    desktop={desktop}
-                    rail={desktop && railOpen && railFits}
+                    rail={railOpen}
                     onLayers={pressLayers}
-                    onRailFits={setRailFits}
+                    notes={{
+                      foil: foilFar ? FOIL_ZOOM_NOTE : null,
+                      currents: currents.note,
+                    }}
                     layoutKey={`${dockOpen ? dockHeight : 0}`}
                     onCollapse={split ? openList : undefined}
                     options={() => (
@@ -2475,7 +2474,6 @@ export default function App() {
                         />
                       </Suspense>
                     )}
-                    onInfo={setInfo}
                     wind={wind}
                     onWind={chooseWind}
                     layers={layers}
@@ -2486,25 +2484,6 @@ export default function App() {
                     onSatellite={chooseSatellite}
                     focusStyle={focusStyle}
                     onFocusStyle={chooseFocusStyle}
-                    satelliteTides={satellite.station}
-                    satelliteLoading={satelliteLoading}
-                    model={manifest?.model}
-                    modelNote={
-                      reachNote && mapColumn
-                        ? handoverName
-                          ? `${reachNote}: ${handoverName} is on the map at ${dayShort(mapColumn.time)} ${clock(mapColumn.time)}, and ${manifest?.modelName} comes back within its own hours.`
-                          : `${reachNote}: no wind on the map at ${dayShort(mapColumn.time)} ${clock(mapColumn.time)}.${reachable && reachable.id !== manifest?.model ? ` ${reachable.name} reaches it.` : ""}`
-                        : null
-                    }
-                    currentsNote={currents.note}
-                    foilNote={foilFar ? FOIL_ZOOM_NOTE : null}
-                    onResetLayers={() => {
-                      chooseWind(LAYER_DEFAULTS.wind);
-                      chooseLayers(DEFAULT_LAYERS);
-                      chooseFocusStyle(LAYER_DEFAULTS.focusStyle);
-                    }}
-                    modelDisabled={!frame || !!pendingModel}
-                    onModel={(id) => pickRiderModel(id)}
                   />
                 </>
               )}
@@ -2562,7 +2541,6 @@ export default function App() {
                     onTilesFailed={(failed) =>
                       recoverRun(failed.model, failed.run)
                     }
-                    onSatelliteLoading={setSatelliteLoading}
                   />
                 </Suspense>
               )}
@@ -2741,6 +2719,8 @@ export default function App() {
               focusStyle={focusStyle}
               onFocusStyle={setFocusStyle}
               onPanel={setPanel}
+              layers={railOpen}
+              onLayers={setRailOpen}
               onEnd={(customise) => {
                 tourSeen();
                 setGuide(customise ? "settings" : null);

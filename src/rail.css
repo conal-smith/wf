@@ -4,12 +4,30 @@
  * sunk a little into the chart; on is a paper disc ruled in ink, with the
  * hairline inside it and a small thing's soft shadow under it. Each group is
  * set apart by a short rule.
+ *
+ * Where it would run into the dock (on a phone, most often) LayerRail gives
+ * it a max-height and it scrolls. A scroller clips what stands out of it, so
+ * it reaches out to the left, under the chart and out of the pointer's way,
+ * far enough for the names that show there.
  */
 .lr {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 2px;
+  padding: 2px 0 2px var(--lr-tips);
+  margin-left: calc(var(--lr-tips) * -1);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  pointer-events: none;
+  --lr-tips: 260px;
+}
+.lr::-webkit-scrollbar {
+  display: none;
+}
+.lr .lr-ic {
+  pointer-events: auto;
 }
 /* Shut, or no room for it: out of sight, and still measured. */
 .lr[data-shown="false"] {
@@ -18,6 +36,7 @@
 .lr-grp {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   gap: 2px;
 }
 .lr-grp + .lr-grp::before {
@@ -85,6 +104,26 @@
     opacity: 1;
   }
 }
-.lr-ic:focus-visible .lr-tip {
+.lr-ic:focus-visible .lr-tip,
+.lr-ic[data-told] .lr-tip {
   opacity: 1;
+}
+/* What a layer that is on cannot draw just now: a line under its name, and
+   a small dot on the button saying there is something to read there. */
+.lr-note {
+  display: block;
+  max-width: 220px;
+  white-space: normal;
+  opacity: 0.85;
+}
+.lr .lr-ic[data-noted]::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-warn);
+  box-shadow: 0 0 0 1.5px var(--color-ground);
 }

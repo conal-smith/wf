@@ -403,15 +403,22 @@ async function interactions(browser, profileName, shotDir) {
 
   // Switch model: ECMWF (a different grid and run), then back to HARMONIE.
   for (const model of ["ecmwf", "harmonie"]) {
-    // The models sit in the layers panel; open it from the site menu, as a
-    // reader would.
-    if (!(await page.getByRole("dialog", { name: "Layers" }).count())) {
+    // The model is in the display options; open them from the site menu, as
+    // a reader would.
+    if (
+      !(await page.getByRole("dialog", { name: "Display options" }).count())
+    ) {
       await page.getByRole("button", { name: "Site menu" }).click();
-      await page.getByRole("button", { name: "Layers", exact: true }).click();
-      // The panel is a chunk of its own, loaded on this first open.
-      await page.getByRole("dialog", { name: "Layers" }).waitFor();
+      await page
+        .getByRole("navigation", { name: "Site" })
+        .getByRole("link", { name: "Display options", exact: true })
+        .click();
+      await page.getByRole("dialog", { name: "Display options" }).waitFor();
     }
-    const button = page.locator(`[data-model="${model}"]`).first();
+    const name = model === "ecmwf" ? "ECMWF" : "HARMONIE";
+    const button = page
+      .getByRole("group", { name: "Model", exact: true })
+      .getByRole("button", { name, exact: true });
     if (!(await button.count())) continue;
     await time(
       `switchModel:${model}`,
@@ -419,10 +426,8 @@ async function interactions(browser, profileName, shotDir) {
       () =>
         page.waitForFunction(
           (model) =>
-            document
-              .querySelector(`[data-model="${model}"]`)
-              ?.getAttribute("aria-pressed") === "true",
-          model,
+            document.querySelector(".map-model")?.textContent?.includes(model),
+          name,
           { timeout: 60000 },
         ),
     );

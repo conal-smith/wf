@@ -855,6 +855,22 @@ was (a reply's name, a count of new posts, "new" on a listing). The pen's
 strike through what is off, its underline and its handwriting stay. The
 phone app (`mobile/`) still draws its own loop and follows separately.
 
+**2026-10-29 — One menu in four groups, and the layers are the rail.** The
+owner: the old Layers panel ("What the chart draws", its tiles and its
+dialog) goes, and the layers are the rail of small round glyphs by the zoom,
+on a phone as on a desktop (src/LayerRail.tsx); there is no Layers row in the
+menu. On a phone the rail stands under the zoom, down the right edge, and
+wherever it would run into the dock it scrolls in the room above it; a tap
+names the layer and whether it is on, for a moment. What a layer cannot draw
+just now (the tidal depth out too far, the currents past their hours) is a
+small dot on its button and a line under its name. The model is chosen in
+the display options. The site menu is the same on every page, in four
+groups: Chart and Spot finder; Settings and Display options; About and Take
+the tour; then the site's other sections, Use with AI last. From a page that
+is not the map's, Display options, About and the tour are the home page's
+address with a word on it (`/?options`, `/?about`, `/?tour`), which the map
+answers, opening the chart first where the thing is the chart's.
+
 ---
 
 ## Still open
