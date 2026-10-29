@@ -4,6 +4,8 @@ import {
   CHART_HREF,
   SETTINGS_HREF,
   SITE_NAV,
+  SITE_NAV_GROUPS,
+  mapAsk,
   SITE_SECTIONS,
   asksChart,
   asksSettings,
@@ -137,15 +139,36 @@ describe("SITE_SECTIONS", () => {
 });
 
 describe("SITE_NAV", () => {
-  it("is the spot finder, the chart and Settings, in that order, on every page", () => {
-    expect(SITE_NAV).toEqual([
-      { id: "finder", href: "/", label: "Spot finder" },
-      { id: "chart", href: "/?map", label: "Chart" },
-      { id: "settings", href: "/?settings", label: "Settings" },
+  it("is the chart and the finder, Settings and the options, About and the tour, on every page", () => {
+    expect(
+      SITE_NAV_GROUPS.map((group) => group.map((row) => row.label)),
+    ).toEqual([
+      ["Chart", "Spot finder"],
+      ["Settings", "Display options"],
+      ["About", "Take the tour"],
+    ]);
+    expect(SITE_NAV.map((row) => row.href)).toEqual([
+      "/?map",
+      "/",
+      "/?settings",
+      "/?options",
+      "/?about",
+      "/?tour",
     ]);
     // Each is the map's bundle's: none is split off.
     for (const row of SITE_NAV)
       expect(OWN_BUNDLE_PATHS.some((p) => p.test(row.href))).toBe(false);
+  });
+
+  it("reads what an address asks the map to open, once, on the home page", () => {
+    const at = (href: string) => new URL(href, "https://wingfoil.ie");
+    expect(mapAsk(at("/?settings"))).toBe("settings");
+    expect(mapAsk(at("/?customise"))).toBe("settings");
+    expect(mapAsk(at("/?options"))).toBe("options");
+    expect(mapAsk(at("/?about"))).toBe("about");
+    expect(mapAsk(at("/?tour"))).toBe("tour");
+    expect(mapAsk(at("/?map"))).toBe(null);
+    expect(mapAsk(at("/spot/keel?tour"))).toBe(null);
   });
 
   it("names the full chart with a word, and still reads the old one", () => {

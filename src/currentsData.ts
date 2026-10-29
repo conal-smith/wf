@@ -115,7 +115,7 @@ function siteCurves(): Promise<Record<string, TideCurve>> {
 
 export interface CurrentsAt {
   features: CurrentFeature[];
-  /** What is missing from the picture at this hour, said in the layers panel. */
+  /** What is missing from the picture at this hour, said in the map's information. */
   note: string | null;
 }
 

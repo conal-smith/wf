@@ -22,8 +22,6 @@ import {
   TidalDepthGlyph,
   TintsGlyph,
 } from "./chartGlyphs";
-// A type alone: the pictures stay in the Layers panel's own chunk.
-import type { CuttingId } from "./layerCuttings";
 import type { InfoSection } from "./mapInfoContext";
 
 /** What the chart draws, and the way to change each part of it. */
@@ -39,13 +37,16 @@ export interface LayerChoices {
   /** What is drawn round the chosen spot: a loupe, a range ring, or nothing. */
   focusStyle: FocusStyle;
   onFocusStyle: (style: FocusStyle) => void;
+  /**
+   * What a layer that is on cannot draw just now, in a few words: the tidal
+   * depth out too far, the currents at an hour they do not reach.
+   */
+  notes?: Partial<Record<"foil" | "currents", string | null>>;
 }
 
 /**
- * The chart a first visit opens on, and what the Layers panel's Reset puts
- * back (src/App.tsx): the particles, tidal depth, the whole chart and the
- * range ring. The panel's foot names them from here (`defaultLayersLine`),
- * so what it says is the default cannot drift from what Reset does.
+ * The chart a first visit opens on (src/App.tsx): the particles, tidal
+ * depth, the whole chart and the range ring.
  */
 export const LAYER_DEFAULTS: {
   wind: WindLayers;
@@ -75,8 +76,6 @@ export interface LayerTile {
   name: string;
   /** A few words under the name, read after it as its description. */
   sub: string;
-  /** Its picture in the Layers panel (src/layerCuttings.tsx). */
-  cut: CuttingId;
   glyph?: ReactNode;
   on: boolean;
   press: () => void;
@@ -84,6 +83,8 @@ export interface LayerTile {
   layer?: keyof ChartLayers;
   /** Its key is in the map's information, behind an "i". */
   info?: { label: string; at: InfoSection };
+  /** What it cannot draw just now, while it is on. */
+  note?: string | null;
   /** New to the chart: marked so beside its name. */
   isNew?: boolean;
   /**
@@ -105,10 +106,9 @@ export interface LayerGroup {
 }
 
 /**
- * Every layer the chart can draw, in the groups and the order the Layers
- * panel (src/LayersPanel.tsx) and the layers' rail (src/LayerRail.tsx) both
- * show them: the wind, the sea, the weather, the chart, the ground under it,
- * and what is drawn round the chosen spot. A layer added here is in both.
+ * Every layer the chart can draw, in the groups and the order the layers'
+ * rail (src/LayerRail.tsx) shows them: the wind, the sea, the weather, the
+ * chart, the ground under it, and what is drawn round the chosen spot.
  * Round the spot one is always on, as a radio's choice is; a satellite tide
  * pressed again is no image; the rest, the wind's two layers among them, each
  * switch their own part.
@@ -122,6 +122,7 @@ export function layerGroups({
   onSatellite,
   focusStyle,
   onFocusStyle,
+  notes = {},
 }: LayerChoices): LayerGroup[] {
   const windPart = (
     key: keyof WindLayers,
@@ -132,7 +133,6 @@ export function layerGroups({
     id: `wind-${key}`,
     name,
     sub,
-    cut: key,
     glyph,
     on: wind[key],
     press: () => onWind({ ...wind, [key]: !wind[key] }),
@@ -141,18 +141,18 @@ export function layerGroups({
     key: keyof ChartLayers,
     name: string,
     sub: string,
-    cut: CuttingId,
     glyph: ReactNode,
     info?: LayerTile["info"],
   ): LayerTile => ({
     id: key,
     name,
     sub,
-    cut,
     glyph,
     on: layers[key],
     press: () => onLayersChange({ ...layers, [key]: !layers[key] }),
     layer: key,
+    note:
+      layers[key] && (key === "foil" || key === "currents") ? notes[key] : null,
     info,
   });
   const photo = (
@@ -164,7 +164,6 @@ export function layerGroups({
     id: `satellite-${option}`,
     name,
     sub,
-    cut: option === "high" ? "sat-high" : "sat-low",
     glyph,
     on: satellite === option,
     press: () => onSatellite(satellite === option ? "off" : option),
@@ -173,13 +172,11 @@ export function layerGroups({
     style: FocusStyle,
     name: string,
     sub: string,
-    cut: CuttingId,
     glyph?: ReactNode,
   ): LayerTile => ({
     id: `focus-${style}`,
     name,
     sub,
-    cut,
     glyph,
     on: focusStyle === style,
     press: () => onFocusStyle(style),
@@ -217,7 +214,6 @@ export function layerGroups({
           "foil",
           "Tidal depth",
           "Water at this tide",
-          "foil",
           <TidalDepthGlyph size={18} />,
           { label: "About tidal depth", at: "foil" },
         ),
@@ -226,7 +222,6 @@ export function layerGroups({
             "currents",
             "Currents",
             "Tidal streams",
-            "currents",
             <CurrentsGlyph size={18} />,
             { label: "About currents", at: "currents" },
           ),
@@ -245,7 +240,6 @@ export function layerGroups({
             "rain",
             "Rain",
             "In the hour shown",
-            "rain",
             <RainGlyph size={18} />,
             { label: "About rain", at: "rain" },
           ),
@@ -263,28 +257,19 @@ export function layerGroups({
           "tints",
           "Depth tints",
           "Shallow to deep",
-          "tints",
           <TintsGlyph size={18} />,
         ),
         part(
           "soundings",
           "Contours",
           "And soundings",
-          "soundings",
           <SoundingsGlyph size={18} />,
         ),
-        part(
-          "relief",
-          "Land relief",
-          "Hachures",
-          "relief",
-          <ReliefGlyph size={18} />,
-        ),
+        part("relief", "Land relief", "Hachures", <ReliefGlyph size={18} />),
         part(
           "names",
           "Spot names",
           "Beside the lights",
-          "names",
           <NamesGlyph size={18} />,
         ),
       ],
@@ -315,21 +300,14 @@ export function layerGroups({
       glyph: <LoupeGlyph size={14} />,
       rule: "one at a time",
       tiles: [
-        focus(
-          "loupe",
-          "Loupe",
-          "Headings you hold",
-          "loupe",
-          <LoupeGlyph size={18} />,
-        ),
+        focus("loupe", "Loupe", "Headings you hold", <LoupeGlyph size={18} />),
         focus(
           "ring",
           "Range ring",
           "A distance round it",
-          "ring",
           <RingGlyph size={18} />,
         ),
-        focus("off", "Nothing", "Just the light", "focus-off"),
+        focus("off", "Nothing", "Just the light"),
       ],
     },
   ];
@@ -341,6 +319,8 @@ export interface RailItem {
   name: string;
   glyph: ReactNode;
   on: boolean;
+  /** What it cannot draw just now, said beside its name. */
+  note?: string | null;
   press: () => void;
 }
 
@@ -363,62 +343,9 @@ export function railGroups(groups: LayerGroup[]) {
           name: tile.name,
           glyph: tile.glyph,
           on: tile.on,
+          note: tile.note,
           press: tile.on && none ? none.press : tile.press,
         })),
     };
   });
-}
-
-/** The choices as they are, against the defaults: the layers alone, not their switches. */
-export function isDefaultLayers({
-  wind,
-  layers,
-  satellite,
-  focusStyle,
-}: Pick<LayerChoices, "wind" | "layers" | "satellite" | "focusStyle">) {
-  const d = LAYER_DEFAULTS;
-  return (
-    wind.wash === d.wind.wash &&
-    wind.particles === d.wind.particles &&
-    (Object.keys(d.layers) as (keyof ChartLayers)[]).every(
-      (key) => !!layers[key] === d.layers[key],
-    ) &&
-    satellite === d.satellite &&
-    focusStyle === d.focusStyle
-  );
-}
-
-/**
- * The default layers in words, read off the panel's own tiles as they stand
- * at the defaults, in the panel's order: a group whose every layer is on by
- * its group's name ("the chart"), any other by its layers' names.
- */
-export function defaultLayerNames(): string[] {
-  const none = () => {};
-  const groups = layerGroups({
-    ...LAYER_DEFAULTS,
-    onWind: none,
-    onLayersChange: none,
-    onSatellite: none,
-    onFocusStyle: none,
-  });
-  return groups.flatMap((group) => {
-    const tiles = group.tiles.filter((tile) => !tile.none);
-    const on = tiles.filter((tile) => tile.on);
-    if (on.length > 1 && on.length === tiles.length)
-      return [`the ${group.name.toLowerCase()}`];
-    return on.map((tile) => tile.name.toLowerCase());
-  });
-}
-
-/**
- * The Layers panel's foot: the defaults by name, said as what is on when
- * the chart is at them, and otherwise as what Reset puts back, so a rider
- * with other layers on never reads it as a list of what is on now.
- */
-export function defaultLayersLine(atDefault: boolean): string {
-  const names = defaultLayerNames().join(", ");
-  return atDefault
-    ? `The default layers are on: ${names}.`
-    : `Reset for the default: ${names}.`;
 }

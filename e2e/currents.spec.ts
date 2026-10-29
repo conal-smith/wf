@@ -1,4 +1,4 @@
-import { expect, openFromMenu, test, type Page } from "./fixtures";
+import { expect, layersRail, openLayers, test, type Page } from "./fixtures";
 
 /**
  * The Currents layer: off on a first visit, and then nothing of it is read,
@@ -20,8 +20,8 @@ function watch(page: Page) {
 }
 
 async function layers(page: Page) {
-  await openFromMenu(page, "Layers");
-  return page.getByRole("group", { name: "Layers" });
+  await openLayers(page);
+  return layersRail(page);
 }
 
 test("the currents layer is off at first and nothing of it is loaded", async ({
@@ -33,7 +33,7 @@ test("the currents layer is off at first and nothing of it is loaded", async ({
     timeout: 30000,
   });
   const panel = await layers(page);
-  await expect(panel.locator('[data-layer="currents"]')).toHaveAttribute(
+  await expect(panel.locator('[data-rail-layer="currents"]')).toHaveAttribute(
     "aria-pressed",
     "false",
   );
@@ -52,14 +52,13 @@ test("turned on, it reads the run and keeps the rider's choice", async ({
     timeout: 30000,
   });
   const panel = await layers(page);
-  await panel.locator('[data-layer="currents"]').click();
-  await expect(panel.locator('[data-layer="currents"]')).toHaveAttribute(
+  await panel.locator('[data-rail-layer="currents"]').click();
+  await expect(panel.locator('[data-rail-layer="currents"]')).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await expect(panel.locator("[data-currents-note]")).toHaveText(
-    "Not for safety.",
-  );
+  // Nothing it cannot draw, so nothing said beside it.
+  await expect(panel.locator('[data-layer-note="currents"]')).toHaveCount(0);
   await expect
     .poll(
       () => asked.filter((path) => /frames\/\d{3}\.json$/.test(path)).length,
@@ -100,7 +99,7 @@ test("with no current forecast published the page still works, and says so", asy
     timeout: 30000,
   });
   const panel = await layers(page);
-  await expect(panel.locator("[data-currents-note]")).toHaveText(
+  await expect(panel.locator('[data-layer-note="currents"]')).toHaveText(
     "No current forecast is published just now.",
     { timeout: 20000 },
   );

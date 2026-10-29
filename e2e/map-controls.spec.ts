@@ -1,8 +1,10 @@
 import {
-  chartTools,
+  SITE_ROWS,
+  closeLayers,
   expect,
   layerTile,
-  menuRow,
+  layersButton,
+  layersRail,
   openFromMenu,
   openMenu,
   setLayer,
@@ -11,7 +13,7 @@ import {
   test,
 } from "./fixtures";
 
-test("the chart's controls: zoom and Layers on the right, the layers from the menu by keyboard, with the credits behind the i", async ({
+test("the chart's controls: zoom and Layers on the right, Layers the rail on a phone, the menu by keyboard, with the credits behind the i", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -36,37 +38,38 @@ test("the chart's controls: zoom and Layers on the right, the layers from the me
   const head = (await page.locator(".map-head").boundingBox())!;
   expect(box.y + box.height).toBeLessThan(dock.y);
   expect(head.x + head.width).toBeLessThanOrEqual(box.x);
-  // The layers open from the menu by keyboard, and close on Escape with the
-  // focus back on the menu's trigger.
+  // The menu is the site's navigation, in its groups, by keyboard, and no
+  // layers in it: they are the rail.
   const menu = page.getByRole("button", { name: "Site menu" });
   await menu.focus();
   await page.keyboard.press("Enter");
-  // The site's navigation first, its first row focused; the chart's own
-  // tools under it.
-  await expect(siteRow(page, "Spot finder")).toBeFocused();
-  await expect(siteNav(page).getByRole("link")).toHaveText([
-    "Spot finder",
+  await expect(siteRow(page, "Chart")).toBeFocused();
+  await expect(siteNav(page).getByRole("link")).toHaveText(SITE_ROWS);
+  await expect(
+    page.getByRole("dialog", { name: "Site menu" }).getByText("Layers"),
+  ).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeFocused();
+  await expect(menu).toHaveAttribute("aria-expanded", "false");
+  // Layers opens the rail on a phone too: a column of round switches beside
+  // the zoom, in the groups, with no panel behind it.
+  await expect(layersRail(page)).toBeHidden();
+  await layersButton(page).click();
+  await expect(layersButton(page)).toHaveAttribute("aria-expanded", "true");
+  const rail = layersRail(page);
+  await expect(rail).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  for (const group of [
+    "Wind",
+    "Sea",
+    "Weather",
     "Chart",
-    "Settings",
-    "Marketplace",
-    "Community",
-    "Use with AI",
-  ]);
-  await expect(chartTools(page).getByRole("button")).toHaveText([
-    "Layers",
-    "Display options",
-    "About the map",
-    "Take the tour",
-  ]);
-  await expect(chartTools(page).getByRole("link")).toHaveCount(0);
-  for (let i = 0; i < 6; i++) await page.keyboard.press("Tab");
-  await expect(menuRow(page, "Layers")).toBeFocused();
-  await page.keyboard.press("Enter");
-  const panel = page.getByRole("group", { name: "Layers" });
-  await expect(panel).toBeVisible();
-  // Each layer a tile with a picture of it, a toggle under its group's name.
-  const wind = panel.getByRole("group", { name: "Wind" });
+    "Ground",
+    "Round your spot",
+  ])
+    await expect(rail.getByRole("group", { name: group })).toBeAttached();
   // The wind in two layers, each its own switch: the particles alone at first.
+  const wind = rail.getByRole("group", { name: "Wind" });
   await expect(wind.getByRole("button")).toHaveCount(2);
   for (const [i, name] of ["Coloured wind", "Particles"].entries())
     await expect(wind.getByRole("button").nth(i)).toHaveAccessibleName(name);
@@ -78,24 +81,8 @@ test("the chart's controls: zoom and Layers on the right, the layers from the me
     "aria-pressed",
     "false",
   );
-  await expect(layerTile(page, "Particles")).toHaveAccessibleDescription(
-    "Lines moving with it",
-  );
-  for (const group of [
-    "Sea",
-    "Chart",
-    "Ground",
-    "Round your spot",
-    "Weather model",
-  ])
-    await expect(panel.getByRole("group", { name: group })).toBeVisible();
-  // The knot scale is there while the wind is drawn in its colours.
-  await expect(panel.locator(".knot-scale")).toHaveCount(0);
-  // The tiles take the keys: Tab reaches the coloured wind first, Space
-  // presses it, and the particles stay on over it.
-  await page.keyboard.press("Tab");
-  await expect(layerTile(page, "Coloured wind")).toBeFocused();
-  await page.keyboard.press("Space");
+  // A tap switches one, the particles staying on over it, and says which.
+  await layerTile(page, "Coloured wind").click();
   await expect(layerTile(page, "Coloured wind")).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -104,37 +91,22 @@ test("the chart's controls: zoom and Layers on the right, the layers from the me
     "aria-pressed",
     "true",
   );
-  await expect(panel.locator(".knot-scale")).toBeVisible();
-  // Reset puts the defaults back.
-  await page.getByRole("button", { name: "Reset", exact: true }).click();
-  await expect(layerTile(page, "Particles")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(layerTile(page, "Coloured wind")).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
-  await expect(
-    panel.getByRole("group", { name: "Weather model" }),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(panel).toHaveCount(0);
-  await expect(menu).toBeFocused();
-  await expect(menu).toHaveAttribute("aria-expanded", "false");
+  // It stands clear of the dock, scrolling in the room above it.
+  const railBox = (await rail.boundingBox())!;
+  expect(railBox.y + railBox.height).toBeLessThanOrEqual(dock.y);
   // The chart's parts switch off and stay off.
-  await openFromMenu(page, "Layers");
   await setLayer(page, "Spot names", false);
   await expect(page.locator(".map-canvas")).toHaveClass(/no-names/);
   await page.reload();
   await expect(page.locator(".map-canvas")).toHaveClass(/no-names/, {
     timeout: 30000,
   });
-  await openFromMenu(page, "Layers");
+  // The rail is as it was left on this device: open.
+  await expect(layersRail(page)).toBeVisible();
   await setLayer(page, "Spot names", true);
-  await page.keyboard.press("Escape");
+  await closeLayers(page);
   // The key is in the menu, in a dialog rather than on the chart.
-  await openFromMenu(page, "About the map");
+  await openFromMenu(page, "About");
   await expect(
     page.getByRole("dialog", { name: "About the map" }),
   ).toContainText("Depths in metres below chart datum");
@@ -153,7 +125,7 @@ test("the chart's controls: zoom and Layers on the right, the layers from the me
   await expect(print).toContainText("Not for navigation");
 });
 
-test("the map's information is one dialog over the dimmed chart: from the menu and from the tidal depth's i", async ({
+test("the map's information is one dialog over the dimmed chart, from the menu's About", async ({
   page,
 }) => {
   // The tidal-depth layer on, as a rider who had it on last time.
@@ -172,7 +144,7 @@ test("the map's information is one dialog over the dimmed chart: from the menu a
   await expect(page.locator(".foil-key")).toHaveCount(0);
   await expect(page.locator(".map-info")).toHaveCount(0);
   const menu = page.getByRole("button", { name: "Site menu" });
-  await openFromMenu(page, "About the map");
+  await openFromMenu(page, "About");
   const info = page.getByRole("dialog", { name: "About the map" });
   await expect(info).toBeVisible();
   // A rail of parts, the key chosen; each part in its own panel beside it.
@@ -217,21 +189,12 @@ test("the map's information is one dialog over the dimmed chart: from the menu a
   await page.keyboard.press("Escape");
   await expect(info).toHaveCount(0);
   await expect(menu).toBeFocused();
-  // The tidal depth's own i opens it at its key.
-  await openFromMenu(page, "Layers");
-  await page.getByRole("button", { name: "About tidal depth" }).click();
-  await expect(info).toBeVisible();
-  await expect(info.locator("#map-info-foil")).toBeInViewport();
-  await info.getByRole("button", { name: "Close" }).click();
-  await expect(info).toHaveCount(0);
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("group", { name: "Layers" })).toHaveCount(0);
   // The stars are explained in it, with the way on to the page that works
   // them through for the spot in view; the dock has no "?" of its own.
   await expect(
     page.locator(".dock").getByRole("button", { name: "How the stars work" }),
   ).toHaveCount(0);
-  await openFromMenu(page, "About the map");
+  await openFromMenu(page, "About");
   await info.getByRole("tab", { name: "Stars" }).click();
   await expect(info.locator("#map-info-stars")).toBeAttached();
   await expect(
@@ -240,7 +203,7 @@ test("the map's information is one dialog over the dimmed chart: from the menu a
 });
 
 for (const width of [390, 1440]) {
-  test(`the spot finder is in the menu's navigation, over the chart's own tools, at ${width}px`, async ({
+  test(`the menu is the chart and the spot finder, then Settings and the options, then About and the tour, at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 });
@@ -251,14 +214,19 @@ for (const width of [390, 1440]) {
     const menu = page.getByRole("button", { name: "Site menu" });
     await openMenu(page);
     const finder = siteRow(page, "Spot finder");
-    const c = (await siteRow(page, "Chart").boundingBox())!;
-    const f = (await finder.boundingBox())!;
-    const u = (await menuRow(page, "Settings").boundingBox())!;
-    const l = (await menuRow(page, "Layers").boundingBox())!;
-    expect(f.x).toBe(l.x);
-    expect(c.y).toBeGreaterThan(f.y);
-    expect(u.y).toBeGreaterThan(c.y);
-    expect(l.y).toBeGreaterThan(u.y);
+    const at = async (name: string) =>
+      (await siteRow(page, name).boundingBox())!;
+    const rows = await Promise.all(SITE_ROWS.map(at));
+    // In one column, down the menu in order, with a wider gap between the
+    // groups than between the rows of one.
+    for (const [i, box] of rows.entries()) {
+      expect(box.x).toBe(rows[0].x);
+      if (i) expect(box.y).toBeGreaterThan(rows[i - 1].y);
+    }
+    const step = (i: number) => rows[i].y - rows[i - 1].y;
+    expect(step(2)).toBeGreaterThan(step(1) + 10);
+    expect(step(4)).toBeGreaterThan(step(3) + 10);
+    expect(step(6)).toBeGreaterThan(step(5) + 10);
     await finder.click();
     await expect(menu).toHaveAttribute("aria-expanded", "false");
     await expect(page).toHaveURL(/\/$/);

@@ -158,15 +158,10 @@ describe("on the chart", () => {
   });
 
   it("names every row in the body face, on hairlines, with its glyph in the margin", () => {
-    for (const slot of ["row", "tool"] as const) {
-      const row = siteMenuStyles()[slot]().split(" ");
-      for (const name of ["font-body", "border-b", "border-line", "h-touch"])
-        expect(row, `${slot} ${name}`).toContain(name);
-    }
+    const row = siteMenuStyles().row().split(" ");
+    for (const name of ["font-body", "border-b", "border-line", "h-touch"])
+      expect(row, name).toContain(name);
     expect(SOURCE).toContain("<ChartGlyph glyph={ROW_GLYPH[id]} />");
-    expect(SOURCE).toContain(
-      "<span className={styles.glyph()}>{tool.glyph}</span>",
-    );
   });
 
   it("is signed by nothing: the Almanac and its puffin are gone from the menu", () => {
@@ -232,32 +227,39 @@ describe("the navigation", () => {
     );
   const both = { market: true, community: true };
 
-  it("is the spot finder, the chart and Settings, then the sections, each with its glyph", () => {
+  it("is the chart and the finder, Settings and the options, About and the tour, then the sections, Use with AI last, each with its glyph", () => {
     const markup = rows({ current: "chart", features: both });
     expect(names(markup)).toEqual([
-      "Spot finder",
       "Chart",
+      "Spot finder",
       "Settings",
+      "Display options",
+      "About",
+      "Take the tour",
       "Marketplace",
       "Community",
       "Use with AI",
     ]);
     const links = markup.match(/<a [^>]*>[\s\S]*?<\/a>/g) ?? [];
     for (const link of links) expect(link).toMatch(/<svg[^>]*class="g-set"/);
-    // The chart's folded sheet, the finder's loupe, Settings' sliders and
-    // the AI's bubble.
+    // The chart's folded sheet, the finder's loupe, Settings' sliders, the
+    // options' rules, About's "i", the tour's flag and the AI's bubble.
     for (const glyph of [
       glyphs.windMap,
       glyphs.spotFinder,
       glyphs.settings,
+      glyphs.displayOptions,
+      glyphs.about,
+      glyphs.tour,
       glyphs.useWithAi,
     ]) {
       const path = glyph.find((part) => "d" in part);
       const drawn = !!path && "d" in path && markup.includes(`d="${path.d}"`);
       expect(drawn).toBe(true);
     }
-    // Two lists: the navigation, and a gap before the sections.
-    expect(markup.match(/<ul /g)).toHaveLength(2);
+    // Four lists, a gap before each after the first: the pages, the
+    // settings, the guides, and the sections.
+    expect(markup.match(/<ul /g)).toHaveLength(4);
     // The map is the chart: there is no "Wind map" beside it.
     expect(markup).not.toContain("Wind map");
     expect(markup.match(/href="\/\?map"/g)).toHaveLength(1);
@@ -299,6 +301,9 @@ describe("the navigation", () => {
       "/",
       "/?map",
       "/?settings",
+      "/?options",
+      "/?about",
+      "/?tour",
       "/market",
       "/community",
       "/ai",
@@ -312,7 +317,7 @@ describe("the navigation", () => {
       features: { market: false, community: false },
     });
     expect(markup).not.toMatch(/Marketplace|Community|\/market|\/community/);
-    expect(markup.match(/<li>/g)).toHaveLength(4);
+    expect(markup.match(/<li>/g)).toHaveLength(7);
   });
 
   it("leaves them out as production builds it, with no feature switched on", () => {
@@ -329,17 +334,9 @@ describe("the navigation", () => {
       expect(read(path), path).not.toMatch(/VITE_FEATURE_(MARKET|COMMUNITY)/);
   });
 
-  it("sets the page's own tools apart under it, headed for the page", () => {
-    const nav = SOURCE.indexOf("<SiteNav");
-    const tools = SOURCE.indexOf("{toolItems.length > 0 && (");
-    expect(nav).toBeGreaterThan(0);
-    expect(tools).toBeGreaterThan(nav);
-    expect(SOURCE).toMatch(
-      /<h2 id=\{`\$\{drawerId\}-page`\} className=\{styles\.pageTitle\(\)\}>/,
-    );
-    const title = siteMenuStyles().pageTitle().split(" ");
-    for (const name of ["font-mono", "uppercase", "border-b", "border-ink"])
-      expect(title).toContain(name);
+  it("has no rows of a page's own: the chart's layers are its rail", () => {
+    expect(SOURCE).not.toContain("tools");
+    expect(SOURCE).not.toMatch(/>Layers</);
   });
 });
 

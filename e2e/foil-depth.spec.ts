@@ -1,4 +1,4 @@
-import { expect, openFromMenu, setLayer, test, type Page } from "./fixtures";
+import { closeLayers, expect, setLayer, test, type Page } from "./fixtures";
 import { SAMPLE_CLOCK, sampleStrip } from "./columns";
 
 /**
@@ -200,10 +200,8 @@ for (const ranges of [true, false])
     await expect(slider).toHaveValue(String(low.i));
     const atLow = await photograph(page);
     // The same hour with the layer off.
-    await openFromMenu(page, "Layers");
     await setLayer(page, "Tidal depth", false);
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("group", { name: "Layers" })).toHaveCount(0);
+    await closeLayers(page);
     const off = await photograph(page);
 
     // The tints are over the estuary at both tides, and the tide moves them.

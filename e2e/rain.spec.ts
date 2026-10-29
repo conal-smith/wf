@@ -1,5 +1,6 @@
 import {
   expect,
+  layerTile,
   moreRows,
   openFromMenu,
   setLayer,
@@ -48,9 +49,10 @@ test("the rain layer is off at first and nothing of it is loaded", async ({
     timeout: 30000,
   });
   await openFromMenu(page, "Layers");
-  await expect(
-    page.getByRole("group", { name: "Layers" }).locator('[data-layer="rain"]'),
-  ).toHaveAttribute("aria-pressed", "false");
+  await expect(layerTile(page, "Rain")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
   await page.waitForTimeout(500);
   expect(asked).toEqual([]);
   await expect(map(page)).not.toHaveAttribute("data-rain", /./);
@@ -66,15 +68,7 @@ test("turned on, it draws the hour shown under the chart's ink, and follows the 
   await expect(page.locator(".dock tr.tt-wind")).toBeVisible({
     timeout: 30000,
   });
-  await openFromMenu(page, "Layers");
   await setLayer(page, "Rain", true);
-  // Its key, in mm an hour, under the tile while it is on.
-  const panel = page.getByRole("group", { name: "Layers" });
-  await expect(panel.locator("[data-rain-key]")).toBeVisible();
-  await expect(panel.locator("[data-rain-key] i")).toHaveText("mm/h");
-  await expect(panel.locator("[data-rain-key] li")).toHaveCount(6);
-  await page.keyboard.press("Escape");
-  await expect(page.locator("dialog.map-panel-dialog")).toHaveCount(0);
 
   // The hour shown, read from its own frame: one hour's rain, under the relief.
   await expect(map(page)).toHaveAttribute(
@@ -107,7 +101,6 @@ test("turned on, it draws the hour shown under the chart's ink, and follows the 
   ).toBe(true);
 
   // Off again: nothing drawn.
-  await openFromMenu(page, "Layers");
   await setLayer(page, "Rain", false);
   await expect(map(page)).not.toHaveAttribute("data-rain", /./);
   expect(errors).toEqual([]);
@@ -124,8 +117,8 @@ test("its part of About the map says what the hour shows", async ({ page }) => {
   await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });
-  await openFromMenu(page, "Layers");
-  await page.getByRole("button", { name: "About rain" }).click();
+  await openFromMenu(page, "About");
+  await page.getByRole("tab", { name: "Rain" }).click();
   const part = page.locator("#map-info-rain");
   await expect(part).toBeVisible();
   await expect(part.locator("[data-rain-key]")).toBeVisible();
@@ -153,7 +146,7 @@ test("with no rain published the page still works, and says so", async ({
   await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });
-  await openFromMenu(page, "About the map");
+  await openFromMenu(page, "About");
   await page.getByRole("tab", { name: "Rain" }).click();
   await expect(page.locator("[data-rain-line]")).toHaveText(
     "No rain forecast is published just now.",

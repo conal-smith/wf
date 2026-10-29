@@ -1,14 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ChartLayers } from "../force5/src/WindMap";
-import {
-  LAYER_DEFAULTS,
-  defaultLayerNames,
-  defaultLayersLine,
-  isDefaultLayers,
-  layerGroups,
-  railGroups,
-  type LayerChoices,
-} from "./layerGroups";
+import { layerGroups, railGroups, type LayerChoices } from "./layerGroups";
 
 const LAYERS: ChartLayers = {
   tints: true,
@@ -107,60 +99,5 @@ describe("railGroups", () => {
     expect(set.onSatellite).toHaveBeenLastCalledWith("off");
     item(rail, "satellite-low").press();
     expect(set.onSatellite).toHaveBeenLastCalledWith("low");
-  });
-});
-
-describe("the default layers", () => {
-  it("are named from the tiles at the defaults, a whole group by its name", () => {
-    expect(defaultLayerNames()).toEqual([
-      "particles",
-      "tidal depth",
-      "the chart",
-      "range ring",
-    ]);
-  });
-
-  it("are every layer on at the defaults, and only those", () => {
-    const groups = layerGroups(choices(LAYER_DEFAULTS));
-    const on = groups.flatMap((group) =>
-      group.tiles.filter((tile) => tile.on).map((tile) => tile.id),
-    );
-    expect(on).toEqual([
-      "wind-particles",
-      "foil",
-      "tints",
-      "soundings",
-      "relief",
-      "names",
-      "focus-ring",
-    ]);
-  });
-
-  it("tells the defaults from a rider's own layers", () => {
-    expect(isDefaultLayers(LAYER_DEFAULTS)).toBe(true);
-    expect(
-      isDefaultLayers({
-        ...LAYER_DEFAULTS,
-        wind: { wash: true, particles: false },
-      }),
-    ).toBe(false);
-    expect(
-      isDefaultLayers({
-        ...LAYER_DEFAULTS,
-        layers: { ...LAYER_DEFAULTS.layers, rain: true },
-      }),
-    ).toBe(false);
-    expect(isDefaultLayers({ ...LAYER_DEFAULTS, focusStyle: "loupe" })).toBe(
-      false,
-    );
-  });
-
-  it("are said as what is on, or as what Reset puts back", () => {
-    expect(defaultLayersLine(true)).toBe(
-      "The default layers are on: particles, tidal depth, the chart, range ring.",
-    );
-    expect(defaultLayersLine(false)).toBe(
-      "Reset for the default: particles, tidal depth, the chart, range ring.",
-    );
   });
 });

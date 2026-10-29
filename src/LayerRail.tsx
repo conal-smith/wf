@@ -1,7 +1,13 @@
-import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { Button } from "../ui/Button";
 import { railGroups, type LayerGroup } from "./layerGroups";
-import { railFits, type Box } from "./railFit";
+import { railRoom, type Box } from "./railFit";
 import "./rail.css";
 
 /**
@@ -39,24 +45,25 @@ function resting(el: Element): Box {
  * pointer and on the keys' focus. The groups and their rules are the Layers
  * panel's own (src/layerGroups.tsx), each set apart by a short rule.
  *
+ * It is the one way to the layers, on a phone as on a desktop: there is no
+ * panel behind it. Where it would run into the dock it scrolls, in the room
+ * left above it. A finger has no pointer to rest on a button, so a tap says
+ * the layer's name and whether it is now on, for a moment, where the pointer
+ * shows it.
+ *
  * It is a toolbar: one stop on Tab, the arrows walk it, Home and End go to
- * its ends. It stays mounted while it is shut, out of sight and inert, so it
- * can say whether it would fit: where it would run into the dock it is not
- * shown, and Layers opens the panel instead (`onFits`).
+ * its ends. It stays mounted while it is shut, out of sight and inert.
  */
 export default function LayerRail({
   id,
   groups,
   shown,
-  onFits,
   layoutKey,
 }: {
   id: string;
   groups: LayerGroup[];
-  /** Open, and room for it. */
+  /** Open. */
   shown: boolean;
-  /** Whether it fits above what is below it, as that changes. */
-  onFits: (fits: boolean) => void;
   /** Changes as what is below it moves (the dock opens, grows or goes). */
   layoutKey: string;
 }) {
@@ -67,6 +74,13 @@ export default function LayerRail({
   // The one button Tab stops on: the last one the keys or the pointer were
   // on, else the first.
   const [current, setCurrent] = useState<string | null>(null);
+  // The layer a tap just switched, named beside it for a moment.
+  const [told, setTold] = useState<string | null>(null);
+  useEffect(() => {
+    if (!told) return;
+    const quiet = window.setTimeout(() => setTold(null), 1400);
+    return () => window.clearTimeout(quiet);
+  }, [told]);
   const stop = items.some((item) => item.id === current)
     ? current
     : (items[0]?.id ?? null);
@@ -76,9 +90,7 @@ export default function LayerRail({
       const el = ref.current;
       if (!el) return;
       const below = [...document.querySelectorAll(BELOW)].map(resting);
-      onFits(
-        railFits(el.getBoundingClientRect(), below, window.innerHeight, CLEAR),
-      );
+      el.style.maxHeight = `${railRoom(el.getBoundingClientRect(), below, window.innerHeight, CLEAR)}px`;
     };
     measure();
     // Again as the dock opens, grows, shrinks or goes: the footer it stands
@@ -98,7 +110,7 @@ export default function LayerRail({
       window.removeEventListener("resize", measure);
       document.removeEventListener("transitionend", settled);
     };
-  }, [onFits, layoutKey, count]);
+  }, [layoutKey, count]);
 
   // The arrows walk the buttons, top to bottom, across the groups' rules.
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -149,16 +161,29 @@ export default function LayerRail({
               icon
               className="lr-ic"
               aria-label={item.name}
+              aria-description={item.note ?? undefined}
               pressed={item.on ? "worded" : false}
               tabIndex={item.id === stop ? 0 : -1}
               data-rail-layer={item.id}
+              data-told={item.id === told || undefined}
+              data-noted={!!item.note || undefined}
               onFocus={() => setCurrent(item.id)}
-              onClick={item.press}
+              onClick={(event) => {
+                item.press();
+                // A tap, not the keys or a mouse, which show the name already.
+                if (event.detail && !matchMedia("(hover: hover)").matches)
+                  setTold(item.id);
+              }}
             >
               {item.glyph}
               <span className="lr-tip" aria-hidden="true">
                 {item.name}
                 <small> · {item.on ? "on" : "off"}</small>
+                {item.note && (
+                  <span className="lr-note" data-layer-note={item.id}>
+                    {item.note}
+                  </span>
+                )}
               </span>
             </Button>
           ))}

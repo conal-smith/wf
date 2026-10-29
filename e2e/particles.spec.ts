@@ -1,7 +1,9 @@
 import {
   chooseSpot,
-  closePanel,
+  closeLayers,
   expect,
+  layerTile,
+  layersRail,
   openFromMenu,
   test,
   type Page,
@@ -175,7 +177,7 @@ test("the wind's two layers: the particles on and off by themselves, over the co
   await expect(canvas).toHaveAttribute("data-wind", "particles");
   await expect.poll(() => inked(page)).toBeGreaterThan(100);
   await openFromMenu(page, "Layers");
-  const panel = page.getByRole("group", { name: "Layers" });
+  const panel = layersRail(page);
   const press = (name: string) =>
     panel.getByRole("button", { name, exact: true }).click();
   // The coloured wind under them: the particles keep drawing, in ink.
@@ -258,12 +260,9 @@ test("an older chart's wind style is read into the two layers", async ({
   }
   // The new key wins over the old one once the rider has chosen.
   await openFromMenu(page, "Layers");
-  await page
-    .getByRole("group", { name: "Layers" })
-    .getByRole("button", { name: "Particles", exact: true })
-    .click();
+  await layerTile(page, "Particles").click();
   await expect(canvas).toHaveAttribute("data-wind", "wash");
-  await closePanel(page);
+  await closeLayers(page);
   await page.reload();
   await expect(canvas).toHaveAttribute("data-wind", "wash");
 });

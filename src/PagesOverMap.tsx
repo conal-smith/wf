@@ -15,8 +15,8 @@
  * (`/`) or the full chart (`/?map`, `/?spot=…`), whichever the page opened
  * over; a link to the one it was is the way back to it as it was, and a link
  * to the other brings that one up in the map's place. The site menu's
- * Settings (`/?settings`) is the way back with Settings open over whichever
- * it is.
+ * Settings, display options, About and tour (`/?settings`, `/?options`…) are
+ * the way back with that open over whichever it is.
  */
 import React, {
   Suspense,
@@ -29,7 +29,8 @@ import {
   CHART_HREF,
   FINDER_HREF,
   asksChart,
-  asksSettings,
+  mapAsk,
+  type MapAsk,
   isAiPath,
   isChartAddress,
   isSpotPath,
@@ -40,9 +41,10 @@ const SpotApp = React.lazy(() => import("../spot/web/SpotApp"));
 
 /**
  * Said on the window once a page over the map has handed the reader back to
- * it for Settings: the map (src/App.tsx) opens the Settings dialog.
+ * it for what the menu asked (`detail`, a MapAsk): the map (src/App.tsx)
+ * opens it.
  */
-export const SETTINGS_EVENT = "wingfoil:settings";
+export const MAP_ASK_EVENT = "wingfoil:ask";
 
 /** The paths drawn over the map when a link from it asks for one. */
 export const isOverPath = (pathname: string) =>
@@ -86,9 +88,9 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
   // the map with another (`/?spot=…`) is a page load, as the map reads it once.
   const mapSearch = useRef(window.location.search);
   const page = useRef<HTMLDivElement>(null);
-  // Settings was asked for from a page over the map: once the map is back
-  // and no longer inert, it opens Settings.
-  const settings = useRef(false);
+  // What the menu asked the map for from a page over it: once the map is
+  // back and no longer inert, it opens it.
+  const asked = useRef<MapAsk | null>(null);
   // How far down the map's page was (the spot finder scrolls it on a
   // phone) when the first page opened over it, given back on the way back.
   const mapScroll = useRef(0);
@@ -143,9 +145,9 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
           setOver(null);
           window.dispatchEvent(new PopStateEvent("popstate"));
         }
-      } else if (over && asksSettings(url)) {
+      } else if (over && mapAsk(url)) {
         event.preventDefault();
-        settings.current = true;
+        asked.current = mapAsk(url);
         back();
       } else if (
         over &&
@@ -179,9 +181,10 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
   }, [over]);
 
   useEffect(() => {
-    if (over || !settings.current) return;
-    settings.current = false;
-    window.dispatchEvent(new Event(SETTINGS_EVENT));
+    const ask = asked.current;
+    if (over || !ask) return;
+    asked.current = null;
+    window.dispatchEvent(new CustomEvent(MAP_ASK_EVENT, { detail: ask }));
   }, [over]);
 
   const path = over ? new URL(over, window.location.origin).pathname : "";

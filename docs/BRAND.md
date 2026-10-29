@@ -158,7 +158,7 @@ exports its recipe (`buttonStyles`, …) for a link a router owns.
 | Component | What it is | Notes |
 | --- | --- | --- |
 | `Button` | Mono capitals. `primary` ink pill · `pill` ruled capsule · `quiet` · `raised` the square instrument over the map · `link` the underlined "← Chart" · `danger` | `pressed`, `icon` (needs `aria-label`), `size` sm/md/lg, `href` makes it a link. |
-| `Segmented` | A ruled capsule of choices, the one that is on filled in ink (the satellite's in Layers) | `stack` for a ruled column of choices. |
+| `Segmented` | A ruled capsule of choices, the one that is on filled in ink (the model in the display options) | `stack` for a ruled column of choices. |
 | `Surface` | The chart's box over the map: opaque paper, grain, double rule | `rule="single"` inside another box. |
 | `Pane` | A box on a page | `kind` card (one ink rule) · sunken · ruled (a heavy rule above, the broadsheet's section); `double`; `standing`. |
 | `Dialog`, `ConfirmDialog` | The chart's box as a modal; title in the display face | Unchanged API. |

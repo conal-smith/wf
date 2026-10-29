@@ -40,6 +40,9 @@ export interface TourProps {
   focusStyle: FocusStyle;
   onFocusStyle: (style: FocusStyle) => void;
   onPanel: (panel: MapPanel) => void;
+  /** The layers' rail, open or shut. */
+  layers: boolean;
+  onLayers: (open: boolean) => void;
   /** Skipped, or finished; with Customise asked for at the end. */
   onEnd: (customise: boolean) => void;
 }
@@ -55,7 +58,7 @@ const TARGETS = {
   loupe: [".map-loupe .map-loupe-rim", ".map-loupe .map-loupe-foot-box"],
   blend: [".dock tr.tt-blend", ".dock .blend-chart"],
   menu: '.map-head [aria-label="Site menu"]',
-  layers: "dialog[open]",
+  layers: "#map-rail",
 } as const;
 
 const box = (el: Element | null): Box | null => {
@@ -179,14 +182,14 @@ const STEPS: Step[] = [
   {
     id: "menu",
     title: "The menu",
-    body: "The menu has the spot finder, which lists the best places to ride this week. It also has Settings, map layers, a guide to the map, and this tour.",
+    body: "The menu has the spot finder, which lists the best places to ride this week. It also has Settings, the display options, a guide to the map, and this tour.",
     target: () => pad(box(document.querySelector(TARGETS.menu)), 4),
   },
   {
     id: "layers",
     title: "Map layers",
-    body: "Here you can add more to the map, such as water depth, tidal currents, rain and satellite photos. You can also choose which forecast the map and the stars use. You don’t need any of this to see the wind and stars.",
-    prep: (p) => p.onPanel("layers"),
+    body: "These buttons add more to the map, such as water depth, tidal currents, rain and satellite photos. The layers button by the zoom shows and hides them. You don’t need any of this to see the wind and stars.",
+    prep: (p) => p.onLayers(true),
     target: () => pad(box(document.querySelector(TARGETS.layers)), 4),
   },
   {
@@ -211,6 +214,7 @@ export default function Tour(props: TourProps) {
     spot: props.spot,
     view: props.view,
     focusStyle: props.focusStyle,
+    layers: props.layers,
   }));
   const live = useRef(props);
   live.current = props;
@@ -219,6 +223,7 @@ export default function Tour(props: TourProps) {
   const end = (customise: boolean) => {
     const p = live.current;
     p.onPanel(null);
+    p.onLayers(was.layers);
     p.onView(was.view);
     p.onFocusStyle(was.focusStyle);
     p.onSpot(was.spot);
@@ -232,7 +237,8 @@ export default function Tour(props: TourProps) {
   useEffect(() => {
     const p = live.current;
     // Back or on, whatever an earlier card opened that this one does not need is put away.
-    if (step.id !== "layers") p.onPanel(null);
+    p.onPanel(null);
+    if (step.id !== "layers") p.onLayers(was.layers);
     if (step.id !== "blend") p.onView(was.view);
     if (at < 3) p.onFocusStyle(was.focusStyle);
     step.prep?.(p, tour.current);

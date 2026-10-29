@@ -60,7 +60,7 @@ export function approxMetres(metres: number) {
 }
 
 /**
- * The Layers panel's line under the switch, the same whichever image is
+ * The key's line on the satellite images, the same whichever image is
  * shown: the tides both images were taken at, at the station nearest the
  * map's centre (satelliteIndex.ts's SatelliteStation), each as the key gives
  * it. "Tide in the images at Galway: high ≈4.0 m, low ≈0.8 m".

@@ -18,15 +18,14 @@
  * The menu is a drawer from the left (owner's ruling of 2026-10-24, the mockup
  * `backlog/mockups/2026-10-24-your-spots-home.html`): a modal <dialog> over
  * the kit's backdrop, so the focus is trapped in it and the page behind is
- * inert, with the site's navigation, the same on every page, and under it the
- * page's own tools, each row with its glyph in the margin. A finger can push
- * it back off to the left.
+ * inert, with the site's navigation, the same on every page, each row with
+ * its glyph in the margin. A finger can push it back off to the left.
  *
- * The navigation is the chart, the spot finder and Settings, then the
- * site's other sections (owner's ruling of 2026-10-25): one menu, in one
- * order, wherever it is opened. What only one page has (the chart's layers,
- * say) is set apart under it, headed for the page, and a page with nothing of
- * its own has no such part.
+ * The navigation is one menu, in one order, wherever it is opened (owner's
+ * ruling of 2026-10-29): the chart and the spot finder; Settings and the
+ * display options; About and the tour; then the site's other sections, Use
+ * with AI last. The chart's layers are not in it: they are the rail beside
+ * the zoom (src/LayerRail.tsx).
  */
 import { Menu, X } from "lucide-react";
 import {
@@ -37,26 +36,28 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from "react";
 import { useFadeOut } from "../../ui/Backdrop";
 import { Button } from "../../ui/Button";
 import { backdropPress, onBackdrop } from "../../ui/Dialog";
-import { MONO_LABEL, RING, tv } from "../../ui/tv";
+import { RING, tv } from "../../ui/tv";
 import { Wordmark } from "../../ui/Wordmark";
 import { ChartGlyph } from "../../shared/web/ChartGlyph";
 import { FEATURES, type SiteFeatures } from "../../shared/web/features";
 import {
+  about,
   community,
+  displayOptions,
   market,
   settings,
   spotFinder,
+  tour,
   useWithAi,
   windMap,
   type GlyphDef,
 } from "../../shared/web/glyphSet";
 import {
-  SITE_NAV,
+  SITE_NAV_GROUPS,
   siteSections,
   type SiteNavId,
   type SitePageId,
@@ -74,6 +75,9 @@ const ROW_GLYPH: Record<SiteNavId | Exclude<SiteSectionId, "map">, GlyphDef> = {
   chart: windMap,
   finder: spotFinder,
   settings,
+  options: displayOptions,
+  about,
+  tour,
   market,
   community,
   ai: useWithAi,
@@ -121,18 +125,8 @@ export const siteMenuStyles = tv({
     // The close button and the nameplate, over the broadsheet's heavy rule.
     head: "flex items-center gap-3 border-b-2 border-ink pb-2.5",
     list: "m-0 mt-2.5 flex list-none flex-col p-0",
-    // The site's other sections, a gap under the navigation.
-    sections: "mt-6",
-    /*
-     * The page's own tools, set apart under the site's rows: a wider gap, and
-     * the page named in the mono label over a rule in ink, as a broadsheet
-     * heads a column. `border-0` first: the site has no reset.
-     */
-    page: "mt-7",
-    pageTitle: [
-      "m-0 border-0 border-b border-ink pb-1.5 text-ink-muted",
-      MONO_LABEL,
-    ],
+    // Each group after the first, a gap under the one before.
+    group: "mt-6",
     /*
      * A row is a name on a hairline, the height of touch, with its glyph in
      * the margin: the index of a broadsheet, not a list of buttons. It goes
@@ -143,15 +137,6 @@ export const siteMenuStyles = tv({
       "font-body text-prose font-medium text-ink no-underline",
       "transition-colors duration-fast not-disabled:hover:text-chart-magenta",
       RING,
-    ],
-    /*
-     * A tool is a row like a section's: the kit's quiet button, its mono
-     * capitals and pill taken back to the row's face and hairline.
-     */
-    tool: [
-      "h-touch w-full justify-start gap-3 rounded-none border-0 border-b border-line px-0.5",
-      "font-body text-prose font-medium tracking-normal text-ink normal-case",
-      "not-disabled:hover:bg-transparent not-disabled:hover:text-chart-magenta",
     ],
     glyph: "inline-flex size-5 shrink-0 items-center justify-center",
     // A small bar on the right edge, saying the drawer can be pushed away.
@@ -176,24 +161,6 @@ export const siteMenuStyles = tv({
   },
   defaultVariants: { ground: "map" },
 });
-
-/** Something the page itself opens from the menu: the map's layers, say. */
-export interface SiteMenuTool {
-  id: string;
-  label: string;
-  /** A small drawn glyph in `currentColor`, beside the name. */
-  glyph?: ReactNode;
-  /**
-   * A page rather than a dialog (the chart, the spot finder): the row is a
-   * link to it. Where `onSelect` is given too, a plain press calls it in
-   * place of the page load; a press for a new tab is the browser's.
-   */
-  href?: string;
-  /** The page the reader is on, marked as the section you are in is. */
-  current?: boolean;
-  /** Called once the menu has shut and handed the focus back to its trigger. */
-  onSelect?: () => void;
-}
 
 /** A finger on the drawer: where it went down, and how it has moved since. */
 interface Drag {
@@ -230,10 +197,10 @@ const plainPress = (event: ReactMouseEvent) =>
   !event.altKey;
 
 /**
- * The site's navigation, the same rows in the same order on every page: the
- * chart, the spot finder and Settings, then a gap and the site's other
- * sections. Each is a link with its glyph in the margin, and the page you are
- * on is marked. Only the sections switched on in this build are drawn: with
+ * The site's navigation, the same rows in the same order on every page, in
+ * its groups (SITE_NAV_GROUPS), then a gap and the site's other sections,
+ * Use with AI last. Each is a link with its glyph in the margin, and the page
+ * you are on is marked. Only the sections switched on in this build are drawn: with
  * the marketplace or the community off (as production has them,
  * shared/web/features.ts), nothing of it is.
  */
@@ -247,8 +214,9 @@ export function SiteNav({
   current: SitePageId | null;
   /**
    * The map's own way to a row, in place of the page load, where the page
-   * has one: the chart and the spot finder are one bundle, and Settings is
-   * a dialog of theirs. A press for a new tab is still the browser's.
+   * has one: the chart and the spot finder are one bundle, and Settings, the
+   * display options, About and the tour are dialogs of theirs. A press for a
+   * new tab is still the browser's.
    */
   go?: Partial<Record<SiteNavId, () => void>>;
   features?: Pick<SiteFeatures, "market" | "community">;
@@ -275,6 +243,9 @@ export function SiteNav({
           className={styles.row({ current: here })}
           href={href}
           aria-current={here ? "page" : undefined}
+          // A mouse dragging a link drags the link itself, and the drawer
+          // never hears the drag that would push it away.
+          draggable={false}
           // Following a row closes the menu: the map, kept under the page the
           // row opens (src/PagesOverMap.tsx), comes back with its menu shut.
           // The page you are on is not opened again, only the menu shut.
@@ -302,8 +273,17 @@ export function SiteNav({
   );
   return (
     <nav aria-label="Site">
-      <ul className={styles.list()}>{SITE_NAV.map(row)}</ul>
-      <ul className={styles.list({ className: styles.sections() })}>
+      {SITE_NAV_GROUPS.map((group, at) => (
+        <ul
+          key={group[0].id}
+          className={styles.list({
+            className: at ? styles.group() : undefined,
+          })}
+        >
+          {group.map((entry, i) => row(entry, at + i))}
+        </ul>
+      ))}
+      <ul className={styles.list({ className: styles.group() })}>
         {sections.map((section) => row(section, -1))}
       </ul>
     </nav>
@@ -329,14 +309,6 @@ export function SiteMenu({
    * masthead on a page. The drawer is the same either way.
    */
   ground = "map",
-  /**
-   * The page's own tools, under the navigation and headed with `title`: on
-   * the chart, its layers, the display options, what the map means and the
-   * tour. The menu is the one way in to them. Each opens a dialog of the
-   * page's, which hands the focus back to the trigger when it shuts, or is a
-   * link to a page (`href`).
-   */
-  tools,
   /** Which sections are switched on: the build's, unless a test says. */
   features = FEATURES,
 }: {
@@ -344,7 +316,6 @@ export function SiteMenu({
   go?: Partial<Record<SiteNavId, () => void>>;
   size?: "sm" | "md";
   ground?: "map" | "content";
-  tools?: { title: string; items: readonly SiteMenuTool[] };
   features?: Pick<SiteFeatures, "market" | "community">;
 }) {
   const [open, setOpen] = useState(false);
@@ -391,7 +362,7 @@ export function SiteMenu({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       // The map has a global Escape handler of its own, which closes the
-      // search, the layers panel, the spot card or the sheet. Capturing on the
+      // search, the display options, the spot card or the sheet. Capturing on the
       // document and stopping there is what makes Escape with this menu open
       // mean "close this menu" and nothing else.
       event.preventDefault();
@@ -472,7 +443,6 @@ export function SiteMenu({
   };
 
   const styles = siteMenuStyles({ ground });
-  const toolItems = tools?.items ?? [];
 
   return (
     <div className={styles.root()}>
@@ -553,55 +523,6 @@ export function SiteMenu({
             }}
             onFollow={close}
           />
-          {toolItems.length > 0 && (
-            <div
-              role="group"
-              aria-labelledby={`${drawerId}-page`}
-              className={styles.page()}
-            >
-              <h2 id={`${drawerId}-page`} className={styles.pageTitle()}>
-                {tools?.title}
-              </h2>
-              <ul className={styles.list()}>
-                {toolItems.map((tool) => (
-                  <li key={tool.id}>
-                    {tool.href !== undefined ? (
-                      <a
-                        className={styles.row({ current: !!tool.current })}
-                        href={tool.href}
-                        aria-current={tool.current ? "page" : undefined}
-                        onClick={(event) => {
-                          if (!tool.onSelect || !plainPress(event)) {
-                            close();
-                            return;
-                          }
-                          event.preventDefault();
-                          close();
-                          tool.onSelect();
-                        }}
-                      >
-                        <span className={styles.glyph()}>{tool.glyph}</span>
-                        {tool.label}
-                      </a>
-                    ) : (
-                      <Button
-                        variant="quiet"
-                        className={styles.tool()}
-                        aria-haspopup="dialog"
-                        onClick={() => {
-                          close();
-                          tool.onSelect?.();
-                        }}
-                      >
-                        <span className={styles.glyph()}>{tool.glyph}</span>
-                        {tool.label}
-                      </Button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
           <span aria-hidden="true" className={styles.grip()} />
         </dialog>
       )}

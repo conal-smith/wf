@@ -1,5 +1,13 @@
 import { readFileSync } from "node:fs";
-import { expect, openFromMenu, setLayer, test, type Page } from "./fixtures";
+import {
+  closeLayers,
+  expect,
+  layersRail,
+  openFromMenu,
+  setLayer,
+  test,
+  type Page,
+} from "./fixtures";
 import { SAMPLE_CLOCK, sampleStrip } from "./columns";
 
 /**
@@ -235,9 +243,8 @@ test("a national region draws on its own station's tide, answers a tap, and only
   await slider.fill(String(low.i));
   await expect(slider).toHaveValue(String(low.i));
   const atLow = await photograph(page);
-  await openFromMenu(page, "Layers");
   await setLayer(page, "Tidal depth", false);
-  await page.keyboard.press("Escape");
+  await closeLayers(page);
   const off = await photograph(page);
   expect(await differs(page, atHigh, off)).toBeGreaterThan(0.05);
   expect(await differs(page, atLow, off)).toBeGreaterThan(0.05);
@@ -245,9 +252,8 @@ test("a national region draws on its own station's tide, answers a tap, and only
 
   // Back on, at high water: a tap beside the spot, on the flat, is read out
   // as (tide − 1) m of water at Galway's tide.
-  await openFromMenu(page, "Layers");
   await setLayer(page, "Tidal depth", true);
-  await page.keyboard.press("Escape");
+  await closeLayers(page);
   await slider.fill(String(high.i));
   const spot = (await page
     .locator('.spot-marker[data-spot-id="rusheen"]')
@@ -256,7 +262,7 @@ test("a national region draws on its own station's tide, answers a tap, and only
     spot.x + spot.width / 2 + 40,
     spot.y + spot.height / 2,
   );
-  await openFromMenu(page, "About the map");
+  await openFromMenu(page, "About");
   await page.getByRole("tab", { name: "Tidal depth" }).click();
   const probe = page.locator(".foil-probe");
   await expect(probe).toBeVisible({ timeout: 10000 });
@@ -297,13 +303,14 @@ test("over the whole chart nothing of it is fetched, and Layers says to zoom in"
   await page.waitForTimeout(1000);
   expect(asked).toEqual([]);
   await openFromMenu(page, "Layers");
-  const panel = page.getByRole("group", { name: "Layers" });
-  await expect(panel.locator('[data-layer="foil"]')).toHaveAttribute(
+  const panel = layersRail(page);
+  await expect(panel.locator('[data-rail-layer="foil"]')).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await expect(panel.locator("[data-foil-note]")).toHaveText("Zoom in to see.");
-  await page.keyboard.press("Escape");
+  await expect(panel.locator('[data-layer-note="foil"]')).toHaveText(
+    "Zoom in to see.",
+  );
 
   // In to a bay's zoom, the index is read and the note goes.
   const zoomIn = page.getByRole("button", { name: "Zoom in" });
@@ -311,7 +318,6 @@ test("over the whole chart nothing of it is fetched, and Layers says to zoom in"
   await expect
     .poll(() => asked.some((p) => p.endsWith("/foildepth/index.json")))
     .toBe(true);
-  await openFromMenu(page, "Layers");
-  await expect(panel.locator("[data-foil-note]")).toHaveCount(0);
+  await expect(panel.locator('[data-layer-note="foil"]')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

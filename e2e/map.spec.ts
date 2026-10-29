@@ -1,8 +1,12 @@
 import {
   backToIreland,
+  chooseModel,
   chooseSpot,
+  closeLayers,
   closePanel,
   expect,
+  layersRail,
+  modelChoice,
   openFromMenu,
   setRider,
   steadyFrames,
@@ -72,25 +76,10 @@ async function openWater(page: Page) {
   }, box);
 }
 
-async function openLayers(page: Page) {
-  if (!(await page.getByRole("dialog", { name: "Layers" }).isVisible()))
-    await openFromMenu(page, "Layers");
-}
-
-/** The model the map is drawing, from the layers panel, shut after. */
-async function chooseModel(page: Page, id: string) {
-  await openLayers(page);
-  await page.locator(`[data-model="${id}"]`).click();
-  await closePanel(page);
-}
-
-/** Which model the layers panel says is on the map. */
+/** Which model the display options say the map and the stars are. */
 async function expectModel(page: Page, id: string) {
-  await openLayers(page);
-  await expect(page.locator(`[data-model="${id}"]`)).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await openFromMenu(page, "Display options");
+  await expect(modelChoice(page, id)).toHaveAttribute("aria-pressed", "true");
   await closePanel(page);
 }
 
@@ -571,15 +560,16 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   page,
 }) => {
   await openChart(page, 1440, 900, null);
-  // The range ring by default; the loupe, from the layers.
+  // The range ring by default; the loupe, from the layers' rail.
   await openFromMenu(page, "Layers");
-  const panel = page.getByRole("group", { name: "Layers" });
-  const choice = panel.getByRole("group", { name: "Round your spot" });
+  const choice = layersRail(page).getByRole("group", {
+    name: "Round your spot",
+  });
   await expect(
     choice.getByRole("button", { name: "Range ring" }),
   ).toHaveAttribute("aria-pressed", "true");
   await choice.getByRole("button", { name: "Loupe" }).click();
-  await closePanel(page);
+  await closeLayers(page);
   await findSpot(page, "Dollymount");
   const map = page.locator(".map-canvas");
   const focus = page.locator(".map-focus");
@@ -627,13 +617,13 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   await expect(focus).toHaveAttribute("data-focus", "ring");
   await expect(focus.locator(".map-loupe-rim")).toHaveCount(0);
   await expect(focus.locator(".map-range-label")).toHaveText(/^[\d.]+ NM$/);
-  // Nothing at all: the pen's ring alone marks the spot.
-  await choice.getByRole("button", { name: "Nothing", exact: true }).click();
+  // Nothing at all: the ring that is on, pressed again.
+  await choice.getByRole("button", { name: "Range ring" }).click();
   await expect(focus).toHaveAttribute("data-focus", "off");
   await expect(focus.locator("*")).toHaveCount(0);
   await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(1);
   await expect(map).toHaveClass(/is-focus/);
-  await closePanel(page);
+  await closeLayers(page);
 
   // Kept for the next visit, which opens on the chart alone: at `/`, as the
   // reload of a chosen spot's own link (`/?spot=brandon`) opens on it.
@@ -643,10 +633,12 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   });
   await expect(page.locator(".dock")).toHaveCount(0);
   await openFromMenu(page, "Layers");
-  await expect(
-    choice.getByRole("button", { name: "Nothing", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await page.keyboard.press("Escape");
+  for (const name of ["Loupe", "Range ring"])
+    await expect(choice.getByRole("button", { name })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  await closeLayers(page);
   await findSpot(page, "Brandon");
   await expect(map).toHaveClass(/is-focus/);
   await expect(focus).toHaveAttribute("data-focus", "off");
@@ -842,7 +834,7 @@ for (const device of [
     };
     /**
      * The dimmed map beside an open panel's dialog, off its box: to its left,
-     * or above it where it spans the width, as the Layers sheet does.
+     * or above it where it spans the width, as a phone's sheet does.
      */
     const backdrop = async (page: Page) => {
       const box = await page.locator("dialog.map-panel-dialog").boundingBox();
@@ -868,17 +860,17 @@ for (const device of [
       // A finger on the screen, the suite's only tap on the chart: the
       // sheet, the spot and the point in turn. The desktop's tests below go
       // through every case.
-      test("a tap shuts the Layers sheet and picks nothing, then lets go of the spot, then picks the point", async ({
+      test("a tap shuts the display options and picks nothing, then lets go of the spot, then picks the point", async ({
         page,
       }) => {
         await openOn(page, "keel", "Keel Beach");
         const map = page.locator(".map-canvas");
         // The sheet spans the width: the tap lands on the dimmed map above.
-        await openFromMenu(page, "Layers");
+        await openFromMenu(page, "Display options");
         await press(page, await backdrop(page));
-        await expect(page.getByRole("dialog", { name: "Layers" })).toHaveCount(
-          0,
-        );
+        await expect(
+          page.getByRole("dialog", { name: "Display options" }),
+        ).toHaveCount(0);
         await page.waitForTimeout(800);
         await expect(dockName(page)).toHaveText("Keel Beach");
         await expect(page).toHaveURL(/\/\?spot=keel$/);
@@ -912,12 +904,13 @@ for (const device of [
         await expect(map).toHaveClass(/is-focus/);
         await expect(page.locator(".pick-mark")).toHaveCount(0);
       };
-      // The panels are modal: the press lands on the dimmed map round them.
-      // Layers stands for them both here; the display options' own test
-      // presses round those.
-      await openFromMenu(page, "Layers");
+      // The display options are modal: the press lands on the dimmed map
+      // round them.
+      await openFromMenu(page, "Display options");
       await press(page, await backdrop(page));
-      await expect(page.getByRole("dialog", { name: "Layers" })).toHaveCount(0);
+      await expect(
+        page.getByRole("dialog", { name: "Display options" }),
+      ).toHaveCount(0);
       await unmoved();
       // The menu's drawer stands at the left edge: the press lands on the
       // dimmed map beside it, found before it covers the chart.
@@ -952,9 +945,11 @@ for (const device of [
         await expect(page.locator(".spot-marker.sel")).toHaveCount(0);
         await expect(page).toHaveURL(/\/\?map$/);
       };
-      await openFromMenu(page, "Layers");
+      await openFromMenu(page, "Display options");
       await press(page, await backdrop(page));
-      await expect(page.getByRole("dialog", { name: "Layers" })).toHaveCount(0);
+      await expect(
+        page.getByRole("dialog", { name: "Display options" }),
+      ).toHaveCount(0);
       await none();
       // Shut, the chart is the reader's again: a press picks its point.
       await press(page, await clear(page));
@@ -1044,13 +1039,13 @@ test("Escape shuts what is open over the chart first, then lets go of the chosen
   await expect(dockName).toHaveText("Keel Beach", { timeout: 30000 });
   const map = page.locator(".map-canvas");
   await expect(map).toHaveClass(/is-focus/, { timeout: 30000 });
-  for (const name of ["Layers", "Display options"] as const) {
-    await openFromMenu(page, name);
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog", { name })).toHaveCount(0);
-    await expect(map).toHaveClass(/is-focus/);
-    await expect(dockName).toHaveText("Keel Beach");
-  }
+  await openFromMenu(page, "Display options");
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("dialog", { name: "Display options" }),
+  ).toHaveCount(0);
+  await expect(map).toHaveClass(/is-focus/);
+  await expect(dockName).toHaveText("Keel Beach");
   const menu = page.getByRole("button", { name: "Site menu" });
   await menu.click();
   await expect(menu).toHaveAttribute("aria-expanded", "true");
