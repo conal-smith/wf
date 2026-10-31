@@ -163,11 +163,10 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
 .side-near .near .st { grid-column: 3; grid-row: 1 / span 2; }
 .pair { display: grid; }
 @container page (min-width: 1400px) { .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 44px; } .pair .guide { grid-template-columns: 1fr 1fr; } }
-.reads { display: grid; grid-template-columns: 1fr 1fr; }
-.read { padding: 12px 0 12px; border-bottom: 1px solid var(--line); min-width: 0; }
-.read:nth-child(odd) { padding-right: 14px; border-right: 1px solid var(--line); }
-.read:nth-child(even) { padding-left: 14px; }
-.read.wide { grid-column: 1 / -1; padding-right: 0; border-right: 0; }
+/* the figures now: small quiet cards, no rules */
+.reads { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.read { padding: 14px 16px 15px; min-width: 0; border-radius: 16px; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line-soft); }
+.read.wide { grid-column: 1 / -1; }
 .read .eyebrow { display: flex; align-items: center; }
 .fig { font: 600 30px/1.05 var(--mono); letter-spacing: -.03em; margin: 6px 0 3px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .fig .g { font-size: 17px; color: var(--gust); letter-spacing: 0; }
@@ -215,7 +214,7 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
 .sat .north { position: absolute; top: 10px; right: 10px; background: #f3eee3e6; border-radius: 99px; box-shadow: 0 0 0 1px var(--rule); font: 600 10px var(--mono); padding: 2px 8px; }
 
 /* alert line */
-.alertline { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; padding: 12px 0 0; }
+.alertline { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; margin-top: 10px; padding: 10px 10px 10px 16px; border-radius: 16px; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line-soft); }
 .alertline p { font: 400 14px var(--body); color: var(--ink-2); }
 
 /* week strip */
@@ -467,6 +466,8 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
         <li id="n8"><span class="n">8</span><span><b>The spot guide.</b> Surfline's Guide tab, in a few lines: launch, water, things to watch for, who rides here. We have none of this today (a spot has only a name, a place and a facing). <b>Water</b> can be written by the site itself from the foil-depth data (the tide that gives 1 m at the launch). The rest would be a short file per spot (<code>data/locations/guides/&lt;id&gt;.md</code>), drafted from the sources already gathered in <code>docs/IRISH_SPOTS_SOURCES.md</code> and the satellite pictures, checked by the owner, then kept up through "Suggest a change". A spot with no guide yet shows only the Water line.</span></li>
       </ol>
 
+      <h3>Round five (owner's steer, 31 October)</h3>
+      <ul><li>The figures in Now and the alert are small quiet cards on a slightly raised ground, instead of boxes ruled like a newspaper table.</li></ul>
       <h3>Round four (owner's steer, 31 October)</h3>
       <ul>
         <li>Taken out: the facing line under the name, the "Now at 14:20" heading, the status line (model run, buoy read), and the buoy's measured wind.</li>
