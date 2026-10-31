@@ -1,320 +1,242 @@
 <!doctype html>
-<html lang="en-IE">
+<html lang="en-IE" data-theme="white">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mock-up · The spot page as a spot report</title>
 <!--
-  A design mock-up for the owner to review, not product code. Standalone: the
-  faces come from node_modules, the pictures from the folder beside this file.
+  A design mock-up for the owner to review, not product code. Standalone: Fraunces
+  comes from node_modules, Inter from the fonts folder beside this file (SIL OFL),
+  the pictures from the folder beside it.
 
-  The owner's steer (31 October 2026): take the spot page somewhere nearer
-  Surfline's spot report (surfline.com/surf-report/white-rocks/…): the
-  conditions now at the top, the nearby spots, the week at a glance, one
-  stacked graph of the days with every row on the same clock, then the guide.
-  Do it in our own look and fix what riders complain about in forecasts.
+  Round five, the premium pass (31 October 2026): two typefaces (Fraunces for the
+  spot's name and the wordmark, Inter for everything else, with even figures), one
+  big figure and one short line per card, the star rating drawn as stars the same
+  way everywhere, a graph of smooth curves with fewer and larger words, a clean top
+  bar, flat quiet buttons, cards instead of rules, one set of line icons, the loupe's
+  words on hover, and a smaller picture so the 10 m satellite doesn't look soft.
 
-  The satellite pictures are the real ones (data.wingfoil.ie, Sentinel-2 at
-  high and low tide). Everything else is made up: the forecast, the buoy
-  readings, the guide. "Now" is fixed at Saturday 31 October, 14:20.
+  Made up: the forecast, the guide. Real: the Sentinel-2 pictures (enhanced). "Now"
+  is Saturday 31 October, 14:20.
 
   ?embed=1   the page alone, without the mock-up's bar and notes
   ?w=390     open at phone width
+  ?theme=dark
 -->
-<style id="css">
+<style>
 @font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
   src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
-@font-face { font-family: "Fraunces Variable"; font-style: italic; font-display: swap; font-weight: 100 900;
-  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-italic.woff2") format("woff2"); }
-@font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
-  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
-@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 400;
-  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); }
-@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 500;
-  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
-@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 600;
-  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
-@font-face { font-family: "Kalam"; font-style: normal; font-display: swap; font-weight: 400;
-  src: url("../../node_modules/@fontsource/kalam/files/kalam-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("fonts/inter/inter-latin-opsz-normal.woff2") format("woff2"); }
 
-/* ui/theme.css, the tokens this page uses */
+/* the tokens: white, and dark */
 :root {
-  --rule: var(--ink);
-  --ground: #f3eee3; --sunken: #ede6d6; --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b;
-  --line: #1a1d2133; --line-soft: #1a1d211f; --pen: #d43a2c; --pen-ink: #bf3125; --magenta: #b0186a;
-  --ok: #2a7046; --warn: #b02a1f; --buoy: #e9b200; --buoy-ink: #8a6a00; --gust: #e0803a; --depth: #5f8c9c;
-  --sea-1: #a9cbd8; --sea-2: #c3dae2; --sea-3: #dae8ea; --sea-4: #ecf0ea;
-  --s1: #e28bb3; --s2: #d2609a; --s3: #bd3d84; --s4: #a01f6c; --s5: #7c0f55;
-  --night: #1a1d2114;
+  --bg: #ffffff; --surface: #f5f5f7; --surface-2: #ececf0; --line: #e7e7eb; --line-strong: #d3d3d9;
+  --text: #0f0f12; --text-2: #4b4b53; --muted: #8b8b94; --accent: #b0186a; --pen: #e5372a;
+  --gust: #e8833a; --depth: #3f86a0; --sea: #a9cfe0; --sea-soft: #e4f0f5; --night: rgba(15,15,18,.045); --spread: rgba(15,15,18,.07);
+  --s1: #e28bb3; --s2: #d2609a; --s3: #bd3d84; --s4: #a01f6c; --s5: #7c0f55; --s0: #dcdce1;
+  --on-accent: #ffffff; --chip: #0f0f12; --chip-text: #ffffff; --shadow: 0 1px 2px rgba(15,15,18,.06), 0 8px 24px -12px rgba(15,15,18,.18);
   --display: "Fraunces Variable", Fraunces, Georgia, serif;
-  --body: "Newsreader Variable", Newsreader, Georgia, serif;
-  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-  --hand: "Kalam", "Comic Sans MS", cursive;
-  --frame: inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142;
-  --sh-raised: inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126;
-  --g-ink: linear-gradient(180deg, #33373d, #15171a);
-  --g-raised: linear-gradient(180deg, #ffffff, #f0eadd);
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --note: #1f6fe0;
-  --bar-h: 42px;
+  --sans: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r: 16px; --r-s: 12px;
 }
-html[data-theme=white], html[data-theme=dark] { --grain: none; }
-html[data-theme=dark] { color-scheme: dark; --rule: #34343b; --line: #fffffe1c; --line-soft: #fffffe10; --frame: inset 0 0 0 1px #fffffe14; }
-.themebtn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--g-raised); box-shadow: var(--sh-raised); display: grid; place-items: center; padding: 0; }
-.themebtn svg { width: 16px; height: 16px; }
+:root[data-theme=dark] {
+  color-scheme: dark;
+  --bg: #0b0b0d; --surface: #141417; --surface-2: #1c1c21; --line: #222228; --line-strong: #34343c;
+  --text: #f4f4f6; --text-2: #b9b9c2; --muted: #7d7d88; --accent: #ff5aae; --pen: #ff5b4d;
+  --gust: #ff9a4d; --depth: #4fa3c2; --sea: #2f6f88; --sea-soft: #12303b; --night: rgba(255,255,255,.035); --spread: rgba(255,255,255,.08);
+  --s1: #7a2d55; --s2: #a8397a; --s3: #d0479a; --s4: #ef5fb0; --s5: #ff8fcf; --s0: #2c2c33;
+  --chip: #f4f4f6; --chip-text: #0b0b0d; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+}
 *, *::before, *::after { box-sizing: border-box; }
-html { font-size: 14px; }
-body { margin: 0; background: #d9d4c7; color: var(--ink); font-family: var(--body); line-height: 1.35; }
+html { font-size: 15px; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-feature-settings: "tnum", "cv11"; line-height: 1.4; -webkit-font-smoothing: antialiased; }
 button { font: inherit; color: inherit; cursor: pointer; }
-h1, h2, h3, h4, p { margin: 0; }
+h1, h2, h3, p { margin: 0; }
+svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
 /* ---- the mock-up's own bar and notes (not part of the design) ---- */
-.mockbar { position: sticky; top: 0; z-index: 100; height: var(--bar-h); display: flex; gap: 6px; align-items: center; padding: 0 14px; background: #1b1d21; color: #f4eee3;
-  font: 500 11px var(--mono); letter-spacing: .06em; white-space: nowrap; overflow-x: auto; }
+.mockbar { position: sticky; top: 0; z-index: 100; height: 42px; display: flex; gap: 6px; align-items: center; padding: 0 14px; background: #1b1d21; color: #f4eee3;
+  font: 500 11px ui-monospace, Menlo, monospace; letter-spacing: .04em; white-space: nowrap; overflow-x: auto; }
 .mockbar b { margin-right: 8px; text-transform: uppercase; letter-spacing: .12em; }
 .mockbar .gap { width: 12px; flex: none; }
-.mockbar button, .mockbar a { background: none; border: 1px solid #f4eee355; border-radius: 99px; padding: 3px 10px; font-size: 10.5px; letter-spacing: .06em; color: #f4eee3; text-decoration: none; }
-.mockbar button[aria-pressed=true] { background: #f4eee3; color: #1b1d21; }
 .mockbar .lbl { color: #f4eee388; margin-left: 4px; }
+.mockbar button, .mockbar a { background: none; border: 1px solid #f4eee355; border-radius: 99px; padding: 3px 10px; font: inherit; font-size: 10.5px; color: #f4eee3; text-decoration: none; }
+.mockbar button[aria-pressed=true] { background: #f4eee3; color: #1b1d21; }
 .mockbar .note { color: #f4eee399; }
 body.embed .mockbar, body.embed .mocknotes { display: none; }
-body.embed { --bar-h: 0px; }
-.stage { display: flex; justify-content: center; }
-body.preview .stage { padding: 20px 16px 28px; overflow-x: auto; justify-content: safe center; }
-body.preview .page { box-shadow: 0 0 0 1px #1b1d2122, 0 20px 50px -20px #3c2d1466; }
-
-/* numbered notes, in the mock-up's blue so they never pass for the pen */
-.n { display: none; vertical-align: 2px; margin-left: 6px; width: 18px; height: 18px; border-radius: 50%; background: var(--note); color: #fff;
-  font: 600 10px/18px var(--mono); text-align: center; letter-spacing: 0; text-decoration: none; flex: none; }
+.stage { display: flex; justify-content: center; background: #2a2a2e; }
+body.preview .stage { padding: 16px; overflow-x: auto; justify-content: safe center; }
+.n { display: none; width: 18px; height: 18px; border-radius: 50%; background: #1f6fe0; color: #fff; font: 600 10px/18px var(--sans); text-align: center; vertical-align: 2px; margin-left: 6px; text-decoration: none; flex: none; }
 body.notes .n { display: inline-block; }
 
 /* ---- the page ---- */
-.page { width: 100%; background: var(--ground) var(--grain); container: page / inline-size; min-height: 100vh; }
-.wrap { margin: 0 auto; padding: 0 16px; }
-@container page (min-width: 720px) { .wrap { padding: 0 28px; } }
-@container page (min-width: 1400px) { .wrap { padding: 0 44px; } }
+.page { width: 100%; background: var(--bg); container: page / inline-size; min-height: 100vh; }
+.wrap { padding: 0 16px; }
+@container page (min-width: 720px) { .wrap { padding: 0 32px; } }
+@container page (min-width: 1400px) { .wrap { padding: 0 48px; } }
 
-.mono { font-family: var(--mono); }
-.eyebrow { font: 500 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
-.u { font: 500 .55em var(--mono); letter-spacing: .02em; margin-left: 2px; }
-.muted { color: var(--muted); }
-a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink);
-  text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
-
-/* header */
-.site { display: flex; align-items: center; gap: 12px; height: 64px; border-bottom: 3px double var(--rule); }
-.burger { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--rule); background: none; display: grid; place-items: center; }
-.word { font: 600 26px/1 var(--display); letter-spacing: -.02em; font-variation-settings: "opsz" 72; }
-.word i { color: var(--magenta); font-weight: 500; }
-.site .sp { flex: 1; }
-.site .tool { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; display: flex; gap: 6px; align-items: center; background: none; border: 0; }
-.site .tool svg { width: 16px; height: 16px; }
+/* top bar */
+.top { display: flex; align-items: center; gap: 12px; height: 64px; border-bottom: 1px solid var(--line); }
+.logo { font: 600 23px/1 var(--display); letter-spacing: -.02em; font-variation-settings: "opsz" 72; color: var(--text); text-decoration: none; }
+.logo i { color: var(--accent); font-weight: 500; }
+.search { display: none; align-items: center; gap: 8px; height: 40px; width: min(360px, 34vw); padding: 0 14px; margin-left: 20px; border-radius: 99px; background: var(--surface); color: var(--muted); font-size: 14px; }
+@container page (min-width: 720px) { .search { display: flex; } }
+.top .sp { flex: 1; }
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 99px; border: 1px solid var(--line); background: var(--bg); font-size: 14px; font-weight: 500; text-decoration: none; color: var(--text); transition: background .15s, border-color .15s; }
+.btn:hover { background: var(--surface); }
+.btn.primary { background: var(--chip); color: var(--chip-text); border-color: transparent; }
+.icon { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); display: grid; place-items: center; padding: 0; transition: background .15s; }
+.icon:hover { background: var(--surface); }
 
 /* title */
-.title { display: grid; gap: 6px; padding: 22px 0 14px; grid-template-columns: 1fr auto; align-items: end; }
-.title h1 { font: 600 40px/1 var(--display); letter-spacing: -.025em; font-variation-settings: "opsz" 144; }
-@container page (min-width: 720px) { .title h1 { font-size: 48px; } }
-.meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font: 500 10.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
-.meta b { font-weight: 600; color: var(--ink); }
-.meta .dot { color: var(--muted); }
+.title { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 28px 0 22px; }
+.title h1 { font: 600 42px/1 var(--display); letter-spacing: -.025em; font-variation-settings: "opsz" 144; }
+@container page (min-width: 720px) { .title h1 { font-size: 54px; } }
 .title .acts { display: flex; gap: 8px; }
-.pill { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--g-raised); box-shadow: var(--sh-raised);
-  font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
-.pill.ink { background: var(--g-ink); color: var(--ground); border-color: #000; box-shadow: inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150; }
-.pill svg { width: 14px; height: 14px; }
+
+.label { font-size: 13px; color: var(--muted); font-weight: 500; }
+.h2 { font: 600 20px/1.2 var(--sans); letter-spacing: -.01em; display: flex; align-items: center; }
+.sec { padding: 36px 0 0; }
+.sec-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+
+/* stars: five stars, filled in the rating's colour */
+.stars { display: inline-flex; gap: 2px; vertical-align: middle; }
+.stars svg { display: block; }
 
 /* nearby */
-.nearby { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--line); padding: 10px 0 12px; }
-.nearby-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.near-row { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x mandatory; padding: 2px; }
+.near-row { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .near-row::-webkit-scrollbar { display: none; }
-.near { flex: none; width: 150px; scroll-snap-align: start; display: grid; grid-template-columns: 44px 1fr; gap: 3px 9px; align-items: center; padding: 6px; border-radius: 10px; text-decoration: none; color: inherit; }
-.near:hover { background: var(--sunken); }
-.near[aria-current] { box-shadow: inset 0 0 0 1.5px var(--rule); background: var(--sunken); }
-.near img { grid-row: span 3; width: 44px; height: 44px; border-radius: 8px; object-fit: cover; box-shadow: var(--frame); }
-.near .nm { font: 600 13px/1.1 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.near .wn { font: 600 12px var(--mono); }
-.near .wn sup { color: var(--gust); font-size: 9px; margin-left: 1px; }
-.near .st { display: flex; gap: 2px; }
-
-/* stars: five marks, filled in the spot finder's star colours */
-.stars { display: inline-flex; gap: 2px; align-items: center; }
-.stars i { width: 7px; height: 7px; border-radius: 50%; background: var(--line-soft); }
-.stars.big i { width: 11px; height: 11px; }
-.stars i.on { background: var(--c, var(--s4)); }
-
-/* section heads */
-.sec { padding: 26px 0 8px; }
-.sec-h { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; justify-content: space-between; border-bottom: 2px solid var(--rule); padding-bottom: 6px; margin-bottom: 0; }
-.sec-h h2 { font: 600 22px/1.1 var(--display); letter-spacing: -.01em; font-variation-settings: "opsz" 72; display: flex; align-items: center; }
-.sec-h .side { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-.fresh { font: 400 10.5px var(--mono); color: var(--muted); letter-spacing: .02em; }
-.fresh b { color: var(--ink-2); font-weight: 500; }
-.livedot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-right: 5px; vertical-align: 1px; box-shadow: 0 0 0 3px #2a704626; }
+.near { flex: none; display: grid; grid-template-columns: 40px 1fr; gap: 2px 10px; align-items: center; padding: 8px 14px 8px 8px; border-radius: var(--r-s); background: var(--surface); text-decoration: none; color: inherit; transition: background .15s; }
+.near:hover { background: var(--surface-2); }
+.near[aria-current] { box-shadow: inset 0 0 0 1.5px var(--text); }
+.near img { grid-row: span 2; width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
+.near .nm { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.near .wn { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--text-2); white-space: nowrap; }
 
 /* now */
-.now { display: grid; gap: 0; }
-@container page (min-width: 900px) { .now { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 28px; } }
-@container page (min-width: 1300px) { .now { grid-template-columns: minmax(440px, 1fr) minmax(0, 1.5fr); gap: 36px; } }
-@container page (min-width: 1600px) { .now { grid-template-columns: minmax(460px, 1fr) minmax(0, 1.6fr) minmax(280px, .62fr); } .nearby { display: none; } .side-near { display: block !important; } }
-.side-near { display: none; border-top: 1px solid var(--line); }
-.side-near .near { width: auto; grid-template-columns: 56px 1fr auto; padding: 8px 6px; border-radius: 10px; }
-.side-near .near img { width: 56px; height: 40px; grid-row: span 2; }
-.side-near .near .st { grid-column: 3; grid-row: 1 / span 2; }
-.pair { display: grid; }
-@container page (min-width: 1400px) { .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 44px; } .pair .guide { grid-template-columns: 1fr 1fr; } }
-/* the figures now: small quiet cards, no rules */
-.reads { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.read { padding: 14px 16px 15px; min-width: 0; border-radius: 16px; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line-soft); }
-.read.wide { grid-column: 1 / -1; }
-.read .eyebrow { display: flex; align-items: center; }
-.fig { font: 600 30px/1.05 var(--mono); letter-spacing: -.03em; margin: 6px 0 3px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
-.fig .g { font-size: 17px; color: var(--gust); letter-spacing: 0; }
-.fig .dir { font: 500 13px var(--mono); letter-spacing: .06em; color: var(--ink-2); }
-.sub { font: 400 14px/1.35 var(--body); color: var(--ink-2); }
-.sub .m { font-family: var(--mono); font-size: 12px; }
-.obs { margin-top: 8px; display: flex; gap: 8px; align-items: flex-start; font: 400 13px/1.35 var(--body); }
-.obs .bd { flex: none; width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; background: var(--buoy); box-shadow: 0 0 0 1.5px var(--rule); }
-.obs b { font: 600 13px var(--mono); }
-.delta { display: inline-block; margin-top: 6px; font: 500 11px var(--mono); padding: 2px 8px; border-radius: 99px; background: #e9b20026; color: var(--buoy-ink); letter-spacing: .02em; }
-.depthbar { position: relative; height: 10px; border-radius: 99px; background: var(--sea-3); margin: 8px 0 4px; box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+.now { display: grid; gap: 12px; }
+@container page (min-width: 900px) { .now { grid-template-columns: minmax(0, 1fr) clamp(320px, 32cqw, 420px); gap: 16px; } }
+@container page (min-width: 1500px) { .now { grid-template-columns: minmax(0, 1fr) 420px 300px; } .nearby-top { display: none; } .side-near { display: flex !important; } }
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-content: start; }
+.card { background: var(--surface); border-radius: var(--r); padding: 18px 20px 18px; min-width: 0; }
+.card.wide { grid-column: 1 / -1; }
+.card .label { display: flex; align-items: center; }
+.big { font-size: 40px; font-weight: 600; letter-spacing: -.035em; line-height: 1.05; margin: 8px 0 6px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.big .u { font-size: 16px; font-weight: 500; letter-spacing: 0; color: var(--text-2); }
+.big .g { font-size: 20px; font-weight: 600; color: var(--gust); letter-spacing: -.01em; }
+.line { font-size: 14px; color: var(--text-2); }
+.line.off { color: var(--pen); }
+.depthbar { position: relative; height: 6px; border-radius: 99px; background: var(--surface-2); margin: 4px 0 8px; overflow: hidden; }
 .depthbar span { position: absolute; inset: 0 auto 0 0; background: var(--depth); border-radius: 99px; }
-.depthbar em { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); }
+.side-near { display: none; flex-direction: column; gap: 8px; }
+.side-near .near { grid-template-columns: 44px 1fr; }
+.side-near .near img { width: 44px; height: 44px; }
 
-/* satellite */
-.sat { margin: 12px 0 0; position: relative; }
-@container page (min-width: 900px) { .sat { margin-top: 12px; } }
-.sat-frame { position: relative; border-radius: 14px; overflow: hidden; box-shadow: var(--frame), 0 0 0 1px var(--rule); aspect-ratio: 4 / 3; background: #57746f; }
-@container page (min-width: 900px) { .sat-frame { aspect-ratio: auto; height: 100%; min-height: 330px; } }
-@container page (min-width: 1300px) { .sat-frame { min-height: 560px; } }
-.sat-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .35s; }
-.sat-frame img.off { opacity: 0; }
-.sat-frame svg.rose { position: absolute; inset: 0; width: 100%; height: 100%; }
-.sat-tools { position: absolute; left: 10px; right: 10px; top: 10px; display: flex; justify-content: space-between; align-items: end; gap: 8px; pointer-events: none; }
-.sat-tools > * { pointer-events: auto; }
-.seg { display: inline-flex; border-radius: 99px; background: #f3eee3e6; box-shadow: 0 0 0 1px var(--rule); padding: 2px; }
-.seg button { border: 0; background: none; border-radius: 99px; padding: 5px 10px; font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
-.seg button[aria-pressed=true] { background: var(--ink); color: var(--ground); }
-/* the loupe's words: its own colours, on the photograph in every theme */
-.lp-t { font: 600 16px var(--mono); letter-spacing: .14em; fill: #fffffe; text-anchor: middle; paint-order: stroke; stroke: rgba(6,8,10,.55); stroke-width: 3px; }
-.lp-f { font: 500 14px var(--mono); fill: rgba(255,255,255,.85); text-anchor: middle; paint-order: stroke; stroke: rgba(6,8,10,.55); stroke-width: 3px; }
-.lp-c { font: 600 19px var(--mono); fill: #fffffe; text-anchor: middle; }
+/* the picture and its loupe */
+.sat { position: relative; aspect-ratio: 1; border-radius: var(--r); overflow: hidden; background: #31504c; }
+.sat img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .35s; }
+.sat img.off { opacity: 0; }
+.sat svg.rose { position: absolute; inset: 0; width: 100%; height: 100%; }
+.seg { display: inline-flex; padding: 3px; border-radius: 99px; background: var(--surface); }
+.seg button { border: 0; background: none; border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 500; color: var(--text-2); }
+.seg button[aria-pressed=true] { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.sat .seg { position: absolute; left: 10px; top: 10px; background: rgba(10,12,14,.6); backdrop-filter: blur(8px); }
+.sat .seg button { color: rgba(255,255,255,.8); font-size: 12px; padding: 5px 10px; }
+.sat .seg button[aria-pressed=true] { background: #fffffe; color: #0b0b0d; }
+.lp-foot { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 99px; background: rgba(10,12,14,.72); backdrop-filter: blur(8px); color: #fffffe; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.lp-foot sup { color: #ffa45c; font-size: 10px; }
+.lp-foot .off { color: #ff7a6c; }
+/* the loupe's words show on hover (or a tap), its shapes always */
+.lp-t { font: 600 15px var(--sans); letter-spacing: .04em; fill: #fffffe; text-anchor: middle; paint-order: stroke; stroke: rgba(6,8,10,.5); stroke-width: 3px; }
+.lp-f { font: 500 14px var(--sans); fill: rgba(255,255,255,.85); text-anchor: middle; paint-order: stroke; stroke: rgba(6,8,10,.5); stroke-width: 3px; }
+.lp-c { font: 600 18px var(--sans); fill: #fffffe; text-anchor: middle; }
 .lp-pill rect { fill: rgba(10,12,14,.74); }
-.lp-pill text { font: 600 15px var(--mono); letter-spacing: .06em; fill: #fffffe; text-anchor: middle; }
+.lp-pill text { font: 600 15px var(--sans); fill: #fffffe; text-anchor: middle; }
 .lp-pill.red rect { fill: #ff4d3d; }
-.lp-g { fill: #ffa45c; font-size: 14px; }
-.lp-foot { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); padding: 6px 14px; border-radius: 99px; background: rgba(10,12,14,.78); color: #fffffe; font: 600 12px var(--mono); letter-spacing: .06em; white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,.35); }
-.lp-foot sup { color: #ffa45c; font-size: 9px; }
-.lp-foot .off { color: #ff7a6c; margin-left: 8px; }
-.lp-foot .st { display: inline-flex; gap: 2px; margin-left: 8px; vertical-align: 1px; }
-.lp-foot .st i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.22); }
-@container page (max-width: 700px) { .lp-t, .lp-f, .lp-pill, .lp-c { display: none; } }
-.key { background: #f3eee3e6; border-radius: 10px; box-shadow: 0 0 0 1px var(--rule); padding: 6px 9px; font: 500 9.5px/1.6 var(--mono); letter-spacing: .04em; }
-.key i { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; margin-right: 5px; border-radius: 2px; }
-.sat .north { position: absolute; top: 10px; right: 10px; background: #f3eee3e6; border-radius: 99px; box-shadow: 0 0 0 1px var(--rule); font: 600 10px var(--mono); padding: 2px 8px; }
+.lp-t, .lp-f, .lp-pill:not(.red) { opacity: 0; transition: opacity .2s; }
+.sat:hover .lp-t, .sat:hover .lp-f, .sat:hover .lp-pill, .sat.words .lp-t, .sat.words .lp-f, .sat.words .lp-pill { opacity: 1; }
 
-/* alert line */
-.alertline { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; margin-top: 10px; padding: 10px 10px 10px 16px; border-radius: 16px; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line-soft); }
-.alertline p { font: 400 14px var(--body); color: var(--ink-2); }
-
-/* week strip */
-.week { display: grid; grid-template-columns: repeat(7, minmax(92px, 1fr)); overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); }
+/* the week */
+.week { display: grid; grid-template-columns: repeat(7, minmax(118px, 1fr)); gap: 8px; overflow-x: auto; scrollbar-width: none; }
 .week::-webkit-scrollbar { display: none; }
-.day { border: 0; background: none; text-align: left; padding: 10px 8px 10px; border-right: 1px solid var(--line); position: relative; display: grid; gap: 5px; align-content: start; }
-.day:last-child { border-right: 0; }
-.day:hover { background: #ede6d680; }
-.day[aria-pressed=true] { background: var(--sunken); }
-.day[aria-pressed=true]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; background: var(--ink); }
-.day .dn { font: 600 15px var(--display); }
-.day .dn small { font: 400 10px var(--mono); color: var(--muted); margin-left: 3px; }
-.day .rng { font: 600 13px var(--mono); }
-.day .rng sup { color: var(--gust); font-size: 9px; margin-left: 1px; }
-.day svg { width: 100%; height: 30px; display: block; }
-.day .win { font: 500 10px var(--mono); color: var(--ink-2); min-height: 13px; }
-.day .sure { font: 500 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; display: flex; align-items: center; gap: 4px; color: var(--muted); }
-.sure .bars { display: inline-flex; gap: 1.5px; align-items: end; }
-.sure .bars i { width: 3px; background: var(--line); border-radius: 1px; }
-.sure .bars i.on { background: var(--ink-2); }
-.day .flag { font: 500 9.5px var(--mono); color: var(--pen-ink); letter-spacing: .02em; }
+.day { border: 0; text-align: left; padding: 14px 14px 12px; border-radius: var(--r); background: var(--surface); display: grid; gap: 8px; align-content: start; transition: background .15s, box-shadow .15s; }
+.day:hover { background: var(--surface-2); }
+.day[aria-pressed=true] { box-shadow: inset 0 0 0 1.5px var(--text); }
+.day .dn { font-size: 14px; font-weight: 600; }
+.day .dn small { font-weight: 400; color: var(--muted); margin-left: 4px; font-size: 13px; }
+.day .rng { font-size: 15px; font-weight: 600; }
+.day .rng small { font-size: 12px; font-weight: 400; color: var(--muted); }
+.day svg.spark { width: 100%; height: 26px; display: block; }
+.day .foot { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--muted); min-height: 16px; }
+.day .foot .off { color: var(--pen); font-weight: 500; }
 
 /* the graph */
-.gtools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 0 6px; }
-.gtools .navs { display: flex; gap: 6px; }
-.round { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--g-raised); box-shadow: var(--sh-raised); display: grid; place-items: center; }
-.readout { min-height: 64px; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: end; padding: 6px 0 8px; border-bottom: 1px solid var(--line); }
-.readout .t { flex: none; font: 600 13px var(--mono); letter-spacing: .02em; padding: 2px 8px; border-radius: 99px; background: var(--ink); color: var(--ground); align-self: center; }
-.readout .t.is-now { background: var(--pen); }
+.gtools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 18px 0 8px; }
+.readout { display: flex; flex-wrap: wrap; gap: 6px 24px; align-items: center; min-height: 52px; }
+.readout .t { font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 99px; background: var(--chip); color: var(--chip-text); }
+.readout .t.is-now { background: var(--pen); color: #fff; }
 .ro { display: grid; gap: 1px; }
-.ro .eyebrow { font-size: 9px; }
-.ro b { font: 600 18px var(--mono); letter-spacing: -.02em; }
-.ro b sup { font-size: 11px; color: var(--gust); margin-left: 1px; }
-.ro span { font: 400 11px var(--mono); color: var(--ink-2); }
-.graph { position: relative; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
+.ro .label { font-size: 12px; }
+.ro b { font-size: 16px; font-weight: 600; }
+.ro b sup { font-size: 11px; color: var(--gust); }
+.navs { display: flex; gap: 6px; }
+.gbox { display: grid; grid-template-columns: 64px minmax(0, 1fr); border-radius: var(--r); background: var(--surface); padding: 6px 0 4px; }
+.gl { position: relative; }
+.gl span { position: absolute; left: 16px; font-size: 12px; color: var(--muted); font-weight: 500; transform: translateY(-50%); white-space: nowrap; }
+.graph { position: relative; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; border-left: 1px solid var(--line); }
 .graph svg { display: block; }
-.graph .rowlab { font: 500 9px var(--mono); letter-spacing: .12em; text-transform: uppercase; fill: var(--muted); }
-.graph text { font-family: var(--mono); }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 8px 0 0; font: 400 10.5px var(--mono); color: var(--ink-2); }
-.legend i { display: inline-block; width: 14px; height: 8px; margin-right: 5px; vertical-align: 0; border-radius: 2px; }
+.graph text { font-family: var(--sans); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 12px 2px 0; font-size: 12.5px; color: var(--text-2); }
+.legend i { display: inline-block; width: 14px; height: 8px; margin-right: 6px; border-radius: 3px; vertical-align: 0; }
 
-/* the table (Graph | Table) */
-.tbl { width: 100%; border-collapse: collapse; font: 400 13px var(--mono); }
-.tbl th { font: 500 9.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
-.tbl td { padding: 9px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-.tbl td b { font-size: 16px; font-weight: 600; }
+/* the table */
+.tbl { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--surface); border-radius: var(--r); overflow: hidden; }
+.tbl th { font-size: 12px; font-weight: 500; color: var(--muted); text-align: left; padding: 12px 12px 10px; white-space: nowrap; }
+.tbl td { padding: 10px 12px; border-top: 1px solid var(--line); white-space: nowrap; }
+.tbl td b { font-size: 15px; font-weight: 600; }
 .tbl td sup { color: var(--gust); font-size: 10px; }
 .tbl tr.dim td { color: var(--muted); }
 .tbl .hide-n { display: none; }
 @container page (min-width: 720px) { .tbl .hide-n { display: table-cell; } }
-.offs { color: var(--pen-ink); text-decoration: line-through; text-decoration-color: var(--pen); }
+.tbl .off { color: var(--pen); }
 
-/* was it right */
-.verify { display: grid; gap: 14px; padding-top: 12px; }
-@container page (min-width: 900px) { .verify { grid-template-columns: 260px 1fr; gap: 28px; } }
-.vfig { display: grid; gap: 10px; align-content: start; }
-.vfig .row { display: grid; grid-template-columns: 1fr auto; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
-.vfig .row b { font: 600 20px var(--mono); }
-.vfig .row span { font: 400 13px var(--body); color: var(--ink-2); grid-column: 1 / -1; }
-.models { width: 100%; border-collapse: collapse; font: 400 12px var(--mono); margin-top: 4px; }
-.models td { padding: 5px 0; border-bottom: 1px solid var(--line-soft); }
-.models td:last-child { text-align: right; }
-.models .bar { display: inline-block; height: 6px; background: var(--ink-2); border-radius: 3px; vertical-align: 1px; margin-right: 6px; }
+/* the guide */
+.guide { display: grid; gap: 12px; }
+@container page (min-width: 720px) { .guide { grid-template-columns: 1fr 1fr; } }
+@container page (min-width: 1100px) { .guide { grid-template-columns: repeat(4, 1fr); } }
+.gd { background: var(--surface); border-radius: var(--r); padding: 18px 20px; }
+.gd h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.gd p, .gd li { font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.gd ul { margin: 0; padding-left: 18px; }
+a.link, button.link { background: none; border: 0; padding: 0; font-size: 14px; font-weight: 500; color: var(--text); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
+.small { font-size: 12.5px; color: var(--muted); padding: 32px 0 48px; }
 
-/* guide */
-.guide { display: grid; grid-template-columns: 1fr; padding-top: 4px; }
-@container page (min-width: 720px) { .guide { grid-template-columns: 1fr 1fr; column-gap: 28px; } }
-@container page (min-width: 1000px) { .guide { grid-template-columns: repeat(4, 1fr); } }
-.gd { padding: 12px 0; border-bottom: 1px solid var(--line); }
-.gd h3 { font: 600 16px var(--display); margin-bottom: 6px; display: flex; align-items: center; }
-.gd p, .gd li { font: 400 14px/1.4 var(--body); color: var(--ink-2); }
-.gd ul { margin: 0; padding-left: 16px; }
-.gd .m { font: 500 12px var(--mono); color: var(--ink); }
-.reports { display: grid; gap: 8px; padding-top: 12px; }
-.rep { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
-.rep .who { width: 28px; height: 28px; border-radius: 50%; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); display: grid; place-items: center; font: 600 11px var(--mono); grid-row: span 2; }
-.rep .hd { font: 500 11px var(--mono); color: var(--ink-2); }
-.rep p { font: 400 14px var(--body); }
+/* phone */
+@container page (max-width: 640px) {
+  .big { font-size: 32px; }
+  .cards { gap: 8px; }
+  .card { padding: 14px 14px; }
+  .title { padding: 20px 0 16px; }
+  .title .acts .btn span { display: none; }
+  .title .acts .btn { width: 40px; padding: 0; justify-content: center; }
+  .lp-t, .lp-f, .lp-pill:not(.red), .lp-c { display: none; }
+}
 
-/* sources */
-.sources { display: grid; gap: 0; padding-top: 6px; }
-.src { display: grid; grid-template-columns: 110px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); font: 400 13px var(--body); color: var(--ink-2); }
-.src .k { font: 500 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink); padding-top: 2px; }
-.src .new { font: 600 9px var(--mono); letter-spacing: .1em; color: var(--note); margin-left: 6px; }
-.small { font: 400 12px/1.5 var(--body); color: var(--muted); padding: 18px 0 40px; }
-
-/* mock-up notes */
-.mocknotes { background: #1b1d21; color: #f4eee3; padding: 28px 0 60px; }
-.mocknotes .wrap { max-width: 980px; }
-.mocknotes h2 { font: 600 24px var(--display); margin-bottom: 4px; }
-.mocknotes h3 { font: 600 17px var(--display); margin: 26px 0 8px; }
-.mocknotes p, .mocknotes li { font: 400 15px/1.5 var(--body); color: #f4eee3dd; }
+/* ---- the mock-up's notes ---- */
+.mocknotes { background: #1b1d21; color: #f4eee3; padding: 32px 0 64px; font-family: var(--sans); }
+.mocknotes .wrap { max-width: 960px; margin: 0 auto; }
+.mocknotes h2 { font: 600 24px var(--sans); margin-bottom: 6px; }
+.mocknotes h3 { font: 600 17px var(--sans); margin: 28px 0 8px; }
+.mocknotes p, .mocknotes li { font-size: 15px; line-height: 1.55; color: #f4eee3dd; }
 .mocknotes ol { padding-left: 0; list-style: none; margin: 10px 0 0; display: grid; gap: 12px; }
 .mocknotes ol li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; }
 .mocknotes ol li .n { display: inline-block; margin: 2px 0 0; }
 .mocknotes b { color: #fffffe; }
-.mocknotes table { border-collapse: collapse; width: 100%; font: 400 13px/1.4 var(--body); margin-top: 8px; }
-.mocknotes th, .mocknotes td { text-align: left; padding: 7px 8px 7px 0; border-bottom: 1px solid #f4eee322; vertical-align: top; }
-.mocknotes th { font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: #f4eee399; }
-.mocknotes code { font: 400 12px var(--mono); }
+.mocknotes table { border-collapse: collapse; width: 100%; font-size: 14px; line-height: 1.45; margin-top: 8px; }
+.mocknotes th, .mocknotes td { text-align: left; padding: 8px 10px 8px 0; border-bottom: 1px solid #f4eee322; vertical-align: top; }
+.mocknotes th { font-size: 12px; font-weight: 500; color: #f4eee399; }
+.mocknotes code { font: 12.5px ui-monospace, Menlo, monospace; }
 </style>
 </head>
 <body class="preview notes">
@@ -329,7 +251,6 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
   <span class="gap"></span><span class="lbl">Theme</span>
   <button data-theme-btn="white" aria-pressed="true">White</button>
   <button data-theme-btn="dark" aria-pressed="false">Dark</button>
-  <button data-theme-btn="paper" aria-pressed="false">Paper (today)</button>
   <span class="gap"></span><span class="lbl">Satellite</span>
   <button data-sat-btn="x" aria-pressed="true">Enhanced</button>
   <button data-sat-btn="orig" aria-pressed="false">As today</button>
@@ -342,160 +263,131 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
 
 <div class="stage"><div class="page" id="page">
   <div class="wrap">
-
-    <header class="site">
-      <button class="burger" aria-label="Menu"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M1 3h12M1 7h12M1 11h12" stroke="#1a1d21" stroke-width="1.6"/></svg></button>
-      <span class="word">wingfoil<i>.ie</i></span>
+    <header class="top">
+      <a class="logo" href="#">wingfoil<i>.ie</i></a>
+      <div class="search"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search spots</div>
       <span class="sp"></span>
-      <button class="themebtn" aria-label="Dark mode"><svg viewBox="0 0 16 16"><path d="M13.5 9.8A5.8 5.8 0 0 1 6.2 2.5a5.8 5.8 0 1 0 7.3 7.3z" fill="none" stroke="#1a1d21" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
-      <button class="tool"><svg viewBox="0 0 16 16"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span style="text-decoration:underline;text-underline-offset:4px">Chart</span></button>
+      <a class="btn" href="#"><svg class="i" viewBox="0 0 24 24"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5M15 6.5V20"/></svg>Chart</a>
+      <button class="icon themebtn" aria-label="Dark mode"><svg class="i" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
+      <button class="icon" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </header>
 
     <section class="title">
       <h1>Dollymount</h1>
       <div class="acts">
-        <button class="pill"><svg viewBox="0 0 16 16"><path d="M8 1.5l1.9 4.1 4.4.5-3.3 3 .9 4.4L8 11.3 4.1 13.5l.9-4.4-3.3-3 4.4-.5z" fill="none" stroke="#d43a2c" stroke-width="1.4" stroke-linejoin="round"/></svg>Star</button>
+        <button class="btn"><svg class="i" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0v4l2 3H4l2-3z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg><span>Alert me</span><a class="n" href="#n7">7</a></button>
+        <button class="btn"><svg class="i" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg><span>Star</span></button>
       </div>
     </section>
 
-    <section class="nearby" aria-label="Nearby spots">
-      <div class="nearby-h">
-        <span class="eyebrow">Nearby now<a class="n" href="#n1">1</a></span>
-        <button class="link">All spots on the chart</button>
-      </div>
+    <section class="nearby-top" aria-label="Nearby">
+      <div class="sec-h" style="margin-bottom:10px"><span class="label">Nearby<a class="n" href="#n1">1</a></span><a class="link" href="#" style="font-size:13px">All spots on the chart</a></div>
       <div class="near-row" id="nearRow"></div>
     </section>
 
     <!-- NOW -->
-    <section class="sec" aria-label="Now">
+    <section class="sec" aria-label="Now" style="padding-top:20px">
       <div class="now">
-        <div>
-          <div class="reads" id="reads"></div>
-          <div class="alertline">
-            <p>Tell me when Dollymount has <b class="mono">3+</b> stars in daylight.</p>
-            <button class="pill ink"><svg viewBox="0 0 16 16"><path d="M8 2a4 4 0 0 0-4 4v3L2.5 11.5h11L12 9V6a4 4 0 0 0-4-4ZM6.5 13.5a1.5 1.5 0 0 0 3 0" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>Alert me<a class="n" href="#n7" style="margin-left:2px">7</a></button>
-          </div>
-        </div>
-        <figure class="sat">
-          <div class="sat-frame">
-            <img id="satHigh" data-sat="2026-10-31-spot-page/sat/dollymount-high" src="2026-10-31-spot-page/sat/dollymount-high.webp" alt="Dollymount from above at high tide, north up, with the wind now drawn over it.">
-            <img id="satLow" class="off" data-sat="2026-10-31-spot-page/sat/dollymount-low" src="2026-10-31-spot-page/sat/dollymount-low.webp" alt="Dollymount from above at low tide, north up.">
-            <svg class="rose" id="rose" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
-            <div class="lp-foot" id="lpFoot"></div>
-            <span class="north">↑ N</span>
-            <div class="sat-tools">
-              <div class="seg" role="group" aria-label="Tide in the picture">
-                <button data-tide="high" aria-pressed="true">High tide</button>
-                <button data-tide="low" aria-pressed="false">Low tide</button>
-              </div>
-            </div>
-          </div>
+        <div class="cards" id="cards"></div>
+        <figure class="sat" id="sat" style="margin:0">
+          <img id="satHigh" data-sat="2026-10-31-spot-page/sat/dollymount-high" src="2026-10-31-spot-page/sat/dollymount-high.webp" alt="Dollymount from above at high tide, north up, with the wind drawn over it.">
+          <img id="satLow" class="off" data-sat="2026-10-31-spot-page/sat/dollymount-low" src="2026-10-31-spot-page/sat/dollymount-low.webp" alt="Dollymount from above at low tide, north up.">
+          <svg class="rose" id="rose" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+          <div class="seg" role="group" aria-label="Tide in the picture"><button data-tide="high" aria-pressed="true">High tide</button><button data-tide="low" aria-pressed="false">Low tide</button></div>
+          <div class="lp-foot" id="lpFoot"></div>
         </figure>
-        <aside class="side-near" aria-label="Nearby now"><div class="nearby-h" style="padding-top:10px"><span class="eyebrow">Nearby now</span><button class="link">All on the chart</button></div><div id="sideNear"></div></aside>
+        <aside class="side-near" aria-label="Nearby"><div class="sec-h" style="margin:0 0 2px"><span class="label">Nearby</span><a class="link" href="#" style="font-size:13px">All on the chart</a></div><div id="sideNear" style="display:grid;gap:8px"></div></aside>
       </div>
     </section>
 
-    <!-- WEEK + GRAPH -->
+    <!-- THE WEEK -->
     <section class="sec" aria-labelledby="fcH">
       <div class="sec-h">
-        <h2 id="fcH">The week<a class="n" href="#n3">3</a></h2>
-        <div class="side">
-          <span class="fresh">Stars for <b>~80 kg</b> · <b>Harmonie</b> to Mon, then <b>ECMWF</b></span>
-          <div class="seg" role="group" aria-label="View" style="box-shadow:0 0 0 1px var(--line)">
-            <button data-view="graph" aria-pressed="true">Graph</button>
-            <button data-view="table" aria-pressed="false">Table</button>
-          </div>
-        </div>
+        <h2 class="h2" id="fcH">The week<a class="n" href="#n3">3</a></h2>
+        <div class="seg" role="group" aria-label="View"><button data-view="graph" aria-pressed="true">Graph</button><button data-view="table" aria-pressed="false">Table</button></div>
       </div>
       <div class="week" id="week" role="group" aria-label="Days"></div>
 
       <div id="graphView">
         <div class="gtools">
-          <span class="eyebrow">Every row on the same clock · hover or drag<a class="n" href="#n4">4</a></span>
+          <div class="readout" id="readout"></div>
           <div class="navs">
-            <button class="round" id="prev" aria-label="Earlier"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M8 1 3 6l5 5" fill="none" stroke="#1a1d21" stroke-width="1.6"/></svg></button>
-            <button class="round" id="next" aria-label="Later"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M4 1l5 5-5 5" fill="none" stroke="#1a1d21" stroke-width="1.6"/></svg></button>
+            <button class="icon" id="prev" aria-label="Earlier"><svg class="i" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg></button>
+            <button class="icon" id="next" aria-label="Later"><svg class="i" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
           </div>
         </div>
-        <div class="readout" id="readout"></div>
-        <div class="graph" id="graph"></div>
+        <div class="gbox"><div class="gl" id="gl"></div><div class="graph" id="graph"></div></div>
         <div class="legend">
-          <span><i style="background:linear-gradient(90deg,#4f80c8,#49a88a,#4cb35a,#b5cf3a,#ecd23a,#f2a03a,#e05a33)"></i>Wind, coloured by speed</span>
-          <span><i style="background:#e0803a;height:3px;vertical-align:2px"></i>Gust</span>
-          <span><i style="background:#1a1d2126"></i>Models disagree this much<a class="n" href="#n5">5</a></span>
-          <span><i style="background:#b0186a1f;box-shadow:inset 0 0 0 1px #b0186a55"></i>Your range 15–22</span>
-          <span><i style="background:#5f8c9c"></i>1 m of water or more at the launch<a class="n" href="#n6">6</a></span>
-          <span><i style="background:#1a1d2114"></i>Dark</span>
+          <span><i style="background:linear-gradient(90deg,#4f80c8,#49a88a,#4cb35a,#b5cf3a,#ecd23a,#f2a03a)"></i>Wind<a class="n" href="#n4">4</a></span>
+          <span><i style="height:2px;vertical-align:3px;background:repeating-linear-gradient(90deg,var(--gust) 0 4px,transparent 4px 7px)"></i>Gust</span>
+          <span><i style="background:var(--spread)"></i>Where the models disagree<a class="n" href="#n5">5</a></span>
+          <span><i style="background:var(--depth)"></i>1 m of water or more at the launch<a class="n" href="#n6">6</a></span>
+          <span><i style="background:var(--night);box-shadow:inset 0 0 0 1px var(--line)"></i>Dark</span>
         </div>
       </div>
-      <div id="tableView" hidden>
-        <table class="tbl" id="tbl"></table>
-      </div>
+      <div id="tableView" hidden><table class="tbl" id="tbl"></table></div>
     </section>
 
-    <!-- GUIDE -->
+    <!-- THE SPOT -->
     <section class="sec" aria-labelledby="gH">
       <div class="sec-h">
-        <h2 id="gH">The spot<a class="n" href="#n8">8</a></h2>
-        <span class="fresh">Written for wingfoil.ie · checked 12 Oct · <button class="link" style="font-size:10px">Suggest a change</button></span>
+        <h2 class="h2" id="gH">The spot<a class="n" href="#n8">8</a></h2>
+        <button class="link" style="font-size:13px">Suggest a change</button>
       </div>
       <div class="guide">
-        <div class="gd"><h3>Launch</h3><p>From the sand at the end of the causeway road. Cars can drive onto the beach; park well above the high-water line.</p></div>
-        <div class="gd"><h3>Water</h3><p><span class="m">1 m deep at the launch above 2.6 m of tide.</span> At low water the sand runs a long way out and the foil touches.</p></div>
+        <div class="gd"><h3>Launch</h3><p>From the sand at the end of the causeway road. Park well above the high-water line.</p></div>
+        <div class="gd"><h3>Water</h3><p>1 m deep at the launch above 2.6 m of tide. At low water the sand runs a long way out.</p></div>
         <div class="gd"><h3>Watch for</h3><ul><li>Westerlies blow off the beach.</li><li>Kites on the sand in a southerly.</li><li>Shipping south of the Bull Wall.</li></ul></div>
-        <div class="gd"><h3>Riders here</h3><p>Popular with kiters; wing on the higher half of the tide. Busy at weekends.</p></div>
+        <div class="gd"><h3>Riders here</h3><p>Popular with kiters. Wing on the higher half of the tide. Busy at weekends.</p></div>
       </div>
     </section>
-
-    <p class="small">Model forecasts and a buoy, not a safety statement. Look at the water before you go out. Times are Irish.</p>
+    <p class="small">Model forecasts, not a safety statement. Look at the water before you go out. Times are Irish.</p>
   </div>
 
   <!-- ===== the mock-up's notes ===== -->
   <section class="mocknotes" id="why">
     <div class="wrap">
       <h2>What changed, and why</h2>
-      <p>Surfline's spot report has a clear order: what it's like now, the spots around it, the days at a glance, one stacked graph where every row shares the clock, then the guide. This keeps that order, in our paper-and-ink look, and aims each piece at a complaint riders make about wind and surf forecasts. No adverts, no paywall and no wetsuit or sunscreen advice: the site states figures and highlights hours, it doesn't give advice.</p>
+      <p>Surfline's spot report has a clear order: what it's like now, the spots around it, the days at a glance, one stacked graph where every row shares the clock, then the guide. This keeps that order and aims each piece at a complaint riders make about wind and surf forecasts. No adverts, no paywall, no advice: the site states figures and highlights hours.</p>
       <ol>
-        <li id="n1"><span class="n">1</span><span><b>Nearby now.</b> Surfline's strip of nearby spots, with the wind now and today's best stars for each. If Dollymount is off, Portmarnock might be on, without going back to the chart.</span></li>
-        <li id="n2"><span class="n">2</span><span><b>Now, at the top, with the loupe.</b> Today the page opens on a table. Riders' first question is "what is it like right now?", so the page answers with five figures: the wind, the stars, the depth at the launch, the sea and the light left. Beside them, the chart's loupe on the satellite picture, restyled (see round four). Hovering an hour on the graph turns the loupe to that hour.</span></li>
-        <li id="n3"><span class="n">3</span><span><b>The week, in one row.</b> Like Surfline's day selector, but for wind: the wind range, the hours worth riding, an hour-by-hour bar coloured by stars, and <b>how sure</b> the day is. "Offshore" is flagged in pen, as on Wednesday. Pressing a day moves the graph there.</span></li>
-        <li id="n4"><span class="n">4</span><span><b>One graph, every row on one clock.</b> Stars, wind and gust, direction and wing size, waves, tide and depth, sky. Hover or drag across it and one readout shows that hour. Dark hours are shaded but still drawn, so dawn sessions are visible. A dashed line marks where Harmonie hands over to ECMWF. Graph or Table, as Surfline offers; the table is today's table.</span></li>
-        <li id="n5"><span class="n">5</span><span><b>How sure, drawn instead of explained.</b> Behind each wind bar, a grey band runs from the lowest model to the highest. Narrow means they agree; wide, as on Tuesday and Wednesday, means don't plan around it yet. This answers "which model do I trust?" without making riders compare four tabs.</span></li>
-        <li id="n6"><span class="n">6</span><span><b>Depth on the tide.</b> We already have foil depth on the map. Here it goes onto the tide curve: the part of the tide with 1 m of water or more at the launch is filled. Wingfoilers ask "can I ride at 10?", and only we can answer it. No surf site has this.</span></li>
-        <li id="n7"><span class="n">7</span><span><b>Alerts.</b> The page's one filled button. iKitesurf's most-praised feature is threshold alerts; the <code>alerts/</code> work can hang off this.</span></li>
-        <li id="n8"><span class="n">8</span><span><b>The spot guide.</b> Surfline's Guide tab, in a few lines: launch, water, things to watch for, who rides here. We have none of this today (a spot has only a name, a place and a facing). <b>Water</b> can be written by the site itself from the foil-depth data (the tide that gives 1 m at the launch). The rest would be a short file per spot (<code>data/locations/guides/&lt;id&gt;.md</code>), drafted from the sources already gathered in <code>docs/IRISH_SPOTS_SOURCES.md</code> and the satellite pictures, checked by the owner, then kept up through "Suggest a change". A spot with no guide yet shows only the Water line.</span></li>
+        <li id="n1"><span class="n">1</span><span><b>Nearby.</b> The spots around it with the wind now and today's best stars. If Dollymount is off, Portmarnock might be on. From 1500 px it becomes a column beside the picture.</span></li>
+        <li id="n2"><span class="n">2</span><span><b>Now.</b> Five cards, each one big figure and one short line: the wind, your stars, the water at the launch, the sea and the light left. Beside them, the chart's loupe on the satellite picture.</span></li>
+        <li id="n3"><span class="n">3</span><span><b>The week.</b> A card per day: the best stars, the wind range, a small curve of the wind in its colours, and Offshore in red when it is. Pressing a day moves the graph there.</span></li>
+        <li id="n4"><span class="n">4</span><span><b>One graph on one clock.</b> Stars, wind and gust, the direction every three hours, the sea, the tide with the depth at the launch, the sky. Hover or drag and the line above it reads out that hour; the loupe turns to it too. Graph or Table, as on Surfline.</span></li>
+        <li id="n5"><span class="n">5</span><span><b>How sure, drawn.</b> A soft band behind the wind runs from the lowest model to the highest. Narrow means they agree; wide, as on Tuesday and Wednesday, means don't plan around it yet.</span></li>
+        <li id="n6"><span class="n">6</span><span><b>Depth on the tide.</b> The tide is filled where there is 1 m of water or more at the launch, from our foil-depth data. "Can I ride at 10?" answered at a glance. No surf site has this.</span></li>
+        <li id="n7"><span class="n">7</span><span><b>Alert me</b>, beside Star at the top: tell me when this spot has 3 stars or more in daylight.</span></li>
+        <li id="n8"><span class="n">8</span><span><b>The spot guide.</b> Water is written by the site from the foil-depth data. Launch, Watch for and Riders here would be a short file per spot, drafted from <code>docs/IRISH_SPOTS_SOURCES.md</code> and the pictures, checked by the owner, then kept up through "Suggest a change". A spot with no guide yet shows only Water.</span></li>
       </ol>
 
-      <h3>Round five (owner's steer, 31 October)</h3>
-      <ul><li>The figures in Now and the alert are small quiet cards on a slightly raised ground, instead of boxes ruled like a newspaper table.</li></ul>
-      <h3>Round four (owner's steer, 31 October)</h3>
+      <h3>Round five: the premium pass</h3>
       <ul>
-        <li>Taken out: the facing line under the name, the "Now at 14:20" heading, the status line (model run, buoy read), and the buoy's measured wind.</li>
-        <li><b>The loupe, restyled, nothing lost.</b> Every part of the chart's loupe (<code>force5/src/focus.ts</code>, <code>rideWedge.ts</code>) is here: the rim to scale at half a nautical mile with the ring at a quarter and both written; the compass ticks and N E S W; offshore red on the rim with the cross-offshore either side lighter; the wind's needle in the wind's colour, and inside, the ride rose: the no-go hatched, the tack out filled and arrowed, the tack home dashed, the slow water dotted along the rim, the drift (red when it carries you out to sea); the spot at the centre; and the foot box with the wind, OFF when offshore, and the stars. What changed is the hand: a fine white rim with a soft shadow instead of the paper bezel, the world outside the glass dimmed instead of washed in paper, labels in small dark pills, and its own colours in every theme, since it always sits on a photograph. On a phone it drops its words and keeps the shapes, as the chart's small rose does.</li>
+        <li><b>Two typefaces, not four.</b> Fraunces for the spot's name and the wordmark; Inter for everything else, with figures of even width so columns line up. No more uppercase spaced-out mono labels: labels are short, in sentence case, in grey.</li>
+        <li><b>One figure and one line per card.</b> The second and third grey lines are gone (kit, sweet spot, tide times, swell, water temperature, last light, the air). They're in the graph's readout and the table for whoever wants them.</li>
+        <li><b>The star rating, as stars,</b> drawn the same way everywhere: Now, Nearby, the week, the readout, the table. Filled in the stars' own colours, no word beside them.</li>
+        <li><b>The graph is smooth curves.</b> The wind is one filled curve in the wind's colours with the gust as a dashed line over it, the models' spread a soft band behind; the sea a filled curve; the tide a curve filled where it's deep enough. Words are larger and fewer: the direction and knots every three hours, high and low water times, the hours every six. Row names sit in a fixed column on the left, so they don't repeat each day.</li>
+        <li><b>A clean top bar</b> with search, the chart and the theme; no double rule. Buttons are flat and quiet, one filled button at most. Sections are separated by space and soft cards, not lines.</li>
+        <li><b>The loupe shows its shapes, and its words on hover</b> (a tap on a phone): the scale, the tack names and bearings, the drift. OFFSHORE stays, always.</li>
+        <li><b>One set of line icons</b> (1.75 px, rounded) for the bar, the buttons and the sky.</li>
+        <li><b>A smaller picture.</b> The Sentinel-2 composite is 10 m a pixel; shown big, it looks soft. At 420 px square it looks sharp, until we have aerial photography (see the reply in the PR: Ireland's isn't free).</li>
       </ul>
-      <h3>Round three (owner's steer, 31 October)</h3>
+      <h3>Earlier rounds</h3>
       <ul>
-        <li>Dark mode's rules are a soft grey instead of the text's white: the header's double rule, the section rules, the boxes and the picture's outline.</li>
-        <li>Taken out: "Was it right?" (forecast against measured), "Today on the water" (riders' reports), "Where this comes from", and the "running 2 kn above the forecast" line. The buoy's live reading stays in Now. The safety line stays as small print.</li>
+        <li>Full width; more days on the graph the wider the window. White and dark themes instead of the paper. Enhanced satellite pictures (dehazed, more colour, sharpened; "As today" in the bar shows the originals).</li>
+        <li>Taken out at the owner's request: forecast against measured, riders' reports, the sources section, the facing line, the "Now" heading and status line, the buoy's reading.</li>
+        <li>The loupe restyled with every part of the chart's kept: the rim to scale at 0.5 NM with the 0.25 NM ring, the compass, offshore and cross-offshore in red, the wind's needle in the wind's colour, the ride rose (no-go hatched, tack out filled, tack home dashed, slow water dotted, the drift), the spot, and the foot box with the wind and stars.</li>
       </ul>
-      <h3>Round two (owner's steer, 31 October)</h3>
-      <ul>
-        <li><b>Full width.</b> The page uses the whole window. From 1300 px the picture grows beside the figures; from 1600 px the nearby spots become a column beside it. The graph shows more days the wider it is (three at 1100, five at 1920), instead of wider hours.</li>
-        <li><b>Modern white and dark</b> in place of the paper. White is pure white with neutral greys; dark is near-black with the stars, the pen and the magenta lifted so they read on black. The moon button in the header switches. The mock-up's bar keeps "Paper (today)" for comparison. The real build would add these as two sets of the tokens in <code>ui/theme.css</code>, following the system's setting until the rider picks one.</li>
-        <li><b>Enhanced satellite pictures.</b> The Sentinel-2 composites are hazy. Each is now stretched from its own darkest to brightest point (one stretch for all three colours, so there's no cast), given a little more colour (less in the bright sand), then local contrast and a fine sharpen. "As today" in the bar shows the originals. The same few lines would run in <code>scripts/satellite</code> when the pictures are made, so nothing changes at runtime.</li>
-      </ul>
-
       <h3>What riders complain about, and our answer</h3>
       <table>
         <tr><th>Complaint (Surfline, Windguru, Windy, Windfinder, iKitesurf)</th><th>Here</th></tr>
-        <tr><td>The forecast didn't match the beach; ratings feel arbitrary ("always poor to fair").</td><td>Stars for <i>your</i> weight and range, and the buoy's reading beside the forecast.</td></tr>
+        <tr><td>The forecast didn't match the beach; ratings feel arbitrary ("always poor to fair").</td><td>Stars for <i>your</i> weight and range, and how much the models disagree, drawn.</td></tr>
         <tr><td>Which model do I trust? They disagree, and comparing them is work.</td><td>One forecast, with the spread drawn behind it; "how sure" on every day.</td></tr>
-        <tr><td>No idea what it's like now; cams are offline or paid.</td><td>The nearest buoy's live wind beside the forecast.</td></tr>
-        <tr><td>Gusts untrustworthy; sea breeze and local effects missed.</td><td>Gust drawn on every bar; the buoy's live reading shows a sea breeze the model missed.</td></tr>
+        <tr><td>No idea what it's like now; cams are offline or paid.</td><td>Live readings from buoys and stations on the Spot finder's map (Live wind).</td></tr>
+        <tr><td>Gusts untrustworthy; sea breeze and local effects missed.</td><td>The gust drawn over the wind on every hour.</td></tr>
         <tr><td>Built for surfers: a surf rating means nothing on a wing.</td><td>Wind first, wing size, offshore struck through, chop and swell apart, depth on the tide.</td></tr>
         <tr><td>Too many numbers, or too few (Windguru against the Met Éireann redesign).</td><td>Five figures at the top, the graph for the week, the full table one tap away.</td></tr>
         <tr><td>Adverts, paywalls, "5 checks a week".</td><td>None. Everything on this page is free.</td></tr>
-        <tr><td>Stale or unclear model runs.</td><td>Run time, arrival time and next run on every block.</td></tr>
+        <tr><td>Stale or unclear model runs.</td><td>The graph says where Harmonie hands over to ECMWF.</td></tr>
       </table>
 
       <h3>Better, more frequent waves</h3>
@@ -524,54 +416,6 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
 </div></div>
 
 <script>
-/* ===================== themes: modern white, dark, and today's paper =====================
-   The page is drawn in today's paper colours; this layer maps each of them to the
-   chosen theme everywhere they appear: the stylesheet, every style, fill and stroke,
-   including what the page draws later. The real build would set these values in
-   ui/theme.css as tokens for each theme. */
-const THEMES = {
-  paper: null,
-  white: { f3eee3: "ffffff", ede6d6: "f5f5f7", f1efe6: "ffffff", f0eadd: "f4f4f6", f6f2e9: "ffffff", f1ebdf: "fafafa", f3f1ea: "f7f8fa",
-    "1a1d21": "111114", "3b3c3e": "3a3a40", "5b5c5b": "6c6c74", d9d4c7: "e8e8eb", "3c2d14": "000000",
-    dae8ea: "e4f0f5", c3dae2: "d3e6ee", ecf0ea: "f2f7f9", e7eef0: "eef3f7", fffdf6: "ffffff", "33373d": "2b2b30", "15171a": "0b0b0d" },
-  dark: { f3eee3: "0c0c0e", ede6d6: "17171b", f1efe6: "0c0c0e", ffffff: "2a2a30", f0eadd: "1d1d22", f6f2e9: "151518", f1ebdf: "121215", f3f1ea: "0f1013",
-    "1a1d21": "f1f1f3", "3b3c3e": "c9c9cf", "5b5c5b": "8f8f99", d9d4c7: "000000", "3c2d14": "000000",
-    "33373d": "f1f1f3", "15171a": "d8d8de", b0186a: "ff5aae", d43a2c: "ff5b4d", bf3125: "ff7d70", b02a1f: "ff6a5e", "2a7046": "4cc27a", "8a6a00": "ffd24d",
-    "5f8c9c": "4fa3c2", a9cbd8: "2c6c84", c3dae2: "1b4252", dae8ea: "123240", ecf0ea: "0f1b21", e7eef0: "17222b", fffdf6: "1d1d21", "3a7fb0": "5aa8e0",
-    e28bb3: "6f2a4f", d2609a: "9d3672", bd3d84: "cc4796", a01f6c: "ee62b0", "7c0f55": "ff9ad3", ffd2a8: "5a2a00" },
-};
-const HEXRE = /#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?(?![0-9a-fA-F])/g;
-let THEME = "white", TMAP = THEMES.white;
-const tr = s => TMAP ? s.replace(HEXRE, (m, b, a) => { const t = TMAP[b.toLowerCase()]; return t ? "#" + t + (a || "") : m; }) : s;
-const ORIG = new WeakMap(), TATTRS = ["style", "fill", "stroke", "stop-color"];
-function paintEl(el) {
-  if (!el.getAttribute) return;
-  let o = ORIG.get(el);
-  for (const a of TATTRS) {
-    const cur = el.getAttribute(a); if (cur == null) continue;
-    if (!o) { o = { p: {} }; ORIG.set(el, o); }
-    if (o.p[a] !== cur) o[a] = cur;           // the page wrote a new value: that is the original now
-    const v = tr(o[a]); o.p[a] = v; if (v !== cur) el.setAttribute(a, v);
-  }
-}
-function paintTree(root) { if (root.nodeType !== 1) return; paintEl(root); root.querySelectorAll("[style],[fill],[stroke],[stop-color]").forEach(paintEl); }
-new MutationObserver(rs => { for (const r of rs) { if (r.type === "attributes") paintEl(r.target); else r.addedNodes.forEach(paintTree); } })
-  .observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: TATTRS });
-const CSS0 = document.getElementById("css").textContent;
-const themeHooks = [];
-// ink as rgba for a canvas
-const inkRGBA = a => { const h = tr("#1a1d21").slice(1); return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${a})`; };
-function setTheme(t) {
-  THEME = t; TMAP = THEMES[t];
-  document.documentElement.dataset.theme = t;
-  document.getElementById("css").textContent = tr(CSS0);
-  paintTree(document.body);
-  document.querySelectorAll("[data-theme-btn]").forEach(b => b.setAttribute("aria-pressed", b.dataset.themeBtn === t));
-  document.querySelectorAll(".themebtn").forEach(b => b.setAttribute("aria-label", t === "dark" ? "Light mode" : "Dark mode"));
-  try { localStorage.setItem("mock.theme", t); } catch {}
-  themeHooks.forEach(f => f(t));
-}
-
 /* ===================== the loupe, restyled =====================
    Every part of the chart's loupe (force5/src/focus.ts, rideWedge.ts) kept, in a
    modern hand: a fine white rim to scale (half a nautical mile) with the ring at
@@ -750,321 +594,260 @@ for (let i = 0; i < HOURS; i++) {
     agree: spread < 3 ? 3 : spread < 6 ? 2 : 1 });
 }
 const nowH = H[14];
-const obsD = 205;
 
-/* ===================== small drawing helpers ===================== */
+/* ===================== tokens and small helpers ===================== */
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const starC = n => n ? css("--s" + n) : css("--s0");
 const NS = "http://www.w3.org/2000/svg";
 const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
-const starsHTML = (n, big) => `<span class="stars${big ? " big" : ""}" aria-label="${n ?? 0} stars">${[1,2,3,4,5].map(k => `<i class="${n >= k ? "on" : ""}" style="--c:${STAR_C[n] || ""}"></i>`).join("")}</span>`;
-function arrow(g, x, y, from, len, color = "#1a1d21", w = 1.4) {
-  const r = (from + 180) * Math.PI / 180, dx = Math.sin(r) * len / 2, dy = -Math.cos(r) * len / 2;
-  const x1 = x - dx, y1 = y - dy, x2 = x + dx, y2 = y + dy;
-  el("line", { x1, y1, x2, y2, stroke: color, "stroke-width": w, "stroke-linecap": "round" }, g);
-  const a = Math.atan2(y2 - y1, x2 - x1), hs = Math.max(3, len * .3);
-  el("path", { d: `M${x2},${y2} L${x2 - hs * Math.cos(a - .5)},${y2 - hs * Math.sin(a - .5)} L${x2 - hs * Math.cos(a + .5)},${y2 - hs * Math.sin(a + .5)} Z`, fill: color }, g);
+const STAR = "M12 2.6l2.75 5.6 6.15.9-4.45 4.35 1.05 6.1L12 16.65l-5.5 2.9 1.05-6.1L3.1 9.1l6.15-.9z";
+function starsSVG(n, size = 13) {
+  const on = starC(n), offc = css("--s0");
+  return `<span class="stars" aria-label="${n} of 5 stars">${[1, 2, 3, 4, 5].map(k => `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><path d="${STAR}" fill="${k <= n ? on : offc}"/></svg>`).join("")}</span>`;
 }
-function skyGlyph(g, x, y, kind, night) {
-  const s = "#1a1d21";
-  if (night && kind !== "rain" && kind !== "cloud") { el("path", { d: `M${x + 3},${y - 5} a5.5 5.5 0 1 0 2.5 9 a4.5 4.5 0 1 1 -2.5 -9z`, fill: "none", stroke: s, "stroke-width": 1.1 }, g); return; }
-  if (kind === "sun" || kind === "part") {
-    const cx = kind === "part" ? x - 2.5 : x, cy = kind === "part" ? y - 2.5 : y;
-    el("circle", { cx, cy, r: 3.2, fill: "#ecd23a", stroke: s, "stroke-width": 1 }, g);
-    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; el("line", { x1: cx + Math.cos(a) * 4.8, y1: cy + Math.sin(a) * 4.8, x2: cx + Math.cos(a) * 6.3, y2: cy + Math.sin(a) * 6.3, stroke: s, "stroke-width": .9 }, g); }
+// a smooth curve through points (Catmull-Rom as Béziers)
+function smooth(p) {
+  let d = `M${p[0][0].toFixed(1)},${p[0][1].toFixed(1)}`;
+  for (let i = 0; i < p.length - 1; i++) {
+    const a = p[i - 1] || p[i], b = p[i], c = p[i + 1], e = p[i + 2] || c;
+    d += `C${(b[0] + (c[0] - a[0]) / 6).toFixed(1)},${(b[1] + (c[1] - a[1]) / 6).toFixed(1)} ${(c[0] - (e[0] - b[0]) / 6).toFixed(1)},${(c[1] - (e[1] - b[1]) / 6).toFixed(1)} ${c[0].toFixed(1)},${c[1].toFixed(1)}`;
   }
-  if (kind !== "sun") {
-    el("path", { d: `M${x - 6},${y + 4} h11 a3 3 0 0 0 0 -6 a4 4 0 0 0 -7.5 -1 a3 3 0 0 0 -3.5 7z`, fill: "#f3eee3", stroke: s, "stroke-width": 1.1 }, g);
-    if (kind === "rain") for (const dx of [-3, 0, 3]) el("line", { x1: x + dx, y1: y + 6, x2: x + dx - 1.2, y2: y + 9, stroke: "#3a7fb0", "stroke-width": 1.2 }, g);
-  }
+  return d;
 }
+const ARROW = (from, size, col) => `<svg width="${size}" height="${size}" viewBox="-12 -12 24 24" style="overflow:visible"><g transform="rotate(${from + 180})"><path d="M0 9V-8.5M-4.5 -4L0 -9l4.5 5" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`;
 
 /* ===================== nearby ===================== */
-const NEAR = [
-  ["dollymount", "Dollymount", "16", "21", 4, true], ["bull-island-north", "Bull Island N", "15", "20", 3], ["sandymount", "Sandymount", "14", "19", 3],
-  ["portmarnock", "Portmarnock", "17", "22", 4], ["poolbeg", "Poolbeg", "13", "20", 2], ["seapoint", "Seapoint", "12", "18", 2],
-  ["malahide-estuary", "Malahide", "15", "19", 3], ["dun-laoghaire", "Dún Laoghaire", "11", "17", 1], ["killiney", "Killiney", "10", "15", 0]];
-document.getElementById("sideNear").innerHTML = document.getElementById("nearRow").innerHTML = NEAR.map(([id, nm, w, g, st, cur]) =>
-  `<a class="near" href="#" ${cur ? 'aria-current="page"' : ""}><img data-sat="2026-10-31-spot-page/sat/thumb-${id}" src="2026-10-31-spot-page/sat/thumb-${id}.webp" alt=""><span class="nm">${nm}</span><span class="wn">${w}<sup>${g}</sup> <span class="muted" style="font-weight:400;font-size:10px">kn</span></span><span class="st">${starsHTML(st)}</span></a>`).join("");
+const NEAR = [["dollymount", "Dollymount", 16, 21, 4, true], ["bull-island-north", "Bull Island N", 15, 20, 3], ["sandymount", "Sandymount", 14, 19, 3],
+  ["portmarnock", "Portmarnock", 17, 22, 4], ["poolbeg", "Poolbeg", 13, 20, 2], ["seapoint", "Seapoint", 12, 18, 2],
+  ["malahide-estuary", "Malahide", 15, 19, 3], ["dun-laoghaire", "Dún Laoghaire", 11, 17, 1], ["killiney", "Killiney", 10, 15, 0]];
+let SATX = "x";
+function drawNearby() {
+  const html = NEAR.map(([id, nm, w, g, st, cur]) => `<a class="near" href="#" ${cur ? 'aria-current="page"' : ""}><img data-sat="2026-10-31-spot-page/sat/thumb-${id}" src="2026-10-31-spot-page/sat/thumb-${id}${SATX === "orig" ? "-orig" : ""}.webp" alt=""><span class="nm">${nm}</span><span class="wn">${w} kn ${starsSVG(st, 11)}</span></a>`);
+  $("nearRow").innerHTML = html.join("");
+  $("sideNear").innerHTML = html.slice(0, 6).join("");
+}
 
 /* ===================== now ===================== */
-(function now() {
+function drawNow() {
   const n = H[14], next = H[15];
   const w = Math.round(n.w + (next.w - n.w) / 3), g = Math.round(n.g + (next.g - n.g) / 3);
-  const obsW = w + 2, obsG = g + 3;
   const tideNow = tideAt(NOW), depth = tideNow - LAUNCH_BED;
-  // the hour the launch gets shallower than 1 m
   let dry = null; for (let h = NOW; h < NOW + 12; h += 1 / 12) if (tideAt(h) - LAUNCH_BED < 1) { dry = h; break; }
-  let deep = NOW; while (tideAt(deep - 1 / 12) - LAUNCH_BED >= 1) deep -= 1 / 12;
-  const rising = tideAt(NOW + .2) > tideNow;
   const s = sun(0), left = s.ll - NOW;
-  document.getElementById("reads").innerHTML = `
-    <div class="read wide">
-      <span class="eyebrow">Wind now · 14:20<a class="n" href="#n2">2</a></span>
-      <div class="fig">${w}<span class="g">g${g}</span><span class="u">kn</span><span class="dir">${compass(n.d)} ${Math.round(n.d)}° · ${n.rel}</span></div>
-    </div>
-    <div class="read">
-      <span class="eyebrow">Stars for you</span>
-      <div class="fig" style="font-size:22px;margin:10px 0 7px">${starsHTML(n.st, true)}</div>
-      <div class="sub"><span class="m">~80 kg · ${n.wing} m² wing</span><br>15–22 kn is your sweet spot</div>
-    </div>
-    <div class="read">
-      <span class="eyebrow">Water at the launch</span>
-      <div class="fig">${depth.toFixed(1)}<span class="u">m deep</span></div>
-      <div class="depthbar" aria-hidden="true"><span style="width:${Math.min(100, depth / 3 * 100)}%"></span><em style="left:${1 / 3 * 100}%"></em></div>
-      <div class="sub"><span class="m">Tide ${tideNow.toFixed(1)} m ${rising ? "rising" : "falling"} · high 15:10</span><br>1 m or more from ${hhmm(deep)} to ${hhmm(dry)}</div>
-    </div>
-    <div class="read">
-      <span class="eyebrow">Sea</span>
-      <div class="fig">${n.ws.toFixed(1)}<span class="u">m chop</span><span class="dir">${n.wsp.toFixed(0)} s</span></div>
-      <div class="sub"><span class="m">Swell ${n.sw.toFixed(1)} m ${n.swp} s E</span><br>Water <span class="m">13.2 °C</span> at the buoy</div>
-    </div>
-    <div class="read">
-      <span class="eyebrow">Light left</span>
-      <div class="fig">${Math.floor(left)}<span class="u">h</span>${pad(Math.round((left % 1) * 60))}<span class="u">min</span></div>
-      <div class="sub"><span class="m">Sunset ${hhmm(s.set)} · last light ${hhmm(s.ll)}</span><br>${n.temp.toFixed(0)}° in the air, ${n.sky === "sun" ? "sunny" : n.sky === "part" ? "sunny spells" : n.sky === "rain" ? "showers" : "cloudy"}</div>
-    </div>`;
-  drawLoupe(14 + 1 / 3);
-  const tide = tideNow > 2.5 ? "high" : "low";
-  setTide(tide);
-})();
+  const off = n.rel === "offshore" || n.rel === "cross-off";
+  $("cards").innerHTML = `
+    <div class="card wide"><span class="label">Wind now<a class="n" href="#n2">2</a></span>
+      <div class="big">${w}<span class="g">g${g}</span><span class="u">kn</span></div>
+      <div class="line ${off ? "off" : ""}">${compass(n.d)} · ${n.rel}</div></div>
+    <div class="card"><span class="label">Your stars</span>
+      <div class="big" style="margin:14px 0 12px">${starsSVG(n.st, 22)}</div>
+      <div class="line">${n.wing} m² wing</div></div>
+    <div class="card"><span class="label">Water at the launch</span>
+      <div class="big">${depth.toFixed(1)}<span class="u">m</span></div>
+      <div class="depthbar"><span style="width:${Math.min(100, depth / 3 * 100)}%"></span></div>
+      <div class="line">Deep enough until ${hhmm(dry)}</div></div>
+    <div class="card"><span class="label">Sea</span>
+      <div class="big">${n.ws.toFixed(1)}<span class="u">m</span></div>
+      <div class="line">Chop, ${n.wsp.toFixed(0)} s</div></div>
+    <div class="card"><span class="label">Light left</span>
+      <div class="big">${Math.floor(left)}<span class="u">h</span>${pad(Math.round((left % 1) * 60))}<span class="u">min</span></div>
+      <div class="line">Sunset ${hhmm(s.set)}</div></div>`;
+}
 
-
-// the loupe for an hour (fractions between hours for now), and the wind written under it
+/* ===================== the loupe ===================== */
 function drawLoupe(t) {
   const a = H[Math.floor(t)], b = H[Math.min(HOURS - 1, Math.floor(t) + 1)], k = t % 1;
   const w = a.w + (b.w - a.w) * k, g = a.g + (b.g - a.g) * k, d = a.d;
-  const { svg, rose } = loupeSVG({ id: "lp", w, g, from: d, facing: FACING, daylight: a.light, color: windColor(w) });
-  document.getElementById("rose").innerHTML = svg;
+  $("rose").innerHTML = loupeSVG({ id: "lp", w, g, from: d, facing: FACING, daylight: a.light, color: windColor(w) }).svg;
   const off = a.rel === "offshore" || a.rel === "cross-off";
-  document.getElementById("lpFoot").innerHTML = `${compass(d)} ${Math.round(w)}<sup>g${Math.round(g)}</sup> · ${a.rel.toUpperCase()}${off ? `<span class="off">OFF</span>` : ""}<span class="st">${[1,2,3,4,5].map(n => `<i style="${a.st >= n ? `background:${STAR_C[a.st]}` : ""}"></i>`).join("")}</span>`;
+  $("lpFoot").innerHTML = `${compass(d)} ${Math.round(w)}<sup>g${Math.round(g)}</sup> <span style="opacity:.6">·</span> ${off ? `<span class="off">Offshore</span>` : a.rel}`;
 }
 function setTide(t) {
-  document.getElementById("satHigh").classList.toggle("off", t !== "high");
-  document.getElementById("satLow").classList.toggle("off", t !== "low");
+  $("satHigh").classList.toggle("off", t !== "high"); $("satLow").classList.toggle("off", t !== "low");
   document.querySelectorAll("[data-tide]").forEach(b => b.setAttribute("aria-pressed", b.dataset.tide === t));
 }
 document.querySelectorAll("[data-tide]").forEach(b => b.onclick = () => setTide(b.dataset.tide));
+$("sat").addEventListener("click", e => { if (!e.target.closest("button")) $("sat").classList.toggle("words"); });
 
 /* ===================== the week ===================== */
 let selDay = 0;
 function drawWeek() {
-  const wk = document.getElementById("week");
-  wk.innerHTML = "";
+  const wk = $("week"); wk.innerHTML = "";
   for (let d = 0; d < 7; d++) {
     const hrs = H.filter(h => h.day === d), lit = hrs.filter(h => h.light);
-    const lo = Math.round(Math.min(...lit.map(h => h.w))), hi = Math.round(Math.max(...lit.map(h => h.w))), gmax = Math.round(Math.max(...lit.map(h => h.g)));
-    const good = lit.filter(h => h.st >= 3);
-    const win = good.length ? `${pad(good[0].hr)}–${pad(good[good.length - 1].hr + 1)} ★${Math.max(...good.map(h => h.st))}` : "";
-    const agree = Math.round(lit.reduce((a, h) => a + h.agree, 0) / lit.length);
+    const lo = Math.round(Math.min(...lit.map(h => h.w))), hi = Math.round(Math.max(...lit.map(h => h.w)));
+    const best = Math.max(...lit.map(h => h.st || 0));
     const off = lit.some(h => h.rel === "offshore" && h.w > 12);
     const b = document.createElement("button");
     b.className = "day"; b.setAttribute("aria-pressed", d === selDay);
+    // a small curve of the day's wind, 05 to 20, in the wind's colours
+    const xs = hrs.filter(h => h.hr >= 5 && h.hr <= 20), X = h => (h.hr - 5) / 15 * 100, Y = w => 25 - Math.min(w, 32) / 32 * 22;
+    const pts = xs.map(h => [X(h), Y(h.w)]), gid = "wg" + d;
+    const stops = xs.map(h => `<stop offset="${X(h).toFixed(1)}%" stop-color="${windColor(h.w)}"/>`).join("");
     b.innerHTML = `<span class="dn">${d === 0 ? "Today" : DAYS[d]}<small>${DATES[d]}</small></span>
-      <span class="rng">${lo}–${hi}<sup>${gmax}</sup> <span class="muted" style="font-weight:400;font-size:9px">kn</span></span>
-      <svg viewBox="0 0 96 30" preserveAspectRatio="none" aria-hidden="true"></svg>
-      <span class="win">${win || (off ? "" : "—")}</span>
-      ${off ? `<span class="flag">Offshore</span>` : ""}
-      <span class="sure"><span class="bars">${[1,2,3].map(k => `<i class="${agree >= k ? "on" : ""}" style="height:${3 + k * 3}px"></i>`).join("")}</span>${["", "Unsure", "Fairly sure", "Sure"][agree]}</span>`;
-    const svg = b.querySelector("svg");
-    const x0 = 5, span = 19, bw = 96 / (span - x0);
-    hrs.filter(h => h.hr >= x0 && h.hr < span).forEach(h => {
-      const x = (h.hr - x0) * bw, bh = Math.max(2, h.w / 30 * 22);
-      el("rect", { x: x + .5, y: 24 - bh, width: bw - 1, height: bh, fill: h.light ? windColor(h.w) : "#1a1d2122", rx: .8 }, svg);
-      el("rect", { x: x + .5, y: 26.5, width: bw - 1, height: 3.5, fill: h.st ? STAR_C[h.st] : "#1a1d2117" }, svg);
-    });
+      ${starsSVG(best, 13)}
+      <span class="rng">${lo}–${hi} <small>kn</small></span>
+      <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none"><defs><linearGradient id="${gid}">${stops}</linearGradient></defs><path d="${smooth(pts)}L100,26L0,26Z" fill="url(#${gid})" opacity=".85"/></svg>
+      <span class="foot">${off ? '<span class="off">Offshore</span>' : "<span></span>"}<span title="How much the models agree">${["", "Unsure", "Fairly sure", "Sure"][Math.round(lit.reduce((s, h) => s + h.agree, 0) / lit.length)]}</span></span>`;
     b.onclick = () => { selDay = d; drawWeek(); scrollGraphTo(d); drawTable(); };
     wk.appendChild(b);
   }
 }
 
 /* ===================== the graph ===================== */
+const ROW = { stars: [14, 8], wind: [34, 118], dir: [160, 40], sea: [208, 46], tide: [266, 74], sky: [352, 28], axis: [388, 20] };
+const GH = 410;
 let PX = 14, hover = 14;
-const ROWS = { stars: [22, 12], wind: [42, 120], arrows: [164, 40], waves: [214, 54], tide: [282, 84], sky: [376, 28], axis: [406, 18] };
-const GH = 430, LEFT = 0;
 function drawGraph() {
-  const box = document.getElementById("graph");
-  const w = box.clientWidth || 900;
-  const days = w < 600 ? 0 : Math.max(3, Math.min(7, Math.floor(w / 350)));
-  PX = w < 600 ? 17 : w / (days * 24);
-  const W = PX * HOURS;
+  const box = $("graph"), w = box.clientWidth || 900;
+  const days = w < 600 ? 0 : Math.max(3, Math.min(7, Math.floor(w / 330)));
+  PX = w < 600 ? 18 : w / (days * 24);
+  const W = PX * HOURS, X = i => i * PX + PX / 2;
   box.innerHTML = "";
   const svg = el("svg", { width: W, height: GH, viewBox: `0 0 ${W} ${GH}` }, box);
-  const X = i => i * PX;
   const defs = el("defs", {}, svg);
-  const pat = el("pattern", { id: "shallow", width: 5, height: 5, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, defs);
-  el("rect", { width: 5, height: 5, fill: "#dae8ea" }, pat); el("rect", { width: 1.2, height: 5, fill: "#5f8c9c55" }, pat);
-
-  // dark
+  const C = { text: css("--text"), text2: css("--text-2"), muted: css("--muted"), line: css("--line"), night: css("--night"), spread: css("--spread"), gust: css("--gust"), depth: css("--depth"), sea: css("--sea"), seaSoft: css("--sea-soft"), pen: css("--pen"), accent: css("--accent") };
+  // the row names, fixed on the left
+  $("gl").innerHTML = [["Stars", ROW.stars[0] + ROW.stars[1] / 2], ["Wind", ROW.wind[0] + 40], ["Direction", ROW.dir[0] + 12], ["Sea", ROW.sea[0] + 26], ["Tide", ROW.tide[0] + 36], ["Sky", ROW.sky[0] + 14]]
+    .map(([t, y]) => `<span style="top:${y + 6}px">${t}</span>`).join("");
+  $("gl").style.height = GH + "px";
+  // dark hours, and the days
   for (let d = 0; d < 7; d++) {
     const s = sun(d);
-    el("rect", { x: X(d * 24), y: 0, width: X(s.fl), height: GH - 18, fill: "#1a1d2114" }, svg);
-    el("rect", { x: X(d * 24 + s.ll), y: 0, width: X(24 - s.ll), height: GH - 18, fill: "#1a1d2114" }, svg);
+    el("rect", { x: d * 24 * PX, y: 0, width: s.fl * PX, height: GH - 22, fill: C.night }, svg);
+    el("rect", { x: (d * 24 + s.ll) * PX, y: 0, width: (24 - s.ll) * PX, height: GH - 22, fill: C.night }, svg);
+    if (d) el("line", { x1: d * 24 * PX, x2: d * 24 * PX, y1: 0, y2: GH, stroke: C.line, "stroke-width": 1 }, svg);
   }
-  // day lines and names
-  for (let d = 0; d < 7; d++) {
-    el("line", { x1: X(d * 24), x2: X(d * 24), y1: 0, y2: GH, stroke: "#1a1d21", "stroke-width": d ? 1 : 0 }, svg);
-    el("text", { x: X(d * 24) + 6, y: 13, "font-size": 11, "font-weight": 600, fill: "#1a1d21", style: "font-family:var(--display);font-size:13px" }, svg).textContent = `${FULL[d]} ${DATES[d]}`;
-  }
-  // row labels (repeated at each day)
-  const lab = (y, t) => { for (let d = 0; d < 7; d++) el("text", { x: X(d * 24) + 6, y, class: "rowlab" }, svg).textContent = t; };
-  lab(ROWS.wind[0] + 9, "Wind kn"); lab(ROWS.waves[0] + 9, "Sea"); lab(ROWS.tide[0] + 9, "Tide & depth");
-
-  // stars band
-  const [sy, sh] = ROWS.stars;
-  H.forEach(h => el("rect", { x: X(h.i) + .5, y: sy, width: PX - 1, height: sh, rx: 1.5, fill: h.st ? STAR_C[h.st] : h.light ? "#1a1d2117" : "transparent" }, svg));
-
-  // wind
-  const [wy, wh] = ROWS.wind, MAXK = 36, Y = k => wy + wh - k / MAXK * wh;
-  el("rect", { x: 0, y: Y(22), width: W, height: Y(15) - Y(22), fill: "#b0186a14" }, svg);
-  for (const k of [15, 22]) el("line", { x1: 0, x2: W, y1: Y(k), y2: Y(k), stroke: "#b0186a55", "stroke-width": .8, "stroke-dasharray": "3 3" }, svg);
-  for (const k of [10, 20, 30]) el("text", { x: W - 4, y: Y(k) - 2, "text-anchor": "end", "font-size": 8.5, fill: "#5b5c5b" }, svg).textContent = k;
-  H.forEach(h => {
-    const x = X(h.i);
-    el("rect", { x: x + PX * .2, y: Y(h.hi), width: PX * .6, height: Y(h.lo) - Y(h.hi), fill: "#1a1d2126", rx: 2 }, svg);
-    el("rect", { x: x + PX * .28, y: Y(h.w), width: PX * .44, height: wy + wh - Y(h.w), fill: windColor(h.w), rx: 1 }, svg);
-    el("line", { x1: x + PX * .15, x2: x + PX * .85, y1: Y(h.g), y2: Y(h.g), stroke: "#e0803a", "stroke-width": 2, "stroke-linecap": "round" }, svg);
-  });
-  el("line", { x1: 0, x2: W, y1: wy + wh, y2: wy + wh, stroke: "#1a1d2155" }, svg);
-
-  // arrows, speed, wing, every 2 hours
-  const [ay] = ROWS.arrows;
-  H.forEach(h => {
-    if (h.hr % 2) return;
-    const cx = X(h.i) + PX;
-    const off = h.rel === "offshore" || h.rel === "cross-off";
-    arrow(svg, cx, ay + 8, h.d, 13, off ? "#d43a2c" : "#1a1d21", 1.4);
-    const t = el("text", { x: cx, y: ay + 26, "text-anchor": "middle", "font-size": 10.5, "font-weight": 600, fill: "#1a1d21" }, svg);
-    t.innerHTML = `${Math.round(h.w)}<tspan font-size="7.5" fill="#e0803a" dy="-3">${Math.round(h.g)}</tspan>`;
-    if (h.light && h.wing && !off) el("text", { x: cx, y: ay + 37, "text-anchor": "middle", "font-size": 8.5, fill: "#5b5c5b" }, svg).textContent = `${h.wing}m²`;
-    if (h.light && off && h.w > 12) el("text", { x: cx, y: ay + 37, "text-anchor": "middle", "font-size": 8.5, fill: "#bf3125" }, svg).textContent = "off";
-  });
-
-  // sea: chop over swell
-  const [vy, vh] = ROWS.waves, MAXW = .8, VY = m => vy + vh - m / MAXW * (vh - 10);
-  H.forEach(h => {
-    const x = X(h.i), dashed = h.i >= SWAN_END && h.i % 3;
-    if (dashed) return; // GFS-Wave: every 3 hours only
-    const bw = h.i >= SWAN_END ? PX * 3 - 1 : PX - 1;
-    el("rect", { x: x + .5, y: VY(h.sw), width: bw, height: vy + vh - VY(h.sw), fill: "#5f8c9c" }, svg);
-    el("rect", { x: x + .5, y: VY(h.sw + h.ws), width: bw, height: VY(h.sw) - VY(h.sw + h.ws), fill: "#a9cbd8" }, svg);
-  });
-  H.forEach(h => { if (h.hr % 6 === 3) el("text", { x: X(h.i) + PX / 2, y: VY(h.sw + h.ws) - 3, "text-anchor": "middle", "font-size": 8.5, fill: "#3b3c3e" }, svg).textContent = `${(h.sw + h.ws).toFixed(1)}m ${h.wsp.toFixed(0)}s`; });
-  el("line", { x1: 0, x2: W, y1: vy + vh, y2: vy + vh, stroke: "#1a1d2155" }, svg);
-
-  // tide and depth
-  const [ty, th] = ROWS.tide, TMAX = 5.3, TY = m => ty + th - m / TMAX * (th - 8);
-  let path = `M0,${TY(tideAt(0))}`;
-  for (let h = 0; h <= HOURS; h += .25) path += ` L${X(h)},${TY(tideAt(h))}`;
-  const area = path + ` L${W},${ty + th} L0,${ty + th}Z`;
-  const thr = LAUNCH_BED + 1;
-  const clipA = el("clipPath", { id: "deep" }, defs); el("rect", { x: 0, y: ty - 4, width: W, height: TY(thr) - ty + 4 }, clipA);
-  const clipB = el("clipPath", { id: "shal" }, defs); el("rect", { x: 0, y: TY(thr), width: W, height: ty + th - TY(thr) }, clipB);
-  el("path", { d: area, fill: "url(#shallow)", "clip-path": "url(#shal)" }, svg);
-  el("path", { d: area, fill: "#5f8c9c", opacity: .85, "clip-path": "url(#deep)" }, svg);
-  el("path", { d: path, fill: "none", stroke: "#1a1d21", "stroke-width": 1.2 }, svg);
-  el("line", { x1: 0, x2: W, y1: TY(thr), y2: TY(thr), stroke: "#1a1d21", "stroke-width": .8, "stroke-dasharray": "2 3" }, svg);
-  for (let d = 0; d < 7; d++) el("text", { x: X(d * 24) + 6, y: TY(thr) + 10, "font-size": 8, fill: "#1a1d21", style: "paint-order:stroke;stroke:#dae8ea;stroke-width:3px" }, svg).textContent = "1 m deep at the launch";
-  TX.forEach(([t, m], k) => {
-    if (t < 0 || t > HOURS) return;
-    const high = k % 2 === 1 ? m > 2.5 : m > 2.5;
-    el("circle", { cx: X(t), cy: TY(m), r: 2.4, fill: high ? "#1a1d21" : "#f3eee3", stroke: "#1a1d21", "stroke-width": 1 }, svg);
-    el("text", { x: X(t), y: high ? TY(m) - 5 : TY(m) + 11, "text-anchor": "middle", "font-size": 8.5, fill: "#1a1d21" }, svg).textContent = `${hhmm(t % 24)} ${m.toFixed(1)}`;
-  });
-
-  // sky
-  const [ky] = ROWS.sky;
+  // stars
+  H.forEach(h => { if (h.st == null) return; el("rect", { x: h.i * PX + 1, y: ROW.stars[0], width: PX - 2, height: ROW.stars[1], rx: 2, fill: starC(h.st) }, svg); });
+  // wind: the models' spread, the mean filled in the wind's colours, the gust dashed
+  const [wy, wh] = ROW.wind, MAXK = 36, Y = k => wy + wh - Math.min(k, MAXK) / MAXK * wh;
+  const top = H.map(h => [X(h.i), Y(h.hi)]), bot = H.map(h => [X(h.i), Y(h.lo)]).reverse();
+  el("path", { d: smooth(top) + "L" + smooth(bot).slice(1) + "Z", fill: C.spread }, svg);
+  const lg = el("linearGradient", { id: "windfill", gradientUnits: "userSpaceOnUse", x1: 0, x2: W, y1: 0, y2: 0 }, defs);
+  H.forEach(h => { if (h.i % 2 === 0) el("stop", { offset: (X(h.i) / W).toFixed(4), "stop-color": windColor(h.w) }, lg); });
+  const mean = H.map(h => [X(h.i), Y(h.w)]);
+  el("path", { d: `${smooth(mean)}L${X(HOURS - 1)},${wy + wh}L${X(0)},${wy + wh}Z`, fill: "url(#windfill)", opacity: .78 }, svg);
+  el("path", { d: smooth(mean), fill: "none", stroke: "url(#windfill)", "stroke-width": 2.2 }, svg);
+  el("path", { d: smooth(H.map(h => [X(h.i), Y(h.g)])), fill: "none", stroke: C.gust, "stroke-width": 1.6, "stroke-dasharray": "4 3" }, svg);
+  for (const k of [10, 20, 30]) el("text", { x: W - 6, y: Y(k) - 3, "text-anchor": "end", "font-size": 10, fill: C.muted }, svg).textContent = k;
+  // direction and knots every three hours
+  const [dy] = ROW.dir;
   H.forEach(h => {
     if (h.hr % 3) return;
-    const cx = X(h.i) + PX / 2, s = sun(h.day);
-    skyGlyph(svg, cx - 7, ky + 12, h.sky, !(h.hr >= s.rise && h.hr <= s.set));
-    el("text", { x: cx + 5, y: ky + 16, "font-size": 9.5, fill: "#1a1d21" }, svg).textContent = `${Math.round(h.temp)}°`;
+    const cx = X(h.i), off = h.rel === "offshore" || h.rel === "cross-off", g = el("g", { transform: `translate(${cx},${dy + 9}) rotate(${h.d + 180})` }, svg);
+    el("path", { d: "M0 6V-6M-3.5 -2.5L0 -6.5l3.5 4", fill: "none", stroke: off ? C.pen : C.text, "stroke-width": 1.8, "stroke-linecap": "round", "stroke-linejoin": "round" }, g);
+    el("text", { x: cx, y: dy + 34, "text-anchor": "middle", "font-size": 12, "font-weight": 600, fill: C.text }, svg).textContent = Math.round(h.w);
   });
-
-  // axis
-  const [xy] = ROWS.axis;
-  el("line", { x1: 0, x2: W, y1: xy, y2: xy, stroke: "#1a1d21" }, svg);
-  H.forEach(h => { if (h.hr % 3 === 0 && h.hr) el("text", { x: X(h.i), y: xy + 13, "text-anchor": "middle", "font-size": 9, fill: "#5b5c5b" }, svg).textContent = pad(h.hr); });
-
-  // model hand-overs
-  const hand = (i, t, y0, y1) => {
-    el("line", { x1: X(i), x2: X(i), y1: y0, y2: y1, stroke: "#1a1d21", "stroke-width": 1, "stroke-dasharray": "4 3" }, svg);
-    el("text", { x: X(i) + 4, y: y0 + 9, "font-size": 8.5, fill: "#3b3c3e", style: "paint-order:stroke;stroke:#f3eee3;stroke-width:3px" }, svg).textContent = t;
-  };
-  hand(HARMONIE_END, "ECMWF from here →", ROWS.stars[0], ROWS.arrows[0] + 40);
-  hand(SWAN_END, "3-hourly waves from here →", ROWS.waves[0], ROWS.waves[0] + ROWS.waves[1]);
-
-  // now, in pen
-  el("line", { x1: X(NOW), x2: X(NOW), y1: 18, y2: xy, stroke: "#d43a2c", "stroke-width": 1.5 }, svg);
-  el("text", { x: X(NOW) + 5, y: ROWS.wind[0] + 14, "font-size": 13, fill: "#bf3125", style: "font-family:var(--hand)" }, svg).textContent = "now";
-
-  // hover: a ring round the hour, in pen
+  // the sea
+  const [sy, sh] = ROW.sea, SY = m => sy + sh - Math.min(m, .8) / .8 * (sh - 4);
+  const sea = H.map(h => [X(h.i), SY(h.sw + h.ws)]);
+  el("path", { d: `${smooth(sea)}L${X(HOURS - 1)},${sy + sh}L${X(0)},${sy + sh}Z`, fill: C.sea, opacity: .9 }, svg);
+  for (let d = 0; d < 7; d++) { const hs = H.filter(h => h.day === d && h.light); const m = hs.reduce((a, b) => (a.sw + a.ws) > (b.sw + b.ws) ? a : b);
+    el("text", { x: X(m.i), y: SY(m.sw + m.ws) - 5, "text-anchor": "middle", "font-size": 11, fill: C.text2 }, svg).textContent = `${(m.sw + m.ws).toFixed(1)} m`; }
+  // the tide, filled where the launch has 1 m or more
+  const [ty, th] = ROW.tide, TY = m => ty + th - m / 4.6 * (th - 6), thr = LAUNCH_BED + 1;
+  const tide = []; for (let h = 0; h <= HOURS; h += .5) tide.push([h * PX, TY(tideAt(h))]);
+  const area = `${smooth(tide)}L${W},${ty + th}L0,${ty + th}Z`;
+  el("clipPath", { id: "deep" }, defs).appendChild(el("rect", { x: 0, y: 0, width: W, height: TY(thr) }));
+  el("path", { d: area, fill: C.seaSoft }, svg);
+  el("path", { d: area, fill: C.depth, opacity: .9, "clip-path": "url(#deep)" }, svg);
+  el("path", { d: smooth(tide), fill: "none", stroke: C.text2, "stroke-width": 1.4 }, svg);
+  TX.forEach(([t, m]) => { if (t < 0 || t > HOURS) return; const high = m > 2.5;
+    el("text", { x: t * PX, y: high ? TY(m) - 6 : TY(m) + 15, "text-anchor": "middle", "font-size": 11, fill: C.text2 }, svg).textContent = hhmm(t % 24); });
+  // the sky
+  const [ky] = ROW.sky;
+  H.forEach(h => { if (h.hr % 3) return; const s = sun(h.day); skyIcon(svg, X(h.i) - 8, ky + 13, h.sky, !(h.hr >= s.rise && h.hr <= s.set), C);
+    el("text", { x: X(h.i) + 4, y: ky + 18, "font-size": 11.5, fill: C.text2 }, svg).textContent = `${Math.round(h.temp)}°`; });
+  // the hours, and the days
+  const [ay] = ROW.axis;
+  H.forEach(h => { if (h.hr % 6 === 0 && h.hr) el("text", { x: h.i * PX, y: ay + 14, "text-anchor": "middle", "font-size": 11, fill: C.muted }, svg).textContent = pad(h.hr); });
+  for (let d = 0; d < 7; d++) el("text", { x: d * 24 * PX + 8, y: ay + 14, "font-size": 11.5, "font-weight": 600, fill: C.text }, svg).textContent = `${d ? DAYS[d] : "Today"} ${DATES[d]}`;
+  // where Harmonie hands over
+  el("line", { x1: HARMONIE_END * PX, x2: HARMONIE_END * PX, y1: ROW.wind[0] - 6, y2: ROW.dir[0] + 40, stroke: C.muted, "stroke-dasharray": "3 4" }, svg);
+  el("text", { x: HARMONIE_END * PX + 6, y: ROW.wind[0] + 6, "font-size": 11, fill: C.muted }, svg).textContent = "ECMWF from here";
+  // now
+  el("line", { x1: NOW * PX, x2: NOW * PX, y1: 4, y2: ay, stroke: C.pen, "stroke-width": 1.5 }, svg);
+  // hover
   const cur = el("g", {}, svg);
   const setHover = i => {
-    hover = Math.max(0, Math.min(HOURS - 1, i));
-    cur.innerHTML = "";
-    const x = X(hover);
-    el("rect", { x: x - 1, y: ROWS.stars[0] - 3, width: PX + 2, height: xy - ROWS.stars[0] + 3, fill: "none", stroke: "#d43a2c", "stroke-width": 1.4, rx: 6 }, cur);
+    hover = Math.max(0, Math.min(HOURS - 1, i)); cur.innerHTML = "";
+    el("rect", { x: hover * PX, y: 4, width: PX, height: ay - 4, rx: Math.min(6, PX / 2), fill: C.text, opacity: .07 }, cur);
+    el("circle", { cx: X(hover), cy: Y(H[hover].w), r: 4, fill: windColor(H[hover].w), stroke: css("--bg"), "stroke-width": 2 }, cur);
+    el("circle", { cx: X(hover), cy: TY(H[hover].tide), r: 3.5, fill: C.text2, stroke: css("--bg"), "stroke-width": 2 }, cur);
     readout(hover);
   };
   svg.addEventListener("pointermove", e => { const r = svg.getBoundingClientRect(); setHover(Math.floor((e.clientX - r.left) / PX)); });
   setHover(hover);
 }
-function scrollGraphTo(d) {
-  const box = document.getElementById("graph");
-  box.scrollTo({ left: Math.max(0, d * 24 * PX - (d ? 0 : 0)), behavior: "smooth" });
+function skyIcon(svg, x, y, kind, night, C) {
+  const g = el("g", { transform: `translate(${x},${y})`, fill: "none", stroke: C.text2, "stroke-width": 1.5, "stroke-linecap": "round", "stroke-linejoin": "round" }, svg);
+  if (night && (kind === "sun" || kind === "part")) { el("path", { d: "M4.5 -4.5A5.5 5.5 0 1 0 5 4.5 4.3 4.3 0 0 1 4.5 -4.5z" }, g); return; }
+  if (kind === "sun" || kind === "part") { const cx = kind === "part" ? -2.5 : 0, cy = kind === "part" ? -2.5 : 0;
+    el("circle", { cx, cy, r: 3.2, fill: "#f5b82e", stroke: "#f5b82e" }, g);
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; el("line", { x1: cx + Math.cos(a) * 5, y1: cy + Math.sin(a) * 5, x2: cx + Math.cos(a) * 6.6, y2: cy + Math.sin(a) * 6.6, stroke: "#f5b82e" }, g); } }
+  if (kind !== "sun") { el("path", { d: "M-5.5 5h10.5a3.2 3.2 0 0 0 .4-6.4A4.4 4.4 0 0 0 -2.4 -3a3.4 3.4 0 0 0 -3.1 8z", fill: css("--surface") }, g);
+    if (kind === "rain") for (const dx of [-3, 0.5, 4]) el("line", { x1: dx, y1: 8, x2: dx - 1, y2: 10.5, stroke: "#3a8fd0" }, g); }
 }
+function scrollGraphTo(d) { $("graph").scrollTo({ left: d * 24 * PX, behavior: "smooth" }); }
 function readout(i) {
-  const h = H[i];
-  drawLoupe(i === 14 ? 14 + 1 / 3 : i);
-  const isNow = i === 14;
-  document.getElementById("readout").innerHTML = `
-    <span class="t ${isNow ? "is-now" : ""}">${DAYS[h.day]} ${pad(h.hr)}:00${isNow ? " · now" : ""}</span>
-    <div class="ro"><span class="eyebrow">Stars</span>${h.st == null ? '<span>Dark</span>' : starsHTML(h.st)}</div>
-    <div class="ro"><span class="eyebrow">Wind</span><b>${Math.round(h.w)}<sup>${Math.round(h.g)}</sup></b><span>${compass(h.d)} · ${h.rel}</span></div>
-    <div class="ro"><span class="eyebrow">Models</span><b style="font-size:14px">${Math.round(h.lo)}–${Math.round(h.hi)}</b><span>${["", "unsure", "fairly sure", "sure"][h.agree]}</span></div>
-    <div class="ro"><span class="eyebrow">Wing</span><b style="font-size:14px">${h.wing && h.st ? h.wing + " m²" : "—"}</b><span>~80 kg</span></div>
-    <div class="ro"><span class="eyebrow">Sea</span><b style="font-size:14px">${h.ws.toFixed(1)} m chop</b><span>swell ${h.sw.toFixed(1)} m ${h.swp} s</span></div>
-    <div class="ro"><span class="eyebrow">At the launch</span><b style="font-size:14px;color:${h.depth >= 1 ? "var(--depth)" : "var(--pen-ink)"}">${Math.max(0, h.depth).toFixed(1)} m deep</b><span>tide ${h.tide.toFixed(1)} m</span></div>`;
+  const h = H[i], isNow = i === 14;
+  drawLoupe(isNow ? 14 + 1 / 3 : i);
+  $("readout").innerHTML = `<span class="t ${isNow ? "is-now" : ""}">${isNow ? "Now" : `${DAYS[h.day]} ${pad(h.hr)}:00`}</span>
+    <div class="ro"><span class="label">Stars</span>${h.st == null ? "<b>Dark</b>" : starsSVG(h.st, 13)}</div>
+    <div class="ro"><span class="label">Wind</span><b>${Math.round(h.w)}<sup>g${Math.round(h.g)}</sup> kn ${compass(h.d)}</b></div>
+    <div class="ro"><span class="label">Models</span><b>${Math.round(h.lo)}–${Math.round(h.hi)}</b></div>
+    <div class="ro"><span class="label">Wing</span><b>${h.wing && h.st ? h.wing + " m²" : "–"}</b></div>
+    <div class="ro"><span class="label">Sea</span><b>${(h.ws + h.sw).toFixed(1)} m</b></div>
+    <div class="ro"><span class="label">At the launch</span><b style="color:${h.depth >= 1 ? "inherit" : "var(--pen)"}">${Math.max(0, h.depth).toFixed(1)} m</b></div>`;
 }
-document.getElementById("prev").onclick = () => document.getElementById("graph").scrollBy({ left: -24 * PX, behavior: "smooth" });
-document.getElementById("next").onclick = () => document.getElementById("graph").scrollBy({ left: 24 * PX, behavior: "smooth" });
+$("prev").onclick = () => $("graph").scrollBy({ left: -24 * PX, behavior: "smooth" });
+$("next").onclick = () => $("graph").scrollBy({ left: 24 * PX, behavior: "smooth" });
 
 /* ===================== the table ===================== */
 function drawTable() {
   const rows = H.filter(h => h.day === selDay && h.light);
-  document.getElementById("tbl").innerHTML = `<thead><tr><th>${FULL[selDay]}</th><th>Stars</th><th>Wind kn</th><th>From</th><th class="hide-n">Models</th><th class="hide-n">Wing</th><th>Sea</th><th>Launch</th><th class="hide-n">Sky</th></tr></thead><tbody>${
-    rows.map(h => `<tr class="${h.st ? "" : "dim"}"><td>${pad(h.hr)}</td><td>${starsHTML(h.st)}</td><td><b>${Math.round(h.w)}</b><sup>${Math.round(h.g)}</sup></td>
-      <td class="${h.rel === "offshore" || h.rel === "cross-off" ? "offs" : ""}">${compass(h.d)} · ${h.rel}</td><td class="hide-n">${Math.round(h.lo)}–${Math.round(h.hi)}</td><td class="hide-n">${h.wing && h.st ? h.wing + " m²" : "–"}</td>
-      <td>${h.ws.toFixed(1)} m ${h.wsp.toFixed(0)} s</td><td style="color:${h.depth >= 1 ? "inherit" : "var(--pen-ink)"}">${Math.max(0, h.depth).toFixed(1)} m</td><td class="hide-n">${Math.round(h.temp)}°</td></tr>`).join("")}</tbody>`;
+  $("tbl").innerHTML = `<thead><tr><th>${FULL[selDay]}</th><th>Stars</th><th>Wind kn</th><th>From</th><th class="hide-n">Models</th><th class="hide-n">Wing</th><th>Sea</th><th>Launch</th><th class="hide-n">Air</th></tr></thead><tbody>${
+    rows.map(h => `<tr class="${h.st ? "" : "dim"}"><td>${pad(h.hr)}:00</td><td>${starsSVG(h.st, 12)}</td><td><b>${Math.round(h.w)}</b><sup> ${Math.round(h.g)}</sup></td>
+      <td class="${h.rel === "offshore" || h.rel === "cross-off" ? "off" : ""}">${compass(h.d)} · ${h.rel}</td><td class="hide-n">${Math.round(h.lo)}–${Math.round(h.hi)}</td><td class="hide-n">${h.wing && h.st ? h.wing + " m²" : "–"}</td>
+      <td>${(h.ws + h.sw).toFixed(1)} m</td><td class="${h.depth >= 1 ? "" : "off"}">${Math.max(0, h.depth).toFixed(1)} m</td><td class="hide-n">${Math.round(h.temp)}°</td></tr>`).join("")}</tbody>`;
 }
 document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => {
   const t = b.dataset.view === "table";
   document.querySelectorAll("[data-view]").forEach(x => x.setAttribute("aria-pressed", x === b));
-  document.getElementById("graphView").hidden = t; document.getElementById("tableView").hidden = !t;
+  $("graphView").hidden = t; $("tableView").hidden = !t;
   if (!t) drawGraph();
 });
 
-/* ===================== was it right ===================== */
-/* ===================== mock-up controls ===================== */
-const page = document.getElementById("page");
-function setW(w) {
-  document.querySelectorAll("[data-w]").forEach(b => b.setAttribute("aria-pressed", b.dataset.w === String(w)));
-  page.style.width = w === "fit" ? "100%" : w + "px";
-  page.style.flex = "none";
-  requestAnimationFrame(() => { drawGraph(); scrollGraphTo(0); });
+/* ===================== themes, the satellite switch, the mock-up's controls ===================== */
+function redraw() { drawNearby(); drawNow(); drawWeek(); drawTable(); drawGraph(); }
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  document.querySelectorAll("[data-theme-btn]").forEach(b => b.setAttribute("aria-pressed", b.dataset.themeBtn === t));
+  document.querySelector(".themebtn").setAttribute("aria-label", t === "dark" ? "Light mode" : "Dark mode");
+  try { localStorage.setItem("mock.theme", t); } catch {}
+  redraw();
 }
-document.querySelectorAll("[data-w]").forEach(b => b.onclick = () => setW(b.dataset.w));
-document.getElementById("notesBtn").onclick = e => { const on = document.body.classList.toggle("notes"); e.currentTarget.setAttribute("aria-pressed", on); };
-const q = new URLSearchParams(location.search);
-if (q.get("embed")) document.body.classList.add("embed"), document.body.classList.remove("preview", "notes");
-drawWeek(); drawTable();
-document.querySelectorAll("[data-theme-btn]").forEach(b => b.onclick = () => setTheme(b.dataset.themeBtn));
-document.querySelector(".themebtn").onclick = () => setTheme(THEME === "dark" ? "white" : "dark");
 function setSat(m) {
+  SATX = m;
   document.querySelectorAll("[data-sat]").forEach(im => im.src = im.dataset.sat + (m === "orig" ? "-orig" : "") + ".webp");
   document.querySelectorAll("[data-sat-btn]").forEach(b => b.setAttribute("aria-pressed", b.dataset.satBtn === m));
 }
+const page = $("page");
+function setW(w) {
+  document.querySelectorAll("[data-w]").forEach(b => b.setAttribute("aria-pressed", b.dataset.w === String(w)));
+  page.style.width = w === "fit" ? "100%" : w + "px"; page.style.flex = "none";
+  requestAnimationFrame(() => { drawGraph(); scrollGraphTo(0); });
+}
+document.querySelectorAll("[data-w]").forEach(b => b.onclick = () => setW(b.dataset.w));
+document.querySelectorAll("[data-theme-btn]").forEach(b => b.onclick = () => setTheme(b.dataset.themeBtn));
+document.querySelector(".themebtn").onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "white" : "dark");
 document.querySelectorAll("[data-sat-btn]").forEach(b => b.onclick = () => setSat(b.dataset.satBtn));
-themeHooks.push(() => drawGraph());
+$("notesBtn").onclick = e => { const on = document.body.classList.toggle("notes"); e.currentTarget.setAttribute("aria-pressed", on); };
+const q = new URLSearchParams(location.search);
+if (q.get("embed")) document.body.classList.add("embed"), document.body.classList.remove("preview", "notes");
+setTide(tideAt(NOW) > 2.5 ? "high" : "low");
 setTheme(q.get("theme") || (() => { try { return localStorage.getItem("mock.theme"); } catch { return null; } })() || "white");
 if (q.get("sat")) setSat(q.get("sat"));
 setW(q.get("w") || "fit");
