@@ -27,7 +27,7 @@
   ?w=390     open at phone width
   #chart     open with the map switched to the chart
 -->
-<style>
+<style id="css">
 @font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
   src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
 @font-face { font-family: "Fraunces Variable"; font-style: italic; font-display: swap; font-weight: 100 900;
@@ -61,6 +61,8 @@
   --note: #1f6fe0;
   --bar-h: 42px;
 }
+html[data-theme=white], html[data-theme=dark] { --grain: none; }
+html[data-theme=dark] { color-scheme: dark; }
 *, *::before, *::after { box-sizing: border-box; }
 html { font-size: 14px; }
 body { margin: 0; background: #d9d4c7; color: var(--ink); font-family: var(--body); line-height: 1.35; }
@@ -68,13 +70,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 h1, h2, h3, p { margin: 0; }
 
 /* ---- the mock-up's own bar and notes (not part of the design) ---- */
-.mockbar { position: sticky; top: 0; z-index: 100; height: var(--bar-h); display: flex; gap: 6px; align-items: center; padding: 0 14px; background: #1a1d21; color: #f3eee3;
+.mockbar { position: sticky; top: 0; z-index: 100; height: var(--bar-h); display: flex; gap: 6px; align-items: center; padding: 0 14px; background: #1b1d21; color: #f4eee3;
   font: 500 11px var(--mono); letter-spacing: .06em; white-space: nowrap; overflow-x: auto; }
 .mockbar b { margin-right: 8px; text-transform: uppercase; letter-spacing: .12em; }
 .mockbar .gap { width: 12px; flex: none; }
-.mockbar button, .mockbar a { background: none; border: 1px solid #f3eee355; border-radius: 99px; padding: 3px 10px; font-size: 10.5px; letter-spacing: .06em; color: #f3eee3; text-decoration: none; }
-.mockbar button[aria-pressed=true] { background: #f3eee3; color: #1a1d21; }
-.mockbar .note { color: #f3eee399; }
+.mockbar button, .mockbar a { background: none; border: 1px solid #f4eee355; border-radius: 99px; padding: 3px 10px; font-size: 10.5px; letter-spacing: .06em; color: #f4eee3; text-decoration: none; }
+.mockbar button[aria-pressed=true] { background: #f4eee3; color: #1b1d21; }
+.mockbar .lbl { color: #f4eee388; margin-left: 4px; }
+.mockbar .note { color: #f4eee399; }
 body.embed { --bar-h: 0px; }
 body.embed .mockbar, body.embed .mocknotes { display: none; }
 .stage { display: flex; justify-content: center; }
@@ -144,7 +147,7 @@ canvas.fx { position: absolute; inset: 0; pointer-events: none; }
 .pin svg { width: 12px; height: 12px; flex: none; }
 .pin sup { font-size: 8.5px; color: var(--gust); margin-left: -2px; }
 .pin.s0 { border-style: dashed; color: var(--muted); }
-.pin.s3, .pin.s4, .pin.s5 { color: #fff; }
+.pin.s3, .pin.s4, .pin.s5 { color: #ffffff; }
 .pin.s3 sup, .pin.s4 sup, .pin.s5 sup { color: #ffd2a8; }
 .pin.lit { transform: translate(-50%, -50%) scale(1.18); z-index: 5; outline: 2px solid var(--ink); outline-offset: 2px; }
 .lights.has-lit .pin:not(.lit), .lights.has-lit .lt:not(.lit) { opacity: .5; }
@@ -221,18 +224,18 @@ canvas.fx { position: absolute; inset: 0; pointer-events: none; }
 .zoomnote { left: 50%; top: 60px; transform: translateX(-50%); display: none; padding: 6px 12px; border-radius: 99px; background: var(--ink); color: var(--ground); font: 500 10.5px var(--mono); letter-spacing: .04em; }
 .zoomnote.on { display: block; }
 
-.timebar { left: 0; right: 0; bottom: 0; height: 88px; display: none; background: var(--g-ink); color: var(--ground); padding: 8px 14px 10px; }
+.timebar { left: 0; right: 0; bottom: 0; height: 88px; display: none; background: #16181b; color: #f4eee3; padding: 8px 14px 10px; }
 .app.charted .timebar { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: center; }
 .tb-ctrl { display: flex; gap: 4px; align-items: center; grid-row: span 2; }
-.tb-ctrl button { width: 32px; height: 32px; border: 1px solid #f3eee355; border-radius: 99px; background: none; color: var(--ground); display: grid; place-items: center; }
+.tb-ctrl button { width: 32px; height: 32px; border: 1px solid #f4eee355; border-radius: 99px; background: none; color: #f4eee3; display: grid; place-items: center; }
 .tb-when { font: 600 12px var(--mono); letter-spacing: .04em; display: flex; gap: 10px; align-items: center; }
 .tb-when span { padding: 2px 9px; border-radius: 99px; background: var(--ground); color: var(--ink); }
-.tb-when i { font-style: normal; font-weight: 400; color: #f3eee3aa; font-size: 10.5px; }
+.tb-when i { font-style: normal; font-weight: 400; color: #f4eee3aa; font-size: 10.5px; }
 .track { position: relative; height: 34px; cursor: pointer; touch-action: none; }
-.track .days { position: absolute; inset: 0 0 auto 0; display: flex; font: 500 10px var(--mono); color: #f3eee3cc; }
-.track .days span { flex: 1; border-left: 1px solid #f3eee344; padding-left: 5px; white-space: nowrap; overflow: hidden; }
-.track .rail { position: absolute; left: 0; right: 0; top: 20px; height: 6px; border-radius: 3px; background: repeating-linear-gradient(90deg, #f3eee333 0 2px, transparent 2px 6px); }
-.track .run { position: absolute; top: 20px; height: 6px; border-radius: 3px; background: #f3eee366; }
+.track .days { position: absolute; inset: 0 0 auto 0; display: flex; font: 500 10px var(--mono); color: #f4eee3cc; }
+.track .days span { flex: 1; border-left: 1px solid #f4eee344; padding-left: 5px; white-space: nowrap; overflow: hidden; }
+.track .rail { position: absolute; left: 0; right: 0; top: 20px; height: 6px; border-radius: 3px; background: repeating-linear-gradient(90deg, #f4eee333 0 2px, transparent 2px 6px); }
+.track .run { position: absolute; top: 20px; height: 6px; border-radius: 3px; background: #f4eee366; }
 .track .now { position: absolute; top: 14px; width: 2px; height: 18px; background: var(--pen); }
 .track .thumb { position: absolute; top: 15px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--ground); border: 2px solid var(--ink); box-shadow: 0 0 0 2px var(--ground); }
 
@@ -269,15 +272,15 @@ body.expanded .list { display: none; }
 .n { display: none; width: 18px; height: 18px; border-radius: 50%; background: var(--note); color: #fff; font: 600 10px/18px var(--mono); text-align: center; letter-spacing: 0; vertical-align: 1px; margin-left: 6px; text-decoration: none; }
 body.notes .n { display: inline-block; }
 .fl .n { position: absolute; top: -8px; right: -8px; margin: 0; }
-.mocknotes { background: #1a1d21; color: #f3eee3; padding: 28px 0 60px; }
+.mocknotes { background: #1b1d21; color: #f4eee3; padding: 28px 0 60px; }
 .mocknotes .wrap { max-width: 900px; margin: 0 auto; padding: 0 20px; }
 .mocknotes h2 { font: 600 24px var(--display); margin-bottom: 6px; }
 .mocknotes h3 { font: 600 17px var(--display); margin: 24px 0 8px; }
-.mocknotes p, .mocknotes li { font: 400 15px/1.5 var(--body); color: #f3eee3dd; }
+.mocknotes p, .mocknotes li { font: 400 15px/1.5 var(--body); color: #f4eee3dd; }
 .mocknotes ol { padding: 0; list-style: none; display: grid; gap: 10px; margin: 10px 0 0; }
 .mocknotes ol li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; }
 .mocknotes ol li .n { display: inline-block; margin: 2px 0 0; }
-.mocknotes b { color: #fff; }
+.mocknotes b { color: #fffffe; }
 .mocknotes code { font: 400 12px var(--mono); }
 </style>
 </head>
@@ -289,11 +292,18 @@ body.notes .n { display: inline-block; }
   <button data-w="1440">1440</button>
   <button data-w="1100">1100</button>
   <button data-w="390">Phone 390</button>
+  <span class="gap"></span><span class="lbl">Theme</span>
+  <button data-theme-btn="white" aria-pressed="true">White</button>
+  <button data-theme-btn="dark" aria-pressed="false">Dark</button>
+  <button data-theme-btn="paper" aria-pressed="false">Paper (today)</button>
+  <span class="gap"></span><span class="lbl">Satellite</span>
+  <button data-sat-btn="x" aria-pressed="true">Enhanced</button>
+  <button data-sat-btn="orig" aria-pressed="false">As today</button>
   <span class="gap"></span>
   <button id="notesBtn" aria-pressed="true">Numbered notes</button>
   <a href="#why">Why · what changed</a>
   <span class="gap"></span>
-  <span class="note">Real chart pictures · made-up forecast · now = Sat 31 Oct 14:00</span>
+  <span class="note">Real chart pictures, recoloured · made-up forecast · now = Sat 31 Oct 14:00</span>
 </div>
 
 <div class="stage"><div class="app" id="app">
@@ -305,6 +315,7 @@ body.notes .n { display: inline-block; }
       <button data-scope="fav" aria-pressed="false">Favourites</button>
       <button data-scope="near" aria-pressed="true">Nearby</button>
     </div>
+    <button class="round themebtn" aria-label="Dark mode"><svg width="15" height="15" viewBox="0 0 16 16"><path d="M13.5 9.8A5.8 5.8 0 0 1 6.2 2.5a5.8 5.8 0 1 0 7.3 7.3z" fill="none" stroke="#1a1d21" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
     <button class="round" aria-label="Search"><svg width="15" height="15" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" fill="none" stroke="#1a1d21" stroke-width="1.5"/><path d="M11 11l4 4" stroke="#1a1d21" stroke-width="1.5"/></svg></button>
   </header>
 
@@ -383,6 +394,11 @@ body.notes .n { display: inline-block; }
       <li id="n4"><span class="n">4</span><span><b>Settings, as Surfline's.</b> Which way it blows: <b>Particles</b> (the chart's today), <b>Arrows</b>, or <b>None</b>. Then wind in colour on or off, and the spots and live wind on or off. The tabs (Wind, Rain, Currents, Foil depth, Sea chart) are the layers the chart already has; this only puts them one tap from the map.</span></li>
       <li id="n5"><span class="n">5</span><span><b>The time bar.</b> Drag, step or play through the week. The pins, the lights, the list's figures and the particles follow the hour. The model is named for the hour (Harmonie, then ECMWF), as on the spot page. In this mock-up the coloured wind is one photograph of one hour, so it doesn't change; in the real build it is the chart's own layer and moves with the hour.</span></li>
     </ol>
+    <h3>Round two (owner's steer, 31 October)</h3>
+    <ul>
+      <li><b>Modern white and dark</b> in place of the paper, with the moon button in the header; "Paper (today)" stays in the mock-up's bar for comparison. The map pictures are recoloured to match: in white, light grey land and a pale blue sea; in dark, near-black sea and dark grey land, with the wind's colours dimmed. That's a stand-in done on the photographs. The real build needs a white and a dark MapLibre style.</li>
+      <li><b>Enhanced satellite pictures</b> on the cards: dehazed, a little more colour, then local contrast and a fine sharpen. "As today" in the bar shows the originals.</li>
+    </ul>
     <h3>What is real and what is not</h3>
     <ul>
       <li>Real: the map pictures (wingfoil.ie's chart on 31 October, the camera set exactly in MapLibre), the 16 spot pictures, and the spots' places and facings.</li>
@@ -400,6 +416,55 @@ body.notes .n { display: inline-block; }
 </section>
 
 <script>
+/* ===================== themes: modern white, dark, and today's paper =====================
+   The page is drawn in today's paper colours; this layer maps each of them to the
+   chosen theme everywhere they appear: the stylesheet, every style, fill and stroke,
+   including what the page draws later. The real build would set these values in
+   ui/theme.css as tokens for each theme. */
+const THEMES = {
+  paper: null,
+  white: { f3eee3: "ffffff", ede6d6: "f5f5f7", f1efe6: "ffffff", f0eadd: "f4f4f6", f6f2e9: "ffffff", f1ebdf: "fafafa", f3f1ea: "f7f8fa",
+    "1a1d21": "111114", "3b3c3e": "3a3a40", "5b5c5b": "6c6c74", d9d4c7: "e8e8eb", "3c2d14": "000000",
+    dae8ea: "e4f0f5", c3dae2: "d3e6ee", ecf0ea: "f2f7f9", e7eef0: "eef3f7", fffdf6: "ffffff", "33373d": "2b2b30", "15171a": "0b0b0d" },
+  dark: { f3eee3: "0c0c0e", ede6d6: "17171b", f1efe6: "0c0c0e", ffffff: "2a2a30", f0eadd: "1d1d22", f6f2e9: "151518", f1ebdf: "121215", f3f1ea: "0f1013",
+    "1a1d21": "f1f1f3", "3b3c3e": "c9c9cf", "5b5c5b": "8f8f99", d9d4c7: "000000", "3c2d14": "000000",
+    "33373d": "f1f1f3", "15171a": "d8d8de", b0186a: "ff5aae", d43a2c: "ff5b4d", bf3125: "ff7d70", b02a1f: "ff6a5e", "2a7046": "4cc27a", "8a6a00": "ffd24d",
+    "5f8c9c": "4fa3c2", a9cbd8: "2c6c84", c3dae2: "1b4252", dae8ea: "123240", ecf0ea: "0f1b21", e7eef0: "17222b", fffdf6: "1d1d21", "3a7fb0": "5aa8e0",
+    e28bb3: "6f2a4f", d2609a: "9d3672", bd3d84: "cc4796", a01f6c: "ee62b0", "7c0f55": "ff9ad3", ffd2a8: "5a2a00" },
+};
+const HEXRE = /#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?(?![0-9a-fA-F])/g;
+let THEME = "white", TMAP = THEMES.white;
+const tr = s => TMAP ? s.replace(HEXRE, (m, b, a) => { const t = TMAP[b.toLowerCase()]; return t ? "#" + t + (a || "") : m; }) : s;
+const ORIG = new WeakMap(), TATTRS = ["style", "fill", "stroke", "stop-color"];
+function paintEl(el) {
+  if (!el.getAttribute) return;
+  let o = ORIG.get(el);
+  for (const a of TATTRS) {
+    const cur = el.getAttribute(a); if (cur == null) continue;
+    if (!o) { o = { p: {} }; ORIG.set(el, o); }
+    if (o.p[a] !== cur) o[a] = cur;           // the page wrote a new value: that is the original now
+    const v = tr(o[a]); o.p[a] = v; if (v !== cur) el.setAttribute(a, v);
+  }
+}
+function paintTree(root) { if (root.nodeType !== 1) return; paintEl(root); root.querySelectorAll("[style],[fill],[stroke],[stop-color]").forEach(paintEl); }
+new MutationObserver(rs => { for (const r of rs) { if (r.type === "attributes") paintEl(r.target); else r.addedNodes.forEach(paintTree); } })
+  .observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: TATTRS });
+const CSS0 = document.getElementById("css").textContent;
+const themeHooks = [];
+// ink as rgba for a canvas
+const inkRGBA = a => { const h = tr("#1a1d21").slice(1); return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${a})`; };
+function setTheme(t) {
+  THEME = t; TMAP = THEMES[t];
+  document.documentElement.dataset.theme = t;
+  document.getElementById("css").textContent = tr(CSS0);
+  paintTree(document.body);
+  document.querySelectorAll("[data-theme-btn]").forEach(b => b.setAttribute("aria-pressed", b.dataset.themeBtn === t));
+  document.querySelectorAll(".themebtn").forEach(b => b.setAttribute("aria-label", t === "dark" ? "Light mode" : "Dark mode"));
+  try { localStorage.setItem("mock.theme", t); } catch {}
+  themeHooks.forEach(f => f(t));
+}
+
+let SATX = "x";
 /* ===================== the places ===================== */
 // [id, name, county, lat, lon, facing, open (wind there against the bay's), launch bed (m of tide at which it dries)]
 const SP = [
@@ -489,7 +554,7 @@ function renderList() {
     const strip = hrs.map((x, k) => `<rect x="${k * bw + .4}%" y="4" width="${bw - .8}%" height="14" rx="2" fill="${x.r.st ? STAR_C[x.r.st] : x.r.dark ? "#1a1d2110" : "#1a1d211c"}"/>${x.h === S.hour % 24 ? `<rect x="${k * bw}%" y="1" width="${bw}%" height="20" rx="3" fill="none" stroke="#d43a2c" stroke-width="1.5"/>` : ""}<text x="${k * bw + bw / 2}%" y="26" text-anchor="middle" font-family="IBM Plex Mono" font-size="7.5" fill="#5b5c5b">${x.h % 3 === 0 ? pad(x.h) : ""}</text>`).join("");
     const deep = s.bed === 0 ? "harbour" : r.depth >= 1 ? `${r.depth.toFixed(1)}<span class="u">m</span>` : `${Math.max(0, r.depth).toFixed(1)}<span class="u">m</span>`;
     return `<article class="card ${S.lit === s.id ? "lit" : ""}" data-card="${s.id}">
-      <div class="pic"><img src="2026-10-31-spot-finder-map/sat/${s.id}.webp" alt="" loading="lazy">${picSvg(s, r)}<span class="km">${s.km} km</span></div>
+      <div class="pic"><img data-sat="2026-10-31-spot-finder-map/sat/${s.id}" src="2026-10-31-spot-finder-map/sat/${s.id}${SATX === "orig" ? "-orig" : ""}.webp" alt="" loading="lazy">${picSvg(s, r)}<span class="km">${s.km} km</span></div>
       <div class="crow"><div class="cname">${s.name}<small>${s.county} · faces ${compass(s.facing)}</small></div>
         <button class="fav" aria-label="Star"><svg width="15" height="15" viewBox="0 0 20 20"><path d="M10 1.8l2.5 5.4 5.9.6-4.4 4 1.3 5.8L10 14.6l-5.3 3 1.3-5.8-4.4-4 5.9-.6z" fill="${FAVS.has(s.id) ? "#d43a2c" : "none"}" stroke="#d43a2c" stroke-width="1.7" stroke-linejoin="round"/></svg></button></div>
       <div class="figs">
@@ -526,7 +591,7 @@ const STACKS = [
 for (const L of STACKS) {
   const c = world(L.lon, L.lat, L.z); L.tl = [c[0] - L.w / 2, c[1] - L.h / 2];
   L.el.style.width = L.w + "px"; L.el.style.height = L.h + "px";
-  L.el.innerHTML = L.has.map(k => `<img data-pic="${k}" src="2026-10-31-spot-finder-map/map/${L.key}-${k}.webp" alt="" draggable="false">`).join("");
+  L.el.innerHTML = L.has.map(k => `<img data-pic="${k}" data-base="2026-10-31-spot-finder-map/map/${L.key}-${k}" alt="" draggable="false">`).join("");
 }
 let V = { lon: -6.16, lat: 53.39, zoom: 10.6 };
 const size = () => [mapEl.clientWidth, mapEl.clientHeight];
@@ -639,7 +704,7 @@ function frame() {
   if (!on || S.dir === "none") { cx2.clearRect(0, 0, W, H); lastArrows = ""; }
   else if (S.dir === "particles") {
     cx2.globalCompositeOperation = "destination-in"; cx2.fillStyle = "rgba(0,0,0,.9)"; cx2.fillRect(0, 0, W, H); cx2.globalCompositeOperation = "source-over";
-    cx2.strokeStyle = S.tab === "wind" && S.wash ? "rgba(26,29,33,.62)" : "rgba(26,29,33,.5)"; cx2.lineWidth = 1.1; cx2.beginPath();
+    cx2.strokeStyle = inkRGBA(S.tab === "wind" && S.wash ? (THEME === "dark" ? .7 : .62) : .5); cx2.lineWidth = 1.1; cx2.beginPath();
     for (const p of P) {
       const f = field(p.x, p.y), k = .09;
       const nx = p.x + f.u * k, ny = p.y + f.v * k;
@@ -654,9 +719,9 @@ function frame() {
       for (let y = 30; y < H; y += 54) for (let x = 30 + ((y / 54) % 2) * 27; x < W; x += 54) {
         const f = field(x, y), len = 10 + f.w * .9, a = Math.atan2(f.v, f.u);
         const x0 = x - Math.cos(a) * len / 2, y0 = y - Math.sin(a) * len / 2, x1 = x + Math.cos(a) * len / 2, y1 = y + Math.sin(a) * len / 2;
-        cx2.strokeStyle = "rgba(26,29,33,.78)"; cx2.lineWidth = 1.6; cx2.lineCap = "round"; cx2.beginPath(); cx2.moveTo(x0, y0); cx2.lineTo(x1, y1);
+        cx2.strokeStyle = inkRGBA(.78); cx2.lineWidth = 1.6; cx2.lineCap = "round"; cx2.beginPath(); cx2.moveTo(x0, y0); cx2.lineTo(x1, y1);
         cx2.moveTo(x1, y1); cx2.lineTo(x1 - Math.cos(a - .5) * 6, y1 - Math.sin(a - .5) * 6); cx2.moveTo(x1, y1); cx2.lineTo(x1 - Math.cos(a + .5) * 6, y1 - Math.sin(a + .5) * 6); cx2.stroke();
-        cx2.font = "500 9px IBM Plex Mono"; cx2.fillStyle = "rgba(26,29,33,.7)"; cx2.fillText(Math.round(f.w), x + 7, y + 13);
+        cx2.font = "500 9px IBM Plex Mono"; cx2.fillStyle = inkRGBA(.7); cx2.fillText(Math.round(f.w), x + 7, y + 13);
       }
     }
   }
@@ -752,6 +817,14 @@ $("notesBtn").onclick = e => { const on = document.body.classList.toggle("notes"
 if (q.get("embed")) document.body.classList.add("embed"), document.body.classList.remove("preview", "notes");
 addEventListener("resize", () => { resizeFx(); seed(); draw(); });
 
+function mapPics() { const sfx = THEME === "paper" ? "" : "-" + THEME; document.querySelectorAll("[data-base]").forEach(im => im.src = im.dataset.base + sfx + ".webp"); }
+themeHooks.push(() => { mapPics(); lastArrows = ""; });
+document.querySelectorAll("[data-theme-btn]").forEach(b => b.onclick = () => setTheme(b.dataset.themeBtn));
+document.querySelector(".themebtn").onclick = () => setTheme(THEME === "dark" ? "white" : "dark");
+function setSat(m) { SATX = m; document.querySelectorAll("[data-sat]").forEach(im => im.src = im.dataset.sat + (m === "orig" ? "-orig" : "") + ".webp"); document.querySelectorAll("[data-sat-btn]").forEach(b => b.setAttribute("aria-pressed", b.dataset.satBtn === m)); }
+document.querySelectorAll("[data-sat-btn]").forEach(b => b.onclick = () => setSat(b.dataset.satBtn));
+setTheme(q.get("theme") || (() => { try { return localStorage.getItem("mock.theme"); } catch { return null; } })() || "white");
+if (q.get("sat")) setSat(q.get("sat"));
 renderList(); timebar(); setChart(S.chart); setW(q.get("w") || "fit");
 requestAnimationFrame(frame);
 </script>
