@@ -21,7 +21,7 @@
   ?embed=1   the page alone, without the mock-up's bar and notes
   ?w=390     open at phone width
 -->
-<style>
+<style id="css">
 @font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
   src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
 @font-face { font-family: "Fraunces Variable"; font-style: italic; font-display: swap; font-weight: 100 900;
@@ -57,6 +57,10 @@
   --note: #1f6fe0;
   --bar-h: 42px;
 }
+html[data-theme=white], html[data-theme=dark] { --grain: none; }
+html[data-theme=dark] { color-scheme: dark; }
+.themebtn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--g-raised); box-shadow: var(--sh-raised); display: grid; place-items: center; padding: 0; }
+.themebtn svg { width: 16px; height: 16px; }
 *, *::before, *::after { box-sizing: border-box; }
 html { font-size: 14px; }
 body { margin: 0; background: #d9d4c7; color: var(--ink); font-family: var(--body); line-height: 1.35; }
@@ -64,13 +68,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 h1, h2, h3, h4, p { margin: 0; }
 
 /* ---- the mock-up's own bar and notes (not part of the design) ---- */
-.mockbar { position: sticky; top: 0; z-index: 100; height: var(--bar-h); display: flex; gap: 6px; align-items: center; padding: 0 14px; background: #1a1d21; color: #f3eee3;
+.mockbar { position: sticky; top: 0; z-index: 100; height: var(--bar-h); display: flex; gap: 6px; align-items: center; padding: 0 14px; background: #1b1d21; color: #f4eee3;
   font: 500 11px var(--mono); letter-spacing: .06em; white-space: nowrap; overflow-x: auto; }
 .mockbar b { margin-right: 8px; text-transform: uppercase; letter-spacing: .12em; }
 .mockbar .gap { width: 12px; flex: none; }
-.mockbar button, .mockbar a { background: none; border: 1px solid #f3eee355; border-radius: 99px; padding: 3px 10px; font-size: 10.5px; letter-spacing: .06em; color: #f3eee3; text-decoration: none; }
-.mockbar button[aria-pressed=true] { background: #f3eee3; color: #1a1d21; }
-.mockbar .note { color: #f3eee399; }
+.mockbar button, .mockbar a { background: none; border: 1px solid #f4eee355; border-radius: 99px; padding: 3px 10px; font-size: 10.5px; letter-spacing: .06em; color: #f4eee3; text-decoration: none; }
+.mockbar button[aria-pressed=true] { background: #f4eee3; color: #1b1d21; }
+.mockbar .lbl { color: #f4eee388; margin-left: 4px; }
+.mockbar .note { color: #f4eee399; }
 body.embed .mockbar, body.embed .mocknotes { display: none; }
 body.embed { --bar-h: 0px; }
 .stage { display: flex; justify-content: center; }
@@ -84,8 +89,9 @@ body.notes .n { display: inline-block; }
 
 /* ---- the page ---- */
 .page { width: 100%; background: var(--ground) var(--grain); container: page / inline-size; min-height: 100vh; }
-.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+.wrap { margin: 0 auto; padding: 0 16px; }
 @container page (min-width: 720px) { .wrap { padding: 0 28px; } }
+@container page (min-width: 1400px) { .wrap { padding: 0 44px; } }
 
 .mono { font-family: var(--mono); }
 .eyebrow { font: 500 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
@@ -148,6 +154,14 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
 /* now */
 .now { display: grid; gap: 0; }
 @container page (min-width: 900px) { .now { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 28px; } }
+@container page (min-width: 1300px) { .now { grid-template-columns: minmax(440px, 1fr) minmax(0, 1.5fr); gap: 36px; } }
+@container page (min-width: 1600px) { .now { grid-template-columns: minmax(460px, 1fr) minmax(0, 1.6fr) minmax(280px, .62fr); } .nearby { display: none; } .side-near { display: block !important; } }
+.side-near { display: none; border-top: 1px solid var(--line); }
+.side-near .near { width: auto; grid-template-columns: 56px 1fr auto; padding: 8px 6px; border-radius: 10px; }
+.side-near .near img { width: 56px; height: 40px; grid-row: span 2; }
+.side-near .near .st { grid-column: 3; grid-row: 1 / span 2; }
+.pair { display: grid; }
+@container page (min-width: 1400px) { .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 44px; } .pair .guide { grid-template-columns: 1fr 1fr; } }
 .reads { display: grid; grid-template-columns: 1fr 1fr; }
 .read { padding: 12px 0 12px; border-bottom: 1px solid var(--line); min-width: 0; }
 .read:nth-child(odd) { padding-right: 14px; border-right: 1px solid var(--line); }
@@ -172,6 +186,7 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
 @container page (min-width: 900px) { .sat { margin-top: 12px; } }
 .sat-frame { position: relative; border-radius: 14px; overflow: hidden; box-shadow: var(--frame), 0 0 0 1px var(--ink); aspect-ratio: 4 / 3; background: #57746f; }
 @container page (min-width: 900px) { .sat-frame { aspect-ratio: auto; height: 100%; min-height: 330px; } }
+@container page (min-width: 1300px) { .sat-frame { min-height: 440px; } }
 .sat-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .35s; }
 .sat-frame img.off { opacity: 0; }
 .sat-frame svg.rose { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -273,18 +288,18 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
 .small { font: 400 12px/1.5 var(--body); color: var(--muted); padding: 18px 0 40px; }
 
 /* mock-up notes */
-.mocknotes { background: #1a1d21; color: #f3eee3; padding: 28px 0 60px; }
+.mocknotes { background: #1b1d21; color: #f4eee3; padding: 28px 0 60px; }
 .mocknotes .wrap { max-width: 980px; }
 .mocknotes h2 { font: 600 24px var(--display); margin-bottom: 4px; }
 .mocknotes h3 { font: 600 17px var(--display); margin: 26px 0 8px; }
-.mocknotes p, .mocknotes li { font: 400 15px/1.5 var(--body); color: #f3eee3dd; }
+.mocknotes p, .mocknotes li { font: 400 15px/1.5 var(--body); color: #f4eee3dd; }
 .mocknotes ol { padding-left: 0; list-style: none; margin: 10px 0 0; display: grid; gap: 12px; }
 .mocknotes ol li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; }
 .mocknotes ol li .n { display: inline-block; margin: 2px 0 0; }
-.mocknotes b { color: #fff; }
+.mocknotes b { color: #fffffe; }
 .mocknotes table { border-collapse: collapse; width: 100%; font: 400 13px/1.4 var(--body); margin-top: 8px; }
-.mocknotes th, .mocknotes td { text-align: left; padding: 7px 8px 7px 0; border-bottom: 1px solid #f3eee322; vertical-align: top; }
-.mocknotes th { font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: #f3eee399; }
+.mocknotes th, .mocknotes td { text-align: left; padding: 7px 8px 7px 0; border-bottom: 1px solid #f4eee322; vertical-align: top; }
+.mocknotes th { font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: #f4eee399; }
 .mocknotes code { font: 400 12px var(--mono); }
 </style>
 </head>
@@ -293,14 +308,22 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
 <div class="mockbar" role="toolbar" aria-label="Mock-up controls">
   <b>Mock-up · Spot page</b>
   <button data-w="fit" aria-pressed="true">This window</button>
-  <button data-w="1280">1280</button>
-  <button data-w="900">900</button>
+  <button data-w="1920">1920</button>
+  <button data-w="1440">1440</button>
+  <button data-w="1100">1100</button>
   <button data-w="390">Phone 390</button>
+  <span class="gap"></span><span class="lbl">Theme</span>
+  <button data-theme-btn="white" aria-pressed="true">White</button>
+  <button data-theme-btn="dark" aria-pressed="false">Dark</button>
+  <button data-theme-btn="paper" aria-pressed="false">Paper (today)</button>
+  <span class="gap"></span><span class="lbl">Satellite</span>
+  <button data-sat-btn="x" aria-pressed="true">Enhanced</button>
+  <button data-sat-btn="orig" aria-pressed="false">As today</button>
   <span class="gap"></span>
   <button id="notesBtn" aria-pressed="true">Numbered notes</button>
   <a href="#why">Why · what changed</a>
   <span class="gap"></span>
-  <span class="note">Made-up forecast · real satellite · now = Sat 31 Oct 14:20</span>
+  <span class="note">Made-up forecast · our satellite · now = Sat 31 Oct 14:20</span>
 </div>
 
 <div class="stage"><div class="page" id="page">
@@ -310,6 +333,7 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
       <button class="burger" aria-label="Menu"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M1 3h12M1 7h12M1 11h12" stroke="#1a1d21" stroke-width="1.6"/></svg></button>
       <span class="word">wingfoil<i>.ie</i></span>
       <span class="sp"></span>
+      <button class="themebtn" aria-label="Dark mode"><svg viewBox="0 0 16 16"><path d="M13.5 9.8A5.8 5.8 0 0 1 6.2 2.5a5.8 5.8 0 1 0 7.3 7.3z" fill="none" stroke="#1a1d21" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
       <button class="tool"><svg viewBox="0 0 16 16"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span style="text-decoration:underline;text-underline-offset:4px">Chart</span></button>
     </header>
 
@@ -353,8 +377,8 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
         </div>
         <figure class="sat">
           <div class="sat-frame">
-            <img id="satHigh" src="2026-10-31-spot-page/sat/dollymount-high.webp" alt="Dollymount from above at high tide, north up, with the wind now drawn over it.">
-            <img id="satLow" class="off" src="2026-10-31-spot-page/sat/dollymount-low.webp" alt="Dollymount from above at low tide, north up.">
+            <img id="satHigh" data-sat="2026-10-31-spot-page/sat/dollymount-high" src="2026-10-31-spot-page/sat/dollymount-high.webp" alt="Dollymount from above at high tide, north up, with the wind now drawn over it.">
+            <img id="satLow" class="off" data-sat="2026-10-31-spot-page/sat/dollymount-low" src="2026-10-31-spot-page/sat/dollymount-low.webp" alt="Dollymount from above at low tide, north up.">
             <svg class="rose" id="rose" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
             <span class="north">↑ N</span>
             <div class="sat-tools">
@@ -366,6 +390,7 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
             </div>
           </div>
         </figure>
+        <aside class="side-near" aria-label="Nearby now"><div class="nearby-h" style="padding-top:10px"><span class="eyebrow">Nearby now</span><button class="link">All on the chart</button></div><div id="sideNear"></div></aside>
       </div>
     </section>
 
@@ -407,6 +432,7 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
       </div>
     </section>
 
+    <div class="pair">
     <!-- WAS IT RIGHT -->
     <section class="sec" aria-labelledby="vH">
       <div class="sec-h">
@@ -447,6 +473,7 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
       </div>
     </section>
 
+    </div>
     <!-- SOURCES -->
     <section class="sec" aria-labelledby="sH">
       <div class="sec-h"><h2 id="sH">Where this comes from<a class="n" href="#n11">11</a></h2></div>
@@ -479,6 +506,13 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
         <li id="n10"><span class="n">10</span><span><b>The spot guide and reports.</b> Surfline's Guide tab, in a few lines: launch, water, things to watch for, who rides here. We have no data for this today (spots only have a name, place and facing), so it would start as an owner-edited file and then take riders' suggestions. Riders' short reports after a session give the "what was it actually like" that people missed when cams went offline or behind paywalls.</span></li>
         <li id="n11"><span class="n">11</span><span><b>Sources, plainly.</b> What each figure comes from, how fine and how often. The two marked NEW are the wave and live-data upgrades below.</span></li>
       </ol>
+
+      <h3>Round two (owner's steer, 31 October)</h3>
+      <ul>
+        <li><b>Full width.</b> The page uses the whole window. From 1300 px the picture grows beside the figures; from 1600 px the nearby spots become a column beside it; from 1400 px "Was it right?" and the guide sit side by side. The graph shows more days the wider it is (three at 1100, five at 1920), instead of wider hours.</li>
+        <li><b>Modern white and dark</b> in place of the paper. White is pure white with neutral greys; dark is near-black with the stars, the pen and the magenta lifted so they read on black. The moon button in the header switches. The mock-up's bar keeps "Paper (today)" for comparison. The real build would add these as two sets of the tokens in <code>ui/theme.css</code>, following the system's setting until the rider picks one.</li>
+        <li><b>Enhanced satellite pictures.</b> The Sentinel-2 composites are hazy. Each is now stretched from its own darkest to brightest point (one stretch for all three colours, so there's no cast), given a little more colour (less in the bright sand), then local contrast and a fine sharpen. "As today" in the bar shows the originals. The same few lines would run in <code>scripts/satellite</code> when the pictures are made, so nothing changes at runtime.</li>
+      </ul>
 
       <h3>What riders complain about, and our answer</h3>
       <table>
@@ -520,6 +554,54 @@ a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px va
 </div></div>
 
 <script>
+/* ===================== themes: modern white, dark, and today's paper =====================
+   The page is drawn in today's paper colours; this layer maps each of them to the
+   chosen theme everywhere they appear: the stylesheet, every style, fill and stroke,
+   including what the page draws later. The real build would set these values in
+   ui/theme.css as tokens for each theme. */
+const THEMES = {
+  paper: null,
+  white: { f3eee3: "ffffff", ede6d6: "f5f5f7", f1efe6: "ffffff", f0eadd: "f4f4f6", f6f2e9: "ffffff", f1ebdf: "fafafa", f3f1ea: "f7f8fa",
+    "1a1d21": "111114", "3b3c3e": "3a3a40", "5b5c5b": "6c6c74", d9d4c7: "e8e8eb", "3c2d14": "000000",
+    dae8ea: "e4f0f5", c3dae2: "d3e6ee", ecf0ea: "f2f7f9", e7eef0: "eef3f7", fffdf6: "ffffff", "33373d": "2b2b30", "15171a": "0b0b0d" },
+  dark: { f3eee3: "0c0c0e", ede6d6: "17171b", f1efe6: "0c0c0e", ffffff: "2a2a30", f0eadd: "1d1d22", f6f2e9: "151518", f1ebdf: "121215", f3f1ea: "0f1013",
+    "1a1d21": "f1f1f3", "3b3c3e": "c9c9cf", "5b5c5b": "8f8f99", d9d4c7: "000000", "3c2d14": "000000",
+    "33373d": "f1f1f3", "15171a": "d8d8de", b0186a: "ff5aae", d43a2c: "ff5b4d", bf3125: "ff7d70", b02a1f: "ff6a5e", "2a7046": "4cc27a", "8a6a00": "ffd24d",
+    "5f8c9c": "4fa3c2", a9cbd8: "2c6c84", c3dae2: "1b4252", dae8ea: "123240", ecf0ea: "0f1b21", e7eef0: "17222b", fffdf6: "1d1d21", "3a7fb0": "5aa8e0",
+    e28bb3: "6f2a4f", d2609a: "9d3672", bd3d84: "cc4796", a01f6c: "ee62b0", "7c0f55": "ff9ad3", ffd2a8: "5a2a00" },
+};
+const HEXRE = /#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?(?![0-9a-fA-F])/g;
+let THEME = "white", TMAP = THEMES.white;
+const tr = s => TMAP ? s.replace(HEXRE, (m, b, a) => { const t = TMAP[b.toLowerCase()]; return t ? "#" + t + (a || "") : m; }) : s;
+const ORIG = new WeakMap(), TATTRS = ["style", "fill", "stroke", "stop-color"];
+function paintEl(el) {
+  if (!el.getAttribute) return;
+  let o = ORIG.get(el);
+  for (const a of TATTRS) {
+    const cur = el.getAttribute(a); if (cur == null) continue;
+    if (!o) { o = { p: {} }; ORIG.set(el, o); }
+    if (o.p[a] !== cur) o[a] = cur;           // the page wrote a new value: that is the original now
+    const v = tr(o[a]); o.p[a] = v; if (v !== cur) el.setAttribute(a, v);
+  }
+}
+function paintTree(root) { if (root.nodeType !== 1) return; paintEl(root); root.querySelectorAll("[style],[fill],[stroke],[stop-color]").forEach(paintEl); }
+new MutationObserver(rs => { for (const r of rs) { if (r.type === "attributes") paintEl(r.target); else r.addedNodes.forEach(paintTree); } })
+  .observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: TATTRS });
+const CSS0 = document.getElementById("css").textContent;
+const themeHooks = [];
+// ink as rgba for a canvas
+const inkRGBA = a => { const h = tr("#1a1d21").slice(1); return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${a})`; };
+function setTheme(t) {
+  THEME = t; TMAP = THEMES[t];
+  document.documentElement.dataset.theme = t;
+  document.getElementById("css").textContent = tr(CSS0);
+  paintTree(document.body);
+  document.querySelectorAll("[data-theme-btn]").forEach(b => b.setAttribute("aria-pressed", b.dataset.themeBtn === t));
+  document.querySelectorAll(".themebtn").forEach(b => b.setAttribute("aria-label", t === "dark" ? "Light mode" : "Dark mode"));
+  try { localStorage.setItem("mock.theme", t); } catch {}
+  themeHooks.forEach(f => f(t));
+}
+
 /* ===================== made-up forecast ===================== */
 const FACING = 125, NOW = 14 + 20 / 60, HOURS = 168, LAUNCH_BED = 1.6; // tide (m CD) at which the launch is dry
 const DAYS = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"], DATES = [31, 1, 2, 3, 4, 5, 6];
@@ -623,8 +705,8 @@ const NEAR = [
   ["dollymount", "Dollymount", "16", "21", 4, true], ["bull-island-north", "Bull Island N", "15", "20", 3], ["sandymount", "Sandymount", "14", "19", 3],
   ["portmarnock", "Portmarnock", "17", "22", 4], ["poolbeg", "Poolbeg", "13", "20", 2], ["seapoint", "Seapoint", "12", "18", 2],
   ["malahide-estuary", "Malahide", "15", "19", 3], ["dun-laoghaire", "Dún Laoghaire", "11", "17", 1], ["killiney", "Killiney", "10", "15", 0]];
-document.getElementById("nearRow").innerHTML = NEAR.map(([id, nm, w, g, st, cur]) =>
-  `<a class="near" href="#" ${cur ? 'aria-current="page"' : ""}><img src="2026-10-31-spot-page/sat/thumb-${id}.webp" alt=""><span class="nm">${nm}</span><span class="wn">${w}<sup>${g}</sup> <span class="muted" style="font-weight:400;font-size:10px">kn</span></span><span class="st">${starsHTML(st)}</span></a>`).join("");
+document.getElementById("sideNear").innerHTML = document.getElementById("nearRow").innerHTML = NEAR.map(([id, nm, w, g, st, cur]) =>
+  `<a class="near" href="#" ${cur ? 'aria-current="page"' : ""}><img data-sat="2026-10-31-spot-page/sat/thumb-${id}" src="2026-10-31-spot-page/sat/thumb-${id}.webp" alt=""><span class="nm">${nm}</span><span class="wn">${w}<sup>${g}</sup> <span class="muted" style="font-weight:400;font-size:10px">kn</span></span><span class="st">${starsHTML(st)}</span></a>`).join("");
 
 /* ===================== now ===================== */
 (function now() {
@@ -750,7 +832,8 @@ const GH = 430, LEFT = 0;
 function drawGraph() {
   const box = document.getElementById("graph");
   const w = box.clientWidth || 900;
-  PX = w < 600 ? 17 : Math.max(11, Math.floor(w / 72));
+  const days = w < 600 ? 0 : Math.max(3, Math.min(7, Math.floor(w / 350)));
+  PX = w < 600 ? 17 : w / (days * 24);
   const W = PX * HOURS;
   box.innerHTML = "";
   const svg = el("svg", { width: W, height: GH, viewBox: `0 0 ${W} ${GH}` }, box);
@@ -946,6 +1029,16 @@ document.getElementById("notesBtn").onclick = e => { const on = document.body.cl
 const q = new URLSearchParams(location.search);
 if (q.get("embed")) document.body.classList.add("embed"), document.body.classList.remove("preview", "notes");
 drawWeek(); drawTable();
+document.querySelectorAll("[data-theme-btn]").forEach(b => b.onclick = () => setTheme(b.dataset.themeBtn));
+document.querySelector(".themebtn").onclick = () => setTheme(THEME === "dark" ? "white" : "dark");
+function setSat(m) {
+  document.querySelectorAll("[data-sat]").forEach(im => im.src = im.dataset.sat + (m === "orig" ? "-orig" : "") + ".webp");
+  document.querySelectorAll("[data-sat-btn]").forEach(b => b.setAttribute("aria-pressed", b.dataset.satBtn === m));
+}
+document.querySelectorAll("[data-sat-btn]").forEach(b => b.onclick = () => setSat(b.dataset.satBtn));
+themeHooks.push(() => { drawGraph(); drawVerify(); });
+setTheme(q.get("theme") || (() => { try { return localStorage.getItem("mock.theme"); } catch { return null; } })() || "white");
+if (q.get("sat")) setSat(q.get("sat"));
 setW(q.get("w") || "fit");
 let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawGraph(); drawVerify(); }, 120); });
 </script>
