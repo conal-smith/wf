@@ -43,6 +43,7 @@
 
 /* ui/theme.css, the tokens this page uses */
 :root {
+  --rule: var(--ink);
   --ground: #f3eee3; --sunken: #ede6d6; --glass: #f3eee3eb; --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b;
   --line: #1a1d2133; --line-soft: #1a1d211f; --pen: #d43a2c; --pen-ink: #bf3125; --magenta: #b0186a; --halo: #f1efe6; --you: #1f6fe0;
   --buoy: #e9b200; --gust: #e0803a; --depth: #5f8c9c;
@@ -62,7 +63,7 @@
   --bar-h: 42px;
 }
 html[data-theme=white], html[data-theme=dark] { --grain: none; }
-html[data-theme=dark] { color-scheme: dark; }
+html[data-theme=dark] { color-scheme: dark; --rule: #34343b; --line: #fffffe1c; --line-soft: #fffffe10; --frame: inset 0 0 0 1px #fffffe14; }
 *, *::before, *::after { box-sizing: border-box; }
 html { font-size: 14px; }
 body { margin: 0; background: #d9d4c7; color: var(--ink); font-family: var(--body); line-height: 1.35; }
@@ -82,18 +83,18 @@ body.embed { --bar-h: 0px; }
 body.embed .mockbar, body.embed .mocknotes { display: none; }
 .stage { display: flex; justify-content: center; }
 body.preview .stage { padding: 16px; overflow-x: auto; justify-content: safe center; }
-body.preview .app { box-shadow: 0 0 0 1px #1a1d2122, 0 20px 50px -20px #3c2d1466; }
+body.preview .app { box-shadow: 0 0 0 1px #1b1d2122, 0 20px 50px -20px #3c2d1466; }
 
 /* ---- the finder ---- */
 .app { position: relative; width: 100%; height: calc(100vh - var(--bar-h) - 32px); min-height: 640px; background: var(--ground) var(--grain); display: flex; flex-direction: column; overflow: hidden; container: app / inline-size; }
 body.embed .app { height: 100vh; }
 
-.fhead { flex: none; display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 16px; border-bottom: 3px double var(--ink); background: var(--ground) var(--grain); position: relative; z-index: 30; }
-.round { flex: none; width: 36px; height: 36px; padding: 0; border-radius: 99px; border: 1px solid var(--ink); background: var(--g-raised); box-shadow: var(--sh-raised); display: grid; place-items: center; }
+.fhead { flex: none; display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 16px; border-bottom: 3px double var(--rule); background: var(--ground) var(--grain); position: relative; z-index: 30; }
+.round { flex: none; width: 36px; height: 36px; padding: 0; border-radius: 99px; border: 1px solid var(--rule); background: var(--g-raised); box-shadow: var(--sh-raised); display: grid; place-items: center; }
 .word { font: 600 22px/1 var(--display); letter-spacing: -.02em; font-variation-settings: "opsz" 72; }
 .word i { color: var(--magenta); font-weight: 500; }
 .fhead .sp { flex: 1; }
-.seg { display: inline-flex; border-radius: 99px; border: 1px solid var(--ink); padding: 2px; background: var(--g-raised); }
+.seg { display: inline-flex; border-radius: 99px; border: 1px solid var(--rule); padding: 2px; background: var(--g-raised); }
 .seg button { border: 0; background: none; border-radius: 99px; padding: 6px 11px; font: 500 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
 .seg button[aria-pressed=true] { background: var(--g-ink); color: var(--ground); }
 
@@ -101,34 +102,31 @@ body.embed .app { height: 100vh; }
 @container app (max-width: 1099px) { .body { grid-template-columns: 360px minmax(0, 1fr); } }
 
 /* the list */
-.list { overflow-y: auto; overscroll-behavior: contain; border-right: 1px solid var(--ink); padding: 0 14px 90px; scrollbar-width: thin; }
+.list { overflow-y: auto; overscroll-behavior: contain; border-right: 1px solid var(--rule); padding: 0 14px 90px; scrollbar-width: thin; }
 .lhead { position: sticky; top: 0; z-index: 2; background: var(--ground) var(--grain); padding: 12px 0 10px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .lhead h1 { font: 600 19px var(--display); }
 .lhead span { font: 400 10.5px var(--mono); color: var(--muted); }
 .card { display: block; padding: 12px 0 14px; border-bottom: 1px solid var(--line); cursor: pointer; position: relative; }
-.card:hover .pic, .card.lit .pic { box-shadow: var(--frame), 0 0 0 2px var(--ink); }
+.card:hover .pic, .card.lit .pic { box-shadow: var(--frame), 0 0 0 2px var(--rule); }
 .pic { position: relative; aspect-ratio: 2 / 1; border-radius: 12px; overflow: hidden; box-shadow: var(--frame), 0 0 0 1px #1a1d2140; background: #57746f; transition: box-shadow .15s; }
 .pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .pic svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.pic .km { position: absolute; left: 8px; top: 8px; font: 600 10px var(--mono); padding: 2px 7px; border-radius: 99px; background: #f3eee3e6; box-shadow: 0 0 0 1px var(--ink); }
+.pic .km { position: absolute; left: 8px; top: 8px; font: 600 10px var(--mono); padding: 2px 7px; border-radius: 99px; background: #f3eee3e6; box-shadow: 0 0 0 1px var(--rule); }
 .crow { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-top: 9px; }
 .cname { font: 600 17px/1.15 var(--display); letter-spacing: -.01em; font-variation-settings: "opsz" 48; }
 .cname small { display: block; font: 400 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
-.fav { flex: none; width: 30px; height: 30px; padding: 0; border-radius: 99px; border: 1px solid var(--ink); background: var(--g-raised); box-shadow: var(--sh-raised); display: grid; place-items: center; }
-.figs { display: grid; grid-template-columns: auto 1fr 1fr; gap: 0 14px; margin-top: 8px; align-items: end; }
-.figs .k { font: 500 9px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 3px; }
-.figs b { font: 600 20px/1 var(--mono); letter-spacing: -.03em; }
-.figs b sup { font-size: 11px; color: var(--gust); margin-left: 1px; letter-spacing: 0; }
-.figs .u { font: 500 10px var(--mono); margin-left: 2px; }
-.figs .d { display: block; font: 400 10.5px var(--mono); color: var(--ink-2); margin-top: 3px; white-space: nowrap; }
-.figs .d.off { color: var(--pen-ink); }
+.fav { flex: none; width: 30px; height: 30px; padding: 0; border-radius: 99px; border: 1px solid var(--rule); background: var(--g-raised); box-shadow: var(--sh-raised); display: grid; place-items: center; }
 .stars { display: inline-flex; gap: 2px; }
 .stars i { width: 9px; height: 9px; border-radius: 50%; background: var(--line-soft); }
 .stars i.on { background: var(--c); }
-.strip { margin-top: 10px; }
-.strip svg { display: block; width: 100%; height: 26px; }
-.strip .lab { display: flex; justify-content: space-between; font: 400 9.5px var(--mono); color: var(--muted); margin-top: 2px; }
-.strip .lab b { color: var(--ink); font-weight: 500; }
+.grads { display: grid; grid-template-columns: 40px 1fr; gap: 6px 8px; align-items: center; margin-top: 10px; }
+.gk { font: 500 9px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.gbar { position: relative; height: 16px; border-radius: 5px; }
+.gbar.wind { height: 22px; }
+.gbar b { position: absolute; top: 50%; transform: translate(-50%, -50%); font: 600 10px var(--mono); color: #111114; text-shadow: 0 0 3px #fffffecc, 0 0 1px #fffffe; }
+.gbar .nowm { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--pen); }
+.ticks { position: relative; height: 12px; font: 400 9px var(--mono); color: var(--muted); }
+.ticks span { position: absolute; transform: translateX(-50%); }
 
 /* the map */
 .mapwrap { position: relative; min-width: 0; overflow: hidden; background: #f3f1ea; }
@@ -142,14 +140,14 @@ canvas.fx { position: absolute; inset: 0; pointer-events: none; }
 .mk { position: absolute; left: 0; top: 0; pointer-events: auto; }
 
 /* the plain map's spots: a pill with the wind, filled in the stars' colour */
-.pin { transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px 0 6px; border-radius: 99px; border: 1.5px solid var(--ink);
+.pin { transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px 0 6px; border-radius: 99px; border: 1.5px solid var(--rule);
   background: var(--ground); font: 600 12px var(--mono); white-space: nowrap; box-shadow: 0 1px 2px #1a1d2140, 0 4px 10px -4px #1a1d2160; transition: transform .15s, opacity .15s; }
 .pin svg { width: 12px; height: 12px; flex: none; }
 .pin sup { font-size: 8.5px; color: var(--gust); margin-left: -2px; }
 .pin.s0 { border-style: dashed; color: var(--muted); }
 .pin.s3, .pin.s4, .pin.s5 { color: #ffffff; }
 .pin.s3 sup, .pin.s4 sup, .pin.s5 sup { color: #ffd2a8; }
-.pin.lit { transform: translate(-50%, -50%) scale(1.18); z-index: 5; outline: 2px solid var(--ink); outline-offset: 2px; }
+.pin.lit { transform: translate(-50%, -50%) scale(1.18); z-index: 5; outline: 2px solid var(--rule); outline-offset: 2px; }
 .lights.has-lit .pin:not(.lit), .lights.has-lit .lt:not(.lit) { opacity: .5; }
 /* the chart's own lights (src/map.css) in chart mode */
 .lt { width: 22px; height: 22px; margin: -11px 0 0 -11px; padding: 0; border: 0; background: none; }
@@ -163,14 +161,14 @@ canvas.fx { position: absolute; inset: 0; pointer-events: none; }
 .lt.off .lt-arrow { stroke: var(--pen); }
 .lt.lit svg { transform: scale(1.25); }
 /* live readings: buoys and stations, in the buoy's yellow */
-.obs { transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 7px 0 4px; border-radius: 6px; border: 1.5px solid var(--ink);
+.obs { transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 7px 0 4px; border-radius: 6px; border: 1.5px solid var(--rule);
   background: var(--buoy); font: 600 11px var(--mono); white-space: nowrap; box-shadow: 0 1px 2px #1a1d2140; }
 .obs sup { font-size: 8px; color: #7a3d00; }
 .obs svg { width: 12px; height: 12px; }
 .you { width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--you); border: 2.5px solid #fff; box-shadow: 0 0 0 6px #1f6fe026, 0 1px 3px #0005; pointer-events: none; }
 
 /* the hover card on the map, as Surfline's */
-.pop { position: absolute; z-index: 20; min-width: 230px; padding: 10px 12px 11px; border-radius: 12px; background: var(--ground); border: 1px solid var(--ink); box-shadow: var(--sh-float); pointer-events: none; display: none; }
+.pop { position: absolute; z-index: 20; min-width: 230px; padding: 10px 12px 11px; border-radius: 12px; background: var(--ground); border: 1px solid var(--rule); box-shadow: var(--sh-float); pointer-events: none; display: none; }
 .pop.on { display: block; }
 .pop h3 { font: 600 15px var(--display); margin-bottom: 4px; }
 .pop .row { display: flex; gap: 14px; margin-top: 7px; }
@@ -182,11 +180,11 @@ canvas.fx { position: absolute; inset: 0; pointer-events: none; }
 
 /* controls on the map */
 .fl { position: absolute; z-index: 10; }
-.chip { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px; border-radius: 99px; border: 1px solid var(--ink); background: var(--g-raised); box-shadow: var(--sh-raised), var(--sh-card);
+.chip { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px; border-radius: 99px; border: 1px solid var(--rule); background: var(--g-raised); box-shadow: var(--sh-raised), var(--sh-card);
   font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
 .chip svg { width: 14px; height: 14px; }
 .chip[aria-pressed=true] { background: var(--g-ink); color: var(--ground); border-color: #000; }
-.zoombox { right: 12px; top: 12px; display: grid; border-radius: 12px; border: 1px solid var(--ink); background: var(--g-raised); box-shadow: var(--sh-raised), var(--sh-card); padding: 2px; }
+.zoombox { right: 12px; top: 12px; display: grid; border-radius: 12px; border: 1px solid var(--rule); background: var(--g-raised); box-shadow: var(--sh-raised), var(--sh-card); padding: 2px; }
 .zoombox button { width: 32px; height: 30px; border: 0; background: none; display: grid; place-items: center; font: 500 18px/1 var(--mono); }
 .modes { left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; gap: 6px; padding: 5px; border-radius: 99px; background: #f3eee3e0; box-shadow: 0 0 0 1px #1a1d2133, var(--sh-float); }
 .modes .chip { box-shadow: none; }
@@ -204,20 +202,20 @@ canvas.fx { position: absolute; inset: 0; pointer-events: none; }
 .app.charted .setbtn { display: inline-flex; }
 .expand { left: 12px; top: 12px; }
 .app.charted .expand { top: 62px; }
-.settings { right: 12px; top: 54px; width: 300px; display: none; padding: 14px; border-radius: 16px; background: var(--ground) var(--grain); border: 1px solid var(--ink); box-shadow: var(--sh-float); }
+.settings { right: 12px; top: 54px; width: 300px; display: none; padding: 14px; border-radius: 16px; background: var(--ground) var(--grain); border: 1px solid var(--rule); box-shadow: var(--sh-float); }
 .settings.on { display: block; }
 .settings h4 { font: 500 9.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
 .settings h4 + * { margin-bottom: 14px; }
 .dirs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .dirs button { border: 1px solid var(--line); border-radius: 12px; background: var(--g-raised); padding: 6px 6px 7px; display: grid; gap: 4px; justify-items: center; font: 500 10px var(--mono); letter-spacing: .06em; }
 .dirs button svg { width: 100%; height: 44px; border-radius: 8px; background: #e7eef0; }
-.dirs button[aria-pressed=true] { border-color: var(--ink); box-shadow: 0 0 0 1.5px var(--ink); }
+.dirs button[aria-pressed=true] { border-color: var(--ink); box-shadow: 0 0 0 1.5px var(--rule); }
 .tog { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-top: 1px solid var(--line-soft); font: 400 14px var(--body); }
-.sw { width: 36px; height: 20px; border-radius: 99px; border: 1px solid var(--ink); background: var(--sunken); position: relative; padding: 0; }
+.sw { width: 36px; height: 20px; border-radius: 99px; border: 1px solid var(--rule); background: var(--sunken); position: relative; padding: 0; }
 .sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--ink); transition: left .15s; }
 .sw[aria-checked=true] { background: var(--ink); }
 .sw[aria-checked=true]::after { left: 18px; background: var(--ground); }
-.legend { left: 12px; bottom: 104px; display: none; padding: 7px 10px; border-radius: 10px; background: #f3eee3e6; border: 1px solid var(--ink); font: 500 9.5px var(--mono); }
+.legend { left: 12px; bottom: 104px; display: none; padding: 7px 10px; border-radius: 10px; background: #f3eee3e6; border: 1px solid var(--rule); font: 500 9.5px var(--mono); }
 .app.charted .legend { display: block; }
 .legend .scale { width: 170px; height: 8px; border-radius: 4px; margin: 4px 0 2px; }
 .legend .ticks { display: flex; justify-content: space-between; color: var(--muted); }
@@ -237,7 +235,7 @@ canvas.fx { position: absolute; inset: 0; pointer-events: none; }
 .track .rail { position: absolute; left: 0; right: 0; top: 20px; height: 6px; border-radius: 3px; background: repeating-linear-gradient(90deg, #f4eee333 0 2px, transparent 2px 6px); }
 .track .run { position: absolute; top: 20px; height: 6px; border-radius: 3px; background: #f4eee366; }
 .track .now { position: absolute; top: 14px; width: 2px; height: 18px; background: var(--pen); }
-.track .thumb { position: absolute; top: 15px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--ground); border: 2px solid var(--ink); box-shadow: 0 0 0 2px var(--ground); }
+.track .thumb { position: absolute; top: 15px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--ground); border: 2px solid var(--rule); box-shadow: 0 0 0 2px var(--ground); }
 
 /* phone: the list alone, and the black button to the map */
 .toggle { display: none; }
@@ -388,12 +386,17 @@ body.notes .n { display: inline-block; }
     <h2>What changed, and why</h2>
     <p>Surfline's map page has a narrow list beside a plain map, and a "Charts" switch on the map that turns it into a forecast chart with wind, waves, particles or arrows, and a time bar. This applies that to our Spot finder. Today the list takes most of the screen and the map beside it already draws the particles. Here the map is plain until the rider asks for the chart.</p>
     <ol>
-      <li id="n1"><span class="n">1</span><span><b>A narrow list, 400 px.</b> Each card is the spot's real satellite picture, the name and distance, three figures (stars, wind and gust with direction, water at the launch) and a strip of today's hours coloured by stars, with the best hours written under it. That's the Surfline card with our figures. The five-day row on today's card goes to the spot page, one tap away. Hovering a card lights its pin; hovering a pin lights its card.</span></li>
+      <li id="n1"><span class="n">1</span><span><b>A narrow list, 400 px.</b> Each card is the spot's satellite picture, the name, and two bars across today's daylight hours: the wind in its colours (with the knots every three hours) and the stars in theirs. A red tick marks the hour. Nothing else. The five-day row on today's card goes to the spot page, one tap away. Hovering a card lights its pin; hovering a pin lights its card.</span></li>
       <li id="n2"><span class="n">2</span><span><b>A plain map, then the Chart switch.</b> At first the map has every layer off: land, sea, place names, and the listed spots as pills showing the wind, filled in the star colour. No particles, wash, soundings or tints. <b>Chart</b> (bottom, in magenta) turns the same map into the chart: the layer tabs, the settings, every spot as the chart's own lights and the time bar. <b>Map</b> turns it back. <b>Full chart</b> still opens today's full-screen chart, with the dock.</span></li>
       <li id="n3"><span class="n">3</span><span><b>Live wind on the plain map.</b> Surfline's map has "Wind stations" and "Wave buoys" beside "Charts". Ours is <b>Live wind</b>: the latest readings from the buoys and Met Éireann stations our <code>wind-obs</code> job already reads every hour (plus Irish Lights' buoys, if we get their licence). The readings here are made up.</span></li>
       <li id="n4"><span class="n">4</span><span><b>Settings, as Surfline's.</b> Which way it blows: <b>Particles</b> (the chart's today), <b>Arrows</b>, or <b>None</b>. Then wind in colour on or off, and the spots and live wind on or off. The tabs (Wind, Rain, Currents, Foil depth, Sea chart) are the layers the chart already has; this only puts them one tap from the map.</span></li>
       <li id="n5"><span class="n">5</span><span><b>The time bar.</b> Drag, step or play through the week. The pins, the lights, the list's figures and the particles follow the hour. The model is named for the hour (Harmonie, then ECMWF), as on the spot page. In this mock-up the coloured wind is one photograph of one hour, so it doesn't change; in the real build it is the chart's own layer and moves with the hour.</span></li>
     </ol>
+    <h3>Round three (owner's steer, 31 October)</h3>
+    <ul>
+      <li>The cards are simpler: no facing, no stars or wind figures, no depth. Just the wind's gradient and the stars' gradient across today.</li>
+      <li>Dark mode's rules are a soft grey instead of the text's white: the header's rule, the list's edge, the buttons and the pictures' outlines.</li>
+    </ul>
     <h3>Round two (owner's steer, 31 October)</h3>
     <ul>
       <li><b>Modern white and dark</b> in place of the paper, with the moon button in the header; "Paper (today)" stays in the mock-up's bar for comparison. The map pictures are recoloured to match: in white, light grey land and a pale blue sea; in dark, near-black sea and dark grey land, with the wind's colours dimmed. That's a stand-in done on the photographs. The real build needs a white and a dark MapLibre style.</li>
@@ -488,6 +491,8 @@ const LIVE = [["Dublin Bay buoy", 53.329, -6.07, 19, 25, 205], ["Kish Bank", 53.
 const NOW = 14, HOURS = 168, HARMONIE_END = 48;
 const DAYS = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"], DATES = [31, 1, 2, 3, 4, 5, 6];
 const STAR_C = ["", "#e28bb3", "#d2609a", "#bd3d84", "#a01f6c", "#7c0f55"];
+const WIND_STOPS = [[0,"#aacbea"],[5,"#80aee0"],[9,"#4f80c8"],[10,"#49a88a"],[15,"#4cb35a"],[20,"#6fbf3e"],[25,"#b5cf3a"],[30,"#ecd23a"],[35,"#f2a03a"],[40,"#e05a33"],[45,"#c8304a"],[50,"#9b2f86"]];
+const windColor = k => { let c = WIND_STOPS[0][1]; for (const [st, col] of WIND_STOPS) if (k >= st) c = col; return c; };
 const COMPASS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
 const compass = d => COMPASS[Math.round(((d % 360) + 360) % 360 / 22.5) % 16];
 const angDiff = (a, b) => Math.abs(((a - b) % 360 + 540) % 360 - 180);
@@ -549,20 +554,22 @@ function renderList() {
   $("cards").innerHTML = L.map(s => {
     const r = rate(s, S.hour);
     const hrs = []; for (let h = 6; h < 19; h++) hrs.push({ h, r: rate(s, day * 24 + h) });
-    const good = hrs.filter(x => x.r.st >= 3);
-    const bw = 100 / hrs.length;
-    const strip = hrs.map((x, k) => `<rect x="${k * bw + .4}%" y="4" width="${bw - .8}%" height="14" rx="2" fill="${x.r.st ? STAR_C[x.r.st] : x.r.dark ? "#1a1d2110" : "#1a1d211c"}"/>${x.h === S.hour % 24 ? `<rect x="${k * bw}%" y="1" width="${bw}%" height="20" rx="3" fill="none" stroke="#d43a2c" stroke-width="1.5"/>` : ""}<text x="${k * bw + bw / 2}%" y="26" text-anchor="middle" font-family="IBM Plex Mono" font-size="7.5" fill="#5b5c5b">${x.h % 3 === 0 ? pad(x.h) : ""}</text>`).join("");
-    const deep = s.bed === 0 ? "harbour" : r.depth >= 1 ? `${r.depth.toFixed(1)}<span class="u">m</span>` : `${Math.max(0, r.depth).toFixed(1)}<span class="u">m</span>`;
+    // two gradients across today's hours, 06 to 19: the wind's colours and the stars' colours
+    const pos = k => ((k + .5) / hrs.length * 100).toFixed(1) + "%";
+    const windG = `linear-gradient(90deg, ${hrs.map((x, k) => `${windColor(x.r.w)} ${pos(k)}`).join(", ")})`;
+    const starG = `linear-gradient(90deg, ${hrs.map((x, k) => `${x.r.st ? STAR_C[x.r.st] : "#1a1d211a"} ${pos(k)}`).join(", ")})`;
+    const nowK = hrs.findIndex(x => x.h === S.hour % 24), nowM = nowK < 0 ? "" : `<i class="nowm" style="left:${pos(nowK)}"></i>`;
+    const nums = hrs.map((x, k) => x.h % 3 === 0 ? `<b style="left:${pos(k)}">${Math.round(x.r.w)}</b>` : "").join("");
+    const ticks = hrs.map((x, k) => x.h % 3 === 0 ? `<span style="left:${pos(k)}">${pad(x.h)}</span>` : "").join("");
     return `<article class="card ${S.lit === s.id ? "lit" : ""}" data-card="${s.id}">
       <div class="pic"><img data-sat="2026-10-31-spot-finder-map/sat/${s.id}" src="2026-10-31-spot-finder-map/sat/${s.id}${SATX === "orig" ? "-orig" : ""}.webp" alt="" loading="lazy">${picSvg(s, r)}<span class="km">${s.km} km</span></div>
-      <div class="crow"><div class="cname">${s.name}<small>${s.county} · faces ${compass(s.facing)}</small></div>
+      <div class="crow"><div class="cname">${s.name}<small>${s.county}</small></div>
         <button class="fav" aria-label="Star"><svg width="15" height="15" viewBox="0 0 20 20"><path d="M10 1.8l2.5 5.4 5.9.6-4.4 4 1.3 5.8L10 14.6l-5.3 3 1.3-5.8-4.4-4 5.9-.6z" fill="${FAVS.has(s.id) ? "#d43a2c" : "none"}" stroke="#d43a2c" stroke-width="1.7" stroke-linejoin="round"/></svg></button></div>
-      <div class="figs">
-        <div><span class="k">Stars</span>${r.dark ? '<span class="d">dark</span>' : starsHTML(r.st)}<span class="d">${pad(S.hour % 24)}:00</span></div>
-        <div><span class="k">Wind kn</span><b>${Math.round(r.w)}<sup>${Math.round(r.g)}</sup></b><span class="d ${r.off ? "off" : ""}">${compass(r.d)} · ${r.shore}</span></div>
-        <div><span class="k">At the launch</span><b style="color:${s.bed && r.depth < 1 ? "var(--pen-ink)" : "inherit"}">${deep}</b><span class="d">${s.bed === 0 ? "deep water" : r.depth >= 1 ? "deep enough" : "too shallow"}</span></div>
+      <div class="grads">
+        <span class="gk">Wind</span><div class="gbar wind" style="background:${windG}">${nums}${nowM}</div>
+        <span class="gk">Stars</span><div class="gbar" style="background:${starG}">${nowM}</div>
+        <span></span><div class="ticks">${ticks}</div>
       </div>
-      <div class="strip"><svg aria-hidden="true">${strip}</svg><div class="lab"><span>${DAYS[day] === "Sat" ? "Today" : DAYS[day]}</span><b>${good.length ? `Best ${pad(good[0].h)}–${pad(good[good.length - 1].h + 1)}` : "No stars in daylight"}</b></div></div>
     </article>`;
   }).join("");
   document.querySelectorAll("[data-card]").forEach(c => {
