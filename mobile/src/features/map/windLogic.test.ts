@@ -92,7 +92,7 @@ describe("the wind's two layers", () => {
   });
 
   it("turns colours to hex", () => {
-    expect(hexOf([26, 29, 33])).toBe(colors.ink);
+    expect(hexOf([17, 17, 20])).toBe(colors.ink);
   });
 });
 
