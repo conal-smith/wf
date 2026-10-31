@@ -111,6 +111,14 @@ body.embed .app { height: 100vh; }
 .pic { position: relative; aspect-ratio: 2 / 1; border-radius: 12px; overflow: hidden; box-shadow: var(--frame), 0 0 0 1px #1a1d2140; background: #57746f; transition: box-shadow .15s; }
 .pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .pic svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* the loupe's words: its own colours, on the photograph in every theme */
+.lp-t { font: 600 16px var(--mono); letter-spacing: .14em; fill: #fffffe; text-anchor: middle; paint-order: stroke; stroke: rgba(6,8,10,.55); stroke-width: 3px; }
+.lp-f { font: 500 14px var(--mono); fill: rgba(255,255,255,.85); text-anchor: middle; paint-order: stroke; stroke: rgba(6,8,10,.55); stroke-width: 3px; }
+.lp-c { font: 600 19px var(--mono); fill: #fffffe; text-anchor: middle; }
+.lp-pill rect { fill: rgba(10,12,14,.74); }
+.lp-pill text { font: 600 15px var(--mono); letter-spacing: .06em; fill: #fffffe; text-anchor: middle; }
+.lp-pill.red rect { fill: #ff4d3d; }
+.lp-g { fill: #ffa45c; font-size: 14px; }
 .pic .km { position: absolute; left: 8px; top: 8px; font: 600 10px var(--mono); padding: 2px 7px; border-radius: 99px; background: #f3eee3e6; box-shadow: 0 0 0 1px var(--rule); }
 .crow { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-top: 9px; }
 .cname { font: 600 17px/1.15 var(--display); letter-spacing: -.01em; font-variation-settings: "opsz" 48; }
@@ -392,6 +400,10 @@ body.notes .n { display: inline-block; }
       <li id="n4"><span class="n">4</span><span><b>Settings, as Surfline's.</b> Which way it blows: <b>Particles</b> (the chart's today), <b>Arrows</b>, or <b>None</b>. Then wind in colour on or off, and the spots and live wind on or off. The tabs (Wind, Rain, Currents, Foil depth, Sea chart) are the layers the chart already has; this only puts them one tap from the map.</span></li>
       <li id="n5"><span class="n">5</span><span><b>The time bar.</b> Drag, step or play through the week. The pins, the lights, the list's figures and the particles follow the hour. The model is named for the hour (Harmonie, then ECMWF), as on the spot page. In this mock-up the coloured wind is one photograph of one hour, so it doesn't change; in the real build it is the chart's own layer and moves with the hour.</span></li>
     </ol>
+    <h3>Round four (owner's steer, 31 October)</h3>
+    <ul>
+      <li>The card's picture carries the chart's loupe, restyled as on the spot page, at card size: the rim to scale, offshore red on it, the wind's needle in the wind's colour, and the ride rose inside (no-go hatched, tack out filled, tack home dashed, slow water dotted, the drift). No words at this size, as the chart's small rose has none.</li>
+    </ul>
     <h3>Round three (owner's steer, 31 October)</h3>
     <ul>
       <li>The cards are simpler: no facing, no stars or wind figures, no depth. Just the wind's gradient and the stars' gradient across today.</li>
@@ -419,6 +431,113 @@ body.notes .n { display: inline-block; }
 </section>
 
 <script>
+/* ===================== the loupe, restyled =====================
+   Every part of the chart's loupe (force5/src/focus.ts, rideWedge.ts) kept, in a
+   modern hand: a fine white rim to scale (half a nautical mile) with the ring at
+   half, compass ticks, offshore and cross-offshore on the rim in red, the wind's
+   needle in the wind's colour, and inside it the ride rose: the no-go hatched,
+   the tack out filled, the tack home dashed, the slow water dotted along the rim,
+   the drift. The world outside the glass is dimmed. Drawn in the satellite
+   picture's own pixels (1200 x 600, 3.94 m a pixel at zoom 14.5), so it is to
+   scale on any size of picture; lines keep their width on screen. Its colours are
+   its own, the same in every theme: it always sits on a photograph. */
+const LP = { W: 1200, H: 600, MPP: 3.94, NM: 1852 };
+const lpNorm = d => ((d % 360) + 360) % 360;
+const lpPolar = (b, r, cx = 600, cy = 300) => [cx + Math.sin(b * Math.PI / 180) * r, cy - Math.cos(b * Math.PI / 180) * r];
+const lpArc = (a, b, r) => { const [x0, y0] = lpPolar(a, r), [x1, y1] = lpPolar(b, r), lg = (b - a) > 180 ? 1 : 0; return `M${x0.toFixed(1)},${y0.toFixed(1)}A${r},${r} 0 ${lg} 1 ${x1.toFixed(1)},${y1.toFixed(1)}`; };
+const lpSector = (a, b, r0, r1) => { const [x0, y0] = lpPolar(a, r1), [x1, y1] = lpPolar(b, r1), [x2, y2] = lpPolar(b, r0), [x3, y3] = lpPolar(a, r0), lg = (b - a) > 180 ? 1 : 0;
+  return `M${x0.toFixed(1)},${y0.toFixed(1)}A${r1},${r1} 0 ${lg} 1 ${x1.toFixed(1)},${y1.toFixed(1)}L${x2.toFixed(1)},${y2.toFixed(1)}A${r0},${r0} 0 ${lg} 0 ${x3.toFixed(1)},${y3.toFixed(1)}Z`; };
+// the part of the heading span a..b (a < b, unwrapped) that heads out to sea from a beach facing `f`
+function lpClipToSea(a, b, f) {
+  for (const k of [-360, 0, 360]) { const lo = Math.max(a, f - 90 + k), hi = Math.min(b, f + 90 + k); if (hi - lo > 4) return [lo, hi]; }
+  return null;
+}
+// the ride rose for an hour, after rideWedge.ts: [up, down] off the wind for an ~80 kg rider on the day's kit
+function lpRose(w, from, facing, daylight) {
+  const rose = { from, nogo: null, reaches: [], slow: null, drift: null, driftOut: false };
+  if (!daylight || w < 11) return rose;
+  const up = w < 14 ? 55 : 48, down = w < 14 ? 115 : 125;
+  const tacks = [[from + up, from + down], [from - down, from - up]];
+  const a = Math.abs(((from - facing) % 360 + 540) % 360 - 180);
+  const offshore = a > 150;
+  rose.reaches = tacks.map(([x, y]) => { if (offshore) return { from: x, to: y, kind: "reach" }; const s = lpClipToSea(x, y, facing); return s ? { from: s[0], to: s[1], kind: "out" } : { from: x, to: y, kind: "home" }; });
+  if (!offshore && !rose.reaches.some(r => r.kind === "out")) { rose.reaches = []; return rose; }
+  rose.nogo = [from - up, from + up]; rose.slow = [from + down, from + 360 - down]; rose.drift = lpNorm(from + 180); rose.driftOut = a > 110;
+  return rose;
+}
+function loupeSVG({ id, w, g, from, facing, daylight = true, color = "#4cb35a", detail = "full", foot = "" }) {
+  const R = Math.round(LP.NM / 2 / LP.MPP), cx = 600, cy = 300, card = detail === "card", rose = lpRose(w, from, facing, daylight);
+  const nsw = card ? 1.6 : 1.5;  // line widths in screen pixels
+  const L = (d, s, wdt, extra = "") => `<path d="${d}" fill="none" stroke="${s}" stroke-width="${wdt}" vector-effect="non-scaling-stroke" ${extra}/>`;
+  const out = [];
+  out.push(`<defs><mask id="${id}-m"><rect width="1200" height="600" fill="#fff"/><circle cx="${cx}" cy="${cy}" r="${R}" fill="#000"/></mask>
+    <pattern id="${id}-h" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2.4" height="9" fill="rgba(255,255,255,.34)"/></pattern>
+    <radialGradient id="${id}-f" cx="${cx}" cy="${cy}" r="${R}" gradientUnits="userSpaceOnUse"><stop offset=".15" stop-color="rgba(255,255,255,.05)"/><stop offset="1" stop-color="rgba(255,255,255,.34)"/></radialGradient>
+    <filter id="${id}-s" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation="${card ? 3 : 2.5}" flood-color="#000" flood-opacity=".55"/></filter></defs>`);
+  // the world outside the glass, dimmed
+  out.push(`<rect width="1200" height="600" fill="rgba(6,8,10,${card ? .34 : .42})" mask="url(#${id}-m)"/>`);
+  const g1 = [];
+  // the ride rose
+  if (rose.nogo) {
+    const [a, b] = rose.nogo;
+    g1.push(`<path d="${lpSector(a, b, 0, R)}" fill="rgba(8,10,12,.30)"/><path d="${lpSector(a, b, 0, R)}" fill="url(#${id}-h)"/>`);
+    for (const e of [a, b]) { const [x, y] = lpPolar(e, R); g1.push(L(`M${cx},${cy}L${x.toFixed(1)},${y.toFixed(1)}`, "rgba(255,255,255,.5)", 1)); }
+  }
+  for (const r of rose.reaches) {
+    const [x0, y0] = lpPolar(r.from, 22), [x1, y1] = lpPolar(r.from, R), [x2, y2] = lpPolar(r.to, 22), [x3, y3] = lpPolar(r.to, R);
+    if (r.kind !== "home") {
+      g1.push(`<path d="${lpSector(r.from, r.to, 22, R)}" fill="url(#${id}-f)"/>`);
+      g1.push(L(`M${x0},${y0}L${x1},${y1}M${x2},${y2}L${x3},${y3}`, "rgba(255,255,255,.9)", nsw));
+      const m = (r.from + r.to) / 2, [hx, hy] = lpPolar(m, R - 4), [lx, ly] = lpPolar(m - 3.2, R - 26), [rx, ry] = lpPolar(m + 3.2, R - 26);
+      g1.push(`<path d="M${hx},${hy}L${lx},${ly}L${rx},${ry}Z" fill="#fffffe"/>`);
+    } else {
+      g1.push(L(`M${x0},${y0}L${x1},${y1}M${x2},${y2}L${x3},${y3}`, "rgba(255,255,255,.85)", nsw, `stroke-dasharray="6 5"`));
+      g1.push(L(lpArc(r.from, r.to, R - 10), "rgba(255,255,255,.85)", nsw, `stroke-dasharray="6 5"`));
+    }
+    if (!card) { const m = (r.from + r.to) / 2, [tx, ty] = lpPolar(m, R * .66);
+      g1.push(`<text x="${tx}" y="${ty - 5}" class="lp-t">${r.kind === "out" ? "OUT" : r.kind === "home" ? "HOME" : "REACH"}</text><text x="${tx}" y="${ty + 17}" class="lp-f">${String(Math.round(lpNorm(r.from) / 5) * 5).padStart(3, "0")}–${String(Math.round(lpNorm(r.to) / 5) * 5).padStart(3, "0")}°</text>`); }
+  }
+  if (rose.slow) g1.push(L(lpArc(rose.slow[0], rose.slow[1], R - 10), "rgba(255,255,255,.7)", nsw, `stroke-dasharray="1 6" stroke-linecap="round"`));
+  if (rose.drift != null) {
+    const [x0, y0] = lpPolar(rose.drift, 30), [x1, y1] = lpPolar(rose.drift, R * .6), col = rose.driftOut ? "#ff5a4a" : "#fffffe";
+    const [hx, hy] = lpPolar(rose.drift, R * .6 + 14), [lx, ly] = lpPolar(rose.drift - 6, R * .6 - 4), [rx, ry] = lpPolar(rose.drift + 6, R * .6 - 4);
+    g1.push(L(`M${x0},${y0}L${x1},${y1}`, col, nsw + .4, `stroke-linecap="round"`), `<path d="M${hx},${hy}L${lx},${ly}L${rx},${ry}Z" fill="${col}"/>`);
+    if (!card) { const [tx, ty] = lpPolar(rose.drift, R * .38); g1.push(`<text x="${tx + 16}" y="${ty + 5}" class="lp-t" text-anchor="start" ${rose.driftOut ? 'fill="#ff7a6c"' : ""}>DRIFT${rose.driftOut ? " · OUT TO SEA" : ""}</text>`); }
+  }
+  if (rose.nogo && !card) { const [tx, ty] = lpPolar(from, R * .55); g1.push(`<text x="${tx}" y="${ty + 5}" class="lp-t">NO-GO</text>`); }
+  // the ring at half the distance
+  g1.push(L(`M${cx - R / 2},${cy}a${R / 2},${R / 2} 0 1 0 ${R},0a${R / 2},${R / 2} 0 1 0 ${-R},0`, "rgba(255,255,255,.45)", 1, `stroke-dasharray="3 5"`));
+  // written 45° round from the drift, where no fan reaches, on the side higher up (as focus.ts does)
+  const dr = rose.drift ?? 180, at = [dr - 45, dr + 45].reduce((p, q) => Math.cos(q * Math.PI / 180) > Math.cos(p * Math.PI / 180) ? q : p);
+  if (!card) { const [ix, iy] = lpPolar(at, R / 2), [ox, oy] = lpPolar(at, R - 30);
+    g1.push(`<g class="lp-pill"><rect x="${ix - 46}" y="${iy - 15}" width="92" height="30" rx="15"/><text x="${ix}" y="${iy + 6}">0.25 NM</text></g><g class="lp-pill"><rect x="${ox - 40}" y="${oy - 15}" width="80" height="30" rx="15"/><text x="${ox}" y="${oy + 6}">0.5 NM</text></g>`); }
+  out.push(`<g>${g1.join("")}</g>`);
+  // the rim, its ticks and the cardinal points
+  const g2 = [];
+  g2.push(L(`M${cx - R},${cy}a${R},${R} 0 1 0 ${2 * R},0a${R},${R} 0 1 0 ${-2 * R},0`, "rgba(255,255,255,.96)", card ? 1.8 : 2.2));
+  if (!card) {
+    let t = ""; for (let b = 0; b < 360; b += 10) { const long = b % 90 === 0 ? 20 : b % 30 === 0 ? 13 : 7, [x0, y0] = lpPolar(b, R), [x1, y1] = lpPolar(b, R - long); t += `M${x0.toFixed(1)},${y0.toFixed(1)}L${x1.toFixed(1)},${y1.toFixed(1)}`; }
+    g2.push(L(t, "rgba(255,255,255,.85)", 1.2));
+    for (const [b, n] of [[0, "N"], [90, "E"], [180, "S"], [270, "W"]]) { const [x, y] = lpPolar(b, R - 40); g2.push(`<text x="${x}" y="${y + 7}" class="lp-c">${n}</text>`); }
+  }
+  // offshore and cross-offshore, red on the rim
+  if (facing != null) {
+    const off = facing + 180, rr = R + (card ? 0 : 7), wide = card ? 5 : 9;
+    for (const [a, b] of [[off - 70, off - 30], [off + 30, off + 70]]) g2.push(L(lpArc(a, b, rr), "rgba(255,77,61,.42)", wide * .7, `stroke-linecap="round"`));
+    g2.push(L(lpArc(off - 30, off + 30, rr), "#ff4d3d", wide, `stroke-linecap="round"`));
+    if (!card) { const up = Math.cos(off * Math.PI / 180) > -0.2, [tx, ty] = lpPolar(off, R + 40); g2.push(`<g class="lp-pill red"><rect x="${tx - 56}" y="${ty - 15}" width="112" height="30" rx="15"/><text x="${tx}" y="${ty + 6}">OFFSHORE</text></g>`); }
+  }
+  // the wind's needle: on the rim at the bearing it comes from, pointing in, in the wind's colour
+  {
+    const s = card ? 1.5 : 1, [tx, ty] = lpPolar(from, R - 30 * s), [ax, ay] = lpPolar(from - 7, R + 30 * s), [bx, by] = lpPolar(from + 7, R + 30 * s), [nx, ny] = lpPolar(from, R + 20 * s);
+    g2.push(`<path d="M${tx},${ty}L${ax},${ay}L${nx},${ny}L${bx},${by}Z" fill="${color}" stroke="#fffffe" stroke-width="${card ? 1.4 : 1.6}" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`);
+  }
+  // the spot
+  g2.push(`<circle cx="${cx}" cy="${cy}" r="${card ? 9 : 7}" fill="#fffffe" stroke="rgba(8,10,12,.85)" stroke-width="${card ? 2 : 2.2}" vector-effect="non-scaling-stroke"/>`);
+  out.push(`<g filter="url(#${id}-s)">${g2.join("")}</g>`);
+  return { svg: out.join(""), rose, foot };
+}
+
 /* ===================== themes: modern white, dark, and today's paper =====================
    The page is drawn in today's paper colours; this layer maps each of them to the
    chosen theme everywhere they appear: the stylesheet, every style, fill and stroke,
@@ -533,20 +652,8 @@ function listed() {
   const best = s => { let m = 0; for (let i = 0; i < 24; i++) m = Math.max(m, rate(s, i).st); return m; };
   return pool.slice().sort((a, b) => best(b) - best(a) || a.km - b.km);
 }
-function picSvg(s, r) {
-  // the spot ringed, the way it faces, and the wind at the hour blowing in
-  const cx = 320, cy = 160, R = 70, p = (b, rr) => [cx + Math.sin(b * Math.PI / 180) * rr, cy - Math.cos(b * Math.PI / 180) * rr];
-  const [fx, fy] = p(s.facing, 26), [ax, ay] = p(r.d, R + 26), [bx, by] = p(r.d, R - 24);
-  const col = r.off ? "#d43a2c" : "#1a1d21";
-  return `<svg viewBox="0 0 640 320" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#f3eee3" stroke-width="2.5"/><circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#1a1d21" stroke-width="1" stroke-dasharray="3 4"/>
-    <line x1="${cx}" y1="${cy}" x2="${fx}" y2="${fy}" stroke="#f3eee3" stroke-width="2" stroke-dasharray="4 4"/>
-    <circle cx="${cx}" cy="${cy}" r="5" fill="#f3eee3" stroke="#1a1d21" stroke-width="2"/>
-    <line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="#f3eee3" stroke-width="9" stroke-linecap="round"/>
-    <line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="${col}" stroke-width="5" stroke-linecap="round"/>
-    <path d="M${bx},${by} l${(Math.sin((r.d + 180 + 150) * Math.PI / 180) * 16).toFixed(1)},${(-Math.cos((r.d + 180 + 150) * Math.PI / 180) * 16).toFixed(1)} M${bx},${by} l${(Math.sin((r.d + 180 - 150) * Math.PI / 180) * 16).toFixed(1)},${(-Math.cos((r.d + 180 - 150) * Math.PI / 180) * 16).toFixed(1)}" stroke="${col}" stroke-width="5" stroke-linecap="round"/>
-  </svg>`;
-}
+// the chart's loupe, small, on the card's picture (see the spot page mock-up): shapes, no words
+const picSvg = (s, r) => `<svg viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${loupeSVG({ id: "lp-" + s.id, w: r.w, g: r.g, from: r.d, facing: s.facing, daylight: !r.dark, color: windColor(r.w), detail: "card" }).svg}</svg>`;
 function renderList() {
   const L = listed(), day = Math.floor(S.hour / 24);
   $("lcount").textContent = `${L.length} spots · ${DAYS[day]} ${pad(S.hour % 24)}:00`;
