@@ -32,6 +32,8 @@
   src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
 @font-face { font-family: "Fraunces Variable"; font-style: italic; font-display: swap; font-weight: 100 900;
   src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-italic.woff2") format("woff2"); }
+@font-face { font-family: "Inter Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("fonts/inter/inter-latin-opsz-normal.woff2") format("woff2"); }
 @font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
   src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
 @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 400;
@@ -49,8 +51,9 @@
   --buoy: #e9b200; --gust: #e0803a; --depth: #5f8c9c;
   --s1: #e28bb3; --s2: #d2609a; --s3: #bd3d84; --s4: #a01f6c; --s5: #7c0f55;
   --display: "Fraunces Variable", Fraunces, Georgia, serif;
-  --body: "Newsreader Variable", Newsreader, Georgia, serif;
-  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --sans: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body: var(--sans);
+  --mono: var(--sans);
   --frame: inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142;
   --sh-card: 0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a;
   --sh-float: 0 1px 1px #1a1d211a, 0 3px 6px -2px #1a1d211f, 0 14px 28px -12px #3c2d1466;
@@ -274,6 +277,61 @@ canvas.fx { position: absolute; inset: 0; pointer-events: none; }
 body.expanded .body { grid-template-columns: 0 minmax(0, 1fr); }
 body.expanded .list { display: none; }
 
+/* ---- round five: the premium pass ---- */
+:root { --rule: #1a1d211f; --g-raised: linear-gradient(var(--ground), var(--ground)); --sh-raised: none; --g-ink: linear-gradient(var(--ink), var(--ink)); --frame: none; }
+.app { font-family: var(--sans); font-feature-settings: "tnum", "cv11"; -webkit-font-smoothing: antialiased; }
+.app *:not(.word):not(.word *) { text-transform: none !important; letter-spacing: normal !important; }
+.fhead { height: 64px; border-bottom: 1px solid var(--line); padding: 0 20px; gap: 10px; }
+.fhead .word { font-size: 23px; }
+.fhead .search { display: flex; align-items: center; gap: 8px; height: 40px; width: min(320px, 28cqw); padding: 0 14px; margin-left: 16px; border-radius: 99px; background: var(--sunken); color: var(--muted); font-size: 14px; }
+@container app (max-width: 759px) { .fhead .search { display: none; } }
+.round { width: 40px; height: 40px; border: 1px solid var(--line); box-shadow: none; }
+.round svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.seg { border: 0; background: var(--sunken); padding: 3px; }
+.seg button { font-size: 13px; font-weight: 500; padding: 7px 13px; color: var(--ink-2); }
+.seg button[aria-pressed=true] { background: var(--ground); color: var(--ink); box-shadow: 0 1px 2px #1a1d2126; }
+.list { border-right: 1px solid var(--line); padding: 0 14px 90px; }
+.lhead { border-bottom: 0; padding: 18px 2px 12px; }
+.lhead h1 { font: 600 18px var(--sans); }
+.lhead span { font-size: 12.5px; }
+.card { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 0 14px; padding: 10px; margin-bottom: 8px; border: 0; border-radius: 16px; background: var(--sunken); transition: box-shadow .15s; }
+.card:hover, .card.lit { box-shadow: inset 0 0 0 1.5px #1a1d2133; }
+.card .pic { grid-row: span 2; width: 104px; aspect-ratio: 1; border-radius: 12px; box-shadow: none; }
+.card:hover .pic, .card.lit .pic { box-shadow: none; }
+.pic .km { left: 6px; top: 6px; padding: 1px 7px; font: 600 11px var(--sans); background: rgba(10,12,14,.62); color: #fffffe; box-shadow: none; }
+.crow { margin-top: 0; align-items: center; }
+.cname { font: 600 15px/1.25 var(--sans); }
+.cname small { font: 400 12.5px var(--sans); color: var(--muted); margin-top: 1px; }
+.fav { width: 32px; height: 32px; border: 0; background: none; box-shadow: none; }
+.grads { grid-template-columns: 34px minmax(0, 1fr); gap: 5px 6px; margin-top: 8px; }
+.gk { font: 500 11px var(--sans); color: var(--muted); }
+.gbar { height: 9px; border-radius: 99px; }
+.gbar.wind { height: 18px; }
+.gbar b { font: 600 10px var(--sans); }
+.ticks { font: 400 10.5px var(--sans); }
+.stars { gap: 1px; align-items: center; }
+.stars svg { display: block; }
+.chip { height: 36px; border: 1px solid var(--line); box-shadow: none; font: 500 13px var(--sans); }
+.chip[aria-pressed=true] { background: var(--ink); color: var(--ground); border-color: transparent; }
+.modes { background: var(--ground); box-shadow: 0 1px 2px #1a1d211a, 0 8px 24px -10px #1a1d2140; }
+.zoombox { border: 1px solid var(--line); box-shadow: 0 1px 2px #1a1d211a; }
+.pin { font: 600 12px var(--sans); }
+.obs { font: 600 11px var(--sans); }
+.pop { border: 1px solid var(--line); border-radius: 14px; font-family: var(--sans); }
+.pop h3 { font: 600 15px var(--sans); }
+.pop .k { font: 500 11px var(--sans); color: var(--muted); }
+.pop b { font: 600 15px var(--sans); }
+.pop .src { font: 400 11.5px var(--sans); }
+.tabs button { font: 500 13px var(--sans); }
+.settings { border: 1px solid var(--line); font-family: var(--sans); }
+.settings h4 { font: 500 12.5px var(--sans); color: var(--muted); }
+.dirs button { font: 500 12px var(--sans); }
+.tog { font: 400 14px var(--sans); }
+.legend { font: 500 11px var(--sans); border: 1px solid var(--line); }
+.timebar, .tb-when, .track .days { font-family: var(--sans) !important; }
+.toggle { font: 500 14px var(--sans); }
+.zoomnote { font: 500 12.5px var(--sans); }
+
 /* notes */
 .n { display: none; width: 18px; height: 18px; border-radius: 50%; background: var(--note); color: #fff; font: 600 10px/18px var(--mono); text-align: center; letter-spacing: 0; vertical-align: 1px; margin-left: 6px; text-decoration: none; }
 body.notes .n { display: inline-block; }
@@ -314,15 +372,15 @@ body.notes .n { display: inline-block; }
 
 <div class="stage"><div class="app" id="app">
   <header class="fhead">
-    <button class="round" aria-label="Menu"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M1 3h12M1 7h12M1 11h12" stroke="#1a1d21" stroke-width="1.6"/></svg></button>
     <span class="word">wingfoil<i>.ie</i></span>
+    <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search spots</div>
     <span class="sp"></span>
     <div class="seg" role="group" aria-label="Which spots">
       <button data-scope="fav" aria-pressed="false">Favourites</button>
       <button data-scope="near" aria-pressed="true">Nearby</button>
     </div>
-    <button class="round themebtn" aria-label="Dark mode"><svg width="15" height="15" viewBox="0 0 16 16"><path d="M13.5 9.8A5.8 5.8 0 0 1 6.2 2.5a5.8 5.8 0 1 0 7.3 7.3z" fill="none" stroke="#1a1d21" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
-    <button class="round" aria-label="Search"><svg width="15" height="15" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" fill="none" stroke="#1a1d21" stroke-width="1.5"/><path d="M11 11l4 4" stroke="#1a1d21" stroke-width="1.5"/></svg></button>
+    <button class="round themebtn" aria-label="Dark mode"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
+    <button class="round" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   </header>
 
   <div class="body">
@@ -400,6 +458,12 @@ body.notes .n { display: inline-block; }
       <li id="n4"><span class="n">4</span><span><b>Settings, as Surfline's.</b> Which way it blows: <b>Particles</b> (the chart's today), <b>Arrows</b>, or <b>None</b>. Then wind in colour on or off, and the spots and live wind on or off. The tabs (Wind, Rain, Currents, Foil depth, Sea chart) are the layers the chart already has; this only puts them one tap from the map.</span></li>
       <li id="n5"><span class="n">5</span><span><b>The time bar.</b> Drag, step or play through the week. The pins, the lights, the list's figures and the particles follow the hour. The model is named for the hour (Harmonie, then ECMWF), as on the spot page. In this mock-up the coloured wind is one photograph of one hour, so it doesn't change; in the real build it is the chart's own layer and moves with the hour.</span></li>
     </ol>
+    <h3>Round five: the premium pass (as on the spot page, #273)</h3>
+    <ul>
+      <li>Two typefaces: Fraunces for the wordmark, Inter for everything else; no uppercase spaced-out labels. Flat, quiet buttons with soft edges; a clean top bar with search.</li>
+      <li><b>Smaller pictures.</b> A card is now a row: a 104 px square picture (the 10 m satellite looks sharp at this size) with the loupe on it (drawn smaller than to scale, as a symbol), beside the name, the wind's gradient and the stars' gradient.</li>
+      <li>The star rating drawn as stars, the same way as on the spot page.</li>
+    </ul>
     <h3>Round four (owner's steer, 31 October)</h3>
     <ul>
       <li>The card's picture carries the chart's loupe, restyled as on the spot page, at card size: the rim to scale, offshore red on it, the wind's needle in the wind's colour, and the ride rose inside (no-go hatched, tack out filled, tack home dashed, slow water dotted, the drift). No words at this size, as the chart's small rose has none.</li>
@@ -465,8 +529,9 @@ function lpRose(w, from, facing, daylight) {
   rose.nogo = [from - up, from + up]; rose.slow = [from + down, from + 360 - down]; rose.drift = lpNorm(from + 180); rose.driftOut = a > 110;
   return rose;
 }
-function loupeSVG({ id, w, g, from, facing, daylight = true, color = "#4cb35a", detail = "full", foot = "" }) {
-  const R = Math.round(LP.NM / 2 / LP.MPP), cx = 600, cy = 300, card = detail === "card", rose = lpRose(w, from, facing, daylight);
+function loupeSVG({ id, w, g, from, facing, daylight = true, color = "#4cb35a", detail = "full", foot = "", scale = 1 }) {
+  // scale < 1 on a small picture: the rose as a symbol, not to scale
+  const R = Math.round(LP.NM / 2 / LP.MPP * scale), cx = 600, cy = 300, card = detail === "card", rose = lpRose(w, from, facing, daylight);
   const nsw = card ? 1.6 : 1.5;  // line widths in screen pixels
   const L = (d, s, wdt, extra = "") => `<path d="${d}" fill="none" stroke="${s}" stroke-width="${wdt}" vector-effect="non-scaling-stroke" ${extra}/>`;
   const out = [];
@@ -638,7 +703,8 @@ function rate(s, i) {
   const depth = s.bed ? tideAt(i) - s.bed : 3;
   return { w, g, d, shore, st: light(i) ? st : 0, dark: !light(i), depth, off: shore === "offshore" || shore === "cross-off" };
 }
-const starsHTML = n => `<span class="stars" aria-label="${n} stars">${[1,2,3,4,5].map(k => `<i class="${n >= k ? "on" : ""}" style="--c:${STAR_C[n] || ""}"></i>`).join("")}</span>`;
+const STAR = "M12 2.6l2.75 5.6 6.15.9-4.45 4.35 1.05 6.1L12 16.65l-5.5 2.9 1.05-6.1L3.1 9.1l6.15-.9z";
+const starsHTML = (n, size = 12) => `<span class="stars" aria-label="${n} of 5 stars">${[1,2,3,4,5].map(k => `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><path d="${STAR}" fill="${k <= n ? STAR_C[n] : "#1a1d2126"}"/></svg>`).join("")}</span>`;
 const arrowSvg = (from, col = "currentColor") => `<svg viewBox="-7 -7 14 14" aria-hidden="true" style="overflow:visible"><g transform="rotate(${from + 180})"><path d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`;
 
 /* ===================== state ===================== */
@@ -653,7 +719,7 @@ function listed() {
   return pool.slice().sort((a, b) => best(b) - best(a) || a.km - b.km);
 }
 // the chart's loupe, small, on the card's picture (see the spot page mock-up): shapes, no words
-const picSvg = (s, r) => `<svg viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${loupeSVG({ id: "lp-" + s.id, w: r.w, g: r.g, from: r.d, facing: s.facing, daylight: !r.dark, color: windColor(r.w), detail: "card" }).svg}</svg>`;
+const picSvg = (s, r) => `<svg viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${loupeSVG({ id: "lp-" + s.id, w: r.w, g: r.g, from: r.d, facing: s.facing, daylight: !r.dark, color: windColor(r.w), detail: "card", scale: .62 }).svg}</svg>`;
 function renderList() {
   const L = listed(), day = Math.floor(S.hour / 24);
   $("lcount").textContent = `${L.length} spots · ${DAYS[day]} ${pad(S.hour % 24)}:00`;
@@ -671,7 +737,7 @@ function renderList() {
     return `<article class="card ${S.lit === s.id ? "lit" : ""}" data-card="${s.id}">
       <div class="pic"><img data-sat="2026-10-31-spot-finder-map/sat/${s.id}" src="2026-10-31-spot-finder-map/sat/${s.id}${SATX === "orig" ? "-orig" : ""}.webp" alt="" loading="lazy">${picSvg(s, r)}<span class="km">${s.km} km</span></div>
       <div class="crow"><div class="cname">${s.name}<small>${s.county}</small></div>
-        <button class="fav" aria-label="Star"><svg width="15" height="15" viewBox="0 0 20 20"><path d="M10 1.8l2.5 5.4 5.9.6-4.4 4 1.3 5.8L10 14.6l-5.3 3 1.3-5.8-4.4-4 5.9-.6z" fill="${FAVS.has(s.id) ? "#d43a2c" : "none"}" stroke="#d43a2c" stroke-width="1.7" stroke-linejoin="round"/></svg></button></div>
+        <button class="fav" aria-label="Star"><svg width="18" height="18" viewBox="0 0 24 24"><path d="${STAR}" fill="${FAVS.has(s.id) ? "#d43a2c" : "none"}" stroke="${FAVS.has(s.id) ? "#d43a2c" : "#5b5c5b"}" stroke-width="1.75" stroke-linejoin="round"/></svg></button></div>
       <div class="grads">
         <span class="gk">Wind</span><div class="gbar wind" style="background:${windG}">${nums}${nowM}</div>
         <span class="gk">Stars</span><div class="gbar" style="background:${starG}">${nowM}</div>
