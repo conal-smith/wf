@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock-up · The spot page as a spot report</title>
+<!--
+  A design mock-up for the owner to review, not product code. Standalone: the
+  faces come from node_modules, the pictures from the folder beside this file.
+
+  The owner's steer (31 October 2026): take the spot page somewhere nearer
+  Surfline's spot report (surfline.com/surf-report/white-rocks/…): the
+  conditions now at the top, the nearby spots, the week at a glance, one
+  stacked graph of the days with every row on the same clock, then the guide.
+  Do it in our own look and fix what riders complain about in forecasts.
+
+  The satellite pictures are the real ones (data.wingfoil.ie, Sentinel-2 at
+  high and low tide). Everything else is made up: the forecast, the buoy
+  readings, the guide. "Now" is fixed at Saturday 31 October, 14:20.
+
+  ?embed=1   the page alone, without the mock-up's bar and notes
+  ?w=390     open at phone width
+-->
+<style>
+@font-face { font-family: "Fraunces Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fraunces Variable"; font-style: italic; font-display: swap; font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-italic.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 400;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 500;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-display: swap; font-weight: 600;
+  src: url("../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Kalam"; font-style: normal; font-display: swap; font-weight: 400;
+  src: url("../../node_modules/@fontsource/kalam/files/kalam-latin-400-normal.woff2") format("woff2"); }
+
+/* ui/theme.css, the tokens this page uses */
+:root {
+  --ground: #f3eee3; --sunken: #ede6d6; --ink: #1a1d21; --ink-2: #3b3c3e; --muted: #5b5c5b;
+  --line: #1a1d2133; --line-soft: #1a1d211f; --pen: #d43a2c; --pen-ink: #bf3125; --magenta: #b0186a;
+  --ok: #2a7046; --warn: #b02a1f; --buoy: #e9b200; --buoy-ink: #8a6a00; --gust: #e0803a; --depth: #5f8c9c;
+  --sea-1: #a9cbd8; --sea-2: #c3dae2; --sea-3: #dae8ea; --sea-4: #ecf0ea;
+  --s1: #e28bb3; --s2: #d2609a; --s3: #bd3d84; --s4: #a01f6c; --s5: #7c0f55;
+  --night: #1a1d2114;
+  --display: "Fraunces Variable", Fraunces, Georgia, serif;
+  --body: "Newsreader Variable", Newsreader, Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --hand: "Kalam", "Comic Sans MS", cursive;
+  --frame: inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142;
+  --sh-raised: inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126;
+  --g-ink: linear-gradient(180deg, #33373d, #15171a);
+  --g-raised: linear-gradient(180deg, #ffffff, #f0eadd);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --note: #1f6fe0;
+  --bar-h: 42px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 14px; }
+body { margin: 0; background: #d9d4c7; color: var(--ink); font-family: var(--body); line-height: 1.35; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3, h4, p { margin: 0; }
+
+/* ---- the mock-up's own bar and notes (not part of the design) ---- */
+.mockbar { position: sticky; top: 0; z-index: 100; height: var(--bar-h); display: flex; gap: 6px; align-items: center; padding: 0 14px; background: #1a1d21; color: #f3eee3;
+  font: 500 11px var(--mono); letter-spacing: .06em; white-space: nowrap; overflow-x: auto; }
+.mockbar b { margin-right: 8px; text-transform: uppercase; letter-spacing: .12em; }
+.mockbar .gap { width: 12px; flex: none; }
+.mockbar button, .mockbar a { background: none; border: 1px solid #f3eee355; border-radius: 99px; padding: 3px 10px; font-size: 10.5px; letter-spacing: .06em; color: #f3eee3; text-decoration: none; }
+.mockbar button[aria-pressed=true] { background: #f3eee3; color: #1a1d21; }
+.mockbar .note { color: #f3eee399; }
+body.embed .mockbar, body.embed .mocknotes { display: none; }
+body.embed { --bar-h: 0px; }
+.stage { display: flex; justify-content: center; }
+body.preview .stage { padding: 20px 16px 28px; overflow-x: auto; justify-content: safe center; }
+body.preview .page { box-shadow: 0 0 0 1px #1a1d2122, 0 20px 50px -20px #3c2d1466; }
+
+/* numbered notes, in the mock-up's blue so they never pass for the pen */
+.n { display: none; vertical-align: 2px; margin-left: 6px; width: 18px; height: 18px; border-radius: 50%; background: var(--note); color: #fff;
+  font: 600 10px/18px var(--mono); text-align: center; letter-spacing: 0; text-decoration: none; flex: none; }
+body.notes .n { display: inline-block; }
+
+/* ---- the page ---- */
+.page { width: 100%; background: var(--ground) var(--grain); container: page / inline-size; min-height: 100vh; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+@container page (min-width: 720px) { .wrap { padding: 0 28px; } }
+
+.mono { font-family: var(--mono); }
+.eyebrow { font: 500 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.u { font: 500 .55em var(--mono); letter-spacing: .02em; margin-left: 2px; }
+.muted { color: var(--muted); }
+a.link, button.link { background: none; border: 0; padding: 0; font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink);
+  text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+
+/* header */
+.site { display: flex; align-items: center; gap: 12px; height: 64px; border-bottom: 3px double var(--ink); }
+.burger { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--ink); background: none; display: grid; place-items: center; }
+.word { font: 600 26px/1 var(--display); letter-spacing: -.02em; font-variation-settings: "opsz" 72; }
+.word i { color: var(--magenta); font-weight: 500; }
+.site .sp { flex: 1; }
+.site .tool { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; display: flex; gap: 6px; align-items: center; background: none; border: 0; }
+.site .tool svg { width: 16px; height: 16px; }
+
+/* title */
+.title { display: grid; gap: 6px; padding: 22px 0 14px; grid-template-columns: 1fr auto; align-items: end; }
+.title h1 { font: 600 40px/1 var(--display); letter-spacing: -.025em; font-variation-settings: "opsz" 144; }
+@container page (min-width: 720px) { .title h1 { font-size: 48px; } }
+.meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font: 500 10.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
+.meta b { font-weight: 600; color: var(--ink); }
+.meta .dot { color: var(--muted); }
+.title .acts { display: flex; gap: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--g-raised); box-shadow: var(--sh-raised);
+  font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.pill.ink { background: var(--g-ink); color: var(--ground); border-color: #000; box-shadow: inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150; }
+.pill svg { width: 14px; height: 14px; }
+
+/* nearby */
+.nearby { border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); padding: 10px 0 12px; }
+.nearby-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.near-row { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x mandatory; padding: 2px; }
+.near-row::-webkit-scrollbar { display: none; }
+.near { flex: none; width: 150px; scroll-snap-align: start; display: grid; grid-template-columns: 44px 1fr; gap: 3px 9px; align-items: center; padding: 6px; border-radius: 10px; text-decoration: none; color: inherit; }
+.near:hover { background: var(--sunken); }
+.near[aria-current] { box-shadow: inset 0 0 0 1.5px var(--ink); background: var(--sunken); }
+.near img { grid-row: span 3; width: 44px; height: 44px; border-radius: 8px; object-fit: cover; box-shadow: var(--frame); }
+.near .nm { font: 600 13px/1.1 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.near .wn { font: 600 12px var(--mono); }
+.near .wn sup { color: var(--gust); font-size: 9px; margin-left: 1px; }
+.near .st { display: flex; gap: 2px; }
+
+/* stars: five marks, filled in the spot finder's star colours */
+.stars { display: inline-flex; gap: 2px; align-items: center; }
+.stars i { width: 7px; height: 7px; border-radius: 50%; background: var(--line-soft); }
+.stars.big i { width: 11px; height: 11px; }
+.stars i.on { background: var(--c, var(--s4)); }
+
+/* section heads */
+.sec { padding: 26px 0 8px; }
+.sec-h { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; justify-content: space-between; border-bottom: 2px solid var(--ink); padding-bottom: 6px; margin-bottom: 0; }
+.sec-h h2 { font: 600 22px/1.1 var(--display); letter-spacing: -.01em; font-variation-settings: "opsz" 72; display: flex; align-items: center; }
+.sec-h .side { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.fresh { font: 400 10.5px var(--mono); color: var(--muted); letter-spacing: .02em; }
+.fresh b { color: var(--ink-2); font-weight: 500; }
+.livedot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-right: 5px; vertical-align: 1px; box-shadow: 0 0 0 3px #2a704626; }
+
+/* now */
+.now { display: grid; gap: 0; }
+@container page (min-width: 900px) { .now { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 28px; } }
+.reads { display: grid; grid-template-columns: 1fr 1fr; }
+.read { padding: 12px 0 12px; border-bottom: 1px solid var(--line); min-width: 0; }
+.read:nth-child(odd) { padding-right: 14px; border-right: 1px solid var(--line); }
+.read:nth-child(even) { padding-left: 14px; }
+.read.wide { grid-column: 1 / -1; padding-right: 0; border-right: 0; }
+.read .eyebrow { display: flex; align-items: center; }
+.fig { font: 600 30px/1.05 var(--mono); letter-spacing: -.03em; margin: 6px 0 3px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.fig .g { font-size: 17px; color: var(--gust); letter-spacing: 0; }
+.fig .dir { font: 500 13px var(--mono); letter-spacing: .06em; color: var(--ink-2); }
+.sub { font: 400 14px/1.35 var(--body); color: var(--ink-2); }
+.sub .m { font-family: var(--mono); font-size: 12px; }
+.obs { margin-top: 8px; display: flex; gap: 8px; align-items: flex-start; font: 400 13px/1.35 var(--body); }
+.obs .bd { flex: none; width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; background: var(--buoy); box-shadow: 0 0 0 1.5px var(--ink); }
+.obs b { font: 600 13px var(--mono); }
+.delta { display: inline-block; margin-top: 6px; font: 500 11px var(--mono); padding: 2px 8px; border-radius: 99px; background: #e9b20026; color: var(--buoy-ink); letter-spacing: .02em; }
+.depthbar { position: relative; height: 10px; border-radius: 99px; background: var(--sea-3); margin: 8px 0 4px; box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+.depthbar span { position: absolute; inset: 0 auto 0 0; background: var(--depth); border-radius: 99px; }
+.depthbar em { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); }
+
+/* satellite */
+.sat { margin: 12px 0 0; position: relative; }
+@container page (min-width: 900px) { .sat { margin-top: 12px; } }
+.sat-frame { position: relative; border-radius: 14px; overflow: hidden; box-shadow: var(--frame), 0 0 0 1px var(--ink); aspect-ratio: 4 / 3; background: #57746f; }
+@container page (min-width: 900px) { .sat-frame { aspect-ratio: auto; height: 100%; min-height: 330px; } }
+.sat-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .35s; }
+.sat-frame img.off { opacity: 0; }
+.sat-frame svg.rose { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sat-tools { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; justify-content: space-between; align-items: end; gap: 8px; pointer-events: none; }
+.sat-tools > * { pointer-events: auto; }
+.seg { display: inline-flex; border-radius: 99px; background: #f3eee3e6; box-shadow: 0 0 0 1px var(--ink); padding: 2px; }
+.seg button { border: 0; background: none; border-radius: 99px; padding: 5px 10px; font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.seg button[aria-pressed=true] { background: var(--ink); color: var(--ground); }
+.key { background: #f3eee3e6; border-radius: 10px; box-shadow: 0 0 0 1px var(--ink); padding: 6px 9px; font: 500 9.5px/1.6 var(--mono); letter-spacing: .04em; }
+.key i { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; margin-right: 5px; border-radius: 2px; }
+.sat .north { position: absolute; top: 10px; right: 10px; background: #f3eee3e6; border-radius: 99px; box-shadow: 0 0 0 1px var(--ink); font: 600 10px var(--mono); padding: 2px 8px; }
+
+/* alert line */
+.alertline { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; padding: 12px 0 0; }
+.alertline p { font: 400 14px var(--body); color: var(--ink-2); }
+
+/* week strip */
+.week { display: grid; grid-template-columns: repeat(7, minmax(92px, 1fr)); overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); }
+.week::-webkit-scrollbar { display: none; }
+.day { border: 0; background: none; text-align: left; padding: 10px 8px 10px; border-right: 1px solid var(--line); position: relative; display: grid; gap: 5px; align-content: start; }
+.day:last-child { border-right: 0; }
+.day:hover { background: #ede6d680; }
+.day[aria-pressed=true] { background: var(--sunken); }
+.day[aria-pressed=true]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; background: var(--ink); }
+.day .dn { font: 600 15px var(--display); }
+.day .dn small { font: 400 10px var(--mono); color: var(--muted); margin-left: 3px; }
+.day .rng { font: 600 13px var(--mono); }
+.day .rng sup { color: var(--gust); font-size: 9px; margin-left: 1px; }
+.day svg { width: 100%; height: 30px; display: block; }
+.day .win { font: 500 10px var(--mono); color: var(--ink-2); min-height: 13px; }
+.day .sure { font: 500 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; display: flex; align-items: center; gap: 4px; color: var(--muted); }
+.sure .bars { display: inline-flex; gap: 1.5px; align-items: end; }
+.sure .bars i { width: 3px; background: var(--line); border-radius: 1px; }
+.sure .bars i.on { background: var(--ink-2); }
+.day .flag { font: 500 9.5px var(--mono); color: var(--pen-ink); letter-spacing: .02em; }
+
+/* the graph */
+.gtools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 0 6px; }
+.gtools .navs { display: flex; gap: 6px; }
+.round { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--g-raised); box-shadow: var(--sh-raised); display: grid; place-items: center; }
+.readout { min-height: 64px; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: end; padding: 6px 0 8px; border-bottom: 1px solid var(--line); }
+.readout .t { flex: none; font: 600 13px var(--mono); letter-spacing: .02em; padding: 2px 8px; border-radius: 99px; background: var(--ink); color: var(--ground); align-self: center; }
+.readout .t.is-now { background: var(--pen); }
+.ro { display: grid; gap: 1px; }
+.ro .eyebrow { font-size: 9px; }
+.ro b { font: 600 18px var(--mono); letter-spacing: -.02em; }
+.ro b sup { font-size: 11px; color: var(--gust); margin-left: 1px; }
+.ro span { font: 400 11px var(--mono); color: var(--ink-2); }
+.graph { position: relative; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
+.graph svg { display: block; }
+.graph .rowlab { font: 500 9px var(--mono); letter-spacing: .12em; text-transform: uppercase; fill: var(--muted); }
+.graph text { font-family: var(--mono); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 8px 0 0; font: 400 10.5px var(--mono); color: var(--ink-2); }
+.legend i { display: inline-block; width: 14px; height: 8px; margin-right: 5px; vertical-align: 0; border-radius: 2px; }
+
+/* the table (Graph | Table) */
+.tbl { width: 100%; border-collapse: collapse; font: 400 13px var(--mono); }
+.tbl th { font: 500 9.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--ink); white-space: nowrap; }
+.tbl td { padding: 9px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tbl td b { font-size: 16px; font-weight: 600; }
+.tbl td sup { color: var(--gust); font-size: 10px; }
+.tbl tr.dim td { color: var(--muted); }
+.tbl .hide-n { display: none; }
+@container page (min-width: 720px) { .tbl .hide-n { display: table-cell; } }
+.offs { color: var(--pen-ink); text-decoration: line-through; text-decoration-color: var(--pen); }
+
+/* was it right */
+.verify { display: grid; gap: 14px; padding-top: 12px; }
+@container page (min-width: 900px) { .verify { grid-template-columns: 260px 1fr; gap: 28px; } }
+.vfig { display: grid; gap: 10px; align-content: start; }
+.vfig .row { display: grid; grid-template-columns: 1fr auto; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.vfig .row b { font: 600 20px var(--mono); }
+.vfig .row span { font: 400 13px var(--body); color: var(--ink-2); grid-column: 1 / -1; }
+.models { width: 100%; border-collapse: collapse; font: 400 12px var(--mono); margin-top: 4px; }
+.models td { padding: 5px 0; border-bottom: 1px solid var(--line-soft); }
+.models td:last-child { text-align: right; }
+.models .bar { display: inline-block; height: 6px; background: var(--ink-2); border-radius: 3px; vertical-align: 1px; margin-right: 6px; }
+
+/* guide */
+.guide { display: grid; grid-template-columns: 1fr; padding-top: 4px; }
+@container page (min-width: 720px) { .guide { grid-template-columns: 1fr 1fr; column-gap: 28px; } }
+@container page (min-width: 1000px) { .guide { grid-template-columns: repeat(4, 1fr); } }
+.gd { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.gd h3 { font: 600 16px var(--display); margin-bottom: 6px; display: flex; align-items: center; }
+.gd p, .gd li { font: 400 14px/1.4 var(--body); color: var(--ink-2); }
+.gd ul { margin: 0; padding-left: 16px; }
+.gd .m { font: 500 12px var(--mono); color: var(--ink); }
+.reports { display: grid; gap: 8px; padding-top: 12px; }
+.rep { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
+.rep .who { width: 28px; height: 28px; border-radius: 50%; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); display: grid; place-items: center; font: 600 11px var(--mono); grid-row: span 2; }
+.rep .hd { font: 500 11px var(--mono); color: var(--ink-2); }
+.rep p { font: 400 14px var(--body); }
+
+/* sources */
+.sources { display: grid; gap: 0; padding-top: 6px; }
+.src { display: grid; grid-template-columns: 110px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); font: 400 13px var(--body); color: var(--ink-2); }
+.src .k { font: 500 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink); padding-top: 2px; }
+.src .new { font: 600 9px var(--mono); letter-spacing: .1em; color: var(--note); margin-left: 6px; }
+.small { font: 400 12px/1.5 var(--body); color: var(--muted); padding: 18px 0 40px; }
+
+/* mock-up notes */
+.mocknotes { background: #1a1d21; color: #f3eee3; padding: 28px 0 60px; }
+.mocknotes .wrap { max-width: 980px; }
+.mocknotes h2 { font: 600 24px var(--display); margin-bottom: 4px; }
+.mocknotes h3 { font: 600 17px var(--display); margin: 26px 0 8px; }
+.mocknotes p, .mocknotes li { font: 400 15px/1.5 var(--body); color: #f3eee3dd; }
+.mocknotes ol { padding-left: 0; list-style: none; margin: 10px 0 0; display: grid; gap: 12px; }
+.mocknotes ol li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; }
+.mocknotes ol li .n { display: inline-block; margin: 2px 0 0; }
+.mocknotes b { color: #fff; }
+.mocknotes table { border-collapse: collapse; width: 100%; font: 400 13px/1.4 var(--body); margin-top: 8px; }
+.mocknotes th, .mocknotes td { text-align: left; padding: 7px 8px 7px 0; border-bottom: 1px solid #f3eee322; vertical-align: top; }
+.mocknotes th { font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: #f3eee399; }
+.mocknotes code { font: 400 12px var(--mono); }
+</style>
+</head>
+<body class="preview notes">
+
+<div class="mockbar" role="toolbar" aria-label="Mock-up controls">
+  <b>Mock-up · Spot page</b>
+  <button data-w="fit" aria-pressed="true">This window</button>
+  <button data-w="1280">1280</button>
+  <button data-w="900">900</button>
+  <button data-w="390">Phone 390</button>
+  <span class="gap"></span>
+  <button id="notesBtn" aria-pressed="true">Numbered notes</button>
+  <a href="#why">Why · what changed</a>
+  <span class="gap"></span>
+  <span class="note">Made-up forecast · real satellite · now = Sat 31 Oct 14:20</span>
+</div>
+
+<div class="stage"><div class="page" id="page">
+  <div class="wrap">
+
+    <header class="site">
+      <button class="burger" aria-label="Menu"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M1 3h12M1 7h12M1 11h12" stroke="#1a1d21" stroke-width="1.6"/></svg></button>
+      <span class="word">wingfoil<i>.ie</i></span>
+      <span class="sp"></span>
+      <button class="tool"><svg viewBox="0 0 16 16"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span style="text-decoration:underline;text-underline-offset:4px">Chart</span></button>
+    </header>
+
+    <section class="title">
+      <h1>Dollymount</h1>
+      <div class="acts">
+        <button class="pill"><svg viewBox="0 0 16 16"><path d="M8 1.5l1.9 4.1 4.4.5-3.3 3 .9 4.4L8 11.3 4.1 13.5l.9-4.4-3.3-3 4.4-.5z" fill="none" stroke="#d43a2c" stroke-width="1.4" stroke-linejoin="round"/></svg>Star</button>
+      </div>
+      <div class="meta">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="#1a1d21" stroke-width="1.2"/><path d="M8 8 12.6 11.2" stroke="#1a1d21" stroke-width="1.6"/><path d="M2.5 4.4 13.5 11.6" stroke="#1a1d21" stroke-width=".8" stroke-dasharray="1.5 1.5"/></svg>
+        <span>Faces <b>SE</b> 125°</span><span class="dot">·</span>
+        <span>Best NNE–E, SSE–SW</span><span class="dot">·</span>
+        <span>Dublin Bay</span><span class="dot">·</span>
+        <span>Kite, wing, windsurf</span>
+      </div>
+    </section>
+
+    <section class="nearby" aria-label="Nearby spots">
+      <div class="nearby-h">
+        <span class="eyebrow">Nearby now<a class="n" href="#n1">1</a></span>
+        <button class="link">All spots on the chart</button>
+      </div>
+      <div class="near-row" id="nearRow"></div>
+    </section>
+
+    <!-- NOW -->
+    <section class="sec" aria-labelledby="nowH">
+      <div class="sec-h">
+        <h2 id="nowH">Now at 14:20<a class="n" href="#n2">2</a></h2>
+        <div class="side">
+          <span class="fresh"><span class="livedot"></span>Wind <b>Harmonie 12:00</b>, in 13:41 · next 15:40 · Buoy read <b>6 min ago</b><a class="n" href="#n3">3</a></span>
+        </div>
+      </div>
+      <div class="now">
+        <div>
+          <div class="reads" id="reads"></div>
+          <div class="alertline">
+            <p>Tell me when Dollymount has <b class="mono">3+</b> stars in daylight.</p>
+            <button class="pill ink"><svg viewBox="0 0 16 16"><path d="M8 2a4 4 0 0 0-4 4v3L2.5 11.5h11L12 9V6a4 4 0 0 0-4-4ZM6.5 13.5a1.5 1.5 0 0 0 3 0" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>Alert me<a class="n" href="#n9" style="margin-left:2px">9</a></button>
+          </div>
+        </div>
+        <figure class="sat">
+          <div class="sat-frame">
+            <img id="satHigh" src="2026-10-31-spot-page/sat/dollymount-high.webp" alt="Dollymount from above at high tide, north up, with the wind now drawn over it.">
+            <img id="satLow" class="off" src="2026-10-31-spot-page/sat/dollymount-low.webp" alt="Dollymount from above at low tide, north up.">
+            <svg class="rose" id="rose" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+            <span class="north">↑ N</span>
+            <div class="sat-tools">
+              <div class="seg" role="group" aria-label="Tide in the picture">
+                <button data-tide="high" aria-pressed="true">High tide</button>
+                <button data-tide="low" aria-pressed="false">Low tide</button>
+              </div>
+              <div class="key" id="satKey"></div>
+            </div>
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <!-- WEEK + GRAPH -->
+    <section class="sec" aria-labelledby="fcH">
+      <div class="sec-h">
+        <h2 id="fcH">The week<a class="n" href="#n4">4</a></h2>
+        <div class="side">
+          <span class="fresh">Stars for <b>~80 kg</b> · <b>Harmonie</b> to Mon, then <b>ECMWF</b></span>
+          <div class="seg" role="group" aria-label="View" style="box-shadow:0 0 0 1px var(--line)">
+            <button data-view="graph" aria-pressed="true">Graph</button>
+            <button data-view="table" aria-pressed="false">Table</button>
+          </div>
+        </div>
+      </div>
+      <div class="week" id="week" role="group" aria-label="Days"></div>
+
+      <div id="graphView">
+        <div class="gtools">
+          <span class="eyebrow">Every row on the same clock · hover or drag<a class="n" href="#n5">5</a></span>
+          <div class="navs">
+            <button class="round" id="prev" aria-label="Earlier"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M8 1 3 6l5 5" fill="none" stroke="#1a1d21" stroke-width="1.6"/></svg></button>
+            <button class="round" id="next" aria-label="Later"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M4 1l5 5-5 5" fill="none" stroke="#1a1d21" stroke-width="1.6"/></svg></button>
+          </div>
+        </div>
+        <div class="readout" id="readout"></div>
+        <div class="graph" id="graph"></div>
+        <div class="legend">
+          <span><i style="background:linear-gradient(90deg,#4f80c8,#49a88a,#4cb35a,#b5cf3a,#ecd23a,#f2a03a,#e05a33)"></i>Wind, coloured by speed</span>
+          <span><i style="background:#e0803a;height:3px;vertical-align:2px"></i>Gust</span>
+          <span><i style="background:#1a1d2126"></i>Models disagree this much<a class="n" href="#n6">6</a></span>
+          <span><i style="background:#b0186a1f;box-shadow:inset 0 0 0 1px #b0186a55"></i>Your range 15–22</span>
+          <span><i style="background:#5f8c9c"></i>1 m of water or more at the launch<a class="n" href="#n7">7</a></span>
+          <span><i style="background:#1a1d2114"></i>Dark</span>
+        </div>
+      </div>
+      <div id="tableView" hidden>
+        <table class="tbl" id="tbl"></table>
+      </div>
+    </section>
+
+    <!-- WAS IT RIGHT -->
+    <section class="sec" aria-labelledby="vH">
+      <div class="sec-h">
+        <h2 id="vH">Was it right?<a class="n" href="#n8">8</a></h2>
+        <span class="fresh">Forecast against the <b>Dublin Bay buoy</b>, 4 km, last 48 hours</span>
+      </div>
+      <div class="verify">
+        <div class="vfig">
+          <div class="row"><span>Today the wind is running</span><b>+2 kn</b><span>above the forecast, since 09:00.</span></div>
+          <div class="row"><span>Harmonie's miss here, last 30 days</span><b>±2.4 kn</b><span>Most often low in a southerly.</span></div>
+          <table class="models" aria-label="Average miss by model, last 30 days">
+            <tr><td>Harmonie</td><td><span class="bar" style="width:48px"></span>2.4</td></tr>
+            <tr><td>ICON-EU</td><td><span class="bar" style="width:60px"></span>3.0</td></tr>
+            <tr><td>ECMWF</td><td><span class="bar" style="width:66px"></span>3.3</td></tr>
+            <tr><td>GFS</td><td><span class="bar" style="width:84px"></span>4.2</td></tr>
+          </table>
+        </div>
+        <div class="graph" id="vgraph"></div>
+      </div>
+    </section>
+
+    <!-- GUIDE -->
+    <section class="sec" aria-labelledby="gH">
+      <div class="sec-h">
+        <h2 id="gH">The spot<a class="n" href="#n10">10</a></h2>
+        <span class="fresh">From riders · last edited 12 Oct · <button class="link" style="font-size:10px">Suggest a change</button></span>
+      </div>
+      <div class="guide">
+        <div class="gd"><h3>Launch</h3><p>From the sand at the end of the causeway road. Cars can drive onto the beach; park well above the high-water line.</p></div>
+        <div class="gd"><h3>Water</h3><p><span class="m">1 m deep at the launch above 2.6 m of tide.</span> At low water the sand runs a long way out and the foil touches.</p></div>
+        <div class="gd"><h3>Watch for</h3><ul><li>Westerlies blow off the beach.</li><li>Kites on the sand in a southerly.</li><li>Shipping south of the Bull Wall.</li></ul></div>
+        <div class="gd"><h3>Riders here</h3><p>Popular with kiters; wing on the higher half of the tide. Busy at weekends.</p></div>
+      </div>
+      <div class="reports" aria-label="Reports today">
+        <div class="eyebrow" style="padding-top:6px">Today on the water</div>
+        <div class="rep"><span class="who">CM</span><span class="hd">13:55 · 4.5 m² · 85 kg</span><p>Gusty near the causeway, cleaner 200 m out. Lit the whole session.</p></div>
+        <div class="rep"><span class="who">AO</span><span class="hd">12:40 · 5 m² · 72 kg</span><p>Chop is short. Pumped up easily once it filled in.</p></div>
+      </div>
+    </section>
+
+    <!-- SOURCES -->
+    <section class="sec" aria-labelledby="sH">
+      <div class="sec-h"><h2 id="sH">Where this comes from<a class="n" href="#n11">11</a></h2></div>
+      <div class="sources">
+        <div class="src"><span class="k">Wind</span><span>Met Éireann Harmonie, 2 km, every 3 hours, to 60 h; then ECMWF, 25 km, to 15 days. Gusts and the spread from ICON-EU and GFS too.</span></div>
+        <div class="src"><span class="k">Waves</span><span>Marine Institute SWAN, about 2 km, hourly steps. <span class="new">NEW</span> Copernicus IBI waves, 3 km, twice a day, with swell and chop apart; GFS-Wave after day 6.</span></div>
+        <div class="src"><span class="k">Live</span><span><span class="new">NEW</span> Irish Lights' Dublin Bay buoy, every 20 minutes: wind, gust, waves, water. Met Éireann stations and the M2 buoy.</span></div>
+        <div class="src"><span class="k">Tide &amp; depth</span><span>Marine Institute tide predictions for Howth; seabed from INFOMAR and EMODnet.</span></div>
+        <div class="src"><span class="k">Picture</span><span>Contains modified Copernicus Sentinel data 2017–2026, composited for wingfoil.ie.</span></div>
+      </div>
+      <p class="small">Model forecasts and a buoy, not a safety statement. Look at the water before you go out. Times are Irish.</p>
+    </section>
+  </div>
+
+  <!-- ===== the mock-up's notes ===== -->
+  <section class="mocknotes" id="why">
+    <div class="wrap">
+      <h2>What changed, and why</h2>
+      <p>Surfline's spot report has a clear order: what it's like now, the spots around it, the days at a glance, one stacked graph where every row shares the clock, then the guide. This keeps that order, in our paper-and-ink look, and aims each piece at a complaint riders make about wind and surf forecasts. No adverts, no paywall and no wetsuit or sunscreen advice: the site states figures and highlights hours, it doesn't give advice.</p>
+      <ol>
+        <li id="n1"><span class="n">1</span><span><b>Nearby now.</b> Surfline's strip of nearby spots, with the wind now and today's best stars for each. If Dollymount is off, Portmarnock might be on, without going back to the chart.</span></li>
+        <li id="n2"><span class="n">2</span><span><b>Now, at the top.</b> Today the page opens on a table. Riders' first question is "what is it like right now?", so the page answers with five figures: the wind, the stars, the depth at the launch, the sea and the light left. Over the real satellite picture: the forecast wind, the measured wind and the offshore arc struck through in pen.</span></li>
+        <li id="n3"><span class="n">3</span><span><b>When it was made and what it's based on.</b> Every block says which model, which run, when it came in and when the next one is due. Riders can't tell stale from fresh on Windguru or Surfline.</span></li>
+        <li id="n4"><span class="n">4</span><span><b>The week, in one row.</b> Like Surfline's day selector, but for wind: the wind range, the hours worth riding, an hour-by-hour bar coloured by stars, and <b>how sure</b> the day is. "Offshore" is flagged in pen, as on Wednesday. Pressing a day moves the graph there.</span></li>
+        <li id="n5"><span class="n">5</span><span><b>One graph, every row on one clock.</b> Stars, wind and gust, direction and wing size, waves, tide and depth, sky. Hover or drag across it and one readout shows that hour. Dark hours are shaded but still drawn, so dawn sessions are visible. A dashed line marks where Harmonie hands over to ECMWF. Graph or Table, as Surfline offers; the table is today's table.</span></li>
+        <li id="n6"><span class="n">6</span><span><b>How sure, drawn instead of explained.</b> Behind each wind bar, a grey band runs from the lowest model to the highest. Narrow means they agree; wide, as on Tuesday and Wednesday, means don't plan around it yet. This answers "which model do I trust?" without making riders compare four tabs.</span></li>
+        <li id="n7"><span class="n">7</span><span><b>Depth on the tide.</b> We already have foil depth on the map. Here it goes onto the tide curve: the part of the tide with 1 m of water or more at the launch is filled. Wingfoilers ask "can I ride at 10?", and only we can answer it. No surf site has this.</span></li>
+        <li id="n8"><span class="n">8</span><span><b>Was it right?</b> The forecast against the nearest buoy, for the last two days and as a 30-day miss per model. Our <code>wind-obs</code> job already collects this for checking, but no page shows it. It builds trust, and "running 2 kn above forecast today" is the single most useful line for someone deciding to drive.</span></li>
+        <li id="n9"><span class="n">9</span><span><b>Alerts.</b> The page's one filled button. iKitesurf's most-praised feature is threshold alerts; the <code>alerts/</code> work can hang off this.</span></li>
+        <li id="n10"><span class="n">10</span><span><b>The spot guide and reports.</b> Surfline's Guide tab, in a few lines: launch, water, things to watch for, who rides here. We have no data for this today (spots only have a name, place and facing), so it would start as an owner-edited file and then take riders' suggestions. Riders' short reports after a session give the "what was it actually like" that people missed when cams went offline or behind paywalls.</span></li>
+        <li id="n11"><span class="n">11</span><span><b>Sources, plainly.</b> What each figure comes from, how fine and how often. The two marked NEW are the wave and live-data upgrades below.</span></li>
+      </ol>
+
+      <h3>What riders complain about, and our answer</h3>
+      <table>
+        <tr><th>Complaint (Surfline, Windguru, Windy, Windfinder, iKitesurf)</th><th>Here</th></tr>
+        <tr><td>The forecast didn't match the beach; ratings feel arbitrary ("always poor to fair").</td><td>Stars for <i>your</i> weight and range, and "Was it right?" shows how far off the forecast has been at this spot.</td></tr>
+        <tr><td>Which model do I trust? They disagree, and comparing them is work.</td><td>One forecast, with the spread drawn behind it; "how sure" on every day.</td></tr>
+        <tr><td>No idea what it's like now; cams are offline or paid.</td><td>The nearest buoy's live wind beside the forecast, plus riders' reports.</td></tr>
+        <tr><td>Gusts untrustworthy; sea breeze and local effects missed.</td><td>Gust drawn on every bar; today's measured-against-forecast line catches a sea breeze the model missed.</td></tr>
+        <tr><td>Built for surfers: a surf rating means nothing on a wing.</td><td>Wind first, wing size, offshore struck through, chop and swell apart, depth on the tide.</td></tr>
+        <tr><td>Too many numbers, or too few (Windguru against the Met Éireann redesign).</td><td>Five figures at the top, the graph for the week, the full table one tap away.</td></tr>
+        <tr><td>Adverts, paywalls, "5 checks a week".</td><td>None. Everything on this page is free.</td></tr>
+        <tr><td>Stale or unclear model runs.</td><td>Run time, arrival time and next run on every block.</td></tr>
+      </table>
+
+      <h3>Better, more frequent waves</h3>
+      <p>Today: Marine Institute SWAN (about 2.8 × 1.6 km) runs <b>once a day</b> to day 6, then GFS-Wave at 9 km, every 3 hours. And only height, period and direction reach the page, so chop and swell are mixed.</p>
+      <table>
+        <tr><th>Source</th><th>Grid</th><th>How often</th><th>Gives us</th></tr>
+        <tr><td><b>Copernicus Marine IBI waves</b> (<code>IBI_ANALYSISFORECAST_WAV_005_005</code>)</td><td>~3 km, hourly</td><td>Twice a day</td><td>Swell and wind sea apart (primary and secondary swell). Free with attribution, NetCDF. The best next step.</td></tr>
+        <tr><td><b>Irish Lights MetOcean buoys</b> (Dublin Bay, Ballybunion, Coningbeg, Foyle, …)</td><td>Points</td><td>Every 20 min</td><td>Live wind, gust, waves, water temperature near the coast. Licence needs asking.</td></tr>
+        <tr><td><b>Irish Wave Buoy Network</b> (<code>IWaveBNetwork30Min</code>, Marine Institute ERDDAP)</td><td>11 west-coast buoys</td><td>Every 30 min</td><td>Measured waves at Brandon Bay, Clew Bay, Bantry, Galway Bay. Correct the forecast on the day.</td></tr>
+        <tr><td><b>Marine Institute Connemara SWAN</b> (<code>IMI_CONNEMARA_SWAN_WAVE</code>)</td><td>~200 m</td><td>Daily</td><td>Bay-scale waves for Galway and Connemara spots.</td></tr>
+        <tr><td><b>ECMWF WAM</b> (open data, or via Open-Meteo)</td><td>~9–25 km</td><td>2–4 runs a day</td><td>Replaces GFS-Wave beyond day 6, to day 15. Open-Meteo needs a paid plan for commercial use.</td></tr>
+      </table>
+      <p style="margin-top:10px">Fetching SWAN as soon as it's published (about 09 UTC, not 10 UTC), adding IBI's two runs a day, and switching days 6–15 to ECMWF WAM would take waves from one update a day to three, and split chop from swell.</p>
+
+      <h3>What would make us different</h3>
+      <ul>
+        <li><b>Depth on the tide</b>: hours with enough water at the launch, on every spot page. No one else has it.</li>
+        <li><b>Forecast against measured</b>, at each spot, always visible.</li>
+        <li><b>The spread, not four models</b>: one forecast, with how sure it is.</li>
+        <li><b>Stars for your kit</b>: weight, range and wing size, with offshore marked plainly.</li>
+        <li><b>Free and plain</b>: no adverts or paywall, and almost no words.</li>
+      </ul>
+      <h3>Open question</h3>
+      <p>Switch to Table and pick Tuesday: 11:00 to 13:00 get four or five stars with 0.1–0.2 m of water at the launch. Today the stars ignore depth. Should they drop when the launch is too shallow to ride, or stay on wind alone, with the depth shown beside them as it is here?</p>
+    </div>
+  </section>
+</div></div>
+
+<script>
+/* ===================== made-up forecast ===================== */
+const FACING = 125, NOW = 14 + 20 / 60, HOURS = 168, LAUNCH_BED = 1.6; // tide (m CD) at which the launch is dry
+const DAYS = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"], DATES = [31, 1, 2, 3, 4, 5, 6];
+const FULL = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const WIND_STOPS = [[0,"#aacbea"],[5,"#80aee0"],[9,"#4f80c8"],[10,"#49a88a"],[15,"#4cb35a"],[20,"#6fbf3e"],[25,"#b5cf3a"],[30,"#ecd23a"],[35,"#f2a03a"],[40,"#e05a33"],[45,"#c8304a"],[50,"#9b2f86"],[60,"#5a2368"],[65,"#231628"]];
+const STAR_C = ["", "#e28bb3", "#d2609a", "#bd3d84", "#a01f6c", "#7c0f55"];
+const COMPASS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+const HARMONIE_END = 48 + 0;   // Harmonie hands over to ECMWF at Mon 00:00
+const SWAN_END = 120;          // SWAN to Thu 00:00, then GFS-Wave
+
+const windColor = k => { let c = WIND_STOPS[0][1]; for (const [s, col] of WIND_STOPS) if (k >= s) c = col; return c; };
+const compass = d => COMPASS[Math.round(((d % 360) + 360) % 360 / 22.5) % 16];
+const angDiff = (a, b) => { const d = Math.abs(((a - b) % 360 + 540) % 360 - 180); return d; };
+const shore = dir => { const d = angDiff(dir, FACING); return d <= 35 ? "onshore" : d <= 70 ? "cross-on" : d <= 112 ? "cross-shore" : d <= 145 ? "cross-off" : "offshore"; };
+const pad = n => String(n).padStart(2, "0");
+const hhmm = h => { const m = Math.round(h * 60); return `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`; };
+
+// wind control points: [hour index, mean kn, gust kn, from °]
+const CP = [[0,10,14,190],[6,12,16,195],[10,15,20,200],[14,17,22,200],[16,18,24,210],[20,14,19,220],
+  [28,10,14,260],[33,7,11,315],[38,9,16,350],[44,7,12,20],
+  [54,6,10,60],[60,8,13,55],[66,9,13,45],
+  [75,12,17,170],[81,17,23,195],[85,21,28,205],[89,23,31,215],[94,22,30,235],
+  [102,24,33,255],[108,22,31,270],[114,18,26,285],
+  [126,12,17,310],[132,10,14,330],[138,8,11,350],
+  [147,9,12,140],[154,14,18,160],[158,16,21,175],[164,13,17,185],[167,11,15,190]];
+function lerpAng(a, b, t) { let d = ((b - a + 540) % 360) - 180; return (a + d * t + 360) % 360; }
+function windAt(i) {
+  let k = 0; while (k < CP.length - 2 && CP[k + 1][0] <= i) k++;
+  const [h0, w0, g0, d0] = CP[k], [h1, w1, g1, d1] = CP[k + 1];
+  const t = Math.min(1, Math.max(0, (i - h0) / (h1 - h0)));
+  const n = Math.sin(i * 1.7) * 0.6 + Math.sin(i * 0.37) * 0.5;
+  return { w: w0 + (w1 - w0) * t + n, g: g0 + (g1 - g0) * t + n * 1.3, d: lerpAng(d0, d1, t) + Math.sin(i * .9) * 4 };
+}
+// tide extremes [hour index, metres CD]; Sat to Mon as on the live page today, then carried on
+const TX = [[-3.4,1.3],[2.75,3.9],[8.17,1.2],[15.17,4.0],[21,1.0],[27.92,3.7],[33.33,1.4],[40.33,3.9],[46.25,1.1],[53.25,3.6],[58.67,1.6],[65.58,3.8],[71.67,1.1],
+  [78.5,3.5],[84,1.7],[90.83,3.6],[97,1.3],[103.67,3.4],[109.17,1.8],[116,3.5],[122.17,1.4],[128.75,3.5],[134.25,1.7],[141,3.6],[147.17,1.3],[153.67,3.6],[159.17,1.5],[165.83,3.8],[172,1.2]];
+function tideAt(h) {
+  let k = 0; while (k < TX.length - 2 && TX[k + 1][0] <= h) k++;
+  const [t0, a] = TX[k], [t1, b] = TX[k + 1];
+  const p = (h - t0) / (t1 - t0);
+  return a + (b - a) * (1 - Math.cos(Math.PI * p)) / 2;
+}
+const sun = d => ({ fl: 6 + 44 / 60 + d * 2 / 60, rise: 7 + 21 / 60 + d * 2 / 60, set: 16 + 54 / 60 - d * 2 / 60, ll: 17 + 31 / 60 - d * 2 / 60 });
+
+const H = [];
+for (let i = 0; i < HOURS; i++) {
+  const day = Math.floor(i / 24), hr = i % 24, s = sun(day);
+  const { w, g, d } = windAt(i);
+  const lead = Math.max(0, i - NOW);
+  const wide = (i >= 76 && i < 116) ? 4.5 : 0;
+  const spread = 1.2 + lead * 0.035 + wide;
+  const rel = shore(d);
+  const light = hr + .5 >= s.fl && hr + .5 <= s.ll;
+  // stars, for an ~80 kg rider whose range is 11–35 with 15–22 sweet
+  let st = w < 11 ? 0 : w < 13 ? 1 : w < 15 ? 2 : w <= 22 ? (w > 16 ? 4 : 3) + (w >= 17 && w <= 21 && g / w < 1.4 ? 1 : 0) : w <= 28 ? 3 : w <= 35 ? 2 : 0;
+  if (rel === "offshore") st = 0; else if (rel === "cross-off") st = Math.min(st, 1); else if (rel === "onshore") st = Math.max(0, st - 1);
+  if (g / w > 1.45) st = Math.max(0, st - 1);
+  const fetch = angDiff(d, FACING) <= 112;
+  const ws = fetch ? Math.max(.1, 0.012 * Math.pow(w, 1.25)) : 0.08;
+  const sw = 0.12 + 0.08 * Math.sin(i / 20);
+  const tide = tideAt(i);
+  const cloud = (Math.sin(i / 7) + Math.sin(i / 3.1) * .5 + 1.5) / 3;
+  const rain = (i > 26 && i < 34) || (i > 98 && i < 106) || (i > 128 && i < 131);
+  H.push({ i, day, hr, w, g, d, lo: Math.max(0, w - spread * .7), hi: w + spread, rel, light, st: light ? st : null,
+    wing: w < 11 ? null : Math.max(2.5, Math.min(6, Math.round(75 / w * 2) / 2)),
+    ws, wsp: 1.8 + ws * 4.5, sw, swp: 8 + Math.round(Math.sin(i / 30)), swd: 85,
+    tide, depth: tide - LAUNCH_BED, temp: 9 + 3 * Math.sin((hr - 9) / 24 * 2 * Math.PI) - day * .3 + (day === 3 ? 1.5 : 0),
+    sky: rain ? "rain" : cloud > .66 ? "cloud" : cloud > .4 ? "part" : "sun",
+    agree: spread < 3 ? 3 : spread < 6 ? 2 : 1 });
+}
+const nowH = H[14];
+const obsD = 205;
+
+/* ===================== small drawing helpers ===================== */
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+const starsHTML = (n, big) => `<span class="stars${big ? " big" : ""}" aria-label="${n ?? 0} stars">${[1,2,3,4,5].map(k => `<i class="${n >= k ? "on" : ""}" style="--c:${STAR_C[n] || ""}"></i>`).join("")}</span>`;
+function arrow(g, x, y, from, len, color = "#1a1d21", w = 1.4) {
+  const r = (from + 180) * Math.PI / 180, dx = Math.sin(r) * len / 2, dy = -Math.cos(r) * len / 2;
+  const x1 = x - dx, y1 = y - dy, x2 = x + dx, y2 = y + dy;
+  el("line", { x1, y1, x2, y2, stroke: color, "stroke-width": w, "stroke-linecap": "round" }, g);
+  const a = Math.atan2(y2 - y1, x2 - x1), hs = Math.max(3, len * .3);
+  el("path", { d: `M${x2},${y2} L${x2 - hs * Math.cos(a - .5)},${y2 - hs * Math.sin(a - .5)} L${x2 - hs * Math.cos(a + .5)},${y2 - hs * Math.sin(a + .5)} Z`, fill: color }, g);
+}
+function skyGlyph(g, x, y, kind, night) {
+  const s = "#1a1d21";
+  if (night && kind !== "rain" && kind !== "cloud") { el("path", { d: `M${x + 3},${y - 5} a5.5 5.5 0 1 0 2.5 9 a4.5 4.5 0 1 1 -2.5 -9z`, fill: "none", stroke: s, "stroke-width": 1.1 }, g); return; }
+  if (kind === "sun" || kind === "part") {
+    const cx = kind === "part" ? x - 2.5 : x, cy = kind === "part" ? y - 2.5 : y;
+    el("circle", { cx, cy, r: 3.2, fill: "#ecd23a", stroke: s, "stroke-width": 1 }, g);
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; el("line", { x1: cx + Math.cos(a) * 4.8, y1: cy + Math.sin(a) * 4.8, x2: cx + Math.cos(a) * 6.3, y2: cy + Math.sin(a) * 6.3, stroke: s, "stroke-width": .9 }, g); }
+  }
+  if (kind !== "sun") {
+    el("path", { d: `M${x - 6},${y + 4} h11 a3 3 0 0 0 0 -6 a4 4 0 0 0 -7.5 -1 a3 3 0 0 0 -3.5 7z`, fill: "#f3eee3", stroke: s, "stroke-width": 1.1 }, g);
+    if (kind === "rain") for (const dx of [-3, 0, 3]) el("line", { x1: x + dx, y1: y + 6, x2: x + dx - 1.2, y2: y + 9, stroke: "#3a7fb0", "stroke-width": 1.2 }, g);
+  }
+}
+
+/* ===================== nearby ===================== */
+const NEAR = [
+  ["dollymount", "Dollymount", "16", "21", 4, true], ["bull-island-north", "Bull Island N", "15", "20", 3], ["sandymount", "Sandymount", "14", "19", 3],
+  ["portmarnock", "Portmarnock", "17", "22", 4], ["poolbeg", "Poolbeg", "13", "20", 2], ["seapoint", "Seapoint", "12", "18", 2],
+  ["malahide-estuary", "Malahide", "15", "19", 3], ["dun-laoghaire", "Dún Laoghaire", "11", "17", 1], ["killiney", "Killiney", "10", "15", 0]];
+document.getElementById("nearRow").innerHTML = NEAR.map(([id, nm, w, g, st, cur]) =>
+  `<a class="near" href="#" ${cur ? 'aria-current="page"' : ""}><img src="2026-10-31-spot-page/sat/thumb-${id}.webp" alt=""><span class="nm">${nm}</span><span class="wn">${w}<sup>${g}</sup> <span class="muted" style="font-weight:400;font-size:10px">kn</span></span><span class="st">${starsHTML(st)}</span></a>`).join("");
+
+/* ===================== now ===================== */
+(function now() {
+  const n = H[14], next = H[15];
+  const w = Math.round(n.w + (next.w - n.w) / 3), g = Math.round(n.g + (next.g - n.g) / 3);
+  const obsW = w + 2, obsG = g + 3;
+  const tideNow = tideAt(NOW), depth = tideNow - LAUNCH_BED;
+  // the hour the launch gets shallower than 1 m
+  let dry = null; for (let h = NOW; h < NOW + 12; h += 1 / 12) if (tideAt(h) - LAUNCH_BED < 1) { dry = h; break; }
+  let deep = NOW; while (tideAt(deep - 1 / 12) - LAUNCH_BED >= 1) deep -= 1 / 12;
+  const rising = tideAt(NOW + .2) > tideNow;
+  const s = sun(0), left = s.ll - NOW;
+  document.getElementById("reads").innerHTML = `
+    <div class="read wide">
+      <span class="eyebrow">Wind · forecast</span>
+      <div class="fig">${w}<span class="g">g${g}</span><span class="u">kn</span><span class="dir">${compass(n.d)} ${Math.round(n.d)}° · ${n.rel}</span></div>
+      <div class="obs"><span class="bd"></span><span>Measured <b>${obsW}</b><b style="color:var(--gust);font-size:11px;vertical-align:4px">${obsG}</b> from ${compass(obsD)} at the Dublin Bay buoy, 4 km out, 6 min ago.<br><span class="delta">Running 2 kn above the forecast since 09:00</span></span></div>
+    </div>
+    <div class="read">
+      <span class="eyebrow">Stars for you</span>
+      <div class="fig" style="font-size:22px;margin:10px 0 7px">${starsHTML(n.st, true)}</div>
+      <div class="sub"><span class="m">~80 kg · ${n.wing} m² wing</span><br>15–22 kn is your sweet spot</div>
+    </div>
+    <div class="read">
+      <span class="eyebrow">Water at the launch</span>
+      <div class="fig">${depth.toFixed(1)}<span class="u">m deep</span></div>
+      <div class="depthbar" aria-hidden="true"><span style="width:${Math.min(100, depth / 3 * 100)}%"></span><em style="left:${1 / 3 * 100}%"></em></div>
+      <div class="sub"><span class="m">Tide ${tideNow.toFixed(1)} m ${rising ? "rising" : "falling"} · high 15:10</span><br>1 m or more from ${hhmm(deep)} to ${hhmm(dry)}</div>
+    </div>
+    <div class="read">
+      <span class="eyebrow">Sea</span>
+      <div class="fig">${n.ws.toFixed(1)}<span class="u">m chop</span><span class="dir">${n.wsp.toFixed(0)} s</span></div>
+      <div class="sub"><span class="m">Swell ${n.sw.toFixed(1)} m ${n.swp} s E</span><br>Water <span class="m">13.2 °C</span> at the buoy</div>
+    </div>
+    <div class="read">
+      <span class="eyebrow">Light left</span>
+      <div class="fig">${Math.floor(left)}<span class="u">h</span>${pad(Math.round((left % 1) * 60))}<span class="u">min</span></div>
+      <div class="sub"><span class="m">Sunset ${hhmm(s.set)} · last light ${hhmm(s.ll)}</span><br>${n.temp.toFixed(0)}° in the air, ${n.sky === "sun" ? "sunny" : n.sky === "part" ? "sunny spells" : n.sky === "rain" ? "showers" : "cloudy"}</div>
+    </div>`;
+  drawRose(w, g, n.d, obsW, obsG);
+  document.getElementById("satKey").innerHTML = `<div><i style="background:#1a1d21"></i>Forecast ${w}<sup style="color:#e0803a">${g}</sup></div><div><i style="background:#e9b200;box-shadow:0 0 0 1px #1a1d21"></i>Buoy ${obsW}<sup style="color:#e0803a">${obsG}</sup></div><div><i style="background:repeating-linear-gradient(45deg,#d43a2c 0 2px,transparent 2px 4px)"></i>Offshore</div>`;
+  const tide = tideNow > 2.5 ? "high" : "low";
+  setTide(tide);
+})();
+
+function drawRose(w, g, dir, ow, og) {
+  const svg = document.getElementById("rose"), cx = 200, cy = 150, R = 92;
+  svg.innerHTML = "";
+  const defs = el("defs", {}, svg);
+  const pat = el("pattern", { id: "hatch", width: 6, height: 6, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, defs);
+  el("rect", { width: 2.2, height: 6, fill: "#d43a2c" }, pat);
+  const pt = (b, r) => [cx + Math.sin(b * Math.PI / 180) * r, cy - Math.cos(b * Math.PI / 180) * r];
+  const sector = (a, b, r0, r1) => { const [x0, y0] = pt(a, r1), [x1, y1] = pt(b, r1), [x2, y2] = pt(b, r0), [x3, y3] = pt(a, r0); const lg = ((b - a + 360) % 360) > 180 ? 1 : 0; return `M${x0},${y0} A${r1},${r1} 0 ${lg} 1 ${x1},${y1} L${x2},${y2} A${r0},${r0} 0 ${lg} 0 ${x3},${y3}Z`; };
+  el("circle", { cx, cy, r: R, fill: "#1a1d2133", stroke: "#f3eee3", "stroke-width": 1.5 }, svg);
+  // good arcs: NNE–E and SSE–SW
+  for (const [a, b] of [[22.5, 90], [157.5, 225]]) el("path", { d: sector(a, b, R - 16, R), fill: "#f3eee3", opacity: .75 }, svg);
+  // offshore, struck through in pen
+  const off = (FACING + 180) % 360;
+  el("path", { d: sector(off - 35, off + 35, R - 16, R), fill: "url(#hatch)", stroke: "#d43a2c", "stroke-width": 1 }, svg);
+  el("circle", { cx, cy, r: R - 16, fill: "none", stroke: "#f3eee3aa", "stroke-width": 1, "stroke-dasharray": "2 4" }, svg);
+  for (const [b, t] of [[0, "N"], [90, "E"], [180, "S"], [270, "W"]]) { const [x, y] = pt(b, R + 12); el("text", { x, y: y + 4, "text-anchor": "middle", fill: "#f3eee3", "font-size": 11, "font-weight": 600, style: "paint-order:stroke;stroke:#1a1d21;stroke-width:3px" }, svg).textContent = t; }
+  // which way it faces
+  const [fx, fy] = pt(FACING, 30);
+  el("line", { x1: cx, y1: cy, x2: fx, y2: fy, stroke: "#f3eee3", "stroke-width": 1.5, "stroke-dasharray": "3 3" }, svg);
+  el("circle", { cx, cy, r: 5, fill: "#f3eee3", stroke: "#1a1d21", "stroke-width": 1.5 }, svg);
+  // the buoy's wind (thin, yellow) then the forecast (bold, ink), both blowing towards the centre
+  const windArrow = (from, col, sw, len, halo) => {
+    const [x0, y0] = pt(from, R + 2), [x1, y1] = pt(from, R + 2 - len);
+    if (halo) el("line", { x1: x0, y1: y0, x2: x1, y2: y1, stroke: "#f3eee3", "stroke-width": sw + 3, "stroke-linecap": "round" }, svg);
+    el("line", { x1: x0, y1: y0, x2: x1, y2: y1, stroke: col, "stroke-width": sw, "stroke-linecap": "round" }, svg);
+    const a = Math.atan2(y1 - y0, x1 - x0), hs = sw * 3.6;
+    el("path", { d: `M${x1 + Math.cos(a) * hs * .6},${y1 + Math.sin(a) * hs * .6} L${x1 - hs * Math.cos(a - .55)},${y1 - hs * Math.sin(a - .55)} L${x1 - hs * Math.cos(a + .55)},${y1 - hs * Math.sin(a + .55)}Z`, fill: col, stroke: halo ? "#f3eee3" : "#1a1d21", "stroke-width": 1 }, svg);
+  };
+  windArrow(obsD, "#e9b200", 3, 58, true);
+  windArrow(dir, "#1a1d21", 4.5, 66, true);
+  const [lx, ly] = pt(dir - 16, R - 34);
+  const lab = el("text", { x: lx, y: ly + 5, "text-anchor": "middle", "font-size": 16, "font-weight": 600, fill: "#1a1d21", style: "paint-order:stroke;stroke:#f3eee3;stroke-width:4px" }, svg);
+  lab.innerHTML = `${w}<tspan fill="#e0803a" font-size="11" dy="-6">${g}</tspan>`;
+}
+function setTide(t) {
+  document.getElementById("satHigh").classList.toggle("off", t !== "high");
+  document.getElementById("satLow").classList.toggle("off", t !== "low");
+  document.querySelectorAll("[data-tide]").forEach(b => b.setAttribute("aria-pressed", b.dataset.tide === t));
+}
+document.querySelectorAll("[data-tide]").forEach(b => b.onclick = () => setTide(b.dataset.tide));
+
+/* ===================== the week ===================== */
+let selDay = 0;
+function drawWeek() {
+  const wk = document.getElementById("week");
+  wk.innerHTML = "";
+  for (let d = 0; d < 7; d++) {
+    const hrs = H.filter(h => h.day === d), lit = hrs.filter(h => h.light);
+    const lo = Math.round(Math.min(...lit.map(h => h.w))), hi = Math.round(Math.max(...lit.map(h => h.w))), gmax = Math.round(Math.max(...lit.map(h => h.g)));
+    const good = lit.filter(h => h.st >= 3);
+    const win = good.length ? `${pad(good[0].hr)}–${pad(good[good.length - 1].hr + 1)} ★${Math.max(...good.map(h => h.st))}` : "";
+    const agree = Math.round(lit.reduce((a, h) => a + h.agree, 0) / lit.length);
+    const off = lit.some(h => h.rel === "offshore" && h.w > 12);
+    const b = document.createElement("button");
+    b.className = "day"; b.setAttribute("aria-pressed", d === selDay);
+    b.innerHTML = `<span class="dn">${d === 0 ? "Today" : DAYS[d]}<small>${DATES[d]}</small></span>
+      <span class="rng">${lo}–${hi}<sup>${gmax}</sup> <span class="muted" style="font-weight:400;font-size:9px">kn</span></span>
+      <svg viewBox="0 0 96 30" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <span class="win">${win || (off ? "" : "—")}</span>
+      ${off ? `<span class="flag">Offshore</span>` : ""}
+      <span class="sure"><span class="bars">${[1,2,3].map(k => `<i class="${agree >= k ? "on" : ""}" style="height:${3 + k * 3}px"></i>`).join("")}</span>${["", "Unsure", "Fairly sure", "Sure"][agree]}</span>`;
+    const svg = b.querySelector("svg");
+    const x0 = 5, span = 19, bw = 96 / (span - x0);
+    hrs.filter(h => h.hr >= x0 && h.hr < span).forEach(h => {
+      const x = (h.hr - x0) * bw, bh = Math.max(2, h.w / 30 * 22);
+      el("rect", { x: x + .5, y: 24 - bh, width: bw - 1, height: bh, fill: h.light ? windColor(h.w) : "#1a1d2122", rx: .8 }, svg);
+      el("rect", { x: x + .5, y: 26.5, width: bw - 1, height: 3.5, fill: h.st ? STAR_C[h.st] : "#1a1d2117" }, svg);
+    });
+    b.onclick = () => { selDay = d; drawWeek(); scrollGraphTo(d); drawTable(); };
+    wk.appendChild(b);
+  }
+}
+
+/* ===================== the graph ===================== */
+let PX = 14, hover = 14;
+const ROWS = { stars: [22, 12], wind: [42, 120], arrows: [164, 40], waves: [214, 54], tide: [282, 84], sky: [376, 28], axis: [406, 18] };
+const GH = 430, LEFT = 0;
+function drawGraph() {
+  const box = document.getElementById("graph");
+  const w = box.clientWidth || 900;
+  PX = w < 600 ? 17 : Math.max(11, Math.floor(w / 72));
+  const W = PX * HOURS;
+  box.innerHTML = "";
+  const svg = el("svg", { width: W, height: GH, viewBox: `0 0 ${W} ${GH}` }, box);
+  const X = i => i * PX;
+  const defs = el("defs", {}, svg);
+  const pat = el("pattern", { id: "shallow", width: 5, height: 5, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, defs);
+  el("rect", { width: 5, height: 5, fill: "#dae8ea" }, pat); el("rect", { width: 1.2, height: 5, fill: "#5f8c9c55" }, pat);
+
+  // dark
+  for (let d = 0; d < 7; d++) {
+    const s = sun(d);
+    el("rect", { x: X(d * 24), y: 0, width: X(s.fl), height: GH - 18, fill: "#1a1d2114" }, svg);
+    el("rect", { x: X(d * 24 + s.ll), y: 0, width: X(24 - s.ll), height: GH - 18, fill: "#1a1d2114" }, svg);
+  }
+  // day lines and names
+  for (let d = 0; d < 7; d++) {
+    el("line", { x1: X(d * 24), x2: X(d * 24), y1: 0, y2: GH, stroke: "#1a1d21", "stroke-width": d ? 1 : 0 }, svg);
+    el("text", { x: X(d * 24) + 6, y: 13, "font-size": 11, "font-weight": 600, fill: "#1a1d21", style: "font-family:var(--display);font-size:13px" }, svg).textContent = `${FULL[d]} ${DATES[d]}`;
+  }
+  // row labels (repeated at each day)
+  const lab = (y, t) => { for (let d = 0; d < 7; d++) el("text", { x: X(d * 24) + 6, y, class: "rowlab" }, svg).textContent = t; };
+  lab(ROWS.wind[0] + 9, "Wind kn"); lab(ROWS.waves[0] + 9, "Sea"); lab(ROWS.tide[0] + 9, "Tide & depth");
+
+  // stars band
+  const [sy, sh] = ROWS.stars;
+  H.forEach(h => el("rect", { x: X(h.i) + .5, y: sy, width: PX - 1, height: sh, rx: 1.5, fill: h.st ? STAR_C[h.st] : h.light ? "#1a1d2117" : "transparent" }, svg));
+
+  // wind
+  const [wy, wh] = ROWS.wind, MAXK = 36, Y = k => wy + wh - k / MAXK * wh;
+  el("rect", { x: 0, y: Y(22), width: W, height: Y(15) - Y(22), fill: "#b0186a14" }, svg);
+  for (const k of [15, 22]) el("line", { x1: 0, x2: W, y1: Y(k), y2: Y(k), stroke: "#b0186a55", "stroke-width": .8, "stroke-dasharray": "3 3" }, svg);
+  for (const k of [10, 20, 30]) el("text", { x: W - 4, y: Y(k) - 2, "text-anchor": "end", "font-size": 8.5, fill: "#5b5c5b" }, svg).textContent = k;
+  H.forEach(h => {
+    const x = X(h.i);
+    el("rect", { x: x + PX * .2, y: Y(h.hi), width: PX * .6, height: Y(h.lo) - Y(h.hi), fill: "#1a1d2126", rx: 2 }, svg);
+    el("rect", { x: x + PX * .28, y: Y(h.w), width: PX * .44, height: wy + wh - Y(h.w), fill: windColor(h.w), rx: 1 }, svg);
+    el("line", { x1: x + PX * .15, x2: x + PX * .85, y1: Y(h.g), y2: Y(h.g), stroke: "#e0803a", "stroke-width": 2, "stroke-linecap": "round" }, svg);
+  });
+  el("line", { x1: 0, x2: W, y1: wy + wh, y2: wy + wh, stroke: "#1a1d2155" }, svg);
+
+  // arrows, speed, wing, every 2 hours
+  const [ay] = ROWS.arrows;
+  H.forEach(h => {
+    if (h.hr % 2) return;
+    const cx = X(h.i) + PX;
+    const off = h.rel === "offshore" || h.rel === "cross-off";
+    arrow(svg, cx, ay + 8, h.d, 13, off ? "#d43a2c" : "#1a1d21", 1.4);
+    const t = el("text", { x: cx, y: ay + 26, "text-anchor": "middle", "font-size": 10.5, "font-weight": 600, fill: "#1a1d21" }, svg);
+    t.innerHTML = `${Math.round(h.w)}<tspan font-size="7.5" fill="#e0803a" dy="-3">${Math.round(h.g)}</tspan>`;
+    if (h.light && h.wing && !off) el("text", { x: cx, y: ay + 37, "text-anchor": "middle", "font-size": 8.5, fill: "#5b5c5b" }, svg).textContent = `${h.wing}m²`;
+    if (h.light && off && h.w > 12) el("text", { x: cx, y: ay + 37, "text-anchor": "middle", "font-size": 8.5, fill: "#bf3125" }, svg).textContent = "off";
+  });
+
+  // sea: chop over swell
+  const [vy, vh] = ROWS.waves, MAXW = .8, VY = m => vy + vh - m / MAXW * (vh - 10);
+  H.forEach(h => {
+    const x = X(h.i), dashed = h.i >= SWAN_END && h.i % 3;
+    if (dashed) return; // GFS-Wave: every 3 hours only
+    const bw = h.i >= SWAN_END ? PX * 3 - 1 : PX - 1;
+    el("rect", { x: x + .5, y: VY(h.sw), width: bw, height: vy + vh - VY(h.sw), fill: "#5f8c9c" }, svg);
+    el("rect", { x: x + .5, y: VY(h.sw + h.ws), width: bw, height: VY(h.sw) - VY(h.sw + h.ws), fill: "#a9cbd8" }, svg);
+  });
+  H.forEach(h => { if (h.hr % 6 === 3) el("text", { x: X(h.i) + PX / 2, y: VY(h.sw + h.ws) - 3, "text-anchor": "middle", "font-size": 8.5, fill: "#3b3c3e" }, svg).textContent = `${(h.sw + h.ws).toFixed(1)}m ${h.wsp.toFixed(0)}s`; });
+  el("line", { x1: 0, x2: W, y1: vy + vh, y2: vy + vh, stroke: "#1a1d2155" }, svg);
+
+  // tide and depth
+  const [ty, th] = ROWS.tide, TMAX = 5.3, TY = m => ty + th - m / TMAX * (th - 8);
+  let path = `M0,${TY(tideAt(0))}`;
+  for (let h = 0; h <= HOURS; h += .25) path += ` L${X(h)},${TY(tideAt(h))}`;
+  const area = path + ` L${W},${ty + th} L0,${ty + th}Z`;
+  const thr = LAUNCH_BED + 1;
+  const clipA = el("clipPath", { id: "deep" }, defs); el("rect", { x: 0, y: ty - 4, width: W, height: TY(thr) - ty + 4 }, clipA);
+  const clipB = el("clipPath", { id: "shal" }, defs); el("rect", { x: 0, y: TY(thr), width: W, height: ty + th - TY(thr) }, clipB);
+  el("path", { d: area, fill: "url(#shallow)", "clip-path": "url(#shal)" }, svg);
+  el("path", { d: area, fill: "#5f8c9c", opacity: .85, "clip-path": "url(#deep)" }, svg);
+  el("path", { d: path, fill: "none", stroke: "#1a1d21", "stroke-width": 1.2 }, svg);
+  el("line", { x1: 0, x2: W, y1: TY(thr), y2: TY(thr), stroke: "#1a1d21", "stroke-width": .8, "stroke-dasharray": "2 3" }, svg);
+  for (let d = 0; d < 7; d++) el("text", { x: X(d * 24) + 6, y: TY(thr) + 10, "font-size": 8, fill: "#1a1d21", style: "paint-order:stroke;stroke:#dae8ea;stroke-width:3px" }, svg).textContent = "1 m deep at the launch";
+  TX.forEach(([t, m], k) => {
+    if (t < 0 || t > HOURS) return;
+    const high = k % 2 === 1 ? m > 2.5 : m > 2.5;
+    el("circle", { cx: X(t), cy: TY(m), r: 2.4, fill: high ? "#1a1d21" : "#f3eee3", stroke: "#1a1d21", "stroke-width": 1 }, svg);
+    el("text", { x: X(t), y: high ? TY(m) - 5 : TY(m) + 11, "text-anchor": "middle", "font-size": 8.5, fill: "#1a1d21" }, svg).textContent = `${hhmm(t % 24)} ${m.toFixed(1)}`;
+  });
+
+  // sky
+  const [ky] = ROWS.sky;
+  H.forEach(h => {
+    if (h.hr % 3) return;
+    const cx = X(h.i) + PX / 2, s = sun(h.day);
+    skyGlyph(svg, cx - 7, ky + 12, h.sky, !(h.hr >= s.rise && h.hr <= s.set));
+    el("text", { x: cx + 5, y: ky + 16, "font-size": 9.5, fill: "#1a1d21" }, svg).textContent = `${Math.round(h.temp)}°`;
+  });
+
+  // axis
+  const [xy] = ROWS.axis;
+  el("line", { x1: 0, x2: W, y1: xy, y2: xy, stroke: "#1a1d21" }, svg);
+  H.forEach(h => { if (h.hr % 3 === 0 && h.hr) el("text", { x: X(h.i), y: xy + 13, "text-anchor": "middle", "font-size": 9, fill: "#5b5c5b" }, svg).textContent = pad(h.hr); });
+
+  // model hand-overs
+  const hand = (i, t, y0, y1) => {
+    el("line", { x1: X(i), x2: X(i), y1: y0, y2: y1, stroke: "#1a1d21", "stroke-width": 1, "stroke-dasharray": "4 3" }, svg);
+    el("text", { x: X(i) + 4, y: y0 + 9, "font-size": 8.5, fill: "#3b3c3e", style: "paint-order:stroke;stroke:#f3eee3;stroke-width:3px" }, svg).textContent = t;
+  };
+  hand(HARMONIE_END, "ECMWF from here →", ROWS.stars[0], ROWS.arrows[0] + 40);
+  hand(SWAN_END, "3-hourly waves from here →", ROWS.waves[0], ROWS.waves[0] + ROWS.waves[1]);
+
+  // now, in pen
+  el("line", { x1: X(NOW), x2: X(NOW), y1: 18, y2: xy, stroke: "#d43a2c", "stroke-width": 1.5 }, svg);
+  el("text", { x: X(NOW) + 5, y: ROWS.wind[0] + 14, "font-size": 13, fill: "#bf3125", style: "font-family:var(--hand)" }, svg).textContent = "now";
+
+  // hover: a ring round the hour, in pen
+  const cur = el("g", {}, svg);
+  const setHover = i => {
+    hover = Math.max(0, Math.min(HOURS - 1, i));
+    cur.innerHTML = "";
+    const x = X(hover);
+    el("rect", { x: x - 1, y: ROWS.stars[0] - 3, width: PX + 2, height: xy - ROWS.stars[0] + 3, fill: "none", stroke: "#d43a2c", "stroke-width": 1.4, rx: 6 }, cur);
+    readout(hover);
+  };
+  svg.addEventListener("pointermove", e => { const r = svg.getBoundingClientRect(); setHover(Math.floor((e.clientX - r.left) / PX)); });
+  setHover(hover);
+}
+function scrollGraphTo(d) {
+  const box = document.getElementById("graph");
+  box.scrollTo({ left: Math.max(0, d * 24 * PX - (d ? 0 : 0)), behavior: "smooth" });
+}
+function readout(i) {
+  const h = H[i];
+  const isNow = i === 14;
+  document.getElementById("readout").innerHTML = `
+    <span class="t ${isNow ? "is-now" : ""}">${DAYS[h.day]} ${pad(h.hr)}:00${isNow ? " · now" : ""}</span>
+    <div class="ro"><span class="eyebrow">Stars</span>${h.st == null ? '<span>Dark</span>' : starsHTML(h.st)}</div>
+    <div class="ro"><span class="eyebrow">Wind</span><b>${Math.round(h.w)}<sup>${Math.round(h.g)}</sup></b><span>${compass(h.d)} · ${h.rel}</span></div>
+    <div class="ro"><span class="eyebrow">Models</span><b style="font-size:14px">${Math.round(h.lo)}–${Math.round(h.hi)}</b><span>${["", "unsure", "fairly sure", "sure"][h.agree]}</span></div>
+    <div class="ro"><span class="eyebrow">Wing</span><b style="font-size:14px">${h.wing && h.st ? h.wing + " m²" : "—"}</b><span>~80 kg</span></div>
+    <div class="ro"><span class="eyebrow">Sea</span><b style="font-size:14px">${h.ws.toFixed(1)} m chop</b><span>swell ${h.sw.toFixed(1)} m ${h.swp} s</span></div>
+    <div class="ro"><span class="eyebrow">At the launch</span><b style="font-size:14px;color:${h.depth >= 1 ? "var(--depth)" : "var(--pen-ink)"}">${Math.max(0, h.depth).toFixed(1)} m deep</b><span>tide ${h.tide.toFixed(1)} m</span></div>`;
+}
+document.getElementById("prev").onclick = () => document.getElementById("graph").scrollBy({ left: -24 * PX, behavior: "smooth" });
+document.getElementById("next").onclick = () => document.getElementById("graph").scrollBy({ left: 24 * PX, behavior: "smooth" });
+
+/* ===================== the table ===================== */
+function drawTable() {
+  const rows = H.filter(h => h.day === selDay && h.light);
+  document.getElementById("tbl").innerHTML = `<thead><tr><th>${FULL[selDay]}</th><th>Stars</th><th>Wind kn</th><th>From</th><th class="hide-n">Models</th><th class="hide-n">Wing</th><th>Sea</th><th>Launch</th><th class="hide-n">Sky</th></tr></thead><tbody>${
+    rows.map(h => `<tr class="${h.st ? "" : "dim"}"><td>${pad(h.hr)}</td><td>${starsHTML(h.st)}</td><td><b>${Math.round(h.w)}</b><sup>${Math.round(h.g)}</sup></td>
+      <td class="${h.rel === "offshore" || h.rel === "cross-off" ? "offs" : ""}">${compass(h.d)} · ${h.rel}</td><td class="hide-n">${Math.round(h.lo)}–${Math.round(h.hi)}</td><td class="hide-n">${h.wing && h.st ? h.wing + " m²" : "–"}</td>
+      <td>${h.ws.toFixed(1)} m ${h.wsp.toFixed(0)} s</td><td style="color:${h.depth >= 1 ? "inherit" : "var(--pen-ink)"}">${Math.max(0, h.depth).toFixed(1)} m</td><td class="hide-n">${Math.round(h.temp)}°</td></tr>`).join("")}</tbody>`;
+}
+document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => {
+  const t = b.dataset.view === "table";
+  document.querySelectorAll("[data-view]").forEach(x => x.setAttribute("aria-pressed", x === b));
+  document.getElementById("graphView").hidden = t; document.getElementById("tableView").hidden = !t;
+  if (!t) drawGraph();
+});
+
+/* ===================== was it right ===================== */
+function drawVerify() {
+  const box = document.getElementById("vgraph"), W = Math.max(320, box.clientWidth || 600), Ht = 170;
+  box.innerHTML = "";
+  const svg = el("svg", { width: W, height: Ht, viewBox: `0 0 ${W} ${Ht}` }, box);
+  const N = 48, X = i => 28 + i / (N - 1) * (W - 36), Y = k => 14 + (1 - k / 30) * (Ht - 40);
+  for (const k of [0, 10, 20, 30]) { el("line", { x1: 28, x2: W - 8, y1: Y(k), y2: Y(k), stroke: "#1a1d211f" }, svg); el("text", { x: 22, y: Y(k) + 3, "text-anchor": "end", "font-size": 9, fill: "#5b5c5b" }, svg).textContent = k; }
+  const f = [], m = [];
+  for (let i = 0; i < N; i++) {
+    // Thu 14:00 to Sat 14:00: the last 15 hours are this page's own forecast
+    const early = 9 + 5 * Math.sin((i - 6) / 9), k = i - 33;
+    const base = k >= 0 ? H[k].w : early + (H[0].w - (9 + 5 * Math.sin(27 / 9))) * Math.max(0, (i - 20) / 13);
+    f.push(base); m.push(base + (i > 39 ? 2.6 : 0) + Math.sin(i * 1.9) * (i > 39 ? .6 : 1.4) + Math.sin(i * .6) * .6 - (i > 12 && i < 20 ? 1.5 : 0));
+  }
+  el("path", { d: f.map((k, i) => `${i ? "L" : "M"}${X(i)},${Y(k)}`).join(" "), fill: "none", stroke: "#1a1d21", "stroke-width": 1.6 }, svg);
+  el("path", { d: m.map((k, i) => `${i ? "L" : "M"}${X(i)},${Y(k)}`).join(" "), fill: "none", stroke: "#e9b200", "stroke-width": 2.2 }, svg);
+  m.forEach((k, i) => i % 3 === 0 && el("circle", { cx: X(i), cy: Y(k), r: 2.2, fill: "#e9b200", stroke: "#1a1d21", "stroke-width": .8 }, svg));
+  for (const [i, t] of [[0, "Thu 14:00"], [10, "Fri 00"], [34, "Sat 00"], [47, "now"]]) el("text", { x: X(i), y: Ht - 6, "text-anchor": i === 47 ? "end" : "start", "font-size": 9, fill: i === 47 ? "#bf3125" : "#5b5c5b" }, svg).textContent = t;
+  el("line", { x1: X(39), x2: X(39), y1: 10, y2: Ht - 22, stroke: "#1a1d2155", "stroke-dasharray": "2 3" }, svg);
+  el("text", { x: X(39) - 4, y: 18, "text-anchor": "end", "font-size": 9, fill: "#3b3c3e" }, svg).textContent = "today 09:00";
+  const lg = el("g", { transform: `translate(${W - 260},${Ht - 40})` }, svg);
+  el("line", { x1: 0, x2: 16, y1: 0, y2: 0, stroke: "#1a1d21", "stroke-width": 1.6 }, lg); el("text", { x: 20, y: 3, "font-size": 9.5, fill: "#1a1d21" }, lg).textContent = "Forecast (Harmonie)";
+  el("line", { x1: 150, x2: 166, y1: 0, y2: 0, stroke: "#e9b200", "stroke-width": 2.2 }, lg); el("text", { x: 170, y: 3, "font-size": 9.5, fill: "#1a1d21" }, lg).textContent = "Buoy, measured";
+}
+
+/* ===================== mock-up controls ===================== */
+const page = document.getElementById("page");
+function setW(w) {
+  document.querySelectorAll("[data-w]").forEach(b => b.setAttribute("aria-pressed", b.dataset.w === String(w)));
+  page.style.width = w === "fit" ? "100%" : w + "px";
+  page.style.flex = "none";
+  requestAnimationFrame(() => { drawGraph(); drawVerify(); scrollGraphTo(0); });
+}
+document.querySelectorAll("[data-w]").forEach(b => b.onclick = () => setW(b.dataset.w));
+document.getElementById("notesBtn").onclick = e => { const on = document.body.classList.toggle("notes"); e.currentTarget.setAttribute("aria-pressed", on); };
+const q = new URLSearchParams(location.search);
+if (q.get("embed")) document.body.classList.add("embed"), document.body.classList.remove("preview", "notes");
+drawWeek(); drawTable();
+setW(q.get("w") || "fit");
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawGraph(); drawVerify(); }, 120); });
+</script>
+</body>
+</html>
