@@ -11,7 +11,7 @@ export const fieldStyles = tv({
     // The mono label, as a chart's legend names a thing: TITLE, PRICE. The
     // hint beside it goes back to the body face's italic, in sentence case.
     label:
-      "flex items-baseline justify-between gap-2 font-mono text-eyebrow leading-tight text-ink-muted uppercase",
+      "flex items-baseline justify-between gap-2 font-mono text-eyebrow leading-tight text-ink-muted",
     // The hint's face stands taller than the mono label's, and in a row
     // aligned on the baseline it would deepen the row: the label 2px lower and
     // the control under it 3.6px lower than a field without a hint. Drawn in

@@ -92,7 +92,7 @@ describe("S1: the name, the county and the way to the map", () => {
       /<span class="[^"]*font-display[^"]*italic[^"]*">Dollymount<\/span>/,
     );
     expect(markup).toMatch(
-      /<span class="[^"]*uppercase[^"]*">Co. Dublin<\/span>/,
+      /<span class="[^"]*text-eyebrow[^"]*">Co. Dublin<\/span>/,
     );
     expect(markup).toContain("Chart");
     expect(markup).toContain("Forecast on the wind map");

@@ -57,7 +57,6 @@
 }
 .dk-coords {
   font: 500 10px var(--font-mono);
-  letter-spacing: 0.04em;
   white-space: nowrap;
   color: var(--color-ink-muted);
 }
@@ -197,8 +196,6 @@
   background: var(--color-ground);
   color: var(--color-ink);
   font: 500 10px var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   cursor: pointer;
 }
 @media (hover: hover) and (pointer: fine) {
@@ -218,8 +215,6 @@
   align-items: center;
   gap: 3px;
   font: 500 9px var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   white-space: nowrap;
   color: var(--color-ink-muted);
 }
@@ -250,7 +245,6 @@
 }
 .dk-labs small {
   font-size: 8px;
-  letter-spacing: 0.04em;
   text-transform: none;
   opacity: 0.75;
 }
@@ -596,7 +590,6 @@ table.tt {
   .dk-labs div {
     gap: 0;
     font-size: var(--text-eyebrow);
-    letter-spacing: 0.04em;
   }
   .dk-labs .dk-lab-wind,
   .dk-labs .dk-lab-stack {
@@ -793,8 +786,6 @@ table.tt {
   padding: 2px 4px;
   border-radius: 4px;
   font: 600 9px/1 var(--font-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--color-ink);
   vertical-align: middle;
   white-space: nowrap;
@@ -833,8 +824,6 @@ table.tt {
   border-radius: 4px;
   background: var(--color-warn-ground);
   font: 600 9px/1 var(--font-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--color-warn);
   vertical-align: middle;
   white-space: nowrap;
@@ -885,8 +874,6 @@ table.tt {
   flex: none;
   margin-left: auto;
   font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--color-ink-muted);
 }
 /* A phone's strip (DockWarnings' `phone`): one line, the highest level's tag,

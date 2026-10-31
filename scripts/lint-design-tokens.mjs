@@ -12,7 +12,11 @@
 //     aliases, in the light mode) equals the theme's;
 //   - every path MAP names exists in design-system/foundations/tokens.tokens.json;
 //   - every MAP entry names a property the theme still declares;
-//   - the bundle's spacing steps (sem.space.x<n>) are n times the theme's step.
+//   - the bundle's spacing steps (sem.space.x<n>) are n times the theme's step;
+//   - the dark theme (the `/* ==== dark ====` block, `:root[data-theme="dark"]`)
+//     re-declares names MAP knows, and each equals that token's dark mode
+//     ($extensions["com.sprintengine"].modes.dark, aliases followed). A dark
+//     value whose token has no dark mode is a warning, not a failure.
 //
 // Section additions. Sections append their own values to the END of the theme
 // under a banner comment, `/* ==== <section> ====…`, as the map does. A
@@ -231,6 +235,7 @@ function themeDeclarations(css) {
   lines.forEach((raw, i) => {
     const banner = raw.match(BANNER);
     if (banner) section = banner[1].trim();
+    const mode = section === "dark" ? "dark" : "light";
     let line = raw;
     if (inComment) {
       const end = line.indexOf("*/");
@@ -246,7 +251,13 @@ function themeDeclarations(css) {
     }
     const decl = line.match(/^\s*(--[a-z0-9-]+)\s*:\s*(.+?)\s*;\s*$/i);
     if (!decl || decl[1].endsWith("-*")) return;
-    out.push({ name: decl[1], value: decl[2], line: i + 1, section });
+    out.push({
+      name: decl[1],
+      value: decl[2],
+      line: i + 1,
+      section: mode === "dark" ? null : section,
+      mode,
+    });
   });
   return out;
 }
@@ -269,6 +280,17 @@ function resolve(tokens, path, seen = new Set()) {
   const alias = typeof node.$value === "string" && node.$value.match(ALIAS);
   if (alias) return resolve(tokens, alias[1], seen);
   return { value: node.$value, type: node.$type };
+}
+
+/** A token's dark value, through its dark mode, or null when it has none. */
+function resolveDark(tokens, path) {
+  const node = leaf(tokens, path);
+  if (!node) return { error: `${path} is not a token in the bundle` };
+  const dark = node.$extensions?.["com.sprintengine"]?.modes?.dark;
+  if (dark === undefined) return null;
+  const alias = typeof dark === "string" && dark.match(ALIAS);
+  if (alias) return resolve(tokens, alias[1]);
+  return { value: dark, type: node.$type };
 }
 
 /* ---------- comparing ---------- */
@@ -315,7 +337,26 @@ function check(root, map = MAP) {
   const declared = new Set();
   const pending = new Map();
   let matched = 0;
-  for (const d of decls) {
+  for (const d of decls.filter((d) => d.mode === "dark")) {
+    const where = `${THEME}:${d.line} ${d.name} (dark)`;
+    const path = map[d.name];
+    if (!path) {
+      pending.set("dark", [...(pending.get("dark") ?? []), d.name]);
+      continue;
+    }
+    const token = resolveDark(tokens, path);
+    if (!token) {
+      pending.set("dark", [...(pending.get("dark") ?? []), d.name]);
+      continue;
+    }
+    if (token.error) problems.push(`${where} maps to ${path}, but ${token.error}`);
+    else if (!same(d.value, token))
+      problems.push(
+        `${where} is ${d.value} in the theme but ${show(token.value)} in the dark mode of ${path} in the bundle - change both together`,
+      );
+    else matched += 1;
+  }
+  for (const d of decls.filter((d) => d.mode === "light")) {
     declared.add(d.name);
     const where = `${THEME}:${d.line} ${d.name}`;
     const path = map[d.name];
@@ -387,7 +428,7 @@ const PROBES = [
   ["the two as they are", {}, 0],
   [
     "a drifted colour in the theme",
-    { theme: swap("--color-ink: #1a1d21;", "--color-ink: #1a1d22;") },
+    { theme: swap("--color-ink: #111114;", "--color-ink: #111115;") },
     1,
   ],
   [

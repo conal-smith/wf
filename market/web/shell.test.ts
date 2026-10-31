@@ -809,7 +809,7 @@ describe("S4: the header, and its one filled action", () => {
     expect(out).toMatch(
       /<a href="\/market"[^>]*aria-label="wingfoil\.ie Market, home"/,
     );
-    expect(out).toMatch(/<span class="[^"]*uppercase[^"]*">Market<\/span>/);
+    expect(out).toMatch(/<span class="[^"]*text-eyebrow[^"]*">Market<\/span>/);
     expect(out).toMatch(/<nav class="[^"]*" aria-label="Marketplace">/);
   });
 

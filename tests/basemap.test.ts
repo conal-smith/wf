@@ -36,7 +36,7 @@ describe("the basemap's colours", () => {
           "--color-basemap-water": declared("basemap-water"),
         }),
       ),
-    ).toEqual({ land: "#ede3c8", water: "#e5edea" });
+    ).toEqual({ land: "#f1f1f3", water: "#e6eef3" });
   });
 
   // A computed value arrives with the whitespace the declaration had.

@@ -27,7 +27,7 @@
  * with AI last. The chart's layers are not in it: they are the rail beside
  * the zoom (src/LayerRail.tsx).
  */
-import { Menu, X } from "lucide-react";
+import { Menu, Moon, Sun, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -44,6 +44,12 @@ import { RING, tv } from "../../ui/tv";
 import { Wordmark } from "../../ui/Wordmark";
 import { ChartGlyph } from "../../shared/web/ChartGlyph";
 import { FEATURES, type SiteFeatures } from "../../shared/web/features";
+import {
+  THEME_EVENT,
+  currentTheme,
+  toggleTheme,
+  type Theme,
+} from "../../shared/web/theme";
 import {
   about,
   community,
@@ -286,7 +292,45 @@ export function SiteNav({
       <ul className={styles.list({ className: styles.group() })}>
         {sections.map((section) => row(section, -1))}
       </ul>
+      <ul className={styles.list({ className: styles.group() })}>
+        <li>
+          <ThemeRow />
+        </li>
+      </ul>
     </nav>
+  );
+}
+
+/** Dark mode on or off: a switch, kept on this device (shared/web/theme.ts). */
+function ThemeRow() {
+  const styles = siteMenuStyles();
+  const [theme, setTheme] = useState<Theme>(currentTheme);
+  useEffect(() => {
+    const follow = () => setTheme(currentTheme());
+    window.addEventListener(THEME_EVENT, follow);
+    return () => window.removeEventListener(THEME_EVENT, follow);
+  }, []);
+  const dark = theme === "dark";
+  return (
+    <Button
+      role="switch"
+      aria-checked={dark}
+      className={styles.row({
+        className:
+          "justify-start border-x-0 border-t-0 bg-transparent text-left",
+      })}
+      data-theme-switch
+      onClick={toggleTheme}
+    >
+      <span className={styles.glyph()}>
+        {dark ? (
+          <Sun size={18} strokeWidth={1.75} aria-hidden="true" />
+        ) : (
+          <Moon size={18} strokeWidth={1.75} aria-hidden="true" />
+        )}
+      </span>
+      Dark mode
+    </Button>
   );
 }
 

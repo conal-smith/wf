@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { compileTheme } from "../ui/theme.testkit";
 
 /**
- * The chart's palette, held to the ruling of 2026-10-05 (docs/BRAND.md, and
+ * The chart's palette, held to the ruling of 2026-10-31 (docs/BRAND.md, and
  * the ruling in docs/DESIGN_PRINCIPLES.md).
  *
  * Every page on the site reads its colour from ui/theme.css, so the theme's
@@ -50,13 +50,13 @@ function contrast(a: string, b: string): number {
 describe("paper and ink", () => {
   it("is one paper: the ground, the card and the solid fallback", () => {
     for (const name of ["ground", "card", "solid", "ink-inverse"])
-      expect(resolved(name), name).toBe("#f3eee3");
-    expect(resolved("sunken")).toBe("#ede6d6");
+      expect(resolved(name), name).toBe("#ffffff");
+    expect(resolved("sunken")).toBe("#f5f5f7");
   });
 
   it("is one ink, for text, the filled action and the inverse fill", () => {
     for (const name of ["ink", "accent", "quiet", "inverse"])
-      expect(resolved(name), name).toBe("#1a1d21");
+      expect(resolved(name), name).toBe("#111114");
   });
 
   it("paints the double rule's gap in the paper every surface is", () => {
@@ -75,8 +75,8 @@ describe("the chart's inks", () => {
     expect(resolved("chart-magenta")).toBe("#b0186a");
     expect(resolved("pen")).toBe("#d43a2c");
     expect(resolved("buoy")).toBe("#e9b200");
-    expect(resolved("land")).toBe("#ede3c8");
-    expect(resolved("sea")).toBe("#d5e6ea");
+    expect(resolved("land")).toBe("#f1f1f3");
+    expect(resolved("sea")).toBe("#e4eef3");
     expect(resolved("depth")).toBe("#5f8c9c");
   });
 
@@ -110,8 +110,8 @@ describe("the weather's colours", () => {
   it("are the glyph sheet's, the sun the buoy's own yellow", () => {
     expect(resolved("weather-sun")).toBe(resolved("buoy"));
     expect(resolved("weather-rain")).toBe("#3a7fb0");
-    expect(resolved("weather-cloud")).toBe("#d6d0c2");
-    expect(resolved("weather-night")).toBe("#e7dcb4");
+    expect(resolved("weather-cloud")).toBe("#d4d4da");
+    expect(resolved("weather-night")).toBe("#dedee6");
   });
 
   it("keep rain to a mark: it shows on paper, and does not read as words", () => {
@@ -171,7 +171,7 @@ describe("contrast, as the ruling records it", () => {
 
   it("is a dated ruling, quoting the figures measured here", () => {
     const principles = readFileSync(PRINCIPLES, "utf8");
-    const at = principles.indexOf("**2026-10-05 — The chart");
+    const at = principles.indexOf("**2026-10-31 — Modern white and dark");
     expect(at).toBeGreaterThan(-1);
     const ruling = principles.slice(at, principles.indexOf("\n**", at + 1));
     const quoted = (pair: number) => `${pair.toFixed(2)}:1`;

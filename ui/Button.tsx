@@ -18,7 +18,7 @@ const NUDGE = "not-disabled:active:translate-y-px";
 export const buttonStyles = tv({
   base: [
     "inline-flex shrink-0 items-center justify-center gap-1.5 border border-transparent bg-transparent",
-    "font-mono text-label text-quiet uppercase no-underline whitespace-nowrap",
+    "font-mono text-label text-quiet no-underline whitespace-nowrap",
     "cursor-pointer touch-manipulation transition-colors duration-fast",
     // A tap target is never shorter than touch, whatever size was asked for.
     "pointer-coarse:min-h-touch",

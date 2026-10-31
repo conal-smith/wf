@@ -60,8 +60,6 @@
 }
 .st-kick {
   font: 500 var(--text-eyebrow) / 1.4 var(--font-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: var(--color-ink-muted);
 }
 .st-foot {
@@ -134,9 +132,7 @@
   display: block;
   margin-top: 3px;
   font: 500 var(--text-eyebrow) / 1 var(--font-mono);
-  letter-spacing: 0.08em;
   text-align: center;
-  text-transform: uppercase;
   color: var(--color-ink-muted);
 }
 
@@ -182,8 +178,6 @@
   position: absolute;
   top: 4px;
   font: 500 var(--text-eyebrow) var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   white-space: nowrap;
   color: var(--color-ink-muted);
 }
@@ -323,7 +317,6 @@
   position: absolute;
   top: 0;
   font: 500 9px / 13px var(--font-mono);
-  letter-spacing: 0.06em;
   white-space: nowrap;
   color: var(--color-pen-ink);
 }
@@ -384,7 +377,6 @@
 }
 .st-web-word {
   font: 500 9px var(--font-mono);
-  letter-spacing: 0.14em;
   fill: var(--color-ink-muted);
 }
 .st-web-rim {
@@ -415,7 +407,6 @@
 }
 .st-web-name {
   font: 500 8.5px var(--font-mono);
-  letter-spacing: 0.06em;
   fill: var(--color-ink-2);
 }
 .st-web-name.is-danger {
@@ -529,7 +520,6 @@
 }
 .st-lab {
   font: 500 9px var(--font-mono);
-  letter-spacing: 0.1em;
   fill: var(--color-ink-muted);
 }
 .st-lab.is-strong {
@@ -659,8 +649,6 @@
 }
 .st-into span {
   font: 500 var(--text-label) var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--color-ink-2);
 }
 .st-ask {

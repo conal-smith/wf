@@ -275,7 +275,7 @@ describe("S1: Following", () => {
       );
     // In the row's dateline, beside its channel.
     expect(row(thread("a", { why: "replied" }))).toMatch(
-      /<p class="[^"]*uppercase[^"]*">.*?>You replied<\/span>/,
+      /<p class="[^"]*text-eyebrow[^"]*">.*?>You replied<\/span>/,
     );
     const plain = row(thread("b"));
     for (const words of Object.values(WHY)) expect(plain).not.toContain(words);

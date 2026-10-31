@@ -257,9 +257,9 @@ describe("the navigation", () => {
       const drawn = !!path && "d" in path && markup.includes(`d="${path.d}"`);
       expect(drawn).toBe(true);
     }
-    // Four lists, a gap before each after the first: the pages, the
-    // settings, the guides, and the sections.
-    expect(markup.match(/<ul /g)).toHaveLength(4);
+    // Five lists, a gap before each after the first: the pages, the
+    // settings, the guides, the sections, and the theme's switch.
+    expect(markup.match(/<ul /g)).toHaveLength(5);
     // The map is the chart: there is no "Wind map" beside it.
     expect(markup).not.toContain("Wind map");
     expect(markup.match(/href="\/\?map"/g)).toHaveLength(1);
@@ -317,7 +317,7 @@ describe("the navigation", () => {
       features: { market: false, community: false },
     });
     expect(markup).not.toMatch(/Marketplace|Community|\/market|\/community/);
-    expect(markup.match(/<li>/g)).toHaveLength(7);
+    expect(markup.match(/<li>/g)).toHaveLength(8);
   });
 
   it("leaves them out as production builds it, with no feature switched on", () => {
