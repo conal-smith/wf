@@ -4,104 +4,72 @@ import type {
   ReactNode,
   Ref,
 } from "react";
-import { DISABLED, HOVER, RING, tv, type VariantProps } from "./tv";
+import { DISABLED, RING, tv, type VariantProps } from "./tv";
 
 /*
- * Every button speaks in the mono label: tracked capitals in IBM Plex Mono,
- * as the chart's own controls do. The shapes are the chart's too: a capsule
- * ruled in ink, filled in ink when it is the one action, and a raised
- * button for an instrument laid over the map. A filled ink control carries
- * the ink sheen, a raised one the paper's; both nudge down a pixel when
- * pressed. Nothing larger than a control is lit.
+ * Four flat buttons, round-ended, in Inter and sentence case: filled (the one
+ * thing to do next, at most one a view), outlined (the default), soft (a grey
+ * fill, for a second action inside a card) and quiet (no edge: Reset, Clear,
+ * Skip). No gradient, no raised shadow, no nudge. An icon button is a circle.
+ * A link in running text is `link`; the one destructive answer is `danger`.
  */
-const NUDGE = "not-disabled:active:translate-y-px";
 export const buttonStyles = tv({
   base: [
-    "inline-flex shrink-0 items-center justify-center gap-1.5 border border-transparent bg-transparent",
-    "font-mono text-label text-quiet no-underline whitespace-nowrap",
+    "inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-transparent bg-transparent",
+    "font-body text-body font-medium text-ink no-underline whitespace-nowrap",
     "cursor-pointer touch-manipulation transition-colors duration-fast",
     // A tap target is never shorter than touch, whatever size was asked for.
     "pointer-coarse:min-h-touch",
     RING,
     DISABLED,
+    "disabled:opacity-40 disabled:text-ink",
   ],
   variants: {
     variant: {
-      quiet: ["rounded-pill", HOVER],
-      // The one filled control: an ink pill, magenta under the pointer. A
-      // view has one of these, or none.
-      primary: [
-        "rounded-full border-accent bg-accent sheen-ink text-accent-ink shadow-control",
-        "not-disabled:hover:border-accent-hover not-disabled:hover:bg-accent-hover not-disabled:hover:bg-none",
-        "disabled:border-line disabled:bg-sunken disabled:bg-none disabled:shadow-none",
-        NUDGE,
-      ],
-      // A capsule ruled in ink, which turns to ink under the pointer.
-      pill: [
-        "rounded-full border-ink bg-card",
-        "not-disabled:hover:bg-inverse not-disabled:hover:text-ink-inverse",
-        "disabled:border-line disabled:bg-transparent",
-      ],
-      /*
-       * The chart's instrument: a raised button ruled in ink, for a
-       * control laid over the moving map or heading a page (the site menu),
-       * lit from above with a lip and a contact shadow of its own. A
-       * control's corner with words in it; round with an icon.
-       */
-      raised: [
-        "rounded-control border-ink bg-card sheen-raised shadow-raised",
-        "not-disabled:hover:bg-inverse not-disabled:hover:sheen-ink not-disabled:hover:text-ink-inverse not-disabled:hover:shadow-control",
-        "disabled:bg-transparent disabled:bg-none disabled:shadow-none",
-        NUDGE,
-      ],
-      // A way back or on, in the label face, underlined in ink: "<- Chart".
-      // A hover names its own background even where it wants none: the
-      // site's reset lays a wash behind `button:enabled:hover`, and a variant
-      // that stays quiet about it is the one place that wash gets through.
+      // The default: a hairline round the words, the ground inside.
+      outline: "border-line bg-ground not-disabled:hover:bg-sunken",
+      // The one filled control: ink on the ground, a view has one or none.
+      primary:
+        "bg-accent text-accent-ink not-disabled:hover:bg-accent not-disabled:hover:opacity-90 disabled:text-accent-ink",
+      // A grey fill, for a second action inside a card or a list.
+      soft: "bg-sunken not-disabled:hover:bg-line",
+      // No edge, for the small actions: Reset, Clear, Skip, Close.
+      quiet: "not-disabled:hover:bg-sunken",
+      // A way back or on in running text, underlined.
       link: [
-        "underline decoration-1 underline-offset-4 decoration-ink",
-        "not-disabled:hover:bg-transparent not-disabled:hover:text-chart-magenta not-disabled:hover:decoration-current",
+        "underline decoration-1 underline-offset-3 decoration-line-strong",
+        "not-disabled:hover:bg-transparent not-disabled:hover:decoration-current",
       ],
-      // The destructive answer in a ConfirmDialog, and nowhere else: warm
-      // means degraded, and what it confirms cannot be taken back. It lifts
-      // under the pointer and keeps its fill, rather than being washed out.
+      // The destructive answer in a ConfirmDialog, and nowhere else.
       danger:
-        "rounded-full border-warn bg-warn text-ink-inverse not-disabled:hover:bg-warn not-disabled:hover:shadow-marker disabled:border-line disabled:bg-sunken",
+        "border-line bg-ground text-pen-ink not-disabled:hover:bg-warn-ground disabled:text-pen-ink",
     },
     size: {
-      sm: "h-control-sm px-3",
+      sm: "h-8 gap-1.5 px-3",
       md: "h-control-md px-4",
-      lg: "h-control-lg px-5 font-semibold",
+      lg: "h-12 px-5.5 text-prose",
     },
-    icon: { true: "rounded-full p-0 pointer-coarse:min-w-touch" },
+    icon: { true: "p-0 pointer-coarse:min-w-touch" },
     pressed: {
-      // Filled in ink as well as recoloured, and heavier: never colour alone.
-      // The ink has its sheen and its lip, so it reads as pressed in.
-      true: [
-        "border-ink bg-inverse sheen-ink font-semibold text-ink-inverse shadow-control not-disabled:hover:bg-inverse",
-        "disabled:bg-sunken disabled:bg-none disabled:shadow-none",
-        NUDGE,
-      ],
+      // On: filled in ink, the way a chip is, and so not by colour alone.
+      true: "border-transparent bg-inverse text-ink-inverse not-disabled:hover:bg-inverse not-disabled:hover:opacity-90",
       /*
-       * A toggle that renames itself when it goes on — Save becomes Saved, the
-       * heart beside it filled in — has already said so twice, in the word and
-       * in the mark. It keeps its quiet box, so that being on does not put a
-       * second filled control on a view that already has the one it is allowed.
+       * A toggle that renames itself when it goes on (Save becomes Saved, the
+       * star beside it filled) has already said so twice, in the word and the
+       * mark, and keeps its own box: being on does not put a second filled
+       * control on a view.
        */
       worded: "",
     },
   },
   compoundVariants: [
-    { icon: true, size: "sm", class: "w-control-sm" },
+    { icon: true, size: "sm", class: "w-8" },
     { icon: true, size: "md", class: "w-control-md" },
-    { icon: true, size: "lg", class: "w-control-lg" },
-    // The instrument is round with an icon in it: the round menu button.
-    { icon: true, variant: "raised", class: "rounded-full" },
+    { icon: true, size: "lg", class: "w-12" },
     /*
      * A link in running text: no box of its own, whatever size was asked for.
-     * A thumb still gets a touch-tall target: on a coarse pointer an invisible
-     * band the height of touch is laid across the words, centred on them, so
-     * the target grows and nothing around it moves.
+     * A thumb still gets a touch-tall target: an invisible band the height of
+     * touch is laid across the words, so the target grows and nothing moves.
      */
     {
       variant: "link",
@@ -112,7 +80,7 @@ export const buttonStyles = tv({
       ],
     },
   ],
-  defaultVariants: { variant: "quiet", size: "md" },
+  defaultVariants: { variant: "outline", size: "md" },
 });
 
 type ButtonVariants = VariantProps<typeof buttonStyles>;
@@ -122,7 +90,7 @@ interface Shared {
   size?: ButtonVariants["size"];
   /**
    * A toggle that is on. `"worded"` for one whose own label and icon say so,
-   * which keeps its quiet box. Omit it on a button that is not a toggle.
+   * which keeps its box. Omit it on a button that is not a toggle.
    */
   pressed?: boolean | "worded";
   children?: ReactNode;

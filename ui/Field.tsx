@@ -5,20 +5,10 @@ export const fieldStyles = tv({
   slots: {
     // `group/field` is what lets the control inside read `data-invalid`.
     base: "group/field grid min-w-0 content-start gap-2",
-    // A label's leading, not a paragraph's: the body step at the design
-    // system's label line height (1.3), which is what a field label has always
-    // been drawn at. The hint sits on the same line and keeps it.
-    // The mono label, as a chart's legend names a thing: TITLE, PRICE. The
-    // hint beside it goes back to the body face's italic, in sentence case.
-    label:
-      "flex items-baseline justify-between gap-2 font-mono text-eyebrow leading-tight text-ink-muted",
-    // The hint's face stands taller than the mono label's, and in a row
-    // aligned on the baseline it would deepen the row: the label 2px lower and
-    // the control under it 3.6px lower than a field without a hint. Drawn in
-    // by 2px above and below, it fits the label's line exactly; a hint long
-    // enough to wrap still takes the room its second line needs.
-    hint: "-my-0.5 text-right font-body text-body leading-tight font-normal tracking-normal text-ink-muted normal-case italic",
-    error: "font-body text-body text-warn italic",
+    // The label above in grey, in sentence case; a hint under the control.
+    label: "font-body text-body font-medium text-ink-2",
+    hint: "font-body text-body leading-normal text-ink-muted",
+    error: "font-body text-body text-warn",
   },
 });
 
@@ -48,9 +38,10 @@ export function Field({
       data-invalid={error ? "" : undefined}
     >
       <label className={styles.label()} htmlFor={htmlFor}>
-        {label} {hint && <small className={styles.hint()}>{hint}</small>}
+        {label}
       </label>
       {children}
+      {hint && <small className={styles.hint()}>{hint}</small>}
       {error && (
         <span className={styles.error()} role="alert">
           {error}

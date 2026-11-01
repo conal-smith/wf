@@ -138,14 +138,7 @@
   --ref-shadow-sheet-night: 0 1px 1px #00000040, 0 6px 12px -4px #0000004d, 0 24px 48px -16px #000000a6;
   --ref-shadow-dock: 0 -1px 1px #1111141a, 0 -6px 12px -4px #11111424, 0 -24px 48px -16px #00000080;
   --ref-shadow-dock-night: 0 -1px 1px #00000040, 0 -6px 12px -4px #0000004d, 0 -24px 48px -16px #000000a6;
-  --ref-shadow-frame: inset 0 0 0 2px #ffffff, inset 0 0 0 3px #11111426;
   --ref-shadow-frame-night: inset 0 0 0 2px #1d1c19, inset 0 0 0 3px #ece5d642;
-  --ref-gradient-ink: linear-gradient(180deg, #111114, #111114);
-  --ref-gradient-ink-night: linear-gradient(180deg, #f6f0e3, #dcd4c4);
-  --ref-gradient-raised: linear-gradient(180deg, #ffffff, #ffffff);
-  --ref-gradient-raised-night: linear-gradient(180deg, #2e2b25, #22201b);
-  --ref-gradient-float: linear-gradient(180deg, #ffffff, #ffffff);
-  --ref-gradient-float-night: linear-gradient(180deg, #211f1c, #1b1a17);
   --ref-blur-6: 6px;
   --ref-blur-12: 12px;
   --ref-duration-150: 150ms;
@@ -160,8 +153,8 @@
   --sem-color-sunken: var(--ref-color-paper-200);
   --sem-color-glass: var(--ref-color-paper-glass);
   --sem-color-inverse: var(--ref-color-ink-900);
-  --sem-color-scrim: var(--ref-color-paper-a40);
-  --sem-color-scrim-solid: var(--ref-color-paper-a80);
+  --sem-color-scrim: #0f0f1247;
+  --sem-color-scrim-solid: #0f0f1299;
   --sem-color-sea: var(--ref-color-sea-ground);
   --sem-color-sea-1: var(--ref-color-sea-1);
   --sem-color-sea-2: var(--ref-color-sea-2);
@@ -254,6 +247,8 @@
   --sem-font-size-title: var(--ref-font-size-30);
   --sem-font-size-headline: var(--ref-font-size-44);
   --sem-font-size-reading: var(--ref-font-size-48);
+  --sem-font-size-wordmark: 23px;
+  --sem-font-size-wordmark-sm: 21px;
   --sem-font-line-eyebrow: var(--ref-font-line-130);
   --sem-font-line-caption: var(--ref-font-line-140);
   --sem-font-line-label: var(--ref-font-line-120);
@@ -268,6 +263,8 @@
   --sem-font-line-tight: var(--ref-font-line-120);
   --sem-font-line-normal: var(--ref-font-line-145);
   --sem-font-line-loose: var(--ref-font-line-175);
+  --sem-font-line-wordmark: 1;
+  --sem-font-line-wordmark-sm: 1;
   --sem-font-tracking-eyebrow: var(--ref-font-tracking-zero);
   --sem-font-tracking-label: var(--ref-font-tracking-zero);
   --sem-font-tracking-figure: var(--ref-font-tracking-neg-020);
@@ -297,6 +294,7 @@
   --sem-radius-dialog: var(--ref-radius-18);
   --sem-radius-full: var(--ref-radius-round);
   --sem-radius-overlay: var(--ref-radius-18);
+  --sem-radius-mark: 5px;
   --sem-rule-hairline: var(--ref-rule-1);
   --sem-rule-heavy: var(--ref-rule-2);
   --sem-rule-double: var(--ref-rule-3);
@@ -310,10 +308,6 @@
   --sem-shadow-float: var(--ref-shadow-float);
   --sem-shadow-sheet: var(--ref-shadow-sheet);
   --sem-shadow-dock: var(--ref-shadow-dock);
-  --sem-shadow-frame: var(--ref-shadow-frame);
-  --sem-gradient-ink: var(--ref-gradient-ink);
-  --sem-gradient-raised: var(--ref-gradient-raised);
-  --sem-gradient-float: var(--ref-gradient-float);
   --sem-blur-glass: var(--ref-blur-12);
   --sem-blur-scrim: var(--ref-blur-6);
   --sem-container-dialog: 420px;
@@ -330,6 +324,7 @@
   --sem-grid-profile: minmax(0, 3fr) minmax(260px, 2fr);
   --sem-grid-fields: repeat(auto-fit, minmax(180px, 1fr));
   --sem-grid-tiles: repeat(auto-fill, minmax(132px, 1fr));
+  --sem-grid-notice: 36px minmax(0, 1fr) auto;
   --sem-breakpoint-rail: 56.25rem;
   --sem-breakpoint-wide: 45rem;
   --sem-breakpoint-cards: 73.75rem;
@@ -339,7 +334,7 @@
   --sem-animate-dialog-in: dialog-in 150ms ease backwards;
   --sem-animate-scrim-in: scrim-in 150ms ease backwards;
   --sem-animate-menu-in: menu-in 150ms ease both;
-  --sem-animate-bob: bob 6s ease-in-out infinite;
+  --sem-animate-sheet-in: sheet-in 200ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
   --sem-z-index-popover: var(--ref-z-6);
   --sem-z-index-panel: var(--ref-z-15);
   --sem-z-index-header: var(--ref-z-20);
@@ -354,7 +349,6 @@
   --sem-opacity-strip-3: 0.5;
   --sem-opacity-strip-4: 0.72;
   --sem-opacity-strip-5: 0.95;
-  --sem-texture-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 [data-mode="dark"] {
   --sem-color-ground: var(--ref-color-night-ground);
@@ -363,8 +357,8 @@
   --sem-color-sunken: var(--ref-color-night-sheet);
   --sem-color-glass: var(--ref-color-night-glass);
   --sem-color-inverse: var(--ref-color-night-ink);
-  --sem-color-scrim: #0c0c0e66;
-  --sem-color-scrim-solid: #0c0c0ecc;
+  --sem-color-scrim: #0000008c;
+  --sem-color-scrim-solid: #000000b3;
   --sem-color-sea: var(--ref-color-night-sea);
   --sem-color-sea-1: var(--ref-color-night-sea-1);
   --sem-color-sea-2: var(--ref-color-night-sea-2);
@@ -407,8 +401,4 @@
   --sem-shadow-float: 0 1px 2px #00000066, 0 14px 28px -12px #000000b3;
   --sem-shadow-sheet: 0 1px 2px #00000066, 0 24px 48px -16px #000000cc;
   --sem-shadow-dock: 0 -1px 2px #00000066, 0 -24px 48px -16px #000000cc;
-  --sem-shadow-frame: inset 0 0 0 2px #0c0c0e, inset 0 0 0 3px #ffffff1a;
-  --sem-gradient-ink: linear-gradient(180deg, #f2f2f4, #f2f2f4);
-  --sem-gradient-raised: linear-gradient(180deg, #17171b, #17171b);
-  --sem-gradient-float: linear-gradient(180deg, #141417, #141417);
 }

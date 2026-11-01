@@ -92,25 +92,25 @@
 
   /* ---- colour: the chart ---------------------------------------------- */
 
-  /* An Admiralty chart crossed with a broadsheet weather report (ruling of
-     2026-10-05, docs/BRAND.md): paper and ink, chart magenta, and a red pen.
-     Structure is drawn in ink rules on one paper, not in lighter cards on a
-     darker ground, so the ground, the card, the solid fallback and the paper
-     a double rule's gap is painted in are one value. `solid` is a fill only:
-     `border-solid` and `outline-solid` already mean the line style. */
+  /* Quiet, modern and flat (the premium redesign, November 2026): a plain
+     ground, soft cards a shade off it (`sunken`), hairlines, one accent.
+     Structure is said by space and by those soft cards, never by heavy
+     rules or a frame. White here; the dark theme, the default, is below.
+     `solid` is a fill only: `border-solid` and `outline-solid` already mean
+     the line style. */
   --color-ground: #ffffff;
   --color-card: #ffffff;
   --color-solid: #ffffff;
-  /* The paper's second sheet: a well, a placeholder, a tinted table row. */
+  /* The soft card a shade off the ground: a card, a well, a field, a row. */
   --color-sunken: #f5f5f7;
   /* Paper laid over a photograph, which still shows a little through it. */
   --color-glass: #ffffffeb;
   --color-inverse: #111114;
-  /* Behind a dialog: a wash of paper over the page, or the map, blurred under
-     it (`scrim`, below). Where nothing blurs it, the wash is thicker, so the
+  /* Behind a dialog: a dim wash over the page, or the map, blurred under it
+     (`scrim`, below). Where nothing blurs it, the wash is thicker, so the
      chart's marks do not read through the box's edge. */
-  --color-scrim: #ffffff66;
-  --color-scrim-solid: #ffffffcc;
+  --color-scrim: #0f0f1247;
+  --color-scrim-solid: #0f0f1299;
 
   /* The sea and the shore, as a chart tints them. `sea` is the ground the map
      floats on, what shows in a tile gap. The four tints run shallow to deep:
@@ -138,8 +138,7 @@
   --color-wash: #b0186a;
 
   /* Lines. `line` is the hairline between rows; `line-strong` is the stroke a
-     field's box and a disabled icon take, at 3:1 on paper. A rule that frames
-     something is drawn in `ink` itself: `border-ink`. */
+     disabled icon takes, at 3:1 on the ground. Nothing is framed in ink. */
   --color-line: #1111141f;
   --color-line-strong: #8b8b94;
 
@@ -151,8 +150,7 @@
   --color-ink-disabled: #8b8b94;
   --color-ink-inverse: #ffffff;
 
-  /* Action: one filled action per view, and it is an ink pill that turns
-     magenta under the pointer. */
+  /* Action: one filled action per view, an ink pill. */
   --color-accent: #111114;
   --color-accent-hover: #b0186a;
   --color-accent-ink: #ffffff;
@@ -169,7 +167,7 @@
   --color-pen: #d43a2c;
   --color-pen-ink: #bf3125;
 
-  /* A buoy's yellow: the puffin's beak, a light on the chart. Never text. */
+  /* A buoy's yellow: a light on the chart. Never text. */
   --color-buoy: #e9b200;
 
   /* Status. Warm means now or degraded, never decoration; on the chart the
@@ -239,8 +237,8 @@
   /* ---- type ------------------------------------------------------------ */
 
   /* Three names, two faces, self-hosted (ui/fonts.css):
-     display, Fraunces: names, headings, the wordmark, set with optical size;
-     body, Inter: everything else;
+     display, Fraunces: the wordmark and a spot's name on its page, nothing else;
+     body, Inter: everything else, headings included, in sentence case;
      mono, Inter too: every figure and label, its figures at even width. */
   --font-display: "Fraunces Variable", "Fraunces", Georgia, "Times New Roman", serif;
   --font-body: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -255,9 +253,10 @@
 
   /* A step carries its own line height, and its weight and tracking where it
      has one: `text-title` is the whole step, not only a size. The face is
-     the recipe's to name beside it (`font-mono text-label uppercase`): a
-     step cannot carry a family. */
-  /* Mono, tracked capitals: a kicker, a column head, an axis tick. */
+     the recipe's to name beside it (`font-body text-label`): a step cannot
+     carry a family. Every label is in sentence case; nothing is set in
+     tracked capitals. */
+  /* A small label: a column head, an axis tick. */
   --text-eyebrow: 12px;
   --text-eyebrow--line-height: 1.3;
   --text-eyebrow--font-weight: 500;
@@ -265,7 +264,7 @@
   /* Small figures and the small print. */
   --text-caption: 11px;
   --text-caption--line-height: 1.4;
-  /* A control's words: mono capitals on a pill. */
+  /* A small control's words. */
   --text-label: 12px;
   --text-label--line-height: 1.2;
   --text-label--font-weight: 500;
@@ -277,7 +276,7 @@
   /* What a field is set at on a touch device: under 16px a phone zooms. */
   --text-input: 16px;
   --text-input--line-height: 1.3;
-  /* A section's heading, a card's name: Fraunces. */
+  /* A section's heading, a dialog's title: Inter, semibold. */
   --text-lead: 19px;
   --text-lead--line-height: 1.2;
   --text-lead--font-weight: 600;
@@ -290,13 +289,19 @@
   --text-title--line-height: 1.05;
   --text-title--font-weight: 700;
   --text-title--letter-spacing: -0.02em;
-  /* The broadsheet's headline: one a page, and a page that is read. */
+  /* The largest heading step. */
   --text-headline: 44px;
   --text-headline--line-height: 1;
   --text-headline--font-weight: 700;
   --text-headline--letter-spacing: -0.035em;
   --text-reading: 48px;
   --text-reading--line-height: 1;
+  /* The wordmark in the top bar and the menu's head: Fraunces, 23px, and 21
+     on a phone. */
+  --text-wordmark: 23px;
+  --text-wordmark--line-height: 1;
+  --text-wordmark-sm: 21px;
+  --text-wordmark-sm--line-height: 1;
 
   /* The three leadings, for the few places a step's own is not the one wanted:
      a card's title takes the prose size at the tight leading. `leading-none`
@@ -318,36 +323,22 @@
   --radius-pill: 9999px;
   --radius-dialog: 18px;
   --radius-full: 9999px;
+  /* The small square a notice leaves in a table's hour. */
+  --radius-mark: 5px;
 
-  /* Shadow by elevation, soft and stacked, the far one warm: a card on a page
-     casts only a contact shadow; a box over the chart floats; a sheet or a
-     dialog sits a level deeper; the dock is a sheet standing on the foot of
-     the screen, so its stack is cast upward. Each is listed after the frame:
-     `inset-shadow-frame shadow-float`. */
+  /* Shadow by elevation, soft and stacked: a card on a page casts at most a
+     contact shadow; a box over the chart floats; a sheet or a dialog sits a
+     level deeper; the dock is a sheet standing on the foot of the screen, so
+     its stack is cast upward. */
   --shadow-card: 0 1px 1px #1111141a, 0 2px 4px -2px #1111141a;
   --shadow-float: 0 1px 1px #1111141a, 0 3px 6px -2px #1111141f, 0 14px 28px -12px #00000066;
   --shadow-sheet: 0 1px 1px #1111141a, 0 6px 12px -4px #11111424, 0 24px 48px -16px #00000080;
   --shadow-dock: 0 -1px 1px #1111141a, 0 -6px 12px -4px #11111424, 0 -24px 48px -16px #00000080;
   --shadow-marker: 0px 4px 10px -6px #00000066;
-  /* A small control's own: a pressed ink one's lit lip, under `sheen-ink`,
-     and a raised one's, under `sheen-raised`. */
+  /* A small control's own: the chosen segment's lift, a thumb's shadow. */
   --shadow-control: 0 1px 2px #11111433;
   --shadow-raised: 0 1px 2px #1111140f;
 
-  /* The edge, as `border border-ink inset-shadow-frame`: the ink rule is the
-     border, then two of paper, then a hairline of ink at a quarter. Every box
-     and sheet has it. */
-  --inset-shadow-frame: inset 0 0 0 2px #ffffff, inset 0 0 0 3px #11111426;
-
-  /* Paper is flat; a little light is allowed only where a thing is small.
-     The fill of a pressed ink control (`sheen-ink`), of a raised button
-     (`sheen-raised`), and the faintest light from above on a box over the
-     chart (`paper-float`). A page, a dialog and the dock stay flat. */
-  --gradient-ink: linear-gradient(180deg, #111114, #111114);
-  --gradient-raised: linear-gradient(180deg, #ffffff, #ffffff);
-  --gradient-float: linear-gradient(180deg, #ffffff, #ffffff);
-  /* The paper's grain, the background image of `paper-grain`. */
-  --texture-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 
   /* Glass is a badge over a photograph now, not a panel over the map: paper
      over the map is opaque. Behind a dialog the page goes soft: the map's
@@ -391,6 +382,9 @@
      thumbnails, as `grid-cols-tiles`: the same idea at a photograph's size. */
   --grid-template-columns-fields: repeat(auto-fit, minmax(180px, 1fr));
   --grid-template-columns-tiles: repeat(auto-fill, minmax(132px, 1fr));
+  /* A notice, as `grid-cols-notice`: its coloured square, its words, and the
+     chevron or the action on the right. */
+  --grid-template-columns-notice: 36px minmax(0, 1fr) auto;
 
   /* Where those two columns stop fitting, as `rail:` and `max-rail:`. 900px,
      written in the stock breakpoints' unit so the two sort together; a media
@@ -424,23 +418,10 @@
      opacity of their own, so the fade out a dialog closes with (`modal-fade`)
      can run. An animation still filling forwards keeps a transition off it. */
   --animate-dialog-in: dialog-in 150ms ease backwards;
+  /* A sheet rising from the foot of a phone's screen. */
+  --animate-sheet-in: sheet-in 200ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
   --animate-scrim-in: scrim-in 150ms ease backwards;
   --animate-menu-in: menu-in 150ms ease both;
-  /* The puffin shifting his weight, now and then. */
-  --animate-bob: bob 6s ease-in-out infinite;
-
-  @keyframes bob {
-    0%,
-    46%,
-    54%,
-    100% {
-      transform: none;
-    }
-    50% {
-      transform: translateY(-3px) rotate(-2deg);
-    }
-  }
-
   @keyframes pulse {
     from {
       opacity: 0.45;
@@ -451,6 +432,12 @@
     from {
       opacity: 0;
       transform: translateY(8px);
+    }
+  }
+
+  @keyframes sheet-in {
+    from {
+      transform: translateY(100%);
     }
   }
 
@@ -478,6 +465,11 @@
   --spacing-touch: 44px;
 }
 
+/* The dark theme, as a variant: `dark:ring-1` applies under
+   <html data-theme="dark"> (shared/web/theme.ts), not the system's setting,
+   which the rider may have overruled. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* The one media feature the kit reads that has no variant of its own: glass
    goes solid for a reader who has asked for less transparency. */
 @custom-variant reduced-transparency {
@@ -503,42 +495,6 @@
       @slot;
     }
   }
-}
-
-/*
- * The paper's grain: a faint fractal noise, multiplied into whatever paper
- * the element is filled with. It is a background image only, so it sits with
- * `bg-ground` or `bg-card` rather than replacing them: an opaque surface that
- * covers the ground's grain brings its own, and the page reads as one sheet.
- * One 220px tile, rasterised once and repeated, so no filter runs per frame.
- * It is never laid over the moving map: the map is not paper.
- */
-@utility paper-grain {
-  background-image: var(--texture-grain);
-  background-repeat: repeat;
-}
-
-/*
- * A small box over the chart: the grain over the faintest light from above
- * (`--gradient-float`), so it reads as printed paper lifted off the chart. A
- * page, a dialog and the dock stay flat: `paper-grain`.
- */
-@utility paper-float {
-  background-image: var(--texture-grain), var(--gradient-float);
-  background-repeat: repeat, no-repeat;
-}
-
-/*
- * The two sheens, for small controls only. `sheen-ink` under a pressed or
- * filled ink control, with `shadow-control`; `sheen-raised` under a raised
- * paper button, with `shadow-raised`. Each sits over the control's own
- * `bg-*` colour, which is what shows where a gradient is not drawn.
- */
-@utility sheen-ink {
-  background-image: var(--gradient-ink);
-}
-@utility sheen-raised {
-  background-image: var(--gradient-raised);
 }
 
 /*
@@ -606,7 +562,7 @@
 }
 
 /*
- * A modal <dialog> drawn as a drawer from the left edge (the site menu,
+ * A modal <dialog> drawn as a drawer from the right edge (the site menu,
  * force5/src/SiteMenu.tsx): it slides in over the fast duration as it opens,
  * and back out to the edge as it closes, its backdrop fading with it. Closed
  * is closed at once, as with `modal-fade`: the browser keeps it on top for
@@ -618,7 +574,7 @@
   transition: transform var(--transition-duration-fast) ease;
   &[open] {
     @starting-style {
-      transform: translateX(-100%);
+      transform: translateX(100%);
     }
   }
   @supports (overlay: auto) {
@@ -627,7 +583,7 @@
       overlay var(--transition-duration-fast) allow-discrete,
       display var(--transition-duration-fast) allow-discrete;
     &:not([open]) {
-      transform: translateX(-100%);
+      transform: translateX(100%);
       pointer-events: none;
     }
     &::backdrop {
@@ -645,6 +601,67 @@
   }
 }
 
+/*
+ * The kit's slider (ui/Slider.tsx): a native range input drawn as a thin
+ * track filled in the ink colour up to the thumb (`--range-fill`, set by the
+ * component), and a round white thumb with a soft shadow. Two spellings of
+ * each part, because no browser reads both.
+ */
+@utility range-kit {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 28px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  &::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      var(--color-ink) var(--range-fill, 0%),
+      var(--color-line-strong) var(--range-fill, 0%)
+    );
+  }
+  &::-moz-range-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--color-line-strong);
+  }
+  &::-moz-range-progress {
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--color-ink);
+  }
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    margin-top: -9px;
+    border: 0;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow:
+      0 0 0 1px #00000014,
+      0 1px 3px #0000004d;
+  }
+  &::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow:
+      0 0 0 1px #00000014,
+      0 1px 3px #0000004d;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: 9999px;
+  }
+}
+
 /* The dark hours: a fine diagonal hatch in ink, as a chart shades what is
    not there to be used. Over a table cell, a strip of a day, a tide curve. */
 @utility hatch {
@@ -655,19 +672,18 @@
   );
 }
 
-/* Fraunces at its largest optical size: the high-contrast cut the wordmark
-   and a headline are set in, whatever size they are drawn at. Elsewhere the
+/* Fraunces at its largest optical size: the high-contrast cut a spot's name
+   is set in on its own page, whatever size it is drawn at. Elsewhere the
    browser picks the optical size from the font size, which is what is
-   wanted. */
+   wanted. Fraunces is for the wordmark and a spot's name, and nothing else. */
 @utility optical-display {
   font-variation-settings: "opsz" 144;
 }
 
-/* The headline is set tight (-0.035em) at the display cut, and tracking takes
-   the word space in with every letter: at 44px "heading to" closed up into
-   "headingto". The letters stay tight; the gaps between words are given back. */
-@utility word-gap-display {
-  word-spacing: 0.12em;
+/* The wordmark's cut: Fraunces at a middle optical size, as the approved
+   mock-ups set "wingfoil.ie" in the top bar. */
+@utility optical-wordmark {
+  font-variation-settings: "opsz" 72;
 }
 
 /* A row that scrolls sideways inside a page that does not: the cut-off item at
@@ -835,8 +851,8 @@
   --color-sunken: #17171b;
   --color-glass: #0c0c0eeb;
   --color-inverse: #f2f2f4;
-  --color-scrim: #0c0c0e66;
-  --color-scrim-solid: #0c0c0ecc;
+  --color-scrim: #0000008c;
+  --color-scrim-solid: #000000b3;
   --color-sea: #0f1a20;
   --color-sea-1: #2c6c84;
   --color-sea-2: #1b4252;
@@ -881,10 +897,6 @@
   --shadow-marker: 0px 4px 10px -6px #000000b3;
   --shadow-control: 0 1px 2px #00000080;
   --shadow-raised: 0 1px 2px #00000066;
-  --inset-shadow-frame: inset 0 0 0 2px #0c0c0e, inset 0 0 0 3px #ffffff1a;
-  --gradient-ink: linear-gradient(180deg, #f2f2f4, #f2f2f4);
-  --gradient-raised: linear-gradient(180deg, #17171b, #17171b);
-  --gradient-float: linear-gradient(180deg, #141417, #141417);
   --map-d0: #2c6c84;
   --map-d1: #275f75;
   --map-d2: #225367;

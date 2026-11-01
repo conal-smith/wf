@@ -3,15 +3,15 @@ import { tv, type VariantProps } from "./tv";
 
 export const countStyles = tv({
   slots: {
-    // The chart's light: a figure in a ring, as a spot's stars are drawn.
-    base: "inline-grid h-5 min-w-5 place-items-center rounded-full border px-1 font-mono text-caption leading-none font-semibold tabular-nums",
+    // A small figure in a capsule.
+    base: "inline-grid h-5 min-w-5 place-items-center rounded-full px-1.5 font-body text-caption leading-none font-semibold tabular-nums",
     label: "sr-only",
   },
   variants: {
     tone: {
       // Unread. Said in fill and weight together, never in colour alone.
-      strong: { base: "border-ink bg-inverse text-ink-inverse" },
-      quiet: { base: "border-ink bg-card text-ink" },
+      strong: { base: "bg-inverse text-ink-inverse" },
+      quiet: { base: "bg-sunken text-ink-2" },
     },
   },
   defaultVariants: { tone: "strong" },

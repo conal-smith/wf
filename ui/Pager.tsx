@@ -37,7 +37,7 @@ export function Pager({
   return (
     <nav className={styles.base({ className })} aria-label="Pages">
       <Button
-        variant="pill"
+        variant="outline"
         size="sm"
         disabled={page <= 1}
         onClick={() => onPage(page - 1)}
@@ -48,7 +48,7 @@ export function Pager({
         Page {page} of {pages}
       </span>
       <Button
-        variant="pill"
+        variant="outline"
         size="sm"
         disabled={page >= pages}
         onClick={() => onPage(page + 1)}

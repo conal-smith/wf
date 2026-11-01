@@ -1,36 +1,58 @@
-import type { HTMLAttributes } from "react";
-import { tv, type VariantProps } from "./tv";
+import { X } from "lucide-react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
+import { DISABLED, RING, tv } from "./tv";
 
 /*
- * A tag in the figures' face: mono, in a capsule ruled with a hairline, on the
- * paper it stands on. It labels; it is never pressed.
+ * A choice you can press: a soft capsule, filled in ink when it is on. Never
+ * in capitals. A word that only describes something is a Tag, not a Chip.
  */
 export const chipStyles = tv({
-  base: "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-mono text-caption whitespace-nowrap",
-  variants: {
-    tone: {
-      neutral: "border-line bg-sunken text-ink-2",
-      // Warm means now or degraded. A chip that is only a category is neutral.
-      warn: "border-warn bg-warn-ground text-warn",
-      // Paper over a photograph: a badge has to read on whatever the picture
-      // is, so it takes the ink rule and paper that lets a little through, and
-      // goes solid for a reader who has declined transparency.
-      glass: [
-        "border-ink bg-glass text-ink backdrop-blur-glass",
-        "reduced-transparency:bg-solid reduced-transparency:backdrop-filter-none",
-      ],
-    },
-    eyebrow: { true: "text-eyebrow" },
+  slots: {
+    base: [
+      "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-0 bg-sunken px-3",
+      "font-body text-body font-medium whitespace-nowrap text-ink",
+      "touch-manipulation transition-colors duration-fast pointer-coarse:min-h-touch",
+      "not-disabled:hover:bg-line",
+      "aria-pressed:bg-inverse aria-pressed:text-ink-inverse not-disabled:aria-pressed:hover:bg-inverse",
+      RING,
+      DISABLED,
+    ],
+    remove: "-mr-1 opacity-60",
   },
-  defaultVariants: { tone: "neutral" },
 });
 
-export type ChipProps = HTMLAttributes<HTMLSpanElement> &
-  VariantProps<typeof chipStyles>;
+export type ChipProps = Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  "aria-pressed" | "children"
+> & {
+  /** On, for a choice; omit it for a filter in use that a press takes away. */
+  pressed?: boolean;
+  /** A filter in use: the cross that says a press takes it away. */
+  removable?: boolean;
+  children: ReactNode;
+  ref?: Ref<HTMLButtonElement>;
+};
 
-/** A label on a thing: a category, a condition, a status. Never pressable. */
-export function Chip({ tone, eyebrow, className, ...props }: ChipProps) {
+/** A choice in a row of them, or a filter in use that a press clears. */
+export function Chip({
+  pressed,
+  removable = false,
+  className,
+  children,
+  ...props
+}: ChipProps) {
+  const styles = chipStyles();
   return (
-    <span {...props} className={chipStyles({ tone, eyebrow, className })} />
+    <button
+      type="button"
+      {...props}
+      className={styles.base({ className })}
+      aria-pressed={pressed}
+    >
+      {children}
+      {removable && (
+        <X className={styles.remove()} size={14} aria-hidden="true" />
+      )}
+    </button>
   );
 }

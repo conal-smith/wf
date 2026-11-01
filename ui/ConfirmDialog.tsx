@@ -36,7 +36,7 @@ export function ConfirmDialog({
       onClose={onCancel}
       actions={
         <>
-          <Button variant="pill" disabled={busy} onClick={onCancel}>
+          <Button variant="outline" disabled={busy} onClick={onCancel}>
             Cancel
           </Button>
           <Button variant="danger" disabled={busy} onClick={onConfirm}>

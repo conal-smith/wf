@@ -745,47 +745,10 @@
         "$value": "0 -1px 1px #00000040, 0 -6px 12px -4px #0000004d, 0 -24px 48px -16px #000000a6",
         "$description": "Proposed night chart: the dock."
       },
-      "frame": {
-        "$type": "shadow",
-        "$value": "inset 0 0 0 2px #ffffff, inset 0 0 0 3px #11111426",
-        "$description": "The hairline inside the ink rule: two of paper, then one of ink at a quarter."
-      },
       "frame-night": {
         "$type": "shadow",
         "$value": "inset 0 0 0 2px #1d1c19, inset 0 0 0 3px #ece5d642",
         "$description": "Proposed night chart: the hairline inside the ink rule."
-      }
-    },
-    "gradient": {
-      "ink": {
-        "$type": "string",
-        "$value": "linear-gradient(180deg, #111114, #111114)",
-        "$description": "A pressed ink control's fill: ink, lit a little from above."
-      },
-      "ink-night": {
-        "$type": "string",
-        "$value": "linear-gradient(180deg, #f6f0e3, #dcd4c4)",
-        "$description": "Proposed night chart: a pressed control's fill."
-      },
-      "raised": {
-        "$type": "string",
-        "$value": "linear-gradient(180deg, #ffffff, #ffffff)",
-        "$description": "A raised button's fill: white at the top to paper."
-      },
-      "raised-night": {
-        "$type": "string",
-        "$value": "linear-gradient(180deg, #2e2b25, #22201b)",
-        "$description": "Proposed night chart: a raised button's fill."
-      },
-      "float": {
-        "$type": "string",
-        "$value": "linear-gradient(180deg, #ffffff, #ffffff)",
-        "$description": "A floating box's paper: the faintest light from above."
-      },
-      "float-night": {
-        "$type": "string",
-        "$value": "linear-gradient(180deg, #211f1c, #1b1a17)",
-        "$description": "Proposed night chart: a floating box's paper."
       }
     },
     "blur": {
@@ -931,30 +894,30 @@
       },
       "scrim": {
         "$type": "color",
-        "$value": "{ref.color.paper.a40}",
-        "$description": "Behind a dialog, over the page it blurs. --color-scrim.",
+        "$value": "#0f0f1247",
+        "$description": "Behind a dialog, over the page it blurs: a dim wash. --color-scrim.",
         "$extensions": {
           "com.sprintengine": {
             "role": "surface",
             "use": "The modal backdrop only, with --blur-scrim under it.",
             "modes": {
-              "light": "{ref.color.paper.a40}",
-              "dark": "#0c0c0e66"
+              "light": "#0f0f1247",
+              "dark": "#0000008c"
             }
           }
         }
       },
       "scrim-solid": {
         "$type": "color",
-        "$value": "{ref.color.paper.a80}",
+        "$value": "#0f0f1299",
         "$description": "Behind a dialog where the page is not blurred. --color-scrim-solid.",
         "$extensions": {
           "com.sprintengine": {
             "role": "surface",
             "use": "The modal backdrop for a reader who asks for less transparency, and in a browser that cannot blur.",
             "modes": {
-              "light": "{ref.color.paper.a80}",
-              "dark": "#0c0c0ecc"
+              "light": "#0f0f1299",
+              "dark": "#000000b3"
             }
           }
         }
@@ -2183,6 +2146,28 @@
               "use": "The wind reading, one a view."
             }
           }
+        },
+        "wordmark": {
+          "$type": "dimension",
+          "$value": "23px",
+          "$description": "--text-wordmark.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "The wordmark in the top bar and the menu's head."
+            }
+          }
+        },
+        "wordmark-sm": {
+          "$type": "dimension",
+          "$value": "21px",
+          "$description": "--text-wordmark-sm.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "The wordmark on a phone."
+            }
+          }
         }
       },
       "line": {
@@ -2337,6 +2322,28 @@
             "com.sprintengine": {
               "role": "type",
               "use": "Rarely: a list that wants air."
+            }
+          }
+        },
+        "wordmark": {
+          "$type": "number",
+          "$value": 1,
+          "$description": "--text-wordmark--line-height.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.wordmark."
+            }
+          }
+        },
+        "wordmark-sm": {
+          "$type": "number",
+          "$value": 1,
+          "$description": "--text-wordmark-sm--line-height.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.wordmark-sm."
             }
           }
         }
@@ -2672,6 +2679,17 @@
             "doNotUse": "In components: use sem.radius.dialog or sem.radius.surface."
           }
         }
+      },
+      "mark": {
+        "$type": "dimension",
+        "$value": "5px",
+        "$description": "--radius-mark.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "shape",
+            "use": "The small square a notice leaves in a table's hour."
+          }
+        }
       }
     },
     "rule": {
@@ -2843,71 +2861,6 @@
             "modes": {
               "light": "{ref.shadow.dock}",
               "dark": "0 -1px 2px #00000066, 0 -24px 48px -16px #000000cc"
-            }
-          }
-        }
-      },
-      "frame": {
-        "$type": "shadow",
-        "$value": "{ref.shadow.frame}",
-        "$description": "--inset-shadow-frame: the hairline just inside the ink rule.",
-        "$extensions": {
-          "com.sprintengine": {
-            "role": "structure",
-            "use": "With a 1px ink border, round every box and sheet: a Surface, a Dialog, a card Pane, the dock, a menu. Listed before the elevation shadow.",
-            "modes": {
-              "light": "{ref.shadow.frame}",
-              "dark": "inset 0 0 0 2px #0c0c0e, inset 0 0 0 3px #ffffff1a"
-            }
-          }
-        }
-      }
-    },
-    "gradient": {
-      "ink": {
-        "$type": "string",
-        "$value": "{ref.gradient.ink}",
-        "$description": "--gradient-ink: the sheen on a pressed ink control.",
-        "$extensions": {
-          "com.sprintengine": {
-            "role": "surface",
-            "use": "A background-image under a filled ink control (the theme's `sheen-ink`), with sem.shadow.control.",
-            "doNotUse": "On a large surface: a page, a dialog, the dock stay flat paper.",
-            "modes": {
-              "light": "{ref.gradient.ink}",
-              "dark": "linear-gradient(180deg, #f2f2f4, #f2f2f4)"
-            }
-          }
-        }
-      },
-      "raised": {
-        "$type": "string",
-        "$value": "{ref.gradient.raised}",
-        "$description": "--gradient-raised: a raised button.",
-        "$extensions": {
-          "com.sprintengine": {
-            "role": "surface",
-            "use": "A background-image under a raised button (the theme's `sheen-raised`), with sem.shadow.raised.",
-            "doNotUse": "On a large surface: a page, a dialog, the dock stay flat paper.",
-            "modes": {
-              "light": "{ref.gradient.raised}",
-              "dark": "linear-gradient(180deg, #17171b, #17171b)"
-            }
-          }
-        }
-      },
-      "float": {
-        "$type": "string",
-        "$value": "{ref.gradient.float}",
-        "$description": "--gradient-float: a floating box's faint top light.",
-        "$extensions": {
-          "com.sprintengine": {
-            "role": "surface",
-            "use": "Under the grain of a small box over the map (the theme's `paper-float`): a Surface, the chart's boxes.",
-            "doNotUse": "On a large surface: a page, a dialog, the dock stay flat paper.",
-            "modes": {
-              "light": "{ref.gradient.float}",
-              "dark": "linear-gradient(180deg, #141417, #141417)"
             }
           }
         }
@@ -3093,6 +3046,17 @@
             "use": "A grid of thumbnails."
           }
         }
+      },
+      "notice": {
+        "$type": "string",
+        "$value": "36px minmax(0, 1fr) auto",
+        "$description": "--grid-template-columns-notice.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layout",
+            "use": "A notice: its coloured square, its words, the chevron or action."
+          }
+        }
       }
     },
     "breakpoint": {
@@ -3199,14 +3163,14 @@
           }
         }
       },
-      "bob": {
+      "sheet-in": {
         "$type": "string",
-        "$value": "bob 6s ease-in-out infinite",
-        "$description": "--animate-bob: the puffin shifting his weight.",
+        "$value": "sheet-in 200ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards",
+        "$description": "--animate-sheet-in.",
         "$extensions": {
           "com.sprintengine": {
             "role": "motion",
-            "use": "The puffin, now and then. Off under reduced motion."
+            "use": "A dialog rising as a sheet from the foot of a phone's screen."
           }
         }
       }
@@ -3365,20 +3329,6 @@
           "com.sprintengine": {
             "role": "data",
             "use": "The dock's week strip, by stars."
-          }
-        }
-      }
-    },
-    "texture": {
-      "grain": {
-        "$type": "string",
-        "$value": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-        "$description": "The paper's grain: one 220px tile of faint fractal noise (the theme's `paper-grain` utility).",
-        "$extensions": {
-          "com.sprintengine": {
-            "role": "surface",
-            "use": "A background-image beside the paper fill: a section root, the masthead, a card Pane, a Surface, a Dialog.",
-            "doNotUse": "Over the moving map: the map is not paper."
           }
         }
       }
