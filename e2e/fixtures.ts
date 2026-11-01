@@ -193,7 +193,7 @@ export async function steadyFrames(page: Page) {
  */
 export async function closePanel(page: Page) {
   await page
-    .locator("dialog.map-panel-dialog > div:first-child")
+    .locator("dialog.map-panel-dialog > div:first-of-type")
     .getByRole("button", { name: "Close", exact: true })
     .click();
   await expect(page.locator("dialog.map-panel-dialog")).toHaveCount(0);
