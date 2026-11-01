@@ -9,7 +9,7 @@ import { tv, type VariantProps } from "./tv";
  * warning"), a second line (when, and what it does to the stars), and a
  * chevron that opens the details. No capital chip, no coloured bar down the
  * side. Met Éireann's yellow, orange and red keep their own colours; bathing
- * water is a drop on the pen's tint.
+ * water is a drop on the warm tint.
  */
 export const noticeStyles = tv({
   slots: {

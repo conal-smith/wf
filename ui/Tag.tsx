@@ -10,7 +10,7 @@ export const tagStyles = tv({
   variants: {
     tone: {
       neutral: "bg-sunken text-ink-2",
-      // Offshore, a warning, something wrong: the pen's red on its tint.
+      // Offshore, a warning, something wrong: red on its warm tint.
       off: "bg-warn-ground text-pen-ink",
       ok: "bg-sunken text-ok",
       // Over a photograph: the ground that lets a little through, solid for
