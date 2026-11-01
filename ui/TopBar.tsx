@@ -29,6 +29,7 @@ export const topBarStyles = tv({
     brand: ["shrink-0 rounded-control text-ink no-underline", RING],
     search: "ml-4.5 min-w-0 max-wide:ml-0 max-wide:order-1",
     gap: "flex-1",
+    actions: "flex items-center gap-2 max-wide:order-2 max-wide:gap-1",
     view: "max-wide:order-2 max-wide:px-3.5",
     theme: "max-wide:hidden",
     menu: "max-wide:order-3",
@@ -50,6 +51,9 @@ export interface TopBarProps {
   onHome?: (event: MouseEvent<HTMLAnchorElement>) => void;
   /** The search (ui/SpotSearch.tsx). */
   search?: ReactNode;
+  /** A section's own few actions (the marketplace's Sell, the community's
+   * bell), before the button to the other view. */
+  actions?: ReactNode;
   /** The button to the other view. */
   view?: TopBarView;
   /** Light or dark, on a computer; on a phone the menu carries it. */
@@ -69,6 +73,7 @@ export function TopBar({
   home = "/",
   onHome,
   search,
+  actions,
   view,
   theme = true,
   menu,
@@ -96,6 +101,7 @@ export function TopBar({
       </a>
       {search && <div className={s.search()}>{search}</div>}
       <span className={s.gap()} />
+      {actions && <div className={s.actions()}>{actions}</div>}
       {view && (
         <Button
           href={view.href}
