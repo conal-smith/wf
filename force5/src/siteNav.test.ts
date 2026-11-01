@@ -147,14 +147,13 @@ describe("SITE_NAV", () => {
       ]),
     ).toEqual([
       ["Forecast", ["Chart", "Spot finder"]],
-      ["Your settings", ["Settings", "Display options"]],
+      ["Your settings", ["Settings"]],
       ["Help", ["About the map", "How the stars work", "Take the tour"]],
     ]);
     expect(SITE_NAV.map((row) => row.href)).toEqual([
       "/?map",
       "/",
       "/?settings",
-      "/?options",
       "/?about",
       "/stars",
       "/?tour",
@@ -170,7 +169,8 @@ describe("SITE_NAV", () => {
     const at = (href: string) => new URL(href, "https://wingfoil.ie");
     expect(mapAsk(at("/?settings"))).toBe("settings");
     expect(mapAsk(at("/?customise"))).toBe("settings");
-    expect(mapAsk(at("/?options"))).toBe("options");
+    // The display options were taken into Settings: their word opens it.
+    expect(mapAsk(at("/?options"))).toBe("settings");
     expect(mapAsk(at("/?about"))).toBe("about");
     expect(mapAsk(at("/?tour"))).toBe("tour");
     expect(mapAsk(at("/?map"))).toBe(null);

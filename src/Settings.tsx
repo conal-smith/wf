@@ -1,17 +1,20 @@
 /**
- * "Settings": the site menu's third row, one dialog with everything a rider
- * sets about themselves, on one page, in four parts: about them (weight and
- * units), the wind strength that suits them (two handles, too light and too
- * strong, with the stars they make under the slider), the stars each wind
- * direction takes off, and how far up and down the wind they ride (two
- * handles on a circle). Every handle wears the same dashed ring, which says
+ * "Settings": the site menu's one place for everything a rider sets, on one
+ * page, in five parts: about them (weight and units), the wind strength that
+ * suits them (two handles, too light and too strong, with the stars they make
+ * under the slider), the stars each wind direction takes off, how far up and
+ * down the wind they ride (two handles on a circle), and how the forecast is
+ * shown (its hours, the one model, the blend's models), which were once a
+ * dialog of their own, the display options (the owner's ruling of
+ * 2026-11-01: "a single settings page is enough"). Every handle wears the same dashed ring, which says
  * it can be dragged (the owner's ruling of 2026-10-28). It took the place of a six-step
  * wizard (owner's ruling of 2026-10-26: "one modal, so people don't have to
  * keep clicking through"); the controls and pictures are the wizard's.
  *
  * Everyone starts from ours; "Reset to ours" shows once anything the stars
- * or the course are made of differs from it. On a desktop the four parts sit
- * two by two; on a phone it is the whole screen, one column, and scrolls.
+ * or the course are made of differs from it. On a desktop the first four
+ * parts sit two by two and the forecast runs across under them; on a phone
+ * it is the whole screen, one column, and scrolls.
  *
  * Its own chunk, fetched when it is opened. It edits a draft, and Save keeps
  * it through src/settingsDraft.ts, into the preferences the stars and every
@@ -28,12 +31,20 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import type { Prefs } from "../force5/src/prefs";
+import { modelEntry } from "../force5/src/catalog";
+import { FALLBACK_MODEL, STARS_MODELS, modelName } from "../force5/src/lead";
+import {
+  MODEL_CATALOG,
+  modelHue,
+  type ModelAvailability,
+} from "../force5/src/manifests";
+import type { NightHours, Prefs } from "../force5/src/prefs";
 import { DOWNWIND_MAX, UPWIND_MAX } from "../force5/src/rideWedge";
 import { NEVER, type DirectionKey } from "../force5/src/stars";
 import { UNITS, beaufort, forceKn, type Units } from "../force5/src/units";
 import { BeaufortGlyph } from "../ui/BeaufortGlyph";
 import { Button } from "../ui/Button";
+import { Checkbox } from "../ui/Checkbox";
 import { Dialog } from "../ui/Dialog";
 import { Segmented } from "../ui/Segmented";
 import {
@@ -62,13 +73,14 @@ import {
   inUnits,
   offWords,
   resetToOurs,
+  withBlendModel,
   withDownwind,
   withShore,
   withUpwind,
   type Draft,
 } from "./settingsDraft";
 
-/** The four parts, in the order they read, each a heading and one line of help. */
+/** The five parts, in the order they read, each a heading and one line of help. */
 const PARTS = {
   you: {
     title: "About you",
@@ -85,6 +97,10 @@ const PARTS = {
   upwind: {
     title: "Riding upwind",
     help: "This shows where you can ride on the map. It does not change your stars. Drag the ringed handles on the circle.",
+  },
+  forecast: {
+    title: "Forecast",
+    help: "The hours the forecast shows, the model behind the map and the stars, and the models the blend chart compares.",
   },
 } as const;
 
@@ -127,6 +143,8 @@ export interface SettingsProps {
   onClose: () => void;
   /** Save: the preferences to keep. */
   onSave: (prefs: Prefs) => void;
+  /** The wind models, and whether each one's forecast could be read. */
+  models: readonly ModelAvailability[];
 }
 
 export default function Settings({
@@ -134,6 +152,7 @@ export default function Settings({
   prefs,
   onClose,
   onSave,
+  models,
 }: SettingsProps) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(prefs));
   const unit = unitScale(draft.units);
@@ -214,6 +233,10 @@ export default function Settings({
         )}
         {part("shore", <ShorePart draft={draft} setDraft={setDraft} />)}
         {part("upwind", <UpwindPart draft={draft} setDraft={setDraft} />)}
+        {part(
+          "forecast",
+          <ForecastPart draft={draft} setDraft={setDraft} models={models} />,
+        )}
         {phone && reset && <div className="st-end">{reset}</div>}
       </div>
     </Dialog>
@@ -1155,5 +1178,107 @@ function UpwindPart({ draft, setDraft }: PartProps) {
         </div>
       </div>
     </>
+  );
+}
+
+/* ---- 5. the forecast ---- */
+
+/**
+ * How the forecast is shown: its hours, the one model the map draws and the
+ * stars rate, and the models the blend chart draws. Side by side on a
+ * desktop. None of them moves a star of the rider's own rating.
+ */
+function ForecastPart({
+  draft,
+  setDraft,
+  models,
+}: PartProps & { models: readonly ModelAvailability[] }) {
+  const planned = MODEL_CATALOG.filter(
+    (entry) => entry.planned && entry.kind === "wind",
+  );
+  return (
+    <div className="st-forecast">
+      <div className="st-row">
+        <span className="st-kick">Hours</span>
+        <Segmented<NightHours>
+          aria-label="Hours in the forecast"
+          options={[
+            { value: "show", label: "Day and night" },
+            { value: "hide", label: "First to last light" },
+          ]}
+          value={draft.nightHours}
+          onChange={(nightHours) => setDraft({ ...draft, nightHours })}
+        />
+        <p className="st-note">
+          {draft.nightHours === "hide"
+            ? "From first light to last light, when the sun is 6° below the horizon. The twilight either side stays, hatched as dark."
+            : "Round the clock, the night hatched as dark."}
+        </p>
+      </div>
+      <div className="st-row">
+        <span className="st-kick">Model</span>
+        <Segmented<string>
+          aria-label="Model"
+          options={STARS_MODELS.map((id) => ({
+            value: id,
+            label: modelName(id),
+          }))}
+          value={draft.model}
+          onChange={(model) => setDraft({ ...draft, model })}
+        />
+        <p className="st-note" data-model-detail>
+          {modelEntry(draft.model)?.detail}.{" "}
+          {draft.model === FALLBACK_MODEL
+            ? `The map, the wind and the stars are ${modelName(draft.model)}’s.`
+            : `The map, the wind and the stars are ${modelName(draft.model)}’s, and ${modelName(FALLBACK_MODEL)}’s past the end of its run.`}
+        </p>
+      </div>
+      <div
+        className="st-row st-blend"
+        role="group"
+        aria-label="Models in the blend"
+      >
+        <span className="st-kick">Models in the blend</span>
+        <ul className="st-models">
+          {models.map((model) => (
+            <li key={model.id}>
+              <Checkbox
+                data-model-toggle={model.id}
+                checked={draft.blendModels.includes(model.id)}
+                disabled={!model.available}
+                onChange={(event) =>
+                  setDraft(
+                    withBlendModel(draft, model.id, event.target.checked),
+                  )
+                }
+              >
+                <i
+                  className="st-swatch"
+                  aria-hidden="true"
+                  style={{ background: modelHue(model.id).wind }}
+                />
+                {model.entry.name}
+                <small>
+                  {model.available ? model.entry.detail : "no data"}
+                </small>
+              </Checkbox>
+            </li>
+          ))}
+          {planned.map((entry) => (
+            <li key={entry.id}>
+              <Checkbox disabled checked={false} readOnly>
+                <i
+                  className="st-swatch"
+                  aria-hidden="true"
+                  style={{ background: modelHue(entry.id).wind }}
+                />
+                {entry.name}
+                <small>coming</small>
+              </Checkbox>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }

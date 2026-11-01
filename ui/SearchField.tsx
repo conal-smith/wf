@@ -4,12 +4,12 @@ import { NO_RING, tv, type VariantProps } from "./tv";
 
 export const searchFieldStyles = tv({
   slots: {
-    // A soft grey pill with the magnifier in it; the ink edge and a soft
-    // ring of the accent when it holds the focus. No underline, no frame.
+    // A soft grey pill with the magnifier in it, a step lighter when it holds
+    // the focus. No edge, no ring, no underline, no frame.
     base: [
       "flex min-w-0 items-center gap-2 rounded-full border border-transparent bg-well px-3.5",
       "font-body text-ink-muted transition-colors duration-fast",
-      "focus-within:border-ink focus-within:bg-ground focus-within:ring-3 focus-within:ring-focus/20",
+      "focus-within:bg-raised",
       "aria-busy:cursor-progress",
       // A tap target is never shorter than touch, whatever size was asked for.
       "pointer-coarse:min-h-touch",

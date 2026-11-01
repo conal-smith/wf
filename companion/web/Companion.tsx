@@ -47,7 +47,7 @@ function openMapAt(action: MapAction) {
 }
 
 /**
- * The same validation and storage the dock's Display options use. Gust
+ * The same validation and storage Settings uses. Gust
  * proposes a weight and wings; the rider's own star rating stays.
  */
 function saveToPrefs(rider: RiderContext) {

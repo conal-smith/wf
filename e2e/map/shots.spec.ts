@@ -1,11 +1,11 @@
 import {
-  closePanel,
   expect,
   layersRail,
   modelChoice,
   moreRows,
   openFromMenu,
   rememberSpot,
+  saveSettings,
   SPOTS_KEY,
   test,
   type Page,
@@ -271,11 +271,11 @@ for (const { width, height } of [
       await shoot(page, "dock-blend", width);
     });
 
-    test("display options", async ({ page }) => {
+    test("settings, at the forecast's part", async ({ page }) => {
       await openMap(page);
-      await openFromMenu(page, "Display options");
-      await expect(page.locator("#map-options")).toBeVisible();
-      await shoot(page, "display-filter", width);
+      await openFromMenu(page, "Settings");
+      await page.locator(".st-part.is-forecast").scrollIntoViewIfNeeded();
+      await shoot(page, "settings", width);
     });
 
     test("the key", async ({ page }) => {
@@ -330,10 +330,10 @@ for (const { width, height } of [
     test("model switch loading", async ({ page }) => {
       await openMap(page);
       await page.route("**/weather/icon-eu-*/t/**", () => {});
-      await openFromMenu(page, "Display options");
+      await openFromMenu(page, "Settings");
       await modelChoice(page, "icon-eu").click();
+      await saveSettings(page);
       await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
-      await closePanel(page);
       await shoot(page, "model-loading", width);
     });
 
@@ -342,10 +342,10 @@ for (const { width, height } of [
         route.fulfill({ status: 503, body: "Unavailable" }),
       );
       await openMap(page);
-      await openFromMenu(page, "Display options");
+      await openFromMenu(page, "Settings");
       await modelChoice(page, "icon-eu").click();
+      await saveSettings(page);
       await expect(page.locator(".frame-status.is-error")).toBeVisible();
-      await closePanel(page);
       await shoot(page, "warning", width);
     });
 

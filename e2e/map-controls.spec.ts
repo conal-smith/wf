@@ -225,9 +225,10 @@ for (const width of [390, 1440]) {
       if (i) expect(box.y).toBeGreaterThan(rows[i - 1].y);
     }
     const step = (i: number) => rows[i].y - rows[i - 1].y;
+    // Settings stands alone in its group: the gap before About is a group's.
     expect(step(2)).toBeGreaterThan(step(1) + 10);
-    expect(step(4)).toBeGreaterThan(step(3) + 10);
-    expect(step(7)).toBeGreaterThan(step(6) + 10);
+    expect(step(3)).toBeGreaterThan(step(1) + 10);
+    expect(step(6)).toBeGreaterThan(step(5) + 10);
     await finder.click();
     await expect(menu).toHaveAttribute("aria-expanded", "false");
     await expect(page).toHaveURL(/\/$/);

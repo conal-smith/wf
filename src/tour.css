@@ -161,3 +161,7 @@ dialog[open]:has(> .tour) {
     width: calc(100% - 20px);
   }
 }
+/* The card holds the focus as the tour opens (src/Tour.tsx): no ring for it. */
+.tour-card[tabindex]:focus-visible {
+  outline: none;
+}

@@ -3,8 +3,8 @@
   "writtenAt": "2026-10-05",
   "areas": {
     "src": {
-      "button": 13,
-      "input": 3,
+      "button": 12,
+      "input": 1,
       "select": 0,
       "textarea": 0
     },

@@ -1004,17 +1004,6 @@
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;
 }
-/* The display options (panels.css), in the kit's dialog over the dimmed map
-   (src/MapControls.tsx). The dialog scrolls a tall panel; its body's prose
-   sizes give way to the panel's own. */
-.map-panel-dialog {
-  max-width: 380px;
-}
-.map-panel-dialog > div:last-child {
-  gap: 0;
-  font-size: 14.5px;
-  color: var(--color-ink);
-}
 /* A glyph's figures, a sounding or a drying height, in the chart's italic. */
 .g-chart .g-fig {
   fill: currentColor;

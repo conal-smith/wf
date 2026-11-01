@@ -278,26 +278,22 @@ test("a drag that starts on a row is the drawer's, and a tap on a row still pres
 
   // Past the line, from the middle of a row: the drawer goes, the row's
   // dialog does not open.
-  const options = (await menuRow(page, "Display options").boundingBox())!;
-  const x = options.x + options.width / 2;
-  const y = options.y + options.height / 2;
+  const settings = (await menuRow(page, "Settings").boundingBox())!;
+  const x = settings.x + settings.width / 2;
+  const y = settings.y + settings.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x + 120, y, { steps: 12 });
   await page.mouse.up();
   await expect(drawer(page)).toHaveCount(0);
   await page.waitForTimeout(300);
-  await expect(
-    page.getByRole("dialog", { name: "Display options" }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
 
   // And a tap on a row is still a press of it.
   await trigger(page).click();
   await settled(page);
-  await menuRow(page, "Display options").click();
-  await expect(
-    page.getByRole("dialog", { name: "Display options" }),
-  ).toBeVisible();
+  await menuRow(page, "Settings").click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
   // And the layers are not in the menu: they are the rail by the zoom.
   await expect(layersRail(page)).toBeHidden();
 });
@@ -617,28 +613,32 @@ test.describe("on a coarse pointer", () => {
 });
 
 /**
- * The owner's ruling of 2026-10-29: the same menu on every page, so the
- * display options, About and the tour are rows on a page that is not the
- * chart's too. From there each is the home page's address with a word on it
+ * The owner's ruling of 2026-10-29: the same menu on every page, so
+ * Settings, About and the tour are rows on a page that is not the chart's
+ * too. From there each is the home page's address with a word on it
  * (force5/src/siteNav.ts `askHref`), which the map answers and takes away.
  */
-test("the display options, About and the tour open over the map from another page's menu", async ({
+test("Settings, About and the tour open over the map from another page's menu", async ({
   page,
 }) => {
   // The AI page, loaded by itself: its own bundle, so each row is a page load.
   await page.goto("/ai");
   await trigger(page).click();
   await expect(panel(page).getByRole("link")).toHaveText(SECTIONS);
-  await expect(row(page, "Display options")).toHaveAttribute(
-    "href",
-    "/?options",
-  );
-  await row(page, "Display options").click();
-  // The display options are the chart's: it opens, with them over it.
-  await expect(
-    page.getByRole("dialog", { name: "Display options" }),
-  ).toBeVisible({ timeout: 30000 });
-  await expect(page).toHaveURL(/\/\?map$/);
+  await expect(row(page, "Settings")).toHaveAttribute("href", "/?settings");
+  await row(page, "Settings").click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(page).toHaveURL(/\/$/);
+  await page.keyboard.press("Escape");
+
+  // The display options' old address opens Settings, which took them in.
+  await page.goto("/?options");
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(page).toHaveURL(/\/$/);
   await page.keyboard.press("Escape");
 
   // About, from the AI page again: the map's information over the list.

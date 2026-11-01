@@ -133,8 +133,7 @@ export async function backToIreland(page: Page) {
 }
 
 /**
- * Change the stored rider in the page and say so, as Settings does on Save:
- * the display options no longer set the rider's weight or level.
+ * Change the stored rider in the page and say so, as Settings does on Save.
  */
 export async function setRider(page: Page, rider: Record<string, unknown>) {
   await page.evaluate((rider) => {
@@ -187,17 +186,34 @@ export async function steadyFrames(page: Page) {
     .toBeLessThan(50);
 }
 
+/** Settings (src/Settings.tsx), while it is open. */
+export const settingsDialog = (page: Page) =>
+  page.getByRole("dialog", { name: "Settings" });
+
 /**
- * Shut the map's open panel (the display options) on its dialog's X. It is
- * modal, so what it opened from is behind it.
+ * Keep what was set in Settings: its Save, in the foot on a desktop and in
+ * the head on a phone. It shuts as it saves.
  */
-export async function closePanel(page: Page) {
-  await page
-    .locator("dialog.map-panel-dialog > div:first-of-type")
+export async function saveSettings(page: Page) {
+  await settingsDialog(page)
+    .getByRole("button", { name: "Save", exact: true })
+    .click();
+  await expect(settingsDialog(page)).toHaveCount(0);
+}
+
+/** Shut Settings on its X, keeping nothing. */
+export async function closeSettings(page: Page) {
+  await settingsDialog(page)
     .getByRole("button", { name: "Close", exact: true })
     .click();
-  await expect(page.locator("dialog.map-panel-dialog")).toHaveCount(0);
+  await expect(settingsDialog(page)).toHaveCount(0);
 }
+
+/** A choice of Settings' units, by its name on the button ("Knots", "m/s", "Force"…). */
+export const unitChoice = (page: Page, name: string) =>
+  settingsDialog(page)
+    .getByRole("group", { name: "Units", exact: true })
+    .getByRole("button", { name, exact: true });
 
 /**
  * What the site menu opens over the chart, each a row of its navigation
@@ -205,11 +221,11 @@ export async function closePanel(page: Page) {
  * rail beside the zoom (src/LayerRail.tsx) rather than a row.
  */
 export type ChartTool =
-  "Settings" | "Layers" | "Display options" | "About the map" | "Take the tour";
+  "Settings" | "Layers" | "About the map" | "Take the tour";
 
 /** The dialog each row opens, by its title. */
 const DIALOG_TITLE: Partial<Record<ChartTool, string>> = {
-  "Display options": "Display options",
+  Settings: "Settings",
   "About the map": "About the map",
 };
 
@@ -227,7 +243,6 @@ export const SITE_ROWS = [
   "Chart",
   "Spot finder",
   "Settings",
-  "Display options",
   "About the map",
   "How the stars work",
   "Take the tour",
@@ -301,7 +316,7 @@ export async function closeLayers(page: Page) {
 }
 
 /**
- * Open the layers, the display options, the map's information, Settings or
+ * Open the layers, the map's information, Settings or
  * the tour as a rider does: the layers from the Layers button by the zoom,
  * the rest from the site menu.
  */
@@ -333,21 +348,21 @@ export async function setLayer(page: Page, name: string, on: boolean) {
   await expect(tile).toHaveAttribute("aria-pressed", String(on));
 }
 
-/** The display options' choice of model, by a model's id. */
+/** Settings' choice of model, by a model's id. */
 export const modelChoice = (page: Page, id: string) =>
-  page
+  settingsDialog(page)
     .getByRole("group", { name: "Model", exact: true })
     .getByRole("button", { name: modelName(id), exact: true });
 
 /**
- * Ask for a model the map draws and the stars rate, from the display options,
- * shut after. Asked, not had: a run that cannot be read leaves the rider on
- * the one they had.
+ * Ask for a model the map draws and the stars rate, from Settings, and save.
+ * Asked, not had: a run that cannot be read leaves the rider on the one they
+ * had.
  */
 export async function chooseModel(page: Page, id: string) {
-  await openFromMenu(page, "Display options");
+  await openFromMenu(page, "Settings");
   await modelChoice(page, id).click();
-  await closePanel(page);
+  await saveSettings(page);
 }
 
 /**

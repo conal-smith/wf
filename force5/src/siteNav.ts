@@ -195,23 +195,22 @@ export function tidySearch(query: URLSearchParams): string {
  */
 export const SETTINGS_PARAM = "settings";
 export const SETTINGS_HREF = `/?${SETTINGS_PARAM}`;
-/** Settings' word before 26 October 2026, still read. */
-export const OLD_SETTINGS_PARAM = "customise";
+/**
+ * Words that once asked for what is now Settings, still read: Settings'
+ * own before 26 October 2026, and the display options', which Settings took
+ * in on 1 November 2026.
+ */
+export const OLD_SETTINGS_PARAMS: readonly string[] = ["customise", "options"];
 
 /**
  * What a menu row on another page asks the map to open, as Settings does:
- * Settings, the display options, what the map means, or the tour. Each is a
- * word on the home page's address (`/?options`), read once by the map and
+ * Settings, what the map means, or the tour. Each is a word on the home
+ * page's address (`/?about`), read once by the map and
  * taken out of it (src/App.tsx), which opens the chart first where the thing
  * asked for is the chart's.
  */
-export type MapAsk = "settings" | "options" | "about" | "tour";
-export const MAP_ASKS: readonly MapAsk[] = [
-  "settings",
-  "options",
-  "about",
-  "tour",
-];
+export type MapAsk = "settings" | "about" | "tour";
+export const MAP_ASKS: readonly MapAsk[] = ["settings", "about", "tour"];
 /** The address on another page that asks the map for `ask`. */
 export const askHref = (ask: MapAsk) => `/?${ask}`;
 
@@ -222,7 +221,7 @@ export function mapAsk(url: {
 }): MapAsk | null {
   if (url.pathname !== "/") return null;
   const query = new URLSearchParams(url.search);
-  if (query.has(OLD_SETTINGS_PARAM)) return "settings";
+  if (OLD_SETTINGS_PARAMS.some((word) => query.has(word))) return "settings";
   return MAP_ASKS.find((ask) => query.has(ask)) ?? null;
 }
 
@@ -233,13 +232,7 @@ export function asksSettings(url: { pathname: string; search: string }) {
 
 /** The site menu's rows that are the same on every page. */
 export type SiteNavId =
-  | "chart"
-  | "finder"
-  | "settings"
-  | "options"
-  | "about"
-  | "stars"
-  | "tour";
+  "chart" | "finder" | "settings" | "about" | "stars" | "tour";
 
 export interface SiteNavRow {
   id: SiteNavId;
@@ -255,8 +248,8 @@ export interface SiteNavGroup {
 
 /**
  * The site's navigation, the same menu on every page, in named groups: the
- * forecast (the chart and the spot finder), the rider's settings (Settings
- * and the display options), and help (About the map, How the stars work and
+ * forecast (the chart and the spot finder), the rider's settings (Settings,
+ * everything they set in one place), and help (About the map, How the stars work and
  * the tour). The site's other sections follow under "More from wingfoil.ie",
  * Use with AI last of all (SECTIONS_GROUP_NAME). The chart is the map
  * section's own page, so the sections under these leave the map out: it is
@@ -272,10 +265,7 @@ export const SITE_NAV_GROUPS: readonly SiteNavGroup[] = [
   },
   {
     name: "Your settings",
-    rows: [
-      { id: "settings", href: SETTINGS_HREF, label: "Settings" },
-      { id: "options", href: askHref("options"), label: "Display options" },
-    ],
+    rows: [{ id: "settings", href: SETTINGS_HREF, label: "Settings" }],
   },
   {
     name: "Help",
@@ -300,10 +290,7 @@ export const SITE_NAV: readonly SiteNavRow[] = SITE_NAV_GROUPS.flatMap(
  * of the sections', or none (a spot's page, the spot index).
  */
 export type SitePageId =
-  | "chart"
-  | "finder"
-  | "stars"
-  | Exclude<SiteSectionId, "map">;
+  "chart" | "finder" | "stars" | Exclude<SiteSectionId, "map">;
 
 /**
  * Every path that `src/main.tsx` splits off from the map: everything else is

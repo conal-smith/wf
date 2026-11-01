@@ -17,11 +17,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import {
-  Maximize2,
-  Waves,
-  X,
-} from "lucide-react";
+import { Maximize2, Waves, X } from "lucide-react";
 import { Button } from "../ui/Button";
 import { SpotSearch } from "../ui/SpotSearch";
 import { StarGlyphs } from "../ui/StarGlyphs";
@@ -63,7 +59,7 @@ import { rideWedge } from "../force5/src/rideWedge";
 import { parseWindLayers, type WindLayers } from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ForecastDock, { type DockView } from "./ForecastDock";
-import MapControls, { type MapPanel } from "./MapControls";
+import MapControls from "./MapControls";
 import { LAYER_DEFAULTS } from "./layerGroups";
 import { tourOffered, tourSeen } from "./tourOffer";
 import { SiteMenu } from "../force5/src/SiteMenu";
@@ -71,7 +67,7 @@ import {
   CHART_HREF,
   FINDER_HREF,
   MAP_ASKS,
-  OLD_SETTINGS_PARAM,
+  OLD_SETTINGS_PARAMS,
   asksSettings,
   isChartAddress,
   mapAsk,
@@ -142,8 +138,6 @@ import {
   MODELS,
   type ModelId,
 } from "../force5/src/models";
-// The display options, only when asked for from the map's controls.
-const DisplayFilter = lazy(() => import("./DisplayFilter"));
 // The map's information: a chunk of its own, fetched when it first opens.
 const MapInfo = lazy(() => import("./MapInfo"));
 // Gust is a launcher in the corner until he is asked: his code comes once
@@ -229,8 +223,8 @@ const RAIL_KEY = "wingfoil.map.rail.v1";
 const AT_POINT = "@point";
 /**
  * What is open over the chart and shuts on a press away from it: the top
- * bar's search with its results, and the site menu, the layers, the options
- * or the map's information in their dialog.
+ * bar's search with its results, and the site menu, Settings or the map's
+ * information in their dialog.
  */
 const OVER_THE_CHART = "[data-spot-search-results], dialog[open]";
 
@@ -448,8 +442,6 @@ export default function App() {
     setMore(next);
     store.set(MORE_KEY, next ? "1" : "0");
   };
-  /** The display options, in a dialog over the map. */
-  const [panel, setPanel] = useState<MapPanel>(null);
   // The layers' rail, the one way to the layers: Layers opens and shuts it,
   // and this device keeps it as it was left.
   const [railOpen, setRailOpen] = useState(() => store.get(RAIL_KEY) === "1");
@@ -704,10 +696,10 @@ export default function App() {
   // Squares that cannot be read are as good as no blend at all.
   const published = blendSquares.failed ? null : pointer;
   const [wantModels, setWantModels] = useState(false);
-  // The display options list every wind model, and say which answered.
+  // Settings lists every wind model for the blend, and says which answered.
   useEffect(() => {
-    if (panel === "options") setWantModels(true);
-  }, [panel]);
+    if (guide === "settings") setWantModels(true);
+  }, [guide]);
   const { models } = useModelAvailability(
     !!pendingModel,
     undefined,
@@ -1014,7 +1006,7 @@ export default function App() {
       changePrefs({ ...prefs, rider: withRiderModel(prefs.rider, id) });
     void chooseModel(id, wanted);
   };
-  // A model picked elsewhere (the display options, the account, another tab)
+  // A model picked elsewhere (Settings, the account, another tab)
   // moves the map to it too. Once per change: a run that cannot be read leaves
   // the map on the one it had, says so, and the rider back on it (`stayOn`).
   useEffect(() => {
@@ -1569,7 +1561,6 @@ export default function App() {
   const toList = () => {
     if (pageRef.current !== "chart" || closing.current) return;
     hideDock();
-    setPanel(null);
     const el = workspace.current;
     const map = controls.current?.map;
     const to = panelRef.current;
@@ -1841,9 +1832,8 @@ export default function App() {
   // the dock, and then, from the full chart, goes back to the list.
   const escaped = useRef(() => {});
   escaped.current = () => {
-    if (panel) setPanel(null);
-    else if (pageRef.current !== "chart") return;
-    else if (focusId) clearFocus();
+    if (pageRef.current !== "chart") return;
+    if (focusId) clearFocus();
     else if (dockOpen) closeDock();
     else openList();
   };
@@ -2187,15 +2177,13 @@ export default function App() {
   };
   /**
    * What the menu asks the map to open: Settings over whichever page it is,
-   * what the map means, and on the full chart the display options or the
-   * tour, which are the chart's.
+   * what the map means, and on the full chart the tour, which is the chart's.
    */
   const answer = useCallback((ask: MapAsk) => {
     if (ask === "settings") return setGuide("settings");
     if (ask === "about") return setInfo("key");
     openChartRef.current();
-    if (ask === "options") setPanel("options");
-    else setGuide("tour");
+    setGuide("tour");
   }, []);
   // The site menu's navigation, the same on both and on every page: each row
   // is this bundle's own, in place of a page load.
@@ -2204,22 +2192,21 @@ export default function App() {
       chart: () => openChartRef.current(),
       finder: () => openListRef.current(),
       settings: () => answer("settings"),
-      options: () => answer("options"),
       about: () => answer("about"),
       tour: () => answer("tour"),
     }),
     [answer],
   );
   // Asked for by another page's menu: a page load to the home page with the
-  // word in its address (`/?options`, SETTINGS_HREF, the old /?customise),
-  // answered now and taken out of the address; or a page over the map, which
-  // hands the reader back to it first (src/PagesOverMap.tsx). Settings is
-  // open already, from the first render.
+  // word in its address (`/?about`, SETTINGS_HREF, the old /?customise and
+  // /?options), answered now and taken out of the address; or a page over the
+  // map, which hands the reader back to it first (src/PagesOverMap.tsx).
+  // Settings is open already, from the first render.
   useEffect(() => {
     const asked = mapAsk(location);
     if (asked) {
       const url = new URL(location.href);
-      for (const word of [...MAP_ASKS, OLD_SETTINGS_PARAM])
+      for (const word of [...MAP_ASKS, ...OLD_SETTINGS_PARAMS])
         url.searchParams.delete(word);
       window.history.replaceState(
         window.history.state,
@@ -2241,7 +2228,7 @@ export default function App() {
   );
   const onToggleStar = useCallback((id: string) => fav.toggle(id), [fav]);
   // A model picked on the list: the rider's from now on, as from the
-  // display options or the spot page, and the map moves to it (above).
+  // Settings or the spot page, and the map moves to it (above).
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
   const onFinderModel = useCallback((id: string) => {
@@ -2317,9 +2304,7 @@ export default function App() {
             ? { to: "spots", href: FINDER_HREF, onClick: openList }
             : { to: "chart", href: CHART_HREF, onClick: openChart }
         }
-        menu={
-          <SiteMenu current={onChart ? "chart" : "finder"} go={menuGo} />
-        }
+        menu={<SiteMenu current={onChart ? "chart" : "finder"} go={menuGo} />}
       />
     </div>
   );
@@ -2529,8 +2514,6 @@ export default function App() {
                   <MapControls
                     onZoomIn={() => controls.current?.zoomIn()}
                     onZoomOut={() => controls.current?.zoomOut()}
-                    open={panel}
-                    onOpen={setPanel}
                     rail={railOpen}
                     onLayers={pressLayers}
                     notes={{
@@ -2539,17 +2522,6 @@ export default function App() {
                     }}
                     layoutKey={`${dockOpen ? dockHeight : 0}`}
                     onCollapse={split ? openList : undefined}
-                    options={() => (
-                      <Suspense fallback={null}>
-                        <DisplayFilter
-                          prefs={prefs}
-                          onChange={changePrefs}
-                          models={models.filter(
-                            (model) => model.entry.kind === "wind",
-                          )}
-                        />
-                      </Suspense>
-                    )}
                     wind={wind}
                     onWind={chooseWind}
                     layers={layers}
@@ -2768,6 +2740,7 @@ export default function App() {
           <Settings
             open={guide === "settings"}
             prefs={prefs}
+            models={models.filter((model) => model.entry.kind === "wind")}
             onClose={() => setGuide(null)}
             onSave={(next) => {
               changePrefs(next);
@@ -2793,7 +2766,6 @@ export default function App() {
               onView={setView}
               focusStyle={focusStyle}
               onFocusStyle={setFocusStyle}
-              onPanel={setPanel}
               layers={railOpen}
               onLayers={setRailOpen}
               onEnd={(customise) => {

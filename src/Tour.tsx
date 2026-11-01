@@ -18,7 +18,6 @@ import { createPortal } from "react-dom";
 import type { FocusStyle } from "../force5/src/focus";
 import { Button } from "../ui/Button";
 import type { DockView } from "./ForecastDock";
-import type { MapPanel } from "./MapControls";
 
 /** A box with rounded corners of radius `r`, as one SVG path. */
 function roundBox(x: number, y: number, w: number, h: number, r: number) {
@@ -48,7 +47,6 @@ export interface TourProps {
   onView: (view: DockView) => void;
   focusStyle: FocusStyle;
   onFocusStyle: (style: FocusStyle) => void;
-  onPanel: (panel: MapPanel) => void;
   /** The layers' rail, open or shut. */
   layers: boolean;
   onLayers: (open: boolean) => void;
@@ -191,7 +189,7 @@ const STEPS: Step[] = [
   {
     id: "menu",
     title: "The menu",
-    body: "The menu has the spot finder, which lists the best places to ride this week. It also has Settings, the display options, a guide to the map, and this tour.",
+    body: "The menu has the spot finder, which lists the best places to ride this week. It also has Settings, a guide to the map, and this tour.",
     target: () => pad(box(document.querySelector(TARGETS.menu)), 4),
   },
   {
@@ -231,7 +229,6 @@ export default function Tour(props: TourProps) {
 
   const end = (customise: boolean) => {
     const p = live.current;
-    p.onPanel(null);
     p.onLayers(was.layers);
     p.onView(was.view);
     p.onFocusStyle(was.focusStyle);
@@ -246,7 +243,6 @@ export default function Tour(props: TourProps) {
   useEffect(() => {
     const p = live.current;
     // Back or on, whatever an earlier card opened that this one does not need is put away.
-    p.onPanel(null);
     if (step.id !== "layers") p.onLayers(was.layers);
     if (step.id !== "blend") p.onView(was.view);
     if (at < 3) p.onFocusStyle(was.focusStyle);
@@ -279,7 +275,14 @@ export default function Tour(props: TourProps) {
     return () => document.removeEventListener("keydown", key, true);
   }, []);
 
-  useEffect(() => next.current?.focus({ preventScroll: true }), [at]);
+  // The card holds the focus as it opens, with no ring round anything; from
+  // there Tab reaches Skip and Next. Once the keys are on the card's buttons,
+  // each step hands the focus on to its Next, so Enter goes on through.
+  useEffect(() => {
+    const inCard = card.current?.contains(document.activeElement);
+    const to = inCard && document.activeElement !== card.current;
+    (to ? next.current : card.current)?.focus({ preventScroll: true });
+  }, [at]);
 
   // The card beside its target, clear of it where there is room.
   useLayoutEffect(() => {
@@ -363,6 +366,8 @@ export default function Tour(props: TourProps) {
       <div
         ref={card}
         className="tour-card"
+        // Focusable, to hold the focus as the tour opens.
+        tabIndex={-1}
         role="dialog"
         aria-modal="false"
         aria-labelledby="tour-card-t"
@@ -391,9 +396,7 @@ export default function Tour(props: TourProps) {
               {STEPS.slice(0, COUNT).map((s, i) => (
                 <i
                   key={s.id}
-                  className={
-                    i === at ? "is-at" : i < at ? "is-on" : undefined
-                  }
+                  className={i === at ? "is-at" : i < at ? "is-on" : undefined}
                 />
               ))}
             </span>

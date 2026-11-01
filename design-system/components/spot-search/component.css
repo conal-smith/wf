@@ -4,8 +4,8 @@
  *
  * The top bar's search: a field that finds a riding place as the rider types,
  * an ARIA combobox with a list of results under it. The field is a soft grey
- * pill that widens a little and comes onto the ground, with an ink edge,
- * while it is in use. The results are a sheet under it: groups with a small
+ * pill that widens a little and lifts a step while it is in use, with no
+ * edge and no ring. The results are a sheet under it: groups with a small
  * grey name, each spot its name in Inter semibold, its county under it, the
  * typed letters underlined in the accent.
  *
@@ -38,8 +38,7 @@
 .wf-spot-search__field:focus-within,
 .wf-spot-search__field.is-focus {
   width: 400px;
-  border-color: var(--sem-color-ink);
-  background: var(--sem-color-ground);
+  background: var(--sem-color-raised);
 }
 @media (prefers-reduced-motion: reduce) {
   .wf-spot-search__field {
@@ -106,7 +105,9 @@
   border-radius: var(--sem-radius-surface);
   background: var(--sem-color-ground);
   color: var(--sem-color-ink);
-  box-shadow: var(--sem-shadow-sheet), 0 0 0 var(--sem-rule-hairline) var(--sem-color-line);
+  box-shadow:
+    var(--sem-shadow-sheet),
+    0 0 0 var(--sem-rule-hairline) var(--sem-color-line);
 }
 /* A static rendering: the sheet in the flow, under its field. */
 .wf-spot-search__panel--static {

@@ -22,10 +22,12 @@ import {
   offWords,
   ratingIsOurs,
   resetToOurs,
+  withBlendModel,
   withDownwind,
   withShore,
   withUpwind,
 } from "./settingsDraft";
+import { chosenModel } from "../force5/src/lead";
 import { offerTour, TOUR_KEY, TOUR_TEST_KEY } from "./tourOffer";
 
 const NOW = new Date("2026-10-23T12:00:00Z");
@@ -222,6 +224,48 @@ describe("saving", () => {
     expect(next.rider.custom).toBeUndefined();
     // In knots, the same numbers are the rider's own.
     expect(ratingIsOurs(draft.custom, "kn")).toBe(false);
+  });
+});
+
+describe("the forecast's hours, model and blend", () => {
+  it("start as the rider has them, and save with the rest", () => {
+    const before = prefs();
+    const draft = draftOf(before);
+    expect(draft.nightHours).toBe(before.nightHours);
+    expect(draft.model).toBe(chosenModel(before.rider.starsFrom));
+    expect(draft.blendModels).toEqual(before.blendModels);
+
+    const next = applyDraft(
+      before,
+      {
+        ...withBlendModel(draft, "gfs", false),
+        nightHours: "hide",
+        model: "icon-eu",
+      },
+      NOW,
+    );
+    expect(next.nightHours).toBe("hide");
+    expect(chosenModel(next.rider.starsFrom)).toBe("icon-eu");
+    expect(next.blendModels).not.toContain("gfs");
+    // None of them is the rating: the stars' own stamp stays.
+    expect(next.starsUpdatedAt).toBe(before.starsUpdatedAt);
+  });
+  it("leave a rider who never picked a model on ours", () => {
+    const before = prefs();
+    expect(applyDraft(before, draftOf(before), NOW).rider).toEqual(
+      before.rider,
+    );
+  });
+  it("tick a blend model once, and untick it", () => {
+    const draft = { ...draftOf(prefs()), blendModels: ["harmonie"] };
+    expect(withBlendModel(draft, "ecmwf", true).blendModels).toEqual([
+      "harmonie",
+      "ecmwf",
+    ]);
+    expect(withBlendModel(draft, "harmonie", true).blendModels).toEqual([
+      "harmonie",
+    ]);
+    expect(withBlendModel(draft, "harmonie", false).blendModels).toEqual([]);
   });
 });
 

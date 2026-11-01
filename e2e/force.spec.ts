@@ -1,12 +1,13 @@
 /**
- * Force (Beaufort) as the rider's wind unit: chosen in Display options, it is
+ * Force (Beaufort) as the rider's wind unit: chosen in Settings, it is
  * the old charts' glyph and the force wherever the wind is shown in the
  * rider's units (the dock, the loupe's foot box, the spot page), and a scale
  * (the blend's axis) stays in knots.
  */
 import {
   chooseSpot,
-  closePanel,
+  saveSettings,
+  unitChoice,
   expect,
   openFromMenu,
   test,
@@ -22,12 +23,11 @@ async function inForce(page: Page) {
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
     timeout: 30000,
   });
-  await openFromMenu(page, "Display options");
-  const force = page.locator('[data-units="bft"]');
-  await expect(force).toHaveText("Force");
+  await openFromMenu(page, "Settings");
+  const force = unitChoice(page, "Force");
   await force.click();
   await expect(force).toHaveAttribute("aria-pressed", "true");
-  await closePanel(page);
+  await saveSettings(page);
 }
 
 test("in Force the dock and the loupe draw the force's glyph and number", async ({
@@ -71,6 +71,8 @@ test("in Force the spot page's figures are forces, written F4", async ({
   // Now's wind, and the week's ranges, in forces; no knots anywhere.
   const now = page.locator("[data-now]");
   await expect(now).toContainText(/F\d/, { timeout: 30000 });
-  await expect(page.locator("[data-day-card]").nth(1)).toContainText(/F\d+–F\d+/);
+  await expect(page.locator("[data-day-card]").nth(1)).toContainText(
+    /F\d+–F\d+/,
+  );
   await expect(now).not.toContainText(/\bkn\b/);
 });

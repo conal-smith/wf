@@ -60,12 +60,14 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   await expect(
     settings.getByRole("heading", { name: "Settings", exact: true }),
   ).toBeVisible();
-  // One page, in four parts: no steps, no spots, no summary.
+  // One page, in five parts, the forecast's last: no steps, no spots, no
+  // summary.
   await expect(settings.locator(".st-h")).toHaveText([
     "About you",
     "Wind strength",
     "Wind direction",
     "Riding upwind",
+    "Forecast",
   ]);
   for (const name of ["Next", "Back", "Skip"])
     await expect(
@@ -93,6 +95,9 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   await expect(settings.locator(".st-row .st-kick")).toHaveText([
     "Weight",
     "Units",
+    "Hours",
+    "Model",
+    "Models in the blend",
   ]);
   // Everything is ours to start: nothing to reset.
   const reset = settings.getByRole("button", { name: "Reset to ours" });

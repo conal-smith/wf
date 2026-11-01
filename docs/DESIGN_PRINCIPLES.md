@@ -174,7 +174,10 @@ along the inline one.
 **Focus.** One ring, for the keyboard only: 2px of `focus`, the chart's
 magenta, 2px clear of the control (`RING` in `ui/tv.ts`), on every control. A
 field whose box holds the focus takes an ink edge and a soft ring of the
-accent instead. Nothing wears the ring by default.
+accent instead; a search field only lifts a step (`raised`), with no edge or
+ring. Nothing wears the ring by default: a dialog, the menu's drawer opened
+with a mouse or a finger, and the tour's card take the focus themselves as
+they open, so nothing in them is ringed before a key is pressed.
 
 **Motion.** Short and functional: a dialog arriving, a sheet rising, the menu
 sliding in, a placeholder breathing. Every one is skipped for a reader who asks
@@ -672,6 +675,17 @@ sold price is struck through in `ink-muted`; "new" on a listing and a count of
 new posts are marks of the kit; a reply's name is plain. The red stays as the
 accent (`pen`, `pen-ink`) for the line at now and what is off. The phone app
 (`mobile/`) follows separately.
+
+**2026-11-01 — One Settings, and no ring until a key is pressed.** The owner:
+"a single settings page is enough". The display options (units, the hours,
+the model and the blend's models) are gone as a dialog, a menu row and a
+glyph; Settings took them in as its fifth part, Forecast, across the foot of
+the dialog on a desktop, saved with the rest by its Save. The menu's middle
+group is Settings alone, and the old address `/?options` opens Settings. The
+owner also did not want the magenta ring round the first row of the menu, a
+dialog's close button or the search box the moment they appeared: the boxes
+hold the focus themselves (see Focus, above), and the search lifts a step
+instead of taking an edge.
 
 ---
 

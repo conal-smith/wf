@@ -10,10 +10,12 @@
   max-height: calc(100dvh - 32px);
 }
 /* The kit's head (the title and the close) and its foot keep still; the body
-   holds the parts, which scroll in .st-body. */
+   holds the parts, which scroll in .st-body. Both grow from their content's
+   height, not from none (`flex: 1` is a basis of 0), so neither can fold to
+   nothing in a box with no height of its own, only shrink to scroll. */
 .st > div:nth-of-type(2) {
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 0;
   min-height: 0;
@@ -21,7 +23,7 @@
   padding-bottom: 0;
 }
 .st-body {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   padding: 0 2px;
@@ -643,8 +645,55 @@
   color: var(--color-ink-2);
 }
 
+/* ---- 5. the forecast: the hours, the model and the blend's models, each
+   its name over it ---- */
+.st-forecast {
+  display: grid;
+  gap: 18px;
+}
+.st-forecast .st-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+.st-note {
+  max-width: 44ch;
+  margin: 0;
+  font: var(--text-body) / 1.4 var(--font-body);
+  color: var(--color-ink-muted);
+}
+.st-models {
+  display: grid;
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.st-models label {
+  width: 100%;
+}
+.st-models small {
+  margin-left: 8px;
+  font: var(--text-label) var(--font-body);
+  color: var(--color-ink-muted);
+}
+.st-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  vertical-align: 1px;
+}
+.st-models label:has(:disabled) .st-swatch {
+  opacity: 0.35;
+}
+
 /* ---- a desktop: two by two, about you beside the wind strength, the wind
-   direction beside riding upwind ---- */
+   direction beside riding upwind; the forecast across under them, its three
+   choices side by side ---- */
 @media (min-width: 1000px) {
   .st-body {
     display: grid;
@@ -653,6 +702,13 @@
   }
   .st-part:nth-child(2) {
     border-top: 0;
+  }
+  .st-part.is-forecast {
+    grid-column: 1 / -1;
+  }
+  .st-forecast {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 40px;
   }
   .st-shore {
     grid-template-columns: 220px 1fr;

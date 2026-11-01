@@ -3,7 +3,7 @@
  * the rider's own) with the way to Settings, where they are changed; the
  * weight and wings behind a fold that opens in place, which size the wing
  * and never move a star; and the rider's model behind another. The same
- * rider as the dock's Display options, read and written through the same
+ * rider as Settings', read and written through the same
  * preference (force5.prefs.v1) and the same validation, so a change here is
  * the rider the map rates for too.
  *
@@ -89,7 +89,7 @@ export function RiderSwitch({
   const open = fold === "rider";
   const model = chosenModel(rider.starsFrom);
   // The fields keep what is being typed ("5." on the way to "5.5"); the rider
-  // only ever holds what parses, as in Display options.
+  // only ever holds what parses, as in Settings.
   const [weight, setWeight] = useState(
     rider.weightKg === null ? "" : String(rider.weightKg),
   );

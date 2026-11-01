@@ -467,11 +467,6 @@ export const settings: GlyphDef = [
   { cx: 15.5, cy: 12, r: 2.3, fill: "paper" },
   { cx: 10, cy: 17, r: 2.3, fill: "paper" },
 ];
-/** The display options: three rules, each with its tick. */
-export const displayOptions: GlyphDef = [
-  { d: "M3 6H21M3 12H21M3 18H21", width: 1 },
-  { d: "M14.5 3.5V8.5M7.5 9.5V14.5M16.5 15.5V20.5", width: 2.4 },
-];
 /** About: an "i" in a ring. */
 export const about: GlyphDef = [
   { cx: 12, cy: 12, r: 9 },

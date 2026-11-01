@@ -71,6 +71,11 @@ input:focus-visible,
   outline: 3px solid var(--color-focus);
   outline-offset: 3px;
 }
+/* A dialog or the menu's drawer holds the focus itself as it opens
+   (ui/Dialog.tsx `syncModal`): the box wears no ring for that. */
+dialog[tabindex]:focus-visible {
+  outline: none;
+}
 h1,
 h2,
 p {

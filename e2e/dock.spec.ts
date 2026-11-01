@@ -1,13 +1,16 @@
 import {
   backToIreland,
   chooseSpot,
-  closePanel,
+  closeSettings,
   expect,
   menuRow,
   modelChoice,
   moreRows,
   openFromMenu,
+  saveSettings,
+  settingsDialog,
   setRider,
+  unitChoice,
   steadyFrames,
   test,
   type Locator,
@@ -442,13 +445,13 @@ test("the night's hours can be left out, from last light to first, and stay so",
   await expect(
     page.locator(".dock tr.tt-hour td.night").first(),
   ).toBeAttached();
-  await openFromMenu(page, "Display options");
+  await openFromMenu(page, "Settings");
   const choice = page.getByRole("group", { name: "Hours in the forecast" });
   await expect(
     choice.getByRole("button", { name: "Day and night" }),
   ).toHaveAttribute("aria-pressed", "true");
   await choice.getByRole("button", { name: "First to last light" }).click();
-  await closePanel(page);
+  await saveSettings(page);
   // Brandon's lit hours alone: from civil dawn to civil dusk, each day.
   const nights = dayNights(
     52.276,
@@ -494,12 +497,12 @@ test("the night's hours can be left out, from last light to first, and stay so",
   await chooseSpot(page, "brandon");
   await expect(hours).toHaveCount(lit.length, { timeout: 30000 });
   // And back round the clock.
-  await openFromMenu(page, "Display options");
+  await openFromMenu(page, "Settings");
   await page
     .getByRole("group", { name: "Hours in the forecast" })
     .getByRole("button", { name: "Day and night" })
     .click();
-  await closePanel(page);
+  await saveSettings(page);
   await expect(hours).toHaveCount(sampleStrip.length);
 });
 
@@ -698,37 +701,28 @@ test("a starred spot is kept on this device: the dock and the spot finder's favo
   );
 });
 
-test("units and the blend's models are display options, kept on reload; the rider is Settings'", async ({
+test("units, the hours, the model and the blend's models are Settings', with the rider, kept on reload", async ({
   page,
 }) => {
   await openDock(page);
   const wing = () =>
     page.locator(".dock tr.tt-wing td[data-i]").allTextContents();
   const before = await wing();
-  // From the map's controls now, not the dock's head.
-  await openFromMenu(page, "Display options");
-  const options = page.locator("#map-options");
-  // No weight, no level and no way to the rider's own stars: those are
-  // Settings', from the site menu.
-  await expect(options.locator('[data-rider="weight"]')).toHaveCount(0);
-  // Nor the wings.
-  await expect(options.locator('[data-rider="wings"]')).toHaveCount(0);
-  await expect(options.getByText("Wings you own")).toHaveCount(0);
-  await expect(
-    options.getByRole("group", { name: "Riding level" }),
-  ).toHaveCount(0);
-  await expect(
-    options.getByRole("button", { name: /^(Customise|Settings|Edit custom)$/ }),
-  ).toHaveCount(0);
-  await expect(options.getByRole("heading")).toHaveText([
-    "Units",
-    "Hours",
-    "Model",
-    "Models in the blend",
+  // One place for all of it: Settings, from the site menu.
+  await openFromMenu(page, "Settings");
+  const settings = settingsDialog(page);
+  await expect(settings.locator(".st-h")).toHaveText([
+    "About you",
+    "Wind strength",
+    "Wind direction",
+    "Riding upwind",
+    "Forecast",
   ]);
-  await page.locator('[data-units="m/s"]').click();
-  await page.locator('input[data-model-toggle="gfs"]').uncheck();
-  await closePanel(page);
+  await unitChoice(page, "m/s").click();
+  const gfs = settings.locator('input[data-model-toggle="gfs"]');
+  await expect(gfs).toBeEnabled({ timeout: 30000 });
+  await gfs.uncheck();
+  await saveSettings(page);
   await expect(page.locator(".dk-labs")).toContainText("m/s");
   // A heavier rider, as Settings saves one, takes a bigger wing for the
   // same wind, hour by hour.
@@ -752,11 +746,8 @@ test("units and the blend's models are display options, kept on reload; the ride
   await expect(page.locator(".dk-labs")).toContainText("m/s", {
     timeout: 30000,
   });
-  await openFromMenu(page, "Display options");
-  await expect(page.locator('[data-units="m/s"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await openFromMenu(page, "Settings");
+  await expect(unitChoice(page, "m/s")).toHaveAttribute("aria-pressed", "true");
   await expect(
     page.locator('input[data-model-toggle="gfs"]'),
   ).not.toBeChecked();
@@ -823,14 +814,14 @@ async function selectFrom(page: Page, model: string): Promise<string> {
   return at!;
 }
 
-/** Pick the rider's one model in Display options. */
+/** Pick the rider's one model in Settings, and save. */
 async function pickModel(page: Page, model: string) {
-  await openFromMenu(page, "Display options");
-  await page
+  await openFromMenu(page, "Settings");
+  await settingsDialog(page)
     .getByRole("group", { name: "Model", exact: true })
     .getByRole("button", { name: model, exact: true })
     .click();
-  await closePanel(page);
+  await saveSettings(page);
 }
 
 test("the stars come from one model, the rider's: the hours name it, and the map draws it and follows", async ({
@@ -920,8 +911,8 @@ test("one model to pick and no fallback to set, and a blend of the rider's own t
     timeout: 30000,
   });
   const lightsBefore = await lightRatings(page);
-  await openFromMenu(page, "Display options");
-  const panel = page.locator("#map-options");
+  await openFromMenu(page, "Settings");
+  const panel = settingsDialog(page);
   // One choice: no "Stars from", nothing for when the run ends, no spot's own.
   await expect(panel).not.toContainText(/stars from/i);
   await expect(panel.getByRole("group", { name: /ends$/ })).toHaveCount(0);
@@ -937,7 +928,7 @@ test("one model to pick and no fallback to set, and a blend of the rider's own t
     await expect(box).toBeEnabled({ timeout: 30000 });
     await box.uncheck();
   }
-  await closePanel(page);
+  await saveSettings(page);
   // The lights are the stars, and the stars are HARMONIE's whatever the blend.
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0);
   expect(await lightRatings(page)).toEqual(lightsBefore);
@@ -951,14 +942,13 @@ test("one model to pick and no fallback to set, and a blend of the rider's own t
   await expect(chart.locator('[data-model="icon-eu"]')).toHaveCount(0);
 });
 
-test("the display options open over the dimmed map from the site menu, one panel at a time", async ({
+test("Settings is the one place for how the forecast is shown: no display options on the chart or in the menu", async ({
   page,
 }) => {
   await openDock(page);
   const trigger = page.getByRole("button", { name: "Site menu" });
-  const panel = page.locator("#map-options");
-  // The map's controls are zoom and the layers; the options are in the
-  // menu, beside Settings.
+  const settings = settingsDialog(page);
+  // The map's controls are zoom and the layers, and nothing to set.
   const names = await page
     .locator(".zbox button")
     .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
@@ -969,34 +959,38 @@ test("the display options open over the dimmed map from the site menu, one panel
   // From the keyboard: open, into it, and Escape hands focus back.
   await trigger.focus();
   await page.keyboard.press("Enter");
-  // Past the chart, the spot finder and Settings.
-  for (let i = 0; i < 3; i++) await page.keyboard.press("Tab");
-  await expect(menuRow(page, "Display options")).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect(panel).toBeVisible();
-  await expect(trigger).toHaveAttribute("aria-expanded", "false");
-  // A modal: the focus is in it from the start.
+  await expect(menuRow(page, "Settings")).toBeVisible();
   await expect(
-    page.getByRole("dialog", { name: "Display options" }),
-  ).toBeVisible();
+    page
+      .getByRole("dialog", { name: "Site menu" })
+      .getByText("Display options"),
+  ).toHaveCount(0);
+  // Past the chart and the spot finder.
+  for (let i = 0; i < 2; i++) await page.keyboard.press("Tab");
+  await expect(menuRow(page, "Settings")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(settings).toBeVisible();
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  // A modal: the focus is in it from the start, on the box itself and not
+  // ringing its close button.
+  await expect(settings).toBeFocused();
   await page.keyboard.press("Tab");
   expect(
-    await page.evaluate(() =>
-      document.querySelector("#map-options")!.contains(document.activeElement),
+    await page.evaluate(
+      () => !!document.activeElement?.closest("dialog[open]"),
     ),
   ).toBe(true);
   await page.keyboard.press("Escape");
-  await expect(panel).toHaveCount(0);
+  await expect(settings).toHaveCount(0);
   await expect(trigger).toBeFocused();
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
   // A press on the dimmed map round it shuts it, as its X does, and the
   // focus goes back to the menu's trigger.
-  await openFromMenu(page, "Display options");
+  await openFromMenu(page, "Settings");
   await page.mouse.click(4, 400);
-  await expect(panel).toHaveCount(0);
-  await openFromMenu(page, "Display options");
-  await closePanel(page);
-  await expect(panel).toHaveCount(0);
+  await expect(settings).toHaveCount(0);
+  await openFromMenu(page, "Settings");
+  await closeSettings(page);
   await expect(trigger).toBeFocused();
 });
 
@@ -1006,7 +1000,8 @@ test("the blend draws every model that covers the spot, on the strip's hours", a
   await openDock(page);
   await page.locator(".dock").getByRole("button", { name: "Blend" }).click();
   const chart = page.locator(".dock .blend-chart");
-  await expect(chart).toBeVisible();
+  // Every model's manifest and square is read first, as in the tests above.
+  await expect(chart).toBeVisible({ timeout: 30000 });
   expect(await chart.locator(".model-line").count()).toBeGreaterThan(3);
   // The tide is not drawn behind it, where its curve would read as one more
   // model's line. The chart's label column is its unit and its scale,
@@ -1246,12 +1241,12 @@ test("an hour past the map's model hands the map to the run that reaches it", as
     page.getByRole("button", { name: /Show ECMWF on the map/ }),
   ).toHaveCount(0);
   // The reader's choice is still HARMONIE.
-  await openFromMenu(page, "Display options");
+  await openFromMenu(page, "Settings");
   await expect(modelChoice(page, "harmonie")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await closePanel(page);
+  await closeSettings(page);
   // Back and forth across the seam: both runs are in hand, so no manifest is
   // read again, and the map is HARMONIE's within its hours.
   const manifests: string[] = [];

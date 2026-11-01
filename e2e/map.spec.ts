@@ -3,12 +3,13 @@ import {
   chooseModel,
   chooseSpot,
   closeLayers,
-  closePanel,
+  closeSettings,
   expect,
   layersRail,
   modelChoice,
   openFromMenu,
   setRider,
+  settingsDialog,
   steadyFrames,
   test,
   type Page,
@@ -79,11 +80,11 @@ async function openWater(page: Page) {
   }, box);
 }
 
-/** Which model the display options say the map and the stars are. */
+/** Which model Settings says the map and the stars are. */
 async function expectModel(page: Page, id: string) {
-  await openFromMenu(page, "Display options");
+  await openFromMenu(page, "Settings");
   await expect(modelChoice(page, id)).toHaveAttribute("aria-pressed", "true");
-  await closePanel(page);
+  await closeSettings(page);
 }
 
 test("the chart opens on paper: the head, the controls, the lights and a flush dock", async ({
@@ -840,11 +841,11 @@ for (const device of [
       return at!;
     };
     /**
-     * The dimmed map beside an open panel's dialog, off its box: to its left,
-     * or above it where it spans the width, as a phone's sheet does.
+     * The dimmed map beside an open dialog, off its box: to its left, or
+     * above it where it spans the width, as a phone's sheet does.
      */
     const backdrop = async (page: Page) => {
-      const box = await page.locator("dialog.map-panel-dialog").boundingBox();
+      const box = await page.locator("dialog[open]").boundingBox();
       expect(box).not.toBeNull();
       if (box!.x >= 8) return { x: box!.x / 2, y: box!.y + box!.height / 2 };
       expect(box!.y).toBeGreaterThanOrEqual(8);
@@ -867,17 +868,21 @@ for (const device of [
       // A finger on the screen, the suite's only tap on the chart: the
       // sheet, the spot and the point in turn. The desktop's tests below go
       // through every case.
-      test("a tap shuts the display options and picks nothing, then lets go of the spot, then picks the point", async ({
+      test("a tap shuts the site menu and picks nothing, then lets go of the spot, then picks the point", async ({
         page,
       }) => {
         await openOn(page, "keel", "Keel Beach");
         const map = page.locator(".map-canvas");
-        // The sheet spans the width: the tap lands on the dimmed map above.
-        await openFromMenu(page, "Display options");
-        await press(page, await backdrop(page));
+        // The drawer leaves a strip of the dimmed map beside it: the tap
+        // lands there.
+        const menu = page.getByRole("button", { name: "Site menu" });
+        await menu.click();
         await expect(
-          page.getByRole("dialog", { name: "Display options" }),
-        ).toHaveCount(0);
+          page.getByRole("dialog", { name: "Site menu" }),
+        ).toBeVisible();
+        await page.waitForTimeout(500);
+        await press(page, await backdrop(page));
+        await expect(menu).toHaveAttribute("aria-expanded", "false");
         await page.waitForTimeout(800);
         await expect(dockName(page)).toHaveText("Keel Beach");
         await expect(page).toHaveURL(/\/\?spot=keel$/);
@@ -911,13 +916,10 @@ for (const device of [
         await expect(map).toHaveClass(/is-focus/);
         await expect(page.locator(".pick-mark")).toHaveCount(0);
       };
-      // The display options are modal: the press lands on the dimmed map
-      // round them.
-      await openFromMenu(page, "Display options");
+      // Settings is modal: the press lands on the dimmed map round it.
+      await openFromMenu(page, "Settings");
       await press(page, await backdrop(page));
-      await expect(
-        page.getByRole("dialog", { name: "Display options" }),
-      ).toHaveCount(0);
+      await expect(settingsDialog(page)).toHaveCount(0);
       await unmoved();
       // The menu's drawer stands at the left edge: the press lands on the
       // dimmed map beside it, found before it covers the chart.
@@ -952,11 +954,9 @@ for (const device of [
         await expect(page.locator(".spot-marker.sel")).toHaveCount(0);
         await expect(page).toHaveURL(/\/\?map$/);
       };
-      await openFromMenu(page, "Display options");
+      await openFromMenu(page, "Settings");
       await press(page, await backdrop(page));
-      await expect(
-        page.getByRole("dialog", { name: "Display options" }),
-      ).toHaveCount(0);
+      await expect(settingsDialog(page)).toHaveCount(0);
       await none();
       // Shut, the chart is the reader's again: a press picks its point.
       await press(page, await clear(page));
@@ -1046,11 +1046,9 @@ test("Escape shuts what is open over the chart first, then lets go of the chosen
   await expect(dockName).toHaveText("Keel Beach", { timeout: 30000 });
   const map = page.locator(".map-canvas");
   await expect(map).toHaveClass(/is-focus/, { timeout: 30000 });
-  await openFromMenu(page, "Display options");
+  await openFromMenu(page, "Settings");
   await page.keyboard.press("Escape");
-  await expect(
-    page.getByRole("dialog", { name: "Display options" }),
-  ).toHaveCount(0);
+  await expect(settingsDialog(page)).toHaveCount(0);
   await expect(map).toHaveClass(/is-focus/);
   await expect(dockName).toHaveText("Keel Beach");
   const menu = page.getByRole("button", { name: "Site menu" });
