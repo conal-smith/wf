@@ -133,9 +133,9 @@ describe("the PNG codec", () => {
     );
     expect([shot.width, shot.height, shot.channels]).toEqual([1440, 1000, 3]);
     expect(shot.data.length).toBe(1440 * 1000 * 3);
-    // The corner of the chart's neatline, in ink. What this test is about is
+    // The top bar's corner, on the dark ground. What this test is about is
     // the codec, not the palette: a pixel nothing here wrote, read back.
-    expect([...shot.data.subarray(0, 3)]).toEqual([0x1a, 0x1d, 0x21]);
+    expect([...shot.data.subarray(0, 3)]).toEqual([0x0c, 0x0c, 0x0e]);
   });
 });
 
