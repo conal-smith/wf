@@ -28,12 +28,10 @@ LAT = math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * Y / 2 ** 13))))
 QUARTERS = {(X - 1, Y - 1): (255, 0, 0), (X, Y - 1): (0, 0, 255),
             (X - 1, Y): (0, 255, 0), (X, Y): (255, 255, 0)}
 
-
 def png(colour, alpha=255):
     buf = io.BytesIO()
     Image.new("RGBA", (512, 512), colour + (alpha,)).save(buf, "PNG")
     return buf.getvalue()
-
 
 class GeometryTest(unittest.TestCase):
     def test_world_pixels(self):
@@ -63,7 +61,6 @@ class GeometryTest(unittest.TestCase):
         self.assertIsNone(spots.area_for([AREA], -6, 54))
         self.assertEqual(spots.area_for([dict(AREA, cover=None)], -6, 54)["id"], "ireland")
 
-
 @unittest.skipUnless(Image, "Pillow is not installed")
 class PictureTest(unittest.TestCase):
     def test_centred_on_the_place(self):
@@ -89,7 +86,6 @@ class PictureTest(unittest.TestCase):
         self.assertEqual(image.getpixel((10, 10)), spots.PAPER)
         r, g, b = image.getpixel((190, 90))
         self.assertTrue(abs(r - 0xF3 / 2) < 3 and abs(b - 0xE3 / 2) < 3)
-
 
 class PublishTest(unittest.TestCase):
     def write_set(self, folder, names):
@@ -133,6 +129,25 @@ class PublishTest(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 publish.spots_set(tmp)
 
+@unittest.skipUnless(Image, "Pillow is not installed")
+class Enhance(unittest.TestCase):
+    """A hazy picture comes out clearer, the same size, and without a cast."""
+
+    def test_clearer_and_true(self):
+        import numpy as np
+        rng = np.random.default_rng(1)
+        base = rng.uniform(0.35, 0.65, (60, 120, 1)) * np.array([0.8, 1.0, 0.95])
+        hazy = Image.fromarray((base * 255).astype(np.uint8))
+        out = spots.enhance(hazy)
+        self.assertEqual(out.size, hazy.size)
+        a = np.asarray(hazy).astype(float)
+        b = np.asarray(out).astype(float)
+        self.assertGreater(b.std(), a.std() * 1.2)
+        # More colour, but no cast: the channels keep their order, and each
+        # moves away from the grey the way it already leant.
+        ma, mb = a.mean(axis=(0, 1)), b.mean(axis=(0, 1))
+        self.assertEqual(list(np.argsort(ma)), list(np.argsort(mb)))
+        self.assertTrue(np.all(np.sign(ma - ma.mean()) == np.sign(mb - mb.mean())))
 
 if __name__ == "__main__":
     unittest.main()
