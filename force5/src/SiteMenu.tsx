@@ -260,11 +260,19 @@ export function SiteNav({
             <ChartGlyph glyph={ROW_GLYPH[id]} />
           </span>
           {label}
+          {/* Said in words for the eye; a screen reader hears the page
+              you are on from `aria-current`, and the row's name stays the
+              page's own. */}
           {here ? (
-            <span className={s.end()}>You’re here</span>
+            <span className={s.end()} aria-hidden="true">
+              You’re here
+            </span>
           ) : (
             preview && (
-              <span className={s.end({ className: s.preview() })}>
+              <span
+                className={s.end({ className: s.preview() })}
+                aria-hidden="true"
+              >
                 Preview
               </span>
             )
