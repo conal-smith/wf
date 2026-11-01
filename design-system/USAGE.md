@@ -27,9 +27,16 @@ node scripts/build-catalog.mjs  # regenerate catalog/index.html after component/
 - Never hard-code a color. Every color comes from a `--sem-*` variable; each
   token's meaning (`role`, `use`, `doNotUse`) is documented in
   `foundations/tokens.tokens.json`, so pick by meaning, not by looks.
-- Dark mode: set `data-mode="dark"` on the document element or any container.
-  Light is the default (`:root`). Never write per-mode style overrides —
-  consume the semantic variables and both modes come for free.
+- Dark and light: the product's default theme is **dark**, and light is the
+  other. `foundations/tokens.css` carries the light values at `:root` and the
+  dark ones under `[data-mode="dark"]`, so a surface that follows the product
+  sets `data-mode="dark"` on its document element (or any container) and
+  drops it for light. Every component works in both; each demo shows both.
+- Consume the semantic variables and both modes come for free. Do not write
+  per-mode overrides; the few the kit itself needs (a chosen segment, the faint
+  edge on a floating card or a dialog in dark) are listed under "Gaps" in
+  `foundations/principles.md`, written as a `[data-mode="dark"]` rule beside
+  the light one.
 - Reuse components from `components/` before building new ones. Read each
   component's `component.md` (anatomy, variants, states, usage, accessibility)
   before use. `catalog/index.html` shows everything the system offers.

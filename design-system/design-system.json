@@ -1,9 +1,12 @@
 {
   "schemaVersion": 1,
-  "name": "wingfoil-chart",
-  "version": "0.1.0",
-  "summary": "wingfoil.ie as an Admiralty chart crossed with an old broadsheet weather report: one paper and one ink, the chart's magenta for the best of something and the focus, a red accent for the time now and what is off, thin ink rules and double-rule frames, Fraunces and Inter, and the puffin. Figures over prose, mobile first. Light is the product; dark is a proposed night chart.",
-  "modes": ["light", "dark"],
+  "name": "wingfoil",
+  "version": "0.2.0",
+  "summary": "wingfoil.ie, premium, modern and flat. Dark is the default theme and light the other; every surface works in both. Inter for everything, Fraunces only for the wordmark and a spot's name as the title of its own page. Sentence case everywhere. Structure by space and soft cards, hairlines only inside a card; boxes over the map float on a soft shadow. One filled button a view; chips are choices you press, tags are words that describe. The accent marks the best of something once and is the focus ring; wind colours mean wind speed. No paper texture, frames, heavy or double rules, hand-drawn marks or mascot. Figures over prose, mobile first.",
+  "modes": [
+    "light",
+    "dark"
+  ],
   "namingGrammar": {
     "tokens": "<tier>.<group...>.<name> — tier is 'ref' or 'sem'; every segment is lowercase kebab-case; nesting follows DTCG groups; aliases reference the full dotted path as {tier.group.name}. A sem colour carries the Tailwind name from ui/theme.css unchanged (--color-ink-muted -> sem.color.ink-muted), except the accent family, which is a group (--color-accent -> sem.color.accent.primary, --color-accent-hover -> sem.color.accent.hover); a type step's parts split by family (--text-lead -> sem.font.size.lead, --text-lead--line-height -> sem.font.line.lead, --text-lead--font-weight -> sem.font.weight.lead, --text-lead--letter-spacing -> sem.font.tracking.lead); spacing steps are sem.space.x<n> for Tailwind's *-<n>",
     "cssVariables": "'--' plus the token path with '.' replaced by '-' (sem.color.ink-muted -> --sem-color-ink-muted, the product's --color-ink-muted); components consume only the --sem-* set",
@@ -11,10 +14,71 @@
     "glyphs": "kebab-case concept name, one concept per SVG; strokes and fills use currentColor"
   },
   "contents": {
-    "foundations": ["foundations/tokens.tokens.json", "foundations/principles.md"],
-    "components": [],
-    "patterns": [],
-    "glyphs": [],
+    "foundations": [
+      "foundations/tokens.tokens.json",
+      "foundations/principles.md"
+    ],
+    "components": [
+      "avatar",
+      "beaufort-glyph",
+      "button",
+      "card",
+      "checkbox",
+      "chip",
+      "count",
+      "dialog",
+      "empty",
+      "field",
+      "figure",
+      "heading",
+      "hour-cell",
+      "link",
+      "notice",
+      "number-field",
+      "pager",
+      "rows",
+      "search-field",
+      "segmented",
+      "select",
+      "shore-compass",
+      "skeleton",
+      "slider",
+      "spot-light",
+      "spot-search",
+      "star-glyphs",
+      "switch",
+      "tabs",
+      "tag",
+      "text-area",
+      "text-input",
+      "tide-label",
+      "top-bar",
+      "wind-figure",
+      "wordmark"
+    ],
+    "patterns": [
+      "patterns/dock.html",
+      "patterns/listing-card.html",
+      "patterns/spot-day.html",
+      "patterns/spot-popup.html",
+      "patterns/your-spots.html",
+      "patterns/your-stars.html"
+    ],
+    "glyphs": [
+      "glyphs/beaufort-force.svg",
+      "glyphs/beaufort-pennant.svg",
+      "glyphs/downwind-arrow.svg",
+      "glyphs/favourite-star.svg",
+      "glyphs/shore-compass.svg",
+      "glyphs/star-dot.svg",
+      "glyphs/star-faded.svg",
+      "glyphs/star-solid.svg",
+      "glyphs/tide-high.svg",
+      "glyphs/tide-low.svg",
+      "glyphs/tide-wave.svg",
+      "glyphs/use-with-ai.svg",
+      "glyphs/wind-map.svg"
+    ],
     "assets": []
   },
   "derived": {
@@ -26,10 +90,9 @@
     "derivedFrom": [
       "ui/theme.css (every design value; the drift check scripts/lint-design-tokens.mjs holds the two equal)",
       "ui/*.tsx (the kit's primitives and their tailwind-variants recipes)",
-      "design/chart/1-the-chart.html in the wingfoil-design worktree, with design/chart/shots/1-*.jpg (the signed-off reference mockup)",
       "docs/BRAND.md and docs/DESIGN_PRINCIPLES.md (the rules and dated rulings)"
     ],
-    "derivedAt": "2026-10-05",
+    "derivedAt": "2026-11-01",
     "sourceLibraryId": null,
     "sourceLibraryVersion": null,
     "releasedAt": null,

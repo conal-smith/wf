@@ -1,202 +1,214 @@
 # Principles
 
-The rules of the chart that tokens cannot carry. Tokens decide what a value is;
-these decide when you may reach for it. Read before drawing anything this
-system does not already cover.
+The rules tokens cannot carry. Tokens decide what a value is; these decide
+when you may reach for it. Read before drawing anything this system does not
+already cover.
 
-wingfoil.ie is drawn as **an Admiralty chart crossed with an old broadsheet
-weather report**: paper and ink, the chart's magenta, a red accent used
-sparingly, two faces, thin ink rules and double-rule frames, and the puffin. The site is a
-map with tools over it, and pages that are read (the spot page, the
-marketplace, the community). On the map, the map is the product, and everything
-else earns the pixels it covers the sea with.
+wingfoil.ie is **premium, modern and flat**: a near-black page (or a white
+one), soft grey cards kept apart by space, one typeface for everything, and
+colour only where it means something. The site is a map with tools over it,
+and pages that are read (the spot page, the finder, the marketplace, the
+community). On the map, the map is the product, and everything else earns the
+pixels it covers the sea with.
 
 The product's single source of design values is `ui/theme.css` (Tailwind v4
-`@theme`), and its primitives are `ui/*.tsx`. This bundle is a faithful
-restatement of both, held equal by the project's drift check
-(`scripts/lint-design-tokens.mjs`). Where this file and the signed-off mockup
-(`design/chart/1-the-chart.html`) disagree on a look, the mockup wins; where they
-disagree on a rule (contrast, tap targets, one filled action), this file wins.
+`@theme`), and its primitives are `ui/*.tsx`. This bundle restates both, held
+equal by the project's drift check (`scripts/lint-design-tokens.mjs`).
 
-## The accent rule
+## Two themes, dark first
 
-**One filled action per view.** `sem.color.accent.primary` is the filled action:
-the ink pill, magenta under the pointer (`sem.color.accent.hover`). A view has
-one, or none. Everything else that can be pressed is quiet, ruled in ink, or a
-link. A destructive confirmation is a dialog of its own, and its one filled
-button is the warm `danger` pill.
+**Dark is the default; light is the other.** The product opens dark unless the
+rider has chosen light (or their device's setting); `shared/web/theme.ts` sets
+`data-theme="dark"` on the page before the first paint. In this bundle
+`foundations/tokens.css` carries light at `:root` and dark under
+`[data-mode="dark"]`, so a surface that follows the product sets
+`data-mode="dark"` on its root.
 
-**The chart's magenta** (`sem.color.chart-magenta`) marks **the best of
-something, once**: a five-star light, the spot in view, a quantity's bar
-(`sem.color.wash`, drawn faint), `.ie` in the wordmark, a link under the
-pointer. And it is **the focus ring** (`sem.color.focus`): 2px, 2px clear, the
-same on every control.
+- Every surface works in both. Consume the semantic tokens and both come for
+  free; never write a colour for one theme only.
+- Dark is near-black (`sem.color.ground`), neutral greys, no blue shift; its
+  soft card (`sem.color.sunken`) is a step lighter than the ground.
+- Wind colours, Met Éireann's warning colours and the weather's marks mean the
+  same on any ground and do not change between themes.
 
-**The thing shown is marked flat**: the chosen hour is outlined in ink inside
-its column, the open spot's light stands a size up, and a tour's target is
-ringed in the focus colour. Nothing is lifted on a card, circled or written by
-hand. **The red accent** (`sem.color.pen`, its words `sem.color.pen-ink`) rules
-the line at now and marks what is off (offshore); a sold price is struck
-through in `sem.color.ink-muted`. It is never a control, a status or emphasis.
+## Type: Inter for everything
 
-**Warm is not an accent.** `sem.color.warn`, `sem.color.now` and
-`sem.color.warn-ground` mean *this instant* or *this is degraded*, and nothing
-else. The warm red is not the accent's red.
+- **Inter** (`sem.font.family.body`) sets every heading, label, figure and
+  sentence. Figures are tabular.
+- **Fraunces** (`sem.font.family.display`) is for two things only: the
+  [wordmark](../components/wordmark/component.md), and a spot's name as the
+  title of that spot's own page. Never a heading, a name in a list, a popup or
+  the dock, a figure, or a demo's head.
+- **Sentence case everywhere.** No capitals for labels, no letter-spaced
+  eyebrows, no small caps. A name keeps its own spelling (HARMONIE, ECMWF,
+  WSW) because it is a name.
+- No italic serif. The only italic is ".ie" in the wordmark.
+- Headings are [Heading](../components/heading/component.md): a page's (40px
+  in the product, 32 on a phone, with a lead line), a section's
+  (`sem.font.size.lead`, 19px) and a card's (`sem.font.size.prose`, 15px).
+  One page heading a page.
+- A small label is Inter at `sem.font.size.label` (12px) in
+  `sem.color.ink-muted`, over or beside what it names.
+- A field on a coarse pointer is `sem.font.size.input` (16px), so a phone does
+  not zoom.
 
-**Wind colours mean wind speed.** The fourteen `sem.color.wind.*` stops are
-speed bands and nothing else, the same for every rider, and they do not
-re-theme: 35 knots is the same colour on any paper, night included.
+## Structure: space and soft cards
 
-## What structure is made of
+- **Space separates.** Sections sit apart by space (`sem.space.x8` and up),
+  cards by `sem.space.x3` to `sem.space.x4`, a heading from its content by
+  `sem.space.x3` to `sem.space.x4`.
+- **Soft cards group.** A [Card](../components/card/component.md) is
+  `sem.color.sunken` with `sem.radius.surface`, no border, no shadow. Do not
+  nest a soft card in a soft card.
+- **Two greys for controls: the well and the raised grey.** A control's fill
+  (a soft button, a segmented control's well, a chip, a tag, a number field, a
+  filled field, a search, the current tab) is `sem.color.well`: the soft grey
+  on the ground. A soft card, [Rows](../components/rows/component.md) and a
+  [Notice](../components/notice/component.md) carry `on-card` (`.wf-on-card`
+  in this bundle), which sets the well to `sem.color.raised`, the second grey,
+  inside them, so a control still shows on a card. Never fill a control with
+  `sem.color.sunken` directly: that is the card's grey. A small square on a
+  card that must stand out from it (a notice's info or water-advice sign) is
+  `sem.color.raised`.
+- **Hairlines only inside a card**: `sem.rule.hairline` of `sem.color.line`
+  between [Rows](../components/rows/component.md), between the rows of a
+  table, above a dialog's actions, under the top bar. Never round a card,
+  never under a heading, never heavier than a hairline, never doubled.
+- **Over the map, a box floats**: `sem.color.ground` with `sem.shadow.float`
+  (the popup, the layers, the time bar) or `sem.shadow.dock` (the dock), and
+  in dark a faint `sem.color.line` edge as well, because a shadow barely shows
+  on a dark chart.
+- **A sheet** (a dialog, a menu, the dock) has `sem.radius.dialog`; under
+  640px a dialog becomes a sheet up from the foot of the screen, with a grabber
+  and full-width actions.
+- **Corners by size**: `sem.radius.control` (10px) for a field or a small box,
+  `sem.radius.surface` (14px) for a card, `sem.radius.dialog` (18px) for a
+  sheet. Anything pressed (a button, a chip, a segment, a search) is round-ended
+  (`sem.radius.full`); an icon button is a circle.
+- Glass (`sem.color.glass`) only for a tag over a photograph, solid for a
+  reader who asks for less transparency.
 
-**Rules, not surfaces.** One sheet of paper: `sem.color.ground`,
-`sem.color.card` and `sem.color.solid` are the same value. A thing is set apart
-by an ink rule round it or under it, as a chart boxes its title and a broadsheet
-heads its columns.
+## Flat
 
-- `sem.rule.hairline` in `sem.color.ink` frames a box.
-- `sem.rule.hairline` in `sem.color.line` divides rows inside it, and nothing
-  heavier.
-- `sem.rule.heavy` in ink heads a section (`Pane kind="ruled"`,
-  `SectionHeading`). Most of a page is this, not boxes.
-- `sem.rule.double` (a CSS `double` border) runs along an edge: the masthead's
-  foot, the dock's top, a page's foot. Write the other three sides to zero
-  first.
-- **The edge of every box and sheet** is a 1px ink border plus
-  `sem.shadow.frame` (two of paper, then a hairline of ink at a quarter,
-  inset): a card on a page, the chart's box, a dialog, a menu, the dock.
-- **Print rules stay square and unshadowed**: a heavy rule, a double rule, a
-  table or column rule, the dock's day rules. A section under a rule is
-  `sem.radius` none, never a rounded box with a one-sided border.
+- No gradients on controls or boxes, no sheen, no raised shadow, no inset
+  frame, no paper texture, no nudge when pressed.
+- Shadows are for what floats over something else, and only the elevation
+  tokens: `sem.shadow.float`, `sheet`, `dock`, and `sem.shadow.control` under a
+  chosen segment or a switch's thumb.
+- The dark hours are faintly shaded (`sem.color.hatch`), never left blank and
+  never rated.
 
-**Four kinds of box, told apart by their size and their lift, not their
-fill** (mixed and rounded, 2026-10-24): the card (on a page:
-`sem.radius.surface`, `sem.shadow.card`), the chart's box (anything over the
-map: `sem.radius.surface`, `sem.shadow.float`), the sheet (a dialog, the dock,
-a menu: `sem.radius.dialog`, `sem.shadow.sheet`, or `sem.shadow.dock` for the
-dock cast upward) and the pill (a capsule, for what is pressed). All but the
-pill carry the edge above. A new thing that fits none of them should be a
-section under a rule.
+## Buttons, chips and tags
 
-**Over the map, paper is opaque.** Glass (`sem.color.glass`) survives only as a
-badge over a photograph, and goes solid for a reader who asks for less
-transparency.
+- **One filled button a view**, or none: `Button variant="primary"`, the next
+  thing to do ("Show 12 spots", "Get started"). Everything else is outlined
+  (the default), soft (a grey fill, a second action beside an outlined one),
+  quiet (Reset, Clear, Skip, Close) or a link. If a view seems to need two filled buttons, the
+  hierarchy is wrong.
+- The destructive answer is `danger`, only inside a confirm dialog.
+- **A chip is a choice you can press**: a soft capsule, filled in ink when it
+  is on (`aria-pressed`), or a filter in use with a cross that removes it.
+- **A tag is a word that describes** and cannot be pressed: Offshore, Unsure,
+  now, new. Never make a tag look pressable or a chip look like a label.
+- One of a few options, all in view, is a
+  [Segmented](../components/segmented/component.md) control; the parts of one
+  page are [Tabs](../components/tabs/component.md); a setting that takes effect
+  at once is a [Switch](../components/switch/component.md).
 
-**Shadows by elevation**, soft and stacked (contact, near, far), the far one
-warm, always after `sem.shadow.frame`: `sem.shadow.card` (a contact shadow
-only), `float`, `sheet`, `dock` (the sheet's stack cast upward). `marker`
-lifts a light or a small floating button. A small control has its own:
-`sem.shadow.control` under a pressed or filled ink control, `raised` under a
-raised one. Everything at one height casts the same shadow. No drop
-shadow beyond these.
+## Colour means something
 
-**Paper is flat; light is for small things.** A page, a dialog and the dock
-are flat paper. A small box over the chart may take `sem.gradient.float`, the
-faintest light from above, under its grain. A sheen is for small controls
-only: `sem.gradient.ink` under a pressed or filled ink control,
-`sem.gradient.raised` under a raised button (the round menu button, a
-knob). A press nudges a lit control down a pixel.
+- **The ink colour** (`sem.color.ink`, near-white in dark, near-black in
+  light) is the filled button, a chosen chip, a chosen segment's words, the
+  selected hour.
+- **The accent** (`sem.color.chart-magenta`, `sem.color.focus`) marks **the
+  best of something, once** (a five-star light, the present hour on a tide
+  curve, the letters found in a search, ".ie" in the wordmark) and is **the
+  focus ring**: 2px, 2px clear, the same on every control. A field holding the
+  focus takes the ink edge and a soft ring of the accent instead.
+- **The warm red** (`sem.color.pen`, its words `sem.color.pen-ink`) marks the
+  time now and what is off (offshore, a gust well over the mean, a destructive
+  answer). It is never a fill for a control, a status or emphasis.
+- **Warn** (`sem.color.warn`, `sem.color.warn-ground`) means *something is
+  wrong*: an error under a field, a failed load.
+- **Met Éireann's yellow, orange and red** are a weather warning's own
+  colours, on a [Notice](../components/notice/component.md)'s square or a
+  notice mark, with the level said in words.
+- **Wind colours mean wind speed.** The fourteen `sem.color.wind.*` stops are
+  speed bands and nothing else, the same for every rider.
+- Never let colour alone carry a state: pressed is filled, offshore is struck
+  and worded, a warning says its level in words.
 
-**The paper's grain** (`sem.texture.grain`) is a background image beside the
-paper fill on a section root, the masthead, a card pane, a Surface and a
-Dialog. Never over the moving map.
+## Little text, figures first
 
-**The dark hours** are shaded with the hatch (`sem.color.hatch`, a fine 135°
-diagonal), never left blank and never rated.
+A view says what it has to in figures, a few short labels, and a line or two
+of sentences at most. If a sentence can be a figure, make it one: `14 g22`,
+`6.5 m`. One big figure and one short line a card. Labels name a thing in a
+word or two. Every sentence is plain, everyday English for a rider with no
+technical knowledge, in British and Irish spelling.
 
-## Ceilings
+## Accessible by default
 
-**Type.** Two faces under three names: `sem.font.family.display` (Fraunces:
-names, headings, the wordmark), `body` (Inter: everything else) and `mono`
-(Inter too: every figure, at even width, and every label). Eleven steps:
-
-- `eyebrow` 10px is the floor, for the mono label in tracked capitals only.
-- `caption` 11px is the floor for sentence case.
-- Per surface: **one `title`** (30). Per page: **one `headline`** (44), and only
-  on a page that is read; it steps to `title` under 720px. Per view: **one
-  `reading`** (48), the wind speed.
-- A map panel (the popup, a Surface, the dock's head) tops out at `lead` (19):
-  the spot's name. Its figures are `figure` (19) or less.
-- A field on a coarse pointer is `input` (16), so a phone does not zoom.
-- Five weights; `extrabold` (800) is the wordmark's alone.
-
-**Radius** (mixed and rounded, 2026-10-24). Three corners by size, and the
-capsule: `sem.radius.control` 10px (a field, a small chip, a tooltip, a
-layer tile, a key in a box, the instrument button with words in it),
-`sem.radius.surface` 14px (a box: a card, anything on the chart),
-`sem.radius.dialog` 18px (a sheet: a dialog, the dock, a menu; a sheet on the
-foot of the screen rounds its top corners only). Anything pressed is a capsule
-(`sem.radius.full`), and so is the instrument with an icon in it (the round
-menu button). A square box is now a mistake; so is a squared capsule, and so
-is a rounded print rule. A key inside a box sits in by the difference of the
-two corners, so the curves nest.
-
-**Tap targets.** Nothing pressed is shorter than `sem.size.touch` (44px) on a
-coarse pointer. A control drawn smaller grows its hit area instead.
-
-**Contrast.** `sem.color.ink-muted` is the floor for words. `line-strong` and
-`ink-disabled` are a stroke's 3:1, never text. The red accent's marks are
-`pen`, its words `pen-ink`.
-
-## Little text, figures over prose
-
-A view says what it has to in figures, a few words of mono label, and a line or
-two of sentences at most. If a sentence can be a figure, make it one: `14 g22 ·
-WSW · 6.5 m`, not "fourteen knots gusting twenty-two". A figure leads, its unit
-small after it, a gust raised over the mean (`Figure`). Labels name a thing in
-a word or two and never say a sentence. Every sentence is plain, clear,
-everyday English for a rider with no technical knowledge: no riddles, puns or
-jargon, nothing that needs a second read ("Take a 30-second tour of how the
-site works."), in British and Irish spelling. The puffin is a picture, one a
-view at most; nothing is signed "the Almanac".
+- **Contrast**: words at 4.5:1 or more in both themes; `sem.color.ink-muted`
+  is the floor for words. `sem.color.line-strong` and
+  `sem.color.ink-disabled` are a stroke's 3:1, never text.
+- **Tap targets**: nothing pressed is shorter than `sem.size.touch` (44px) on
+  a coarse pointer; a control drawn smaller grows its hit area instead.
+- **Focus**: the one ring, never restyled, never removed without a
+  replacement.
+- **Motion**: every transition and animation stops for a reader who asks for
+  reduced motion.
 
 ## Mobile first
 
-Draw at 390×844 first, then let it open at 720 (`sem.breakpoint.wide`) and 900
-(`sem.breakpoint.rail`). The dock, the popup and the spot page are phone
-layouts that widen, not desktop layouts that shrink. Demos and patterns in
-this bundle are drawn at phone width unless they say otherwise.
+Draw at 390 wide first, then let it open at 720 (`sem.breakpoint.wide`) and
+900 (`sem.breakpoint.rail`). The dock, the popup and the spot page are phone
+layouts that widen, not desktop layouts that shrink.
 
 ## Don't
 
 - Don't write a colour, a px, a radius or a duration that a token holds. A
   missing value is a missing step: add it to `ui/theme.css` and to
   `tokens.tokens.json`, together.
-- Don't put a second filled action on a view.
-- Don't use the red accent as a fill, a control, a status or emphasis.
-- Don't use magenta for "best" twice on one view, or as body text.
-- Don't use warm to make something stand out.
+- Don't put a second filled button on a view.
+- Don't use Fraunces for anything but the wordmark and a spot's name as its
+  page's title.
+- Don't set a label in capitals or space its letters; don't use italic serif.
+- Don't frame a box, draw a rule round a card, use a heavy or double rule, or
+  put a rule under a heading.
+- Don't add paper texture, a gradient, a sheen, a raised shadow or a glow.
+- Don't draw anything by hand (a pen note, a scribble, a lifted card), and
+  don't use a mascot.
+- Don't use the accent for "best" twice on one view, or as body text; don't
+  use the warm red as a control or emphasis.
 - Don't use the wind ramp for anything but wind speed.
-- Don't lay a translucent or blurred panel over the map.
-- Don't square a box, round a print rule, or square a capsule.
-- Don't add a drop shadow, a gradient fill or a glow beyond the tokens: the
-  elevation shadows, the faint top light on a floating box, the sheen on a
-  small control. Structure is still rules.
-- Don't set sentences in the mono face, or figures in the body face.
 - Don't restyle the focus ring.
-- Don't let colour alone carry a state: pressed is filled *and* heavier; offshore
-  is struck through *and* red; warn has an icon *and* words.
-- Don't draw a second puffin, or a second headline.
 
 ## Gaps, recorded rather than invented
 
 - **The faces.** The bundle names Fraunces and Inter; it does not ship them.
-  The product self-hosts them (`ui/fonts.css`). The Studio door and the catalog
-  draw them only where they are installed, and fall back to Georgia and the
-  system sans otherwise.
-- **The tide curve's line.** The mockup strokes it in `#3F6E7E`, a darker teal
-  than `sem.color.depth`, which has no token; the bundle draws it in `depth`
-  over a `sea` fill until the product rules on it.
-- **The wind-range bar** of the mockup's spot page (models and ensembles) uses
-  hues that are not in the theme; it is left out of the bundle.
-- **Hover on the map's lights** (the mockup scales the glyph 1.18×) is not in
-  the product yet; the light component shows it as the mockup draws it.
+  The product self-hosts them (`ui/fonts.css`). The catalog draws them only
+  where they are installed, and falls back to Georgia and the system sans
+  otherwise.
+- **Type steps the tokens do not carry yet.** The product's page heading is
+  40px (32 on a phone) and a spot's name on its page 54px (`text-big`,
+  `text-big-sm`, `text-name` in `ui/theme.css`, under the spot report's
+  banner); the token file has no step for them, so the bundle's
+  [Heading](../components/heading/component.md) uses `sem.font.size.headline`
+  (44) and `sem.font.size.title` (30) until they are added.
+- **Theme-fixed colours.** The slider's white thumb and the signs on Met
+  Éireann's colours (near-black on yellow, white on orange and red) are the
+  same in both themes; no token is fixed across modes, so those few values are
+  literals marked `ds-lint-allow`.
+- **Translucent tints.** The soft focus ring round a field (the focus colour
+  at 20%) has no token; it is a `color-mix()` marked `ds-lint-allow`.
+- **A few dark-only rules.** The chosen segment, a floating card and a dialog
+  differ in dark beyond their tokens (a lighter grey instead of the ground; a
+  faint edge). The product writes these as `dark:` utilities; the bundle as a
+  `[data-mode="dark"]` rule beside the light one.
 
 ## Rulings
 
-Dated, because an undated rule cannot be told from an opinion. Carried over
-from `docs/DESIGN_PRINCIPLES.md`, restated in this bundle's names, then this
-bundle's own.
+Dated, because an undated rule cannot be told from an opinion.
 
 - **2026-09-14 — The ramp is derived from the product, not invented.** Every
   colour literal in the map's sources was harvested and clustered.
@@ -206,52 +218,23 @@ bundle's own.
   wind, never both.
 - **2026-09-16 — Model identity hues stay out of the theme**, inside the
   forecast chart and the display filter's swatches only.
-- **2026-09-16 — Two type steps for pages that are read: `lead` and `prose`.**
-- **2026-09-17 — A page that is read stands on `ground`, its boxes on `card`.**
-  Since 2026-10-05 the two are one paper.
 - **2026-09-20 — Tailwind is the system.** `ui/theme.css` is the only source of
   design values; arbitrary values and colour literals are refused by
   `npm run ui:lint`.
-- **2026-09-21 — The map's filled action stays on the accent** (D13).
-- **2026-09-21 — An active filter is a line, not a fill** (a border and an inset
-  ring in the accent), so it does not rival the one filled action.
-- **2026-10-05 — The chart.** Paper (`#f3eee3`) and ink (`#1a1d21`), structure
-  in rules, opaque paper over the map, square boxes, the focus ring in the
-  chart's magenta, four self-hosted faces on eleven steps, and the red pen with
-  its own rule. Measured on paper: ink 14.62:1, ink-2 9.54:1, ink-muted 5.80:1
-  (5.40:1 on sunken), line-strong 3.66:1, chart-magenta 5.70:1, warn 5.68:1,
-  pen 4.09:1 (a stroke), pen-ink 4.93:1 (words), paper on the hovered accent
-  5.70:1.
-- **2026-10-05 — No dark mode in the product: the chart is paper.** The
-  product ships light only (D9). A **night chart** (as a chart is read under a
-  red light on a night passage) is a possible later mode. The Studio's Design
-  door requires a bundle to declare both modes, so this bundle carries a
-  restrained night chart as a **proposal**: warm dark ink paper (`#1d1c19`,
-  never blue-shifted), paper-coloured ink, magenta lifted to `#e6609f` (4.9:1+)
-  and the pen to `#ef5f4f`, the wind ramp, the now-marker, the gust cap and the
-  buoy unchanged. No product surface reads it. It needs its own contrast pass
-  and a dark basemap before it is offered.
 - **2026-10-05 — The bundle's names are the product's.** A sem colour is the
   Tailwind name unchanged (`--color-ink-muted` is `--sem-color-ink-muted`),
   except the accent, which is a group. A handful of `interop` aliases
   (`sem.color.bg.app`, `text.primary`, `font.family.ui`, …) exist only so the
-  Studio's catalog and door draw in the brand; components never use them.
-- **2026-10-24 — Mixed and rounded** (approved by the owner, the
-  layer rail's "Mixed" style). Corners
-  10 / 14 / 18 by size, capsules kept; the ink rule and the hairline inside it
-  on every box and sheet (`sem.shadow.frame`, now `inset 0 0 0 2px #f3eee3,
-  inset 0 0 0 3px #1a1d2142`); soft stacked shadows by elevation
-  (`sem.shadow.card`, `float`, `sheet`, `dock`; `surface` is gone); paper flat
-  on anything large, the faintest top light on a floating box, a sheen on small
-  controls (`sem.gradient.*`); print rules square and unshadowed. Replaces the
-  square boxes of 2026-10-05. The night chart's values for each are proposed
-  alongside (`ref.shadow.*-night`, `ref.gradient.*-night`).
+  catalog draws in the brand; components never use them.
 - **2026-10-05 — The map's vocabulary is part of the system.** The spot's
   light, the shore compass, the wind-and-gust figure, the tide label and the
   dock's hour cell repeat across the map, the dock, the popup and the spot
-  page, and are components here, drawn as the mockup draws them.
-- **2026-11-01 — No pen and no lift.** With the white and dark theme, nothing
-  is drawn or written by hand and nothing is lifted onto a card: the pen's
-  note, strike and underline, the lifted card, the handwriting face and the
-  `ink` animation are gone. The chosen hour is outlined flat, the open spot's
-  light stands a size up, and "new" is a `Chip`.
+  page, and are components here.
+- **2026-11-01 — The new brand.** Premium, modern and flat. Dark is the
+  default theme and light the other. Inter for everything; Fraunces only for
+  the wordmark and a spot's name as its page's title. Sentence case. Structure
+  by space and soft cards, hairlines only inside a card. One filled button a
+  view; chips are pressable choices and tags are words. The paper, its
+  texture, the frames and double rules, the hand-drawn marks and the mascot
+  are gone, and so are the kit's parts that drew them (the masthead, the
+  kicker, the old headline and section heading, the pane and the surface).
