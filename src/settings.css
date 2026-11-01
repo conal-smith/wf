@@ -5,30 +5,20 @@
    by two; under 1000px wide they are one column, and on a phone the dialog
    is the whole screen. */
 .st[open] {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
   width: calc(100% - 32px);
   max-width: 1080px;
   max-height: calc(100dvh - 32px);
-  padding: 20px 26px 16px;
 }
-/* The head: the title and the close. */
-.st > div:first-child {
-  align-items: center;
-  gap: 14px;
-  padding: 2px 0 12px;
-}
-.st > div:first-child h2 {
-  font: 600 22px / 1.2 var(--font-body);
-  letter-spacing: -0.01em;
-}
-.st > div:nth-child(2) {
+/* The kit's head (the title and the close) and its foot keep still; the body
+   holds the parts, which scroll in .st-body. */
+.st > div:nth-of-type(2) {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 0;
   min-height: 0;
+  overflow: hidden;
+  padding-bottom: 0;
 }
 .st-body {
   flex: 1;
@@ -66,11 +56,6 @@
   flex: 1;
   align-items: center;
   gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-line);
-}
-.st > div:last-child {
-  margin-top: 0;
 }
 .st .st-reset {
   padding: 0 6px;
@@ -685,10 +670,6 @@
     max-height: 100dvh;
     margin: 0;
     border-radius: 0;
-    padding: 12px 16px;
-  }
-  .st > div:first-child h2 {
-    font-size: var(--text-lead);
   }
   /* Room past the last part, so it scrolls clear of a browser's bars
      where they stand over the foot of the screen. */

@@ -5,8 +5,11 @@
 
 /* The dialog's head is the title at the top of the rail, its body falls
    away (`display: contents`) so the rail and the section are the box's own
-   columns. Only the grid is set here: the kit's `open:grid` says when the
-   box is drawn at all. */
+   columns. The kit's dialog is drawn (`open:flex`) only while open; open,
+   this one is a grid. */
+.map-info[open] {
+  display: grid;
+}
 .map-info {
   position: relative;
   grid-template-columns: 230px minmax(0, 1fr);
@@ -19,18 +22,22 @@
   gap: 0;
   overflow: hidden;
 }
-.map-info > div:first-child {
+/* The kit's grabber is for a sheet; this dialog is the whole screen on a
+   phone. */
+.map-info > span:first-child {
+  display: none;
+}
+.map-info > div:nth-of-type(1) {
   grid-column: 1;
   grid-row: 1;
-  display: block;
-  padding: 20px 20px 12px;
+  padding: 20px 20px 12px 24px;
   background: var(--color-ground);
 }
-.map-info > div:first-child h2 {
+.map-info > div:nth-of-type(1) h2 {
   font: 600 var(--text-lead) / 1.2 var(--font-body);
   letter-spacing: -0.01em;
 }
-.map-info > div:first-child > button {
+.map-info > div:nth-of-type(1) > button {
   position: absolute;
   top: 10px;
   right: 10px;
@@ -602,7 +609,7 @@
     border-radius: 0;
     box-shadow: none;
   }
-  .map-info > div:first-child {
+  .map-info > div:nth-of-type(1) {
     padding: max(12px, env(safe-area-inset-top)) 56px 8px 16px;
   }
   .mi-nav {
