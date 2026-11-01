@@ -54,6 +54,7 @@ export const THEME_NAMES = {
     "ai",
     "loupe",
     "side",
+    "list",
   ],
   spacing: ["control-sm", "control-md", "control-lg", "touch"],
   animate: ["pulse", "dialog-in", "scrim-in", "menu-in", "ink", "bob"],

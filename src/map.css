@@ -1443,7 +1443,7 @@
   width: var(--panel-width);
   height: var(--panel-height);
   overflow: hidden;
-  border: 1px solid var(--color-ink);
+  border: 1px solid var(--color-line);
   border-radius: var(--radius-dialog);
   box-shadow: var(--shadow-float);
 }
@@ -1483,12 +1483,6 @@
 [data-beside-chart] [data-finder-cards],
 [data-beside-chart] [data-finder-loading] {
   grid-template-columns: minmax(0, 1fr);
-}
-@media (min-width: 1920px) {
-  [data-beside-chart] [data-finder-cards],
-  [data-beside-chart] [data-finder-loading] {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 /* A light under the pointer outlines its place's card; one pressed brings
    the card into view, its outline drawn in for a moment. */
@@ -1538,6 +1532,25 @@
   position: absolute;
   top: 12px;
   right: 12px;
+}
+/* The map's two modes at its foot, as the mock-up has them: the plain map
+   with the spots, and the chart, which opens the full chart with its layers. */
+.panel-modes {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--color-ground);
+  box-shadow: var(--shadow-float);
+}
+.panel-modes .panel-chart {
+  gap: 7px;
+  color: var(--color-chart-magenta);
+  border-color: var(--color-chart-magenta);
 }
 .panel-when {
   position: absolute;

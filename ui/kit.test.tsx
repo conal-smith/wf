@@ -1300,7 +1300,7 @@ describe("the chart's own primitives", () => {
     expect(named).toMatch(/fill="url\(#puffin-\S+?\)"/);
   });
 
-  it("the masthead is a banner on the double rule, with the name and section", () => {
+  it("the masthead is a banner on a soft line, with the name and section", () => {
     const markup = html(
       <Masthead>
         <a href="/market">
@@ -1311,7 +1311,8 @@ describe("the chart's own primitives", () => {
     expect(markup).toMatch(/^<header class="/);
     expect(markup).toContain("wingfoil");
     expect(markup).toContain(">Market</span>");
-    for (const name of ["border-b-3", "border-double", "border-ink"])
+    // A single soft line under it, in either theme (the 2026-10-31 ruling).
+    for (const name of ["border-b", "border-line"])
       expect(mastheadStyles().bar().split(" ")).toContain(name);
   });
 });

@@ -828,6 +828,10 @@
   --grid-template-columns-week: repeat(7, minmax(118px, 1fr));
   --grid-template-columns-graph: 72px minmax(0, 1fr);
   --grid-template-columns-near: 40px minmax(0, 1fr);
+  /* The Spot finder's card: its picture, then its name and its two bars. */
+  --grid-template-columns-card: 104px minmax(0, 1fr);
+  --grid-template-columns-bars: 36px minmax(0, 1fr);
+  --container-list: 400px;
   --breakpoint-xwide: 93.75rem;
 }
 

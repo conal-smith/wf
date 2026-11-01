@@ -5,12 +5,12 @@
  * uses the whole width too: a spot report has a lot to show, and the wider
  * the window the more of the week it shows.
  */
-import { Map as MapIcon, Moon, Search, Sun } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Map as MapIcon, Search } from "lucide-react";
+import type { ReactNode } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
-import { THEME_EVENT, currentTheme, toggleTheme } from "../../shared/web/theme";
 import { Button } from "../../ui";
 import { MastheadMark } from "../../ui/Masthead";
+import { ThemeButton } from "../../ui/ThemeButton";
 import { RING, tv } from "../../ui/tv";
 
 const styles = tv({
@@ -28,30 +28,6 @@ const styles = tv({
     tools: "flex items-center gap-2",
   },
 });
-
-function ThemeButton() {
-  const [dark, setDark] = useState(() => currentTheme() === "dark");
-  useEffect(() => {
-    const follow = () => setDark(currentTheme() === "dark");
-    window.addEventListener(THEME_EVENT, follow);
-    return () => window.removeEventListener(THEME_EVENT, follow);
-  }, []);
-  return (
-    <Button
-      variant="raised"
-      icon
-      aria-label={dark ? "Light mode" : "Dark mode"}
-      onClick={toggleTheme}
-      data-theme-button
-    >
-      {dark ? (
-        <Sun size={18} strokeWidth={1.75} aria-hidden="true" />
-      ) : (
-        <Moon size={18} strokeWidth={1.75} aria-hidden="true" />
-      )}
-    </Button>
-  );
-}
 
 export function SpotFrame({
   back,
