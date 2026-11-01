@@ -117,7 +117,7 @@ test("its part of About the map says what the hour shows", async ({ page }) => {
   await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });
-  await openFromMenu(page, "About");
+  await openFromMenu(page, "About the map");
   await page.getByRole("tab", { name: "Rain" }).click();
   const part = page.locator("#map-info-rain");
   await expect(part).toBeVisible();
@@ -146,7 +146,7 @@ test("with no rain published the page still works, and says so", async ({
   await expect(page.locator(".spot-marker").first()).toBeVisible({
     timeout: 30000,
   });
-  await openFromMenu(page, "About");
+  await openFromMenu(page, "About the map");
   await page.getByRole("tab", { name: "Rain" }).click();
   await expect(page.locator("[data-rain-line]")).toHaveText(
     "No rain forecast is published just now.",

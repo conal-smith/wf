@@ -307,7 +307,7 @@ test.describe("on a phone", () => {
     const zbox = (await page.locator(".zbox").boundingBox())!;
     const box = (await rail(page).boundingBox())!;
     const sheet = (await page.locator(".map-footer").boundingBox())!;
-    const head = (await page.locator(".map-head").boundingBox())!;
+    const head = (await page.locator("[data-top-bar]").boundingBox())!;
     expect(Math.abs(box.x + box.width - (zbox.x + zbox.width))).toBeLessThan(2);
     expect(box.y).toBeGreaterThanOrEqual(zbox.y + zbox.height);
     expect(box.y + box.height).toBeLessThanOrEqual(sheet.y);

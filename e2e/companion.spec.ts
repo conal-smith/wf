@@ -142,7 +142,7 @@ test("the launcher covers none of the map's controls or the dock", async ({
     ".map-ctrl",
     ".map-print",
     ".map-footer",
-    ".map-head",
+    "[data-top-bar]",
   ]) {
     const other = (await page.locator(selector).boundingBox())!;
     const overlaps =

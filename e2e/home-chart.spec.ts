@@ -25,10 +25,16 @@ const cards = (page: Page) => page.locator("[data-spot-card]");
 const panel = (page: Page) =>
   page.getByRole("region", { name: "The chart, at the spots on the list" });
 const lights = (page: Page) => page.locator(".spot-marker");
+/** The top bar over the list and the chart alike (ui/TopBar.tsx). */
+const bar = (page: Page) => page.locator("[data-top-bar]");
+/** The bar's button to the list, on the full chart. */
 const listButton = (page: Page) =>
-  page.getByRole("button", { name: "List", exact: true });
+  bar(page).getByRole("link", { name: "Spots", exact: true });
+/** The bar's button to the full chart, on the list. */
 const mapButton = (page: Page) =>
-  page.getByRole("button", { name: "Map", exact: true });
+  bar(page).getByRole("link", { name: "Chart", exact: true });
+/** On the full chart: the bar's button is the way back to the list. */
+const onChart = (page: Page) => page.locator('[data-view-switch="spots"]');
 
 /** Marks the map's canvas, so a map drawn afresh is told from the one kept. */
 const mark = (page: Page) =>
@@ -80,10 +86,10 @@ test.describe("on a wide screen", () => {
     page.on("pageerror", (error) => errors.push(error.message));
     await openHome(page);
     await expect(page).toHaveURL(/\/$/);
-    // Beside the list, under its head, the full height of the page.
+    // Beside the list, under the top bar, the full height of the page.
     const box = (await panel(page).boundingBox())!;
     const card = (await cards(page).first().boundingBox())!;
-    const head = (await finder(page).locator("header").boundingBox())!;
+    const head = (await bar(page).boundingBox())!;
     expect(box.x).toBeGreaterThan(card.x + card.width);
     expect(box.y).toBeGreaterThan(head.y + head.height);
     expect(box.y + box.height).toBeGreaterThan(880);
@@ -94,7 +100,7 @@ test.describe("on a wide screen", () => {
     await expect(
       panel(page).getByRole("button", { name: "Zoom in" }),
     ).toBeVisible();
-    await expect(page.locator(".map-head")).toHaveCount(0);
+    await expect(onChart(page)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Layers" })).toHaveCount(0);
     await expect(page.locator("[data-panel-when]")).toHaveText(
       /^Stars at \d\d:\d\d (today|on \w+)$/,
@@ -179,7 +185,7 @@ test.describe("on a wide screen", () => {
     const open = async () => {
       await panel(page).getByRole("button", { name: "Full chart" }).click();
       await expect(page).toHaveURL(/\/\?map$/);
-      await expect(page.locator(".map-head")).toBeVisible();
+      await expect(onChart(page)).toBeVisible();
       await expect(lights(page)).toHaveCount(149);
       await expect(
         page
@@ -187,9 +193,9 @@ test.describe("on a wide screen", () => {
           .getByRole("button", { name: "Layers" }),
       ).toBeVisible();
       await expect(listButton(page)).toBeVisible();
-      // The whole screen, the list under it and out of reach.
+      // The whole screen under the top bar, the list under it and out of reach.
       const box = (await page.locator(".workspace").boundingBox())!;
-      expect(box).toEqual({ x: 0, y: 0, width: 1440, height: 900 });
+      expect(box).toEqual({ x: 0, y: 64, width: 1440, height: 836 });
       await expect(page.locator(".finder-under")).toHaveAttribute("inert", "");
       expect(await kept(page)).toBe(true);
     };
@@ -197,7 +203,7 @@ test.describe("on a wide screen", () => {
       await expect(page).toHaveURL(/\/$/);
       await expect(panel(page)).toBeVisible();
       await expect(lights(page)).toHaveCount(3);
-      await expect(page.locator(".map-head")).toHaveCount(0);
+      await expect(onChart(page)).toHaveCount(0);
       expect(await kept(page)).toBe(true);
     };
     await open();
@@ -214,57 +220,50 @@ test.describe("on a wide screen", () => {
     await back();
     // Forward is the full chart again.
     await page.goForward();
-    await expect(page.locator(".map-head")).toBeVisible();
+    await expect(onChart(page)).toBeVisible();
   });
 
-  test("on the full chart a spot opens the dock; the List button stands above it, and takes the reader to the list, the dock gone", async ({
+  test("on the full chart a spot opens the dock; the bar's Spots takes the reader to the list, the dock gone", async ({
     page,
   }) => {
     await openHome(page);
-    await panel(page).getByRole("button", { name: "Full chart" }).click();
+    await mapButton(page).click();
     await expect(lights(page)).toHaveCount(149);
-    const foot = (await listButton(page).boundingBox())!;
-    expect(foot.y + foot.height).toBeGreaterThan(860);
     await page.locator('.spot-marker[data-spot-id="brandon"]').click();
     const dock = page.locator(".dock");
     await expect(dock.locator(".dk-name")).toHaveText("Brandon Bay", {
       timeout: 30000,
     });
     await expect(page).toHaveURL(/\/\?spot=brandon$/);
-    // Just above the dock's top edge, clear of it and of its tools.
-    const button = (await listButton(page).boundingBox())!;
-    const top = (await dock.boundingBox())!.y;
-    const tools = (await dock.locator(".dk-tools").boundingBox())!;
-    expect(button.y + button.height).toBeLessThanOrEqual(top);
-    expect(button.y + button.height).toBeGreaterThan(top - 40);
-    expect(
-      button.x + button.width <= tools.x || button.y + button.height <= tools.y,
-    ).toBe(true);
-    // It rises with the dock as it grows.
-    await dock.getByRole("button", { name: "Show more rows" }).click();
-    await expect(dock.locator("tr.tt-waves")).toHaveCount(1);
-    const higher = (await listButton(page).boundingBox())!;
-    expect(higher.y).toBeLessThan(button.y - 60);
-    expect(higher.y + higher.height).toBeLessThanOrEqual(
-      (await dock.boundingBox())!.y,
+    // The dock stands under the bar, never over it.
+    const top = (await bar(page).boundingBox())!;
+    expect((await dock.boundingBox())!.y).toBeGreaterThanOrEqual(
+      top.y + top.height,
     );
-    // The dock's arrow closes it, and the button drops back to the foot.
-    await dock
-      .getByRole("button", { name: "Close the forecast for Brandon Bay" })
-      .click();
-    await expect(dock).toHaveCount(0);
-    await expect
-      .poll(async () => (await listButton(page).boundingBox())!.y)
-      .toBeCloseTo(foot.y, 0);
-    // With a dock open, List is the list, and the dock is gone with it.
-    await page
-      .locator('.spot-marker[data-spot-id="keel"]')
-      .dispatchEvent("click");
-    await expect(dock.locator(".dk-name")).toHaveText("Keel Beach");
+    // With a dock open, Spots is the list, and the dock is gone with it.
     await listButton(page).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(panel(page)).toBeVisible();
     await expect(page.locator(".dock")).toHaveCount(0);
+  });
+
+  test("the bar's search on the full chart flies to the spot picked and opens it", async ({
+    page,
+  }) => {
+    await openHome(page);
+    await mapButton(page).click();
+    await expect(lights(page)).toHaveCount(149);
+    const find = page.getByRole("combobox", { name: "Search spots" });
+    await find.fill("keel");
+    await expect(
+      page.getByRole("listbox", { name: "Spots" }).getByRole("option").first(),
+    ).toContainText("Keel Beach");
+    await find.press("Enter");
+    await expect(page.locator(".dock .dk-name")).toHaveText("Keel Beach", {
+      timeout: 30000,
+    });
+    await expect(page).toHaveURL(/\/\?spot=keel$/);
+    await expect(find).toHaveValue("");
   });
 
   test("a card's picture opens the full chart at its spot, with its dock; Back is the list", async ({
@@ -279,7 +278,7 @@ test.describe("on a wide screen", () => {
     await expect(page.locator(".dock .dk-name")).toHaveText("Keel Beach", {
       timeout: 30000,
     });
-    await expect(page.locator(".map-head")).toBeVisible();
+    await expect(onChart(page)).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(/\/$/);
     await expect(panel(page)).toBeVisible();
@@ -294,7 +293,7 @@ test.describe("on a wide screen", () => {
     await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay", {
       timeout: 30000,
     });
-    await expect(page.locator(".map-head")).toBeVisible();
+    await expect(onChart(page)).toBeVisible();
     await listButton(page).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(cards(page)).toHaveCount(1);
@@ -370,19 +369,17 @@ test.describe("a first visit, with no favourites", () => {
 test.describe("under the width for the chart beside the list", () => {
   test.use({ viewport: { width: 900, height: 860 } });
 
-  test("the list alone, and the black Map button to the full chart, which is List there", async ({
+  test("the list alone, and the bar's Chart to the full chart, which is Spots there", async ({
     page,
   }) => {
     await star(page, ["brandon", "keel"]);
     await page.goto("/");
     await expect(cards(page)).toHaveCount(2, { timeout: 30000 });
     await expect(panel(page)).toHaveCount(0);
-    const button = (await mapButton(page).boundingBox())!;
-    expect(Math.abs(button.x + button.width / 2 - 450)).toBeLessThan(2);
     await mapButton(page).click();
     await expect(page).toHaveURL(/\/\?map$/);
     await expect(lights(page)).toHaveCount(149, { timeout: 30000 });
-    await expect(page.locator(".map-head")).toBeVisible();
+    await expect(onChart(page)).toBeVisible();
     // No collapse here: there is no panel to collapse to.
     await expect(
       page.getByRole("button", { name: "Back to the list" }),
@@ -400,7 +397,7 @@ test.describe("on a phone", () => {
     hasTouch: true,
   });
 
-  test("the map is made the first time Map is pressed, and kept; the chart keeps its zoom and Layers", async ({
+  test("the map is made the first time Chart is pressed, and kept; the chart keeps its zoom and Layers", async ({
     page,
   }) => {
     await star(page, ["brandon", "keel"]);
@@ -417,7 +414,11 @@ test.describe("on a phone", () => {
     const controls = page.getByRole("group", { name: "Map controls" });
     for (const name of ["Zoom in", "Zoom out", "Layers"])
       await expect(controls.getByRole("button", { name })).toBeVisible();
-    // A spot: the sheet, the List button over it and clear of the controls.
+    // The controls start under the bar, not under its 56px.
+    const top = (await bar(page).boundingBox())!;
+    const zoom = (await controls.boundingBox())!;
+    expect(zoom.y).toBeGreaterThanOrEqual(top.y + top.height);
+    // A spot: the sheet; the bar's Spots back to the list.
     await page
       .locator('.spot-marker[data-spot-id="brandon"]')
       .dispatchEvent("click");
@@ -425,12 +426,6 @@ test.describe("on a phone", () => {
     await expect(dock.locator(".dk-name")).toHaveText("Brandon Bay", {
       timeout: 30000,
     });
-    const button = (await listButton(page).boundingBox())!;
-    expect(button.y + button.height).toBeLessThanOrEqual(
-      (await dock.boundingBox())!.y,
-    );
-    const zoom = (await controls.boundingBox())!;
-    expect(zoom.y + zoom.height).toBeLessThan(button.y);
     await listButton(page).tap();
     await expect(page).toHaveURL(/\/$/);
     await expect(cards(page)).toHaveCount(2);
@@ -438,7 +433,7 @@ test.describe("on a phone", () => {
     // Kept, out of sight, for the next time.
     expect(await kept(page)).toBe(true);
     await mapButton(page).tap();
-    await expect(page.locator(".map-head")).toBeVisible();
+    await expect(onChart(page)).toBeVisible();
     expect(await kept(page)).toBe(true);
   });
 });

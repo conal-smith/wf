@@ -148,7 +148,7 @@ test("with no spot open, the first stop skips to the search", async ({
   );
   await page.keyboard.press("Enter");
   await expect(
-    page.getByRole("combobox", { name: "Find a spot" }),
+    page.getByRole("combobox", { name: "Search spots" }),
   ).toBeFocused();
 });
 

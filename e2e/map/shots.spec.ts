@@ -151,8 +151,8 @@ async function shoot(page: Page, state: string, width: number) {
 
 /** Choose a spot by name, as the head's search does. */
 async function pick(page: Page, words: string) {
-  await page.getByRole("combobox", { name: "Find a spot" }).fill(words);
-  await page.locator(".spot-row").first().click();
+  await page.getByRole("combobox", { name: "Search spots" }).fill(words);
+  await page.locator("[data-spot-option]").first().click();
 }
 
 for (const { width, height } of [
@@ -179,8 +179,8 @@ for (const { width, height } of [
 
     test("search open", async ({ page }) => {
       await openMap(page);
-      await page.getByRole("combobox", { name: "Find a spot" }).fill("Dublin");
-      await expect(page.locator(".results .spot-row").first()).toBeVisible();
+      await page.getByRole("combobox", { name: "Search spots" }).fill("Dublin");
+      await expect(page.locator("[data-spot-option]").first()).toBeVisible();
       await shoot(page, "search", width);
     });
 
@@ -280,7 +280,7 @@ for (const { width, height } of [
 
     test("the key", async ({ page }) => {
       await openMap(page);
-      await openFromMenu(page, "About");
+      await openFromMenu(page, "About the map");
       await expect(page.locator(".map-info .key")).toBeVisible();
       await shoot(page, "key", width);
     });

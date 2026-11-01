@@ -41,8 +41,8 @@ async function openMap(page: Page, path = "/?map") {
 
 /** Find a spot by name and take the first result. */
 async function findSpot(page: Page, words: string) {
-  await page.getByRole("combobox", { name: "Find a spot" }).fill(words);
-  await page.locator(".spot-row").first().click();
+  await page.getByRole("combobox", { name: "Search spots" }).fill(words);
+  await page.locator("[data-spot-option]").first().click();
 }
 
 const stored = (page: Page) =>

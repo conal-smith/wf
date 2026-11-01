@@ -31,7 +31,7 @@ test("the LiDAR layer is gone, and a rider who had it on reads none of it", asyn
   await expect(rail.locator('[data-rail-layer="currents"]')).toBeVisible();
   await expect(rail.locator('[data-rail-layer="lidar"]')).toHaveCount(0);
   await expect(rail).not.toContainText("LiDAR");
-  await openFromMenu(page, "About");
+  await openFromMenu(page, "About the map");
   const info = page.getByRole("dialog", { name: "About the map" });
   await expect(info.getByRole("tab", { name: "Currents" })).toBeVisible();
   await expect(info.getByRole("tab", { name: /LiDAR/ })).toHaveCount(0);

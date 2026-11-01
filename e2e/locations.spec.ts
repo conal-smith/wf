@@ -11,22 +11,22 @@ test("public riding places are on the chart and the Blast alias finds Kilcrea, w
   // Riding places only: no schools, clubs or areas among the lights.
   for (const kind of ["operator", "club", "area"])
     await expect(page.locator(`.spot-marker[data-kind="${kind}"]`)).toHaveCount(0);
-  const search = page.getByRole("combobox", { name: "Find a spot" });
+  const search = page.getByRole("combobox", { name: "Search spots" });
   for (const alias of ["Blast", "Kilcrea", "Donabate"]) {
     await search.fill(alias);
     // Donabate is also a beach of its own on the far side of the peninsula,
     // and the owner's Donabate North Beach beyond it, so that alias finds all
     // three; the estuary is still the one Blast names.
     const rows = page
-      .locator(".spot-row")
+      .locator("[data-spot-option]")
       .filter({ hasText: "Kilcrea — Malahide Estuary" });
     await expect(rows).toHaveCount(1);
-    await expect(page.locator(".spot-row")).toHaveCount(
+    await expect(page.locator("[data-spot-option]")).toHaveCount(
       alias === "Donabate" ? 3 : 1,
     );
   }
   await search.fill("Kilcrea");
-  await page.locator(".spot-row").click();
+  await page.locator("[data-spot-option]").click();
   const blast = page.locator('[data-spot-id="kilcrea"]');
   await expect(blast).toHaveClass(/\bsel\b/);
   await expect(page.locator(".dock .dk-name")).toHaveText(
@@ -42,7 +42,7 @@ test("public riding places are on the chart and the Blast alias finds Kilcrea, w
   ).toContainText("CC BY 4.0");
   await page.keyboard.press("Escape");
   await search.fill("Newtownards");
-  await page.locator(".spot-row").click();
+  await page.locator("[data-spot-option]").click();
   await expect(page.locator('[data-spot-id="newtownards"]')).toHaveClass(
     /\bsel\b/,
   );
