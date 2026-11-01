@@ -217,6 +217,28 @@ describe("the pages with heads of their own", () => {
     expect(await head.text()).toBe("");
   });
 
+  it("answers a point on the water 200, under its own name, out of search", async () => {
+    const { env } = site();
+    for (const path of [
+      "/spot/@53.3412,-6.1520",
+      "/spot/%4053.3412%2C-6.1520",
+    ]) {
+      const res = await worker.fetch(get(path), env);
+      expect(res.status, path).toBe(200);
+      expect(res.headers.get("x-robots-tag")).toBe("noindex");
+      const page = await res.text();
+      expect(page).toContain(
+        "<title>53.34° N, 6.15° W wing foil forecast — wingfoil.ie Wind map</title>",
+      );
+      expect(page).toContain(
+        '<link rel="canonical" href="https://wingfoil.ie/spot/@53.3412,-6.1520" />',
+      );
+    }
+    // A riding place's page stays in search.
+    const spot = await worker.fetch(get("/spot/brandon"), env);
+    expect(spot.headers.get("x-robots-tag")).toBeNull();
+  });
+
   it("answers a spot no place has 404, with the app to say so", async () => {
     const { env } = site();
     for (const path of [
@@ -322,6 +344,9 @@ describe("withHead", () => {
     expect(isMissingSpot("/spot", spots)).toBe(false);
     expect(isMissingSpot("/spot/", spots)).toBe(false);
     expect(isMissingSpot("/nope", spots)).toBe(false);
+    // A point on the water is a page, not a missing place; off the globe, it is.
+    expect(isMissingSpot("/spot/@53.3412,-6.1520", spots)).toBe(false);
+    expect(isMissingSpot("/spot/@95,-6.1", spots)).toBe(true);
     // Places that could not be read leave every spot a page.
     expect(isMissingSpot("/spot/brandon-bay", new Map())).toBe(false);
   });

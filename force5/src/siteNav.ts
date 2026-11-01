@@ -330,8 +330,64 @@ export function spotIdFromPath(pathname: string): string | null {
   }
 }
 
-/** A riding place's own page. Absolute: it is a page load from the map. */
-export const spotHref = (id: string) => `/spot/${encodeURIComponent(id)}`;
+/**
+ * The word on a spot page's address that opens its week at an hour, as if
+ * the rider had put the pointer on it there: `?at=2026-09-14T13:00:00Z`.
+ */
+export const AT_PARAM = "at";
+
+const atQuery = (at: string | undefined) =>
+  at ? `?${AT_PARAM}=${encodeURIComponent(at)}` : "";
+
+/**
+ * A riding place's own page, opened at the hour `at` (an ISO time) when one
+ * is given. Absolute: it is a page load from the map.
+ */
+export const spotHref = (id: string, at?: string) =>
+  `/spot/${encodeURIComponent(id)}${atQuery(at)}`;
+
+/**
+ * A point on the water's id, as its page's address writes it: "@" and its
+ * latitude and longitude to four places (about ten metres), "@53.3412,-6.1520".
+ * No riding place's id starts with "@" (scripts/import-owner-places.mjs makes
+ * them of letters, figures and hyphens), so the two never meet.
+ */
+export const pointId = (lat: number, lon: number) =>
+  `@${lat.toFixed(4)},${lon.toFixed(4)}`;
+
+const POINT_ID = /^@(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)$/;
+
+/**
+ * The point a spot page's id names ("@53.3412,-6.1520"), or null where it is
+ * a riding place's id, or a point off the globe.
+ */
+export function pointFromId(id: string): { lat: number; lon: number } | null {
+  const match = POINT_ID.exec(id);
+  if (!match) return null;
+  const lat = Number(match[1]);
+  const lon = Number(match[2]);
+  return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat, lon } : null;
+}
+
+/** Two places for a name: about a kilometre, which is what a reader needs. */
+const degrees = (value: number, positive: string, negative: string) =>
+  `${Math.abs(value).toFixed(2)}° ${value < 0 ? negative : positive}`;
+
+/**
+ * A point's name, in words, as its page and its head both title it:
+ * "53.34° N, 6.15° W".
+ */
+export const pointName = (lat: number, lon: number) =>
+  `${degrees(lat, "N", "S")}, ${degrees(lon, "E", "W")}`;
+
+/**
+ * The page of a point on the water, a tap on the chart that is not a riding
+ * place: `/spot/@53.3412,-6.1520`, opened at the hour `at` when one is given.
+ * The "@" and the comma are written as they are, which a path allows, so the
+ * address reads as the place it is.
+ */
+export const pointHref = (lat: number, lon: number, at?: string) =>
+  `/spot/${pointId(lat, lon)}${atQuery(at)}`;
 
 /** The map, opened on a riding place, as every link back to it is written. */
 export const mapSpotHref = (id: string) => `/?spot=${encodeURIComponent(id)}`;
