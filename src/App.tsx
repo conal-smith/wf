@@ -18,13 +18,14 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
-  List as ListGlyph,
-  Map as MapGlyph,
   Maximize2,
   Waves,
   X,
 } from "lucide-react";
 import { Button } from "../ui/Button";
+import { SpotSearch } from "../ui/SpotSearch";
+import { StarGlyphs } from "../ui/StarGlyphs";
+import { TopBar } from "../ui/TopBar";
 import type {
   ChartLayers,
   FoilView,
@@ -63,7 +64,6 @@ import { parseWindLayers, type WindLayers } from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ForecastDock, { type DockView } from "./ForecastDock";
 import MapControls, { type MapPanel } from "./MapControls";
-import MapHead from "./MapHead";
 import { LAYER_DEFAULTS } from "./layerGroups";
 import { tourOffered, tourSeen } from "./tourOffer";
 import { SiteMenu } from "../force5/src/SiteMenu";
@@ -77,6 +77,7 @@ import {
   mapAsk,
   type MapAsk,
   mapSpotHref,
+  spotHref,
   tidySearch,
 } from "../force5/src/siteNav";
 import { MAP_ASK_EVENT } from "./PagesOverMap";
@@ -102,6 +103,7 @@ import { squaresToRead } from "../force5/src/squares";
 import { usePointSeries } from "./usePointSeries";
 import {
   handedPointHours,
+  hourWind,
   offshoreMark,
   type PlaceHour,
   type RatedPlace,
@@ -226,12 +228,11 @@ const RAIL_KEY = "wingfoil.map.rail.v1";
 /** The focus is on the point tapped on the map, not a riding place. */
 const AT_POINT = "@point";
 /**
- * What is open over the chart and shuts on a press away from it: the site
- * menu and the search's list in the head, each said open on the control it
- * hangs from, and the layers, the options or the map's
- * information in their dialog.
+ * What is open over the chart and shuts on a press away from it: the top
+ * bar's search with its results, and the site menu, the layers, the options
+ * or the map's information in their dialog.
  */
-const OVER_THE_CHART = '.map-head [aria-expanded="true"], dialog[open]';
+const OVER_THE_CHART = "[data-spot-search-results], dialog[open]";
 
 /** Where the map was tapped, as the map hands it over. */
 interface TappedAt {
@@ -307,7 +308,7 @@ const afterPaint = (then: () => void) =>
 const SKIP = {
   list: { label: "Skip to the spots", to: "[data-finder-list]" },
   dock: { label: "Skip to the forecast", to: ".dock" },
-  search: { label: "Skip to the search", to: '.map-head [role="combobox"]' },
+  search: { label: "Skip to the search", to: "[data-spot-search-field]" },
 };
 
 function useMedia(query: string) {
@@ -1487,27 +1488,47 @@ export default function App() {
   // the compositor, and the map takes its new size once: at the start going
   // out, at the end coming back.
   const workspace = useRef<HTMLElement>(null);
-  const [finderHead, setFinderHead] = useState<HTMLElement | null>(null);
+  // The top bar over both, fixed at the top of the window: the chart beside
+  // the list stands under it, and the full chart opens out below it.
+  const [bar, setBar] = useState<HTMLElement | null>(null);
+  const barRef = useRef(bar);
+  barRef.current = bar;
+  /** How far down the window the bar reaches: where the full chart begins. */
+  const barBottom = () => barRef.current?.getBoundingClientRect().bottom ?? 0;
   const [panelBox, setPanelBox] = useState<Rect | null>(null);
   useLayoutEffect(() => {
-    if (!finderHead) return;
+    if (!bar) return;
     const measure = () =>
       setPanelBox(
         panelRect(
           window.innerWidth,
           window.innerHeight,
-          finderHead.getBoundingClientRect().bottom,
+          bar.getBoundingClientRect().bottom,
         ),
       );
     measure();
     const watch = new ResizeObserver(measure);
-    watch.observe(finderHead);
+    watch.observe(bar);
     window.addEventListener("resize", measure);
     return () => {
       watch.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [finderHead]);
+  }, [bar]);
+  /**
+   * The clip that shows only `rect` (in the window) of the full chart's box,
+   * which starts under the bar: the panel the chart opens out from, or
+   * shrinks back to.
+   */
+  const clipToPanel = (rect: Rect) => {
+    const top = barBottom();
+    return clipTo(
+      { ...rect, top: rect.top - top },
+      window.innerWidth,
+      window.innerHeight - top,
+      18,
+    );
+  };
   const panelRef = useRef(panelBox);
   panelRef.current = panelBox;
   /** The panel the chart is opening out from, and its middle, until the next layout. */
@@ -1551,18 +1572,17 @@ export default function App() {
     const map = controls.current?.map;
     const to = panelRef.current;
     if (!splitRef.current || !el || !map || !to) return setPage("finder");
+    // The map's own pixels start under the bar.
     const middle = map.unproject([
       to.left + to.width / 2,
-      to.top + to.height / 2,
+      to.top - barBottom() + to.height / 2,
     ]);
     backTo.current = { lng: middle.lng, lat: middle.lat };
     if (motionRef.current || !el.animate) return setPage("finder");
     const shrink = el.animate(
       [
         { clipPath: "inset(0px 0px 0px 0px round 0px)" },
-        {
-          clipPath: clipTo(to, window.innerWidth, window.innerHeight, 18),
-        },
+        { clipPath: clipToPanel(to) },
       ],
       {
         duration: OPEN_MS,
@@ -1591,10 +1611,11 @@ export default function App() {
       // it was, and glides to the middle of the screen as the box opens
       // round it.
       const shift = () => {
+        const top = barBottom();
         map.panBy(
           [
             window.innerWidth / 2 - (from.left + from.width / 2),
-            window.innerHeight / 2 - (from.top + from.height / 2),
+            top + (window.innerHeight - top) / 2 - (from.top + from.height / 2),
           ],
           { duration: 0 },
         );
@@ -1609,9 +1630,7 @@ export default function App() {
       if (motionRef.current || !el.animate) return;
       el.animate(
         [
-          {
-            clipPath: clipTo(from, window.innerWidth, window.innerHeight, 18),
-          },
+          { clipPath: clipToPanel(from) },
           { clipPath: "inset(0px 0px 0px 0px round 0px)" },
         ],
         { duration: OPEN_MS, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" },
@@ -2212,10 +2231,6 @@ export default function App() {
     window.addEventListener(MAP_ASK_EVENT, heard);
     return () => window.removeEventListener(MAP_ASK_EVENT, heard);
   }, [answer]);
-  const finderMenu = useMemo(
-    () => <SiteMenu current="finder" go={menuGo} />,
-    [menuGo],
-  );
   const openInChartRef = useRef(openInChart);
   openInChartRef.current = openInChart;
   const onInChart = useCallback(
@@ -2238,10 +2253,7 @@ export default function App() {
     setFinderWant(ids);
     setFinderScope(scope);
   }, []);
-  const onFinderHead = useCallback((el: HTMLElement | null) => {
-    setFinderHead(el);
-    if (el) setFinderDrawn(true);
-  }, []);
+  const onFinderDrawn = useCallback(() => setFinderDrawn(true), []);
   /** The button between the list and the full chart, at the foot. */
   const onChart = page === "chart";
   // Alone, the list scrolls the page (src/finder/SpotFinder.tsx), and under
@@ -2262,24 +2274,52 @@ export default function App() {
   useLayoutEffect(() => {
     if (!onChart && listScroll.current) window.scrollTo(0, listScroll.current);
   }, [onChart]);
-  const listButton = (onChart || !split) && (
-    <Button
-      variant="primary"
-      size="md"
-      className="list-toggle"
-      onClick={onChart ? openList : openChart}
-      data-map-toggle
-    >
-      {onChart ? (
-        <>
-          <ListGlyph size={15} strokeWidth={1.75} aria-hidden="true" /> List
-        </>
-      ) : (
-        <>
-          <MapGlyph size={15} strokeWidth={1.75} aria-hidden="true" /> Map
-        </>
-      )}
-    </Button>
+  /**
+   * A spot picked in the top bar's search: on the chart it is flown to and
+   * opened there, as a light pressed is; from the list, its own page.
+   */
+  const pickFound = (spot: Spot) => {
+    if (pageRef.current === "chart") selectSpot(spot);
+    else window.location.assign(spotHref(spot.id));
+  };
+  /** A found spot's wind and stars at the hour the map shows, where rated. */
+  const describeFound = (spot: Spot) => {
+    const hour = hourAt(spot.id);
+    if (!hour?.rating) return null;
+    return (
+      <>
+        <span>{hourWind(hour)}</span>
+        <StarGlyphs
+          stars={hour.rating.stars}
+          potential={hour.rating.potential}
+          size={10}
+        />
+      </>
+    );
+  };
+  const topBar = (
+    <div className="app-bar">
+      <TopBar
+        ref={setBar}
+        onHome={openList}
+        search={
+          <SpotSearch
+            spots={spots}
+            onPick={pickFound}
+            describe={describeFound}
+            describeLabel="At the hour shown"
+          />
+        }
+        view={
+          onChart
+            ? { to: "spots", href: FINDER_HREF, onClick: openList }
+            : { to: "chart", href: CHART_HREF, onClick: openChart }
+        }
+        menu={
+          <SiteMenu current={onChart ? "chart" : "finder"} go={menuGo} />
+        }
+      />
+    </div>
   );
   /** The hour the lights beside the list show, as the cards say it. */
   const panelWhen =
@@ -2357,6 +2397,7 @@ export default function App() {
         </main>
       ) : (
         <>
+          {topBar}
           {/* The list, always there: under the full chart it waits, as it
             was, for the way back to it. */}
           <div
@@ -2382,19 +2423,17 @@ export default function App() {
                   phone={phone}
                   onWant={onWant}
                   onInChart={onInChart}
-                  menu={finderMenu}
                   beside={split}
                   onHover={hoverCard}
                   onShown={setFinderShown}
                   onPlace={setRiderAt}
-                  headRef={onFinderHead}
+                  onDrawn={onFinderDrawn}
                   onScreen={!onChart}
                   model={riderModel}
                   onModel={onFinderModel}
                 />
               </Suspense>
             )}
-            {!onChart && listButton}
           </div>
           <main
             className="workspace"
@@ -2481,13 +2520,6 @@ export default function App() {
               )}
               {onChart && (
                 <>
-                  <MapHead
-                    spots={spots}
-                    starred={starred}
-                    hourAt={hourAt}
-                    onPick={(spot) => selectSpot(spot)}
-                    go={menuGo}
-                  />
                   <MapControls
                     onZoomIn={() => controls.current?.zoomIn()}
                     onZoomOut={() => controls.current?.zoomOut()}
@@ -2712,12 +2744,8 @@ export default function App() {
                           ? pickRiderModel(reachable.id, column.validTime)
                           : undefined
                       }
-                      float={listButton}
                     />
                   )}
-                  {/* The List button, at the foot with no dock, and with one
-                  just above it, inside its layout, so it moves with it. */}
-                  {!dockOpen && listButton}
                 </div>
               )}
             </section>
