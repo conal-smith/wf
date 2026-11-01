@@ -393,35 +393,6 @@
   }
 }
 
-/* The neatline: alternate ink and paper along the edges, with the degrees. */
-.map-neat {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 5;
-}
-.map-neat .nl-a {
-  fill: var(--color-ink);
-}
-.map-neat .nl-b {
-  fill: var(--color-ground);
-}
-.map-neat .nl-frame {
-  fill: none;
-  stroke: var(--color-ink);
-  stroke-width: 1;
-}
-.map-neat .nl-inner {
-  stroke-width: 0.8;
-}
-.map-neat .nl-t {
-  font: 500 9px var(--font-mono);
-  fill: var(--color-ink);
-  paint-order: stroke;
-  stroke: var(--map-halo);
-  stroke-width: 3px;
-}
-
 .map-loading,
 .map-error {
   position: absolute;
@@ -1337,10 +1308,6 @@
 .workspace[data-chart="hidden"] {
   visibility: hidden;
   pointer-events: none;
-}
-/* Beside the list the chart is a window onto it, in a box: no neatline. */
-.workspace[data-chart="panel"] .map-neat {
-  display: none;
 }
 /* Under the full chart the list is out of sight as well as out of reach, so
    nothing in it moves the page while it waits; it stays drawn while the chart

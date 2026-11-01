@@ -1,23 +1,23 @@
 /**
- * The tour: seven cards, each with a ring round the real thing on
- * the chart it is about (the lights, a spot's hours, sliding them, the loupe,
- * the blend, the menu, the layers), and a last card that offers Settings.
+ * The tour: six cards, each with a ring round the real thing on
+ * the chart it is about (the lights, a spot's week in the scrub bar, moving
+ * through it, the loupe, the menu, the layers), and a last card that offers
+ * Settings.
  * Back, Next, Skip tour, and Escape leaves. Its own chunk, fetched when the
  * tour is taken, from the first visit's offer or the site menu.
  *
  * The cards name what they point at and say nothing on the chart itself:
  * the ring is the one mark (the owner's ruling, 23 October 2026: no
- * written commentary on the chart or the dock).
+ * written commentary on the chart).
  *
- * It finds its targets by the chart's own classes, so a change to the dock
- * moves a target here with it: `TARGETS` is the one list of them.
+ * It finds its targets by the chart's own classes, so a change to the scrub
+ * bar moves a target here with it: `TARGETS` is the one list of them.
  */
 import "./tour.css";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { FocusStyle } from "../force5/src/focus";
 import { Button } from "../ui/Button";
-import type { DockView } from "./ForecastDock";
 
 /** A box with rounded corners of radius `r`, as one SVG path. */
 function roundBox(x: number, y: number, w: number, h: number, r: number) {
@@ -40,11 +40,9 @@ interface Box {
 /** What the tour may do to the chart, and what it was when the tour began. */
 export interface TourProps {
   phone: boolean;
-  /** The spot open in the dock, if any, and a way to open one or close it. */
+  /** The spot open in the scrub bar, if any, and a way to open one or close it. */
   spot: string | null;
   onSpot: (id: string | null) => void;
-  view: DockView;
-  onView: (view: DockView) => void;
   focusStyle: FocusStyle;
   onFocusStyle: (style: FocusStyle) => void;
   /** The layers' rail, open or shut. */
@@ -57,13 +55,10 @@ export interface TourProps {
 /** Where each card's ring goes: the chart's own classes, in one place. */
 const TARGETS = {
   light: ".spot-marker",
-  dock: ".map-footer .dock",
-  dockTools: "#dk-tools",
-  hours: [".dock tr.tt-day", ".dock tr.tt-hour"],
-  hoursWrap: ".dock .tt-wrap",
+  bar: ".map-footer .scrub",
+  strip: ".scrub .sb-strip",
   // The loupe's sheet is the whole map: its rim and the reading under it are the loupe.
   loupe: [".map-loupe .map-loupe-rim", ".map-loupe .map-loupe-foot-box"],
-  blend: [".dock tr.tt-blend", ".dock .blend-chart"],
   menu: '[data-top-bar] [aria-label="Site menu"]',
   layers: "#map-rail",
 } as const;
@@ -89,12 +84,6 @@ const union = (boxes: (Box | null)[]): Box | null => {
 };
 const pad = (b: Box | null, by: number) =>
   b && { x: b.x - by, y: b.y - by, w: b.w + by * 2, h: b.h + by * 2 };
-const clip = (b: Box | null, to: Box | null) => {
-  if (!b || !to) return b;
-  const x = Math.max(b.x, to.x);
-  const w = Math.min(b.x + b.w, to.x + to.w) - x;
-  return w > 0 ? { ...b, x, w } : null;
-};
 
 /** The best light on the screen, by the stars it shows: the one the first card rings. */
 function bestLight(): HTMLElement | null {
@@ -107,7 +96,7 @@ function bestLight(): HTMLElement | null {
   let best: HTMLElement | null = null;
   for (const el of document.querySelectorAll<HTMLElement>(TARGETS.light)) {
     const b = box(el);
-    // Clear of the head and the dock, where a ring can be seen whole.
+    // Clear of the head and the scrub bar, where a ring can be seen whole.
     if (!b || b.x < 40 || b.x > W - 60 || b.y < 110 || b.y > H * 0.62) continue;
     if (!best || stars(el) > stars(best)) best = el;
   }
@@ -142,28 +131,20 @@ const STEPS: Step[] = [
     },
   },
   {
-    id: "dock",
-    title: "A spot’s forecast",
-    body: "Tap any spot to see its forecast hour by hour: the stars, the wind speed and gusts, which way the wind is blowing, and the size of wing to use.",
+    id: "bar",
+    title: "A spot’s week",
+    body: "Tap any spot to see its week along the foot of the chart: the wind and gusts, or the waves or the tide, with a row of pink under them for its stars. Full forecast opens the spot’s page, with every detail hour by hour.",
     prep: (p, t) => {
       const id = p.spot ?? t.light;
       if (id) p.onSpot(id);
     },
-    target: () =>
-      union([
-        box(document.querySelector(TARGETS.dock)),
-        box(document.querySelector(TARGETS.dockTools)),
-      ]),
+    target: () => pad(box(document.querySelector(TARGETS.bar)), 2),
   },
   {
-    id: "hours",
+    id: "time",
     title: "Pick a time",
-    body: "Tap an hour, or slide the hours sideways, to pick a time. The whole map then shows the wind and stars for that time.",
-    target: () =>
-      clip(
-        pad(union(TARGETS.hours.map((s) => box(document.querySelector(s)))), 2),
-        box(document.querySelector(TARGETS.hoursWrap)),
-      ),
+    body: "Drag along the week, or press play, to move through it. The whole map then shows the wind and stars for that time.",
+    target: () => pad(box(document.querySelector(TARGETS.strip)), 4),
   },
   {
     id: "loupe",
@@ -172,19 +153,6 @@ const STEPS: Step[] = [
     prep: (p) => p.onFocusStyle("loupe"),
     target: () =>
       pad(union(TARGETS.loupe.map((s) => box(document.querySelector(s)))), 6),
-  },
-  {
-    id: "blend",
-    title: "Compare forecasts",
-    body: "The Blend button shows the wind from several different weather forecasts on one chart. When the lines are close together, the forecasts agree. When they are far apart, the forecast is less certain.",
-    prep: (p) => p.onView("blend"),
-    target: () => {
-      const chart =
-        TARGETS.blend
-          .map((s) => box(document.querySelector(s)))
-          .find(Boolean) ?? null;
-      return clip(chart, box(document.querySelector(TARGETS.hoursWrap)));
-    },
   },
   {
     id: "menu",
@@ -219,7 +187,6 @@ export default function Tour(props: TourProps) {
   // The chart as it was, put back as the tour leaves.
   const [was] = useState(() => ({
     spot: props.spot,
-    view: props.view,
     focusStyle: props.focusStyle,
     layers: props.layers,
   }));
@@ -230,7 +197,6 @@ export default function Tour(props: TourProps) {
   const end = (customise: boolean) => {
     const p = live.current;
     p.onLayers(was.layers);
-    p.onView(was.view);
     p.onFocusStyle(was.focusStyle);
     p.onSpot(was.spot);
     p.onEnd(customise);
@@ -239,12 +205,11 @@ export default function Tour(props: TourProps) {
   endRef.current = end;
 
   // Each card sets the chart up, then follows its target as the chart
-  // settles (the dock slides in, the camera flies) and as the window moves.
+  // settles (the scrub bar fills, the camera flies) and as the window moves.
   useEffect(() => {
     const p = live.current;
     // Back or on, whatever an earlier card opened that this one does not need is put away.
     if (step.id !== "layers") p.onLayers(was.layers);
-    if (step.id !== "blend") p.onView(was.view);
     if (at < 3) p.onFocusStyle(was.focusStyle);
     step.prep?.(p, tour.current);
     setRing(null);

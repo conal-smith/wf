@@ -330,8 +330,19 @@ export function spotIdFromPath(pathname: string): string | null {
   }
 }
 
-/** A riding place's own page. Absolute: it is a page load from the map. */
-export const spotHref = (id: string) => `/spot/${encodeURIComponent(id)}`;
+const atQuery = (at: string | undefined) =>
+  at ? `?at=${encodeURIComponent(at)}` : "";
+
+/**
+ * A riding place's own page, opened at the hour `at` (an ISO time) when one
+ * is given. Absolute: it is a page load from the map.
+ */
+export const spotHref = (id: string, at?: string) =>
+  `/spot/${encodeURIComponent(id)}${atQuery(at)}`;
+
+/** A point on the water's own page, "/spot/@53.3412,-6.1520", at `at`. */
+export const pointHref = (lat: number, lon: number, at?: string) =>
+  `/spot/@${lat.toFixed(4)},${lon.toFixed(4)}${atQuery(at)}`;
 
 /** The map, opened on a riding place, as every link back to it is written. */
 export const mapSpotHref = (id: string) => `/?spot=${encodeURIComponent(id)}`;

@@ -253,8 +253,7 @@ describe("a hover is for a mouse", () => {
     const sheets = [
       "src/styles.css",
       "src/map.css",
-      "src/dock.css",
-      "src/panels.css",
+      "src/scrub.css",
       "companion/web/gust.css",
     ];
     const ungated = sheets.flatMap((sheet) =>
