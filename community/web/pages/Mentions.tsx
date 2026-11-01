@@ -171,7 +171,7 @@ function Mentioned() {
         icon={<CloudOff size={24} strokeWidth={1.5} aria-hidden="true" />}
       >
         <p role="alert">{state.message}</p>
-        <Button variant="pill" onClick={reload}>
+        <Button variant="outline" onClick={reload}>
           Try again
         </Button>
       </Empty>
@@ -193,7 +193,7 @@ function Mentioned() {
       )}
       {state.nextCursor !== null && (
         <Button
-          variant="pill"
+          variant="outline"
           className={styles.more()}
           disabled={state.more.status === "loading"}
           onClick={loadMore}

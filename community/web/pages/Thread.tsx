@@ -440,7 +440,7 @@ function Conversation({
         <div className={styles.arrivals()} aria-live="polite">
           {arrived > 0 && (
             <Button
-              variant="pill"
+              variant="outline"
               size="sm"
               className={styles.pill()}
               onClick={() => void data.reachEnd().then(toEnd)}
@@ -612,7 +612,7 @@ export function ThreadHead({
             />
           )}
           <Button
-            variant="pill"
+            variant="outline"
             size="sm"
             icon
             aria-label={copied ? "Link copied" : "Copy link"}
@@ -629,7 +629,7 @@ export function ThreadHead({
           </span>
           {(canReport || viewer.staff) && (
             <Popover
-              variant="pill"
+              variant="outline"
               size="sm"
               icon
               aria-label="More"

@@ -473,7 +473,7 @@ export default function SpotFinder(props: FinderProps) {
             onChange={chooseScope}
           />
           <Button
-            variant="raised"
+            variant="outline"
             size="sm"
             icon
             className={s.searchButton()}
@@ -619,7 +619,7 @@ export default function SpotFinder(props: FinderProps) {
                   Nearby lists the spots within 30 km of where you are. To find
                   them, your browser will ask to share your location.
                 </span>
-                <Button variant="pill" onClick={() => setAsked(true)}>
+                <Button variant="outline" onClick={() => setAsked(true)}>
                   Use my location
                 </Button>
               </p>

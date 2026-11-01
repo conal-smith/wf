@@ -83,7 +83,7 @@ function Inbox({ unread, onUnread }: NotificationsProps) {
         )}
         {state.status === "ready" && state.nextCursor !== null && (
           <Button
-            variant="pill"
+            variant="outline"
             className={styles.more()}
             disabled={state.more.status === "loading"}
             onClick={rows.loadMore}

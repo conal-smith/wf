@@ -492,7 +492,7 @@ export function SiteMenu({
     <div className={styles.root()}>
       <Button
         ref={trigger}
-        variant="raised"
+        variant="outline"
         size={size}
         icon
         className={styles.trigger()}

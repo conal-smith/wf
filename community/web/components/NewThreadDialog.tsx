@@ -383,7 +383,7 @@ function NewThreadDialog({
       onClose={onClose}
       actions={
         <>
-          <Button variant="pill" disabled={posting} onClick={onClose}>
+          <Button variant="outline" disabled={posting} onClick={onClose}>
             Cancel
           </Button>
           <Button
@@ -471,7 +471,7 @@ function NewThreadDialog({
                   return (
                     <Button
                       key={tag.id}
-                      variant="pill"
+                      variant="outline"
                       size="sm"
                       pressed={on}
                       // Three are picked: a fourth has to take one's place.
@@ -526,7 +526,7 @@ function NewThreadDialog({
                   </span>
                 )}
                 <Button
-                  variant="pill"
+                  variant="outline"
                   size="sm"
                   icon
                   aria-label={`Remove photo ${i + 1}`}

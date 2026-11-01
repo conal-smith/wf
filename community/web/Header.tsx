@@ -74,7 +74,7 @@ export function Header({
             {newThread && (
               <Button
                 {...routed(newThread)}
-                variant={accentNew ? "primary" : "pill"}
+                variant={accentNew ? "primary" : "outline"}
                 size="sm"
                 className={styles.newThread()}
               >
@@ -110,7 +110,7 @@ export function Header({
           </>
         ) : (
           <Button
-            variant="pill"
+            variant="outline"
             size="sm"
             onClick={auth.signIn}
             disabled={auth.provider === "none" || !auth.loaded}

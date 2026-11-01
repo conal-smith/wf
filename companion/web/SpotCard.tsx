@@ -84,7 +84,7 @@ export function SpotCard({ card, onShow, compact = false }: SpotCardProps) {
           )}
         </div>
         <Button
-          variant="pill"
+          variant="outline"
           size="sm"
           icon
           aria-label={`Show ${card.name} on the map`}
@@ -181,7 +181,7 @@ export function SpotCard({ card, onShow, compact = false }: SpotCardProps) {
             {card.windows.map((w) => (
               <li key={w.from}>
                 <Button
-                  variant="pill"
+                  variant="outline"
                   size="sm"
                   className="gap-1.5 tabular-nums"
                   onClick={() => show(w)}
@@ -197,7 +197,7 @@ export function SpotCard({ card, onShow, compact = false }: SpotCardProps) {
       )}
 
       <footer className="flex flex-wrap items-center gap-2">
-        <Button variant="pill" size="sm" onClick={() => show(best)}>
+        <Button variant="outline" size="sm" onClick={() => show(best)}>
           <MapPin size={14} strokeWidth={1.5} aria-hidden="true" />
           Show on map
         </Button>

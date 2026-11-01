@@ -115,7 +115,7 @@ export function Channel({
         icon={<Compass size={24} strokeWidth={1.5} aria-hidden="true" />}
       >
         <p>The link may be old, or the channel may have been archived.</p>
-        <Button {...routed(paths.home())} variant="pill">
+        <Button {...routed(paths.home())} variant="outline">
           Back to the community
         </Button>
       </Empty>
@@ -209,7 +209,7 @@ function Listed({
         actions={
           auth.provider !== "none" && (
             <Button
-              variant="pill"
+              variant="outline"
               size="sm"
               pressed={Boolean(channel.following)}
               disabled={following || !auth.loaded}
@@ -243,7 +243,7 @@ function Listed({
               title={`No threads tagged ${tag.label}`}
               icon={<Tag size={24} strokeWidth={1.5} aria-hidden="true" />}
             >
-              <Button {...routed(paths.channel(channel.slug))} variant="pill">
+              <Button {...routed(paths.channel(channel.slug))} variant="outline">
                 Show every thread
               </Button>
             </Empty>
@@ -256,7 +256,7 @@ function Listed({
                       the floating one on a phone. */}
                   <Button
                     {...routed(paths.newThread(channel.slug))}
-                    variant="pill"
+                    variant="outline"
                   >
                     Start the first one
                   </Button>

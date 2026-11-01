@@ -220,7 +220,7 @@ export function StarToggle({
 }) {
   return (
     <Button
-      variant="raised"
+      variant="outline"
       size="sm"
       icon
       pressed={on ? "worded" : false}

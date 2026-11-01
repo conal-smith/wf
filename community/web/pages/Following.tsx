@@ -111,7 +111,7 @@ function Followed({ channels, onFollowed }: FollowingProps) {
           ? managed.map((channel) => (
               <Button
                 key={channel.id}
-                variant="pill"
+                variant="outline"
                 size="sm"
                 pressed={!off.has(channel.slug)}
                 disabled={busy === channel.slug}
@@ -126,7 +126,7 @@ function Followed({ channels, onFollowed }: FollowingProps) {
               <Button
                 key={channel.id}
                 {...routed(paths.channel(channel.slug))}
-                variant="pill"
+                variant="outline"
                 size="sm"
               >
                 <Hash size={13} strokeWidth={1.5} aria-hidden="true" />
@@ -171,7 +171,7 @@ function Followed({ channels, onFollowed }: FollowingProps) {
               Start a thread or reply to one, and it is kept here. The bell
               tells you when it moves.
             </p>
-            <Button {...routed(paths.home())} variant="pill">
+            <Button {...routed(paths.home())} variant="outline">
               Browse the latest threads
             </Button>
           </Empty>

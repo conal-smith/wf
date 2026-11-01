@@ -305,7 +305,7 @@ function Gallery({ listing }: { listing: Listing }) {
         {count > 1 && (
           <>
             <Button
-              variant="pill"
+              variant="outline"
               icon
               className={listingStyles({ side: "prev" }).nav()}
               aria-label="Previous photo"
@@ -314,7 +314,7 @@ function Gallery({ listing }: { listing: Listing }) {
               <ChevronLeft size={18} strokeWidth={1.5} aria-hidden="true" />
             </Button>
             <Button
-              variant="pill"
+              variant="outline"
               icon
               className={listingStyles({ side: "next" }).nav()}
               aria-label="Next photo"
@@ -457,7 +457,7 @@ export function Aside({
 
   const shareButton = (
     <Button
-      variant="pill"
+      variant="outline"
       icon
       size="lg"
       aria-label={shared ? "Link copied" : "Share this listing"}
@@ -526,7 +526,7 @@ export function Aside({
             <div className={styles.formActions()}>
               {listing.status === "active" ? (
                 <Button
-                  variant="pill"
+                  variant="outline"
                   disabled={statusBusy}
                   onClick={() => setStatus("sold")}
                 >
@@ -534,7 +534,7 @@ export function Aside({
                 </Button>
               ) : (
                 <Button
-                  variant="pill"
+                  variant="outline"
                   disabled={statusBusy}
                   onClick={() => setStatus("active")}
                 >
@@ -798,7 +798,7 @@ function ReviewSection({
             </Notice>
           )}
           <div className={styles.formActions()}>
-            <Button type="submit" variant="pill" disabled={busy}>
+            <Button type="submit" variant="outline" disabled={busy}>
               {busy ? "Saving…" : e.existing ? "Update review" : "Post review"}
             </Button>
           </div>

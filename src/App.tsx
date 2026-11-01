@@ -2337,7 +2337,7 @@ export default function App() {
     >
       {!error && (
         <Button
-          variant="raised"
+          variant="outline"
           size="sm"
           href="#"
           className="skip-link"
@@ -2412,7 +2412,7 @@ export default function App() {
               {!onChart && (
                 <div className="panel-tools">
                   <Button
-                    variant="pill"
+                    variant="outline"
                     size="sm"
                     className="panel-open"
                     onClick={openChart}
@@ -2463,11 +2463,11 @@ export default function App() {
                     aria-label="The map"
                     data-panel-modes
                   >
-                    <Button variant="pill" size="sm" pressed>
+                    <Button variant="outline" size="sm" pressed>
                       Spots
                     </Button>
                     <Button
-                      variant="raised"
+                      variant="outline"
                       size="sm"
                       className="panel-chart"
                       onClick={openChart}

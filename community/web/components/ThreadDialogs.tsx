@@ -77,7 +77,7 @@ export function ReportDialog({
           </Button>
         ) : (
           <>
-            <Button variant="pill" disabled={busy} onClick={onClose}>
+            <Button variant="outline" disabled={busy} onClick={onClose}>
               Cancel
             </Button>
             <Button variant="primary" disabled={busy} onClick={send}>
@@ -165,7 +165,7 @@ export function LockDialog({ open, onLock, onClose }: LockDialogProps) {
       onClose={onClose}
       actions={
         <>
-          <Button variant="pill" disabled={busy} onClick={onClose}>
+          <Button variant="outline" disabled={busy} onClick={onClose}>
             Cancel
           </Button>
           <Button

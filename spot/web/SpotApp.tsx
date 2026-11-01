@@ -152,7 +152,7 @@ function SpotRoute({ id }: { id: string | null }) {
             The forecast could not be read just now: {state.message}
           </Notice>
           <div>
-            <Button variant="pill" onClick={() => setAttempt((n) => n + 1)}>
+            <Button variant="outline" onClick={() => setAttempt((n) => n + 1)}>
               <RefreshCw size={14} strokeWidth={1.5} aria-hidden="true" />
               <span>Try again</span>
             </Button>
@@ -186,7 +186,7 @@ function SpotRoute({ id }: { id: string | null }) {
               </ul>
             )}
             <div>
-              <Button variant="pill" href="/spot">
+              <Button variant="outline" href="/spot">
                 All places
               </Button>
             </div>

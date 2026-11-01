@@ -59,7 +59,7 @@ export function TagPills({ slug, tags, current }: TagPillsProps) {
           <li key={pill.id ?? "all"} className={styles.item()}>
             <Button
               {...routed(paths.channel(slug, pill.id))}
-              variant="pill"
+              variant="outline"
               size="sm"
               pressed={current === pill.id}
               className={tagPillsStyles({ on: current === pill.id }).pill()}

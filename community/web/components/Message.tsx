@@ -216,7 +216,7 @@ function EditForm({
       <div className={styles.editActions()}>
         {/* Reply is the view's one filled action: saving is a pill. */}
         <Button
-          variant="pill"
+          variant="outline"
           size="sm"
           disabled={busy || !text.trim()}
           onClick={save}

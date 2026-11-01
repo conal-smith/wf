@@ -639,7 +639,7 @@ export function DayHours({
         aria-hidden="true"
       />
       <Button
-        variant="raised"
+        variant="outline"
         size="sm"
         icon
         aria-label="Earlier hours"
@@ -656,7 +656,7 @@ export function DayHours({
         <ChevronLeft size={15} strokeWidth={1.75} aria-hidden="true" />
       </Button>
       <Button
-        variant="raised"
+        variant="outline"
         size="sm"
         icon
         aria-label="Later hours"

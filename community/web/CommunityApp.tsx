@@ -141,7 +141,7 @@ function Shell() {
           {/* A thread's way back is its own, to its channel. */}
           {route.page !== "thread" && (
             <Button
-              variant="pill"
+              variant="outline"
               size="sm"
               className={styles.channels()}
               aria-expanded={channelsOpen}

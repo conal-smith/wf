@@ -687,7 +687,7 @@ function PhotoUploader({
           <div className={styles.tools()}>
             <span className={styles.reorder()}>
               <Button
-                variant="pill"
+                variant="outline"
                 icon
                 size="sm"
                 className={styles.tool()}
@@ -698,7 +698,7 @@ function PhotoUploader({
                 <ArrowLeft size={14} aria-hidden="true" />
               </Button>
               <Button
-                variant="pill"
+                variant="outline"
                 icon
                 size="sm"
                 className={styles.tool()}
@@ -710,7 +710,7 @@ function PhotoUploader({
               </Button>
             </span>
             <Button
-              variant="pill"
+              variant="outline"
               icon
               size="sm"
               className={styles.tool()}

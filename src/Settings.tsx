@@ -188,7 +188,7 @@ export default function Settings({
           <div className="st-foot">
             {reset}
             <span className="st-sp" />
-            <Button variant="pill" onClick={onClose}>
+            <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
             {save}
@@ -298,7 +298,7 @@ function YouPart({ draft, setDraft, unit }: PartProps & { unit: UnitScale }) {
         <span className="st-kick">Weight</span>
         <span className="st-stepper">
           <Button
-            variant="pill"
+            variant="outline"
             size="sm"
             icon
             aria-label="Lighter"
@@ -313,7 +313,7 @@ function YouPart({ draft, setDraft, unit }: PartProps & { unit: UnitScale }) {
             <small>kg</small>
           </output>
           <Button
-            variant="pill"
+            variant="outline"
             size="sm"
             icon
             aria-label="Heavier"

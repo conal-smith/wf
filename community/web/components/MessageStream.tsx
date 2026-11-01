@@ -92,7 +92,7 @@ export function MessageStream({
       {hasOlder && (
         <div className={styles.more()}>
           <span ref={top} className={styles.sentinel()} aria-hidden="true" />
-          <Button variant="pill" size="sm" disabled={loading} onClick={onOlder}>
+          <Button variant="outline" size="sm" disabled={loading} onClick={onOlder}>
             {loading ? "Loading…" : "Show earlier replies"}
           </Button>
         </div>
@@ -125,7 +125,7 @@ export function MessageStream({
       })}
       {hasNewer && (
         <div className={styles.more()}>
-          <Button variant="pill" size="sm" disabled={loading} onClick={onNewer}>
+          <Button variant="outline" size="sm" disabled={loading} onClick={onNewer}>
             {loading ? "Loading…" : "Show later replies"}
           </Button>
         </div>

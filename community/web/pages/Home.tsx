@@ -126,7 +126,7 @@ export function Home({ channels, onPosted, pathname, search }: HomeProps) {
               icon={<SearchX size={24} strokeWidth={1.5} aria-hidden="true" />}
             >
               <p>Try fewer words, or other ones.</p>
-              <Button {...routed(paths.home())} variant="pill">
+              <Button {...routed(paths.home())} variant="outline">
                 The latest threads
               </Button>
             </Empty>
@@ -136,7 +136,7 @@ export function Home({ channels, onPosted, pathname, search }: HomeProps) {
               {canStart && (
                 // Quiet: the view's filled New thread is the header's, or the
                 // floating one on a phone.
-                <Button {...routed(paths.newThread())} variant="pill">
+                <Button {...routed(paths.newThread())} variant="outline">
                   Start the first one
                 </Button>
               )}

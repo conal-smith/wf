@@ -190,7 +190,7 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
             </>
           ) : (
             <Button
-              variant="pill"
+              variant="outline"
               size="sm"
               onClick={auth.signIn}
               disabled={auth.provider === "none" || !auth.loaded}
@@ -883,7 +883,7 @@ export function LoadError({
         <p>{message}</p>
         <div className={styles.emptyActions()}>
           {onRetry && (
-            <Button variant="pill" onClick={onRetry}>
+            <Button variant="outline" onClick={onRetry}>
               <RotateCw size={15} aria-hidden="true" /> Try again
             </Button>
           )}
@@ -968,7 +968,7 @@ export function SaveButton({
 }) {
   return (
     <Button
-      variant="pill"
+      variant="outline"
       size="lg"
       // Saved says so in the word and in the filled heart beside it, so the
       // box stays quiet and never rivals the view's one filled action.

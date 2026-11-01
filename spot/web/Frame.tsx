@@ -56,7 +56,7 @@ export function SpotFrame({
           </a>
           <span className={s.gap()} />
           <span className={s.tools()}>
-            <Button variant="raised" size="sm" href={back} data-back-to-map>
+            <Button variant="outline" size="sm" href={back} data-back-to-map>
               <MapIcon size={18} strokeWidth={1.75} aria-hidden="true" />
               <span>{backLabel}</span>
             </Button>

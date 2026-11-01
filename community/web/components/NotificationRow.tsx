@@ -256,7 +256,7 @@ export function NotificationRows({
     return (
       <Notice kind="warn">
         <p>{state.message}</p>
-        <Button variant="pill" size="sm" onClick={onRetry}>
+        <Button variant="outline" size="sm" onClick={onRetry}>
           Try again
         </Button>
       </Notice>

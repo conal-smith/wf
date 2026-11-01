@@ -49,7 +49,7 @@ export function MembersOnly({ what, children }: MembersOnlyProps) {
             Signing in is not available on this version of the site. Reading the
             community is open to everyone.
           </p>
-          <Button {...routed(paths.home())} variant="pill">
+          <Button {...routed(paths.home())} variant="outline">
             Read the latest threads
           </Button>
         </>
@@ -57,7 +57,7 @@ export function MembersOnly({ what, children }: MembersOnlyProps) {
         <>
           <p>Reading needs no account. This page is a member’s own.</p>
           {/* Quiet, as in the header: signing in is offered, not pushed. */}
-          <Button variant="pill" onClick={auth.signIn}>
+          <Button variant="outline" onClick={auth.signIn}>
             <LogIn size={15} strokeWidth={1.5} aria-hidden="true" />
             <span>Sign in</span>
           </Button>

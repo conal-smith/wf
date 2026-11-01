@@ -300,7 +300,7 @@ export default function BrowsePage() {
 
       <div className={styles.filters()}>
         <Button
-          variant="pill"
+          variant="outline"
           className={styles.toggle()}
           aria-expanded={filtersOpen}
           aria-controls="browse-filters"
@@ -453,7 +453,7 @@ export default function BrowsePage() {
           </p>
           <div className={shared.emptyActions()}>
             {active ? (
-              <Button variant="pill" onClick={clearAll}>
+              <Button variant="outline" onClick={clearAll}>
                 Clear all filters
               </Button>
             ) : (

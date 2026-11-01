@@ -39,7 +39,7 @@ export function ProposalCard({
       </div>
       {status === "pending" ? (
         <div className="flex gap-2">
-          <Button variant="pill" size="sm" className="px-4" onClick={onConfirm}>
+          <Button variant="outline" size="sm" className="px-4" onClick={onConfirm}>
             Confirm
           </Button>
           <Button variant="quiet" size="sm" onClick={onDismiss}>

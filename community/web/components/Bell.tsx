@@ -214,7 +214,7 @@ export function Bell({ unread, onUnread, pathname }: BellProps) {
           },
         })}
         ref={bell}
-        variant="pill"
+        variant="outline"
         size="sm"
         icon
         className={styles.bell()}

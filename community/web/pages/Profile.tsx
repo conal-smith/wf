@@ -248,7 +248,7 @@ function Member({ handle }: ProfileProps) {
         icon={<Compass size={24} strokeWidth={1.5} aria-hidden="true" />}
       >
         <p>The link may be old, or they may have changed their handle.</p>
-        <Button {...routed(paths.home())} variant="pill">
+        <Button {...routed(paths.home())} variant="outline">
           Back to the community
         </Button>
       </Empty>
@@ -261,7 +261,7 @@ function Member({ handle }: ProfileProps) {
         icon={<CloudOff size={24} strokeWidth={1.5} aria-hidden="true" />}
       >
         <p role="alert">{state.message}</p>
-        <Button variant="pill" onClick={reload}>
+        <Button variant="outline" onClick={reload}>
           Try again
         </Button>
       </Empty>
@@ -395,7 +395,7 @@ function Own({ onSaved }: { onSaved: () => void }) {
         </Pane>
       ) : (
         <Button
-          variant="pill"
+          variant="outline"
           size="sm"
           className={styles.edit()}
           onClick={() => setEditing(true)}
@@ -570,7 +570,7 @@ function ProfileForm({
           Cancel
         </Button>
         {/* Quiet: the view's one filled action is the header's New thread. */}
-        <Button type="submit" variant="pill" disabled={saving}>
+        <Button type="submit" variant="outline" disabled={saving}>
           {saving ? "Saving…" : "Save profile"}
         </Button>
       </div>

@@ -109,7 +109,7 @@ export function ThreadList({
         icon={<CloudOff size={24} strokeWidth={1.5} aria-hidden="true" />}
       >
         <p role="alert">{state.message}</p>
-        <Button variant="pill" onClick={onRetry}>
+        <Button variant="outline" onClick={onRetry}>
           Try again
         </Button>
       </Empty>
@@ -139,7 +139,7 @@ export function ThreadList({
       {state.nextCursor !== null && (
         <Button
           ref={more}
-          variant="pill"
+          variant="outline"
           className={styles.more()}
           disabled={state.more.status === "loading"}
           onClick={onMore}

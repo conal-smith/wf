@@ -399,13 +399,13 @@ export default function Tour(props: TourProps) {
           )}
           <span className="tour-sp" />
           {at > 0 && !step.final && (
-            <Button variant="pill" size="sm" onClick={() => setAt(at - 1)}>
+            <Button variant="outline" size="sm" onClick={() => setAt(at - 1)}>
               Back
             </Button>
           )}
           {step.final ? (
             <>
-              <Button variant="pill" size="sm" onClick={() => end(false)}>
+              <Button variant="outline" size="sm" onClick={() => end(false)}>
                 Done
               </Button>
               <Button

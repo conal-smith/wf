@@ -105,7 +105,7 @@ export default function AiApp() {
                 <Button
                   href={plan.href}
                   {...away}
-                  variant="raised"
+                  variant="outline"
                   className={s.button()}
                   onClick={() => (plan.copies ? copy(a) : setCopied(null))}
                   data-app={a}
@@ -128,7 +128,7 @@ export default function AiApp() {
           <li className={s.row()}>
             <h2 className={s.name({ className: s.other() })}>Another app</h2>
             <Button
-              variant="raised"
+              variant="outline"
               className={s.button()}
               onClick={() => copy("other")}
               data-app="other"

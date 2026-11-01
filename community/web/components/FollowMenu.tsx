@@ -49,7 +49,7 @@ export function FollowMenu({ level, busy, onChoose }: FollowMenuProps) {
   const styles = followMenuStyles();
   return (
     <Popover
-      variant="pill"
+      variant="outline"
       size="sm"
       // Said in its words and its ringing bell, so it keeps its quiet box:
       // Reply is this view's one filled action.

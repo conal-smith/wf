@@ -953,7 +953,7 @@ describe("sell/me S2: the photo uploader", () => {
     expect(styles.badge().split(" ")).toEqual(["absolute", "top-1", "left-1"]);
     // The kit's paper capsule, which stays paper when it cannot be pressed.
     expect(read("pages/SellPage.tsx")).toMatch(
-      /variant="pill"\s+icon\s+size="sm"\s+className=\{styles\.tool\(\)\}/,
+      /variant="outline"\s+icon\s+size="sm"\s+className=\{styles\.tool\(\)\}/,
     );
     expect(styles.tool()).toContain("disabled:bg-card");
     expect(styles.tools()).toContain("absolute");
