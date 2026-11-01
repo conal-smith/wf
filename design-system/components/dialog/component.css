@@ -2,64 +2,56 @@
  * CSS. Consumes --sem-* only. Its buttons are the Button component's classes
  * (components/button/component.css); nothing here restyles them.
  *
- * A sheet: flat paper with its grain, the ink rule and the hairline inside it,
- * a sheet's corner and the sheet's deeper lift (2026-10-24), the title
- * in the display face over an ink rule, the body in sentences, and a row of
- * answers with the one filled action last.
+ * No frame: the ground, a dialog's corner and the deeper lift; in dark a
+ * faint edge so it separates from the dimmed page. An Inter title with no
+ * rule under it, the body in sentences, and a hairline above the actions and
+ * only there. Under 640px it is a sheet: up from the foot of the screen, the
+ * whole width, the corners at the top only, a grabber over its head, and the
+ * actions full width within a thumb's reach.
  *
  * The product draws a native <dialog>, which the browser hides with nothing
- * stronger than `display` while it is closed, so the grid is only set on
+ * stronger than `display` while it is closed, so the flex is only set on
  * [open]. Any other element carrying the class (a static rendering, as in the
- * demo) is drawn open. */
+ * demo) is drawn open; `--sheet` draws the phone's sheet at any width. */
 
 .wf-dialog {
   box-sizing: border-box;
-  margin: auto;
-  width: 91.6667%; /* w-11/12 of what holds it */
+  flex-direction: column;
+  width: 91.6667%;
   max-width: var(--sem-container-dialog);
-  gap: var(--sem-space-x5);
-  padding: var(--sem-space-x7);
-  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  max-height: 91.6667%;
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
   border-radius: var(--sem-radius-dialog);
-  background-color: var(--sem-color-card);
-  background-image: var(--sem-texture-grain);
-  background-repeat: repeat;
+  background: var(--sem-color-ground);
   color: var(--sem-color-ink);
   font-family: var(--sem-font-family-body);
-  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-sheet);
+  box-shadow: var(--sem-shadow-sheet);
+}
+/* In dark the lift barely shows on the dimmed page: a faint edge as well (the
+ * product's `dark:ring-1 ring-line`). */
+[data-mode="dark"] .wf-dialog {
+  box-shadow: var(--sem-shadow-sheet), 0 0 0 var(--sem-rule-hairline) var(--sem-color-line);
 }
 
 .wf-dialog[open],
 .wf-dialog:not(dialog) {
-  display: grid;
+  display: flex;
   animation: var(--sem-animate-dialog-in);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .wf-dialog[open],
-  .wf-dialog:not(dialog) {
-    animation: none;
-  }
+.wf-dialog--wide {
+  max-width: var(--sem-container-dialog-wide);
 }
 
-/* max-wide: under sem.breakpoint.wide (45rem) the inset narrows. */
-@media (max-width: 719.98px) {
-  .wf-dialog {
-    padding: var(--sem-space-x5);
-  }
-}
-
-/* The page behind softens under a wash of paper: the scrim, over a blur. */
+/* The page behind, blurred under a wash. */
 .wf-dialog::backdrop {
   background: var(--sem-color-scrim);
   -webkit-backdrop-filter: blur(var(--sem-blur-scrim));
   backdrop-filter: blur(var(--sem-blur-scrim));
   animation: var(--sem-animate-scrim-in);
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .wf-dialog::backdrop {
-    background: var(--sem-color-scrim-solid);
-  }
 }
 @media (prefers-reduced-transparency: reduce) {
   .wf-dialog::backdrop {
@@ -68,67 +60,133 @@
     backdrop-filter: none;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .wf-dialog::backdrop {
-    animation: none;
-  }
+
+/* The grabber: shown on the sheet only. */
+.wf-dialog__grabber {
+  display: none;
+  flex-shrink: 0;
+  width: 36px;
+  height: 5px;
+  margin: var(--sem-space-x2) auto 0;
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-line-strong);
 }
 
-/* size="wide" */
-.wf-dialog--wide {
-  max-width: var(--sem-container-dialog-wide);
-}
-
-/* ---- head: the title, and the close button, over an ink rule ---- */
 .wf-dialog__head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-shrink: 0;
+  align-items: center;
   gap: var(--sem-space-x3);
-  padding-bottom: var(--sem-space-x3);
-  border-bottom: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  padding: 18px var(--sem-space-x4) var(--sem-space-x2-5) var(--sem-space-x6);
 }
-
 .wf-dialog__title {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
   margin: 0;
-  font-family: var(--sem-font-family-display);
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-body);
   font-size: var(--sem-font-size-lead);
   line-height: var(--sem-font-line-lead);
-  font-weight: var(--sem-font-weight-lead);
-  color: var(--sem-color-ink);
+  font-weight: var(--sem-font-weight-semibold);
+  letter-spacing: -0.01em;
 }
-
-/* A figure beside the title, before the close: how far through a wizard is. */
+/* Beside the title, before the close button: how far through a wizard is. */
 .wf-dialog__aside {
   flex-shrink: 0;
   align-self: center;
-  font-family: var(--sem-font-family-mono);
-  font-size: var(--sem-font-size-label);
   color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-body);
+  font-variant-numeric: tabular-nums;
 }
 
-/* ---- body: a sentence or two ---- */
 .wf-dialog__body {
   display: grid;
-  gap: var(--sem-space-x3);
+  flex: 1 1 auto;
+  align-content: start;
+  gap: var(--sem-space-x4);
+  min-height: 0;
+  padding: var(--sem-space-x2) var(--sem-space-x6) var(--sem-space-x6);
+  overflow-y: auto;
+  color: var(--sem-color-ink-2);
   font-size: var(--sem-font-size-prose);
   line-height: var(--sem-font-line-prose);
-  color: var(--sem-color-ink-2);
 }
-/* The product's preflight zeroes a paragraph's margins; the gap spaces them. */
-.wf-dialog__body > * {
+.wf-dialog__body p {
   margin: 0;
 }
 
-/* ---- actions: the filled one, if any, last ---- */
+/* A hairline above the actions, and only there. The filled one comes last. */
 .wf-dialog__actions {
   display: flex;
+  flex-shrink: 0;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: var(--sem-space-x2);
+  padding: 14px var(--sem-space-x6) 18px;
+  border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
+}
+
+/* ---- the sheet: under 640px, or `--sheet` in a static rendering ---- */
+@media (max-width: 639.98px) {
+  .wf-dialog {
+    width: 100%;
+    max-width: none;
+    margin-bottom: 0;
+    border-radius: var(--sem-radius-dialog) var(--sem-radius-dialog) 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .wf-dialog[open] {
+    animation: var(--sem-animate-sheet-in);
+  }
+  .wf-dialog .wf-dialog__grabber {
+    display: block;
+  }
+  .wf-dialog .wf-dialog__head {
+    padding: var(--sem-space-x2-5) var(--sem-space-x3) var(--sem-space-x2-5) var(--sem-space-x5);
+  }
+  .wf-dialog .wf-dialog__body {
+    padding: var(--sem-space-x2) var(--sem-space-x5) var(--sem-space-x5);
+  }
+  .wf-dialog .wf-dialog__actions {
+    flex-wrap: nowrap;
+    padding: var(--sem-space-x3) var(--sem-space-x5) 22px;
+  }
+  .wf-dialog .wf-dialog__actions > * {
+    flex: 1 1 0;
+    height: calc(var(--sem-space-x6) * 2);
+  }
+}
+.wf-dialog--sheet {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 0;
+  border-radius: var(--sem-radius-dialog) var(--sem-radius-dialog) 0 0;
+}
+.wf-dialog--sheet .wf-dialog__grabber {
+  display: block;
+}
+.wf-dialog--sheet .wf-dialog__head {
+  padding: var(--sem-space-x2-5) var(--sem-space-x3) var(--sem-space-x2-5) var(--sem-space-x5);
+}
+.wf-dialog--sheet .wf-dialog__body {
+  padding: var(--sem-space-x2) var(--sem-space-x5) var(--sem-space-x5);
+}
+.wf-dialog--sheet .wf-dialog__actions {
+  flex-wrap: nowrap;
+  padding: var(--sem-space-x3) var(--sem-space-x5) 22px;
+}
+.wf-dialog--sheet .wf-dialog__actions > * {
+  flex: 1 1 0;
+  height: calc(var(--sem-space-x6) * 2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-dialog[open],
+  .wf-dialog:not(dialog),
+  .wf-dialog::backdrop {
+    animation: none;
+  }
 }
 
 @keyframes dialog-in {
@@ -137,7 +195,11 @@
     transform: translateY(var(--sem-space-x2));
   }
 }
-
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
 @keyframes scrim-in {
   from {
     opacity: 0;

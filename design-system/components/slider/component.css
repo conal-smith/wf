@@ -1,0 +1,89 @@
+/* Slider — ui/Slider.tsx (sliderStyles) and the theme's range-kit, rendered
+ * in CSS. Consumes --sem-* only, but for the thumb (see below).
+ *
+ * A value along a range: a thin track filled in the ink colour up to a round
+ * white thumb, and the value said beside it with its unit. A native range
+ * input, so the keys, a screen reader and a thumb work as the platform's.
+ * `--wf-slider-fill` (a percentage) is set on the input by the page, as the
+ * product sets `--range-fill`. */
+
+.wf-slider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--sem-font-family-body);
+}
+
+.wf-slider__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--sem-space-x7);
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.wf-slider__input::-webkit-slider-runnable-track {
+  height: var(--sem-space-x1);
+  border-radius: var(--sem-radius-full);
+  background: linear-gradient(
+    to right,
+    var(--sem-color-ink) var(--wf-slider-fill, 0%),
+    var(--sem-color-line-strong) var(--wf-slider-fill, 0%)
+  );
+}
+.wf-slider__input::-moz-range-track {
+  height: var(--sem-space-x1);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-line-strong);
+}
+.wf-slider__input::-moz-range-progress {
+  height: var(--sem-space-x1);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-ink);
+}
+/* The thumb is white on either ground, as the product draws it; no token is
+ * white in both modes, so its fill and edge are literals. */
+.wf-slider__input::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: -9px;
+  border: 0;
+  border-radius: var(--sem-radius-full);
+  background: #ffffff; /* ds-lint-allow: the thumb is white on either ground; no token is white in both modes */
+  /* ds-lint-allow: the thumb's hairline and shadow are the product's literals (range-kit in ui/theme.css) */
+  box-shadow: 0 0 0 1px #00000014, 0 1px 3px #0000004d;
+  -webkit-appearance: none;
+}
+.wf-slider__input::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: var(--sem-radius-full);
+  background: #ffffff; /* ds-lint-allow: the thumb is white on either ground; no token is white in both modes */
+  /* ds-lint-allow: the thumb's hairline and shadow are the product's literals (range-kit in ui/theme.css) */
+  box-shadow: 0 0 0 1px #00000014, 0 1px 3px #0000004d;
+}
+.wf-slider__input:focus-visible,
+.wf-slider__input.is-focus {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: var(--sem-ring-offset);
+  border-radius: var(--sem-radius-full);
+}
+
+/* The value beside the track, with its unit. */
+.wf-slider__value {
+  min-width: 54px;
+  color: var(--sem-color-ink);
+  font-size: var(--sem-font-size-prose);
+  font-weight: var(--sem-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.wf-slider__unit {
+  margin-left: var(--sem-space-x0-5);
+  color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-label);
+  font-weight: var(--sem-font-weight-medium);
+}

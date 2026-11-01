@@ -1,6 +1,6 @@
 # BeaufortGlyph
 
-A wind in Force (Beaufort) as the old charts drew it (`ui/BeaufortGlyph.tsx`,
+A wind in Force (Beaufort), drawn in the traditional notation (`ui/BeaufortGlyph.tsx`,
 `beaufortGlyphStyles`; its geometry is `ui/beaufortPath.ts`): a short staff
 with feathers at its top, a half feather for each force, and the force's
 number beside it so nobody has to count. Used wherever the rider's wind is
@@ -27,12 +27,12 @@ shown and they read it in Force.
   small after "g". The number is the text's size, not the glyph's.
 - Bare: the glyph alone, where the number is written beside it already.
 - Force 0 is the bare staff; 1 a half feather set a little down from the tip,
-  as the charts set it; 10 to 12 fly the pennant.
+  as the notation sets it; 10 to 12 fly the pennant.
 
 ## States
 
-- None of its own. It is `currentColor`: in a gust in the pen's ink (the
-  wind figure's alarm) it is red; on an ink fill it is paper.
+- None of its own. It is `currentColor`: in a gust in the warm red (the wind
+  figure's alarm) it is red; on an ink fill it takes the fill's words' colour.
 
 ## Usage
 
@@ -44,7 +44,7 @@ shown and they read it in Force.
 - A scale has no forces to draw along: a chart's axis, a range ring, a tidal
   stream read Force in knots, and a scale's ticks stand where each force
   starts, named by its number.
-- The feathers are the old notation, not a wind barb: never draw a knot barb
+- The feathers are the Beaufort notation, not a wind barb: never draw a knot barb
   (a feather for ten knots) with it.
 
 ## Accessibility

@@ -1,49 +1,53 @@
 # Chip
 
-A label on a thing: a category, a condition, a status (`ui/Chip.tsx`,
-`chipStyles`). A tag in the figures' face, in a capsule ruled with a hairline.
-It labels; it is never pressed.
+A choice you can press (`ui/Chip.tsx`, `chipStyles`): a soft grey capsule in
+a row of them, filled in ink when it is on. Or a filter in use, with a cross,
+that a press takes away. A word that only describes something is a
+[Tag](../tag/component.md), not a chip.
 
 ## Anatomy
 
-- Capsule: `.wf-chip` — an inline row, `sem.space.x1` gap, `sem.space.x0-5` by
-  `sem.space.x2-5` inset, a `sem.rule.hairline` border, `sem.radius.full`,
-  never wrapping.
-- Words: `sem.font.family.mono` at `sem.font.size.caption`.
-- Icon: `.wf-chip__icon` — optional, a 10px lucide icon in `currentColor`
-  (the heart of Saved, the camera of a photo count).
+- Chip: `.wf-chip`, a `<button>` 32px tall (`sem.size.control.sm`),
+  `sem.space.x3` across, round-ended, on `sem.color.well` (the soft grey on the ground, the card's second grey `sem.color.raised` on a soft card), no edge.
+- Label: Inter at `sem.font.size.body`, `sem.font.weight.medium`, in
+  sentence case.
+- Remove mark (optional): `.wf-chip__remove`, a 14px cross after the words, at
+  60% so the words lead.
+- Row: `.wf-chip-row`, chips wrapping with `sem.space.x2` between them.
 
 ## Variants
 
-- **Neutral** (`.wf-chip`, the default) — `sem.color.sunken` with a
-  `sem.color.line` hairline, `sem.color.ink-2` words. A category, a figure.
-- **Warn** (`--warn`) — `sem.color.warn-ground`, a `sem.color.warn` hairline and
-  words: now, or degraded (Sold on a listing page, a photo that failed).
-- **Glass** (`--glass`) — paper over a photograph: an ink hairline,
-  `sem.color.glass` (paper that lets a little through) with a `sem.blur.glass`
-  blur behind, ink words. Goes solid (`sem.color.solid`, no blur) for a reader
-  who has asked for less transparency.
-- **Eyebrow** (`--eyebrow`) — the mono label's step: `sem.font.size.eyebrow`,
-  its weight and tracking, capitals. With any tone.
+- **Choice**: `aria-pressed="false"` or `"true"`. On is filled in
+  `sem.color.inverse` with `sem.color.ink-inverse` words. A row of choices
+  can have one on (a single choice) or several (filters).
+- **Removable**: no `aria-pressed`; the cross says a press clears it ("Spots
+  named 'Bally' ×"). Used for a filter in use, next to a quiet Clear.
 
 ## States
 
-- None. A chip is not pressed, hovered or focused; something that is pressed is
-  a Button.
+- Hover: `sem.color.line` under the pointer (`.is-hover` in the demo); a chip
+  that is on stays filled.
+- Focus: the one ring, `sem.ring.width` of `sem.color.focus`,
+  `sem.ring.offset` clear.
+- Disabled: words in `sem.color.ink-disabled`, default cursor.
+- Coarse pointer: never shorter than `sem.size.touch`.
 
 ## Usage
 
-- Glass only over a photograph (a listing's badges: Saved, Sold, the photo
-  count, Cover). Never over the map: over the map, paper is opaque.
-- Warm means now or degraded. A chip that is only a category is neutral; do not
-  use warm to make a tag stand out.
-- A word or a figure, never a sentence.
+- For a few short choices that sit in a row and wrap: Any stars, 3+ stars, 4+
+  stars; Today, Tomorrow, Weekend.
+- Five or fewer exclusive options that all fit on one line read better as a
+  [Segmented](../segmented/component.md) control.
+- Never in capitals, never with a heading or a label set inside it.
+- A chip is never the one filled action on a view; on is a state, not a call
+  to act.
 
 ## Accessibility
 
-- A plain `span`. A status that appears after an action (a failed upload)
-  carries `role="alert"`.
-- An icon is `aria-hidden`; give an icon-led figure a visually hidden word
-  ("Photos: 4").
-- Ink-2 on sunken 8.9:1; warn on warn-ground 4.8:1; ink on glass reads on any
-  picture because the paper is near solid.
+- A real `<button type="button">` with `aria-pressed` for a choice; on is said
+  by the fill as well as the colour.
+- A removable chip names what it takes away in its words; the cross is
+  `aria-hidden`. Give the button an `aria-label` such as "Remove: spots named
+  Bally" where the words alone do not say it.
+- Contrast: words 17.3:1 on the light grey, 16.0:1 on the dark; on, 18.8:1
+  and 17.5:1.

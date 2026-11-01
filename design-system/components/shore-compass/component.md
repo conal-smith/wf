@@ -1,7 +1,7 @@
 # Shore compass
 
-Which way the beach faces, and how the wind meets it. The mockup's
-`compassSVG` and `shoreSVG` (`design/chart/1-the-chart.html`); no `ui/`
+Which way the beach faces, and how the wind meets it: the two shore glyphs
+the forecast draws (`src/glyphs.tsx`, `src/chartGlyphs.tsx`); no `ui/`
 primitive yet.
 
 ## Anatomy
@@ -33,8 +33,8 @@ primitive yet.
   `--cross`, `--cross-off`, `--offshore`. The relation is the angle between
   the wind and the facing: under 30° onshore, under 70° cross-on, under 110°
   cross, under 150° cross-off, else offshore.
-- `--offshore` and `--cross-off` draw the arrow in `sem.color.pen`: the wind
-  takes you out, not in.
+- `--offshore` and `--cross-off` draw the arrow in `sem.color.pen`, the warm
+  red: the wind takes you out, not in.
 
 ## States
 
@@ -45,12 +45,12 @@ primitive yet.
 - The compass sits beside a spot's name or county (the popup's meta line, the
   dock's head, the spot page's line "SE 123°"). It describes the beach and
   never changes with the hour.
-- The shore-wind glyph sits beside a wind reading (the dock's FROM row, the
-  popup's wind line, the spot page's SHORE column) and changes with the hour.
+- The shore-wind glyph sits beside a wind reading (the dock's "From" row, the
+  popup's wind line, the spot page's "Shore" column) and changes with the
+  hour.
 - Write the shore word beside it where there is room ("cross-offshore"); the
-  pen's colour is a mark, not the message.
-- The pen here is the strike's sibling on the map's light: use it for
-  offshore and cross-off only, never to decorate an onshore arrow.
+  red is a mark, not the message.
+- Red for offshore and cross-off only, never to decorate an onshore arrow.
 
 ## Accessibility
 

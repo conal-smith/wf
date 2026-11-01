@@ -1,122 +1,94 @@
 /* Segmented — ui/Segmented.tsx (segmentedStyles), rendered in CSS. Consumes
  * --sem-* only.
  *
- * The chart's switch, as the dock's TABLE | RIBBON: one capsule ruled in ink,
- * the words in mono capitals, and the one that is on filled in ink. Stacked,
- * a ruled column of choices with one row filled.
+ * One of a few short options, all in view (five at most): a grey well, the
+ * chosen one lifted out of it onto the ground. Model names keep their own
+ * spelling (HARMONIE, ICON-EU): they are names, not labels set in capitals.
  *
- * `.is-hover` and `.is-focus` hold a state still for the catalog; the product
- * reaches the same rules through :hover and :focus-visible. */
+ * `.is-hover` and `.is-focus` hold a state still for the catalog. */
 
 .wf-segmented {
   display: inline-flex;
+  flex-shrink: 0;
+  max-width: 100%;
   box-sizing: border-box;
-  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  padding: 3px;
+  overflow-x: auto;
   border-radius: var(--sem-radius-full);
-  background: var(--sem-color-card);
+  background: var(--sem-color-well);
+  scrollbar-width: none;
+}
+.wf-segmented::-webkit-scrollbar {
+  display: none;
 }
 
 .wf-segmented__item {
   display: inline-flex;
-  box-sizing: border-box;
-  height: var(--sem-size-control-sm);
+  flex: 1 1 auto;
   align-items: center;
   justify-content: center;
-  gap: var(--sem-space-x1);
-  margin: 0;
+  gap: var(--sem-space-x1-5);
+  height: 30px;
   padding: 0 var(--sem-space-x3);
   border: 0;
   border-radius: var(--sem-radius-full);
   background: transparent;
-  color: var(--sem-color-ink);
-  font-family: var(--sem-font-family-mono);
-  font-size: var(--sem-font-size-label);
+  color: var(--sem-color-ink-2);
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-body);
   line-height: var(--sem-font-line-label);
-  font-weight: var(--sem-font-weight-label);
-  letter-spacing: var(--sem-font-tracking-label);
-  text-transform: uppercase;
+  font-weight: var(--sem-font-weight-medium);
   white-space: nowrap;
   cursor: pointer;
   touch-action: manipulation;
-  transition-property: color, background-color, border-color, outline-color;
+  transition-property: color, background-color, box-shadow;
   transition-duration: var(--sem-duration-fast);
 }
-
-/* A tap target is never shorter than touch. */
-@media (pointer: coarse) {
-  .wf-segmented__item {
-    min-height: var(--sem-size-touch);
-  }
-}
-
 .wf-segmented__item:not(:disabled):hover,
 .wf-segmented__item.is-hover {
-  background: var(--sem-color-sunken);
+  color: var(--sem-color-ink);
 }
 
-/* The one ring: 2px of the chart's magenta, 2px clear (RING). */
+/* The chosen one: lifted onto the ground, in the ink colour. */
+.wf-segmented__item[aria-pressed="true"] {
+  background: var(--sem-color-ground);
+  color: var(--sem-color-ink);
+  box-shadow: var(--sem-shadow-control);
+}
+/* In dark the ground is darker than the well, so the chosen one is a lighter
+ * grey instead, with no shadow: the line colour over the well. */
+[data-mode="dark"] .wf-segmented__item[aria-pressed="true"] {
+  background: var(--sem-color-line);
+  box-shadow: none;
+}
+
 .wf-segmented__item:not(:disabled):focus-visible,
 .wf-segmented__item.is-focus {
   outline: var(--sem-ring-width) solid var(--sem-color-focus);
   outline-offset: var(--sem-ring-offset);
 }
-
-/* Disabled is said in ink and cursor, not a fade (DISABLED). */
 .wf-segmented__item:disabled {
   cursor: default;
   color: var(--sem-color-ink-disabled);
-  opacity: 1;
 }
 
-/* The chosen one is filled in ink and set heavier: not colour alone. It stays
- * filled under the pointer. */
-.wf-segmented__item[aria-pressed="true"],
-.wf-segmented__item[aria-pressed="true"]:not(:disabled):hover,
-.wf-segmented__item[aria-pressed="true"].is-hover {
-  background: var(--sem-color-inverse) var(--sem-gradient-ink);
-  color: var(--sem-color-ink-inverse);
-  font-weight: var(--sem-font-weight-semibold);
-  box-shadow: var(--sem-shadow-control);
-}
-.wf-segmented--stack .wf-segmented__item[aria-pressed="true"] {
-  box-shadow: none;
-}
-
-/* ---- stack: a column of choices, a ruled list with one row filled ---- */
-.wf-segmented--stack {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  border-radius: var(--sem-radius-surface);
-  /* The box clips its rows to its corner; the rows' rules stay square. */
-  overflow: hidden;
-}
-.wf-segmented--stack .wf-segmented__item {
-  height: var(--sem-size-control-md);
-  justify-content: flex-start;
-  padding: 0 var(--sem-space-x4);
-  border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
-  border-radius: 0;
-}
-.wf-segmented--stack .wf-segmented__item:last-child {
-  border-bottom-width: 0;
-}
-
-/* ---- small: a switch in a crowded head ---- */
+/* ---- sizes ---- */
 .wf-segmented--sm .wf-segmented__item {
-  position: relative;
-  padding: 0 var(--sem-space-x2);
-  font-size: var(--sem-font-size-eyebrow);
+  height: 26px;
+  padding: 0 var(--sem-space-x2-5);
+  font-size: var(--sem-font-size-label);
 }
-/* It keeps its height under a finger; the press reaches a touch's height
- * through a band laid across it. */
-@media (pointer: coarse) {
-  .wf-segmented--sm .wf-segmented__item {
-    min-height: 0;
-  }
-  .wf-segmented--sm .wf-segmented__item::before {
-    content: "";
-    position: absolute;
-    inset: calc((var(--sem-size-control-sm) - var(--sem-size-touch)) / 2) 0;
-  }
+.wf-segmented--lg .wf-segmented__item {
+  height: 38px;
+  padding: 0 var(--sem-space-x4);
+  font-size: var(--sem-font-size-prose);
+}
+
+/* ---- full: across the whole width, each option an equal share ---- */
+.wf-segmented--full {
+  display: flex;
+  width: 100%;
+}
+.wf-segmented--full .wf-segmented__item {
+  flex: 1 1 0;
 }

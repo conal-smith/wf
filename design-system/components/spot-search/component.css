@@ -1,0 +1,203 @@
+/* Spot search — ui/SpotSearch.tsx (spotSearchStyles), rendered in CSS.
+ * Consumes --sem-* only. Its clear and phone buttons are the Button
+ * component's (load its CSS beside this one).
+ *
+ * The top bar's search: a field that finds a riding place as the rider types,
+ * an ARIA combobox with a list of results under it. The field is a soft grey
+ * pill that widens a little and comes onto the ground, with an ink edge,
+ * while it is in use. The results are a sheet under it: groups with a small
+ * grey name, each spot its name in Inter semibold, its county under it, the
+ * typed letters underlined in the accent.
+ *
+ * `.is-focus` holds the field's focused look still for the catalog. */
+
+.wf-spot-search {
+  position: relative;
+  min-width: 0;
+  font-family: var(--sem-font-family-body);
+}
+
+.wf-spot-search__field {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-x2);
+  box-sizing: border-box;
+  width: 320px;
+  max-width: 100%;
+  min-width: 0;
+  height: var(--sem-size-control-md);
+  padding: 0 var(--sem-space-x2-5) 0 14px;
+  border: var(--sem-rule-hairline) solid transparent;
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-sunken);
+  color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-body);
+  transition-property: width, border-color, background-color;
+  transition-duration: var(--sem-duration-fast);
+}
+.wf-spot-search__field:focus-within,
+.wf-spot-search__field.is-focus {
+  width: 400px;
+  border-color: var(--sem-color-ink);
+  background: var(--sem-color-ground);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wf-spot-search__field {
+    transition: none;
+  }
+}
+
+.wf-spot-search__icon {
+  flex-shrink: 0;
+  width: var(--sem-space-x4);
+  height: var(--sem-space-x4);
+}
+
+.wf-spot-search__input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-body);
+  appearance: none;
+}
+.wf-spot-search__input::placeholder {
+  color: var(--sem-color-ink-muted);
+  opacity: 1;
+}
+.wf-spot-search__input:focus-visible {
+  outline: none;
+}
+@media (pointer: coarse) {
+  .wf-spot-search__input {
+    font-size: var(--sem-font-size-input);
+  }
+}
+
+/* The "/" that brings the search from anywhere on the page. */
+.wf-spot-search__key {
+  padding: 0 var(--sem-space-x1-5);
+  border: var(--sem-rule-hairline) solid var(--sem-color-line);
+  border-radius: var(--sem-radius-mark);
+  color: var(--sem-color-ink-muted);
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-label);
+  font-weight: var(--sem-font-weight-medium);
+}
+
+/* ---- the results: a sheet under the field ---- */
+.wf-spot-search__panel {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  z-index: var(--sem-z-index-dialog);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 380px;
+  max-height: 480px;
+  padding: var(--sem-space-x1-5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--sem-radius-surface);
+  background: var(--sem-color-ground);
+  color: var(--sem-color-ink);
+  box-shadow: var(--sem-shadow-sheet), 0 0 0 var(--sem-rule-hairline) var(--sem-color-line);
+}
+/* A static rendering: the sheet in the flow, under its field. */
+.wf-spot-search__panel--static {
+  position: static;
+  margin-top: var(--sem-space-x2);
+}
+
+.wf-spot-search__group-name {
+  padding: var(--sem-space-x2) var(--sem-space-x2-5) var(--sem-space-x1-5);
+  color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-label);
+  font-weight: var(--sem-font-weight-medium);
+}
+
+.wf-spot-search__option {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-x3);
+  padding: var(--sem-space-x2) var(--sem-space-x2-5);
+  border-radius: var(--sem-radius-control);
+  cursor: pointer;
+}
+.wf-spot-search__option[aria-selected="true"] {
+  background: var(--sem-color-sunken);
+}
+@media (max-width: 719.98px) {
+  .wf-spot-search__option {
+    min-height: 52px;
+  }
+}
+
+.wf-spot-search__words {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--sem-space-x0-5);
+  min-width: 0;
+}
+.wf-spot-search__name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sem-color-ink);
+  font-size: var(--sem-font-size-prose);
+  font-weight: var(--sem-font-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The letters typed, found in the name. */
+.wf-spot-search__mark {
+  background: transparent;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--sem-color-chart-magenta);
+  text-decoration-thickness: var(--sem-rule-heavy);
+  text-underline-offset: 3px;
+}
+.wf-spot-search__county {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The right of a result, where it is cheap: today's wind and stars. */
+.wf-spot-search__detail {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  color: var(--sem-color-ink);
+  font-size: var(--sem-font-size-body);
+  font-weight: var(--sem-font-weight-semibold);
+}
+
+.wf-spot-search__none {
+  margin: 0;
+  padding: var(--sem-space-x4) var(--sem-space-x2-5);
+  color: var(--sem-color-ink-2);
+  font-size: var(--sem-font-size-prose);
+}
+.wf-spot-search__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sem-space-x3);
+  padding: var(--sem-space-x2) var(--sem-space-x2-5) var(--sem-space-x1);
+  color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-label);
+}
+@media (max-width: 719.98px) {
+  .wf-spot-search__foot {
+    display: none;
+  }
+}

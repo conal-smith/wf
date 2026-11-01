@@ -1,14 +1,13 @@
-/* Shore compass — the mockup's compassSVG and shoreSVG (design/chart/1-the-chart.html),
- * in CSS. No ui/ primitive yet; drawn as the signed-off mockup draws them.
- * Consumes --sem-* only.
+/* Shore compass — the two shore glyphs the forecast draws (src/glyphs.tsx,
+ * src/chartGlyphs.tsx), in CSS. No ui/ primitive yet. Consumes --sem-* only.
  *
  * Two glyphs of one idea, which way the beach faces:
- *   .wf-shore-compass        a paper disc ringed in ink, a north tick, and,
+ *   .wf-shore-compass        a disc on the ground ringed in ink, a north tick, and,
  *                            turned by the facing, the sea (a depth wedge)
  *                            and the beach (a heavy ink line). viewBox -10 -10 20 20.
  *   .wf-shore-compass--wind  the wind against that beach: the beach below (a
  *                            land band, hatched, under an ink line) and an
- *                            arrow blowing downwind over it, in the pen when the
+ *                            arrow blowing downwind over it, in the warm red when the
  *                            wind is offshore or cross-off. viewBox -9 -9 18 18.
  *
  * The angles are inline custom properties, not colours:
@@ -94,7 +93,7 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-/* Off the beach is the pen's: it takes you out, not in. The words say it too. */
+/* Off the beach is in the warm red: it takes you out, not in. The words say it too. */
 .wf-shore-compass--offshore .wf-shore-compass__arrow,
 .wf-shore-compass--cross-off .wf-shore-compass__arrow {
   stroke: var(--sem-color-pen);

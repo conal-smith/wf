@@ -1,0 +1,104 @@
+/* Top bar — ui/TopBar.tsx (topBarStyles), rendered in CSS. Consumes --sem-*
+ * only. Its buttons are the Button component's, its mark the Wordmark's and
+ * its search the Spot search's (load their CSS beside this one).
+ *
+ * The one top bar, on every page that has a head: the wordmark at the left
+ * (it goes home), the search beside it, then at the right a section's own
+ * actions, one outlined button for the other view (Chart, or Spots on the
+ * chart), light or dark, and the site menu at the far right. 64px tall, 56 on
+ * a phone, with one hairline under it and nothing heavier. On a phone the
+ * search folds into a round button and light or dark moves into the menu.
+ * `--phone` draws the phone's bar at any width, for a static rendering. */
+
+.wf-top-bar {
+  position: relative;
+  z-index: var(--sem-z-index-header);
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--sem-space-x2-5);
+  box-sizing: border-box;
+  height: 64px;
+  padding: 0 var(--sem-space-x6);
+  border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+  background: var(--sem-color-ground);
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-body);
+}
+
+.wf-top-bar__brand {
+  flex-shrink: 0;
+  border-radius: var(--sem-radius-control);
+  color: var(--sem-color-ink);
+  text-decoration: none;
+}
+.wf-top-bar__brand:focus-visible {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: var(--sem-ring-offset);
+}
+
+.wf-top-bar__search {
+  min-width: 0;
+  margin-left: 18px;
+}
+.wf-top-bar__gap {
+  flex: 1 1 auto;
+}
+.wf-top-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-x2);
+}
+
+/* ---- a phone: under sem.breakpoint.wide, or `--phone` ---- */
+@media (max-width: 719.98px) {
+  .wf-top-bar {
+    height: 56px;
+    gap: var(--sem-space-x2);
+    padding: 0 var(--sem-space-x3) 0 var(--sem-space-x4);
+  }
+  .wf-top-bar .wf-top-bar__search {
+    order: 1;
+    margin-left: 0;
+  }
+  .wf-top-bar .wf-top-bar__actions {
+    order: 2;
+    gap: var(--sem-space-x1);
+  }
+  .wf-top-bar .wf-top-bar__view {
+    order: 2;
+    padding: 0 14px;
+  }
+  .wf-top-bar .wf-top-bar__theme {
+    display: none;
+  }
+  .wf-top-bar .wf-top-bar__menu {
+    order: 3;
+  }
+}
+.wf-top-bar--phone {
+  height: 56px;
+  gap: var(--sem-space-x2);
+  padding: 0 var(--sem-space-x3) 0 var(--sem-space-x4);
+}
+.wf-top-bar--phone .wf-top-bar__search {
+  order: 1;
+  margin-left: 0;
+}
+.wf-top-bar--phone .wf-top-bar__actions {
+  order: 2;
+  gap: var(--sem-space-x1);
+}
+.wf-top-bar--phone .wf-top-bar__view {
+  order: 2;
+  padding: 0 14px;
+}
+.wf-top-bar--phone .wf-top-bar__theme {
+  display: none;
+}
+.wf-top-bar--phone .wf-top-bar__menu {
+  order: 3;
+}
+.wf-top-bar--phone .wf-wordmark {
+  font-size: var(--sem-font-size-wordmark-sm);
+}

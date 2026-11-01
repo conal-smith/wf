@@ -1,51 +1,41 @@
 # Text area
 
-A box to write a few sentences in (`ui/TextArea.tsx`,
-`controlStyles({ kind: "area" })`): the text input's box, three large
-controls tall, growing downward.
+Several lines of writing (`ui/TextArea.tsx`, on `ui/control.ts`): the kit's
+filled box, taller.
 
 ## Anatomy
 
-- Box: `.wf-control.wf-control--area` — the shared field box (hairline in
-  `sem.color.line-strong`, `sem.radius.control`, `sem.color.card`,
-  `sem.space.x3` across), its contents held to the top instead of the middle.
-- Element: `.wf-control__input` on a `<textarea>` — at least
-  `sem.space.step` × 34.5 tall (138, three large controls) before anything
-  is written, `sem.space.x3` above and below the words, Newsreader at
-  `sem.font.size.prose` on `sem.font.line.normal`, resizable vertically only.
-- Shared: the box, the element and every state are the `.wf-control` classes
-  owned by `components/text-input/component.css` (the product's
-  `controlStyles` in `ui/control.ts`). This component links that file and
-  adds only `.wf-control--area`.
+- Box: `.wf-text-area`, 14px in from each side, `sem.radius.control`, on
+  `sem.color.well`, a transparent hairline edge that the states colour.
+- Text area: `.wf-text-area__input`, the bare `<textarea>`, 138px tall before
+  anything is written (three large controls), `sem.space.x3` above and below
+  the words, Inter at `sem.font.size.prose` with `sem.font.line.normal`
+  (`sem.font.size.input` on a touch screen). It grows downward only
+  (`resize: vertical`).
 
 ## Variants
 
-- One kind. A text area is never a filter, so it is never `--active`.
+- None.
 
 ## States
 
-- Hover: the border goes to `sem.color.ink` (`.is-hover` in the demo).
-- Focus: the one ring round the box (`:focus-within`, `.is-focus` in the
-  demo): `sem.ring.width` of `sem.color.focus`, `sem.ring.offset` clear.
-- Invalid: `sem.color.warn` border on `sem.color.warn-ground`, from
-  `aria-invalid="true"` or a Field carrying `data-invalid`.
-- Disabled: `sem.color.sunken`, a `sem.color.line` border,
-  `sem.color.ink-disabled` text.
-- Placeholder: italic, `sem.color.ink-muted`.
-- Coarse pointer: the text steps to `sem.font.size.input` (16); the leading
-  stays `normal`.
+- Focus: the ink edge and a soft ring of the accent round the box
+  (`.is-focus` in the demo).
+- Invalid: `aria-invalid="true"`, or inside an invalid Field: the warm edge
+  and ground.
+- Disabled: words in `sem.color.ink-disabled`, the box at 60%.
 
 ## Usage
 
-- Inside a Field, for a note, a listing's description, a post: sentences,
-  not figures.
-- A placeholder asks the question ("What was it like?"); it is not the label.
-- Keep the words few; a figure belongs in a text input beside it.
+- Inside a [Field](../field/component.md) with a visible label; a hint says
+  how long or what to cover ("What's included, its condition, where it can be
+  collected").
+- For a listing's description, a report, a message. One line of text is a
+  [Text input](../text-input/component.md).
 
 ## Accessibility
 
-- A real `<textarea>`, named by its Field's `<label for>` or `aria-label`.
-- Invalid sets `aria-invalid="true"`; the Field's message carries
-  `role="alert"`.
-- The resize handle is the platform's, and vertical only, so a reader can
-  give themselves room without breaking the column.
+- Named by the Field's `<label for>`; hint and error tied with
+  `aria-describedby`.
+- Contrast: written words 17.3:1 (light) and 16.0:1 (dark); placeholder 4.8:1
+  and 5.6:1.

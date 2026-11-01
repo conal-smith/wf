@@ -1,64 +1,73 @@
 /* Chip — ui/Chip.tsx (chipStyles), rendered in CSS. Consumes --sem-* only.
  *
- * A tag in the figures' face: mono, in a capsule ruled with a hairline, on the
- * paper it stands on. It labels a thing (a category, a condition, a status);
- * it is never pressed. */
+ * A choice you can press: a soft grey capsule, filled in ink when it is on.
+ * In sentence case, never in capitals. A word that only describes something
+ * is a Tag (components/tag), not a Chip.
+ *
+ * `.is-hover` and `.is-focus` hold a state still for the catalog. */
 
-/* tone="neutral" (the default): the second sheet, a line-coloured hairline. */
 .wf-chip {
-  box-sizing: border-box;
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
-  gap: var(--sem-space-x1);
-  padding: var(--sem-space-x0-5) var(--sem-space-x2-5);
-  border: var(--sem-rule-hairline) solid var(--sem-color-line);
+  gap: var(--sem-space-x1-5);
+  box-sizing: border-box;
+  height: var(--sem-size-control-sm);
+  padding: 0 var(--sem-space-x3);
+  border: 0;
   border-radius: var(--sem-radius-full);
-  background: var(--sem-color-sunken);
-  color: var(--sem-color-ink-2);
-  font-family: var(--sem-font-family-mono);
-  font-size: var(--sem-font-size-caption);
-  line-height: var(--sem-font-line-caption);
-  white-space: nowrap;
-}
-
-/* tone="warn": now, or degraded. A chip that is only a category is neutral. */
-.wf-chip--warn {
-  border-color: var(--sem-color-warn);
-  background: var(--sem-color-warn-ground);
-  color: var(--sem-color-warn);
-}
-
-/* tone="glass": paper over a photograph. A badge has to read on whatever the
- * picture is, so it takes the ink rule and paper that lets a little through. */
-.wf-chip--glass {
-  border-color: var(--sem-color-ink);
-  background: var(--sem-color-glass);
+  background: var(--sem-color-well);
   color: var(--sem-color-ink);
-  -webkit-backdrop-filter: blur(var(--sem-blur-glass));
-  backdrop-filter: blur(var(--sem-blur-glass));
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-body);
+  line-height: var(--sem-font-line-label);
+  font-weight: var(--sem-font-weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition-property: color, background-color;
+  transition-duration: var(--sem-duration-fast);
 }
-
-/* ...and goes solid for a reader who has declined transparency. */
-@media (prefers-reduced-transparency: reduce) {
-  .wf-chip--glass {
-    background: var(--sem-color-solid);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+@media (pointer: coarse) {
+  .wf-chip {
+    min-height: var(--sem-size-touch);
   }
 }
 
-/* eyebrow: the mono label's step, in tracked capitals. */
-.wf-chip--eyebrow {
-  font-size: var(--sem-font-size-eyebrow);
-  line-height: var(--sem-font-line-eyebrow);
-  font-weight: var(--sem-font-weight-eyebrow);
-  letter-spacing: var(--sem-font-tracking-eyebrow);
-  text-transform: uppercase;
+.wf-chip:not(:disabled):hover,
+.wf-chip.is-hover {
+  background: var(--sem-color-line);
 }
 
-/* A 10px lucide icon in currentColor beside the words (Saved, a photo count). */
-.wf-chip__icon {
-  width: var(--sem-space-x2-5);
-  height: var(--sem-space-x2-5);
-  flex-shrink: 0;
+/* On: filled in ink, so not by colour alone. */
+.wf-chip[aria-pressed="true"],
+.wf-chip[aria-pressed="true"]:not(:disabled):hover {
+  background: var(--sem-color-inverse);
+  color: var(--sem-color-ink-inverse);
+}
+
+.wf-chip:not(:disabled):focus-visible,
+.wf-chip.is-focus {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: var(--sem-ring-offset);
+}
+
+.wf-chip:disabled {
+  cursor: default;
+  color: var(--sem-color-ink-disabled);
+}
+
+/* A filter in use: the cross that says a press takes it away. */
+.wf-chip__remove {
+  width: calc(var(--sem-space-x3) + var(--sem-space-x0-5));
+  height: calc(var(--sem-space-x3) + var(--sem-space-x0-5));
+  margin-right: calc(var(--sem-space-x1) * -1);
+  opacity: 0.6;
+}
+
+/* A row of chips: they wrap, a small gap between them. */
+.wf-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sem-space-x2);
 }

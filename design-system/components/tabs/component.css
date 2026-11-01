@@ -1,0 +1,63 @@
+/* Tabs — ui/Tabs.tsx (tabsStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * The parts of one page or dialog: a row of words, the current one on a soft
+ * pill. Down the side of a wide dialog, a column of the same.
+ *
+ * `.is-hover` and `.is-focus` hold a state still for the catalog. */
+
+.wf-tabs {
+  display: flex;
+  gap: var(--sem-space-x1);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.wf-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.wf-tabs__tab {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--sem-space-x2);
+  padding: var(--sem-space-x2) var(--sem-space-x3);
+  border: 0;
+  border-radius: var(--sem-radius-full);
+  background: transparent;
+  color: var(--sem-color-ink-2);
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-prose);
+  line-height: var(--sem-font-line-label);
+  font-weight: var(--sem-font-weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition-property: color, background-color;
+  transition-duration: var(--sem-duration-fast);
+}
+.wf-tabs__tab:hover,
+.wf-tabs__tab.is-hover {
+  background: var(--sem-color-well);
+}
+.wf-tabs__tab[aria-selected="true"] {
+  background: var(--sem-color-well);
+  color: var(--sem-color-ink);
+}
+.wf-tabs__tab:focus-visible,
+.wf-tabs__tab.is-focus {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: var(--sem-ring-offset);
+}
+
+/* ---- vertical: a column down the side of a wide dialog ---- */
+.wf-tabs--vertical {
+  flex-direction: column;
+  gap: var(--sem-space-x0-5);
+  overflow: visible;
+}
+.wf-tabs--vertical .wf-tabs__tab {
+  justify-content: flex-start;
+  width: 100%;
+  padding: 9px var(--sem-space-x3);
+  border-radius: var(--sem-radius-control);
+}

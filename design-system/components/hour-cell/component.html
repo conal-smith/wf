@@ -3,65 +3,68 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Hour cell — wingfoil-chart</title>
+    <title>Hour cell — wingfoil</title>
     <link rel="stylesheet" href="../../foundations/tokens.css" />
     <link rel="stylesheet" href="../wind-figure/component.css" />
     <link rel="stylesheet" href="../shore-compass/component.css" />
     <link rel="stylesheet" href="component.css" />
     <style>
-      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      /* Demo scaffolding only: the ground, a grey label over each row, soft cards. */
       body {
         margin: 0;
       }
       .demo {
-        padding: var(--sem-space-x5);
-        background-color: var(--sem-color-ground);
-        background-image: var(--sem-texture-grain);
+        padding: var(--sem-space-x6);
+        background: var(--sem-color-ground);
         color: var(--sem-color-ink);
         font-family: var(--sem-font-family-body);
         font-size: var(--sem-font-size-prose);
         line-height: var(--sem-font-line-prose);
       }
-      .demo + .demo {
-        border-top: var(--sem-rule-double) double var(--sem-color-ink);
-      }
       .demo__head {
-        margin: 0 0 var(--sem-space-x3);
-        padding-bottom: var(--sem-space-x1);
-        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
-        font-family: var(--sem-font-family-display);
+        margin: 0 0 var(--sem-space-x2);
         font-size: var(--sem-font-size-lead);
         line-height: var(--sem-font-line-lead);
-        font-weight: var(--sem-font-weight-lead);
+        font-weight: var(--sem-font-weight-semibold);
       }
       .demo__label {
-        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-eyebrow);
-        line-height: var(--sem-font-line-eyebrow);
-        font-weight: var(--sem-font-weight-eyebrow);
-        letter-spacing: var(--sem-font-tracking-eyebrow);
-        text-transform: uppercase;
+        margin: var(--sem-space-x6) 0 var(--sem-space-x2);
+        font-size: var(--sem-font-size-label);
+        line-height: var(--sem-font-line-label);
+        font-weight: var(--sem-font-weight-medium);
         color: var(--sem-color-ink-muted);
       }
       .demo__row {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: var(--sem-space-x3);
+        gap: var(--sem-space-x2);
       }
-      .demo__map {
-        padding: var(--sem-space-x3);
-        background: var(--sem-color-sea-3);
+      .demo__stack {
+        display: grid;
+        gap: var(--sem-space-x3);
+        max-width: var(--sem-container-form);
+      }
+      .demo__card {
+        padding: var(--sem-space-x5);
+        border-radius: var(--sem-radius-surface);
+        background: var(--sem-color-sunken);
+        /* A soft card: a control inside takes the second grey (on-card). */
+        --sem-color-well: var(--sem-color-raised);
+      }
+      /* Demo only: the dock is a floating card. */
+      .demo__dock {
+        padding: var(--sem-space-x2) 0 var(--sem-space-x3);
+        border-radius: var(--sem-radius-surface);
+        background: var(--sem-color-ground);
+        box-shadow: var(--sem-shadow-float), 0 0 0 var(--sem-rule-hairline) var(--sem-color-line);
       }
     </style>
   </head>
   <body>
-    <section class="demo" data-mode="light">
-      <h2 class="demo__head">Hour cell</h2>
-
-      <p class="demo__label">Eight hours of the dock · past, now and selected, dark, a new day</p>
-      <div class="wf-hour-cell__dock" tabindex="0" role="region" aria-label="Rusheen Bay, hour by hour">
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Hour cell in dark</h2>
+      <div class="demo__dock"><div class="wf-hour-cell__dock" tabindex="0" role="region" aria-label="Rusheen Bay, hour by hour">
         <table class="wf-hour-cell__table">
           <colgroup><col class="wf-hour-cell__col-label" /><col /><col /><col /><col /><col /><col /><col /><col /></colgroup>
           <tbody>
@@ -127,12 +130,14 @@
             </tr>
           </tbody>
         </table>
-      </div>
+      </div></div>
     </section>
 
-    <section class="demo" data-mode="dark">
-      <h2 class="demo__head">Hour cell · night chart (proposed)</h2>
-      <div class="wf-hour-cell__dock" tabindex="0" role="region" aria-label="Rusheen Bay, hour by hour">
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Hour cell in light</h2>
+
+      <p class="demo__label">Eight hours of the dock: past, now and selected, dark, a new day</p>
+      <div class="demo__dock"><div class="wf-hour-cell__dock" tabindex="0" role="region" aria-label="Rusheen Bay, hour by hour">
         <table class="wf-hour-cell__table">
           <colgroup><col class="wf-hour-cell__col-label" /><col /><col /><col /><col /><col /><col /><col /><col /></colgroup>
           <tbody>
@@ -198,7 +203,7 @@
             </tr>
           </tbody>
         </table>
-      </div>
+      </div></div>
     </section>
   </body>
 </html>
