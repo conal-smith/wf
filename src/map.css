@@ -67,16 +67,19 @@
   outline-offset: -4px;
 }
 
-/* The box everything over the chart is drawn in (mixed and rounded,
-   2026-10-24): paper with the faintest light from above, the ink rule and
-   the hairline just inside it, a box's corner, and the stacked soft shadow
-   that lifts it off the chart. A box that scrolls clips to its corner. */
+/* The box everything over the chart is drawn in: flat ground, a soft
+   corner and one soft shadow that lifts it off the chart, with no frame. In
+   dark a faint hairline edge keeps it apart from the dark sea. A box that
+   scrolls clips to its corner. */
 .chart-box {
   background-color: var(--color-ground);
-  background-image: var(--gradient-float);
-  border: 1px solid var(--color-ink);
   border-radius: var(--radius-surface);
-  box-shadow: var(--inset-shadow-frame), var(--shadow-float);
+  box-shadow: var(--shadow-float);
+}
+:root[data-theme="dark"] .chart-box {
+  box-shadow:
+    var(--shadow-float),
+    0 0 0 1px var(--color-line);
 }
 
 /* ---------- the chart's layers over the map ---------- */
@@ -410,28 +413,32 @@
   transform: translate(-50%, -50%);
   z-index: 8;
   padding: 10px 14px;
-  font: italic 15px var(--font-body);
+  font: 500 15px var(--font-body);
   color: var(--color-ink-muted);
-  background: var(--color-ground) var(--gradient-float);
-  border: 1px solid var(--color-ink);
+  background: var(--color-ground);
   border-radius: var(--radius-surface);
-  box-shadow: var(--inset-shadow-frame), var(--shadow-float);
+  box-shadow: var(--shadow-float);
   display: flex;
   gap: 12px;
   align-items: center;
 }
+:root[data-theme="dark"] .map-loading,
+:root[data-theme="dark"] .map-error {
+  box-shadow:
+    var(--shadow-float),
+    0 0 0 1px var(--color-line);
+}
 .map-error {
   color: var(--color-warn);
-  font-style: normal;
 }
 .map-error button,
 .frame-status button,
 .primary-button {
-  border: 1px solid var(--color-ink);
-  border-radius: 999px;
-  background: var(--color-ground);
-  padding: 4px 12px;
-  font: 500 10.5px var(--font-mono);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-sunken);
+  padding: 6px 12px;
+  font: 500 12px var(--font-body);
   color: var(--color-ink);
   cursor: pointer;
 }
@@ -439,8 +446,7 @@
   .map-error button:hover,
   .frame-status button:hover,
   .primary-button:hover {
-    background: var(--color-ink);
-    color: var(--color-ink-inverse);
+    background: color-mix(in srgb, var(--color-ink) 10%, var(--color-sunken));
   }
 }
 
@@ -731,7 +737,7 @@
 }
 .lt-lab b {
   display: block;
-  font: italic 600 12px var(--font-display);
+  font: 600 12px/1.15 var(--font-body);
 }
 .lt-lab i {
   font: 500 10px var(--font-mono);
@@ -852,7 +858,7 @@
   top: -10px;
   padding: 4px 9px 5px;
   border-radius: var(--radius-control);
-  background: var(--color-ink) var(--gradient-ink);
+  background: var(--color-ink);
   color: var(--color-ink-inverse);
   text-align: left;
   text-shadow: none;
@@ -1058,12 +1064,11 @@
   margin: 1px 4px;
   background: var(--color-line);
 }
-/* Pressed is ink with its sheen; a press nudges the key down a pixel. */
+/* Pressed is flat ink; a press nudges the key down a pixel. */
 .zbox button[aria-pressed="true"],
 .zbox button[aria-expanded="true"] {
-  background: var(--color-ink) var(--gradient-ink);
+  background: var(--color-ink);
   color: var(--color-ink-inverse);
-  box-shadow: var(--shadow-control);
 }
 .zbox button:active {
   translate: 0 1px;
@@ -1126,7 +1131,8 @@
   position: absolute;
   right: 0;
   top: 1px;
-  font: italic 10px var(--font-body);
+  font: 500 10px var(--font-body);
+  color: var(--color-ink-muted);
 }
 
 /* The rain scale, in the key and the layers: a swatch an amount, on the
@@ -1162,8 +1168,9 @@
   background: var(--color-card);
 }
 .rain-scale i {
-  font: italic 10px var(--font-body);
-  color: var(--color-ink);
+  font: 500 10px var(--font-body);
+  font-style: normal;
+  color: var(--color-ink-muted);
 }
 
 /* Gust's panel lines up with the boxes along the top (companion/web/gust.css
@@ -1186,7 +1193,7 @@
   border-radius: 50%;
   background: var(--color-ground);
   color: var(--color-ink-muted);
-  font: italic 600 12px/1 var(--font-body);
+  font: 600 12px/1 var(--font-body);
   text-decoration: none;
   vertical-align: middle;
   cursor: pointer;
@@ -1352,7 +1359,7 @@
 }
 .fatal-error h1 {
   margin: 0 0 8px;
-  font: 600 22px var(--font-display);
+  font: 600 19px/1.2 var(--font-body);
 }
 
 /* ---------- a phone: the boxes close in ---------- */

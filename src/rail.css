@@ -1,9 +1,8 @@
 /*
  * The layers' rail (src/LayerRail.tsx): beside the zoom, a column of round
- * switches over the chart with no panel behind them. Off is faint and flat,
- * sunk a little into the chart; on is a paper disc ruled in ink, with the
- * hairline inside it and a small thing's soft shadow under it. Each group is
- * set apart by a short rule.
+ * switches over the chart with no panel behind them. Off is a plain disc on
+ * the ground with a small soft shadow; on is filled in ink. The groups are
+ * set apart by space.
  *
  * Where it would run into the dock (on a phone, most often) LayerRail gives
  * it a max-height and it scrolls. A scroller clips what stands out of it, so
@@ -14,8 +13,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2px 0 2px var(--lr-tips);
+  padding: 2px 2px 4px var(--lr-tips);
   margin-left: calc(var(--lr-tips) * -1);
+  margin-right: -2px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -37,57 +37,53 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  gap: 2px;
+  gap: 4px;
 }
-.lr-grp + .lr-grp::before {
-  content: "";
-  display: block;
-  width: 14px;
-  height: 1.5px;
-  margin: 4px auto 2px;
-  border-radius: var(--radius-full);
-  background: var(--color-line-strong);
+.lr-grp + .lr-grp {
+  margin-top: 10px;
 }
 .lr .lr-ic {
   position: relative;
   width: var(--spacing-control-sm);
   height: var(--spacing-control-sm);
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--color-ground) 45%, transparent);
-  color: color-mix(in srgb, var(--color-ink) 50%, transparent);
-  box-shadow: inset 0 1px 2px
-    color-mix(in srgb, var(--color-ink) 8%, transparent);
+  background: var(--color-ground);
+  color: var(--color-ink-2);
+  box-shadow: var(--shadow-card);
   transition:
     background-color var(--transition-duration-fast) ease,
-    color var(--transition-duration-fast) ease,
-    border-color var(--transition-duration-fast) ease,
-    box-shadow var(--transition-duration-fast) ease;
+    color var(--transition-duration-fast) ease;
+}
+:root[data-theme="dark"] .lr .lr-ic {
+  box-shadow:
+    var(--shadow-card),
+    0 0 0 1px var(--color-line);
 }
 @media (hover: hover) and (pointer: fine) {
   .lr .lr-ic:hover {
-    background: color-mix(in srgb, var(--color-ground) 75%, transparent);
-    color: color-mix(in srgb, var(--color-ink) 75%, transparent);
+    background: var(--color-sunken);
+    color: var(--color-ink);
   }
 }
 .lr .lr-ic[aria-pressed="true"] {
-  background: var(--color-card);
-  border-color: var(--color-ink);
-  color: var(--color-ink);
-  box-shadow: var(--inset-shadow-frame), var(--shadow-card);
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
 }
 .lr .lr-ic:active {
   transform: translateY(1px);
 }
 /* Its name and whether it is on, to its left, under the pointer and on the
-   keys' focus: in the button's own mono label, ink on paper turned over. */
+   keys' focus: a dark pill. */
 .lr-tip {
   position: absolute;
   right: calc(100% + 8px);
   top: 50%;
   transform: translateY(-50%);
-  padding: 4px 8px;
+  padding: 5px 11px;
   border-radius: var(--radius-control);
+  font: 500 13px/1.3 var(--font-body);
+  text-align: left;
   background: var(--color-ink);
   color: var(--color-ink-inverse);
   white-space: nowrap;
