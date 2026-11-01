@@ -25,13 +25,15 @@ export const noticeStyles = tv({
   },
   variants: {
     level: {
-      info: { mark: "bg-ground text-ink-2" },
+      // A plain notice's square, and bathing water's advice: a grey a shade
+      // lighter than the card it is on.
+      info: { mark: "bg-line text-ink-2" },
       warn: { mark: "bg-warn-ground text-pen-ink" },
       yellow: { mark: "bg-met-yellow text-photo-shade" },
       orange: { mark: "bg-met-orange text-photo-line" },
       red: { mark: "bg-met-red text-photo-line" },
       water: { mark: "bg-warn-ground text-pen-ink" },
-      "water-advice": { mark: "bg-ground text-depth" },
+      "water-advice": { mark: "bg-line text-depth" },
     },
   },
   defaultVariants: { level: "info" },
@@ -145,13 +147,13 @@ export const noticeMarkStyles = tv({
       md: { base: "text-prose", square: "size-7 rounded-control" },
     },
     level: {
-      info: { square: "bg-ground text-ink-2" },
+      info: { square: "bg-line text-ink-2" },
       warn: { square: "bg-warn-ground text-pen-ink" },
       yellow: { square: "bg-met-yellow text-photo-shade" },
       orange: { square: "bg-met-orange text-photo-line" },
       red: { square: "bg-met-red text-photo-line" },
       water: { square: "bg-warn-ground text-pen-ink" },
-      "water-advice": { square: "bg-ground text-depth" },
+      "water-advice": { square: "bg-line text-depth" },
     },
   },
   defaultVariants: { size: "sm", level: "info" },
