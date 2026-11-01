@@ -6,7 +6,7 @@
  * outside it in the wind's colour. Its rim is the loupe's distance, half a
  * nautical mile or a kilometre, wherever the picture says that is.
  *
- * Drawn on paper's lines over the photograph, as the mockup draws it: no
+ * Drawn in the photo's own white and red (the 2026-10-31 mock-ups): no
  * words, which at this size would be most of it. The washes stay light, and
  * the no-go's hatching is drawn in screen pixels, a line a pixel wide every
  * few: at a card's size a hatch drawn to the rose's own scale is finer than
@@ -87,7 +87,7 @@ export function Rose({
           patternTransform="rotate(45)"
         >
           <line
-            className="stroke-ground"
+            className="stroke-photo-line"
             x1={0}
             y1={0}
             x2={0}
@@ -98,22 +98,22 @@ export function Rose({
         </pattern>
       </defs>
       <circle
-        className="fill-none stroke-ground"
+        className="fill-none stroke-photo-shade"
         r={R}
-        strokeWidth={6}
-        strokeOpacity={0.8}
+        strokeWidth={4}
+        strokeOpacity={0.35}
       />
-      <circle className="fill-none stroke-ink" r={R} strokeWidth={2.2} />
+      <circle className="fill-none stroke-photo-line" r={R} strokeWidth={2.2} />
       {rose?.nogo && (
         <g data-rose-nogo>
           <path d={rose.nogo.fill} fill={`url(#${hatch})`} />
           {rose.nogo.edges.map((e, i) => (
             <line
               key={i}
-              className="stroke-ink"
+              className="stroke-photo-line"
+              strokeOpacity={0.6}
               {...line(e)}
-              strokeWidth={1.8}
-              strokeDasharray="5 4"
+              strokeWidth={1.4}
             />
           ))}
         </g>
@@ -121,10 +121,10 @@ export function Rose({
       {rose?.fans.map((fan, i) => (
         <g key={i} data-rose-fan={fan.kind}>
           {fan.fill && (
-            <path className="fill-card" d={fan.fill} fillOpacity={0.3} />
+            <path className="fill-photo-line" d={fan.fill} fillOpacity={0.24} />
           )}
           <path
-            className="fill-none stroke-ink"
+            className="fill-none stroke-photo-line"
             d={fan.arc}
             strokeWidth={fan.kind === "out" ? 3.5 : 2.5}
             strokeDasharray={fan.kind === "out" ? undefined : "8 6"}
@@ -132,7 +132,7 @@ export function Rose({
           {fan.edges.map((e, j) => (
             <line
               key={j}
-              className="stroke-ink"
+              className="stroke-photo-line"
               {...line(e)}
               strokeWidth={2}
               strokeDasharray={fan.kind === "out" ? undefined : "8 6"}
@@ -142,7 +142,7 @@ export function Rose({
       ))}
       {dial?.offshore && (
         <path
-          className="fill-none stroke-pen"
+          className="fill-none stroke-photo-red"
           d={dial.offshore.arc}
           strokeWidth={6}
           strokeLinecap="round"
@@ -151,14 +151,18 @@ export function Rose({
       )}
       {dial && loupe && (
         <path
-          className="stroke-ink"
+          className="stroke-photo-line"
           d={needle(loupe.rose.windFrom)}
           fill={loupe.colour}
           strokeWidth={2}
           strokeLinejoin="round"
         />
       )}
-      <circle className="fill-ink stroke-ground" r={5} strokeWidth={2.5} />
+      <circle
+        className="fill-photo-line stroke-photo-shade"
+        r={5}
+        strokeWidth={2.5}
+      />
     </svg>
   );
 }

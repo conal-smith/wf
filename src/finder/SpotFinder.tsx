@@ -57,6 +57,7 @@ import type { Spot } from "../../force5/src/weather";
 import { modelName, STARS_MODELS } from "../../force5/src/lead";
 import { isChartAddress } from "../../force5/src/siteNav";
 import { Button } from "../../ui/Button";
+import { ThemeButton } from "../../ui/ThemeButton";
 import { Dialog } from "../../ui/Dialog";
 import { Field } from "../../ui/Field";
 import { Link } from "../../ui/Link";
@@ -147,8 +148,8 @@ const styles = tv({
     // way to give it.
     ask: "m-0 mb-3.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-prose text-ink-2",
     // One column, two where each card has its room (`cards:`, 1180px).
-    cards:
-      "m-0 grid list-none grid-cols-1 items-start gap-3.5 p-0 cards:grid-cols-2",
+    // One card a row: a narrow list, as the mock-up has it.
+    cards: "m-0 grid list-none grid-cols-1 items-start gap-2 p-0",
     empty: "py-8 text-prose text-ink-2",
     // Above the cards: where "near you" is measured from, when that is not
     // the rider.
@@ -489,6 +490,7 @@ export default function SpotFinder(props: FinderProps) {
             <Search size={15} strokeWidth={1.75} aria-hidden="true" />
             {narrowing && <span className={s.searchDot()} aria-hidden="true" />}
           </Button>
+          <ThemeButton size="sm" />
         </div>
       </PageHeader>
       <Dialog
