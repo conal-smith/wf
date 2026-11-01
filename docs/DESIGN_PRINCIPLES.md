@@ -625,7 +625,8 @@ for a spot's name and the wordmark, Inter for everything else, figures at even
 width; labels are in sentence case, untracked, at 12px.
 
 Measured, not assumed, on white: `ink` 18.85:1, `ink-2` 11.30:1, `ink-muted`
-5.20:1 (4.78:1 on `sunken`), `line-strong` 3.38:1 (a stroke's bar, not
+5.86:1 (5.39:1 on `sunken`, 4.71:1 on `raised`, a control's fill on a card),
+`line-strong` 3.38:1 (a stroke's bar, not
 text's), `chart-magenta` 6.59:1, `warn` 6.57:1, `pen` 4.73:1 and `pen-ink`
 5.70:1. White on the hovered accent is 6.59:1. On black: `ink` 17.48:1,
 `ink-2` 11.86:1, `ink-muted` 6.10:1 (5.58:1 on `sunken`), `line-strong`

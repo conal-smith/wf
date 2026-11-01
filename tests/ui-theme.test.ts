@@ -89,7 +89,7 @@ const COLOURS: Record<string, string> = {
   "line-strong": "#8b8b94",
   ink: "#111114",
   "ink-2": "#3a3a40",
-  "ink-muted": "#6c6c74",
+  "ink-muted": "#64646c",
   "ink-disabled": "#8b8b94",
   "ink-inverse": "#ffffff",
   accent: "#111114",

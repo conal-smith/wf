@@ -167,33 +167,19 @@ const VARIANTS = [
 /** The four a view is built from; `link` and `danger` are the two special cases. */
 const FOUR = ["primary", "outline", "soft", "quiet"] as const;
 
-/*
- * Known and reported, in files another hand is changing: each is asserted to
- * be still wrong, so the day it is put right this list fails and is emptied.
- * The top bar's phone padding names a side the theme's safe insets do not
- * hold (`px-safe-*` is there; `pl-`/`pr-safe-*` are not), so on a phone the
- * bar keeps its 24px sides.
- */
-const UNRESOLVED: Record<string, string[]> = {
-  topBarStyles: ["max-wide:pr-safe-3", "max-wide:pl-safe-4"],
-};
-/** The spot search's live status is written straight into its markup. */
-const UNRECIPED = ["SpotSearch.tsx"];
-
 describe("the kit is styled only from the theme", () => {
   // A class that names a value the theme does not hold is not an error
   // anywhere: it is a control quietly missing its fill. So every name is asked.
   it.each(Object.entries(RECIPES))(
     "every class in %s resolves",
-    (recipeName, recipe) => {
+    (_, recipe) => {
       const names = classesOf(recipe as Recipe);
       expect(names.length).toBeGreaterThan(0);
       const css = build(names);
-      const known = UNRESOLVED[recipeName] ?? [];
       for (const name of names) {
         // `group/field` is a marker for a variant to find, not a rule.
         if (name.startsWith("group/")) continue;
-        expect(holds(css, name), name).toBe(!known.includes(name));
+        expect(holds(css, name), name).toBe(true);
       }
     },
   );
@@ -210,9 +196,7 @@ describe("the kit is styled only from the theme", () => {
   // A class written straight into markup would slip past the check above.
   it("writes no class outside a recipe, the gallery apart", () => {
     for (const file of sources.filter((f) => f !== "Gallery.tsx"))
-      expect(/className="/.test(read(file)), file).toBe(
-        UNRECIPED.includes(file),
-      );
+      expect(read(file), file).not.toMatch(/className="/);
   });
 
   it("imports nothing from the design bundle, and no stylesheet", () => {

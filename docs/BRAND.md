@@ -66,7 +66,7 @@ attribute. Design and check every view in both.
 | `glass` | ground at 92% | A badge over a photograph only (`Tag tone="glass"`). Never over the map. |
 | `ink` | `#111114` / `#f2f2f4` | Text, and the filled button's fill. |
 | `ink-2` | `#3a3a40` / `#c9c9cf` | Secondary text, a label above a field. |
-| `ink-muted` | `#6c6c74` / `#8f8f99` | The floor for words: hints, small print, a group's name. |
+| `ink-muted` | `#64646c` / `#8f8f99` | The floor for words: hints, small print, a group's name. |
 | `line` | ink at 12% | The hairline between rows inside a card, under the top bar, above a dialog's actions. |
 | `line-strong`, `ink-disabled` | `#8b8b94` / `#6b6b74` | A disabled icon, a switch's empty track. Strokes only. |
 | `accent`, `accent-ink` | ink, and the ground on it | The one filled button. |

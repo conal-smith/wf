@@ -204,9 +204,9 @@ describe("contrast, as the ruling records it", () => {
     );
   });
 
-  it("keeps muted text above 4.5:1 on paper and on the second sheet", () => {
+  it("keeps muted text above 4.5:1 on the ground, a card and a control on a card", () => {
     const muted = resolved("ink-muted");
-    for (const ground of ["ground", "card", "solid", "sunken"])
+    for (const ground of ["ground", "card", "solid", "sunken", "raised"])
       expect(contrast(muted, resolved(ground)), ground).toBeGreaterThanOrEqual(
         4.5,
       );
