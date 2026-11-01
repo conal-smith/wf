@@ -35,7 +35,7 @@ export const spotSearchStyles = tv({
     // The field: a soft grey pill that widens a little and comes onto the
     // ground, with an ink edge, while it is in use.
     field: [
-      "flex h-control-md w-80 min-w-0 items-center gap-2 rounded-full border border-transparent bg-sunken pr-2.5 pl-3.5",
+      "flex h-control-md w-80 min-w-0 items-center gap-2 rounded-full border border-transparent bg-well pr-2.5 pl-3.5",
       "font-body text-body text-ink-muted transition-all duration-fast motion-reduce:transition-none",
       "focus-within:w-100 focus-within:border-ink focus-within:bg-ground focus-within:ring-3 focus-within:ring-focus/20",
       "max-wide:hidden",
@@ -70,7 +70,7 @@ export const spotSearchStyles = tv({
     groupName: "px-2.5 pt-2 pb-1.5 font-body text-label font-medium text-ink-muted",
     option: [
       "flex cursor-pointer items-center gap-3 rounded-control px-2.5 py-2 max-wide:min-h-13",
-      "aria-selected:bg-sunken",
+      "aria-selected:bg-well",
     ],
     words: "grid min-w-0 flex-1 gap-0.5",
     name: "min-w-0 truncate font-body text-prose font-semibold text-ink",
