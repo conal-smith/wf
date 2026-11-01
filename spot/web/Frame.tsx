@@ -16,7 +16,8 @@ import { tv } from "../../ui/tv";
 const styles = tv({
   slots: {
     root: "flex min-h-dvh flex-col bg-ground font-body text-prose text-ink antialiased",
-    page: "flex w-full flex-1 flex-col px-safe-4 wide:px-safe-8 xwide:px-safe-12",
+    // The same edge as the bar's, so the wordmark and the page line up.
+    page: "flex w-full flex-1 flex-col px-safe-4 wide:px-safe-6",
   },
 });
 
