@@ -7,7 +7,7 @@
  * then the nearest. Each card is the place from above with the ride rose on
  * it, today hour by hour from first light to last, and the next five days
  * (src/finder/SpotCard.tsx). The approved design is
- * backlog/mockups/2026-10-25-spot-list-cards.html, its "7e".
+ * the spot list cards mock-up, its "7e".
  *
  * Over the cards, "Find a spot…": a name typed lists the places it names,
  * from every place and not only the tab's, best match first, so a rider

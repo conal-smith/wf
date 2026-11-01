@@ -1,5 +1,5 @@
 /**
- * The spot page's frame (backlog/mockups/2026-10-31-spot-page.html): a clean
+ * The spot page's frame (the approved spot report mock-up): a clean
  * top bar the full width of the window (the wordmark, a way to the spot
  * search, the chart, light or dark, and the site's menu) over a page that
  * uses the whole width too: a spot report has a lot to show, and the wider

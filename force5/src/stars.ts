@@ -432,7 +432,7 @@ export interface HourRating {
  * four just short of the sweet spot; five through it; then four for up to
  * three knots, down to one at too much − 5 and none from too much − 3.
  * Exactly the approved mock-up's function
- * (backlog/mockups/2026-10-25-own-star-rating.html).
+ * (the approved star rating mock-up).
  */
 export function windStars(kn: number, w: WindBand): number {
   if (kn < w.min) return 0;

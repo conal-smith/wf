@@ -1,7 +1,7 @@
 /**
  * The glyph set: one 24-unit grid, one 1.5 stroke (1.6 at 18 pixels and
  * under), round ends, as the customise-wizard mockup's glyph sheet draws them
- * (wingfoil-mockups/customise-wizard, "The glyphs"). Each is drawn as a chart
+ * (the customise wizard mock-up, "The glyphs"). Each is drawn as a chart
  * draws a buoy: an ink outline, and a colour inside only where it means
  * something.
  *

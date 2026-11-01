@@ -1,6 +1,6 @@
 /**
  * A riding place as a spot report, after the approved mock-up
- * (backlog/mockups/2026-10-31-spot-page.html): what it is like now on quiet
+ * (the approved mock-up): what it is like now on quiet
  * cards beside the chart's loupe on the satellite picture, the spots around
  * it, the week as a row of day cards, one graph where every row shares the
  * clock (or the table), and the spot's own notes. Two faces, sentence-case

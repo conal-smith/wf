@@ -7,7 +7,6 @@ risk: normal
 epic: community-forum
 iteration: 1
 dependsOn: community-web-shell, community-live
-mockups: backlog/mockups/2026-09-20-community-atlantic.html
 ---
 
 # Thread page: conversation, composer, reactions, live updates

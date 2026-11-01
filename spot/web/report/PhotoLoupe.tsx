@@ -1,6 +1,6 @@
 /**
  * The chart's loupe over a spot's satellite picture, in the modern hand of the
- * mock-ups (backlog/mockups/2026-10-31-spot-page.html): every part of the
+ * mock-ups: every part of the
  * chart's loupe, drawn from its own geometry (force5/src/focus.ts), on a fine
  * white rim with the world outside the glass dimmed. The rim is to scale,
  * half a nautical mile or a kilometre (roseScale), with the ring at half; the

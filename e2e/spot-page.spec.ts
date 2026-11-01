@@ -3,7 +3,7 @@ import { SAMPLE_CLOCK } from "./columns";
 
 /**
  * A riding place's own page, /spot/<id>, against the synthetic sample site:
- * the spot report of backlog/mockups/2026-10-31-spot-page.html.
+ * the spot report the approved mock-up drew.
  *
  * Every spec stands at SAMPLE_CLOCK (e2e/fixtures.ts): 21:00 UTC on 13 Sept
  * 2026, so the page opens on a night — today's rows are all dark — and the

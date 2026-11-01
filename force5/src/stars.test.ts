@@ -66,7 +66,7 @@ const rate = (
 
 /*
  * The approved mock-up's model, copied as it is
- * (backlog/mockups/2026-10-25-own-star-rating.html, "How the stars come from
+ * (the approved star rating mock-up, "How the stars come from
  * four numbers"), so the rating is held to the very function the owner
  * approved, and the plan's "ours" (PR #206) it was checked against.
  */

@@ -78,7 +78,7 @@ table, names the model on the day's header and in each hour's card.
 **The owner's ruling, 25 October 2026: one rating, no levels.** Learning,
 Riding and Advanced are gone everywhere. Everyone is rated on ours; a rider
 who wants something else moves four numbers in Settings
-(`backlog/mockups/2026-10-25-own-star-rating.html`, approved; the plan before
+(from the approved mock-up; the plan before
 it, `backlog/research/2026-10-25-star-rating-plan.html`). The rider never sees
 a gust setting: the rest is our model.
 

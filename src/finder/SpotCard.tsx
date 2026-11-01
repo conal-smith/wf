@@ -4,7 +4,7 @@
  * the card's width, with the ride rose on it; then today (or the day
  * chosen), hour by hour (src/finder/DayHours.tsx), and the other five of its
  * six days (src/finder/NextDays.tsx). The approved mock-up was
- * backlog/mockups/2026-10-25-spot-list-cards.html, its "7e"; the picture
+ * the spot list cards mock-up, its "7e"; the picture
  * went to the card's width, and the name over it, on the owner's ruling of
  * 2026-10-28 (it was too small to read the place from).
  *

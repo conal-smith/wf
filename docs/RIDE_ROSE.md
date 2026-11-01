@@ -8,8 +8,7 @@ from this beach, the no-go upwind, the slow water downwind, where they would
 drift, the wind
 directions that are offshore here, the wind's needle, and the reading at the
 foot ("NE 22 g27 · CROSS"). It is the mockup's recommended design
-(`wingfoil-mockups/loupe-purpose`, design 1 with design 2's needle and box,
-without the 12-hour trail), approved by the owner on 19 October 2026.
+(design 1 with design 2's needle and box, without the 12-hour trail), approved by the owner on 19 October 2026.
 
 - Geometry: `force5/src/rideWedge.ts` (`rideRange`, `rideRose`,
   `offshoreSpans`) and `force5/src/focus.ts` (`roseScale`, `roseRadius`,
