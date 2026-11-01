@@ -26,7 +26,7 @@ export const css = {
   "color-line-strong": "#8b8b94",
   "color-ink": "#111114",
   "color-ink-2": "#3a3a40",
-  "color-ink-muted": "#6c6c74",
+  "color-ink-muted": "#64646c",
   "color-ink-disabled": "#8b8b94",
   "color-ink-inverse": "#ffffff",
   "color-accent": "#111114",

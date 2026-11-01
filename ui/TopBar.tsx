@@ -24,7 +24,7 @@ export const topBarStyles = tv({
   slots: {
     base: [
       "relative z-header flex h-16 shrink-0 items-center gap-2.5 border-0 border-b border-line bg-ground px-safe-6 font-body text-ink",
-      "max-wide:h-14 max-wide:gap-2 max-wide:pr-safe-3 max-wide:pl-safe-4",
+      "max-wide:h-14 max-wide:gap-2 max-wide:px-safe-4",
     ],
     brand: ["shrink-0 rounded-control text-ink no-underline", RING],
     search: "ml-4.5 min-w-0 max-wide:ml-0 max-wide:order-1",

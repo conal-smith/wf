@@ -149,11 +149,11 @@
   --color-line: #1111141f;
   --color-line-strong: #8b8b94;
 
-  /* Text, on paper. ink 14.6:1, ink-2 9.5:1, ink-muted 5.8:1 (5.4:1 on
-     sunken): muted is the floor for words. ink-disabled is a stroke's 3:1. */
+  /* Text, on the ground. ink 14.6:1, ink-2 9.5:1, ink-muted 5.9:1 (5.4:1 on
+     sunken, 4.7:1 on raised): muted is the floor for words. ink-disabled is a stroke's 3:1. */
   --color-ink: #111114;
   --color-ink-2: #3a3a40;
-  --color-ink-muted: #6c6c74;
+  --color-ink-muted: #64646c;
   --color-ink-disabled: #8b8b94;
   --color-ink-inverse: #ffffff;
 
