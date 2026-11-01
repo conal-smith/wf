@@ -2,16 +2,14 @@ import { SearchX, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
-  Figure,
-  Headline,
-  headlineStyles,
-  Kicker,
+  Chip,
+  Heading,
   SearchField,
   Select,
   TextInput,
 } from "../../../ui";
 import { buttonStyles } from "../../../ui/Button";
-import { RING, tv } from "../../../ui/tv";
+import { tv } from "../../../ui/tv";
 import { useApi } from "../api";
 import {
   Empty,
@@ -21,7 +19,6 @@ import {
   Pager,
   categoryLabel,
   conditionLabel,
-  sharedStyles,
   useAsync,
   usePageTitle,
 } from "../components";
@@ -40,36 +37,23 @@ import {
 
 export const browseStyles = tv({
   slots: {
-    hero: "flex flex-col gap-4 max-wide:gap-3",
+    hero: "flex flex-col gap-5 max-wide:gap-4",
     search: "w-full max-w-dialog-wide",
     /*
-     * The categories, as a broadsheet runs its sections along a line between
-     * two rules: the mono label, and the one being read set in the display
-     * face's italic. One line that scrolls on a phone, bleeding to the screen
-     * edge so the word cut off at it says there is more.
+     * The categories, as the kit's choice chips: one pressed, the rest a
+     * press away. One line that scrolls on a phone, bleeding to the screen
+     * edge so the chip cut off at it says there is more.
      */
     rail: [
-      "flex flex-wrap items-stretch gap-x-1 border-0 border-y border-ink",
-      "max-wide:-mx-3 max-wide:flex-nowrap max-wide:overflow-x-auto max-wide:scrollbar-none max-wide:px-2",
-    ],
-    chip: [
-      "inline-flex h-control-md shrink-0 cursor-pointer items-center px-2.5",
-      "border-0 bg-transparent font-mono text-label whitespace-nowrap text-ink-2 uppercase",
-      "touch-manipulation transition-colors duration-fast pointer-coarse:min-h-touch",
-      "not-disabled:hover:bg-sunken not-disabled:hover:text-ink",
-      // On: the display face's italic, heavier, on the paper's second sheet,
-      // as the site menu marks where you are. Not colour alone.
-      "aria-pressed:bg-sunken aria-pressed:font-display aria-pressed:text-prose aria-pressed:font-semibold aria-pressed:tracking-normal aria-pressed:text-ink aria-pressed:normal-case aria-pressed:italic",
-      RING,
-      "not-disabled:focus-visible:-outline-offset-2",
+      "flex flex-wrap items-center gap-2",
+      "max-wide:-mx-3 max-wide:flex-nowrap max-wide:overflow-x-auto max-wide:scrollbar-none max-wide:px-3",
     ],
     filters: "flex flex-wrap items-center gap-2",
     // The way in to the filters on a phone, and nothing at all above it.
     toggle: [
       "hidden",
       "max-wide:inline-flex max-wide:h-touch max-wide:flex-1 max-wide:shrink",
-      "max-wide:rounded-control max-wide:border-line-strong max-wide:shadow-none",
-      // Open, it is on the second sheet, with the panel it opened.
+      // Open, it is on the soft ground, with the panel it opened.
       "aria-expanded:bg-sunken",
     ],
     panel:
@@ -80,29 +64,17 @@ export const browseStyles = tv({
     sort: "ml-auto inline-flex items-center gap-2 max-wide:ml-0 max-wide:flex-1",
     sortField: "min-w-43 max-wide:min-w-0 max-wide:flex-1",
     // The section head over the ads: how many, and what narrows them.
-    // No rule of its own: every ad under it brings its heavy one.
     head: "flex min-h-control-md flex-wrap items-center justify-between gap-x-5 gap-y-2",
-    count: "m-0 inline-flex items-baseline gap-2 font-display text-lead",
+    count: "m-0 font-body text-lead tracking-tight text-ink",
     active: "flex flex-auto flex-wrap items-center justify-end gap-x-2 gap-y-1",
-    // A removable filter: the chip is the button. It is the one control on
-    // this page the kit has no part for, so it carries the kit's own coarse
-    // minimum by hand — a filter is taken off with a thumb as often as the
-    // rail's section beside it is put on.
-    token: [
-      "inline-flex h-control-sm items-center gap-1 rounded-full border border-line bg-sunken pr-2 pl-3",
-      "font-mono text-caption text-ink-2 cursor-pointer",
-      "transition-colors duration-fast pointer-coarse:min-h-touch",
-      "not-disabled:hover:border-ink not-disabled:hover:bg-inverse not-disabled:hover:text-ink-inverse",
-      RING,
-    ],
   },
   variants: {
-    // Below the toggle's breakpoint the folded filters unfold into a well of
-    // their own, under the row that opened them.
+    // Below the toggle's breakpoint the folded filters unfold into a soft
+    // card of their own, under the row that opened them.
     open: {
       true: {
         panel:
-          "max-wide:grid max-wide:grid-cols-1 max-wide:gap-3 max-wide:bg-sunken max-wide:p-3",
+          "max-wide:grid max-wide:grid-cols-1 max-wide:gap-3 max-wide:rounded-surface max-wide:bg-sunken max-wide:p-3",
       },
     },
   },
@@ -156,8 +128,6 @@ export default function BrowsePage() {
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const styles = browseStyles({ open: filtersOpen });
-  const shared = sharedStyles();
-  const headline = headlineStyles();
 
   const active = Boolean(
     query.q ||
@@ -230,20 +200,13 @@ export default function BrowsePage() {
   return (
     <>
       <section className={styles.hero()} aria-labelledby="browse-title">
-        <div className={shared.dateline()}>
-          <Kicker as="span" tone="ink">
-            Classifieds
-          </Kicker>
-          {/*
-            Where the paper is read, not the day: a date here would be the one
-            thing on the page that changes overnight, baseline and all.
-          */}
-          <Kicker as="span">All {COUNTIES.length} counties</Kicker>
-        </div>
-        <Headline id="browse-title">
-          Second-hand gear<span className={headline.mark()}>:</span>{" "}
-          <em className={headline.soft()}>across Ireland</em>
-        </Headline>
+        <Heading
+          level="page"
+          id="browse-title"
+          lead={`Second-hand wingfoil gear, bought and sold across all ${COUNTIES.length} counties.`}
+        >
+          Market
+        </Heading>
         <form
           className={styles.search()}
           role="search"
@@ -253,7 +216,7 @@ export default function BrowsePage() {
           }}
         >
           <SearchField
-            size="hero"
+            size="lg"
             enterKeyHint="search"
             aria-label="Search listings"
             placeholder="Brand, model or size…"
@@ -262,6 +225,8 @@ export default function BrowsePage() {
           >
             {text && (
               <Button
+                variant="quiet"
+                size="sm"
                 icon
                 aria-label="Clear search"
                 onClick={() => setText("")}
@@ -274,27 +239,23 @@ export default function BrowsePage() {
       </section>
 
       <div className={styles.rail()} role="group" aria-label="Category">
-        <button
-          type="button"
-          className={styles.chip()}
-          aria-pressed={!query.category}
+        <Chip
+          pressed={!query.category}
           onClick={() => update({ category: undefined })}
         >
           All gear
-        </button>
+        </Chip>
         {CATEGORIES.map((c) => (
-          <button
+          <Chip
             key={c.id}
-            type="button"
-            className={styles.chip()}
-            aria-pressed={query.category === c.id}
+            pressed={query.category === c.id}
             title={c.hint}
             onClick={() =>
               update({ category: query.category === c.id ? undefined : c.id })
             }
           >
             {c.label}
-          </button>
+          </Chip>
         ))}
       </div>
 
@@ -399,31 +360,24 @@ export default function BrowsePage() {
       {!result.error && (
         <div className={styles.head()}>
           <h2 className={styles.count()} aria-live="polite">
-            {total == null ? (
-              "Loading listings…"
-            ) : (
-              <>
-                <Figure value={total.toLocaleString("en-IE")} />{" "}
-                {`listing${total === 1 ? "" : "s"}`}
-              </>
-            )}
+            {total == null
+              ? "Loading listings…"
+              : `${total.toLocaleString("en-IE")} listing${total === 1 ? "" : "s"}`}
           </h2>
           {tokens.length > 0 && (
             <div className={styles.active()}>
               {tokens.map((t) => (
-                <button
+                <Chip
                   key={t.key}
-                  type="button"
-                  className={styles.token()}
+                  removable
                   aria-label={`Remove filter: ${t.label}`}
                   onClick={t.remove}
                 >
                   {t.label}
-                  <X size={13} aria-hidden="true" />
-                </button>
+                </Chip>
               ))}
               {tokens.length > 1 && (
-                <Button variant="link" onClick={clearAll}>
+                <Button variant="quiet" size="sm" onClick={clearAll}>
                   Clear all
                 </Button>
               )}
@@ -443,28 +397,25 @@ export default function BrowsePage() {
       ) : result.data.items.length === 0 ? (
         <Empty
           title={active ? "Nothing matches that search" : "No listings yet"}
-          icon={<SearchX size={24} strokeWidth={1.5} aria-hidden="true" />}
-          className={shared.emptyPane()}
+          icon={<SearchX size={24} strokeWidth={1.75} />}
+          actions={
+            active ? (
+              <Button onClick={clearAll}>Clear all filters</Button>
+            ) : (
+              <Link
+                to={paths.sell()}
+                className={buttonStyles({ variant: "outline" })}
+              >
+                List your gear
+              </Link>
+            )
+          }
         >
           <p>
             {active
               ? "Try a broader search, or take a filter off."
               : "Be the first to list something you no longer ride."}
           </p>
-          <div className={shared.emptyActions()}>
-            {active ? (
-              <Button variant="outline" onClick={clearAll}>
-                Clear all filters
-              </Button>
-            ) : (
-              <Link
-                to={paths.sell()}
-                className={buttonStyles({ variant: "pill" })}
-              >
-                List your gear
-              </Link>
-            )}
-          </div>
         </Empty>
       ) : (
         <>
