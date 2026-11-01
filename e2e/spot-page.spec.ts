@@ -686,3 +686,52 @@ test("a point on the open water has a page: its wind, no stars, and the nearest 
   ).toHaveAttribute("href", "/?map");
   expect(errors).toEqual([]);
 });
+
+test("below the spot: the wind and the waves through the year, with their figures on hover", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await withTides(page);
+  await page.goto("/spot/brandon");
+  const year = page.locator("[data-climate]");
+  await expect(year).toBeAttached({ timeout: 30000 });
+  await year.scrollIntoViewIfNeeded();
+  // After everything the page had: the spot's notes come first, the small print last.
+  const order = await page.evaluate(() => {
+    const at = (sel: string) => {
+      const el = document.querySelector(sel);
+      return el ? Array.from(document.querySelectorAll("main *")).indexOf(el) : -1;
+    };
+    return { spot: at("#the-spot"), year: at("[data-climate]"), print: at("[data-warnings-source]") };
+  });
+  expect(order.spot).toBeGreaterThan(-1);
+  expect(order.year).toBeGreaterThan(order.spot);
+  expect(order.print).toBeGreaterThan(order.year);
+  await expect(page.getByRole("heading", { name: "The wind through the year" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "The waves through the year" })).toBeVisible();
+  await expect(year).toContainText("How often it blows 12 kn or more");
+  await expect(year).toContainText("Generated using E.U. Copernicus Marine Service Information");
+  // A month's column answers a hover with its figures.
+  await page.locator("[data-climate-wind] rect[data-tip-target]").first().hover();
+  const tip = page.locator("[data-climate-tip]");
+  await expect(tip).toContainText("January");
+  await expect(tip).toContainText("12 kn or more");
+  // The swell's sizes: another size, another chart.
+  const swell = page.locator("[data-climate-swell]");
+  const before = await swell.locator("polyline").first().getAttribute("points");
+  await swell.getByRole("button", { name: "1.2 to 1.8 m" }).click();
+  await expect(swell.getByRole("button", { name: "1.2 to 1.8 m" })).toHaveAttribute("aria-pressed", "true");
+  expect(await swell.locator("polyline").first().getAttribute("points")).not.toBe(before);
+  await page.locator("[data-climate-candles] rect[data-tip-target]").first().hover();
+  await expect(tip).toContainText("Days a month");
+  expect(errors).toEqual([]);
+});
+
+test("a point on the open water has no year of its own", async ({ page }) => {
+  await page.goto("/spot/@52.3000,-10.1000");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "52.30° N, 10.10° W" }),
+  ).toBeVisible({ timeout: 30000 });
+  await expect(page.locator("[data-climate]")).toHaveCount(0);
+});
