@@ -124,6 +124,7 @@ export function WarningNotices({
             <Notice
               level={item.level}
               title={<span data-warning-headline>{warningTitle(item)}</span>}
+              detailsLabel={`Details of the ${warningTitle(item).charAt(0).toLowerCase()}${warningTitle(item).slice(1)}`}
               details={
                 <div className={s.more()}>
                   <p className={s.line()}>

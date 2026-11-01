@@ -440,16 +440,17 @@ repair.
 
 ## Spot pictures
 
-Each riding place's page (/spot/<id>, `spot/web/SpotSatellite.tsx`) opens on
-the place from above, at high tide or at low tide: `spots.py` cuts one WebP a
-place and tide from the imagery archives, 1200 x 600 at zoom 14.5 (4 m a
-pixel at 53.5°N, 4.8 km across; the archives' own 5.8 m resampled), north
-up and centred on the place, laid on the chart's paper where the archive has
-no image. It reads the archives the site's `public/satellite/index.json`
-names, by range from the data host (`--imagery` reads a local set instead),
-so nothing is read from Sentinel-2 again and it runs anywhere in about a
-minute: 148 places, 296 pictures, 6.4 MB (16–25 kB each), on 19 October
-2026, every place in `public/riding-locations.json` pictured.
+Each riding place's page (/spot/<id>, `spot/web/report/PhotoLoupe.tsx`, read
+through `spot/web/useSpotPicture.ts`) shows the place from above, at high
+tide or at low tide: `spots.py` cuts one WebP a place and tide from the
+imagery archives, 1200 x 600 at zoom 14.5 (4 m a pixel at 53.5°N, 4.8 km
+across; the archives' own 5.8 m resampled), north up and centred on the
+place, laid on the chart's paper where the archive has no image. It reads
+the archives the site's `public/satellite/index.json` names, by range from
+the data host (`--imagery` reads a local set instead), so nothing is read
+from Sentinel-2 again and it runs anywhere in about a minute: 148 places,
+296 pictures, 6.4 MB (16–25 kB each), on 19 October 2026, every place in
+`public/riding-locations.json` pictured.
 
 `publish.py --spots` puts them under their own `satellite/v…/` beside a
 `spots.json` that lists them, and writes the site's copy,

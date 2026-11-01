@@ -57,6 +57,7 @@ export function WaterNotices({
           <Notice
             level={item.replaces_ratings ? "water" : "water-advice"}
             title={item.restriction}
+            detailsLabel={`Details of the notice: ${item.restriction}, at ${item.beach}`}
             details={
               <p className={s.line()}>
                 {item.cause && `${item.cause}. `}

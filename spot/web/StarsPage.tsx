@@ -59,7 +59,7 @@ const styles = tv({
     // The key: the glyphs in a column of their own, the words beside them,
     // so the lines start together.
     glyphs:
-      "m-0 grid list-none grid-cols-meter items-center gap-x-3 gap-y-2.5 rounded-surface bg-sunken p-4 font-body text-body text-ink-2 wide:px-5",
+      "m-0 grid list-none grid-cols-meter items-center gap-x-3 gap-y-2.5 rounded-surface bg-sunken on-card p-4 font-body text-body text-ink-2 wide:px-5",
     glyph: "col-span-3 grid grid-cols-subgrid items-center",
     glyphMark: "flex",
     dark: ["text-ink-muted", MONO_LABEL],
@@ -68,7 +68,7 @@ const styles = tv({
     figures: "m-0 font-body text-label text-ink-muted tabular-nums",
     // A table in a soft card, a hairline between its rows.
     table:
-      "w-full border-collapse overflow-hidden rounded-surface bg-sunken font-body text-body",
+      "w-full border-collapse overflow-hidden rounded-surface bg-sunken on-card font-body text-body",
     th: [
       "px-3 pt-3 pb-2.5 text-left font-medium whitespace-nowrap text-ink-muted",
       MONO_LABEL,

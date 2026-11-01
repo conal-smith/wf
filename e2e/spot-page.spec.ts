@@ -72,10 +72,9 @@ test("a spot page is a spot report: the name, now, the week, one graph, and the 
 
   await expect(heading(page)).toBeVisible({ timeout: 30000 });
   await expect(page).toHaveTitle(/Brandon Bay/);
-  await expect(page.locator("[data-back-to-map]")).toHaveAttribute(
-    "href",
-    "/?spot=brandon",
-  );
+  await expect(
+    page.locator(`[data-top-bar] [data-view-switch="chart"]`),
+  ).toHaveAttribute("href", "/?spot=brandon");
   // Now: the wind, the stars, the tide or the launch, the sea, the light.
   const now = page.locator("[data-now]");
   await expect(now).toContainText("Wind now");
@@ -316,7 +315,7 @@ test("the map's dock opens the spot page, for the spot it opens on and one chose
     page.getByRole("heading", { level: 1, name: "Dollymount", exact: true }),
   ).toBeVisible({ timeout: 30000 });
   // And back to the map, on the same place.
-  await page.locator("[data-back-to-map]").click();
+  await page.locator(`[data-top-bar] [data-view-switch="chart"]`).click();
   await expect(page).toHaveURL(/\/\?spot=dollymount$/);
   await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount", {
     timeout: 30000,
@@ -333,10 +332,9 @@ test("How the stars work draws the four numbers, the gusts, the shore sectors an
     page.getByRole("heading", { level: 1, name: "How the stars work" }),
   ).toBeVisible({ timeout: 30000 });
   await expect(page).toHaveTitle(/How the stars work/);
-  await expect(page.locator("[data-back-to-map]")).toHaveAttribute(
-    "href",
-    "/?spot=brandon",
-  );
+  await expect(
+    page.locator(`[data-top-bar] [data-view-switch="chart"]`),
+  ).toHaveAttribute("href", "/?spot=brandon");
   // Ours, the only stars there are until the rider makes their own.
   const band = page.locator('[data-band-table] [data-band="ours"]');
   await expect(band).toContainText("11");

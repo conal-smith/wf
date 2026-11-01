@@ -50,7 +50,7 @@ const styles = tv({
     countyHead: "wide:pt-3.5",
     count: "font-body text-body font-normal text-ink-muted tabular-nums",
     places:
-      "m-0 grid list-none grid-cols-cards gap-x-6 rounded-surface bg-sunken px-5 py-2 max-wide:px-4",
+      "m-0 grid list-none grid-cols-cards gap-x-6 rounded-surface bg-sunken on-card px-5 py-2 max-wide:px-4",
     place: [
       "flex min-h-10 items-center rounded-control font-body text-body font-medium text-ink no-underline",
       "transition-colors duration-fast hover:text-chart-magenta pointer-coarse:min-h-touch",
