@@ -222,9 +222,9 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   await expect(settings.locator("[data-answer]")).toHaveText(
     "I can ride across the wind without losing ground.",
   );
-  await expect(settings.locator(".st-up-pic")).toContainText("DRIFT");
-  await expect(settings.locator(".st-up-pic")).toContainText("YOU LOSE GROUND");
-  await expect(settings.locator(".st-up-pic")).not.toContainText("SLOW");
+  await expect(settings.locator(".st-up-pic")).toContainText("Drift");
+  await expect(settings.locator(".st-up-pic")).toContainText("You lose ground");
+  await expect(settings.locator(".st-up-pic")).not.toContainText(/slow/i);
   await expect(settings.locator(".st-slide")).toHaveCount(0);
   await expect(settings.locator(".st-up-pic .st-grab-ring")).toHaveCount(4);
   // Straight across: no magenta angle, only the course's 10° downwind.
