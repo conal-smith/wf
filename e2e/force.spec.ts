@@ -63,21 +63,14 @@ test("in Force the dock and the loupe draw the force's glyph and number", async 
   });
 });
 
-test("in Force the spot page's hours are glyphs, said as Force N", async ({
+test("in Force the spot page's figures are forces, written F4", async ({
   page,
 }) => {
   await inForce(page);
   await page.goto("/spot/brandon");
-  const figure = page
-    .locator("[data-row] [role=img][aria-label^='Force'] >> visible=true")
-    .first();
-  await expect(figure).toBeVisible({ timeout: 30000 });
-  await expect(figure).toHaveAttribute(
-    "aria-label",
-    /^Force \d+(, gusting Force \d+)?$/,
-  );
-  // The key says what the feathers are.
-  await expect(page.locator("[data-table-key]")).toContainText(
-    "half a feather for each force",
-  );
+  // Now's wind, and the week's ranges, in forces; no knots anywhere.
+  const now = page.locator("[data-now]");
+  await expect(now).toContainText(/F\d/, { timeout: 30000 });
+  await expect(page.locator("[data-day-card]").nth(1)).toContainText(/F\d+–F\d+/);
+  await expect(now).not.toContainText(/\bkn\b/);
 });

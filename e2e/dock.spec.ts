@@ -1889,13 +1889,12 @@ for (const width of [390, 1440])
     // The spot's name opens its page, which says all of it.
     await dock.getByRole("link", { name: "Brandon Bay, spot page" }).click();
     await expect(page).toHaveURL(/\/spot\/brandon$/);
+    // On the Sea card, one short line; the station and its age on hover.
     const water = page.locator("[data-sea-temperature]");
-    await expect(water).toHaveText(
-      "Water 14.5 °C measured 2 h ago at the M3 weather buoy, 46 km from here: the nearest station reporting, and the water at the shore can differ.",
-      { timeout: 30000 },
-    );
-    await expect(page.locator("[data-sources]")).toContainText(
-      "Water temperature: M3, 45.5 km away, read",
+    await expect(water).toContainText("water 14.5 °C", { timeout: 30000 });
+    await expect(water).toHaveAttribute(
+      "title",
+      "Measured 2 h ago at the M3 weather buoy, 46 km from here",
     );
   });
 
