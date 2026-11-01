@@ -9,10 +9,10 @@ export const tagStyles = tv({
   base: "inline-flex h-5.5 shrink-0 items-center gap-1.5 rounded-full px-2 font-body text-label font-medium whitespace-nowrap",
   variants: {
     tone: {
-      neutral: "bg-sunken text-ink-2",
+      neutral: "bg-well text-ink-2",
       // Offshore, a warning, something wrong: the pen's red on its tint.
       off: "bg-warn-ground text-pen-ink",
-      ok: "bg-sunken text-ok",
+      ok: "bg-well text-ok",
       // Over a photograph: the ground that lets a little through, solid for
       // a reader who has declined transparency.
       glass: [

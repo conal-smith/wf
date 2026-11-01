@@ -27,14 +27,14 @@ export const buttonStyles = tv({
   variants: {
     variant: {
       // The default: a hairline round the words, the ground inside.
-      outline: "border-line bg-ground not-disabled:hover:bg-sunken",
+      outline: "border-line bg-ground not-disabled:hover:bg-well",
       // The one filled control: ink on the ground, a view has one or none.
       primary:
         "bg-accent text-accent-ink not-disabled:hover:bg-accent not-disabled:hover:opacity-90 disabled:text-accent-ink",
       // A grey fill, for a second action inside a card or a list.
-      soft: "bg-sunken not-disabled:hover:bg-line",
+      soft: "bg-well not-disabled:hover:bg-line",
       // No edge, for the small actions: Reset, Clear, Skip, Close.
-      quiet: "not-disabled:hover:bg-sunken",
+      quiet: "not-disabled:hover:bg-well",
       // A way back or on in running text, underlined.
       link: [
         "underline decoration-1 underline-offset-3 decoration-line-strong",
@@ -45,9 +45,9 @@ export const buttonStyles = tv({
         "border-line bg-ground text-pen-ink not-disabled:hover:bg-warn-ground disabled:text-pen-ink",
     },
     size: {
-      sm: "h-8 gap-1.5 px-3",
+      sm: "h-control-sm gap-1.5 px-3",
       md: "h-control-md px-4",
-      lg: "h-12 px-5.5 text-prose",
+      lg: "h-control-lg px-5.5 text-prose",
     },
     icon: { true: "p-0 pointer-coarse:min-w-touch" },
     pressed: {
@@ -63,9 +63,9 @@ export const buttonStyles = tv({
     },
   },
   compoundVariants: [
-    { icon: true, size: "sm", class: "w-8" },
+    { icon: true, size: "sm", class: "w-control-sm" },
     { icon: true, size: "md", class: "w-control-md" },
-    { icon: true, size: "lg", class: "w-12" },
+    { icon: true, size: "lg", class: "w-control-lg" },
     /*
      * A link in running text: no box of its own, whatever size was asked for.
      * A thumb still gets a touch-tall target: an invisible band the height of

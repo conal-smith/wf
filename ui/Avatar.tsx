@@ -4,7 +4,7 @@ import { tv, type VariantProps } from "./tv";
 export const avatarStyles = tv({
   slots: {
     // A monogram on the soft grey, in Inter.
-    base: "inline-grid shrink-0 place-items-center overflow-hidden rounded-full bg-sunken font-body leading-none font-semibold text-ink-2",
+    base: "inline-grid shrink-0 place-items-center overflow-hidden rounded-full bg-well font-body leading-none font-semibold text-ink-2",
     image: "size-full object-cover",
   },
   variants: {

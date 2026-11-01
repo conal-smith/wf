@@ -15,7 +15,7 @@ import { RING, tv } from "./tv";
  */
 export const rowsStyles = tv({
   slots: {
-    list: "m-0 list-none divide-y divide-line overflow-hidden rounded-surface bg-sunken p-0",
+    list: "m-0 list-none divide-y divide-line overflow-hidden rounded-surface bg-sunken p-0 on-card",
     row: [
       "flex min-h-14 w-full items-center gap-3.5 border-0 bg-transparent px-4 py-3.25 text-left",
       "font-body text-ink no-underline",

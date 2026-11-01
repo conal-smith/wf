@@ -1,8 +1,7 @@
 import { tv, type VariantProps } from "./tv";
 
 export const skeletonStyles = tv({
-  // The hairline's ink, which shows on grained paper where the second sheet
-  // does not.
+  // The hairline's grey, which shows on the ground and on a soft card alike.
   base: "block animate-pulse bg-line motion-reduce:animate-none",
   variants: {
     shape: {

@@ -12,8 +12,8 @@ export const tabsStyles = tv({
     tab: [
       "inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full border-0 bg-transparent px-3 py-2",
       "font-body text-prose font-medium whitespace-nowrap text-ink-2 no-underline",
-      "transition-colors duration-fast not-disabled:hover:bg-sunken",
-      "aria-selected:bg-sunken aria-selected:text-ink",
+      "transition-colors duration-fast not-disabled:hover:bg-well",
+      "aria-selected:bg-well aria-selected:text-ink",
       RING,
     ],
   },
