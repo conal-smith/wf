@@ -1,4 +1,10 @@
-import { AlertTriangle, ChevronDown, Droplet, Info } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  Droplet,
+  DropletOff,
+  Info,
+} from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { Button } from "./Button";
 import { tv, type VariantProps } from "./tv";
@@ -47,7 +53,9 @@ const ICON: Record<NoticeLevel, typeof Info> = {
   yellow: AlertTriangle,
   orange: AlertTriangle,
   red: AlertTriangle,
-  water: Droplet,
+  // Bathing prohibited or closed: the drop struck through. Advice keeps the
+  // plain drop.
+  water: DropletOff,
   "water-advice": Droplet,
 };
 
