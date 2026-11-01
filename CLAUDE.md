@@ -31,6 +31,15 @@ paths and email addresses by their shape, and the competitors' names and the
 owner's own details from the `PUBLICATION_DENYLIST` repository secret, one
 regular expression per line, so that they are never written down here.
 
+## No mock-ups in the repository
+
+Mock-ups and design explorations are never committed or put in a pull
+request. Make them outside the repository, show them to the owner in chat,
+and once a direction is picked, build the real thing. Code and docs describe
+the design itself, not a mock-up file. Work the new design has made
+redundant (an old look, a superseded component) is removed, not kept beside
+it.
+
 ## Commits and pull requests
 
 Every commit message and every pull request title is a
