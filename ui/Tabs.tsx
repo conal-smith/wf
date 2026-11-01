@@ -15,6 +15,8 @@ export const tabsStyles = tv({
       "transition-colors duration-fast not-disabled:hover:bg-well",
       "aria-selected:bg-well aria-selected:text-ink",
       RING,
+      // Inside the control, so a list that scrolls sideways does not clip it.
+      "focus-visible:-outline-offset-2",
     ],
   },
   variants: {
