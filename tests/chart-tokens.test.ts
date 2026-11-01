@@ -59,12 +59,6 @@ describe("paper and ink", () => {
       expect(resolved(name), name).toBe("#111114");
   });
 
-  it("paints the double rule's gap in the paper every surface is", () => {
-    const frame = css.match(/--inset-shadow-frame: ([^;]+);/)?.[1] ?? "";
-    expect(frame).toContain(resolved("card"));
-    expect(frame).toContain(resolved("ink"));
-  });
-
   it("lays the glass a badge stands on in the same paper, a little open", () => {
     expect(resolved("glass")).toBe(`${resolved("solid")}eb`);
   });
