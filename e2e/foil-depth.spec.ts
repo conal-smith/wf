@@ -98,7 +98,7 @@ async function open(page: Page, ranges: boolean) {
   await expect(page.locator(".map-loading")).toHaveCount(0, { timeout: 30000 });
   await page.addStyleTag({
     content:
-      ".particle-canvas, .spot-marker, .map-pen, .pick-mark { visibility: hidden !important; }",
+      ".particle-canvas, .spot-marker, .pick-mark { visibility: hidden !important; }",
   });
   await page.keyboard.press("Escape"); // the focus's paper, off the estuary
   await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);

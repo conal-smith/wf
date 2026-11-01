@@ -45,7 +45,7 @@ import { siteSource } from "../../shared/web/forecastSource";
 import { usePageTitle } from "../../shared/web/usePageTitle";
 import {
   Headline,
-  PenNote,
+  Kicker,
   SectionHeading,
   Skeleton,
   StarGlyphs,
@@ -369,9 +369,9 @@ function BandTable({ rider }: { rider: Rider }) {
                 <td className={s.td()}>
                   {column.name}{" "}
                   {column.you && (
-                    <PenNote as="span" size="sm">
+                    <Kicker as="span" tone="ink">
                       you
-                    </PenNote>
+                    </Kicker>
                   )}
                 </td>
                 <td className={s.td({ className: s.num() })}>

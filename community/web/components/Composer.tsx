@@ -4,8 +4,8 @@
  * ruled field to write in and the view's one filled action, Reply; signed out
  * it is the offer to sign in; on a locked thread it is the reason.
  *
- * When a reply answers one message, the pen loops the name of who is being
- * answered: the one mark on the view that says where this letter is going.
+ * When a reply answers one message, the name of who is being answered is
+ * set in the display face: it says where this letter is going.
  */
 import { AtSign, Image as ImageIcon, Lock, LogIn, Send, X } from "lucide-react";
 import {
@@ -17,7 +17,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
-import { Avatar, Button, Lift } from "../../../ui";
+import { Avatar, Button } from "../../../ui";
 import { HOVER, MONO_LABEL, NO_RING, RING_WITHIN, tv } from "../../../ui/tv";
 import { LIMITS, type Member, type Message } from "../../shared/types";
 import {
@@ -37,9 +37,7 @@ export const composerStyles = tv({
     ],
     replying: "flex min-w-0 items-center gap-2 pl-1 text-body text-ink-muted",
     replyingLabel: ["shrink-0", MONO_LABEL],
-    // Clear of the words either side by the loop's own reach.
-    lift: "mx-1 shrink-0",
-    replyingName: "font-display font-semibold text-ink",
+    replyingName: "shrink-0 font-display font-semibold text-ink",
     replyingLine: "min-w-0 flex-1 truncate italic",
     // The field: a box ruled in ink to write in, as the kit's fields are.
     box: [
@@ -331,11 +329,9 @@ export function Composer({
       {replyingTo && (
         <div className={styles.replying()}>
           <span className={styles.replyingLabel()}>Replying to</span>
-          <Lift className={styles.lift()}>
-            <span className={styles.replyingName()}>
-              {replyingTo.author.displayName}
-            </span>
-          </Lift>
+          <span className={styles.replyingName()}>
+            {replyingTo.author.displayName}
+          </span>
           <span className={styles.replyingLine()}>{firstLine(replyingTo)}</span>
           <Button
             size="sm"

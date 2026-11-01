@@ -159,7 +159,7 @@ export const STAR: Shape[] = [
 
 /**
  * The pen's loop: an ellipse drawn once round by hand, a little past where it
- * started and a little out of round (ui/penPaths.ts `loopPath`, 24 × 18).
+ * started and a little out of round (24 × 18, as the site once drew it).
  */
 export function loopShape(rx = 22, ry = 16.5, width = 2.2): Shape[] {
   const points: Point[] = [];

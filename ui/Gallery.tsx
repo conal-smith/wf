@@ -33,7 +33,6 @@ import {
   Headline,
   headlineStyles,
   Kicker,
-  Lift,
   Link,
   Masthead,
   MastheadMark,
@@ -41,9 +40,6 @@ import {
   Notice,
   Pager,
   Pane,
-  PenNote,
-  PenStrike,
-  PenUnderline,
   Puffin,
   SearchField,
   SectionHeading,
@@ -192,7 +188,6 @@ export default function Gallery() {
             Plex Mono at the caption step: WSW 14g22 · 9x
           </p>
           <Kicker>Plex Mono, the label: stars · wind kn · from</Kicker>
-          <PenNote>Kalam, the pen: Go 13:00–16:00.</PenNote>
         </div>
       </Section>
 
@@ -279,27 +274,10 @@ export default function Gallery() {
         </Row>
       </Section>
 
-      <Section title="The pen and the Almanac">
-        <Row label="a lift, an underline, a strike: one mark a view">
-          <span className="font-mono text-figure">
-            <Lift>13 g22</Lift>
-          </span>
-          <span className="font-display text-lead">
-            <PenUnderline>Four stars</PenUnderline>
-          </span>
-          <span className="font-display text-lead italic">
-            <PenStrike>Brandon Bay</PenStrike>
-          </span>
-        </Row>
-        <div className="flex max-w-dialog items-end gap-4 border-l border-line pl-4">
-          <div className="grid flex-1 gap-1">
-            <PenNote>
-              Go 13:00–16:00. <PenUnderline>Four stars</PenUnderline> on a 6 m.
-            </PenNote>
-            <PenNote size="sm">WSW 14 g22 · cross-shore · HW 13:25</PenNote>
-          </div>
+      <Section title="The Almanac">
+        <Row label="the puffin, bobbing as it signs">
           <Puffin bob title="The Almanac" />
-        </div>
+        </Row>
         <Row label="the puffin, at three sizes">
           <Puffin size={32} />
           <Puffin />

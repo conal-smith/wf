@@ -76,12 +76,12 @@
         "500": {
           "$type": "color",
           "$value": "#d43a2c",
-          "$description": "The red pen's stroke. 4.1:1 on paper: a mark, not words."
+          "$description": "The red accent's stroke: the time now, offshore. 4.1:1 on paper: a mark, not words."
         },
         "600": {
           "$type": "color",
           "$value": "#bf3125",
-          "$description": "The red pen's handwriting, darkened to read as words. 4.9:1 on paper."
+          "$description": "The red accent darkened to read as words. 4.9:1 on paper."
         }
       },
       "warm": {
@@ -93,7 +93,7 @@
         "700": {
           "$type": "color",
           "$value": "#b02a1f",
-          "$description": "Warm red for degraded and now. 5.7:1 on paper. Not the pen."
+          "$description": "Warm red for degraded and now. 5.7:1 on paper. Not the red accent."
         }
       },
       "green": {
@@ -363,12 +363,12 @@
         "pen": {
           "$type": "color",
           "$value": "#ff5b4d",
-          "$description": "Proposed night chart: the pen's stroke. 5.2:1."
+          "$description": "Proposed night chart: the red accent's stroke. 5.2:1."
         },
         "pen-ink": {
           "$type": "color",
           "$value": "#ff7d70",
-          "$description": "Proposed night chart: the pen's handwriting. 6.2:1."
+          "$description": "Proposed night chart: the red accent in words. 6.2:1."
         },
         "warn": {
           "$type": "color",
@@ -470,16 +470,6 @@
             "sans-serif"
           ],
           "$description": "Inter, as the body: the old mono slot keeps its name so the recipes that ask for it still resolve."
-        },
-        "hand": {
-          "$type": "fontFamily",
-          "$value": [
-            "Kalam",
-            "Bradley Hand",
-            "Segoe Print",
-            "cursive"
-          ],
-          "$description": "Kalam: the red pen's handwriting, and nothing else."
         }
       },
       "weight": {
@@ -703,7 +693,7 @@
       "raised": {
         "$type": "shadow",
         "$value": "inset 0 1px 0 #ffffff, 0 1px 2px #11111426",
-        "$description": "A raised paper button: a white lip and a contact shadow."
+        "$description": "A raised button: a white lip and a contact shadow."
       },
       "raised-night": {
         "$type": "shadow",
@@ -780,7 +770,7 @@
       "raised": {
         "$type": "string",
         "$value": "linear-gradient(180deg, #ffffff, #ffffff)",
-        "$description": "A raised paper button's fill: white at the top to paper."
+        "$description": "A raised button's fill: white at the top to paper."
       },
       "raised-night": {
         "$type": "string",
@@ -1357,7 +1347,7 @@
       "pen": {
         "$type": "color",
         "$value": "{ref.color.pen.500}",
-        "$description": "The red pen's strokes. --color-pen.",
+        "$description": "The red accent's strokes. --color-pen.",
         "$extensions": {
           "com.sprintengine": {
             "role": "mark",
@@ -1373,11 +1363,11 @@
       "pen-ink": {
         "$type": "color",
         "$value": "{ref.color.pen.600}",
-        "$description": "The red pen's handwriting. --color-pen-ink.",
+        "$description": "The red accent in words. --color-pen-ink.",
         "$extensions": {
           "com.sprintengine": {
             "role": "mark",
-            "use": "The pen's note; a gust well over the mean; the label of the one thing that matters.",
+            "use": "A gust well over the mean; a warning in words; the label of the one thing that matters.",
             "modes": {
               "light": "{ref.color.pen.600}",
               "dark": "{ref.color.night.pen-ink}"
@@ -1922,17 +1912,6 @@
             }
           }
         },
-        "hand": {
-          "$type": "fontFamily",
-          "$value": "{ref.font.family.hand}",
-          "$description": "Kalam. --font-hand.",
-          "$extensions": {
-            "com.sprintengine": {
-              "role": "type",
-              "use": "The pen's notes. Nothing else."
-            }
-          }
-        },
         "ui": {
           "$type": "fontFamily",
           "$value": "{ref.font.family.body}",
@@ -1941,7 +1920,7 @@
             "com.sprintengine": {
               "role": "interop",
               "use": "Read by the Studio catalog and door.",
-              "doNotUse": "In components: name the face's job (display, body, mono, hand)."
+              "doNotUse": "In components: name the face's job (display, body, mono)."
             }
           }
         }
@@ -2157,7 +2136,7 @@
           "$extensions": {
             "com.sprintengine": {
               "role": "type",
-              "use": "A section's heading, a card's name, a dialog's title, the pen's note at md."
+              "use": "A section's heading, a card's name, a dialog's title."
             }
           }
         },
@@ -2335,7 +2314,7 @@
           "$extensions": {
             "com.sprintengine": {
               "role": "type",
-              "use": "A card's title at the prose size; a field's label; the pen's note."
+              "use": "A card's title at the prose size; a field's label."
             }
           }
         },
@@ -2788,7 +2767,7 @@
         "$extensions": {
           "com.sprintengine": {
             "role": "elevation",
-            "use": "A raised paper button, under sem.gradient.raised: the round menu button, the instrument.",
+            "use": "A raised button, under sem.gradient.raised: the round menu button, the instrument.",
             "modes": {
               "light": "0 1px 2px #1111140f",
               "dark": "0 1px 2px #00000066"
@@ -2904,11 +2883,11 @@
       "raised": {
         "$type": "string",
         "$value": "{ref.gradient.raised}",
-        "$description": "--gradient-raised: a raised paper button.",
+        "$description": "--gradient-raised: a raised button.",
         "$extensions": {
           "com.sprintengine": {
             "role": "surface",
-            "use": "A background-image under a raised paper button (the theme's `sheen-raised`), with sem.shadow.raised.",
+            "use": "A background-image under a raised button (the theme's `sheen-raised`), with sem.shadow.raised.",
             "doNotUse": "On a large surface: a page, a dialog, the dock stay flat paper.",
             "modes": {
               "light": "{ref.gradient.raised}",
@@ -3220,17 +3199,6 @@
           }
         }
       },
-      "ink": {
-        "$type": "string",
-        "$value": "ink 750ms cubic-bezier(0.5, 0.1, 0.3, 1) both",
-        "$description": "--animate-ink: the pen drawing its stroke in, once.",
-        "$extensions": {
-          "com.sprintengine": {
-            "role": "motion",
-            "use": "On a path with pathLength 1 and stroke-dasharray 1. Off under reduced motion."
-          }
-        }
-      },
       "bob": {
         "$type": "string",
         "$value": "bob 6s ease-in-out infinite",
@@ -3337,11 +3305,11 @@
       "pen": {
         "$type": "number",
         "$value": 0.9,
-        "$description": "The pen's stroke, a little thin, as ink is (Pen.tsx).",
+        "$description": "The red accent's line, a little thin.",
         "$extensions": {
           "com.sprintengine": {
             "role": "mark",
-            "use": "Every pen stroke."
+            "use": "The line at the time now."
           }
         }
       },

@@ -292,8 +292,7 @@ function MyListings({
               <Price listing={listing} size="sm" />
               <Kicker as="span">
                 {/* Sold is written where it is read: "7min" alone looked like
-                    the age of a live ad. (Not the pen's strike: the pen is
-                    not for status, docs/BRAND.md.) */}
+                    the age of a live ad. */}
                 {listing.status === "sold" && listing.soldAt ? (
                   <>
                     Sold <Age iso={listing.soldAt} prefix="" />

@@ -16,7 +16,7 @@ chart names its parts and a broadsheet heads its columns.
   head.
 - `--ink` — `sem.color.ink`: a label that heads something.
 - `--pen` — `sem.color.pen-ink`: the label of the one thing that matters
-  ("Best of the week"), beside the pen's mark.
+  ("Best of the week").
 
 ## States
 

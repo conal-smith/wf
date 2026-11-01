@@ -23,9 +23,6 @@ import {
   Chip,
   Empty,
   Figure,
-  Lift,
-  PenNote,
-  PenStrike,
   Puffin,
   Skeleton,
   StarGlyphs,
@@ -383,11 +380,11 @@ export function Age({ iso, prefix = "Listed" }: { iso: string; prefix?: string }
   );
 }
 
-/** How recent a listing has to be for the pen to call it new: a week. */
+/** How recent a listing has to be to be marked new: a week. */
 export const FRESH_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * The one listing on a page the pen loops "new" round: the newest of them, if
+ * The one listing on a page marked "new": the newest of them, if
  * it went up within the week. One mark on a view (docs/BRAND.md), so never
  * more than one card, and none where nothing is recent.
  */
@@ -409,9 +406,12 @@ export function newestFresh(
 
 /**
  * The price, as a figure: the mono face's tabular digits, the number a card
- * and a listing are about. A sold one is struck through in the pen, which is
- * the one mark that view carries.
+ * and a listing are about. A sold one is struck through and muted.
  */
+export const priceStyles = tv({
+  base: "text-ink-muted line-through decoration-1",
+});
+
 export function Price({
   listing,
   size = "md",
@@ -423,14 +423,13 @@ export function Price({
   strike?: boolean;
   className?: string;
 }) {
-  const figure = (
+  return (
     <Figure
       size={size}
-      className={className}
+      className={strike ? priceStyles({ className }) : className}
       value={formatPrice(listing.priceCents, listing.currency)}
     />
   );
-  return strike ? <PenStrike>{figure}</PenStrike> : figure;
 }
 
 // ---- the face ----------------------------------------------------------------
@@ -499,11 +498,8 @@ export const listingCardStyles = tv({
     badge: "absolute top-2 left-2",
     count: "absolute right-2 bottom-2",
     body: "flex flex-1 flex-col gap-1",
-    // The price, and the pen's "new" beside it on the one card it marks.
-    // The pen's loop reaches 12px past what it rings, so it stands that far
-    // off the price.
-    head: "flex min-h-7 items-center gap-5",
-    fresh: "inline-block",
+    // The price, and "new" beside it on the one card it marks.
+    head: "flex min-h-7 items-center gap-2",
     // The name of the thing in the display face, never more than two lines.
     title:
       "m-0 line-clamp-2 font-display text-prose leading-tight font-semibold text-balance",
@@ -550,7 +546,7 @@ export function ListingCard({
 }: {
   listing: Listing;
   showStatus?: boolean;
-  /** The pen loops "new" beside the price: one card on a view, at most. */
+  /** "New" in a chip beside the price: one card on a view, at most. */
   fresh?: boolean;
   /** On the Saved tab every card is saved, and a badge saying so says nothing. */
   hideSaved?: boolean;
@@ -620,11 +616,9 @@ export function ListingCard({
         <div className={styles.head()}>
           <Price listing={listing} />
           {fresh && (
-            <Lift className={styles.fresh()}>
-              <PenNote as="span" size="sm">
-                new
-              </PenNote>
-            </Lift>
+            <Chip eyebrow data-fresh>
+              new
+            </Chip>
           )}
         </div>
         <h3 className={styles.title()}>{listing.title}</h3>
@@ -661,7 +655,7 @@ export function ListingGrid({
   showStatus?: boolean;
   hideSaved?: boolean;
   hideSeller?: boolean;
-  /** Let the pen loop "new" round the newest, if it is from this week. */
+  /** Mark the newest "new", if it is from this week. */
   markNew?: boolean;
   /** A newer result is on its way; what is shown is about to be replaced. */
   busy?: boolean;
@@ -831,9 +825,9 @@ export function PageSkeleton() {
 
 export const notFoundStyles = tv({
   slots: {
-    // A URL that is not a page: the puffin on his rock, and the pen's word.
+    // A URL that is not a page: the puffin on his rock, and a word.
     lost: "grid justify-items-center gap-4 py-14 text-center",
-    lostTitle: "m-0 -rotate-1",
+    lostTitle: "m-0 font-display text-lead font-semibold text-ink",
     lostText: "m-0 max-w-reading font-body text-prose text-ink-muted",
   },
 });
@@ -855,7 +849,7 @@ export function NotFound({
     <section className={styles.lost()} aria-labelledby="not-found-title">
       <Puffin size={88} bob />
       <h1 className={styles.lostTitle()} id="not-found-title">
-        <PenNote as="span">{title}</PenNote>
+        {title}
       </h1>
       <p className={styles.lostText()}>{text}</p>
       <Link to={paths.browse()} className={buttonStyles({ variant: "primary" })}>

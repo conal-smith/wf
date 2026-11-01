@@ -356,12 +356,8 @@ describe("ui/theme.css: blur, measures and animation", () => {
     expect(css).toContain("background-image: var(--gradient-raised);");
   });
 
-  it("draws the pen in once, and lets the puffin bob, both declinable", () => {
-    const css = flat(
-      build(["animate-ink", "animate-bob", "motion-reduce:animate-none"]),
-    );
-    expect(css).toContain("--animate-ink: ink 750ms");
-    expect(css).toMatch(/@keyframes ink \{ from \{ stroke-dashoffset: 1; \}/);
+  it("lets the puffin bob, declinably", () => {
+    const css = flat(build(["animate-bob", "motion-reduce:animate-none"]));
     expect(css).toContain("@keyframes bob");
   });
 

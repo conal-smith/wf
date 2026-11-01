@@ -44,16 +44,16 @@ things and nothing else: _this instant_ (the now-marker) or _this is degraded_
 (a stale snapshot, a failed fetch, an error, a destructive answer). Warm is
 never used to make something stand out.
 
-## The pen rule
+## The mark rule
 
-**The one thing that matters is lifted, and nothing else.** The chosen hour on
-a raised card, the open spot's light lifted off the chart, a red line at the
-time now, a strike through a spot that is offshore. One mark on a view, two at
-most. Nothing is circled or framed by hand (see 2026-10-29). It marks; it does not
-write a verdict beside the mark (the information rule). It is never a fill,
-never a control, never a status: a warning is `warn`, a different red that
-means degraded. The pen's strokes are `pen`; its handwriting is `pen-ink`,
-which reads as words.
+**The thing shown is marked flat, and nothing else.** The chosen hour is
+outlined in ink inside its column, the open spot's light stands a size up, a
+red line rules the time now, and a spot that is offshore is struck through in
+red. Nothing is lifted on a card, circled, or drawn or written by hand (see
+2026-11-01). A mark does not write a verdict beside it (the information rule).
+The red accent is never a fill, never a control, never a status: a warning is
+`warn`, a different red that means degraded. Its strokes are `pen`; its words
+are `pen-ink`.
 
 ## The information rule
 
@@ -61,8 +61,8 @@ which reads as words.
 page show the wind, the stars, the hours, the figures and plain labels, and
 leave the reading of them to the rider. No verdict or advice in the house
 voice: not "Go after lunch: four stars on a 5 m", not "Go 13–16, shallow after
-3", in the pen's hand or in type. Highlighting the key hours is fine (the
-stars, the card under the chosen hour, the line at now, a tint), and so
+3". Highlighting the key hours is fine (the stars, the outline round the
+chosen hour, the line at now, a tint), and so
 is a label that says what a figure is ("14.4 °C, M3 weather buoy, 50 km from
 here").
 
@@ -117,9 +117,9 @@ section under a rule instead.
 
 ## Ceilings
 
-**Type.** Four faces, each with one job (`font-display` Fraunces for names and
-headings, `font-body` Newsreader for sentences, `font-mono` IBM Plex Mono for
-every figure and label, `font-hand` Kalam for the pen), and eleven named steps,
+**Type.** Two faces under three names (`font-display` Fraunces for names and
+headings, `font-body` Inter for everything else, `font-mono` Inter too, for
+every figure and label at even width), and eleven named steps,
 10px to 48px: `eyebrow` 10, `caption` 11, `label` 11, `body` 13, `prose` 15,
 `input` 16, `lead` 19, `figure` 19, `title` 30, `headline` 44, `reading` 48.
 
@@ -155,19 +155,19 @@ the spot's tools, the search, a menu, a popover, a tooltip), `shadow-sheet`
 (a dialog or sheet, a level deeper) and `shadow-dock` (the sheet's stack cast
 upward, for the dock on the foot of the screen). `shadow-marker` lifts a light
 or a small floating button. A small control has its own: `shadow-control`
-under a pressed or filled ink control, `shadow-raised` under a raised paper
+under a pressed or filled ink control, `shadow-raised` under a raised
 one. Everything at the same height casts the same shadow; a print rule casts
 none.
 
 **Light.** Paper is flat. The faintest light from above (`paper-float`) is
 allowed on a small box over the chart; a page, a dialog and the dock stay flat
 (`paper-grain`). A sheen is for small controls only: `sheen-ink` under a
-pressed or filled ink control, `sheen-raised` under a raised paper button (the
+pressed or filled ink control, `sheen-raised` under a raised button (the
 round menu button, a knob). A press nudges a lit control down a pixel.
 
 **Colour.** Paper and ink are the structure; the chart's magenta marks the best
 of something (and the focus ring, and the filled action under the pointer); the
-pen is the one mark that matters. The sea tints, the land and the depth ink
+red accent marks the time now and what is off. The sea tints, the land and the depth ink
 draw the chart itself. The only other families are warm (now or degraded),
 green (`ok`, one liveness mark) and wind (data). A further family is a design
 change, not an implementation detail.
@@ -175,8 +175,8 @@ change, not an implementation detail.
 **Text contrast.** `ink-muted` is the floor for text. `line-strong` and
 `ink-disabled` (the same step) are for strokes, icons and disabled controls,
 where 3:1 is the bar, and are never used for text that is merely low priority:
-disabled means unavailable. The pen's marks are `pen` (a stroke); its words are
-`pen-ink`.
+disabled means unavailable. The red accent's marks are `pen` (a stroke); its
+words are `pen-ink`.
 
 **Tap targets.** Nothing that is pressed is shorter than 44px on a coarse
 pointer (`min-h-touch`). A control drawn smaller keeps its drawn size and grows
@@ -196,8 +196,8 @@ along the inline one.
 - Don't lay a translucent panel over the map; it is solid paper.
 - Don't round a print rule, shadow one, or light a large surface. Don't square
   a box or a capsule.
-- Don't use the pen for more than the one thing that matters on a view, and
-  never as a fill or a status.
+- Don't use the red accent as a fill or a status, and don't lift, circle or
+  hand-draw a mark.
 - Don't write a verdict or advice on the chart, the dock or the spot page.
   Highlight the hours that matter and say what the figures are; the rider
   reads them.
@@ -311,8 +311,8 @@ text's), `chart-magenta` 5.70:1, `warn` 5.68:1. The pen's mark `pen` is
 4.09:1, which is enough for a stroke and not for words, so its handwriting
 takes `pen-ink` at 4.93:1. Paper on the hovered accent is 5.70:1.
 
-**2026-10-31 — Modern white and dark** (the spot page and Spot finder mock-ups,
-`backlog/mockups/2026-10-31-spot-page.html` and `…-spot-finder-map.html`). The
+**2026-10-31 — Modern white and dark** (the spot page and Spot finder
+mock-ups). The
 owner found the off-white paper "a bit gross" and asked for "a premium modern
 white and a dark black mode", fewer typefaces, and no small grey text on every
 figure. It replaces the 2026-10-05 ruling's values, not its other rules (one
@@ -324,7 +324,7 @@ lit lip. A dark theme sits beside it under `<html data-theme="dark">`
 following the system until the rider picks one in the menu
 (`shared/web/theme.ts`). The type is two faces: Fraunces for a place's name and
 the wordmark, Inter for everything else, figures at even width; labels are in
-sentence case, untracked, at 12px. Kalam stays for the pen.
+sentence case, untracked, at 12px. Kalam stayed for the pen until 2026-11-01.
 
 Measured, not assumed, on white: `ink` 18.85:1, `ink-2` 11.30:1, `ink-muted`
 5.20:1 (4.78:1 on `sunken`), `line-strong` 3.38:1 (a stroke's bar, not
@@ -358,8 +358,7 @@ tight, and a week with no hour worth rating leaves out the stars and the wing.
 The phone's dock went from 232 px to 128, the desktop's from 205 to 172. The
 chosen hour is the pen's (twice round its column, the hour in the pen's ink, no
 wash and no black cell), and the time now is a pen line with the time written
-over it (mockups in `wingfoil-mockups/table-selection`, option D, and
-`dock-compact`, option B).
+over it.
 
 **2026-10-19 — One wind scale for every rider.** The map's wash and coloured
 arrows had a scale of their own (`--ride-*`), its stops at the rider's
@@ -503,9 +502,8 @@ and a screen reader, and the glide is skipped for a reader who asks for less
 motion.
 
 **2026-10-24 — Mixed and rounded.** The owner approved a new treatment for
-everything that is a box, from the mockup
-`backlog/mockups/2026-10-24-layer-rail.html` (its "Mixed" style, the
-`body.mixed` rules and the `--r-*` corners). It keeps the broadsheet's edge
+everything that is a box, from the layer
+rail's mock-up (its "Mixed" style and the `--r-*` corners). It keeps the broadsheet's edge
 and adds a corner and a lift: the 1px ink rule and the hairline just inside it
 (`inset-shadow-frame`, now two of paper and a hairline of ink at a quarter,
 `#1a1d2142`; the mockup's gap of `#f4efe5` is drawn in the product's paper,
@@ -514,7 +512,7 @@ a box and 18 for a sheet, with capsules unchanged; and each box is lifted by
 soft stacked shadows by its elevation (`shadow-card`, `shadow-float`,
 `shadow-sheet`, `shadow-dock`). Paper stays flat on anything large; the
 faintest top light is on a floating box only, and a sheen on small controls
-only (a pressed ink control, a raised paper button), which nudge down a pixel
+only (a pressed ink control, a raised button), which nudge down a pixel
 when pressed. Print rules (double rules under heads, table and column rules,
 the dock's day dividers) stay square and unshadowed. It replaces the square
 boxes of 2026-10-05 and the "rules, not surfaces" lift, not the rules
@@ -522,7 +520,7 @@ themselves: structure is still drawn in ink. Values: `ui/theme.css` "shape and
 depth"; the bundle's `sem.radius.*`, `sem.shadow.*` and `sem.gradient.*`.
 
 **2026-10-24 — The site menu is a drawer from the left.** The owner approved
-the menu of the "Your spots" mockup (`backlog/mockups/2026-10-24-your-spots-home.html`)
+the menu of the "Your spots" mockup
 for every page that has the site menu. The button stays where it was (top
 left on the chart, at the left of a page's masthead); it opens a drawer from
 the left edge over the kit's backdrop, a modal, so the focus is held in it,
@@ -557,8 +555,8 @@ rest of the map it drew nothing and looked broken. The site has no LiDAR
 layer and serves none of it; the pipeline and what it would take to bring
 the layer back (wider coverage) are in scripts/lidar/README.md.
 
-**2026-10-24 — The spot finder, beside the chart.** From the approved mockup
-`backlog/mockups/2026-10-24-spot-finder.html`: "where is best for me, and
+**2026-10-24 — The spot finder, beside the chart.** From the approved mockup:
+"where is best for me, and
 when?" as a list beside a map, at `/spots` (src/finder). It is a page of the
 chart's bundle, drawn from the chart's own data (the rated hours, the strip of
 columns, the frame on the map), and it replaces Your spots in the menu. It
@@ -576,7 +574,7 @@ that names one wins.
 
 **2026-10-24 — Customise, in plain words, one title a step.** "It reads
 like cryptic riddles." The owner approved the wizard of the mockup
-`backlog/mockups/2026-10-24-customise-wizard.html` (src/Customise.tsx). Six
+(src/Customise.tsx). Six
 steps, each with one title in the dialog's head beside "n / 6" and the close,
 and a thin bar of segments under it for the progress; no "Customise your
 chart" over them, no row of step labels, no Almanac or puffin. The words say
@@ -609,9 +607,8 @@ older choice the same way; with Reduce Motion on, its particles are still
 arrows in ink.
 
 **2026-10-25 — The spot finder is a page of cards, and stars have colours of
-their own.** From the approved mock-up
-`backlog/mockups/2026-10-25-spot-list-cards.html`, its "7e" (after
-`2026-10-25-spot-finder-ideas.html`, #194 to #200). The finder at `/spots`
+their own.** From the approved mock-up,
+its "7e" (after #194 to #200). The finder at `/spots`
 (src/finder) is a page of its own: no map and no week's timeline at its head,
 and no longer tied to the chart's time (this supersedes the finder of
 2026-10-24, its map, its pins and its timeline). The head is the menu, the
@@ -694,7 +691,7 @@ force5/src/timeline.ts). Past hours stay drawn as past (the dock's faded
 midnight is kept (docs/LIVE_FORECAST_PIPELINE.md, "Today, kept whole").
 
 **2026-10-25 — One star rating, ours, made your own in four numbers.** From
-the approved mock-up `backlog/mockups/2026-10-25-own-star-rating.html` and the
+the approved mock-up and the
 plan `backlog/research/2026-10-25-star-rating-plan.html`. There are no levels
 (Learning, Riding, Advanced) anywhere: everyone starts from ours, and a rider
 makes it their own in Settings. They set four numbers under "Wind strength" — too light, the sweet spot's two ends, too much in gusts (ours 11 ·
@@ -747,7 +744,7 @@ in gusts", and "ONSHORE", "CROSS-ON" on the web rather than "ON", "X-ON".
 
 **2026-10-26 — The dock's top row: the star, the name, Blend and one
 arrow.** From the approved mock-up
-`backlog/mockups/2026-10-26-spot-finder-chart.html` (#238). Everywhere the
+(#238). Everywhere the
 dock appears (src/ForecastDock.tsx), its top row is the star, the spot's name
 in full, the Blend glyph and a downward arrow that closes the dock. The name
 is no longer cut short: a long one goes over two lines, and it is still the
@@ -762,7 +759,7 @@ and the keys (Up for more, Down for fewer). On a phone the sheet is swiped
 as before, and swiped down from its head alone it closes.
 
 **2026-10-26 — The spot finder is the home page, with the chart beside it.**
-From the approved mock-up `backlog/mockups/2026-10-26-spot-finder-chart.html`
+From the approved mock-up
 (#238). The site's root (`/`) is the spot finder: its cards as they were,
 and, from 1100 pixels wide, the real chart beside them in a box on the right,
 the full height of the page under the head. The chart there shows only the
@@ -861,21 +858,24 @@ out, its columns, stars and days are the shapes of their figures, with
 "Loading the forecast…" over the row's middle, and the dock's wind row the
 same, not dashes that read as no forecast (ui/Skeleton).
 
-**2026-10-29 — The red pen no longer circles: the one thing is lifted.** The
-owner: "I don't like the red pen circling stuff anymore… change it for a
-modern approach", and of three options (backlog/mockups/2026-10-29-pen-
-alternatives.html) chose C, the lifted card. The dock's chosen hour stands on
-a raised paper card under its figures, with an ink tab at its foot, springing
-from hour to hour (`.tt-card`); its hour is set in ink, a size up. The line at
-now is straight and red, fading down the hours; the model's handover is a
-straight dashed rule. The open spot's light is lifted off the chart and
-enlarged, its shadow left on the water where the spot is, in place of the
-pen's loop. The tour rings its target in a clean paper ring that springs in.
-`PenLoop` and the hand-drawn geometry (`loopPath`, `framePath`, `stemPath`,
-`arrowPath`) are gone; `Lift` sets a few words on raised paper where a loop
-was (a reply's name, a count of new posts, "new" on a listing). The pen's
-strike through what is off, its underline and its handwriting stay. The
-phone app (`mobile/`) still draws its own loop and follows separately.
+**2026-10-29 — The red pen no longer circles.** The owner: "I don't like the
+red pen circling stuff anymore… change it for a modern approach". The pen's
+loops and hand-drawn frames went; the line at now became straight and red,
+fading down the hours, and the model's handover a straight dashed rule. For a
+few days the chosen hour and the open spot were lifted on cards in their
+place (superseded, 2026-11-01).
+
+**2026-11-01 — No pen and no lift.** The owner: the new site has no pen
+drawings anywhere, and the lifted card belongs to the old paper look. The
+pen's handwriting, its underline and its strike are gone from the kit, with
+the handwriting face and the `ink` animation. The dock's chosen hour is
+outlined flat in ink inside its column (`.tt-shown`), as the Spot finder
+outlines the hour shown, and slides from hour to hour; its hour is set in ink,
+a size up. The open spot's light stands a size up with no shadow. The tour
+rings its target in the focus colour. A sold price is struck through in
+`ink-muted`; "new" on a listing and a count of new posts are `Chip`s; a
+reply's name is plain. The red stays as the accent (`pen`, `pen-ink`) for the
+line at now and what is off. The phone app (`mobile/`) follows separately.
 
 **2026-10-29 — One menu in four groups, and the layers are the rail.** The
 owner: the old Layers panel ("What the chart draws", its tiles and its

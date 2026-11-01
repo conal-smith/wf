@@ -13,7 +13,6 @@
     <link rel="stylesheet" href="../components/wind-figure/component.css" />
     <link rel="stylesheet" href="../components/tide-label/component.css" />
     <link rel="stylesheet" href="../components/spot-light/component.css" />
-        <link rel="stylesheet" href="../components/pen-note/component.css" />
     <style>
       /* The page: one sheet of paper with its grain; a mono label names each instance. */
       body {
@@ -161,19 +160,12 @@
         margin-top: var(--sem-space-x2);
       }
 
-      /* ---- the light it points at, lifted (spot-light --sel), and its note ---- */
+      /* ---- the light it points at, selected (spot-light --sel) ---- */
       .pop__spot {
         position: relative;
         width: var(--sem-space-x5);
         height: var(--sem-space-x5);
         margin-top: var(--sem-space-x5);
-      }
-      .pop__note {
-        position: absolute;
-        top: calc(50% + var(--sem-space-x6));
-        left: 50%;
-        transform: translateX(-50%);
-        white-space: nowrap;
       }
     </style>
   </head>
@@ -207,7 +199,6 @@
             <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">3</text></svg>
             <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Dollymount</span><span class="wf-spot-light__line">3★ W 13 · cross-off</span></span>
           </button>
-          <div class="pop__note"><p class="wf-pen-note">3★ 08–17, 6 m</p></div>
         </div>
       </div>
     </div>

@@ -164,9 +164,8 @@
      which it meets on paper. */
   --color-chart-magenta: #b0186a;
 
-  /* The red pen: a loop round the one thing that matters, an underline, a
-     strike through what is off. `pen` is the mark (a stroke, 4.1:1); the
-     pen's handwriting takes `pen-ink`, which reads at 4.9:1. */
+  /* The red accent: the time now, offshore, a warning. `pen` is the mark (a
+     stroke, 4.1:1); words in it take `pen-ink`, which reads at 4.9:1. */
   --color-pen: #d43a2c;
   --color-pen-ink: #bf3125;
 
@@ -239,15 +238,13 @@
 
   /* ---- type ------------------------------------------------------------ */
 
-  /* Four faces, each with one job, self-hosted (ui/fonts.css):
+  /* Three names, two faces, self-hosted (ui/fonts.css):
      display, Fraunces: names, headings, the wordmark, set with optical size;
-     body, Newsreader: the few sentences there are;
-     mono, IBM Plex Mono: every figure, and every label, in tracked capitals;
-     hand, Kalam: the red pen, and nothing else. */
+     body, Inter: everything else;
+     mono, Inter too: every figure and label, its figures at even width. */
   --font-display: "Fraunces Variable", "Fraunces", Georgia, "Times New Roman", serif;
   --font-body: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-hand: "Kalam", "Bradley Hand", "Segoe Print", cursive;
 
   --font-weight-normal: 400;
   --font-weight-medium: 500;
@@ -333,7 +330,7 @@
   --shadow-dock: 0 -1px 1px #1111141a, 0 -6px 12px -4px #11111424, 0 -24px 48px -16px #00000080;
   --shadow-marker: 0px 4px 10px -6px #00000066;
   /* A small control's own: a pressed ink one's lit lip, under `sheen-ink`,
-     and a raised paper one's, under `sheen-raised`. */
+     and a raised one's, under `sheen-raised`. */
   --shadow-control: 0 1px 2px #11111433;
   --shadow-raised: 0 1px 2px #1111140f;
 
@@ -343,7 +340,7 @@
   --inset-shadow-frame: inset 0 0 0 2px #ffffff, inset 0 0 0 3px #11111426;
 
   /* Paper is flat; a little light is allowed only where a thing is small.
-     The fill of a pressed ink control (`sheen-ink`), of a raised paper button
+     The fill of a pressed ink control (`sheen-ink`), of a raised button
      (`sheen-raised`), and the faintest light from above on a box over the
      chart (`paper-float`). A page, a dialog and the dock stay flat. */
   --gradient-ink: linear-gradient(180deg, #111114, #111114);
@@ -429,21 +426,8 @@
   --animate-dialog-in: dialog-in 150ms ease backwards;
   --animate-scrim-in: scrim-in 150ms ease backwards;
   --animate-menu-in: menu-in 150ms ease both;
-  /* The pen drawing its stroke in, once, as a hand would: on a path with
-     `pathLength="1"` and `strokeDasharray="1"` (ui/Pen.tsx). Held off for a
-     reader who asks for less motion, when the stroke is simply there. */
-  --animate-ink: ink 750ms cubic-bezier(0.5, 0.1, 0.3, 1) both;
   /* The puffin shifting his weight, now and then. */
   --animate-bob: bob 6s ease-in-out infinite;
-
-  @keyframes ink {
-    from {
-      stroke-dashoffset: 1;
-    }
-    to {
-      stroke-dashoffset: 0;
-    }
-  }
 
   @keyframes bob {
     0%,
@@ -798,7 +782,7 @@
 }
 
 /* ==== spot ===============================================================
-   The spot page as a spot report (backlog/mockups/2026-10-31-spot-page.html):
+   The spot page as a spot report (the approved mock-up):
    the figures on quiet cards, the loupe over the satellite picture at a size
    that keeps its 10 m pixels sharp, the week as a row of cards, and the graph
    with its row names in a fixed column. The photo's colours are the loupe's
@@ -919,7 +903,7 @@
 
 /* ==== ai =================================================================
    The AI page (ai/web/AiApp.tsx), as its approved mock-up sets it
-   (backlog/mockups/2026-10-26-ai-page.html): a short column of
+   (the approved AI page mock-up): a short column of
    apps, each named a little larger than a card's name, under one line a
    little larger than prose. Each step carries a phone's smaller size
    beside it, as `-sm`. */

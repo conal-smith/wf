@@ -476,12 +476,11 @@ describe("ui/theme.css: the values", () => {
     expect(variable(css, `--spacing-${name}`)).toBe(value);
   });
 
-  it("is Fraunces for names, Inter for the rest, and the pen's hand, in the weights they use", () => {
+  it("is Fraunces for names and Inter for the rest, in the weights they use", () => {
     const css = build([
       "font-display",
       "font-body",
       "font-mono",
-      "font-hand",
       "font-normal",
       "font-medium",
       "font-semibold",
@@ -492,7 +491,6 @@ describe("ui/theme.css: the values", () => {
       ["display", '"Fraunces Variable"'],
       ["body", '"Inter Variable"'],
       ["mono", '"Inter Variable"'],
-      ["hand", '"Kalam"'],
     ]) {
       expect(rule(css, `font-${name}`)).toContain(
         `font-family: var(--font-${name});`,

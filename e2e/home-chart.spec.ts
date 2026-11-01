@@ -3,7 +3,7 @@ import { expect, SPOTS_KEY, test, type Page } from "./fixtures";
 /**
  * The home page: the spot finder's list, with the chart beside it on a wide
  * screen, and the full chart opened out of it (src/App.tsx, the approved
- * mock-up backlog/mockups/2026-10-26-spot-finder-chart.html). One map, never
+ * mock-up, #238). One map, never
  * taken down: the panel beside the list and the full chart are the same map
  * in a bigger box.
  */
@@ -115,7 +115,7 @@ test.describe("on a wide screen", () => {
     await page.waitForTimeout(500);
     await expect(page.locator(".dock")).toHaveCount(0);
     await expect(page).toHaveURL(/\/$/);
-    // No loupe and no pen beside the list.
+    // No loupe and no range ring beside the list.
     await expect(page.locator(".map-focus > *")).toHaveCount(0);
     expect(errors).toEqual([]);
   });

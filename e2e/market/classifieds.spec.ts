@@ -5,11 +5,11 @@ import { BUYER, SELLER, expect, test } from "./fixtures";
  * The marketplace in the chart's style, as a reader meets it: the classifieds
  * on a phone and a laptop, an ad, a seller and the sell form. What is asked is
  * what the brand promises (docs/BRAND.md) and what a thumb needs: ruled ads,
- * prices as figures, the chart's stars, one pen mark at most, 44px targets and
+ * prices as figures, the chart's stars, one "new" at most, 44px targets and
  * nothing wider than the screen.
  *
  * It stands on the baseline's fixtures (fixtures.ts) but reads them at the
- * real time, so the newest ad is minutes old and the pen calls it new.
+ * real time, so the newest ad is minutes old and is marked new.
  */
 
 const DEV_USER_KEY = "wingfoil:dev-user";
@@ -80,12 +80,12 @@ for (const phone of [true, false]) {
     const price = ads(page).first().getByText(/^€\d/);
     await expect(price).toHaveCSS("font-family", /Inter/);
 
-    // The pen marks one ad on the view, the newest, and says it in words.
-    const pen = page.locator("main .font-hand");
-    await expect(pen).toHaveCount(1);
-    await expect(pen).toHaveText("new");
+    // One ad on the view, the newest, is marked new, in words.
+    const fresh = page.locator("main [data-fresh]");
+    await expect(fresh).toHaveCount(1);
+    await expect(fresh).toHaveText("new");
     await expect(
-      ads(page).filter({ hasText: baseline.noPhoto.title }).locator(".font-hand"),
+      ads(page).filter({ hasText: baseline.noPhoto.title }).locator("[data-fresh]"),
     ).toHaveCount(1);
 
     // The seller's stars are the chart's, named for a screen reader.
@@ -150,11 +150,11 @@ for (const phone of [true, false]) {
     await expect(page.getByText(/Met me at the slip/)).toBeVisible();
     await fits(page);
 
-    // Sold: the price struck through in the pen, and said in words.
+    // Sold: the price struck through, and said in words.
     await page.goto(`/market/listing/${baseline.sold.id}`);
     await expect(page.getByText("Sold", { exact: true })).toBeVisible();
     await expect(page.getByText("This item has been sold")).toBeVisible();
-    await expect(page.locator("main svg .stroke-pen")).toHaveCount(1);
+    await expect(page.locator("main .line-through")).toHaveCount(1);
     await page.context().close();
   });
 

@@ -21,7 +21,7 @@ capitals in every variant; the shape says what it is.
   pointer. One per view, or none.
 - **Pill** (`--pill`) — a capsule ruled in ink on paper; inverse under the
   pointer. Sign in, Previous / Next, Cancel.
-- **Raised** (`--raised`) — the chart's instrument: a raised paper button
+- **Raised** (`--raised`) — the chart's instrument: a raised button
   ruled in ink (the site menu), lit from above (`sem.gradient.raised`) with
   `sem.shadow.raised`; `sem.radius.control` with words in it, a circle with an
   icon (the round menu button). Ink with its sheen under the pointer.

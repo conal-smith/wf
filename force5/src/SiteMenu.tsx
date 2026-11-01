@@ -15,8 +15,8 @@
  * this one file of force5/src (and none of the map's), so its classes resolve
  * in every bundle.
  *
- * The menu is a drawer from the left (owner's ruling of 2026-10-24, the mockup
- * `backlog/mockups/2026-10-24-your-spots-home.html`): a modal <dialog> over
+ * The menu is a drawer from the left (owner's ruling of 2026-10-24, the
+ * "Your spots" mock-up): a modal <dialog> over
  * the kit's backdrop, so the focus is trapped in it and the page behind is
  * inert, with the site's navigation, the same on every page, each row with
  * its glyph in the margin. A finger can push it back off to the left.
@@ -348,7 +348,7 @@ export function SiteMenu({
   size = "md",
   /**
    * What the menu stands on: the moving map, or a page's masthead. The
-   * trigger is the round menu button either way: the kit's raised paper
+   * trigger is the round menu button either way: the kit's raised
    * button, lit from above, inside the head's box on the map and on the
    * masthead on a page. The drawer is the same either way.
    */

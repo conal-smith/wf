@@ -647,7 +647,7 @@ function HandoverMark({
       {/* Named for a pointer that rests on it: the dock's head no longer
           says the model, so the line does, quietly. */}
       <title>{`${modelName(handover.to)} from ${dayShort(column.time)} ${clock(column.time)}`}</title>
-      <path className="pen-handover" d={`M${x} ${top}V${height - 2}`} />
+      <path className="tt-handover" d={`M${x} ${top}V${height - 2}`} />
     </svg>
   );
 }
@@ -703,7 +703,7 @@ function NowMark({
         <stop offset="0" className="now-from" />
         <stop offset="1" className="now-to" />
       </linearGradient>
-      <path className="pen-now" d={`M${x} ${top - 1}V${height - 2}`} />
+      <path className="tt-now" d={`M${x} ${top - 1}V${height - 2}`} />
     </svg>
   );
 }
@@ -1224,7 +1224,7 @@ export default function ForecastDock(props: Props) {
   // The scroll that brings each hour to the strip's cursor, and where that
   // point stands at a scroll: still in the middle through the week, walking
   // out to the ends so the first hour sits against the labels (see
-  // `stripTrack`). It is not drawn: the card under it marks the hour there.
+  // `stripTrack`). It is not drawn: the outline under it marks the hour there.
   const track = useMemo(() => stripTrack(g, wrapWidth), [g, wrapWidth]);
   const shape = useRef({ g, track });
   shape.current = { g, track };
@@ -1531,13 +1531,13 @@ export default function ForecastDock(props: Props) {
   }, []);
 
   // The selected column, marked in place rather than by re-rendering the
-  // table, and the card lifted under it: under the column's figures, from its
-  // hour down, sliding from the last hour chosen to the next on a spring
-  // (src/dock.css .tt-card), or simply there for a reader who asks for less
-  // motion.
+  // table, and outlined from its hour down, as the Spot finder outlines the
+  // hour shown: the outline slides from the last hour chosen to the next
+  // (src/dock.css .tt-shown), or is simply there for a reader who asks for
+  // less motion.
   const tableHeight =
     rows.day + rows.hour + rowsUnderHours(rows, view, isPoint, rated, more);
-  const card = useRef<HTMLDivElement>(null);
+  const outline = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = wrap.current;
     if (!el) return;
@@ -1547,14 +1547,14 @@ export default function ForecastDock(props: Props) {
     el.querySelectorAll(`td[data-i="${selected}"]`).forEach((td) =>
       td.classList.add("c-sel"),
     );
-    const lift = card.current;
-    if (!lift || g.w[selected] === undefined) return;
-    const placed = lift.style.width !== "";
-    lift.style.transition = placed ? "" : "none";
-    lift.style.transform = `translateX(${g.x[selected]}px)`;
-    lift.style.width = `${g.w[selected]}px`;
-    lift.style.top = `${rows.day}px`;
-    lift.style.height = `${tableHeight - rows.day + 2}px`;
+    const box = outline.current;
+    if (!box || g.w[selected] === undefined) return;
+    const placed = box.style.width !== "";
+    box.style.transition = placed ? "" : "none";
+    box.style.transform = `translateX(${g.x[selected]}px)`;
+    box.style.width = `${g.w[selected]}px`;
+    box.style.top = `${rows.day}px`;
+    box.style.height = `${tableHeight - rows.day + 2}px`;
   });
 
   // The tools stand on the dock's top edge, so the blend (taller than the
@@ -1710,7 +1710,7 @@ export default function ForecastDock(props: Props) {
     const head =
       (dockRef.current?.offsetHeight ?? 0) -
       (bodyRef.current?.offsetHeight ?? 0);
-    // The strip's rows, and the room under them for the chosen hour's card.
+    // The strip's rows, and the room under them for the chosen hour's outline.
     const half =
       head +
       rows.day +
@@ -2063,7 +2063,7 @@ export default function ForecastDock(props: Props) {
       )}
 
       {/* The time, for a keyboard and a screen reader: the hours scrolling
-          through the pen's frame are the slider a finger and a mouse use, and
+          through the chosen hour's outline are the slider a finger and a mouse use, and
           this steps them. Out of sight; its focus ring is drawn on the hours. */}
       <input
         type="range"
@@ -2251,9 +2251,9 @@ export default function ForecastDock(props: Props) {
               if (td) onSelect(Number(td.dataset.i), true);
             }}
           >
-            {/* The chosen hour's card, under the tide, the line at now
+            {/* The chosen hour's outline, under the tide, the line at now
                 and the figures: placed by the effect above. */}
-            <div ref={card} className="tt-card" aria-hidden="true" />
+            <div ref={outline} className="tt-shown" aria-hidden="true" />
             {/* The tide, faint behind the rows of figures and under the
                 line at now, which crosses it. Not behind the blend, where
                 its curve would read as one more model's line. */}

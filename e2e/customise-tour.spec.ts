@@ -427,7 +427,7 @@ test("the tour is offered on a first visit, can be skipped, and is not offered a
   await expect(prompt(page)).toHaveCount(0);
   await expect(card(page)).toContainText("Step 1 of 7");
   await expect(card(page)).toContainText("Spots on the map");
-  // The pen's ring is round a light.
+  // A ring is round a light.
   await expect(page.locator(".tour-ring path")).toBeVisible();
   await card(page).getByRole("button", { name: "Next" }).click();
   // Tapping a light: the tour opens a spot's hours.
