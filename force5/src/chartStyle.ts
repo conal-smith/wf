@@ -119,6 +119,16 @@ export const DEPTH_BY_ZOOM: Record<string, [string, ExpressionSpecification]> =
   };
 
 /**
+ * Where the soundings and the contours' figures start. Their opacity is 0
+ * until zoom 9 (DEPTH_BY_ZOOM), and an invisible symbol still costs what a
+ * visible one does: each tile's labels laid out, and every one of them placed
+ * against the others at each placement. From zoom 7.2 that was hundreds of
+ * soundings, placed a slice per frame, which kept the map drawing for seconds
+ * after it moved where frames are slow (a CI runner draws in software).
+ */
+const FIGURES_FROM = 9;
+
+/**
  * The coast's ink: as the chart draws it, and heavier under the coloured
  * wind (windLayer.ts), where a hairline is lost between the sea's strong
  * colour and the land's fainter one. The map switches between them as the
@@ -318,7 +328,8 @@ export function chartStyle(
         type: "symbol",
         ...bathy,
         "source-layer": "contours",
-        minzoom: 7.5,
+        // Not laid out or placed until they can be seen (FIGURES_FROM).
+        minzoom: FIGURES_FROM,
         filter: [
           "in",
           ["get", "depth"],
@@ -343,7 +354,7 @@ export function chartStyle(
         type: "symbol",
         ...bathy,
         "source-layer": "soundings",
-        minzoom: 7.2,
+        minzoom: FIGURES_FROM,
         layout: {
           "text-field": ["get", "label"],
           "text-font": FONT,
