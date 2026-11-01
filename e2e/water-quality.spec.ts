@@ -5,7 +5,7 @@ import { SAMPLE_CLOCK } from "./columns";
 
 /**
  * The EPA's bathing water notices on the site (force5/src/waterQuality.ts):
- * the spot page's list and its rows, and the dock's strip and star cells, for
+ * the spot page's notice card and its rows, and the dock's strip and star cells, for
  * the prohibition at Portmarnock in the job's published fixture, moved a year
  * on to the sample's week. The file is routed in, as the warnings are in
  * warnings.spec.ts: `public/marine` is ingest output, never part of the e2e
@@ -69,10 +69,11 @@ test("a spot page lists its bathing water notice, which stands in for the stars"
     page.getByRole("heading", { level: 1, name: /Portmarnock/ }),
   ).toBeVisible({ timeout: 30000 });
 
-  const panel = page.locator("[data-water-quality]");
+  const group = page.locator("[data-notices]");
   await expect(
-    panel.getByRole("heading", { name: "Bathing water notices" }),
+    group.getByRole("heading", { name: "Warnings and notices" }),
   ).toBeVisible();
+  const panel = group.locator("[data-water-quality]");
   const items = panel.locator("[data-water-notice]");
   await expect(items).toHaveCount(1);
   await expect(items.first()).toHaveAttribute("data-water-notice", "replaces");
@@ -80,8 +81,13 @@ test("a spot page lists its bathing water notice, which stands in for the stars"
   await expect(items.first()).toContainText(
     /From Mon 14 Sept?, expected to last 5 days, until lifted/i,
   );
+  // What it does to the stars, on the notice itself; its square is the
+  // water's, not a capital chip.
+  await expect(items.first()).toContainText("no stars while it lasts");
+  await expect(items.first().locator('[data-level="water"]')).toBeVisible();
+  await expect(items.first()).not.toContainText("WATER");
   // The cause, the bathing water and the council's notice, folded under it.
-  await items.first().locator("summary").click();
+  await items.first().getByRole("button", { name: "Details" }).click();
   await expect(items.first()).toContainText(
     "Water quality deteriorated due to suspected storm water overflow",
   );
@@ -92,7 +98,7 @@ test("a spot page lists its bathing water notice, which stands in for the stars"
     items.first().getByRole("link", { name: "The council’s notice" }),
   ).toHaveAttribute("href", /beaches\.ie\/wp-content\/files\/\/notice\//);
   await expect(
-    panel.getByRole("link", { name: "The latest at beaches.ie" }),
+    group.getByRole("link", { name: "the latest at beaches.ie" }),
   ).toHaveAttribute("href", "https://www.beaches.ie");
 
   await openDay(page, monday(12));
@@ -101,7 +107,8 @@ test("a spot page lists its bathing water notice, which stands in for the stars"
     const cell = row(page, monday(hour)).locator("[data-hour-water]");
     await expect(cell).toHaveAttribute("data-hour-water", "replaces");
     await expect(cell).not.toHaveAttribute("data-stars");
-    await expect(cell.locator('[data-water-mark="replaces"]')).toBeVisible();
+    await expect(cell.locator('[data-notice-mark="water"]')).toBeVisible();
+    await expect(cell).toContainText("Water");
   }
   // Sunday afternoon, before it, is as it was.
   await expect(
@@ -121,6 +128,41 @@ test("a spot page lists its bathing water notice, which stands in for the stars"
   await expect(page.locator("[data-water-quality-source]")).toContainText(
     "Bathing water notices: the EPA",
   );
+});
+
+test("with the notice in force, the Your stars card and the week say why there are no stars", async ({
+  page,
+}) => {
+  // The same notice, from a day earlier: in force at the clock.
+  const body = fresh();
+  await withNotices(page, {
+    ...body,
+    notices: body.notices.map((n) => ({
+      ...n,
+      from: n.from && new Date(Date.parse(n.from) - DAY).toISOString(),
+    })),
+  });
+  await page.goto("/spot/portmarnock");
+  const card = page.locator("[data-your-stars]");
+  await expect(card).toContainText("Bathing prohibited", { timeout: 30000 });
+  await expect(card).toContainText("No stars while it lasts");
+  await expect(card.locator('[data-notice-mark="water"]')).toBeVisible();
+  await expect(card).not.toContainText("Not rated");
+  await expect(page.locator("[data-water-notice]").first()).toContainText(
+    " · now · ",
+  );
+  // A day whose every daylight hour it takes shows its mark for the stars.
+  const monday = page.locator('[data-day-card="2026-09-14"]');
+  await expect(monday.locator('[data-notice-mark="water"]')).toBeVisible();
+  await expect(monday).toContainText("Water");
+  // And the graph's readout, on an hour under it.
+  await page.locator("[data-spot-graph]").scrollIntoViewIfNeeded();
+  await monday.click();
+  const graph = (await page.locator("[data-spot-graph]").boundingBox())!;
+  await page.mouse.move(graph.x + graph.width * 0.35, graph.y + 80);
+  await expect(
+    page.locator('[data-readout] [data-notice-mark="water"]'),
+  ).toBeVisible();
 });
 
 test("a notices file too old to trust shows none", async ({ page }) => {

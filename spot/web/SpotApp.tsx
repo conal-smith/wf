@@ -1,16 +1,15 @@
 /**
- * A riding place's own page, at /spot/<id>, set as the chart's broadsheet: the
- * place's name, the week in one strip, then day after day
- * down the page, every daylight hour a row of figures, and the tide and the
- * light under each day. No day is rated: the hours carry the stars. `src/main.tsx`
- * lazy-loads it, so it never carries the map, MapLibre or the other sections;
- * it reads the published forecast through the MCP server's own reduction, so
- * the page and an agent can never be told two different forecasts.
+ * A riding place's own page, at /spot/<id>: the spot report
+ * (report/SpotReport.tsx), with its warnings and notices (Notices.tsx) above
+ * the cards. `src/main.tsx` lazy-loads it, so it never carries the map,
+ * MapLibre or the other sections; it reads the published forecast through
+ * the MCP server's own reduction, so the page and an agent can never be told
+ * two different forecasts.
  *
- * /spot with no id is the index of every place; /stars is "How the stars
- * work" (StarsPage.tsx), the bundle's other page.
+ * /spot with no id is the index of every place, by county; /stars is "How
+ * the stars work" (StarsPage.tsx), the bundle's other page.
  */
-import { MapPin, RefreshCw } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { starsFromAt } from "../../force5/src/lead";
 import { loadPrefs, saveRider } from "../../force5/src/prefs";
@@ -26,62 +25,36 @@ import { type RidingSpot, type SpotForecast } from "../../mcp/api/forecast";
 import { favourites } from "../../shared/web/favourites";
 import { onPrefsChange, signedInHint } from "../../shared/web/riderSync";
 import { usePageTitle } from "../../shared/web/usePageTitle";
-import {
-  Button,
-  Empty,
-  Headline,
-  Notice,
-  SectionHeading,
-  Skeleton,
-} from "../../ui";
-import { MONO_LABEL, RING, tv } from "../../ui/tv";
+import { Button, Empty, Heading, Notice, Row, Rows, Skeleton } from "../../ui";
+import { RING, tv } from "../../ui/tv";
 import { SpotFrame } from "./Frame";
 import { KeepStar } from "./glyphs";
 import { loadSpotPictures } from "./satellite";
 import StarsPage from "./StarsPage";
 import { useSpotForecast } from "./useSpotForecast";
 import { SpotReport } from "./report/SpotReport";
-import { WarningsPanel } from "./Warnings";
-import { WaterQualityPanel } from "./WaterQuality";
+import { SpotNotices, hasNotices } from "./Notices";
 
 const styles = tv({
   slots: {
-    main: "relative flex flex-col gap-4 pt-4 pb-12 max-sm:pt-3",
-    // Met Éireann's warnings and the bathing water notices. Where the page
-    // has a margin as wide as the list, they stand in it, beside the name and
-    // the picture: there they add nothing above the forecast, which then
-    // starts where it would with none at all.
-    notices: "mb-4 grid gap-3 wide:grid-cols-2",
-    // The facts are kept apart by points (Dot), so the gap between them is
-    // the point's own spacing either side.
-    meta: [
-      "m-0 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-ink-muted",
-      MONO_LABEL,
-    ],
-    metaItem: "inline-flex items-center gap-1.5",
-    strong: "font-semibold text-ink",
-    water: "m-0 -mt-2 font-body text-body text-ink",
-    star: [
-      "inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border border-line bg-ground px-4 font-body text-body font-medium text-ink",
-      "pointer-coarse:min-h-touch not-disabled:hover:bg-sunken",
-      RING,
-    ],
+    main: "relative flex flex-col gap-4 pt-7 pb-12 max-sm:pt-5",
     starWord: "max-sm:sr-only",
-    days: "flex flex-col",
-    footer:
-      "mt-8 flex flex-col gap-2 border-0 border-t-2 border-ink pt-3 font-body text-body text-ink-2",
-    footerList: "m-0 flex list-none flex-col gap-1 p-0",
-    muted: "text-ink-muted",
-    safety: "m-0 font-body text-body font-semibold text-ink",
-    link: "rounded-control text-ink underline underline-offset-4 hover:text-chart-magenta",
-    address: "font-mono text-body wrap-anywhere text-ink",
-    index: "flex flex-col gap-6",
-    places: "m-0 grid list-none grid-cols-cards gap-x-6 p-0",
+    address: "wrap-anywhere text-ink",
+    // The index: a county a section, kept apart by space, its name beside
+    // its places on a wide screen; the places in one soft card, as many
+    // columns of plain links as fit.
+    index: "flex flex-col gap-6 pt-6",
+    county: "grid items-start gap-3 wide:grid-cols-shell wide:gap-6",
+    countyHead: "wide:pt-3.5",
+    count: "font-body text-body font-normal text-ink-muted tabular-nums",
+    places:
+      "m-0 grid list-none grid-cols-cards gap-x-6 rounded-surface bg-sunken on-card px-5 py-2 max-wide:px-4",
     place: [
-      "flex min-h-touch items-center border-0 border-b border-line py-2 font-display text-prose font-semibold text-ink italic no-underline",
-      "hover:text-chart-magenta",
+      "flex min-h-10 items-center rounded-control font-body text-body font-medium text-ink no-underline",
+      "transition-colors duration-fast hover:text-chart-magenta pointer-coarse:min-h-touch",
       RING,
     ],
+    candidates: "w-full max-w-form text-left",
   },
 });
 
@@ -148,15 +121,18 @@ function SpotRoute({ id }: { id: string | null }) {
       {state.kind === "loading" && <Loading />}
       {state.kind === "error" && (
         <main className={s.main()}>
-          <Notice kind="warn">
-            The forecast could not be read just now: {state.message}
+          <Notice
+            level="info"
+            alert
+            title="The forecast could not be read just now"
+            action={
+              <Button size="sm" onClick={() => setAttempt((n) => n + 1)}>
+                Try again
+              </Button>
+            }
+          >
+            {state.message}
           </Notice>
-          <div>
-            <Button variant="outline" onClick={() => setAttempt((n) => n + 1)}>
-              <RefreshCw size={14} strokeWidth={1.5} aria-hidden="true" />
-              <span>Try again</span>
-            </Button>
-          </div>
         </main>
       )}
       {state.kind === "unknown" && (
@@ -165,9 +141,17 @@ function SpotRoute({ id }: { id: string | null }) {
               address breaks at its hyphens, and a title that leaves "all”"
               alone on its last line is worse than one that never names it. */}
           <Empty
+            as="h1"
             title="No riding place at this address"
-            icon={<MapPin size={24} strokeWidth={1.5} />}
-            className="text-balance"
+            icon={<MapPin size={24} strokeWidth={1.75} />}
+            actions={
+              <>
+                <Button href="/spot">All places</Button>
+                <Button variant="quiet" href={CHART_HREF}>
+                  The chart
+                </Button>
+              </>
+            }
           >
             <p className="m-0">
               Nothing is called{" "}
@@ -177,19 +161,12 @@ function SpotRoute({ id }: { id: string | null }) {
                 : "It may have been renamed. Every place is on the map, and in the list of all places."}
             </p>
             {state.candidates.length > 0 && (
-              <ul className={s.places()}>
+              <Rows className={s.candidates()}>
                 {state.candidates.map((spot) => (
-                  <li key={spot.id}>
-                    <PlaceLink spot={spot} />
-                  </li>
+                  <PlaceRow key={spot.id} spot={spot} />
                 ))}
-              </ul>
+              </Rows>
             )}
-            <div>
-              <Button variant="outline" href="/spot">
-                All places
-              </Button>
-            </div>
           </Empty>
         </main>
       )}
@@ -226,10 +203,8 @@ function KeepButton({ id, name }: { id: string; name: string }) {
     return store.subscribe(() => setOn(store.isStarred(id)));
   }, [store, id]);
   return (
-    <button
-      type="button"
-      className={s.star()}
-      aria-pressed={on}
+    <Button
+      pressed={on ? "worded" : false}
       aria-label={on ? `Unstar ${name}` : `Star ${name}`}
       data-keep-star
       onClick={() => setOn(store.toggle(id))}
@@ -238,16 +213,20 @@ function KeepButton({ id, name }: { id: string; name: string }) {
       <span className={s.starWord()} aria-hidden="true">
         {on ? "Starred" : "Star"}
       </span>
-    </button>
+    </Button>
   );
 }
 
-function PlaceLink({ spot }: { spot: RidingSpot }) {
-  const s = styles();
+/** A place it may have meant: its name and county, the way to its page. */
+function PlaceRow({ spot }: { spot: RidingSpot }) {
   return (
-    <a className={s.place()} href={spotHref(spot.id)}>
-      {spot.name}
-    </a>
+    <Row
+      inList
+      href={spotHref(spot.id)}
+      title={spot.name}
+      detail={spot.county || undefined}
+      chevron
+    />
   );
 }
 
@@ -264,18 +243,38 @@ function SpotIndex({ spots }: { spots: readonly RidingSpot[] }) {
   }, [spots]);
   return (
     <main className={s.main()}>
-      <Headline>Spot forecasts</Headline>
-      <p className={s.meta()}>{spots.length} riding places</p>
+      <Heading
+        level="page"
+        lead={`${spots.length} riding places, by county, each with its forecast hour by hour.`}
+      >
+        Spot forecasts
+      </Heading>
       <div className={s.index()}>
         {counties.map(([county, places]) => (
-          <section key={county} aria-label={county}>
-            <SectionHeading size="kicker" rule="thin" aside={places.length}>
+          <section
+            key={county}
+            className={s.county()}
+            aria-labelledby={`county-${county}`}
+          >
+            <Heading
+              level="card"
+              as="h2"
+              id={`county-${county}`}
+              className={s.countyHead()}
+              aside={
+                <span className={s.count()}>
+                  {places.length} {places.length === 1 ? "place" : "places"}
+                </span>
+              }
+            >
               {county}
-            </SectionHeading>
+            </Heading>
             <ul className={s.places()}>
               {places.map((spot) => (
                 <li key={spot.id}>
-                  <PlaceLink spot={spot} />
+                  <a className={s.place()} href={spotHref(spot.id)}>
+                    {spot.name}
+                  </a>
                 </li>
               ))}
             </ul>
@@ -318,12 +317,6 @@ function SpotPage({
     return () => clearInterval(timer);
   }, []);
   const units = useMemo(() => loadPrefs().units, []);
-  const s = styles();
-  const warned =
-    (forecast.warnings.status === "current" &&
-      forecast.warnings.items.length > 0) ||
-    (forecast.water_quality.status === "current" &&
-      forecast.water_quality.items.length > 0);
   return (
     <SpotReport
       spot={spot}
@@ -333,15 +326,13 @@ function SpotPage({
       now={now}
       actions={<KeepButton id={spot.id} name={spot.name} />}
       notices={
-        warned && (
-          <div className={s.notices()}>
-            <WarningsPanel warnings={forecast.warnings} />
-            <WaterQualityPanel water={forecast.water_quality} />
-          </div>
+        hasNotices(forecast.warnings, forecast.water_quality) && (
+          <SpotNotices
+            warnings={forecast.warnings}
+            water={forecast.water_quality}
+          />
         )
       }
     />
   );
 }
-
-/** How far off a station is before the page says it may not be the beach's water. */

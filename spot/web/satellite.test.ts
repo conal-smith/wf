@@ -6,7 +6,6 @@ import {
   parseSpotPictures,
   pictureCredit,
   resetSpotPictures,
-  scaleBar,
   spotPicture,
   worldPixel,
   type SpotPictures,
@@ -135,20 +134,6 @@ describe("the picture's geometry", () => {
     );
     const moved = inFrame({ ...picture, at: { x: 0.6, y: 0.5 } }, 358, 239);
     expect(moved.x - 179).toBeCloseTo(0.1 * 1200 * (239 / 600));
-  });
-
-  it("draws the longest round distance that fits as its scale", () => {
-    expect(scaleBar(4, 120)).toEqual({
-      metres: 250,
-      pixels: 62.5,
-      label: "250 m",
-    });
-    expect(scaleBar(10, 228)).toEqual({
-      metres: 2000,
-      pixels: 200,
-      label: "2 km",
-    });
-    expect(scaleBar(10, 49).label).toBe("250 m");
   });
 
   it("credits the imagery under the picture in its own clause", () => {

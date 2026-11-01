@@ -11,6 +11,7 @@
  * unless they pick another), and ECMWF's past the end of its run, with no
  * setting for it (force5/src/lead.ts).
  */
+import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 import {
   FALLBACK_MODEL,
@@ -26,31 +27,40 @@ import {
   MIN_WEIGHT_KG,
   type Rider,
 } from "../../force5/src/stars";
-import { Button, Kicker, Segmented, TextInput } from "../../ui";
-import { MONO_LABEL, RING, tv } from "../../ui/tv";
+import { Button, Segmented, TextInput } from "../../ui";
+import { MONO_LABEL, tv } from "../../ui/tv";
 
 const styles = tv({
   slots: {
     base: "flex flex-col gap-2",
     line: "flex flex-wrap items-center gap-x-3 gap-y-2",
-    kicker: "max-sm:sr-only",
-    whose: "font-body text-body text-ink",
-    more: [
-      "inline-flex min-h-control-sm cursor-pointer items-center gap-1 rounded-full border-0 bg-transparent px-1 text-ink tabular-nums",
-      "underline decoration-line-strong underline-offset-4 pointer-coarse:min-h-touch",
-      "not-disabled:hover:bg-transparent not-disabled:hover:text-chart-magenta",
-      MONO_LABEL,
-      RING,
-    ],
+    name: ["text-ink-muted max-sm:sr-only", MONO_LABEL],
+    whose: "font-body text-body font-medium text-ink",
+    more: "tabular-nums",
     fields: "grid max-w-form grid-cols-2 gap-3",
     field: "flex min-w-0 flex-col gap-1",
     label: ["text-ink-muted", MONO_LABEL],
-    note: "m-0 font-body text-body text-ink-muted italic",
+    note: "m-0 max-w-reading font-body text-body text-ink-muted",
     choices: "flex flex-col gap-3",
     // The models' names in one capsule, which scrolls on a phone too narrow for it.
     models: "max-w-full self-start overflow-x-auto",
   },
 });
+
+/** The chevron after a fold's name: down shut, up open. */
+function Fold({ open }: { open: boolean }) {
+  return (
+    <ChevronDown
+      size={14}
+      strokeWidth={1.75}
+      aria-hidden="true"
+      className={[
+        "transition-transform duration-fast motion-reduce:transition-none",
+        open ? "rotate-180" : "",
+      ].join(" ")}
+    />
+  );
+}
 
 /** "~80 kg" until a weight is given, as the dock's star row says it. */
 export const weightText = (rider: Rider) =>
@@ -89,9 +99,9 @@ export function RiderSwitch({
   return (
     <div className={s.base()} role="group" aria-labelledby={`${panel}-for`}>
       <div className={s.line()}>
-        <Kicker as="span" id={`${panel}-for`} className={s.kicker()}>
+        <span id={`${panel}-for`} className={s.name()}>
           Stars
-        </Kicker>
+        </span>
         {/* Whose stars, and the way to change them: Settings, on the map. */}
         <span className={s.whose()} data-stars-whose>
           {starsWhose(rider)}
@@ -104,8 +114,9 @@ export function RiderSwitch({
         >
           Settings
         </Button>
-        <button
-          type="button"
+        <Button
+          variant="link"
+          size="sm"
           className={s.more()}
           aria-expanded={open}
           aria-controls={panel}
@@ -114,14 +125,14 @@ export function RiderSwitch({
         >
           <span data-rider-summary>{weightText(rider)}</span>
           {rider.wings.length > 0 && <span>· {rider.wings.join(", ")} m²</span>}
-          <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+          <Fold open={open} />
           <span className="sr-only">
             {open ? ": close the weight and wings" : ": weight and wings"}
           </span>
-        </button>
-        <Kicker as="span" id={`${starsPanel}-from`} className={s.kicker()}>
+        </Button>
+        <span id={`${starsPanel}-from`} className={s.name()}>
           Model
-        </Kicker>
+        </span>
         <Button
           variant="link"
           size="sm"
@@ -132,7 +143,7 @@ export function RiderSwitch({
           onClick={() => setFold((was) => (was === "stars" ? null : "stars"))}
         >
           <span data-stars-from-summary>{modelName(model)}</span>
-          <span aria-hidden="true">{fold === "stars" ? "▴" : "▾"}</span>
+          <Fold open={fold === "stars"} />
         </Button>
       </div>
       {fold === "stars" && (
