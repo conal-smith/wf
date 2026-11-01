@@ -1,0 +1,59 @@
+name: Pull request
+
+# Checks on what a pull request publishes, not on the code (CI does that).
+# A workflow of its own so that editing a title or description checks it
+# again without running all of CI. CLAUDE.md says what each check is for.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pull-request-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # The title and every commit are Conventional Commits. Pull requests are
+  # squash-merged with the title as the commit, so the title lands on main.
+  commits:
+    name: Conventional commits
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      # The title through the environment, never into the script's text.
+      - name: Title and commits
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+        run: node scripts/conventional-commits.mjs --title "$TITLE" --range "$RANGE"
+
+  # Nothing personal and no competitor's name in the title, the description,
+  # the commit messages or the added lines.
+  publication:
+    name: Nothing personal, no competitors
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Title, description, commits and added lines
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+          RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+          PUBLICATION_DENYLIST: ${{ secrets.PUBLICATION_DENYLIST }}
+        run: node scripts/publication-check.mjs --text-env TITLE --text-env BODY --range "$RANGE"
