@@ -79,7 +79,7 @@ const styles = tv({
       "relative h-auto min-w-0 flex-col items-stretch justify-start gap-0.5 rounded-control border-0 px-0.5 py-0.5 -mx-0.5",
       "tracking-normal normal-case pointer-coarse:min-h-0",
     ],
-    name: "flex items-center gap-1 font-mono text-eyebrow font-semibold whitespace-nowrap text-ink uppercase",
+    name: "flex items-center gap-1 font-mono text-eyebrow font-semibold whitespace-nowrap text-ink",
     sky: "flex h-4 items-center gap-1 font-mono text-caption whitespace-nowrap text-ink-2",
     drawing: "relative block cursor-pointer overflow-visible",
     // While the place's hours are worked out: the shape of the stars, and

@@ -112,9 +112,9 @@ const styles = tv({
     // takes no room, so nothing moves when it goes.
     pendingWords: [
       "pointer-events-none absolute inset-x-0 z-panel flex justify-center",
-      "font-body text-caption text-ink-muted italic",
+      "font-body text-caption text-ink-muted",
     ],
-    pendingTag: "rounded-control bg-card px-2 py-0.5",
+    pendingTag: "rounded-control bg-ground px-2 py-0.5",
     // The day's stars along the foot of the hours, under the presses.
     stars: "pointer-events-none absolute left-0",
     pendingLine: "absolute flex",
