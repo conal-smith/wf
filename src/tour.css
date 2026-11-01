@@ -1,5 +1,22 @@
 /* The first visit's offer (src/TourPrompt.tsx) and the tour (src/Tour.tsx),
-   in their own chunks. The chart's box, the Almanac's puffin, the pen's ring. */
+   in their own chunks. A plain card on the chart, and a ring in the accent
+   round what each step is about. */
+
+/* ---- the card both draw on: the ground, a sheet's corner and its soft
+   shadow, with no frame; in dark, a faint edge ---- */
+.tour-prompt,
+.tour-card {
+  background: var(--color-ground);
+  border-radius: var(--radius-dialog);
+  box-shadow: var(--shadow-sheet);
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .tour-prompt,
+:root[data-theme="dark"] .tour-card {
+  box-shadow:
+    var(--shadow-sheet),
+    0 0 0 1px var(--color-line);
+}
 
 /* ---- the offer: on the chart, low and in the middle, never over the head ---- */
 .tour-prompt {
@@ -7,31 +24,29 @@
   z-index: var(--z-index-header);
   bottom: 28px;
   left: 50%;
-  display: flex;
-  align-items: flex-end;
-  gap: 14px;
-  width: min(430px, calc(100% - 24px));
-  padding: 14px 18px 14px 12px;
+  width: min(380px, calc(100% - 24px));
+  padding: 16px 18px;
   transform: translateX(-50%);
   animation: tour-in 0.35s ease-out both;
 }
 .tour-prompt h3,
 .tour-say h3 {
   margin: 0;
-  font: 600 var(--text-lead) / 1.2 var(--font-display);
+  font: 600 17px / 1.3 var(--font-body);
+  letter-spacing: -0.01em;
   color: var(--color-ink);
 }
 .tour-prompt p,
 .tour-say p {
   margin: 4px 0 0;
-  font: var(--text-prose) / 1.4 var(--font-body);
+  font: 14.5px / 1.5 var(--font-body);
   color: var(--color-ink-2);
 }
 .tour-acts {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 @keyframes tour-in {
   from {
@@ -66,8 +81,8 @@ dialog[open]:has(> .tour) {
   inset: 0;
   overflow: visible;
 }
-/* A focus ring round the target in the accent, a little out from it, fading
-   in at each step. */
+/* A ring round the target in the accent, a little out from it, fading in at
+   each step. */
 .tour-ring path {
   fill: none;
   stroke: var(--color-focus);
@@ -82,55 +97,50 @@ dialog[open]:has(> .tour) {
 .tour-card {
   position: absolute;
   width: 340px;
-  padding: 12px 14px 12px;
+  padding: 12px 18px 16px;
   pointer-events: auto;
   animation: tour-in 0.25s ease-out both;
 }
+/* "Step 1 of 7" in the grey label, and Skip tour a quiet button. */
 .tour-k {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font: 500 var(--text-eyebrow) var(--font-mono);
+  margin-right: -8px;
+  font: 500 var(--text-label) var(--font-body);
   color: var(--color-ink-muted);
 }
-.tour .tour-skip {
-  padding: 0 4px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
 .tour-say {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  margin-top: 6px;
-}
-.tour-say > div {
-  flex: 1;
-  min-width: 0;
+  margin-top: 4px;
 }
 .tour-foot {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-line);
+  margin-top: 14px;
 }
 .tour-sp {
   flex: 1;
 }
+/* The progress: small dots, the steps done darker, the current one a short
+   bar. */
 .tour-dots {
   display: flex;
+  align-items: center;
   gap: 5px;
 }
 .tour-dots i {
-  width: 7px;
-  height: 7px;
-  border: 1px solid var(--color-ink);
-  border-radius: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-line-strong);
 }
 .tour-dots .is-on {
+  background: var(--color-ink-2);
+}
+.tour-dots .is-at {
+  width: 16px;
   background: var(--color-ink);
 }
 @media (prefers-reduced-motion: reduce) {
@@ -143,6 +153,9 @@ dialog[open]:has(> .tour) {
 @media (max-width: 719px) {
   .tour-prompt {
     bottom: 16px;
+  }
+  .tour-acts > * {
+    flex: 1;
   }
   .tour-card {
     width: calc(100% - 20px);
