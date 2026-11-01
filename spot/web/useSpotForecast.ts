@@ -15,7 +15,9 @@ import {
   type SpotForecast,
 } from "../../mcp/api/forecast";
 import type { ForecastSource } from "../../mcp/api/httpSource";
+import { pointFromId } from "../../force5/src/siteNav";
 import { siteSource } from "../../shared/web/forecastSource";
+import { pointForecast, pointPlace, type PointPlace } from "./point";
 import {
   FORECAST_DAYS,
   HOUR,
@@ -31,7 +33,16 @@ export type SpotState =
   | { kind: "unknown"; id: string; candidates: RidingSpot[] }
   /** `/spot` with no id: the index of every place. */
   | { kind: "index"; spots: RidingSpot[] }
-  | { kind: "ready"; spot: RidingSpot; forecast: SpotForecast };
+  /**
+   * A riding place's forecast, or a point on the water's (`point`, with the
+   * places around it: /spot/@53.3412,-6.1520, ./point.ts).
+   */
+  | {
+      kind: "ready";
+      spot: RidingSpot;
+      forecast: SpotForecast;
+      point?: PointPlace;
+    };
 
 /** The hours asked for: from before today's midnight to the last day's end. */
 export function forecastWindow(now: number) {
@@ -85,6 +96,19 @@ export function useSpotForecast(
     (async () => {
       const spots = await loadSpots(source());
       if (id === null) return { kind: "index", spots } as const;
+      // A point on the water is no riding place, and no unknown one either.
+      const at = pointFromId(id);
+      if (at) {
+        const point = pointPlace(spots, at.lat, at.lon);
+        const now = Date.now();
+        const forecast = await pointForecast(
+          source(),
+          point,
+          forecastWindow(now),
+          { now, from: { model, then } },
+        );
+        return { kind: "ready", spot: point.spot, forecast, point } as const;
+      }
       const spot = spots.find((place) => place.id === id);
       if (!spot)
         return {

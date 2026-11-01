@@ -127,7 +127,7 @@ async function withPageHead(
   const headers = new Headers(index.headers);
   headers.delete("content-length");
   headers.delete("etag");
-  if (missing) headers.set("X-Robots-Tag", "noindex");
+  if (missing || head.noindex) headers.set("X-Robots-Tag", "noindex");
   const html = withHead(await index.text(), head);
   return new Response(request.method === "HEAD" ? null : html, {
     status: missing ? 404 : index.status,

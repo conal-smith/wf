@@ -66,8 +66,11 @@
 	# (mcp/pages/worker.ts), so a crawler or link checker does not keep it.
 	# spot-paths.caddy, written beside this file when the image is built
 	# (scripts/caddy-spot-paths.mjs), names every place's page.
+	# A point on the water (/spot/@53.3412,-6.1520, force5/src/siteNav.ts
+	# pointHref) is a page of its own, never a missing place.
 	@missingSpot {
 		path_regexp ^/spot/[^/]+/?$
+		not path_regexp (?i)^/spot/(@|%40)-?[0-9.]+(,|%2C)-?[0-9.]+/?$
 		import spot-paths.caddy
 	}
 	handle @missingSpot {

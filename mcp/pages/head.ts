@@ -7,6 +7,7 @@
  * reads these tags, so the page a reader sees is the same either way.
  */
 
+import { pointFromId, pointId, pointName } from "../../force5/src/siteNav.js";
 import { pageTitle } from "../../site/shared/pageTitle.js";
 
 /** Where the site is, whichever host served it: staging points here too. */
@@ -24,6 +25,11 @@ export interface PageHead {
   description: string;
   /** The page's address on the site, its canonical URL. */
   url: string;
+  /**
+   * Kept out of search: a point on the water's page, one of countless, is
+   * for the rider who tapped it, not for an index.
+   */
+  noindex?: boolean;
 }
 
 /** The map's own head, in index.html: what every other path keeps. */
@@ -56,7 +62,10 @@ export function isMissingSpot(
   const id = SPOT.exec(pathname)?.[1];
   if (id === undefined || !spots.size) return false;
   try {
-    return !spots.has(decodeURIComponent(id));
+    const key = decodeURIComponent(id);
+    // A point on the water (/spot/@53.3412,-6.1520) is a page of its own,
+    // never a place gone missing.
+    return !spots.has(key) && !pointFromId(key);
   } catch {
     return true;
   }
@@ -84,6 +93,16 @@ export function pageHead(
       key = decodeURIComponent(id);
     } catch {
       return null;
+    }
+    const point = pointFromId(key);
+    if (point) {
+      const name = pointName(point.lat, point.lon);
+      return {
+        title: pageTitle(`${name} wing foil forecast`, "Wind map"),
+        description: `Hour-by-hour wind, gusts, waves and current on the open water at ${name}, beside the nearest riding place.`,
+        url: `${SITE}/spot/${pointId(point.lat, point.lon)}`,
+        noindex: true,
+      };
     }
     const spot = spots.get(key);
     if (!spot) return null;

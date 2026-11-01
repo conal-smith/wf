@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   APP_ROUTES,
+  AT_PARAM,
   CHART_HREF,
   SETTINGS_HREF,
   SITE_NAV,
@@ -16,6 +17,9 @@ import {
   isSpotPath,
   isStarsPath,
   mapSpotHref,
+  pointFromId,
+  pointHref,
+  pointId,
   spotHref,
   spotIdFromPath,
   isAiPath,
@@ -271,6 +275,58 @@ describe("spotIdFromPath", () => {
   it("round-trips with spotHref", () => {
     for (const id of ["brandon", "osm-blast-kilcrea", "a b/c"])
       expect(spotIdFromPath(spotHref(id))).toBe(id);
+  });
+});
+
+describe("spotHref", () => {
+  it("is the place's page, and the page at an hour when one is given", () => {
+    expect(spotHref("brandon")).toBe("/spot/brandon");
+    expect(spotHref("a b")).toBe("/spot/a%20b");
+    expect(spotHref("brandon", "2026-09-14T13:00:00Z")).toBe(
+      "/spot/brandon?at=2026-09-14T13%3A00%3A00Z",
+    );
+    expect(spotHref("brandon", "")).toBe("/spot/brandon");
+  });
+
+  it("keeps the hour readable as the page reads it", () => {
+    const href = spotHref("brandon", "2026-09-14T13:00:00.000Z");
+    const url = new URL(href, "https://example.com");
+    expect(url.searchParams.get(AT_PARAM)).toBe("2026-09-14T13:00:00.000Z");
+  });
+});
+
+describe("pointHref", () => {
+  it("writes the point to four places, with its hour when one is given", () => {
+    expect(pointHref(53.34123, -6.152)).toBe("/spot/@53.3412,-6.1520");
+    expect(pointHref(53.34123, -6.152, "2026-09-14T13:00:00Z")).toBe(
+      "/spot/@53.3412,-6.1520?at=2026-09-14T13%3A00%3A00Z",
+    );
+  });
+
+  it("round-trips with spotIdFromPath and pointFromId", () => {
+    const id = spotIdFromPath(pointHref(53.34123, -6.152));
+    expect(id).toBe(pointId(53.34123, -6.152));
+    expect(pointFromId(id!)).toEqual({ lat: 53.3412, lon: -6.152 });
+    // A browser may write the "@" and the comma escaped.
+    expect(spotIdFromPath("/spot/%4053.3412%2C-6.1520")).toBe(
+      "@53.3412,-6.1520",
+    );
+  });
+});
+
+describe("pointFromId", () => {
+  it("reads a point, and no riding place's id", () => {
+    expect(pointFromId("@53.3412,-6.1520")).toEqual({
+      lat: 53.3412,
+      lon: -6.152,
+    });
+    expect(pointFromId("@-1,2")).toEqual({ lat: -1, lon: 2 });
+    expect(pointFromId("brandon")).toBeNull();
+    expect(pointFromId("53.3412,-6.1520")).toBeNull();
+    expect(pointFromId("@53.3412")).toBeNull();
+    expect(pointFromId("@95,-6.1")).toBeNull();
+    expect(pointFromId("@53.3,-190")).toBeNull();
+    expect(pointFromId("@53.3,-6.1,2")).toBeNull();
   });
 });
 

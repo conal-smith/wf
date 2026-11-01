@@ -17,6 +17,7 @@ import {
   CHART_HREF,
   isStarsPath,
   mapSpotHref,
+  pointFromId,
   spotHref,
   spotIdFromPath,
 } from "../../force5/src/siteNav";
@@ -32,7 +33,8 @@ import { KeepStar } from "./glyphs";
 import { loadSpotPictures } from "./satellite";
 import StarsPage from "./StarsPage";
 import { useSpotForecast } from "./useSpotForecast";
-import { SpotReport } from "./report/SpotReport";
+import { atFromSearch } from "./report/detail";
+import { SpotReport, type ReportPoint } from "./report/SpotReport";
 import { SpotNotices, hasNotices } from "./Notices";
 
 const styles = tv({
@@ -117,7 +119,8 @@ function SpotRoute({ id }: { id: string | null }) {
   }, [id]);
 
   return (
-    <SpotFrame back={id ? mapSpotHref(id) : CHART_HREF}>
+    // A point on the water goes back to the chart, which has no light for it.
+    <SpotFrame back={id && !pointFromId(id) ? mapSpotHref(id) : CHART_HREF}>
       {state.kind === "loading" && <Loading />}
       {state.kind === "error" && (
         <main className={s.main()}>
@@ -175,6 +178,7 @@ function SpotRoute({ id }: { id: string | null }) {
         <SpotPage
           spot={state.spot}
           forecast={state.forecast}
+          point={state.point ?? null}
           rider={rider}
           onRider={changeRider}
         />
@@ -304,10 +308,13 @@ function Loading() {
 function SpotPage({
   spot,
   forecast,
+  point,
   rider,
 }: {
   spot: RidingSpot;
   forecast: SpotForecast;
+  /** A point on the open water: no star to keep it by, and no stars. */
+  point: ReportPoint | null;
   rider: Rider;
   onRider: (rider: Rider) => void;
 }) {
@@ -316,7 +323,10 @@ function SpotPage({
     const timer = window.setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(timer);
   }, []);
-  const units = useMemo(() => loadPrefs().units, []);
+  const { units, blendModels } = useMemo(() => loadPrefs(), []);
+  // The hour a link opens the week at (`?at=`, siteNav's spotHref), read
+  // once: the week opens there, and then it is the rider's.
+  const [at] = useState(() => atFromSearch(window.location.search));
   return (
     <SpotReport
       spot={spot}
@@ -324,7 +334,10 @@ function SpotPage({
       rider={rider}
       units={units}
       now={now}
-      actions={<KeepButton id={spot.id} name={spot.name} />}
+      at={at}
+      blendModels={blendModels}
+      point={point}
+      actions={point ? null : <KeepButton id={spot.id} name={spot.name} />}
       notices={
         hasNotices(forecast.warnings, forecast.water_quality) && (
           <SpotNotices
