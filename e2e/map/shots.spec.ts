@@ -133,7 +133,7 @@ async function shoot(page: Page, state: string, width: number) {
             face.status === "loaded",
         );
       return {
-        mono: loaded("IBM Plex Mono"),
+        mono: loaded("Inter Variable"),
         display: loaded("Fraunces"),
         failed: faces
           .filter((face) => face.status === "error")

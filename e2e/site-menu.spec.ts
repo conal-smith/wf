@@ -110,8 +110,9 @@ test("the menu's navigation is the same on the full chart and on the home page's
   // No part of a page's own on either, and the same four groups.
   expect(chart.own).toBe(0);
   expect(spots.own).toBe(0);
-  expect(chart.lists).toBe(4);
-  expect(spots.lists).toBe(4);
+  // The four groups, then the theme's switch.
+  expect(chart.lists).toBe(5);
+  expect(spots.lists).toBe(5);
   // "Wind map" was the chart a second time: it is gone.
   await trigger(page).click();
   await expect(drawer(page)).not.toContainText("Wind map");
@@ -152,7 +153,7 @@ test("the menu is a drawer from the left, over the dimmed map, with a glyph on e
   // The site's navigation and sections, and nothing else: no Layers, which
   // is the rail by the zoom. Each row has its glyph in the margin.
   const rows = drawer(page).locator("li > :is(a, button)");
-  await expect(rows).toHaveText(SECTIONS);
+  await expect(rows).toHaveText([...SECTIONS, "Dark mode"]);
   for (const row of await rows.all())
     await expect(row.locator("svg")).toHaveCount(1);
   // The Almanac signs it no longer.
