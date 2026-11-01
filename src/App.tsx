@@ -2,8 +2,7 @@
 // and the other sections never ask for MapLibre's CSS or the chart's.
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./map.css";
-import "./dock.css";
-import "./panels.css";
+import "./scrub.css";
 import {
   lazy,
   memo,
@@ -58,7 +57,7 @@ import { speedWords } from "../force5/src/units";
 import { rideWedge } from "../force5/src/rideWedge";
 import { parseWindLayers, type WindLayers } from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
-import ForecastDock, { type DockView } from "./ForecastDock";
+import ScrubBar from "./ScrubBar";
 import MapControls from "./MapControls";
 import { LAYER_DEFAULTS } from "./layerGroups";
 import { tourOffered, tourSeen } from "./tourOffer";
@@ -73,6 +72,7 @@ import {
   mapAsk,
   type MapAsk,
   mapSpotHref,
+  pointHref,
   spotHref,
   tidySearch,
 } from "../force5/src/siteNav";
@@ -112,7 +112,6 @@ import {
   nearestColumn,
   openingColumn,
   stripColumns,
-  stripDays,
 } from "./strip";
 import { ridingLocations } from "./locations";
 import { openingSpot, spotAddress } from "./openingSpot";
@@ -185,9 +184,7 @@ import { freshwaterSpots, tideAt } from "../force5/src/tides";
 import { nearestSpotOnWater } from "../force5/src/pointSource";
 import { FEATURES } from "../shared/web/features";
 import { useWarnings } from "./useWarnings";
-import { placeWarnings } from "../force5/src/warnings";
 import { useWaterQuality } from "./useWaterQuality";
-import { spotWaterQuality } from "../force5/src/waterQuality";
 import { favourites } from "../shared/web/favourites";
 import {
   compass,
@@ -216,7 +213,6 @@ const WIND_KEY = "wingfoil.map.wind.v2";
 const OLD_WIND_KEY = "wingfoil.map.wind.v1";
 const LAYERS_KEY = "wingfoil.map.layers.v1";
 const FOCUS_KEY = "wingfoil.map.focus.v1";
-const MORE_KEY = "wingfoil.map.more.v1";
 /** The layers' rail, open or shut on this device. */
 const RAIL_KEY = "wingfoil.map.rail.v1";
 /** The focus is on the point tapped on the map, not a riding place. */
@@ -298,12 +294,12 @@ const afterPaint = (then: () => void) =>
 /**
  * The first stop for the keys on the list and the chart, out of sight until
  * it has the focus: past the menu and the chart's lights to what the page is
- * for (#222). On the full chart, the forecast in the dock, or with none open
- * the search, which finds a spot by its name without the chart.
+ * for (#222). On the full chart, the spot's forecast in the scrub bar, or with
+ * none open the search, which finds a spot by its name without the chart.
  */
 const SKIP = {
   list: { label: "Skip to the spots", to: "[data-finder-list]" },
-  dock: { label: "Skip to the forecast", to: ".dock" },
+  dock: { label: "Skip to the forecast", to: ".scrub" },
   search: { label: "Skip to the search", to: "[data-spot-search-field]" },
 };
 
@@ -437,11 +433,6 @@ export default function App() {
   const phone = useMedia(PHONE);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [picked, setPicked] = useState<Picked | null>(null);
-  const [more, setMore] = useState(() => store.get(MORE_KEY) === "1");
-  const chooseMore = (next: boolean) => {
-    setMore(next);
-    store.set(MORE_KEY, next ? "1" : "0");
-  };
   // The layers' rail, the one way to the layers: Layers opens and shuts it,
   // and this device keeps it as it was left.
   const [railOpen, setRailOpen] = useState(() => store.get(RAIL_KEY) === "1");
@@ -460,7 +451,10 @@ export default function App() {
   );
   /** Settings is kept while it fades out, once shut. */
   const settingsShown = useFadeOut(guide === "settings");
-  const [view, setView] = useState<DockView>("table");
+  /** The scrub bar playing through the forecast. */
+  const [playing, setPlaying] = useState(false);
+  /** The wave models, read once the scrub bar first draws the waves. */
+  const [wantMarine, setWantMarine] = useState(false);
   const [wind, setWind] = useState<WindLayers>(() =>
     parseWindLayers(store.get(WIND_KEY), store.get(OLD_WIND_KEY)),
   );
@@ -701,7 +695,7 @@ export default function App() {
     if (guide === "settings") setWantModels(true);
   }, [guide]);
   const { models } = useModelAvailability(
-    !!pendingModel,
+    !!pendingModel || playing,
     undefined,
     wantModels || (spotBlend.resolved && !published),
     riderModel,
@@ -740,7 +734,6 @@ export default function App() {
     () => stripColumns(columns, clockNow),
     [stripKey, clockNow - (clockNow % 3600000)],
   );
-  const days = useMemo(() => stripDays(strip), [strip]);
   const axis = useMemo(() => strip.map((c) => c.validTime), [strip]);
   const stripRef = useRef(strip);
   stripRef.current = strip;
@@ -1047,7 +1040,7 @@ export default function App() {
     manifest,
     validTime: selectedTime ?? frame?.validTime ?? null,
     switching: !!pendingModel,
-    playing: false,
+    playing,
     onRun: commitRun,
   });
 
@@ -1932,27 +1925,13 @@ export default function App() {
     : point;
 
   /**
-   * With no spot chosen there is no dock, and nothing at the chart's foot;
-   * and there is none beside the list, only on the full chart.
+   * The scrub bar, on the full chart once the opening spot is known and the
+   * strip has hours: always, a plain timeline with no spot chosen. None beside
+   * the list, where the time is the cards'.
    */
-  const dockOpen = opened && !!dockSpot && strip.length > 0 && page === "chart";
-  // The riding place's Met Éireann warnings, for the dock's strip: the same
-  // file and rule its stars were worked out with (src/useRatings.ts).
-  const dockWarnings = useMemo(
-    () =>
-      dockSpot && !picked
-        ? placeWarnings(warnings, dockSpot, clockNow).warnings
-        : [],
-    [warnings, dockSpot, picked, clockNow],
-  );
-  // And its bathing water notices, the same way.
-  const dockWater = useMemo(
-    () =>
-      dockSpot && !picked
-        ? spotWaterQuality(water, dockSpot.id, clockNow).notices
-        : [],
-    [water, dockSpot, picked, clockNow],
-  );
+  const barShown = opened && strip.length > 0 && page === "chart";
+  /** A spot or a point is open in the scrub bar. */
+  const dockOpen = barShown && !!dockSpot;
 
   const pointHours: PlaceHour[] | undefined = picked
     ? pickedHours
@@ -1960,7 +1939,7 @@ export default function App() {
       ? hours.get(point.id)
       : undefined;
 
-  const marine = useMarineModels(more && mapReady);
+  const marine = useMarineModels(wantMarine && mapReady);
   const focusAt =
     focusId === AT_POINT
       ? picked
@@ -2520,7 +2499,7 @@ export default function App() {
                       foil: foilFar ? FOIL_ZOOM_NOTE : null,
                       currents: currents.note,
                     }}
-                    layoutKey={`${dockOpen ? dockHeight : 0}`}
+                    layoutKey={`${barShown ? dockHeight : 0}`}
                     onCollapse={split ? openList : undefined}
                     wind={wind}
                     onWind={chooseWind}
@@ -2576,7 +2555,7 @@ export default function App() {
                     rain={onChart ? rain.view : null}
                     satellite={onChart ? satellite.image : null}
                     reducedMotion={reducedMotion}
-                    bottomInset={dockOpen ? dockHeight : 0}
+                    bottomInset={barShown ? dockHeight : 0}
                     phone={phone}
                     onSelect={(spot) =>
                       pageRef.current === "chart"
@@ -2638,7 +2617,7 @@ export default function App() {
               )}
               {onChart && (
                 <div
-                  className={`map-footer${dockOpen ? "" : " is-bare"}`}
+                  className={`map-footer${barShown ? "" : " is-bare"}`}
                   ref={dock}
                 >
                   {/* The small print rides on the dock's top edge, in the dock's
@@ -2684,38 +2663,41 @@ export default function App() {
                           : ""}
                     </span>
                   </div>
-                  {/* With no spot chosen there is no dock: the chart has the
-                  screen, at the hour the page opened on. */}
-                  {dockOpen && dockSpot && (
-                    <ForecastDock
-                      spot={dockSpot}
-                      isPoint={!!picked}
-                      pointSource={pointSource}
-                      pointPending={!!picked && series.pending}
-                      more={more}
-                      onMore={chooseMore}
-                      marine={marine}
+                  {/* With no spot chosen, a plain timeline: the playhead
+                  still moves the map's time. */}
+                  {barShown && (
+                    <ScrubBar
                       columns={strip}
-                      days={days}
-                      hours={pointHours}
                       selected={selected}
                       onSelect={(at) => selectColumn(at)}
                       now={clockNow}
-                      prefs={prefs}
-                      models={models}
-                      onWantModels={() => setWantModels(true)}
-                      starred={
-                        !!dockSpot && !picked && starred.includes(dockSpot.id)
+                      spot={dockSpot}
+                      isPoint={!!picked}
+                      hours={pointHours}
+                      tide={dockSpot ? tide.tide : null}
+                      marine={marine}
+                      onWantMarine={() => setWantMarine(true)}
+                      lender={
+                        picked ? (pointSource?.source?.spot ?? null) : point
                       }
-                      onToggleStar={() => dockSpot && fav.toggle(dockSpot.id)}
-                      warnings={dockWarnings}
-                      water={dockWater}
-                      tide={tide.tide}
+                      units={prefs.units}
+                      nightHours={prefs.nightHours}
+                      href={
+                        !column
+                          ? null
+                          : picked
+                            ? pointHref(
+                                picked.lat,
+                                picked.lon,
+                                column.validTime,
+                              )
+                            : point
+                              ? spotHref(point.id, column.validTime)
+                              : null
+                      }
                       onClose={closeDock}
-                      phone={phone}
-                      view={picked ? "table" : view}
-                      onView={setView}
-                      reducedMotion={reducedMotion}
+                      playing={playing}
+                      onPlaying={setPlaying}
                       reachable={reachable}
                       onShowOnMap={() =>
                         reachable && column
@@ -2762,8 +2744,6 @@ export default function App() {
                 if (spot) showSpot(spot);
                 else hideDock();
               }}
-              view={view}
-              onView={setView}
               focusStyle={focusStyle}
               onFocusStyle={setFocusStyle}
               layers={railOpen}
@@ -2799,7 +2779,7 @@ export default function App() {
               })
             }
             // Over the spot's tools on the dock's edge, while there is a dock.
-            launcherBottom={dockHeight + (dockOpen ? 72 : 24)}
+            launcherBottom={dockHeight + 24}
             panelBottom={dockHeight + 12}
           />
         </Suspense>

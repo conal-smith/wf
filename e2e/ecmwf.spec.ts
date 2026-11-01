@@ -144,21 +144,16 @@ test("the chart pans out over the Atlantic as far as ECMWF reaches, and a smalle
     await page.keyboard.press("ArrowLeft");
     await page.waitForTimeout(150);
   }
-  // The neatline names the meridians at least 400 px in from either edge
-  // (force5/src/neatline.ts). The chart used to stop at 18° W, which kept
-  // every label east of about 12° W; ECMWF's box reaches 30° W.
-  const westmost = () =>
-    page
-      .locator(".nl-t")
-      .allTextContents()
-      .then((labels) =>
-        Math.max(
-          ...labels
-            .filter((label) => label.endsWith("W"))
-            .map((label) => parseInt(label, 10)),
-        ),
-      );
-  await expect.poll(westmost, { timeout: 10000 }).toBeGreaterThanOrEqual(20);
+  // The chart pans well out past 18° W, where it used to stop: ECMWF's box
+  // reaches 30° W. The centre the chart keeps for the spot finder says where
+  // it stands (src/lastView.ts).
+  const centreLon = () =>
+    page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("wingfoil.map.centre.v1") ?? "{}")
+          .lon as number,
+    );
+  await expect.poll(centreLon, { timeout: 10000 }).toBeLessThan(-16);
   await expect(page.locator(".frame-status.is-error")).toHaveCount(0);
   // HARMONIE out here: its box is behind the view, so it draws nothing in
   // most of it, and says nothing is wrong.

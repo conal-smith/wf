@@ -289,6 +289,7 @@ export function Stars({
       stars={stars}
       potential={potential}
       size={size}
+      inked
       label={value == null ? "Not yet rated" : `${value} out of 5`}
     />
   );
@@ -335,6 +336,7 @@ export function RatingPicker({
               potential={1}
               slots="potential"
               size={22}
+              inked
               label=""
             />
           </Button>

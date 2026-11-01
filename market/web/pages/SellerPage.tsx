@@ -162,6 +162,7 @@ export default function SellerPage({ id }: { id: string }) {
                     <StarGlyphs
                       stars={n}
                       size={10}
+                      inked
                       label={`${n} star${n === 1 ? "" : "s"}`}
                     />
                   </span>

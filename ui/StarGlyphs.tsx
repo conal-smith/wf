@@ -4,12 +4,19 @@ import { tv, type VariantProps } from "./tv";
  * An hour's stars, as the chart draws them: solid for what the hour is worth
  * for this rider, an outline for what the wind alone would have given, and a
  * small dot for each of the five it does not reach. Shape carries the
- * difference; the tone only repeats it. The dark is not rated: an empty slot
- * of the same width, so a row of hours stays in line.
+ * difference. The dark is not rated: an empty slot of the same width, so a
+ * row of hours stays in line.
  *
- * `coloured` is the spot finder's way (ruling of 2026-10-25): the stars an
- * hour earns filled in the stars' own colours, by how many, and the rest of
- * the five outlined. Opt in; every other star stays as the chart draws it.
+ * The solid stars are in the stars' own colours, by how many the hour earns
+ * (ui/theme.css `stars-1` … `stars-5`): wherever stars are drawn, a count of
+ * them has the one colour it has on the map's lights, the spot finder's cards
+ * and the chart's row of stars (the owner's ruling of 2026-11-01). On an ink
+ * fill (`tone: "inverse"`) they stay the fill's own ink, and so does a
+ * rating that is not a rider's stars (`inked`: a seller's, in the market),
+ * since those colours mean the riding stars and nothing else.
+ *
+ * `coloured` is the spot finder's way (ruling of 2026-10-25): the rest of
+ * the five outlined rather than dotted, and the potential not drawn.
  */
 export const starGlyphsStyles = tv({
   slots: {
@@ -81,6 +88,8 @@ export type StarGlyphsProps = VariantProps<typeof starGlyphsStyles> & {
    * The potential is not drawn.
    */
   coloured?: boolean;
+  /** Not a rider's stars (a seller's rating): the solid stars in ink. */
+  inked?: boolean;
   /**
    * What a screen reader hears. `starsLabel` by default. An empty string says
    * the words are already beside it (a button that names the day's stars):
@@ -97,6 +106,7 @@ export function StarGlyphs({
   slots = "five",
   tone,
   coloured = false,
+  inked = false,
   label,
   className,
 }: StarGlyphsProps) {
@@ -149,7 +159,11 @@ export function StarGlyphs({
             return (
               <path
                 key={i}
-                className={styles.solid()}
+                className={
+                  inked || tone === "inverse"
+                    ? styles.solid()
+                    : `${STAR_FILL[solid]} ${styles.earned()}`
+                }
                 d={STAR}
                 transform={`translate(${x} ${y + 0.4}) scale(${k})`}
               />

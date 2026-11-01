@@ -53,30 +53,55 @@ export async function rememberSpot(page: Page, id = "brandon") {
   );
 }
 
+/** The chart's scrub bar (src/ScrubBar.tsx): a plain timeline, or a spot's week. */
+export const scrubBar = (page: Page) => page.locator(".scrub");
+
+/** The name of the spot or point open in the scrub bar; none with nothing chosen. */
+export const barName = (page: Page) => page.locator(".scrub .sb-name");
+
+/** The chart's time: the scrub bar's slider, a column of the strip per step. */
+export const timeSlider = (page: Page) =>
+  page.getByRole("slider", { name: "Forecast time" });
+
 /**
- * Choose a spot as a rider does, with a tap on its light: the dock opens on
- * it and the chart flies there. The lights stand close on the whole of
- * Ireland, so the tap goes to the light itself rather than to a point on the
- * screen another light may cover.
+ * The pill over the playhead: its words, and the stars of the hour it is on
+ * (`data-stars`, none where the hour is not rated).
  */
-export async function chooseSpot(page: Page, id = "brandon") {
-  await page
-    .locator(`.spot-marker[data-spot-id="${id}"]`)
-    .evaluate((light: HTMLElement) => light.click());
-  await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible({
+export const barPill = (page: Page) => page.locator(".scrub .sb-pill");
+
+/** The scrub bar has a place's hours in, and draws its week. */
+export async function barReady(page: Page) {
+  await expect(page.locator(".scrub[data-ready]")).toBeVisible({
     timeout: 30000,
   });
 }
 
 /**
- * Back to the whole of Ireland with the dock still open, as the map stood
+ * Choose a spot as a rider does, with a tap on its light: the scrub bar
+ * opens on its week and the chart flies there. The lights stand close on the
+ * whole of Ireland, so the tap goes to the light itself rather than to a
+ * point on the screen another light may cover.
+ */
+export async function chooseSpot(page: Page, id = "brandon") {
+  await page
+    .locator(`.spot-marker[data-spot-id="${id}"]`)
+    .evaluate((light: HTMLElement) => light.click());
+  await expect(page.locator(`.scrub[data-spot="${id}"]`)).toBeVisible({
+    timeout: 30000,
+  });
+  await barReady(page);
+}
+
+/**
+ * Back to the whole of Ireland with the spot still open in the scrub bar, as
+ * the map stood
  * when a remembered spot opened it: the chart let go of the spot it flew to
  * and zoomed back out until every light is on it, each rated again. For a
  * spec that reads every light, or times the hours over the whole chart.
  */
 export async function backToIreland(page: Page) {
   // Escape lets go of the chart's focus on the spot; pressed again, it would
-  // close the dock, and then go back to the list.
+  // close the spot's week, and then go back to the list.
   if (await page.locator(".map-canvas.is-focus").count())
     await page.keyboard.press("Escape");
   await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
@@ -363,19 +388,4 @@ export async function chooseModel(page: Page, id: string) {
   await openFromMenu(page, "Settings");
   await modelChoice(page, id).click();
   await saveSettings(page);
-}
-
-/**
- * The dock's rows under the fold (the gust factor, the waves, the current,
- * the sky, the air and the rain). On a wide screen, the grip on the dock's
- * top edge; on a phone's sheet, its handle stepped up a height, as a swipe
- * up does.
- */
-export async function moreRows(page: Page) {
-  const dock = page.locator(".dock");
-  await expect(dock).toBeVisible();
-  const grip = dock.getByRole("button", { name: "Show more rows" });
-  if (await grip.count()) return grip.click();
-  await dock.locator(".dk-grab").focus();
-  await page.keyboard.press("ArrowUp");
 }

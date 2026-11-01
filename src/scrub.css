@@ -1,0 +1,395 @@
+/* The scrub bar (src/ScrubBar.tsx): the chart's foot, the full width of the
+   map, inset a little from its edges. Two rows: the controls, then the strip
+   along the whole width. Glass over the map, as the chart's other boxes are,
+   one soft shadow and a faint edge. Its width, not the window's, decides how
+   the top row folds (a container query), so it lays out the same wherever
+   the map is. */
+.scrub {
+  position: relative;
+  container: scrub / inline-size;
+  margin: 0 12px calc(12px + env(safe-area-inset-bottom));
+  padding: 10px 14px 6px;
+  border-radius: var(--radius-surface);
+  background: color-mix(in srgb, var(--color-ground) 86%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow:
+    var(--shadow-float),
+    inset 0 0 0 1px var(--color-line);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.scrub:focus {
+  outline: none;
+}
+
+/* ---- the top row ---- */
+.sb-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 32px;
+}
+.sb-spot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.sb-name {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font: 600 var(--text-body) / 1.2 var(--font-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb-coords {
+  flex: none;
+  font: var(--text-label) var(--font-body);
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+.sb-link {
+  flex: none;
+  font: 500 var(--text-label) var(--font-body);
+  color: var(--color-ink-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sb-link span {
+  display: inline-block;
+  transition: transform var(--duration-fast, 120ms);
+}
+@media (hover: hover) and (pointer: fine) {
+  .sb-link:hover {
+    color: var(--color-ink);
+  }
+  .sb-link:hover span {
+    transform: translateX(2px);
+  }
+}
+.sb-close {
+  flex: none;
+  margin-left: -6px;
+  color: var(--color-ink-muted);
+}
+.sb-transport {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+.sb-hint {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font: var(--text-label) var(--font-body);
+  color: var(--color-ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb-space {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.sb-modes,
+.sb-now {
+  flex: none;
+}
+.sb-now::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--color-now);
+}
+.sb-now[data-at-now] {
+  color: var(--color-ink-muted);
+}
+
+/* The key: the wind's colours (or the waves' or the tide's swatch), the
+   gusts' dashes, and the stars' five shades. */
+.sb-key {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  font: var(--text-label) var(--font-body);
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+.sb-key-ramp {
+  width: 52px;
+  height: 6px;
+  border-radius: 3px;
+}
+.sb-key-gust {
+  width: 12px;
+  border-top: 1.5px dashed color-mix(in srgb, var(--color-ink) 55%, transparent);
+}
+.sb-key-swatch {
+  width: 14px;
+  height: 6px;
+  border-radius: 3px;
+}
+.sb-key-swatch.is-waves {
+  background: var(--color-depth);
+}
+.sb-key-swatch.is-tide {
+  background: var(--color-ink-2);
+}
+.sb-key-stars {
+  display: inline-flex;
+  gap: 1px;
+  margin-left: 8px;
+}
+.sb-key-stars i {
+  display: block;
+  width: 7px;
+  height: 5px;
+}
+.sb-key-stars i:first-child {
+  border-radius: 2.5px 0 0 2.5px;
+}
+.sb-key-stars i:last-child {
+  border-radius: 0 2.5px 2.5px 0;
+}
+
+/* ---- the strip ---- */
+.sb-strip {
+  position: relative;
+  margin-top: 6px;
+  padding-bottom: 18px;
+  box-sizing: content-box;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.sb-strip svg {
+  position: absolute;
+  inset: 0 0 auto;
+  display: block;
+  overflow: visible;
+}
+/* The slider is out of sight: its focus ring is drawn on the strip. */
+.scrub:has(.sb-time:focus-visible) .sb-strip {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.sb-hatch {
+  stroke: color-mix(in srgb, var(--color-ink) 9%, transparent);
+  stroke-width: 1.5;
+}
+.sb-night {
+  opacity: 1;
+}
+.sb-day {
+  stroke: var(--color-line);
+  stroke-width: 1;
+}
+.sb-area.is-waves {
+  fill: var(--color-depth);
+}
+.sb-area.is-tide {
+  fill: color-mix(in srgb, var(--color-ink-2) 40%, transparent);
+}
+.sb-line {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.sb-line.is-wind {
+  stroke: color-mix(in srgb, var(--color-ink) 35%, transparent);
+  stroke-width: 1;
+}
+.sb-line.is-waves {
+  stroke: var(--color-depth);
+}
+.sb-line.is-tide {
+  stroke: var(--color-ink-2);
+}
+.sb-gust {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-ink) 55%, transparent);
+  stroke-width: 1.2;
+  stroke-dasharray: 2 3;
+}
+.sb-stars-track {
+  fill: color-mix(in srgb, var(--color-ink) 6%, transparent);
+}
+.sb-past {
+  fill: var(--color-ground);
+  opacity: 0.45;
+}
+.sb-now-line {
+  stroke: var(--color-now);
+  stroke-width: 1.5;
+}
+.sb-head line {
+  stroke: var(--color-ink);
+  stroke-width: 1.5;
+}
+.sb-knob {
+  fill: var(--color-ink);
+  filter: drop-shadow(0 1px 2px #00000080);
+}
+.sb-dot {
+  fill: var(--color-ground);
+  stroke: var(--color-ink);
+  stroke-width: 1.5;
+}
+
+/* The days under the strip, each at the middle of its stretch. */
+.sb-days {
+  position: absolute;
+  inset: auto 0 0;
+  height: 16px;
+  pointer-events: none;
+}
+.sb-days span {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  font: 500 var(--text-label) / 16px var(--font-body);
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+.sb-days span.is-on {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+/* ---- the pill over the playhead ---- */
+.sb-pill {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-raised) 92%, transparent);
+  box-shadow:
+    var(--shadow-float),
+    inset 0 0 0 1px var(--color-line);
+  font: var(--text-body) var(--font-body);
+  color: var(--color-ink);
+  white-space: nowrap;
+  pointer-events: none;
+  will-change: transform;
+}
+.sb-pill b,
+.sb-pill-time {
+  font-weight: 600;
+}
+.sb-pill-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--color-line);
+}
+.sb-pill-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.sb-pill-soft,
+.sb-pill-dir {
+  color: var(--color-ink-2);
+}
+.sb-pill-dir {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sb-pill-dir .g-arrow {
+  stroke: currentColor;
+}
+.sb-pill-none {
+  color: var(--color-ink-muted);
+}
+
+/* The small print stands over the pill's lane, clear of it. */
+.map-footer:not(.is-bare) .map-print {
+  bottom: calc(100% + 52px);
+}
+
+/* "Show ECMWF on the map": a chip over the bar's right end, where an hour
+   is past the map's own model and another reaches it. */
+.map-reach {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+}
+.map-reach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+  font: 500 var(--text-label) var(--font-body);
+  cursor: pointer;
+}
+
+/* ---- narrower: the key goes first ---- */
+@container scrub (max-width: 1040px) {
+  .sb-key {
+    display: none;
+  }
+}
+/* ---- a phone: the spot on its own line, then the controls, then the
+   strip; a thumb's targets ---- */
+@container scrub (max-width: 640px) {
+  .sb-top {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "spot spot spot spot"
+      "tr . modes now";
+    column-gap: 8px;
+    row-gap: 2px;
+  }
+  .scrub.is-bare .sb-top {
+    grid-template-areas: "tr hint hint now";
+  }
+  .sb-spot {
+    grid-area: spot;
+    min-height: 40px;
+  }
+  .sb-close {
+    margin-left: auto;
+  }
+  .sb-transport {
+    grid-area: tr;
+  }
+  .sb-hint {
+    grid-area: hint;
+  }
+  .sb-space {
+    display: none;
+  }
+  .sb-modes {
+    grid-area: modes;
+  }
+  .sb-now {
+    grid-area: now;
+  }
+}
+@media (max-width: 720px) {
+  .scrub {
+    margin: 0 8px calc(8px + env(safe-area-inset-bottom));
+    padding: 6px 10px 4px;
+  }
+}
