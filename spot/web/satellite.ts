@@ -174,22 +174,6 @@ export function inFrame(picture: SpotPicture, width: number, height: number) {
   };
 }
 
-const SCALE_STEPS = [50, 100, 200, 250, 500, 1000, 2000, 2500, 5000];
-
-/**
- * The scale bar: the longest round distance whose bar is no longer than
- * `maxPixels` on the screen, at `metresPerScreenPixel`.
- */
-export function scaleBar(metresPerScreenPixel: number, maxPixels: number) {
-  const fits = SCALE_STEPS.filter((m) => m / metresPerScreenPixel <= maxPixels);
-  const metres = fits.at(-1) ?? SCALE_STEPS[0];
-  return {
-    metres,
-    pixels: metres / metresPerScreenPixel,
-    label: metres >= 1000 ? `${metres / 1000} km` : `${metres} m`,
-  };
-}
-
 /**
  * The credit under the picture: the imagery's own clause of the list's
  * attribution ("Contains modified Copernicus Sentinel data 2017–2026,
