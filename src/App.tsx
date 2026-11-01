@@ -1703,7 +1703,7 @@ export default function App() {
       let n = mpp * 3779.5;
       const p = 10 ** (Math.floor(Math.log10(n)) - 1);
       n = Math.round(n / p) * p;
-      setScale(`SCALE 1 : ${n.toLocaleString("en-IE").replace(/,/g, " ")}`);
+      setScale(`Scale 1 : ${n.toLocaleString("en-IE").replace(/,/g, " ")}`);
       const areas = foilAreas.current;
       if (areas) setFoilNearId(nearestArea(areas, c.lng, c.lat)?.id ?? null);
       const b = map.getBounds();

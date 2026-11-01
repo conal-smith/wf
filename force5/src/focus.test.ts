@@ -162,20 +162,20 @@ describe("the ride rose's geometry", () => {
     const words = d.labels.map((l) => l.text);
     expect(words).toEqual(
       expect.arrayContaining([
-        "NO-GO",
-        "OUT",
+        "No-go",
+        "Out",
         "105–155°",
-        "HOME",
+        "Home",
         "295–345°",
-        "SLOW",
-        "DRIFT",
+        "Slow",
+        "Drift",
         "0.5 NM",
       ]),
     );
     // Past 120° off the wind each side: a faint arc along the rim, and its
     // word faint too.
     expect(d.slow).toMatch(/^M.*A/);
-    expect(d.labels.find((l) => l.text === "SLOW")!.kind).toBe("faint");
+    expect(d.labels.find((l) => l.text === "Slow")!.kind).toBe("faint");
     // The half-way ring, half the radius out, with its distance.
     expect(d.rings).toHaveLength(1);
     expect(d.rings[0].r).toBeCloseTo(75);
@@ -188,7 +188,7 @@ describe("the ride rose's geometry", () => {
     expect(d.drift?.out).toBe(true);
     expect(
       d.labels.filter((l) => l.kind === "warn").map((l) => l.text),
-    ).toEqual(["DRIFT", "OUT TO SEA"]);
+    ).toEqual(["Drift", "Out to sea"]);
     expect(d.rings).toHaveLength(0);
   });
 
@@ -196,8 +196,8 @@ describe("the ride rose's geometry", () => {
     const rose = rideRose(rider, { ...day, from: 225 }, DOLLYMOUNT)!;
     const small = roseDrawing(rose, 100, null);
     expect(small.labels.map((l) => l.text)).not.toContain("105–155°");
-    expect(small.labels.map((l) => l.text)).not.toContain("SLOW");
-    expect(small.labels.map((l) => l.text)).toContain("OUT");
+    expect(small.labels.map((l) => l.text)).not.toContain("Slow");
+    expect(small.labels.map((l) => l.text)).toContain("Out");
     expect(small.slow).not.toBeNull();
     const tiny = roseDrawing(rose, 80, null);
     expect(tiny.labels).toHaveLength(0);
@@ -221,18 +221,18 @@ describe("the ride rose's geometry", () => {
   });
 
   it("keeps the foot box on the bezel, or pinned inside the clear map", () => {
-    expect(footBox("SW 16 g22", "CROSS", 150)).toMatchObject({
+    expect(footBox("SW 16 g22", "Cross", 150)).toMatchObject({
       x: 0,
       y: 156.5,
     });
-    const pinned = footBox("SW 16 g22", "CROSS", 900, {
+    const pinned = footBox("SW 16 g22", "Cross", 900, {
       left: -195,
       right: 195,
       bottom: 300,
     });
     expect(pinned.y).toBe(286);
     expect(pinned.x).toBe(0);
-    const edge = footBox("SW 16 g22", "CROSS", 150, {
+    const edge = footBox("SW 16 g22", "Cross", 150, {
       left: -20,
       right: 400,
       bottom: 900,
@@ -245,16 +245,16 @@ describe("the loupe's reading", () => {
   it("writes the wind in the rider's units with the way it meets the beach", () => {
     const loupe = loupeRose(rider, { ...day, from: 225 }, DOLLYMOUNT, "kn")!;
     expect(loupe.reading).toBe("SW 16 g22");
-    expect(loupe.relation).toBe("CROSS");
+    expect(loupe.relation).toBe("Cross");
     expect(loupe.warn).toBe(false);
     const kmh = loupeRose(rider, { ...day, from: 225 }, DOLLYMOUNT, "km/h")!;
     expect(kmh.reading).toBe("SW 30 g41");
     const off = loupeRose(rider, { ...day, from: 300 }, DOLLYMOUNT, "kn")!;
-    expect(off.relation).toBe("OFF");
+    expect(off.relation).toBe("Off");
     expect(off.warn).toBe(true);
     expect(
       loupeRose(rider, { ...day, from: 265 }, DOLLYMOUNT, "kn")!.relation,
-    ).toBe("CROSS-OFF");
+    ).toBe("Cross-off");
   });
 
   it("names the units where there is no beach, and drops a gust no stronger than the wind", () => {
@@ -265,7 +265,7 @@ describe("the loupe's reading", () => {
       "mph",
     )!;
     expect(point.reading).toBe("SW 18");
-    expect(point.relation).toBe("MPH");
+    expect(point.relation).toBe("mph");
     expect(point.warn).toBe(false);
     expect(loupeRose(rider, { ...day, from: null }, null, "kn")).toBeNull();
   });
