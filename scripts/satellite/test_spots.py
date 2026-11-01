@@ -136,3 +136,24 @@ class PublishTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Enhance(unittest.TestCase):
+    """A hazy picture comes out clearer, the same size, and without a cast."""
+
+    def test_clearer_and_true(self):
+        import numpy as np
+        from PIL import Image
+        rng = np.random.default_rng(1)
+        base = rng.uniform(0.35, 0.65, (60, 120, 1)) * np.array([0.8, 1.0, 0.95])
+        hazy = Image.fromarray((base * 255).astype(np.uint8))
+        out = spots.enhance(hazy)
+        self.assertEqual(out.size, hazy.size)
+        a = np.asarray(hazy).astype(float)
+        b = np.asarray(out).astype(float)
+        self.assertGreater(b.std(), a.std() * 1.2)
+        # More colour, but no cast: the channels keep their order, and each
+        # moves away from the grey the way it already leant.
+        ma, mb = a.mean(axis=(0, 1)), b.mean(axis=(0, 1))
+        self.assertEqual(list(np.argsort(ma)), list(np.argsort(mb)))
+        self.assertTrue(np.all(np.sign(ma - ma.mean()) == np.sign(mb - mb.mean())))

@@ -36,6 +36,7 @@ import { Skeleton } from "../../ui/Skeleton";
 import { tv } from "../../ui/tv";
 import {
   inFrame,
+  lift,
   loadSpotPictures,
   spotPicture,
   type SpotPictures,
@@ -182,7 +183,7 @@ export function SpotPicture({
     >
       {shown && (
         <img
-          className={s.image()}
+          className={s.image({ className: lift(shown) })}
           src={shown.urls.high}
           width={shown.width}
           height={shown.height}

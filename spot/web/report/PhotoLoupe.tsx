@@ -23,7 +23,7 @@ import {
   type RoseScale,
 } from "../../../force5/src/focus";
 import { tv } from "../../../ui/tv";
-import type { PictureTide, SpotPicture } from "../satellite";
+import { lift, type PictureTide, type SpotPicture } from "../satellite";
 
 const styles = tv({
   slots: {
@@ -112,7 +112,10 @@ export function PhotoLoupe({
         <img
           key={t}
           className={s.img({
-            className: t === tide ? "opacity-100" : "opacity-0",
+            className: [
+              t === tide ? "opacity-100" : "opacity-0",
+              lift(picture),
+            ],
           })}
           src={picture.urls[t]}
           alt={

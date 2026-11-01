@@ -108,6 +108,28 @@ def picture(get_tile, area, lon, lat, zoom, width, height):
     return Image.alpha_composite(paper, rgba).convert("RGB"), cover
 
 
+def enhance(image, stretch=0.55, colour=1.18, clarity=22, sharpen=55):
+    """The picture clearer, as the owner chose on the mock-ups (2026-10-31,
+    the "soft" treatment): the Sentinel-2 composites are hazy at 10 m a pixel.
+    One stretch for all three channels from the luminance's own ends (no
+    colour cast), a little more colour held back in the brightest sand, then
+    local contrast and a fine sharpen for the upscaled pixels."""
+    import numpy as np
+    from PIL import Image, ImageFilter
+    a = np.asarray(image.convert("RGB")).astype(np.float32) / 255
+    weights = np.array([0.2126, 0.7152, 0.0722], np.float32)
+    lum = a @ weights
+    lo, hi = np.percentile(lum, 0.4), np.percentile(lum, 99.6)
+    if hi - lo > 1e-3:
+        a = a + (np.clip((a - lo) / (hi - lo), 0, 1) - a) * stretch
+    mean = a.mean(axis=2, keepdims=True)
+    bright = (a @ weights)[..., None]
+    a = np.clip(mean + (a - mean) * (1 + (colour - 1) * (1 - bright ** 3)), 0, 1)
+    out = Image.fromarray((a * 255 + 0.5).astype(np.uint8))
+    out = out.filter(ImageFilter.UnsharpMask(radius=36, percent=clarity, threshold=0))
+    return out.filter(ImageFilter.UnsharpMask(radius=1.4, percent=sharpen, threshold=2))
+
+
 def encode(image, quality):
     buf = io.BytesIO()
     image.save(buf, "WEBP", quality=quality, method=6)
@@ -168,6 +190,7 @@ def main():
     p.add_argument("--width", type=int, default=1200)
     p.add_argument("--height", type=int, default=600)
     p.add_argument("--quality", type=int, default=78)
+    p.add_argument("--plain", action="store_true", help="the composite as it is, without enhance()")
     a = p.parse_args()
 
     places = json.load(open(a.spots))
@@ -200,7 +223,7 @@ def main():
             for tide, image in images.items():
                 entry[tide] = f"{place['id']}-{tide}.webp"
                 with open(os.path.join(a.out, entry[tide]), "wb") as fh:
-                    fh.write(encode(image, a.quality))
+                    fh.write(encode(image if a.plain else enhance(image), a.quality))
             listed.append(entry)
             print(f"{place['id']}: {area['id']}", flush=True)
             continue
@@ -214,6 +237,9 @@ def main():
         "width": a.width,
         "height": a.height,
         "attribution": attribution,
+        # Cut with enhance(): the pages draw these as they are, and lift
+        # an older set's hazy pictures themselves (spot/web/satellite.ts).
+        "enhanced": not a.plain,
         "imagery": {area["id"]: area["base"] for area in areas if area["base"]},
         "spots": listed,
     }

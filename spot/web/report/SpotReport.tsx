@@ -34,7 +34,7 @@ import { WarningMark, warningName } from "../Warnings";
 import { WaterMark, noticeWords } from "../WaterQuality";
 import { RING, tv } from "../../../ui/tv";
 import { SkyGlyph } from "../glyphs";
-import { pictureCredit, type PictureTide } from "../satellite";
+import { lift, pictureCredit, type PictureTide } from "../satellite";
 import {
   FORECAST_DAYS,
   HOUR,
@@ -569,7 +569,7 @@ function NearThumb({ id, lat, lon }: { id: string; lat: number; lon: number }) {
   if (!picture) return <span className={s.nearImg({ className: "bg-line" })} />;
   return (
     <img
-      className={s.nearImg()}
+      className={s.nearImg({ className: lift(picture) })}
       src={picture.urls.high}
       alt=""
       loading="lazy"

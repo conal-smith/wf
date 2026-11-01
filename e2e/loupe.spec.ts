@@ -201,10 +201,9 @@ test("on a phone the rose fits above the dock, and stays readable zoomed out or 
   await open(page, "dollymount", 390, 844);
   const reading = await firstHour(page, "CROSS");
   const r = rose(page);
-  // Flown in to fit: the bezel inside the screen's width, its foot box above the dock.
-  const rim = await page
-    .locator(".map-loupe-edge:not(.is-inner)")
-    .boundingBox();
+  // Flown in to fit: the rim inside the screen's width, its foot box above
+  // the dock (the rim is the one fine line now, the bezel's inner edge).
+  const rim = await page.locator(".map-loupe-edge.is-inner").boundingBox();
   expect(rim!.x).toBeGreaterThanOrEqual(0);
   expect(rim!.x + rim!.width).toBeLessThanOrEqual(390);
   const foot = await r.locator(".map-loupe-foot-box").boundingBox();
