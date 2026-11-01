@@ -25,15 +25,7 @@ import { type RidingSpot, type SpotForecast } from "../../mcp/api/forecast";
 import { favourites } from "../../shared/web/favourites";
 import { onPrefsChange, signedInHint } from "../../shared/web/riderSync";
 import { usePageTitle } from "../../shared/web/usePageTitle";
-import {
-  Button,
-  Empty,
-  Heading,
-  Notice,
-  Row,
-  Rows,
-  Skeleton,
-} from "../../ui";
+import { Button, Empty, Heading, Notice, Row, Rows, Skeleton } from "../../ui";
 import { RING, tv } from "../../ui/tv";
 import { SpotFrame } from "./Frame";
 import { KeepStar } from "./glyphs";
@@ -47,6 +39,8 @@ const styles = tv({
   slots: {
     main: "relative flex flex-col gap-4 pt-7 pb-12 max-sm:pt-5",
     starWord: "max-sm:sr-only",
+    head: "flex flex-col gap-2",
+    lead: "m-0 max-w-form font-body text-prose leading-normal text-pretty text-ink-2",
     address: "wrap-anywhere text-ink",
     // The index: a county a section, kept apart by space, its name beside
     // its places on a wide screen; the places in one soft card, as many
@@ -251,12 +245,13 @@ function SpotIndex({ spots }: { spots: readonly RidingSpot[] }) {
   }, [spots]);
   return (
     <main className={s.main()}>
-      <Heading
-        level="page"
-        lead={`${spots.length} riding places, by county, each with its forecast hour by hour.`}
-      >
-        Spot forecasts
-      </Heading>
+      <div className={s.head()}>
+        <Heading level="page">Spot forecasts</Heading>
+        <p className={s.lead()}>
+          {spots.length} riding places, by county, each with its forecast hour
+          by hour.
+        </p>
+      </div>
       <div className={s.index()}>
         {counties.map(([county, places]) => (
           <section

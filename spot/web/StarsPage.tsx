@@ -43,14 +43,7 @@ import {
 } from "../../mcp/api/forecast";
 import { siteSource } from "../../shared/web/forecastSource";
 import { usePageTitle } from "../../shared/web/usePageTitle";
-import {
-  Heading,
-  Link,
-  NoticeMark,
-  Skeleton,
-  StarGlyphs,
-  Tag,
-} from "../../ui";
+import { Heading, Link, NoticeMark, Skeleton, StarGlyphs, Tag } from "../../ui";
 import { MONO_LABEL, tv } from "../../ui/tv";
 import { SpotFrame } from "./Frame";
 import { ledger, type Ledger } from "./ledger";
@@ -61,6 +54,8 @@ import { useWidth } from "./useWidth";
 const styles = tv({
   slots: {
     main: "flex max-w-page flex-col gap-5 pt-7 pb-12 max-sm:pt-5",
+    head: "flex flex-col gap-2",
+    lead: "m-0 max-w-form font-body text-prose leading-normal text-pretty text-ink-2",
     // The key: the glyphs in a column of their own, the words beside them,
     // so the lines start together.
     glyphs:
@@ -122,12 +117,14 @@ export default function StarsPage() {
   return (
     <SpotFrame back={named ? mapSpotHref(named) : CHART_HREF}>
       <main className={s.main()} ref={chartRef}>
-        <Heading
-          level="page"
-          lead="We rate every daylight hour out of five stars, from four numbers: ours, unless you have made them your own in Settings, from the site menu."
-        >
-          How the stars work
-        </Heading>
+        <div className={s.head()}>
+          <Heading level="page">How the stars work</Heading>
+          <p className={s.lead()}>
+            We rate every daylight hour out of five stars, from four numbers:
+            ours, unless you have made them your own in Settings, from the site
+            menu.
+          </p>
+        </div>
         <RiderSwitch rider={rider} onChange={changeRider} />
         <ul className={s.glyphs()}>
           <li className={s.glyph()}>
@@ -163,8 +160,8 @@ export default function StarsPage() {
               <NoticeMark level="water">Water</NoticeMark>
             </span>
             <span className="col-span-2">
-              So does a bathing water prohibition or advice against bathing
-              from the EPA, at a beach near the spot.
+              So does a bathing water prohibition or advice against bathing from
+              the EPA, at a beach near the spot.
             </span>
           </li>
           <li className={s.glyph()}>
@@ -348,8 +345,7 @@ function BandTable({ rider }: { rider: Rider }) {
                 data-band={column.key}
               >
                 <td className={s.td()}>
-                  {column.name}{" "}
-                  {column.you && <Tag>you</Tag>}
+                  {column.name} {column.you && <Tag>you</Tag>}
                 </td>
                 <td className={s.td({ className: s.num() })}>
                   {knots(band.min)}
@@ -1018,9 +1014,8 @@ function WorkedExample({ spotId, rider }: { spotId: string; rider: Rider }) {
           size={14}
           label={starsText(result.rating)}
         />{" "}
-        on the{" "}
-        <Link href={spotHref(example.spot.id)}>spot page</Link>
-        . Stars: {riderWords(rider)}.
+        on the <Link href={spotHref(example.spot.id)}>spot page</Link>. Stars:{" "}
+        {riderWords(rider)}.
       </p>
     </>
   );
