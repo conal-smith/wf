@@ -148,9 +148,9 @@ test("with the notice in force, the Your stars card and the week say why there a
   await expect(card).toContainText("No stars while it lasts");
   await expect(card.locator('[data-notice-mark="water"]')).toBeVisible();
   await expect(card).not.toContainText("Not rated");
-  await expect(
-    page.locator("[data-water-notice]").first(),
-  ).toContainText(" · now · ");
+  await expect(page.locator("[data-water-notice]").first()).toContainText(
+    " · now · ",
+  );
   // A day whose every daylight hour it takes shows its mark for the stars.
   const monday = page.locator('[data-day-card="2026-09-14"]');
   await expect(monday.locator('[data-notice-mark="water"]')).toBeVisible();

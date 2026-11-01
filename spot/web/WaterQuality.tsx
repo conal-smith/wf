@@ -28,16 +28,31 @@ export function restrictionShort(item: Pick<WaterItem, "restriction">) {
   return "Bathing restricted";
 }
 
-/** The notices, a card each. Null with none, or none checked. */
-export function WaterNotices({ water }: { water: WaterAnswer }) {
+/**
+ * The notices, a card each; those in `folded` kept for the group's "more"
+ * (Notices.tsx). Null with none, or none checked.
+ */
+export function WaterNotices({
+  water,
+  folded,
+}: {
+  water: WaterAnswer;
+  folded?: ReadonlySet<string>;
+}) {
   const s = noticeListStyles();
   if (water.status !== "current" || !water.items.length) return null;
   return (
-    <ul className={s.list()} id="water-quality" data-water-quality>
+    <ul
+      className={s.list()}
+      id="water-quality"
+      data-water-quality
+      hidden={water.items.every((item) => folded?.has(`n:${item.id}`))}
+    >
       {water.items.map((item) => (
         <li
           key={item.id}
           data-water-notice={item.replaces_ratings ? "replaces" : "beside"}
+          hidden={folded?.has(`n:${item.id}`)}
         >
           <Notice
             level={item.replaces_ratings ? "water" : "water-advice"}

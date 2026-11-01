@@ -1329,7 +1329,9 @@ function Readout({
             {besideMark(row) && <NoticeMark level={besideMark(row)!} />}
           </span>
         ) : standIn(row) ? (
-          <NoticeMark level={standIn(row)!.level}>{standIn(row)!.word}</NoticeMark>
+          <NoticeMark level={standIn(row)!.level}>
+            {standIn(row)!.word}
+          </NoticeMark>
         ) : (
           <b className={s.roValue()}>{row.hour.daylight ? "–" : "Dark"}</b>
         )}

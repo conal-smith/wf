@@ -71,7 +71,9 @@ describe("the spot report's sums", () => {
       rows: [
         hour(3, { warning: { level: "red", ids: [], replaces_rating: true } }),
         hour(9, { water: { ids: [], replaces_rating: true } }),
-        hour(13, { warning: { level: "orange", ids: [], replaces_rating: true } }),
+        hour(13, {
+          warning: { level: "orange", ids: [], replaces_rating: true },
+        }),
       ],
     } as never;
     // The red one is in the dark: the orange is the day's.

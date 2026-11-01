@@ -93,16 +93,34 @@ export function warningWhen(item: Pick<WarningItem, "onset" | "expiry">): {
   };
 }
 
-/** The warnings, a notice each. Null with none, or none checked. */
-export function WarningNotices({ warnings }: { warnings: WarningsAnswer }) {
+/**
+ * The warnings, a notice each; those in `folded` kept for the group's "more"
+ * (Notices.tsx). Null with none, or none checked.
+ */
+export function WarningNotices({
+  warnings,
+  folded,
+}: {
+  warnings: WarningsAnswer;
+  folded?: ReadonlySet<string>;
+}) {
   const s = noticeListStyles();
   if (warnings.status !== "current" || !warnings.items.length) return null;
   return (
-    <ul className={s.list()} id="warnings" data-warnings>
+    <ul
+      className={s.list()}
+      id="warnings"
+      data-warnings
+      hidden={warnings.items.every((item) => folded?.has(`w:${item.id}`))}
+    >
       {warnings.items.map((item) => {
         const when = warningWhen(item);
         return (
-          <li key={item.id} data-warning={item.level}>
+          <li
+            key={item.id}
+            data-warning={item.level}
+            hidden={folded?.has(`w:${item.id}`)}
+          >
             <Notice
               level={item.level}
               title={<span data-warning-headline>{warningTitle(item)}</span>}

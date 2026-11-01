@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { foldedNotices } from "./Notices";
 import { besideMark, standIn } from "./report/report";
 import { headlineText, warningTitle, warningWhen } from "./Warnings";
 import { restrictionShort } from "./WaterQuality";
@@ -42,7 +43,10 @@ describe("a warning's notice", () => {
     ).toBe("Red marine violent storm warning from Valentia to Loop Head");
     // A headline that already opens with its level, or names another, as it is.
     expect(
-      warningTitle({ level: "yellow", headline: "Yellow rain warning for Cork" }),
+      warningTitle({
+        level: "yellow",
+        headline: "Yellow rain warning for Cork",
+      }),
     ).toBe("Yellow rain warning for Cork");
     expect(
       warningTitle({
@@ -111,5 +115,39 @@ describe("what stands in an hour's stars", () => {
     expect(besideMark({ warning: warning("yellow") })).toBe("yellow");
     expect(besideMark({ water: water(false) })).toBe("water-advice");
     expect(besideMark({ warning: warning("orange") })).toBe(null);
+  });
+});
+
+describe("the notices a stormy day folds", () => {
+  const answer = (levels: string[]) =>
+    ({
+      status: "current",
+      items: levels.map((level, i) => ({
+        id: String(i),
+        level,
+        replaces_ratings: level !== "yellow",
+      })),
+    }) as never;
+  const water = (takes: boolean[]) =>
+    ({
+      status: "current",
+      items: takes.map((t, i) => ({ id: String(i), replaces_ratings: t })),
+    }) as never;
+  const none = { status: "current", items: [] } as never;
+
+  it("shows two, and keeps the rest behind more", () => {
+    expect([...foldedNotices(answer(["yellow", "yellow"]), none)]).toEqual([]);
+    expect([
+      ...foldedNotices(answer(["yellow", "yellow", "yellow", "yellow"]), none),
+    ]).toEqual(["w:2", "w:3"]);
+  });
+
+  it("never folds one that takes the stars", () => {
+    expect([
+      ...foldedNotices(answer(["red", "orange", "yellow"]), water([true])),
+    ]).toEqual(["w:2"]);
+    expect([
+      ...foldedNotices(answer(["orange", "yellow"]), water([false])),
+    ]).toEqual(["n:0"]);
   });
 });

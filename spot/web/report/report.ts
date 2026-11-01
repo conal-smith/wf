@@ -31,7 +31,10 @@ export function standIn(
 ): StandIn | null {
   const warning = row.warning;
   if (warning?.replaces_rating && warning.level !== "yellow")
-    return { level: warning.level, word: `${LEVEL_LABEL[warning.level]} warning` };
+    return {
+      level: warning.level,
+      word: `${LEVEL_LABEL[warning.level]} warning`,
+    };
   if (row.water?.replaces_rating) return { level: "water", word: NOTICE_MARK };
   return null;
 }
