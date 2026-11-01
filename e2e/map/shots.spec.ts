@@ -1,22 +1,24 @@
 import {
+  barName,
+  barReady,
   expect,
   layersRail,
   modelChoice,
-  moreRows,
   openFromMenu,
   rememberSpot,
   saveSettings,
   SPOTS_KEY,
   test,
+  timeSlider,
   type Page,
 } from "../fixtures";
-import { sampleStrip } from "../columns";
 
 /**
  * The map's visual baseline: one PNG per state per width, committed.
  *
- * The chart's boxes, lights, dialogs and dock, each state as a reader reaches
- * it — a panel open, a spot chosen, hours drawn — and each the same twice, so
+ * The chart's boxes, lights, dialogs and scrub bar, each state as a reader
+ * reaches it — a panel open, a spot chosen, its week drawn — and each the
+ * same twice, so
  * a change to the map's CSS shows up as a picture of what it changed.
  *
  * What is held still, and how:
@@ -31,7 +33,7 @@ import { sampleStrip } from "../columns";
  *                 line of text a little;
  *   the layout    watched until it stops, see `settled`.
  *
- * Each state is a test of its own so that it opens its own context: the dock
+ * Each state is a test of its own so that it opens its own context: the map
  * remembers display choices in storage, and a shot must not inherit them.
  *
  * Not part of `npm run test:e2e`: `npm run map:shots` alone runs this file (see
@@ -42,8 +44,9 @@ import { sampleStrip } from "../columns";
 test.use({ reducedMotion: "reduce" });
 
 // Every state but the first visit's is a returning visitor's, with Brandon
-// Bay chosen last. That opens nothing: the map opens with no dock until a
-// spot is chosen, so the states about a spot's dock choose Brandon Bay.
+// Bay chosen last. That opens nothing: the scrub bar is a plain timeline
+// until a spot is chosen, so the state about a spot's week chooses Brandon
+// Bay.
 test.beforeEach(({ page }) => rememberSpot(page, "brandon"));
 
 /** Where a shot lands, relative to the repo root Playwright is run from. */
@@ -56,8 +59,8 @@ const shot = (state: string, width: number) =>
  * The chart's style is ours, but its coast comes from OpenFreeMap's tiles over
  * the network in every run, and a picture of their tiles is neither ours to
  * commit nor stable across a change of theirs. Hiding the canvas leaves
- * everything the map's own CSS draws: the paper beneath it, the neatline, the
- * lights, the panels, the dialogs and the dock. The map still loads.
+ * everything the map's own CSS draws: the paper beneath it, the lights, the
+ * panels, the dialogs and the scrub bar. The map still loads.
  */
 async function hideBasemap(page: Page) {
   await page.addInitScript(() => {
@@ -149,9 +152,19 @@ async function shoot(page: Page, state: string, width: number) {
   });
 }
 
+/**
+ * The head's search, opened first on a phone, where it is a round button
+ * until pressed.
+ */
+async function search(page: Page) {
+  const opener = page.locator("[data-spot-search-open]");
+  if (await opener.isVisible()) await opener.click();
+  return page.getByRole("combobox", { name: "Search spots" });
+}
+
 /** Choose a spot by name, as the head's search does. */
 async function pick(page: Page, words: string) {
-  await page.getByRole("combobox", { name: "Search spots" }).fill(words);
+  await (await search(page)).fill(words);
   await page.locator("[data-spot-option]").first().click();
 }
 
@@ -167,19 +180,21 @@ for (const { width, height } of [
       await shoot(page, "idle", width);
     });
 
-    test("a first visit, with no spot and so no dock", async ({ page }) => {
+    test("a first visit, with no spot and so a plain timeline", async ({
+      page,
+    }) => {
       await page.addInitScript(
         (key) => localStorage.removeItem(key),
         SPOTS_KEY,
       );
       await openMap(page);
-      await expect(page.locator(".dock")).toHaveCount(0);
+      await expect(barName(page)).toHaveCount(0);
       await shoot(page, "first-visit", width);
     });
 
     test("search open", async ({ page }) => {
       await openMap(page);
-      await page.getByRole("combobox", { name: "Search spots" }).fill("Dublin");
+      await (await search(page)).fill("Dublin");
       await expect(page.locator("[data-spot-option]").first()).toBeVisible();
       await shoot(page, "search", width);
     });
@@ -199,30 +214,17 @@ for (const { width, height } of [
       await shoot(page, "spot", width);
     });
 
-    test("the dock's hours", async ({ page }) => {
+    test("a spot's week", async ({ page }) => {
       await openMap(page);
       await pick(page, "Brandon Bay");
-      await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
-      await page.getByRole("slider", { name: "Forecast time" }).fill("12");
-      await shoot(page, "dock", width);
-    });
-
-    test("the dock's waves, sky and sea", async ({ page }) => {
-      await openMap(page);
-      await pick(page, "Brandon Bay");
-      await moreRows(page);
-      await expect(page.locator(".dock tr.tt-rain")).toHaveCount(1);
-      // Inside the sample's weather run, which starts three days on.
-      const noon = sampleStrip.findIndex(
-        (c) => c.date === "2026-09-17" && c.hour >= 12,
-      );
-      await page
-        .getByRole("slider", { name: "Forecast time" })
-        .fill(String(noon));
+      await barReady(page);
+      await timeSlider(page).fill("12");
+      // The week as it stands, not the focus ring the slider draws round it.
+      await timeSlider(page).blur();
       await expect(
-        page.locator(".dock tr.tt-sky .weather-cell").first(),
-      ).toBeVisible();
-      await shoot(page, "dock-more", width);
+        page.locator('.scrub [data-curve="wind"] .sb-line'),
+      ).toHaveAttribute("d", /^M/);
+      await shoot(page, "week", width);
     });
 
     test("a point tapped on the map", async ({ page }) => {
@@ -252,23 +254,13 @@ for (const { width, height } of [
         (el) => ((el as HTMLElement).style.visibility = ""),
       );
       await expect(page.locator(".pick-mark")).toHaveCount(1);
-      await expect
-        .poll(() => page.locator(".dock tr.tt-wind td .kn").count(), {
-          timeout: 30000,
-        })
-        .toBeGreaterThan(5);
+      // The point's week in the scrub bar: a place, not a riding spot.
+      await barReady(page);
+      await expect(page.locator(".scrub")).not.toHaveAttribute("data-spot");
+      await expect(
+        page.locator('.scrub [data-curve="wind"] .sb-line'),
+      ).toHaveAttribute("d", /^M/);
       await shoot(page, "point", width);
-    });
-
-    test("the dock's blend", async ({ page }) => {
-      await openMap(page);
-      await pick(page, "Brandon Bay");
-      await page
-        .locator(".dock")
-        .getByRole("button", { name: "Blend" })
-        .click();
-      await expect(page.locator(".dock .blend-chart")).toBeVisible();
-      await shoot(page, "dock-blend", width);
     });
 
     test("settings, at the forecast's part", async ({ page }) => {
@@ -281,7 +273,7 @@ for (const { width, height } of [
     test("the key", async ({ page }) => {
       await openMap(page);
       await openFromMenu(page, "About the map");
-      await expect(page.locator(".map-info .key")).toBeVisible();
+      await expect(page.locator(".map-info .mi-keys")).toBeVisible();
       await shoot(page, "key", width);
     });
 
@@ -351,10 +343,13 @@ for (const { width, height } of [
 
     test("focus ring", async ({ page }) => {
       await openMap(page);
+      // The first stop for the keys is the skip link, past the menu and the
+      // lights to the search (src/App.tsx), seen only with the focus.
       await page.keyboard.press("Tab");
-      await expect(
-        page.getByRole("button", { name: "Site menu" }),
-      ).toBeFocused();
+      await expect(page.locator("[data-skip-link]")).toBeFocused();
+      await expect(page.locator("[data-skip-link]")).toHaveText(
+        "Skip to the search",
+      );
       await shoot(page, "focus-ring", width);
     });
   });

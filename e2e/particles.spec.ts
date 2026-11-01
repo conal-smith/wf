@@ -6,6 +6,7 @@ import {
   layersRail,
   openFromMenu,
   test,
+  timeSlider,
   type Page,
 } from "./fixtures";
 
@@ -160,9 +161,9 @@ test("dragging carries the arrows with the map and defers field rebuilds until i
     .toBeGreaterThan(before.fields);
   await page.setViewportSize({ width: 820, height: 900 });
   await expectResumed(page);
-  // A spot chosen: the dock's slider moves the time.
+  // A spot chosen: the scrub bar's slider moves the time.
   await chooseSpot(page);
-  await page.getByRole("slider", { name: "Forecast time" }).fill("4");
+  await timeSlider(page).fill("4");
   await expectResumed(page);
 });
 

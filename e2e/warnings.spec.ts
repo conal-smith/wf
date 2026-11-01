@@ -5,9 +5,8 @@ import { SAMPLE_CLOCK } from "./columns";
 
 /**
  * Met Éireann's warnings on the site (force5/src/warnings.ts): the spot page's
- * notice cards and its rows, and the dock's strip and star cells, for a warning of
- * each level at Brandon Bay, and nothing but the link to met.ie from a file
- * too old to trust. The warnings file is routed in, as the tides are in
+ * notice cards and its rows, for a warning of each level at Brandon Bay, and
+ * nothing but the link to met.ie from a file too old to trust. The warnings file is routed in, as the tides are in
  * spot-page.spec.ts: `public/marine` is ingest output, never part of the e2e
  * site. SAMPLE_CLOCK is 21:00 UTC on 13 Sept, so tomorrow is daylight.
  *
@@ -335,100 +334,4 @@ test("a warnings file too old to trust shows nothing but the link to met.ie", as
       .locator("[data-warnings-source]")
       .getByRole("link", { name: "met.ie/warnings" }),
   ).toHaveAttribute("href", "https://www.met.ie/warnings");
-});
-
-test("on a phone the dock's strip says how many warnings there are, and opens to each in full", async ({
-  page,
-}) => {
-  await withWarnings(page, fresh());
-  await page.setViewportSize({ width: 393, height: 852 });
-  await page.goto("/?spot=brandon");
-  const strip = page.locator("[data-dock-warnings]");
-  await expect(strip).toBeVisible({ timeout: 30000 });
-  // One line: the highest level's tag, how many and their kinds, cut short
-  // inside the screen rather than run off it.
-  const summary = strip.getByRole("button", {
-    name: "3 Met Éireann warnings: Violent storm, Wind, Small craft",
-  });
-  await expect(summary).toBeVisible();
-  await expect(summary).toHaveAttribute("aria-expanded", "false");
-  await expect(summary.locator('[data-warning-mark="red"]')).toBeVisible();
-  await expect(summary).toContainText("3 warnings");
-  const kinds = summary.locator(".dk-warnings-kinds");
-  await expect(kinds).toHaveCSS("text-overflow", "ellipsis");
-  const edge = (el: Element) => el.getBoundingClientRect().right;
-  expect(await summary.evaluate(edge)).toBeLessThanOrEqual(393);
-  await expect(strip.locator("[data-warning]").first()).toBeHidden();
-  // Pressed, every warning under it, each over as many lines as it needs and
-  // all of it on the screen; pressed again, folded.
-  await summary.click();
-  await expect(summary).toHaveAttribute("aria-expanded", "true");
-  const items = strip.locator("[data-warning]");
-  await expect(items).toHaveCount(3);
-  for (const item of await items.all()) {
-    await expect(item).toBeVisible();
-    expect(await item.evaluate(edge)).toBeLessThanOrEqual(393);
-    expect(await item.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
-      true,
-    );
-  }
-  await expect(items.nth(1)).toContainText(
-    /Wind\s*Mon 14 Sept? 13:00 – Mon 14 Sept? 16:00/,
-  );
-  await expect(items.nth(1)).toHaveAttribute("href", "/spot/brandon#warnings");
-  await shot(page, "dock-warnings-phone");
-  await summary.click();
-  await expect(items.first()).toBeHidden();
-});
-
-test("the dock names the spot's warnings and marks their hours", async ({
-  page,
-}) => {
-  await withWarnings(page, fresh());
-  await page.goto("/?spot=brandon");
-  const strip = page.locator("[data-dock-warnings]");
-  await expect(strip).toBeVisible({ timeout: 30000 });
-  await expect(strip.locator("[data-warning]")).toHaveCount(3);
-  await expect(strip.locator("[data-warning]").first()).toHaveAttribute(
-    "data-warning",
-    "red",
-  );
-  await expect(strip.locator("[data-warning]").nth(1)).toContainText("Wind");
-  await expect(strip.locator("[data-warning]").nth(1)).toContainText(
-    /Mon 14 Sept? 13:00 – Mon 14 Sept? 16:00/,
-  );
-  await expect(strip.locator("[data-warning]").nth(1)).toHaveAttribute(
-    "href",
-    "/spot/brandon#warnings",
-  );
-  await expect(strip).toContainText("Met Éireann");
-
-  // Under orange and red the stars' row holds the warning; under yellow the
-  // stars, with its mark beside them.
-  const stars = page.locator(".dock tr.tt-stars");
-  await expect
-    .poll(() => stars.locator('[data-warning-mark="orange"]').count(), {
-      timeout: 30000,
-    })
-    .toBeGreaterThan(0);
-  expect(
-    await stars.locator('[data-warning-mark="red"]').count(),
-  ).toBeGreaterThan(0);
-  expect(
-    await stars.locator('[data-warning-mark="yellow"]').count(),
-  ).toBeGreaterThan(0);
-  await expect(
-    stars
-      .getByRole("img", { name: /no stars, Orange Met Éireann warning/ })
-      .first(),
-  ).toBeAttached();
-
-  // Scroll the hours to tomorrow afternoon, where the orange warning is.
-  await stars
-    .locator('[data-warning-mark="orange"]')
-    .first()
-    .evaluate((mark) =>
-      mark.scrollIntoView({ inline: "center", block: "nearest" }),
-    );
-  await shot(page, "dock-warnings");
 });

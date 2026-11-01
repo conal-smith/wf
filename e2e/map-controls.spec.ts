@@ -8,6 +8,7 @@ import {
   layersRail,
   openFromMenu,
   openMenu,
+  scrubBar,
   setLayer,
   siteNav,
   siteRow,
@@ -33,11 +34,11 @@ test("the chart's controls: zoom and Layers on the right, Layers the rail on a p
     await expect(
       controls.getByRole("button", { name, exact: true }),
     ).toBeVisible();
-  // Clear of the head and of the dock.
+  // Clear of the head and of the scrub bar.
   const box = (await controls.boundingBox())!;
-  const dock = (await page.locator(".map-footer").boundingBox())!;
+  const bar = (await page.locator(".map-footer").boundingBox())!;
   const head = (await page.locator("[data-top-bar]").boundingBox())!;
-  expect(box.y + box.height).toBeLessThan(dock.y);
+  expect(box.y + box.height).toBeLessThan(bar.y);
   expect(box.y).toBeGreaterThanOrEqual(head.y + head.height);
   // The menu is the site's navigation, in its groups, by keyboard, and no
   // layers in it: they are the rail.
@@ -92,9 +93,9 @@ test("the chart's controls: zoom and Layers on the right, Layers the rail on a p
     "aria-pressed",
     "true",
   );
-  // It stands clear of the dock, scrolling in the room above it.
+  // It stands clear of the scrub bar, scrolling in the room above it.
   const railBox = (await rail.boundingBox())!;
-  expect(railBox.y + railBox.height).toBeLessThanOrEqual(dock.y);
+  expect(railBox.y + railBox.height).toBeLessThanOrEqual(bar.y);
   // The chart's parts switch off and stay off.
   await setLayer(page, "Spot names", false);
   await expect(page.locator(".map-canvas")).toHaveClass(/no-names/);
@@ -136,7 +137,7 @@ test("the map's information is one dialog over the dimmed chart, from the menu's
       JSON.stringify({ foil: true }),
     ),
   );
-  // And Brandon Bay in the dock, from the link: the stars' link names it.
+  // And Brandon Bay in the scrub bar, from the link: the stars' link names it.
   await page.goto("/?spot=brandon");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
@@ -191,9 +192,9 @@ test("the map's information is one dialog over the dimmed chart, from the menu's
   await expect(info).toHaveCount(0);
   await expect(menu).toBeFocused();
   // The stars are explained in it, with the way on to the page that works
-  // them through for the spot in view; the dock has no "?" of its own.
+  // them through for the spot in view; the scrub bar has no "?" of its own.
   await expect(
-    page.locator(".dock").getByRole("button", { name: "How the stars work" }),
+    scrubBar(page).getByRole("button", { name: "How the stars work" }),
   ).toHaveCount(0);
   await openFromMenu(page, "About the map");
   await info.getByRole("tab", { name: "Stars" }).click();

@@ -1,4 +1,5 @@
 import {
+  barPill,
   closeLayers,
   expect,
   layersRail,
@@ -60,12 +61,17 @@ async function open(page: Page) {
 /** The chart, once nothing is on its way and three looks half a second apart agree. */
 async function photograph(page: Page) {
   const map = (await page.locator(".maplibregl-canvas").boundingBox())!;
-  const dock = (await page.locator(".map-footer").boundingBox())!;
+  // Clear of the scrub bar, and of the pill over its playhead, which moves
+  // along with the hour.
+  const foot = Math.min(
+    (await page.locator(".map-footer").boundingBox())!.y,
+    (await barPill(page).boundingBox())!.y,
+  );
   const clip = {
     x: map.x + 80,
     y: map.y + 100,
     width: map.width - 200,
-    height: dock.y - map.y - 140,
+    height: foot - map.y - 140,
   };
   const pending = inFlight.get(page)!;
   let last = await page.screenshot({ clip });
@@ -139,7 +145,7 @@ test("the satellite image draws at high and at low tide in the Malahide estuary,
 }) => {
   // Photographs of the chart, each waiting for it to settle, and a
   // reload: on a loaded runner its last steps ran past 45 s, though no step
-  // hung, as the blend squares' and the dock's long tests do.
+  // hung, as the blend squares' long tests do.
   test.slow();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

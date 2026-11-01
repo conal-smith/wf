@@ -1,5 +1,12 @@
 import { SAMPLE_CLOCK } from "./columns";
-import { expect, rememberSpot, test, type Page } from "./fixtures";
+import {
+  barName,
+  expect,
+  rememberSpot,
+  scrubBar,
+  test,
+  type Page,
+} from "./fixtures";
 import { readSampleRun } from "./sample";
 
 /**
@@ -175,7 +182,7 @@ test("a thread with a spot shows its name, its wind now and the way to the map",
     /active/,
     { timeout: 30000 },
   );
-  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
+  await expect(barName(page)).toHaveText("Dollymount");
 });
 
 test("a thread without a spot shows no card, and neither does a spot the map does not list", async ({
@@ -294,12 +301,13 @@ test("the reading keeps up with the clock on a thread left open, and stands down
 test("the map opens as a plain visit would for a spot it does not hold", async ({
   page,
 }) => {
-  // A first visit: no spot, and so no dock, as on `/`.
+  // A first visit: no spot, and so no spot's week in the scrub bar, as on `/`.
   await page.goto("/?spot=atlantis");
   await expect(page.locator(".spot-marker").first()).toBeAttached({
     timeout: 30000,
   });
-  await expect(page.locator(".dock")).toHaveCount(0);
+  await expect(barName(page)).toHaveCount(0);
+  await expect(scrubBar(page)).toHaveClass(/\bis-bare\b/);
   await expect(page.locator(".spot-marker.active")).toHaveCount(0);
   // A returning visitor: still nothing until a spot is chosen, as on `/`.
   await rememberSpot(page, "brandon");
@@ -308,6 +316,6 @@ test("the map opens as a plain visit would for a spot it does not hold", async (
   await expect(page.locator(".spot-marker").first()).toBeAttached({
     timeout: 30000,
   });
-  await expect(page.locator(".dock")).toHaveCount(0);
+  await expect(barName(page)).toHaveCount(0);
   await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
 });

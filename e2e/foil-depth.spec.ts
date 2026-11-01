@@ -1,4 +1,12 @@
-import { closeLayers, expect, setLayer, test, type Page } from "./fixtures";
+import {
+  barPill,
+  closeLayers,
+  expect,
+  setLayer,
+  test,
+  timeSlider,
+  type Page,
+} from "./fixtures";
 import { SAMPLE_CLOCK, sampleStrip } from "./columns";
 
 /**
@@ -125,12 +133,17 @@ function trackArchives(page: Page) {
  */
 async function photograph(page: Page) {
   const map = (await page.locator(".maplibregl-canvas").boundingBox())!;
-  const dock = (await page.locator(".map-footer").boundingBox())!;
+  // Clear of the scrub bar, and of the pill over its playhead, which moves
+  // along with the hour.
+  const foot = Math.min(
+    (await page.locator(".map-footer").boundingBox())!.y,
+    (await barPill(page).boundingBox())!.y,
+  );
   const clip = {
     x: map.x + 80,
     y: map.y + 100,
     width: map.width - 200,
-    height: dock.y - map.y - 140,
+    height: foot - map.y - 140,
   };
   const pending = inFlight.get(page)!;
   let last = await page.screenshot({ clip });
@@ -191,7 +204,7 @@ for (const ranges of [true, false])
       reads.set(path, [...(reads.get(path) ?? []), response.status()]);
     });
     await open(page, ranges);
-    const slider = page.getByRole("slider", { name: "Forecast time" });
+    const slider = timeSlider(page);
 
     await slider.fill(String(high.i));
     await expect(slider).toHaveValue(String(high.i));

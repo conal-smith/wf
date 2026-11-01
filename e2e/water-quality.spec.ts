@@ -5,10 +5,9 @@ import { SAMPLE_CLOCK } from "./columns";
 
 /**
  * The EPA's bathing water notices on the site (force5/src/waterQuality.ts):
- * the spot page's notice card and its rows, and the dock's strip and star cells, for
- * the prohibition at Portmarnock in the job's published fixture, moved a year
- * on to the sample's week. The file is routed in, as the warnings are in
- * warnings.spec.ts: `public/marine` is ingest output, never part of the e2e
+ * the spot page's notice card and its rows, for the prohibition at
+ * Portmarnock in the job's published fixture, moved a year on to the sample's
+ * week. The file is routed in, as the warnings are in warnings.spec.ts: `public/marine` is ingest output, never part of the e2e
  * site. SAMPLE_CLOCK is 21:00 UTC on Sun 13 Sept; the notice starts at the
  * beginning of Mon 14 Sept, Irish time, and stands until lifted.
  */
@@ -176,53 +175,4 @@ test("a notices file too old to trust shows none", async ({ page }) => {
   });
   await expect(page.locator("[data-water-quality]")).toHaveCount(0);
   await expect(page.locator("[data-hour-water]")).toHaveCount(0);
-});
-
-test("the dock names the spot's notice and marks its hours", async ({
-  page,
-}) => {
-  await withNotices(page, fresh());
-  await page.goto("/?spot=portmarnock");
-  const strip = page.locator("[data-dock-warnings]");
-  await expect(strip).toBeVisible({ timeout: 30000 });
-  const notice = strip.locator("[data-water-notice]");
-  await expect(notice).toHaveCount(1);
-  await expect(notice).toContainText("Bathing is prohibited");
-  await expect(notice).toHaveAttribute(
-    "href",
-    "/spot/portmarnock#water-quality",
-  );
-  await expect(strip).toContainText("EPA");
-
-  const stars = page.locator(".dock tr.tt-stars");
-  await expect
-    .poll(() => stars.locator('[data-water-mark="replaces"]').count(), {
-      timeout: 30000,
-    })
-    .toBeGreaterThan(0);
-  await expect(
-    stars.getByRole("img", { name: /no stars, bathing water notice/ }).first(),
-  ).toBeAttached();
-});
-
-test("on a phone the dock's strip names the notice, and opens to it in full", async ({
-  page,
-}) => {
-  await withNotices(page, fresh());
-  await page.setViewportSize({ width: 393, height: 852 });
-  await page.goto("/?spot=portmarnock");
-  const strip = page.locator("[data-dock-warnings]");
-  await expect(strip).toBeVisible({ timeout: 30000 });
-  const summary = strip.getByRole("button", {
-    name: "Bathing water notice: Bathing is prohibited",
-  });
-  await expect(summary).toBeVisible();
-  await expect(summary.locator('[data-water-mark="replaces"]')).toBeVisible();
-  await expect(strip.locator("[data-water-notice]")).toBeHidden();
-  await summary.click();
-  await expect(strip.locator("[data-water-notice]")).toBeVisible();
-  await expect(strip.locator("[data-water-notice]")).toHaveAttribute(
-    "href",
-    "/spot/portmarnock#water-quality",
-  );
 });

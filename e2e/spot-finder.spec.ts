@@ -1,4 +1,5 @@
 import {
+  barName,
   expect,
   siteNav,
   siteRow,
@@ -215,7 +216,7 @@ test.describe("on a desktop", () => {
     const keel = cards(page).filter({ hasText: "Keel Beach" });
     await keel.getByRole("button", { name: "Keel Beach on the chart" }).click();
     await expect(page).toHaveURL(/\/\?spot=keel$/);
-    await expect(page.locator(".dock .dk-name")).toHaveText("Keel Beach", {
+    await expect(barName(page)).toHaveText("Keel Beach", {
       timeout: 30000,
     });
     await page.goBack();
@@ -879,9 +880,10 @@ test.describe("on a desktop", () => {
     await expect(page.locator('[data-view-switch="spots"]')).toBeVisible({
       timeout: 30000,
     });
-    // A link to a spot on the chart is the full chart on it, with its dock.
+    // A link to a spot on the chart is the full chart on it, with its week
+    // in the scrub bar.
     await page.goto("/?spot=brandon");
-    await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay", {
+    await expect(barName(page)).toHaveText("Brandon Bay", {
       timeout: 30000,
     });
     await expect(page.locator('[data-view-switch="spots"]')).toBeVisible();
