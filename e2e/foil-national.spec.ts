@@ -6,6 +6,7 @@ import {
   openFromMenu,
   setLayer,
   test,
+  timeSlider,
   type Page,
 } from "./fixtures";
 import { SAMPLE_CLOCK, sampleStrip } from "./columns";
@@ -235,7 +236,7 @@ test("a national region draws on its own station's tide, answers a tap, and only
   page.on("pageerror", (error) => errors.push(error.message));
   const asked: string[] = [];
   await open(page, asked);
-  const slider = page.getByRole("slider", { name: "Forecast time" });
+  const slider = timeSlider(page);
 
   await slider.fill(String(high.i));
   await expect(slider).toHaveValue(String(high.i));

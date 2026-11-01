@@ -56,13 +56,17 @@ test("the chart draws every riding place and reads this deployment's forecast", 
     }, url);
     expect(answer, url).toEqual({ status: 200, json: true });
   }
-  // A first visit is the chart alone; a spot brings the dock and its hours.
-  await expect(page.locator(".dock")).toHaveCount(0);
+  // A first visit is the chart alone, the scrub bar a plain timeline; a
+  // spot brings its week, the wind drawn along it.
+  await expect(page.locator(".scrub .sb-name")).toHaveCount(0);
   if (manifests.length) {
     await page.goto("/?spot=brandon");
-    await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible({
+    await expect(page.locator(".scrub[data-ready]")).toBeVisible({
       timeout: 30000,
     });
+    await expect(
+      page.locator('.scrub [data-curve="wind"] .sb-line'),
+    ).toHaveAttribute("d", /^M/, { timeout: 30000 });
   }
   expect(errors).toEqual([]);
 });

@@ -41,7 +41,6 @@ import {
   type RoseScale,
 } from "./focus";
 import { FOIL_MIN_ZOOM } from "./foilDepth";
-import { drawNeatline } from "./neatline";
 import { isLakeWater } from "./pointSource";
 import { setMapView } from "./tiledField";
 import {
@@ -679,12 +678,10 @@ export default function WindMap(props: Props) {
     satellite = null,
     reducedMotion,
     bottomInset,
-    phone,
     you = null,
   } = props;
   const container = useRef<HTMLDivElement>(null);
   const particles = useRef<HTMLCanvasElement | null>(null);
-  const neat = useRef<SVGSVGElement>(null);
   const glass = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const windRef = useRef<WindLayer | null>(null);
@@ -1592,51 +1589,6 @@ export default function WindMap(props: Props) {
   const roseKey = rose ? JSON.stringify(rose) : "";
   useEffect(() => redrawRose.current(), [roseKey]);
 
-  // The neatline follows the map as it moves.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!ready || !map) return;
-    let raf = 0;
-    // The map's size, read when it changes: read on every frame of a move,
-    // it laid the page out again under the lights just moved.
-    let size = { width: 0, height: 0 };
-    const measure = () => {
-      const { width, height } = map.getContainer().getBoundingClientRect();
-      size = { width, height };
-    };
-    const place = () => {
-      raf = 0;
-      if (neat.current)
-        drawNeatline(neat.current, map, {
-          ...size,
-          // The frame runs down to the dock: on a phone the strip of the
-          // rider's spots sits inside it, as the mockup draws it.
-          bottom: size.height - bottomInset + (phone ? 54 : 0),
-          phone,
-          // The small print's "i" sits in the frame's foot on the left, over
-          // the latitudes there (src/map.css .map-print): on a phone it
-          // stands above the strip of the rider's spots.
-          clearBottom: phone ? 84 : 36,
-        });
-    };
-    const queue = () => {
-      if (!raf) raf = requestAnimationFrame(place);
-    };
-    const resized = () => {
-      measure();
-      queue();
-    };
-    measure();
-    place();
-    map.on("move", queue);
-    map.on("resize", resized);
-    return () => {
-      cancelAnimationFrame(raf);
-      map.off("move", queue);
-      map.off("resize", resized);
-    };
-  }, [ready, bottomInset, phone]);
-
   // The point tapped on the open map, marked where it was.
   useEffect(() => {
     const map = mapRef.current;
@@ -1660,7 +1612,6 @@ export default function WindMap(props: Props) {
         role="region"
         aria-label="Chart of Ireland's coast with the wing foil forecast"
       />
-      <svg ref={neat} className="map-neat" aria-hidden="true" />
       {!ready && !error && (
         <div className="map-loading" role="status">
           Drawing the chart…

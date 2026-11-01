@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { barName, barPill, barReady, expect, test } from "./fixtures";
 
 test("public riding places are on the chart and the Blast alias finds Kilcrea, with its sources behind the i", async ({
   page,
@@ -34,12 +34,10 @@ test("public riding places are on the chart and the Blast alias finds Kilcrea, w
   await page.locator("[data-spot-option]").click();
   const blast = page.locator('[data-spot-id="kilcrea"]');
   await expect(blast).toHaveClass(/\bsel\b/);
-  await expect(page.locator(".dock .dk-name")).toHaveText(
-    "Kilcrea — Malahide Estuary",
-  );
-  await expect(page.locator(".dock tr.tt-wind td .kn").first()).toHaveText(
-    /^\d+$/,
-  );
+  await expect(barName(page)).toHaveText("Kilcrea — Malahide Estuary");
+  // Its week is in, the hour's wind read out over the playhead.
+  await barReady(page);
+  await expect(barPill(page).locator("b")).toHaveText(/^\d+ kn$/);
   // The chart's own sources, the licences with them.
   await page.getByRole("button", { name: "Sources and small print" }).click();
   await expect(
@@ -52,5 +50,5 @@ test("public riding places are on the chart and the Blast alias finds Kilcrea, w
   await expect(page.locator('[data-spot-id="newtownards"]')).toHaveClass(
     /\bsel\b/,
   );
-  await expect(page.locator(".dock .dk-name")).toHaveText(/Newtownards/);
+  await expect(barName(page)).toHaveText(/Newtownards/);
 });

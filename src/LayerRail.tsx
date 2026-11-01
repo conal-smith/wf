@@ -12,28 +12,26 @@ import "./rail.css";
 
 /**
  * What stands below the rail on the chart, which it must not run into: the
- * spot's tools on the dock's edge (src/ForecastDock.tsx), the dock under
- * them, and Gust's button over the dock.
+ * scrub bar at the chart's foot (src/ScrubBar.tsx), and Gust's button.
  */
-const BELOW = "#dk-tools, .map-footer, .gust-launcher";
+const BELOW = ".map-footer, .gust-launcher";
 /** How clear of them the rail keeps, at the least. */
 const CLEAR = 12;
-
 /**
- * Where a box stands at rest: the dock's tools are held under the pointer
- * by a `translate` while the dock grows under a click (src/ForecastDock.tsx),
- * and go back to its edge as the pointer leaves them, with no layout to say
- * so. The rail is judged against where they go back to.
+ * Over the scrub bar, the lane its pill and its "Show … on the map" chip ride
+ * in as the playhead moves: kept clear too, whichever end they are at.
  */
-function resting(el: Element): Box {
+const PILL_LANE = 44;
+
+/** Where a box below the rail stands, the scrub bar's pill lane with it. */
+function below(el: Element): Box {
   const box = el.getBoundingClientRect();
-  const [, y = "0"] = getComputedStyle(el).translate.split(" ");
-  const by = parseFloat(y) || 0;
+  const lane = el.matches(".map-footer") ? PILL_LANE : 0;
   return {
     left: box.left,
     right: box.right,
-    top: box.top - by,
-    bottom: box.bottom - by,
+    top: box.top - lane,
+    bottom: box.bottom,
   };
 }
 
@@ -64,7 +62,7 @@ export default function LayerRail({
   groups: LayerGroup[];
   /** Open. */
   shown: boolean;
-  /** Changes as what is below it moves (the dock opens, grows or goes). */
+  /** Changes as what is below it moves (the scrub bar changes height). */
   layoutKey: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -89,17 +87,17 @@ export default function LayerRail({
     const measure = () => {
       const el = ref.current;
       if (!el) return;
-      const below = [...document.querySelectorAll(BELOW)].map(resting);
-      el.style.maxHeight = `${railRoom(el.getBoundingClientRect(), below, window.innerHeight, CLEAR)}px`;
+      const boxes = [...document.querySelectorAll(BELOW)].map(below);
+      el.style.maxHeight = `${railRoom(el.getBoundingClientRect(), boxes, window.innerHeight, CLEAR)}px`;
     };
     measure();
-    // Again as the dock opens, grows, shrinks or goes: the footer it stands
-    // in changes its height each time, a frame or more after the render that
-    // asked for it.
+    // Again as the scrub bar changes height (a spot chosen or let go, the
+    // window narrowed): the footer it stands in changes its height each time,
+    // a frame or more after the render that asked for it.
     const watch = new ResizeObserver(measure);
     document.querySelectorAll(BELOW).forEach((box) => watch.observe(box));
-    // And as anything below it comes to rest after gliding (Gust's button
-    // rises and falls with the dock), which no size change says.
+    // And as anything below it comes to rest after gliding (Gust's button),
+    // which no size change says.
     const settled = (event: TransitionEvent) => {
       if ((event.target as Element).matches?.(BELOW)) measure();
     };

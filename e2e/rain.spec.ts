@@ -1,21 +1,21 @@
 import {
   expect,
+  barReady,
   layerTile,
-  moreRows,
   openFromMenu,
   setLayer,
   test,
+  timeSlider,
   type Page,
 } from "./fixtures";
 import { sampleStrip } from "./columns";
 
 /**
  * Rain, hourly: the Rain layer over the chart (off at first, and then nothing
- * of it is read, neither its frames nor its code), and the dock's rain row,
- * which reads each hour's own rain where the weather is hourly and adds a
- * three-hourly column's hours up. The e2e site's ICON-EU weather is an hourly
- * run from HARMONIE's sample day for three days (scripts/sample-weather.mjs),
- * with a frame of rain an hour.
+ * of it is read, neither its frames nor its code), following the scrub bar's
+ * hour. A spot's rain hour by hour is on its page. The e2e site's ICON-EU
+ * weather is an hourly run from HARMONIE's sample day for three days
+ * (scripts/sample-weather.mjs), with a frame of rain an hour.
  */
 
 const FRAMES = /\/weather\/icon-eu-weather-[^/]+\/frames\/\d{3}\.json$/;
@@ -30,8 +30,7 @@ function watch(page: Page) {
   return asked;
 }
 
-const slider = (page: Page) =>
-  page.getByRole("slider", { name: "Forecast time" });
+const slider = timeSlider;
 const map = (page: Page) => page.locator(".map-canvas");
 
 /** The hour the map shows, as the rain layer must have it. */
@@ -65,9 +64,7 @@ test("turned on, it draws the hour shown under the chart's ink, and follows the 
   page.on("pageerror", (error) => errors.push(error.message));
   const asked = watch(page);
   await page.goto("/?spot=brandon");
-  await expect(page.locator(".dock tr.tt-wind")).toBeVisible({
-    timeout: 30000,
-  });
+  await barReady(page);
   await setLayer(page, "Rain", true);
 
   // The hour shown, read from its own frame: one hour's rain, under the relief.
@@ -154,45 +151,4 @@ test("with no rain published the page still works, and says so", async ({
   );
   await expect(map(page)).not.toHaveAttribute("data-rain", /./);
   expect(errors).toEqual([]);
-});
-
-test("the dock's rain row is per hour: each hourly column its own, a three-hour column its mean", async ({
-  page,
-}) => {
-  await page.goto("/?spot=brandon");
-  await expect(page.locator(".dock tr.tt-wind")).toBeVisible({
-    timeout: 30000,
-  });
-  await moreRows(page);
-  await expect(
-    page.locator('.dk-labs .dk-glyph[title="Rain, mm per hour"]'),
-  ).toHaveCount(1);
-  const cells = page.locator(".dock tr.tt-rain .rain-cell");
-  await expect
-    .poll(() => cells.count(), { timeout: 20000 })
-    .toBeGreaterThan(24);
-  const read = await cells.evaluateAll((spans) =>
-    spans.map((span) => ({
-      text: span.textContent,
-      title: span.getAttribute("title") ?? "",
-      part: span.classList.contains("is-part"),
-    })),
-  );
-  // Hourly weather under hourly columns: every hour its own figure, no dots.
-  const hourly = read.filter((cell) => / in the hour to /.test(cell.title));
-  expect(hourly.length).toBeGreaterThanOrEqual(12);
-  for (const cell of hourly) {
-    expect(cell.part).toBe(false);
-    expect(cell.text).toMatch(/^(0|<0\.1|\d+\.\d)$/);
-  }
-  expect(read.some((cell) => cell.part)).toBe(false);
-  // Further out the columns are three-hourly: the three hours added, per hour.
-  const threes = read.filter((cell) => / in the 3 h to /.test(cell.title));
-  expect(threes.length).toBeGreaterThan(0);
-  expect(threes[0].title).toMatch(/mm\/h/);
-  // The sky is each hour's own too: a glyph in every hourly column the run has.
-  const skies = await page
-    .locator(".dock tr.tt-sky td[data-i]")
-    .evaluateAll((tds) => tds.filter((td) => td.querySelector("svg")).length);
-  expect(skies).toBeGreaterThanOrEqual(hourly.length);
 });

@@ -3,8 +3,8 @@
 The wing-foil forecast for Ireland, drawn as an Admiralty chart crossed with an
 old broadsheet weather report (see [the brand](docs/BRAND.md)). The map shows
 the forecast wind over EMODnet depths, and every riding place as a light rated
-in stars for the hour selected; the dock below it is the chosen spot's week,
-hour by hour. The forecasts are Met Éireann HARMONIE, DWD ICON-EU, ECMWF IFS
+in stars for the hour selected; the scrub bar along its foot moves the
+chart's time, and draws the chosen spot's week. The forecasts are Met Éireann HARMONIE, DWD ICON-EU, ECMWF IFS
 and AIFS, NOAA GFS and GEFS, Météo-France ARPEGE and AROME, blended.
 
 ## Run the website

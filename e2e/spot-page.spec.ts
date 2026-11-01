@@ -1,5 +1,12 @@
-import { expect, test, type Page } from "./fixtures";
-import { SAMPLE_CLOCK } from "./columns";
+import {
+  barName,
+  expect,
+  scrubBar,
+  test,
+  timeSlider,
+  type Page,
+} from "./fixtures";
+import { SAMPLE_CLOCK, sampleStrip } from "./columns";
 
 /**
  * A riding place's own page, /spot/<id>, against the synthetic sample site:
@@ -7,8 +14,8 @@ import { SAMPLE_CLOCK } from "./columns";
  *
  * Every spec stands at SAMPLE_CLOCK (e2e/fixtures.ts): 21:00 UTC on 13 Sept
  * 2026, so the page opens on a night — today's rows are all dark — and the
- * daylight days follow. Tides are a fixture routed in, as in dock.spec.ts:
- * `public/marine` is git-ignored ingest output and never part of the e2e site.
+ * daylight days follow. Tides are a fixture routed in: `public/marine` is
+ * git-ignored ingest output and never part of the e2e site.
  */
 
 const HOUR = 3600000;
@@ -283,41 +290,64 @@ test("a map link to a spot that does not exist says so", async ({ page }) => {
   });
   const status = page.locator(".frame-status");
   await expect(status).toContainText("Spot not found: “does-not-exist”.");
-  await expect(page.locator(".dock .dk-name")).toHaveCount(0);
+  await expect(barName(page)).toHaveCount(0);
   await status.getByRole("button", { name: "Dismiss" }).click();
   await expect(status).toHaveCount(0);
 });
 
-test("the map's dock opens the spot page, for the spot it opens on and one chosen", async ({
+/** The hour the scrub bar is on, as the spot page's link opens it. */
+async function atHour(page: Page) {
+  const at = Number(await timeSlider(page).inputValue());
+  return encodeURIComponent(sampleStrip[at].validTime);
+}
+
+test("the scrub bar opens the spot page at its hour, for the spot it opens on and one chosen", async ({
   page,
 }) => {
   await page.goto("/?spot=brandon");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
-  // The dock opens on Brandon Bay, chosen last, and links to its page.
-  await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
-  await expect(page.locator(".dock [data-spot-page-link]")).toHaveAttribute(
+  // The scrub bar opens on Brandon Bay, from the link, and its Full forecast
+  // is the spot's page at the hour in hand.
+  await expect(barName(page)).toHaveText("Brandon Bay");
+  const link = scrubBar(page).locator("[data-spot-page-link]");
+  await expect(link).toHaveAccessibleName("Full forecast");
+  await expect(link).toHaveAttribute(
     "href",
-    "/spot/brandon",
+    `/spot/brandon?at=${await atHour(page)}`,
+  );
+  // It follows the hour.
+  await timeSlider(page).fill("20");
+  await expect(link).toHaveAttribute(
+    "href",
+    `/spot/brandon?at=${encodeURIComponent(sampleStrip[20].validTime)}`,
   );
 
-  // A spot chosen on the map is the dock's, with no box over the chart.
+  // A spot chosen on the map is the scrub bar's, with no box over the chart.
+  const opener = page.locator("[data-spot-search-open]");
+  if (await opener.isVisible()) await opener.click();
   await page.getByRole("combobox", { name: "Search spots" }).fill("Dollymount");
   await page.locator("[data-spot-option]").first().click();
-  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
+  await expect(barName(page)).toHaveText("Dollymount");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  const link = page.locator(".dock").getByRole("link", { name: "Spot page" });
-  await expect(link).toHaveAttribute("href", "/spot/dollymount");
-  await link.click();
-  await expect(page).toHaveURL(/\/spot\/dollymount$/);
+  const full = scrubBar(page).getByRole("link", {
+    name: "Full forecast",
+    exact: true,
+  });
+  await expect(full).toHaveAttribute(
+    "href",
+    `/spot/dollymount?at=${await atHour(page)}`,
+  );
+  await full.click();
+  await expect(page).toHaveURL(/\/spot\/dollymount\?at=/);
   await expect(
     page.getByRole("heading", { level: 1, name: "Dollymount", exact: true }),
   ).toBeVisible({ timeout: 30000 });
   // And back to the map, on the same place.
   await page.locator(`[data-top-bar] [data-view-switch="chart"]`).click();
   await expect(page).toHaveURL(/\/\?spot=dollymount$/);
-  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount", {
+  await expect(barName(page)).toHaveText("Dollymount", {
     timeout: 30000,
   });
 });

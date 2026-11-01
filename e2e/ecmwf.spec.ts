@@ -6,9 +6,12 @@ import {
   openFromMenu,
   saveSettings,
   test,
+  barReady,
+  timeSlider,
 } from "./fixtures";
 import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleColumnsWithoutEcmwf, stripAt } from "./columns";
+import { timeSpoken } from "../src/strip";
 
 const ecmwf = readSample("ecmwf");
 
@@ -18,7 +21,7 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   await page.setViewportSize({ width: 390, height: 844 });
   const clock = Date.parse(ecmwf.runTime) + 14 * 3600000;
   await page.clock.setFixedTime(new Date(clock));
-  // A spot in the link, so the dock shows the strip.
+  // A spot in the link, so the scrub bar draws its week.
   await page.goto("/?spot=brandon");
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
@@ -28,15 +31,13 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   await expect(page.locator(".map-model")).toContainText("ECMWF");
   // Hourly where HARMONIE reaches, ECMWF's own three- and six-hourly steps after.
   const strip = stripAt(clock);
-  const hours = page.locator(".dock tr.tt-hour td[data-i]");
-  await expect(hours).toHaveCount(strip.length);
   const steps = strip
     .slice(1)
     .map((c, i) => (c.time - strip[i].time) / 3600000)
     .filter((h) => h < 12);
   expect(Math.min(...steps)).toBe(1);
   expect(Math.max(...steps)).toBeGreaterThanOrEqual(3);
-  const slider = page.getByRole("slider", { name: "Forecast time" });
+  const slider = timeSlider(page);
   await expect(slider).toHaveAttribute("max", String(strip.length - 1));
   // Step across the seam with the keys, and to the end.
   const seam = strip.findIndex(
@@ -52,9 +53,10 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   await expect(slider).toHaveValue(String(seam));
   await slider.press("End");
   await expect(slider).toHaveValue(String(strip.length - 1));
-  await expect(
-    page.locator(`.dock tr.tt-hour td[data-i="${strip.length - 1}"]`),
-  ).toHaveClass(/c-sel/);
+  await expect(slider).toHaveAttribute(
+    "aria-valuetext",
+    timeSpoken(strip[strip.length - 1].time),
+  );
   // ECMWF reaches the end: nothing to offer, nothing failing.
   await expect(page.getByRole("button", { name: /on the map$/ })).toHaveCount(
     0,
@@ -86,7 +88,7 @@ test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", as
 }) => {
   let body: unknown = null;
   // No published blend either: its columns would still carry ECMWF's run, and
-  // this is the dock building its own from the manifests it could read.
+  // this is the strip built from the manifests the page could read.
   await page.route("**/weather/blend.json", (route) =>
     route.fulfill({ status: 404, body: "Not found" }),
   );
@@ -96,14 +98,15 @@ test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", as
       : route.fulfill({ status: 503, body: "Unavailable" }),
   );
   await page.clock.setFixedTime(SAMPLE_CLOCK);
-  // A spot's dock, so its rows are there to read: Brandon Bay, chosen last.
+  // A spot's week in the scrub bar, so its hours are in: Brandon Bay.
   await page.goto("/?spot=brandon");
-  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
-    timeout: 30000,
-  });
+  await barReady(page);
   // Without ECMWF the long range falls to GFS, and the strip says so.
-  await expect(page.locator(".dock tr.tt-hour td[data-i]")).toHaveCount(
-    stripAt(SAMPLE_CLOCK.getTime(), sampleColumnsWithoutEcmwf).length,
+  await expect(timeSlider(page)).toHaveAttribute(
+    "max",
+    String(
+      stripAt(SAMPLE_CLOCK.getTime(), sampleColumnsWithoutEcmwf).length - 1,
+    ),
   );
   for (const next of [null, { ...ecmwf, model: "wrong" }]) {
     body = next;
@@ -144,21 +147,19 @@ test("the chart pans out over the Atlantic as far as ECMWF reaches, and a smalle
     await page.keyboard.press("ArrowLeft");
     await page.waitForTimeout(150);
   }
-  // The neatline names the meridians at least 400 px in from either edge
-  // (force5/src/neatline.ts). The chart used to stop at 18° W, which kept
-  // every label east of about 12° W; ECMWF's box reaches 30° W.
-  const westmost = () =>
-    page
-      .locator(".nl-t")
-      .allTextContents()
-      .then((labels) =>
-        Math.max(
-          ...labels
-            .filter((label) => label.endsWith("W"))
-            .map((label) => parseInt(label, 10)),
-        ),
-      );
-  await expect.poll(westmost, { timeout: 10000 }).toBeGreaterThanOrEqual(20);
+  // The chart pans well out past 18° W, where it used to stop: ECMWF's box
+  // reaches 30° W. The centre the chart keeps for the spot finder says where
+  // it stands (src/lastView.ts). Zoomed all the way out the chart is about
+  // 32° of longitude across at this width, so the centre goes no further
+  // west than about 14° W, with 30° W at the chart's edge; stopped at 18° W,
+  // it went no further than about 2° W.
+  const centreLon = () =>
+    page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("wingfoil.map.centre.v1") ?? "{}")
+          .lon as number,
+    );
+  await expect.poll(centreLon, { timeout: 10000 }).toBeLessThan(-12);
   await expect(page.locator(".frame-status.is-error")).toHaveCount(0);
   // HARMONIE out here: its box is behind the view, so it draws nothing in
   // most of it, and says nothing is wrong.
@@ -166,5 +167,5 @@ test("the chart pans out over the Atlantic as far as ECMWF reaches, and a smalle
   await expect(page.locator(".map-model")).toContainText("HARMONIE");
   await page.waitForTimeout(1500);
   await expect(page.locator(".frame-status.is-error")).toHaveCount(0);
-  expect(await westmost()).toBeGreaterThanOrEqual(20);
+  expect(await centreLon()).toBeLessThan(-12);
 });

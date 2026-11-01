@@ -1,10 +1,11 @@
 /**
  * Force (Beaufort) as the rider's wind unit: chosen in Settings, it is
- * the old charts' glyph and the force wherever the wind is shown in the
- * rider's units (the dock, the loupe's foot box, the spot page), and a scale
- * (the blend's axis) stays in knots.
+ * the force wherever the wind is shown in the rider's units (the scrub
+ * bar's pill, written F4; the loupe's foot box, the old charts' glyph and
+ * the force; the spot page), and a scale stays in knots.
  */
 import {
+  barPill,
   chooseSpot,
   saveSettings,
   unitChoice,
@@ -30,24 +31,22 @@ async function inForce(page: Page) {
   await saveSettings(page);
 }
 
-test("in Force the dock and the loupe draw the force's glyph and number", async ({
+test("in Force the scrub bar's pill reads the force and the loupe draws its glyph", async ({
   page,
 }) => {
   await inForce(page);
   await chooseSpot(page, "brandon");
-  const wind = page.locator(".dock tr.tt-wind td[data-i]");
-  await expect(wind.first()).toBeVisible({ timeout: 30000 });
-  await expect(page.locator(".dk-labs")).toContainText("Force");
-  // Every hour with a reading is a glyph named by its force, 0 to 12.
-  const glyphs = page.locator(".dock tr.tt-wind .kn [role=img]");
-  await expect(glyphs.first()).toHaveAttribute("aria-label", /^Force \d+$/);
-  const forces = await glyphs.evaluateAll((els) =>
-    els.map((el) => Number(el.getAttribute("data-force"))),
-  );
-  expect(forces.length).toBeGreaterThan(10);
-  expect(forces.every((f) => f >= 0 && f <= 12)).toBe(true);
-  // The number is written beside the feathers.
-  await expect(glyphs.first()).toHaveText(String(forces[0]));
+  // The hour over the playhead is a force, F0 to F12, its gust too where
+  // there is one; no knots.
+  const pill = barPill(page);
+  const figure = pill.locator("b");
+  await expect(figure).toHaveText(/^F\d{1,2}$/, { timeout: 30000 });
+  const force = Number((await figure.textContent())!.slice(1));
+  expect(force).toBeGreaterThanOrEqual(0);
+  expect(force).toBeLessThanOrEqual(12);
+  const gust = pill.locator(".sb-pill-soft");
+  if (await gust.count()) await expect(gust).toHaveText(/^gusting F\d{1,2}$/);
+  await expect(pill).not.toContainText(/\d ?kn\b/);
 
   // The loupe's foot box: the compass point, then the glyph and the force.
   const reading = page.locator(".map-loupe-reading.is-force");
@@ -58,7 +57,7 @@ test("in Force the dock and the loupe draw the force's glyph and number", async 
   // Kept on reload.
   await page.reload();
   await chooseSpot(page, "brandon");
-  await expect(page.locator(".dk-labs")).toContainText("Force", {
+  await expect(barPill(page).locator("b")).toHaveText(/^F\d{1,2}$/, {
     timeout: 30000,
   });
 });

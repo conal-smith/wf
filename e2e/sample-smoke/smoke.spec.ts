@@ -1,6 +1,8 @@
 import {
   test as frozen,
   expect,
+  barName,
+  barReady,
   chooseSpot,
   siteRow,
   SPOTS_KEY,
@@ -165,18 +167,18 @@ test.describe("on a desktop", () => {
     await painted(page);
   });
 
-  test("a spot chosen on the chart opens the dock on its hours", async ({
+  test("a spot chosen on the chart opens its week in the scrub bar", async ({
     page,
   }) => {
     await page.goto("/?map");
-    await expect(page.locator(".dock")).toHaveCount(0);
+    await expect(barName(page)).toHaveCount(0);
     await chooseSpot(page, "brandon");
-    await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
-    await expect
-      .poll(() => page.locator(".dock tr.tt-wind td .kn").count(), {
-        timeout: 30000,
-      })
-      .toBeGreaterThan(10);
+    await expect(barName(page)).toHaveText("Brandon Bay");
+    // The wind along the week, and the stars' row under it.
+    await expect(
+      page.locator('.scrub [data-curve="wind"] .sb-line'),
+    ).toHaveAttribute("d", /^M/, { timeout: 30000 });
+    await expect(page.locator(".scrub .sb-stars")).toBeVisible();
   });
 
   test("a spot's page draws its week, hour by hour", async ({ page }) => {
@@ -263,16 +265,18 @@ test.describe("on a phone", () => {
     await finderReads(page, 2);
   });
 
-  test("the chart draws its lights, and a spot in the link opens on its hours", async ({
+  test("the chart draws its lights, and a spot in the link opens on its week", async ({
     page,
   }) => {
     await page.goto("/?spot=brandon");
     await expect
       .poll(() => page.locator(".spot-marker").count(), { timeout: 30000 })
       .toBeGreaterThan(100);
-    await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible({
-      timeout: 30000,
-    });
+    await barReady(page);
+    await expect(page.locator(".scrub")).toHaveAttribute(
+      "data-spot",
+      "brandon",
+    );
   });
 
   test("a spot's page draws its week", async ({ page }) => {

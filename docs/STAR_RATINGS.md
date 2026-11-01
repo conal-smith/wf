@@ -376,16 +376,13 @@ so nobody else downloads the identity provider. The app has no sign-in yet, so
 its rating stays on the phone; it reaches the alerts server with the rest of
 the rider when the phone registers.
 
-## In the dock
+## In the scrub bar
 
-- The **stars** are the dock's first row, over wind, direction, wing and tide,
-  for every hour of the fortnight's strip, and over the chart in the Blend
-  view, rated from the same hours as the map's lights. Hover or tap them for the chart's
-  box with the session, the shore, the wing and every reason a star came off
-  (`ui/RatingTip.tsx`, the same card as the spot page's); the "?" beside the
-  row leads to [How the stars work](/stars).
-- The **wing** row gives each rated hour's wing, the rider's own if they have
-  one that fits, else the recommended size.
+- The **stars** are one thin row under the chosen spot's week in the chart's
+  scrub bar (`src/ScrubBar.tsx`), each hour in the stars' own shade from one
+  to five, rated from the same hours as the map's lights; the pill over the
+  playhead gives the hour's stars as glyphs in the same shade. Every reason a
+  star came off, the wing and the session are on the spot page, a link away.
 - The map's lights read the same stars for the selected hour
   (`src/ratings.ts`), and so do the rows that list places (the search, Your
   spots, the note beside the selected light): each gives the place's stars and
