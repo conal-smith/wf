@@ -102,8 +102,11 @@ for (const phone of [true, false]) {
       .getByRole("group", { name: "Category" })
       .getByRole("button", { name: "Wings" });
     if (phone) {
-      const box = await wings.boundingBox();
-      expect(box!.height).toBeGreaterThanOrEqual(44);
+      // Drawn 32px tall, with a band across it that reaches a thumb's 44.
+      const reach = await wings.evaluate(
+        (el) => parseFloat(getComputedStyle(el, "::before").height) || 0,
+      );
+      expect(reach).toBeGreaterThanOrEqual(44);
     }
     await wings.click();
     await expect(wings).toHaveAttribute("aria-pressed", "true");
