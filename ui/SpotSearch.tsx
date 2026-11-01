@@ -37,7 +37,7 @@ export const spotSearchStyles = tv({
     field: [
       "flex h-control-md w-80 min-w-0 items-center gap-2 rounded-full border border-transparent bg-sunken pr-2.5 pl-3.5",
       "font-body text-body text-ink-muted transition-all duration-fast motion-reduce:transition-none",
-      "focus-within:w-100 focus-within:border-ink focus-within:bg-ground",
+      "focus-within:w-100 focus-within:border-ink focus-within:bg-ground focus-within:ring-3 focus-within:ring-focus/20",
       "max-wide:hidden",
       // A phone's search, opened: a field the width of the screen over the bar.
       "group-data-phone/search:max-wide:fixed group-data-phone/search:max-wide:inset-x-0 group-data-phone/search:max-wide:top-0",
@@ -78,6 +78,8 @@ export const spotSearchStyles = tv({
     county: "min-w-0 truncate font-body text-label text-ink-muted",
     detail: "flex shrink-0 flex-col items-end gap-0.75 font-body text-body font-semibold text-ink",
     none: "px-2.5 py-4 font-body text-prose text-ink-2",
+    // Said to a screen reader as the results change.
+    status: "sr-only",
     foot: "flex shrink-0 justify-between gap-3 border-0 border-t border-line px-2.5 pt-2 pb-1 font-body text-label text-ink-muted max-wide:hidden",
   },
 });
@@ -400,7 +402,7 @@ export function SpotSearch<S extends Findable>({
       >
         <Search size={18} strokeWidth={1.75} aria-hidden="true" />
       </Button>
-      <span className="sr-only" role="status">
+      <span className={s.status()} role="status">
         {showing ? status : ""}
       </span>
       {showing && (

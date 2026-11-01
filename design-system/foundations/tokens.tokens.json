@@ -1168,14 +1168,14 @@
       },
       "ink-muted": {
         "$type": "color",
-        "$value": "{ref.color.ink.600}",
+        "$value": "#64646c",
         "$description": "The floor for words. --color-ink-muted.",
         "$extensions": {
           "com.sprintengine": {
             "role": "text",
-            "use": "Mono labels, small print, units, placeholders.",
+            "use": "Labels, small print, units, placeholders: 4.7:1 even on the raised grey.",
             "modes": {
-              "light": "{ref.color.ink.600}",
+              "light": "#64646c",
               "dark": "{ref.color.night.muted}"
             }
           }
