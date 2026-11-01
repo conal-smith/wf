@@ -263,6 +263,8 @@ const NO_NAMES: ReadonlySet<string> = new Set();
 const SPLIT = "(min-width: 1100px)";
 /** The wind beside the list: no colour and no particles (the map is plain there). */
 const PLAIN_WIND = { wash: false, particles: false } as const;
+/** No foilable depth beside the list, the same empty list every render. */
+const NO_FOIL: FoilView[] = [];
 /** How long the chart takes to open out from beside the list, or back. */
 const OPEN_MS = 420;
 
@@ -2338,16 +2340,20 @@ export default function App() {
    * Where the chart is: opened out over the whole screen, standing beside
    * the list, or (under the width for that) out of sight behind it.
    */
-  // The chart's own layers off beside the list, its names kept.
-  const plainLayers = {
-    ...layers,
-    tints: false,
-    soundings: false,
-    relief: false,
-    foil: false,
-    currents: false,
-    rain: false,
-  };
+  // The chart's own layers off beside the list, its names kept. The same
+  // object from one render to the next, so the map is not told it again.
+  const plainLayers = useMemo(
+    () => ({
+      ...layers,
+      tints: false,
+      soundings: false,
+      relief: false,
+      foil: false,
+      currents: false,
+      rain: false,
+    }),
+    [layers],
+  );
   const mode = onChart ? "full" : split && panelBox ? "panel" : "hidden";
   const skip = !onChart ? SKIP.list : dockOpen ? SKIP.dock : SKIP.search;
   const skipTo = (event: React.MouseEvent) => {
@@ -2593,7 +2599,7 @@ export default function App() {
                     // finder mock-up, 2026-10-31).
                     wind={onChart ? wind : PLAIN_WIND}
                     layers={onChart ? layers : plainLayers}
-                    foil={onChart ? foilViews : []}
+                    foil={onChart ? foilViews : NO_FOIL}
                     currents={onChart ? currents.features : null}
                     rain={onChart ? rain.view : null}
                     satellite={onChart ? satellite.image : null}
