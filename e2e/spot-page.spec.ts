@@ -434,3 +434,225 @@ async function withPictures(page: Page, served = true) {
 }
 
 const picture = (page: Page) => page.locator("[data-spot-satellite]");
+
+/*
+ * Under the week graph, the rows the chart's dock used to draw: every model's
+ * own wind, the gust factor, the waves' period and direction, the current
+ * and the rain, on the graph's hours. The sample's wind runs (harmonie,
+ * ecmwf and the rest), its hourly ICON-EU rain, its 72 hours of currents and
+ * its short GFS-Wave run on 16 September all reach Brandon.
+ */
+test("under the week graph: the models, the gusts, the waves, the current and the rain", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await withTides(page);
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  const graph = page.locator("[data-graph-svg]");
+  await expect(graph).toBeVisible();
+
+  // Models: a line of its own for each model the rider blends, named below.
+  const lines = graph.locator('[data-band="models"] path[data-model]');
+  await expect.poll(() => lines.count()).toBeGreaterThanOrEqual(2);
+  for (const d of await lines.evaluateAll((paths) =>
+    paths.map((path) => path.getAttribute("d") ?? ""),
+  ))
+    expect(d).toMatch(/^M[\d.]+,[\d.]+C/);
+  const legend = page.locator("[data-models-legend]");
+  await expect(legend).toContainText("HARMONIE");
+  await expect(legend).toContainText("ECMWF");
+
+  // Gusts: the factor, to a tenth, as the dock wrote it.
+  const factors = await graph
+    .locator("[data-gust-factor]")
+    .evaluateAll((cells) =>
+      cells.map((cell) => cell.getAttribute("data-gust-factor")!),
+    );
+  expect(factors.length).toBeGreaterThan(5);
+  for (const factor of factors) {
+    expect(factor).toMatch(/^\d\.\d×$/);
+    expect(parseFloat(factor)).toBeGreaterThanOrEqual(1);
+    // The sample's gusts are synthetic, and gustier than any real day.
+    expect(parseFloat(factor)).toBeLessThan(10);
+  }
+
+  // Waves: a period in seconds, under an arrow that says where they run.
+  const periods = await graph
+    .locator("[data-wave-period]")
+    .evaluateAll((cells) =>
+      cells.map((cell) => Number(cell.getAttribute("data-wave-period"))),
+    );
+  expect(periods.length).toBeGreaterThan(0);
+  for (const period of periods) {
+    expect(period).toBeGreaterThan(2);
+    expect(period).toBeLessThan(25);
+  }
+
+  // Current: a speed in knots every third hour for the run's 72 hours.
+  const currents = await graph
+    .locator("[data-current]")
+    .evaluateAll((cells) =>
+      cells.map((cell) => Number(cell.getAttribute("data-current"))),
+    );
+  expect(currents.length).toBeGreaterThan(5);
+  for (const knots of currents) expect(knots).toBeLessThan(6);
+
+  // Rain: bars as tall as the rain, mm/h.
+  const rain = await graph
+    .locator('[data-band="rain"] rect[data-rain]')
+    .evaluateAll((bars) =>
+      bars.map((bar) => ({
+        mm: Number(bar.getAttribute("data-rain")),
+        tall: Number(bar.getAttribute("height")),
+      })),
+    );
+  expect(rain.length).toBeGreaterThan(10);
+  for (const bar of rain) {
+    expect(bar.mm).toBeGreaterThan(0);
+    expect(bar.tall).toBeGreaterThan(0);
+  }
+  const wettest = rain.reduce((a, b) => (b.mm > a.mm ? b : a));
+  const driest = rain.reduce((a, b) => (b.mm < a.mm ? b : a));
+  expect(wettest.tall).toBeGreaterThan(driest.tall);
+
+  // The readout says each of them for the hour under the pointer.
+  const readout = page.locator("[data-readout]");
+  await expect(readout.locator("[data-readout-current]")).toContainText(
+    /\d\.\d kn/,
+  );
+  await expect(readout.locator("[data-readout-rain]")).toContainText(
+    /mm\/h|Dry/,
+  );
+  // An hour with a gust: its factor too (HARMONIE gives none at its first).
+  await page.locator("[data-spot-graph]").scrollIntoViewIfNeeded();
+  const box = (await page.locator("[data-spot-graph]").boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.6, box.y + 80);
+  await expect(readout.locator("[data-readout-gust]")).toContainText(
+    /^Gusts\d\.\d×$/,
+  );
+  expect(errors).toEqual([]);
+});
+
+test("with no current published, the current's band says so", async ({
+  page,
+}) => {
+  await page.route("**/weather/currents.json", (route) =>
+    route.fulfill({ status: 404 }),
+  );
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  await expect(page.locator("[data-current-note]")).toHaveText(
+    "No current forecast is published just now",
+  );
+  await expect(page.locator('[data-band="current"]')).toHaveCount(0);
+});
+
+test("Table adds the gust factor, the wave period and the rain", async ({
+  page,
+}) => {
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  await page.locator("[data-day-card]").nth(1).click();
+  await page.getByRole("button", { name: "Table", exact: true }).click();
+  const table = page.locator("[data-hour-table]");
+  await expect(table.locator("thead")).toContainText("Gusts");
+  await expect(table.locator("thead")).toContainText("Period");
+  await expect(table.locator("thead")).toContainText("Rain mm/h");
+  await expect(table.locator("[data-gust-cell]").first()).toHaveText(
+    /^\d\.\d×$/,
+  );
+  await expect(table.locator("[data-rain-cell]").first()).toHaveText(
+    /^(\d+\.\d|0|<0\.1|–)$/,
+  );
+});
+
+test("?at= opens the week at that hour, as the pointer would", async ({
+  page,
+}) => {
+  await withPictures(page);
+  // 13:00 UTC on Tuesday 15 September: 14:00 in Ireland.
+  await page.goto("/spot/brandon?at=2026-09-15T13:00:00Z");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  const readout = page.locator("[data-readout]");
+  await expect(readout).toContainText("Tue 14:00");
+  await expect(readout).not.toContainText("Now");
+  await expect(page.locator('[data-day-card="2026-09-15"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // The loupe on the picture reads the same hour as the readout.
+  const wind = await readout
+    .locator("div", { hasText: /^Wind/ })
+    .first()
+    .textContent();
+  const kn = /Wind(\d+)/.exec(wind ?? "")![1];
+  await expect(page.locator("[data-loupe-foot]")).toContainText(kn);
+  // The graph is scrolled along to it, past the hours before.
+  const graph = page.locator("[data-spot-graph]");
+  await expect
+    .poll(() => graph.evaluate((el) => el.scrollLeft))
+    .toBeGreaterThan(400);
+  // The pointer moving off it lets the week go back to now.
+  await graph.scrollIntoViewIfNeeded();
+  const box = (await graph.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.5, box.y + 80);
+  await page.mouse.move(box.x + box.width + 50, box.y - 50);
+  await expect(readout).toContainText("Now");
+});
+
+test("?at= that is no time, or not in the week, opens on now", async ({
+  page,
+}) => {
+  for (const at of [
+    "tomorrow",
+    "2027-01-01T12:00:00Z",
+    "2026-09-01T12:00:00Z",
+  ]) {
+    await page.goto(`/spot/brandon?at=${at}`);
+    await expect(heading(page)).toBeVisible({ timeout: 30000 });
+    await expect(page.locator("[data-readout]")).toContainText("Now");
+  }
+});
+
+test("a point on the open water has a page: its wind, no stars, and the nearest spot", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  // Off Brandon Bay, between it and the Maharees.
+  const response = await page.goto("/spot/@52.3000,-10.1000");
+  expect(response?.status()).toBe(200);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "52.30° N, 10.10° W" }),
+  ).toBeVisible({ timeout: 30000 });
+  await expect(page).toHaveTitle(/52\.30° N, 10\.10° W/);
+  // The forecast: the point's own wind, now and across the week.
+  const now = page.locator("[data-now]");
+  await expect(now).toContainText("Wind now");
+  await expect(now.locator(".text-big-sm").first()).toHaveText(/^\d+/);
+  await expect(page.locator("[data-graph-svg] path").first()).toBeAttached();
+  // No stars anywhere: not now, not in the week, not in an hour.
+  await expect(page.locator('[data-your-stars="none"]')).toContainText(
+    "No stars on open water",
+  );
+  await expect(page.locator("[data-point-no-stars]")).toBeVisible();
+  for (const where of ["[data-now]", "[data-day-card]", "[data-readout]"])
+    await expect(page.locator(`${where} [data-stars]`)).toHaveCount(0);
+  await page.getByRole("button", { name: "Table", exact: true }).click();
+  await expect(page.locator("[data-hour-table] thead")).not.toContainText(
+    "Stars",
+  );
+  // The nearest riding place, named and linked, and no star to keep a point by.
+  const nearest = page.locator("[data-point-line] a[data-nearest-spot]");
+  await expect(nearest).toHaveText("Garrywilliam Point");
+  await expect(nearest).toHaveAttribute("href", "/spot/garrywilliam-point");
+  await expect(page.locator("[data-point-line]")).toContainText(/\d\.\d km/);
+  await expect(page.locator("[data-keep-star]")).toHaveCount(0);
+  // Back goes to the chart: the map has no light for a point.
+  await expect(
+    page.locator(`[data-top-bar] [data-view-switch="chart"]`),
+  ).toHaveAttribute("href", "/?map");
+  expect(errors).toEqual([]);
+});
