@@ -235,7 +235,7 @@ interface TappedAt {
 interface MapEntry {
   mapPoint?: TappedAt;
 }
-/** A point tapped on the map, as the dock names it. */
+/** A point tapped on the map, as the scrub bar names it. */
 interface Picked {
   lon: number;
   lat: number;
@@ -408,7 +408,7 @@ export default function App() {
     () => signedInHint() || Boolean(import.meta.env.VITE_MARKET_DEV_USER),
   );
   const rider = prefs.rider;
-  // The one model the rider picked: the map draws it, the dock gives its wind
+  // The one model the rider picked: the map draws it, the scrub bar gives its wind
   // and the stars rate it, ECMWF past the end of its run (force5/src/lead.ts).
   const riderModel = chosenModel(rider.starsFrom) as ModelId;
   const [manifest, setManifest] = useState<Manifest | null>(null);
@@ -420,7 +420,7 @@ export default function App() {
   const [point, setPoint] = useState<Spot | null>(null);
   /**
    * Whether the opening spot has been worked out (it waits for the places):
-   * until then the dock is not drawn, so a linked spot never comes in over a
+   * until then the scrub bar is not drawn, so a linked spot never comes in over a
    * moment of "no spot".
    */
   const [opened, setOpened] = useState(false);
@@ -607,7 +607,7 @@ export default function App() {
           setSelectedTime(
             validated.frames[nearestFrame(validated.frames)].validTime,
           );
-        // No default place, and no dock until a spot is chosen: only a link
+        // No default place, and no spot's week until a spot is chosen: only a link
         // opens on one, focused (src/openingSpot.ts). A remembered or starred
         // spot waits for the reader to tap it.
         const linked = openingSpot(location.search, places);
@@ -701,7 +701,7 @@ export default function App() {
     riderModel,
   );
 
-  /* ---- the week's columns, and the strip of them the dock shows ---- */
+  /* ---- the week's columns, and the strip of them the scrub bar shows ---- */
   const columnModels = useMemo<ColumnModel[]>(() => {
     // The blend's own runs, so the columns are the times it has values for.
     if (published) return blendColumnModels(published);
@@ -819,9 +819,9 @@ export default function App() {
   );
   /**
    * The model the map hands over to where the reader's run does not reach the
-   * hour: the one the dock's column there comes from (force5/src/timeline.ts).
+   * hour: the one the scrub bar's column there comes from (force5/src/timeline.ts).
    * Worked out from the runs the columns are built from, so it holds with no
-   * spot open and no dock on screen. The reader's choice stays `manifest`, and
+   * spot open and no scrub bar on screen. The reader's choice stays `manifest`, and
    * the map goes back to it as soon as the hour is inside its run again.
    */
   const handoverId = useMemo(
@@ -938,7 +938,7 @@ export default function App() {
   /**
    * Whether the map has a run that reaches the hour it is at. Where neither
    * the reader's run nor a hand-over does, it draws no wind, rather than the
-   * last frame it painted: the lights and the dock read the hour itself, and
+   * last frame it painted: the lights and the scrub bar read the hour itself, and
    * two hours shown as one moment is wrong. While the hand-over's run is on
    * its way the frame on screen stands, as it does through any scrub.
    */
@@ -991,7 +991,7 @@ export default function App() {
       return next;
     });
   /**
-   * The rider picks a model: theirs from now on, for the map, the dock and the
+   * The rider picks a model: theirs from now on, for the map, the scrub bar and the
    * stars alike, and the map moves to it (at `wanted`, where given).
    */
   const pickRiderModel = (id: ModelId, wanted?: string) => {
@@ -1044,7 +1044,7 @@ export default function App() {
     onRun: commitRun,
   });
 
-  /* ---- every place's hours, rated: the lights, the dock and the panel ---- */
+  /* ---- every place's hours, rated: the lights, the scrub bar and the panel ---- */
   const places = useMemo<RatedPlace[]>(
     () =>
       spots.map((s) => ({
@@ -1191,7 +1191,7 @@ export default function App() {
   // The Currents layer at the hour the map shows; nothing at all while off.
   const currents = useCurrents(layers.currents, mapAt, prefs.units);
   // The Rain layer at the hour the map shows: the rain of that column's own
-  // hours, from the column before it, as the dock's rain row reads it.
+  // hours, from the column before it.
   const rain = useRain(
     layers.rain,
     mapAt,
@@ -1375,7 +1375,7 @@ export default function App() {
   /**
    * Each spot chosen is a step in the page's history, with the spot in its
    * link (`/?spot=keel`, src/openingSpot.ts): the link can be shared, Back
-   * goes to the spot before or, from the first, closes the dock, and Forward
+   * goes to the spot before or, from the first, closes the scrub bar, and Forward
    * comes back. A tapped point is a step too, with the full chart's own link
    * (`/?map`), and the point in the entry's state; a tap after a tap only
    * moves it. Each step counts how far it is from the list the chart was
@@ -1405,8 +1405,8 @@ export default function App() {
   };
   /**
    * A light pressed on the full chart. It is drawn as the open spot's at once,
-   * and the dock, the flight and the step in the history wait until that is
-   * painted, the dock drawn as a transition: drawn in the tap's own task, they
+   * and the scrub bar, the flight and the step in the history wait until that is
+   * painted, the scrub bar drawn as a transition: drawn in the tap's own task, they
    * held its answer back by a third of a second and more (#250).
    */
   const openLight = (spot: Spot) => {
@@ -1424,7 +1424,7 @@ export default function App() {
     setFocusId(spot.id);
     if (fly) controls.current?.flyTo(spot);
   };
-  /** A tap on the open map: that point's forecast in the dock, and the focus on it. */
+  /** A tap on the open map: that point's forecast in the scrub bar, and the focus on it. */
   const pickPoint = (at: TappedAt) => {
     showPoint(at);
     remember(null, at);
@@ -1444,9 +1444,9 @@ export default function App() {
   const clearFocus = () => setFocusId(null);
   /**
    * A tap on the open chart. With a spot or point chosen it lets go of it,
-   * as Escape does, and moves nothing: the dock keeps it until another is
+   * as Escape does, and moves nothing: the scrub bar keeps it until another is
    * chosen or it is closed (#109). With none, it picks the point tapped.
-   * Beside the list the chart picks nothing: it has no dock there.
+   * Beside the list the chart picks nothing: it has no scrub bar there.
    */
   const tapChart = (at: TappedAt) => {
     if (pageRef.current !== "chart") return;
@@ -1459,8 +1459,8 @@ export default function App() {
     setFocusId(null);
   };
   /**
-   * The dock's close: no spot nor point, and the chart alone, as a step in
-   * the history like a choice (Back opens the dock again).
+   * The scrub bar's close: no spot nor point, and the chart alone, as a step in
+   * the history like a choice (Back opens the scrub bar again).
    */
   const closeDock = () => {
     hideDock();
@@ -1550,7 +1550,7 @@ export default function App() {
     }
     setPage("chart");
   };
-  /** The list, the chart beside it again on a wide screen. No dock there. */
+  /** The list, the chart beside it again on a wide screen. No scrub bar there. */
   const toList = () => {
     if (pageRef.current !== "chart" || closing.current) return;
     hideDock();
@@ -1641,9 +1641,9 @@ export default function App() {
     window.setTimeout(() => map.off("resize", settle), 200);
   }, [page]);
 
-  // Back and Forward through the spots and points chosen: the dock follows
+  // Back and Forward through the spots and points chosen: the scrub bar follows
   // the link, and between the list and the full chart, the page does. An
-  // entry that already shows what the dock shows changes nothing (the way
+  // entry that already shows what the scrub bar shows changes nothing (the way
   // back from a page over the map lands on one), so the chart is not flown
   // anywhere it was not.
   const popped = useRef(() => {});
@@ -1822,7 +1822,7 @@ export default function App() {
   // Escape is a tap on the open chart from the keys: it shuts what is open
   // over the chart first (the site menu and the search take theirs before
   // it reaches here), then lets go of the spot or point chosen, then closes
-  // the dock, and then, from the full chart, goes back to the list.
+  // the scrub bar, and then, from the full chart, goes back to the list.
   const escaped = useRef(() => {});
   escaped.current = () => {
     if (pageRef.current !== "chart") return;
@@ -1947,8 +1947,8 @@ export default function App() {
         ? point
         : null;
 
-  /* ---- the loupe's ride rose: the dock's hour, at the focus ---- */
-  // What the dock shows, whichever model it comes from, even past the end of
+  /* ---- the loupe's ride rose: the scrub bar's hour, at the focus ---- */
+  // What the scrub bar shows, whichever model it comes from, even past the end of
   // the map's run: the rose reads the place, not the map.
   const roseHour =
     focusAt && focusStyle === "loupe" ? pointHours?.[selected] : undefined;
@@ -1998,7 +1998,7 @@ export default function App() {
   const handoverWhen =
     handoverAt === null ? "" : `${dayShort(handoverAt)} ${clock(handoverAt)}`;
   // Only where nothing can be handed over: the chip lets the reader ask for
-  // the run the dock's column comes from, if it could not be read by itself.
+  // the run the scrub bar's column comes from, if it could not be read by itself.
   const reachable =
     beyondMap && !handing && !handoverDue && column
       ? (MODELS.find((m) => m.id === column.model) ?? null)
@@ -2132,7 +2132,7 @@ export default function App() {
   openListRef.current = openList;
   const openChartRef = useRef(openChart);
   openChartRef.current = openChart;
-  /** A card's picture: the full chart on its place, at the hour its rose showed, with its dock. */
+  /** A card's picture: the full chart on its place, at the hour its rose showed, with its week in the scrub bar. */
   const openInChart = (spot: Spot, at: number | null) => {
     if (at !== null) selectColumn(at);
     setPicked(null);
@@ -2335,7 +2335,6 @@ export default function App() {
       data-chart={mode}
       style={
         {
-          "--dock-height": `${dockHeight}px`,
           ...(panelBox && {
             "--panel-top": `${panelBox.top}px`,
             "--panel-left": `${panelBox.left}px`,
@@ -2517,7 +2516,7 @@ export default function App() {
               {/* After the boxes: the keys reach the menu, the search and the
                 controls before the lights. One map, made once and never
                 taken down: beside the list it shows the list's places
-                alone, at the cards' hour, with no loupe and no dock. */}
+                alone, at the cards' hour, with no loupe and no scrub bar. */}
               {mapWanted && (
                 <Suspense fallback={null}>
                   <WindMap
@@ -2620,7 +2619,7 @@ export default function App() {
                   className={`map-footer${barShown ? "" : " is-bare"}`}
                   ref={dock}
                 >
-                  {/* The small print rides on the dock's top edge, in the dock's
+                  {/* The small print rides over the scrub bar's top edge, in its
                   own layout: never a frame behind it (map.css). */}
                   <div className="map-print">
                     <InfoPop label="Sources and small print" wide>
@@ -2778,7 +2777,7 @@ export default function App() {
                 rider: parseRider({ ...prefs.rider, ...r }),
               })
             }
-            // Over the spot's tools on the dock's edge, while there is a dock.
+            // Over the scrub bar and the lane its pill rides in.
             launcherBottom={dockHeight + 24}
             panelBottom={dockHeight + 12}
           />
@@ -2822,6 +2821,6 @@ export default function App() {
       )}
     </div>
   );
-  // The "?"s by the stars, in the dock and the panel, open the dialog too.
+  // The "?"s by the stars, in the panel, open the dialog too.
   return <MapInfoOpen.Provider value={setInfo}>{shell}</MapInfoOpen.Provider>;
 }

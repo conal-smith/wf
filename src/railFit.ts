@@ -8,10 +8,10 @@ export interface Box {
 
 /**
  * How tall the layers' rail may stand, from its top, and stay clear of what
- * is below it on the chart: the spot's tools on the dock's edge, the dock,
- * Gust, the foot of the window. Only what shares its column counts (the
- * dock's tools stand at the right, as the rail does; the small print at the
- * left does not). Clear by `gap`, so the two never touch.
+ * is below it on the chart: the scrub bar and the lane over it its pill
+ * rides in, Gust, the foot of the window. Only what shares its column counts
+ * (Gust stands at the right, as the rail does; the small print at the left
+ * does not). Clear by `gap`, so the two never touch.
  */
 export function railRoom(
   rail: Box,
