@@ -3,9 +3,50 @@
  * now, each day as a card, the curve through a series, and the light left.
  * Pure, so they are tested without a page.
  */
+import { LEVEL_LABEL, type WarningLevel } from "../../../force5/src/warnings";
+import { NOTICE_MARK } from "../../../force5/src/waterQuality";
 import type { Agreement } from "../../../mcp/api/forecast";
 import type { DaySun, SpotDay, SpotRow } from "../spot";
 import { dayNames } from "../spot";
+
+/**
+ * What stands where an hour's stars would be: an orange or red Met Éireann
+ * warning ("Orange warning"), or else a notice against bathing ("Water").
+ * The kit's NoticeMark draws it, the level's square and the word.
+ */
+export interface StandIn {
+  level: Exclude<WarningLevel, "yellow"> | "water";
+  word: string;
+}
+
+const STAND_IN_RANK: Record<StandIn["level"], number> = {
+  water: 1,
+  orange: 2,
+  red: 3,
+};
+
+/** What took a row's stars away, or null where nothing did. */
+export function standIn(
+  row: Pick<SpotRow, "warning" | "water">,
+): StandIn | null {
+  const warning = row.warning;
+  if (warning?.replaces_rating && warning.level !== "yellow")
+    return { level: warning.level, word: `${LEVEL_LABEL[warning.level]} warning` };
+  if (row.water?.replaces_rating) return { level: "water", word: NOTICE_MARK };
+  return null;
+}
+
+/**
+ * What rides beside a row's stars and leaves them: a yellow warning, or a
+ * notice that does not keep anyone out of the water. The square alone.
+ */
+export function besideMark(
+  row: Pick<SpotRow, "warning" | "water">,
+): "yellow" | "water-advice" | null {
+  if (row.warning && !row.warning.replaces_rating) return "yellow";
+  if (row.water && !row.water.replaces_rating) return "water-advice";
+  return null;
+}
 
 /** The row that covers a moment: the last that starts at or before it. */
 export function rowAt(rows: readonly SpotRow[], time: number): SpotRow | null {
@@ -37,6 +78,8 @@ export interface DayCard {
   offshore: boolean;
   /** How far the models agree, most of the daylight hours. */
   sure: Agreement | null;
+  /** The strongest warning or notice that took a daylight hour's stars. */
+  notice: StandIn | null;
 }
 
 export function dayCard(day: SpotDay, now: number, midnight: number): DayCard {
@@ -62,6 +105,16 @@ export function dayCard(day: SpotDay, now: number, midnight: number): DayCard {
       })),
     offshore: light.some((r) => isOff(r) && r.hour.wind!.wind_kn >= 12),
     sure: [...sure].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
+    notice: day.rows
+      .filter((r) => r.hour.daylight)
+      .map(standIn)
+      .reduce<StandIn | null>(
+        (top, x) =>
+          x && (!top || STAND_IN_RANK[x.level] > STAND_IN_RANK[top.level])
+            ? x
+            : top,
+        null,
+      ),
   };
 }
 

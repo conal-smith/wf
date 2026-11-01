@@ -11,7 +11,7 @@ import { loupeRose, roseScale } from "../../../force5/src/focus";
 import { modelName } from "../../../force5/src/lead";
 import { shoreFacing } from "../../../force5/src/shoreFacing";
 import { CHART_HREF, spotHref } from "../../../force5/src/siteNav";
-import { MET_WARNINGS_PAGE } from "../../../force5/src/warnings";
+import { LEVEL_LABEL, MET_WARNINGS_PAGE } from "../../../force5/src/warnings";
 import { BEACHES_PAGE } from "../../../force5/src/waterQuality";
 import type { Rider } from "../../../force5/src/stars";
 import { unitLabel, type Units } from "../../../force5/src/units";
@@ -26,12 +26,11 @@ import type {
   SpotForecast,
   SpotSea,
 } from "../../../mcp/api/forecast";
-import { Segmented } from "../../../ui";
+import { NoticeMark, Segmented } from "../../../ui";
 import { RatingTip } from "../../../ui/RatingTip";
-import { LEVEL_LABEL } from "../../../force5/src/warnings";
 import { starsText } from "../../../force5/src/stars";
-import { WarningMark, warningName } from "../Warnings";
-import { WaterMark, noticeWords } from "../WaterQuality";
+import { warningName } from "../Warnings";
+import { noticeWords, restrictionShort } from "../WaterQuality";
 import { RING, tv } from "../../../ui/tv";
 import { SkyGlyph } from "../glyphs";
 import { lift, pictureCredit, type PictureTide } from "../satellite";
@@ -56,18 +55,20 @@ import {
   type DaySun,
   type SpotRow,
 } from "../spot";
-import { useSpotPicture } from "../SpotSatellite";
+import { useSpotPicture } from "../useSpotPicture";
 import { useWidth } from "../useWidth";
 import { launchBed, launchDepth, type LaunchBed } from "./launch";
 import { useNearby, type NearbyReading } from "./nearby";
 import { PhotoLoupe } from "./PhotoLoupe";
 import {
+  besideMark,
   dayCard,
   deepUntil,
   hoursMinutes,
   lightLeft,
   rowAt,
   smoothPath,
+  standIn,
   type DayCard,
 } from "./report";
 
@@ -91,12 +92,14 @@ const styles = tv({
       "transition-colors duration-fast hover:bg-line",
       RING,
     ],
-    nearHere: "inset-shadow-frame",
+    // The spot you are on, as the chosen day: a plain ring inside the card.
+    nearHere: "inset-ring-2 inset-ring-ink",
     nearImg: "row-span-2 size-10 rounded-control object-cover",
     nearName: "font-body text-body font-semibold whitespace-nowrap",
     nearLine:
       "flex items-center gap-2 font-body text-body whitespace-nowrap text-ink-2",
     now: "grid gap-3 rail:grid-cols-now rail:gap-4 xwide:grid-cols-now-wide",
+    column: "flex min-w-0 flex-col gap-5",
     cards: "grid grid-cols-2 content-start gap-3",
     card: "min-w-0 rounded-surface bg-sunken p-4 wide:px-5",
     wide: "col-span-2",
@@ -121,7 +124,7 @@ const styles = tv({
       "cursor-pointer transition-colors duration-fast hover:bg-line",
       RING,
     ],
-    dayOn: "inset-shadow-frame",
+    dayOn: "inset-ring-2 inset-ring-ink",
     dayName: "font-body text-prose font-semibold",
     dayDate: "ml-1 font-normal text-ink-muted",
     range: "font-body text-prose font-semibold",
@@ -309,7 +312,6 @@ export function SpotReport({
           <h1 className={s.name()}>{spot.name}</h1>
           <div className={s.acts()}>{actions}</div>
         </section>
-        {notices}
         {nearby.length > 0 && (
           <section className="xwide:hidden" aria-label="Nearby">
             <div className={s.sectionHead({ className: "mb-2.5" })}>
@@ -334,16 +336,21 @@ export function SpotReport({
                   : "xwide:grid-cols-now",
             })}
           >
-            <NowCards
-              sea={forecast.sea_temperature}
-              row={nowRow}
-              now={now}
-              sun={days[0]?.sun ?? null}
-              tideNow={tideNow}
-              turns={turns}
-              depthAt={depthAt}
-              hasBed={!!bed}
-            />
+            {/* The warnings and notices above the cards, in their column. */}
+            <div className={s.column()}>
+              {notices}
+              <NowCards
+                forecast={forecast}
+                sea={forecast.sea_temperature}
+                row={nowRow}
+                now={now}
+                sun={days[0]?.sun ?? null}
+                tideNow={tideNow}
+                turns={turns}
+                depthAt={depthAt}
+                hasBed={!!bed}
+              />
+            </div>
             {picture && (
               <PhotoLoupe
                 picture={picture}
@@ -579,6 +586,7 @@ function NearThumb({ id, lat, lon }: { id: string; lat: number; lon: number }) {
 }
 
 function NowCards({
+  forecast,
   sea,
   row,
   now,
@@ -588,6 +596,7 @@ function NowCards({
   depthAt,
   hasBed,
 }: {
+  forecast: SpotForecast;
   sea: SpotSea | null;
   row: SpotRow | null;
   now: number;
@@ -605,6 +614,10 @@ function NowCards({
   const until = deepUntil(depthAt, now);
   const left = sun ? lightLeft(now, sun) : null;
   const nextTurn = turns.find((t) => t.time > now);
+  const taken = row && !row.rating ? standIn(row) : null;
+  const watered = (row?.water?.ids ?? [])
+    .map((id) => forecast.water_quality.items.find((item) => item.id === id))
+    .find((item) => item?.replaces_ratings);
   return (
     <div className={s.cards()} data-now>
       <div className={s.card({ className: s.wide() })}>
@@ -635,21 +648,29 @@ function NowCards({
           </div>
         )}
       </div>
-      <div className={s.card()}>
+      <div className={s.card()} data-your-stars>
         <span className={s.label()}>Your stars</span>
-        <div className="my-3.5">
+        <div className="my-3.5 flex min-h-7 items-center">
           {row?.rating ? (
             <Stars n={row.rating.stars} size={22} />
+          ) : taken ? (
+            <NoticeMark level={taken.level} size="md">
+              {taken.level === "water" && watered
+                ? restrictionShort(watered)
+                : taken.word}
+            </NoticeMark>
           ) : (
-            <span className={s.line()}>Not rated now</span>
+            <span className={s.line()}>No stars now</span>
           )}
         </div>
         <div className={s.line()}>
           {row?.rating
             ? `${row.rating.wing.own ?? row.rating.wing.recommended} m² wing`
-            : row?.hour.daylight
-              ? "Too little wind"
-              : "Dark"}
+            : taken
+              ? "No stars while it lasts"
+              : row?.hour.daylight
+                ? "Too little wind"
+                : "Dark"}
         </div>
       </div>
       {hasBed && depth !== null ? (
@@ -771,7 +792,21 @@ function DayButton({
         {card.label}
         <span className={s.dayDate()}>{card.day}</span>
       </span>
-      <Stars n={card.best} />
+      {card.notice && !card.best ? (
+        <NoticeMark level={card.notice.level}>{card.notice.word}</NoticeMark>
+      ) : (
+        <span className="inline-flex items-center gap-1.5">
+          <Stars n={card.best} />
+          {card.notice && (
+            <>
+              <NoticeMark level={card.notice.level} />
+              <span className="sr-only">
+                {card.notice.word}, no stars for some hours
+              </span>
+            </>
+          )}
+        </span>
+      )}
       <span className={s.range()}>
         {card.lo === null || card.hi === null
           ? "–"
@@ -1257,7 +1292,7 @@ function Graph({
           </span>
         )}
         <span>
-          <i className={s.key({ className: "bg-ink/5 inset-shadow-frame" })} />
+          <i className={s.key({ className: "bg-ink/10" })} />
           Dark
         </span>
       </div>
@@ -1289,7 +1324,12 @@ function Readout({
       <div className={s.ro()}>
         <span className={s.label()}>Stars</span>
         {row.rating ? (
-          <Stars n={row.rating.stars} />
+          <span className="inline-flex items-center gap-1.5">
+            <Stars n={row.rating.stars} />
+            {besideMark(row) && <NoticeMark level={besideMark(row)!} />}
+          </span>
+        ) : standIn(row) ? (
+          <NoticeMark level={standIn(row)!.level}>{standIn(row)!.word}</NoticeMark>
         ) : (
           <b className={s.roValue()}>{row.hour.daylight ? "–" : "Dark"}</b>
         )}
@@ -1445,10 +1485,11 @@ function HourTable({
 }
 
 /**
- * An hour's stars in the table, as the old day table had them: an orange or
- * red Met Éireann warning, or a notice against bathing, stands where the
- * stars were; a yellow warning or an advisory rides beside them. A press says
- * why, in words (ui/RatingTip.tsx).
+ * An hour's stars in the table: an orange or red Met Éireann warning, or a
+ * notice against bathing, stands where the stars were, as its square and one
+ * word ("Orange warning", "Water"); a yellow warning or any other notice
+ * rides beside them, the square alone. A press says why, in words
+ * (ui/RatingTip.tsx).
  */
 function StarsCell({
   row,
@@ -1468,19 +1509,22 @@ function StarsCell({
       .filter((item) => item !== undefined)
       .map(noticeWords)
       .join("; ") || "Bathing water notice";
-  const waterStands =
-    !row.warning?.replaces_rating && !!row.water?.replaces_rating;
+  const taken = standIn(row);
+  const beside = besideMark(row);
+  const warningWords = row.warning
+    ? warned || `${LEVEL_LABEL[row.warning.level]} warning`
+    : "";
   const label = `${clock(row.time)}: ${
-    row.warning?.replaces_rating
-      ? `no stars: ${warned || `${LEVEL_LABEL[row.warning.level]} warning`}`
-      : waterStands
-        ? `no stars: ${watered}`
+    taken?.level === "water"
+      ? `no stars: ${watered}`
+      : taken
+        ? `no stars: ${warningWords}`
         : row.rating
           ? starsText(row.rating)
           : row.hour.daylight
             ? "no wind reading"
             : "dark, not rated"
-  }${row.warning && !row.warning.replaces_rating ? `; ${warned || "Yellow warning"}` : ""}${row.water && !waterStands ? `; ${watered}` : ""}`;
+  }${row.warning && !row.warning.replaces_rating ? `; ${warningWords}` : ""}${row.water && taken?.level !== "water" ? `; ${watered}` : ""}`;
   return (
     <td
       className={styles().td()}
@@ -1500,9 +1544,9 @@ function StarsCell({
           <div className="grid gap-1.5" data-hour-tip>
             {row.warning && (
               <p className="m-0 flex items-center gap-1.5" data-tip-warning>
-                <WarningMark level={row.warning.level} dot />
+                <NoticeMark level={row.warning.level} />
                 <span>
-                  {warned || `${LEVEL_LABEL[row.warning.level]} warning`}
+                  {warningWords}
                   {row.warning.replaces_rating
                     ? ": no stars while it is in force."
                     : ": the stars stand beside it."}
@@ -1511,7 +1555,9 @@ function StarsCell({
             )}
             {row.water && (
               <p className="m-0 flex items-center gap-1.5" data-tip-water>
-                <WaterMark dot />
+                <NoticeMark
+                  level={row.water.replaces_rating ? "water" : "water-advice"}
+                />
                 <span>
                   {watered}
                   {row.water.replaces_rating
@@ -1521,10 +1567,10 @@ function StarsCell({
               </p>
             )}
             <p className="m-0 font-semibold">
-              {row.warning?.replaces_rating
-                ? "Met Éireann warning."
-                : waterStands
-                  ? "Bathing water notice."
+              {taken?.level === "water"
+                ? "Bathing water notice."
+                : taken
+                  ? "Met Éireann warning."
                   : row.rating
                     ? starsText(row.rating)
                     : row.hour.daylight
@@ -1541,15 +1587,12 @@ function StarsCell({
           </div>
         }
       >
-        {row.warning?.replaces_rating ? (
-          <WarningMark level={row.warning.level} />
-        ) : waterStands ? (
-          <WaterMark />
+        {taken ? (
+          <NoticeMark level={taken.level}>{taken.word}</NoticeMark>
         ) : (
           <span className="inline-flex items-center gap-1.5">
             {row.rating ? <Stars n={row.rating.stars} size={12} /> : "–"}
-            {row.warning && <WarningMark level={row.warning.level} dot />}
-            {row.water && <WaterMark dot />}
+            {beside && <NoticeMark level={beside} />}
           </span>
         )}
       </RatingTip>

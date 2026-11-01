@@ -31,7 +31,7 @@ const styles = tv({
     img: "absolute inset-0 size-full object-cover transition-opacity duration-base",
     svg: "absolute inset-0 size-full",
     words: "transition-opacity duration-fast",
-    word: "fill-photo-line font-mono font-semibold",
+    word: "fill-photo-line font-body font-semibold",
     pill: "fill-photo-pill",
   },
   variants: {
