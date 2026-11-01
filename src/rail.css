@@ -15,7 +15,6 @@
   align-items: center;
   padding: 2px 2px 4px var(--lr-tips);
   margin-left: calc(var(--lr-tips) * -1);
-  margin-right: -2px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;

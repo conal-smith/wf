@@ -740,9 +740,9 @@
   font: 600 12px/1.15 var(--font-body);
 }
 .lt-lab i {
-  font: 500 10px var(--font-mono);
+  font: 500 11px var(--font-body);
   font-style: normal;
-  color: var(--color-chart-magenta);
+  color: var(--color-ink-2);
 }
 .lt.off .lt-lab i {
   color: var(--color-pen-ink);
