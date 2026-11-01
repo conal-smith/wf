@@ -1,8 +1,8 @@
 import { useEffect, useRef, type CSSProperties, type RefObject } from "react";
 import { CircleAlert, SquarePen, X } from "lucide-react";
-import { Button, Kicker, StarGlyphs } from "../../ui";
+import { Button, Notice, StarGlyphs } from "../../ui";
 import { AI_HREF } from "../../force5/src/siteNav";
-import { MONO_LABEL, RING } from "../../ui/tv";
+import { RING } from "../../ui/tv";
 import { loadPrefs, parseRider, saveRider } from "../../force5/src/prefs";
 import {
   COMPANION_NAME,
@@ -131,11 +131,11 @@ export function Companion({
         ref={launcher}
         type="button"
         className={[
-          // Paper in an ink ring, like a light on the chart: not glass. It
-          // floats over the map, lit faintly from above as a small box is.
-          "gust-launcher group grid size-16 cursor-pointer place-items-center rounded-full",
-          "border border-ink bg-card paper-float shadow-float inset-shadow-frame",
-          "not-disabled:hover:bg-card not-disabled:hover:-translate-y-0.5",
+          // The kit's floating card, round: the ground with the float shadow,
+          // and in dark a faint edge, over the map as a box over it is.
+          "gust-launcher group grid size-16 cursor-pointer place-items-center rounded-full border-0",
+          "bg-ground shadow-float dark:ring-1 dark:ring-line",
+          "not-disabled:hover:bg-ground not-disabled:hover:-translate-y-0.5",
           RING,
         ].join(" ")}
         data-open={gust.open}
@@ -150,7 +150,7 @@ export function Companion({
         {gust.nudging && !gust.open && (
           <span
             aria-hidden="true"
-            className="absolute -top-1 -left-1 flex rounded-full bg-inverse sheen-ink px-2 py-1 shadow-control"
+            className="absolute -top-1 -left-1 flex rounded-full bg-inverse px-2 py-1 shadow-control"
           >
             <StarGlyphs
               stars={nudgeStars}
@@ -198,12 +198,11 @@ function Panel({
       aria-label={COMPANION_NAME}
       tabIndex={-1}
       className={[
-        // A sheet: flat, opaque paper with its grain, the ink rule and the
-        // hairline inside it, a sheet's corner, and the deeper lift. On a
-        // phone it stands on the foot of the screen, and gust.css squares
-        // its two lower corners.
+        // A sheet, as the kit's dialog is: the ground, a sheet's corner, the
+        // deeper shadow, and in dark a faint edge. On a phone it stands on
+        // the foot of the screen, and gust.css squares its two lower corners.
         "gust-panel flex flex-col overflow-hidden rounded-dialog font-body text-ink focus:outline-hidden",
-        "border border-ink bg-card paper-grain shadow-sheet inset-shadow-frame",
+        "bg-ground shadow-sheet dark:ring-1 dark:ring-line",
       ].join(" ")}
       onKeyDown={(event) => {
         // The map closes its dock on Escape; inside Gust it closes Gust only.
@@ -213,14 +212,14 @@ function Panel({
         }
       }}
     >
-      <header className="mx-1 mt-1 flex items-center gap-3 border-0 border-b-3 border-double border-ink px-3 py-2.5">
+      <header className="flex items-center gap-3 border-0 border-b border-line px-4 py-3">
         <Character mood={gust.mood} size={40} labelled />
         <div className="min-w-0 flex-1">
-          <h2 className="m-0 font-display text-lead text-ink">
+          <h2 className="m-0 font-body text-lead tracking-tight text-ink">
             {COMPANION_NAME}
           </h2>
           <p
-            className={["m-0 truncate text-ink-muted", MONO_LABEL].join(" ")}
+            className="m-0 truncate font-body text-body text-ink-muted"
             aria-live="polite"
           >
             {resting
@@ -244,7 +243,7 @@ function Panel({
             input.current?.focus();
           }}
         >
-          <SquarePen size={16} strokeWidth={1.5} aria-hidden="true" />
+          <SquarePen size={16} strokeWidth={1.75} aria-hidden="true" />
         </Button>
         <Button
           variant="quiet"
@@ -253,7 +252,7 @@ function Panel({
           aria-label={`Close ${COMPANION_NAME}`}
           onClick={() => gust.toggle(false)}
         >
-          <X size={18} strokeWidth={1.5} aria-hidden="true" />
+          <X size={18} strokeWidth={1.75} aria-hidden="true" />
         </Button>
       </header>
 
@@ -274,7 +273,7 @@ function Panel({
         )}
       </div>
 
-      <footer className="flex flex-col gap-1 border-0 border-t border-ink px-3 pt-3 pb-safe-3">
+      <footer className="flex flex-col gap-1.5 border-0 border-t border-line px-3 pt-3 pb-safe-3">
         {gust.chat.requestError && !resting && (
           <p
             role="alert"
@@ -303,7 +302,7 @@ function Panel({
                 : undefined
           }
         />
-        <p className="m-0 px-1 font-body text-caption text-ink-muted italic">
+        <p className="m-0 px-1 font-body text-caption text-ink-muted">
           Forecasts, not promises. Check the launch and conditions yourself.
         </p>
       </footer>
@@ -330,7 +329,7 @@ function Resting({ resumes }: { resumes: string | null }) {
       role="status"
     >
       <Character mood="asleep" size={96} />
-      <p className="m-0 font-display text-lead text-ink">
+      <p className="m-0 font-body text-lead tracking-tight text-ink">
         {COMPANION_NAME} is resting
       </p>
       <p className="m-0 max-w-reading font-body text-body text-ink-2">
@@ -353,7 +352,7 @@ function Asleep() {
       role="status"
     >
       <Character mood="asleep" size={96} />
-      <p className="m-0 font-display text-lead text-ink">
+      <p className="m-0 font-body text-lead tracking-tight text-ink">
         {COMPANION_NAME} is asleep
       </p>
       <p className="m-0 max-w-reading font-body text-body text-ink-2">
@@ -385,29 +384,32 @@ function Welcome({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col items-center gap-2 pt-2 text-center">
         <Character mood={gust.mood} size={84} />
-        <p className="m-0 font-display text-lead text-ink">Where to, rider?</p>
+        <p className="m-0 font-body text-lead tracking-tight text-ink">
+          Where to, rider?
+        </p>
         <p className="m-0 max-w-reading font-body text-body text-ink-2">
           Ask me where and when to go. I read every model&rsquo;s forecast, rate
           it for you in stars, and can put it on the map.
         </p>
       </div>
       <ul
-        className="m-0 flex list-none flex-col border-0 border-t border-ink p-0"
+        className="m-0 flex list-none flex-col divide-y divide-line overflow-hidden rounded-surface bg-sunken p-0"
         aria-label="Suggestions"
       >
         {asks.map((ask) => (
-          <li key={ask} className="border-0 border-b border-line">
+          <li key={ask}>
             <button
               type="button"
               className={[
-                "flex min-h-touch w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-1 py-2 text-left font-body text-prose text-ink italic",
-                "not-disabled:hover:bg-sunken not-disabled:hover:text-chart-magenta",
+                "flex min-h-touch w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-4 py-2.5 text-left font-body text-prose text-ink",
+                "transition-colors duration-fast not-disabled:hover:bg-line",
                 RING,
+                "focus-visible:-outline-offset-2",
               ].join(" ")}
               onClick={() => void gust.send(ask)}
             >
               <span className="min-w-0 flex-1">{ask}</span>
-              <span aria-hidden="true" className="font-mono text-ink-muted">
+              <span aria-hidden="true" className="text-ink-muted">
                 →
               </span>
             </button>
@@ -416,7 +418,7 @@ function Welcome({
       </ul>
       {gust.nudge?.best && (
         <div className="flex flex-col gap-2">
-          <Kicker className="flex items-center gap-1.5">
+          <p className="m-0 flex items-center gap-1.5 font-body text-body text-ink-muted">
             Heads up:{" "}
             <StarGlyphs
               stars={gust.nudge.best.stars}
@@ -424,7 +426,7 @@ function Welcome({
               size={10}
             />{" "}
             at {gust.nudge.name}
-          </Kicker>
+          </p>
           <SpotCard card={gust.nudge} onShow={onShow} compact />
         </div>
       )}
@@ -471,14 +473,7 @@ function Reply({
         ),
       )}
       {message.error && (
-        <p className="m-0 flex items-start gap-2 border-0 border-l-3 border-warn bg-warn-ground px-3 py-2 font-body text-body text-warn">
-          <CircleAlert
-            size={14}
-            className="mt-0.5 shrink-0"
-            aria-hidden="true"
-          />
-          {message.error.message}
-        </p>
+        <Notice level="warn" alert title={message.error.message} />
       )}
     </li>
   );
@@ -520,7 +515,7 @@ function Conversation({
             m.role === "user" ? (
               <li key={m.id} className="flex justify-end pl-10">
                 <span className="sr-only">You said</span>
-                <p className="m-0 border-0 border-r-3 border-ink pr-3 text-right font-body text-prose whitespace-pre-wrap text-ink italic">
+                <p className="m-0 rounded-surface bg-sunken px-3.5 py-2.5 font-body text-prose whitespace-pre-wrap text-ink">
                   {m.text}
                 </p>
               </li>
@@ -532,7 +527,7 @@ function Conversation({
       </div>
       {waiting && (
         <p
-          className="m-0 flex items-center gap-2 font-body text-body text-ink-muted italic"
+          className="m-0 flex items-center gap-2 font-body text-body text-ink-muted"
           role="status"
         >
           <Character mood="thinking" size={30} /> {COMPANION_NAME} is{" "}

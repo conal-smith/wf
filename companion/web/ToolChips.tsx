@@ -15,31 +15,33 @@ export function ToolChips({ tools }: { tools: ToolActivity[] }) {
           key={tool.id}
           data-status={tool.status}
           className={[
-            "inline-flex max-w-full items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-caption",
+            // The kit's tag (ui/Tag): a word in a soft capsule, the pen's red
+            // on its tint for a lookup that failed.
+            "inline-flex h-5.5 max-w-full items-center gap-1.5 rounded-full px-2 font-body text-label font-medium",
             tool.status === "error"
-              ? "border-warn bg-warn-ground text-warn"
-              : "border-line bg-sunken text-ink-2",
+              ? "bg-warn-ground text-pen-ink"
+              : "bg-sunken text-ink-2",
           ].join(" ")}
           title={tool.summary}
         >
           {tool.status === "running" ? (
             <LoaderCircle
               size={12}
-              strokeWidth={1.5}
+              strokeWidth={1.75}
               className="gust-spin shrink-0"
               aria-hidden="true"
             />
           ) : tool.status === "done" ? (
             <Check
               size={12}
-              strokeWidth={1.5}
+              strokeWidth={1.75}
               className="shrink-0 text-ok"
               aria-hidden="true"
             />
           ) : (
             <CircleAlert
               size={12}
-              strokeWidth={1.5}
+              strokeWidth={1.75}
               className="shrink-0"
               aria-hidden="true"
             />
