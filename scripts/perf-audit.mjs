@@ -17,7 +17,8 @@
  * What is measured, per load: TTFB, FCP, LCP, CLS, total blocking time (the
  * part of every long task over 50 ms, from navigation until the map is
  * ready), "map ready" (every riding place on the map with its rating), "dock
- * ready" (the forecast's days and stars on the page), and the bytes and
+ * ready" (the spot's week in the scrub bar, as the metric was named when it
+ * was the dock), and the bytes and
  * requests it took. Then, on a warm page, the
  * interactions a rider makes: switching model, stepping the forecast time,
  * opening a riding place, and opening search, each as the wall time from the
@@ -35,7 +36,7 @@
  * wide screen (since 26 October 2026): its loads are timed to the list
  * ("list ready", the cards on the page) and, on a desktop, to the chart
  * beside it. The chart's own loads open on a spot (`/?spot=brandon`), the
- * full chart with its dock. A rider with five favourites is put on the
+ * full chart with the spot's week in its scrub bar. A rider with five favourites is put on the
  * device first, so the list has cards. `--home /spots` times the list on a
  * build from before, when the root was the chart.
  */
@@ -55,7 +56,7 @@ const runs = Number(option("runs", 3));
 const clock = option("clock", "");
 const only = option("only", "");
 const home = option("home", "/");
-/** The full chart, on a spot, with its dock. */
+/** The full chart, on a spot, with its week in the scrub bar. */
 const CHART = "/?spot=brandon";
 /** The rider's favourites, so the home page has cards to draw. */
 const FAVOURITES = ["brandon", "dollymount", "keel", "rosslare", "seapoint"];
@@ -200,10 +201,10 @@ async function panelReady(page) {
   );
 }
 
-/** The dock is ready when its days and its stars row are on the page. */
-async function dockReady(page) {
+/** The scrub bar is ready when it has the chosen spot's hours in. */
+async function barReady(page) {
   await page.waitForFunction(
-    () => !!document.querySelector(".dock tr.tt-stars"),
+    () => !!document.querySelector(".scrub[data-ready]"),
     null,
     { timeout: 90000, polling: 50 },
   );
@@ -316,7 +317,7 @@ async function loadOnce(
       mapReady(page).then(async () => {
         readyAt = await page.evaluate(() => performance.now());
       }),
-      dockReady(page).then(async () => {
+      barReady(page).then(async () => {
         dockAt = await page.evaluate(() => performance.now());
       }),
     ]);
@@ -349,7 +350,7 @@ async function interactions(browser, profileName, shotDir) {
   const page = await context.newPage();
   await page.goto(base + CHART);
   await mapReady(page);
-  await dockReady(page);
+  await barReady(page);
   await page.waitForTimeout(2500);
   await throttle(page, profile);
   const result = {};
@@ -446,18 +447,16 @@ async function interactions(browser, profileName, shotDir) {
       await page.screenshot({ path: join(shotDir, `${profileName}-spot.png`) });
   }
 
-  // Switch the dock's view to the blend and back to the table.
-  for (const view of ["Blend", "Table"]) {
+  // Switch the scrub bar's strip to the waves and back to the wind.
+  for (const view of ["Waves", "Wind"]) {
     const button = page
-      .locator(".dock")
-      .getByRole("radio", { name: view })
-      .or(page.locator(".dock").getByRole("button", { name: view }))
-      .first();
+      .locator(".scrub")
+      .getByRole("button", { name: view, exact: true });
     if (!(await button.count())) continue;
-    await time(`dockView:${view.toLowerCase()}`, () => button.click());
-    if (shotDir && view === "Blend")
+    await time(`stripView:${view.toLowerCase()}`, () => button.click());
+    if (shotDir && view === "Waves")
       await page.screenshot({
-        path: join(shotDir, `${profileName}-blend.png`),
+        path: join(shotDir, `${profileName}-waves.png`),
       });
   }
 
