@@ -671,6 +671,10 @@
     margin: 0;
     border-radius: 0;
   }
+  /* The whole screen, not a sheet: no grabber. */
+  .st > span:first-child {
+    display: none;
+  }
   /* Room past the last part, so it scrolls clear of a browser's bars
      where they stand over the foot of the screen. */
   .st-body {
