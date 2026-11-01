@@ -98,7 +98,7 @@ export const HOVER = "not-disabled:hover:bg-sunken";
  * capitals in IBM Plex Mono, at the eyebrow step. Spread into a recipe where
  * a slot is a label; `Kicker` is the same thing as a component.
  */
-export const MONO_LABEL = "font-mono text-eyebrow uppercase";
+export const MONO_LABEL = "font-mono text-eyebrow";
 
 /** Disabled is said in ink and cursor; the reset's fade is taken back off. */
 export const DISABLED =

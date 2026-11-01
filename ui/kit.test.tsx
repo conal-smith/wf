@@ -271,10 +271,10 @@ describe("S2: what ui/ exports", () => {
 });
 
 describe("S3: the chart's shapes", () => {
-  it("speaks in the mono label: every button, in tracked capitals", () => {
+  it("speaks in the label: every button, in sentence case", () => {
     for (const variant of ["quiet", "primary", "pill", "raised", "danger"] as const) {
       const classes = buttonStyles({ variant }).split(" ");
-      for (const name of ["font-mono", "text-label", "uppercase"])
+      for (const name of ["font-mono", "text-label"])
         expect(classes, `${variant} ${name}`).toContain(name);
     }
   });
@@ -388,7 +388,7 @@ describe("S3: the chart's shapes", () => {
 
   it("a field is named in the mono label, and its words are the body face", () => {
     expect(fieldStyles().label()).toContain(MONO_LABEL.split(" ")[0]);
-    expect(fieldStyles().label().split(" ")).toContain("uppercase");
+    expect(fieldStyles().label().split(" ")).not.toContain("uppercase");
     expect(controlStyles().input().split(" ")).toContain("font-body");
     expect(controlStyles().input().split(" ")).toContain("placeholder:italic");
   });
@@ -941,7 +941,7 @@ describe("the components, rendered", () => {
   });
 
   it("Chip, Pane and Surface pass their attributes through", () => {
-    expect(html(<Chip eyebrow>New</Chip>)).toContain("uppercase");
+    expect(html(<Chip eyebrow>New</Chip>)).toContain("text-eyebrow");
     expect(html(<Pane kind="sunken" id="p" />)).toMatch(/id="p"/);
     expect(html(<Pane kind="sunken" />)).not.toContain("border-line");
     expect(html(<Surface role="region" />)).toMatch(/^<div role="region"/);

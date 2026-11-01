@@ -58,39 +58,39 @@ function variable(css: string, name: string): string | null {
 
 // The chart (ruling of 2026-10-05, docs/BRAND.md).
 const COLOURS: Record<string, string> = {
-  ground: "#f3eee3",
-  card: "#f3eee3",
-  solid: "#f3eee3",
-  sunken: "#ede6d6",
-  glass: "#f3eee3eb",
-  inverse: "#1a1d21",
-  scrim: "#f3eee366",
-  "scrim-solid": "#f3eee3cc",
+  ground: "#ffffff",
+  card: "#ffffff",
+  solid: "#ffffff",
+  sunken: "#f5f5f7",
+  glass: "#ffffffeb",
+  inverse: "#111114",
+  scrim: "#ffffff66",
+  "scrim-solid": "#ffffffcc",
   // The sea and the shore, as a chart tints them, shallow to deep.
-  sea: "#d5e6ea",
+  sea: "#e4eef3",
   "sea-1": "#a9cbd8",
   "sea-2": "#c3dae2",
   "sea-3": "#dae8ea",
-  "sea-4": "#ecf0ea",
+  "sea-4": "#eef3f6",
   depth: "#5f8c9c",
-  land: "#ede3c8",
-  relief: "#b59e74",
+  land: "#f1f1f3",
+  relief: "#a9a9b1",
   // The basemap's two fills, and the bar a forecast cell draws behind its
   // number: a quantity, so the chart's magenta rather than water.
-  "basemap-water": "#e5edea",
-  "basemap-land": "#ede3c8",
+  "basemap-water": "#e6eef3",
+  "basemap-land": "#f1f1f3",
   wash: "#b0186a",
-  line: "#1a1d2133",
-  "line-strong": "#7c7b78",
-  ink: "#1a1d21",
-  "ink-2": "#3b3c3e",
-  "ink-muted": "#5b5c5b",
-  "ink-disabled": "#7c7b78",
-  "ink-inverse": "#f3eee3",
-  accent: "#1a1d21",
+  line: "#1111141f",
+  "line-strong": "#8b8b94",
+  ink: "#111114",
+  "ink-2": "#3a3a40",
+  "ink-muted": "#6c6c74",
+  "ink-disabled": "#8b8b94",
+  "ink-inverse": "#ffffff",
+  accent: "#111114",
   "accent-hover": "#b0186a",
-  "accent-ink": "#f3eee3",
-  quiet: "#1a1d21",
+  "accent-ink": "#ffffff",
+  quiet: "#111114",
   focus: "#b0186a",
   "chart-magenta": "#b0186a",
   pen: "#d43a2c",
@@ -98,7 +98,7 @@ const COLOURS: Record<string, string> = {
   buoy: "#e9b200",
   ok: "#2a7046",
   warn: "#b02a1f",
-  "warn-ground": "#efd8cd",
+  "warn-ground": "#fde8e4",
   "met-yellow": "#f0c419",
   "met-orange": "#e67322",
   "met-red": "#c3241c",
@@ -110,8 +110,8 @@ const COLOURS: Record<string, string> = {
   // The weather's state, and nothing else: the sun is the buoy's yellow.
   "weather-sun": "#e9b200",
   "weather-rain": "#3a7fb0",
-  "weather-cloud": "#d6d0c2",
-  "weather-night": "#e7dcb4",
+  "weather-cloud": "#d4d4da",
+  "weather-night": "#dedee6",
   // A rider's stars as colour, one to five, and nothing else.
   "stars-1": "#e28bb3",
   "stars-2": "#d2609a",
@@ -122,9 +122,9 @@ const COLOURS: Record<string, string> = {
 
 // Size, line height, then weight and tracking where the step has one.
 const TYPE: Record<string, [string, string, string?, string?]> = {
-  eyebrow: ["10px", "1.3", "500", "0.14em"],
+  eyebrow: ["12px", "1.3", "500", "0em"],
   caption: ["11px", "1.4"],
-  label: ["11px", "1.2", "500", "0.09em"],
+  label: ["12px", "1.2", "500", "0em"],
   body: ["13px", "1.4"],
   prose: ["15px", "1.45"],
   input: ["16px", "1.3"],
@@ -310,8 +310,18 @@ describe("ui/theme.css: the values", () => {
     );
   });
 
+  it("re-declares in the dark only names the light theme has", () => {
+    const [light, dark] = readFileSync(THEME, "utf8").split("/* ==== dark");
+    const names = (css: string) =>
+      new Set([...css.matchAll(/^\s*(--[a-z0-9-]+):/gm)].map((m) => m[1]));
+    const known = names(light);
+    const darkBlock = dark.slice(0, dark.indexOf("\n}"));
+    for (const name of names(darkBlock)) expect(known.has(name), name).toBe(true);
+  });
+
   it("holds exactly those colours and the wind ramp, no others", () => {
-    const source = readFileSync(THEME, "utf8");
+    // The light theme's; the dark block re-declares some of the same names.
+    const source = readFileSync(THEME, "utf8").split("/* ==== dark")[0];
     const declared = [...source.matchAll(/^\s*--color-([a-z0-9-]+):/gm)].map(
       (m) => m[1],
     );
@@ -407,13 +417,13 @@ describe("ui/theme.css: the values", () => {
   // Shadow by elevation, soft and stacked, the far one warm: the last layer
   // of each is the one that says how high it stands.
   it.each([
-    ["card", "0 2px 4px -2px", "#1a1d211a"],
-    ["float", "0 14px 28px -12px", "#3c2d1466"],
-    ["sheet", "0 24px 48px -16px", "#3c2d1480"],
-    ["dock", "0 -24px 48px -16px", "#3c2d1480"],
-    ["marker", "0px 4px 10px -6px", "#3c2d1466"],
-    ["control", "0 1px 2px", "#1a1d2150"],
-    ["raised", "0 1px 2px", "#1a1d2126"],
+    ["card", "0 2px 4px -2px", "#1111141a"],
+    ["float", "0 14px 28px -12px", "#00000066"],
+    ["sheet", "0 24px 48px -16px", "#00000080"],
+    ["dock", "0 -24px 48px -16px", "#00000080"],
+    ["marker", "0px 4px 10px -6px", "#00000066"],
+    ["control", "0 1px 2px", "#11111433"],
+    ["raised", "0 1px 2px", "#1111140f"],
   ])("shadow %s ends in %s %s", (name, geometry, ink) => {
     const declarations = rule(build([`shadow-${name}`]), `shadow-${name}`);
     expect(declarations).toMatch(/--tw-shadow: [^;]+;/);
@@ -460,7 +470,7 @@ describe("ui/theme.css: the values", () => {
     expect(variable(css, `--spacing-${name}`)).toBe(value);
   });
 
-  it("is four faces, each with its job, in the weights they use", () => {
+  it("is Fraunces for names, Inter for the rest, and the pen's hand, in the weights they use", () => {
     const css = build([
       "font-display",
       "font-body",
@@ -474,8 +484,8 @@ describe("ui/theme.css: the values", () => {
     ]);
     for (const [name, first] of [
       ["display", '"Fraunces Variable"'],
-      ["body", '"Newsreader Variable"'],
-      ["mono", '"IBM Plex Mono"'],
+      ["body", '"Inter Variable"'],
+      ["mono", '"Inter Variable"'],
       ["hand", '"Kalam"'],
     ]) {
       expect(rule(css, `font-${name}`)).toContain(

@@ -20,7 +20,7 @@ export const chipStyles = tv({
         "reduced-transparency:bg-solid reduced-transparency:backdrop-filter-none",
       ],
     },
-    eyebrow: { true: "text-eyebrow uppercase" },
+    eyebrow: { true: "text-eyebrow" },
   },
   defaultVariants: { tone: "neutral" },
 });

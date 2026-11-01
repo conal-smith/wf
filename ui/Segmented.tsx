@@ -10,7 +10,7 @@ export const segmentedStyles = tv({
     base: "inline-flex rounded-full border border-ink bg-card",
     item: [
       "inline-flex h-control-sm items-center justify-center gap-1 rounded-full border-0 bg-transparent px-3",
-      "font-mono text-label whitespace-nowrap text-ink uppercase",
+      "font-mono text-label whitespace-nowrap text-ink",
       "cursor-pointer touch-manipulation transition-colors duration-fast pointer-coarse:min-h-touch",
       "not-disabled:hover:bg-sunken",
       // The chosen one is filled in ink, with the ink's sheen, and set

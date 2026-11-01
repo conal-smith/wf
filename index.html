@@ -6,7 +6,9 @@
     <!-- The page's own ground, `--color-ground` in ui/theme.css. A document
          cannot read a CSS variable, so the value is written out here; the two
          are held equal by tests/ui-theme.test.ts. -->
-    <meta name="theme-color" content="#f3eee3" />
+    <meta name="theme-color" content="#ffffff" />
+    <!-- The theme before the first paint (shared/web/theme.ts THEME_BOOT). -->
+    <script>try{var t=localStorage.getItem("wingfoil.theme.v1");if(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.dataset.theme="dark"}catch(e){}</script>
     <!-- The map's head. The spot pages, /stars and /ai are served this file
          with their own title, description and address in these same tags
          (mcp/pages/head.ts, written by the Pages worker): keep each tag's

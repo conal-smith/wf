@@ -217,7 +217,7 @@ describe("S5: the header", () => {
     expect(out).toMatch(
       /<a href="\/community"[^>]*aria-label="wingfoil\.ie Community, home"/,
     );
-    expect(out).toMatch(/<span class="[^"]*uppercase[^"]*">Community<\/span>/);
+    expect(out).toMatch(/<span class="[^"]*text-eyebrow[^"]*">Community<\/span>/);
     expect(out).toMatch(/<nav class="[^"]*" aria-label="Community">/);
   });
 

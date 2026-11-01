@@ -93,7 +93,6 @@
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 1.1px;
-  text-transform: uppercase;
   color: var(--color-ink-muted);
   margin-bottom: 5px;
 }
@@ -148,8 +147,6 @@
 .display-filter h2 {
   margin: 16px 0 6px;
   font: 500 10px/1.2 var(--font-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: var(--color-ink-muted);
 }
 .display-filter h2:first-child {
@@ -167,8 +164,6 @@
   background: none;
   padding: 5px 11px;
   font: 500 10.5px var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   cursor: pointer;
   color: var(--color-ink);
 }
@@ -240,8 +235,6 @@
 .filter-sub {
   margin-top: 6px;
   font: 500 10px var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--color-ink-muted);
 }
 .filter-note {

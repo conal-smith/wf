@@ -379,7 +379,7 @@ async function settle(page: Page) {
   // face moves every line of every shot. `document.fonts.check` is no use — it
   // answers true for a family nobody has — so ask the set itself, for the
   // three faces every view sets: the names, the sentences and the figures.
-  for (const family of ["Fraunces", "Newsreader", "IBM Plex Mono"])
+  for (const family of ["Fraunces", "Inter Variable"])
     await expect
       .poll(
         () =>

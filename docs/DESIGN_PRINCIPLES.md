@@ -311,6 +311,28 @@ text's), `chart-magenta` 5.70:1, `warn` 5.68:1. The pen's mark `pen` is
 4.09:1, which is enough for a stroke and not for words, so its handwriting
 takes `pen-ink` at 4.93:1. Paper on the hovered accent is 5.70:1.
 
+**2026-10-31 — Modern white and dark** (the spot page and Spot finder mock-ups,
+`backlog/mockups/2026-10-31-spot-page.html` and `…-spot-finder-map.html`). The
+owner found the off-white paper "a bit gross" and asked for "a premium modern
+white and a dark black mode", fewer typefaces, and no small grey text on every
+figure. It replaces the 2026-10-05 ruling's values, not its other rules (one
+filled action per view, warm means now, wind colours mean wind): the ground is
+white (`#ffffff`, a second sheet `#f5f5f7`), the ink near-black (`#111114`),
+lines a hairline of ink at 12%, and controls flat, with no paper gradient or
+lit lip. A dark theme sits beside it under `<html data-theme="dark">`
+(`#0c0c0e`, ink `#f2f2f4`, magenta and the pen lifted to read on black),
+following the system until the rider picks one in the menu
+(`shared/web/theme.ts`). The type is two faces: Fraunces for a place's name and
+the wordmark, Inter for everything else, figures at even width; labels are in
+sentence case, untracked, at 12px. Kalam stays for the pen.
+
+Measured, not assumed, on white: `ink` 18.85:1, `ink-2` 11.30:1, `ink-muted`
+5.20:1 (4.78:1 on `sunken`), `line-strong` 3.38:1 (a stroke's bar, not
+text's), `chart-magenta` 6.59:1, `warn` 6.57:1, `pen` 4.73:1 and `pen-ink`
+5.70:1. White on the hovered accent is 6.59:1. On black: `ink` 17.48:1,
+`ink-2` 11.86:1, `ink-muted` 6.10:1 (5.58:1 on `sunken`), `chart-magenta`
+6.82:1, `pen` 6.38:1, `warn` 6.96:1.
+
 **2026-10-11 — The map has no default place.** It used to open every first
 visit on Brandon Bay, which told a rider in Donegal where to go before they had
 asked. Now the dock opens on the spot in the link (`?spot=`, focused, as a

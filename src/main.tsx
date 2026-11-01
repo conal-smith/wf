@@ -17,6 +17,11 @@ import {
   isSwitchedOffPath,
 } from "../force5/src/siteNav";
 import { openingPath } from "./lastView";
+import { watchTheme } from "../shared/web/theme";
+
+// Light or dark, following the system until the rider picks (the head has
+// already painted the first frame in it: index.html).
+watchTheme();
 
 // A section switched off in this build (shared/web/features.ts) is not there.
 // The host answers its paths with the app all the same (public/_redirects), so

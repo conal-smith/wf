@@ -98,8 +98,6 @@ dialog[open]:has(> .tour) {
   justify-content: space-between;
   gap: 8px;
   font: 500 var(--text-eyebrow) var(--font-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: var(--color-ink-muted);
 }
 .tour .tour-skip {

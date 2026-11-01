@@ -4,64 +4,64 @@
       "paper": {
         "100": {
           "$type": "color",
-          "$value": "#f3eee3",
+          "$value": "#ffffff",
           "$description": "The chart's paper. Every ground, card and the solid fallback are this one sheet."
         },
         "200": {
           "$type": "color",
-          "$value": "#ede6d6",
+          "$value": "#f5f5f7",
           "$description": "The paper's second sheet: a well, a tinted row, the current menu row."
         },
         "glass": {
           "$type": "color",
-          "$value": "#f3eee3eb",
+          "$value": "#ffffffeb",
           "$description": "Paper at 92%, laid over a photograph so a little of it shows through."
         },
         "a40": {
           "$type": "color",
-          "$value": "#f3eee366",
+          "$value": "#ffffff66",
           "$description": "Paper at 40%: the wash over a blurred page behind a dialog."
         },
         "a80": {
           "$type": "color",
-          "$value": "#f3eee3cc",
+          "$value": "#ffffffcc",
           "$description": "Paper at 80%: the same wash where nothing blurs the page under it."
         }
       },
       "ink": {
         "500": {
           "$type": "color",
-          "$value": "#7c7b78",
+          "$value": "#8b8b94",
           "$description": "A stroke's ink: a field's box, a disabled icon. 3.7:1 on paper; never words."
         },
         "600": {
           "$type": "color",
-          "$value": "#5b5c5b",
+          "$value": "#6c6c74",
           "$description": "Muted ink, the floor for words. 5.8:1 on paper, 5.4:1 on the second sheet."
         },
         "700": {
           "$type": "color",
-          "$value": "#3b3c3e",
+          "$value": "#3a3a40",
           "$description": "Second ink, for secondary text. 9.5:1 on paper."
         },
         "900": {
           "$type": "color",
-          "$value": "#1a1d21",
+          "$value": "#111114",
           "$description": "The ink: text, rules, the filled action. 14.6:1 on paper."
         },
         "a20": {
           "$type": "color",
-          "$value": "#1a1d2133",
+          "$value": "#1111141f",
           "$description": "Ink at 20%: the hairline between rows."
         },
         "a18": {
           "$type": "color",
-          "$value": "#1a1d212e",
+          "$value": "#1111142e",
           "$description": "Ink at 18%: the scrim behind a dialog until it became a wash of paper."
         },
         "a09": {
           "$type": "color",
-          "$value": "#1a1d2117",
+          "$value": "#11111417",
           "$description": "Ink at 9%: the hatch a chart shades the dark hours with."
         }
       },
@@ -87,7 +87,7 @@
       "warm": {
         "100": {
           "$type": "color",
-          "$value": "#efd8cd",
+          "$value": "#fde8e4",
           "$description": "Warm ground under a warning or an invalid field."
         },
         "700": {
@@ -145,12 +145,12 @@
         },
         "4": {
           "$type": "color",
-          "$value": "#ecf0ea",
+          "$value": "#eef3f6",
           "$description": "Depth tint: thirty metres and beyond, nearly paper as on a chart."
         },
         "ground": {
           "$type": "color",
-          "$value": "#d5e6ea",
+          "$value": "#e4eef3",
           "$description": "The sea the map floats on, what shows in a tile gap."
         },
         "depth": {
@@ -160,19 +160,19 @@
         },
         "basemap": {
           "$type": "color",
-          "$value": "#e5edea",
+          "$value": "#e6eef3",
           "$description": "Deep water as the basemap paints it, nearly paper."
         }
       },
       "land": {
         "buff": {
           "$type": "color",
-          "$value": "#ede3c8",
+          "$value": "#f1f1f3",
           "$description": "Land buff."
         },
         "relief": {
           "$type": "color",
-          "$value": "#b59e74",
+          "$value": "#a9a9b1",
           "$description": "The relief lines drawn on the land."
         }
       },
@@ -196,12 +196,12 @@
         },
         "cloud": {
           "$type": "color",
-          "$value": "#d6d0c2",
+          "$value": "#d4d4da",
           "$description": "A cloud's grey, a fill inside an ink outline only."
         },
         "night": {
           "$type": "color",
-          "$value": "#e7dcb4",
+          "$value": "#dedee6",
           "$description": "The moon's pale fill, inside an ink outline only."
         }
       },
@@ -307,42 +307,42 @@
       "night": {
         "ground": {
           "$type": "color",
-          "$value": "#1d1c19",
+          "$value": "#0c0c0e",
           "$description": "Proposed night chart: the paper, as warm dark ink. Not blue-shifted."
         },
         "sheet": {
           "$type": "color",
-          "$value": "#26241f",
+          "$value": "#17171b",
           "$description": "Proposed night chart: the second sheet."
         },
         "glass": {
           "$type": "color",
-          "$value": "#1d1c19eb",
+          "$value": "#0c0c0eeb",
           "$description": "Proposed night chart: dark paper at 92% over a photograph."
         },
         "ink": {
           "$type": "color",
-          "$value": "#ece5d6",
+          "$value": "#f2f2f4",
           "$description": "Proposed night chart: text and rules, in paper. 13.6:1 on the night ground."
         },
         "ink-2": {
           "$type": "color",
-          "$value": "#d2cbbb",
+          "$value": "#c9c9cf",
           "$description": "Proposed night chart: secondary text. 10.6:1."
         },
         "muted": {
           "$type": "color",
-          "$value": "#a8a194",
+          "$value": "#8f8f99",
           "$description": "Proposed night chart: the floor for words. 6.7:1, 6.1:1 on the night sheet."
         },
         "stroke": {
           "$type": "color",
-          "$value": "#827d72",
+          "$value": "#6b6b74",
           "$description": "Proposed night chart: a stroke's 3:1 step (4.2:1). Never words."
         },
         "line": {
           "$type": "color",
-          "$value": "#ece5d633",
+          "$value": "#ffffff1f",
           "$description": "Proposed night chart: the hairline, paper at 20%."
         },
         "scrim": {
@@ -352,82 +352,82 @@
         },
         "hatch": {
           "$type": "color",
-          "$value": "#ece5d617",
+          "$value": "#ffffff12",
           "$description": "Proposed night chart: the dark-hours hatch, paper at 9%."
         },
         "magenta": {
           "$type": "color",
-          "$value": "#e6609f",
+          "$value": "#ff5aae",
           "$description": "Proposed night chart: magenta lifted to clear 5:1 on the night ground."
         },
         "pen": {
           "$type": "color",
-          "$value": "#ef5f4f",
+          "$value": "#ff5b4d",
           "$description": "Proposed night chart: the pen's stroke. 5.2:1."
         },
         "pen-ink": {
           "$type": "color",
-          "$value": "#f2766a",
+          "$value": "#ff7d70",
           "$description": "Proposed night chart: the pen's handwriting. 6.2:1."
         },
         "warn": {
           "$type": "color",
-          "$value": "#f07565",
+          "$value": "#ff6a5e",
           "$description": "Proposed night chart: degraded and now. 6.0:1."
         },
         "warn-ground": {
           "$type": "color",
-          "$value": "#3b231e",
+          "$value": "#3a1e1b",
           "$description": "Proposed night chart: the warm ground under a warning."
         },
         "ok": {
           "$type": "color",
-          "$value": "#6dbb88",
+          "$value": "#4cc27a",
           "$description": "Proposed night chart: liveness green. 7.4:1."
         },
         "sea": {
           "$type": "color",
-          "$value": "#1e2a2d",
+          "$value": "#0f1a20",
           "$description": "Proposed night chart: the sea the map floats on."
         },
         "sea-1": {
           "$type": "color",
-          "$value": "#2d4a54",
+          "$value": "#2c6c84",
           "$description": "Proposed night chart: depth tint, under a metre."
         },
         "sea-2": {
           "$type": "color",
-          "$value": "#283e46",
+          "$value": "#1b4252",
           "$description": "Proposed night chart: depth tint, about three metres."
         },
         "sea-3": {
           "$type": "color",
-          "$value": "#23333a",
+          "$value": "#123240",
           "$description": "Proposed night chart: depth tint, about ten metres."
         },
         "sea-4": {
           "$type": "color",
-          "$value": "#1f2a2e",
+          "$value": "#0f1b21",
           "$description": "Proposed night chart: depth tint, thirty metres and beyond."
         },
         "depth": {
           "$type": "color",
-          "$value": "#7fa9b8",
+          "$value": "#4fa3c2",
           "$description": "Proposed night chart: contour and sounding ink."
         },
         "land": {
           "$type": "color",
-          "$value": "#2c2920",
+          "$value": "#1b1b1f",
           "$description": "Proposed night chart: land."
         },
         "relief": {
           "$type": "color",
-          "$value": "#8a7652",
+          "$value": "#6b6b74",
           "$description": "Proposed night chart: relief lines."
         },
         "basemap-water": {
           "$type": "color",
-          "$value": "#202727",
+          "$value": "#0f1013",
           "$description": "Proposed night chart: deep water on the basemap."
         }
       }
@@ -448,24 +448,28 @@
         "body": {
           "$type": "fontFamily",
           "$value": [
-            "Newsreader Variable",
-            "Newsreader",
-            "Georgia",
-            "Times New Roman",
-            "serif"
+            "Inter Variable",
+            "Inter",
+            "ui-sans-serif",
+            "system-ui",
+            "-apple-system",
+            "Segoe UI",
+            "sans-serif"
           ],
-          "$description": "Newsreader: the few sentences there are."
+          "$description": "Inter: every sentence, figure and label, in sentence case, figures of even width."
         },
         "mono": {
           "$type": "fontFamily",
           "$value": [
-            "IBM Plex Mono",
-            "ui-monospace",
-            "SFMono-Regular",
-            "Menlo",
-            "monospace"
+            "Inter Variable",
+            "Inter",
+            "ui-sans-serif",
+            "system-ui",
+            "-apple-system",
+            "Segoe UI",
+            "sans-serif"
           ],
-          "$description": "IBM Plex Mono: every figure, and every label in tracked capitals."
+          "$description": "Inter, as the body: the old mono slot keeps its name so the recipes that ask for it still resolve."
         },
         "hand": {
           "$type": "fontFamily",
@@ -609,6 +613,11 @@
           "$type": "dimension",
           "$value": "0.14em",
           "$description": "The mono label's tracked capitals."
+        },
+        "zero": {
+          "$type": "dimension",
+          "$value": "0em",
+          "$description": "No tracking: labels are in sentence case."
         }
       }
     },
@@ -683,7 +692,7 @@
     "shadow": {
       "control": {
         "$type": "shadow",
-        "$value": "inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150",
+        "$value": "inset 0 1px 0 #ffffff2e, 0 1px 2px #11111450",
         "$description": "A pressed ink control's sheen: a lit top lip and a contact shadow."
       },
       "control-night": {
@@ -693,7 +702,7 @@
       },
       "raised": {
         "$type": "shadow",
-        "$value": "inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126",
+        "$value": "inset 0 1px 0 #ffffff, 0 1px 2px #11111426",
         "$description": "A raised paper button: a white lip and a contact shadow."
       },
       "raised-night": {
@@ -703,12 +712,12 @@
       },
       "marker": {
         "$type": "shadow",
-        "$value": "0px 4px 10px -6px #3c2d1466",
+        "$value": "0px 4px 10px -6px #00000066",
         "$description": "A marker lifting off the chart."
       },
       "card": {
         "$type": "shadow",
-        "$value": "0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a",
+        "$value": "0 1px 1px #1111141a, 0 2px 4px -2px #1111141a",
         "$description": "A card on a page: a contact shadow only."
       },
       "card-night": {
@@ -718,7 +727,7 @@
       },
       "float": {
         "$type": "shadow",
-        "$value": "0 1px 1px #1a1d211a, 0 3px 6px -2px #1a1d211f, 0 14px 28px -12px #3c2d1466",
+        "$value": "0 1px 1px #1111141a, 0 3px 6px -2px #1111141f, 0 14px 28px -12px #00000066",
         "$description": "A box over the chart: contact, near and far, stacked, the far one warm."
       },
       "float-night": {
@@ -728,7 +737,7 @@
       },
       "sheet": {
         "$type": "shadow",
-        "$value": "0 1px 1px #1a1d211a, 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480",
+        "$value": "0 1px 1px #1111141a, 0 6px 12px -4px #11111424, 0 24px 48px -16px #00000080",
         "$description": "A sheet or a dialog: the float's stack one level deeper."
       },
       "sheet-night": {
@@ -738,7 +747,7 @@
       },
       "dock": {
         "$type": "shadow",
-        "$value": "0 -1px 1px #1a1d211a, 0 -6px 12px -4px #1a1d2124, 0 -24px 48px -16px #3c2d1480",
+        "$value": "0 -1px 1px #1111141a, 0 -6px 12px -4px #11111424, 0 -24px 48px -16px #00000080",
         "$description": "The dock: the sheet's stack cast upward, from the foot of the screen over the map."
       },
       "dock-night": {
@@ -748,7 +757,7 @@
       },
       "frame": {
         "$type": "shadow",
-        "$value": "inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142",
+        "$value": "inset 0 0 0 2px #ffffff, inset 0 0 0 3px #11111426",
         "$description": "The hairline inside the ink rule: two of paper, then one of ink at a quarter."
       },
       "frame-night": {
@@ -760,7 +769,7 @@
     "gradient": {
       "ink": {
         "$type": "string",
-        "$value": "linear-gradient(180deg, #33373d, #15171a)",
+        "$value": "linear-gradient(180deg, #111114, #111114)",
         "$description": "A pressed ink control's fill: ink, lit a little from above."
       },
       "ink-night": {
@@ -770,7 +779,7 @@
       },
       "raised": {
         "$type": "string",
-        "$value": "linear-gradient(180deg, #ffffff, #f0eadd)",
+        "$value": "linear-gradient(180deg, #ffffff, #ffffff)",
         "$description": "A raised paper button's fill: white at the top to paper."
       },
       "raised-night": {
@@ -780,7 +789,7 @@
       },
       "float": {
         "$type": "string",
-        "$value": "linear-gradient(180deg, #f6f2e9, #f1ebdf)",
+        "$value": "linear-gradient(180deg, #ffffff, #ffffff)",
         "$description": "A floating box's paper: the faintest light from above."
       },
       "float-night": {
@@ -940,7 +949,7 @@
             "use": "The modal backdrop only, with --blur-scrim under it.",
             "modes": {
               "light": "{ref.color.paper.a40}",
-              "dark": "{ref.color.night.scrim}"
+              "dark": "#0c0c0e66"
             }
           }
         }
@@ -955,7 +964,7 @@
             "use": "The modal backdrop for a reader who asks for less transparency, and in a browser that cannot blur.",
             "modes": {
               "light": "{ref.color.paper.a80}",
-              "dark": "{ref.color.night.scrim}"
+              "dark": "#0c0c0ecc"
             }
           }
         }
@@ -2076,7 +2085,7 @@
       "size": {
         "eyebrow": {
           "$type": "dimension",
-          "$value": "{ref.font.size.10}",
+          "$value": "12px",
           "$description": "--text-eyebrow: mono, tracked capitals.",
           "$extensions": {
             "com.sprintengine": {
@@ -2099,7 +2108,7 @@
         },
         "label": {
           "$type": "dimension",
-          "$value": "{ref.font.size.11}",
+          "$value": "12px",
           "$description": "--text-label: a control's words.",
           "$extensions": {
             "com.sprintengine": {
@@ -2356,7 +2365,7 @@
       "tracking": {
         "eyebrow": {
           "$type": "dimension",
-          "$value": "{ref.font.tracking.pos-014}",
+          "$value": "{ref.font.tracking.zero}",
           "$description": "--text-eyebrow--letter-spacing.",
           "$extensions": {
             "com.sprintengine": {
@@ -2367,7 +2376,7 @@
         },
         "label": {
           "$type": "dimension",
-          "$value": "{ref.font.tracking.pos-009}",
+          "$value": "{ref.font.tracking.zero}",
           "$description": "--text-label--letter-spacing.",
           "$extensions": {
             "com.sprintengine": {
@@ -2759,30 +2768,30 @@
     "shadow": {
       "control": {
         "$type": "shadow",
-        "$value": "{ref.shadow.control}",
+        "$value": "0 1px 2px #11111433",
         "$description": "--shadow-control.",
         "$extensions": {
           "com.sprintengine": {
             "role": "elevation",
             "use": "A pressed or filled ink control, under sem.gradient.ink: the Button pressed or primary, a segmented choice, the zoom's pressed key.",
             "modes": {
-              "light": "{ref.shadow.control}",
-              "dark": "{ref.shadow.control-night}"
+              "light": "0 1px 2px #11111433",
+              "dark": "0 1px 2px #00000080"
             }
           }
         }
       },
       "raised": {
         "$type": "shadow",
-        "$value": "{ref.shadow.raised}",
+        "$value": "0 1px 2px #1111140f",
         "$description": "--shadow-raised.",
         "$extensions": {
           "com.sprintengine": {
             "role": "elevation",
             "use": "A raised paper button, under sem.gradient.raised: the round menu button, the instrument.",
             "modes": {
-              "light": "{ref.shadow.raised}",
-              "dark": "{ref.shadow.raised-night}"
+              "light": "0 1px 2px #1111140f",
+              "dark": "0 1px 2px #00000066"
             }
           }
         }
@@ -2809,7 +2818,7 @@
             "doNotUse": "Over the map: that is sem.shadow.float.",
             "modes": {
               "light": "{ref.shadow.card}",
-              "dark": "{ref.shadow.card-night}"
+              "dark": "0 1px 2px #00000066"
             }
           }
         }
@@ -2824,7 +2833,7 @@
             "use": "Anything sitting on the map: a Surface, the zoom, the spot's tools, the search's list, a menu, a popover.",
             "modes": {
               "light": "{ref.shadow.float}",
-              "dark": "{ref.shadow.float-night}"
+              "dark": "0 1px 2px #00000066, 0 14px 28px -12px #000000b3"
             }
           }
         }
@@ -2839,7 +2848,7 @@
             "use": "A Dialog or a sheet: one level deeper than float.",
             "modes": {
               "light": "{ref.shadow.sheet}",
-              "dark": "{ref.shadow.sheet-night}"
+              "dark": "0 1px 2px #00000066, 0 24px 48px -16px #000000cc"
             }
           }
         }
@@ -2854,7 +2863,7 @@
             "use": "The dock, a sheet standing on the foot of the screen: the sheet's stack cast upward.",
             "modes": {
               "light": "{ref.shadow.dock}",
-              "dark": "{ref.shadow.dock-night}"
+              "dark": "0 -1px 2px #00000066, 0 -24px 48px -16px #000000cc"
             }
           }
         }
@@ -2869,7 +2878,7 @@
             "use": "With a 1px ink border, round every box and sheet: a Surface, a Dialog, a card Pane, the dock, a menu. Listed before the elevation shadow.",
             "modes": {
               "light": "{ref.shadow.frame}",
-              "dark": "{ref.shadow.frame-night}"
+              "dark": "inset 0 0 0 2px #0c0c0e, inset 0 0 0 3px #ffffff1a"
             }
           }
         }
@@ -2887,7 +2896,7 @@
             "doNotUse": "On a large surface: a page, a dialog, the dock stay flat paper.",
             "modes": {
               "light": "{ref.gradient.ink}",
-              "dark": "{ref.gradient.ink-night}"
+              "dark": "linear-gradient(180deg, #f2f2f4, #f2f2f4)"
             }
           }
         }
@@ -2903,7 +2912,7 @@
             "doNotUse": "On a large surface: a page, a dialog, the dock stay flat paper.",
             "modes": {
               "light": "{ref.gradient.raised}",
-              "dark": "{ref.gradient.raised-night}"
+              "dark": "linear-gradient(180deg, #17171b, #17171b)"
             }
           }
         }
@@ -2919,7 +2928,7 @@
             "doNotUse": "On a large surface: a page, a dialog, the dock stay flat paper.",
             "modes": {
               "light": "{ref.gradient.float}",
-              "dark": "{ref.gradient.float-night}"
+              "dark": "linear-gradient(180deg, #141417, #141417)"
             }
           }
         }

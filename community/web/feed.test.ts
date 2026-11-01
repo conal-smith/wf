@@ -155,7 +155,7 @@ describe("S1: home", () => {
 
   it("names the channel on each row, in its dateline", () => {
     const out = row(thread("a"));
-    expect(out).toMatch(/<p class="[^"]*uppercase[^"]*">.*?>Wings<\/span>/);
+    expect(out).toMatch(/<p class="[^"]*text-eyebrow[^"]*">.*?>Wings<\/span>/);
     expect(row(thread("a"), false)).not.toContain(">Wings</span>");
   });
 
@@ -932,7 +932,7 @@ describe("S8 and the pages", () => {
     });
     expect(out).toMatch(/<h1[^>]*>Latest<\/h1>/);
     expect(out).toMatch(
-      /<p class="[^"]*uppercase[^"]*"><span>\w{3} \d{1,2} \w{3} \d{4}<\/span>/,
+      /<p class="[^"]*text-eyebrow[^"]*"><span>\w{3} \d{1,2} \w{3} \d{4}<\/span>/,
     );
     expect(out).not.toContain("from wingfoilers around Ireland.");
     expect(out).toContain("1,284 members");

@@ -11,6 +11,9 @@
   font-synthesis: none;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
+  /* Inter's figures at even width, so a column of numbers lines up, and its
+     straight-sided 1. */
+  font-feature-settings: "tnum", "cv11";
 }
 * {
   box-sizing: border-box;

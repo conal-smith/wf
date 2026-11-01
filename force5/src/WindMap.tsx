@@ -15,6 +15,8 @@ import {
   chartColours,
   chartStyle,
 } from "./chartStyle";
+import { colourSwaps, rethemeMap } from "./retheme";
+import { THEME_EVENT } from "../../shared/web/theme";
 import { archiveUrl, pmtilesTile } from "./archives";
 import { releaseReplacedColorRamps } from "./colorRelief";
 import { forecastUrl } from "./urls";
@@ -712,8 +714,8 @@ export default function WindMap(props: Props) {
   useEffect(() => {
     if (!container.current) return;
     registerPmtiles();
-    // Once, with the map: the theme cannot move under a map that is already up.
-    const colours = chartColours(getComputedStyle(document.documentElement));
+    // With the map, and again when the rider switches theme (retheme.ts).
+    let colours = chartColours(getComputedStyle(document.documentElement));
     // The dev server's mode, not the env's `DEV` flag: that one follows
     // NODE_ENV, so a shell exporting NODE_ENV=development would ship this
     // warning in a built bundle (src/main.tsx guards the gallery the same way).
@@ -754,6 +756,14 @@ export default function WindMap(props: Props) {
       return;
     }
     mapRef.current = map;
+    const retheme = () => {
+      const next = chartColours(getComputedStyle(document.documentElement));
+      if (map.isStyleLoaded()) rethemeMap(map, colourSwaps(colours, next));
+      else map.once("load", () => rethemeMap(map, colourSwaps(colours, next)));
+      colours = next;
+    };
+    window.addEventListener(THEME_EVENT, retheme);
+    map.once("remove", () => window.removeEventListener(THEME_EVENT, retheme));
     // What the map shows, before it has loaded: the first frame's tiles are
     // asked for while the basemap is still on its way.
     setMapView(viewOf(map));

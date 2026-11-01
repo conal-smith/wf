@@ -78,7 +78,7 @@ for (const phone of [true, false]) {
 
     // The price is a figure, in the mono face.
     const price = ads(page).first().getByText(/^€\d/);
-    await expect(price).toHaveCSS("font-family", /IBM Plex Mono/);
+    await expect(price).toHaveCSS("font-family", /Inter/);
 
     // The pen marks one ad on the view, the newest, and says it in words.
     const pen = page.locator("main .font-hand");
@@ -122,7 +122,7 @@ for (const phone of [true, false]) {
     // The ad is the one double-ruled box, and the price its big figure.
     await expect(page.getByText("€900", { exact: true }).first()).toHaveCSS(
       "font-family",
-      /IBM Plex Mono/,
+      /Inter/,
     );
     // Rated five by the buyer: the seller's stars, and the buyer's own.
     await expect(

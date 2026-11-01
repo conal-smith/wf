@@ -1159,12 +1159,13 @@ test("on a phone each row is named in a word, and the names stand while the read
   const labels = page.locator(".dock .dk-labs");
   const wrap = page.locator(".dock .tt-wrap");
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
-  // A word a row, in the mono label at its floor, and the figures at the
-  // body's size: a glyph alone and 8px type did not read at arm's length.
+  // A word a row, in the label at its floor (12px in sentence case), and the
+  // figures at the body's size: a glyph alone and 8px type did not read at
+  // arm's length.
   await expect(labels.locator(".dk-word")).toHaveText(["Wind", "Dir", "Wing"]);
   await expect(labels.locator(".dk-word").first()).toHaveCSS(
     "font-size",
-    "10px",
+    "12px",
   );
   await expect(page.locator(".dock tr.tt-hour td[data-i]").first()).toHaveCSS(
     "font-size",

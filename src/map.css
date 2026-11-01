@@ -261,7 +261,6 @@
 .map-rose-label,
 .map-dial-words {
   font: 600 10px var(--font-mono);
-  letter-spacing: 0.14em;
   fill: var(--color-ink);
   paint-order: stroke;
   stroke: var(--color-ground);
@@ -270,7 +269,6 @@
 }
 .map-rose-label.is-figure {
   font-weight: 500;
-  letter-spacing: 0.04em;
 }
 .map-rose-label.is-faint {
   font-weight: 500;
@@ -335,7 +333,6 @@
 }
 .map-loupe-relation {
   font: 500 10px var(--font-mono);
-  letter-spacing: 0.08em;
   fill: var(--color-ink-muted);
 }
 .map-loupe-relation.is-warn {
@@ -431,8 +428,6 @@
   background: var(--color-ground);
   padding: 4px 12px;
   font: 500 10.5px var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
   color: var(--color-ink);
   cursor: pointer;
 }
@@ -1015,8 +1010,6 @@
 .results li small {
   grid-column: 1;
   font: 10px var(--font-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--color-ink-muted);
 }
 /* The place's hour at the time the map shows: its stars, its wind under them. */
@@ -1346,8 +1339,6 @@
 }
 .map-model {
   font: 500 9.5px var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--color-ink-2);
   background: color-mix(in srgb, var(--color-ground) 85%, transparent);
   padding: 1px 4px;
@@ -1557,8 +1548,6 @@
   border-radius: 999px;
   background: var(--color-ground);
   font: 500 10px/1.5 var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   pointer-events: none;
 }
 /* The black button between the list and the full chart: at the foot of the
