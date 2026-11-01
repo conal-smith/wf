@@ -59,10 +59,15 @@ describe("paper and ink", () => {
       expect(resolved(name), name).toBe("#111114");
   });
 
-  it("paints the double rule's gap in the paper every surface is", () => {
-    const frame = css.match(/--inset-shadow-frame: ([^;]+);/)?.[1] ?? "";
-    expect(frame).toContain(resolved("card"));
-    expect(frame).toContain(resolved("ink"));
+  // Flat: no frame, no grain and no sheen are left to paint with.
+  it("draws no frame, grain or sheen", () => {
+    for (const gone of ["--inset-shadow-frame", "--texture-grain", "--gradient-"])
+      expect(css, gone).not.toContain(gone);
+  });
+
+  it("dims what is behind a dialog in a dark wash, thicker where nothing blurs it", () => {
+    expect(resolved("scrim")).toBe("#0f0f1247");
+    expect(resolved("scrim-solid")).toBe("#0f0f1299");
   });
 
   it("lays the glass a badge stands on in the same paper, a little open", () => {

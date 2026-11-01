@@ -53,7 +53,9 @@ describe("ui/tv.ts: the merge knows the theme's names", () => {
     ["bg-card bg-accent", "bg-accent"],
     ["font-body font-mono", "font-mono"],
     ["font-display font-body", "font-body"],
-    ["inset-shadow-frame inset-shadow-none", "inset-shadow-none"],
+    ["text-wordmark text-wordmark-sm", "text-wordmark-sm"],
+    ["rounded-mark rounded-control", "rounded-control"],
+    ["animate-dialog-in animate-sheet-in", "animate-sheet-in"],
   ])("%s merges to %s", (written, merged) => {
     expect(tv({ base: written })()).toBe(merged);
   });
@@ -307,17 +309,8 @@ describe("ui/theme.css: blur, measures and animation", () => {
     );
   });
 
-  // The paper's grain, the night's hatch and the display cut: three
-  // utilities the theme writes itself, because each is a value no class holds.
-  it("grains the paper with one tile, as a background image only", () => {
-    const css = flat(build(["paper-grain"]));
-    expect(css).toContain(".paper-grain {");
-    expect(css).toContain("background-image: var(--texture-grain);");
-    expect(css).toContain('--texture-grain: url("data:image/svg+xml,');
-    expect(css).toContain("feTurbulence");
-    expect(css).not.toMatch(/\.paper-grain \{[^}]*background-color/);
-  });
-
+  // The night's hatch and the two optical cuts: utilities the theme writes
+  // itself, because each is a value no class holds.
   it("hatches the dark hours in ink, and sets Fraunces at its display cut", () => {
     expect(flat(build(["hatch"]))).toContain(
       "background-image: repeating-linear-gradient( 135deg, color-mix(in srgb, var(--color-ink) 9%, transparent) 0 1px, transparent 1px 4px );",
@@ -325,40 +318,44 @@ describe("ui/theme.css: blur, measures and animation", () => {
     expect(flat(build(["optical-display"]))).toContain(
       'font-variation-settings: "opsz" 144;',
     );
+    expect(flat(build(["optical-wordmark"]))).toContain(".optical-wordmark {");
   });
 
-  it("draws the edge as a gap of paper and a hairline inside the ink rule", () => {
-    const css = flat(build(["inset-shadow-frame"]));
-    expect(css).toContain(".inset-shadow-frame {");
-    // The outer line is the border; this is the gap of paper and the hairline.
-    expect(css).toMatch(
-      /--tw-inset-shadow: inset 0 0 0 2px var\(--tw-inset-shadow-color, #\w+\), inset 0 0 0 3px var\(--tw-inset-shadow-color, #\w+\);/,
-    );
+  // The flat design: nothing of the paper is left in the theme to write.
+  it.each([
+    "paper-grain",
+    "paper-float",
+    "inset-shadow-frame",
+    "sheen-ink",
+    "sheen-raised",
+    "animate-bob",
+  ])("%s produces no CSS", (name) => {
+    expect(build([name])).not.toContain(selector(name));
   });
 
-  it("lifts by elevation with the frame kept, and lights only small things", () => {
-    const css = flat(
-      build([
-        "inset-shadow-frame",
-        "shadow-float",
-        "paper-float",
-        "sheen-ink",
-        "sheen-raised",
-      ]),
-    );
-    // The frame and the lift compose: one box-shadow, the frame's inset first.
-    expect(css).toContain(".shadow-float {");
-    expect(css).toMatch(/box-shadow: var\(--tw-inset-shadow\)/);
-    expect(css).toContain(
-      "background-image: var(--texture-grain), var(--gradient-float);",
-    );
-    expect(css).toContain("background-image: var(--gradient-ink);");
-    expect(css).toContain("background-image: var(--gradient-raised);");
+  it("holds no texture, gradient or frame for anything to paint with", () => {
+    const css = build([]);
+    for (const gone of ["--texture-", "--gradient-", "--inset-shadow-frame", "@keyframes bob"])
+      expect(css, gone).not.toContain(gone);
   });
 
-  it("lets the puffin bob, declinably", () => {
-    const css = flat(build(["animate-bob", "motion-reduce:animate-none"]));
-    expect(css).toContain("@keyframes bob");
+  // A sheet rises from the foot of a phone's screen; a notice lays out in
+  // three columns; the wordmark has a step of its own and a phone's smaller.
+  it("a sheet rises, and can be declined", () => {
+    const css = build(["animate-sheet-in", "max-sm:open:animate-sheet-in"]);
+    expect(css).toContain("@keyframes sheet-in");
+    expect(css).toMatch(/--animate-sheet-in: sheet-in 200ms /);
+  });
+
+  it.each([
+    ["grid-cols-notice", "--grid-template-columns-notice", "36px minmax(0, 1fr) auto"],
+    ["rounded-mark", "--radius-mark", "5px"],
+    ["text-wordmark", "--text-wordmark", "23px"],
+    ["text-wordmark-sm", "--text-wordmark-sm", "21px"],
+  ])("%s reads %s, which is %s", (name, variable, value) => {
+    const css = build([name]);
+    expect(css).toContain(selector(name));
+    expect(css).toContain(`${variable}: ${value};`);
   });
 
   it("glass goes solid for a reader who asked for less transparency", () => {

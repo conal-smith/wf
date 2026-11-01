@@ -64,8 +64,9 @@ const COLOURS: Record<string, string> = {
   sunken: "#f5f5f7",
   glass: "#ffffffeb",
   inverse: "#111114",
-  scrim: "#ffffff66",
-  "scrim-solid": "#ffffffcc",
+  // Behind a dialog: a dim wash, thicker where nothing blurs the page.
+  scrim: "#0f0f1247",
+  "scrim-solid": "#0f0f1299",
   // The sea and the shore, as a chart tints them, shallow to deep.
   sea: "#e4eef3",
   "sea-1": "#a9cbd8",
@@ -139,6 +140,12 @@ const TYPE: Record<string, [string, string, string?, string?]> = {
   title: ["30px", "1.05", "700", "-0.02em"],
   headline: ["44px", "1", "700", "-0.035em"],
   reading: ["48px", "1"],
+  // The wordmark's own, in the top bar, and a phone's.
+  wordmark: ["23px", "1"],
+  "wordmark-sm": ["21px", "1"],
+  // A page's heading, and a phone's (the spot report's banner).
+  big: ["40px", "1.05", "600", "-0.035em"],
+  "big-sm": ["32px", "1.05", "600", "-0.03em"],
 };
 
 describe("ui/theme.css: how it is wired", () => {
@@ -415,6 +422,8 @@ describe("ui/theme.css: the values", () => {
     ["pill", "9999px"],
     ["dialog", "18px"],
     ["full", "9999px"],
+    // The small square a notice leaves where the stars would be.
+    ["mark", "5px"],
   ])("radius %s is %s", (name, value) => {
     const css = build([`rounded-${name}`]);
     expect(rule(css, `rounded-${name}`)).toContain(
