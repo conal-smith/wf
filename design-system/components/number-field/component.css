@@ -1,0 +1,79 @@
+/* Number field — ui/NumberField.tsx (numberFieldStyles), rendered in CSS.
+ * Consumes --sem-* only.
+ *
+ * A number moved in steps: minus, the value with its unit, plus, in a filled
+ * capsule. The value is a spin button, so the arrow keys step it too.
+ *
+ * `.is-hover` and `.is-focus` hold a state still for the catalog. */
+
+.wf-number-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sem-space-x1);
+  height: var(--sem-size-touch);
+  padding: 0 var(--sem-space-x1);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-well);
+  font-family: var(--sem-font-family-body);
+}
+
+.wf-number-field__step {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sem-radius-full);
+  background: transparent;
+  color: var(--sem-color-ink);
+  cursor: pointer;
+  transition: background-color var(--sem-duration-fast);
+}
+.wf-number-field__step:not(:disabled):hover,
+.wf-number-field__step.is-hover {
+  background: var(--sem-color-line);
+}
+.wf-number-field__step:disabled {
+  cursor: default;
+  color: var(--sem-color-ink-disabled);
+}
+@media (pointer: coarse) {
+  .wf-number-field__step {
+    width: var(--sem-size-touch);
+    height: var(--sem-size-touch);
+  }
+}
+
+.wf-number-field__value {
+  min-width: 70px;
+  border-radius: var(--sem-radius-control);
+  color: var(--sem-color-ink);
+  font-size: var(--sem-font-size-lead);
+  line-height: var(--sem-font-line-lead);
+  font-weight: var(--sem-font-weight-semibold);
+  letter-spacing: var(--sem-font-tracking-figure);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.wf-number-field__unit {
+  margin-left: var(--sem-space-x0-5);
+  color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-body);
+  font-weight: var(--sem-font-weight-medium);
+  letter-spacing: 0;
+}
+
+.wf-number-field__step:not(:disabled):focus-visible,
+.wf-number-field__step.is-focus,
+.wf-number-field__value:focus-visible,
+.wf-number-field__value.is-focus {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: var(--sem-ring-offset);
+}
+
+.wf-number-field__icon {
+  width: var(--sem-space-x4);
+  height: var(--sem-space-x4);
+}

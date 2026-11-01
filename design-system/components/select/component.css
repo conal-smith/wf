@@ -1,32 +1,84 @@
-/* Select — ui/Select.tsx, controlStyles({ kind: "select" }), rendered in CSS.
- * Consumes --sem-* only.
+/* Select — ui/Select.tsx on the kit's control box (ui/control.ts), rendered
+ * in CSS. Consumes --sem-* only, but for the soft focus ring.
  *
- * A native <select>: the platform's own picker, in the kit's box. The box,
- * the element and every state (hover, ring, active, invalid, disabled, the
- * coarse pointer's 16) are the shared `.wf-control` classes in
- * ../text-input/component.css, which the page links first. This file adds
- * only what the select kind adds: the platform's arrow taken off, room for
- * the kit's chevron, and the chevron laid over the right of the box. */
+ * A native select, the platform's own picker, in the filled box: the soft
+ * grey, no rule round it, a chevron at the right; the ink edge and a soft ring
+ * of the accent when it holds the focus.
+ *
+ * `.is-focus` holds the focused look still for the catalog. */
 
-.wf-control--select {
+.wf-select {
   position: relative;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: var(--sem-size-touch);
+  padding: 0 14px;
+  border: var(--sem-rule-hairline) solid transparent;
+  border-radius: var(--sem-radius-control);
+  background: var(--sem-color-well);
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-body);
+  transition-property: border-color, background-color, box-shadow;
+  transition-duration: var(--sem-duration-fast);
+}
+.wf-select:focus-within,
+.wf-select.is-focus {
+  border-color: var(--sem-color-ink);
+  /* ds-lint-allow: the kit's soft focus ring is the focus colour at 20%, which no token carries */
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sem-color-focus) 20%, transparent);
 }
 
-.wf-control--select .wf-control__input {
-  appearance: none;
-  padding-right: var(--sem-space-x6);
+.wf-select__input {
+  flex: 1 1 auto;
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
+  padding: 0 var(--sem-space-x6) 0 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-prose);
+  font-weight: var(--sem-font-weight-normal);
   text-overflow: ellipsis;
   cursor: pointer;
+  appearance: none;
 }
-.wf-control--select .wf-control__input:disabled {
-  cursor: default;
+.wf-select__input:focus-visible {
+  outline: none;
+}
+@media (pointer: coarse) {
+  .wf-select__input {
+    font-size: var(--sem-font-size-input);
+  }
 }
 
-/* The chevron (lucide ChevronDown, 16) in currentColor: the adornment's
- * ink-muted. The pointer passes through it to the select. */
-.wf-control--select .wf-control__adornment {
+.wf-select__chevron {
   position: absolute;
   right: var(--sem-space-x3);
-  font-weight: var(--sem-font-weight-normal);
+  width: var(--sem-space-x4);
+  height: var(--sem-space-x4);
+  color: var(--sem-color-ink-muted);
   pointer-events: none;
+}
+
+/* A filter that is narrowing the results: an ink edge, not colour alone. */
+.wf-select--active {
+  border-color: var(--sem-color-ink);
+}
+
+.wf-select:has([aria-invalid="true"]),
+.wf-field--invalid .wf-select {
+  border-color: var(--sem-color-warn);
+  background: var(--sem-color-warn-ground);
+}
+
+.wf-select:has(:disabled) {
+  color: var(--sem-color-ink-disabled);
+  opacity: 0.6;
+}
+.wf-select:has(:disabled) .wf-select__input {
+  cursor: default;
 }

@@ -3,39 +3,65 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Your star rating — wingfoil-chart pattern</title>
+    <title>Your star rating — wingfoil pattern</title>
     <link rel="stylesheet" href="../foundations/tokens.css" />
     <link rel="stylesheet" href="../components/button/component.css" />
     <link rel="stylesheet" href="../components/dialog/component.css" />
     <link rel="stylesheet" href="../components/segmented/component.css" />
-    <link rel="stylesheet" href="../components/kicker/component.css" />
+    <link rel="stylesheet" href="../components/heading/component.css" />
     <link rel="stylesheet" href="../components/link/component.css" />
     <link rel="stylesheet" href="../components/star-glyphs/component.css" />
     <link rel="stylesheet" href="../components/field/component.css" />
     <link rel="stylesheet" href="../components/text-input/component.css" />
     <link rel="stylesheet" href="../components/select/component.css" />
     <style>
-      /* The page: one sheet of paper with its grain; a mono label names each instance. */
+      /* The page: the ground, a grey label over each instance. */
       body {
         margin: 0;
-        padding-bottom: var(--sem-space-x10);
-        background-color: var(--sem-color-ground);
-        background-image: var(--sem-texture-grain);
+      }
+      .pt {
+        padding: var(--sem-space-x6) 0 var(--sem-space-x8);
+        background: var(--sem-color-ground);
         color: var(--sem-color-ink);
         font-family: var(--sem-font-family-body);
         font-size: var(--sem-font-size-prose);
         line-height: var(--sem-font-line-prose);
       }
+      .pt__head {
+        margin: 0 var(--sem-space-x3) var(--sem-space-x2);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-semibold);
+      }
       .pt__label {
         margin: var(--sem-space-x5) var(--sem-space-x3) var(--sem-space-x2);
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-eyebrow);
-        line-height: var(--sem-font-line-eyebrow);
-        font-weight: var(--sem-font-weight-eyebrow);
-        letter-spacing: var(--sem-font-tracking-eyebrow);
-        text-transform: uppercase;
         color: var(--sem-color-ink-muted);
+        font-size: var(--sem-font-size-label);
+        font-weight: var(--sem-font-weight-medium);
       }
+      /* A stand-in for the chart under what is laid over it. */
+      .pt__map {
+        position: relative;
+        overflow: hidden;
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea);
+      }
+      /* The favourite: the star in the accent, filled when it is starred. */
+      .fav {
+        display: block;
+        width: calc(var(--sem-space-step) * 4.25);
+        height: calc(var(--sem-space-step) * 4.25);
+      }
+      .fav__path {
+        fill: none;
+        stroke: var(--sem-color-chart-magenta);
+        stroke-width: 1.3;
+        stroke-linejoin: round;
+      }
+      [aria-pressed="true"] > .fav .fav__path {
+        fill: var(--sem-color-chart-magenta);
+      }
+
       .pt__row {
         display: flex;
         flex-wrap: wrap;
@@ -53,7 +79,6 @@
         gap: var(--sem-space-x2);
         padding: 0 var(--sem-space-x3);
       }
-
       /* ---- the dialog: the system's own, sized for the page and for a phone ---- */
       .ys.wf-dialog {
         position: static;
@@ -65,13 +90,11 @@
         width: calc(var(--sem-space-step) * 97.5);
       }
       .ys__block + .ys__block {
-        padding-top: var(--sem-space-x3);
-        border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
+        margin-top: var(--sem-space-x6);
       }
       .ys__presets {
         margin-top: var(--sem-space-x1);
       }
-
       /* ---- the two curves: stars for the wind, stars off for the gusts ---- */
       .curve {
         display: block;
@@ -100,7 +123,7 @@
         fill: var(--sem-color-sunken);
       }
       .curve__axis {
-        font-family: var(--sem-font-family-mono);
+        font-family: var(--sem-font-family-body);
         font-size: 10px; /* ds-lint-allow: SVG user units at the eyebrow's size */
         fill: var(--sem-color-ink-muted);
       }
@@ -108,10 +131,8 @@
         display: flex;
         gap: var(--sem-space-x4);
         margin-top: var(--sem-space-x1);
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-eyebrow);
-        letter-spacing: var(--sem-font-tracking-eyebrow);
-        text-transform: uppercase;
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-label);
         color: var(--sem-color-ink-muted);
       }
       .legend__key {
@@ -124,7 +145,6 @@
       .legend__key--base {
         border-top: 1.25px dashed var(--sem-color-line-strong); /* ds-lint-allow: the curve's own stroke */
       }
-
       /* ---- a scale of handles under each curve ---- */
       .band {
         position: relative;
@@ -195,10 +215,10 @@
       .band input[type="range"]::-webkit-slider-thumb {
         width: calc(var(--sem-space-step) * 2.5);
         height: calc(var(--sem-space-step) * 5);
-        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border: var(--sem-rule-hairline) solid var(--sem-color-line);
         border-radius: var(--sem-radius-full);
-        background: var(--sem-color-card) var(--sem-gradient-raised);
-        box-shadow: var(--sem-shadow-raised);
+        background: var(--sem-color-card);
+        box-shadow: var(--sem-shadow-control);
         cursor: ew-resize;
         pointer-events: auto;
         -webkit-appearance: none;
@@ -207,10 +227,10 @@
       .band input[type="range"]::-moz-range-thumb {
         width: calc(var(--sem-space-step) * 2.5);
         height: calc(var(--sem-space-step) * 5);
-        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border: var(--sem-rule-hairline) solid var(--sem-color-line);
         border-radius: var(--sem-radius-full);
-        background: var(--sem-color-card) var(--sem-gradient-raised);
-        box-shadow: var(--sem-shadow-raised);
+        background: var(--sem-color-card);
+        box-shadow: var(--sem-shadow-control);
         cursor: ew-resize;
         pointer-events: auto;
       }
@@ -240,16 +260,14 @@
         gap: var(--sem-space-x0-5);
       }
       .fig__name {
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-eyebrow);
-        line-height: var(--sem-font-line-eyebrow);
-        font-weight: var(--sem-font-weight-eyebrow);
-        letter-spacing: var(--sem-font-tracking-eyebrow);
-        text-transform: uppercase;
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-label);
+        line-height: var(--sem-font-line-label);
+        font-weight: var(--sem-font-weight-medium);
         color: var(--sem-color-ink-muted);
       }
       .fig__value {
-        font-family: var(--sem-font-family-mono);
+        font-family: var(--sem-font-family-body);
         font-size: var(--sem-font-size-figure);
         line-height: var(--sem-font-line-figure);
         font-weight: var(--sem-font-weight-figure);
@@ -262,7 +280,6 @@
       .fig .wf-segmented {
         align-self: flex-start;
       }
-
       /* ---- wind direction: the beach, and the stars each direction costs ---- */
       .shore {
         display: block;
@@ -296,10 +313,8 @@
         stroke-width: 1;
       }
       .shore__word {
-        font-family: var(--sem-font-family-mono);
-        font-size: 9px; /* ds-lint-allow: SVG user units, under the eyebrow */
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
+        font-family: var(--sem-font-family-body);
+        font-size: 9px; /* ds-lint-allow: SVG user units, a small label inside the drawing */
         fill: var(--sem-color-ink);
       }
       .shore__word--on-dark {
@@ -349,23 +364,19 @@
         stroke-width: 3;
       }
       .web__half {
-        font-family: var(--sem-font-family-mono);
-        font-size: 7.5px; /* ds-lint-allow: SVG user units, under the eyebrow */
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+        font-family: var(--sem-font-family-body);
+        font-size: 7.5px; /* ds-lint-allow: SVG user units, a small label inside the drawing */
         fill: var(--sem-color-ink-muted);
         pointer-events: none;
       }
       .web__name {
-        font-family: var(--sem-font-family-mono);
-        font-size: 8px; /* ds-lint-allow: SVG user units, under the eyebrow */
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
+        font-family: var(--sem-font-family-body);
+        font-size: 8px; /* ds-lint-allow: SVG user units, a small label inside the drawing */
         fill: var(--sem-color-ink-2);
         pointer-events: none;
       }
       .web__ring-label {
-        font-family: var(--sem-font-family-mono);
+        font-family: var(--sem-font-family-body);
         font-size: 6.5px; /* ds-lint-allow: SVG user units, the rings' small figures */
         fill: var(--sem-color-ink-muted);
         pointer-events: none;
@@ -384,12 +395,11 @@
         justify-content: center;
         gap: var(--sem-space-x2);
         margin-top: var(--sem-space-x1);
-        font-family: var(--sem-font-family-mono);
+        font-family: var(--sem-font-family-body);
         font-size: var(--sem-font-size-label);
       }
       .picked__name {
-        text-transform: uppercase;
-        letter-spacing: var(--sem-font-tracking-label);
+        color: var(--sem-color-ink-2);
       }
       .picked__value {
         min-width: calc(var(--sem-space-step) * 10);
@@ -405,7 +415,6 @@
         margin-top: var(--sem-space-x1);
         font-size: var(--sem-font-size-body);
       }
-
       /* ---- together: every wind and gust, rated ---- */
       .grid {
         display: block;
@@ -432,10 +441,8 @@
         align-items: center;
         gap: var(--sem-space-x1);
         margin-top: var(--sem-space-x1);
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-eyebrow);
-        letter-spacing: var(--sem-font-tracking-eyebrow);
-        text-transform: uppercase;
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-label);
         color: var(--sem-color-ink-muted);
       }
       .grid__swatch {
@@ -451,7 +458,7 @@
         gap: var(--sem-space-x2);
         min-height: var(--sem-size-control-sm);
         margin-top: var(--sem-space-x1);
-        font-family: var(--sem-font-family-mono);
+        font-family: var(--sem-font-family-body);
         font-size: var(--sem-font-size-label);
         font-variant-numeric: tabular-nums;
       }
@@ -460,23 +467,20 @@
         font-size: var(--sem-font-size-caption);
         color: var(--sem-color-ink-muted);
       }
-
       /* ---- examples: the level they started from, against theirs ---- */
       .rates {
         width: 100%;
         margin-top: var(--sem-space-x1);
         border-collapse: collapse;
-        font-family: var(--sem-font-family-mono);
+        font-family: var(--sem-font-family-body);
         font-size: var(--sem-font-size-label);
         font-variant-numeric: tabular-nums;
       }
       .rates th {
         padding: var(--sem-space-x1) 0;
-        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-ink);
-        font-size: var(--sem-font-size-eyebrow);
-        font-weight: var(--sem-font-weight-eyebrow);
-        letter-spacing: var(--sem-font-tracking-eyebrow);
-        text-transform: uppercase;
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+        font-size: var(--sem-font-size-label);
+        font-weight: var(--sem-font-weight-medium);
         color: var(--sem-color-ink-muted);
         text-align: left;
       }
@@ -498,18 +502,14 @@
       .rates__moved {
         font-weight: var(--sem-font-weight-semibold);
       }
-
-      /* ---- where it opens from: the rider settings' row ---- */
+      /* The rider settings: rows in one soft card, a hairline between them. */
       .settings {
+        box-sizing: border-box;
         width: calc(var(--sem-space-step) * 90);
         max-width: 100%;
-        box-sizing: border-box;
-        padding: var(--sem-space-x3) var(--sem-space-x4);
-        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        padding: 0 var(--sem-space-x4);
         border-radius: var(--sem-radius-surface);
-        box-shadow: var(--sem-shadow-frame), var(--sem-shadow-card);
-        background-color: var(--sem-color-card);
-        background-image: var(--sem-texture-grain);
+        background: var(--sem-color-sunken);
       }
       .settings__row {
         display: grid;
@@ -522,11 +522,9 @@
         border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
       }
       .settings__name {
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-eyebrow);
-        font-weight: var(--sem-font-weight-eyebrow);
-        letter-spacing: var(--sem-font-tracking-eyebrow);
-        text-transform: uppercase;
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-label);
+        font-weight: var(--sem-font-weight-medium);
         color: var(--sem-color-ink-muted);
       }
       .settings__value {
@@ -537,18 +535,18 @@
         gap: var(--sem-space-x3);
         align-items: center;
       }
-
-      /* ---- the dock's head, when the stars are the rider's own ---- */
+      /* The dock's head over the map: a floating sheet, no frame. */
       .dockhead {
-        width: calc(var(--sem-space-step) * 150);
-        max-width: 100%;
         box-sizing: border-box;
-        padding: var(--sem-space-x2) var(--sem-space-x3);
-        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
-        border-bottom: 0;
+        width: calc(var(--sem-space-step) * 90);
+        max-width: 100%;
+        padding: var(--sem-space-x3) var(--sem-space-x4);
         border-radius: var(--sem-radius-dialog) var(--sem-radius-dialog) 0 0;
-        background-color: var(--sem-color-card);
-        box-shadow: var(--sem-shadow-frame), var(--sem-shadow-dock);
+        background: var(--sem-color-ground);
+        box-shadow: var(--sem-shadow-dock);
+      }
+      [data-mode="dark"] .dockhead {
+        box-shadow: var(--sem-shadow-dock), 0 0 0 var(--sem-rule-hairline) var(--sem-color-line);
       }
       .dockhead__top {
         display: flex;
@@ -557,26 +555,25 @@
         gap: var(--sem-space-x2);
       }
       .dockhead__spot {
-        font-family: var(--sem-font-family-display);
+        font-family: var(--sem-font-family-body);
         font-size: var(--sem-font-size-lead);
         line-height: var(--sem-font-line-lead);
         font-weight: var(--sem-font-weight-lead);
       }
+      /* The chip that says the stars are the rider's own, and opens the dialog. */
       .whose {
         display: inline-flex;
         align-items: center;
-        gap: var(--sem-space-x1);
-        padding: 0 var(--sem-space-x2);
-        min-height: var(--sem-size-control-sm);
-        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        gap: var(--sem-space-x1-5);
+        height: var(--sem-space-x8);
+        padding: 0 var(--sem-space-x3);
+        border: 0;
         border-radius: var(--sem-radius-full);
-        background: var(--sem-color-card);
+        background: var(--sem-color-sunken);
         color: var(--sem-color-ink);
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-eyebrow);
-        font-weight: var(--sem-font-weight-eyebrow);
-        letter-spacing: var(--sem-font-tracking-eyebrow);
-        text-transform: uppercase;
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-body);
+        font-weight: var(--sem-font-weight-medium);
         cursor: pointer;
       }
       .whose:focus-visible {
@@ -595,7 +592,7 @@
         align-items: center;
         gap: var(--sem-space-x0-5);
         padding: var(--sem-space-x1) 0;
-        font-family: var(--sem-font-family-mono);
+        font-family: var(--sem-font-family-body);
         font-size: var(--sem-font-size-label);
         font-variant-numeric: tabular-nums;
       }
@@ -603,84 +600,137 @@
         border-left: var(--sem-rule-hairline) solid var(--sem-color-line);
       }
       .hour__ist {
-        font-size: var(--sem-font-size-eyebrow);
+        font-size: var(--sem-font-size-label);
         color: var(--sem-color-ink-muted);
       }
       .hour .wf-star-glyphs {
         width: calc(var(--sem-space-step) * 14);
         height: auto;
       }
+
+      /* A block's small grey name, in sentence case. */
+      .ys__label {
+        display: block;
+        margin-bottom: var(--sem-space-x2);
+        color: var(--sem-color-ink-2);
+        font-size: var(--sem-font-size-body);
+        font-weight: var(--sem-font-weight-semibold);
+      }
     </style>
   </head>
   <body>
-    <p class="pt__label">Mockup only · the rider's unit setting, which every figure, axis and handle follows</p>
-    <div class="pt__units">
-      <div class="wf-segmented" role="group" aria-label="Wind units">
-        <button class="wf-segmented__item" type="button" data-unit="kn" aria-pressed="true">kn</button>
-        <button class="wf-segmented__item" type="button" data-unit="mph" aria-pressed="false">mph</button>
-        <button class="wf-segmented__item" type="button" data-unit="kmh" aria-pressed="false">km/h</button>
-        <button class="wf-segmented__item" type="button" data-unit="ms" aria-pressed="false">m/s</button>
+    <section class="pt" data-mode="dark">
+      <h2 class="pt__head">Your star rating in dark</h2>
+      <p class="pt__label">Demo only: the rider's unit setting, which every figure, axis and handle follows</p>
+      <div class="pt__units">
+        <div class="wf-segmented" role="group" aria-label="Wind units">
+          <button class="wf-segmented__item" type="button" data-unit="kn" aria-pressed="true">kn</button>
+          <button class="wf-segmented__item" type="button" data-unit="mph" aria-pressed="false">mph</button>
+          <button class="wf-segmented__item" type="button" data-unit="kmh" aria-pressed="false">km/h</button>
+          <button class="wf-segmented__item" type="button" data-unit="ms" aria-pressed="false">m/s</button>
+        </div>
       </div>
-    </div>
 
-    <p class="pt__label">1 · Where it opens: the rider settings (Display ▸ You), before and after</p>
-    <div class="pt__row">
-      <div class="settings" aria-label="Rider settings, standard stars">
-        <div class="settings__row">
-          <span class="settings__name">Level</span>
-          <span class="settings__value">Riding</span>
-        </div>
-        <div class="settings__row">
-          <span class="settings__name">Star rating</span>
-          <span class="settings__actions"><span class="settings__value">Standard for Riding</span><a class="wf-link" href="#">Customise</a></span>
-        </div>
-      </div>
-      <div class="settings" aria-label="Rider settings, custom stars">
-        <div class="settings__row">
-          <span class="settings__name">Level</span>
-          <span class="settings__value">Riding</span>
-        </div>
-        <div class="settings__row">
-          <span class="settings__name">Star rating</span>
-          <span class="settings__actions"><span class="settings__value">Custom</span><a class="wf-link" href="#">Edit</a><a class="wf-link" href="#">Reset</a></span>
-        </div>
-      </div>
-    </div>
-
-    <p class="pt__label">2 · The dialog, desktop · a rider who wants about 20 knots, and no gusts much over 25</p>
-    <div class="pt__row">
-      <div data-ys data-start="intermediate" data-custom='{"min":15,"sweetLow":18,"sweetHigh":23,"max":27,"fine":24,"worst":30,"most":3,"dir":{"onshore":0.5,"crossOn":0,"cross":0,"crossOff":2.5,"offshore":4}}'></div>
-      <div class="pt__col">
-        <p class="pt__label" style="margin: 0">3 · The forecast, once saved: a chip says the stars are custom, and opens the dialog</p>
-        <div class="dockhead">
-          <div class="dockhead__top">
-            <span class="dockhead__spot">Dollymount Strand</span>
-            <button class="whose" type="button" aria-label="Custom star rating: edit">
-              <svg width="10" height="10" viewBox="-5 -5 10 10" aria-hidden="true"><path fill="currentColor" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" /></svg>
-              Custom stars
-            </button>
+      <p class="pt__label">1. Where it opens: the rider settings (Display ▸ You), before and after</p>
+      <div class="pt__row">
+        <div class="settings" aria-label="Rider settings, standard stars">
+          <div class="settings__row">
+            <span class="settings__name">Level</span>
+            <span class="settings__value">Riding</span>
           </div>
-          <div class="hours" data-hours></div>
+          <div class="settings__row">
+            <span class="settings__name">Star rating</span>
+            <span class="settings__actions"><span class="settings__value">Standard for Riding</span><a class="wf-link" href="#">Customise</a></span>
+          </div>
+        </div>
+        <div class="settings" aria-label="Rider settings, custom stars">
+          <div class="settings__row">
+            <span class="settings__name">Level</span>
+            <span class="settings__value">Riding</span>
+          </div>
+          <div class="settings__row">
+            <span class="settings__name">Star rating</span>
+            <span class="settings__actions"><span class="settings__value">Custom</span><a class="wf-link" href="#">Edit</a><a class="wf-link" href="#">Reset</a></span>
+          </div>
         </div>
       </div>
-    </div>
 
-    <p class="pt__label">4 · The dialog on a phone, 390 wide · opened from a Learning level, nothing changed yet</p>
-    <div class="pt__row">
-      <div data-ys data-start="beginner" data-phone></div>
-    </div>
+      <p class="pt__label">2. The dialog on a computer: a rider who wants about 20 knots, and no gusts much over 25</p>
+      <div class="pt__row">
+        <div data-ys data-start="intermediate" data-custom='{"min":15,"sweetLow":18,"sweetHigh":23,"max":27,"fine":24,"worst":30,"most":3,"dir":{"onshore":0.5,"crossOn":0,"cross":0,"crossOff":2.5,"offshore":4}}'></div>
+        <div class="pt__col">
+          <p class="pt__label" style="margin: 0">3. The forecast, once saved: a chip says the stars are custom, and opens the dialog</p>
+          <div class="dockhead">
+            <div class="dockhead__top">
+              <span class="dockhead__spot">Dollymount Strand</span>
+              <button class="whose" type="button" aria-label="Custom star rating: edit">
+                <svg width="10" height="10" viewBox="-5 -5 10 10" aria-hidden="true"><path fill="currentColor" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" /></svg>
+                Custom stars
+              </button>
+            </div>
+            <div class="hours" data-hours></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="pt__label">4. The dialog on a phone, 390 wide, opened from a Learning level, nothing changed yet</p>
+      <div class="pt__row">
+        <div data-ys data-start="beginner" data-phone></div>
+      </div>
+    </section>
+
+    <section class="pt" data-mode="light">
+      <h2 class="pt__head">Your star rating in light</h2>
+      <p class="pt__label">1. Where it opens: the rider settings (Display ▸ You), before and after</p>
+      <div class="pt__row">
+        <div class="settings" aria-label="Rider settings, standard stars">
+          <div class="settings__row">
+            <span class="settings__name">Level</span>
+            <span class="settings__value">Riding</span>
+          </div>
+          <div class="settings__row">
+            <span class="settings__name">Star rating</span>
+            <span class="settings__actions"><span class="settings__value">Standard for Riding</span><a class="wf-link" href="#">Customise</a></span>
+          </div>
+        </div>
+        <div class="settings" aria-label="Rider settings, custom stars">
+          <div class="settings__row">
+            <span class="settings__name">Level</span>
+            <span class="settings__value">Riding</span>
+          </div>
+          <div class="settings__row">
+            <span class="settings__name">Star rating</span>
+            <span class="settings__actions"><span class="settings__value">Custom</span><a class="wf-link" href="#">Edit</a><a class="wf-link" href="#">Reset</a></span>
+          </div>
+        </div>
+      </div>
+
+      <p class="pt__label">3. The forecast, once saved: a chip says the stars are custom</p>
+      <div class="pt__row">
+        <div class="dockhead">
+              <div class="dockhead__top">
+                <span class="dockhead__spot">Dollymount Strand</span>
+                <button class="whose" type="button" aria-label="Custom star rating: edit">
+                  <svg width="10" height="10" viewBox="-5 -5 10 10" aria-hidden="true"><path fill="currentColor" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" /></svg>
+                  Custom stars
+                </button>
+              </div>
+              <div class="hours"></div>
+            </div>
+      </div>
+    </section>
 
     <template id="ys">
       <div class="wf-dialog wf-dialog--wide ys" role="dialog" aria-modal="true">
         <div class="wf-dialog__head">
           <h2 class="wf-dialog__title" data-title>Your star rating</h2>
-          <button class="wf-button wf-button--icon wf-button--sm" type="button" aria-label="Close">
+          <button class="wf-button wf-button--quiet wf-button--icon" type="button" aria-label="Close">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
           </button>
         </div>
         <div class="wf-dialog__body">
           <div class="ys__block">
-            <span class="wf-kicker">Start from</span>
+            <span class="ys__label">Start from</span>
             <div class="wf-segmented ys__presets" role="group" aria-label="Start from">
               <button class="wf-segmented__item" type="button" data-preset="beginner">Learning</button>
               <button class="wf-segmented__item" type="button" data-preset="intermediate">Riding</button>
@@ -689,7 +739,7 @@
           </div>
 
           <div class="ys__block">
-            <span class="wf-kicker wf-kicker--ink">Wind speed: stars</span>
+            <span class="ys__label">Wind speed: stars</span>
             <svg class="curve" viewBox="0 0 400 92" role="img" data-curve="wind"></svg>
             <div class="legend" aria-hidden="true">
               <span><span class="legend__key"></span>Yours</span>
@@ -714,7 +764,7 @@
           </div>
 
           <div class="ys__block">
-            <span class="wf-kicker wf-kicker--ink">Gusts: stars taken off</span>
+            <span class="ys__label">Gusts: stars taken off</span>
             <svg class="curve" viewBox="0 0 400 92" role="img" data-curve="gust"></svg>
             <div class="legend" aria-hidden="true">
               <span><span class="legend__key"></span>Yours</span>
@@ -742,7 +792,7 @@
           </div>
 
           <div class="ys__block">
-            <span class="wf-kicker wf-kicker--ink">Wind direction: stars taken off</span>
+            <span class="ys__label">Wind direction: stars taken off</span>
             <svg class="shore web" viewBox="-180 -128 360 256" role="group" aria-label="Stars taken off for each wind direction" data-shore></svg>
             <div class="picked" data-picked>
               <span class="picked__name" data-picked-name></span>
@@ -753,12 +803,12 @@
           </div>
 
           <div class="ys__block">
-            <span class="wf-kicker wf-kicker--ink">Together: wind speed, gusts and direction</span>
+            <span class="ys__label">Together: wind speed, gusts and direction</span>
             <div class="together__for">
               <span>For wind that is</span>
-              <div class="wf-control wf-control--select">
-                <select class="wf-control__input" aria-label="Show the stars for wind that is" data-for></select>
-                <svg class="wf-control__adornment" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+              <div class="wf-select">
+                <select class="wf-select__input" aria-label="Show the stars for wind that is" data-for></select>
+                <svg class="wf-select__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
               </div>
             </div>
             <svg class="grid" viewBox="0 -18 400 278" role="img" data-grid></svg>
@@ -769,7 +819,7 @@
           </div>
 
           <div class="ys__block">
-            <span class="wf-kicker wf-kicker--ink">Examples</span>
+            <span class="ys__label">Examples</span>
             <table class="rates">
               <thead>
                 <tr><th scope="col" class="rates__w" data-forecast-head></th><th scope="col" class="rates__s" data-base-name></th><th scope="col">Yours</th></tr>
@@ -779,7 +829,7 @@
           </div>
         </div>
         <div class="wf-dialog__actions">
-          <button class="wf-button wf-button--pill" type="button">Cancel</button>
+          <button class="wf-button" type="button">Cancel</button>
           <button class="wf-button wf-button--primary" type="button">Save</button>
         </div>
       </div>
@@ -849,7 +899,7 @@
         const f = (n) => n.toFixed(1);
         const wedge = (a1, a2) => { const [x1, y1] = polar(a1, R), [x2, y2] = polar(a2, R); return `M0,0 L${f(x1)},${f(y1)} A${R},${R} 0 0 1 ${f(x2)},${f(y2)}Z`; };
         const arcs = (d) => (d.from === 0 ? [[-30, 30]] : d.to === 180 ? [[150, 210]] : [[d.from, d.to], [-d.to, -d.from]]);
-        // Sea and land only inside the circle; paper round it.
+        // Sea and land only inside the circle; the ground round it.
         let out = `<path class="shore__sea" d="M${-R},0 A${R},${R} 0 0 1 ${R},0Z"/><path class="shore__land" d="M${R},0 A${R},${R} 0 0 1 ${-R},0Z"/>`;
         DIRS.forEach((d) => arcs(d).forEach(([a1, a2]) => {
           out += `<path class="web__slice${d.key === picked ? " web__slice--on" : ""}" d="${wedge(a1, a2)}" data-slice="${d.key}"><title>${d.name}</title></path>`;

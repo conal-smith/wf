@@ -1,14 +1,15 @@
 /* Figure — ui/Figure.tsx (figureStyles), rendered in CSS. Consumes --sem-* only.
  *
- * The number first and large in the mono face's tabular digits, its unit
- * small after it and, where there is one, a second figure raised after it the
- * way the chart writes a gust over the mean (14 g22 -> 14²²). */
+ * The number first and large in Inter's tabular figures, its unit small after
+ * it and, where there is one, a second figure raised after it the way the
+ * site writes a gust over the mean (14 g22 -> 14²²). The product's recipe
+ * names the figures' face `font-mono`, which is Inter. */
 
 .wf-figure {
   display: inline-flex;
   align-items: baseline;
   gap: var(--sem-space-x0-5);
-  font-family: var(--sem-font-family-mono);
+  font-family: var(--sem-font-family-body);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   color: var(--sem-color-ink);
@@ -38,13 +39,13 @@
 /* ---- the raised figure: the gust over the mean ---- */
 .wf-figure__sup {
   align-self: flex-start;
-  font-family: var(--sem-font-family-mono);
+  font-family: var(--sem-font-family-body);
   font-size: var(--sem-font-size-caption);
   line-height: var(--sem-font-line-caption);
   font-weight: var(--sem-font-weight-medium);
   color: var(--sem-color-ink-muted);
 }
-/* The one to watch: a gust well over the mean, in the pen's ink and heavier. */
+/* The one to watch: a gust well over the mean, in the warm red and heavier. */
 .wf-figure--alarm .wf-figure__sup {
   font-weight: var(--sem-font-weight-semibold);
   color: var(--sem-color-pen-ink);
@@ -52,7 +53,7 @@
 
 /* ---- the unit: kn, m, €, % ---- */
 .wf-figure__unit {
-  font-family: var(--sem-font-family-mono);
+  font-family: var(--sem-font-family-body);
   font-size: var(--sem-font-size-caption);
   line-height: var(--sem-font-line-caption);
   color: var(--sem-color-ink-muted);

@@ -10,7 +10,7 @@ import { tv } from "./tv";
 export const emptyStyles = tv({
   slots: {
     base: "grid justify-items-center gap-2.5 px-5 py-14 text-center font-body",
-    icon: "mb-1.5 grid size-14 place-items-center rounded-full bg-sunken text-ink-2",
+    icon: "mb-1.5 grid size-14 place-items-center rounded-full bg-well text-ink-2",
     title: "m-0 font-body text-lead tracking-tight text-balance text-ink",
     body: "grid max-w-reading justify-items-center gap-2 text-prose leading-normal text-pretty text-ink-2",
     actions: "mt-2 flex flex-wrap justify-center gap-2",

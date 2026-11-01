@@ -59,10 +59,19 @@ describe("paper and ink", () => {
       expect(resolved(name), name).toBe("#111114");
   });
 
-  it("paints the double rule's gap in the paper every surface is", () => {
-    const frame = css.match(/--inset-shadow-frame: ([^;]+);/)?.[1] ?? "";
-    expect(frame).toContain(resolved("card"));
-    expect(frame).toContain(resolved("ink"));
+  // Flat: no frame, no grain and no sheen are left to paint with.
+  it("draws no frame, grain or sheen", () => {
+    for (const gone of [
+      "--inset-shadow-frame",
+      "--texture-grain",
+      "--gradient-",
+    ])
+      expect(css, gone).not.toContain(gone);
+  });
+
+  it("dims what is behind a dialog in a dark wash, thicker where nothing blurs it", () => {
+    expect(resolved("scrim")).toBe("#0f0f1247");
+    expect(resolved("scrim-solid")).toBe("#0f0f1299");
   });
 
   it("lays the glass a badge stands on in the same paper, a little open", () => {
@@ -186,9 +195,7 @@ describe("contrast, as the ruling records it", () => {
       "pen-ink",
       "warn",
     ])
-      expect(ruling, name).toContain(
-        quoted(contrast(resolved(name), paper)),
-      );
+      expect(ruling, name).toContain(quoted(contrast(resolved(name), paper)));
     expect(ruling).toContain(
       quoted(contrast(resolved("ink-muted"), resolved("sunken"))),
     );
@@ -197,9 +204,9 @@ describe("contrast, as the ruling records it", () => {
     );
   });
 
-  it("keeps muted text above 4.5:1 on paper and on the second sheet", () => {
+  it("keeps muted text above 4.5:1 on the ground, a card and a control on a card", () => {
     const muted = resolved("ink-muted");
-    for (const ground of ["ground", "card", "solid", "sunken"])
+    for (const ground of ["ground", "card", "solid", "sunken", "raised"])
       expect(contrast(muted, resolved(ground)), ground).toBeGreaterThanOrEqual(
         4.5,
       );
@@ -215,7 +222,9 @@ describe("contrast, as the ruling records it", () => {
     const paper = resolved("ground");
     expect(contrast(resolved("pen-ink"), paper)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(resolved("pen"), paper)).toBeGreaterThanOrEqual(3);
-    expect(contrast(resolved("warn"), resolved("warn-ground"))).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrast(resolved("warn"), resolved("warn-ground")),
+    ).toBeGreaterThanOrEqual(4.5);
     expect(contrast(resolved("ok"), paper)).toBeGreaterThanOrEqual(4.5);
   });
 

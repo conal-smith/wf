@@ -24,19 +24,20 @@ foot ("NE 22 g27 · CROSS"). It is the mockup's recommended design
 
 | Part | Drawn as | From |
 |---|---|---|
-| No-go | Hatched in ink over a light paper wash, with dashed edges, labelled NO-GO | `rideRange`'s upwind angle, either side of the wind |
-| Out | Paper wash at about 45% to the rim, with ink edges, a heavy rim arc and an arrowhead, labelled "OUT 105–155°" | The tack that reaches the sea, cut off at the beach (as the light's wedge is), from the no-go's edge to 120° off the wind |
+| No-go | Hatched in ink over a light wash of the ground's colour, with dashed edges, labelled NO-GO | `rideRange`'s upwind angle, either side of the wind |
+| Out | A wash of the ground's colour at about 45% to the rim, with ink edges, a heavy rim arc and an arrowhead, labelled "OUT 105–155°" | The tack that reaches the sea, cut off at the beach (as the light's wedge is), from the no-go's edge to 120° off the wind |
 | Home | Dashed edges and a dashed rim arc, labelled "HOME 295–345°" | The other tack, whole |
 | Reach | As home, labelled REACH | Both tacks where out and home mean nothing: a tapped point, a place with no facing, or an offshore wind |
 | Slow | A faint dotted arc along the rim, labelled SLOW in muted ink from 120 px | Downwind of both courses, past 120° off the wind each side: possible, but slow, so not drawn as course |
-| Drift | Dotted arrow straight downwind, labelled DRIFT. In the pen's red, with "OUT TO SEA", when the wind is cross-offshore or offshore | The wind's bearing + 180° |
+| Drift | Dotted arrow straight downwind, labelled DRIFT. In red, with "OUT TO SEA", when the wind is cross-offshore or offshore | The wind's bearing + 180° |
 | Offshore | On the bezel: a dense red hatch where the wind is offshore, a light one where it is cross-offshore, a red arc outside, and the word OFFSHORE | `shoreAngle`'s bands (see below) and the spot's facing |
 | Needle | From outside the bezel in to the glass, at the wind's from-bearing, filled with the wind's colour (`PALETTE`) | The dock's hour |
 | Foot box | "SW 16 g22" in the rider's units (in Force, the wind's glyph and force and the gust's smaller, `BeaufortGlyph`'s drawing), then the shore relation: ON, CROSS-ON, CROSS, CROSS-OFF (red) or OFF (red). With no beach, the units | The dock's hour |
 
-The wind's colour appears only on the needle. The pen's red is used only for
+The wind's colour appears only on the needle. The red accent is used only for
 danger: the offshore winds on the bezel, and the drift when it heads out to
-sea. Labels are IBM Plex Mono in tracked capitals at 10 px on a paper halo.
+sea. Labels are Inter, semibold at 11 px, haloed in the ground's colour so
+they read over the satellite picture and the chart in either theme.
 
 **Fallbacks.** In the dark, or below the rider's floor, the glass is empty.
 The needle, the foot box and the red bezel stay. The same happens when nothing
@@ -76,7 +77,7 @@ tack. A dashed ring marks half of it.
   MapLibre's `move` event, as its markers do. A pan only moves the glass, as a
   layer of its own, so nothing is painted again. Through a zoom the elements
   already drawn are given their new sizes rather than built again, and the
-  hole in the paper wash, a distance on the chart, is cut again only when its
+  hole in the wash, a distance on the chart, is cut again only when its
   edge would leave the rim's band, and once the camera rests. The glass is
   also redrawn when the hour changes, and when the rider's level, degrees
   into the wind or units change.

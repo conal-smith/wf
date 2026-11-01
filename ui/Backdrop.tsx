@@ -3,7 +3,7 @@ import { tv } from "./tv";
 
 /**
  * The backdrop behind every dialog and sheet, in one place: the page, or the
- * moving map, blurred under a wash of paper, fading in and out.
+ * moving map, blurred under a dim wash, fading in and out.
  *
  * - A modal <dialog> has it as its `::backdrop`: `BACKDROP` in its classes,
  *   as ui/Dialog.tsx does. Use the kit's Dialog and it is there already.

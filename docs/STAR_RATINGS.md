@@ -66,8 +66,8 @@ file: the lights cost the same for any blend. The chart reads only the ticked
 models' (and the rider's model's and ECMWF's) spot square for the open spot,
 and only while it is shown.
 
-Where the stars hand over from one model to the next, the dock draws a dashed
-pen line down the hours with "ECMWF from Wed 22:00" written by it, and the
+Where the stars hand over from one model to the next, the dock draws a
+straight dashed line down the hours, with nothing written by it, and the
 dock's head names the model whose forecast the hour in hand is ("★ HARMONIE",
 "★ ECMWF" past the end of its run). The map hands over to ECMWF at the same
 hours (`handoverModel` in `force5/src/timeline.ts`) and its label says so. The spot page puts a handover row in the day's
@@ -397,7 +397,7 @@ and picks a window themselves.
 
 ## On the spot page
 
-`/spot/<id>` (`spot/web/`) is the chart's broadsheet for one place, day by
+`/spot/<id>` (`spot/web/`) is the spot report for one place, day by
 day. It rates the forecast server's headline line, one model's own wind, gust
 and direction by the rider's choice (`hourWind`, `mcp/api/forecast.ts`), with
 agreement read across every model as context, so the stars there are the stars
@@ -410,7 +410,7 @@ an assistant would be given. The dock follows the same rule from the same
 - **Each day** under a header that sticks while its hours scroll: its name
   and date.
 - **A row per daylight hour**, the dark folded either side and never rated:
-  the stars, the wind with its gust raised (in the pen's red when it jumps),
+  the stars, the wind with its gust raised (in red when it jumps),
   where it comes from, the waves and the sky. Rows are hourly
   for the first 72 hours and every third Irish hour after, where the models
   themselves step three-hourly. Hover or tap the stars for why

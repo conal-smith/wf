@@ -49,8 +49,6 @@ export const THEME_NAMES = {
     "dialog",
     "dialog-wide",
     "reading",
-    "wordmark",
-    "wordmark-sm",
     "measure",
     "page",
     "form",

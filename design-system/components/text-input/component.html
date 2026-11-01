@@ -3,127 +3,107 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Text input — wingfoil-chart</title>
+    <title>Text input — wingfoil</title>
     <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="../field/component.css" />
     <link rel="stylesheet" href="component.css" />
     <style>
-      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      /* Demo scaffolding only: the ground, a grey label over each row, soft cards. */
       body {
         margin: 0;
       }
       .demo {
-        padding: var(--sem-space-x5);
-        background-color: var(--sem-color-ground);
-        background-image: var(--sem-texture-grain);
+        padding: var(--sem-space-x6);
+        background: var(--sem-color-ground);
         color: var(--sem-color-ink);
         font-family: var(--sem-font-family-body);
         font-size: var(--sem-font-size-prose);
         line-height: var(--sem-font-line-prose);
       }
-      .demo + .demo {
-        border-top: var(--sem-rule-double) double var(--sem-color-ink);
-      }
       .demo__head {
-        margin: 0 0 var(--sem-space-x3);
-        padding-bottom: var(--sem-space-x1);
-        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
-        font-family: var(--sem-font-family-display);
+        margin: 0 0 var(--sem-space-x2);
         font-size: var(--sem-font-size-lead);
         line-height: var(--sem-font-line-lead);
-        font-weight: var(--sem-font-weight-lead);
+        font-weight: var(--sem-font-weight-semibold);
       }
       .demo__label {
-        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-eyebrow);
-        line-height: var(--sem-font-line-eyebrow);
-        font-weight: var(--sem-font-weight-eyebrow);
-        letter-spacing: var(--sem-font-tracking-eyebrow);
-        text-transform: uppercase;
+        margin: var(--sem-space-x6) 0 var(--sem-space-x2);
+        font-size: var(--sem-font-size-label);
+        line-height: var(--sem-font-line-label);
+        font-weight: var(--sem-font-weight-medium);
         color: var(--sem-color-ink-muted);
       }
       .demo__row {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: var(--sem-space-x3);
+        gap: var(--sem-space-x2);
       }
-      .demo__map {
-        padding: var(--sem-space-x3);
-        background: var(--sem-color-sea-3);
+      .demo__stack {
+        display: grid;
+        gap: var(--sem-space-x3);
+        max-width: var(--sem-container-form);
+      }
+      .demo__card {
+        padding: var(--sem-space-x5);
+        border-radius: var(--sem-radius-surface);
+        background: var(--sem-color-sunken);
+        /* A soft card: a control inside takes the second grey (on-card). */
+        --sem-color-well: var(--sem-color-raised);
       }
     </style>
   </head>
   <body>
-    <section class="demo" data-mode="light">
-      <h2 class="demo__head">Text input</h2>
-
-      <p class="demo__label">Empty · italic placeholder</p>
-      <div class="wf-control">
-        <input class="wf-control__input" type="text" placeholder="Rusheen Bay, Galway" aria-label="Spot" />
-      </div>
-
-      <p class="demo__label">Filled</p>
-      <div class="wf-control">
-        <input class="wf-control__input" type="text" value="Dollymount" aria-label="Spot" />
-      </div>
-
-      <p class="demo__label">Prefix</p>
-      <div class="wf-control">
-        <span class="wf-control__adornment">€</span>
-        <input class="wf-control__input" type="text" inputmode="numeric" value="850" aria-label="Price" />
-      </div>
-
-      <p class="demo__label">Hover (held)</p>
-      <div class="wf-control is-hover">
-        <input class="wf-control__input" type="text" value="Brandon Bay" aria-label="Spot" />
-      </div>
-
-      <p class="demo__label">Focus-within (held): the ring on the box</p>
-      <div class="wf-control is-focus">
-        <input class="wf-control__input" type="text" value="Keel Beach" aria-label="Spot" />
-      </div>
-
-      <p class="demo__label">Active · a filter narrowing the results</p>
-      <div class="wf-control wf-control--active">
-        <span class="wf-control__adornment">€</span>
-        <input class="wf-control__input" type="text" inputmode="numeric" value="1200" aria-label="Most I'd pay" />
-      </div>
-
-      <p class="demo__label">Invalid · aria-invalid</p>
-      <div class="wf-control">
-        <input class="wf-control__input" type="text" value="6,5 m" aria-label="Wing size" aria-invalid="true" />
-      </div>
-
-      <p class="demo__label">Disabled</p>
-      <div class="wf-control">
-        <span class="wf-control__adornment">€</span>
-        <input class="wf-control__input" type="text" value="850" aria-label="Price" disabled />
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Text input in dark</h2>
+      <div class="demo__stack">
+        <div class="wf-field">
+          <label class="wf-field__label" for="ti-d-home">Your home spot</label>
+          <div class="wf-text-input"><input class="wf-text-input__input" id="ti-d-home" placeholder="e.g. Dollymount" /></div>
+        </div>
+        <div class="wf-field">
+          <label class="wf-field__label" for="ti-d-price">Asking price</label>
+          <div class="wf-text-input is-focus"><span class="wf-text-input__adornment">€</span><input class="wf-text-input__input" id="ti-d-price" value="650" aria-describedby="ti-d-price-hint" /></div>
+          <small class="wf-field__hint" id="ti-d-price-hint">Focused (held). Buyers see it on the card.</small>
+        </div>
+        <div class="wf-field wf-field--invalid">
+          <label class="wf-field__label" for="ti-d-email">Email</label>
+          <div class="wf-text-input"><input class="wf-text-input__input" id="ti-d-email" value="rider@" aria-invalid="true" aria-describedby="ti-d-email-error" /></div>
+          <span class="wf-field__error" id="ti-d-email-error" role="alert">Give an email address we can write to.</span>
+        </div>
+        <div class="wf-field">
+          <label class="wf-field__label" for="ti-d-name">Spot name, active filter</label>
+          <div class="wf-text-input wf-text-input--active"><input class="wf-text-input__input" id="ti-d-name" value="Bally" /></div>
+        </div>
+        <div class="demo__card">
+          <div class="wf-field">
+            <label class="wf-field__label" for="ti-d-card">On a soft card: the field takes the card's second grey</label>
+            <div class="wf-text-input"><input class="wf-text-input__input" id="ti-d-card" placeholder="e.g. Dollymount" /></div>
+          </div>
+        </div>
+        <div class="wf-field">
+          <label class="wf-field__label" for="ti-d-off">Disabled</label>
+          <div class="wf-text-input"><input class="wf-text-input__input" id="ti-d-off" value="Set by your club" disabled /></div>
+        </div>
       </div>
     </section>
 
-    <section class="demo" data-mode="dark">
-      <h2 class="demo__head">Text input · night chart (proposed)</h2>
-      <p class="demo__label">Empty</p>
-      <div class="wf-control">
-        <input class="wf-control__input" type="text" placeholder="Rusheen Bay, Galway" aria-label="Spot" />
-      </div>
-      <p class="demo__label">Active</p>
-      <div class="wf-control wf-control--active">
-        <span class="wf-control__adornment">€</span>
-        <input class="wf-control__input" type="text" value="1200" aria-label="Most I'd pay" />
-      </div>
-      <p class="demo__label">Focus (held)</p>
-      <div class="wf-control is-focus">
-        <input class="wf-control__input" type="text" value="The Burrow" aria-label="Spot" />
-      </div>
-      <p class="demo__label">Invalid</p>
-      <div class="wf-control">
-        <input class="wf-control__input" type="text" value="6,5 m" aria-label="Wing size" aria-invalid="true" />
-      </div>
-      <p class="demo__label">Disabled</p>
-      <div class="wf-control">
-        <input class="wf-control__input" type="text" value="Donabate" aria-label="Spot" disabled />
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Text input in light</h2>
+      <div class="demo__stack">
+        <div class="wf-field">
+          <label class="wf-field__label" for="ti-l-home">Your home spot</label>
+          <div class="wf-text-input"><input class="wf-text-input__input" id="ti-l-home" placeholder="e.g. Dollymount" /></div>
+        </div>
+        <div class="wf-field">
+          <label class="wf-field__label" for="ti-l-price">Asking price</label>
+          <div class="wf-text-input is-focus"><span class="wf-text-input__adornment">€</span><input class="wf-text-input__input" id="ti-l-price" value="650" /></div>
+        </div>
+        <div class="wf-field wf-field--invalid">
+          <label class="wf-field__label" for="ti-l-email">Email</label>
+          <div class="wf-text-input"><input class="wf-text-input__input" id="ti-l-email" value="rider@" aria-invalid="true" aria-describedby="ti-l-email-error" /></div>
+          <span class="wf-field__error" id="ti-l-email-error" role="alert">Give an email address we can write to.</span>
+        </div>
       </div>
     </section>
   </body>

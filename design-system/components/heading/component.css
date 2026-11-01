@@ -1,0 +1,77 @@
+/* Heading — ui/Heading.tsx (headingStyles), rendered in CSS. Consumes --sem-*
+ * only.
+ *
+ * Headings in Inter and sentence case, kept apart from what follows by space
+ * and never by a rule. Three steps: a page's (40px, 32 on a phone, with a lead
+ * line under it), a section's (19px, with a link or a count on the right) and
+ * a card's (15px). Fraunces is the wordmark's and a spot's name's, and no
+ * heading's. */
+
+.wf-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sem-space-x1) var(--sem-space-x3);
+  min-width: 0;
+  font-family: var(--sem-font-family-body);
+}
+
+.wf-heading__title {
+  min-width: 0;
+  margin: 0;
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-lead);
+  line-height: var(--sem-font-line-lead);
+  font-weight: var(--sem-font-weight-semibold);
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+/* Set right on the heading's line: a link, a count, an action. */
+.wf-heading__aside {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--sem-space-x2);
+  color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-body);
+  font-weight: var(--sem-font-weight-medium);
+}
+
+/* The line under a page's heading. */
+.wf-heading__lead {
+  flex-basis: 100%;
+  max-width: var(--sem-container-form);
+  margin: 0;
+  color: var(--sem-color-ink-2);
+  font-size: var(--sem-font-size-prose);
+  line-height: var(--sem-font-line-normal);
+  text-wrap: pretty;
+}
+
+/* ---- page: the page's own heading ---- */
+.wf-heading--page {
+  align-items: flex-end;
+  row-gap: var(--sem-space-x2);
+}
+.wf-heading--page .wf-heading__title {
+  font-size: var(--sem-font-size-headline);
+  line-height: var(--sem-font-line-title);
+  letter-spacing: var(--sem-font-tracking-headline);
+}
+@media (max-width: 719.98px) {
+  /* sem.breakpoint.wide */
+  .wf-heading--page .wf-heading__title {
+    font-size: var(--sem-font-size-title);
+    letter-spacing: var(--sem-font-tracking-title);
+  }
+}
+
+/* ---- card: a card's own heading ---- */
+.wf-heading--card .wf-heading__title {
+  font-size: var(--sem-font-size-prose);
+  line-height: var(--sem-font-line-tight);
+  letter-spacing: 0;
+}

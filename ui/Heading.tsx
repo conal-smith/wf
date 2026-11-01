@@ -13,18 +13,21 @@ import { tv, type VariantProps } from "./tv";
  */
 export const headingStyles = tv({
   slots: {
-    base: "flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1",
+    // The heading's line, then the lead under it. The lead is its own row,
+    // not a wrapped item of the line: a short title would otherwise take the
+    // lead up beside it, a lead held to a measure fitting in what is left.
+    base: "grid min-w-0 gap-y-1",
+    line: "flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1",
     title: "m-0 min-w-0 font-body text-balance text-ink",
-    aside: "flex shrink-0 items-center gap-2 font-body text-body font-medium text-ink-muted",
-    // The lead's own row, the full width, so it always stands under the
-    // title however short the title is; the words inside keep a measure.
-    leadRow: "basis-full",
+    aside:
+      "flex shrink-0 items-center gap-2 font-body text-body font-medium text-ink-muted",
     lead: "m-0 font-body text-prose leading-normal text-pretty text-ink-2",
   },
   variants: {
     level: {
       page: {
-        base: "items-end gap-y-2",
+        base: "gap-y-2",
+        line: "items-end",
         title: "text-big max-wide:text-big-sm",
         lead: "max-w-form",
       },
@@ -62,15 +65,13 @@ export function Heading({
   const Tag = as ?? TAG[level];
   return (
     <div className={styles.base({ className })}>
-      <Tag className={styles.title()} id={id}>
-        {children}
-      </Tag>
-      {aside && <div className={styles.aside()}>{aside}</div>}
-      {lead && (
-        <div className={styles.leadRow()}>
-          <p className={styles.lead()}>{lead}</p>
-        </div>
-      )}
+      <div className={styles.line()}>
+        <Tag className={styles.title()} id={id}>
+          {children}
+        </Tag>
+        {aside && <div className={styles.aside()}>{aside}</div>}
+      </div>
+      {lead && <p className={styles.lead()}>{lead}</p>}
     </div>
   );
 }

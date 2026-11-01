@@ -6,7 +6,8 @@
  * above them when there is no room below, and closes on scroll, on Escape
  * and on a tap anywhere else.
  *
- * It is the chart's box: paper with its grain, ruled twice in ink. A press on
+ * It is a floating card: the ground, the float shadow, a faint edge in dark.
+ * A press on
  * the stars is theirs alone: it never reaches the row or the column they sit
  * in, which have presses of their own.
  *

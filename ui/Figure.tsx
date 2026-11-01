@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { tv, type VariantProps } from "./tv";
 
 /*
- * A figure: the number first and large, in the mono face's tabular digits, its
+ * A figure: the number first and large, in tabular digits, its
  * unit small beside it and, where there is one, a second figure raised after
  * it the way the chart writes a gust over the mean (14 g22 -> 14²²). The site
  * says things in these rather than in sentences.

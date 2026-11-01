@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spot search — wingfoil</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="../button/component.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the ground, a grey label over each row, soft cards. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x6);
+        background: var(--sem-color-ground);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x2);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-semibold);
+      }
+      .demo__label {
+        margin: var(--sem-space-x6) 0 var(--sem-space-x2);
+        font-size: var(--sem-font-size-label);
+        line-height: var(--sem-font-line-label);
+        font-weight: var(--sem-font-weight-medium);
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x2);
+      }
+      .demo__stack {
+        display: grid;
+        gap: var(--sem-space-x3);
+        max-width: var(--sem-container-form);
+      }
+      .demo__card {
+        padding: var(--sem-space-x5);
+        border-radius: var(--sem-radius-surface);
+        background: var(--sem-color-sunken);
+        /* A soft card: a control inside takes the second grey (on-card). */
+        --sem-color-well: var(--sem-color-raised);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Spot search in dark</h2>
+      <p class="demo__label">At rest</p>
+      <div class="wf-spot-search"><div class="wf-spot-search__field"><svg class="wf-spot-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg><input class="wf-spot-search__input" placeholder="Search spots" aria-label="Search spots" role="combobox" aria-expanded="false" aria-autocomplete="list" /><kbd class="wf-spot-search__key" aria-hidden="true">/</kbd></div></div>
+      <p class="demo__label">In use, with results (held)</p>
+      <div class="wf-spot-search">
+        <div class="wf-spot-search__field is-focus"><svg class="wf-spot-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg><input class="wf-spot-search__input" value="bally" aria-label="Search spots" role="combobox" aria-expanded="true" aria-controls="sd-list" aria-autocomplete="list" aria-activedescendant="sd-0" /><button class="wf-button wf-button--quiet wf-button--icon wf-button--sm" type="button" aria-label="Clear the search"><svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg></button></div>
+        <div class="wf-spot-search__panel wf-spot-search__panel--static">
+          <div role="listbox" id="sd-list" aria-label="Spots">
+            <div role="group" aria-labelledby="sd-g">
+              <div class="wf-spot-search__group-name" id="sd-g" role="presentation">Spots</div>
+              <div class="wf-spot-search__option" id="sd-0" role="option" aria-selected="true"><span class="wf-spot-search__words"><span class="wf-spot-search__name"><mark class="wf-spot-search__mark">Bally</mark>heigue</span><span class="wf-spot-search__county">Kerry</span></span><span class="wf-spot-search__detail">16 kn</span></div>
+              <div class="wf-spot-search__option" id="sd-1" role="option" aria-selected="false"><span class="wf-spot-search__words"><span class="wf-spot-search__name"><mark class="wf-spot-search__mark">Bally</mark>castle</span><span class="wf-spot-search__county">Antrim</span></span><span class="wf-spot-search__detail">11 kn</span></div>
+              <div class="wf-spot-search__option" id="sd-2" role="option" aria-selected="false"><span class="wf-spot-search__words"><span class="wf-spot-search__name"><mark class="wf-spot-search__mark">Bally</mark>cotton</span><span class="wf-spot-search__county">Cork</span></span><span class="wf-spot-search__detail">9 kn</span></div>
+            </div>
+          </div>
+          <div class="wf-spot-search__foot" aria-hidden="true"><span>Enter opens the forecast</span><span>Wind today</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Spot search in light</h2>
+      <div class="wf-spot-search">
+        <div class="wf-spot-search__field is-focus"><svg class="wf-spot-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg><input class="wf-spot-search__input" value="bally" aria-label="Search spots" role="combobox" aria-expanded="true" aria-controls="sl-list" aria-autocomplete="list" aria-activedescendant="sl-0" /><button class="wf-button wf-button--quiet wf-button--icon wf-button--sm" type="button" aria-label="Clear the search"><svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg></button></div>
+        <div class="wf-spot-search__panel wf-spot-search__panel--static">
+          <div role="listbox" id="sl-list" aria-label="Spots">
+            <div role="group" aria-labelledby="sl-g">
+              <div class="wf-spot-search__group-name" id="sl-g" role="presentation">Spots</div>
+              <div class="wf-spot-search__option" id="sl-0" role="option" aria-selected="true"><span class="wf-spot-search__words"><span class="wf-spot-search__name"><mark class="wf-spot-search__mark">Bally</mark>heigue</span><span class="wf-spot-search__county">Kerry</span></span><span class="wf-spot-search__detail">16 kn</span></div>
+              <div class="wf-spot-search__option" id="sl-1" role="option" aria-selected="false"><span class="wf-spot-search__words"><span class="wf-spot-search__name"><mark class="wf-spot-search__mark">Bally</mark>castle</span><span class="wf-spot-search__county">Antrim</span></span><span class="wf-spot-search__detail">11 kn</span></div>
+              <div class="wf-spot-search__option" id="sl-2" role="option" aria-selected="false"><span class="wf-spot-search__words"><span class="wf-spot-search__name"><mark class="wf-spot-search__mark">Bally</mark>cotton</span><span class="wf-spot-search__county">Cork</span></span><span class="wf-spot-search__detail">9 kn</span></div>
+            </div>
+          </div>
+          <div class="wf-spot-search__foot" aria-hidden="true"><span>Enter opens the forecast</span><span>Wind today</span></div>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

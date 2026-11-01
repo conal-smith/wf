@@ -1,70 +1,63 @@
-/* Empty — ui/Empty.tsx (emptyStyles over paneStyles), rendered in CSS.
- * Consumes --sem-* only.
+/* Empty — ui/Empty.tsx (emptyStyles), rendered in CSS. Consumes --sem-* only.
  *
- * Where a list would be, when there is nothing to list. It is a card Pane (one
- * ink rule, paper with its grain), restated here so the component stands on
- * its own, with a tall inset, everything centred, an icon in a ring like a
- * chart's light, and a line in the display face's italic. */
+ * Nothing found, not found, could not load: centred where the list would be,
+ * with no frame round it. A round grey icon, an Inter title, a line or two,
+ * and at most two buttons. */
 
 .wf-empty {
-  box-sizing: border-box;
   display: grid;
   justify-items: center;
-  gap: var(--sem-space-x3);
-  padding: var(--sem-space-x14) var(--sem-space-x6);
-  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
-  border-radius: var(--sem-radius-surface);
-  background-color: var(--sem-color-card);
-  background-image: var(--sem-texture-grain);
-  background-repeat: repeat;
-  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-card);
-  color: var(--sem-color-ink-muted);
+  gap: var(--sem-space-x2-5);
+  padding: var(--sem-space-x14) var(--sem-space-x5);
+  color: var(--sem-color-ink);
   font-family: var(--sem-font-family-body);
-  font-size: var(--sem-font-size-prose);
-  line-height: var(--sem-font-line-prose);
   text-align: center;
 }
 
-/* A large control and a gap across (58px), ruled in ink like a chart's light.
- * kind="info" (the default). */
 .wf-empty__icon {
-  box-sizing: border-box;
   display: grid;
   place-items: center;
-  width: calc(var(--sem-space-step) * 14.5);
-  height: calc(var(--sem-space-step) * 14.5);
-  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  width: var(--sem-space-x14);
+  height: var(--sem-space-x14);
+  margin-bottom: var(--sem-space-x1-5);
   border-radius: var(--sem-radius-full);
-  background: var(--sem-color-card);
-  color: var(--sem-color-ink);
+  background: var(--sem-color-sunken);
+  color: var(--sem-color-ink-2);
+}
+.wf-empty__icon svg {
+  width: var(--sem-space-x6);
+  height: var(--sem-space-x6);
 }
 
-/* kind="warn": the ring goes warm, and only the ring. */
-.wf-empty--warn .wf-empty__icon {
-  border-color: var(--sem-color-warn);
-  background: var(--sem-color-warn-ground);
-  color: var(--sem-color-warn);
-}
-
-/* The display face's italic: a line, not a heading. */
 .wf-empty__title {
   margin: 0;
-  font-family: var(--sem-font-family-display);
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-body);
   font-size: var(--sem-font-size-lead);
   line-height: var(--sem-font-line-lead);
-  font-weight: var(--sem-font-weight-lead);
-  font-style: italic;
-  color: var(--sem-color-ink);
+  font-weight: var(--sem-font-weight-semibold);
+  letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
-/* What to do about it: a sentence, and the action that mends it. */
 .wf-empty__body {
   display: grid;
   justify-items: center;
-  gap: var(--sem-space-x3);
+  gap: var(--sem-space-x2);
   max-width: var(--sem-container-reading);
+  color: var(--sem-color-ink-2);
+  font-size: var(--sem-font-size-prose);
+  line-height: var(--sem-font-line-normal);
+  text-wrap: pretty;
 }
-/* The product's preflight zeroes a paragraph's margins. */
-.wf-empty__body > * {
+.wf-empty__body p {
   margin: 0;
+}
+
+.wf-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sem-space-x2);
+  margin-top: var(--sem-space-x2);
 }

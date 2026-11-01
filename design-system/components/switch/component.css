@@ -1,0 +1,84 @@
+/* Switch — ui/Switch.tsx (switchStyles), rendered in CSS. Consumes --sem-*
+ * only.
+ *
+ * On or off, taking effect at once: a flat track that fills with the ink
+ * colour when on, the thumb sliding across. No gradient, no frame.
+ *
+ * `.is-focus` holds the ring still for the catalog. */
+
+.wf-switch {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-line-strong);
+  cursor: pointer;
+  transition: background-color var(--sem-duration-fast);
+}
+.wf-switch[aria-checked="true"] {
+  background: var(--sem-color-inverse);
+}
+.wf-switch:not(:disabled):focus-visible,
+.wf-switch.is-focus {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: var(--sem-ring-offset);
+}
+.wf-switch:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+/* A thumb's reach on a touch screen: an invisible band to touch height. */
+@media (pointer: coarse) {
+  .wf-switch::before {
+    content: "";
+    position: absolute;
+    inset: -9px 0;
+  }
+}
+
+.wf-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: var(--sem-space-x5);
+  height: var(--sem-space-x5);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-ground);
+  box-shadow: var(--sem-shadow-control);
+  pointer-events: none;
+  transition: transform var(--sem-duration-fast);
+}
+.wf-switch[aria-checked="true"] .wf-switch__thumb {
+  transform: translateX(18px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-switch,
+  .wf-switch__thumb {
+    transition: none;
+  }
+}
+
+/* A switch in a row: its words on the left, the switch on the right. */
+.wf-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sem-space-x4);
+  min-height: var(--sem-size-touch);
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-prose);
+  color: var(--sem-color-ink);
+}
+.wf-switch-row__words {
+  display: grid;
+  gap: var(--sem-space-x0-5);
+}
+.wf-switch-row__detail {
+  font-size: var(--sem-font-size-body);
+  color: var(--sem-color-ink-2);
+}

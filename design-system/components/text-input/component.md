@@ -1,66 +1,47 @@
 # Text input
 
-A box to write in (`ui/TextInput.tsx` over `ui/control.ts`, `controlStyles`).
-Body-face text, an italic placeholder, a hairline box ruled at the stroke's
-3:1, at a control's corner (`sem.radius.control`, 10px).
+A one-line text field (`ui/TextInput.tsx`, on the kit's control box in
+`ui/control.ts`): filled with the soft grey, no rule round it.
 
 ## Anatomy
 
-- Box: `.wf-control` (the `box` slot) — at least `sem.size.touch` tall,
-  `sem.space.x3` across, `sem.space.x2` between its parts, a
-  `sem.rule.hairline` border in `sem.color.line-strong`, `sem.radius.control`,
-  `sem.color.card`. The box is what is drawn: it takes the border, the hover
-  and the ring, so a prefix sits inside the same outline as the text.
-- Element: `.wf-control__input` (the `input` slot) — bare, no border, no
-  fill, no ring of its own; Newsreader at `sem.font.size.prose`, normal
-  weight, in the box's ink.
-- Optional prefix: `.wf-control__adornment` — a currency sign or a unit, a
-  figure's companion, so IBM Plex Mono at `sem.font.size.caption` in
-  `sem.color.ink-muted`.
-- Shared: this file owns `.wf-control`, `.wf-control__input`,
-  `.wf-control__adornment` and `.wf-control--active` for all three field
-  controls, as `controlStyles` does in the product. Text area and select link
-  `../text-input/component.css` and add only `--area` and `--select` in their
-  own files.
+- Box: `.wf-text-input`, at least 44px tall (`sem.size.touch`), 14px in from
+  each side, a box's corner (`sem.radius.control`), on `sem.color.well`,
+  with a transparent hairline edge that the states colour.
+- Input: `.wf-text-input__input`, the bare `<input>` filling the box, Inter
+  at `sem.font.size.prose`; `sem.font.size.input` (16px) on a touch screen so
+  a phone does not zoom. Placeholder in `sem.color.ink-muted`.
+- Adornment (optional): `.wf-text-input__adornment`, a currency sign or a unit
+  inside the box, in `sem.color.ink-muted`.
 
 ## Variants
 
-- **Text** (the default) — one line, an optional prefix.
-- **Active** (`.wf-control--active`) — a filter that is narrowing the results,
-  as opposed to sitting at "any": the border in `sem.color.accent.primary`
-  and a second hairline inside it (an inset ring), so it is not said by
-  colour alone. A line, not a fill, so it never rivals the one filled action.
+- **Active** (`--active`): an ink edge, for a filter that is narrowing the
+  results as opposed to sitting at "any".
+- **With an adornment**: "€" ahead of a price, "kg" after a weight.
 
 ## States
 
-- Hover: the border goes to `sem.color.ink` (`.is-hover` holds it in the
-  demo); an active box keeps its accent.
-- Focus: the box draws the one ring when its element holds the focus
-  (`:focus-within`, `.is-focus` in the demo): `sem.ring.width` of
-  `sem.color.focus`, `sem.ring.offset` clear.
-- Invalid: `sem.color.warn` border on `sem.color.warn-ground`, reached by
-  `aria-invalid="true"` on the element or by a Field carrying
-  `data-invalid`. The Field's message says what is wrong in words.
-- Disabled: `sem.color.sunken` ground, `sem.color.line` border,
-  `sem.color.ink-disabled` text, default cursor; hover changes nothing.
-- Placeholder: italic, `sem.color.ink-muted`, full opacity.
-- Coarse pointer: the text steps to `sem.font.size.input` (16) so a phone
-  does not zoom the page when the field takes the focus.
+- Focus: the ink edge and a soft ring of the accent round the box (the focus
+  colour at 20%); the bare input draws no ring of its own (`.is-focus` in the
+  demo).
+- Invalid: `aria-invalid="true"` on the input, or inside an invalid
+  [Field](../field/component.md): a `sem.color.warn` edge on
+  `sem.color.warn-ground`.
+- Disabled: words in `sem.color.ink-disabled`, the box at 60%.
 
 ## Usage
 
-- Always inside a Field, which names it in the mono label.
-- A placeholder is an example ("Rusheen Bay, Galway"), never the label.
-- Use the prefix for a currency or a unit, so the figure stays a figure.
-- Active only on a filter; a form field is never active.
+- Always inside a Field with a visible label.
+- Placeholder text is an example, not the label: "e.g. Dollymount".
+- No underline-only fields, no frames: the grey fill says "write here".
+- The fill is `sem.color.well`: the soft grey on the ground, the card's second
+  grey (`sem.color.raised`) inside a soft card, so a field shows on either.
 
 ## Accessibility
 
-- The element is a real `<input>`, named by its Field's `<label for>` or by
-  `aria-label`.
-- Invalid sets `aria-invalid="true"` on the element; the Field announces the
-  message with `role="alert"`.
-- The ring is on the box, so a prefix is inside what the focus outlines.
-- Contrast: the box's `line-strong` is 3.7:1 on paper (a stroke); placeholder
-  `ink-muted` 5.8:1 on paper. A disabled field's `ink-disabled` is below the
-  words' floor on purpose: it is not there to be read.
+- The Field's label names the input; the hint and error are tied to it with
+  `aria-describedby`.
+- Wrong is said in the Field's words as well as the warm edge and ground.
+- Contrast: typed words 17.3:1 (light) and 16.0:1 (dark); placeholder 4.8:1
+  and 5.6:1.

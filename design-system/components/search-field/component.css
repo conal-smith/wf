@@ -1,131 +1,79 @@
 /* Search field — ui/SearchField.tsx (searchFieldStyles), rendered in CSS.
- * Consumes --sem-* only.
+ * Consumes --sem-* only, but for the soft focus ring.
  *
- * A rule to write on, as the chart's "Find a spot…": no box, an ink line
- * under the words, the placeholder in the body face's italic, and the
- * magnifier ahead of it in the muted ink. The line goes magenta under the
- * pointer; the focus draws the one ring round the whole field.
+ * A soft grey pill with the magnifier in it; the ink edge, the ground and a
+ * soft ring of the accent when it holds the focus. No underline, no frame.
  *
- * `.is-hover` and `.is-focus` hold a state still for the catalog; the product
- * reaches the same rules through :hover and :focus-within. */
+ * `.is-focus` holds the focused look still for the catalog. */
 
 .wf-search-field {
   display: flex;
-  box-sizing: border-box;
-  height: var(--sem-size-control-lg);
-  min-width: 0;
   align-items: center;
   gap: var(--sem-space-x2);
-  padding: 0 var(--sem-space-x0-5);
-  border: 0;
-  border-bottom: var(--sem-rule-hairline) solid var(--sem-color-ink);
-  background: transparent;
+  box-sizing: border-box;
+  min-width: 0;
+  height: var(--sem-size-control-md);
+  padding: 0 14px;
+  border: var(--sem-rule-hairline) solid transparent;
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-well);
   color: var(--sem-color-ink-muted);
   font-family: var(--sem-font-family-body);
-  transition-property: color, background-color, border-color, outline-color;
+  transition-property: border-color, background-color, box-shadow;
   transition-duration: var(--sem-duration-fast);
 }
-
-.wf-search-field:hover,
-.wf-search-field.is-hover {
-  border-bottom-color: var(--sem-color-chart-magenta);
+.wf-search-field:focus-within,
+.wf-search-field.is-focus {
+  border-color: var(--sem-color-ink);
+  background: var(--sem-color-ground);
+  /* ds-lint-allow: the kit's soft focus ring is the focus colour at 20%, which no token carries */
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sem-color-focus) 20%, transparent);
 }
-
-/* Results are on their way. */
 .wf-search-field[aria-busy="true"] {
   cursor: progress;
 }
-
-/* A tap target is never shorter than touch, whatever size was asked for. */
 @media (pointer: coarse) {
   .wf-search-field {
     min-height: var(--sem-size-touch);
   }
 }
 
-/* The one ring, round the field whose input holds the focus (RING_WITHIN). */
-.wf-search-field:focus-within,
-.wf-search-field.is-focus {
-  outline: var(--sem-ring-width) solid var(--sem-color-focus);
-  outline-offset: var(--sem-ring-offset);
+.wf-search-field--lg {
+  height: var(--sem-size-touch);
 }
 
-/* The magnifier (lucide Search) in currentColor, the field's muted ink. */
 .wf-search-field__icon {
+  flex-shrink: 0;
   width: var(--sem-space-x4);
   height: var(--sem-space-x4);
-  flex-shrink: 0;
 }
 
 .wf-search-field__input {
-  box-sizing: border-box;
+  flex: 1 1 auto;
   width: 100%;
   min-width: 0;
-  flex: 1 1 0%;
-  align-self: stretch;
-  margin: 0;
+  height: 100%;
   padding: 0;
   border: 0;
-  border-radius: 0;
   background: transparent;
   color: var(--sem-color-ink);
   font-family: var(--sem-font-family-body);
   font-size: var(--sem-font-size-prose);
-  line-height: var(--sem-font-line-prose);
   font-weight: var(--sem-font-weight-normal);
   appearance: none;
 }
 .wf-search-field__input::placeholder {
   color: var(--sem-color-ink-muted);
-  font-style: italic;
   opacity: 1;
 }
-/* The field draws the ring; the input draws none (NO_RING). */
 .wf-search-field__input:focus-visible {
   outline: none;
 }
-/* A focused field under 16px makes a phone zoom the page. */
+.wf-search-field__input::-webkit-search-cancel-button {
+  appearance: none;
+}
 @media (pointer: coarse) {
   .wf-search-field__input {
     font-size: var(--sem-font-size-input);
-    line-height: var(--sem-font-line-input);
   }
-}
-
-/* ---- sizes: md (40), lg (46, the default), hero ---- */
-.wf-search-field--md {
-  height: var(--sem-size-control-md);
-}
-
-/* The search a page is built around rather than a control in a bar: taller
- * than any other control, on a heavier rule, in the lead size. */
-.wf-search-field--hero {
-  height: calc(var(--sem-space-step) * 13.5);
-  gap: var(--sem-space-x3);
-  padding-right: var(--sem-space-x1);
-  border-bottom-width: var(--sem-rule-heavy);
-}
-.wf-search-field--hero .wf-search-field__icon {
-  width: var(--sem-space-x5);
-  height: var(--sem-space-x5);
-}
-/* Lead on any pointer (pointer-coarse:text-lead): 19 is past the 16 a phone
- * needs, and this rule outranks the coarse one above. */
-.wf-search-field--hero .wf-search-field__input {
-  font-size: var(--sem-font-size-lead);
-  line-height: var(--sem-font-line-lead);
-  font-weight: var(--sem-font-weight-normal);
-}
-
-/* ---- shape: pill ---- */
-/* A capsule ruled all round in ink rather than a rule under the words: a
- * search inside a box, where a lone rule would read as a divider. */
-.wf-search-field--pill {
-  padding: 0 calc(var(--sem-space-step) * 3.5);
-  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
-  border-radius: var(--sem-radius-pill);
-}
-.wf-search-field--pill:hover,
-.wf-search-field--pill.is-hover {
-  border-color: var(--sem-color-chart-magenta);
 }

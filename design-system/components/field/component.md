@@ -1,56 +1,50 @@
 # Field
 
-A label, the control it names, and what is wrong with it if anything is
-(`ui/Field.tsx`, `fieldStyles`). The label names the thing as a chart's
-legend does: in tracked mono capitals.
+A label, the control it names, a hint, and what is wrong if anything is
+(`ui/Field.tsx`, `fieldStyles`).
 
 ## Anatomy
 
-- Root: `.wf-field` — a grid, `sem.space.x2` between label, control and
-  message, never wider than its column (`min-width: 0`).
-- Label: `.wf-field__label` on a `<label for>` — IBM Plex Mono at
-  `sem.font.size.eyebrow`, `sem.font.weight.eyebrow`, tracked
-  `sem.font.tracking.eyebrow`, uppercase, `sem.color.ink-muted`, at
-  `sem.font.line.tight`. A flex row: the words left, the hint right, on one
-  baseline.
-- Optional hint: `.wf-field__hint` on a `<small>` inside the label —
-  Newsreader italic at `sem.font.size.body`, normal weight, no tracking,
-  sentence case, `sem.color.ink-muted`, set right, keeping the label's tight
-  leading.
-- Control: any of the field controls (text input, text area, select). They
-  share the `.wf-control` box owned by `components/text-input/component.css`;
-  the demo links that file.
-- Optional error: `.wf-field__error` — Newsreader italic at
-  `sem.font.size.body` in `sem.color.warn`, `role="alert"`.
+- Field: `.wf-field`, a grid with `sem.space.x2` between its parts.
+- Label: `.wf-field__label`, a `<label for>` above the control, Inter at
+  `sem.font.size.body`, `sem.font.weight.medium`, in `sem.color.ink-2`, in
+  sentence case. Never capitals, never tracked.
+- Control: a [Text input](../text-input/component.md),
+  [Select](../select/component.md), [Text area](../text-area/component.md),
+  [Slider](../slider/component.md) or
+  [Number field](../number-field/component.md).
+- Hint (optional): `.wf-field__hint`, a line under the control in
+  `sem.color.ink-muted`.
+- Error (optional): `.wf-field__error`, what is wrong in words, in
+  `sem.color.warn`, under the control.
+- Grid (optional): `.wf-field-grid`, fields side by side where there is room
+  (`sem.grid.fields`).
 
 ## Variants
 
-- Label only; label with a hint; with an error.
+- **Invalid** (`.wf-field--invalid`, the product's `data-invalid`): the error
+  line shows and the control inside turns warm.
 
 ## States
 
-- Invalid: an error sets `data-invalid` on `.wf-field`, and the control
-  inside turns warm (`sem.color.warn` border on `sem.color.warn-ground`).
-  The rule is the control's (`.wf-field[data-invalid] .wf-control`, the
-  product's `group-data-invalid/field`), so it lives in the text input's
-  CSS beside the box it styles.
-- Focus, hover, disabled: the control's own; the field draws none.
+- The field itself has none; the control carries hover, focus and disabled.
 
 ## Usage
 
-- Name the thing in a word or two: SPOT, PRICE, WING SIZE. A label never
-  says a sentence.
-- A hint is a unit or a short rule ("whole euro", "m²"), not instructions.
-- An error says what to do, briefly ("Write it as 6.5"). Wrong is said in
-  words as well as warm, never colour alone.
-- Fields in a form sit in `sem.grid.fields` columns.
+- Every control on a form sits in a field with a visible label. The one
+  exception is a search, which says what it is with its icon and
+  placeholder and carries an `aria-label`.
+- Label in a word or a few, in sentence case: "Weight", "Asking price", "Your
+  home spot".
+- A hint says what the value is for or how to write it; it is not the error.
+- Write the error as what to do: "Give a price in euro".
 
 ## Accessibility
 
-- The `<label for>` names the control, and taking it focuses the control.
-- The hint is inside the label, so it is read with the name.
-- The error carries `role="alert"`, so it is announced when it appears; tie
-  it to the control with `aria-describedby` and set `aria-invalid="true"` on
-  the control.
-- Label and hint are `ink-muted`, 5.8:1 on paper; the error is `warn`,
-  5.7:1 on paper.
+- The label's `for` names the control's `id`.
+- The hint is tied to the control with `aria-describedby`; the error too, and
+  the control carries `aria-invalid="true"`.
+- The error is announced as it appears (`role="alert"`) and is said in words
+  as well as the warm colour.
+- Contrast: label 10.4:1 (light) and 10.8:1 (dark); hint 5.2:1 and 6.1:1;
+  error on the ground 6.6:1 and 7.0:1.

@@ -1,0 +1,89 @@
+/* Card — ui/Card.tsx (cardStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * The soft card: a shade off the ground, a box's corner, no rule and no
+ * shadow. Cards are kept apart by space. Over the map a box floats instead:
+ * the ground itself, with the float shadow and, in dark, a faint edge so it
+ * separates from the chart. */
+
+.wf-card {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: var(--sem-space-x5);
+  border-radius: var(--sem-radius-surface);
+  background: var(--sem-color-sunken);
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-body);
+}
+
+/* on-card: inside a soft card (and anything else on the card's grey) the
+ * well, the fill a control takes, becomes the second grey, so a soft button,
+ * a segmented control, a chip, a tag or a filled field still shows. The
+ * product's `on-card` utility; every soft card, Rows and Notice carry it. */
+.wf-card,
+.wf-on-card {
+  --sem-color-well: var(--sem-color-raised);
+}
+@media (max-width: 719.98px) {
+  /* sem.breakpoint.wide */
+  .wf-card {
+    padding: var(--sem-space-x4);
+  }
+}
+
+/* Over the map: the ground, lifted. On the ground the well is its own grey
+ * again. */
+.wf-card--float {
+  --sem-color-well: var(--sem-color-sunken);
+  background: var(--sem-color-ground);
+  box-shadow: var(--sem-shadow-float);
+}
+/* In dark the shadow barely shows on the chart, so a faint edge does the
+ * separating (the product's `dark:ring-1 ring-line`). */
+[data-mode="dark"] .wf-card--float {
+  box-shadow: var(--sem-shadow-float), 0 0 0 var(--sem-rule-hairline) var(--sem-color-line);
+}
+
+.wf-card--pad-none {
+  padding: 0;
+}
+
+/* The parts a card usually holds: a small grey label, one big figure, one
+ * short line. */
+.wf-card__label {
+  margin: 0;
+  color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-body);
+  line-height: var(--sem-font-line-body);
+  font-weight: var(--sem-font-weight-medium);
+}
+.wf-card__big {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sem-space-x1-5);
+  margin: var(--sem-space-x2) 0 var(--sem-space-x1-5);
+  font-size: var(--sem-font-size-headline);
+  line-height: var(--sem-font-line-title);
+  font-weight: var(--sem-font-weight-semibold);
+  letter-spacing: var(--sem-font-tracking-headline);
+  font-variant-numeric: tabular-nums;
+}
+.wf-card__unit {
+  color: var(--sem-color-ink-2);
+  font-size: var(--sem-font-size-input);
+  font-weight: var(--sem-font-weight-medium);
+  letter-spacing: 0;
+}
+.wf-card__line {
+  margin: 0;
+  color: var(--sem-color-ink-2);
+  font-size: var(--sem-font-size-body);
+  line-height: var(--sem-font-line-body);
+}
+
+/* Cards side by side, kept apart by space. */
+.wf-card-grid {
+  display: grid;
+  grid-template-columns: var(--sem-grid-cards);
+  gap: var(--sem-space-x3);
+}
