@@ -1,16 +1,16 @@
 # The design system bundle
 
-`design-system/` is the chart (see [BRAND.md](BRAND.md)) written down as a
-SprintEngine Studio design-system bundle: tokens, principles, a component for
-every primitive in `ui/` and for the map's own vocabulary, a few patterns, the
+`design-system/` is the site's design (see [BRAND.md](BRAND.md)) written down
+as a SprintEngine Studio design-system bundle: tokens, principles, components
+for the kit in `ui/` and for the map's own vocabulary, a few patterns, the
 glyphs, and a single-file catalog. It exists so the owner can look at the whole
 system in the Studio's Design door, and so an agent can read it before it
 draws.
 
 ## How it relates to `ui/theme.css`
 
-**The product reads `ui/theme.css`, not the bundle.** The theme is still the one
-place a design value is written for the site, and `ui/` is still the kit. The
+**The product reads `ui/theme.css`, not the bundle.** The theme is the one
+place a design value is written for the site, and `ui/` is the kit. The
 bundle restates both:
 
 | Product | Bundle |
@@ -28,43 +28,43 @@ the two disagree. So **a value changes in both places, together**: edit
 `npm run design:build` to regenerate the derived `foundations/tokens.css` and
 `catalog/index.html` (never edit those by hand).
 
-### Shape and elevation (mixed and rounded, 24 October 2026)
+### Two themes
 
-The owner approved the "mixed and rounded" treatment on 24 October 2026 (the
-layer rail's "Mixed" style; the
-ruling is in [DESIGN_PRINCIPLES.md](DESIGN_PRINCIPLES.md#rulings)). The rule,
-as the tokens hold it:
+Dark is the site's default and white the other (ruling of 2026-11-01 in
+[DESIGN_PRINCIPLES.md](DESIGN_PRINCIPLES.md#rulings)). The theme's light values
+sit in `@theme`; the dark block (`/* ==== dark ==== */`,
+`:root[data-theme="dark"]`) re-declares the same names. In the bundle each
+semantic token carries both, as its `light` and `dark` modes
+(`$extensions["com.sprintengine"].modes`), and the drift check compares the
+dark block with each token's dark mode as it compares the light values with
+the tokens. A dark value whose token has no dark mode is a warning.
+
+### Shape and elevation
+
+The corners and the shadows, as the tokens hold them (light values; the dark
+mode of each shadow is a deeper, plainer black):
 
 | Theme | Bundle | Value | For |
 | --- | --- | --- | --- |
-| `--radius-control` | `sem.radius.control` | 10px | a control that is not a capsule: a field, a small chip, a tooltip, a tile, a key |
-| `--radius-surface` | `sem.radius.surface` | 14px | a box: a card on a page, anything on the chart |
-| `--radius-dialog` | `sem.radius.dialog` | 18px | a sheet: a dialog, the dock, a menu |
-| `--radius-pill`, `--radius-full` | `sem.radius.pill`, `.full` | 9999px | what is pressed: stays a capsule |
-| `--inset-shadow-frame` | `sem.shadow.frame` | `inset 0 0 0 2px #f3eee3, inset 0 0 0 3px #1a1d2142` | the hairline inside the 1px ink rule, on every box and sheet |
-| `--shadow-card` | `sem.shadow.card` | `0 1px 1px #1a1d211a, 0 2px 4px -2px #1a1d211a` | a card in a page or a dialog |
-| `--shadow-float` | `sem.shadow.float` | `0 1px 1px #1a1d211a, 0 3px 6px -2px #1a1d211f, 0 14px 28px -12px #3c2d1466` | anything on the map, a menu, a popover |
-| `--shadow-sheet` | `sem.shadow.sheet` | `0 1px 1px #1a1d211a, 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480` | a dialog or a sheet |
+| `--radius-control` | `sem.radius.control` | 10px | a control that is not a capsule: a field, a tooltip, a key |
+| `--radius-surface` | `sem.radius.surface` | 14px | a card on a page, a box on the chart |
+| `--radius-dialog` | `sem.radius.dialog` | 18px | a sheet: a dialog, the dock, the menu |
+| `--radius-pill`, `--radius-full` | `sem.radius.pill`, `.full` | 9999px | what is pressed: buttons, chips, tags, segmented controls, search fields |
+| `--radius-mark` | `sem.radius.mark` | 5px | the small square of a `NoticeMark` |
+| `--shadow-float` | `sem.shadow.float` | `0 1px 1px #1111141a, 0 3px 6px -2px #1111141f, 0 14px 28px -12px #00000066` | anything on the map, a popover |
+| `--shadow-sheet` | `sem.shadow.sheet` | `0 1px 1px #1111141a, 0 6px 12px -4px #11111424, 0 24px 48px -16px #00000080` | a dialog, the menu |
 | `--shadow-dock` | `sem.shadow.dock` | the sheet's stack with each offset upward | the dock, on the foot of the screen |
-| `--shadow-control` | `sem.shadow.control` | `inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150` | a pressed or filled ink control |
-| `--shadow-raised` | `sem.shadow.raised` | `inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126` | a raised button |
-| `--gradient-ink` (`sheen-ink`) | `sem.gradient.ink` | `linear-gradient(180deg, #33373d, #15171a)` | under a pressed or filled ink control |
-| `--gradient-raised` (`sheen-raised`) | `sem.gradient.raised` | `linear-gradient(180deg, #ffffff, #f0eadd)` | under a raised button |
-| `--gradient-float` (`paper-float`) | `sem.gradient.float` | `linear-gradient(180deg, #f6f2e9, #f1ebdf)` | under the grain of a small box over the chart |
+| `--shadow-control` | `sem.shadow.control` | `0 1px 2px #11111433` | the chosen segment, a switch's thumb |
 
-A box is `border border-ink inset-shadow-frame` plus its corner and its
-shadow; in the map's plain CSS, `box-shadow: var(--inset-shadow-frame),
-var(--shadow-float)` (`.chart-box` in `src/map.css` is that box). Large
-surfaces stay flat, sheens are for small controls, a lit control nudges down a
-pixel when pressed, and print rules (double rules under heads, table and
-column rules, the dock's day rules) stay square and unshadowed. The bundle
-carries a proposed night value for each shadow and gradient.
+A card on a page casts no shadow: it is `bg-sunken rounded-surface` and
+nothing else. There are no frames, sheens or gradients, so the bundle holds
+none.
 
 The mobile app reads the theme's values through
 `mobile/src/theme/css.generated.ts` (`npm run tokens` in `mobile/`), which is
 regenerated with them, but its components still draw from the hand-written
-`radius` and `shadow` in `mobile/src/theme/tokens.ts`, which are still square
-and still the old shadows: porting them is its own piece of work.
+`radius` and `shadow` in `mobile/src/theme/tokens.ts`, which are still in the
+old look: porting them is its own piece of work.
 
 A section that adds values of its own appends them to the end of the theme
 under a banner, `/* ==== <section> ==== … */`. Until they are in the bundle
@@ -72,9 +72,17 @@ the drift check lists them as warnings, "to add to the bundle", rather than
 failing; an unmapped value in the kit's own theme above the first banner
 fails.
 
-The bundle has a proposed night chart for its dark mode, because the Door
-requires one. The product has no dark mode; nothing reads it. See the ruling
-of 2026-10-05 in `design-system/foundations/principles.md`.
+### Components
+
+The kit's parts are listed in `ui/index.ts`, and BRAND.md says when to use
+each. The bundle has a component folder for avatar, beaufort-glyph, button,
+checkbox, chip, count, dialog, empty, field, figure, link, notice, pager,
+search-field, segmented, select, skeleton, star-glyphs, tag, text-area,
+text-input and wordmark, and for the map's own hour-cell, shore-compass,
+spot-light, tide-label and wind-figure. The kit's newer parts are not in the
+bundle yet: `Card`, `Heading`, `Rows`, `Switch`, `Slider`, `NumberField`,
+`Tabs`, `TopBar`, `SpotSearch`, `ThemeButton` and `RatingTip`. Until they are,
+the kit's own files and the `/ui` gallery are their reference.
 
 ## The rules it enforces in the project
 
@@ -83,7 +91,7 @@ of 2026-10-05 in `design-system/foundations/principles.md`.
 - `scripts/lint-ui.mjs` and its probe: no arbitrary values, no colour literals
   outside the theme.
 - `scripts/lint-design-tokens.mjs` and its probe: the theme and the bundle hold
-  the same values.
+  the same values, in both themes.
 - `scripts/lint-raw-primitives.mjs` and its probe: no new raw `<button>`,
   `<input>`, `<select>` or `<textarea>` outside `ui/`, against the per-area
   counts in `scripts/raw-primitives.baseline.json`, which only go down. Under
@@ -106,6 +114,7 @@ The door reads the folder live and never writes to it; a commit or a
 `npm run design:build` shows up on the next read. If the folder moves, the
 row says so and offers **Re-point…**.
 
-The faces (Fraunces and Inter) are named by the tokens but not shipped in
-the bundle; the door and the catalog draw them where they are installed, and
-fall back to Georgia and the system sans otherwise. `catalog/index.html` opens directly in a browser too.
+The faces (Inter, and Fraunces for the wordmark) are named by the tokens but
+not shipped in the bundle; the door and the catalog draw them where they are
+installed, and fall back to the system sans and Georgia otherwise.
+`catalog/index.html` opens directly in a browser too.
