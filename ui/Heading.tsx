@@ -16,7 +16,10 @@ export const headingStyles = tv({
     base: "flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1",
     title: "m-0 min-w-0 font-body text-balance text-ink",
     aside: "flex shrink-0 items-center gap-2 font-body text-body font-medium text-ink-muted",
-    lead: "m-0 basis-full font-body text-prose leading-normal text-pretty text-ink-2",
+    // The lead's own row, the full width, so it always stands under the
+    // title however short the title is; the words inside keep a measure.
+    leadRow: "basis-full",
+    lead: "m-0 font-body text-prose leading-normal text-pretty text-ink-2",
   },
   variants: {
     level: {
@@ -63,7 +66,11 @@ export function Heading({
         {children}
       </Tag>
       {aside && <div className={styles.aside()}>{aside}</div>}
-      {lead && <p className={styles.lead()}>{lead}</p>}
+      {lead && (
+        <div className={styles.leadRow()}>
+          <p className={styles.lead()}>{lead}</p>
+        </div>
+      )}
     </div>
   );
 }
