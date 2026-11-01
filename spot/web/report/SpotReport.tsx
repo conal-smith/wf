@@ -327,9 +327,11 @@ export function SpotReport({
         <section className={s.section({ className: "pt-5" })} aria-label="Now">
           <div
             className={s.now({
-              className: picture
-                ? undefined
-                : "rail:grid-cols-1 xwide:grid-cols-1",
+              className: !picture
+                ? "rail:grid-cols-1 xwide:grid-cols-1"
+                : nearby.length
+                  ? undefined
+                  : "xwide:grid-cols-now",
             })}
           >
             <NowCards
