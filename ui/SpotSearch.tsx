@@ -267,7 +267,7 @@ export function SpotSearch<S extends Findable>({
   const showing = want && (typed || options.length > 0 || !spots);
   // The result the keys are on stays in view as they move through a long list.
   useEffect(() => {
-    if (showing)
+    if (showing && typeof document !== "undefined")
       document
         .getElementById(`${listId}-${at}`)
         ?.scrollIntoView?.({ block: "nearest" });

@@ -7,7 +7,7 @@ import { SpotSearch } from "./SpotSearch";
  * The top bar's search, as a rider uses it: an ARIA combobox over a list box
  * of places. Typing filters at once, accents and case let go of; the arrow
  * keys move the active option, which the field points at; Enter picks it;
- * Escape clears what was typed and then closes. With nothing typed it offers
+ * Escape takes what was typed and the list with it, then closes. With nothing typed it offers
  * the rider's own spots, and the ones they look at.
  */
 
@@ -159,17 +159,21 @@ describe("SpotSearch", () => {
     expect(s.picked.map((p) => p.id)).toEqual(["rosslare"]);
   });
 
-  it("clears what was typed with Escape, then closes with a second", () => {
+  it("takes what was typed and its list with Escape; the arrow brings the list back", () => {
     const s = search();
     type(s, "dolly");
     key(s, "Escape");
     expect(s.field().props.value).toBe("");
-    // Still open, offering the rider's own.
-    expect(s.field().props["aria-expanded"]).toBe(true);
-    expect(s.names()).toEqual(["Inch", "Brandon Bay", "Rosslare"]);
-    key(s, "Escape");
+    // The words and the list go together; the field keeps the focus.
     expect(s.field().props["aria-expanded"]).toBe(false);
     expect(s.options()).toHaveLength(0);
+    // Down brings back the rider's own.
+    key(s, "ArrowDown");
+    expect(s.field().props["aria-expanded"]).toBe(true);
+    expect(s.names()).toEqual(["Inch", "Brandon Bay", "Rosslare"]);
+    // A second Escape, with nothing typed, closes it.
+    key(s, "Escape");
+    expect(s.field().props["aria-expanded"]).toBe(false);
   });
 
   it("says plainly when no spot matches, and offers no option to pick", () => {

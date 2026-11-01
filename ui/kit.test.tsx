@@ -691,7 +691,20 @@ describe("states", () => {
       expect(words(searchFieldStyles({ size }).base()), size).toContain(
         "pointer-coarse:min-h-touch",
       );
-    expect(words(chipStyles().base())).toContain("pointer-coarse:min-h-touch");
+    // A chip and a segment keep their drawn size: a band laid across each
+    // reaches a thumb's height, so a row of them does not grow on a phone.
+    expect(words(chipStyles().base())).toEqual(
+      expect.arrayContaining([
+        "pointer-coarse:before:absolute",
+        "pointer-coarse:before:-inset-y-1.5",
+      ]),
+    );
+    expect(words(segmentedStyles().item())).toEqual(
+      expect.arrayContaining([
+        "pointer-coarse:before:absolute",
+        "pointer-coarse:before:-inset-y-2.5",
+      ]),
+    );
     expect(words(numberFieldStyles().step())).toContain(
       "pointer-coarse:size-11",
     );
