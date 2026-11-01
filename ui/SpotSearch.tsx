@@ -60,12 +60,13 @@ export const spotSearchStyles = tv({
     // The results: a sheet under the field; on a phone, the screen under the
     // field opened over the bar.
     panel: [
-      "absolute top-12 left-0 z-dialog w-full min-w-95 overflow-y-auto rounded-surface bg-ground p-1.5 text-ink shadow-sheet ring-1 ring-line",
-      "max-h-120 overscroll-contain",
+      "absolute top-12 left-0 z-dialog flex w-full min-w-95 flex-col rounded-surface bg-ground p-1.5 text-ink shadow-sheet ring-1 ring-line",
+      "max-h-120",
       "max-wide:fixed max-wide:inset-x-0 max-wide:top-14 max-wide:bottom-0 max-wide:max-h-none max-wide:min-w-0",
       "max-wide:rounded-none max-wide:p-2 max-wide:pb-safe-4 max-wide:shadow-none max-wide:ring-0",
     ],
-    group: "m-0 list-none p-0",
+    // The results scroll between the panel's edges; the foot stays.
+    list: "min-h-0 flex-1 overflow-y-auto overscroll-contain",
     groupName: "px-2.5 pt-2 pb-1.5 font-body text-label font-medium text-ink-muted",
     option: [
       "flex cursor-pointer items-center gap-3 rounded-control px-2.5 py-2 max-wide:min-h-13",
@@ -77,7 +78,7 @@ export const spotSearchStyles = tv({
     county: "min-w-0 truncate font-body text-label text-ink-muted",
     detail: "flex shrink-0 flex-col items-end gap-0.75 font-body text-body font-semibold text-ink",
     none: "px-2.5 py-4 font-body text-prose text-ink-2",
-    foot: "flex justify-between gap-3 px-2.5 pt-2 pb-1 font-body text-label text-ink-muted max-wide:hidden",
+    foot: "flex shrink-0 justify-between gap-3 border-0 border-t border-line px-2.5 pt-2 pb-1 font-body text-label text-ink-muted max-wide:hidden",
   },
 });
 
@@ -262,6 +263,13 @@ export function SpotSearch<S extends Findable>({
   };
 
   const showing = want && (typed || options.length > 0 || !spots);
+  // The result the keys are on stays in view as they move through a long list.
+  useEffect(() => {
+    if (showing)
+      document
+        .getElementById(`${listId}-${at}`)
+        ?.scrollIntoView?.({ block: "nearest" });
+  }, [showing, at, listId]);
   const status = !spots
     ? failed
       ? "The spots could not be read just now."
@@ -391,7 +399,12 @@ export function SpotSearch<S extends Findable>({
       {showing && (
         <div className={s.panel()} data-spot-search-results>
           {spots && options.length > 0 ? (
-            <div role="listbox" id={listId} aria-label="Spots">
+            <div
+              role="listbox"
+              id={listId}
+              aria-label="Spots"
+              className={s.list()}
+            >
               {groups.map((group, g) => {
                 const first = groups
                   .slice(0, g)

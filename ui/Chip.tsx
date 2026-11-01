@@ -11,7 +11,10 @@ export const chipStyles = tv({
     base: [
       "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-0 bg-sunken px-3",
       "font-body text-body font-medium whitespace-nowrap text-ink",
-      "touch-manipulation transition-colors duration-fast pointer-coarse:min-h-touch",
+      "relative touch-manipulation transition-colors duration-fast",
+      // A thumb's reach on a touch screen: a band to touch height across it,
+      // so the row keeps its size and nothing around it moves.
+      "pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:-inset-y-1.5",
       "not-disabled:hover:bg-line",
       "aria-pressed:bg-inverse aria-pressed:text-ink-inverse not-disabled:aria-pressed:hover:bg-inverse",
       RING,

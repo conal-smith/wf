@@ -14,8 +14,10 @@ export const segmentedStyles = tv({
     item: [
       "inline-flex h-7.5 flex-auto items-center justify-center gap-1.5 rounded-full border-0 bg-transparent px-3",
       "font-body text-body font-medium whitespace-nowrap text-ink-2",
-      "cursor-pointer touch-manipulation transition-colors duration-fast",
+      "relative cursor-pointer touch-manipulation transition-colors duration-fast",
       "not-disabled:hover:text-ink",
+      // A thumb's reach on a touch screen: a band to touch height across it.
+      "pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:-inset-y-2.5",
       // The chosen one: lifted onto the ground in white, a lighter grey in
       // dark, and in the ink colour: not by colour alone.
       "aria-pressed:bg-ground aria-pressed:text-ink aria-pressed:shadow-control dark:aria-pressed:bg-ink/12 dark:aria-pressed:shadow-none",
