@@ -31,8 +31,19 @@ export const topBarStyles = tv({
     gap: "flex-1",
     actions: "flex items-center gap-2 max-wide:order-2 max-wide:gap-1",
     view: "max-wide:order-2 max-wide:px-3.5",
+    // On a phone with a section's own actions beside it, the button to the
+    // other view keeps its glyph and its name for a screen reader only.
+    viewWord: "",
     theme: "max-wide:hidden",
     menu: "max-wide:order-3",
+  },
+  variants: {
+    crowded: {
+      true: {
+        view: "max-wide:w-control-md max-wide:px-0",
+        viewWord: "max-wide:sr-only",
+      },
+    },
   },
 });
 
@@ -80,7 +91,7 @@ export function TopBar({
   className,
   ref,
 }: TopBarProps) {
-  const s = topBarStyles();
+  const s = topBarStyles({ crowded: !!actions });
   return (
     <header className={s.base({ className })} ref={ref} data-top-bar>
       <a
@@ -123,7 +134,9 @@ export function TopBar({
           ) : (
             <List size={18} strokeWidth={1.75} aria-hidden="true" />
           )}
-          <span>{view.to === "chart" ? "Chart" : "Spots"}</span>
+          <span className={s.viewWord() || undefined}>
+            {view.to === "chart" ? "Chart" : "Spots"}
+          </span>
         </Button>
       )}
       {theme && <ThemeButton className={s.theme()} />}

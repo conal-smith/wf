@@ -1830,15 +1830,18 @@ describe("TopBar", () => {
     expect(order.every((at) => at > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(markup).toMatch(/<a href="\/"[^>]*><span class="[^"]*font-display/);
+    // With a section's actions beside it, the button to the other view keeps
+    // its glyph on a phone and its word for a screen reader only.
     expect(markup).toMatch(
-      /data-view-switch="chart"[^>]*>.*<span>Chart<\/span><\/a>/,
+      /data-view-switch="chart"[^>]*>.*<span class="max-wide:sr-only">Chart<\/span><\/a>/,
     );
   });
 
   it("names the other view, leaves out what it is not given, and is one hairline under", () => {
-    expect(bar({ view: { to: "spots", href: "/" } })).toContain(
-      "<span>Spots</span>",
-    );
+    // Without a section's actions, the word shows on a phone too.
+    expect(
+      bar({ actions: undefined, view: { to: "spots", href: "/" } }),
+    ).toContain("<span>Spots</span>");
     const bare = bar({
       search: undefined,
       actions: undefined,
