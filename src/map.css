@@ -1088,7 +1088,8 @@
    reads these), and on a phone its sheet stops under the zoom rail rather
    than cutting through it. */
 .app-shell {
-  --gust-panel-top: 18px;
+  /* Under the top bar (64px), as the chart's own controls are. */
+  --gust-panel-top: 82px;
   --gust-sheet-height: calc(100dvh - 206px);
 }
 /* ---------- small round buttons: i for the small print, ? for the stars ---------- */
