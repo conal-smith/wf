@@ -233,7 +233,13 @@ export function asksSettings(url: { pathname: string; search: string }) {
 
 /** The site menu's rows that are the same on every page. */
 export type SiteNavId =
-  "chart" | "finder" | "settings" | "options" | "about" | "tour";
+  | "chart"
+  | "finder"
+  | "settings"
+  | "options"
+  | "about"
+  | "stars"
+  | "tour";
 
 export interface SiteNavRow {
   id: SiteNavId;
@@ -241,37 +247,63 @@ export interface SiteNavRow {
   label: string;
 }
 
+export interface SiteNavGroup {
+  /** The group's short name, in grey over its rows. */
+  name: string;
+  rows: readonly SiteNavRow[];
+}
+
 /**
- * The site's navigation, the same menu on every page, in groups set apart
- * by a gap (the owner's ruling of 2026-10-29): the chart and the spot
- * finder; Settings and the display options; About and the tour. The site's
- * other sections follow, Use with AI last of all. The chart is the map
+ * The site's navigation, the same menu on every page, in named groups: the
+ * forecast (the chart and the spot finder), the rider's settings (Settings
+ * and the display options), and help (About the map, How the stars work and
+ * the tour). The site's other sections follow under "More from wingfoil.ie",
+ * Use with AI last of all (SECTIONS_GROUP_NAME). The chart is the map
  * section's own page, so the sections under these leave the map out: it is
  * here, once, as the chart.
  */
-export const SITE_NAV_GROUPS: readonly (readonly SiteNavRow[])[] = [
-  [
-    { id: "chart", href: CHART_HREF, label: "Chart" },
-    { id: "finder", href: FINDER_HREF, label: "Spot finder" },
-  ],
-  [
-    { id: "settings", href: SETTINGS_HREF, label: "Settings" },
-    { id: "options", href: askHref("options"), label: "Display options" },
-  ],
-  [
-    { id: "about", href: askHref("about"), label: "About" },
-    { id: "tour", href: askHref("tour"), label: "Take the tour" },
-  ],
+export const SITE_NAV_GROUPS: readonly SiteNavGroup[] = [
+  {
+    name: "Forecast",
+    rows: [
+      { id: "chart", href: CHART_HREF, label: "Chart" },
+      { id: "finder", href: FINDER_HREF, label: "Spot finder" },
+    ],
+  },
+  {
+    name: "Your settings",
+    rows: [
+      { id: "settings", href: SETTINGS_HREF, label: "Settings" },
+      { id: "options", href: askHref("options"), label: "Display options" },
+    ],
+  },
+  {
+    name: "Help",
+    rows: [
+      { id: "about", href: askHref("about"), label: "About the map" },
+      { id: "stars", href: "/stars", label: "How the stars work" },
+      { id: "tour", href: askHref("tour"), label: "Take the tour" },
+    ],
+  },
 ];
 
+/** The name over the site's other sections, after the navigation. */
+export const SECTIONS_GROUP_NAME = "More from wingfoil.ie";
+
 /** Every row of the navigation, in order. */
-export const SITE_NAV: readonly SiteNavRow[] = SITE_NAV_GROUPS.flat();
+export const SITE_NAV: readonly SiteNavRow[] = SITE_NAV_GROUPS.flatMap(
+  (group) => group.rows,
+);
 
 /**
  * The page the menu marks as the one you are on: one of the navigation's or
- * of the sections', or none (a spot's page, "How the stars work").
+ * of the sections', or none (a spot's page, the spot index).
  */
-export type SitePageId = "chart" | "finder" | Exclude<SiteSectionId, "map">;
+export type SitePageId =
+  | "chart"
+  | "finder"
+  | "stars"
+  | Exclude<SiteSectionId, "map">;
 
 /**
  * Every path that `src/main.tsx` splits off from the map: everything else is

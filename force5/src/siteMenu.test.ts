@@ -20,7 +20,7 @@ import {
  * The site menu, drawn from ui/ and the theme rather than the design bundle's
  * stylesheet. How it behaves (Escape, focus, blur, the grown hit area) is
  * e2e/site-menu.spec.ts's; what is asked here is that every class it writes
- * comes to something, and that each ground gets the look it had.
+ * comes to something, and that it has the quiet look of the new design.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -79,123 +79,82 @@ describe("the site menu's recipe", () => {
   });
 });
 
-describe("on the chart", () => {
+describe("the drawer", () => {
   /*
-   * The trigger is the kit's own button, not one that looks like it: every
-   * class of the kit's (its hover and ring included), and only the menu's
-   * hit band on top. On either ground it is the round menu button: the
-   * kit's raised button with an icon in it (mixed and rounded,
-   * 2026-10-24).
+   * The trigger is the kit's own button, not one that looks like it: the
+   * round outlined icon button, 40px, its ring the kit's.
    */
-  it("draws the trigger as exactly the kit's button: the round raised menu button on either ground", () => {
-    const classOf = (markup: string) =>
-      markup
-        .match(/<button[^>]*\bclass="([^"]+)"/)?.[1]
-        .split(" ")
-        .sort();
-    const cases = [
-      [{ current: "chart", size: "md", ground: "map" }, "md", "raised"],
-      [{ current: "market", size: "sm", ground: "content" }, "sm", "raised"],
-    ] as const;
-    for (const [props, size, variant] of cases) {
-      const kit = buttonStyles({
-        variant,
-        size,
-        icon: true,
-        className: siteMenuStyles({ ground: props.ground }).trigger(),
-      });
-      const drawn = classOf(html(props));
-      expect(drawn, props.ground).toEqual(kit.split(" ").sort());
-      expect(drawn, props.ground).toContain(
-        "not-disabled:focus-visible:outline-focus",
-      );
-      for (const name of ["rounded-full", "border-ink", "sheen-raised"])
-        expect(drawn, `${props.ground} ${name}`).toContain(name);
-    }
+  it("draws the trigger as exactly the kit's round outlined icon button", () => {
+    const drawn = html({ current: "chart" })
+      .match(/<button[^>]*\bclass="([^"]+)"/)?.[1]
+      .split(" ")
+      .sort();
+    expect(drawn).toEqual(buttonStyles({ icon: true }).split(" ").sort());
+    expect(drawn).toContain("not-disabled:focus-visible:outline-focus");
+    expect(drawn).toContain("rounded-full");
   });
 
   /*
-   * The drawer: paper at the left edge, ruled in ink down its right edge,
-   * its corners and its shadow the theme's (so a change to the dialog's
-   * radius or the sheet's shadow reaches it), sliding in over the kit's
-   * backdrop and holding still for a reader who asks for less motion.
+   * The drawer: the ground at the right edge, where the menu button is, its
+   * page-facing corners a sheet's, one soft shadow, over the kit's backdrop.
+   * No ink edge, no grain.
    */
-  it("draws the drawer from the theme: the left edge, the dialog's radius, the kit's backdrop", () => {
+  it("draws the drawer from the theme: the right edge, a sheet's corners, the kit's backdrop", () => {
     const classes = siteMenuStyles().drawer().split(" ");
     for (const name of [
       "fixed",
-      "left-0",
+      "right-0",
       "inset-y-0",
       "h-dvh",
-      "w-80",
+      "w-90",
       "max-w-11/12",
-      "rounded-r-dialog",
-      "border-r",
-      "border-ink",
-      "bg-card",
-      "paper-grain",
+      "rounded-l-dialog",
+      "bg-ground",
       "shadow-sheet",
       "backdrop:scrim",
       "drawer-slide",
       "touch-pan-y",
     ])
       expect(classes, name).toContain(name);
-    // No radius or shadow of its own.
-    expect(classes.join(" ")).not.toMatch(
-      /rounded-(?!r-dialog)|shadow-(?!sheet)/,
-    );
-    expect(classes.join(" ")).not.toMatch(/glass/);
+    expect(classes.join(" ")).not.toMatch(/paper-grain|border-ink|border-r\b/);
     expect(SOURCE).toMatch(/<dialog[\s\S]*className=\{styles\.drawer\(\)\}/);
   });
 
-  it("slides in and out at the fast duration, and holds still for less motion", () => {
+  it("slides in from the right at the fast duration, and holds still for less motion", () => {
     const css = build(["drawer-slide"]);
-    expect(css).toMatch(/@starting-style \{\s*transform: translateX\(-100%\);/);
+    expect(css).toMatch(/@starting-style \{\s*transform: translateX\(100%\);/);
     expect(css).toContain("transform var(--transition-duration-fast) ease");
     expect(css).toMatch(
       /@media \(prefers-reduced-motion: reduce\) \{[^}]*transition: none;/,
     );
   });
 
-  it("names every row in the body face, on hairlines, with its glyph in the margin", () => {
+  it("names every row in Inter, the height of touch, with no rule between rows", () => {
     const row = siteMenuStyles().row().split(" ");
-    for (const name of ["font-body", "border-b", "border-line", "h-touch"])
+    for (const name of ["font-body", "h-touch", "rounded-control"])
       expect(row, name).toContain(name);
+    expect(row).not.toContain("border-b");
     expect(SOURCE).toContain("<ChartGlyph glyph={ROW_GLYPH[id]} />");
   });
 
-  it("is signed by nothing: the Almanac and its puffin are gone from the menu", () => {
+  it("is signed by nothing: no puffin, no Almanac", () => {
     expect(SOURCE).not.toContain("Puffin");
     expect(SOURCE).not.toContain("Almanac");
   });
 
-  it("has a grip on its right edge, and a close button and the name at its head", () => {
-    const grip = siteMenuStyles().grip().split(" ");
-    for (const name of ["absolute", "right-1.5", "top-1/2", "rounded-full"])
-      expect(grip).toContain(name);
+  it("has the wordmark and a close button at its head, with no rule under them", () => {
     expect(SOURCE).toContain('aria-label="Close menu"');
-    expect(SOURCE).toContain('<Wordmark size="sm" />');
+    expect(SOURCE).toContain("<Wordmark />");
+    expect(siteMenuStyles().head()).not.toMatch(/border/);
   });
 
-  it("sets the page you are on in the italic, heavier, on the second sheet", () => {
+  it("sets the page you are on on a soft pill in semibold, not in italic", () => {
     const here = siteMenuStyles({ current: true }).row().split(" ");
-    for (const name of ["italic", "font-bold", "bg-sunken"])
+    for (const name of ["font-semibold", "bg-sunken"])
       expect(here).toContain(name);
+    expect(here).not.toContain("italic");
     const other = siteMenuStyles().row().split(" ");
-    for (const name of ["italic", "font-bold", "bg-sunken"])
-      expect(other).not.toContain(name);
-  });
-
-  it("keeps a row the height of touch, and the trigger's own size on a finger", () => {
-    expect(siteMenuStyles().row().split(" ")).toContain("h-touch");
-    const trigger = siteMenuStyles().trigger().split(" ");
-    for (const name of [
-      "pointer-coarse:min-h-0",
-      "pointer-coarse:min-w-0",
-      "pointer-coarse:after:h-touch",
-      "pointer-coarse:after:inset-x-0",
-    ])
-      expect(trigger).toContain(name);
+    expect(other).not.toContain("font-semibold");
   });
 });
 
@@ -207,7 +166,7 @@ describe("the markup", () => {
   });
 
   it("is a disclosure: a named button, closed, controlling nothing yet", () => {
-    const markup = html({ current: "community", size: "sm" });
+    const markup = html({ current: "community" });
     expect(markup).toContain('aria-label="Site menu"');
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).not.toContain("aria-haspopup");
@@ -227,29 +186,38 @@ describe("the navigation", () => {
     );
   const both = { market: true, community: true };
 
-  it("is the chart and the finder, Settings and the options, About and the tour, then the sections, Use with AI last, each with its glyph", () => {
+  it("is the forecast, your settings, help, then the sections, Use with AI last, each named and with its glyph", () => {
     const markup = rows({ current: "chart", features: both });
     expect(names(markup)).toEqual([
-      "Chart",
+      "ChartYou’re here",
       "Spot finder",
       "Settings",
       "Display options",
-      "About",
+      "About the map",
+      "How the stars work",
       "Take the tour",
-      "Marketplace",
-      "Community",
+      "MarketplacePreview",
+      "CommunityPreview",
       "Use with AI",
+    ]);
+    const heads = [...markup.matchAll(/<h2[^>]*>([^<]*)<\/h2>/g)].map(
+      (m) => m[1],
+    );
+    expect(heads).toEqual([
+      "Forecast",
+      "Your settings",
+      "Help",
+      "More from wingfoil.ie",
     ]);
     const links = markup.match(/<a [^>]*>[\s\S]*?<\/a>/g) ?? [];
     for (const link of links) expect(link).toMatch(/<svg[^>]*class="g-set"/);
-    // The chart's folded sheet, the finder's loupe, Settings' sliders, the
-    // options' rules, About's "i", the tour's flag and the AI's bubble.
     for (const glyph of [
       glyphs.windMap,
       glyphs.spotFinder,
       glyphs.settings,
       glyphs.displayOptions,
       glyphs.about,
+      glyphs.starsFrom,
       glyphs.tour,
       glyphs.useWithAi,
     ]) {
@@ -257,9 +225,7 @@ describe("the navigation", () => {
       const drawn = !!path && "d" in path && markup.includes(`d="${path.d}"`);
       expect(drawn).toBe(true);
     }
-    // Five lists, a gap before each after the first: the pages, the
-    // settings, the guides, the sections, and the theme's switch.
-    expect(markup.match(/<ul /g)).toHaveLength(5);
+    expect(markup.match(/<ul /g)).toHaveLength(4);
     // The map is the chart: there is no "Wind map" beside it.
     expect(markup).not.toContain("Wind map");
     expect(markup.match(/href="\/\?map"/g)).toHaveLength(1);
@@ -280,11 +246,13 @@ describe("the navigation", () => {
       null,
     ] as const;
     const drawn = pages.map((current) => rows({ current, features: both }));
-    for (const markup of drawn) expect(names(markup)).toEqual(names(drawn[0]));
+    const bare = (markup: string) =>
+      names(markup).map((name) => name.replace(/You’re here|Preview/, ""));
+    for (const markup of drawn) expect(bare(markup)).toEqual(bare(drawn[0]));
     const marked = (markup: string) =>
       [
         ...markup.matchAll(/<a [^>]*aria-current="page"[^>]*>([\s\S]*?)<\/a>/g),
-      ].map((m) => m[1].replace(/<[^>]+>/g, ""));
+      ].map((m) => m[1].replace(/<[^>]+>/g, "").replace("You’re here", ""));
     expect(drawn.map(marked)).toEqual([
       ["Chart"],
       ["Spot finder"],
@@ -303,6 +271,7 @@ describe("the navigation", () => {
       "/?settings",
       "/?options",
       "/?about",
+      "/stars",
       "/?tour",
       "/market",
       "/community",
@@ -318,6 +287,7 @@ describe("the navigation", () => {
     });
     expect(markup).not.toMatch(/Marketplace|Community|\/market|\/community/);
     expect(markup.match(/<li>/g)).toHaveLength(8);
+    expect(markup).not.toContain("Preview");
   });
 
   it("leaves them out as production builds it, with no feature switched on", () => {
@@ -343,15 +313,15 @@ describe("the navigation", () => {
 describe("a finger on the drawer", () => {
   const at = 1000;
   it("puts it away past the line, or with a flick", () => {
-    expect(dragCloses({ dx: -DRAG.CLOSE_AT - 1, speed: 0, at }, at + 500)).toBe(
+    expect(dragCloses({ dx: DRAG.CLOSE_AT + 1, speed: 0, at }, at + 500)).toBe(
       true,
     );
-    expect(dragCloses({ dx: -30, speed: -1, at }, at + 16)).toBe(true);
+    expect(dragCloses({ dx: 30, speed: 1, at }, at + 16)).toBe(true);
   });
   it("springs back from a short drag, a slow one, or a flick held still", () => {
-    expect(dragCloses({ dx: -40, speed: -0.1, at }, at + 16)).toBe(false);
-    expect(dragCloses({ dx: -40, speed: -1, at }, at + 400)).toBe(false);
+    expect(dragCloses({ dx: 40, speed: 0.1, at }, at + 16)).toBe(false);
+    expect(dragCloses({ dx: 40, speed: 1, at }, at + 400)).toBe(false);
     // A twitch is not a flick.
-    expect(dragCloses({ dx: -6, speed: -2, at }, at + 8)).toBe(false);
+    expect(dragCloses({ dx: 6, speed: 2, at }, at + 8)).toBe(false);
   });
 });

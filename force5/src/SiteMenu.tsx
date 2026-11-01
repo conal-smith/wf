@@ -15,17 +15,18 @@
  * this one file of force5/src (and none of the map's), so its classes resolve
  * in every bundle.
  *
- * The menu is a drawer from the left (owner's ruling of 2026-10-24, the
- * "Your spots" mock-up): a modal <dialog> over
- * the kit's backdrop, so the focus is trapped in it and the page behind is
- * inert, with the site's navigation, the same on every page, each row with
- * its glyph in the margin. A finger can push it back off to the left.
+ * The menu is a drawer from the right, where its button is at the far right
+ * of the top bar on every page (ui/TopBar.tsx): a modal <dialog> over the
+ * kit's backdrop, so the focus is trapped in it and the page behind is inert.
+ * A quiet sheet: the wordmark and a close button at the bar's height, the
+ * site's navigation in named groups with one line icon a row and no rules
+ * between them, the page you are on on a soft pill with "You're here", and
+ * at the foot Light, Dark or Auto. A finger can push it back off to the right.
  *
- * The navigation is one menu, in one order, wherever it is opened (owner's
- * ruling of 2026-10-29): the chart and the spot finder; Settings and the
- * display options; About and the tour; then the site's other sections, Use
- * with AI last. The chart's layers are not in it: they are the rail beside
- * the zoom (src/LayerRail.tsx).
+ * The navigation is one menu, in one order, wherever it is opened: the
+ * forecast, your settings, help, then the site's other sections, Use with AI
+ * last (force5/src/siteNav.ts). The chart's layers are not in it: they are
+ * the rail beside the zoom (src/LayerRail.tsx).
  */
 import { Menu, Moon, Sun, X } from "lucide-react";
 import {
@@ -40,15 +41,16 @@ import {
 import { useFadeOut } from "../../ui/Backdrop";
 import { Button } from "../../ui/Button";
 import { backdropPress, onBackdrop } from "../../ui/Dialog";
+import { Segmented } from "../../ui/Segmented";
 import { RING, tv } from "../../ui/tv";
 import { Wordmark } from "../../ui/Wordmark";
 import { ChartGlyph } from "../../shared/web/ChartGlyph";
 import { FEATURES, type SiteFeatures } from "../../shared/web/features";
 import {
   THEME_EVENT,
-  currentTheme,
-  toggleTheme,
-  type Theme,
+  chooseTheme,
+  themeChoice,
+  type ThemeChoice,
 } from "../../shared/web/theme";
 import {
   about,
@@ -57,12 +59,14 @@ import {
   market,
   settings,
   spotFinder,
+  starsFrom,
   tour,
   useWithAi,
   windMap,
   type GlyphDef,
 } from "../../shared/web/glyphSet";
 import {
+  SECTIONS_GROUP_NAME,
   SITE_NAV_GROUPS,
   siteSections,
   type SiteNavId,
@@ -83,6 +87,7 @@ const ROW_GLYPH: Record<SiteNavId | Exclude<SiteSectionId, "map">, GlyphDef> = {
   settings,
   options: displayOptions,
   about,
+  stars: starsFrom,
   tour,
   market,
   community,
@@ -91,7 +96,7 @@ const ROW_GLYPH: Record<SiteNavId | Exclude<SiteSectionId, "map">, GlyphDef> = {
 
 /*
  * How a finger puts the drawer away. A press has to travel a few pixels to the
- * left, and more left than up or down, before it is a drag at all: a tap on a
+ * right, and more right than up or down, before it is a drag at all: a tap on a
  * row, or a scroll down a long list, is not one. Let go past CLOSE_AT pixels,
  * or flicked faster than FLICK pixels a millisecond, it shuts; otherwise it
  * springs back.
@@ -102,70 +107,53 @@ export const siteMenuStyles = tv({
   slots: {
     root: `${HOOK} pointer-events-auto relative inline-flex`,
     /*
-     * An icon button is under the target floor on a finger, and in a header
-     * row its neighbours are inches away along the inline axis. So on a coarse
-     * pointer it keeps its drawn size and its hit area grows DOWN THE BLOCK
-     * AXIS ONLY, to touch, through a band laid across it: an overhang to
-     * either side would swallow taps meant for the brand link beside it.
-     * Padding the inline side out is the parent's job.
-     */
-    trigger: [
-      "relative pointer-coarse:min-h-0 pointer-coarse:min-w-0",
-      "pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:top-1/2",
-      "pointer-coarse:after:h-touch pointer-coarse:after:-translate-y-1/2",
-    ],
-    /*
-     * The drawer: the full height of the screen at the left edge, paper with
-     * its grain, ruled in ink down its right edge, where its corners take the
-     * dialog's radius. It scrolls a list too long for a short screen, and
-     * leaves the vertical pan to the browser so a sideways drag is the
-     * script's.
+     * The drawer: the full height of the screen at the right edge, on the
+     * ground, its corners facing the page rounded to a sheet's, one soft
+     * shadow (and in dark a faint edge). Its list scrolls between the head
+     * and the foot, and it leaves the vertical pan to the browser so a
+     * sideways drag is the script's.
      */
     drawer: [
-      "fixed inset-y-0 left-0 right-auto m-0 h-dvh max-h-none w-80 max-w-11/12",
-      "overflow-y-auto overscroll-contain touch-pan-y",
-      "rounded-r-dialog border-0 border-r border-ink bg-card paper-grain shadow-sheet",
-      "px-safe-5 pt-safe-4 pb-safe-4 font-body text-ink",
+      "fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-none w-90 max-w-11/12 open:flex open:flex-col",
+      "overscroll-contain touch-pan-y",
+      "rounded-l-dialog border-0 bg-ground p-0 shadow-sheet dark:ring-1 dark:ring-line",
+      "pt-safe-0 pb-safe-0 font-body text-ink",
       "backdrop:scrim drawer-slide",
     ],
-    // The close button and the nameplate, over the broadsheet's heavy rule.
-    head: "flex items-center gap-3 border-b-2 border-ink pb-2.5",
-    list: "m-0 mt-2.5 flex list-none flex-col p-0",
-    // Each group after the first, a gap under the one before.
-    group: "mt-6",
+    // The wordmark and the close button, at the top bar's height. Space, not
+    // a rule, sets it off from the rows.
+    head: "flex h-16 shrink-0 items-center justify-between gap-3 pr-3 pl-6 max-wide:h-14 max-wide:pl-5",
+    body: "min-h-0 flex-1 overflow-y-auto px-3 pt-1 pb-4",
+    group: "mt-4.5 first:mt-0",
+    groupName: "m-0 px-3 pb-1.5 font-body text-body font-medium text-ink-muted",
+    list: "m-0 flex list-none flex-col gap-0.5 p-0",
     /*
-     * A row is a name on a hairline, the height of touch, with its glyph in
-     * the margin: the index of a broadsheet, not a list of buttons. It goes
-     * magenta under the pointer, as every link on the chart does.
+     * A row: a name with its line icon, the height of touch, on a soft pill
+     * under the pointer. No rule between rows.
      */
     row: [
-      "flex h-touch w-full items-center gap-3 border-b border-line px-0.5",
+      "flex h-touch w-full items-center gap-3 rounded-control px-3",
       "font-body text-prose font-medium text-ink no-underline",
-      "transition-colors duration-fast not-disabled:hover:text-chart-magenta",
+      "transition-colors duration-fast not-disabled:hover:bg-sunken",
       RING,
     ],
-    glyph: "inline-flex size-5 shrink-0 items-center justify-center",
-    // A small bar on the right edge, saying the drawer can be pushed away.
-    grip: "pointer-events-none absolute top-1/2 right-1.5 h-touch w-1 -translate-y-1/2 rounded-full bg-line",
+    glyph: "inline-flex size-5 shrink-0 items-center justify-center text-ink-2",
+    // "You're here", or a quiet "Preview", at the row's end.
+    end: "ml-auto font-body text-label font-medium text-ink-muted",
+    preview: "rounded-full bg-sunken px-2 py-0.5",
+    // Light, dark or auto, and the one line every page owes a rider.
+    foot: "grid shrink-0 gap-3 px-6 pt-3.5 pb-5 max-wide:px-5",
+    appearance: "flex items-center justify-between gap-3 font-body text-prose font-medium",
+    small: "m-0 font-body text-label leading-normal text-ink-muted",
   },
   variants: {
     /*
-     * What the menu stands on: the moving map or a page. Both are paper now
-     * (the chart draws its boxes solid), and the trigger is the same round
-     * button on either, so the ground draws nothing of its own.
-     */
-    ground: {
-      map: {},
-      content: {},
-    },
-    /*
-     * The page you are on: set in the italic, heavier, on the paper's
-     * second sheet, so the state is not said by colour alone. The
+     * The page you are on: on the soft pill and in semibold, with "You're
+     * here" at its end, so the state is not said by colour alone. The
      * machine-readable half is `aria-current="page"`.
      */
-    current: { true: { row: "bg-sunken font-bold italic" } },
+    current: { true: { row: "bg-sunken font-semibold", glyph: "text-ink" } },
   },
-  defaultVariants: { ground: "map" },
 });
 
 /** A finger on the drawer: where it went down, and how it has moved since. */
@@ -177,7 +165,7 @@ interface Drag {
   /** When it last moved, and how fast, in pixels a millisecond. */
   at: number;
   speed: number;
-  /** Past the slop, and to the left: the drawer follows it. */
+  /** Past the slop, and to the right: the drawer follows it. */
   active: boolean;
 }
 
@@ -190,8 +178,8 @@ export function dragCloses(
   drag: { dx: number; speed: number; at: number },
   now: number,
 ): boolean {
-  const flick = now - drag.at < 100 && drag.speed < -DRAG.FLICK;
-  return drag.dx < -DRAG.CLOSE_AT || (flick && drag.dx < -2 * DRAG.SLOP);
+  const flick = now - drag.at < 100 && drag.speed > DRAG.FLICK;
+  return drag.dx > DRAG.CLOSE_AT || (flick && drag.dx > 2 * DRAG.SLOP);
 }
 
 /** A plain press: not one for a new tab or window, nor a middle click. */
@@ -204,11 +192,11 @@ const plainPress = (event: ReactMouseEvent) =>
 
 /**
  * The site's navigation, the same rows in the same order on every page, in
- * its groups (SITE_NAV_GROUPS), then a gap and the site's other sections,
- * Use with AI last. Each is a link with its glyph in the margin, and the page
- * you are on is marked. Only the sections switched on in this build are drawn: with
- * the marketplace or the community off (as production has them,
- * shared/web/features.ts), nothing of it is.
+ * its named groups (SITE_NAV_GROUPS), then the site's other sections, Use
+ * with AI last. Each is a link with its line icon, and the page you are on is
+ * marked. Only the sections switched on in this build are drawn: with the
+ * marketplace or the community off (as production has them,
+ * shared/web/features.ts), nothing of it is; on, they say "Preview".
  */
 export function SiteNav({
   current,
@@ -232,6 +220,7 @@ export function SiteNav({
   onFollow?: () => void;
 }) {
   const styles = siteMenuStyles();
+  const groupId = useId();
   const row = (
     {
       id,
@@ -242,11 +231,13 @@ export function SiteNav({
   ) => {
     const here = id === current;
     const own = go[id as SiteNavId];
+    const preview = id === "market" || id === "community";
+    const s = siteMenuStyles({ current: here });
     return (
       <li key={id}>
         <a
           ref={index === 0 ? first : undefined}
-          className={styles.row({ current: here })}
+          className={s.row()}
           href={href}
           aria-current={here ? "page" : undefined}
           // A mouse dragging a link drags the link itself, and the drawer
@@ -265,10 +256,19 @@ export function SiteNav({
             onFollow?.();
           }}
         >
-          <span className={styles.glyph()}>
+          <span className={s.glyph()}>
             <ChartGlyph glyph={ROW_GLYPH[id]} />
           </span>
           {label}
+          {here ? (
+            <span className={s.end()}>You’re here</span>
+          ) : (
+            preview && (
+              <span className={s.end({ className: s.preview() })}>
+                Preview
+              </span>
+            )
+          )}
         </a>
       </li>
     );
@@ -277,60 +277,87 @@ export function SiteNav({
   const sections = siteSections(features).flatMap((section) =>
     section.id === "map" ? [] : [{ ...section, id: section.id }],
   );
+  const groups = [
+    ...SITE_NAV_GROUPS.map((group) => ({
+      name: group.name,
+      rows: group.rows as readonly {
+        id: keyof typeof ROW_GLYPH;
+        href: string;
+        label: string;
+      }[],
+    })),
+    { name: SECTIONS_GROUP_NAME, rows: sections },
+  ];
+  let index = 0;
   return (
     <nav aria-label="Site">
-      {SITE_NAV_GROUPS.map((group, at) => (
-        <ul
-          key={group[0].id}
-          className={styles.list({
-            className: at ? styles.group() : undefined,
-          })}
+      {groups.map((group, g) => (
+        <section
+          key={group.name}
+          className={styles.group()}
+          aria-labelledby={`${groupId}-${g}`}
         >
-          {group.map((entry, i) => row(entry, at + i))}
-        </ul>
+          <h2 className={styles.groupName()} id={`${groupId}-${g}`}>
+            {group.name}
+          </h2>
+          <ul className={styles.list()}>
+            {group.rows.map((entry) => row(entry, index++))}
+          </ul>
+        </section>
       ))}
-      <ul className={styles.list({ className: styles.group() })}>
-        {sections.map((section) => row(section, -1))}
-      </ul>
-      <ul className={styles.list({ className: styles.group() })}>
-        <li>
-          <ThemeRow />
-        </li>
-      </ul>
     </nav>
   );
 }
 
-/** Dark mode on or off: a switch, kept on this device (shared/web/theme.ts). */
-function ThemeRow() {
+const APPEARANCE = [
+  {
+    value: "light",
+    label: (
+      <>
+        <Sun size={15} strokeWidth={1.75} aria-hidden="true" />
+        Light
+      </>
+    ),
+  },
+  {
+    value: "dark",
+    label: (
+      <>
+        <Moon size={15} strokeWidth={1.75} aria-hidden="true" />
+        Dark
+      </>
+    ),
+  },
+  { value: "system", label: "Auto" },
+] as const;
+
+/**
+ * Light, dark, or the device's (auto), kept on this device
+ * (shared/web/theme.ts). On a phone the top bar has no room for its theme
+ * button, so the menu carries the choice on every width.
+ */
+function Appearance() {
   const styles = siteMenuStyles();
-  const [theme, setTheme] = useState<Theme>(currentTheme);
+  const [choice, setChoice] = useState<ThemeChoice>(themeChoice);
   useEffect(() => {
-    const follow = () => setTheme(currentTheme());
+    const follow = () => setChoice(themeChoice());
     window.addEventListener(THEME_EVENT, follow);
     return () => window.removeEventListener(THEME_EVENT, follow);
   }, []);
-  const dark = theme === "dark";
   return (
-    <Button
-      role="switch"
-      aria-checked={dark}
-      className={styles.row({
-        className:
-          "justify-start border-x-0 border-t-0 bg-transparent text-left",
-      })}
-      data-theme-switch
-      onClick={toggleTheme}
-    >
-      <span className={styles.glyph()}>
-        {dark ? (
-          <Sun size={18} strokeWidth={1.75} aria-hidden="true" />
-        ) : (
-          <Moon size={18} strokeWidth={1.75} aria-hidden="true" />
-        )}
-      </span>
-      Dark mode
-    </Button>
+    <div className={styles.appearance()} data-appearance>
+      <span>Appearance</span>
+      <Segmented
+        aria-label="Appearance"
+        size="sm"
+        options={APPEARANCE}
+        value={choice}
+        onChange={(next) => {
+          chooseTheme(next);
+          setChoice(next);
+        }}
+      />
+    </div>
   );
 }
 
@@ -344,22 +371,11 @@ export function SiteMenu({
   current,
   /** The page's own way to a row of the navigation (`SiteNav`'s `go`). */
   go,
-  /** The trigger's control height, so it sits in scale with its neighbours. */
-  size = "md",
-  /**
-   * What the menu stands on: the moving map, or a page's masthead. The
-   * trigger is the round menu button either way: the kit's raised
-   * button, lit from above, inside the head's box on the map and on the
-   * masthead on a page. The drawer is the same either way.
-   */
-  ground = "map",
   /** Which sections are switched on: the build's, unless a test says. */
   features = FEATURES,
 }: {
   current: SitePageId | null;
   go?: Partial<Record<SiteNavId, () => void>>;
-  size?: "sm" | "md";
-  ground?: "map" | "content";
   features?: Pick<SiteFeatures, "market" | "community">;
 }) {
   const [open, setOpen] = useState(false);
@@ -446,8 +462,8 @@ export function SiteMenu({
     const dy = event.clientY - d.y0;
     if (!d.active) {
       if (Math.abs(dx) < DRAG.SLOP && Math.abs(dy) < DRAG.SLOP) return;
-      // Down, up or to the right: a scroll or a slip, not a drag.
-      if (dx > 0 || Math.abs(dy) >= Math.abs(dx)) {
+      // Down, up or to the left: a scroll or a slip, not a drag.
+      if (dx < 0 || Math.abs(dy) >= Math.abs(dx)) {
         drag.current = null;
         return;
       }
@@ -462,7 +478,7 @@ export function SiteMenu({
       }
       el.style.transition = "none";
     }
-    const next = Math.min(0, dx);
+    const next = Math.max(0, dx);
     const dt = event.timeStamp - d.at;
     // Events can come in the same millisecond; a finger never moves in none.
     d.speed = (next - d.dx) / Math.max(dt, 1);
@@ -486,16 +502,13 @@ export function SiteMenu({
     }
   };
 
-  const styles = siteMenuStyles({ ground });
+  const styles = siteMenuStyles();
 
   return (
     <div className={styles.root()}>
       <Button
         ref={trigger}
-        variant="outline"
-        size={size}
         icon
-        className={styles.trigger()}
         // The label stays put; `aria-expanded` is what says open or closed.
         aria-label="Site menu"
         aria-expanded={open}
@@ -503,7 +516,7 @@ export function SiteMenu({
         aria-controls={open ? drawerId : undefined}
         onClick={() => setOpen(true)}
       >
-        <Menu size={size === "sm" ? 15 : 18} aria-hidden="true" />
+        <Menu size={18} strokeWidth={1.75} aria-hidden="true" />
       </Button>
       {shown && (
         <dialog
@@ -547,27 +560,34 @@ export function SiteMenu({
           }}
         >
           <div className={styles.head()}>
+            <Wordmark />
             <Button
               variant="quiet"
-              size="sm"
               icon
               aria-label="Close menu"
               onClick={close}
             >
-              <X size={15} aria-hidden="true" />
+              <X size={18} strokeWidth={1.75} aria-hidden="true" />
             </Button>
-            <Wordmark size="sm" />
           </div>
-          <SiteNav
-            current={current}
-            go={go}
-            features={features}
-            first={(el) => {
-              firstRow.current = el;
-            }}
-            onFollow={close}
-          />
-          <span aria-hidden="true" className={styles.grip()} />
+          <div className={styles.body()}>
+            <SiteNav
+              current={current}
+              go={go}
+              features={features}
+              first={(el) => {
+                firstRow.current = el;
+              }}
+              onFollow={close}
+            />
+          </div>
+          <div className={styles.foot()}>
+            <Appearance />
+            <p className={styles.small()}>
+              Model forecasts, not a safety statement. Look at the water
+              before you go out.
+            </p>
+          </div>
         </dialog>
       )}
     </div>
