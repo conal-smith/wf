@@ -573,9 +573,7 @@ function ListingForm({
             Cancel
           </Link>
         )}
-        <span className={styles.signature()}>
-          as {profile.displayName}
-        </span>
+        <span className={styles.signature()}>as {profile.displayName}</span>
       </div>
     </form>
   );

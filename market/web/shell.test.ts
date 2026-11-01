@@ -399,7 +399,9 @@ describe("S5: what the card does, and what it does not", () => {
     expect(out).toContain("<h3");
     // The town and the county, each in a span of its own: on a phone the town
     // gives way and the county, the one a buyer filters on, stays whole.
-    expect(out).toMatch(/<span class="truncate">Castlegregory<\/span><span class="shrink-0">,\u00a0Kerry<\/span>/);
+    expect(out).toMatch(
+      /<span class="truncate">Castlegregory<\/span><span class="shrink-0">,\u00a0Kerry<\/span>/,
+    );
     // The stars beside the condition say whose they are.
     expect(out).toMatch(/>Seller<\/span><svg[^>]*aria-label="4.5 out of 5"/);
     // Two photos, so the count badge, and the seller's stars, said in words.
@@ -410,10 +412,14 @@ describe("S5: what the card does, and what it does not", () => {
   it("leaves out what the page around it already says", () => {
     const listing = listingOf("active", { saved: true });
     // The Saved tab: every card on it is saved.
-    const onSaved = html(createElement(ListingCard, { listing, hideSaved: true }));
+    const onSaved = html(
+      createElement(ListingCard, { listing, hideSaved: true }),
+    );
     expect(onSaved).not.toContain("Saved");
     // The seller's own page: every card is theirs, and their rating heads it.
-    const onSeller = html(createElement(ListingCard, { listing, hideSeller: true }));
+    const onSeller = html(
+      createElement(ListingCard, { listing, hideSeller: true }),
+    );
     expect(onSeller).not.toContain(">Seller<");
     expect(onSeller).not.toContain('aria-label="4.5 out of 5"');
   });
@@ -432,8 +438,11 @@ describe("S5: what the card does, and what it does not", () => {
 
   it("marks new on one card at most, and only from this week", () => {
     const now = Date.parse("2026-09-20T09:00:00.000Z");
-    const at = (id: string, iso: string, status: Listing["status"] = "active") =>
-      listingOf(status, { id, createdAt: iso });
+    const at = (
+      id: string,
+      iso: string,
+      status: Listing["status"] = "active",
+    ) => listingOf(status, { id, createdAt: iso });
     expect(
       newestFresh(
         [
@@ -627,7 +636,9 @@ describe("S3: a rating is the chart's star, and the shape says it", () => {
   });
 
   it("picks a rating with the same star, solid when lit", () => {
-    const out = html(createElement(RatingPicker, { value: 2, onChange: () => {} }));
+    const out = html(
+      createElement(RatingPicker, { value: 2, onChange: () => {} }),
+    );
     expect(out.match(/role="radio"/g)).toHaveLength(5);
     expect(out.match(/fill-current"/g)).toHaveLength(2);
     expect(out).not.toContain("lucide");
@@ -646,9 +657,9 @@ describe("S3: a rating is the chart's star, and the shape says it", () => {
     expect(html(createElement(SellerRating, { seller: sellerOf(2) }))).toMatch(
       /font-mono[^"]*">4\.5/,
     );
-    expect(html(createElement(SellerRating, { seller: sellerOf(0) }))).toContain(
-      "No ratings yet",
-    );
+    expect(
+      html(createElement(SellerRating, { seller: sellerOf(0) })),
+    ).toContain("No ratings yet");
   });
 
   // The histogram's bars are a quantity, in a soft bar; nothing on these
@@ -817,7 +828,9 @@ describe("S4: the header, and its one filled action", () => {
     const out = await headerAs(null, true);
     expect(out).toContain("data-top-bar");
     expect(out).toContain('aria-label="Site menu"');
-    expect(out).toMatch(/<a href="\/"[^>]*aria-label="wingfoil\.ie, the Spot finder"/);
+    expect(out).toMatch(
+      /<a href="\/"[^>]*aria-label="wingfoil\.ie, the Spot finder"/,
+    );
     expect(out).toContain("data-spot-search");
     expect(out).toMatch(/<a href="\/\?map"[^>]*data-view-switch="chart"/);
     expect(out).toMatch(/<nav class="[^"]*" aria-label="Marketplace">/);

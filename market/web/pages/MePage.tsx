@@ -364,9 +364,7 @@ function MyListings({
           Live ({active.length})
         </Heading>
         {active.length ? (
-          <ul className={styles.list()}>
-            {active.map((l) => row(l))}
-          </ul>
+          <ul className={styles.list()}>{active.map((l) => row(l))}</ul>
         ) : (
           <p className={styles.about()}>Nothing live right now.</p>
         )}
@@ -374,9 +372,7 @@ function MyListings({
       {sold.length > 0 && (
         <section className={styles.group()} aria-labelledby="me-sold">
           <Heading id="me-sold">Sold ({sold.length})</Heading>
-          <ul className={styles.list()}>
-            {sold.map((l) => row(l))}
-          </ul>
+          <ul className={styles.list()}>{sold.map((l) => row(l))}</ul>
         </section>
       )}
     </div>

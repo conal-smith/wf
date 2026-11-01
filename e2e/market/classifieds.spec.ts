@@ -23,7 +23,9 @@ async function open(
 ): Promise<Page> {
   const context = await browser.newContext({
     baseURL,
-    viewport: phone ? { width: 390, height: 844 } : { width: 1440, height: 900 },
+    viewport: phone
+      ? { width: 390, height: 844 }
+      : { width: 1440, height: 900 },
     isMobile: phone,
     hasTouch: phone,
   });
@@ -54,9 +56,7 @@ for (const phone of [true, false]) {
   }) => {
     const page = await open(browser, baseURL, BUYER, phone);
     await page.goto("/market");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-      "Market",
-    );
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Market");
     await expect(
       page.getByRole("heading", { level: 2, name: "7 listings" }),
     ).toBeVisible();
@@ -85,12 +85,16 @@ for (const phone of [true, false]) {
     await expect(fresh).toHaveCount(1);
     await expect(fresh).toHaveText("new");
     await expect(
-      ads(page).filter({ hasText: baseline.noPhoto.title }).locator("[data-fresh]"),
+      ads(page)
+        .filter({ hasText: baseline.noPhoto.title })
+        .locator("[data-fresh]"),
     ).toHaveCount(1);
 
     // The seller's stars are the chart's, named for a screen reader.
     await expect(
-      ads(page).first().getByRole("img", { name: /out of 5/ }),
+      ads(page)
+        .first()
+        .getByRole("img", { name: /out of 5/ }),
     ).toBeVisible();
 
     // A category is a chip, filled when it is chosen, and narrows the ads.
@@ -105,7 +109,9 @@ for (const phone of [true, false]) {
     await expect(wings).toHaveAttribute("aria-pressed", "true");
     await expect(wings).toHaveCSS("font-style", "normal");
     await expect(wings).toHaveCSS("font-family", /Inter/);
-    await expect(page.getByRole("heading", { name: "1 listing" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "1 listing" }),
+    ).toBeVisible();
     await fits(page);
     await page.context().close();
   });
@@ -167,9 +173,13 @@ for (const phone of [true, false]) {
       "What are you selling?",
     );
     for (const name of ["Photos", "Details", "Price and place", "Description"])
-      await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name, exact: true }),
+      ).toBeVisible();
     await page.getByRole("button", { name: "Publish listing" }).click();
-    await expect(page.getByText(/title of at least 4 characters/)).toBeVisible();
+    await expect(
+      page.getByText(/title of at least 4 characters/),
+    ).toBeVisible();
     await fits(page);
 
     await page.goto("/market/me");
@@ -187,5 +197,7 @@ test("a URL that is not a page says so, and the way back", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "That page does not exist" }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Browse listings" })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Browse listings" }),
+  ).toBeVisible();
 });

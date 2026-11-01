@@ -366,7 +366,13 @@ export function shortAge(iso: string, now = Date.now()): string {
 }
 
 /** The age figure, with its words for a screen reader. */
-export function Age({ iso, prefix = "Listed" }: { iso: string; prefix?: string }) {
+export function Age({
+  iso,
+  prefix = "Listed",
+}: {
+  iso: string;
+  prefix?: string;
+}) {
   return (
     <time dateTime={iso}>
       <span aria-hidden="true">{shortAge(iso)}</span>
@@ -791,7 +797,10 @@ export function NotFound({
       title={title}
       icon={<SearchX size={24} strokeWidth={1.75} />}
       actions={
-        <Link to={paths.browse()} className={buttonStyles({ variant: "primary" })}>
+        <Link
+          to={paths.browse()}
+          className={buttonStyles({ variant: "primary" })}
+        >
           Browse listings
         </Link>
       }

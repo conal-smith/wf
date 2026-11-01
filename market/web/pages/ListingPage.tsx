@@ -52,7 +52,8 @@ export const listingStyles = tv({
     // ad that stands beside it. Under the rail's breakpoint the placement
     // falls away and the three children stack in the order they are written,
     // which puts the ad between the photographs and the particulars.
-    detail: "grid items-start gap-x-8 gap-y-8 rail:grid-cols-detail max-wide:gap-y-6",
+    detail:
+      "grid items-start gap-x-8 gap-y-8 rail:grid-cols-detail max-wide:gap-y-6",
     gallery: "min-w-0 rail:col-start-1 rail:row-start-1",
     body: "flex min-w-0 flex-col gap-8 rail:col-start-1 rail:row-start-2",
     // The ad spans both rows and stays in view while the body scrolls under
@@ -115,7 +116,8 @@ export const listingStyles = tv({
     formActions: "flex flex-wrap items-center gap-x-3 gap-y-2",
     // The ways to reach the seller, once asked for: under a hairline in the card.
     contact: "grid gap-3 border-0 border-t border-line pt-4",
-    contactRow: "inline-flex items-center gap-2 font-mono text-body wrap-anywhere",
+    contactRow:
+      "inline-flex items-center gap-2 font-mono text-body wrap-anywhere",
 
     // ---- the seller, in the same column
     seller: [
@@ -129,7 +131,6 @@ export const listingStyles = tv({
       "ml-auto shrink-0 text-ink-muted transition-transform duration-fast",
       "group-hover:translate-x-1 motion-reduce:transition-none",
     ],
-
 
     // ---- the body, and the review form under it
     section: "flex min-w-0 flex-col gap-4",
