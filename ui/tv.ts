@@ -32,10 +32,14 @@ export const THEME_NAMES = {
     "ai-name-sm",
     "ai-line",
     "ai-line-sm",
+    // The spot report's (ui/theme.css, under its banner).
+    "big",
+    "big-sm",
+    "name",
   ],
   // The four faces. Without them the merge reads `font-display` as nothing it
   // knows, and `font-body` beside a caller's `font-mono` would keep both.
-  font: ["display", "body", "mono", "hand"],
+  font: ["display", "body", "mono"],
   radius: ["control", "surface", "pill", "dialog", "full"],
   shadow: ["card", "float", "sheet", "dock", "marker", "control", "raised"],
   "inset-shadow": ["frame"],
@@ -48,9 +52,12 @@ export const THEME_NAMES = {
     "page",
     "form",
     "ai",
+    "loupe",
+    "side",
+    "list",
   ],
   spacing: ["control-sm", "control-md", "control-lg", "touch"],
-  animate: ["pulse", "dialog-in", "scrim-in", "menu-in", "ink", "bob"],
+  animate: ["pulse", "dialog-in", "scrim-in", "menu-in", "bob"],
   "transition-duration": ["fast", "base"],
   "z-index": ["popover", "panel", "header", "dialog"],
 } as const;

@@ -128,24 +128,25 @@
 .map-focus > div {
   animation: chart-fade 400ms ease both;
 }
-/* The rim as the chart draws a box: ink, a band of paper, ink. */
+/* The rim, in the modern hand of the 2026-10-31 mock-ups: one fine line with
+   a soft shadow, the compass ticked round it, no paper bezel. */
 .map-loupe-rim {
   filter: drop-shadow(
-    0 3px 4px color-mix(in srgb, var(--color-ink) 26%, transparent)
+    0 1px 3px color-mix(in srgb, var(--color-ink) 30%, transparent)
   );
 }
 .map-loupe-band {
   fill: none;
-  stroke: var(--color-ground);
-  stroke-width: 13;
+  stroke: none;
 }
 .map-loupe-edge {
-  fill: none;
-  stroke: var(--color-ink);
-  stroke-width: 1;
+  display: none;
 }
 .map-loupe-edge.is-inner {
-  stroke-width: 1.8;
+  display: inline;
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 2;
 }
 .map-loupe-tick {
   stroke: var(--color-ink);
@@ -155,10 +156,11 @@
   stroke-width: 1.1;
 }
 .map-loupe-north {
-  font: 600 10px var(--font-mono);
+  font: 600 11px var(--font-body);
   fill: var(--color-ink);
 }
 .map-loupe-glint {
+  display: none;
   fill: none;
   stroke: var(--color-ground);
   stroke-opacity: 0.4;
@@ -260,7 +262,7 @@
 }
 .map-rose-label,
 .map-dial-words {
-  font: 600 10px var(--font-mono);
+  font: 600 11px var(--font-body);
   fill: var(--color-ink);
   paint-order: stroke;
   stroke: var(--color-ground);
@@ -278,16 +280,18 @@
 .map-dial-words {
   fill: var(--color-pen-ink);
 }
+/* Offshore: one bold red arc on the rim; cross-offshore a lighter red. */
 .map-dial-crossoff {
-  fill: url(#loupe-redlight);
+  fill: var(--color-pen);
+  fill-opacity: 0.28;
 }
 .map-dial-offshore {
-  fill: url(#loupe-redhatch);
+  fill: none;
 }
 .map-dial-offshore-arc {
   fill: none;
   stroke: var(--color-pen);
-  stroke-width: 2.2;
+  stroke-width: 6;
   stroke-linecap: round;
 }
 .map-dial-words-path {
@@ -307,33 +311,33 @@
     0 2px 2.5px color-mix(in srgb, var(--color-ink) 28%, transparent)
   );
 }
+/* The foot box, a dark pill with the wind in it. */
 .map-loupe-foot-box {
-  fill: var(--color-ground);
-  stroke: var(--color-ink);
-  stroke-width: 1;
+  fill: var(--color-inverse);
+  stroke: none;
+  rx: 12px;
 }
 .map-loupe-foot-rule {
-  fill: none;
-  stroke: var(--color-ink);
-  stroke-width: 0.7;
+  display: none;
 }
 .map-loupe-reading {
-  font: 600 13px var(--font-mono);
-  fill: var(--color-ink);
+  font: 600 13px var(--font-body);
+  fill: var(--color-ink-inverse);
 }
 /* In Force: the wind's glyph beside its force, the gust's smaller. */
 .map-loupe-glyph path {
   fill: none;
-  stroke: var(--color-ink);
+  stroke: var(--color-ink-inverse);
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 .map-loupe-glyph path.is-pennant {
-  fill: var(--color-ink);
+  fill: var(--color-ink-inverse);
 }
 .map-loupe-relation {
-  font: 500 10px var(--font-mono);
-  fill: var(--color-ink-muted);
+  font: 500 11px var(--font-body);
+  fill: var(--color-ink-inverse);
+  fill-opacity: 0.75;
 }
 .map-loupe-relation.is-warn {
   fill: var(--color-pen-ink);
@@ -783,37 +787,14 @@
 .map-canvas .lt.sel {
   z-index: 5;
 }
-/* The open spot's light, lifted off the chart on a spring, its shadow left
-   on the water where the spot is: the one mark of the spot chosen, while the
-   chart holds it (the dock can keep a spot the chart has let go of). */
+/* The open spot's light, a size up where it stands: the one mark of the spot
+   chosen, while the chart holds it (the dock can keep a spot the chart has
+   let go of). */
 .map-canvas.is-focus .lt.sel svg {
-  transform: translateY(-6px) scale(1.3);
-  filter: drop-shadow(
-    0 5px 3px color-mix(in srgb, var(--color-ink) 35%, transparent)
-  );
-  transition:
-    opacity 0.45s,
-    transform 0.45s cubic-bezier(0.34, 1.36, 0.5, 1);
+  transform: scale(1.3);
 }
 .map-canvas.is-focus.z-lo .lt.sel svg {
-  transform: translateY(-5px);
-}
-.map-canvas.is-focus .lt.sel::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  z-index: -1;
-  width: 22px;
-  height: 8px;
-  border-radius: 50%;
-  transform: translate(-50%, 2px);
-  background: radial-gradient(
-    closest-side,
-    color-mix(in srgb, var(--color-ink) 30%, transparent),
-    transparent
-  );
-  pointer-events: none;
+  transform: none;
 }
 /* A name the label pass (force5/src/lights.ts) found no room for. */
 .map-canvas .lt.lab-hide:not(.sel) .lt-lab {
@@ -932,7 +913,6 @@
   .lt .lt-pulse {
     animation: none;
   }
-  .map-canvas.is-focus .lt.sel svg,
   .map-focus > div {
     animation: none;
   }
@@ -1443,7 +1423,7 @@
   width: var(--panel-width);
   height: var(--panel-height);
   overflow: hidden;
-  border: 1px solid var(--color-ink);
+  border: 1px solid var(--color-line);
   border-radius: var(--radius-dialog);
   box-shadow: var(--shadow-float);
 }
@@ -1483,12 +1463,6 @@
 [data-beside-chart] [data-finder-cards],
 [data-beside-chart] [data-finder-loading] {
   grid-template-columns: minmax(0, 1fr);
-}
-@media (min-width: 1920px) {
-  [data-beside-chart] [data-finder-cards],
-  [data-beside-chart] [data-finder-loading] {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 /* A light under the pointer outlines its place's card; one pressed brings
    the card into view, its outline drawn in for a moment. */
@@ -1538,6 +1512,25 @@
   position: absolute;
   top: 12px;
   right: 12px;
+}
+/* The map's two modes at its foot, as the mock-up has them: the plain map
+   with the spots, and the chart, which opens the full chart with its layers. */
+.panel-modes {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--color-ground);
+  box-shadow: var(--shadow-float);
+}
+.panel-modes .panel-chart {
+  gap: 7px;
+  color: var(--color-chart-magenta);
+  border-color: var(--color-chart-magenta);
 }
 .panel-when {
   position: absolute;

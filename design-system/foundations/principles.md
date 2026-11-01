@@ -5,8 +5,8 @@ these decide when you may reach for it. Read before drawing anything this
 system does not already cover.
 
 wingfoil.ie is drawn as **an Admiralty chart crossed with an old broadsheet
-weather report**: paper and ink, the chart's magenta, a red pen used sparingly,
-four faces, thin ink rules and double-rule frames, and the puffin. The site is a
+weather report**: paper and ink, the chart's magenta, a red accent used
+sparingly, two faces, thin ink rules and double-rule frames, and the puffin. The site is a
 map with tools over it, and pages that are read (the spot page, the
 marketplace, the community). On the map, the map is the product, and everything
 else earns the pixels it covers the sea with.
@@ -32,17 +32,16 @@ something, once**: a five-star light, the spot in view, a quantity's bar
 pointer. And it is **the focus ring** (`sem.color.focus`): 2px, 2px clear, the
 same on every control.
 
-**The one thing that matters in a view is lifted** on raised paper
-(`Lift`: `sem.color.card`, `sem.gradient.float`, `sem.shadow.float`): the
-chosen hour, the open spot. Nothing is circled or framed by hand. **The red
-pen** (`sem.color.pen`, its words `sem.color.pen-ink`) rules the line at now,
-an underline under the word that carries the note, a strike through what is
-off (offshore, sold), and the note itself in Kalam. One mark on a view, two at
-most. Neither is ever a control, a status or emphasis.
+**The thing shown is marked flat**: the chosen hour is outlined in ink inside
+its column, the open spot's light stands a size up, and a tour's target is
+ringed in the focus colour. Nothing is lifted on a card, circled or written by
+hand. **The red accent** (`sem.color.pen`, its words `sem.color.pen-ink`) rules
+the line at now and marks what is off (offshore); a sold price is struck
+through in `sem.color.ink-muted`. It is never a control, a status or emphasis.
 
 **Warm is not an accent.** `sem.color.warn`, `sem.color.now` and
 `sem.color.warn-ground` mean *this instant* or *this is degraded*, and nothing
-else. The warm red is not the pen's red.
+else. The warm red is not the accent's red.
 
 **Wind colours mean wind speed.** The fourteen `sem.color.wind.*` stops are
 speed bands and nothing else, the same for every rider, and they do not
@@ -88,14 +87,14 @@ warm, always after `sem.shadow.frame`: `sem.shadow.card` (a contact shadow
 only), `float`, `sheet`, `dock` (the sheet's stack cast upward). `marker`
 lifts a light or a small floating button. A small control has its own:
 `sem.shadow.control` under a pressed or filled ink control, `raised` under a
-raised paper one. Everything at one height casts the same shadow. No drop
+raised one. Everything at one height casts the same shadow. No drop
 shadow beyond these.
 
 **Paper is flat; light is for small things.** A page, a dialog and the dock
 are flat paper. A small box over the chart may take `sem.gradient.float`, the
 faintest light from above, under its grain. A sheen is for small controls
 only: `sem.gradient.ink` under a pressed or filled ink control,
-`sem.gradient.raised` under a raised paper button (the round menu button, a
+`sem.gradient.raised` under a raised button (the round menu button, a
 knob). A press nudges a lit control down a pixel.
 
 **The paper's grain** (`sem.texture.grain`) is a background image beside the
@@ -107,10 +106,9 @@ diagonal), never left blank and never rated.
 
 ## Ceilings
 
-**Type.** Four faces, each with one job: `sem.font.family.display` (Fraunces:
-names, headings, the wordmark), `body` (Newsreader: the few sentences),
-`mono` (IBM Plex Mono: every figure, tabular, and every label in tracked
-capitals), `hand` (Kalam: the pen, and nothing else). Eleven steps:
+**Type.** Two faces under three names: `sem.font.family.display` (Fraunces:
+names, headings, the wordmark), `body` (Inter: everything else) and `mono`
+(Inter too: every figure, at even width, and every label). Eleven steps:
 
 - `eyebrow` 10px is the floor, for the mono label in tracked capitals only.
 - `caption` 11px is the floor for sentence case.
@@ -137,8 +135,8 @@ two corners, so the curves nest.
 coarse pointer. A control drawn smaller grows its hit area instead.
 
 **Contrast.** `sem.color.ink-muted` is the floor for words. `line-strong` and
-`ink-disabled` are a stroke's 3:1, never text. The pen's marks are `pen`, its
-words `pen-ink`.
+`ink-disabled` are a stroke's 3:1, never text. The red accent's marks are
+`pen`, its words `pen-ink`.
 
 ## Little text, figures over prose
 
@@ -165,8 +163,7 @@ this bundle are drawn at phone width unless they say otherwise.
   missing value is a missing step: add it to `ui/theme.css` and to
   `tokens.tokens.json`, together.
 - Don't put a second filled action on a view.
-- Don't use the pen for more than the one thing that matters, or as a fill, a
-  control, a status or emphasis.
+- Don't use the red accent as a fill, a control, a status or emphasis.
 - Don't use magenta for "best" twice on one view, or as body text.
 - Don't use warm to make something stand out.
 - Don't use the wind ramp for anything but wind speed.
@@ -183,10 +180,10 @@ this bundle are drawn at phone width unless they say otherwise.
 
 ## Gaps, recorded rather than invented
 
-- **The faces.** The bundle names Fraunces, Newsreader, IBM Plex Mono and
-  Kalam; it does not ship them. The product self-hosts them (`ui/fonts.css`).
-  The Studio door and the catalog draw them only where they are installed, and
-  fall back to Georgia, the system monospace and a cursive otherwise.
+- **The faces.** The bundle names Fraunces and Inter; it does not ship them.
+  The product self-hosts them (`ui/fonts.css`). The Studio door and the catalog
+  draw them only where they are installed, and fall back to Georgia and the
+  system sans otherwise.
 - **The tide curve's line.** The mockup strokes it in `#3F6E7E`, a darker teal
   than `sem.color.depth`, which has no token; the bundle draws it in `depth`
   over a `sea` fill until the product rules on it.
@@ -239,8 +236,8 @@ bundle's own.
   except the accent, which is a group. A handful of `interop` aliases
   (`sem.color.bg.app`, `text.primary`, `font.family.ui`, …) exist only so the
   Studio's catalog and door draw in the brand; components never use them.
-- **2026-10-24 — Mixed and rounded** (approved by the owner, from
-  `backlog/mockups/2026-10-24-layer-rail.html`, its "Mixed" style). Corners
+- **2026-10-24 — Mixed and rounded** (approved by the owner, the
+  layer rail's "Mixed" style). Corners
   10 / 14 / 18 by size, capsules kept; the ink rule and the hairline inside it
   on every box and sheet (`sem.shadow.frame`, now `inset 0 0 0 2px #f3eee3,
   inset 0 0 0 3px #1a1d2142`); soft stacked shadows by elevation
@@ -253,3 +250,8 @@ bundle's own.
   light, the shore compass, the wind-and-gust figure, the tide label and the
   dock's hour cell repeat across the map, the dock, the popup and the spot
   page, and are components here, drawn as the mockup draws them.
+- **2026-11-01 — No pen and no lift.** With the white and dark theme, nothing
+  is drawn or written by hand and nothing is lifted onto a card: the pen's
+  note, strike and underline, the lifted card, the handwriting face and the
+  `ink` animation are gone. The chosen hour is outlined flat, the open spot's
+  light stands a size up, and "new" is a `Chip`.

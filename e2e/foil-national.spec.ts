@@ -170,7 +170,7 @@ async function open(page: Page, asked: string[]) {
   // moves or marks over it (a marker hidden still has its box, for the tap).
   await page.addStyleTag({
     content:
-      ".particle-canvas, .spot-marker, .map-pen, .pick-mark { visibility: hidden !important; }",
+      ".particle-canvas, .spot-marker, .pick-mark { visibility: hidden !important; }",
   });
   await page.keyboard.press("Escape");
   await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);

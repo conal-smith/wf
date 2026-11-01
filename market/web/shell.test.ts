@@ -34,6 +34,7 @@ import {
   starsOf,
   newestFresh,
   notFoundStyles,
+  priceStyles,
   tabStyles,
 } from "./components";
 import { shellStyles } from "./MarketApp";
@@ -104,6 +105,7 @@ const RECIPES = {
   sellStyles,
   sharedStyles,
   notFoundStyles,
+  priceStyles,
   shellStyles,
   tabStyles,
 };
@@ -430,7 +432,7 @@ describe("S5: what the card does, and what it does not", () => {
     );
   });
 
-  it("loops new in the pen on one card at most, and only from this week", () => {
+  it("marks new on one card at most, and only from this week", () => {
     const now = Date.parse("2026-09-20T09:00:00.000Z");
     const at = (id: string, iso: string, status: Listing["status"] = "active") =>
       listingOf(status, { id, createdAt: iso });
@@ -453,8 +455,8 @@ describe("S5: what the card does, and what it does not", () => {
         fresh: true,
       }),
     );
-    expect(fresh).toMatch(/font-hand[^"]*">new</);
-    expect(card("active")).not.toContain("font-hand");
+    expect(fresh).toMatch(/data-fresh="true"[^>]*>new</);
+    expect(card("active")).not.toContain("data-fresh");
   });
 
   it("says an age as a figure, and in words to a screen reader", () => {

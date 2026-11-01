@@ -5,9 +5,7 @@ the site sets up channels, members start threads in them, and a thread is one
 flat, live conversation. It runs on the marketplace's backend (Hono, Postgres,
 Clerk) and is drawn with the Force5 design system.
 
-Status: **proposal, nothing built.** Mockups are in `docs/community-mockups/`
-(`index.html`, screenshots in `shots/`, rebuilt from the real bundle CSS with
-`node docs/community-mockups/build.mjs`). Revised 20 September 2026 after the
+Status: **proposal, nothing built.** Revised 20 September 2026 after the
 review: every channel is set up by the site, sort options dropped, the
 right-hand panel dropped entirely, following and notifications designed, a
 first iteration scoped.
@@ -206,8 +204,8 @@ Set aside, as **map work with its own plan**, not forum work:
   and mocked, then moved out of scope: it is a feature of the map.
 - *More spots.* `docs/IRISH_SPOTS_SOURCES.md` already sets the rules, which
   stand: Fáilte Ireland's open data and OpenStreetMap may be harvested with
-  attribution; Windy's and Surfline's catalogues are not to be scraped, their
-  terms forbid it; nothing unreviewed is published.
+  attribution; other forecast services' spot catalogues are not to be scraped
+  without permission, their terms forbid it; nothing unreviewed is published.
 - *Blowing now*, a panel of live wind at recently discussed spots. Cut: a second
   consumer of forecast data, for decoration.
 
@@ -726,7 +724,7 @@ Measured in the repo, because the three sections are in very different states:
 
 | | Reads the tokens? | What changing the palette means |
 | --- | --- | --- |
-| **Marketplace** (`market/web/market.css`) | Entirely: 444 `var(--sem-*)`, 0 colour literals | **Nothing to do.** Change the token values and it is re-themed. Verified: the real page, running locally with only the tokens overridden, is the first screenshot in `docs/community-mockups/shots/08-*`. |
+| **Marketplace** (`market/web/market.css`) | Entirely: 444 `var(--sem-*)`, 0 colour literals | **Nothing to do.** Change the token values and it is re-themed. Verified on the real page, running locally with only the tokens overridden. |
 | **Community** | Will be built on them | Nothing to do |
 | **Site menu, Force5 components** | Entirely | Nothing to do |
 | **Wind map** (`src/styles.css`, `src/compact.css`, `src/dock.css`) | **Not at all: 237 colour literals, 0 tokens** | Real work, below |

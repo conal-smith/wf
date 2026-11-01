@@ -13,8 +13,6 @@
     <link rel="stylesheet" href="../components/figure/component.css" />
     <link rel="stylesheet" href="../components/tide-label/component.css" />
     <link rel="stylesheet" href="../components/kicker/component.css" />
-    <link rel="stylesheet" href="../components/lift/component.css" />
-    <link rel="stylesheet" href="../components/pen-note/component.css" />
     <style>
       /* The page: one sheet of paper with its grain; a mono label names each instance. */
       body {
@@ -88,13 +86,15 @@
         font-weight: var(--sem-font-weight-medium);
         font-variant-numeric: tabular-nums;
       }
-      .sd__wk {
-        display: inline-block;
-        transform: rotate(-2deg);
-      }
-      /* On a phone the note takes its own line under the head. */
+      /* The verdict in a line, in the body face. On a phone it takes its own
+         line under the head. */
       .sd__pn {
         flex-basis: 100%;
+        margin: 0;
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-body);
+        line-height: var(--sem-font-line-body);
+        color: var(--sem-color-ink-2);
       }
 
       /* ---- the hours: one row each, ruled in hairlines ---- */
@@ -212,11 +212,18 @@
       .sd__rows {
         isolation: isolate;
       }
-      .sd__lift {
+      /* The chosen hours outlined flat in ink, under the figures (src/dock.css
+         .tt-shown). */
+      .sd__shown {
+        position: absolute;
+        z-index: -1;
         top: calc(var(--sem-space-x2) * -1);
         left: calc(var(--sem-space-x3) * -1);
+        border-radius: var(--sem-radius-control);
+        box-shadow: inset 0 0 0 var(--sem-space-x0-5) var(--sem-color-ink);
+        pointer-events: none;
       }
-      .sd__lift--wide {
+      .sd__shown--wide {
         display: none;
       }
 
@@ -339,10 +346,10 @@
         .sd__rows td {
           height: calc(var(--sem-space-step) * 8.5);
         }
-        .sd__lift--phone {
+        .sd__shown--phone {
           display: none;
         }
-        .sd__lift--wide {
+        .sd__shown--wide {
           display: block;
         }
       }
@@ -355,9 +362,9 @@
         <div class="sd__h1">
           <h2 class="wf-section-heading__title" id="sd-day-6">Tuesday 6</h2>
           <span class="sd__best"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="54" height="10" viewBox="0 0 54 10" role="img" aria-label="4 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(16 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(27 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(38 5.4) scale(0.9615)" /><circle class="wf-star-glyphs__dot" cx="49" cy="5" r="0.7" /></svg> 18–19</span>
-          <span class="wf-pen-note wf-pen-note--sm sd__wk">best of the week</span>
+          <span class="wf-kicker wf-kicker--ink">best of the week</span>
         </div>
-        <p class="wf-pen-note wf-pen-note--sm sd__pn">Go 18:00 till dark. Four stars on a 6.5 m.</p>
+        <p class="sd__pn">Go 18:00 till dark. Four stars on a 6.5 m.</p>
       </div>
       <div class="sd__wrap">
         <table class="sd__rows">
@@ -455,7 +462,7 @@
               <td><svg class="sd__sky" viewBox="-9 -9 18 18" role="img" aria-label="cloud"><path class="sd__sky-cloud" transform="translate(0 0) scale(1)" d="M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z" /></svg><span class="sd__air">13°</span></td>
             </tr>
             <tr class="sd__row sd__row--sel" tabindex="0" aria-current="time">
-              <td class="sd__t">18<span class="wf-lift-card sd__lift sd__lift--phone" style="width: 114px; height: 92px" aria-hidden="true"></span><span class="wf-lift-card sd__lift sd__lift--wide" style="width: 114px; height: 84px" aria-hidden="true"></span></td>
+              <td class="sd__t">18<span class="sd__shown sd__shown--phone" style="width: 114px; height: 92px" aria-hidden="true"></span><span class="sd__shown sd__shown--wide" style="width: 114px; height: 84px" aria-hidden="true"></span></td>
               <td><svg class="wf-star-glyphs wf-star-glyphs--ink" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-star-glyphs__dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
               <td><span class="wf-wind-figure" role="img" aria-label="13 knots gusting 19"><span class="wf-wind-figure__value">13</span><span class="wf-wind-figure__sup">19</span></span></td>
               <td><span class="wf-wind-figure sd__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span></span></td>

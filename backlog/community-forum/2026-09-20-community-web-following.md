@@ -7,7 +7,6 @@ risk: normal
 epic: community-forum
 iteration: 1
 dependsOn: community-web-feed, community-follow-notify
-mockups: backlog/mockups/2026-09-20-community-atlantic.html
 ---
 
 # Following, Mentions and the bell

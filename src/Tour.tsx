@@ -1,5 +1,5 @@
 /**
- * The tour: seven cards, each with the pen's ring round the real thing on
+ * The tour: seven cards, each with a ring round the real thing on
  * the chart it is about (the lights, a spot's hours, sliding them, the loupe,
  * the blend, the menu, the layers), and a last card that offers Settings.
  * Back, Next, Skip tour, and Escape leaves. Its own chunk, fetched when the

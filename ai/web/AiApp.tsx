@@ -3,7 +3,7 @@
  * `src/main.tsx` lazy-loads it for /ai, so neither the map nor the other
  * sections pay for it.
  *
- * The approved mock-up is backlog/mockups/2026-10-26-ai-page.html (PR 236):
+ * As the approved design (PR 236) draws it:
  * the spot finder's header, one line, then a list of the apps, each its name
  * and one button. The button does what
  * ai/web/install.ts says for that app on this device: Claude opens with the

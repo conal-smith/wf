@@ -252,8 +252,8 @@ export function sample(
 export type Rgb = [number, number, number];
 
 /**
- * The wind scale, in knots: the same for every rider, as Windy, Windguru and
- * Windfinder draw theirs. Pale blue in a calm, deepening toward 10 kn; greens
+ * The wind scale, in knots: the same for every rider, as the common wind
+ * forecast sites draw theirs. Pale blue in a calm, deepening toward 10 kn; greens
  * from 10 to 20; yellow by the high 20s; orange to red from 30 to 40; red to
  * purple by 50; dark purple to nearly black past 60. Speed bands, not safety
  * or ability ratings: the stars are the rider's, the colours are not.

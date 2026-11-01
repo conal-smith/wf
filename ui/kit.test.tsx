@@ -23,9 +23,6 @@ import { noticeStyles } from "./Notice";
 import { pageHeaderStyles } from "./PageHeader";
 import { pagerStyles } from "./Pager";
 import { paneStyles } from "./Pane";
-import { penNoteStyles, penStyles } from "./Pen";
-import { strikePath, underlinePath } from "./penPaths";
-import { liftStyles } from "./Lift";
 import { puffinStyles } from "./Puffin";
 import { ratingTipStyles } from "./RatingTip";
 import { searchFieldStyles } from "./SearchField";
@@ -55,15 +52,12 @@ const {
   Figure,
   Headline,
   Kicker,
-  Lift,
   Link,
   Masthead,
   MastheadMark,
   Notice,
   Pager,
   Pane,
-  PenNote,
-  PenStrike,
   Puffin,
   SearchField,
   SectionHeading,
@@ -93,15 +87,12 @@ const RECIPES = {
   figureStyles,
   headlineStyles,
   kickerStyles,
-  liftStyles,
   linkStyles,
   mastheadStyles,
   noticeStyles,
   pageHeaderStyles,
   pagerStyles,
   paneStyles,
-  penNoteStyles,
-  penStyles,
   puffinStyles,
   ratingTipStyles,
   searchFieldStyles,
@@ -214,7 +205,6 @@ describe("S2: what ui/ exports", () => {
         "Figure",
         "Headline",
         "Kicker",
-        "Lift",
         "Link",
         "Masthead",
         "MastheadMark",
@@ -222,9 +212,6 @@ describe("S2: what ui/ exports", () => {
         "PageHeader",
         "Pager",
         "Pane",
-        "PenNote",
-        "PenStrike",
-        "PenUnderline",
         "Puffin",
         "RatingTip",
         "SearchField",
@@ -304,7 +291,7 @@ describe("S3: the chart's shapes", () => {
       expect(primary).toContain(name);
   });
 
-  it("the instrument is a raised paper button: a control's corner, round with an icon", () => {
+  it("the instrument is a raised button: a control's corner, round with an icon", () => {
     for (const icon of [false, true]) {
       const raised = buttonStyles({ variant: "raised", icon }).split(" ");
       expect(raised, String(icon)).toContain(
@@ -1243,54 +1230,6 @@ describe("the chart's own primitives", () => {
     );
   });
 
-  it("the pen's strokes are the same each time", () => {
-    expect(underlinePath(0, 3, 100)).toBe("M0.0 3.0 q50.0 -4 100.0 1");
-    expect(strikePath(100, 10)).toMatch(/^M4\.0 7\.2 L96\.0 3\.0$/);
-  });
-
-  it("the pen's marks are decoration, drawn in once and held for less motion", () => {
-    const stroke = penStyles().stroke().split(" ");
-    for (const name of ["stroke-pen", "animate-ink", "motion-reduce:animate-none"])
-      expect(stroke).toContain(name);
-    // Not laid out on the server: the strike is drawn over a measured box.
-    expect(html(<PenStrike>Brandon</PenStrike>)).toBe(
-      '<span class="relative inline-block">Brandon</span>',
-    );
-  });
-
-  it("a lift sets its words on raised paper, and is no control", () => {
-    const markup = html(<Lift>13:00</Lift>);
-    expect(markup).toBe(`<span class="${liftStyles()}">13:00</span>`);
-    for (const name of ["paper-float", "shadow-float", "rounded-control"])
-      expect(liftStyles().split(" ")).toContain(name);
-    expect(markup).not.toMatch(/role=|tabindex/);
-  });
-
-  it("the pen's note is the hand, in the pen's ink that reads", () => {
-    const markup = html(<PenNote>Go 13:00–16:00.</PenNote>);
-    expect(markup).toMatch(/^<p class="[^"]*font-hand[^"]*text-pen-ink/);
-  });
-
-  it("the pen's note takes the attributes it is given, and keeps its classes", () => {
-    const markup = html(
-      <PenNote
-        as="span"
-        size="sm"
-        id="n"
-        data-pen-note
-        aria-live="polite"
-        className="ml-1"
-      >
-        best of the week
-      </PenNote>,
-    );
-    expect(markup).toMatch(/^<span /);
-    expect(markup).toContain('id="n"');
-    expect(markup).toContain('data-pen-note="true"');
-    expect(markup).toContain('aria-live="polite"');
-    expect(markup).toMatch(/class="[^"]*font-hand[^"]*ml-1/);
-  });
-
   it("the puffin is decoration unless he is named", () => {
     expect(html(<Puffin />)).toContain('aria-hidden="true"');
     const named = html(<Puffin title="The Almanac" />);
@@ -1300,7 +1239,7 @@ describe("the chart's own primitives", () => {
     expect(named).toMatch(/fill="url\(#puffin-\S+?\)"/);
   });
 
-  it("the masthead is a banner on the double rule, with the name and section", () => {
+  it("the masthead is a banner on a soft line, with the name and section", () => {
     const markup = html(
       <Masthead>
         <a href="/market">
@@ -1311,7 +1250,8 @@ describe("the chart's own primitives", () => {
     expect(markup).toMatch(/^<header class="/);
     expect(markup).toContain("wingfoil");
     expect(markup).toContain(">Market</span>");
-    for (const name of ["border-b-3", "border-double", "border-ink"])
+    // A single soft line under it, in either theme (the 2026-10-31 ruling).
+    for (const name of ["border-b", "border-line"])
       expect(mastheadStyles().bar().split(" ")).toContain(name);
   });
 });

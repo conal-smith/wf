@@ -24,9 +24,9 @@ export const mastheadStyles = tv({
   slots: {
     // Clear of a notch at the top: the larger of the step and the inset.
     base: "sticky top-0 z-header bg-ground paper-grain pt-safe-2",
-    // `border-0` first: the site has no reset, and `border-double` sets the
+    // `border-0` first: the site has no reset, and a border would set the
     // style of all four sides, whose width is otherwise the browser's medium.
-    bar: "flex min-h-14 items-center gap-3 border-0 border-b-3 border-double border-ink pb-2 max-wide:gap-2",
+    bar: "flex min-h-14 items-center gap-3 border-0 border-b border-line pb-2 max-wide:gap-2",
     // On a phone the section stands under the name rather than beside it, so
     // the menu, the name and two actions share 390px.
     brand: [

@@ -47,9 +47,6 @@ export {
 } from "./PageHeader";
 export { Pager, type PagerProps } from "./Pager";
 export { Pane, type PaneProps } from "./Pane";
-export { Lift, liftStyles, type LiftProps } from "./Lift";
-export { PenNote, PenStrike, PenUnderline, type PenNoteProps } from "./Pen";
-export { strikePath, underlinePath } from "./penPaths";
 export { Puffin, type PuffinProps } from "./Puffin";
 export { RatingTip, ratingTipStyles, type RatingTipProps } from "./RatingTip";
 export { SearchField, type SearchFieldProps } from "./SearchField";

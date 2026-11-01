@@ -9,7 +9,7 @@ import { DISABLED, HOVER, RING, tv, type VariantProps } from "./tv";
 /*
  * Every button speaks in the mono label: tracked capitals in IBM Plex Mono,
  * as the chart's own controls do. The shapes are the chart's too: a capsule
- * ruled in ink, filled in ink when it is the one action, and a raised paper
+ * ruled in ink, filled in ink when it is the one action, and a raised
  * button for an instrument laid over the map. A filled ink control carries
  * the ink sheen, a raised one the paper's; both nudge down a pixel when
  * pressed. Nothing larger than a control is lit.
@@ -43,7 +43,7 @@ export const buttonStyles = tv({
         "disabled:border-line disabled:bg-transparent",
       ],
       /*
-       * The chart's instrument: a raised paper button ruled in ink, for a
+       * The chart's instrument: a raised button ruled in ink, for a
        * control laid over the moving map or heading a page (the site menu),
        * lit from above with a lip and a contact shadow of its own. A
        * control's corner with words in it; round with an icon.

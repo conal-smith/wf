@@ -87,7 +87,6 @@
   --ref-font-family-display: "Fraunces Variable", Fraunces, Georgia, "Times New Roman", serif;
   --ref-font-family-body: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --ref-font-family-mono: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --ref-font-family-hand: Kalam, "Bradley Hand", "Segoe Print", cursive;
   --ref-font-weight-400: 400;
   --ref-font-weight-500: 500;
   --ref-font-weight-600: 600;
@@ -231,7 +230,6 @@
   --sem-font-family-display: var(--ref-font-family-display);
   --sem-font-family-body: var(--ref-font-family-body);
   --sem-font-family-mono: var(--ref-font-family-mono);
-  --sem-font-family-hand: var(--ref-font-family-hand);
   --sem-font-family-ui: var(--ref-font-family-body);
   --sem-font-weight-normal: var(--ref-font-weight-400);
   --sem-font-weight-medium: var(--ref-font-weight-500);
@@ -341,7 +339,6 @@
   --sem-animate-dialog-in: dialog-in 150ms ease backwards;
   --sem-animate-scrim-in: scrim-in 150ms ease backwards;
   --sem-animate-menu-in: menu-in 150ms ease both;
-  --sem-animate-ink: ink 750ms cubic-bezier(0.5, 0.1, 0.3, 1) both;
   --sem-animate-bob: bob 6s ease-in-out infinite;
   --sem-z-index-popover: var(--ref-z-6);
   --sem-z-index-panel: var(--ref-z-15);

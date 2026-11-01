@@ -18,7 +18,7 @@ A locally runnable, responsive wingfoil.ie map using a genuine, timestamped fore
 - Download forecast hours 0–72 at three-hour intervals by default. Label this cadence honestly. No invented hourly forecast or gust interpolation across incompatible statistical periods.
 - Store a cropped regular grid in each JSON file; static hosting/CDN suffices for this MVP. No database, cloud account, API secrets, or deployment required.
 - Use MapLibre for geography. The MVP particle animation uses a Canvas overlay; the heatmap is rendered by MapLibre's GPU raster layer. A GPU particle implementation is a later optimisation based on mobile measurements.
-- OpenFreeMap's public vector basemap with attribution and a configurable replacement style. Weather frames are self-served, not scraped from Windy.
+- OpenFreeMap's public vector basemap with attribution and a configurable replacement style. Weather frames are self-served, not scraped from other forecast services.
 - Approximate coastline forecasts remain model grid estimates, not launch-site measurements. No tides, waves, alerts, marketplace, accounts or automated safety judgments in this feature.
 
 ## Acceptance criteria

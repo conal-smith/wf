@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { expect, test, type Page } from "./fixtures";
+import { openDay } from "./spotTable";
 import { SAMPLE_CLOCK } from "./columns";
 
 /**
@@ -155,6 +156,7 @@ test("a spot page lists its warnings, and orange and red stand in for the stars"
   ).toHaveAttribute("href", "https://www.met.ie/warnings");
   await shot(page, "spot-page-warnings");
 
+  await openDay(page, tomorrow(12));
   // Orange: the mark where the stars were, for each hour it covers.
   for (const hour of [12, 13, 14]) {
     const cell = row(page, tomorrow(hour)).locator("[data-hour-warning]");
@@ -192,6 +194,7 @@ test("a spot page lists its warnings, and orange and red stand in for the stars"
   await page.keyboard.press("Escape");
 
   // Red, the day after: the same.
+  await openDay(page, at(27 + 11));
   await expect(
     row(page, at(27 + 11)).locator(
       '[data-hour-warning="red"] [data-warning-mark="red"]',
@@ -282,7 +285,7 @@ for (const { width, height } of [
       expect(box.x + box.width).toBeLessThanOrEqual(width);
     }
 
-    const days = page.locator("[data-day]").first();
+    const days = page.locator("[data-day-card]").first();
     const without = async () => {
       await page.unroute("**/marine/warnings.json");
       await withWarnings(page, { ...fresh(), warnings: [] });
@@ -292,18 +295,10 @@ for (const { width, height } of [
       return (await days.boundingBox())!.y;
     };
     const withFour = (await days.boundingBox())!.y;
-    if (width >= 1280) {
-      // A screen with a margin: the list stands in it, and the forecast
-      // starts where it would with no warnings at all, on the first screen.
-      expect(withFour).toBeLessThan(height);
-      await shot(page, "spot-page-four-warnings");
-      expect(Math.abs(withFour - (await without()))).toBeLessThanOrEqual(1);
-    } else {
-      // In the column, a line or two each: four push the forecast down by
-      // less than the picture's height.
-      await shot(page, `spot-page-four-warnings-${width}`);
-      expect(withFour - (await without())).toBeLessThan(height / 2);
-    }
+    // Above the report, a line or two each: four push the forecast down by
+    // less than half a screen.
+    await shot(page, `spot-page-four-warnings-${width}`);
+    expect(withFour - (await without())).toBeLessThan(height / 2);
   });
 
 test("a warnings file too old to trust shows nothing but the link to met.ie", async ({
@@ -312,7 +307,7 @@ test("a warnings file too old to trust shows nothing but the link to met.ie", as
   await withWarnings(page, file(new Date(clock - 4 * HOUR).toISOString()));
   await page.goto("/spot/brandon");
   await expect(heading(page)).toBeVisible({ timeout: 30000 });
-  await expect(page.locator("[data-day]").nth(1)).toBeVisible();
+  await expect(page.locator("[data-day-card]").nth(1)).toBeVisible();
   await expect(page.locator("[data-warnings]")).toHaveCount(0);
   await expect(page.locator("[data-hour-warning]")).toHaveCount(0);
   await expect(

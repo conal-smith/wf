@@ -10,9 +10,6 @@
     <link rel="stylesheet" href="../components/chip/component.css" />
     <link rel="stylesheet" href="../components/figure/component.css" />
     <link rel="stylesheet" href="../components/star-glyphs/component.css" />
-    <link rel="stylesheet" href="../components/lift/component.css" />
-    <link rel="stylesheet" href="../components/pen-note/component.css" />
-    <link rel="stylesheet" href="../components/pen-strike/component.css" />
     <style>
       /* The page: one sheet of paper with its grain; a mono label names each instance. */
       body {
@@ -155,15 +152,17 @@
         flex-direction: column;
         gap: var(--sem-space-x1);
       }
-      /* The price, and the pen's "new" a loop's reach off it. */
+      /* The price, and "new" in a chip beside it. */
       .lc__head {
         display: flex;
         align-items: center;
-        gap: var(--sem-space-x5);
+        gap: var(--sem-space-x2);
         min-height: var(--sem-space-x7);
       }
-      .lc__fresh {
-        display: inline-block;
+      /* A sold price, struck through and muted. */
+      .lc__sold {
+        color: var(--sem-color-ink-muted);
+        text-decoration: line-through;
       }
       .lc__title {
         display: -webkit-box;
@@ -241,7 +240,7 @@
         <span class="wf-kicker lc__kicker"><span class="lc__where"><span class="lc__sr">In </span>Lahinch, Clare</span><span>1d</span></span>
         <span class="lc__media"><span class="lc__photo lc__photo--2" role="presentation"></span></span>
         <span class="lc__body">
-          <span class="lc__head"><span class="wf-figure" role="img" aria-label="140 euro"><span class="wf-figure__value">€140</span></span><span class="wf-lift lc__fresh"><span class="wf-pen-note wf-pen-note--sm">new</span></span></span>
+          <span class="lc__head"><span class="wf-figure" role="img" aria-label="140 euro"><span class="wf-figure__value">€140</span></span><span class="wf-chip wf-chip--eyebrow">new</span></span>
           <span class="lc__title" role="heading" aria-level="3">Impact vest and quick-release harness</span>
           <span class="lc__meta"><span class="wf-kicker lc__condition">Like new</span><span title="Seller rated 4.8"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="4.8 out of 5"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(14.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(24.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(44.5 4.9) scale(0.8654)" /></svg></span></span>
         </span>
@@ -250,7 +249,7 @@
         <span class="wf-kicker lc__kicker"><span class="lc__where"><span class="lc__sr">In </span>Malahide, Dublin</span><span>5d</span></span>
         <span class="lc__media"><span class="lc__photo lc__photo--3" role="presentation"></span><span class="wf-chip wf-chip--glass wf-chip--eyebrow lc__badge">Sold</span><span class="wf-chip wf-chip--glass lc__count"><svg class="wf-chip__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3" /></svg><span class="lc__sr">Photos:</span> 2</span></span>
         <span class="lc__body">
-          <span class="lc__head"><span class="wf-pen-strike"><span class="wf-figure" role="img" aria-label="120 euro, sold"><span class="wf-figure__value">€120</span></span><svg class="wf-pen-strike__mark" viewBox="0 0 46 19" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path class="wf-pen-strike__stroke" d="M1.8 13.7 L44.2 5.7" pathLength="1" stroke-dasharray="1" /></svg></span></span>
+          <span class="lc__head"><span class="wf-figure lc__sold" role="img" aria-label="120 euro, sold"><span class="wf-figure__value">€120</span></span></span>
           <span class="lc__title" role="heading" aria-level="3">5/4 winter wetsuit, large</span>
           <span class="lc__meta"><span class="wf-kicker lc__condition">Good</span><span title="Seller rated 4.4"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="4.4 out of 5"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(14.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(24.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.0978" transform="translate(44.5 4.9) scale(0.8654)" /></svg></span></span>
         </span>

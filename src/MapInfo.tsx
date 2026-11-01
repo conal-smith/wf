@@ -868,9 +868,9 @@ function AboutPart() {
         The chart <small>our look</small>
       </h4>
       <p>
-        An Admiralty chart crossed with a broadsheet&rsquo;s weather column:
-        paper, ink, the chart&rsquo;s magenta for the best, and the hour you are
-        reading lifted off the page on a card.
+        A plain chart in white or dark, set in Inter with Fraunces for names:
+        the chart&rsquo;s magenta for the best, red for the time now, and the
+        hour you are reading outlined.
       </p>
     </>
   );

@@ -1,7 +1,7 @@
 /*
  * The dock: the chosen spot's week as one strip of hours, scrolled by hand or
- * stepped from the keys, the chosen hour lifted on a card and the time now
- * ruled down it in red. A sheet standing on the foot of the screen (mixed and
+ * stepped from the keys, the chosen hour outlined and the time now ruled down
+ * it in red. A sheet standing on the foot of the screen (mixed and
  * rounded, 2026-10-24): flat paper, the ink rule and its hairline round the
  * top and sides, a sheet's corner at the top, and the sheet's stacked shadow
  * cast upward over the chart. The day rules inside it stay square. Figures
@@ -262,7 +262,7 @@
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
-  /* Room for the foot of the chosen hour's card, which overflow-y would clip. */
+  /* Room for the foot of the chosen hour's outline, which overflow-y would clip. */
   padding-bottom: 5px;
 }
 .tt-wrap::-webkit-scrollbar {
@@ -371,8 +371,8 @@ table.tt {
 .tt td.past {
   opacity: 0.42;
 }
-/* The chosen hour, written a little larger on its card (.tt-card), which is
-   the rest of the mark. */
+/* The chosen hour, written a little larger inside its outline (.tt-shown),
+   which is the rest of the mark. */
 .tt tr.tt-hour td.c-sel {
   font-size: 12px;
   font-weight: 650;
@@ -430,38 +430,23 @@ table.tt {
   stroke-width: 1.2;
   opacity: 0.5;
 }
-/* The chosen hour's card: raised paper under the column's figures, from its
-   hour down, with an ink tab at its foot. It springs from hour to hour
-   (ForecastDock places it with a transform, so the move is the
-   compositor's). */
-.tt-card {
+/* The chosen hour's outline: an ink ring inside the column, from its hour
+   down, flat, as the Spot finder marks the hour shown (src/finder/DayHours.tsx).
+   It slides from hour to hour (ForecastDock places it with a transform, so the
+   move is the compositor's). */
+.tt-shown {
   position: absolute;
   left: 0;
   top: 0;
   border-radius: var(--radius-control);
-  background: var(--color-card) var(--gradient-raised);
-  box-shadow:
-    var(--shadow-raised),
-    0 10px 22px -10px color-mix(in srgb, var(--color-ink) 45%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--color-ink) 12%, transparent);
+  box-shadow: inset 0 0 0 2px var(--color-ink);
   pointer-events: none;
   transition:
-    transform 0.42s cubic-bezier(0.34, 1.36, 0.5, 1),
+    transform 0.2s ease-out,
     width 0.2s ease-out;
 }
-.tt-card::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 4px;
-  width: 16px;
-  height: 3px;
-  margin-left: -8px;
-  border-radius: 3px;
-  background: var(--color-ink);
-}
 @media (prefers-reduced-motion: reduce) {
-  .tt-card {
+  .tt-shown {
     transition: none;
   }
 }
@@ -475,7 +460,7 @@ table.tt {
 /* The time now, a red line down the hours fading as it goes, and where the
    stars hand over to the next model, dashed in ink: lines only, with no
    words written by them. */
-.pen-now {
+.tt-now {
   fill: none;
   stroke: url(#now-fade);
   stroke-width: 2;
@@ -488,7 +473,7 @@ table.tt {
   stop-color: var(--color-pen);
   stop-opacity: 0.1;
 }
-.pen-handover {
+.tt-handover {
   fill: none;
   stroke: var(--color-ink);
   stroke-width: 1.2;

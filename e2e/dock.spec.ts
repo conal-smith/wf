@@ -112,7 +112,7 @@ const slider = (page: Page) =>
 /**
  * How far, in pixels, the selected hour is from where the strip stands: the
  * scroll against the one that brings that hour to the strip's middle (its
- * snap mark), and the card against the hour's own column.
+ * snap mark), and the outline against the hour's own column.
  */
 async function offCursor(page: Page) {
   return page.evaluate(() => {
@@ -120,7 +120,7 @@ async function offCursor(page: Page) {
     const cell = document.querySelector<HTMLElement>(
       ".dock tr.tt-hour td.c-sel",
     );
-    const frame = document.querySelector(".dock .tt-card");
+    const frame = document.querySelector(".dock .tt-shown");
     if (!wrap || !cell || !frame) return Infinity;
     const snap =
       wrap.querySelectorAll<HTMLElement>(".tt-snaps i")[Number(cell.dataset.i)];
@@ -251,7 +251,7 @@ test("the week is one strip of hours round the clock, with no day slider over it
   await expect(tide.locator(".tide-line").first()).toBeAttached();
   await expect(tide.locator("text, title, circle")).toHaveCount(0);
   // The time is a slider still, for the keys and a screen reader, named
-  // by its day and hour; on the screen it is the pen's frame round an hour.
+  // by its day and hour; on the screen it is the outline round an hour.
   await expect(slider(page)).toHaveAttribute(
     "aria-valuetext",
     /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} [A-Z][a-z]{2,3}, \d\d:\d\d$/,
@@ -406,7 +406,7 @@ test("a night hour is a column of its own: tapped, keyed and under the line", as
   await expect(slider(page)).toHaveValue(String(now));
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   // The small hours of Monday: a tap on one selects it, the slider says so,
-  // and the pen's frame goes round that column, not the morning's.
+  // and the outline goes round that column, not the morning's.
   const small = sampleStrip.findIndex(
     (c) => c.date !== sampleStrip[0].date && c.hour === 3,
   );
@@ -1889,13 +1889,12 @@ for (const width of [390, 1440])
     // The spot's name opens its page, which says all of it.
     await dock.getByRole("link", { name: "Brandon Bay, spot page" }).click();
     await expect(page).toHaveURL(/\/spot\/brandon$/);
+    // On the Sea card, one short line; the station and its age on hover.
     const water = page.locator("[data-sea-temperature]");
-    await expect(water).toHaveText(
-      "Water 14.5 °C measured 2 h ago at the M3 weather buoy, 46 km from here: the nearest station reporting, and the water at the shore can differ.",
-      { timeout: 30000 },
-    );
-    await expect(page.locator("[data-sources]")).toContainText(
-      "Water temperature: M3, 45.5 km away, read",
+    await expect(water).toContainText("water 14.5 °C", { timeout: 30000 });
+    await expect(water).toHaveAttribute(
+      "title",
+      "Measured 2 h ago at the M3 weather buoy, 46 km from here",
     );
   });
 

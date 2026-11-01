@@ -7,7 +7,6 @@ risk: normal
 epic: community-forum
 iteration: 1
 dependsOn: community-web-shell
-mockups: backlog/mockups/2026-09-20-community-atlantic.html
 ---
 
 # Home feed, channel page and the new-thread dialog

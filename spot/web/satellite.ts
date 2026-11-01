@@ -35,6 +35,8 @@ export interface SpotPictures {
   width: number;
   height: number;
   attribution: string;
+  /** Cut with scripts/satellite/spots.py's enhance(); absent on older sets. */
+  enhanced?: boolean;
   spots: SpotPictureEntry[];
 }
 
@@ -117,7 +119,16 @@ export interface SpotPicture {
   at: { x: number; y: number };
   metresPerPixel: number;
   attribution: string;
+  /**
+   * Cut clearer already. An older set's hazy pictures are lifted on the page
+   * instead (`lift`: a little contrast and colour, as the mock-ups chose).
+   */
+  enhanced: boolean;
 }
+
+/** The classes that lift a hazy picture, or none for one cut clearer. */
+export const lift = (picture: { enhanced: boolean }) =>
+  picture.enhanced ? "" : "contrast-115 saturate-120";
 
 /**
  * The place's picture, with where the place is in it: at its centre, unless
@@ -144,6 +155,7 @@ export function spotPicture(
     at: { x, y },
     metresPerPixel: metresPerPixel(spot.lat, pictures.zoom),
     attribution: pictures.attribution,
+    enhanced: pictures.enhanced === true,
   };
 }
 

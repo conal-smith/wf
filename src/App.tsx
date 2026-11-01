@@ -17,7 +17,13 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { List as ListGlyph, Map as MapGlyph, Maximize2, X } from "lucide-react";
+import {
+  List as ListGlyph,
+  Map as MapGlyph,
+  Maximize2,
+  Waves,
+  X,
+} from "lucide-react";
 import { Button } from "../ui/Button";
 import type {
   ChartLayers,
@@ -254,6 +260,10 @@ const PHONE = "(max-width: 720px)";
 const NO_NAMES: ReadonlySet<string> = new Set();
 /** Room for the chart beside the spot finder's list, as the home page has it. */
 const SPLIT = "(min-width: 1100px)";
+/** The wind beside the list: no colour and no particles (the map is plain there). */
+const PLAIN_WIND = { wash: false, particles: false } as const;
+/** No foilable depth beside the list, the same empty list every render. */
+const NO_FOIL: FoilView[] = [];
 /** How long the chart takes to open out from beside the list, or back. */
 const OPEN_MS = 420;
 
@@ -2290,6 +2300,20 @@ export default function App() {
    * Where the chart is: opened out over the whole screen, standing beside
    * the list, or (under the width for that) out of sight behind it.
    */
+  // The chart's own layers off beside the list, its names kept. The same
+  // object from one render to the next, so the map is not told it again.
+  const plainLayers = useMemo(
+    () => ({
+      ...layers,
+      tints: false,
+      soundings: false,
+      relief: false,
+      foil: false,
+      currents: false,
+      rain: false,
+    }),
+    [layers],
+  );
   const mode = onChart ? "full" : split && panelBox ? "panel" : "hidden";
   const skip = !onChart ? SKIP.list : dockOpen ? SKIP.dock : SKIP.search;
   const skipTo = (event: React.MouseEvent) => {
@@ -2439,6 +2463,26 @@ export default function App() {
                       {panelWhen}
                     </span>
                   )}
+                  <div
+                    className="panel-modes"
+                    role="group"
+                    aria-label="The map"
+                    data-panel-modes
+                  >
+                    <Button variant="pill" size="sm" pressed>
+                      Spots
+                    </Button>
+                    <Button
+                      variant="raised"
+                      size="sm"
+                      className="panel-chart"
+                      onClick={openChart}
+                      data-panel-chart
+                    >
+                      <Waves size={15} strokeWidth={1.75} aria-hidden="true" />
+                      Chart
+                    </Button>
+                  </div>
                 </div>
               )}
               {onChart && (
@@ -2518,12 +2562,15 @@ export default function App() {
                     }
                     covered={() => !!document.querySelector(OVER_THE_CHART)}
                     onPick={tapChart}
-                    wind={wind}
-                    layers={layers}
-                    foil={foilViews}
-                    currents={currents.features}
-                    rain={rain.view}
-                    satellite={satellite.image}
+                    // Beside the list the map is plain, every layer off but the
+                    // names: the chart's layers are the full chart's (the Spot
+                    // finder mock-up, 2026-10-31).
+                    wind={onChart ? wind : PLAIN_WIND}
+                    layers={onChart ? layers : plainLayers}
+                    foil={onChart ? foilViews : NO_FOIL}
+                    currents={onChart ? currents.features : null}
+                    rain={onChart ? rain.view : null}
+                    satellite={onChart ? satellite.image : null}
                     reducedMotion={reducedMotion}
                     bottomInset={dockOpen ? dockHeight : 0}
                     phone={phone}

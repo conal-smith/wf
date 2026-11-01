@@ -3,7 +3,7 @@ import { expect, SPOTS_KEY, test, type Page } from "./fixtures";
 /**
  * The home page: the spot finder's list, with the chart beside it on a wide
  * screen, and the full chart opened out of it (src/App.tsx, the approved
- * mock-up backlog/mockups/2026-10-26-spot-finder-chart.html). One map, never
+ * mock-up, #238). One map, never
  * taken down: the panel beside the list and the full chart are the same map
  * in a bigger box.
  */
@@ -115,7 +115,7 @@ test.describe("on a wide screen", () => {
     await page.waitForTimeout(500);
     await expect(page.locator(".dock")).toHaveCount(0);
     await expect(page).toHaveURL(/\/$/);
-    // No loupe and no pen beside the list.
+    // No loupe and no range ring beside the list.
     await expect(page.locator(".map-focus > *")).toHaveCount(0);
     expect(errors).toEqual([]);
   });
@@ -146,11 +146,24 @@ test.describe("on a wide screen", () => {
     await expect(page.locator(".map-lights.is-moving")).toHaveCount(0);
     await page.waitForTimeout(400);
     await expect(page.locator(".map-lights.is-moving")).toHaveCount(0);
-    await page.locator('.spot-marker[data-spot-id="dollymount"]').hover();
-    await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveAttribute(
-      "data-lit",
-      "",
-    );
+    // Brandon's light, which its card has just brought to the chart's middle.
+    // Not Dollymount's: the hovers have panned the chart west (a card whose
+    // light sits near the edge pans it to the middle, src/chartPanel.ts
+    // inView), and Dublin is off the chart, a light nobody can point at. The
+    // test's hover scrolled the clipped chart to reach it, and the light then
+    // slid from under the pointer.
+    const brandon = page.locator('.spot-marker[data-spot-id="brandon"]');
+    const box = (await panel(page).boundingBox())!;
+    const at = (await brandon.boundingBox())!;
+    expect(at.x).toBeGreaterThan(box.x);
+    expect(at.x + at.width).toBeLessThan(box.x + box.width);
+    expect(at.y).toBeGreaterThan(box.y);
+    expect(at.y + at.height).toBeLessThan(box.y + box.height);
+    await brandon.hover();
+    await expect(
+      cards(page).filter({ hasText: "Brandon Bay" }),
+    ).toHaveAttribute("data-lit", "");
+    await expect(page.locator("[data-spot-card][data-lit]")).toHaveCount(1);
     expect(
       await page.evaluate(
         () => document.querySelector(".map-canvas")?.className ?? "",

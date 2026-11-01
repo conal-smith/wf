@@ -7,7 +7,6 @@ risk: normal
 epic: community-forum
 iteration: 1
 dependsOn: ui-kit, shared-web-extract, community-api-core
-mockups: backlog/mockups/2026-09-20-community-atlantic.html
 ---
 
 # Community web bundle: routing, shell, rail, API client

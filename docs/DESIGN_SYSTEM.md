@@ -31,7 +31,7 @@ the two disagree. So **a value changes in both places, together**: edit
 ### Shape and elevation (mixed and rounded, 24 October 2026)
 
 The owner approved the "mixed and rounded" treatment on 24 October 2026 (the
-`body.mixed` style of `backlog/mockups/2026-10-24-layer-rail.html`; the
+layer rail's "Mixed" style; the
 ruling is in [DESIGN_PRINCIPLES.md](DESIGN_PRINCIPLES.md#rulings)). The rule,
 as the tokens hold it:
 
@@ -47,9 +47,9 @@ as the tokens hold it:
 | `--shadow-sheet` | `sem.shadow.sheet` | `0 1px 1px #1a1d211a, 0 6px 12px -4px #1a1d2124, 0 24px 48px -16px #3c2d1480` | a dialog or a sheet |
 | `--shadow-dock` | `sem.shadow.dock` | the sheet's stack with each offset upward | the dock, on the foot of the screen |
 | `--shadow-control` | `sem.shadow.control` | `inset 0 1px 0 #ffffff2e, 0 1px 2px #1a1d2150` | a pressed or filled ink control |
-| `--shadow-raised` | `sem.shadow.raised` | `inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126` | a raised paper button |
+| `--shadow-raised` | `sem.shadow.raised` | `inset 0 1px 0 #ffffff, 0 1px 2px #1a1d2126` | a raised button |
 | `--gradient-ink` (`sheen-ink`) | `sem.gradient.ink` | `linear-gradient(180deg, #33373d, #15171a)` | under a pressed or filled ink control |
-| `--gradient-raised` (`sheen-raised`) | `sem.gradient.raised` | `linear-gradient(180deg, #ffffff, #f0eadd)` | under a raised paper button |
+| `--gradient-raised` (`sheen-raised`) | `sem.gradient.raised` | `linear-gradient(180deg, #ffffff, #f0eadd)` | under a raised button |
 | `--gradient-float` (`paper-float`) | `sem.gradient.float` | `linear-gradient(180deg, #f6f2e9, #f1ebdf)` | under the grain of a small box over the chart |
 
 A box is `border border-ink inset-shadow-frame` plus its corner and its
@@ -106,7 +106,6 @@ The door reads the folder live and never writes to it; a commit or a
 `npm run design:build` shows up on the next read. If the folder moves, the
 row says so and offers **Re-point…**.
 
-The faces (Fraunces, Newsreader, IBM Plex Mono, Kalam) are named by the
-tokens but not shipped in the bundle; the door and the catalog draw them where
-they are installed, and fall back to Georgia and the system monospace
-otherwise. `catalog/index.html` opens directly in a browser too.
+The faces (Fraunces and Inter) are named by the tokens but not shipped in
+the bundle; the door and the catalog draw them where they are installed, and
+fall back to Georgia and the system sans otherwise. `catalog/index.html` opens directly in a browser too.

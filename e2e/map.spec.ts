@@ -181,12 +181,11 @@ test("finding a spot flies there and focuses it, with no box over the map; Escap
         .evaluate((el) => Number(getComputedStyle(el).opacity)),
     )
     .toBe(1);
-  // Its light is lifted off the chart, and nothing is written beside it:
-  // the dock has the hour.
+  // Its light is the selected one, a size up, and nothing is written beside
+  // it: the dock has the hour.
   await expect(page.locator('[data-spot-id="dollymount"]')).toHaveClass(
     /\bsel\b/,
   );
-  await expect(page.locator(".map-pen")).toHaveCount(0);
   // A range ring is drawn round it, by default, under the lights.
   await expect(page.locator(".map-focus")).toHaveAttribute(
     "data-focus",
@@ -620,7 +619,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   await expect(focus).toHaveAttribute("data-focus", "ring");
   await expect(focus.locator(".map-loupe-rim")).toHaveCount(0);
   await expect(focus.locator(".map-range-label")).toHaveText(/^[\d.]+ NM$/);
-  // Nothing at all: the ring that is on, pressed again. The lifted light
+  // Nothing at all: the ring that is on, pressed again. The selected light
   // alone marks the spot.
   await choice.getByRole("button", { name: "Range ring" }).click();
   await expect(focus).toHaveAttribute("data-focus", "off");

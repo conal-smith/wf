@@ -61,7 +61,7 @@ for (const place of places.length ? places : ["kilcrea:1"]) {
       await page.waitForTimeout(700);
     }
     await page.addStyleTag({
-      content: ".particle-canvas, .map-pen { visibility: hidden !important; }",
+      content: ".particle-canvas { visibility: hidden !important; }",
     });
     // Every tile in: the network quiet for a while.
     await page.waitForLoadState("networkidle").catch(() => {});

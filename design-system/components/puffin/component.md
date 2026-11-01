@@ -1,7 +1,7 @@
 # Puffin
 
 The Almanac's own bird (`ui/Puffin.tsx`, `puffinStyles`), standing on his
-rock at the foot of the pen's note. He signs the house's word; he does not
+rock at the foot of a note. He signs the house's word; he does not
 talk.
 
 ## Anatomy

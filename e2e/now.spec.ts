@@ -6,8 +6,8 @@ const harmonie = readSample("harmonie");
 
 /**
  * The hours already gone are drawn faint, the page opens on the hour now, and
- * the red pen rules a line down the strip at the time now, the time written
- * over it. Which hours are gone is the clock's business, never the
+ * a red line is ruled down the strip at the time now, the time written over
+ * it. Which hours are gone is the clock's business, never the
  * selection's.
  */
 test("the strip opens on now and fades the hours gone, whatever is selected", async ({
@@ -60,7 +60,7 @@ test("at night the strip opens on the hour now, a night column of its own", asyn
   await expect(hour).toHaveClass(/\bc-sel\b/);
 });
 
-test("the pen rules a line at the time now, between the hours, and writes nothing by it", async ({
+test("a red line is ruled at the time now, between the hours, and writes nothing by it", async ({
   page,
 }) => {
   // 16:30 Irish time: half way from 16's column to 17's.
@@ -76,7 +76,7 @@ test("the pen rules a line at the time now, between the hours, and writes nothin
   const strip = stripAt(now);
   const lineAt = () =>
     mark
-      .locator(".pen-now")
+      .locator(".tt-now")
       .evaluate((p) => Number(p.getAttribute("d")!.match(/^M([\d.]+)/)![1]));
   const centre = (i: number) =>
     page

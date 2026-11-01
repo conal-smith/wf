@@ -84,7 +84,7 @@ describe("on the chart", () => {
    * The trigger is the kit's own button, not one that looks like it: every
    * class of the kit's (its hover and ring included), and only the menu's
    * hit band on top. On either ground it is the round menu button: the
-   * kit's raised paper button with an icon in it (mixed and rounded,
+   * kit's raised button with an icon in it (mixed and rounded,
    * 2026-10-24).
    */
   it("draws the trigger as exactly the kit's button: the round raised menu button on either ground", () => {

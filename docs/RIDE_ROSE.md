@@ -8,8 +8,7 @@ from this beach, the no-go upwind, the slow water downwind, where they would
 drift, the wind
 directions that are offshore here, the wind's needle, and the reading at the
 foot ("NE 22 g27 · CROSS"). It is the mockup's recommended design
-(`wingfoil-mockups/loupe-purpose`, design 1 with design 2's needle and box,
-without the 12-hour trail), approved by the owner on 19 October 2026.
+(design 1 with design 2's needle and box, without the 12-hour trail), approved by the owner on 19 October 2026.
 
 - Geometry: `force5/src/rideWedge.ts` (`rideRange`, `rideRose`,
   `offshoreSpans`) and `force5/src/focus.ts` (`roseScale`, `roseRadius`,
@@ -180,10 +179,10 @@ sharp 10° more (never over 45°).
     degrees relative to the wind)"), so a "30°" claim may mean 60° off the
     wind.
 - **About 60° for a riding rider.** This is the only measured wing data found,
-  from a GPS track on seabreeze.com.au: "122° between tacks which is 61
-  degrees from straight upwind", in light open-ocean wind. A reply called
-  about 50° realistic on flat water and 60° "very impressive for a wing"
-  (<https://www.seabreeze.com.au/forums/Wing-Foiling/Wind-Wings/Any-tips-how-to-go-up-wind->).
+  from a GPS track posted on a windsurf and kite forum: "122° between tacks
+  which is 61 degrees from straight upwind", in light open-ocean wind. A reply
+  called about 50° realistic on flat water and 60° "very impressive for a
+  wing".
 - **A beam reach at best for a learner.** Coaching tells beginners to
   "concentrate on sailing at 90 degrees or slightly more off the wind"
   (<https://go-wingfoil.com/wing-foiling-undertanding-points-of-sailing/>), and
@@ -193,18 +192,15 @@ sharp 10° more (never over 45°).
 - **Light wind costs about 15°.** (Used from 19 to 24 October 2026; since
   the owner's ruling of 24 October the rose uses one angle in every wind.) A top Formula windsurfer reports "<10 knots
   = 60-65 deg, >10 knots = 55 deg, >20 knots = 49 deg" off the true wind
-  (<https://www.seabreeze.com.au/forums/Windsurfing/General/Formula-Racing>),
-  which is 10–15° worse in light air. A wing foiler at the floor also slips off
+  (on the same forum), which is 10–15° worse in light air. A wing foiler at the floor also slips off
   the foil when pointing high, which "bleeds speed"
   (<https://parawingfoil.com/wingfoil/guides/why-cant-i-get-on-foil/>). We
   use +15°. This is extrapolated, so treat it as a guess.
 - **Overpowered costs about 5°.** The sources only describe this
-  qualitatively: a rider gets "knocked around" by the wing
-  (<https://www.seabreeze.com.au/forums/Wing-Foiling/Wind-Wings/What-affects-upwind-ability-winging?page=1>).
+  qualitatively: a rider gets "knocked around" by the wing (the same forum).
   We used +5° and narrowed the downwind side a little, until 24 October 2026.
 - **Gear.** A high-aspect foil, a longer mast, a harness and a race wing all
-  point higher (same thread, and
-  <https://www.seabreeze.com.au/forums/Wing-Foiling/Wind-Wings/Best-wing-upwind-angle-?page=1>).
+  point higher (the same thread, and another on the same forum).
   Kite-foil racers reach about 40–43°. No published wing-race VMG data was
   found. Advanced is therefore capped at 45°, not 40°: the rose assumes the
   wing the stars would recommend and an everyday foil.

@@ -118,6 +118,12 @@ const COLOURS: Record<string, string> = {
   "stars-3": "#bd3d84",
   "stars-4": "#a01f6c",
   "stars-5": "#7c0f55",
+  // The spot report's loupe, on the photograph in either theme.
+  "photo-line": "#ffffff",
+  "photo-shade": "#06080a",
+  "photo-pill": "#0a0c0e",
+  "photo-red": "#ff4d3d",
+  "photo-gust": "#ffa45c",
 };
 
 // Size, line height, then weight and tracking where the step has one.
@@ -470,12 +476,11 @@ describe("ui/theme.css: the values", () => {
     expect(variable(css, `--spacing-${name}`)).toBe(value);
   });
 
-  it("is Fraunces for names, Inter for the rest, and the pen's hand, in the weights they use", () => {
+  it("is Fraunces for names and Inter for the rest, in the weights they use", () => {
     const css = build([
       "font-display",
       "font-body",
       "font-mono",
-      "font-hand",
       "font-normal",
       "font-medium",
       "font-semibold",
@@ -486,7 +491,6 @@ describe("ui/theme.css: the values", () => {
       ["display", '"Fraunces Variable"'],
       ["body", '"Inter Variable"'],
       ["mono", '"Inter Variable"'],
-      ["hand", '"Kalam"'],
     ]) {
       expect(rule(css, `font-${name}`)).toContain(
         `font-family: var(--font-${name});`,

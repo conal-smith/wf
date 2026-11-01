@@ -4,7 +4,6 @@ status: in_progress
 difficulty: xl
 criticality: high
 risk: high
-mockups: backlog/mockups/2026-09-20-community-atlantic.html
 dependenciesPlanned: true
 updated: 2026-09-22T22:12:13.284Z
 ---

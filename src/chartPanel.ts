@@ -5,8 +5,14 @@
  */
 
 /** The room the chart is given beside the list: 40% of the page, 440 to 720 px. */
+export const LIST_WIDTH = 400;
+/**
+ * The chart beside the list takes all the page but a narrow list (the Spot
+ * finder mock-up, 2026-10-31: a 400px list, the map the rest), and never less
+ * than 440px.
+ */
 export const panelWidth = (pageWidth: number) =>
-  Math.round(Math.max(440, Math.min(720, pageWidth * 0.4)));
+  Math.round(Math.max(440, pageWidth - LIST_WIDTH - 3 * PANEL_GAP));
 
 /** The gap round the chart beside the list, as the cards' own gutter. */
 export const PANEL_GAP = 12;

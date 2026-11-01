@@ -46,10 +46,9 @@ change the format. Afterwards it would be a migration on a live site.
   2×2, 4×4 and so on. A reader fetches just the chunks it needs at the level
   it needs. Open-Meteo's map reads its int16, delta-encoded chunks this way
   (FORECAST_DATA_PLAN.md, "What we learned from Open-Meteo").
-- **Windy** ties its maximum overlay zoom to the model's resolution and
-  interpolates between grid points above that
-  ([Windy community](https://community.windy.com/topic/19991/increase-web-app-zoom-level-where-weather-overlays-are-displayed)).
-  Its tile format is not documented.
+- **A popular weather map site** ties its maximum overlay zoom to the model's
+  resolution and interpolates between grid points above that, by its own
+  forum's account. Its tile format is not documented.
 - **Archives in one file (PMTiles).** One file per tileset, read by HTTP
   range. We already use this for bathymetry and foil depth. Protomaps
   recommends R2 for it, but range reads are harder for a CDN to cache than

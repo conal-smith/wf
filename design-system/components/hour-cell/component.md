@@ -74,7 +74,7 @@ it comes from against the beach, and the wing to take. The mockup's
   dark hour has no stars to read, and its hour is still announced.
 - The selected hour is `aria-current="time"`. The flag is `aria-hidden`: the
   time it shows is already the column's header and the day's head.
-- The flag is set on the pen's handwriting ink (`sem.color.pen-ink`), where
+- The flag is set on the red accent's word ink (`sem.color.pen-ink`), where
   paper reads at 4.9:1; on the stroke red (`sem.color.pen`) it would be 4.1:1,
   below 4.5:1 for small text. The line itself stays in `sem.color.pen`. The selected hour also differs
   in fill, not in colour alone.

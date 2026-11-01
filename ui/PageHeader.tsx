@@ -15,13 +15,13 @@ import { Wordmark } from "./Wordmark";
  *     <Segmented … />
  *   </PageHeader>
  *
- * `border-0` first: the site has no reset, and `border-double` sets the style
+ * `border-0` first: the site has no reset, and a border would set the style
  * of all four sides, whose width is otherwise the browser's medium.
  */
 export const pageHeaderStyles = tv({
   slots: {
     base: [
-      "relative z-header flex items-center gap-3 border-0 border-b-3 border-double border-ink bg-ground px-4.5 py-3",
+      "relative z-header flex items-center gap-3 border-0 border-b border-line bg-ground px-4.5 py-3",
       "max-wide:gap-2 max-wide:px-3 max-wide:py-2.5",
     ],
     lead: "flex flex-1 items-center gap-3 max-wide:gap-2",

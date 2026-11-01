@@ -7,7 +7,7 @@ import { SearchX } from "lucide-react";
 import { useMemo } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
-import { Button, Empty, Lift, Puffin } from "../../../ui";
+import { Button, Chip, Empty, Puffin } from "../../../ui";
 import { tv } from "../../../ui/tv";
 import { NewThread, NewThreadPill } from "../components/NewThreadDialog";
 import { PageHead, dateline } from "../components/PageHead";
@@ -23,7 +23,7 @@ import { NEW_THREAD, QUERY, paths, routed } from "../router";
 
 export const homeStyles = tv({
   slots: {
-    // The pen's loop round what is new: the one mark on the page.
+    // What is new, in a chip: the one mark on the page.
     fresh: "font-semibold text-ink",
     query: "font-normal italic",
   },
@@ -100,9 +100,7 @@ export function Home({ channels, onPosted, pathname, search }: HomeProps) {
             {!q && members}
             {!q && members && fresh && " · "}
             {fresh && (
-              <Lift>
-                <span className={styles.fresh()}>{fresh}</span>
-              </Lift>
+              <Chip className={styles.fresh()}>{fresh}</Chip>
             )}
           </>
         }
