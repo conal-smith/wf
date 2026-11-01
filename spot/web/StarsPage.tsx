@@ -44,12 +44,12 @@ import {
 import { siteSource } from "../../shared/web/forecastSource";
 import { usePageTitle } from "../../shared/web/usePageTitle";
 import {
-  Headline,
-  Kicker,
-  SectionHeading,
+  Heading,
+  Link,
+  NoticeMark,
   Skeleton,
   StarGlyphs,
-  headlineStyles,
+  Tag,
 } from "../../ui";
 import { MONO_LABEL, tv } from "../../ui/tv";
 import { SpotFrame } from "./Frame";
@@ -57,47 +57,45 @@ import { ledger, type Ledger } from "./ledger";
 import { RiderSwitch, riderWords } from "./RiderSwitch";
 import { HOUR, clock, dayNames, dublinDate } from "./spot";
 import { useWidth } from "./useWidth";
-import { WarningMark } from "./Warnings";
-import { WaterMark } from "./WaterQuality";
 
 const styles = tv({
   slots: {
-    main: "flex flex-col gap-4 pt-4 pb-12",
-    deck: "m-0 font-body text-lead font-normal text-ink-2 italic",
+    main: "flex max-w-page flex-col gap-5 pt-7 pb-12 max-sm:pt-5",
     // The key: the glyphs in a column of their own, the words beside them,
     // so the lines start together.
     glyphs:
-      "m-0 grid list-none grid-cols-meter items-center gap-x-3 gap-y-2 p-0 font-body text-body text-ink-2",
+      "m-0 grid list-none grid-cols-meter items-center gap-x-3 gap-y-2.5 rounded-surface bg-sunken p-4 font-body text-body text-ink-2 wide:px-5",
     glyph: "col-span-3 grid grid-cols-subgrid items-center",
     glyphMark: "flex",
     dark: ["text-ink-muted", MONO_LABEL],
-    section: "flex flex-col gap-2 pt-4",
-    p: "m-0 font-body text-prose text-ink-2",
-    figures: "m-0 font-mono text-caption text-ink-muted tabular-nums",
-    table: "w-full border-collapse font-body text-body",
+    section: "flex flex-col gap-3 pt-6",
+    p: "m-0 max-w-reading font-body text-prose text-ink-2",
+    figures: "m-0 font-body text-label text-ink-muted tabular-nums",
+    // A table in a soft card, a hairline between its rows.
+    table:
+      "w-full border-collapse overflow-hidden rounded-surface bg-sunken font-body text-body",
     th: [
-      "border-0 border-b border-ink px-1.5 py-1 text-left whitespace-nowrap text-ink-muted",
+      "px-3 pt-3 pb-2.5 text-left font-medium whitespace-nowrap text-ink-muted",
       MONO_LABEL,
     ],
-    td: "border-0 border-b border-line px-1.5 py-1.5 align-top text-ink",
-    num: "font-mono text-caption whitespace-nowrap tabular-nums",
+    td: "border-0 border-t border-line px-3 py-2.5 align-top text-ink",
+    num: "whitespace-nowrap tabular-nums",
     you: "bg-chart-magenta/7",
     // A sector's name and its degrees each hold together; on a phone the
     // degrees go under the name rather than breaking as "0–" and "30°".
     sector: "whitespace-nowrap",
     degrees:
-      "ml-1 font-mono text-caption whitespace-nowrap text-ink-muted max-wide:ml-0 max-wide:block",
+      "ml-1.5 text-label whitespace-nowrap text-ink-muted tabular-nums max-wide:ml-0 max-wide:block",
     // On a phone the costs may wrap, between the words their non-breaking
     // spaces leave free, so the first column keeps room for its words.
     wraps: "max-wide:whitespace-normal",
     when: "w-1/2",
     // An example hour's stars, and what they come to in figures beside them.
     rated: "flex flex-wrap items-center gap-x-2 gap-y-0.5",
-    total: "border-t-2 border-ink font-semibold",
+    total: "font-semibold",
     right: "text-right",
     chart: "block select-none",
-    small: "m-0 font-body text-body text-ink-muted italic",
-    link: "rounded-control text-ink underline underline-offset-4 hover:text-chart-magenta",
+    small: "m-0 font-body text-body text-ink-muted",
   },
 });
 
@@ -107,7 +105,6 @@ const DEFAULT_SPOT = "brandon";
 export default function StarsPage() {
   usePageTitle("How the stars work", "Wind map");
   const s = styles();
-  const h = headlineStyles();
   const [rider, setRider] = useState<Rider>(() => loadPrefs().rider);
   useEffect(() => onPrefsChange(() => setRider(loadPrefs().rider)), []);
   const changeRider = (next: Rider) => setRider(saveRider(next).rider);
@@ -115,9 +112,9 @@ export default function StarsPage() {
   const spotId = named ?? DEFAULT_SPOT;
   const [chartRef, width] = useWidth<HTMLElement>(640);
   const settings = (
-    <a className={s.link()} href={SETTINGS_HREF} data-settings-link>
+    <Link href={SETTINGS_HREF} data-settings-link>
       Settings
-    </a>
+    </Link>
   );
 
   // Back to the spot the reader came from, or to the chart as it opens: the
@@ -125,14 +122,12 @@ export default function StarsPage() {
   return (
     <SpotFrame back={named ? mapSpotHref(named) : CHART_HREF}>
       <main className={s.main()} ref={chartRef}>
-        <Headline>
-          How the stars <em className={h.soft()}>work</em>
-        </Headline>
-        <p className={s.deck()}>
-          We rate every daylight hour out of five stars, from four numbers:
-          ours, unless you have made them your own in Settings, from the site
-          menu.
-        </p>
+        <Heading
+          level="page"
+          lead="We rate every daylight hour out of five stars, from four numbers: ours, unless you have made them your own in Settings, from the site menu."
+        >
+          How the stars work
+        </Heading>
         <RiderSwitch rider={rider} onChange={changeRider} />
         <ul className={s.glyphs()}>
           <li className={s.glyph()}>
@@ -156,7 +151,7 @@ export default function StarsPage() {
           </li>
           <li className={s.glyph()}>
             <span className={s.glyphMark()}>
-              <WarningMark level="orange" />
+              <NoticeMark level="orange">Orange warning</NoticeMark>
             </span>
             <span className="col-span-2">
               An orange or red Met &Eacute;ireann warning replaces the stars for
@@ -165,7 +160,7 @@ export default function StarsPage() {
           </li>
           <li className={s.glyph()}>
             <span className={s.glyphMark()}>
-              <WaterMark />
+              <NoticeMark level="water">Water</NoticeMark>
             </span>
             <span className="col-span-2">
               So does a bathing water prohibition or advice against bathing
@@ -186,9 +181,7 @@ export default function StarsPage() {
         </ul>
 
         <section className={s.section()} aria-labelledby="forecast">
-          <SectionHeading id="forecast">
-            1. One forecast, <em className="font-normal">your choice</em>
-          </SectionHeading>
+          <Heading id="forecast">One forecast, your choice</Heading>
           <p className={s.p()}>
             Every hour is rated from one forecast model&rsquo;s own wind, gust
             and direction, never from a mix of several: the model you pick to
@@ -214,9 +207,7 @@ export default function StarsPage() {
         </section>
 
         <section className={s.section()} aria-labelledby="band">
-          <SectionHeading id="band">
-            2. How much wind <em className="font-normal">suits you</em>
-          </SectionHeading>
+          <Heading id="band">How much wind suits you</Heading>
           <p className={s.p()}>
             The stars come from four numbers: too light, the two ends of the
             sweet spot, and too much, in gusts. Ours are {OURS.wind.min},{" "}
@@ -235,9 +226,7 @@ export default function StarsPage() {
         </section>
 
         <section className={s.section()} aria-labelledby="gusts">
-          <SectionHeading id="gusts">
-            3. The gusts, <em className="font-normal">read lighter</em>
-          </SectionHeading>
+          <Heading id="gusts">The gusts, read lighter</Heading>
           <p className={s.p()}>
             The stars rate the steady wind, the average: it is what holds you up
             on the foil. A gust past too much leaves the hour no stars at all,
@@ -251,9 +240,7 @@ export default function StarsPage() {
         </section>
 
         <section className={s.section()} aria-labelledby="beach">
-          <SectionHeading id="beach">
-            4. Wind <em className="font-normal">direction</em>
-          </SectionHeading>
+          <Heading id="beach">Wind direction</Heading>
           <p className={s.p()}>
             What matters is the angle between the wind and the beach. Onshore
             wind blows straight in from the sea. Offshore wind blows straight
@@ -272,9 +259,7 @@ export default function StarsPage() {
         </section>
 
         <section className={s.section()} aria-labelledby="off">
-          <SectionHeading id="off">
-            5. What else <em className="font-normal">changes the stars</em>
-          </SectionHeading>
+          <Heading id="off">What else changes the stars</Heading>
           <p className={s.p()}>
             Only the warnings. Outlined stars only ever mean stars lost to the
             gusts or the shore; everything else is shown beside the stars and
@@ -288,9 +273,7 @@ export default function StarsPage() {
         </section>
 
         <section className={s.section()} aria-labelledby="wing">
-          <SectionHeading id="wing">
-            6. Which <em className="font-normal">wing</em>
-          </SectionHeading>
+          <Heading id="wing">Which wing</Heading>
           <p className={s.p()}>
             We suggest a wing size for every hour, from your weight. For an
             80&nbsp;kg rider that is about 5.5&nbsp;m² at 15 knots, 4.5&nbsp;m²
@@ -304,9 +287,7 @@ export default function StarsPage() {
         </section>
 
         <section className={s.section()} aria-labelledby="example">
-          <SectionHeading id="example">
-            7. An <em className="font-normal">example</em>
-          </SectionHeading>
+          <Heading id="example">An example</Heading>
           <p className={s.p()}>
             One hour from the live forecast, worked through step by step.
           </p>
@@ -368,11 +349,7 @@ function BandTable({ rider }: { rider: Rider }) {
               >
                 <td className={s.td()}>
                   {column.name}{" "}
-                  {column.you && (
-                    <Kicker as="span" tone="ink">
-                      you
-                    </Kicker>
-                  )}
+                  {column.you && <Tag>you</Tag>}
                 </td>
                 <td className={s.td({ className: s.num() })}>
                   {knots(band.min)}
@@ -399,18 +376,18 @@ const chartStyles = tv({
   slots: {
     sweet: "fill-chart-magenta/8",
     grid: "stroke-ink/10",
-    axis: "fill-ink-muted font-mono text-eyebrow tabular-nums",
+    axis: "fill-ink-muted font-body text-label tabular-nums",
     line: "fill-none stroke-ink",
     mark: "stroke-chart-magenta/60",
-    markText: "fill-chart-magenta font-mono text-eyebrow",
+    markText: "fill-chart-magenta font-body text-label",
     cursor: "stroke-ink-muted",
-    readout: "fill-ink font-mono text-caption font-semibold",
+    readout: "fill-ink font-body text-label font-semibold tabular-nums",
     dot: "fill-ink",
   },
 });
 
-/** About how wide a character of the eyebrow mono is, its tracking included. */
-const EYEBROW_CHAR = 7.4;
+/** About how wide a character of the chart's 12px labels is, rounded up. */
+const LABEL_CHAR = 7;
 
 /** Stars for a steady wind, against the wind, on the rider's four numbers. */
 function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
@@ -434,7 +411,7 @@ function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
   const narrow = W < 520;
   const minText = `${narrow ? "light" : "too light"} ${knots(band.min)}`;
   const maxText = `${narrow ? "much" : "too much"} ${knots(band.max)}`;
-  const textWidth = (text: string) => text.length * EYEBROW_CHAR;
+  const textWidth = (text: string) => text.length * LABEL_CHAR;
   const minEnd = Math.max(X(0) + textWidth(minText), X(band.min) - 4);
   const maxStart = Math.min(W - 2 - textWidth(maxText), X(band.max) + 4);
   const half = textWidth("sweet spot") / 2;
@@ -713,12 +690,12 @@ const sectorStyles = tv({
     toward: "fill-depth stroke-card",
     away: "fill-pen stroke-card",
     shore: "stroke-ink",
-    deg: "fill-ink-muted font-mono text-eyebrow",
-    name: "fill-ink stroke-card font-body text-body italic",
-    seaWord: "fill-depth font-mono text-eyebrow",
-    landWord: "fill-relief font-mono text-eyebrow",
+    deg: "fill-ink-muted font-body text-label tabular-nums",
+    name: "fill-ink stroke-card font-body text-body font-medium",
+    seaWord: "fill-depth font-body text-label font-medium",
+    landWord: "fill-relief font-body text-label font-medium",
     beach: "fill-ink",
-    beachWord: "fill-ink font-mono text-eyebrow",
+    beachWord: "fill-ink font-body text-label font-medium",
   },
 });
 
@@ -822,10 +799,10 @@ function Sectors({ width }: { width: number }) {
         );
       })}
       <text className={c.seaWord()} x={cx - R - 24} y={cy - R - 10}>
-        SEA
+        Sea
       </text>
       <text className={c.landWord()} x={cx - R - 24} y={cy + R + 18}>
-        LAND
+        Land
       </text>
       <circle className={c.beach()} cx={cx} cy={cy} r={3} />
       <text className={c.beachWord()} x={cx + 8} y={cy - 6}>
@@ -1042,9 +1019,7 @@ function WorkedExample({ spotId, rider }: { spotId: string; rider: Rider }) {
           label={starsText(result.rating)}
         />{" "}
         on the{" "}
-        <a className={s.link()} href={spotHref(example.spot.id)}>
-          spot page
-        </a>
+        <Link href={spotHref(example.spot.id)}>spot page</Link>
         . Stars: {riderWords(rider)}.
       </p>
     </>
