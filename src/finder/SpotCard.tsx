@@ -31,7 +31,7 @@ import type { Rider } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
 import type { Spot } from "../../force5/src/weather";
 import { Button } from "../../ui/Button";
-import { Chip } from "../../ui/Chip";
+import { Tag } from "../../ui/Tag";
 import { Skeleton } from "../../ui/Skeleton";
 import { tv } from "../../ui/tv";
 import {
@@ -54,7 +54,7 @@ export const cardStyles = tv({
     // name and today's wind and stars as two gradients.
     card: [
       "group/card relative grid min-w-0 cursor-pointer grid-cols-card gap-x-3.5 rounded-surface bg-sunken p-2.5",
-      "transition duration-fast motion-reduce:transition-none hover:inset-shadow-frame",
+      "transition duration-fast motion-reduce:transition-none hover:inset-ring-1 hover:inset-ring-line-strong",
     ],
     pictureButton: [
       "group/pic relative block h-auto w-full self-start overflow-visible rounded-control border-0 p-0",
@@ -88,7 +88,7 @@ export const cardStyles = tv({
     // size the card's own will be, so nothing moves when it lands.
     ghostPicture: "aspect-square min-h-0 w-full",
     ghostName: "h-4 w-40 max-w-full",
-    ghostWords: "m-0 font-body text-prose text-ink-muted italic",
+    ghostWords: "m-0 font-body text-prose text-ink-muted",
     ghostMeta: "w-24",
     ghostStar: "size-control-sm shrink-0 pointer-coarse:size-touch",
     ghostBar: "h-4.5 min-h-0 w-full rounded-full",
@@ -220,7 +220,7 @@ export function StarToggle({
 }) {
   return (
     <Button
-      variant="raised"
+      variant="quiet"
       size="sm"
       icon
       pressed={on ? "worded" : false}
@@ -336,19 +336,19 @@ export function SpotCard(props: SpotCardProps) {
           className={s.framed()}
         >
           {km !== null && (
-            <Chip tone="glass" className={s.km()} data-km>
+            <Tag tone="glass" className={s.km()} data-km>
               {km < 0.5 ? "<1 km" : `${Math.round(km)} km`}
-            </Chip>
+            </Tag>
           )}
           {(picked !== null || !isToday) && (
-            <Chip
+            <Tag
               tone="glass"
               className={s.at()}
               data-picked-hour={picked !== null || undefined}
               data-rose-hour
             >
               {clock(shown)}
-            </Chip>
+            </Tag>
           )}
         </SpotPicture>
       </Button>

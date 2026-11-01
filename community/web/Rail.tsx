@@ -1,13 +1,13 @@
 /**
  * The channel rail: search, the three feeds, then every channel under its
- * category. The broadsheet's index: no pane, names in the display face on
- * hairlines, each category under its mono label, and the channel you are in
- * set as the site menu sets its section: italic, heavier, on the second sheet.
+ * category. A side list as the kit's vertical tabs draw one: the names in
+ * Inter, each category under a plain grey label that folds it away, and the
+ * channel you are in on a soft pill.
  */
 import { ChevronDown, Lock } from "lucide-react";
 import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { Button, Count, Notice, SearchField, Skeleton } from "../../ui";
-import { MONO_LABEL, RING, tv } from "../../ui/tv";
+import { RING, tv } from "../../ui/tv";
 import type { Channel } from "../shared/types";
 import type { ChannelsState, RailGroup } from "./hooks";
 import { navigate, paths, routed, type Route } from "./router";
@@ -15,22 +15,21 @@ import { navigate, paths, routed, type Route } from "./router";
 export const railStyles = tv({
   slots: {
     base: "flex min-w-0 flex-col gap-5 font-body",
-    group: "flex flex-col",
-    list: "m-0 flex list-none flex-col p-0",
+    group: "flex flex-col gap-0.5",
+    list: "m-0 flex list-none flex-col gap-0.5 p-0",
     heading: "m-0",
-    // A category: its mono label over a rule in ink, as a column head is.
+    // A category: a plain grey label that folds its channels away.
     head: [
-      "group flex min-h-control-sm w-full cursor-pointer items-center justify-start gap-1 border-0 border-b border-ink px-2",
-      "text-ink-muted pointer-coarse:min-h-touch not-disabled:hover:bg-transparent not-disabled:hover:text-ink",
-      MONO_LABEL,
+      "group flex min-h-control-sm w-full cursor-pointer items-center justify-start gap-1 rounded-control border-0 bg-transparent px-3",
+      "font-body text-label text-ink-muted pointer-coarse:min-h-touch not-disabled:hover:bg-transparent not-disabled:hover:text-ink",
       RING,
     ],
     chevron:
       "-rotate-90 transition-transform duration-fast group-aria-expanded:rotate-0 motion-reduce:transition-none",
     row: [
-      "flex min-h-9 items-center gap-2 border-b border-line px-2",
-      "font-display text-prose whitespace-nowrap text-ink-2 no-underline transition-colors duration-fast",
-      "not-disabled:hover:text-chart-magenta",
+      "flex min-h-9 items-center gap-2 rounded-control px-3",
+      "font-body text-prose font-medium whitespace-nowrap text-ink-2 no-underline transition-colors duration-fast",
+      "not-disabled:hover:bg-sunken not-disabled:hover:text-ink",
       // A row is a tap target on a phone, where the rail unfolds over the page.
       "max-rail:min-h-touch pointer-coarse:min-h-touch",
       RING,
@@ -38,20 +37,13 @@ export const railStyles = tv({
     name: "min-w-0 flex-1 truncate",
     lock: "inline-flex text-ink-muted",
     hidden: "sr-only",
-    loading: "flex flex-col gap-3 px-2 py-2",
-    retry: "mt-1",
+    loading: "flex flex-col gap-3 px-3 py-2",
   },
   variants: {
     // Unread is weight and a count, never colour alone.
     unread: { true: { row: "font-semibold text-ink" } },
-    // The menu's current row: italic, heavier, on the paper's second sheet,
-    // raised as a paper control is, and said with `aria-current`. It is a
-    // ruled row, its one border the hairline under it, so it stays square.
-    current: {
-      true: {
-        row: "bg-sunken font-semibold text-ink italic shadow-raised",
-      },
-    },
+    // The current row: on the soft pill, in ink, and said with `aria-current`.
+    current: { true: { row: "bg-sunken font-semibold text-ink" } },
   },
 });
 
@@ -241,11 +233,17 @@ export function Rail({ state, reload, current, className, id }: RailProps) {
         </div>
       )}
       {state.status === "error" && (
-        <Notice kind="warn">
-          <p>{state.message}</p>
-          <Button variant="link" className={styles.retry()} onClick={reload}>
-            Try again
-          </Button>
+        <Notice
+          level="warn"
+          alert
+          title="The channels could not be loaded"
+          action={
+            <Button size="sm" onClick={reload}>
+              Try again
+            </Button>
+          }
+        >
+          {state.message}
         </Notice>
       )}
       {state.status === "ready" &&

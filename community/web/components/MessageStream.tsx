@@ -13,27 +13,18 @@ import type { StreamRow } from "../thread";
 export const streamStyles = tv({
   slots: {
     base: "flex flex-col",
-    // A day, as the chart heads one: its name in the mono label between rules.
-    divider: [
-      "flex items-center gap-3 pt-5 pb-1 font-mono text-eyebrow text-ink-muted uppercase",
-      "before:flex-1 before:border-t before:border-line after:flex-1 after:border-t after:border-line",
-    ],
+    // A day: its name in a grey label, centred, with space round it.
+    divider:
+      "flex items-center justify-center pt-6 pb-2 font-body text-label text-ink-muted",
     // Filled as well as worded, as an unread count is everywhere else.
-    fresh: "rounded-full bg-inverse px-2 py-0.5 font-semibold text-ink-inverse",
-    // Coming back to new replies scrolls this line to the top: it stops
-    // clear of the sticky masthead, as a message jumped to does.
+    fresh:
+      "rounded-full bg-inverse px-2.5 py-1 font-body text-label font-medium text-ink-inverse",
+    // Coming back to new replies scrolls this line near the top, as a message
+    // jumped to is.
     since: "scroll-mt-24",
     more: "flex justify-center py-1",
     // Where a page is asked for, and where the newest message counts as seen.
     sentinel: "h-px",
-  },
-  variants: {
-    // The line the viewer had read to: a stronger rule either side of it.
-    strong: {
-      true: {
-        divider: "before:border-ink after:border-ink",
-      },
-    },
   },
 });
 
@@ -92,7 +83,7 @@ export function MessageStream({
       {hasOlder && (
         <div className={styles.more()}>
           <span ref={top} className={styles.sentinel()} aria-hidden="true" />
-          <Button variant="pill" size="sm" disabled={loading} onClick={onOlder}>
+          <Button variant="soft" size="sm" disabled={loading} onClick={onOlder}>
             {loading ? "Loading…" : "Show earlier replies"}
           </Button>
         </div>
@@ -110,9 +101,7 @@ export function MessageStream({
               <div
                 key={row.key}
                 id="new-since"
-                className={streamStyles({ strong: true }).divider({
-                  className: styles.since(),
-                })}
+                className={styles.divider({ className: styles.since() })}
               >
                 <span className={styles.fresh()}>
                   {row.count} new since you were last here
@@ -125,7 +114,7 @@ export function MessageStream({
       })}
       {hasNewer && (
         <div className={styles.more()}>
-          <Button variant="pill" size="sm" disabled={loading} onClick={onNewer}>
+          <Button variant="soft" size="sm" disabled={loading} onClick={onNewer}>
             {loading ? "Loading…" : "Show later replies"}
           </Button>
         </div>

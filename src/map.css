@@ -40,6 +40,23 @@
   position: fixed;
   inset: 0;
 }
+/* The site's top bar (ui/TopBar.tsx), fixed over the list and the chart
+   alike: the list scrolls under it, the chart beside the list stands under
+   it, and the full chart opens out below it rather than under it, so its
+   own controls start at the bar's foot. 64px, 56 on a phone. */
+.app-bar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: var(--z-index-header);
+}
+.workspace[data-chart="full"] {
+  top: 64px;
+}
+@media (max-width: 719px) {
+  .workspace[data-chart="full"] {
+    top: 56px;
+  }
+}
 /* The list alone, the chart out of sight behind it: the list scrolls the
    page (src/finder/SpotFinder.tsx), so the shell is as long as it is. Under
    a page opened over the map it is fixed again, out of that page's way. */
@@ -67,16 +84,19 @@
   outline-offset: -4px;
 }
 
-/* The box everything over the chart is drawn in (mixed and rounded,
-   2026-10-24): paper with the faintest light from above, the ink rule and
-   the hairline just inside it, a box's corner, and the stacked soft shadow
-   that lifts it off the chart. A box that scrolls clips to its corner. */
+/* The box everything over the chart is drawn in: flat ground, a soft
+   corner and one soft shadow that lifts it off the chart, with no frame. In
+   dark a faint hairline edge keeps it apart from the dark sea. A box that
+   scrolls clips to its corner. */
 .chart-box {
   background-color: var(--color-ground);
-  background-image: var(--gradient-float);
-  border: 1px solid var(--color-ink);
   border-radius: var(--radius-surface);
-  box-shadow: var(--inset-shadow-frame), var(--shadow-float);
+  box-shadow: var(--shadow-float);
+}
+:root[data-theme="dark"] .chart-box {
+  box-shadow:
+    var(--shadow-float),
+    0 0 0 1px var(--color-line);
 }
 
 /* ---------- the chart's layers over the map ---------- */
@@ -410,28 +430,32 @@
   transform: translate(-50%, -50%);
   z-index: 8;
   padding: 10px 14px;
-  font: italic 15px var(--font-body);
+  font: 500 15px var(--font-body);
   color: var(--color-ink-muted);
-  background: var(--color-ground) var(--gradient-float);
-  border: 1px solid var(--color-ink);
+  background: var(--color-ground);
   border-radius: var(--radius-surface);
-  box-shadow: var(--inset-shadow-frame), var(--shadow-float);
+  box-shadow: var(--shadow-float);
   display: flex;
   gap: 12px;
   align-items: center;
 }
+:root[data-theme="dark"] .map-loading,
+:root[data-theme="dark"] .map-error {
+  box-shadow:
+    var(--shadow-float),
+    0 0 0 1px var(--color-line);
+}
 .map-error {
   color: var(--color-warn);
-  font-style: normal;
 }
 .map-error button,
 .frame-status button,
 .primary-button {
-  border: 1px solid var(--color-ink);
-  border-radius: 999px;
-  background: var(--color-ground);
-  padding: 4px 12px;
-  font: 500 10.5px var(--font-mono);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-sunken);
+  padding: 6px 12px;
+  font: 500 12px var(--font-body);
   color: var(--color-ink);
   cursor: pointer;
 }
@@ -439,8 +463,7 @@
   .map-error button:hover,
   .frame-status button:hover,
   .primary-button:hover {
-    background: var(--color-ink);
-    color: var(--color-ink-inverse);
+    background: color-mix(in srgb, var(--color-ink) 10%, var(--color-sunken));
   }
 }
 
@@ -731,12 +754,12 @@
 }
 .lt-lab b {
   display: block;
-  font: italic 600 12px var(--font-display);
+  font: 600 12px/1.15 var(--font-body);
 }
 .lt-lab i {
-  font: 500 10px var(--font-mono);
+  font: 500 11px var(--font-body);
   font-style: normal;
-  color: var(--color-chart-magenta);
+  color: var(--color-ink-2);
 }
 .lt.off .lt-lab i {
   color: var(--color-pen-ink);
@@ -852,7 +875,7 @@
   top: -10px;
   padding: 4px 9px 5px;
   border-radius: var(--radius-control);
-  background: var(--color-ink) var(--gradient-ink);
+  background: var(--color-ink);
   color: var(--color-ink-inverse);
   text-align: left;
   text-shadow: none;
@@ -918,105 +941,6 @@
   }
 }
 
-/* ---------- top left: the menu, the name, "Find a spot…" ---------- */
-.map-head {
-  position: absolute;
-  top: 18px;
-  left: 18px;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 360px;
-  padding: 7px 10px 7px 7px;
-}
-.map-brand {
-  color: inherit;
-  text-decoration: none;
-  flex: none;
-}
-.map-brand:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
-}
-.find {
-  flex: 1;
-  min-width: 0;
-}
-/* The list hangs from the whole head, not from the field beside the name:
-   from the field it was two hundred pixels on a phone and wrapped a long
-   name onto three lines. A shadow at the top or foot says there is more to
-   scroll, rather than a row cut through for the reader to guess at. */
-.find .results {
-  position: absolute;
-  left: -1px;
-  right: -1px;
-  top: calc(100% + 8px);
-  margin: 0;
-  padding: 6px 0;
-  list-style: none;
-  max-height: min(420px, 60vh);
-  overflow: auto;
-  background:
-    linear-gradient(var(--color-ground) 30%, transparent) top / 100% 28px
-      no-repeat local,
-    linear-gradient(transparent, var(--color-ground) 70%) bottom / 100% 28px
-      no-repeat local,
-    radial-gradient(
-        farthest-side at 50% 0,
-        color-mix(in srgb, var(--color-ink) 22%, transparent),
-        transparent
-      )
-      top / 100% 10px no-repeat scroll,
-    radial-gradient(
-        farthest-side at 50% 100%,
-        color-mix(in srgb, var(--color-ink) 22%, transparent),
-        transparent
-      )
-      bottom / 100% 10px no-repeat scroll,
-    var(--color-ground);
-}
-.results li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0 10px;
-  align-items: center;
-  padding: 5px 14px;
-  cursor: pointer;
-}
-.results li b {
-  font: italic 600 15px var(--font-display);
-}
-.results li small {
-  grid-column: 1;
-  font: 10px var(--font-mono);
-  color: var(--color-ink-muted);
-}
-/* The place's hour at the time the map shows: its stars, its wind under them. */
-.results li .spot-hour {
-  grid-row: 1 / 3;
-  grid-column: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  font: 10px var(--font-mono);
-  color: var(--color-ink-muted);
-}
-.results li[aria-selected="true"] {
-  background: color-mix(in srgb, var(--color-chart-magenta) 8%, transparent);
-}
-@media (hover: hover) and (pointer: fine) {
-  .results li:hover {
-    background: color-mix(in srgb, var(--color-chart-magenta) 8%, transparent);
-  }
-}
-.results .none {
-  font-style: italic;
-  color: var(--color-ink-muted);
-  cursor: default;
-}
-
 /* ---------- top right: zoom and the layers ---------- */
 /* The layers' rail (rail.css) stands to the left of the box, at its top,
    and far enough left to be clear of Gust's button in the corner below. */
@@ -1058,12 +982,11 @@
   margin: 1px 4px;
   background: var(--color-line);
 }
-/* Pressed is ink with its sheen; a press nudges the key down a pixel. */
+/* Pressed is flat ink; a press nudges the key down a pixel. */
 .zbox button[aria-pressed="true"],
 .zbox button[aria-expanded="true"] {
-  background: var(--color-ink) var(--gradient-ink);
+  background: var(--color-ink);
   color: var(--color-ink-inverse);
-  box-shadow: var(--shadow-control);
 }
 .zbox button:active {
   translate: 0 1px;
@@ -1126,7 +1049,8 @@
   position: absolute;
   right: 0;
   top: 1px;
-  font: italic 10px var(--font-body);
+  font: 500 10px var(--font-body);
+  color: var(--color-ink-muted);
 }
 
 /* The rain scale, in the key and the layers: a swatch an amount, on the
@@ -1162,15 +1086,17 @@
   background: var(--color-card);
 }
 .rain-scale i {
-  font: italic 10px var(--font-body);
-  color: var(--color-ink);
+  font: 500 10px var(--font-body);
+  font-style: normal;
+  color: var(--color-ink-muted);
 }
 
 /* Gust's panel lines up with the boxes along the top (companion/web/gust.css
    reads these), and on a phone its sheet stops under the zoom rail rather
    than cutting through it. */
 .app-shell {
-  --gust-panel-top: 18px;
+  /* Under the top bar (64px), as the chart's own controls are. */
+  --gust-panel-top: 82px;
   --gust-sheet-height: calc(100dvh - 206px);
 }
 /* ---------- small round buttons: i for the small print, ? for the stars ---------- */
@@ -1186,7 +1112,7 @@
   border-radius: 50%;
   background: var(--color-ground);
   color: var(--color-ink-muted);
-  font: italic 600 12px/1 var(--font-body);
+  font: 600 12px/1 var(--font-body);
   text-decoration: none;
   vertical-align: middle;
   cursor: pointer;
@@ -1352,7 +1278,7 @@
 }
 .fatal-error h1 {
   margin: 0 0 8px;
-  font: 600 22px var(--font-display);
+  font: 600 19px/1.2 var(--font-body);
 }
 
 /* ---------- a phone: the boxes close in ---------- */
@@ -1367,14 +1293,6 @@
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
-  }
-  .map-head {
-    top: 10px;
-    left: 10px;
-    right: 56px;
-    width: auto;
-    padding: 5px 8px 5px 5px;
-    gap: 8px;
   }
   /* The layers' rail stands under the zoom, down the right edge: beside
      it, it would run over the head. */
@@ -1467,9 +1385,7 @@
 /* A light under the pointer outlines its place's card; one pressed brings
    the card into view, its outline drawn in for a moment. */
 [data-spot-card][data-lit] {
-  outline: 2px solid var(--color-ink);
-  outline-offset: 2px;
-  box-shadow: var(--inset-shadow-frame), var(--shadow-float);
+  box-shadow: inset 0 0 0 1.5px var(--color-line-strong);
 }
 [data-spot-card].is-flash {
   animation: card-flash 1.4s cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -1506,7 +1422,7 @@
   top: 12px;
   left: 12px;
   gap: 7px;
-  box-shadow: var(--inset-shadow-frame), var(--shadow-float);
+  box-shadow: var(--shadow-float);
 }
 .panel-tools .zbox {
   position: absolute;
@@ -1529,58 +1445,16 @@
 }
 .panel-modes .panel-chart {
   gap: 7px;
-  color: var(--color-chart-magenta);
-  border-color: var(--color-chart-magenta);
+  border-color: transparent;
 }
 .panel-when {
   position: absolute;
   left: 12px;
   bottom: 12px;
-  padding: 3px 10px;
-  border: 1px solid var(--color-ink);
+  padding: 4px 10px;
   border-radius: 999px;
   background: var(--color-ground);
-  font: 500 10px/1.5 var(--font-mono);
+  box-shadow: var(--shadow-float);
+  font: 500 12px/1.4 var(--font-body);
   pointer-events: none;
-}
-/* The black button between the list and the full chart: at the foot of the
-   list, or of the full chart; with the dock open, just above its top edge,
-   in its own layout (src/ForecastDock.tsx), so it moves with it. */
-.list-toggle {
-  position: fixed;
-  left: 50%;
-  bottom: calc(18px + env(safe-area-inset-bottom));
-  z-index: 30;
-  gap: 7px;
-  translate: -50% 0;
-  box-shadow: var(--shadow-control), var(--shadow-sheet);
-}
-.map-footer .list-toggle {
-  position: absolute;
-  bottom: calc(100% + 18px);
-}
-.dk-float {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 12px);
-  z-index: 1;
-  translate: -50% 0;
-}
-.dk-float .list-toggle {
-  position: static;
-  translate: none;
-}
-/* Where the window is too narrow for it between the small print and the
-   spot's tools, it stands over the tools. */
-.dk-float.is-lifted {
-  bottom: calc(100% + 22px + var(--tools-height));
-}
-/* Over the chip that offers another model on the map, when there is one. */
-.dock:has(.map-reach) .dk-float {
-  bottom: calc(100% + 52px);
-}
-@media (max-width: 720px) {
-  .dock:has(.map-reach) .dk-float {
-    bottom: calc(100% + 94px);
-  }
 }

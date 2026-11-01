@@ -45,18 +45,18 @@ import {
 
 export const shellStyles = tv({
   slots: {
-    root: "flex min-h-dvh flex-col bg-ground paper-grain font-body text-prose text-ink",
+    root: "flex min-h-dvh flex-col bg-ground font-body text-prose text-ink",
     // The marketplace's page measure, and its narrower gutter on a phone.
     page: "mx-auto flex w-full max-w-page flex-1 flex-col px-6 max-rail:px-3",
     // On a phone the rows sit at the top: stretched, the grid would hand its
     // spare height to the row the Channels control is in.
     shell:
-      "grid flex-1 grid-cols-1 items-start gap-8 pt-4 pb-8 max-rail:content-start max-rail:gap-5 rail:grid-cols-shell",
+      "grid flex-1 grid-cols-1 items-start gap-10 pt-8 pb-12 max-rail:content-start max-rail:gap-5 max-rail:pt-5 rail:grid-cols-shell",
     rail: "",
-    main: "flex min-w-0 flex-col gap-5",
+    main: "flex min-w-0 flex-col gap-6",
     // The way to the channels where they are not beside the page, a finger's
-    // height as the rows it opens are. Open, it is on the second sheet, as
-    // the menu's current row is.
+    // height as the rows it opens are. Open, it is on the soft ground, as the
+    // rail's current row is.
     channels:
       "min-h-touch self-start justify-self-start rail:hidden aria-expanded:bg-sunken",
     chevron: "transition-transform duration-fast motion-reduce:transition-none",
@@ -123,32 +123,30 @@ function Shell() {
 
   return (
     <div className={styles.root()}>
+      <Header
+        accentNew={accentNewThread(route, search.has(NEW_THREAD))}
+        newThread={
+          open && !canStartThread(open, role)
+            ? null
+            : paths.newThread(route.page === "channel" ? route.slug : undefined)
+        }
+        unread={bell.count}
+        onUnread={bell.setCount}
+        pathname={pathname}
+      />
       <div className={styles.page()}>
-        <Header
-          accentNew={accentNewThread(route, search.has(NEW_THREAD))}
-          newThread={
-            open && !canStartThread(open, role)
-              ? null
-              : paths.newThread(
-                  route.page === "channel" ? route.slug : undefined,
-                )
-          }
-          unread={bell.count}
-          onUnread={bell.setCount}
-          pathname={pathname}
-        />
         <div className={styles.shell()}>
           {/* A thread's way back is its own, to its channel. */}
           {route.page !== "thread" && (
             <Button
-              variant="pill"
+              variant="outline"
               size="sm"
               className={styles.channels()}
               aria-expanded={channelsOpen}
               aria-controls={RAIL_ID}
               onClick={() => setChannelsOpen(!channelsOpen)}
             >
-              <List size={15} strokeWidth={1.5} aria-hidden="true" />
+              <List size={16} strokeWidth={1.75} aria-hidden="true" />
               <span>Channels</span>
               <ChevronDown
                 className={styles.chevron()}
@@ -232,13 +230,16 @@ function NotFound() {
   usePageTitle("Page not found", "Community");
   return (
     <Empty
+      as="h1"
       title="That page does not exist"
-      icon={<Compass size={24} strokeWidth={1.5} aria-hidden="true" />}
+      icon={<Compass size={24} strokeWidth={1.75} />}
+      actions={
+        <Button {...routed(paths.home())} variant="primary">
+          Back to the community
+        </Button>
+      }
     >
       <p>The link may be old, or the thread may have been removed.</p>
-      <Button {...routed(paths.home())} variant="primary">
-        Back to the community
-      </Button>
     </Empty>
   );
 }

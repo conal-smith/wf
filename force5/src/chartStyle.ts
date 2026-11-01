@@ -7,7 +7,8 @@
  *
  * The coast, the water and the places are OpenStreetMap's, through
  * OpenFreeMap's planet tiles; the glyphs (Noto Sans) are theirs too. The
- * chart's own faces (Fraunces, Plex Mono) are for the HTML over the map.
+ * site's own face (Inter) is for the HTML over the map. Every name is in
+ * sentence case, as the map's tiles write it, with no added tracking.
  *
  * Pure: nothing here loads MapLibre GL or the archives, so the app's native
  * map (React Native) builds the very same chart from it. The browser's map
@@ -374,8 +375,6 @@ export function chartStyle(
         layout: {
           "text-field": ["coalesce", ["get", "name:en"], ["get", "name"]],
           "text-font": FONT,
-          "text-transform": "uppercase",
-          "text-letter-spacing": 0.25,
           "text-size": zoomed(5, 10, 10, 13),
         },
         paint: {
@@ -404,7 +403,6 @@ export function chartStyle(
                 11.5,
                 10,
               ],
-              "text-letter-spacing": 0.08,
               ...(near ? { visibility: "none" } : {}),
             },
             paint: {

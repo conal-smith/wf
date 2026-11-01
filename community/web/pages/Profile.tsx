@@ -8,7 +8,7 @@
  * edited here; it is sent back as it came, because that PUT resets what it is
  * not sent.
  */
-import { CloudOff, Compass, Pencil } from "lucide-react";
+import { Compass, MessagesSquare, Pencil } from "lucide-react";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
@@ -23,15 +23,13 @@ import { userInputSchema } from "../../../site/shared/validate";
 import {
   Avatar,
   Button,
-  Chip,
   Empty,
   Field,
+  Heading,
   Notice,
-  Pane,
-  Puffin,
-  SectionHeading,
   Select,
   Skeleton,
+  Tag,
   TextArea,
   TextInput,
 } from "../../../ui";
@@ -50,28 +48,28 @@ export const profileStyles = tv({
     face: "shrink-0 max-rail:size-control-lg max-rail:text-lead",
     text: "min-w-0 flex-1",
     name: "inline-flex flex-wrap items-center gap-2",
-    bio: "m-0 max-w-reading font-body text-prose whitespace-pre-line text-ink-2 italic",
+    bio: "m-0 max-w-reading font-body text-prose whitespace-pre-line text-ink-2",
     form: "grid gap-5",
     pair: "grid gap-5 rail:grid-cols-2",
     actions: "flex flex-wrap items-center justify-end gap-2",
     edit: "self-start",
+    // The one setting, as a row in a soft card (ui/Rows).
+    settings: "grid gap-2 rounded-surface bg-sunken p-1 on-card",
     // The whole row is the switch: a target a thumb finds.
     setting: [
-      "flex min-h-touch w-full cursor-pointer items-center justify-between gap-5 rounded-control border-0 bg-transparent p-0 text-left font-body text-ink",
+      "flex min-h-14 w-full cursor-pointer items-center justify-between gap-5 rounded-control border-0 bg-transparent px-3 py-3 text-left font-body text-ink",
       "disabled:cursor-default",
       RING,
     ],
-    settingText: "grid min-w-0 gap-1",
-    settingTitle: "font-display text-prose font-semibold text-ink",
-    settingHint: "text-body text-ink-muted italic",
-    state: [
-      "flex shrink-0 items-center gap-2 font-mono text-label text-ink-2 uppercase",
-    ],
+    settingText: "grid min-w-0 gap-0.5",
+    settingTitle: "text-prose leading-tight font-semibold text-ink",
+    settingHint: "text-body text-ink-2",
+    state: "flex shrink-0 items-center gap-2 text-body text-ink-muted",
+    // The kit's switch (ui/Switch), drawn inside the row that is the switch.
     track:
-      "inline-flex h-6 w-11 items-center rounded-full border border-ink bg-sunken px-0.5 transition-colors duration-fast",
-    // The knob: a raised control, lit at its lip.
+      "relative inline-block h-6.5 w-11 shrink-0 rounded-full bg-line-strong transition-colors duration-fast motion-reduce:transition-none",
     thumb:
-      "size-4.5 rounded-full border border-ink bg-card shadow-raised transition-transform duration-fast motion-reduce:transition-none",
+      "absolute top-0.75 left-0.75 size-5 rounded-full bg-ground shadow-control transition-transform duration-fast motion-reduce:transition-none",
     loading: "grid gap-3",
     short: "w-1/3",
     hidden: "sr-only",
@@ -81,7 +79,7 @@ export const profileStyles = tv({
     on: {
       true: {
         track: "bg-inverse",
-        thumb: "translate-x-5",
+        thumb: "translate-x-4.5",
       },
     },
   },
@@ -227,7 +225,12 @@ function Mine() {
       current = false;
     };
   }, [api]);
-  if (failure) return <Notice kind="warn">{failure}</Notice>;
+  if (failure)
+    return (
+      <Notice level="warn" alert title="Your profile could not be loaded">
+        {failure}
+      </Notice>
+    );
   return <Loading what="your profile" />;
 }
 
@@ -244,27 +247,30 @@ function Member({ handle }: ProfileProps) {
   if (state.status === "missing")
     return (
       <Empty
+        as="h1"
         title="That member does not exist"
-        icon={<Compass size={24} strokeWidth={1.5} aria-hidden="true" />}
+        icon={<Compass size={24} strokeWidth={1.75} />}
+        actions={
+          <Button {...routed(paths.home())}>Back to the community</Button>
+        }
       >
         <p>The link may be old, or they may have changed their handle.</p>
-        <Button {...routed(paths.home())} variant="pill">
-          Back to the community
-        </Button>
       </Empty>
     );
   if (state.status === "error")
     return (
-      <Empty
-        kind="warn"
+      <Notice
+        level="warn"
+        alert
         title="We could not load this profile"
-        icon={<CloudOff size={24} strokeWidth={1.5} aria-hidden="true" />}
+        action={
+          <Button size="sm" onClick={reload}>
+            Try again
+          </Button>
+        }
       >
-        <p role="alert">{state.message}</p>
-        <Button variant="pill" onClick={reload}>
-          Try again
-        </Button>
-      </Empty>
+        {state.message}
+      </Notice>
     );
 
   const { member, threads } = state;
@@ -284,16 +290,16 @@ function Member({ handle }: ProfileProps) {
           title={
             <span className={styles.name()}>
               {member.displayName}
-              {member.role === "staff" && <Chip eyebrow>Staff</Chip>}
+              {member.role === "staff" && <Tag>Staff</Tag>}
             </span>
           }
         />
       </div>
       {member.bio && <p className={styles.bio()}>{member.bio}</p>}
       {own && <Own onSaved={reload} />}
-      <SectionHeading as="h2" rule="thick">
+      <Heading>
         {own ? "Threads you started" : `Threads ${member.displayName} started`}
-      </SectionHeading>
+      </Heading>
       <ThreadList
         state={threads}
         subject="their threads"
@@ -301,7 +307,10 @@ function Member({ handle }: ProfileProps) {
         onRetry={reload}
         onMore={loadMore}
         empty={
-          <Empty title="No threads yet" icon={<Puffin size={40} />}>
+          <Empty
+            title="No threads yet"
+            icon={<MessagesSquare size={24} strokeWidth={1.75} />}
+          >
             <p>
               {own
                 ? "The threads you start are listed here."
@@ -359,7 +368,12 @@ function Own({ onSaved }: { onSaved: () => void }) {
     setting?.focus();
   }, [ready]);
 
-  if (failure) return <Notice kind="warn">{failure}</Notice>;
+  if (failure)
+    return (
+      <Notice level="warn" alert title="Your settings could not be loaded">
+        {failure}
+      </Notice>
+    );
   if (!user) return <Loading what="your settings" />;
 
   const setAutoFollow = async (on: boolean) => {
@@ -379,39 +393,36 @@ function Own({ onSaved }: { onSaved: () => void }) {
   return (
     <>
       {editing ? (
-        <Pane>
-          <ProfileForm
-            user={user}
-            onCancel={() => setEditing(false)}
-            onSaved={(saved) => {
-              setUser(saved);
-              setEditing(false);
-              // A new handle is a new URL; the old one now names nobody.
-              if (saved.handle !== user.handle)
-                navigate(paths.member(saved.handle), { replace: true });
-              else onSaved();
-            }}
-          />
-        </Pane>
+        <ProfileForm
+          user={user}
+          onCancel={() => setEditing(false)}
+          onSaved={(saved) => {
+            setUser(saved);
+            setEditing(false);
+            // A new handle is a new URL; the old one now names nobody.
+            if (saved.handle !== user.handle)
+              navigate(paths.member(saved.handle), { replace: true });
+            else onSaved();
+          }}
+        />
       ) : (
         <Button
-          variant="pill"
           size="sm"
           className={styles.edit()}
           onClick={() => setEditing(true)}
         >
-          <Pencil size={15} strokeWidth={1.5} aria-hidden="true" />
+          <Pencil size={16} strokeWidth={1.75} aria-hidden="true" />
           <span>Edit profile</span>
         </Button>
       )}
-      <Pane kind="ruled">
+      <div className={styles.settings()}>
         <FollowSwitch
           on={user.autoFollow}
           disabled={saving}
           onChange={setAutoFollow}
         />
-        {saveFailure && <Notice kind="warn">{saveFailure}</Notice>}
-      </Pane>
+      </div>
+      {saveFailure && <Notice level="warn" alert title={saveFailure} />}
     </>
   );
 }
@@ -502,7 +513,7 @@ function ProfileForm({
 
   return (
     <form className={styles.form()} onSubmit={submit} noValidate>
-      {top && <Notice kind="warn">{top}</Notice>}
+      {top && <Notice level="warn" alert title={top} />}
       <div className={styles.pair()}>
         <Field
           label="Name"
@@ -566,11 +577,11 @@ function ProfileForm({
         />
       </Field>
       <div className={styles.actions()}>
-        <Button onClick={onCancel} disabled={saving}>
+        <Button variant="quiet" onClick={onCancel} disabled={saving}>
           Cancel
         </Button>
-        {/* Quiet: the view's one filled action is the header's New thread. */}
-        <Button type="submit" variant="pill" disabled={saving}>
+        {/* Outlined: the view's one filled action is the header's New thread. */}
+        <Button type="submit" variant="outline" disabled={saving}>
           {saving ? "Saving…" : "Save profile"}
         </Button>
       </div>

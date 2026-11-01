@@ -2,7 +2,7 @@ import {
   expect,
   siteNav,
   siteRow,
-  SITE_ROWS,
+  SITE_ROW_TEXTS,
   SPOTS_KEY,
   test,
   type Page,
@@ -71,9 +71,11 @@ const useMyLocation = (page: Page) =>
   page.getByRole("button", { name: "Use my location" }).click();
 const cards = (page: Page) => page.locator("[data-spot-card]");
 const scope = (page: Page) => page.getByRole("group", { name: "Which spots" });
-/** The magnifier in the head, which opens the search and its filters. */
-const findButton = (page: Page) =>
-  page.getByRole("button", { name: /^Find a spot and filter/ });
+/** The top bar's search, a combobox (ui/SpotSearch.tsx). */
+const search = (page: Page) =>
+  page.getByRole("combobox", { name: "Search spots" });
+/** The list's filters, in view under its heading. */
+const filters = (page: Page) => page.locator("[data-finder-filters]");
 
 /** The finder up in the afternoon, its places rated. */
 async function openFinder(page: Page, path = "/") {
@@ -281,9 +283,9 @@ test.describe("on a desktop", () => {
     const empty = page.locator("[data-finder-empty]");
     await expect(empty).toContainText("Star a spot and it shows here.");
     await expect(cards(page)).toHaveCount(0);
-    // And a way from it to a spot to star: the search in the head, Nearby,
+    // And a way from it to a spot to star: the top bar's search, Nearby,
     // or every spot's page.
-    await expect(findButton(page)).toBeVisible();
+    await expect(search(page)).toBeVisible();
     await expect(
       empty.getByRole("link", { name: "browse every spot" }),
     ).toHaveAttribute("href", "/spot");
@@ -324,59 +326,67 @@ test.describe("on a desktop", () => {
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
   });
 
-  test("a spot is found by name, from every spot, in the search in the head; Clear goes back to the tab", async ({
+  test("the list names itself and how many it holds, beside Favourites and Nearby", async ({
     page,
   }) => {
     await star(page, ["brandon", "dollymount"]);
     await openFinder(page);
     await expect(cards(page)).toHaveCount(2);
-    const find = page.getByRole("searchbox", { name: "Find a spot" });
-    const search = async (words: string) => {
-      await findButton(page).click();
-      await expect(find).toBeFocused();
-      await find.fill(words);
-      await find.press("Enter");
-      await expect(
-        page.getByRole("dialog", { name: "Find a spot" }),
-      ).toHaveCount(0);
-    };
-    await search("keel");
-    await expect(cards(page).first()).toHaveAttribute("data-spot-card", "keel");
-    // The places the words name, not the tab's.
+    const heading = page.locator("[data-finder-heading]");
+    await expect(heading).toHaveText("Favourites · 2 spots");
     await expect(
-      page.locator('[data-spot-card="brandon"], [data-spot-card="dollymount"]'),
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("region", { name: "Spots found" }),
+      page.getByRole("region", { name: "Favourites · 2 spots" }),
     ).toBeVisible();
-    // Said over the cards, and on the magnifier.
-    await expect(page.locator("[data-finder-using]")).toHaveText(
-      /Spots named “keel”/,
-    );
-    await expect(findButton(page)).toHaveAccessibleName(
-      "Find a spot and filter (in use)",
-    );
-    // Accents and case are let go of, and a name's start comes first.
-    await search("BRAND");
-    await expect(cards(page).first()).toHaveAttribute(
-      "data-spot-card",
-      "brandon",
-    );
-    await search("no such place");
-    await expect(page.locator("[data-finder-empty]")).toHaveText(
-      "No spot by that name.",
-    );
-    await page
-      .locator("[data-finder-using]")
-      .getByRole("button", { name: "Clear" })
-      .click();
-    await expect(cards(page)).toHaveCount(2);
-    await expect(page.locator("[data-finder-using]")).toHaveCount(0);
-    // A tab chosen puts the words down.
-    await search("keel");
     await scope(page).getByRole("button", { name: "Nearby" }).click();
-    await findButton(page).click();
-    await expect(find).toHaveValue("");
+    await expect(heading).toHaveText(/^Near you · \d+ spots$/);
+    // No dialog to open: the search is the top bar's, the filters in view.
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(filters(page)).toBeVisible();
+  });
+
+  test("the top bar's search finds a spot by name, from every spot, and opens its page", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "dollymount"]);
+    await openFinder(page);
+    await expect(cards(page)).toHaveCount(2);
+    // "/" from the page comes to the search.
+    await page.keyboard.press("/");
+    await expect(search(page)).toBeFocused();
+    // With nothing typed, the rider's own spots.
+    const results = page.getByRole("listbox", { name: "Spots" });
+    await expect(results.getByRole("option")).toHaveText([
+      /Brandon Bay/,
+      /Dollymount/,
+    ]);
+    // Filtered at once as it is typed, accents and case let go of, from
+    // every spot and not only the tab's, a name's start first.
+    await search(page).fill("KEEL");
+    await expect(results.getByRole("option").first()).toContainText(
+      "Keel Beach",
+    );
+    await expect(search(page)).toHaveAttribute("aria-expanded", "true");
+    // The list behind is the tab's still.
+    await expect(cards(page)).toHaveCount(2);
+    await search(page).fill("no such place");
+    await expect(page.locator("[data-spot-search-none]")).toHaveText(
+      "No spots match “no such place”",
+    );
+    // Escape clears the words, then closes.
+    await search(page).press("Escape");
+    await expect(search(page)).toHaveValue("");
+    await search(page).press("Escape");
+    await expect(results).toHaveCount(0);
+    // The keys move through the results, and Enter opens the one they are on.
+    await search(page).focus();
+    await search(page).fill("brand");
+    await search(page).press("ArrowDown");
+    await search(page).press("ArrowUp");
+    const active = await search(page).getAttribute("aria-activedescendant");
+    expect(active).toBeTruthy();
+    await expect(page.locator(`[id="${active}"]`)).toContainText("Brandon Bay");
+    await search(page).press("Enter");
+    await expect(page).toHaveURL(/\/spot\/brandon$/, { timeout: 30000 });
   });
 
   test("Nearby never asks the browser unasked: only Use my location does", async ({
@@ -411,24 +421,33 @@ test.describe("on a desktop", () => {
     await star(page, ["tramore", "brandon", "keel", "dollymount"]);
     await openFinder(page);
     await rated(page);
-    // The filters are in the search, under its funnel; the list behind it
+    // The filters are in view under the list's heading, and the list
     // follows them as they are set.
-    await findButton(page).click();
+    const order = filters(page).getByRole("group", { name: "Order" });
     // A to Z.
-    await page.getByRole("combobox", { name: "Order" }).selectOption("name");
+    await order.getByRole("button", { name: "A to Z" }).click();
+    await expect(order.getByRole("button", { name: "A to Z" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     const names = await cards(page).evaluateAll((els) =>
       els.map((el) => el.querySelector("h3")?.textContent?.trim() ?? ""),
     );
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
     // Nearest needs the rider's place, which this browser has not given.
-    await expect(
-      page.getByRole("combobox", { name: "Order" }).locator("option"),
-    ).toHaveText(["Best first", "A to Z"]);
+    await expect(order.getByRole("button")).toHaveText([
+      "Best first",
+      "A to Z",
+    ]);
     // Only the places with five stars in their six days, or a line saying
     // there are none.
-    await page
-      .getByRole("combobox", { name: "Stars in the next six days" })
-      .selectOption("5");
+    const stars = filters(page).getByRole("group", {
+      name: "Stars in the next six days",
+    });
+    await stars.getByRole("button", { name: "5 stars" }).click();
+    await expect(
+      stars.getByRole("button", { name: "5 stars" }),
+    ).toHaveAttribute("aria-pressed", "true");
     const best = await cards(page).evaluateAll((els) =>
       els.map((el) => Number(el.getAttribute("data-best"))),
     );
@@ -437,10 +456,19 @@ test.describe("on a desktop", () => {
       await expect(page.locator("[data-finder-empty]")).toHaveText(
         "No spot on this list has 5 stars in the next six days.",
       );
+    // Clear puts the order and the stars back.
+    await page.locator("[data-finder-clear]").click();
+    await expect(
+      order.getByRole("button", { name: "Best first" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      stars.getByRole("button", { name: "Any stars" }),
+    ).toHaveAttribute("aria-pressed", "true");
     // The model: the rider's own, kept, as the spot page sets it.
-    await page
-      .getByRole("combobox", { name: "Model for the stars" })
-      .selectOption("ecmwf");
+    await filters(page)
+      .getByRole("group", { name: "Model for the stars" })
+      .getByRole("button", { name: "ECMWF" })
+      .click();
     await expect
       .poll(() =>
         page.evaluate(() => localStorage.getItem("force5.prefs.v1") ?? ""),
@@ -723,12 +751,13 @@ test.describe("on a desktop", () => {
   }) => {
     await page.goto("/spot/brandon");
     await page.getByRole("button", { name: "Site menu" }).click();
-    await expect(siteNav(page).getByRole("link")).toHaveText(SITE_ROWS);
-    // Neither of the menu's pages is this one, and it has no tools of its own.
+    await expect(siteNav(page).getByRole("link")).toHaveText(SITE_ROW_TEXTS);
+    // Neither of the menu's pages is this one, and it has no tools of its own:
+    // its one group is light, dark or auto at its foot.
     await expect(siteNav(page).locator('[aria-current="page"]')).toHaveCount(0);
     await expect(
       page.getByRole("dialog", { name: "Site menu" }).getByRole("group"),
-    ).toHaveCount(0);
+    ).toHaveText(["LightDarkAuto"]);
     await expect(siteRow(page, "Settings")).toHaveAttribute(
       "href",
       "/?settings",
@@ -791,7 +820,9 @@ test.describe("on a desktop", () => {
     await page.getByRole("button", { name: "Site menu" }).click();
     await expect(siteRow(page, "Chart")).toHaveAttribute("href", "/?map");
     await siteRow(page, "Chart").click();
-    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('[data-view-switch="spots"]')).toBeVisible({
+      timeout: 30000,
+    });
     await expect(page).toHaveURL(/\/\?map$/);
 
     await page.goto("/spot/brandon");
@@ -799,13 +830,15 @@ test.describe("on a desktop", () => {
     await siteRow(page, "Spot finder").click();
     await expect(finder(page)).toBeVisible({ timeout: 30000 });
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.locator(".map-head")).toHaveCount(0);
+    await expect(page.locator('[data-view-switch="spots"]')).toHaveCount(0);
 
     // The AI page's menu's Chart is the chart too.
     await page.goto("/ai");
     await page.getByRole("button", { name: "Site menu" }).click();
     await siteRow(page, "Chart").click();
-    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('[data-view-switch="spots"]')).toBeVisible({
+      timeout: 30000,
+    });
     await expect(page).toHaveURL(/\/\?map$/);
   });
 
@@ -820,7 +853,7 @@ test.describe("on a desktop", () => {
     await page.getByRole("button", { name: "Site menu" }).click();
     await siteRow(page, "Chart").click();
     await expect(page.locator(".map-under-page")).toHaveCount(0);
-    await expect(page.locator(".map-head")).toBeVisible();
+    await expect(page.locator('[data-view-switch="spots"]')).toBeVisible();
     await expect(page).toHaveURL(/\/\?map$/);
     // No page load: the map was kept under the page.
     expect(
@@ -833,10 +866,12 @@ test.describe("on a desktop", () => {
   }) => {
     // The full chart last open makes no difference to the root.
     await page.goto("/?map");
-    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('[data-view-switch="spots"]')).toBeVisible({
+      timeout: 30000,
+    });
     await page.goto("/");
     await expect(finder(page)).toBeVisible({ timeout: 30000 });
-    await expect(page.locator(".map-head")).toHaveCount(0);
+    await expect(page.locator('[data-view-switch="spots"]')).toHaveCount(0);
     // The spot finder's old address is the home page.
     await page.goto("/spots");
     await expect(page).toHaveURL(/\/$/);
@@ -844,13 +879,15 @@ test.describe("on a desktop", () => {
     // The chart's old word is the full chart's new one.
     await page.goto("/?chart");
     await expect(page).toHaveURL(/\/\?map$/);
-    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('[data-view-switch="spots"]')).toBeVisible({
+      timeout: 30000,
+    });
     // A link to a spot on the chart is the full chart on it, with its dock.
     await page.goto("/?spot=brandon");
     await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay", {
       timeout: 30000,
     });
-    await expect(page.locator(".map-head")).toBeVisible();
+    await expect(page.locator('[data-view-switch="spots"]')).toBeVisible();
   });
 });
 
@@ -877,26 +914,45 @@ test.describe("on a phone", () => {
     hasTouch: true,
   });
 
-  test("the head keeps the wordmark beside the menu and the switch", async ({
+  test("the top bar keeps the wordmark, the search, Chart and the menu in one row", async ({
     page,
   }) => {
     await star(page, ["brandon"]);
     await openFinder(page);
-    const head = finder(page).locator("header");
-    const mark = head.getByText("wingfoil.ie");
+    const bar = page.locator("[data-top-bar]");
+    const mark = bar.getByText("wingfoil.ie");
     await expect(mark).toBeVisible();
-    const [menu, name, tabs] = [
-      (await head.getByRole("button").first().boundingBox())!,
+    const [name, find, chart, menu] = [
       (await mark.boundingBox())!,
-      (await scope(page).boundingBox())!,
+      (await bar.getByRole("button", { name: "Search spots" }).boundingBox())!,
+      (await bar.getByRole("link", { name: "Chart" }).boundingBox())!,
+      (await bar.getByRole("button", { name: "Site menu" }).boundingBox())!,
     ];
-    // In one row, side by side, and all on the screen.
-    expect(name.x).toBeGreaterThanOrEqual(menu.x + menu.width);
-    expect(tabs.x).toBeGreaterThanOrEqual(name.x + name.width);
+    // In one row, in that order, all on the screen; light or dark is in the
+    // menu on a phone.
+    expect(find.x).toBeGreaterThanOrEqual(name.x + name.width);
+    expect(chart.x).toBeGreaterThanOrEqual(find.x + find.width);
+    expect(menu.x).toBeGreaterThanOrEqual(chart.x + chart.width);
+    expect(menu.x + menu.width).toBeLessThanOrEqual(390);
+    await expect(bar.locator("[data-theme-button]")).toBeHidden();
+    // The search opens over the bar, the width of the screen.
+    await bar.getByRole("button", { name: "Search spots" }).tap();
+    await expect(search(page)).toBeFocused();
+    const field = (await search(page).boundingBox())!;
+    expect(field.width).toBeGreaterThan(250);
+    await search(page).fill("keel");
+    await expect(
+      page.getByRole("listbox", { name: "Spots" }).getByRole("option").first(),
+    ).toContainText("Keel Beach");
+    await page.getByRole("button", { name: "Cancel" }).tap();
+    await expect(page.getByRole("listbox", { name: "Spots" })).toHaveCount(0);
+    // The list's heading and Favourites | Nearby share a row.
+    const heading = (await page
+      .locator("[data-finder-heading]")
+      .boundingBox())!;
+    const tabs = (await scope(page).boundingBox())!;
+    expect(tabs.x).toBeGreaterThanOrEqual(heading.x + heading.width);
     expect(tabs.x + tabs.width).toBeLessThanOrEqual(390);
-    expect(
-      Math.abs(name.y + name.height / 2 - (tabs.y + tabs.height / 2)),
-    ).toBeLessThan(4);
   });
 
   test("one column, no wider than the screen, an hour tapped on the bars", async ({

@@ -112,9 +112,9 @@ const styles = tv({
     // takes no room, so nothing moves when it goes.
     pendingWords: [
       "pointer-events-none absolute inset-x-0 z-panel flex justify-center",
-      "font-body text-caption text-ink-muted italic",
+      "font-body text-caption text-ink-muted",
     ],
-    pendingTag: "rounded-control bg-card px-2 py-0.5",
+    pendingTag: "rounded-control bg-ground px-2 py-0.5",
     // The day's stars along the foot of the hours, under the presses.
     stars: "pointer-events-none absolute left-0",
     pendingLine: "absolute flex",
@@ -639,7 +639,7 @@ export function DayHours({
         aria-hidden="true"
       />
       <Button
-        variant="raised"
+        variant="outline"
         size="sm"
         icon
         aria-label="Earlier hours"
@@ -656,7 +656,7 @@ export function DayHours({
         <ChevronLeft size={15} strokeWidth={1.75} aria-hidden="true" />
       </Button>
       <Button
-        variant="raised"
+        variant="outline"
         size="sm"
         icon
         aria-label="Later hours"

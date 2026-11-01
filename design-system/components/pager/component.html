@@ -3,114 +3,79 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Pager — wingfoil-chart</title>
+    <title>Pager — wingfoil</title>
     <link rel="stylesheet" href="../../foundations/tokens.css" />
     <link rel="stylesheet" href="../button/component.css" />
     <link rel="stylesheet" href="component.css" />
     <style>
-      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      /* Demo scaffolding only: the ground, a grey label over each row, soft cards. */
       body {
         margin: 0;
       }
       .demo {
-        padding: var(--sem-space-x5);
-        background-color: var(--sem-color-ground);
-        background-image: var(--sem-texture-grain);
+        padding: var(--sem-space-x6);
+        background: var(--sem-color-ground);
         color: var(--sem-color-ink);
         font-family: var(--sem-font-family-body);
         font-size: var(--sem-font-size-prose);
         line-height: var(--sem-font-line-prose);
       }
-      .demo + .demo {
-        border-top: var(--sem-rule-double) double var(--sem-color-ink);
-      }
       .demo__head {
-        margin: 0 0 var(--sem-space-x3);
-        padding-bottom: var(--sem-space-x1);
-        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
-        font-family: var(--sem-font-family-display);
+        margin: 0 0 var(--sem-space-x2);
         font-size: var(--sem-font-size-lead);
         line-height: var(--sem-font-line-lead);
-        font-weight: var(--sem-font-weight-lead);
+        font-weight: var(--sem-font-weight-semibold);
       }
       .demo__label {
-        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-eyebrow);
-        line-height: var(--sem-font-line-eyebrow);
-        font-weight: var(--sem-font-weight-eyebrow);
-        letter-spacing: var(--sem-font-tracking-eyebrow);
-        text-transform: uppercase;
+        margin: var(--sem-space-x6) 0 var(--sem-space-x2);
+        font-size: var(--sem-font-size-label);
+        line-height: var(--sem-font-line-label);
+        font-weight: var(--sem-font-weight-medium);
         color: var(--sem-color-ink-muted);
       }
       .demo__row {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: var(--sem-space-x3);
+        gap: var(--sem-space-x2);
       }
-      .demo__map {
-        padding: var(--sem-space-x3);
-        background: var(--sem-color-sea-3);
+      .demo__stack {
+        display: grid;
+        gap: var(--sem-space-x3);
+        max-width: var(--sem-container-form);
+      }
+      .demo__card {
+        padding: var(--sem-space-x5);
+        border-radius: var(--sem-radius-surface);
+        background: var(--sem-color-sunken);
+        /* A soft card: a control inside takes the second grey (on-card). */
+        --sem-color-well: var(--sem-color-raised);
       }
     </style>
   </head>
   <body>
-    <section class="demo" data-mode="light">
-      <h2 class="demo__head">Pager</h2>
-
-      <p class="demo__label">Between the ends</p>
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Pager in dark</h2>
+      <p class="demo__label">A middle page</p>
       <nav class="wf-pager" aria-label="Pages">
-        <button class="wf-button wf-button--pill wf-button--sm" type="button">
-          <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
-          Previous
-        </button>
+        <button class="wf-button wf-button--sm" type="button"><svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg> Previous</button>
         <span class="wf-pager__status" aria-current="page">Page 2 of 7</span>
-        <button class="wf-button wf-button--pill wf-button--sm" type="button">
-          Next
-          <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-        </button>
+        <button class="wf-button wf-button--sm is-hover" type="button">Next <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
       </nav>
-
-      <p class="demo__label">First page · Previous disabled</p>
+      <p class="demo__label">The first page</p>
       <nav class="wf-pager" aria-label="Pages">
-        <button class="wf-button wf-button--pill wf-button--sm" type="button" disabled>
-          <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
-          Previous
-        </button>
+        <button class="wf-button wf-button--sm" type="button" disabled><svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg> Previous</button>
         <span class="wf-pager__status" aria-current="page">Page 1 of 7</span>
-        <button class="wf-button wf-button--pill wf-button--sm is-hover" type="button">
-          Next
-          <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-        </button>
-      </nav>
-
-      <p class="demo__label">Last page · Next disabled · Previous focused (held)</p>
-      <nav class="wf-pager" aria-label="Pages">
-        <button class="wf-button wf-button--pill wf-button--sm is-focus" type="button">
-          <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
-          Previous
-        </button>
-        <span class="wf-pager__status" aria-current="page">Page 7 of 7</span>
-        <button class="wf-button wf-button--pill wf-button--sm" type="button" disabled>
-          Next
-          <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-        </button>
+        <button class="wf-button wf-button--sm is-focus" type="button">Next <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
       </nav>
     </section>
 
-    <section class="demo" data-mode="dark">
-      <h2 class="demo__head">Pager · night chart (proposed)</h2>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Pager in light</h2>
       <nav class="wf-pager" aria-label="Pages">
-        <button class="wf-button wf-button--pill wf-button--sm" type="button" disabled>
-          <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
-          Previous
-        </button>
-        <span class="wf-pager__status" aria-current="page">Page 1 of 7</span>
-        <button class="wf-button wf-button--pill wf-button--sm" type="button">
-          Next
-          <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-        </button>
+        <button class="wf-button wf-button--sm" type="button"><svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg> Previous</button>
+        <span class="wf-pager__status" aria-current="page">Page 7 of 7</span>
+        <button class="wf-button wf-button--sm" type="button" disabled>Next <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
       </nav>
     </section>
   </body>

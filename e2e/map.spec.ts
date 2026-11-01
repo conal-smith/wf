@@ -55,10 +55,13 @@ export async function openChart(
   await backToIreland(page);
 }
 
-/** Find a spot by name and take the first result. */
+/** Find a spot by name in the top bar's search and take the first result. */
 export async function findSpot(page: Page, words: string, pick?: RegExp) {
-  await page.getByRole("combobox", { name: "Find a spot" }).fill(words);
-  const rows = page.locator(".spot-row");
+  // On a phone the field is folded into a round button.
+  const open = page.locator("[data-spot-search-open]");
+  if (await open.isVisible()) await open.click();
+  await page.getByRole("combobox", { name: "Search spots" }).fill(words);
+  const rows = page.getByRole("listbox", { name: "Spots" }).getByRole("option");
   await (pick ? rows.filter({ hasText: pick }) : rows).first().click();
 }
 
@@ -90,15 +93,17 @@ test("the chart opens on paper: the head, the controls, the lights and a flush d
   page.on("pageerror", (error) => errors.push(error.message));
   await openChart(page, 390, 844);
   await expect(page.locator(".map-loading")).toHaveCount(0);
-  // The brand, not the old one: the wordmark, and no Force5 logo or glass.
-  await expect(page.locator(".map-head")).toContainText("wingfoil.ie");
+  // The brand, not the old one: the wordmark in the top bar, and no Force5
+  // logo or glass.
+  await expect(page.locator("[data-top-bar]")).toContainText("wingfoil.ie");
   await expect(
     page.locator(".force5-logo, .platform-brand, .glass"),
   ).toHaveCount(0);
+  // On a phone the search is a round button in the bar.
   await expect(
-    page.getByRole("combobox", { name: "Find a spot" }),
-  ).toHaveAttribute("placeholder", "Find a spot…");
-  for (const box of [".map-head", ".zbox", ".dock"]) {
+    page.getByRole("button", { name: "Search spots" }),
+  ).toBeVisible();
+  for (const box of ["[data-top-bar]", ".zbox", ".dock"]) {
     const filter = await page
       .locator(box)
       .evaluate((el) => getComputedStyle(el).backdropFilter);
@@ -927,10 +932,10 @@ for (const device of [
       await expect(menu).toHaveAttribute("aria-expanded", "false");
       await unmoved();
       // The search's list of spots, as the reader types.
-      await page.getByRole("combobox", { name: "Find a spot" }).fill("Bran");
-      await expect(page.locator(".find .results")).toBeVisible();
+      await page.getByRole("combobox", { name: "Search spots" }).fill("Bran");
+      await expect(page.locator("[data-spot-search-results]")).toBeVisible();
       await press(page, await clear(page));
-      await expect(page.locator(".find .results")).toHaveCount(0);
+      await expect(page.locator("[data-spot-search-results]")).toHaveCount(0);
       await unmoved();
 
       // With nothing chosen, the same: the panel shuts and no point is
@@ -1055,11 +1060,11 @@ test("Escape shuts what is open over the chart first, then lets go of the chosen
   await expect(menu).toHaveAttribute("aria-expanded", "false");
   await expect(map).toHaveClass(/is-focus/);
   // The search's list goes with the words in it, and the field with the next.
-  const find = page.getByRole("combobox", { name: "Find a spot" });
+  const find = page.getByRole("combobox", { name: "Search spots" });
   await find.fill("Bran");
-  await expect(page.locator(".find .results")).toBeVisible();
+  await expect(page.locator("[data-spot-search-results]")).toBeVisible();
   await find.press("Escape");
-  await expect(page.locator(".find .results")).toHaveCount(0);
+  await expect(page.locator("[data-spot-search-results]")).toHaveCount(0);
   await find.press("Escape");
   await expect(find).not.toBeFocused();
   await expect(map).toHaveClass(/is-focus/);

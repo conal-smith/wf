@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Figure, Headline, Kicker, StarGlyphs } from "../../../ui";
+import { Figure, Heading, StarGlyphs } from "../../../ui";
 import { linkStyles } from "../../../ui/Link";
 import { tv } from "../../../ui/tv";
 import { useApi } from "../api";
@@ -13,7 +13,6 @@ import {
   NotFound,
   PageSkeleton,
   Stars,
-  sharedStyles,
   tabStyles,
   useAsync,
   usePageTitle,
@@ -27,38 +26,38 @@ export const sellerStyles = tv({
     // detail panel's 320, which would take 8px off the name at 900 wide.
     head: "grid min-w-0 items-start gap-x-10 gap-y-6 rail:grid-cols-profile",
     who: "flex min-w-0 items-center gap-4",
-    column: "flex min-w-0 flex-col gap-4",
-    // The seller's own words: the broadsheet's deck, in the body's italic.
-    bio: "m-0 max-w-measure font-body text-prose text-ink-2 italic whitespace-pre-wrap wrap-anywhere",
+    name: "flex min-w-0 flex-col gap-1",
+    column: "flex min-w-0 flex-col gap-5",
+    // The seller's own words, in plain prose.
+    bio: "m-0 max-w-measure font-body text-prose text-ink-2 whitespace-pre-wrap wrap-anywhere",
 
-    // ---- the figures, as the chart sets a day's: a ruled row of cells,
-    // a hairline between them, the figure over its mono label.
-    // On a phone the rating takes a row of its own and the three counts
-    // share the one under it.
+    // ---- the figures, as a row of cells in one soft card, a hairline
+    // between them inside it, the figure over its label. On a phone the
+    // rating takes a row of its own and the three counts share the one
+    // under it.
     stats:
-      "m-0 grid grid-cols-4 border-0 border-y border-ink max-wide:grid-cols-3",
+      "m-0 grid grid-cols-4 rounded-surface bg-sunken max-wide:grid-cols-3",
     stat: [
-      "flex min-w-0 flex-col-reverse justify-end gap-1 border-0 border-line px-3 py-3 first:pl-0",
+      "flex min-w-0 flex-col-reverse justify-end gap-1 border-0 border-line px-4 py-3.5",
       "not-first:border-l",
-      "max-wide:first:col-span-3 max-wide:first:border-b max-wide:nth-2:border-l-0 max-wide:nth-2:pl-0",
+      "max-wide:first:col-span-3 max-wide:first:border-b max-wide:nth-2:border-l-0",
     ],
+    statLabel: "font-body text-body text-ink-muted",
     statValue: "m-0 flex flex-wrap items-center gap-2",
 
-    // ---- the rating breakdown: a hairline box filled from the left in
-    // magenta's wash.
+    // ---- the rating breakdown: a soft bar filled from the left.
     breakdown: "flex min-w-0 flex-col gap-3",
     histogram: "grid grid-cols-meter items-center gap-x-3 gap-y-2",
-    bar: "h-3 overflow-hidden border border-line",
-    fill: "block h-full bg-wash/25",
-    figure: "font-mono text-caption text-ink-2 tabular-nums",
+    bar: "h-2 overflow-hidden rounded-full bg-sunken",
+    fill: "block h-full rounded-full bg-ink-2",
+    figure: "font-mono text-label text-ink-2 tabular-nums",
 
-    // ---- the reviews, one under another on hairlines
-    reviews: "flex flex-col",
-    review:
-      "flex flex-col gap-2 border-0 border-b border-line py-4 first:pt-1",
+    // ---- the reviews, as rows in one soft card
+    reviews: "m-0 list-none divide-y divide-line rounded-surface bg-sunken p-0",
+    review: "flex flex-col gap-2 px-4 py-3.5",
     between: "flex flex-wrap items-center justify-between gap-2",
     row: "flex flex-wrap items-center gap-3",
-    reviewer: "font-display text-prose font-semibold italic",
+    reviewer: "font-body text-prose font-semibold",
     about: "m-0 text-body text-ink-muted",
     prose: "m-0 max-w-measure text-prose whitespace-pre-wrap wrap-anywhere",
   },
@@ -71,7 +70,6 @@ export default function SellerPage({ id }: { id: string }) {
   usePageTitle(page ? page.seller.displayName : "Seller");
   const [tab, setTab] = useState<"active" | "sold" | "reviews">("active");
   const styles = sellerStyles();
-  const shared = sharedStyles();
   const tabs = tabStyles();
 
   if (result.notFound)
@@ -113,18 +111,17 @@ export default function SellerPage({ id }: { id: string }) {
       <BackLink />
       <section className={styles.head()} aria-labelledby="seller-name">
         <div className={styles.column()}>
-          <div className={shared.dateline()}>
-            <Kicker as="span" tone="ink">
-              Seller
-            </Kicker>
-            <Kicker as="span">
-              Since {since}
-              {seller.county ? ` · Co. ${seller.county}` : ""}
-            </Kicker>
-          </div>
           <div className={styles.who()}>
             <Avatar name={seller.displayName} large />
-            <Headline id="seller-name">{seller.displayName}</Headline>
+            <div className={styles.name()}>
+              <Heading level="page" id="seller-name">
+                {seller.displayName}
+              </Heading>
+              <p className={styles.about()}>
+                Seller since {since}
+                {seller.county ? ` · Co. ${seller.county}` : ""}
+              </p>
+            </div>
           </div>
           {seller.bio && <p className={styles.bio()}>{seller.bio}</p>}
           <dl className={styles.stats()}>
@@ -150,7 +147,9 @@ export default function SellerPage({ id }: { id: string }) {
           </dl>
         </div>
         <div className={styles.breakdown()}>
-          <Kicker tone="ink">Ratings</Kicker>
+          <Heading level="card" as="h2">
+            Ratings
+          </Heading>
           {stats.ratingCount ? (
             <div
               className={styles.histogram()}
@@ -227,9 +226,9 @@ export default function SellerPage({ id }: { id: string }) {
         ))}
       {tab === "reviews" &&
         (page.reviews.length ? (
-          <section className={styles.reviews()} aria-label="Reviews">
+          <ul className={styles.reviews()} aria-label="Reviews">
             {page.reviews.map((r) => (
-              <div key={r.id} className={styles.review()}>
+              <li key={r.id} className={styles.review()}>
                 <div className={styles.between()}>
                   <span className={styles.row()}>
                     <Stars value={r.rating} size={12} />
@@ -237,9 +236,9 @@ export default function SellerPage({ id }: { id: string }) {
                       {r.reviewer.displayName}
                     </span>
                   </span>
-                  <Kicker as="span">
+                  <span className={styles.about()}>
                     <Age iso={r.createdAt} prefix="Reviewed" />
-                  </Kicker>
+                  </span>
                 </div>
                 <p className={styles.about()}>
                   About{" "}
@@ -251,9 +250,9 @@ export default function SellerPage({ id }: { id: string }) {
                   </Link>
                 </p>
                 {r.comment && <p className={styles.prose()}>{r.comment}</p>}
-              </div>
+              </li>
             ))}
-          </section>
+          </ul>
         ) : (
           <Empty title="No reviews yet" />
         ))}
@@ -273,9 +272,7 @@ function Stat({
     // The label comes first in the source, as a <dl> wants it, and the
     // figure is drawn over it, as the chart sets a figure over its name.
     <div className={styles.stat()}>
-      <dt>
-        <Kicker as="span">{label}</Kicker>
-      </dt>
+      <dt className={styles.statLabel()}>{label}</dt>
       <dd className={styles.statValue()}>{children}</dd>
     </div>
   );

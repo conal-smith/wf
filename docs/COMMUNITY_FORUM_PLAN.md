@@ -467,7 +467,8 @@ A third bundle, exactly as the marketplace was added:
   `isCommunityPath`; the site menu gets its third row in both existing apps.
 - `src/main.tsx` lazy-loads `community/web/CommunityApp` for `/community` URLs.
 - `public/_redirects`: two more rules. Caddy's fallback already covers it.
-- The header is the marketplace's bar with `Community` in the eyebrow chip.
+- The header is the site's one top bar (`ui/TopBar.tsx`), with the section's
+  own actions (the bell) in it.
 
 ```
 /community                     home feed (Latest, Following, Unanswered)

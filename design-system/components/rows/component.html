@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rows — wingfoil</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="../switch/component.css" />
+    <link rel="stylesheet" href="../tag/component.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the ground, a grey label over each row, soft cards. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x6);
+        background: var(--sem-color-ground);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x2);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-semibold);
+      }
+      .demo__label {
+        margin: var(--sem-space-x6) 0 var(--sem-space-x2);
+        font-size: var(--sem-font-size-label);
+        line-height: var(--sem-font-line-label);
+        font-weight: var(--sem-font-weight-medium);
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x2);
+      }
+      .demo__stack {
+        display: grid;
+        gap: var(--sem-space-x3);
+        max-width: var(--sem-container-form);
+      }
+      .demo__card {
+        padding: var(--sem-space-x5);
+        border-radius: var(--sem-radius-surface);
+        background: var(--sem-color-sunken);
+        /* A soft card: a control inside takes the second grey (on-card). */
+        --sem-color-well: var(--sem-color-raised);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Rows in dark</h2>
+      <div class="demo__stack">
+        <p class="demo__label">Rows that open a page</p>
+        <ul class="wf-rows">
+          <li><a class="wf-rows__row wf-rows__row--action" href="#"><span class="wf-rows__main"><span class="wf-rows__title">Dollymount</span><span class="wf-rows__detail">Dublin</span></span><span class="wf-rows__end"><svg class="wf-rows__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></span></a></li>
+          <li><a class="wf-rows__row wf-rows__row--action is-hover" href="#"><span class="wf-rows__main"><span class="wf-rows__title">Brandon Bay</span><span class="wf-rows__detail">Kerry</span></span><span class="wf-rows__end"><svg class="wf-rows__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></span></a></li>
+          <li><a class="wf-rows__row wf-rows__row--action is-focus" href="#"><span class="wf-rows__main"><span class="wf-rows__title">Rosslare</span><span class="wf-rows__detail">Wexford</span></span><span class="wf-rows__end"><svg class="wf-rows__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></span></a></li>
+        </ul>
+
+        <p class="demo__label">Rows with a value, and one that is dim</p>
+        <ul class="wf-rows">
+          <li><div class="wf-rows__row"><span class="wf-rows__main"><span class="wf-rows__title">Cross-offshore</span><span class="wf-rows__detail">Blows out at an angle. You drift away from the beach.</span></span><span class="wf-rows__end">1 star off</span></div></li>
+          <li><div class="wf-rows__row wf-rows__row--dim"><span class="wf-rows__main"><span class="wf-rows__title">Offshore</span><span class="wf-rows__detail">Blows out to sea. We don't recommend going out in it.</span></span><span class="wf-rows__end"><span class="wf-tag wf-tag--off">No stars</span></span></div></li>
+        </ul>
+
+        <p class="demo__label">A setting with a switch</p>
+        <ul class="wf-rows">
+          <li><div class="wf-rows__row"><span class="wf-rows__main"><span class="wf-rows__title" id="rw-d-h">HARMONIE</span><span class="wf-rows__detail">2.5 km, 2½ days</span></span><span class="wf-rows__end"><button class="wf-switch" type="button" role="switch" aria-checked="true" aria-labelledby="rw-d-h"><span class="wf-switch__thumb" aria-hidden="true"></span></button></span></div></li>
+          <li><div class="wf-rows__row"><span class="wf-rows__main"><span class="wf-rows__title" id="rw-d-g">GFS</span><span class="wf-rows__detail">25 km, 16 days</span></span><span class="wf-rows__end"><button class="wf-switch" type="button" role="switch" aria-checked="false" aria-labelledby="rw-d-g"><span class="wf-switch__thumb" aria-hidden="true"></span></button></span></div></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Rows in light</h2>
+      <div class="demo__stack">
+        <ul class="wf-rows">
+          <li><a class="wf-rows__row wf-rows__row--action" href="#"><span class="wf-rows__main"><span class="wf-rows__title">Dollymount</span><span class="wf-rows__detail">Dublin</span></span><span class="wf-rows__end"><svg class="wf-rows__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></span></a></li>
+          <li><a class="wf-rows__row wf-rows__row--action is-hover" href="#"><span class="wf-rows__main"><span class="wf-rows__title">Brandon Bay</span><span class="wf-rows__detail">Kerry</span></span><span class="wf-rows__end"><svg class="wf-rows__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></span></a></li>
+          <li><div class="wf-rows__row wf-rows__row--dim"><span class="wf-rows__main"><span class="wf-rows__title">Offshore</span><span class="wf-rows__detail">Blows out to sea.</span></span><span class="wf-rows__end"><span class="wf-tag wf-tag--off">No stars</span></span></div></li>
+        </ul>
+      </div>
+    </section>
+  </body>
+</html>

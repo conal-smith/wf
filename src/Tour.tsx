@@ -17,7 +17,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { FocusStyle } from "../force5/src/focus";
 import { Button } from "../ui/Button";
-import { Puffin } from "../ui/Puffin";
 import type { DockView } from "./ForecastDock";
 import type { MapPanel } from "./MapControls";
 
@@ -67,7 +66,7 @@ const TARGETS = {
   // The loupe's sheet is the whole map: its rim and the reading under it are the loupe.
   loupe: [".map-loupe .map-loupe-rim", ".map-loupe .map-loupe-foot-box"],
   blend: [".dock tr.tt-blend", ".dock .blend-chart"],
-  menu: '.map-head [aria-label="Site menu"]',
+  menu: '[data-top-bar] [aria-label="Site menu"]',
   layers: "#map-rail",
 } as const;
 
@@ -363,7 +362,7 @@ export default function Tour(props: TourProps) {
       )}
       <div
         ref={card}
-        className="tour-card chart-box"
+        className="tour-card"
         role="dialog"
         aria-modal="false"
         aria-labelledby="tour-card-t"
@@ -383,29 +382,31 @@ export default function Tour(props: TourProps) {
           </Button>
         </div>
         <div className="tour-say">
-          <div>
-            <h3 id="tour-card-t">{step.title}</h3>
-            <p id="tour-card-p">{step.body}</p>
-          </div>
-          <Puffin size={step.final ? 66 : 46} bob />
+          <h3 id="tour-card-t">{step.title}</h3>
+          <p id="tour-card-p">{step.body}</p>
         </div>
         <div className="tour-foot">
           {!step.final && (
             <span className="tour-dots" aria-hidden="true">
               {STEPS.slice(0, COUNT).map((s, i) => (
-                <i key={s.id} className={i <= at ? "is-on" : undefined} />
+                <i
+                  key={s.id}
+                  className={
+                    i === at ? "is-at" : i < at ? "is-on" : undefined
+                  }
+                />
               ))}
             </span>
           )}
           <span className="tour-sp" />
           {at > 0 && !step.final && (
-            <Button variant="pill" size="sm" onClick={() => setAt(at - 1)}>
+            <Button variant="outline" size="sm" onClick={() => setAt(at - 1)}>
               Back
             </Button>
           )}
           {step.final ? (
             <>
-              <Button variant="pill" size="sm" onClick={() => end(false)}>
+              <Button variant="outline" size="sm" onClick={() => end(false)}>
                 Done
               </Button>
               <Button

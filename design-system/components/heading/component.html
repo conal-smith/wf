@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Heading — wingfoil</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the ground, a grey label over each row, soft cards. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x6);
+        background: var(--sem-color-ground);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x2);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-semibold);
+      }
+      .demo__label {
+        margin: var(--sem-space-x6) 0 var(--sem-space-x2);
+        font-size: var(--sem-font-size-label);
+        line-height: var(--sem-font-line-label);
+        font-weight: var(--sem-font-weight-medium);
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x2);
+      }
+      .demo__stack {
+        display: grid;
+        gap: var(--sem-space-x3);
+        max-width: var(--sem-container-form);
+      }
+      .demo__card {
+        padding: var(--sem-space-x5);
+        border-radius: var(--sem-radius-surface);
+        background: var(--sem-color-sunken);
+        /* A soft card: a control inside takes the second grey (on-card). */
+        --sem-color-well: var(--sem-color-raised);
+      }
+      .demo__link {
+        color: inherit;
+        text-decoration: underline;
+        text-decoration-color: var(--sem-color-line-strong);
+        text-underline-offset: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Heading in dark</h2>
+
+      <p class="demo__label">Page, with a lead line</p>
+      <div class="wf-heading wf-heading--page">
+        <h1 class="wf-heading__title">How the stars work</h1>
+        <p class="wf-heading__lead">We rate every daylight hour out of five stars, from four numbers: wind, gust, its direction against the beach, and the water.</p>
+      </div>
+
+      <p class="demo__label">Section, with a link on the right</p>
+      <div class="wf-heading">
+        <h2 class="wf-heading__title">The week</h2>
+        <div class="wf-heading__aside"><a class="demo__link" href="#">All spots on the chart</a></div>
+      </div>
+
+      <p class="demo__label">Section, with a count</p>
+      <div class="wf-heading">
+        <h2 class="wf-heading__title">Dublin</h2>
+        <div class="wf-heading__aside">21 places</div>
+      </div>
+
+      <p class="demo__label">Card, inside a soft card</p>
+      <div class="demo__card">
+        <div class="wf-heading wf-heading--card"><h3 class="wf-heading__title">Launch</h3></div>
+        <p style="margin: var(--sem-space-x1-5) 0 0; color: var(--sem-color-ink-2); font-size: var(--sem-font-size-body)">From the sand at the end of the causeway road, from mid-tide up.</p>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Heading in light</h2>
+      <div class="wf-heading wf-heading--page">
+        <h1 class="wf-heading__title">How the stars work</h1>
+        <p class="wf-heading__lead">We rate every daylight hour out of five stars, from four numbers.</p>
+      </div>
+      <p class="demo__label">Section</p>
+      <div class="wf-heading">
+        <h2 class="wf-heading__title">The week</h2>
+        <div class="wf-heading__aside"><a class="demo__link" href="#">All spots on the chart</a></div>
+      </div>
+    </section>
+  </body>
+</html>

@@ -2,45 +2,39 @@ import type { ReactNode } from "react";
 import { DISABLED, RING, tv, type VariantProps } from "./tv";
 
 /*
- * The chart's switch, as the dock's TABLE | RIBBON: one capsule ruled in ink,
- * the words in mono capitals, and the one that is on filled in ink.
+ * One of a few short options, all in view (five at most): a grey well, the
+ * chosen one lifted out of it. Model names keep their own spelling (HARMONIE,
+ * ICON-EU): they are names, not labels set in capitals.
  */
 export const segmentedStyles = tv({
   slots: {
-    base: "inline-flex rounded-full border border-ink bg-card",
+    base: [
+      "inline-flex max-w-full shrink-0 overflow-x-auto rounded-full bg-well p-0.75 scrollbar-none",
+    ],
     item: [
-      "inline-flex h-control-sm items-center justify-center gap-1 rounded-full border-0 bg-transparent px-3",
-      "font-mono text-label whitespace-nowrap text-ink",
-      "cursor-pointer touch-manipulation transition-colors duration-fast pointer-coarse:min-h-touch",
-      "not-disabled:hover:bg-sunken",
-      // The chosen one is filled in ink, with the ink's sheen, and set
-      // heavier: not colour alone.
-      "aria-pressed:bg-inverse aria-pressed:sheen-ink aria-pressed:font-semibold aria-pressed:text-ink-inverse aria-pressed:shadow-control not-disabled:aria-pressed:hover:bg-inverse",
+      "inline-flex h-7.5 flex-auto items-center justify-center gap-1.5 rounded-full border-0 bg-transparent px-3",
+      "font-body text-body font-medium whitespace-nowrap text-ink-2",
+      "relative cursor-pointer touch-manipulation transition-colors duration-fast",
+      "not-disabled:hover:text-ink",
+      // A thumb's reach on a touch screen: a band to touch height across it.
+      "pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:-inset-y-2.5",
+      // The chosen one: lifted onto the ground in white, a lighter grey in
+      // dark, and in the ink colour: not by colour alone.
+      "aria-pressed:bg-ground aria-pressed:text-ink aria-pressed:shadow-control dark:aria-pressed:bg-ink/12 dark:aria-pressed:shadow-none",
       RING,
       DISABLED,
     ],
   },
   variants: {
-    // A column of choices: a ruled list in a box, one row filled. The box
-    // clips the rows to its corners; the rows' rules stay square.
-    stack: {
-      true: {
-        base: "flex flex-col items-stretch overflow-hidden rounded-surface",
-        item: "h-control-md justify-start rounded-none border-b border-line px-4 last:border-b-0 aria-pressed:shadow-none",
-      },
-    },
-    // A switch in a crowded head (the spot finder's, on a phone): the
-    // eyebrow's size and half the room across. It stays a control's height
-    // on a touch screen too, and the press reaches past it to a touch's
-    // height through a band laid across it, so nothing around it moves.
     size: {
+      sm: { item: "h-6.5 px-2.5 text-label" },
       md: {},
-      sm: {
-        item: [
-          "relative px-2 text-eyebrow",
-          "pointer-coarse:min-h-0 pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:-inset-y-1.75",
-        ],
-      },
+      // A question with a few answers, across the width it is given.
+      lg: { item: "h-9.5 px-4 text-prose" },
+    },
+    // Across the whole width it is given, each option an equal share.
+    full: {
+      true: { base: "flex w-full", item: "flex-1 basis-0" },
     },
   },
   defaultVariants: { size: "md" },
@@ -68,12 +62,12 @@ export function Segmented<T extends string>({
   options,
   value,
   onChange,
-  stack,
   size,
+  full,
   className,
   "aria-label": label,
 }: SegmentedProps<T>) {
-  const styles = segmentedStyles({ stack, size });
+  const styles = segmentedStyles({ size, full });
   return (
     <div role="group" aria-label={label} className={styles.base({ className })}>
       {options.map((option) => (

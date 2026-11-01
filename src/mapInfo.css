@@ -3,10 +3,13 @@
    phone as a row of tabs over the section. In MapInfo's own chunk, so the
    map carries none of it until the dialog is opened. */
 
-/* The dialog's head is the cartouche at the top of the rail, its body falls
+/* The dialog's head is the title at the top of the rail, its body falls
    away (`display: contents`) so the rail and the section are the box's own
-   columns. Only the grid is set here: the kit's `open:grid` says when the
-   box is drawn at all. */
+   columns. The kit's dialog is drawn (`open:flex`) only while open; open,
+   this one is a grid. */
+.map-info[open] {
+  display: grid;
+}
 .map-info {
   position: relative;
   grid-template-columns: 230px minmax(0, 1fr);
@@ -19,26 +22,22 @@
   gap: 0;
   overflow: hidden;
 }
-.map-info > div:first-child {
+/* The kit's grabber is for a sheet; this dialog is the whole screen on a
+   phone. */
+.map-info > span:first-child {
+  display: none;
+}
+.map-info > div:nth-of-type(1) {
   grid-column: 1;
   grid-row: 1;
-  display: block;
-  padding: 16px 16px 12px;
-  border-bottom: 3px double var(--color-ink);
-  border-right: 1px solid var(--color-ink);
+  padding: 20px 20px 12px 24px;
   background: var(--color-ground);
 }
-/* The cartouche: the sheet's name over its title, as a chart names itself. */
-.map-info > div:first-child h2 {
-  font: italic 600 19px/1.15 var(--font-display);
+.map-info > div:nth-of-type(1) h2 {
+  font: 600 var(--text-lead) / 1.2 var(--font-body);
+  letter-spacing: -0.01em;
 }
-.map-info > div:first-child h2::before {
-  content: "IRELAND";
-  display: block;
-  margin-bottom: 2px;
-  font: normal 600 10px var(--font-mono);
-}
-.map-info > div:first-child > button {
+.map-info > div:nth-of-type(1) > button {
   position: absolute;
   top: 10px;
   right: 10px;
@@ -48,62 +47,56 @@
   display: contents;
 }
 
-/* ---- the rail ---- */
+/* ---- the rail: the kit's tabs down the side, in groups set apart by space ---- */
 .mi-nav {
   grid-column: 1;
   grid-row: 2;
   display: flex;
   flex-direction: column;
+  gap: 2px;
   min-height: 0;
   overflow-y: auto;
-  padding: 6px 0;
-  border-right: 1px solid var(--color-ink);
-  background-color: var(--color-sunken);
+  padding: 4px 12px 16px;
 }
 .map-info .mi-nav .mi-tab {
   position: relative;
+  flex: none;
   justify-content: flex-start;
   gap: 10px;
   width: 100%;
-  height: 42px;
-  min-height: 42px;
-  padding: 0 14px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 12px;
   border: 0;
-  border-radius: 0;
-  font: 600 14.5px var(--font-display);
-  letter-spacing: 0;
-  text-transform: none;
+  border-radius: var(--radius-control);
+  font: 500 14px var(--font-body);
   text-align: left;
   color: var(--color-ink-2);
+}
+.map-info .mi-nav .mi-tab svg {
+  color: var(--color-ink-muted);
 }
 .mi-tab .mi-short {
   display: none;
 }
 .map-info .mi-nav .mi-tab[aria-selected="true"] {
-  background: var(--color-ground);
+  background: var(--color-sunken);
   color: var(--color-ink);
-  font-style: italic;
-  font-weight: 700;
 }
-.mi-tab[aria-selected="true"]::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  background: var(--color-ink);
+.map-info .mi-nav .mi-tab[aria-selected="true"] svg {
+  color: var(--color-ink);
 }
 @media (hover: hover) and (pointer: fine) {
   .map-info .mi-nav .mi-tab:hover {
-    background: var(--color-ground);
-    color: var(--color-chart-magenta);
+    background: var(--color-sunken);
+    color: var(--color-ink);
   }
 }
 .mi-nav hr {
-  margin: 6px 14px;
+  flex: none;
+  height: 12px;
+  margin: 0;
   border: 0;
-  border-top: 1px solid var(--color-line);
 }
 
 /* ---- the section ---- */
@@ -112,7 +105,7 @@
   grid-row: 1 / -1;
   min-height: 0;
   overflow-y: auto;
-  padding: 22px 30px 30px;
+  padding: 24px 32px 32px 20px;
   color: var(--color-ink);
   font-size: 14.5px;
   line-height: 1.4;
@@ -121,17 +114,9 @@
   outline: 2px solid var(--color-focus);
   outline-offset: -2px;
 }
-.mi-kick {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  font: 500 10px/1.3 var(--font-mono);
-  color: var(--color-ink-muted);
-}
 .mi-main h3 {
-  margin: 6px 0 4px;
-  font: 700 30px/1.05 var(--font-display);
+  margin: 0 0 6px;
+  font: 600 28px/1.1 var(--font-body);
   letter-spacing: -0.02em;
 }
 .mi-lede {
@@ -146,13 +131,13 @@
   justify-content: space-between;
   align-items: baseline;
   gap: 2px 10px;
-  margin: 20px 0 10px;
-  padding-bottom: 4px;
-  border-bottom: 2px solid var(--color-ink);
-  font: 600 17px var(--font-display);
+  margin: 28px 0 10px;
+  font: 600 17px/1.3 var(--font-body);
+  letter-spacing: -0.01em;
 }
 .mi-main h4 small {
-  font: 500 10px var(--font-mono);
+  font: 400 13px var(--font-body);
+  letter-spacing: 0;
   color: var(--color-ink-muted);
 }
 .mi-main p {
@@ -171,11 +156,11 @@
 .mi-more {
   display: inline-block;
   margin-top: 12px;
-  font: 500 11px var(--font-mono);
+  font: 500 13px var(--font-body);
   text-underline-offset: 3px;
 }
 .mi-fig {
-  font: 500 12px var(--font-mono);
+  font: 500 13px var(--font-body);
 }
 
 /* A grid of marks, each beside its name and a line on it. */
@@ -202,7 +187,7 @@
 }
 .mi-keys b {
   display: block;
-  font: 600 14px var(--font-display);
+  font: 600 14px var(--font-body);
 }
 .mi-keys li > span:last-child > span {
   display: block;
@@ -235,7 +220,8 @@
   flex: none;
   width: 22px;
   height: 14px;
-  border: 1px solid var(--color-ink);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 3px;
 }
 .mi-sw-nogo {
   background: var(--color-ground) var(--mi-hatch);
@@ -271,9 +257,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 12px;
-  padding: 14px;
-  border: 1px solid var(--color-ink);
-  background: var(--color-ground);
+  padding: 14px 16px;
+  border-radius: var(--radius-surface);
+  background: var(--color-sunken);
 }
 .mi-eq > span {
   display: flex;
@@ -282,11 +268,11 @@
   gap: 4px;
 }
 .mi-eq small {
-  font: 500 9.5px var(--font-mono);
+  font: 400 12px var(--font-body);
   color: var(--color-ink-muted);
 }
 .mi-eq .mi-op {
-  font: 400 22px var(--font-mono);
+  font: 400 22px var(--font-body);
   color: var(--color-ink-muted);
 }
 .mi-dark {
@@ -311,18 +297,16 @@
   display: grid;
   place-items: center;
   height: 70px;
-  border: 1px solid var(--color-ink);
+  border-radius: var(--radius-control);
   background: var(--color-sea);
 }
 .mi-two figcaption {
-  margin-top: 5px;
-  font: 500 10px var(--font-mono);
+  margin-top: 6px;
+  font: 600 13px var(--font-body);
 }
 .mi-two figcaption small {
   display: block;
-  font: italic 12.5px var(--font-body);
-  letter-spacing: 0;
-  text-transform: none;
+  font: 400 12.5px var(--font-body);
   color: var(--color-ink-muted);
 }
 .mi-wind-fig {
@@ -341,8 +325,8 @@
   display: block;
   width: 100%;
   height: auto;
-  border: 1px solid var(--color-ink);
-  background: var(--color-ground);
+  border-radius: var(--radius-surface);
+  background: var(--color-sunken);
 }
 .mi-blend text {
   font: 500 9.5px var(--font-mono);
@@ -351,7 +335,7 @@
 .mi-models {
   width: 100%;
   border-collapse: collapse;
-  font: 12.5px var(--font-mono);
+  font: 13px var(--font-body);
 }
 .mi-models td {
   padding: 7px 4px;
@@ -364,7 +348,7 @@
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: 1px solid var(--color-ink);
+  border-radius: 3px;
   vertical-align: middle;
 }
 .mi-models b {
@@ -375,7 +359,7 @@
   text-underline-offset: 3px;
 }
 .mi-models .mi-tag {
-  font: 500 9.5px var(--font-mono);
+  font: 400 12px var(--font-body);
   color: var(--color-ink-muted);
 }
 
@@ -396,19 +380,23 @@
   color: var(--color-ink);
 }
 .mi-symbols b {
-  font: 600 14px var(--font-display);
+  font: 600 14px var(--font-body);
 }
 .mi-symbols span {
-  font: italic 12.5px/1.3 var(--font-body);
+  font: 400 12.5px/1.3 var(--font-body);
   color: var(--color-ink-muted);
 }
 
-/* The sources: a heavy rule, a line each. */
+/* The sources: a line each, in one soft card. */
 .mi-sources ul {
   margin: 0;
-  padding: 0;
-  border-top: 2px solid var(--color-ink);
+  padding: 0 16px;
+  border-radius: var(--radius-surface);
+  background: var(--color-sunken);
   list-style: none;
+}
+.mi-sources li:last-child {
+  border-bottom: 0;
 }
 .mi-sources li {
   padding: 9px 0;
@@ -418,23 +406,16 @@
 }
 .mi-sources .ip-small {
   margin-top: 16px;
-  padding: 10px 12px;
-  border-left: 3px solid var(--color-warn);
+  padding: 12px 16px;
+  border-radius: var(--radius-surface);
   background: var(--color-warn-ground);
   font-size: 14px;
   color: var(--color-ink);
 }
 
-/* About: the name, the puffin beside it. */
+/* About: the wordmark large, the line under it. */
 .mi-about {
-  display: flex;
-  align-items: flex-end;
-  gap: 18px;
-  padding-bottom: 12px;
-  border-bottom: 3px double var(--color-ink);
-}
-.mi-about > div {
-  flex: 1;
+  padding-bottom: 4px;
 }
 .mi-about .mi-lede {
   margin: 8px 0 0;
@@ -452,12 +433,12 @@
 .mi-main .tints span {
   flex: 1;
   height: 18px;
-  font: italic 10px/18px var(--font-body);
+  font: 400 10px/18px var(--font-body);
   text-align: center;
   color: var(--color-ink-2);
 }
 .mi-main .k-sat {
-  font: 500 11px var(--font-mono);
+  font: 500 12px var(--font-body);
 }
 .mi-main .k-sat.is-error {
   color: var(--color-warn);
@@ -559,7 +540,8 @@
   flex: none;
   width: 22px;
   height: 10px;
-  border: 1px solid var(--color-ink);
+  border: 1px solid var(--color-line);
+  border-radius: 3px;
 }
 .foil-key .fk-enough {
   background: var(--map-foil-enough);
@@ -580,7 +562,8 @@
 }
 .foil-key .fk-scale {
   height: 10px;
-  border: 1px solid var(--color-ink);
+  border: 1px solid var(--color-line);
+  border-radius: 3px;
 }
 .foil-key .fk-ticks {
   position: relative;
@@ -626,18 +609,17 @@
     border-radius: 0;
     box-shadow: none;
   }
-  .map-info > div:first-child {
-    padding: max(12px, env(safe-area-inset-top)) 56px 8px 14px;
-    border-right: 0;
+  .map-info > div:nth-of-type(1) {
+    padding: max(12px, env(safe-area-inset-top)) 56px 8px 16px;
   }
   .mi-nav {
     grid-row: 2;
     flex-direction: row;
+    gap: 2px;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 0;
-    border-right: 0;
-    border-bottom: 1px solid var(--color-ink);
+    padding: 0 10px 8px;
+    border-bottom: 1px solid var(--color-line);
     scrollbar-width: none;
   }
   .mi-nav::-webkit-scrollbar {
@@ -651,15 +633,12 @@
     justify-content: center;
     gap: 3px;
     width: auto;
-    min-width: 72px;
-    height: 62px;
+    min-width: 64px;
+    height: 56px;
+    min-height: 56px;
     padding: 6px 8px 4px;
-    font: 500 9px var(--font-mono);
+    font: 500 12px var(--font-body);
     white-space: nowrap;
-  }
-  .map-info .mi-nav .mi-tab[aria-selected="true"] {
-    font-style: normal;
-    font-weight: 600;
   }
   .mi-tab .mi-name {
     display: none;
@@ -667,21 +646,13 @@
   .mi-tab .mi-short {
     display: inline;
   }
-  .mi-tab[aria-selected="true"]::before {
-    left: 8px;
-    right: 8px;
-    top: auto;
-    bottom: 0;
-    width: auto;
-    height: 3px;
-  }
   .mi-main {
     grid-column: 1;
     grid-row: 3;
     padding: 16px 16px max(24px, env(safe-area-inset-bottom));
   }
   .mi-main h3 {
-    font-size: 26px;
+    font-size: 24px;
   }
   .mi-keys {
     grid-template-columns: minmax(0, 1fr);

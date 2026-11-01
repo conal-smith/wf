@@ -1,8 +1,8 @@
 /* Skeleton — ui/Skeleton.tsx (skeletonStyles), rendered in CSS. Consumes --sem-* only.
  *
  * The shape of what is loading, so the page does not jump when it lands. Drawn
- * in the hairline's ink, which shows on grained paper where the second sheet
- * does not, breathing gently; still for a reader who asks for less motion. It
+ * in the hairline's colour, which shows on the ground and on a soft card
+ * alike, breathing gently; still for a reader who asks for less motion. It
  * says nothing itself: whatever holds it carries aria-busy. */
 
 /* shape="line" (the default): square, as a line of type is. */
@@ -14,14 +14,14 @@
   animation: var(--sem-animate-pulse);
 }
 
-/* shape="block": a photo, a chart, a pane's worth (128px at the least). */
+/* shape="block": a photo, a chart, a card's worth (128px at the least). */
 .wf-skeleton--block {
   height: auto;
   min-height: calc(var(--sem-space-step) * 32);
   border-radius: var(--sem-radius-surface);
 }
 
-/* shape="circle": an avatar, a light, a control. */
+/* shape="circle": an avatar, a control. */
 .wf-skeleton--circle {
   width: var(--sem-size-control-md);
   height: var(--sem-size-control-md);

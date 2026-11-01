@@ -210,8 +210,8 @@ export default function ProfileForm({
         Only signed-in members can see your contact details, and only when they
         ask for them on a listing.
       </p>
-      {errors._ && <Notice kind="warn">{errors._}</Notice>}
-      {saved && <Notice>Profile saved.</Notice>}
+      {errors._ && <Notice level="warn" alert title={errors._} />}
+      {saved && <Notice title="Profile saved" />}
       <div className={shared.formActions()}>
         <Button type="submit" variant="primary" size="lg" disabled={busy}>
           {busy ? "Saving…" : (submitLabel ?? "Save profile")}

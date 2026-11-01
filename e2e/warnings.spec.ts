@@ -5,7 +5,7 @@ import { SAMPLE_CLOCK } from "./columns";
 
 /**
  * Met Éireann's warnings on the site (force5/src/warnings.ts): the spot page's
- * list and its rows, and the dock's strip and star cells, for a warning of
+ * notice cards and its rows, and the dock's strip and star cells, for a warning of
  * each level at Brandon Bay, and nothing but the link to met.ie from a file
  * too old to trust. The warnings file is routed in, as the tides are in
  * spot-page.spec.ts: `public/marine` is ingest output, never part of the e2e
@@ -109,50 +109,52 @@ test("a spot page lists its warnings, and orange and red stand in for the stars"
   await page.goto("/spot/brandon");
   await expect(heading(page)).toBeVisible({ timeout: 30000 });
 
-  const panel = page.locator("[data-warnings]");
+  const group = page.locator("[data-notices]");
   await expect(
-    panel.getByRole("heading", { name: "Met Éireann warnings" }),
+    group.getByRole("heading", { name: "Warnings and notices" }),
   ).toBeVisible();
-  // Highest level first, a line each: its level, Met Éireann's headline
-  // without the "Status Red - " its mark already says, and its validity in
-  // Irish time. Its kind and Met Éireann's words fold underneath.
+  const panel = group.locator("[data-warnings]");
+  // Highest level first, a notice each: a plain title that says the level in
+  // words (Met Éireann's "Status Red - " said once, not twice), its validity
+  // in Irish time, and what it does to the stars. Its kind and Met Éireann's
+  // words fold under the chevron.
   await expect(panel.locator("[data-warning]")).toHaveCount(3);
   const items = panel.locator("[data-warning]");
   const headlines = panel.locator("[data-warning-headline]");
   await expect(items.nth(0)).toHaveAttribute("data-warning", "red");
   await expect(headlines.nth(0)).toHaveText(
-    "Marine Violent Storm warning from Valentia to Loop Head",
+    "Red marine violent storm warning from Valentia to Loop Head",
   );
   await expect(items.nth(1)).toHaveAttribute("data-warning", "orange");
-  await expect(headlines.nth(1)).toHaveText("Wind warning for Kerry");
-  await expect(items.nth(1)).toContainText(
-    /Mon 14 Sept? 13:00 – Mon 14 Sept? 16:00/,
-  );
+  await expect(headlines.nth(1)).toHaveText("Orange wind warning for Kerry");
+  await expect(items.nth(1)).toContainText(/Mon 14 Sept?, 13:00 to 16:00/);
   await expect(items.nth(2)).toHaveAttribute("data-warning", "yellow");
   await expect(headlines.nth(2)).toHaveText(
-    "Small Craft warning for all coasts of Ireland",
+    "Yellow small craft warning for all coasts of Ireland",
   );
   await expect(items.nth(1).locator("time").first()).toHaveAttribute(
     "datetime",
     tomorrow(12),
   );
-  // What a warning does to the stars, said once for the list.
-  const rule = panel.locator("[data-warnings-rule]");
-  await expect(rule).toContainText(
-    "Yellow: the stars still show beside it; see whether it bears on the water.",
-  );
-  await expect(rule).toContainText(
-    "Orange and red: no stars for the hours they cover.",
-  );
-  await expect(panel.getByText(/stars still show/)).toHaveCount(1);
+  // What a warning does to the stars, on the warning itself.
+  await expect(items.nth(0)).toContainText("no stars for these hours");
+  await expect(items.nth(1)).toContainText("no stars for these hours");
+  await expect(items.nth(2)).toContainText("stars still shown");
+  await expect(items.nth(2)).not.toContainText("no stars");
+  // No capital chip, no coloured bar down the side.
+  await expect(panel).not.toContainText(/ORANGE|YELLOW|RED\b/);
   // The kind and the description, every word kept, folded underneath.
   const words = items.nth(1).getByText("• Large coastal waves");
   await expect(words).toBeHidden();
-  await items.nth(1).locator("summary").click();
+  const details = items.nth(1).getByRole("button", { name: "Details" });
+  await expect(details).toHaveAttribute("aria-expanded", "false");
+  await details.click();
+  await expect(details).toHaveAttribute("aria-expanded", "true");
   await expect(items.nth(1).getByText(/^Wind warning: /)).toBeVisible();
   await expect(words).toBeVisible();
+  // The source, under the group.
   await expect(
-    panel.getByRole("link", { name: "The latest at met.ie" }),
+    group.getByRole("link", { name: "the latest at met.ie" }),
   ).toHaveAttribute("href", "https://www.met.ie/warnings");
   await shot(page, "spot-page-warnings");
 
@@ -162,7 +164,8 @@ test("a spot page lists its warnings, and orange and red stand in for the stars"
     const cell = row(page, tomorrow(hour)).locator("[data-hour-warning]");
     await expect(cell).toHaveAttribute("data-hour-warning", "orange");
     await expect(cell).not.toHaveAttribute("data-stars");
-    await expect(cell.locator('[data-warning-mark="orange"]')).toBeVisible();
+    await expect(cell.locator('[data-notice-mark="orange"]')).toBeVisible();
+    await expect(cell).toContainText("Orange warning");
     await expect(cell.getByRole("img", { name: /of 5 stars/ })).toHaveCount(0);
   }
   // Yellow: the stars stay, with its mark beside them.
@@ -170,7 +173,7 @@ test("a spot page lists its warnings, and orange and red stand in for the stars"
     const cell = row(page, tomorrow(hour)).locator("[data-hour-warning]");
     await expect(cell).toHaveAttribute("data-hour-warning", "yellow");
     await expect(cell).toHaveAttribute("data-stars", /\d/);
-    await expect(cell.locator('[data-warning-mark="yellow"]')).toBeVisible();
+    await expect(cell.locator('[data-notice-mark="yellow"]')).toBeVisible();
   }
   // Before and after, the hours are as they were.
   for (const hour of [11, 15])
@@ -197,7 +200,7 @@ test("a spot page lists its warnings, and orange and red stand in for the stars"
   await openDay(page, at(27 + 11));
   await expect(
     row(page, at(27 + 11)).locator(
-      '[data-hour-warning="red"] [data-warning-mark="red"]',
+      '[data-hour-warning="red"] [data-notice-mark="red"]',
     ),
   ).toBeAttached();
   await row(page, at(27 + 11)).scrollIntoViewIfNeeded();
@@ -265,27 +268,45 @@ for (const { width, height } of [
     const panel = page.locator("[data-warnings]");
     const items = panel.locator("[data-warning]");
     await expect(items).toHaveCount(4);
-    // Each says its own content once: no level twice, no shared sentence
-    // under every one, and Met Éireann's words folded until asked for.
+    // Each says its own content once: no level twice, and Met Éireann's
+    // words folded until asked for.
     for (const name of [
-      "Wind warning for Kerry, Clare, Galway",
-      "Rain warning for Cork, Kerry",
+      "Yellow wind warning for Kerry, Clare, Galway",
+      "Yellow rain warning for Cork, Kerry",
     ])
       await expect(
         panel.locator("[data-warning-headline]").filter({ hasText: name }),
       ).toHaveText(name);
     await expect(panel).not.toContainText("Status Yellow");
-    await expect(panel.getByText(/stars still show/)).toHaveCount(1);
-    for (const summary of await items.locator("summary").all())
-      await expect(summary).toBeVisible();
-    // Every warning is on the first screen, whole.
-    for (const item of await items.all()) {
+    await expect(panel.getByText(/stars still shown/)).toHaveCount(4);
+    // None takes the stars, so two show and the other two fold behind
+    // "more"; the two and the way to the rest are on the first screen, whole.
+    const more = page.locator("[data-notices-more]");
+    await expect(items.filter({ visible: true })).toHaveCount(2);
+    await expect(more).toHaveText("Show 2 more");
+    await expect(more).toHaveAttribute("aria-expanded", "false");
+    for (const item of [
+      ...(await items.filter({ visible: true }).all()),
+      more,
+    ]) {
       const box = (await item.boundingBox())!;
       expect(box.y + box.height).toBeLessThanOrEqual(height);
       expect(box.x + box.width).toBeLessThanOrEqual(width);
     }
-
     const days = page.locator("[data-day-card]").first();
+    const withTwo = (await days.boundingBox())!.y;
+    // Pressed, all four, each with its details under the chevron.
+    await more.click();
+    await expect(more).toHaveAttribute("aria-expanded", "true");
+    await expect(items.filter({ visible: true })).toHaveCount(4);
+    for (const details of await items
+      .getByRole("button", { name: "Details" })
+      .all())
+      await expect(details).toBeVisible();
+    await shot(page, `spot-page-four-warnings-open-${width}`);
+    await more.click();
+    await expect(items.filter({ visible: true })).toHaveCount(2);
+
     const without = async () => {
       await page.unroute("**/marine/warnings.json");
       await withWarnings(page, { ...fresh(), warnings: [] });
@@ -294,11 +315,10 @@ for (const { width, height } of [
       await expect(panel).toHaveCount(0);
       return (await days.boundingBox())!.y;
     };
-    const withFour = (await days.boundingBox())!.y;
-    // Above the report, a line or two each: four push the forecast down by
-    // less than half a screen.
+    // Above the cards, two and the way to the rest: four push the forecast
+    // down by less than half a screen.
     await shot(page, `spot-page-four-warnings-${width}`);
-    expect(withFour - (await without())).toBeLessThan(height / 2);
+    expect(withTwo - (await without())).toBeLessThan(height / 2);
   });
 
 test("a warnings file too old to trust shows nothing but the link to met.ie", async ({

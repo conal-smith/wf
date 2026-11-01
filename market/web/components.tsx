@@ -4,35 +4,35 @@
  */
 import { UserButton } from "@clerk/clerk-react";
 import {
-  AlertTriangle,
   Heart,
   Camera,
   Image as ImageIcon,
   LogIn,
   PlusCircle,
   RotateCw,
+  SearchX,
   UserRound,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
-import { CHART_HREF } from "../../force5/src/siteNav";
+import { CHART_HREF, spotHref } from "../../force5/src/siteNav";
 import { usePageTitle as useSitePageTitle } from "../../shared/web/usePageTitle";
 import {
   Avatar as KitAvatar,
   Button,
-  Chip,
   Empty,
   Figure,
-  Puffin,
+  Notice,
   Skeleton,
+  SpotSearch,
   StarGlyphs,
+  Tag,
+  TopBar,
 } from "../../ui";
-import { Masthead, MastheadMark, mastheadStyles } from "../../ui/Masthead";
 import { buttonStyles } from "../../ui/Button";
-import { kickerStyles } from "../../ui/Kicker";
 import { linkStyles } from "../../ui/Link";
-import { paneStyles } from "../../ui/Pane";
 import { skeletonStyles } from "../../ui/Skeleton";
+import { tabsStyles } from "../../ui/Tabs";
 import { RING, tv } from "../../ui/tv";
 import { useMarketAuth } from "./auth";
 import { Link, paths } from "./router";
@@ -118,18 +118,25 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): Async<T> {
 // ---- header ----------------------------------------------------------------
 
 /*
- * The site's masthead (ui/Masthead.tsx) with the marketplace's own few
- * actions. The bar's insets and the nameplate step down on a phone, so the
- * menu, the nameplate and both actions share 390px without a label wrapping.
+ * The site's one top bar (ui/TopBar.tsx) with the marketplace's own few
+ * actions in it. A phone's bar has room for one of them beside the search,
+ * Chart and the menu: the way to the account, as an icon. Sell is then the
+ * page's own (`SellOnPhone`), and the footer's.
  */
 export const headerStyles = tv({
   slots: {
     // The word beside the icon, where the row is wide enough to hold it.
     label: "hidden wide:inline",
-    user: "inline-flex items-center px-2",
+    // Only where the bar has room for it.
+    wide: "max-wide:hidden",
+    user: "inline-flex items-center px-1 max-wide:hidden",
     name: "hidden items-center px-2 text-body text-ink-muted wide:inline-flex",
+    actions: "flex items-center gap-2 max-wide:gap-1",
   },
 });
+
+/** A spot picked in the bar's search opens that spot's own page. */
+const openSpot = (spot: { id: string }) => location.assign(spotHref(spot.id));
 
 /**
  * `accentSell` fills the Sell button. A view gets one filled action, so the
@@ -138,47 +145,40 @@ export const headerStyles = tv({
 export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
   const auth = useMarketAuth();
   const styles = headerStyles();
-  const masthead = mastheadStyles();
   return (
-    <Masthead>
-        <SiteMenu current="market" size="sm" ground="content" />
-        <Link
-          to={paths.browse()}
-          className={masthead.brand()}
-          aria-label="wingfoil.ie Market, home"
-        >
-          <MastheadMark section="Market" />
-        </Link>
-        {/*
-          The wind map is reached through the site menu at the start of the bar,
-          not a button of its own here: one control per destination. The footer
-          link stays — it is at the other end of the page, not beside it.
-        */}
-        <nav className={masthead.actions()} aria-label="Marketplace">
-          {/*
-            The kit's Button is an anchor when it is given an href, but the
-            marketplace's router takes a link over through its own <Link>. So a
-            link that looks like a button wears the recipe's classes instead:
-            one styling, either element.
-          */}
+    <TopBar
+      search={<SpotSearch onPick={openSpot} />}
+      view={{ to: "chart", href: CHART_HREF }}
+      menu={<SiteMenu current="market" />}
+      actions={
+        /*
+          The kit's Button is an anchor when it is given an href, but the
+          marketplace's router takes a link over through its own <Link>. So a
+          link that looks like a button wears the recipe's classes instead:
+          one styling, either element.
+        */
+        <nav className={styles.actions()} aria-label="Marketplace">
           <Link
             className={buttonStyles({
-              variant: accentSell ? "primary" : "pill",
-              size: "sm",
+              variant: accentSell ? "primary" : "outline",
+              className: styles.wide(),
             })}
             to={paths.sell()}
           >
-            <PlusCircle size={15} strokeWidth={1.5} aria-hidden="true" />
+            <PlusCircle size={18} strokeWidth={1.75} aria-hidden="true" />
             <span>Sell</span>
           </Link>
           {auth.signedIn ? (
             <>
               <Link
-                className={buttonStyles({ variant: "pill", size: "sm" })}
+                className={buttonStyles({ variant: "quiet" })}
                 to={paths.me()}
+                aria-label="Account"
               >
-                <UserRound size={15} strokeWidth={1.5} aria-hidden="true" />
-                <span className={styles.label()}>Account</span>
+                <UserRound size={18} strokeWidth={1.75} aria-hidden="true" />
+                <span className={styles.label()} aria-hidden="true">
+                  Account
+                </span>
               </Link>
               {auth.provider === "clerk" ? (
                 <span className={styles.user()}>
@@ -190,8 +190,8 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
             </>
           ) : (
             <Button
-              variant="pill"
-              size="sm"
+              variant="quiet"
+              aria-label="Sign in"
               onClick={auth.signIn}
               disabled={auth.provider === "none" || !auth.loaded}
               title={
@@ -200,12 +200,35 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
                   : undefined
               }
             >
-              <LogIn size={15} strokeWidth={1.5} aria-hidden="true" />
-              <span>Sign in</span>
+              <LogIn size={18} strokeWidth={1.75} aria-hidden="true" />
+              <span className={styles.label()}>Sign in</span>
             </Button>
           )}
         </nav>
-    </Masthead>
+      }
+    />
+  );
+}
+
+/*
+ * Sell, where the top bar has no room for it: on a phone, beside the page's
+ * heading, the view's filled action as the bar's Sell is on a computer.
+ */
+export const sellOnPhoneStyles = tv({ base: "wide:hidden" });
+
+export function SellOnPhone() {
+  return (
+    <Link
+      className={buttonStyles({
+        variant: "primary",
+        size: "sm",
+        className: sellOnPhoneStyles(),
+      })}
+      to={paths.sell()}
+    >
+      <PlusCircle size={16} strokeWidth={1.75} aria-hidden="true" />
+      <span>Sell</span>
+    </Link>
   );
 }
 
@@ -230,7 +253,7 @@ export const ratingStyles = tv({
     // "4.5 · 2": the average and how many it is the average of.
     figure: "font-mono text-caption text-ink-2 tabular-nums",
     // Nobody has rated them: a line of small print, not five empty marks.
-    quiet: "font-body text-body text-ink-muted italic",
+    quiet: "font-body text-body text-ink-muted",
     picker: "inline-flex gap-1",
     // Under the pointer a star is lit, and a lit star draws no box: the run
     // of solid marks is what answers the hover.
@@ -292,6 +315,7 @@ export function RatingPicker({
         return (
           <Button
             key={n}
+            variant="quiet"
             icon
             size="md"
             role="radio"
@@ -369,7 +393,13 @@ export function shortAge(iso: string, now = Date.now()): string {
 }
 
 /** The age figure, with its words for a screen reader. */
-export function Age({ iso, prefix = "Listed" }: { iso: string; prefix?: string }) {
+export function Age({
+  iso,
+  prefix = "Listed",
+}: {
+  iso: string;
+  prefix?: string;
+}) {
   return (
     <time dateTime={iso}>
       <span aria-hidden="true">{shortAge(iso)}</span>
@@ -435,9 +465,9 @@ export function Price({
 // ---- the face ----------------------------------------------------------------
 
 /*
- * The face beside a seller's name: the kit's monogram, an initial in the
- * display face's italic in an ink ring. The one size a listing's seller row
- * wants, and the large one for the seller's own page.
+ * The face beside a seller's name: the kit's monogram, an initial on a soft
+ * round. The one size a listing's seller row wants, and the large one for the
+ * seller's own page.
  */
 export const faceStyles = tv({
   base: "",
@@ -466,8 +496,8 @@ export function Avatar({
 // ---- listing card ------------------------------------------------------------
 
 /**
- * The classifieds: as many 240px columns as fit, two on a phone, each ad
- * under a heavy rule of its own. Dimmed while a newer result replaces it.
+ * The classifieds: as many 240px columns as fit, two on a phone, kept apart
+ * by space. Dimmed while a newer result replaces it.
  */
 export const listingGridStyles = tv({
   base: [
@@ -478,35 +508,33 @@ export const listingGridStyles = tv({
 
 export const listingCardStyles = tv({
   slots: {
-    // A ruled Pane (ui/Pane `kind="ruled"`): the broadsheet's heavy rule over
-    // each ad, and no box round it. The photograph stands in its own frame.
-    card: "group relative flex min-w-0 flex-col gap-2 text-ink no-underline",
-    // Where it is and how long it has been up, in the mono label, over the
-    // photograph the way a classified's section line heads it.
-    kicker: "flex min-w-0 items-baseline justify-between gap-2 text-ink-muted",
-    // On a phone the line runs out: the town gives way, the county stays,
-    // because the county is what a buyer filters on.
-    where: "flex min-w-0",
-    town: "truncate",
-    county: "shrink-0",
-    // The photograph on paper, in a hairline frame.
+    // No box round an ad: the photograph in its soft card, the words under it.
+    card: "group relative flex min-w-0 flex-col gap-2.5 rounded-surface text-ink no-underline",
+    // The photograph, cut to the card's corner on the soft ground.
     media:
-      "relative grid aspect-4/3 place-items-center overflow-hidden border border-line bg-sunken text-ink-muted",
-    // Sold is said by the badge as well as by the colour draining out of it.
+      "relative grid aspect-4/3 place-items-center overflow-hidden rounded-surface bg-sunken text-ink-muted",
+    // Sold is said by the tag as well as by the colour draining out of it.
     image: "block size-full object-cover group-data-sold:grayscale",
-    noPhoto: "flex min-w-0 flex-col items-center gap-1",
+    noPhoto: "flex min-w-0 flex-col items-center gap-1 text-body",
     badge: "absolute top-2 left-2",
     count: "absolute right-2 bottom-2",
     body: "flex flex-1 flex-col gap-1",
     // The price, and "new" beside it on the one card it marks.
     head: "flex min-h-7 items-center gap-2",
-    // The name of the thing in the display face, never more than two lines.
+    // The name of the thing, never more than two lines.
     title:
-      "m-0 line-clamp-2 font-display text-prose leading-tight font-semibold text-balance",
-    meta: "mt-auto flex min-w-0 items-center justify-between gap-2 pt-1 text-ink-muted",
+      "m-0 line-clamp-2 font-body text-prose leading-tight font-semibold text-balance",
+    // Where it is and how long it has been up, in a grey line.
+    where:
+      "flex min-w-0 items-baseline justify-between gap-2 text-body text-ink-muted",
+    // On a phone the line runs out: the town gives way, the county stays,
+    // because the county is what a buyer filters on.
+    place: "flex min-w-0",
+    town: "truncate",
+    county: "shrink-0",
+    meta: "mt-auto flex min-w-0 items-center justify-between gap-2 text-body text-ink-muted",
     condition: "truncate",
     seller: "flex shrink-0 items-center gap-1",
-    quiet: "m-0",
     hidden: "sr-only",
     // The three lines of a placeholder, as long as what they stand for.
     linePrice: "w-2/5",
@@ -515,16 +543,14 @@ export const listingCardStyles = tv({
   },
   variants: {
     /**
-     * A card that is a link answers the pointer the way a page does: the
-     * name underlines and the photograph leans in a little. Paper does not
-     * float, so nothing lifts. A placeholder does neither; both stand still
-     * for a reader who has asked for less movement.
+     * A card that is a link answers the pointer: the name underlines and the
+     * photograph leans in a little. Nothing lifts. A placeholder does
+     * neither; both stand still for a reader who has asked for less movement.
      */
     linked: {
       true: {
         card: RING,
-        title:
-          "decoration-1 underline-offset-3 group-hover:underline",
+        title: "decoration-1 underline-offset-3 group-hover:underline",
         image: [
           "transition duration-base motion-reduce:transition-none",
           "motion-safe:group-hover:scale-104",
@@ -546,7 +572,7 @@ export function ListingCard({
 }: {
   listing: Listing;
   showStatus?: boolean;
-  /** "New" in a chip beside the price: one card on a view, at most. */
+  /** "New" in a tag beside the price: one card on a view, at most. */
   fresh?: boolean;
   /** On the Saved tab every card is saved, and a badge saying so says nothing. */
   hideSaved?: boolean;
@@ -555,29 +581,12 @@ export function ListingCard({
 }) {
   const cover = listing.photos[0];
   const styles = listingCardStyles();
-  const label = kickerStyles;
   return (
     <Link
       to={paths.listing(listing.id)}
-      className={paneStyles({ kind: "ruled", className: styles.card() })}
+      className={styles.card()}
       data-sold={listing.status === "sold" ? "" : undefined}
     >
-      <span className={label({ className: styles.kicker() })}>
-        <span className={styles.where()}>
-          <span className={styles.hidden()}>In </span>
-          {listing.town && (
-            <span className={styles.town()}>{listing.town}</span>
-          )}
-          {/* The comma travels with the county, so a cut town still reads
-              "Castlegregor…, Kerry". A plain space would be trimmed at the
-              start of a flex item; this one is not. */}
-          <span className={styles.county()}>
-            {listing.town ? ",\u00a0" : ""}
-            {listing.county}
-          </span>
-        </span>
-        <Age iso={listing.createdAt} />
-      </span>
       <div className={styles.media()}>
         {cover ? (
           <img
@@ -592,38 +601,50 @@ export function ListingCard({
         ) : (
           <span className={styles.noPhoto()}>
             <ImageIcon size={24} strokeWidth={1.5} aria-hidden="true" />
-            <span className={label()}>No photo</span>
+            <span>No photo</span>
           </span>
         )}
         {showStatus && listing.status !== "active" ? (
-          <Chip tone="glass" eyebrow className={styles.badge()}>
+          <Tag tone="glass" className={styles.badge()}>
             {listing.status === "sold" ? "Sold" : "Removed"}
-          </Chip>
+          </Tag>
         ) : listing.saved && !hideSaved ? (
-          <Chip tone="glass" eyebrow className={styles.badge()}>
+          <Tag tone="glass" className={styles.badge()}>
             <Heart size={10} fill="currentColor" aria-hidden="true" /> Saved
-          </Chip>
+          </Tag>
         ) : null}
         {listing.photos.length > 1 && (
-          <Chip tone="glass" className={styles.count()}>
+          <Tag tone="glass" className={styles.count()}>
             <Camera size={11} strokeWidth={1.5} aria-hidden="true" />
             <span className={styles.hidden()}>Photos:</span>{" "}
             {listing.photos.length}
-          </Chip>
+          </Tag>
         )}
       </div>
       <div className={styles.body()}>
         <div className={styles.head()}>
           <Price listing={listing} />
-          {fresh && (
-            <Chip eyebrow data-fresh>
-              new
-            </Chip>
-          )}
+          {fresh && <Tag data-fresh>new</Tag>}
         </div>
         <h3 className={styles.title()}>{listing.title}</h3>
+        <span className={styles.where()}>
+          <span className={styles.place()}>
+            <span className={styles.hidden()}>In </span>
+            {listing.town && (
+              <span className={styles.town()}>{listing.town}</span>
+            )}
+            {/* The comma travels with the county, so a cut town still reads
+                "Castlegregor…, Kerry". A plain space would be trimmed at the
+                start of a flex item; this one is not. */}
+            <span className={styles.county()}>
+              {listing.town ? ",\u00a0" : ""}
+              {listing.county}
+            </span>
+          </span>
+          <Age iso={listing.createdAt} />
+        </span>
         <div className={styles.meta()}>
-          <span className={label({ className: styles.condition() })}>
+          <span className={styles.condition()}>
             {conditionLabel(listing.condition)}
           </span>
           {listing.seller.ratingCount > 0 && !hideSeller && (
@@ -633,7 +654,7 @@ export function ListingCard({
               className={styles.seller()}
               title={`Seller rated ${listing.seller.ratingAvg?.toFixed(1)} from ${listing.seller.ratingCount} review${listing.seller.ratingCount === 1 ? "" : "s"}`}
             >
-              <span className={label()}>Seller</span>
+              <span>Seller</span>
               <Stars value={listing.seller.ratingAvg} size={9} />
             </span>
           )}
@@ -686,11 +707,7 @@ export function GridSkeleton({ count = 8 }: { count?: number }) {
       aria-label="Loading listings"
     >
       {Array.from({ length: count }, (_, i) => (
-        <div
-          key={i}
-          className={paneStyles({ kind: "ruled", className: styles.card() })}
-          aria-hidden="true"
-        >
+        <div key={i} className={styles.card()} aria-hidden="true">
           <div className={styles.media()} />
           <div className={styles.body()}>
             <Skeleton className={styles.linePrice()} />
@@ -706,28 +723,19 @@ export function GridSkeleton({ count = 8 }: { count?: number }) {
 // ---- tabs --------------------------------------------------------------------
 
 /*
- * The account's sections and a seller's history: a row of mono labels on a
- * hairline, the one being read underlined in ink and set heavier, as a
- * broadsheet heads the column you are in. A tablist is not one of the kit's
- * parts (ui/Segmented is a group of toggles), so it is drawn here, once, for
- * both pages. The row scrolls sideways where the words do not fit, so the
- * ring is drawn inside a tab, where the scrolling row cannot clip it.
+ * The account's sections and a seller's history: the kit's tabs (ui/Tabs),
+ * a row of words with the current one on a soft pill. The account's are links
+ * the marketplace's router follows, which the kit's Tabs (buttons) cannot be,
+ * so both pages wear its recipe here. How many a tab holds is a figure in it.
  */
 export const tabStyles = tv({
+  extend: tabsStyles,
   slots: {
-    list: "flex max-w-full overflow-x-auto scrollbar-none border-0 border-b border-ink",
-    tab: [
-      "inline-flex h-control-md shrink-0 cursor-pointer items-center gap-1.5 px-3",
-      "border-0 border-b-3 border-transparent bg-transparent",
-      "font-mono text-label whitespace-nowrap text-ink-muted uppercase no-underline",
-      "touch-manipulation transition-colors duration-fast pointer-coarse:min-h-touch",
-      "not-disabled:hover:bg-transparent not-disabled:hover:text-ink",
-      "aria-selected:border-ink aria-selected:font-semibold aria-selected:text-ink",
-      RING,
-      "not-disabled:focus-visible:-outline-offset-2",
-    ],
-    // How many are in it, as a figure in the tab.
-    count: "font-mono text-caption tabular-nums",
+    list: "flex max-w-full gap-1 overflow-x-auto scrollbar-none",
+    // The row clips what overflows it, so the ring goes inside the tab, and
+    // a thumb gets the kit's minimum.
+    tab: "not-disabled:focus-visible:-outline-offset-2 pointer-coarse:min-h-touch",
+    count: "font-mono text-label text-ink-muted tabular-nums",
   },
 });
 
@@ -755,23 +763,10 @@ export {
 
 export const sharedStyles = tv({
   slots: {
-    /*
-     * The marketplace's box, for what stands alone (a form, a gate): the
-     * kit's Pane, one ink rule on grain, at the page inset rather than a
-     * panel's. The phone takes the panel inset back, there being less page.
-     */
-    pane: "p-6 max-wide:p-5",
-    /*
-     * The same box under an empty state, which brings a generous inset of its
-     * own on a wide screen. A phone takes the pane's inset back here too.
-     */
-    emptyPane: "max-wide:p-5",
-    /*
-     * The row of ways out of an empty state. Inside `Empty`'s own body, which
-     * is a centred column, so this only has to lay its own buttons out — and
-     * stand a little further off than the sentence above it.
-     */
-    emptyActions: "mt-2 flex flex-wrap justify-center gap-2",
+    /** A form's measure, where it stands on a page wider than it. */
+    formWidth: "w-full max-w-form",
+    /** The row of ways out of an empty state. */
+    emptyActions: "flex flex-wrap justify-center gap-2",
     /** The whole page, while there is nothing of it to draw yet. */
     skeleton: "min-h-69",
     /** A column of fields, read down. */
@@ -783,26 +778,14 @@ export const sharedStyles = tv({
     formRow: "grid grid-cols-fields gap-x-3 gap-y-5",
     /** What a form is answered with, and whatever is said beside it. */
     formActions: "flex flex-wrap items-center gap-x-3 gap-y-2",
-    /*
-     * The broadsheet's dateline over a page's head: what the page is on the
-     * left, its figures on the right, in the mono label on a hairline.
-     */
-    dateline:
-      "flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-0 border-b border-line pb-1.5",
-    /** A page's head: the dateline, the headline and what stands under it. */
-    head: "flex min-w-0 flex-col gap-3",
+    /** A grey line over or under a heading: where, since when, which step. */
+    meta: "m-0 font-body text-body text-ink-muted",
+    /** A page's head: the way back, the heading and what stands under it. */
+    head: "flex min-w-0 flex-col gap-2",
     /** The way back, on a line of its own. */
     back: "flex",
   },
 });
-
-/**
- * The kit's Pane worn by an element of the page's own choosing — a <section>,
- * a <li> — with the marketplace's inset and whatever that element lays out
- * inside it. The component would be a <div>, and these boxes are not.
- */
-export const pane = (...classes: string[]) =>
-  paneStyles({ className: classes.join(" ") });
 
 /**
  * A page that has not arrived. It says it is busy itself: there is nothing
@@ -823,15 +806,6 @@ export function PageSkeleton() {
   );
 }
 
-export const notFoundStyles = tv({
-  slots: {
-    // A URL that is not a page: the puffin on his rock, and a word.
-    lost: "grid justify-items-center gap-4 py-14 text-center",
-    lostTitle: "m-0 font-display text-lead font-semibold text-ink",
-    lostText: "m-0 max-w-reading font-body text-prose text-ink-muted",
-  },
-});
-
 /**
  * What a link to nothing finds: a path that is no page, or a listing or seller
  * the API says is not there (gone, sold and removed, or never was). There is
@@ -844,53 +818,54 @@ export function NotFound({
   title?: string;
   text?: string;
 }) {
-  const styles = notFoundStyles();
   return (
-    <section className={styles.lost()} aria-labelledby="not-found-title">
-      <Puffin size={88} bob />
-      <h1 className={styles.lostTitle()} id="not-found-title">
-        {title}
-      </h1>
-      <p className={styles.lostText()}>{text}</p>
-      <Link to={paths.browse()} className={buttonStyles({ variant: "primary" })}>
-        Browse listings
-      </Link>
-    </section>
+    <Empty
+      as="h1"
+      title={title}
+      icon={<SearchX size={24} strokeWidth={1.75} />}
+      actions={
+        <Link
+          to={paths.browse()}
+          className={buttonStyles({ variant: "primary" })}
+        >
+          Browse listings
+        </Link>
+      }
+    >
+      <p>{text}</p>
+    </Empty>
   );
 }
 
-/** A page or a list that could not be fetched: say so plainly and offer the retry. */
+/**
+ * A page or a list that could not be fetched: a notice that says so plainly,
+ * with the retry beside it.
+ */
 export function LoadError({
   title = "This could not be loaded",
   message,
   onRetry,
-  children,
 }: {
   title?: string;
   message: string;
   onRetry?: () => void;
-  children?: ReactNode;
 }) {
-  const styles = sharedStyles();
   return (
-    <div role="alert">
-      <Empty
-        kind="warn"
-        title={title}
-        icon={<AlertTriangle size={24} strokeWidth={1.5} />}
-        className={styles.emptyPane()}
-      >
-        <p>{message}</p>
-        <div className={styles.emptyActions()}>
-          {onRetry && (
-            <Button variant="pill" onClick={onRetry}>
-              <RotateCw size={15} aria-hidden="true" /> Try again
-            </Button>
-          )}
-          {children}
-        </div>
-      </Empty>
-    </div>
+    <Notice
+      level="warn"
+      alert
+      title={title}
+      action={
+        onRetry && (
+          <Button size="sm" onClick={onRetry}>
+            <RotateCw size={16} strokeWidth={1.75} aria-hidden="true" /> Try
+            again
+          </Button>
+        )
+      }
+    >
+      {message}
+    </Notice>
   );
 }
 
@@ -898,15 +873,14 @@ export function LoadError({
 
 export const footerStyles = tv({
   slots: {
+    // The page's foot, kept off the page by space and nothing heavier, and
+    // the last row on the page, so its foot clears a home bar.
     base: [
-      // The page's foot: the broadsheet's double rule, and the last row on the
-      // page, so its foot clears a home bar.
-      "mt-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-3",
-      "border-0 border-t-3 border-double border-ink pt-4 pb-safe-6",
+      "mt-16 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 pt-4 pb-safe-6",
       // A phone has no room for two ends of a row, so they become two rows.
-      "max-wide:flex-col max-wide:items-start",
+      "max-wide:mt-12 max-wide:flex-col max-wide:items-start",
     ],
-    note: "m-0 text-ink-muted",
+    note: "m-0 font-body text-body text-ink-muted",
     links: "flex flex-wrap gap-x-5 gap-y-2 font-body text-body text-ink-2",
   },
 });
@@ -917,9 +891,7 @@ export function MarketFooter() {
   const link = linkStyles({ plain: true });
   return (
     <footer className={styles.base()}>
-      <p className={kickerStyles({ className: styles.note() })}>
-        © {new Date().getFullYear()} wingfoil.ie
-      </p>
+      <p className={styles.note()}>© {new Date().getFullYear()} wingfoil.ie</p>
       <nav className={styles.links()} aria-label="Footer">
         <Link className={link} to={paths.browse()}>
           Browse gear
@@ -968,7 +940,7 @@ export function SaveButton({
 }) {
   return (
     <Button
-      variant="pill"
+      variant="outline"
       size="lg"
       // Saved says so in the word and in the filled heart beside it, so the
       // box stays quiet and never rivals the view's one filled action.

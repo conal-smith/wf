@@ -1,6 +1,6 @@
 /**
- * Light or dark. The rider's choice is kept on the device; with none, the
- * system's setting decides, and follows it when it changes. The page is
+ * Light, dark or auto. Dark is the default; the rider's choice is kept on the
+ * device, and "auto" (`system`) follows the device's setting as it changes. The page is
  * painted in the theme before anything is drawn: index.html carries the same
  * few lines inline in its head (THEME_BOOT below, kept equal by theme.test.ts),
  * so a dark page never flashes white. ui/theme.css holds both palettes; the
@@ -38,9 +38,9 @@ const systemDark = () =>
 export function themeChoice(storage: Store | null = store()): ThemeChoice {
   try {
     const saved = storage?.getItem(THEME_KEY);
-    return saved === "light" || saved === "dark" ? saved : "system";
+    return saved === "light" || saved === "system" ? saved : "dark";
   } catch {
-    return "system";
+    return "dark";
   }
 }
 
@@ -67,11 +67,10 @@ export function applyTheme(theme: Theme) {
     window.dispatchEvent(new CustomEvent(THEME_EVENT, { detail: theme }));
 }
 
-/** The rider picks a theme; "system" forgets their choice. */
+/** The rider picks a theme: light, dark, or the device's (`system`). */
 export function chooseTheme(choice: ThemeChoice, storage = store()) {
   try {
-    if (choice === "system") storage?.removeItem(THEME_KEY);
-    else storage?.setItem(THEME_KEY, choice);
+    storage?.setItem(THEME_KEY, choice);
   } catch {
     // Best effort: the theme still changes for this page.
   }
@@ -83,7 +82,7 @@ export function toggleTheme() {
   chooseTheme(currentTheme() === "dark" ? "light" : "dark");
 }
 
-/** Start following the system's setting while the rider has made no choice. */
+/** Paint the rider's theme, and follow the device's while they chose auto. */
 export function watchTheme() {
   applyTheme(resolveTheme(themeChoice()));
   if (typeof window.matchMedia !== "function") return () => {};
@@ -97,4 +96,4 @@ export function watchTheme() {
 }
 
 /** The head's inline script: the same decision, before the first paint. */
-export const THEME_BOOT = `try{var t=localStorage.getItem("${THEME_KEY}");if(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.dataset.theme="dark"}catch(e){}`;
+export const THEME_BOOT = `try{var t=localStorage.getItem("${THEME_KEY}");if(t!=="light"&&(t!=="system"||matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.dataset.theme="dark"}catch(e){document.documentElement.dataset.theme="dark"}`;

@@ -1,23 +1,23 @@
 import { Search } from "lucide-react";
 import type { InputHTMLAttributes, ReactNode, Ref } from "react";
-import { NO_RING, RING_WITHIN, tv, type VariantProps } from "./tv";
+import { NO_RING, tv, type VariantProps } from "./tv";
 
 export const searchFieldStyles = tv({
   slots: {
-    // A rule to write on, as the chart's "Find a spot...": no box, an ink
-    // line under the words, and the words in the body face's italic.
+    // A soft grey pill with the magnifier in it; the ink edge and a soft
+    // ring of the accent when it holds the focus. No underline, no frame.
     base: [
-      "flex min-w-0 items-center gap-2 border-0 border-b border-ink bg-transparent px-0.5",
-      "font-body text-ink-muted transition-colors duration-fast hover:border-chart-magenta",
+      "flex min-w-0 items-center gap-2 rounded-full border border-transparent bg-well px-3.5",
+      "font-body text-ink-muted transition-colors duration-fast",
+      "focus-within:border-ink focus-within:bg-ground focus-within:ring-3 focus-within:ring-focus/20",
       "aria-busy:cursor-progress",
       // A tap target is never shorter than touch, whatever size was asked for.
       "pointer-coarse:min-h-touch",
-      RING_WITHIN,
     ],
     input: [
-      "w-full min-w-0 flex-1 self-stretch appearance-none border-0 bg-transparent p-0",
+      "h-full w-full min-w-0 flex-1 appearance-none border-0 bg-transparent p-0",
       "font-body text-prose font-normal text-ink",
-      "placeholder:text-ink-muted placeholder:italic placeholder:opacity-100",
+      "placeholder:text-ink-muted placeholder:opacity-100",
       "pointer-coarse:text-input",
       NO_RING,
     ],
@@ -25,28 +25,11 @@ export const searchFieldStyles = tv({
   variants: {
     size: {
       md: { base: "h-control-md" },
-      lg: { base: "h-control-lg" },
-      // The search a page is built around rather than a control in a bar:
-      // taller than any other control, on a heavier rule, in the lead size.
-      hero: {
-        base: "h-13.5 gap-3 border-b-2 pr-1",
-        input: "text-lead font-normal pointer-coarse:text-lead",
-      },
-    },
-    // A capsule ruled all round in ink rather than a rule under the words:
-    // a search inside a box, where a lone rule would read as a divider.
-    shape: {
-      rule: {},
-      pill: {
-        base: "rounded-pill border border-ink px-3.5 hover:border-chart-magenta",
-      },
+      lg: { base: "h-11" },
     },
   },
-  defaultVariants: { size: "lg", shape: "rule" },
+  defaultVariants: { size: "md" },
 });
-
-/** The magnifier, which grows with the box. */
-const ICON = { md: 16, lg: 16, hero: 20 } as const;
 
 export type SearchFieldProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -63,17 +46,16 @@ export type SearchFieldProps = Omit<
   };
 
 export function SearchField({
-  size = "lg",
-  shape,
+  size,
   busy = false,
   className,
   children,
   ...props
 }: SearchFieldProps) {
-  const styles = searchFieldStyles({ size, shape });
+  const styles = searchFieldStyles({ size });
   return (
     <div className={styles.base({ className })} aria-busy={busy}>
-      <Search size={ICON[size]} aria-hidden="true" />
+      <Search size={16} strokeWidth={1.75} aria-hidden="true" />
       <input {...props} type="search" className={styles.input()} />
       {children}
     </div>

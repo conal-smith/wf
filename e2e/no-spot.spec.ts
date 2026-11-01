@@ -41,8 +41,11 @@ async function openMap(page: Page, path = "/?map") {
 
 /** Find a spot by name and take the first result. */
 async function findSpot(page: Page, words: string) {
-  await page.getByRole("combobox", { name: "Find a spot" }).fill(words);
-  await page.locator(".spot-row").first().click();
+  // On a phone the top bar's search is a round button that opens the field.
+  const opener = page.locator("[data-spot-search-open]");
+  if (await opener.isVisible()) await opener.click();
+  await page.getByRole("combobox", { name: "Search spots" }).fill(words);
+  await page.locator("[data-spot-option]").first().click();
 }
 
 const stored = (page: Page) =>
@@ -85,7 +88,7 @@ for (const [width, height] of [
     expect(await stored(page)).toBeNull();
 
     // No dock: no days, no hours, nothing at the foot of the chart, which
-    // has the whole height. No light chosen, none focused.
+    // has the whole height under the top bar. No light chosen, none focused.
     await expect(page.locator(".dock")).toHaveCount(0);
     await expect(
       page.getByRole("slider", { name: "Forecast time" }),
@@ -94,7 +97,9 @@ for (const [width, height] of [
       await page.evaluate(() => [
         document.querySelector(".map-footer")!.getBoundingClientRect().height,
         document.querySelector(".maplibregl-canvas")!.getBoundingClientRect()
-          .height,
+          .height +
+          document.querySelector("[data-top-bar]")!.getBoundingClientRect()
+            .height,
         innerHeight,
       ]),
     ).toEqual([0, height, height]);

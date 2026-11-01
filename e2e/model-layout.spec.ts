@@ -9,7 +9,7 @@ const geometry = (page: Page) =>
     };
     return {
       dock: rect(".map-footer"),
-      head: rect(".map-head"),
+      head: rect("[data-top-bar]"),
       controls: rect(".zbox"),
       print: rect(".map-print .info-i"),
       columnWidth: document

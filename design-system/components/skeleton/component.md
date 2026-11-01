@@ -5,18 +5,18 @@ The shape of what is loading, so the page does not jump when it lands
 
 ## Anatomy
 
-- Shape: `.wf-skeleton` — a block-level `span` filled with `sem.color.line`
-  (the hairline's ink, which shows on grained paper where the second sheet does
-  not), breathing with `sem.animate.pulse`. The caller sets its width.
+- Shape: `.wf-skeleton`, a block-level `span` filled with `sem.color.line`
+  (the hairline's colour, which shows on the ground and on a soft card alike),
+  breathing with `sem.animate.pulse`. The caller sets its width.
 
 ## Variants
 
-- **Line** (`.wf-skeleton`, the default) — `sem.space.x3` tall, the field's
+- **Line** (`.wf-skeleton`, the default): `sem.space.x3` tall, the field's
   `sem.radius.control`.
-- **Block** (`--block`) — at least 128px (32 steps) tall, a box's corner
-  (`sem.radius.surface`): a photo, a chart, a pane's worth.
-- **Circle** (`--circle`) — `sem.size.control.md` across, a full circle: an
-  avatar, a light.
+- **Block** (`--block`): at least 128px (32 steps) tall, a box's corner
+  (`sem.radius.surface`): a photo, a chart, a card's worth.
+- **Circle** (`--circle`): `sem.size.control.md` across, a full circle: an
+  avatar.
 
 ## States
 
@@ -30,7 +30,7 @@ The shape of what is loading, so the page does not jump when it lands
   their widths, inside the same box.
 - Swap the whole holder at once when the data lands; do not mix skeletons and
   real rows.
-- Never as decoration, and never coloured: it is the hairline's ink only.
+- Never as decoration, and never coloured: it is the hairline's colour only.
 
 ## Accessibility
 

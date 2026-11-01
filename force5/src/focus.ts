@@ -340,7 +340,7 @@ export function roseDrawing(
       fill: sectorPath(rose.nogo, 0, r),
       edges: [ray(rose.nogo.from, 0, r), ray(rose.nogo.to, 0, r)],
     };
-    if (names) label(mid(rose.nogo), r * 0.6, "NO-GO", "name", 3);
+    if (names) label(mid(rose.nogo), r * 0.6, "No-go", "name", 3);
   }
   for (const reach of rose?.reaches ?? []) {
     const isOut = reach.kind === "out";
@@ -351,12 +351,19 @@ export function roseDrawing(
       arc: arcPath(reach, r - 3),
       head: isOut ? arrowHead(mid(reach), r - 1, 9) : null,
     });
-    if (names) label(mid(reach), r * 0.7, reach.kind.toUpperCase(), "name", -2);
+    if (names)
+      label(
+        mid(reach),
+        r * 0.7,
+        reach.kind[0].toUpperCase() + reach.kind.slice(1),
+        "name",
+        -2,
+      );
     if (figures) label(mid(reach), r * 0.7, bearings(reach), "figure", 11);
   }
   if (rose?.slow) {
     out.slow = arcPath(rose.slow, r - 3);
-    if (figures) label(mid(rose.slow), r * 0.86, "SLOW", "faint", 4);
+    if (figures) label(mid(rose.slow), r * 0.86, "Slow", "faint", 4);
   }
   if (rose?.drift != null) {
     const tip = r * 0.66;
@@ -367,9 +374,9 @@ export function roseDrawing(
     };
     if (names) {
       const kind = rose.driftOut ? "warn" : "name";
-      label(rose.drift, r * 0.45, "DRIFT", kind, 15);
+      label(rose.drift, r * 0.45, "Drift", kind, 15);
       if (rose.driftOut && figures)
-        label(rose.drift, r * 0.45, "OUT TO SEA", kind, 27);
+        label(rose.drift, r * 0.45, "Out to sea", kind, 27);
     }
   }
   if (scale) {
@@ -463,7 +470,7 @@ export interface LoupeRose {
   from: string;
   /** In Force, the forces the box draws as glyphs; null in any other unit. */
   forces: { wind: number; gust: number | null } | null;
-  /** "CROSS", or the units where there is no beach. */
+  /** "Cross", or the units where there is no beach. */
   relation: string;
   /** The relation in the pen's red: cross-offshore or offshore. */
   warn: boolean;
@@ -471,11 +478,11 @@ export interface LoupeRose {
 
 /** The shore relation as the foot box writes it. */
 export const RELATION: Record<NonNullable<Rose["shore"]>, string> = {
-  onshore: "ON",
-  "cross-on": "CROSS-ON",
-  cross: "CROSS",
-  "cross-off": "CROSS-OFF",
-  offshore: "OFF",
+  onshore: "On",
+  "cross-on": "Cross-on",
+  cross: "Cross",
+  "cross-off": "Cross-off",
+  offshore: "Off",
 };
 
 /**
@@ -538,9 +545,7 @@ export function loupeRose(
           gust: gustKn === null ? null : beaufort(gustKn),
         }
       : null,
-    relation: rose.shore
-      ? RELATION[rose.shore]
-      : unitLabel(units).toUpperCase(),
+    relation: rose.shore ? RELATION[rose.shore] : unitLabel(units),
     warn: rose.shore === "cross-off" || rose.shore === "offshore",
   };
 }

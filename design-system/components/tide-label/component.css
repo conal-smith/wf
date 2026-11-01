@@ -1,30 +1,29 @@
-/* Tide label — a tide's turn, written beside its mark on the curve: the mockup's
- * drawTideRow and tideGlyph (design/chart/1-the-chart.html). No ui/ primitive
- * yet; drawn as the signed-off mockup draws it. Consumes --sem-* only.
+/* Tide label — a tide's turn, written beside its mark on the curve (the
+ * forecast's tide row and its HighTideGlyph and LowTideGlyph,
+ * src/chartGlyphs.tsx). No ui/ primitive yet. Consumes --sem-* only.
  *
- *   .wf-tide-label           "Low tide 13:25 · 1.7 m" as HTML: the turn's mark,
- *                            then the words in mono 500 at the caption step
- *                            (the mockup's 9.5px; 11px is the floor for
- *                            sentence case), on a paper halo.
+ *   .wf-tide-label           "Low tide 13:25, 1.7 m" as HTML: the turn's mark,
+ *                            then the words in Inter medium at the caption
+ *                            step, on a halo of the ground.
  *   .wf-tide-label__curve    the same on the dock's tide row, as SVG: the curve
  *                            in depth over a sea fill, a mark at each turn, the
- *                            words beside it, a magenta dot at the present hour.
+ *                            words beside it, an accent dot at the present hour.
  *   .wf-tide-label--line     the popup's line: a small wave in depth, "4.1 m".
  *
- * A turn's mark: high water an ink dot, low water a paper dot ringed in ink. */
+ * A turn's mark: high water a filled dot, low water an open dot ringed in ink. */
 
 .wf-tide-label {
   display: inline-flex;
   align-items: center;
   gap: var(--sem-space-x1);
   color: var(--sem-color-ink);
-  font-family: var(--sem-font-family-mono);
+  font-family: var(--sem-font-family-body);
   font-size: var(--sem-font-size-caption);
   line-height: var(--sem-font-line-caption);
   font-weight: var(--sem-font-weight-medium);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  /* The halo: paper round the letters, so they read over the curve. */
+  /* The halo: the ground round the letters, so they read over the curve. */
   text-shadow:
     0 0 2px var(--sem-color-ground),
     0 0 3px var(--sem-color-ground),
@@ -62,10 +61,10 @@
   stroke: var(--sem-color-depth);
   stroke-width: 1.4;
 }
-/* The words in SVG: the halo is a paper stroke painted under the fill. */
+/* The words in SVG: the halo is a stroke of the ground painted under the fill. */
 .wf-tide-label__text {
   fill: var(--sem-color-ink);
-  font-family: var(--sem-font-family-mono);
+  font-family: var(--sem-font-family-body);
   font-size: var(--sem-font-size-caption);
   font-weight: var(--sem-font-weight-medium);
   font-variant-numeric: tabular-nums;
@@ -74,7 +73,7 @@
   stroke-width: 3px;
   stroke-linejoin: round;
 }
-/* The present hour on the curve: the chart's magenta, once. */
+/* The present hour on the curve: the accent, once. */
 .wf-tide-label__now {
   fill: var(--sem-color-chart-magenta);
 }

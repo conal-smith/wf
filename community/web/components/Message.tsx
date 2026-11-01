@@ -1,9 +1,9 @@
 /**
- * One message: a letter. The opening post is the one card of the page, ruled
- * in ink; a reply stands on the paper under it, divided from the next by a
- * hairline. Both carry the same things: a byline (the face, the name in the
- * display face, the time in the mono), the body set for reading, photos,
- * reactions, and the actions that show on hover, on focus and on a long press.
+ * One message. The opening post is the one soft card of the page; a reply
+ * stands on the ground under it, kept from the next by space. Both carry the
+ * same things: a byline (the face, the name, the time), the body set for
+ * reading, photos, reactions, and the actions that show on hover, on focus
+ * and on a long press.
  */
 import { Flag, Pencil, Reply, Trash2 } from "lucide-react";
 import {
@@ -13,8 +13,7 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
-import { Avatar, Button, Chip, TextArea } from "../../../ui";
-import { paneStyles } from "../../../ui/Pane";
+import { Avatar, Button, Tag, TextArea } from "../../../ui";
 import { RING, tv } from "../../../ui/tv";
 import type {
   Member,
@@ -36,44 +35,40 @@ import { ReactionPicker, Reactions } from "./Reactions";
 export const messageStyles = tv({
   slots: {
     base: [
-      "group relative flex scroll-mt-24 flex-col gap-2 font-body",
+      "group relative flex scroll-mt-24 flex-col gap-2 rounded-surface font-body",
       "transition-colors duration-base motion-reduce:transition-none",
     ],
-    // The letter it answers, quoted above it under a rule down its edge.
+    // The message it answers, quoted above it beside a soft bar.
     replyTo: [
-      "flex min-w-0 max-w-full items-baseline gap-1.5 self-start border-0 border-l-2 border-ink pl-2 text-body text-ink-muted no-underline",
+      "flex min-w-0 max-w-full items-baseline gap-1.5 self-start border-0 border-l-2 border-line-strong pl-2 text-body text-ink-muted no-underline",
       "not-disabled:hover:text-ink",
       RING,
     ],
     replyToIcon: "shrink-0 self-center",
-    replyToName: "shrink-0 font-display font-semibold text-ink-2",
-    replyToLine: "min-w-0 truncate italic",
+    replyToName: "shrink-0 font-semibold text-ink-2",
+    replyToLine: "min-w-0 truncate",
     // The byline: the face, the name, and the time set right.
     head: "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1",
     // The name is the way to the member's profile: a link in ink, said as one
     // on hover and focus, as the chart's other names are.
     name: [
-      "font-display text-prose font-semibold text-ink no-underline decoration-1 underline-offset-4",
-      "not-disabled:hover:text-chart-magenta not-disabled:hover:underline",
+      "rounded-control font-body text-prose font-semibold text-ink no-underline decoration-1 underline-offset-4",
+      "not-disabled:hover:underline",
       RING,
     ],
-    time: "font-mono text-caption whitespace-nowrap text-ink-muted tabular-nums",
+    time: "font-body text-body whitespace-nowrap text-ink-muted tabular-nums",
     when: "ml-auto flex items-baseline gap-2",
     timeLong: "max-rail:hidden",
     timeShort: "rail:hidden",
     column: "flex min-w-0 flex-col gap-2",
-    removed: "m-0 text-prose text-ink-muted italic",
+    removed: "m-0 text-prose text-ink-muted",
     photos: "grid max-w-dialog grid-cols-2 gap-2",
     // A thumbnail of the photograph: a control's corner, the picture cut to it.
-    photo: [
-      "block aspect-4/3 overflow-hidden rounded-control border border-line bg-sunken",
-      RING,
-    ],
+    photo: ["block aspect-4/3 overflow-hidden rounded-control bg-sunken", RING],
     photoImage: "size-full object-cover",
-    // The chart's instrument: a small toolbar ruled in ink, floating over the
-    // letter's corner. A control's corner; too small for the hairline inside.
+    // A small toolbar, the kit's floating card, over the message's corner.
     tools: [
-      "absolute top-1 right-0 z-popover flex rounded-control border border-ink bg-card paper-float p-0.5 shadow-float",
+      "absolute top-2 right-3 z-popover flex gap-0.5 rounded-control bg-ground p-0.5 shadow-float dark:ring-1 dark:ring-line",
       "pointer-events-none opacity-0 transition-opacity duration-fast motion-reduce:transition-none",
       "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
       "group-hover:pointer-events-auto group-hover:opacity-100",
@@ -83,20 +78,19 @@ export const messageStyles = tv({
     error: "m-0 text-body text-warn",
   },
   variants: {
-    // The one card: the opening post, ruled in ink on its grained paper.
+    // The one card: the opening post, on the soft ground.
     opening: {
       true: {
-        base: "gap-3 p-5 max-rail:p-4",
-        name: "text-lead",
+        base: "gap-3 bg-sunken p-5 on-card max-rail:p-4",
         column: "gap-3",
         tools: "top-3 right-3",
       },
-      // A reply: on the paper, a hairline under it.
-      false: { base: "border-b border-line py-4" },
+      // A reply: on the ground, its words in line with the card's.
+      false: { base: "px-5 py-4 max-rail:px-4" },
     },
     // Held open by a long press or an open picker, where there is no hover.
     toolsOpen: { true: { tools: "pointer-events-auto opacity-100" } },
-    // Just jumped to: on the second sheet for a moment, then let go.
+    // Just jumped to: on the soft ground for a moment, then let go.
     marked: { true: { base: "bg-sunken" } },
   },
 });
@@ -214,16 +208,16 @@ function EditForm({
         </p>
       )}
       <div className={styles.editActions()}>
-        {/* Reply is the view's one filled action: saving is a pill. */}
+        {/* Reply is the view's one filled action: saving is outlined. */}
         <Button
-          variant="pill"
+          variant="outline"
           size="sm"
           disabled={busy || !text.trim()}
           onClick={save}
         >
           Save
         </Button>
-        <Button size="sm" disabled={busy} onClick={onCancel}>
+        <Button variant="quiet" size="sm" disabled={busy} onClick={onCancel}>
           Cancel
         </Button>
       </div>
@@ -349,11 +343,7 @@ export function Message({
     <article
       ref={root}
       id={`m-${message.seq}`}
-      className={
-        opening
-          ? paneStyles({ double: true, className: styles.base() })
-          : styles.base()
-      }
+      className={styles.base()}
       aria-label={`${author.displayName}, ${messageTime(message.createdAt, now).long}`}
       onPointerDown={startPress}
       onPointerUp={cancelPress}
@@ -379,6 +369,7 @@ export function Message({
           )}
           {onReply && !opening && (
             <Button
+              variant="quiet"
               size="sm"
               icon
               aria-label="Reply to this message"
@@ -389,6 +380,7 @@ export function Message({
           )}
           {!mine && (
             <Button
+              variant="quiet"
               size="sm"
               icon
               aria-label="Report"
@@ -399,6 +391,7 @@ export function Message({
           )}
           {canEdit(message, viewer, now) && (
             <Button
+              variant="quiet"
               size="sm"
               icon
               aria-label="Edit"
@@ -409,6 +402,7 @@ export function Message({
           )}
           {canDelete(message, viewer) && (
             <Button
+              variant="quiet"
               size="sm"
               icon
               aria-label="Delete"
@@ -470,7 +464,7 @@ function Byline({
       >
         {message.author.displayName}
       </a>
-      {started && <Chip eyebrow>Started the thread</Chip>}
+      {started && <Tag>Started the thread</Tag>}
       <span className={styles.when()}>
         {message.editedAt && message.status === "visible" && (
           <span

@@ -9,10 +9,11 @@ const memory = (value: string | null) => ({
 });
 
 describe("light or dark", () => {
-  it("follows the system until the rider picks", () => {
-    expect(themeChoice(memory(null))).toBe("system");
-    expect(themeChoice(memory("nonsense"))).toBe("system");
-    expect(themeChoice(memory("dark"))).toBe("dark");
+  it("is dark until the rider picks, and follows the device on auto", () => {
+    expect(themeChoice(memory(null))).toBe("dark");
+    expect(themeChoice(memory("nonsense"))).toBe("dark");
+    expect(themeChoice(memory("light"))).toBe("light");
+    expect(themeChoice(memory("system"))).toBe("system");
     expect(resolveTheme("system", true)).toBe("dark");
     expect(resolveTheme("system", false)).toBe("light");
     expect(resolveTheme("light", true)).toBe("light");

@@ -1,269 +1,306 @@
-# The chart: wingfoil.ie's brand
+# wingfoil.ie's brand
 
-An Admiralty chart crossed with an old broadsheet weather report. Paper and
-ink, the chart's magenta, and the one hour worth going for outlined flat. The
-owner's words: "original… unique… keeps
-that kind of look and feel of old kind of weather report."
+Premium, modern, high quality and flat. A plain ground, soft cards a shade
+off it, one typeface for nearly everything, and colour kept for what it
+means: the wind, the weather, a rider's stars and a warning. Nothing on the
+site imitates paper, print or handwriting.
 
-**The reference is the mockup**, `design/chart/1-the-chart.html` in the
-`wingfoil-design` worktree, with its kit `design/chart/chart-kit.js` and its
-screenshots `design/chart/shots/1-*.jpg`. Open it and use it before you
-draw anything. Where this file and the mockup disagree on a look, the mockup
-wins. Where they disagree on a rule (contrast, tap targets, one filled
-action), this file and [DESIGN_PRINCIPLES.md](DESIGN_PRINCIPLES.md) win.
-
-Every value below lives in `ui/theme.css` and nowhere else
-(`npm run ui:lint` enforces it). The gallery at `/ui` (dev only) shows all
-of it.
+Every value below lives in `ui/theme.css` and nowhere else (`npm run ui:lint`
+enforces it). The gallery at `/ui` (dev only) shows the kit in both themes.
+The rules behind it, and the dated rulings, are in
+[DESIGN_PRINCIPLES.md](DESIGN_PRINCIPLES.md).
 
 ## The rules
 
-1. **Very little text.** A page says what it has to in figures, a few words
-   in the mono label, and at most a line or two of sentences. If a sentence
-   can be a figure, make it one. If a label can go, it goes.
+1. **Very little text.** A page says what it has to in figures, a few short
+   labels and at most a line or two of sentences. If a sentence can be a
+   figure, make it one. If a label can go, it goes.
 2. **Figures over prose.** `14 g22 · WSW · 6.5 m`, not "fourteen knots
-   gusting twenty-two from the west-south-west". Figures are set in the mono
-   face with tabular digits (`Figure`, or `font-mono tabular-nums`).
+   gusting twenty-two from the west-south-west". Figures are set with
+   even-width digits (`Figure`, or `font-mono tabular-nums`), so a column of
+   them lines up.
 3. **Mobile first.** Draw it at 390×844 first, then let it open out at 720
    (`wide:`) and 900 (`rail:`). Nothing pressed is shorter than 44px on a
    finger. A field is 16px on a touch device.
-4. **The thing shown is marked flat.** The chosen hour is outlined in ink, the
-   open spot's light stands a size up, "new" is a `Chip`. The time now is a
-   red line, and what is off is struck through. Nothing is lifted on a card,
-   circled, or drawn or written by hand. A mark does not comment: no verdict beside it ("Go
-   13:00–16:00" is not written; see the information rule in
-   DESIGN_PRINCIPLES.md). It is never a control or a status.
-5. **One filled action per view.** The ink pill (`Button variant="primary"`),
-   magenta under the pointer. Everything else is ruled in ink, or quiet.
-6. **Rules, not surfaces.** One paper. Things are set apart by an ink rule
-   round them or under them, not by a lighter card on a darker ground. Most
-   of a page is sections under a heavy rule; boxes are for what stands alone.
-7. **Plain, clear English.** Every word is written for a rider with no
-   technical knowledge who is learning the site. Say what a thing is and
-   what it does, in full everyday sentences: "Take a 30-second tour of how
-   the site works." No riddles, puns, wordplay, metaphors, clipped or
-   poetic phrasing, and no jargon a newcomer would not know (no "MCP",
-   "server", "blend", "model run" in a sentence a rider reads). Read every
-   line aloud: if it needs a second read, rewrite it plainer. British and
-   Irish spelling.
-8. **The puffin is a picture, not a speaker.** It may sit on a view, one at
-   most, but no words are signed by or credited to "the Almanac", and the
-   name is not used in anything a rider reads.
+4. **Sentence case everywhere.** Headings, buttons, labels, tabs, tags and
+   column heads. Nothing is set in capitals with the letters spaced out. Names
+   keep their own spelling (HARMONIE, ICON-EU, ECMWF): they are names, not
+   labels in capitals.
+5. **One filled button per view.** `Button variant="primary"`. Everything
+   else is outlined, soft or quiet.
+6. **Structure by space and soft cards.** Sections are kept apart by space;
+   things that belong together sit in a soft card (`bg-sunken
+   rounded-surface`). A hairline (`border-line`) divides rows, and only
+   inside a card.
+7. **The thing shown is marked flat.** The chosen hour is outlined inside its
+   column, the open spot's light stands a size up, the time now is a red line,
+   and what is off is struck through or tagged in red. Nothing is lifted,
+   circled, or drawn or written by hand. A mark does not comment: no verdict
+   beside it (see the information rule in DESIGN_PRINCIPLES.md).
+8. **Plain, clear English.** Every word is written for a rider with no
+   technical knowledge who is learning the site. Say what a thing is and what
+   it does, in full everyday sentences: "Take a 30-second tour of how the site
+   works." No riddles, puns, wordplay, metaphors, clipped or poetic phrasing,
+   and no jargon a newcomer would not know (no "MCP", "server", "blend",
+   "model run" in a sentence a rider reads). Read every line aloud: if it
+   needs a second read, rewrite it plainer. British and Irish spelling.
 
-## Palette
+## Two themes
 
-| Token | Value | Use |
+**Dark is the default**; white (light) is the other. The rider picks Light,
+Dark or Auto (follow the device), and the choice is kept on the device
+(`shared/web/theme.ts`). The page is painted in the theme before anything is
+drawn, so a dark page never flashes white. Both themes use the same token
+names: the light values sit in `@theme`, the dark ones re-declare them under
+`<html data-theme="dark">`, and the `dark:` variant targets the same
+attribute. Design and check every view in both.
+
+## Colour
+
+| Token | White / dark | Use |
 | --- | --- | --- |
-| `ground`, `card`, `solid` | `#f3eee3` | The paper. One value: the page, a box, the fallback for glass. |
-| `sunken` | `#ede6d6` | The paper's second sheet: a well, a tinted row, the current menu row. |
-| `glass` | `#f3eee3eb` | Paper over a photograph only (`Chip tone="glass"`). Never over the map. |
-| `ink` | `#1a1d21` | Text, rules, the filled action, the inverse fill. 14.6:1. |
-| `ink-2` | `#3b3c3e` | Secondary text. 9.5:1. |
-| `ink-muted` | `#5b5c5b` | The floor for words: labels, small print. 5.8:1, 5.4:1 on `sunken`. |
-| `line` | ink at 20% | The hairline between rows. |
-| `line-strong`, `ink-disabled` | `#7c7b78` | A field's box, a disabled icon. Strokes only, 3.7:1. |
-| `chart-magenta` | `#b0186a` | The best of something (a five-star light, the selected spot), a quantity's bar (`wash`), the focus ring, the filled action hovered. |
-| `pen` | `#d43a2c` | The red accent's strokes: the line at now, offshore. 4.1:1, a mark. |
-| `pen-ink` | `#bf3125` | The red accent in words. 4.9:1, reads as words. |
-| `warn`, `now` / `warn-ground` | `#b02a1f` / `#efd8cd` | Degraded, an error, the present instant. Not the red accent. |
-| `ok` | `#2a7046` | One liveness mark. |
-| `buoy` | `#e9b200` | The puffin's beak, a light on the chart. Never text. |
-| `sea` | `#d5e6ea` | The ground the map floats on. |
-| `sea-1` … `sea-4` | `#a9cbd8` … `#ecf0ea` | Depth tints, shallow to deep (under 1 m, ~3 m, ~10 m, 30 m+). |
-| `depth` | `#5f8c9c` | Contours and soundings. |
-| `land`, `relief` | `#ede3c8`, `#b59e74` | Land buff, and its relief lines. |
-| `basemap-water`, `basemap-land` | `#e5edea`, `#ede3c8` | What WindMap paints over the basemap. |
-| `wind-k00` … `wind-k65` | unchanged | Wind speed and nothing else. |
-| `weather-sun` | `#e9b200` | The sun, a thunderbolt: the buoy's own yellow. A fill, never text. |
-| `weather-rain` | `#3a7fb0` | Rain: a drop, a shower's streaks, the rain row's tint. 3.75:1, a mark, never words. |
-| `weather-cloud`, `weather-night` | `#d6d0c2`, `#e7dcb4` | A cloud's grey and the moon's pale fill, inside an ink outline only. |
-| `stars-1` … `stars-5` | `#e28bb3` … `#7c0f55` | A rider's stars as colour, pale pink to deep magenta: a filled star, a day's rideable line. The spot finder only, for now. Never text, never the wind. |
+| `ground`, `card`, `solid` | `#ffffff` / `#0c0c0e` | The page, and a box floating over the map. |
+| `sunken` | `#f5f5f7` / `#17171b` | The soft card: a card, a list of rows, a notice, the current menu row. |
+| `raised` | `#e6e6eb` / `#26262c` | The second grey: a control's fill on a soft card, a plain notice's square. |
+| `well` | `sunken`, or `raised` on a card | The fill every control takes (`bg-well`): a field, a chip, a tag, a segmented well, a soft button. On the ground it is the soft grey; inside a soft card, which carries the `on-card` utility, it is the second grey, so the control stays in sight. |
+| `glass` | ground at 92% | A badge over a photograph only (`Tag tone="glass"`). Never over the map. |
+| `ink` | `#111114` / `#f2f2f4` | Text, and the filled button's fill. |
+| `ink-2` | `#3a3a40` / `#c9c9cf` | Secondary text, a label above a field. |
+| `ink-muted` | `#64646c` / `#8f8f99` | The floor for words: hints, small print, a group's name. |
+| `line` | ink at 12% | The hairline between rows inside a card, under the top bar, above a dialog's actions. |
+| `line-strong`, `ink-disabled` | `#8b8b94` / `#6b6b74` | A disabled icon, a switch's empty track. Strokes only. |
+| `accent`, `accent-ink` | ink, and the ground on it | The one filled button. |
+| `chart-magenta`, `focus` | `#b0186a` / `#ff5aae` | The best of something (a five-star hour, the spot in view), a quantity's bar (`wash`), the `.ie` of the wordmark, and the focus ring. |
+| `pen` / `pen-ink` | `#d43a2c` / `#ff5b4d`, words `#bf3125` / `#ff7d70` | The red accent: the line at now, offshore, an `off` tag. `pen` is the mark; words in red take `pen-ink`. |
+| `warn`, `now` / `warn-ground` | `#b02a1f` / `#ff6a5e`, on `#fde8e4` / `#3a1e1b` | Degraded, an error, a field that is wrong, the present instant. |
+| `ok` | `#2a7046` / `#4cc27a` | One liveness mark. |
+| `met-yellow`, `met-orange`, `met-red` | `#f0c419`, `#e67322`, `#c3241c` | Met Éireann's warning levels: the square of a notice, nothing else. Do not re-theme. |
+| `wind-k00` … `wind-k65` | `PALETTE` in `force5/src/weather.ts` | Wind speed and nothing else. Do not re-theme. |
+| `weather-sun`, `-rain`, `-cloud`, `-night` | sun `#e9b200`, rain `#3a7fb0` | The sky's glyphs. Fills and marks, never words. |
+| `stars-1` … `stars-5` | pale pink to deep magenta | A rider's stars as colour. Never text, never the wind. |
+| `sea*`, `land`, `relief`, `depth`, `basemap-*` | per theme | The map itself. |
 
-**Colour, only here.** The weather's state (sun, rain, cloud, night), the
-wind-speed scale, a rider's stars on the spot finder's cards, the chart's
-magenta for the best of something, and the warm red for a warning. Everything else is ink on paper. A glyph carries colour as
-a chart draws a buoy: an ink outline, and the colour inside it.
+**Colour, only here.** The wind-speed scale, the weather's state, a rider's
+stars, Met Éireann's warning levels, the chart's magenta for the best of
+something and the red accent for now and what is off. Everything else is ink
+on the ground and the soft grey of a card. A glyph carries colour inside a
+line drawn in ink, and only where the colour says something.
 
 ## Type
 
-Four faces, self-hosted from `ui/fonts.css`, each with one job:
+Two faces, self-hosted from `ui/fonts.css`:
 
 | Class | Face | Job |
 | --- | --- | --- |
-| `font-display` | Fraunces (optical size axis) | Names, headings, the wordmark, a headline. Its italic for a spot's name in a list. |
-| `font-body` | Newsreader | The few sentences there are; a field's text; italic for placeholders and hints. |
-| `font-mono` | IBM Plex Mono | Every figure, and every label in tracked capitals. |
+| `font-body` | Inter | Everything: headings, sentences, labels, buttons, fields. |
+| `font-mono` | Inter too | Figures and small labels, its digits at even width. The name is kept for the recipes that ask for it. |
+| `font-display` | Fraunces | The wordmark, and a spot's name as the title of its own page. Nothing else: no heading, no name in a list, no title of a dialog. |
 
-Headings (`h1`–`h4`) take the display face from the site's reset; any
-utility on the heading still wins. A step is a size with its own leading, and
-its weight and tracking where it has one; the face is named beside it:
+Beyond the wordmark's ".ie" there is no italic serif, and there is no
+handwriting face and no monospaced face.
 
-| Step | Size | Typical pairing |
+The steps (each a size with its own leading, and its weight where it has
+one):
+
+| Step | Size | Use |
 | --- | --- | --- |
-| `text-eyebrow` | 10, 500, 0.14em | `font-mono uppercase`: the mono label (`Kicker`, `MONO_LABEL`). |
-| `text-caption` | 11 | `font-mono`: small figures; the small print. |
-| `text-label` | 11, 500, 0.09em | `font-mono uppercase`: a control's words (every `Button`). |
-| `text-body` | 13 | `font-body`: secondary sentences. |
-| `text-prose` | 15 | `font-body`: sentences. |
+| `text-caption` | 11 | Small figures, the small print. The floor. |
+| `text-eyebrow`, `text-label` | 12, 500 | A column head, an axis tick, a tag, a small control's words (`MONO_LABEL` in `ui/tv.ts`). |
+| `text-body` | 13 | Secondary sentences, a button's words, a row's second line. |
+| `text-prose` | 15 | Sentences, a card's heading, a row's name. |
 | `text-input` | 16 | A field on a touch device. |
-| `text-lead` | 19, 600 | `font-display`: a section's heading, a card's name. |
-| `text-figure` | 19, 600, −0.02em | `font-mono`: the number a row is about. |
-| `text-title` | 30, 700 | `font-display`: a page's head where there is no headline. |
-| `text-headline` | 44, 700, −0.035em | `font-display optical-display`: one a page (`Headline`). Steps to `title` under 720. |
-| `text-reading` | 48 | `font-mono`: the wind reading, one a view. |
+| `text-lead` | 19, 600 | A section's heading, a dialog's title, an empty state's title. |
+| `text-figure` | 19, 600 | The number a row is about. |
+| `text-big`, `text-big-sm` | 40 / 32, 600 | A page's heading (`Heading level="page"`), 32 on a phone. |
+| `text-reading` | 48 | The wind reading, one a view. |
+| `text-wordmark` | 23 / 21 | The wordmark in the top bar, 21 on a phone. |
 
-`optical-display` sets Fraunces at its high-contrast display cut whatever its
-size: the wordmark and the headline use it. Elsewhere the browser picks the
-optical size from the font size.
+A spot's name on its own page is Fraunces at `text-headline`, `text-name`
+from 720px, with `optical-display`.
 
-## Shape, rules and paper
+## Shape and depth
 
-- **Spacing** is the 4px step (`p-4` is 16px).
-- **Rules.** `border border-ink` frames a box; `border-b border-line` divides
-  rows; `border-b-2 border-ink` heads a section; the double rule is
-  `border-0 border-b-3 border-double border-ink` along an edge (the masthead,
-  the dock) or `border border-ink inset-shadow-frame` round a box (the
-  chart's box). **Write `border-0` before `border-double`**: there is no
-  reset, so a border style set on all four sides draws all four at the
-  browser's 3px.
-- **Radius** (mixed and rounded, 2026-10-24). A control is 10px
-  (`rounded-control`), a box 14px (`rounded-surface`), a sheet 18px
-  (`rounded-dialog`: a dialog, the dock, a menu); anything pressed is still a
-  capsule (`rounded-full`). Print rules stay square.
-- **Shadow.** By elevation, soft and stacked, after the frame:
-  `inset-shadow-frame shadow-card` for a card on a page,
-  `shadow-float` for anything over the map, `shadow-sheet` for a dialog,
-  `shadow-dock` for the dock. A small control has its own (`shadow-control`
-  under `sheen-ink`, `shadow-raised` under `sheen-raised`). A rule casts none.
-- **Paper grain.** `paper-grain` is a background image only; pair it with
-  the fill (`bg-ground paper-grain`). Every section root, the masthead, a
-  card Pane, a Surface and a Dialog carry it. Do not lay it over the map.
-  A small box over the chart takes `paper-float` instead: the grain over the
-  faintest light from above.
-- **Night.** `hatch` is the fine diagonal ink hatch for the dark hours.
-- **Motion.** `animate-bob` (the puffin), always with
-  `motion-reduce:animate-none`.
-- **Focus.** One ring: 2px of magenta, 2px clear (`RING` in `ui/tv.ts`).
-- **Hover** is for a mouse. `hover:` only applies under
-  `(hover: hover) and (pointer: fine)`, so a finger's tap never leaves a pill
-  inked; a hover in plain CSS goes inside the same `@media` (the map's
-  stylesheets do, and `tests/ui-theme.test.ts` checks them).
+- **Spacing** is the 4px step (`p-4` is 16px). Root font size is 14px.
+- **Cards.** `Card` (`bg-sunken rounded-surface`, no border, no shadow) on a
+  page; cards are kept apart by space, not by a rule. A soft card carries the
+  `on-card` utility (`Card`, `Rows` and `Notice` do it themselves), which
+  turns the controls inside it from the soft grey to the second grey
+  (`bg-well` becomes `raised`): a field, a chip or a segmented well on a card
+  never vanishes into it. A control is filled with `bg-well`, never
+  `bg-sunken`, so it follows the card it stands on. Over the map a box
+  floats instead (`Card kind="float"`: the ground, `shadow-float`, and in dark
+  a faint `ring-line` edge so it separates from the chart).
+- **Hairlines** (`border-line`) only inside a card: between rows, above a
+  dialog's actions, and the one line under the top bar.
+- **Radius.** A control that is not a capsule is 10px (`rounded-control`: a
+  field, a tooltip, a key), a card 14px (`rounded-surface`), a sheet 18px
+  (`rounded-dialog`: a dialog, the dock, the menu's facing edge). Buttons,
+  chips, tags, segmented controls and search fields are capsules
+  (`rounded-full`).
+- **Shadow** only for what floats: `shadow-float` over the map, `shadow-sheet`
+  for a dialog or the menu, `shadow-dock` for the dock, `shadow-control` for
+  the chosen segment and a switch's thumb. A card on a page casts none.
+- **Flat.** No gradients, sheens, lit edges, paper grain, frames or double,
+  heavy or ink rules. A control does not nudge when pressed.
+- **Night hours.** `hatch` is a fine diagonal hatch for the dark hours.
+- **Icons** are one set of line icons at a 1.75 stroke, rounded (lucide), and
+  the site's own glyph set (`shared/web/glyphSet.ts`, drawn by `ChartGlyph`)
+  for the weather, the wind and the dock's rows.
 
 ## The kit
 
-Import from `ui/` (`import { Button } from "../../ui"`). Each component
-exports its recipe (`buttonStyles`, …) for a link a router owns.
+Import from `ui/` (`import { Button } from "../../ui"`). Each part exports its
+recipe (`buttonStyles`, …) for a link a router owns. Don't restyle a part
+locally: add a variant to it in `ui/`.
 
-| Component | What it is | Notes |
-| --- | --- | --- |
-| `Button` | Mono capitals. `primary` ink pill · `pill` ruled capsule · `quiet` · `raised` the square instrument over the map · `link` the underlined "← Chart" · `danger` | `pressed`, `icon` (needs `aria-label`), `size` sm/md/lg, `href` makes it a link. |
-| `Segmented` | A ruled capsule of choices, the one that is on filled in ink (the model in the display options) | `stack` for a ruled column of choices. |
-| `Surface` | The chart's box over the map: opaque paper, grain, double rule | `rule="single"` inside another box. |
-| `Pane` | A box on a page | `kind` card (one ink rule) · sunken · ruled (a heavy rule above, the broadsheet's section); `double`; `standing`. |
-| `Dialog`, `ConfirmDialog` | The chart's box as a modal; title in the display face | Unchanged API. |
-| `Field`, `TextInput`, `TextArea`, `Select`, `Checkbox` | Mono label, body-face text, italic placeholder, ruled box | Unchanged API. |
-| `SearchField` | A rule to write on, italic placeholder | `size` md/lg/hero. |
-| `Chip` | A mono tag on the second sheet, hairline capsule | `tone` neutral/warn/glass, `eyebrow`. Never pressed. |
-| `Count` | A figure in a ring, like a chart's light | `tone` strong/quiet. |
-| `Avatar` | A monogram in Fraunces italic, in an ink ring | Unchanged API. |
-| `Notice`, `Empty`, `Pager`, `Skeleton`, `Link` | Restyled; same APIs | `Notice` is set off by a heavy rule down its edge. |
-| `Wordmark` | "wingfoil" heavy, ".ie" magenta italic | `size` sm (19) / md (30) / lg (44). |
-| `Masthead`, `MastheadMark`, `mastheadStyles` | The shared header: menu, name, section, actions, double rule | See below. |
-| `Kicker` | The mono label as an element | `as`, `tone` muted/ink/pen. `MONO_LABEL` in `ui/tv.ts` is the same classes. |
-| `SectionHeading` | A heading on a rule, its figures set right | `as`, `size` lead/title/kicker, `rule` thin/thick/double, `aside`. |
-| `Headline` | One a page; `headlineStyles().soft()` for the italic tail, `.mark()` for a magenta colon | `as` h1/h2. |
-| `Figure` | The number first, a gust raised, the unit small | `value`, `sup`, `unit`, `size` sm/md/lg, `alarm` (sup in `pen-ink`), `label`. |
-| `StarGlyphs` | Solid, faded (the wind alone), dots to five; `null` is the dark | `stars`, `potential`, `size`, `slots` five/potential, `tone` ink/inverse/magenta, `label`. |
-| `BeaufortGlyph` | A wind in Force as the old charts drew it: a staff with a half feather a force, a pennant for ten, the force's number beside it | `force`, `size` (17 by a table's figure, 10 for a gust written small), `bare` (no number), `label` ("Force 5" by default). `beaufortPath` is its geometry, for any SVG (the loupe's foot box). |
-| `RatingTip` | An hour's stars as a button; hover, focus or tap opens the chart's box saying why | `label`, `detail`, `size` md (the spot page) / sm (the map's dock and card). The one explanation on the site. |
-| `Puffin` | The Almanac's bird | `size`, `bob`, `title` (decorative without). |
+**Buttons.** Four styles, all flat, round-ended, in sentence case:
 
-**The masthead.** Every page that is read starts with it; the brand link is
-the section's own, because each router takes a link over in its own way:
+- `primary`, filled in ink (white in dark): the one thing to do next. At most
+  one a view, and many views have none.
+- `outline`, the default: a hairline round the words. The other view's button
+  in the top bar is one, never filled.
+- `soft`, a grey fill: a second action inside a card or a list.
+- `quiet`, no edge: Reset, Clear, Skip, Close.
 
-```tsx
-<Masthead>
-  <SiteMenu current="market" size="sm" ground="content" />
-  <Link to={paths.browse()} className={mastheadStyles().brand()}
-    aria-label="wingfoil.ie Market, home">
-    <MastheadMark section="Market" />
-  </Link>
-  <nav className={mastheadStyles().actions()} aria-label="Marketplace">…</nav>
-</Masthead>
-```
+Then `link` for a way on in running text, and `danger`, red words in an
+outlined button, for the destructive answer in a `ConfirmDialog` and nowhere
+else. Sizes `sm` 32px, `md` 40, `lg` 48; `icon` makes a circle and needs an
+`aria-label`. `pressed` fills a toggle in ink, so on is not said by colour
+alone; `pressed="worded"` is for a toggle that renames itself (Save, Saved).
 
-### Do
+**Chips and tags.** A `Chip` is a choice you can press: a soft capsule,
+filled in ink when `pressed`, or `removable` for a filter in use. A `Tag` is a
+word that only describes something and cannot be pressed (Offshore, Unsure,
+now, coming): `tone` neutral, `off` (red on its tint), `ok`, or `glass` over a
+photograph. If it does nothing when pressed, it is a tag.
 
-- Lead with a figure, then the mono label that names it.
-- Use `Pane kind="ruled"` and `SectionHeading` for most sections; keep boxes
-  for what stands alone.
-- Set a spot's name in `font-display italic font-semibold` in a list, as the
-  mockup does.
+**Segmented and tabs.** `Segmented` picks one of two to five short options,
+all in view, that change what is shown on the spot (a grey well, the chosen
+one lifted out of it; `size` sm/md/lg, `full` for the whole width). `Tabs`
+switch between the parts of one page or dialog (a row of words, the current on
+a soft pill; `vertical` down the side of a wide dialog); the arrow keys move
+between them. More than five options, or long ones: a `Select`.
+
+**Switch, slider, number.** `Switch` is on or off, taking effect at once (a
+layer, a model in the blend); a choice that waits for Save is a `Checkbox`.
+`Slider` is a value along a range, its value and unit said beside it.
+`NumberField` steps a number with minus and plus (weight).
+
+**Fields.** `Field` puts the label above in grey and a hint under the control;
+an error is said in words as well as in the warm ground. `TextInput`,
+`TextArea`, `Select` and `SearchField` are filled in the soft grey, with no
+rule round them; in focus they take an ink edge and a soft ring. `active`
+gives a filter that narrows the results an ink edge.
+
+**Rows.** `Rows` and `Row`: a list of rows in one soft card, a hairline
+between them. The name in Inter semibold, a grey line under it, the value or
+action on the right, a chevron when the row opens a page; `href` makes a row a
+link and `onClick` a button. For a key, an index of spots, the models, a
+setting with its value, the AI apps.
+
+**Notices.** `Notice` is something the reader should know, in a soft card: a
+coloured square with its sign, a plain title that says the level in words
+("Orange wind warning", "Yellow small craft warning for all coasts of
+Ireland"), a second line (when, and what it does to the stars), and a chevron
+that opens the details, or an `action` such as Try again. `level` is info,
+warn, yellow, orange, red, water or water-advice; Met Éireann's levels keep
+their own colours. There is no capital chip and no bar down the side. Where a
+notice takes the place of the stars (an hour in the table, the Your stars
+card), `NoticeMark` is the same square with one word beside it ("Water",
+"Orange warning"). `alert` is for something that went wrong just now; a
+warning that was there when the page came is not one.
+
+**Empty.** `Empty` stands where a list would be when there is nothing to
+list: centred, with no frame, a round grey icon, an Inter title, a line or
+two, and at most two buttons. A load error is a `Notice` with Try again.
+
+**Dialog.** `Dialog` and `ConfirmDialog`: the ground with a sheet's corner
+and the sheet's shadow, no frame and no rule under the title; the title in
+Inter at `text-lead`, a quiet close button, a hairline above the actions
+only; in dark a faint edge. Under 640px the same dialog is a bottom sheet with
+a grabber and full-width actions within a thumb's reach; a long one
+(Settings) fills the screen.
+
+**Headings.** `Heading` in Inter, sentence case, never over a rule: `page`
+(40px, 32 on a phone, with an optional `lead` line under it), `section` (with
+an `aside` on the right: a link, a count) and `card`.
+
+**Figures and stars.** `Figure` (the number first, a gust raised, the unit
+small; `alarm` sets the gust in red), `StarGlyphs` (the stars drawn the same
+way everywhere; `coloured` for the stars' own colours), `BeaufortGlyph` (a
+wind in Force as a staff and feathers, with the force's number), `RatingTip`
+(an hour's stars as a button that opens why).
+
+**Also:** `Avatar` (a monogram on the soft grey), `Count` (a small figure in
+a capsule; unread is filled), `Pager`, `Skeleton`, `Link` (underlined in
+running text), `Backdrop`.
+
+## The top bar
+
+One bar on every page that has a head (`TopBar`): the Spot finder, the chart,
+a spot's page, How the stars work, the spot index, Use with AI and the
+sections. 64px tall, 56 on a phone, on the page's own ground, with one
+hairline under it and nothing heavier: no frame, no double rule, no shadow. On
+the chart it sits above the map, not floating on it.
+
+From left to right:
+
+1. **The wordmark** (`Wordmark`): "wingfoil" in Fraunces with ".ie" in the
+   magenta italic, the bar's only serif. It goes home to the Spot finder, and
+   it is the same size and 24px from the edge (16 on a phone) on every page,
+   so it never jumps.
+2. **The search** (`SpotSearch`): a soft grey pill beside the wordmark that
+   finds a riding place as the rider types; "/" anywhere comes to it. The same
+   search, and the same results, on every page.
+3. A section's own few actions, where it has them (the marketplace's Sell).
+4. **One button for the other view**: Chart (the map glyph) on the finder and
+   a spot's page, Spots (the list glyph) on the chart. Outlined, never filled:
+   the filled button is kept for the page's own main action.
+5. **Light or dark**: a round button showing what it switches to, the sun in
+   dark and the moon in white.
+6. **The menu**, at the far right on every page.
+
+On a phone the search folds into a round button that opens a full-width field
+over the bar, and light or dark moves into the menu. Controls that belong to
+the page stay on the page (the finder's Favourites and Near you head its
+list; a spot's Star and Alert me stand by its name; the chart's controls stay
+on the map).
+
+**The site menu** is a drawer from the right, where its button is: the
+facing edge rounded to the sheet's corner, one soft shadow, the page dimmed
+under a scrim. Its head is the wordmark and a close button, with space, not a
+rule, under it. The rows are in groups, each under a short grey name in
+sentence case, unruled, 44px tall, with one line icon each. The current page
+sits on a soft grey pill in semibold with "You're here" at its end, and the
+same pill is the hover of the other rows. Light, Dark or Auto is at its foot,
+on every width. A section switched off in the build is not drawn at all.
+
+## Do
+
+- Lead with a figure, then the short label that names it.
+- Keep a page to space, headings and soft cards; reach for `Rows` for any
+  list of named things with a value.
 - Use `chart-magenta` for the best of something, once.
 - Draw stars with `StarGlyphs`, and leave the dark unrated.
-- Draw a wind in Force with `BeaufortGlyph` where a figure stands: the
-  glyph and the force together. Where only text fits (a label, a tooltip,
-  what a screen reader hears) write "Force 5", or "F5" in a line of figures.
-- Draw a glyph from the set (`shared/web/glyphSet.ts`, drawn by `ChartGlyph`
-  in `shared/web/ChartGlyph.tsx`, `glyphs` from `src/chartGlyphs.tsx` on the
-  map, and `SetGlyph` in the app) before reaching for lucide:
-  the weather, the wind and the blend, the dock's rows, the chart's symbols.
-- Pass `strokeWidth={1.5}` to lucide icons beside mono labels; the default 2
-  reads heavy against the thin rules.
+- Draw a wind in Force with `BeaufortGlyph` where a figure stands. Where only
+  text fits (a label, a tooltip, what a screen reader hears) write "Force 5",
+  or "F5" in a line of figures.
+- Draw a glyph from the set (`shared/web/glyphSet.ts`, `ChartGlyph`; `glyphs`
+  from `src/chartGlyphs.tsx` on the map; `SetGlyph` in the app) before
+  reaching for lucide.
 
-### Don't
+## Don't
 
 - Don't write a colour, a px or a font name outside `ui/theme.css`.
-- Don't use the red accent for emphasis, status or decoration; don't lift a
-  mark on a card, and don't circle, frame or write anything by hand.
-- Don't lay a translucent or blurred panel over the map; it is paper.
-- Don't round a box, or square a capsule.
-- Don't set sentences in the mono face, or figures in the body face.
-- Don't put a second filled action on a view.
-- Don't use the wind ramp for anything but wind speed, the weather's
-  colours for anything but the weather, or the stars' for anything but stars.
-
-## For each section
-
-**The map (`src/`, `force5/src/`, `companion/web/`).** The map's own CSS
-(`src/styles.css`, `compact.css`, `dock.css`, `force5/src/brand.css`) reads the
-theme through `var(--color-*)`, so it has already moved to paper and ink, but
-its glass (`.glass`, `--glass`, `--glass-shadow`, the `backdrop-filter`s) and
-its pills are still the old shapes; turn them into the chart's boxes
-(`Surface`, or the same rules in CSS) and the dock's top into a double rule.
-The basemap colours are re-pointed; the depth tints, contours and soundings
-are new tokens for the chart-kit's bathymetry. The top-left is the mockup's
-head: the menu, the wordmark (`Wordmark size="sm"`), and "Find a spot…" as a
-`SearchField`. Spot lights are the mockup's `.lt`: a figure in a ring (ink at
-3–4 stars, magenta at 5, dashed at none, struck through in red when
-offshore); the open spot's light stands a size up. In the dock the chosen hour
-is outlined in ink and slides from hour to hour, and a red line fades down the hours at
-the time now, with nothing written by it; the dock's tools (the star,
-the name that opens the spot's page, the blend, the fold, the close) stand on
-the chart in a box like the map's controls, and on a phone are the head of
-the dock's sheet. `StarGlyphs` in `src/StarsRows.tsx` already draws through the kit;
-it keeps the dock's narrow width with `slots="potential"`. Gust is still the
-ink blob with a magenta wing; whether he becomes the puffin is the owner's
-call. The Force5 logo in the top bar is the old brand. The map visual
-baseline (`npm run map:shots`) needs regenerating at the end.
-
-**The marketplace (`market/web/`).** The header is the shared masthead. The
-category pills and filters are already in the mono label. The seller's
-ratings (`ratingStyles`) still draw lucide stars in `accent` (now ink) over
-`line-strong`, and want the chart's star shape from `StarGlyphs`. Listing
-cards should be `Pane`s (one ink rule, grain) and a price a `Figure`; photos
-stand on paper in a hairline frame;
-the glass badges over them are paper now. The visual baseline
-(`npm run market:shots`) needs regenerating at the end.
-
-**The community (`community/web/`).** The header is the shared masthead. The
-rail is a ruled list (`border-b border-line`, the current channel set as the
-menu sets it: italic, heavier, on `sunken`); threads are sections under a
-rule rather than cards, with the opening post the one `Pane`; names in the
-display face, times and counts in the mono face. Avatars are monograms.
-
-**Everyone.** The spot page is on the masthead already but otherwise
-untouched. The AI page has the spot finder's header (`PageHeader`) over a
-list of the apps, one button each. `community/web/components/Composer.tsx` still sets its
-field at `pointer-coarse:text-lead` (19px, fine, but `text-input` is the
-step for it now).
+- Don't put a second filled button on a view.
+- Don't set a heading, a list's names or a dialog's title in Fraunces, or
+  anything but the wordmark's ".ie" in an italic serif.
+- Don't set a label in capitals or space its letters.
+- Don't draw a frame, a double, heavy or ink rule, paper grain, a sheen or a
+  gradient; don't put a hairline between cards or under a heading.
+- Don't lift a mark on a card, circle it, or draw or write anything by hand.
+- Don't lay a translucent or blurred panel over the map.
+- Don't use the red accent for emphasis or decoration.
+- Don't use the wind ramp for anything but wind speed, the weather's colours
+  for anything but the weather, the stars' for anything but stars, or Met
+  Éireann's for anything but their warnings.

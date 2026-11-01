@@ -2,6 +2,8 @@ import {
   expect,
   layersRail,
   menuRow,
+  rowName,
+  SITE_ROW_TEXTS,
   SITE_ROWS,
   test,
   type Page,
@@ -19,13 +21,8 @@ const trigger = (page: Page) => page.getByRole("button", { name: "Site menu" });
 const panel = (page: Page) => page.getByRole("navigation", { name: "Site" });
 const row = (page: Page, name: string) =>
   panel(page).getByRole("link", { name, exact: true });
-/**
- * The marketplace's header pill: the one box inside its banner, which is
- * Tailwind now and carries no class name worth writing down.
- */
-const headerBar = (page: Page) => page.getByRole("banner").locator("> div");
 // The same rows in the same order, whichever bundle drew them.
-const SECTIONS = SITE_ROWS;
+const SECTIONS = SITE_ROW_TEXTS;
 
 test("on the map the menu opens by keyboard and Escape closes only the menu", async ({
   page,
@@ -85,34 +82,38 @@ test("the menu's navigation is the same on the full chart and on the home page's
   const read = async () => {
     await trigger(page).click();
     await settled(page);
-    const rows = await panel(page).getByRole("link").allTextContents();
-    const marked = await panel(page)
-      .locator('[aria-current="page"]')
-      .allTextContents();
-    const own = await drawer(page).getByRole("group").count();
+    const rows = (await panel(page).getByRole("link").allTextContents()).map(
+      rowName,
+    );
+    const marked = (
+      await panel(page).locator('[aria-current="page"]').allTextContents()
+    ).map(rowName);
+    const own = await panel(page).getByRole("group").count();
     const lists = await panel(page).locator("ul").count();
     await page.keyboard.press("Escape");
     await expect(drawer(page)).toHaveCount(0);
     return { rows, marked, own, lists };
   };
   await page.goto("/?map");
-  await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('[data-view-switch="spots"]')).toBeVisible({
+    timeout: 30000,
+  });
   const chart = await read();
   await page.goto("/");
   await expect(page.locator("[data-spot-finder]")).toBeVisible({
     timeout: 30000,
   });
   const spots = await read();
-  expect(chart.rows).toEqual(SECTIONS);
+  expect(chart.rows).toEqual(SITE_ROWS);
   expect(spots.rows).toEqual(chart.rows);
   expect(chart.marked).toEqual(["Chart"]);
   expect(spots.marked).toEqual(["Spot finder"]);
   // No part of a page's own on either, and the same four groups.
   expect(chart.own).toBe(0);
   expect(spots.own).toBe(0);
-  // The four groups, then the theme's switch.
-  expect(chart.lists).toBe(5);
-  expect(spots.lists).toBe(5);
+  // The four named groups.
+  expect(chart.lists).toBe(4);
+  expect(spots.lists).toBe(4);
   // "Wind map" was the chart a second time: it is gone.
   await trigger(page).click();
   await expect(drawer(page)).not.toContainText("Wind map");
@@ -121,23 +122,29 @@ test("the menu's navigation is the same on the full chart and on the home page's
 /** The drawer itself: the modal the trigger opens. */
 const drawer = (page: Page) => page.getByRole("dialog", { name: "Site menu" });
 
+/** How far the drawer's right edge is from the window's. */
+const offRight = async (page: Page) => {
+  const box = (await drawer(page).boundingBox())!;
+  return Math.round(page.viewportSize()!.width - box.x - box.width);
+};
+
 /** Where the drawer stands, once it has slid in. */
 async function settled(page: Page) {
   await expect(drawer(page)).toBeVisible();
-  await expect.poll(async () => (await drawer(page).boundingBox())?.x).toBe(0);
+  await expect.poll(() => offRight(page)).toBe(0);
   return (await drawer(page).boundingBox())!;
 }
 
-test("the menu is a drawer from the left, over the dimmed map, with a glyph on every row", async ({
+test("the menu is a drawer from the right, over the dimmed map, with named groups and a glyph on every row", async ({
   page,
 }) => {
   await page.goto("/?map");
   await trigger(page).click();
   const box = await settled(page);
-  // The left edge, the screen's full height, and clear of the right of it.
+  // The right edge, the screen's full height, and clear of the left of it.
   expect(box.y).toBe(0);
   expect(box.height).toBe(page.viewportSize()!.height);
-  expect(box.width).toBeLessThanOrEqual(320);
+  expect(box.width).toBeLessThanOrEqual(360);
   // A modal over the kit's backdrop: the map under it is inert.
   expect(await drawer(page).evaluate((el) => el.matches(":modal"))).toBe(true);
   expect(
@@ -152,10 +159,19 @@ test("the menu is a drawer from the left, over the dimmed map, with a glyph on e
   await expect(drawer(page)).toContainText("wingfoil.ie");
   // The site's navigation and sections, and nothing else: no Layers, which
   // is the rail by the zoom. Each row has its glyph in the margin.
-  const rows = drawer(page).locator("li > :is(a, button)");
-  await expect(rows).toHaveText([...SECTIONS, "Dark mode"]);
+  const rows = panel(page).getByRole("link");
+  await expect(rows).toHaveText(SECTIONS);
   for (const row of await rows.all())
     await expect(row.locator("svg")).toHaveCount(1);
+  await expect(panel(page).getByRole("heading")).toHaveText([
+    "Forecast",
+    "Your settings",
+    "Help",
+    "More from wingfoil.ie",
+  ]);
+  // The page you are on is said in words, and to a screen reader by
+  // aria-current, its name its own.
+  await expect(row(page, "Chart")).toHaveAttribute("aria-current", "page");
   // The Almanac signs it no longer.
   await expect(drawer(page)).not.toContainText("Almanac");
   // The page behind does not scroll while it is open.
@@ -186,7 +202,7 @@ test("the drawer closes on Escape, on its X and on the backdrop, the focus back 
   // A press on the dimmed map beside it, which moves nothing under it.
   await trigger(page).click();
   const box = await settled(page);
-  await page.mouse.click(box.x + box.width + 200, 500);
+  await page.mouse.click(box.x - 200, 500);
   await expect(drawer(page)).toHaveCount(0);
   await expect(trigger(page)).toBeFocused();
   expect(
@@ -216,36 +232,36 @@ test("the focus stays in the drawer while it is open", async ({ page }) => {
 });
 
 /**
- * A finger pushes the drawer back off to the left: it follows the finger, and
- * let go past the line it shuts, short of it it springs back. The mouse's
+ * A finger pushes the drawer back off to the right: it follows the finger,
+ * and let go past the line it shuts, short of it it springs back. The mouse's
  * pointer events stand in for a finger's here: the drawer reads either.
  */
-test("a drag to the left puts the drawer away, and a short one springs back", async ({
+test("a drag to the right puts the drawer away, and a short one springs back", async ({
   page,
 }) => {
   await page.goto("/?map");
   await trigger(page).click();
   const box = await settled(page);
-  // From the drawer's own paper, under its rows.
-  const x = box.x + box.width - 30;
-  const y = box.y + box.height - 60;
-  const left = async () => (await drawer(page).boundingBox())!.x;
+  // From the drawer's own ground, between its rows and its foot.
+  const x = box.x + 30;
+  const y = box.y + box.height - 150;
+  const off = () => offRight(page);
 
   // A short drag: it follows, then springs back.
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x - 20, y, { steps: 4 });
-  await page.mouse.move(x - 40, y, { steps: 4 });
-  expect(await left()).toBeLessThan(-30);
+  await page.mouse.move(x + 20, y, { steps: 4 });
+  await page.mouse.move(x + 40, y, { steps: 4 });
+  expect(await off()).toBeLessThan(-30);
   await page.waitForTimeout(200);
   await page.mouse.up();
-  await expect.poll(left).toBe(0);
+  await expect.poll(off).toBe(0);
   await expect(drawer(page)).toBeVisible();
 
   // Past the line: it goes, and the focus is back on the trigger.
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x - 120, y, { steps: 12 });
+  await page.mouse.move(x + 120, y, { steps: 12 });
   await page.waitForTimeout(200);
   await page.mouse.up();
   await expect(drawer(page)).toHaveCount(0);
@@ -267,7 +283,7 @@ test("a drag that starts on a row is the drawer's, and a tap on a row still pres
   const y = options.y + options.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x - 120, y, { steps: 12 });
+  await page.mouse.move(x + 120, y, { steps: 12 });
   await page.mouse.up();
   await expect(drawer(page)).toHaveCount(0);
   await page.waitForTimeout(300);
@@ -312,12 +328,12 @@ test("a fast flick puts the drawer away short of the line", async ({
           }),
         );
       send("pointerdown", at.x);
-      send("pointermove", at.x - 12);
-      send("pointermove", at.x - 24);
-      send("pointermove", at.x - 36);
-      send("pointerup", at.x - 36);
+      send("pointermove", at.x + 12);
+      send("pointermove", at.x + 24);
+      send("pointermove", at.x + 36);
+      send("pointerup", at.x + 36);
     },
-    { x: box.x + box.width - 30, y: box.y + box.height - 60 },
+    { x: box.x + 30, y: box.y + box.height - 150 },
   );
   await expect(drawer(page)).toHaveCount(0);
   await expect(trigger(page)).toHaveAttribute("aria-expanded", "false");
@@ -332,10 +348,13 @@ test("the menu carries the reader between the map and the marketplace", async ({
 
   await page.waitForURL("**/market");
   await expect(
-    page.getByRole("heading", { name: /Second-hand gear/ }),
+    page.getByRole("heading", { level: 1, name: "Market" }),
   ).toBeVisible();
+  // The site's one top bar, the wordmark going home.
   await expect(
-    page.getByRole("link", { name: "wingfoil.ie Market, home" }),
+    page
+      .locator("[data-top-bar]")
+      .getByRole("link", { name: "wingfoil.ie, the Spot finder" }),
   ).toBeVisible();
   // The standalone Map button is gone: one control per destination.
   await expect(
@@ -358,7 +377,7 @@ test("the menu carries the reader between the map and the marketplace", async ({
 
   await row(page, "Chart").click();
   await page.waitForURL((url) => url.pathname === "/");
-  await expect(page.locator(".map-head")).toBeVisible();
+  await expect(page.locator('[data-view-switch="spots"]')).toBeVisible();
   await expect(trigger(page)).toBeVisible();
 });
 
@@ -368,9 +387,7 @@ test("a direct load of a marketplace URL renders the marketplace and its menu", 
   // SPA fallback: the server has no /market/sell on disk and must answer with
   // index.html, which is where the pathname picks the marketplace bundle.
   await page.goto("/market/sell");
-  await expect(
-    page.getByRole("link", { name: "wingfoil.ie Market, home" }),
-  ).toBeVisible();
+  await expect(page.locator("[data-top-bar]")).toBeVisible();
   await trigger(page).click();
   await expect(row(page, "Marketplace")).toHaveAttribute(
     "aria-current",
@@ -387,20 +404,18 @@ test("the menu carries the reader into the community and back out of it", async 
   await row(page, "Community").click();
 
   await page.waitForURL("**/community");
-  await expect(
-    page.getByRole("link", { name: "wingfoil.ie Community, home" }),
-  ).toBeVisible();
+  await expect(page.locator("[data-top-bar]")).toBeVisible();
 
   await trigger(page).click();
   await expect(panel(page).getByRole("link")).toHaveText(SECTIONS);
   await expect(panel(page).locator('[aria-current="page"]')).toHaveText([
-    "Community",
+    /^Community/,
   ]);
   await expect(row(page, "Marketplace")).toHaveAttribute("href", "/market");
 
   await row(page, "Chart").click();
   await page.waitForURL((url) => url.pathname === "/");
-  await expect(page.locator(".map-head")).toBeVisible();
+  await expect(page.locator('[data-view-switch="spots"]')).toBeVisible();
 });
 
 test("a direct load of a community URL renders the community and its menu", async ({
@@ -408,14 +423,12 @@ test("a direct load of a community URL renders the community and its menu", asyn
 }) => {
   // The same fallback, for the third bundle: no /community/c/wings on disk.
   await page.goto("/community/c/wings");
-  await expect(
-    page.getByRole("link", { name: "wingfoil.ie Community, home" }),
-  ).toBeVisible();
+  await expect(page.locator("[data-top-bar]")).toBeVisible();
   await trigger(page).click();
   await expect(row(page, "Community")).toHaveAttribute("aria-current", "page");
 });
 
-test("at 390px the menu shares the header row without wrapping or scrolling", async ({
+test("at 390px the menu shares the top bar's row without wrapping or scrolling", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -427,75 +440,94 @@ test("at 390px the menu shares the header row without wrapping or scrolling", as
         document.documentElement.clientWidth,
     );
 
-  // The chart's head: the menu, the name and "Find a spot…" on one row, clear
-  // of the controls on the right.
+  // The top bar: the name, the search, Spots and the menu on one row, the
+  // menu at the far right, the chart's controls under the bar.
+  const bar = page.locator("[data-top-bar]");
   const menu = (await trigger(page).boundingBox())!;
-  const brand = (await page.locator(".map-brand").boundingBox())!;
-  const search = (await page
-    .getByRole("combobox", { name: "Find a spot" })
+  const brand = (await bar.getByText("wingfoil.ie").boundingBox())!;
+  const search = (await bar
+    .getByRole("button", { name: "Search spots" })
     .boundingBox())!;
+  const head = (await bar.boundingBox())!;
   const controls = (await page.locator(".map-ctrl").boundingBox())!;
   expect(
     Math.abs(menu.y + menu.height / 2 - (brand.y + brand.height / 2)),
   ).toBeLessThan(4);
-  expect(menu.x + menu.width).toBeLessThanOrEqual(brand.x);
   expect(brand.x + brand.width).toBeLessThanOrEqual(search.x);
-  expect(search.x + search.width).toBeLessThanOrEqual(controls.x);
+  expect(search.x + search.width).toBeLessThanOrEqual(menu.x);
+  expect(menu.x + menu.width).toBeLessThanOrEqual(390);
+  expect(controls.y).toBeGreaterThanOrEqual(head.y + head.height);
   expect(await overflow()).toBeLessThanOrEqual(0);
 
-  // Open, the drawer stands at the left edge, the full height of the
-  // screen, and leaves a strip of the map showing beside it.
+  // Open, the drawer stands at the right edge, the full height of the
+  // screen, and leaves a strip of the map showing beside it, with light or
+  // dark at its foot.
   await trigger(page).click();
   const open = await settled(page);
   expect(open.y).toBe(0);
   expect(open.height).toBe(844);
-  expect(open.x + open.width).toBeLessThan(390);
+  expect(open.x).toBeGreaterThan(0);
+  await expect(
+    drawer(page).getByRole("group", { name: "Appearance" }),
+  ).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(drawer(page)).toHaveCount(0);
   expect(await overflow()).toBeLessThanOrEqual(0);
 });
 
-test("at 390px the marketplace header takes the menu without squeezing a label", async ({
+test("light, dark or auto at the menu's foot: dark by default, and the choice kept", async ({
+  page,
+}) => {
+  await page.goto("/?map");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await trigger(page).click();
+  await settled(page);
+  const appearance = drawer(page).getByRole("group", { name: "Appearance" });
+  await expect(
+    appearance.getByRole("button", { name: "Dark" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await appearance.getByRole("button", { name: "Light" }).click();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.+/);
+  await expect(
+    appearance.getByRole("button", { name: "Light" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.+/);
+  // Auto follows the device.
+  await page.emulateMedia({ colorScheme: "dark" });
+  await trigger(page).click();
+  await settled(page);
+  await drawer(page)
+    .getByRole("group", { name: "Appearance" })
+    .getByRole("button", { name: "Auto" })
+    .click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.emulateMedia({ colorScheme: "light" });
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.+/);
+});
+
+test("at 390px the marketplace's top bar takes its own actions without overflowing", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/market");
-  await expect(
-    page.getByRole("link", { name: "wingfoil.ie Market, home" }),
-  ).toBeVisible();
-
-  const menu = (await trigger(page).boundingBox())!;
-  const brand = (await page
-    .getByRole("link", { name: "wingfoil.ie Market, home" })
-    .boundingBox())!;
-  expect(menu.x + menu.width).toBeLessThanOrEqual(brand.x);
-
-  // The bar shrinks its own insets to make room, so the menu costs the labels
-  // beside it nothing: "Sign in" is laid out exactly as it is with the menu
-  // taken out of the row. Measured against itself rather than against a number,
-  // and only once the webfont has settled — this header is tight at 390px with
-  // the fallback metrics whatever is in it, and the question here is whether
-  // the menu made it tighter.
+  const bar = page.locator("[data-top-bar]");
+  await expect(bar).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
-  const label = page
+  // The menu at the far right, the section's action and Chart (its glyph
+  // only, beside an action) before it, nothing spilling out of the row.
+  const menu = (await trigger(page).boundingBox())!;
+  const chart = (await bar.getByRole("link", { name: "Chart" }).boundingBox())!;
+  const account = (await bar
     .getByRole("navigation", { name: "Marketplace" })
-    .getByText("Sign in", { exact: true });
-  const height = () =>
-    label.evaluate((el) => el.getBoundingClientRect().height);
-  const withMenu = await height();
-  await page
-    .locator(".f5-site-menu")
-    .evaluate((el: HTMLElement) => (el.style.display = "none"));
-  expect(withMenu).toBe(await height());
-  await page
-    .locator(".f5-site-menu")
-    .evaluate((el: HTMLElement) => (el.style.display = ""));
-
-  // Nothing inside the pill overflows it, font or no font.
+    .boundingBox())!;
+  expect(menu.x + menu.width).toBeLessThanOrEqual(390);
+  expect(chart.x + chart.width).toBeLessThanOrEqual(menu.x);
+  expect(account.x + account.width).toBeLessThanOrEqual(chart.x);
+  expect(Math.abs(menu.y - chart.y)).toBeLessThan(4);
   expect(
-    await headerBar(page).evaluate((el) => el.scrollWidth - el.clientWidth),
+    await bar.evaluate((el) => el.scrollWidth - el.clientWidth),
   ).toBeLessThanOrEqual(0);
-
   expect(
     await page.evaluate(
       () =>
@@ -506,7 +538,7 @@ test("at 390px the marketplace header takes the menu without squeezing a label",
 
   await trigger(page).click();
   const open = await settled(page);
-  expect(open.x + open.width).toBeLessThan(390);
+  expect(open.x).toBeGreaterThan(0);
 });
 
 /**
@@ -535,7 +567,7 @@ test.describe("on a coarse pointer", () => {
       [x, y],
     );
 
-  test("the map's trigger does not reach over the name beside it", async ({
+  test("the map's trigger does not reach over the button beside it", async ({
     page,
   }) => {
     await page.goto("/?map");
@@ -543,7 +575,9 @@ test.describe("on a coarse pointer", () => {
       await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches),
     ).toBe(true);
 
-    const search = page.locator(".map-brand");
+    const search = page
+      .locator("[data-top-bar]")
+      .getByRole("link", { name: "wingfoil.ie, the Spot finder" });
     const box = (await search.boundingBox())!;
     // One pixel inside the name's leading edge, at its middle.
     const owner = await ownerAt(page, box.x + 1, box.y + box.height / 2);
@@ -557,31 +591,28 @@ test.describe("on a coarse pointer", () => {
     ).toBe(true);
   });
 
-  test("the marketplace's trigger does not reach over the brand link", async ({
+  test("the marketplace's trigger does not reach over the button beside it", async ({
     page,
   }) => {
     await page.goto("/market");
-    const brand = page.getByRole("link", { name: "wingfoil.ie Market, home" });
-    const box = (await brand.boundingBox())!;
-    const owner = await ownerAt(page, box.x + 1, box.y + box.height / 2);
+    const chart = page
+      .locator("[data-top-bar]")
+      .getByRole("link", { name: "Chart" });
+    const box = (await chart.boundingBox())!;
+    // One pixel inside the button's trailing edge, at its middle.
+    const owner = await ownerAt(
+      page,
+      box.x + box.width - 1,
+      box.y + box.height / 2,
+    );
     expect(owner.onTrigger).toBe(false);
-
-    // The grown area also stays inside the header pill it sits in.
-    const bar = (await headerBar(page).boundingBox())!;
+    // The menu's own middle belongs to the menu, a thumb's size.
     const menu = (await trigger(page).boundingBox())!;
-    const grown = await trigger(page).evaluate((el) => {
-      const rect = el.getBoundingClientRect();
-      const after = getComputedStyle(el, "::after");
-      return {
-        height: parseFloat(after.height) || rect.height,
-        width: parseFloat(after.width) || rect.width,
-      };
-    });
-    expect(grown.height).toBeGreaterThanOrEqual(44);
-    expect(grown.width).toBeLessThanOrEqual(menu.width + 0.5);
-    const top = menu.y + menu.height / 2 - grown.height / 2;
-    expect(top).toBeGreaterThanOrEqual(bar.y - 0.5);
-    expect(top + grown.height).toBeLessThanOrEqual(bar.y + bar.height + 0.5);
+    expect(menu.height).toBeGreaterThanOrEqual(44);
+    expect(
+      (await ownerAt(page, menu.x + menu.width / 2, menu.y + menu.height / 2))
+        .onTrigger,
+    ).toBe(true);
   });
 });
 
@@ -613,7 +644,7 @@ test("the display options, About and the tour open over the map from another pag
   // About, from the AI page again: the map's information over the list.
   await page.goto("/ai");
   await trigger(page).click();
-  await row(page, "About").click();
+  await row(page, "About the map").click();
   await expect(page.getByRole("dialog", { name: "About the map" })).toBeVisible(
     { timeout: 30000 },
   );

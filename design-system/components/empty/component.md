@@ -1,48 +1,47 @@
 # Empty
 
 Where a list would be, when there is nothing to list (`ui/Empty.tsx`,
-`emptyStyles` laid over a card `paneStyles`). An icon in a ring, a line in the
-display face's italic, and what to do about it.
+`emptyStyles`): nothing found, not found, could not load. Centred, with no
+frame round it.
 
 ## Anatomy
 
-- Container: `.wf-empty` — a card Pane (a `sem.rule.hairline` ink border,
-  `sem.color.card` with `sem.texture.grain`, the hairline inside the rule, a
-  box's corner and the card's contact shadow), with a tall inset
-  (`sem.space.x14` by `sem.space.x6`), everything centred in a grid
-  `sem.space.x3` apart; sentences in `sem.font.family.body` at
-  `sem.font.size.prose`, `sem.color.ink-muted`.
-- Icon: `.wf-empty__icon` — a 58px ring (a large control and a gap across, 14.5
-  steps), hairline, holding a 24px lucide icon in `currentColor`; the Image icon
-  when none is given. Decoration, `aria-hidden`.
-- Title: `.wf-empty__title` — a `p`, not a heading: the display face's italic
-  at `sem.font.size.lead` and `sem.font.weight.lead`, in ink.
-- Body: `.wf-empty__body` — optional; a grid up to `sem.container.reading`
-  wide, centred: a sentence, and the button or link that mends it.
+- Block: `.wf-empty`, a centred column, `sem.space.x14` above and below,
+  `sem.space.x2-5` between its parts.
+- Icon: `.wf-empty__icon`, a 56px circle on `sem.color.sunken` holding a 24px
+  line icon in `sem.color.ink-2` (a magnifier unless the page gives another).
+  `aria-hidden`.
+- Title: `.wf-empty__title`, Inter semibold at `sem.font.size.lead`, in
+  sentence case. An `<h2>` by default; an `<h1>` where it is the page's own
+  (a 404), a `<p>` inside a panel.
+- Body (optional): `.wf-empty__body`, a line or two in `sem.color.ink-2`, no
+  wider than `sem.container.reading`: what to do about it.
+- Actions (optional): `.wf-empty__actions`, at most two buttons.
 
 ## Variants
 
-- **Info** (the default) — the ring in ink on paper.
-- **Warn** (`--warn`) — the ring in `sem.color.warn` on `sem.color.warn-ground`,
-  for an empty list that is empty because something failed. Only the ring goes
-  warm; the words stay muted and the title ink.
+- None. What changes is the icon, the words and the buttons: "No riding place
+  at this address" with Dollymount and All places; "Nothing on sale yet" with
+  Sell.
 
 ## States
 
-- None of its own. The action inside has the Button's states.
+- None of its own.
 
 ## Usage
 
-- Say why it is empty in the title ("No reviews yet", "Nothing matches that
-  search"), and what mends it in one sentence.
-- The action is a pill or a link. Use the primary pill only when it is the one
-  filled action on the view.
-- Pick an icon that names the list (search, photo, star); do not use the warm
-  kind to draw the eye.
+- No frame, no card, no dashed box round it; it stands in the space the list
+  would take.
+- The title says what happened in plain words; the body says what to do.
+- At most two buttons: the likely way on as the one filled button if the view
+  has none, the other outlined. Or a single outlined button.
+- A failure the reader can retry inside a page is better as a
+  [Notice](../notice/component.md) with "Try again"; Empty is for a whole list
+  or page that has nothing.
 
 ## Accessibility
 
-- The title is a paragraph, so an empty list does not add a heading to the
-  outline; the section that holds it has its own heading.
-- The icon is decoration; a warning is said in words as well as the warm ring.
-- Muted words on paper are 5.8:1.
+- The title is a real heading where it heads the page or the panel, so it is
+  found by heading navigation.
+- The icon is decoration.
+- Contrast: title 18.8:1 (light) and 17.5:1 (dark); body 11.3:1 and 11.9:1.

@@ -1,4 +1,5 @@
 import {
+  SITE_ROW_TEXTS,
   SITE_ROWS,
   closeLayers,
   expect,
@@ -35,16 +36,16 @@ test("the chart's controls: zoom and Layers on the right, Layers the rail on a p
   // Clear of the head and of the dock.
   const box = (await controls.boundingBox())!;
   const dock = (await page.locator(".map-footer").boundingBox())!;
-  const head = (await page.locator(".map-head").boundingBox())!;
+  const head = (await page.locator("[data-top-bar]").boundingBox())!;
   expect(box.y + box.height).toBeLessThan(dock.y);
-  expect(head.x + head.width).toBeLessThanOrEqual(box.x);
+  expect(box.y).toBeGreaterThanOrEqual(head.y + head.height);
   // The menu is the site's navigation, in its groups, by keyboard, and no
   // layers in it: they are the rail.
   const menu = page.getByRole("button", { name: "Site menu" });
   await menu.focus();
   await page.keyboard.press("Enter");
   await expect(siteRow(page, "Chart")).toBeFocused();
-  await expect(siteNav(page).getByRole("link")).toHaveText(SITE_ROWS);
+  await expect(siteNav(page).getByRole("link")).toHaveText(SITE_ROW_TEXTS);
   await expect(
     page.getByRole("dialog", { name: "Site menu" }).getByText("Layers"),
   ).toHaveCount(0);
@@ -106,7 +107,7 @@ test("the chart's controls: zoom and Layers on the right, Layers the rail on a p
   await setLayer(page, "Spot names", true);
   await closeLayers(page);
   // The key is in the menu, in a dialog rather than on the chart.
-  await openFromMenu(page, "About");
+  await openFromMenu(page, "About the map");
   await expect(
     page.getByRole("dialog", { name: "About the map" }),
   ).toContainText("Depths in metres below chart datum");
@@ -144,7 +145,7 @@ test("the map's information is one dialog over the dimmed chart, from the menu's
   await expect(page.locator(".foil-key")).toHaveCount(0);
   await expect(page.locator(".map-info")).toHaveCount(0);
   const menu = page.getByRole("button", { name: "Site menu" });
-  await openFromMenu(page, "About");
+  await openFromMenu(page, "About the map");
   const info = page.getByRole("dialog", { name: "About the map" });
   await expect(info).toBeVisible();
   // A rail of parts, the key chosen; each part in its own panel beside it.
@@ -194,7 +195,7 @@ test("the map's information is one dialog over the dimmed chart, from the menu's
   await expect(
     page.locator(".dock").getByRole("button", { name: "How the stars work" }),
   ).toHaveCount(0);
-  await openFromMenu(page, "About");
+  await openFromMenu(page, "About the map");
   await info.getByRole("tab", { name: "Stars" }).click();
   await expect(info.locator("#map-info-stars")).toBeAttached();
   await expect(
@@ -203,7 +204,7 @@ test("the map's information is one dialog over the dimmed chart, from the menu's
 });
 
 for (const width of [390, 1440]) {
-  test(`the menu is the chart and the spot finder, then Settings and the options, then About and the tour, at ${width}px`, async ({
+  test(`the menu is the forecast, your settings, help and more, in named groups, at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 });
@@ -226,7 +227,7 @@ for (const width of [390, 1440]) {
     const step = (i: number) => rows[i].y - rows[i - 1].y;
     expect(step(2)).toBeGreaterThan(step(1) + 10);
     expect(step(4)).toBeGreaterThan(step(3) + 10);
-    expect(step(6)).toBeGreaterThan(step(5) + 10);
+    expect(step(7)).toBeGreaterThan(step(6) + 10);
     await finder.click();
     await expect(menu).toHaveAttribute("aria-expanded", "false");
     await expect(page).toHaveURL(/\/$/);

@@ -6,7 +6,8 @@
  * above them when there is no room below, and closes on scroll, on Escape
  * and on a tap anywhere else.
  *
- * It is the chart's box: paper with its grain, ruled twice in ink. A press on
+ * It is a floating card: the ground, the float shadow, a faint edge in dark.
+ * A press on
  * the stars is theirs alone: it never reaches the row or the column they sit
  * in, which have presses of their own.
  *
@@ -33,7 +34,7 @@ export const ratingTipStyles = tv({
     ],
     // On the dialogs' layer: it is the one thing open, and it must clear the
     // spot page's sticky heads and the map's dock and boxes.
-    card: "pointer-events-auto fixed z-dialog rounded-surface border border-ink bg-card paper-float p-4 text-left text-ink shadow-float inset-shadow-frame",
+    card: "pointer-events-auto fixed z-dialog rounded-surface bg-ground p-4 text-left text-ink shadow-float dark:ring-1 dark:ring-line",
   },
   variants: {
     size: {

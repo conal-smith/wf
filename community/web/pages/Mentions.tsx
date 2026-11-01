@@ -2,17 +2,17 @@
  * Mentions: every message that names the member, newest first. Each row is one
  * link to the message, inside its thread.
  */
-import { AtSign, CloudOff } from "lucide-react";
+import { AtSign } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
 import { Avatar, Button, Empty, Notice, Skeleton } from "../../../ui";
-import { MONO_LABEL, RING, tv } from "../../../ui/tv";
+import { RING, tv } from "../../../ui/tv";
 import type { MentionItem, Message } from "../../shared/types";
 import { useApi } from "../api";
 import { MENTION_PATTERN } from "../../shared/validate";
 import { MembersOnly } from "../components/MembersOnly";
-import { PageHead, dateline } from "../components/PageHead";
+import { COMMUNITY, PageHead } from "../components/PageHead";
 import { ago } from "../components/ThreadRow";
 import { useMentions } from "../hooks";
 import { paths, routed } from "../router";
@@ -21,26 +21,24 @@ import { keepRanges } from "../thread";
 export const mentionsStyles = tv({
   slots: {
     base: "flex flex-col gap-4",
-    list: "m-0 flex list-none flex-col p-0",
-    // A letter that names you: on a hairline, as the thread rows are.
+    // Rows in one soft card, a hairline between them, as the thread rows are.
+    list: "m-0 flex list-none flex-col divide-y divide-line overflow-hidden rounded-surface bg-sunken p-0 on-card",
+    // A message that names you.
     row: [
-      "group flex items-start gap-3 border-b border-line py-4 text-ink no-underline transition-colors duration-fast",
-      "max-rail:py-3",
+      "group flex items-start gap-3 px-4 py-4 text-ink no-underline transition-colors duration-fast",
+      "not-disabled:hover:bg-line max-rail:py-3",
       RING,
       "not-disabled:focus-visible:-outline-offset-2",
     ],
     main: "grid min-w-0 flex-1 gap-1",
     line: "m-0 font-body text-prose text-ink-2",
-    strong: "font-display font-semibold text-ink",
+    strong: "font-semibold text-ink",
     title:
-      "font-display font-semibold text-ink transition-colors duration-fast group-hover:text-chart-magenta",
-    body: "m-0 line-clamp-2 font-body text-prose text-ink-muted italic",
-    meta: [
-      "m-0 flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 text-ink-muted tabular-nums",
-      MONO_LABEL,
-    ],
-    channel: "font-semibold text-ink-2",
-    loading: "grid gap-2 border-b border-line py-4",
+      "font-semibold text-ink decoration-1 underline-offset-3 group-hover:underline",
+    body: "m-0 line-clamp-2 font-body text-body text-ink-muted",
+    meta: "m-0 flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 font-body text-body text-ink-muted tabular-nums",
+    channel: "font-medium text-ink-2",
+    loading: "grid gap-2 px-4 py-4",
     short: "w-1/4",
     long: "h-4 w-3/4",
     more: "self-center",
@@ -66,7 +64,7 @@ export function Mentions() {
   usePageTitle("Mentions", "Community");
   return (
     <>
-      <PageHead dateline={dateline(new Date())} title="Mentions" />
+      <PageHead dateline={COMMUNITY} title="Mentions" />
       <MembersOnly what="your mentions">
         <Mentioned />
       </MembersOnly>
@@ -129,7 +127,7 @@ function NoMentions() {
   return (
     <Empty
       title="No mentions yet"
-      icon={<AtSign size={24} strokeWidth={1.5} aria-hidden="true" />}
+      icon={<AtSign size={24} strokeWidth={1.75} />}
     >
       <p>
         {handle ? (
@@ -152,8 +150,7 @@ function Mentioned() {
 
   if (state.status === "loading")
     return (
-      <div aria-busy="true">
-        <span className={styles.hidden()}>Loading your mentions…</span>
+      <div className={styles.list()} aria-busy="true">
         {[0, 1, 2].map((row) => (
           <div key={row} className={styles.loading()}>
             <Skeleton className={styles.long()} />
@@ -161,20 +158,23 @@ function Mentioned() {
             <Skeleton className={styles.short()} />
           </div>
         ))}
+        <span className={styles.hidden()}>Loading your mentions…</span>
       </div>
     );
   if (state.status === "error")
     return (
-      <Empty
-        kind="warn"
+      <Notice
+        level="warn"
+        alert
         title="We could not load your mentions"
-        icon={<CloudOff size={24} strokeWidth={1.5} aria-hidden="true" />}
+        action={
+          <Button size="sm" onClick={reload}>
+            Try again
+          </Button>
+        }
       >
-        <p role="alert">{state.message}</p>
-        <Button variant="pill" onClick={reload}>
-          Try again
-        </Button>
-      </Empty>
+        {state.message}
+      </Notice>
     );
   if (!state.items.length) return <NoMentions />;
   return (
@@ -187,13 +187,13 @@ function Mentioned() {
         ))}
       </ul>
       {state.more.status === "error" && (
-        <Notice kind="warn">
-          <p>{state.more.message}</p>
+        <Notice level="warn" alert title="We could not load more mentions">
+          {state.more.message}
         </Notice>
       )}
       {state.nextCursor !== null && (
         <Button
-          variant="pill"
+          variant="soft"
           className={styles.more()}
           disabled={state.more.status === "loading"}
           onClick={loadMore}

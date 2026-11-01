@@ -87,7 +87,7 @@ test("over the home page, the way back is the list, and the chart from there is 
     .click();
   await expect(page).toHaveURL(/\/\?map$/);
   await expect(page.locator(".map-under-page")).toHaveCount(0);
-  await expect(page.locator(".map-head")).toBeVisible();
+  await expect(page.locator("[data-top-bar]")).toBeVisible();
   expect(await kept(page)).toBe(true);
 });
 

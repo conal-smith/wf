@@ -1,44 +1,37 @@
 # Avatar
 
 A face for a name (`ui/Avatar.tsx`, `avatarStyles`): the member's photo, or a
-monogram in the display face's italic, in an ink ring. Decoration: the name is
-always written beside it.
+monogram in Inter on the soft grey. Decoration: the name is always written
+beside it.
 
 ## Anatomy
 
-- Ring: `.wf-avatar` — a circle (`sem.radius.full`) with a
-  `sem.rule.hairline` ink border, `sem.color.sunken` behind, clipping what is
-  inside.
-- Monogram: up to two letters, the first of the first word and of the last
-  ("Aoife Ní Bhriain" is AN), in `sem.font.family.display` italic,
-  `sem.font.weight.semibold`, line-height 1, in ink.
-- Photo: `.wf-avatar__image` — an `img` with an empty `alt`, filling the ring
-  and cropped to it (`object-fit: cover`).
+- Circle: `.wf-avatar`, `sem.radius.full`, on `sem.color.well`, no ring.
+- Monogram: up to two letters, Inter semibold in `sem.color.ink-2`.
+- Photo (optional): `.wf-avatar__image`, an `<img alt="">` that fills the
+  circle, cropped to it.
 
 ## Variants
 
-- **Sm** (`--sm`) — `sem.size.control.sm` (30px), the monogram at
-  `sem.font.size.caption`.
-- **Md** (the default) — `sem.size.control.md` (40px), at
-  `sem.font.size.body`.
-- **Lg** (`--lg`) — 72px (18 steps), at `sem.font.size.title` with its tracking;
-  the weight stays semibold. A profile's head.
+- **sm** (`--sm`): `sem.size.control.sm`, the monogram at
+  `sem.font.size.caption`. A row in a list, a notification.
+- **md** (the default): `sem.size.control.md`, at `sem.font.size.body`.
+- **lg** (`--lg`): 72px, at `sem.font.size.title`. A profile's head.
 
 ## States
 
-- No photo, or a photo that fails to load: the monogram stands in.
-- An empty name draws "?".
+- None.
 
 ## Usage
 
-- Always with the name written beside it, in the display face; the avatar never
-  stands in for the name.
+- Always with the name written beside it, in Inter; the avatar never stands in
+  for the name.
 - Monograms over stock pictures: the community draws monograms unless a member
   has given a photo.
-- Do not colour the ring or the sheet to tell members apart; the ring is ink.
+- Do not colour the circle to tell members apart.
 
 ## Accessibility
 
-- `aria-hidden="true"` on the ring, and `alt=""` on the photo: the name beside
+- `aria-hidden="true"` on the circle and `alt=""` on the photo: the name beside
   it is what is read, once.
-- Ink on sunken is 13.6:1.
+- Contrast: the monogram 10.4:1 (light) and 10.8:1 (dark) on the grey.

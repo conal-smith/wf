@@ -273,9 +273,9 @@ describe("S1: Following", () => {
       html(
         createElement(ThreadRow, { thread: t, showChannel: true, now: NOW }),
       );
-    // In the row's dateline, beside its channel.
+    // In the grey line over the title, beside its channel.
     expect(row(thread("a", { why: "replied" }))).toMatch(
-      /<p class="[^"]*text-eyebrow[^"]*">.*?>You replied<\/span>/,
+      /<p class="[^"]*text-ink-muted[^"]*">.*?>You replied<\/span>/,
     );
     const plain = row(thread("b"));
     for (const words of Object.values(WHY)) expect(plain).not.toContain(words);
@@ -633,9 +633,19 @@ describe("S4: a row of the bell", () => {
     expect(kindLabel({ ...row, readAt: minutesAgo(1) })).toBe("4 replies");
     const out = drawn(row);
     expect(out).toMatch(/4 new replies · (<!-- -->)?<time [^>]*>12 min ago/);
-    // Each face is ringed in the paper it stands on: the unread row's tint.
+    // Each face is ringed in what it stands on: the page's soft card, or
+    // the bell's floating one.
     expect(out.match(/ring-sunken/g)).toHaveLength(2);
-    expect(drawn({ ...row, readAt: minutesAgo(1) })).toContain("ring-ground");
+    expect(
+      html(
+        createElement(NotificationRow, {
+          row,
+          onOpen: () => {},
+          on: "popover",
+          now: NOW,
+        }),
+      ).match(/ring-ground/g),
+    ).toHaveLength(2);
   });
 
   it("a mention stands alone, with the line that names the reader", () => {
@@ -672,7 +682,6 @@ describe("S4: a row of the bell", () => {
     const out = drawn(row);
     expect(out).not.toContain("Unread");
     expect(out).not.toContain("bg-accent");
-    expect(out).not.toContain("bg-ground");
   });
 
   it("a report is a row like the rest: the API sends one to staff alone", () => {
@@ -684,14 +693,14 @@ describe("S4: a row of the bell", () => {
     expect(drawn(row)).toContain("lucide-flag");
   });
 
-  it("unread is a dot, a tint and a word: never colour alone", () => {
+  it("unread is a dot, words in ink and a word: never colour alone", () => {
     const unread = drawn(note("u"));
-    expect(unread).toMatch(/^<a [^>]*class="[^"]*bg-sunken/);
+    expect(unread).toMatch(/<span class="[^"]*text-ink"><span class="m-0">/);
     expect(unread).toMatch(
       /<span class="[^"]*rounded-full bg-accent[^"]*"><span class="sr-only">Unread<\/span><\/span>/,
     );
     const read = drawn(note("u", { readAt: minutesAgo(1) }));
-    expect(read).not.toMatch(/^<a [^>]*class="[^"]*bg-sunken/);
+    expect(read).toMatch(/<span class="[^"]*text-ink-2"><span class="m-0">/);
     expect(read).not.toContain("Unread");
     expect(read).not.toContain("bg-accent");
   });
@@ -1067,8 +1076,8 @@ describe("S6: a member's profile", () => {
     expect(off).toContain('aria-checked="false"');
     expect(off).toMatch(/>Off<span/);
     // The thumb moves as well as the track filling: never colour alone.
-    expect(on).toContain("translate-x-5");
-    expect(off).not.toContain("translate-x-5");
+    expect(on).toContain("translate-x-4.5");
+    expect(off).not.toContain("translate-x-4.5");
   });
 
   it("sends the whole row back, so a change here resets nothing of the marketplace's", () => {

@@ -36,6 +36,10 @@ const html = (element: ReactElement) => renderToStaticMarkup(element);
 const count = (markup: string, needle: string) =>
   markup.split(needle).length - 1;
 
+/** How many elements are filled in the accent: the view's primary actions. */
+const filled = (markup: string) =>
+  [...markup.matchAll(/class="(?:[^"]*\s)?bg-accent[\s"]/g)].length;
+
 const member = (name: string, role: Member["role"] = "member"): Member => ({
   id: `dev_${name.toLowerCase().replace(/\s+/g, "-")}`,
   handle: name.toLowerCase().replace(/\s+/g, "-"),
@@ -197,14 +201,15 @@ describe("S1: the head", () => {
 });
 
 describe("S2: the opening post is the one card", () => {
-  it("the opening post is a pane, a reply is not", () => {
+  it("the opening post is a soft card, a reply is not", () => {
     const opening = drawn({ message: message({ seq: 0 }), opening: true });
     const card = /<article[^>]*>/.exec(opening)?.[0];
-    for (const name of ["bg-card", "border-ink", "rounded-surface"])
+    for (const name of ["bg-sunken", "rounded-surface"])
       expect(card).toContain(name);
+    expect(card).not.toMatch(/border|shadow/);
     expect(opening).toContain('id="m-0"');
     const reply = drawn({});
-    expect(/<article[^>]*>/.exec(reply)?.[0]).not.toContain("border-ink");
+    expect(/<article[^>]*>/.exec(reply)?.[0]).not.toContain("bg-sunken");
     expect(reply).toContain('id="m-3"');
   });
 
@@ -327,7 +332,7 @@ describe("S6: reactions", () => {
     expect(reactionChips(message())).toEqual([]);
   });
 
-  it("yours is outlined and raised as well as filled, and pressed", () => {
+  it("yours is filled in ink, and pressed", () => {
     const markup = html(
       createElement(Reactions, { message: reacted, onReact: noop }),
     );
@@ -335,11 +340,11 @@ describe("S6: reactions", () => {
       (m) => m[0],
     );
     expect(mine).toContain('aria-pressed="true"');
-    for (const name of ["border-ink", "bg-card", "shadow-raised"])
+    for (const name of ["bg-inverse", "text-ink-inverse"])
       expect(mine).toContain(name);
     expect(theirs).toContain('aria-pressed="false"');
-    expect(theirs).toContain("bg-sunken");
-    expect(theirs).not.toContain("shadow-raised");
+    expect(theirs).toContain("border-line");
+    expect(theirs).not.toMatch(/[\s"]bg-inverse/);
     expect(markup).toContain("12");
   });
 
@@ -414,7 +419,7 @@ describe("S8, S9, S11: the reply slot", () => {
   it("Reply is the one filled action, beside photos and mentions", () => {
     const markup = composer(null);
     expect(markup).toMatch(/<textarea[^>]*placeholder="Reply to the thread…"/);
-    expect(count(markup, "bg-accent ")).toBe(1);
+    expect(filled(markup)).toBe(1);
     expect(markup).toMatch(
       /<button[^>]*type="submit"[^>]*bg-accent[^>]*>.*Reply/s,
     );
@@ -444,7 +449,7 @@ describe("S8, S9, S11: the reply slot", () => {
     expect(markup).toContain("Sign in to reply");
     expect(markup).toContain("Reading is open to everyone.");
     expect(markup).not.toContain("<textarea");
-    expect(count(markup, "bg-accent ")).toBe(1);
+    expect(filled(markup)).toBe(1);
   });
 
   it("a locked thread shows the reason where the composer was", () => {

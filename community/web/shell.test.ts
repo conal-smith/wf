@@ -211,14 +211,18 @@ describe("S5: the header", () => {
 
   const quiet = { accentNew: true, newThread: "/community?new=1", unread: 0 };
 
-  it("is the marketplace's bar with Community in the chip", async () => {
+  it("is the site's top bar: the wordmark home, the search, the chart and the menu", async () => {
     const out = await headerAs(null, quiet);
+    expect(out).toContain("data-top-bar");
     expect(out).toContain('aria-label="Site menu"');
     expect(out).toMatch(
-      /<a href="\/community"[^>]*aria-label="wingfoil\.ie Community, home"/,
+      /<a href="\/"[^>]*aria-label="wingfoil\.ie, the Spot finder"/,
     );
-    expect(out).toMatch(/<span class="[^"]*text-eyebrow[^"]*">Community<\/span>/);
+    expect(out).toContain("data-spot-search");
+    expect(out).toMatch(/<a href="\/\?map"[^>]*data-view-switch="chart"/);
     expect(out).toMatch(/<nav class="[^"]*" aria-label="Community">/);
+    // No "wingfoil.ie / Community" label beside the wordmark: the page says it.
+    expect(out).not.toMatch(/>Community</);
   });
 
   it("signed out is Sign in, and nothing a reader cannot use", async () => {
@@ -258,7 +262,7 @@ describe("S5: the header", () => {
       await headerAs("aoife", { ...quiet, accentNew: false }),
     );
     expect(stood).not.toContain("bg-accent");
-    expect(stood).toContain("bg-card");
+    expect(stood).toContain("border-line");
     // On a phone the bar does not carry it at all.
     expect(filled).toContain("max-rail:hidden");
   });
@@ -327,9 +331,10 @@ describe("S6: the rail", () => {
         row.attributes.includes('aria-current="page"'),
       );
       expect(current.map((row) => row.href)).toEqual([href]);
-      // Raised and heavier as well as said: never by colour alone.
-      expect(current[0].attributes).toContain("shadow-raised");
+      // On the soft pill and heavier as well as said: never by colour alone.
+      expect(current[0].attributes).toContain("bg-sunken");
       expect(current[0].attributes).toContain("font-semibold");
+      expect(current[0].attributes).not.toMatch(/italic|font-display/);
     },
   );
 
@@ -371,7 +376,7 @@ describe("S6: the rail", () => {
     );
     // Past four the badge is filled; up to four it is quiet. Both are numbers.
     expect(row("wings").inner).toContain("bg-inverse");
-    expect(row("foils").inner).toContain("bg-card");
+    expect(row("foils").inner).toContain("bg-well");
     expect(row("foils").inner).not.toContain("bg-inverse");
     expect(row("boards").attributes).not.toContain("font-semibold");
     expect(row("boards").inner).not.toContain("unread");

@@ -18,7 +18,9 @@ const lightsInView = (page: Page) =>
     const chart = document
       .querySelector(".maplibregl-canvas")!
       .getBoundingClientRect();
-    const head = document.querySelector(".map-head")!.getBoundingClientRect();
+    const head = document
+      .querySelector("[data-top-bar]")!
+      .getBoundingClientRect();
     const lights = [...document.querySelectorAll<HTMLElement>(".spot-marker")];
     const seen = lights.filter((light) => {
       const r = light.getBoundingClientRect();

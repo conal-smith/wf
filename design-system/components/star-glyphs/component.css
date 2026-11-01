@@ -1,7 +1,7 @@
 /* StarGlyphs — ui/StarGlyphs.tsx (starGlyphsStyles), rendered in CSS.
  * Consumes --sem-* only.
  *
- * An hour's stars as the chart draws them: solid for what the hour is worth
+ * An hour's stars as the site draws them: solid for what the hour is worth
  * for this rider, an outline for what the wind alone would have given, and a
  * small dot for each of the five it does not reach. Shape carries the
  * difference; the tone only repeats it. The dark is not rated: an empty SVG of
@@ -23,11 +23,11 @@
 .wf-star-glyphs--ink {
   color: var(--sem-color-ink);
 }
-/* On an ink fill: a selected column, a light. */
+/* On an ink fill: a selected hour, a chosen chip. */
 .wf-star-glyphs--inverse {
   color: var(--sem-color-ink-inverse);
 }
-/* The best of the week, where magenta marks it. */
+/* The best of the week, where the accent marks it. */
 .wf-star-glyphs--magenta {
   color: var(--sem-color-chart-magenta);
 }

@@ -25,6 +25,8 @@ export const THEME_NAMES = {
     "title",
     "headline",
     "reading",
+    "wordmark",
+    "wordmark-sm",
     // The AI page's own (ui/theme.css, under its banner).
     "ai-intro",
     "ai-intro-sm",
@@ -40,9 +42,8 @@ export const THEME_NAMES = {
   // The four faces. Without them the merge reads `font-display` as nothing it
   // knows, and `font-body` beside a caller's `font-mono` would keep both.
   font: ["display", "body", "mono"],
-  radius: ["control", "surface", "pill", "dialog", "full"],
+  radius: ["control", "surface", "pill", "dialog", "full", "mark"],
   shadow: ["card", "float", "sheet", "dock", "marker", "control", "raised"],
-  "inset-shadow": ["frame"],
   blur: ["glass", "scrim"],
   container: [
     "dialog",
@@ -57,7 +58,7 @@ export const THEME_NAMES = {
     "list",
   ],
   spacing: ["control-sm", "control-md", "control-lg", "touch"],
-  animate: ["pulse", "dialog-in", "scrim-in", "menu-in", "bob"],
+  animate: ["pulse", "dialog-in", "sheet-in", "scrim-in", "menu-in"],
   "transition-duration": ["fast", "base"],
   "z-index": ["popover", "panel", "header", "dialog"],
 } as const;
@@ -88,7 +89,7 @@ export const tv = createTV({
  * `focus-visible:outline-hidden` is enough to take the map's ring off a field.
  */
 
-/** The one focus ring: 2px of the chart's magenta, 2px clear of the control. */
+/** The one focus ring, for the keyboard only: 2px of the accent, 2px clear. */
 export const RING =
   "not-disabled:focus-visible:outline-2 not-disabled:focus-visible:outline-offset-2 not-disabled:focus-visible:outline-focus";
 
@@ -101,9 +102,8 @@ export const NO_RING = "focus-visible:outline-hidden";
 export const HOVER = "not-disabled:hover:bg-sunken";
 
 /**
- * The mono label: a kicker, a column head, a control's words. Tracked
- * capitals in IBM Plex Mono, at the eyebrow step. Spread into a recipe where
- * a slot is a label; `Kicker` is the same thing as a component.
+ * A small label: a column head, a figure's name. Inter at the eyebrow step,
+ * in sentence case: nothing in the kit is set in tracked capitals.
  */
 export const MONO_LABEL = "font-mono text-eyebrow";
 

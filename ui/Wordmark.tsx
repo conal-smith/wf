@@ -1,23 +1,21 @@
 import { tv, type VariantProps } from "./tv";
 
 /*
- * The nameplate: "wingfoil" in Fraunces at its display cut, heavy and set
- * tight, then ".ie" in the light italic and the chart's magenta. It is the
- * only thing in the site set this heavy.
+ * The wordmark: "wingfoil" in Fraunces, semibold and set a little tight, then
+ * ".ie" in the accent and Fraunces' italic. With a spot's name on its own
+ * page, the only Fraunces on the site.
  */
 export const wordmarkStyles = tv({
   slots: {
-    base: "inline-block font-display leading-none font-extrabold tracking-tight whitespace-nowrap text-ink optical-display",
-    domain: "font-normal tracking-normal text-chart-magenta italic",
+    base: "inline-block font-display leading-none font-semibold tracking-tight whitespace-nowrap text-ink optical-wordmark",
+    domain: "font-medium text-chart-magenta italic",
   },
   variants: {
     size: {
-      // A masthead on a phone, and the map's top bar.
-      sm: { base: "text-lead" },
-      // A masthead with the room.
-      md: { base: "text-title" },
-      // The menu's head, an about page.
-      lg: { base: "text-headline" },
+      // The top bar and the menu's head: 23px, 21 on a phone.
+      md: { base: "text-wordmark max-wide:text-wordmark-sm" },
+      // A larger mark, where a page is about the site itself.
+      lg: { base: "text-title" },
     },
   },
   defaultVariants: { size: "md" },
@@ -29,7 +27,7 @@ export type WordmarkProps = VariantProps<typeof wordmarkStyles> & {
 
 /**
  * wingfoil.ie. Words, not a picture, so it is read as the name it is; a link
- * round it names where it goes (`aria-label="wingfoil.ie Market, home"`).
+ * round it names where it goes.
  */
 export function Wordmark({ size, className }: WordmarkProps) {
   const styles = wordmarkStyles({ size });

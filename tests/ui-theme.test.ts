@@ -62,10 +62,15 @@ const COLOURS: Record<string, string> = {
   card: "#ffffff",
   solid: "#ffffff",
   sunken: "#f5f5f7",
+  // A control's fill inside a soft card, and the fill a control takes
+  // (`bg-well`): the soft grey on the ground, the second grey on a card.
+  raised: "#e6e6eb",
+  well: "#f5f5f7",
   glass: "#ffffffeb",
   inverse: "#111114",
-  scrim: "#ffffff66",
-  "scrim-solid": "#ffffffcc",
+  // Behind a dialog: a dim wash, thicker where nothing blurs the page.
+  scrim: "#0f0f1247",
+  "scrim-solid": "#0f0f1299",
   // The sea and the shore, as a chart tints them, shallow to deep.
   sea: "#e4eef3",
   "sea-1": "#a9cbd8",
@@ -84,7 +89,7 @@ const COLOURS: Record<string, string> = {
   "line-strong": "#8b8b94",
   ink: "#111114",
   "ink-2": "#3a3a40",
-  "ink-muted": "#6c6c74",
+  "ink-muted": "#64646c",
   "ink-disabled": "#8b8b94",
   "ink-inverse": "#ffffff",
   accent: "#111114",
@@ -139,6 +144,12 @@ const TYPE: Record<string, [string, string, string?, string?]> = {
   title: ["30px", "1.05", "700", "-0.02em"],
   headline: ["44px", "1", "700", "-0.035em"],
   reading: ["48px", "1"],
+  // The wordmark's own, in the top bar, and a phone's.
+  wordmark: ["23px", "1"],
+  "wordmark-sm": ["21px", "1"],
+  // A page's heading, and a phone's (the spot report's banner).
+  big: ["40px", "1.05", "600", "-0.035em"],
+  "big-sm": ["32px", "1.05", "600", "-0.03em"],
 };
 
 describe("ui/theme.css: how it is wired", () => {
@@ -322,7 +333,8 @@ describe("ui/theme.css: the values", () => {
       new Set([...css.matchAll(/^\s*(--[a-z0-9-]+):/gm)].map((m) => m[1]));
     const known = names(light);
     const darkBlock = dark.slice(0, dark.indexOf("\n}"));
-    for (const name of names(darkBlock)) expect(known.has(name), name).toBe(true);
+    for (const name of names(darkBlock))
+      expect(known.has(name), name).toBe(true);
   });
 
   it("holds exactly those colours and the wind ramp, no others", () => {
@@ -335,7 +347,18 @@ describe("ui/theme.css: the values", () => {
       ...Object.keys(COLOURS),
       ...windRamp().map(([step]) => `wind-${step}`),
     ];
-    expect(declared.sort()).toEqual(expected.sort());
+    // A name set again by a utility (`on-card` sets the well) is one name.
+    expect([...new Set(declared)].sort()).toEqual(expected.sort());
+  });
+
+  // Inside a soft card a control's fill is the second grey, so it does not
+  // vanish into the card: `on-card` sets the well to it there.
+  it("sets the well to the raised grey on a card, and leaves it the soft grey elsewhere", () => {
+    const css = build(["on-card", "bg-well"]).replace(/\s+/g, " ");
+    expect(css).toMatch(/\.on-card \{ --color-well: var\(--color-raised\); \}/);
+    expect(rule(build(["bg-well"]), "bg-well")).toContain(
+      "background-color: var(--color-well);",
+    );
   });
 
   it("copies the wind ramp verbatim from the PALETTE that paints the map", () => {
@@ -381,7 +404,10 @@ describe("ui/theme.css: the values", () => {
   it("is the colour index.html hands the browser chrome", () => {
     const html = readFileSync(resolve(ROOT, "index.html"), "utf8");
     const meta = html.match(/<meta name="theme-color" content="([^"]+)"/);
-    expect(meta?.[1]).toBe(variable(build(["bg-ground"]), "--color-ground"));
+    // Dark is the default theme, so the chrome is the dark ground.
+    const theme = readFileSync(resolve(ROOT, "ui/theme.css"), "utf8");
+    const dark = theme.slice(theme.indexOf(':root[data-theme="dark"]'));
+    expect(meta?.[1]).toBe(dark.match(/--color-ground: ([^;]+);/)?.[1]);
   });
 
   it.each(Object.entries(TYPE))(
@@ -412,6 +438,8 @@ describe("ui/theme.css: the values", () => {
     ["pill", "9999px"],
     ["dialog", "18px"],
     ["full", "9999px"],
+    // The small square a notice leaves where the stars would be.
+    ["mark", "5px"],
   ])("radius %s is %s", (name, value) => {
     const css = build([`rounded-${name}`]);
     expect(rule(css, `rounded-${name}`)).toContain(
@@ -463,9 +491,9 @@ describe("ui/theme.css: the values", () => {
   });
 
   it.each([
-    ["control-sm", "30px"],
+    ["control-sm", "32px"],
     ["control-md", "40px"],
-    ["control-lg", "46px"],
+    ["control-lg", "48px"],
     ["touch", "44px"],
   ])("control height %s is %s, as named spacing", (name, value) => {
     const css = build([`h-${name}`, `min-h-${name}`]);

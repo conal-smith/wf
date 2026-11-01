@@ -39,29 +39,28 @@ export function MembersOnly({ what, children }: MembersOnlyProps) {
   return (
     <Empty
       title={`Sign in to see ${what}`}
-      icon={<LogIn size={24} strokeWidth={1.5} aria-hidden="true" />}
+      icon={<LogIn size={24} strokeWidth={1.75} />}
+      actions={
+        auth.provider === "none" ? (
+          <Button {...routed(paths.home())}>Read the latest threads</Button>
+        ) : (
+          // Outlined, as in the header: signing in is offered, not pushed.
+          <Button onClick={auth.signIn}>
+            <LogIn size={16} strokeWidth={1.75} aria-hidden="true" />
+            <span>Sign in</span>
+          </Button>
+        )
+      }
     >
       {auth.provider === "none" ? (
         // A build with no sign-in (a preview, a review): said as a reader
         // would need it, with the way on to what they can still do.
-        <>
-          <p>
-            Signing in is not available on this version of the site. Reading the
-            community is open to everyone.
-          </p>
-          <Button {...routed(paths.home())} variant="pill">
-            Read the latest threads
-          </Button>
-        </>
+        <p>
+          Signing in is not available on this version of the site. Reading the
+          community is open to everyone.
+        </p>
       ) : (
-        <>
-          <p>Reading needs no account. This page is a member’s own.</p>
-          {/* Quiet, as in the header: signing in is offered, not pushed. */}
-          <Button variant="pill" onClick={auth.signIn}>
-            <LogIn size={15} strokeWidth={1.5} aria-hidden="true" />
-            <span>Sign in</span>
-          </Button>
-        </>
+        <p>Reading needs no account. This page is a member’s own.</p>
       )}
     </Empty>
   );

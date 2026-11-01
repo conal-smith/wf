@@ -45,6 +45,8 @@ import { canStartThread, countsLine } from "./pages/Channel";
 import { MEMBERS_SHOWN_FROM, membersLine, newOnPage } from "./pages/Home";
 import { matchRoute, paths, withoutNewThread } from "./router";
 
+// The top bar's spot search reads the favourites from the browser's storage,
+// which a server render has not got. It is the kit's, and tested there.
 /**
  * The feed, the channel page and the new-thread dialog. As in shell.test.ts
  * there is no DOM here: what is asked is what a reader is handed, and what the
@@ -153,9 +155,11 @@ describe("S1: home", () => {
     expect(membersLine(1284)).toBe("1,284 members");
   });
 
-  it("names the channel on each row, in its dateline", () => {
+  it("names the channel on each row, in the grey line over its title", () => {
     const out = row(thread("a"));
-    expect(out).toMatch(/<p class="[^"]*text-eyebrow[^"]*">.*?>Wings<\/span>/);
+    expect(out).toMatch(
+      /<p class="[^"]*text-ink-muted[^"]*">.*?>Wings<\/span>/,
+    );
     expect(row(thread("a"), false)).not.toContain(">Wings</span>");
   });
 
@@ -332,11 +336,11 @@ describe("S2: a channel", () => {
     ]);
     expect(pills[0].href).toBe("/community/c/wings");
     expect(pills[2].href).toBe(`/community/c/wings?tag=${picked.id}`);
-    // The one that is on is said, and raised and filled: never colour alone.
+    // The one that is on is said, and filled in ink: never colour alone.
     const on = pills.filter((p) => p.attributes.includes("aria-current"));
     expect(on.map((p) => p.label)).toEqual([picked.label]);
     expect(on[0].attributes).toContain("bg-inverse");
-    expect(on[0].attributes).toContain("font-semibold");
+    expect(on[0].attributes).toContain("text-ink-inverse");
   });
 
   it("draws no filter for a channel with no tags, and reads a stray tag as All", () => {
@@ -388,15 +392,16 @@ describe("S3: a thread row", () => {
     thumbnail: { id: "ph1", url: "/uploads/a.jpg", width: 1600, height: 1200 },
   });
 
-  it("is one link to the thread, a letter: the title as a heading, in the display face, and its author", () => {
+  it("is one link to the thread: the title as a heading, in Inter, and its author", () => {
     const out = row(busy);
     expect(out).toMatch(/^<a href="\/community\/t\/q\/thread-q"/);
     expect(out.match(/<a /g)).toHaveLength(1);
     expect(out).toMatch(
-      /<h2 class="[^"]*font-display[^"]*">.*5m or 6m as a one-wing quiver\?.*<\/h2>/,
+      /<h2 class="[^"]*font-body[^"]*">.*5m or 6m as a one-wing quiver\?.*<\/h2>/,
     );
-    expect(out).toMatch(/<span class="[^"]*font-display[^"]*">Aoife K<\/span>/);
-    // A list of letters, not of faces: the byline names them.
+    expect(out).toMatch(/<span class="[^"]*font-medium[^"]*">Aoife K<\/span>/);
+    expect(out).not.toMatch(/font-display|italic|uppercase/);
+    // A list of threads, not of faces: the byline names them.
     expect(out).not.toContain(">AK</span>");
   });
 
@@ -406,7 +411,7 @@ describe("S3: a thread row", () => {
     expect(unread).toMatch(/<span class="[^"]*bg-accent[^"]*" aria-hidden/);
     expect(unread).toContain("2 new");
     const read = row({ ...busy, unread: 0 });
-    expect(read).toMatch(/<h2 class="[^"]*font-normal[^"]*"/);
+    expect(read).toMatch(/<h2 class="[^"]*font-medium[^"]*"/);
     expect(read).not.toMatch(/<h2 class="[^"]*font-semibold/);
     expect(read).not.toContain("bg-accent");
     expect(read).not.toContain(" new<");
@@ -758,8 +763,9 @@ describe("S7: instead of a list", () => {
       message: "The community could not be reached. Check your connection.",
     });
     expect(out).toContain("We could not load the latest threads");
-    expect(out).toMatch(
-      /<p role="alert">The community could not be reached\. Check your connection\.<\/p>/,
+    expect(out).toMatch(/role="alert"/);
+    expect(out).toContain(
+      "The community could not be reached. Check your connection.",
     );
     expect(out).toMatch(/<button type="button"[^>]*>Try again<\/button>/);
     expect(out).not.toContain("bg-accent");
@@ -924,16 +930,15 @@ describe("S7: a page with nothing to list", () => {
 });
 
 describe("S8 and the pages", () => {
-  it("home is a dateline, a title and the count: figures, not a line about the place", async () => {
+  it("home is where it is, a title and the count: figures, not a line about the place", async () => {
     const out = await pageAs("aoife", "home", {
       channels: channelsReady,
       pathname: "/community",
       search: new URLSearchParams(),
     });
     expect(out).toMatch(/<h1[^>]*>Latest<\/h1>/);
-    expect(out).toMatch(
-      /<p class="[^"]*text-eyebrow[^"]*"><span>\w{3} \d{1,2} \w{3} \d{4}<\/span>/,
-    );
+    // Which section this is, in a plain grey line over the title.
+    expect(out).toMatch(/<p class="[^"]*text-ink-muted[^"]*">Community<\/p>/);
     expect(out).not.toContain("from wingfoilers around Ireland.");
     expect(out).toContain("1,284 members");
     const few = await pageAs("aoife", "home", {
@@ -951,7 +956,7 @@ describe("S8 and the pages", () => {
       search: new URLSearchParams("q=gybes"),
     });
     expect(out).toMatch(/<h1[^>]*><span[^>]*>“gybes”<\/span><\/h1>/);
-    expect(out).toContain("<span>Search</span>");
+    expect(out).toMatch(/<p class="[^"]*">Search<\/p>/);
     expect(out).toContain("Loading the search results…");
   });
 
@@ -964,7 +969,7 @@ describe("S8 and the pages", () => {
       search: new URLSearchParams(),
     });
     expect(out).toMatch(/<h1[^>]*>Wings<\/h1>/);
-    expect(out).toContain(">Gear</span>");
+    expect(out).toContain(">Gear</p>");
     expect(out).toContain(wings.description);
     expect(out).toContain("0 threads · 0 followers");
     expect(out).toMatch(

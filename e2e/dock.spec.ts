@@ -527,7 +527,7 @@ test("the arrow keys step the hour as the page opens, with nothing clicked, and 
   await expect(slider(page)).toHaveValue(String(start + 2));
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   // In the search field the keys move the caret, not the hour.
-  const search = page.getByRole("combobox", { name: "Find a spot" });
+  const search = page.getByRole("combobox", { name: "Search spots" });
   await search.fill("keel");
   await search.press("ArrowLeft");
   await expect(slider(page)).toHaveValue(String(start + 2));
@@ -572,7 +572,7 @@ test("the stars open nothing on hover, and their explanation is the map's i", as
   await expect(
     page.locator(".dock").getByRole("button", { name: "How the stars work" }),
   ).toHaveCount(0);
-  await openFromMenu(page, "About");
+  await openFromMenu(page, "About the map");
   const info = page.getByRole("dialog", { name: "About the map" });
   await info.getByRole("tab", { name: "Stars" }).click();
   await expect(info.locator("#map-info-stars")).toBeInViewport();
@@ -675,8 +675,8 @@ test("a starred spot is kept on this device: the dock and the spot finder's favo
   );
   expect(stored.starred).toEqual(["brandon"]);
   // Chosen again from the search, the spot comes back starred.
-  await page.getByRole("combobox", { name: "Find a spot" }).fill("Brandon");
-  await page.locator(".spot-row").first().click();
+  await page.getByRole("combobox", { name: "Search spots" }).fill("Brandon");
+  await page.locator("[data-spot-option]").first().click();
   await expect(
     page.locator(".dock").getByRole("button", { name: "Unstar Brandon Bay" }),
   ).toHaveAttribute("aria-pressed", "true");

@@ -193,7 +193,7 @@ export async function steadyFrames(page: Page) {
  */
 export async function closePanel(page: Page) {
   await page
-    .locator("dialog.map-panel-dialog > div:first-child")
+    .locator("dialog.map-panel-dialog > div:first-of-type")
     .getByRole("button", { name: "Close", exact: true })
     .click();
   await expect(page.locator("dialog.map-panel-dialog")).toHaveCount(0);
@@ -205,12 +205,12 @@ export async function closePanel(page: Page) {
  * rail beside the zoom (src/LayerRail.tsx) rather than a row.
  */
 export type ChartTool =
-  "Settings" | "Layers" | "Display options" | "About" | "Take the tour";
+  "Settings" | "Layers" | "Display options" | "About the map" | "Take the tour";
 
 /** The dialog each row opens, by its title. */
 const DIALOG_TITLE: Partial<Record<ChartTool, string>> = {
   "Display options": "Display options",
-  About: "About the map",
+  "About the map": "About the map",
 };
 
 /** A row of the site menu that opens something over the chart, while it is open. */
@@ -219,21 +219,35 @@ export const menuRow = (page: Page, name: Exclude<ChartTool, "Layers">) =>
 
 /**
  * The site's navigation, the same on every page (force5/src/siteNav.ts
- * SITE_NAV_GROUPS): the chart and the spot finder, Settings and the display
- * options, About and the tour, then the sections, the marketplace and the
- * community switched on in this suite's build, and Use with AI last.
+ * SITE_NAV_GROUPS): the forecast, your settings and help, then the sections,
+ * the marketplace and the community switched on in this suite's build, and
+ * Use with AI last.
  */
 export const SITE_ROWS = [
   "Chart",
   "Spot finder",
   "Settings",
   "Display options",
-  "About",
+  "About the map",
+  "How the stars work",
   "Take the tour",
   "Marketplace",
   "Community",
   "Use with AI",
 ];
+
+/**
+ * The rows as their links read: the page you are on says "You’re here" at
+ * its end, and a section in preview "Preview", both for the eye only (the
+ * accessible names are the rows' own).
+ */
+export const SITE_ROW_TEXTS = SITE_ROWS.map(
+  (name) => new RegExp(`^${name}(You’re here|Preview)?$`),
+);
+
+/** A row's words without what is said for the eye only. */
+export const rowName = (text: string) =>
+  text.replace(/(You’re here|Preview)$/, "");
 
 /** The site's navigation in the open menu: the same on every page. */
 export const siteNav = (page: Page) =>
@@ -244,7 +258,7 @@ export const siteRow = (page: Page, name: string) =>
   siteNav(page).getByRole("link", { name, exact: true });
 
 /**
- * Open the site menu, a drawer from the left (force5/src/SiteMenu.tsx), and
+ * Open the site menu, a drawer from the right (force5/src/SiteMenu.tsx), and
  * wait for it to finish sliding in, so what is measured in it holds still.
  */
 export async function openMenu(page: Page) {
@@ -252,7 +266,13 @@ export async function openMenu(page: Page) {
   if ((await menu.getAttribute("aria-expanded")) !== "true") await menu.click();
   const drawer = page.getByRole("dialog", { name: "Site menu" });
   await expect(drawer).toBeVisible();
-  await expect.poll(async () => (await drawer.boundingBox())?.x).toBe(0);
+  const width = page.viewportSize()!.width;
+  await expect
+    .poll(async () => {
+      const box = await drawer.boundingBox();
+      return box && Math.round(box.x + box.width);
+    })
+    .toBe(width);
   return drawer;
 }
 

@@ -1,25 +1,25 @@
 /* Wind figure — the wind and its gust as the site writes them. No ui/ primitive
  * of its own: it is ui/Figure.tsx (figureStyles: value, sup, unit, alarm) with
- * the mockup's downwind arrow (arrowSVG) and compass point beside it, in the
- * three places the mockup writes it (design/chart/1-the-chart.html):
+ * a downwind arrow and the compass point beside it, in the three places the
+ * site writes it:
  *
- *   row  (the default, the spot page's `.ht td.w`): 12²¹ ↗ WSW. The mean at
- *        the figure step, the gust raised small after it (Figure size md).
- *   --cell (the dock's `.tt tr.wd`): 14 g22. The knots at body semibold
- *        (Figure size sm), "g22" at the caption step, muted.
- *   --line (the popup's `.pp .ln`): → 13 g26 W [shore] · 6.5 m. One line of
- *        mono at the body step, the knots and the wing set semibold.
+ *   row  (the default, a spot page's hour): 12²¹ ↗ WSW. The mean at the
+ *        figure step, the gust raised small after it (Figure size md).
+ *   --cell (the dock's wind row): 14 g22. The knots at body semibold (Figure
+ *        size sm), "g22" small and grey.
+ *   --line (a popup's wind line): → 13 g26 W [shore] · 6.5 m. One line at the
+ *        body step, the knots and the wing semibold.
  *
  * The wind's direction is an inline custom property, not a colour:
  * style="--from: 270deg" (where it blows from); the arrow points downwind.
- * Consumes --sem-* only. */
+ * Inter with tabular figures throughout. Consumes --sem-* only. */
 
 .wf-wind-figure {
   display: inline-flex;
   align-items: baseline;
   gap: var(--sem-space-x0-5);
   color: var(--sem-color-ink);
-  font-family: var(--sem-font-family-mono);
+  font-family: var(--sem-font-family-body);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -46,7 +46,7 @@
   font-size: var(--sem-font-size-caption);
   line-height: var(--sem-font-line-caption);
 }
-/* Alarm: the gust is a big jump over the mean. Pen's words, and heavier. */
+/* Alarm: the gust is a big jump over the mean. The warm red, and heavier. */
 .wf-wind-figure--alarm .wf-wind-figure__sup {
   color: var(--sem-color-pen-ink);
   font-weight: var(--sem-font-weight-semibold);
@@ -78,12 +78,13 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-/* The compass point, small and muted: a label in capitals, so the eyebrow step. */
+/* The compass point, small and grey. Its letters are a name (WSW), not a
+ * label set in capitals. */
 .wf-wind-figure__point {
   color: var(--sem-color-ink-muted);
-  font-size: var(--sem-font-size-eyebrow);
-  line-height: var(--sem-font-line-eyebrow);
-  font-weight: var(--sem-font-weight-normal);
+  font-size: var(--sem-font-size-label);
+  line-height: var(--sem-font-line-label);
+  font-weight: var(--sem-font-weight-medium);
 }
 
 /* ---- --cell: the dock's 14 g22 ---- */
@@ -101,7 +102,7 @@
   font-size: var(--sem-font-size-caption);
   line-height: var(--sem-font-line-caption);
 }
-/* On an ink fill (a selected cell): the paper's words. */
+/* On an ink fill (a selected cell): the fill's words' colour. */
 .wf-wind-figure--inverse,
 .wf-wind-figure--inverse .wf-wind-figure__gust,
 .wf-wind-figure--inverse .wf-wind-figure__sup,

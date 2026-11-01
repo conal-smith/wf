@@ -1,13 +1,15 @@
 /**
- * Light or dark, in a page's top bar: the moon to go dark, the sun to come
- * back (shared/web/theme.ts keeps the choice on this device).
+ * Light or dark, in the top bar: a round button that shows what it switches
+ * to, the sun in dark and the moon in white (shared/web/theme.ts keeps the
+ * choice on this device). On a phone the bar has no room for it, and the
+ * site menu carries the switch instead.
  */
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { THEME_EVENT, currentTheme, toggleTheme } from "../shared/web/theme";
 import { Button } from "./Button";
 
-export function ThemeButton({ size }: { size?: "sm" | "md" }) {
+export function ThemeButton({ className }: { className?: string }) {
   const [dark, setDark] = useState(() => currentTheme() === "dark");
   useEffect(() => {
     const follow = () => setDark(currentTheme() === "dark");
@@ -16,18 +18,17 @@ export function ThemeButton({ size }: { size?: "sm" | "md" }) {
   }, []);
   return (
     <Button
-      variant="raised"
-      size={size}
       icon
+      className={className}
       aria-label={dark ? "Light mode" : "Dark mode"}
       title={dark ? "Light mode" : "Dark mode"}
       onClick={toggleTheme}
       data-theme-button
     >
       {dark ? (
-        <Sun size={17} strokeWidth={1.75} aria-hidden="true" />
+        <Sun size={18} strokeWidth={1.75} aria-hidden="true" />
       ) : (
-        <Moon size={17} strokeWidth={1.75} aria-hidden="true" />
+        <Moon size={18} strokeWidth={1.75} aria-hidden="true" />
       )}
     </Button>
   );

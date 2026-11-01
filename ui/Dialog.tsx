@@ -13,24 +13,34 @@ import { tv, type VariantProps } from "./tv";
 
 export const dialogStyles = tv({
   slots: {
-    // `open:` and not a bare `grid`: a display of its own would show a closed
+    // `open:` and not a bare `flex`: a display of its own would show a closed
     // dialog, which the browser hides with nothing stronger than `display`.
-    // A sheet: flat paper with its grain, the ink rule and the hairline
-    // inside it, a sheet's corner, and the deeper of the two lifts.
+    // The ground, a dialog's corner and the deeper lift; in dark a faint edge
+    // so it separates from the dimmed page. No frame, no rule under the title.
     base: [
-      "m-auto w-11/12 gap-5 rounded-dialog border border-ink bg-card paper-grain p-7 font-body text-ink shadow-sheet inset-shadow-frame max-wide:p-5",
-      "open:grid open:animate-dialog-in motion-reduce:animate-none",
-      // The map or the page behind, blurred under a wash of paper, fading in
-      // as the box arrives and out with it as it goes (ui/Backdrop.tsx).
+      "m-auto max-h-11/12 w-11/12 flex-col overflow-hidden rounded-dialog border-0 bg-ground p-0 font-body text-ink shadow-sheet dark:ring-1 dark:ring-line",
+      "open:flex open:animate-dialog-in motion-reduce:animate-none",
+      // Under 640px it is a sheet: up from the foot of the screen, the whole
+      // width, the corners at the top only, a grabber over its head, and the
+      // actions full width within a thumb's reach.
+      "max-sm:mb-0 max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:pb-safe-0 max-sm:open:animate-sheet-in",
+      // The map or the page behind, blurred under a wash, fading in as the
+      // box arrives and out with it as it goes (ui/Backdrop.tsx).
       BACKDROP,
     ],
-    head: "flex items-start justify-between gap-3 border-b border-ink pb-3",
-    title: "m-0 min-w-0 flex-1 font-display text-lead text-ink",
+    grabber:
+      "mx-auto mt-2 hidden h-1.25 w-9 shrink-0 rounded-full bg-line-strong max-sm:block",
+    head: "flex shrink-0 items-center gap-3 pt-4.5 pr-4 pb-2.5 pl-6 max-sm:pt-2.5 max-sm:pr-3 max-sm:pl-5",
+    title: "m-0 min-w-0 flex-1 font-body text-lead tracking-tight text-ink",
     // Beside the title, before the close button: where a wizard says how far
     // through it is ("2 / 6").
-    aside: "shrink-0 self-center font-mono text-label text-ink-muted",
-    body: "grid gap-3 text-prose text-ink-2",
-    actions: "flex flex-wrap items-center justify-end gap-2",
+    aside: "shrink-0 self-center font-body text-body text-ink-muted tabular-nums",
+    body: "grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-6 pt-2 pb-6 text-prose text-ink-2 max-sm:px-5 max-sm:pb-5",
+    // A hairline above the actions, and only there.
+    actions: [
+      "flex shrink-0 flex-wrap items-center justify-end gap-2 border-0 border-t border-line px-6 pt-3.5 pb-4.5",
+      "max-sm:flex-nowrap max-sm:px-5 max-sm:pt-3 max-sm:pb-5.5 max-sm:*:h-12 max-sm:*:flex-1",
+    ],
   },
   variants: {
     size: {
@@ -233,6 +243,7 @@ export function Dialog({
         if (press.click(event) && !busy) onClose();
       }}
     >
+      <span className={styles.grabber()} aria-hidden="true" />
       <div className={styles.head()}>
         <h2 className={styles.title()} id={titleId}>
           {title}
@@ -241,13 +252,12 @@ export function Dialog({
         {dismissible && (
           <Button
             variant="quiet"
-            size="sm"
             icon
             aria-label="Close"
             disabled={busy}
             onClick={onClose}
           >
-            <X size={15} aria-hidden="true" />
+            <X size={18} strokeWidth={1.75} aria-hidden="true" />
           </Button>
         )}
       </div>

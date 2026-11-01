@@ -1,44 +1,52 @@
-import { Image as ImageIcon } from "lucide-react";
+import { Search } from "lucide-react";
 import type { ReactNode } from "react";
-import { paneStyles } from "./Pane";
-import { tv, type VariantProps } from "./tv";
+import { tv } from "./tv";
 
+/*
+ * Nothing found, not found, could not load: centred where the list would be,
+ * with no frame round it. A round grey icon, an Inter title, a line or two,
+ * and at most two buttons.
+ */
 export const emptyStyles = tv({
   slots: {
-    base: "grid justify-items-center gap-3 px-6 py-14 text-center font-body text-prose text-ink-muted",
-    // A large control and a gap across, ruled in ink like a chart's light.
-    icon: "grid size-14.5 place-items-center rounded-full border",
-    // The display face's italic: a line, not a heading.
-    title: "m-0 font-display text-lead text-balance text-ink italic",
-    body: "grid max-w-reading justify-items-center gap-3 text-pretty",
+    base: "grid justify-items-center gap-2.5 px-5 py-14 text-center font-body",
+    icon: "mb-1.5 grid size-14 place-items-center rounded-full bg-well text-ink-2",
+    title: "m-0 font-body text-lead tracking-tight text-balance text-ink",
+    body: "grid max-w-reading justify-items-center gap-2 text-prose leading-normal text-pretty text-ink-2",
+    actions: "mt-2 flex flex-wrap justify-center gap-2",
   },
-  variants: {
-    kind: {
-      info: { icon: "border-ink bg-card text-ink" },
-      warn: { icon: "border-warn bg-warn-ground text-warn" },
-    },
-  },
-  defaultVariants: { kind: "info" },
 });
 
-export type EmptyProps = VariantProps<typeof emptyStyles> & {
+export interface EmptyProps {
   title: string;
   icon?: ReactNode;
+  /** The title's level in the page's outline: a heading where it is the page's. */
+  as?: "h1" | "h2" | "p";
   className?: string;
-  /** What to do about it: a sentence, and the action that mends it. */
+  /** What to do about it, in a sentence. */
   children?: ReactNode;
-};
+  /** At most two buttons: the way on. */
+  actions?: ReactNode;
+}
 
 /** Where a list would be, when there is nothing to list. */
-export function Empty({ title, icon, kind, className, children }: EmptyProps) {
-  const styles = emptyStyles({ kind });
+export function Empty({
+  title,
+  icon,
+  as: Tag = "h2",
+  className,
+  children,
+  actions,
+}: EmptyProps) {
+  const styles = emptyStyles();
   return (
-    <div className={paneStyles({ className: styles.base({ className }) })}>
+    <div className={styles.base({ className })}>
       <span className={styles.icon()} aria-hidden="true">
-        {icon ?? <ImageIcon size={24} />}
+        {icon ?? <Search size={24} strokeWidth={1.75} />}
       </span>
-      <p className={styles.title()}>{title}</p>
+      <Tag className={styles.title()}>{title}</Tag>
       {children && <div className={styles.body()}>{children}</div>}
+      {actions && <div className={styles.actions()}>{actions}</div>}
     </div>
   );
 }

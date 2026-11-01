@@ -78,10 +78,10 @@ test("Dollymount's cross-shore hour: the no-go, out and home, and the wind at th
   page,
 }) => {
   await open(page, "dollymount");
-  const reading = await firstHour(page, "CROSS");
+  const reading = await firstHour(page, "Cross");
   const r = rose(page);
   expect(reading).toMatch(/^[NESW]{1,3} \d+( g\d+)?$/);
-  await expect(r.locator(".map-loupe-relation")).toHaveText("CROSS");
+  await expect(r.locator(".map-loupe-relation")).toHaveText("Cross");
   await expect(r.locator(".map-loupe-relation")).not.toHaveClass(/is-warn/);
   // The no-go upwind, hatched; the tack out washed to the rim; the tack home.
   await expect(r.locator(".map-rose-nogo")).toHaveCount(1);
@@ -92,10 +92,10 @@ test("Dollymount's cross-shore hour: the no-go, out and home, and the wind at th
   const words = await labels(page);
   expect(words).toEqual(
     expect.arrayContaining([
-      "NO-GO",
-      "OUT",
-      "HOME",
-      "DRIFT",
+      "No-go",
+      "Out",
+      "Home",
+      "Drift",
       "0.5 NM",
       "0.25 NM",
     ]),
@@ -143,16 +143,16 @@ test("an offshore hour: the drift out to sea in red, and no way out or home", as
   page,
 }) => {
   await open(page, "dollymount");
-  const reading = await firstHour(page, "OFF");
+  const reading = await firstHour(page, "Off");
   const r = rose(page);
   // Offshore at Dollymount is a wind from the west to the north.
   expect(reading).toMatch(/^(W|WNW|NW|NNW) \d+/);
-  await expect(r.locator(".map-loupe-relation")).toHaveText("OFF");
+  await expect(r.locator(".map-loupe-relation")).toHaveText("Off");
   await expect(r.locator(".map-loupe-relation")).toHaveClass(/is-warn/);
   await expect(r.locator(".map-rose-drift")).toHaveClass(/is-out/);
   await expect(r.locator(".map-rose-label.is-warn")).toHaveText([
-    "DRIFT",
-    "OUT TO SEA",
+    "Drift",
+    "Out to sea",
   ]);
   // Nothing heads out in an offshore wind: two plain reaches.
   await expect(r.locator(".map-rose-fan.is-out")).toHaveCount(0);
@@ -186,20 +186,20 @@ test("a spot with no shore facing: no red, no out or home, the needle and the re
   await expect(r.locator(".map-dial-needle")).toHaveCount(1);
   await expect(r.locator(".map-loupe-reading")).toHaveText(/^\w+ \d+( g\d+)?$/);
   // With no beach, the units where the shore would be.
-  await expect(r.locator(".map-loupe-relation")).toHaveText("KN");
+  await expect(r.locator(".map-loupe-relation")).toHaveText("kn");
   await expect(r.locator(".map-dial-offshore")).toHaveCount(0);
   await expect(r.locator(".map-dial-crossoff")).toHaveCount(0);
   await expect(r.locator(".map-rose-fan.is-out")).toHaveCount(0);
   await expect(r.locator(".map-rose-fan.is-home")).toHaveCount(0);
   await expect(r.locator(".map-rose-drift")).not.toHaveClass(/is-out/);
-  expect(await labels(page)).not.toContain("OUT");
+  expect(await labels(page)).not.toContain("Out");
 });
 
 test("on a phone the rose fits above the dock, and stays readable zoomed out or in", async ({
   page,
 }) => {
   await open(page, "dollymount", 390, 844);
-  const reading = await firstHour(page, "CROSS");
+  const reading = await firstHour(page, "Cross");
   const r = rose(page);
   // Flown in to fit: the rim inside the screen's width, its foot box above
   // the dock (the rim is the one fine line now, the bezel's inner edge).
@@ -236,7 +236,7 @@ test("degrees into the wind and below across: set in Settings, they move the cou
   page,
 }) => {
   await open(page, "dollymount");
-  await firstHour(page, "CROSS");
+  await firstHour(page, "Cross");
   const bearings = async () => (await labels(page)).filter((w) => /°$/.test(w));
   // Ours: straight across the wind, the course to 10° below it.
   const ours = await bearings();

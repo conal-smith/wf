@@ -10,7 +10,7 @@
  */
 import { AtSign, Flag, Hash, MessageCircle, Settings } from "lucide-react";
 import { Avatar, Button, Notice, Skeleton } from "../../../ui";
-import { MONO_LABEL, RING, tv } from "../../../ui/tv";
+import { RING, tv } from "../../../ui/tv";
 import type { Notification } from "../../shared/types";
 import type { PagedState } from "../hooks";
 import { paths, routed } from "../router";
@@ -19,50 +19,52 @@ import { ago } from "./ThreadRow";
 
 export const notificationRowStyles = tv({
   slots: {
-    // A note on the hairline under the last: who, what, where, and when.
+    // A note: who, what, where, and when.
     row: [
-      "group flex items-start gap-3 border-b border-line px-1 py-3 text-ink no-underline transition-colors duration-fast",
+      "group flex items-start gap-3 rounded-control px-3 py-3 text-ink no-underline transition-colors duration-fast",
+      "not-disabled:hover:bg-line",
       RING,
       "not-disabled:focus-visible:-outline-offset-2",
     ],
     // Two faces, the first named on top: overlapped by a quarter at most, so
     // the second's initials are still read, and each cut out of the other by a
-    // ring of whatever paper the row is on.
+    // ring of whatever the row stands on.
     faces: "flex shrink-0 -space-x-1",
     face: "relative ring-2 first:z-1",
     text: "grid min-w-0 flex-1 gap-1 font-body text-prose text-ink-2",
     line: "m-0",
     strong:
-      "font-display font-semibold text-ink group-hover:text-chart-magenta",
-    quote: "m-0 truncate text-body text-ink-muted italic",
-    meta: [
-      "m-0 flex items-center gap-1 text-ink-muted tabular-nums",
-      MONO_LABEL,
-    ],
+      "font-body font-semibold text-ink decoration-1 underline-offset-3 group-hover:underline",
+    quote: "m-0 truncate text-body text-ink-muted",
+    meta: "m-0 flex items-center gap-1 font-body text-body text-ink-muted tabular-nums",
     dot: "mt-2 size-2 shrink-0 rounded-full bg-accent",
     list: "m-0 grid list-none p-0",
-    loading: "flex items-center gap-3 border-b border-line px-1 py-3",
+    loading: "flex items-center gap-3 px-3 py-3",
     lines: "grid flex-1 gap-2",
     short: "w-1/3",
-    nothing: "m-0 px-1 py-3 font-body text-prose text-ink-muted italic",
+    nothing: "m-0 px-3 py-3 font-body text-prose text-ink-muted",
     tools: "flex items-center gap-1",
     hidden: "sr-only",
   },
   variants: {
-    // Unread is a dot, a tint and a word a screen reader hears: never colour alone.
-    unread: { true: { row: "bg-sunken" } },
-    // The paper under the faces' rings: the row's tint when unread, otherwise
-    // the popover's card or the page's ground.
-    paper: {
-      card: { face: "ring-card" },
-      ground: { face: "ring-ground" },
-      sunken: { face: "ring-sunken" },
+    // Unread is a dot, heavier words and a word a screen reader hears: never
+    // colour alone.
+    unread: { true: { text: "text-ink" } },
+    // What the rows stand on: the bell's floating card, where a hairline
+    // parts them, or the page, where they are rows in one soft card.
+    on: {
+      popover: { face: "ring-ground", list: "divide-y divide-line" },
+      page: {
+        face: "ring-sunken",
+        list: "divide-y divide-line rounded-surface bg-sunken p-1 on-card",
+      },
     },
   },
+  defaultVariants: { on: "page" },
 });
 
 /** What a list of rows is laid on: the bell's popover, or the page. */
-export type RowPaper = "card" | "ground";
+export type RowGround = "popover" | "page";
 
 /** A piece of a row's sentence. The names and the title are the strong ones. */
 export interface LinePart {
@@ -155,21 +157,18 @@ export interface NotificationRowProps {
   /** Opening a row is what marks it read. */
   onOpen: (row: Notification) => void;
   /** What the row is laid on, for the rings round its faces. */
-  paper?: RowPaper;
+  on?: RowGround;
   now?: Date;
 }
 
 export function NotificationRow({
   row,
   onOpen,
-  paper = "ground",
+  on = "page",
   now,
 }: NotificationRowProps) {
   const unread = isUnread(row);
-  const styles = notificationRowStyles({
-    unread,
-    paper: unread ? "sunken" : paper,
-  });
+  const styles = notificationRowStyles({ unread, on });
   const label = kindLabel(row);
   const Icon = KIND_ICON[row.kind];
   return (
@@ -222,8 +221,8 @@ export interface NotificationRowsProps {
   limit?: number;
   onOpen: (row: Notification) => void;
   onRetry: () => void;
-  /** The bell's popover is card; the page is ground. */
-  paper?: RowPaper;
+  /** The bell's popover, or the page. */
+  on?: RowGround;
   now?: Date;
 }
 
@@ -233,10 +232,10 @@ export function NotificationRows({
   limit,
   onOpen,
   onRetry,
-  paper,
+  on = "page",
   now,
 }: NotificationRowsProps) {
-  const styles = notificationRowStyles();
+  const styles = notificationRowStyles({ on });
   if (state.status === "loading")
     return (
       <div aria-busy="true">
@@ -254,11 +253,17 @@ export function NotificationRows({
     );
   if (state.status === "error")
     return (
-      <Notice kind="warn">
-        <p>{state.message}</p>
-        <Button variant="pill" size="sm" onClick={onRetry}>
-          Try again
-        </Button>
+      <Notice
+        level="warn"
+        alert
+        title="Your notifications could not be loaded"
+        action={
+          <Button size="sm" onClick={onRetry}>
+            Try again
+          </Button>
+        }
+      >
+        {state.message}
       </Notice>
     );
   if (!state.items.length)
@@ -272,7 +277,7 @@ export function NotificationRows({
     <ul className={styles.list()}>
       {state.items.slice(0, limit).map((row) => (
         <li key={row.id}>
-          <NotificationRow row={row} onOpen={onOpen} paper={paper} now={now} />
+          <NotificationRow row={row} onOpen={onOpen} on={on} now={now} />
         </li>
       ))}
     </ul>
@@ -293,16 +298,17 @@ export function NotificationTools({
   const styles = notificationRowStyles();
   return (
     <div className={styles.tools()}>
-      <Button variant="link" disabled={allRead} onClick={onMarkAll}>
+      <Button variant="quiet" size="sm" disabled={allRead} onClick={onMarkAll}>
         Mark all read
       </Button>
       <Button
         {...routed(paths.settings())}
+        variant="quiet"
         size="sm"
         icon
         aria-label="Notification settings"
       >
-        <Settings size={15} strokeWidth={1.5} aria-hidden="true" />
+        <Settings size={16} strokeWidth={1.75} aria-hidden="true" />
       </Button>
     </div>
   );

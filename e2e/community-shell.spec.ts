@@ -86,8 +86,13 @@ test("/community is the header, the rail from the API and one main column", asyn
   });
   await page.goto("/community");
 
+  // The site's one top bar: the wordmark home, and the page says which
+  // section this is.
   await expect(
-    page.getByRole("link", { name: "wingfoil.ie Community, home" }),
+    page.getByRole("link", { name: "wingfoil.ie, the Spot finder" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("Community", { exact: true }),
   ).toBeVisible();
   // Signed out on this build: Sign in, and nothing a reader cannot use.
   const actions = page.getByRole("navigation", { name: "Community" });
@@ -289,8 +294,8 @@ test.describe("below 900px", () => {
     }
     expect(await overflow(page)).toBeLessThanOrEqual(0);
 
-    // Nothing inside the header's pill overflows it.
-    const bar = page.locator("header > div");
+    // Nothing inside the top bar overflows it.
+    const bar = page.locator("header[data-top-bar]");
     expect(
       await bar.evaluate((el) => el.scrollWidth - el.clientWidth),
     ).toBeLessThanOrEqual(0);

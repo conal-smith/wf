@@ -28,11 +28,11 @@ import {
   Button,
   ConfirmDialog,
   Empty,
-  Headline,
+  Heading,
   Notice,
   Skeleton,
 } from "../../../ui";
-import { MONO_LABEL, tv } from "../../../ui/tv";
+import { tv } from "../../../ui/tv";
 import type {
   Message as MessageData,
   Reaction,
@@ -67,12 +67,9 @@ export const threadStyles = tv({
     top: "flex min-h-control-sm items-center justify-between gap-3",
     back: "self-center",
     title: "max-w-measure",
-    // Under the headline, over the double rule: what the thread comes to.
-    metaRow: [
-      "m-0 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-0 border-b-3 border-double border-ink pb-2",
-      "text-ink-muted tabular-nums",
-      MONO_LABEL,
-    ],
+    // Under the title: what the thread comes to, in a grey line.
+    metaRow:
+      "m-0 flex flex-wrap items-baseline gap-x-2 gap-y-1 font-body text-body text-ink-muted tabular-nums",
     flag: "inline-flex items-center gap-1 font-semibold text-ink",
     started: "max-rail:hidden",
     actions: "flex items-center gap-1",
@@ -82,7 +79,6 @@ export const threadStyles = tv({
     dock: "sticky bottom-0 z-panel flex flex-col items-stretch gap-2",
     arrivals: "flex justify-center",
     pill: "shadow-marker",
-    dismiss: "mt-1",
   },
 });
 
@@ -133,26 +129,31 @@ export function ThreadPage({ id, onChannel }: ThreadPageProps) {
   if (state.status === "missing")
     return (
       <Empty
+        as="h1"
         title="That thread does not exist"
-        icon={<Compass size={24} strokeWidth={1.5} aria-hidden="true" />}
+        icon={<Compass size={24} strokeWidth={1.75} />}
+        actions={
+          <Button {...routed(paths.home())} variant="primary">
+            Back to the community
+          </Button>
+        }
       >
         <p>The link may be old, or the thread may have been removed.</p>
-        <Button {...routed(paths.home())} variant="primary">
-          Back to the community
-        </Button>
       </Empty>
     );
   if (state.status === "error")
     return (
-      <Notice kind="warn">
-        <p>{state.message}</p>
-        <Button
-          variant="link"
-          className={styles.dismiss()}
-          onClick={data.reload}
-        >
-          Try again
-        </Button>
+      <Notice
+        level="warn"
+        alert
+        title="This thread could not be loaded"
+        action={
+          <Button size="sm" onClick={data.reload}>
+            Try again
+          </Button>
+        }
+      >
+        {state.message}
       </Notice>
     );
 
@@ -440,27 +441,31 @@ function Conversation({
         <div className={styles.arrivals()} aria-live="polite">
           {arrived > 0 && (
             <Button
-              variant="pill"
+              variant="outline"
               size="sm"
               className={styles.pill()}
               onClick={() => void data.reachEnd().then(toEnd)}
             >
-              <ArrowDown size={14} strokeWidth={1.5} aria-hidden="true" />
+              <ArrowDown size={14} strokeWidth={1.75} aria-hidden="true" />
               <span>{arrived} new</span>
             </Button>
           )}
         </div>
         {data.failure && (
-          <Notice kind="warn">
-            <p>{data.failure}</p>
-            <Button
-              variant="link"
-              className={styles.dismiss()}
-              onClick={() => setFailure(null)}
-            >
-              Dismiss
-            </Button>
-          </Notice>
+          <Notice
+            level="warn"
+            alert
+            title={data.failure}
+            action={
+              <Button
+                variant="quiet"
+                size="sm"
+                onClick={() => setFailure(null)}
+              >
+                Dismiss
+              </Button>
+            }
+          />
         )}
         {locked ? (
           <LockedNotice reason={thread.lockedReason} />
@@ -578,13 +583,13 @@ export function ThreadHead({
   const parts = [
     thread.pinned && (
       <span key="pinned" className={styles.flag()}>
-        <Pin size={11} strokeWidth={1.5} aria-hidden="true" />
+        <Pin size={11} strokeWidth={1.75} aria-hidden="true" />
         Pinned
       </span>
     ),
     locked && (
       <span key="locked" className={styles.flag()}>
-        <Lock size={11} strokeWidth={1.5} aria-hidden="true" />
+        <Lock size={11} strokeWidth={1.75} aria-hidden="true" />
         Locked
       </span>
     ),
@@ -600,7 +605,7 @@ export function ThreadHead({
           variant="link"
           className={styles.back()}
         >
-          <ArrowLeft size={14} strokeWidth={1.5} aria-hidden="true" />
+          <ArrowLeft size={14} strokeWidth={1.75} aria-hidden="true" />
           <span>{thread.channel.name}</span>
         </Button>
         <div className={styles.actions()}>
@@ -612,16 +617,16 @@ export function ThreadHead({
             />
           )}
           <Button
-            variant="pill"
+            variant="quiet"
             size="sm"
             icon
             aria-label={copied ? "Link copied" : "Copy link"}
             onClick={copy}
           >
             {copied ? (
-              <Check size={15} strokeWidth={1.5} aria-hidden="true" />
+              <Check size={15} strokeWidth={1.75} aria-hidden="true" />
             ) : (
-              <LinkIcon size={15} strokeWidth={1.5} aria-hidden="true" />
+              <LinkIcon size={15} strokeWidth={1.75} aria-hidden="true" />
             )}
           </Button>
           <span className={styles.status()} role="status">
@@ -629,7 +634,7 @@ export function ThreadHead({
           </span>
           {(canReport || viewer.staff) && (
             <Popover
-              variant="pill"
+              variant="quiet"
               size="sm"
               icon
               aria-label="More"
@@ -638,7 +643,7 @@ export function ThreadHead({
               label={
                 <MoreHorizontal
                   size={15}
-                  strokeWidth={1.5}
+                  strokeWidth={1.75}
                   aria-hidden="true"
                 />
               }
@@ -667,7 +672,9 @@ export function ThreadHead({
           )}
         </div>
       </div>
-      <Headline className={styles.title()}>{keepRanges(thread.title)}</Headline>
+      <Heading level="page" className={styles.title()}>
+        {keepRanges(thread.title)}
+      </Heading>
       <p className={styles.metaRow()}>
         {parts.flatMap((part, i) =>
           i

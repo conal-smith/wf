@@ -3,9 +3,8 @@
  * `src/main.tsx` lazy-loads it for /ai, so neither the map nor the other
  * sections pay for it.
  *
- * As the approved design (PR 236) draws it:
- * the spot finder's header, one line, then a list of the apps, each its name
- * and one button. The button does what
+ * Under the site's top bar (ui/TopBar.tsx): one line, then a list of the
+ * apps in one soft card, each its name and one button. The button does what
  * ai/web/install.ts says for that app on this device: Claude opens with the
  * address filled in; the others copy the address and open the app's page for
  * it, and then the row says the one thing left to do. The last row copies
@@ -15,9 +14,10 @@
 import { ArrowUpRight, Copy } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
+import { CHART_HREF, spotHref } from "../../force5/src/siteNav";
 import { API_ROOT } from "../../shared/web/http";
 import { usePageTitle } from "../../shared/web/usePageTitle";
-import { Button, PageHeader } from "../../ui";
+import { Button, SpotSearch, TopBar } from "../../ui";
 import { tv } from "../../ui/tv";
 import {
   ASSISTANTS,
@@ -31,7 +31,7 @@ import {
 
 const styles = tv({
   slots: {
-    root: "flex min-h-dvh flex-col bg-ground paper-grain font-body text-ink antialiased",
+    root: "flex min-h-dvh flex-col bg-ground font-body text-ink antialiased",
     main: [
       "mx-auto w-full max-w-ai px-6 pt-10 pb-18",
       "max-wide:px-3.5 max-wide:pt-4.5 max-wide:pb-14",
@@ -40,16 +40,14 @@ const styles = tv({
       "m-0 mb-5.5 font-body text-ai-intro text-pretty text-ink-2",
       "max-wide:mb-4 max-wide:text-ai-intro-sm",
     ],
-    list: "m-0 list-none p-0",
-    // The name and its button on a hairline, and under them, once pressed,
-    // the line saying what is left to do.
-    row: [
-      "flex flex-wrap items-center gap-x-4 border-0 border-b border-line py-3.5",
-      "first:border-t max-wide:py-3",
-    ],
-    name: "m-0 min-w-0 flex-1 font-display text-ai-name text-ink max-wide:text-ai-name-sm",
+    // The apps in one soft card, a hairline between them inside it.
+    list: "m-0 list-none divide-y divide-line overflow-hidden rounded-surface bg-sunken p-0 on-card",
+    // The name and its button, and under them, once pressed, the line
+    // saying what is left to do.
+    row: "flex flex-wrap items-center gap-x-4 px-5 py-3.5 max-wide:px-4 max-wide:py-3",
+    name: "m-0 min-w-0 flex-1 font-body text-ai-name text-ink max-wide:text-ai-name-sm",
     // The last row's, which is not an app's name.
-    other: "font-medium italic",
+    other: "text-ink-2",
     // One width for every button, so they stand in a column.
     button: "h-touch w-52.5 gap-2 rounded-full max-wide:w-49",
     line: "m-0 w-full pt-2 font-body text-ai-line text-ink-2 max-wide:text-ai-line-sm",
@@ -88,7 +86,15 @@ export default function AiApp() {
 
   return (
     <div className={s.root()}>
-      <PageHeader menu={<SiteMenu current="ai" />} />
+      <TopBar
+        search={
+          <SpotSearch
+            onPick={(spot) => window.location.assign(spotHref(spot.id))}
+          />
+        }
+        view={{ to: "chart", href: CHART_HREF }}
+        menu={<SiteMenu current="ai" />}
+      />
       <main className={s.main()}>
         <h1 className="sr-only">Add wingfoil.ie to your AI app</h1>
         <p className={s.intro()}>
@@ -105,7 +111,7 @@ export default function AiApp() {
                 <Button
                   href={plan.href}
                   {...away}
-                  variant="raised"
+                  variant="outline"
                   className={s.button()}
                   onClick={() => (plan.copies ? copy(a) : setCopied(null))}
                   data-app={a}
@@ -128,7 +134,7 @@ export default function AiApp() {
           <li className={s.row()}>
             <h2 className={s.name({ className: s.other() })}>Another app</h2>
             <Button
-              variant="raised"
+              variant="outline"
               className={s.button()}
               onClick={() => copy("other")}
               data-app="other"

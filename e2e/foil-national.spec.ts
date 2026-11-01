@@ -262,7 +262,7 @@ test("a national region draws on its own station's tide, answers a tap, and only
     spot.x + spot.width / 2 + 40,
     spot.y + spot.height / 2,
   );
-  await openFromMenu(page, "About");
+  await openFromMenu(page, "About the map");
   await page.getByRole("tab", { name: "Tidal depth" }).click();
   const probe = page.locator(".foil-probe");
   await expect(probe).toBeVisible({ timeout: 10000 });

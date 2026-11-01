@@ -23,21 +23,19 @@ export const bellStyles = tv({
   slots: {
     base: "relative",
     bell: "relative",
-    // Hung off the pill's shoulder, clear of the glyph: a number laid over
+    // Hung off the button's shoulder, clear of the glyph: a number laid over
     // the bell hides the very thing it counts.
-    count: "absolute -top-2 -right-2.5",
-    // Hung from the bell, and never drawn where the page stands in for it. A
-    // menu's sheet corner, and it floats over the page as a box over the
-    // chart does; padded well clear of the corner, so an unread row's tint
-    // never reaches it.
+    count: "absolute -top-1 -right-1",
+    // Hung from the bell, and never drawn where the page stands in for it:
+    // the kit's floating card (ui/Card `float`), padded clear of its corner.
     panel: [
-      "absolute top-full right-0 z-popover mt-3 grid w-100 gap-1 rounded-dialog border border-ink bg-card paper-float p-3 font-body text-ink shadow-float inset-shadow-frame max-rail:hidden",
+      "absolute top-full right-0 z-popover mt-2 grid w-100 gap-1 rounded-surface bg-ground p-3 font-body text-ink shadow-float max-rail:hidden dark:ring-1 dark:ring-line",
       NO_RING,
     ],
-    head: "flex items-center justify-between gap-2 border-0 border-b-2 border-ink pb-1",
-    title: "m-0 font-display text-lead text-ink",
+    head: "flex items-center justify-between gap-2 px-1 pb-1",
+    title: "m-0 font-body text-lead tracking-tight text-ink",
     foot: [
-      "block p-2 text-center font-mono text-label text-ink uppercase underline decoration-1 underline-offset-4 transition-colors duration-fast not-disabled:hover:text-chart-magenta",
+      "block rounded-control p-2 text-center font-body text-body font-medium text-ink underline decoration-1 underline-offset-4 transition-colors duration-fast not-disabled:hover:bg-sunken",
       RING,
     ],
   },
@@ -214,8 +212,7 @@ export function Bell({ unread, onUnread, pathname }: BellProps) {
           },
         })}
         ref={bell}
-        variant="pill"
-        size="sm"
+        variant="quiet"
         icon
         className={styles.bell()}
         aria-label={
@@ -226,7 +223,7 @@ export function Bell({ unread, onUnread, pathname }: BellProps) {
         aria-expanded={wide && !onPage ? open : undefined}
         aria-current={onPage ? "page" : undefined}
       >
-        <BellIcon size={15} strokeWidth={1.5} aria-hidden="true" />
+        <BellIcon size={18} strokeWidth={1.75} aria-hidden="true" />
         <Count value={unread} className={styles.count()} />
       </Button>
       {open && (
@@ -245,11 +242,11 @@ export function Bell({ unread, onUnread, pathname }: BellProps) {
             <h2 className={styles.title()}>Notifications</h2>
             <NotificationTools allRead={allRead} onMarkAll={rows.markAll} />
           </div>
-          {rows.failure && <Notice kind="warn">{rows.failure}</Notice>}
+          {rows.failure && <Notice level="warn" alert title={rows.failure} />}
           <NotificationRows
             state={rows.state}
             limit={POPOVER_ROWS}
-            paper="card"
+            on="popover"
             onOpen={rows.open}
             onRetry={rows.reload}
           />

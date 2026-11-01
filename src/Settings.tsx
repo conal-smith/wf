@@ -112,11 +112,11 @@ const DIRECTION_LINE: Record<DirectionKey, string> = {
 };
 /** The picture's names, at the end of each spoke. */
 const DIRECTION_SHORT: Record<DirectionKey, string> = {
-  onshore: "ONSHORE",
-  crossOn: "CROSS-ON",
-  cross: "CROSS",
-  crossOff: "CROSS-OFF",
-  offshore: "OFFSHORE",
+  onshore: "onshore",
+  crossOn: "cross-on",
+  cross: "cross",
+  crossOff: "cross-off",
+  offshore: "offshore",
 };
 
 export interface SettingsProps {
@@ -188,7 +188,7 @@ export default function Settings({
           <div className="st-foot">
             {reset}
             <span className="st-sp" />
-            <Button variant="pill" onClick={onClose}>
+            <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
             {save}
@@ -298,7 +298,7 @@ function YouPart({ draft, setDraft, unit }: PartProps & { unit: UnitScale }) {
         <span className="st-kick">Weight</span>
         <span className="st-stepper">
           <Button
-            variant="pill"
+            variant="outline"
             size="sm"
             icon
             aria-label="Lighter"
@@ -313,7 +313,7 @@ function YouPart({ draft, setDraft, unit }: PartProps & { unit: UnitScale }) {
             <small>kg</small>
           </output>
           <Button
-            variant="pill"
+            variant="outline"
             size="sm"
             icon
             aria-label="Heavier"
@@ -718,10 +718,10 @@ function ShoreWeb({
       <rect className="st-web-land" x="-158" y="0" width="316" height="144" />
       <line className="st-web-beach" x1="-158" x2="158" y1="0" y2="0" />
       <text className="st-web-word" x="-150" y="-128">
-        SEA
+        Sea
       </text>
       <text className="st-web-word" x="-150" y="124">
-        LAND
+        Land
       </text>
       <circle className="st-web-rim" r={R} />
       {[1, 2, 3, 4].map((n) => (
@@ -819,7 +819,7 @@ function ShoreWeb({
         );
       })}
       <text className="st-web-word" x="0" y="138" textAnchor="middle">
-        ARROWS SHOW WHICH WAY THE WIND BLOWS
+        Arrows show which way the wind blows
       </text>
     </svg>
   );
@@ -855,8 +855,8 @@ const UP = { cx: 150, cy: 168, r: 118, vx: -36, vw: 372, vh: 310 };
  * angles said under it. Degrees into the wind (counted from straight across
  * it) and degrees below across that the course runs to, used in every wind
  * and moving no star. The picture draws them as the loupe will: the no-go
- * hatched into the wind (CAN'T RIDE HERE), the two courses (RIDE), and past
- * the course downwind DRIFT, where they lose ground. Each angle is set by
+ * hatched into the wind ("Can't ride here"), the two courses ("Ride"), and past
+ * the course downwind the drift, where they lose ground. Each angle is set by
  * its handles on the course's edges, dragged round the circle, or a degree
  * at a time from the keyboard on the right-hand one (the owner's ruling of
  * 2026-10-28 took the two sliders away for them).
@@ -1025,7 +1025,7 @@ function UpwindPart({ draft, setDraft }: PartProps) {
         y={(y + (wide ? 3 : -8)).toFixed(1)}
         textAnchor="middle"
       >
-        RIDE
+        Ride
       </text>
     );
   };
@@ -1093,10 +1093,10 @@ function UpwindPart({ draft, setDraft }: PartProps) {
           {/* Clear of the handles' rings, which stand on the line when the
             rider rides straight across. */}
           <text className="st-lab" x={cx + r + 22} y={cy + 3}>
-            ACROSS
+            Across
           </text>
           <text className="st-lab" x={cx - r - 22} y={cy + 3} textAnchor="end">
-            ACROSS
+            Across
           </text>
           <text
             className="st-lab is-strong"
@@ -1104,7 +1104,7 @@ function UpwindPart({ draft, setDraft }: PartProps) {
             y={cy - r * 0.62}
             textAnchor="middle"
           >
-            CAN&rsquo;T RIDE HERE
+            Can&rsquo;t ride here
           </text>
           {rideLabel(1)}
           {rideLabel(-1)}
@@ -1114,7 +1114,7 @@ function UpwindPart({ draft, setDraft }: PartProps) {
             y={cy + r * 0.55}
             textAnchor="middle"
           >
-            DRIFT
+            Drift
           </text>
           <text
             className="st-lab"
@@ -1122,7 +1122,7 @@ function UpwindPart({ draft, setDraft }: PartProps) {
             y={cy + r * 0.55 + 12}
             textAnchor="middle"
           >
-            YOU LOSE GROUND
+            You lose ground
           </text>
           {angle(1)}
           {angle(-1)}
@@ -1132,7 +1132,7 @@ function UpwindPart({ draft, setDraft }: PartProps) {
             d={`M${cx - 6} ${cy - r - 14}L${cx + 6} ${cy - r - 14}L${cx} ${cy - r - 3}Z`}
           />
           <text className="st-lab is-strong" x={cx + 10} y="18">
-            WIND
+            Wind
           </text>
           <path
             className="st-up-board"

@@ -1,10 +1,10 @@
-/* Spot light — the spot's light on the chart: the mockup's `.lt`
- * (design/chart/1-the-chart.html). No ui/ primitive yet; drawn as the
- * signed-off mockup draws it. Consumes --sem-* only.
+/* Spot light — the spot's light on the chart (src/map.css `.lt`, and the
+ * phone's map lights). No ui/ primitive yet. Consumes --sem-* only.
  *
  * A 20px target, with the glyph drawn at 60px round it (viewBox -30 -30 60 60):
  * a ring with the hour's stars in it, an arrow blowing downwind, and beside it
- * the label (the name, and the chart's line in magenta) on a paper halo.
+ * the label (the name in Inter semibold, the wind under it in grey) on a halo
+ * the colour of the ground.
  * Shape carries the kind; the ring's fill carries the stars, and nothing else.
  *
  * The wind is an inline custom property, not a colour: style="--from: 247deg"
@@ -47,7 +47,7 @@
 .wf-spot-light:focus-visible,
 .wf-spot-light.is-focus {
   outline: var(--sem-ring-width) solid var(--sem-color-focus);
-  /* The ring clears the glyph, not the 20px target: the mockup's 6px. */
+  /* The ring clears the glyph, not the 20px target. */
   outline-offset: var(--sem-space-x1-5);
 }
 
@@ -93,8 +93,8 @@
 }
 .wf-spot-light__n {
   fill: var(--sem-color-ink);
-  font-family: var(--sem-font-family-mono);
-  font-size: var(--sem-font-size-eyebrow);
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-caption);
   font-weight: var(--sem-font-weight-semibold);
   font-variant-numeric: tabular-nums;
 }
@@ -105,7 +105,7 @@
   stroke-linecap: round;
 }
 
-/* ---- the label: the name, then the chart's line, on a paper halo ---- */
+/* ---- the label: the name, then the wind, on a halo of the ground ---- */
 .wf-spot-light__label {
   position: absolute;
   top: calc(var(--sem-space-x1) * -1);
@@ -115,7 +115,7 @@
   text-align: left;
   white-space: nowrap;
   pointer-events: none;
-  /* The halo: the paper round the letters, as a chart clears its soundings. */
+  /* The halo: the ground round the letters, so they read over sea and land. */
   text-shadow:
     0 0 2px var(--sem-color-ground),
     0 0 3px var(--sem-color-ground),
@@ -125,16 +125,15 @@
 .wf-spot-light__name {
   display: block;
   color: var(--sem-color-ink);
-  font-family: var(--sem-font-family-display);
+  font-family: var(--sem-font-family-body);
   font-size: var(--sem-font-size-body);
-  font-style: italic;
   font-weight: var(--sem-font-weight-semibold);
 }
 .wf-spot-light__line {
   display: block;
   margin-top: var(--sem-space-x0-5);
-  color: var(--sem-color-chart-magenta);
-  font-family: var(--sem-font-family-mono);
+  color: var(--sem-color-ink-muted);
+  font-family: var(--sem-font-family-body);
   font-size: var(--sem-font-size-caption);
   font-weight: var(--sem-font-weight-medium);
   font-variant-numeric: tabular-nums;
@@ -155,7 +154,7 @@
   fill: var(--sem-color-ink-muted);
   font-weight: var(--sem-font-weight-medium);
 }
-/* 1 and 2: the paper ring (the default). 3 and 4: filled in ink. */
+/* 1 and 2: the open ring (the default). 3 and 4: filled in ink. */
 .wf-spot-light--s3 .wf-spot-light__ring,
 .wf-spot-light--s4 .wf-spot-light__ring {
   fill: var(--sem-color-inverse);
@@ -164,7 +163,7 @@
 .wf-spot-light--s4 .wf-spot-light__n {
   fill: var(--sem-color-ink-inverse);
 }
-/* 5: the best, in the chart's magenta. */
+/* 5: the best, in the accent. */
 .wf-spot-light--s5 .wf-spot-light__ring {
   fill: var(--sem-color-chart-magenta);
   stroke: var(--sem-color-chart-magenta);
@@ -184,11 +183,8 @@
 .wf-spot-light--dark .wf-spot-light__n {
   display: none;
 }
-.wf-spot-light--dark .wf-spot-light__line {
-  color: var(--sem-color-ink-muted);
-}
 
-/* Offshore: struck through in the pen, and said in words on the line. */
+/* Offshore: struck through in the warm red, and said in words on the line. */
 .wf-spot-light--off .wf-spot-light__ring {
   fill: var(--sem-color-card);
   stroke: var(--sem-color-pen);
@@ -207,10 +203,7 @@
 .wf-spot-light--off .wf-spot-light__line {
   color: var(--sem-color-pen-ink);
 }
-/* Cross-off: the arrow in the pen, the line muted with "· cross-off". */
-.wf-spot-light--xoff .wf-spot-light__line {
-  color: var(--sem-color-ink-muted);
-}
+/* Cross-off: the arrow in the warm red, the line grey with "· cross-off". */
 
 /* ---- selected, and the field round it ---- */
 .wf-spot-light--sel {

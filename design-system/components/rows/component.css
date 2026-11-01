@@ -1,0 +1,95 @@
+/* Rows — ui/Rows.tsx (rowsStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * A list of rows in one soft card, a hairline between them inside it: the
+ * key, the spot index, the models, a setting with its value. The name in
+ * Inter semibold, a grey line under it, and the value or action on the right.
+ *
+ * `.is-hover` and `.is-focus` hold a state still for the catalog. */
+
+.wf-rows {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--sem-radius-surface);
+  background: var(--sem-color-sunken);
+  list-style: none;
+  /* on-card: a control inside takes the second grey. */
+  --sem-color-well: var(--sem-color-raised);
+}
+.wf-rows > * + * {
+  border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
+}
+
+.wf-rows__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 56px;
+  padding: 13px var(--sem-space-x4);
+  border: 0;
+  background: transparent;
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-body);
+  text-align: left;
+  text-decoration: none;
+}
+
+/* A row that goes somewhere or does something: a wash under the pointer. */
+.wf-rows__row--action {
+  cursor: pointer;
+  transition: background-color var(--sem-duration-fast);
+}
+.wf-rows__row--action:hover,
+.wf-rows__row--action.is-hover {
+  background: var(--sem-color-line);
+}
+.wf-rows__row--action:focus-visible,
+.wf-rows__row--action.is-focus {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: calc(var(--sem-ring-offset) * -1);
+}
+
+.wf-rows__lead {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  color: var(--sem-color-ink-2);
+}
+.wf-rows__main {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--sem-space-x0-5);
+  min-width: 0;
+}
+.wf-rows__title {
+  color: var(--sem-color-ink);
+  font-size: var(--sem-font-size-prose);
+  line-height: var(--sem-font-line-tight);
+  font-weight: var(--sem-font-weight-semibold);
+}
+.wf-rows__detail {
+  color: var(--sem-color-ink-2);
+  font-size: var(--sem-font-size-body);
+  line-height: var(--sem-font-line-normal);
+}
+.wf-rows__end {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--sem-space-x2);
+  color: var(--sem-color-ink-2);
+  font-size: var(--sem-font-size-body);
+}
+.wf-rows__chevron {
+  width: calc(var(--sem-space-x4) + var(--sem-space-x0-5));
+  height: calc(var(--sem-space-x4) + var(--sem-space-x0-5));
+  color: var(--sem-color-ink-muted);
+}
+
+/* Not available: the words in grey. */
+.wf-rows__row--dim .wf-rows__title,
+.wf-rows__row--dim .wf-rows__detail {
+  color: var(--sem-color-ink-muted);
+}

@@ -3,110 +3,82 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Text area — wingfoil-chart</title>
+    <title>Text area — wingfoil</title>
     <link rel="stylesheet" href="../../foundations/tokens.css" />
-    <link rel="stylesheet" href="../text-input/component.css" />
+    <link rel="stylesheet" href="../field/component.css" />
     <link rel="stylesheet" href="component.css" />
     <style>
-      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      /* Demo scaffolding only: the ground, a grey label over each row, soft cards. */
       body {
         margin: 0;
       }
       .demo {
-        padding: var(--sem-space-x5);
-        background-color: var(--sem-color-ground);
-        background-image: var(--sem-texture-grain);
+        padding: var(--sem-space-x6);
+        background: var(--sem-color-ground);
         color: var(--sem-color-ink);
         font-family: var(--sem-font-family-body);
         font-size: var(--sem-font-size-prose);
         line-height: var(--sem-font-line-prose);
       }
-      .demo + .demo {
-        border-top: var(--sem-rule-double) double var(--sem-color-ink);
-      }
       .demo__head {
-        margin: 0 0 var(--sem-space-x3);
-        padding-bottom: var(--sem-space-x1);
-        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
-        font-family: var(--sem-font-family-display);
+        margin: 0 0 var(--sem-space-x2);
         font-size: var(--sem-font-size-lead);
         line-height: var(--sem-font-line-lead);
-        font-weight: var(--sem-font-weight-lead);
+        font-weight: var(--sem-font-weight-semibold);
       }
       .demo__label {
-        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-eyebrow);
-        line-height: var(--sem-font-line-eyebrow);
-        font-weight: var(--sem-font-weight-eyebrow);
-        letter-spacing: var(--sem-font-tracking-eyebrow);
-        text-transform: uppercase;
+        margin: var(--sem-space-x6) 0 var(--sem-space-x2);
+        font-size: var(--sem-font-size-label);
+        line-height: var(--sem-font-line-label);
+        font-weight: var(--sem-font-weight-medium);
         color: var(--sem-color-ink-muted);
       }
       .demo__row {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: var(--sem-space-x3);
+        gap: var(--sem-space-x2);
       }
-      .demo__map {
-        padding: var(--sem-space-x3);
-        background: var(--sem-color-sea-3);
+      .demo__stack {
+        display: grid;
+        gap: var(--sem-space-x3);
+        max-width: var(--sem-container-form);
+      }
+      .demo__card {
+        padding: var(--sem-space-x5);
+        border-radius: var(--sem-radius-surface);
+        background: var(--sem-color-sunken);
+        /* A soft card: a control inside takes the second grey (on-card). */
+        --sem-color-well: var(--sem-color-raised);
       }
     </style>
   </head>
   <body>
-    <section class="demo" data-mode="light">
-      <h2 class="demo__head">Text area</h2>
-
-      <p class="demo__label">Empty · italic placeholder</p>
-      <div class="wf-control wf-control--area">
-        <textarea class="wf-control__input" rows="3" aria-label="Session notes" placeholder="What was it like?"></textarea>
-      </div>
-
-      <p class="demo__label">Filled</p>
-      <div class="wf-control wf-control--area">
-        <textarea class="wf-control__input" rows="3" aria-label="Session notes">Cross-shore WSW, flat inside the bar at low tide. Best 13:00–16:00 on a 6 m.</textarea>
-      </div>
-
-      <p class="demo__label">Hover (held)</p>
-      <div class="wf-control wf-control--area is-hover">
-        <textarea class="wf-control__input" rows="3" aria-label="Session notes">Cross-shore WSW, flat inside the bar at low tide. Best 13:00–16:00 on a 6 m.</textarea>
-      </div>
-
-      <p class="demo__label">Focus-within (held)</p>
-      <div class="wf-control wf-control--area is-focus">
-        <textarea class="wf-control__input" rows="3" aria-label="Session notes">Cross-shore WSW, flat inside the bar at low tide. Best 13:00–16:00 on a 6 m.</textarea>
-      </div>
-
-      <p class="demo__label">Invalid · aria-invalid</p>
-      <div class="wf-control wf-control--area">
-        <textarea class="wf-control__input" rows="3" aria-label="Session notes" aria-invalid="true">Grand</textarea>
-      </div>
-
-      <p class="demo__label">Disabled</p>
-      <div class="wf-control wf-control--area">
-        <textarea class="wf-control__input" rows="3" aria-label="Session notes" disabled>Cross-shore WSW, flat inside the bar at low tide. Best 13:00–16:00 on a 6 m.</textarea>
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Text area in dark</h2>
+      <div class="demo__stack">
+        <div class="wf-field">
+          <label class="wf-field__label" for="ta-d-desc">Description</label>
+          <div class="wf-text-area"><textarea class="wf-text-area__input" id="ta-d-desc" placeholder="What's included, its condition, where it can be collected" aria-describedby="ta-d-desc-hint"></textarea></div>
+          <small class="wf-field__hint" id="ta-d-desc-hint">A few lines is plenty.</small>
+        </div>
+        <div class="wf-field">
+          <label class="wf-field__label" for="ta-d-note">Focused (held)</label>
+          <div class="wf-text-area is-focus"><textarea class="wf-text-area__input" id="ta-d-note">5 m wing, used one season. A small repair on the leading edge.</textarea></div>
+        </div>
+        <div class="wf-field wf-field--invalid">
+          <label class="wf-field__label" for="ta-d-report">Report</label>
+          <div class="wf-text-area"><textarea class="wf-text-area__input" id="ta-d-report" aria-invalid="true" aria-describedby="ta-d-report-error"></textarea></div>
+          <span class="wf-field__error" id="ta-d-report-error" role="alert">Say what you saw at the spot.</span>
+        </div>
       </div>
     </section>
 
-    <section class="demo" data-mode="dark">
-      <h2 class="demo__head">Text area · night chart (proposed)</h2>
-      <p class="demo__label">Empty</p>
-      <div class="wf-control wf-control--area">
-        <textarea class="wf-control__input" rows="3" aria-label="Session notes" placeholder="What was it like?"></textarea>
-      </div>
-      <p class="demo__label">Focus (held)</p>
-      <div class="wf-control wf-control--area is-focus">
-        <textarea class="wf-control__input" rows="3" aria-label="Session notes">Cross-shore WSW, flat inside the bar at low tide. Best 13:00–16:00 on a 6 m.</textarea>
-      </div>
-      <p class="demo__label">Invalid</p>
-      <div class="wf-control wf-control--area">
-        <textarea class="wf-control__input" rows="3" aria-label="Session notes" aria-invalid="true">Grand</textarea>
-      </div>
-      <p class="demo__label">Disabled</p>
-      <div class="wf-control wf-control--area">
-        <textarea class="wf-control__input" rows="3" aria-label="Session notes" disabled>Cross-shore WSW, flat inside the bar at low tide. Best 13:00–16:00 on a 6 m.</textarea>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Text area in light</h2>
+      <div class="wf-field">
+        <label class="wf-field__label" for="ta-l-desc">Description</label>
+        <div class="wf-text-area"><textarea class="wf-text-area__input" id="ta-l-desc" placeholder="What's included, its condition, where it can be collected"></textarea></div>
       </div>
     </section>
   </body>

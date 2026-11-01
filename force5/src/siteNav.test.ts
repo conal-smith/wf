@@ -139,13 +139,16 @@ describe("SITE_SECTIONS", () => {
 });
 
 describe("SITE_NAV", () => {
-  it("is the chart and the finder, Settings and the options, About and the tour, on every page", () => {
+  it("is the forecast, your settings and help, in named groups, on every page", () => {
     expect(
-      SITE_NAV_GROUPS.map((group) => group.map((row) => row.label)),
+      SITE_NAV_GROUPS.map((group) => [
+        group.name,
+        group.rows.map((row) => row.label),
+      ]),
     ).toEqual([
-      ["Chart", "Spot finder"],
-      ["Settings", "Display options"],
-      ["About", "Take the tour"],
+      ["Forecast", ["Chart", "Spot finder"]],
+      ["Your settings", ["Settings", "Display options"]],
+      ["Help", ["About the map", "How the stars work", "Take the tour"]],
     ]);
     expect(SITE_NAV.map((row) => row.href)).toEqual([
       "/?map",
@@ -153,11 +156,14 @@ describe("SITE_NAV", () => {
       "/?settings",
       "/?options",
       "/?about",
+      "/stars",
       "/?tour",
     ]);
-    // Each is the map's bundle's: none is split off.
+    // Each is the map's bundle's but How the stars work, the spot bundle's.
     for (const row of SITE_NAV)
-      expect(OWN_BUNDLE_PATHS.some((p) => p.test(row.href))).toBe(false);
+      expect(OWN_BUNDLE_PATHS.some((p) => p.test(row.href))).toBe(
+        row.id === "stars",
+      );
   });
 
   it("reads what an address asks the map to open, once, on the home page", () => {

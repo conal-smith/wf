@@ -9,8 +9,10 @@ for (const width of [390, 1440]) {
     await expect(page.locator(".spot-marker")).toHaveCount(149, {
       timeout: 30000,
     });
-    await page.getByRole("combobox", { name: "Find a spot" }).fill("Blast");
-    await page.locator(".spot-row").click();
+    const opener = page.locator("[data-spot-search-open]");
+    if (await opener.isVisible()) await opener.click();
+    await page.getByRole("combobox", { name: "Search spots" }).fill("Blast");
+    await page.locator("[data-spot-option]").click();
     const pin = page.locator('[data-spot-id="kilcrea"]');
     await expect(pin).toHaveClass(/\bsel\b/);
     // The dock has the spot: its name, its star and the way to its page.
@@ -39,8 +41,11 @@ for (const width of [390, 1440]) {
     await expect(page.locator(".map-canvas")).toHaveClass(/is-focus/);
     await expect(page.locator(".maplibregl-popup")).toHaveCount(0);
     // Another spot takes its place in the dock.
-    await page.getByRole("combobox", { name: "Find a spot" }).fill("Dollymount");
-    await page.locator(".spot-row").click();
+    if (await opener.isVisible()) await opener.click();
+    await page
+      .getByRole("combobox", { name: "Search spots" })
+      .fill("Dollymount");
+    await page.locator("[data-spot-option]").click();
     await expect(dock.locator(".dk-name")).toHaveText("Dollymount");
     await expect(page.locator('[data-spot-id="dollymount"]')).toHaveClass(
       /\bsel\b/,
