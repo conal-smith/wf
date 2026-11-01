@@ -708,15 +708,12 @@ test.describe("on a desktop", () => {
     const row = siteRow(page, "Spot finder");
     await expect(row).toHaveAttribute("href", "/");
     await page.evaluate(() => ((window as { stayed?: boolean }).stayed = true));
-    // Second in the navigation, under the chart and over Settings and the
-    // display options.
+    // Second in the navigation, under the chart and over Settings.
     const chart = (await siteRow(page, "Chart").boundingBox())!;
     const settings = (await siteRow(page, "Settings").boundingBox())!;
-    const options = (await siteRow(page, "Display options").boundingBox())!;
     const box = (await row.boundingBox())!;
     expect(chart.y).toBeLessThan(box.y);
     expect(box.y).toBeLessThan(settings.y);
-    expect(settings.y).toBeLessThan(options.y);
     await row.click();
     await expect(page).toHaveURL(/\/$/);
     await expect(finder(page)).toBeVisible();
@@ -730,7 +727,7 @@ test.describe("on a desktop", () => {
       "aria-current",
       "page",
     );
-    await expect(siteRow(page, "Display options")).toBeVisible();
+    await expect(siteRow(page, "Settings")).toBeVisible();
     await siteRow(page, "Chart").click();
     await expect(page).toHaveURL(/\/\?map$/);
     await expect(page.locator(".spot-marker")).toHaveCount(149);

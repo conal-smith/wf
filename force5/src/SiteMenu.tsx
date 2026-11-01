@@ -55,7 +55,6 @@ import {
 import {
   about,
   community,
-  displayOptions,
   market,
   settings,
   spotFinder,
@@ -85,7 +84,6 @@ const ROW_GLYPH: Record<SiteNavId | Exclude<SiteSectionId, "map">, GlyphDef> = {
   chart: windMap,
   finder: spotFinder,
   settings,
-  options: displayOptions,
   about,
   stars: starsFrom,
   tour,
@@ -143,7 +141,8 @@ export const siteMenuStyles = tv({
     preview: "rounded-full bg-sunken px-2 py-0.5",
     // Light, dark or auto, and the one line every page owes a rider.
     foot: "grid shrink-0 gap-3 px-6 pt-3.5 pb-5 max-wide:px-5",
-    appearance: "flex items-center justify-between gap-3 font-body text-prose font-medium",
+    appearance:
+      "flex items-center justify-between gap-3 font-body text-prose font-medium",
     small: "m-0 font-body text-label leading-normal text-ink-muted",
   },
   variants: {
@@ -208,9 +207,9 @@ export function SiteNav({
   current: SitePageId | null;
   /**
    * The map's own way to a row, in place of the page load, where the page
-   * has one: the chart and the spot finder are one bundle, and Settings, the
-   * display options, About and the tour are dialogs of theirs. A press for a
-   * new tab is still the browser's.
+   * has one: the chart and the spot finder are one bundle, and Settings,
+   * About and the tour are dialogs of theirs. A press for a new tab is still
+   * the browser's.
    */
   go?: Partial<Record<SiteNavId, () => void>>;
   features?: Pick<SiteFeatures, "market" | "community">;
@@ -393,6 +392,8 @@ export function SiteMenu({
   const drawer = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const firstRow = useRef<HTMLElement | null>(null);
+  /** The menu was opened from the keyboard (Enter or Space on the button). */
+  const byKey = useRef(false);
   const drag = useRef<Drag | null>(null);
   // A drag ends in a click on whatever it let go over: that click is the
   // drag's, not a press of the row.
@@ -421,8 +422,12 @@ export function SiteMenu({
     const el = drawer.current;
     if (!open || !el) return;
     if (!el.open) el.showModal();
-    // The browser focuses the close button; the first row is what was asked.
-    firstRow.current?.focus();
+    // The browser focuses the close button, and rings it. Opened from the
+    // keyboard, the first row takes the focus, ringed so the keys can see
+    // where they are; opened with a mouse or a finger, the drawer holds it
+    // itself, and nothing is ringed until a key is pressed.
+    if (byKey.current) firstRow.current?.focus();
+    else el.focus({ preventScroll: true });
     // The page under it holds still while it is open.
     const root = document.documentElement;
     const overflow = root.style.overflow;
@@ -430,9 +435,9 @@ export function SiteMenu({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       // The map has a global Escape handler of its own, which closes the
-      // search, the display options, the spot card or the sheet. Capturing on the
-      // document and stopping there is what makes Escape with this menu open
-      // mean "close this menu" and nothing else.
+      // search, the spot card or the sheet. Capturing on the document and
+      // stopping there is what makes Escape with this menu open mean "close
+      // this menu" and nothing else.
       event.preventDefault();
       event.stopPropagation();
       close();
@@ -522,7 +527,11 @@ export function SiteMenu({
         aria-expanded={open}
         // The drawer only exists while it is open (or sliding out).
         aria-controls={open ? drawerId : undefined}
-        onClick={() => setOpen(true)}
+        onClick={(event) => {
+          // A click the keyboard made counts none.
+          byKey.current = event.detail === 0;
+          setOpen(true);
+        }}
       >
         <Menu size={18} strokeWidth={1.75} aria-hidden="true" />
       </Button>
@@ -530,6 +539,8 @@ export function SiteMenu({
         <dialog
           ref={drawer}
           id={drawerId}
+          // Focusable, to hold the focus as a mouse or a finger opens it.
+          tabIndex={-1}
           aria-label="Site menu"
           className={styles.drawer()}
           onCancel={(event) => {
@@ -592,8 +603,8 @@ export function SiteMenu({
           <div className={styles.foot()}>
             <Appearance />
             <p className={styles.small()}>
-              Model forecasts, not a safety statement. Look at the water
-              before you go out.
+              Model forecasts, not a safety statement. Look at the water before
+              you go out.
             </p>
           </div>
         </dialog>

@@ -1,8 +1,8 @@
 /* Search field — ui/SearchField.tsx (searchFieldStyles), rendered in CSS.
- * Consumes --sem-* only, but for the soft focus ring.
+ * Consumes --sem-* only.
  *
- * A soft grey pill with the magnifier in it; the ink edge, the ground and a
- * soft ring of the accent when it holds the focus. No underline, no frame.
+ * A soft grey pill with the magnifier in it, a step lighter when it holds the
+ * focus. No edge, no ring, no underline, no frame.
  *
  * `.is-focus` holds the focused look still for the catalog. */
 
@@ -19,15 +19,12 @@
   background: var(--sem-color-well);
   color: var(--sem-color-ink-muted);
   font-family: var(--sem-font-family-body);
-  transition-property: border-color, background-color, box-shadow;
+  transition-property: background-color;
   transition-duration: var(--sem-duration-fast);
 }
 .wf-search-field:focus-within,
 .wf-search-field.is-focus {
-  border-color: var(--sem-color-ink);
-  background: var(--sem-color-ground);
-  /* ds-lint-allow: the kit's soft focus ring is the focus colour at 20%, which no token carries */
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sem-color-focus) 20%, transparent);
+  background: var(--sem-color-raised);
 }
 .wf-search-field[aria-busy="true"] {
   cursor: progress;

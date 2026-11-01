@@ -1,9 +1,10 @@
 import {
   chooseModel,
-  closePanel,
+  closeSettings,
   expect,
   modelChoice,
   openFromMenu,
+  saveSettings,
   test,
 } from "./fixtures";
 import { readSample } from "./sample";
@@ -106,14 +107,17 @@ test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", as
   );
   for (const next of [null, { ...ecmwf, model: "wrong" }]) {
     body = next;
-    await openFromMenu(page, "Display options");
+    await openFromMenu(page, "Settings");
     await modelChoice(page, "ecmwf").click();
+    await saveSettings(page);
     await expect(page.locator(".frame-status.is-error")).toBeVisible();
+    // Asked, not had: the rider is back on HARMONIE.
+    await openFromMenu(page, "Settings");
     await expect(modelChoice(page, "harmonie")).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    await closePanel(page);
+    await closeSettings(page);
     await page.getByRole("button", { name: "Dismiss" }).click();
   }
 });

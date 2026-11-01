@@ -73,7 +73,7 @@ export interface ChatContext {
   spot: { id: string; name: string } | null;
   /** The hour selected on the map's timeline, ISO. */
   time: string | null;
-  /** Null when the rider has never opened Display options. */
+  /** Null when the rider has never opened Settings. */
   rider: RiderContext | null;
   /** The browser's clock when the message was sent, ISO. */
   now: string;

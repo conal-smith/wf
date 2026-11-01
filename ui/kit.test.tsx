@@ -602,8 +602,11 @@ describe("states", () => {
         expect(words(styles.box()), `${kind} ${name}`).toContain(name);
       expect(styles.input(), kind).toContain(NO_RING);
     }
+    // A search lifts a step and draws no edge or ring round it.
     const search = searchFieldStyles();
-    expect(words(search.base())).toContain("focus-within:ring-focus/20");
+    expect(words(search.base())).toContain("focus-within:bg-raised");
+    expect(words(search.base())).not.toContain("focus-within:ring-focus/20");
+    expect(words(search.base())).not.toContain("focus-within:border-ink");
     expect(search.input()).toContain(NO_RING);
   });
 
@@ -1013,6 +1016,16 @@ describe("Dialog", () => {
     syncModal(dialog, false, opener, () => null);
     expect(button.focus).toHaveBeenCalledOnce();
     expect(inside.focus).not.toHaveBeenCalled();
+  });
+
+  // The browser would focus the close button and ring it before anything
+  // was pressed: the dialog takes the focus itself.
+  it("gives the focus to the dialog itself as it opens", () => {
+    const dialog = { ...host(), focus: vi.fn() };
+    syncModal(dialog, true, { current: null }, () => target());
+    expect(dialog.focus).toHaveBeenCalledOnce();
+    syncModal(dialog, true, { current: null }, () => target());
+    expect(dialog.focus).toHaveBeenCalledOnce();
   });
 
   it("does not focus an opener that has left the page, or close twice", () => {

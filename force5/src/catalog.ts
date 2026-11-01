@@ -43,7 +43,7 @@ export interface ModelEntry {
 }
 
 // Hues are provisional: a design ruling on model identity colours is pending.
-// `detail` is what the layers list and the display options print beside a
+// `detail` is what the layers list and Settings print beside a
 // name, in one form for every model: the grid in kilometres, then how far
 // ahead its published run reaches, in days (the run the site serves, so
 // GFS's 240 hours of its 384, HARMONIE's 60), then the members of an

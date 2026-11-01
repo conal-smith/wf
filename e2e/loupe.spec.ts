@@ -1,4 +1,11 @@
-import { closePanel, expect, openFromMenu, test, type Page } from "./fixtures";
+import {
+  expect,
+  openFromMenu,
+  saveSettings,
+  test,
+  unitChoice,
+  type Page,
+} from "./fixtures";
 
 /**
  * The loupe's ride rose (force5/src/focus.ts, drawn by WindMap.tsx): round the
@@ -129,9 +136,9 @@ test("Dollymount's cross-shore hour: the no-go, out and home, and the wind at th
 
   // Half a nautical mile with knots; a kilometre with km/h, a little larger.
   const before = await radius(page);
-  await openFromMenu(page, "Display options");
-  await page.locator('[data-units="km/h"]').click();
-  await closePanel(page);
+  await openFromMenu(page, "Settings");
+  await unitChoice(page, "km/h").click();
+  await saveSettings(page);
   await expect
     .poll(() => labels(page))
     .toEqual(expect.arrayContaining(["1 km", "500 m"]));
@@ -244,15 +251,10 @@ test("degrees into the wind and below across: set in Settings, they move the cou
   // Past the course, downwind, is drawn faintly along the rim.
   await expect(rose(page).locator(".map-rose-slow")).toHaveCount(1);
 
-  // Display options no longer carry it: Settings is where the rider says.
-  await openFromMenu(page, "Display options");
-  await expect(page.getByText("Pointing upwind")).toHaveCount(0);
-  await closePanel(page);
-
   const upwind = async () => {
     await openFromMenu(page, "Settings");
     const settings = page.getByRole("dialog", { name: "Settings" });
-    // The last of its four parts, on the one page.
+    // The fourth of its five parts, on the one page.
     await expect(
       settings.getByRole("heading", { name: "Riding upwind" }),
     ).toBeVisible();

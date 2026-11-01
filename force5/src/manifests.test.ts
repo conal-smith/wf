@@ -96,7 +96,7 @@ describe("model registry", () => {
     }
     expect(requireModel("harmonie-eps").planned).toBe(true);
     // Retired to save downloads: still known, never fetched nor listed, and
-    // distinct from a planned model, which the display options grey out.
+    // distinct from a planned model, which Settings greys out.
     for (const id of [
       "ecmwf-ens",
       "gefs",

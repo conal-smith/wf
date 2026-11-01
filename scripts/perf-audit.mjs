@@ -403,26 +403,27 @@ async function interactions(browser, profileName, shotDir) {
 
   // Switch model: ECMWF (a different grid and run), then back to HARMONIE.
   for (const model of ["ecmwf", "harmonie"]) {
-    // The model is in the display options; open them from the site menu, as
-    // a reader would.
-    if (
-      !(await page.getByRole("dialog", { name: "Display options" }).count())
-    ) {
-      await page.getByRole("button", { name: "Site menu" }).click();
-      await page
-        .getByRole("navigation", { name: "Site" })
-        .getByRole("link", { name: "Display options", exact: true })
-        .click();
-      await page.getByRole("dialog", { name: "Display options" }).waitFor();
-    }
+    // The model is in Settings; open it from the site menu, as a reader
+    // would, pick, and time from Save.
+    const settings = page.getByRole("dialog", { name: "Settings" });
+    await page.getByRole("button", { name: "Site menu" }).click();
+    await page
+      .getByRole("navigation", { name: "Site" })
+      .getByRole("link", { name: "Settings", exact: true })
+      .click();
+    await settings.waitFor();
     const name = model === "ecmwf" ? "ECMWF" : "HARMONIE";
-    const button = page
+    const button = settings
       .getByRole("group", { name: "Model", exact: true })
       .getByRole("button", { name, exact: true });
-    if (!(await button.count())) continue;
+    if (!(await button.count())) {
+      await page.keyboard.press("Escape");
+      continue;
+    }
+    await button.click();
     await time(
       `switchModel:${model}`,
-      () => button.click(),
+      () => settings.getByRole("button", { name: "Save", exact: true }).click(),
       () =>
         page.waitForFunction(
           (model) =>
@@ -432,7 +433,6 @@ async function interactions(browser, profileName, shotDir) {
         ),
     );
   }
-  await page.keyboard.press("Escape");
 
   // Open a riding place from its marker.
   const marker = page.locator(".spot-marker").nth(10);

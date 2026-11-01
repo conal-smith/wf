@@ -34,7 +34,8 @@ export const dialogStyles = tv({
     title: "m-0 min-w-0 flex-1 font-body text-lead tracking-tight text-ink",
     // Beside the title, before the close button: where a wizard says how far
     // through it is ("2 / 6").
-    aside: "shrink-0 self-center font-body text-body text-ink-muted tabular-nums",
+    aside:
+      "shrink-0 self-center font-body text-body text-ink-muted tabular-nums",
     body: "grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-6 pt-2 pb-6 text-prose text-ink-2 max-sm:px-5 max-sm:pb-5",
     // A hairline above the actions, and only there.
     actions: [
@@ -56,6 +57,8 @@ export interface ModalHost {
   readonly open: boolean;
   showModal(): void;
   close(): void;
+  /** Takes the focus itself, as it opens (it has a tabindex of -1). */
+  focus?(options?: FocusOptions): void;
 }
 
 /** As much of an element as giving focus back to it needs. */
@@ -67,7 +70,10 @@ export interface FocusTarget {
 /**
  * Bring a dialog in line with `open`, and look after the focus around it.
  *
- * Opening remembers what held the focus; closing hands it back. The browser
+ * Opening remembers what held the focus, and gives it to the dialog itself:
+ * the browser would give it to the first control, the close button, and draw
+ * the focus ring round it before anything was pressed. Tab goes on to the
+ * close button from there. Closing hands the focus back. The browser
  * does the same for a dialog it closes itself, but not reliably for a button
  * that was clicked rather than tabbed to, which one engine never focuses. The
  * opener is only read at the moment the dialog really opens, so running this
@@ -83,6 +89,7 @@ export function syncModal(
   if (open && !host.open) {
     opener.current = focused();
     host.showModal();
+    host.focus?.({ preventScroll: true });
   }
   if (!open && host.open) {
     host.close();
@@ -226,6 +233,8 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
+      // Focusable, to take the focus as it opens (`syncModal`).
+      tabIndex={-1}
       className={styles.base({ className })}
       aria-labelledby={label ? undefined : titleId}
       aria-label={label}

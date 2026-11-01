@@ -192,7 +192,6 @@ describe("the navigation", () => {
       "ChartYou’re here",
       "Spot finder",
       "Settings",
-      "Display options",
       "About the map",
       "How the stars work",
       "Take the tour",
@@ -215,7 +214,6 @@ describe("the navigation", () => {
       glyphs.windMap,
       glyphs.spotFinder,
       glyphs.settings,
-      glyphs.displayOptions,
       glyphs.about,
       glyphs.starsFrom,
       glyphs.tour,
@@ -269,7 +267,6 @@ describe("the navigation", () => {
       "/",
       "/?map",
       "/?settings",
-      "/?options",
       "/?about",
       "/stars",
       "/?tour",
@@ -286,7 +283,7 @@ describe("the navigation", () => {
       features: { market: false, community: false },
     });
     expect(markup).not.toMatch(/Marketplace|Community|\/market|\/community/);
-    expect(markup.match(/<li>/g)).toHaveLength(8);
+    expect(markup.match(/<li>/g)).toHaveLength(7);
     expect(markup).not.toContain("Preview");
   });
 

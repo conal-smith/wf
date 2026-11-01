@@ -9,9 +9,17 @@
  * and shore are the rider's own rating; left as ours, none is kept and ours
  * rates. How far up and down the wind they ride is kept on the rider; it
  * moves no star. Weight and units are the rider's too, and never make the
- * rating differ from ours.
+ * rating differ from ours, and so is how the forecast is shown: its hours,
+ * the one model the map draws and the stars rate, and the blend's models.
  */
-import { parseRider, withCustomStars, type Prefs } from "../force5/src/prefs";
+import { chosenModel } from "../force5/src/lead";
+import {
+  parseRider,
+  withCustomStars,
+  withRiderModel,
+  type NightHours,
+  type Prefs,
+} from "../force5/src/prefs";
 import {
   DOWNWIND_DEFAULT,
   UPWIND_DEFAULT,
@@ -41,6 +49,12 @@ export interface Draft {
   upwind: number;
   /** Degrees below straight across the course runs to: ours, 10, until changed. */
   downwind: number;
+  /** The forecast's hours: round the clock, or first to last light. */
+  nightHours: NightHours;
+  /** The one model the map draws and the stars rate (force5/src/lead.ts). */
+  model: string;
+  /** The models the blend chart draws. */
+  blendModels: readonly string[];
 }
 
 /** The draft as the rider stands now: their own rating if they have one, else ours. */
@@ -54,8 +68,23 @@ export function draftOf(prefs: Prefs): Draft {
       : oursCopy(),
     upwind: upwindOf(rider),
     downwind: downwindOf(rider),
+    nightHours: prefs.nightHours,
+    model: chosenModel(rider.starsFrom),
+    blendModels: [...prefs.blendModels],
   });
 }
+
+/** The blend's models with `id` ticked or not, in the order they were ticked. */
+export const withBlendModel = (
+  draft: Draft,
+  id: string,
+  on: boolean,
+): Draft => ({
+  ...draft,
+  blendModels: on
+    ? [...new Set([...draft.blendModels, id])]
+    : draft.blendModels.filter((entry) => entry !== id),
+});
 
 /**
  * The draft as its units show it: in Force, the four numbers on whole
@@ -135,22 +164,34 @@ export const withDownwind = (draft: Draft, deg: number): Draft => {
 
 /**
  * The preferences with the draft saved: the rider's weight and angles, the
- * units, and either no rating of their own (the draft's wind and shore left
- * as ours) or the draft as their own. Through `withCustomStars`, so the
- * account's copy is stamped only when the rating itself changes.
+ * units, the forecast's hours, model and blend, and either no rating of
+ * their own (the draft's wind and shore left as ours) or the draft as their
+ * own. Through `withCustomStars`, so the account's copy is stamped only when
+ * the rating itself changes; the model is set only when it changed, so a
+ * rider who never picked one keeps following ours.
  */
 export function applyDraft(
   prefs: Prefs,
   draft: Draft,
   now: Date = new Date(),
 ): Prefs {
-  const rider = parseRider({
+  const kept = parseRider({
     ...prefs.rider,
     weightKg: draft.weightKg,
     upwind: draft.upwind,
     downwind: draft.downwind,
   });
-  const next: Prefs = { ...prefs, units: draft.units, rider };
+  const rider =
+    draft.model === chosenModel(prefs.rider.starsFrom)
+      ? kept
+      : withRiderModel(kept, draft.model);
+  const next: Prefs = {
+    ...prefs,
+    units: draft.units,
+    nightHours: draft.nightHours,
+    blendModels: [...draft.blendModels],
+    rider,
+  };
   const custom = ratingIsOurs(draft.custom, draft.units) ? null : draft.custom;
   if (sameCustomRating(custom, prefs.rider.custom ?? null)) return next;
   return withCustomStars(next, custom, now);

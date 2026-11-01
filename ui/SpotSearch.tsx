@@ -32,12 +32,13 @@ import { NO_RING, tv } from "./tv";
 export const spotSearchStyles = tv({
   slots: {
     root: "relative min-w-0",
-    // The field: a soft grey pill that widens a little and comes onto the
-    // ground, with an ink edge, while it is in use.
+    // The field: a soft grey pill that widens a little and lifts a step
+    // while it is in use. No edge and no ring: the caret and the results
+    // under it say it holds the focus.
     field: [
       "flex h-control-md w-80 min-w-0 items-center gap-2 rounded-full border border-transparent bg-well pr-2.5 pl-3.5",
       "font-body text-body text-ink-muted transition-all duration-fast motion-reduce:transition-none",
-      "focus-within:w-100 focus-within:border-ink focus-within:bg-ground focus-within:ring-3 focus-within:ring-focus/20",
+      "focus-within:w-100 focus-within:bg-raised",
       "max-wide:hidden",
       // A phone's search, opened: a field the width of the screen over the bar.
       "group-data-phone/search:max-wide:fixed group-data-phone/search:max-wide:inset-x-0 group-data-phone/search:max-wide:top-0",

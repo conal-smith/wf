@@ -41,7 +41,7 @@ by every surface that rates:
 The choice rides on the rider (`Rider.starsFrom`, a `StarsChoice` of one
 `model` in `force5.prefs.v1`; the field keeps its old name so stored riders
 still read), so every page and service that is handed the rider rates from it.
-It is set in Display options ("Model", above "Models in the blend"), the map's
+It is set in Settings ("Model", in its Forecast part), the map's
 Layers ("Model, for the map and the stars"), the spot page's rider line and its
 hour card's model table, and the app's Settings → Model; all of them set the
 same choice, and the map moves to it. The map opens on it (`storedMapModel` in
