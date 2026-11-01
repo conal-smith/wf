@@ -687,6 +687,27 @@ dialog's close button or the search box the moment they appeared: the boxes
 hold the focus themselves (see Focus, above), and the search lifts a step
 instead of taking an edge.
 
+**2026-11-01 — A scrub bar in place of the dock, and no chart frame.** The
+owner: the chart's dock was a table to read, and the spot page already reads
+a spot's hours better; the chart wants "something minimal where a rider can
+really easily scrub back and forward and see how the wind or wave or tide
+changes". The dock is gone, and with it the Blend view, the fold of rows under
+it and the phone's sheet. In its place a bar the full width of the map
+(`src/ScrubBar.tsx`): the controls in one row (the spot, Full forecast, the
+close, play and step, Wind | Waves | Tide, the key, Now), and under them the
+strip, a week at a time, sliding on through the fortnight. A playhead is
+dragged smoothly, not hour by hour; the column nearest it is the map's. Under
+the curve one thin row is the stars as colour, and a pill over the playhead
+reads the moment. With no spot chosen it is a plain timeline that still moves
+the map. Everything the dock's rows held (the gust factor, the waves' period
+and direction, the current, the sky, the rain, each model's own line) is on
+the spot page, which also opens at an hour (`?at=`) and has a page for a point
+on the open water (`/spot/@lat,lon`). The neatline, the chart's black and
+white frame with its degrees, is gone too: the map meets the top bar and the
+floating boxes directly. And a count of stars has one colour wherever stars
+are drawn: the stars' own shades, `stars-1` … `stars-5`, on the glyphs too
+(`ui/StarGlyphs`), a seller's rating alone staying in ink.
+
 ---
 
 ## Still open

@@ -3,7 +3,7 @@
 When a spot or a tapped point is chosen and "Round the chosen spot" is
 **Loupe**, the map lays a glass round it. The default is **Range ring**; a
 rider's choice is kept for their next visit. The glass is a ride rose for the
-hour the dock has selected and for this rider: the headings they can hold
+hour the scrub bar has selected and for this rider: the headings they can hold
 from this beach, the no-go upwind, the slow water downwind, where they would
 drift, the wind
 directions that are offshore here, the wind's needle, and the reading at the
