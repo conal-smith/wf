@@ -299,8 +299,6 @@
   --sem-radius-mark: 5px;
   --sem-rule-hairline: var(--ref-rule-1);
   --sem-rule-heavy: var(--ref-rule-2);
-  --sem-rule-double: var(--ref-rule-3);
-  --sem-rule-edge: var(--ref-rule-3);
   --sem-ring-width: var(--ref-rule-2);
   --sem-ring-offset: var(--ref-rule-2);
   --sem-shadow-control: 0 1px 2px #11111433;

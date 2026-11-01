@@ -2726,44 +2726,22 @@
       "hairline": {
         "$type": "dimension",
         "$value": "{ref.rule.1}",
-        "$description": "One ink rule (`border`).",
+        "$description": "One hairline (`border`), inside a card only.",
         "$extensions": {
           "com.sprintengine": {
             "role": "structure",
-            "use": "A box's frame, a row's hairline, a field's box."
+            "use": "Between rows inside a soft card, above a dialog's actions, under the top bar."
           }
         }
       },
       "heavy": {
         "$type": "dimension",
         "$value": "{ref.rule.2}",
-        "$description": "The heavy rule (`border-t-2`, `border-b-2`).",
+        "$description": "A 2px stroke: a match's underline, a marker's line. Never a rule under a heading.",
         "$extensions": {
           "com.sprintengine": {
             "role": "structure",
-            "use": "Over a broadsheet section; under a section heading."
-          }
-        }
-      },
-      "double": {
-        "$type": "dimension",
-        "$value": "{ref.rule.3}",
-        "$description": "The double rule along an edge (`border-b-3 border-double`).",
-        "$extensions": {
-          "com.sprintengine": {
-            "role": "structure",
-            "use": "The masthead's foot, the dock's top, a page's foot."
-          }
-        }
-      },
-      "edge": {
-        "$type": "dimension",
-        "$value": "{ref.rule.3}",
-        "$description": "A notice's edge (`border-l-3`).",
-        "$extensions": {
-          "com.sprintengine": {
-            "role": "structure",
-            "use": "The heavy rule down a Notice's left side."
+            "use": "The search's match underline; a marker's line on a figure."
           }
         }
       }
