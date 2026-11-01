@@ -521,6 +521,7 @@ describe("the flat kit's shapes", () => {
       ["field", controlStyles().box()],
       ["search", searchFieldStyles().base()],
       ["number", numberFieldStyles().base()],
+      ["empty's icon", emptyStyles().icon()],
     ] as const) {
       expect(words(classes), name).toContain("bg-well");
       expect(words(classes), name).not.toContain("bg-sunken");
@@ -1440,7 +1441,7 @@ describe("the components, rendered", () => {
     const s = emptyStyles();
     expect(s.base()).not.toMatch(/border|shadow|bg-|rounded/);
     expect(words(s.icon())).toEqual(
-      expect.arrayContaining(["rounded-full", "bg-sunken"]),
+      expect.arrayContaining(["rounded-full", "bg-well"]),
     );
     expect(s.title()).not.toMatch(/italic|font-display/);
     expect(html(<Empty title="Not found" as="h1" />)).toMatch(/<h1 class="/);
