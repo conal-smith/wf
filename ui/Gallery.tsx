@@ -744,7 +744,7 @@ export default function Gallery() {
               <Row
                 inList
                 lead={
-                  <span className="grid size-7 place-items-center rounded-full bg-stars-5 text-label font-semibold text-photo-line">
+                  <span className="grid size-7 place-items-center rounded-full bg-stars-5 text-label font-semibold text-ink-inverse">
                     5
                   </span>
                 }
