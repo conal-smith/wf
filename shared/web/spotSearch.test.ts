@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Spot } from "../force5/src/weather";
-import { findSpots } from "./spotSearch";
+import type { Spot } from "../../force5/src/weather";
+import { findSpots, matchIn } from "./spotSearch";
 
 const place = (id: string, name: string, extra: Partial<Spot> = {}): Spot =>
   ({ id, name, lat: 53, lon: -9, ...extra }) as Spot;
@@ -41,5 +41,16 @@ describe("finding a spot by name", () => {
       "brandon",
       "keel",
     ]);
+  });
+});
+
+describe("where a query falls in a name", () => {
+  it("is found with accents and case let go of", () => {
+    expect(matchIn("Trá na Rossan", "tra")).toEqual([0, 3]);
+    expect(matchIn("Seanchéibh an Spidéil", "SPIDEIL")).toEqual([14, 21]);
+  });
+  it("is null where it is not in the name, or nothing was typed", () => {
+    expect(matchIn("Keel Beach", "inch")).toBeNull();
+    expect(matchIn("Keel Beach", "  ")).toBeNull();
   });
 });

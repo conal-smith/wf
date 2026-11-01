@@ -67,7 +67,7 @@ import { Segmented } from "../../ui/Segmented";
 import { Select } from "../../ui/Select";
 import { tv } from "../../ui/tv";
 import type { PlaceHour } from "../ratings";
-import { findSpots } from "../spotSearch";
+import { findSpots } from "../../shared/web/spotSearch";
 import {
   dayLong,
   dayShort,

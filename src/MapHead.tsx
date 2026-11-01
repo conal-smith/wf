@@ -6,7 +6,7 @@ import { SiteMenu } from "../force5/src/SiteMenu";
 import { FINDER_HREF, type SiteNavId } from "../force5/src/siteNav";
 import type { Spot } from "../force5/src/weather";
 import { hourWind, type PlaceHour } from "./ratings";
-import { findSpots } from "./spotSearch";
+import { findSpots } from "../shared/web/spotSearch";
 
 /**
  * The chart's head, top left: the site menu, the name, and "Find a spot…",
