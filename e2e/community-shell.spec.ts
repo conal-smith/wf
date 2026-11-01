@@ -294,8 +294,8 @@ test.describe("below 900px", () => {
     }
     expect(await overflow(page)).toBeLessThanOrEqual(0);
 
-    // Nothing inside the header's pill overflows it.
-    const bar = page.locator("header > div");
+    // Nothing inside the top bar overflows it.
+    const bar = page.locator("header[data-top-bar]");
     expect(
       await bar.evaluate((el) => el.scrollWidth - el.clientWidth),
     ).toBeLessThanOrEqual(0);
