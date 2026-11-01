@@ -3,14 +3,14 @@
  * room. Each row names its channel. The rail's search lands here too, as the
  * same list narrowed by `?q=`.
  */
-import { SearchX } from "lucide-react";
+import { MessagesSquare, SearchX } from "lucide-react";
 import { useMemo } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
-import { Button, Chip, Empty, Puffin } from "../../../ui";
+import { Button, Empty, Tag } from "../../../ui";
 import { tv } from "../../../ui/tv";
 import { NewThread, NewThreadPill } from "../components/NewThreadDialog";
-import { PageHead, dateline } from "../components/PageHead";
+import { COMMUNITY, PageHead } from "../components/PageHead";
 import { ThreadList } from "../components/ThreadList";
 import { freshOf } from "../components/ThreadRow";
 import {
@@ -23,9 +23,9 @@ import { NEW_THREAD, QUERY, paths, routed } from "../router";
 
 export const homeStyles = tv({
   slots: {
-    // What is new, in a chip: the one mark on the page.
+    // What is new, in a tag: the one mark on the page.
     fresh: "font-semibold text-ink",
-    query: "font-normal italic",
+    query: "font-normal",
   },
 });
 
@@ -94,18 +94,16 @@ export function Home({ channels, onPosted, pathname, search }: HomeProps) {
   return (
     <>
       <PageHead
-        dateline={q ? "Search" : dateline(new Date())}
+        dateline={q ? "Search" : COMMUNITY}
         figures={
           <>
             {!q && members}
             {!q && members && fresh && " · "}
-            {fresh && (
-              <Chip className={styles.fresh()}>{fresh}</Chip>
-            )}
+            {fresh && <Tag className={styles.fresh()}>{fresh}</Tag>}
           </>
         }
         title={q ? <span className={styles.query()}>“{q}”</span> : "Latest"}
-        // Signed out: what joining is for, said once and quietly, under the rule.
+        // Signed out: what joining is for, said once and quietly, under the title.
         lede={
           !q &&
           auth.loaded &&
@@ -123,23 +121,28 @@ export function Home({ channels, onPosted, pathname, search }: HomeProps) {
           q ? (
             <Empty
               title={`Nothing found for “${q}”`}
-              icon={<SearchX size={24} strokeWidth={1.5} aria-hidden="true" />}
+              icon={<SearchX size={24} strokeWidth={1.75} />}
+              actions={
+                <Button {...routed(paths.home())}>The latest threads</Button>
+              }
             >
               <p>Try fewer words, or other ones.</p>
-              <Button {...routed(paths.home())} variant="outline">
-                The latest threads
-              </Button>
             </Empty>
           ) : (
-            <Empty title="No threads yet" icon={<Puffin size={40} />}>
+            <Empty
+              title="No threads yet"
+              icon={<MessagesSquare size={24} strokeWidth={1.75} />}
+              actions={
+                canStart && (
+                  // Outlined: the view's filled New thread is the header's, or
+                  // the floating one on a phone.
+                  <Button {...routed(paths.newThread())}>
+                    Start the first one
+                  </Button>
+                )
+              }
+            >
               <p>Nobody has written in. It could be you.</p>
-              {canStart && (
-                // Quiet: the view's filled New thread is the header's, or the
-                // floating one on a phone.
-                <Button {...routed(paths.newThread())} variant="outline">
-                  Start the first one
-                </Button>
-              )}
             </Empty>
           )
         }

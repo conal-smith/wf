@@ -58,9 +58,9 @@ export function FollowMenu({ level, busy, onChoose }: FollowMenuProps) {
       panelLabel="Notify me about"
       label={
         <>
-          <Icon size={15} strokeWidth={1.5} aria-hidden="true" />
+          <Icon size={16} strokeWidth={1.75} aria-hidden="true" />
           <span className={styles.words()}>{followLabel(level)}</span>
-          <ChevronDown size={14} strokeWidth={1.5} aria-hidden="true" />
+          <ChevronDown size={14} strokeWidth={1.75} aria-hidden="true" />
         </>
       }
     >

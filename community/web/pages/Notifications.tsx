@@ -9,7 +9,7 @@ import { usePageTitle } from "../../../shared/web/usePageTitle";
 import { Button, Notice } from "../../../ui";
 import { tv } from "../../../ui/tv";
 import { MembersOnly } from "../components/MembersOnly";
-import { PageHead, dateline } from "../components/PageHead";
+import { COMMUNITY, PageHead } from "../components/PageHead";
 import {
   NotificationRows,
   NotificationTools,
@@ -47,7 +47,7 @@ export function Notifications(props: NotificationsProps) {
 function Head({ tools, unread }: { tools?: ReactNode; unread?: number }) {
   return (
     <PageHead
-      dateline={dateline(new Date())}
+      dateline={COMMUNITY}
       figures={unread ? `${unread} unread` : undefined}
       title="Notifications"
       actions={tools}
@@ -69,7 +69,7 @@ function Inbox({ unread, onUnread }: NotificationsProps) {
         unread={unread}
         tools={<NotificationTools allRead={allRead} onMarkAll={rows.markAll} />}
       />
-      {rows.failure && <Notice kind="warn">{rows.failure}</Notice>}
+      {rows.failure && <Notice level="warn" alert title={rows.failure} />}
       <div className={styles.base()}>
         <NotificationRows
           state={state}
@@ -77,13 +77,17 @@ function Inbox({ unread, onUnread }: NotificationsProps) {
           onRetry={rows.reload}
         />
         {state.status === "ready" && state.more.status === "error" && (
-          <Notice kind="warn">
-            <p>{state.more.message}</p>
+          <Notice
+            level="warn"
+            alert
+            title="The older notifications could not be loaded"
+          >
+            {state.more.message}
           </Notice>
         )}
         {state.status === "ready" && state.nextCursor !== null && (
           <Button
-            variant="outline"
+            variant="soft"
             className={styles.more()}
             disabled={state.more.status === "loading"}
             onClick={rows.loadMore}

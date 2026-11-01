@@ -87,13 +87,14 @@ describe("S1: the name, the county and the way to the map", () => {
     );
     expect(markup).toMatch(/^<a [^>]*href="\/\?spot=dollymount"/);
     expect(markup.match(/<a /g)).toHaveLength(1);
-    // The name in the display face's italic, the county in the mono label.
+    // The name in Inter, the county in a grey line: no serif, no capitals.
     expect(markup).toMatch(
-      /<span class="[^"]*font-display[^"]*italic[^"]*">Dollymount<\/span>/,
+      /<span class="[^"]*font-body[^"]*font-semibold[^"]*">Dollymount<\/span>/,
     );
     expect(markup).toMatch(
-      /<span class="[^"]*text-eyebrow[^"]*">Co. Dublin<\/span>/,
+      /<span class="[^"]*text-ink-muted[^"]*">Co. Dublin<\/span>/,
     );
+    expect(markup).not.toMatch(/font-display|italic|uppercase/);
     expect(markup).toContain("Chart");
     expect(markup).toContain("Forecast on the wind map");
   });

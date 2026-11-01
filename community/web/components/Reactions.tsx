@@ -11,11 +11,13 @@ import { Popover } from "./Popover";
 export const reactionStyles = tv({
   slots: {
     base: "flex flex-wrap items-center gap-1",
-    // A tag on the second sheet, as the kit's chip is: the face, then its count in the figures' face.
+    // An outlined capsule, as the kit's outlined button is, so it reads on the
+    // opening post's soft card and on the ground alike: the face, then its
+    // count.
     chip: [
-      "inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-line bg-sunken px-2",
-      "font-mono text-caption font-semibold text-ink-2 tabular-nums transition-colors duration-fast",
-      "not-disabled:hover:border-ink pointer-coarse:min-h-touch pointer-coarse:px-3",
+      "inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-line bg-transparent px-2",
+      "font-body text-label font-semibold text-ink-2 tabular-nums transition-colors duration-fast",
+      "not-disabled:hover:bg-line pointer-coarse:min-h-touch pointer-coarse:px-3",
       RING,
     ],
     face: [
@@ -25,12 +27,11 @@ export const reactionStyles = tv({
     ],
   },
   variants: {
-    // Yours: outlined and raised as well as filled, and said with aria-pressed.
-    // Raised as a paper control is: a lip of light and a contact shadow.
+    // Yours: filled in ink, as a pressed chip is, and said with aria-pressed.
     mine: {
       true: {
-        chip: "border-ink bg-card text-ink shadow-raised not-disabled:hover:border-ink",
-        face: "border border-ink bg-card shadow-raised",
+        chip: "border-transparent bg-inverse text-ink-inverse not-disabled:hover:bg-inverse",
+        face: "bg-sunken ring-1 ring-line-strong",
       },
     },
   },
@@ -127,6 +128,7 @@ export function ReactionPicker({
 }: ReactionPickerProps) {
   return (
     <Popover
+      variant="quiet"
       size="sm"
       side={side}
       icon
@@ -134,7 +136,7 @@ export function ReactionPicker({
       panelLabel="Reactions"
       grid
       onOpenChange={onOpenChange}
-      label={<SmilePlus size={15} strokeWidth={1.5} aria-hidden="true" />}
+      label={<SmilePlus size={16} strokeWidth={1.75} aria-hidden="true" />}
     >
       {(close) => (
         <ReactionFaces

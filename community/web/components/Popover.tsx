@@ -12,16 +12,15 @@ import { RING, tv } from "../../../ui/tv";
 export const popoverStyles = tv({
   slots: {
     base: "relative inline-flex",
-    // The chart's box, hung from its trigger: paper ruled in ink with the
-    // hairline inside. A menu is a sheet, so it takes a sheet's corner, and
-    // it floats as a box over the chart does. Padded clear of that corner, so
-    // a row's ring is not cut by it; the rows are ruled, so they stay square.
+    // The kit's floating card (ui/Card `float`), hung from its trigger: the
+    // ground with the float shadow, and in dark a faint edge. Padded clear of
+    // its corner, so a row's ring is not cut by it.
     panel:
-      "absolute z-popover flex w-max min-w-44 flex-col rounded-dialog border border-ink bg-card paper-float p-2 font-body shadow-float inset-shadow-frame animate-menu-in motion-reduce:animate-none",
-    // A row of a panel that is a list of choices: the menu's row, on a hairline.
+      "absolute z-popover flex w-max min-w-44 flex-col gap-0.5 rounded-surface bg-ground p-1.5 font-body shadow-float animate-menu-in motion-reduce:animate-none dark:ring-1 dark:ring-line",
+    // A row of a panel that is a list of choices: a wash under the pointer.
     item: [
-      "flex min-h-control-md w-full cursor-pointer items-center gap-2 border-0 border-b border-line px-2 text-left font-display text-body whitespace-nowrap text-ink-2 last:border-b-0",
-      "pointer-coarse:min-h-touch not-disabled:hover:bg-transparent not-disabled:hover:text-chart-magenta",
+      "flex min-h-control-md w-full cursor-pointer items-center gap-2 rounded-control border-0 bg-transparent px-2.5 text-left font-body text-body font-medium whitespace-nowrap text-ink-2",
+      "pointer-coarse:min-h-touch not-disabled:hover:bg-sunken not-disabled:hover:text-ink",
       RING,
     ],
     check: "ml-auto shrink-0",
@@ -37,7 +36,7 @@ export const popoverStyles = tv({
     // The picker is a grid of faces, not a list of words.
     grid: { true: { panel: "min-w-0 grid grid-cols-6 gap-0.5" } },
     // The choice that stands: heavier, and ticked.
-    chosen: { true: { item: "font-semibold text-ink italic" } },
+    chosen: { true: { item: "font-semibold text-ink" } },
   },
   defaultVariants: { align: "end", side: "bottom" },
 });

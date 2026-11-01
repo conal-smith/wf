@@ -1,39 +1,42 @@
 /**
- * The community's header: the site's masthead, with Community beside the name.
- * The site menu, the way home, and on the right what a member does from any
- * page: start a thread, read the bell, be themselves.
+ * The community's header: the site's one top bar (ui/TopBar.tsx), with what
+ * a member does from any page in it: start a thread, read the bell, be
+ * themselves. Which section this is, the page's own heading says.
  */
 import { UserButton } from "@clerk/clerk-react";
 import { LogIn, PlusCircle, UserRound } from "lucide-react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
+import { CHART_HREF, spotHref } from "../../force5/src/siteNav";
 import { useSiteAuth } from "../../shared/web/auth";
-import { Button } from "../../ui";
-import { Masthead, MastheadMark, mastheadStyles } from "../../ui/Masthead";
+import { Button, SpotSearch, TopBar } from "../../ui";
 import { RING, tv } from "../../ui/tv";
 import { Bell } from "./components/Bell";
 import { ME, paths, routed } from "./router";
 
-/*
- * The site's masthead (ui/Masthead.tsx) with the community's own few actions.
- */
 export const headerStyles = tv({
   slots: {
+    actions: "flex items-center gap-2 max-wide:gap-1",
     // On a phone the way to start a thread is the page's own, not the bar's.
     newThread: "max-rail:hidden",
-    user: "inline-flex items-center px-2 font-body text-body text-ink-muted",
+    user: "inline-flex items-center px-1 font-body text-body text-ink-muted",
     // Their own name is the way to their own profile.
     me: [
-      "inline-flex min-h-control-sm items-center px-2 font-body text-body text-ink-muted no-underline decoration-1 underline-offset-4",
-      "transition-colors duration-fast not-disabled:hover:text-chart-magenta not-disabled:hover:underline",
+      "hidden min-h-control-sm items-center rounded-control px-2 font-body text-body text-ink-muted no-underline decoration-1 underline-offset-4 wide:inline-flex",
+      "transition-colors duration-fast not-disabled:hover:text-ink not-disabled:hover:underline",
       RING,
     ],
+    // The word beside the icon, where the row is wide enough to hold it.
+    label: "hidden wide:inline",
   },
 });
+
+/** A spot picked in the bar's search opens that spot's own page. */
+const openSpot = (spot: { id: string }) => location.assign(spotHref(spot.id));
 
 export interface HeaderProps {
   /**
    * One filled action per view: New thread is it, except on a view that brings
-   * a primary of its own, where it goes quiet.
+   * a primary of its own, where it goes back to the outline.
    */
   accentNew: boolean;
   /**
@@ -57,74 +60,69 @@ export function Header({
 }: HeaderProps) {
   const auth = useSiteAuth();
   const styles = headerStyles();
-  const masthead = mastheadStyles();
   return (
-    <Masthead>
-      <SiteMenu current="community" size="sm" ground="content" />
-      <a
-        {...routed(paths.home())}
-        className={masthead.brand()}
-        aria-label="wingfoil.ie Community, home"
-      >
-        <MastheadMark section="Community" />
-      </a>
-      <nav className={masthead.actions()} aria-label="Community">
-        {auth.signedIn ? (
-          <>
-            {newThread && (
-              <Button
-                {...routed(newThread)}
-                variant={accentNew ? "primary" : "outline"}
-                size="sm"
-                className={styles.newThread()}
-              >
-                <PlusCircle size={15} aria-hidden="true" />
-                <span>New thread</span>
-              </Button>
-            )}
-            <Bell unread={unread} onUnread={onUnread} pathname={pathname} />
-            {auth.provider === "clerk" ? (
-              <span className={styles.user()}>
-                {/* Clerk's own menu, with the way to the profile in it. */}
-                <UserButton>
-                  <UserButton.MenuItems>
-                    <UserButton.Link
-                      label="Your profile"
-                      labelIcon={<UserRound size={15} aria-hidden="true" />}
-                      href={paths.member(ME)}
-                    />
-                  </UserButton.MenuItems>
-                </UserButton>
-              </span>
-            ) : (
-              <a
-                {...routed(paths.member(ME))}
-                className={styles.me()}
-                aria-current={
-                  pathname === paths.member(ME) ? "page" : undefined
-                }
-              >
-                {auth.identity.name}
-              </a>
-            )}
-          </>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={auth.signIn}
-            disabled={auth.provider === "none" || !auth.loaded}
-            title={
-              auth.provider === "none"
-                ? "Signing in is not available on this version of the site"
-                : undefined
-            }
-          >
-            <LogIn size={15} aria-hidden="true" />
-            <span>Sign in</span>
-          </Button>
-        )}
-      </nav>
-    </Masthead>
+    <TopBar
+      search={<SpotSearch onPick={openSpot} />}
+      view={{ to: "chart", href: CHART_HREF }}
+      menu={<SiteMenu current="community" />}
+      actions={
+        <nav className={styles.actions()} aria-label="Community">
+          {auth.signedIn ? (
+            <>
+              {newThread && (
+                <Button
+                  {...routed(newThread)}
+                  variant={accentNew ? "primary" : "outline"}
+                  className={styles.newThread()}
+                >
+                  <PlusCircle size={18} strokeWidth={1.75} aria-hidden="true" />
+                  <span>New thread</span>
+                </Button>
+              )}
+              <Bell unread={unread} onUnread={onUnread} pathname={pathname} />
+              {auth.provider === "clerk" ? (
+                <span className={styles.user()}>
+                  {/* Clerk's own menu, with the way to the profile in it. */}
+                  <UserButton>
+                    <UserButton.MenuItems>
+                      <UserButton.Link
+                        label="Your profile"
+                        labelIcon={<UserRound size={15} aria-hidden="true" />}
+                        href={paths.member(ME)}
+                      />
+                    </UserButton.MenuItems>
+                  </UserButton>
+                </span>
+              ) : (
+                <a
+                  {...routed(paths.member(ME))}
+                  className={styles.me()}
+                  aria-current={
+                    pathname === paths.member(ME) ? "page" : undefined
+                  }
+                >
+                  {auth.identity.name}
+                </a>
+              )}
+            </>
+          ) : (
+            <Button
+              variant="quiet"
+              aria-label="Sign in"
+              onClick={auth.signIn}
+              disabled={auth.provider === "none" || !auth.loaded}
+              title={
+                auth.provider === "none"
+                  ? "Signing in is not available on this version of the site"
+                  : undefined
+              }
+            >
+              <LogIn size={18} strokeWidth={1.75} aria-hidden="true" />
+              <span className={styles.label()}>Sign in</span>
+            </Button>
+          )}
+        </nav>
+      }
+    />
   );
 }

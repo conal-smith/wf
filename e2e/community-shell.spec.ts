@@ -86,8 +86,13 @@ test("/community is the header, the rail from the API and one main column", asyn
   });
   await page.goto("/community");
 
+  // The site's one top bar: the wordmark home, and the page says which
+  // section this is.
   await expect(
-    page.getByRole("link", { name: "wingfoil.ie Community, home" }),
+    page.getByRole("link", { name: "wingfoil.ie, the Spot finder" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("Community", { exact: true }),
   ).toBeVisible();
   // Signed out on this build: Sign in, and nothing a reader cannot use.
   const actions = page.getByRole("navigation", { name: "Community" });

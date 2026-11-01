@@ -1,6 +1,6 @@
 /**
- * The spot a thread names, as the chart writes a spot up: its name in the
- * display face's italic, the county in the mono label, and, when the map's
+ * The spot a thread names, as the chart writes a spot up: its name, the
+ * county in a grey line, and, when the map's
  * data can be had, the hour now in figures (its stars, the wind and the gust
  * raised over it, where it comes from). No verdict on the day: a rider goes
  * by the hours, and the chart has them.
@@ -42,38 +42,34 @@ import {
 import { mapSpotHref } from "../../../force5/src/siteNav";
 import { windStop } from "../../../shared/web/windStops";
 import { Figure, StarGlyphs } from "../../../ui";
-import { MONO_LABEL, RING, tv, type VariantProps } from "../../../ui/tv";
+import { RING, tv, type VariantProps } from "../../../ui/tv";
 import type { Spot } from "./NewThreadDialog";
 
 export const spotCardStyles = tv({
   slots: {
-    // A box of its own inside the opening post: a box's corner and a card's
-    // contact shadow, but one ink rule and no hairline inside it, as a box
-    // inside another box is drawn.
+    // A box of its own inside the opening post's soft card: the ground, a
+    // box's corner, and no rule and no shadow.
     base: [
-      "group grid min-h-touch max-w-measure gap-2 rounded-surface border border-ink bg-ground px-4 py-3 font-body text-ink no-underline shadow-card",
+      "group grid min-h-touch max-w-measure gap-2 rounded-surface bg-ground px-4 py-3 font-body text-ink no-underline",
       "max-rail:px-3",
       RING,
     ],
     head: "flex min-w-0 items-baseline gap-2",
     name: [
-      "min-w-0 truncate font-display text-lead font-semibold italic transition-colors duration-fast",
-      "group-hover:text-chart-magenta motion-reduce:transition-none",
+      "min-w-0 truncate font-body text-prose font-semibold decoration-1 underline-offset-3",
+      "group-hover:underline",
     ],
-    county: ["shrink-0 text-ink-muted", MONO_LABEL],
-    // Where the card goes, set right: CHART ->, as the spot page's way back.
-    go: [
-      "ml-auto inline-flex shrink-0 items-center gap-1 self-center text-ink",
-      MONO_LABEL,
-    ],
+    county: "shrink-0 font-body text-body text-ink-muted",
+    // Where the card goes, set right: Chart ->, as the spot page's way back.
+    go: "ml-auto inline-flex shrink-0 items-center gap-1 self-center font-body text-body font-medium text-ink",
     // The hour now, in figures, on a hairline.
     now: "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-0 border-t border-line pt-2",
     // Wind is data: the swatch takes the ramp, and the number stays in ink.
     swatch: "h-5 w-1.5 shrink-0 rounded-full",
-    from: "font-mono text-caption text-ink-2",
-    label: ["text-ink-muted", MONO_LABEL],
-    dark: "font-mono text-caption text-ink-muted italic",
-    meta: "font-body text-body text-ink-muted italic",
+    from: "font-body text-body text-ink-2",
+    label: "font-body text-body text-ink-muted",
+    dark: "font-body text-body text-ink-muted",
+    meta: "font-body text-body text-ink-muted",
     hidden: "sr-only",
   },
   variants: {

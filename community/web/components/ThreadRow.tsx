@@ -1,8 +1,7 @@
 /**
- * A thread, as a row of a list: a letter on the letters page. A dateline in
- * the mono label (its channel, its tags, when it last moved), the title in the
- * display face, the last thing said in it, and who started it. The whole row
- * is one link to the thread.
+ * A thread, as a row of a list: a grey line over it (its channel, its tags,
+ * when it last moved), the title, the last thing said in it, and who started
+ * it. The whole row is one link to the thread.
  *
  * One markup for both widths. Beside the rail a row ends in a thumbnail and
  * a column of figures; below the rail breakpoint those stand down and the same
@@ -11,7 +10,7 @@
 import { Pin } from "lucide-react";
 import type { ReactNode } from "react";
 import { Figure } from "../../../ui";
-import { MONO_LABEL, RING, tv } from "../../../ui/tv";
+import { RING, tv } from "../../../ui/tv";
 import type { FollowReason, Member, Thread } from "../../shared/types";
 import { MENTION_PATTERN } from "../../shared/validate";
 import { paths, routed } from "../router";
@@ -19,59 +18,56 @@ import { keepRanges } from "../thread";
 
 export const threadRowStyles = tv({
   slots: {
-    // Rows divided by hairlines, on the page's own paper: no box round them.
+    // A row in the list's soft card (ThreadList), a wash under the pointer.
     row: [
-      "group flex items-start gap-5 border-b border-line py-4 text-ink no-underline transition-colors duration-fast",
-      "max-rail:gap-3 max-rail:py-3",
+      "group flex items-start gap-5 px-4 py-4 text-ink no-underline transition-colors duration-fast",
+      "not-disabled:hover:bg-line max-rail:gap-3 max-rail:py-3",
       RING,
       "not-disabled:focus-visible:-outline-offset-2",
     ],
     main: "grid min-w-0 flex-1 gap-1",
-    // The letter's dateline: where it was sent from, and when it last moved.
-    dateline: [
-      "m-0 flex min-w-0 items-baseline gap-2 text-ink-muted tabular-nums",
-      MONO_LABEL,
-    ],
+    // The grey line over the title: where it was posted, and when it last moved.
+    dateline:
+      "m-0 flex min-w-0 items-baseline gap-2 font-body text-body text-ink-muted tabular-nums",
     where: "flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2",
-    channel: "font-semibold text-ink-2",
+    channel: "font-medium text-ink-2",
     why: "text-ink-2",
     when: "shrink-0 whitespace-nowrap",
     title: [
-      "m-0 flex items-baseline gap-2 font-display text-lead font-normal text-balance text-ink-2",
-      "transition-colors duration-fast group-hover:text-chart-magenta max-rail:text-prose",
+      "m-0 flex items-baseline gap-2 font-body text-prose leading-tight font-medium text-balance text-ink-2",
+      "decoration-1 underline-offset-3 group-hover:underline",
     ],
     dot: "size-2 shrink-0 -translate-y-0.5 rounded-full bg-accent",
     titleText: "min-w-0",
-    preview: "m-0 truncate font-body text-prose text-ink-muted",
+    preview: "m-0 truncate font-body text-body text-ink-muted",
     byline:
-      "m-0 flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono text-caption text-ink-muted tabular-nums",
-    by: "font-display text-body font-semibold text-ink-2",
+      "m-0 flex flex-wrap items-baseline gap-x-2 gap-y-1 font-body text-body text-ink-muted tabular-nums",
+    by: "font-medium text-ink-2",
     // The figures, written into the byline: only where the column is not drawn.
     inline: "rail:hidden",
     // A thumbnail: a control's corner.
     thumb:
-      "h-14.25 w-19 shrink-0 rounded-control border border-line bg-sunken object-cover max-rail:hidden",
+      "h-14.25 w-19 shrink-0 rounded-control bg-ground object-cover max-rail:hidden",
     // The column of figures: replies, and how many of them are new.
     stats:
       "grid w-20 shrink-0 justify-items-end gap-1 pt-4 text-right max-rail:hidden",
-    statsLabel: ["text-ink-muted", MONO_LABEL],
+    statsLabel: "font-body text-label text-ink-muted",
     // Where a thread has no replies yet, a blank of the figure's height holds
-    // its place, so the pill under it stands at the same height on every row.
+    // its place, so the tag under it stands at the same height on every row.
     blank: "invisible grid justify-items-end gap-1",
-    fresh: [
-      "inline-flex h-5 items-center rounded-full bg-inverse px-2 leading-none whitespace-nowrap text-ink-inverse tabular-nums",
-      MONO_LABEL,
-    ],
+    fresh:
+      "inline-flex h-5.5 items-center rounded-full bg-inverse px-2 font-body text-label font-medium leading-none whitespace-nowrap text-ink-inverse tabular-nums",
     hidden: "sr-only",
     pinned: [
-      "group flex min-h-touch items-center gap-3 border-b border-line py-2 text-prose text-ink no-underline transition-colors duration-fast",
+      "group flex min-h-touch items-center gap-3 px-4 py-2 text-prose text-ink no-underline transition-colors duration-fast",
+      "not-disabled:hover:bg-line",
       RING,
       "not-disabled:focus-visible:-outline-offset-2",
     ],
     pin: "shrink-0 text-ink-muted",
     pinnedTitle:
-      "min-w-0 flex-1 truncate font-display font-semibold italic transition-colors duration-fast group-hover:text-chart-magenta",
-    pinnedLabel: ["shrink-0 text-ink-muted", MONO_LABEL],
+      "min-w-0 flex-1 truncate font-body font-semibold decoration-1 underline-offset-3 group-hover:underline",
+    pinnedLabel: "shrink-0 font-body text-body text-ink-muted",
   },
   variants: {
     // Unread is weight, a dot and a count, never colour alone.

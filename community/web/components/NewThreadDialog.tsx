@@ -16,6 +16,7 @@ import {
 import { useSiteAuth, type SiteAuth } from "../../../shared/web/auth";
 import {
   Button,
+  Chip,
   Dialog,
   Field,
   Notice,
@@ -23,7 +24,7 @@ import {
   TextArea,
   TextInput,
 } from "../../../ui";
-import { MONO_LABEL, RING, tv } from "../../../ui/tv";
+import { RING, tv } from "../../../ui/tv";
 import { LIMITS, type Channel, type ThreadInput } from "../../shared/types";
 import { threadInputSchema } from "../../shared/validate";
 import { ApiRequestError, useApi } from "../api";
@@ -38,25 +39,22 @@ import {
 export const newThreadStyles = tv({
   slots: {
     form: "grid gap-5",
-    where: ["m-0 flex flex-wrap items-center gap-1 text-ink-muted", MONO_LABEL],
+    where:
+      "m-0 flex flex-wrap items-center gap-1 font-body text-body text-ink-muted",
     channel: "inline-flex items-center gap-0.5 font-semibold text-ink",
-    tags: "flex flex-wrap gap-1",
-    tag: "",
+    tags: "flex flex-wrap gap-2",
     photos: "m-0 flex list-none flex-wrap gap-2 p-0",
     // A thumbnail: a control's corner, the picture cut to it.
-    photo:
-      "relative h-18 w-24 overflow-hidden rounded-control border border-line bg-sunken",
+    photo: "relative h-18 w-24 overflow-hidden rounded-control bg-sunken",
     image: "size-full object-cover",
-    // A small paper button over the picture, raised and lit so it reads
-    // against any photograph; under the pointer it turns to lit ink, as the
-    // kit's raised button does.
-    remove:
-      "absolute top-1 right-1 bg-card sheen-raised shadow-raised not-disabled:hover:sheen-ink not-disabled:hover:shadow-control",
+    // The kit's outlined button over the picture, with the deeper shadow a
+    // mark over a photograph carries, so it reads against any of them.
+    remove: "absolute top-1 right-1 shadow-marker",
     failed:
       "absolute inset-x-0 bottom-0 bg-warn-ground px-1 text-center text-caption text-warn",
     add: [
-      "grid h-18 w-24 cursor-pointer place-items-center rounded-control border border-dashed border-ink bg-ground text-ink-muted",
-      "transition-colors duration-fast not-disabled:hover:border-ink-muted not-disabled:hover:text-ink",
+      "grid h-18 w-24 cursor-pointer place-items-center rounded-control border border-dashed border-line-strong bg-ground text-ink-muted",
+      "transition-colors duration-fast not-disabled:hover:bg-sunken not-disabled:hover:text-ink",
       "disabled:cursor-default disabled:opacity-100",
       RING,
     ],
@@ -67,7 +65,6 @@ export const newThreadStyles = tv({
   variants: {
     // Still on its way to storage.
     busy: { true: { image: "animate-pulse motion-reduce:animate-none" } },
-    on: { false: { tag: "shadow-none" } },
   },
 });
 
@@ -403,7 +400,7 @@ function NewThreadDialog({
             <>
               <span>in</span>
               <span className={styles.channel()}>
-                <Hash size={13} strokeWidth={1.5} aria-hidden="true" />
+                <Hash size={13} strokeWidth={1.75} aria-hidden="true" />
                 {channel.name}
               </span>
               {auth.identity.name && <span aria-hidden="true">·</span>}
@@ -412,7 +409,7 @@ function NewThreadDialog({
           {auth.identity.name && <span>posting as {auth.identity.name}</span>}
         </p>
 
-        {failure && <Notice kind="warn">{failure}</Notice>}
+        {failure && <Notice level="warn" alert title={failure} />}
 
         {!channel && (
           <Field label="Channel" htmlFor={ids.into} error={errors.into}>
@@ -469,21 +466,18 @@ function NewThreadDialog({
                 .map((tag) => {
                   const on = tagIds.includes(tag.id);
                   return (
-                    <Button
+                    <Chip
                       key={tag.id}
-                      variant="outline"
-                      size="sm"
                       pressed={on}
                       // Three are picked: a fourth has to take one's place.
                       disabled={!on && tagIds.length >= LIMITS.tagsPerThread}
-                      className={newThreadStyles({ on }).tag()}
                       onClick={() => {
                         setTagIds(toggleTag(tagIds, tag.id));
                         mended("tagIds");
                       }}
                     >
                       {tag.label}
-                    </Button>
+                    </Chip>
                   );
                 })}
             </div>
@@ -533,7 +527,7 @@ function NewThreadDialog({
                   className={styles.remove()}
                   onClick={() => remove(photo)}
                 >
-                  <X size={14} strokeWidth={1.5} aria-hidden="true" />
+                  <X size={14} strokeWidth={1.75} aria-hidden="true" />
                 </Button>
               </li>
             ))}
@@ -545,7 +539,7 @@ function NewThreadDialog({
                   aria-label="Add photos"
                   onClick={() => file.current?.click()}
                 >
-                  <ImagePlus size={20} strokeWidth={1.5} aria-hidden="true" />
+                  <ImagePlus size={20} strokeWidth={1.75} aria-hidden="true" />
                 </button>
               </li>
             )}
@@ -607,7 +601,7 @@ export function NewThreadPill({ to }: NewThreadPillProps) {
       size="lg"
       className={styles.fab()}
     >
-      <Plus size={18} strokeWidth={1.5} aria-hidden="true" />
+      <Plus size={18} strokeWidth={1.75} aria-hidden="true" />
       New thread
     </Button>
   );

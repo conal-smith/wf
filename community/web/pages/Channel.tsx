@@ -3,12 +3,19 @@
  * threads in the one order there is: pinned first, then most recent activity,
  * so a reply bumps a thread.
  */
-import { BellPlus, BellRing, Compass, Lock, Tag } from "lucide-react";
+import {
+  BellPlus,
+  BellRing,
+  Compass,
+  Lock,
+  MessagesSquare,
+  Tag,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
 import type { UserRole } from "../../../site/shared/types";
-import { Button, Empty, Notice, Puffin, Skeleton } from "../../../ui";
+import { Button, Empty, Notice, Skeleton } from "../../../ui";
 import { tv } from "../../../ui/tv";
 import type { Channel as ChannelData } from "../../shared/types";
 import { useApi } from "../api";
@@ -32,7 +39,7 @@ export const channelStyles = tv({
     lede: "grid gap-1",
     // Who starts threads here, where it is only the team: at every width,
     // since the rail's lock is all a phone would otherwise have to go on.
-    policy: "inline-flex items-center gap-1.5 not-italic text-ink-muted",
+    policy: "inline-flex items-center gap-1.5 text-body text-ink-muted",
     // "Follow" is said at every width, so it never reads as the header's
     // bell beside it; "channel" is the word a phone can do without.
     followWhat: "max-rail:sr-only",
@@ -104,20 +111,22 @@ export function Channel({
   // The rail beside this says what went wrong, and holds the way to try again.
   if (channels.status === "error")
     return (
-      <Notice kind="warn">
-        <p>This channel could not be loaded.</p>
+      <Notice level="warn" title="This channel could not be loaded">
+        The list of channels says what went wrong, and holds the way to try
+        again.
       </Notice>
     );
   if (!listed)
     return (
       <Empty
+        as="h1"
         title="That channel does not exist"
-        icon={<Compass size={24} strokeWidth={1.5} aria-hidden="true" />}
+        icon={<Compass size={24} strokeWidth={1.75} />}
+        actions={
+          <Button {...routed(paths.home())}>Back to the community</Button>
+        }
       >
         <p>The link may be old, or the channel may have been archived.</p>
-        <Button {...routed(paths.home())} variant="outline">
-          Back to the community
-        </Button>
       </Empty>
     );
   return (
@@ -199,7 +208,7 @@ function Listed({
               )}
               {channel.postPolicy === "staff" && (
                 <span className={styles.policy()}>
-                  <Lock size={12} strokeWidth={1.5} aria-hidden="true" />
+                  <Lock size={12} strokeWidth={1.75} aria-hidden="true" />
                   {TEAM_STARTS}; anyone can reply.
                 </span>
               )}
@@ -216,9 +225,9 @@ function Listed({
               onClick={follow}
             >
               {channel.following ? (
-                <BellRing size={15} strokeWidth={1.5} aria-hidden="true" />
+                <BellRing size={15} strokeWidth={1.75} aria-hidden="true" />
               ) : (
-                <BellPlus size={15} strokeWidth={1.5} aria-hidden="true" />
+                <BellPlus size={15} strokeWidth={1.75} aria-hidden="true" />
               )}
               {/* Pressed says which; the words stay the same, as a toggle's do. */}
               <span>
@@ -228,7 +237,7 @@ function Listed({
           )
         }
       />
-      {failure && <Notice kind="warn">{failure}</Notice>}
+      {failure && <Notice level="warn" alert title={failure} />}
       <TagPills slug={channel.slug} tags={channel.tags} current={tagId} />
       <ThreadList
         state={feed.state}
@@ -241,29 +250,32 @@ function Listed({
           tag ? (
             <Empty
               title={`No threads tagged ${tag.label}`}
-              icon={<Tag size={24} strokeWidth={1.5} aria-hidden="true" />}
-            >
-              <Button {...routed(paths.channel(channel.slug))} variant="outline">
-                Show every thread
-              </Button>
-            </Empty>
+              icon={<Tag size={24} strokeWidth={1.75} />}
+              actions={
+                <Button {...routed(paths.channel(channel.slug))}>
+                  Show every thread
+                </Button>
+              }
+            />
           ) : (
-            <Empty title="No threads yet" icon={<Puffin size={40} />}>
-              {canStart ? (
-                <>
-                  <p>Nobody has written in here. It could be you.</p>
-                  {/* Quiet: the view's filled New thread is the header's, or
-                      the floating one on a phone. */}
-                  <Button
-                    {...routed(paths.newThread(channel.slug))}
-                    variant="outline"
-                  >
+            <Empty
+              title="No threads yet"
+              icon={<MessagesSquare size={24} strokeWidth={1.75} />}
+              actions={
+                canStart && (
+                  // Outlined: the view's filled New thread is the header's,
+                  // or the floating one on a phone.
+                  <Button {...routed(paths.newThread(channel.slug))}>
                     Start the first one
                   </Button>
-                </>
-              ) : (
-                <p>When the site’s team posts here, it will show up first.</p>
-              )}
+                )
+              }
+            >
+              <p>
+                {canStart
+                  ? "Nobody has written in here. It could be you."
+                  : "When the site’s team posts here, it will show up first."}
+              </p>
             </Empty>
           )
         }
