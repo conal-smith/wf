@@ -101,8 +101,15 @@
   --color-ground: #ffffff;
   --color-card: #ffffff;
   --color-solid: #ffffff;
-  /* The soft card a shade off the ground: a card, a well, a field, a row. */
+  /* The soft card a shade off the ground: a card, a row, a notice. */
   --color-sunken: #f5f5f7;
+  /* A control's fill on a soft card: the second grey, a shade deeper than
+     the card, so a field, a chip or a segmented well stays in sight on it. */
+  --color-raised: #e6e6eb;
+  /* The fill a control takes where it stands (`bg-well`): the soft grey on
+     the ground, the second grey inside a card (the `on-card` utility, which
+     every soft card carries, sets it there). */
+  --color-well: #f5f5f7;
   /* Paper laid over a photograph, which still shows a little through it. */
   --color-glass: #ffffffeb;
   --color-inverse: #111114;
@@ -459,9 +466,9 @@
 
   /* Heights, as named spacing: `h-control-md`, `min-h-touch`. A tap target is
      never shorter than touch. */
-  --spacing-control-sm: 30px;
+  --spacing-control-sm: 32px;
   --spacing-control-md: 40px;
-  --spacing-control-lg: 46px;
+  --spacing-control-lg: 48px;
   --spacing-touch: 44px;
 }
 
@@ -662,6 +669,18 @@
   }
 }
 
+/*
+ * A soft card's own: the controls inside it take the second grey for their
+ * fill (`bg-well`), so a field, a chip, a segmented well or a soft button
+ * does not vanish into the card it stands on. Card, Rows and Notice carry it.
+ */
+@utility on-card {
+  /* On two lines, so the drift check (scripts/lint-design-tokens.mjs) reads
+     it as the utility's and not as the token's own value. */
+  --color-well:
+    var(--color-raised);
+}
+
 /* The dark hours: a fine diagonal hatch in ink, as a chart shades what is
    not there to be used. Over a table cell, a strip of a day, a tide curve. */
 @utility hatch {
@@ -849,6 +868,8 @@
   --color-card: #0c0c0e;
   --color-solid: #0c0c0e;
   --color-sunken: #17171b;
+  --color-raised: #26262c;
+  --color-well: #17171b;
   --color-glass: #0c0c0eeb;
   --color-inverse: #f2f2f4;
   --color-scrim: #0000008c;

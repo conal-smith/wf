@@ -11,7 +11,7 @@ export const cardStyles = tv({
   base: "min-w-0 rounded-surface text-ink",
   variants: {
     kind: {
-      soft: "bg-sunken",
+      soft: "bg-sunken on-card",
       float: "bg-ground shadow-float dark:ring-1 dark:ring-line",
     },
     pad: {

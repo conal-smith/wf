@@ -9,7 +9,7 @@ import { DISABLED, RING, tv, type VariantProps } from "./tv";
 export const segmentedStyles = tv({
   slots: {
     base: [
-      "inline-flex max-w-full shrink-0 overflow-x-auto rounded-full bg-sunken p-0.75 scrollbar-none",
+      "inline-flex max-w-full shrink-0 overflow-x-auto rounded-full bg-well p-0.75 scrollbar-none",
     ],
     item: [
       "inline-flex h-7.5 flex-auto items-center justify-center gap-1.5 rounded-full border-0 bg-transparent px-3",

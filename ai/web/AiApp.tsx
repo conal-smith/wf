@@ -41,7 +41,7 @@ const styles = tv({
       "max-wide:mb-4 max-wide:text-ai-intro-sm",
     ],
     // The apps in one soft card, a hairline between them inside it.
-    list: "m-0 list-none divide-y divide-line overflow-hidden rounded-surface bg-sunken p-0",
+    list: "m-0 list-none divide-y divide-line overflow-hidden rounded-surface bg-sunken p-0 on-card",
     // The name and its button, and under them, once pressed, the line
     // saying what is left to do.
     row: "flex flex-wrap items-center gap-x-4 px-5 py-3.5 max-wide:px-4 max-wide:py-3",

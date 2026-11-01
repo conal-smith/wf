@@ -220,6 +220,8 @@
   --sem-color-text-muted: var(--ref-color-ink-600);
   --sem-color-border-default: var(--ref-color-ink-a20);
   --sem-color-status-danger: var(--ref-color-warm-700);
+  --sem-color-raised: #e6e6eb;
+  --sem-color-well: #f5f5f7;
   --sem-font-family-display: var(--ref-font-family-display);
   --sem-font-family-body: var(--ref-font-family-body);
   --sem-font-family-mono: var(--ref-font-family-mono);
@@ -284,9 +286,9 @@
   --sem-space-x8: 32px;
   --sem-space-x10: 40px;
   --sem-space-x14: 56px;
-  --sem-size-control-sm: var(--ref-size-30);
+  --sem-size-control-sm: 32px;
   --sem-size-control-md: var(--ref-size-40);
-  --sem-size-control-lg: var(--ref-size-46);
+  --sem-size-control-lg: 48px;
   --sem-size-touch: var(--ref-size-44);
   --sem-radius-control: var(--ref-radius-10);
   --sem-radius-surface: var(--ref-radius-14);
@@ -395,6 +397,8 @@
   --sem-color-text-muted: var(--ref-color-night-muted);
   --sem-color-border-default: var(--ref-color-night-line);
   --sem-color-status-danger: var(--ref-color-night-warn);
+  --sem-color-raised: #26262c;
+  --sem-color-well: #17171b;
   --sem-shadow-control: 0 1px 2px #00000080;
   --sem-shadow-raised: 0 1px 2px #00000066;
   --sem-shadow-card: 0 1px 2px #00000066;
