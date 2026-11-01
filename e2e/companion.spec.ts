@@ -1,4 +1,4 @@
-import { chooseSpot, expect, test, type Page } from "./fixtures";
+import { barName, chooseSpot, expect, test, type Page } from "./fixtures";
 
 /**
  * Gust, the companion, against the real API with its scripted fake model
@@ -55,7 +55,7 @@ test("Gust answers a suggestion with lookups and a spot card, and shows it on th
   await expect(
     page.locator(`.spot-marker.sel[data-spot-id="${id}"]`),
   ).toBeVisible();
-  await expect(page.locator(".dock .dk-name")).toHaveText(name!);
+  await expect(barName(page)).toHaveText(name!);
   // Showing it moves no conversation along and leaves the panel where it was.
   await expect(panel(page)).toBeVisible();
 });
@@ -112,11 +112,11 @@ test("the conversation survives a reload, and a new chat clears it", async ({
   await expect(panel(page).getByText("Where to, rider?")).toBeVisible();
 });
 
-test("Ctrl+J toggles Gust and Escape closes him without closing the dock", async ({
+test("Ctrl+J toggles Gust and Escape closes him without closing the spot's week", async ({
   page,
 }) => {
   await openMap(page);
-  // A spot chosen, so there is a dock to keep open.
+  // A spot chosen, so there is a spot's week in the scrub bar to keep open.
   await chooseSpot(page);
   await page.keyboard.press("Control+j");
   await expect(panel(page)).toBeVisible();
@@ -126,14 +126,15 @@ test("Ctrl+J toggles Gust and Escape closes him without closing the dock", async
   await page.keyboard.press("Escape");
   await expect(panel(page)).toBeHidden();
   await expect(launcher(page)).toBeFocused();
-  await expect(page.locator(".dock")).toBeVisible();
+  await expect(page.locator('.scrub[data-spot="brandon"]')).toBeVisible();
+  await expect(barName(page)).toHaveCount(1);
   await page.keyboard.press("Control+j");
   await expect(panel(page)).toBeVisible();
   await page.keyboard.press("Control+j");
   await expect(panel(page)).toBeHidden();
 });
 
-test("the launcher covers none of the map's controls or the dock", async ({
+test("the launcher covers none of the map's controls or the scrub bar", async ({
   page,
 }) => {
   await openMap(page);

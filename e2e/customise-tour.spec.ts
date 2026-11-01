@@ -1,8 +1,11 @@
 import { SAMPLE_CLOCK } from "./columns";
 import {
+  barName,
+  barReady,
   expect,
   layersRail,
   openFromMenu,
+  scrubBar,
   siteRow,
   test,
   type Page,
@@ -10,8 +13,8 @@ import {
 
 /**
  * Settings (src/Settings.tsx) and the tour (src/Tour.tsx): Settings saves
- * to the preferences the stars are rated on, so the lights and the dock
- * re-rate as it closes; the tour is offered once, on a first visit, can be
+ * to the preferences the stars are rated on, so the lights and the spot's
+ * week in the scrub bar re-rate as it closes; the tour is offered once, on a first visit, can be
  * skipped, and is never offered again.
  *
  * A browser driven by Playwright is never offered the tour
@@ -34,26 +37,39 @@ const lightStars = (page: Page) =>
     return count;
   });
 
-const dockStars = (page: Page) =>
-  page
-    .locator(".dock tr.tt-stars td[data-i]")
-    .evaluateAll((cells) => cells.map((cell) => cell.innerHTML).join("|"));
+/**
+ * The stars' row under the spot's week, as it is drawn: each run of rated
+ * hours, and the stars of every hour along it (the shades of its gradient).
+ */
+const barStars = (page: Page) =>
+  scrubBar(page)
+    .locator(".sb-strip")
+    .evaluate((strip) =>
+      [
+        ...[...strip.querySelectorAll(".sb-stars rect")].map(
+          (run) => `${run.getAttribute("x")}+${run.getAttribute("width")}`,
+        ),
+        ...[...strip.querySelectorAll('linearGradient[id*="stars"] stop')].map(
+          (stop) =>
+            `${stop.getAttribute("offset")} ${stop.getAttribute("style")}`,
+        ),
+      ].join("|"),
+    );
 
-test("Settings holds the rider's settings on one page and saves them, and the lights and the dock re-rate", async ({
+test("Settings holds the rider's settings on one page and saves them, and the lights and the spot's week re-rate", async ({
   page,
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.clock.setFixedTime(AFTERNOON);
   await page.goto("/?spot=brandon");
-  await expect(
-    page.locator(".dock tr.tt-stars td[data-i] svg").first(),
-  ).toBeVisible({ timeout: 30000 });
+  await barReady(page);
+  await expect(scrubBar(page).locator(".sb-stars rect").nth(1)).toBeAttached();
   await expect(page.locator(".spot-marker.s5").first()).toBeAttached({
     timeout: 30000,
   });
   const lightsBefore = await lightStars(page);
-  const dockBefore = await dockStars(page);
+  const barBefore = await barStars(page);
 
   await openFromMenu(page, "Settings");
   const settings = page.getByRole("dialog", { name: "Settings" });
@@ -290,7 +306,7 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   await settings.getByRole("button", { name: "Save", exact: true }).click();
   await expect(settings).toHaveCount(0);
 
-  // Saved where the dock and every page read the rider.
+  // Saved where the chart and every page read the rider.
   const rider = await page.evaluate(
     () => JSON.parse(localStorage.getItem("force5.prefs.v1")!).rider,
   );
@@ -313,11 +329,16 @@ test("Settings holds the rider's settings on one page and saves them, and the li
     crossOff: 5,
     offshore: 5,
   });
-  // The lights re-rate: most beaches now see a wind they will not ride.
+  // The lights re-rate: most beaches now see a wind they will not ride. Read
+  // as a share of the lights rated: with the chart on the spot, a third of
+  // them are still pending their new rating long after the rest, and how
+  // many have it by the time of a look is a matter of timing.
+  const noStars = (count: number[]) =>
+    count[0] / count.reduce((sum, n) => sum + n, 0);
   await expect
-    .poll(async () => (await lightStars(page))[0], { timeout: 30000 })
-    .toBeGreaterThan(lightsBefore[0]);
-  await expect.poll(() => dockStars(page)).not.toBe(dockBefore);
+    .poll(async () => noStars(await lightStars(page)), { timeout: 30000 })
+    .toBeGreaterThan(Math.max(0.5, noStars(lightsBefore)));
+  await expect.poll(() => barStars(page)).not.toBe(barBefore);
 
   const storedMin = () =>
     page.evaluate(
@@ -393,9 +414,7 @@ test("Settings starts from ours over settings stored before 25 October 2026, wit
     ),
   );
   await page.goto("/?spot=brandon");
-  await expect(
-    page.locator(".dock tr.tt-stars td[data-i]").first(),
-  ).toBeAttached({ timeout: 30000 });
+  await barReady(page);
   await openFromMenu(page, "Settings");
   const settings = page.getByRole("dialog", { name: "Settings" });
   await expect(settings.locator(".st-stepper output")).toContainText("90");
@@ -430,21 +449,26 @@ test("the tour is offered on a first visit, can be skipped, and is not offered a
   );
   await prompt(page).getByRole("button", { name: "Take the tour" }).click();
   await expect(prompt(page)).toHaveCount(0);
-  await expect(card(page)).toContainText("Step 1 of 7");
+  await expect(card(page)).toContainText("Step 1 of 6");
   await expect(card(page)).toContainText("Spots on the map");
   // A ring is round a light.
   await expect(page.locator(".tour-ring path")).toBeVisible();
   await card(page).getByRole("button", { name: "Next" }).click();
-  // Tapping a light: the tour opens a spot's hours.
-  await expect(card(page)).toContainText("2 of 7");
-  await expect(page.locator(".dock")).toBeVisible({ timeout: 30000 });
+  // Tapping a light: the tour opens a spot's week in the scrub bar.
+  await expect(card(page)).toContainText("2 of 6");
+  await expect(page.locator(".scrub[data-spot]")).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(barName(page)).toHaveCount(1);
   await card(page).getByRole("button", { name: "Back" }).click();
-  await expect(card(page)).toContainText("1 of 7");
+  await expect(card(page)).toContainText("1 of 6");
   await card(page).getByRole("button", { name: "Next" }).click();
   await card(page).getByRole("button", { name: "Skip tour" }).click();
   await expect(card(page)).toHaveCount(0);
-  // The chart as it was: no spot was open, so none is.
-  await expect(page.locator(".dock")).toHaveCount(0);
+  // The chart as it was: no spot was open, so none is, and the scrub bar is
+  // the plain timeline again.
+  await expect(barName(page)).toHaveCount(0);
+  await expect(scrubBar(page)).toHaveClass(/\bis-bare\b/);
   expect(
     await page.evaluate((key) => localStorage.getItem(key), TOUR_KEY),
   ).toBe("seen");
@@ -475,16 +499,17 @@ test("No thanks is never asked again; Escape leaves the tour; the menu replays i
 
   // From the menu, at any time; Escape leaves it.
   await openFromMenuRow(page, "Take the tour");
-  await expect(card(page)).toContainText("1 of 7");
+  await expect(card(page)).toContainText("1 of 6");
   await page.keyboard.press("Escape");
   await expect(card(page)).toHaveCount(0);
 
-  // Through every card: the dock, the hours, the loupe, the blend, the menu, the layers.
+  // Through every card: the lights, a spot's week, the time, the loupe, the
+  // menu, the layers.
   await openFromMenuRow(page, "Take the tour");
-  const steps = ["lights", "dock", "hours", "loupe", "blend", "menu", "layers"];
+  const steps = ["lights", "bar", "time", "loupe", "menu", "layers"];
   for (const [i, id] of steps.entries()) {
     await expect(page.locator(".tour")).toHaveAttribute("data-step", id);
-    await expect(card(page)).toContainText(`${i + 1} of 7`);
+    await expect(card(page)).toContainText(`${i + 1} of 6`);
     await expect(page.locator(".tour-ring path")).toBeVisible({
       timeout: 15000,
     });
@@ -494,6 +519,7 @@ test("No thanks is never asked again; Escape leaves the tour; the menu replays i
       .getByRole("button", { name: i === steps.length - 1 ? "Finish" : "Next" })
       .click();
   }
+  await expect(page.locator(".tour")).toHaveAttribute("data-step", "end");
   await expect(card(page)).toContainText("That’s the end of the tour");
   await expect(card(page)).not.toContainText("Almanac");
   // Shut again, as it was before the tour.

@@ -1,5 +1,7 @@
 import {
   expect,
+  scrubBar,
+  timeSlider,
   openFromMenu,
   saveSettings,
   test,
@@ -10,11 +12,11 @@ import {
 /**
  * The loupe's ride rose (force5/src/focus.ts, drawn by WindMap.tsx): round the
  * chosen spot, at half a nautical mile, the headings the rider can hold at the
- * dock's hour, the no-go, the drift, the offshore winds and the needle.
+ * chart's hour, the no-go, the drift, the offshore winds and the needle.
  *
  * Dollymount's beach faces 125°. The hours are found in the sample
  * (scripts/sample-weather.mjs) as a rider would find them, by scrubbing the
- * dock: the first daylight hour whose wind is cross-shore, and the first that
+ * spot's week: the first daylight hour whose wind is cross-shore, and the first that
  * is offshore, each with the rider's wind to ride; Sunday 22:00 is dark.
  */
 test.use({ reducedMotion: "reduce" });
@@ -22,10 +24,9 @@ test.use({ reducedMotion: "reduce" });
 const DARK = "Sun 13 Sept, 22:00";
 const MIDDAY = "Mon 14 Sept, 14:00";
 
-const slider = (page: Page) =>
-  page.getByRole("slider", { name: "Forecast time" });
+const slider = timeSlider;
 
-/** The dock at an hour, by the words its slider says it in. */
+/** The chart at an hour, by the words the scrub bar's slider says it in. */
 async function hour(page: Page, when: string) {
   const s = slider(page);
   await s.press("Home");
@@ -33,11 +34,11 @@ async function hour(page: Page, when: string) {
     if ((await s.getAttribute("aria-valuetext")) === when) return;
     await s.press("ArrowRight");
   }
-  throw new Error(`The dock has no ${when}`);
+  throw new Error(`The strip has no ${when}`);
 }
 
 /**
- * The first hour in the dock whose foot box names this shore relation and
+ * The first hour of the strip whose foot box names this shore relation and
  * whose glass has its fans (daylight, wind enough): what it reads, and when.
  */
 async function firstHour(page: Page, relation: string) {
@@ -130,7 +131,7 @@ test("Dollymount's cross-shore hour: the no-go, out and home, and the wind at th
     page.locator('[data-spot-id="dollymount"] .lt-wedge path'),
   ).not.toHaveAttribute("d", /A/);
 
-  // It follows the dock: back at the start, another hour's reading.
+  // It follows the scrub bar: back at the start, another hour's reading.
   await slider(page).press("Home");
   await expect(r.locator(".map-loupe-reading")).not.toHaveText(reading);
 
@@ -202,20 +203,20 @@ test("a spot with no shore facing: no red, no out or home, the needle and the re
   expect(await labels(page)).not.toContain("Out");
 });
 
-test("on a phone the rose fits above the dock, and stays readable zoomed out or in", async ({
+test("on a phone the rose fits above the scrub bar, and stays readable zoomed out or in", async ({
   page,
 }) => {
   await open(page, "dollymount", 390, 844);
   const reading = await firstHour(page, "Cross");
   const r = rose(page);
   // Flown in to fit: the rim inside the screen's width, its foot box above
-  // the dock (the rim is the one fine line now, the bezel's inner edge).
+  // the scrub bar (the rim is the one fine line now, the bezel's inner edge).
   const rim = await page.locator(".map-loupe-edge.is-inner").boundingBox();
   expect(rim!.x).toBeGreaterThanOrEqual(0);
   expect(rim!.x + rim!.width).toBeLessThanOrEqual(390);
   const foot = await r.locator(".map-loupe-foot-box").boundingBox();
-  const dock = await page.locator(".dock").boundingBox();
-  expect(foot!.y + foot!.height).toBeLessThanOrEqual(dock!.y);
+  const bar = await scrubBar(page).boundingBox();
+  expect(foot!.y + foot!.height).toBeLessThanOrEqual(bar!.y);
   await expect(r.locator(".map-rose-fan.is-out")).toHaveCount(1);
   await expect(r.locator(".map-loupe-reading")).toHaveText(reading);
 
@@ -233,8 +234,8 @@ test("on a phone the rose fits above the dock, and stays readable zoomed out or 
   for (let i = 0; i < 6; i++) await zoomIn.click();
   await expect.poll(() => radius(page)).toBeGreaterThan(195);
   const pinned = await r.locator(".map-loupe-foot-box").boundingBox();
-  const dockNow = await page.locator(".dock").boundingBox();
-  expect(pinned!.y + pinned!.height).toBeLessThanOrEqual(dockNow!.y);
+  const barNow = await scrubBar(page).boundingBox();
+  expect(pinned!.y + pinned!.height).toBeLessThanOrEqual(barNow!.y);
   expect(pinned!.x).toBeGreaterThanOrEqual(0);
   expect(pinned!.x + pinned!.width).toBeLessThanOrEqual(390);
 });
