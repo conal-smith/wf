@@ -814,6 +814,7 @@ export default function Gallery() {
                 level="orange"
                 defaultOpen
                 title="Orange wind warning for Kerry"
+                detailsLabel="Details of the orange wind warning"
                 details="Wind warning: Kerry. Very strong southwest winds will veer westerly with severe gusts and coastal gales. Be aware of potential impacts: debris and loose objects displaced, large coastal waves, some fallen trees and branches."
               >
                 Mon 14 Sept, 13:00 to 16:00 ·{" "}
@@ -1075,6 +1076,40 @@ export default function Gallery() {
                 </Card>
               </div>
             </div>
+          </Spec>
+          <Spec label="Controls on a soft card take the second grey">
+            <Card className="grid gap-4">
+              <Segmented
+                aria-label="Wind in, on a card"
+                value={unit}
+                onChange={setUnit}
+                options={UNITS.slice(0, 3)}
+              />
+              <Line>
+                {STARS.slice(0, 3).map((s) => (
+                  <Chip
+                    key={s}
+                    pressed={stars === s}
+                    onClick={() => setStars(s)}
+                  >
+                    {s}
+                  </Chip>
+                ))}
+                <Tag>Unsure</Tag>
+              </Line>
+              <SearchField
+                aria-label="A spot's name, on a card"
+                placeholder="A spot’s name…"
+              />
+              <Line>
+                <Button variant="soft" size="sm">
+                  Use my location
+                </Button>
+                <Button variant="quiet" size="sm">
+                  Reset
+                </Button>
+              </Line>
+            </Card>
           </Spec>
           <Spec label="Avatar, count and pager">
             <Line>

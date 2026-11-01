@@ -367,8 +367,9 @@ describe("the flat kit's shapes", () => {
     ["outline", ["border-line", "bg-ground"]],
     // The one filled control.
     ["primary", ["bg-accent", "text-accent-ink"]],
-    // A grey fill, for a second action inside a card.
-    ["soft", ["bg-sunken"]],
+    // A grey fill, for a second action inside a card: the well, which is the
+    // second grey there.
+    ["soft", ["bg-well"]],
     // No edge: Reset, Clear, Skip, Close.
     ["quiet", ["border-transparent", "bg-transparent"]],
   ] as const)("%s is drawn in %j", (variant, names) => {
@@ -386,13 +387,15 @@ describe("the flat kit's shapes", () => {
   });
 
   it("is 32, 40 and 48px tall, and an icon button is a circle as wide", () => {
-    expect(words(buttonStyles({ size: "sm" }))).toContain("h-8");
-    expect(words(buttonStyles({ size: "md" }))).toContain("h-control-md");
-    expect(words(buttonStyles({ size: "lg" }))).toContain("h-12");
+    for (const size of ["sm", "md", "lg"] as const)
+      expect(words(buttonStyles({ size }))).toContain(`h-control-${size}`);
+    const css = build(["h-control-sm"]);
+    expect(css).toMatch(/--spacing-control-sm: 32px;/);
+    expect(css).toMatch(/--spacing-control-lg: 48px;/);
     for (const [size, width] of [
-      ["sm", "w-8"],
+      ["sm", "w-control-sm"],
       ["md", "w-control-md"],
-      ["lg", "w-12"],
+      ["lg", "w-control-lg"],
     ] as const) {
       const classes = words(buttonStyles({ icon: true, size }));
       for (const name of [width, "rounded-full", "p-0"])
@@ -405,7 +408,7 @@ describe("the flat kit's shapes", () => {
     const chip = words(chipStyles().base());
     for (const name of [
       "rounded-full",
-      "bg-sunken",
+      "bg-well",
       "font-body",
       "aria-pressed:bg-inverse",
       "aria-pressed:text-ink-inverse",
@@ -416,7 +419,7 @@ describe("the flat kit's shapes", () => {
 
   it("a tag is a small capsule, never in capitals, and only a glass one is glass", () => {
     const tag = words(tagStyles());
-    for (const name of ["rounded-full", "font-body", "bg-sunken", "text-ink-2"])
+    for (const name of ["rounded-full", "font-body", "bg-well", "text-ink-2"])
       expect(tag, name).toContain(name);
     expect(tagStyles({ tone: "off" })).toContain("text-pen-ink");
     for (const [name, recipe] of Object.entries(RECIPES)) {
@@ -428,7 +431,7 @@ describe("the flat kit's shapes", () => {
 
   it("a card is soft: a shade off the ground, a box's corner, no rule and no shadow", () => {
     const soft = words(cardStyles());
-    for (const name of ["bg-sunken", "rounded-surface", "p-5"])
+    for (const name of ["bg-sunken", "on-card", "rounded-surface", "p-5"])
       expect(soft, name).toContain(name);
     expect(soft.some((c) => /^(border|shadow-)/.test(c))).toBe(false);
     // Over the map it floats: the ground, the float shadow, a faint edge in dark.
@@ -447,7 +450,7 @@ describe("the flat kit's shapes", () => {
 
   it("the segmented control is a grey well, the chosen one lifted out of it", () => {
     const s = segmentedStyles();
-    expect(words(s.base())).toContain("bg-sunken");
+    expect(words(s.base())).toContain("bg-well");
     expect(words(s.base())).toContain("rounded-full");
     for (const name of [
       "aria-pressed:bg-ground",
@@ -461,7 +464,7 @@ describe("the flat kit's shapes", () => {
 
   it("a field is filled: the soft grey, no rule, the label above in grey", () => {
     const box = words(controlStyles().box());
-    for (const name of ["bg-sunken", "border-transparent", "rounded-control"])
+    for (const name of ["bg-well", "border-transparent", "rounded-control"])
       expect(box, name).toContain(name);
     expect(box).not.toContain("border-b");
     const field = fieldStyles();
@@ -476,7 +479,7 @@ describe("the flat kit's shapes", () => {
 
   it("a search is a soft grey pill, not a rule to write on", () => {
     const base = words(searchFieldStyles().base());
-    for (const name of ["bg-sunken", "rounded-full", "border-transparent"])
+    for (const name of ["bg-well", "rounded-full", "border-transparent"])
       expect(base, name).toContain(name);
     expect(base).not.toContain("border-b");
     expect(base).not.toContain("bg-transparent");
@@ -509,6 +512,35 @@ describe("the flat kit's shapes", () => {
     ])
       expect(list, name).toContain(name);
     expect(words(rowsStyles().title())).toContain("font-semibold");
+  });
+
+  /*
+   * A control fills with the well: the soft grey on the ground, the second
+   * grey (raised) inside a soft card, which carries `on-card` to set it.
+   * So a field, a chip or a segmented well never vanishes into its card.
+   */
+  it("every soft card sets the well, and every control fills from it", () => {
+    for (const [name, classes] of [
+      ["Card", cardStyles()],
+      ["Rows", rowsStyles().list()],
+      ["Notice", noticeStyles().base()],
+    ] as const) {
+      expect(words(classes), name).toContain("bg-sunken");
+      expect(words(classes), name).toContain("on-card");
+    }
+    expect(words(cardStyles({ kind: "float" }))).not.toContain("on-card");
+    for (const [name, classes] of [
+      ["soft button", buttonStyles({ variant: "soft" })],
+      ["chip", chipStyles().base()],
+      ["tag", tagStyles()],
+      ["segmented", segmentedStyles().base()],
+      ["field", controlStyles().box()],
+      ["search", searchFieldStyles().base()],
+      ["number", numberFieldStyles().base()],
+    ] as const) {
+      expect(words(classes), name).toContain("bg-well");
+      expect(words(classes), name).not.toContain("bg-sunken");
+    }
   });
 
   it("a switch is a flat track that fills in ink when on", () => {
@@ -650,10 +682,10 @@ describe("states", () => {
    * `link`, whose answer is "none".
    */
   it.each([
-    ["outline", "not-disabled:hover:bg-sunken"],
+    ["outline", "not-disabled:hover:bg-well"],
     ["primary", "not-disabled:hover:bg-accent"],
     ["soft", "not-disabled:hover:bg-line"],
-    ["quiet", "not-disabled:hover:bg-sunken"],
+    ["quiet", "not-disabled:hover:bg-well"],
     ["link", "not-disabled:hover:bg-transparent"],
     ["danger", "not-disabled:hover:bg-warn-ground"],
   ] as const)("%s names the background its hover has", (variant, name) => {
@@ -1320,6 +1352,12 @@ describe("the components, rendered", () => {
     expect(noticeStyles({ level: "yellow" }).mark()).toContain("bg-met-yellow");
     expect(noticeStyles({ level: "red" }).mark()).toContain("bg-met-red");
     expect(noticeStyles({ level: "water" }).mark()).toContain("bg-warn-ground");
+    // The plain and the advice squares: the second grey, in sight on the card.
+    expect(noticeStyles({ level: "info" }).mark()).toContain("bg-raised");
+    expect(noticeStyles({ level: "water-advice" }).mark()).toContain(
+      "bg-raised",
+    );
+    expect(noticeMarkStyles({ level: "info" }).square()).toContain("bg-raised");
   });
 
   it("Notice interrupts only when asked, and has a second line and an action", () => {
@@ -1372,6 +1410,16 @@ describe("the components, rendered", () => {
     expect(html(<Notice title="x" details="y" defaultOpen />)).toContain(
       'aria-expanded="true"',
     );
+    // A chevron named for what it opens, where a page has several.
+    expect(
+      html(
+        <Notice
+          title="x"
+          details="y"
+          detailsLabel="Details of the orange warning"
+        />,
+      ),
+    ).toContain('aria-label="Details of the orange warning"');
     // No details, no chevron.
     expect(html(<Notice title="x" />)).not.toContain("aria-expanded");
   });

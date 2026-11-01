@@ -62,6 +62,10 @@ const COLOURS: Record<string, string> = {
   card: "#ffffff",
   solid: "#ffffff",
   sunken: "#f5f5f7",
+  // A control's fill inside a soft card, and the fill a control takes
+  // (`bg-well`): the soft grey on the ground, the second grey on a card.
+  raised: "#e6e6eb",
+  well: "#f5f5f7",
   glass: "#ffffffeb",
   inverse: "#111114",
   // Behind a dialog: a dim wash, thicker where nothing blurs the page.
@@ -343,7 +347,18 @@ describe("ui/theme.css: the values", () => {
       ...Object.keys(COLOURS),
       ...windRamp().map(([step]) => `wind-${step}`),
     ];
-    expect(declared.sort()).toEqual(expected.sort());
+    // A name set again by a utility (`on-card` sets the well) is one name.
+    expect([...new Set(declared)].sort()).toEqual(expected.sort());
+  });
+
+  // Inside a soft card a control's fill is the second grey, so it does not
+  // vanish into the card: `on-card` sets the well to it there.
+  it("sets the well to the raised grey on a card, and leaves it the soft grey elsewhere", () => {
+    const css = build(["on-card", "bg-well"]).replace(/\s+/g, " ");
+    expect(css).toMatch(/\.on-card \{ --color-well: var\(--color-raised\); \}/);
+    expect(rule(build(["bg-well"]), "bg-well")).toContain(
+      "background-color: var(--color-well);",
+    );
   });
 
   it("copies the wind ramp verbatim from the PALETTE that paints the map", () => {
@@ -476,9 +491,9 @@ describe("ui/theme.css: the values", () => {
   });
 
   it.each([
-    ["control-sm", "30px"],
+    ["control-sm", "32px"],
     ["control-md", "40px"],
-    ["control-lg", "46px"],
+    ["control-lg", "48px"],
     ["touch", "44px"],
   ])("control height %s is %s, as named spacing", (name, value) => {
     const css = build([`h-${name}`, `min-h-${name}`]);
