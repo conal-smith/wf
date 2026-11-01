@@ -587,8 +587,9 @@ function WavesSection({ climate }: { climate: Climate }) {
   const [size, setSize] = useState<SwellSize>("all");
   const sizeIndex = SWELL_SIZES.findIndex((z) => z.value === size);
   const heightTop = niceScale(Math.max(...waves.height.map((h) => h[2])), 4).top;
+  // Room above the tallest candle for its day count.
   const candleTop = niceScale(
-    Math.max(0.5, ...waves.candles.flat().map((c: Candle) => c[3] ?? 0)),
+    Math.max(0.5, ...waves.candles.flat().map((c: Candle) => c[3] ?? 0)) * 1.12,
     4,
   ).top;
   const roseParts = ROSE_PERIODS.map((label, b) => ({ label, className: PERIOD_FILL[b] }));
