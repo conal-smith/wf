@@ -55,8 +55,8 @@ export const notificationRowStyles = tv({
     on: {
       popover: { face: "ring-ground", list: "divide-y divide-line" },
       page: {
-        face: "bg-ground ring-sunken",
-        list: "divide-y divide-line rounded-surface bg-sunken p-1",
+        face: "ring-sunken",
+        list: "divide-y divide-line rounded-surface bg-sunken p-1 on-card",
       },
     },
   },

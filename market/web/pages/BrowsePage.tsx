@@ -75,7 +75,7 @@ export const browseStyles = tv({
     open: {
       true: {
         panel:
-          "max-wide:grid max-wide:grid-cols-1 max-wide:gap-3 max-wide:rounded-surface max-wide:bg-sunken max-wide:p-3",
+          "max-wide:grid max-wide:grid-cols-1 max-wide:gap-3 max-wide:rounded-surface max-wide:bg-sunken max-wide:p-3 max-wide:on-card",
       },
     },
   },

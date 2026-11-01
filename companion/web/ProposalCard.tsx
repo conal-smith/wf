@@ -20,7 +20,7 @@ export function ProposalCard({
 }) {
   return (
     <article
-      className="flex flex-col gap-3 rounded-surface bg-sunken p-4 font-body text-ink"
+      className="flex flex-col gap-3 rounded-surface bg-sunken p-4 font-body text-ink on-card"
       aria-label="Rider profile proposal"
     >
       <div className="flex items-start gap-3">

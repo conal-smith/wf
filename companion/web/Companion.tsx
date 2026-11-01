@@ -393,7 +393,7 @@ function Welcome({
         </p>
       </div>
       <ul
-        className="m-0 flex list-none flex-col divide-y divide-line overflow-hidden rounded-surface bg-sunken p-0"
+        className="m-0 flex list-none flex-col divide-y divide-line overflow-hidden rounded-surface bg-sunken p-0 on-card"
         aria-label="Suggestions"
       >
         {asks.map((ask) => (

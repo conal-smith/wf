@@ -54,7 +54,7 @@ export const profileStyles = tv({
     actions: "flex flex-wrap items-center justify-end gap-2",
     edit: "self-start",
     // The one setting, as a row in a soft card (ui/Rows).
-    settings: "grid gap-2 rounded-surface bg-sunken p-1",
+    settings: "grid gap-2 rounded-surface bg-sunken p-1 on-card",
     // The whole row is the switch: a target a thumb finds.
     setting: [
       "flex min-h-14 w-full cursor-pointer items-center justify-between gap-5 rounded-control border-0 bg-transparent px-3 py-3 text-left font-body text-ink",

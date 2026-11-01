@@ -56,7 +56,7 @@ export function SpotCard({ card, onShow, compact = false }: SpotCardProps) {
   if (compact)
     return (
       <article
-        className="flex items-center gap-3 rounded-surface bg-sunken px-4 py-2.5 font-body text-ink"
+        className="flex items-center gap-3 rounded-surface bg-sunken px-4 py-2.5 font-body text-ink on-card"
         aria-label={`${card.name}, ${card.county}`}
         data-spot-card={card.id}
       >
@@ -98,7 +98,7 @@ export function SpotCard({ card, onShow, compact = false }: SpotCardProps) {
     );
   return (
     <article
-      className="flex flex-col gap-3 rounded-surface bg-sunken p-4 font-body text-ink"
+      className="flex flex-col gap-3 rounded-surface bg-sunken p-4 font-body text-ink on-card"
       aria-label={`${card.name}, ${card.county}`}
       data-spot-card={card.id}
     >
@@ -157,10 +157,7 @@ export function SpotCard({ card, onShow, compact = false }: SpotCardProps) {
             />
           </dl>
           {best.shore && (
-            <Tag
-              tone={offshore ? "off" : "neutral"}
-              className={offshore ? "self-start" : "self-start bg-ground"}
-            >
+            <Tag tone={offshore ? "off" : "neutral"} className="self-start">
               {offshore && (
                 <TriangleAlert
                   size={12}

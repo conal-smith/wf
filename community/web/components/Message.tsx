@@ -49,7 +49,6 @@ export const messageStyles = tv({
     replyToLine: "min-w-0 truncate",
     // The byline: the face, the name, and the time set right.
     head: "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1",
-    face: "",
     // The name is the way to the member's profile: a link in ink, said as one
     // on hover and focus, as the chart's other names are.
     name: [
@@ -82,9 +81,7 @@ export const messageStyles = tv({
     // The one card: the opening post, on the soft ground.
     opening: {
       true: {
-        base: "gap-3 bg-sunken p-5 max-rail:p-4",
-        // On the ground, so the face stands out of the card.
-        face: "bg-ground",
+        base: "gap-3 bg-sunken p-5 on-card max-rail:p-4",
         column: "gap-3",
         tools: "top-3 right-3",
       },
@@ -460,7 +457,6 @@ function Byline({
         name={message.author.displayName}
         src={message.author.avatarUrl}
         size={opening ? "md" : "sm"}
-        className={styles.face()}
       />
       <a
         {...routed(paths.member(message.author.handle))}

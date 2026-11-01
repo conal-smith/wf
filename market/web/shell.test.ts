@@ -247,7 +247,7 @@ describe("S1: Tailwind and ui/ only, everywhere in the marketplace", () => {
     );
     // The kit's soft round in Inter: no ink ring, no italic serif.
     const face = html(createElement(Avatar, { name: "aoife" }));
-    expect(face).toMatch(/class="[^"]*bg-sunken[^"]*font-body/);
+    expect(face).toMatch(/class="[^"]*bg-well[^"]*font-body/);
     expect(face).not.toMatch(/border-ink|italic|font-display/);
   });
 });
@@ -573,7 +573,7 @@ describe("the tabs, on the seller's page and the account", () => {
 
   it("is the kit's tab: the one being read on a soft pill, in ink", () => {
     const tab = tabStyles().tab().split(" ");
-    expect(tab).toContain("aria-selected:bg-sunken");
+    expect(tab).toContain("aria-selected:bg-well");
     expect(tab).toContain("aria-selected:text-ink");
     expect(tab).toContain("pointer-coarse:min-h-touch");
     expect(tab).not.toContain("uppercase");

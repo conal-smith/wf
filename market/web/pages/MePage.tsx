@@ -48,7 +48,7 @@ export const meStyles = tv({
     stack: "flex min-w-0 flex-col gap-8",
     group: "flex min-w-0 flex-col gap-3",
     /** One listing to a row, in one soft card, a hairline between them. */
-    list: "m-0 flex list-none flex-col divide-y divide-line rounded-surface bg-sunken p-0",
+    list: "m-0 flex list-none flex-col divide-y divide-line rounded-surface bg-sunken p-0 on-card",
     /*
      * A listing and what can be done to it, side by side until they cannot.
      */
@@ -304,7 +304,7 @@ function MyListings({
           </Link>
           {listing.status === "active" ? (
             <Button
-              variant="outline"
+              variant="soft"
               size="sm"
               disabled={busy === listing.id}
               onClick={() => setStatus(listing, "sold")}
@@ -313,7 +313,7 @@ function MyListings({
             </Button>
           ) : (
             <Button
-              variant="outline"
+              variant="soft"
               size="sm"
               disabled={busy === listing.id}
               onClick={() => setStatus(listing, "active")}

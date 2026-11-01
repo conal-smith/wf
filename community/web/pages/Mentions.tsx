@@ -22,7 +22,7 @@ export const mentionsStyles = tv({
   slots: {
     base: "flex flex-col gap-4",
     // Rows in one soft card, a hairline between them, as the thread rows are.
-    list: "m-0 flex list-none flex-col divide-y divide-line overflow-hidden rounded-surface bg-sunken p-0",
+    list: "m-0 flex list-none flex-col divide-y divide-line overflow-hidden rounded-surface bg-sunken p-0 on-card",
     // A message that names you.
     row: [
       "group flex items-start gap-3 px-4 py-4 text-ink no-underline transition-colors duration-fast",
@@ -30,8 +30,6 @@ export const mentionsStyles = tv({
       RING,
       "not-disabled:focus-visible:-outline-offset-2",
     ],
-    // The face, on the ground so it stands out of the card.
-    face: "bg-ground",
     main: "grid min-w-0 flex-1 gap-1",
     line: "m-0 font-body text-prose text-ink-2",
     strong: "font-semibold text-ink",
@@ -86,7 +84,6 @@ export function MentionRow({ item, now }: { item: MentionItem; now?: Date }) {
         name={message.author.displayName}
         src={message.author.avatarUrl}
         size="sm"
-        className={styles.face()}
       />
       <span className={styles.main()}>
         <span className={styles.line()}>
