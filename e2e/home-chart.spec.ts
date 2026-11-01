@@ -146,11 +146,24 @@ test.describe("on a wide screen", () => {
     await expect(page.locator(".map-lights.is-moving")).toHaveCount(0);
     await page.waitForTimeout(400);
     await expect(page.locator(".map-lights.is-moving")).toHaveCount(0);
-    await page.locator('.spot-marker[data-spot-id="dollymount"]').hover();
-    await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveAttribute(
-      "data-lit",
-      "",
-    );
+    // Brandon's light, which its card has just brought to the chart's middle.
+    // Not Dollymount's: the hovers have panned the chart west (a card whose
+    // light sits near the edge pans it to the middle, src/chartPanel.ts
+    // inView), and Dublin is off the chart, a light nobody can point at. The
+    // test's hover scrolled the clipped chart to reach it, and the light then
+    // slid from under the pointer.
+    const brandon = page.locator('.spot-marker[data-spot-id="brandon"]');
+    const box = (await panel(page).boundingBox())!;
+    const at = (await brandon.boundingBox())!;
+    expect(at.x).toBeGreaterThan(box.x);
+    expect(at.x + at.width).toBeLessThan(box.x + box.width);
+    expect(at.y).toBeGreaterThan(box.y);
+    expect(at.y + at.height).toBeLessThan(box.y + box.height);
+    await brandon.hover();
+    await expect(
+      cards(page).filter({ hasText: "Brandon Bay" }),
+    ).toHaveAttribute("data-lit", "");
+    await expect(page.locator("[data-spot-card][data-lit]")).toHaveCount(1);
     expect(
       await page.evaluate(
         () => document.querySelector(".map-canvas")?.className ?? "",
