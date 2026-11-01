@@ -57,7 +57,10 @@ mode of each shadow is a deeper, plainer black):
 | `--shadow-control` | `sem.shadow.control` | `0 1px 2px #11111433` | the chosen segment, a switch's thumb |
 
 A card on a page casts no shadow: it is `bg-sunken rounded-surface` and
-nothing else. There are no frames, sheens or gradients, so the bundle holds
+nothing else. Inside it, a control's fill is the second grey: controls fill
+with `--color-well` (`bg-well`), which is `sunken` on the ground, and the
+`on-card` utility that a soft card carries sets it to `--color-raised`
+(`#e6e6eb` white, `#26262c` dark). There are no frames, sheens or gradients, so the bundle holds
 none.
 
 The mobile app reads the theme's values through

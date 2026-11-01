@@ -60,7 +60,9 @@ attribute. Design and check every view in both.
 | Token | White / dark | Use |
 | --- | --- | --- |
 | `ground`, `card`, `solid` | `#ffffff` / `#0c0c0e` | The page, and a box floating over the map. |
-| `sunken` | `#f5f5f7` / `#17171b` | The soft card: a card, a well, a field, a list of rows, the current menu row. |
+| `sunken` | `#f5f5f7` / `#17171b` | The soft card: a card, a list of rows, a notice, the current menu row. |
+| `raised` | `#e6e6eb` / `#26262c` | The second grey: a control's fill on a soft card, a plain notice's square. |
+| `well` | `sunken`, or `raised` on a card | The fill every control takes (`bg-well`): a field, a chip, a tag, a segmented well, a soft button. On the ground it is the soft grey; inside a soft card, which carries the `on-card` utility, it is the second grey, so the control stays in sight. |
 | `glass` | ground at 92% | A badge over a photograph only (`Tag tone="glass"`). Never over the map. |
 | `ink` | `#111114` / `#f2f2f4` | Text, and the filled button's fill. |
 | `ink-2` | `#3a3a40` / `#c9c9cf` | Secondary text, a label above a field. |
@@ -120,7 +122,12 @@ from 720px, with `optical-display`.
 
 - **Spacing** is the 4px step (`p-4` is 16px). Root font size is 14px.
 - **Cards.** `Card` (`bg-sunken rounded-surface`, no border, no shadow) on a
-  page; cards are kept apart by space, not by a rule. Over the map a box
+  page; cards are kept apart by space, not by a rule. A soft card carries the
+  `on-card` utility (`Card`, `Rows` and `Notice` do it themselves), which
+  turns the controls inside it from the soft grey to the second grey
+  (`bg-well` becomes `raised`): a field, a chip or a segmented well on a card
+  never vanishes into it. A control is filled with `bg-well`, never
+  `bg-sunken`, so it follows the card it stands on. Over the map a box
   floats instead (`Card kind="float"`: the ground, `shadow-float`, and in dark
   a faint `ring-line` edge so it separates from the chart).
 - **Hairlines** (`border-line`) only inside a card: between rows, above a
