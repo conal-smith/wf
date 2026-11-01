@@ -9,11 +9,11 @@ import { tv, type VariantProps } from "./tv";
  * warning"), a second line (when, and what it does to the stars), and a
  * chevron that opens the details. No capital chip, no coloured bar down the
  * side. Met Éireann's yellow, orange and red keep their own colours; bathing
- * water is a drop on the warm tint.
+ * water is a drop on the pen's tint.
  */
 export const noticeStyles = tv({
   slots: {
-    base: "grid grid-cols-notice items-start gap-x-3.5 gap-y-0.5 rounded-surface bg-sunken px-4 py-3.5 font-body text-ink",
+    base: "grid grid-cols-notice items-start gap-x-3.5 gap-y-0.5 rounded-surface bg-sunken px-4 py-3.5 font-body text-ink on-card",
     mark: "row-span-2 grid size-9 place-items-center rounded-control",
     title: "min-w-0 pt-px text-prose leading-tight font-semibold text-pretty",
     meta: "col-start-2 min-w-0 text-body leading-normal text-ink-2",
@@ -25,15 +25,13 @@ export const noticeStyles = tv({
   },
   variants: {
     level: {
-      // A plain notice's square, and bathing water's advice: a grey a shade
-      // lighter than the card it is on.
-      info: { mark: "bg-line text-ink-2" },
+      info: { mark: "bg-raised text-ink-2" },
       warn: { mark: "bg-warn-ground text-pen-ink" },
       yellow: { mark: "bg-met-yellow text-photo-shade" },
       orange: { mark: "bg-met-orange text-photo-line" },
       red: { mark: "bg-met-red text-photo-line" },
       water: { mark: "bg-warn-ground text-pen-ink" },
-      "water-advice": { mark: "bg-line text-depth" },
+      "water-advice": { mark: "bg-raised text-depth" },
     },
   },
   defaultVariants: { level: "info" },
@@ -63,6 +61,11 @@ export interface NoticeProps {
   details?: ReactNode;
   /** The details open from the first. */
   defaultOpen?: boolean;
+  /**
+   * The chevron's name for a screen reader: "Details" unless said, better
+   * the notice's own ("Details of the orange wind warning").
+   */
+  detailsLabel?: string;
   /** An action on the right in place of the chevron: Try again. */
   action?: ReactNode;
   /**
@@ -79,6 +82,7 @@ export function Notice({
   children,
   details,
   defaultOpen = false,
+  detailsLabel = "Details",
   action,
   alert = false,
   className,
@@ -107,7 +111,7 @@ export function Notice({
             size="sm"
             icon
             className={styles.end()}
-            aria-label="Details"
+            aria-label={detailsLabel}
             aria-expanded={open}
             aria-controls={detailsId}
             onClick={() => setOpen((was) => !was)}
@@ -147,13 +151,13 @@ export const noticeMarkStyles = tv({
       md: { base: "text-prose", square: "size-7 rounded-control" },
     },
     level: {
-      info: { square: "bg-line text-ink-2" },
+      info: { square: "bg-raised text-ink-2" },
       warn: { square: "bg-warn-ground text-pen-ink" },
       yellow: { square: "bg-met-yellow text-photo-shade" },
       orange: { square: "bg-met-orange text-photo-line" },
       red: { square: "bg-met-red text-photo-line" },
       water: { square: "bg-warn-ground text-pen-ink" },
-      "water-advice": { square: "bg-line text-depth" },
+      "water-advice": { square: "bg-raised text-depth" },
     },
   },
   defaultVariants: { size: "sm", level: "info" },

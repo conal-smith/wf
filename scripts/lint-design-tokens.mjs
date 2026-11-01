@@ -60,6 +60,8 @@ const MAP = {
   "--color-card": "sem.color.card",
   "--color-solid": "sem.color.solid",
   "--color-sunken": "sem.color.sunken",
+  "--color-raised": "sem.color.raised",
+  "--color-well": "sem.color.well",
   "--color-glass": "sem.color.glass",
   "--color-inverse": "sem.color.inverse",
   "--color-scrim": "sem.color.scrim",

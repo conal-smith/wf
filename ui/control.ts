@@ -10,7 +10,7 @@ export const controlStyles = tv({
     // A filled field: the soft card's grey, no rule round it, the ink edge
     // and a soft ring of the accent when it holds the focus.
     box: [
-      "flex min-h-11 min-w-0 items-center gap-2.5 rounded-control border border-transparent bg-sunken px-3.5",
+      "flex min-h-11 min-w-0 items-center gap-2.5 rounded-control border border-transparent bg-well px-3.5",
       "font-body text-ink transition-colors duration-fast",
       "focus-within:border-ink focus-within:ring-3 focus-within:ring-focus/20",
       // Wrong is said by the Field's message as well as by the warm ground.

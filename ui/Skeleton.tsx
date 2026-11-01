@@ -1,7 +1,7 @@
 import { tv, type VariantProps } from "./tv";
 
 export const skeletonStyles = tv({
-  // The hairline's grey, which shows on a soft card as well as on the ground.
+  // The hairline's grey, which shows on the ground and on a soft card alike.
   base: "block animate-pulse bg-line motion-reduce:animate-none",
   variants: {
     shape: {

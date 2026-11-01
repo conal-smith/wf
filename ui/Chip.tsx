@@ -9,7 +9,7 @@ import { DISABLED, RING, tv } from "./tv";
 export const chipStyles = tv({
   slots: {
     base: [
-      "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-0 bg-sunken px-3",
+      "inline-flex h-control-sm shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-0 bg-well px-3",
       "font-body text-body font-medium whitespace-nowrap text-ink",
       "touch-manipulation transition-colors duration-fast pointer-coarse:min-h-touch",
       "not-disabled:hover:bg-line",
