@@ -368,7 +368,7 @@ coloured the same forecast differently. That was a second way for colour to
 describe wind, which the wind rule forbids, and it confused: the same 20 knots
 was green for one rider and orange for another. They are drawn on `PALETTE` now,
 as the dock and the spot page already were, and the palette was redrawn as
-Windy, Windguru and Windfinder draw theirs: pale blue in a calm, deepening to
+the common wind forecast sites draw theirs: pale blue in a calm, deepening to
 10 kn; greens from 10 to 20; yellow by the high 20s; orange to red from 30 to
 40; red to purple by 50; dark purple to nearly black past 60. The rider's level
 moves the stars, the wedge and the lights, never the colour. The map's key

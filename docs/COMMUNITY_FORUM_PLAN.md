@@ -206,8 +206,8 @@ Set aside, as **map work with its own plan**, not forum work:
   and mocked, then moved out of scope: it is a feature of the map.
 - *More spots.* `docs/IRISH_SPOTS_SOURCES.md` already sets the rules, which
   stand: Fáilte Ireland's open data and OpenStreetMap may be harvested with
-  attribution; Windy's and Surfline's catalogues are not to be scraped, their
-  terms forbid it; nothing unreviewed is published.
+  attribution; other forecast services' spot catalogues are not to be scraped
+  without permission, their terms forbid it; nothing unreviewed is published.
 - *Blowing now*, a panel of live wind at recently discussed spots. Cut: a second
   consumer of forecast data, for decoration.
 

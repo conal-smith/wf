@@ -32,7 +32,7 @@ Treat this as an operator-location candidate, not a surveyed launch, access poin
 ## Other sources
 
 - [OSM Ireland and Northern Ireland extract](https://download.geofabrik.de/europe/ireland-and-northern-ireland.html): useful supplement, but sport tags alone are sparse and miss operators such as Blast. A research query returned only six relevant sport-tagged records. Do not use [public Nominatim](https://operations.osmfoundation.org/policies/nominatim/) for bulk POI extraction or autocomplete.
-- Windy and Surfline: do not scrape their spot catalogues without permission. Their [Windy terms](https://account.windy.com/agreements/windy-terms-of-use) and [Surfline terms](https://www.surfline.com/terms-of-use) restrict automated collection or extraction. A one-time scrape still needs permission where required.
+- Other forecast services: do not scrape their spot catalogues without permission. Their terms commonly restrict automated collection or extraction. A one-time scrape still needs permission where required.
 
 ## Suggested one-time import
 
