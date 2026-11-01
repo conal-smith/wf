@@ -78,21 +78,24 @@
   width: max-content;
   max-width: 240px;
   padding: 9px 11px;
-  /* A tooltip over the chart: a control's corner, the edge every box has,
-     and the float's lift. */
+  /* A tooltip over the chart: a control's corner and the float's lift, with
+     no frame; in dark, a faint edge. */
   border-radius: var(--radius-control);
-  background: var(--color-solid) var(--gradient-float);
-  border: 1px solid var(--color-ink);
-  box-shadow: var(--inset-shadow-frame), var(--shadow-float);
-  font-size: 11px;
+  background: var(--color-solid);
+  box-shadow: var(--shadow-float);
+  font-size: 12px;
   color: var(--color-ink);
   pointer-events: none;
 }
+:root[data-theme="dark"] .chart-hover-card {
+  box-shadow:
+    var(--shadow-float),
+    0 0 0 1px var(--color-line);
+}
 .chart-hover-card > strong {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 1.1px;
   color: var(--color-ink-muted);
   margin-bottom: 5px;
 }
@@ -133,7 +136,7 @@
 .chart-hover-card p {
   margin-top: 6px;
   padding-top: 5px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--color-line);
   font-size: 10px;
   color: var(--color-ink-muted);
 }
@@ -145,34 +148,49 @@
   font-family: var(--font-body);
 }
 .display-filter h2 {
-  margin: 16px 0 6px;
-  font: 500 10px/1.2 var(--font-mono);
-  color: var(--color-ink-muted);
+  margin: 20px 0 8px;
+  font: 600 13px/1.3 var(--font-body);
+  color: var(--color-ink);
 }
 .display-filter h2:first-child {
   margin-top: 0;
 }
+/* As the kit's Segmented draws a choice (ui/Segmented.tsx): a grey well, the
+   chosen one lifted out of it. */
 .filter-units {
   display: inline-flex;
-  border: 1px solid var(--color-ink);
-  border-radius: 999px;
-  overflow: hidden;
-  margin-top: 8px;
+  max-width: 100%;
+  padding: 3px;
+  border-radius: var(--radius-full);
+  background: var(--color-sunken);
 }
 .filter-units button {
+  height: 30px;
+  padding: 0 12px;
   border: 0;
+  border-radius: var(--radius-full);
   background: none;
-  padding: 5px 11px;
-  font: 500 10.5px var(--font-mono);
+  font: 500 13px var(--font-body);
   cursor: pointer;
-  color: var(--color-ink);
+  color: var(--color-ink-2);
 }
-.filter-units button + button {
-  border-left: 1px solid var(--color-line);
+@media (hover: hover) and (pointer: fine) {
+  .filter-units button:hover {
+    color: var(--color-ink);
+  }
+}
+.filter-units button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .filter-units button[aria-pressed="true"] {
-  background: var(--color-ink);
-  color: var(--color-ink-inverse);
+  background: var(--color-ground);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-control);
+}
+:root[data-theme="dark"] .filter-units button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--color-ink) 12%, transparent);
+  box-shadow: none;
 }
 .filter-models {
   display: flex;
@@ -182,9 +200,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 0;
+  padding: 7px 0;
   border-bottom: 1px solid var(--color-line);
-  font: 600 14px var(--font-display);
+  font: 500 13px var(--font-body);
   cursor: pointer;
 }
 .filter-model input {
@@ -196,7 +214,7 @@
   flex-direction: column;
 }
 .filter-model small {
-  font: 400 10px var(--font-mono);
+  font: 400 12px var(--font-body);
   color: var(--color-ink-muted);
 }
 .filter-model.is-planned,
@@ -230,15 +248,14 @@
 .filter-model-choice > [role="group"] button {
   flex: 1 1 auto;
   padding: 0 4px;
-  letter-spacing: 0.02em;
 }
 .filter-sub {
   margin-top: 6px;
-  font: 500 10px var(--font-mono);
+  font: 400 12px var(--font-body);
   color: var(--color-ink-muted);
 }
 .filter-note {
   margin: 8px 0 0;
-  font: italic 13px/1.35 var(--font-body);
+  font: 400 13px/1.4 var(--font-body);
   color: var(--color-ink-muted);
 }

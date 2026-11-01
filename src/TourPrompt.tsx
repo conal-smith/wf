@@ -7,7 +7,6 @@
 import "./tour.css";
 import { useEffect } from "react";
 import { Button } from "../ui/Button";
-import { Puffin } from "../ui/Puffin";
 
 export default function TourPrompt({
   onTour,
@@ -23,22 +22,19 @@ export default function TourPrompt({
   }, [onNo]);
   return (
     <div
-      className="tour-prompt chart-box"
+      className="tour-prompt"
       role="dialog"
       aria-labelledby="tour-prompt-t"
     >
-      <Puffin size={70} bob />
-      <div>
-        <h3 id="tour-prompt-t">New here?</h3>
-        <p>Take a 30-second tour of how the site works.</p>
-        <div className="tour-acts">
-          <Button variant="primary" onClick={onTour}>
-            Take the tour
-          </Button>
-          <Button variant="quiet" onClick={onNo}>
-            No thanks
-          </Button>
-        </div>
+      <h3 id="tour-prompt-t">New here?</h3>
+      <p>Take a 30-second tour of how the site works.</p>
+      <div className="tour-acts">
+        <Button variant="primary" onClick={onTour}>
+          Take the tour
+        </Button>
+        <Button variant="quiet" onClick={onNo}>
+          No thanks
+        </Button>
       </div>
     </div>
   );

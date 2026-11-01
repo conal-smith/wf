@@ -11,7 +11,6 @@ import {
 } from "react";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
-import { Puffin } from "../ui/Puffin";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { Wordmark } from "../ui/Wordmark";
 import { MODEL_CATALOG, modelHue } from "../force5/src/catalog";
@@ -329,9 +328,6 @@ export default function MapInfo({
         aria-labelledby={`${ids}-${shown}`}
         tabIndex={0}
       >
-        <p className="mi-kick" aria-hidden="true">
-          {part.glyph(14)} {part.name}
-        </p>
         <h3>{part.name}</h3>
         {body[shown]()}
       </div>
@@ -848,29 +844,19 @@ function AboutPart() {
   return (
     <>
       <div className="mi-about">
-        <div>
-          <Wordmark size="lg" />
-          <p className="mi-lede">
-            The wind for Ireland&rsquo;s wing foilers, read hour by hour, spot
-            by spot.
-          </p>
-        </div>
-        <Puffin size={80} />
+        <Wordmark size="lg" />
+        <p className="mi-lede">
+          The wind for Ireland&rsquo;s wing foilers, read hour by hour, spot by
+          spot.
+        </p>
       </div>
-      <h4>
-        The Almanac <small>our voice</small>
-      </h4>
-      <p>
-        The Almanac reads every forecast so you don&rsquo;t have to. The puffin
-        signs it, at the foot of the menu.
-      </p>
       <h4>
         The chart <small>our look</small>
       </h4>
       <p>
-        A plain chart in white or dark, set in Inter with Fraunces for names:
-        the chart&rsquo;s magenta for the best, red for the time now, and the
-        hour you are reading outlined.
+        A plain chart in dark or white, set in Inter: the chart&rsquo;s magenta
+        for the best, red for the time now, and the hour you are reading
+        outlined.
       </p>
     </>
   );
