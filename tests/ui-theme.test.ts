@@ -381,7 +381,10 @@ describe("ui/theme.css: the values", () => {
   it("is the colour index.html hands the browser chrome", () => {
     const html = readFileSync(resolve(ROOT, "index.html"), "utf8");
     const meta = html.match(/<meta name="theme-color" content="([^"]+)"/);
-    expect(meta?.[1]).toBe(variable(build(["bg-ground"]), "--color-ground"));
+    // Dark is the default theme, so the chrome is the dark ground.
+    const theme = readFileSync(resolve(ROOT, "ui/theme.css"), "utf8");
+    const dark = theme.slice(theme.indexOf(':root[data-theme="dark"]'));
+    expect(meta?.[1]).toBe(dark.match(/--color-ground: ([^;]+);/)?.[1]);
   });
 
   it.each(Object.entries(TYPE))(
