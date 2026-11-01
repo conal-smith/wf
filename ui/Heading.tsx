@@ -19,7 +19,8 @@ export const headingStyles = tv({
     base: "grid min-w-0 gap-y-1",
     line: "flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1",
     title: "m-0 min-w-0 font-body text-balance text-ink",
-    aside: "flex shrink-0 items-center gap-2 font-body text-body font-medium text-ink-muted",
+    aside:
+      "flex shrink-0 items-center gap-2 font-body text-body font-medium text-ink-muted",
     lead: "m-0 font-body text-prose leading-normal text-pretty text-ink-2",
   },
   variants: {

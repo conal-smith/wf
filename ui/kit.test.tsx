@@ -352,7 +352,11 @@ describe("the flat kit's shapes", () => {
       for (const pressed of [undefined, true] as const) {
         const classes = words(buttonStyles({ variant, pressed }));
         expect(
-          classes.filter((c) => /(^|:)(shadow-|bg-(linear|radial|gradient|none))|sheen|active:translate-y/.test(c)),
+          classes.filter((c) =>
+            /(^|:)(shadow-|bg-(linear|radial|gradient|none))|sheen|active:translate-y/.test(
+              c,
+            ),
+          ),
           `${variant} ${pressed}`,
         ).toEqual([]);
       }
@@ -375,7 +379,9 @@ describe("the flat kit's shapes", () => {
   it("only the outline and danger buttons draw an edge", () => {
     for (const variant of VARIANTS) {
       const edged = words(buttonStyles({ variant })).includes("border-line");
-      expect(edged, variant).toBe(variant === "outline" || variant === "danger");
+      expect(edged, variant).toBe(
+        variant === "outline" || variant === "danger",
+      );
     }
   });
 
@@ -427,7 +433,12 @@ describe("the flat kit's shapes", () => {
     expect(soft.some((c) => /^(border|shadow-)/.test(c))).toBe(false);
     // Over the map it floats: the ground, the float shadow, a faint edge in dark.
     const float = words(cardStyles({ kind: "float" }));
-    for (const name of ["bg-ground", "shadow-float", "dark:ring-1", "dark:ring-line"])
+    for (const name of [
+      "bg-ground",
+      "shadow-float",
+      "dark:ring-1",
+      "dark:ring-line",
+    ])
       expect(float, name).toContain(name);
     expect(words(cardStyles({ pad: "none" })).some((c) => /^p-/.test(c))).toBe(
       false,
@@ -458,7 +469,9 @@ describe("the flat kit's shapes", () => {
     expect(words(field.label())).toContain("font-body");
     expect(words(field.label())).not.toContain("uppercase");
     expect(words(field.hint())).toContain("text-ink-muted");
-    expect(words(controlStyles().input())).toContain("placeholder:text-ink-muted");
+    expect(words(controlStyles().input())).toContain(
+      "placeholder:text-ink-muted",
+    );
   });
 
   it("a search is a soft grey pill, not a rule to write on", () => {
@@ -488,17 +501,28 @@ describe("the flat kit's shapes", () => {
 
   it("rows stand in one soft card with a hairline between them", () => {
     const list = words(rowsStyles().list());
-    for (const name of ["bg-sunken", "rounded-surface", "divide-y", "divide-line"])
+    for (const name of [
+      "bg-sunken",
+      "rounded-surface",
+      "divide-y",
+      "divide-line",
+    ])
       expect(list, name).toContain(name);
     expect(words(rowsStyles().title())).toContain("font-semibold");
   });
 
   it("a switch is a flat track that fills in ink when on", () => {
     const s = switchStyles();
-    for (const name of ["rounded-full", "bg-line-strong", "aria-checked:bg-inverse"])
+    for (const name of [
+      "rounded-full",
+      "bg-line-strong",
+      "aria-checked:bg-inverse",
+    ])
       expect(words(s.base()), name).toContain(name);
     expect(s.base()).not.toMatch(/gradient|sheen/);
-    expect(words(s.thumb())).toContain("group-aria-checked/switch:translate-x-4.5");
+    expect(words(s.thumb())).toContain(
+      "group-aria-checked/switch:translate-x-4.5",
+    );
   });
 
   it("the wordmark is Fraunces at its own step, .ie in magenta italic", () => {
@@ -651,7 +675,9 @@ describe("states", () => {
         "pointer-coarse:min-h-touch",
       );
     expect(words(chipStyles().base())).toContain("pointer-coarse:min-h-touch");
-    expect(words(numberFieldStyles().step())).toContain("pointer-coarse:size-11");
+    expect(words(numberFieldStyles().step())).toContain(
+      "pointer-coarse:size-11",
+    );
     // A switch is smaller than a thumb: a band laid over it reaches touch.
     expect(words(switchStyles().base())).toEqual(
       expect.arrayContaining([
@@ -730,10 +756,15 @@ describe("one filled control", () => {
   it("no other control is drawn in the accent", () => {
     expect(checkboxStyles().input()).toContain("accent-inverse");
     expect(checkboxStyles().input()).not.toContain("accent-accent");
-    for (const recipe of [switchStyles, chipStyles, segmentedStyles, tabsStyles])
-      expect(JSON.stringify(classesOf(recipe as unknown as Recipe))).not.toMatch(
-        /bg-accent/,
-      );
+    for (const recipe of [
+      switchStyles,
+      chipStyles,
+      segmentedStyles,
+      tabsStyles,
+    ])
+      expect(
+        JSON.stringify(classesOf(recipe as unknown as Recipe)),
+      ).not.toMatch(/bg-accent/);
   });
 });
 
@@ -745,7 +776,10 @@ describe("fields on a touch device", () => {
       spotSearchStyles().input(),
     ])
       expect(words(input)).toContain("pointer-coarse:text-input");
-    for (const input of [controlStyles().input(), searchFieldStyles().input()]) {
+    for (const input of [
+      controlStyles().input(),
+      searchFieldStyles().input(),
+    ]) {
       expect(input).toContain("text-prose");
       expect(input).toContain("font-normal");
     }
@@ -780,9 +814,13 @@ describe("Dialog", () => {
     const s = dialogStyles();
     const base = words(s.base());
     expect(base).toContain("border-0");
-    expect(base.some((c) => /border-ink|inset-shadow|paper/.test(c))).toBe(false);
+    expect(base.some((c) => /border-ink|inset-shadow|paper/.test(c))).toBe(
+      false,
+    );
     // In dark a faint edge, so it separates from the dimmed page.
-    expect(base).toEqual(expect.arrayContaining(["dark:ring-1", "dark:ring-line"]));
+    expect(base).toEqual(
+      expect.arrayContaining(["dark:ring-1", "dark:ring-line"]),
+    );
     expect(s.head()).not.toMatch(/border/);
     expect(words(s.actions())).toEqual(
       expect.arrayContaining(["border-t", "border-line"]),
@@ -796,7 +834,9 @@ describe("Dialog", () => {
       </Dialog>,
     );
     const close = markup.match(/<button [^>]*aria-label="Close"[^>]*>/)![0];
-    expect(close).toContain(buttonStyles({ variant: "quiet", icon: true }).split(" ")[0]);
+    expect(close).toContain(
+      buttonStyles({ variant: "quiet", icon: true }).split(" ")[0],
+    );
     expect(close).not.toContain("border-line");
   });
 
@@ -826,7 +866,9 @@ describe("Dialog", () => {
         Body
       </Dialog>,
     );
-    expect(markup).toMatch(/<span class="[^"]*max-sm:block[^"]*" aria-hidden="true"><\/span>/);
+    expect(markup).toMatch(
+      /<span class="[^"]*max-sm:block[^"]*" aria-hidden="true"><\/span>/,
+    );
   });
 
   it("takes a name of its own over a changing title, and a figure in its head", () => {
@@ -1207,7 +1249,12 @@ describe("the components, rendered", () => {
       ),
     ).toMatch(/<h3 class="[^"]*text-lead/);
     const page = html(
-      <Heading level="page" id="t" lead="We rate every daylight hour." aside={<span>149</span>}>
+      <Heading
+        level="page"
+        id="t"
+        lead="We rate every daylight hour."
+        aside={<span>149</span>}
+      >
         How the stars work
       </Heading>,
     );
@@ -1221,18 +1268,30 @@ describe("the components, rendered", () => {
   it("Rows is a list in a card; a Row is a link, a button or a plain row", () => {
     const list = html(
       <Rows>
-        <Row inList href="/spot/dollymount" title="Dollymount" detail="Dublin" chevron />
+        <Row
+          inList
+          href="/spot/dollymount"
+          title="Dollymount"
+          detail="Dublin"
+          chevron
+        />
         <Row inList onClick={() => {}} title="Clear the stars" />
         <Row inList title="Cross-offshore" end="1 star off" />
       </Rows>,
     );
     expect(list).toMatch(/^<ul class="[^"]*bg-sunken/);
     expect(list.match(/<li>/g)).toHaveLength(3);
-    expect(list).toMatch(/<li><a href="\/spot\/dollymount" class="[^"]*cursor-pointer/);
-    expect(list).toMatch(/<li><button type="button" class="[^"]*cursor-pointer/);
+    expect(list).toMatch(
+      /<li><a href="\/spot\/dollymount" class="[^"]*cursor-pointer/,
+    );
+    expect(list).toMatch(
+      /<li><button type="button" class="[^"]*cursor-pointer/,
+    );
     expect(list).toMatch(/<li><div class="[^"]*">.*Cross-offshore/);
     // The chevron says "opens a page" and is not read.
-    expect(list).toMatch(/Dublin<\/span><\/span><span class="[^"]*"><svg [^>]*aria-hidden="true"/);
+    expect(list).toMatch(
+      /Dublin<\/span><\/span><span class="[^"]*"><svg [^>]*aria-hidden="true"/,
+    );
     expect(html(<Rows as="div" />)).toMatch(/^<div /);
     expect(html(<Row title="UKV" dim />)).toContain("text-ink-muted");
   });
@@ -1250,7 +1309,9 @@ describe("the components, rendered", () => {
       const markup = html(<Notice level={level} title={`${level} title`} />);
       expect(markup, level).toContain(`data-level="${level}"`);
       // The square: the level's colour and its sign, hidden from a reader.
-      const square = markup.match(/<span class="([^"]+)" aria-hidden="true"><svg/);
+      const square = markup.match(
+        /<span class="([^"]+)" aria-hidden="true"><svg/,
+      );
       expect(square, level).not.toBeNull();
       expect(square![1]).toBe(noticeStyles({ level }).mark());
       expect(markup).not.toMatch(/uppercase|border-l/);
@@ -1286,13 +1347,20 @@ describe("the components, rendered", () => {
 
   it("Notice's details open and close under a chevron that says so", () => {
     const view = mount(
-      <Notice level="yellow" title="Yellow small craft warning" details="Force 6 at times.">
+      <Notice
+        level="yellow"
+        title="Yellow small craft warning"
+        details="Force 6 at times."
+      >
         Stars still shown
       </Notice>,
     );
     const toggle = () =>
-      view.one((n) => n.type === "button" && n.props["aria-label"] === "Details");
-    const details = () => view.one((n) => n.props.id === toggle().props["aria-controls"]);
+      view.one(
+        (n) => n.type === "button" && n.props["aria-label"] === "Details",
+      );
+    const details = () =>
+      view.one((n) => n.props.id === toggle().props["aria-controls"]);
     expect(toggle().props["aria-expanded"]).toBe(false);
     expect(details().props.hidden).toBe(true);
     expect(text(details())).toBe("Force 6 at times.");
@@ -1301,9 +1369,9 @@ describe("the components, rendered", () => {
     expect(details().props.hidden).toBe(false);
     view.fire(toggle(), "onClick");
     expect(toggle().props["aria-expanded"]).toBe(false);
-    expect(
-      html(<Notice title="x" details="y" defaultOpen />),
-    ).toContain('aria-expanded="true"');
+    expect(html(<Notice title="x" details="y" defaultOpen />)).toContain(
+      'aria-expanded="true"',
+    );
     // No details, no chevron.
     expect(html(<Notice title="x" />)).not.toContain("aria-expanded");
   });
@@ -1311,7 +1379,9 @@ describe("the components, rendered", () => {
   it("NoticeMark is the level's small square and a word beside it", () => {
     const mark = html(<NoticeMark level="water">Water</NoticeMark>);
     expect(mark).toContain('data-notice-mark="water"');
-    expect(mark).toMatch(/<span class="[^"]*rounded-mark[^"]*" aria-hidden="true"><svg/);
+    expect(mark).toMatch(
+      /<span class="[^"]*rounded-mark[^"]*" aria-hidden="true"><svg/,
+    );
     expect(mark).toMatch(/<\/span>Water<\/span>$/);
     expect(noticeMarkStyles({ level: "orange" }).square()).toContain(
       "bg-met-orange",
@@ -1330,7 +1400,9 @@ describe("the components, rendered", () => {
         Did you mean Dollymount?
       </Empty>,
     );
-    expect(markup).toMatch(/<h2 class="[^"]*font-body[^"]*">No riding place at this address<\/h2>/);
+    expect(markup).toMatch(
+      /<h2 class="[^"]*font-body[^"]*">No riding place at this address<\/h2>/,
+    );
     expect(markup).toContain("Did you mean Dollymount?");
     expect(markup).toContain(">Dollymount</button>");
     const s = emptyStyles();
@@ -1434,7 +1506,12 @@ describe("the components, rendered", () => {
       { value: "force", label: "Force", disabled: true },
     ] as const;
     const markup = html(
-      <Segmented aria-label="Wind in" value="ms" onChange={() => {}} options={options} />,
+      <Segmented
+        aria-label="Wind in"
+        value="ms"
+        onChange={() => {}}
+        options={options}
+      />,
     );
     expect(markup).toMatch(/^<div role="group" aria-label="Wind in"/);
     expect(markup.match(/aria-pressed="true"/g)).toHaveLength(1);
@@ -1443,11 +1520,19 @@ describe("the components, rendered", () => {
 
     let value: string = "kn";
     const view = mount(
-      <Segmented aria-label="Wind in" value={value} onChange={(v) => (value = v)} options={options} />,
+      <Segmented
+        aria-label="Wind in"
+        value={value}
+        onChange={(v) => (value = v)}
+        options={options}
+      />,
     );
     const knots = view.one((n) => n.type === "button" && text(n) === "Knots");
     expect(knots.props["aria-pressed"]).toBe(true);
-    view.fire(view.one((n) => n.type === "button" && text(n) === "m/s"), "onClick");
+    view.fire(
+      view.one((n) => n.type === "button" && text(n) === "m/s"),
+      "onClick",
+    );
     expect(value).toBe("ms");
   });
 
@@ -1495,7 +1580,14 @@ describe("the new controls, pressed and keyed", () => {
           }}
         />,
       );
-    return { view, changes, rerender, get value() { return value; } };
+    return {
+      view,
+      changes,
+      rerender,
+      get value() {
+        return value;
+      },
+    };
   }
 
   it("Tabs is a tab list with one tab selected and in the tab order", () => {
@@ -1504,7 +1596,11 @@ describe("the new controls, pressed and keyed", () => {
     expect(list.props["aria-label"]).toBe("About the map");
     expect(list.props["aria-orientation"]).toBe("horizontal");
     const all = view.byRole("tab");
-    expect(all.map((t) => t.props["aria-selected"])).toEqual([true, false, false]);
+    expect(all.map((t) => t.props["aria-selected"])).toEqual([
+      true,
+      false,
+      false,
+    ]);
     expect(all.map((t) => t.props.tabIndex)).toEqual([0, -1, -1]);
   });
 
@@ -1561,25 +1657,45 @@ describe("the new controls, pressed and keyed", () => {
     expect(sw().props["aria-checked"]).toBe(true);
     view.fire(sw(), "onClick");
     expect(on).toBe(false);
-    expect(html(<Switch checked onChange={() => {}} aria-label="x" disabled />)).toMatch(
-      /role="switch" aria-checked="true"/,
-    );
+    expect(
+      html(<Switch checked onChange={() => {}} aria-label="x" disabled />),
+    ).toMatch(/role="switch" aria-checked="true"/);
   });
 
   it("Slider is the native range, with its value and unit beside it", () => {
     const markup = html(
-      <Slider value={35} min={10} max={50} unit="kn" onChange={() => {}} aria-label="Too strong in gusts above" />,
+      <Slider
+        value={35}
+        min={10}
+        max={50}
+        unit="kn"
+        onChange={() => {}}
+        aria-label="Too strong in gusts above"
+      />,
     );
-    expect(markup).toMatch(/<input [^>]*type="range"[^>]*min="10" max="50"[^>]*value="35"/);
+    expect(markup).toMatch(
+      /<input [^>]*type="range"[^>]*min="10" max="50"[^>]*value="35"/,
+    );
     expect(markup).toContain('aria-label="Too strong in gusts above"');
     expect(markup).toContain("--range-fill:62.5%");
     // The figure beside it is for the eye; the range says its own value.
-    expect(markup).toMatch(/<span class="[^"]*" aria-hidden="true">35<small class="[^"]*">kn<\/small><\/span>/);
+    expect(markup).toMatch(
+      /<span class="[^"]*" aria-hidden="true">35<small class="[^"]*">kn<\/small><\/span>/,
+    );
     let value = 35;
     const view = mount(
-      <Slider value={value} min={10} max={50} onChange={(v) => (value = v)} aria-label="x" />,
+      <Slider
+        value={value}
+        min={10}
+        max={50}
+        onChange={(v) => (value = v)}
+        aria-label="x"
+      />,
     );
-    view.type(view.one((n) => n.type === "input"), "40");
+    view.type(
+      view.one((n) => n.type === "input"),
+      "40",
+    );
     expect(value).toBe(40);
   });
 
@@ -1668,19 +1784,37 @@ describe("TopBar", () => {
     expect(order.every((at) => at > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(markup).toMatch(/<a href="\/"[^>]*><span class="[^"]*font-display/);
-    expect(markup).toMatch(/data-view-switch="chart"[^>]*>.*<span>Chart<\/span><\/a>/);
+    expect(markup).toMatch(
+      /data-view-switch="chart"[^>]*>.*<span>Chart<\/span><\/a>/,
+    );
   });
 
   it("names the other view, leaves out what it is not given, and is one hairline under", () => {
-    expect(bar({ view: { to: "spots", href: "/" } })).toContain("<span>Spots</span>");
-    const bare = bar({ search: undefined, actions: undefined, view: undefined, theme: false });
-    expect(bare).not.toMatch(/data-part="search"|data-part="actions"|data-view-switch|data-theme-button/);
+    expect(bar({ view: { to: "spots", href: "/" } })).toContain(
+      "<span>Spots</span>",
+    );
+    const bare = bar({
+      search: undefined,
+      actions: undefined,
+      view: undefined,
+      theme: false,
+    });
+    expect(bare).not.toMatch(
+      /data-part="search"|data-part="actions"|data-view-switch|data-theme-button/,
+    );
     expect(bare).toContain('data-part="menu"');
     const base = words(topBarStyles().base());
     expect(base).toEqual(
-      expect.arrayContaining(["border-b", "border-line", "h-16", "max-wide:h-14"]),
+      expect.arrayContaining([
+        "border-b",
+        "border-line",
+        "h-16",
+        "max-wide:h-14",
+      ]),
     );
-    expect(base.some((c) => /border-(ink|double)|border-b-\d/.test(c))).toBe(false);
+    expect(base.some((c) => /border-(ink|double)|border-b-\d/.test(c))).toBe(
+      false,
+    );
   });
 
   it("on a phone moves light or dark into the menu", () => {
@@ -1741,7 +1875,9 @@ describe("the chart's own primitives", () => {
     expect(markup).toContain('aria-label="3 of 5 stars, 4 on the wind alone"');
     expect(markup.match(/<path/g)).toHaveLength(4);
     expect(markup.match(/<circle/g)).toHaveLength(1);
-    const narrow = html(<StarGlyphs stars={2} potential={2} slots="potential" />);
+    const narrow = html(
+      <StarGlyphs stars={2} potential={2} slots="potential" />,
+    );
     expect(narrow.match(/<path/g)).toHaveLength(2);
     expect(narrow).not.toContain("<circle");
   });
@@ -1753,7 +1889,9 @@ describe("the chart's own primitives", () => {
     expect(three.match(/fill-stars-3/g)).toHaveLength(3);
     expect(three).not.toContain("<circle");
     expect(three.match(/fill-none/g)).toHaveLength(2);
-    expect(html(<StarGlyphs stars={5} coloured />).match(/fill-stars-5/g)).toHaveLength(5);
+    expect(
+      html(<StarGlyphs stars={5} coloured />).match(/fill-stars-5/g),
+    ).toHaveLength(5);
     const none = html(<StarGlyphs stars={0} coloured />);
     expect(none).not.toMatch(/fill-stars-/);
     expect(none.match(/stroke-ink\/25/g)).toHaveLength(5);

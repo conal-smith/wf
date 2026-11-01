@@ -61,7 +61,11 @@ describe("paper and ink", () => {
 
   // Flat: no frame, no grain and no sheen are left to paint with.
   it("draws no frame, grain or sheen", () => {
-    for (const gone of ["--inset-shadow-frame", "--texture-grain", "--gradient-"])
+    for (const gone of [
+      "--inset-shadow-frame",
+      "--texture-grain",
+      "--gradient-",
+    ])
       expect(css, gone).not.toContain(gone);
   });
 
@@ -191,9 +195,7 @@ describe("contrast, as the ruling records it", () => {
       "pen-ink",
       "warn",
     ])
-      expect(ruling, name).toContain(
-        quoted(contrast(resolved(name), paper)),
-      );
+      expect(ruling, name).toContain(quoted(contrast(resolved(name), paper)));
     expect(ruling).toContain(
       quoted(contrast(resolved("ink-muted"), resolved("sunken"))),
     );
@@ -220,7 +222,9 @@ describe("contrast, as the ruling records it", () => {
     const paper = resolved("ground");
     expect(contrast(resolved("pen-ink"), paper)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(resolved("pen"), paper)).toBeGreaterThanOrEqual(3);
-    expect(contrast(resolved("warn"), resolved("warn-ground"))).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrast(resolved("warn"), resolved("warn-ground")),
+    ).toBeGreaterThanOrEqual(4.5);
     expect(contrast(resolved("ok"), paper)).toBeGreaterThanOrEqual(4.5);
   });
 

@@ -104,7 +104,9 @@ describe("SpotSearch", () => {
     expect(s.names()).toEqual(["Brandon Bay", "Inch", "Béal Bán"]);
     expect(text(s.view.one((n) => n.props.role === "status"))).toBe("3 spots");
     // One list, not grouped, once something is typed.
-    expect(s.view.byRole("group").map((g) => text(g.children[0] as Drawn))).toEqual(["Spots"]);
+    expect(
+      s.view.byRole("group").map((g) => text(g.children[0] as Drawn)),
+    ).toEqual(["Spots"]);
   });
 
   it("lets go of accents and case, and underlines the part of the name typed", () => {
@@ -173,7 +175,9 @@ describe("SpotSearch", () => {
   it("says plainly when no spot matches, and offers no option to pick", () => {
     const s = search();
     type(s, "zzz");
-    const none = s.view.one((n) => n.props["data-spot-search-none"] !== undefined);
+    const none = s.view.one(
+      (n) => n.props["data-spot-search-none"] !== undefined,
+    );
     expect(text(none)).toBe("No spots match “zzz”");
     expect(s.options()).toHaveLength(0);
     expect(s.view.byRole("listbox")).toHaveLength(0);
@@ -186,7 +190,8 @@ describe("SpotSearch", () => {
     const s = search();
     type(s, "dolly");
     const clear = s.view.one(
-      (n) => n.type === "button" && n.props["aria-label"] === "Clear the search",
+      (n) =>
+        n.type === "button" && n.props["aria-label"] === "Clear the search",
     );
     s.view.fire(clear, "onClick");
     expect(s.field().props.value).toBe("");

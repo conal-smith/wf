@@ -335,7 +335,12 @@ describe("ui/theme.css: blur, measures and animation", () => {
 
   it("holds no texture, gradient or frame for anything to paint with", () => {
     const css = build([]);
-    for (const gone of ["--texture-", "--gradient-", "--inset-shadow-frame", "@keyframes bob"])
+    for (const gone of [
+      "--texture-",
+      "--gradient-",
+      "--inset-shadow-frame",
+      "@keyframes bob",
+    ])
       expect(css, gone).not.toContain(gone);
   });
 
@@ -348,7 +353,11 @@ describe("ui/theme.css: blur, measures and animation", () => {
   });
 
   it.each([
-    ["grid-cols-notice", "--grid-template-columns-notice", "36px minmax(0, 1fr) auto"],
+    [
+      "grid-cols-notice",
+      "--grid-template-columns-notice",
+      "36px minmax(0, 1fr) auto",
+    ],
     ["rounded-mark", "--radius-mark", "5px"],
     ["text-wordmark", "--text-wordmark", "23px"],
     ["text-wordmark-sm", "--text-wordmark-sm", "21px"],

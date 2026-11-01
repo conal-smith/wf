@@ -209,9 +209,8 @@ export default function Gallery() {
   const theme = useTheme();
   const [view, setView] = useState<"graph" | "table">("graph");
   const [unit, setUnit] = useState<(typeof UNITS)[number]["value"]>("kn");
-  const [model, setModel] = useState<(typeof MODELS)[number]["value"]>(
-    "harmonie",
-  );
+  const [model, setModel] =
+    useState<(typeof MODELS)[number]["value"]>("harmonie");
   const [answer, setAnswer] = useState<"no" | "little" | "yes">("little");
   const [order, setOrder] = useState<(typeof ORDERS)[number]["value"]>("best");
   const [stars, setStars] = useState<(typeof STARS)[number]>("4+ stars");
@@ -675,11 +674,18 @@ export default function Gallery() {
                 <option value="az">A to Z</option>
               </Select>
             </Field>
-            <SearchField aria-label="A spot's name" placeholder="A spot’s name…" />
+            <SearchField
+              aria-label="A spot's name"
+              placeholder="A spot’s name…"
+            />
             <Field label="Price" hint="In euro, whole" htmlFor="g-price">
               <TextInput id="g-price" prefix="€" inputMode="numeric" />
             </Field>
-            <Field label="Title" error="Give the thread a title" htmlFor="g-bad">
+            <Field
+              label="Title"
+              error="Give the thread a title"
+              htmlFor="g-bad"
+            >
               <TextInput id="g-bad" aria-invalid />
             </Field>
           </Spec>
@@ -962,7 +968,10 @@ export default function Gallery() {
               </>
             }
           >
-            <SearchField aria-label="A spot's name" placeholder="A spot’s name…" />
+            <SearchField
+              aria-label="A spot's name"
+              placeholder="A spot’s name…"
+            />
             <Field label="Order">
               <Segmented
                 aria-label="Order"

@@ -329,7 +329,8 @@ describe("ui/theme.css: the values", () => {
       new Set([...css.matchAll(/^\s*(--[a-z0-9-]+):/gm)].map((m) => m[1]));
     const known = names(light);
     const darkBlock = dark.slice(0, dark.indexOf("\n}"));
-    for (const name of names(darkBlock)) expect(known.has(name), name).toBe(true);
+    for (const name of names(darkBlock))
+      expect(known.has(name), name).toBe(true);
   });
 
   it("holds exactly those colours and the wind ramp, no others", () => {

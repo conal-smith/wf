@@ -256,9 +256,7 @@ export function mount(root: ReactElement): Mounted {
         path: here,
       };
       const ref = props.ref as
-        | { current: unknown }
-        | ((el: unknown) => void)
-        | undefined;
+        { current: unknown } | ((el: unknown) => void) | undefined;
       if (typeof ref === "function") ref(fake(here, type));
       else if (ref) ref.current = fake(here, type);
       return [drawn];
@@ -301,7 +299,8 @@ export function mount(root: ReactElement): Mounted {
 
   const fire: Mounted["fire"] = (node, handler, event = {}) => {
     const fn = node.props[handler] as ((e: unknown) => void) | undefined;
-    if (!fn) throw new Error(`render.testkit: <${node.type}> has no ${handler}`);
+    if (!fn)
+      throw new Error(`render.testkit: <${node.type}> has no ${handler}`);
     const target = fake(node.path, node.type);
     let prevented = false;
     busy = true;
