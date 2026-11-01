@@ -328,12 +328,19 @@ export function SpotSearch<S extends Findable>({
               event.preventDefault();
               event.stopPropagation();
               if (query) {
+                // The words go, and the list with them; the field stays.
                 setQuery("");
                 setActive(0);
+                setOpen(false);
               } else {
                 close(true);
                 if (!phone) input.current?.blur();
               }
+              return;
+            }
+            if (event.key === "ArrowDown" && !open) {
+              event.preventDefault();
+              setOpen(true);
               return;
             }
             if (!options.length) return;
