@@ -797,6 +797,40 @@
   --map-rain-heavy: rgba(24, 58, 140, 0.74);
 }
 
+/* ==== spot ===============================================================
+   The spot page as a spot report (backlog/mockups/2026-10-31-spot-page.html):
+   the figures on quiet cards, the loupe over the satellite picture at a size
+   that keeps its 10 m pixels sharp, the week as a row of cards, and the graph
+   with its row names in a fixed column. The photo's colours are the loupe's
+   own and do not re-theme: it always sits on a photograph. */
+@theme static {
+  --color-photo-line: #ffffff;
+  --color-photo-shade: #06080a;
+  --color-photo-pill: #0a0c0e;
+  --color-photo-red: #ff4d3d;
+  --color-photo-gust: #ffa45c;
+  --container-loupe: 420px;
+  --container-side: 300px;
+  --text-big: 40px;
+  --text-big--line-height: 1.05;
+  --text-big--font-weight: 600;
+  --text-big--letter-spacing: -0.035em;
+  --text-big-sm: 32px;
+  --text-big-sm--line-height: 1.05;
+  --text-big-sm--font-weight: 600;
+  --text-big-sm--letter-spacing: -0.03em;
+  --text-name: 54px;
+  --text-name--line-height: 1;
+  --text-name--font-weight: 600;
+  --text-name--letter-spacing: -0.025em;
+  --grid-template-columns-now: minmax(0, 1fr) minmax(320px, 420px);
+  --grid-template-columns-now-wide: minmax(0, 1fr) 420px 300px;
+  --grid-template-columns-week: repeat(7, minmax(118px, 1fr));
+  --grid-template-columns-graph: 72px minmax(0, 1fr);
+  --grid-template-columns-near: 40px minmax(0, 1fr);
+  --breakpoint-xwide: 93.75rem;
+}
+
 /* ==== dark ===============================================================
    The dark theme (the spot page and Spot finder mock-ups, 31 October 2026):
    near-black, neutral greys, and the marks lifted so they read on black. The

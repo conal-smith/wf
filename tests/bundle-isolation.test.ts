@@ -66,6 +66,8 @@ function staticGraph(entry: string): Set<string> {
     for (const match of source.matchAll(SPECIFIER)) {
       const specifier = match[1] ?? match[2];
       if (!specifier) continue;
+      // `import type` is erased by the build: it reaches nothing.
+      if (/^\s*(?:import|export)\s+type\s/.test(match[0])) continue;
       const local = resolveLocal(file, specifier);
       if (local) queue.push(local);
       // A bare specifier is a package; record the package, not its contents.

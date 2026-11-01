@@ -118,6 +118,12 @@ const COLOURS: Record<string, string> = {
   "stars-3": "#bd3d84",
   "stars-4": "#a01f6c",
   "stars-5": "#7c0f55",
+  // The spot report's loupe, on the photograph in either theme.
+  "photo-line": "#ffffff",
+  "photo-shade": "#06080a",
+  "photo-pill": "#0a0c0e",
+  "photo-red": "#ff4d3d",
+  "photo-gust": "#ffa45c",
 };
 
 // Size, line height, then weight and tracking where the step has one.

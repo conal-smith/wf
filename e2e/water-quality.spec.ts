@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "./fixtures";
+import { openDay } from "./spotTable";
 import { SAMPLE_CLOCK } from "./columns";
 
 /**
@@ -94,6 +95,7 @@ test("a spot page lists its bathing water notice, which stands in for the stars"
     panel.getByRole("link", { name: "The latest at beaches.ie" }),
   ).toHaveAttribute("href", "https://www.beaches.ie");
 
+  await openDay(page, monday(12));
   // From Monday the notice stands where the stars were.
   for (const hour of [9, 12, 15]) {
     const cell = row(page, monday(hour)).locator("[data-hour-water]");
@@ -127,7 +129,7 @@ test("a notices file too old to trust shows none", async ({ page }) => {
     runTime: new Date(clock - 4 * HOUR).toISOString(),
   });
   await page.goto("/spot/portmarnock");
-  await expect(page.locator("[data-day]").nth(1)).toBeVisible({
+  await expect(page.locator("[data-day-card]").nth(1)).toBeVisible({
     timeout: 30000,
   });
   await expect(page.locator("[data-water-quality]")).toHaveCount(0);

@@ -64,7 +64,7 @@ export function candidatesFor(
 }
 
 let shared: ForecastSource | null = null;
-const source = () => (shared ??= siteSource());
+export const source = () => (shared ??= siteSource());
 
 /**
  * The place's forecast, read again when the rider picks another model: the page already drawn stays while it is read, so a change of

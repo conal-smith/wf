@@ -13,34 +13,16 @@
 import { MapPin, RefreshCw } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { starsFromAt } from "../../force5/src/lead";
-import { loadPrefs, saveRider, withRiderModel } from "../../force5/src/prefs";
-import { isOnWater, shoreFacing } from "../../force5/src/shoreFacing";
+import { loadPrefs, saveRider } from "../../force5/src/prefs";
 import {
   CHART_HREF,
-  STARS_HREF,
   isStarsPath,
   mapSpotHref,
   spotHref,
   spotIdFromPath,
 } from "../../force5/src/siteNav";
 import type { Rider } from "../../force5/src/stars";
-import { unitLabel } from "../../force5/src/units";
-import {
-  WAVE_MODELS,
-  WEATHER_MODELS,
-  WIND_MODELS,
-  localTime,
-  rainByHour,
-  type RidingSpot,
-  type SpotForecast,
-  type SpotSea,
-  type Unavailable,
-} from "../../mcp/api/forecast";
-import {
-  NETWORK_LABEL,
-  observationAge,
-  type SeaTemperatureNetwork,
-} from "../../force5/src/seaTemperature";
+import { type RidingSpot, type SpotForecast } from "../../mcp/api/forecast";
 import { favourites } from "../../shared/web/favourites";
 import { onPrefsChange, signedInHint } from "../../shared/web/riderSync";
 import { usePageTitle } from "../../shared/web/usePageTitle";
@@ -48,40 +30,19 @@ import {
   Button,
   Empty,
   Headline,
-  Kicker,
   Notice,
   SectionHeading,
   Skeleton,
 } from "../../ui";
 import { MONO_LABEL, RING, tv } from "../../ui/tv";
-import { DaySection } from "./DaySection";
 import { SpotFrame } from "./Frame";
-import { FacingGlyph, KeepStar } from "./glyphs";
-import { RiderSwitch, riderWords } from "./RiderSwitch";
-import { loadSpotPictures, type SpotPicture } from "./satellite";
-import {
-  FORECAST_DAYS,
-  bandKnots,
-  compass,
-  daySun,
-  dublinDate,
-  groupDays,
-  leadChanges,
-  shoreHeading,
-  skyStopsOn,
-  spotRows,
-  tideTurns,
-} from "./spot";
-import { SpotSatellite, useSpotPicture } from "./SpotSatellite";
-import { TableKey } from "./TableKey";
+import { KeepStar } from "./glyphs";
+import { loadSpotPictures } from "./satellite";
 import StarsPage from "./StarsPage";
 import { useSpotForecast } from "./useSpotForecast";
-import { useWidth } from "./useWidth";
+import { SpotReport } from "./report/SpotReport";
 import { WarningsPanel } from "./Warnings";
 import { WaterQualityPanel } from "./WaterQuality";
-import { BEACHES_PAGE } from "../../force5/src/waterQuality";
-import { MET_WARNINGS_PAGE } from "../../force5/src/warnings";
-import { WeekStrip } from "./WeekStrip";
 
 const styles = tv({
   slots: {
@@ -90,8 +51,7 @@ const styles = tv({
     // has a margin as wide as the list, they stand in it, beside the name and
     // the picture: there they add nothing above the forecast, which then
     // starts where it would with none at all.
-    notices:
-      "flex flex-col gap-4 xl:absolute xl:top-4 xl:left-full xl:ml-6 xl:w-56",
+    notices: "mb-4 grid gap-3 wide:grid-cols-2",
     // The facts are kept apart by points (Dot), so the gap between them is
     // the point's own spacing either side.
     meta: [
@@ -102,9 +62,8 @@ const styles = tv({
     strong: "font-semibold text-ink",
     water: "m-0 -mt-2 font-body text-body text-ink",
     star: [
-      "inline-flex min-h-control-sm cursor-pointer items-center gap-1.5 rounded-full border-0 bg-transparent px-2 text-ink",
-      "pointer-coarse:min-h-touch pointer-coarse:min-w-touch not-disabled:hover:bg-sunken",
-      MONO_LABEL,
+      "inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border border-line bg-ground px-4 font-body text-body font-medium text-ink",
+      "pointer-coarse:min-h-touch not-disabled:hover:bg-sunken",
       RING,
     ],
     starWord: "max-sm:sr-only",
@@ -185,14 +144,7 @@ function SpotRoute({ id }: { id: string | null }) {
   }, [id]);
 
   return (
-    <SpotFrame
-      back={id ? mapSpotHref(id) : CHART_HREF}
-      actions={
-        state.kind === "ready" && (
-          <KeepButton id={state.spot.id} name={state.spot.name} />
-        )
-      }
-    >
+    <SpotFrame back={id ? mapSpotHref(id) : CHART_HREF}>
       {state.kind === "loading" && <Loading />}
       {state.kind === "error" && (
         <main className={s.main()}>
@@ -350,347 +302,46 @@ function Loading() {
   );
 }
 
-/** Scroll to an element, smoothly unless the reader has asked for less motion. */
-function scrollToId(id: string) {
-  const element = document.getElementById(id);
-  if (!element) return;
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  element.scrollIntoView({
-    behavior: reduce ? "auto" : "smooth",
-    block: "start",
-  });
-}
-
 function SpotPage({
   spot,
   forecast,
   rider,
-  onRider,
 }: {
   spot: RidingSpot;
   forecast: SpotForecast;
   rider: Rider;
   onRider: (rider: Rider) => void;
 }) {
-  const s = styles();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(timer);
   }, []);
   const units = useMemo(() => loadPrefs().units, []);
-  const unitText = unitLabel(units);
-  const starsFrom = starsFromAt(rider.starsFrom);
-  // A model picked in an hour's card: the rider's from now on, everywhere.
-  const changeModel = (model: string) => onRider(withRiderModel(rider, model));
-  const facing = shoreFacing(spot.id);
-  const rows = useMemo(
-    () => spotRows(forecast.hours, now, facing, rider),
-    [forecast.hours, now, facing, rider],
-  );
-  const days = useMemo(
-    () =>
-      groupDays(rows)
-        .filter((day) => day.hasWind)
-        .slice(0, FORECAST_DAYS)
-        .map((day) => ({ day, sun: daySun(spot.lat, spot.lon, day.date) })),
-    [rows, spot.lat, spot.lon],
-  );
-  const changes = useMemo(() => leadChanges(rows), [rows]);
-  const rain = useMemo(() => rainByHour(forecast.hours), [forecast.hours]);
-  const skyStops = useMemo(
-    () => skyStopsOn(days.map(({ day }) => day)),
-    [days],
-  );
-  const band = useMemo(() => bandKnots(rider), [rider]);
-  const turns = useMemo(() => tideTurns(forecast), [forecast]);
-  const ceiling = Math.max(4.5, ...turns.map((t) => t.height)) + 0.3;
-  const tides = forecast.tides;
-  const stationNote = !tides
-    ? "No tide station near"
-    : "note" in tides
-      ? tides.note
-      : null;
-  const [mainRef, width] = useWidth<HTMLElement>();
-
-  // Days draw as they scroll near; a day chosen from the strip, and every day
-  // before it, draws at once, so the page does not move under the scroll.
-  const [eagerTo, setEagerTo] = useState(1);
-  const [current, setCurrent] = useState<string | null>(null);
-  const [goTo, setGoTo] = useState<string | null>(null);
-  useEffect(() => {
-    if (!goTo) return;
-    scrollToId(`day-${goTo}`);
-    setGoTo(null);
-  }, [goTo]);
-  const showDay = (date: string) => {
-    const index = days.findIndex(({ day }) => day.date === date);
-    setEagerTo((was) => Math.max(was, index));
-    setCurrent(date);
-    setGoTo(date);
-  };
-
-  // The strip follows the day whose header is at the top of the screen.
-  const daysRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const box = daysRef.current;
-    if (!box || typeof IntersectionObserver === "undefined") return;
-    const watch = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries)
-          if (entry.isIntersecting)
-            setCurrent((entry.target as HTMLElement).dataset.day ?? null);
-      },
-      { rootMargin: "0px 0px -90% 0px" },
-    );
-    box.querySelectorAll("[data-day]").forEach((el) => watch.observe(el));
-    return () => watch.disconnect();
-  }, [days.length]);
-
-  const shown = current ?? days[0]?.day.date ?? "";
-  const heading = shoreHeading(spot.id);
-  const sea = forecast.sea_temperature;
-  const riderText = riderWords(rider);
-  const picture = useSpotPicture(spot);
-
+  const s = styles();
+  const warned =
+    (forecast.warnings.status === "current" &&
+      forecast.warnings.items.length > 0) ||
+    (forecast.water_quality.status === "current" &&
+      forecast.water_quality.items.length > 0);
   return (
-    <main className={s.main()} ref={mainRef}>
-      <Headline>{spot.name}</Headline>
-      <p className={s.meta()}>
-        {heading?.kind === "facing" && (
-          <span className={s.metaItem()} data-shore-summary>
-            <FacingGlyph facing={heading.facing} />
-            <span>
-              Faces <b className={s.strong()}>{compass(heading.facing)}</b>{" "}
-              {Math.round(heading.facing)}°
-            </span>
-            {heading.best.length > 0 && (
-              <span>· best {heading.best.join(", ")}</span>
-            )}
-          </span>
-        )}
-        {heading?.kind === "unknown" && (
-          <span data-shore-summary>{heading.text}</span>
-        )}
-        {spot.county && (
-          <span className={s.metaItem()}>
-            {heading && <Dot />}
-            {spot.county}
-          </span>
-        )}
-      </p>
-      {((forecast.warnings.status === "current" &&
-        forecast.warnings.items.length > 0) ||
-        (forecast.water_quality.status === "current" &&
-          forecast.water_quality.items.length > 0)) && (
-        <div className={s.notices()}>
-          <WarningsPanel warnings={forecast.warnings} />
-          <WaterQualityPanel water={forecast.water_quality} />
-        </div>
-      )}
-      {sea && <WaterLine sea={sea} now={now} />}
-      {picture && (
-        <SpotSatellite picture={picture} name={spot.name} facing={facing} />
-      )}
-      <RiderSwitch rider={rider} onChange={onRider} />
-      <WeekStrip
-        days={days.map(({ day }) => ({ date: day.date }))}
-        current={shown}
-        now={now}
-        onSelect={showDay}
-      />
-      <div className={s.days()} ref={daysRef}>
-        {days.map(({ day, sun }, index) => (
-          <DaySection
-            key={day.date}
-            day={day}
-            now={now}
-            units={units}
-            unitText={unitText}
-            riderText={riderText}
-            band={band}
-            facing={facing}
-            onWater={isOnWater(spot.id)}
-            turns={turns}
-            sun={sun}
-            tideCeiling={ceiling}
-            stationNote={stationNote}
-            width={width}
-            eager={index <= eagerTo}
-            spotName={spot.name}
-            models={forecast.sources.wind}
-            starsFrom={starsFrom}
-            changes={changes.filter(
-              (change) => dublinDate(change.time) === day.date,
-            )}
-            onModel={changeModel}
-            skyStops={day.date === skyStops}
-            rain={rain}
-            warnings={forecast.warnings}
-            water={forecast.water_quality}
-          />
-        ))}
-      </div>
-      {days.length > 0 && (
-        <TableKey band={band} units={units} unitText={unitText} />
-      )}
-      <SourcesFooter forecast={forecast} picture={picture} />
-    </main>
+    <SpotReport
+      spot={spot}
+      forecast={forecast}
+      rider={rider}
+      units={units}
+      now={now}
+      actions={<KeepButton id={spot.id} name={spot.name} />}
+      notices={
+        warned && (
+          <div className={s.notices()}>
+            <WarningsPanel warnings={forecast.warnings} />
+            <WaterQualityPanel water={forecast.water_quality} />
+          </div>
+        )
+      }
+    />
   );
-}
-
-/** What each kind of model forecasts, for a reader who does not know them by name. */
-const MODEL_KIND = new Map<string, string>([
-  ...WIND_MODELS.map((model) => [model.id, "wind"] as const),
-  ...WAVE_MODELS.map((model) => [model.id, "wave"] as const),
-  ...WEATHER_MODELS.map((model) => [model.id, "weather"] as const),
-]);
-
-/** The server's reasons for leaving a model out, said shortly. */
-const MISSING_WHY: Record<string, string> = {
-  "Could not be read just now.": "could not be read just now",
-  "Not published.": "not published",
-  "The latest published run has already ended.": "its latest run has ended",
-};
-
-/**
- * "the MI SWAN wave model (its latest run has ended)": a model the forecast
- * went without, and why, rather than a bare name a rider cannot place.
- */
-function missingWords(model: Unavailable): string {
-  const kind = MODEL_KIND.get(model.id);
-  const why = MISSING_WHY[model.reason];
-  // "ICON-EU weather" already says what it is.
-  const what =
-    kind && !model.name.toLowerCase().includes(kind) ? ` ${kind}` : "";
-  return `the ${model.name}${what} model${why ? ` (${why})` : ""}`;
 }
 
 /** How far off a station is before the page says it may not be the beach's water. */
-const FAR_KM = 10;
-
-/**
- * The water's temperature, said here rather than on the map's dock: one
- * measurement, not a forecast, and only as good as where it was taken. So
- * the station, what kind it is, how far off and how long ago are said with
- * it, and a station far from the spot is said to be far.
- */
-function WaterLine({ sea, now }: { sea: SpotSea; now: number }) {
-  const s = styles();
-  const kind = NETWORK_LABEL[sea.network as SeaTemperatureNetwork] ?? "station";
-  const age = observationAge((now - Date.parse(sea.time)) / 3600000);
-  const km =
-    sea.distance_km < 10
-      ? sea.distance_km.toFixed(1)
-      : String(Math.round(sea.distance_km));
-  return (
-    <p className={s.water()} data-sea-temperature>
-      <span>
-        Water <b className={s.strong()}>{sea.celsius.toFixed(1)} °C</b>
-      </span>{" "}
-      <span className={s.muted()}>
-        measured {age} at the {sea.station} {kind}, {km} km from here
-        {sea.distance_km >= FAR_KM &&
-          ": the nearest station reporting, and the water at the shore can differ"}
-        .
-      </span>
-    </p>
-  );
-}
-
-/**
- * The point between the header's facts, as the shore summary has inside its
- * own: without it "best SE–SSW, N–ENE" and "Kerry" read as one list.
- */
-function Dot() {
-  return <span aria-hidden="true">·</span>;
-}
-
-function SourcesFooter({
-  forecast,
-  picture,
-}: {
-  forecast: SpotForecast;
-  picture: SpotPicture | null;
-}) {
-  const s = styles();
-  const { sources } = forecast;
-  const tides =
-    forecast.tides && "station" in forecast.tides ? forecast.tides : null;
-  const sea = forecast.sea_temperature;
-  return (
-    <footer className={s.footer()} aria-labelledby="sources-title">
-      <Kicker as="h2" id="sources-title">
-        Where this comes from
-      </Kicker>
-      <ul className={s.footerList()} data-sources>
-        <li>
-          Wind:{" "}
-          {sources.wind.length
-            ? sources.wind
-                .map(
-                  (run) =>
-                    `${run.name} (${localTime(Date.parse(run.run_time))}${run.stale ? ", older run" : ""})`,
-                )
-                .join(", ")
-            : "no live model reaches this spot"}
-          .
-        </li>
-        {sources.waves && <li>Waves: {sources.waves.name}.</li>}
-        {sources.weather && <li>Sky, air and rain: {sources.weather.name}.</li>}
-        {tides && (
-          <li>
-            Tides: {tides.station}, {tides.distance_km} km away, above{" "}
-            {tides.datum}
-            {tides.attribution ? ` · ${tides.attribution}` : ""}.
-          </li>
-        )}
-        {sea && (
-          <li>
-            Water temperature: {sea.station}, {sea.distance_km} km away, read{" "}
-            {sea.measured}
-            {sea.attribution ? ` · ${sea.attribution}` : ""}.
-          </li>
-        )}
-        <li data-warnings-source>
-          Weather warnings: Met Éireann,{" "}
-          <a className={s.link()} href={MET_WARNINGS_PAGE}>
-            met.ie/warnings
-          </a>
-          .
-        </li>
-        <li data-water-quality-source>
-          Bathing water notices: the EPA,{" "}
-          <a className={s.link()} href={BEACHES_PAGE}>
-            beaches.ie
-          </a>
-          .
-          {forecast.water_quality.status === "not-monitored" &&
-            " No bathing water is monitored near here."}
-        </li>
-        {picture && (
-          <li data-satellite-source>
-            Satellite picture: Sentinel-2 at high and low tide ·{" "}
-            {picture.attribution}
-          </li>
-        )}
-        {sources.unavailable.length > 0 && (
-          <li className={s.muted()}>
-            Left out of this forecast:{" "}
-            {sources.unavailable.map(missingWords).join("; ")}.
-          </li>
-        )}
-      </ul>
-      <p className="m-0">
-        Times are Irish.{" "}
-        <a className={s.link()} href={STARS_HREF}>
-          How the stars work
-        </a>
-      </p>
-      <p className={s.safety()}>
-        Model forecasts only, not a safety statement. Look at the water, and
-        never ride alone in offshore wind.
-      </p>
-    </footer>
-  );
-}
