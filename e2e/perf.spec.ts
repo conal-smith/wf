@@ -1,8 +1,8 @@
 import { backToIreland, chooseSpot, expect, test, type Page } from "./fixtures";
 
 // The map as a rider has it once they choose a spot: every light rated on the
-// whole of Ireland, then Brandon Bay's whole week in the dock, the most it
-// draws (nothing opens a dock as the page loads).
+// whole of Ireland, then Brandon Bay's whole week in the scrub bar, the most
+// it draws (nothing opens a spot's week as the page loads).
 
 /**
  * Performance budgets: what each page downloads, how often, and whether it
@@ -55,10 +55,8 @@ async function mapReady(page: Page) {
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
     timeout: 30000,
   });
+  // The light tapped, and the bar's week drawn from its hours.
   await chooseSpot(page, "brandon");
-  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
-    timeout: 30000,
-  });
 }
 
 // The stars page reads the forecast itself (spot/web), so only the others
@@ -183,7 +181,7 @@ test("stepping through the forecast answers within an interaction budget", async
   await page.goto("/?map");
   await mapReady(page);
   // Over the whole chart, as this budget was set: the tap that opened the
-  // dock flew the chart in to the spot, and a step there redraws its
+  // spot's week flew the chart in to the spot, and a step there redraws its
   // closer, denser tiles, which a headless browser copies back out of WebGL
   // frame by frame (its compositor is software).
   await backToIreland(page);
@@ -208,7 +206,7 @@ test("stepping through the forecast answers within an interaction budget", async
   expect(Math.max(...durations)).toBeLessThan(500);
 });
 
-test("a light pressed is marked at once, and the dock waits for that to be painted", async ({
+test("a light pressed is marked at once, and the scrub bar waits for that to be painted", async ({
   page,
 }) => {
   await page.goto("/?map");
@@ -219,7 +217,7 @@ test("a light pressed is marked at once, and the dock waits for that to be paint
     timeout: 30000,
   });
   // Read in the task after the tap's: the light already drawn as the open
-  // spot's, and nothing of the dock or the flight yet. Drawn in the tap's
+  // spot's, and nothing of the spot's week or the flight yet. Drawn in the tap's
   // own task, they held its answer back by 300 to 600 ms (#250).
   const straight = await page.evaluate(async () => {
     const light = document.querySelector<HTMLElement>(
@@ -229,16 +227,14 @@ test("a light pressed is marked at once, and the dock waits for that to be paint
     await new Promise((done) => setTimeout(done));
     return {
       marked: light.classList.contains("sel"),
-      dock: !!document.querySelector(".dock"),
+      week: !!document.querySelector(".scrub .sb-name"),
       address: location.search,
     };
   });
-  expect(straight).toEqual({ marked: true, dock: false, address: "?map" });
-  await expect(page.locator(".dock")).toHaveAttribute(
-    "aria-label",
-    "Forecast for Dollymount",
-    { timeout: 30000 },
-  );
+  expect(straight).toEqual({ marked: true, week: false, address: "?map" });
+  await expect(
+    page.getByRole("region", { name: "Forecast for Dollymount" }),
+  ).toBeVisible({ timeout: 30000 });
   await expect(page).toHaveURL(/\?spot=dollymount$/);
   await expect(
     page.locator('.spot-marker[data-spot-id="dollymount"]'),

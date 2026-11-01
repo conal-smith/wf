@@ -1,5 +1,8 @@
 import {
   backToIreland,
+  barName,
+  barPill,
+  barReady,
   chooseModel,
   chooseSpot,
   closeLayers,
@@ -8,14 +11,17 @@ import {
   layersRail,
   modelChoice,
   openFromMenu,
+  scrubBar,
   setRider,
   settingsDialog,
   steadyFrames,
   test,
+  timeSlider,
   type Page,
 } from "./fixtures";
 import { SAMPLE_CLOCK, sampleStrip, stripAt } from "./columns";
 import { readSample } from "./sample";
+import { clock, dayShort, irishDate } from "../src/strip";
 import { readFileSync } from "node:fs";
 
 const manifest = readSample("latest");
@@ -28,9 +34,17 @@ const BATHY_PATH = /BATHY_PATH = "([^"]+)"/.exec(
 )![1];
 const harmonie = readSample("harmonie");
 
+/** The scrub bar's pill's words for a column's time: "Sun 13 22:00". */
+const pillTime = (time: number) =>
+  `${dayShort(time)} ${Number(irishDate(time).slice(8))} ${clock(time)}`;
+
+/** A tapped point's coordinates, in its name or under it. */
+const coords = /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/;
+
 /**
  * The chart, up: every light placed and rated, then `spot` chosen with a tap
- * on its light and its dock drawn; with null, nothing chosen and no dock.
+ * on its light and its week drawn in the scrub bar; with null, nothing chosen
+ * and the bar a plain timeline.
  * The tap flies the chart to the spot, and these specs read every light on
  * the whole of Ireland, so the chart goes back to it (`backToIreland`).
  */
@@ -49,7 +63,7 @@ export async function openChart(
     timeout: 30000,
   });
   if (!spot) {
-    await expect(page.locator(".dock")).toHaveCount(0);
+    await expect(barName(page)).toHaveCount(0);
     return;
   }
   await chooseSpot(page, spot);
@@ -87,7 +101,7 @@ async function expectModel(page: Page, id: string) {
   await closeSettings(page);
 }
 
-test("the chart opens on paper: the head, the controls, the lights and a flush dock", async ({
+test("the chart opens on paper: the head, the controls, the lights and a flush scrub bar", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -104,26 +118,32 @@ test("the chart opens on paper: the head, the controls, the lights and a flush d
   await expect(
     page.getByRole("button", { name: "Search spots" }),
   ).toBeVisible();
-  for (const box of ["[data-top-bar]", ".zbox", ".dock"]) {
+  for (const box of ["[data-top-bar]", ".zbox"]) {
     const filter = await page
       .locator(box)
       .evaluate((el) => getComputedStyle(el).backdropFilter);
     expect(filter === "none" || filter === "", box).toBe(true);
   }
-  const dock = (await page.locator(".map-footer").boundingBox())!;
-  expect(dock.x).toBe(0);
-  expect(dock.width).toBe(390);
-  expect(dock.y + dock.height).toBe(844);
-  // A phone opens on the remembered spot's hours: the head, the week's days
-  // over the hours, and no row of day blocks or folded state between them.
-  expect(dock.height).toBeLessThan(844 / 3);
-  await expect(page.locator(".dock tr.tt-day td")).toHaveCount(
-    new Set(sampleStrip.map((c) => c.date)).size,
-  );
+  // The chart's foot, the full width and down to the bottom edge: no frame
+  // round the chart.
+  const foot = (await page.locator(".map-footer").boundingBox())!;
+  expect(foot.x).toBe(0);
+  expect(foot.width).toBe(390);
+  expect(foot.y + foot.height).toBe(844);
+  await expect(page.locator(".map-neat, .nl-t")).toHaveCount(0);
+  // The spot's week in a slim bar over the chart: its name, the strip and
+  // the days under it, the day in hand marked.
+  const bar = (await scrubBar(page).boundingBox())!;
+  expect(bar.height).toBeLessThan(844 / 3);
+  await expect(barName(page)).toHaveText("Brandon Bay");
+  const days = await scrubBar(page).locator(".sb-days span").count();
+  expect(days).toBeGreaterThanOrEqual(4);
+  expect(days).toBeLessThanOrEqual(8);
+  await expect(scrubBar(page).locator(".sb-days span.is-on")).toHaveCount(1);
   // Nothing else is on the chart: the rider's spots are in the menu.
   await expect(page.locator(".side")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Site menu" })).toBeVisible();
-  const slider = page.getByRole("slider", { name: "Forecast time" });
+  const slider = timeSlider(page);
   await slider.focus();
   await slider.press("Home");
   await expect(slider).toHaveValue("0");
@@ -171,7 +191,7 @@ test("finding a spot flies there and focuses it, with no box over the map; Escap
   await findSpot(page, "Dollymount");
   await expect(map).toHaveClass(/is-focus/);
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
+  await expect(barName(page)).toHaveText("Dollymount");
   // The other lights stay at full strength, to be compared with it.
   await expect
     .poll(() =>
@@ -188,7 +208,7 @@ test("finding a spot flies there and focuses it, with no box over the map; Escap
     )
     .toBe(1);
   // Its light is the selected one, a size up, and nothing is written beside
-  // it: the dock has the hour.
+  // it: the scrub bar has the hour.
   await expect(page.locator('[data-spot-id="dollymount"]')).toHaveClass(
     /\bsel\b/,
   );
@@ -208,11 +228,11 @@ test("finding a spot flies there and focuses it, with no box over the map; Escap
   await expect(page.locator(".map-focus")).toHaveAttribute("data-focus", "off");
   await expect(page.locator(".map-focus > *")).toHaveCount(0);
 
-  // Clearing the focus is not choosing another place: the dock keeps it.
-  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
+  // Clearing the focus is not choosing another place: the scrub bar keeps it.
+  await expect(barName(page)).toHaveText("Dollymount");
 });
 
-test("a tap on the open map reads that point's forecast into the dock, focused on it", async ({
+test("a tap on the open map reads that point's forecast into the scrub bar, focused on it", async ({
   page,
 }) => {
   await openChart(page, 1440, 900, null);
@@ -220,26 +240,27 @@ test("a tap on the open map reads that point's forecast into the dock, focused o
   await steadyFrames(page);
   const at = await openWater(page);
   await page.locator(".maplibregl-canvas").click({ position: at });
-  // Named by the nearest place or its coordinates, with no star and no page.
-  const name = page.locator(".dock .dk-name");
+  // Named by the nearest place or its coordinates, not a riding spot's, and
+  // its full forecast a page of its own at its coordinates.
+  const name = barName(page);
   await expect(name).not.toHaveText("Brandon Bay");
-  await expect(page.locator(".dock .dk-tools")).toContainText(
-    /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
+  await expect(scrubBar(page).locator(".sb-spot")).toContainText(coords);
+  await expect(scrubBar(page)).not.toHaveAttribute("data-spot");
+  await expect(scrubBar(page).locator("[data-spot-page-link]")).toHaveAttribute(
+    "href",
+    /^\/spot\/@-?\d+\.\d{4},-?\d+\.\d{4}\?at=/,
   );
-  await expect(
-    page.locator(".dock").getByRole("button", { name: /^Star / }),
-  ).toHaveCount(0);
-  await expect(page.locator(".dock [data-spot-page-link]")).toHaveCount(0);
   await expect(page.locator(".pick-mark")).toHaveCount(1);
   await expect(map).toHaveClass(/is-focus/);
-  // Its hours fill from the map model's frames. No beach, so no stars.
-  await expect
-    .poll(() => page.locator(".dock tr.tt-wind td .kn").count(), {
-      timeout: 30000,
-    })
-    .toBeGreaterThan(5);
-  await expect(page.locator(".dock tr.tt-stars")).toHaveCount(0);
-  await expect(page.locator(".dk-labs")).not.toContainText("Stars");
+  // Its hours fill from the map model's frames: the wind's curve and the
+  // pill's figure. No beach, so no stars.
+  await barReady(page);
+  await expect(
+    scrubBar(page).locator('[data-curve="wind"] .sb-line'),
+  ).toHaveCount(1);
+  await expect(barPill(page)).toContainText(/\d+ kn/);
+  await expect(scrubBar(page).locator(".sb-stars")).toHaveCount(0);
+  await expect(barPill(page)).not.toHaveAttribute("data-stars");
   // A double tap zooms and picks nothing.
   const before = await name.textContent();
   await page
@@ -255,30 +276,27 @@ test("a tap on the open map reads that point's forecast into the dock, focused o
   await expect(page.locator(".pick-mark")).toHaveCount(0);
 });
 
-test("a light shows the selected hour's stars, as the dock does, and follows the time", async ({
+test("a light shows the selected hour's stars, as the scrub bar does, and follows the time", async ({
   page,
 }) => {
   await openChart(page);
   await findSpot(page, "Brandon");
   const light = page.locator('[data-spot-id="brandon"]');
-  const slider = page.getByRole("slider", { name: "Forecast time" });
-  // Through a few hours, day and night: the light's figure is the dock's
-  // stars, and a dark hour's light is dark.
+  const slider = timeSlider(page);
+  const pill = barPill(page);
+  // Through a few hours, day and night: the light's figure is the stars the
+  // pill over the playhead gives the hour, and a dark hour's light is dark.
   for (const at of [2, 5, 9, 16, 30]) {
     if (at >= sampleStrip.length) continue;
     await slider.fill(String(at));
-    const cell = page.locator(`.dock tr.tt-stars td[data-i="${at}"]`);
-    await expect(cell).toHaveClass(/c-sel/);
-    const stars0 = cell.locator(".hour-stars");
-    const said = (await stars0.count())
-      ? await stars0.getAttribute("aria-label")
-      : null;
+    await expect(slider).toHaveValue(String(at));
+    await expect(pill).toContainText(pillTime(sampleStrip[at].time));
+    const stars = await pill.getAttribute("data-stars");
     const label = await light.getAttribute("aria-label");
-    if (!said) {
+    if (stars === null) {
       await expect(light).toHaveClass(/\bdark\b/);
       continue;
     }
-    const stars = /(\d) of 5 star/.exec(said)?.[1] ?? "0";
     expect(label, `column ${at}`).toContain(
       stars === "1" ? "1 star" : `${stars} stars`,
     );
@@ -290,20 +308,39 @@ test("a click just off a light's ring chooses it, and the nearest light wins", a
   page,
 }) => {
   await openChart(page, 1440, 900, null);
+  // A step in, so that lights stand apart: over the whole of Ireland, above
+  // the scrub bar, the most room any has is under 40 px. Read once the
+  // camera rests, where the lights' buttons are placed.
+  await page
+    .getByRole("button", { name: "Zoom in", exact: true })
+    .evaluate((button: HTMLElement) => button.click());
+  await page.waitForTimeout(300);
+  await page.waitForFunction(
+    () => !document.querySelector(".map-lights.is-moving"),
+  );
   // A light with room round it, and a point a little way off its ring.
   const { id, x, y } = await page.evaluate(() => {
-    const lights = [...document.querySelectorAll<HTMLElement>(".spot-marker")]
-      .map((el) => {
-        const r = el.getBoundingClientRect();
-        return {
-          id: el.dataset.spotId!,
-          x: r.x + r.width / 2,
-          y: r.y + r.height / 2,
-        };
-      })
-      .filter((l) => l.y > 300 && l.y < 700);
-    const alone = lights.find((l) =>
-      lights.every((o) => o === l || Math.hypot(o.x - l.x, o.y - l.y) > 40),
+    const lights = [
+      ...document.querySelectorAll<HTMLElement>(".spot-marker"),
+    ].map((el) => {
+      const r = el.getBoundingClientRect();
+      return {
+        id: el.dataset.spotId!,
+        x: r.x + r.width / 2,
+        y: r.y + r.height / 2,
+      };
+    });
+    // Clear of the top bar and of the scrub bar over the chart's foot.
+    const top =
+      document.querySelector("[data-top-bar]")!.getBoundingClientRect().bottom +
+      40;
+    const bottom =
+      document.querySelector(".scrub")!.getBoundingClientRect().top - 40;
+    const alone = lights.find(
+      (l) =>
+        l.y > top &&
+        l.y < bottom &&
+        lights.every((o) => o === l || Math.hypot(o.x - l.x, o.y - l.y) > 40),
     )!;
     return { id: alone.id, x: alone.x, y: alone.y + 13 };
   });
@@ -347,7 +384,7 @@ test("only offshore is struck through; a learner's cross-offshore is too", async
   page,
 }) => {
   await openChart(page);
-  const slider = page.getByRole("slider", { name: "Forecast time" });
+  const slider = timeSlider(page);
   // An hour with a struck light and a cross-offshore one, if the sample has it.
   let found = -1;
   for (let at = 0; at < sampleStrip.length && found < 0; at++) {
@@ -388,7 +425,7 @@ test("switches the map's model from the layers and keeps the hour", async ({
   page,
 }) => {
   await openChart(page);
-  const slider = page.getByRole("slider", { name: "Forecast time" });
+  const slider = timeSlider(page);
   // An hour inside HARMONIE's run, three after its first: today's morning
   // before it is ECMWF's steps (the ruling of 25 October 2026).
   const hour = String(
@@ -440,7 +477,7 @@ test("a model switch that fails or is cancelled cannot relabel what is drawn", a
   const noon = stripAt(clock).findIndex(
     (c) => c.validTime === "2026-09-14T12:00:00Z",
   );
-  await page.getByRole("slider", { name: "Forecast time" }).fill(String(noon));
+  await timeSlider(page).fill(String(noon));
   await expect(page.locator(".frame-status")).toHaveCount(0);
   // HARMONIE's tiles for that hour fail, so the switch cannot complete.
   const noonTiles = `**/weather/harmonie-*/t/*/*/*/${String(
@@ -475,7 +512,7 @@ test("a missing frame keeps the map on its last good frame and offers a retry", 
   page,
 }) => {
   await openChart(page);
-  const slider = page.getByRole("slider", { name: "Forecast time" });
+  const slider = timeSlider(page);
   // A HARMONIE hour on the strip that is not the one already painted.
   const target = sampleStrip.findIndex(
     (c, at) =>
@@ -495,10 +532,9 @@ test("a missing frame keeps the map on its last good frame and offers a retry", 
   );
   await slider.fill(String(target));
   await expect(page.locator(".frame-status.is-error")).toBeVisible();
-  // The dock follows the reader to the hour they chose all the same.
-  await expect(
-    page.locator(`.dock tr.tt-hour td[data-i="${target}"]`),
-  ).toHaveClass(/c-sel/);
+  // The scrub bar follows the reader to the hour they chose all the same.
+  await expect(slider).toHaveValue(String(target));
+  await expect(barPill(page)).toContainText(pillTime(sampleStrip[target].time));
   await page.unroute(brokenTiles);
   await page.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(page.locator(".frame-status")).toHaveCount(0);
@@ -540,7 +576,7 @@ test("reduced motion keeps the arrows still, and the time keys still work", asyn
       return count;
     });
   expect(drawn).toBe(0);
-  const slider = page.getByRole("slider", { name: "Forecast time" });
+  const slider = timeSlider(page);
   await slider.focus();
   await slider.press("Home");
   await expect(slider).toHaveValue("0");
@@ -548,20 +584,22 @@ test("reduced motion keeps the arrows still, and the time keys still work", asyn
   await expect(slider).toHaveValue("1");
 });
 
-test("an unavailable basemap says so, and the dock still reads the forecast", async ({
+test("an unavailable basemap says so, and the scrub bar still reads the forecast", async ({
   page,
 }) => {
   await page.route("https://tiles.openfreemap.org/planet", (route) =>
     route.fulfill({ status: 503, body: "Unavailable" }),
   );
-  // A spot in the link: the dock reads it with no basemap drawn.
+  // A spot in the link: the scrub bar reads it with no basemap drawn.
   await page.goto("/?spot=brandon");
   await expect(page.locator(".map-error")).toBeVisible({ timeout: 30000 });
   await expect(page.getByRole("button", { name: "Reload map" })).toBeVisible();
-  await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
-  await expect
-    .poll(() => page.locator(".dock tr.tt-wind td .kn").count())
-    .toBeGreaterThan(10);
+  await expect(barName(page)).toHaveText("Brandon Bay");
+  await barReady(page);
+  await expect(
+    scrubBar(page).locator('[data-curve="wind"] .sb-line'),
+  ).toHaveCount(1);
+  await expect(barPill(page)).toContainText(/\d+ kn/);
 });
 
 test("round the chosen spot: a range ring, a loupe at a true distance, or nothing, kept as chosen", async ({
@@ -639,7 +677,7 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   await expect(page.locator(".spot-marker")).toHaveCount(149, {
     timeout: 30000,
   });
-  await expect(page.locator(".dock")).toHaveCount(0);
+  await expect(barName(page)).toHaveCount(0);
   await openFromMenu(page, "Layers");
   for (const name of ["Loupe", "Range ring"])
     await expect(choice.getByRole("button", { name })).toHaveAttribute(
@@ -748,7 +786,7 @@ test("the mark round a chosen spot moves with the chart, in the same frame", asy
 
 test("a link that names a spot opens the chart on it", async ({ page }) => {
   await page.goto("/?spot=keel");
-  await expect(page.locator(".dock .dk-name")).toHaveText("Keel Beach", {
+  await expect(barName(page)).toHaveText("Keel Beach", {
     timeout: 30000,
   });
   await expect(page.locator(".map-canvas")).toHaveClass(/is-focus/);
@@ -771,7 +809,7 @@ test("a light off the chart keeps its stars and wind in its name while a spot is
   await page.waitForTimeout(2000);
   await expect(far).toHaveAttribute("aria-label", summary);
   // And at another hour, from the same run.
-  await page.getByRole("slider", { name: "Forecast time" }).fill("10");
+  await timeSlider(page).fill("10");
   await expect(far).toHaveAttribute("aria-label", summary);
 });
 
@@ -851,12 +889,10 @@ for (const device of [
       expect(box!.y).toBeGreaterThanOrEqual(8);
       return { x: box!.x + box!.width / 2, y: box!.y / 2 };
     };
-    const dockName = (page: Page) => page.locator(".dock .dk-name");
-    const coords = /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/;
     /** A spot from a link, the chart flown to it and at rest. */
     const openOn = async (page: Page, id: string, name: string) => {
       await page.goto(`/?spot=${id}`);
-      await expect(dockName(page)).toHaveText(name, { timeout: 30000 });
+      await expect(barName(page)).toHaveText(name, { timeout: 30000 });
       await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
         timeout: 30000,
       });
@@ -866,7 +902,7 @@ for (const device of [
 
     if (touch) {
       // A finger on the screen, the suite's only tap on the chart: the
-      // sheet, the spot and the point in turn. The desktop's tests below go
+      // menu, the spot and the point in turn. The desktop's tests below go
       // through every case.
       test("a tap shuts the site menu and picks nothing, then lets go of the spot, then picks the point", async ({
         page,
@@ -884,7 +920,7 @@ for (const device of [
         await press(page, await backdrop(page));
         await expect(menu).toHaveAttribute("aria-expanded", "false");
         await page.waitForTimeout(800);
-        await expect(dockName(page)).toHaveText("Keel Beach");
+        await expect(barName(page)).toHaveText("Keel Beach");
         await expect(page).toHaveURL(/\/\?spot=keel$/);
         await expect(map).toHaveClass(/is-focus/);
         await expect(page.locator(".pick-mark")).toHaveCount(0);
@@ -893,11 +929,11 @@ for (const device of [
         await press(page, at);
         await expect(map).not.toHaveClass(/is-focus/);
         await page.waitForTimeout(800);
-        await expect(dockName(page)).toHaveText("Keel Beach");
+        await expect(barName(page)).toHaveText("Keel Beach");
         await expect(page.locator(".pick-mark")).toHaveCount(0);
         // With nothing chosen, the next tap picks the point.
         await press(page, at);
-        await expect(page.locator(".dock .dk-tools")).toContainText(coords);
+        await expect(scrubBar(page).locator(".sb-spot")).toContainText(coords);
         await expect(page.locator(".pick-mark")).toHaveCount(1);
       });
       return;
@@ -911,7 +947,7 @@ for (const device of [
       /** A moment past the tap's wait, and Keel as it was. */
       const unmoved = async () => {
         await page.waitForTimeout(800);
-        await expect(dockName(page)).toHaveText("Keel Beach");
+        await expect(barName(page)).toHaveText("Keel Beach");
         await expect(page).toHaveURL(/\/\?spot=keel$/);
         await expect(map).toHaveClass(/is-focus/);
         await expect(page.locator(".pick-mark")).toHaveCount(0);
@@ -949,7 +985,7 @@ for (const device of [
       await steadyFrames(page);
       const none = async () => {
         await page.waitForTimeout(800);
-        await expect(page.locator(".dock")).toHaveCount(0);
+        await expect(barName(page)).toHaveCount(0);
         await expect(page.locator(".pick-mark")).toHaveCount(0);
         await expect(page.locator(".spot-marker.sel")).toHaveCount(0);
         await expect(page).toHaveURL(/\/\?map$/);
@@ -960,7 +996,7 @@ for (const device of [
       await none();
       // Shut, the chart is the reader's again: a press picks its point.
       await press(page, await clear(page));
-      await expect(page.locator(".dock .dk-tools")).toContainText(coords);
+      await expect(scrubBar(page).locator(".sb-spot")).toContainText(coords);
       await expect(page.locator(".pick-mark")).toHaveCount(1);
     });
 
@@ -980,24 +1016,24 @@ for (const device of [
       await page.waitForTimeout(800);
       await expect(map).toHaveClass(/is-focus/);
       await steadyFrames(page);
-      // One press lets go of Keel: the chart's focus goes, the dock keeps
-      // it, and no point is picked where the press was.
+      // One press lets go of Keel: the chart's focus goes, the scrub bar
+      // keeps it, and no point is picked where the press was.
       const at = await clear(page);
       await press(page, at);
       await expect(map).not.toHaveClass(/is-focus/);
       await page.waitForTimeout(800);
-      await expect(dockName(page)).toHaveText("Keel Beach");
+      await expect(barName(page)).toHaveText("Keel Beach");
       await expect(page).toHaveURL(/\/\?spot=keel$/);
       await expect(page.locator(".pick-mark")).toHaveCount(0);
       await expect(page.locator(".map-canvas.is-focus .lt.sel")).toHaveCount(0);
 
       // With nothing chosen, the next press picks the point.
       await press(page, at);
-      await expect(page.locator(".dock .dk-tools")).toContainText(coords);
+      await expect(scrubBar(page).locator(".sb-spot")).toContainText(coords);
       await expect(page.locator(".pick-mark")).toHaveCount(1);
       await expect(map).toHaveClass(/is-focus/);
       await expect(keel).not.toHaveClass(/\bsel\b/);
-      const point = await dockName(page).textContent();
+      const point = await barName(page).textContent();
 
       // And the point is let go of the same way, not moved to the next press.
       await steadyFrames(page);
@@ -1005,7 +1041,7 @@ for (const device of [
       await press(page, await clear(page));
       await expect(map).not.toHaveClass(/is-focus/);
       await page.waitForTimeout(800);
-      await expect(dockName(page)).toHaveText(point!);
+      await expect(barName(page)).toHaveText(point!);
       await expect(page.locator(".pick-mark")).toHaveCount(1);
 
       // A light still chooses its spot, focused, at one press.
@@ -1042,15 +1078,15 @@ test("Escape shuts what is open over the chart first, then lets go of the chosen
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/?spot=keel");
-  const dockName = page.locator(".dock .dk-name");
-  await expect(dockName).toHaveText("Keel Beach", { timeout: 30000 });
+  const name = barName(page);
+  await expect(name).toHaveText("Keel Beach", { timeout: 30000 });
   const map = page.locator(".map-canvas");
   await expect(map).toHaveClass(/is-focus/, { timeout: 30000 });
   await openFromMenu(page, "Settings");
   await page.keyboard.press("Escape");
   await expect(settingsDialog(page)).toHaveCount(0);
   await expect(map).toHaveClass(/is-focus/);
-  await expect(dockName).toHaveText("Keel Beach");
+  await expect(name).toHaveText("Keel Beach");
   const menu = page.getByRole("button", { name: "Site menu" });
   await menu.click();
   await expect(menu).toHaveAttribute("aria-expanded", "true");
@@ -1066,9 +1102,9 @@ test("Escape shuts what is open over the chart first, then lets go of the chosen
   await find.press("Escape");
   await expect(find).not.toBeFocused();
   await expect(map).toHaveClass(/is-focus/);
-  // Nothing open: Escape lets go of Keel, and the dock keeps it.
+  // Nothing open: Escape lets go of Keel, and the scrub bar keeps it.
   await page.keyboard.press("Escape");
   await expect(map).not.toHaveClass(/is-focus/);
-  await expect(dockName).toHaveText("Keel Beach");
+  await expect(name).toHaveText("Keel Beach");
   await expect(page).toHaveURL(/\/\?spot=keel$/);
 });

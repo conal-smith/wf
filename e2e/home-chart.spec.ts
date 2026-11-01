@@ -1,4 +1,11 @@
-import { expect, SPOTS_KEY, test, type Page } from "./fixtures";
+import {
+  barName,
+  expect,
+  scrubBar,
+  SPOTS_KEY,
+  test,
+  type Page,
+} from "./fixtures";
 
 /**
  * The home page: the spot finder's list, with the chart beside it on a wide
@@ -79,7 +86,7 @@ async function openHome(page: Page, ids = ["brandon", "dollymount", "keel"]) {
 test.describe("on a wide screen", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("the list is the home page, and the chart beside it shows only the listed spots, fitted to them, with no dock", async ({
+  test("the list is the home page, and the chart beside it shows only the listed spots, fitted to them, with no scrub bar", async ({
     page,
   }) => {
     const errors: string[] = [];
@@ -113,13 +120,14 @@ test.describe("on a wide screen", () => {
       expect(l.y).toBeGreaterThan(box.y);
       expect(l.y + l.height).toBeLessThan(box.y + box.height);
     }
-    // A light pressed scrolls the list to its card, and opens no dock.
+    // A light pressed scrolls the list to its card, and opens no forecast:
+    // beside the list the time is the cards', and the chart has no scrub bar.
     await page.locator('.spot-marker[data-spot-id="keel"]').click();
     await expect(
       cards(page).filter({ hasText: "Keel Beach" }),
     ).toBeInViewport();
     await page.waitForTimeout(500);
-    await expect(page.locator(".dock")).toHaveCount(0);
+    await expect(scrubBar(page)).toHaveCount(0);
     await expect(page).toHaveURL(/\/$/);
     // No loupe and no range ring beside the list.
     await expect(page.locator(".map-focus > *")).toHaveCount(0);
@@ -223,28 +231,27 @@ test.describe("on a wide screen", () => {
     await expect(onChart(page)).toBeVisible();
   });
 
-  test("on the full chart a spot opens the dock; the bar's Spots takes the reader to the list, the dock gone", async ({
+  test("on the full chart a spot opens its week in the scrub bar; the top bar's Spots takes the reader to the list, the scrub bar gone", async ({
     page,
   }) => {
     await openHome(page);
     await mapButton(page).click();
     await expect(lights(page)).toHaveCount(149);
     await page.locator('.spot-marker[data-spot-id="brandon"]').click();
-    const dock = page.locator(".dock");
-    await expect(dock.locator(".dk-name")).toHaveText("Brandon Bay", {
+    await expect(barName(page)).toHaveText("Brandon Bay", {
       timeout: 30000,
     });
     await expect(page).toHaveURL(/\/\?spot=brandon$/);
-    // The dock stands under the bar, never over it.
+    // The scrub bar stands under the top bar, never over it.
     const top = (await bar(page).boundingBox())!;
-    expect((await dock.boundingBox())!.y).toBeGreaterThanOrEqual(
+    expect((await scrubBar(page).boundingBox())!.y).toBeGreaterThanOrEqual(
       top.y + top.height,
     );
-    // With a dock open, Spots is the list, and the dock is gone with it.
+    // With a spot open, Spots is the list, and the scrub bar is gone with it.
     await listButton(page).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(panel(page)).toBeVisible();
-    await expect(page.locator(".dock")).toHaveCount(0);
+    await expect(scrubBar(page)).toHaveCount(0);
   });
 
   test("the bar's search on the full chart flies to the spot picked and opens it", async ({
@@ -259,14 +266,14 @@ test.describe("on a wide screen", () => {
       page.getByRole("listbox", { name: "Spots" }).getByRole("option").first(),
     ).toContainText("Keel Beach");
     await find.press("Enter");
-    await expect(page.locator(".dock .dk-name")).toHaveText("Keel Beach", {
+    await expect(barName(page)).toHaveText("Keel Beach", {
       timeout: 30000,
     });
     await expect(page).toHaveURL(/\/\?spot=keel$/);
     await expect(find).toHaveValue("");
   });
 
-  test("a card's picture opens the full chart at its spot, with its dock; Back is the list", async ({
+  test("a card's picture opens the full chart at its spot, with its week; Back is the list", async ({
     page,
   }) => {
     await openHome(page);
@@ -275,33 +282,33 @@ test.describe("on a wide screen", () => {
       .getByRole("button", { name: "Keel Beach on the chart" })
       .click();
     await expect(page).toHaveURL(/\/\?spot=keel$/);
-    await expect(page.locator(".dock .dk-name")).toHaveText("Keel Beach", {
+    await expect(barName(page)).toHaveText("Keel Beach", {
       timeout: 30000,
     });
     await expect(onChart(page)).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(/\/$/);
     await expect(panel(page)).toBeVisible();
-    await expect(page.locator(".dock")).toHaveCount(0);
+    await expect(scrubBar(page)).toHaveCount(0);
   });
 
-  test("a link to a spot opens the full chart on it with its dock, and List goes on to the list", async ({
+  test("a link to a spot opens the full chart on it with its week, and List goes on to the list", async ({
     page,
   }) => {
     await star(page, ["brandon"]);
     await page.goto("/?spot=brandon");
-    await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay", {
+    await expect(barName(page)).toHaveText("Brandon Bay", {
       timeout: 30000,
     });
     await expect(onChart(page)).toBeVisible();
     await listButton(page).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(cards(page)).toHaveCount(1);
-    await expect(page.locator(".dock")).toHaveCount(0);
+    await expect(scrubBar(page)).toHaveCount(0);
     // A step on, not back: Back is the chart on the spot again.
     await page.goBack();
     await expect(page).toHaveURL(/\/\?spot=brandon$/);
-    await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
+    await expect(barName(page)).toHaveText("Brandon Bay");
   });
 
   test("Nearby lists the spots round the rider; the chart beside it shows the rider as a blue dot", async ({
@@ -418,18 +425,17 @@ test.describe("on a phone", () => {
     const top = (await bar(page).boundingBox())!;
     const zoom = (await controls.boundingBox())!;
     expect(zoom.y).toBeGreaterThanOrEqual(top.y + top.height);
-    // A spot: the sheet; the bar's Spots back to the list.
+    // A spot: its week in the scrub bar; the top bar's Spots back to the list.
     await page
       .locator('.spot-marker[data-spot-id="brandon"]')
       .dispatchEvent("click");
-    const dock = page.locator(".dock");
-    await expect(dock.locator(".dk-name")).toHaveText("Brandon Bay", {
+    await expect(barName(page)).toHaveText("Brandon Bay", {
       timeout: 30000,
     });
     await listButton(page).tap();
     await expect(page).toHaveURL(/\/$/);
     await expect(cards(page)).toHaveCount(2);
-    await expect(page.locator(".dock")).toHaveCount(0);
+    await expect(scrubBar(page)).toHaveCount(0);
     // Kept, out of sight, for the next time.
     expect(await kept(page)).toBe(true);
     await mapButton(page).tap();

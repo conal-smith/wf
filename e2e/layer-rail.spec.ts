@@ -1,10 +1,10 @@
-import { expect, moreRows, test, type Page } from "./fixtures";
+import { barReady, expect, test, type Page } from "./fixtures";
 
 /**
  * The layers' rail (src/LayerRail.tsx), the one way to the layers: Layers
  * under the zoom opens a column of round switches beside it, one a layer, in
  * the groups of src/layerGroups.tsx, on a desktop and on a phone. There is no
- * panel behind it; where it would run into the dock it scrolls.
+ * panel behind it; where it would run into the scrub bar it scrolls.
  */
 
 const RAIL_KEY = "wingfoil.map.rail.v1";
@@ -18,13 +18,19 @@ const zoomLayers = (page: Page) =>
 const railButton = (page: Page, name: string) =>
   rail(page).getByRole("button", { name, exact: true });
 
-async function openDock(page: Page, width: number, height: number) {
+/** Brandon Bay's week open in the scrub bar, in a window of that size. */
+async function openSpot(page: Page, width: number, height: number) {
   await page.setViewportSize({ width, height });
   await page.goto("/?spot=brandon");
-  await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible({
-    timeout: 30000,
-  });
+  await barReady(page);
 }
+
+/** The top of the chart's foot: the scrub bar, the full width of the map. */
+const barTop = async (page: Page) =>
+  Math.min(
+    (await page.locator(".map-footer").boundingBox())!.y,
+    (await page.locator(".scrub").boundingBox())!.y,
+  );
 
 /** Each group's name and its layers' names, top to bottom. */
 const groupsOf = (box: ReturnType<typeof rail>) =>
@@ -39,10 +45,10 @@ const groupsOf = (box: ReturnType<typeof rail>) =>
       ]),
     );
 
-test("on a desktop, Layers opens the rail beside the zoom, clear of the dock, with every layer in its group", async ({
+test("on a desktop, Layers opens the rail beside the zoom, clear of the scrub bar, with every layer in its group", async ({
   page,
 }) => {
-  await openDock(page, 1440, 900);
+  await openSpot(page, 1440, 900);
   // Shut at first: zoom and Layers alone.
   await expect(rail(page)).toHaveCount(0);
   await expect(zoomLayers(page)).toHaveAttribute("aria-expanded", "false");
@@ -50,13 +56,12 @@ test("on a desktop, Layers opens the rail beside the zoom, clear of the dock, wi
   await expect(rail(page)).toBeVisible();
   await expect(zoomLayers(page)).toHaveAttribute("aria-expanded", "true");
   // To the left of the zoom, at its top, with no panel open, and clear of
-  // the spot's tools and the dock below it.
+  // the scrub bar below it.
   const zbox = (await page.locator(".zbox").boundingBox())!;
   const box = (await rail(page).boundingBox())!;
-  const tools = (await page.locator("#dk-tools").boundingBox())!;
   expect(box.x + box.width).toBeLessThanOrEqual(zbox.x);
   expect(Math.abs(box.y - zbox.y)).toBeLessThan(6);
-  expect(box.y + box.height).toBeLessThan(tools.y);
+  expect(box.y + box.height).toBeLessThan(await barTop(page));
   await expect(page.getByRole("dialog")).toHaveCount(0);
   // Round switches.
   expect(
@@ -84,7 +89,7 @@ test("on a desktop, Layers opens the rail beside the zoom, clear of the dock, wi
 test("the rail's switches: a part of the chart, the wind's two layers each by itself, one thing or nothing round the spot, one tide or none", async ({
   page,
 }) => {
-  await openDock(page, 1440, 900);
+  await openSpot(page, 1440, 900);
   await zoomLayers(page).click();
   await expect(rail(page)).toBeVisible();
 
@@ -175,7 +180,7 @@ test("the rail's switches: a part of the chart, the wind's two layers each by it
 test("the rail stays open or shut on the device, as it was left", async ({
   page,
 }) => {
-  await openDock(page, 1440, 900);
+  await openSpot(page, 1440, 900);
   await zoomLayers(page).click();
   await railButton(page, "Coloured wind").click();
   expect(
@@ -195,9 +200,7 @@ test("the rail stays open or shut on the device, as it was left", async ({
     await page.evaluate((key) => localStorage.getItem(key), RAIL_KEY),
   ).toBe("0");
   await page.reload();
-  await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible({
-    timeout: 30000,
-  });
+  await barReady(page);
   await expect(zoomLayers(page)).toHaveAttribute("aria-expanded", "false");
   await expect(rail(page)).toHaveCount(0);
 });
@@ -205,7 +208,7 @@ test("the rail stays open or shut on the device, as it was left", async ({
 test("the rail is a toolbar: one stop on Tab, the arrows walk it, Space switches", async ({
   page,
 }) => {
-  await openDock(page, 1440, 900);
+  await openSpot(page, 1440, 900);
   await zoomLayers(page).focus();
   await page.keyboard.press("Enter");
   await expect(rail(page)).toBeVisible();
@@ -245,30 +248,27 @@ test("the rail is a toolbar: one stop on Tab, the arrows walk it, Space switches
   await expect(railButton(page, "Tidal depth")).toBeFocused();
 });
 
-test("the dock has no Layers of its own; where the rail would run into the dock, it scrolls above it", async ({
+test("the scrub bar has no Layers of its own; where the rail would run into the bar, it scrolls above it", async ({
   page,
 }) => {
-  await openDock(page, 1280, 720);
+  await openSpot(page, 1280, 720);
   await expect(
-    page
-      .getByRole("group", { name: "This spot" })
-      .getByRole("button", { name: "Layers" }),
+    page.locator(".scrub").getByRole("button", { name: "Layers" }),
   ).toHaveCount(0);
   await zoomLayers(page).click();
   await expect(rail(page)).toBeVisible();
   const clear = async () => {
     const box = (await rail(page).boundingBox())!;
-    const tools = (await page.locator("#dk-tools").boundingBox())!;
-    expect(box.y + box.height).toBeLessThan(tools.y);
+    expect(box.y + box.height).toBeLessThan(await barTop(page));
   };
   await clear();
   await zoomLayers(page).click();
   await expect(rail(page)).toHaveCount(0);
   await zoomLayers(page).click();
   await expect(rail(page)).toBeVisible();
-  // The waves, sky and sea open: the dock is too tall for the whole rail
-  // beside it, so it stays, shorter, and scrolls to its last layer.
-  await moreRows(page);
+  // A shorter window: the room over the bar is too short for the whole rail,
+  // so it stays, shorter, and scrolls to its last layer.
+  await page.setViewportSize({ width: 1280, height: 520 });
   await page.mouse.move(400, 300);
   await expect(rail(page)).toBeVisible();
   await expect(zoomLayers(page)).toHaveAttribute("aria-expanded", "true");
@@ -291,26 +291,23 @@ test.describe("on a phone", () => {
     hasTouch: true,
   });
 
-  test("Layers opens the rail from the zoom, clear of the dock, and a tap says what it switched", async ({
+  test("Layers opens the rail from the zoom, clear of the scrub bar, and a tap says what it switched", async ({
     page,
   }) => {
     await page.goto("/?spot=brandon");
-    await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible({
-      timeout: 30000,
-    });
+    await barReady(page);
     await expect(rail(page)).toHaveCount(0);
     await zoomLayers(page).tap();
     await expect(rail(page)).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     // Under the zoom, down the right edge, clear of the head beside it, and
-    // above the dock's sheet, scrolling where it must.
+    // above the scrub bar, scrolling where it must.
     const zbox = (await page.locator(".zbox").boundingBox())!;
     const box = (await rail(page).boundingBox())!;
-    const sheet = (await page.locator(".map-footer").boundingBox())!;
     const head = (await page.locator("[data-top-bar]").boundingBox())!;
     expect(Math.abs(box.x + box.width - (zbox.x + zbox.width))).toBeLessThan(2);
     expect(box.y).toBeGreaterThanOrEqual(zbox.y + zbox.height);
-    expect(box.y + box.height).toBeLessThanOrEqual(sheet.y);
+    expect(box.y + box.height).toBeLessThanOrEqual(await barTop(page));
     const first = (await railButton(page, "Coloured wind").boundingBox())!;
     expect(first.y).toBeGreaterThanOrEqual(head.y + head.height);
     // A finger has no pointer to rest on it: a tap names the layer, and

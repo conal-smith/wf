@@ -3,10 +3,11 @@ import { expect, test, type Page } from "./fixtures";
 /**
  * The page from the keys alone (#222). The first stop is a skip link, out of
  * sight until it has the focus, to what the page is for: the list, the
- * forecast in the dock, or the search for a spot by name. The chart's lights
- * are one stop (force5/src/lights.ts): Tab comes to one, the arrows walk
- * them, Enter opens one, and Escape leaves them for the chart. With a stop a
- * light, the dock lay a hundred and fifty presses of Tab from the top.
+ * forecast in the scrub bar, or the search for a spot by name. The chart's
+ * lights are one stop (force5/src/lights.ts): Tab comes to one, the arrows
+ * walk them, Enter opens one, and Escape leaves them for the chart. With a
+ * stop a light, the forecast lay a hundred and fifty presses of Tab from the
+ * top.
  */
 
 /**
@@ -24,7 +25,7 @@ async function lightsUp(page: Page, rated = true) {
     });
 }
 
-/** What has the focus: a light, the dock, the skip link, or something else. */
+/** What has the focus: a light, the scrub bar, the skip link, or something else. */
 const focused = (page: Page) =>
   page.evaluate(() => {
     const el = document.activeElement as HTMLElement | null;
@@ -32,7 +33,7 @@ const focused = (page: Page) =>
       light: el?.classList.contains("spot-marker")
         ? (el.dataset.spotId ?? null)
         : null,
-      dock: !!el?.closest(".dock"),
+      bar: !!el?.closest(".scrub"),
       skip: el?.hasAttribute("data-skip-link") ?? false,
       name: el?.getAttribute("aria-label") ?? el?.textContent?.trim() ?? "",
     };
@@ -59,7 +60,9 @@ test("the first stop skips to the forecast, and the lights are one stop on the w
 }) => {
   await page.goto("/?spot=brandon");
   await lightsUp(page, false);
-  await expect(page.locator(".dock")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator(".scrub[data-spot=brandon]")).toBeVisible({
+    timeout: 30000,
+  });
 
   // Out of sight until the keys come to it, and then the first stop.
   const skip = page.locator("[data-skip-link]");
@@ -69,15 +72,17 @@ test("the first stop skips to the forecast, and the lights are one stop on the w
   expect((await focused(page)).skip).toBe(true);
   await expect(skip).toBeInViewport();
   await page.keyboard.press("Enter");
-  await expect(page.locator(".dock")).toBeFocused();
+  await expect(page.locator(".scrub")).toBeFocused();
   await page.keyboard.press("Tab");
-  expect((await focused(page)).dock).toBe(true);
+  expect((await focused(page)).bar).toBe(true);
 
   // Without it, the forecast is a dozen presses from the top, past one light.
   await page.reload();
   await lightsUp(page, false);
-  await expect(page.locator(".dock")).toBeVisible({ timeout: 30000 });
-  const way = await tabsUntil(page, (at) => at.dock);
+  await expect(page.locator(".scrub[data-spot=brandon]")).toBeVisible({
+    timeout: 30000,
+  });
+  const way = await tabsUntil(page, (at) => at.bar);
   expect(way.lights).toBe(1);
   expect(way.presses).toBeLessThan(16);
   await expect(page.locator('.spot-marker[tabindex="0"]')).toHaveCount(1);
@@ -119,11 +124,11 @@ test("the arrows walk the lights, Enter opens one, and Escape leaves them", asyn
   await page.keyboard.press("Shift+Tab");
   expect((await focused(page)).light).toBe(to);
 
-  // Enter opens it: the dock on its place, the focus still on its light.
+  // Enter opens it: the scrub bar on its place, the focus still on its light.
   const name = (await focused(page)).name.split(",")[0];
   await page.keyboard.press("Enter");
-  await expect(page.locator(".dock")).toBeVisible({ timeout: 30000 });
-  await expect(page.locator(".dock")).toHaveAttribute(
+  await expect(page.locator(".scrub .sb-name")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator(".scrub")).toHaveAttribute(
     "aria-label",
     new RegExp(`^Forecast for ${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
   );
@@ -134,7 +139,7 @@ test("the arrows walk the lights, Enter opens one, and Escape leaves them", asyn
   await page.keyboard.press("Escape");
   await expect(page.locator(".maplibregl-canvas")).toBeFocused();
   await expect(page.locator(".map-canvas.is-focus")).toHaveCount(1);
-  await expect(page.locator(".dock")).toBeVisible();
+  await expect(page.locator(".scrub .sb-name")).toBeVisible();
 });
 
 test("with no spot open, the first stop skips to the search", async ({
