@@ -54,8 +54,6 @@ import { useWidth } from "./useWidth";
 const styles = tv({
   slots: {
     main: "flex max-w-page flex-col gap-5 pt-7 pb-12 max-sm:pt-5",
-    head: "flex flex-col gap-2",
-    lead: "m-0 max-w-form font-body text-prose leading-normal text-pretty text-ink-2",
     // The key: the glyphs in a column of their own, the words beside them,
     // so the lines start together.
     glyphs:
@@ -117,14 +115,12 @@ export default function StarsPage() {
   return (
     <SpotFrame back={named ? mapSpotHref(named) : CHART_HREF}>
       <main className={s.main()} ref={chartRef}>
-        <div className={s.head()}>
-          <Heading level="page">How the stars work</Heading>
-          <p className={s.lead()}>
-            We rate every daylight hour out of five stars, from four numbers:
-            ours, unless you have made them your own in Settings, from the site
-            menu.
-          </p>
-        </div>
+        <Heading
+          level="page"
+          lead="We rate every daylight hour out of five stars, from four numbers: ours, unless you have made them your own in Settings, from the site menu."
+        >
+          How the stars work
+        </Heading>
         <RiderSwitch rider={rider} onChange={changeRider} />
         <ul className={s.glyphs()}>
           <li className={s.glyph()}>
