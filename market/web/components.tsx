@@ -119,14 +119,17 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): Async<T> {
 
 /*
  * The site's one top bar (ui/TopBar.tsx) with the marketplace's own few
- * actions in it. The words beside the icons go on a phone, so the bar's
- * search, the actions, Chart and the menu share 390px.
+ * actions in it. A phone's bar has room for one of them beside the search,
+ * Chart and the menu: the way to the account, as an icon. Sell is then the
+ * page's own (`SellOnPhone`), and the footer's.
  */
 export const headerStyles = tv({
   slots: {
     // The word beside the icon, where the row is wide enough to hold it.
     label: "hidden wide:inline",
-    user: "inline-flex items-center px-1",
+    // Only where the bar has room for it.
+    wide: "max-wide:hidden",
+    user: "inline-flex items-center px-1 max-wide:hidden",
     name: "hidden items-center px-2 text-body text-ink-muted wide:inline-flex",
     actions: "flex items-center gap-2 max-wide:gap-1",
   },
@@ -158,6 +161,7 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
           <Link
             className={buttonStyles({
               variant: accentSell ? "primary" : "outline",
+              className: styles.wide(),
             })}
             to={paths.sell()}
           >
@@ -203,6 +207,28 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
         </nav>
       }
     />
+  );
+}
+
+/*
+ * Sell, where the top bar has no room for it: on a phone, beside the page's
+ * heading, the view's filled action as the bar's Sell is on a computer.
+ */
+export const sellOnPhoneStyles = tv({ base: "wide:hidden" });
+
+export function SellOnPhone() {
+  return (
+    <Link
+      className={buttonStyles({
+        variant: "primary",
+        size: "sm",
+        className: sellOnPhoneStyles(),
+      })}
+      to={paths.sell()}
+    >
+      <PlusCircle size={16} strokeWidth={1.75} aria-hidden="true" />
+      <span>Sell</span>
+    </Link>
   );
 }
 
@@ -289,6 +315,7 @@ export function RatingPicker({
         return (
           <Button
             key={n}
+            variant="quiet"
             icon
             size="md"
             role="radio"

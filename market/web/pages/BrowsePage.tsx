@@ -17,6 +17,7 @@ import {
   ListingGrid,
   LoadError,
   Pager,
+  SellOnPhone,
   categoryLabel,
   conditionLabel,
   useAsync,
@@ -203,6 +204,7 @@ export default function BrowsePage() {
         <Heading
           level="page"
           id="browse-title"
+          aside={<SellOnPhone />}
           lead={`Second-hand wingfoil gear, bought and sold across all ${COUNTIES.length} counties.`}
         >
           Market

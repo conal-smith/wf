@@ -514,7 +514,7 @@ export function Aside({
             <div className={styles.formActions()}>
               {listing.status === "active" ? (
                 <Button
-                  variant="soft"
+                  variant="outline"
                   disabled={statusBusy}
                   onClick={() => setStatus("sold")}
                 >
@@ -522,7 +522,7 @@ export function Aside({
                 </Button>
               ) : (
                 <Button
-                  variant="soft"
+                  variant="outline"
                   disabled={statusBusy}
                   onClick={() => setStatus("active")}
                 >

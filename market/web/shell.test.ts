@@ -34,6 +34,7 @@ import {
   starsOf,
   newestFresh,
   priceStyles,
+  sellOnPhoneStyles,
   tabStyles,
 } from "./components";
 import { shellStyles } from "./MarketApp";
@@ -104,6 +105,7 @@ const RECIPES = {
   sellStyles,
   sharedStyles,
   priceStyles,
+  sellOnPhoneStyles,
   shellStyles,
   tabStyles,
 };

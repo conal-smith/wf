@@ -304,7 +304,7 @@ function MyListings({
           </Link>
           {listing.status === "active" ? (
             <Button
-              variant="soft"
+              variant="outline"
               size="sm"
               disabled={busy === listing.id}
               onClick={() => setStatus(listing, "sold")}
@@ -313,7 +313,7 @@ function MyListings({
             </Button>
           ) : (
             <Button
-              variant="soft"
+              variant="outline"
               size="sm"
               disabled={busy === listing.id}
               onClick={() => setStatus(listing, "active")}
