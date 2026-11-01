@@ -471,8 +471,8 @@ test.describe("on a desktop", () => {
     expect(words.some((w) => w.dim)).toBe(true);
     for (const word of words) expect(word.opacity).toBe(1);
     // ink-2 on a gone or dark hour, ink on the others (ui/theme.css).
-    const ink2 = "rgb(59, 60, 62)";
-    const ink = "rgb(26, 29, 33)";
+    const ink2 = "rgb(58, 58, 64)";
+    const ink = "rgb(17, 17, 20)";
     for (const word of words) expect(word.colour).toBe(word.dim ? ink2 : ink);
   });
 

@@ -104,7 +104,7 @@ export const cardStyles = tv({
     // The star's room, as the star button stands (a touch's size under a finger).
     ghostStar: "size-control-sm shrink-0 pointer-coarse:size-touch",
     ghostFacts: "h-5 w-32",
-    ghostHours: "mb-1 min-h-25",
+    ghostHours: "mb-1 min-h-25.5",
     ghostDays: "min-h-32.75",
   },
 });
