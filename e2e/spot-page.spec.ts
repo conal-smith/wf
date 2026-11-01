@@ -7,7 +7,7 @@ import { SAMPLE_CLOCK } from "./columns";
  *
  * Every spec stands at SAMPLE_CLOCK (e2e/fixtures.ts): 21:00 UTC on 13 Sept
  * 2026, so the page opens on a night — today's rows are all dark — and the
- * daylight days follow. Tides are a fixture routed in, as in dock.spec.ts:
+ * daylight days follow. Tides are a fixture routed in, as in scrub.spec.ts:
  * `public/marine` is git-ignored ingest output and never part of the e2e site.
  */
 

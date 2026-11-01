@@ -430,7 +430,9 @@ export default function ScrubBar({
   /* ---- what the strip draws ---- */
 
   const named = !!spot;
-  const shows: ScrubMode = isPoint && mode === "tide" && !tide ? "wind" : mode;
+  // Tide where no station reaches the place (the switch then disabled):
+  // the wind, rather than an empty strip.
+  const shows: ScrubMode = mode === "tide" && !tide ? "wind" : mode;
   useEffect(() => {
     if (named && shows === "waves") onWantMarine();
   }, [named, shows]);
@@ -713,7 +715,7 @@ export default function ScrubBar({
             icon
             className="sb-play"
             aria-label={playing ? "Pause" : "Play through the forecast"}
-            aria-pressed={playing}
+            pressed={playing}
             onClick={() => onPlaying(!playing)}
           >
             {playing ? (
