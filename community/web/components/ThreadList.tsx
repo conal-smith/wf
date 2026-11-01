@@ -1,13 +1,11 @@
 /**
- * A list of threads as the letters page sets them: no box, rows divided by
- * hairlines under the page's rule, and everything a list can be instead:
- * loading, failed, or empty. The pages after the first
+ * A list of threads as rows in one soft card, a hairline between them inside
+ * it, and everything a list can be instead: loading, failed, or empty. The pages after the first
  * arrive as the reader nears the end of the list; the button that asks for them
  * stays, for a browser that cannot watch for that and for a keyboard.
  */
-import { CloudOff } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
-import { Button, Empty, Notice, Skeleton } from "../../../ui";
+import { Button, Notice, Skeleton } from "../../../ui";
 import { tv } from "../../../ui/tv";
 import type { FeedState } from "../hooks";
 import { ThreadRow } from "./ThreadRow";
@@ -15,9 +13,9 @@ import { ThreadRow } from "./ThreadRow";
 export const threadListStyles = tv({
   slots: {
     base: "flex flex-col gap-4",
-    list: "m-0 flex list-none flex-col p-0",
-    // The shape of a row while it loads: a dateline, a title, a byline.
-    loading: "grid gap-2 border-b border-line py-4 max-rail:py-3",
+    list: "m-0 flex list-none flex-col divide-y divide-line overflow-hidden rounded-surface bg-sunken p-0",
+    // The shape of a row while it loads: a line over it, a title, a byline.
+    loading: "grid gap-2 px-4 py-4 max-rail:py-3",
     short: "w-1/4",
     long: "h-4 w-3/4",
     more: "self-center",
@@ -89,8 +87,7 @@ export function ThreadList({
 
   if (state.status === "loading")
     return (
-      <div aria-busy="true">
-        <span className={styles.hidden()}>Loading {subject}…</span>
+      <div className={styles.list()} aria-busy="true">
         {[0, 1, 2, 3].map((row) => (
           <div key={row} className={styles.loading()}>
             <Skeleton className={styles.short()} />
@@ -98,21 +95,24 @@ export function ThreadList({
             <Skeleton className={styles.short()} />
           </div>
         ))}
+        <span className={styles.hidden()}>Loading {subject}…</span>
       </div>
     );
 
   if (state.status === "error")
     return (
-      <Empty
-        kind="warn"
+      <Notice
+        level="warn"
+        alert
         title={`We could not load ${subject}`}
-        icon={<CloudOff size={24} strokeWidth={1.5} aria-hidden="true" />}
+        action={
+          <Button size="sm" onClick={onRetry}>
+            Try again
+          </Button>
+        }
       >
-        <p role="alert">{state.message}</p>
-        <Button variant="outline" onClick={onRetry}>
-          Try again
-        </Button>
-      </Empty>
+        {state.message}
+      </Notice>
     );
 
   if (!state.items.length) return <>{empty}</>;
@@ -132,14 +132,18 @@ export function ThreadList({
         ))}
       </ul>
       {state.more.status === "error" && (
-        <Notice kind="warn">
-          <p>{state.more.message}</p>
+        <Notice
+          level="warn"
+          alert
+          title={`We could not load more of ${subject}`}
+        >
+          {state.more.message}
         </Notice>
       )}
       {state.nextCursor !== null && (
         <Button
           ref={more}
-          variant="outline"
+          variant="soft"
           className={styles.more()}
           disabled={state.more.status === "loading"}
           onClick={onMore}

@@ -9,7 +9,7 @@ import { buttonStyles } from "../../ui/Button";
 import { checkboxStyles } from "../../ui/Checkbox";
 import { controlStyles } from "../../ui/control";
 import { fieldStyles } from "../../ui/Field";
-import { mastheadStyles } from "../../ui/Masthead";
+import { topBarStyles } from "../../ui/TopBar";
 import { compileTheme, holds } from "../../ui/theme.testkit";
 import type { Listing } from "../shared/types";
 import {
@@ -33,8 +33,8 @@ import {
   Stars,
   starsOf,
   newestFresh,
-  notFoundStyles,
   priceStyles,
+  sellOnPhoneStyles,
   tabStyles,
 } from "./components";
 import { shellStyles } from "./MarketApp";
@@ -104,8 +104,8 @@ const RECIPES = {
   sellerStyles,
   sellStyles,
   sharedStyles,
-  notFoundStyles,
   priceStyles,
+  sellOnPhoneStyles,
   shellStyles,
   tabStyles,
 };
@@ -230,10 +230,12 @@ describe("S1: Tailwind and ui/ only, everywhere in the marketplace", () => {
       expect(name).not.toMatch(new RegExp(`^(?:${MK}|${F5})`));
   });
 
-  it("stands the site menu on the header's card, not on glass", () => {
-    expect(read("components.tsx")).toContain(
-      '<SiteMenu current="market" size="sm" ground="content" />',
-    );
+  it("heads every page with the site's one top bar, its search and the chart", () => {
+    const source = read("components.tsx");
+    expect(source).toContain("<TopBar");
+    expect(source).toContain('menu={<SiteMenu current="market" />}');
+    expect(source).toContain('view={{ to: "chart", href: CHART_HREF }}');
+    expect(source).toContain("<SpotSearch onPick={openSpot} />");
   });
 
   it("draws the face beside a name as the kit's monogram, a size down on a phone", () => {
@@ -243,10 +245,10 @@ describe("S1: Tailwind and ui/ only, everywhere in the marketplace", () => {
     expect(html(createElement(Avatar, { name: "Aoife Byrne" }))).toContain(
       ">AB<",
     );
-    // The kit's ring in ink, not the old filled disc.
-    expect(html(createElement(Avatar, { name: "aoife" }))).toMatch(
-      /class="[^"]*border-ink[^"]*italic/,
-    );
+    // The kit's soft round in Inter: no ink ring, no italic serif.
+    const face = html(createElement(Avatar, { name: "aoife" }));
+    expect(face).toMatch(/class="[^"]*bg-well[^"]*font-body/);
+    expect(face).not.toMatch(/border-ink|italic|font-display/);
   });
 });
 
@@ -276,8 +278,8 @@ describe("S2: the shell's measures", () => {
     expect(page).not.toContain("px-6");
     expect(page).not.toContain("max-wide:px-3");
 
-    // The header is the site's masthead now, and it keeps the notch clear too.
-    expect(mastheadStyles().base().split(" ")).toContain("pt-safe-2");
+    // The header is the site's top bar now, and it keeps the notch clear too.
+    expect(topBarStyles().base()).toContain("px-safe-6");
     expect(footerStyles().base()).toContain("pb-safe-6");
   });
 });
@@ -294,7 +296,7 @@ describe("S3: what a phone drops, at 720px", () => {
     const styles = headerStyles();
     expect(styles.label()).toBe("hidden wide:inline");
     expect(styles.name()).toContain("wide:inline-flex");
-    expect(mastheadStyles().bar()).toContain("max-wide:gap-2");
+    expect(styles.actions()).toContain("max-wide:gap-1");
   });
 
   it("scrolls the category rail on one line, bleeding to the edge", () => {
@@ -332,13 +334,12 @@ describe("S3: what a phone drops, at 720px", () => {
 
   /*
    * A thumb, not a pointer. The kit's own controls carry the minimum, so the
-   * rail's chips and the toggle already have it; the removable filter is the
-   * one control on this page that ui/ has no part for, and it is asked for
-   * here so that it does not stay 30px beside a 44px chip.
+   * rail's chips, the removable filters and the toggle already have it.
    */
-  it("gives every control a reader taps 44px, the kit's and its own", () => {
-    expect(browseStyles().token()).toContain("pointer-coarse:min-h-touch");
-    expect(buttonStyles({ variant: "pill" })).toContain(
+  it("gives every control a reader taps 44px", () => {
+    const source = read("pages/BrowsePage.tsx");
+    expect(source).toMatch(/<Chip[\s\S]*?removable/);
+    expect(buttonStyles({ variant: "outline" })).toContain(
       "pointer-coarse:min-h-touch",
     );
     // The toggle says 44 outright, as market.css did, rather than by minimum.
@@ -351,16 +352,15 @@ describe("S3: what a phone drops, at 720px", () => {
 });
 
 describe("S5: what the card does, and what it does not", () => {
-  it("is a ruled pane: the heavy rule over the ad, no box round it", () => {
+  it("has no box and no rule: the photograph in a soft card, the words under it", () => {
     const out = card("active");
     const open = out.slice(0, out.indexOf(">"));
-    expect(open).toContain("border-t-2");
-    expect(open).toContain("border-ink");
-    expect(open).not.toMatch(/[\s"]border[\s"]/);
-    // The photograph stands in its own hairline frame.
+    expect(open).not.toMatch(/border/);
     expect(listingCardStyles().media().split(" ")).toEqual(
-      expect.arrayContaining(["border", "border-line"]),
+      expect.arrayContaining(["rounded-surface", "bg-sunken"]),
     );
+    expect(listingCardStyles().media()).not.toMatch(/border/);
+    expect(listingCardStyles().title()).toContain("font-body");
   });
 
   it("does not float under the pointer: the name underlines, the photo leans in", () => {
@@ -401,7 +401,9 @@ describe("S5: what the card does, and what it does not", () => {
     expect(out).toContain("<h3");
     // The town and the county, each in a span of its own: on a phone the town
     // gives way and the county, the one a buyer filters on, stays whole.
-    expect(out).toMatch(/<span class="truncate">Castlegregory<\/span><span class="shrink-0">,\u00a0Kerry<\/span>/);
+    expect(out).toMatch(
+      /<span class="truncate">Castlegregory<\/span><span class="shrink-0">,\u00a0Kerry<\/span>/,
+    );
     // The stars beside the condition say whose they are.
     expect(out).toMatch(/>Seller<\/span><svg[^>]*aria-label="4.5 out of 5"/);
     // Two photos, so the count badge, and the seller's stars, said in words.
@@ -412,15 +414,19 @@ describe("S5: what the card does, and what it does not", () => {
   it("leaves out what the page around it already says", () => {
     const listing = listingOf("active", { saved: true });
     // The Saved tab: every card on it is saved.
-    const onSaved = html(createElement(ListingCard, { listing, hideSaved: true }));
+    const onSaved = html(
+      createElement(ListingCard, { listing, hideSaved: true }),
+    );
     expect(onSaved).not.toContain("Saved");
     // The seller's own page: every card is theirs, and their rating heads it.
-    const onSeller = html(createElement(ListingCard, { listing, hideSeller: true }));
+    const onSeller = html(
+      createElement(ListingCard, { listing, hideSeller: true }),
+    );
     expect(onSeller).not.toContain(">Seller<");
     expect(onSeller).not.toContain('aria-label="4.5 out of 5"');
   });
 
-  it("badges a saved listing on paper, at the corner of the photograph", () => {
+  it("badges a saved listing on glass, at the corner of the photograph", () => {
     // Top left is the badge's corner; bottom right is the photo count's,
     // which every card with more than one photo already carries.
     expect(card("active", { saved: true })).toMatch(
@@ -434,8 +440,11 @@ describe("S5: what the card does, and what it does not", () => {
 
   it("marks new on one card at most, and only from this week", () => {
     const now = Date.parse("2026-09-20T09:00:00.000Z");
-    const at = (id: string, iso: string, status: Listing["status"] = "active") =>
-      listingOf(status, { id, createdAt: iso });
+    const at = (
+      id: string,
+      iso: string,
+      status: Listing["status"] = "active",
+    ) => listingOf(status, { id, createdAt: iso });
     expect(
       newestFresh(
         [
@@ -523,10 +532,9 @@ describe("S1: the listing's two columns, and the panel that stays in view", () =
     );
   });
 
-  it("holds the panel clear of the sticky header", () => {
-    // 22.5 steps of 4px is 90: the header's bar, its inset and the gap under
-    // it, which is what market.css added up to. The header itself is 70.
-    expect(listingStyles().aside().split(" ")).toContain("rail:top-22.5");
+  it("holds the panel a little way off the top of the window", () => {
+    // The top bar scrolls away with the page, so the panel only keeps a gap.
+    expect(listingStyles().aside().split(" ")).toContain("rail:top-6");
   });
 
   it("lets the action's words wrap before the row runs past the panel", () => {
@@ -563,11 +571,12 @@ describe("the tabs, on the seller's page and the account", () => {
     expect(tabStyles().list().split(" ")).toContain("scrollbar-none");
   });
 
-  it("underlines the one being read in ink and sets it heavier, not colour alone", () => {
+  it("is the kit's tab: the one being read on a soft pill, in ink", () => {
     const tab = tabStyles().tab().split(" ");
-    expect(tab).toContain("aria-selected:border-ink");
-    expect(tab).toContain("aria-selected:font-semibold");
+    expect(tab).toContain("aria-selected:bg-well");
+    expect(tab).toContain("aria-selected:text-ink");
     expect(tab).toContain("pointer-coarse:min-h-touch");
+    expect(tab).not.toContain("uppercase");
   });
 
   it("is the one recipe both pages draw their tabs with", () => {
@@ -629,7 +638,9 @@ describe("S3: a rating is the chart's star, and the shape says it", () => {
   });
 
   it("picks a rating with the same star, solid when lit", () => {
-    const out = html(createElement(RatingPicker, { value: 2, onChange: () => {} }));
+    const out = html(
+      createElement(RatingPicker, { value: 2, onChange: () => {} }),
+    );
     expect(out.match(/role="radio"/g)).toHaveLength(5);
     expect(out.match(/fill-current"/g)).toHaveLength(2);
     expect(out).not.toContain("lucide");
@@ -648,22 +659,22 @@ describe("S3: a rating is the chart's star, and the shape says it", () => {
     expect(html(createElement(SellerRating, { seller: sellerOf(2) }))).toMatch(
       /font-mono[^"]*">4\.5/,
     );
-    expect(html(createElement(SellerRating, { seller: sellerOf(0) }))).toContain(
-      "No ratings yet",
-    );
+    expect(
+      html(createElement(SellerRating, { seller: sellerOf(0) })),
+    ).toContain("No ratings yet");
   });
 
-  // The histogram's bars are a quantity, so they are magenta's wash; nothing
-  // on these pages fills in the accent but the kit's one primary.
-  it("fills the histogram in the wash, and leaves the accent fill to the action", () => {
-    expect(sellerStyles().fill().split(" ")).toContain("bg-wash/25");
+  // The histogram's bars are a quantity, in a soft bar; nothing on these
+  // pages fills in the accent but the kit's one primary.
+  it("fills the histogram in grey, and leaves the accent fill to the action", () => {
+    expect(sellerStyles().fill().split(" ")).toContain("bg-ink-2");
     expect(classesOf(listingStyles)).not.toContain("bg-accent");
     expect(classesOf(ratingStyles)).not.toContain("bg-accent");
     expect(classesOf(sellerStyles)).not.toContain("bg-accent");
     expect(buttonStyles({ variant: "primary" })).toContain("bg-accent");
     // Saved is a toggle that says so in its own words, not another fill.
     expect(
-      buttonStyles({ variant: "pill", pressed: "worded" }).split(" "),
+      buttonStyles({ variant: "outline", pressed: "worded" }).split(" "),
     ).not.toContain("bg-inverse");
   });
 });
@@ -791,6 +802,12 @@ async function headerAs(devUser: string | null, accentSell: boolean) {
   vi.resetModules();
   vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", "");
   vi.stubEnv("VITE_MARKET_DEV_USER", devUser ?? "");
+  // The bar's spot search reads the favourites from the browser's storage,
+  // which a server render has not got: it is the kit's, and tested there.
+  vi.doMock("../../ui/SpotSearch", async (original) => ({
+    ...(await original<typeof import("../../ui/SpotSearch")>()),
+    SpotSearch: () => createElement("div", { "data-spot-search": "" }),
+  }));
   const { MarketAuthProvider } = await import("./auth");
   const { MarketHeader } = await import("./components");
   return html(
@@ -805,14 +822,22 @@ describe("S4: the header, and its one filled action", () => {
     vi.unstubAllEnvs();
   });
 
-  it("is the site menu, the brand, the chip and the marketplace's nav", async () => {
+  afterEach(() => {
+    vi.doUnmock("../../ui/SpotSearch");
+  });
+
+  it("is the site's top bar: the wordmark home, the search, the chart and the menu", async () => {
     const out = await headerAs(null, true);
+    expect(out).toContain("data-top-bar");
     expect(out).toContain('aria-label="Site menu"');
     expect(out).toMatch(
-      /<a href="\/market"[^>]*aria-label="wingfoil\.ie Market, home"/,
+      /<a href="\/"[^>]*aria-label="wingfoil\.ie, the Spot finder"/,
     );
-    expect(out).toMatch(/<span class="[^"]*text-eyebrow[^"]*">Market<\/span>/);
+    expect(out).toContain("data-spot-search");
+    expect(out).toMatch(/<a href="\/\?map"[^>]*data-view-switch="chart"/);
     expect(out).toMatch(/<nav class="[^"]*" aria-label="Marketplace">/);
+    // No "wingfoil.ie / Market" label beside the wordmark: the page says it.
+    expect(out).not.toMatch(/>Market</);
   });
 
   it("signed out is Sell and Sign in, and nothing a reader cannot use", async () => {
@@ -835,7 +860,7 @@ describe("S4: the header, and its one filled action", () => {
     expect(filled).toContain("bg-accent");
     const stood = sell(await headerAs("maeve", false));
     expect(stood).not.toContain("bg-accent");
-    expect(stood).toContain("bg-card");
+    expect(stood).toContain("border-line");
   });
 });
 
@@ -855,9 +880,10 @@ describe("S4: accentSell decides which action is filled", () => {
 });
 
 describe("S6: the footer", () => {
-  it("is the year, three plain links and a hairline above them", () => {
+  it("is the year and three plain links, kept off the page by space alone", () => {
     const out = html(createElement(MarketFooter));
-    expect(out).toMatch(/^<footer class="[^"]*border-t[^"]*"/);
+    expect(out).toMatch(/^<footer class="[^"]*mt-16[^"]*"/);
+    expect(out.slice(0, out.indexOf(">"))).not.toMatch(/border/);
     expect(out).toContain(`© ${new Date().getFullYear()} wingfoil.ie`);
     expect(out).toMatch(/<nav class="[^"]*" aria-label="Footer">/);
     const hrefs = [...out.matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1]);
@@ -949,13 +975,13 @@ describe("sell/me S2: the photo uploader", () => {
     expect(styles.tile().split(" ")).toContain("group");
   });
 
-  it("puts the cover badge and the tools on paper over the photograph", () => {
+  it("puts the cover tag and the tools over the photograph", () => {
     expect(styles.badge().split(" ")).toEqual(["absolute", "top-1", "left-1"]);
-    // The kit's paper capsule, which stays paper when it cannot be pressed.
+    // The kit's outlined button, which stays solid when it cannot be pressed.
     expect(read("pages/SellPage.tsx")).toMatch(
       /variant="outline"\s+icon\s+size="sm"\s+className=\{styles\.tool\(\)\}/,
     );
-    expect(styles.tool()).toContain("disabled:bg-card");
+    expect(styles.tool()).toContain("disabled:bg-ground");
     expect(styles.tools()).toContain("absolute");
   });
 });

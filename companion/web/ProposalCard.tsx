@@ -1,5 +1,5 @@
 import { Check, UserRound } from "lucide-react";
-import { Button, Kicker } from "../../ui";
+import { Button } from "../../ui";
 import { riderSummary, type ProfileProposal } from "../shared/protocol";
 import type { ProposalStatus } from "./chat";
 
@@ -20,26 +20,28 @@ export function ProposalCard({
 }) {
   return (
     <article
-      className="flex flex-col gap-3 rounded-surface border border-ink bg-card paper-grain p-4 font-body text-ink inset-shadow-frame shadow-card"
+      className="flex flex-col gap-3 rounded-surface bg-sunken p-4 font-body text-ink on-card"
       aria-label="Rider profile proposal"
     >
       <div className="flex items-start gap-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-full border border-ink text-ink">
-          <UserRound size={16} strokeWidth={1.5} aria-hidden="true" />
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ground text-ink-2">
+          <UserRound size={16} strokeWidth={1.75} aria-hidden="true" />
         </span>
-        <div className="min-w-0">
-          <Kicker>Rider profile</Kicker>
-          <p className="m-0 font-display text-prose font-semibold">
+        <div className="grid min-w-0 gap-0.5">
+          <p className="m-0 font-body text-body text-ink-muted">
+            Rider profile
+          </p>
+          <p className="m-0 font-body text-prose font-semibold">
             {proposal.summary}
           </p>
-          <p className="m-0 font-body text-caption text-ink-muted italic">
+          <p className="m-0 font-body text-body text-ink-2">
             Stars and wing sizes everywhere on the map follow your profile.
           </p>
         </div>
       </div>
       {status === "pending" ? (
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="px-4" onClick={onConfirm}>
+          <Button size="sm" onClick={onConfirm}>
             Confirm
           </Button>
           <Button variant="quiet" size="sm" onClick={onDismiss}>
@@ -48,7 +50,7 @@ export function ProposalCard({
         </div>
       ) : (
         <p
-          className="m-0 inline-flex items-center gap-1 font-mono text-caption text-ink-2"
+          className="m-0 inline-flex items-center gap-1 font-body text-body text-ink-2"
           role="status"
         >
           {status === "saved" ? (

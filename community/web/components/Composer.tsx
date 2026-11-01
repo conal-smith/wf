@@ -1,11 +1,11 @@
 /**
  * The reply slot, docked under the stream as the forecast's dock is under the
- * map: a strip of paper over a double rule. Signed in it is the composer, a
- * ruled field to write in and the view's one filled action, Reply; signed out
- * it is the offer to sign in; on a locked thread it is the reason.
+ * map: a strip of the ground under one hairline. Signed in it is the composer,
+ * a filled field to write in and the view's one filled action, Reply; signed
+ * out it is the offer to sign in; on a locked thread it is the reason.
  *
  * When a reply answers one message, the name of who is being answered is
- * set in the display face: it says where this letter is going.
+ * set heavier: it says where this reply is going.
  */
 import { AtSign, Image as ImageIcon, Lock, LogIn, Send, X } from "lucide-react";
 import {
@@ -18,7 +18,7 @@ import {
 } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { Avatar, Button } from "../../../ui";
-import { HOVER, MONO_LABEL, NO_RING, RING_WITHIN, tv } from "../../../ui/tv";
+import { HOVER, NO_RING, RING_WITHIN, tv } from "../../../ui/tv";
 import { LIMITS, type Member, type Message } from "../../shared/types";
 import {
   applyMention,
@@ -30,58 +30,51 @@ import {
 
 export const composerStyles = tv({
   slots: {
-    // The dock's paper, over the broadsheet's double rule. `border-0` first:
-    // `border-double` would otherwise draw all four sides.
+    // The dock: the ground, under one hairline, as the top bar is over it.
     base: [
-      "relative grid gap-2 border-0 border-t-3 border-double border-ink bg-ground paper-grain pt-3 pb-safe-3 font-body",
+      "relative grid gap-2 border-0 border-t border-line bg-ground pt-3 pb-safe-3 font-body",
     ],
     replying: "flex min-w-0 items-center gap-2 pl-1 text-body text-ink-muted",
-    replyingLabel: ["shrink-0", MONO_LABEL],
-    replyingName: "shrink-0 font-display font-semibold text-ink",
-    replyingLine: "min-w-0 flex-1 truncate italic",
-    // The field: a box ruled in ink to write in, as the kit's fields are.
-    box: [
-      "grid gap-2 rounded-control border border-ink bg-card px-3 py-2",
-      RING_WITHIN,
-    ],
+    replyingLabel: "shrink-0",
+    replyingName: "shrink-0 font-semibold text-ink",
+    replyingLine: "min-w-0 flex-1 truncate",
+    // The field: filled, as the kit's fields are, with the soft ring on focus.
+    box: ["grid gap-2 rounded-control bg-sunken px-3.5 py-2.5", RING_WITHIN],
     input: [
       "field-sizing-content max-h-60 min-h-control-md w-full resize-none border-0 bg-transparent p-0",
       // The input step everywhere: under 16px a focused field makes a phone
-      // zoom the page, and a letter is easier written at the size it is read.
-      "font-body text-input leading-normal text-ink placeholder:text-ink-muted placeholder:italic placeholder:opacity-100",
+      // zoom the page, and a reply is easier written at the size it is read.
+      "font-body text-input leading-normal text-ink placeholder:text-ink-muted placeholder:opacity-100",
       NO_RING,
     ],
     photos: "m-0 flex list-none flex-wrap gap-2 p-0",
     // A thumbnail: a control's corner, the picture cut to it.
-    photo:
-      "relative size-18 overflow-hidden rounded-control border border-line bg-sunken",
+    photo: "relative size-18 overflow-hidden rounded-control bg-ground",
     photoImage: "size-full object-cover",
     photoBusy: "animate-pulse motion-reduce:animate-none",
-    // A small paper button over the picture, raised and lit so it reads
-    // against any photograph; the sheen lifts under the pointer for the hover.
-    photoRemove:
-      "absolute top-0 right-0 bg-card sheen-raised shadow-raised not-disabled:hover:bg-none",
+    // The kit's outlined button over the picture, with the deeper shadow a
+    // mark over a photograph carries, so it reads against any of them.
+    photoRemove: "absolute top-1 right-1 shadow-marker",
     error: "m-0 text-body text-warn",
     bar: "flex items-center gap-0.5",
     send: "ml-auto",
     hiddenInput: "hidden",
-    // The people an @ offers, over the field: a menu, so a sheet's corner,
-    // floating. Padded clear of that corner, so the row the arrows are on
-    // keeps its tint off it; the rows are ruled, so they stay square.
+    // The people an @ offers, over the field: the kit's floating card,
+    // padded clear of its corner.
     matches:
-      "absolute bottom-full left-0 z-popover mb-1 flex min-w-56 flex-col rounded-dialog border border-ink bg-card paper-float p-2 shadow-float inset-shadow-frame",
+      "absolute bottom-full left-0 z-popover mb-1 flex min-w-56 flex-col gap-0.5 rounded-surface bg-ground p-1.5 shadow-float dark:ring-1 dark:ring-line",
     match: [
-      "flex min-h-control-md w-full cursor-pointer items-center gap-2 border-b border-line px-2 text-left text-body text-ink-2 last:border-b-0",
+      "flex min-h-control-md w-full cursor-pointer items-center gap-2 rounded-control border-0 bg-transparent px-2 text-left text-body text-ink-2",
       "pointer-coarse:min-h-touch",
       HOVER,
     ],
-    matchName: "font-display font-semibold text-ink",
-    matchHandle: "font-mono text-caption text-ink-muted",
-    // Signed out, or locked: the same strip of paper, one thing on it.
-    gate: "flex items-center justify-between gap-3 border-0 border-t-3 border-double border-ink bg-ground paper-grain pt-3 pb-safe-3 font-body",
+    matchName: "font-semibold text-ink",
+    matchHandle: "text-body text-ink-muted",
+    // Signed out, or locked: the same strip, one thing on it.
+    gate: "flex items-center justify-between gap-3 border-0 border-t border-line bg-ground pt-3 pb-safe-3 font-body",
     gateText: "grid min-w-0 gap-0.5",
-    gateTitle: "font-display text-prose font-semibold text-ink",
-    gateMeta: "text-body text-ink-muted italic",
+    gateTitle: "text-prose font-semibold text-ink",
+    gateMeta: "text-body text-ink-muted",
     locked: "flex items-center gap-3 text-ink-muted",
   },
   variants: {
@@ -334,12 +327,13 @@ export function Composer({
           </span>
           <span className={styles.replyingLine()}>{firstLine(replyingTo)}</span>
           <Button
+            variant="quiet"
             size="sm"
             icon
             aria-label="Cancel replying to this message"
             onClick={onCancelReply}
           >
-            <X size={15} strokeWidth={1.5} aria-hidden="true" />
+            <X size={15} strokeWidth={1.75} aria-hidden="true" />
           </Button>
         </div>
       )}
@@ -394,7 +388,7 @@ export function Composer({
                   aria-label={`Remove photo ${i + 1}`}
                   onClick={() => detach(photo)}
                 >
-                  <X size={13} strokeWidth={1.5} aria-hidden="true" />
+                  <X size={13} strokeWidth={1.75} aria-hidden="true" />
                 </Button>
               </li>
             ))}
@@ -418,22 +412,24 @@ export function Composer({
           onChange={attach}
         />
         <Button
+          variant="quiet"
           size="sm"
           icon
           aria-label="Add photos"
           disabled={busy || photos.length >= LIMITS.photosPerMessage}
           onClick={() => files.current?.click()}
         >
-          <ImageIcon size={16} strokeWidth={1.5} aria-hidden="true" />
+          <ImageIcon size={16} strokeWidth={1.75} aria-hidden="true" />
         </Button>
         <Button
+          variant="quiet"
           size="sm"
           icon
           aria-label="Mention someone"
           disabled={busy}
           onClick={startMention}
         >
-          <AtSign size={16} strokeWidth={1.5} aria-hidden="true" />
+          <AtSign size={16} strokeWidth={1.75} aria-hidden="true" />
         </Button>
         <Button
           type="submit"
@@ -443,7 +439,7 @@ export function Composer({
           disabled={!ready}
         >
           <span>{busy ? "Sending…" : "Reply"}</span>
-          <Send size={14} strokeWidth={1.5} aria-hidden="true" />
+          <Send size={14} strokeWidth={1.75} aria-hidden="true" />
         </Button>
       </div>
     </form>
@@ -471,7 +467,7 @@ export function SignInToReply() {
             : undefined
         }
       >
-        <LogIn size={15} strokeWidth={1.5} aria-hidden="true" />
+        <LogIn size={15} strokeWidth={1.75} aria-hidden="true" />
         <span>Sign in to reply</span>
       </Button>
     </div>
@@ -484,7 +480,7 @@ export function LockedNotice({ reason }: { reason: string | null }) {
   return (
     <div className={styles.gate()} role="status">
       <span className={styles.locked()}>
-        <Lock size={18} strokeWidth={1.5} aria-hidden="true" />
+        <Lock size={18} strokeWidth={1.75} aria-hidden="true" />
         <span className={styles.gateText()}>
           <span className={styles.gateTitle()}>This thread is locked</span>
           <span className={styles.gateMeta()}>

@@ -1,7 +1,8 @@
 /**
  * A channel's tags as its one filter: All, then each tag. Links, so the tag
- * rides in the URL and a filtered channel can be sent to someone; the one that
- * is on is raised and filled as well as said with `aria-current`.
+ * rides in the URL and a filtered channel can be sent to someone. They look as
+ * the kit's choice chips do: soft, and the one that is on filled in ink as
+ * well as said with `aria-current`.
  */
 import { Button } from "../../../ui";
 import { tv } from "../../../ui/tv";
@@ -20,11 +21,6 @@ export const tagPillsStyles = tv({
       "max-rail:-mx-3 max-rail:flex-nowrap max-rail:overflow-x-auto max-rail:px-3 max-rail:py-1",
     ],
     item: "shrink-0",
-    pill: "",
-  },
-  variants: {
-    // The ones that are off are quiet: the kit's pressed pill says the rest.
-    on: { false: { pill: "shadow-none" } },
   },
 });
 
@@ -59,10 +55,9 @@ export function TagPills({ slug, tags, current }: TagPillsProps) {
           <li key={pill.id ?? "all"} className={styles.item()}>
             <Button
               {...routed(paths.channel(slug, pill.id))}
-              variant="outline"
+              variant="soft"
               size="sm"
               pressed={current === pill.id}
-              className={tagPillsStyles({ on: current === pill.id }).pill()}
             >
               {pill.label}
             </Button>

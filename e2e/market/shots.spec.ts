@@ -35,7 +35,7 @@ test("browse: the grid, and the filters open on a phone", async ({
     await shoot("browse", width, { as: BUYER }, async (page) => {
       await page.goto("/market");
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-        "Second-hand gear: across Ireland",
+        "Market",
       );
       // Seven of the eight: the eighth is sold, and browse does not keep those.
       await expect(page.getByText("7 listings")).toBeVisible();
@@ -200,7 +200,9 @@ test("selling: the empty form, the form with errors, and the way in", async ({
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(
         "Sell your gear",
       );
-      await expect(page.getByRole("alert")).toBeVisible();
+      await expect(
+        page.getByText("Sign-in is not available here"),
+      ).toBeVisible();
     });
 
     // Nothing filled in and published anyway: the form answers before the API

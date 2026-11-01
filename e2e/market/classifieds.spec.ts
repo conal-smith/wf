@@ -2,11 +2,11 @@ import type { Browser, Page } from "@playwright/test";
 import { BUYER, SELLER, expect, test } from "./fixtures";
 
 /**
- * The marketplace in the chart's style, as a reader meets it: the classifieds
+ * The marketplace in the site's style, as a reader meets it: the classifieds
  * on a phone and a laptop, an ad, a seller and the sell form. What is asked is
- * what the brand promises (docs/BRAND.md) and what a thumb needs: ruled ads,
- * prices as figures, the chart's stars, one "new" at most, 44px targets and
- * nothing wider than the screen.
+ * what the brand promises (docs/BRAND.md) and what a thumb needs: ads with no
+ * box or rule round them, prices as figures, the chart's stars, one "new" at
+ * most, 44px targets and nothing wider than the screen.
  *
  * It stands on the baseline's fixtures (fixtures.ts) but reads them at the
  * real time, so the newest ad is minutes old and is marked new.
@@ -23,7 +23,9 @@ async function open(
 ): Promise<Page> {
   const context = await browser.newContext({
     baseURL,
-    viewport: phone ? { width: 390, height: 844 } : { width: 1440, height: 900 },
+    viewport: phone
+      ? { width: 390, height: 844 }
+      : { width: 1440, height: 900 },
     isMobile: phone,
     hasTouch: phone,
   });
@@ -54,22 +56,20 @@ for (const phone of [true, false]) {
   }) => {
     const page = await open(browser, baseURL, BUYER, phone);
     await page.goto("/market");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-      "Second-hand gear: across Ireland",
-    );
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Market");
     await expect(
       page.getByRole("heading", { level: 2, name: "7 listings" }),
     ).toBeVisible();
     await expect(ads(page)).toHaveCount(7);
 
-    // Every ad is ruled, not boxed: a heavy rule over it and none at its sides.
+    // No ad is ruled or boxed: space keeps them apart.
     const rule = await ads(page)
       .first()
       .evaluate((a) => {
         const style = getComputedStyle(a);
         return [style.borderTopWidth, style.borderLeftWidth];
       });
-    expect(rule).toEqual(["2px", "0px"]);
+    expect(rule).toEqual(["0px", "0px"]);
     // Two up on a phone, more where there is room.
     const tops = await ads(page).evaluateAll((all) =>
       all.slice(0, 2).map((a) => Math.round(a.getBoundingClientRect().top)),
@@ -85,15 +85,19 @@ for (const phone of [true, false]) {
     await expect(fresh).toHaveCount(1);
     await expect(fresh).toHaveText("new");
     await expect(
-      ads(page).filter({ hasText: baseline.noPhoto.title }).locator("[data-fresh]"),
+      ads(page)
+        .filter({ hasText: baseline.noPhoto.title })
+        .locator("[data-fresh]"),
     ).toHaveCount(1);
 
     // The seller's stars are the chart's, named for a screen reader.
     await expect(
-      ads(page).first().getByRole("img", { name: /out of 5/ }),
+      ads(page)
+        .first()
+        .getByRole("img", { name: /out of 5/ }),
     ).toBeVisible();
 
-    // A category is chosen in the display italic, and narrows the ads.
+    // A category is a chip, filled when it is chosen, and narrows the ads.
     const wings = page
       .getByRole("group", { name: "Category" })
       .getByRole("button", { name: "Wings" });
@@ -103,8 +107,11 @@ for (const phone of [true, false]) {
     }
     await wings.click();
     await expect(wings).toHaveAttribute("aria-pressed", "true");
-    await expect(wings).toHaveCSS("font-style", "italic");
-    await expect(page.getByRole("heading", { name: "1 listing" })).toBeVisible();
+    await expect(wings).toHaveCSS("font-style", "normal");
+    await expect(wings).toHaveCSS("font-family", /Inter/);
+    await expect(
+      page.getByRole("heading", { name: "1 listing" }),
+    ).toBeVisible();
     await fits(page);
     await page.context().close();
   });
@@ -119,7 +126,7 @@ for (const phone of [true, false]) {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
       baseline.reviewed.title,
     );
-    // The ad is the one double-ruled box, and the price its big figure.
+    // The ad is the one soft card, and the price its big figure.
     await expect(page.getByText("€900", { exact: true }).first()).toHaveCSS(
       "font-family",
       /Inter/,
@@ -131,12 +138,10 @@ for (const phone of [true, false]) {
     await expect(
       page.getByRole("heading", { name: "Particulars" }),
     ).toBeVisible();
-    // The Almanac's word, signed by the one puffin on the view.
-    const almanac = page.getByRole("complementary", {
-      name: "The Almanac's advice",
-    });
-    await expect(almanac).toContainText("never send a deposit");
-    await expect(almanac.locator("svg")).toHaveCount(1);
+    // How to buy safely, in a quiet notice: its one sign, and no puffin.
+    const advice = page.getByRole("complementary", { name: "Buying safely" });
+    await expect(advice).toContainText("never send a deposit");
+    await expect(advice.locator("svg")).toHaveCount(1);
     await fits(page);
 
     // The seller, with their figures and their history in tabs.
@@ -168,9 +173,13 @@ for (const phone of [true, false]) {
       "What are you selling?",
     );
     for (const name of ["Photos", "Details", "Price and place", "Description"])
-      await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name, exact: true }),
+      ).toBeVisible();
     await page.getByRole("button", { name: "Publish listing" }).click();
-    await expect(page.getByText(/title of at least 4 characters/)).toBeVisible();
+    await expect(
+      page.getByText(/title of at least 4 characters/),
+    ).toBeVisible();
     await fits(page);
 
     await page.goto("/market/me");
@@ -183,10 +192,12 @@ for (const phone of [true, false]) {
   });
 }
 
-test("a URL that is not a page meets the puffin", async ({ page }) => {
+test("a URL that is not a page says so, and the way back", async ({ page }) => {
   await page.goto("/market/no-such-page");
   await expect(
     page.getByRole("heading", { name: "That page does not exist" }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Browse listings" })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Browse listings" }),
+  ).toBeVisible();
 });

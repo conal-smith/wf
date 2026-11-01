@@ -16,12 +16,12 @@ import { matchRoute, useLocation } from "./router";
 
 export const shellStyles = tv({
   slots: {
-    root: "flex min-h-dvh flex-col bg-ground paper-grain font-body text-prose text-ink antialiased",
+    root: "flex min-h-dvh flex-col bg-ground font-body text-prose text-ink antialiased",
     // The page measure, and the narrower gutter a phone can spare. Neither
     // gutter goes under a notch: `px-safe-*` takes the device's own inset
     // where it is the larger, as market.css's `max(…, env(…))` did.
     page: "mx-auto flex w-full max-w-page flex-1 flex-col px-safe-6 max-wide:px-safe-3",
-    main: "flex min-w-0 flex-1 flex-col gap-6 pt-3 max-wide:gap-5",
+    main: "flex min-w-0 flex-1 flex-col gap-8 pt-8 max-wide:gap-6 max-wide:pt-5",
   },
   variants: {
     // A form is read down a column, not across a page: it stops well short of
@@ -53,8 +53,8 @@ function Shell() {
 
   return (
     <div className={styles.root()}>
+      <MarketHeader accentSell={accentSell} />
       <div className={styles.page()}>
-        <MarketHeader accentSell={accentSell} />
         <main id="market-main" className={styles.main()}>
           <Page route={route} />
         </main>

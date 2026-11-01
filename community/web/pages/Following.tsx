@@ -4,16 +4,16 @@
  * first. Each row says why it is there. A thread is followed by starting it or
  * replying to it (D19), so this page is mostly a member's own conversations.
  */
-import { Hash } from "lucide-react";
+import { BellRing, Hash } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
-import { Button, Empty, Notice, Puffin } from "../../../ui";
-import { MONO_LABEL, tv } from "../../../ui/tv";
+import { Button, Chip, Empty, Notice } from "../../../ui";
+import { tv } from "../../../ui/tv";
 import type { Channel } from "../../shared/types";
 import { useApi } from "../api";
 import { MembersOnly } from "../components/MembersOnly";
-import { PageHead, dateline } from "../components/PageHead";
+import { COMMUNITY, PageHead } from "../components/PageHead";
 import { ThreadList } from "../components/ThreadList";
 import { useThreadFeed, type ChannelsState, type FeedSource } from "../hooks";
 import { paths, routed } from "../router";
@@ -21,8 +21,8 @@ import { paths, routed } from "../router";
 export const followingStyles = tv({
   slots: {
     channels: "flex flex-wrap items-center gap-2",
-    label: ["text-ink-muted", MONO_LABEL],
-    none: "m-0 font-body text-body text-ink-muted italic",
+    label: "font-body text-body text-ink-muted",
+    none: "m-0 font-body text-body text-ink-muted",
   },
 });
 
@@ -46,7 +46,7 @@ export function Following(props: FollowingProps) {
   usePageTitle("Following", "Community");
   return (
     <>
-      <PageHead dateline={dateline(new Date())} title="Following" />
+      <PageHead dateline={COMMUNITY} title="Following" />
       <MembersOnly what="what you follow">
         <Followed {...props} />
       </MembersOnly>
@@ -109,27 +109,25 @@ function Followed({ channels, onFollowed }: FollowingProps) {
         </span>
         {managed
           ? managed.map((channel) => (
-              <Button
+              <Chip
                 key={channel.id}
-                variant="outline"
-                size="sm"
                 pressed={!off.has(channel.slug)}
                 disabled={busy === channel.slug}
                 onClick={() => toggle(channel)}
                 aria-describedby="followed-channels"
               >
-                <Hash size={13} strokeWidth={1.5} aria-hidden="true" />
+                <Hash size={14} strokeWidth={1.75} aria-hidden="true" />
                 {channel.name}
-              </Button>
+              </Chip>
             ))
           : last.current.map((channel) => (
               <Button
                 key={channel.id}
                 {...routed(paths.channel(channel.slug))}
-                variant="outline"
+                variant="soft"
                 size="sm"
               >
-                <Hash size={13} strokeWidth={1.5} aria-hidden="true" />
+                <Hash size={14} strokeWidth={1.75} aria-hidden="true" />
                 {channel.name}
               </Button>
             ))}
@@ -141,24 +139,27 @@ function Followed({ channels, onFollowed }: FollowingProps) {
           </p>
         )}
         {managed ? (
-          <Button variant="link" onClick={done}>
+          <Button variant="quiet" size="sm" onClick={done}>
             Done
           </Button>
         ) : (
           last.current.length > 0 && (
-            <Button variant="link" onClick={() => setManaged(last.current)}>
+            <Button
+              variant="quiet"
+              size="sm"
+              onClick={() => setManaged(last.current)}
+            >
               Manage
             </Button>
           )
         )}
       </div>
       {managed && (
-        <Notice>
-          A pressed channel is one you follow. Press it to stop hearing about
-          its new threads.
+        <Notice title="A filled channel is one you follow">
+          Press it to stop hearing about its new threads.
         </Notice>
       )}
-      {failure && <Notice kind="warn">{failure}</Notice>}
+      {failure && <Notice level="warn" alert title={failure} />}
       <ThreadList
         state={feed.state}
         subject="what you follow"
@@ -166,14 +167,19 @@ function Followed({ channels, onFollowed }: FollowingProps) {
         onRetry={feed.reload}
         onMore={feed.loadMore}
         empty={
-          <Empty title="Nothing followed yet" icon={<Puffin size={40} />}>
+          <Empty
+            title="Nothing followed yet"
+            icon={<BellRing size={24} strokeWidth={1.75} />}
+            actions={
+              <Button {...routed(paths.home())}>
+                Browse the latest threads
+              </Button>
+            }
+          >
             <p>
               Start a thread or reply to one, and it is kept here. The bell
               tells you when it moves.
             </p>
-            <Button {...routed(paths.home())} variant="outline">
-              Browse the latest threads
-            </Button>
           </Empty>
         }
       />

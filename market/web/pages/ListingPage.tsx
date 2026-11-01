@@ -10,16 +10,9 @@ import {
   Share2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import {
-  Button,
-  Chip,
-  Kicker,
-  Pane,
-  Puffin,
-  SectionHeading,
-} from "../../../ui";
-import { paneStyles } from "../../../ui/Pane";
+import { Button, Heading, Tag } from "../../../ui";
 import { buttonStyles } from "../../../ui/Button";
+import { cardStyles } from "../../../ui/Card";
 import { linkStyles } from "../../../ui/Link";
 import { RING, tv } from "../../../ui/tv";
 import { ApiRequestError, useApi } from "../api";
@@ -59,25 +52,26 @@ export const listingStyles = tv({
     // ad that stands beside it. Under the rail's breakpoint the placement
     // falls away and the three children stack in the order they are written,
     // which puts the ad between the photographs and the particulars.
-    detail: "grid items-start gap-x-8 gap-y-8 rail:grid-cols-detail max-wide:gap-y-6",
+    detail:
+      "grid items-start gap-x-8 gap-y-8 rail:grid-cols-detail max-wide:gap-y-6",
     gallery: "min-w-0 rail:col-start-1 rail:row-start-1",
     body: "flex min-w-0 flex-col gap-8 rail:col-start-1 rail:row-start-2",
     // The ad spans both rows and stays in view while the body scrolls under
-    // it, clear of the sticky masthead: its bar, its inset and the gap.
+    // it, a little way off the top of the window.
     aside: [
       "flex min-w-0 flex-col gap-6",
-      "rail:col-start-2 rail:row-start-1 rail:row-span-2 rail:sticky rail:top-22.5",
+      "rail:col-start-2 rail:row-start-1 rail:row-span-2 rail:sticky rail:top-6",
     ],
 
     // ---- the photographs
-    // On paper, in a hairline frame, and never cropped.
+    // On the soft ground, cut to a card's corner, and never cropped.
     frame: [
       "relative grid aspect-4/3 place-items-center overflow-hidden",
-      "border border-line bg-sunken text-ink-muted",
+      "rounded-surface bg-sunken text-ink-muted",
     ],
     // Contained, not cropped: a board photographed end-on is the whole point.
     photo: "block size-full object-contain",
-    noPhoto: "flex min-w-0 flex-col items-center gap-2",
+    noPhoto: "flex min-w-0 flex-col items-center gap-2 text-body",
     // Over the photograph, so it carries the deeper shadow a marker has.
     nav: "absolute top-1/2 -translate-y-1/2 shadow-marker",
     count: "absolute right-3 bottom-3",
@@ -94,7 +88,7 @@ export const listingStyles = tv({
      * `button:enabled:hover` does not lay its wash over it.
      */
     thumb: [
-      "w-19 shrink-0 cursor-pointer overflow-hidden rounded-control border border-line bg-sunken p-0",
+      "w-19 shrink-0 cursor-pointer overflow-hidden rounded-control border-0 bg-sunken p-0",
       "aspect-4/3 opacity-65 transition-opacity duration-fast",
       "not-disabled:hover:bg-sunken not-disabled:hover:opacity-100",
       "focus-visible:opacity-100",
@@ -106,12 +100,11 @@ export const listingStyles = tv({
     thumbImage: "block size-full object-cover",
 
     // ---- the ad
-    // The one box on the page: the chart's card, the ink rule with its
-    // hairline inside, for what matters.
+    // The one card on the page, for what matters.
     ad: "flex min-w-0 flex-col gap-5",
     stack: "flex min-w-0 flex-col gap-4",
     tight: "flex min-w-0 flex-col gap-1",
-    kickerRow: "flex flex-wrap items-center gap-x-3 gap-y-1",
+    tagRow: "flex flex-wrap items-center gap-x-2 gap-y-1",
     actions: "flex items-center gap-2",
     /*
      * The action takes whatever the row has left after the controls beside it,
@@ -121,40 +114,37 @@ export const listingStyles = tv({
      */
     fill: "min-w-0 grow shrink text-center leading-tight whitespace-normal",
     formActions: "flex flex-wrap items-center gap-x-3 gap-y-2",
-    // The ways to reach the seller, once asked for: a well on the second sheet.
-    contact: "grid gap-3 p-4",
-    contactRow: "inline-flex items-center gap-2 font-mono text-body wrap-anywhere",
+    // The ways to reach the seller, once asked for: under a hairline in the card.
+    contact: "grid gap-3 border-0 border-t border-line pt-4",
+    contactRow:
+      "inline-flex items-center gap-2 font-mono text-body wrap-anywhere",
 
-    // ---- the seller, under a rule in the same column
+    // ---- the seller, in the same column
     seller: [
       "group flex min-w-0 items-center gap-3 rounded-control py-1 text-ink no-underline",
       RING,
     ],
     sellerName:
-      "font-display text-lead italic decoration-1 underline-offset-3 group-hover:underline",
+      "font-body text-prose font-semibold decoration-1 underline-offset-3 group-hover:underline",
     // It leans towards the page it opens, unless movement has been declined.
     chevron: [
       "ml-auto shrink-0 text-ink-muted transition-transform duration-fast",
       "group-hover:translate-x-1 motion-reduce:transition-none",
     ],
 
-    // ---- the Almanac's word, signed by the puffin
-    almanac: "flex items-end gap-3",
-    almanacText: "m-0 flex min-w-0 flex-col gap-1",
-    saying: "font-body text-body text-ink-2 italic",
-
     // ---- the body, and the review form under it
     section: "flex min-w-0 flex-col gap-4",
-    // The particulars, as the chart sets a table: the name in the body face,
-    // the figure set right in the mono, a hairline between rows.
-    specs: "m-0 grid gap-x-8 wide:grid-cols-2",
-    spec: "flex min-w-0 items-baseline justify-between gap-4 border-0 border-b border-line py-2",
+    // The particulars, as rows in one soft card: the name on the left, the
+    // value set right, a hairline between rows inside the card.
+    specs: "m-0 divide-y divide-line rounded-surface bg-sunken px-4",
+    spec: "flex min-w-0 items-baseline justify-between gap-4 py-3",
     term: "font-body text-prose text-ink-2",
-    value: "m-0 text-right font-mono text-body font-medium wrap-anywhere",
+    value: "m-0 text-right font-body text-prose font-semibold wrap-anywhere",
     form: "grid gap-5",
 
     // ---- the words
-    title: "m-0 font-display text-title text-balance text-ink",
+    title: "m-0 font-body text-title font-semibold text-balance text-ink",
+    meta: "m-0 font-body text-body text-ink-muted",
     quiet: "m-0 text-body text-ink-muted",
     muted: "m-0 text-ink-muted",
     // A line of paragraph that carries nothing but a mark of its own.
@@ -237,7 +227,7 @@ export default function ListingPage({ id }: { id: string }) {
             className={styles.section()}
             aria-labelledby="listing-details"
           >
-            <SectionHeading id="listing-details">Particulars</SectionHeading>
+            <Heading id="listing-details">Particulars</Heading>
             <dl className={styles.specs()}>
               {specs.map(
                 ([label, value]) =>
@@ -255,9 +245,7 @@ export default function ListingPage({ id }: { id: string }) {
             className={styles.section()}
             aria-labelledby="listing-description"
           >
-            <SectionHeading id="listing-description">
-              Description
-            </SectionHeading>
+            <Heading id="listing-description">Description</Heading>
             <p className={styles.prose()}>{listing.description}</p>
           </section>
           {auth.signedIn && !listing.isOwner && (
@@ -299,7 +287,7 @@ function Gallery({ listing }: { listing: Listing }) {
         ) : (
           <div className={styles.noPhoto()}>
             <ImageIcon size={32} strokeWidth={1.25} aria-hidden="true" />
-            <Kicker>The seller has not added photos</Kicker>
+            <span>The seller has not added photos</span>
           </div>
         )}
         {count > 1 && (
@@ -322,9 +310,9 @@ function Gallery({ listing }: { listing: Listing }) {
             >
               <ChevronRight size={18} strokeWidth={1.5} aria-hidden="true" />
             </Button>
-            <Chip tone="glass" className={styles.count()} aria-hidden="true">
+            <Tag tone="glass" className={styles.count()} aria-hidden="true">
               {index + 1} / {count}
-            </Chip>
+            </Tag>
           </>
         )}
       </div>
@@ -475,20 +463,20 @@ export function Aside({
   return (
     <aside className={styles.aside()}>
       <section
-        className={paneStyles({ double: true, className: styles.ad() })}
+        className={cardStyles({ className: styles.ad() })}
         aria-labelledby="listing-title"
       >
         <div className={styles.stack()}>
-          <div className={styles.kickerRow()}>
+          <div className={styles.tagRow()}>
             {listing.status !== "active" && (
-              <Chip tone="warn" eyebrow>
+              <Tag tone="off">
                 {listing.status === "sold" ? "Sold" : "Removed"}
-              </Chip>
+              </Tag>
             )}
-            <Kicker as="span">
+            <span className={styles.meta()}>
               {categoryLabel(listing.category)} ·{" "}
               {conditionLabel(listing.condition)}
-            </Kicker>
+            </span>
           </div>
           <h1 className={styles.title()} id="listing-title">
             {listing.title}
@@ -501,9 +489,9 @@ export function Aside({
                 strike={listing.status === "sold"}
               />
             </p>
-            <Kicker>
+            <p className={styles.meta()}>
               {where} · Listed {relativeAge(listing.createdAt)}
-            </Kicker>
+            </p>
           </div>
         </div>
 
@@ -526,7 +514,7 @@ export function Aside({
             <div className={styles.formActions()}>
               {listing.status === "active" ? (
                 <Button
-                  variant="outline"
+                  variant="soft"
                   disabled={statusBusy}
                   onClick={() => setStatus("sold")}
                 >
@@ -534,7 +522,7 @@ export function Aside({
                 </Button>
               ) : (
                 <Button
-                  variant="outline"
+                  variant="soft"
                   disabled={statusBusy}
                   onClick={() => setStatus("active")}
                 >
@@ -542,7 +530,7 @@ export function Aside({
                 </Button>
               )}
               <Button
-                variant="link"
+                variant="quiet"
                 disabled={statusBusy}
                 onClick={() => setConfirmRemove(true)}
               >
@@ -551,13 +539,14 @@ export function Aside({
             </div>
           </div>
         ) : listing.status !== "active" ? (
-          <Notice>
-            This item has been {listing.status}. The seller may have other gear
-            listed.
+          <Notice title={`This item has been ${listing.status}`}>
+            The seller may have other gear listed.
           </Notice>
         ) : contact ? (
-          <Pane kind="sunken" className={styles.contact()} aria-live="polite">
-            <Kicker tone="ink">Contact {contact.displayName}</Kicker>
+          <div className={styles.contact()} aria-live="polite">
+            <Heading level="card" as="h2">
+              Contact {contact.displayName}
+            </Heading>
             {contact.phone && (
               <a
                 className={linkStyles({ className: styles.contactRow() })}
@@ -587,7 +576,7 @@ export function Aside({
                 {contact.email}
               </a>
             )}
-          </Pane>
+          </div>
         ) : (
           <div className={styles.actions()}>
             <Button
@@ -631,13 +620,13 @@ export function Aside({
             details are hidden.
           </p>
         )}
-        {error && <Notice kind="warn">{error}</Notice>}
+        {error && <Notice level="warn" alert title={error} />}
       </section>
 
       <section className={styles.section()} aria-label="Seller">
-        <SectionHeading size="kicker" rule="thin" as="h2">
+        <Heading level="card" as="h2">
           Seller
-        </SectionHeading>
+        </Heading>
         <Link to={paths.seller(listing.seller.id)} className={styles.seller()}>
           <Avatar name={listing.seller.displayName} />
           <span className={styles.tight()}>
@@ -653,7 +642,7 @@ export function Aside({
             aria-hidden="true"
           />
         </Link>
-        <Kicker>
+        <p className={styles.meta()}>
           {listing.seller.soldCount} sold · Since{" "}
           {/* The month as well as the year, as the seller's own page says it. */}
           {new Date(listing.seller.memberSince).toLocaleDateString("en-IE", {
@@ -661,19 +650,14 @@ export function Aside({
             year: "numeric",
           })}
           {listing.seller.county ? ` · Co. ${listing.seller.county}` : ""}
-        </Kicker>
+        </p>
       </section>
 
       {!listing.isOwner && listing.status === "active" && (
-        <aside className={styles.almanac()} aria-label="The Almanac's advice">
-          <Puffin size={44} />
-          <p className={styles.almanacText()}>
-            <span className={styles.saying()}>
-              Meet somewhere public, see the gear before you pay, and never
-              send a deposit to hold it.
-            </span>
-            <Kicker as="span">The Almanac</Kicker>
-          </p>
+        <aside aria-label="Buying safely">
+          <Notice title="Meet somewhere public">
+            See the gear before you pay, and never send a deposit to hold it.
+          </Notice>
         </aside>
       )}
 
@@ -751,14 +735,14 @@ function ReviewSection({
       className={styles.section()}
       aria-labelledby="listing-review-title"
     >
-      <SectionHeading
+      <Heading
         id="listing-review-title"
         aside={e.existing && <Stars value={e.existing.rating} size={14} />}
       >
         {e.existing
           ? "Your review of this seller"
           : `Rate ${listing.seller.displayName}`}
-      </SectionHeading>
+      </Heading>
       {e.reason === "profile-required" ? (
         <p className={styles.muted()}>
           <Link to={paths.me("profile")} className={linkStyles()}>
@@ -790,11 +774,10 @@ function ReviewSection({
               placeholder="Was the gear as described? Were they easy to deal with?"
             />
           </Field>
-          {error && <Notice kind="warn">{error}</Notice>}
+          {error && <Notice level="warn" alert title={error} />}
           {done && (
-            <Notice>
-              Thanks, your review is live on {listing.seller.displayName}'s
-              profile.
+            <Notice title="Thanks, your review is live">
+              It is on {listing.seller.displayName}'s profile now.
             </Notice>
           )}
           <div className={styles.formActions()}>
