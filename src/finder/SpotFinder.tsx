@@ -119,11 +119,11 @@ const styles = tv({
     clear: "ml-auto",
     // Near you without the rider's place: why it is wanted, and the one
     // way to give it, in a soft card.
-    ask: "mb-2 grid gap-2.5 rounded-surface bg-sunken px-4 py-3.5 text-prose leading-normal text-ink-2",
+    ask: "mb-2 grid gap-2.5 rounded-surface bg-sunken on-card px-4 py-3.5 text-prose leading-normal text-ink-2",
     askAction: "justify-self-start",
     // One card a row: a narrow list, as the mock-up has it.
     cards: "m-0 grid list-none grid-cols-1 items-start gap-2 p-0",
-    empty: "rounded-surface bg-sunken px-4 py-3.5 text-prose leading-normal text-ink-2",
+    empty: "rounded-surface bg-sunken on-card px-4 py-3.5 text-prose leading-normal text-ink-2",
     // Above the cards: where "near you" is measured from, when that is not
     // the rider.
     note: "m-0 px-0.5 pb-3 text-body leading-normal text-ink-muted",

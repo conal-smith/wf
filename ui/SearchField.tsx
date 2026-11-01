@@ -7,7 +7,7 @@ export const searchFieldStyles = tv({
     // A soft grey pill with the magnifier in it; the ink edge and a soft
     // ring of the accent when it holds the focus. No underline, no frame.
     base: [
-      "flex min-w-0 items-center gap-2 rounded-full border border-transparent bg-sunken px-3.5",
+      "flex min-w-0 items-center gap-2 rounded-full border border-transparent bg-well px-3.5",
       "font-body text-ink-muted transition-colors duration-fast",
       "focus-within:border-ink focus-within:bg-ground focus-within:ring-3 focus-within:ring-focus/20",
       "aria-busy:cursor-progress",

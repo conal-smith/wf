@@ -11,7 +11,7 @@ export const countStyles = tv({
     tone: {
       // Unread. Said in fill and weight together, never in colour alone.
       strong: { base: "bg-inverse text-ink-inverse" },
-      quiet: { base: "bg-sunken text-ink-2" },
+      quiet: { base: "bg-well text-ink-2" },
     },
   },
   defaultVariants: { tone: "strong" },

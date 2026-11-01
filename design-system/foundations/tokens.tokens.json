@@ -1838,6 +1838,36 @@
             }
           }
         }
+      },
+      "raised": {
+        "$type": "color",
+        "$value": "#e6e6eb",
+        "$description": "A control's fill on a soft card: the second grey. --color-raised.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "Inside a Card, Rows or Notice, through bg-well; a notice mark's quiet square.",
+            "modes": {
+              "light": "#e6e6eb",
+              "dark": "#26262c"
+            }
+          }
+        }
+      },
+      "well": {
+        "$type": "color",
+        "$value": "#f5f5f7",
+        "$description": "The fill a control takes where it stands. --color-well.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "A field, chip, tag, segmented well or soft button: the soft grey on the ground, the second grey inside a card (the on-card utility).",
+            "modes": {
+              "light": "#f5f5f7",
+              "dark": "#17171b"
+            }
+          }
+        }
       }
     },
     "font": {
@@ -2566,7 +2596,7 @@
       "control": {
         "sm": {
           "$type": "dimension",
-          "$value": "{ref.size.30}",
+          "$value": "32px",
           "$description": "--spacing-control-sm.",
           "$extensions": {
             "com.sprintengine": {
@@ -2588,7 +2618,7 @@
         },
         "lg": {
           "$type": "dimension",
-          "$value": "{ref.size.46}",
+          "$value": "48px",
           "$description": "--spacing-control-lg.",
           "$extensions": {
             "com.sprintengine": {

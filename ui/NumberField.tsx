@@ -9,7 +9,7 @@ import { DISABLED, RING, tv } from "./tv";
  */
 export const numberFieldStyles = tv({
   slots: {
-    base: "inline-flex h-11 items-center gap-1 rounded-full bg-sunken px-1",
+    base: "inline-flex h-11 items-center gap-1 rounded-full bg-well px-1",
     step: [
       "grid size-9 shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent text-ink",
       "not-disabled:hover:bg-line pointer-coarse:size-11",
