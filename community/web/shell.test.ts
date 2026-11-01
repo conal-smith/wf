@@ -42,15 +42,6 @@ import { matchRoute } from "./router";
  * what the class names come to. How it lays out at a width is e2e's question.
  */
 
-/*
- * The top bar's spot search reads the favourites from the browser's storage,
- * which a server render has not got. It is the kit's, and tested there.
- */
-vi.mock("../../ui/SpotSearch", async (original) => ({
-  ...(await original<typeof import("../../ui/SpotSearch")>()),
-  SpotSearch: () => createElement("div", { "data-spot-search": "" }),
-}));
-
 const WEB = dirname(fileURLToPath(import.meta.url));
 const html = (element: ReactElement) => renderToStaticMarkup(element);
 

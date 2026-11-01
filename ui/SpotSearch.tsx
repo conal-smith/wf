@@ -67,7 +67,8 @@ export const spotSearchStyles = tv({
     ],
     // The results scroll between the panel's edges; the foot stays.
     list: "min-h-0 flex-1 overflow-y-auto overscroll-contain",
-    groupName: "px-2.5 pt-2 pb-1.5 font-body text-label font-medium text-ink-muted",
+    groupName:
+      "px-2.5 pt-2 pb-1.5 font-body text-label font-medium text-ink-muted",
     option: [
       "flex cursor-pointer items-center gap-3 rounded-control px-2.5 py-2 max-wide:min-h-13",
       "aria-selected:bg-well",
@@ -76,7 +77,8 @@ export const spotSearchStyles = tv({
     name: "min-w-0 truncate font-body text-prose font-semibold text-ink",
     mark: "bg-transparent text-inherit underline decoration-chart-magenta decoration-2 underline-offset-3",
     county: "min-w-0 truncate font-body text-label text-ink-muted",
-    detail: "flex shrink-0 flex-col items-end gap-0.75 font-body text-body font-semibold text-ink",
+    detail:
+      "flex shrink-0 flex-col items-end gap-0.75 font-body text-body font-semibold text-ink",
     none: "px-2.5 py-4 font-body text-prose text-ink-2",
     // Said to a screen reader as the results change.
     status: "sr-only",
@@ -120,9 +122,7 @@ export function loadPlaces(): Promise<Findable[]> {
     .then((rows) =>
       Array.isArray(rows)
         ? rows.flatMap((row): Findable[] =>
-            row &&
-            typeof row.id === "string" &&
-            typeof row.name === "string"
+            row && typeof row.id === "string" && typeof row.name === "string"
               ? [
                   {
                     id: row.id,
@@ -185,7 +185,8 @@ export function SpotSearch<S extends Findable>({
   const spots = given ?? loaded;
 
   const fav = favourites();
-  const favState = useSyncExternalStore(fav.subscribe, fav.get);
+  // The same snapshot on a server render, where there is no storage.
+  const favState = useSyncExternalStore(fav.subscribe, fav.get, fav.get);
 
   const want = open || phone;
   useEffect(() => {
@@ -484,4 +485,3 @@ export function SpotSearch<S extends Findable>({
     </div>
   );
 }
-

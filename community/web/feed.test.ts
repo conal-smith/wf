@@ -47,11 +47,6 @@ import { matchRoute, paths, withoutNewThread } from "./router";
 
 // The top bar's spot search reads the favourites from the browser's storage,
 // which a server render has not got. It is the kit's, and tested there.
-vi.mock("../../ui/SpotSearch", async (original) => ({
-  ...(await original<typeof import("../../ui/SpotSearch")>()),
-  SpotSearch: () => null,
-}));
-
 /**
  * The feed, the channel page and the new-thread dialog. As in shell.test.ts
  * there is no DOM here: what is asked is what a reader is handed, and what the

@@ -802,12 +802,6 @@ async function headerAs(devUser: string | null, accentSell: boolean) {
   vi.resetModules();
   vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", "");
   vi.stubEnv("VITE_MARKET_DEV_USER", devUser ?? "");
-  // The bar's spot search reads the favourites from the browser's storage,
-  // which a server render has not got: it is the kit's, and tested there.
-  vi.doMock("../../ui/SpotSearch", async (original) => ({
-    ...(await original<typeof import("../../ui/SpotSearch")>()),
-    SpotSearch: () => createElement("div", { "data-spot-search": "" }),
-  }));
   const { MarketAuthProvider } = await import("./auth");
   const { MarketHeader } = await import("./components");
   return html(
@@ -820,10 +814,6 @@ async function headerAs(devUser: string | null, accentSell: boolean) {
 describe("S4: the header, and its one filled action", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
-  });
-
-  afterEach(() => {
-    vi.doUnmock("../../ui/SpotSearch");
   });
 
   it("is the site's top bar: the wordmark home, the search, the chart and the menu", async () => {
