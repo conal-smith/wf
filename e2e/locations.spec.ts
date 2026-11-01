@@ -10,7 +10,12 @@ test("public riding places are on the chart and the Blast alias finds Kilcrea, w
   });
   // Riding places only: no schools, clubs or areas among the lights.
   for (const kind of ["operator", "club", "area"])
-    await expect(page.locator(`.spot-marker[data-kind="${kind}"]`)).toHaveCount(0);
+    await expect(page.locator(`.spot-marker[data-kind="${kind}"]`)).toHaveCount(
+      0,
+    );
+  // On a phone the top bar's search is a round button that opens the field.
+  const opener = page.locator("[data-spot-search-open]");
+  if (await opener.isVisible()) await opener.click();
   const search = page.getByRole("combobox", { name: "Search spots" });
   for (const alias of ["Blast", "Kilcrea", "Donabate"]) {
     await search.fill(alias);
@@ -41,6 +46,7 @@ test("public riding places are on the chart and the Blast alias finds Kilcrea, w
     page.getByRole("dialog", { name: "Sources and small print" }),
   ).toContainText("CC BY 4.0");
   await page.keyboard.press("Escape");
+  if (await opener.isVisible()) await opener.click();
   await search.fill("Newtownards");
   await page.locator("[data-spot-option]").click();
   await expect(page.locator('[data-spot-id="newtownards"]')).toHaveClass(

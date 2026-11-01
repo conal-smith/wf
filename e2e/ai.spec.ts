@@ -36,11 +36,19 @@ test("one line, then a row and one button for each app", async ({ page }) => {
     "Add to Le Chat",
     "Copy address",
   ]);
-  // The header is the spot finder's: the menu and the wordmark, nothing else.
+  // The site's one top bar: the wordmark, the search, Chart and the menu.
+  const bar = page.getByRole("banner");
+  await expect(bar.getByRole("button", { name: "Site menu" })).toBeVisible();
+  await expect(bar.getByRole("link", { name: /^wingfoil\.ie/ })).toHaveText(
+    "wingfoil.ie",
+  );
   await expect(
-    page.getByRole("banner").getByRole("button", { name: "Site menu" }),
+    bar.getByRole("combobox", { name: "Search spots" }),
   ).toBeVisible();
-  await expect(page.getByRole("banner")).toHaveText("wingfoil.ie");
+  await expect(bar.getByRole("link", { name: "Chart" })).toHaveAttribute(
+    "href",
+    "/?map",
+  );
   await expect(lines(page)).toHaveCount(0);
 
   // Claude opens its connector dialog filled in, in a new tab.

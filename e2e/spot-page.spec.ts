@@ -303,8 +303,8 @@ test("the map's dock opens the spot page, for the spot it opens on and one chose
   );
 
   // A spot chosen on the map is the dock's, with no box over the chart.
-  await page.getByRole("combobox", { name: "Find a spot" }).fill("Dollymount");
-  await page.locator(".spot-row").first().click();
+  await page.getByRole("combobox", { name: "Search spots" }).fill("Dollymount");
+  await page.locator("[data-spot-option]").first().click();
   await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   const link = page.locator(".dock").getByRole("link", { name: "Spot page" });

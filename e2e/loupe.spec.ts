@@ -186,7 +186,7 @@ test("a spot with no shore facing: no red, no out or home, the needle and the re
   await expect(r.locator(".map-dial-needle")).toHaveCount(1);
   await expect(r.locator(".map-loupe-reading")).toHaveText(/^\w+ \d+( g\d+)?$/);
   // With no beach, the units where the shore would be.
-  await expect(r.locator(".map-loupe-relation")).toHaveText("KN");
+  await expect(r.locator(".map-loupe-relation")).toHaveText("kn");
   await expect(r.locator(".map-dial-offshore")).toHaveCount(0);
   await expect(r.locator(".map-dial-crossoff")).toHaveCount(0);
   await expect(r.locator(".map-rose-fan.is-out")).toHaveCount(0);

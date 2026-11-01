@@ -205,11 +205,7 @@ export async function closePanel(page: Page) {
  * rail beside the zoom (src/LayerRail.tsx) rather than a row.
  */
 export type ChartTool =
-  | "Settings"
-  | "Layers"
-  | "Display options"
-  | "About the map"
-  | "Take the tour";
+  "Settings" | "Layers" | "Display options" | "About the map" | "Take the tour";
 
 /** The dialog each row opens, by its title. */
 const DIALOG_TITLE: Partial<Record<ChartTool, string>> = {

@@ -435,7 +435,10 @@ test.describe("on a desktop", () => {
     );
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
     // Nearest needs the rider's place, which this browser has not given.
-    await expect(order.getByRole("button")).toHaveText(["Best first", "A to Z"]);
+    await expect(order.getByRole("button")).toHaveText([
+      "Best first",
+      "A to Z",
+    ]);
     // Only the places with five stars in their six days, or a line saying
     // there are none.
     const stars = filters(page).getByRole("group", {
@@ -749,11 +752,12 @@ test.describe("on a desktop", () => {
     await page.goto("/spot/brandon");
     await page.getByRole("button", { name: "Site menu" }).click();
     await expect(siteNav(page).getByRole("link")).toHaveText(SITE_ROW_TEXTS);
-    // Neither of the menu's pages is this one, and it has no tools of its own.
+    // Neither of the menu's pages is this one, and it has no tools of its own:
+    // its one group is light, dark or auto at its foot.
     await expect(siteNav(page).locator('[aria-current="page"]')).toHaveCount(0);
     await expect(
       page.getByRole("dialog", { name: "Site menu" }).getByRole("group"),
-    ).toHaveCount(0);
+    ).toHaveText(["LightDarkAuto"]);
     await expect(siteRow(page, "Settings")).toHaveAttribute(
       "href",
       "/?settings",
@@ -816,7 +820,9 @@ test.describe("on a desktop", () => {
     await page.getByRole("button", { name: "Site menu" }).click();
     await expect(siteRow(page, "Chart")).toHaveAttribute("href", "/?map");
     await siteRow(page, "Chart").click();
-    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('[data-view-switch="spots"]')).toBeVisible({
+      timeout: 30000,
+    });
     await expect(page).toHaveURL(/\/\?map$/);
 
     await page.goto("/spot/brandon");
@@ -824,13 +830,15 @@ test.describe("on a desktop", () => {
     await siteRow(page, "Spot finder").click();
     await expect(finder(page)).toBeVisible({ timeout: 30000 });
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.locator(".map-head")).toHaveCount(0);
+    await expect(page.locator('[data-view-switch="spots"]')).toHaveCount(0);
 
     // The AI page's menu's Chart is the chart too.
     await page.goto("/ai");
     await page.getByRole("button", { name: "Site menu" }).click();
     await siteRow(page, "Chart").click();
-    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('[data-view-switch="spots"]')).toBeVisible({
+      timeout: 30000,
+    });
     await expect(page).toHaveURL(/\/\?map$/);
   });
 
@@ -845,7 +853,7 @@ test.describe("on a desktop", () => {
     await page.getByRole("button", { name: "Site menu" }).click();
     await siteRow(page, "Chart").click();
     await expect(page.locator(".map-under-page")).toHaveCount(0);
-    await expect(page.locator(".map-head")).toBeVisible();
+    await expect(page.locator('[data-view-switch="spots"]')).toBeVisible();
     await expect(page).toHaveURL(/\/\?map$/);
     // No page load: the map was kept under the page.
     expect(
@@ -858,10 +866,12 @@ test.describe("on a desktop", () => {
   }) => {
     // The full chart last open makes no difference to the root.
     await page.goto("/?map");
-    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('[data-view-switch="spots"]')).toBeVisible({
+      timeout: 30000,
+    });
     await page.goto("/");
     await expect(finder(page)).toBeVisible({ timeout: 30000 });
-    await expect(page.locator(".map-head")).toHaveCount(0);
+    await expect(page.locator('[data-view-switch="spots"]')).toHaveCount(0);
     // The spot finder's old address is the home page.
     await page.goto("/spots");
     await expect(page).toHaveURL(/\/$/);
@@ -869,13 +879,15 @@ test.describe("on a desktop", () => {
     // The chart's old word is the full chart's new one.
     await page.goto("/?chart");
     await expect(page).toHaveURL(/\/\?map$/);
-    await expect(page.locator(".map-head")).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('[data-view-switch="spots"]')).toBeVisible({
+      timeout: 30000,
+    });
     // A link to a spot on the chart is the full chart on it, with its dock.
     await page.goto("/?spot=brandon");
     await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay", {
       timeout: 30000,
     });
-    await expect(page.locator(".map-head")).toBeVisible();
+    await expect(page.locator('[data-view-switch="spots"]')).toBeVisible();
   });
 });
 

@@ -66,7 +66,7 @@ const TARGETS = {
   // The loupe's sheet is the whole map: its rim and the reading under it are the loupe.
   loupe: [".map-loupe .map-loupe-rim", ".map-loupe .map-loupe-foot-box"],
   blend: [".dock tr.tt-blend", ".dock .blend-chart"],
-  menu: '.map-head [aria-label="Site menu"]',
+  menu: '[data-top-bar] [aria-label="Site menu"]',
   layers: "#map-rail",
 } as const;
 

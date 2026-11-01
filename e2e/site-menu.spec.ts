@@ -21,11 +21,6 @@ const trigger = (page: Page) => page.getByRole("button", { name: "Site menu" });
 const panel = (page: Page) => page.getByRole("navigation", { name: "Site" });
 const row = (page: Page, name: string) =>
   panel(page).getByRole("link", { name, exact: true });
-/**
- * The marketplace's header pill: the one box inside its banner, which is
- * Tailwind now and carries no class name worth writing down.
- */
-const headerBar = (page: Page) => page.getByRole("banner").locator("> div");
 // The same rows in the same order, whichever bundle drew them.
 const SECTIONS = SITE_ROW_TEXTS;
 
@@ -90,9 +85,9 @@ test("the menu's navigation is the same on the full chart and on the home page's
     const rows = (await panel(page).getByRole("link").allTextContents()).map(
       rowName,
     );
-    const marked = await panel(page)
-      .locator('[aria-current="page"]')
-      .allTextContents();
+    const marked = (
+      await panel(page).locator('[aria-current="page"]').allTextContents()
+    ).map(rowName);
     const own = await panel(page).getByRole("group").count();
     const lists = await panel(page).locator("ul").count();
     await page.keyboard.press("Escape");
@@ -353,10 +348,13 @@ test("the menu carries the reader between the map and the marketplace", async ({
 
   await page.waitForURL("**/market");
   await expect(
-    page.getByRole("heading", { name: /Second-hand gear/ }),
+    page.getByRole("heading", { level: 1, name: "Market" }),
   ).toBeVisible();
+  // The site's one top bar, the wordmark going home.
   await expect(
-    page.getByRole("link", { name: "wingfoil.ie Market, home" }),
+    page
+      .locator("[data-top-bar]")
+      .getByRole("link", { name: "wingfoil.ie, the Spot finder" }),
   ).toBeVisible();
   // The standalone Map button is gone: one control per destination.
   await expect(
@@ -389,9 +387,7 @@ test("a direct load of a marketplace URL renders the marketplace and its menu", 
   // SPA fallback: the server has no /market/sell on disk and must answer with
   // index.html, which is where the pathname picks the marketplace bundle.
   await page.goto("/market/sell");
-  await expect(
-    page.getByRole("link", { name: "wingfoil.ie Market, home" }),
-  ).toBeVisible();
+  await expect(page.locator("[data-top-bar]")).toBeVisible();
   await trigger(page).click();
   await expect(row(page, "Marketplace")).toHaveAttribute(
     "aria-current",
@@ -408,14 +404,12 @@ test("the menu carries the reader into the community and back out of it", async 
   await row(page, "Community").click();
 
   await page.waitForURL("**/community");
-  await expect(
-    page.getByRole("link", { name: "wingfoil.ie Community, home" }),
-  ).toBeVisible();
+  await expect(page.locator("[data-top-bar]")).toBeVisible();
 
   await trigger(page).click();
   await expect(panel(page).getByRole("link")).toHaveText(SECTIONS);
   await expect(panel(page).locator('[aria-current="page"]')).toHaveText([
-    "Community",
+    /^Community/,
   ]);
   await expect(row(page, "Marketplace")).toHaveAttribute("href", "/market");
 
@@ -429,9 +423,7 @@ test("a direct load of a community URL renders the community and its menu", asyn
 }) => {
   // The same fallback, for the third bundle: no /community/c/wings on disk.
   await page.goto("/community/c/wings");
-  await expect(
-    page.getByRole("link", { name: "wingfoil.ie Community, home" }),
-  ).toBeVisible();
+  await expect(page.locator("[data-top-bar]")).toBeVisible();
   await trigger(page).click();
   await expect(row(page, "Community")).toHaveAttribute("aria-current", "page");
 });
@@ -514,47 +506,28 @@ test("light, dark or auto at the menu's foot: dark by default, and the choice ke
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.+/);
 });
 
-test("at 390px the marketplace header takes the menu without squeezing a label", async ({
+test("at 390px the marketplace's top bar takes its own actions without overflowing", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/market");
-  await expect(
-    page.getByRole("link", { name: "wingfoil.ie Market, home" }),
-  ).toBeVisible();
-
-  const menu = (await trigger(page).boundingBox())!;
-  const brand = (await page
-    .getByRole("link", { name: "wingfoil.ie Market, home" })
-    .boundingBox())!;
-  expect(menu.x + menu.width).toBeLessThanOrEqual(brand.x);
-
-  // The bar shrinks its own insets to make room, so the menu costs the labels
-  // beside it nothing: "Sign in" is laid out exactly as it is with the menu
-  // taken out of the row. Measured against itself rather than against a number,
-  // and only once the webfont has settled — this header is tight at 390px with
-  // the fallback metrics whatever is in it, and the question here is whether
-  // the menu made it tighter.
+  const bar = page.locator("[data-top-bar]");
+  await expect(bar).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
-  const label = page
+  // The menu at the far right, the section's action and Chart (its glyph
+  // only, beside an action) before it, nothing spilling out of the row.
+  const menu = (await trigger(page).boundingBox())!;
+  const chart = (await bar.getByRole("link", { name: "Chart" }).boundingBox())!;
+  const account = (await bar
     .getByRole("navigation", { name: "Marketplace" })
-    .getByText("Sign in", { exact: true });
-  const height = () =>
-    label.evaluate((el) => el.getBoundingClientRect().height);
-  const withMenu = await height();
-  await page
-    .locator(".f5-site-menu")
-    .evaluate((el: HTMLElement) => (el.style.display = "none"));
-  expect(withMenu).toBe(await height());
-  await page
-    .locator(".f5-site-menu")
-    .evaluate((el: HTMLElement) => (el.style.display = ""));
-
-  // Nothing inside the pill overflows it, font or no font.
+    .boundingBox())!;
+  expect(menu.x + menu.width).toBeLessThanOrEqual(390);
+  expect(chart.x + chart.width).toBeLessThanOrEqual(menu.x);
+  expect(account.x + account.width).toBeLessThanOrEqual(chart.x);
+  expect(Math.abs(menu.y - chart.y)).toBeLessThan(4);
   expect(
-    await headerBar(page).evaluate((el) => el.scrollWidth - el.clientWidth),
+    await bar.evaluate((el) => el.scrollWidth - el.clientWidth),
   ).toBeLessThanOrEqual(0);
-
   expect(
     await page.evaluate(
       () =>
@@ -565,7 +538,7 @@ test("at 390px the marketplace header takes the menu without squeezing a label",
 
   await trigger(page).click();
   const open = await settled(page);
-  expect(open.x + open.width).toBeLessThan(390);
+  expect(open.x).toBeGreaterThan(0);
 });
 
 /**
@@ -618,31 +591,28 @@ test.describe("on a coarse pointer", () => {
     ).toBe(true);
   });
 
-  test("the marketplace's trigger does not reach over the brand link", async ({
+  test("the marketplace's trigger does not reach over the button beside it", async ({
     page,
   }) => {
     await page.goto("/market");
-    const brand = page.getByRole("link", { name: "wingfoil.ie Market, home" });
-    const box = (await brand.boundingBox())!;
-    const owner = await ownerAt(page, box.x + 1, box.y + box.height / 2);
+    const chart = page
+      .locator("[data-top-bar]")
+      .getByRole("link", { name: "Chart" });
+    const box = (await chart.boundingBox())!;
+    // One pixel inside the button's trailing edge, at its middle.
+    const owner = await ownerAt(
+      page,
+      box.x + box.width - 1,
+      box.y + box.height / 2,
+    );
     expect(owner.onTrigger).toBe(false);
-
-    // The grown area also stays inside the header pill it sits in.
-    const bar = (await headerBar(page).boundingBox())!;
+    // The menu's own middle belongs to the menu, a thumb's size.
     const menu = (await trigger(page).boundingBox())!;
-    const grown = await trigger(page).evaluate((el) => {
-      const rect = el.getBoundingClientRect();
-      const after = getComputedStyle(el, "::after");
-      return {
-        height: parseFloat(after.height) || rect.height,
-        width: parseFloat(after.width) || rect.width,
-      };
-    });
-    expect(grown.height).toBeGreaterThanOrEqual(44);
-    expect(grown.width).toBeLessThanOrEqual(menu.width + 0.5);
-    const top = menu.y + menu.height / 2 - grown.height / 2;
-    expect(top).toBeGreaterThanOrEqual(bar.y - 0.5);
-    expect(top + grown.height).toBeLessThanOrEqual(bar.y + bar.height + 0.5);
+    expect(menu.height).toBeGreaterThanOrEqual(44);
+    expect(
+      (await ownerAt(page, menu.x + menu.width / 2, menu.y + menu.height / 2))
+        .onTrigger,
+    ).toBe(true);
   });
 });
 
@@ -674,7 +644,7 @@ test("the display options, About and the tour open over the map from another pag
   // About, from the AI page again: the map's information over the list.
   await page.goto("/ai");
   await trigger(page).click();
-  await row(page, "About").click();
+  await row(page, "About the map").click();
   await expect(page.getByRole("dialog", { name: "About the map" })).toBeVisible(
     { timeout: 30000 },
   );
