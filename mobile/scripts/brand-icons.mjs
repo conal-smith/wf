@@ -53,15 +53,15 @@ const clear = (inner) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${inner}</svg>`;
 
 const icons = [
-  ["icon.png", 1024, square(bird(1))],
-  ["icon-staging.png", 1024, square(bird(1) + band("Staging", MAGENTA))],
-  ["icon-development.png", 1024, square(bird(1) + band("Dev", "#3a3a40"))],
+  ["icon.png", 1024, square(glyph(1))],
+  ["icon-staging.png", 1024, square(glyph(1) + band("Staging", MAGENTA))],
+  ["icon-development.png", 1024, square(glyph(1) + band("Dev", "#3a3a40"))],
   // Android shows the middle two thirds of an adaptive icon: at 0.85 the
   // favicon's own crop falls outside that, so no straight edge shows.
-  ["adaptive-foreground.png", 1024, clear(bird(0.85))],
-  ["adaptive-monochrome.png", 1024, clear(bird(0.85, "#000000"))],
-  ["splash.png", 512, clear(bird(1))],
-  ["notification-icon.png", 96, clear(bird(1.05, "#ffffff"))],
+  ["adaptive-foreground.png", 1024, clear(glyph(0.85))],
+  ["adaptive-monochrome.png", 1024, clear(glyph(0.85, "#000000"))],
+  ["splash.png", 512, clear(glyph(1))],
+  ["notification-icon.png", 96, clear(glyph(1.05, "#ffffff"))],
 ];
 
 const browser = await chromium.launch();
