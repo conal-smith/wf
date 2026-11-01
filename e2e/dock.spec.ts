@@ -1000,7 +1000,8 @@ test("the blend draws every model that covers the spot, on the strip's hours", a
   await openDock(page);
   await page.locator(".dock").getByRole("button", { name: "Blend" }).click();
   const chart = page.locator(".dock .blend-chart");
-  await expect(chart).toBeVisible();
+  // Every model's manifest and square is read first, as in the tests above.
+  await expect(chart).toBeVisible({ timeout: 30000 });
   expect(await chart.locator(".model-line").count()).toBeGreaterThan(3);
   // The tide is not drawn behind it, where its curve would read as one more
   // model's line. The chart's label column is its unit and its scale,
