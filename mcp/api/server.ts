@@ -12,6 +12,8 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
+import { SPOT_CARD_URI } from "../app/card.js";
+import { SPOT_CARD_HTML } from "../app/spotCard.generated.js";
 import {
   FORECAST_TOOLS,
   INSTRUCTIONS,
@@ -33,6 +35,13 @@ const READ_ONLY = {
   openWorldHint: false,
 } as const;
 
+/**
+ * MCP Apps (modelcontextprotocol.io/extensions/apps): a tool names the page an
+ * app that supports them draws its answer in, and the page is served as a
+ * resource of this type. An app without them reads the answer's text as ever.
+ */
+export const APP_MIME_TYPE = "text/html;profile=mcp-app";
+
 function register(server: McpServer, tool: ForecastTool, deps: McpDeps) {
   server.registerTool(
     tool.name,
@@ -41,6 +50,10 @@ function register(server: McpServer, tool: ForecastTool, deps: McpDeps) {
       description: tool.description,
       inputSchema: tool.inputSchema,
       annotations: READ_ONLY,
+      // The spec's place for the page, and the older key some apps still read.
+      ...(tool.ui && {
+        _meta: { ui: { resourceUri: tool.ui }, "ui/resourceUri": tool.ui },
+      }),
     },
     async (args) => {
       const outcome = await tool.run(args, deps);
@@ -49,6 +62,10 @@ function register(server: McpServer, tool: ForecastTool, deps: McpDeps) {
             content: [
               { type: "text" as const, text: JSON.stringify(outcome.value) },
             ],
+            // What the app's page draws; the model reads the text.
+            ...(outcome.card !== undefined && {
+              structuredContent: outcome.card as Record<string, unknown>,
+            }),
           }
         : {
             content: [{ type: "text" as const, text: outcome.message }],
@@ -65,7 +82,41 @@ export function createMcpServer(deps: McpDeps): McpServer {
   );
   for (const tool of FORECAST_TOOLS)
     register(server, tool as ForecastTool, deps);
+  registerSpotCard(server, deps);
   return server;
+}
+
+/**
+ * The spot card (mcp/app/spotCard.ts), get_spot_forecast's page. It loads its
+ * picture from the data host, so the app's frame is told to let it.
+ */
+function registerSpotCard(server: McpServer, deps: McpDeps) {
+  const ui = {
+    csp: {
+      resourceDomains: deps.dataBase ? [new URL(deps.dataBase).origin] : [],
+    },
+  };
+  server.registerResource(
+    "spot-card",
+    SPOT_CARD_URI,
+    {
+      title: "wingfoil.ie spot card",
+      description:
+        "A spot's forecast as a card: the place from above with the wind across it, and its hours in the site's colours and stars.",
+      mimeType: APP_MIME_TYPE,
+      _meta: { ui },
+    },
+    async () => ({
+      contents: [
+        {
+          uri: SPOT_CARD_URI,
+          mimeType: APP_MIME_TYPE,
+          text: SPOT_CARD_HTML,
+          _meta: { ui },
+        },
+      ],
+    }),
+  );
 }
 
 /** Everything a JSON-RPC error on this endpoint needs, for the non-POST verbs. */

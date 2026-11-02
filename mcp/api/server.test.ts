@@ -665,3 +665,130 @@ describe("the MCP endpoint", () => {
     expect(preflight.headers.get("access-control-allow-origin")).toBe("*");
   });
 });
+
+/*
+ * The spot card (mcp/app): get_spot_forecast names it as its MCP App, the
+ * server serves it, and the answer carries the card's data beside the text.
+ */
+describe("the spot card", () => {
+  const withCard = () => {
+    const app = new Hono();
+    app.route(
+      "/api/mcp",
+      createMcpRouter({
+        source: fixtureSource(),
+        now: () => FIXTURE_NOW,
+        site: "https://wingfoil.example",
+        dataBase: "https://data.wingfoil.example/",
+      }),
+    );
+    const rpc = async (method: string, params: unknown = {}) => {
+      const res = await app.request("/api/mcp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      });
+      return ((await res.json()) as { result: Record<string, unknown> })
+        .result;
+    };
+    return rpc;
+  };
+
+  it("is get_spot_forecast's page, and no other tool's", async () => {
+    const rpc = withCard();
+    const tools = (await rpc("tools/list")).tools as {
+      name: string;
+      _meta?: { ui?: { resourceUri?: string }; "ui/resourceUri"?: string };
+    }[];
+    const forecast = tools.find((t) => t.name === "get_spot_forecast")!;
+    expect(forecast._meta?.ui?.resourceUri).toBe("ui://wingfoil/spot-card.html");
+    expect(forecast._meta?.["ui/resourceUri"]).toBe(
+      "ui://wingfoil/spot-card.html",
+    );
+    expect(tools.filter((t) => t._meta).map((t) => t.name)).toEqual([
+      "get_spot_forecast",
+    ]);
+  });
+
+  it("is served as an MCP App, let to load its pictures from the data host", async () => {
+    const rpc = withCard();
+    const listed = (await rpc("resources/list")).resources as {
+      uri: string;
+      mimeType: string;
+    }[];
+    expect(listed).toEqual([
+      expect.objectContaining({
+        uri: "ui://wingfoil/spot-card.html",
+        mimeType: "text/html;profile=mcp-app",
+      }),
+    ]);
+    const read = await rpc("resources/read", {
+      uri: "ui://wingfoil/spot-card.html",
+    });
+    const [page] = read.contents as {
+      mimeType: string;
+      text: string;
+      _meta: { ui: { csp: { resourceDomains: string[] } } };
+    }[];
+    expect(page.mimeType).toBe("text/html;profile=mcp-app");
+    expect(page.text).toMatch(/^<!doctype html>/);
+    expect(page.text).toContain('id="card"');
+    expect(page._meta.ui.csp.resourceDomains).toEqual([
+      "https://data.wingfoil.example",
+    ]);
+  });
+
+  it("comes with the forecast: the place, its picture, its hours and its stars", async () => {
+    const rpc = withCard();
+    const result = await rpc("tools/call", {
+      name: "get_spot_forecast",
+      arguments: { spot: "brandon", hours: 12 },
+    });
+    const card = result.structuredContent as {
+      kind: string;
+      spot: { id: string; name: string };
+      page: string;
+      picture: { url: string; x: number; y: number } | null;
+      hours: { time: string; wind_kn: number | null; stars: number | null }[];
+      focus: string | null;
+    };
+    expect(card.kind).toBe("wingfoil-spot-card");
+    expect(card.spot).toMatchObject({ id: "brandon", name: "Brandon Bay" });
+    expect(card.page).toBe("https://wingfoil.example/spot/brandon");
+    expect(card.picture?.url).toMatch(
+      /^https:\/\/data\.wingfoil\.example\/satellite\/v[0-9a-f]+\/brandon-high\.webp$/,
+    );
+    expect(card.picture!.x).toBeGreaterThan(0.15);
+    expect(card.picture!.x).toBeLessThan(0.85);
+    // The same hours as the text, the stars as the text has them.
+    const text = JSON.parse(
+      (result.content as { text: string }[])[0].text,
+    ) as { hours: { time: string; rating?: { stars: number } | null }[] };
+    expect(card.hours.map((h) => h.time)).toEqual(
+      text.hours.map((h) => h.time),
+    );
+    expect(card.hours.map((h) => h.stars)).toEqual(
+      text.hours.map((h) => h.rating?.stars ?? null),
+    );
+    expect(card.hours.map((h) => h.time)).toContain(card.focus);
+  });
+
+  it("has no picture where the data host is not known", async () => {
+    const { rpc } = harness();
+    const result = (
+      await rpc("tools/call", {
+        name: "get_spot_forecast",
+        arguments: { spot: "brandon", hours: 3 },
+      })
+    ).result!;
+    expect(
+      (result.structuredContent as { picture: unknown; page: string }).picture,
+    ).toBeNull();
+    expect((result.structuredContent as { page: string }).page).toBe(
+      "https://wingfoil.ie/spot/brandon",
+    );
+  });
+});

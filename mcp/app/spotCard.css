@@ -1,0 +1,281 @@
+/*
+ * The spot card's look (mcp/app/spotCard.ts). Its colours are the site's own,
+ * written in by scripts/mcp-card/build.mjs from ui/theme.css as the custom
+ * properties below use them, light and dark. No fonts of its own: the
+ * wordmark is outlines, and the words are in the system's face, which the
+ * app around it uses too.
+ */
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 14px/1.35 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+button {
+  font: inherit;
+  color: inherit;
+}
+#card {
+  overflow: hidden;
+  max-width: 640px;
+  border-radius: 16px;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+#card:empty {
+  height: 280px;
+  background: linear-gradient(90deg, var(--sunken), var(--ground), var(--sunken));
+  background-size: 200% 100%;
+  animation: wait 1.4s ease-in-out infinite;
+}
+@keyframes wait {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ---- the head: the wordmark, and the hour ---- */
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px 10px;
+}
+.mark {
+  display: block;
+  height: 18px;
+  width: auto;
+}
+.mark-name {
+  fill: var(--ink);
+}
+.mark-ie {
+  fill: var(--magenta);
+}
+.when {
+  color: var(--ink-muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+/* ---- the place from above, the wind across it ---- */
+.map {
+  position: relative;
+  aspect-ratio: var(--aspect);
+  max-height: 300px;
+  width: 100%;
+  overflow: hidden;
+  background: var(--sea);
+}
+.map img,
+.map canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.map img {
+  object-fit: cover;
+}
+.map.is-plain {
+  background: radial-gradient(120% 90% at 30% 20%, var(--sea), var(--sunken));
+}
+.pin {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.dot {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--magenta);
+  box-shadow:
+    0 0 0 3px var(--ground),
+    0 2px 8px rgb(0 0 0 / 0.35);
+}
+.tag {
+  position: absolute;
+  bottom: 14px;
+  left: 0;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--ground);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.22);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.tag b {
+  font-weight: 600;
+}
+.tag span {
+  color: var(--ink-2);
+}
+.credit {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  max-width: 70%;
+  overflow: hidden;
+  color: rgb(255 255 255 / 0.85);
+  font-size: 9.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
+}
+
+/* ---- five stars, solid to the hour's count ---- */
+.stars {
+  display: inline-flex;
+  gap: 2px;
+}
+.stars i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--line);
+}
+/* A count of stars in the stars' own shade for that count, as on the site. */
+.stars[data-stars="1"] i:nth-child(-n + 1) {
+  background: var(--stars-1);
+}
+.stars[data-stars="2"] i:nth-child(-n + 2) {
+  background: var(--stars-2);
+}
+.stars[data-stars="3"] i:nth-child(-n + 3) {
+  background: var(--stars-3);
+}
+.stars[data-stars="4"] i:nth-child(-n + 4) {
+  background: var(--stars-4);
+}
+.stars[data-stars="5"] i:nth-child(-n + 5) {
+  background: var(--stars-5);
+}
+
+/* ---- the place's name, and the way to its page ---- */
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px 4px;
+}
+.names {
+  min-width: 0;
+}
+.name {
+  margin: 0;
+  font: 600 17px/1.2 "Fraunces", Georgia, "Times New Roman", serif;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.county {
+  color: var(--ink-muted);
+  font-size: 12.5px;
+}
+.open {
+  flex: none;
+  padding: 7px 12px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.open:hover {
+  background: var(--sunken);
+}
+
+/* ---- the days, and the day's hours ---- */
+.days {
+  display: flex;
+  gap: 4px;
+  padding: 8px 14px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.days button {
+  flex: none;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.days button[aria-pressed="true"] {
+  background: var(--sunken);
+  color: var(--ink);
+  font-weight: 600;
+}
+.hours {
+  display: flex;
+  gap: 4px;
+  padding: 8px 14px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.hr {
+  flex: 1 0 34px;
+  max-width: 52px;
+  display: grid;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.hr .kn {
+  display: grid;
+  place-items: center;
+  height: 26px;
+  border-radius: 7px;
+  color: var(--on-wind);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.hr .st {
+  height: 4px;
+  border-radius: 2px;
+}
+.hr .hh {
+  color: var(--ink-muted);
+  font-size: 11px;
+  text-align: center;
+}
+.hr.is-dark {
+  opacity: 0.45;
+}
+.hr[aria-pressed="true"] .kn {
+  box-shadow:
+    0 0 0 2px var(--ground),
+    0 0 0 4px var(--magenta);
+}
+.hr[aria-pressed="true"] .hh {
+  color: var(--ink);
+  font-weight: 600;
+}
+.hr:focus-visible,
+.days button:focus-visible,
+.open:focus-visible {
+  outline: 2px solid var(--magenta);
+  outline-offset: 2px;
+}

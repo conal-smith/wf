@@ -731,6 +731,18 @@ many and a filter button that opens the stars, the order and the model in a
 sheet. Light, dark or auto left the foot of the site menu for the first part
 of Settings.
 
+**2026-11-02 — A spot card in the AI apps.** An AI app that supports MCP
+Apps draws get_spot_forecast's answer as a card beside its reply
+(`mcp/app/`): the wordmark, the place from above with the hour's wind blowing
+across it in its own colour, a pin with its name, wind and stars, the day's
+hours in the site's colours with a tab per day, and "Open on wingfoil.ie".
+The site's look, not a look of its own: its colours are read from
+`ui/theme.css` as the card is built, light and dark as the app is; the
+wordmark is the site's own Fraunces cut into outlines; and the words take the
+app's system face. One HTML file of about 20 KB with no fonts and no library,
+so it opens at once in a chat. An app without MCP Apps reads the answer's
+text as it always has.
+
 ---
 
 ## Still open

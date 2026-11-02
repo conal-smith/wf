@@ -7,6 +7,11 @@
  *
  * Never imports Node, so the browser can load it.
  */
+import {
+  SPOT_CARD_URI,
+  parsePictureList,
+  spotCardData,
+} from "../app/card.js";
 import { z } from "zod";
 import {
   GUST_FACTOR_RULE,
@@ -58,16 +63,29 @@ export interface ToolDeps {
   source: ForecastSource;
   /** The clock "now" is read from. Tests pin it to the fixtures' runs. */
   now?: () => number;
+  /** The site the spot card links to; wingfoil.ie when left out. */
+  site?: string;
+  /**
+   * Where the data host serves the published files (the spot pictures among
+   * them), as an absolute URL. Left out, the spot card has no picture.
+   */
+  dataBase?: string;
 }
 
-/** An answer to pass on, or a message saying why there is none. */
+/**
+ * An answer to pass on, or a message saying why there is none. An answer may
+ * carry a card for the AI app to draw beside it (mcp/app/card.ts).
+ */
 export type ToolOutcome =
-  { ok: true; value: unknown } | { ok: false; message: string };
+  | { ok: true; value: unknown; card?: unknown }
+  | { ok: false; message: string };
 
 export interface ForecastTool<Shape extends z.ZodRawShape = z.ZodRawShape> {
   name: string;
   title: string;
   description: string;
+  /** The MCP App the tool's answer is drawn in, where it has one. */
+  ui?: string;
   inputSchema: Shape;
   run(args: z.infer<z.ZodObject<Shape>>, deps: ToolDeps): Promise<ToolOutcome>;
 }
@@ -193,7 +211,11 @@ function answerWarnings(warnings: WarningsAnswer, explain: boolean) {
   };
 }
 
-const answer = (value: unknown): ToolOutcome => ({ ok: true, value });
+const answer = (value: unknown, card?: unknown): ToolOutcome => ({
+  ok: true,
+  value,
+  ...(card !== undefined && { card }),
+});
 const failure = (message: string): ToolOutcome => ({ ok: false, message });
 
 const describeSpot = (s: RidingSpot) => `${s.name} (${s.county}, id ${s.id})`;
@@ -350,6 +372,7 @@ const modelArg = (model: string | undefined): StarsFrom =>
 export const getSpotForecast = tool({
   name: "get_spot_forecast",
   title: "Spot forecast",
+  ui: SPOT_CARD_URI,
   description:
     "Hour-by-hour forecast for one spot, each hour rated in stars (0-5) exactly as wingfoil.ie's spot page rates it (ours, the same for every rider: `rider.label` 'Ours · ~80 kg'), with why an hour has no stars, each day's best window and the winds the beach wants (`best_directions`): wind speed, gusts, gust factor and direction from one weather model, the one wingfoil.ie rates its stars from (HARMONIE while it reaches the hour, then ECMWF, unless `model` names another, which ECMWF then follows), with the range across every model and how well they agree as context, how the wind meets the shore (onshore to offshore), plus waves, air temperature and how cold it feels in the mean wind (`feels_like_c`, a wind chill), rain and the chance of it (`rain_chance_pct`), visibility (`visibility_km`, and `visibility`: good, moderate, poor or fog), a thunder and lightning risk (`thunder_risk`), the sky in words (`description` and `sky`, as wingfoil.ie's sky glyph has it; `weather_code` is WMO 4677), how light each hour is (`light`: day, twilight or dark), each day's first light, sunrise, sunset and last light, high and low tides and the latest sea temperature, Met Éireann's official warnings for the spot (`warnings`, and `warning` on each hour one covers: under orange or red the hour has no stars and is never rideable), and the EPA's bathing water notices near it (`water_quality`, and `water` on each hour one covers: under a prohibition or advice against bathing the hour has no stars). Rain is the weather model's own total over an interval (`rain_interval_hours`: an hour for ICON-EU, so each hourly row has its own hour's rain; three hours for GFS far ahead), given once on the row where its interval ends and null on any hours before it inside the interval, so add rain_mm up over the rows for a period's rain. `rain_chance_pct` covers the same interval on the same row, from every weather model that reaches it: use it to say how likely rain is, since a rain_mm of 0 from one model is not a promise of a dry hour. Answer size: about 5–7 KB with one row (most of it the warnings in force, given whole), then about 0.75 KB a row, 1 KB with per_model: about 20 KB for the default 48 hours (16 rows), 45 KB for 240 hours at step_hours 6 and 190 KB at step_hours 1, so ask for the hours the question needs. explain adds about 7 KB.",
   inputSchema: {
@@ -433,6 +456,15 @@ export const getSpotForecast = tool({
     const { note } = about;
     const nearby = nearbySpots(spots, match.spot);
     const { warnings, idOf } = answerWarnings(warned, explain);
+    const card = spotCardData(forecast, {
+      site: deps.site ?? "https://wingfoil.ie",
+      dataBase: deps.dataBase,
+      pictures: deps.dataBase
+        ? parsePictureList(
+            await deps.source.json("satellite/spots.json").catch(() => null),
+          )
+        : null,
+    });
     return answer({
       spot: where,
       window: span,
@@ -451,7 +483,7 @@ export const getSpotForecast = tool({
       warnings,
       sources: explain ? sources : briefSources(sources),
       ...(explain && { method }),
-    });
+    }, card);
   },
 });
 
