@@ -755,8 +755,8 @@ its brand page (`public/logos/`), with no line under it until a press has
 something to say; one-colour marks take the ink, black on light and white on
 dark, as their makers ask. A line under the list says the marks are their
 owners' and that none of them endorses the site. Le Chat is Mistral Vibe since
-Mistral renamed it. Claude waits off the list for Anthropic's approval of its
-mark.
+Mistral renamed it. Claude is listed with its Spark in Clay, as Anthropic's
+press kit gives it, once Anthropic had approved its mark here.
 
 ---
 
