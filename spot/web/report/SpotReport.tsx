@@ -84,6 +84,7 @@ import {
   type ModelSeries,
 } from "./detail";
 import { useNearby, type NearbyReading } from "./nearby";
+import { ClimateSections } from "./ClimateSections";
 import { PhotoLoupe } from "./PhotoLoupe";
 import {
   besideMark,
@@ -599,6 +600,7 @@ export function SpotReport({
             </div>
           </section>
         )}
+        {!point && <ClimateSections spotId={spot.id} units={units} />}
         <div className={s.smallPrint()}>
           <p className="m-0">
             Model forecasts, not a safety statement. Look at the water before
