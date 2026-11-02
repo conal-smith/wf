@@ -937,27 +937,20 @@
 }
 
 /* ==== ai =================================================================
-   The AI page (ai/web/AiApp.tsx), as its approved mock-up sets it
-   (the approved AI page mock-up): a short column of
-   apps, each named a little larger than a card's name, under one line a
-   little larger than prose. Each step carries a phone's smaller size
-   beside it, as `-sm`. */
+   The AI page (ai/web/AiApp.tsx, ai/web/ai.css): a phone in the hand, with an
+   AI app on it reading the forecast. The phone's body is dark whatever the
+   theme, as a phone is: its frame from a near-black to a lit edge, its keys,
+   and the island at the top of its screen. Everything on its screen is the
+   site's own colours. */
 @theme static {
-  --container-ai: 600px;
-  --text-ai-intro: 19px;
-  --text-ai-intro--line-height: 1.4;
-  --text-ai-intro-sm: 17px;
-  --text-ai-intro-sm--line-height: 1.4;
-  --text-ai-name: 21px;
-  --text-ai-name--line-height: 1.2;
-  --text-ai-name--font-weight: 600;
-  --text-ai-name--letter-spacing: -0.01em;
-  --text-ai-name-sm: 19px;
-  --text-ai-name-sm--line-height: 1.2;
-  --text-ai-name-sm--font-weight: 600;
-  --text-ai-name-sm--letter-spacing: -0.01em;
-  --text-ai-line: 16px;
-  --text-ai-line--line-height: 1.35;
-  --text-ai-line-sm: 15px;
-  --text-ai-line-sm--line-height: 1.35;
+  --color-device: #0b0b0d;
+  --color-device-body: #141417;
+  --color-device-sheen: #3a3a40;
+  --color-device-edge: #5a5a62;
+  --color-device-key: #2a2a30;
+  --color-device-key-lit: #4a4a52;
+  /* A row of the list: the app's mark, "Add to …", and its arrow. */
+  --grid-template-columns-ai-row: 40px minmax(0, 1fr) auto;
+  --text-ai-row: 16.5px;
+  --text-ai-row--line-height: 1.25;
 }

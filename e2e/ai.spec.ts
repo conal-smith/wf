@@ -1,10 +1,12 @@
 import { expect, test, type Page } from "./fixtures";
 
 /**
- * The AI page (/ai): the spot finder's header, one line, and a row for each
- * app with one button that adds wingfoil.ie to it, then a row that copies the
- * address for any other. The links themselves are tested in
- * ai/web/install.test.ts; this is that the page wires them up.
+ * The AI page (/ai): the site's top bar, a short scene (a phone with an AI
+ * app reading wingfoil.ie), and a list of the apps, each its maker's mark and
+ * one row that adds wingfoil.ie to it, then a row that copies the address for
+ * any other. The links themselves are tested in ai/web/install.test.ts; this
+ * is that the page wires them up. Most tests ask for less motion, which shows
+ * the scene's last beat at once.
  */
 
 const IPHONE =
@@ -15,27 +17,47 @@ const ANDROID =
 const button = (page: Page, app: string) => page.locator(`[data-app="${app}"]`);
 const lines = (page: Page) => page.locator("[data-line]");
 
-test("one line, then a row and one button for each app", async ({ page }) => {
+test.use({ reducedMotion: "reduce" });
+
+test("the line, then a row for each app with its maker's mark", async ({
+  page,
+}) => {
   await page.goto("/ai");
-  await expect(page.locator("main p").first()).toHaveText(
-    "wingfoil.ie is fully compatible with your bots. Click below to add your favourite bot.",
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "wingfoil.ie is fully compatible with your bots.",
   );
-  await expect(page.locator("main h2")).toHaveText([
-    "ChatGPT",
-    "Claude",
-    "Grok",
-    "Perplexity",
-    "Le Chat",
-    "Another app",
-  ]);
   await expect(page.locator("[data-app]")).toHaveText([
     "Add to ChatGPT",
-    "Add to Claude",
     "Add to Grok",
     "Add to Perplexity",
-    "Add to Le Chat",
-    "Copy address",
+    "Add to Mistral Vibe",
+    "Another app",
   ]);
+  // Each app's mark is its maker's own file, and it is there.
+  const marks = await page.locator(".ai-logo img, .ai-logo .mono").evaluateAll(
+    (els) =>
+      els.map((el) =>
+        el instanceof HTMLImageElement
+          ? el.getAttribute("src")
+          : getComputedStyle(el).getPropertyValue("--ai-mark").trim(),
+      ),
+  );
+  expect(marks).toEqual([
+    "url(/ai/logos/openai-blossom.svg)",
+    "url(/ai/logos/grok-logomark.svg)",
+    "url(/ai/logos/perplexity-symbol.svg)",
+    "/ai/logos/mistral-icon.svg",
+  ]);
+  for (const file of [
+    "openai-blossom",
+    "grok-logomark",
+    "perplexity-symbol",
+    "mistral-icon",
+  ])
+    expect((await page.request.get(`/ai/logos/${file}.svg`)).status()).toBe(200);
+  await expect(page.locator("main")).toContainText(
+    "Product names and logos are trademarks of their owners",
+  );
   // The site's one top bar: the wordmark, the search, Chart and the menu.
   const bar = page.getByRole("banner");
   await expect(bar.getByRole("button", { name: "Site menu" })).toBeVisible();
@@ -51,12 +73,9 @@ test("one line, then a row and one button for each app", async ({ page }) => {
   );
   await expect(lines(page)).toHaveCount(0);
 
-  // Claude opens its connector dialog filled in, in a new tab.
-  await expect(button(page, "claude")).toHaveAttribute(
-    "href",
-    /^https:\/\/claude\.ai\/customize\/connectors\?modal=add-custom-connector&/,
-  );
-  await expect(button(page, "claude")).toHaveAttribute("target", "_blank");
+  // Claude is not listed until Anthropic has approved its mark here.
+  await expect(button(page, "claude")).toHaveCount(0);
+  await expect(button(page, "chatgpt")).toHaveAttribute("target", "_blank");
   await expect(button(page, "chatgpt")).toHaveAttribute(
     "href",
     "https://chatgpt.com/plugins",
@@ -108,15 +127,38 @@ test("a button that copies the address says where to paste it", async ({
   await expect(
     page.locator("li", { has: button(page, "other") }),
   ).toContainText("Address copied. Paste it in your app.");
+});
 
-  // Claude is filled in for the rider: nothing is left to say.
-  await page.route("https://claude.ai/**", (route) => route.abort());
-  const [claude] = await Promise.all([
-    context.waitForEvent("page"),
-    button(page, "claude").click(),
-  ]);
-  await claude.close();
-  await expect(lines(page)).toHaveCount(0);
+test.describe("with motion", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  test("the scene plays, the list comes in, and Replay plays it again", async ({
+    page,
+  }) => {
+    test.slow();
+    await page.goto("/ai");
+    const stage = page.locator("main.ai-stage");
+    const replay = page.getByRole("button", { name: "Replay" });
+    // The line types itself; the phone's app is asked, and answers with a chart.
+    await expect(page.locator(".ai-intro .c.on").first()).toBeAttached();
+    await expect(page.locator('[data-scene="card"].on')).toBeAttached({
+      timeout: 20000,
+    });
+    await expect(stage).toHaveClass(/is-done/, { timeout: 20000 });
+    await expect(replay).toHaveClass(/\bon\b/);
+    await expect(button(page, "chatgpt")).toHaveCSS("opacity", "1");
+    await replay.click();
+    await expect(stage).not.toHaveClass(/is-done/);
+  });
+
+  test("a press while it plays skips to its end", async ({ page }) => {
+    await page.goto("/ai");
+    const stage = page.locator("main.ai-stage");
+    await expect(stage).not.toHaveClass(/is-done/);
+    await page.mouse.wheel(0, 200);
+    await expect(stage).toHaveClass(/is-done/);
+    await expect(page.locator('[data-scene="say2"].on')).toBeAttached();
+  });
 });
 
 test.describe("on an iPhone", () => {
@@ -139,16 +181,17 @@ test.describe("on an iPhone", () => {
     // Followed in the same tab, which is what opens the app rather than a
     // browser tab.
     await expect(button(page, "chatgpt")).not.toHaveAttribute("target", /.*/);
-    await expect(button(page, "claude")).not.toHaveAttribute("target", /.*/);
 
-    // Each name and its button share a line, every button the same width.
+    // Every row the same width, the line over the phone, the list under it.
     const boxes = await page
       .locator("[data-app]")
       .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
     expect(new Set(boxes).size).toBe(1);
-    const name = (await page.locator("main h2").first().boundingBox())!;
+    const line = (await page.getByRole("heading", { level: 1 }).boundingBox())!;
+    const phone = (await page.locator(".ai-phone").boundingBox())!;
     const add = (await button(page, "chatgpt").boundingBox())!;
-    expect(add.y).toBeLessThan(name.y + name.height);
+    expect(phone.y).toBeGreaterThan(line.y + line.height);
+    expect(add.y).toBeGreaterThan(phone.y + phone.height);
 
     // Nothing on the page is wider than the phone.
     const wide = await page.evaluate(
@@ -173,10 +216,6 @@ test.describe("on Android", () => {
     await expect(button(page, "chatgpt")).toHaveAttribute(
       "href",
       "intent://chatgpt.com/plugins#Intent;scheme=https;package=com.openai.chatgpt;S.browser_fallback_url=https%3A%2F%2Fchatgpt.com%2Fplugins;end",
-    );
-    await expect(button(page, "claude")).toHaveAttribute(
-      "href",
-      /^intent:\/\/claude\.ai\/customize\/connectors\?.+;package=com\.anthropic\.claude;/,
     );
     await expect(button(page, "grok")).toHaveAttribute(
       "href",

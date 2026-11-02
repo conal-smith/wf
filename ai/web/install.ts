@@ -40,7 +40,8 @@ export const ASSISTANT_NAME: Record<Assistant, string> = {
   claude: "Claude",
   grok: "Grok",
   perplexity: "Perplexity",
-  lechat: "Le Chat",
+  // Le Chat until Mistral renamed its assistant Vibe in May 2026.
+  lechat: "Mistral Vibe",
 };
 
 /* -------------------------------------------------------------- devices */
@@ -132,9 +133,9 @@ export function grokLink(): string {
 export const PERPLEXITY_PLUGINS = "https://www.perplexity.ai/computer/plugins";
 
 /**
- * Le Chat. Mistral documents adding a custom MCP connector from its
- * Connectors page (under Context) but gives that page no address, so the
- * page opens Le Chat. Its iPhone app does not claim the root.
+ * Mistral Vibe (Le Chat until May 2026). Mistral documents adding a custom
+ * MCP connector from its Connectors page (under Context) but gives that page
+ * no address, so the page opens Vibe. Its iPhone app does not claim the root.
  */
 export const LE_CHAT = "https://chat.mistral.ai/";
 

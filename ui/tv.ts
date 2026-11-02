@@ -28,12 +28,7 @@ export const THEME_NAMES = {
     "wordmark",
     "wordmark-sm",
     // The AI page's own (ui/theme.css, under its banner).
-    "ai-intro",
-    "ai-intro-sm",
-    "ai-name",
-    "ai-name-sm",
-    "ai-line",
-    "ai-line-sm",
+    "ai-row",
     // The spot report's (ui/theme.css, under its banner).
     "big",
     "big-sm",
@@ -52,7 +47,6 @@ export const THEME_NAMES = {
     "measure",
     "page",
     "form",
-    "ai",
     "loupe",
     "side",
     "list",

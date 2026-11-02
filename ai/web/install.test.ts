@@ -120,7 +120,7 @@ describe("the assistants", () => {
       "Claude",
       "Grok",
       "Perplexity",
-      "Le Chat",
+      "Mistral Vibe",
     ]);
   });
 
@@ -177,7 +177,7 @@ describe("adding to an app", () => {
     });
   });
 
-  it("opens Perplexity's plugins and Le Chat on the web, on any device", () => {
+  it("opens Perplexity's plugins and Mistral Vibe on the web, on any device", () => {
     expect(PERPLEXITY_PLUGINS).toBe(
       "https://www.perplexity.ai/computer/plugins",
     );
@@ -189,7 +189,9 @@ describe("adding to an app", () => {
 
   it("says the address is copied and where to paste it", () => {
     expect(pasteLine("ChatGPT")).toBe("Address copied. Paste it in ChatGPT.");
-    expect(pasteLine("Le Chat")).toBe("Address copied. Paste it in Le Chat.");
+    expect(pasteLine("Mistral Vibe")).toBe(
+      "Address copied. Paste it in Mistral Vibe.",
+    );
     expect(pasteLine()).toBe("Address copied. Paste it in your app.");
   });
 });
