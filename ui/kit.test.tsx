@@ -931,6 +931,20 @@ describe("Dialog", () => {
       expect(base).not.toContain(name);
   });
 
+  // The box has no height of its own, only a most. A body grown from a basis
+  // of 0% (`flex-1`) folds to its padding wherever the browser resolves that
+  // basis to nothing: the box is sized round the head and the actions alone.
+  it("grows its body from its content, and scrolls it only at the box's most", () => {
+    const s = dialogStyles();
+    const body = words(s.body());
+    expect(body).toEqual(
+      expect.arrayContaining(["flex-auto", "min-h-0", "overflow-y-auto"]),
+    );
+    expect(body).not.toContain("flex-1");
+    expect(words(s.base())).toContain("max-h-11/12");
+    expect(build(["flex-auto"])).toMatch(/flex: auto;/);
+  });
+
   it("has the shared backdrop: a dim wash over a 6px blur, fading in and out", () => {
     const base = words(dialogStyles().base());
     for (const name of BACKDROP.split(" ")) expect(base).toContain(name);
