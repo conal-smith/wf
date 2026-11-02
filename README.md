@@ -21,6 +21,16 @@ Open **http://127.0.0.1:5173/**. The sample bundles say in their attribution
 that they are not a forecast; [the live pipeline](docs/LIVE_FORECAST_PIPELINE.md)
 fetches real runs.
 
+## Use it from an AI assistant
+
+The forecast is also an MCP server, at `https://wingfoil.ie/api/mcp`, and a
+plugin for Claude Code and Codex ([`plugins/wingfoil-ie`](plugins/wingfoil-ie)):
+
+```sh
+claude plugin install wingfoil-ie --marketplace sprintengine/wingfoil
+codex plugin marketplace add sprintengine/wingfoil && codex plugin add wingfoil-ie@wingfoil-ie
+```
+
 ## Checks
 
 ```sh
@@ -37,6 +47,7 @@ npm run test:e2e   # the full Playwright suite
 - [Star ratings](docs/STAR_RATINGS.md) and [model verification](docs/VERIFICATION.md)
 - [Design system](docs/DESIGN_SYSTEM.md) and [design principles](docs/DESIGN_PRINCIPLES.md)
 - [Builds and releases](docs/RELEASES.md)
+- [Listing the AI plugin](docs/AI_PLUGIN_LISTING.md) in Anthropic's and OpenAI's directories
 - [The iOS and Android app](docs/MOBILE.md): running it, its release train and how riders get updates
 - [Running it on one machine](deploy/local/README.md)
 - [Where the riding places come from](data/locations/README.md)
