@@ -67,7 +67,7 @@ export interface TopBarProps {
   actions?: ReactNode;
   /** The button to the other view. */
   view?: TopBarView;
-  /** Light or dark, on a computer; on a phone the menu carries it. */
+  /** Light or dark, on a computer; on a phone Settings carries it. */
   theme?: boolean;
   /** The site menu (force5/src/SiteMenu.tsx), at the far right. */
   menu: ReactNode;

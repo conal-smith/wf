@@ -1,6 +1,9 @@
 /**
  * "Settings": the site menu's one place for everything a rider sets, on one
- * page, in five parts: about them (weight and units), the wind strength that
+ * page, in six parts: how the site looks (light, dark or the device's, which
+ * applies at once and is kept on the device, not saved with the rest; it
+ * was at the foot of the site menu until the owner's ruling of 2026-11-02),
+ * about them (weight and units), the wind strength that
  * suits them (two handles, too light and too strong, with the stars they make
  * under the slider), the stars each wind direction takes off, how far up and
  * down the wind they ride (two handles on a circle), and how the forecast is
@@ -12,8 +15,9 @@
  * keep clicking through"); the controls and pictures are the wizard's.
  *
  * Everyone starts from ours; "Reset to ours" shows once anything the stars
- * or the course are made of differs from it. On a desktop the first four
- * parts sit two by two and the forecast runs across under them; on a phone
+ * or the course are made of differs from it. On a desktop the appearance
+ * runs across the top, the next four parts sit two by two and the forecast
+ * runs across under them; on a phone
  * it is the whole screen, one column, and scrolls.
  *
  * Its own chunk, fetched when it is opened. It edits a draft, and Save keeps
@@ -31,6 +35,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { Moon, Sun } from "lucide-react";
 import { modelEntry } from "../force5/src/catalog";
 import { FALLBACK_MODEL, STARS_MODELS, modelName } from "../force5/src/lead";
 import {
@@ -42,6 +47,12 @@ import type { NightHours, Prefs } from "../force5/src/prefs";
 import { DOWNWIND_MAX, UPWIND_MAX } from "../force5/src/rideWedge";
 import { NEVER, type DirectionKey } from "../force5/src/stars";
 import { UNITS, beaufort, forceKn, type Units } from "../force5/src/units";
+import {
+  THEME_EVENT,
+  chooseTheme,
+  themeChoice,
+  type ThemeChoice,
+} from "../shared/web/theme";
 import { BeaufortGlyph } from "../ui/BeaufortGlyph";
 import { Button } from "../ui/Button";
 import { Checkbox } from "../ui/Checkbox";
@@ -80,8 +91,12 @@ import {
   type Draft,
 } from "./settingsDraft";
 
-/** The five parts, in the order they read, each a heading and one line of help. */
+/** The six parts, in the order they read, each a heading and one line of help. */
 const PARTS = {
+  look: {
+    title: "Appearance",
+    help: "Light, dark, or as your device is set. It changes at once.",
+  },
   you: {
     title: "About you",
     help: "Your weight helps us suggest the right wing size.",
@@ -216,6 +231,7 @@ export default function Settings({
       }
     >
       <div className="st-body">
+        {part("look", <Appearance />)}
         {part("you", <YouPart draft={draft} setDraft={setDraft} unit={unit} />)}
         {part(
           "wind",
@@ -301,6 +317,55 @@ function Speed({
     <BeaufortGlyph force={beaufort(kn)} size={size} />
   ) : (
     <>{shown(kn, unit)}</>
+  );
+}
+
+/* ---- 0. appearance ---- */
+
+const APPEARANCE = [
+  {
+    value: "light",
+    label: (
+      <>
+        <Sun size={15} strokeWidth={1.75} aria-hidden="true" />
+        Light
+      </>
+    ),
+  },
+  {
+    value: "dark",
+    label: (
+      <>
+        <Moon size={15} strokeWidth={1.75} aria-hidden="true" />
+        Dark
+      </>
+    ),
+  },
+  { value: "system", label: "Auto" },
+] as const;
+
+/**
+ * Light, dark, or the device's (auto), kept on this device
+ * (shared/web/theme.ts) the moment it is pressed. On a phone the top bar has
+ * no room for its theme button, so this is the choice there.
+ */
+function Appearance() {
+  const [choice, setChoice] = useState<ThemeChoice>(themeChoice);
+  useEffect(() => {
+    const follow = () => setChoice(themeChoice());
+    window.addEventListener(THEME_EVENT, follow);
+    return () => window.removeEventListener(THEME_EVENT, follow);
+  }, []);
+  return (
+    <Segmented
+      aria-label="Appearance"
+      options={APPEARANCE}
+      value={choice}
+      onChange={(next) => {
+        chooseTheme(next);
+        setChoice(next);
+      }}
+    />
   );
 }
 

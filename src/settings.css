@@ -691,18 +691,16 @@
   opacity: 0.35;
 }
 
-/* ---- a desktop: two by two, about you beside the wind strength, the wind
-   direction beside riding upwind; the forecast across under them, its three
-   choices side by side ---- */
+/* ---- a desktop: the appearance across the top; under it two by two, about
+   you beside the wind strength, the wind direction beside riding upwind; the
+   forecast across under them, its three choices side by side ---- */
 @media (min-width: 1000px) {
   .st-body {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 0 40px;
   }
-  .st-part:nth-child(2) {
-    border-top: 0;
-  }
+  .st-part.is-look,
   .st-part.is-forecast {
     grid-column: 1 / -1;
   }

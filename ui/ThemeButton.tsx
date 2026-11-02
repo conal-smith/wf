@@ -1,8 +1,8 @@
 /**
  * Light or dark, in the top bar: a round button that shows what it switches
  * to, the sun in dark and the moon in white (shared/web/theme.ts keeps the
- * choice on this device). On a phone the bar has no room for it, and the
- * site menu carries the switch instead.
+ * choice on this device). On a phone the bar has no room for it, and
+ * Settings carries the choice instead (src/Settings.tsx).
  */
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
