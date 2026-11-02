@@ -846,6 +846,8 @@
   --grid-template-columns-now-wide: minmax(0, 1fr) 420px 300px;
   --grid-template-columns-week: repeat(7, minmax(118px, 1fr));
   --grid-template-columns-graph: 72px minmax(0, 1fr);
+  /* The spot page's readout over its graph: even cells that keep their places. */
+  --grid-template-columns-readout: repeat(auto-fill, minmax(112px, 1fr));
   --grid-template-columns-near: 40px minmax(0, 1fr);
   /* The Spot finder's card: its picture, then its name and its two bars. */
   --grid-template-columns-card: 104px minmax(0, 1fr);
