@@ -738,6 +738,17 @@
 .lt.xoff .lt-lab i {
   color: var(--color-ink-muted);
 }
+/* The chosen light's name is the way to its page (force5/src/lights.ts). */
+.lt.sel .lt-lab {
+  pointer-events: auto;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lt.sel .lt-lab:hover b {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
 .lt.named .lt-lab,
 .lt.sel .lt-lab,
 .map-canvas.z-hi .lt .lt-lab {
@@ -1276,6 +1287,7 @@
 
 /* A point tapped on the open map: a ring and a cross, in ink. */
 .pick-mark {
+  position: relative;
   width: 18px;
   height: 18px;
   border: 1.5px solid var(--color-ink);
@@ -1286,6 +1298,28 @@
     linear-gradient(var(--color-ink), var(--color-ink)) center / 100% 1.5px
       no-repeat;
   pointer-events: none;
+}
+/* Its name beside it, as a chosen light's: pressed, the point's page. */
+.pick-lab {
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  font: 600 12px/1.15 var(--font-body);
+  color: var(--color-ink);
+  white-space: nowrap;
+  text-shadow:
+    0 0 2px var(--map-halo),
+    0 0 3px var(--map-halo),
+    0 0 5px var(--map-halo);
+  pointer-events: auto;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pick-lab:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
 }
 
 /* ---------- the home page: the spot finder, and the chart beside it ---------- */

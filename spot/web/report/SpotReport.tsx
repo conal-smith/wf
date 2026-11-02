@@ -158,18 +158,38 @@ const styles = tv({
     spark: "block h-7 w-full",
     dayFoot:
       "flex items-center justify-between font-body text-caption text-ink-muted",
-    tools: "my-4 flex flex-wrap items-center justify-between gap-2.5",
-    readout: "flex min-h-12 flex-wrap items-center gap-x-6 gap-y-1.5",
-    chip: "rounded-full bg-inverse px-3 py-1 font-body text-body font-semibold text-ink-inverse",
+    tools: [
+      "my-4 flex flex-wrap items-center justify-between gap-2.5",
+      // On a phone the readout stays in view over the graph, which is
+      // taller than the screen, as the hours are scrubbed through.
+      "max-wide:sticky max-wide:top-0 max-wide:z-2 max-wide:my-0 max-wide:bg-ground max-wide:py-3",
+    ],
+    // The readings in a grid of cells that keep their places as the hours
+    // are scrubbed: even cells, the longer readings two wide, four to a row
+    // on a phone.
+    readout: [
+      "grid w-full grid-flow-row-dense grid-cols-4 items-start gap-x-3 gap-y-1.5",
+      "wide:grid-cols-readout wide:gap-x-5 wide:gap-y-2.5",
+    ],
+    chip: "inline-block justify-self-start rounded-full bg-inverse px-3 py-1 font-body text-body font-semibold whitespace-nowrap text-ink-inverse tabular-nums",
     chipNow: "bg-pen text-ground",
-    ro: "grid gap-px",
-    roValue: "font-body text-prose font-semibold text-ink",
-    gbox: "grid grid-cols-graph rounded-surface bg-sunken on-card py-1.5",
-    gl: "relative",
-    glName:
+    ro: "grid min-w-0 gap-px",
+    roWide: "col-span-2",
+    roLabel:
+      "font-body text-caption font-medium whitespace-nowrap text-ink-muted wide:text-body",
+    roValue:
+      "truncate font-body text-body font-semibold whitespace-nowrap text-ink tabular-nums wide:text-prose",
+    // The band names in a column of their own beside the hours; on a phone
+    // they float over the hours' left edge instead, so the graph has the
+    // card's whole width.
+    gbox: "relative grid grid-cols-1 rounded-surface bg-sunken on-card py-1.5 wide:grid-cols-graph",
+    gl: "max-wide:pointer-events-none max-wide:absolute max-wide:inset-y-1.5 max-wide:left-0 max-wide:z-1 wide:relative",
+    glName: [
       "absolute left-4 -translate-y-1/2 font-body text-caption font-medium whitespace-nowrap text-ink-muted",
+      "max-wide:left-1.5 max-wide:rounded-control max-wide:bg-sunken/85 max-wide:px-1 max-wide:text-eyebrow",
+    ],
     graph:
-      "relative overflow-x-auto overscroll-x-contain border-0 border-l border-line",
+      "relative overflow-x-auto overscroll-x-contain border-0 border-line wide:border-l",
     sky: "pointer-events-none absolute left-0 flex items-center gap-1 font-body text-caption text-ink-2",
     legend:
       "flex flex-wrap gap-x-4 gap-y-1.5 pt-3 font-body text-caption text-ink-2",
@@ -1191,17 +1211,52 @@ function Graph({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollTo]);
+  // On a phone the hours are scrolled, not pointed at: a playhead stands in
+  // the graph and the hour under it is the one read out. It rides in from
+  // the left edge over the first half screen of scrolling, holds in the
+  // middle, and rides out to the right edge over the last, so every hour
+  // can be put under it.
+  const phone = width < 600;
+  const reach = W - width;
+  const headAt = (left: number) =>
+    reach < width
+      ? (left / Math.max(1, reach)) * W
+      : left < width / 2
+        ? 2 * left
+        : left > reach - width / 2
+          ? 2 * left - reach + width
+          : left + width / 2;
+  const leftFor = (x: number) =>
+    reach < width
+      ? (x / W) * reach
+      : x < width
+        ? x / 2
+        : x > reach
+          ? (x + reach - width) / 2
+          : x - width / 2;
+  const rowAtX = (x: number) => {
+    const t = start + (x / px) * HOUR;
+    let at = 0;
+    rows.forEach((r, i) => {
+      if (r.time <= t) at = i;
+    });
+    return at;
+  };
   useEffect(() => {
     if (!ref.current) return;
-    // The hour the address opens on, a third of the way in, as the hours
-    // before it are worth a glance; else now, six hours in.
     const opened = opening === null ? null : rows[opening];
-    ref.current.scrollLeft = Math.max(
-      0,
-      opened ? X(opened.time) - width / 3 : X(now) - px * 6,
-    );
+    ref.current.scrollLeft = phone
+      ? // The hour the address opens on, else now, under the playhead.
+        Math.max(0, leftFor(opened ? mid(opened) : X(now)))
+      : // The hour the address opens on, a third of the way in, as the
+        // hours before it are worth a glance; else now, six hours in.
+        Math.max(0, opened ? X(opened.time) - width / 3 : X(now) - px * 6);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [px]);
+  const onScroll = phone
+    ? (e: React.UIEvent<HTMLDivElement>) =>
+        setHover(rowAtX(headAt(e.currentTarget.scrollLeft)))
+    : undefined;
   const windRows = rows.filter((r) => r.hour.wind);
   const [wy, wh] = ROW.wind;
   const Y = (k: number) => wy + wh - (Math.min(k, 36) / 36) * wh;
@@ -1229,25 +1284,26 @@ function Graph({
   const deepAt =
     bed && Number.isFinite(bed.z) && !bed.area.level ? bed.z + 1 : null;
   const handovers = leadChanges(rows);
+  const hasDepth = useMemo(
+    () => rows.some((r) => depthAt(r.time) !== null),
+    [rows, depthAt],
+  );
   const ay = lower.axis;
   const hoverRow = hover === null ? null : rows[hover];
   const shownRow = hoverRow ?? rowAt(rows, now);
   const shownAt = shownRow ? rows.indexOf(shownRow) : -1;
   const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
     const box = e.currentTarget.getBoundingClientRect();
-    const t = start + ((e.clientX - box.left) / px) * HOUR;
-    let at = 0;
-    rows.forEach((r, i) => {
-      if (r.time <= t) at = i;
-    });
-    setHover(at);
+    setHover(rowAtX(e.clientX - box.left));
   };
+  // Now is said as now, however it came to be under the playhead.
+  const isNow = hoverRow === null || hoverRow === rowAt(rows, now);
   return (
     <>
       <div className={s.tools()}>
         <Readout
           row={shownRow}
-          isNow={hover === null}
+          isNow={isNow}
           depth={shownRow ? depthAt(shownRow.time) : null}
           rated={rated}
           gust={
@@ -1261,6 +1317,8 @@ function Graph({
           }
           current={current.columns[shownAt] ?? null}
           rain={shownRow ? rowRain(rain, shownRow) : null}
+          hasCurrent={current.columns.length > 0}
+          hasDepth={hasDepth}
         />
       </div>
       <div className={s.gbox()}>
@@ -1284,13 +1342,19 @@ function Graph({
             </span>
           ))}
         </div>
-        <div className={s.graph()} ref={ref} data-spot-graph>
+        <div
+          className={s.graph()}
+          ref={ref}
+          onScroll={onScroll}
+          data-spot-graph
+          data-playhead={phone || undefined}
+        >
           <svg
             width={W}
             height={GH}
             viewBox={`0 0 ${W} ${GH}`}
-            onPointerMove={onMove}
-            onPointerLeave={() => setHover(null)}
+            onPointerMove={phone ? undefined : onMove}
+            onPointerLeave={phone ? undefined : () => setHover(null)}
             className="block touch-pan-x"
             data-graph-svg
           >
@@ -1555,6 +1619,18 @@ function Graph({
                   className="fill-ink"
                   fillOpacity={0.07}
                 />
+                {phone && (
+                  <line
+                    x1={mid(hoverRow)}
+                    x2={mid(hoverRow)}
+                    y1={4}
+                    y2={ay}
+                    className="stroke-ink"
+                    strokeOpacity={0.5}
+                    strokeWidth={1.5}
+                    data-playhead-line
+                  />
+                )}
                 {hoverRow.hour.wind && (
                   <circle
                     cx={mid(hoverRow)}
@@ -1989,6 +2065,8 @@ function Readout({
   gust,
   current,
   rain,
+  hasCurrent,
+  hasDepth,
 }: {
   row: SpotRow | null;
   isNow: boolean;
@@ -1998,6 +2076,9 @@ function Readout({
   current: CurrentReading | null;
   /** The row's rain, mm/h, or null where no total covers it. */
   rain: number | null;
+  /** The place has a current, and a launch with a depth, at any hour. */
+  hasCurrent: boolean;
+  hasDepth: boolean;
 }) {
   const speed = useSpeed();
   const units = useContext(UnitsContext);
@@ -2005,18 +2086,26 @@ function Readout({
   if (!row) return <div className={s.readout()} />;
   const wind = row.hour.wind;
   const waves = row.hour.waves;
+  const gustKn = wind ? speed.gust(wind.wind_kn, wind.gust_kn) : null;
+  // Every reading the place has, in a cell of its own that holds its place
+  // whatever the hour: an hour without one reads "–", so nothing moves as
+  // the hours are scrubbed through.
   return (
     <div className={s.readout()} data-readout>
-      <span className={s.chip({ className: isNow ? s.chipNow() : undefined })}>
-        {isNow
-          ? "Now"
-          : `${dayNames(dublinDate(row.time), row.time).short} ${clock(row.time)}`}
-      </span>
+      <div className={s.ro({ className: "max-wide:col-span-2" })}>
+        <span
+          className={s.chip({ className: isNow ? s.chipNow() : undefined })}
+        >
+          {isNow
+            ? "Now"
+            : `${dayNames(dublinDate(row.time), row.time).short} ${clock(row.time)}`}
+        </span>
+      </div>
       {rated && (
         <div className={s.ro()}>
-          <span className={s.label()}>Stars</span>
+          <span className={s.roLabel()}>Stars</span>
           {row.rating ? (
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex h-6 items-center gap-1.5">
               <Stars n={row.rating.stars} />
               {besideMark(row) && <NoticeMark level={besideMark(row)!} />}
             </span>
@@ -2029,43 +2118,42 @@ function Readout({
           )}
         </div>
       )}
-      {wind && (
-        <div className={s.ro()}>
-          <span className={s.label()}>Wind</span>
-          <b className={s.roValue()}>
-            {speed.say(wind.wind_kn)}
-            {speed.gust(wind.wind_kn, wind.gust_kn) !== null && (
-              <span className="text-gust">
-                {" "}
-                g{speed.say(speed.gust(wind.wind_kn, wind.gust_kn)!)}
-              </span>
-            )}{" "}
-            {speed.unit} {compass(wind.direction_deg)}
-          </b>
-        </div>
-      )}
-      {gust && (
-        <div className={s.ro()} data-readout-gust>
-          <span className={s.label()}>Gusts</span>
-          <b
-            className={s.roValue()}
-            title={rated ? GUST_WORDS[gust.kind] : undefined}
-          >
-            {gust.text}
-          </b>
-        </div>
-      )}
-      {wind && wind.models > 1 && (
-        <div className={s.ro()}>
-          <span className={s.label()}>Models</span>
-          <b className={s.roValue()}>
-            {speed.say(wind.min_kn)}–{speed.say(wind.max_kn)}
-          </b>
-        </div>
-      )}
+      <div className={s.ro({ className: s.roWide() })}>
+        <span className={s.roLabel()}>Wind</span>
+        <b className={s.roValue()}>
+          {wind ? (
+            <>
+              {speed.say(wind.wind_kn)}
+              {gustKn !== null && (
+                <span className="text-gust"> g{speed.say(gustKn)}</span>
+              )}{" "}
+              {speed.unit} {compass(wind.direction_deg)}
+            </>
+          ) : (
+            "–"
+          )}
+        </b>
+      </div>
+      <div className={s.ro()} data-readout-gust>
+        <span className={s.roLabel()}>Gusts</span>
+        <b
+          className={s.roValue()}
+          title={rated && gust ? GUST_WORDS[gust.kind] : undefined}
+        >
+          {gust?.text ?? "–"}
+        </b>
+      </div>
+      <div className={s.ro()}>
+        <span className={s.roLabel()}>Models</span>
+        <b className={s.roValue()}>
+          {wind && wind.models > 1
+            ? `${speed.say(wind.min_kn)}–${speed.say(wind.max_kn)}`
+            : "–"}
+        </b>
+      </div>
       {rated && (
         <div className={s.ro()}>
-          <span className={s.label()}>Wing</span>
+          <span className={s.roLabel()}>Wing</span>
           <b className={s.roValue()}>
             {row.rating
               ? `${row.rating.wing.own ?? row.rating.wing.recommended} m²`
@@ -2073,8 +2161,8 @@ function Readout({
           </b>
         </div>
       )}
-      <div className={s.ro()} data-readout-sea>
-        <span className={s.label()}>Sea</span>
+      <div className={s.ro({ className: s.roWide() })} data-readout-sea>
+        <span className={s.roLabel()}>Sea</span>
         <b className={s.roValue()}>
           {waves?.height_m == null ? "–" : `${waves.height_m.toFixed(1)} m`}
           {waves?.height_m != null && waves.period_s !== null && (
@@ -2087,39 +2175,45 @@ function Readout({
           )}
         </b>
       </div>
-      {current && (
-        <div className={s.ro()} data-readout-current>
-          <span className={s.label()}>Current</span>
+      {hasCurrent && (
+        <div className={s.ro({ className: s.roWide() })} data-readout-current>
+          <span className={s.roLabel()}>Current</span>
           <b className={s.roValue()}>
-            {currentText(current.speed, units)}
-            {current.speed >= MIN_ARROW_MS && (
-              <span className="font-normal text-ink-2">
-                {" "}
-                to {compass(current.towards)}
-              </span>
+            {current ? (
+              <>
+                {currentText(current.speed, units)}
+                {current.speed >= MIN_ARROW_MS && (
+                  <span className="font-normal text-ink-2">
+                    {" "}
+                    to {compass(current.towards)}
+                  </span>
+                )}
+              </>
+            ) : (
+              "–"
             )}
           </b>
         </div>
       )}
-      {rain !== null && (
-        <div className={s.ro()} data-readout-rain>
-          <span className={s.label()}>Rain</span>
-          <b className={s.roValue()}>
-            {rain < DRY_MM_PER_HOUR
+      <div className={s.ro()} data-readout-rain>
+        <span className={s.roLabel()}>Rain</span>
+        <b className={s.roValue()}>
+          {rain === null
+            ? "–"
+            : rain < DRY_MM_PER_HOUR
               ? "Dry"
               : `${rain < 0.1 ? "<0.1" : rain.toFixed(1)} mm/h`}
-          </b>
-        </div>
-      )}
-      {depth !== null && (
+        </b>
+      </div>
+      {hasDepth && (
         <div className={s.ro()}>
-          <span className={s.label()}>At the launch</span>
+          <span className={s.roLabel()}>At the launch</span>
           <b
             className={s.roValue({
-              className: depth < 1 ? s.off() : undefined,
+              className: depth !== null && depth < 1 ? s.off() : undefined,
             })}
           >
-            {depth.toFixed(1)} m
+            {depth === null ? "–" : `${depth.toFixed(1)} m`}
           </b>
         </div>
       )}

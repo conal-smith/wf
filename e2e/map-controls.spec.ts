@@ -65,11 +65,11 @@ test("the chart's controls: zoom and Layers on the right, Layers the rail on a p
     "Wind",
     "Sea",
     "Weather",
-    "Chart",
     "Ground",
     "Round your spot",
   ])
     await expect(rail.getByRole("group", { name: group })).toBeAttached();
+  await expect(rail.getByRole("group", { name: "Chart" })).toHaveCount(0);
   // The wind in two layers, each its own switch: the particles alone at first.
   const wind = rail.getByRole("group", { name: "Wind" });
   await expect(wind.getByRole("button")).toHaveCount(2);
@@ -96,16 +96,16 @@ test("the chart's controls: zoom and Layers on the right, Layers the rail on a p
   // It stands clear of the scrub bar, scrolling in the room above it.
   const railBox = (await rail.boundingBox())!;
   expect(railBox.y + railBox.height).toBeLessThanOrEqual(bar.y);
-  // The chart's parts switch off and stay off.
-  await setLayer(page, "Spot names", false);
-  await expect(page.locator(".map-canvas")).toHaveClass(/no-names/);
+  // A layer switched on stays on.
+  await setLayer(page, "Currents", true);
   await page.reload();
-  await expect(page.locator(".map-canvas")).toHaveClass(/no-names/, {
-    timeout: 30000,
-  });
   // The rail is as it was left on this device: open.
-  await expect(layersRail(page)).toBeVisible();
-  await setLayer(page, "Spot names", true);
+  await expect(layersRail(page)).toBeVisible({ timeout: 30000 });
+  await expect(layerTile(page, "Currents")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await setLayer(page, "Currents", false);
   await closeLayers(page);
   // The key is in the menu, in a dialog rather than on the chart.
   await openFromMenu(page, "About the map");

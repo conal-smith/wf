@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import {
+  barName,
   closeLayers,
   expect,
   layersRail,
@@ -259,10 +260,14 @@ test("a national region draws on its own station's tide, answers a tap, and only
   const spot = (await page
     .locator('.spot-marker[data-spot-id="rusheen"]')
     .boundingBox())!;
-  await page.mouse.click(
-    spot.x + spot.width / 2 + 40,
-    spot.y + spot.height / 2,
-  );
+  // The first tap lets go of the spot the link chose; the next one, with
+  // nothing chosen, picks the point.
+  const flat = { x: spot.x + spot.width / 2 + 40, y: spot.y + spot.height / 2 };
+  await page.mouse.click(flat.x, flat.y);
+  await expect(barName(page)).toHaveCount(0);
+  await page.waitForTimeout(800);
+  await page.mouse.click(flat.x, flat.y);
+  await expect(page.locator(".scrub .sb-coords")).toBeAttached();
   await openFromMenu(page, "About the map");
   await page.getByRole("tab", { name: "Tidal depth" }).click();
   const probe = page.locator(".foil-probe");

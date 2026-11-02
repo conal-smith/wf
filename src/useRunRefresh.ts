@@ -20,7 +20,6 @@ interface Options {
   validTime: string | null;
   /** A model switch is in flight; two transactions must never overlap. */
   switching: boolean;
-  playing: boolean;
   /**
    * A newer run, already loaded whole: manifest, frame and index together, for
    * the caller to commit in one React batch exactly as a model switch does.
@@ -126,9 +125,9 @@ function scrubbing(): boolean {
  * through the same `loadModel` transaction a model switch uses, so the caller
  * gets a complete new run to swap in atomically and the reader keeps their time.
  *
- * Nothing here ever interrupts a gesture: while the forecast is playing, while a
- * model switch is in flight, while a pointer is down or while the scrubber has
- * focus, the check is put off for a minute and tried again. And nothing here is
+ * Nothing here ever interrupts a gesture: while a model switch is in flight,
+ * while a pointer is down or while the scrubber has focus, the check is put
+ * off for a minute and tried again. And nothing here is
  * ever shown as an error — a background refresh that fails logs and leaves the
  * forecast that is already on screen exactly as it is.
  */
@@ -136,13 +135,12 @@ export default function useRunRefresh({
   manifest,
   validTime,
   switching,
-  playing,
   onRun,
 }: Options): void {
   // The timers are installed once; the current props are read through a ref so
   // that a scrub or a new frame does not tear the schedule down and restart it.
-  const latest = useRef({ manifest, validTime, switching, playing, onRun });
-  latest.current = { manifest, validTime, switching, playing, onRun };
+  const latest = useRef({ manifest, validTime, switching, onRun });
+  latest.current = { manifest, validTime, switching, onRun };
   const lastCheck = useRef(Date.now());
   const running = useRef(false);
   const pointerDown = useRef(false);
@@ -183,8 +181,7 @@ export default function useRunRefresh({
         validTime: time,
         switching: busy,
       } = latest.current;
-      const held =
-        busy || latest.current.playing || pointerDown.current || scrubbing();
+      const held = busy || pointerDown.current || scrubbing();
       const decision = revalidateDecision(
         lastCheck.current,
         Date.now(),

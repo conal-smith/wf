@@ -13,7 +13,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2px 2px 4px var(--lr-tips);
+  padding: 2px 6px 6px var(--lr-tips);
   margin-left: calc(var(--lr-tips) * -1);
   overflow-x: hidden;
   overflow-y: auto;
@@ -39,7 +39,7 @@
   gap: 4px;
 }
 .lr-grp + .lr-grp {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 .lr .lr-ic {
   position: relative;

@@ -83,21 +83,45 @@ describe("railGroups", () => {
     });
   });
 
-  it("chooses nothing round the spot when the one on is pressed again", () => {
-    const set = choices({ focusStyle: "loupe" });
-    const rail = railGroups(layerGroups(set));
-    item(rail, "focus-loupe").press();
-    expect(set.onFocusStyle).toHaveBeenLastCalledWith("off");
-    item(rail, "focus-ring").press();
-    expect(set.onFocusStyle).toHaveBeenLastCalledWith("ring");
+  it("switches the loupe on, and off to the range ring", () => {
+    const off = choices({ focusStyle: "ring" });
+    item(railGroups(layerGroups(off)), "focus-loupe").press();
+    expect(off.onFocusStyle).toHaveBeenLastCalledWith("loupe");
+    const on = choices({ focusStyle: "loupe" });
+    const loupe = item(railGroups(layerGroups(on)), "focus-loupe");
+    expect(loupe.on).toBe(true);
+    loupe.press();
+    expect(on.onFocusStyle).toHaveBeenLastCalledWith("ring");
   });
 
-  it("takes the satellite away when its tide is pressed again", () => {
-    const set = choices({ satellite: "high" });
-    const rail = railGroups(layerGroups(set));
-    item(rail, "satellite-high").press();
-    expect(set.onSatellite).toHaveBeenLastCalledWith("off");
-    item(rail, "satellite-low").press();
-    expect(set.onSatellite).toHaveBeenLastCalledWith("low");
+  it("goes from high tide to low tide to no satellite on one button", () => {
+    const steps = [
+      ["off", "high", "Satellite, high tide"],
+      ["high", "low", "Satellite, high tide"],
+      ["low", "off", "Satellite, low tide"],
+    ] as const;
+    for (const [now, next, name] of steps) {
+      const set = choices({ satellite: now });
+      const button = item(railGroups(layerGroups(set)), "satellite");
+      expect(button.name).toBe(name);
+      expect(button.on).toBe(now !== "off");
+      button.press();
+      expect(set.onSatellite).toHaveBeenLastCalledWith(next);
+    }
+  });
+
+  it("leaves the chart's own parts out: they are always drawn", () => {
+    const ids = railGroups(layerGroups(choices())).flatMap((group) =>
+      group.items.map((entry) => entry.id),
+    );
+    expect(ids).toEqual([
+      "wind-wash",
+      "wind-particles",
+      "foil",
+      "currents",
+      "rain",
+      "satellite",
+      "focus-loupe",
+    ]);
   });
 });

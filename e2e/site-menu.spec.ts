@@ -2,6 +2,7 @@ import {
   expect,
   layersRail,
   menuRow,
+  openFromMenu,
   rowName,
   SITE_ROW_TEXTS,
   SITE_ROWS,
@@ -456,8 +457,8 @@ test("at 390px the menu shares the top bar's row without wrapping or scrolling",
   expect(await overflow()).toBeLessThanOrEqual(0);
 
   // Open, the drawer stands at the right edge, the full height of the
-  // screen, and leaves a strip of the map showing beside it, with light or
-  // dark at its foot.
+  // screen, and leaves a strip of the map showing beside it. Light or dark
+  // is not in it: it is the first part of Settings.
   await trigger(page).click();
   const open = await settled(page);
   expect(open.y).toBe(0);
@@ -465,20 +466,22 @@ test("at 390px the menu shares the top bar's row without wrapping or scrolling",
   expect(open.x).toBeGreaterThan(0);
   await expect(
     drawer(page).getByRole("group", { name: "Appearance" }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(drawer(page)).toHaveCount(0);
   expect(await overflow()).toBeLessThanOrEqual(0);
 });
 
-test("light, dark or auto at the menu's foot: dark by default, and the choice kept", async ({
+test("light, dark or auto first in Settings: dark by default, changed at once, and the choice kept", async ({
   page,
 }) => {
   await page.goto("/?map");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await trigger(page).click();
-  await settled(page);
-  const appearance = drawer(page).getByRole("group", { name: "Appearance" });
+  await openFromMenu(page, "Settings");
+  const settings = page.getByRole("dialog", { name: "Settings" });
+  // The first of its parts.
+  await expect(settings.locator("h3").first()).toHaveText("Appearance");
+  const appearance = settings.getByRole("group", { name: "Appearance" });
   await expect(
     appearance.getByRole("button", { name: "Dark" }),
   ).toHaveAttribute("aria-pressed", "true");
@@ -487,13 +490,16 @@ test("light, dark or auto at the menu's foot: dark by default, and the choice ke
   await expect(
     appearance.getByRole("button", { name: "Light" }),
   ).toHaveAttribute("aria-pressed", "true");
+  // It is not a draft: closed without saving, it stays.
+  await page.keyboard.press("Escape");
+  await expect(settings).toBeHidden();
   await page.reload();
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.+/);
   // Auto follows the device.
   await page.emulateMedia({ colorScheme: "dark" });
-  await trigger(page).click();
-  await settled(page);
-  await drawer(page)
+  await openFromMenu(page, "Settings");
+  await page
+    .getByRole("dialog", { name: "Settings" })
     .getByRole("group", { name: "Appearance" })
     .getByRole("button", { name: "Auto" })
     .click();

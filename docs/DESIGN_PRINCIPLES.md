@@ -708,6 +708,29 @@ floating boxes directly. And a count of stars has one colour wherever stars
 are drawn: the stars' own shades, `stars-1` … `stars-5`, on the glyphs too
 (`ui/StarGlyphs`), a seller's rating alone staying in ink.
 
+**2026-11-02 — The data alone in the scrub bar, a still readout, fewer
+layers.** The owner, from the site on a phone: the bar's controls crowded the
+data to its foot, and its Now sat over the Wind | Waves | Tide switch. The
+bar is now the data alone: no name, no close, no play or step, no switch, no
+key, no Now. Over the strip the moment is read out in cells that keep their
+places as the playhead moves (the time, the wind, the stars, the waves, the
+tide), a reading an hour lacks saying "–"; the strip draws the wind and the
+stars, and under them a lane each for the waves and the tide. The spot's name
+beside its light on the map opens its page (a tapped point has its name beside
+its mark too); a tap off the spot lets it go, the bar's forecast with it, and
+the next tap picks a point. The spot page's readout over its graph is cells in
+fixed places too, held in view on a phone, where the band names float over the
+hours instead of taking a column and the hours scrolled under a playhead are
+the hour read out. The layers' rail lost what does not change a rider's day,
+so it stands whole in a column on a phone: the chart's own parts (depth
+tints, contours, relief, names) are always drawn, the satellite is one button
+from high tide to low to none, and the loupe is on or off, the range ring in
+its stead. On the spot finder a card opens its spot's page wherever it is
+pressed, its picture too; the list's head is one row, Favourites or Nearby, how
+many and a filter button that opens the stars, the order and the model in a
+sheet. Light, dark or auto left the foot of the site menu for the first part
+of Settings.
+
 ---
 
 ## Still open

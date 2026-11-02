@@ -76,9 +76,10 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   await expect(
     settings.getByRole("heading", { name: "Settings", exact: true }),
   ).toBeVisible();
-  // One page, in five parts, the forecast's last: no steps, no spots, no
-  // summary.
+  // One page, in six parts, the appearance first and the forecast last: no
+  // steps, no spots, no summary.
   await expect(settings.locator(".st-h")).toHaveText([
+    "Appearance",
     "About you",
     "Wind strength",
     "Wind direction",

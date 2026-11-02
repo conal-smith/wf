@@ -21,14 +21,16 @@
  * A quiet sheet: the wordmark and a close button at the bar's height, the
  * site's navigation in named groups with one line icon a row and no rules
  * between them, the page you are on on a soft pill with "You're here", and
- * at the foot Light, Dark or Auto. A finger can push it back off to the right.
+ * at the foot the one line every page owes a rider. Light, Dark or Auto is
+ * the first part of Settings (src/Settings.tsx). A finger can push it back
+ * off to the right.
  *
  * The navigation is one menu, in one order, wherever it is opened: the
  * forecast, your settings, help, then the site's other sections, Use with AI
  * last (force5/src/siteNav.ts). The chart's layers are not in it: they are
  * the rail beside the zoom (src/LayerRail.tsx).
  */
-import { Menu, Moon, Sun, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -41,17 +43,10 @@ import {
 import { useFadeOut } from "../../ui/Backdrop";
 import { Button } from "../../ui/Button";
 import { backdropPress, onBackdrop } from "../../ui/Dialog";
-import { Segmented } from "../../ui/Segmented";
 import { RING, tv } from "../../ui/tv";
 import { Wordmark } from "../../ui/Wordmark";
 import { ChartGlyph } from "../../shared/web/ChartGlyph";
 import { FEATURES, type SiteFeatures } from "../../shared/web/features";
-import {
-  THEME_EVENT,
-  chooseTheme,
-  themeChoice,
-  type ThemeChoice,
-} from "../../shared/web/theme";
 import {
   about,
   community,
@@ -139,10 +134,8 @@ export const siteMenuStyles = tv({
     // "You're here", or a quiet "Preview", at the row's end.
     end: "ml-auto font-body text-label font-medium text-ink-muted",
     preview: "rounded-full bg-sunken px-2 py-0.5",
-    // Light, dark or auto, and the one line every page owes a rider.
+    // The one line every page owes a rider.
     foot: "grid shrink-0 gap-3 px-6 pt-3.5 pb-5 max-wide:px-5",
-    appearance:
-      "flex items-center justify-between gap-3 font-body text-prose font-medium",
     small: "m-0 font-body text-label leading-normal text-ink-muted",
   },
   variants: {
@@ -313,58 +306,6 @@ export function SiteNav({
         </section>
       ))}
     </nav>
-  );
-}
-
-const APPEARANCE = [
-  {
-    value: "light",
-    label: (
-      <>
-        <Sun size={15} strokeWidth={1.75} aria-hidden="true" />
-        Light
-      </>
-    ),
-  },
-  {
-    value: "dark",
-    label: (
-      <>
-        <Moon size={15} strokeWidth={1.75} aria-hidden="true" />
-        Dark
-      </>
-    ),
-  },
-  { value: "system", label: "Auto" },
-] as const;
-
-/**
- * Light, dark, or the device's (auto), kept on this device
- * (shared/web/theme.ts). On a phone the top bar has no room for its theme
- * button, so the menu carries the choice on every width.
- */
-function Appearance() {
-  const styles = siteMenuStyles();
-  const [choice, setChoice] = useState<ThemeChoice>(themeChoice);
-  useEffect(() => {
-    const follow = () => setChoice(themeChoice());
-    window.addEventListener(THEME_EVENT, follow);
-    return () => window.removeEventListener(THEME_EVENT, follow);
-  }, []);
-  return (
-    <div className={styles.appearance()} data-appearance>
-      <span>Appearance</span>
-      <Segmented
-        aria-label="Appearance"
-        size="sm"
-        options={APPEARANCE}
-        value={choice}
-        onChange={(next) => {
-          chooseTheme(next);
-          setChoice(next);
-        }}
-      />
-    </div>
   );
 }
 
@@ -601,7 +542,6 @@ export function SiteMenu({
             />
           </div>
           <div className={styles.foot()}>
-            <Appearance />
             <p className={styles.small()}>
               Model forecasts, not a safety statement. Look at the water before
               you go out.

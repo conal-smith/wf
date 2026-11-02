@@ -273,19 +273,15 @@ test.describe("on a wide screen", () => {
     await expect(find).toHaveValue("");
   });
 
-  test("a card's picture opens the full chart at its spot, with its week; Back is the list", async ({
+  test("a card's picture opens its spot's page, not the chart; Back is the list", async ({
     page,
   }) => {
     await openHome(page);
     await cards(page)
       .filter({ hasText: "Keel Beach" })
-      .getByRole("button", { name: "Keel Beach on the chart" })
+      .locator("[data-card-picture]")
       .click();
-    await expect(page).toHaveURL(/\/\?spot=keel$/);
-    await expect(barName(page)).toHaveText("Keel Beach", {
-      timeout: 30000,
-    });
-    await expect(onChart(page)).toBeVisible();
+    await expect(page).toHaveURL(/\/spot\/keel$/);
     await page.goBack();
     await expect(page).toHaveURL(/\/$/);
     await expect(panel(page)).toBeVisible();
