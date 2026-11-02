@@ -11,16 +11,16 @@ and read-only, with no account and nothing to configure.
 Claude Code:
 
 ```sh
-claude plugin marketplace add sprintengine/wingfoil
+claude plugin marketplace add slopsmith/wf
 claude plugin install wingfoil-ie@wingfoil-ie
 ```
 
-or, in a session, `/plugin install wingfoil-ie --marketplace sprintengine/wingfoil`.
+or, in a session, `/plugin install wingfoil-ie --marketplace slopsmith/wf`.
 
 Codex:
 
 ```sh
-codex plugin marketplace add sprintengine/wingfoil
+codex plugin marketplace add slopsmith/wf
 codex plugin add wingfoil-ie@wingfoil-ie
 ```
 

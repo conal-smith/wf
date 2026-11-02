@@ -8,11 +8,11 @@
     "url": "https://wingfoil.ie/"
   },
   "homepage": "https://wingfoil.ie/ai",
-  "repository": "https://github.com/sprintengine/wingfoil",
+  "repository": "https://github.com/slopsmith/wf",
   "license": "AGPL-3.0-only",
   "keywords": ["wing foiling", "wind", "forecast", "tides", "waves", "ireland"],
   "icon": "./assets/logo.png",
   "documentationUrl": "https://wingfoil.ie/ai",
-  "supportUrl": "https://github.com/sprintengine/wingfoil/issues",
+  "supportUrl": "https://github.com/slopsmith/wf/issues",
   "mcpServers": "./.mcp.json"
 }

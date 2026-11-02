@@ -27,8 +27,8 @@ The forecast is also an MCP server, at `https://wingfoil.ie/api/mcp`, and a
 plugin for Claude Code and Codex ([`plugins/wingfoil-ie`](plugins/wingfoil-ie)):
 
 ```sh
-claude plugin install wingfoil-ie --marketplace sprintengine/wingfoil
-codex plugin marketplace add sprintengine/wingfoil && codex plugin add wingfoil-ie@wingfoil-ie
+claude plugin install wingfoil-ie --marketplace slopsmith/wf
+codex plugin marketplace add slopsmith/wf && codex plugin add wingfoil-ie@wingfoil-ie
 ```
 
 ## Checks
