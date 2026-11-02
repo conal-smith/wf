@@ -43,10 +43,10 @@ test("the line, then a row for each app with its maker's mark", async ({
       ),
   );
   expect(marks).toEqual([
-    "url(/ai/logos/openai-blossom.svg)",
-    "url(/ai/logos/grok-logomark.svg)",
-    "url(/ai/logos/perplexity-symbol.svg)",
-    "/ai/logos/mistral-icon.svg",
+    "url(/logos/openai-blossom.svg)",
+    "url(/logos/grok-logomark.svg)",
+    "url(/logos/perplexity-symbol.svg)",
+    "/logos/mistral-icon.svg",
   ]);
   for (const file of [
     "openai-blossom",
@@ -54,7 +54,7 @@ test("the line, then a row for each app with its maker's mark", async ({
     "perplexity-symbol",
     "mistral-icon",
   ])
-    expect((await page.request.get(`/ai/logos/${file}.svg`)).status()).toBe(200);
+    expect((await page.request.get(`/logos/${file}.svg`)).status()).toBe(200);
   await expect(page.locator("main")).toContainText(
     "Product names and logos are trademarks of their owners",
   );

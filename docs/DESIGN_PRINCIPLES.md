@@ -751,7 +751,7 @@ then the phone slides over and the apps come in beside it (`ai/web/scene.ts`,
 `ai/web/ai.css`). On a phone's width the line sits over a smaller phone and
 the list follows straight under it. Any scroll, tap or key skips to the end,
 as does less motion. Each app is shown by its maker's own mark, unaltered, from
-its brand page (`public/ai/logos/`), with no line under it until a press has
+its brand page (`public/logos/`), with no line under it until a press has
 something to say; one-colour marks take the ink, black on light and white on
 dark, as their makers ask. A line under the list says the marks are their
 owners' and that none of them endorses the site. Le Chat is Mistral Vibe since

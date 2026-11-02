@@ -8,7 +8,7 @@
  * itself; a phone rises with an AI app on it, asked where to wing foil on
  * Saturday, answering with a little wind chart from wingfoil.ie; then the
  * phone slides over and the ways in come beside it. Those are a list of the
- * apps, each its own mark from its maker's brand page (public/ai/logos/),
+ * apps, each its own mark from its maker's brand page (public/logos/),
  * and one row: pressed, it does what ai/web/install.ts says for that app on
  * this device. Claude opens with the address filled in; the others copy the
  * address and open the app's page for it, and then the row says the one
@@ -81,7 +81,8 @@ function Logo({ app }: { app: Row }) {
       </span>
     );
   const { file, mono, wide } = LOGO[app];
-  const src = `/ai/logos/${file}`;
+  // Not under /ai/: public/_redirects hands every /ai/* to the app.
+  const src = `/logos/${file}`;
   return (
     <span className="ai-logo">
       {mono ? (
