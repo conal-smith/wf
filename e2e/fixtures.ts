@@ -64,10 +64,11 @@ export const timeSlider = (page: Page) =>
   page.getByRole("slider", { name: "Forecast time" });
 
 /**
- * The pill over the playhead: its words, and the stars of the hour it is on
- * (`data-stars`, none where the hour is not rated).
+ * The readings over the strip: the moment the playhead is at, its readings,
+ * and the stars of the hour it is on (`data-stars`, none where the hour is
+ * not rated).
  */
-export const barPill = (page: Page) => page.locator(".scrub .sb-pill");
+export const barPill = (page: Page) => page.locator(".scrub [data-readout]");
 
 /** The scrub bar has a place's hours in, and draws its week. */
 export async function barReady(page: Page) {

@@ -122,7 +122,7 @@ test("at night the strip opens on the hour now, a night column of its own", asyn
   // The pill reads the hour out, and that it is dark: no stars to give.
   const pill = barPill(page);
   await expect(pill).toContainText("Sun 13 22:00");
-  await expect(pill).toContainText("dark");
+  await expect(pill.locator('[data-cell="stars"]')).toHaveText("StarsDark");
   await expect(pill).not.toHaveAttribute("data-stars");
   // And the playhead stands in the night's hatching.
   const x = await headAt(page);

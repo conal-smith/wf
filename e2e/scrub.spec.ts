@@ -123,13 +123,13 @@ const opening = () =>
   sampleStrip.findIndex((c) => c.time === SAMPLE_CLOCK.getTime());
 
 /**
- * The moment the pill over the playhead reads, as a time: "Sun 13 22:00" is
+ * The moment the readings over the strip are for, as a time: "Sun 13 22:00" is
  * Irish summer time, to the nearest ten minutes. Every day of the sample's
  * strip is in September, so the day's number names it.
  */
 async function pillTime(page: Page) {
   const words = (
-    (await barPill(page).locator(".sb-pill-time").textContent()) ?? ""
+    (await barPill(page).locator(".sb-time-words").textContent()) ?? ""
   ).trim();
   const [, day, hh, mm] = /^\w{3} (\d{1,2}) (\d\d):(\d\d)$/.exec(words) ?? [];
   const date = sampleStrip.find(
@@ -137,6 +137,26 @@ async function pillTime(page: Page) {
   )?.date;
   expect(date, `"${words}" is a day of the strip`).toBeTruthy();
   return Date.parse(`${date}T${hh}:${mm}:00+01:00`);
+}
+
+/**
+ * A press on the chart with no light and no box over it: with a spot or a
+ * point chosen, it lets go of it, and the bar's forecast with it.
+ */
+async function tapOff(page: Page) {
+  const at = await page.evaluate(() => {
+    for (let y = 200; y < innerHeight - 260; y += 20)
+      for (let x = 60; x < innerWidth - 120; x += 20)
+        if (
+          document
+            .elementFromPoint(x, y)
+            ?.classList.contains("maplibregl-canvas")
+        )
+          return { x, y };
+    return null;
+  });
+  expect(at).not.toBeNull();
+  await page.mouse.click(at!.x, at!.y);
 }
 
 /** The slider's value, as a number. */
@@ -155,34 +175,21 @@ test("the scrub bar draws the spot's week: its wind and gusts, its stars, the ni
   ).toBeVisible();
   await expect(bar).not.toHaveClass(/is-bare/);
   await expect(barName(page)).toHaveText("Brandon Bay");
-  // The top row: the spot, the way to its page and the close; play and the
-  // steps either side; what the strip shows; and Now. No star to favourite,
-  // no Blend, no table of hours, no fold: that detail is the spot page's.
+  // The data alone (the owner's ruling of 2026-11-02): no name on the
+  // screen, no close, no play or steps, no switch of what the strip shows,
+  // no Now. The spot's name is beside it on the map; its page is a press on
+  // that name, and for the keys a link out of sight until it has the focus.
+  await expect(barName(page)).not.toBeInViewport();
+  await expect(bar.getByRole("button")).toHaveCount(0);
+  await expect(bar.getByRole("group")).toHaveCount(0);
   await expect(bar.locator("[data-spot-page-link]")).toHaveText(
     /^Full forecast/,
   );
-  for (const name of [
-    "Close the forecast for Brandon Bay",
-    "An hour back",
-    "Play through the forecast",
-    "An hour on",
-  ])
-    await expect(bar.getByRole("button", { name, exact: true })).toBeVisible();
-  await expect(
-    bar.getByRole("button", { name: "Now", exact: true }),
-  ).toBeVisible();
-  await expect(
-    bar
-      .getByRole("group", { name: "What the strip shows" })
-      .getByRole("button"),
-  ).toHaveText(["Wind", "Waves", "Tide"]);
-  await expect(
-    bar.getByRole("button", { name: /^(Star|Unstar) Brandon Bay$|^Blend$/ }),
-  ).toHaveCount(0);
   await expect(bar.locator("table, tr")).toHaveCount(0);
   // The strip: the wind as a fill with its line and the gusts over it, one
-  // row of the stars as colour under it, the night hatched, the hours gone
-  // faded behind the line at now, and the playhead.
+  // row of the stars as colour under it, a lane each for the waves and the
+  // tide, the night hatched, the hours gone faded behind the line at now,
+  // and the playhead.
   const strip = bar.locator(".sb-strip");
   const wind = strip.locator('[data-curve="wind"]');
   await expect(wind.locator(".sb-area")).toHaveCount(1);
@@ -190,6 +197,9 @@ test("the scrub bar draws the spot's week: its wind and gusts, its stars, the ni
   await expect(wind.locator(".sb-gust")).toHaveCount(1);
   // The row's track, and a stretch of stars or more on it.
   expect(await strip.locator(".sb-stars rect").count()).toBeGreaterThan(1);
+  await expect(strip.locator("[data-lane]")).toHaveCount(2);
+  await expect(strip.locator('[data-lane="waves"]')).toBeAttached();
+  await expect(strip.locator('[data-lane="tide"] .sb-line')).toHaveCount(1);
   expect(await strip.locator(".sb-night").count()).toBeGreaterThan(0);
   await expect(strip.locator(".sb-past")).toHaveCount(1);
   await expect(strip.locator(".sb-now-line[data-now]")).toHaveCount(1);
@@ -209,11 +219,12 @@ test("the scrub bar draws the spot's week: its wind and gusts, its stars, the ni
     "aria-valuetext",
     /^Sun \d{1,2} [A-Z][a-z]{2,3}, 22:00$/,
   );
-  // The pill reads the moment: the playhead's time, the wind (its gust where
-  // the hour has one) and where it comes from. 22:00 is after last light: no stars, and it says so.
+  // The readings over the strip: the playhead's time, the wind (its gust
+  // where the hour has one) and where it comes from, the stars, the waves
+  // and the tide. 22:00 is after last light: no stars, and it says so.
   const pill = barPill(page);
   await expect(pill).toHaveText(
-    /^Sun 13 22:00\d+ kn(gusting \d+)?[NSEW]{1,3}dark$/,
+    /^Sun 13 22:00Wind\d+ kn(g\d+)?[NSEW]{1,3}StarsDarkWaves(–|\d+\.\d m)Tide\d+\.\d m[↑↓]$/,
   );
   await expect(pill).not.toHaveAttribute("data-stars");
   // The map's small print stands over the bar, not under it.
@@ -265,119 +276,53 @@ test("a drag across the strip moves the time smoothly, and the map's hour is the
   await expect.poll(() => sliderAt(page)).toBeGreaterThan(before);
 });
 
-test("play runs the time on through the forecast, and Pause stops it where it is", async ({
+test("the waves and the tide have lanes of their own under the wind, and none where nothing reaches", async ({
   page,
 }) => {
   await openBar(page);
   const bar = scrubBar(page);
-  const start = await sliderAt(page);
-  await bar
-    .getByRole("button", { name: "Play through the forecast", exact: true })
-    .click();
-  // Playing, the button is the way to stop: its name says so.
-  const pause = bar.getByRole("button", { name: "Pause", exact: true });
-  await expect(pause).toBeVisible();
-  // Six hours a second: the map's hour moves on, a column after another.
-  await expect.poll(() => sliderAt(page)).toBeGreaterThan(start + 3);
-  await pause.click();
-  const play = bar.getByRole("button", {
-    name: "Play through the forecast",
-    exact: true,
-  });
-  await expect(play).toBeVisible();
-  await expect(pause).toHaveCount(0);
-  const stopped = await timeSlider(page).inputValue();
-  await page.waitForTimeout(1000);
-  await expect(timeSlider(page)).toHaveValue(stopped);
-  // The steps either side move it an hour, and the time stays.
-  await bar.getByRole("button", { name: "An hour on", exact: true }).click();
-  await expect(timeSlider(page)).toHaveValue(String(Number(stopped) + 1));
-  await bar.getByRole("button", { name: "An hour back", exact: true }).click();
-  await expect(timeSlider(page)).toHaveValue(stopped);
-});
-
-test("Now goes back to the hour the chart opened on, and stops play", async ({
-  page,
-}) => {
-  await openBar(page);
-  const bar = scrubBar(page);
-  const now = bar.getByRole("button", { name: "Now", exact: true });
-  await expect(now).toHaveAttribute("data-at-now", "true");
-  await timeSlider(page).fill(String(opening() + 30));
-  await expect(timeSlider(page)).toHaveValue(String(opening() + 30));
-  await expect(now).not.toHaveAttribute("data-at-now");
-  await now.click();
-  await expect(timeSlider(page)).toHaveValue(String(opening()));
-  await expect(now).toHaveAttribute("data-at-now", "true");
-  await expect(barPill(page)).toHaveText(/^Sun 13 22:00/);
-  // Played away from now, Now brings it back and the play stops.
-  await bar
-    .getByRole("button", { name: "Play through the forecast", exact: true })
-    .click();
-  await expect.poll(() => sliderAt(page)).toBeGreaterThan(opening() + 2);
-  await now.click();
-  await expect(
-    bar.getByRole("button", { name: "Play through the forecast", exact: true }),
-  ).toBeVisible();
-  await expect(
-    bar.getByRole("button", { name: "Pause", exact: true }),
-  ).toHaveCount(0);
-  await expect(timeSlider(page)).toHaveValue(String(opening()));
-});
-
-test("Wind, Waves and Tide switch the curve the strip draws, and Tide is off where no station reaches", async ({
-  page,
-}) => {
-  await openBar(page);
-  const bar = scrubBar(page);
-  const modes = bar.getByRole("group", { name: "What the strip shows" });
-  const mode = (name: string) =>
-    modes.getByRole("button", { name, exact: true });
-  const curve = bar.locator(".sb-strip [data-curve]");
-  // The wind by default, its gusts dashed over it.
-  await expect(mode("Wind")).toHaveAttribute("aria-pressed", "true");
-  await expect(curve).toHaveAttribute("data-curve", "wind");
-  await expect(curve.locator(".sb-gust")).toHaveCount(1);
-  // The waves, from the wave models, read once they are asked for.
-  await mode("Waves").click();
-  await expect(mode("Waves")).toHaveAttribute("aria-pressed", "true");
-  await expect(curve).toHaveAttribute("data-curve", "waves", {
+  const cell = (name: string) => barPill(page).locator(`[data-cell="${name}"]`);
+  // The wind, its gusts dashed over it.
+  await expect(bar.locator('.sb-strip [data-curve="wind"] .sb-gust')).toHaveCount(
+    1,
+  );
+  // The waves, from the wave models, read once the spot is chosen. The
+  // sample's wave run covers a night midweek alone: there the cell reads a
+  // height, and outside it no figure stands in for one.
+  await expect(bar.locator('[data-lane="waves"] .sb-line')).toHaveCount(1, {
     timeout: 30000,
   });
-  await expect(curve.locator(".sb-gust")).toHaveCount(0);
-  // The sample's wave run covers a night midweek alone: there the pill reads
-  // a height, and outside it no figure stands in for one.
-  await expect(barPill(page)).toContainText("no data");
+  await expect(cell("waves")).toHaveText("Waves–");
+  // Every cell keeps its place as the hour moves.
+  const places = () =>
+    barPill(page)
+      .locator("[data-cell]")
+      .evaluateAll((cells) =>
+        cells.map((c) => {
+          const r = c.getBoundingClientRect();
+          return [Math.round(r.x), Math.round(r.y), Math.round(r.width)];
+        }),
+      );
+  const before = await places();
   await timeSlider(page).fill(String(columnAt("2026-09-17T00:00:00Z")));
-  await expect(barPill(page)).toContainText(/\d+\.\d m/);
+  await expect(cell("waves")).toHaveText(/^Waves\d+\.\d m$/);
+  expect(await places()).toEqual(before);
   // The tide, Fenit's: a height and which way it is going.
-  await mode("Tide").click();
-  await expect(mode("Tide")).toHaveAttribute("aria-pressed", "true");
-  await expect(curve).toHaveAttribute("data-curve", "tide");
-  await expect(barPill(page)).toContainText(/\d+\.\d m.*(rising|falling)/);
-  // Kept on this device, for the next spot chosen.
-  await page.reload();
-  await chooseSpot(page, "brandon");
-  await expect(mode("Tide")).toHaveAttribute("aria-pressed", "true");
-  await expect(curve).toHaveAttribute("data-curve", "tide");
-  // Back to the wind before the next spot.
-  await mode("Wind").click();
-  await expect(curve).toHaveAttribute("data-curve", "wind");
-  // Dollymount has no tide station within reach: Tide cannot be chosen there.
+  await expect(bar.locator('[data-lane="tide"] .sb-line')).toHaveCount(1);
+  await expect(cell("tide")).toHaveText(/^Tide\d+\.\d m[↑↓]$/);
+  // Dollymount has no tide station within reach: no lane, no cell.
   await chooseSpot(page, "dollymount");
-  await expect(mode("Tide")).toBeDisabled();
-  await expect(mode("Wind")).toHaveAttribute("aria-pressed", "true");
-  await expect(curve).toHaveAttribute("data-curve", "wind");
+  await expect(bar.locator('[data-lane="tide"]')).toHaveCount(0);
+  await expect(cell("tide")).toHaveCount(0);
+  await expect(bar.locator('[data-lane="waves"]')).toHaveCount(1);
 });
 
-test("the close leaves the plain timeline, still moving the map, and Back opens the spot again", async ({
+test("a tap off the spot lets it go, leaving the plain timeline still moving the map, and Back opens it again", async ({
   page,
 }) => {
   await openBar(page);
   await timeSlider(page).fill(String(opening() + 12));
-  await scrubBar(page)
-    .getByRole("button", { name: "Close the forecast for Brandon Bay" })
-    .click();
+  await tapOff(page);
   // No spot open: the bar stays, as the chart's timeline alone.
   await expect(barName(page)).toHaveCount(0);
   await expect(scrubBar(page)).toHaveClass(/is-bare/);
@@ -387,17 +332,13 @@ test("the close leaves the plain timeline, still moving the map, and Back opens 
   await expect(scrubBar(page)).not.toHaveAttribute("data-spot");
   await expect(scrubBar(page).locator("[data-spot-page-link]")).toHaveCount(0);
   await expect(
-    scrubBar(page).getByRole("group", { name: "What the strip shows" }),
+    scrubBar(page).locator("[data-curve], [data-lane], .sb-stars"),
   ).toHaveCount(0);
-  await expect(scrubBar(page).locator("[data-curve], .sb-stars")).toHaveCount(
-    0,
-  );
+  await expect(barPill(page)).toContainText("Tap the map for a forecast");
   // Its time is the one the spot's week had, and it still moves.
   await expect(timeSlider(page)).toHaveValue(String(opening() + 12));
   await expect(scrubBar(page).locator(".sb-night").first()).toBeAttached();
-  await scrubBar(page)
-    .getByRole("button", { name: "An hour on", exact: true })
-    .click();
+  await timeSlider(page).fill(String(opening() + 13));
   await expect(timeSlider(page)).toHaveValue(String(opening() + 13));
   // A step in the history like the choice: Back opens it again.
   await page.goBack();
@@ -407,18 +348,23 @@ test("the close leaves the plain timeline, still moving the map, and Back opens 
   await expect(barName(page)).toHaveText("Brandon Bay");
 });
 
-test("Full forecast opens the spot's page at the hour in hand", async ({
+test("the spot's name on the map opens its page at the hour in hand, and so does the keys' link", async ({
   page,
 }) => {
   await openBar(page);
-  const link = scrubBar(page).locator("[data-spot-page-link]");
   const at = (i: number) =>
     `/spot/brandon?at=${encodeURIComponent(sampleStrip[i].validTime)}`;
-  await expect(link).toHaveAttribute("href", at(opening()));
   const later = columnAt("2026-09-15T12:00:00Z");
   await timeSlider(page).fill(String(later));
+  // The link for the keys: out of sight until it has the focus.
+  const link = scrubBar(page).locator("[data-spot-page-link]");
   await expect(link).toHaveAttribute("href", at(later));
-  await link.click();
+  await link.focus();
+  await expect(link).toBeInViewport();
+  // The name beside the chosen light.
+  const name = page.locator('.spot-marker.sel[data-spot-id="brandon"] .lt-lab b');
+  await expect(name).toHaveText("Brandon Bay");
+  await name.click();
   await expect(page).toHaveURL(
     new RegExp(
       `/spot/brandon\\?at=${encodeURIComponent(sampleStrip[later].validTime)}$`,
@@ -444,7 +390,7 @@ test("a night hour is a column of its own: chosen, keyed, and read as dark", asy
     "aria-valuetext",
     /^Mon \d{1,2} [A-Z][a-z]{2,3}, 03:00$/,
   );
-  await expect(barPill(page)).toHaveText(/^Mon 14 03:00.*\d+ kn.*dark$/);
+  await expect(barPill(page)).toHaveText(/^Mon 14 03:00.*\d+ kn.*StarsDark/);
   await expect(barPill(page)).not.toHaveAttribute("data-stars");
   // The keys step through the night an hour at a time.
   await timeSlider(page).focus();
@@ -650,6 +596,7 @@ test("units, the hours, the model and the spot page's blend are Settings', kept 
   await openFromMenu(page, "Settings");
   const settings = settingsDialog(page);
   await expect(settings.locator(".st-h")).toHaveText([
+    "Appearance",
     "About you",
     "Wind strength",
     "Wind direction",
@@ -661,10 +608,9 @@ test("units, the hours, the model and the spot page's blend are Settings', kept 
   await expect(gfs).toBeEnabled({ timeout: 30000 });
   await gfs.uncheck();
   await saveSettings(page);
-  // The pill reads the wind in them, and the strip's key says so.
+  // The readings give the wind in them.
   await expect(barPill(page)).toContainText("m/s");
   await expect(barPill(page)).not.toContainText(" kn");
-  await expect(scrubBar(page).locator(".sb-key")).toContainText("m/s");
   // Kept on reload; the spot, as on any visit, is chosen again.
   await page.reload();
   await chooseSpot(page, "brandon");
@@ -695,7 +641,9 @@ const lightRatings = (page: Page) =>
 const pillAndLight = (page: Page) =>
   page.evaluate(() => {
     const pill =
-      document.querySelector(".scrub .sb-pill")?.getAttribute("data-stars") ??
+      document
+        .querySelector(".scrub [data-readout]")
+        ?.getAttribute("data-stars") ??
       "none";
     const light =
       document
@@ -954,9 +902,7 @@ test("an hour past the map's model hands the map to the run that reaches it", as
   expect(manifests).toEqual([]);
   // With the spot closed, the bar a plain timeline, the hand-over stands: it
   // comes from the runs on offer, not from the spot.
-  await page
-    .getByRole("button", { name: "Close the forecast for Brandon Bay" })
-    .click();
+  await tapOff(page);
   await expect(barName(page)).toHaveCount(0);
   await expect(scrubBar(page)).toHaveClass(/is-bare/);
   await expect(timeSlider(page)).toHaveValue(String(far));
@@ -1407,11 +1353,15 @@ test("a point tapped off Dublin Bay reads its wind and its nearest station's tid
   await expect(barName(page)).toHaveText("Dollymount", { timeout: 30000 });
   await page.keyboard.press("Escape");
   await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
+  // And let go of: a tap with a spot chosen would only let go of it.
+  await page.keyboard.press("Escape");
+  await expect(barName(page)).toHaveCount(0);
   // Out on the bay, off Poolbeg: not a riding place.
   await tapAt(page, ["dollymount", "seapoint"], [53.33, -6.1]);
   const bar = scrubBar(page);
-  // Its name, or its coordinates beside a place's name.
-  await expect(bar.locator(".sb-spot")).toContainText(COORDS);
+  // Its coordinates, for a screen reader, and its name beside its mark.
+  await expect(bar.locator(".sb-coords")).toContainText(COORDS);
+  await expect(page.locator(".pick-mark .pick-lab")).toBeVisible();
   await expect(bar).not.toHaveAttribute("data-spot");
   await barReady(page);
   // The wind, read from the map's frames at the point, and no stars: a point
@@ -1420,7 +1370,7 @@ test("a point tapped off Dublin Bay reads its wind and its nearest station's tid
   await expect(bar.locator(".sb-stars")).toHaveCount(0);
   await expect(barPill(page)).toContainText(/\d+ kn/);
   await expect(barPill(page)).not.toHaveAttribute("data-stars");
-  await expect(barPill(page)).not.toContainText(/dark|no stars/);
+  await expect(barPill(page).locator('[data-cell="stars"]')).toHaveCount(0);
   // The strip's columns past HARMONIE's run are ECMWF's, as a spot's are.
   // The point used to read the map's own run alone, and left every one of
   // them empty. An hour far past HARMONIE has its wind, under the map's
@@ -1438,22 +1388,14 @@ test("a point tapped off Dublin Bay reads its wind and its nearest station's tid
   // And within HARMONIE's run, HARMONIE's wind is read as before.
   await timeSlider(page).fill(String(firstHarmonie() + 2));
   await expect(barPill(page)).toContainText(/\d+ kn/, { timeout: 30000 });
-  // The tide, the nearest station's: Tide can be chosen, and draws it.
-  const tide = bar
-    .getByRole("group", { name: "What the strip shows" })
-    .getByRole("button", { name: "Tide", exact: true });
-  await expect(tide).toBeEnabled({ timeout: 15000 });
-  await tide.click();
-  await expect(bar.locator(".sb-strip [data-curve]")).toHaveAttribute(
-    "data-curve",
-    "tide",
+  // The tide, the nearest station's, in a lane of its own.
+  await expect(bar.locator('[data-lane="tide"] .sb-line')).toHaveCount(1, {
+    timeout: 15000,
+  });
+  await expect(barPill(page).locator('[data-cell="tide"]')).toHaveText(
+    /^Tide\d+\.\d m[↑↓]$/,
   );
-  await expect(barPill(page)).toContainText(/\d+\.\d m/);
-  await bar
-    .getByRole("group", { name: "What the strip shows" })
-    .getByRole("button", { name: "Wind", exact: true })
-    .click();
-  // Its Full forecast is the point's own page, at the hour in hand.
+  // Its page is the point's own, at the hour in hand.
   await timeSlider(page).fill(String(farHour));
   await expect(bar.locator("[data-spot-page-link]")).toHaveAttribute(
     "href",
@@ -1461,14 +1403,14 @@ test("a point tapped off Dublin Bay reads its wind and its nearest station's tid
       `^/spot/@53\\.3\\d{3},-6\\.[01]\\d{3}\\?at=${encodeURIComponent(sampleStrip[farHour].validTime)}$`,
     ),
   );
-  // And the bar closes from its own button, leaving the chart alone.
-  await bar.getByRole("button", { name: /^Close the forecast for / }).click();
+  // And a tap off it lets it go, leaving the chart alone.
+  await tapOff(page);
   await expect(barName(page)).toHaveCount(0);
   await expect(bar).toHaveClass(/is-bare/);
   await expect(page).toHaveURL(/\/\?map$/);
   // A step in the history like a choice: Back opens it again.
   await page.goBack();
-  await expect(bar.locator(".sb-spot")).toContainText(COORDS, {
+  await expect(bar.locator(".sb-coords")).toContainText(COORDS, {
     timeout: 15000,
   });
   expect(errors).toEqual([]);
@@ -1485,15 +1427,9 @@ test.describe("on a phone", () => {
     page,
   }) => {
     await withTides(page);
-    // A long name, to crowd the top row.
     await page.goto("/?spot=broadmeadows-south");
     await barReady(page);
     await expect(barName(page)).toHaveText(
-      "Broadmeadows Estuary — south shore",
-    );
-    // Its whole name is there for a pointer resting on it, cut short or not.
-    await expect(barName(page)).toHaveAttribute(
-      "title",
       "Broadmeadows Estuary — south shore",
     );
     const days = scrubBar(page).locator(".sb-days span");
@@ -1524,7 +1460,7 @@ test.describe("on a phone", () => {
       });
     expect(await overflowing()).toEqual([]);
     expect(await overlapping()).toBe(0);
-    // And with the playhead at either end of the strip, the pill beside it.
+    // And with the playhead at either end of the strip.
     for (const key of ["End", "Home"]) {
       await timeSlider(page).press(key);
       await expect(days.first()).toBeVisible();

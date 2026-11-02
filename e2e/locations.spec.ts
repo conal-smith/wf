@@ -37,7 +37,9 @@ test("public riding places are on the chart and the Blast alias finds Kilcrea, w
   await expect(barName(page)).toHaveText("Kilcrea — Malahide Estuary");
   // Its week is in, the hour's wind read out over the playhead.
   await barReady(page);
-  await expect(barPill(page).locator("b")).toHaveText(/^\d+ kn$/);
+  await expect(barPill(page).locator('[data-cell="wind"] b')).toHaveText(
+    /^\d+ kn$/,
+  );
   // The chart's own sources, the licences with them.
   await page.getByRole("button", { name: "Sources and small print" }).click();
   await expect(

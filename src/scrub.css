@@ -1,9 +1,9 @@
 /* The scrub bar (src/ScrubBar.tsx): the chart's foot, the full width of the
-   map, inset a little from its edges. Two rows: the controls, then the strip
-   along the whole width. Glass over the map, as the chart's other boxes are,
-   one soft shadow and a faint edge. Its width, not the window's, decides how
-   the top row folds (a container query), so it lays out the same wherever
-   the map is. */
+   map, inset a little from its edges. Two rows: the moment's readings, then
+   the strip along the whole width. Glass over the map, as the chart's other
+   boxes are, one soft shadow and a faint edge. Its width, not the window's,
+   decides how the readings sit (a container query), so it lays out the same
+   wherever the map is. */
 .scrub {
   position: relative;
   container: scrub / inline-size;
@@ -25,140 +25,103 @@
   outline: none;
 }
 
-/* ---- the top row ---- */
-.sb-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  min-height: 32px;
-}
-.sb-spot {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  flex: 0 1 auto;
-}
-.sb-name {
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  font: 600 var(--text-body) / 1.2 var(--font-body);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.sb-coords {
-  flex: none;
-  font: var(--text-label) var(--font-body);
-  color: var(--color-ink-muted);
-  white-space: nowrap;
-}
-.sb-link {
-  flex: none;
+/* The way to the spot's page for the keys: out of sight until it has the
+   focus, then over the card's top right corner. On the screen the way there
+   is the spot's name beside it on the map. */
+.sb-page {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 1;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-ground);
   font: 500 var(--text-label) var(--font-body);
-  color: var(--color-ink-muted);
+  color: var(--color-ink);
   text-decoration: none;
+  clip-path: inset(50%);
   white-space: nowrap;
 }
-.sb-link span {
-  display: inline-block;
-  transition: transform var(--duration-fast, 120ms);
+.sb-page:focus-visible {
+  clip-path: none;
 }
-@media (hover: hover) and (pointer: fine) {
-  .sb-link:hover {
-    color: var(--color-ink);
-  }
-  .sb-link:hover span {
-    transform: translateX(2px);
-  }
+
+/* ---- the readings ---- */
+/* Each in a cell of its own, the same width whatever it reads, so nothing
+   moves as the playhead does: a row of them, or on a phone two rows of
+   four columns, the time and the stars over the wind, waves and tide. */
+.sb-readout {
+  display: grid;
+  grid-template-columns: 112px 168px 96px 76px 88px;
+  align-items: end;
+  column-gap: 14px;
+  row-gap: 6px;
+  min-width: 0;
 }
-.sb-close {
-  flex: none;
-  margin-left: -6px;
-  color: var(--color-ink-muted);
-}
-.sb-transport {
-  display: flex;
-  flex: none;
+.sb-readout.is-bare {
+  grid-template-columns: 112px minmax(0, 1fr);
   align-items: center;
-  gap: 2px;
+}
+.sb-cell {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.sb-label {
+  font: 500 var(--text-label) / 1.2 var(--font-body);
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+.sb-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 20px;
+  overflow: hidden;
+  font: var(--text-body) / 20px var(--font-body);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sb-value b,
+.sb-time-words {
+  font-weight: 600;
+}
+.sb-time-words {
+  font: 600 var(--text-body) / 20px var(--font-body);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sb-swatch {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.sb-soft,
+.sb-dir {
+  color: var(--color-ink-2);
+  font-weight: 400;
+}
+.sb-dir {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.sb-dir .g-arrow {
+  stroke: currentColor;
+}
+.sb-none,
+.sb-hint {
+  color: var(--color-ink-muted);
 }
 .sb-hint {
   min-width: 0;
   margin: 0;
   overflow: hidden;
   font: var(--text-label) var(--font-body);
-  color: var(--color-ink-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.sb-space {
-  flex: 1 1 0;
-  min-width: 0;
-}
-.sb-modes,
-.sb-now {
-  flex: none;
-}
-.sb-now::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  margin-right: 6px;
-  border-radius: 50%;
-  background: var(--color-now);
-}
-.sb-now[data-at-now] {
-  color: var(--color-ink-muted);
-}
-
-/* The key: the wind's colours (or the waves' or the tide's swatch), the
-   gusts' dashes, and the stars' five shades. */
-.sb-key {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 6px;
-  font: var(--text-label) var(--font-body);
-  color: var(--color-ink-muted);
-  white-space: nowrap;
-}
-.sb-key-ramp {
-  width: 52px;
-  height: 6px;
-  border-radius: 3px;
-}
-.sb-key-gust {
-  width: 12px;
-  border-top: 1.5px dashed color-mix(in srgb, var(--color-ink) 55%, transparent);
-}
-.sb-key-swatch {
-  width: 14px;
-  height: 6px;
-  border-radius: 3px;
-}
-.sb-key-swatch.is-waves {
-  background: var(--color-depth);
-}
-.sb-key-swatch.is-tide {
-  background: var(--color-ink-2);
-}
-.sb-key-stars {
-  display: inline-flex;
-  gap: 1px;
-  margin-left: 8px;
-}
-.sb-key-stars i {
-  display: block;
-  width: 7px;
-  height: 5px;
-}
-.sb-key-stars i:first-child {
-  border-radius: 2.5px 0 0 2.5px;
-}
-.sb-key-stars i:last-child {
-  border-radius: 0 2.5px 2.5px 0;
 }
 
 /* ---- the strip ---- */
@@ -220,6 +183,9 @@
   stroke-width: 1.2;
   stroke-dasharray: 2 3;
 }
+.sb-lane {
+  fill: color-mix(in srgb, var(--color-ink) 4%, transparent);
+}
 .sb-stars-track {
   fill: color-mix(in srgb, var(--color-ink) 6%, transparent);
 }
@@ -265,63 +231,6 @@
   font-weight: 600;
 }
 
-/* ---- the pill over the playhead ---- */
-.sb-pill {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--color-raised) 92%, transparent);
-  box-shadow:
-    var(--shadow-float),
-    inset 0 0 0 1px var(--color-line);
-  font: var(--text-body) var(--font-body);
-  color: var(--color-ink);
-  white-space: nowrap;
-  pointer-events: none;
-  will-change: transform;
-}
-.sb-pill b,
-.sb-pill-time {
-  font-weight: 600;
-}
-.sb-pill-sep {
-  width: 1px;
-  height: 14px;
-  background: var(--color-line);
-}
-.sb-pill-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-.sb-pill-soft,
-.sb-pill-dir {
-  color: var(--color-ink-2);
-}
-.sb-pill-dir {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.sb-pill-dir .g-arrow {
-  stroke: currentColor;
-}
-.sb-pill-none {
-  color: var(--color-ink-muted);
-}
-
-/* The small print stands over the pill's lane, clear of it. */
-.map-footer:not(.is-bare) .map-print {
-  bottom: calc(100% + 52px);
-}
-
 /* "Show ECMWF on the map": a chip over the bar's right end, where an hour
    is past the map's own model and another reaches it. */
 .map-reach {
@@ -343,48 +252,27 @@
   cursor: pointer;
 }
 
-/* ---- narrower: the key goes first ---- */
-@container scrub (max-width: 1040px) {
-  .sb-key {
-    display: none;
+/* ---- a phone: two rows of four columns ---- */
+@container scrub (max-width: 560px) {
+  .sb-readout {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-flow: row dense;
+    column-gap: 10px;
   }
-}
-/* ---- a phone: the spot on its own line, then the controls, then the
-   strip; a thumb's targets ---- */
-@container scrub (max-width: 640px) {
-  .sb-top {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    grid-template-areas:
-      "spot spot spot spot"
-      "tr . modes now";
-    column-gap: 8px;
-    row-gap: 2px;
+  .sb-readout.is-bare {
+    grid-template-columns: auto minmax(0, 1fr);
   }
-  .scrub.is-bare .sb-top {
-    grid-template-areas: "tr hint hint now";
+  .sb-cell.is-time {
+    grid-column: span 2;
   }
-  .sb-spot {
-    grid-area: spot;
-    min-height: 40px;
+  .sb-cell.is-wind {
+    grid-column: span 2;
   }
-  .sb-close {
-    margin-left: auto;
+  .sb-cell.is-stars {
+    grid-column: span 2;
   }
-  .sb-transport {
-    grid-area: tr;
-  }
-  .sb-hint {
-    grid-area: hint;
-  }
-  .sb-space {
-    display: none;
-  }
-  .sb-modes {
-    grid-area: modes;
-  }
-  .sb-now {
-    grid-area: now;
+  .sb-readout.is-bare .sb-cell.is-time {
+    grid-column: auto;
   }
 }
 @media (max-width: 720px) {

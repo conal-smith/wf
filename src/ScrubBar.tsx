@@ -1,25 +1,22 @@
 /**
- * The chart's foot: a slim bar the full width of the map that moves the
- * chart's time (the owner's ruling of 2026-11-01, in place of the dock's
- * table of hours). Two rows: the controls on top (the spot, play and step,
- * what the strip draws, its key and Now), and under them the strip itself,
- * the whole forecast from now on along the full width, with a playhead a
- * finger or a mouse drags smoothly through it. A pill over the playhead reads
- * the moment out.
+ * The chart's foot: a slim card the full width of the map that moves the
+ * chart's time. The data alone (the owner's ruling of 2026-11-02): no name,
+ * no buttons. On top, the moment in hand read out in cells that keep their
+ * places as the time moves (the time, the wind, the stars, the waves, the
+ * tide); under them the strip, the whole forecast from now on along the full
+ * width, with a playhead a finger or a mouse drags smoothly through it.
  *
  * With a spot chosen the strip draws its week: the wind (a fill in the map's
- * own wind colours, the gusts dashed over it), the waves or the tide, as the
- * rider picks, and under it one thin row of the stars as colour, the stars'
- * own shades from one to five. With none chosen it is a plain timeline: the
- * days, the night, now, and the playhead, which still moves the map.
- *
- * The detail the dock's table held (the gust factor, the current, the sky,
- * the rain, every model's own line) is on the spot's page, a link away
- * ("Full forecast →"), opened at the hour in hand.
+ * own wind colours, the gusts dashed over it), under it one thin row of the
+ * stars as colour, the stars' own shades from one to five, and under that a
+ * lane each for the waves and the tide. With none chosen it is a plain
+ * timeline: the days, the night, now, and the playhead, which still moves
+ * the map. The spot's name is beside it on the map; a tap off it on the map
+ * lets it go, and the card with it.
  *
  * The strip shows a week at a time, the full width of the bar, and slides on
  * through the forecast's fifteen days as the playhead nears its edge: dragged
- * there, played, stepped, or with a wheel or a trackpad across it.
+ * there, or with a wheel or a trackpad across it.
  *
  * The time stays the strip's columns underneath, as the map's frames are: the
  * playhead stops anywhere between two hours, and the column nearest it is the
@@ -35,16 +32,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Layers3,
-  Pause,
-  Play,
-  X,
-} from "lucide-react";
-import { Button } from "../ui/Button";
-import { Segmented } from "../ui/Segmented";
+import { Layers3 } from "lucide-react";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { WindArrow } from "./glyphs";
 import { arrowsFree, hourStep } from "./hourKeys";
@@ -55,7 +43,6 @@ import {
   dayStep,
   irishDate,
   nearestColumn,
-  openingColumn,
   shownAt,
   shownColumns,
   stripDays,
@@ -72,39 +59,9 @@ import { speedShort, unitLabel, type Units } from "../force5/src/units";
 import { variableValue } from "../force5/src/variables";
 import { compass, windCss, type Spot } from "../force5/src/weather";
 
-/** What the strip draws for a spot. */
-export type ScrubMode = "wind" | "waves" | "tide";
-const MODES: readonly { value: ScrubMode; label: string }[] = [
-  { value: "wind", label: "Wind" },
-  { value: "waves", label: "Waves" },
-  { value: "tide", label: "Tide" },
-];
-/** What the strip draws, kept on this device. */
-const MODE_KEY = "wingfoil.map.scrub.v1";
-const store = {
-  get(key: string): string | null {
-    try {
-      return localStorage.getItem(key);
-    } catch {
-      return null;
-    }
-  },
-  set(key: string, value: string) {
-    try {
-      localStorage.setItem(key, value);
-    } catch {
-      // Best effort: the choice still holds for this page.
-    }
-  },
-};
-const isMode = (value: unknown): value is ScrubMode =>
-  MODES.some((mode) => mode.value === value);
-
 /** The night and the days with no spot chosen: the middle of Ireland's. */
 const IRELAND_MIDDLE = { lat: 53.4, lon: -7.9 };
 
-/** How fast play runs through the forecast: six hours a second. */
-const PLAY_RATE = (6 * 3600000) / 1000;
 const HOUR = 3600000;
 /** What the strip shows at once: a week. */
 const WINDOW = 7 * 24 * HOUR;
@@ -112,14 +69,25 @@ const WINDOW = 7 * 24 * HOUR;
 const EDGE = 0.08;
 const NO_MODELS: readonly ModelAvailability[] = [];
 
-/** The strip's drawing, in pixels: the curve, then the row of stars. */
-const CURVE_TOP = 8;
-const CURVE_BOTTOM = 52;
-const STARS_Y = 58;
+/**
+ * The strip's drawing, in pixels: the wind's curve, then the row of stars,
+ * then a lane each for the waves and the tide.
+ */
+const CURVE_TOP = 6;
+const CURVE_BOTTOM = 46;
+const STARS_Y = 51;
 const STARS_H = 5;
-const SPOT_HEIGHT = 64;
+const LANE_H = 14;
+const LANE_GAP = 6;
 /** With no spot: the days and the night alone, in a slimmer strip. */
 const BARE_HEIGHT = 34;
+
+/** A lane under the wind: what it draws, and where it stands. */
+interface Lane {
+  kind: "waves" | "tide";
+  top: number;
+  bottom: number;
+}
 
 /** One stretch of hours with a star or more, and the stars of each. */
 interface StarRun {
@@ -149,11 +117,11 @@ export interface ScrubBarProps {
   lender: Spot | null;
   units: Units;
   nightHours: NightHours;
-  /** The spot's page, at the hour in hand; null where there is none. */
+  /**
+   * The spot's page, at the hour in hand; null where there is none. On the
+   * screen the way there is the spot's name on the map; this is the keys'.
+   */
   href: string | null;
-  onClose: () => void;
-  playing: boolean;
-  onPlaying: (playing: boolean) => void;
   /** A model that reaches the hour the map's own does not, and its chip. */
   reachable: { id: string; name: string } | null;
   onShowOnMap: () => void;
@@ -174,21 +142,10 @@ export default function ScrubBar({
   units,
   nightHours,
   href,
-  onClose,
-  playing,
-  onPlaying,
   reachable,
   onShowOnMap,
 }: ScrubBarProps) {
   const id = useId();
-  const [mode, setModeState] = useState<ScrubMode>(() => {
-    const saved = store.get(MODE_KEY);
-    return isMode(saved) ? saved : "wind";
-  });
-  const setMode = (next: ScrubMode) => {
-    setModeState(next);
-    store.set(MODE_KEY, next);
-  };
   const place = spot ?? IRELAND_MIDDLE;
   const stripAxis = useMemo(() => strip.map((c) => c.validTime), [strip]);
 
@@ -259,7 +216,7 @@ export default function ScrubBar({
   posRef.current = pos;
   /** The column the playhead last asked for, to tell its own change from another's. */
   const asked = useRef(stripSelected);
-  // The time moved by anything but the playhead (a key, Now, a model's
+  // The time moved by anything but the playhead (a key, a model's
   // hand-over, a tab coming back): the playhead goes to that hour.
   useEffect(() => {
     if (stripSelected === asked.current || !column) return;
@@ -282,23 +239,6 @@ export default function ScrubBar({
   };
   const moveRef = useRef(moveTo);
   moveRef.current = moveTo;
-
-  // Play: the playhead runs on through the forecast, smoothly, and stops at
-  // its end. From the end, it starts again from now.
-  useEffect(() => {
-    if (!playing) return;
-    if (posRef.current >= t1)
-      moveRef.current(strip[openingColumn(strip, now)]?.time ?? t0);
-    let last = performance.now();
-    let frame = requestAnimationFrame(function run(at) {
-      const next = posRef.current + (at - last) * PLAY_RATE;
-      last = at;
-      moveRef.current(next);
-      if (next >= t1) return onPlaying(false);
-      frame = requestAnimationFrame(run);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [playing, t1]);
 
   /* ---- the strip's size, and its scale ---- */
 
@@ -346,7 +286,6 @@ export default function ScrubBar({
     } catch {
       // A pointer the browser no longer knows: the drag goes on without.
     }
-    if (playing) onPlaying(false);
     pointerTo(event.clientX);
   };
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -430,20 +369,16 @@ export default function ScrubBar({
   /* ---- what the strip draws ---- */
 
   const named = !!spot;
-  // Tide where no station reaches the place (the switch then disabled):
-  // the wind, rather than an empty strip.
-  const shows: ScrubMode = mode === "tide" && !tide ? "wind" : mode;
+  // The waves are read once a place is chosen: the wave manifests are large,
+  // and a plain timeline has no use for them.
   useEffect(() => {
-    if (named && shows === "waves") onWantMarine();
-  }, [named, shows]);
+    if (named && lender) onWantMarine();
+  }, [named, !!lender]);
   const square = useMemo(
     () => (lender ? [spotSquare(lender.lat, lender.lon)] : null),
     [lender?.lat, lender?.lon],
   );
-  const waveModels = useSpotSquares(
-    named && shows === "waves" ? marine : NO_MODELS,
-    square,
-  );
+  const waveModels = useSpotSquares(named ? marine : NO_MODELS, square);
   const waves = useSpotWaves(waveModels, lender?.id, stripAxis);
 
   const daylight = useMemo(
@@ -451,47 +386,73 @@ export default function ScrubBar({
     [place.lat, place.lon, stripAxis],
   );
 
-  /** Each column's value in the mode, and its gust where it has one. */
+  /** Each column's wind and gust, wave height and tide. */
   const series = useMemo(() => {
     if (!named) return null;
-    if (shows === "wind")
-      return strip.map((_, at) => ({
-        v: stripHours?.[at]?.windKn ?? null,
-        g: stripHours?.[at]?.gustKn ?? null,
-      }));
-    if (shows === "waves") {
-      const height = waves.source?.fields.total.height;
-      return strip.map((_, at) => {
-        const step = waves.columns[at];
-        return {
-          v: height && step ? variableValue(step, height) : null,
-          g: null,
-        };
-      });
-    }
-    return strip.map((c) => ({
-      v: tide ? tideAt(tide.curve, c.time) : null,
-      g: null,
-    }));
-  }, [named, shows, strip, stripHours, waves, tide]);
-
-  /** The value scale: from the floor to a round top over the week's highest. */
-  const scale = useMemo(() => {
-    const values = (series ?? []).flatMap((s) =>
-      [s.v, s.g].filter((v): v is number => v !== null),
-    );
-    if (shows === "tide" && values.length)
+    const height = waves.source?.fields.total.height;
+    return strip.map((c, at) => {
+      const step = waves.columns[at];
       return {
-        low: Math.min(...values),
-        high: Math.max(Math.max(...values), Math.min(...values) + 1),
+        wind: stripHours?.[at]?.windKn ?? null,
+        gust: stripHours?.[at]?.gustKn ?? null,
+        waves: height && step ? variableValue(step, height) : null,
+        tide: tide ? tideAt(tide.curve, c.time) : null,
       };
-    const top = Math.max(shows === "wind" ? 25 : 1.5, ...values) * 1.08;
-    return { low: 0, high: top };
-  }, [series, shows]);
+    });
+  }, [named, strip, stripHours, waves, tide]);
+
+  /** The wind's scale: from calm to a round top over the week's strongest. */
+  const windHigh = useMemo(
+    () =>
+      Math.max(
+        25,
+        ...(series ?? []).flatMap((s) =>
+          [s.wind, s.gust].filter((v): v is number => v !== null),
+        ),
+      ) * 1.08,
+    [series],
+  );
   const y = (value: number) =>
-    CURVE_BOTTOM -
-    ((value - scale.low) / Math.max(0.01, scale.high - scale.low)) *
-      (CURVE_BOTTOM - CURVE_TOP);
+    CURVE_BOTTOM - (value / windHigh) * (CURVE_BOTTOM - CURVE_TOP);
+
+  // The lanes under the wind: the waves where a riding place lends them,
+  // the tide where a station reaches the place. Each is there from the
+  // moment the place is chosen, read or not, so the card never grows under
+  // the rider's thumb.
+  const lanes = useMemo<Lane[]>(() => {
+    if (!named) return [];
+    const kinds: Lane["kind"][] = [
+      ...(lender ? (["waves"] as const) : []),
+      ...(tide ? (["tide"] as const) : []),
+    ];
+    let top = (isPoint ? CURVE_BOTTOM : STARS_Y + STARS_H) + LANE_GAP;
+    return kinds.map((kind) => {
+      const lane = { kind, top, bottom: top + LANE_H };
+      top += LANE_H + LANE_GAP;
+      return lane;
+    });
+  }, [named, !!lender, !!tide, isPoint]);
+  const height = !named
+    ? BARE_HEIGHT
+    : (lanes.at(-1)?.bottom ??
+        (isPoint ? CURVE_BOTTOM : STARS_Y + STARS_H)) + 2;
+  /** A lane's own scale: the waves from flat, the tide from its lowest. */
+  const laneY = useMemo(() => {
+    const out = new Map<Lane["kind"], (v: number) => number>();
+    for (const lane of lanes) {
+      const values = (series ?? [])
+        .map((s) => s[lane.kind])
+        .filter((v): v is number => v !== null);
+      const tidal = lane.kind === "tide";
+      const low = tidal && values.length ? Math.min(...values) : 0;
+      const high = Math.max(low + (tidal ? 1 : 1.5), ...values);
+      out.set(
+        lane.kind,
+        (v) => lane.bottom - ((v - low) / (high - low)) * (LANE_H - 2),
+      );
+    }
+    return out;
+  }, [lanes, series]);
 
   /** The stars of each column; a warning or a notice that takes them away has none. */
   const starsOf = (hour: PlaceHour | undefined) =>
@@ -538,42 +499,51 @@ export default function ScrubBar({
 
   const days = useMemo(() => stripDays(strip), [strip]);
 
-  /** The curve through the columns, smoothed, and the area under it. */
-  const curve = useMemo(() => {
+  /** A line through the columns, smoothed, and the area under it to `bottom`. */
+  const shape = (
+    pick: (s: NonNullable<typeof series>[number]) => number | null,
+    to: (v: number) => number,
+    bottom: number,
+  ) => {
     if (!series || !width) return null;
     // A stretch with no value (a source that ends, or has a gap) breaks the
     // curve rather than drawing a line across it.
-    const runs = (
-      pick: (s: { v: number | null; g: number | null }) => number | null,
-    ) => {
-      const out: (readonly [number, number])[][] = [];
-      let run: (readonly [number, number])[] = [];
-      series.forEach((s, at) => {
-        const v = pick(s);
-        if (v === null) {
-          if (run.length) out.push(run);
-          run = [];
-        } else run.push([x(strip[at].time), y(v)] as const);
-      });
-      if (run.length) out.push(run);
-      return out.filter((r) => r.length > 1);
-    };
-    const lines = runs((s) => s.v);
+    const runs: (readonly [number, number])[][] = [];
+    let run: (readonly [number, number])[] = [];
+    series.forEach((s, at) => {
+      const v = pick(s);
+      if (v === null) {
+        if (run.length) runs.push(run);
+        run = [];
+      } else run.push([x(strip[at].time), to(v)] as const);
+    });
+    if (run.length) runs.push(run);
+    const lines = runs.filter((r) => r.length > 1);
     if (!lines.length) return null;
-    const line = lines.map(smooth).join(" ");
-    const area = lines
-      .map(
-        (points) =>
-          `${smooth(points)} L${points[points.length - 1][0].toFixed(1)},${CURVE_BOTTOM} L${points[0][0].toFixed(1)},${CURVE_BOTTOM} Z`,
-      )
-      .join(" ");
-    const gusts = runs((s) => s.g);
     return {
-      line,
-      area,
-      gust: gusts.length ? gusts.map(smooth).join(" ") : null,
+      line: lines.map((points) => smooth(points, bottom)).join(" "),
+      area: lines
+        .map(
+          (points) =>
+            `${smooth(points, bottom)} L${points[points.length - 1][0].toFixed(1)},${bottom} L${points[0][0].toFixed(1)},${bottom} Z`,
+        )
+        .join(" "),
     };
-  }, [series, width, scale, view0, span]);
+  };
+  const curve = useMemo(() => {
+    const wind = shape((s) => s.wind, y, CURVE_BOTTOM);
+    if (!wind) return null;
+    const gust = shape((s) => s.gust, y, CURVE_BOTTOM);
+    return { ...wind, gust: gust?.line ?? null };
+  }, [series, width, windHigh, view0, span]);
+  const laneShapes = useMemo(
+    () =>
+      lanes.map((lane) => ({
+        lane,
+        shape: shape((s) => s[lane.kind], laneY.get(lane.kind)!, lane.bottom),
+      })),
+    [lanes, laneY, series, width, view0, span],
+  );
 
   /* ---- the moment the playhead is at ---- */
 
@@ -590,37 +560,25 @@ export default function ScrubBar({
     const mix = (va: number | null, vb: number | null) =>
       va === null ? vb : vb === null ? va : va + (vb - va) * f;
     const hour = stripHours?.[near];
+    const level = tide ? tideAt(tide.curve, pos) : null;
+    const soon = tide ? tideAt(tide.curve, pos + 15 * 60000) : null;
     return {
-      value:
-        shows === "tide" && tide
-          ? tideAt(tide.curve, pos)
-          : mix(series[a].v, series[b].v),
-      gust: mix(series[a].g, series[b].g),
+      wind: mix(series[a].wind, series[b].wind),
+      gust: mix(series[a].gust, series[b].gust),
+      waves: mix(series[a].waves, series[b].waves),
+      tide: level,
+      rising: level !== null && soon !== null ? soon >= level : null,
       from: hour?.from ?? null,
       hour,
       at: near,
     };
-  }, [series, pos, strip, stripHours, shows, tide]);
+  }, [series, pos, strip, stripHours, tide]);
 
-  /* ---- the bubble over the playhead, kept inside the bar ---- */
-
-  const bubble = useRef<HTMLDivElement>(null);
-  const [bubbleWidth, setBubbleWidth] = useState(0);
-  useLayoutEffect(() => {
-    if (bubble.current) setBubbleWidth(bubble.current.offsetWidth);
-  });
   const playX = x(pos);
-  const barPad = 14;
-  const bubbleX = Math.max(
-    bubbleWidth / 2 - barPad + 4,
-    Math.min(width - bubbleWidth / 2 + barPad - 4, playX),
-  );
 
   const label = spot
     ? `Forecast for ${spot.name}`
     : "Forecast time, for the whole chart";
-  const atNow = column ? Math.abs(column.time - now) <= 90 * 60000 : false;
-  const height = named ? SPOT_HEIGHT : BARE_HEIGHT;
 
   return (
     <div
@@ -646,123 +604,29 @@ export default function ScrubBar({
         </div>
       )}
 
-      <div
-        ref={bubble}
-        className="sb-pill"
-        aria-hidden="true"
-        data-stars={
-          reading && !isPoint && reading.hour?.rating
-            ? starsOf(reading.hour)
-            : undefined
-        }
-        style={{
-          transform: `translateX(${bubbleX + barPad}px) translateX(-50%)`,
-        }}
-      >
-        <span className="sb-pill-time">{momentWords(pos)}</span>
-        {reading && (
-          <Reading
-            reading={reading}
-            mode={shows}
-            units={units}
-            isPoint={isPoint}
-            dark={!daylight[reading.at]}
-            tide={tide}
-            pos={pos}
-          />
-        )}
-      </div>
-
-      <div className="sb-top">
-        {spot ? (
-          <div className="sb-spot">
-            <h2 className="sb-name" title={spot.name}>
-              {spot.name}
-            </h2>
-            {isPoint && spot.county && (
-              <span className="sb-coords">{spot.county}</span>
-            )}
-            {href && (
-              <a className="sb-link" href={href} data-spot-page-link>
-                Full forecast <span aria-hidden="true">→</span>
-              </a>
-            )}
-            <Button
-              variant="quiet"
-              size="sm"
-              icon
-              className="sb-close"
-              aria-label={`Close the forecast for ${spot.name}`}
-              onClick={onClose}
-            >
-              <X size={16} strokeWidth={1.75} aria-hidden="true" />
-            </Button>
-          </div>
-        ) : null}
-        <div className="sb-transport">
-          <Button
-            variant="quiet"
-            size="sm"
-            icon
-            aria-label="An hour back"
-            onClick={() => onSelect(Math.max(0, selected - 1))}
-          >
-            <ChevronLeft size={16} strokeWidth={1.75} aria-hidden="true" />
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            icon
-            className="sb-play"
-            aria-label={playing ? "Pause" : "Play through the forecast"}
-            pressed={playing}
-            onClick={() => onPlaying(!playing)}
-          >
-            {playing ? (
-              <Pause size={15} strokeWidth={2} aria-hidden="true" />
-            ) : (
-              <Play size={15} strokeWidth={2} aria-hidden="true" />
-            )}
-          </Button>
-          <Button
-            variant="quiet"
-            size="sm"
-            icon
-            aria-label="An hour on"
-            onClick={() => onSelect(Math.min(stops.length - 1, selected + 1))}
-          >
-            <ChevronRight size={16} strokeWidth={1.75} aria-hidden="true" />
-          </Button>
-        </div>
-        {!spot && <p className="sb-hint">Tap a spot for its forecast</p>}
-        <span className="sb-space" />
-        {spot && (
-          <Segmented<ScrubMode>
-            size="sm"
-            className="sb-modes"
-            aria-label="What the strip shows"
-            options={MODES.map((m) => ({
-              ...m,
-              disabled: m.value === "tide" && !tide,
-            }))}
-            value={shows}
-            onChange={setMode}
-          />
-        )}
-        {spot && <Key mode={shows} units={units} stars={!isPoint} />}
-        <Button
-          variant="outline"
-          size="sm"
-          className="sb-now"
-          data-at-now={atNow || undefined}
-          onClick={() => {
-            onPlaying(false);
-            onSelectStrip(openingColumn(strip, now));
-          }}
-        >
-          Now
-        </Button>
-      </div>
+      {/* The spot's name, and the way to its page, for a screen reader and
+          the keys: on the screen they are its name beside it on the map.
+          Shown while the link has the focus. */}
+      {spot && <h2 className="sb-name sr-only">{spot.name}</h2>}
+      {/* A point's coordinates: its name where no place names it. */}
+      {isPoint && spot && (
+        <p className="sb-coords sr-only">{spot.county || spot.name}</p>
+      )}
+      {spot && href && (
+        <a className="sb-page" href={href} data-spot-page-link>
+          Full forecast <span aria-hidden="true">→</span>
+        </a>
+      )}
+      <Readout
+        time={pos}
+        reading={reading}
+        named={named}
+        isPoint={isPoint}
+        dark={reading ? !daylight[reading.at] : false}
+        waves={lanes.some((l) => l.kind === "waves")}
+        tide={!!tide}
+        units={units}
+      />
 
       <div
         ref={track}
@@ -785,7 +649,7 @@ export default function ScrubBar({
               >
                 <line x1="0" y1="0" x2="0" y2="5" className="sb-hatch" />
               </pattern>
-              {curve && shows === "wind" && (
+              {curve && (
                 <linearGradient
                   id={`${id}wind`}
                   gradientUnits="userSpaceOnUse"
@@ -795,14 +659,14 @@ export default function ScrubBar({
                   y2={0}
                 >
                   {series!.map((s, at) =>
-                    s.v === null ? null : (
+                    s.wind === null ? null : (
                       <stop
                         key={at}
                         offset={Math.max(
                           0,
                           Math.min(1, x(strip[at].time) / width),
                         )}
-                        stopColor={windCss(s.v)}
+                        stopColor={windCss(s.wind)}
                       />
                     ),
                   )}
@@ -857,7 +721,7 @@ export default function ScrubBar({
                   x={x(n.from)}
                   y={0}
                   width={Math.max(0, x(n.to) - x(n.from))}
-                  height={named ? STARS_Y - 2 : height - 14}
+                  height={named ? height : height - 14}
                   fill={`url(#${id}hatch)`}
                 />
               ))}
@@ -873,23 +737,41 @@ export default function ScrubBar({
                     x1={at}
                     x2={at}
                     y1={0}
-                    y2={named ? STARS_Y - 2 : height - 14}
+                    y2={named ? height : height - 14}
                   />
                 );
               })}
 
               {curve && (
-                <g data-curve={shows}>
+                <g data-curve="wind">
                   <path
-                    className={`sb-area is-${shows}`}
+                    className="sb-area is-wind"
                     d={curve.area}
-                    fill={shows === "wind" ? `url(#${id}wind)` : undefined}
+                    fill={`url(#${id}wind)`}
                     mask={`url(#${id}mask)`}
                   />
-                  <path className={`sb-line is-${shows}`} d={curve.line} />
+                  <path className="sb-line is-wind" d={curve.line} />
                   {curve.gust && <path className="sb-gust" d={curve.gust} />}
                 </g>
               )}
+              {laneShapes.map(({ lane, shape }) => (
+                <g key={lane.kind} data-lane={lane.kind}>
+                  <rect
+                    className="sb-lane"
+                    x={0}
+                    y={lane.top}
+                    width={width}
+                    height={LANE_H}
+                    rx={3}
+                  />
+                  {shape && (
+                    <>
+                      <path className={`sb-area is-${lane.kind}`} d={shape.area} />
+                      <path className={`sb-line is-${lane.kind}`} d={shape.line} />
+                    </>
+                  )}
+                </g>
+              ))}
 
               {named && !isPoint && (
                 <g className="sb-stars" data-stars>
@@ -932,7 +814,7 @@ export default function ScrubBar({
                   x1={x(now)}
                   x2={x(now)}
                   y1={0}
-                  y2={named ? STARS_Y + STARS_H : height - 14}
+                  y2={named ? height : height - 14}
                 />
               )}
             </g>
@@ -945,16 +827,28 @@ export default function ScrubBar({
                 x1={0}
                 x2={0}
                 y1={2}
-                y2={named ? STARS_Y + STARS_H + 2 : height - 12}
+                y2={named ? height : height - 12}
               />
-              {reading?.value != null && curve && (
+              {reading?.wind != null && curve && (
                 <circle
                   className="sb-dot"
                   cx={0}
-                  cy={y(reading.value)}
+                  cy={y(reading.wind)}
                   r={3.5}
                 />
               )}
+              {laneShapes.map(({ lane, shape }) => {
+                const v = reading?.[lane.kind];
+                return v != null && shape ? (
+                  <circle
+                    key={lane.kind}
+                    className="sb-dot"
+                    cx={0}
+                    cy={laneY.get(lane.kind)!(v)}
+                    r={2.5}
+                  />
+                ) : null;
+              })}
               <circle className="sb-knob" cx={0} cy={4} r={6.5} />
             </g>
           </svg>
@@ -1050,139 +944,139 @@ function DayLabels({
   );
 }
 
-/** The pill's reading in the strip's mode, with the hour's stars. */
-function Reading({
+/**
+ * The moment in hand, over the strip: the time, then the wind, the stars,
+ * the waves and the tide, each in a cell of its own that keeps its place
+ * as the playhead moves, an hour without a reading saying "–". With no
+ * place chosen, the time and how to choose one.
+ */
+function Readout({
+  time,
   reading,
-  mode,
-  units,
+  named,
   isPoint,
   dark,
+  waves,
   tide,
-  pos,
+  units,
 }: {
+  time: number;
   reading: {
-    value: number | null;
+    wind: number | null;
     gust: number | null;
+    waves: number | null;
+    tide: number | null;
+    rising: boolean | null;
     from: number | null;
     hour: PlaceHour | undefined;
-  };
-  mode: ScrubMode;
-  units: Units;
+  } | null;
+  named: boolean;
   isPoint: boolean;
   dark: boolean;
-  tide: SpotTide | null;
-  pos: number;
+  /** The place has a lane of waves, and of tide: their cells are kept. */
+  waves: boolean;
+  tide: boolean;
+  units: Units;
 }) {
-  const { value, gust, from, hour } = reading;
+  const when = (
+    <div className="sb-cell is-time">
+      <b className="sb-time-words">{momentWords(time)}</b>
+    </div>
+  );
+  if (!named || !reading)
+    return (
+      <div className="sb-readout is-bare" data-readout>
+        {when}
+        <p className="sb-hint">Tap the map for a forecast</p>
+      </div>
+    );
+  const { wind, gust, from, hour } = reading;
   const stars =
     hour?.warning?.replacesRating || hour?.water?.replacesRating
       ? 0
       : (hour?.rating?.stars ?? null);
   const unit = units === "bft" ? "" : ` ${unitLabel(units)}`;
-  let figure = null;
-  if (value === null) figure = <span className="sb-pill-none">no data</span>;
-  else if (mode === "wind")
-    figure = (
-      <>
-        <i className="sb-pill-dot" style={{ background: windCss(value) }} />
-        <b>
-          {speedShort(value, units)}
-          {unit}
-        </b>
-        {gust !== null && (
-          <span className="sb-pill-soft">
-            gusting {speedShort(gust, units)}
-          </span>
-        )}
-        {from !== null && (
-          <span className="sb-pill-dir">
-            <WindArrow from={from} size={12} />
-            {compass(from)}
-          </span>
-        )}
-      </>
-    );
-  else if (mode === "waves") figure = <b>{value.toFixed(1)} m</b>;
-  else {
-    const later = tide ? tideAt(tide.curve, pos + 15 * 60000) : null;
-    figure = (
-      <>
-        <b>{value.toFixed(1)} m</b>
-        {later !== null && (
-          <span className="sb-pill-soft">
-            {later >= value ? "rising" : "falling"}
-          </span>
-        )}
-      </>
-    );
-  }
   return (
-    <>
-      <i className="sb-pill-sep" />
-      {figure}
-      {!isPoint &&
-        (stars ? (
-          <StarGlyphs stars={stars} size={11} slots="potential" coloured />
-        ) : (
-          <span className="sb-pill-none">{dark ? "dark" : "no stars"}</span>
-        ))}
-    </>
-  );
-}
-
-/** The mode's key, and the stars' five shades beside it. */
-function Key({
-  mode,
-  units,
-  stars,
-}: {
-  mode: ScrubMode;
-  units: Units;
-  stars: boolean;
-}) {
-  const top = 35;
-  return (
-    <div className="sb-key" aria-hidden="true">
-      {mode === "wind" ? (
-        <>
-          <span>{speedShort(5, units)}</span>
-          <i
-            className="sb-key-ramp"
-            style={{
-              background: `linear-gradient(90deg, ${[5, 10, 15, 20, 25, 30, top]
-                .map((kn) => windCss(kn))
-                .join(", ")})`,
-            }}
-          />
-          <span>
-            {speedShort(top, units)}
-            {units === "bft" ? "" : ` ${unitLabel(units)}`}
+    <div
+      className="sb-readout"
+      data-readout
+      // The hour's stars, where it is rated.
+      data-stars={!isPoint && hour?.rating ? (stars ?? 0) : undefined}
+    >
+      {when}
+      <div className="sb-cell is-wind" data-cell="wind">
+        <span className="sb-label">Wind</span>
+        <span className="sb-value">
+          {wind === null ? (
+            "–"
+          ) : (
+            <>
+              <i className="sb-swatch" style={{ background: windCss(wind) }} />
+              <b>
+                {speedShort(wind, units)}
+                {unit}
+              </b>
+              {gust !== null && (
+                <span className="sb-soft">g{speedShort(gust, units)}</span>
+              )}
+              {from !== null && (
+                <span className="sb-dir">
+                  <WindArrow from={from} size={12} />
+                  {compass(from)}
+                </span>
+              )}
+            </>
+          )}
+        </span>
+      </div>
+      {!isPoint && (
+        <div className="sb-cell is-stars" data-cell="stars">
+          <span className="sb-label">Stars</span>
+          <span className="sb-value">
+            {stars ? (
+              <StarGlyphs stars={stars} size={11} slots="potential" coloured />
+            ) : (
+              <span className="sb-none">{dark ? "Dark" : "None"}</span>
+            )}
           </span>
-          <i className="sb-key-gust" />
-          <span>gusts</span>
-        </>
-      ) : (
-        <>
-          <i className={`sb-key-swatch is-${mode}`} />
-          <span>{mode === "waves" ? "wave height, m" : "tide height, m"}</span>
-        </>
+        </div>
       )}
-      {stars && (
-        <>
-          <span className="sb-key-stars">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <i key={n} style={{ background: `var(--color-stars-${n})` }} />
-            ))}
+      {waves && (
+        <div className="sb-cell is-waves" data-cell="waves">
+          <span className="sb-label">Waves</span>
+          <span className="sb-value">
+            <b>{reading.waves === null ? "–" : `${reading.waves.toFixed(1)} m`}</b>
           </span>
-          <span>1–5★</span>
-        </>
+        </div>
+      )}
+      {tide && (
+        <div className="sb-cell is-tide" data-cell="tide">
+          <span className="sb-label">Tide</span>
+          <span className="sb-value">
+            {reading.tide === null ? (
+              "–"
+            ) : (
+              <>
+                <b>{reading.tide.toFixed(1)} m</b>
+                {reading.rising !== null && (
+                  <span className="sb-soft">
+                    {reading.rising ? "↑" : "↓"}
+                  </span>
+                )}
+              </>
+            )}
+          </span>
+        </div>
       )}
     </div>
   );
 }
 
 /** A line through points, smoothed (Catmull–Rom, as cubic Béziers). */
-function smooth(points: readonly (readonly [number, number])[]): string {
+function smooth(
+  points: readonly (readonly [number, number])[],
+  bottom: number,
+): string {
   const f = (n: number) => n.toFixed(1);
   let d = `M${f(points[0][0])},${f(points[0][1])}`;
   for (let i = 0; i < points.length - 1; i++) {
@@ -1194,7 +1088,7 @@ function smooth(points: readonly (readonly [number, number])[]): string {
     const c1y = p1[1] + (p2[1] - p0[1]) / 6;
     const c2x = p2[0] - (p3[0] - p1[0]) / 6;
     const c2y = p2[1] - (p3[1] - p1[1]) / 6;
-    d += ` C${f(c1x)},${f(Math.min(CURVE_BOTTOM, c1y))} ${f(c2x)},${f(Math.min(CURVE_BOTTOM, c2y))} ${f(p2[0])},${f(p2[1])}`;
+    d += ` C${f(c1x)},${f(Math.min(bottom, c1y))} ${f(c2x)},${f(Math.min(bottom, c2y))} ${f(p2[0])},${f(p2[1])}`;
   }
   return d;
 }

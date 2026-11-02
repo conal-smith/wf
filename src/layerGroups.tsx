@@ -12,15 +12,10 @@ import {
   HighTideGlyph,
   LoupeGlyph,
   LowTideGlyph,
-  NamesGlyph,
   ParticlesGlyph,
   RainGlyph,
-  ReliefGlyph,
-  RingGlyph,
   SatelliteGlyph,
-  SoundingsGlyph,
   TidalDepthGlyph,
-  TintsGlyph,
 } from "./chartGlyphs";
 import type { InfoSection } from "./mapInfoContext";
 
@@ -106,12 +101,14 @@ export interface LayerGroup {
 }
 
 /**
- * Every layer the chart can draw, in the groups and the order the layers'
- * rail (src/LayerRail.tsx) shows them: the wind, the sea, the weather, the
- * chart, the ground under it, and what is drawn round the chosen spot.
- * Round the spot one is always on, as a radio's choice is; a satellite tide
- * pressed again is no image; the rest, the wind's two layers among them, each
- * switch their own part.
+ * The layers a rider switches, in the groups and the order the layers' rail
+ * (src/LayerRail.tsx) shows them: the wind, the sea, the weather, the ground
+ * under the chart, and the loupe round the chosen spot. Few enough to stand
+ * in a column on a phone (the owner's ruling of 2026-11-02): the chart's own
+ * parts (its depth tints, contours, relief and names) are always drawn, the
+ * satellite is one button that goes from high tide to low tide to none, and
+ * the loupe is on or off, the range ring standing in for it when off. The
+ * rest, the wind's two layers among them, each switch their own part.
  */
 export function layerGroups({
   wind,
@@ -155,34 +152,6 @@ export function layerGroups({
       layers[key] && (key === "foil" || key === "currents") ? notes[key] : null,
     info,
   });
-  const photo = (
-    option: Exclude<SatelliteOption, "off">,
-    name: string,
-    sub: string,
-    glyph: ReactNode,
-  ): LayerTile => ({
-    id: `satellite-${option}`,
-    name,
-    sub,
-    glyph,
-    on: satellite === option,
-    press: () => onSatellite(satellite === option ? "off" : option),
-  });
-  const focus = (
-    style: FocusStyle,
-    name: string,
-    sub: string,
-    glyph?: ReactNode,
-  ): LayerTile => ({
-    id: `focus-${style}`,
-    name,
-    sub,
-    glyph,
-    on: focusStyle === style,
-    press: () => onFocusStyle(style),
-    none: style === "off",
-  });
-
   return [
     {
       id: "wind",
@@ -248,66 +217,45 @@ export function layerGroups({
       ],
     },
     {
-      id: "chart",
-      name: "Chart",
-      glyph: <ChartGlyph glyph={glyphs.chartMap} size={14} />,
-      rule: "any",
-      tiles: [
-        part(
-          "tints",
-          "Depth tints",
-          "Shallow to deep",
-          <TintsGlyph size={18} />,
-        ),
-        part(
-          "soundings",
-          "Contours",
-          "And soundings",
-          <SoundingsGlyph size={18} />,
-        ),
-        part("relief", "Land relief", "Hachures", <ReliefGlyph size={18} />),
-        part(
-          "names",
-          "Spot names",
-          "Beside the lights",
-          <NamesGlyph size={18} />,
-        ),
-      ],
-    },
-    {
       id: "ground",
       name: "Ground",
       glyph: <SatelliteGlyph size={14} />,
       rule: "a picture under the chart",
       tiles: [
-        photo(
-          "high",
-          "Satellite, high tide",
-          "Sentinel-2",
-          <HighTideGlyph size={18} />,
-        ),
-        photo(
-          "low",
-          "Satellite, low tide",
-          "The sand bared",
-          <LowTideGlyph size={18} />,
-        ),
+        {
+          id: "satellite",
+          name:
+            satellite === "low" ? "Satellite, low tide" : "Satellite, high tide",
+          sub: satellite === "low" ? "The sand bared" : "Sentinel-2",
+          glyph:
+            satellite === "low" ? (
+              <LowTideGlyph size={18} />
+            ) : (
+              <HighTideGlyph size={18} />
+            ),
+          on: satellite !== "off",
+          // Off, then high tide, then low, then off again: one button.
+          press: () =>
+            onSatellite(
+              satellite === "off" ? "high" : satellite === "high" ? "low" : "off",
+            ),
+        },
       ],
     },
     {
       id: "focus",
       name: "Round your spot",
       glyph: <LoupeGlyph size={14} />,
-      rule: "one at a time",
+      rule: "the loupe, or the range ring",
       tiles: [
-        focus("loupe", "Loupe", "Headings you hold", <LoupeGlyph size={18} />),
-        focus(
-          "ring",
-          "Range ring",
-          "A distance round it",
-          <RingGlyph size={18} />,
-        ),
-        focus("off", "Nothing", "Just the light"),
+        {
+          id: "focus-loupe",
+          name: "Loupe",
+          sub: "Headings you hold",
+          glyph: <LoupeGlyph size={18} />,
+          on: focusStyle === "loupe",
+          press: () => onFocusStyle(focusStyle === "loupe" ? "ring" : "loupe"),
+        },
       ],
     },
   ];

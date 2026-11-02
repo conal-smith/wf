@@ -1,8 +1,8 @@
 # The ride rose
 
-When a spot or a tapped point is chosen and "Round the chosen spot" is
-**Loupe**, the map lays a glass round it. The default is **Range ring**; a
-rider's choice is kept for their next visit. The glass is a ride rose for the
+When a spot or a tapped point is chosen and the layers' **Loupe** is on, the
+map lays a glass round it. Off, as by default, a range ring stands round it
+instead; a rider's choice is kept for their next visit. The glass is a ride rose for the
 hour the scrub bar has selected and for this rider: the headings they can hold
 from this beach, the no-go upwind, the slow water downwind, where they would
 drift, the wind
@@ -46,7 +46,7 @@ the same case in which the light's wedge is absent. At an hour past the end
 of the map model's run, the rose still reads the hour the dock shows, as the
 lights do: it reads the place, not the map. While the loupe is on, the light's
 own small wedge is hidden, because the rose shows the same thing, larger.
-"Range ring" and "Off" are unchanged.
+The range ring is unchanged.
 
 ## Size: a true distance
 

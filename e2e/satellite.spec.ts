@@ -114,28 +114,32 @@ async function differs(page: Page, a: Buffer, b: Buffer, by = 40) {
   );
 }
 
-/** Each tide's button on the layers' rail, under Ground. */
-const TILE = {
+/** The satellite's one button on the layers' rail, under Ground: its name is the tide it shows. */
+const TIDE = {
   "High tide": "Satellite, high tide",
   "Low tide": "Satellite, low tide",
 } as const;
-const tile = (page: Page, name: keyof typeof TILE) =>
+const satelliteButton = (page: Page) =>
   layersRail(page)
     .getByRole("group", { name: "Ground" })
-    .getByRole("button", { name: TILE[name], exact: true });
+    .locator('[data-rail-layer="satellite"]');
 
+/** Pressed until it shows the tide asked for, or none: high, low, none, and round again. */
 async function choose(page: Page, name: "Off" | "High tide" | "Low tide") {
   await openFromMenu(page, "Layers");
-  if (name === "Off") {
-    // No image: the tide that is on, pressed again.
-    for (const tide of ["High tide", "Low tide"] as const)
-      if ((await tile(page, tide).getAttribute("aria-pressed")) === "true")
-        await tile(page, tide).click();
-    for (const tide of ["High tide", "Low tide"] as const)
-      await expect(tile(page, tide)).toHaveAttribute("aria-pressed", "false");
-  } else {
-    await tile(page, name).click();
-    await expect(tile(page, name)).toHaveAttribute("aria-pressed", "true");
+  const button = satelliteButton(page);
+  const there = async () => {
+    const on = (await button.getAttribute("aria-pressed")) === "true";
+    return name === "Off"
+      ? !on
+      : on && (await button.getAttribute("aria-label")) === TIDE[name];
+  };
+  for (let i = 0; i < 3 && !(await there()); i++) await button.click();
+  if (name === "Off")
+    await expect(button).toHaveAttribute("aria-pressed", "false");
+  else {
+    await expect(button).toHaveAttribute("aria-pressed", "true");
+    await expect(button).toHaveAccessibleName(TIDE[name]);
   }
   await closeLayers(page);
 }
@@ -212,7 +216,8 @@ test("the satellite image draws at high and at low tide in the Malahide estuary,
     timeout: 30000,
   });
   await openFromMenu(page, "Layers");
-  await expect(tile(page, "Low tide")).toHaveAttribute("aria-pressed", "true");
+  await expect(satelliteButton(page)).toHaveAttribute("aria-pressed", "true");
+  await expect(satelliteButton(page)).toHaveAccessibleName(TIDE["Low tide"]);
   await closeLayers(page);
 
   // And off again is off, and stays so.

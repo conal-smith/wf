@@ -244,7 +244,7 @@ test("a tap on the open map reads that point's forecast into the scrub bar, focu
   // its full forecast a page of its own at its coordinates.
   const name = barName(page);
   await expect(name).not.toHaveText("Brandon Bay");
-  await expect(scrubBar(page).locator(".sb-spot")).toContainText(coords);
+  await expect(scrubBar(page).locator(".sb-coords")).toContainText(coords);
   await expect(scrubBar(page)).not.toHaveAttribute("data-spot");
   await expect(scrubBar(page).locator("[data-spot-page-link]")).toHaveAttribute(
     "href",
@@ -265,7 +265,7 @@ test("a tap on the open map reads that point's forecast into the scrub bar, focu
   const before = await name.textContent();
   await page
     .locator(".maplibregl-canvas")
-    .dblclick({ position: { x: at.x + 40, y: at.y } });
+    .dblclick({ position: { x: at.x - 40, y: at.y } });
   await page.waitForTimeout(500);
   await expect(name).toHaveText(before!);
   // Escape clears the focus, and a light chooses a riding place again.
@@ -602,7 +602,7 @@ test("an unavailable basemap says so, and the scrub bar still reads the forecast
   await expect(barPill(page)).toContainText(/\d+ kn/);
 });
 
-test("round the chosen spot: a range ring, a loupe at a true distance, or nothing, kept as chosen", async ({
+test("round the chosen spot: a range ring, or a loupe at a true distance, kept as chosen", async ({
   page,
 }) => {
   await openChart(page, 1440, 900, null);
@@ -611,9 +611,10 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   const choice = layersRail(page).getByRole("group", {
     name: "Round your spot",
   });
-  await expect(
-    choice.getByRole("button", { name: "Range ring" }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(choice.getByRole("button", { name: "Loupe" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
   await choice.getByRole("button", { name: "Loupe" }).click();
   await closeLayers(page);
   await findSpot(page, "Dollymount");
@@ -653,24 +654,6 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   expect(further / wide).toBeGreaterThan(0.45);
   expect(further / wide).toBeLessThan(0.55);
 
-  // Back to the range ring.
-  await openFromMenu(page, "Layers");
-  await expect(choice.getByRole("button", { name: "Loupe" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await choice.getByRole("button", { name: "Range ring" }).click();
-  await expect(focus).toHaveAttribute("data-focus", "ring");
-  await expect(focus.locator(".map-loupe-rim")).toHaveCount(0);
-  await expect(focus.locator(".map-range-label")).toHaveText(/^[\d.]+ NM$/);
-  // Nothing at all: the ring that is on, pressed again. The selected light
-  // alone marks the spot.
-  await choice.getByRole("button", { name: "Range ring" }).click();
-  await expect(focus).toHaveAttribute("data-focus", "off");
-  await expect(focus.locator("*")).toHaveCount(0);
-  await expect(page.locator(".map-canvas.is-focus .lt.sel")).toHaveCount(1);
-  await closeLayers(page);
-
   // Kept for the next visit, which opens on the chart alone: at `/`, as the
   // reload of a chosen spot's own link (`/?spot=brandon`) opens on it.
   await page.goto("/?map");
@@ -679,16 +662,18 @@ test("round the chosen spot: a range ring, a loupe at a true distance, or nothin
   });
   await expect(barName(page)).toHaveCount(0);
   await openFromMenu(page, "Layers");
-  for (const name of ["Loupe", "Range ring"])
-    await expect(choice.getByRole("button", { name })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
+  await expect(choice.getByRole("button", { name: "Loupe" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // Back to the range ring: the loupe pressed again.
+  await choice.getByRole("button", { name: "Loupe" }).click();
   await closeLayers(page);
   await findSpot(page, "Brandon");
   await expect(map).toHaveClass(/is-focus/);
-  await expect(focus).toHaveAttribute("data-focus", "off");
-  await expect(focus.locator("*")).toHaveCount(0);
+  await expect(focus).toHaveAttribute("data-focus", "ring");
+  await expect(focus.locator(".map-loupe-rim")).toHaveCount(0);
+  await expect(focus.locator(".map-range-label")).toHaveText(/^[\d.]+ NM$/);
 });
 
 /**
@@ -816,8 +801,10 @@ test("a light off the chart keeps its stars and wind in its name while a spot is
 /*
  * A press on the chart (#109). With a panel or a menu open over it, it shuts
  * that and does nothing else. With nothing open and a spot or a point chosen,
- * it lets go of it, as Escape does, and moves nothing; a light still chooses
- * its spot. Only with nothing chosen does it pick the point under it.
+ * it lets go of it, and the scrub bar's forecast with it (the owner's ruling
+ * of 2026-11-02: the bar has no close of its own), and moves nothing; a
+ * light still chooses its spot. Only with nothing chosen does it pick the
+ * point under it.
  */
 for (const device of [
   { name: "desktop", use: { viewport: { width: 1440, height: 900 } } },
@@ -924,16 +911,17 @@ for (const device of [
         await expect(page).toHaveURL(/\/\?spot=keel$/);
         await expect(map).toHaveClass(/is-focus/);
         await expect(page.locator(".pick-mark")).toHaveCount(0);
-        // One tap lets go of Keel, and picks no point where it was.
+        // One tap lets go of Keel, the scrub bar's forecast with it, and
+        // picks no point where it was.
         const at = await clear(page);
         await press(page, at);
         await expect(map).not.toHaveClass(/is-focus/);
         await page.waitForTimeout(800);
-        await expect(barName(page)).toHaveText("Keel Beach");
+        await expect(barName(page)).toHaveCount(0);
         await expect(page.locator(".pick-mark")).toHaveCount(0);
         // With nothing chosen, the next tap picks the point.
         await press(page, at);
-        await expect(scrubBar(page).locator(".sb-spot")).toContainText(coords);
+        await expect(scrubBar(page).locator(".sb-coords")).toContainText(coords);
         await expect(page.locator(".pick-mark")).toHaveCount(1);
       });
       return;
@@ -996,7 +984,7 @@ for (const device of [
       await none();
       // Shut, the chart is the reader's again: a press picks its point.
       await press(page, await clear(page));
-      await expect(scrubBar(page).locator(".sb-spot")).toContainText(coords);
+      await expect(scrubBar(page).locator(".sb-coords")).toContainText(coords);
       await expect(page.locator(".pick-mark")).toHaveCount(1);
     });
 
@@ -1016,24 +1004,24 @@ for (const device of [
       await page.waitForTimeout(800);
       await expect(map).toHaveClass(/is-focus/);
       await steadyFrames(page);
-      // One press lets go of Keel: the chart's focus goes, the scrub bar
-      // keeps it, and no point is picked where the press was.
+      // One press lets go of Keel: the chart's focus goes, and the scrub
+      // bar's forecast with it (it has no close of its own), and no point
+      // is picked where the press was.
       const at = await clear(page);
       await press(page, at);
       await expect(map).not.toHaveClass(/is-focus/);
       await page.waitForTimeout(800);
-      await expect(barName(page)).toHaveText("Keel Beach");
-      await expect(page).toHaveURL(/\/\?spot=keel$/);
+      await expect(barName(page)).toHaveCount(0);
+      await expect(page).toHaveURL(/\/\?map$/);
       await expect(page.locator(".pick-mark")).toHaveCount(0);
       await expect(page.locator(".map-canvas.is-focus .lt.sel")).toHaveCount(0);
 
       // With nothing chosen, the next press picks the point.
       await press(page, at);
-      await expect(scrubBar(page).locator(".sb-spot")).toContainText(coords);
+      await expect(scrubBar(page).locator(".sb-coords")).toContainText(coords);
       await expect(page.locator(".pick-mark")).toHaveCount(1);
       await expect(map).toHaveClass(/is-focus/);
       await expect(keel).not.toHaveClass(/\bsel\b/);
-      const point = await barName(page).textContent();
 
       // And the point is let go of the same way, not moved to the next press.
       await steadyFrames(page);
@@ -1041,8 +1029,8 @@ for (const device of [
       await press(page, await clear(page));
       await expect(map).not.toHaveClass(/is-focus/);
       await page.waitForTimeout(800);
-      await expect(barName(page)).toHaveText(point!);
-      await expect(page.locator(".pick-mark")).toHaveCount(1);
+      await expect(barName(page)).toHaveCount(0);
+      await expect(page.locator(".pick-mark")).toHaveCount(0);
 
       // A light still chooses its spot, focused, at one press.
       const zoomOut = page.getByRole("button", {

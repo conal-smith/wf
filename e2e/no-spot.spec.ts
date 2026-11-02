@@ -247,8 +247,11 @@ test("the spot chosen is remembered, a bare point is not, and neither opens the 
   await expect(barName(page)).toHaveText("Dollymount");
 
   // A point on the open sea is not a riding place: it takes the scrub bar,
-  // and is not remembered.
+  // and is not remembered. (Escape lets go of the chart's focus, then of the
+  // spot: a tap with a spot chosen would only let go of it.)
   await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await expect(barName(page)).toHaveCount(0);
   const canvas = page.locator(".maplibregl-canvas");
   const box = (await canvas.boundingBox())!;
   const water = await page.evaluate((box) => {
@@ -261,7 +264,7 @@ test("the spot chosen is remembered, a bare point is not, and neither opens the 
   }, box);
   await canvas.click({ position: water });
   // Named by the nearest place or its coordinates, with no stars.
-  await expect(scrubBar(page).locator(".sb-spot")).toContainText(
+  await expect(scrubBar(page).locator(".sb-coords")).toContainText(
     /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
   );
   await expect(scrubBar(page)).not.toHaveAttribute("data-spot");
@@ -317,9 +320,9 @@ test("Back lets go of a tap on the chart still waiting to pick a point: the char
   await openMap(page);
   await page.locator('[data-spot-id="tramore"]').dispatchEvent("click");
   await expect(barName(page)).toHaveText("Tramore", { timeout: 30000 });
-  await scrubBar(page)
-    .getByRole("button", { name: "Close the forecast for Tramore" })
-    .click();
+  // A tap off it lets it go.
+  const off = await openChart(page);
+  await page.mouse.click(off.x, off.y);
   await expect(page).toHaveURL(/\/\?map$/);
   await expect(barName(page)).toHaveCount(0);
   await page.goBack();

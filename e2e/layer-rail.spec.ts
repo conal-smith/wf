@@ -74,46 +74,49 @@ test("on a desktop, Layers opens the rail beside the zoom, clear of the scrub ba
     ),
   );
 
-  // Every layer, in its group, in order. "Nothing" round the spot is the
-  // layer that is on, pressed again, so it has no switch of its own.
+  // Every layer, in its group, in order: few enough to stand in a column on
+  // a phone (the owner's ruling of 2026-11-02). The chart's own parts are
+  // always drawn; the satellite is one button for either tide; the loupe is
+  // on or off, the range ring standing in for it.
   expect(await groupsOf(rail(page))).toEqual([
     ["Wind", ["Coloured wind", "Particles"]],
     ["Sea", ["Tidal depth", "Currents"]],
     ["Weather", ["Rain"]],
-    ["Chart", ["Depth tints", "Contours", "Land relief", "Spot names"]],
-    ["Ground", ["Satellite, high tide", "Satellite, low tide"]],
-    ["Round your spot", ["Loupe", "Range ring"]],
+    ["Ground", ["Satellite, high tide"]],
+    ["Round your spot", ["Loupe"]],
   ]);
 });
 
-test("the rail's switches: a part of the chart, the wind's two layers each by itself, one thing or nothing round the spot, one tide or none", async ({
+test("the rail's switches: a layer on and off, the wind's two layers each by itself, the loupe or the ring, one tide or none", async ({
   page,
 }) => {
   await openSpot(page, 1440, 900);
   await zoomLayers(page).click();
   await expect(rail(page)).toBeVisible();
 
-  // A part of the chart, on and off.
-  await expect(railButton(page, "Spot names")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await railButton(page, "Spot names").click();
-  await expect(railButton(page, "Spot names")).toHaveAttribute(
+  // A layer, on and off.
+  await expect(railButton(page, "Rain")).toHaveAttribute(
     "aria-pressed",
     "false",
   );
-  await expect(page.locator(".map-canvas")).toHaveClass(/no-names/);
+  await railButton(page, "Rain").click();
+  await expect(railButton(page, "Rain")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   // Its name, and whether it is on, to its left under the pointer.
-  await railButton(page, "Spot names").hover();
-  const tip = railButton(page, "Spot names").locator(".lr-tip");
+  await railButton(page, "Rain").hover();
+  const tip = railButton(page, "Rain").locator(".lr-tip");
   await expect(tip).toBeVisible();
-  await expect(tip).toHaveText("Spot names · off");
+  await expect(tip).toContainText("Rain · on");
   const at = (await tip.boundingBox())!;
-  const button = (await railButton(page, "Spot names").boundingBox())!;
+  const button = (await railButton(page, "Rain").boundingBox())!;
   expect(at.x + at.width).toBeLessThanOrEqual(button.x);
-  await railButton(page, "Spot names").click();
-  await expect(page.locator(".map-canvas")).not.toHaveClass(/no-names/);
+  await railButton(page, "Rain").click();
+  await expect(railButton(page, "Rain")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
 
   // The wind's two layers, each on and off by itself: the coloured wind on
   // leaves the particles on over it, and they go off and on alone.
@@ -140,41 +143,29 @@ test("the rail's switches: a part of the chart, the wind's two layers each by it
     "aria-pressed",
     "true",
   );
-  // Round the spot, one or nothing: the loupe for the ring, then pressed
-  // again, nothing.
-  await expect(railButton(page, "Range ring")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await railButton(page, "Loupe").click();
-  await expect(railButton(page, "Loupe")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(railButton(page, "Range ring")).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
-  await railButton(page, "Loupe").click();
-  await expect(railButton(page, "Loupe")).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
-  await expect(railButton(page, "Range ring")).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
-  await expect(page.locator(".map-focus")).toHaveAttribute("data-focus", "off");
-  // The satellite, one tide or none.
-  const high = railButton(page, "Satellite, high tide");
-  const low = railButton(page, "Satellite, low tide");
-  await high.click();
-  await expect(high).toHaveAttribute("aria-pressed", "true");
-  await low.click();
-  await expect(low).toHaveAttribute("aria-pressed", "true");
-  await expect(high).toHaveAttribute("aria-pressed", "false");
-  await low.click();
-  await expect(low).toHaveAttribute("aria-pressed", "false");
+  // Round the spot: the range ring, or the loupe in its place, and pressed
+  // again the ring.
+  const loupe = railButton(page, "Loupe");
+  await expect(loupe).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator(".map-focus")).toHaveAttribute("data-focus", "ring");
+  await loupe.click();
+  await expect(loupe).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".map-focus")).toHaveAttribute("data-focus", "loupe");
+  await loupe.click();
+  await expect(loupe).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator(".map-focus")).toHaveAttribute("data-focus", "ring");
+  // The satellite, one button: high tide, then low tide, then none.
+  const satellite = rail(page).locator('[data-rail-layer="satellite"]');
+  await expect(satellite).toHaveAttribute("aria-pressed", "false");
+  await satellite.click();
+  await expect(satellite).toHaveAttribute("aria-pressed", "true");
+  await expect(satellite).toHaveAccessibleName("Satellite, high tide");
+  await satellite.click();
+  await expect(satellite).toHaveAttribute("aria-pressed", "true");
+  await expect(satellite).toHaveAccessibleName("Satellite, low tide");
+  await satellite.click();
+  await expect(satellite).toHaveAttribute("aria-pressed", "false");
+  await expect(satellite).toHaveAccessibleName("Satellite, high tide");
 });
 
 test("the rail stays open or shut on the device, as it was left", async ({
@@ -234,7 +225,7 @@ test("the rail is a toolbar: one stop on Tab, the arrows walk it, Space switches
     "true",
   );
   await page.keyboard.press("End");
-  await expect(railButton(page, "Range ring")).toBeFocused();
+  await expect(railButton(page, "Loupe")).toBeFocused();
   await page.keyboard.press("Home");
   await expect(railButton(page, "Coloured wind")).toBeFocused();
   // One stop: Tab leaves the rail, and Shift+Tab comes back to where it was.
@@ -278,8 +269,8 @@ test("the scrub bar has no Layers of its own; where the rail would run into the 
     )
     .toBe(true);
   await clear();
-  await railButton(page, "Range ring").scrollIntoViewIfNeeded();
-  await expect(railButton(page, "Range ring")).toBeInViewport();
+  await railButton(page, "Loupe").scrollIntoViewIfNeeded();
+  await expect(railButton(page, "Loupe")).toBeInViewport();
   await clear();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
@@ -310,18 +301,21 @@ test.describe("on a phone", () => {
     expect(box.y + box.height).toBeLessThanOrEqual(await barTop(page));
     const first = (await railButton(page, "Coloured wind").boundingBox())!;
     expect(first.y).toBeGreaterThanOrEqual(head.y + head.height);
+    // Every layer in the room there, with nothing to scroll.
+    expect(
+      await rail(page).evaluate((el) => el.scrollHeight <= el.clientHeight + 1),
+    ).toBe(true);
     // A finger has no pointer to rest on it: a tap names the layer, and
     // whether it is on now, for a moment.
-    const names = railButton(page, "Spot names");
-    await names.tap();
-    await expect(names).toHaveAttribute("aria-pressed", "false");
-    const tip = names.locator(".lr-tip");
+    const loupe = railButton(page, "Loupe");
+    await loupe.tap();
+    await expect(loupe).toHaveAttribute("aria-pressed", "true");
+    const tip = loupe.locator(".lr-tip");
     const shown = () =>
       tip.evaluate((el) => Number(getComputedStyle(el).opacity));
-    await expect(tip).toHaveText("Spot names · off");
+    await expect(tip).toHaveText("Loupe · on");
     await expect.poll(shown).toBe(1);
     await expect.poll(shown, { timeout: 3000 }).toBe(0);
-    await expect(page.locator(".map-canvas")).toHaveClass(/no-names/);
     // And Layers shuts it.
     await zoomLayers(page).tap();
     await expect(rail(page)).toHaveCount(0);

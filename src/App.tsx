@@ -71,7 +71,6 @@ import {
   isChartAddress,
   mapAsk,
   type MapAsk,
-  mapSpotHref,
   pointHref,
   spotHref,
   tidySearch,
@@ -451,8 +450,6 @@ export default function App() {
   );
   /** Settings is kept while it fades out, once shut. */
   const settingsShown = useFadeOut(guide === "settings");
-  /** The scrub bar playing through the forecast. */
-  const [playing, setPlaying] = useState(false);
   /** The wave models, read once the scrub bar first draws the waves. */
   const [wantMarine, setWantMarine] = useState(false);
   const [wind, setWind] = useState<WindLayers>(() =>
@@ -468,6 +465,12 @@ export default function App() {
       return {
         ...DEFAULT_LAYERS,
         ...saved,
+        // The chart's own parts are always drawn since the rail lost their
+        // switches (src/layerGroups.tsx): a part a rider once hid comes back.
+        tints: true,
+        soundings: true,
+        relief: true,
+        names: true,
         satellite: parseSatelliteOption(saved.satellite),
       };
     } catch {
@@ -695,7 +698,7 @@ export default function App() {
     if (guide === "settings") setWantModels(true);
   }, [guide]);
   const { models } = useModelAvailability(
-    !!pendingModel || playing,
+    !!pendingModel,
     undefined,
     wantModels || (spotBlend.resolved && !published),
     riderModel,
@@ -1040,7 +1043,6 @@ export default function App() {
     manifest,
     validTime: selectedTime ?? frame?.validTime ?? null,
     switching: !!pendingModel,
-    playing,
     onRun: commitRun,
   });
 
@@ -1444,13 +1446,14 @@ export default function App() {
   const clearFocus = () => setFocusId(null);
   /**
    * A tap on the open chart. With a spot or point chosen it lets go of it,
-   * as Escape does, and moves nothing: the scrub bar keeps it until another is
-   * chosen or it is closed (#109). With none, it picks the point tapped.
-   * Beside the list the chart picks nothing: it has no scrub bar there.
+   * and the scrub bar's forecast with it (the owner's ruling of 2026-11-02:
+   * the bar has no close of its own), and moves nothing. With none, it picks
+   * the point tapped. Beside the list the chart picks nothing: it has no
+   * scrub bar there.
    */
   const tapChart = (at: TappedAt) => {
     if (pageRef.current !== "chart") return;
-    if (focusId) clearFocus();
+    if (focusId || point || picked) closeDock();
     else pickPoint(at);
   };
   const hideDock = () => {
@@ -2132,28 +2135,6 @@ export default function App() {
   openListRef.current = openList;
   const openChartRef = useRef(openChart);
   openChartRef.current = openChart;
-  /** A card's picture: the full chart on its place, at the hour its rose showed, with its week in the scrub bar. */
-  const openInChart = (spot: Spot, at: number | null) => {
-    if (at !== null) selectColumn(at);
-    setPicked(null);
-    setPoint(spot);
-    setFocusId(spot.id);
-    fav.visit(spot.id);
-    window.history.pushState(
-      { fromList: 1 } satisfies ListEntry,
-      "",
-      mapSpotHref(spot.id),
-    );
-    const grown = pageRef.current === "finder" && splitRef.current;
-    toChart();
-    // Flown to once the chart has opened out; a map made just now flies
-    // there as it comes up (above).
-    if (controls.current)
-      window.setTimeout(
-        () => controls.current?.flyTo(spot),
-        grown && !reducedMotion ? OPEN_MS : 0,
-      );
-  };
   /**
    * What the menu asks the map to open: Settings over whichever page it is,
    * what the map means, and on the full chart the tour, which is the chart's.
@@ -2199,12 +2180,6 @@ export default function App() {
     window.addEventListener(MAP_ASK_EVENT, heard);
     return () => window.removeEventListener(MAP_ASK_EVENT, heard);
   }, [answer]);
-  const openInChartRef = useRef(openInChart);
-  openInChartRef.current = openInChart;
-  const onInChart = useCallback(
-    (spot: Spot, at: number | null) => openInChartRef.current(spot, at),
-    [],
-  );
   const onToggleStar = useCallback((id: string) => fav.toggle(id), [fav]);
   // A model picked on the list: the rider's from now on, as from the
   // Settings or the spot page, and the map moves to it (above).
@@ -2391,7 +2366,6 @@ export default function App() {
                   reducedMotion={reducedMotion}
                   phone={phone}
                   onWant={onWant}
-                  onInChart={onInChart}
                   beside={split}
                   onHover={hoverCard}
                   onShown={setFinderShown}
@@ -2536,7 +2510,7 @@ export default function App() {
                     rose={onChart ? rose : null}
                     picked={
                       onChart && picked
-                        ? { lon: picked.lon, lat: picked.lat }
+                        ? { lon: picked.lon, lat: picked.lat, name: picked.name }
                         : null
                     }
                     you={
@@ -2562,6 +2536,13 @@ export default function App() {
                         : showCard(spot)
                     }
                     onHoverSpot={hoverLight}
+                    onOpenPage={(place) =>
+                      window.location.assign(
+                        "id" in place
+                          ? spotHref(place.id, column?.validTime)
+                          : pointHref(place.lat, place.lon, column?.validTime),
+                      )
+                    }
                     onMade={() => setMapMade(true)}
                     onReady={(c) => {
                       controls.current = c;
@@ -2694,9 +2675,6 @@ export default function App() {
                               ? spotHref(point.id, column.validTime)
                               : null
                       }
-                      onClose={closeDock}
-                      playing={playing}
-                      onPlaying={setPlaying}
                       reachable={reachable}
                       onShowOnMap={() =>
                         reachable && column

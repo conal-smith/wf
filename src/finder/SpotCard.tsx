@@ -8,8 +8,9 @@
  * went to the card's width, and the name over it, on the owner's ruling of
  * 2026-10-28 (it was too small to read the place from).
  *
- * Pressing the picture opens the chart at the place, at the hour the rose on
- * it shows; pressing anywhere else on the card opens the place's own page.
+ * Pressing the card, its picture too, opens the place's own page (the
+ * owner's ruling of 2026-11-02: the chart is a button away in the top bar);
+ * only the star and the bars, which pick an hour, do anything else.
  *
  * The picture is the spot page's own, cut from the chart's satellite
  * composites (spot/web/satellite.ts), loaded lazily as the card scrolls in;
@@ -56,15 +57,10 @@ export const cardStyles = tv({
       "group/card relative grid min-w-0 cursor-pointer grid-cols-card gap-x-3.5 rounded-surface bg-sunken p-2.5",
       "transition duration-fast motion-reduce:transition-none hover:inset-ring-1 hover:inset-ring-line-strong",
     ],
-    pictureButton: [
-      "group/pic relative block h-auto w-full self-start overflow-visible rounded-control border-0 p-0",
-      "not-disabled:hover:bg-transparent pointer-coarse:min-h-0",
-    ],
+    pictureBox: "relative block w-full self-start",
     picture: "relative aspect-square overflow-hidden rounded-control bg-sea-1",
-    framed:
-      "rounded-control group-hover/pic:outline-2 group-hover/pic:outline-offset-1 group-hover/pic:outline-ink",
+    framed: "rounded-control",
     image: "absolute inset-0 block size-full object-cover",
-    go: "pointer-events-none absolute bottom-1 left-1 px-1.5 py-0 text-eyebrow opacity-0 transition-opacity duration-fast group-hover/pic:opacity-100",
     at: "pointer-events-none absolute right-1 bottom-1 px-1.5 py-0 text-eyebrow font-semibold",
     km: "pointer-events-none absolute top-1.5 left-1.5 px-1.5 py-0 text-eyebrow font-semibold",
     body: "flex min-w-0 flex-col gap-2",
@@ -274,8 +270,6 @@ export interface SpotCardProps {
   onPick: (time: number) => void;
   /** Show a day hour by hour, on every card. */
   onChooseDay: (date: string) => void;
-  /** The chart, at this place, at the hour the rose shows. */
-  onChart: () => void;
   /** Its place in the list. */
   order: number;
   /** Its best of the six days, which put it there. */
@@ -298,7 +292,6 @@ export function SpotCard(props: SpotCardProps) {
     starred,
     onToggleStar,
     onPick,
-    onChart,
     best,
   } = props;
   const s = cardStyles();
@@ -318,16 +311,7 @@ export function SpotCard(props: SpotCardProps) {
         window.location.assign(href);
       }}
     >
-      <Button
-        variant="quiet"
-        className={s.pictureButton()}
-        aria-label={`${spot.name} on the chart`}
-        onClick={(event) => {
-          event.stopPropagation();
-          onChart();
-        }}
-        data-to-chart
-      >
+      <div className={s.pictureBox()} data-card-picture>
         <SpotPicture
           spot={spot}
           hour={roseAt === null ? null : (row?.[roseAt] ?? null)}
@@ -351,7 +335,7 @@ export function SpotCard(props: SpotCardProps) {
             </Tag>
           )}
         </SpotPicture>
-      </Button>
+      </div>
       <div className={s.body()}>
         <div className={s.head()}>
           <div className={s.names()}>

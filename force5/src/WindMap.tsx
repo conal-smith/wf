@@ -157,7 +157,7 @@ type Props = {
   /** The loupe's ride rose for the dock's hour at the focus, or null with no wind to show. */
   rose: LoupeRose | null;
   /** A point tapped on the open map, marked where it was tapped. */
-  picked: { lon: number; lat: number } | null;
+  picked: { lon: number; lat: number; name: string } | null;
   /** The wind's two layers, the coloured wind and the particles, each on or off. */
   wind: WindLayers;
   layers: ChartLayers;
@@ -182,6 +182,11 @@ type Props = {
   onSelect: (spot: Spot) => void;
   /** A mouse comes onto a light (its place), or leaves it (null). */
   onHoverSpot?: (spot: Spot | null) => void;
+  /**
+   * The name beside the chosen spot, or beside the point tapped, is pressed:
+   * its own page.
+   */
+  onOpenPage?: (place: Spot | { lon: number; lat: number }) => void;
   /** Where the rider is, drawn as a blue dot, or null where it is not known. */
   you?: { lon: number; lat: number } | null;
   /**
@@ -1277,6 +1282,7 @@ export default function WindMap(props: Props) {
       spots,
       (spot) => latest.current.onSelect(spot),
       (spot) => latest.current.onHoverSpot?.(spot),
+      (spot) => latest.current.onOpenPage?.(spot),
     );
     lightsRef.current.light(lit.current);
     return () => {
@@ -1589,20 +1595,29 @@ export default function WindMap(props: Props) {
   const roseKey = rose ? JSON.stringify(rose) : "";
   useEffect(() => redrawRose.current(), [roseKey]);
 
-  // The point tapped on the open map, marked where it was.
+  // The point tapped on the open map, marked where it was, with its name
+  // beside it as a chosen light's is: pressed, the point's own page.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map || !picked) return;
     const el = document.createElement("div");
     el.className = "pick-mark";
     el.setAttribute("aria-hidden", "true");
+    const name = document.createElement("span");
+    name.className = "pick-lab";
+    name.textContent = picked.name;
+    name.addEventListener("click", (event) => {
+      event.stopPropagation();
+      latest.current.onOpenPage?.({ lon: picked.lon, lat: picked.lat });
+    });
+    el.append(name);
     const marker = new maplibregl.Marker({ element: el, anchor: "center" })
       .setLngLat([picked.lon, picked.lat])
       .addTo(map);
     return () => {
       marker.remove();
     };
-  }, [ready, picked?.lon, picked?.lat]);
+  }, [ready, picked?.lon, picked?.lat, picked?.name]);
 
   return (
     <>

@@ -171,6 +171,8 @@ export function createLights(
   onSelect: (spot: Spot) => void,
   /** A mouse comes onto a light (its place), or leaves it (null). */
   onHover?: (spot: Spot | null) => void,
+  /** The chosen light's name is pressed: its place's own page. */
+  onOpen?: (spot: Spot) => void,
 ): Lights {
   const entries = new Map<string, Entry>();
   /**
@@ -558,6 +560,14 @@ export function createLights(
     el.querySelector(".lt-lab b")!.textContent = spot.name;
     el.addEventListener("click", (event) => {
       event.stopPropagation();
+      // The name beside the chosen light is the way to its page: the scrub
+      // bar under the chart has no name or link of its own.
+      if (
+        onOpen &&
+        el.classList.contains("sel") &&
+        (event.target as Element).closest?.(".lt-lab")
+      )
+        return onOpen(spot);
       onSelect(meant(spot, el, event));
     });
     // As MapLibre's markers do: a press on a light neither drags it as an

@@ -309,7 +309,8 @@ test("the scrub bar opens the spot page at its hour, for the spot it opens on an
     timeout: 30000,
   });
   // The scrub bar opens on Brandon Bay, from the link, and its Full forecast
-  // is the spot's page at the hour in hand.
+  // (for the keys: on the screen, the spot's name on the map) is the spot's
+  // page at the hour in hand.
   await expect(barName(page)).toHaveText("Brandon Bay");
   const link = scrubBar(page).locator("[data-spot-page-link]");
   await expect(link).toHaveAccessibleName("Full forecast");
@@ -339,7 +340,9 @@ test("the scrub bar opens the spot page at its hour, for the spot it opens on an
     "href",
     `/spot/dollymount?at=${await atHour(page)}`,
   );
-  await full.click();
+  // Out of sight until the keys reach it.
+  await full.focus();
+  await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/spot\/dollymount\?at=/);
   await expect(
     page.getByRole("heading", { level: 1, name: "Dollymount", exact: true }),

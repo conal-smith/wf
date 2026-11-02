@@ -77,6 +77,11 @@ const search = (page: Page) =>
   page.getByRole("combobox", { name: "Search spots" });
 /** The list's filters, in view under its heading. */
 const filters = (page: Page) => page.locator("[data-finder-filters]");
+/** The filter button, and the sheet it opens. */
+const openFilters = async (page: Page) => {
+  await page.locator("[data-finder-filter]").click();
+  await expect(page.getByRole("dialog", { name: "Filter" })).toBeVisible();
+};
 
 /** The finder up in the afternoon, its places rated. */
 async function openFinder(page: Page, path = "/") {
@@ -207,18 +212,17 @@ test.describe("on a desktop", () => {
     expect(Math.abs(card.height - ghost.height)).toBeLessThan(4);
   });
 
-  test("the picture opens the chart there; the card opens the spot's page; Chart opens the full chart", async ({
+  test("a card opens the spot's page, its picture too; Chart opens the full chart", async ({
     page,
   }) => {
     await star(page, ["brandon", "keel"]);
     await openFinder(page);
     await rated(page);
+    // No way from a card to the chart: the chart is the top bar's.
+    await expect(cards(page).getByRole("button", { name: /on the chart$/ })).toHaveCount(0);
     const keel = cards(page).filter({ hasText: "Keel Beach" });
-    await keel.getByRole("button", { name: "Keel Beach on the chart" }).click();
-    await expect(page).toHaveURL(/\/\?spot=keel$/);
-    await expect(barName(page)).toHaveText("Keel Beach", {
-      timeout: 30000,
-    });
+    await keel.locator("[data-card-picture]").click();
+    await expect(page).toHaveURL(/\/spot\/keel$/);
     await page.goBack();
     await expect(finder(page)).toBeVisible();
     await cards(page)
@@ -340,9 +344,14 @@ test.describe("on a desktop", () => {
     ).toBeVisible();
     await scope(page).getByRole("button", { name: "Nearby" }).click();
     await expect(heading).toHaveText(/^Near you · \d+ spots$/);
-    // No dialog to open: the search is the top bar's, the filters in view.
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+    // On the screen, one row: Favourites or Nearby, how many, and the
+    // filter, which opens the order, the stars and the model in a sheet.
+    await expect(heading).toBeInViewport();
+    await expect(filters(page)).toBeHidden();
+    await openFilters(page);
     await expect(filters(page)).toBeVisible();
+    await page.getByRole("dialog").getByRole("button", { name: "Done" }).click();
+    await expect(filters(page)).toBeHidden();
   });
 
   test("the top bar's search finds a spot by name, from every spot, and opens its page", async ({
@@ -422,8 +431,12 @@ test.describe("on a desktop", () => {
     await star(page, ["tramore", "brandon", "keel", "dollymount"]);
     await openFinder(page);
     await rated(page);
-    // The filters are in view under the list's heading, and the list
-    // follows them as they are set.
+    // The filters are behind the filter button, and the list follows them
+    // as they are set.
+    await expect(page.locator("[data-finder-filter]")).not.toHaveAttribute(
+      "data-narrowed",
+    );
+    await openFilters(page);
     const order = filters(page).getByRole("group", { name: "Order" });
     // A to Z.
     await order.getByRole("button", { name: "A to Z" }).click();
@@ -457,7 +470,12 @@ test.describe("on a desktop", () => {
       await expect(page.locator("[data-finder-empty]")).toHaveText(
         "No spot on this list has 5 stars in the next six days.",
       );
-    // Clear puts the order and the stars back.
+    // The button says the list is narrowed; Clear puts the order and the
+    // stars back.
+    await expect(page.locator("[data-finder-filter]")).toHaveAttribute(
+      "data-narrowed",
+      "true",
+    );
     await page.locator("[data-finder-clear]").click();
     await expect(
       order.getByRole("button", { name: "Best first" }),
@@ -751,11 +769,11 @@ test.describe("on a desktop", () => {
     await page.getByRole("button", { name: "Site menu" }).click();
     await expect(siteNav(page).getByRole("link")).toHaveText(SITE_ROW_TEXTS);
     // Neither of the menu's pages is this one, and it has no tools of its own:
-    // its one group is light, dark or auto at its foot.
+    // and no group: light, dark or auto is in Settings.
     await expect(siteNav(page).locator('[aria-current="page"]')).toHaveCount(0);
     await expect(
       page.getByRole("dialog", { name: "Site menu" }).getByRole("group"),
-    ).toHaveText(["LightDarkAuto"]);
+    ).toHaveCount(0);
     await expect(siteRow(page, "Settings")).toHaveAttribute(
       "href",
       "/?settings",
@@ -945,13 +963,18 @@ test.describe("on a phone", () => {
     ).toContainText("Keel Beach");
     await page.getByRole("button", { name: "Cancel" }).tap();
     await expect(page.getByRole("listbox", { name: "Spots" })).toHaveCount(0);
-    // The list's heading and Favourites | Nearby share a row.
+    // Favourites | Nearby, how many, and the filter share a row, in that
+    // order, on the screen.
+    const tabs = (await scope(page).boundingBox())!;
     const heading = (await page
       .locator("[data-finder-heading]")
       .boundingBox())!;
-    const tabs = (await scope(page).boundingBox())!;
-    expect(tabs.x).toBeGreaterThanOrEqual(heading.x + heading.width);
-    expect(tabs.x + tabs.width).toBeLessThanOrEqual(390);
+    const filter = (await page.locator("[data-finder-filter]").boundingBox())!;
+    expect(heading.x).toBeGreaterThanOrEqual(tabs.x + tabs.width);
+    expect(filter.x).toBeGreaterThanOrEqual(heading.x + heading.width);
+    expect(filter.x + filter.width).toBeLessThanOrEqual(390);
+    const middle = (box: { y: number; height: number }) => box.y + box.height / 2;
+    expect(Math.abs(middle(filter) - middle(tabs))).toBeLessThan(4);
   });
 
   test("one column, no wider than the screen, an hour tapped on the bars", async ({

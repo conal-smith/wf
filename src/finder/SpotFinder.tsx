@@ -9,13 +9,13 @@
  * (src/finder/SpotCard.tsx). The approved design is
  * the spot list cards mock-up, its "7e".
  *
- * Over the cards, the list's own heading: what the list is and how many
- * ("Near you · 16 spots"), Favourites or Nearby beside it, and under it, in
- * view, the list's order (the best of the week, the nearest, A to Z) and the
- * model the stars are rated from (the rider's own, as the spot page and the
- * display options set it) as segmented controls, and the fewest stars a
- * place is to have as chips. A spot is found by name with the top bar's
- * search (ui/SpotSearch.tsx), which goes to its page. The tab is in the
+ * Over the cards, one row: Favourites or Nearby, how many spots the list
+ * holds, and a filter button. The filter opens a sheet with the fewest stars
+ * a place is to have, the list's order (the best of the week, the nearest,
+ * A to Z) and the model the stars are rated from (the rider's own, as the
+ * spot page and Settings set it); a dot on the button says the list is
+ * narrowed or reordered. A spot is found by name with the top bar's search
+ * (ui/SpotSearch.tsx), which goes to its page. The tab is in the
  * address (`/?tab=favourites`, finder.ts `TAB_PARAM`) once one is chosen, so
  * either can be linked to, kept and reloaded.
  * Near you never asks the browser where the rider is unasked: without
@@ -32,8 +32,8 @@
  * every card in today's place (today goes among the others, to come back
  * to); an hour picked on one card's day is picked on every card, its rose
  * turned to it; and a mouse over a card's hours, or over a day, draws a
- * dotted line at that time on every card (src/finder/hover.ts). The picture
- * opens the chart there, at the hour its rose shows. No legend: the stars
+ * dotted line at that time on every card (src/finder/hover.ts). A card
+ * opens its spot's page; the chart is a button away in the top bar. No legend: the stars
  * and the wind's colours are the site's own, said once on the Info page.
  *
  * A page of the map's bundle, drawn by src/App.tsx under the chart and
@@ -49,9 +49,10 @@ import type { Units } from "../../force5/src/units";
 import type { Spot } from "../../force5/src/weather";
 import { modelName, STARS_MODELS } from "../../force5/src/lead";
 import { isChartAddress } from "../../force5/src/siteNav";
-import { MapPin } from "lucide-react";
+import { MapPin, SlidersHorizontal } from "lucide-react";
 import { Button } from "../../ui/Button";
 import { Chip } from "../../ui/Chip";
+import { Dialog } from "../../ui/Dialog";
 import { Link } from "../../ui/Link";
 import { Segmented } from "../../ui/Segmented";
 import { tv } from "../../ui/tv";
@@ -109,14 +110,18 @@ const styles = tv({
     scroller: "overflow-y-auto overscroll-contain",
     // Room at the foot of a phone's list.
     alone: "pb-24 max-wide:pb-24",
-    // The list's heading: what it is and how many, and which spots.
-    head: "flex items-center justify-between gap-2.5 px-0.5 pb-3",
-    title: "m-0 min-w-0 font-body text-lead tracking-tight text-ink",
-    count: "font-medium text-ink-muted",
-    // The order, the model and the stars, in view under the heading.
-    filters: "mb-3.5 grid gap-2 px-0.5",
+    // The list's head, one row: which spots, how many, and the filter.
+    head: "flex items-center gap-2.5 px-0.5 pb-3",
+    title:
+      "m-0 min-w-0 flex-1 truncate text-right font-body text-body font-medium text-ink-muted",
+    filter: "relative shrink-0",
+    // On the filter button: the list is narrowed or reordered.
+    dot: "pointer-events-none absolute top-1 right-1 size-2 rounded-full bg-pen",
+    // The filter sheet: a group a heading, its choices under it.
+    filters: "grid gap-5",
+    group: "m-0 grid gap-2 border-0 p-0",
+    groupName: "m-0 p-0 font-body text-body font-medium text-ink-muted",
     filterRow: "flex flex-wrap items-center gap-2",
-    clear: "ml-auto",
     // Near you without the rider's place: why it is wanted, and the one
     // way to give it, in a soft card.
     ask: "mb-2 grid gap-2.5 rounded-surface bg-sunken on-card px-4 py-3.5 text-prose leading-normal text-ink-2",
@@ -173,8 +178,6 @@ export interface FinderProps {
   onPlace?: (at: { lat: number; lon: number } | null) => void;
   /** The list is drawn: the chart beside it may be made. */
   onDrawn?: () => void;
-  /** The chart, on a place, at a column of the strip (null: as it is). */
-  onInChart: (spot: Spot, at: number | null) => void;
   /** The model the stars are rated from, the rider's own, as on the spot page. */
   model: string;
   /** The rider picks another: theirs from now on, everywhere. */
@@ -201,7 +204,6 @@ export default function SpotFinder(props: FinderProps) {
     reducedMotion,
     phone,
     onWant,
-    onInChart,
     beside = false,
     onHover,
     onShown,
@@ -266,6 +268,8 @@ export default function SpotFinder(props: FinderProps) {
   // The list's order, and the fewest stars a place has in its six days.
   const [order, setOrder] = useState<Order>("best");
   const [fewest, setFewest] = useState(0);
+  // The filter sheet.
+  const [filtering, setFiltering] = useState(false);
 
   const chooseScope = (next: Scope) => {
     setScope(next);
@@ -409,77 +413,106 @@ export default function SpotFinder(props: FinderProps) {
           data-finder-list
         >
           <div className={s.head()}>
-            <h1 className={s.title()} id={headId} data-finder-heading>
-              {scope === "near" ? "Near you" : "Favourites"}
-              {counted && (
-                <span className={s.count()}>
-                  {" "}
-                  · {ranked.length === 1 ? "1 spot" : `${ranked.length} spots`}
-                </span>
-              )}
-            </h1>
             <Segmented
               aria-label="Which spots"
-              size="sm"
               options={SCOPES}
               value={scope}
               onChange={chooseScope}
             />
-          </div>
-          <div className={s.filters()} data-finder-filters>
-            <div className={s.filterRow()}>
-              <Segmented
-                aria-label="Order"
-                size="sm"
-                options={[
-                  { value: "best", label: "Best first" },
-                  ...(known
-                    ? [{ value: "near" as const, label: "Nearest" }]
-                    : []),
-                  { value: "name", label: "A to Z" },
-                ]}
-                value={ordered}
-                onChange={setOrder}
-              />
-              <Segmented
-                aria-label="Model for the stars"
-                size="sm"
-                options={STARS_MODELS.map((id) => ({
-                  value: id,
-                  label: modelName(id),
-                }))}
-                value={model}
-                onChange={onModel}
-              />
-            </div>
-            <div
-              className={s.filterRow()}
-              role="group"
-              aria-label="Stars in the next six days"
+            <h1 className={s.title()} id={headId} data-finder-heading>
+              <span className="sr-only">
+                {scope === "near" ? "Near you" : "Favourites"}
+                {counted && " · "}
+              </span>
+              {counted &&
+                (ranked.length === 1 ? "1 spot" : `${ranked.length} spots`)}
+            </h1>
+            <Button
+              variant="quiet"
+              icon
+              aria-label={narrowing ? "Filter, on" : "Filter"}
+              aria-haspopup="dialog"
+              className={s.filter()}
+              onClick={() => setFiltering(true)}
+              data-finder-filter
+              data-narrowed={narrowing || undefined}
             >
-              {FEWEST.map((choice) => (
-                <Chip
-                  key={choice.value}
-                  pressed={fewest === choice.value}
-                  onClick={() => setFewest(choice.value)}
-                  data-finder-stars={choice.value}
-                >
-                  {choice.label}
-                </Chip>
-              ))}
-              {narrowing && (
-                <Button
-                  variant="quiet"
-                  size="sm"
-                  className={s.clear()}
-                  onClick={clearNarrowing}
-                  data-finder-clear
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
+              <SlidersHorizontal
+                size={18}
+                strokeWidth={1.75}
+                aria-hidden="true"
+              />
+              {narrowing && <i className={s.dot()} aria-hidden="true" />}
+            </Button>
           </div>
+          <Dialog
+            open={filtering}
+            title="Filter"
+            onClose={() => setFiltering(false)}
+            actions={
+              <>
+                {narrowing && (
+                  <Button
+                    variant="quiet"
+                    onClick={clearNarrowing}
+                    data-finder-clear
+                  >
+                    Clear
+                  </Button>
+                )}
+                <Button variant="primary" onClick={() => setFiltering(false)}>
+                  Done
+                </Button>
+              </>
+            }
+          >
+            <div className={s.filters()} data-finder-filters>
+              <fieldset className={s.group()}>
+                <legend className={s.groupName()}>
+                  Stars in the next six days
+                </legend>
+                <div className={s.filterRow()}>
+                  {FEWEST.map((choice) => (
+                    <Chip
+                      key={choice.value}
+                      pressed={fewest === choice.value}
+                      onClick={() => setFewest(choice.value)}
+                      data-finder-stars={choice.value}
+                    >
+                      {choice.label}
+                    </Chip>
+                  ))}
+                </div>
+              </fieldset>
+              <div className={s.group()}>
+                <p className={s.groupName()}>Sort</p>
+                <Segmented
+                  aria-label="Order"
+                  options={[
+                    { value: "best", label: "Best first" },
+                    ...(known
+                      ? [{ value: "near" as const, label: "Nearest" }]
+                      : []),
+                    { value: "name", label: "A to Z" },
+                  ]}
+                  value={ordered}
+                  onChange={setOrder}
+                />
+              </div>
+              <div className={s.group()}>
+                <p className={s.groupName()}>Model for the stars</p>
+                <Segmented
+                  aria-label="Model for the stars"
+                  options={STARS_MODELS.map((id) => ({
+                    value: id,
+                    label: modelName(id),
+                  }))}
+                  value={model}
+                  onChange={onModel}
+                />
+              </div>
+            </div>
+          </Dialog>
           {scope === "near" &&
             !known &&
             !waiting &&
@@ -578,7 +611,6 @@ export default function SpotFinder(props: FinderProps) {
                         onToggleStar={() => onToggleStar(item.spot.id)}
                         onPick={(time) => setPicked(pickHour(time, standing))}
                         onChooseDay={chooseDay}
-                        onChart={() => onInChart(item.spot, roseAt)}
                         order={order}
                         best={item.best}
                       />

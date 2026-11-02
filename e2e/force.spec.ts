@@ -39,13 +39,13 @@ test("in Force the scrub bar's pill reads the force and the loupe draws its glyp
   // The hour over the playhead is a force, F0 to F12, its gust too where
   // there is one; no knots.
   const pill = barPill(page);
-  const figure = pill.locator("b");
+  const figure = pill.locator('[data-cell="wind"] b');
   await expect(figure).toHaveText(/^F\d{1,2}$/, { timeout: 30000 });
   const force = Number((await figure.textContent())!.slice(1));
   expect(force).toBeGreaterThanOrEqual(0);
   expect(force).toBeLessThanOrEqual(12);
-  const gust = pill.locator(".sb-pill-soft");
-  if (await gust.count()) await expect(gust).toHaveText(/^gusting F\d{1,2}$/);
+  const gust = pill.locator('[data-cell="wind"] .sb-soft');
+  if (await gust.count()) await expect(gust).toHaveText(/^gF\d{1,2}$/);
   await expect(pill).not.toContainText(/\d ?kn\b/);
 
   // The loupe's foot box: the compass point, then the glyph and the force.
@@ -57,7 +57,9 @@ test("in Force the scrub bar's pill reads the force and the loupe draws its glyp
   // Kept on reload.
   await page.reload();
   await chooseSpot(page, "brandon");
-  await expect(barPill(page).locator("b")).toHaveText(/^F\d{1,2}$/, {
+  await expect(
+    barPill(page).locator('[data-cell="wind"] b'),
+  ).toHaveText(/^F\d{1,2}$/, {
     timeout: 30000,
   });
 });
