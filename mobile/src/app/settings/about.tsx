@@ -25,7 +25,7 @@ import {
 import { useStoreUpdate } from "../../features/updates/useStoreUpdate";
 import { colors, hitTarget, space } from "../../theme/tokens";
 
-const SOURCE_URL = "https://github.com/sprintengine/wingfoil";
+const SOURCE_URL = "https://github.com/slopsmith/wf";
 const LICENCE_URL = "https://www.gnu.org/licenses/agpl-3.0.html";
 
 const VARIANT_NAME = { production: "Production", staging: "Staging", development: "Development" } as const;

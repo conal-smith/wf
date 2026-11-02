@@ -81,7 +81,7 @@ IMMUTABLE_MIN_AGE_SECONDS = 86400
 TILE_URL = "t/{level}/{x}/{y}/{hour}.bin"
 TILE_ENCODINGS = ("br", "gzip")
 FORECAST_BASE_META = "wingfoil:forecast-base"
-USER_AGENT = "wingfoil-production-monitor (+https://github.com/sprintengine/wingfoil)"
+USER_AGENT = "wingfoil-production-monitor (+https://github.com/slopsmith/wf)"
 
 ISSUE_TITLE = "Production monitor: forecast data problem"
 ISSUE_LABEL = "monitor"
