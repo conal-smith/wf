@@ -24,6 +24,8 @@ import {
   spotIdFromPath,
   isAiPath,
   isCommunityPath,
+  infoPageOf,
+  isInfoPath,
   isMarketPath,
   isSwitchedOffPath,
   OWN_BUNDLE_PATHS,
@@ -42,13 +44,17 @@ describe("OWN_BUNDLE_PATHS", () => {
       "/ai",
       "/spot/brandon",
       "/stars",
+      "/privacy",
+      "/terms",
+      "/support/",
     ]) {
       expect(claimed(path)).toBe(true);
       expect(
         isMarketPath(path) ||
           isCommunityPath(path) ||
           isAiPath(path) ||
-          isSpotPath(path),
+          isSpotPath(path) ||
+          isInfoPath(path),
       ).toBe(true);
     }
   });
@@ -374,15 +380,36 @@ describe("isSwitchedOffPath", () => {
 });
 
 describe("APP_ROUTES", () => {
-  it("is every section with a bundle of its own, then the spot page, the stars and the spot finder", () => {
+  it("is every section with a bundle of its own, then the spot page, the stars, the information pages and the spot finder", () => {
     expect(APP_ROUTES).toEqual([
       "/market",
       "/community",
       "/ai",
       "/spot",
       "/stars",
+      "/privacy",
+      "/terms",
+      "/support",
       "/spots",
     ]);
+  });
+});
+
+describe("the information pages", () => {
+  it("are /privacy, /terms and /support, with or without a trailing slash", () => {
+    expect(infoPageOf("/privacy")).toBe("privacy");
+    expect(infoPageOf("/terms/")).toBe("terms");
+    expect(infoPageOf("/support")).toBe("support");
+    for (const path of [
+      "/",
+      "/privacy-policy",
+      "/termsx",
+      "/ai",
+      "/spot/terms",
+    ]) {
+      expect(isInfoPath(path), path).toBe(false);
+      expect(infoPageOf(path), path).toBeNull();
+    }
   });
 });
 

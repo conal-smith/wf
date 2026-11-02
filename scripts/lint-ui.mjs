@@ -45,6 +45,7 @@ const DIRS = [
   "ai/web",
   "companion/web",
   "spot/web",
+  "info/web",
   "force5/src/SiteMenu.tsx",
   "src/finder",
 ];
