@@ -743,6 +743,21 @@ app's system face. One HTML file of about 20 KB with no fonts and no library,
 so it opens at once in a chat. An app without MCP Apps reads the answer's
 text as it always has.
 
+**2026-11-02 — The AI page as a scene.** The owner: the page was a bland
+line over a list. Now "wingfoil.ie is fully compatible with your bots" types
+itself, a phone rises with an AI app on it, someone asks where to wing foil
+on Saturday and the app answers with a little wind chart from wingfoil.ie;
+then the phone slides over and the apps come in beside it (`ai/web/scene.ts`,
+`ai/web/ai.css`). On a phone's width the line sits over a smaller phone and
+the list follows straight under it. Any scroll, tap or key skips to the end,
+as does less motion. Each app is shown by its maker's own mark, unaltered, from
+its brand page (`public/ai/logos/`), with no line under it until a press has
+something to say; one-colour marks take the ink, black on light and white on
+dark, as their makers ask. A line under the list says the marks are their
+owners' and that none of them endorses the site. Le Chat is Mistral Vibe since
+Mistral renamed it. Claude waits off the list for Anthropic's approval of its
+mark.
+
 ---
 
 ## Still open

@@ -1,0 +1,956 @@
+/*
+ * The AI page's stage (ai/web/AiApp.tsx, moved by ai/web/scene.ts): the line
+ * that types itself, the phone with an AI app on it reading the forecast, and
+ * the ways to add wingfoil.ie beside it. Plain CSS rather than the kit's
+ * utilities: most of it is a picture, positioned and timed, and its parts
+ * are moved by the scene's script. Every colour is the theme's
+ * (ui/theme.css), the phone's dark body among them; every class is the
+ * page's own (`ai-`), since the page can open over the map.
+ */
+.ai-stage {
+  --ai-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ai-ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  /* The phone, drawn at one size and scaled (the scene sets --ai-ps). */
+  --ai-pw: 318px;
+  --ai-ph: 672px;
+  --ai-ps: 1;
+  position: relative;
+  min-height: calc(100svh - 64px);
+  display: grid;
+  place-items: center;
+  padding: 40px 32px 56px;
+  overflow: hidden;
+  font-feature-settings: "cv11";
+}
+.ai-layout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 500px);
+  grid-template-rows: 1fr auto auto auto 1fr;
+  grid-template-areas:
+    "phone ."
+    "phone head"
+    "phone sub"
+    "phone apps"
+    "phone .";
+  column-gap: clamp(56px, 8vw, 120px);
+  align-items: start;
+}
+
+/* The wordmark wherever the name is written out: the site's own, Fraunces
+   semibold at its display cut, ".ie" in the magenta and the italic. */
+.ai-wm {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  font-variation-settings: "opsz" 72;
+}
+.ai-wm-ie {
+  color: var(--color-chart-magenta);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+}
+.ai-soft {
+  color: var(--color-ink-muted);
+}
+
+/* The line, typed at the centre before anything else is there. */
+.ai-intro {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 5;
+  transform-origin: 0 0;
+  width: max-content;
+  max-width: min(1120px, calc(100vw - 48px));
+  text-align: center;
+  font-weight: 700;
+  font-size: clamp(40px, 4.7vw, 68px);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.ai-intro .w {
+  display: inline-block;
+  white-space: nowrap;
+}
+.ai-intro .c {
+  opacity: 0;
+}
+.ai-intro .c.on {
+  opacity: 1;
+}
+.ai-intro .c.caret {
+  position: relative;
+}
+.ai-intro .c.caret::after,
+.ai-cbox .cur {
+  background: var(--color-chart-magenta);
+  animation: ai-blink 900ms steps(1) infinite;
+}
+.ai-intro .c.caret::after {
+  content: "";
+  position: absolute;
+  right: -0.07em;
+  top: 0.08em;
+  bottom: 0.02em;
+  width: 0.06em;
+  border-radius: 2px;
+}
+@keyframes ai-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---- the words beside the phone ---- */
+.ai-head {
+  grid-area: head;
+}
+.ai-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  margin-bottom: 20px;
+  padding: 0 12px 0 9px;
+  border-radius: var(--radius-full);
+  background: var(--color-sunken);
+  color: var(--color-ink-2);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.ai-eyebrow svg {
+  color: var(--color-chart-magenta);
+}
+.ai-h1 {
+  margin: 0;
+  font-weight: 700;
+  font-size: clamp(38px, 3.5vw, 52px);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.ai-sub {
+  grid-area: sub;
+  max-width: 44ch;
+  margin: 18px 0 0;
+  color: var(--color-ink-2);
+  font-size: 17px;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+.ai-apps {
+  grid-area: apps;
+  margin-top: 30px;
+}
+.ai-list {
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border-radius: var(--radius-dialog);
+  background: var(--color-sunken);
+}
+.ai-list > li {
+  position: relative;
+}
+.ai-list > li + li::before {
+  content: "";
+  position: absolute;
+  left: 66px;
+  right: 14px;
+  top: -0.5px;
+  height: 1px;
+  background: var(--color-line);
+}
+.ai-list > li:hover::before,
+.ai-list > li:hover + li::before {
+  opacity: 0;
+}
+.ai-logo {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: var(--color-ground);
+  box-shadow: inset 0 0 0 1px var(--color-line);
+  color: var(--color-ink);
+}
+.ai-logo img {
+  display: block;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+/* A mark its maker draws in one colour: black on light, white on dark, so in
+   the ink, through the mark's own shape. */
+.ai-logo .mono {
+  display: block;
+  width: 24px;
+  height: 24px;
+  background: currentColor;
+  mask: var(--ai-mark) center / contain no-repeat;
+}
+/* The blossom's file has a wide margin of its own round the mark. */
+.ai-logo .mono.is-wide {
+  width: 44px;
+  height: 44px;
+}
+.ai-go {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-line);
+  color: var(--color-ink);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease,
+    transform 250ms var(--ai-ease-out);
+}
+.ai-row:hover .ai-go {
+  border-color: transparent;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  transform: translate(1px, -1px);
+}
+.ai-fine {
+  margin: 14px 0 0;
+  padding-left: 6px;
+  color: var(--color-ink-muted);
+  font-size: 12.5px;
+}
+.ai-tm {
+  display: block;
+  margin-top: 6px;
+  font-size: 11.5px;
+  opacity: 0.8;
+}
+
+/* ---- the phone ---- */
+.ai-slot {
+  grid-area: phone;
+  align-self: center;
+  position: relative;
+  width: calc(var(--ai-pw) * var(--ai-ps));
+  height: calc(var(--ai-ph) * var(--ai-ps));
+  transform-origin: 0 0;
+  will-change: transform, opacity;
+}
+/* A soft light behind the phone, in the wind's own colours. */
+.ai-slot::before {
+  content: "";
+  position: absolute;
+  inset: -18% -45%;
+  z-index: -1;
+  background:
+    radial-gradient(
+      40% 32% at 30% 38%,
+      color-mix(in srgb, var(--color-wind-k05) 33%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      38% 30% at 70% 60%,
+      color-mix(in srgb, var(--color-wind-k20) 24%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      30% 26% at 58% 28%,
+      color-mix(in srgb, var(--color-wind-k30) 20%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(50% 40% at 50% 50%, var(--color-sea), transparent 75%);
+  filter: blur(30px);
+  pointer-events: none;
+}
+:root[data-theme="dark"] .ai-slot::before {
+  opacity: 0.55;
+}
+.ai-phone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--ai-pw);
+  height: var(--ai-ph);
+  padding: 11px;
+  transform: scale(var(--ai-ps));
+  transform-origin: 0 0;
+  border-radius: 54px;
+  background: linear-gradient(
+    145deg,
+    var(--color-device-sheen) 0%,
+    var(--color-device-body) 18%,
+    var(--color-device) 50%,
+    var(--color-device-body) 85%,
+    var(--color-device-sheen) 100%
+  );
+  box-shadow:
+    inset 0 0 0 1.5px var(--color-device-edge),
+    inset 0 0 0 3px var(--color-device),
+    var(--shadow-sheet);
+}
+.ai-key {
+  position: absolute;
+  width: 4px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--color-device-key), var(--color-device-key-lit));
+}
+.ai-key.l1 {
+  left: -3px;
+  top: 118px;
+  height: 30px;
+}
+.ai-key.l2 {
+  left: -3px;
+  top: 168px;
+  height: 54px;
+}
+.ai-key.l3 {
+  left: -3px;
+  top: 234px;
+  height: 54px;
+}
+.ai-key.r1 {
+  right: -3px;
+  top: 190px;
+  height: 84px;
+  background: linear-gradient(270deg, var(--color-device-key), var(--color-device-key-lit));
+}
+.ai-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 43px;
+  background: var(--color-ground);
+  color: var(--color-ink);
+}
+/* Figures at one width where they line up: the clock, the card's time, its
+   scale, its hours and its tag. */
+.ai-status,
+.ai-card-time,
+.ai-scale,
+.ai-hours,
+.ai-tag {
+  font-feature-settings: "tnum", "cv11";
+}
+.ai-island {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 3;
+  width: 92px;
+  height: 27px;
+  margin-left: -46px;
+  border-radius: 20px;
+  background: var(--color-device);
+}
+.ai-status {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 4px 26px 0 34px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.ai-status .ic {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ai-apphead {
+  display: grid;
+  flex: none;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
+  height: 50px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--color-line);
+}
+.ai-apphead .ttl {
+  line-height: 1.15;
+  text-align: center;
+}
+.ai-apphead .ttl b {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.ai-conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  color: var(--color-ink-muted);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+.ai-conn i {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-ok);
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--color-ok) 20%, transparent);
+}
+.ai-apphead .ib {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--color-ink-2);
+}
+.ai-msgs {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 0;
+  overflow: hidden;
+}
+.ai-track {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 12px 13px 8px;
+  will-change: transform;
+}
+.ai-it:not(.on) {
+  display: none;
+}
+.ai-it.on {
+  animation: ai-rise 420ms var(--ai-ease-out) both;
+}
+@keyframes ai-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+}
+.ai-hello {
+  padding: 0 18px 6px;
+  color: var(--color-ink-muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-align: center;
+}
+.ai-hello b {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-ink);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.ai-user {
+  align-self: flex-end;
+  max-width: 82%;
+  padding: 9px 13px;
+  border-radius: 19px 19px 6px 19px;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  font-size: 13.5px;
+  line-height: 1.35;
+  transform-origin: 100% 100%;
+}
+.ai-tool.on {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+.ai-av {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: var(--color-sunken);
+  color: var(--color-ink-2);
+}
+.ai-tk {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-sunken);
+  color: var(--color-ink-2);
+  font-weight: 500;
+}
+.ai-tk .g {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+}
+.ai-tk .g svg {
+  color: var(--color-ok);
+}
+.ai-spin {
+  width: 13px;
+  height: 13px;
+  border: 1.75px solid var(--color-line);
+  border-top-color: var(--color-ink);
+  border-radius: var(--radius-full);
+  animation: ai-spin 700ms linear infinite;
+}
+@keyframes ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.ai-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-ink-muted) 0%,
+    var(--color-ink) 45%,
+    var(--color-ink-muted) 60%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ai-shim 1.3s linear infinite;
+}
+@keyframes ai-shim {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+.ai-tk .more {
+  color: var(--color-ink-muted);
+  font-weight: 400;
+}
+.ai-say {
+  padding: 0 4px 0 30px;
+  color: var(--color-ink);
+  font-size: 13.5px;
+  line-height: 1.42;
+}
+.ai-say .wd {
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+.ai-say .wd.on {
+  opacity: 1;
+}
+.ai-say b {
+  font-weight: 600;
+}
+
+/* The chart, as the assistant hands it over. */
+.ai-card {
+  margin-left: 30px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--color-ground);
+  box-shadow:
+    0 0 0 1px var(--color-line),
+    var(--shadow-card);
+}
+.ai-card.on {
+  animation: ai-card 620ms var(--ai-ease-out) both;
+}
+@keyframes ai-card {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+}
+.ai-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 11px 8px;
+}
+.ai-card-head .ai-wm {
+  font-size: 14px;
+}
+.ai-card-time {
+  color: var(--color-ink-muted);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+.ai-map {
+  position: relative;
+  height: 192px;
+  overflow: hidden;
+  background: var(--color-basemap-water);
+}
+.ai-map canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ai-map .fade {
+  opacity: 0;
+  transition: opacity 700ms ease;
+}
+.ai-map.live .fade {
+  opacity: 1;
+}
+.ai-pin {
+  position: absolute;
+  z-index: 2;
+  width: 0;
+  height: 0;
+}
+.ai-pin i {
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  background: var(--color-chart-magenta);
+  box-shadow:
+    0 0 0 2px var(--color-photo-line),
+    var(--shadow-marker);
+  transform: scale(0);
+  transition: transform 520ms cubic-bezier(0.34, 1.7, 0.5, 1);
+}
+.ai-pin b {
+  position: absolute;
+  left: -16px;
+  top: -16px;
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid var(--color-chart-magenta);
+  border-radius: var(--radius-full);
+  opacity: 0;
+}
+.ai-map.pinned .ai-pin i {
+  transform: scale(1);
+}
+.ai-map.pinned .ai-pin b {
+  animation: ai-ping 2.2s var(--ai-ease-out) 400ms infinite;
+}
+@keyframes ai-ping {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.35);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+.ai-tag {
+  position: absolute;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--color-ground);
+  box-shadow: var(--shadow-float);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(4px) scale(0.94);
+  transform-origin: 60% 100%;
+  transition:
+    opacity 300ms ease,
+    transform 420ms var(--ai-ease-out);
+}
+.ai-tag .k {
+  color: var(--color-ink-2);
+  font-weight: 500;
+}
+.ai-tag .dot {
+  width: 2px;
+  height: 2px;
+  border-radius: var(--radius-full);
+  background: var(--color-ink-muted);
+}
+.ai-map.pinned .ai-tag {
+  opacity: 1;
+  transform: none;
+  transition-delay: 220ms;
+}
+.ai-stars {
+  display: inline-flex;
+  gap: 1px;
+  color: var(--color-stars-4);
+}
+.ai-scale {
+  position: absolute;
+  left: 9px;
+  bottom: 9px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: var(--color-glass);
+  color: var(--color-ink-2);
+  font-size: 8.5px;
+  font-weight: 500;
+}
+.ai-scale .bar {
+  width: 66px;
+  height: 5px;
+  border-radius: var(--radius-full);
+}
+.ai-card-foot {
+  padding: 9px 11px 10px;
+}
+.ai-card-foot .top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.ai-card-foot .nm {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  font-variation-settings: "opsz" 36;
+}
+.ai-card-foot .open {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--color-ink-muted);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+.ai-hours {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  margin-top: 8px;
+}
+.ai-hr {
+  text-align: center;
+}
+.ai-hr .bx {
+  display: grid;
+  place-items: center;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--color-photo-shade);
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0;
+  transform: scaleY(0.2);
+  transform-origin: 50% 100%;
+  transition:
+    transform 420ms var(--ai-ease-out),
+    opacity 220ms ease;
+}
+.ai-hours.on .bx {
+  opacity: 1;
+  transform: none;
+}
+.ai-hr .h {
+  margin-top: 3px;
+  color: var(--color-ink-muted);
+  font-size: 9px;
+  font-weight: 500;
+}
+.ai-hr.best .bx {
+  box-shadow:
+    0 0 0 1.5px var(--color-ground),
+    0 0 0 3px var(--color-chart-magenta);
+}
+.ai-composer {
+  flex: none;
+  padding: 8px 12px 6px;
+}
+.ai-cbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 5px 5px 5px 8px;
+  border-radius: 22px;
+  background: var(--color-sunken);
+}
+.ai-cbox .plus {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--color-ink-2);
+}
+.ai-cbox .txt {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-ink);
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+.ai-cbox .txt.ph {
+  color: var(--color-ink-muted);
+}
+.ai-cbox .cur {
+  display: inline-block;
+  width: 1.5px;
+  height: 1.05em;
+  margin-left: 1px;
+  vertical-align: -0.17em;
+}
+.ai-send {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--color-raised);
+  color: var(--color-ink-muted);
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    transform 200ms ease;
+}
+.ai-send.hot {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+.ai-send.press {
+  transform: scale(0.86);
+}
+.ai-homebar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  height: 22px;
+}
+.ai-homebar i {
+  width: 118px;
+  height: 4.5px;
+  border-radius: var(--radius-full);
+  background: var(--color-ink);
+  opacity: 0.85;
+}
+
+/* ---- Replay, once the scene has played ---- */
+.ai-replay {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 30;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 300ms ease,
+    transform 300ms var(--ai-ease-out);
+}
+.ai-replay.on {
+  opacity: 1;
+  transform: none;
+}
+.ai-replay:not(.on) {
+  pointer-events: none;
+}
+
+/* ---- what the scene moves: hidden until it shows them, and not to be
+   pressed while it is out of sight (a press skips to the end instead) ---- */
+.ai-stage:not(.is-done) .ai-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+}
+.ai-stage:not(.is-done) .ai-apps {
+  pointer-events: none;
+}
+
+/* ---- a phone's width: the line, the phone, the ways in, the words ---- */
+@media (max-width: 899px) {
+  .ai-stage {
+    min-height: calc(100svh - 56px);
+    padding: 24px 18px 96px;
+    place-items: start center;
+  }
+  .ai-layout {
+    width: 100%;
+    max-width: 460px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas: "head" "phone" "apps" "sub";
+    justify-items: center;
+  }
+  .ai-head {
+    text-align: center;
+  }
+  .ai-eyebrow {
+    display: none;
+  }
+  .ai-h1,
+  .ai-intro {
+    font-size: 33px;
+    line-height: 1.06;
+  }
+  .ai-intro {
+    max-width: min(460px, calc(100vw - 36px));
+  }
+  .ai-intro br {
+    display: none;
+  }
+  .ai-slot {
+    margin-top: 26px;
+  }
+  .ai-sub {
+    max-width: 34ch;
+    margin-top: 26px;
+    font-size: 15px;
+    text-align: center;
+  }
+  .ai-apps {
+    width: 100%;
+    margin-top: 24px;
+  }
+  .ai-fine {
+    padding-left: 0;
+    text-align: center;
+  }
+  /* At the page's foot, under everything, not over the words. */
+  .ai-replay {
+    position: absolute;
+    right: auto;
+    left: 50%;
+    bottom: 28px;
+    transform: translate(-50%, 8px);
+  }
+  .ai-replay.on {
+    transform: translate(-50%, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-stage *,
+  .ai-stage *::before,
+  .ai-stage *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
