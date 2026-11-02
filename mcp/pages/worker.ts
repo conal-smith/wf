@@ -62,7 +62,8 @@ function appFor(request: Request, env: Env): Promise<Hono> {
     const origin = new URL(request.url).origin;
     const index = await env.ASSETS.fetch(new URL("/", origin).href);
     if (!index.ok) throw new Error(`index.html answered ${index.status}`);
-    const data = httpSource(forecastBase(await index.text(), origin));
+    const dataBase = forecastBase(await index.text(), origin);
+    const data = httpSource(dataBase);
     const site = httpSource(origin, {
       fetch: (url, init) => env.ASSETS.fetch(url, init),
     });
@@ -72,7 +73,12 @@ function appFor(request: Request, env: Env): Promise<Hono> {
       json: (path) => from(path).json(path),
       forget: (path) => from(path).forget?.(path),
     };
-    return new Hono().route("/api/mcp", createMcpRouter({ source }));
+    return new Hono().route(
+      "/api/mcp",
+      // The spot card links to this site, and loads its pictures from the
+      // data host the map reads.
+      createMcpRouter({ source, site: origin, dataBase }),
+    );
   })().catch((error) => {
     app = undefined;
     throw error;
