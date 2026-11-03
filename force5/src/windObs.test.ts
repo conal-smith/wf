@@ -9,6 +9,7 @@ import {
   isStale,
   latestReading,
   measuredAt,
+  measuredNow,
   mpsToKn,
   readWindObs,
   readingAt,
@@ -237,6 +238,23 @@ describe("pairStation", () => {
     const far = station("Far", at.lat - 13 / 111.2, -9.0, "inland");
     expect(pairStation(at, [far])).toBeNull();
     expect(INLAND_WEIGHT).toBe(2);
+  });
+
+  it("says the wind now while the paired station's last reading is fresh, and nothing past that", () => {
+    const paired = { station: BELMULLET, km: 1.1 };
+    expect(measuredNow(paired, END)).toEqual({
+      paired,
+      reading: BELMULLET.readings[0],
+    });
+    expect(
+      measuredNow(paired, END + READING_FRESH_HOURS * HOUR),
+    ).not.toBeNull();
+    expect(
+      measuredNow(paired, END + READING_FRESH_HOURS * HOUR + 1),
+    ).toBeNull();
+    // Nothing is measured before its time.
+    expect(measuredNow(paired, END - 1)).toBeNull();
+    expect(measuredNow(null, END)).toBeNull();
   });
 
   it("never pairs a station with no readings", () => {

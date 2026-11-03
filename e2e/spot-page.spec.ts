@@ -954,3 +954,52 @@ test("a point on the open water has no year of its own", async ({ page }) => {
   ).toBeVisible({ timeout: 30000 });
   await expect(page.locator("[data-climate]")).toHaveCount(0);
 });
+
+/** The figures in a wind, in order: "3 g5 kn W" is ["3", "5"]. */
+const figures = (text: string | null) => (text ?? "").match(/\d+/g) ?? [];
+/** The compass point a wind is from, the first one in its text. */
+const point = (text: string | null) =>
+  (text ?? "").match(/\b[NESW]{1,3}\b/)?.[0] ?? null;
+
+for (const [id, station] of [
+  ["belmullet", "ME_03976"],
+  ["brandon", null],
+] as const) {
+  test(`the Wind now card and the readout at Now say the same wind, ${station ? "as measured" : "the forecast's"}, at ${id}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto(`/spot/${id}`);
+    const readout = page.locator("[data-readout]");
+    await expect(readout).toContainText("Now", { timeout: 30000 });
+    const card = page.locator("[data-now]");
+    const cardWind = card.locator("[data-now-wind]");
+    const readWind = page.locator("[data-readout-wind] b");
+    await expect(cardWind).toBeVisible();
+    if (station) {
+      // Both the station's last reading, both saying where and when.
+      await expect(cardWind).toHaveAttribute("data-measured", station);
+      await expect(readWind).toHaveAttribute("data-measured", station);
+      await expect(card.locator("[data-now-source]")).toHaveText(
+        "· Belmullet 1 km, 22:00",
+      );
+      await expect(card.locator("[data-now-source]")).toHaveText(
+        (await page
+          .locator("[data-readout-wind] [data-readout-source]")
+          .textContent())!,
+      );
+    } else {
+      // No station within reach: both the forecast, from nowhere else.
+      await expect(cardWind).not.toHaveAttribute("data-measured", /.*/);
+      await expect(readWind).not.toHaveAttribute("data-measured", /.*/);
+      await expect(card.locator("[data-now-source]")).toHaveCount(0);
+    }
+    const cardText = await cardWind.textContent();
+    const readText = await readWind.textContent();
+    expect(figures(cardText).length).toBeGreaterThan(0);
+    expect(figures(cardText)).toEqual(figures(readText));
+    expect(
+      point(await card.locator("[data-now-direction]").textContent()),
+    ).toBe(point(readText));
+  });
+}

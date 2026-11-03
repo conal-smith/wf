@@ -27,6 +27,7 @@ import { modelHue } from "../../../force5/src/manifests";
 import { POINT_SOURCE_KM } from "../../../force5/src/pointSource";
 import { rainTint, DRY_MM_PER_HOUR } from "../../../force5/src/rain";
 import { shoreFacing } from "../../../force5/src/shoreFacing";
+import { shoreAngle, type ShoreAngle } from "../../../force5/src/stars";
 import { CHART_HREF, spotHref } from "../../../force5/src/siteNav";
 import { LEVEL_LABEL, MET_WARNINGS_PAGE } from "../../../force5/src/warnings";
 import { BEACHES_PAGE } from "../../../force5/src/waterQuality";
@@ -39,11 +40,11 @@ import {
 } from "../../../force5/src/seaTemperature";
 import { windCss } from "../../../force5/src/windCss";
 import {
-  isStale,
-  latestReading,
   measuredAt,
+  measuredNow,
   pairStation,
   pairedName,
+  type MeasuredReading,
   type Paired,
   type WindReading,
 } from "../../../force5/src/windObs";
@@ -300,10 +301,10 @@ function useSpeed() {
   };
 }
 
-const isOff = (row: SpotRow | null) =>
-  row?.shore === "offshore" || row?.shore === "cross-off";
-const shoreWord = (row: SpotRow | null) =>
-  !row?.shore ? null : row.shore === "cross" ? "cross-shore" : row.shore;
+const isOff = (shore: ShoreAngle | null | undefined) =>
+  shore === "offshore" || shore === "cross-off";
+const shoreWord = (shore: ShoreAngle | null | undefined) =>
+  !shore ? null : shore === "cross" ? "cross-shore" : shore;
 
 /**
  * A point on the open water, where the report is a point's
@@ -403,6 +404,9 @@ export function SpotReport({
     () => (obs ? pairStation(spot, obs.stations) : null),
     [obs, spot.lat, spot.lon],
   );
+  // The wind now as that station measured it, while fresh: the Wind now
+  // card and the readout at Now both say it, so they never disagree.
+  const nowMeasured = useMemo(() => measuredNow(paired, now), [paired, now]);
   const [firstNow] = useState(now);
   const nearby = useNearby(forecast.nearby, rider, firstNow);
   // The rows after dark, where the rider has hidden them: from last light
@@ -543,6 +547,8 @@ export function SpotReport({
                 depthAt={depthAt}
                 hasBed={!!bed}
                 rated={!point}
+                facing={facing}
+                measured={nowMeasured}
               />
             </div>
             {picture && (
@@ -578,7 +584,8 @@ export function SpotReport({
                       <span
                         className={loupe.warn ? "text-photo-red" : undefined}
                       >
-                        {shoreWord(shown) ?? loupe.relation.toLowerCase()}
+                        {shoreWord(shown?.shore) ??
+                          loupe.relation.toLowerCase()}
                       </span>
                     </>
                   ) : (
@@ -654,6 +661,7 @@ export function SpotReport({
               current={current}
               rain={rain}
               measured={paired}
+              nowMeasured={nowMeasured}
             />
           ) : (
             <HourTable
@@ -904,6 +912,8 @@ function NowCards({
   depthAt,
   hasBed,
   rated,
+  facing,
+  measured,
 }: {
   forecast: SpotForecast;
   sea: SpotSea | null;
@@ -916,10 +926,36 @@ function NowCards({
   hasBed: boolean;
   /** False at a point on the open water, which has no shore and no stars. */
   rated: boolean;
+  /** The way the shore faces, or null where it has none. */
+  facing: number | null;
+  /**
+   * The paired station's latest reading, fresh (`measuredNow`), or null: the
+   * card says it, and where it is from, in place of the forecast's, as the
+   * readout at Now does.
+   */
+  measured: MeasuredReading | null;
 }) {
   const speed = useSpeed();
   const s = styles();
-  const wind = row?.hour.wind ?? null;
+  // The wind now: the station's, while it has one fresh, else the forecast's.
+  const wind = measured
+    ? {
+        kn: measured.reading.windKn,
+        gust: measured.reading.gustKn,
+        from: measured.reading.from,
+      }
+    : row?.hour.wind
+      ? {
+          kn: row.hour.wind.wind_kn,
+          gust: row.hour.wind.gust_kn,
+          from: row.hour.wind.direction_deg as number | null,
+        }
+      : null;
+  const shore = !measured
+    ? row?.shore
+    : facing === null || measured.reading.from === null
+      ? null
+      : shoreAngle(measured.reading.from, facing);
   const waves = row?.hour.waves ?? null;
   const depth = depthAt(now);
   const until = deepUntil(depthAt, now);
@@ -932,25 +968,40 @@ function NowCards({
   return (
     <div className={s.cards()} data-now>
       <div className={s.card({ className: s.wide() })}>
-        <span className={s.label()}>Wind now</span>
+        <span className={s.label()} data-now-wind-label>
+          Wind now
+          {measured && (
+            <span className={s.roSource()} data-now-source>
+              {" "}
+              · {pairedName(measured.paired)},{" "}
+              {measuredAt(measured.reading.time)}
+            </span>
+          )}
+        </span>
         {wind ? (
           <>
-            <div className={s.big()}>
-              {speed.say(wind.wind_kn)}
-              {speed.gust(wind.wind_kn, wind.gust_kn) !== null && (
+            <div
+              className={s.big()}
+              data-now-wind
+              data-measured={measured ? measured.paired.station.id : undefined}
+            >
+              {speed.say(wind.kn)}
+              {speed.gust(wind.kn, wind.gust) !== null && (
                 <span className={s.gust()}>
-                  g{speed.say(speed.gust(wind.wind_kn, wind.gust_kn)!)}
+                  g{speed.say(speed.gust(wind.kn, wind.gust)!)}
                 </span>
               )}
               {speed.unit && <span className={s.unit()}>{speed.unit}</span>}
             </div>
             <div
               className={s.line({
-                className: isOff(row) ? s.off() : undefined,
+                className: isOff(shore) ? s.off() : undefined,
               })}
+              data-now-direction
             >
-              {compass(wind.direction_deg)}
-              {shoreWord(row) && ` · ${shoreWord(row)}`}
+              {wind.from !== null && compass(wind.from)}
+              {wind.from !== null && shoreWord(shore) && " · "}
+              {shoreWord(shore)}
             </div>
           </>
         ) : (
@@ -1245,6 +1296,7 @@ function Graph({
   current,
   rain,
   measured = null,
+  nowMeasured = null,
 }: {
   rows: SpotRow[];
   days: { day: { date: string }; sun: DaySun; midnight: number }[];
@@ -1274,6 +1326,8 @@ function Graph({
    * and its latest is the readout's at Now.
    */
   measured?: Paired | null;
+  /** Its latest reading, while fresh (`measuredNow`): the readout's at Now. */
+  nowMeasured?: MeasuredReading | null;
 }) {
   const speed = useSpeed();
   const units = useContext(UnitsContext);
@@ -1468,13 +1522,6 @@ function Graph({
     .filter((run) => run.length > 1)
     .map((run) => smoothPath(run.map((r) => [rx(r), Y(r.windKn)] as const)))
     .join("");
-  // At Now, the readout says what the station measured last, while it is
-  // fresh enough to be the wind now.
-  const latest = measured ? latestReading(measured.station, now) : null;
-  const nowMeasured =
-    measured && latest && !isStale(latest, now)
-      ? { paired: measured, reading: latest }
-      : null;
   const [sy, sh] = ROW.sea;
   const SY = (m: number) => sy + sh - (Math.min(m, 2) / 2) * (sh - 4);
   const seaRows = rows.filter((r) => r.hour.waves?.height_m != null && seen(r));
@@ -1751,7 +1798,7 @@ function Graph({
                     <path
                       d={ARROW}
                       className={
-                        isOff(r)
+                        isOff(r.shore)
                           ? "fill-none stroke-pen"
                           : "fill-none stroke-ink"
                       }
@@ -2579,7 +2626,7 @@ function Readout({
    * At Now, the paired station's latest reading, fresh: the wind cell says
    * it, and where it is from, in place of the forecast's.
    */
-  measured?: { paired: Paired; reading: WindReading } | null;
+  measured?: MeasuredReading | null;
 }) {
   const speed = useSpeed();
   const units = useContext(UnitsContext);
@@ -2845,11 +2892,11 @@ function HourTable({
                 </td>
                 <td
                   className={s.td({
-                    className: isOff(r) ? s.off() : undefined,
+                    className: isOff(r.shore) ? s.off() : undefined,
                   })}
                 >
                   {w ? compass(w.direction_deg) : "–"}
-                  {shoreWord(r) && ` · ${shoreWord(r)}`}
+                  {shoreWord(r.shore) && ` · ${shoreWord(r.shore)}`}
                 </td>
                 {rated && (
                   <td className={s.td({ className: s.narrow() })}>
