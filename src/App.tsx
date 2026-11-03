@@ -105,10 +105,9 @@ import {
 } from "./ratings";
 import {
   clock,
-  dayLong,
   dayShort,
-  irishDate,
   nearestColumn,
+  onDay,
   openingColumn,
   stripColumns,
 } from "./strip";
@@ -2268,11 +2267,7 @@ export default function App() {
   /** The hour the lights beside the list show, as the cards say it. */
   const panelWhen =
     lightColumn &&
-    `Stars at ${clock(lightColumn.time)} ${
-      irishDate(lightColumn.time) === irishDate(clockNow)
-        ? "today"
-        : `on ${dayLong(lightColumn.time)}`
-    }`;
+    `Stars at ${clock(lightColumn.time)} ${onDay(lightColumn.time, clockNow)}`;
   const leaveTour = () => {
     tourSeen();
     setGuide(null);

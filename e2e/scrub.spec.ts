@@ -276,6 +276,96 @@ test("a drag across the strip moves the time smoothly, and the map's hour is the
   await expect.poll(() => sliderAt(page)).toBeGreaterThan(before);
 });
 
+test("a wheel or a trackpad across the strip moves the playhead, and the week slides on under it", async ({
+  page,
+}) => {
+  await openBar(page);
+  const strip = scrubBar(page).locator(".sb-strip");
+  const box = (await strip.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const start = await pillTime(page);
+  const days = scrubBar(page).locator(".sb-days span");
+  const firstDay = await days.first().textContent();
+  // A trackpad's sideways scroll of a few hours: the playhead goes with it,
+  // between the hours, and the readout with it.
+  const hour = box.width / (7 * 24);
+  await page.mouse.wheel(hour * 3.5, 0);
+  await expect.poll(() => pillTime(page)).not.toBe(start);
+  const moved = (await pillTime(page)) - start;
+  expect(moved).toBeGreaterThan(3 * 3600000 - 600000);
+  expect(moved).toBeLessThan(4 * 3600000 + 600000);
+  await expect.poll(() => sliderAt(page)).toBeGreaterThan(opening());
+  // Back the other way: earlier.
+  const back = await pillTime(page);
+  await page.mouse.wheel(-hour * 2, 0);
+  await expect.poll(() => pillTime(page)).toBeLessThan(back);
+  // A mouse's wheel, up and down, moves it as well.
+  const wheeled = await pillTime(page);
+  await page.mouse.wheel(0, hour * 2);
+  await expect.poll(() => pillTime(page)).toBeGreaterThan(wheeled);
+  // Scrolled on and on, the playhead nears the edge and the week slides on
+  // under it, the playhead staying in view.
+  for (let i = 0; i < 12; i++) await page.mouse.wheel(box.width / 4, 0);
+  await expect(days.first()).not.toHaveText(firstDay ?? "");
+  const head = (await scrubBar(page).locator(".sb-head line").boundingBox())!;
+  expect(head.x).toBeGreaterThanOrEqual(box.x);
+  expect(head.x).toBeLessThanOrEqual(box.x + box.width + 1);
+});
+
+test("a finger swiped across the strip carries the playhead as far as it travels, and a tap takes the time there", async ({
+  page,
+}) => {
+  await openBar(page);
+  const strip = scrubBar(page).locator(".sb-strip");
+  const box = (await strip.boundingBox())!;
+  const hour = box.width / (7 * 24);
+  const y = box.y + box.height / 2;
+  /** A finger on the strip, from `from` to `to` in pixels. */
+  const swipe = (from: number, to: number) =>
+    strip.evaluate(
+      (el, { from, to, y }) => {
+        const touch = (type: string, x: number) =>
+          el.dispatchEvent(
+            new PointerEvent(type, {
+              bubbles: true,
+              cancelable: true,
+              pointerId: 7,
+              pointerType: "touch",
+              isPrimary: true,
+              button: type === "pointermove" ? -1 : 0,
+              buttons: type === "pointerup" ? 0 : 1,
+              clientX: x,
+              clientY: y,
+            }),
+          );
+        touch("pointerdown", from);
+        for (let i = 1; i <= 6; i++)
+          touch("pointermove", from + ((to - from) * i) / 6);
+        touch("pointerup", to);
+      },
+      { from, to, y },
+    );
+  const start = await pillTime(page);
+  const slider = await sliderAt(page);
+  // A swipe that starts far from the playhead does not take it to the
+  // finger: it moves the playhead by the six hours the finger travelled.
+  const far = box.x + box.width * 0.8;
+  await swipe(far, far + hour * 6);
+  await expect.poll(() => pillTime(page)).not.toBe(start);
+  const moved = (await pillTime(page)) - start;
+  expect(moved).toBeGreaterThan(5.5 * 3600000);
+  expect(moved).toBeLessThan(6.5 * 3600000);
+  expect(await sliderAt(page)).toBeLessThan(slider + 12);
+  // Back the other way.
+  const swiped = await pillTime(page);
+  await swipe(far, far - hour * 3);
+  await expect.poll(() => pillTime(page)).toBeLessThan(swiped);
+  // A tap that does not travel takes the time where it lands.
+  const before = await sliderAt(page);
+  await swipe(box.x + box.width * 0.75, box.x + box.width * 0.75);
+  await expect.poll(() => sliderAt(page)).toBeGreaterThan(before + 24);
+});
+
 test("the waves and the tide have lanes of their own under the wind, and none where nothing reaches", async ({
   page,
 }) => {
@@ -283,9 +373,9 @@ test("the waves and the tide have lanes of their own under the wind, and none wh
   const bar = scrubBar(page);
   const cell = (name: string) => barPill(page).locator(`[data-cell="${name}"]`);
   // The wind, its gusts dashed over it.
-  await expect(bar.locator('.sb-strip [data-curve="wind"] .sb-gust')).toHaveCount(
-    1,
-  );
+  await expect(
+    bar.locator('.sb-strip [data-curve="wind"] .sb-gust'),
+  ).toHaveCount(1);
   // The waves, from the wave models, read once the spot is chosen. The
   // sample's wave run covers a night midweek alone: there the cell reads a
   // height, and outside it no figure stands in for one.
@@ -362,7 +452,9 @@ test("the spot's name on the map opens its page at the hour in hand, and so does
   await link.focus();
   await expect(link).toBeInViewport();
   // The name beside the chosen light.
-  const name = page.locator('.spot-marker.sel[data-spot-id="brandon"] .lt-lab b');
+  const name = page.locator(
+    '.spot-marker.sel[data-spot-id="brandon"] .lt-lab b',
+  );
   await expect(name).toHaveText("Brandon Bay");
   await name.click();
   await expect(page).toHaveURL(
@@ -643,8 +735,7 @@ const pillAndLight = (page: Page) =>
     const pill =
       document
         .querySelector(".scrub [data-readout]")
-        ?.getAttribute("data-stars") ??
-      "none";
+        ?.getAttribute("data-stars") ?? "none";
     const light =
       document
         .querySelector('.spot-marker[data-spot-id="brandon"] .lt-n')
