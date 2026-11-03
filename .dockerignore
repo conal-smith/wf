@@ -40,6 +40,8 @@ market/api/dist
 !ai/**
 # The spot pages, a lazy bundle of the site.
 !spot/**
+# The privacy, terms and support pages, another lazy bundle.
+!info/**
 # The site image builds the browser code every section shares (shared/web).
 !shared/**
 # ...and the Tailwind theme src/main.tsx imports (ui/theme.css).
