@@ -16,7 +16,8 @@
  *
  * The strip shows a week at a time, the full width of the bar, and slides on
  * through the forecast's fifteen days as the playhead nears its edge: dragged
- * there, or with a wheel or a trackpad across it.
+ * there, or carried there by a wheel, a trackpad or a finger swiped across
+ * the strip, each of which moves the playhead by as far as it goes.
  *
  * The time stays the strip's columns underneath, as the map's frames are: the
  * playhead stops anywhere between two hours, and the column nearest it is the
@@ -67,6 +68,8 @@ const HOUR = 3600000;
 const WINDOW = 7 * 24 * HOUR;
 /** How near the edge the playhead comes before the week slides on. */
 const EDGE = 0.08;
+/** How far a finger travels on the strip before it is a swipe, not a tap. */
+const SWIPE_SLOP = 6;
 const NO_MODELS: readonly ModelAvailability[] = [];
 
 /**
@@ -231,7 +234,11 @@ export default function ScrubBar({
     const at = nearestColumn(stops, t);
     const to = shown ? shown[at] : at;
     // In the hidden night the playhead rests on the hour it stops at.
-    setPos(shown && Math.abs(strip[to].time - t) > HOUR ? strip[to].time : t);
+    const head =
+      shown && Math.abs(strip[to].time - t) > HOUR ? strip[to].time : t;
+    // Held at once, so wheel events that come faster than the frames add up.
+    posRef.current = head;
+    setPos(head);
     if (to !== asked.current) {
       asked.current = to;
       onSelectStrip(to);
@@ -277,6 +284,16 @@ export default function ScrubBar({
     pushing.current = px < 0 ? -1 : px > box.width ? 1 : 0;
     if (!pushing.current) moveTo(timeAt(px));
   };
+  /**
+   * A finger on the strip: where it went down, the playhead's time then, and
+   * whether it has travelled yet. A swipe carries the playhead by the
+   * distance the finger travels, as a wheel does, so it never leaps to
+   * wherever the finger first touched; a tap that does not travel takes the
+   * time there, as a click does.
+   */
+  const finger = useRef<{ x: number; pos: number; swiping: boolean } | null>(
+    null,
+  );
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || !track.current) return;
     event.preventDefault();
@@ -286,19 +303,42 @@ export default function ScrubBar({
     } catch {
       // A pointer the browser no longer knows: the drag goes on without.
     }
+    if (event.pointerType === "touch") {
+      finger.current = {
+        x: event.clientX,
+        pos: posRef.current,
+        swiping: false,
+      };
+      return;
+    }
+    finger.current = null;
     pointerTo(event.clientX);
   };
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (dragging.current !== event.pointerId) return;
-    pointerTo(event.clientX);
+    const swipe = finger.current;
+    if (!swipe) {
+      pointerTo(event.clientX);
+      return;
+    }
+    const dx = event.clientX - swipe.x;
+    if (!swipe.swiping && Math.abs(dx) < SWIPE_SLOP) return;
+    swipe.swiping = true;
+    moveTo(swipe.pos + (dx / Math.max(1, width)) * span);
   };
   const onPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (dragging.current !== event.pointerId) return;
+    const swipe = finger.current;
+    if (swipe && !swipe.swiping && event.type === "pointerup")
+      pointerTo(event.clientX);
     dragging.current = null;
     pushing.current = 0;
+    finger.current = null;
   };
-  // A wheel or a trackpad across the strip slides the week, the playhead
-  // staying on its hour.
+  // A wheel or a trackpad across the strip moves the playhead by as much as
+  // it scrolls, between the hours as a drag does; the week slides on under
+  // it as it nears an edge (`moveTo`, `reveal`). A mouse's plain wheel, up
+  // and down, moves it too: on the strip there is nothing else to scroll.
   useEffect(() => {
     const el = track.current;
     if (!el) return;
@@ -307,21 +347,22 @@ export default function ScrubBar({
         Math.abs(event.deltaX) > Math.abs(event.deltaY)
           ? event.deltaX
           : event.deltaY;
-      if (!delta || span >= t1 - t0) return;
+      if (!delta) return;
       event.preventDefault();
-      const next = Math.max(
-        t0,
-        Math.min(
-          t1 - span,
-          w0Ref.current + (delta / Math.max(1, el.clientWidth)) * span,
-        ),
+      // Lines and pages, from a mouse's wheel, as pixels.
+      const px =
+        event.deltaMode === 1
+          ? delta * 16
+          : event.deltaMode === 2
+            ? delta * el.clientWidth
+            : delta;
+      moveRef.current(
+        posRef.current + (px / Math.max(1, el.clientWidth)) * span,
       );
-      w0Ref.current = next;
-      setW0(next);
     };
     el.addEventListener("wheel", wheel, { passive: false });
     return () => el.removeEventListener("wheel", wheel);
-  }, [span, t0, t1]);
+  }, [span]);
 
   // Left and Right step the hour wherever the focus is, unless it is in a
   // control whose own keys they are (src/hourKeys.ts); with Shift, a day.
@@ -434,8 +475,8 @@ export default function ScrubBar({
   }, [named, !!lender, !!tide, isPoint]);
   const height = !named
     ? BARE_HEIGHT
-    : (lanes.at(-1)?.bottom ??
-        (isPoint ? CURVE_BOTTOM : STARS_Y + STARS_H)) + 2;
+    : (lanes.at(-1)?.bottom ?? (isPoint ? CURVE_BOTTOM : STARS_Y + STARS_H)) +
+      2;
   /** A lane's own scale: the waves from flat, the tide from its lowest. */
   const laneY = useMemo(() => {
     const out = new Map<Lane["kind"], (v: number) => number>();
@@ -766,8 +807,14 @@ export default function ScrubBar({
                   />
                   {shape && (
                     <>
-                      <path className={`sb-area is-${lane.kind}`} d={shape.area} />
-                      <path className={`sb-line is-${lane.kind}`} d={shape.line} />
+                      <path
+                        className={`sb-area is-${lane.kind}`}
+                        d={shape.area}
+                      />
+                      <path
+                        className={`sb-line is-${lane.kind}`}
+                        d={shape.line}
+                      />
                     </>
                   )}
                 </g>
@@ -823,12 +870,7 @@ export default function ScrubBar({
               className="sb-head"
               transform={`translate(${playX.toFixed(1)} 0)`}
             >
-              <line
-                x1={0}
-                x2={0}
-                y1={2}
-                y2={named ? height : height - 12}
-              />
+              <line x1={0} x2={0} y1={2} y2={named ? height : height - 12} />
               {reading?.wind != null && curve && (
                 <circle
                   className="sb-dot"
@@ -1045,7 +1087,9 @@ function Readout({
         <div className="sb-cell is-waves" data-cell="waves">
           <span className="sb-label">Waves</span>
           <span className="sb-value">
-            <b>{reading.waves === null ? "–" : `${reading.waves.toFixed(1)} m`}</b>
+            <b>
+              {reading.waves === null ? "–" : `${reading.waves.toFixed(1)} m`}
+            </b>
           </span>
         </div>
       )}
@@ -1059,9 +1103,7 @@ function Readout({
               <>
                 <b>{reading.tide.toFixed(1)} m</b>
                 {reading.rising !== null && (
-                  <span className="sb-soft">
-                    {reading.rising ? "↑" : "↓"}
-                  </span>
+                  <span className="sb-soft">{reading.rising ? "↑" : "↓"}</span>
                 )}
               </>
             )}
