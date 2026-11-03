@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "wingfoil-ie": {
+      "type": "http",
+      "url": "https://wingfoil.ie/api/mcp"
+    }
+  }
+}

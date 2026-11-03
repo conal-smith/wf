@@ -1,0 +1,32 @@
+{
+  "name": "wingfoil-ie",
+  "version": "1.0.0",
+  "description": "Wind, wave and tide forecasts for wing foiling spots in Ireland: ask where and when it will be good, and how sure the forecast is.",
+  "author": {
+    "name": "wingfoil.ie",
+    "url": "https://wingfoil.ie/"
+  },
+  "homepage": "https://wingfoil.ie/ai",
+  "repository": "https://github.com/slopsmith/wf",
+  "license": "AGPL-3.0-only",
+  "keywords": ["wing foiling", "wind", "forecast", "tides", "waves", "ireland"],
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "wingfoil.ie",
+    "shortDescription": "Wind forecasts for Irish spots",
+    "longDescription": "Wind, wave and tide forecasts for wing foiling spots across Ireland, the Republic and Northern Ireland. Ask where it will be good this weekend, when the next good session near you is, or whether one spot is worth the drive. Each hour comes with the wind and gusts, the wind's direction against the shore, waves, tide, rain, daylight and a star rating, along with how far the weather models agree and any Met Éireann warning or bathing water notice. It reads the same forecast as the wingfoil.ie map, needs no account, and only reads: it never changes anything.",
+    "developerName": "wingfoil.ie",
+    "category": "Travel",
+    "capabilities": ["Interactive", "Read"],
+    "websiteURL": "https://wingfoil.ie/",
+    "defaultPrompt": [
+      "When's the next good session after work near me?",
+      "Where's the best wing foiling in Ireland this Saturday?",
+      "Is Brandon Bay worth the drive tomorrow afternoon?"
+    ],
+    "brandColor": "#B0186A",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/logo.png",
+    "screenshots": []
+  }
+}

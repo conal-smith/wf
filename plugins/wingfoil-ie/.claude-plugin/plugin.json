@@ -1,0 +1,18 @@
+{
+  "name": "wingfoil-ie",
+  "displayName": "wingfoil.ie",
+  "version": "1.0.0",
+  "description": "Wind, wave and tide forecasts for wing foiling spots in Ireland: ask where and when it will be good, and how sure the forecast is.",
+  "author": {
+    "name": "wingfoil.ie",
+    "url": "https://wingfoil.ie/"
+  },
+  "homepage": "https://wingfoil.ie/ai",
+  "repository": "https://github.com/slopsmith/wf",
+  "license": "AGPL-3.0-only",
+  "keywords": ["wing foiling", "wind", "forecast", "tides", "waves", "ireland"],
+  "icon": "./assets/logo.png",
+  "documentationUrl": "https://wingfoil.ie/ai",
+  "supportUrl": "https://github.com/slopsmith/wf/issues",
+  "mcpServers": "./.mcp.json"
+}

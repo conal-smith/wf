@@ -1,0 +1,15 @@
+{
+  "name": "wingfoil-ie",
+  "description": "wingfoil.ie's plugin: Ireland's wing foiling forecast, for Claude.",
+  "owner": {
+    "name": "wingfoil.ie",
+    "url": "https://wingfoil.ie/"
+  },
+  "plugins": [
+    {
+      "name": "wingfoil-ie",
+      "source": "./plugins/wingfoil-ie",
+      "description": "Wind, wave and tide forecasts for wing foiling spots in Ireland."
+    }
+  ]
+}
