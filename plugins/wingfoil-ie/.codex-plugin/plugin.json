@@ -7,7 +7,7 @@
     "url": "https://wingfoil.ie/"
   },
   "homepage": "https://wingfoil.ie/ai",
-  "repository": "https://github.com/slopsmith/wf",
+  "repository": "https://github.com/sprintengine/wf",
   "license": "AGPL-3.0-only",
   "keywords": ["wing foiling", "wind", "forecast", "tides", "waves", "ireland"],
   "mcpServers": "./.mcp.json",
