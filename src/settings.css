@@ -658,6 +658,16 @@
   gap: 8px;
   min-width: 0;
 }
+/* A switch and its words, the words a press too. */
+.st-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  font: 500 var(--text-body) / 1.3 var(--font-body);
+  color: var(--color-ink);
+  cursor: pointer;
+}
 .st-note {
   max-width: 44ch;
   margin: 0;

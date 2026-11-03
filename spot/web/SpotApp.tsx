@@ -13,6 +13,7 @@ import { MapPin } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { starsFromAt } from "../../force5/src/lead";
 import { loadPrefs, saveRider } from "../../force5/src/prefs";
+import { useNightHours } from "../../shared/web/useNightHours";
 import {
   CHART_HREF,
   isStarsPath,
@@ -324,6 +325,9 @@ function SpotPage({
     return () => clearInterval(timer);
   }, []);
   const { units, blendModels } = useMemo(() => loadPrefs(), []);
+  // Whether the week shows the hours after dark (Settings), kept on the
+  // device and followed as it changes.
+  const nightHours = useNightHours();
   // The hour a link opens the week at (`?at=`, siteNav's spotHref), read
   // once: the week opens there, and then it is the rider's.
   const [at] = useState(() => atFromSearch(window.location.search));
@@ -333,6 +337,7 @@ function SpotPage({
       forecast={forecast}
       rider={rider}
       units={units}
+      nightHours={nightHours}
       now={now}
       at={at}
       blendModels={blendModels}
