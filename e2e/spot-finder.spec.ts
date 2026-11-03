@@ -350,7 +350,20 @@ test.describe("on a desktop", () => {
     await expect(filters(page)).toBeHidden();
     await openFilters(page);
     await expect(filters(page)).toBeVisible();
-    await page.getByRole("dialog").getByRole("button", { name: "Done" }).click();
+    // The sheet shows every filter, not a body folded to its padding under
+    // the first heading: on a desktop, and as a sheet at a phone's width.
+    const unfolded = () =>
+      filters(page).evaluate((el) => {
+        const body = el.parentElement!;
+        return body.clientHeight >= body.scrollHeight - 1;
+      });
+    expect(await unfolded()).toBe(true);
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await unfolded()).toBe(true);
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Done" })
+      .click();
     await expect(filters(page)).toBeHidden();
   });
 

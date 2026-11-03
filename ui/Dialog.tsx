@@ -36,7 +36,12 @@ export const dialogStyles = tv({
     // through it is ("2 / 6").
     aside:
       "shrink-0 self-center font-body text-body text-ink-muted tabular-nums",
-    body: "grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-6 pt-2 pb-6 text-prose text-ink-2 max-sm:px-5 max-sm:pb-5",
+    // Grows from its content's height (`flex-auto`), and shrinks to scroll
+    // only when the box reaches its most. Not `flex-1`: that is a basis of
+    // 0%, and the box has no height of its own, so a browser that resolves
+    // the basis to nothing sizes the box round the head and the actions and
+    // folds the body to its padding.
+    body: "grid min-h-0 flex-auto content-start gap-4 overflow-y-auto px-6 pt-2 pb-6 text-prose text-ink-2 max-sm:px-5 max-sm:pb-5",
     // A hairline above the actions, and only there.
     actions: [
       "flex shrink-0 flex-wrap items-center justify-end gap-2 border-0 border-t border-line px-6 pt-3.5 pb-4.5",
