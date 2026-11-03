@@ -49,6 +49,14 @@ import {
   type SpotCurrents,
 } from "../../../shared/web/useSpotCurrents";
 import { NoticeMark, Segmented } from "../../../ui";
+import type { NightHours } from "../../../force5/src/prefs";
+import {
+  afterDark,
+  fold,
+  keptSpans,
+  unfolded,
+  type Fold,
+} from "../../../shared/web/afterDark";
 import { RatingTip } from "../../../ui/RatingTip";
 import { starsText } from "../../../force5/src/stars";
 import { warningName } from "../Warnings";
@@ -299,6 +307,7 @@ export function SpotReport({
   forecast,
   rider,
   units,
+  nightHours = "show",
   now,
   at = null,
   blendModels = [],
@@ -310,6 +319,12 @@ export function SpotReport({
   forecast: SpotForecast;
   rider: Rider;
   units: Units;
+  /**
+   * Whether the week shows the hours after dark (Settings): hidden, its
+   * graph is each day's hours from first light to last, the days side by
+   * side (shared/web/afterDark.ts).
+   */
+  nightHours?: NightHours;
   now: number;
   /**
    * The hour the week opens at (`?at=`), as if the rider had put the pointer
@@ -370,9 +385,27 @@ export function SpotReport({
   const picture = useSpotPicture(spot);
   const [firstNow] = useState(now);
   const nearby = useNearby(forecast.nearby, rider, firstNow);
+  // The rows after dark, where the rider has hidden them: from last light
+  // to first light at the spot.
+  const dark = useMemo(
+    () =>
+      nightHours === "hide"
+        ? afterDark(
+            spot,
+            rows.map((row) => row.time),
+          )
+        : null,
+    [nightHours, rows, spot.lat, spot.lon],
+  );
   // The hour the address opens the week at, while the rows hold it: the
-  // row it falls in, focused as a pointer resting on it would focus it.
-  const [opening] = useState(() => (at === null ? null : rowIndexAt(rows, at)));
+  // row it falls in, focused as a pointer resting on it would focus it. One
+  // after dark, hidden, opens on the next first light.
+  const [opening] = useState(() => {
+    const row = at === null ? null : rowIndexAt(rows, at);
+    if (row === null || !dark) return row;
+    const lit = dark.findIndex((night, i) => i >= row && !night);
+    return lit < 0 ? null : lit;
+  });
   const [focus, setFocus] = useState<number | null>(
     opening === null ? null : rows[opening].time,
   );
@@ -594,6 +627,7 @@ export function SpotReport({
               onFocus={setFocus}
               scrollTo={scrollTo}
               opening={opening}
+              dark={dark}
               rider={rider}
               rated={!point}
               models={models}
@@ -1183,6 +1217,7 @@ function Graph({
   onFocus,
   scrollTo,
   opening,
+  dark,
   rider,
   rated,
   models,
@@ -1199,6 +1234,11 @@ function Graph({
   scrollTo: { day: number; at: number } | null;
   /** The row the address opens on (`?at=`), held as a pointer would hold it. */
   opening: number | null;
+  /**
+   * Which rows are after dark, where the rider hides them (Settings); null
+   * where the night is shown, shaded.
+   */
+  dark: readonly boolean[] | null;
   rider: Rider;
   /** False at a point on the open water: no stars, so no star row or tint. */
   rated: boolean;
@@ -1220,12 +1260,50 @@ function Graph({
   const GH = lower.height;
   const start = days[0]?.midnight ?? now;
   const end = (days.at(-1)?.midnight ?? now) + 24 * HOUR;
-  const hours = (end - start) / HOUR;
+  // The graph's timeline: the days end to end, or with the night hidden
+  // each day's lit hours alone, the days joined side by side
+  // (shared/web/afterDark.ts). Every x along the graph is a place on it.
+  const line = useMemo<Fold>(
+    () =>
+      dark
+        ? fold(
+            keptSpans(rows, dark)
+              .map((span) => ({
+                from: Math.max(start, span.from),
+                to: Math.min(end, span.to),
+              }))
+              .filter((span) => span.to > span.from),
+          )
+        : unfolded(start, end),
+    [dark, rows, start, end],
+  );
+  /** Whether a row is drawn: all of them, or those before dark alone. */
+  const seen = (r: Pick<SpotRow, "time">) => !dark || line.kept(r.time);
+  /** Where a line through the hours breaks: across a night left out. */
+  const apart = useMemo(() => {
+    if (!dark) return () => false;
+    const spanOf = (t: number) =>
+      line.spans.findIndex((span) => t >= span.from && t < span.to);
+    return (a: number, b: number) => spanOf(a) !== spanOf(b);
+  }, [dark, line]);
+  const hours = line.length / HOUR;
+  /** Hours between the figures along the foot. */
+  const tick = dark ? 3 : 6;
   const daysShown =
     width < 600 ? 0 : Math.max(3, Math.min(7, Math.floor(width / 330)));
-  const px = width < 600 ? 18 : width / (daysShown * 24);
+  // A day's width on a desktop is a day's hours, the lit ones alone where
+  // the night is hidden.
+  const dayHours = dark ? hours / Math.max(1, line.spans.length) : 24;
+  const px = width < 600 ? 18 : width / (daysShown * dayHours);
   const W = Math.max(width, hours * px);
-  const X = (t: number) => ((t - start) / HOUR) * px;
+  const X = (t: number) => (line.at(t) / HOUR) * px;
+  /**
+   * Whether a day has any of the graph: with the night left out, a day whose
+   * light is all gone (tonight, the page opened after dark) has none, and
+   * no name or line of its own.
+   */
+  const drawn = (midnight: number) =>
+    !dark || X(midnight + 24 * HOUR) - X(midnight) >= 1;
   useEffect(() => {
     if (!scrollTo || !ref.current) return;
     ref.current.scrollTo({
@@ -1258,12 +1336,12 @@ function Graph({
           ? (x + reach - width) / 2
           : x - width / 2;
   const rowAtX = (x: number) => {
-    const t = start + (x / px) * HOUR;
-    let at = 0;
+    const t = line.time((x / px) * HOUR);
+    let at = rows.findIndex(seen);
     rows.forEach((r, i) => {
-      if (r.time <= t) at = i;
+      if (r.time <= t && seen(r)) at = i;
     });
-    return at;
+    return Math.max(0, at);
   };
   useEffect(() => {
     if (!ref.current) return;
@@ -1292,29 +1370,70 @@ function Graph({
         ),
       );
   };
-  const windRows = rows.filter((r) => r.hour.wind);
+  const windRows = rows.filter((r) => r.hour.wind && seen(r));
   const [wy, wh] = ROW.wind;
   const Y = (k: number) => wy + wh - (Math.min(k, 36) / 36) * wh;
   const mid = (r: SpotRow) => X(r.time) + (r.step * px) / 2;
-  const mean = windRows.map((r) => [mid(r), Y(r.hour.wind!.wind_kn)] as const);
-  const top = windRows.map((r) => [mid(r), Y(r.hour.wind!.max_kn)] as const);
-  const bot = windRows
-    .map((r) => [mid(r), Y(r.hour.wind!.min_kn)] as const)
-    .reverse();
-  const gust = windRows
-    .filter((r) => r.hour.wind!.gust_kn !== null)
-    .map((r) => [mid(r), Y(r.hour.wind!.gust_kn!)] as const);
+  /** Hours in runs, each broken where a night is left out between two. */
+  const runs = <T extends { time: number }>(items: readonly T[]): T[][] => {
+    const out: T[][] = [];
+    items.forEach((item, i) => {
+      if (!i || apart(items[i - 1].time, item.time)) out.push([]);
+      out.at(-1)!.push(item);
+    });
+    return out.filter((run) => run.length > 1);
+  };
+  /** A line through each run, and the area under each down to `base`. */
+  const traced = <T extends { time: number }>(
+    items: readonly T[],
+    at: (item: T) => readonly [number, number],
+    base: number,
+  ) => {
+    const lines = runs(items).map((run) => run.map(at));
+    return {
+      line: lines.map(smoothPath).join(""),
+      area: lines
+        .map(
+          (pts) =>
+            `${smoothPath(pts)}L${pts.at(-1)![0]},${base}L${pts[0][0]},${base}Z`,
+        )
+        .join(""),
+    };
+  };
+  const mean = traced(
+    windRows,
+    (r) => [mid(r), Y(r.hour.wind!.wind_kn)],
+    wy + wh,
+  );
+  const spread = runs(windRows)
+    .map((run) => {
+      const top = run.map((r) => [mid(r), Y(r.hour.wind!.max_kn)] as const);
+      const bot = run
+        .map((r) => [mid(r), Y(r.hour.wind!.min_kn)] as const)
+        .reverse();
+      return `${smoothPath(top)}L${smoothPath(bot).slice(1)}Z`;
+    })
+    .join("");
+  const gust = traced(
+    windRows.filter((r) => r.hour.wind!.gust_kn !== null),
+    (r) => [mid(r), Y(r.hour.wind!.gust_kn!)],
+    wy + wh,
+  ).line;
   const [sy, sh] = ROW.sea;
   const SY = (m: number) => sy + sh - (Math.min(m, 2) / 2) * (sh - 4);
-  const seaRows = rows.filter((r) => r.hour.waves?.height_m != null);
-  const sea = seaRows.map(
-    (r) => [mid(r), SY(r.hour.waves!.height_m!)] as const,
-  );
+  const seaRows = rows.filter((r) => r.hour.waves?.height_m != null && seen(r));
+  const sea = traced(
+    seaRows,
+    (r) => [mid(r), SY(r.hour.waves!.height_m!)],
+    sy + sh,
+  ).area;
   const [ty, th] = ROW.tide;
   const tideMax = Math.max(4.5, ...turns.map((t) => t.height)) + 0.3;
   const TY = (m: number) => ty + th - (m / tideMax) * (th - 6);
-  const curve = tideCurve(turns, start, end, 30).map(
-    (p) => [X(p.time), TY(p.height)] as const,
+  const curve = traced(
+    tideCurve(turns, start, end, 30).filter(seen),
+    (p) => [X(p.time), TY(p.height)],
+    ty + th,
   );
   const deepAt =
     bed && Number.isFinite(bed.z) && !bed.area.level ? bed.z + 1 : null;
@@ -1325,7 +1444,14 @@ function Graph({
   );
   const ay = lower.axis;
   const hoverRow = hover === null ? null : rows[hover];
-  const shownRow = hoverRow ?? rowAt(rows, now);
+  // Now, or with the night left out and now in it, the next first light.
+  const nowRow = useMemo(() => {
+    const row = rowAt(rows, now);
+    if (!dark || !row || seen(row)) return row;
+    return rows.find((r) => r.time > row.time && seen(r)) ?? row;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, now, dark, line]);
+  const shownRow = hoverRow ?? nowRow;
   const shownAt = shownRow ? rows.indexOf(shownRow) : -1;
   const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
     pointerX.current = e.clientX;
@@ -1337,7 +1463,9 @@ function Graph({
     setHover(null);
   };
   // Now is said as now, however it came to be under the playhead.
-  const isNow = hoverRow === null || hoverRow === rowAt(rows, now);
+  // Not with the night left out and now in it: then the hour read out is
+  // the next first light's, and said by its time.
+  const isNow = shownRow === rowAt(rows, now);
   return (
     <>
       <div className={s.tools()}>
@@ -1359,6 +1487,7 @@ function Graph({
           rain={shownRow ? rowRain(rain, shownRow) : null}
           hasCurrent={current.columns.length > 0}
           hasDepth={hasDepth}
+          unlit={dark ? "Twilight" : "Dark"}
         />
       </div>
       <div className={s.gbox()}>
@@ -1421,9 +1550,12 @@ function Graph({
                 </clipPath>
               )}
             </defs>
+            {/* The night shaded, each side of a day's light; with the night
+                left out, none of it, and the line between two days is
+                where it was. */}
             {days.map(({ sun, midnight }, i) => (
               <g key={i}>
-                {sun.firstLight && (
+                {!dark && sun.firstLight && (
                   <rect
                     x={X(midnight)}
                     y={0}
@@ -1431,9 +1563,10 @@ function Graph({
                     height={GH - 22}
                     className="fill-ink"
                     fillOpacity={0.045}
+                    data-night
                   />
                 )}
-                {sun.lastLight && (
+                {!dark && sun.lastLight && (
                   <rect
                     x={X(sun.lastLight)}
                     y={0}
@@ -1441,21 +1574,23 @@ function Graph({
                     height={GH - 22}
                     className="fill-ink"
                     fillOpacity={0.045}
+                    data-night
                   />
                 )}
-                {i > 0 && (
+                {i > 0 && drawn(midnight) && X(midnight) > 0 && (
                   <line
                     x1={X(midnight)}
                     x2={X(midnight)}
                     y1={0}
                     y2={GH}
                     className="stroke-line"
+                    data-day-line
                   />
                 )}
               </g>
             ))}
             {rows.map((r, i) =>
-              r.rating ? (
+              r.rating && seen(r) ? (
                 <rect
                   key={i}
                   x={X(r.time) + 1}
@@ -1467,31 +1602,23 @@ function Graph({
                 />
               ) : null,
             )}
-            {top.length > 1 && (
-              <path
-                d={`${smoothPath(top)}L${smoothPath(bot).slice(1)}Z`}
-                className="fill-ink"
-                fillOpacity={0.07}
-              />
+            {spread && (
+              <path d={spread} className="fill-ink" fillOpacity={0.07} />
             )}
-            {mean.length > 1 && (
+            {mean.line && (
               <>
+                <path d={mean.area} fill="url(#spot-wind)" fillOpacity={0.78} />
                 <path
-                  d={`${smoothPath(mean)}L${mean.at(-1)![0]},${wy + wh}L${mean[0][0]},${wy + wh}Z`}
-                  fill="url(#spot-wind)"
-                  fillOpacity={0.78}
-                />
-                <path
-                  d={smoothPath(mean)}
+                  d={mean.line}
                   fill="none"
                   stroke="url(#spot-wind)"
                   strokeWidth={2.2}
                 />
               </>
             )}
-            {gust.length > 1 && (
+            {gust && (
               <path
-                d={smoothPath(gust)}
+                d={gust}
                 className="fill-none stroke-gust"
                 strokeWidth={1.6}
                 strokeDasharray="4 3"
@@ -1537,36 +1664,27 @@ function Graph({
                   </text>
                 </g>
               ))}
-            {sea.length > 1 && (
-              <path
-                d={`${smoothPath(sea)}L${sea.at(-1)![0]},${sy + sh}L${sea[0][0]},${sy + sh}Z`}
-                className="fill-sea-1"
-                fillOpacity={0.9}
-              />
-            )}
-            {curve.length > 1 && (
+            {sea && <path d={sea} className="fill-sea-1" fillOpacity={0.9} />}
+            {curve.line && (
               <>
-                <path
-                  d={`${smoothPath(curve)}L${curve.at(-1)![0]},${ty + th}L${curve[0][0]},${ty + th}Z`}
-                  className="fill-sea-3"
-                />
+                <path d={curve.area} className="fill-sea-3" />
                 {deepAt !== null && (
                   <path
-                    d={`${smoothPath(curve)}L${curve.at(-1)![0]},${ty + th}L${curve[0][0]},${ty + th}Z`}
+                    d={curve.area}
                     className="fill-depth"
                     fillOpacity={0.9}
                     clipPath="url(#spot-deep)"
                   />
                 )}
                 <path
-                  d={smoothPath(curve)}
+                  d={curve.line}
                   className="fill-none stroke-ink-2"
                   strokeWidth={1.4}
                 />
               </>
             )}
             {turns
-              .filter((t) => t.time >= start && t.time <= end)
+              .filter((t) => t.time >= start && t.time <= end && seen(t))
               .map((t, i) => (
                 <text
                   key={i}
@@ -1580,6 +1698,8 @@ function Graph({
               ))}
             <LowerBands
               rows={rows}
+              seen={seen}
+              apart={apart}
               lower={lower.at}
               X={X}
               px={px}
@@ -1592,11 +1712,24 @@ function Graph({
               rain={rain}
               units={units}
             />
+            {/* The hours along the foot: every sixth, or with the night
+                left out every third, clear of where each day starts. */}
             {Array.from(
-              { length: Math.ceil(hours / 6) },
-              (_, i) => start + i * 6 * HOUR,
+              { length: Math.ceil((end - start) / HOUR / tick) },
+              (_, i) => start + i * tick * HOUR,
             )
-              .filter((t) => dublinHour(t) % 24 !== 0)
+              .filter(
+                (t) =>
+                  dublinHour(t) % 24 !== 0 &&
+                  (!dark ||
+                    line.spans.some(
+                      (span) =>
+                        // Clear of the day's name at its start.
+                        t >= span.from &&
+                        X(t) - X(span.from) >= 60 &&
+                        span.to - t >= HOUR,
+                    )),
+              )
               .map((t) => (
                 <text
                   key={t}
@@ -1608,20 +1741,22 @@ function Graph({
                   {String(dublinHour(t)).padStart(2, "0")}
                 </text>
               ))}
-            {days.map(({ day, midnight }, i) => (
-              <text
-                key={i}
-                x={X(midnight) + 8}
-                y={ay + 14}
-                className="fill-ink font-body text-caption font-semibold"
-              >
-                {dayNames(day.date, now).relative === "Today"
-                  ? "Today"
-                  : dayNames(day.date, now).short}{" "}
-                {Number(day.date.slice(8, 10))}
-              </text>
-            ))}
-            {handovers.map((h, i) => (
+            {days.map(({ day, midnight }, i) =>
+              !drawn(midnight) ? null : (
+                <text
+                  key={i}
+                  x={X(midnight) + 8}
+                  y={ay + 14}
+                  className="fill-ink font-body text-caption font-semibold"
+                >
+                  {dayNames(day.date, now).relative === "Today"
+                    ? "Today"
+                    : dayNames(day.date, now).short}{" "}
+                  {Number(day.date.slice(8, 10))}
+                </text>
+              ),
+            )}
+            {handovers.filter(seen).map((h, i) => (
               <g key={i}>
                 <line
                   x1={X(h.time)}
@@ -1699,7 +1834,9 @@ function Graph({
             </div>
           )}
           {rows
-            .filter((r) => r.hour.weather && dublinHour(r.time) % 3 === 0)
+            .filter(
+              (r) => r.hour.weather && dublinHour(r.time) % 3 === 0 && seen(r),
+            )
             .map((r, i) => (
               <span
                 key={i}
@@ -1742,7 +1879,7 @@ function Graph({
           )}
         </KeyGroup>
         <KeyGroup name="Sky">
-          <KeyItem mark="dark">Dark</KeyItem>
+          {!dark && <KeyItem mark="dark">Dark</KeyItem>}
           <KeyItem mark="rain">Rain, mm/h</KeyItem>
         </KeyGroup>
         {models.length > 0 && (
@@ -1978,6 +2115,8 @@ const LOWER_NAME: Record<LowerBand, string> = {
  */
 function LowerBands({
   rows,
+  seen,
+  apart,
   lower,
   X,
   px,
@@ -1991,6 +2130,10 @@ function LowerBands({
   units,
 }: {
   rows: readonly SpotRow[];
+  /** Whether a row is drawn: not with the night left out and it after dark. */
+  seen: (row: Pick<SpotRow, "time">) => boolean;
+  /** Whether a night left out stands between two times: a line breaks there. */
+  apart: (a: number, b: number) => boolean;
   lower: ReturnType<typeof lowerBands>["at"];
   X: (t: number) => number;
   px: number;
@@ -2006,7 +2149,7 @@ function LowerBands({
   const speed = useSpeed();
   const mid = (r: Pick<SpotRow, "time" | "step">) =>
     X(r.time) + (r.step * px) / 2;
-  const third = (r: SpotRow) => dublinHour(r.time) % 3 === 0;
+  const third = (r: SpotRow) => dublinHour(r.time) % 3 === 0 && seen(r);
   const caption = "font-body text-caption";
   const hovered = hover === null ? null : rows[hover];
   return (
@@ -2025,6 +2168,7 @@ function LowerBands({
                 className="stroke-line"
               />
               {rows.map((r, i) => {
+                if (!seen(r)) return null;
                 const rate = rowRain(rain, r);
                 const tint = rate === null ? 0 : rainTint(rate);
                 if (!tint) return null;
@@ -2089,9 +2233,13 @@ function LowerBands({
                 // A model's line breaks where it has no reading, rather than
                 // drawing a guess across the hole.
                 const runs: (readonly [number, number])[][] = [];
-                m.points.forEach((p, i) => {
-                  const before = m.points[i - 1];
-                  if (!before || before.time + before.step * HOUR !== p.time)
+                m.points.filter(seen).forEach((p, i, points) => {
+                  const before = points[i - 1];
+                  if (
+                    !before ||
+                    before.time + before.step * HOUR !== p.time ||
+                    apart(before.time, p.time)
+                  )
                     runs.push([]);
                   runs.at(-1)!.push([mid(p), MY(p.kn)]);
                 });
@@ -2111,6 +2259,7 @@ function LowerBands({
                 );
               })}
               {hovered &&
+                seen(hovered) &&
                 models.map((m) => {
                   const p = m.points.find((q) => q.time === hovered.time);
                   return p ? (
@@ -2140,7 +2289,7 @@ function LowerBands({
             <g data-band="gusts">
               {rated &&
                 rows.map((r, i) => {
-                  const kind = read[i]?.kind;
+                  const kind = seen(r) ? read[i]?.kind : undefined;
                   return kind === "costs" || kind === "over" ? (
                     <rect
                       key={i}
@@ -2270,6 +2419,7 @@ function Readout({
   rain,
   hasCurrent,
   hasDepth,
+  unlit,
 }: {
   row: SpotRow | null;
   isNow: boolean;
@@ -2282,6 +2432,11 @@ function Readout({
   /** The place has a current, and a launch with a depth, at any hour. */
   hasCurrent: boolean;
   hasDepth: boolean;
+  /**
+   * What an hour the sun is not up in is called: dark, or with the night
+   * left out the twilight, the one such hour still shown.
+   */
+  unlit: "Dark" | "Twilight";
 }) {
   const speed = useSpeed();
   const units = useContext(UnitsContext);
@@ -2322,7 +2477,7 @@ function Readout({
             </span>
           ) : (
             <b className={s.roValue()}>
-              {!row || row.hour.daylight ? "–" : "Dark"}
+              {!row || row.hour.daylight ? "–" : unlit}
             </b>
           )}
         </div>

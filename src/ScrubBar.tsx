@@ -23,6 +23,11 @@
  * playhead stops anywhere between two hours, and the column nearest it is the
  * one the map draws. The keys step whole hours (Left and Right) and days
  * (with Shift, or Page Up and Page Down), and snap the playhead to the hour.
+ *
+ * With the hours after dark hidden (Settings, shared/web/afterDark.ts) the
+ * strip is the days' lit hours alone, from first light to last, the days
+ * side by side with the line between them: the playhead, the keys and a
+ * wheel move from one day's last light straight to the next one's first.
  */
 import {
   useEffect,
@@ -38,6 +43,7 @@ import { StarGlyphs } from "../ui/StarGlyphs";
 import { WindArrow } from "./glyphs";
 import { arrowsFree, hourStep } from "./hourKeys";
 import { daylightOn, type PlaceHour } from "./ratings";
+import { afterDark, fold, keptShares, unfolded } from "../shared/web/afterDark";
 import {
   clock,
   dayShort,
@@ -152,24 +158,26 @@ export default function ScrubBar({
   const place = spot ?? IRELAND_MIDDLE;
   const stripAxis = useMemo(() => strip.map((c) => c.validTime), [strip]);
 
-  // The night's hours, from last light to first, left out where the rider
-  // has hidden them (Settings): the time then stops on the lit columns alone,
-  // each day from its first light to its last, and the slider counts those.
+  // The hours after dark, from last light to first, left out where the
+  // rider has hidden them (Settings, shared/web/afterDark.ts): the strip
+  // draws the lit columns alone, each day from its first light to its last
+  // and the days joined side by side, and the time stops on those alone.
   // Round the clock, as by default, every column is one to stop on.
-  const shown = useMemo(() => {
-    if (nightHours !== "hide" || !stripAxis.length) return null;
-    // A day past the strip's end, so the night its last hour falls in is not
-    // cut short at that hour (`dayNights` clips to the axis).
-    const after = new Date(
-      Date.parse(stripAxis[stripAxis.length - 1]) + 86400000,
-    ).toISOString();
-    return shownColumns(
-      daylightOn(place, [...stripAxis, after], { boundary: "civil" }).slice(
-        0,
-        -1,
-      ),
-    );
-  }, [nightHours, place.lat, place.lon, stripAxis]);
+  const hideNight = nightHours === "hide";
+  const hidden = useMemo(
+    () =>
+      hideNight
+        ? afterDark(
+            place,
+            strip.map((c) => c.time),
+          )
+        : null,
+    [hideNight, place.lat, place.lon, strip],
+  );
+  const shown = useMemo(
+    () => (hidden ? shownColumns(hidden.map((dark) => !dark)) : null),
+    [hidden],
+  );
   const stops = useMemo(
     () => (shown ? shown.map((at) => strip[at]) : strip),
     [shown, strip],
@@ -189,17 +197,38 @@ export default function ScrubBar({
       onSelectStrip(shown[selected]);
   }, [shown, selected, stripSelected]);
 
-  const t0 = strip[0]?.time ?? now;
-  const t1 = strip[strip.length - 1]?.time ?? now + HOUR;
+  // The strip's own timeline: the forecast's time, with the night taken
+  // out where it is hidden. Everything that slides or is dragged along the
+  // strip is measured on it; the playhead's time (`pos`) stays a real time.
+  const first = strip[0]?.time ?? now;
+  const last = strip[strip.length - 1]?.time ?? now + HOUR;
+  const line = useMemo(
+    () =>
+      shown && hidden
+        ? fold(
+            keptShares(
+              strip.map((c) => c.time),
+              hidden,
+            ),
+          )
+        : unfolded(first, last),
+    [shown, hidden, strip, first, last],
+  );
+  const t0 = line.at(first);
+  const t1 = line.at(last);
   const column = strip[stripSelected];
   /** The week in view: where it starts, and how long it is. */
-  const span = Math.max(HOUR, Math.min(WINDOW, t1 - t0));
+  const span = Math.max(
+    HOUR,
+    Math.min(line.at(first + WINDOW) - line.at(first), t1 - t0),
+  );
   const [w0, setW0] = useState(t0);
   const view0 = Math.max(t0, Math.min(t1 - span, w0));
   const w0Ref = useRef(view0);
   w0Ref.current = view0;
   /** Slide the week so that `time` is in view, clear of its edges. */
-  const reveal = (time: number) => {
+  const reveal = (real: number) => {
+    const time = line.at(real);
     const from = w0Ref.current;
     const margin = span * EDGE;
     let next = from;
@@ -227,15 +256,17 @@ export default function ScrubBar({
     setPos(column.time);
     reveal(column.time);
   }, [stripSelected, column?.time]);
-  /** Move the playhead to a time; the nearest column it may stop on is the map's. */
-  const moveTo = (time: number) => {
-    const t = Math.max(t0, Math.min(t1, time));
+  /**
+   * Move the playhead to a place along the strip's timeline (`line`); the
+   * nearest column it may stop on is the map's. With the night hidden the
+   * place is never in it: the timeline has none.
+   */
+  const moveTo = (along: number) => {
+    const t = line.time(Math.max(t0, Math.min(t1, along)));
     reveal(t);
     const at = nearestColumn(stops, t);
     const to = shown ? shown[at] : at;
-    // In the hidden night the playhead rests on the hour it stops at.
-    const head =
-      shown && Math.abs(strip[to].time - t) > HOUR ? strip[to].time : t;
+    const head = t;
     // Held at once, so wheel events that come faster than the frames add up.
     posRef.current = head;
     setPos(head);
@@ -260,7 +291,7 @@ export default function ScrubBar({
     watch.observe(el);
     return () => watch.disconnect();
   }, []);
-  const x = (time: number) => ((time - view0) / span) * width;
+  const x = (time: number) => ((line.at(time) - view0) / span) * width;
   const timeAt = (px: number) => view0 + (px / Math.max(1, width)) * span;
 
   // A drag held past either edge of the strip runs on through the forecast,
@@ -271,12 +302,14 @@ export default function ScrubBar({
     let frame = 0;
     const run = () => {
       if (pushing.current && dragging.current !== null)
-        moveRef.current(posRef.current + pushing.current * span * 0.012);
+        moveRef.current(
+          line.at(posRef.current) + pushing.current * span * 0.012,
+        );
       frame = requestAnimationFrame(run);
     };
     frame = requestAnimationFrame(run);
     return () => cancelAnimationFrame(frame);
-  }, [span]);
+  }, [span, line]);
   const pointerTo = (clientX: number) => {
     if (!track.current) return;
     const box = track.current.getBoundingClientRect();
@@ -285,7 +318,7 @@ export default function ScrubBar({
     if (!pushing.current) moveTo(timeAt(px));
   };
   /**
-   * A finger on the strip: where it went down, the playhead's time then, and
+   * A finger on the strip: where it went down, the playhead's place then, and
    * whether it has travelled yet. A swipe carries the playhead by the
    * distance the finger travels, as a wheel does, so it never leaps to
    * wherever the finger first touched; a tap that does not travel takes the
@@ -306,7 +339,7 @@ export default function ScrubBar({
     if (event.pointerType === "touch") {
       finger.current = {
         x: event.clientX,
-        pos: posRef.current,
+        pos: line.at(posRef.current),
         swiping: false,
       };
       return;
@@ -357,12 +390,12 @@ export default function ScrubBar({
             ? delta * el.clientWidth
             : delta;
       moveRef.current(
-        posRef.current + (px / Math.max(1, el.clientWidth)) * span,
+        line.at(posRef.current) + (px / Math.max(1, el.clientWidth)) * span,
       );
     };
     el.addEventListener("wheel", wheel, { passive: false });
     return () => el.removeEventListener("wheel", wheel);
-  }, [span]);
+  }, [span, line]);
 
   // Left and Right step the hour wherever the focus is, unless it is in a
   // control whose own keys they are (src/hourKeys.ts); with Shift, a day.
@@ -523,9 +556,14 @@ export default function ScrubBar({
     return runs;
   }, [named, isPoint, strip, stripHours]);
 
-  /** The night's stretches, each from its first dark column to its last. */
+  /**
+   * The night's stretches, each from its first dark column to its last. None
+   * with the hours after dark hidden: what is left of the dark is the
+   * twilight, drawn as the day is, so nothing on the strip reads as night.
+   */
   const nights = useMemo(() => {
     const out: { from: number; to: number }[] = [];
+    if (hideNight) return out;
     strip.forEach((c, at) => {
       if (daylight[at]) return;
       const before = at > 0 ? (strip[at - 1].time + c.time) / 2 : c.time;
@@ -536,7 +574,7 @@ export default function ScrubBar({
       else out.push({ from: before, to: after });
     });
     return out;
-  }, [strip, daylight]);
+  }, [strip, daylight, hideNight]);
 
   const days = useMemo(() => stripDays(strip), [strip]);
 
@@ -553,7 +591,9 @@ export default function ScrubBar({
     let run: (readonly [number, number])[] = [];
     series.forEach((s, at) => {
       const v = pick(s);
-      if (v === null) {
+      // A column after dark, hidden, breaks it too: the days either side of
+      // a night are not one curve.
+      if (v === null || hidden?.[at]) {
         if (run.length) runs.push(run);
         run = [];
       } else run.push([x(strip[at].time), to(v)] as const);
@@ -576,14 +616,14 @@ export default function ScrubBar({
     if (!wind) return null;
     const gust = shape((s) => s.gust, y, CURVE_BOTTOM);
     return { ...wind, gust: gust?.line ?? null };
-  }, [series, width, windHigh, view0, span]);
+  }, [series, width, windHigh, view0, span, line, hidden]);
   const laneShapes = useMemo(
     () =>
       lanes.map((lane) => ({
         lane,
         shape: shape((s) => s[lane.kind], laneY.get(lane.kind)!, lane.bottom),
       })),
-    [lanes, laneY, series, width, view0, span],
+    [lanes, laneY, series, width, view0, span, line, hidden],
   );
 
   /* ---- the moment the playhead is at ---- */
@@ -663,7 +703,14 @@ export default function ScrubBar({
         reading={reading}
         named={named}
         isPoint={isPoint}
-        dark={reading ? !daylight[reading.at] : false}
+        dark={
+          reading && !daylight[reading.at]
+            ? // With the night hidden, an unlit hour left is twilight.
+              hideNight
+              ? "Twilight"
+              : "Dark"
+            : null
+        }
         waves={lanes.some((l) => l.kind === "waves")}
         tide={!!tide}
         units={units}
@@ -700,7 +747,7 @@ export default function ScrubBar({
                   y2={0}
                 >
                   {series!.map((s, at) =>
-                    s.wind === null ? null : (
+                    s.wind === null || hidden?.[at] ? null : (
                       <stop
                         key={at}
                         offset={Math.max(
@@ -845,7 +892,7 @@ export default function ScrubBar({
               )}
 
               {/* The hours gone, faded, and the line at now. */}
-              {now > view0 && (
+              {line.at(now) > view0 && (
                 <rect
                   className="sb-past"
                   x={0}
@@ -854,7 +901,7 @@ export default function ScrubBar({
                   height={height}
                 />
               )}
-              {now >= view0 && now <= view0 + span && (
+              {line.at(now) >= view0 && line.at(now) <= view0 + span && (
                 <line
                   className="sb-now-line"
                   data-now
@@ -1014,7 +1061,8 @@ function Readout({
   } | null;
   named: boolean;
   isPoint: boolean;
-  dark: boolean;
+  /** What an unlit hour is called, where the playhead is on one. */
+  dark: "Dark" | "Twilight" | null;
   /** The place has a lane of waves, and of tide: their cells are kept. */
   waves: boolean;
   tide: boolean;
@@ -1078,7 +1126,7 @@ function Readout({
             {stars ? (
               <StarGlyphs stars={stars} size={11} slots="potential" coloured />
             ) : (
-              <span className="sb-none">{dark ? "Dark" : "None"}</span>
+              <span className="sb-none">{dark ?? "None"}</span>
             )}
           </span>
         </div>

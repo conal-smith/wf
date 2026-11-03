@@ -554,7 +554,7 @@ test("the strip runs fifteen days, a week in view, and slides on as the playhead
   expect(head.x).toBeLessThanOrEqual(strip.x + strip.width + 1);
 });
 
-test("the night's hours can be left out, from last light to first, and stay so", async ({
+test("the hours after dark can be left out, from last light to first, and stay so", async ({
   page,
 }) => {
   await openBar(page);
@@ -562,13 +562,29 @@ test("the night's hours can be left out, from last light to first, and stay so",
   // Round the clock unless the reader says otherwise, the night hatched.
   await expect(slider).toHaveAttribute("max", String(sampleStrip.length - 1));
   await expect(scrubBar(page).locator(".sb-night").first()).toBeAttached();
+  const days = scrubBar(page).locator(".sb-strip .sb-day");
+  const dayLines = async () =>
+    (await days.evaluateAll((lines) =>
+      lines.map((line) => Number(line.getAttribute("x1"))),
+    )) as number[];
+  const roundTheClock = await dayLines();
   await openFromMenu(page, "Settings");
-  const choice = page.getByRole("group", { name: "Hours in the forecast" });
-  await expect(
-    choice.getByRole("button", { name: "Day and night" }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await choice.getByRole("button", { name: "First to last light" }).click();
+  const night = page.getByRole("switch", { name: "Show the hours after dark" });
+  await expect(night).toHaveAttribute("aria-checked", "true");
+  await night.click();
+  await expect(night).toHaveAttribute("aria-checked", "false");
   await saveSettings(page);
+  // Nothing on the strip is night: no hatching, and the days stand closer,
+  // side by side, the line between them.
+  await expect(scrubBar(page).locator(".sb-night")).toHaveCount(0);
+  await expect
+    .poll(async () => {
+      const lines = await dayLines();
+      return lines.length > 1 && roundTheClock.length > 1
+        ? lines[1] - lines[0] < roundTheClock[1] - roundTheClock[0]
+        : false;
+    })
+    .toBe(true);
   // Brandon's lit hours alone: from civil dawn to civil dusk, each day.
   const nights = dayNights(
     52.276,
@@ -620,11 +636,9 @@ test("the night's hours can be left out, from last light to first, and stay so",
   });
   // And back round the clock.
   await openFromMenu(page, "Settings");
-  await page
-    .getByRole("group", { name: "Hours in the forecast" })
-    .getByRole("button", { name: "Day and night" })
-    .click();
+  await page.getByRole("switch", { name: "Show the hours after dark" }).click();
   await saveSettings(page);
+  await expect(scrubBar(page).locator(".sb-night").first()).toBeAttached();
   await expect(slider).toHaveAttribute("max", String(sampleStrip.length - 1));
 });
 

@@ -1,6 +1,8 @@
 import {
   barName,
   expect,
+  openFromMenu,
+  saveSettings,
   scrubBar,
   test,
   timeSlider,
@@ -220,6 +222,74 @@ for (const width of [1500, 1100, 390])
     }
     // The hours moved through were dark and rated both.
     expect(seen).toEqual({ rated: true, dark: true, hour: true });
+  });
+
+for (const width of [1440, 390])
+  test(`the hours after dark can be left out of the week, the days side by side, at ${width}px`, async ({
+    page,
+  }) => {
+    await withTides(page);
+    await page.setViewportSize({ width, height: width < 600 ? 844 : 1000 });
+    await page.goto("/spot/brandon");
+    await expect(heading(page)).toBeVisible({ timeout: 30000 });
+    const svg = page.locator("[data-graph-svg]");
+    const readout = page.locator("[data-readout]");
+    const legend = page.locator("[data-legend]");
+    await expect(svg).toBeVisible();
+    // Round the clock by default: the night shaded, and now, at 22:00 on the
+    // Sunday, read out as dark.
+    await expect(svg.locator("[data-night]").first()).toBeAttached();
+    await expect(readout).toContainText("Now");
+    await expect(readout).toContainText("Dark");
+    await expect(legend).toContainText("Dark");
+
+    await openFromMenu(page, "Settings");
+    const night = page.getByRole("switch", {
+      name: "Show the hours after dark",
+    });
+    await expect(night).toHaveAttribute("aria-checked", "true");
+    await night.click();
+    await saveSettings(page);
+
+    await page.goto("/spot/brandon");
+    await expect(heading(page)).toBeVisible({ timeout: 30000 });
+    await expect(svg).toBeVisible();
+    // No night: nothing shaded, no key for it, and the days joined by their
+    // lines alone.
+    await expect(svg.locator("[data-night]")).toHaveCount(0);
+    await expect(legend).not.toContainText("Dark");
+    await expect(svg.locator("[data-day-line]").first()).toBeAttached();
+    // Now is after dark: the readout is Monday's first light instead.
+    await expect(readout).not.toContainText("Now");
+    await expect(readout).toContainText(/Mon \d{2}:\d{2}/);
+    await expect(readout).not.toContainText("Dark");
+    // None of the small hours along the foot.
+    const ticks = await svg
+      .locator("text")
+      .evaluateAll((texts) => texts.map((t) => t.textContent ?? ""));
+    for (const small of ["00", "03", "21"]) expect(ticks).not.toContain(small);
+    // And the readout never lands in the night, however far the hours go.
+    const graph = page.locator("[data-spot-graph]");
+    await readout.evaluate((el) =>
+      scrollTo(0, scrollY + el.getBoundingClientRect().top - 60),
+    );
+    const box = (await graph.boundingBox())!;
+    const phone = box.width < 600;
+    for (let i = 1; i < 16; i++) {
+      if (phone)
+        await graph.evaluate(
+          (el, f) => (el.scrollLeft = (el.scrollWidth - el.clientWidth) * f),
+          i / 16,
+        );
+      else await page.mouse.move(box.x + (box.width * i) / 16, box.y + 60);
+      await page.waitForTimeout(40);
+      expect(await readout.textContent()).not.toMatch(/Dark/);
+      const hour = Number(
+        (await readout.textContent())?.match(/ (\d{2}):\d{2}/)?.[1] ?? 12,
+      );
+      expect(hour).toBeGreaterThanOrEqual(5);
+      expect(hour).toBeLessThanOrEqual(21);
+    }
   });
 
 test("Table shows the day's hours with their stars, wind, sea and launch", async ({

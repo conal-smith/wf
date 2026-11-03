@@ -784,6 +784,25 @@ are. While it is off nothing of the archive is read, not even its header
 (`force5/src/chartStyle.ts`), and a rider's old stored choice of the three
 parts is dropped, so everyone starts with it off once.
 
+**2026-11-03 — The hours after dark, shown or left out everywhere.** The
+owner: some riders do not care about the night and do not want to see it at
+all; it is a distraction. Settings has one switch for it, "Show the hours
+after dark", in its Forecast part, on by default (`nightHours`, kept on the
+device with the other preferences and read before the first frame). After
+dark is from last light to first light, the sun 6° below the horizon; an hour
+is after dark when its time falls there (`shared/web/afterDark.ts`, one rule
+for every view). Off, the night is left out, not shaded: the spot page's
+graph and the chart's scrub bar draw each day's hours from first light to
+last, the days side by side with the thin line between them, every band
+breaking at the line rather than running across the night. The readout, the
+playhead, the keys and a wheel move from one day's last light straight to
+the next one's first, and now, after dark, is the next first light. The
+twilight either side of sunrise and sunset stays, drawn as the day is and
+not rated, its stars read as "Twilight"; nothing says "Dark". The spot
+page's day cards and hour table, and the spot finder's stars, already count
+the daylight alone. The "Now" cards over the week still say the light now,
+and the app keeps its own settings.
+
 ---
 
 ## Still open
