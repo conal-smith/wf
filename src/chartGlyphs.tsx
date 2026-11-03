@@ -179,6 +179,21 @@ export function ColouredWindGlyph(props: ChartGlyphProps) {
   );
 }
 
+/**
+ * The wind measured: a cup anemometer on its mast, as a weather station
+ * stands, its two cups turned to the wind.
+ */
+export function LiveWindGlyph(props: ChartGlyphProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 21V7.5M8.5 21H15.5M5 7.5H19" />
+      <path d="M2.6 7.5a2.4 2.4 0 0 0 4.8 0Z" {...tint(0.55)} />
+      <path d="M16.6 7.5a2.4 2.4 0 0 1 4.8 0Z" {...tint(0.55)} />
+      <path d="M2.6 7.5a2.4 2.4 0 0 0 4.8 0M16.6 7.5a2.4 2.4 0 0 1 4.8 0" />
+    </Glyph>
+  );
+}
+
 /* ---- the chart ---- */
 
 /**

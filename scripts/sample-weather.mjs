@@ -1479,6 +1479,116 @@ function write(bundles, out, { force }) {
   return bytes;
 }
 
+// ---------------------------------------------------------------------------
+// Wind observations
+// ---------------------------------------------------------------------------
+
+/**
+ * Synthetic readings at the real stations and buoys (force5/ingest/
+ * wind_stations.json), in the `wind-obs` job's published shape
+ * (force5/ingest/fetch_wind_obs.py build_manifest): 72 hours of hourly
+ * [time, speed, gust, direction] rows in m/s, ending at `endMs`. A smooth
+ * swing of each station's own, never real weather. One buoy stopped
+ * reporting five hours before the end, so a reading too old to stand for
+ * now has a case of its own; one station has no gusts.
+ */
+function windObservations(endMs) {
+  const { stations } = JSON.parse(
+    readFileSync(join(ROOT, "force5", "ingest", "wind_stations.json"), "utf8"),
+  );
+  const end = Math.floor(endMs / HOUR) * HOUR;
+  const published = {};
+  stations.forEach((station, k) => {
+    const stopped = station.id === "MI_M6" ? 5 : 0;
+    const rows = [];
+    for (let h = 72; h >= stopped; h--) {
+      const t = end - h * HOUR;
+      const phase = (t / HOUR) * 0.21 + k * 0.9;
+      const speed =
+        Math.round((6.5 + 0.12 * k + 3.2 * Math.sin(phase)) * 10) / 10;
+      const gust =
+        station.id === "ME_03966"
+          ? null
+          : Math.round((speed * 1.38 + 0.6 * Math.cos(phase * 1.7)) * 10) / 10;
+      const direction =
+        Math.round(250 + 40 * Math.sin(phase * 0.5) + k * 7) % 360;
+      rows.push([
+        iso(t),
+        speed,
+        gust === null ? null : Math.max(gust, speed),
+        direction,
+      ]);
+    }
+    const latest = rows.at(-1);
+    published[station.id] = {
+      name: station.name,
+      sourceName: station.name,
+      lat: station.lat,
+      lon: station.lon,
+      source: station.source,
+      class: station.class,
+      heightM: station.heightM,
+      elevationM: station.elevationM,
+      sourceId: station.sourceId,
+      latest: {
+        time: latest[0],
+        speed: latest[1],
+        gust: latest[2],
+        direction: latest[3],
+      },
+      readings: rows,
+    };
+  });
+  return {
+    schemaVersion: 1,
+    kind: "observation",
+    observes: "wind",
+    model: "wind-obs",
+    modelName: "Irish wind observations",
+    provider: SYNTHETIC.provider,
+    modelDetail: "Synthetic readings at the real stations, for tests",
+    run: iso(end).slice(0, 13).replace(/[-T]/g, ""),
+    runTime: iso(end),
+    generatedAt: iso(end + 50 * 60000),
+    observed: true,
+    units: {
+      speed: "m/s",
+      gust: "m/s",
+      direction: "degrees true, blowing from",
+    },
+    readingFields: ["time", "speed", "gust", "direction"],
+    windowHours: 72,
+    observationWindow: { from: iso(end - 72 * HOUR), to: iso(end) },
+    stations: published,
+    attribution: SYNTHETIC.attribution,
+    licenseUrl: SYNTHETIC.licenseUrl,
+    note: SYNTHETIC.note,
+  };
+}
+
+/**
+ * The observations beside the bundles, at `<root>/marine/wind-observations.json`,
+ * never over a file this script did not write: `public/marine` in a working
+ * checkout is the real `wind-obs` output.
+ */
+function writeObservations(root, endMs) {
+  const path = join(root, "marine", "wind-observations.json");
+  if (existsSync(path)) {
+    let provider;
+    try {
+      provider = JSON.parse(readFileSync(path, "utf8"))?.provider;
+    } catch {
+      provider = null;
+    }
+    if (provider !== SYNTHETIC.provider) {
+      console.log(`Left ${path} as it is: it is not synthetic.`);
+      return;
+    }
+  }
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(windObservations(endMs)));
+}
+
 function main() {
   const args = process.argv.slice(2);
   const option = (name, fallback) => {
@@ -1502,6 +1612,16 @@ function main() {
     throw new Error("--site is the fixtures profile at the site's spacing");
   const bundles = build({ profile, now, spacing, all, site });
   const bytes = write(bundles, out, { force: args.includes("--force") });
+  // With --all (the dev sample and the e2e site): the stations' readings,
+  // ending at the e2e specs' clock (e2e/columns.ts SAMPLE_CLOCK, eight hours
+  // into the HARMONIE run), or at the last whole hour for a live sample.
+  if (all)
+    writeObservations(
+      resolve(out, ".."),
+      profile === "fixtures"
+        ? Date.parse(FIXTURE_RUNS.harmonie) + 8 * HOUR
+        : Math.floor(now / HOUR) * HOUR,
+    );
   const files = bundles.reduce(
     (total, bundle) => total + bundle.files.length,
     0,

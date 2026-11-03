@@ -10,6 +10,7 @@ import {
   ColouredWindGlyph,
   CurrentsGlyph,
   HighTideGlyph,
+  LiveWindGlyph,
   LoupeGlyph,
   LowTideGlyph,
   ParticlesGlyph,
@@ -61,6 +62,10 @@ export const LAYER_DEFAULTS: {
     currents: false,
     // Off too, and nothing of it read until asked for.
     rain: false,
+    // The measured wind at the weather stations and buoys. On the Spot
+    // finder's plain map always (src/App.tsx); on the full chart off until
+    // asked for, so the forecast's own wind is the chart's first word there.
+    live: false,
   },
   satellite: "off",
   focusStyle: "ring",
@@ -160,7 +165,7 @@ export function layerGroups({
       id: "wind",
       name: "Wind",
       glyph: <ChartGlyph glyph={glyphs.wind} size={14} />,
-      rule: "either, or both",
+      rule: "any",
       tiles: [
         windPart(
           "wash",
@@ -174,6 +179,16 @@ export function layerGroups({
           "Lines moving with it",
           <ParticlesGlyph size={18} />,
         ),
+        {
+          ...part(
+            "live",
+            "Live wind",
+            "Measured at stations",
+            <LiveWindGlyph size={18} />,
+            { label: "About live wind", at: "wind" },
+          ),
+          isNew: true,
+        },
       ],
     },
     {
@@ -235,7 +250,9 @@ export function layerGroups({
         {
           id: "satellite",
           name:
-            satellite === "low" ? "Satellite, low tide" : "Satellite, high tide",
+            satellite === "low"
+              ? "Satellite, low tide"
+              : "Satellite, high tide",
           sub: satellite === "low" ? "The sand bared" : "Sentinel-2",
           glyph:
             satellite === "low" ? (
@@ -247,7 +264,11 @@ export function layerGroups({
           // Off, then high tide, then low, then off again: one button.
           press: () =>
             onSatellite(
-              satellite === "off" ? "high" : satellite === "high" ? "low" : "off",
+              satellite === "off"
+                ? "high"
+                : satellite === "high"
+                  ? "low"
+                  : "off",
             ),
         },
       ],

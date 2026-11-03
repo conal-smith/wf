@@ -25,6 +25,8 @@ import { archiveUrl, pmtilesTile } from "./archives";
 import { releaseReplacedColorRamps } from "./colorRelief";
 import { forecastUrl } from "./urls";
 import { createLights, type LightState, type Lights } from "./lights";
+import { createReadingPills, type ReadingPills } from "./readingPills";
+import type { WindStation } from "./windObs";
 import {
   LOUPE_BAND,
   bezelTicks,
@@ -98,6 +100,12 @@ export interface ChartLayers {
   currents: boolean;
   /** The rain in the hour shown (force5/src/rain.ts), off unless asked for. */
   rain: boolean;
+  /**
+   * The Live wind layer: the weather stations' and buoys' latest readings
+   * (./readingPills.ts). Its readings are the page's to fetch and pass in
+   * (`readings`); this says only whether the rider asked for them.
+   */
+  live: boolean;
 }
 
 /** One area's foilable-depth layer (a region or a pilot), as the map draws it. */
@@ -204,6 +212,16 @@ type Props = {
   onOpenPage?: (place: Spot | { lon: number; lat: number }) => void;
   /** Where the rider is, drawn as a blue dot, or null where it is not known. */
   you?: { lon: number; lat: number } | null;
+  /**
+   * The plain map beside the Spot finder's list: each spot a pill with its
+   * wind (./lights.ts), not a ring.
+   */
+  plain?: boolean;
+  /**
+   * The Live wind layer: the weather stations and buoys with the wind each
+   * last measured by `now` (./readingPills.ts), or null with the layer off.
+   */
+  readings?: { stations: readonly WindStation[]; now: number } | null;
   /**
    * Whether a panel or a menu is open over the chart, and shuts on a press
    * away from it: a press on the chart then only shuts it, and picks and
@@ -896,7 +914,7 @@ export default function WindMap(props: Props) {
       map.on("click", (event) => {
         cancelPick();
         const target = event.originalEvent.target as HTMLElement | null;
-        if (target?.closest(".spot-marker")) return;
+        if (target?.closest(".spot-marker, .obs-mark")) return;
         if (shutting || event.originalEvent.detail > 1) return;
         const { lng, lat } = event.lngLat;
         // Read now, while the water drawn under the finger is what was tapped.
@@ -1317,6 +1335,36 @@ export default function WindMap(props: Props) {
       units,
     );
   }, [ready, spots, lights, selectedId, named, units, props.lightLabel]);
+
+  // The plain map's pills, from the map box's class (src/map.css).
+  const plain = !!props.plain;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    map.getContainer().classList.toggle("is-plain", plain);
+  }, [ready, plain]);
+
+  // The Live wind layer: made the first time it has readings, then written
+  // to in place.
+  const readingsRef = useRef<ReadingPills | null>(null);
+  const readings = props.readings ?? null;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    if (!readings) {
+      readingsRef.current?.update(null, Date.now(), units);
+      return;
+    }
+    readingsRef.current ??= createReadingPills(map);
+    readingsRef.current.update(readings.stations, readings.now, units);
+  }, [ready, readings, units]);
+  useEffect(
+    () => () => {
+      readingsRef.current?.destroy();
+      readingsRef.current = null;
+    },
+    [ready],
+  );
 
   // The rider, where the browser has said they are: a blue dot, as maps
   // draw "you are here", with a slow ring round it.

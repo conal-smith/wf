@@ -319,6 +319,26 @@
   font: 500 14px var(--font-mono);
   color: var(--color-ink-muted);
 }
+/* A Live wind pill, as the map draws one (src/map.css .obs). */
+.mi-obs {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius-mark);
+  background: var(--color-buoy);
+  color: var(--color-buoy-ink);
+  font: 600 16px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.mi-obs sup {
+  align-self: flex-start;
+  margin: 6px 0 0 1px;
+  font-size: 10px;
+  font-weight: 500;
+  vertical-align: baseline;
+}
 
 /* The blend's figure and its models. */
 .mi-blend {

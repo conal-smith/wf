@@ -17,6 +17,18 @@ archive and verification jobs are `readsBucket`: with a bucket they read what it
 and write its archive, and without one they read and write the work directory's
 `public/`.
 
+## On the site
+
+The readings are also shown, as the Live wind layer (`force5/src/windObs.ts`,
+`force5/src/readingPills.ts`): each station and buoy a gold pill on the map with its
+latest reading in the rider's units, and a card under the pointer or a tap with the
+station, its network, the wind, gust and direction, the time measured and the network's
+credit. It is always on beside the Spot finder's list, and a switch under Wind in the
+full chart's Layers, off until asked for. A reading over three hours old is faded, one
+over twelve is not drawn, and none is ever moved to an hour it was not measured at.
+Both networks are credited there and in the map's Sources & credits, and the site
+shows Met Éireann's warnings, as the terms below ask of a public display.
+
 ## What is observed
 
 `force5/ingest/fetch_wind_obs.py`, registry id `wind-obs`, kind `observation` with

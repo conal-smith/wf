@@ -12,6 +12,10 @@
  * halo. A frame is then one picture or three per light, placed. A light the
  * rider is pointing at, has open or has the keys on stays a button.
  *
+ * On the plain map a light is a pill (./lights.ts): its picture is the pill's
+ * box, its arrow and its figures, from the pill's own computed styles, in
+ * place of the ring and the arrow beside it.
+ *
  * The pictures are drawn to the device's pixels, on the same pixel grid as
  * the buttons at rest, so where the camera starts and ends they are the
  * buttons' pixels.
@@ -150,6 +154,123 @@ function text(
 }
 
 const ringCache = new Map<string, Sprite>();
+const pillCache = new Map<string, Sprite>();
+/** The pill's arrow (lights.ts PILL_ARROW), in its 12-unit box. */
+const PILL_ARROW = "M0 4.6V-4.4M-2.7 -1.6L0 -4.8L2.7 -1.6";
+
+/** A picture of a light's pill as it is styled now, from the light's centre `at`. */
+function pillSprite(
+  pill: HTMLElement,
+  at: { x: number; y: number },
+  dpr: number,
+): Sprite {
+  const cs = getComputedStyle(pill);
+  const box = pill.getBoundingClientRect();
+  const svg = pill.querySelector("svg");
+  const turn = svg?.querySelector("g");
+  const shown = !!svg && !!turn && getComputedStyle(turn).display !== "none";
+  const path = svg?.querySelector("path");
+  const pathCs = path ? getComputedStyle(path) : null;
+  const parts = [...pill.querySelectorAll<HTMLElement>("b, sup")].filter(
+    (p) => p.textContent,
+  );
+  const key = [
+    dpr,
+    Math.round(box.width * 4),
+    Math.round(box.height * 4),
+    cs.backgroundColor,
+    cs.borderTopColor,
+    cs.borderTopWidth,
+    cs.borderTopStyle,
+    cs.borderTopLeftRadius,
+    cs.transform,
+    shown
+      ? `${turn!.getAttribute("transform")}|${pathCs!.stroke}|${getComputedStyle(svg!).backgroundColor}`
+      : "",
+    ...parts.map((p) => `${p.textContent}|${getComputedStyle(p).color}`),
+  ].join("|");
+  const cached = pillCache.get(key);
+  // The same pill elsewhere: placed from this light's centre.
+  if (cached) return cached;
+  const pad = 2;
+  const left = box.left - pad;
+  const top = box.top - pad;
+  const sprite_ = sprite(
+    box.width + 2 * pad,
+    box.height + 2 * pad,
+    at.x - left,
+    at.y - top,
+    dpr,
+    (g) => {
+      const bw = px(cs.borderTopWidth);
+      const x = box.left - at.x + bw / 2;
+      const y = box.top - at.y + bw / 2;
+      const w = box.width - bw;
+      const h = box.height - bw;
+      const radius = Math.min(px(cs.borderTopLeftRadius), h / 2);
+      g.beginPath();
+      g.roundRect(x, y, w, h, radius);
+      g.fillStyle = cs.backgroundColor;
+      g.fill();
+      if (bw && cs.borderTopStyle !== "none") {
+        g.strokeStyle = cs.borderTopColor;
+        g.lineWidth = bw;
+        g.setLineDash(cs.borderTopStyle === "dashed" ? [3 * bw, 2 * bw] : []);
+        g.stroke();
+        g.setLineDash([]);
+      }
+      if (shown && pathCs) {
+        const r = svg!.getBoundingClientRect();
+        const k = r.width / 12;
+        const deg = Number(
+          /rotate\((-?[\d.]+)/.exec(
+            turn!.getAttribute("transform") ?? "",
+          )?.[1] ?? 0,
+        );
+        g.save();
+        g.translate(r.left - at.x + r.width / 2, r.top - at.y + r.height / 2);
+        // The ground's disc an offshore arrow sits on (src/map.css).
+        const disc = getComputedStyle(svg!).backgroundColor;
+        if (disc && disc !== "transparent" && disc !== "rgba(0, 0, 0, 0)") {
+          g.beginPath();
+          g.arc(0, 0, r.width / 2 + 1.5, 0, 2 * Math.PI);
+          g.fillStyle = disc;
+          g.fill();
+        }
+        g.scale(k, k);
+        g.rotate((deg * Math.PI) / 180);
+        strokeAs(g, pathCs);
+        g.stroke(new Path2D(PILL_ARROW));
+        g.restore();
+      }
+      for (const p of parts) text(g, p, p.getBoundingClientRect(), at, dpr);
+    },
+  );
+  // Keyed by what it shows, not where: a sprite's offsets are from the
+  // light's centre, which for a pill is its own centre too.
+  pillCache.set(key, sprite_);
+  return sprite_;
+}
+
+/** A light's name and its line beside it, from its centre `at`. */
+function labelSprite(
+  lab: HTMLElement,
+  at: { x: number; y: number },
+  dpr: number,
+): Sprite {
+  const parts = [...lab.children].filter(
+    (p) => getComputedStyle(p).display !== "none",
+  );
+  const boxes = parts.map((p) => p.getBoundingClientRect());
+  const pad = 14;
+  const left = Math.min(...boxes.map((b) => b.left)) - pad;
+  const top = Math.min(...boxes.map((b) => b.top)) - pad;
+  const right = Math.max(...boxes.map((b) => b.right)) + pad;
+  const bottom = Math.max(...boxes.map((b) => b.bottom)) + pad;
+  return sprite(right - left, bottom - top, at.x - left, at.y - top, dpr, (g) =>
+    parts.forEach((p, i) => text(g, p, boxes[i], at, dpr)),
+  );
+}
 const arrowCache = new Map<string, Sprite>();
 
 /**
@@ -162,6 +283,14 @@ export function lookOf(
   dpr: number,
   withLabel: boolean,
 ): Look {
+  const lab = el.querySelector(".lt-lab") as HTMLElement | null;
+  const label =
+    withLabel && lab && getComputedStyle(lab).display !== "none"
+      ? labelSprite(lab, at, dpr)
+      : null;
+  const pill = el.querySelector<HTMLElement>(":scope > .lt-pill");
+  if (pill && getComputedStyle(pill).display !== "none")
+    return { ring: pillSprite(pill, at, dpr), arrow: null, label };
   const svg = el.querySelector(":scope > svg") as SVGElement;
   const matrix = getComputedStyle(svg).transform;
   const scale =
@@ -264,25 +393,6 @@ export function lookOf(
     }
   }
 
-  let label: Sprite | null = null;
-  const lab = el.querySelector(".lt-lab") as HTMLElement | null;
-  if (withLabel && lab && getComputedStyle(lab).display !== "none") {
-    const parts = [...lab.children];
-    const boxes = parts.map((p) => p.getBoundingClientRect());
-    const pad = 14;
-    const left = Math.min(...boxes.map((b) => b.left)) - pad;
-    const top = Math.min(...boxes.map((b) => b.top)) - pad;
-    const right = Math.max(...boxes.map((b) => b.right)) + pad;
-    const bottom = Math.max(...boxes.map((b) => b.bottom)) + pad;
-    label = sprite(
-      right - left,
-      bottom - top,
-      at.x - left,
-      at.y - top,
-      dpr,
-      (g) => parts.forEach((p, i) => text(g, p, boxes[i], at, dpr)),
-    );
-  }
   return { ring, arrow, label };
 }
 

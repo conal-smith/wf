@@ -38,6 +38,7 @@ export const css = {
   "color-pen": "#d43a2c",
   "color-pen-ink": "#bf3125",
   "color-buoy": "#e9b200",
+  "color-buoy-ink": "#1f1800",
   "color-ok": "#2a7046",
   "color-warn": "#b02a1f",
   "color-warn-ground": "#fde8e4",

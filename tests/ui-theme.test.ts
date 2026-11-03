@@ -101,6 +101,7 @@ const COLOURS: Record<string, string> = {
   pen: "#d43a2c",
   "pen-ink": "#bf3125",
   buoy: "#e9b200",
+  "buoy-ink": "#1f1800",
   ok: "#2a7046",
   warn: "#b02a1f",
   "warn-ground": "#fde8e4",
