@@ -30,16 +30,29 @@
   "jobs": [
     {
       "id": "harmonie",
-      "description": "HARMONIE-AROME (Met Éireann), hourly DINI cycle",
+      "description": "HARMONIE-AROME (Met Éireann), hourly DINI cycle, in daylight only (the 05 and 19 UTC slots whatever the light)",
       "schedule": {
         "at": {
           "hours": [
+            3,
+            4,
             5,
+            6,
+            7,
             8,
+            9,
+            10,
             11,
+            12,
+            13,
+            14,
+            15,
             16,
+            17,
+            18,
             19,
-            23
+            20,
+            21
           ],
           "minutes": [
             35
@@ -86,7 +99,10 @@
           "--models",
           "harmonie",
           "--step",
-          "1"
+          "1",
+          "--daylight-only",
+          "--always-hours",
+          "5,19"
         ],
         "report": {
           "format": "json-lines",
@@ -101,7 +117,9 @@
       "schedule": {
         "at": {
           "hours": [
-            3
+            3,
+            9,
+            15
           ],
           "minutes": [
             30
@@ -1236,16 +1254,29 @@
     },
     {
       "id": "blend-after-harmonie",
-      "description": "Every spot's wind blend, for the map's stars",
+      "description": "Every spot's wind blend, for the map's stars, in daylight only (the 05 and 19 UTC slots whatever the light)",
       "schedule": {
         "at": {
           "hours": [
+            3,
+            4,
             5,
+            6,
+            7,
             8,
+            9,
+            10,
             11,
+            12,
+            13,
+            14,
+            15,
             16,
+            17,
+            18,
             19,
-            23
+            20,
+            21
           ],
           "minutes": [
             45
@@ -1290,7 +1321,10 @@
         ],
         "parameters": [
           "--models",
-          "blend"
+          "blend",
+          "--daylight-only",
+          "--always-hours",
+          "5,19"
         ],
         "report": {
           "format": "json-lines",

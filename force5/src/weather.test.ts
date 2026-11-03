@@ -404,8 +404,8 @@ describe("forecast integrity and freshness", () => {
         { ...manifest.frames[1], validTime: "2026-09-16T06:00Z" },
       ],
     };
-    // ICON-EU runs once a day: a day-old run is on schedule, and stale only
-    // past its 30-hour limit.
+    // ICON-EU keeps a 30-hour limit though it now runs three times a day: a
+    // day-old run is late but not yet stale, and stale only past 30 hours.
     expect(freshness(long, Date.parse("2026-09-14T07:00Z"))).toBe("fresh");
     expect(freshness(long, Date.parse("2026-09-14T13:00Z"))).toBe("stale");
   });

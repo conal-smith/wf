@@ -8,11 +8,22 @@ import shutil
 import tempfile
 import unittest
 
+import daylight
 import scheduler
 from registry import MODELS
 
 NOW = datetime(2026, 9, 16, 12, 30, tzinfo=timezone.utc)
 JOBS_FILE = Path(__file__).resolve().parents[2] / "deploy" / "local" / "jobs.toml"
+# Days the timetable is checked on: a `--daylight-only` job's slots that fetch
+# change with the light (daylight.py), fewest at midwinter, all of them at midsummer,
+# and the two days the clocks change.
+SEASONS = [datetime(2026, month, day, tzinfo=timezone.utc)
+           for month, day in ((12, 21), (6, 21), (3, 29), (10, 12), (10, 25))]
+
+
+def fetching(job, slots):
+    """The slots of a job that fetch: all of them, unless it is daylight-gated."""
+    return [slot for slot in slots if daylight.slot_runs(job["args"], slot)]
 
 
 SCRATCH = tempfile.mkdtemp(prefix="force5-schedule-")
@@ -200,20 +211,23 @@ class ShippedScheduleTest(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             jobs = {job["id"]: job for job in scheduler.load_jobs(JOBS_FILE)}
 
-        def slots(model):
-            day = datetime(2026, 10, 12, tzinfo=timezone.utc)
+        def slots(model, day=datetime(2026, 10, 12, tzinfo=timezone.utc)):
             job = jobs[model]
-            return [day.replace(hour=hour, minute=minute)
-                    for hour in job["hours"] for minute in job["minutes"]]
+            return fetching(job, [day.replace(hour=hour, minute=minute)
+                                  for hour in job["hours"] for minute in job["minutes"]])
 
         def hours(earlier, later):
             return (later - earlier).total_seconds() / 3600
 
-        harmonie = slots("harmonie")
-        gaps = [hours(a, b) for a, b in zip(harmonie, harmonie[1:])] + [
-            24 - hours(harmonie[0], harmonie[-1])]
-        missed_one = max(a + b for a, b in zip(gaps, gaps[1:] + gaps[:1]))
-        self.assertLessEqual(3 + missed_one + 1, MODELS["harmonie"]["maxAgeHours"])
+        # HARMONIE only fetches in daylight, and at 05:35 and 19:35 whatever the
+        # light, so its longest gaps are midwinter's.
+        for day in SEASONS:
+            with self.subTest(day=day.date()):
+                harmonie = slots("harmonie", day)
+                gaps = [hours(a, b) for a, b in zip(harmonie, harmonie[1:])] + [
+                    24 - hours(harmonie[0], harmonie[-1])]
+                missed_one = max(a + b for a, b in zip(gaps, gaps[1:] + gaps[:1]))
+                self.assertLessEqual(3 + missed_one + 1, MODELS["harmonie"]["maxAgeHours"])
 
         ecmwf = slots("ecmwf")
         for cycle in (0, 12):
@@ -251,11 +265,12 @@ class ShippedScheduleTest(unittest.TestCase):
         enabled = {model for job in jobs.values() if job["enabled"] for model in job["models"]
                    if MODELS[model]["kind"] in ("wind", "wave", "weather", "current")}
         self.assertEqual(enabled, set(cadence), "Give a newly enabled forecast its cadence here")
-        start = datetime(2026, 10, 12, tzinfo=timezone.utc)
-        for model, (cycles, lag) in cadence.items():
+        for start, (model, (cycles, lag)) in ((start, entry) for start in SEASONS
+                                              for entry in cadence.items()):
             job = jobs[model]
-            slots = sorted(start + timedelta(days=day, hours=hour, minutes=minute)
-                           for day in range(3) for hour in job["hours"] for minute in job["minutes"])
+            slots = fetching(job, sorted(start + timedelta(days=day, hours=hour, minutes=minute)
+                                         for day in range(3) for hour in job["hours"]
+                                         for minute in job["minutes"]))
 
             def newest(slot):
                 ready = slot - lag
@@ -272,8 +287,8 @@ class ShippedScheduleTest(unittest.TestCase):
                     served = run
             self.assertGreater(oldest, 0, model)
             self.assertLessEqual(oldest + 1, MODELS[model]["maxAgeHours"],
-                                 f"{model}'s run is {oldest:.1f} h old on time, "
-                                 f"too near its {MODELS[model]['maxAgeHours']} h limit")
+                                 f"{model}'s run is {oldest:.1f} h old on time from "
+                                 f"{start:%d %B}, too near its {MODELS[model]['maxAgeHours']} h limit")
 
     def test_every_registered_model_has_a_cadence(self):
         with contextlib.redirect_stdout(io.StringIO()):

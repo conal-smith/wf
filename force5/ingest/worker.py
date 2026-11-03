@@ -23,6 +23,12 @@ which includes the adapter's own children, such as the blend's Node process).
 The worker stays resident while its adapter runs, so the two added together
 bound what the container held at once; that is what a job's memory ceiling
 in deploy/schedules.py has to cover.
+
+`--daylight-only` makes a slot conditional on the light (daylight.py): outside
+the riding window over Ireland the job logs one `forecast_unchanged` event per
+model, with `"reason": "dark"`, and exits 0 before it reads the bucket or
+downloads anything, which Home Compute counts as a run that found nothing new.
+`--always-hours 5,19` names the UTC hours whose slots run regardless.
 """
 import argparse
 from datetime import datetime, timezone
@@ -35,6 +41,7 @@ import subprocess
 import sys
 import time
 
+import daylight
 from prune import prune_published
 from publish_s3 import make_client, object_prefix, publish, read_current, validate_bundle
 from registry import MANIFESTS, MODELS, PUBLISHED_RUN_ENV, UNCHANGED_EXIT
@@ -119,9 +126,19 @@ def main():
                         help="Default: the registry limit per model (12 regional, 30 HARMONIE, "
                         "ICON-EU and tides, 40 ECMWF, 48 observations)")
     parser.add_argument("--timeout-seconds", type=int, default=2700)
+    parser.add_argument("--daylight-only", action="store_true",
+                        help="Fetch only in the riding window over Ireland, from 2.5 h before "
+                        "civil first light to civil last light; otherwise exit 0 at once")
+    parser.add_argument("--always-hours", type=daylight.hours_list, default=(),
+                        help="With --daylight-only: UTC hours (e.g. 5,19) whose slots run "
+                        "whatever the light")
     args = parser.parse_args()
     if (args.max_age_hours is not None and args.max_age_hours <= 0) or args.timeout_seconds <= 0:
         parser.error("Age limit and timeout must be positive")
+    if args.always_hours and not args.daylight_only:
+        parser.error("--always-hours only applies with --daylight-only")
+    if args.daylight_only and skipped_in_the_dark(args.models, args.always_hours):
+        return 0
     root = Path(os.environ.get("FORCE5_WORK_DIR", str(Path(__file__).resolve().parents[2])))
     s3 = make_client(args.endpoint_url, args.region) if args.bucket else None
     try:
@@ -130,6 +147,24 @@ def main():
     except BlockingIOError:
         print('{"event":"forecast_failed","error":"Workspace is already in use"}', file=sys.stderr)
         return 1
+
+
+def skipped_in_the_dark(models, always_hours, now=None):
+    """True, having logged why, when a `--daylight-only` slot falls outside the window.
+
+    Each model gets a `forecast_unchanged` event, the worker's word for "nothing
+    new", so the run reads as one that found nothing rather than as a failure;
+    `reason` and `message` say it was the light. Nothing is written to the job
+    record (`.cache/jobs/<model>.json`): status.py keeps showing the last real run.
+    """
+    moment = now or datetime.now(timezone.utc)
+    runs, details = daylight.gate(moment, always_hours)
+    if runs:
+        return False
+    for model in dict.fromkeys(models):
+        print(json.dumps({"event": "forecast_unchanged", "model": model, **details,
+                          "seconds": 0, "time": moment.isoformat()}), flush=True)
+    return True
 
 
 def drop_downloads(root, model):

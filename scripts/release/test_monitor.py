@@ -157,7 +157,7 @@ class StaleLimits(unittest.TestCase):
         self.assertGreater(hours["icon-eu-weather"], 24 + 3.5)
         self.assertGreater(hours["mi-swan"], 24 + 10)
         self.assertGreater(hours["ecmwf"], 12 + 8.5)
-        self.assertLess(hours["harmonie"], 18, "HARMONIE runs six times a day")
+        self.assertLess(hours["harmonie"], 18, "HARMONIE runs every hour in daylight")
 
     def test_parsing_reads_each_entrys_own_limit(self):
         text = """export const MODEL_CATALOG: readonly ModelEntry[] = [

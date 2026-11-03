@@ -34,6 +34,8 @@ from scheduler import load_jobs  # noqa: E402
 JOBS_FILE = ROOT / "deploy" / "local" / "jobs.toml"
 HOME_COMPUTE_FILE = ROOT / "deploy" / "home-compute" / "home-compute.json"
 
+# What each model's job is, for Home Compute's dashboard. A job given `--daylight-only`
+# (force5/ingest/daylight.py) has that said after these, by gate_text().
 DESCRIPTIONS = {
     "harmonie": "HARMONIE-AROME (Met Éireann), hourly DINI cycle",
     "icon-eu": "ICON-EU wind (DWD)",
@@ -177,10 +179,19 @@ def slots(job):
     return {**hours, "minutes": job["minutes"]}
 
 
+def gate_text(args):
+    """How `--daylight-only` reads in a job's description, or nothing for an ungated job."""
+    if "--daylight-only" not in args:
+        return ""
+    always = args[args.index("--always-hours") + 1] if "--always-hours" in args else ""
+    hours = " and ".join(f"{int(hour):02d}" for hour in always.split(",") if hour.strip())
+    return (", in daylight only" + (f" (the {hours} UTC slots whatever the light)" if hours else ""))
+
+
 def describe(job):
     if job["command"] == "prune":
         return "Sweep the bucket: superseded runs past their grace, and objects nothing references"
-    return " + ".join(DESCRIPTIONS.get(model, model) for model in job["models"])
+    return " + ".join(DESCRIPTIONS.get(model, model) for model in job["models"]) + gate_text(job["args"])
 
 
 def scheduled(jobs):
