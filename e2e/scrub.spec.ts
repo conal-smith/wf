@@ -569,10 +569,14 @@ test("the hours after dark can be left out, from last light to first, and stay s
     )) as number[];
   const roundTheClock = await dayLines();
   await openFromMenu(page, "Settings");
-  const night = page.getByRole("switch", { name: "Show the hours after dark" });
-  await expect(night).toHaveAttribute("aria-checked", "true");
-  await night.click();
-  await expect(night).toHaveAttribute("aria-checked", "false");
+  const hours = page.getByRole("group", { name: "Hours", exact: true });
+  await expect(
+    hours.getByRole("button", { name: "Day and night" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await hours.getByRole("button", { name: "Daylight only" }).click();
+  await expect(
+    hours.getByRole("button", { name: "Daylight only" }),
+  ).toHaveAttribute("aria-pressed", "true");
   await saveSettings(page);
   // Nothing on the strip is night: no hatching, and the days stand closer,
   // side by side, the line between them.
@@ -636,7 +640,10 @@ test("the hours after dark can be left out, from last light to first, and stay s
   });
   // And back round the clock.
   await openFromMenu(page, "Settings");
-  await page.getByRole("switch", { name: "Show the hours after dark" }).click();
+  await page
+    .getByRole("group", { name: "Hours", exact: true })
+    .getByRole("button", { name: "Day and night" })
+    .click();
   await saveSettings(page);
   await expect(scrubBar(page).locator(".sb-night").first()).toBeAttached();
   await expect(slider).toHaveAttribute("max", String(sampleStrip.length - 1));

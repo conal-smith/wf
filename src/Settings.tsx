@@ -43,7 +43,7 @@ import {
   modelHue,
   type ModelAvailability,
 } from "../force5/src/manifests";
-import type { Prefs } from "../force5/src/prefs";
+import type { NightHours, Prefs } from "../force5/src/prefs";
 import { DOWNWIND_MAX, UPWIND_MAX } from "../force5/src/rideWedge";
 import { NEVER, type DirectionKey } from "../force5/src/stars";
 import { UNITS, beaufort, forceKn, type Units } from "../force5/src/units";
@@ -58,7 +58,6 @@ import { Button } from "../ui/Button";
 import { Checkbox } from "../ui/Checkbox";
 import { Dialog } from "../ui/Dialog";
 import { Segmented } from "../ui/Segmented";
-import { Switch } from "../ui/Switch";
 import {
   WEB_DIRS,
   WEB_R,
@@ -1259,7 +1258,6 @@ function ForecastPart({
   setDraft,
   models,
 }: PartProps & { models: readonly ModelAvailability[] }) {
-  const id = useId();
   const planned = MODEL_CATALOG.filter(
     (entry) => entry.planned && entry.kind === "wind",
   );
@@ -1270,19 +1268,19 @@ function ForecastPart({
         {/* Everywhere the forecast's hours are drawn: the chart's scrub bar,
             the spot page's graph and the spot finder's days
             (shared/web/afterDark.ts). */}
-        <label className="st-switch">
-          <Switch
-            checked={draft.nightHours === "show"}
-            onChange={(on) =>
-              setDraft({ ...draft, nightHours: on ? "show" : "hide" })
-            }
-            aria-labelledby={`${id}night`}
-            aria-describedby={`${id}night-note`}
-          />
-          <span id={`${id}night`}>Show the hours after dark</span>
-        </label>
-        <p className="st-note" id={`${id}night-note`}>
-          Turn off to see only daylight hours in every chart and list.
+        <Segmented<NightHours>
+          aria-label="Hours"
+          options={[
+            { value: "show", label: "Day and night" },
+            { value: "hide", label: "Daylight only" },
+          ]}
+          value={draft.nightHours}
+          onChange={(nightHours) => setDraft({ ...draft, nightHours })}
+        />
+        <p className="st-note">
+          {draft.nightHours === "show"
+            ? "Every hour, with the night shaded."
+            : "Only the hours from first light to last light."}
         </p>
       </div>
       <div className="st-row">

@@ -244,11 +244,11 @@ for (const width of [1440, 390])
     await expect(legend).toContainText("Dark");
 
     await openFromMenu(page, "Settings");
-    const night = page.getByRole("switch", {
-      name: "Show the hours after dark",
-    });
-    await expect(night).toHaveAttribute("aria-checked", "true");
-    await night.click();
+    const hours = page.getByRole("group", { name: "Hours", exact: true });
+    await expect(
+      hours.getByRole("button", { name: "Day and night" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await hours.getByRole("button", { name: "Daylight only" }).click();
     await saveSettings(page);
 
     await page.goto("/spot/brandon");

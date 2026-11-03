@@ -1,8 +1,8 @@
 /**
  * The hours after dark, and the forecast without them.
  *
- * A rider may leave the night out of every chart and list (Settings, "Show
- * the hours after dark"; `nightHours` in force5/src/prefs.ts, kept on the
+ * A rider may leave the night out of every chart and list (Settings, Hours,
+ * "Daylight only"; `nightHours` in force5/src/prefs.ts, kept on the
  * device). After dark is from last light to first light, civil dusk to civil
  * dawn, the sun 6° below the horizon (force5/src/sun.ts): an hour is after
  * dark when its time falls in that stretch, as the chart's scrub bar and the

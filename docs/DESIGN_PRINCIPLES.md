@@ -786,8 +786,8 @@ parts is dropped, so everyone starts with it off once.
 
 **2026-11-03 — The hours after dark, shown or left out everywhere.** The
 owner: some riders do not care about the night and do not want to see it at
-all; it is a distraction. Settings has one switch for it, "Show the hours
-after dark", in its Forecast part, on by default (`nightHours`, kept on the
+all; it is a distraction. Settings has one choice for it, Hours: "Day and
+night" or "Daylight only", in its Forecast part, day and night by default (`nightHours`, kept on the
 device with the other preferences and read before the first frame). After
 dark is from last light to first light, the sun 6° below the horizon; an hour
 is after dark when its time falls there (`shared/web/afterDark.ts`, one rule
