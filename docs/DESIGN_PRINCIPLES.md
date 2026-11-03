@@ -561,7 +561,7 @@ location only when the rider says so** (#246, #228, #229, #248; PRs #255
 and #257). Find a spot is the kit's dialog (a sheet on a phone): a name typed
 lists the places it names from every spot, not only the tab's, and under it,
 with no heading, are the order (best first; nearest, once the rider's place
-is known; A to Z), the fewest stars in the six days and the model the stars
+is known; A to Z), the fewest stars (on the day shown, since 2026-11-03) and the model the stars
 are rated from. Each has four or fewer short options, so they are segmented
 controls and a row of chips rather than closed selects, one tap to change
 (2026-11-01). The model is
@@ -757,6 +757,22 @@ dark, as their makers ask. A line under the list says the marks are their
 owners' and that none of them endorses the site. Le Chat is Mistral Vibe since
 Mistral renamed it. Claude waits off the list for Anthropic's approval of its
 mark.
+
+**2026-11-03 — The spot finder steps through the days, and after dark opens
+on tomorrow.** The owner, at 19:59 on a November evening: every card's tick
+sat on 18:00, the map said "Stars at 19:00 today", and there was no way to
+look at tomorrow, so the page was no use once the day was over. Under the
+list's head is the day, ‹ Today ›: an arrow either side steps a day at a
+time through today and the five days after it, each arrow off at its end,
+the arrow keys stepping too, and the day said as Today, Tomorrow, then the
+weekday, with its date in grey. Every card's bars, the list's order and the
+fewest stars its filter asks for are the day's, and so are the chart's
+lights and pill beside it ("Stars at 13:00 tomorrow"). Once the hour now is
+past the end of today's rows (the hour after last light) at every spot
+listed, the finder opens on tomorrow, at its early afternoon. Today, the
+hour now is the nearest hour, as a clock is read (19:59 is 20:00), on the
+cards and the pill alike; an hour off either end of the day's row is ticked
+nowhere, never on the last hour in its stead.
 
 ---
 

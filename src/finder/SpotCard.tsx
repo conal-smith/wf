@@ -1,12 +1,8 @@
 /**
- * A place on the spot finder: its name, how far it is and its county on one
- * line with the star a rider keeps it by; under them its picture from above,
- * the card's width, with the ride rose on it; then today (or the day
- * chosen), hour by hour (src/finder/DayHours.tsx), and the other five of its
- * six days (src/finder/NextDays.tsx). The approved mock-up was
- * the spot list cards mock-up, its "7e"; the picture
- * went to the card's width, and the name over it, on the owner's ruling of
- * 2026-10-28 (it was too small to read the place from).
+ * A place on the spot finder, a row: its picture from above, small and
+ * square, with the ride rose on it; beside it the name and county with the
+ * star a rider keeps it by, and the day shown (today, or the day stepped to)
+ * hour by hour as two bars, the wind and the stars (`DayBars`).
  *
  * Pressing the card, its picture too, opens the place's own page (the
  * owner's ruling of 2026-11-02: the chart is a button away in the top bar);
@@ -44,7 +40,7 @@ import {
 } from "../../spot/web/satellite";
 import type { PlaceHour } from "../ratings";
 import { clock, type StripColumn } from "../strip";
-import { type DayPlan, type DayRow, type WeekBest } from "./finder";
+import { HOUR, type Best, type DayRow } from "./finder";
 import { Rose } from "./Rose";
 import type { Readings } from "./useReadings";
 
@@ -245,14 +241,10 @@ export interface SpotCardProps {
   km: number | null;
   row: readonly PlaceHour[] | undefined;
   strip: readonly StripColumn[];
-  /** The day drawn hour by hour: today, or the one chosen. */
+  /** The day drawn hour by hour: today, or the one stepped to. */
   day: DayRow | null;
-  /** The day, as its heading says it ("Today", "Tue 28") and said in full. */
-  dayName: { short: string; long: string };
-  /** Whether the day is today (not one chosen). */
+  /** Whether the day is today. */
   isToday: boolean;
-  /** The other five of the six days. */
-  days: readonly (DayPlan | null)[];
   readings: Readings;
   /** The hour picked on the day's row, or null for the hour it stands at. */
   picked: number | null;
@@ -268,12 +260,8 @@ export interface SpotCardProps {
   reducedMotion: boolean;
   onToggleStar: () => void;
   onPick: (time: number) => void;
-  /** Show a day hour by hour, on every card. */
-  onChooseDay: (date: string) => void;
-  /** Its place in the list. */
-  order: number;
-  /** Its best of the six days, which put it there. */
-  best: WeekBest;
+  /** Its best on the day shown, which put it where it is on the list. */
+  best: Best;
 }
 
 /** A card on the list. */
@@ -377,10 +365,12 @@ const STARS_CSS = [
 ];
 
 /**
- * Today's hours, first light to last, as two gradients: the wind in its own
- * colours with its speed every three hours, and the stars in theirs. A red
- * tick marks the hour shown; a press on either picks the hour under it, on
- * every card (as the old card's hours did).
+ * The day's hours, first light to last, as two gradients: the wind in its
+ * own colours with its speed every three hours, and the stars in theirs. A
+ * red tick marks the hour shown, where it is on the row: none for an hour
+ * off either end (today after dark, or before first light), never the last
+ * hour standing in for it. A press on either bar picks the hour under it, of
+ * this day's, on every card.
  */
 function DayBars({
   day,
@@ -413,8 +403,9 @@ function DayBars({
   const stars = `linear-gradient(90deg, ${hours
     .map((_, i) => `${STARS_CSS[at(i)?.rating?.stars ?? 0]} ${pos(i)}`)
     .join(", ")})`;
+  // The column whose hour (or step, where the run is coarser) holds it.
   const shownAt = hours.findIndex(
-    (h, i) => h.time <= shown && (hours[i + 1]?.time ?? Infinity) > shown,
+    (h, i) => h.time <= shown && shown < (hours[i + 1]?.time ?? h.time + HOUR),
   );
   const pick = (event: React.MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();

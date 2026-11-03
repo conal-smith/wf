@@ -1,16 +1,16 @@
 /**
  * The spot finder's arithmetic, apart from the page: which places it lists,
- * the six days each card covers, a day's row of hours from first light to
- * last and where a time stands along it, each day's daylight, the best stars
- * a place has in them and the order that puts the places in, and the day
- * and the hour a rider picks. Pure, so it is tested without a page;
+ * the six days it steps through and the one it opens on, a day's row of
+ * hours from first light to last, each day's daylight, the best stars a
+ * place has on the day shown and the order that puts the places in, and the
+ * hour a rider picks. Pure, so it is tested without a page;
  * src/finder/SpotFinder.tsx draws it.
  *
  * The finder reads the chart's own table of rated hours (src/useRatings.ts)
  * on the chart's own strip of columns (src/strip.ts): a star here is the
  * chart's star and the dock's, for this rider. It is not tied to the chart's
- * time: the page is today and the five days after it, whatever hour the
- * chart was left on.
+ * time: the page is one of today and the five days after it, whatever hour
+ * the chart was left on.
  */
 import { sunTimes } from "../../force5/src/sun";
 import type { Spot } from "../../force5/src/weather";
@@ -32,7 +32,7 @@ export const NEAR_KM = 30;
  */
 export const NEAREST_COUNT = 12;
 
-/** Today and the five days after it: what a card covers. */
+/** Today and the five days after it: the days the finder steps through. */
 export const CARD_DAYS = 6;
 
 /** The middle of Ireland: where the finder looks with nothing else to go on. */
@@ -171,6 +171,34 @@ export function dayLight(
   };
 }
 
+/**
+ * Whether today is over on the finder: the hour now (`nearestHour`) is past
+ * the end of today's row (`dayRow`, the hour after last light) at every
+ * place listed, or at the middle of Ireland with none listed. At 19:59 on a
+ * November evening, whose rows end at 18:00, it is.
+ */
+export function todayOver(places: readonly LatLon[], now: number): boolean {
+  const date = irishDate(now);
+  const current = nearestHour(now);
+  return (places.length ? places : [IRELAND_CENTRE]).every((place) => {
+    const light = dayLight(place, date);
+    return !light || current > hourOf(light.lastLight) + HOUR;
+  });
+}
+
+/**
+ * The day the finder opens on, of `dates` (`cardDates`): today, and once
+ * today is over (`todayOver`), tomorrow, so the evening's page is the day
+ * ahead rather than a day of hours gone.
+ */
+export function openingDay(
+  dates: readonly string[],
+  places: readonly LatLon[],
+  now: number,
+): string {
+  return dates.length > 1 && todayOver(places, now) ? dates[1] : dates[0];
+}
+
 /** The strip's columns by their time, for finding an hour's column. */
 export function columnsByTime(
   strip: readonly Pick<StripColumn, "time">[],
@@ -180,6 +208,13 @@ export function columnsByTime(
 
 /** The top of the hour a time falls in. */
 export const hourOf = (time: number) => Math.floor(time / HOUR) * HOUR;
+
+/**
+ * The hour a time is nearest: the hour the finder calls now, as a clock is
+ * read (19:59 is 20:00, not 19:00). The cards' tick, the map's pill and the
+ * lights beside the list all stand on it.
+ */
+export const nearestHour = (time: number) => Math.round(time / HOUR) * HOUR;
 
 /** One column of a day's row: an hour, and the strip's column for it. */
 export interface RowHour {
@@ -191,7 +226,7 @@ export interface RowHour {
   dark: boolean;
   /** Over already. */
   gone: boolean;
-  /** The hour now. */
+  /** The hour now (`nearestHour`). */
   now: boolean;
 }
 
@@ -214,8 +249,10 @@ export interface DayRow {
  * after last light: an hour between two steps has no column of its own and
  * is left out, not drawn empty. An hour before the strip begins has none
  * either, and is kept, empty (rare since 25 October 2026: the strip begins
- * at today's midnight, `dockColumns`); and so is the hour now, wherever it
- * falls.
+ * at today's midnight, `dockColumns`); and so is the hour now where it falls
+ * between the two ends and the strip steps over it. The hour now is never
+ * added past either end: after dark, and before first light, it is not on
+ * the row at all, and nothing on the row stands for it.
  */
 export function dayRow(
   strip: readonly Pick<StripColumn, "time">[],
@@ -238,7 +275,7 @@ export function dayRow(
     from = strip.reduce((t, c) => (c.time <= from ? c.time : t), from);
   if (!byTime.has(to) && to < end)
     to = strip.reduce((t, c) => (c.time >= to && c.time < t ? c.time : t), end);
-  const current = hourOf(now);
+  const current = nearestHour(now);
   const hours: RowHour[] = [];
   for (let time = from; time <= to; time += HOUR) {
     const at = byTime.get(time) ?? null;
@@ -263,117 +300,13 @@ export const todayRow = (
   byTime?: ReadonlyMap<number, number>,
 ) => dayRow(strip, place, irishDate(now), now, byTime);
 
-/**
- * Where a time stands along a row of columns, in columns from the first
- * one's middle: each column's time at its middle, and a time between two
- * columns the same share of the way between them (an hour a column where
- * the run is hourly, three where it is three-hourly). Past either end, an
- * hour a column.
- */
-export function rowPosition(times: readonly number[], time: number): number {
-  const n = times.length;
-  if (!n) return 0;
-  if (time <= times[0]) return (time - times[0]) / HOUR;
-  for (let i = 1; i < n; i++)
-    if (time <= times[i])
-      return i - 1 + (time - times[i - 1]) / (times[i] - times[i - 1]);
-  return n - 1 + (time - times[n - 1]) / HOUR;
-}
-
-/** The time at a place along a row of columns: `rowPosition`, undone. */
-export function rowTime(times: readonly number[], position: number): number {
-  const n = times.length;
-  if (!n) return 0;
-  if (position <= 0) return times[0] + position * HOUR;
-  if (position >= n - 1) return times[n - 1] + (position - n + 1) * HOUR;
-  const i = Math.floor(position);
-  return times[i] + (position - i) * (times[i + 1] - times[i]);
-}
-
-/** One of the next days at a place: its light, and the strip's columns in it. */
-export interface DayPlan {
-  date: string;
-  firstLight: number;
-  lastLight: number;
-  /** The strip's columns from first light to last, by their place in it. */
-  columns: number[];
-}
-
-/**
- * A day's daylight at a place: the strip's columns from first light to last
- * light, at whatever cadence the run has there (hourly near, three-hourly
- * further out). Nothing after last light is drawn.
- */
-export function dayPlan(
-  strip: readonly Pick<StripColumn, "time" | "date">[],
-  place: LatLon,
-  date: string,
-): DayPlan | null {
-  const light = dayLight(place, date);
-  if (!light) return null;
-  const columns: number[] = [];
-  strip.forEach((column, at) => {
-    if (
-      column.date === date &&
-      column.time >= light.firstLight &&
-      column.time <= light.lastLight
-    )
-      columns.push(at);
-  });
-  return { date, ...light, columns };
-}
-
 /** The stars an hour is worth, or null for one with none to give (dark, unrated). */
 export const starsAt = (hour: PlaceHour | null | undefined): number | null =>
   hour?.rating ? hour.rating.stars : null;
 
-/** The most stars among some columns of a row; 0 with none rated. */
-export function bestStars(
-  row: readonly (PlaceHour | null | undefined)[] | undefined,
-  columns: readonly number[],
-): number {
-  let best = 0;
-  for (const at of columns) best = Math.max(best, starsAt(row?.[at]) ?? 0);
-  return best;
-}
-
 /**
- * The run of rideable columns round a day's best: from the best column, out
- * either way while the stars hold above none. Null on a day with no stars.
- * The card draws it as a short line under the day, in the best's colour.
- */
-export function rideableRun(
-  row: readonly (PlaceHour | null | undefined)[] | undefined,
-  columns: readonly number[],
-): { from: number; to: number; stars: number } | null {
-  const stars = columns.map((at) => starsAt(row?.[at]) ?? 0);
-  const top = Math.max(0, ...stars);
-  if (!top) return null;
-  let a = stars.indexOf(top);
-  let b = a;
-  while (a > 0 && stars[a - 1] > 0) a--;
-  while (b < stars.length - 1 && stars[b + 1] > 0) b++;
-  return { from: columns[a], to: columns[b], stars: top };
-}
-
-/** The windiest column among some, by the mean wind; null with no wind. */
-export function windiest(
-  row: readonly (PlaceHour | null | undefined)[] | undefined,
-  columns: readonly number[],
-): number | null {
-  let best: number | null = null;
-  for (const at of columns) {
-    const kn = row?.[at]?.windKn;
-    if (kn == null) continue;
-    if (best === null || kn > row![best]!.windKn!) best = at;
-  }
-  return best;
-}
-
-/**
- * The column a day is summed up at, for its sky, its air and its sea: the
- * one nearest 13:00, early afternoon, or the hour now on a day already past
- * it. Null for a day with no columns.
+ * The column a day opens on: the one nearest 13:00, early afternoon, or the
+ * last of them on a day already past it. Null for a day with no columns.
  */
 export function middayColumn(
   strip: readonly Pick<StripColumn, "time">[],
@@ -383,7 +316,7 @@ export function middayColumn(
   if (!columns.length) return null;
   const score = (at: number) => {
     const time = strip[at].time;
-    // Past hours are no use to a heading about the day ahead.
+    // Past hours are no use to a day ahead.
     if (time < hourOf(now)) return Infinity;
     return Math.abs(irishHour(time) + (time % HOUR) / HOUR - 13);
   };
@@ -394,27 +327,28 @@ export function middayColumn(
 
 /* ---- the order ------------------------------------------------------------ */
 
-/** A place's best in its six days: how many stars, and the first day it has them. */
-export interface WeekBest {
+/** A place's best on some days: how many stars, and the first day it has them. */
+export interface Best {
   stars: number;
-  /** 0 for today, 1 for tomorrow, …; null with no stars anywhere. */
+  /** Which of the days, from 0; null with no stars on any. */
   day: number | null;
 }
 
 /**
- * The most stars a place has in its six days, and the soonest day it has
+ * The most stars a place has on some days, and the soonest of them it has
  * them: today's hours only from the hour now on, each day's only in its
- * light. A place not yet rated has none (`stars` -1), and goes last.
+ * light. The finder asks it of the day shown, so the list is in that day's
+ * order. A place not yet rated has none (`stars` -1), and goes last.
  */
-export function weekBest(
+export function bestStars(
   row: readonly (PlaceHour | null | undefined)[] | undefined,
   strip: readonly Pick<StripColumn, "time" | "date">[],
   dates: readonly string[],
   now: number,
-): WeekBest {
+): Best {
   if (!row) return { stars: -1, day: null };
   const current = hourOf(now);
-  let best: WeekBest = { stars: 0, day: null };
+  let best: Best = { stars: 0, day: null };
   strip.forEach((column, at) => {
     const day = dates.indexOf(column.date);
     if (day < 0 || column.time < current) return;
@@ -429,18 +363,18 @@ export function weekBest(
   return best;
 }
 
-/** A place on the list: how far it is, and its best of the week. */
+/** A place on the list: how far it is, and its best on the day shown. */
 export interface Listed<S extends Spot = Spot> {
   spot: S;
   /** From the rider, where that is known. */
   km: number | null;
-  best: WeekBest;
+  best: Best;
 }
 
 /**
- * The most stars in the six days first; among equals the soonest day they
- * come, then the nearer, then the order the places came in (the favourites'
- * own, most recently starred first).
+ * The most stars first; among equals the soonest day they come, then the
+ * nearer, then the order the places came in (the favourites' own, most
+ * recently starred first).
  */
 export function rankSpots<S extends Spot>(
   list: readonly Listed<S>[],
@@ -457,7 +391,7 @@ export function rankSpots<S extends Spot>(
     .map(({ item }) => item);
 }
 
-/** How the rider has the list put in order: the best of the week first, the nearest, or by name. */
+/** How the rider has the list put in order: the best first, the nearest, or by name. */
 export type Order = "best" | "near" | "name";
 
 /**
@@ -481,8 +415,8 @@ export function orderSpots<S extends Spot>(
 }
 
 /**
- * The places with at least `stars` stars somewhere in their six days; every
- * place for none. A place not rated yet has none to show, and waits until
+ * The places with at least `stars` stars at their best (on the day shown);
+ * every place for none. A place not rated yet has none to show, and waits until
  * its stars are in.
  */
 export function withStars<S extends Spot>(
@@ -498,15 +432,15 @@ export function withStars<S extends Spot>(
 /**
  * The hour picked after a press on one of the day's: that hour, for every
  * card at once, or none again for the hour the day stands at with none
- * picked (now, today; on a day chosen, its early afternoon).
+ * picked (now, today; on any other day, the hour it opens on).
  */
 export const pickHour = (pressed: number, standing: number): number | null =>
   hourOf(pressed) === hourOf(standing) ? null : hourOf(pressed);
 
 /**
- * The strip's column a day chosen opens on, with no hour picked: its early
- * afternoon (`middayColumn`), where the next days sum themselves up. Null
- * for a day the strip has no column in.
+ * The strip's column a day after today opens on, with no hour picked: its
+ * early afternoon (`middayColumn`). Null for a day the strip has no column
+ * in.
  */
 export function dayOpening(
   strip: readonly Pick<StripColumn, "time" | "date">[],
@@ -521,7 +455,7 @@ export function dayOpening(
 /**
  * The strip's column a card's picture shows: the hour picked, or with none
  * the column the day opens on (today, the one the chart itself would open
- * on now; a day chosen, `dayOpening`). Null where the strip has no column
+ * on now; any other day, `dayOpening`). Null where the strip has no column
  * for the hour picked.
  */
 export function shownColumn(
@@ -532,54 +466,4 @@ export function shownColumn(
 ): number | null {
   if (picked === null) return strip.length ? opening : null;
   return byTime.get(picked) ?? null;
-}
-
-/* ---- the row's scroll ----------------------------------------------------------- */
-
-/** How far a row scrolls to stand a column in its middle, held to its ends. */
-export function centredScroll(
-  left: number,
-  width: number,
-  view: number,
-  scrollWidth: number,
-): number {
-  const max = Math.max(0, scrollWidth - view);
-  return Math.max(0, Math.min(max, left + width / 2 - view / 2));
-}
-
-/** Where a press of ‹ or › takes the row: most of a view on, held to its ends. */
-export function steppedScroll(
-  scrollLeft: number,
-  direction: -1 | 1,
-  view: number,
-  scrollWidth: number,
-): number {
-  const max = Math.max(0, scrollWidth - view);
-  return Math.max(
-    0,
-    Math.min(max, scrollLeft + direction * Math.round(view * 0.6)),
-  );
-}
-
-/** Whether there is more of the row before its view, and after it. */
-export function rowEnds(
-  scrollLeft: number,
-  view: number,
-  scrollWidth: number,
-): { before: boolean; after: boolean } {
-  return {
-    before: scrollLeft > 4,
-    after: scrollLeft + view < scrollWidth - 4,
-  };
-}
-
-/* ---- the stars' colours ------------------------------------------------------------ */
-
-/**
- * The theme's colour for a number of stars (ui/theme.css `stars-1` …
- * `stars-5`), as CSS reads it; null for none, which has no colour.
- */
-export function starColour(stars: number | null | undefined): string | null {
-  if (stars == null || !Number.isFinite(stars) || stars < 1) return null;
-  return `var(--color-stars-${Math.min(5, Math.round(stars))})`;
 }
