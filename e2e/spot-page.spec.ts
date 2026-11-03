@@ -715,6 +715,10 @@ test("below the spot: the wind and the waves through the year, with their figure
   await expect(page.getByRole("heading", { name: "The waves through the year" })).toBeVisible();
   await expect(year).toContainText("How often it blows 12 kn or more");
   await expect(year).toContainText("Generated using E.U. Copernicus Marine Service Information");
+  // Every figure says what it is: the whole sea's height, the swell alone, and where it was read.
+  await expect(year).toContainText("The whole sea, wind waves and swell together");
+  await expect(page.locator("[data-climate-candles]")).toContainText("Bar: from 1 in 10 to 9 in 10 of those days");
+  await expect(year).toContainText(/Waves at the wave model’s point \d+\.\d km from the spot/);
   // A month's column answers a hover with its figures.
   await page.locator("[data-climate-wind] rect[data-tip-target]").first().hover();
   const tip = page.locator("[data-climate-tip]");
@@ -729,6 +733,18 @@ test("below the spot: the wind and the waves through the year, with their figure
   await page.locator("[data-climate-candles] rect[data-tip-target]").first().hover();
   await expect(tip).toContainText("Days a month");
   expect(errors).toEqual([]);
+});
+
+test("sheltered water says the open sea's waves do not reach it, rather than showing them", async ({ page }) => {
+  await withTides(page);
+  await page.goto("/spot/malahide-estuary");
+  const year = page.locator("[data-climate]");
+  await expect(year).toBeAttached({ timeout: 30000 });
+  await expect(page.getByRole("heading", { name: "The wind through the year" })).toBeVisible();
+  const sheltered = page.locator("[data-climate-sheltered]");
+  await expect(sheltered).toContainText("Sheltered water");
+  await expect(sheltered).toContainText("The open sea’s waves don’t reach here");
+  await expect(page.locator("[data-climate-waves]")).toHaveCount(0);
 });
 
 test("a point on the open water has no year of its own", async ({ page }) => {
