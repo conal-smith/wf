@@ -1,6 +1,6 @@
 /**
- * Whether the rider shows the hours after dark (Settings, "Show the hours
- * after dark"), for a page that does not hold the preferences itself: the
+ * Whether the rider shows the hours after dark (Settings, Hours: "Day and
+ * night" or "Daylight only"), for a page that does not hold the preferences itself: the
  * spot pages. One source of truth, the stored preferences (`nightHours`,
  * force5.prefs.v1), read as the page is first drawn, so it never draws the
  * night and then takes it away, and read again when they change under it, in
