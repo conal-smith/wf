@@ -184,6 +184,7 @@ import { FEATURES } from "../shared/web/features";
 import { useWarnings } from "./useWarnings";
 import { useWaterQuality } from "./useWaterQuality";
 import { useWindObs } from "../shared/web/useWindObs";
+import { pairStation } from "../force5/src/windObs";
 import { favourites } from "../shared/web/favourites";
 import {
   compass,
@@ -1085,12 +1086,13 @@ export default function App() {
   const rated = useSpotSquaresState(windOnly, ownSquares, true);
   const warnings = useWarnings();
   /**
-   * The Live wind layer: always on the Spot finder's plain map, and on the
-   * full chart when the rider turns it on in Layers. Nothing is read until
-   * the map is made and the layer is on.
+   * The wind measured at the weather stations and buoys: the Live wind
+   * layer's, always on the Spot finder's plain map and on the full chart
+   * when the rider turns it on in Layers; and the readings beside a spot's
+   * forecast in the scrub bar and on the finder's cards, whatever the map.
    */
   const liveOn = page === "chart" ? layers.live : true;
-  const windObs = useWindObs(mapWanted && liveOn);
+  const windObs = useWindObs();
   const readings = useMemo(
     () =>
       liveOn && windObs ? { stations: windObs.stations, now: clockNow } : null,
@@ -1951,6 +1953,12 @@ export default function App() {
   const barShown = opened && strip.length > 0 && page === "chart";
   /** A spot or a point is open in the scrub bar. */
   const dockOpen = barShown && !!dockSpot;
+  /** The weather station or buoy beside the dock's place, for its readout. */
+  const dockPaired = useMemo(
+    () =>
+      windObs && dockSpot ? pairStation(dockSpot, windObs.stations) : null,
+    [windObs, dockSpot?.lat, dockSpot?.lon],
+  );
 
   const pointHours: PlaceHour[] | undefined = picked
     ? pickedHours
@@ -2394,6 +2402,7 @@ export default function App() {
                   onScreen={!onChart}
                   model={riderModel}
                   onModel={onFinderModel}
+                  stations={windObs?.stations ?? null}
                 />
               </Suspense>
             )}
@@ -2688,6 +2697,7 @@ export default function App() {
                       }
                       units={prefs.units}
                       nightHours={prefs.nightHours}
+                      measured={dockPaired}
                       href={
                         !column
                           ? null

@@ -71,6 +71,8 @@
   font: 500 var(--text-label) / 1.2 var(--font-body);
   color: var(--color-ink-muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sb-value {
   display: flex;
@@ -97,6 +99,12 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
+}
+/* The wind measured at the station beside the place: the readings' gold,
+   squarer than the forecast's round swatch, as the map's pills are. */
+.sb-swatch.is-measured {
+  border-radius: 2px;
+  background: var(--color-buoy);
 }
 .sb-soft,
 .sb-dir {

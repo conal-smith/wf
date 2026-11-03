@@ -821,6 +821,26 @@ measured and whose data it is. It is always on beside the list; on the full
 chart it is a switch under Wind in Layers, off until asked for, so the
 forecast is the chart's first word there.
 
+**2026-11-03 — The measured wind beside the forecast, on every timeline.**
+The owner: the current conditions should be on the timelines too, and at
+Now the readout should say them, not the forecast. Each place is paired with
+its nearest weather station or buoy (`force5/src/windObs.ts` `pairStation`):
+within 25 km, an inland mast counted at twice its distance, so the coast's
+or a buoy's is chosen unless the inland one is much nearer; none past that.
+Wherever its readings are shown its name and distance go with them, so a
+rider knows it is not the beach. On the spot page the wind band draws the
+station's hours up to now in the buoy's gold (the mean a line with a dot an
+hour, each gust a ring), each reading at the middle of the hour it
+measured, with its own line in the Wind key; at Now the readout's wind,
+gust and direction are the station's last reading, with "Belmullet 1 km,
+21:00" quietly on the label's line, and every other hour, past ones too,
+reads the forecast. A reading over three hours old is not the wind now, so
+Now falls back on the forecast then, as it does with no station near. The
+scrub bar's readout says the measured wind, with a gold square in place of
+the wind's swatch and "Measured · Belmullet 1 km", with the playhead at now
+or before it. A finder card on today has one quiet line under its county,
+"Now 3 g5 kn · Belmullet 1 km" after a gold dot; other days, none.
+
 ---
 
 ## Still open

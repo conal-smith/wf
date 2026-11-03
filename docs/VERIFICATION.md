@@ -29,6 +29,12 @@ over twelve is not drawn, and none is ever moved to an hour it was not measured 
 Both networks are credited there and in the map's Sources & credits, and the site
 shows Met Éireann's warnings, as the terms below ask of a public display.
 
+Each place is also paired with its nearest station or buoy (`pairStation`: within
+25 km, an inland one counted at twice its distance), whose readings stand beside the
+forecast on the spot page's graph, in its readout at Now, in the scrub bar's readout
+at and before now and on the Spot finder's cards on today, always with the station's
+name and distance. See the ruling of 2026-11-03 in `docs/DESIGN_PRINCIPLES.md`.
+
 ## What is observed
 
 `force5/ingest/fetch_wind_obs.py`, registry id `wind-obs`, kind `observation` with

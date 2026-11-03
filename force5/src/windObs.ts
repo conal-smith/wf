@@ -204,3 +204,64 @@ export const measuredAt = (time: number) => HOUR_MINUTE.format(new Date(time));
 /** "a weather buoy" or "a weather station": what a station is, in a word or two. */
 export const stationKind = (station: WindStation) =>
   station.kind === "buoy" ? "Weather buoy" : "Weather station";
+
+/* ---- a spot's own station ---- */
+
+/** How far a station may be from a spot and still stand beside it, in km. */
+export const PAIR_MAX_KM = 25;
+/**
+ * An inland station counts this many times its distance: a mast in a field
+ * or an airport reads the land's wind, not the water's, so one on the coast
+ * or a buoy is preferred unless the inland one is much nearer.
+ */
+export const INLAND_WEIGHT = 2;
+
+/** The great-circle distance between two places, in km. */
+export function distanceKm(
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+) {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLon = (b.lon - a.lon) * rad;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+export interface Paired {
+  station: WindStation;
+  /** How far it is from the spot, in km. */
+  km: number;
+}
+
+/**
+ * The station whose readings stand beside a spot's forecast: the nearest
+ * buoy or coastal station within PAIR_MAX_KM, an inland one only where it is
+ * nearer by half (INLAND_WEIGHT), or null where none is near enough. Never a
+ * station that has no readings. A station is not the beach: wherever its
+ * readings are shown, its name and distance go with them.
+ */
+export function pairStation(
+  spot: { lat: number; lon: number },
+  stations: readonly WindStation[],
+  maxKm = PAIR_MAX_KM,
+): Paired | null {
+  let best: Paired | null = null;
+  let bestScore = Infinity;
+  for (const station of stations) {
+    if (!station.readings.length) continue;
+    const km = distanceKm(spot, station);
+    const score = station.kind === "inland" ? km * INLAND_WEIGHT : km;
+    if (score <= maxKm && score < bestScore) {
+      best = { station, km };
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+/** "Malin Head 6 km", a station's name with how far it is, as a rider reads it. */
+export const pairedName = ({ station, km }: Paired) =>
+  `${station.name} ${km < 1 ? "<1" : Math.round(km)} km`;

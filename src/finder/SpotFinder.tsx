@@ -86,8 +86,14 @@ export type { Scope };
 import { DaySteps } from "./DaySteps";
 import { HoverContext, hoverStore } from "./hover";
 import { knownBefore, useRiderPlace } from "./location";
-import { CardSkeleton, SpotCard } from "./SpotCard";
+import { CardSkeleton, SpotCard, type SpotCardProps } from "./SpotCard";
 import { useReadings } from "./useReadings";
+import {
+  isStale,
+  latestReading,
+  pairStation,
+  type WindStation,
+} from "../../force5/src/windObs";
 
 const styles = tv({
   slots: {
@@ -125,7 +131,8 @@ const styles = tv({
     askAction: "justify-self-start",
     // One card a row: a narrow list, as the mock-up has it.
     cards: "m-0 grid list-none grid-cols-1 items-start gap-2 p-0",
-    empty: "rounded-surface bg-sunken on-card px-4 py-3.5 text-prose leading-normal text-ink-2",
+    empty:
+      "rounded-surface bg-sunken on-card px-4 py-3.5 text-prose leading-normal text-ink-2",
     // Above the cards: where "near you" is measured from, when that is not
     // the rider.
     note: "m-0 px-0.5 pb-3 text-body leading-normal text-ink-muted",
@@ -185,6 +192,11 @@ export interface FinderProps {
    * it is.
    */
   onScreen?: boolean;
+  /**
+   * The weather stations and buoys with their readings (force5/src/windObs.ts),
+   * or null until read: a card on today says what its nearest one measured.
+   */
+  stations?: readonly WindStation[] | null;
 }
 
 export default function SpotFinder(props: FinderProps) {
@@ -349,6 +361,20 @@ export default function SpotFinder(props: FinderProps) {
 
   const axis = useMemo(() => strip.map((c) => c.validTime), [strip]);
   const readings = useReadings(listedSpots, axis);
+  // Each listed place's nearest station, and its latest reading while it is
+  // fresh enough to be the wind now: a card on today says it.
+  const stations = props.stations ?? null;
+  const measuredNow = useMemo(() => {
+    const out = new Map<string, NonNullable<SpotCardProps["measured"]>>();
+    if (!stations) return out;
+    for (const spot of listedSpots) {
+      const paired = pairStation(spot, stations);
+      const reading = paired ? latestReading(paired.station, now) : null;
+      if (paired && reading && !isStale(reading, now))
+        out.set(spot.id, { paired, reading });
+    }
+    return out;
+  }, [stations, listedSpots, now]);
 
   // The day's row, at each place's own light.
   const rows = useMemo(
@@ -536,9 +562,7 @@ export default function SpotFinder(props: FinderProps) {
                 {
                   length: Math.min(
                     4,
-                    scope === "near"
-                      ? 4
-                      : Math.max(1, starred.length),
+                    scope === "near" ? 4 : Math.max(1, starred.length),
                   ),
                 },
                 (_, k) => (
@@ -551,11 +575,7 @@ export default function SpotFinder(props: FinderProps) {
             </div>
           ) : ranked.length ? (
             <HoverContext.Provider value={hover}>
-              <ul
-                className={s.cards()}
-                data-finder-cards
-                data-day={day}
-              >
+              <ul className={s.cards()} data-finder-cards data-day={day}>
                 {ranked.map((item) => {
                   return (
                     <li
@@ -573,6 +593,11 @@ export default function SpotFinder(props: FinderProps) {
                         strip={strip}
                         day={rows.get(item.spot.id) ?? null}
                         isToday={isToday}
+                        measured={
+                          isToday
+                            ? (measuredNow.get(item.spot.id) ?? null)
+                            : null
+                        }
                         readings={
                           readings.get(item.spot.id) ?? {
                             sky: [],
