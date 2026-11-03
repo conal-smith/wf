@@ -38,6 +38,14 @@ scheduler. Regenerate `home-compute.json`, then import it into the plane:
 from the home-compute checkout. Edits made on the dashboard are kept unless you pass
 `--force`.
 
+**A job argument the pinned image does not know fails every run at once.** The worker
+parses its arguments strictly, so a timetable that passes a new flag must not reach the
+plane before the release that carries it is the image the jobs pin. HARMONIE's and
+`blend-after-harmonie`'s `--daylight-only --always-hours 5,19` (November 2026) exit 2
+with argparse's "unrecognized arguments" on any older image: import that timetable only
+after promoting the release that has `force5/ingest/daylight.py`, with that release's
+digest (`--image`, docs/RELEASES.md, "The forecast jobs"), dry run first.
+
 ### Switching back to the local scheduler
 
 1. Pause the wingfoil jobs on the hosted plane, or at least `prune`. Never let `prune`
@@ -95,8 +103,9 @@ deploy/home-compute/macmini.sh stop
 After changing the importer code, `macmini.sh image` rebuilds `wingfoil-forecast:local`;
 the next submission uses it. No registry is involved: Bacalhau runs the local image.
 Rebuild before restarting the scheduler on a timetable that passes the worker a flag
-the old image lacks: the ECMWF job's `--ecmwf-cycle 00` (October 2026) fails at once
-on an older image, with argparse's "unrecognized arguments", until it is rebuilt.
+the old image lacks: the ECMWF job's `--ecmwf-cycle 00` (October 2026) and HARMONIE's
+`--daylight-only` (November 2026) fail at once on an older image, with argparse's
+"unrecognized arguments", until it is rebuilt.
 
 Colima's `home-compute` VM has to be running for any job to start. `start` starts it
 if it is not, and `setup` writes a launch agent that starts it again at login, and
@@ -118,6 +127,13 @@ bucket already serves and exits at once if its source has nothing newer
 (`readsPublishedRun` in `force5/ingest/registry.py`), so ECMWF's 10:20 retry after
 its 08:20 slot has published, or a SWAN slot that finds the same day's run, costs a
 listing, not an import.
+
+A daylight-gated slot outside the riding window (`--daylight-only`,
+`force5/ingest/daylight.py`) costs less still: the worker exits before it reads the
+bucket, with a `forecast_unchanged` event whose `reason` is `dark`, so the run counts as
+`unchanged`. HARMONIE's hourly slots from 03:35 to 21:35 UTC fetch 13 times a day in
+December and all 19 in June; in winter the other six are a container start and
+nothing more. A fetching HARMONIE slot is ~826 MB and about 3½ minutes.
 
 Bacalhau is told the Colima VM's size, less half a GiB for Docker and the kernel,
 and each job's memory is a hard ceiling (`RESOURCES` in `deploy/schedules.py`): 1 GB

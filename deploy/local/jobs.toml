@@ -19,21 +19,25 @@
 [[jobs]]
 id = "harmonie"
 models = ["harmonie"]
-args = ["--step", "1"]
-hours = [5, 8, 11, 16, 19, 23]  # Six a day, each fresh just before riders look (Irish
-minutes = [35]              # winter time; an hour later by the clock in summer): the
-timeout_seconds = 3300      # commute in, the desk, lunch, the commute home, the evening's
-                            # planning, and last thing. Met Éireann starts a run every
-                            # hour and lists it complete (+000 to +060, ~826 MB) about
-                            # 2 h 25 m later, so :35 takes the run from 2 h 35 m before;
-                            # on the hour it took the one from three hours before.
+args = ["--step", "1", "--daylight-only", "--always-hours", "5,19"]
+hours = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+minutes = [35]              # Every hour while riders can use it. Met Éireann starts a run
+timeout_seconds = 3300      # every hour and lists it complete (+000 to +060, ~826 MB)
+                            # about 2 h 25 m later, so :35 takes the run from 2 h 35 m
+                            # before. --daylight-only skips a slot, downloading nothing,
+                            # outside 2.5 h before civil first light to civil last light
+                            # (force5/ingest/daylight.py): 13-14 runs a day in winter,
+                            # all 19 in June. 05:35 and 19:35 run whatever the light: the
+                            # morning commute's, and the evening's for planning tomorrow.
 
 [[jobs]]
 id = "icon-eu"
 models = ["icon-eu"]
 args = ["--step", "1"]
-hours = [3]                 # Once a day: the 00 UTC cycle plus ~3.5 h publication lag.
-minutes = [30]
+hours = [3, 9, 15]          # The 00, 06 and 12 UTC cycles, each ~3.5 h after its run
+minutes = [30]              # time; the importer takes the newest complete run, so a slot
+                            # that comes early finds the one served and stops. No 18 UTC
+                            # cycle: it would land after 21:30, in the dark.
 timeout_seconds = 3300
 
 [[jobs]]
@@ -174,8 +178,12 @@ timeout_seconds = 600       # then.
 [[jobs]]
 id = "blend-after-harmonie"
 models = ["blend"]
-hours = [5, 8, 11, 16, 19, 23]  # Ten minutes after each HARMONIE slot, so the map's stars
-minutes = [45]              # take the new run now rather than at the next :05.
+args = ["--daylight-only", "--always-hours", "5,19"]
+hours = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+minutes = [45]              # Ten minutes after each HARMONIE slot, under the same gate,
+                            # so the map's stars take the new run now rather than at the
+                            # next :05. A HARMONIE run landing just before last light is
+                            # blended at the next :05 instead.
 timeout_seconds = 600
 
 [[jobs]]

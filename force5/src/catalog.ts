@@ -58,7 +58,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     detail: "2 km · 2½ days",
     manifestUrl: "weather/harmonie.json",
     kind: "wind",
-    staleAfterHours: 15,
+    staleAfterHours: 17,
     hue: { wind: "#1a9e8a", gust: "#e9a23b" },
     mapCapable: true,
   },

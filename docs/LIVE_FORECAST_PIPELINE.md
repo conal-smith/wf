@@ -330,7 +330,9 @@ lock. This page said 03/09/15/21 UTC until 24 October 2026; the deploy configs h
 run it once a day since 10 October 2026. Running all
 four cycles hourly would be about 100 GB a month for this job alone; a second slot for
 the 12 UTC cycle (about 15:40 UTC) would make the afternoon's rain six to twelve hours
-fresher for about 25 GB a month more. That is a proposal, not the schedule.
+fresher for about 25 GB a month more. That is a proposal, not the schedule. (The wind
+job, `icon-eu`, has also taken the 06 and 12 UTC cycles, at 09:30 and 15:30 UTC, since
+November 2026; its ~250 MB runs are a third of this job's.)
 
 GFS surface weather is the second: `--models gfs-weather` runs `fetch_gfs_weather.py`,
 which reads sixteen GFS 0.25° surface fields through the same NOMADS subregion filter as
@@ -643,11 +645,14 @@ against 37.7 ms without.
 ```sh
 R2="--bucket wingfoil-forecast --endpoint-url https://ACCOUNT.r2.cloudflarestorage.com"
 
-# Six times a day (HARMONIE), twice a day (ECMWF's 00 and 12 UTC runs, each with a retry)
-docker run --rm --env-file r2.env force5-forecast:latest --models harmonie --step 1 $R2
+# Every hour in daylight, and at 05:35 and 19:35 UTC whatever the light (HARMONIE; see
+# "Only while riders can use it" below), twice a day (ECMWF's 00 and 12 UTC runs, each
+# with a retry)
+docker run --rm --env-file r2.env force5-forecast:latest --models harmonie --step 1 \
+  --daylight-only --always-hours 5,19 $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf $R2
 
-# Four cycles a day
+# Three cycles a day (ICON-EU wind: 00, 06 and 12 UTC), once (its weather), four (the rest)
 docker run --rm --env-file r2.env force5-forecast:latest --models icon-eu --step 1 $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models icon-eu-weather $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models gfs --step 3 $R2
@@ -768,6 +773,42 @@ prefix (`ecmwf-RUN-360h-v2` → `v3`), member count or horizon does not force an
 re-import of the run already published: the new objects land with the source's next
 cycle (within a day for ECMWF and SWAN). Pass `--run YYYYMMDDHH` to re-import the current one at once —
 an explicit `--run` always skips the check.
+
+### Only while riders can use it
+
+HARMONIE starts a run every hour, but a fresh run at 02:00 in December helps nobody. Its
+job, and the blend that follows it, run at :35 (and :45) every hour from 03 to 21 UTC
+with `--daylight-only --always-hours 5,19`. The worker then works out the day's
+**riding window** over the middle of Ireland (53.4°N 8.0°W, `force5/ingest/daylight.py`,
+the same sun maths as the site's `force5/src/sun.ts`): from 2.5 hours before civil first
+light, so the run fetched before dawn has landed by first light, to civil last light.
+Outside it, before it reads the bucket, takes the workspace lock or downloads anything,
+it logs one event per model and exits **0**:
+
+```json
+{
+  "event": "forecast_unchanged",
+  "model": "harmonie",
+  "reason": "dark",
+  "window": {"opens": "2026-11-03T04:27+00:00", "closes": "2026-11-03T17:33+00:00"},
+  "message": "Skipped after dark: today's window is 04:27 to 17:33 UTC, so nothing was fetched",
+  "seconds": 0,
+  "time": "2026-11-03T21:35:04+00:00"
+}
+```
+
+It is `forecast_unchanged`, the word for "nothing new", so Home Compute counts the run
+as `unchanged` rather than failed, and nothing is written to the model's job record, so
+`status.py` keeps showing the last real import. `--always-hours` names the UTC hours
+whose slots run whatever the light: 05:35, ready for the morning commute however late
+winter's first light, and 19:35, which riders read in the evening to plan tomorrow.
+
+The window is in UTC and follows the sun, so it moves by a minute or two a day and not
+at all when the clocks change. The fetching slots come to 13 a day in December and
+January (05:35 to 16:35, and 19:35), 14 in early November, 17 at the spring clock
+change and all 19 from late May to mid-July: about 16 a day over the year, against six
+before November 2026. `force5/ingest/test_scheduler.py` holds HARMONIE's 17-hour
+`maxAgeHours` to the slots that fetch, on midwinter's and midsummer's days.
 
 ### The blend: every spot's stars, by spot square
 
@@ -1348,8 +1389,8 @@ The browser fetches the manifest on page load and model changes, then reads the 
 - **What runs today**: `.github/workflows/monitor.yml` checks production every two hours, from outside: each live model's pointer, its age against `registry.py`'s `maxAgeHours` plus an hour, the spot squares and a sample of tiles it names, and the cache and encoding headers. A problem opens a GitHub issue. docs/RELEASES.md, "The production monitor", has the details. The bullets below are the fuller plan from the AWS design.
 - Send container stdout/stderr to CloudWatch. Alarm on `forecast_failed`, ECS nonzero task exit, unusually long task duration, and age of the **published manifest's runTime**. A scheduler successfully starting an ECS task does not prove that the forecast succeeded.
 - Configure Scheduler delivery retries/DLQ for failures to start the task. Separately monitor ECS task completion and retry failed jobs; Scheduler delivery retries alone do not handle an ingest process exiting unsuccessfully.
-- Measure source publication lag before selecting alert thresholds. HARMONIE is fetched six times a day, each time about three hours behind its cycle, so its run is at most about 9.5 hours old on time and only one older than its 15-hour `maxAgeHours` (one failed slot) is worth alerting on; ICON-EU, once a day, at 30 hours, and ECMWF's twice-daily runs at 40. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay and the :45 retry before alerting: a published run older than about 13 hours is a genuine failure. Irish Shelf SWAN runs once a day and is sometimes a day late, so only a published run older than about 40 hours is worth alerting on; a single missed attempt is normal.
-- Measure source publication lag before selecting alert thresholds. HARMONIE is fetched six times a day, each time about three hours behind its cycle, so its run is at most about 9.5 hours old on time and only one older than its 15-hour `maxAgeHours` (one failed slot) is worth alerting on; ICON-EU, once a day, at 30 hours, and ECMWF's twice-daily runs at 40. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay and the :45 retry before alerting: a published run older than about 13 hours is a genuine failure. GFS-Wave follows the same cycles with a similar delay, so it shares that threshold; its full 240-hour listing appears later than the wind files, and a wave task started too early simply skips the cycle. GEFS is slower still: its 0.25° members finish 4.5–6 hours after run time and not in member order, so a GEFS run one cycle behind the newest is normal and only a published run older than about 18 hours is worth alerting on.
+- Measure source publication lag before selecting alert thresholds. HARMONIE is fetched every hour in daylight and at 05:35 and 19:35 UTC, each time about three hours behind its cycle, so its run is at most about 13 hours old on time (December's night, 19:35 to 05:35) and only one older than its 17-hour `maxAgeHours` (one failed slot) is worth alerting on; ICON-EU, three times a day but at the 30 hours it had once a day, and ECMWF's twice-daily runs at 40. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay and the :45 retry before alerting: a published run older than about 13 hours is a genuine failure. Irish Shelf SWAN runs once a day and is sometimes a day late, so only a published run older than about 40 hours is worth alerting on; a single missed attempt is normal.
+- Measure source publication lag before selecting alert thresholds. HARMONIE is fetched every hour in daylight and at 05:35 and 19:35 UTC, each time about three hours behind its cycle, so its run is at most about 13 hours old on time (December's night, 19:35 to 05:35) and only one older than its 17-hour `maxAgeHours` (one failed slot) is worth alerting on; ICON-EU, three times a day but at the 30 hours it had once a day, and ECMWF's twice-daily runs at 40. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay and the :45 retry before alerting: a published run older than about 13 hours is a genuine failure. GFS-Wave follows the same cycles with a similar delay, so it shares that threshold; its full 240-hour listing appears later than the wind files, and a wave task started too early simply skips the cycle. GEFS is slower still: its 0.25° members finish 4.5–6 hours after run time and not in member order, so a GEFS run one cycle behind the newest is normal and only a published run older than about 18 hours is worth alerting on.
 - After first publication, fetch the manifest and every referenced frame through CloudFront; check HTTP status, encoding, CORS, timestamps and numerical validity. Check switching, hourly scrubbing, arbitrary-point forecasts and unavailable-gust handling on phone/desktop.
 - Keep S3 versioning. For rollback, an operator can restore a pointer version whose frames still exist. The normal worker deliberately refuses an older-run rollback. **This does not carry over to the R2 design**, which keeps only the newest run and uses no object versioning: a superseded run's directory is deleted once its hour of grace is over, so there is nothing to roll back to after that.
 - Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, and never touches a run that is still being written. Never expire the latest pointers. `force5/ingest/prune.py` implements exactly that for a filesystem: the worker calls it as soon as a new run is published, keeping only the newest run per model, and the local deployment schedules it hourly as a backstop. In the bucket the publisher deletes nothing: its new pointer names the run directory it replaced under `superseded`, and `prune.py --bucket` deletes that once the grace period is over, along with objects that failed uploads left behind, guarded by age. Locally the worker's prune keeps the replaced run for the same grace period and the hourly job collects it. See "Cloudflare R2 and one-shot batch containers" above. A bucket lifecycle rule is still not a substitute, because it cannot see which frames the current manifest references.

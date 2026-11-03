@@ -48,8 +48,9 @@ describe("staleAfterHours", () => {
 
   it("calls HARMONIE and GFS stale sooner, because they run more often", () => {
     expect(staleAfterHours("harmonie")).toBeLessThan(18);
-    expect(isStale("harmonie", RUN, after(9.5))).toBe(false);
-    expect(isStale("harmonie", RUN, after(16))).toBe(true);
+    // A December night, 19:35 to 05:35 UTC, leaves the run about 13 hours old.
+    expect(isStale("harmonie", RUN, after(13.5))).toBe(false);
+    expect(isStale("harmonie", RUN, after(17.5))).toBe(true);
     expect(isStale("gfs", RUN, after(11.5))).toBe(false);
     expect(isStale("gfs", RUN, after(14))).toBe(true);
     expect(isStale("gfs-wave", RUN, after(14))).toBe(true);

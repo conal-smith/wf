@@ -53,15 +53,19 @@ PUBLISHED_RUN_ENV = "FORCE5_PUBLISHED_RUN"
 # re-upload a run the site already serves. Tides and sea temperature do not: see
 # their entries.
 MODELS = {
-    # Fetched six times a day (05, 08, 11, 16, 19 and 23 UTC at :35), each time the
-    # cycle about three hours earlier. The longest gap, 23:35 to 05:35, leaves the
-    # served run about 9 h old before the next lands; 15 h leaves one failed slot to
-    # the next (10 h across 19:35 to 05:35, plus 3 h of lag and an hour of queueing
-    # and download) before it reads as stale.
+    # Fetched every hour at :35 from 03 to 21 UTC while it is light enough to ride
+    # (`--daylight-only`, daylight.py), and at 05:35 and 19:35 whatever the light,
+    # each time the cycle about three hours earlier. The longest gap, December's
+    # 19:35 to 05:35, leaves the served run about 13 h old before the next lands; 17 h
+    # leaves one failed slot to the next (13 h across 16:35, the last before dark,
+    # to 05:35, plus 3 h of lag and an hour of queueing and download) before it reads
+    # as stale.
     "harmonie": {"script": "fetch_harmonie.py", "manifest": "weather/harmonie.json",
-                 "kind": "wind", "maxAgeHours": 15, "cache": "harmonie", "readsPublishedRun": True},
-    # Once a day, the 00 UTC cycle (about 3.5 h behind) at 03:30 UTC, its weather half
-    # at 03:40, so the served run is about 28.5 h old when the next day's lands.
+                 "kind": "wind", "maxAgeHours": 17, "cache": "harmonie", "readsPublishedRun": True},
+    # The 00, 06 and 12 UTC cycles (each about 3.5 h behind) at 03:30, 09:30 and 15:30
+    # UTC; its weather half once a day, the 00 UTC cycle at 03:40. On time the wind run
+    # is at most about 15.5 h old (12 UTC to the next 03:30). 30 h is kept from the
+    # once-a-day days, so a day's 06 and 12 UTC slots may both fail before it is stale.
     "icon-eu": {"script": "fetch_forecast.py", "manifest": "weather/latest.json",
                 "kind": "wind", "maxAgeHours": 30, "cache": "grib", "readsPublishedRun": True},
     "icon-eu-weather": {"script": "fetch_icon_weather.py", "manifest": "weather/icon-eu-weather.json",

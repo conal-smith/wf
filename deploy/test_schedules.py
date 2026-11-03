@@ -148,6 +148,65 @@ class ResourcesTest(unittest.TestCase):
                 self.assertGreater(2 * cpu, self.CPUS)
 
 
+class QueueTest(unittest.TestCase):
+    """One job at a time: the shipped slots never pile up behind each other."""
+
+    # Typical minutes a run takes, container start included: HARMONIE 3.5,
+    # ICON-EU 5.5, GFS 4 and the hourly feeds about half a minute were measured on
+    # 18 October 2026 (deploy/home-compute/README.md, "One job at a time"); the
+    # rest are generous guesses. Every gated slot is counted as running, as in June.
+    MINUTES = {"harmonie": 4, "icon-eu": 6, "icon-eu-weather": 6, "ecmwf": 5, "gfs": 4,
+               "gfs-wave": 3, "gfs-weather": 3, "mi-swan": 1, "currents": 1, "tides": 1,
+               "sea-temperature": 1, "blend": 1, "wind-obs": 1, "warnings": 1,
+               "water-quality": 1, "forecast-archive": 2, "verify": 3}
+    SWEEP_MINUTES = 2
+    # Far inside the hour Home Compute lets a run queue (QUEUE_SECONDS).
+    LONGEST_WAIT_MINUTES = 15
+
+    def test_no_slot_waits_long_behind_the_others(self):
+        jobs = [job for job in schedules.scheduled(schedules.load()) if job["enabled"]]
+        self.assertLess(self.LONGEST_WAIT_MINUTES * 60, schedules.QUEUE_SECONDS)
+        due = sorted((hour * 60 + minute, order, job) for order, job in enumerate(jobs)
+                     for hour in job["hours"] for minute in job["minutes"])
+        free, waits = 0, {}
+        for minute, _, job in due:
+            start = max(minute, free)
+            waits[job["id"]] = max(waits.get(job["id"], 0), start - minute)
+            free = start + (self.SWEEP_MINUTES if job["command"] == "prune"
+                            else max(self.MINUTES[model] for model in job["models"]))
+        for job_id, wait in waits.items():
+            with self.subTest(job=job_id):
+                self.assertLessEqual(wait, self.LONGEST_WAIT_MINUTES)
+        self.assertLess(free, 24 * 60 + 60, "the day's work spills well into the next")
+
+
+class DaylightGateTest(unittest.TestCase):
+    """The daylight-gated jobs, as jobs.toml writes them."""
+
+    def test_the_blend_after_harmonie_follows_harmonie(self):
+        jobs = {job["id"]: job for job in schedules.load()}
+        harmonie, blend = jobs["harmonie"], jobs["blend-after-harmonie"]
+        self.assertEqual(blend["hours"], harmonie["hours"])
+        self.assertEqual([minute - 10 for minute in blend["minutes"]], harmonie["minutes"])
+        gate = harmonie["args"][harmonie["args"].index("--daylight-only"):]
+        self.assertEqual(blend["args"], gate)
+
+    def test_the_always_hours_are_slots_of_the_job(self):
+        for job in schedules.load():
+            if "--always-hours" not in job["args"]:
+                continue
+            with self.subTest(job=job["id"]):
+                self.assertIn("--daylight-only", job["args"])
+                always = job["args"][job["args"].index("--always-hours") + 1]
+                self.assertLessEqual({int(hour) for hour in always.split(",")}, set(job["hours"]))
+
+    def test_the_description_says_so(self):
+        home = {entry["id"]: entry for entry in schedules.home_compute(schedules.load())["jobs"]}
+        self.assertTrue(home["harmonie"]["description"].endswith(
+            ", in daylight only (the 05 and 19 UTC slots whatever the light)"))
+        self.assertEqual(home["icon-eu"]["description"], "ICON-EU wind (DWD)")
+
+
 class SweepTest(unittest.TestCase):
     """The bucket sweep in the real timetable: it deletes superseded run directories."""
 

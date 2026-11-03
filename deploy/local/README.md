@@ -89,8 +89,8 @@ in UTC. The shipped schedule is:
 
 | Job               | When (UTC)         | Why                                                   |
 | ----------------- | ------------------ | ----------------------------------------------------- |
-| `harmonie`        | 05/08/11/16/19/23 at :35 | before each time riders look; ~826 MB a run, 15 h |
-| `icon-eu`         | 03 at :30          | once a day, the 00 UTC cycle; 30 h age limit          |
+| `harmonie`        | 03-21 at :35, daylight only | every hour from 2.5 h before civil first light to civil last light, plus 05:35 and 19:35 always; ~826 MB a run, 17 h |
+| `icon-eu`         | 03/09/15 at :30    | the 00, 06 and 12 UTC cycles; 30 h age limit          |
 | `icon-eu-weather` | 03 at :40          | once a day, the 00 UTC cycle, hourly steps; 30 h age limit |
 | `ecmwf`           | 08/10/20/22 at :20 | the 00 and 12 UTC runs, out ~07:35 and ~19:35; retries |
 | `harmonie-eps`    | off                | lagged control members; enable knowingly              |
@@ -112,7 +112,15 @@ in UTC. The shipped schedule is:
 | `water-quality`   | every hour at :40  | the EPA's bathing water notices near riding places    |
 | `forecast-archive`| every hour at :15  | copies served wind runs and observations to archive/  |
 | `verify`          | 07:25 daily        | model and blend scores (docs/VERIFICATION.md)         |
+| `blend`           | every hour at :05  | every spot's blend, from what the wind jobs published |
+| `blend-after-harmonie` | 03-21 at :45, daylight only | ten minutes after each HARMONIE slot, under its gate |
 | `prune`           | every hour at :10  | retention (see below)                                 |
+
+"Daylight only" is the worker's `--daylight-only --always-hours 5,19`
+(`force5/ingest/daylight.py`): a slot outside the day's riding window over Ireland
+logs a `forecast_unchanged` event with `"reason": "dark"` and exits at once, having
+downloaded nothing, except at 05 and 19 UTC. The window follows the season in UTC,
+so HARMONIE fetches 13 times a day in December and 19 in June, about 16 on average.
 
 Six models were **retired** on 10 October 2026: the ECMWF ensemble, AIFS, GEFS,
 ARPEGE, AROME and ECMWF waves. Their jobs ship disabled and `force5/src/catalog.ts`
@@ -126,13 +134,18 @@ already published download nothing):
 
 | Job | Per run | Runs a day | A month |
 | --- | --- | --- | --- |
-| `harmonie` | ~785 MB (61 whole files) | 2 | ~47 GB |
+| `harmonie` | ~826 MB (61 whole files) | 13-19, ~16 | ~400 GB |
 | `icon-eu-weather` | ~845 MB (949 files, hourly) | 1 | ~25 GB |
-| `icon-eu` | ~250 MB | 1 | ~7.5 GB |
-| `ecmwf` | ~245 MB | 1 | ~7.4 GB |
+| `icon-eu` | ~250 MB | 3 | ~22 GB |
+| `ecmwf` | ~245 MB | 2 | ~15 GB |
 | `gfs-weather` | ~21 MB (209 steps) | 4 | ~2.5 GB |
 | `gfs`, `gfs-wave`, `mi-swan`, observations, tides | 1-8 MB each | 4-24 | ~1 GB |
-| **Total** | | | **~91-93 GB** |
+| **Total** | | | **~465 GB** |
+
+HARMONIE went from six runs a day to every hour in daylight in November 2026, and
+ICON-EU wind from one cycle a day to three: about 265 GB a month more than the ~200 GB
+before, nearly all of it HARMONIE, the price of a forecast at most about three hours
+behind Met Éireann's newest run whenever it is light enough to ride.
 
 ICON-EU weather and GFS weather went hourly on 24 October 2026, so the dock's rain is
 each hour's own and the map has a Rain layer: about 17 GB a month more than the
@@ -168,7 +181,7 @@ docker compose -f deploy/local/docker-compose.yml ps
 `status` prints one row per registered model and exits nonzero if any model is
 `absent`, `unreadable`, `incomplete` (a manifest referencing an object that is not on
 disk), `stale` (older than the registry's limit for that model, which its schedule
-sets: 13 h for GFS and GFS-Wave, 15 h for HARMONIE, 30 h for the once-a-day ICON-EU
+sets: 13 h for GFS and GFS-Wave, 17 h for HARMONIE, 30 h for ICON-EU
 and tides, 36 h for the daily SWAN run, 40 h for ECMWF; the map and the MCP call a run
 stale at the same limit) or `expired` (its coverage has
 already ended). `--json` emits one object per line for a monitoring script, and
