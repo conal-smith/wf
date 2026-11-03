@@ -454,7 +454,10 @@ function MapKey({ scale }: { scale: string }) {
           </span>
         ))}
       </div>
-      <p className="mi-sm">Depths in metres below chart datum</p>
+      <p className="mi-sm">
+        Depths in metres below chart datum, drawn with the contours and
+        soundings once you turn on Depths in Layers, under Sea.
+      </p>
       <h4>
         A chart&rsquo;s own symbols <small>INT 1</small>
       </h4>
@@ -505,9 +508,9 @@ function RainPart({ on, line }: { on: boolean; line: string | null }) {
 /** The chart's parts, each in the symbol INT 1 gives it, and where it is. */
 const SYMBOLS: readonly [ReactNode, string, string][] = [
   [<NamesGlyph size={32} />, "A light", "Each spot, and its name"],
-  [<TintsGlyph size={32} />, "Depth tints", "Layers: Chart"],
-  [<SoundingsGlyph size={32} />, "Contours, soundings", "Layers: Chart"],
-  [<ReliefGlyph size={32} />, "Land relief", "Layers: Chart"],
+  [<TintsGlyph size={32} />, "Depth tints", "Layers: Depths"],
+  [<SoundingsGlyph size={32} />, "Contours, soundings", "Layers: Depths"],
+  [<ReliefGlyph size={32} />, "Land relief", "Layers: Depths"],
   [<TidalDepthGlyph size={32} />, "A drying height", "Layers: Tidal depth"],
   [<CurrentsGlyph size={32} />, "A flood stream", "Layers: Currents"],
   [<SatelliteGlyph size={32} />, "A photograph inset", "Layers: Satellite"],

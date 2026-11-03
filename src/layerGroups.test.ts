@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ChartLayers } from "../force5/src/WindMap";
-import { layerGroups, railGroups, type LayerChoices } from "./layerGroups";
+import {
+  LAYER_DEFAULTS,
+  layerGroups,
+  railGroups,
+  type LayerChoices,
+} from "./layerGroups";
 
 const LAYERS: ChartLayers = {
-  tints: true,
-  soundings: true,
-  relief: true,
+  depths: false,
   names: true,
   foil: true,
   currents: false,
@@ -53,6 +56,25 @@ describe("railGroups", () => {
     expect(set.onLayersChange).toHaveBeenCalledWith({
       ...LAYERS,
       currents: true,
+    });
+  });
+
+  it("opens with the depths off, and switches them on under the sea", () => {
+    expect(LAYER_DEFAULTS.layers.depths).toBe(false);
+    const set = choices();
+    const groups = layerGroups(set);
+    const depths = groups
+      .find((group) => group.id === "sea")!
+      .tiles.find((tile) => tile.id === "depths")!;
+    expect([depths.name, depths.on, depths.layer]).toEqual([
+      "Depths",
+      false,
+      "depths",
+    ]);
+    depths.press();
+    expect(set.onLayersChange).toHaveBeenCalledWith({
+      ...LAYERS,
+      depths: true,
     });
   });
 
@@ -110,7 +132,7 @@ describe("railGroups", () => {
     }
   });
 
-  it("leaves the chart's own parts out: they are always drawn", () => {
+  it("has one switch for the depths, and none for the names: they are always drawn", () => {
     const ids = railGroups(layerGroups(choices())).flatMap((group) =>
       group.items.map((entry) => entry.id),
     );
@@ -119,6 +141,7 @@ describe("railGroups", () => {
       "wind-particles",
       "foil",
       "currents",
+      "depths",
       "rain",
       "satellite",
       "focus-loupe",

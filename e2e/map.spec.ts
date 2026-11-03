@@ -12,6 +12,7 @@ import {
   modelChoice,
   openFromMenu,
   scrubBar,
+  setLayer,
   setRider,
   settingsDialog,
   steadyFrames,
@@ -159,7 +160,7 @@ test("the chart opens on paper: the head, the controls, the lights and a flush s
   expect(errors).toEqual([]);
 });
 
-test("the depths are one static file, read by range requests", async ({
+test("the depths are one static file, read by range requests, and only once turned on", async ({
   page,
 }) => {
   const response = await page.request.get(`/${BATHY_PATH}`, {
@@ -171,15 +172,32 @@ test("the depths are one static file, read by range requests", async ({
   // A PMTiles v3 archive opens with its name and version.
   expect(head.subarray(0, 7).toString("latin1")).toBe("PMTiles");
   expect(head[7]).toBe(3);
-  // And the chart asks for it through the protocol, not as a whole download.
+  // The chart reads none of it while the Depths are off, as they are on a
+  // first visit and for a rider whose store still says the old parts were on.
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "wingfoil.map.layers.v1",
+      JSON.stringify({ tints: true, soundings: true, relief: true }),
+    ),
+  );
   const ranged: string[] = [];
   page.on("request", (request) => {
     if (request.url().includes(`/${BATHY_PATH}`))
       ranged.push(request.headers()["range"] ?? "none");
   });
   await openChart(page);
+  await steadyFrames(page);
+  expect(ranged).toEqual([]);
+  // Turned on, it asks for it through the protocol, not as a whole download.
+  await setLayer(page, "Depths", true);
   await expect.poll(() => ranged.length).toBeGreaterThan(0);
   expect(ranged.every((range) => /^bytes=\d+-\d+$/.test(range))).toBe(true);
+  // And the choice is kept for the next visit.
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("wingfoil.map.layers.v1")!).depths,
+    ),
+  ).toBe(true);
 });
 
 test("finding a spot flies there and focuses it, with no box over the map; Escape clears it", async ({

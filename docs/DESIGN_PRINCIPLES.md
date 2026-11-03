@@ -774,6 +774,16 @@ hour now is the nearest hour, as a clock is read (19:59 is 20:00), on the
 cards and the pill alike; an hour off either end of the day's row is ticked
 nowhere, never on the last hour in its stead.
 
+**2026-11-03 — The depths are a layer, off by default.** The owner: a first
+visit read the figures in the water before anything else, and could not say
+what they were. The depth tints, contours, their figures, the soundings and
+the land's relief, all from the one survey archive, are one switch, Depths,
+under the Sea on the layers' rail, and off until a rider turns it on. This
+reverses the ruling of 2026-11-02 that they are always drawn; the names still
+are. While it is off nothing of the archive is read, not even its header
+(`force5/src/chartStyle.ts`), and a rider's old stored choice of the three
+parts is dropped, so everyone starts with it off once.
+
 ---
 
 ## Still open

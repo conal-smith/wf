@@ -70,6 +70,13 @@ test("the chart's controls: zoom and Layers on the right, Layers the rail on a p
   ])
     await expect(rail.getByRole("group", { name: group })).toBeAttached();
   await expect(rail.getByRole("group", { name: "Chart" })).toHaveCount(0);
+  // The depths are one switch under the sea, off until a rider asks.
+  await expect(
+    rail.getByRole("group", { name: "Sea" }).getByRole("button", {
+      name: "Depths",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "false");
   // The wind in two layers, each its own switch: the particles alone at first.
   const wind = rail.getByRole("group", { name: "Wind" });
   await expect(wind.getByRole("button")).toHaveCount(2);

@@ -75,12 +75,13 @@ test("on a desktop, Layers opens the rail beside the zoom, clear of the scrub ba
   );
 
   // Every layer, in its group, in order: few enough to stand in a column on
-  // a phone (the owner's ruling of 2026-11-02). The chart's own parts are
-  // always drawn; the satellite is one button for either tide; the loupe is
-  // on or off, the range ring standing in for it.
+  // a phone (the owner's ruling of 2026-11-02). The names are always drawn,
+  // the depths one switch (the ruling of 2026-11-03); the satellite is one
+  // button for either tide; the loupe is on or off, the range ring standing
+  // in for it.
   expect(await groupsOf(rail(page))).toEqual([
     ["Wind", ["Coloured wind", "Particles"]],
-    ["Sea", ["Tidal depth", "Currents"]],
+    ["Sea", ["Tidal depth", "Currents", "Depths"]],
     ["Weather", ["Rain"]],
     ["Ground", ["Satellite, high tide"]],
     ["Round your spot", ["Loupe"]],

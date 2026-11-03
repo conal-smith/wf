@@ -15,6 +15,7 @@ import {
   ParticlesGlyph,
   RainGlyph,
   SatelliteGlyph,
+  SoundingsGlyph,
   TidalDepthGlyph,
 } from "./chartGlyphs";
 import type { InfoSection } from "./mapInfoContext";
@@ -41,7 +42,7 @@ export interface LayerChoices {
 
 /**
  * The chart a first visit opens on (src/App.tsx): the particles, tidal
- * depth, the whole chart and the range ring.
+ * depth, the names and the range ring.
  */
 export const LAYER_DEFAULTS: {
   wind: WindLayers;
@@ -51,9 +52,9 @@ export const LAYER_DEFAULTS: {
 } = {
   wind: DEFAULT_WIND,
   layers: {
-    tints: true,
-    soundings: true,
-    relief: true,
+    // Off by default (the owner's ruling of 2026-11-03): a first visit's
+    // eye went to the figures in the water, and the chart is lighter without.
+    depths: false,
     names: true,
     foil: true,
     // Off by default: nothing of it is read until a rider asks for it.
@@ -104,11 +105,13 @@ export interface LayerGroup {
  * The layers a rider switches, in the groups and the order the layers' rail
  * (src/LayerRail.tsx) shows them: the wind, the sea, the weather, the ground
  * under the chart, and the loupe round the chosen spot. Few enough to stand
- * in a column on a phone (the owner's ruling of 2026-11-02): the chart's own
- * parts (its depth tints, contours, relief and names) are always drawn, the
- * satellite is one button that goes from high tide to low tide to none, and
- * the loupe is on or off, the range ring standing in for it when off. The
- * rest, the wind's two layers among them, each switch their own part.
+ * in a column on a phone (the owner's ruling of 2026-11-02): the names are
+ * always drawn, the depths (their tints, contours, soundings and the land's
+ * relief) are one switch under the Sea, off until asked for (the ruling of
+ * 2026-11-03), the satellite is one button that goes from high tide to low
+ * tide to none, and the loupe is on or off, the range ring standing in for it
+ * when off. The rest, the wind's two layers among them, each switch their own
+ * part.
  */
 export function layerGroups({
   wind,
@@ -196,6 +199,13 @@ export function layerGroups({
           ),
           isNew: true,
         },
+        part(
+          "depths",
+          "Depths",
+          "Contours and soundings",
+          <SoundingsGlyph size={18} />,
+          { label: "About the depths", at: "key" },
+        ),
       ],
     },
     {
