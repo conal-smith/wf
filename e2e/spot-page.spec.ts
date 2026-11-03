@@ -126,6 +126,102 @@ test("hovering the graph reads out that hour; a day card moves to its day", asyn
   await expect(second).toHaveAttribute("aria-pressed", "true");
 });
 
+test("a wheel or a trackpad over the graph reads out the hour that comes under the pointer", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  const graph = page.locator("[data-spot-graph]");
+  await graph.scrollIntoViewIfNeeded();
+  const box = (await graph.boundingBox())!;
+  const chip = page.locator("[data-readout] > div").first();
+  const x = box.x + box.width * 0.5;
+  const y = box.y + 80;
+  await page.mouse.move(x, y);
+  await expect(chip).not.toHaveText("Now");
+  const pointed = await chip.textContent();
+  // The hours scroll along under a pointer that stays put.
+  const left = await graph.evaluate((el) => el.scrollLeft);
+  await page.mouse.wheel(box.width / 3, 0);
+  await expect
+    .poll(() => graph.evaluate((el) => el.scrollLeft))
+    .toBeGreaterThan(left + 50);
+  await expect(chip).not.toHaveText(pointed ?? "");
+  // The hour read out is the one now under the pointer, as a move there says.
+  await expect
+    .poll(async () => {
+      const scrolled = await graph.evaluate((el) => el.scrollLeft);
+      await page.waitForTimeout(100);
+      return scrolled === (await graph.evaluate((el) => el.scrollLeft));
+    })
+    .toBe(true);
+  const scrolled = await chip.textContent();
+  await page.mouse.move(x + 1, y);
+  await page.mouse.move(x, y);
+  await expect(chip).toHaveText(scrolled ?? "");
+});
+
+/**
+ * Where every cell of the readout stands, with the pill itself, the graph's
+ * top and the key under it, in the page's own pixels.
+ */
+const readoutLayout = (page: Page) =>
+  page.evaluate(() => {
+    const at = (el: Element | null) => {
+      const r = el!.getBoundingClientRect();
+      return [r.x, r.y + scrollY, r.width, r.height].map(Math.round).join(",");
+    };
+    const readout = document.querySelector("[data-readout]")!;
+    return {
+      cells: [...readout.children].map(at),
+      pill: at(readout.querySelector("span")),
+      graph: at(document.querySelector("[data-spot-graph]")),
+      key: at(document.querySelector("[data-legend]")),
+    };
+  });
+
+for (const width of [1500, 1100, 390])
+  test(`the readout holds still as the hours change, dark or rated, at ${width}px`, async ({
+    page,
+  }) => {
+    await withTides(page);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/spot/brandon");
+    await expect(heading(page)).toBeVisible({ timeout: 30000 });
+    const graph = page.locator("[data-spot-graph]");
+    const readout = page.locator("[data-readout]");
+    await expect(page.locator("[data-graph-svg]")).toBeVisible();
+    // The readout and the top of the graph in view, so nothing scrolls the
+    // page while the hours are moved through.
+    await readout.evaluate((el) =>
+      scrollTo(0, scrollY + el.getBoundingClientRect().top - 60),
+    );
+    // The sample opens at night: the readout is now, and dark.
+    await expect(readout).toContainText("Now");
+    await expect(readout).toContainText("Dark");
+    const still = await readoutLayout(page);
+    const box = (await graph.boundingBox())!;
+    const seen = { rated: false, dark: false, hour: false };
+    const steps = 24;
+    for (let i = 1; i < steps; i++) {
+      if (width < 600)
+        await graph.evaluate(
+          (el, f) => (el.scrollLeft = (el.scrollWidth - el.clientWidth) * f),
+          i / steps,
+        );
+      else await page.mouse.move(box.x + (box.width * i) / steps, box.y + 60);
+      await page.waitForTimeout(60);
+      const text = (await readout.textContent()) ?? "";
+      if (!text.startsWith("Now")) seen.hour = true;
+      if (/Dark/.test(text)) seen.dark = true;
+      if (await readout.locator("[data-stars]").count()) seen.rated = true;
+      expect(await readoutLayout(page), `at "${text}"`).toEqual(still);
+    }
+    // The hours moved through were dark and rated both.
+    expect(seen).toEqual({ rated: true, dark: true, hour: true });
+  });
+
 test("Table shows the day's hours with their stars, wind, sea and launch", async ({
   page,
 }) => {
@@ -704,23 +800,44 @@ test("below the spot: the wind and the waves through the year, with their figure
   const order = await page.evaluate(() => {
     const at = (sel: string) => {
       const el = document.querySelector(sel);
-      return el ? Array.from(document.querySelectorAll("main *")).indexOf(el) : -1;
+      return el
+        ? Array.from(document.querySelectorAll("main *")).indexOf(el)
+        : -1;
     };
-    return { spot: at("#the-spot"), year: at("[data-climate]"), print: at("[data-warnings-source]") };
+    return {
+      spot: at("#the-spot"),
+      year: at("[data-climate]"),
+      print: at("[data-warnings-source]"),
+    };
   });
   expect(order.spot).toBeGreaterThan(-1);
   expect(order.year).toBeGreaterThan(order.spot);
   expect(order.print).toBeGreaterThan(order.year);
-  await expect(page.getByRole("heading", { name: "The wind through the year" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "The waves through the year" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "The wind through the year" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "The waves through the year" }),
+  ).toBeVisible();
   await expect(year).toContainText("How often it blows 12 kn or more");
-  await expect(year).toContainText("Generated using E.U. Copernicus Marine Service Information");
+  await expect(year).toContainText(
+    "Generated using E.U. Copernicus Marine Service Information",
+  );
   // Every figure says what it is: the whole sea's height, the swell alone, and where it was read.
-  await expect(year).toContainText("The whole sea, wind waves and swell together");
-  await expect(page.locator("[data-climate-candles]")).toContainText("Bar: from 1 in 10 to 9 in 10 of those days");
-  await expect(year).toContainText(/Waves at the wave model’s point \d+\.\d km from the spot/);
+  await expect(year).toContainText(
+    "The whole sea, wind waves and swell together",
+  );
+  await expect(page.locator("[data-climate-candles]")).toContainText(
+    "Bar: from 1 in 10 to 9 in 10 of those days",
+  );
+  await expect(year).toContainText(
+    /Waves at the wave model’s point \d+\.\d km from the spot/,
+  );
   // A month's column answers a hover with its figures.
-  await page.locator("[data-climate-wind] rect[data-tip-target]").first().hover();
+  await page
+    .locator("[data-climate-wind] rect[data-tip-target]")
+    .first()
+    .hover();
   const tip = page.locator("[data-climate-tip]");
   await expect(tip).toContainText("January");
   await expect(tip).toContainText("12 kn or more");
@@ -728,22 +845,35 @@ test("below the spot: the wind and the waves through the year, with their figure
   const swell = page.locator("[data-climate-swell]");
   const before = await swell.locator("polyline").first().getAttribute("points");
   await swell.getByRole("button", { name: "1.2 to 1.8 m" }).click();
-  await expect(swell.getByRole("button", { name: "1.2 to 1.8 m" })).toHaveAttribute("aria-pressed", "true");
-  expect(await swell.locator("polyline").first().getAttribute("points")).not.toBe(before);
-  await page.locator("[data-climate-candles] rect[data-tip-target]").first().hover();
+  await expect(
+    swell.getByRole("button", { name: "1.2 to 1.8 m" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  expect(
+    await swell.locator("polyline").first().getAttribute("points"),
+  ).not.toBe(before);
+  await page
+    .locator("[data-climate-candles] rect[data-tip-target]")
+    .first()
+    .hover();
   await expect(tip).toContainText("Days a month");
   expect(errors).toEqual([]);
 });
 
-test("sheltered water says the open sea's waves do not reach it, rather than showing them", async ({ page }) => {
+test("sheltered water says the open sea's waves do not reach it, rather than showing them", async ({
+  page,
+}) => {
   await withTides(page);
   await page.goto("/spot/malahide-estuary");
   const year = page.locator("[data-climate]");
   await expect(year).toBeAttached({ timeout: 30000 });
-  await expect(page.getByRole("heading", { name: "The wind through the year" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "The wind through the year" }),
+  ).toBeVisible();
   const sheltered = page.locator("[data-climate-sheltered]");
   await expect(sheltered).toContainText("Sheltered water");
-  await expect(sheltered).toContainText("The open sea’s waves don’t reach here");
+  await expect(sheltered).toContainText(
+    "The open sea’s waves don’t reach here",
+  );
   await expect(page.locator("[data-climate-waves]")).toHaveCount(0);
 });
 

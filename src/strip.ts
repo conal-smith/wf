@@ -65,6 +65,22 @@ export const timeSpoken = (time: number) =>
 /** "13". */
 export const hourLabel = (time: number) => clock(time).slice(0, 2);
 
+/** The Irish date of the day after `now`'s, across a change of the clocks. */
+export const irishTomorrow = (now: number) =>
+  irishDate(Date.parse(`${irishDate(now)}T12:00:00Z`) + 24 * 3600000);
+
+/**
+ * The Irish day of `time` in words, as it is from `now`: "today",
+ * "tomorrow", or "on Thursday" for a day further on (or gone). For the end
+ * of a sentence: "Stars at 13:00 tomorrow".
+ */
+export function onDay(time: number, now: number): string {
+  const date = irishDate(time);
+  if (date === irishDate(now)) return "today";
+  if (date === irishTomorrow(now)) return "tomorrow";
+  return `on ${dayLong(time)}`;
+}
+
 export interface StripColumn extends DockColumn {
   time: number;
   /** Irish calendar day. */

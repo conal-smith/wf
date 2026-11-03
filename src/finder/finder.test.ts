@@ -1,42 +1,33 @@
 import { describe, expect, it } from "vitest";
 import type { Spot } from "../../force5/src/weather";
-import { windCss } from "../../force5/src/weather";
 import type { PlaceHour } from "../ratings";
-import { clock, irishHour, stripColumns } from "../strip";
-import { BAND_TOP_KN, windBand } from "./band";
+import { clock, irishDate, irishHour, stripColumns } from "../strip";
 import {
   HOUR,
   IRELAND_CENTRE,
   NEAREST_COUNT,
   bestStars,
   cardDates,
-  centredScroll,
   columnsByTime,
   dayLight,
   dayOpening,
-  dayPlan,
   dayRow,
   distanceKm,
   listFor,
   middayColumn,
   nearSpots,
+  nearestHour,
   nearestSpots,
+  openingDay,
   openingScope,
   orderSpots,
   pickHour,
   rankSpots,
-  rideableRun,
-  rowEnds,
-  rowPosition,
-  rowTime,
   scopeAddress,
   scopeInAddress,
   shownColumn,
-  starColour,
-  steppedScroll,
+  todayOver,
   todayRow,
-  weekBest,
-  windiest,
   withStars,
   type Listed,
 } from "./finder";
@@ -339,78 +330,117 @@ describe("a day chosen, hour by hour", () => {
     );
     expect(dayOpening(strip, "2026-12-25", now)).toBeNull();
   });
+});
 
-  it("stands a time along its columns, and back", () => {
-    const h = (n: number) => start + n * HOUR;
-    // Hourly, then three-hourly.
-    const times = [h(6), h(7), h(8), h(11), h(14)];
-    expect(rowPosition(times, h(7))).toBe(1);
-    expect(rowPosition(times, h(7.5))).toBe(1.5);
-    expect(rowPosition(times, h(9.5))).toBe(2.5);
-    expect(rowPosition(times, h(14))).toBe(4);
-    // Past either end, an hour a column.
-    expect(rowPosition(times, h(5.5))).toBe(-0.5);
-    expect(rowPosition(times, h(14.5))).toBe(4.5);
-    for (const p of [-0.5, 0, 0.25, 1, 2.5, 3.75, 4, 4.5])
-      expect(rowPosition(times, rowTime(times, p))).toBeCloseTo(p, 9);
-    expect(rowPosition([], h(3))).toBe(0);
+describe("the hour now, and the evening", () => {
+  // Tuesday 3 November 2026, Irish winter time (GMT): Dublin's light is
+  // about 06:50 to 17:25, so its row runs 06:00 to 18:00.
+  const strip = (now: number) =>
+    hourly(`${irishDate(now)}T00:00:00Z`, 24 * 7, now);
+  const KEEL = { lat: 53.97, lon: -10.08 };
+
+  it("is the nearest hour, as a clock is read", () => {
+    expect(nearestHour(Date.parse("2026-11-03T19:59:00Z"))).toBe(
+      Date.parse("2026-11-03T20:00:00Z"),
+    );
+    expect(nearestHour(Date.parse("2026-11-03T13:20:00Z"))).toBe(
+      Date.parse("2026-11-03T13:00:00Z"),
+    );
+    expect(nearestHour(Date.parse("2026-11-03T13:30:00Z"))).toBe(
+      Date.parse("2026-11-03T14:00:00Z"),
+    );
+  });
+
+  it("marks the nearest hour on today's row, not the one it is in", () => {
+    const now = Date.parse("2026-11-03T13:40:00Z");
+    const row = todayRow(strip(now), DUBLIN, now)!;
+    expect(irishHour(row.hours.find((h) => h.now)!.time)).toBe(14);
+    expect(row.hours.find((h) => irishHour(h.time) === 13)!.gone).toBe(true);
+  });
+
+  it("leaves the hour now off the row after dark: 19:59 is not 18:00", () => {
+    const now = Date.parse("2026-11-03T19:59:00Z");
+    const row = todayRow(strip(now), DUBLIN, now)!;
+    expect(irishHour(row.hours.at(-1)!.time)).toBe(18);
+    expect(row.hours.some((h) => h.now)).toBe(false);
+    expect(row.hours.every((h) => h.gone)).toBe(true);
+  });
+
+  it("is over once the hour now is past the end of today's row", () => {
+    const at = (iso: string) => Date.parse(iso);
+    // 18:00 is still on the row, and 18:29 is nearest it.
+    expect(todayOver([DUBLIN], at("2026-11-03T18:00:00Z"))).toBe(false);
+    expect(todayOver([DUBLIN], at("2026-11-03T18:29:00Z"))).toBe(false);
+    // 18:30 is nearest 19:00, past it; so is the owner's 19:59, and 20:30.
+    expect(todayOver([DUBLIN], at("2026-11-03T18:30:00Z"))).toBe(true);
+    expect(todayOver([DUBLIN], at("2026-11-03T19:59:00Z"))).toBe(true);
+    expect(todayOver([DUBLIN], at("2026-11-03T20:30:00Z"))).toBe(true);
+    // Before first light, the day is to come.
+    expect(todayOver([DUBLIN], at("2026-11-03T05:00:00Z"))).toBe(false);
+    // With none listed, the middle of Ireland stands for them.
+    expect(todayOver([], at("2026-11-03T19:59:00Z"))).toBe(true);
+    expect(todayOver([], at("2026-11-03T15:00:00Z"))).toBe(false);
+  });
+
+  it("waits for the place listed whose light lasts longest", () => {
+    // 10 April 2026, Irish summer time: Dublin's last light is about 20:50,
+    // its row ending at 21:00; Keel's, out west, about 21:10, its row ending
+    // at 22:00. At 21:40 Irish (nearest 22:00) Dublin's day is over, Keel's
+    // is not.
+    const late = Date.parse("2026-04-10T20:40:00Z");
+    expect(todayOver([DUBLIN], late)).toBe(true);
+    expect(todayOver([KEEL], late)).toBe(false);
+    expect(todayOver([DUBLIN, KEEL], late)).toBe(false);
+    const row = dayRow(strip(late), KEEL, "2026-04-10", late)!;
+    expect(irishHour(row.hours.at(-1)!.time)).toBe(22);
+  });
+
+  it("opens the finder on tomorrow after dark, at tomorrow's early afternoon", () => {
+    for (const iso of ["2026-11-03T19:59:00Z", "2026-11-03T20:30:00Z"]) {
+      const now = Date.parse(iso);
+      const dates = cardDates(now);
+      const day = openingDay(dates, [DUBLIN], now);
+      expect(day).toBe("2026-11-04");
+      const s = strip(now);
+      expect(clock(s[dayOpening(s, day, now)!].time)).toBe("13:00");
+    }
+    // In the afternoon, today.
+    const now = Date.parse("2026-11-03T15:00:00Z");
+    expect(openingDay(cardDates(now), [DUBLIN], now)).toBe("2026-11-03");
+    // Just after midnight it is a new today, not the day after it.
+    const night = Date.parse("2026-11-04T00:10:00Z");
+    expect(openingDay(cardDates(night), [DUBLIN], night)).toBe("2026-11-04");
+  });
+
+  it("rolls over in Irish summer time too, an hour off UTC", () => {
+    // 22 June 2026: Dublin's row ends at 23:00 Irish, 22:00 UTC.
+    const before = Date.parse("2026-06-22T21:20:00Z"); // 22:20 Irish
+    const after = Date.parse("2026-06-22T22:40:00Z"); // 23:40 Irish
+    expect(openingDay(cardDates(before), [DUBLIN], before)).toBe("2026-06-22");
+    expect(openingDay(cardDates(after), [DUBLIN], after)).toBe("2026-06-23");
   });
 });
 
-describe("the next days", () => {
+describe("a day's opening hour", () => {
   const now = Date.parse("2026-10-25T13:20:00Z");
-  // Hourly for two days, then three-hourly.
   const start = Date.parse("2026-10-25T00:00:00Z");
   const strip = stripColumns(
-    [
-      ...Array.from({ length: 48 }, (_, i) => start + i * HOUR),
-      ...Array.from({ length: 40 }, (_, i) => start + (48 + i * 3) * HOUR),
-    ].map((t) => ({ validTime: new Date(t).toISOString(), model: "x" })),
+    Array.from({ length: 48 }, (_, i) => ({
+      validTime: new Date(start + i * HOUR).toISOString(),
+      model: "x",
+    })),
     now,
   );
+  const columns = (date: string) =>
+    strip.flatMap((c, at) => (c.date === date ? [at] : []));
 
-  it("keep each day's columns from first light to last, at the run's cadence", () => {
-    const monday = dayPlan(strip, DUBLIN, "2026-10-26")!;
-    const light = dayLight(DUBLIN, "2026-10-26")!;
-    expect(monday.columns.length).toBeGreaterThan(9);
-    for (const at of monday.columns) {
-      expect(strip[at].time).toBeGreaterThanOrEqual(light.firstLight);
-      expect(strip[at].time).toBeLessThanOrEqual(light.lastLight);
-    }
-    const thursday = dayPlan(strip, DUBLIN, "2026-10-29")!;
-    expect(thursday.columns.length).toBeLessThan(6);
+  it("is early afternoon, or the last hour on a day past it", () => {
     expect(
-      strip[thursday.columns[1]].time - strip[thursday.columns[0]].time,
-    ).toBe(3 * HOUR);
-  });
-
-  it("say a day's best stars, its run worth riding and its windiest hour", () => {
-    const row = [
-      hour(0, 8),
-      hour(2, 14),
-      hour(4, 18),
-      hour(3, 22),
-      hour(0, 26),
-      hour(1, 12),
-    ];
-    const all = [0, 1, 2, 3, 4, 5];
-    expect(bestStars(row, all)).toBe(4);
-    expect(bestStars(row, [0, 4])).toBe(0);
-    expect(rideableRun(row, all)).toEqual({ from: 1, to: 3, stars: 4 });
-    expect(rideableRun(row, [0, 4])).toBeNull();
-    expect(windiest(row, all)).toBe(4);
-    expect(windiest([hour(null, null)], [0])).toBeNull();
-  });
-
-  it("sum a day up at early afternoon, or now on a day past it", () => {
-    const monday = dayPlan(strip, DUBLIN, "2026-10-26")!;
-    expect(
-      irishHour(strip[middayColumn(strip, monday.columns, now)!].time),
+      irishHour(strip[middayColumn(strip, columns("2026-10-26"), now)!].time),
     ).toBe(13);
-    const today = dayPlan(strip, DUBLIN, "2026-10-25")!;
     const late = Date.parse("2026-10-25T15:30:00Z");
     expect(
-      irishHour(strip[middayColumn(strip, today.columns, late)!].time),
+      irishHour(strip[middayColumn(strip, columns("2026-10-25"), late)!].time),
     ).toBe(15);
     expect(middayColumn(strip, [], now)).toBeNull();
   });
@@ -428,9 +458,9 @@ describe("the order", () => {
     return r;
   };
 
-  it("takes a place's best of the six days, the soonest day it comes", () => {
+  it("takes a place's best of some days, the soonest day it comes", () => {
     expect(
-      weekBest(
+      bestStars(
         row({ "2026-10-27T12:00:00Z": 4, "2026-10-26T12:00:00Z": 4 }),
         strip,
         dates,
@@ -439,7 +469,7 @@ describe("the order", () => {
     ).toEqual({ stars: 4, day: 1 });
     // Today's hours count from the hour now on, not the morning's.
     expect(
-      weekBest(
+      bestStars(
         row({ "2026-10-25T09:00:00Z": 5, "2026-10-25T15:00:00Z": 3 }),
         strip,
         dates,
@@ -448,10 +478,19 @@ describe("the order", () => {
     ).toEqual({ stars: 3, day: 0 });
     // Past the sixth day, nothing.
     expect(
-      weekBest(row({ "2026-10-31T12:00:00Z": 5 }), strip, dates, now),
+      bestStars(row({ "2026-10-31T12:00:00Z": 5 }), strip, dates, now),
     ).toEqual({ stars: 0, day: null });
+    // Of one day, as the finder asks of the day shown: that day's best.
+    expect(
+      bestStars(
+        row({ "2026-10-27T12:00:00Z": 5, "2026-10-26T12:00:00Z": 2 }),
+        strip,
+        ["2026-10-26"],
+        now,
+      ),
+    ).toEqual({ stars: 2, day: 0 });
     // Not yet rated.
-    expect(weekBest(undefined, strip, dates, now)).toEqual({
+    expect(bestStars(undefined, strip, dates, now)).toEqual({
       stars: -1,
       day: null,
     });
@@ -532,89 +571,6 @@ describe("the hour picked", () => {
       shownColumn(strip, Date.parse("2026-11-05T16:00:00Z"), opening),
     ).toBeNull();
     expect(shownColumn([], null, 0)).toBeNull();
-  });
-});
-
-describe("the row's scroll", () => {
-  it("stands a column in the middle, held to the ends", () => {
-    // 13 columns of 54px in a 300px view.
-    const all = 13 * 54;
-    expect(centredScroll(7 * 54, 54, 300, all)).toBe(7 * 54 + 27 - 150);
-    expect(centredScroll(0, 54, 300, all)).toBe(0);
-    expect(centredScroll(12 * 54, 54, 300, all)).toBe(all - 300);
-    expect(centredScroll(3 * 54, 54, 900, all)).toBe(0);
-  });
-
-  it("steps most of a view either way, and stops at the ends", () => {
-    expect(steppedScroll(100, 1, 300, 700)).toBe(280);
-    expect(steppedScroll(100, -1, 300, 700)).toBe(0);
-    expect(steppedScroll(380, 1, 300, 700)).toBe(400);
-  });
-
-  it("says whether there is more either side", () => {
-    expect(rowEnds(0, 300, 700)).toEqual({ before: false, after: true });
-    expect(rowEnds(200, 300, 700)).toEqual({ before: true, after: true });
-    expect(rowEnds(400, 300, 700)).toEqual({ before: true, after: false });
-    expect(rowEnds(0, 700, 700)).toEqual({ before: false, after: false });
-  });
-});
-
-describe("the stars' colours", () => {
-  it("are the theme's, one to five, and none has none", () => {
-    expect([1, 2, 3, 4, 5].map(starColour)).toEqual([
-      "var(--color-stars-1)",
-      "var(--color-stars-2)",
-      "var(--color-stars-3)",
-      "var(--color-stars-4)",
-      "var(--color-stars-5)",
-    ]);
-    expect(starColour(0)).toBeNull();
-    expect(starColour(null)).toBeNull();
-    expect(starColour(undefined)).toBeNull();
-    expect(starColour(7)).toBe("var(--color-stars-5)");
-  });
-});
-
-describe("the wind band", () => {
-  const box = { x0: 0, x1: 100, top: 10, base: 100 };
-
-  it("fills from the base up to the mean, held out to either edge", () => {
-    const band = windBand(
-      [
-        { x: 25, mean: 0, gust: null },
-        { x: 75, mean: BAND_TOP_KN, gust: null },
-      ],
-      box,
-    )!;
-    expect(band.area).toBe("M0 100L0 100L25 100L75 10L100 10L100 100Z");
-    expect(band.line).toBe("M0 100L25 100L75 10L100 10");
-    // No gust over the mean: no gust layer.
-    expect(band.gusts).toBeNull();
-    expect(band.gustLine).toBeNull();
-  });
-
-  it("lays the gusts over the mean in their own colour, and the mean in its", () => {
-    const band = windBand(
-      [
-        { x: 0, mean: 15, gust: 25 },
-        { x: 50, mean: 20, gust: null },
-        { x: 100, mean: 10, gust: 30 },
-      ],
-      box,
-    )!;
-    expect(band.gusts).toMatch(/^M.*Z$/);
-    expect(band.stops.map((s) => s.offset)).toEqual([0, 0.5, 1]);
-    expect(band.stops[0]).toEqual({
-      offset: 0,
-      mean: windCss(15),
-      gust: windCss(25),
-    });
-    // Where there is no gust, the layer closes onto the mean.
-    expect(band.stops[1].gust).toBe(windCss(20));
-  });
-
-  it("draws nothing with no wind", () => {
-    expect(windBand([], box)).toBeNull();
   });
 });
 

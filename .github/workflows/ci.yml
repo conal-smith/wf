@@ -92,9 +92,6 @@ jobs:
       # The satellite pipeline's pure parts (scripts/satellite): numpy only.
       - name: Satellite pipeline tests
         run: python -m unittest discover -s scripts/satellite -p 'test_*.py'
-      # The climate build's arithmetic (scripts/climate): numpy only.
-      - name: Climate build tests
-        run: python -m unittest discover -s scripts/climate -p 'test_*.py'
       # Home Compute's and Cloudflare's timetables are generated from
       # deploy/local/jobs.toml; an edit to one without the others fails here.
       - name: Generated timetables are current

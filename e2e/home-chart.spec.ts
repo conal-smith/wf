@@ -110,7 +110,7 @@ test.describe("on a wide screen", () => {
     await expect(onChart(page)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Layers" })).toHaveCount(0);
     await expect(page.locator("[data-panel-when]")).toHaveText(
-      /^Stars at \d\d:\d\d (today|on \w+)$/,
+      /^Stars at \d\d:\d\d (today|tomorrow|on \w+)$/,
     );
     // Every listed spot's light is inside the panel.
     for (const light of await lights(page).all()) {

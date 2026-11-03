@@ -12,9 +12,10 @@ import { SAMPLE_CLOCK } from "./columns";
 
 /**
  * The spot finder, the home page (src/finder): the rider's places as cards,
- * the best of the six days first, each with its picture and rose, today hour
- * by hour from first light to last, and the next five days. No timeline, not
- * tied to the chart's time; on a wide screen the chart stands beside it
+ * the best on the day shown first, each with its picture and rose, and the
+ * day hour by hour from first light to last; ‹ Today › steps through the six
+ * days, and after dark it opens on tomorrow. No timeline, not tied to the
+ * chart's time; on a wide screen the chart stands beside it
  * (e2e/home-chart.spec.ts). Favourites once the rider has starred a place,
  * else every place near the rider; either on asking.
  */
@@ -49,10 +50,10 @@ const unanswered = (page: Page, at: { latitude: number; longitude: number }) =>
   }, at);
 
 /**
- * Half past one in the afternoon, Irish time, on the sample's day: inside
+ * Half past two in the afternoon, Irish time, on the sample's day: inside
  * HARMONIE's run, with the afternoon's light ahead. The suite's own clock
  * (`SAMPLE_CLOCK`) is that evening, after last light, when today's row is
- * all hours gone.
+ * all hours gone and the finder opens on tomorrow.
  */
 const AFTERNOON = new Date(SAMPLE_CLOCK.getTime() - 7.5 * 3600000);
 
@@ -67,6 +68,29 @@ const star = (page: Page, ids: string[]) =>
   );
 
 const finder = (page: Page) => page.locator("[data-spot-finder]");
+/** The day the finder shows, and its arrows (src/finder/DaySteps.tsx). */
+const days = (page: Page) => page.getByRole("group", { name: "Day" });
+const shownDay = (page: Page) => page.locator("[data-finder-day]");
+const earlier = (page: Page) =>
+  days(page).getByRole("button", { name: "Previous day" });
+const later = (page: Page) =>
+  days(page).getByRole("button", { name: "Next day" });
+/** The chart's pill beside the list: "Stars at 13:00 tomorrow". */
+const pill = (page: Page) => page.locator("[data-panel-when]");
+/** The Irish date of a moment, and of the day after it. */
+const irishDate = (time: number) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Dublin" }).format(
+    new Date(time),
+  );
+const SAMPLE_DAY = irishDate(SAMPLE_CLOCK.getTime());
+const SAMPLE_TOMORROW = irishDate(SAMPLE_CLOCK.getTime() + 24 * 3600000);
+/** Every card's bars are this day's. */
+const barsOn = (page: Page) =>
+  page
+    .locator("[data-day-bars]")
+    .evaluateAll((els) => [
+      ...new Set(els.map((el) => el.getAttribute("data-day-bars"))),
+    ]);
 /** "Use my location": the one way the browser is asked where the rider is. */
 const useMyLocation = (page: Page) =>
   page.getByRole("button", { name: "Use my location" }).click();
@@ -155,7 +179,6 @@ test.describe("on a desktop", () => {
     await expect(brandon.locator('[data-bar="wind"]')).toBeVisible();
     await expect(brandon.locator('[data-bar="stars"]')).toBeVisible();
     await expect(brandon.locator("[data-shown-tick]").first()).toBeAttached();
-    await expect(brandon.locator("[data-next-days]")).toHaveCount(0);
     // The map's two modes at its foot: Spots, pressed, and Chart.
     const modes = page.locator("[data-panel-modes]");
     await expect(modes.getByRole("button", { name: "Spots" })).toHaveAttribute(
@@ -184,6 +207,95 @@ test.describe("on a desktop", () => {
     await expect(page.locator("[data-picked-hour]")).toHaveCount(2);
     await expect.poll(() => tick(0)).not.toBe(before[0]);
     expect(await tick(1)).toBe(await tick(0));
+  });
+
+  test("the day steps through today and the five days after it, on every card and the chart", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "keel", "dollymount"]);
+    await openFinder(page);
+    await rated(page);
+    // In the afternoon it opens on today, the hour now ticked on each card.
+    await expect(shownDay(page)).toHaveAttribute("data-finder-day", SAMPLE_DAY);
+    await expect(shownDay(page)).toContainText("Today");
+    await expect(earlier(page)).toBeDisabled();
+    await expect(pill(page)).toHaveText(/^Stars at \d\d:00 today$/);
+    expect(await barsOn(page)).toEqual([SAMPLE_DAY]);
+    // One on: tomorrow, on every card, at the hour it opens on, which the
+    // chart's pill says too.
+    await later(page).click();
+    await expect(shownDay(page)).toHaveAttribute(
+      "data-finder-day",
+      SAMPLE_TOMORROW,
+    );
+    await expect(shownDay(page)).toContainText("Tomorrow");
+    await expect.poll(() => barsOn(page)).toEqual([SAMPLE_TOMORROW]);
+    await expect(pill(page)).toHaveText(/^Stars at \d\d:00 tomorrow$/);
+    const opening = (await pill(page).textContent())!.slice(9, 14);
+    await expect(page.locator("[data-rose-hour]").first()).toHaveText(opening);
+    await expect(cards(page).locator("[data-shown-tick]")).toHaveCount(6);
+    await expect(earlier(page)).toBeEnabled();
+    // A press on the bars picks an hour of tomorrow's, on every card.
+    const bar = cards(page).nth(0).locator('[data-bar="wind"]');
+    const box = (await bar.boundingBox())!;
+    await page.mouse.click(box.x + box.width * 0.15, box.y + box.height / 2);
+    await expect(page.locator("[data-picked-hour]")).toHaveCount(3);
+    await expect(pill(page)).toHaveText(/^Stars at \d\d:00 tomorrow$/);
+    await expect(pill(page)).not.toHaveText(`Stars at ${opening} tomorrow`);
+    // The arrow keys step it from either button; at the last day its arrow
+    // is off and the focus stays in the control.
+    await later(page).focus();
+    for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowRight");
+    await expect(later(page)).toBeDisabled();
+    await expect(earlier(page)).toBeFocused();
+    await expect(shownDay(page)).not.toContainText(/Today|Tomorrow/);
+    await expect(pill(page)).toHaveText(/^Stars at \d\d:\d\d on \w+day$/);
+    // Back to today, with Enter on the other arrow and the left key.
+    for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowLeft");
+    await expect(shownDay(page)).toContainText("Tomorrow");
+    await page.keyboard.press("Enter");
+    await expect(shownDay(page)).toHaveAttribute("data-finder-day", SAMPLE_DAY);
+    await expect(earlier(page)).toBeDisabled();
+    await expect(later(page)).toBeFocused();
+    await expect(page.locator("[data-picked-hour]")).toHaveCount(0);
+  });
+
+  test("after dark it opens on tomorrow, and today ticks no hour it is not", async ({
+    page,
+  }) => {
+    // The suite's own clock: 22:00 Irish summer time, after last light.
+    await star(page, ["brandon", "keel"]);
+    await page.goto("/");
+    await expect(finder(page)).toBeVisible({ timeout: 30000 });
+    await rated(page);
+    await expect(shownDay(page)).toHaveAttribute(
+      "data-finder-day",
+      SAMPLE_TOMORROW,
+    );
+    await expect(shownDay(page)).toContainText("Tomorrow");
+    expect(await barsOn(page)).toEqual([SAMPLE_TOMORROW]);
+    await expect(pill(page)).toHaveText(/^Stars at \d\d:00 tomorrow$/);
+    await expect(cards(page).locator("[data-shown-tick]")).toHaveCount(4);
+    // Back to today: its rows ended at dusk, so no card ticks its last
+    // hour for the hour now, and the pill says the hour now, nearest.
+    await earlier(page).click();
+    await expect(shownDay(page)).toContainText("Today");
+    await expect.poll(() => barsOn(page)).toEqual([SAMPLE_DAY]);
+    await expect(cards(page).locator("[data-shown-tick]")).toHaveCount(0);
+    await expect(pill(page)).toHaveText("Stars at 22:00 today");
+  });
+
+  test("the hour now is the nearest one, on the cards and the chart's pill", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "keel"]);
+    // 14:59 Irish time: 15:00, not 14:00.
+    await page.clock.setFixedTime(new Date(AFTERNOON.getTime() + 29 * 60000));
+    await page.goto("/");
+    await expect(finder(page)).toBeVisible({ timeout: 30000 });
+    await rated(page);
+    await expect(pill(page)).toHaveText("Stars at 15:00 today");
+    await expect(cards(page).locator("[data-shown-tick]")).toHaveCount(4);
   });
 
   test("while the places and their hours load, the cards hold their shape and say so", async ({
@@ -466,11 +578,9 @@ test.describe("on a desktop", () => {
       "Best first",
       "A to Z",
     ]);
-    // Only the places with five stars in their six days, or a line saying
+    // Only the places with five stars on the day shown, or a line saying
     // there are none.
-    const stars = filters(page).getByRole("group", {
-      name: "Stars in the next six days",
-    });
+    const stars = filters(page).getByRole("group", { name: "Stars today" });
     await stars.getByRole("button", { name: "5 stars" }).click();
     await expect(
       stars.getByRole("button", { name: "5 stars" }),
@@ -481,7 +591,7 @@ test.describe("on a desktop", () => {
     if (best.length) expect(best.every((n) => n === 5)).toBe(true);
     else
       await expect(page.locator("[data-finder-empty]")).toHaveText(
-        "No spot on this list has 5 stars in the next six days.",
+        "No spot on this list has 5 stars today.",
       );
     // The button says the list is narrowed; Clear puts the order and the
     // stars back.

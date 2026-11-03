@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   columnAtX,
   dayStep,
+  irishTomorrow,
+  onDay,
   stripGeometry,
   nearestColumn,
   openingColumn,
@@ -19,6 +21,29 @@ const hours = (from: string, n: number, step = 1) =>
     validTime: new Date(Date.parse(from) + i * step * 3600000).toISOString(),
     model: "harmonie",
   }));
+
+describe("a day in words", () => {
+  const now = Date.parse("2026-11-03T19:59:00Z");
+
+  it("says today, tomorrow, or the weekday", () => {
+    expect(onDay(Date.parse("2026-11-03T20:00:00Z"), now)).toBe("today");
+    expect(onDay(Date.parse("2026-11-04T10:00:00Z"), now)).toBe("tomorrow");
+    expect(onDay(Date.parse("2026-11-05T13:00:00Z"), now)).toBe(
+      "on Thursday",
+    );
+  });
+
+  it("finds tomorrow by the Irish date, across the clocks going back", () => {
+    // 23:30 on Saturday 24 October, summer time: 22:30 UTC.
+    expect(irishTomorrow(Date.parse("2026-10-24T22:30:00Z"))).toBe(
+      "2026-10-25",
+    );
+    // 00:30 Irish summer time on 22 June is 23:30 UTC the day before.
+    expect(irishTomorrow(Date.parse("2026-06-21T23:30:00Z"))).toBe(
+      "2026-06-23",
+    );
+  });
+});
 
 describe("stripColumns", () => {
   // 5 October 2026 is a Monday in Irish summer time (UTC+1).
