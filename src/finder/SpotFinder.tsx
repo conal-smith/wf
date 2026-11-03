@@ -1,20 +1,21 @@
 /**
- * The spot finder, the home page at /: where is good for this rider this week. The
- * places (their favourites, or every one round them: it opens on the
- * favourites once there are some, else on the places round the rider, so a
- * first visit is never empty) as cards, the best
- * first: the most stars in today and the five days after it, the soonest,
- * then the nearest. Each card is the place from above with the ride rose on
- * it, today hour by hour from first light to last, and the next five days
- * (src/finder/SpotCard.tsx). The approved design is
- * the spot list cards mock-up, its "7e".
+ * The spot finder, the home page at /: where is good for this rider, on one
+ * day at a time. The places (their favourites, or every one round them: it
+ * opens on the favourites once there are some, else on the places round the
+ * rider, so a first visit is never empty) as cards, the best first: the most
+ * stars on the day shown, then the nearest. Each card is the place from
+ * above with the ride rose on it, and the day hour by hour from first light
+ * to last as two bars, the wind and the stars (src/finder/SpotCard.tsx).
  *
  * Over the cards, one row: Favourites or Nearby, how many spots the list
  * holds, and a filter button. The filter opens a sheet with the fewest stars
- * a place is to have, the list's order (the best of the week, the nearest,
- * A to Z) and the model the stars are rated from (the rider's own, as the
- * spot page and Settings set it); a dot on the button says the list is
- * narrowed or reordered. A spot is found by name with the top bar's search
+ * a place is to have, the list's order (the best first, the nearest, A to Z)
+ * and the model the stars are rated from (the rider's own, as the spot page
+ * and Settings set it); a dot on the button says the list is narrowed or
+ * reordered. Under it, the day: ‹ Today › steps through today and the five
+ * days after it (src/finder/DaySteps.tsx). It opens on today, and once
+ * today's rows are over (the hour after last light, finder.ts `todayOver`)
+ * on tomorrow, at the hour it opens on. A spot is found by name with the top bar's search
  * (ui/SpotSearch.tsx), which goes to its page. The tab is in the
  * address (`/?tab=favourites`, finder.ts `TAB_PARAM`) once one is chosen, so
  * either can be linked to, kept and reloaded.
@@ -27,14 +28,14 @@
  * (`beside`); the list tells it which places it shows, at which hour, which
  * card is under the pointer and where the rider is. Under that width the
  * list is alone, with a button to the chart. No timeline at its head, and
- * not tied to the chart's time. The cards keep one time between them, as a dashboard's
- * charts do: a day pressed among the next ones is drawn hour by hour on
- * every card in today's place (today goes among the others, to come back
- * to); an hour picked on one card's day is picked on every card, its rose
- * turned to it; and a mouse over a card's hours, or over a day, draws a
- * dotted line at that time on every card (src/finder/hover.ts). A card
- * opens its spot's page; the chart is a button away in the top bar. No legend: the stars
- * and the wind's colours are the site's own, said once on the Info page.
+ * not tied to the chart's time. The cards keep one time between them, as a
+ * dashboard's charts do: the day stepped to is the day on every card, and an
+ * hour picked on one card's bars is picked on every card, its rose turned to
+ * it, and on the chart beside them. Today, the hour they stand at is the
+ * hour now, the nearest one (19:59 is 20:00, finder.ts `nearestHour`); any
+ * other day, the hour it opens on. A card opens its spot's page; the chart
+ * is a button away in the top bar. No legend: the stars and the wind's
+ * colours are the site's own, said once on the Info page.
  *
  * A page of the map's bundle, drawn by src/App.tsx under the chart and
  * loaded as a chunk of its own. Its wind and its
@@ -57,21 +58,17 @@ import { Link } from "../../ui/Link";
 import { Segmented } from "../../ui/Segmented";
 import { tv } from "../../ui/tv";
 import type { PlaceHour } from "../ratings";
+import { irishDate, onDay, openingColumn, type StripColumn } from "../strip";
 import {
-  dayLong,
-  dayShort,
-  irishDate,
-  openingColumn,
-  type StripColumn,
-} from "../strip";
-import {
+  HOUR,
+  bestStars,
   cardDates,
   columnsByTime,
   dayOpening,
-  dayPlan,
   dayRow,
-  hourOf,
   listFor,
+  nearestHour,
+  openingDay,
   openingScope,
   orderSpots,
   pickHour,
@@ -79,7 +76,6 @@ import {
   scopeAddress,
   scopeInAddress,
   shownColumn,
-  weekBest,
   withStars,
   type Listed,
   type Order,
@@ -87,6 +83,7 @@ import {
 } from "./finder";
 
 export type { Scope };
+import { DaySteps } from "./DaySteps";
 import { HoverContext, hoverStore } from "./hover";
 import { knownBefore, useRiderPlace } from "./location";
 import { CardSkeleton, SpotCard } from "./SpotCard";
@@ -140,7 +137,7 @@ const SCOPES = [
   { value: "near", label: "Nearby" },
 ] as const;
 
-/** The fewest stars a place is to have in its six days, as chips. */
+/** The fewest stars a place is to have on the day shown, as chips. */
 const FEWEST = [
   { value: 0, label: "Any stars" },
   { value: 3, label: "3+ stars" },
@@ -257,7 +254,8 @@ export default function SpotFinder(props: FinderProps) {
     return () => window.removeEventListener("popstate", pop);
   }, []);
   useEffect(() => onDrawn?.(), []);
-  // The day drawn hour by hour on every card; null is today.
+  // The day stepped to, drawn hour by hour on every card; null is the day the
+  // finder opens on (today, or tomorrow once today is over).
   const [chosen, setChosen] = useState<string | null>(null);
   // The hour picked on that day's row, for every card; null is the hour the
   // day stands at (now, today).
@@ -265,7 +263,7 @@ export default function SpotFinder(props: FinderProps) {
   // The time under a mouse, shared by every card without drawing them again.
   const [hover] = useState(hoverStore);
 
-  // The list's order, and the fewest stars a place has in its six days.
+  // The list's order, and the fewest stars a place has on the day shown.
   const [order, setOrder] = useState<Order>("best");
   const [fewest, setFewest] = useState(0);
   // The filter sheet.
@@ -317,63 +315,55 @@ export default function SpotFinder(props: FinderProps) {
     [placeLat, placeLon],
   );
 
-  const hourKey = hourOf(now);
-  const dates = useMemo(() => cardDates(now), [hourKey]);
-  // A day chosen yesterday that is today now, or gone, is today again.
-  const day = chosen !== null && dates.includes(chosen) ? chosen : dates[0];
+  // Every half hour: the date, and the hour now as `nearestHour` says it.
+  const halfHour = Math.floor(now / (HOUR / 2));
+  const dates = useMemo(() => cardDates(now), [halfHour]);
+  const listedSpots = useMemo(() => listed.map((l) => l.spot), [listed]);
+  // The day the finder opens on: today, or tomorrow once today's rows are
+  // over at every place listed.
+  const opensOn = useMemo(
+    () => openingDay(dates, listedSpots, now),
+    [dates, listedSpots, halfHour],
+  );
+  // A day stepped to yesterday that is gone now is the opening day again.
+  const day = chosen !== null && dates.includes(chosen) ? chosen : opensOn;
   const isToday = day === dates[0];
   // An hour picked on another day is not one of this day's to show.
   const pick = picked !== null && irishDate(picked) === day ? picked : null;
   const chooseDay = (date: string) => {
-    setChosen(date === dates[0] ? null : date);
+    setChosen(date === opensOn ? null : date);
     setPicked(null);
   };
   const byTime = useMemo(() => columnsByTime(strip), [strip]);
-  // A tab's places, the best of the week first, then in the order asked.
+  // A tab's places, the best on the day first, then in the order asked.
   const ranked: Listed[] = useMemo(() => {
     const rated = listed.map(({ spot, km }) => ({
       spot,
       km,
-      best: weekBest(hours.get(spot.id), strip, dates, now),
+      best: bestStars(hours.get(spot.id), strip, [day], now),
     }));
     // Nearest first means nothing without the rider's place.
     const by = order === "near" && !known ? "best" : order;
     return withStars(orderSpots(rankSpots(rated), by), fewest);
-  }, [
-    listed,
-    order,
-    known,
-    fewest,
-    hours,
-    version,
-    strip,
-    dates,
-    hourKey,
-  ]);
+  }, [listed, order, known, fewest, hours, version, strip, day, halfHour]);
 
-  const listedSpots = useMemo(() => listed.map((l) => l.spot), [listed]);
   const axis = useMemo(() => strip.map((c) => c.validTime), [strip]);
   const readings = useReadings(listedSpots, axis);
 
-  // The day's row and the other five days, at each place's own light.
-  const plans = useMemo(
+  // The day's row, at each place's own light.
+  const rows = useMemo(
     () =>
       new Map(
         listedSpots.map((spot) => [
           spot.id,
-          {
-            day: dayRow(strip, spot, day, now, byTime),
-            days: dates
-              .filter((date) => date !== day)
-              .map((date) => dayPlan(strip, spot, date)),
-          },
+          dayRow(strip, spot, day, now, byTime),
         ]),
       ),
-    [listedSpots, strip, byTime, dates, day, hourKey],
+    [listedSpots, strip, byTime, day, halfHour],
   );
 
   // Where the day stands with no hour picked: now, today, as the chart
-  // would open; a day chosen, its early afternoon.
+  // would open; any other day, the hour it opens on.
   const opening = isToday
     ? strip.length
       ? openingColumn(strip, now)
@@ -382,7 +372,7 @@ export default function SpotFinder(props: FinderProps) {
   const roseAt = shownColumn(strip, pick, opening, byTime);
   const noon = Date.parse(`${day}T12:00:00Z`);
   const standing = isToday
-    ? hourOf(now)
+    ? nearestHour(now)
     : opening === null
       ? noon
       : strip[opening].time;
@@ -391,12 +381,8 @@ export default function SpotFinder(props: FinderProps) {
   const headId = "finder-heading";
   // The count beside the heading, once the list is the list.
   const counted = !waiting && !placesDue;
-  const dayName = isToday
-    ? { short: "Today", long: "Today" }
-    : {
-        short: `${dayShort(noon)} ${Number(day.slice(8))}`,
-        long: `${dayLong(noon)} ${Number(day.slice(8))}`,
-      };
+  // "today", "tomorrow", "on Thursday": the day shown, in a sentence.
+  const onTheDay = onDay(noon, now);
 
   return (
     <div
@@ -445,6 +431,7 @@ export default function SpotFinder(props: FinderProps) {
               {narrowing && <i className={s.dot()} aria-hidden="true" />}
             </Button>
           </div>
+          <DaySteps dates={dates} day={day} now={now} onDay={chooseDay} />
           <Dialog
             open={filtering}
             title="Filter"
@@ -468,9 +455,7 @@ export default function SpotFinder(props: FinderProps) {
           >
             <div className={s.filters()} data-finder-filters>
               <fieldset className={s.group()}>
-                <legend className={s.groupName()}>
-                  Stars in the next six days
-                </legend>
+                <legend className={s.groupName()}>Stars {onTheDay}</legend>
                 <div className={s.filterRow()}>
                   {FEWEST.map((choice) => (
                     <Chip
@@ -569,10 +554,9 @@ export default function SpotFinder(props: FinderProps) {
               <ul
                 className={s.cards()}
                 data-finder-cards
-                data-day-chosen={isToday ? undefined : day}
+                data-day={day}
               >
-                {ranked.map((item, order) => {
-                  const plan = plans.get(item.spot.id);
+                {ranked.map((item) => {
                   return (
                     <li
                       key={item.spot.id}
@@ -587,10 +571,8 @@ export default function SpotFinder(props: FinderProps) {
                         km={item.km}
                         row={hours.get(item.spot.id)}
                         strip={strip}
-                        day={plan?.day ?? null}
-                        dayName={dayName}
+                        day={rows.get(item.spot.id) ?? null}
                         isToday={isToday}
-                        days={plan?.days ?? []}
                         readings={
                           readings.get(item.spot.id) ?? {
                             sky: [],
@@ -610,8 +592,6 @@ export default function SpotFinder(props: FinderProps) {
                         reducedMotion={reducedMotion}
                         onToggleStar={() => onToggleStar(item.spot.id)}
                         onPick={(time) => setPicked(pickHour(time, standing))}
-                        onChooseDay={chooseDay}
-                        order={order}
                         best={item.best}
                       />
                     </li>
@@ -623,9 +603,9 @@ export default function SpotFinder(props: FinderProps) {
             <p className={s.empty()} data-finder-empty>
               {listed.length && fewest > 0 ? (
                 fewest === 5 ? (
-                  "No spot on this list has 5 stars in the next six days."
+                  `No spot on this list has 5 stars ${onTheDay}.`
                 ) : (
-                  `No spot on this list has ${fewest} stars or more in the next six days.`
+                  `No spot on this list has ${fewest} stars or more ${onTheDay}.`
                 )
               ) : scope === "favourites" ? (
                 <>
