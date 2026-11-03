@@ -174,8 +174,12 @@
   --color-pen: #d43a2c;
   --color-pen-ink: #bf3125;
 
-  /* A buoy's yellow: a light on the chart. Never text. */
+  /* A buoy's yellow: a light on the chart, and a wind measured at a weather
+     station or buoy (the Live wind layer's pills). Never text. Words and
+     marks on it take `buoy-ink`, a near-black warmed to the yellow, in
+     either theme: 9.1:1. */
   --color-buoy: #e9b200;
+  --color-buoy-ink: #1f1800;
 
   /* Status. Warm means now or degraded, never decoration; on the chart the
      warm is the pen's own red, darkened to read as words. */

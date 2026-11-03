@@ -35,6 +35,7 @@
   --ref-color-warm-700: #b02a1f;
   --ref-color-green-700: #2a7046;
   --ref-color-buoy-500: #e9b200;
+  --ref-color-buoy-900: #1f1800;
   --ref-color-met-yellow: #f0c419;
   --ref-color-met-orange: #e67322;
   --ref-color-met-red: #c3241c;
@@ -195,6 +196,7 @@
   --sem-color-pen: var(--ref-color-pen-500);
   --sem-color-pen-ink: var(--ref-color-pen-600);
   --sem-color-buoy: var(--ref-color-buoy-500);
+  --sem-color-buoy-ink: var(--ref-color-buoy-900);
   --sem-color-ok: var(--ref-color-green-700);
   --sem-color-warn: var(--ref-color-warm-700);
   --sem-color-warn-ground: var(--ref-color-warm-100);
@@ -2585,10 +2587,10 @@ code {
 
 /* components/search-field/component.css */
 /* Search field — ui/SearchField.tsx (searchFieldStyles), rendered in CSS.
- * Consumes --sem-* only, but for the soft focus ring.
+ * Consumes --sem-* only.
  *
- * A soft grey pill with the magnifier in it; the ink edge, the ground and a
- * soft ring of the accent when it holds the focus. No underline, no frame.
+ * A soft grey pill with the magnifier in it, a step lighter when it holds the
+ * focus. No edge, no ring, no underline, no frame.
  *
  * `.is-focus` holds the focused look still for the catalog. */
 
@@ -2605,15 +2607,12 @@ code {
   background: var(--sem-color-well);
   color: var(--sem-color-ink-muted);
   font-family: var(--sem-font-family-body);
-  transition-property: border-color, background-color, box-shadow;
+  transition-property: background-color;
   transition-duration: var(--sem-duration-fast);
 }
 .wf-search-field:focus-within,
 .wf-search-field.is-focus {
-  border-color: var(--sem-color-ink);
-  background: var(--sem-color-ground);
-  /* ds-lint-allow: the kit's soft focus ring is the focus colour at 20%, which no token carries */
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sem-color-focus) 20%, transparent);
+  background: var(--sem-color-raised);
 }
 .wf-search-field[aria-busy="true"] {
   cursor: progress;
@@ -3314,8 +3313,8 @@ code {
  *
  * The top bar's search: a field that finds a riding place as the rider types,
  * an ARIA combobox with a list of results under it. The field is a soft grey
- * pill that widens a little and comes onto the ground, with an ink edge,
- * while it is in use. The results are a sheet under it: groups with a small
+ * pill that widens a little and lifts a step while it is in use, with no
+ * edge and no ring. The results are a sheet under it: groups with a small
  * grey name, each spot its name in Inter semibold, its county under it, the
  * typed letters underlined in the accent.
  *
@@ -3348,8 +3347,7 @@ code {
 .wf-spot-search__field:focus-within,
 .wf-spot-search__field.is-focus {
   width: 400px;
-  border-color: var(--sem-color-ink);
-  background: var(--sem-color-ground);
+  background: var(--sem-color-raised);
 }
 @media (prefers-reduced-motion: reduce) {
   .wf-spot-search__field {
@@ -3416,7 +3414,9 @@ code {
   border-radius: var(--sem-radius-surface);
   background: var(--sem-color-ground);
   color: var(--sem-color-ink);
-  box-shadow: var(--sem-shadow-sheet), 0 0 0 var(--sem-rule-hairline) var(--sem-color-line);
+  box-shadow:
+    var(--sem-shadow-sheet),
+    0 0 0 var(--sem-rule-hairline) var(--sem-color-line);
 }
 /* A static rendering: the sheet in the flow, under its field. */
 .wf-spot-search__panel--static {
@@ -7968,6 +7968,7 @@ code {
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-warm-700)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.warm.700</code><code class="catalog-token-value">#b02a1f</code></p><p class="catalog-token-meta">Warm red for degraded and now. 5.7:1 on paper. Not the red accent.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-green-700)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.green.700</code><code class="catalog-token-value">#2a7046</code></p><p class="catalog-token-meta">Liveness green, one mark at a time.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-buoy-500)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.buoy.500</code><code class="catalog-token-value">#e9b200</code></p><p class="catalog-token-meta">A buoy's yellow: the puffin's beak and feet, a light on the chart. Never text.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-buoy-900)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.buoy.900</code><code class="catalog-token-value">#1f1800</code></p><p class="catalog-token-meta">A near-black warmed to the buoy's yellow: words and marks on it. 9.1:1 on buoy.500.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-met-yellow)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.met.yellow</code><code class="catalog-token-value">#f0c419</code></p><p class="catalog-token-meta">Met Éireann's Status Yellow, as the chart prints it.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-met-orange)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.met.orange</code><code class="catalog-token-value">#e67322</code></p><p class="catalog-token-meta">Met Éireann's Status Orange, as the chart prints it.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--ref-color-met-red)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>ref.color.met.red</code><code class="catalog-token-value">#c3241c</code></p><p class="catalog-token-meta">Met Éireann's Status Red, as the chart prints it.</p></div></div>
@@ -8063,7 +8064,8 @@ code {
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-chart-magenta)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-chart-magenta)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.chart-magenta</code><code class="catalog-token-value">{ref.color.magenta.600}</code><span class="catalog-badge">mark</span></p><p class="catalog-token-meta">The chart's magenta. --color-chart-magenta. The best of something (a five-star light, the selected spot), a link under the pointer, `.ie`. <strong>Do not:</strong> Twice for 'best' on one view; or as body text.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-pen)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-pen)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.pen</code><code class="catalog-token-value">{ref.color.pen.500}</code><span class="catalog-badge">mark</span></p><p class="catalog-token-meta">The red accent's strokes. --color-pen. A loop round the one thing that matters, an underline, a strike through what is off. <strong>Do not:</strong> As a fill, a control, a status, or for emphasis.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-pen-ink)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-pen-ink)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.pen-ink</code><code class="catalog-token-value">{ref.color.pen.600}</code><span class="catalog-badge">mark</span></p><p class="catalog-token-meta">The red accent in words. --color-pen-ink. A gust well over the mean; a warning in words; the label of the one thing that matters.</p></div></div>
-<div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--sem-color-buoy)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.buoy</code><code class="catalog-token-value">{ref.color.buoy.500}</code><span class="catalog-badge">mark</span></p><p class="catalog-token-meta">A buoy's yellow. --color-buoy. The puffin's beak and feet. <strong>Do not:</strong> As text.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--sem-color-buoy)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.buoy</code><code class="catalog-token-value">{ref.color.buoy.500}</code><span class="catalog-badge">mark</span></p><p class="catalog-token-meta">A buoy's yellow. --color-buoy. The puffin's beak and feet; a light on the chart; a measured wind (the Live wind layer's pills). <strong>Do not:</strong> As text.</p></div></div>
+<div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" style="background: var(--sem-color-buoy-ink)"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.buoy-ink</code><code class="catalog-token-value">{ref.color.buoy.900}</code><span class="catalog-badge">mark</span></p><p class="catalog-token-meta">Words and marks on the buoy's yellow. --color-buoy-ink. Not re-themed. The figures and arrow on a Live wind pill. <strong>Do not:</strong> On anything but the buoy's yellow.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-ok)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-ok)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.ok</code><code class="catalog-token-value">{ref.color.green.700}</code><span class="catalog-badge">status</span></p><p class="catalog-token-meta">Live. --color-ok. One liveness mark.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-warn)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-warn)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.warn</code><code class="catalog-token-value">{ref.color.warm.700}</code><span class="catalog-badge">status</span></p><p class="catalog-token-meta">Degraded. --color-warn. An error, a stale snapshot, a destructive answer, an invalid field. <strong>Do not:</strong> To make something stand out.</p></div></div>
 <div class="catalog-token-row"><span class="catalog-chip-pair"><span class="catalog-chip" data-mode="light" style="background: var(--sem-color-warn-ground)" title="light"></span><span class="catalog-chip" data-mode="dark" style="background: var(--sem-color-warn-ground)" title="dark"></span></span><div class="catalog-token-text"><p class="catalog-token-name"><code>sem.color.warn-ground</code><code class="catalog-token-value">{ref.color.warm.100}</code><span class="catalog-badge">status</span></p><p class="catalog-token-meta">The warm ground. --color-warn-ground. Under a warning notice, an invalid field, a warn chip.</p></div></div>
@@ -13522,10 +13524,10 @@ code {
 </div>
 </div>
 <details class="catalog-source"><summary>components/search-field/component.css</summary><pre><code>/* Search field — ui/SearchField.tsx (searchFieldStyles), rendered in CSS.
- * Consumes --sem-* only, but for the soft focus ring.
+ * Consumes --sem-* only.
  *
- * A soft grey pill with the magnifier in it; the ink edge, the ground and a
- * soft ring of the accent when it holds the focus. No underline, no frame.
+ * A soft grey pill with the magnifier in it, a step lighter when it holds the
+ * focus. No edge, no ring, no underline, no frame.
  *
  * `.is-focus` holds the focused look still for the catalog. */
 
@@ -13542,15 +13544,12 @@ code {
   background: var(--sem-color-well);
   color: var(--sem-color-ink-muted);
   font-family: var(--sem-font-family-body);
-  transition-property: border-color, background-color, box-shadow;
+  transition-property: background-color;
   transition-duration: var(--sem-duration-fast);
 }
 .wf-search-field:focus-within,
 .wf-search-field.is-focus {
-  border-color: var(--sem-color-ink);
-  background: var(--sem-color-ground);
-  /* ds-lint-allow: the kit's soft focus ring is the focus colour at 20%, which no token carries */
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sem-color-focus) 20%, transparent);
+  background: var(--sem-color-raised);
 }
 .wf-search-field[aria-busy=&quot;true&quot;] {
   cursor: progress;
@@ -15783,8 +15782,8 @@ code {
  *
  * The top bar's search: a field that finds a riding place as the rider types,
  * an ARIA combobox with a list of results under it. The field is a soft grey
- * pill that widens a little and comes onto the ground, with an ink edge,
- * while it is in use. The results are a sheet under it: groups with a small
+ * pill that widens a little and lifts a step while it is in use, with no
+ * edge and no ring. The results are a sheet under it: groups with a small
  * grey name, each spot its name in Inter semibold, its county under it, the
  * typed letters underlined in the accent.
  *
@@ -15817,8 +15816,7 @@ code {
 .wf-spot-search__field:focus-within,
 .wf-spot-search__field.is-focus {
   width: 400px;
-  border-color: var(--sem-color-ink);
-  background: var(--sem-color-ground);
+  background: var(--sem-color-raised);
 }
 @media (prefers-reduced-motion: reduce) {
   .wf-spot-search__field {
@@ -15885,7 +15883,9 @@ code {
   border-radius: var(--sem-radius-surface);
   background: var(--sem-color-ground);
   color: var(--sem-color-ink);
-  box-shadow: var(--sem-shadow-sheet), 0 0 0 var(--sem-rule-hairline) var(--sem-color-line);
+  box-shadow:
+    var(--sem-shadow-sheet),
+    0 0 0 var(--sem-rule-hairline) var(--sem-color-line);
 }
 /* A static rendering: the sheet in the flow, under its field. */
 .wf-spot-search__panel--static {

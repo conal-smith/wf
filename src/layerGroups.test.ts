@@ -13,6 +13,7 @@ const LAYERS: ChartLayers = {
   foil: true,
   currents: false,
   rain: false,
+  live: false,
 };
 
 function choices(over: Partial<LayerChoices> = {}): LayerChoices {
@@ -84,6 +85,7 @@ describe("railGroups", () => {
     expect(rail[0].items.map((entry) => [entry.name, entry.on])).toEqual([
       ["Coloured wind", false],
       ["Particles", true],
+      ["Live wind", false],
     ]);
     item(rail, "wind-wash").press();
     expect(set.onWind).toHaveBeenLastCalledWith({
@@ -97,12 +99,25 @@ describe("railGroups", () => {
     });
     const both = choices({ wind: { wash: true, particles: true } });
     const panel = layerGroups(both)[0];
-    expect(panel.tiles.every((tile) => tile.on)).toBe(true);
+    expect(
+      panel.tiles
+        .filter((tile) => tile.id.startsWith("wind-"))
+        .every((tile) => tile.on),
+    ).toBe(true);
     panel.tiles[0].press();
     expect(both.onWind).toHaveBeenLastCalledWith({
       wash: false,
       particles: true,
     });
+  });
+
+  it("has the Live wind layer under the wind, off on the full chart until asked for", () => {
+    expect(LAYER_DEFAULTS.layers.live).toBe(false);
+    const set = choices();
+    const live = item(railGroups(layerGroups(set)), "live");
+    expect([live.name, live.on]).toEqual(["Live wind", false]);
+    live.press();
+    expect(set.onLayersChange).toHaveBeenCalledWith({ ...LAYERS, live: true });
   });
 
   it("switches the loupe on, and off to the range ring", () => {
@@ -139,6 +154,7 @@ describe("railGroups", () => {
     expect(ids).toEqual([
       "wind-wash",
       "wind-particles",
+      "live",
       "foil",
       "currents",
       "depths",

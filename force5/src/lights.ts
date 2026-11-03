@@ -28,6 +28,13 @@
  * The names beside the lights are laid out once the camera rests: see
  * `placeLabels`.
  *
+ * On the Spot finder's plain map (the map's box has `is-plain`), each light
+ * is a pill instead of a ring: an arrow blowing downwind, the wind, and the
+ * gust raised beside it, filled in the same stars' colours, dashed at none,
+ * with a red arrow offshore (src/map.css). The same button either way, so
+ * hover, click, the lit light and the hour it follows are the ring's; only
+ * the stylesheet, and the canvas's picture of it, tell the two apart.
+ *
  * To the keys the lights are one stop (a roving tab stop, as the layers'
  * rail is): Tab comes to one light, the open spot's or the last the keys
  * were on, else the first in view; the arrows go to the nearest light that
@@ -52,6 +59,8 @@ export interface LightState {
   from: number | null;
   /** The wind, in knots whatever the rider's units: `speedShort` writes it. */
   windKn: number | null;
+  /** The gust, in knots, or null: the plain map's pill raises it beside the wind. */
+  gustKn?: number | null;
   compass: string | null;
   mark: "struck" | "cross-off" | null;
   /** The headings the rider can hold out to sea, or null. */
@@ -77,6 +86,10 @@ interface Entry {
   wedge: SVGPathElement;
   figure: SVGTextElement;
   sub: HTMLElement;
+  /** The pill's arrow, wind and gust, on the plain map. */
+  pillTurn: SVGGElement;
+  pillWind: HTMLElement;
+  pillGust: HTMLElement;
   key: string;
 }
 
@@ -124,6 +137,10 @@ const overlaps = (a: Box, b: Box, pad = 1) =>
   b.left < a.right + pad &&
   a.top < b.bottom + pad &&
   b.top < a.bottom + pad;
+
+/** The pill's arrow (src/map.css .lt-pill), pointing downwind once turned. */
+export const PILL_ARROW = "M0 4.6V-4.4M-2.7 -1.6L0 -4.8L2.7 -1.6";
+const PILL_HTML = `<span class="lt-pill" aria-hidden="true"><svg class="lt-pa" viewBox="-6 -6 12 12"><g><path d="${PILL_ARROW}"/></g></svg><b class="lt-kn"></b><sup class="lt-gu"></sup></span>`;
 
 const LIGHT_SVG = `<svg viewBox="-30 -30 60 60" aria-hidden="true"><g class="lt-wind"><path class="lt-arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6"/></g><circle class="lt-ring" r="7.6"/><line class="lt-strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6"/><text class="lt-n" y="3.4" text-anchor="middle"></text></svg>`;
 
@@ -194,7 +211,14 @@ export function createLights(
     dirty = false;
     const frame = map.getContainer().getBoundingClientRect();
     const layers = PLACE_LAYERS.filter((id) => map.getLayer(id));
+    // A pill fills its button; a ring sits inside its button's square.
+    const inset = map.getContainer().classList.contains("is-plain") ? 0 : 3;
     const rings: { el: HTMLElement; box: Box }[] = [];
+    // The Live wind layer's pills (./readingPills.ts): a name is not printed
+    // over a reading either.
+    const readings: Box[] = [
+      ...map.getContainer().querySelectorAll<HTMLElement>(".obs"),
+    ].map((el) => el.getBoundingClientRect());
     const shown: { el: HTMLElement; ring: Box; lab: Box; rank: number }[] = [];
     const before = new Map<Entry, string>();
     for (const entry of entries.values()) {
@@ -216,10 +240,10 @@ export function createLights(
         continue;
       // The ring, not the button's whole square.
       const ring = {
-        left: r.left + 3,
-        top: r.top + 3,
-        right: r.right - 3,
-        bottom: r.bottom - 3,
+        left: r.left + inset,
+        top: r.top + inset,
+        right: r.right - inset,
+        bottom: r.bottom - inset,
       };
       rings.push({ el, box: ring });
       const lab = el.querySelector<HTMLElement>(".lt-lab");
@@ -237,6 +261,7 @@ export function createLights(
     const free = (el: HTMLElement, box: Box) =>
       !placed.some((p) => overlaps(p, box)) &&
       !rings.some((ring) => ring.el !== el && overlaps(ring.box, box)) &&
+      !readings.some((reading) => overlaps(reading, box)) &&
       !(
         layers.length &&
         map.queryRenderedFeatures(
@@ -556,7 +581,7 @@ export function createLights(
     el.className = "spot-marker lt pending";
     el.dataset.spotId = spot.id;
     el.tabIndex = -1;
-    el.innerHTML = `<span class="lt-pulse" aria-hidden="true"><svg class="lt-wedge" viewBox="-30 -30 60 60"><path/></svg></span>${LIGHT_SVG}<span class="lt-lab" aria-hidden="true"><b></b><i></i></span>`;
+    el.innerHTML = `<span class="lt-pulse" aria-hidden="true"><svg class="lt-wedge" viewBox="-30 -30 60 60"><path/></svg></span>${LIGHT_SVG}${PILL_HTML}<span class="lt-lab" aria-hidden="true"><b></b><i></i></span>`;
     el.querySelector(".lt-lab b")!.textContent = spot.name;
     el.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -595,6 +620,9 @@ export function createLights(
       wedge: el.querySelector<SVGPathElement>(".lt-wedge path")!,
       figure: el.querySelector<SVGTextElement>(".lt-n")!,
       sub: el.querySelector<HTMLElement>(".lt-lab i")!,
+      pillTurn: el.querySelector<SVGGElement>(".lt-pa g")!,
+      pillWind: el.querySelector<HTMLElement>(".lt-kn")!,
+      pillGust: el.querySelector<HTMLElement>(".lt-gu")!,
       key: "",
     });
   }
@@ -637,7 +665,7 @@ export function createLights(
         const on = spot.id === selected;
         const w = s?.wedge;
         const key = s
-          ? `${s.pending}|${s.stars}|${s.dark}|${s.mark}|${s.from === null ? "" : Math.round(s.from)}|${s.windKn === null ? "" : speedShort(s.windKn, units)}|${w ? `${Math.round(w.from)},${Math.round(w.to)},${Math.round(w.power * 20)},${w.state}` : ""}|${on}|${named.has(spot.id)}`
+          ? `${s.pending}|${s.stars}|${s.dark}|${s.mark}|${s.from === null ? "" : Math.round(s.from)}|${s.windKn === null ? "" : speedShort(s.windKn, units)}|${s.gustKn == null ? "" : speedShort(s.gustKn, units)}|${w ? `${Math.round(w.from)},${Math.round(w.to)},${Math.round(w.power * 20)},${w.state}` : ""}|${on}|${named.has(spot.id)}`
           : `none|${on}|${named.has(spot.id)}`;
         if (entry.key === key) continue;
         entry.key = key;
@@ -666,7 +694,24 @@ export function createLights(
             `rotate(${Math.round(s.from + 180)})`,
           );
           entry.arrow.style.display = "";
-        } else entry.arrow.style.display = "none";
+          entry.pillTurn.setAttribute(
+            "transform",
+            `rotate(${Math.round(s.from + 180)})`,
+          );
+          entry.pillTurn.style.display = "";
+        } else {
+          entry.arrow.style.display = "none";
+          entry.pillTurn.style.display = "none";
+        }
+        // The pill's figures: the wind, and the gust raised beside it.
+        entry.pillWind.textContent =
+          s && !s.pending && s.windKn !== null
+            ? speedShort(s.windKn, units)
+            : "";
+        entry.pillGust.textContent =
+          s && !s.pending && s.windKn !== null && s.gustKn != null
+            ? speedShort(s.gustKn, units)
+            : "";
         if (w && level.startsWith("s")) {
           entry.wedge.setAttribute("d", wedgePath(w));
           entry.pulse.style.display = "";

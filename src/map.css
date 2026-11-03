@@ -867,6 +867,377 @@
 .lt:focus-visible .lt-lab i {
   color: var(--color-ink-inverse);
 }
+/* ---------- the plain map's pills ---------- */
+/* On the Spot finder's plain map (force5/src/lights.ts, `is-plain` on the
+   map's box) a spot is a pill in place of a ring: an arrow blowing downwind,
+   the wind at the cards' hour, and its gust raised beside it, filled in the
+   stars' own colours as the ring was, dashed at no stars, and with a red
+   arrow offshore. The button is the pill's box; the pill inside it is what
+   scales, so the light's own place (its transform) is never touched. */
+.lt-pill {
+  display: none;
+}
+.map-canvas.is-plain .lt {
+  width: auto;
+  height: auto;
+  border-radius: var(--radius-pill);
+}
+.map-canvas.is-plain .lt > svg,
+.map-canvas.is-plain .lt .lt-pulse {
+  display: none;
+}
+.map-canvas.is-plain .lt .lt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 0 9px 0 7px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font: 600 12px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: var(--shadow-marker);
+  transition:
+    transform 0.2s,
+    background-color 0.2s;
+}
+.map-canvas.is-plain .lt .lt-pill svg.lt-pa {
+  position: static;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  overflow: visible;
+  border-radius: 50%;
+  transform: none;
+  filter: none;
+  transition: none;
+}
+.lt-pa path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.lt-kn {
+  font-weight: 600;
+}
+/* The gust, raised: smaller, and a step quieter than the wind. */
+.lt-gu {
+  align-self: flex-start;
+  margin: 5px 0 0 -1px;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1;
+  vertical-align: baseline;
+  color: color-mix(in srgb, currentColor 78%, transparent);
+}
+.lt-gu:empty {
+  display: none;
+}
+.map-canvas.is-plain .lt.s0 .lt-pill {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--color-ink) 50%, transparent);
+  color: var(--color-ink-muted);
+}
+.map-canvas.is-plain .lt.pending .lt-pill {
+  border-style: dotted;
+  border-color: color-mix(in srgb, var(--color-ink) 35%, transparent);
+  color: var(--color-ink-muted);
+  min-width: 34px;
+}
+.map-canvas.is-plain .lt.s1 .lt-pill {
+  background: var(--color-stars-1);
+  border-color: var(--color-stars-2);
+}
+.map-canvas.is-plain .lt.s2 .lt-pill {
+  background: var(--color-stars-2);
+  border-color: var(--color-stars-3);
+}
+.map-canvas.is-plain .lt.s3 .lt-pill {
+  background: var(--color-stars-3);
+  border-color: var(--color-stars-4);
+  color: var(--color-ground);
+}
+.map-canvas.is-plain .lt.s4 .lt-pill {
+  background: var(--color-stars-4);
+  border-color: var(--color-stars-5);
+  color: var(--color-ground);
+}
+.map-canvas.is-plain .lt.s5 .lt-pill {
+  background: var(--color-stars-5);
+  border-color: var(--color-ink);
+  color: var(--color-ground);
+}
+/* A dark hour: the spot still there, in grey, with its wind. */
+.map-canvas.is-plain .lt.dark .lt-pill {
+  background: color-mix(in srgb, var(--color-ink) 16%, var(--color-ground));
+  border-color: color-mix(in srgb, var(--color-ink) 40%, transparent);
+  color: var(--color-ink-2);
+}
+/* Offshore: the red arrow, on a small disc of the ground so it reads on any
+   of the stars' fills; a true offshore hour takes the pill to the pen. */
+.map-canvas.is-plain .lt.off .lt-pill svg.lt-pa,
+.map-canvas.is-plain .lt.xoff .lt-pill svg.lt-pa {
+  background: var(--color-ground);
+  box-shadow: 0 0 0 1.5px var(--color-ground);
+}
+.map-canvas.is-plain .lt.off .lt-pa path,
+.map-canvas.is-plain .lt.xoff .lt-pa path {
+  stroke: var(--color-pen);
+}
+.map-canvas.is-plain .lt.off .lt-pill {
+  background: var(--color-ground);
+  border-color: var(--color-pen);
+  color: var(--color-pen-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .map-canvas.is-plain .lt:hover .lt-pill {
+    transform: scale(1.08);
+  }
+}
+.map-canvas.is-plain .lt:focus-visible {
+  outline-offset: 3px;
+}
+/* A card for this place under the pointer: its pill in ink, a size up. */
+.map-canvas.is-plain .lt.lit .lt-pill {
+  transform: scale(1.12);
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+  border-style: solid;
+  color: var(--color-ink-inverse);
+}
+/* Further out, a size down. */
+.map-canvas.is-plain.z-lo .lt .lt-pill {
+  height: 22px;
+  padding: 0 7px 0 5px;
+  font-size: 11px;
+}
+.map-canvas.is-plain.z-lo .lt .lt-gu {
+  margin-top: 4px;
+  font-size: 8.5px;
+}
+/* The name beside its pill, on either side, and the line under it left to
+   the pill: it says the wind already. */
+.map-canvas.is-plain .lt .lt-lab,
+.map-canvas.is-plain.z-lo .lt .lt-lab {
+  left: calc(100% + 6px);
+  right: auto;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.map-canvas.is-plain .lt .lt-lab i {
+  display: none;
+}
+/* Beside the list the map shows the list's few spots alone: their names
+   from the regional zoom in, where the label pass (force5/src/lights.ts)
+   finds them room, and none at the national zoom. */
+.map-canvas.is-plain:not(.z-lo) .lt:not(.lab-hide) .lt-lab {
+  display: block;
+}
+.map-canvas.is-plain .lt.lab-left .lt-lab,
+.map-canvas.is-plain.z-lo .lt.lab-left .lt-lab {
+  left: auto;
+  right: calc(100% + 6px);
+}
+.map-canvas.is-plain .lt.lit .lt-lab,
+.map-canvas.is-plain .lt:focus-visible .lt-lab,
+.map-canvas.is-plain .lt.lit.lab-hide .lt-lab,
+.map-canvas.is-plain.no-names .lt.lit .lt-lab {
+  left: calc(100% + 10px);
+  right: auto;
+  top: 50%;
+}
+
+/* ---------- the Live wind layer ---------- */
+/* A weather station or buoy, at the wind it last measured
+   (force5/src/readingPills.ts): a small gold pill, squarer than a spot's,
+   under the spots' lights. Faded once the reading is over three hours old. */
+.obs-mark {
+  z-index: 2;
+}
+.obs-mark.is-open {
+  z-index: 6;
+}
+.obs {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  height: 21px;
+  padding: 0 6px 0 4px;
+  border: 1px solid
+    color-mix(in srgb, var(--color-buoy-ink) 30%, var(--color-buoy));
+  border-radius: var(--radius-mark);
+  background: var(--color-buoy);
+  color: var(--color-buoy-ink);
+  font: 600 11px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: var(--shadow-marker);
+  transition:
+    transform 0.2s,
+    opacity 0.2s;
+}
+/* A finger's reach, beyond the pill. */
+.obs::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+@media (pointer: coarse) {
+  .obs::before {
+    inset: -11px -6px;
+  }
+}
+.obs-arrow {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  overflow: visible;
+}
+.obs-arrow path,
+.obs-card .obs-arrow path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.obs sup {
+  align-self: flex-start;
+  margin: 4px 0 0;
+  font-size: 8.5px;
+  font-weight: 500;
+  line-height: 1;
+  vertical-align: baseline;
+  color: color-mix(in srgb, currentColor 72%, transparent);
+}
+.obs-mark.is-stale .obs {
+  opacity: 0.5;
+}
+/* Further out, a size down and the wind alone: the gust is in its card. */
+.map-canvas.z-lo .obs {
+  height: 18px;
+  padding: 0 5px 0 3px;
+  font-size: 10px;
+}
+.map-canvas.z-lo .obs sup {
+  display: none;
+}
+.map-canvas.z-lo .obs-arrow {
+  width: 9px;
+  height: 9px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .obs:hover {
+    transform: scale(1.08);
+  }
+}
+.obs-mark.is-open .obs {
+  transform: scale(1.08);
+  opacity: 1;
+}
+.obs:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+/* The reading's card: its station, the wind, when, and whose. */
+.obs-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 8;
+  box-sizing: border-box;
+  min-width: 196px;
+  max-width: 260px;
+  padding: 10px 12px 9px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
+  background: var(--color-card);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-float);
+  pointer-events: none;
+  font: 400 12px/1.35 var(--font-body);
+}
+.obs-card[hidden] {
+  display: none;
+}
+.obs-card-head {
+  display: grid;
+  gap: 1px;
+}
+.obs-card-name {
+  font: 600 14px/1.2 var(--font-body);
+}
+.obs-card-net {
+  font: 500 11px/1.3 var(--font-body);
+  color: var(--color-ink-muted);
+}
+.obs-card-wind {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.obs-card-wind .obs-arrow {
+  width: 13px;
+  height: 13px;
+  align-self: center;
+  color: var(--color-ink);
+}
+.obs-card-speed {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+}
+.obs-card-gust {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-2);
+}
+.obs-card-unit,
+.obs-card-from {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink-2);
+}
+.obs-card-from {
+  margin-left: 4px;
+}
+.obs-card-when {
+  margin-top: 6px;
+  font-weight: 500;
+  color: var(--color-ink-2);
+}
+.obs-card-when::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 2px;
+  background: var(--color-buoy);
+  vertical-align: 0;
+}
+.obs-card-when.is-stale {
+  color: var(--color-ink-muted);
+}
+.obs-card-credit {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-line);
+  font-size: 10.5px;
+  color: var(--color-ink-muted);
+}
 /* Where the skip link puts the focus (src/App.tsx): the list or the dock. */
 [data-finder-list]:focus-visible,
 .dock:focus-visible {

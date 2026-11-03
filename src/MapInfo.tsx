@@ -691,6 +691,28 @@ function WindPart() {
           hour.
         </p>
       </div>
+      <h4>
+        Live wind <small>measured, not forecast</small>
+      </h4>
+      <div className="mi-beside">
+        <span className="mi-obs" aria-hidden="true">
+          14<sup>19</sup>
+        </span>
+        <p>
+          The gold pills are the wind as it was measured, at Met Éireann&rsquo;s
+          weather stations and the Marine Institute&rsquo;s weather buoys: the
+          last hour&rsquo;s mean, then its strongest gust. Point at one, or tap
+          it, for the station and the time it was measured. A reading over three
+          hours old is faded. A station is not the beach: a headland reads
+          windier than a sheltered bay, and a buoy is far out to sea. Always on
+          beside the Spot finder&rsquo;s list; on the full chart, in Layers,
+          under Wind.
+        </p>
+      </div>
+      <p className="ip-small">
+        Contains Met Éireann data, CC BY 4.0. Weather buoy data © Marine
+        Institute, CC BY 4.0.
+      </p>
     </>
   );
 }

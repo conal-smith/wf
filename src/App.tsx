@@ -183,6 +183,7 @@ import { nearestSpotOnWater } from "../force5/src/pointSource";
 import { FEATURES } from "../shared/web/features";
 import { useWarnings } from "./useWarnings";
 import { useWaterQuality } from "./useWaterQuality";
+import { useWindObs } from "../shared/web/useWindObs";
 import { favourites } from "../shared/web/favourites";
 import {
   compass,
@@ -1083,6 +1084,18 @@ export default function App() {
   // could not read keeps its places pending, and the rest are rated.
   const rated = useSpotSquaresState(windOnly, ownSquares, true);
   const warnings = useWarnings();
+  /**
+   * The Live wind layer: always on the Spot finder's plain map, and on the
+   * full chart when the rider turns it on in Layers. Nothing is read until
+   * the map is made and the layer is on.
+   */
+  const liveOn = page === "chart" ? layers.live : true;
+  const windObs = useWindObs(mapWanted && liveOn);
+  const readings = useMemo(
+    () =>
+      liveOn && windObs ? { stations: windObs.stations, now: clockNow } : null,
+    [liveOn, windObs, clockNow],
+  );
   const water = useWaterQuality();
   const { hours, version } = useRatings(
     rated.models,
@@ -1126,6 +1139,7 @@ export default function App() {
         dark: !!hour && !hour.daylight,
         from: hour?.from ?? null,
         windKn: hour?.windKn ?? null,
+        gustKn: hour?.gustKn ?? null,
         compass: hour?.from != null ? compass(hour.from) : null,
         mark: offshoreMark(hour?.rating ?? null, rider),
         wedge:
@@ -2060,6 +2074,14 @@ export default function App() {
           gauges (Open Government Licence v3.0) and the EOT20 ocean tide model
           (DGFI-TUM, CC BY 4.0)
         </li>
+        {liveOn && (
+          <li>
+            Live wind: measured at Met Éireann&rsquo;s weather stations
+            (contains Met Éireann data, CC BY 4.0) and the Marine
+            Institute&rsquo;s weather buoys (weather buoy data © Marine
+            Institute, CC BY 4.0), hourly, as each network publishes it
+          </li>
+        )}
         {layers.rain && (
           <li>
             Rain: Deutscher Wetterdienst&rsquo;s ICON-EU model (CC BY 4.0), the
@@ -2286,6 +2308,8 @@ export default function App() {
       foil: false,
       currents: false,
       rain: false,
+      // The stations' and buoys' own wind, beside the spots' forecast.
+      live: true,
     }),
     [layers],
   );
@@ -2506,12 +2530,18 @@ export default function App() {
                     rose={onChart ? rose : null}
                     picked={
                       onChart && picked
-                        ? { lon: picked.lon, lat: picked.lat, name: picked.name }
+                        ? {
+                            lon: picked.lon,
+                            lat: picked.lat,
+                            name: picked.name,
+                          }
                         : null
                     }
                     you={
                       riderAt ? { lon: riderAt.lon, lat: riderAt.lat } : null
                     }
+                    plain={!onChart}
+                    readings={readings}
                     covered={() => !!document.querySelector(OVER_THE_CHART)}
                     onPick={tapChart}
                     // Beside the list the map is plain, every layer off but the

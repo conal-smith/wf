@@ -76,6 +76,7 @@ attribute. Design and check every view in both.
 | `ok` | `#2a7046` / `#4cc27a` | One liveness mark. |
 | `met-yellow`, `met-orange`, `met-red` | `#f0c419`, `#e67322`, `#c3241c` | Met Éireann's warning levels: the square of a notice, nothing else. Do not re-theme. |
 | `wind-k00` … `wind-k65` | `PALETTE` in `force5/src/weather.ts` | Wind speed and nothing else. Do not re-theme. |
+| `buoy` / `buoy-ink` | `#e9b200`, on it `#1f1800` (9.1:1), both themes | A buoy's yellow: a light on the chart, and the wind measured at a weather station or buoy (the Live wind layer's pills). Words and marks on it take `buoy-ink`. Never text on the ground. |
 | `weather-sun`, `-rain`, `-cloud`, `-night` | sun `#e9b200`, rain `#3a7fb0` | The sky's glyphs. Fills and marks, never words. |
 | `stars-1` … `stars-5` | pale pink to deep magenta | A rider's stars as colour. Never text, never the wind. |
 | `sea*`, `land`, `relief`, `depth`, `basemap-*` | per theme | The map itself. |

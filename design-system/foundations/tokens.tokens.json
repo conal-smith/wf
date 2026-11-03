@@ -108,6 +108,11 @@
           "$type": "color",
           "$value": "#e9b200",
           "$description": "A buoy's yellow: the puffin's beak and feet, a light on the chart. Never text."
+        },
+        "900": {
+          "$type": "color",
+          "$value": "#1f1800",
+          "$description": "A near-black warmed to the buoy's yellow: words and marks on it. 9.1:1 on buoy.500."
         }
       },
       "met": {
@@ -1345,8 +1350,20 @@
         "$extensions": {
           "com.sprintengine": {
             "role": "mark",
-            "use": "The puffin's beak and feet.",
+            "use": "The puffin's beak and feet; a light on the chart; a measured wind (the Live wind layer's pills).",
             "doNotUse": "As text."
+          }
+        }
+      },
+      "buoy-ink": {
+        "$type": "color",
+        "$value": "{ref.color.buoy.900}",
+        "$description": "Words and marks on the buoy's yellow. --color-buoy-ink. Not re-themed.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "mark",
+            "use": "The figures and arrow on a Live wind pill.",
+            "doNotUse": "On anything but the buoy's yellow."
           }
         }
       },

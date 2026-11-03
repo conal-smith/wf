@@ -93,6 +93,7 @@ const MAP = {
   "--color-pen": "sem.color.pen",
   "--color-pen-ink": "sem.color.pen-ink",
   "--color-buoy": "sem.color.buoy",
+  "--color-buoy-ink": "sem.color.buoy-ink",
   "--color-ok": "sem.color.ok",
   "--color-warn": "sem.color.warn",
   "--color-warn-ground": "sem.color.warn-ground",

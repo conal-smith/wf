@@ -85,7 +85,10 @@ the ramp by hand is how the legend and the map drifted apart before.
 On the map, **shape carries kind and colour carries the reading.** A spot
 marker says riding spot, operator, club or area by its shape (round, squared,
 dashed); colour on a marker only ever means wind, or on the Spot finder's map
-a rider's stars.
+a rider's stars. There a spot is a round-ended pill, its wind and gust in it,
+filled in its stars' colour (dashed at none, a red arrow offshore); a weather
+station or buoy is a squarer, smaller pill in the buoy's gold, its wind as it
+was measured. A forecast is never gold, and a reading never wears the stars.
 
 ## What structure is made of
 

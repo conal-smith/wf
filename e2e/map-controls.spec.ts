@@ -61,13 +61,7 @@ test("the chart's controls: zoom and Layers on the right, Layers the rail on a p
   const rail = layersRail(page);
   await expect(rail).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  for (const group of [
-    "Wind",
-    "Sea",
-    "Weather",
-    "Ground",
-    "Round your spot",
-  ])
+  for (const group of ["Wind", "Sea", "Weather", "Ground", "Round your spot"])
     await expect(rail.getByRole("group", { name: group })).toBeAttached();
   await expect(rail.getByRole("group", { name: "Chart" })).toHaveCount(0);
   // The depths are one switch under the sea, off until a rider asks.
@@ -77,10 +71,11 @@ test("the chart's controls: zoom and Layers on the right, Layers the rail on a p
       exact: true,
     }),
   ).toHaveAttribute("aria-pressed", "false");
-  // The wind in two layers, each its own switch: the particles alone at first.
+  // The wind in two layers, each its own switch: the particles alone at
+  // first; and the wind measured at the stations, off on the full chart.
   const wind = rail.getByRole("group", { name: "Wind" });
-  await expect(wind.getByRole("button")).toHaveCount(2);
-  for (const [i, name] of ["Coloured wind", "Particles"].entries())
+  await expect(wind.getByRole("button")).toHaveCount(3);
+  for (const [i, name] of ["Coloured wind", "Particles", "Live wind"].entries())
     await expect(wind.getByRole("button").nth(i)).toHaveAccessibleName(name);
   await expect(layerTile(page, "Particles")).toHaveAttribute(
     "aria-pressed",

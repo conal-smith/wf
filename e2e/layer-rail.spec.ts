@@ -80,7 +80,7 @@ test("on a desktop, Layers opens the rail beside the zoom, clear of the scrub ba
   // button for either tide; the loupe is on or off, the range ring standing
   // in for it.
   expect(await groupsOf(rail(page))).toEqual([
-    ["Wind", ["Coloured wind", "Particles"]],
+    ["Wind", ["Coloured wind", "Particles", "Live wind"]],
     ["Sea", ["Tidal depth", "Currents", "Depths"]],
     ["Weather", ["Rain"]],
     ["Ground", ["Satellite, high tide"]],
@@ -148,13 +148,22 @@ test("the rail's switches: a layer on and off, the wind's two layers each by its
   // again the ring.
   const loupe = railButton(page, "Loupe");
   await expect(loupe).toHaveAttribute("aria-pressed", "false");
-  await expect(page.locator(".map-focus")).toHaveAttribute("data-focus", "ring");
+  await expect(page.locator(".map-focus")).toHaveAttribute(
+    "data-focus",
+    "ring",
+  );
   await loupe.click();
   await expect(loupe).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".map-focus")).toHaveAttribute("data-focus", "loupe");
+  await expect(page.locator(".map-focus")).toHaveAttribute(
+    "data-focus",
+    "loupe",
+  );
   await loupe.click();
   await expect(loupe).toHaveAttribute("aria-pressed", "false");
-  await expect(page.locator(".map-focus")).toHaveAttribute("data-focus", "ring");
+  await expect(page.locator(".map-focus")).toHaveAttribute(
+    "data-focus",
+    "ring",
+  );
   // The satellite, one button: high tide, then low tide, then none.
   const satellite = rail(page).locator('[data-rail-layer="satellite"]');
   await expect(satellite).toHaveAttribute("aria-pressed", "false");
@@ -232,6 +241,7 @@ test("the rail is a toolbar: one stop on Tab, the arrows walk it, Space switches
   // One stop: Tab leaves the rail, and Shift+Tab comes back to where it was.
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Tab");
   expect(
     await rail(page).evaluate((el) => el.contains(document.activeElement)),
@@ -302,14 +312,21 @@ test.describe("on a phone", () => {
     expect(box.y + box.height).toBeLessThanOrEqual(await barTop(page));
     const first = (await railButton(page, "Coloured wind").boundingBox())!;
     expect(first.y).toBeGreaterThanOrEqual(head.y + head.height);
-    // Every layer in the room there, with nothing to scroll.
+    // Every layer in the room there, or for a spot's week open under it,
+    // scrolled by no more than a switch: Live wind made it nine (the ruling
+    // of 2026-11-03), a switch more than the room over a phone's open dock.
     expect(
-      await rail(page).evaluate((el) => el.scrollHeight <= el.clientHeight + 1),
+      await rail(page).evaluate(
+        (el) => el.scrollHeight <= el.clientHeight + 48,
+      ),
     ).toBe(true);
     // A finger has no pointer to rest on it: a tap names the layer, and
     // whether it is on now, for a moment.
     const loupe = railButton(page, "Loupe");
-    await loupe.tap();
+    await loupe.scrollIntoViewIfNeeded();
+    // Near its top: scrolled to the rail's foot, Gust's picture just over his
+    // button reaches up over the last switch's lower edge.
+    await loupe.tap({ position: { x: 22, y: 10 } });
     await expect(loupe).toHaveAttribute("aria-pressed", "true");
     const tip = loupe.locator(".lr-tip");
     const shown = () =>
