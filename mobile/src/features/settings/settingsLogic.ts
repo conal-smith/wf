@@ -207,7 +207,7 @@ export const EXAMPLE_QUESTIONS: readonly string[] = EXAMPLE_PROMPTS;
 
 /* ------------------------------------------------------------------ links */
 
-export const SOURCE_CODE_URL = "https://github.com/slopsmith/wf";
+export const SOURCE_CODE_URL = "https://github.com/sprintengine/wf";
 export const LICENCE_URL = "https://www.gnu.org/licenses/agpl-3.0.html";
 
 /** Where the data comes from, as the site credits it (README.md, "Licence"). */
