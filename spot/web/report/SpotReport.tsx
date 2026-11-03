@@ -38,6 +38,16 @@ import {
   type SeaTemperatureNetwork,
 } from "../../../force5/src/seaTemperature";
 import { windCss } from "../../../force5/src/windCss";
+import {
+  isStale,
+  latestReading,
+  measuredAt,
+  pairStation,
+  pairedName,
+  type Paired,
+  type WindReading,
+} from "../../../force5/src/windObs";
+import { useWindObs } from "../../../shared/web/useWindObs";
 import type {
   NearbySpot,
   RidingSpot,
@@ -193,7 +203,10 @@ const styles = tv({
     ro: "grid min-w-0 gap-px",
     roWide: "col-span-2",
     roLabel:
-      "font-body text-caption font-medium whitespace-nowrap text-ink-muted wide:text-body",
+      "truncate font-body text-caption font-medium whitespace-nowrap text-ink-muted wide:text-body",
+    // Where the wind at Now was measured: quiet, on the label's own line, so
+    // the cell is the height it always is.
+    roSource: "font-normal",
     // One line of a fixed height, whatever it holds: a figure, a dash, the
     // stars or a notice, so no row grows or shrinks with the hour.
     roValue:
@@ -383,6 +396,13 @@ export function SpotReport({
     [bed, tideAt],
   );
   const picture = useSpotPicture(spot);
+  // The nearest weather station or buoy, whose readings stand beside the
+  // forecast: its name and distance go wherever they are shown.
+  const obs = useWindObs();
+  const paired = useMemo(
+    () => (obs ? pairStation(spot, obs.stations) : null),
+    [obs, spot.lat, spot.lon],
+  );
   const [firstNow] = useState(now);
   const nearby = useNearby(forecast.nearby, rider, firstNow);
   // The rows after dark, where the rider has hidden them: from last light
@@ -633,6 +653,7 @@ export function SpotReport({
               models={models}
               current={current}
               rain={rain}
+              measured={paired}
             />
           ) : (
             <HourTable
@@ -1223,6 +1244,7 @@ function Graph({
   models,
   current,
   rain,
+  measured = null,
 }: {
   rows: SpotRow[];
   days: { day: { date: string }; sun: DaySun; midnight: number }[];
@@ -1246,6 +1268,12 @@ function Graph({
   current: SpotCurrents;
   /** The rain in each hour, mm/h, by the hour's time (`rainPerHour`). */
   rain: ReadonlyMap<number, number>;
+  /**
+   * The weather station or buoy paired with the place (force5/src/windObs.ts
+   * `pairStation`), or null: its readings up to now are drawn on the wind,
+   * and its latest is the readout's at Now.
+   */
+  measured?: Paired | null;
 }) {
   const speed = useSpeed();
   const units = useContext(UnitsContext);
@@ -1419,6 +1447,34 @@ function Graph({
     (r) => [mid(r), Y(r.hour.wind!.gust_kn!)],
     wy + wh,
   ).line;
+  // The wind measured at the paired station, hour by hour up to now, where
+  // the graph's hours are: each reading is the mean of the hour that ends
+  // at its time, so it is drawn at that hour's middle, never past now. A
+  // line through each run of hours, broken where one is missing.
+  const readings = measured
+    ? measured.station.readings.filter(
+        (r) => r.time > start && r.time <= now && seen(r),
+      )
+    : [];
+  const rx = (r: WindReading) => X(r.time - HOUR / 2);
+  const measuredLine = readings
+    .reduce<WindReading[][]>((out, r, i) => {
+      const prev = readings[i - 1];
+      if (!prev || r.time - prev.time > HOUR || apart(prev.time, r.time))
+        out.push([]);
+      out.at(-1)!.push(r);
+      return out;
+    }, [])
+    .filter((run) => run.length > 1)
+    .map((run) => smoothPath(run.map((r) => [rx(r), Y(r.windKn)] as const)))
+    .join("");
+  // At Now, the readout says what the station measured last, while it is
+  // fresh enough to be the wind now.
+  const latest = measured ? latestReading(measured.station, now) : null;
+  const nowMeasured =
+    measured && latest && !isStale(latest, now)
+      ? { paired: measured, reading: latest }
+      : null;
   const [sy, sh] = ROW.sea;
   const SY = (m: number) => sy + sh - (Math.min(m, 2) / 2) * (sh - 4);
   const seaRows = rows.filter((r) => r.hour.waves?.height_m != null && seen(r));
@@ -1488,6 +1544,7 @@ function Graph({
           hasCurrent={current.columns.length > 0}
           hasDepth={hasDepth}
           unlit={dark ? "Twilight" : "Dark"}
+          measured={isNow ? nowMeasured : null}
         />
       </div>
       <div className={s.gbox()}>
@@ -1623,6 +1680,55 @@ function Graph({
                 strokeWidth={1.6}
                 strokeDasharray="4 3"
               />
+            )}
+            {readings.length > 0 && (
+              <g data-measured={measured!.station.id}>
+                {/* On a ground-coloured halo, so the gold reads over the
+                    wind's own colours and the paper alike. */}
+                {measuredLine && (
+                  <>
+                    <path
+                      d={measuredLine}
+                      className="fill-none stroke-ground"
+                      strokeWidth={4.4}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d={measuredLine}
+                      className="fill-none stroke-buoy"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      data-measured-line
+                    />
+                  </>
+                )}
+                {readings.map((r) =>
+                  r.gustKn === null ? null : (
+                    <circle
+                      key={`g${r.time}`}
+                      cx={rx(r)}
+                      cy={Y(r.gustKn)}
+                      r={2.3}
+                      className="fill-ground stroke-buoy"
+                      strokeWidth={1.4}
+                      data-measured-gust={r.time}
+                    />
+                  ),
+                )}
+                {readings.map((r) => (
+                  <circle
+                    key={`w${r.time}`}
+                    cx={rx(r)}
+                    cy={Y(r.windKn)}
+                    r={2.6}
+                    className="fill-buoy stroke-ground"
+                    strokeWidth={1.2}
+                    data-measured-wind={r.time}
+                  />
+                ))}
+              </g>
             )}
             {[10, 20, 30].map((k) => (
               <text
@@ -1860,6 +1966,11 @@ function Graph({
         <KeyGroup name="Wind">
           <KeyItem mark="wind">Wind</KeyItem>
           <KeyItem mark="gust">Gust</KeyItem>
+          {readings.length > 0 && (
+            <KeyItem mark="measured" data-measured-key>
+              Measured at {pairedName(measured!)}, wind and gust
+            </KeyItem>
+          )}
           {/* A point reads one model an hour: nothing to disagree. */}
           {rated && <KeyItem mark="spread">Where models disagree</KeyItem>}
         </KeyGroup>
@@ -1910,6 +2021,7 @@ function Graph({
 type KeyMarkKind =
   | "wind"
   | "gust"
+  | "measured"
   | "spread"
   | "costs"
   | "over"
@@ -2016,6 +2128,31 @@ function KeyMark({ mark }: { mark: KeyMarkKind }) {
           strokeWidth={1.6}
           strokeDasharray="4 3"
         />
+      );
+    case "measured":
+      return (
+        <>
+          <path
+            d="M1 8C6 6 9 7 14 5S18 4 19 4"
+            className="fill-none stroke-buoy"
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+          <circle
+            cx={7}
+            cy={6.8}
+            r={2.4}
+            className="fill-buoy stroke-ground"
+            strokeWidth={1}
+          />
+          <circle
+            cx={13}
+            cy={1.6}
+            r={2}
+            className="fill-ground stroke-buoy"
+            strokeWidth={1.3}
+          />
+        </>
       );
     case "spread":
       return (
@@ -2420,6 +2557,7 @@ function Readout({
   hasCurrent,
   hasDepth,
   unlit,
+  measured = null,
 }: {
   row: SpotRow | null;
   isNow: boolean;
@@ -2437,6 +2575,11 @@ function Readout({
    * left out the twilight, the one such hour still shown.
    */
   unlit: "Dark" | "Twilight";
+  /**
+   * At Now, the paired station's latest reading, fresh: the wind cell says
+   * it, and where it is from, in place of the forecast's.
+   */
+  measured?: { paired: Paired; reading: WindReading } | null;
 }) {
   const speed = useSpeed();
   const units = useContext(UnitsContext);
@@ -2482,10 +2625,42 @@ function Readout({
           )}
         </div>
       )}
-      <div className={s.ro({ className: s.roWide() })}>
-        <span className={s.roLabel()}>Wind</span>
-        <b className={s.roValue()}>
-          {wind ? (
+      <div className={s.ro({ className: s.roWide() })} data-readout-wind>
+        <span className={s.roLabel()}>
+          Wind
+          {measured && (
+            <span className={s.roSource()} data-readout-source>
+              {" "}
+              · {pairedName(measured.paired)},{" "}
+              {measuredAt(measured.reading.time)}
+            </span>
+          )}
+        </span>
+        <b
+          className={s.roValue()}
+          data-measured={measured ? measured.paired.station.id : undefined}
+        >
+          {measured ? (
+            <>
+              {speed.say(measured.reading.windKn)}
+              {speed.gust(measured.reading.windKn, measured.reading.gustKn) !==
+                null && (
+                <span className="text-gust">
+                  {" "}
+                  g
+                  {speed.say(
+                    speed.gust(
+                      measured.reading.windKn,
+                      measured.reading.gustKn,
+                    )!,
+                  )}
+                </span>
+              )}{" "}
+              {speed.unit}
+              {measured.reading.from !== null &&
+                ` ${compass(measured.reading.from)}`}
+            </>
+          ) : wind ? (
             <>
               {speed.say(wind.wind_kn)}
               {gustKn !== null && (

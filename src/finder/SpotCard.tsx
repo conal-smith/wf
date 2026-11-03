@@ -21,7 +21,13 @@ import {
   type ReactNode,
 } from "react";
 import { loupeRose, roseScale } from "../../force5/src/focus";
-import { speedShort } from "../../force5/src/units";
+import { speedShort, unitLabel } from "../../force5/src/units";
+import {
+  measuredAt,
+  pairedName,
+  type Paired,
+  type WindReading,
+} from "../../force5/src/windObs";
 import { windCss } from "../../force5/src/windCss";
 import { spotHref } from "../../force5/src/siteNav";
 import type { Rider } from "../../force5/src/stars";
@@ -66,6 +72,12 @@ export const cardStyles = tv({
     nameLink:
       "rounded-control text-ink no-underline not-disabled:hover:text-chart-magenta",
     meta: "truncate font-body text-body text-ink-muted",
+    // The wind measured now at the nearest station, after the county: a
+    // small square of the readings' gold, the figures, and where.
+    measured: "mt-0.5 truncate font-body text-caption text-ink-2",
+    measuredMark:
+      "mr-1.5 inline-block size-1.5 rounded-full bg-buoy align-middle",
+    measuredFigure: "font-semibold text-ink tabular-nums",
     star: "self-start",
     bars: "grid grid-cols-bars items-center gap-x-1.5 gap-y-1",
     barName: "font-body text-caption font-medium text-ink-muted",
@@ -262,6 +274,11 @@ export interface SpotCardProps {
   onPick: (time: number) => void;
   /** Its best on the day shown, which put it where it is on the list. */
   best: Best;
+  /**
+   * On today, its nearest weather station or buoy and the wind it measured
+   * last, while fresh (force5/src/windObs.ts); else null.
+   */
+  measured?: { paired: Paired; reading: WindReading } | null;
 }
 
 /** A card on the list. */
@@ -281,6 +298,7 @@ export function SpotCard(props: SpotCardProps) {
     onToggleStar,
     onPick,
     best,
+    measured = null,
   } = props;
   const s = cardStyles();
   const href = spotHref(spot.id);
@@ -333,6 +351,25 @@ export function SpotCard(props: SpotCardProps) {
               </a>
             </h3>
             {where && <span className={s.meta()}>{where}</span>}
+            {measured && (
+              <span
+                className={s.measured()}
+                data-card-measured={measured.paired.station.id}
+                title={`Measured at ${pairedName(measured.paired)}, ${measuredAt(measured.reading.time)}`}
+              >
+                <i className={s.measuredMark()} aria-hidden="true" />
+                Now{" "}
+                <b className={s.measuredFigure()}>
+                  {speedShort(measured.reading.windKn, units)}
+                  {measured.reading.gustKn !== null &&
+                    ` g${speedShort(measured.reading.gustKn, units)}`}
+                </b>
+                {units === "bft" ? "" : ` ${unitLabel(units)}`}
+                <span className="sr-only"> measured at</span>
+                <span aria-hidden="true"> · </span>
+                {pairedName(measured.paired)}
+              </span>
+            )}
           </div>
           <StarToggle
             spot={spot}

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  INLAND_WEIGHT,
+  PAIR_MAX_KM,
   READING_FRESH_HOURS,
+  distanceKm,
+  pairStation,
+  pairedName,
   isStale,
   latestReading,
   measuredAt,
@@ -164,5 +169,80 @@ describe("how old a reading is", () => {
     // the clock is an hour ahead.
     expect(measuredAt(END)).toBe("19:00");
     expect(measuredAt(Date.parse("2026-07-01T19:00:00Z"))).toBe("20:00");
+  });
+});
+
+describe("pairStation", () => {
+  const station = (
+    id: string,
+    lat: number,
+    lon: number,
+    kind: WindStation["kind"],
+    readings = 1,
+  ): WindStation => ({
+    id,
+    name: id,
+    network: kind === "buoy" ? "marine-institute" : "met-eireann",
+    kind,
+    lat,
+    lon,
+    readings: Array.from({ length: readings }, (_, i) => ({
+      time: END - i * HOUR,
+      windKn: 10,
+      gustKn: 14,
+      from: 270,
+    })),
+  });
+  // Belmullet's beach, and the stations round it (force5/ingest/wind_stations.json).
+  const BEACH = { lat: 54.2234, lon: -9.9919 };
+  const BELMULLET = station("Belmullet", 54.2275, -10.00694, "coastal");
+  const NEWPORT = station("Newport Furnace", 53.92361, -9.57278, "inland");
+  const M4 = station("M4", 54.6667, -9.0667, "buoy");
+
+  it("measures distances on the sphere", () => {
+    expect(distanceKm(BEACH, BELMULLET)).toBeCloseTo(1.1, 1);
+    // A degree of latitude is about 111 km.
+    expect(distanceKm({ lat: 53, lon: -8 }, { lat: 54, lon: -8 })).toBeCloseTo(
+      111.2,
+      0,
+    );
+  });
+
+  it("is the nearest station within 25 km, with its distance", () => {
+    const paired = pairStation(BEACH, [M4, NEWPORT, BELMULLET])!;
+    expect(paired.station.id).toBe("Belmullet");
+    expect(paired.km).toBeCloseTo(1.1, 1);
+    expect(pairedName(paired)).toBe("Belmullet 1 km");
+    expect(pairedName({ station: BELMULLET, km: 0.4 })).toBe("Belmullet <1 km");
+  });
+
+  it("is none where no station is near enough", () => {
+    expect(PAIR_MAX_KM).toBe(25);
+    expect(
+      pairStation({ lat: 52.276, lon: -10.024 }, [BELMULLET, M4]),
+    ).toBeNull();
+    expect(pairStation(BEACH, [])).toBeNull();
+  });
+
+  it("prefers a coastal station or a buoy to a nearer inland one, unless that is much nearer", () => {
+    const shore = station("Shore", 53.0, -9.0, "coastal");
+    // 10 km off on the coast, 8 km inland: the coast's.
+    const at = { lat: 53.0 + 10 / 111.2, lon: -9.0 };
+    const inland = station("Inland", at.lat - 8 / 111.2, -9.0, "inland");
+    expect(pairStation(at, [inland, shore])!.station.id).toBe("Shore");
+    // 3 km inland is nearer by more than half: the inland one.
+    const near = station("Near", at.lat - 3 / 111.2, -9.0, "inland");
+    expect(pairStation(at, [near, shore])!.station.id).toBe("Near");
+    // An inland station counts double: 13 km of it is past the limit.
+    const far = station("Far", at.lat - 13 / 111.2, -9.0, "inland");
+    expect(pairStation(at, [far])).toBeNull();
+    expect(INLAND_WEIGHT).toBe(2);
+  });
+
+  it("never pairs a station with no readings", () => {
+    const silent = station("Silent", BEACH.lat, BEACH.lon, "coastal", 0);
+    expect(pairStation(BEACH, [silent, BELMULLET])!.station.id).toBe(
+      "Belmullet",
+    );
   });
 });

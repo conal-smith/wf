@@ -65,6 +65,15 @@ import { tideAt, type SpotTide } from "../force5/src/tides";
 import { speedShort, unitLabel, type Units } from "../force5/src/units";
 import { variableValue } from "../force5/src/variables";
 import { compass, windCss, type Spot } from "../force5/src/weather";
+import {
+  isStale,
+  latestReading,
+  measuredAt,
+  pairedName,
+  readingAt,
+  type Paired,
+  type WindReading,
+} from "../force5/src/windObs";
 
 /** The night and the days with no spot chosen: the middle of Ireland's. */
 const IRELAND_MIDDLE = { lat: 53.4, lon: -7.9 };
@@ -106,6 +115,12 @@ interface StarRun {
 }
 
 export interface ScrubBarProps {
+  /**
+   * The weather station or buoy beside the place (force5/src/windObs.ts
+   * `pairStation`), or null: with the playhead at or before now, the
+   * readout says what it measured.
+   */
+  measured?: Paired | null;
   columns: readonly StripColumn[];
   /** The column in hand, on the strip. */
   selected: number;
@@ -153,6 +168,7 @@ export default function ScrubBar({
   href,
   reachable,
   onShowOnMap,
+  measured = null,
 }: ScrubBarProps) {
   const id = useId();
   const place = spot ?? IRELAND_MIDDLE;
@@ -655,6 +671,20 @@ export default function ScrubBar({
     };
   }, [series, pos, strip, stripHours, tide]);
 
+  // What the paired station measured at the playhead's hour, at or before
+  // now: at the hour now (the column nearest it, which may be the next
+  // whole hour), its latest reading while fresh; before it, the reading of
+  // that hour. After now there is only the forecast.
+  const measuredHere = useMemo(() => {
+    if (!measured || pos > now + HOUR / 2) return null;
+    const current = now - pos < HOUR;
+    const r = current
+      ? latestReading(measured.station, now)
+      : readingAt(measured.station, pos);
+    if (!r || (current && isStale(r, now))) return null;
+    return { paired: measured, reading: r };
+  }, [measured, pos, now]);
+
   const playX = x(pos);
 
   const label = spot
@@ -714,6 +744,7 @@ export default function ScrubBar({
         waves={lanes.some((l) => l.kind === "waves")}
         tide={!!tide}
         units={units}
+        measured={measuredHere}
       />
 
       <div
@@ -1048,7 +1079,10 @@ function Readout({
   waves,
   tide,
   units,
+  measured,
 }: {
+  /** What the paired station measured at the hour, or null for the forecast's. */
+  measured: { paired: Paired; reading: WindReading } | null;
   time: number;
   reading: {
     wind: number | null;
@@ -1094,10 +1128,42 @@ function Readout({
       data-stars={!isPoint && hour?.rating ? (stars ?? 0) : undefined}
     >
       {when}
-      <div className="sb-cell is-wind" data-cell="wind">
-        <span className="sb-label">Wind</span>
+      <div
+        className={`sb-cell is-wind${measured ? " is-measured" : ""}`}
+        data-cell="wind"
+        data-measured={measured?.paired.station.id}
+      >
+        {measured ? (
+          <span
+            className="sb-label"
+            title={`Measured at ${pairedName(measured.paired)}, ${measuredAt(measured.reading.time)}`}
+          >
+            Measured · {pairedName(measured.paired)}
+          </span>
+        ) : (
+          <span className="sb-label">Wind</span>
+        )}
         <span className="sb-value">
-          {wind === null ? (
+          {measured ? (
+            <>
+              <i className="sb-swatch is-measured" />
+              <b>
+                {speedShort(measured.reading.windKn, units)}
+                {unit}
+              </b>
+              {measured.reading.gustKn !== null && (
+                <span className="sb-soft">
+                  g{speedShort(measured.reading.gustKn, units)}
+                </span>
+              )}
+              {measured.reading.from !== null && (
+                <span className="sb-dir">
+                  <WindArrow from={measured.reading.from} size={12} />
+                  {compass(measured.reading.from)}
+                </span>
+              )}
+            </>
+          ) : wind === null ? (
             "–"
           ) : (
             <>
