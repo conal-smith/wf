@@ -154,6 +154,22 @@ test.describe("on a wide screen", () => {
     const zoom = await page.evaluate(
       () => document.querySelector(".map-canvas")?.className ?? "",
     );
+    // The card brings its light into view a moment after the pointer comes
+    // to rest on it (src/App.tsx hoverCard): left at once, it never does.
+    const inside = async (id: string) => {
+      const box = (await panel(page).boundingBox())!;
+      const at = await page
+        .locator(`.spot-marker[data-spot-id="${id}"]`)
+        .boundingBox();
+      return (
+        !!at &&
+        at.x > box.x &&
+        at.x + at.width < box.x + box.width &&
+        at.y > box.y &&
+        at.y + at.height < box.y + box.height
+      );
+    };
+    await expect.poll(() => inside("brandon")).toBe(true);
     await page.mouse.move(5, 5);
     // And a light under the pointer outlines its card, once the chart is at
     // rest (through a move its lights are drawn, not buttons).
