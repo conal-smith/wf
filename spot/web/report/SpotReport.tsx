@@ -6,7 +6,14 @@
  * clock (or the table), and the spot's own notes. Two faces, sentence-case
  * labels, one big figure and one short line per card, the stars as stars.
  */
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   MIN_ARROW_MS,
   currentFigure,
@@ -171,14 +178,19 @@ const styles = tv({
       "grid w-full grid-flow-row-dense grid-cols-4 items-start gap-x-3 gap-y-1.5",
       "wide:grid-cols-readout wide:gap-x-5 wide:gap-y-2.5",
     ],
-    chip: "inline-block justify-self-start rounded-full bg-inverse px-3 py-1 font-body text-body font-semibold whitespace-nowrap text-ink-inverse tabular-nums",
+    // As wide as the widest hour it says ("Wed 16:00"), so "Now" and every
+    // hour after it hold the same place.
+    chip: "inline-block min-w-24 justify-self-start rounded-full bg-inverse px-3 py-1 text-center font-body text-body font-semibold whitespace-nowrap text-ink-inverse tabular-nums",
     chipNow: "bg-pen text-ground",
     ro: "grid min-w-0 gap-px",
     roWide: "col-span-2",
     roLabel:
       "font-body text-caption font-medium whitespace-nowrap text-ink-muted wide:text-body",
+    // One line of a fixed height, whatever it holds: a figure, a dash, the
+    // stars or a notice, so no row grows or shrinks with the hour.
     roValue:
-      "truncate font-body text-body font-semibold whitespace-nowrap text-ink tabular-nums wide:text-prose",
+      "block h-5 truncate font-body text-body leading-5 font-semibold whitespace-nowrap text-ink tabular-nums wide:h-6 wide:text-prose wide:leading-6",
+    roMarks: "flex h-5 min-w-0 items-center gap-1.5 overflow-hidden wide:h-6",
     // The band names in a column of their own beside the hours; on a phone
     // they float over the hours' left edge instead, so the graph has the
     // card's whole width.
@@ -191,9 +203,20 @@ const styles = tv({
     graph:
       "relative overflow-x-auto overscroll-x-contain border-0 border-line wide:border-l",
     sky: "pointer-events-none absolute left-0 flex items-center gap-1 font-body text-caption text-ink-2",
-    legend:
-      "flex flex-wrap gap-x-4 gap-y-1.5 pt-3 font-body text-caption text-ink-2",
-    key: "mr-1.5 inline-block h-2 w-3.5 rounded-control align-middle",
+    // The key under the graph: its groups in a row, each a small heading
+    // over its marks, every mark drawn at one size; two to a row on a phone.
+    legend: [
+      "grid grid-cols-2 gap-x-6 gap-y-5 px-1 pt-5 font-body text-caption text-ink-2",
+      "wide:flex wide:flex-wrap wide:gap-x-14 wide:px-4",
+    ],
+    kGroup: "grid min-w-0 content-start gap-2",
+    kHead: "font-medium text-ink-muted",
+    kList: "m-0 grid list-none gap-1.5 p-0",
+    kItem: "flex min-w-0 items-start gap-2.5",
+    kMark: "mt-0.5 h-3 w-5 shrink-0 overflow-visible",
+    kWords: "min-w-0",
+    kFigure:
+      "ml-auto min-w-6 pl-2 text-right font-semibold text-ink tabular-nums",
     table:
       "w-full border-collapse overflow-hidden rounded-surface bg-sunken on-card font-body text-body",
     th: "px-3 pt-3 pb-2.5 text-left font-medium whitespace-nowrap text-ink-muted",
@@ -1253,10 +1276,22 @@ function Graph({
         Math.max(0, opened ? X(opened.time) - width / 3 : X(now) - px * 6);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [px]);
-  const onScroll = phone
-    ? (e: React.UIEvent<HTMLDivElement>) =>
-        setHover(rowAtX(headAt(e.currentTarget.scrollLeft)))
-    : undefined;
+  // With a mouse the hour read out is the one under the pointer, and stays
+  // so as a wheel or a trackpad scrolls the hours along under it.
+  const pointerX = useRef<number | null>(null);
+  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (phone) setHover(rowAtX(headAt(el.scrollLeft)));
+    else if (pointerX.current !== null)
+      setHover(
+        rowAtX(
+          pointerX.current -
+            el.getBoundingClientRect().left -
+            el.clientLeft +
+            el.scrollLeft,
+        ),
+      );
+  };
   const windRows = rows.filter((r) => r.hour.wind);
   const [wy, wh] = ROW.wind;
   const Y = (k: number) => wy + wh - (Math.min(k, 36) / 36) * wh;
@@ -1293,8 +1328,13 @@ function Graph({
   const shownRow = hoverRow ?? rowAt(rows, now);
   const shownAt = shownRow ? rows.indexOf(shownRow) : -1;
   const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    pointerX.current = e.clientX;
     const box = e.currentTarget.getBoundingClientRect();
     setHover(rowAtX(e.clientX - box.left));
+  };
+  const onLeave = () => {
+    pointerX.current = null;
+    setHover(null);
   };
   // Now is said as now, however it came to be under the playhead.
   const isNow = hoverRow === null || hoverRow === rowAt(rows, now);
@@ -1354,7 +1394,7 @@ function Graph({
             height={GH}
             viewBox={`0 0 ${W} ${GH}`}
             onPointerMove={phone ? undefined : onMove}
-            onPointerLeave={phone ? undefined : () => setHover(null)}
+            onPointerLeave={phone ? undefined : onLeave}
             className="block touch-pan-x"
             data-graph-svg
           >
@@ -1677,77 +1717,240 @@ function Graph({
             ))}
         </div>
       </div>
-      <div className={s.legend()}>
-        <span>
-          <i className={s.key({ className: "bg-wind-k15" })} />
-          Wind
-        </span>
-        <span>
-          <i className={s.key({ className: "h-0.5 bg-gust" })} />
-          Gust
-        </span>
-        {/* A point reads one model an hour: nothing to disagree. */}
+      {/* The key, in groups as the graph's bands run, each mark drawn as
+          the graph draws it. */}
+      <div className={s.legend()} data-legend>
+        <KeyGroup name="Wind">
+          <KeyItem mark="wind">Wind</KeyItem>
+          <KeyItem mark="gust">Gust</KeyItem>
+          {/* A point reads one model an hour: nothing to disagree. */}
+          {rated && <KeyItem mark="spread">Where models disagree</KeyItem>}
+        </KeyGroup>
         {rated && (
-          <span>
-            <i className={s.key({ className: "bg-line" })} />
-            Where the models disagree
-          </span>
+          <KeyGroup name="Gusts">
+            <KeyItem mark="costs">Costs a star</KeyItem>
+            <KeyItem mark="over">Past too much: no stars</KeyItem>
+          </KeyGroup>
         )}
-        {deepAt !== null && (
-          <span>
-            <i className={s.key({ className: "bg-depth" })} />1 m of water or
-            more at the launch
-          </span>
+        <KeyGroup name="Sea" wide>
+          <KeyItem mark="waves">Waves: where they run, period in s</KeyItem>
+          <KeyItem mark="current">
+            Current: where it runs, in {unitLabel(currentUnits(units))}
+          </KeyItem>
+          {deepAt !== null && (
+            <KeyItem mark="depth">1 m of water or more at the launch</KeyItem>
+          )}
+        </KeyGroup>
+        <KeyGroup name="Sky">
+          <KeyItem mark="dark">Dark</KeyItem>
+          <KeyItem mark="rain">Rain, mm/h</KeyItem>
+        </KeyGroup>
+        {models.length > 0 && (
+          <KeyGroup name="Models" data-models-legend>
+            {models.map((m) => {
+              const at = shownRow
+                ? m.points.find((p) => p.time === shownRow.time)
+                : undefined;
+              return (
+                <KeyItem
+                  key={m.id}
+                  hue={modelHue(m.id).wind}
+                  figure={at ? speed.say(at.kn) : ""}
+                  data-model-key={m.id}
+                >
+                  {modelName(m.id)}
+                </KeyItem>
+              );
+            })}
+          </KeyGroup>
         )}
-        <span>
-          <i className={s.key({ className: "bg-ink/10" })} />
-          Dark
-        </span>
-        <span>
-          <i className={s.key({ className: "bg-weather-rain" })} />
-          Rain, mm/h
-        </span>
-        {rated && (
-          <>
-            <span>
-              <i className={s.key({ className: "bg-gust/25" })} />
-              Gusts {GUST_WORDS.costs}
-            </span>
-            <span>
-              <i className={s.key({ className: "bg-gust/50" })} />
-              Gusts {GUST_WORDS.over}
-            </span>
-          </>
-        )}
-        <span>Waves: where they run, and their period in seconds</span>
-        <span>Current: where it runs, in {unitLabel(currentUnits(units))}</span>
       </div>
-      {models.length > 0 && (
-        <div className={s.legend({ className: "pt-2" })} data-models-legend>
-          <span className="font-medium text-ink-muted">Models</span>
-          {models.map((m) => {
-            const at = hoverRow
-              ? m.points.find((p) => p.time === hoverRow.time)
-              : undefined;
-            return (
-              <span key={m.id} data-model-key={m.id}>
-                <i
-                  className={s.key({ className: "h-0.5" })}
-                  style={{ background: modelHue(m.id).wind }}
-                />
-                {modelName(m.id)}
-                {at && (
-                  <b className="ml-1 font-semibold text-ink">
-                    {speed.say(at.kn)}
-                  </b>
-                )}
-              </span>
-            );
-          })}
-        </div>
-      )}
     </>
   );
+}
+
+/** What a key's mark is: one of the graph's own, or a model's line in its hue. */
+type KeyMarkKind =
+  | "wind"
+  | "gust"
+  | "spread"
+  | "costs"
+  | "over"
+  | "waves"
+  | "current"
+  | "depth"
+  | "dark"
+  | "rain";
+
+/** A group of the key under the graph: a small heading, and its marks. */
+function KeyGroup({
+  name,
+  wide = false,
+  children,
+  ...data
+}: {
+  name: string;
+  /** Its words are long: the whole width on a phone. */
+  wide?: boolean;
+  children: React.ReactNode;
+  "data-models-legend"?: boolean;
+}) {
+  const s = styles();
+  return (
+    <div
+      className={s.kGroup({ className: wide ? "max-wide:col-span-2" : "" })}
+      {...data}
+    >
+      <span className={s.kHead()}>{name}</span>
+      <ul className={s.kList()}>{children}</ul>
+    </div>
+  );
+}
+
+/**
+ * One mark of the key, drawn as the graph draws it, at one size for every
+ * mark: `mark` is the kind, or `hue` a model's colour for its line. A model's figure
+ * at the hour read out sits in a slot of its own, kept whether there is a
+ * figure or not, so the key never rewraps as the hours move.
+ */
+function KeyItem({
+  mark,
+  hue,
+  figure,
+  children,
+  ...data
+}: {
+  mark?: KeyMarkKind;
+  hue?: string;
+  figure?: string;
+  children: React.ReactNode;
+  "data-model-key"?: string;
+}) {
+  const s = styles();
+  return (
+    <li className={s.kItem()} {...data}>
+      <svg
+        className={s.kMark()}
+        viewBox="0 0 20 12"
+        aria-hidden="true"
+        data-key-mark={mark ?? "model"}
+      >
+        {mark ? (
+          <KeyMark mark={mark} />
+        ) : (
+          // A model's own line, in its hue (the ruling of 2026-09-16).
+          <path
+            d="M0 6H20"
+            fill="none"
+            stroke={hue}
+            strokeWidth={1.6}
+            strokeLinecap="round"
+          />
+        )}
+      </svg>
+      <span className={s.kWords()}>{children}</span>
+      {figure !== undefined && <b className={s.kFigure()}>{figure}</b>}
+    </li>
+  );
+}
+
+function KeyMark({ mark }: { mark: KeyMarkKind }) {
+  switch (mark) {
+    case "wind":
+      return (
+        <>
+          <path
+            d="M0 7C4 4 7 5 10 4.5S16 2.5 20 3.5V12H0Z"
+            className="fill-wind-k15"
+            fillOpacity={0.78}
+          />
+          <path
+            d="M0 7C4 4 7 5 10 4.5S16 2.5 20 3.5"
+            className="fill-none stroke-wind-k15"
+            strokeWidth={1.6}
+          />
+        </>
+      );
+    case "gust":
+      return (
+        <path
+          d="M0 6H20"
+          className="fill-none stroke-gust"
+          strokeWidth={1.6}
+          strokeDasharray="4 3"
+        />
+      );
+    case "spread":
+      return (
+        <path
+          d="M0 4C5 1.5 10 3 20 1.5V10C12 11 6 9.5 0 10.5Z"
+          className="fill-ink"
+          fillOpacity={0.14}
+        />
+      );
+    case "costs":
+    case "over":
+      return (
+        <rect
+          x={0}
+          y={1}
+          width={20}
+          height={10}
+          rx={2}
+          className="fill-gust"
+          fillOpacity={mark === "over" ? 0.45 : 0.22}
+        />
+      );
+    case "waves":
+    case "current":
+      return (
+        <g transform="translate(10 6) rotate(45) scale(0.8)">
+          <path
+            d={ARROW}
+            className={
+              mark === "waves"
+                ? "fill-none stroke-depth"
+                : "fill-none stroke-ink-2"
+            }
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </g>
+      );
+    case "depth":
+      return (
+        <rect
+          x={0}
+          y={1}
+          width={20}
+          height={10}
+          rx={2}
+          className="fill-depth"
+          fillOpacity={0.9}
+        />
+      );
+    case "dark":
+      return (
+        <rect
+          x={0}
+          y={0}
+          width={20}
+          height={12}
+          rx={2}
+          className="fill-ink"
+          fillOpacity={0.09}
+        />
+      );
+    case "rain":
+      return (
+        <g className="fill-weather-rain">
+          <rect x={1} y={7} width={5} height={5} rx={1} />
+          <rect x={7.5} y={3} width={5} height={9} rx={1} />
+          <rect x={14} y={5} width={5} height={7} rx={1} />
+        </g>
+      );
+  }
 }
 
 /** The lower bands' names, down the graph's left edge. */
@@ -2083,20 +2286,22 @@ function Readout({
   const speed = useSpeed();
   const units = useContext(UnitsContext);
   const s = styles();
-  if (!row) return <div className={s.readout()} />;
-  const wind = row.hour.wind;
-  const waves = row.hour.waves;
+  const wind = row?.hour.wind;
+  const waves = row?.hour.waves;
   const gustKn = wind ? speed.gust(wind.wind_kn, wind.gust_kn) : null;
+  const beside = row?.rating ? besideMark(row) : null;
+  const taken = row && !row.rating ? standIn(row) : null;
   // Every reading the place has, in a cell of its own that holds its place
   // whatever the hour: an hour without one reads "–", so nothing moves as
-  // the hours are scrubbed through.
+  // the hours are scrubbed through. Before the hours are read the cells
+  // stand empty, at the height they will have.
   return (
     <div className={s.readout()} data-readout>
       <div className={s.ro({ className: "max-wide:col-span-2" })}>
         <span
           className={s.chip({ className: isNow ? s.chipNow() : undefined })}
         >
-          {isNow
+          {isNow || !row
             ? "Now"
             : `${dayNames(dublinDate(row.time), row.time).short} ${clock(row.time)}`}
         </span>
@@ -2104,17 +2309,21 @@ function Readout({
       {rated && (
         <div className={s.ro()}>
           <span className={s.roLabel()}>Stars</span>
-          {row.rating ? (
-            <span className="inline-flex h-6 items-center gap-1.5">
+          {row?.rating ? (
+            <span className={s.roMarks()}>
               <Stars n={row.rating.stars} />
-              {besideMark(row) && <NoticeMark level={besideMark(row)!} />}
+              {beside && <NoticeMark level={beside} />}
             </span>
-          ) : standIn(row) ? (
-            <NoticeMark level={standIn(row)!.level}>
-              {standIn(row)!.word}
-            </NoticeMark>
+          ) : taken ? (
+            <span className={s.roMarks()} title={taken.word}>
+              <NoticeMark level={taken.level} className="min-w-0">
+                <span className="truncate">{taken.word}</span>
+              </NoticeMark>
+            </span>
           ) : (
-            <b className={s.roValue()}>{row.hour.daylight ? "–" : "Dark"}</b>
+            <b className={s.roValue()}>
+              {!row || row.hour.daylight ? "–" : "Dark"}
+            </b>
           )}
         </div>
       )}
@@ -2155,7 +2364,7 @@ function Readout({
         <div className={s.ro()}>
           <span className={s.roLabel()}>Wing</span>
           <b className={s.roValue()}>
-            {row.rating
+            {row?.rating
               ? `${row.rating.wing.own ?? row.rating.wing.recommended} m²`
               : "–"}
           </b>
