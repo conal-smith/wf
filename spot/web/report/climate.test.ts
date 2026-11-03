@@ -40,10 +40,18 @@ describe("parseClimate", () => {
     const c = parseClimate({ id: "keel-lake", wind, waves: { ...waves, swell: [] } });
     expect(c?.wind.months).toHaveLength(12);
     expect(c?.waves).toBeUndefined();
+    expect(c?.sheltered).toBe(false);
   });
 
-  it("reads a lake's file, which has no waves", () => {
-    expect(parseClimate({ id: "blessington", wind })?.waves).toBeUndefined();
+  it("reads a sea spot's file as open water", () => {
+    expect(parseClimate({ id: "donabate", wind, waves })?.sheltered).toBe(false);
+  });
+
+  it("reads a file with no waves as sheltered water: a lake, or a lagoon behind a spit", () => {
+    const lake = parseClimate({ id: "blessington", wind });
+    expect(lake?.waves).toBeUndefined();
+    expect(lake?.sheltered).toBe(true);
+    expect(parseClimate({ id: "malahide-estuary", wind, sheltered: true })?.sheltered).toBe(true);
   });
 
   it("refuses what is not one: the host's page for a missing file, or a short month list", () => {

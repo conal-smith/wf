@@ -2,7 +2,8 @@
  * The spot's wind and waves through the year, below everything else on the
  * spot page: how often it blows and from where, how big the waves are and
  * from where, and how often each period of swell comes, at what size and in
- * which months. Static numbers from Copernicus Marine's records of the past
+ * which months; on sheltered water, that the open sea's waves do not reach
+ * it. The swell is the swell alone, never the wind's own waves. Static numbers from Copernicus Marine's records of the past
  * (spot/web/report/climate.ts); every chart answers a hover or a tap with its
  * figures in a small floating card.
  */
@@ -389,7 +390,7 @@ function Rose({
   );
 }
 
-/** A candle per month: a bar over the usual range, a line at the typical value. */
+/** A candle per month: a bar from the 1-in-10 value to the 9-in-10, a line at the middle. */
 function Candles({
   rows,
   top,
@@ -434,8 +435,8 @@ function Candles({
           const rowsTip: TipRow[] = [];
           if (d !== undefined) rowsTip.push({ label: "Days a month", value: daysWords(d) });
           if (mid !== null && lo !== null && hi !== null) {
-            rowsTip.push({ label: "Typical", value: metresWords(mid) });
-            rowsTip.push({ label: "Usual range", value: `${lo.toFixed(1)} to ${hi.toFixed(1)} m` });
+            rowsTip.push({ label: "Middle", value: metresWords(mid) });
+            rowsTip.push({ label: "8 in 10 between", value: `${lo.toFixed(1)} and ${hi.toFixed(1)} m` });
           }
           return (
             <g key={i}>
@@ -606,7 +607,10 @@ function WavesSection({ climate }: { climate: Climate }) {
             <div className={s.cardTop()}>
               <div>
                 <h3 className={s.h3()}>Wave height</h3>
-                <p className={s.note()}>Line: a typical day. Bar: most days.</p>
+                <p className={s.note()}>
+                  The whole sea, wind waves and swell together. Bar: from 1 in 10 to 9 in 10 of the readings. Line: the
+                  middle one.
+                </p>
               </div>
             </div>
             <Candles
@@ -629,7 +633,10 @@ function WavesSection({ climate }: { climate: Climate }) {
           <div className={s.cardTop()}>
             <div>
               <h3 className={s.h3()}>Days a month with each swell</h3>
-              <p className={s.note()}>Period: the time between waves. The longer it is, the more power they carry.</p>
+              <p className={s.note()}>
+                The swell alone, not the wind&rsquo;s own waves, on days it lasts 6 hours or more. Period: the time between
+                its waves, on average. The longer it is, the more power they carry.
+              </p>
             </div>
             <Segmented
               aria-label="Size of swell"
@@ -646,7 +653,10 @@ function WavesSection({ climate }: { climate: Climate }) {
           <div className={s.cardTop()}>
             <div>
               <h3 className={s.h3()}>How big each swell is</h3>
-              <p className={s.note()}>Bar: the usual size. Line: a typical day. Number: days a month.</p>
+              <p className={s.note()}>
+                The swell alone, each day by its typical size. Bar: from 1 in 10 to 9 in 10 of those days. Line: the
+                middle day. Number: days a month.
+              </p>
             </div>
           </div>
           <div className={s.panels()}>
@@ -671,9 +681,30 @@ function WavesSection({ climate }: { climate: Climate }) {
         </div>
       </div>
       <p className={s.credit()}>
-        Waves {waves.km.toFixed(1)} km off the beach, {waves.years[0]} to {waves.years[1]}; wind {climate.wind.years[0]} to{" "}
+        Waves at the wave model&rsquo;s point {waves.km.toFixed(1)} km from the spot, {waves.years[0]} to {waves.years[1]};
+        wind {climate.wind.years[0]} to{" "}
         {climate.wind.years[1]}. {climate.credit}.
       </p>
+    </section>
+  );
+}
+
+/** In place of the waves where the sea's do not reach: said, rather than left out. */
+function ShelteredSection() {
+  return (
+    <section className={s.section()} aria-labelledby="waves-year" data-climate-sheltered>
+      <div className={s.head()}>
+        <h2 className={s.h2()} id="waves-year">
+          The waves through the year
+        </h2>
+      </div>
+      <div className={s.card()}>
+        <h3 className={s.h3()}>Sheltered water</h3>
+        <p className={s.note()}>
+          The open sea&rsquo;s waves don&rsquo;t reach here, so there is no swell to count. What waves there are, the
+          wind raises on the spot: the wind above says how often.
+        </p>
+      </div>
     </section>
   );
 }
@@ -699,9 +730,12 @@ export function ClimateSections({ spotId, units }: { spotId: string; units: Unit
         {climate.waves ? (
           <WavesSection climate={climate} />
         ) : (
-          <p className={s.credit()}>
-            Wind {climate.wind.years[0]} to {climate.wind.years[1]}. {climate.credit}.
-          </p>
+          <>
+            {climate.sheltered && <ShelteredSection />}
+            <p className={s.credit()}>
+              Wind {climate.wind.years[0]} to {climate.wind.years[1]}. {climate.credit}.
+            </p>
+          </>
         )}
       </div>
       {tip && <TipCard tip={tip} />}

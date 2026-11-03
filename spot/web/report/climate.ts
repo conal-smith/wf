@@ -9,7 +9,11 @@
 export const WIND_EDGES = [12, 16, 22, 30] as const;
 /** The wave rose's periods, in seconds: under 6, 6-9, 9-12, 12 and over. */
 export const ROSE_PERIODS = ["Under 6 s", "6 to 9 s", "9 to 12 s", "Over 12 s"] as const;
-/** The swell charts' periods: the rose's without the shortest. */
+/**
+ * The swell charts' periods: the rose's without the shortest. The rose's are
+ * the whole sea's peak period; these are the swell's own mean period, the
+ * wind's waves left out.
+ */
 export const SWELL_PERIODS = ["6 to 9 s", "9 to 12 s", "Over 12 s"] as const;
 /** The swell chart's sizes, in metres, as the file orders them. */
 export const SWELL_SIZES = [
@@ -48,19 +52,23 @@ export interface ClimateWind {
   rose: number[][];
 }
 
-/** A month of one period's swell: days a month, then the usual size (10th, 50th, 90th centile, metres) or nulls. */
+/**
+ * A month of one period's swell: days a month, then the size of those days
+ * (their 10th, 50th and 90th centile, metres) or nulls when there are too few.
+ */
 export type Candle = [number, number | null, number | null, number | null];
 
 export interface ClimateWaves {
+  /** The wave model's point the waves were read at. */
   at: [number, number];
-  /** How far the wave point is from the spot. */
+  /** How far that point is from the spot. */
   km: number;
   years: [number, number];
-  /** Per month, the wave height's 10th, 50th and 90th centile, metres. */
+  /** Per month, the whole sea's height (wind waves and swell): 10th, 50th and 90th centile, metres. */
   height: [number, number, number][];
-  /** Per sixteenth of the compass, thousandths of all readings in each rose period. */
+  /** Per sixteenth of the compass, thousandths of all readings in each rose period (the whole sea). */
   rose: number[][];
-  /** [size][period][month]: days a month with that swell. */
+  /** [size][period][month]: days a month with that swell, the swell alone, sized by the day's typical reading. */
   swell: number[][][];
   /** [period][month]. */
   candles: Candle[][];
@@ -71,6 +79,12 @@ export interface Climate {
   credit: string;
   wind: ClimateWind;
   waves?: ClimateWaves;
+  /**
+   * No waves because the open sea's do not reach the spot: a lake, a lough,
+   * a lagoon behind a spit, the inside of a harbour. Any spot without waves
+   * is read as one, since that is the only reason the build leaves them out.
+   */
+  sheltered: boolean;
 }
 
 const isNum = (v: unknown): v is number =>
@@ -97,6 +111,7 @@ export function parseClimate(json: unknown): Climate | null {
     id: c.id,
     credit: typeof c.credit === "string" ? c.credit : CLIMATE_CREDIT,
     wind: w as unknown as ClimateWind,
+    sheltered: false,
   };
   const v = c.waves as Record<string, unknown> | undefined;
   if (v) {
@@ -130,6 +145,7 @@ export function parseClimate(json: unknown): Climate | null {
     )
       out.waves = v as unknown as ClimateWaves;
   }
+  out.sheltered = !v;
   return out;
 }
 
