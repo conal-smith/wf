@@ -29,7 +29,7 @@ import {
 import type { FeatureCollection, Point } from "geojson";
 import { memo, useMemo, type Ref } from "react";
 import { StyleSheet, View, type NativeSyntheticEvent } from "react-native";
-import { CHART_LAYERS, CHART_MIN_ZOOM, PLACE_CLASSES } from "../../../../force5/src/chartStyle";
+import { CHART_MIN_ZOOM, PLACE_CLASSES } from "../../../../force5/src/chartStyle";
 import { colors } from "../../theme/tokens";
 import type { FoilLayer } from "./foilLogic";
 import { labelLayers, lightLayers, wedgeLayer, type LightProps } from "./lightsLogic";
@@ -92,9 +92,7 @@ function ChartOverrides({ layers, focus }: { layers: MapLayers; focus: FocusMark
     asLayer({ id, type, source: "bathy", "source-layer": sourceLayer, ...extra });
   return (
     <>
-      {CHART_LAYERS.tints.map((id) => (
-        <Layer key={id} {...own(id, "fill", "bands", { layout: { visibility: visible(layers.tints) } })} />
-      ))}
+      <Layer {...own("bands", "fill", "bands", { layout: { visibility: visible(layers.tints) } })} />
       <Layer {...own("contours", "line", "contours", { layout: { visibility: visible(layers.soundings) } })} />
       <Layer {...own("contours-dashed", "line", "contours", { layout: { visibility: visible(layers.soundings) } })} />
       <Layer {...own("contour-labels", "symbol", "contours", { layout: { visibility: visible(layers.soundings) } })} />

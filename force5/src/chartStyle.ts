@@ -148,11 +148,20 @@ export const COAST_INK: Record<
   },
 };
 
-/** The layers each switch on the layers' rail turns on and off. */
+/**
+ * The chart's layers a switch on the layers' rail turns on and off: the
+ * Depths, every layer drawn from the depth archive (its tints, contours,
+ * their figures, the soundings and the land's relief).
+ */
 export const CHART_LAYERS = {
-  tints: ["bands"],
-  soundings: ["contours", "contours-dashed", "contour-labels", "soundings"],
-  relief: ["relief"],
+  depths: [
+    "bands",
+    "relief",
+    "contours",
+    "contours-dashed",
+    "contour-labels",
+    "soundings",
+  ],
 } as const;
 
 /** Place names: the filter the chart draws, and the one near a focused spot. */
@@ -165,11 +174,14 @@ export const PLACE_CLASSES: ExpressionSpecification = [
 /**
  * The chart's style. `bathySource` is the depth archive as the map reads it:
  * `pmtiles://` and its absolute URL (the browser's `archiveUrl`, or the app's
- * own, which MapLibre Native reads by range itself).
+ * own, which MapLibre Native reads by range itself). Null while the Depths
+ * are off: the source names no archive and its layers are hidden, so nothing
+ * of the archive is read, not even its header, until the map gives the source
+ * its URL (WindMap.tsx).
  */
 export function chartStyle(
   c: ChartColours,
-  bathySource: string,
+  bathySource: string | null,
 ): StyleSpecification {
   const tint = [
     "match",
@@ -200,6 +212,17 @@ export function chartStyle(
     0.6,
   ] as ExpressionSpecification;
   const bathy = { source: "bathy" };
+  const depthsShown = (layers: LayerSpecification[]) =>
+    bathySource
+      ? layers
+      : layers.map((layer) =>
+          "source" in layer && layer.source === "bathy"
+            ? ({
+                ...layer,
+                layout: { ...layer.layout, visibility: "none" },
+              } as LayerSpecification)
+            : layer,
+        );
   return {
     version: 8,
     glyphs: GLYPHS_URL,
@@ -207,13 +230,13 @@ export function chartStyle(
       omt: { type: "vector", url: TILES_URL },
       bathy: {
         type: "vector",
-        url: bathySource,
+        ...(bathySource ? { url: bathySource } : {}),
         minzoom: 5,
         maxzoom: 12,
         attribution: "EMODnet Bathymetry",
       },
     },
-    layers: [
+    layers: depthsShown([
       {
         id: "land",
         type: "background",
@@ -275,9 +298,8 @@ export function chartStyle(
             paint: {
               "line-color": c.depth,
               "line-width": lineWidth,
-              "line-opacity": DEPTH_BY_ZOOM[
-                dashed ? "contours-dashed" : "contours"
-              ][1],
+              "line-opacity":
+                DEPTH_BY_ZOOM[dashed ? "contours-dashed" : "contours"][1],
               ...(dashed ? { "line-dasharray": [3, 2] } : {}),
             },
           }) as LayerSpecification,
@@ -288,7 +310,11 @@ export function chartStyle(
         source: "omt",
         "source-layer": "waterway",
         minzoom: 8,
-        paint: { "line-color": c.depth, "line-width": 0.6, "line-opacity": 0.6 },
+        paint: {
+          "line-color": c.depth,
+          "line-width": 0.6,
+          "line-opacity": 0.6,
+        },
       },
       {
         id: "roads",
@@ -413,6 +439,6 @@ export function chartStyle(
             },
           }) as LayerSpecification,
       ),
-    ],
+    ]),
   };
 }

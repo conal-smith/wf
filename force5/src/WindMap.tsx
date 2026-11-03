@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
-import type { ExpressionSpecification, GeoJSONSource } from "maplibre-gl";
+import type {
+  ExpressionSpecification,
+  GeoJSONSource,
+  VectorTileSource,
+} from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { beaufortPath } from "../../ui/beaufortPath";
 import {
@@ -71,11 +75,22 @@ export function registerPmtiles() {
   registered = true;
 }
 
+/**
+ * The depth archive's source URL. On the data host, as the forecast is
+ * (urls.ts): a versioned, immutable file read by range, not one the site
+ * serves whole.
+ */
+const bathyUrl = () =>
+  archiveUrl(new URL(forecastUrl(BATHY_PATH), window.location.href).href);
+
 /** Which parts of the chart are drawn. */
 export interface ChartLayers {
-  tints: boolean;
-  soundings: boolean;
-  relief: boolean;
+  /**
+   * The depths from the survey: their tints, contours and soundings, and the
+   * land's relief with them, all from one archive. Off unless asked for, and
+   * nothing of the archive read until then (chartStyle.ts).
+   */
+  depths: boolean;
   names: boolean;
   /** Foilable depth at the selected tide, round the coast. */
   foil: boolean;
@@ -728,14 +743,14 @@ export default function WindMap(props: Props) {
       console.warn(
         "The chart has no colours to draw in: ui/theme.css is not on the document.",
       );
-    // On the data host, as the forecast is (urls.ts): a versioned, immutable
-    // file read by range, not one the site serves whole.
-    const bathy = new URL(forecastUrl(BATHY_PATH), window.location.href).href;
     let map: maplibregl.Map;
     try {
       map = new maplibregl.Map({
         container: container.current,
-        style: chartStyle(colours, archiveUrl(bathy)),
+        style: chartStyle(
+          colours,
+          latest.current.layers.depths ? bathyUrl() : null,
+        ),
         bounds: IRELAND,
         fitBoundsOptions: { padding: 20 },
         minZoom: CHART_MIN_ZOOM,
@@ -1040,10 +1055,13 @@ export default function WindMap(props: Props) {
     windRef.current?.setPaused(reducedMotion || still.current);
   }, [ready, reducedMotion]);
 
-  // The chart's own layers, from the layers' rail.
+  // The chart's own layers, from the layers' rail. The depths' source is
+  // given its archive the first time they are on, and keeps it.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
+    const bathy = map.getSource<VectorTileSource>("bathy");
+    if (layers.depths && bathy && !bathy.url) bathy.setUrl(bathyUrl());
     for (const [key, ids] of Object.entries(CHART_LAYERS))
       for (const id of ids)
         if (map.getLayer(id))

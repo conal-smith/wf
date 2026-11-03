@@ -91,8 +91,8 @@ export default function FoilLegend({
       <p className="foil-small" data-foil-floor>
         The water&rsquo;s depth now, so a rising tide carries it to 6 m and
         more. Where the bottom is over {-floor} m under the lowest tide (LAT),
-        nothing is drawn: it is deep enough at any tide, and the chart&rsquo;s
-        depth tints show it.
+        nothing is drawn: it is deep enough at any tide, and the Depths layer
+        shows how deep.
       </p>
       <ul>
         <li>

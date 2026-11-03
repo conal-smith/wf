@@ -457,19 +457,22 @@ export default function App() {
   );
   const [layers, setLayers] = useState<MapLayers>(() => {
     try {
-      // The LiDAR layer was taken off on 2026-10-24: a rider's stored choice
-      // of it is dropped, and goes from the store with their next change.
-      const { lidar: _lidar, ...saved } = JSON.parse(
-        store.get(LAYERS_KEY) ?? "{}",
-      );
+      // The LiDAR layer was taken off on 2026-10-24, and the depths' three
+      // switches became one, off by default, on 2026-11-03: a rider's stored
+      // choice of any of them is dropped, and goes from the store with their
+      // next change, so every rider starts with the depths off.
+      const {
+        lidar: _lidar,
+        tints: _tints,
+        soundings: _soundings,
+        relief: _relief,
+        ...saved
+      } = JSON.parse(store.get(LAYERS_KEY) ?? "{}");
       return {
         ...DEFAULT_LAYERS,
         ...saved,
-        // The chart's own parts are always drawn since the rail lost their
-        // switches (src/layerGroups.tsx): a part a rider once hid comes back.
-        tints: true,
-        soundings: true,
-        relief: true,
+        // The names are always drawn since the rail lost their switch
+        // (src/layerGroups.tsx): names a rider once hid come back.
         names: true,
         satellite: parseSatelliteOption(saved.satellite),
       };
@@ -2284,9 +2287,7 @@ export default function App() {
   const plainLayers = useMemo(
     () => ({
       ...layers,
-      tints: false,
-      soundings: false,
-      relief: false,
+      depths: false,
       foil: false,
       currents: false,
       rain: false,
