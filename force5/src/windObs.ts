@@ -265,3 +265,25 @@ export function pairStation(
 /** "Malin Head 6 km", a station's name with how far it is, as a rider reads it. */
 export const pairedName = ({ station, km }: Paired) =>
   `${station.name} ${km < 1 ? "<1" : Math.round(km)} km`;
+
+/** A paired station's reading, with the station it is from. */
+export interface MeasuredReading {
+  paired: Paired;
+  reading: WindReading;
+}
+
+/**
+ * The wind now as measured beside a spot: its paired station's latest
+ * reading by `now`, or null where there is no station or its last reading is
+ * over READING_FRESH_HOURS old, and the forecast stands for the wind now. The
+ * one answer the spot page's Wind now card, its readout at Now and the scrub
+ * bar's readout at now all give.
+ */
+export function measuredNow(
+  paired: Paired | null,
+  now: number,
+): MeasuredReading | null {
+  if (!paired) return null;
+  const reading = latestReading(paired.station, now);
+  return reading && !isStale(reading, now) ? { paired, reading } : null;
+}

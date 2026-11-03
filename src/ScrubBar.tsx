@@ -66,13 +66,12 @@ import { speedShort, unitLabel, type Units } from "../force5/src/units";
 import { variableValue } from "../force5/src/variables";
 import { compass, windCss, type Spot } from "../force5/src/weather";
 import {
-  isStale,
-  latestReading,
   measuredAt,
+  measuredNow,
   pairedName,
   readingAt,
+  type MeasuredReading,
   type Paired,
-  type WindReading,
 } from "../force5/src/windObs";
 
 /** The night and the days with no spot chosen: the middle of Ireland's. */
@@ -677,12 +676,9 @@ export default function ScrubBar({
   // that hour. After now there is only the forecast.
   const measuredHere = useMemo(() => {
     if (!measured || pos > now + HOUR / 2) return null;
-    const current = now - pos < HOUR;
-    const r = current
-      ? latestReading(measured.station, now)
-      : readingAt(measured.station, pos);
-    if (!r || (current && isStale(r, now))) return null;
-    return { paired: measured, reading: r };
+    if (now - pos < HOUR) return measuredNow(measured, now);
+    const r = readingAt(measured.station, pos);
+    return r && { paired: measured, reading: r };
   }, [measured, pos, now]);
 
   const playX = x(pos);
@@ -1082,7 +1078,7 @@ function Readout({
   measured,
 }: {
   /** What the paired station measured at the hour, or null for the forecast's. */
-  measured: { paired: Paired; reading: WindReading } | null;
+  measured: MeasuredReading | null;
   time: number;
   reading: {
     wind: number | null;
