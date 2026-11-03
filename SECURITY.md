@@ -2,7 +2,7 @@
 
 Please report a vulnerability privately, not in a public issue: use
 **Report a vulnerability** on this repository's
-[Security tab](https://github.com/slopsmith/wf/security/advisories/new).
+[Security tab](https://github.com/sprintengine/wf/security/advisories/new).
 Say what you found, how to reproduce it, and what it lets someone do. You will
 get an answer within a week.
 
