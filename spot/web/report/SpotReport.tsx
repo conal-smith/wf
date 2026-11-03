@@ -305,6 +305,11 @@ const isOff = (shore: ShoreAngle | null | undefined) =>
   shore === "offshore" || shore === "cross-off";
 const shoreWord = (shore: ShoreAngle | null | undefined) =>
   !shore ? null : shore === "cross" ? "cross-shore" : shore;
+/** The shore a measured wind blows at, where the shore and the wind say. */
+const measuredShore = (m: MeasuredReading, facing: number | null) =>
+  facing === null || m.reading.from === null
+    ? null
+    : shoreAngle(m.reading.from, facing);
 
 /**
  * A point on the open water, where the report is a point's
@@ -465,19 +470,41 @@ export function SpotReport({
   const nowRow = rowAt(rows, now);
   const shown = focus === null ? nowRow : rowAt(rows, focus);
   const scale = useMemo(() => roseScale(units), [units]);
-  const loupe = shown?.hour.wind
+  // At Now the picture's rose says the wind the station measured, as the
+  // Wind now card and the readout do; a reading with no direction has no
+  // rose to draw, so the forecast's stands then.
+  const loupeMeasured =
+    shown !== null && shown === nowRow && nowMeasured?.reading.from != null
+      ? nowMeasured
+      : null;
+  const loupe = loupeMeasured
     ? loupeRose(
         rider,
         {
-          windKn: shown.hour.wind.wind_kn,
-          gustKn: shown.hour.wind.gust_kn,
-          from: shown.hour.wind.direction_deg,
-          daylight: shown.hour.daylight,
+          windKn: loupeMeasured.reading.windKn,
+          gustKn: loupeMeasured.reading.gustKn,
+          from: loupeMeasured.reading.from,
+          daylight: shown!.hour.daylight,
         },
         facing,
         units,
       )
-    : null;
+    : shown?.hour.wind
+      ? loupeRose(
+          rider,
+          {
+            windKn: shown.hour.wind.wind_kn,
+            gustKn: shown.hour.wind.gust_kn,
+            from: shown.hour.wind.direction_deg,
+            daylight: shown.hour.daylight,
+          },
+          facing,
+          units,
+        )
+      : null;
+  const loupeShore = loupeMeasured
+    ? measuredShore(loupeMeasured, facing)
+    : shown?.shore;
   const heights = turns.map((t) => t.height);
   const tideNow = tideAt(now);
   const tideNowAt: PictureTide =
@@ -571,7 +598,11 @@ export function SpotReport({
                     { value: "low", label: "Low tide" },
                   ]}
                 />
-                <span className={s.foot()} data-loupe-foot>
+                <span
+                  className={s.foot()}
+                  data-loupe-foot
+                  data-measured={loupeMeasured?.paired.station.id}
+                >
                   {loupe ? (
                     <>
                       {loupe.reading.replace(/ g(\d+)$/, "")}
@@ -584,8 +615,7 @@ export function SpotReport({
                       <span
                         className={loupe.warn ? "text-photo-red" : undefined}
                       >
-                        {shoreWord(shown?.shore) ??
-                          loupe.relation.toLowerCase()}
+                        {shoreWord(loupeShore) ?? loupe.relation.toLowerCase()}
                       </span>
                     </>
                   ) : (
@@ -951,11 +981,7 @@ function NowCards({
           from: row.hour.wind.direction_deg as number | null,
         }
       : null;
-  const shore = !measured
-    ? row?.shore
-    : facing === null || measured.reading.from === null
-      ? null
-      : shoreAngle(measured.reading.from, facing);
+  const shore = measured ? measuredShore(measured, facing) : row?.shore;
   const waves = row?.hour.waves ?? null;
   const depth = depthAt(now);
   const until = deepUntil(depthAt, now);
