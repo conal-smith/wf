@@ -806,6 +806,21 @@ page's day cards and hour table, and the spot finder's stars, already count
 the daylight alone. The "Now" cards over the week still say the light now,
 and the app keeps its own settings.
 
+**2026-11-03 — Spots as pills beside the list, and the wind as measured.**
+The owner: the readings of the weather stations and buoys should be shown,
+on the map too, and the spots on the Spot finder's small map should be pills
+with the wind, not circles. Beside the list each spot is a pill with its
+wind and gust at the cards' hour, filled in its stars' colours (dashed at
+none, a red arrow offshore), its name beside it from the regional zoom in;
+the full chart keeps its rings. The Live wind layer draws each Met Éireann
+station and Marine Institute buoy as a smaller, squarer pill in the buoy's
+gold (`buoy`, its figures in `buoy-ink`) at the wind it last measured, faded
+past three hours and gone past twelve, with a card under the pointer or a
+tap: the station, its network, the wind, gust and direction, when it was
+measured and whose data it is. It is always on beside the list; on the full
+chart it is a switch under Wind in Layers, off until asked for, so the
+forecast is the chart's first word there.
+
 ---
 
 ## Still open
