@@ -19,13 +19,15 @@ COPY alerts/ ./alerts/
 # from (lead.ts) names its models from the catalogue. Met Éireann's warnings
 # (warnings.ts) read their area table from data/locations; the EPA's bathing
 # water notices (waterQuality.ts) need nothing more. The spot pages' heads
-# (mcp/pages/head.ts) name a point on the water by siteNav.ts's rule.
+# (mcp/pages/head.ts) name a point on the water by siteNav.ts's rule, and the
+# wave models' own partitions are read by wavePartitions.ts's names.
 COPY force5/src/units.ts force5/src/sun.ts force5/src/stars.ts force5/src/weights.ts \
      force5/src/spotData.ts force5/src/squares.ts force5/src/lead.ts \
      force5/src/catalog.ts force5/src/shoreFacing.ts force5/src/windArcs.ts \
      force5/src/presentWeather.ts force5/src/gustFactor.ts \
      force5/src/feelsLike.ts force5/src/thunder.ts force5/src/warnings.ts \
-     force5/src/waterQuality.ts force5/src/siteNav.ts ./force5/src/
+     force5/src/waterQuality.ts force5/src/siteNav.ts \
+     force5/src/wavePartitions.ts ./force5/src/
 COPY data/locations/shore-facing.json data/locations/warning-areas.json ./data/locations/
 # Alerts rate the published catalogue's places (alerts/api/forecast.ts).
 COPY public/riding-locations.json ./public/

@@ -83,7 +83,7 @@ export const MIN_DIRECTION_RESULTANT = 0.1;
 
 /**
  * The partitions the lead model's step is read for (`WAVE_PARTITIONS`, kept in
- * force5/src/waves.ts so the forecast server reads the same names).
+ * force5/src/wavePartitions.ts so the forecast server reads the same names).
  */
 export {
   PARTITION_KEYS,

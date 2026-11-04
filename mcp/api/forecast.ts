@@ -36,7 +36,7 @@ import {
   PARTITION_KEYS,
   WAVE_PARTITIONS,
   type PartitionKey,
-} from "../../force5/src/waves.js";
+} from "../../force5/src/wavePartitions.js";
 import { KNOTS } from "../../force5/src/units.js";
 import {
   AGREEMENT_MIN_MODELS,
@@ -1304,7 +1304,7 @@ export interface ModelWaves {
   time: string;
   /**
    * Its own split of the sea at that step, as it names its partitions
-   * (force5/src/waves.ts, `WAVE_PARTITIONS`): a partition it has no height
+   * (force5/src/wavePartitions.ts, `WAVE_PARTITIONS`): a partition it has no height
    * for is left out. One model's split, never averaged with another's.
    */
   parts?: Partial<Record<PartitionKey, WavePart>>;
