@@ -52,6 +52,7 @@ DESCRIPTIONS = {
     "gfs-wave": "GFS-Wave (NOAA)",
     "gfs-weather": "GFS surface weather (NOAA)",
     "mi-swan": "Irish Shelf SWAN waves (Marine Institute)",
+    "met-office-wave": "North-West Shelf 1.5 km waves (Met Office)",
     "currents": "NE Atlantic ROMS surface currents (Marine Institute)",
     "tides": "Tide predictions (Marine Institute; Northern Ireland harmonic)",
     "sea-temperature": "Sea temperature observations",
@@ -97,6 +98,8 @@ UNMEASURED = {"cpu": "2", "memory": "4Gb", "disk": "12Gb"}
 ENSEMBLE = {"cpu": "2", "memory": "4Gb", "disk": "20Gb"}
 RESOURCES = {
     "harmonie": MODEL, "icon-eu": MODEL, "ecmwf": MODEL, "gfs-wave": MODEL,
+    # About 430 MB a run held in memory a file at a time, four files at once.
+    "met-office-wave": MODEL,
     "icon-eu-weather": FORECAST, "gfs": FORECAST,
     # Its whole 384 h run's series are in memory before they are written.
     "gfs-weather": MODEL,
@@ -120,7 +123,7 @@ MEASURED_PEAK_MB = {
     "icon-eu-weather": 225, "gfs": 230, "verify": 225, "gfs-weather": 355,
     "mi-swan": 190, "currents": 240, "blend": 185, "forecast-archive": 140,
     "tides": 135, "sea-temperature": 135, "wind-obs": 135, "warnings": 135,
-    "water-quality": 155,
+    "water-quality": 155, "met-office-wave": 390,
     # Not yet measured in the image: the worker's 72 MB and the 148 MB peak of the
     # bundled force5/blend/waves.ts over a full-size synthetic run (GFS-Wave's ten
     # days and SWAN's six at every riding place), measured natively on 4 November 2026.

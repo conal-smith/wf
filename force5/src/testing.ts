@@ -365,6 +365,29 @@ export const SWAN_VARIABLES: Record<string, WaveVariable> = Object.fromEntries(
   ]),
 );
 
+/** The Met Office wave adapter's names: peak periods, three swell partitions. */
+export const MET_OFFICE_WAVE_VARIABLES: Record<string, WaveVariable> =
+  Object.fromEntries(
+    (
+      [
+        ["swh", "m", "Wave height"],
+        ["pp1d", "s", "Peak period"],
+        ["mwd", "deg", "Mean direction"],
+        ["shww", "m", "Wind-sea height"],
+        ["ppww", "s", "Wind-sea peak period"],
+        ["mdww", "deg", "Wind-sea direction"],
+        ...[1, 2, 3].flatMap((n) => [
+          [`swell${n}_h`, "m", `Swell ${n} height`] as const,
+          [`swell${n}_p`, "s", `Swell ${n} peak period`] as const,
+          [`swell${n}_d`, "deg", `Swell ${n} direction`] as const,
+        ]),
+      ] as const
+    ).map(([name, units, label]) => [
+      name,
+      { units, label, description: `${label}, synthetic` },
+    ]),
+  );
+
 export interface WaveFixture {
   model?: string;
   runTime?: string;

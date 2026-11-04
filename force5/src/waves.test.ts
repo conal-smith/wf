@@ -3,6 +3,7 @@ import { clearManifestCache, loadWaveManifest } from "./manifests";
 import {
   ECMWF_WAVE_VARIABLES,
   GFS_WAVE_VARIABLES,
+  MET_OFFICE_WAVE_VARIABLES,
   SWAN_VARIABLES,
   pointerOf,
   waveManifest,
@@ -318,8 +319,9 @@ describe("choosing a source per spot", () => {
     variables: ECMWF_WAVE_VARIABLES,
     values: (hour) => ({ swh: 3 + hour / 10, pp1d: 13, mwd: 290, h1417: 1.4 }),
   });
-  it("ranks the shelf model, then GFS-Wave, then ECMWF's coarse stream", () => {
+  it("ranks the Met Office's 1.5 km model, the shelf model, GFS-Wave, then ECMWF", () => {
     expect(WAVE_SOURCE_PREFERENCE).toEqual([
+      "met-office-wave",
       "mi-swan",
       "gfs-wave",
       "ecmwf-wave",
@@ -479,6 +481,43 @@ describe("handing a spot's waves from one source to the next", () => {
       "2026-10-22T12:00:00Z",
     ]);
     expect(columns.map((step) => step?.values.pp1d)).toEqual([11, 9]);
+  });
+  it("leads with the Met Office's 60 hours, then SWAN's, then GFS-Wave's", () => {
+    const metOffice = waveManifest({
+      model: "met-office-wave",
+      runTime: "2026-10-22T00:00:00Z",
+      hours: [0, 1, 2, 3],
+      variables: MET_OFFICE_WAVE_VARIABLES,
+      values: () => ({ swh: 1, pp1d: 12, mwd: 270, shww: 0.3, ppww: 4 }),
+    });
+    const sources = waveSources([gfs, swan, metOffice], "brandon");
+    expect(sources.map((s) => s.manifest.model)).toEqual([
+      "met-office-wave",
+      "mi-swan",
+      "gfs-wave",
+    ]);
+    const source = handedWaveSource(sources)!;
+    expect(source.manifest.model).toBe("met-office-wave");
+    expect(source.fields.windsea).toEqual({
+      height: "shww",
+      period: "ppww",
+      direction: "mdww",
+    });
+    expect(source.fields.swell?.period).toBe("swell1_p");
+    expect(
+      source.series.map((step) => [step.hour, step.values.swh, step.model]),
+    ).toEqual([
+      [0, 1, "met-office-wave"],
+      [1, 1, "met-office-wave"],
+      [2, 1, "met-office-wave"],
+      [3, 1, "met-office-wave"],
+      [6, 2, "mi-swan"],
+      [9, 3.09, "gfs-wave"],
+      [12, 3.12, "gfs-wave"],
+    ]);
+    // SWAN's swell height reads as the Met Office's first swell partition.
+    const swell = source.series.find((step) => step.model === "mi-swan");
+    expect(Object.keys(swell!.values)).toContain("swell1_h");
   });
   it("is the one source alone where only one sees the spot, and none with none", () => {
     const blind = waveManifest({

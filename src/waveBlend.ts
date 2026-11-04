@@ -82,10 +82,12 @@ export const MIN_DIRECTION_RESULTANT = 0.1;
  * The partitions the lead model's step is read for, by the variables each
  * model names them with. `swell` is a model's whole swell as one height
  * (Irish Shelf SWAN's `hswe`), not a partition of it; `swell1` to `swell3` are
- * the swell partitions in the models' own order, most energetic first.
+ * the swell partitions in the models' own order, most energetic first. The
+ * wind sea's period is GFS-Wave's mean (`mpww`) or the Met Office's peak
+ * (`ppww`), as `waveFields` in force5/src/waves.ts reads it.
  */
 export const WAVE_PARTITIONS = {
-  windsea: { height: ["shww"], period: ["mpww"], direction: ["mdww"] },
+  windsea: { height: ["shww"], period: ["mpww", "ppww"], direction: ["mdww"] },
   swell: { height: ["hswe"], period: [], direction: [] },
   swell1: {
     height: ["swell1_h"],

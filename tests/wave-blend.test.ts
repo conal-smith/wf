@@ -174,7 +174,7 @@ describe("the wave blend job", () => {
       ],
       { encoding: "utf8" },
     );
-    expect(log).toMatch(/Not published, left out: mi-swan/);
+    expect(log).toMatch(/Not published, left out: met-office-wave, mi-swan/);
     const pointer = parseWaveBlend(JSON.parse(readFileSync(out, "utf8")));
     expect(pointer.sources.map((source) => source.id)).toEqual(["gfs-wave"]);
     expect(pointer.spots.squares.length).toBeGreaterThan(0);

@@ -141,6 +141,15 @@ MODELS = {
     # 10:15 (14:15 and 18:15 retry): about 34.5 h old when the next day's lands.
     "mi-swan": {"script": "fetch_mi_swan.py", "manifest": "weather/mi-swan.json",
                 "kind": "wave", "maxAgeHours": 36, "readsPublishedRun": True},
+    # The Met Office's 1.5 km North-West Shelf wave model: four runs a day to +60 h,
+    # each listed about 2 h 45 m after its run time, read at :00 three hours after
+    # (03, 09, 15 and 21 UTC) with a :55 retry. On time the served run is at most
+    # about 10 h old when the next lands, an hour more if it queues; 12 h makes a
+    # cycle that both slots missed stale, and nothing on time. No `cache`: the
+    # files are read in memory and never written to disk.
+    "met-office-wave": {"script": "fetch_met_office_wave.py",
+                        "manifest": "weather/met-office-wave.json", "kind": "wave",
+                        "maxAgeHours": 12, "readsPublishedRun": True},
     # Surface currents, tides included: one Marine Institute ROMS run a day, written
     # about 00:55 UTC on its model day, read at 03:20 (07:20 and 13:20 retry). The
     # served run is about 27.5 h old when the next day's lands; 36 h leaves the first
