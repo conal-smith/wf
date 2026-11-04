@@ -113,7 +113,7 @@ in UTC. The shipped schedule is:
 | `water-quality`   | every hour at :40  | the EPA's bathing water notices near riding places    |
 | `forecast-archive`| every hour at :15  | copies served wind runs and observations to archive/  |
 | `verify`          | 07:25 daily        | model and blend scores (docs/VERIFICATION.md)         |
-| `blend`           | every hour at :05  | every spot's blend, from what the wind jobs published |
+| `blend`           | every hour at :05  | every spot's blend, from what the wind jobs published, and its wave blend, from what the wave jobs published |
 | `blend-after-harmonie` | 03-21 at :45, daylight only | ten minutes after each HARMONIE slot, under its gate |
 | `prune`           | every hour at :10  | retention (see below)                                 |
 

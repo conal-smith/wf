@@ -164,6 +164,12 @@ MODELS = {
     # so an hourly job publishes a new one each hour and three missed hours is stale.
     "blend": {"script": "fetch_blend.py", "manifest": "weather/blend.json",
               "kind": "blend", "maxAgeHours": 3, "readsBucket": True},
+    # Not a model either: every riding place's sea state from every wave model above
+    # (src/waveBlend.ts): the median height and its range, the median peak period,
+    # the mean direction, and the leading model's partitions. Worked out by the
+    # hourly blend job beside the wind blend, so `run` is the hour it ran, as above.
+    "wave-blend": {"script": "fetch_wave_blend.py", "manifest": "weather/wave-blend.json",
+                   "kind": "wave-blend", "maxAgeHours": 3, "readsBucket": True},
     # Measured wind at Met Éireann stations and Marine Institute buoys, the truth the
     # forecasts are verified against (docs/VERIFICATION.md). Like sea temperature,
     # `run` is the newest observation hour; the feeds lag the clock by about an hour.

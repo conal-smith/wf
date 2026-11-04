@@ -175,6 +175,7 @@ repository's `.venv` and a scratch `FORCE5_WORK_DIR`, never with a bucket:
 | `met-office-wave` | 1 GB | 390 | 5 | a live run, local output only (4 November 2026); in the image at a quarter of a CPU under a 1 GiB limit, 263 MB for the adapter and 47 for the worker |
 | `currents` | 512 MB | 240 | 4 | a live run (22 October 2026) |
 | `blend` | 512 MB | 185 | 0.4 | the site's current runs, read over public HTTPS; includes Node |
+| `wave-blend` (in the `blend` job) | 512 MB | 225 | 0.2 | not yet measured in the image: the worker's 72 MB plus Node's 148 MB peak over a full-size synthetic run, natively (4 November 2026) |
 | `forecast-archive` | 512 MB | 140 | 1.4 | archiving four new runs at once from that copy |
 | `tides`, `sea-temperature`, `wind-obs` | 512 MB | 135 | 0.2-0.4 | live runs |
 | `warnings` | 512 MB | 135 | 0.1 | the adapter's 62 MB measured natively on a live run (25 October 2026), plus the worker |

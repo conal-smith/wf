@@ -57,6 +57,7 @@ DESCRIPTIONS = {
     "tides": "Tide predictions (Marine Institute; Northern Ireland harmonic)",
     "sea-temperature": "Sea temperature observations",
     "blend": "Every spot's wind blend, for the map's stars",
+    "wave-blend": "Every spot's wave blend, across the wave models",
     "wind-obs": "Wind observations (Met Éireann stations, Marine Institute buoys)",
     "warnings": "Met Éireann weather warnings, land and marine",
     "water-quality": "EPA bathing water notices near the riding places",
@@ -103,7 +104,7 @@ RESOURCES = {
     # Its whole 384 h run's series are in memory before they are written.
     "gfs-weather": MODEL,
     "ecmwf-ens": ENSEMBLE, "ecmwf-wave": ENSEMBLE, "harmonie-eps": ENSEMBLE, "gefs": ENSEMBLE,
-    "tides": FEED, "sea-temperature": FEED, "blend": FEED, "wind-obs": FEED,
+    "tides": FEED, "sea-temperature": FEED, "blend": FEED, "wave-blend": FEED, "wind-obs": FEED,
     "warnings": FEED, "water-quality": FEED,
     "mi-swan": FEED, "currents": FEED,
     # The archive decodes a new run's frames one at a time into Python lists, and
@@ -123,6 +124,10 @@ MEASURED_PEAK_MB = {
     "mi-swan": 190, "currents": 240, "blend": 185, "forecast-archive": 140,
     "tides": 135, "sea-temperature": 135, "wind-obs": 135, "warnings": 135,
     "water-quality": 155, "met-office-wave": 390,
+    # Not yet measured in the image: the worker's 72 MB and the 148 MB peak of the
+    # bundled force5/blend/waves.ts over a full-size synthetic run (GFS-Wave's ten
+    # days and SWAN's six at every riding place), measured natively on 4 November 2026.
+    "wave-blend": 225,
 }
 # A ceiling an edit may not go below: an OOM kill stops a model without a word.
 MIN_HEADROOM = 1.5

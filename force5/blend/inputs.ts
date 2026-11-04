@@ -1,6 +1,8 @@
 /**
- * The blend's inputs: every live wind model's pointer under a root, at the path
- * the site reads it from, with every spot square of the run it names merged in.
+ * The blends' inputs: every live wind model's pointer under a root (the wind
+ * blend, ./build.ts), or every wave model the wave blend reads (./waves.ts), at
+ * the path the site reads it from, with every spot square of the run it names
+ * merged in.
  *
  * A model with no pointer is left out and named (`missing`), and so is one whose
  * pointer will not validate (`refused`): an old version 1 pointer left on a
@@ -12,13 +14,19 @@
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { windModels } from "../src/manifests";
+import { modelEntry, windModels } from "../src/manifests";
 import { withSpotSquares, type ReadJson } from "../src/spotData";
+import {
+  validateWaveManifest,
+  validateWaveSpots,
+  type WaveManifest,
+} from "../src/waves";
 import {
   validateManifest,
   validateWindSpots,
   type Manifest,
 } from "../src/weather";
+import { waveBlendMembers, WAVE_BLEND_MODELS } from "../../src/waveBlend";
 
 export interface WindRuns {
   manifests: Manifest[];
@@ -58,6 +66,58 @@ export async function readWindRuns(root: string): Promise<WindRuns> {
     manifests.push(
       validateWindSpots(
         await withSpotSquares<Manifest, Manifest>(read, entry.manifestUrl, manifest),
+      ),
+    );
+  }
+  return { manifests, missing, refused };
+}
+
+export interface WaveRuns {
+  manifests: WaveManifest[];
+  missing: string[];
+  refused: { id: string; reason: string }[];
+}
+
+/**
+ * The wave blend's members (`WAVE_BLEND_MODELS` that the catalogue publishes),
+ * read as `readWindRuns` reads the wind models: a model with no pointer is
+ * `missing`, one whose pointer will not validate is `refused`, and neither
+ * stops the others.
+ */
+export async function readWaveRuns(root: string): Promise<WaveRuns> {
+  const manifests: WaveManifest[] = [];
+  const missing: string[] = [];
+  const refused: WaveRuns["refused"] = [];
+  const read: ReadJson = async (path) =>
+    JSON.parse(await readFile(join(root, path), "utf8"));
+  for (const id of waveBlendMembers(WAVE_BLEND_MODELS)) {
+    const entry = modelEntry(id)!;
+    let body: string;
+    try {
+      body = await readFile(join(root, entry.manifestUrl), "utf8");
+    } catch {
+      missing.push(id);
+      continue;
+    }
+    let manifest: WaveManifest;
+    try {
+      manifest = validateWaveManifest(JSON.parse(body) as WaveManifest);
+      if (manifest.model !== id)
+        throw new Error(`It holds ${manifest.model}, not ${id}.`);
+    } catch (error) {
+      refused.push({
+        id,
+        reason: error instanceof Error ? error.message : String(error),
+      });
+      continue;
+    }
+    manifests.push(
+      validateWaveSpots(
+        await withSpotSquares<WaveManifest, WaveManifest>(
+          read,
+          entry.manifestUrl,
+          manifest,
+        ),
       ),
     );
   }

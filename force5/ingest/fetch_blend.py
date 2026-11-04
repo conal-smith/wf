@@ -24,6 +24,7 @@ serves, read with its squares into the scratch directory's `previous/`; without
 one, the blend already under public/.
 """
 import argparse
+from datetime import datetime, timezone
 import json
 import shutil
 import subprocess
@@ -47,21 +48,24 @@ def wind_models():
     return [model for model, entry in MODELS.items() if entry["kind"] == "wind"]
 
 
-def read_bucket(s3, bucket, prefix, directory):
+def read_bucket(s3, bucket, prefix, directory, models=None, now=None):
     """Copy every wind pointer the bucket serves, and its squares, into `directory`.
 
     Returns the models found. The squares go first and the pointer last, so a
     pointer in the scratch directory always has the squares it names beside it.
+    `models` reads others instead (the wave blend's, fetch_wave_blend.py).
 
     A model with no pointer is skipped, and so is one whose pointer is not a
     run pointer (an old version 1 pointer from before an upgrade, until that
     model's next run replaces it), named in the log: one model's stale pointer
     must not stop every other model's blend. force5/blend/build.ts leaves out
-    the same pointers (force5/blend/inputs.ts).
+    the same pointers (force5/blend/inputs.ts). With `now`, so is a run older
+    than its model's `maxAgeHours`, before any of its squares are read: a
+    retired model's last pointer, left in the bucket, costs one small read.
     """
     found = []
     prefix = object_prefix(prefix)
-    for model in wind_models():
+    for model in (wind_models() if models is None else models):
         manifest, _ = read_current(s3, bucket, prefix + MANIFESTS[model])
         if manifest is None:
             continue
@@ -69,6 +73,9 @@ def read_bucket(s3, bucket, prefix, directory):
             version = manifest.get("schemaVersion") if isinstance(manifest, dict) else None
             if version != SCHEMA_VERSION:
                 raise ValueError(f"Not a run pointer (schemaVersion {version!r})")
+            if now is not None and too_old(manifest, MODELS[model]["maxAgeHours"], now):
+                raise ValueError(f"Run {manifest.get('run')!r} is past its "
+                                 f"{MODELS[model]['maxAgeHours']} h limit")
             relatives = [square_path(manifest, square)
                          for square in square_index(manifest)["squares"]]
         except ValueError as error:
@@ -85,6 +92,15 @@ def read_bucket(s3, bucket, prefix, directory):
         path.write_text(json.dumps(manifest, separators=(",", ":")))
         found.append(model)
     return found
+
+
+def too_old(manifest, hours, now):
+    """Whether a pointer's run began more than `hours` before `now`."""
+    try:
+        run = datetime.strptime(str(manifest.get("run")), "%Y%m%d%H").replace(tzinfo=timezone.utc)
+    except ValueError as error:
+        raise ValueError(f"Not a run: {manifest.get('run')!r}") from error
+    return (now - run).total_seconds() / 3600 > hours
 
 
 # Where the blend the bucket serves is read to, apart from the wind pointers so
@@ -123,12 +139,12 @@ def read_previous_blend(s3, bucket, prefix, directory):
         return None
 
 
-def builder():
-    if BUNDLE.exists():
-        return [shutil.which("node") or "node", str(BUNDLE)]
-    if SOURCE.exists():
-        return ["npx", "--no-install", "tsx", str(SOURCE)]
-    raise RuntimeError("Neither the blend bundle nor its source is here")
+def builder(bundle=BUNDLE, source=SOURCE):
+    if bundle.exists():
+        return [shutil.which("node") or "node", str(bundle)]
+    if source.exists():
+        return ["npx", "--no-install", "tsx", str(source)]
+    raise RuntimeError(f"Neither the bundle {bundle.name} nor its source is here")
 
 
 def main():
