@@ -12,9 +12,15 @@ import {
   type PartitionKey,
 } from "../../../force5/src/waves";
 import type { WaveBlendHour, WavePartHour } from "../../../force5/src/waveBlend";
-import type { ForecastHour } from "../../../mcp/api/forecast";
+import type { ForecastHour, ModelWaves } from "../../../mcp/api/forecast";
 
 const HOUR = 3600000;
+/**
+ * The widest a wave model's own steps stand apart: ECMWF Wave's, three-hourly
+ * to +144 h and six-hourly on to +360 h. Wider than this is a hole in a run,
+ * not a step of it.
+ */
+const WAVE_STEP_MAX_HOURS = 6;
 
 /** A row of the week: its start, how many hours it stands for, its hour. */
 export type WeekRow = { time: number; step: number; hour: ForecastHour };
@@ -71,6 +77,16 @@ export interface WaveRow {
   /** The published wave blend's median height and period, or null without one. */
   blendM: number | null;
   blendPeriodS: number | null;
+  /** Every model's reading at the hour, each from its own nearest step. */
+  models: Record<string, ModelWaves>;
+  /**
+   * The headline is read from the nearest step of a run coarser than the
+   * rows. The hour is covered, so it says what the sea is, and does not break
+   * the run; the graph draws through the steps themselves, not this.
+   */
+  held: boolean;
+  /** The same of the blend, which goes as coarse as its coarsest model. */
+  blendHeld: boolean;
 }
 
 /** One wave model's own line: a point at each row one of its steps falls in. */
@@ -106,15 +122,33 @@ export function waveOrder(
 }
 
 /**
+ * What stands for an instant between two steps of one run, `steps` in time
+ * order: the nearer, the earlier if it is halfway, and nothing outside the
+ * run or across a hole in it. Never a value between the two.
+ */
+function heldStep<T>(
+  steps: readonly { at: number; value: T }[],
+  time: number,
+): T | null {
+  const after = steps.findIndex((s) => s.at > time);
+  if (after < 1) return null;
+  const [before, next] = [steps[after - 1], steps[after]];
+  if (next.at - before.at > WAVE_STEP_MAX_HOURS * HOUR) return null;
+  return time - before.at <= next.at - time ? before.value : next.value;
+}
+
+/**
  * The week's sea, row by row. The headline at each row is the first model
  * of `order` (`waveLeadOrder`: the rider's choice handed on past its run, or
- * the finest model at each hour) that has a step within `WAVE_MATCH_HOURS`,
- * its own height, period, direction and partitions, never averaged with
- * another's. Beside it, where the published wave blend has the place
- * (`blend`, its hours from `waveBlendHours`), the blend's time nearest the
- * row: its median and the models' range. Without it the range is the
- * models' own at the row, and there is no blend to say. Every wave model's
- * own line is drawn through its own steps, never between them.
+ * the finest model at each hour) whose run reaches it, its own height,
+ * period, direction and partitions, never averaged with another's. A model
+ * leads to its last step: where the rows are finer than its steps it is read
+ * from the nearest one (`held`), never handed on and back. Beside it, where
+ * the published wave blend has the place (`blend`, its hours from
+ * `waveBlendHours`), the blend's time nearest the row: its median and the
+ * models' range. Without it the range is the models' own at the row, and
+ * there is no blend to say. Every wave model's own line is drawn through its
+ * own steps, never between them.
  */
 export function waveWeek(
   rows: readonly WeekRow[],
@@ -128,6 +162,9 @@ export function waveWeek(
   fromBlend = false,
 ): WaveWeek {
   const times = (blend ?? []).map((h) => Date.parse(h.time));
+  const blendSteps = (blend ?? []).flatMap((value, i) =>
+    value.heightM === null ? [] : [{ at: times[i], value }],
+  );
   const nearest = (time: number): WaveBlendHour | null => {
     let best = -1;
     times.forEach((t, i) => {
@@ -146,15 +183,36 @@ export function waveWeek(
   );
   // The rider's order first, then any model it does not name.
   const leads = [...order, ...ids.filter((id) => !order.includes(id))];
+  // Each model's own steps, once each, in time order.
+  const stepsOf = new Map(
+    ids.map((id) => {
+      const byTime = new Map<string, ModelWaves>();
+      for (const row of rows) {
+        const own = row.hour.waves?.by_model?.[id];
+        if (own) byTime.set(own.time, own);
+      }
+      const steps = [...byTime.values()].map((value) => ({
+        at: Date.parse(value.time),
+        value,
+      }));
+      return [id, steps.sort((a, b) => a.at - b.at)] as const;
+    }),
+  );
   let blended = false;
   const out = rows.map((row): WaveRow | null => {
     const waves = row.hour.waves;
     const by = waves?.by_model ?? {};
-    const b = nearest(row.time);
+    const models = { ...by };
+    for (const id of ids) {
+      const own = by[id] ?? heldStep(stepsOf.get(id)!, row.time);
+      if (own) models[id] = own;
+    }
+    const matched = nearest(row.time);
+    const b = matched ?? heldStep(blendSteps, row.time);
     if (b) blended = true;
-    const lead = leads.find((id) => by[id]) ?? null;
-    const own = lead ? by[lead] : null;
-    const heights = Object.values(by).map((m) => m.height_m);
+    const lead = leads.find((id) => models[id]) ?? null;
+    const own = lead ? models[lead] : null;
+    const heights = Object.values(models).map((m) => m.height_m);
     const parts: WaveRow["parts"] = {};
     for (const [key, part] of Object.entries(own?.parts ?? {}))
       parts[key as PartitionKey] = {
@@ -168,6 +226,8 @@ export function waveWeek(
       count: b?.count ?? heights.length,
       blendM: b?.heightM ?? null,
       blendPeriodS: b?.periodS ?? null,
+      models,
+      blendHeld: b !== null && matched === null,
     };
     if (fromBlend && b)
       return {
@@ -177,6 +237,7 @@ export function waveWeek(
         lead: WAVE_BLEND,
         parts: b.parts,
         ...range,
+        held: range.blendHeld,
       };
     // A forecast without each model's own (an older server) has the one.
     const heightM = own ? own.height_m : (waves?.height_m ?? null);
@@ -188,6 +249,7 @@ export function waveWeek(
       lead,
       parts,
       ...range,
+      held: lead !== null && !by[lead],
     };
   });
   const lines = ids.flatMap((id): WaveLine[] => {

@@ -8,9 +8,10 @@ import type { WaveManifest } from "../force5/src/waves";
  * Wave runs for Brandon, routed in over the sample site's (which publishes
  * GFS-Wave alone, from three days out, and no wave blend): the Met Office's
  * hourly 60 hours, MI SWAN's hourly six days, GFS-Wave's three-hourly ten
- * and ECMWF's six-hourly fifteen, from the evening before the clock, each a
- * little higher than the one before, and the wave blend worked out from them
- * as the job does (force5/src/waveBlend.ts).
+ * and ECMWF's fifteen, three-hourly to +144 h and six-hourly past it as its
+ * open data is, from the evening before the clock, each a little higher than
+ * the one before, and the wave blend worked out from them as the job does
+ * (force5/src/waveBlend.ts).
  */
 
 const HOUR = 3600000;
@@ -26,6 +27,9 @@ export const MODELS: {
   name: string;
   step: number;
   hours: number;
+  /** Where a run's steps widen: this many hours on, every `coarseStep`. */
+  coarseFrom?: number;
+  coarseStep?: number;
   base: number;
   variables: Record<string, { units: string; label: string }>;
   values: (h: number, m: number) => Record<string, number>;
@@ -111,8 +115,10 @@ export const MODELS: {
   {
     id: "ecmwf-wave",
     name: "ECMWF Wave",
-    step: 6,
+    step: 3,
     hours: 360,
+    coarseFrom: 144,
+    coarseStep: 6,
     base: 1.5,
     variables: {
       swh: variable("m", "Wave height"),
@@ -122,6 +128,15 @@ export const MODELS: {
     values: (h, m) => ({ swh: m, pp1d: 10, mwd: 295 }),
   },
 ];
+
+const stepsOf = (m: (typeof MODELS)[number]) => {
+  const steps: number[] = [];
+  for (let h = 0; h <= m.hours; ) {
+    steps.push(h);
+    h += m.coarseFrom !== undefined && h >= m.coarseFrom ? m.coarseStep! : m.step;
+  }
+  return steps;
+};
 
 const runBase = (id: string) => `${id}-2026091318-test-v2-0a0b0c0d/`;
 const height = (base: number, h: number) =>
@@ -154,10 +169,7 @@ const manifests = MODELS.map(
       attribution: "Test wave data",
       licenseUrl: "https://example.test/licence",
       spotSeries: {
-        [BRANDON.id]: Array.from(
-          { length: m.hours / m.step + 1 },
-          (_, i) => i * m.step,
-        ).map((h) => ({
+        [BRANDON.id]: stepsOf(m).map((h) => ({
           hour: h,
           validTime: new Date(run + h * HOUR).toISOString(),
           values: m.values(h, height(m.base, h)),
@@ -168,9 +180,21 @@ const manifests = MODELS.map(
 
 const BLEND_BASE = "wave-blend-2026091321-test-v2-0a0b0c0d/";
 
-/** The wave runs routed in, and the wave blend of them unless `blend` is false. */
-export async function withWaves(page: Page, { blend = true } = {}) {
-  for (const m of manifests) {
+/**
+ * The wave runs routed in, those in `without` answering 404 as a model that
+ * does not reach the place, and the wave blend of the rest unless `blend` is
+ * false.
+ */
+export async function withWaves(
+  page: Page,
+  { blend = true, without = [] as string[] } = {},
+) {
+  for (const id of without)
+    await page.route(`**/weather/${id}.json`, (route) =>
+      route.fulfill({ status: 404 }),
+    );
+  const reaching = manifests.filter((m) => !without.includes(m.model));
+  for (const m of reaching) {
     const { spotSeries, ...pointer } = m as unknown as Record<string, unknown>;
     await page.route(`**/weather/${m.model}.json`, (route) =>
       route.fulfill({ json: pointer }),
@@ -193,7 +217,7 @@ export async function withWaves(page: Page, { blend = true } = {}) {
     );
     return;
   }
-  const built = buildWaveBlend(manifests, new Date(clock - HOUR));
+  const built = buildWaveBlend(reaching, new Date(clock - HOUR));
   const { [WAVE_BLEND_KEY]: places, ...head } = built;
   await page.route("**/weather/wave-blend.json", (route) =>
     route.fulfill({

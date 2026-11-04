@@ -255,6 +255,98 @@ test("a rider who picks the blends in Settings reads the wind and the waves from
   );
 });
 
+/** How far right a part of the waves' graph reaches, in the graph's own px. */
+const reach = (page: Page, selector: string) =>
+  page
+    .locator("[data-wave-svg]")
+    .locator(selector)
+    .first()
+    .evaluate((path: SVGGraphicsElement) => {
+      const box = path.getBBox();
+      return box.x + box.width;
+    });
+
+test("the headline, its range and the blend reach ECMWF's last step, six-hourly past +144 h", async ({
+  page,
+}) => {
+  await withWaves(page);
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  const svg = page.locator("[data-wave-svg]");
+  await expect(svg.locator('path[data-model="ecmwf-wave"]')).toBeVisible();
+  const end = await reach(page, 'path[data-model="ecmwf-wave"]');
+  const gfs = await reach(page, 'path[data-model="gfs-wave"]');
+  expect(end).toBeGreaterThan(gfs + 400);
+  expect(await reach(page, "path[data-wave-height]")).toBeCloseTo(end, -1);
+  expect(await reach(page, "path[data-wave-spread]")).toBeCloseTo(end, -1);
+  expect(await reach(page, "path[data-blend]")).toBeCloseTo(end, -1);
+  // One word that it has passed to ECMWF, and the figures at its steps alone.
+  await expect(svg.locator('[data-wave-handover="ecmwf-wave"]')).toHaveCount(1);
+  const lastFigures = await svg
+    .locator('[data-band="wave-direction"] text')
+    .evaluateAll((texts) =>
+      (texts as SVGGraphicsElement[]).map((t) => t.getBBox().x).slice(-3),
+    );
+  expect(lastFigures[2] - lastFigures[1]).toBeCloseTo(
+    lastFigures[1] - lastFigures[0],
+    0,
+  );
+  expect(lastFigures[1] - lastFigures[0]).toBeGreaterThan(100);
+});
+
+test("a rider's ECMWF leads to its end: no flipping between its steps, and a value on every hour", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "force5.prefs.v1",
+      JSON.stringify({ version: 3, waveModel: "ecmwf-wave" }),
+    ),
+  );
+  await withWaves(page);
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  const svg = page.locator("[data-wave-svg]");
+  await expect(svg.locator('path[data-model="ecmwf-wave"]')).toBeVisible();
+  await expect(svg.locator("[data-wave-handover]")).toHaveCount(0);
+  const end = await reach(page, 'path[data-model="ecmwf-wave"]');
+  expect(await reach(page, "path[data-wave-height]")).toBeCloseTo(end, -1);
+  await expect(page.locator("[data-wave-legend]")).toContainText(
+    "Wave height: ECMWF Wave",
+  );
+  // Far along its six-hourly steps: the card reads it at every hour.
+  const graph = page.locator("[data-wave-graph]");
+  await graph.scrollIntoViewIfNeeded();
+  await graph.evaluate((el) => (el.scrollLeft = el.scrollWidth * 0.75));
+  const box = (await graph.boundingBox())!;
+  const card = page.locator('[data-card="waves"]');
+  for (let i = 0; i < 6; i++) {
+    await page.mouse.move(box.x + 300 + i * 28, box.y + 200);
+    await expect(card).toBeVisible();
+    await expect(card.locator("tr, div").filter({ hasText: "ECMWF" }).last()).toContainText(
+      /\d\.\d m/,
+    );
+  }
+});
+
+test("with no GFS-Wave at the place, the waves carry on to ECMWF's last step", async ({
+  page,
+}) => {
+  await withWaves(page, { without: ["met-office-wave", "ibi-wave", "gfs-wave"] });
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  const svg = page.locator("[data-wave-svg]");
+  await expect(svg.locator('path[data-model="ecmwf-wave"]')).toBeVisible();
+  await expect(svg.locator("path[data-model]")).toHaveCount(2);
+  const end = await reach(page, 'path[data-model="ecmwf-wave"]');
+  expect(await reach(page, "path[data-wave-height]")).toBeCloseTo(end, -1);
+  await expect(svg.locator("[data-wave-handover]")).toHaveCount(1);
+  await expect(svg.locator("[data-wave-handover]")).toHaveAttribute(
+    "data-wave-handover",
+    "ecmwf-wave",
+  );
+});
+
 test("sheltered water has no Waves section, as it has no waves through the year", async ({
   page,
 }) => {
