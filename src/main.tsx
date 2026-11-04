@@ -12,6 +12,7 @@ import PagesOverMap from "./PagesOverMap";
 import {
   isAiPath,
   isCommunityPath,
+  isInfoPath,
   isMarketPath,
   isSpotPath,
   isSwitchedOffPath,
@@ -66,6 +67,12 @@ const isAi = isAiPath(window.location.pathname);
 const SpotApp = React.lazy(() => import("../spot/web/SpotApp"));
 const isSpot = isSpotPath(window.location.pathname);
 
+// The privacy policy, the terms of use and the support page, at /privacy,
+// /terms and /support: plain text pages, a sixth bundle split off the same
+// way, so none of them downloads the map or the forecast.
+const InfoApp = React.lazy(() => import("../info/web/InfoApp"));
+const isInfo = isInfoPath(window.location.pathname);
+
 // The kit gallery, at /ui, under the dev server only. The mode is a constant in
 // a build, and `vite build` is "production" whatever the shell says, so the
 // import it guards is dropped there and no gallery chunk is written: in
@@ -79,7 +86,7 @@ const Gallery =
 const isGallery = /^\/ui\/?$/.test(window.location.pathname);
 
 // The wind map, at / and at any path no section above claims: a bundle of its
-// own like the others, so that a spot page, /stars or /ai never downloads
+// own like the others, so that a spot page, /stars, /ai or /privacy never downloads
 // MapLibre and the map's 1.6 MB.
 //
 // Imported rather than `React.lazy`, and rendered once it is here. A lazy
@@ -105,7 +112,7 @@ if (Gallery && isGallery)
       </Suspense>
     </React.StrictMode>,
   );
-else if (isMarket || isCommunity || isAi || isSpot)
+else if (isMarket || isCommunity || isAi || isSpot || isInfo)
   root.render(
     <React.StrictMode>
       <Suspense fallback={null}>
@@ -115,6 +122,8 @@ else if (isMarket || isCommunity || isAi || isSpot)
           <CommunityApp />
         ) : isAi ? (
           <AiApp />
+        ) : isInfo ? (
+          <InfoApp />
         ) : (
           <SpotApp />
         )}

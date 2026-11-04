@@ -106,6 +106,45 @@ export function isSpotPath(pathname: string): boolean {
 }
 
 /**
+ * The site's information pages: how it handles your data, its terms of use,
+ * and how to get help. Each is a page of one small bundle (info/web), which
+ * none of the map, the spot pages or the sections load.
+ */
+export type InfoPageId = "privacy" | "terms" | "support";
+
+export interface InfoPage {
+  id: InfoPageId;
+  href: string;
+  /** Its name in a short list of links (the site menu's foot). */
+  label: string;
+  /** Its heading, and the title of its tab. */
+  title: string;
+}
+
+export const INFO_PAGES: readonly InfoPage[] = [
+  { id: "privacy", href: "/privacy", label: "Privacy", title: "Privacy" },
+  { id: "terms", href: "/terms", label: "Terms", title: "Terms of use" },
+  {
+    id: "support",
+    href: "/support",
+    label: "Support",
+    title: "Help and support",
+  },
+];
+
+/** `/privacy`, `/terms`, `/support` and under each — but not `/privacy-x`. */
+const INFO_PATH = /^\/(privacy|terms|support)(\/|$)/;
+
+export function isInfoPath(pathname: string): boolean {
+  return INFO_PATH.test(pathname);
+}
+
+/** The information page a path is, or null for any other path. */
+export function infoPageOf(pathname: string): InfoPageId | null {
+  return (INFO_PATH.exec(pathname)?.[1] as InfoPageId | undefined) ?? null;
+}
+
+/**
  * The spot finder, the home page: the rider's riding places as cards, the
  * best of their week first, each with today hour by hour and the next five
  * days, with the chart beside them on a wide screen. Since 26 October 2026 it
@@ -303,6 +342,7 @@ export const OWN_BUNDLE_PATHS: readonly RegExp[] = [
   COMMUNITY_PATH,
   AI_PATH,
   SPOT_PATH,
+  INFO_PATH,
 ];
 
 /** The page that adds the forecast to an AI assistant. */
@@ -395,7 +435,7 @@ export const mapSpotHref = (id: string) => `/?spot=${encodeURIComponent(id)}`;
 /**
  * Every path with no file behind it that the entry point draws, as the SPA
  * fallback in public/_redirects lists them: each section with a bundle of its
- * own, the spot page, and the spot finder.
+ * own, the spot page, the stars, the information pages and the spot finder.
  */
 export const APP_ROUTES: readonly string[] = [
   ...SITE_SECTIONS.filter((section) => section.href !== "/").map(
@@ -403,5 +443,6 @@ export const APP_ROUTES: readonly string[] = [
   ),
   "/spot",
   STARS_HREF,
+  ...INFO_PAGES.map((page) => page.href),
   OLD_FINDER_HREF,
 ];

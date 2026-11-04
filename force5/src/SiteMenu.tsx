@@ -21,7 +21,8 @@
  * A quiet sheet: the wordmark and a close button at the bar's height, the
  * site's navigation in named groups with one line icon a row and no rules
  * between them, the page you are on on a soft pill with "You're here", and
- * at the foot the one line every page owes a rider. Light, Dark or Auto is
+ * at the foot the one line every page owes a rider, with small links to the
+ * privacy policy, the terms and support. Light, Dark or Auto is
  * the first part of Settings (src/Settings.tsx). A finger can push it back
  * off to the right.
  *
@@ -60,6 +61,7 @@ import {
   type GlyphDef,
 } from "../../shared/web/glyphSet";
 import {
+  INFO_PAGES,
   SECTIONS_GROUP_NAME,
   SITE_NAV_GROUPS,
   siteSections,
@@ -137,6 +139,14 @@ export const siteMenuStyles = tv({
     // The one line every page owes a rider.
     foot: "grid shrink-0 gap-3 px-6 pt-3.5 pb-5 max-wide:px-5",
     small: "m-0 font-body text-label leading-normal text-ink-muted",
+    // Privacy, Terms and Support: small plain links in a line, each a
+    // finger's height on a touch screen.
+    links: "m-0 flex list-none flex-wrap gap-x-4 p-0",
+    link: [
+      "inline-flex items-center rounded-control font-body text-label font-medium text-ink-muted no-underline",
+      "transition-colors duration-fast hover:text-ink pointer-coarse:min-h-touch",
+      RING,
+    ],
   },
   variants: {
     /*
@@ -546,6 +556,22 @@ export function SiteMenu({
               Model forecasts, not a safety statement. Look at the water before
               you go out.
             </p>
+            <ul className={styles.links()} aria-label="About this site">
+              {INFO_PAGES.map((page) => (
+                <li key={page.id}>
+                  <a
+                    className={styles.link()}
+                    href={page.href}
+                    draggable={false}
+                    // Shut as a row does: the page opens over the map, and
+                    // the way back finds the menu closed.
+                    onClick={close}
+                  >
+                    {page.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         </dialog>
       )}

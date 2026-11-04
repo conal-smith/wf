@@ -59,6 +59,7 @@ const AREAS = [
   "spot/web",
   "companion/web",
   "ai/web",
+  "info/web",
 ];
 const ELEMENTS = ["button", "input", "select", "textarea"];
 const KIT = {

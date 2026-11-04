@@ -1,6 +1,7 @@
 /**
- * The map, with the AI page, "How the stars work" and the spot pages opened
- * over it rather than in its place.
+ * The map, with the AI page, "How the stars work", the spot pages and the
+ * information pages (privacy, terms, support) opened over it rather than in
+ * its place.
  *
  * Each of those is a bundle of its own (src/main.tsx), and a link to one used
  * to be a page load: coming back from /ai rebooted the map, its manifests,
@@ -33,11 +34,13 @@ import {
   type MapAsk,
   isAiPath,
   isChartAddress,
+  isInfoPath,
   isSpotPath,
 } from "../force5/src/siteNav";
 
 const AiApp = React.lazy(() => import("../ai/web/AiApp"));
 const SpotApp = React.lazy(() => import("../spot/web/SpotApp"));
+const InfoApp = React.lazy(() => import("../info/web/InfoApp"));
 
 /**
  * Said on the window once a page over the map has handed the reader back to
@@ -48,7 +51,7 @@ export const MAP_ASK_EVENT = "wingfoil:ask";
 
 /** The paths drawn over the map when a link from it asks for one. */
 export const isOverPath = (pathname: string) =>
-  isAiPath(pathname) || isSpotPath(pathname);
+  isAiPath(pathname) || isSpotPath(pathname) || isInfoPath(pathname);
 
 /** How many pages over the map this history entry is, 0 for the map itself. */
 const depth = (): number => {
@@ -202,7 +205,13 @@ export default function PagesOverMap({ map }: { map: React.ReactNode }) {
       {over && (
         <div ref={page}>
           <Suspense fallback={null}>
-            {isAiPath(path) ? <AiApp key={over} /> : <SpotApp key={over} />}
+            {isAiPath(path) ? (
+              <AiApp key={over} />
+            ) : isInfoPath(path) ? (
+              <InfoApp key={over} />
+            ) : (
+              <SpotApp key={over} />
+            )}
           </Suspense>
         </div>
       )}

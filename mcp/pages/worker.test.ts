@@ -204,6 +204,28 @@ describe("the pages with heads of their own", () => {
     );
   });
 
+  it("names the privacy policy, the terms and support, each at its own address", async () => {
+    const { env } = site();
+    for (const [path, title, url] of [
+      ["/privacy", "Privacy — wingfoil.ie", "https://wingfoil.ie/privacy"],
+      ["/terms/", "Terms of use — wingfoil.ie", "https://wingfoil.ie/terms"],
+      [
+        "/support",
+        "Help and support — wingfoil.ie",
+        "https://wingfoil.ie/support",
+      ],
+    ]) {
+      const res = await worker.fetch(get(path), env);
+      expect(res.status, path).toBe(200);
+      expect(res.headers.get("x-robots-tag"), path).toBeNull();
+      const page = await res.text();
+      expect(page, path).toContain(`<title>${title}</title>`);
+      expect(page, path).toContain(`<link rel="canonical" href="${url}" />`);
+    }
+    expect(pageHead("/privacy/extra", new Map())).toBeNull();
+    expect(pageHead("/privacy-policy", new Map())).toBeNull();
+  });
+
   it("names /stars and /ai, and answers a HEAD without a body", async () => {
     const { env } = site();
     expect(await (await worker.fetch(get("/stars"), env)).text()).toContain(

@@ -6,6 +6,7 @@ import {
   APP_ROUTES,
   isAiPath,
   isCommunityPath,
+  isInfoPath,
   isOldFinderPath,
   isMarketPath,
   isSpotPath,
@@ -28,7 +29,7 @@ const rules = readFileSync(join(ROOT, "public/_redirects"), "utf8")
   .map((line) => line.split(/\s+/));
 
 describe("the SPA fallback", () => {
-  it("has the root and everything under it, for each section with a bundle of its own and the spot page", () => {
+  it("has the root and everything under it, for each section with a bundle of its own, the spot page and the information pages", () => {
     const expected = APP_ROUTES.flatMap((href) => [
       [href, "/", "200"],
       [`${href}/*`, "/", "200"],
@@ -44,6 +45,7 @@ describe("the SPA fallback", () => {
           isCommunityPath(path) ||
           isAiPath(path) ||
           isSpotPath(path) ||
+          isInfoPath(path) ||
           isOldFinderPath(path),
         from,
       ).toBe(true);
@@ -61,7 +63,9 @@ describe("the SPA fallback", () => {
 
   // Without a 404.html, Pages answers every unknown path with index.html.
   it("ships a 404 page, so Pages keeps its single-page fallback off", () => {
-    expect(readFileSync(join(ROOT, "public/404.html"), "utf8")).toContain("<title>");
+    expect(readFileSync(join(ROOT, "public/404.html"), "utf8")).toContain(
+      "<title>",
+    );
   });
 
   it("has no blanket rule", () => {

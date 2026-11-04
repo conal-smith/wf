@@ -1,9 +1,9 @@
 /**
- * Write OUTDIR/sitemap.xml: the map, /stars, /ai and every riding place's
- * page, at the address search engines are to know them by (mcp/pages/head.ts
- * `SITE`, the same as each page's canonical link). Run by `npm run build`
- * after Vite, from public/riding-locations.json, so the list is the places
- * this build has. public/robots.txt names it.
+ * Write OUTDIR/sitemap.xml: the map, /stars, /ai, /privacy, /terms, /support
+ * and every riding place's page, at the address search engines are to know
+ * them by (mcp/pages/head.ts `SITE`, the same as each page's canonical
+ * link). Run by `npm run build` after Vite, from public/riding-locations.json,
+ * so the list is the places this build has. public/robots.txt names it.
  *
  *   node scripts/build-sitemap.mjs [OUTDIR]
  *
@@ -25,6 +25,9 @@ const paths = [
   "/",
   "/stars",
   "/ai",
+  "/privacy",
+  "/terms",
+  "/support",
   ...places.map((place) => `/spot/${encodeURIComponent(place.id)}`),
 ];
 const escape = (text) =>

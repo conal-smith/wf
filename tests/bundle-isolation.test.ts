@@ -238,9 +238,9 @@ describe("the map bundle", () => {
 describe("the stars' explanation", () => {
   it("is ui/RatingTip.tsx on the spot page, and nowhere else", () => {
     const graph = [...staticGraph("spot/web/SpotApp.tsx")];
-    expect(
-      graph.filter((m) => /(StarTip|RatingTip)\.tsx$/.test(m)),
-    ).toEqual(["ui/RatingTip.tsx"]);
+    expect(graph.filter((m) => /(StarTip|RatingTip)\.tsx$/.test(m))).toEqual([
+      "ui/RatingTip.tsx",
+    ]);
   });
 
   it("is not on the map, whose dock shows the stars and nothing over them", () => {
@@ -249,6 +249,35 @@ describe("the stars' explanation", () => {
         /(StarTip|RatingTip)\.tsx$/.test(m),
       ),
     ).toEqual([]);
+  });
+});
+
+// The privacy policy, the terms and support are pages of sentences: they
+// take the site's top bar and the kit, and none of the map, the forecast or
+// the sections.
+describe("the information pages' bundle", () => {
+  const ENTRY = "info/web/InfoApp.tsx";
+
+  it("reaches neither the map, the forecast, nor another section", () => {
+    const graph = [...staticGraph(ENTRY)];
+    expect(graph.filter((m) => m === "maplibre-gl")).toEqual([]);
+    expect(
+      graph.filter((m) =>
+        /^(src|spot|market|community|ai|companion|mcp)\//.test(m),
+      ),
+    ).toEqual([]);
+    expect(
+      graph.filter((m) => /^force5\/src\/(weather|stars|WindMap)/.test(m)),
+    ).toEqual([]);
+  });
+
+  it("is reached from the entry point only through its lazy import", () => {
+    expect(
+      [...staticGraph("src/main.tsx")].filter((m) => m.startsWith("info/")),
+    ).toEqual([]);
+    expect(readFileSync(join(ROOT, "src/main.tsx"), "utf8")).toMatch(
+      /React\.lazy\(\s*\(\)\s*=>\s*import\("\.\.\/info\/web\/InfoApp"\)/,
+    );
   });
 });
 

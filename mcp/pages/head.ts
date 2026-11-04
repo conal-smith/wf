@@ -7,7 +7,14 @@
  * reads these tags, so the page a reader sees is the same either way.
  */
 
-import { pointFromId, pointId, pointName } from "../../force5/src/siteNav.js";
+import {
+  INFO_PAGES,
+  infoPageOf,
+  pointFromId,
+  pointId,
+  pointName,
+  type InfoPageId,
+} from "../../force5/src/siteNav.js";
 import { pageTitle } from "../../site/shared/pageTitle.js";
 
 /** Where the site is, whichever host served it: staging points here too. */
@@ -45,7 +52,7 @@ const SPOT = /^\/spot\/([^/]+)\/?$/;
 
 /** A path with a head of its own, as far as its shape says: before any spot is read. */
 export const isPagePath = (pathname: string) =>
-  /^\/(spot\/[^/]+|stars|ai)\/?$/.test(pathname);
+  /^\/(spot\/[^/]+|stars|ai|privacy|terms|support)\/?$/.test(pathname);
 
 /**
  * Whether `pathname` is the page of a riding place `spots` does not hold:
@@ -122,6 +129,15 @@ export function pageHead(
         "How wingfoil.ie rates an hour from one to five stars: the wind against your weight and wings, the gusts, the shore and the daylight, worked through.",
       url: `${SITE}/stars`,
     };
+  const info = /^\/[a-z]+\/?$/.test(pathname) ? infoPageOf(pathname) : null;
+  if (info) {
+    const page = INFO_PAGES.find((p) => p.id === info)!;
+    return {
+      title: pageTitle(page.title),
+      description: INFO_DESCRIPTION[info],
+      url: `${SITE}${page.href}`,
+    };
+  }
   if (/^\/ai\/?$/.test(pathname))
     return {
       title: pageTitle("Connect your AI agent to the wing foil forecast", "AI"),
@@ -131,6 +147,16 @@ export function pageHead(
     };
   return null;
 }
+
+/** What each information page is, for a search engine and a link preview. */
+const INFO_DESCRIPTION: Record<InfoPageId, string> = {
+  privacy:
+    "What wingfoil.ie keeps about you, which is very little: your settings stay on your device, and there are no accounts, adverts or tracking.",
+  terms:
+    "The terms for using wingfoil.ie and its forecast, including in your AI app. The forecast is a guide: you judge the conditions yourself.",
+  support:
+    "How to get help with wingfoil.ie, report a problem, or add the forecast to your AI app.",
+};
 
 const escape = (text: string) =>
   text
