@@ -1,9 +1,9 @@
 """Spot squares: the 2° × 2° key every spot-shaped file is cut by.
 
 A run's per-spot data (`spotForecasts`, `spotSeries`, `spotCoverage`,
-`spotMembers`, `spotCells`, and the blend's `spotBlend`) used to sit inside its
-pointer manifest, which made every manifest grow with every spot and made every
-page load download all of it.
+`spotMembers`, `spotCells`, the blend's `spotBlend` and the wave blend's
+`spotWaveBlend`) used to sit inside its pointer manifest, which made every
+manifest grow with every spot and made every page load download all of it.
 It now lives in one file per square of the run directory,
 `spots/<square>.json`, and the manifest only lists the squares
 (docs/TILING_DESIGN.md, decision 6).
@@ -36,9 +36,10 @@ SCHEMA_VERSION = 2
 # record of the wet cell each spot was read from; it used to be called `spots`,
 # which is now the name of the square index. `spotBlend` is the blend's own
 # consensus per riding place (src/spotBlend.ts), which the blend publishes as a
-# run of its own, and which no model carries.
+# run of its own, and which no model carries; `spotWaveBlend` is the wave blend's
+# (src/waveBlend.ts), likewise.
 SPOT_KEYS = ("spotForecasts", "spotSeries", "spotCoverage", "spotMembers", "spotCells",
-             "spotBlend")
+             "spotBlend", "spotWaveBlend")
 SQUARE_URL = "spots/{square}.json"
 # [0-9], not \d, which in Python also matches other scripts' digits.
 SQUARE_NAME = re.compile(r"[ns][0-9]{2}[ew][0-9]{3}")
