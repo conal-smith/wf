@@ -68,7 +68,7 @@ import requests
 
 from fetch_forecast import ROOT, load_spots, published_in_bucket
 from fetch_tides import distance_km, stamp
-from registry import UNCHANGED_EXIT
+from registry import MODELS, UNCHANGED_EXIT
 from rundir import write_run
 from squares import SPOT_KEYS
 import timing
@@ -96,8 +96,8 @@ ATTRIBUTION = (f"{CREDIT}. Wave forecast from Météo-France's MFWAM model, read
 FORECAST_DAYS = 10
 HOURS = FORECAST_DAYS * 24 - 1  # The last forecast hour: day R+9 at 23 UTC.
 # The served run is about 26 h old when it lands (the second half is due by 02:00
-# UTC on R+1, read at 02:30) and is replaced a day later. registry.py's limit.
-MAX_AGE_HOURS = 55
+# UTC on R+1, read at 02:30) and is replaced a day later: registry.py's limit.
+MAX_AGE_HOURS = MODELS[MODEL]["maxAgeHours"]
 SEARCH_KM = 8.0
 # The ARCO time-series store's tile, in cells; a read box is aligned to it so that
 # every chunk is fetched once. Checked against the store's own chunking.
