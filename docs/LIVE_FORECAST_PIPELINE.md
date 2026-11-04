@@ -491,7 +491,10 @@ resampled, so a truncated or interpolated cadence cannot publish under either id
   269–276 MB for the adapter and 48 MB for the worker without a bucket (about 350 MB
   with the S3 client; the container's cgroup, page cache included, peaked at
   600–610 MB). Its disk peaked at 325 MB, the GRIB it caches, and it published 3 MB:
-  149 spots' series in ten squares and the pointer, no frames. Cloudflare stops a run at 1200 s, so the job's timeout is
+  149 spots' series in ten squares and the pointer, no frames. Its first run on Cloudflare
+  itself, the same cycle published to the bucket, took 117 s (124 container seconds,
+  105 s downloading, 30 CPU seconds) and peaked at 280 MB for the adapter and 81 MB
+  for the worker. Cloudflare stops a run at 1200 s, so the job's timeout is
   1200 s, about eight times the measured run; its ceiling is the 1 GB and 2 GB disk
   of `deploy/schedules.py`'s `MODEL` size.
 - **Schedule it twice daily.** `deploy/local/jobs.toml` runs it at 08 and 20 UTC + 45

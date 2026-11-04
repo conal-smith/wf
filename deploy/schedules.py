@@ -68,7 +68,7 @@ DESCRIPTIONS = {
 # silently stops updating. Every enabled job was measured on 11 October 2026
 # (deploy/home-compute/README.md, "What a job uses"): the peak resident memory
 # of the worker and its adapter together, which the worker now reports in each
-# event's `resources`, is 130-360 MB (MEASURED_PEAK_MB), so the ceilings are at
+# event's `resources`, is 130-365 MB (MEASURED_PEAK_MB), so the ceilings are at
 # least twice that and mostly three times. The VM's page cache is not counted against
 # a job: Linux reclaims it at the ceiling (the HARMONIE, ICON-EU and ECMWF
 # adapters each ran whole in the image under a 384 MB limit). Every job is
@@ -88,7 +88,7 @@ DESCRIPTIONS = {
 # Cloudflare's `basic` container (1/4 vCPU, 1 GiB, 4 GB), whose memory and disk
 # are billed for the whole run; Home Compute's executor picks the smallest size
 # that fits.
-MODEL = {"cpu": "1", "memory": "1Gb", "disk": "2Gb"}       # Peaks 290-360 MB.
+MODEL = {"cpu": "1", "memory": "1Gb", "disk": "2Gb"}       # Peaks 290-365 MB.
 FORECAST = {"cpu": "1", "memory": "512Mb", "disk": "2Gb"}  # Peaks of about 225 MB.
 FEED = {"cpu": "1", "memory": "512Mb", "disk": "2Gb"}      # Peaks of 130-220 MB.
 # The retired adapters were never measured: they keep the 4 GB the worker was
@@ -119,10 +119,10 @@ RESOURCES = {
 # the bathing water notices on 27 October 2026: 80 MB, most of it pyproj.
 # ECMWF waves were measured on 4 November 2026 in the worker image itself, a live
 # 85-step run under Cloudflare's basic limits (1/4 vCPU, 1 GiB), three times: up to
-# 276 MB for the adapter and 48 MB for the worker without a bucket, so 350 with the
-# S3 client.
+# 276 MB for the adapter and 48 MB for the worker without a bucket. Its first run on
+# Cloudflare itself, publishing to the bucket, peaked at 280 + 81 = 361 MB.
 MEASURED_PEAK_MB = {
-    "harmonie": 290, "icon-eu": 335, "ecmwf": 315, "gfs-wave": 360, "ecmwf-wave": 350,
+    "harmonie": 290, "icon-eu": 335, "ecmwf": 315, "gfs-wave": 360, "ecmwf-wave": 365,
     "icon-eu-weather": 225, "gfs": 230, "verify": 225, "gfs-weather": 355,
     "mi-swan": 190, "currents": 240, "blend": 185, "forecast-archive": 140,
     "tides": 135, "sea-temperature": 135, "wind-obs": 135, "warnings": 135,
