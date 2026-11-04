@@ -43,6 +43,10 @@ export const WAVE_MATCH_HOURS = VARIABLE_MATCH_HOURS;
  * two wide and many spots are read from open water nearby. It is retired (see
  * force5/src/manifests.ts), so the site never loads it, but it keeps its place
  * here for the day it is switched back on.
+ *
+ * It is the wave blend's member list too, in the order its partitions lead
+ * (`WAVE_BLEND_MODELS`, src/waveBlend.ts): a wave model added here joins the
+ * dock's handover and the blend at once.
  */
 export const WAVE_SOURCE_PREFERENCE: readonly string[] = [
   "mi-swan",

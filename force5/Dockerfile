@@ -1,5 +1,5 @@
-# The blend job (force5/blend/build.ts) runs the site's own TypeScript, bundled
-# here into one dependency-free file, so the worker needs only the node binary.
+# The blend jobs (force5/blend/build.ts and waves.ts) run the site's own TypeScript,
+# bundled here into one dependency-free file each, so the worker needs only the node binary.
 # node:22-slim is multi-arch. buildx sets TARGETARCH and builds this stage for
 # the image platform, so the binary copied into the runtime image matches it.
 FROM node:22-slim AS blend
@@ -28,9 +28,13 @@ COPY force5/blend/ force5/blend/
 COPY src/ src/
 # The run layout the blend is published in (a run directory of spot squares).
 COPY scripts/runs.mjs scripts/runs.mjs
+# The wind blend, and the wave blend (force5/blend/waves.ts), the same way.
 RUN /opt/esbuild/node_modules/.bin/esbuild force5/blend/build.ts --bundle \
       --platform=node --format=esm --target=node22 '--define:import.meta.env={}' \
-      --outfile=force5/blend/dist/blend.mjs
+      --outfile=force5/blend/dist/blend.mjs \
+    && /opt/esbuild/node_modules/.bin/esbuild force5/blend/waves.ts --bundle \
+      --platform=node --format=esm --target=node22 '--define:import.meta.env={}' \
+      --outfile=force5/blend/dist/wave-blend.mjs
 
 FROM python:3.12-slim
 ARG TARGETARCH
@@ -53,6 +57,7 @@ RUN pip install --no-cache-dir --only-binary=:all: \
 COPY force5/ingest/ /app/force5/ingest/
 COPY --from=blend /usr/local/bin/node /usr/local/bin/node
 COPY --from=blend /src/force5/blend/dist/blend.mjs /app/force5/blend/dist/blend.mjs
+COPY --from=blend /src/force5/blend/dist/wave-blend.mjs /app/force5/blend/dist/wave-blend.mjs
 COPY public/spots.json public/riding-locations.json /app/public/
 # Default cadence schedule; the local deployment bind-mounts its own over this one.
 COPY deploy/local/jobs.toml /app/deploy/local/jobs.toml
