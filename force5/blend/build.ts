@@ -34,13 +34,14 @@
  * the site's own blend rather than a second copy of it.
  */
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 // The run layout the sample generator writes too; plain JavaScript, so it
 // carries no types of its own.
 // @ts-expect-error -- scripts/runs.mjs has no declaration file.
-import { jsonText, publishRun, retire } from "../../scripts/runs.mjs";
+import { publishRun } from "../../scripts/runs.mjs";
 import { readWindRuns } from "./inputs";
+import { option, placed, writeRun } from "./run";
 import type { ReadJson } from "../src/spotData";
 import {
   blendPrefix,
@@ -49,37 +50,8 @@ import {
   loadBlendSquares,
   parseSpotBlend,
   SPOT_BLEND_PATH,
-  type BlendRun,
   type LoadedBlend,
 } from "../../src/spotBlend";
-
-function option(name: string, fallback: string): string {
-  const at = process.argv.indexOf(`--${name}`);
-  return at > 0 && process.argv[at + 1] ? process.argv[at + 1] : fallback;
-}
-
-interface Place {
-  id: string;
-  lat: number;
-  lon: number;
-}
-
-/** The catalogue, and the blend without any place it does not place. */
-async function placed(blend: BlendRun, catalogue: string) {
-  const places = (JSON.parse(await readFile(catalogue, "utf8")) as Place[]).filter(
-    (place) =>
-      typeof place?.id === "string" &&
-      Number.isFinite(place.lat) &&
-      Number.isFinite(place.lon),
-  );
-  if (!places.length) throw new Error(`${catalogue} lists no riding places.`);
-  const known = new Set(places.map((place) => place.id));
-  const unplaced = Object.keys(blend.spotBlend).filter((id) => !known.has(id));
-  const spotBlend = Object.fromEntries(
-    Object.entries(blend.spotBlend).filter(([id]) => known.has(id)),
-  );
-  return { places, unplaced, blend: { ...blend, spotBlend } };
-}
 
 /**
  * The blend published before this one, every place of it read, for today's
@@ -116,44 +88,6 @@ async function previousBlend(path: string): Promise<LoadedBlend | null> {
   }
 }
 
-/**
- * Write the run directory and then the pointer: the directory under a staging
- * name and renamed whole, so a reader never sees half of it, and the pointer
- * last, so it never names a directory that is not all there. A directory of
- * the same name is the same content, published before, and is kept.
- */
-async function writeRun(
-  out: string,
-  files: [string, Buffer][],
-  pointer: object,
-  base: string,
-) {
-  const weather = dirname(out);
-  const final = join(weather, base.slice(0, -1));
-  if (!existsSync(final)) {
-    const staging = `${final}.tmp-${process.pid}`;
-    await rm(staging, { recursive: true, force: true });
-    for (const [path, bytes] of files) {
-      // `weather/<base><path inside>`, as the publisher names a file.
-      const inside = path.slice(`weather/${base}`.length);
-      const target = join(staging, inside);
-      await mkdir(dirname(target), { recursive: true });
-      await writeFile(target, bytes);
-    }
-    await rename(staging, final);
-  }
-  await mkdir(weather, { recursive: true });
-  // The run directory this pointer replaces stays for readers still holding the
-  // old pointer; naming it here is what tells the pruners so (rundir.write_run).
-  const previous = await readFile(out, "utf8")
-    .then((body) => JSON.parse(body) as unknown)
-    .catch(() => null);
-  const retired = retire(previous, pointer as { base: string });
-  const written = retired.length ? { ...pointer, superseded: retired } : pointer;
-  await writeFile(`${out}.tmp`, jsonText(written));
-  await rename(`${out}.tmp`, out);
-}
-
 async function main() {
   const root = option("root", "public");
   const out = option("out", join(root, SPOT_BLEND_PATH));
@@ -177,7 +111,7 @@ async function main() {
     buildSpotBlend(manifests),
     previous,
   );
-  const { places, unplaced, blend } = await placed(today, catalogue);
+  const { places, unplaced, blend } = await placed(today, "spotBlend", catalogue);
   if (!Object.keys(blend.spotBlend).length)
     throw new Error("No blended place is in the catalogue: nothing to publish.");
   const { pointer, base, files } = publishRun(
