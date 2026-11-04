@@ -835,8 +835,10 @@ measured, with its own line in the Wind key; at Now the readout's wind,
 gust and direction are the station's last reading, with "Belmullet 1 km,
 21:00" quietly on the label's line, and every other hour, past ones too,
 reads the forecast. The Wind now card above says the same reading, with the
-same note after "Wind now" and the shore word for its direction, so the two
-never disagree (`measuredNow`, the one answer both read). A reading over
+same note after "Wind now" and the shore word for its direction, and so do
+the picture's rose and its line at Now, so no two of them disagree
+(`measuredNow`, the one answer all read); a reading with no direction has
+no rose, so the picture keeps the forecast's then. A reading over
 three hours old is not the wind now, so Now falls back on the forecast then, as it does with no station near. The
 scrub bar's readout says the measured wind, with a gold square in place of
 the wind's swatch and "Measured · Belmullet 1 km", with the playhead at now

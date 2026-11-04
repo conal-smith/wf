@@ -965,21 +965,43 @@ for (const [id, station] of [
   ["belmullet", "ME_03976"],
   ["brandon", null],
 ] as const) {
-  test(`the Wind now card and the readout at Now say the same wind, ${station ? "as measured" : "the forecast's"}, at ${id}`, async ({
+  test(`the Wind now card, the readout at Now and the picture's rose say the same wind, ${station ? "as measured" : "the forecast's"}, at ${id}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
+    // A picture of each place, so its rose and its line are drawn.
+    await withPictures(page);
+    await page.route("**/satellite/spots.json", (route) =>
+      route.fulfill({
+        json: {
+          ...pictures,
+          spots: [
+            ...pictures.spots,
+            {
+              id: "belmullet",
+              lonLat: [-9.9919, 54.2234],
+              high: "belmullet-high.webp",
+              low: "belmullet-low.webp",
+            },
+          ],
+        },
+      }),
+    );
     await page.goto(`/spot/${id}`);
     const readout = page.locator("[data-readout]");
     await expect(readout).toContainText("Now", { timeout: 30000 });
     const card = page.locator("[data-now]");
     const cardWind = card.locator("[data-now-wind]");
     const readWind = page.locator("[data-readout-wind] b");
+    const foot = page.locator("[data-photo-loupe] [data-loupe-foot]");
     await expect(cardWind).toBeVisible();
+    await expect(foot).toBeVisible();
     if (station) {
-      // Both the station's last reading, both saying where and when.
+      // All the station's last reading; the card and the readout say where
+      // and when.
       await expect(cardWind).toHaveAttribute("data-measured", station);
       await expect(readWind).toHaveAttribute("data-measured", station);
+      await expect(foot).toHaveAttribute("data-measured", station);
       await expect(card.locator("[data-now-source]")).toHaveText(
         "· Belmullet 1 km, 22:00",
       );
@@ -992,6 +1014,7 @@ for (const [id, station] of [
       // No station within reach: both the forecast, from nowhere else.
       await expect(cardWind).not.toHaveAttribute("data-measured", /.*/);
       await expect(readWind).not.toHaveAttribute("data-measured", /.*/);
+      await expect(foot).not.toHaveAttribute("data-measured", /.*/);
       await expect(card.locator("[data-now-source]")).toHaveCount(0);
     }
     const cardText = await cardWind.textContent();
@@ -1001,5 +1024,18 @@ for (const [id, station] of [
     expect(
       point(await card.locator("[data-now-direction]").textContent()),
     ).toBe(point(readText));
+    // The picture's line: "ENE 4 g6 · offshore", the same wind, gust and way.
+    const footText = await foot.textContent();
+    expect(figures(footText)).toEqual(figures(readText));
+    expect(point(footText)).toBe(point(readText));
+    // And the same word for the shore as the card, where it has one.
+    const shoreWord = (text: string | null) =>
+      (text ?? "").match(
+        /(cross-shore|cross-off|cross-on|offshore|onshore)/,
+      )?.[0] ?? null;
+    const cardShore = shoreWord(
+      await card.locator("[data-now-direction]").textContent(),
+    );
+    if (cardShore) expect(shoreWord(footText)).toBe(cardShore);
   });
 }
