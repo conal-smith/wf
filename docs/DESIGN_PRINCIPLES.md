@@ -865,6 +865,40 @@ Models band is on the tens either side of the week's model winds, 52 px tall
 rather than 72 px on a scale from calm to 36 kn, so its lines fill it instead
 of a strip of mostly empty band.
 
+**2026-11-04 — The spot page's graph in two sections, Wind and Waves, each
+with its blend.** The owner picked the design. The graph is now two sections
+on the same hours, scrolling as one: Wind (stars, wind, direction, wind blend,
+gusts, sky, rain, tide, current) and then Waves (height, direction with
+height, peak period, wave blend, then each swell and the wind sea the lead
+model splits the sea into). The Models band is now **Wind blend**: each model
+the rider blends as its own line, its blend in ink over the band from the
+lowest model to the highest. Waves gets a **Wave blend** of its own: every
+wave model's line through its own steps, the published wave blend in ink,
+and a dotted mark where a model's run ends inside the graph. The headlines
+stay one model's own, the wind's (and so the stars) as the stars rule picks
+it and the waves' the finest wave model at each hour, or the one the rider
+picks in Settings, handed on past its run; a blend is said in its own band,
+its readout and its card, never in place of a headline. With no wave blend
+published, the per-model lines and the leading model stand alone. Sea and
+Waves left the wind's bands for the new section; the wind's readout keeps
+the sea on one line. Sheltered water, which the open sea's waves do not
+reach, has no Waves section, as its year has no waves.
+
+The readouts stay apart: wind values and wave values never share a card. On
+a phone one readout is held at the top, the wind's while the Wind section is
+on screen and the waves' once the Waves section passes the middle of what the
+readout leaves of the screen, with a Wind | Waves switch that takes the page
+to each; each blend's models and the blend sit in it as a strip. On a desktop
+each section has its own readout, and a card beside the pointer lists that
+section's models and blend alone; a click holds the hour and the arrow keys
+step it. Several crossing lines cannot all be told apart by colour, so the
+global models' lines (ECMWF, GFS and their wave models) are dashed as well,
+which also parts ECMWF's purple from ICON-EU's blue for a colour-blind rider.
+The wave models have hues of their own in the theme (`--color-wave-*`), five
+told apart side by side on both themes. The phone's band-name column is 68
+px, room for "Wind blend". The graph reaches every day the data does, to
+ECMWF's fifteen, the day cards with it.
+
 ---
 
 ## Still open

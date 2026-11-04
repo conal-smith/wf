@@ -109,7 +109,8 @@ export function rowRain(
 /** One model's own wind across the week, a reading per row it reaches. */
 export interface ModelSeries {
   id: string;
-  points: { time: number; step: number; kn: number }[];
+  /** Each row it reaches: its own wind, and the way it comes from. */
+  points: { time: number; step: number; kn: number; from: number }[];
 }
 
 /**
@@ -124,7 +125,16 @@ export function modelSeries(
   return models.flatMap((id) => {
     const points = rows.flatMap((row) => {
       const own = row.hour.wind?.by_model?.[id];
-      return own ? [{ time: row.time, step: row.step, kn: own.wind_kn }] : [];
+      return own
+        ? [
+            {
+              time: row.time,
+              step: row.step,
+              kn: own.wind_kn,
+              from: own.direction_deg,
+            },
+          ]
+        : [];
     });
     return points.length > 1 ? [{ id, points }] : [];
   });

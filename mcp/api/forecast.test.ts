@@ -461,6 +461,72 @@ describe("spotForecast", () => {
     expect(waves("2026-09-17T18:00:00.000Z")?.height_m).toBe(4.3);
   });
 
+  it("gives every wave model's own step, with its own partitions, per model", async () => {
+    const inner = fixtureSource();
+    const pointer = (await inner.json("weather/gfs-wave.json")) as Record<
+      string,
+      unknown
+    >;
+    const { spotCoverage: _, ...gfsSquare } = (await inner.json(
+      `weather/${pointer.base as string}spots/n52w008.json`,
+    )) as Record<string, unknown>;
+    const ECMWF = "ecmwf-wave-2026091612-30h-v1-0a1b2c3d/";
+    const run = Date.parse("2026-09-16T12:00:00Z");
+    const source = fixtureSource({
+      "weather/ecmwf-wave.json": {
+        ...pointer,
+        model: "ecmwf-wave",
+        modelName: "ECMWF Wave",
+        run: "2026091612",
+        runTime: "2026-09-16T12:00:00Z",
+        stepHours: 6,
+        frames: [],
+        horizonHours: 30,
+        base: ECMWF,
+      },
+      [`weather/${ECMWF}spots/n52w008.json`]: {
+        ...gfsSquare,
+        model: "ecmwf-wave",
+        run: "2026091612",
+        spotSeries: {
+          dollymount: [0, 6, 12, 18, 24, 30].map((hour) => ({
+            hour,
+            validTime: new Date(run + hour * HOUR).toISOString(),
+            values: { swh: 4 + hour / 100, pp1d: 13, mwd: 290 },
+          })),
+        },
+      },
+    });
+    const spot = findSpot(await loadSpots(source), "dollymount").spot!;
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 27, stepHours: 3 }),
+      { now: FIXTURE_NOW, perModel: true },
+    );
+    const at = (iso: string) =>
+      forecast.hours.find((h) => h.time === iso)!.waves!;
+    // Both models near 18:00 on the 16th, ECMWF's its own six-hourly step.
+    const both = at("2026-09-16T18:00:00.000Z");
+    expect(Object.keys(both.by_model!)).toEqual(["gfs-wave", "ecmwf-wave"]);
+    expect(both.by_model!["ecmwf-wave"]).toEqual({
+      height_m: 4.1,
+      period_s: 13,
+      direction_deg: 290,
+      time: "2026-09-16T18:00:00.000Z",
+    });
+    expect(both.by_model!["gfs-wave"].height_m).toBe(both.height_m);
+    // GFS-Wave's partitions, its wind sea and its swell, as it names them.
+    expect(both.by_model!["gfs-wave"].parts?.windsea?.height_m).toEqual(
+      expect.any(Number),
+    );
+    expect(both.by_model!["gfs-wave"].parts?.swell2).toBeUndefined();
+    // ECMWF publishes none.
+    const late = at("2026-09-17T18:00:00.000Z");
+    expect(Object.keys(late.by_model!)).toEqual(["ecmwf-wave"]);
+    expect(late.by_model!["ecmwf-wave"].parts).toBeUndefined();
+  });
+
   it("says how cold the air feels in the hour's mean wind", async () => {
     const forecast = await dollymount();
     const rows = forecast.hours.filter((h) => h.weather && h.wind);

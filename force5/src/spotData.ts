@@ -22,7 +22,7 @@ export const RUN_SCHEMA_VERSION = 2;
 /**
  * Every per-spot key a run may carry, in the order the publisher writes them.
  * `spotBlend` is the blend's (src/spotBlend.ts) and `spotWaveBlend` the wave
- * blend's (src/waveBlend.ts), each a run of squares of its own read through
+ * blend's (force5/src/waveBlend.ts), each a run of squares of its own read through
  * this same loader; no model carries either.
  */
 export const SPOT_KEYS = [

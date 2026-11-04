@@ -8,7 +8,7 @@ import {
   clampUpwind,
 } from "./rideWedge";
 import { parseStarsChoice, withModel, type StarsChoice } from "./lead";
-import { modelEntry, windModels } from "./manifests";
+import { modelEntry, waveModels, windModels } from "./manifests";
 import {
   DEFAULT_RIDER,
   MAX_WEIGHT_KG,
@@ -67,6 +67,12 @@ export interface Prefs {
    * unless the reader has hidden them. Shown, they are hatched as dark.
    */
   nightHours: NightHours;
+  /**
+   * The wave model the waves' headline is read from (force5/src/waves.ts
+   * `waveLeadOrder`), handed on to the others past the end of its run; null,
+   * the default, for the finest model at each hour. It moves no star.
+   */
+  waveModel: string | null;
   /**
    * Who the stars are rated for: weight, the wings they own, how far up and
    * down the wind they ride, their own star rating (none while ours rates),
@@ -161,6 +167,7 @@ export const defaultPrefs = (): Prefs => ({
   blendModels: windModels().map((model) => model.id),
   view: "blend",
   nightHours: "show",
+  waveModel: null,
   rider: DEFAULT_RIDER,
   starsUpdatedAt: null,
   starsAccount: null,
@@ -382,6 +389,7 @@ export function loadPrefs(
       nightHours: NIGHT_HOURS.includes(stored.nightHours as NightHours)
         ? (stored.nightHours as NightHours)
         : defaults.nightHours,
+      waveModel: parseWaveModel(stored.waveModel),
       rider: parseRider(rider),
       starsUpdatedAt: isoOrNull(stored.starsUpdatedAt),
       starsAccount:
@@ -390,6 +398,14 @@ export function loadPrefs(
   } catch {
     return defaults;
   }
+}
+
+/** A stored wave model, kept while it is one the site publishes; else the default, null. */
+export function parseWaveModel(value: unknown): string | null {
+  return typeof value === "string" &&
+    waveModels().some((entry) => entry.id === value)
+    ? value
+    : null;
 }
 
 /** Returns whether the write landed, so callers can stay silent about failures. */

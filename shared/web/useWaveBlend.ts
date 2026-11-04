@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { readForecastJson } from "../force5/src/manifests";
-import { onPageReturn, pageVisible } from "../force5/src/pageLife";
-import { shouldRevalidate } from "../force5/src/revalidate";
-import type { ReadJson } from "../force5/src/spotData";
+import { readForecastJson } from "../../force5/src/manifests";
+import { onPageReturn, pageVisible } from "../../force5/src/pageLife";
+import { shouldRevalidate } from "../../force5/src/revalidate";
+import type { ReadJson } from "../../force5/src/spotData";
 import {
   loadWaveBlendSquares,
   parseWaveBlend,
@@ -10,7 +10,7 @@ import {
   WAVE_BLEND_PATH,
   type LoadedWaveBlend,
   type WaveBlend,
-} from "./waveBlend";
+} from "../../force5/src/waveBlend";
 
 /**
  * The published wave blend's pointer and the places of `squares`, or null:

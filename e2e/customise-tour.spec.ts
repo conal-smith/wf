@@ -112,10 +112,13 @@ test("Settings holds the rider's settings on one page and saves them, and the li
   await expect(settings.locator(".st-row .st-kick")).toHaveText([
     "Weight",
     "Units",
-    "Hours",
     "Model",
+    "Wave model",
+    "Hours",
     "Models in the blend",
   ]);
+  // The waves' model beside the wind's: the finest at each hour to start.
+  await expect(settings.getByLabel("Wave model")).toHaveValue("finest");
   // Everything is ours to start: nothing to reset.
   const reset = settings.getByRole("button", { name: "Reset to ours" });
   await expect(reset).toHaveCount(0);

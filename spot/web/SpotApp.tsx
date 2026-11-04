@@ -324,7 +324,7 @@ function SpotPage({
     const timer = window.setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(timer);
   }, []);
-  const { units, blendModels } = useMemo(() => loadPrefs(), []);
+  const { units, blendModels, waveModel } = useMemo(() => loadPrefs(), []);
   // Whether the week shows the hours after dark (Settings), kept on the
   // device and followed as it changes.
   const nightHours = useNightHours();
@@ -341,6 +341,7 @@ function SpotPage({
       now={now}
       at={at}
       blendModels={blendModels}
+      waveModel={waveModel}
       point={point}
       actions={point ? null : <KeepButton id={spot.id} name={spot.name} />}
       notices={

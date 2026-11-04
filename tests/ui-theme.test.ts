@@ -130,6 +130,12 @@ const COLOURS: Record<string, string> = {
   "photo-pill": "#0a0c0e",
   "photo-red": "#ff4d3d",
   "photo-gust": "#ffa45c",
+  // The spot page's wave models, each its own line in the wave blend.
+  "wave-met-office": "#d05f88",
+  "wave-ibi": "#4a8be6",
+  "wave-swan": "#22a093",
+  "wave-gfs": "#bb8a2a",
+  "wave-ecmwf": "#9b6be0",
 };
 
 // Size, line height, then weight and tracking where the step has one.

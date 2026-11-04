@@ -23,7 +23,7 @@ import {
 } from "../../../force5/src/currentReading";
 import { loupeRose, roseScale } from "../../../force5/src/focus";
 import { modelName } from "../../../force5/src/lead";
-import { modelHue } from "../../../force5/src/manifests";
+import { modelEntry, modelHue } from "../../../force5/src/manifests";
 import { POINT_SOURCE_KM } from "../../../force5/src/pointSource";
 import { rainTint, DRY_MM_PER_HOUR } from "../../../force5/src/rain";
 import { shoreFacing } from "../../../force5/src/shoreFacing";
@@ -76,7 +76,7 @@ import { RING, tv } from "../../../ui/tv";
 import { SkyGlyph } from "../glyphs";
 import { lift, pictureCredit, type PictureTide } from "../satellite";
 import {
-  FORECAST_DAYS,
+  REPORT_DAYS,
   HOUR,
   clock,
   compass,
@@ -110,7 +110,22 @@ import {
   type ModelSeries,
 } from "./detail";
 import { useNearby, type NearbyReading } from "./nearby";
-import { ClimateSections } from "./ClimateSections";
+import { ClimateSections, useSheltered } from "./ClimateSections";
+import { waveLeadOrder } from "../../../force5/src/waves";
+import {
+  PART_ROWS,
+  partOf,
+  waveHandovers,
+  waveWeek,
+  windBlend,
+  type PartRow,
+  type WaveRow,
+  type WaveWeek,
+  type WindBlendAt,
+} from "./blends";
+import { spotSquare } from "../../../force5/src/spotData";
+import { useWaveBlend } from "../../../shared/web/useWaveBlend";
+import { waveBlendHours, type WavePartHour } from "../../../force5/src/waveBlend";
 import { PhotoLoupe } from "./PhotoLoupe";
 import {
   besideMark,
@@ -170,9 +185,11 @@ const styles = tv({
     ],
     footGust: "text-caption text-photo-gust",
     side: "hidden flex-col gap-2 xwide:flex",
-    week: "grid grid-cols-week gap-2 overflow-x-auto",
+    // A card a day, as many as the forecast reaches: they share the width
+    // while they fit, and scroll sideways past it.
+    week: "flex gap-2 overflow-x-auto",
     day: [
-      "grid content-start gap-2 rounded-surface border-0 bg-sunken on-card p-3.5 text-left text-ink",
+      "grid min-w-29.5 flex-1 shrink-0 content-start gap-2 rounded-surface border-0 bg-sunken on-card p-3.5 text-left text-ink",
       "cursor-pointer transition-colors duration-fast hover:bg-line",
       RING,
     ],
@@ -234,6 +251,40 @@ const styles = tv({
       "relative overflow-x-auto overscroll-x-contain border-0 border-l border-line",
     // Where the readout's foot meets the graph scrolling under it.
     toolsEdge: "pointer-events-none absolute inset-x-0 top-full h-px bg-line",
+    // The week's two sections, Wind and then Waves, each under a heading
+    // with the models it reads beside it.
+    weekHead:
+      "mt-6 mb-1 flex flex-wrap items-baseline justify-between gap-x-2.5 gap-y-1",
+    h3: "m-0 font-body text-lead font-semibold text-ink",
+    weekSub: "font-body text-body text-ink-muted",
+    // On a phone the one readout's two panes, Wind and Waves, in the same
+    // place: the one the page is at shows, the other waits unseen, so the
+    // readout is as tall for either and nothing under it moves.
+    pane: [
+      "col-start-1 row-start-1 transition-opacity duration-fast motion-reduce:transition-none",
+    ],
+    // The swells and the wind sea: three to a row on a phone, each two
+    // cells wide in the desktop's grid.
+    parts:
+      "col-span-4 grid grid-cols-3 gap-x-3 gap-y-1.5 wide:contents",
+    // A blend in the phone's readout: each model's value at the hour, and
+    // the blend's apart after a line.
+    strip: "flex items-end justify-between gap-1.5",
+    bl: "grid min-w-0 shrink gap-0.5",
+    blName:
+      "flex min-w-0 items-center gap-1 font-body text-caption font-medium whitespace-nowrap text-ink-muted",
+    blValue:
+      "font-body text-body leading-5 font-semibold whitespace-nowrap text-ink tabular-nums",
+    blNone: "font-normal text-ink-muted",
+    blSum: "text-prose",
+    blBlend: "shrink-0 border-0 border-l border-line pl-2",
+    // The card beside the pointer over a section, on a desktop.
+    card2: [
+      "pointer-events-none absolute z-6 rounded-control bg-ground px-3.5 py-3 shadow-float inset-ring-1 inset-ring-line",
+      "font-body text-body text-ink",
+    ],
+    cardHead:
+      "mb-2 flex justify-between gap-2 font-body text-body font-semibold text-ink",
     sky: "pointer-events-none absolute left-0 flex items-center gap-1 font-body text-caption text-ink-2",
     // The key under the graph: its groups in a row, each a small heading
     // over its marks, every mark drawn at one size; two to a row on a phone.
@@ -340,6 +391,7 @@ export function SpotReport({
   now,
   at = null,
   blendModels = [],
+  waveModel = null,
   point = null,
   actions,
   notices,
@@ -360,8 +412,13 @@ export function SpotReport({
    * on it; null, or an hour the week does not hold, opens it on now.
    */
   at?: number | null;
-  /** The models the rider blends (Settings): the Models band's lines. */
+  /** The models the rider blends (Settings): the Wind blend band's lines. */
   blendModels?: readonly string[];
+  /**
+   * The wave model the rider reads the waves from (Settings), handed on past
+   * its run; null for the finest model at each hour.
+   */
+  waveModel?: string | null;
   /** A point on the open water's report: no shore, so no stars. */
   point?: ReportPoint | null;
   actions?: React.ReactNode;
@@ -383,7 +440,7 @@ export function SpotReport({
     () =>
       groupDays(rows)
         .filter((d) => d.hasWind)
-        .slice(0, FORECAST_DAYS)
+        .slice(0, REPORT_DAYS)
         .map((day) => ({
           day,
           sun: daySun(spot.lat, spot.lon, day.date),
@@ -476,6 +533,35 @@ export function SpotReport({
   const [scrollTo, setScrollTo] = useState<{ day: number; at: number } | null>(
     null,
   );
+  // The models' blend, said in the Wind blend band alone: the headline wind
+  // and the stars stay the one model's own.
+  const blend = useMemo(
+    () => windBlend(models, forecast.sources.wind),
+    [models, forecast.sources.wind],
+  );
+  // The waves: one model's own at each hour, the rider's or the finest, with
+  // the published wave blend beside them where it has the place (a point's
+  // are the riding place's it borrows them from).
+  const waveFrom = point ? point.lender : spot;
+  const squares = useMemo(
+    () => (waveFrom ? [spotSquare(waveFrom.lat, waveFrom.lon)] : null),
+    [waveFrom?.lat, waveFrom?.lon],
+  );
+  const { blend: waveBlend } = useWaveBlend(squares);
+  const waves = useMemo(
+    () =>
+      waveWeek(
+        rows,
+        waveBlend && waveFrom ? waveBlendHours(waveBlend, waveFrom.id) : null,
+        waveLeadOrder(waveModel),
+      ),
+    [rows, waveBlend, waveFrom?.id, waveModel],
+  );
+  // No Waves section on water the open sea's waves do not reach (a lake, a
+  // harbour), as the spot's year has none, or where no wave model reaches.
+  const sheltered = useSheltered(point ? null : spot.id);
+  const seaShown =
+    sheltered === false && waves.rows.some((r) => r !== null) ? waves : null;
 
   const nowRow = rowAt(rows, now);
   const shown = focus === null ? nowRow : rowAt(rows, focus);
@@ -656,7 +742,7 @@ export function SpotReport({
         <section className={s.section()} aria-labelledby="the-week">
           <div className={s.sectionHead()}>
             <h2 className={s.h2()} id="the-week">
-              The week
+              The days ahead
             </h2>
             <Segmented
               aria-label="View"
@@ -698,6 +784,9 @@ export function SpotReport({
               rider={rider}
               rated={!point}
               models={models}
+              blend={blend}
+              waves={seaShown}
+              waveModel={waveModel}
               current={current}
               rain={rain}
               measured={paired}
@@ -1271,49 +1360,164 @@ function DayButton({
   );
 }
 
-const ROW = {
-  stars: [14, 8],
-  wind: [34, 118],
-  dir: [160, 40],
-  sea: [208, 46],
-  tide: [266, 74],
-  sky: [352, 28],
-} as const;
+/**
+ * The week graph is two sections on the same hours, Wind and then Waves, each
+ * a stack of bands: its name, its height and the gap under it. The wind's
+ * blend sits under its direction; a point on the water reads one model at a
+ * time, so it has no blend. The stars' strip keeps its place without stars,
+ * so the wind band starts where it always does.
+ */
+const WIND_BANDS = [
+  ["stars", 8, 12],
+  ["wind", 118, 8],
+  ["dir", 40, 12],
+  ["blend", 64, 14],
+  ["gusts", 20, 12],
+  ["sky", 28, 12],
+  ["rain", 34, 14],
+  ["tide", 74, 12],
+  ["current", 38, 14],
+] as const;
+type WindBand = (typeof WIND_BANDS)[number][0];
+const WIND_NAME: Record<WindBand, string> = {
+  stars: "Stars",
+  wind: "Wind",
+  dir: "Direction",
+  blend: "Wind blend",
+  gusts: "Gusts",
+  sky: "Sky",
+  rain: "Rain",
+  tide: "Tide",
+  current: "Current",
+};
 
 /**
- * The bands under the sky, each a row of the chart's old dock carried here
- * when the dock gave way to the chart's scrub bar: the rain, every model's own
- * wind, how gusty each hour is, the waves' period and direction, and the
- * current. They share the graph's hours, its scroll, its nights and its
- * pointer, so an hour reads straight down. A point on the water reads one
- * model at a time, so it has no Models band.
+ * The waves' bands: the blended height with the models' spread, where the
+ * sea comes from with its height, its peak period, every wave model's own
+ * line and the blend's, and then the swells and the wind sea, each a band
+ * only where the lead model has it somewhere in the week.
  */
-const LOWER = [
-  ["rain", 34],
-  ["models", 52],
-  ["gusts", 20],
-  ["waves", 38],
-  ["current", 38],
+const WAVE_BANDS = [
+  ["waves", 92, 12],
+  ["wdir", 40, 4],
+  ["period", 18, 14],
+  ["wblend", 84, 14],
+  ["swell1", 38, 12],
+  ["swell2", 38, 12],
+  ["swell3", 38, 12],
+  ["windsea", 38, 14],
 ] as const;
-type LowerBand = (typeof LOWER)[number][0];
-const LOWER_TOP = 396;
-const BAND_GAP = 14;
+type WaveBand = (typeof WAVE_BANDS)[number][0];
+const WAVE_NAME: Record<WaveBand, string> = {
+  waves: "Waves",
+  wdir: "Direction",
+  period: "Period",
+  wblend: "Wave blend",
+  ...(Object.fromEntries(PART_ROWS) as Record<PartRow, string>),
+};
 
-/** Where each lower band sits, the hours axis under the last, and the height. */
-function lowerBands(withModels: boolean) {
-  const at: Partial<Record<LowerBand, readonly [number, number]>> = {};
-  let y = LOWER_TOP;
-  for (const [band, h] of LOWER) {
-    if (band === "models" && !withModels) continue;
+interface Stack<K extends string> {
+  at: Partial<Record<K, readonly [number, number]>>;
+  /** Where the hours run along the foot. */
+  axis: number;
+  height: number;
+}
+
+/** Where each band of a section sits, the hours' axis under the last, and the height. */
+function stack<K extends string>(
+  bands: readonly (readonly [K, number, number])[],
+  top: number,
+  keep: (band: K) => boolean,
+): Stack<K> {
+  const at: Partial<Record<K, readonly [number, number]>> = {};
+  let y = top;
+  let gap = 0;
+  for (const [band, h, g] of bands) {
+    if (!keep(band)) continue;
     at[band] = [y, h];
-    y += h + BAND_GAP;
+    y += h + g;
+    gap = g;
   }
-  const axis = y - BAND_GAP + 8;
+  const axis = y - gap + 8;
   return { at, axis, height: axis + 22 };
 }
 
 /** An arrow pointing up, turned to a bearing: the wind's, the sea's, the water's. */
 const ARROW = "M0 6V-6M-3.5 -2.5L0 -6.5l3.5 4";
+
+/**
+ * The models whose lines are dashed as well as coloured: the global ones.
+ * Several lines in one band all cross, and two hues side by side (ECMWF's
+ * purple, ICON-EU's blue) are too close for a colour-blind rider, so the
+ * coarse global models are dashed and the fine regional ones solid; every
+ * value is named in the readout and the card besides.
+ */
+const DASHED = new Set([
+  "ecmwf",
+  "gfs",
+  "aifs",
+  "ecmwf-ens",
+  "gefs",
+  "icon",
+  "arpege",
+  "gfs-wave",
+  "ecmwf-wave",
+]);
+const DASH = "5 3";
+
+/**
+ * Each wave model's own colour in the wave blend (ui/theme.css): five hues
+ * told apart side by side on both themes, the global two also dashed. A
+ * model with no colour of its own yet is drawn in the second ink.
+ */
+const WAVE_HUE: Record<string, { stroke: string; fill: string }> = {
+  "met-office-wave": {
+    stroke: "stroke-wave-met-office",
+    fill: "fill-wave-met-office",
+  },
+  "ibi-wave": { stroke: "stroke-wave-ibi", fill: "fill-wave-ibi" },
+  "mi-swan": { stroke: "stroke-wave-swan", fill: "fill-wave-swan" },
+  "gfs-wave": { stroke: "stroke-wave-gfs", fill: "fill-wave-gfs" },
+  "ecmwf-wave": { stroke: "stroke-wave-ecmwf", fill: "fill-wave-ecmwf" },
+};
+const waveHue = (id: string) =>
+  WAVE_HUE[id] ?? { stroke: "stroke-ink-2", fill: "fill-ink-2" };
+
+/** A model's name where the readout has a quarter of a phone's width for it. */
+const SHORT: Record<string, string> = {
+  harmonie: "HARM",
+  "icon-eu": "ICON",
+  "met-office-wave": "Met Off",
+  "ibi-wave": "IBI",
+  "mi-swan": "SWAN",
+  "gfs-wave": "GFS",
+  "ecmwf-wave": "ECMWF",
+};
+const shortName = (id: string) => SHORT[id] ?? modelName(id);
+/** A wave model's name, as Settings and the layers list give it. */
+const waveModelName = (id: string) =>
+  modelEntry(id)?.name ?? (id === "ibi-wave" ? "Copernicus IBI" : id);
+/** Where a wave model's run is said to end, on its line: "Met Office ends". */
+const waveEndName = (id: string) => waveModelName(id).replace(/ Wave$/, "");
+
+/** Whether the page is laid out for a desktop (the theme's `wide`), kept current. */
+function useWide() {
+  const query = "(min-width: 45rem)";
+  const [wide, setWide] = useState(() =>
+    typeof matchMedia === "undefined" ? true : matchMedia(query).matches,
+  );
+  useEffect(() => {
+    if (typeof matchMedia === "undefined") return;
+    const list = matchMedia(query);
+    const changed = () => setWide(list.matches);
+    changed();
+    list.addEventListener("change", changed);
+    return () => list.removeEventListener("change", changed);
+  }, []);
+  return wide;
+}
+
+type Section = "wind" | "waves";
 
 function Graph({
   rows,
@@ -1329,6 +1533,9 @@ function Graph({
   rider,
   rated,
   models,
+  blend,
+  waves,
+  waveModel,
   current,
   rain,
   measured = null,
@@ -1352,7 +1559,18 @@ function Graph({
   rider: Rider;
   /** False at a point on the open water: no stars, so no star row or tint. */
   rated: boolean;
+  /** The models the rider blends, each its own wind (`modelSeries`). */
   models: readonly ModelSeries[];
+  /** Their blend at each row's time (`windBlend`). */
+  blend: ReadonlyMap<number, WindBlendAt>;
+  /**
+   * The week's sea (`waveWeek`), or null where the Waves section is not
+   * shown: sheltered water, which the open sea's waves do not reach, or no
+   * wave model at all.
+   */
+  waves: WaveWeek | null;
+  /** The rider's wave model, or null for the finest at each hour. */
+  waveModel: string | null;
   current: SpotCurrents;
   /** The rain in each hour, mm/h, by the hour's time (`rainPerHour`). */
   rain: ReadonlyMap<number, number>;
@@ -1369,16 +1587,26 @@ function Graph({
   const units = useContext(UnitsContext);
   const s = styles();
   const [ref, width] = useWidth<HTMLDivElement>(900);
+  const waveRef = useRef<HTMLDivElement>(null);
+  const windSvg = useRef<SVGSVGElement>(null);
+  const waveSvg = useRef<SVGSVGElement>(null);
+  const wide = useWide();
   const [hover, setHover] = useState<number | null>(opening);
+  // An hour clicked on, or stepped to with the arrow keys, is held: the
+  // pointer moving off the graph goes back to it rather than to now.
+  const [pinned, setPinned] = useState<number | null>(null);
   useEffect(
     () => onFocus(hover === null ? null : (rows[hover]?.time ?? null)),
     [hover, rows, onFocus],
   );
-  // On a phone the readout is held over the top of the graph as the page
+  // On a phone one readout is held over the top of the graphs as the page
   // scrolls (`tools`). The band names are held clear of its foot, `held`
   // being its height, and once the graph runs under it a line marks where.
   const tools = useRef<HTMLDivElement>(null);
   const gbox = useRef<HTMLDivElement>(null);
+  const waveBox = useRef<HTMLDivElement>(null);
+  const windSection = useRef<HTMLElement>(null);
+  const waveSection = useRef<HTMLElement>(null);
   const [held, setHeld] = useState(0);
   const [stuck, setStuck] = useState(false);
   useEffect(() => {
@@ -1410,9 +1638,51 @@ function Graph({
       window.removeEventListener("scroll", scrolled);
       window.removeEventListener("resize", measured);
     };
-  }, []);
-  const lower = lowerBands(models.length > 0);
+  }, [wide]);
+  // On a phone the one readout says the wind while the Wind section is on
+  // screen, and turns to the waves once the Waves section comes up past the
+  // middle of what the readout leaves of the screen.
+  const [section, setSection] = useState<Section>("wind");
+  useEffect(() => {
+    if (wide || !waves) {
+      setSection("wind");
+      return;
+    }
+    const check = () => {
+      const top = tools.current?.getBoundingClientRect().bottom ?? 0;
+      const head = waveSection.current?.getBoundingClientRect().top;
+      if (head === undefined) return;
+      setSection(head < top + (innerHeight - top) * 0.45 ? "waves" : "wind");
+    };
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [wide, !!waves]);
+  /** The phone's Wind | Waves: to that section, under the readout. */
+  const jump = (to: Section) => {
+    const target = (to === "waves" ? waveSection : windSection).current;
+    if (!target) return;
+    setSection(to);
+    window.scrollTo({
+      top:
+        target.getBoundingClientRect().top +
+        scrollY -
+        (tools.current?.offsetHeight ?? 0) -
+        4,
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  };
+  const lower = stack(WIND_BANDS, 14, (band) =>
+    band === "blend" ? models.length > 0 : true,
+  );
   const GH = lower.height;
+  const ROW = lower.at as Record<WindBand, readonly [number, number]>;
   const start = days[0]?.midnight ?? now;
   const end = (days.at(-1)?.midnight ?? now) + 24 * HOUR;
   // The graph's timeline: the days end to end, or with the night hidden
@@ -1459,8 +1729,21 @@ function Graph({
    */
   const drawn = (midnight: number) =>
     !dark || X(midnight + 24 * HOUR) - X(midnight) >= 1;
+  // The two sections' hours scroll as one, so an hour reads straight down
+  // both. The one the rider moves (`driver`) leads; the other follows it,
+  // and never the other way, so a finger's fling is not fought.
+  const driver = useRef<HTMLDivElement | null>(null);
+  const drove = useRef(-Infinity);
+  const scrollers = () =>
+    [ref.current, waveRef.current].filter(
+      (el): el is HTMLDivElement => el !== null,
+    );
+  const drive = (e: { currentTarget: HTMLDivElement }) => {
+    driver.current = e.currentTarget;
+  };
   useEffect(() => {
     if (!scrollTo || !ref.current) return;
+    driver.current = ref.current;
     ref.current.scrollTo({
       left: X(days[scrollTo.day]?.midnight ?? start),
       behavior: "smooth",
@@ -1498,37 +1781,81 @@ function Graph({
     });
     return Math.max(0, at);
   };
+  const mid = (r: Pick<SpotRow, "time" | "step">) =>
+    X(r.time) + (r.step * px) / 2;
   useEffect(() => {
-    if (!ref.current) return;
     const opened = opening === null ? null : rows[opening];
-    ref.current.scrollLeft = phone
+    const left = phone
       ? // The hour the address opens on, else now, under the playhead.
         Math.max(0, leftFor(opened ? mid(opened) : X(now)))
       : // The hour the address opens on, a third of the way in, as the
         // hours before it are worth a glance; else now, six hours in.
         Math.max(0, opened ? X(opened.time) - width / 3 : X(now) - px * 6);
+    for (const el of scrollers()) el.scrollLeft = left;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [px]);
+  }, [px, !!waves]);
   // With a mouse the hour read out is the one under the pointer, and stays
-  // so as a wheel or a trackpad scrolls the hours along under it.
-  const pointerX = useRef<number | null>(null);
+  // so as a wheel or a trackpad scrolls the hours along under it. Over a
+  // section, a card beside the pointer lists that section's models.
+  const pointer = useRef<{
+    section: Section;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [card, setCard] = useState<{
+    section: Section;
+    left: number;
+    top: number;
+  } | null>(null);
+  /** Where a section's card goes: beside the hour's column, by the pointer. */
+  const place = (at: Section, row: number, y: number) => {
+    const box = (at === "wind" ? gbox : waveBox).current;
+    const svg = (at === "wind" ? windSvg : waveSvg).current;
+    const r = rows[row];
+    if (!box || !svg || !r) return null;
+    const b = box.getBoundingClientRect();
+    const v = svg.getBoundingClientRect();
+    const right = v.left + X(r.time) + r.step * px - b.left;
+    const left = right + 14 + CARD_WIDTH <= b.width - 8
+      ? right + 14
+      : Math.max(8, v.left + X(r.time) - b.left - 14 - CARD_WIDTH);
+    const tall =
+      CARD_ROW * ((at === "wind" ? models.length : (waves?.lines.length ?? 0)) + 3) + 40;
+    return {
+      section: at,
+      left,
+      top: Math.max(8, Math.min(y - b.top - 40, b.height - tall - 8)),
+    };
+  };
   const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
+    // A section scrolled a moment after the other last moved is following
+    // it; one scrolled after a pause is being moved itself, and leads.
+    const at = performance.now();
+    if (el !== driver.current && at - drove.current > 150)
+      driver.current = el;
+    if (el === driver.current) {
+      drove.current = at;
+      for (const other of scrollers())
+        if (other !== el && other.scrollLeft !== el.scrollLeft)
+          other.scrollLeft = el.scrollLeft;
+    }
     if (phone) setHover(rowAtX(headAt(el.scrollLeft)));
-    else if (pointerX.current !== null)
-      setHover(
-        rowAtX(
-          pointerX.current -
-            el.getBoundingClientRect().left -
-            el.clientLeft +
-            el.scrollLeft,
-        ),
+    else if (pointer.current) {
+      const row = rowAtX(
+        pointer.current.x -
+          el.getBoundingClientRect().left -
+          el.clientLeft +
+          el.scrollLeft,
       );
+      setHover(row);
+      if (wide)
+        setCard(place(pointer.current.section, row, pointer.current.y));
+    }
   };
   const windRows = rows.filter((r) => r.hour.wind && seen(r));
   const [wy, wh] = ROW.wind;
   const Y = (k: number) => wy + wh - (Math.min(k, 36) / 36) * wh;
-  const mid = (r: SpotRow) => X(r.time) + (r.step * px) / 2;
   /** Hours in runs, each broken where a night is left out between two. */
   const runs = <T extends { time: number }>(items: readonly T[]): T[][] => {
     const out: T[][] = [];
@@ -1555,20 +1882,29 @@ function Graph({
         .join(""),
     };
   };
+  /** The band between a low and a high through each run. */
+  const between = <T extends { time: number }>(
+    items: readonly T[],
+    low: (item: T) => readonly [number, number],
+    high: (item: T) => readonly [number, number],
+  ) =>
+    runs(items)
+      .map((run) => {
+        const top = run.map(high);
+        const bot = run.map(low).reverse();
+        return `${smoothPath(top)}L${smoothPath(bot).slice(1)}Z`;
+      })
+      .join("");
   const mean = traced(
     windRows,
     (r) => [mid(r), Y(r.hour.wind!.wind_kn)],
     wy + wh,
   );
-  const spread = runs(windRows)
-    .map((run) => {
-      const top = run.map((r) => [mid(r), Y(r.hour.wind!.max_kn)] as const);
-      const bot = run
-        .map((r) => [mid(r), Y(r.hour.wind!.min_kn)] as const)
-        .reverse();
-      return `${smoothPath(top)}L${smoothPath(bot).slice(1)}Z`;
-    })
-    .join("");
+  const spread = between(
+    windRows,
+    (r) => [mid(r), Y(r.hour.wind!.min_kn)],
+    (r) => [mid(r), Y(r.hour.wind!.max_kn)],
+  );
   const gust = traced(
     windRows.filter((r) => r.hour.wind!.gust_kn !== null),
     (r) => [mid(r), Y(r.hour.wind!.gust_kn!)],
@@ -1595,14 +1931,6 @@ function Graph({
     .filter((run) => run.length > 1)
     .map((run) => smoothPath(run.map((r) => [rx(r), Y(r.windKn)] as const)))
     .join("");
-  const [sy, sh] = ROW.sea;
-  const SY = (m: number) => sy + sh - (Math.min(m, 2) / 2) * (sh - 4);
-  const seaRows = rows.filter((r) => r.hour.waves?.height_m != null && seen(r));
-  const sea = traced(
-    seaRows,
-    (r) => [mid(r), SY(r.hour.waves!.height_m!)],
-    sy + sh,
-  ).area;
   const [ty, th] = ROW.tide;
   const tideMax = Math.max(4.5, ...turns.map((t) => t.height)) + 0.3;
   const TY = (m: number) => ty + th - (m / tideMax) * (th - 6);
@@ -1629,529 +1957,1184 @@ function Graph({
   }, [rows, now, dark, line]);
   const shownRow = hoverRow ?? nowRow;
   const shownAt = shownRow ? rows.indexOf(shownRow) : -1;
-  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    pointerX.current = e.clientX;
+  const onMove = (at: Section) => (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.pointerType === "touch") return;
+    pointer.current = { section: at, x: e.clientX, y: e.clientY };
     const box = e.currentTarget.getBoundingClientRect();
-    setHover(rowAtX(e.clientX - box.left));
+    const row = rowAtX(e.clientX - box.left);
+    setHover(row);
+    if (wide) setCard(place(at, row, e.clientY));
   };
   const onLeave = () => {
-    pointerX.current = null;
-    setHover(null);
+    pointer.current = null;
+    setCard(null);
+    setHover(pinned);
+  };
+  /** A click holds the hour under the pointer; a click on it again lets go. */
+  const onClick = () => {
+    if (hover === null) return;
+    setPinned((was) => (was === hover ? null : hover));
+  };
+  /** The arrow keys step the hour, a day with Shift, and hold it. */
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const by =
+      e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!by) return;
+    e.preventDefault();
+    const from = shownAt < 0 ? rows.findIndex(seen) : shownAt;
+    let next = from;
+    for (let n = e.shiftKey ? 24 : 1; n > 0; ) {
+      const i = next + by;
+      if (i < 0 || i >= rows.length) break;
+      next = i;
+      if (seen(rows[i])) n -= rows[i].step;
+    }
+    while (next !== from && !seen(rows[next])) next -= by;
+    const row = rows[next];
+    if (!row) return;
+    driver.current = e.currentTarget;
+    if (phone) {
+      e.currentTarget.scrollLeft = leftFor(mid(row));
+      return;
+    }
+    setPinned(next);
+    setHover(next);
+    const el = e.currentTarget;
+    const x = X(row.time);
+    if (x < el.scrollLeft + 40 || x + row.step * px > el.scrollLeft + width - 40)
+      el.scrollLeft = Math.max(0, x - width / 3);
   };
   // Now is said as now, however it came to be under the playhead.
   // Not with the night left out and now in it: then the hour read out is
   // the next first light's, and said by its time.
   const isNow = shownRow === rowAt(rows, now);
+  const hourWords =
+    isNow || !shownRow
+      ? "Now"
+      : `${dayNames(dublinDate(shownRow.time), shownRow.time).short} ${clock(shownRow.time)}`;
+  const chip = (
+    <span
+      className={s.chip({ className: isNow ? s.chipNow() : undefined })}
+      data-readout-hour
+    >
+      {hourWords}
+    </span>
+  );
+  const waveAt = waves && shownAt >= 0 ? waves.rows[shownAt] : null;
+  const windReadout = (desktop: boolean) => (
+    <Readout
+      row={shownRow}
+      chip={desktop ? chip : null}
+      depth={shownRow ? depthAt(shownRow.time) : null}
+      rated={rated}
+      gust={
+        shownRow?.hour.wind
+          ? gustReading(
+              shownRow.hour.wind.wind_kn,
+              shownRow.hour.wind.gust_kn,
+              rider,
+            )
+          : null
+      }
+      current={current.columns[shownAt] ?? null}
+      rain={shownRow ? rowRain(rain, shownRow) : null}
+      hasCurrent={current.columns.length > 0}
+      hasDepth={hasDepth}
+      unlit={dark ? "Twilight" : "Dark"}
+      measured={isNow ? nowMeasured : null}
+      sea={waves ? (waveAt ?? null) : undefined}
+      strip={
+        desktop || !models.length ? null : (
+          <BlendStrip
+            label={`Wind blend${speed.unit ? `, ${speed.unit}` : ""}`}
+            items={models.map((m) => {
+              const p = shownRow
+                ? m.points.find((q) => q.time === shownRow.time)
+                : undefined;
+              return {
+                id: m.id,
+                name: shortName(m.id),
+                mark: <ModelMark wind={m.id} />,
+                value: p ? speed.say(p.kn) : null,
+              };
+            })}
+            blend={
+              models.length > 1
+                ? (() => {
+                    const b = shownRow ? blend.get(shownRow.time) : undefined;
+                    return b ? speed.say(b.kn) : null;
+                  })()
+                : undefined
+            }
+          />
+        )
+      }
+      root={desktop}
+    />
+  );
+  const waveReadout = (desktop: boolean) =>
+    waves && (
+      <WaveReadout
+        row={shownRow}
+        waves={waveAt}
+        chip={desktop ? chip : null}
+        partitions={PART_ROWS.filter(([key]) =>
+          waves.rows.some((r) => partOf(r, key)),
+        ).map(([key]) => key)}
+        strip={
+          desktop ? null : (
+            <BlendStrip
+              label="Wave blend, m"
+              items={waves.lines.map((l) => {
+                const own = shownRow?.hour.waves?.by_model?.[l.id];
+                return {
+                  id: l.id,
+                  name: shortName(l.id),
+                  mark: <ModelMark wave={l.id} />,
+                  value: own ? own.height_m.toFixed(1) : null,
+                };
+              })}
+              blend={
+                waves.blended
+                  ? waveAt?.blendM != null
+                    ? waveAt.blendM.toFixed(1)
+                    : null
+                  : undefined
+              }
+            />
+          )
+        }
+      />
+    );
+  /** The night shaded, the day lines and the hours along a section's foot. */
+  const frame = (height: number, axis: number, data: boolean) => (
+    <>
+      {/* The night shaded, each side of a day's light; with the night
+          left out, none of it, and the line between two days is where
+          it was. */}
+      {days.map(({ sun, midnight }, i) => (
+        <g key={i}>
+          {!dark && sun.firstLight && (
+            <rect
+              x={X(midnight)}
+              y={0}
+              width={X(sun.firstLight) - X(midnight)}
+              height={height - 22}
+              className="fill-ink"
+              fillOpacity={0.045}
+              data-night={data || undefined}
+            />
+          )}
+          {!dark && sun.lastLight && (
+            <rect
+              x={X(sun.lastLight)}
+              y={0}
+              width={X(midnight + 24 * HOUR) - X(sun.lastLight)}
+              height={height - 22}
+              className="fill-ink"
+              fillOpacity={0.045}
+              data-night={data || undefined}
+            />
+          )}
+          {i > 0 && drawn(midnight) && X(midnight) > 0 && (
+            <line
+              x1={X(midnight)}
+              x2={X(midnight)}
+              y1={0}
+              y2={height}
+              className="stroke-line"
+              data-day-line={data || undefined}
+            />
+          )}
+        </g>
+      ))}
+      {/* The hours along the foot: every sixth, or with the night left
+          out every third, clear of where each day starts. */}
+      {Array.from(
+        { length: Math.ceil((end - start) / HOUR / tick) },
+        (_, i) => start + i * tick * HOUR,
+      )
+        .filter(
+          (t) =>
+            dublinHour(t) % 24 !== 0 &&
+            (!dark ||
+              line.spans.some(
+                (span) =>
+                  // Clear of the day's name at its start.
+                  t >= span.from &&
+                  X(t) - X(span.from) >= 60 &&
+                  span.to - t >= HOUR,
+              )),
+        )
+        .map((t) => (
+          <text
+            key={t}
+            x={X(t)}
+            y={axis + 14}
+            textAnchor="middle"
+            className="fill-ink-muted font-body text-caption"
+          >
+            {String(dublinHour(t)).padStart(2, "0")}
+          </text>
+        ))}
+      {days.map(({ day, midnight }, i) =>
+        !drawn(midnight) ? null : (
+          <text
+            key={i}
+            x={X(midnight) + 8}
+            y={axis + 14}
+            className="fill-ink font-body text-caption font-semibold"
+          >
+            {dayNames(day.date, now).relative === "Today"
+              ? "Today"
+              : dayNames(day.date, now).short}{" "}
+            {Number(day.date.slice(8, 10))}
+          </text>
+        ),
+      )}
+    </>
+  );
+  /** Now's line, and the hour read out's column and playhead. */
+  const marks = (axis: number) => (
+    <>
+      <line
+        x1={X(now)}
+        x2={X(now)}
+        y1={4}
+        y2={axis}
+        className="stroke-pen"
+        strokeWidth={1.5}
+      />
+      {hoverRow && (
+        <>
+          <rect
+            x={X(hoverRow.time)}
+            y={4}
+            width={hoverRow.step * px}
+            height={axis - 4}
+            rx={Math.min(6, px / 2)}
+            className="fill-ink"
+            fillOpacity={0.07}
+          />
+          {phone && (
+            <line
+              x1={mid(hoverRow)}
+              x2={mid(hoverRow)}
+              y1={4}
+              y2={axis}
+              className="stroke-ink"
+              strokeOpacity={0.5}
+              strokeWidth={1.5}
+              data-playhead-line
+            />
+          )}
+        </>
+      )}
+    </>
+  );
+  const waveStack = waves
+    ? stack(WAVE_BANDS, 10, (band) =>
+        band in WAVE_PART
+          ? waves.rows.some((r) => partOf(r, band as PartRow))
+          : true,
+      )
+    : null;
+  const graphProps = (at: Section) => ({
+    className: s.graph(),
+    onScroll,
+    onPointerDown: drive,
+    onTouchStart: drive,
+    onWheel: drive,
+    onKeyDown: onKey,
+    onFocus: drive,
+    tabIndex: 0,
+    role: "group",
+    "aria-label": `${at === "wind" ? "Wind" : "Waves"} graph: the arrow keys move the hour`,
+    "data-playhead": phone || undefined,
+  });
+  const svgProps = (at: Section) => ({
+    onPointerMove: phone ? undefined : onMove(at),
+    onPointerLeave: phone ? undefined : onLeave,
+    onClick: phone ? undefined : onClick,
+    className: "block",
+  });
+  const windModels = models.map((m) => modelName(m.id)).join(", ");
+  const waveModels = waves?.lines.map((l) => waveModelName(l.id)).join(", ");
   return (
     <>
-      <div className={s.tools()} ref={tools}>
-        {stuck && <div className={s.toolsEdge()} aria-hidden="true" />}
-        <Readout
-          row={shownRow}
-          isNow={isNow}
-          depth={shownRow ? depthAt(shownRow.time) : null}
-          rated={rated}
-          gust={
-            shownRow?.hour.wind
-              ? gustReading(
-                  shownRow.hour.wind.wind_kn,
-                  shownRow.hour.wind.gust_kn,
-                  rider,
-                )
-              : null
-          }
-          current={current.columns[shownAt] ?? null}
-          rain={shownRow ? rowRain(rain, shownRow) : null}
-          hasCurrent={current.columns.length > 0}
-          hasDepth={hasDepth}
-          unlit={dark ? "Twilight" : "Dark"}
-          measured={isNow ? nowMeasured : null}
-        />
-      </div>
-      <div className={s.gbox()} ref={gbox}>
-        <div className={s.gl()} style={{ height: GH }}>
-          {(
-            [
-              ...(rated
-                ? [["Stars", ROW.stars[0] + 10, ROW.stars] as const]
-                : []),
-              ["Wind", ROW.wind[0] + 46, ROW.wind],
-              ["Direction", ROW.dir[0] + 18, ROW.dir],
-              ["Sea", ROW.sea[0] + 32, ROW.sea],
-              ["Tide", ROW.tide[0] + 42, ROW.tide],
-              ["Sky", ROW.sky[0] + 20, ROW.sky],
-              ...LOWER.flatMap(([band]) => {
-                const at = lower.at[band];
-                return at ? [[LOWER_NAME[band], at[0] + at[1] / 2, at]] : [];
-              }),
-            ] as (readonly [string, number, readonly [number, number]])[]
-          ).map(([name, middle, [y, h]]) => (
-            // The strip runs from where the name sits, beside the middle of
-            // its band, to the band's foot: as far as the name can be held.
-            <div
-              key={name}
-              className={s.glBand()}
-              style={{
-                top: middle - 8,
-                height: Math.max(16, y + h - (middle - 8)),
-              }}
-            >
-              <span
-                className={s.glName()}
-                style={{ top: held }}
-                data-band-name={name}
-              >
-                {name}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div
-          className={s.graph()}
-          ref={ref}
-          onScroll={onScroll}
-          data-spot-graph
-          data-playhead={phone || undefined}
-        >
-          <svg
-            width={W}
-            height={GH}
-            viewBox={`0 0 ${W} ${GH}`}
-            onPointerMove={phone ? undefined : onMove}
-            onPointerLeave={phone ? undefined : onLeave}
-            className="block"
-            data-graph-svg
-          >
-            <defs>
-              <linearGradient
-                id="spot-wind"
-                gradientUnits="userSpaceOnUse"
-                x1={0}
-                x2={W}
-                y1={0}
-                y2={0}
-              >
-                {windRows.map((r, i) => (
-                  <stop
-                    key={i}
-                    offset={Math.min(1, Math.max(0, mid(r) / W)).toFixed(4)}
-                    stopColor={windCss(r.hour.wind!.wind_kn)}
-                  />
-                ))}
-              </linearGradient>
-              {deepAt !== null && (
-                <clipPath id="spot-deep">
-                  <rect x={0} y={0} width={W} height={TY(deepAt)} />
-                </clipPath>
+      {!wide && (
+        <div className={s.tools()} ref={tools}>
+          {stuck && <div className={s.toolsEdge()} aria-hidden="true" />}
+          <div className="grid w-full gap-2" data-readout>
+            <div className="flex items-center justify-between gap-2.5">
+              {chip}
+              {waves && (
+                <Segmented
+                  aria-label="What the readout shows"
+                  size="sm"
+                  value={section}
+                  onChange={jump}
+                  options={[
+                    { value: "wind", label: "Wind" },
+                    { value: "waves", label: "Waves" },
+                  ]}
+                />
               )}
-            </defs>
-            {/* The night shaded, each side of a day's light; with the night
-                left out, none of it, and the line between two days is
-                where it was. */}
-            {days.map(({ sun, midnight }, i) => (
-              <g key={i}>
-                {!dark && sun.firstLight && (
-                  <rect
-                    x={X(midnight)}
-                    y={0}
-                    width={X(sun.firstLight) - X(midnight)}
-                    height={GH - 22}
-                    className="fill-ink"
-                    fillOpacity={0.045}
-                    data-night
-                  />
-                )}
-                {!dark && sun.lastLight && (
-                  <rect
-                    x={X(sun.lastLight)}
-                    y={0}
-                    width={X(midnight + 24 * HOUR) - X(sun.lastLight)}
-                    height={GH - 22}
-                    className="fill-ink"
-                    fillOpacity={0.045}
-                    data-night
-                  />
-                )}
-                {i > 0 && drawn(midnight) && X(midnight) > 0 && (
-                  <line
-                    x1={X(midnight)}
-                    x2={X(midnight)}
-                    y1={0}
-                    y2={GH}
-                    className="stroke-line"
-                    data-day-line
-                  />
-                )}
-              </g>
-            ))}
-            {rows.map((r, i) =>
-              r.rating && seen(r) ? (
-                <rect
-                  key={i}
-                  x={X(r.time) + 1}
-                  y={ROW.stars[0]}
-                  width={r.step * px - 2}
-                  height={ROW.stars[1]}
-                  rx={2}
-                  className={STAR_FILL[r.rating.stars]}
-                />
-              ) : null,
-            )}
-            {spread && (
-              <path d={spread} className="fill-ink" fillOpacity={0.07} />
-            )}
-            {mean.line && (
-              <>
-                <path d={mean.area} fill="url(#spot-wind)" fillOpacity={0.78} />
-                <path
-                  d={mean.line}
-                  fill="none"
-                  stroke="url(#spot-wind)"
-                  strokeWidth={2.2}
-                />
-              </>
-            )}
-            {gust && (
-              <path
-                d={gust}
-                className="fill-none stroke-gust"
-                strokeWidth={1.6}
-                strokeDasharray="4 3"
-              />
-            )}
-            {readings.length > 0 && (
-              <g data-measured={measured!.station.id}>
-                {/* On a ground-coloured halo, so the gold reads over the
-                    wind's own colours and the paper alike. */}
-                {measuredLine && (
-                  <>
-                    <path
-                      d={measuredLine}
-                      className="fill-none stroke-ground"
-                      strokeWidth={4.4}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d={measuredLine}
-                      className="fill-none stroke-buoy"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      data-measured-line
-                    />
-                  </>
-                )}
-                {readings.map((r) =>
-                  r.gustKn === null ? null : (
-                    <circle
-                      key={`g${r.time}`}
-                      cx={rx(r)}
-                      cy={Y(r.gustKn)}
-                      r={2.3}
-                      className="fill-ground stroke-buoy"
-                      strokeWidth={1.4}
-                      data-measured-gust={r.time}
-                    />
-                  ),
-                )}
-                {readings.map((r) => (
-                  <circle
-                    key={`w${r.time}`}
-                    cx={rx(r)}
-                    cy={Y(r.windKn)}
-                    r={2.6}
-                    className="fill-buoy stroke-ground"
-                    strokeWidth={1.2}
-                    data-measured-wind={r.time}
-                  />
-                ))}
-              </g>
-            )}
-            {[10, 20, 30].map((k) => (
-              <text
-                key={k}
-                x={W - 6}
-                y={Y(k) - 3}
-                textAnchor="end"
-                className="fill-ink-muted font-body text-caption"
+            </div>
+            <div className="grid" aria-live="polite">
+              <div
+                className={s.pane({
+                  className:
+                    section === "wind" ? "visible opacity-100" : "invisible opacity-0",
+                })}
+                aria-hidden={section !== "wind"}
+                data-pane="wind"
               >
-                {speed.say(k)}
-              </text>
-            ))}
-            {windRows
-              .filter((r) => dublinHour(r.time) % 3 === 0)
-              .map((r, i) => (
-                <g key={i}>
-                  <g
-                    transform={`translate(${mid(r)},${ROW.dir[0] + 9}) rotate(${r.hour.wind!.direction_deg + 180})`}
-                  >
-                    <path
-                      d={ARROW}
-                      className={
-                        isOff(r.shore)
-                          ? "fill-none stroke-pen"
-                          : "fill-none stroke-ink"
-                      }
-                      strokeWidth={1.8}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                {windReadout(false)}
+              </div>
+              {waves && (
+                <div
+                  className={s.pane({
+                    className:
+                      section === "waves" ? "visible opacity-100" : "invisible opacity-0",
+                  })}
+                  aria-hidden={section !== "waves"}
+                  data-pane="waves"
+                >
+                  {waveReadout(false)}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      <section
+        ref={windSection}
+        aria-labelledby="week-wind"
+        data-week-section="wind"
+      >
+        <div className={s.weekHead()}>
+          <h3 className={s.h3()} id="week-wind">
+            Wind
+          </h3>
+          {windModels && (
+            <span className={s.weekSub()}>
+              {wide ? windModels : `${models.length} models`}
+            </span>
+          )}
+        </div>
+        {wide && (
+          <div className={s.tools()} ref={tools}>
+            {windReadout(true)}
+          </div>
+        )}
+        <div className={s.gbox()} ref={gbox}>
+          <BandNames
+            height={GH}
+            held={held}
+            bands={(Object.keys(ROW) as WindBand[])
+              .filter((band) => rated || band !== "stars")
+              .map((band) => [
+                WIND_NAME[band],
+                band === "stars"
+                  ? ROW.stars[0] + 10
+                  : band === "wind"
+                    ? ROW.wind[0] + 46
+                    : band === "dir"
+                      ? ROW.dir[0] + 18
+                      : band === "tide"
+                        ? ROW.tide[0] + 42
+                        : band === "sky"
+                          ? ROW.sky[0] + 20
+                          : ROW[band][0] + Math.min(ROW[band][1], 40) / 2,
+                ROW[band],
+              ])}
+          />
+          <div {...graphProps("wind")} ref={ref} data-spot-graph>
+            <svg
+              ref={windSvg}
+              width={W}
+              height={GH}
+              viewBox={`0 0 ${W} ${GH}`}
+              {...svgProps("wind")}
+              data-graph-svg
+            >
+              <defs>
+                <linearGradient
+                  id="spot-wind"
+                  gradientUnits="userSpaceOnUse"
+                  x1={0}
+                  x2={W}
+                  y1={0}
+                  y2={0}
+                >
+                  {windRows.map((r, i) => (
+                    <stop
+                      key={i}
+                      offset={Math.min(1, Math.max(0, mid(r) / W)).toFixed(4)}
+                      stopColor={windCss(r.hour.wind!.wind_kn)}
                     />
+                  ))}
+                </linearGradient>
+                {deepAt !== null && (
+                  <clipPath id="spot-deep">
+                    <rect x={0} y={0} width={W} height={TY(deepAt)} />
+                  </clipPath>
+                )}
+              </defs>
+              {frame(GH, ay, true)}
+              {rows.map((r, i) =>
+                r.rating && seen(r) ? (
+                  <rect
+                    key={i}
+                    x={X(r.time) + 1}
+                    y={ROW.stars[0]}
+                    width={r.step * px - 2}
+                    height={ROW.stars[1]}
+                    rx={2}
+                    className={STAR_FILL[r.rating.stars]}
+                  />
+                ) : null,
+              )}
+              {spread && (
+                <path d={spread} className="fill-ink" fillOpacity={0.07} />
+              )}
+              {mean.line && (
+                <>
+                  <path
+                    d={mean.area}
+                    fill="url(#spot-wind)"
+                    fillOpacity={0.78}
+                  />
+                  <path
+                    d={mean.line}
+                    fill="none"
+                    stroke="url(#spot-wind)"
+                    strokeWidth={2.2}
+                  />
+                </>
+              )}
+              {gust && (
+                <path
+                  d={gust}
+                  className="fill-none stroke-gust"
+                  strokeWidth={1.6}
+                  strokeDasharray="4 3"
+                />
+              )}
+              {readings.length > 0 && (
+                <g data-measured={measured!.station.id}>
+                  {/* On a ground-coloured halo, so the gold reads over the
+                      wind's own colours and the paper alike. */}
+                  {measuredLine && (
+                    <>
+                      <path
+                        d={measuredLine}
+                        className="fill-none stroke-ground"
+                        strokeWidth={4.4}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d={measuredLine}
+                        className="fill-none stroke-buoy"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        data-measured-line
+                      />
+                    </>
+                  )}
+                  {readings.map((r) =>
+                    r.gustKn === null ? null : (
+                      <circle
+                        key={`g${r.time}`}
+                        cx={rx(r)}
+                        cy={Y(r.gustKn)}
+                        r={2.3}
+                        className="fill-ground stroke-buoy"
+                        strokeWidth={1.4}
+                        data-measured-gust={r.time}
+                      />
+                    ),
+                  )}
+                  {readings.map((r) => (
+                    <circle
+                      key={`w${r.time}`}
+                      cx={rx(r)}
+                      cy={Y(r.windKn)}
+                      r={2.6}
+                      className="fill-buoy stroke-ground"
+                      strokeWidth={1.2}
+                      data-measured-wind={r.time}
+                    />
+                  ))}
+                </g>
+              )}
+              {[10, 20, 30].map((k) => (
+                <text
+                  key={k}
+                  x={W - 6}
+                  y={Y(k) - 3}
+                  textAnchor="end"
+                  className="fill-ink-muted font-body text-caption"
+                >
+                  {speed.say(k)}
+                </text>
+              ))}
+              {windRows
+                .filter((r) => dublinHour(r.time) % 3 === 0)
+                .map((r, i) => (
+                  <g key={i}>
+                    <g
+                      transform={`translate(${mid(r)},${ROW.dir[0] + 9}) rotate(${r.hour.wind!.direction_deg + 180})`}
+                    >
+                      <path
+                        d={ARROW}
+                        className={
+                          isOff(r.shore)
+                            ? "fill-none stroke-pen"
+                            : "fill-none stroke-ink"
+                        }
+                        strokeWidth={1.8}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </g>
+                    <text
+                      x={mid(r)}
+                      y={ROW.dir[0] + 34}
+                      textAnchor="middle"
+                      className="fill-ink font-body text-body font-semibold"
+                    >
+                      {speed.say(r.hour.wind!.wind_kn)}
+                    </text>
                   </g>
+                ))}
+              {curve.line && (
+                <>
+                  <path d={curve.area} className="fill-sea-3" />
+                  {deepAt !== null && (
+                    <path
+                      d={curve.area}
+                      className="fill-depth"
+                      fillOpacity={0.9}
+                      clipPath="url(#spot-deep)"
+                    />
+                  )}
+                  <path
+                    d={curve.line}
+                    className="fill-none stroke-ink-2"
+                    strokeWidth={1.4}
+                  />
+                </>
+              )}
+              {turns
+                .filter((t) => t.time >= start && t.time <= end && seen(t))
+                .map((t, i) => (
                   <text
-                    x={mid(r)}
-                    y={ROW.dir[0] + 34}
+                    key={i}
+                    x={X(t.time)}
+                    y={t.tide === "high" ? TY(t.height) - 6 : TY(t.height) + 15}
                     textAnchor="middle"
-                    className="fill-ink font-body text-body font-semibold"
+                    className="fill-ink-2 font-body text-caption"
                   >
-                    {speed.say(r.hour.wind!.wind_kn)}
+                    {clock(t.time)}
+                  </text>
+                ))}
+              <LowerBands
+                rows={rows}
+                seen={seen}
+                apart={apart}
+                lower={lower.at}
+                X={X}
+                px={px}
+                W={W}
+                hover={hover}
+                rider={rider}
+                rated={rated}
+                models={models}
+                blend={blend}
+                current={current}
+                rain={rain}
+                units={units}
+              />
+              {handovers.filter(seen).map((h, i) => (
+                <g key={i}>
+                  <line
+                    x1={X(h.time)}
+                    x2={X(h.time)}
+                    y1={ROW.wind[0] - 6}
+                    y2={ROW.dir[0] + 40}
+                    className="stroke-ink-muted"
+                    strokeDasharray="3 4"
+                  />
+                  <text
+                    x={X(h.time) + 6}
+                    y={ROW.wind[0] + 6}
+                    className="fill-ink-muted font-body text-caption"
+                  >
+                    {modelName(h.to)} from here
                   </text>
                 </g>
               ))}
-            {sea && <path d={sea} className="fill-sea-1" fillOpacity={0.9} />}
-            {curve.line && (
-              <>
-                <path d={curve.area} className="fill-sea-3" />
-                {deepAt !== null && (
-                  <path
-                    d={curve.area}
-                    className="fill-depth"
-                    fillOpacity={0.9}
-                    clipPath="url(#spot-deep)"
-                  />
-                )}
-                <path
-                  d={curve.line}
-                  className="fill-none stroke-ink-2"
-                  strokeWidth={1.4}
+              {marks(ay)}
+              {hoverRow?.hour.wind && (
+                <circle
+                  cx={mid(hoverRow)}
+                  cy={Y(hoverRow.hour.wind.wind_kn)}
+                  r={4}
+                  fill={windCss(hoverRow.hour.wind.wind_kn)}
+                  className="stroke-ground"
+                  strokeWidth={2}
                 />
-              </>
-            )}
-            {turns
-              .filter((t) => t.time >= start && t.time <= end && seen(t))
-              .map((t, i) => (
-                <text
-                  key={i}
-                  x={X(t.time)}
-                  y={t.tide === "high" ? TY(t.height) - 6 : TY(t.height) + 15}
-                  textAnchor="middle"
-                  className="fill-ink-2 font-body text-caption"
+              )}
+            </svg>
+            {lower.at.current && current.columns.length === 0 && (
+              // Said once, and kept in view as the hours scroll under it.
+              <div
+                className="pointer-events-none absolute left-0"
+                style={{ top: lower.at.current[0] + 10, width: W }}
+              >
+                <span
+                  className="sticky left-3 inline-block font-body text-caption text-ink-muted"
+                  data-current-note
                 >
-                  {clock(t.time)}
-                </text>
-              ))}
-            <LowerBands
-              rows={rows}
-              seen={seen}
-              apart={apart}
-              lower={lower.at}
-              X={X}
-              px={px}
-              W={W}
-              hover={hover}
-              rider={rider}
-              rated={rated}
-              models={models}
-              current={current}
-              rain={rain}
-              units={units}
-            />
-            {/* The hours along the foot: every sixth, or with the night
-                left out every third, clear of where each day starts. */}
-            {Array.from(
-              { length: Math.ceil((end - start) / HOUR / tick) },
-              (_, i) => start + i * tick * HOUR,
-            )
+                  {current.note ?? "Current: reading…"}
+                </span>
+              </div>
+            )}
+            {rows
               .filter(
-                (t) =>
-                  dublinHour(t) % 24 !== 0 &&
-                  (!dark ||
-                    line.spans.some(
-                      (span) =>
-                        // Clear of the day's name at its start.
-                        t >= span.from &&
-                        X(t) - X(span.from) >= 60 &&
-                        span.to - t >= HOUR,
-                    )),
+                (r) =>
+                  r.hour.weather && dublinHour(r.time) % 3 === 0 && seen(r),
               )
-              .map((t) => (
-                <text
-                  key={t}
-                  x={X(t)}
-                  y={ay + 14}
-                  textAnchor="middle"
-                  className="fill-ink-muted font-body text-caption"
-                >
-                  {String(dublinHour(t)).padStart(2, "0")}
-                </text>
-              ))}
-            {days.map(({ day, midnight }, i) =>
-              !drawn(midnight) ? null : (
-                <text
+              .map((r, i) => (
+                <span
                   key={i}
-                  x={X(midnight) + 8}
-                  y={ay + 14}
-                  className="fill-ink font-body text-caption font-semibold"
+                  className={s.sky()}
+                  style={{ left: mid(r) - 10, top: ROW.sky[0] + 4 }}
                 >
-                  {dayNames(day.date, now).relative === "Today"
-                    ? "Today"
-                    : dayNames(day.date, now).short}{" "}
-                  {Number(day.date.slice(8, 10))}
-                </text>
-              ),
-            )}
-            {handovers.filter(seen).map((h, i) => (
-              <g key={i}>
-                <line
-                  x1={X(h.time)}
-                  x2={X(h.time)}
-                  y1={ROW.wind[0] - 6}
-                  y2={ROW.dir[0] + 40}
-                  className="stroke-ink-muted"
-                  strokeDasharray="3 4"
-                />
-                <text
-                  x={X(h.time) + 6}
-                  y={ROW.wind[0] + 6}
-                  className="fill-ink-muted font-body text-caption"
-                >
-                  {modelName(h.to)} from here
-                </text>
-              </g>
-            ))}
-            <line
-              x1={X(now)}
-              x2={X(now)}
-              y1={4}
-              y2={ay}
-              className="stroke-pen"
-              strokeWidth={1.5}
+                  <SkyGlyph
+                    weather={r.hour.weather!}
+                    size={16}
+                    dark={!r.hour.daylight}
+                  />
+                  {r.hour.weather!.air_c !== null &&
+                    `${Math.round(r.hour.weather!.air_c)}°`}
+                </span>
+              ))}
+          </div>
+          {card?.section === "wind" && shownRow && (
+            <HoverCard
+              title="Wind blend"
+              when={hourWords}
+              left={card.left}
+              top={card.top}
+              rows={[
+                ...models.map((m) => {
+                  const p = m.points.find((q) => q.time === shownRow.time);
+                  return {
+                    id: m.id,
+                    mark: <ModelMark wind={m.id} />,
+                    name: modelName(m.id),
+                    value: p
+                      ? `${speed.say(p.kn)} ${speed.unit}`.trim()
+                      : shownRow.time > m.points.at(-1)!.time
+                        ? "ended"
+                        : null,
+                    extra: p
+                      ? compass(p.from)
+                      : shownRow.time < m.points[0].time
+                        ? `from ${clock(m.points[0].time)}`
+                        : "",
+                  };
+                }),
+              ]}
+              blend={(() => {
+                const b = blend.get(shownRow.time);
+                return models.length > 1 && b
+                  ? {
+                      value: `${speed.say(b.kn)} ${speed.unit}`.trim(),
+                      range: `${speed.say(b.low)}–${speed.say(b.high)} ${speed.unit}`.trim(),
+                    }
+                  : null;
+              })()}
+              data-card="wind"
             />
-            {hoverRow && (
-              <g>
-                <rect
-                  x={X(hoverRow.time)}
-                  y={4}
-                  width={hoverRow.step * px}
-                  height={ay - 4}
-                  rx={Math.min(6, px / 2)}
-                  className="fill-ink"
-                  fillOpacity={0.07}
-                />
-                {phone && (
-                  <line
-                    x1={mid(hoverRow)}
-                    x2={mid(hoverRow)}
-                    y1={4}
-                    y2={ay}
-                    className="stroke-ink"
-                    strokeOpacity={0.5}
-                    strokeWidth={1.5}
-                    data-playhead-line
-                  />
-                )}
-                {hoverRow.hour.wind && (
-                  <circle
-                    cx={mid(hoverRow)}
-                    cy={Y(hoverRow.hour.wind.wind_kn)}
-                    r={4}
-                    fill={windCss(hoverRow.hour.wind.wind_kn)}
-                    className="stroke-ground"
-                    strokeWidth={2}
-                  />
-                )}
-              </g>
-            )}
-          </svg>
-          {lower.at.current && current.columns.length === 0 && (
-            // Said once, and kept in view as the hours scroll under it.
-            <div
-              className="pointer-events-none absolute left-0"
-              style={{ top: lower.at.current[0] + 10, width: W }}
-            >
-              <span
-                className="sticky left-3 inline-block font-body text-caption text-ink-muted"
-                data-current-note
-              >
-                {current.note ?? "Current: reading…"}
-              </span>
-            </div>
           )}
-          {rows
-            .filter(
-              (r) => r.hour.weather && dublinHour(r.time) % 3 === 0 && seen(r),
-            )
-            .map((r, i) => (
-              <span
-                key={i}
-                className={s.sky()}
-                style={{ left: mid(r) - 10, top: ROW.sky[0] + 4 }}
-              >
-                <SkyGlyph
-                  weather={r.hour.weather!}
-                  size={16}
-                  dark={!r.hour.daylight}
-                />
-                {r.hour.weather!.air_c !== null &&
-                  `${Math.round(r.hour.weather!.air_c)}°`}
-              </span>
-            ))}
         </div>
-      </div>
-      {/* The key, in groups as the graph's bands run, each mark drawn as
-          the graph draws it. */}
-      <div className={s.legend()} data-legend>
-        <KeyGroup name="Wind">
-          <KeyItem mark="wind">Wind</KeyItem>
-          <KeyItem mark="gust">Gust</KeyItem>
-          {readings.length > 0 && (
-            <KeyItem mark="measured" data-measured-key>
-              Measured at {pairedName(measured!)}, wind and gust
-            </KeyItem>
-          )}
-          {/* A point reads one model an hour: nothing to disagree. */}
-          {rated && <KeyItem mark="spread">Where models disagree</KeyItem>}
-        </KeyGroup>
-        {rated && (
-          <KeyGroup name="Gusts">
-            <KeyItem mark="costs">Costs a star</KeyItem>
-            <KeyItem mark="over">Past too much: no stars</KeyItem>
+        {/* The key, in groups as the graph's bands run, each mark drawn as
+            the graph draws it. */}
+        <div className={s.legend()} data-legend>
+          <KeyGroup name="Wind">
+            <KeyItem mark="wind">Wind</KeyItem>
+            <KeyItem mark="gust">Gust</KeyItem>
+            {readings.length > 0 && (
+              <KeyItem mark="measured" data-measured-key>
+                Measured at {pairedName(measured!)}, wind and gust
+              </KeyItem>
+            )}
+            {/* A point reads one model an hour: nothing to disagree. */}
+            {rated && <KeyItem mark="spread">Where models disagree</KeyItem>}
           </KeyGroup>
-        )}
-        <KeyGroup name="Sea" wide>
-          <KeyItem mark="waves">Waves: where they run, period in s</KeyItem>
-          <KeyItem mark="current">
-            Current: where it runs, in {unitLabel(currentUnits(units))}
-          </KeyItem>
-          {deepAt !== null && (
-            <KeyItem mark="depth">1 m of water or more at the launch</KeyItem>
-          )}
-        </KeyGroup>
-        <KeyGroup name="Sky">
-          {!dark && <KeyItem mark="dark">Dark</KeyItem>}
-          <KeyItem mark="rain">Rain, mm/h</KeyItem>
-        </KeyGroup>
-        {models.length > 0 && (
-          <KeyGroup name="Models" data-models-legend>
-            {models.map((m) => {
-              const at = shownRow
-                ? m.points.find((p) => p.time === shownRow.time)
-                : undefined;
-              return (
+          {models.length > 0 && (
+            <KeyGroup
+              name={`Wind blend${speed.unit ? `, ${speed.unit}` : ""}`}
+              data-models-legend
+            >
+              {models.map((m) => {
+                const at = shownRow
+                  ? m.points.find((p) => p.time === shownRow.time)
+                  : undefined;
+                return (
+                  <KeyItem
+                    key={m.id}
+                    hue={modelHue(m.id).wind}
+                    dashed={DASHED.has(m.id)}
+                    figure={at ? speed.say(at.kn) : ""}
+                    data-model-key={m.id}
+                  >
+                    {modelName(m.id)}
+                  </KeyItem>
+                );
+              })}
+              {models.length > 1 && (
                 <KeyItem
-                  key={m.id}
-                  hue={modelHue(m.id).wind}
-                  figure={at ? speed.say(at.kn) : ""}
-                  data-model-key={m.id}
+                  mark="blend"
+                  figure={(() => {
+                    const b = shownRow ? blend.get(shownRow.time) : undefined;
+                    return b ? speed.say(b.kn) : "";
+                  })()}
+                  data-model-key="blend"
                 >
-                  {modelName(m.id)}
+                  Blend
                 </KeyItem>
-              );
-            })}
+              )}
+            </KeyGroup>
+          )}
+          {rated && (
+            <KeyGroup name="Gusts">
+              <KeyItem mark="costs">Costs a star</KeyItem>
+              <KeyItem mark="over">Past too much: no stars</KeyItem>
+            </KeyGroup>
+          )}
+          <KeyGroup name="Sky and sea" wide>
+            {!dark && <KeyItem mark="dark">Dark</KeyItem>}
+            <KeyItem mark="rain">Rain, mm/h</KeyItem>
+            <KeyItem mark="current">
+              Current: where it runs, in {unitLabel(currentUnits(units))}
+            </KeyItem>
+            {deepAt !== null && (
+              <KeyItem mark="depth">1 m of water or more at the launch</KeyItem>
+            )}
           </KeyGroup>
+        </div>
+      </section>
+      {waves && waveStack && (
+        <section
+          ref={waveSection}
+          aria-labelledby="week-waves"
+          data-week-section="waves"
+        >
+          <div className={s.weekHead({ className: "mt-9" })}>
+            <h3 className={s.h3()} id="week-waves">
+              Waves
+            </h3>
+            {waveModels && (
+              <span className={s.weekSub()}>
+                {wide ? waveModels : `${waves.lines.length} models`}
+              </span>
+            )}
+          </div>
+          {wide && <div className={s.tools()}>{waveReadout(true)}</div>}
+          <div className={s.gbox()} ref={waveBox}>
+            <BandNames
+              height={waveStack.height}
+              held={held}
+              bands={(Object.keys(waveStack.at) as WaveBand[]).map((band) => {
+                const [y, h] = waveStack.at[band]!;
+                return [
+                  WAVE_NAME[band],
+                  band === "waves"
+                    ? y + 18
+                    : band === "wdir"
+                      ? y + 18
+                      : y + Math.min(h, 40) / 2,
+                  [y, h],
+                ];
+              })}
+            />
+            <div {...graphProps("waves")} ref={waveRef} data-wave-graph>
+              <svg
+                ref={waveSvg}
+                width={W}
+                height={waveStack.height}
+                viewBox={`0 0 ${W} ${waveStack.height}`}
+                {...svgProps("waves")}
+                data-wave-svg
+              >
+                {frame(waveStack.height, waveStack.axis, false)}
+                <WaveBands
+                  rows={rows}
+                  waves={waves}
+                  seen={seen}
+                  apart={apart}
+                  bands={waveStack.at}
+                  X={X}
+                  px={px}
+                  W={W}
+                  hover={hover}
+                  end={end}
+                  handovers={waveHandovers(rows, waves).filter(seen)}
+                />
+                {marks(waveStack.axis)}
+              </svg>
+            </div>
+            {card?.section === "waves" && shownRow && (
+              <HoverCard
+                title="Wave blend"
+                when={hourWords}
+                left={card.left}
+                top={card.top}
+                rows={waves.lines.map((l) => {
+                  const own = shownRow.hour.waves?.by_model?.[l.id];
+                  const before = shownRow.time + shownRow.step * HOUR <= l.first;
+                  return {
+                    id: l.id,
+                    mark: <ModelMark wave={l.id} />,
+                    name: waveModelName(l.id),
+                    // Between two of its own steps it has no value: none is
+                    // read between them.
+                    value: own
+                      ? `${own.height_m.toFixed(1)} m`
+                      : shownRow.time > l.last
+                        ? "ended"
+                        : null,
+                    extra: own
+                      ? own.period_s === null
+                        ? ""
+                        : `${Math.round(own.period_s)} s`
+                      : before
+                        ? `from ${clock(l.first)}`
+                        : "",
+                  };
+                })}
+                blend={
+                  waveAt?.blendM != null
+                    ? {
+                        value: `${waveAt.blendM.toFixed(1)} m`,
+                        extra:
+                          waveAt.blendPeriodS === null
+                            ? ""
+                            : `${Math.round(waveAt.blendPeriodS)} s`,
+                        range:
+                          waveAt.lowM !== null && waveAt.highM !== null
+                            ? `${waveAt.lowM.toFixed(1)}–${waveAt.highM.toFixed(1)} m`
+                            : null,
+                      }
+                    : null
+                }
+                data-card="waves"
+              />
+            )}
+          </div>
+          <div className={s.legend()} data-wave-legend>
+            <KeyGroup name="Waves">
+              <KeyItem mark="sea">
+                {waveModel
+                  ? `Wave height: ${waveModelName(waveModel)}, and the next model past its run`
+                  : "Wave height: the finest model at each hour"}
+              </KeyItem>
+              {waves.lines.length > 1 && (
+                <KeyItem mark="spread">Where models disagree</KeyItem>
+              )}
+              <KeyItem mark="waves">Arrow: where they run; figure: metres</KeyItem>
+            </KeyGroup>
+            <KeyGroup name="Wave blend, m" wide data-wave-models-legend>
+              {waves.lines.map((l) => {
+                const own = shownRow?.hour.waves?.by_model?.[l.id];
+                const detail = modelEntry(l.id)?.detail;
+                return (
+                  <KeyItem
+                    key={l.id}
+                    stroke={waveHue(l.id).stroke}
+                    dashed={DASHED.has(l.id)}
+                    figure={own ? own.height_m.toFixed(1) : ""}
+                    data-model-key={l.id}
+                  >
+                    {waveModelName(l.id)}
+                    {detail && (
+                      <span className="text-ink-muted"> · {detail}</span>
+                    )}
+                  </KeyItem>
+                );
+              })}
+              {waves.blended && (
+                <KeyItem
+                  mark="blend"
+                  figure={
+                    waveAt?.blendM != null ? waveAt.blendM.toFixed(1) : ""
+                  }
+                  data-model-key="blend"
+                >
+                  Blend
+                </KeyItem>
+              )}
+            </KeyGroup>
+            {PART_ROWS.some(([key]) => waveStack.at[key]) && (
+              <KeyGroup name="Swell">
+                <KeyItem mark="swell">
+                  Each train: how high, its period, where it runs
+                </KeyItem>
+              </KeyGroup>
+            )}
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
+
+/** The partition bands, by key: a band of the waves' section only where it has data. */
+const WAVE_PART: Record<string, true> = Object.fromEntries(
+  PART_ROWS.map(([key]) => [key, true]),
+);
+
+/** The hover card's width, and a row's height, for placing it in the graph. */
+const CARD_WIDTH = 256;
+const CARD_ROW = 22;
+
+/**
+ * A section's band names, in a column of their own beside the hours, each in
+ * a strip as tall as its band, held below a phone's readout while any of the
+ * band is still in view.
+ */
+function BandNames({
+  height,
+  held,
+  bands,
+}: {
+  height: number;
+  held: number;
+  bands: (readonly [string, number, readonly [number, number]])[];
+}) {
+  const s = styles();
+  return (
+    <div className={s.gl()} style={{ height }}>
+      {bands.map(([name, middle, [y, h]]) => (
+        // The strip runs from where the name sits, beside the middle of
+        // its band, to the band's foot: as far as the name can be held.
+        <div
+          key={`${name}${y}`}
+          className={s.glBand()}
+          style={{
+            top: middle - 8,
+            height: Math.max(16, y + h - (middle - 8)),
+          }}
+        >
+          <span
+            className={s.glName()}
+            style={{ top: held }}
+            data-band-name={name}
+          >
+            {name}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A model's line, small, as the graph draws it: in its colour, dashed if it is. */
+function ModelMark({
+  wind,
+  wave,
+  blend = false,
+}: {
+  wind?: string;
+  wave?: string;
+  blend?: boolean;
+}) {
+  const id = wind ?? wave ?? "";
+  return (
+    <svg
+      className="h-1.5 w-3.5 shrink-0 overflow-visible"
+      viewBox="0 0 14 6"
+      aria-hidden="true"
+    >
+      <path
+        d="M1 3H13"
+        fill="none"
+        stroke={wind ? modelHue(wind).wind : undefined}
+        className={
+          blend ? "stroke-ink" : wave ? waveHue(wave).stroke : undefined
+        }
+        strokeWidth={blend ? 2.5 : 2}
+        strokeLinecap="round"
+        strokeDasharray={!blend && DASHED.has(id) ? "3 2" : undefined}
+      />
+    </svg>
+  );
+}
+
+/**
+ * The phone's readout of a blend: each model's value at the hour, then the
+ * blend's apart, past a line, so every line in the band is named.
+ */
+function BlendStrip({
+  label,
+  items,
+  blend,
+}: {
+  label: string;
+  items: {
+    id: string;
+    name: string;
+    mark: React.ReactNode;
+    value: string | null;
+  }[];
+  /** The blend's value, null where it has none at the hour; undefined: no blend. */
+  blend?: string | null;
+}) {
+  const s = styles();
+  return (
+    <div className={s.ro({ className: "col-span-4" })} data-blend-strip>
+      <span className={s.roLabel()}>{label}</span>
+      <div className={s.strip()}>
+        {items.map((item) => (
+          <div key={item.id} className={s.bl()} data-strip-model={item.id}>
+            <span className={s.blName()}>
+              {item.mark}
+              <span className="truncate">{item.name}</span>
+            </span>
+            <b
+              className={s.blValue({
+                className: item.value === null ? s.blNone() : undefined,
+              })}
+            >
+              {item.value ?? "–"}
+            </b>
+          </div>
+        ))}
+        {blend !== undefined && (
+          <div
+            className={s.bl({ className: s.blBlend() })}
+            data-strip-model="blend"
+          >
+            <span className={s.blName({ className: "font-semibold text-ink" })}>
+              <ModelMark blend />
+              Blend
+            </span>
+            <b
+              className={s.blValue({
+                className: blend === null ? s.blNone() : s.blSum(),
+              })}
+            >
+              {blend ?? "–"}
+            </b>
+          </div>
         )}
       </div>
-    </>
+    </div>
+  );
+}
+
+/**
+ * Beside the pointer over a section, on a desktop: that section's models at
+ * the hour, and their blend with the models' range. Never both sections'.
+ */
+function HoverCard({
+  title,
+  when,
+  left,
+  top,
+  rows,
+  blend,
+  ...data
+}: {
+  title: string;
+  when: string;
+  left: number;
+  top: number;
+  rows: {
+    id: string;
+    mark: React.ReactNode;
+    name: string;
+    /** Its value, "ended" past its run, or null before it starts. */
+    value: string | null;
+    extra: string;
+  }[];
+  blend: { value: string; extra?: string; range: string | null } | null;
+  "data-card": Section;
+}) {
+  const s = styles();
+  return (
+    <div
+      className={s.card2()}
+      style={{ left, top, width: CARD_WIDTH }}
+      aria-hidden="true"
+      {...data}
+    >
+      <div className={s.cardHead()}>
+        {title}
+        <span className="font-normal text-ink-muted">{when}</span>
+      </div>
+      <table className="w-full border-collapse tabular-nums">
+        <tbody>
+          {rows.map((r) => (
+            <tr
+              key={r.id}
+              className={r.value === null || r.value === "ended" ? "text-ink-muted" : undefined}
+              data-card-model={r.id}
+            >
+              <td className="w-5 py-0.5">{r.mark}</td>
+              <td className="py-0.5 whitespace-nowrap text-ink-2">{r.name}</td>
+              <td
+                className={`py-0.5 pl-2.5 text-right whitespace-nowrap ${
+                  r.value === null || r.value === "ended"
+                    ? "font-normal"
+                    : "font-semibold text-ink"
+                }`}
+              >
+                {r.value ?? "–"}
+              </td>
+              <td className="w-px py-0.5 pl-2 text-right whitespace-nowrap text-ink-muted">
+                {r.extra}
+              </td>
+            </tr>
+          ))}
+          {blend && (
+            <>
+              <tr className="font-semibold text-ink" data-card-model="blend">
+                <td className="w-5 border-0 border-t border-line pt-1.5">
+                  <ModelMark blend />
+                </td>
+                <td className="border-0 border-t border-line pt-1.5">Blend</td>
+                <td className="border-0 border-t border-line pt-1.5 pl-2.5 text-right whitespace-nowrap">
+                  {blend.value}
+                </td>
+                <td className="border-0 border-t border-line pt-1.5 pl-2 text-right whitespace-nowrap">
+                  {blend.extra ?? ""}
+                </td>
+              </tr>
+              {blend.range && (
+                <tr className="text-ink-muted">
+                  <td />
+                  <td className="py-0.5 whitespace-nowrap">Models range</td>
+                  <td
+                    className="py-0.5 pl-2.5 text-right whitespace-nowrap"
+                    colSpan={2}
+                  >
+                    {blend.range}
+                  </td>
+                </tr>
+              )}
+            </>
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -2167,7 +3150,10 @@ type KeyMarkKind =
   | "current"
   | "depth"
   | "dark"
-  | "rain";
+  | "rain"
+  | "blend"
+  | "sea"
+  | "swell";
 
 /** A group of the key under the graph: a small heading, and its marks. */
 function KeyGroup({
@@ -2181,6 +3167,7 @@ function KeyGroup({
   wide?: boolean;
   children: React.ReactNode;
   "data-models-legend"?: boolean;
+  "data-wave-models-legend"?: boolean;
 }) {
   const s = styles();
   return (
@@ -2196,22 +3183,29 @@ function KeyGroup({
 
 /**
  * One mark of the key, drawn as the graph draws it, at one size for every
- * mark: `mark` is the kind, or `hue` a model's colour for its line. A model's figure
- * at the hour read out sits in a slot of its own, kept whether there is a
- * figure or not, so the key never rewraps as the hours move.
+ * mark: `mark` is the kind, or a model's line in its colour, `hue` (a wind
+ * model's) or `stroke` (a wave model's class), dashed if its line is. A
+ * model's figure at the hour read out sits in a slot of its own, kept
+ * whether there is a figure or not, so the key never rewraps as the hours
+ * move.
  */
 function KeyItem({
   mark,
   hue,
+  stroke,
+  dashed = false,
   figure,
   children,
   ...data
 }: {
   mark?: KeyMarkKind;
   hue?: string;
+  stroke?: string;
+  dashed?: boolean;
   figure?: string;
   children: React.ReactNode;
   "data-model-key"?: string;
+  "data-measured-key"?: boolean;
 }) {
   const s = styles();
   return (
@@ -2230,8 +3224,10 @@ function KeyItem({
             d="M0 6H20"
             fill="none"
             stroke={hue}
+            className={stroke}
             strokeWidth={1.6}
             strokeLinecap="round"
+            strokeDasharray={dashed ? DASH : undefined}
           />
         )}
       </svg>
@@ -2354,6 +3350,42 @@ function KeyMark({ mark }: { mark: KeyMarkKind }) {
           fillOpacity={0.09}
         />
       );
+    case "blend":
+      return (
+        <path
+          d="M0 6H20"
+          className="fill-none stroke-ink"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+        />
+      );
+    case "sea":
+      return (
+        <rect
+          x={0}
+          y={1}
+          width={20}
+          height={10}
+          rx={2}
+          className="fill-sea-1"
+          fillOpacity={0.9}
+        />
+      );
+    case "swell":
+      return (
+        <>
+          <path
+            d="M0 9C5 7 9 8 14 7S18 6 20 6V12H0Z"
+            className="fill-sea-1"
+            fillOpacity={0.55}
+          />
+          <path
+            d="M0 9C5 7 9 8 14 7S18 6 20 6"
+            className="fill-none stroke-depth"
+            strokeWidth={1.2}
+          />
+        </>
+      );
     case "rain":
       return (
         <g className="fill-weather-rain">
@@ -2365,28 +3397,22 @@ function KeyMark({ mark }: { mark: KeyMarkKind }) {
   }
 }
 
-/** The lower bands' names, down the graph's left edge. */
-const LOWER_NAME: Record<LowerBand, string> = {
-  rain: "Rain",
-  models: "Models",
-  gusts: "Gusts",
-  waves: "Waves",
-  current: "Current",
-};
-
 /**
- * The graph's lower bands (`LOWER`), drawn on its own hours. Each is the
- * dock's row of the same name, carried over:
+ * The wind section's bands under its sky, each a row of the chart's old dock
+ * carried here when the dock gave way to the chart's scrub bar, on the
+ * graph's own hours, its scroll, its nights and its pointer:
  *
+ * - Wind blend: every model the rider blends (Settings), its own wind as its
+ *   own line in its own colour, the global models dashed, and their blend in
+ *   ink over the band from the lowest model to the highest (`windBlend`), on
+ *   the tens either side of the week's model winds so the lines fill the
+ *   band. The blend is said here and nowhere else: the headline wind, and
+ *   the stars, stay the one model's own.
+ * - Gusts: the gust factor every third hour, and behind every hour the
+ *   stars' reading of its gust, as the dock tinted it (`gustReading`).
  * - Rain: each row's mm/h as a bar, on the square root the dock's rain tint
  *   reads (force5/src/rain.ts), so a wet hour of 0.2 mm shows and a downpour
  *   still fits; the figure every third hour it rains.
- * - Models: every model the rider blends (Settings), its own wind as its own
- *   line, in its own colour, on a scale from the tens either side of the
- *   week's model winds, so the lines fill the band.
- * - Gusts: the gust factor every third hour, and behind every hour the
- *   stars' reading of its gust, as the dock tinted it (`gustReading`).
- * - Waves: where the sea runs, as the arrow points, and its period.
  * - Current: where the water runs, and how fast; with none, the dock's note.
  */
 function LowerBands({
@@ -2401,6 +3427,7 @@ function LowerBands({
   rider,
   rated,
   models,
+  blend,
   current,
   rain,
   units,
@@ -2410,7 +3437,7 @@ function LowerBands({
   seen: (row: Pick<SpotRow, "time">) => boolean;
   /** Whether a night left out stands between two times: a line breaks there. */
   apart: (a: number, b: number) => boolean;
-  lower: ReturnType<typeof lowerBands>["at"];
+  lower: Stack<WindBand>["at"];
   X: (t: number) => number;
   px: number;
   W: number;
@@ -2418,6 +3445,7 @@ function LowerBands({
   rider: Rider;
   rated: boolean;
   models: readonly ModelSeries[];
+  blend: ReadonlyMap<number, WindBlendAt>;
   current: SpotCurrents;
   rain: ReadonlyMap<number, number>;
   units: Units;
@@ -2428,6 +3456,27 @@ function LowerBands({
   const third = (r: SpotRow) => dublinHour(r.time) % 3 === 0 && seen(r);
   const caption = "font-body text-caption";
   const hovered = hover === null ? null : rows[hover];
+  /** A line through points in runs, broken where a reading is missing. */
+  const lineOf = (
+    points: readonly { time: number; step: number }[],
+    y: (i: number) => number,
+  ) => {
+    const out: (readonly [number, number])[][] = [];
+    points.forEach((p, i) => {
+      const before = points[i - 1];
+      if (
+        !before ||
+        before.time + before.step * HOUR !== p.time ||
+        apart(before.time, p.time)
+      )
+        out.push([]);
+      out.at(-1)!.push([mid(p), y(i)]);
+    });
+    return out
+      .filter((run) => run.length > 1)
+      .map(smoothPath)
+      .join("");
+  };
   return (
     <>
       {lower.rain &&
@@ -2479,9 +3528,9 @@ function LowerBands({
             </g>
           );
         })()}
-      {lower.models &&
+      {lower.blend &&
         (() => {
-          const [y, h] = lower.models;
+          const [y, h] = lower.blend;
           // On the tens either side of the week's model winds, so the lines
           // fill the band rather than a strip of a scale from calm to 36 kn.
           const kns = models.flatMap((m) =>
@@ -2493,8 +3542,49 @@ function LowerBands({
             kns.length ? Math.ceil(Math.max(...kns) / 10) * 10 : 20,
           );
           const MY = (k: number) => y + h - ((k - lo) / (hi - lo)) * h;
+          // The blend's hours, in the rows' order, drawn where two models or
+          // more feed it: with one, the blend is that model's own line.
+          const blended =
+            models.length > 1
+              ? rows.filter((r) => seen(r) && blend.has(r.time))
+              : [];
+          const spread = blended.length
+            ? (() => {
+                const parts: string[] = [];
+                let run: SpotRow[] = [];
+                const flush = () => {
+                  if (run.length > 1) {
+                    const top = run.map(
+                      (r) => [mid(r), MY(blend.get(r.time)!.high)] as const,
+                    );
+                    const bot = run
+                      .map((r) => [mid(r), MY(blend.get(r.time)!.low)] as const)
+                      .reverse();
+                    parts.push(
+                      `${smoothPath(top)}L${smoothPath(bot).slice(1)}Z`,
+                    );
+                  }
+                  run = [];
+                };
+                blended.forEach((r, i) => {
+                  const before = blended[i - 1];
+                  if (
+                    before &&
+                    (before.time + before.step * HOUR !== r.time ||
+                      apart(before.time, r.time))
+                  )
+                    flush();
+                  run.push(r);
+                });
+                flush();
+                return parts.join("");
+              })()
+            : "";
+          const blendLine = lineOf(blended, (i) =>
+            MY(blend.get(blended[i].time)!.kn),
+          );
           return (
-            <g data-band="models" data-scale={`${lo}-${hi}`}>
+            <g data-band="wind-blend" data-scale={`${lo}-${hi}`}>
               {Array.from(
                 { length: (hi - lo) / 10 + 1 },
                 (_, i) => lo + i * 10,
@@ -2518,35 +3608,36 @@ function LowerBands({
                   </text>
                 </g>
               ))}
+              {spread && (
+                <path d={spread} className="fill-ink" fillOpacity={0.06} />
+              )}
               {models.map((m) => {
                 // A model's line breaks where it has no reading, rather than
                 // drawing a guess across the hole.
-                const runs: (readonly [number, number])[][] = [];
-                m.points.filter(seen).forEach((p, i, points) => {
-                  const before = points[i - 1];
-                  if (
-                    !before ||
-                    before.time + before.step * HOUR !== p.time ||
-                    apart(before.time, p.time)
-                  )
-                    runs.push([]);
-                  runs.at(-1)!.push([mid(p), MY(p.kn)]);
-                });
+                const points = m.points.filter(seen);
                 return (
                   <path
                     key={m.id}
-                    d={runs
-                      .filter((run) => run.length > 1)
-                      .map(smoothPath)
-                      .join("")}
+                    d={lineOf(points, (i) => MY(points[i].kn))}
                     fill="none"
                     stroke={modelHue(m.id).wind}
                     strokeWidth={1.6}
                     strokeLinejoin="round"
+                    strokeLinecap="round"
+                    strokeDasharray={DASHED.has(m.id) ? DASH : undefined}
                     data-model={m.id}
                   />
                 );
               })}
+              {blendLine && (
+                <path
+                  d={blendLine}
+                  className="fill-none stroke-ink"
+                  strokeWidth={2.2}
+                  strokeLinejoin="round"
+                  data-blend
+                />
+              )}
               {hovered &&
                 seen(hovered) &&
                 models.map((m) => {
@@ -2563,6 +3654,18 @@ function LowerBands({
                     />
                   ) : null;
                 })}
+              {hovered &&
+                seen(hovered) &&
+                models.length > 1 &&
+                blend.has(hovered.time) && (
+                  <circle
+                    cx={mid(hovered)}
+                    cy={MY(blend.get(hovered.time)!.kn)}
+                    r={3.5}
+                    className="fill-ink stroke-ground"
+                    strokeWidth={1.5}
+                  />
+                )}
             </g>
           );
         })()}
@@ -2616,46 +3719,6 @@ function LowerBands({
             </g>
           );
         })()}
-      {lower.waves &&
-        (() => {
-          const [y] = lower.waves;
-          return (
-            <g data-band="waves">
-              {rows.filter(third).map((r, i) => {
-                const waves = r.hour.waves;
-                if (!waves || waves.height_m == null) return null;
-                return (
-                  <g key={i}>
-                    {waves.direction_deg !== null && (
-                      <g
-                        transform={`translate(${mid(r)},${y + 10}) rotate(${waves.direction_deg + 180})`}
-                      >
-                        <path
-                          d={ARROW}
-                          className="fill-none stroke-depth"
-                          strokeWidth={1.8}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </g>
-                    )}
-                    {waves.period_s !== null && (
-                      <text
-                        x={mid(r)}
-                        y={y + 34}
-                        textAnchor="middle"
-                        className={`fill-ink-2 ${caption}`}
-                        data-wave-period={waves.period_s}
-                      >
-                        {waves.period_s}s
-                      </text>
-                    )}
-                  </g>
-                );
-              })}
-            </g>
-          );
-        })()}
       {lower.current && current.columns.length > 0 && (
         <g data-band="current">
           {rows.map((r, i) => {
@@ -2698,9 +3761,447 @@ function LowerBands({
   );
 }
 
+/**
+ * The Waves section's bands (`WAVE_BANDS`), on the wind's hours:
+ *
+ * - Waves: the blended height (the models' median, `waveWeek`) as an area in
+ *   the sea's colour, over the band from the lowest model to the highest;
+ *   where the blend is missing, the leading model's own height.
+ * - Direction: where the sea runs, as the arrow points, and its height.
+ * - Period: the peak period, every third hour.
+ * - Wave blend: every wave model's own line through its own steps, in its
+ *   own colour, the global ones dashed; the blend's in ink where it is
+ *   published; and a dotted mark where a model's run ends inside the week.
+ * - The swells and the wind sea: the lead model's own split, each its
+ *   height as a low area and, every sixth hour, where it runs, how high and
+ *   its period. One model's split, never averaged with another's.
+ */
+function WaveBands({
+  rows,
+  waves,
+  seen,
+  apart,
+  bands,
+  X,
+  px,
+  W,
+  hover,
+  end,
+  handovers,
+}: {
+  rows: readonly SpotRow[];
+  waves: WaveWeek;
+  seen: (row: Pick<SpotRow, "time">) => boolean;
+  apart: (a: number, b: number) => boolean;
+  bands: Stack<WaveBand>["at"];
+  X: (t: number) => number;
+  px: number;
+  W: number;
+  hover: number | null;
+  /** The week's end: a run that ends before it is marked where it does. */
+  end: number;
+  /** Where the headline's model changes (`waveHandovers`). */
+  handovers: readonly { time: number; to: string }[];
+}) {
+  const mid = (r: Pick<SpotRow, "time" | "step">) =>
+    X(r.time) + (r.step * px) / 2;
+  const caption = "font-body text-caption";
+  const third = (r: SpotRow) => dublinHour(r.time) % 3 === 0 && seen(r);
+  const sixth = (r: SpotRow) => dublinHour(r.time) % 6 === 3 && seen(r);
+  const at = rows
+    .map((row, i) => ({ row, w: waves.rows[i] }))
+    .filter(
+      (p): p is { row: SpotRow; w: WaveRow } =>
+        p.w !== null && p.w.heightM !== null && seen(p.row),
+    );
+  // Every wave model's height and the blend's on one scale, in half metres.
+  const top = Math.max(
+    0,
+    ...at.map((p) => p.w.highM ?? p.w.heightM!),
+    ...waves.lines.flatMap((l) => l.points.map((p) => p.m)),
+  );
+  const most = Math.max(1.5, Math.ceil(top * 2) / 2);
+  const ticks = Array.from(
+    { length: Math.floor(most / (most > 3 ? 1 : 0.5)) },
+    (_, i) => (i + 1) * (most > 3 ? 1 : 0.5),
+  );
+  /** Runs of the hours drawn, broken at a gap or a night left out. */
+  const runsOf = <T extends { row: Pick<SpotRow, "time" | "step"> }>(
+    items: readonly T[],
+  ): T[][] => {
+    const out: T[][] = [];
+    items.forEach((item, i) => {
+      const before = items[i - 1];
+      if (
+        !before ||
+        before.row.time + before.row.step * HOUR < item.row.time ||
+        apart(before.row.time, item.row.time)
+      )
+        out.push([]);
+      out.at(-1)!.push(item);
+    });
+    return out.filter((run) => run.length > 1);
+  };
+  const band = (
+    items: readonly { row: SpotRow; w: WaveRow }[],
+    y: (m: number) => number,
+  ) =>
+    runsOf(items.filter((p) => p.w.lowM !== null && p.w.highM !== null))
+      .map((run) => {
+        const hi = run.map((p) => [mid(p.row), y(p.w.highM!)] as const);
+        const lo = run
+          .map((p) => [mid(p.row), y(p.w.lowM!)] as const)
+          .reverse();
+        return `${smoothPath(hi)}L${smoothPath(lo).slice(1)}Z`;
+      })
+      .join("");
+  const hovered = hover === null ? null : rows[hover];
+  const hoveredWave = hover === null ? null : waves.rows[hover];
+  const scale = (y: number, h: number, ticks: readonly number[]) =>
+    ticks.map((m) => {
+      const yy = y + h - (m / most) * (h - 4);
+      return (
+        <g key={m}>
+          <line
+            x1={0}
+            x2={W}
+            y1={yy}
+            y2={yy}
+            className="stroke-line"
+            strokeDasharray="2 4"
+          />
+          <text
+            x={W - 6}
+            y={yy - 3}
+            textAnchor="end"
+            className={`fill-ink-muted ${caption}`}
+          >
+            {m} m
+          </text>
+        </g>
+      );
+    });
+  return (
+    <>
+      {bands.waves &&
+        (() => {
+          const [y, h] = bands.waves;
+          const HY = (m: number) => y + h - (Math.min(m, most) / most) * (h - 4);
+          const runs = runsOf(at);
+          const lines = runs.map((run) =>
+            run.map((p) => [mid(p.row), HY(p.w.heightM!)] as const),
+          );
+          return (
+            <g data-band="waves">
+              {scale(y, h, ticks)}
+              {lines.map((pts, i) => (
+                <path
+                  key={i}
+                  d={`${smoothPath(pts)}L${pts.at(-1)![0]},${y + h}L${pts[0][0]},${y + h}Z`}
+                  className="fill-sea-1"
+                  fillOpacity={0.9}
+                />
+              ))}
+              <path
+                d={band(at, HY)}
+                className="fill-ink"
+                fillOpacity={0.14}
+                data-wave-spread
+              />
+              <path
+                d={lines.map(smoothPath).join("")}
+                className="fill-none stroke-depth"
+                strokeWidth={2}
+                data-wave-height
+              />
+              {/* Where the headline's model changes: its run has ended. */}
+              {handovers.map((change) => (
+                <g key={change.time} data-wave-handover={change.to}>
+                  <line
+                    x1={X(change.time)}
+                    x2={X(change.time)}
+                    y1={y - 6}
+                    y2={(bands.wdir ?? bands.waves!)[0] + 40}
+                    className="stroke-ink-muted"
+                    strokeDasharray="3 4"
+                  />
+                  <text
+                    x={X(change.time) + 6}
+                    y={y + 6}
+                    className={`fill-ink-muted ${caption}`}
+                  >
+                    {waveModelName(change.to)} from here
+                  </text>
+                </g>
+              ))}
+              {hovered && hoveredWave?.heightM != null && seen(hovered) && (
+                <circle
+                  cx={mid(hovered)}
+                  cy={HY(hoveredWave.heightM)}
+                  r={4}
+                  className="fill-depth stroke-ground"
+                  strokeWidth={2}
+                />
+              )}
+            </g>
+          );
+        })()}
+      {bands.wdir &&
+        (() => {
+          const [y] = bands.wdir;
+          return (
+            <g data-band="wave-direction">
+              {at
+                .filter((p) => third(p.row))
+                .map(({ row, w }, i) => (
+                  <g key={i}>
+                    {w.from !== null && (
+                      <g
+                        transform={`translate(${mid(row)},${y + 9}) rotate(${w.from + 180})`}
+                      >
+                        <path
+                          d={ARROW}
+                          className="fill-none stroke-depth"
+                          strokeWidth={1.8}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </g>
+                    )}
+                    <text
+                      x={mid(row)}
+                      y={y + 34}
+                      textAnchor="middle"
+                      className="fill-ink font-body text-body font-semibold"
+                      data-wave-height={w.heightM!.toFixed(1)}
+                    >
+                      {w.heightM!.toFixed(1)}
+                    </text>
+                  </g>
+                ))}
+            </g>
+          );
+        })()}
+      {bands.period &&
+        (() => {
+          const [y, h] = bands.period;
+          return (
+            <g data-band="period">
+              {at
+                .filter((p) => third(p.row) && p.w.periodS !== null)
+                .map(({ row, w }, i) => (
+                  <text
+                    key={i}
+                    x={mid(row)}
+                    y={y + h / 2 + 4}
+                    textAnchor="middle"
+                    className={`fill-ink-2 ${caption}`}
+                    data-wave-period={Math.round(w.periodS!)}
+                  >
+                    {Math.round(w.periodS!)}s
+                  </text>
+                ))}
+            </g>
+          );
+        })()}
+      {bands.wblend &&
+        (() => {
+          const [y, h] = bands.wblend;
+          const BY = (m: number) => y + h - (Math.min(m, most) / most) * (h - 4);
+          const blended = at.filter((p) => p.w.blendM !== null);
+          // How far the longest run reaches in the hours drawn: a run that
+          // ends there is cut by the graph, not ended.
+          const reach = Math.max(...waves.lines.map((l) => l.last));
+          return (
+            <g data-band="wave-blend">
+              {scale(
+                y,
+                h,
+                ticks.filter((m) => m < most),
+              )}
+              <path d={band(at, BY)} className="fill-ink" fillOpacity={0.06} />
+              {waves.lines.map((l) => {
+                const points = l.points.filter(seen);
+                // Through its own steps alone: a three-hourly model's line
+                // goes from step to step, and breaks across a night left out.
+                const lines: (readonly [number, number])[][] = [];
+                points.forEach((p, i) => {
+                  const before = points[i - 1];
+                  if (
+                    !before ||
+                    p.time - before.time > 6 * HOUR ||
+                    apart(before.time, p.time)
+                  )
+                    lines.push([]);
+                  lines.at(-1)!.push([mid(p), BY(p.m)]);
+                });
+                return (
+                  <path
+                    key={l.id}
+                    d={lines
+                      .filter((run) => run.length > 1)
+                      .map(smoothPath)
+                      .join("")}
+                    className={`fill-none ${waveHue(l.id).stroke}`}
+                    strokeWidth={1.6}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeDasharray={DASHED.has(l.id) ? DASH : undefined}
+                    data-model={l.id}
+                  />
+                );
+              })}
+              {blended.length > 1 && (
+                <path
+                  d={runsOf(blended)
+                    .map((run) =>
+                      smoothPath(
+                        run.map((p) => [mid(p.row), BY(p.w.blendM!)] as const),
+                      ),
+                    )
+                    .join("")}
+                  className="fill-none stroke-ink"
+                  strokeWidth={2.2}
+                  strokeLinejoin="round"
+                  data-blend
+                />
+              )}
+              {/* Where a model's run ends inside the week: past it, the
+                  blend is made of the models that are left. */}
+              {waves.lines
+                .filter(
+                  (l) =>
+                    l.last + 3 * HOUR < reach &&
+                    l.last + 3 * HOUR < end &&
+                    l.last > (rows[0]?.time ?? 0) &&
+                    seen({ time: l.last }),
+                )
+                .map((l) => {
+                  const x = X(l.last) + px / 2;
+                  return (
+                    <g key={l.id} data-run-end={l.id}>
+                      <line
+                        x1={x}
+                        x2={x}
+                        y1={y - 4}
+                        y2={y + h}
+                        className="stroke-ink-muted"
+                        strokeDasharray="3 4"
+                      />
+                      <circle
+                        cx={x}
+                        cy={y + 2}
+                        r={3}
+                        className={waveHue(l.id).fill}
+                      />
+                      <text
+                        x={x + 7}
+                        y={y + 6}
+                        className={`fill-ink-muted ${caption}`}
+                      >
+                        {waveEndName(l.id)} ends
+                      </text>
+                    </g>
+                  );
+                })}
+              {hovered &&
+                seen(hovered) &&
+                waves.lines.map((l) => {
+                  const own = hovered.hour.waves?.by_model?.[l.id];
+                  return own ? (
+                    <circle
+                      key={l.id}
+                      cx={mid(hovered)}
+                      cy={BY(own.height_m)}
+                      r={3}
+                      className={`${waveHue(l.id).fill} stroke-ground`}
+                      strokeWidth={1.5}
+                    />
+                  ) : null;
+                })}
+              {hovered &&
+                seen(hovered) &&
+                hoveredWave?.blendM != null && (
+                  <circle
+                    cx={mid(hovered)}
+                    cy={BY(hoveredWave.blendM)}
+                    r={3.5}
+                    className="fill-ink stroke-ground"
+                    strokeWidth={1.5}
+                  />
+                )}
+            </g>
+          );
+        })()}
+      {PART_ROWS.map(([key]) => {
+        const at2 = bands[key];
+        if (!at2) return null;
+        const [y, h] = at2;
+        const PY = (m: number) => y + h - (Math.min(m, most) / most) * (h - 18);
+        const parts = rows
+          .map((row, i) => ({ row, part: partOf(waves.rows[i], key) }))
+          .filter(
+            (p): p is { row: SpotRow; part: WavePartHour } =>
+              p.part !== null && seen(p.row),
+          );
+        const lines = runsOf(parts).map((run) =>
+          run.map((p) => [mid(p.row), PY(p.part.heightM!)] as const),
+        );
+        return (
+          <g key={key} data-band={key}>
+            {lines.map((pts, i) => (
+              <path
+                key={i}
+                d={`${smoothPath(pts)}L${pts.at(-1)![0]},${y + h}L${pts[0][0]},${y + h}Z`}
+                className="fill-sea-1"
+                fillOpacity={0.55}
+              />
+            ))}
+            <path
+              d={lines.map(smoothPath).join("")}
+              className="fill-none stroke-depth"
+              strokeWidth={1.2}
+            />
+            {parts
+              .filter((p) => sixth(p.row))
+              .map(({ row, part }, i) => (
+                <g key={i}>
+                  {part.from !== null && (
+                    <g
+                      transform={`translate(${mid(row) - 17},${y + 8}) rotate(${part.from + 180}) scale(0.85)`}
+                    >
+                      <path
+                        d={ARROW}
+                        className="fill-none stroke-depth"
+                        strokeWidth={1.8}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </g>
+                  )}
+                  <text
+                    x={mid(row) - 6}
+                    y={y + 12}
+                    className={`fill-ink-2 ${caption}`}
+                    data-part={key}
+                  >
+                    <tspan className="fill-ink font-semibold">
+                      {part.heightM!.toFixed(1)}
+                    </tspan>
+                    {part.periodS !== null && ` ${Math.round(part.periodS)}s`}
+                  </text>
+                </g>
+              ))}
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
 function Readout({
   row,
-  isNow,
+  chip,
   depth,
   rated,
   gust,
@@ -2710,9 +4211,13 @@ function Readout({
   hasDepth,
   unlit,
   measured = null,
+  sea,
+  strip,
+  root,
 }: {
   row: SpotRow | null;
-  isNow: boolean;
+  /** The hour's chip, first in the grid on a desktop; a phone's is above. */
+  chip: React.ReactNode;
   depth: number | null;
   rated: boolean;
   gust: GustReading | null;
@@ -2732,12 +4237,21 @@ function Readout({
    * it, and where it is from, in place of the forecast's.
    */
   measured?: MeasuredReading | null;
+  /**
+   * The sea at the hour, as the Waves section has it, on one line; null
+   * where no wave model reaches the hour, and undefined (no cell) on water
+   * the open sea's waves do not reach.
+   */
+  sea?: WaveRow | null;
+  /** On a phone, the wind blend's models and blend (`BlendStrip`). */
+  strip: React.ReactNode;
+  /** The readout the page's tests and tools find as `[data-readout]`. */
+  root: boolean;
 }) {
   const speed = useSpeed();
   const units = useContext(UnitsContext);
   const s = styles();
   const wind = row?.hour.wind;
-  const waves = row?.hour.waves;
   const gustKn = wind ? speed.gust(wind.wind_kn, wind.gust_kn) : null;
   const beside = row?.rating ? besideMark(row) : null;
   const taken = row && !row.rating ? standIn(row) : null;
@@ -2746,39 +4260,12 @@ function Readout({
   // the hours are scrubbed through. Before the hours are read the cells
   // stand empty, at the height they will have.
   return (
-    <div className={s.readout()} data-readout>
-      <div className={s.ro({ className: "max-wide:col-span-2" })}>
-        <span
-          className={s.chip({ className: isNow ? s.chipNow() : undefined })}
-        >
-          {isNow || !row
-            ? "Now"
-            : `${dayNames(dublinDate(row.time), row.time).short} ${clock(row.time)}`}
-        </span>
-      </div>
-      {rated && (
-        // Two wide on a phone, where one cell has no room for the five
-        // stars and a warning's mark beside them.
-        <div className={s.ro({ className: "max-wide:col-span-2" })}>
-          <span className={s.roLabel()}>Stars</span>
-          {row?.rating ? (
-            <span className={s.roMarks()}>
-              <Stars n={row.rating.stars} />
-              {beside && <NoticeMark level={beside} />}
-            </span>
-          ) : taken ? (
-            <span className={s.roMarks()} title={taken.word}>
-              <NoticeMark level={taken.level} className="min-w-0">
-                <span className="truncate">{taken.word}</span>
-              </NoticeMark>
-            </span>
-          ) : (
-            <b className={s.roValue()}>
-              {!row || row.hour.daylight ? "–" : unlit}
-            </b>
-          )}
-        </div>
-      )}
+    <div
+      className={s.readout()}
+      data-readout={root || undefined}
+      data-wind-readout
+    >
+      {chip && <div className={s.ro()}>{chip}</div>}
       <div className={s.ro({ className: s.roWide() })} data-readout-wind>
         <span className={s.roLabel()}>
           Wind
@@ -2827,6 +4314,30 @@ function Readout({
           )}
         </b>
       </div>
+      {rated && (
+        // Two wide on a phone, where one cell has no room for the five
+        // stars and a warning's mark beside them.
+        <div className={s.ro({ className: "max-wide:col-span-2" })}>
+          <span className={s.roLabel()}>Stars</span>
+          {row?.rating ? (
+            <span className={s.roMarks()}>
+              <Stars n={row.rating.stars} />
+              {beside && <NoticeMark level={beside} />}
+            </span>
+          ) : taken ? (
+            <span className={s.roMarks()} title={taken.word}>
+              <NoticeMark level={taken.level} className="min-w-0">
+                <span className="truncate">{taken.word}</span>
+              </NoticeMark>
+            </span>
+          ) : (
+            <b className={s.roValue()}>
+              {!row || row.hour.daylight ? "–" : unlit}
+            </b>
+          )}
+        </div>
+      )}
+      {strip}
       <div className={s.ro()} data-readout-gust>
         <span className={s.roLabel()}>Gusts</span>
         <b
@@ -2836,16 +4347,20 @@ function Readout({
           {gust?.text ?? "–"}
         </b>
       </div>
-      <div className={s.ro()}>
-        <span className={s.roLabel()}>Models</span>
+      {/* On a phone the blend's strip names every model's wind instead. */}
+      <div className={s.ro({ className: strip ? "hidden" : undefined })}>
+        <span className={s.roLabel()}>Wind models</span>
         <b className={s.roValue()}>
           {wind && wind.models > 1
             ? `${speed.say(wind.min_kn)}–${speed.say(wind.max_kn)}`
             : "–"}
+          {wind && wind.models > 1 && speed.unit && (
+            <span className="font-normal text-ink-2"> {speed.unit}</span>
+          )}
         </b>
       </div>
       {rated && (
-        <div className={s.ro({ className: s.roLater() })}>
+        <div className={s.ro()}>
           <span className={s.roLabel()}>Wing</span>
           <b className={s.roValue()}>
             {row?.rating
@@ -2854,25 +4369,38 @@ function Readout({
           </b>
         </div>
       )}
-      <div className={s.ro({ className: s.roWide() })} data-readout-sea>
-        <span className={s.roLabel()}>Sea</span>
+      <div className={s.ro()} data-readout-rain>
+        <span className={s.roLabel()}>Rain</span>
         <b className={s.roValue()}>
-          {waves?.height_m == null ? "–" : `${waves.height_m.toFixed(1)} m`}
-          {waves?.height_m != null && waves.period_s !== null && (
-            <span className="font-normal text-ink-2">
-              {" "}
-              {waves.period_s} s
-              {waves.direction_deg !== null &&
-                ` from ${compass(waves.direction_deg)}`}
-            </span>
-          )}
+          {rain === null
+            ? "–"
+            : rain < DRY_MM_PER_HOUR
+              ? "Dry"
+              : `${rain < 0.1 ? "<0.1" : rain.toFixed(1)} mm/h`}
         </b>
       </div>
+      {hasDepth && (
+        <div className={s.ro()}>
+          <span className={s.roLabel()}>At the launch</span>
+          <b
+            className={s.roValue({
+              className: depth !== null && depth < 1 ? s.off() : undefined,
+            })}
+          >
+            {depth === null ? "–" : `${depth.toFixed(1)} m`}
+          </b>
+        </div>
+      )}
+      {sea !== undefined && (
+        <div className={s.ro({ className: s.roWide() })} data-readout-sea>
+          <span className={s.roLabel()}>Sea</span>
+          <b className={s.roValue()}>
+            <SeaLine at={sea} />
+          </b>
+        </div>
+      )}
       {hasCurrent && (
-        <div
-          className={s.ro({ className: [s.roWide(), s.roLater()] })}
-          data-readout-current
-        >
+        <div className={s.ro({ className: s.roWide() })} data-readout-current>
           <span className={s.roLabel()}>Current</span>
           <b className={s.roValue()}>
             {current ? (
@@ -2891,26 +4419,103 @@ function Readout({
           </b>
         </div>
       )}
-      <div className={s.ro({ className: s.roLater() })} data-readout-rain>
-        <span className={s.roLabel()}>Rain</span>
+    </div>
+  );
+}
+
+/** The sea on one line: "1.2 m 13 s from W". */
+function SeaLine({ at }: { at: WaveRow | null }) {
+  if (!at || at.heightM === null) return <>–</>;
+  return (
+    <>
+      {at.heightM.toFixed(1)} m
+      {(at.periodS !== null || at.from !== null) && (
+        <span className="font-normal text-ink-2">
+          {at.periodS !== null && ` ${Math.round(at.periodS)} s`}
+          {at.from !== null && ` from ${compass(at.from)}`}
+        </span>
+      )}
+    </>
+  );
+}
+
+/** A partition on one line: "1.3 m 12 s W". */
+function PartLine({ part }: { part: WavePartHour | null }) {
+  if (!part || part.heightM === null) return <>–</>;
+  return (
+    <>
+      {part.heightM.toFixed(1)} m
+      {(part.periodS !== null || part.from !== null) && (
+        <span className="font-normal text-ink-2">
+          {part.periodS !== null && ` ${Math.round(part.periodS)} s`}
+          {part.from !== null && ` ${compass(part.from)}`}
+        </span>
+      )}
+    </>
+  );
+}
+
+/**
+ * The Waves section's readout: the sea at the hour, the models' range, and
+ * the swells and the wind sea. Never the wind: that is the Wind section's.
+ */
+function WaveReadout({
+  row,
+  waves,
+  chip,
+  partitions,
+  strip,
+}: {
+  row: SpotRow | null;
+  waves: WaveRow | null;
+  chip: React.ReactNode;
+  /** The partitions the week has, in the bands' order. */
+  partitions: readonly PartRow[];
+  /** On a phone, the wave blend's models and blend (`BlendStrip`). */
+  strip: React.ReactNode;
+}) {
+  const s = styles();
+  const range =
+    waves && waves.lowM !== null && waves.highM !== null && waves.highM > waves.lowM
+      ? `${waves.lowM.toFixed(1)}–${waves.highM.toFixed(1)}`
+      : null;
+  return (
+    <div className={s.readout()} data-wave-readout>
+      {chip && <div className={s.ro()}>{chip}</div>}
+      <div className={s.ro({ className: s.roWide() })} data-readout-waves>
+        <span className={s.roLabel()}>
+          Waves
+        </span>
         <b className={s.roValue()}>
-          {rain === null
-            ? "–"
-            : rain < DRY_MM_PER_HOUR
-              ? "Dry"
-              : `${rain < 0.1 ? "<0.1" : rain.toFixed(1)} mm/h`}
+          <SeaLine at={row ? waves : null} />
         </b>
       </div>
-      {hasDepth && (
-        <div className={s.ro({ className: s.roLater() })}>
-          <span className={s.roLabel()}>At the launch</span>
-          <b
-            className={s.roValue({
-              className: depth !== null && depth < 1 ? s.off() : undefined,
-            })}
-          >
-            {depth === null ? "–" : `${depth.toFixed(1)} m`}
-          </b>
+      <div
+        className={s.ro({ className: strip ? "col-span-2" : undefined })}
+        data-readout-wave-models
+      >
+        <span className={s.roLabel()}>Wave models</span>
+        <b className={s.roValue()}>
+          {range ?? "–"}
+          {range && <span className="font-normal text-ink-2"> m</span>}
+        </b>
+      </div>
+      {strip}
+      {partitions.length > 0 && (
+        // Three to a row on a phone; each two cells wide on a desktop.
+        <div className={s.parts()}>
+          {partitions.map((key) => (
+            <div
+              key={key}
+              className={s.ro({ className: "wide:col-span-2" })}
+              data-readout-part={key}
+            >
+              <span className={s.roLabel()}>{WAVE_NAME[key]}</span>
+              <b className={s.roValue()}>
+                <PartLine part={partOf(waves, key)} />
+              </b>
+            </div>
+          ))}
         </div>
       )}
     </div>

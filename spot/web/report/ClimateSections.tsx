@@ -115,6 +115,30 @@ function useClimate(id: string) {
   return climate;
 }
 
+/**
+ * Whether the place is sheltered water, which the open sea's waves do not
+ * reach (its year has no waves: a lake, a lough, the inside of a harbour):
+ * null while its year is read, and false with no year to read (`id` null,
+ * or no file), so the week shows its waves as before.
+ */
+export function useSheltered(id: string | null): boolean | null {
+  const [known, setKnown] = useState<{ id: string; sheltered: boolean } | null>(
+    null,
+  );
+  useEffect(() => {
+    if (id === null) return;
+    let live = true;
+    void loadClimate(id).then(
+      (c) => live && setKnown({ id, sheltered: c?.sheltered ?? false }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [id]);
+  if (id === null) return false;
+  return known?.id === id ? known.sheltered : null;
+}
+
 /* ------------------------------------------------------------- the card */
 
 interface TipRow {

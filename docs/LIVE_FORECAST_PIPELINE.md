@@ -1073,9 +1073,9 @@ The wave counterpart of the blend above: the `wave-blend` job works out each rid
 place's sea state from every wave model the site publishes and publishes it the same
 way, the pointer `weather/wave-blend.json` and a run directory beside it,
 `weather/wave-blend-RUN-HOURSh-v2-HASH8/spots/<square>.json`, one file per 2° spot
-square, each holding its places under `spotWaveBlend` (`src/waveBlend.ts`).
+square, each holding its places under `spotWaveBlend` (`force5/src/waveBlend.ts`).
 
-- **Its members.** `WAVE_BLEND_MODELS` in `src/waveBlend.ts`, which is the dock's own
+- **Its members.** `WAVE_BLEND_MODELS` in `force5/src/waveBlend.ts`, which is the dock's own
   handover order, `WAVE_SOURCE_PREFERENCE` in `force5/src/waves.ts`, finest first: today
   the Met Office's North-West Shelf model (`met-office-wave`, 60 hours), Irish Shelf SWAN
   (`mi-swan`, six days), IBI (`ibi-wave`, ten days, a day older) then GFS-Wave
@@ -1127,11 +1127,16 @@ square, each holding its places under `spotWaveBlend` (`src/waveBlend.ts`).
   length and range, the median inside its range, `count` the bits of `fed`, and `lead`
   one of the members that fed the time) and publishes it as any run. Its `run` is the
   hour it was worked out, and `maxAgeHours` is 3.
-- **Who reads it.** The site's reader is `useWaveBlend` (`src/useWaveBlend.ts`), with
+- **Who reads it.** The site's reader is `useWaveBlend` (`shared/web/useWaveBlend.ts`), with
   `loadWaveBlend` and `waveBlendHours` for one place's hours; it treats a blend older
-  than six hours as none. No page draws it yet: the wave rows still read each model's
-  own run, handed over from one to the next (`handedWaveSource`). The forecast server
-  and the MCP read the models' own runs, as they do for the wind.
+  than six hours as none. The spot page draws it in its Waves section's Wave blend
+  band, readout and card (`spot/web/report/blends.ts`), beside every wave model's own
+  line; the headline there stays one model's own, the finest at each hour or the
+  rider's pick (Settings), handed on past its run (`waveLeadOrder`), with that
+  model's own partitions. With no blend, the per-model lines and the headline stand
+  alone. The forecast server and the MCP read the models' own runs, as they do for
+  the wind; with `per_model` each hour's waves carry every wave model's own step and
+  partitions (`by_model`).
 - **Size.** Measured over a full-size synthetic run (GFS-Wave's ten days, SWAN's six,
   every riding place): 177 times, about 1.6 MB across the ten squares before
   compression, and a 148 MB peak for the Node process.

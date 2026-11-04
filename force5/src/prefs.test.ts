@@ -70,6 +70,17 @@ describe("display preferences", () => {
     expect(prefs.blendModels).not.toContain("ecmwf-ens");
     expect(prefs.blendModels).not.toContain("ukv");
   });
+  it("keeps a wave model the site publishes, and reads the finest otherwise", () => {
+    expect(defaultPrefs().waveModel).toBeNull();
+    const stored = (waveModel: unknown) =>
+      loadPrefs(
+        fakeStorage({ [PREFS_KEY]: JSON.stringify({ waveModel }) }),
+      ).waveModel;
+    expect(stored("mi-swan")).toBe("mi-swan");
+    expect(stored("harmonie")).toBeNull();
+    expect(stored("no-such-wave")).toBeNull();
+    expect(stored(7)).toBeNull();
+  });
   it("rates for the estimated rider, on ours, until the reader says otherwise", () => {
     expect(defaultPrefs().rider).toEqual({
       weightKg: null,

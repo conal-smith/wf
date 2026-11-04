@@ -19,7 +19,7 @@ import { pointFromId } from "../../force5/src/siteNav";
 import { siteSource } from "../../shared/web/forecastSource";
 import { pointForecast, pointPlace, type PointPlace } from "./point";
 import {
-  FORECAST_DAYS,
+  REPORT_DAYS,
   HOUR,
   LEAD_HOURS,
   dublinDate,
@@ -49,7 +49,7 @@ export function forecastWindow(now: number) {
   const from = dublinMidnight(dublinDate(now)) - LEAD_HOURS * HOUR;
   return {
     from,
-    to: from + (LEAD_HOURS + FORECAST_DAYS * 24) * HOUR,
+    to: from + (LEAD_HOURS + REPORT_DAYS * 24) * HOUR,
     stepHours: 1,
   };
 }

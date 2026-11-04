@@ -832,6 +832,14 @@
   --color-photo-pill: #0a0c0e;
   --color-photo-red: #ff4d3d;
   --color-photo-gust: #ffa45c;
+  /* The wave models' own lines in the spot page's wave blend: five hues a
+     colour-blind rider can tell apart side by side, on both themes; the two
+     global models are dashed as well. */
+  --color-wave-met-office: #d05f88;
+  --color-wave-ibi: #4a8be6;
+  --color-wave-swan: #22a093;
+  --color-wave-gfs: #bb8a2a;
+  --color-wave-ecmwf: #9b6be0;
   --container-loupe: 420px;
   --container-side: 300px;
   --text-big: 40px;
@@ -848,10 +856,9 @@
   --text-name--letter-spacing: -0.025em;
   --grid-template-columns-now: minmax(0, 1fr) minmax(320px, 420px);
   --grid-template-columns-now-wide: minmax(0, 1fr) 420px 300px;
-  --grid-template-columns-week: repeat(7, minmax(118px, 1fr));
   --grid-template-columns-graph: 72px minmax(0, 1fr);
-  /* The same on a phone: room for "Direction" in the caption's size. */
-  --grid-template-columns-graph-narrow: 60px minmax(0, 1fr);
+  /* The same on a phone: room for "Wind blend" in the caption's size. */
+  --grid-template-columns-graph-narrow: 68px minmax(0, 1fr);
   /* The spot page's readout over its graph: even cells that keep their places. */
   --grid-template-columns-readout: repeat(auto-fill, minmax(112px, 1fr));
   --grid-template-columns-near: 40px minmax(0, 1fr);
