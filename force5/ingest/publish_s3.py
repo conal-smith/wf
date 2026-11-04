@@ -30,11 +30,13 @@ The per-spot keys below are read from the squares and checked as before.
         may declare `"kind": "code"`, making its values whole code-table entries
         rather than measurements, so no range check applies to them.
 
-The blend is a run too, at schemaVersion 2 (docs/TILING_DESIGN.md, decision 6):
+The blends are runs too, at schemaVersion 2 (docs/TILING_DESIGN.md, decision 6):
 
 - blend  every riding place's wind consensus (src/spotBlend.ts). The pointer
         holds the times, the models it read and its square index; each place's
         series is under `spotBlend` in the square it falls in. No frames.
+- wave-blend  every riding place's sea state across the wave models
+        (src/waveBlend.ts), the same shape with its places under `spotWaveBlend`.
 
 The other kinds are at schemaVersion 1 and are single files, or (tide) a pointer
 and its station files:
@@ -98,7 +100,7 @@ PRECONDITION_CODES = ("PreconditionFailed", "412", "ConditionalRequestConflict",
 UNSUPPORTED_CONDITION_CODES = ("NotImplemented", "501")
 MISSING_CODES = ("NoSuchKey", "NotFound", "404")
 # Kinds published as a run directory and a schemaVersion 2 pointer.
-RUN_KINDS = ("wind", "wave", "weather", "current", "blend")
+RUN_KINDS = ("wind", "wave", "weather", "current", "blend", "wave-blend")
 
 
 def error_code(error):
@@ -292,8 +294,8 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
         # The run's own checks read the spot data from its squares, merged back in
         # exactly as the adapter held it, and every file of the run is uploaded.
         whole, files, objects = run_bundle(public, model, manifest)
-        validator = {"wind": validate_wind_bundle, "blend": validate_blend_bundle}.get(
-            kind, validate_variables_bundle)
+        validator = {"wind": validate_wind_bundle, "blend": validate_blend_bundle,
+                     "wave-blend": validate_wave_blend_bundle}.get(kind, validate_variables_bundle)
         validator(files, model, whole, run, now)
         return manifest, body, objects
     validator = {"tide": validate_tide_bundle,
@@ -673,6 +675,96 @@ def validate_blend_bundle(files, model, manifest, run, now):
     if rule is not None and (not isinstance(rule, dict) or not isinstance(rule.get("model"), str)
                              or not isinstance(rule.get("then"), str)):
         raise ValueError("The blend's lead is malformed")
+
+
+WAVE_BLEND_KEY = "spotWaveBlend"  # The wave blend's per-spot key (squares.SPOT_KEYS).
+# Centimetres, tenths of a second and whole degrees (src/waveBlend.ts); the models'
+# own limits are 25-30 m and 30-40 s.
+WAVE_BLEND_SERIES = {"height": (0, 3000), "low": (0, 3000), "high": (0, 3000),
+                     "period": (0, 400), "from": (0, 360)}
+WAVE_BLEND_PART_SERIES = {"height": (0, 3000), "period": (0, 400), "from": (0, 360)}
+WAVE_BLEND_PARTITIONS = ("windsea", "swell", "swell1", "swell2", "swell3")
+
+
+def validate_wave_blend_bundle(files, model, manifest, run, now):
+    """Every riding place's sea state across the wave models (src/waveBlend.ts).
+
+    The shape of the wind blend's run (`validate_blend_bundle`): `run` is the hour
+    it was worked out, there are no frames, and the places are under
+    `spotWaveBlend` in its squares. Each place carries the median height and the
+    models' range around it, the median peak period and the mean direction, which
+    models fed each time (`fed`, one bit per source) and how many (`count`, one
+    base-36 digit a time, which must be the number of bits), the model whose
+    partitions each time carries (`lead`, one of those that fed it, or - where
+    none did) and those partitions.
+    """
+    times, sources = manifest.get("times"), manifest.get("sources")
+    spots = manifest.get(WAVE_BLEND_KEY)
+    if manifest.get("frames"):
+        raise ValueError("A wave blend has no frames")
+    if (manifest.get("spots") or {}).get("keys") != [WAVE_BLEND_KEY]:
+        raise ValueError(f"A wave blend's squares carry {WAVE_BLEND_KEY} and nothing else")
+    if not isinstance(times, list) or not times or not all(isinstance(t, str) for t in times):
+        raise ValueError("A wave blend needs the times it covers")
+    moments = [datetime.fromisoformat(t.replace("Z", "+00:00")) for t in times]
+    if any(b <= a for a, b in zip(moments, moments[1:])):
+        raise ValueError("A wave blend's times must be distinct and in order")
+    coverage = manifest.get("coverage")
+    if not isinstance(coverage, dict) or coverage.get("from") != times[0] \
+            or coverage.get("to") != times[-1]:
+        raise ValueError("A wave blend's coverage must be its first and last time")
+    if not isinstance(sources, list) or not sources or len(sources) > 30:
+        raise ValueError("A wave blend must name the models it read")
+    for source in sources:
+        if not isinstance(source, dict) or not isinstance(source.get("id"), str) \
+                or not isinstance(source.get("columns"), list) \
+                or not all(whole(c) and 0 <= c < len(times) for c in source["columns"]) \
+                or not isinstance(source.get("partitions"), list) \
+                or not set(source["partitions"]) <= set(WAVE_BLEND_PARTITIONS):
+            raise ValueError("A wave blend source is malformed")
+    if len({source["id"] for source in sources}) != len(sources):
+        raise ValueError("A wave blend names a model twice")
+    if not isinstance(spots, dict) or not spots:
+        raise ValueError("A wave blend needs the places it describes")
+
+    def series_ok(values, low, high):
+        return isinstance(values, list) and len(values) == len(times) and all(
+            value is None or number(value, high, low) for value in values)
+
+    for spot, place in spots.items():
+        if not isinstance(place, dict):
+            raise ValueError(f"The wave blend for {spot} is malformed")
+        for key, (low, high) in WAVE_BLEND_SERIES.items():
+            if not series_ok(place.get(key), low, high):
+                raise ValueError(f"The wave blend's {key} for {spot} is malformed")
+        for least, middle, most in zip(place["low"], place["height"], place["high"]):
+            if (least is None) != (middle is None) or (middle is None) != (most is None) \
+                    or (middle is not None and not least <= middle <= most):
+                raise ValueError(f"The wave blend's range for {spot} does not hold its median")
+        fed, count, lead = place.get("fed"), place.get("count"), place.get("lead")
+        if not isinstance(fed, list) or len(fed) != len(times) \
+                or not all(whole(mask) and 0 <= mask < 2 ** len(sources) for mask in fed):
+            raise ValueError(f"The wave blend's fed for {spot} is malformed")
+        if not isinstance(count, str) or len(count) != len(times) \
+                or not all(c in BASE36 and int(c, 36) == bin(mask).count("1")
+                           for c, mask in zip(count, fed)):
+            raise ValueError(f"The wave blend's count for {spot} is not the models that fed it")
+        if not isinstance(lead, str) or len(lead) != len(times) or not all(
+                (c == "-" and mask == 0)
+                or (c in BASE36 and int(c, 36) < len(sources) and mask >> int(c, 36) & 1)
+                for c, mask in zip(lead, fed)):
+            raise ValueError(f"The wave blend's lead for {spot} is not a model that fed it")
+        for i, mask in enumerate(fed):
+            if (mask == 0) != (place["height"][i] is None):
+                raise ValueError(f"The wave blend for {spot} has a height no model fed")
+        parts = place.get("parts")
+        if not isinstance(parts, dict) or not set(parts) <= set(WAVE_BLEND_PARTITIONS):
+            raise ValueError(f"The wave blend's partitions for {spot} are malformed")
+        for name, part in parts.items():
+            if not isinstance(part, dict) or not all(
+                    series_ok(part.get(key), low, high)
+                    for key, (low, high) in WAVE_BLEND_PART_SERIES.items()):
+                raise ValueError(f"The wave blend's {name} for {spot} is malformed")
 
 
 def validate_observation_bundle(public, model, manifest, run, now):

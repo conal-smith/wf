@@ -641,6 +641,14 @@ has no frames.
   spot's square is always among those read. Its blend chart already read the
   one square of the models it needs.
 
+The wave blend (`src/waveBlend.ts`, docs/LIVE_FORECAST_PIPELINE.md "The wave
+blend") is published the same way, under its own per-spot key:
+
+```text
+weather/wave-blend.json                                          the pointer: times, sources, coverage, run, base, spots
+weather/wave-blend-2026110418-234h-v2-1a2b3c4d/spots/n52w010.json   {schemaVersion, model: "wave-blend", run, square, spotWaveBlend: {id: {height, low, high, period, from, fed, count, lead, parts}}}
+```
+
 ## As built: the fix pass
 
 A review of the four steps above found readers left without data when a run
