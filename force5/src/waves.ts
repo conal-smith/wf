@@ -40,9 +40,9 @@ export const WAVE_MATCH_HOURS = VARIABLE_MATCH_HOURS;
  * Sources in the order the dock prefers them, finest first. Ireland's own 2.8 km
  * shelf model wins; NOAA's 9 km global model is the fallback; ECMWF's 0.25°
  * (~28 km) wave stream is last, because at that resolution a bay is a cell or
- * two wide and many spots are read from open water nearby. It is retired (see
- * force5/src/manifests.ts), so the site never loads it, but it keeps its place
- * here for the day it is switched back on.
+ * two wide and many spots are read from open water nearby. It earns its place
+ * by reach: its run goes on to 360 h, so past GFS-Wave's 240 h the waves are
+ * ECMWF's (`handedWaveSource`), as the wind is past the end of the others.
  */
 export const WAVE_SOURCE_PREFERENCE: readonly string[] = [
   "mi-swan",
@@ -274,7 +274,9 @@ function waveNames(lead: WaveFields, other: WaveFields) {
 /**
  * The spot's waves from every source in turn: the first source's own run, then
  * each next one's past the end of it (`handOverSeries`), so Ireland's 2.8 km
- * shelf model's six days go on in GFS-Wave's ten rather than stopping. The
+ * shelf model's six days go on in GFS-Wave's ten, and those in ECMWF's fifteen,
+ * rather than stopping. ECMWF publishes no swell or wind-sea partition, so past
+ * GFS-Wave's end only the whole sea's rows go on. The
  * result reads as the first source, its fields and its coverage note; each
  * step names the model it came from. Null with no source.
  */

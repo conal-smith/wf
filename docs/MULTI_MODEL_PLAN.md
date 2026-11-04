@@ -7,7 +7,8 @@ that date. Mockup of the target dock: https://claude.ai/artifact/SsCHYWDuqLkfMBr
 AIFS, GEFS, ARPEGE, AROME and the ECMWF wave stream. Their code is intact and their
 jobs ship disabled; the site serves HARMONIE,
 ICON-EU, ECMWF and GFS for wind, and MI SWAN and GFS-Wave for waves. See
-`deploy/local/README.md`.
+`deploy/local/README.md`. **Update, 4 November 2026:** the ECMWF wave stream is back,
+taking the waves on past GFS-Wave's 240 h to 15 days.
 
 ## Delivered so far (16 September 2026)
 

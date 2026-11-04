@@ -79,11 +79,13 @@ describe("model registry", () => {
       "mi-swan",
       "icon-eu-weather",
       "gfs-weather",
+      "ecmwf-wave",
     ]);
     expect(windModels().every((model) => model.kind === "wind")).toBe(true);
     expect(waveModels().map((model) => model.id)).toEqual([
       "gfs-wave",
       "mi-swan",
+      "ecmwf-wave",
     ]);
     expect(weatherModels().map((model) => model.id)).toEqual([
       "icon-eu-weather",
@@ -97,21 +99,15 @@ describe("model registry", () => {
     expect(requireModel("harmonie-eps").planned).toBe(true);
     // Retired to save downloads: still known, never fetched nor listed, and
     // distinct from a planned model, which Settings greys out.
-    for (const id of [
-      "ecmwf-ens",
-      "gefs",
-      "arpege",
-      "arome",
-      "aifs",
-      "ecmwf-wave",
-    ]) {
+    for (const id of ["ecmwf-ens", "gefs", "arpege", "arome", "aifs"]) {
       expect(requireModel(id).retired).toBe(true);
       expect(requireModel(id).planned).toBeUndefined();
     }
     expect(requireModel("ecmwf-ens").ensemble).toBe(true);
     expect(requireModel("gefs").ensemble).toBe(true);
     expect(requireModel("ecmwf-wave").kind).toBe("wave");
-    for (const id of ["harmonie", "icon-eu", "ecmwf", "gfs"])
+    // Back on 4 November 2026, once downloads no longer had a monthly cap.
+    for (const id of ["harmonie", "icon-eu", "ecmwf", "gfs", "ecmwf-wave"])
       expect(requireModel(id).retired).toBeUndefined();
     expect(modelEntry("nope")).toBeUndefined();
     expect(() => requireModel("nope")).toThrow(/Unknown forecast model/);
@@ -272,14 +268,7 @@ describe("availability sweep", () => {
       // The wave ids answer with a wind bundle here, which is a fault, not a
       // conversion: the registry decides the contract, so they come back unavailable.
     ).toEqual(["harmonie", "icon-eu", "ecmwf"]);
-    for (const id of [
-      "gefs",
-      "arpege",
-      "arome",
-      "aifs",
-      "ecmwf-ens",
-      "ecmwf-wave",
-    ])
+    for (const id of ["gefs", "arpege", "arome", "aifs", "ecmwf-ens"])
       expect(urls.some((url) => url.endsWith(`/${id}.json`))).toBe(false);
     const absent = availability.find((model) => model.id === "gfs")!;
     expect(absent.manifest).toBeNull();

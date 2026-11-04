@@ -104,7 +104,7 @@ in UTC. The shipped schedule is:
 | `gfs-weather`     | 05/11/17/23 at :05 | GFS surface weather, 384 h, ~5 h late; :35 retry     |
 | `mi-swan`         | 10/14/18 at :15    | one SWAN run a day, published ~09 UTC, sometimes late |
 | `currents`        | 03/07/13 at :20    | one ROMS run a day, written ~00:55 UTC; two retries   |
-| `ecmwf-wave`      | off (retired)      | the 00/12 wave stream, ~707 MB per run                |
+| `ecmwf-wave`      | 08/10/20/22 at :45 | the 00/12 wave stream, out with the wind; ~330 MB a run; retries |
 | `tides`           | 01:05 daily        | predictions, not a forecast cycle                     |
 | `sea-temperature` | every 3 h at :15   | Marine Institute observations, newest reading         |
 | `wind-obs`        | every hour at :50  | Met Éireann and buoy wind observations, last 72 h     |
@@ -122,12 +122,18 @@ logs a `forecast_unchanged` event with `"reason": "dark"` and exits at once, hav
 downloaded nothing, except at 05 and 19 UTC. The window follows the season in UTC,
 so HARMONIE fetches 13 times a day in December and 19 in June, about 16 on average.
 
-Six models were **retired** on 10 October 2026: the ECMWF ensemble, AIFS, GEFS,
-ARPEGE, AROME and ECMWF waves. Their jobs ship disabled and `force5/src/catalog.ts`
-marks them `retired`, so the site, the blend, the verification replica and the
-forecast server neither fetch nor list them. Their adapters are unchanged: to bring one back, enable its job, clear
-`retired`, and add it back to `MAP_MODEL_IDS`, `consensus.BLEND_MODELS` and the
-forecast server's lists as the tests direct.
+Six models were **retired** on 10 October 2026, to keep downloads under an 80 GB
+a month target on a home connection: the ECMWF ensemble, AIFS, GEFS, ARPEGE, AROME
+and ECMWF waves. The jobs moved to Cloudflare Containers on 18 October and the
+target was dropped on 25 October, so ECMWF waves came back on 4 November 2026: the
+only wave model that reaches 15 days, it takes the wave rows over past GFS-Wave's
+240 h. The other five still ship disabled and `force5/src/catalog.ts` marks them
+`retired`, so the site, the blend, the verification replica and the forecast
+server neither fetch nor list them. Their adapters are unchanged: to bring one
+back, enable its job, clear `retired`, add it back to `MAP_MODEL_IDS`,
+`consensus.BLEND_MODELS` (wind models only) and the forecast server's lists as the
+tests direct, measure a live run in the worker image under Cloudflare's `basic`
+limits, and size its job in `deploy/schedules.py` from that.
 
 What the enabled jobs download, at 30 days a month (slots that find their run
 already published download nothing):
@@ -138,9 +144,10 @@ already published download nothing):
 | `icon-eu-weather` | ~845 MB (949 files, hourly) | 1 | ~25 GB |
 | `icon-eu` | ~250 MB | 3 | ~22 GB |
 | `ecmwf` | ~245 MB | 2 | ~15 GB |
+| `ecmwf-wave` | ~330 MB (85 steps, ten fields) | 2 | ~20 GB |
 | `gfs-weather` | ~21 MB (209 steps) | 4 | ~2.5 GB |
 | `gfs`, `gfs-wave`, `mi-swan`, observations, tides | 1-8 MB each | 4-24 | ~1 GB |
-| **Total** | | | **~465 GB** |
+| **Total** | | | **~485 GB** |
 
 HARMONIE went from six runs a day to every hour in daylight in November 2026, and
 ICON-EU wind from one cycle a day to three: about 265 GB a month more than the ~200 GB
