@@ -348,10 +348,11 @@ partitions** (`swell1_*`, `swell2_*`, height, Tm01 period and direction).
   grows to about 0.8 MB as the 142-day chunk fills, so up to about 0.45 GB late in a
   chunk), about 10 seconds, a 186 MB peak for the adapter in the image, and about
   10 MB of squares (210 KB brotli for the largest). No cache is kept.
-- **The dock.** It is the second wave source: `WAVE_SOURCE_PREFERENCE` is `mi-swan`,
-  `ibi-wave`, `gfs-wave`, then `ecmwf-wave`, so SWAN's six days go on in IBI's ten and
-  GFS-Wave's past those (`handedWaveSource`), and the wave blend takes it as a member
-  in the same order. Its secondary swell is `swell2` in `waveFields`.
+- **The dock.** It comes after the two shelf models: `WAVE_SOURCE_PREFERENCE` is
+  `met-office-wave`, `mi-swan`, `ibi-wave`, `gfs-wave`, then `ecmwf-wave`, so the Met
+  Office's 60 hours and SWAN's six days go on in IBI's ten, and GFS-Wave's and ECMWF's
+  past those (`handedWaveSource`); the wave blend takes it as a member in the same
+  order. Its secondary swell is `swell2` in `waveFields`.
 
 ICON-EU surface weather is the first **weather** bundle: `--models icon-eu-weather`
 runs `fetch_icon_weather.py`, which reads thirteen ICON-EU single-level parameters
@@ -521,11 +522,75 @@ AIFS is a _different_ model, not a correction of IFS: where the two disagree, ne
 the other's error term. Present it as its own row, and do not fold it into an IFS
 average.
 
+### Met Office North-West Shelf waves
+
+`--models met-office-wave` runs `fetch_met_office_wave.py`, which reads the Met
+Office's UK wave model, WAVEWATCH III on the AMM15 shelf grid (16°W–13°E,
+46–62.7°N, 1/74° by 1/33°: about 1.5 km north-south and 2 km east-west over
+Ireland), and publishes the `kind: "wave"` bundle `weather/met-office-wave.json`:
+hourly series to +60 h for every riding place, no frames. It is the finest wave
+model the site reads, so the dock and the forecast server take it first for its
+60 hours, then MI SWAN to six days, then GFS-Wave (`WAVE_SOURCE_PREFERENCE`,
+`handedWaveSource`, force5/src/waves.ts; `WAVE_MODELS`, mcp/api/forecast.ts).
+
+- **Source.** The anonymous S3 bucket `met-office-nws-wave-model-data` (eu-west-2,
+  [registry entry](https://registry.opendata.aws/met-office-nws-wave/)). Four runs a
+  day; each lands whole about **2 h 45 m** after its run time (every run from 3 to
+  4 November 2026 was listed between 2 h 44 m and 2 h 45 m), as one NetCDF4 file per
+  parameter per day of forecast: hours 0–23, 24–47 and 48–60, under
+  `nws-wave/YYYY/MM/DD/THHMMZ/`. 26 parameters, about 715 MB a run.
+- **What it reads.** Fifteen: the whole sea's height, peak period and mean direction,
+  and the same three for the wind sea and the primary, secondary and tertiary swell
+  partitions (`swh`, `pp1d`, `mwd`, `shww`/`ppww`/`mdww`, `swell1_*`…`swell3_*`).
+  Every period is a peak period. A partition the model does not find has height 0 in
+  the files and 0 for its period and direction too; the adapter publishes the 0 m and
+  nulls the period and direction rather than claim a swell from due north.
+- **No subsetting is possible.** Each file is chunked one whole 1240 × 958 field per
+  hour (about 0.5 MB gzipped), so even a byte-range read of one cell fetches that
+  hour's field; there is no zarr or kerchunk view and no smaller file. The adapter
+  downloads each of its 45 files once, into memory, reads the cells it needs and
+  drops it: **about 430 MB a run** and nothing written to disk, the floor for this
+  source. About 52 GB a month at four runs a day, from AWS's open-data programme,
+  which costs neither side anything.
+- **Cells.** Each spot reads the nearest cell the model solved within 8 km, its
+  distance published as `spotCoverage.nearestOffsetKm`; the directions come from the
+  nearest solved cell whose four neighbours are solved too (`directionCell`), because a
+  coastline cell hears nothing from the land side (as MI SWAN). On the 12 UTC run of
+  4 November 2026, 144 of 149 places had a cell; the five without are the inland lakes
+  (Lough Derg twice, Lough Neagh twice, Blessington).
+- **Schedule.** 03, 09, 15 and 21 UTC at :00, with a :55 retry that stops at once
+  when :00 has published (`deploy/local/jobs.toml`). Registry age limit 12 h.
+- **Measured** on the 12 UTC run of 4 November 2026, in the worker image at a quarter
+  of a CPU under a 1 GiB memory limit (Cloudflare's `basic` container is 1/4 vCPU,
+  1 GiB, 4 GB disk): **39 s** end to end, 45 requests and **426.8 MB** downloaded,
+  33 s of it the download with four at a time, 89 thread-seconds of decoding inside
+  it; peak resident memory **263 MB** for the adapter and 47 MB for the worker;
+  **2.8 MB** written, the run directory of spot squares. Natively on a Mac the same
+  run took 13 s and peaked at 314 MB. It fits `basic` with room to spare; the job's
+  timeout is 1200 s.
+- **Licence: CC BY-SA 4.0** ("British Crown copyright, the Met Office, is licensed
+  under CC BY-SA", on the registry entry; the files carry no licence of their own).
+  The per-spot series the site publishes are adapted from it, so they are offered
+  under the same licence: the manifest's `attribution` says so with the credit, its
+  `licenseUrl` is the licence, its `processing` states what was changed, the map's
+  sources list credits it, and the forecast server passes `attribution` and
+  `license_url` on with every run it reads. Share-alike reaches only this model's
+  bundle, not the rest of the site's data: the other bundles do not adapt it, and a
+  few hundred cells of a 1.2-million-cell grid are not a substantial part of the Met
+  Office's database. Nothing may add terms or technical restrictions on top of
+  CC BY-SA for this bundle.
+
 ### ECMWF wave stream
 
-**Retired** (10 October 2026): the job ships
-disabled and the site does not fetch it. The adapter below is unchanged; see
-`deploy/local/README.md` to bring it back.
+Retired on 10 October 2026 to save downloads and **back on 4 November 2026**, once
+the jobs ran on Cloudflare Containers and the monthly download target was dropped.
+It is the only wave source that reaches 15 days: the dock, the spot page, the app
+and the forecast server hand the wave rows from MI SWAN to GFS-Wave past SWAN's six
+days and from GFS-Wave to this stream past GFS-Wave's 240 h (`handedWaveSource` in
+`force5/src/waves.ts`, `handedSource` in `mcp/api/forecast.ts`), as the wind goes on
+in ECMWF's past the end of the finer models. It publishes no swell or wind-sea
+partition, so past GFS-Wave's end only the whole sea's height, period and direction
+go on.
 
 `--models ecmwf-wave` runs `fetch_ecmwf_wave.py`, which imports the `wave` stream of the
 same open data — the WAM ocean wave model coupled to IFS — and publishes the
@@ -535,16 +600,31 @@ ten variables at native 0.25° on the shared 81 × 45 crop, not the wind control
 holds both `ecmwf` and `ecmwf-wave` to that ladder, whole or stopped early but never
 resampled, so a truncated or interpolated cadence cannot publish under either id.
 
-- **Bandwidth is the operational constraint.** There is no server-side subsetting, so a
-  full run transfers **700.3 MB** in 85 ranged reads (8.32–8.41 MB a step for ten
-  messages). A verified run of the live 12 UTC cycle on 16 September 2026 completed in
-  **61 seconds** with three readers against `--source ecmwf`, writing 85 frames of
-  182 KB (15 MB) and a 407 KB manifest. `--no-bands` drops the six period-band heights
-  for about 315 MB a run; the bands are the only swell information the stream has, so
-  drop them only under real bandwidth pressure.
+- **Bandwidth.** There is no server-side subsetting, so a full run transfers every
+  step's ten messages whole. On 16 September 2026 that was **700.3 MB** (8.3–8.4 MB a
+  step); ECMWF's files have since shrunk, and a live run of the 00 UTC cycle on
+  4 November 2026 transferred **330.2 MB** in 255 ranged reads (3.6–3.7 MB a step),
+  about **20 GB a month** at two runs a day. `--no-bands` drops the six period-band
+  heights for a little under half that; the bands are the only swell information the
+  stream has, so drop them only under real bandwidth pressure.
+- **It fits Cloudflare's `basic` container.** That 4 November run, in the worker
+  image under the `basic` limits (1/4 vCPU, 1 GiB, `docker run --cpus 0.25 --memory 1g`),
+  took **154–157 seconds** end to end over three runs (145–148 s downloading with three
+  readers against `--source ecmwf`, and about 38 CPU seconds, so at a quarter of a CPU
+  it is bound as much by the CPU as by the network). Its peak resident memory was
+  269–276 MB for the adapter and 48 MB for the worker without a bucket (about 350 MB
+  with the S3 client; the container's cgroup, page cache included, peaked at
+  600–610 MB). Its disk peaked at 325 MB, the GRIB it caches, and it published 3 MB:
+  149 spots' series in ten squares and the pointer, no frames. Its first run on Cloudflare
+  itself, the same cycle published to the bucket, took 117 s (124 container seconds,
+  105 s downloading, 30 CPU seconds) and peaked at 280 MB for the adapter and 81 MB
+  for the worker. Cloudflare stops a run at 1200 s, so the job's timeout is
+  1200 s, about eight times the measured run; its ceiling is the 1 GB and 2 GB disk
+  of `deploy/schedules.py`'s `MODEL` size.
 - **Schedule it twice daily.** `deploy/local/jobs.toml` runs it at 08 and 20 UTC + 45
-  minutes, about eight hours after each cycle, with a 24-hour registry age limit — the
-  same shape as the wind control. Every ECMWF adapter and the worker now default to
+  minutes, about eight hours after each cycle and alongside the wind control, with
+  retries at 10:45 and 22:45 that download nothing once the slot before has published,
+  and a 24-hour registry age limit — the same shape as the wind control. Every ECMWF adapter and the worker now default to
   the ECMWF-hosted source; the AWS mirror returned sustained `503 SlowDown` during
   development and remains available as `--ecmwf-source aws`.
 - **Coverage is the thing to communicate, not a fault to fix.** A 0.25° cell is about
@@ -553,7 +633,7 @@ resampled, so a truncated or interpolated cadence cannot publish under either id
   Tullan Strand, median 13.4 km, 37.7 km at Rusheen Bay) and 1 has none within 40 km
   (Mountshannon on Lough Derg). Every offset is published as
   `spotCoverage[spot].nearestOffsetKm` with a sentence the UI shows. That is why the
-  dock's preference is `mi-swan`, then `ibi-wave`, then `gfs-wave`, then `ecmwf-wave`: this source earns
+  dock's preference is `met-office-wave`, `mi-swan`, `ibi-wave`, `gfs-wave`, then `ecmwf-wave`: this source earns
   its place by reaching 15 days, not by resolving a beach.
 
 ## AWS setup checklist
@@ -586,6 +666,7 @@ ECMWF ENS: --models ecmwf-ens --bucket YOUR_FORECAST_BUCKET
 HARMONIE EPS: --models harmonie-eps --step 3 --bucket YOUR_FORECAST_BUCKET
 MI-SWAN:  --models mi-swan --bucket YOUR_FORECAST_BUCKET
 IBI-WAVE: --models ibi-wave --bucket YOUR_FORECAST_BUCKET
+MET OFFICE WAVE: --models met-office-wave --bucket YOUR_FORECAST_BUCKET
 CURRENTS: --models currents --bucket YOUR_FORECAST_BUCKET
 ```
 
@@ -734,6 +815,7 @@ docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf-wave $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models gfs-wave $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models mi-swan $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models ibi-wave $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models met-office-wave $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models currents $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models sea-temperature $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models tides $R2
@@ -823,7 +905,7 @@ success.
 
 Every forecast adapter is in the contract: `harmonie`, `icon-eu`, `icon-eu-weather`,
 `ecmwf`, `ecmwf-ens`, `aifs`, `ecmwf-wave`, `gfs`, `gfs-weather`, `gefs`, `arpege`, `arome`,
-`harmonie-eps`, `gfs-wave`, `mi-swan`, `ibi-wave` and `currents`. Each decides from the discovery step it
+`harmonie-eps`, `gfs-wave`, `mi-swan`, `met-office-wave`, `ibi-wave` and `currents`. Each decides from the discovery step it
 already makes (an inventory listing, a package listing, ECMWF's `latest()` probe,
 SWAN's info page and `time[last]`, IBI's day-file listing), after its freshness check, so a stale or
 incomplete source still fails rather than reading as "nothing new". `ecmwf` and
@@ -992,8 +1074,9 @@ square, each holding its places under `spotWaveBlend` (`src/waveBlend.ts`).
 
 - **Its members.** `WAVE_BLEND_MODELS` in `src/waveBlend.ts`, which is the dock's own
   handover order, `WAVE_SOURCE_PREFERENCE` in `force5/src/waves.ts`, finest first: today
-  Irish Shelf SWAN (`mi-swan`, six days), IBI (`ibi-wave`, ten days, one day older) then
-  GFS-Wave (`gfs-wave`, ten days), with ECMWF
+  the Met Office's North-West Shelf model (`met-office-wave`, 60 hours), Irish Shelf SWAN
+  (`mi-swan`, six days), IBI (`ibi-wave`, ten days, a day older) then GFS-Wave
+  (`gfs-wave`, ten days), with ECMWF
   Wave (`ecmwf-wave`, fifteen days) next once the catalogue publishes it again. A wave
   model joins the blend by being added to that list (one line), and is read only while
   `force5/src/catalog.ts` neither retires nor plans it. A member with no pointer, or one
@@ -1013,18 +1096,19 @@ square, each holding its places under `spotWaveBlend` (`src/waveBlend.ts`).
     the summed weights). Whole degrees.
   - `fed`: which members fed the time, one bit per source (bit `i` for `sources[i]`),
     and `count`, how many, one base-36 digit a time. As the short runs end the members
-    drop out: SWAN's six days, IBI's run about nine days ahead of the clock, then
-    GFS-Wave alone to its tenth.
+    drop out: the Met Office's 60 hours, SWAN's six days, IBI's run about nine days
+    ahead of the clock, then GFS-Wave alone to its tenth.
   - `lead` and `parts`: the swell partitions are never averaged, because the models
     split the sea differently (SWAN publishes one swell height and a derived wind sea,
-    GFS-Wave a wind sea and its primary swell, IBI a wind sea and two swells, ECMWF
-    Wave period bands and no
-    partitions). Each time carries the partitions of the first member, in the handover
+    GFS-Wave a wind sea and its primary swell, IBI a wind sea and two swells, the Met
+    Office a wind sea and three swells, ECMWF Wave period bands and no partitions).
+    Each time carries the partitions of the first member, in the handover
     order, that fed it (`lead`, its place in `sources` in base 36, `-` for none):
     `windsea`, `swell` (a model's whole swell as one height) and `swell1` to `swell3`,
     each a height (cm), period (tenths of a second) and direction (degrees), null where
     the lead model does not publish it. `WAVE_PARTITIONS` names the variables each is
-    read from.
+    read from; the wind sea's period is GFS-Wave's mean (`mpww`) or the Met Office's
+    peak (`ppww`).
   - Each source in the pointer names its run, the times it publishes (`columns`), the
     variables it was read for and the partitions it publishes.
 - **How it runs.** In the same hourly job as the blend (`models = ["blend",
@@ -1292,8 +1376,9 @@ Audited against every entry in `registry.py`:
 - **Clean, no change needed.** `harmonie`, `icon-eu`, `icon-eu-weather`, `gfs`,
   `gfs-weather`, `gefs`, `gfs-wave`, `aifs`, `ecmwf-wave`, `arpege`, `arome`, `sea-temperature`: all
   cache under `.cache/<model>/<run>/` and only ever read files they wrote earlier in
-  the same process. `ibi-wave` keeps no cache at all: it reads the catalogue, the
-  listing and the tiles afresh each run.
+  the same process. `ibi-wave` and `met-office-wave` write no cache at all: IBI reads
+  the catalogue, the listing and the tiles afresh each run, the Met Office each file
+  in memory.
 - **Re-derived, one extra request.** `tides` re-downloads the ERDDAP station
   catalogue every run instead of reusing a 7-day-old copy; an empty catalogue still
   fails the run loudly. `mi-swan` re-reads its dataset info and last-time files
@@ -1367,6 +1452,7 @@ weather/currents.json, weather/currents-RUN-72h-v1-HASH8/   ROMS surface current
 weather/icon-eu-weather.json, weather/icon-eu-weather-RUN-72h-v1-HASH8/  surface weather: 73 rain frames + squares
 weather/gfs-weather.json, weather/gfs-weather-RUN-384h-v1-HASH8/  GFS surface weather: squares only
 weather/gfs-wave.json, weather/gfs-wave-RUN-240h-v1-HASH8/  GFS-Wave: squares only
+weather/met-office-wave.json, weather/met-office-wave-RUN-60h-v1-HASH8/  Met Office NWS Wave: squares only
 weather/ecmwf-wave.json, weather/ecmwf-wave-RUN-360h-10v-v1-HASH8/  ECMWF Wave: squares only
 weather/blend.json, weather/blend-RUN-HOURSh-v2-HASH8/spots/SQUARE.json   every place's blend, by square; no frames
 marine/tides-STATION-FROM-TO-HASH.json     immutable tide curves + high/low events

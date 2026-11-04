@@ -138,9 +138,19 @@ export const WIND_MODELS: readonly CatalogEntry[] = [
 ];
 /** Finest first, as WAVE_SOURCE_PREFERENCE in force5/src/waves.ts. */
 export const WAVE_MODELS: readonly CatalogEntry[] = [
+  {
+    id: "met-office-wave",
+    name: "Met Office Wave",
+    manifestUrl: "weather/met-office-wave.json",
+  },
   { id: "mi-swan", name: "MI SWAN", manifestUrl: "weather/mi-swan.json" },
   { id: "ibi-wave", name: "IBI Wave", manifestUrl: "weather/ibi-wave.json" },
   { id: "gfs-wave", name: "GFS-Wave", manifestUrl: "weather/gfs-wave.json" },
+  {
+    id: "ecmwf-wave",
+    name: "ECMWF Wave",
+    manifestUrl: "weather/ecmwf-wave.json",
+  },
 ];
 export const WEATHER_MODELS: readonly CatalogEntry[] = [
   {
@@ -1247,9 +1257,10 @@ interface SpotVariables {
 /**
  * The spot's steps from every source that says anything about it, finest
  * first: the first source's own run, then each next one's past the end of the
- * steps already taken, as the site's dock hands MI SWAN over to GFS-Wave and
- * ICON-EU weather to GFS's (force5/src/variables.ts, `handOverSeries`). The
- * sources of a kind publish the same names for the readings read here.
+ * steps already taken, as the site's dock hands MI SWAN over to GFS-Wave, and
+ * GFS-Wave to ECMWF Wave, and ICON-EU weather to GFS's (force5/src/variables.ts,
+ * `handOverSeries`). The sources of a kind publish the same names for the
+ * readings read here.
  */
 function handedSource(
   loaded: Loaded<VariablesManifest>[],

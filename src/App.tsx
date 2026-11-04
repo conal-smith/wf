@@ -126,8 +126,9 @@ import {
   loadManifest,
   MANIFEST_REVALIDATE_MS,
   ManifestUnavailableError,
-  modelCredits,
+  waveModels,
 } from "../force5/src/manifests";
+import { WAVE_SOURCE_PREFERENCE } from "../force5/src/waves";
 import { runLabel } from "../force5/src/revalidate";
 import { chosenModel, leadText, starsFromAt } from "../force5/src/lead";
 import {
@@ -2056,10 +2057,6 @@ export default function App() {
           blend of {prefs.blendModels.length} models is context beside them and
           moves no star
         </li>
-        <li>
-          Waves, read where each model reaches the beach&rsquo;s open water:{" "}
-          {modelCredits("wave").join("; ")}
-        </li>
         <li>Depths: EMODnet Bathymetry, metres below chart datum</li>
         {foilState.manifest && (
           <li>
@@ -2080,6 +2077,14 @@ export default function App() {
           <a href="https://openfreemap.org/" target="_blank" rel="noreferrer">
             OpenFreeMap
           </a>
+        </li>
+        <li>
+          Waves, finest first, each taking over where the one before ends:{" "}
+          {WAVE_SOURCE_PREFERENCE.flatMap((id) =>
+            waveModels().filter((model) => model.id === id),
+          )
+            .map((model) => model.credit ?? model.name)
+            .join("; ")}
         </li>
         <li>
           Tides: Marine Institute predictions (CC BY 4.0); in Northern Ireland,

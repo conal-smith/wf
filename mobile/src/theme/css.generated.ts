@@ -218,6 +218,7 @@ export const css = {
   "grid-template-columns-now-wide": "minmax(0, 1fr) 420px 300px",
   "grid-template-columns-week": "repeat(7, minmax(118px, 1fr))",
   "grid-template-columns-graph": "72px minmax(0, 1fr)",
+  "grid-template-columns-graph-narrow": "60px minmax(0, 1fr)",
   "grid-template-columns-readout": "repeat(auto-fill, minmax(112px, 1fr))",
   "grid-template-columns-near": "40px minmax(0, 1fr)",
   "grid-template-columns-card": "104px minmax(0, 1fr)",

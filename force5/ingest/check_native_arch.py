@@ -22,7 +22,7 @@ EM_X86_64 = 62
 EM_AARCH64 = 183
 # Wheels the importers actually load. A pure-Python stand-in for one of these
 # would pass pip and then fail on the Mac mini.
-REQUIRED_PACKAGES = ("numpy", "pyproj", "eccodeslib")
+REQUIRED_PACKAGES = ("numpy", "pyproj", "eccodeslib", "h5py")
 NODE = pathlib.Path("/usr/local/bin/node")
 
 

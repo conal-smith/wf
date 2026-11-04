@@ -37,20 +37,22 @@ export const MAX_WAVE_VALUE = VARIABLE_VALUE_LIMITS.wave;
 export const WAVE_MATCH_HOURS = VARIABLE_MATCH_HOURS;
 
 /**
- * Sources in the order the dock prefers them, finest first. Ireland's own 2.8 km
- * shelf model wins; Copernicus Marine's IBI model (Météo-France MFWAM, 1/36°,
- * about 3 km, ten days, with wind sea and two swells) comes next, so the six
- * days of SWAN go on in it; NOAA's 9 km global model is the fallback; ECMWF's 0.25°
+ * Sources in the order the dock prefers them, finest first. The Met Office's
+ * 1.5 km North-West Shelf model leads for its 60 hours; Ireland's own 2.8 km
+ * shelf model goes on from there to six days; Copernicus Marine's IBI model
+ * (Météo-France MFWAM, 1/36°, about 3 km, ten days, with the wind sea and two
+ * swells) past that; NOAA's 9 km global model is the fallback; ECMWF's 0.25°
  * (~28 km) wave stream is last, because at that resolution a bay is a cell or
- * two wide and many spots are read from open water nearby. It is retired (see
- * force5/src/manifests.ts), so the site never loads it, but it keeps its place
- * here for the day it is switched back on.
+ * two wide and many spots are read from open water nearby. It earns its place
+ * by reach: its run goes on to 360 h, so past GFS-Wave's 240 h the waves are
+ * ECMWF's (`handedWaveSource`), as the wind is past the end of the others.
  *
  * It is the wave blend's member list too, in the order its partitions lead
  * (`WAVE_BLEND_MODELS`, src/waveBlend.ts): a wave model added here joins the
  * dock's handover and the blend at once.
  */
 export const WAVE_SOURCE_PREFERENCE: readonly string[] = [
+  "met-office-wave",
   "mi-swan",
   "ibi-wave",
   "gfs-wave",
@@ -216,7 +218,8 @@ export function waveFields(manifest: WaveManifest): WaveFields | null {
     total,
     swell: set(["swell1_h", "hswe"], ["swell1_p"], ["swell1_d"]),
     swell2: set(["swell2_h"], ["swell2_p"], ["swell2_d"]),
-    windsea: set(["shww"], ["mpww"], ["mdww"]),
+    // GFS-Wave publishes the wind sea's mean period, the Met Office its peak.
+    windsea: set(["shww"], ["mpww", "ppww"], ["mdww"]),
   };
 }
 
@@ -286,8 +289,9 @@ function waveNames(lead: WaveFields, other: WaveFields) {
 /**
  * The spot's waves from every source in turn: the first source's own run, then
  * each next one's past the end of it (`handOverSeries`), so Ireland's 2.8 km
- * shelf model's six days go on in IBI's ten, and GFS-Wave's past those,
- * rather than stopping. The
+ * shelf model's six days go on in IBI's ten, those in GFS-Wave's, and those in
+ * ECMWF's fifteen, rather than stopping. ECMWF publishes no swell or wind-sea
+ * partition, so past GFS-Wave's end only the whole sea's rows go on. The
  * result reads as the first source, its fields and its coverage note; each
  * step names the model it came from. Null with no source.
  */

@@ -187,17 +187,17 @@ class ShippedScheduleTest(unittest.TestCase):
         identities = [job["id"] for job in jobs]
         self.assertEqual(identities, ["harmonie", "icon-eu", "icon-eu-weather", "ecmwf",
                                       "harmonie-eps", "ecmwf-ens", "aifs", "gfs", "gefs", "arpege",
-                                      "arome", "gfs-wave", "gfs-weather", "mi-swan", "ibi-wave", "currents",
-                                      "ecmwf-wave", "tides",
+                                      "arome", "gfs-wave", "gfs-weather", "mi-swan", "ibi-wave",
+                                      "met-office-wave", "currents", "ecmwf-wave", "tides",
                                       "sea-temperature", "blend", "blend-after-harmonie", "wind-obs",
                                       "warnings", "water-quality", "forecast-archive",
                                       "verify", "prune"])
         # The lagged HARMONIE ensemble ships disabled: it is heavy on Met Éireann's
         # bandwidth for a thin spread, so an operator enables it knowingly. The
-        # other six were retired on 10 October 2026.
+        # other five were retired on 10 October 2026 (ECMWF waves, retired with
+        # them, came back on 4 November).
         self.assertEqual([job["id"] for job in jobs if not job["enabled"]],
-                         ["harmonie-eps", "ecmwf-ens", "aifs", "gefs", "arpege", "arome",
-                          "ecmwf-wave"])
+                         ["harmonie-eps", "ecmwf-ens", "aifs", "gefs", "arpege", "arome"])
         for job in jobs:
             self.assertIsNotNone(scheduler.next_due(job, NOW), job["id"])
             for model in job["models"]:
@@ -252,6 +252,8 @@ class ShippedScheduleTest(unittest.TestCase):
             "icon-eu": ((0,), timedelta(hours=3, minutes=30)),
             "icon-eu-weather": ((0,), timedelta(hours=3, minutes=30)),
             "ecmwf": ((0, 12), timedelta(hours=7, minutes=35)),
+            # The wave stream is complete on open data with the wind control's.
+            "ecmwf-wave": ((0, 12), timedelta(hours=7, minutes=35)),
             "gfs": ((0, 6, 12, 18), timedelta(hours=4)),
             "gfs-wave": ((0, 6, 12, 18), timedelta(hours=3, minutes=50)),
             # The whole 384 h run, listed later than the wind's 240 h.
@@ -260,6 +262,8 @@ class ShippedScheduleTest(unittest.TestCase):
             # Copernicus Marine's IBI waves: a run is whole once its second half lands,
             # due by 02:00 UTC the day after its run day.
             "ibi-wave": ((0,), timedelta(hours=26)),
+            # Every file of a run is listed within a minute, about 2 h 45 m after it.
+            "met-office-wave": ((0, 6, 12, 18), timedelta(hours=2, minutes=45)),
             # ROMS writes the day's forecast files by about 00:55 UTC; ERDDAP's
             # aggregate takes them up within the hour or so after.
             "currents": ((0,), timedelta(hours=2)),

@@ -4,6 +4,7 @@ import {
   ECMWF_WAVE_VARIABLES,
   GFS_WAVE_VARIABLES,
   IBI_WAVE_VARIABLES,
+  MET_OFFICE_WAVE_VARIABLES,
   SWAN_VARIABLES,
   pointerOf,
   waveManifest,
@@ -25,6 +26,7 @@ import {
   waveSources,
   type WaveManifest,
 } from "./waves";
+import { handoverColumns } from "./variables";
 
 const ok = (body: unknown) =>
   new Response(JSON.stringify(body), { status: 200 });
@@ -340,8 +342,9 @@ describe("choosing a source per spot", () => {
     variables: ECMWF_WAVE_VARIABLES,
     values: (hour) => ({ swh: 3 + hour / 10, pp1d: 13, mwd: 290, h1417: 1.4 }),
   });
-  it("ranks the shelf model, then IBI, then GFS-Wave, then ECMWF's coarse stream", () => {
+  it("ranks the Met Office's 1.5 km model, the shelf model, IBI, GFS-Wave, then ECMWF", () => {
     expect(WAVE_SOURCE_PREFERENCE).toEqual([
+      "met-office-wave",
       "mi-swan",
       "ibi-wave",
       "gfs-wave",
@@ -534,6 +537,43 @@ describe("handing a spot's waves from one source to the next", () => {
       9.5,
     );
   });
+  it("leads with the Met Office's 60 hours, then SWAN's, then GFS-Wave's", () => {
+    const metOffice = waveManifest({
+      model: "met-office-wave",
+      runTime: "2026-10-22T00:00:00Z",
+      hours: [0, 1, 2, 3],
+      variables: MET_OFFICE_WAVE_VARIABLES,
+      values: () => ({ swh: 1, pp1d: 12, mwd: 270, shww: 0.3, ppww: 4 }),
+    });
+    const sources = waveSources([gfs, swan, metOffice], "brandon");
+    expect(sources.map((s) => s.manifest.model)).toEqual([
+      "met-office-wave",
+      "mi-swan",
+      "gfs-wave",
+    ]);
+    const source = handedWaveSource(sources)!;
+    expect(source.manifest.model).toBe("met-office-wave");
+    expect(source.fields.windsea).toEqual({
+      height: "shww",
+      period: "ppww",
+      direction: "mdww",
+    });
+    expect(source.fields.swell?.period).toBe("swell1_p");
+    expect(
+      source.series.map((step) => [step.hour, step.values.swh, step.model]),
+    ).toEqual([
+      [0, 1, "met-office-wave"],
+      [1, 1, "met-office-wave"],
+      [2, 1, "met-office-wave"],
+      [3, 1, "met-office-wave"],
+      [6, 2, "mi-swan"],
+      [9, 3.09, "gfs-wave"],
+      [12, 3.12, "gfs-wave"],
+    ]);
+    // SWAN's swell height reads as the Met Office's first swell partition.
+    const swell = source.series.find((step) => step.model === "mi-swan");
+    expect(Object.keys(swell!.values)).toContain("swell1_h");
+  });
   it("is the one source alone where only one sees the spot, and none with none", () => {
     const blind = waveManifest({
       model: "mi-swan",
@@ -544,5 +584,122 @@ describe("handing a spot's waves from one source to the next", () => {
     expect(source.manifest.model).toBe("gfs-wave");
     expect(source.series.every((step) => step.model === "gfs-wave")).toBe(true);
     expect(handedWaveSource([])).toBeNull();
+  });
+});
+
+describe("handing the waves on to ECMWF past GFS-Wave's ten days", () => {
+  // The three runs as they are published: MI SWAN's 2.8 km shelf run to six
+  // days, GFS-Wave's to 240 h and ECMWF's 0.25° stream to 360 h, 3-hourly to
+  // +144 h and 6-hourly after, each from its own cycle.
+  const range = (from: number, to: number, step: number) =>
+    Array.from({ length: (to - from) / step + 1 }, (_, i) => from + i * step);
+  const ladder = [...range(0, 144, 3), ...range(150, 360, 6)];
+  const swan = waveManifest({
+    model: "mi-swan",
+    runTime: "2026-11-04T00:00:00Z",
+    hours: range(0, 144, 1),
+    variables: SWAN_VARIABLES,
+    values: () => ({ swh: 2, pp1d: 11, mwd: 280 }),
+  });
+  const gfs = waveManifest({
+    runTime: "2026-11-04T06:00:00Z",
+    hours: range(0, 240, 3),
+    values: () => ({ swh: 3, pp1d: 9, mwd: 300 }),
+  });
+  const ecmwf = waveManifest({
+    model: "ecmwf-wave",
+    runTime: "2026-11-04T00:00:00Z",
+    hours: ladder,
+    variables: ECMWF_WAVE_VARIABLES,
+    values: (hour) => ({ swh: 4 + hour / 1000, pp1d: 13, mwd: 290, h1417: 1 }),
+  });
+  const at = (iso: string) => Date.parse(iso);
+  const models = (series: { model?: string }[]) => [
+    ...new Set(series.map((step) => step.model)),
+  ];
+
+  it("goes on in ECMWF's run past GFS-Wave's last step, to fifteen days", () => {
+    const source = handedWaveSource(waveSources([ecmwf, gfs], "brandon"))!;
+    expect(source.manifest.model).toBe("gfs-wave");
+    expect(models(source.series)).toEqual(["gfs-wave", "ecmwf-wave"]);
+    const gfsEnd = at("2026-11-14T06:00:00Z"); // GFS-Wave's +240 h
+    const handed = source.series.filter((step) => step.model === "ecmwf-wave");
+    // GFS-Wave's last step, 06 UTC on the 14th, is ECMWF's +246 h: that hour
+    // stays GFS-Wave's, and ECMWF's 6-hourly run takes over at its next, +252 h.
+    expect(handed[0].hour).toBe(252);
+    expect(at(handed[0].validTime)).toBeGreaterThan(gfsEnd);
+    expect(
+      source.series
+        .filter((step) => at(step.validTime) <= gfsEnd)
+        .every((step) => step.model === "gfs-wave"),
+    ).toBe(true);
+    expect(source.series.at(-1)).toMatchObject({
+      model: "ecmwf-wave",
+      hour: 360,
+    });
+    expect(at(source.series.at(-1)!.validTime)).toBe(
+      at("2026-11-19T00:00:00Z"),
+    );
+    expect(source.series.at(-1)!.values.swh).toBeCloseTo(4.36);
+  });
+
+  it("hands MI SWAN on to GFS-Wave, then to ECMWF, every hour one model's", () => {
+    const source = handedWaveSource(
+      waveSources([ecmwf, gfs, swan], "brandon"),
+    )!;
+    expect(source.manifest.model).toBe("mi-swan");
+    expect(models(source.series)).toEqual([
+      "mi-swan",
+      "gfs-wave",
+      "ecmwf-wave",
+    ]);
+    const times = source.series.map((step) => at(step.validTime));
+    expect(times.every((time, i) => i === 0 || time > times[i - 1])).toBe(true);
+    const first = (model: string) =>
+      at(source.series.find((step) => step.model === model)!.validTime);
+    expect(first("gfs-wave")).toBe(at("2026-11-10T03:00:00Z")); // past SWAN's +144 h
+    expect(first("ecmwf-wave")).toBe(at("2026-11-14T12:00:00Z")); // past GFS-Wave's +240 h
+    // The dock marks the two places the row changes model.
+    const columns = waveAtAxis(source.series, [
+      "2026-11-10T00:00:00Z",
+      "2026-11-10T03:00:00Z",
+      "2026-11-14T06:00:00Z",
+      "2026-11-14T12:00:00Z",
+      "2026-11-18T00:00:00Z",
+    ]);
+    expect(columns.map((step) => step?.model)).toEqual([
+      "mi-swan",
+      "gfs-wave",
+      "gfs-wave",
+      "ecmwf-wave",
+      "ecmwf-wave",
+    ]);
+    expect([...handoverColumns(columns)]).toEqual([1, 3]);
+    // ECMWF's whole-sea readings carry on in the rows the lead names.
+    expect(columns[4]?.values).toMatchObject({
+      swh: 4.336,
+      pp1d: 13,
+      mwd: 290,
+    });
+  });
+
+  it("leaves GFS-Wave's ten days alone while ECMWF's run is older", () => {
+    // ECMWF's run is a cycle older, so its steps up to GFS-Wave's end are never
+    // read: an hour is GFS-Wave's wherever GFS-Wave reaches.
+    const source = handedWaveSource(waveSources([gfs, ecmwf], "brandon"))!;
+    const gfsSteps = source.series.filter((step) => step.model === "gfs-wave");
+    expect(gfsSteps).toHaveLength(81);
+  });
+
+  it("is ECMWF alone where it is the only model that sees the spot", () => {
+    const blind = waveManifest({
+      runTime: "2026-11-04T06:00:00Z",
+      hours: range(0, 240, 3),
+      values: () => null,
+    });
+    const source = handedWaveSource(waveSources([blind, ecmwf], "brandon"))!;
+    expect(source.manifest.model).toBe("ecmwf-wave");
+    expect(models(source.series)).toEqual(["ecmwf-wave"]);
+    expect(source.series).toHaveLength(ladder.length);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   GFS_WAVE_VARIABLES,
+  MET_OFFICE_WAVE_VARIABLES,
   SWAN_VARIABLES,
   ECMWF_WAVE_VARIABLES,
   waveManifest,
@@ -246,6 +247,57 @@ describe("the partitions", () => {
     ]);
   });
 
+  it("are the Met Office's own while it leads, its wind-sea peak period included", () => {
+    const metOffice = waveManifest({
+      model: "met-office-wave",
+      runTime: RUN,
+      hours: [0, 1],
+      variables: MET_OFFICE_WAVE_VARIABLES,
+      values: () => ({
+        swh: 1.4,
+        pp1d: 12,
+        mwd: 270,
+        shww: 0.4,
+        ppww: 4,
+        mdww: 200,
+        swell1_h: 1.2,
+        swell1_p: 12,
+        swell1_d: 275,
+        swell2_h: 0.5,
+        swell2_p: 8,
+        swell2_d: 300,
+        swell3_h: 0,
+        swell3_p: null,
+        swell3_d: null,
+      }),
+    });
+    const { blend, place, hours } = spot([
+      gfs([0, 1, 2, 3]),
+      swan([0, 1, 2, 3]),
+      metOffice,
+    ]);
+    expect(blend.sources.map((s) => s.id)).toEqual([
+      "met-office-wave",
+      "mi-swan",
+      "gfs-wave",
+    ]);
+    expect(blend.sources[0].partitions).toEqual([
+      "windsea",
+      "swell1",
+      "swell2",
+      "swell3",
+    ]);
+    // Its +1 h step still answers for +2 h (within 1.5 h); SWAN takes +3 h.
+    expect(place.lead).toBe("0001");
+    expect(hours[0].parts).toMatchObject({
+      windsea: { heightM: 0.4, periodS: 4, from: 200 },
+      swell1: { heightM: 1.2, periodS: 12, from: 275 },
+      swell2: { heightM: 0.5, periodS: 8, from: 300 },
+      swell3: { heightM: 0, periodS: null, from: null },
+    });
+    expect(hours[3].lead).toBe("mi-swan");
+  });
+
   it("are none where the lead model publishes none, though a later one does", () => {
     const ecmwf = waveManifest({
       model: "ecmwf-wave",
@@ -264,10 +316,22 @@ describe("the partitions", () => {
 describe("the members", () => {
   it("are the dock's handover order, less what the catalogue does not publish", () => {
     expect(WAVE_BLEND_MODELS).toBe(WAVE_SOURCE_PREFERENCE);
-    // ECMWF Wave is retired in the catalogue until it is published again.
+    // All three wave models are published now ECMWF Wave is back.
     expect(
       waveBlendMembers(["gfs-wave", "ecmwf-wave", "mi-swan", "harmonie"]),
+    ).toEqual(["mi-swan", "gfs-wave", "ecmwf-wave"]);
+    // One the catalogue calls retired is left out until it is published again.
+    expect(
+      waveBlendMembers(
+        ["gfs-wave", "ecmwf-wave", "mi-swan"],
+        WAVE_SOURCE_PREFERENCE,
+        ["gfs-wave", "mi-swan"],
+      ),
     ).toEqual(["mi-swan", "gfs-wave"]);
+    // The Met Office's 1.5 km model leads the members, as it leads the dock.
+    expect(
+      waveBlendMembers(["gfs-wave", "mi-swan", "met-office-wave"]),
+    ).toEqual(["met-office-wave", "mi-swan", "gfs-wave"]);
     expect(
       waveBlendMembers(
         ["gfs-wave", "new-wave"],
