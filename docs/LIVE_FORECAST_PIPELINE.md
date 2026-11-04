@@ -985,7 +985,8 @@ square, each holding its places under `spotWaveBlend` (`src/waveBlend.ts`).
 
 - **Its members.** `WAVE_BLEND_MODELS` in `src/waveBlend.ts`, which is the dock's own
   handover order, `WAVE_SOURCE_PREFERENCE` in `force5/src/waves.ts`, finest first: today
-  Irish Shelf SWAN (`mi-swan`, six days) then GFS-Wave (`gfs-wave`, ten days), with ECMWF
+  the Met Office's North-West Shelf model (`met-office-wave`, 60 hours), Irish Shelf SWAN
+  (`mi-swan`, six days) then GFS-Wave (`gfs-wave`, ten days), with ECMWF
   Wave (`ecmwf-wave`, fifteen days) next once the catalogue publishes it again. A wave
   model joins the blend by being added to that list (one line), and is read only while
   `force5/src/catalog.ts` neither retires nor plans it. A member with no pointer, or one
@@ -1005,16 +1006,18 @@ square, each holding its places under `spotWaveBlend` (`src/waveBlend.ts`).
     the summed weights). Whole degrees.
   - `fed`: which members fed the time, one bit per source (bit `i` for `sources[i]`),
     and `count`, how many, one base-36 digit a time. As the short runs end the members
-    drop out: SWAN's six days, then GFS-Wave alone to its tenth.
+    drop out: the Met Office's 60 hours, SWAN's six days, then GFS-Wave alone to its
+    tenth.
   - `lead` and `parts`: the swell partitions are never averaged, because the models
     split the sea differently (SWAN publishes one swell height and a derived wind sea,
-    GFS-Wave a wind sea and its primary swell, ECMWF Wave period bands and no
-    partitions). Each time carries the partitions of the first member, in the handover
+    GFS-Wave a wind sea and its primary swell, the Met Office a wind sea and three
+    swells, ECMWF Wave period bands and no partitions). Each time carries the partitions of the first member, in the handover
     order, that fed it (`lead`, its place in `sources` in base 36, `-` for none):
     `windsea`, `swell` (a model's whole swell as one height) and `swell1` to `swell3`,
     each a height (cm), period (tenths of a second) and direction (degrees), null where
     the lead model does not publish it. `WAVE_PARTITIONS` names the variables each is
-    read from.
+    read from; the wind sea's period is GFS-Wave's mean (`mpww`) or the Met Office's
+    peak (`ppww`).
   - Each source in the pointer names its run, the times it publishes (`columns`), the
     variables it was read for and the partitions it publishes.
 - **How it runs.** In the same hourly job as the blend (`models = ["blend",
