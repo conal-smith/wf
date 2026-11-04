@@ -40,6 +40,12 @@ export interface ModelEntry {
    * fetches nor lists it. The adapter stays, and clearing this brings it back.
    */
   retired?: boolean;
+  /**
+   * The credit the source's licence asks for wherever its forecast is shown,
+   * which the map's "Sources & credits" prints for every live model that has
+   * one (`modelCredits`).
+   */
+  credit?: string;
 }
 
 // Hues are provisional: a design ruling on model identity colours is pending.
@@ -190,6 +196,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     staleAfterHours: 13,
     hue: { wind: "#1f6f8b", gust: "#cf7d2f" },
     mapCapable: true,
+    credit: "GFS-Wave: NOAA/NCEP WAVEWATCH III (public domain)",
   },
   {
     id: "mi-swan",
@@ -200,6 +207,24 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     staleAfterHours: 36,
     hue: { wind: "#2a7f62", gust: "#cf8a2f" },
     mapCapable: true,
+    credit: "Irish Shelf SWAN wave forecast © Marine Institute (CC BY 4.0)",
+  },
+  {
+    // Copernicus Marine's Iberia-Biscay-Ireland waves: Météo-France's MFWAM on a
+    // 1/36° grid (about 3.1 km north-south, 1.8 km east-west here), ten days,
+    // hourly, with the wind sea and two swells. Spot series only, no frames.
+    id: "ibi-wave",
+    name: "IBI Wave",
+    detail: "2.5 km · 10 days",
+    manifestUrl: "weather/ibi-wave.json",
+    kind: "wave",
+    staleAfterHours: 55,
+    hue: { wind: "#2f8fa3", gust: "#c9853a" },
+    mapCapable: false,
+    // The Copernicus Marine licence's own words for a derived product (2.4a),
+    // with the product's DOI.
+    credit:
+      "IBI waves: Generated using E.U. Copernicus Marine Service Information; https://doi.org/10.48670/moi-00025",
   },
   {
     // The surface-weather half of the same DWD run the `icon-eu` wind model
@@ -265,5 +290,13 @@ export const waveModels = () =>
   MODEL_CATALOG.filter((m) => m.kind === "wave" && published(m));
 export const weatherModels = () =>
   MODEL_CATALOG.filter((m) => m.kind === "weather" && published(m));
+/** The credits of the live models of one kind, in catalogue order, each once. */
+export const modelCredits = (kind: ModelEntry["kind"]) => [
+  ...new Set(
+    MODEL_CATALOG.filter(
+      (m) => m.kind === kind && published(m) && m.credit,
+    ).map((m) => m.credit!),
+  ),
+];
 export const modelHue = (id: string) =>
   modelEntry(id)?.hue ?? { wind: "#7d8b91", gust: "#b9a06a" };

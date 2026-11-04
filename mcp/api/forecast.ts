@@ -139,6 +139,7 @@ export const WIND_MODELS: readonly CatalogEntry[] = [
 /** Finest first, as WAVE_SOURCE_PREFERENCE in force5/src/waves.ts. */
 export const WAVE_MODELS: readonly CatalogEntry[] = [
   { id: "mi-swan", name: "MI SWAN", manifestUrl: "weather/mi-swan.json" },
+  { id: "ibi-wave", name: "IBI Wave", manifestUrl: "weather/ibi-wave.json" },
   { id: "gfs-wave", name: "GFS-Wave", manifestUrl: "weather/gfs-wave.json" },
 ];
 export const WEATHER_MODELS: readonly CatalogEntry[] = [
@@ -1961,8 +1962,8 @@ export async function spotForecast(
 ): Promise<SpotForecast> {
   // Only the one square that holds the spot is read, of each model.
   const square = [spotSquare(spot.lat, spot.lon)];
-  const [wind, waves, weather, tides, sea, warned, notices] =
-    await Promise.all([
+  const [wind, waves, weather, tides, sea, warned, notices] = await Promise.all(
+    [
       loadWind(source, options.now, square),
       loadWaves(source, options.now, square),
       loadWeather(source, options.now, square),
@@ -1970,7 +1971,8 @@ export async function spotForecast(
       spotSea(source, spot.id),
       loadWarnings(source),
       loadWaterQuality(source),
-    ]);
+    ],
+  );
   const warnings = placeWarnings(warned, spot, options.now);
   const water = spotWaterQuality(notices, spot.id, options.now);
   const { lines, outside } = spotWindLines(wind.loaded, spot.id);
@@ -2121,8 +2123,8 @@ function rateForecast(
         : row.water?.replaces_rating
           ? NOT_RATED.water
           : row.wind
-          ? NOT_RATED.dark
-          : NOT_RATED.noWind;
+            ? NOT_RATED.dark
+            : NOT_RATED.noWind;
   }
   const hourly = axis({ ...window, stepHours: 1 }).map((time) => {
     const wind = hourWind(lines, time, false, options.from);

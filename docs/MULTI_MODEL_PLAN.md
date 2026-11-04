@@ -9,6 +9,11 @@ jobs ship disabled; the site serves HARMONIE,
 ICON-EU, ECMWF and GFS for wind, and MI SWAN and GFS-Wave for waves. See
 `deploy/local/README.md`.
 
+**Update, 4 November 2026:** Copernicus Marine's IBI waves (Météo-France MFWAM,
+`ibi-wave`, row 5 of the wave table) are added, between MI SWAN and GFS-Wave in the
+dock's handover and the wave blend. See "Copernicus Marine IBI waves" in
+docs/LIVE_FORECAST_PIPELINE.md.
+
 ## Delivered so far (16 September 2026)
 
 - Ingest foundations: `force5/ingest/registry.py` (one line per model), manifest
@@ -153,14 +158,14 @@ step tables are stale.
 
 ## Wave models
 
-| #   | Source                                            | Coverage / res / length                          | Access                                                                           | Key          | Partitions                         | Notes                                                                                                                         |
-| --- | ------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------- | ------------ | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| 1   | NOAA GFS-Wave `arctic.9km` (+ `global.0p25` tail) | yes, 9 km polar stereo, 384 h, 4/day             | NOMADS filter with subregion (~40 KB/step all params) or S3 `.idx`               | none         | wind sea + 3 swell                 | Verified valid SWH in Irish Sea and west-coast bays. Avoid `global.0p16` (stops 52.5°N) and `atlocn.0p16` (west Atlantic).    |
-| 2   | Met Office NWS Wave 1.5 km                        | 16°W–13°E, 46–62.7°N, 60 h, 4/day, hourly        | anonymous S3 `met-office-nws-wave-model-data`, NetCDF, one file per param        | none         | wind sea + 3 swell                 | Best coastal resolution. No spatial subsetting; read one timestep chunk at a time. CC BY-SA.                                  |
-| 3   | Marine Institute Irish Shelf SWAN                 | 15°W–3°W, 49–56°N, 0.025°, 6 days, 1/day, hourly | ERDDAP griddap with true bbox/time subsetting; ~14 KB per spot for the whole run | none         | swell Hs only                      | Only Irish-authority wave model. One run/day at ~9 h latency, sometimes late. 200 m Connemara nest for Galway Bay. CC BY 4.0. |
-| 4   | ECMWF `stream="wave"`                             | global 0.25°, 360 h                              | existing client + `.index`                                                       | none         | none (period-band heights instead) | Cheapest integration; 15-day horizon. `aifs-single` wave is ~2 h fresher.                                                     |
-| 5   | CMEMS IBI wave (MFWAM)                            | 19°W–5°E, 2.7 km, 10 days, hourly                | `copernicusmarine` subset (ARCO tiles ~50–100 KB/var per spot)                   | free account | WW + SW1 + SW2                     | Best quality; ~13.5 h latency. Attribution DOI required.                                                                      |
-| 6   | DWD EWAM                                          | clipped at 10.5°W, ~6 km, 78 h, 2/day            | `opendata.dwd.de/weather/maritime/wave_models/ewam/`                             | none         | full split                         | Misses the Atlantic-exposed spots that matter most. Second opinion only.                                                      |
+| #   | Source                                            | Coverage / res / length                           | Access                                                                                            | Key                          | Partitions                         | Notes                                                                                                                                                                                                                             |
+| --- | ------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | NOAA GFS-Wave `arctic.9km` (+ `global.0p25` tail) | yes, 9 km polar stereo, 384 h, 4/day              | NOMADS filter with subregion (~40 KB/step all params) or S3 `.idx`                                | none                         | wind sea + 3 swell                 | Verified valid SWH in Irish Sea and west-coast bays. Avoid `global.0p16` (stops 52.5°N) and `atlocn.0p16` (west Atlantic).                                                                                                        |
+| 2   | Met Office NWS Wave 1.5 km                        | 16°W–13°E, 46–62.7°N, 60 h, 4/day, hourly         | anonymous S3 `met-office-nws-wave-model-data`, NetCDF, one file per param                         | none                         | wind sea + 3 swell                 | Best coastal resolution. No spatial subsetting; read one timestep chunk at a time. CC BY-SA.                                                                                                                                      |
+| 3   | Marine Institute Irish Shelf SWAN                 | 15°W–3°W, 49–56°N, 0.025°, 6 days, 1/day, hourly  | ERDDAP griddap with true bbox/time subsetting; ~14 KB per spot for the whole run                  | none                         | swell Hs only                      | Only Irish-authority wave model. One run/day at ~9 h latency, sometimes late. 200 m Connemara nest for Galway Bay. CC BY 4.0.                                                                                                     |
+| 4   | ECMWF `stream="wave"`                             | global 0.25°, 360 h                               | existing client + `.index`                                                                        | none                         | none (period-band heights instead) | Cheapest integration; 15-day horizon. `aifs-single` wave is ~2 h fresher.                                                                                                                                                         |
+| 5   | CMEMS IBI wave (MFWAM), `ibi-wave`                | 19°W–5°E, 26–56°N, 1/36° (~3 km), 10 days, hourly | ARCO zarr over public HTTPS: only the 16 × 16-cell tiles holding a spot's cell (~80–450 MB a run) | none (licence: credit + DOI) | WW + SW1 + SW2                     | **Shipped 4 November 2026.** Second in the handover. A run is whole only once its second half lands (~00:10, by 02:00 UTC the next day), so it is served ~26 h after its run hour; 143 of 149 places have a sea cell within 8 km. |
+| 6   | DWD EWAM                                          | clipped at 10.5°W, ~6 km, 78 h, 2/day             | `opendata.dwd.de/weather/maritime/wave_models/ewam/`                                              | none                         | full split                         | Misses the Atlantic-exposed spots that matter most. Second opinion only.                                                                                                                                                          |
 
 Met Éireann publishes no wave data. Met Office DataHub has no wave product.
 
@@ -225,7 +230,9 @@ Met Éireann publishes no wave data. Met Office DataHub has no wave product.
    `[[jobs]]` entry; an id with no importer is rejected on its own without disturbing the
    other jobs, and new tide/wave output should publish under `marine/`.
 7. **Dependencies**: `requests`, `boto3` (unsigned), `netCDF4`/`xarray` for NetCDF
-   sources, `copernicusmarine` only if CMEMS is adopted. Pin ecCodes with libaec.
+   sources. CMEMS was adopted without `copernicusmarine`: its ARCO stores are read
+   directly with `requests` and `numcodecs` (4 MB, against the toolbox's ~330 MB).
+   Pin ecCodes with libaec.
 
 ## Frontend changes
 

@@ -288,6 +288,71 @@ path reads whole-grid messages, roughly 3.5 MB per step. The importer refuses to
 publish when the cut-out does not land on the source lattice, which is the check
 that would catch NOAA changing the grid or the filter's coordinate arithmetic.
 
+### Copernicus Marine IBI waves (Météo-France MFWAM)
+
+`--models ibi-wave` runs `fetch_ibi_wave.py`, which reads Copernicus Marine's
+Iberia-Biscay-Ireland wave analysis and forecast (`IBI_ANALYSISFORECAST_WAV_005_005`,
+dataset `cmems_mod_ibi_wav_anfc_0.027deg_PT1H-i`): Météo-France's MFWAM on a regular
+1/36° grid (0.0278°, about 3.1 km north-south and 1.8 km east-west here), 26–56°N and
+19°W–5°E, **hourly for ten days**. It publishes the `kind: "wave"` bundle
+`weather/ibi-wave.json`, spot squares only and no frames, hours 0–239 of one run, with
+thirteen variables under the names the site already reads: the whole sea (`swh`,
+`pp1d`, `mwp` Tm02, `mwd`), the wind sea (`shww`, `mpww`, `mdww`) and **two swell
+partitions** (`swell1_*`, `swell2_*`, height, Tm01 period and direction).
+
+- **Licence and credit.** Free under the Copernicus Marine licence, which allows a
+  derived product for any purpose with the credit "Generated using E.U. Copernicus
+  Marine Service Information" and the product's DOI
+  (https://doi.org/10.48670/moi-00025) where the product is reached. The manifest's
+  `attribution` carries it, and `force5/src/catalog.ts` gives it to the map's
+  **Sources & credits**, beside the other wave models' credits. No warranty.
+- **How it is read: public HTTPS, no account.** The Marine Data Store's STAC catalogue
+  names the dataset's versions and stores, its S3 bucket lists the day files, and its
+  ARCO stores are consolidated zarr; the Copernicus Marine Toolbox reads the same
+  objects, unsigned. The toolbox would have added about 330 MB to the image (xarray,
+  dask, pandas, and pyarrow for its sparse datasets: 101 MB more compressed, 64%) and
+  put the job at about 530 MB, so the adapter reads them with `requests` and
+  `numcodecs` (4 MB) instead. The version read is the toolbox's default: the newest
+  released and not retired. Version 202411 retires on 12 January 2027 and 202611,
+  the same grid with a different time chunking, is released on 24 November 2026; the
+  adapter moves to it by itself.
+- **Coverage.** The domain ends at 56.0009°N; the northernmost riding place, Pollan
+  Bay on Inishowen (55.30°N), is read 3.9 km offshore, Portrush 2.4 km and Downings
+  4.7 km, all from open water. Of the 149 riding places, 143 have a sea cell within
+  8 km (median 4.1 km away, 15 of them only on the model's coastline); six do not and
+  publish nulls with a reason: the Lough Derg, Lough Neagh and Blessington lakes, and
+  Duncannon, up Waterford Harbour, which the grid closes.
+- **The cell.** A spot is read at one cell, never interpolated: the nearest
+  open-water cell (sea, and sea on all four sides) within 8 km, else the nearest sea
+  cell. `spotCoverage` gives the cell, its offset, whether it is open water, its depth
+  and a sentence the dock shows.
+- **When a run is whole.** One run a day, labelled by its first forecast day R, lands
+  in two halves: days R to R+4 at about 11:30 UTC on R (the catalogue says by 13:30),
+  and days R+5 to R+9 at about 00:10 UTC on R+1 (by 02:00). Each half overwrites the
+  days the day before's run wrote, so between them the store holds the new run's
+  first five days beside the old run's last four. The service keeps one file a day,
+  named for its run (`…_20261104_20261104_R20261104_FC01.nc`), so the adapter lists
+  the day files and publishes only a run all ten of whose days are its own, refusing
+  otherwise; it also refuses while the store's catalogue entry says it is updating,
+  or was last updated before the run's newest file, or changed while it was read.
+  `run` is R at 00 UTC, the first forecast hour, so a run is about 26 h old when it is
+  published. That is the price of publishing one whole run; IBI's value is past SWAN's
+  six days, where it hands over, and at the places SWAN cannot see.
+- **Schedule.** 02:30 UTC, with 05:30 and 08:30 retries that download nothing once
+  02:30 has published, all before the next run's first half mixes the days again.
+  `maxAgeHours` is 55: the served run is about 50.5 h old when the next day's lands,
+  and 55 leaves the first retry and an hour of queueing.
+- **Cost.** Only the 16 × 16-cell tiles of the time-series store holding a spot's cell
+  are read, each once, all thirteen variables for the run's hours: 43 tiles, 559
+  requests and 80 MB on 4 November 2026 (the tiles' time chunk was a sixth full; each
+  grows to about 0.8 MB as the 142-day chunk fills, so up to about 0.45 GB late in a
+  chunk), about 10 seconds, a 186 MB peak for the adapter in the image, and about
+  10 MB of squares (210 KB brotli for the largest). No cache is kept.
+- **The dock.** It is the second wave source: `WAVE_SOURCE_PREFERENCE` is `mi-swan`,
+  `ibi-wave`, `gfs-wave`, then `ecmwf-wave`, so SWAN's six days go on in IBI's ten and
+  GFS-Wave's past those (`handedWaveSource`), and the wave blend takes it as a member
+  in the same order. Its secondary swell is `swell2` in `waveFields`.
+
 ICON-EU surface weather is the first **weather** bundle: `--models icon-eu-weather`
 runs `fetch_icon_weather.py`, which reads thirteen ICON-EU single-level parameters
 (temperature, dew point, humidity, accumulated precipitation, four cloud layers,
@@ -343,8 +408,8 @@ against 129 steps and 13 MB three-hourly, so about 1 GB a month more. It publish
 `weather/gfs-weather.json` with its spot squares and no frames, in ICON-EU weather's own
 variable names. It is what the dock's sky, air and rain rows read past ICON-EU weather's
 three days: the dock reads ICON-EU while it reaches the hour and GFS from its end on
-(`handedWeatherSource`, force5/src/surface.ts), as the waves go on in GFS-Wave past MI
-SWAN's six days (`handedWaveSource`), and as the wind goes on in ECMWF past HARMONIE.
+(`handedWeatherSource`, force5/src/surface.ts), as the waves go on in IBI and then
+GFS-Wave past MI SWAN's six days (`handedWaveSource`), and as the wind goes on in ECMWF past HARMONIE.
 GFS has no present-weather code, so `ww` is **derived** there from GFS's own
 categorical precipitation type and rate, visibility and total cloud at the hour, and the
 manifest's `presentWeatherNote` says how; it never says shower, drizzle or thunder, which
@@ -488,7 +553,7 @@ resampled, so a truncated or interpolated cadence cannot publish under either id
   Tullan Strand, median 13.4 km, 37.7 km at Rusheen Bay) and 1 has none within 40 km
   (Mountshannon on Lough Derg). Every offset is published as
   `spotCoverage[spot].nearestOffsetKm` with a sentence the UI shows. That is why the
-  dock's preference is `mi-swan`, then `gfs-wave`, then `ecmwf-wave`: this source earns
+  dock's preference is `mi-swan`, then `ibi-wave`, then `gfs-wave`, then `ecmwf-wave`: this source earns
   its place by reaching 15 days, not by resolving a beach.
 
 ## AWS setup checklist
@@ -520,6 +585,7 @@ SEA TEMPERATURE: --models sea-temperature --bucket YOUR_FORECAST_BUCKET
 ECMWF ENS: --models ecmwf-ens --bucket YOUR_FORECAST_BUCKET
 HARMONIE EPS: --models harmonie-eps --step 3 --bucket YOUR_FORECAST_BUCKET
 MI-SWAN:  --models mi-swan --bucket YOUR_FORECAST_BUCKET
+IBI-WAVE: --models ibi-wave --bucket YOUR_FORECAST_BUCKET
 CURRENTS: --models currents --bucket YOUR_FORECAST_BUCKET
 ```
 
@@ -667,6 +733,7 @@ docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf-ens $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf-wave $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models gfs-wave $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models mi-swan $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models ibi-wave $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models currents $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models sea-temperature $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models tides $R2
@@ -756,9 +823,9 @@ success.
 
 Every forecast adapter is in the contract: `harmonie`, `icon-eu`, `icon-eu-weather`,
 `ecmwf`, `ecmwf-ens`, `aifs`, `ecmwf-wave`, `gfs`, `gfs-weather`, `gefs`, `arpege`, `arome`,
-`harmonie-eps`, `gfs-wave`, `mi-swan` and `currents`. Each decides from the discovery step it
+`harmonie-eps`, `gfs-wave`, `mi-swan`, `ibi-wave` and `currents`. Each decides from the discovery step it
 already makes (an inventory listing, a package listing, ECMWF's `latest()` probe,
-SWAN's info page and `time[last]`), after its freshness check, so a stale or
+SWAN's info page and `time[last]`, IBI's day-file listing), after its freshness check, so a stale or
 incomplete source still fails rather than reading as "nothing new". `ecmwf` and
 `ecmwf-ens` use `fetch_forecast.already_published`, both halves; the rest use only its
 bucket half, `fetch_forecast.published_in_bucket`, because they cannot name their bundle
@@ -925,7 +992,8 @@ square, each holding its places under `spotWaveBlend` (`src/waveBlend.ts`).
 
 - **Its members.** `WAVE_BLEND_MODELS` in `src/waveBlend.ts`, which is the dock's own
   handover order, `WAVE_SOURCE_PREFERENCE` in `force5/src/waves.ts`, finest first: today
-  Irish Shelf SWAN (`mi-swan`, six days) then GFS-Wave (`gfs-wave`, ten days), with ECMWF
+  Irish Shelf SWAN (`mi-swan`, six days), IBI (`ibi-wave`, ten days, one day older) then
+  GFS-Wave (`gfs-wave`, ten days), with ECMWF
   Wave (`ecmwf-wave`, fifteen days) next once the catalogue publishes it again. A wave
   model joins the blend by being added to that list (one line), and is read only while
   `force5/src/catalog.ts` neither retires nor plans it. A member with no pointer, or one
@@ -945,10 +1013,12 @@ square, each holding its places under `spotWaveBlend` (`src/waveBlend.ts`).
     the summed weights). Whole degrees.
   - `fed`: which members fed the time, one bit per source (bit `i` for `sources[i]`),
     and `count`, how many, one base-36 digit a time. As the short runs end the members
-    drop out: SWAN's six days, then GFS-Wave alone to its tenth.
+    drop out: SWAN's six days, IBI's run about nine days ahead of the clock, then
+    GFS-Wave alone to its tenth.
   - `lead` and `parts`: the swell partitions are never averaged, because the models
     split the sea differently (SWAN publishes one swell height and a derived wind sea,
-    GFS-Wave a wind sea and its primary swell, ECMWF Wave period bands and no
+    GFS-Wave a wind sea and its primary swell, IBI a wind sea and two swells, ECMWF
+    Wave period bands and no
     partitions). Each time carries the partitions of the first member, in the handover
     order, that fed it (`lead`, its place in `sources` in base 36, `-` for none):
     `windsea`, `swell` (a model's whole swell as one height) and `swell1` to `swell3`,
@@ -1222,7 +1292,8 @@ Audited against every entry in `registry.py`:
 - **Clean, no change needed.** `harmonie`, `icon-eu`, `icon-eu-weather`, `gfs`,
   `gfs-weather`, `gefs`, `gfs-wave`, `aifs`, `ecmwf-wave`, `arpege`, `arome`, `sea-temperature`: all
   cache under `.cache/<model>/<run>/` and only ever read files they wrote earlier in
-  the same process.
+  the same process. `ibi-wave` keeps no cache at all: it reads the catalogue, the
+  listing and the tiles afresh each run.
 - **Re-derived, one extra request.** `tides` re-downloads the ERDDAP station
   catalogue every run instead of reusing a 7-day-old copy; an empty catalogue still
   fails the run loudly. `mi-swan` re-reads its dataset info and last-time files
@@ -1291,6 +1362,7 @@ weather/gefs.json, weather/gefs-RUN-240h-v1-HASH8/          GEFS: mean frames, m
 weather/ecmwf-ens.json, weather/ecmwf-ens-RUN-144h-25m-v1-HASH8/  ECMWF ENS, likewise
 weather/harmonie-eps.json, weather/harmonie-eps-RUN-48h-v1-HASH8/ HARMONIE EPS, likewise
 weather/mi-swan.json, weather/mi-swan-RUN-144h-v1-HASH8/    Irish Shelf SWAN: squares, frames only with --frames
+weather/ibi-wave.json, weather/ibi-wave-RUN-239h-v1-HASH8/  Copernicus Marine IBI waves: squares only
 weather/currents.json, weather/currents-RUN-72h-v1-HASH8/   ROMS surface currents: 73 JSON frames + squares
 weather/icon-eu-weather.json, weather/icon-eu-weather-RUN-72h-v1-HASH8/  surface weather: 73 rain frames + squares
 weather/gfs-weather.json, weather/gfs-weather-RUN-384h-v1-HASH8/  GFS surface weather: squares only

@@ -57,6 +57,7 @@
     "weather:refresh:harmonie-eps": ".venv/bin/python force5/ingest/fetch_harmonie_eps.py",
     "weather:refresh:mi-swan": ".venv/bin/python force5/ingest/fetch_mi_swan.py",
     "weather:refresh:gfs-wave": ".venv/bin/python force5/ingest/fetch_gfswave.py",
+    "weather:refresh:ibi-wave": ".venv/bin/python force5/ingest/fetch_ibi_wave.py",
     "weather:refresh:icon-weather": ".venv/bin/python force5/ingest/fetch_icon_weather.py",
     "tides:refresh": ".venv/bin/python force5/ingest/fetch_tides.py",
     "sea:refresh": ".venv/bin/python force5/ingest/fetch_sea_temperature.py",

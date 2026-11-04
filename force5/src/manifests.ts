@@ -32,6 +32,7 @@ import {
 export {
   MODEL_CATALOG,
   liveModels,
+  modelCredits,
   modelEntry,
   modelHue,
   requireModel,

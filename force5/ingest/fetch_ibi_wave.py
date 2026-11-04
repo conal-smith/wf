@@ -672,7 +672,7 @@ def build(marine, state, run, files, spots, now):
                                      "at some hours of the run; the store is incomplete")
                 series[spot_id] = values
     timing.start("discover")
-    after = marine.describe()
+    after = marine.describe(now)
     check_store(after, files, "after the read")
     if (after["version"], after["updated"]) != (state["version"], state["updated"]):
         raise ValueError(f"The IBI wave store changed while it was read (updated "
@@ -694,7 +694,7 @@ def main(argv=None, marine=None, now=None):
     now = now or datetime.now(timezone.utc)
     timing.start("discover")
     marine = marine or Marine()
-    state = marine.describe()
+    state = marine.describe(now)
     files = marine.listing(state, months_to_list(now.date()))
     run, run_files = complete_run(parse_listing(files))
     run_time = datetime.combine(run, datetime.min.time(), tzinfo=timezone.utc)

@@ -98,7 +98,6 @@ UNMEASURED = {"cpu": "2", "memory": "4Gb", "disk": "12Gb"}
 ENSEMBLE = {"cpu": "2", "memory": "4Gb", "disk": "20Gb"}
 RESOURCES = {
     "harmonie": MODEL, "icon-eu": MODEL, "ecmwf": MODEL, "gfs-wave": MODEL,
-    # The Copernicus Marine Toolbox alone (xarray, dask, pandas) is about 150 MB.
     "ibi-wave": MODEL,
     "icon-eu-weather": FORECAST, "gfs": FORECAST,
     # Its whole 384 h run's series are in memory before they are written.
@@ -123,7 +122,7 @@ MEASURED_PEAK_MB = {
     "icon-eu-weather": 225, "gfs": 230, "verify": 225, "gfs-weather": 355,
     "mi-swan": 190, "currents": 240, "blend": 185, "forecast-archive": 140,
     "tides": 135, "sea-temperature": 135, "wind-obs": 135, "warnings": 135,
-    "water-quality": 155, "ibi-wave": 520,
+    "water-quality": 155, "ibi-wave": 315,
     # Not yet measured in the image: the worker's 72 MB and the 148 MB peak of the
     # bundled force5/blend/waves.ts over a full-size synthetic run (GFS-Wave's ten
     # days and SWAN's six at every riding place), measured natively on 4 November 2026.
@@ -159,14 +158,6 @@ BUCKET_ENV = ["S3_BUCKET", "S3_ENDPOINT_URL", "AWS_ACCESS_KEY_ID", "AWS_SECRET_A
 # object, so the .br/.gz sidecars a local Caddy serves would be compressed for nothing.
 REQUIRED_ENV = BUCKET_ENV + ["FORCE5_SIDECARS"]
 OPTIONAL_ENV = ["S3_PREFIX", "AWS_REGION", "ECMWF_SOURCE", "FORCE5_BROTLI_QUALITY"]
-# What a model's adapter cannot run without, beyond the bucket, given only to its own
-# jobs: the Copernicus Marine account the IBI wave adapter signs in with, under the
-# Copernicus Marine Toolbox's own names. They are secrets: they live in the
-# environment Home Compute runs the job with (its vault, or deploy/home-compute/.env),
-# never in this repository.
-MODEL_ENV = {
-    "ibi-wave": ["COPERNICUSMARINE_SERVICE_USERNAME", "COPERNICUSMARINE_SERVICE_PASSWORD"],
-}
 PRUNE_SCRIPT = 'exec python /app/force5/ingest/prune.py --bucket "$S3_BUCKET"'
 # Bacalhau starts the total clock at submission, and refuses a job whose total
 # is not longer than its queue timeout. So the total is the queue, then the
@@ -174,11 +165,6 @@ PRUNE_SCRIPT = 'exec python /app/force5/ingest/prune.py --bucket "$S3_BUCKET"'
 # behind a large one still has its full timeout once it starts.
 QUEUE_SECONDS = 3600
 START_MARGIN_SECONDS = 600
-
-
-def model_env(job):
-    """The secrets a job's own models need (MODEL_ENV), in order, each once."""
-    return list(dict.fromkeys(name for model in job["models"] for name in MODEL_ENV.get(model, [])))
 
 
 def default_resources(job):
@@ -233,7 +219,7 @@ def home_compute(jobs):
     for job in scheduled(jobs):
         task = {
             "image": "${WINGFOIL_IMAGE}",
-            "requiredEnv": REQUIRED_ENV + model_env(job),
+            "requiredEnv": REQUIRED_ENV,
             "passEnv": OPTIONAL_ENV,
             "resources": resources_for(job),
             "network": {"type": "Full"},

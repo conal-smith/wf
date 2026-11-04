@@ -38,7 +38,9 @@ export const WAVE_MATCH_HOURS = VARIABLE_MATCH_HOURS;
 
 /**
  * Sources in the order the dock prefers them, finest first. Ireland's own 2.8 km
- * shelf model wins; NOAA's 9 km global model is the fallback; ECMWF's 0.25°
+ * shelf model wins; Copernicus Marine's IBI model (Météo-France MFWAM, 1/36°,
+ * about 3 km, ten days, with wind sea and two swells) comes next, so the six
+ * days of SWAN go on in it; NOAA's 9 km global model is the fallback; ECMWF's 0.25°
  * (~28 km) wave stream is last, because at that resolution a bay is a cell or
  * two wide and many spots are read from open water nearby. It is retired (see
  * force5/src/manifests.ts), so the site never loads it, but it keeps its place
@@ -50,6 +52,7 @@ export const WAVE_MATCH_HOURS = VARIABLE_MATCH_HOURS;
  */
 export const WAVE_SOURCE_PREFERENCE: readonly string[] = [
   "mi-swan",
+  "ibi-wave",
   "gfs-wave",
   "ecmwf-wave",
 ];
@@ -177,13 +180,17 @@ export interface WaveFieldSet {
 }
 /**
  * Which of a manifest's variables carry the whole sea and each partition. The
- * two adapters name them differently and publish different partitions — SWAN
- * has a swell height but no swell period, and its wind sea is derived — so the
- * rows read the declared variable map rather than hard-coding one source.
+ * adapters name them differently and publish different partitions — SWAN
+ * has a swell height but no swell period, and its wind sea is derived; GFS-Wave
+ * has one swell partition and IBI two — so the rows read the declared variable
+ * map rather than hard-coding one source.
  */
 export interface WaveFields {
   total: WaveFieldSet;
+  /** The primary swell, or SWAN's whole swell. */
   swell: WaveFieldSet | null;
+  /** The secondary swell, where a model partitions one (IBI). */
+  swell2: WaveFieldSet | null;
   windsea: WaveFieldSet | null;
 }
 
@@ -208,6 +215,7 @@ export function waveFields(manifest: WaveManifest): WaveFields | null {
   return {
     total,
     swell: set(["swell1_h", "hswe"], ["swell1_p"], ["swell1_d"]),
+    swell2: set(["swell2_h"], ["swell2_p"], ["swell2_d"]),
     windsea: set(["shww"], ["mpww"], ["mdww"]),
   };
 }
@@ -262,7 +270,7 @@ export const preferredWaveSource = (
 /** A later source's names for each sea state, as the first source calls them. */
 function waveNames(lead: WaveFields, other: WaveFields) {
   const names: Record<string, string> = {};
-  for (const key of ["total", "swell", "windsea"] as const) {
+  for (const key of ["total", "swell", "swell2", "windsea"] as const) {
     const to = lead[key];
     const from = other[key];
     if (!to || !from) continue;
@@ -278,7 +286,8 @@ function waveNames(lead: WaveFields, other: WaveFields) {
 /**
  * The spot's waves from every source in turn: the first source's own run, then
  * each next one's past the end of it (`handOverSeries`), so Ireland's 2.8 km
- * shelf model's six days go on in GFS-Wave's ten rather than stopping. The
+ * shelf model's six days go on in IBI's ten, and GFS-Wave's past those,
+ * rather than stopping. The
  * result reads as the first source, its fields and its coverage note; each
  * step names the model it came from. Null with no source.
  */

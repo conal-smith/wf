@@ -3,6 +3,7 @@ import { clearManifestCache, loadWaveManifest } from "./manifests";
 import {
   ECMWF_WAVE_VARIABLES,
   GFS_WAVE_VARIABLES,
+  IBI_WAVE_VARIABLES,
   SWAN_VARIABLES,
   pointerOf,
   waveManifest,
@@ -274,13 +275,33 @@ describe("partition fields", () => {
     expect(waveFields(waveManifest())).toEqual({
       total: { height: "swh", period: "pp1d", direction: "mwd" },
       swell: { height: "swell1_h", period: "swell1_p", direction: "swell1_d" },
+      swell2: null,
       windsea: { height: "shww", period: "mpww", direction: "mdww" },
     });
+  });
+  it("maps IBI's wind sea and both of its swells", () => {
+    expect(waveFields(waveManifest({ variables: IBI_WAVE_VARIABLES }))).toEqual(
+      {
+        total: { height: "swh", period: "pp1d", direction: "mwd" },
+        swell: {
+          height: "swell1_h",
+          period: "swell1_p",
+          direction: "swell1_d",
+        },
+        swell2: {
+          height: "swell2_h",
+          period: "swell2_p",
+          direction: "swell2_d",
+        },
+        windsea: { height: "shww", period: "mpww", direction: "mdww" },
+      },
+    );
   });
   it("maps SWAN, whose swell has a height but no period or direction", () => {
     expect(waveFields(waveManifest({ variables: SWAN_VARIABLES }))).toEqual({
       total: { height: "swh", period: "pp1d", direction: "mwd" },
       swell: { height: "hswe", period: null, direction: null },
+      swell2: null,
       windsea: { height: "shww", period: null, direction: null },
     });
   });
@@ -296,6 +317,7 @@ describe("partition fields", () => {
     expect(fields).toEqual({
       total: { height: "swh", period: "mwp", direction: null },
       swell: null,
+      swell2: null,
       windsea: null,
     });
   });
@@ -318,9 +340,10 @@ describe("choosing a source per spot", () => {
     variables: ECMWF_WAVE_VARIABLES,
     values: (hour) => ({ swh: 3 + hour / 10, pp1d: 13, mwd: 290, h1417: 1.4 }),
   });
-  it("ranks the shelf model, then GFS-Wave, then ECMWF's coarse stream", () => {
+  it("ranks the shelf model, then IBI, then GFS-Wave, then ECMWF's coarse stream", () => {
     expect(WAVE_SOURCE_PREFERENCE).toEqual([
       "mi-swan",
+      "ibi-wave",
       "gfs-wave",
       "ecmwf-wave",
     ]);
@@ -479,6 +502,37 @@ describe("handing a spot's waves from one source to the next", () => {
       "2026-10-22T12:00:00Z",
     ]);
     expect(columns.map((step) => step?.values.pp1d)).toEqual([11, 9]);
+  });
+  it("goes on in IBI past the shelf model, and in GFS-Wave past IBI", () => {
+    const ibi = waveManifest({
+      model: "ibi-wave",
+      runTime: "2026-10-22T00:00:00Z",
+      hours: [0, 3, 6, 9],
+      variables: IBI_WAVE_VARIABLES,
+      values: (hour) => ({ swh: 4, pp1d: 12, mwd: 290, swell2_h: 0.5 + hour }),
+    });
+    const sources = waveSources([gfs, ibi, swan], "brandon");
+    expect(sources.map((s) => s.manifest.model)).toEqual([
+      "mi-swan",
+      "ibi-wave",
+      "gfs-wave",
+    ]);
+    const source = handedWaveSource(sources)!;
+    expect(
+      source.series.map((step) => [step.hour, step.values.swh, step.model]),
+    ).toEqual([
+      [0, 2, "mi-swan"],
+      [3, 2, "mi-swan"],
+      [6, 2, "mi-swan"],
+      [9, 4, "ibi-wave"],
+      [12, 3.12, "gfs-wave"],
+    ]);
+    // Read on its own, IBI's secondary swell is where the rows look for it.
+    const alone = handedWaveSource(waveSources([gfs, ibi], "brandon"))!;
+    expect(alone.fields.swell2?.height).toBe("swell2_h");
+    expect(alone.series.find((step) => step.hour === 9)?.values.swell2_h).toBe(
+      9.5,
+    );
   });
   it("is the one source alone where only one sees the spot, and none with none", () => {
     const blind = waveManifest({

@@ -75,6 +75,7 @@ npm run deploy:run -- --models arpege --step 3
 npm run deploy:run -- --models arome --step 3
 npm run deploy:run -- --models gfs-wave
 npm run deploy:run -- --models mi-swan
+npm run deploy:run -- --models ibi-wave
 npm run deploy:run -- --models ecmwf-wave
 npm run deploy:run -- --models tides
 ```
@@ -103,6 +104,7 @@ in UTC. The shipped schedule is:
 | `gfs-wave`        | 04/10/16/22 at :30 | NOAA's 6-hourly wave cycles, ~3 h 50 m late; :55 retry |
 | `gfs-weather`     | 05/11/17/23 at :05 | GFS surface weather, 384 h, ~5 h late; :35 retry     |
 | `mi-swan`         | 10/14/18 at :15    | one SWAN run a day, published ~09 UTC, sometimes late |
+| `ibi-wave`        | 02/05/08 at :30    | Copernicus Marine IBI waves, whole by ~02:00 UTC; retries |
 | `currents`        | 03/07/13 at :20    | one ROMS run a day, written ~00:55 UTC; two retries   |
 | `ecmwf-wave`      | off (retired)      | the 00/12 wave stream, ~707 MB per run                |
 | `tides`           | 01:05 daily        | predictions, not a forecast cycle                     |
@@ -139,8 +141,9 @@ already published download nothing):
 | `icon-eu` | ~250 MB | 3 | ~22 GB |
 | `ecmwf` | ~245 MB | 2 | ~15 GB |
 | `gfs-weather` | ~21 MB (209 steps) | 4 | ~2.5 GB |
+| `ibi-wave` | ~80-450 MB (16 × 16-cell tiles; grows as the store's time chunk fills) | 1 | ~3-14 GB |
 | `gfs`, `gfs-wave`, `mi-swan`, observations, tides | 1-8 MB each | 4-24 | ~1 GB |
-| **Total** | | | **~465 GB** |
+| **Total** | | | **~470-480 GB** |
 
 HARMONIE went from six runs a day to every hour in daylight in November 2026, and
 ICON-EU wind from one cycle a day to three: about 265 GB a month more than the ~200 GB

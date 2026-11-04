@@ -126,6 +126,7 @@ import {
   loadManifest,
   MANIFEST_REVALIDATE_MS,
   ManifestUnavailableError,
+  modelCredits,
 } from "../force5/src/manifests";
 import { runLabel } from "../force5/src/revalidate";
 import { chosenModel, leadText, starsFromAt } from "../force5/src/lead";
@@ -2054,6 +2055,10 @@ export default function App() {
           {leadText(starsFromAt(rider.starsFrom))} past the end of its run. The
           blend of {prefs.blendModels.length} models is context beside them and
           moves no star
+        </li>
+        <li>
+          Waves, read where each model reaches the beach&rsquo;s open water:{" "}
+          {modelCredits("wave").join("; ")}
         </li>
         <li>Depths: EMODnet Bathymetry, metres below chart datum</li>
         {foilState.manifest && (

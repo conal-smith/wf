@@ -9,6 +9,7 @@ import {
   modelEntry,
   modelHue,
   requireModel,
+  modelCredits,
   waveModels,
   weatherModels,
   windModels,
@@ -77,6 +78,7 @@ describe("model registry", () => {
       "gfs",
       "gfs-wave",
       "mi-swan",
+      "ibi-wave",
       "icon-eu-weather",
       "gfs-weather",
     ]);
@@ -84,7 +86,14 @@ describe("model registry", () => {
     expect(waveModels().map((model) => model.id)).toEqual([
       "gfs-wave",
       "mi-swan",
+      "ibi-wave",
     ]);
+    // Every live wave model carries the credit its licence asks for, which the
+    // map's Sources & credits prints; Copernicus Marine's names its DOI.
+    expect(modelCredits("wave")).toHaveLength(waveModels().length);
+    expect(modelCredits("wave").join(" ")).toContain(
+      "Generated using E.U. Copernicus Marine Service Information; https://doi.org/10.48670/moi-00025",
+    );
     expect(weatherModels().map((model) => model.id)).toEqual([
       "icon-eu-weather",
       "gfs-weather",
