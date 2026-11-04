@@ -1,5 +1,5 @@
 /**
- * Work out the wave blend (src/waveBlend.ts) and publish it beside the wave
+ * Work out the wave blend (force5/src/waveBlend.ts) and publish it beside the wave
  * runs it was read from.
  *
  *   npx tsx force5/blend/waves.ts [--root public]
@@ -31,7 +31,7 @@ import {
   WAVE_BLEND_KEY,
   WAVE_BLEND_PATH,
   waveBlendPrefix,
-} from "../../src/waveBlend";
+} from "../src/waveBlend";
 
 async function main() {
   const root = option("root", "public");

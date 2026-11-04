@@ -165,7 +165,7 @@ MODELS = {
     "blend": {"script": "fetch_blend.py", "manifest": "weather/blend.json",
               "kind": "blend", "maxAgeHours": 3, "readsBucket": True},
     # Not a model either: every riding place's sea state from every wave model above
-    # (src/waveBlend.ts): the median height and its range, the median peak period,
+    # (force5/src/waveBlend.ts): the median height and its range, the median peak period,
     # the mean direction, and the leading model's partitions. Worked out by the
     # hourly blend job beside the wind blend, so `run` is the hour it ran, as above.
     "wave-blend": {"script": "fetch_wave_blend.py", "manifest": "weather/wave-blend.json",

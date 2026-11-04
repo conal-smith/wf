@@ -641,7 +641,7 @@ has no frames.
   spot's square is always among those read. Its blend chart already read the
   one square of the models it needs.
 
-The wave blend (`src/waveBlend.ts`, docs/LIVE_FORECAST_PIPELINE.md "The wave
+The wave blend (`force5/src/waveBlend.ts`, docs/LIVE_FORECAST_PIPELINE.md "The wave
 blend") is published the same way, under its own per-spot key:
 
 ```text

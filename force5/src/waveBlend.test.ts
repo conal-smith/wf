@@ -5,8 +5,8 @@ import {
   SWAN_VARIABLES,
   ECMWF_WAVE_VARIABLES,
   waveManifest,
-} from "../force5/src/testing";
-import { WAVE_SOURCE_PREFERENCE, type WaveManifest } from "../force5/src/waves";
+} from "./testing";
+import { WAVE_SOURCE_PREFERENCE, type WaveManifest } from "./waves";
 import {
   buildWaveBlend,
   checkWaveBlendSpots,

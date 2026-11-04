@@ -36,7 +36,8 @@ import {
   type ReactNode,
 } from "react";
 import { Moon, Sun } from "lucide-react";
-import { modelEntry } from "../force5/src/catalog";
+import { modelEntry, waveModels } from "../force5/src/catalog";
+import { waveLeadOrder } from "../force5/src/waves";
 import { FALLBACK_MODEL, STARS_MODELS, modelName } from "../force5/src/lead";
 import {
   MODEL_CATALOG,
@@ -58,6 +59,7 @@ import { Button } from "../ui/Button";
 import { Checkbox } from "../ui/Checkbox";
 import { Dialog } from "../ui/Dialog";
 import { Segmented } from "../ui/Segmented";
+import { Select } from "../ui/Select";
 import {
   WEB_DIRS,
   WEB_R,
@@ -1253,6 +1255,15 @@ function UpwindPart({ draft, setDraft }: PartProps) {
  * stars rate, and the models the blend chart draws. Side by side on a
  * desktop. None of them moves a star of the rider's own rating.
  */
+/** The wave model choice's default: the finest model at each hour. */
+const FINEST_WAVES = "finest";
+/** The wave models a rider can pick, in the handover order, finest first. */
+const waveChoices = () =>
+  waveLeadOrder(null).flatMap((id) => {
+    const entry = waveModels().find((m) => m.id === id);
+    return entry ? [entry] : [];
+  });
+
 function ForecastPart({
   draft,
   setDraft,
@@ -1263,6 +1274,55 @@ function ForecastPart({
   );
   return (
     <div className="st-forecast">
+      <div className="st-row">
+        <span className="st-kick">Model</span>
+        <Segmented<string>
+          aria-label="Model"
+          options={STARS_MODELS.map((id) => ({
+            value: id,
+            label: modelName(id),
+          }))}
+          value={draft.model}
+          onChange={(model) => setDraft({ ...draft, model })}
+        />
+        <p className="st-note" data-model-detail>
+          {modelEntry(draft.model)?.detail}.{" "}
+          {draft.model === FALLBACK_MODEL
+            ? `The map, the wind and the stars are ${modelName(draft.model)}’s.`
+            : `The map, the wind and the stars are ${modelName(draft.model)}’s, and ${modelName(FALLBACK_MODEL)}’s past the end of its run.`}
+        </p>
+      </div>
+      <div className="st-row">
+        <span className="st-kick">Wave model</span>
+        {/* The spot page's waves: one model's own at each hour, the blend
+            beside them (spot/web/report/blends.ts). */}
+        <Select
+          aria-label="Wave model"
+          value={draft.waveModel ?? FINEST_WAVES}
+          onChange={(event) =>
+            setDraft({
+              ...draft,
+              waveModel:
+                event.target.value === FINEST_WAVES ? null : event.target.value,
+            })
+          }
+          data-wave-model
+        >
+          <option value={FINEST_WAVES}>Finest at each hour</option>
+          {waveChoices().map((entry) => (
+            <option key={entry.id} value={entry.id}>
+              {entry.name}
+            </option>
+          ))}
+        </Select>
+        <p className="st-note" data-wave-model-detail>
+          {draft.waveModel
+            ? `${modelEntry(draft.waveModel)?.detail}. The waves are ${modelName(draft.waveModel)}’s, and the next model’s past the end of its run. The wave blend shows beside them.`
+            : `The finest wave model that reaches each hour, then the next as its run ends: ${waveChoices()
+                .map((entry) => entry.name)
+                .join(", ")}. The wave blend shows beside them.`}
+        </p>
+      </div>
       <div className="st-row">
         <span className="st-kick">Hours</span>
         {/* Everywhere the forecast's hours are drawn: the chart's scrub bar,
@@ -1281,24 +1341,6 @@ function ForecastPart({
           {draft.nightHours === "show"
             ? "Every hour, with the night shaded."
             : "Only the hours from first light to last light."}
-        </p>
-      </div>
-      <div className="st-row">
-        <span className="st-kick">Model</span>
-        <Segmented<string>
-          aria-label="Model"
-          options={STARS_MODELS.map((id) => ({
-            value: id,
-            label: modelName(id),
-          }))}
-          value={draft.model}
-          onChange={(model) => setDraft({ ...draft, model })}
-        />
-        <p className="st-note" data-model-detail>
-          {modelEntry(draft.model)?.detail}.{" "}
-          {draft.model === FALLBACK_MODEL
-            ? `The map, the wind and the stars are ${modelName(draft.model)}’s.`
-            : `The map, the wind and the stars are ${modelName(draft.model)}’s, and ${modelName(FALLBACK_MODEL)}’s past the end of its run.`}
         </p>
       </div>
       <div

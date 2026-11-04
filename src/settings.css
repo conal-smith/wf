@@ -645,8 +645,8 @@
   color: var(--color-ink-2);
 }
 
-/* ---- 5. the forecast: the hours, the model and the blend's models, each
-   its name over it ---- */
+/* ---- 5. the forecast: the model, the wave model, the hours and the
+   blend's models, each its name over it ---- */
 .st-forecast {
   display: grid;
   gap: 18px;
@@ -693,7 +693,8 @@
 
 /* ---- a desktop: the appearance across the top; under it two by two, about
    you beside the wind strength, the wind direction beside riding upwind; the
-   forecast across under them, its three choices side by side ---- */
+   forecast across under them, its four choices two by two, the wind's
+   model beside the waves' ---- */
 @media (min-width: 1000px) {
   .st-body {
     display: grid;
@@ -705,8 +706,8 @@
     grid-column: 1 / -1;
   }
   .st-forecast {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0 40px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 40px;
   }
   .st-shore {
     grid-template-columns: 220px 1fr;

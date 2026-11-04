@@ -93,7 +93,8 @@ test("a spot page is a spot report: the name, now, the week, one graph, and the 
   // The week, a card a day, and the graph on one clock with its readout.
   const days = page.locator("[data-day-card]");
   await expect.poll(() => days.count()).toBeGreaterThan(2);
-  expect(await days.count()).toBeLessThanOrEqual(7);
+  // As many days as the forecast reaches, up to ECMWF's fifteen.
+  expect(await days.count()).toBeLessThanOrEqual(15);
   await expect(page.locator("[data-graph-svg]")).toBeVisible();
   await expect(page.locator("[data-readout]")).toContainText("Now");
   // The spot's own notes, and the small print.
@@ -641,7 +642,7 @@ const picture = (page: Page) => page.locator("[data-spot-satellite]");
  * ecmwf and the rest), its hourly ICON-EU rain, its 72 hours of currents and
  * its short GFS-Wave run on 16 September all reach Brandon.
  */
-test("under the week graph: the models, the gusts, the waves, the current and the rain", async ({
+test("under the week graph: the wind blend, the gusts, the waves, the current and the rain", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -652,8 +653,9 @@ test("under the week graph: the models, the gusts, the waves, the current and th
   const graph = page.locator("[data-graph-svg]");
   await expect(graph).toBeVisible();
 
-  // Models: a line of its own for each model the rider blends, named below.
-  const lines = graph.locator('[data-band="models"] path[data-model]');
+  // Wind blend: a line of its own for each model the rider blends, named
+  // below, and their blend in ink.
+  const lines = graph.locator('[data-band="wind-blend"] path[data-model]');
   await expect.poll(() => lines.count()).toBeGreaterThanOrEqual(2);
   for (const d of await lines.evaluateAll((paths) =>
     paths.map((path) => path.getAttribute("d") ?? ""),
@@ -661,7 +663,10 @@ test("under the week graph: the models, the gusts, the waves, the current and th
     expect(d).toMatch(/^M[\d.]+,[\d.]+C/);
   // On the tens either side of the models' winds, so the lines fill the
   // band between its first dotted line and its last.
-  const fill = await graph.locator('[data-band="models"]').evaluate((band) => {
+  await expect(
+    graph.locator('[data-band="wind-blend"] path[data-blend]'),
+  ).toHaveCount(1);
+  const fill = await graph.locator('[data-band="wind-blend"]').evaluate((band) => {
     const ys = [...band.querySelectorAll("line")].map((line) =>
       Number(line.getAttribute("y1")),
     );
@@ -696,9 +701,9 @@ test("under the week graph: the models, the gusts, the waves, the current and th
     expect(parseFloat(factor)).toBeLessThan(10);
   }
 
-  // Waves: a period in seconds, under an arrow that says where they run.
-  const periods = await graph
-    .locator("[data-wave-period]")
+  // Waves, in a section of their own: a period in seconds.
+  const periods = await page
+    .locator("[data-wave-svg] [data-wave-period]")
     .evaluateAll((cells) =>
       cells.map((cell) => Number(cell.getAttribute("data-wave-period"))),
     );
@@ -1169,18 +1174,18 @@ test.describe("on a phone, the week graph", () => {
     const graph = page.locator("[data-spot-graph]");
     const readout = page.locator("[data-readout]");
     await expect(page.locator("[data-graph-svg]")).toBeVisible();
-    const names = page.locator("[data-band-name]");
+    const names = page.locator(
+      '[data-week-section="wind"] [data-band-name]',
+    );
     await expect(names).toHaveText([
       "Stars",
       "Wind",
       "Direction",
-      "Sea",
-      "Tide",
+      "Wind blend",
+      "Gusts",
       "Sky",
       "Rain",
-      "Models",
-      "Gusts",
-      "Waves",
+      "Tide",
       "Current",
     ]);
     // Every name whole, and left of the hours, wherever they are scrolled.
@@ -1198,7 +1203,7 @@ test.describe("on a phone, the week graph", () => {
     // The page scrolled until the top of the wind band is under the readout,
     // which is held at the top of the screen: the band's name is held below
     // the readout's foot rather than going under it.
-    const wind = names.filter({ hasText: "Wind" });
+    const wind = names.getByText("Wind", { exact: true });
     await readout.evaluate((el) =>
       scrollTo(0, scrollY + el.getBoundingClientRect().top),
     );

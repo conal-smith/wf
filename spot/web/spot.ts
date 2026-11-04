@@ -40,8 +40,14 @@ export const HOUR = 3600000;
 export const TIME_ZONE = "Europe/Dublin";
 /** Rows are hourly this far ahead, where the finer models are; three-hourly after. */
 export const HOURLY_AHEAD_HOURS = 72;
-/** Days the page forecasts, today included. */
+/** Days the app's spot screen forecasts, today included. */
 export const FORECAST_DAYS = 7;
+/**
+ * Days the spot page's graph reaches, today included: as far as ECMWF's
+ * fifteen-day run, its wind and its waves. The other rows go as far as their
+ * own data does.
+ */
+export const REPORT_DAYS = 15;
 /**
  * How far before today's midnight the forecast is asked for. Nothing that early
  * becomes a row: it is there so the first tide of the day has the turn before

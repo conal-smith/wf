@@ -10,7 +10,8 @@
  * rates. How far up and down the wind they ride is kept on the rider; it
  * moves no star. Weight and units are the rider's too, and never make the
  * rating differ from ours, and so is how the forecast is shown: its hours,
- * the one model the map draws and the stars rate, and the blend's models.
+ * the one model the map draws and the stars rate, the blend's models, and
+ * the wave model the waves are read from.
  */
 import { chosenModel } from "../force5/src/lead";
 import {
@@ -55,6 +56,11 @@ export interface Draft {
   model: string;
   /** The models the blend chart draws. */
   blendModels: readonly string[];
+  /**
+   * The wave model the waves' headline is read from, handed on past its run;
+   * null for the finest model at each hour (prefs.ts `waveModel`).
+   */
+  waveModel: string | null;
 }
 
 /** The draft as the rider stands now: their own rating if they have one, else ours. */
@@ -71,6 +77,7 @@ export function draftOf(prefs: Prefs): Draft {
     nightHours: prefs.nightHours,
     model: chosenModel(rider.starsFrom),
     blendModels: [...prefs.blendModels],
+    waveModel: prefs.waveModel,
   });
 }
 
@@ -190,6 +197,7 @@ export function applyDraft(
     units: draft.units,
     nightHours: draft.nightHours,
     blendModels: [...draft.blendModels],
+    waveModel: draft.waveModel,
     rider,
   };
   const custom = ratingIsOurs(draft.custom, draft.units) ? null : draft.custom;

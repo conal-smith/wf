@@ -37,7 +37,7 @@ SCHEMA_VERSION = 2
 # which is now the name of the square index. `spotBlend` is the blend's own
 # consensus per riding place (src/spotBlend.ts), which the blend publishes as a
 # run of its own, and which no model carries; `spotWaveBlend` is the wave blend's
-# (src/waveBlend.ts), likewise.
+# (force5/src/waveBlend.ts), likewise.
 SPOT_KEYS = ("spotForecasts", "spotSeries", "spotCoverage", "spotMembers", "spotCells",
              "spotBlend", "spotWaveBlend")
 SQUARE_URL = "spots/{square}.json"

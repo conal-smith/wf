@@ -32,6 +32,11 @@ import {
   type ReadJson,
 } from "../../force5/src/spotData.js";
 import { sunTimes } from "../../force5/src/sun.js";
+import {
+  PARTITION_KEYS,
+  WAVE_PARTITIONS,
+  type PartitionKey,
+} from "../../force5/src/wavePartitions.js";
 import { KNOTS } from "../../force5/src/units.js";
 import {
   AGREEMENT_MIN_MODELS,
@@ -1284,11 +1289,99 @@ function handedSource(
   return out;
 }
 
+/** One partition of the sea (a swell, the wind sea): height, period, direction. */
+export interface WavePart {
+  height_m: number;
+  period_s: number | null;
+  direction_deg: number | null;
+}
+/** One wave model's own sea state at an hour: its nearest step, and when that is. */
+export interface ModelWaves {
+  height_m: number;
+  period_s: number | null;
+  direction_deg: number | null;
+  /** The model's own step it was read from, within 1.5 h of the hour. */
+  time: string;
+  /**
+   * Its own split of the sea at that step, as it names its partitions
+   * (force5/src/wavePartitions.ts, `WAVE_PARTITIONS`): a partition it has no height
+   * for is left out. One model's split, never averaged with another's.
+   */
+  parts?: Partial<Record<PartitionKey, WavePart>>;
+}
 export interface HourWaves {
   height_m: number | null;
   period_s: number | null;
   direction_deg: number | null;
+  /**
+   * With per_model: every wave model's own nearest step, by model id, in
+   * the order the waves are handed over (finest first).
+   */
+  by_model?: Record<string, ModelWaves>;
 }
+
+/** A wave model's own steps for one spot, where it has a height for it. */
+interface WaveModelSteps {
+  id: string;
+  manifest: VariablesManifest;
+  steps: VariableStep[];
+}
+
+function waveModelSteps(
+  loaded: Loaded<VariablesManifest>[],
+  spotId: string,
+): WaveModelSteps[] {
+  return loaded.flatMap(({ run, manifest }) => {
+    const steps = variableSteps(manifest, spotId);
+    const name = pick(manifest, ["swh"]);
+    return steps && name && steps.some((s) => finite(s.values[name]))
+      ? [{ id: run.id, manifest, steps }]
+      : [];
+  });
+}
+
+/** Each wave model's own step at `time`, with its own partitions. */
+function hourWaveModels(
+  models: readonly WaveModelSteps[],
+  time: number,
+): Record<string, ModelWaves> {
+  const by_model: Record<string, ModelWaves> = {};
+  for (const { id, manifest, steps } of models) {
+    const step = stepAt(steps, time);
+    if (!step) continue;
+    const value = (names: readonly string[], places: number) => {
+      const name = pick(manifest, names);
+      const v = name ? step.values[name] : null;
+      return finite(v) ? round(v, places) : null;
+    };
+    const bearing = (names: readonly string[]) => {
+      const v = value(names, 0);
+      return v === null ? null : v % 360;
+    };
+    const height = value(["swh"], 1);
+    if (height === null) continue;
+    const parts: Partial<Record<PartitionKey, WavePart>> = {};
+    for (const key of PARTITION_KEYS) {
+      const set = WAVE_PARTITIONS[key];
+      const h = value(set.height, 2);
+      if (h === null) continue;
+      parts[key] = {
+        height_m: h,
+        period_s: value(set.period, 1),
+        direction_deg: bearing(set.direction),
+      };
+    }
+    by_model[id] = {
+      height_m: height,
+      period_s: value(["pp1d", "mwp"], 0),
+      direction_deg: bearing(["mwd", "pwd"]),
+      time: iso(step.time),
+      ...(Object.keys(parts).length && { parts }),
+    };
+  }
+  return by_model;
+}
+
 function hourWaves(source: SpotVariables, time: number): HourWaves | null {
   const step = stepAt(source.steps, time);
   if (!step) return null;
@@ -1988,6 +2081,9 @@ export async function spotForecast(
   const { lines, outside } = spotWindLines(wind.loaded, spot.id);
   const memberLines = spotMemberLines(wind.loaded, spot.id);
   const waveSource = handedSource(waves.loaded, spot.id, ["swh"]);
+  const waveModels = options.perModel
+    ? waveModelSteps(waves.loaded, spot.id)
+    : [];
   const sky = spotSky(weather.loaded, spot.id);
   const weatherSource = sky?.source ?? null;
   const facing = shoreFacing(spot.id);
@@ -2008,6 +2104,8 @@ export async function spotForecast(
       shore: kind === "on-water" ? "on-water" : shoreOf(facing, wind),
     };
     if (waveSource) hour.waves = hourWaves(waveSource, time);
+    if (hour.waves && waveModels.length)
+      hour.waves.by_model = hourWaveModels(waveModels, time);
     if (weatherSource) {
       hour.weather = hourWeather(weatherSource, time, rain[row]);
       // The mean wind the hour is rated on, never the gust.
