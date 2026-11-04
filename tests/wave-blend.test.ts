@@ -1,4 +1,4 @@
-// The published wave blend as a run of spot squares (src/waveBlend.ts): written
+// The published wave blend as a run of spot squares (force5/src/waveBlend.ts): written
 // by the same layout the job uses (scripts/runs.mjs, through
 // force5/blend/waves.ts) and read back through the site's one spot loader, and
 // the job itself over the sample runs.
@@ -11,7 +11,7 @@ import locations from "../public/riding-locations.json";
 import { indexed, SWAN_VARIABLES, waveManifest } from "../force5/src/testing";
 import type { WaveManifest, WaveStep } from "../force5/src/waves";
 import { publishRun } from "../scripts/runs.mjs";
-import { loadWaveBlend } from "../src/useWaveBlend";
+import { loadWaveBlend } from "../shared/web/useWaveBlend";
 import {
   buildWaveBlend,
   parseWaveBlend,
@@ -19,7 +19,7 @@ import {
   WAVE_BLEND_PATH,
   waveBlendHours,
   waveBlendPrefix,
-} from "../src/waveBlend";
+} from "../force5/src/waveBlend";
 
 const PLACES = ["brandon", "dollymount", "rusheen", "rossnowlagh", "keel"];
 const NOW = new Date("2026-11-04T18:20:00Z");

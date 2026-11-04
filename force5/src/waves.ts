@@ -47,7 +47,7 @@ export const WAVE_MATCH_HOURS = VARIABLE_MATCH_HOURS;
  * ECMWF's (`handedWaveSource`), as the wind is past the end of the others.
  *
  * It is the wave blend's member list too, in the order its partitions lead
- * (`WAVE_BLEND_MODELS`, src/waveBlend.ts): a wave model added here joins the
+ * (`WAVE_BLEND_MODELS`, force5/src/waveBlend.ts): a wave model added here joins the
  * dock's handover and the blend at once.
  */
 export const WAVE_SOURCE_PREFERENCE: readonly string[] = [
@@ -56,6 +56,60 @@ export const WAVE_SOURCE_PREFERENCE: readonly string[] = [
   "gfs-wave",
   "ecmwf-wave",
 ];
+
+/**
+ * The partitions the lead model's step is read for, by the variables each
+ * model names them with. `swell` is a model's whole swell as one height
+ * (Irish Shelf SWAN's `hswe`), not a partition of it; `swell1` to `swell3` are
+ * the swell partitions in the models' own order, most energetic first. The
+ * wind sea's period is GFS-Wave's mean (`mpww`) or the Met Office's peak
+ * (`ppww`), as `waveFields` in force5/src/waves.ts reads it.
+ */
+export const WAVE_PARTITIONS = {
+  windsea: { height: ["shww"], period: ["mpww", "ppww"], direction: ["mdww"] },
+  swell: { height: ["hswe"], period: [], direction: [] },
+  swell1: {
+    height: ["swell1_h"],
+    period: ["swell1_p"],
+    direction: ["swell1_d"],
+  },
+  swell2: {
+    height: ["swell2_h"],
+    period: ["swell2_p"],
+    direction: ["swell2_d"],
+  },
+  swell3: {
+    height: ["swell3_h"],
+    period: ["swell3_p"],
+    direction: ["swell3_d"],
+  },
+} as const satisfies Record<
+  string,
+  {
+    height: readonly string[];
+    period: readonly string[];
+    direction: readonly string[];
+  }
+>;
+export type PartitionKey = keyof typeof WAVE_PARTITIONS;
+export const PARTITION_KEYS = Object.keys(WAVE_PARTITIONS) as PartitionKey[];
+
+/**
+ * The order a place's headline waves are read in, hour by hour: the first of
+ * these models that has the hour. With no model chosen (`null`), the
+ * handover itself, finest first; with one chosen, that model, then the
+ * others in the handover order past the end of its run, as a chosen wind
+ * model is handed on to ECMWF (force5/src/lead.ts). A choice the list does
+ * not know is no choice.
+ */
+export function waveLeadOrder(
+  model: string | null | undefined,
+  preference: readonly string[] = WAVE_SOURCE_PREFERENCE,
+): string[] {
+  return model && preference.includes(model)
+    ? [model, ...preference.filter((id) => id !== model)]
+    : [...preference];
+}
 
 export type WaveVariable = BundleVariable;
 /** One native forecast step for one spot; a variable with no value is null. */

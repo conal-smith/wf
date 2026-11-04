@@ -26,7 +26,7 @@ import {
   validateWindSpots,
   type Manifest,
 } from "../src/weather";
-import { waveBlendMembers, WAVE_BLEND_MODELS } from "../../src/waveBlend";
+import { waveBlendMembers, WAVE_BLEND_MODELS } from "../src/waveBlend";
 
 export interface WindRuns {
   manifests: Manifest[];

@@ -405,7 +405,7 @@ export const getSpotForecast = tool({
       .boolean()
       .optional()
       .describe(
-        "Also give each model's own wind at every hour, to explain disagreement.",
+        "Also give each model's own wind at every hour, and each wave model's own waves with its own swell and wind-sea partitions, to explain disagreement.",
       ),
     ...MODEL_ARGS,
     ...RIDER_ARGS,

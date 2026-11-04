@@ -30,7 +30,7 @@
  * the run directory it falls in, read through the one spot loader
  * (force5/src/spotData.ts).
  */
-import { waveModels } from "../force5/src/catalog";
+import { waveModels } from "./catalog";
 import {
   checkBase,
   checkSpotIndex,
@@ -39,16 +39,19 @@ import {
   SPOT_KEYS,
   type ReadJson,
   type SpotIndex,
-} from "../force5/src/spotData";
-import { pickVariable } from "../force5/src/variables";
+} from "./spotData";
+import { pickVariable } from "./variables";
 import {
+  PARTITION_KEYS,
   WAVE_MATCH_HOURS,
+  WAVE_PARTITIONS,
   WAVE_SOURCE_PREFERENCE,
   waveAtAxis,
   waveSeries,
+  type PartitionKey,
   type WaveManifest,
   type WaveStep,
-} from "../force5/src/waves";
+} from "./waves";
 
 /** Where the wave blend's pointer is published, beside the wind blend's. */
 export const WAVE_BLEND_PATH = "weather/wave-blend.json";
@@ -79,41 +82,14 @@ export const DIRECTION_VARIABLES = ["mwd", "pwd"] as const;
 export const MIN_DIRECTION_RESULTANT = 0.1;
 
 /**
- * The partitions the lead model's step is read for, by the variables each
- * model names them with. `swell` is a model's whole swell as one height
- * (Irish Shelf SWAN's `hswe`), not a partition of it; `swell1` to `swell3` are
- * the swell partitions in the models' own order, most energetic first. The
- * wind sea's period is GFS-Wave's mean (`mpww`) or the Met Office's peak
- * (`ppww`), as `waveFields` in force5/src/waves.ts reads it.
+ * The partitions the lead model's step is read for (`WAVE_PARTITIONS`, kept in
+ * force5/src/waves.ts so the forecast server reads the same names).
  */
-export const WAVE_PARTITIONS = {
-  windsea: { height: ["shww"], period: ["mpww", "ppww"], direction: ["mdww"] },
-  swell: { height: ["hswe"], period: [], direction: [] },
-  swell1: {
-    height: ["swell1_h"],
-    period: ["swell1_p"],
-    direction: ["swell1_d"],
-  },
-  swell2: {
-    height: ["swell2_h"],
-    period: ["swell2_p"],
-    direction: ["swell2_d"],
-  },
-  swell3: {
-    height: ["swell3_h"],
-    period: ["swell3_p"],
-    direction: ["swell3_d"],
-  },
-} as const satisfies Record<
-  string,
-  {
-    height: readonly string[];
-    period: readonly string[];
-    direction: readonly string[];
-  }
->;
-export type PartitionKey = keyof typeof WAVE_PARTITIONS;
-export const PARTITION_KEYS = Object.keys(WAVE_PARTITIONS) as PartitionKey[];
+export {
+  PARTITION_KEYS,
+  WAVE_PARTITIONS,
+  type PartitionKey,
+} from "./waves";
 
 /** One model the wave blend read. */
 export interface WaveBlendSource {

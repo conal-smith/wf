@@ -36,7 +36,7 @@ The blends are runs too, at schemaVersion 2 (docs/TILING_DESIGN.md, decision 6):
         holds the times, the models it read and its square index; each place's
         series is under `spotBlend` in the square it falls in. No frames.
 - wave-blend  every riding place's sea state across the wave models
-        (src/waveBlend.ts), the same shape with its places under `spotWaveBlend`.
+        (force5/src/waveBlend.ts), the same shape with its places under `spotWaveBlend`.
 
 The other kinds are at schemaVersion 1 and are single files, or (tide) a pointer
 and its station files:
@@ -678,7 +678,7 @@ def validate_blend_bundle(files, model, manifest, run, now):
 
 
 WAVE_BLEND_KEY = "spotWaveBlend"  # The wave blend's per-spot key (squares.SPOT_KEYS).
-# Centimetres, tenths of a second and whole degrees (src/waveBlend.ts); the models'
+# Centimetres, tenths of a second and whole degrees (force5/src/waveBlend.ts); the models'
 # own limits are 25-30 m and 30-40 s.
 WAVE_BLEND_SERIES = {"height": (0, 3000), "low": (0, 3000), "high": (0, 3000),
                      "period": (0, 400), "from": (0, 360)}
@@ -687,7 +687,7 @@ WAVE_BLEND_PARTITIONS = ("windsea", "swell", "swell1", "swell2", "swell3")
 
 
 def validate_wave_blend_bundle(files, model, manifest, run, now):
-    """Every riding place's sea state across the wave models (src/waveBlend.ts).
+    """Every riding place's sea state across the wave models (force5/src/waveBlend.ts).
 
     The shape of the wind blend's run (`validate_blend_bundle`): `run` is the hour
     it was worked out, there are no frames, and the places are under

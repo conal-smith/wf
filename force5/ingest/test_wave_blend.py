@@ -3,7 +3,7 @@
 Published as a run like the wind blend (test_blend.py): the pointer
 weather/wave-blend.json carries its times, the models it read and its spot
 squares, and each place's sea state is `spotWaveBlend` in its square. The
-arithmetic is src/waveBlend.ts's, tested in src/waveBlend.test.ts.
+arithmetic is force5/src/waveBlend.ts's, tested in force5/src/waveBlend.test.ts.
 """
 import contextlib
 from datetime import datetime, timezone

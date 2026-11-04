@@ -7,7 +7,7 @@ the worker to validate and publish, the pointer weather/wave-blend.json and
 beside it a run directory named for its content holding each riding place's
 sea state in its 2° spot square,
 `wave-blend-<run>-<hours>h-v2-<hash>/spots/<square>.json`. The arithmetic and
-the writing are the site's own, in TypeScript (src/waveBlend.ts, run by
+the writing are the site's own, in TypeScript (force5/src/waveBlend.ts, run by
 force5/blend/waves.ts); this gathers its inputs and starts it.
 
 With a bucket the inputs are the wave pointers the bucket serves right now,
@@ -16,7 +16,7 @@ as the site is. A pointer past its model's `maxAgeHours` is left out before its
 squares are read: a retired model's last run, still in the bucket, is no
 member. Without a bucket they are the manifests already under public/. Which
 of them the blend reads, and in what order their partitions lead, is
-`WAVE_BLEND_MODELS` in src/waveBlend.ts.
+`WAVE_BLEND_MODELS` in force5/src/waveBlend.ts.
 """
 import argparse
 from datetime import datetime, timezone

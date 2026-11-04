@@ -256,6 +256,22 @@ describe("the forecast's hours, model and blend", () => {
       before.rider,
     );
   });
+  it("save the wave model, and the finest at each hour by default", () => {
+    const before = prefs();
+    expect(draftOf(before).waveModel).toBeNull();
+    const next = applyDraft(
+      before,
+      { ...draftOf(before), waveModel: "gfs-wave" },
+      NOW,
+    );
+    expect(next.waveModel).toBe("gfs-wave");
+    // It moves no star.
+    expect(next.rider).toEqual(before.rider);
+    expect(draftOf(next).waveModel).toBe("gfs-wave");
+    expect(
+      applyDraft(next, { ...draftOf(next), waveModel: null }, NOW).waveModel,
+    ).toBeNull();
+  });
   it("tick a blend model once, and untick it", () => {
     const draft = { ...draftOf(prefs()), blendModels: ["harmonie"] };
     expect(withBlendModel(draft, "ecmwf", true).blendModels).toEqual([
