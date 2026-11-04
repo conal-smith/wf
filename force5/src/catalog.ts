@@ -31,6 +31,13 @@ export interface ModelEntry {
    * before the next scheduled slot replaces it, with room for a late slot.
    */
   staleAfterHours?: number;
+  /**
+   * Who to credit wherever the site shows this model's data, and on what
+   * licence, in the words the licence asks for. A model without one is
+   * credited by its manifest's own `attribution`.
+   */
+  credit?: string;
+  licenseUrl?: string;
   /** Has map frames worth drawing as a raster layer. */
   mapCapable: boolean;
   /** No adapter publishes this yet; show it, do not fetch it. */
@@ -190,6 +197,23 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     staleAfterHours: 13,
     hue: { wind: "#1f6f8b", gust: "#cf7d2f" },
     mapCapable: true,
+    credit: "NOAA/NCEP GFS-Wave, public domain",
+  },
+  {
+    // The finest wave model the site reads, so it leads the waves for its 60
+    // hours (WAVE_SOURCE_PREFERENCE, force5/src/waves.ts). CC BY-SA 4.0: what
+    // the site publishes from it is offered under the same licence.
+    id: "met-office-wave",
+    name: "Met Office Wave",
+    detail: "1.5 km · 2½ days",
+    manifestUrl: "weather/met-office-wave.json",
+    kind: "wave",
+    staleAfterHours: 12,
+    hue: { wind: "#2b5f9e", gust: "#d0773a" },
+    mapCapable: false,
+    credit:
+      "Met Office North-West Shelf wave model, © British Crown copyright, the Met Office, CC BY-SA 4.0; the wave series derived from it are offered under the same licence",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
   },
   {
     id: "mi-swan",
@@ -200,6 +224,8 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     staleAfterHours: 36,
     hue: { wind: "#2a7f62", gust: "#cf8a2f" },
     mapCapable: true,
+    credit: "Marine Institute Irish Shelf SWAN, CC BY 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by/4.0/",
   },
   {
     // The surface-weather half of the same DWD run the `icon-eu` wind model

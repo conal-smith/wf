@@ -16,7 +16,7 @@ def elf(machine):
 
 
 def packages(machine):
-    return {name: [elf(machine)] for name in ("numpy", "pyproj", "eccodeslib")}
+    return {name: [elf(machine)] for name in ("numpy", "pyproj", "eccodeslib", "h5py")}
 
 
 class NativeArchTests(unittest.TestCase):

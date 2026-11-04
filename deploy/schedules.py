@@ -52,6 +52,7 @@ DESCRIPTIONS = {
     "gfs-wave": "GFS-Wave (NOAA)",
     "gfs-weather": "GFS surface weather (NOAA)",
     "mi-swan": "Irish Shelf SWAN waves (Marine Institute)",
+    "met-office-wave": "North-West Shelf 1.5 km waves (Met Office)",
     "currents": "NE Atlantic ROMS surface currents (Marine Institute)",
     "tides": "Tide predictions (Marine Institute; Northern Ireland harmonic)",
     "sea-temperature": "Sea temperature observations",
@@ -69,7 +70,7 @@ DESCRIPTIONS = {
 # silently stops updating. Every enabled job was measured on 11 October 2026
 # (deploy/home-compute/README.md, "What a job uses"): the peak resident memory
 # of the worker and its adapter together, which the worker now reports in each
-# event's `resources`, is 130-365 MB (MEASURED_PEAK_MB), so the ceilings are at
+# event's `resources`, is 130-390 MB (MEASURED_PEAK_MB), so the ceilings are at
 # least twice that and mostly three times. The VM's page cache is not counted against
 # a job: Linux reclaims it at the ceiling (the HARMONIE, ICON-EU and ECMWF
 # adapters each ran whole in the image under a 384 MB limit). Every job is
@@ -89,7 +90,7 @@ DESCRIPTIONS = {
 # Cloudflare's `basic` container (1/4 vCPU, 1 GiB, 4 GB), whose memory and disk
 # are billed for the whole run; Home Compute's executor picks the smallest size
 # that fits.
-MODEL = {"cpu": "1", "memory": "1Gb", "disk": "2Gb"}       # Peaks 290-365 MB.
+MODEL = {"cpu": "1", "memory": "1Gb", "disk": "2Gb"}       # Peaks 290-390 MB.
 FORECAST = {"cpu": "1", "memory": "512Mb", "disk": "2Gb"}  # Peaks of about 225 MB.
 FEED = {"cpu": "1", "memory": "512Mb", "disk": "2Gb"}      # Peaks of 130-220 MB.
 # The retired adapters were never measured: they keep the 4 GB the worker was
@@ -100,6 +101,8 @@ ENSEMBLE = {"cpu": "2", "memory": "4Gb", "disk": "20Gb"}
 RESOURCES = {
     "harmonie": MODEL, "icon-eu": MODEL, "ecmwf": MODEL, "gfs-wave": MODEL,
     "ecmwf-wave": MODEL,
+    # About 430 MB a run held in memory a file at a time, four files at once.
+    "met-office-wave": MODEL,
     "icon-eu-weather": FORECAST, "gfs": FORECAST,
     # Its whole 384 h run's series are in memory before they are written.
     "gfs-weather": MODEL,
@@ -127,7 +130,7 @@ MEASURED_PEAK_MB = {
     "icon-eu-weather": 225, "gfs": 230, "verify": 225, "gfs-weather": 355,
     "mi-swan": 190, "currents": 240, "blend": 185, "forecast-archive": 140,
     "tides": 135, "sea-temperature": 135, "wind-obs": 135, "warnings": 135,
-    "water-quality": 155,
+    "water-quality": 155, "met-office-wave": 390,
     # Not yet measured in the image: the worker's 72 MB and the 148 MB peak of the
     # bundled force5/blend/waves.ts over a full-size synthetic run (GFS-Wave's ten
     # days and SWAN's six at every riding place), measured natively on 4 November 2026.

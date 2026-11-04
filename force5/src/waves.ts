@@ -37,8 +37,10 @@ export const MAX_WAVE_VALUE = VARIABLE_VALUE_LIMITS.wave;
 export const WAVE_MATCH_HOURS = VARIABLE_MATCH_HOURS;
 
 /**
- * Sources in the order the dock prefers them, finest first. Ireland's own 2.8 km
- * shelf model wins; NOAA's 9 km global model is the fallback; ECMWF's 0.25°
+ * Sources in the order the dock prefers them, finest first. The Met Office's
+ * 1.5 km North-West Shelf model leads for its 60 hours; Ireland's own 2.8 km
+ * shelf model goes on from there to six days; NOAA's 9 km global model is the
+ * fallback past that; ECMWF's 0.25°
  * (~28 km) wave stream is last, because at that resolution a bay is a cell or
  * two wide and many spots are read from open water nearby. It earns its place
  * by reach: its run goes on to 360 h, so past GFS-Wave's 240 h the waves are
@@ -49,6 +51,7 @@ export const WAVE_MATCH_HOURS = VARIABLE_MATCH_HOURS;
  * dock's handover and the blend at once.
  */
 export const WAVE_SOURCE_PREFERENCE: readonly string[] = [
+  "met-office-wave",
   "mi-swan",
   "gfs-wave",
   "ecmwf-wave",
@@ -177,7 +180,7 @@ export interface WaveFieldSet {
 }
 /**
  * Which of a manifest's variables carry the whole sea and each partition. The
- * two adapters name them differently and publish different partitions — SWAN
+ * adapters name them differently and publish different partitions — SWAN
  * has a swell height but no swell period, and its wind sea is derived — so the
  * rows read the declared variable map rather than hard-coding one source.
  */
@@ -208,7 +211,8 @@ export function waveFields(manifest: WaveManifest): WaveFields | null {
   return {
     total,
     swell: set(["swell1_h", "hswe"], ["swell1_p"], ["swell1_d"]),
-    windsea: set(["shww"], ["mpww"], ["mdww"]),
+    // GFS-Wave publishes the wind sea's mean period, the Met Office its peak.
+    windsea: set(["shww"], ["mpww", "ppww"], ["mdww"]),
   };
 }
 

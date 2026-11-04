@@ -55,6 +55,7 @@ describe("model registry", () => {
       "ukv",
       "aifs",
       "gfs-wave",
+      "met-office-wave",
       "mi-swan",
       "icon-eu-weather",
       "gfs-weather",
@@ -76,6 +77,7 @@ describe("model registry", () => {
       "ecmwf",
       "gfs",
       "gfs-wave",
+      "met-office-wave",
       "mi-swan",
       "icon-eu-weather",
       "gfs-weather",
@@ -84,6 +86,7 @@ describe("model registry", () => {
     expect(windModels().every((model) => model.kind === "wind")).toBe(true);
     expect(waveModels().map((model) => model.id)).toEqual([
       "gfs-wave",
+      "met-office-wave",
       "mi-swan",
       "ecmwf-wave",
     ]);

@@ -39,6 +39,13 @@ describe("staleAfterHours", () => {
     expect(isStale("mi-swan", RUN, after(37))).toBe(true);
   });
 
+  it("calls a Met Office wave run stale once a whole cycle has been missed", () => {
+    // Read three hours after each six-hourly run, with a :55 retry: the next
+    // lands at about 9 h 55 m, and the one after a missed cycle at 15 h.
+    expect(isStale("met-office-wave", RUN, after(11))).toBe(false);
+    expect(isStale("met-office-wave", RUN, after(12.5))).toBe(true);
+  });
+
   it("keeps ECMWF's 00 UTC run fresh while the 12 UTC run is still publishing", () => {
     // The 12 UTC run is complete about 19:35 UTC, its retry slot is 22:20.
     expect(isStale("ecmwf", RUN, after(22.5))).toBe(false);
