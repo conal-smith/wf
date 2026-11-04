@@ -228,6 +228,25 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     licenseUrl: "https://creativecommons.org/licenses/by/4.0/",
   },
   {
+    // Copernicus Marine's Iberia-Biscay-Ireland waves: Météo-France's MFWAM on a
+    // 1/36° grid (about 3.1 km north-south, 1.8 km east-west here), ten days,
+    // hourly, with the wind sea and two swells. Spot series only, no frames.
+    id: "ibi-wave",
+    name: "IBI Wave",
+    detail: "2.5 km · 10 days",
+    manifestUrl: "weather/ibi-wave.json",
+    kind: "wave",
+    staleAfterHours: 55,
+    hue: { wind: "#2f8fa3", gust: "#c9853a" },
+    mapCapable: false,
+    // The Copernicus Marine licence's own words for a derived product (2.4a),
+    // with the product's DOI.
+    credit:
+      "Copernicus Marine IBI waves (Météo-France MFWAM): Generated using E.U. Copernicus Marine Service Information; https://doi.org/10.48670/moi-00025",
+    licenseUrl:
+      "https://marine.copernicus.eu/user-corner/service-commitments-and-licence",
+  },
+  {
     // The surface-weather half of the same DWD run the `icon-eu` wind model
     // reads, as its own bundle with its own cadence. Not map-capable: its frames
     // carry five gridded variables, but nothing draws a temperature raster yet,

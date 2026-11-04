@@ -348,6 +348,33 @@ export const ECMWF_WAVE_VARIABLES: Record<string, WaveVariable> =
       { units, label, description: `${label}, synthetic` },
     ]),
   );
+/**
+ * Copernicus Marine's IBI waves (MFWAM): the whole sea, the wind sea and two
+ * swell partitions, under the names GFS-Wave uses, as fetch_ibi_wave.py publishes.
+ */
+export const IBI_WAVE_VARIABLES: Record<string, WaveVariable> =
+  Object.fromEntries(
+    (
+      [
+        ["swh", "m", "Wave height"],
+        ["pp1d", "s", "Peak period"],
+        ["mwp", "s", "Mean period"],
+        ["mwd", "degrees true", "Mean direction"],
+        ["shww", "m", "Wind-wave height"],
+        ["mpww", "s", "Wind-wave period"],
+        ["mdww", "degrees true", "Wind-wave direction"],
+        ["swell1_h", "m", "Primary swell height"],
+        ["swell1_p", "s", "Primary swell period"],
+        ["swell1_d", "degrees true", "Primary swell direction"],
+        ["swell2_h", "m", "Secondary swell height"],
+        ["swell2_p", "s", "Secondary swell period"],
+        ["swell2_d", "degrees true", "Secondary swell direction"],
+      ] as const
+    ).map(([name, units, label]) => [
+      name,
+      { units, label, description: `${label}, synthetic` },
+    ]),
+  );
 /** Irish Shelf SWAN: a swell height but no swell period, and a derived wind sea. */
 export const SWAN_VARIABLES: Record<string, WaveVariable> = Object.fromEntries(
   (

@@ -141,6 +141,13 @@ MODELS = {
     # 10:15 (14:15 and 18:15 retry): about 34.5 h old when the next day's lands.
     "mi-swan": {"script": "fetch_mi_swan.py", "manifest": "weather/mi-swan.json",
                 "kind": "wave", "maxAgeHours": 36, "readsPublishedRun": True},
+    # Copernicus Marine's IBI waves (Météo-France MFWAM): one run a day, labelled by its
+    # first forecast day R, whole only once its second half lands by 02:00 UTC on R+1.
+    # Read at 02:30 (05:30 and 08:30 retry), the served run is about 26.5 h old when it
+    # lands and 50.5 h when the next day's replaces it; 55 h leaves the first retry, with
+    # an hour of queueing, before it reads as stale.
+    "ibi-wave": {"script": "fetch_ibi_wave.py", "manifest": "weather/ibi-wave.json",
+                 "kind": "wave", "maxAgeHours": 55, "readsPublishedRun": True},
     # The Met Office's 1.5 km North-West Shelf wave model: four runs a day to +60 h,
     # each listed about 2 h 45 m after its run time, read at :00 three hours after
     # (03, 09, 15 and 21 UTC) with a :55 retry. On time the served run is at most
