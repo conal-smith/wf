@@ -2089,7 +2089,7 @@ function Graph({
             <BlendStrip
               label="Wave blend, m"
               items={waves.lines.map((l) => {
-                const own = shownRow?.hour.waves?.by_model?.[l.id];
+                const own = waveAt?.models[l.id];
                 return {
                   id: l.id,
                   name: shortName(l.id),
@@ -2801,14 +2801,14 @@ function Graph({
                 left={card.left}
                 top={card.top}
                 rows={waves.lines.map((l) => {
-                  const own = shownRow.hour.waves?.by_model?.[l.id];
+                  const own = waveAt?.models[l.id];
                   const before = shownRow.time + shownRow.step * HOUR <= l.first;
                   return {
                     id: l.id,
                     mark: <ModelMark wave={l.id} />,
                     name: waveModelName(l.id),
-                    // Between two of its own steps it has no value: none is
-                    // read between them.
+                    // Its nearest own step, nothing worked out between two;
+                    // across a hole in its run, no value.
                     value: own
                       ? `${own.height_m.toFixed(1)} m`
                       : shownRow.time > l.last
@@ -2858,7 +2858,7 @@ function Graph({
             </KeyGroup>
             <KeyGroup name="Wave blend, m" wide data-wave-models-legend>
               {waves.lines.map((l) => {
-                const own = shownRow?.hour.waves?.by_model?.[l.id];
+                const own = waveAt?.models[l.id];
                 const detail = modelEntry(l.id)?.detail;
                 return (
                   <KeyItem
@@ -3814,9 +3814,13 @@ function WaveBands({
   const third = (r: SpotRow) => dublinHour(r.time) % 3 === 0 && seen(r);
   const sixth = (r: SpotRow) => dublinHour(r.time) % 6 === 3 && seen(r);
   const at = rows
-    .map((row, i) => ({ row, w: waves.rows[i] }))
+    .map((row, i) => ({
+      row,
+      w: waves.rows[i],
+      held: waves.rows[i]?.held ?? false,
+    }))
     .filter(
-      (p): p is { row: SpotRow; w: WaveRow } =>
+      (p): p is { row: SpotRow; w: WaveRow; held: boolean } =>
         p.w !== null && p.w.heightM !== null && seen(p.row),
     );
   // Every wave model's height and the blend's on one scale, in half metres.
@@ -3830,8 +3834,14 @@ function WaveBands({
     { length: Math.floor(most / (most > 3 ? 1 : 0.5)) },
     (_, i) => (i + 1) * (most > 3 ? 1 : 0.5),
   );
-  /** Runs of the hours drawn, broken at a gap or a night left out. */
-  const runsOf = <T extends { row: Pick<SpotRow, "time" | "step"> }>(
+  /**
+   * Runs of the hours drawn, broken at a gap or a night left out. A `held`
+   * hour keeps its run whole, between two of a coarse run's steps, and is not
+   * drawn itself: the line goes through the steps.
+   */
+  const runsOf = <
+    T extends { row: Pick<SpotRow, "time" | "step">; held: boolean },
+  >(
     items: readonly T[],
   ): T[][] => {
     const out: T[][] = [];
@@ -3845,10 +3855,12 @@ function WaveBands({
         out.push([]);
       out.at(-1)!.push(item);
     });
-    return out.filter((run) => run.length > 1);
+    return out
+      .map((run) => run.filter((item) => !item.held))
+      .filter((run) => run.length > 1);
   };
   const band = (
-    items: readonly { row: SpotRow; w: WaveRow }[],
+    items: readonly { row: SpotRow; w: WaveRow; held: boolean }[],
     y: (m: number) => number,
   ) =>
     runsOf(items.filter((p) => p.w.lowM !== null && p.w.highM !== null))
@@ -3957,7 +3969,7 @@ function WaveBands({
           return (
             <g data-band="wave-direction">
               {at
-                .filter((p) => third(p.row))
+                .filter((p) => third(p.row) && !p.held)
                 .map(({ row, w }, i) => (
                   <g key={i}>
                     {w.from !== null && (
@@ -3993,7 +4005,9 @@ function WaveBands({
           return (
             <g data-band="period">
               {at
-                .filter((p) => third(p.row) && p.w.periodS !== null)
+                .filter(
+                  (p) => third(p.row) && !p.held && p.w.periodS !== null,
+                )
                 .map(({ row, w }, i) => (
                   <text
                     key={i}
@@ -4013,7 +4027,9 @@ function WaveBands({
         (() => {
           const [y, h] = bands.wblend;
           const BY = (m: number) => y + h - (Math.min(m, most) / most) * (h - 4);
-          const blended = at.filter((p) => p.w.blendM !== null);
+          const blended = at
+            .filter((p) => p.w.blendM !== null)
+            .map((p) => ({ ...p, held: p.w.blendHeld }));
           // How far the longest run reaches in the hours drawn: a run that
           // ends there is cut by the graph, not ended.
           const reach = Math.max(...waves.lines.map((l) => l.last));
@@ -4112,7 +4128,7 @@ function WaveBands({
               {hovered &&
                 seen(hovered) &&
                 waves.lines.map((l) => {
-                  const own = hovered.hour.waves?.by_model?.[l.id];
+                  const own = hoveredWave?.models[l.id];
                   return own ? (
                     <circle
                       key={l.id}
@@ -4144,9 +4160,13 @@ function WaveBands({
         const [y, h] = at2;
         const PY = (m: number) => y + h - (Math.min(m, most) / most) * (h - 18);
         const parts = rows
-          .map((row, i) => ({ row, part: partOf(waves.rows[i], key) }))
+          .map((row, i) => ({
+            row,
+            part: partOf(waves.rows[i], key),
+            held: waves.rows[i]?.held ?? false,
+          }))
           .filter(
-            (p): p is { row: SpotRow; part: WavePartHour } =>
+            (p): p is { row: SpotRow; part: WavePartHour; held: boolean } =>
               p.part !== null && seen(p.row),
           );
         const lines = runsOf(parts).map((run) =>
@@ -4168,7 +4188,7 @@ function WaveBands({
               strokeWidth={1.2}
             />
             {parts
-              .filter((p) => sixth(p.row))
+              .filter((p) => sixth(p.row) && !p.held)
               .map(({ row, part }, i) => (
                 <g key={i}>
                   {part.from !== null && (
