@@ -139,6 +139,14 @@ minutes = [15]
 timeout_seconds = 1800
 
 [[jobs]]
+id = "met-office-wave"
+models = ["met-office-wave"]
+hours = [3, 9, 15, 21]      # 00/06/12/18 UTC cycles, each listed whole ~2 h 45 m after its
+minutes = [0, 55]           # run time. :55 is a retry that stops at once when :00 has
+timeout_seconds = 1200      # published. ~430 MB a run, read in memory: the files cannot
+                            # be subset, so each needed field is downloaded whole.
+
+[[jobs]]
 id = "currents"
 models = ["currents"]
 hours = [3, 7, 13]          # One ROMS run a day, its forecast files written by about

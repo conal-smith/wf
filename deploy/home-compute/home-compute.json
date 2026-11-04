@@ -943,6 +943,70 @@
       }
     },
     {
+      "id": "met-office-wave",
+      "description": "North-West Shelf 1.5 km waves (Met Office)",
+      "schedule": {
+        "at": {
+          "hours": [
+            3,
+            9,
+            15,
+            21
+          ],
+          "minutes": [
+            0,
+            55
+          ]
+        },
+        "timezone": "UTC"
+      },
+      "labels": {
+        "application": "wingfoil",
+        "models": "met-office-wave"
+      },
+      "task": {
+        "image": "${WINGFOIL_IMAGE}",
+        "requiredEnv": [
+          "S3_BUCKET",
+          "S3_ENDPOINT_URL",
+          "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY",
+          "FORCE5_SIDECARS"
+        ],
+        "passEnv": [
+          "S3_PREFIX",
+          "AWS_REGION",
+          "ECMWF_SOURCE",
+          "FORCE5_BROTLI_QUALITY"
+        ],
+        "resources": {
+          "cpu": "1",
+          "memory": "1Gb",
+          "disk": "2Gb"
+        },
+        "network": {
+          "type": "Full"
+        },
+        "timeouts": {
+          "queueSeconds": 3600,
+          "totalSeconds": 5400
+        },
+        "entrypoint": [
+          "python",
+          "/app/force5/ingest/worker.py"
+        ],
+        "parameters": [
+          "--models",
+          "met-office-wave"
+        ],
+        "report": {
+          "format": "json-lines",
+          "trackEvent": "forecast_complete",
+          "trackBy": "model"
+        }
+      }
+    },
+    {
       "id": "currents",
       "description": "NE Atlantic ROMS surface currents (Marine Institute)",
       "schedule": {

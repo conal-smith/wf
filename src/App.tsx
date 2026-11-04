@@ -126,7 +126,9 @@ import {
   loadManifest,
   MANIFEST_REVALIDATE_MS,
   ManifestUnavailableError,
+  waveModels,
 } from "../force5/src/manifests";
+import { WAVE_SOURCE_PREFERENCE } from "../force5/src/waves";
 import { runLabel } from "../force5/src/revalidate";
 import { chosenModel, leadText, starsFromAt } from "../force5/src/lead";
 import {
@@ -2075,6 +2077,14 @@ export default function App() {
           <a href="https://openfreemap.org/" target="_blank" rel="noreferrer">
             OpenFreeMap
           </a>
+        </li>
+        <li>
+          Waves, finest first, each taking over where the one before ends:{" "}
+          {WAVE_SOURCE_PREFERENCE.flatMap((id) =>
+            waveModels().filter((model) => model.id === id),
+          )
+            .map((model) => model.credit ?? model.name)
+            .join("; ")}
         </li>
         <li>
           Tides: Marine Institute predictions (CC BY 4.0); in Northern Ireland,

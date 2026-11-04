@@ -42,7 +42,7 @@ COPY force5/ingest/requirements*.txt /app/force5/ingest/
 # requirements-lock.txt pins every package, transitive ones too, to a set the
 # image smoke test has passed with (scripts/release/worker-image-smoke.sh).
 # --only-binary refuses a source build, so a wheel published for one architecture
-# cannot stand in for the other. The locked native packages (eccodeslib, eckitlib,
+# cannot stand in for the other. The locked native packages (eccodeslib, eckitlib, h5py,
 # pyproj, numpy, cffi, brotli) publish manylinux wheels for x86_64 and aarch64.
 RUN pip install --no-cache-dir --only-binary=:all: \
        -r force5/ingest/requirements-worker.txt \
