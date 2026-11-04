@@ -845,6 +845,26 @@ the wind's swatch and "Measured · Belmullet 1 km", with the playhead at now
 or before it. A finder card on today has one quiet line under its county,
 "Now 3 g5 kn · Belmullet 1 km" after a gold dot; other days, none.
 
+**2026-11-04 — The spot page's graph on a phone: names beside the hours, and
+a finger that drags.** The owner, from a phone: the band names floating over
+the hours' left edge hid the first figures under them, the stars and a
+warning's mark ran into the Gusts cell, the top of the graph looked cut off
+under the readout, and a finger on the graph could not move it. The band
+names now take a column of their own on a phone too, 60 px, in the caption's
+size, so no figure is ever under one. With the readout held over the graph,
+a band's name is held just below the readout's foot while any of its band is
+still in view, and a hairline marks the foot once the graph runs under it, so
+the graph reads as passing under the readout rather than as clipped. The
+graph takes the browser's own touch handling: a sideways drag scrolls the
+hours under the playhead and an upward one scrolls the page. It had been
+held to sideways pans alone, so a drag whose first movement was upward, as a
+finger's often is, moved nothing at all, and the page could only be scrolled
+from above the graph. In the
+readout the stars are two cells wide on a phone, with room for the mark. The
+Models band is on the tens either side of the week's model winds, 52 px tall
+rather than 72 px on a scale from calm to 36 kn, so its lines fill it instead
+of a strip of mostly empty band.
+
 ---
 
 ## Still open

@@ -659,6 +659,25 @@ test("under the week graph: the models, the gusts, the waves, the current and th
     paths.map((path) => path.getAttribute("d") ?? ""),
   ))
     expect(d).toMatch(/^M[\d.]+,[\d.]+C/);
+  // On the tens either side of the models' winds, so the lines fill the
+  // band between its first dotted line and its last.
+  const fill = await graph.locator('[data-band="models"]').evaluate((band) => {
+    const ys = [...band.querySelectorAll("line")].map((line) =>
+      Number(line.getAttribute("y1")),
+    );
+    const boxes = [...band.querySelectorAll("path[data-model]")].map((path) =>
+      (path as SVGGraphicsElement).getBBox(),
+    );
+    return {
+      top: Math.min(...ys),
+      bottom: Math.max(...ys),
+      high: Math.min(...boxes.map((box) => box.y)),
+      low: Math.max(...boxes.map((box) => box.y + box.height)),
+    };
+  });
+  expect(fill.high).toBeGreaterThanOrEqual(fill.top - 2);
+  expect(fill.low).toBeLessThanOrEqual(fill.bottom + 2);
+  expect(fill.low - fill.high).toBeGreaterThan((fill.bottom - fill.top) / 3);
   const legend = page.locator("[data-models-legend]");
   await expect(legend).toContainText("HARMONIE");
   await expect(legend).toContainText("ECMWF");
@@ -1039,3 +1058,237 @@ for (const [id, station] of [
     if (cardShore) expect(shoreWord(footText)).toBe(cardShore);
   });
 }
+
+/**
+ * A finger's drag from one point to another, as the phone's own touch events
+ * (Chrome's DevTools protocol): unlike `page.touchscreen`, which only taps,
+ * the browser scrolls under it as it would under a finger, by the page's own
+ * `touch-action`.
+ */
+async function swipe(
+  page: Page,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+) {
+  const cdp = await page.context().newCDPSession(page);
+  const steps = 12;
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [from],
+  });
+  for (let i = 1; i <= steps; i++)
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [
+        {
+          x: from.x + ((to.x - from.x) * i) / steps,
+          y: from.y + ((to.y - from.y) * i) / steps,
+        },
+      ],
+    });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  await cdp.detach();
+}
+
+test.describe("on a phone, the week graph", () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+
+  const graphState = (page: Page) =>
+    page.evaluate(() => ({
+      left: document.querySelector("[data-spot-graph]")!.scrollLeft,
+      top: Math.round(scrollY),
+      hour: document.querySelector("[data-readout]")!.textContent!.slice(0, 9),
+    }));
+  /** Where the hours and the page come to rest, once a fling has run out. */
+  const settled = async (page: Page) => {
+    let last = await graphState(page);
+    for (;;) {
+      await page.waitForTimeout(150);
+      const now = await graphState(page);
+      if (now.left === last.left && now.top === last.top) return now;
+      last = now;
+    }
+  };
+
+  test("a finger drags the hours along the graph, and scrolls the page up and down it", async ({
+    page,
+  }) => {
+    await withTides(page);
+    await page.goto("/spot/brandon");
+    await expect(heading(page)).toBeVisible({ timeout: 30000 });
+    const graph = page.locator("[data-spot-graph]");
+    const readout = page.locator("[data-readout]");
+    await expect(page.locator("[data-graph-svg]")).toBeVisible();
+    // Everything above the graph in, so nothing moves the page but a finger.
+    await page.waitForLoadState("networkidle");
+    await readout.evaluate((el) =>
+      scrollTo(0, scrollY + el.getBoundingClientRect().top),
+    );
+    const box = (await graph.boundingBox())!;
+    // Across the graph, from its wind row to its current: the hours move
+    // under the playhead and the readout follows, and the page stays put.
+    for (const down of [60, 200, 330, 480]) {
+      const before = await settled(page);
+      const y = box.y + down;
+      await swipe(page, { x: box.x + 250, y }, { x: box.x + 50, y });
+      await expect
+        .poll(async () => (await graphState(page)).left, {
+          message: `a drag ${down}px down the graph`,
+        })
+        .toBeGreaterThan(before.left + 100);
+      const after = await settled(page);
+      expect(after.top).toBe(before.top);
+      expect(after.hour).not.toBe(before.hour);
+    }
+    // Up the graph: the page scrolls, the hours stay where they were.
+    const before = await settled(page);
+    await swipe(
+      page,
+      { x: box.x + 150, y: box.y + 400 },
+      { x: box.x + 150, y: box.y + 150 },
+    );
+    await expect
+      .poll(async () => (await graphState(page)).top)
+      .toBeGreaterThan(before.top + 100);
+    expect((await settled(page)).left).toBe(before.left);
+  });
+
+  test("the band names stand beside the hours, never over them, and clear of the readout", async ({
+    page,
+  }) => {
+    await withTides(page);
+    await page.goto("/spot/brandon");
+    await expect(heading(page)).toBeVisible({ timeout: 30000 });
+    const graph = page.locator("[data-spot-graph]");
+    const readout = page.locator("[data-readout]");
+    await expect(page.locator("[data-graph-svg]")).toBeVisible();
+    const names = page.locator("[data-band-name]");
+    await expect(names).toHaveText([
+      "Stars",
+      "Wind",
+      "Direction",
+      "Sea",
+      "Tide",
+      "Sky",
+      "Rain",
+      "Models",
+      "Gusts",
+      "Waves",
+      "Current",
+    ]);
+    // Every name whole, and left of the hours, wherever they are scrolled.
+    const left = (await graph.boundingBox())!.x;
+    await graph.evaluate((el) => (el.scrollLeft = el.scrollWidth / 3));
+    for (const box of await names.evaluateAll((spans) =>
+      spans.map((span) => {
+        const { left, right } = span.getBoundingClientRect();
+        return { left, right };
+      }),
+    )) {
+      expect(box.right).toBeLessThanOrEqual(left);
+      expect(box.left).toBeGreaterThanOrEqual(0);
+    }
+    // The page scrolled until the top of the wind band is under the readout,
+    // which is held at the top of the screen: the band's name is held below
+    // the readout's foot rather than going under it.
+    const wind = names.filter({ hasText: "Wind" });
+    await readout.evaluate((el) =>
+      scrollTo(0, scrollY + el.getBoundingClientRect().top),
+    );
+    const foot = await readout.evaluate(
+      (el) => el.parentElement!.getBoundingClientRect().bottom,
+    );
+    const svgTop = (await page.locator("[data-graph-svg]").boundingBox())!.y;
+    // 60px of the 118px wind band, which starts 34px down, under the readout.
+    await page.evaluate((by) => scrollBy(0, by), svgTop + 34 + 60 - foot);
+    await expect
+      .poll(async () => (await wind.boundingBox())!.y)
+      .toBeGreaterThanOrEqual(foot - 0.5);
+    expect((await wind.boundingBox())!.y).toBeLessThan(foot + 4);
+  });
+
+  test("the readout's stars have room for a warning's mark beside them", async ({
+    page,
+  }) => {
+    // A yellow small-craft warning over the rated hours of the next two days.
+    const at = (hours: number) => new Date(clock + hours * HOUR).toISOString();
+    const runTime =
+      new Date(clock - HOUR).toISOString().slice(0, 14) + "00:00.000Z";
+    await page.route("**/marine/warnings.json", (route) =>
+      route.fulfill({
+        json: {
+          schemaVersion: 1,
+          kind: "warnings",
+          model: "warnings",
+          run: runTime.slice(0, 13).replace(/[-T]/g, ""),
+          runTime,
+          generatedAt: runTime.replace(":00.000Z", ":25.000Z"),
+          sourceUrl: "https://www.met.ie/Open_Data/json/warning_ALL.json",
+          attribution: "Weather warnings from Met Éireann (met.ie), CC BY 4.0",
+          licenseUrl: "https://creativecommons.org/licenses/by/4.0/",
+          warnings: [
+            {
+              id: 1,
+              capId: "test.yellow",
+              type: "small-craft",
+              level: "yellow",
+              severity: "Moderate",
+              certainty: "Likely",
+              status: "Warning",
+              issued: at(-10),
+              updated: at(-10),
+              onset: at(5),
+              expiry: at(60),
+              headline: "Small Craft warning for all coasts of Ireland",
+              description: "<p>Southwest winds will reach force 6.</p>",
+              regions: ["EI816", "EI817", "EI818"],
+            },
+          ],
+        },
+      }),
+    );
+    await withTides(page);
+    await page.goto("/spot/brandon");
+    await expect(heading(page)).toBeVisible({ timeout: 30000 });
+    const graph = page.locator("[data-spot-graph]");
+    const readout = page.locator("[data-readout]");
+    const mark = readout.locator("[data-notice-mark]");
+    await expect(page.locator("[data-graph-svg]")).toBeVisible();
+    await readout.evaluate((el) =>
+      scrollTo(0, scrollY + el.getBoundingClientRect().top),
+    );
+    // Along the hours until one under the warning is read out.
+    for (let i = 0; i < 100 && !(await mark.count()); i++) {
+      await graph.evaluate(
+        (el, f) => (el.scrollLeft = (el.scrollWidth - el.clientWidth) * f),
+        i / 100,
+      );
+      await page.waitForTimeout(20);
+    }
+    await expect(mark).toHaveCount(1);
+    await expect(readout.locator("[data-stars]")).toBeVisible();
+    const room = await mark.evaluate((el) => {
+      const cell = el.closest("[data-readout] > *")!.getBoundingClientRect();
+      const box = el.getBoundingClientRect();
+      const gust = document
+        .querySelector("[data-readout-gust]")!
+        .getBoundingClientRect();
+      return {
+        inCell: box.left >= cell.left && box.right <= cell.right,
+        clear:
+          box.right <= gust.left ||
+          box.left >= gust.right ||
+          box.bottom <= gust.top ||
+          box.top >= gust.bottom,
+      };
+    });
+    expect(room).toEqual({ inCell: true, clear: true });
+  });
+});
