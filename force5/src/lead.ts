@@ -13,6 +13,14 @@
 // context — the blend, the agreement, the range, the faint ticks — and never
 // move a star.
 //
+// The ruling of 4 November 2026 adds one choice that is no model: the blend
+// (`BLEND_MODEL`). A rider who picks it has every hour rated from the blend
+// of every model that reaches it, each model's own wind, gust and direction
+// weighted as the chart's blend weights it (force5/src/windBlend.ts). It
+// reaches as far as any model does, so it hands over to nothing. The default
+// stays HARMONIE, then ECMWF; the map, which draws one model's frames, draws
+// the default's for a rider on the blend.
+//
 // Plain data and arithmetic with no imports beyond the catalogue, so the map,
 // the dock, the spot page, the forecast server (mcp/api, compiled on its own),
 // the alerts and the app all read the same rule.
@@ -38,11 +46,20 @@ export const DEFAULT_MODEL = "harmonie";
 /** The model that takes over past the end of any other's run: ECMWF, fifteen days. */
 export const FALLBACK_MODEL = "ecmwf";
 
-/** The models to rate an hour from for a chosen model: it, then ECMWF past its run. */
+/**
+ * The models to rate an hour from for a chosen model: it, then ECMWF past its
+ * run. The blend reaches as far as any model, so it is its own fallback.
+ */
 export const leadFor = (model: string): StarsFrom => ({
   model,
-  then: FALLBACK_MODEL,
+  then: model === BLEND_MODEL ? BLEND_MODEL : FALLBACK_MODEL,
 });
+
+/**
+ * The blend as a choice: no model's own, but every model's (`STARS_MODELS`)
+ * weighted together at each hour (force5/src/windBlend.ts `blendHour`).
+ */
+export const BLEND_MODEL = "blend";
 
 /** HARMONIE while it reaches the hour, then ECMWF. */
 export const DEFAULT_STARS_FROM: StarsFrom = Object.freeze(
@@ -64,13 +81,38 @@ export const STARS_MODELS: readonly string[] = MODEL_CATALOG.filter(
 export const isStarsModel = (id: unknown): id is string =>
   typeof id === "string" && STARS_MODELS.includes(id);
 
-/** The model's name as the site prints it: "HARMONIE", "ECMWF", "GFS". */
+/** What a rider can pick to see and rate: each of those models, or their blend. */
+export const STARS_CHOICES: readonly string[] = [...STARS_MODELS, BLEND_MODEL];
+
+export const isStarsChoice = (id: unknown): id is string =>
+  isStarsModel(id) || id === BLEND_MODEL;
+
+/** The model's name as the site prints it: "HARMONIE", "ECMWF", "GFS", "Blend". */
 export const modelName = (id: string): string =>
-  MODEL_CATALOG.find((entry) => entry.id === id)?.name ?? id.toUpperCase();
+  id === BLEND_MODEL
+    ? "Blend"
+    : (MODEL_CATALOG.find((entry) => entry.id === id)?.name ??
+      id.toUpperCase());
 
 /** The one model the rider picked, HARMONIE if they never did. */
 export const chosenModel = (choice: StarsChoice | null | undefined): string =>
   choice?.model ?? DEFAULT_MODEL;
+
+/**
+ * The model the map draws for a choice: the one chosen, or for the blend,
+ * which has no frames of its own, the default's.
+ */
+export const mapModelOf = (choice: StarsChoice | null | undefined): string => {
+  const model = chosenModel(choice);
+  return model === BLEND_MODEL ? DEFAULT_MODEL : model;
+};
+
+/**
+ * The models an hour is worked out from for `from`: the chosen one and the one
+ * after it, or for the blend every model it blends.
+ */
+export const leadModels = (from: StarsFrom): string[] =>
+  from.model === BLEND_MODEL ? [...STARS_MODELS] : leadOrder(from);
 
 /** What rates every spot for this rider: their model, then ECMWF past its run. */
 export const starsFromAt = (
@@ -109,7 +151,7 @@ export function pickModel(
 export function parseStarsChoice(value: unknown): StarsChoice | undefined {
   if (!value || typeof value !== "object") return undefined;
   const model = (value as Record<string, unknown>).model;
-  return isStarsModel(model) && model !== DEFAULT_MODEL ? { model } : undefined;
+  return isStarsChoice(model) && model !== DEFAULT_MODEL ? { model } : undefined;
 }
 
 /** Whether a choice is the default: HARMONIE. */

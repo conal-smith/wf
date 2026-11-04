@@ -1133,7 +1133,7 @@ square, each holding its places under `spotWaveBlend` (`force5/src/waveBlend.ts`
   band, readout and card (`spot/web/report/blends.ts`), beside every wave model's own
   line; the headline there stays one model's own, the finest at each hour or the
   rider's pick (Settings), handed on past its run (`waveLeadOrder`), with that
-  model's own partitions. With no blend, the per-model lines and the headline stand
+  model's own partitions, unless the rider picks the blend itself (`WAVE_BLEND`). With no blend, the per-model lines and the headline stand
   alone. The forecast server and the MCP read the models' own runs, as they do for
   the wind; with `per_model` each hour's waves carry every wave model's own step and
   partitions (`by_model`).

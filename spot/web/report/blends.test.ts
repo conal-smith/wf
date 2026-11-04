@@ -15,28 +15,17 @@ const T0 = Date.parse("2026-11-04T12:00:00Z");
 const iso = (h: number) => new Date(T0 + h * HOUR).toISOString();
 
 describe("windBlend", () => {
-  it("weights each model as the chart's blend does, and keeps their range", () => {
-    const point = (h: number, kn: number) => ({
+  it("reads the forecast's blend of every model, and their range", () => {
+    const row = (h: number, blend: number | null): WeekRow => ({
       time: T0 + h * HOUR,
       step: 1,
-      kn,
-      from: 270,
+      hour: {
+        wind: { blend_kn: blend, min_kn: 10, max_kn: 20, models: 3 },
+      } as unknown as ForecastHour,
     });
-    const blend = windBlend(
-      [
-        { id: "harmonie", points: [point(0, 10), point(1, 12)] },
-        { id: "ecmwf", points: [point(0, 20), point(1, 14)] },
-      ],
-      [
-        { id: "harmonie", run_time: iso(-6) },
-        { id: "ecmwf", run_time: iso(-12) },
-      ],
-    );
-    // HARMONIE 4, ECMWF 0.5 on day 0 (force5/src/weights.ts).
-    expect(blend.get(T0)!.kn).toBeCloseTo((10 * 4 + 20 * 0.5) / 4.5, 6);
-    expect(blend.get(T0)).toMatchObject({ low: 10, high: 20, count: 2 });
-    expect(blend.get(T0 + HOUR)!.kn).toBeCloseTo((12 * 4 + 14 * 0.5) / 4.5, 6);
-    expect(blend.has(T0 + 2 * HOUR)).toBe(false);
+    const blend = windBlend([row(0, 14.2), row(1, null)]);
+    expect(blend.get(T0)).toEqual({ kn: 14.2, low: 10, high: 20, count: 3 });
+    expect(blend.has(T0 + HOUR)).toBe(false);
   });
 });
 
@@ -146,5 +135,30 @@ describe("waveWeek", () => {
       highM: 1.5,
     });
     expect(week.rows.map((r) => r?.blendM)).toEqual([1.2, 1.2, 1.2, 1.2]);
+  });
+
+  it("reads the blend as the headline for a rider who picks it", () => {
+    const blend: WaveBlendHour[] = [0, 1].map((h) => ({
+      time: iso(h),
+      heightM: 1.2,
+      lowM: 0.9,
+      highM: 1.5,
+      periodS: 11,
+      from: 280,
+      models: ["mi-swan", "gfs-wave"],
+      count: 2,
+      lead: "mi-swan",
+      parts: { swell: { heightM: 0.8, periodS: null, from: null } },
+    }));
+    const week = waveWeek(rows, blend, ORDER, true);
+    expect(week.rows[0]).toMatchObject({
+      heightM: 1.2,
+      periodS: 11,
+      from: 280,
+      lead: "blend",
+    });
+    expect(partOf(week.rows[0], "swell1")?.heightM).toBe(0.8);
+    // Past the blend's times, the finest model at each hour stands in.
+    expect(week.rows[3]?.lead).toBe("gfs-wave");
   });
 });

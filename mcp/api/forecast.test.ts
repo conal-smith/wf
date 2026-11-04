@@ -382,6 +382,26 @@ describe("spotForecast", () => {
     expect(Object.keys(wind.by_model!).sort()).toEqual(["ecmwf", "gfs"]);
   });
 
+  it("rates from the blend of every model for a rider who picks it, and gives it beside any headline", async () => {
+    const spot = findSpot(await loadSpots(source), "dollymount").spot!;
+    const window = windowFor(FIXTURE_NOW, { hours: 6, stepHours: 3 });
+    const blended = await spotForecast(source, spot, window, {
+      perModel: true,
+      now: FIXTURE_NOW,
+      from: { model: "blend", then: "blend" },
+    });
+    const plain = await dollymount();
+    blended.hours.forEach((hour, i) => {
+      const wind = hour.wind!;
+      expect(wind.lead).toBe("blend");
+      expect(wind.wind_kn).toBe(wind.blend_kn);
+      // The blend lies within the models, and is the same beside HARMONIE's.
+      expect(wind.wind_kn).toBeGreaterThanOrEqual(wind.min_kn);
+      expect(wind.wind_kn).toBeLessThanOrEqual(wind.max_kn);
+      expect(plain.hours[i].wind!.blend_kn).toBe(wind.blend_kn);
+    });
+  });
+
   it("adds waves, weather, daylight and sunrise beside the wind", async () => {
     const forecast = await dollymount();
     expect(forecast.sources.waves?.id).toBe("gfs-wave");

@@ -48,7 +48,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Rider } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
 import type { Spot } from "../../force5/src/weather";
-import { modelName, STARS_MODELS } from "../../force5/src/lead";
+import { modelName, STARS_CHOICES } from "../../force5/src/lead";
 import { isChartAddress } from "../../force5/src/siteNav";
 import { MapPin, SlidersHorizontal } from "lucide-react";
 import { Button } from "../../ui/Button";
@@ -514,7 +514,7 @@ export default function SpotFinder(props: FinderProps) {
                 <p className={s.groupName()}>Model for the stars</p>
                 <Segmented
                   aria-label="Model for the stars"
-                  options={STARS_MODELS.map((id) => ({
+                  options={STARS_CHOICES.map((id) => ({
                     value: id,
                     label: modelName(id),
                   }))}

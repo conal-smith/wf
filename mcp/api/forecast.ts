@@ -46,11 +46,14 @@ import {
   type Agreement,
 } from "../../force5/src/weights.js";
 import {
+  BLEND_MODEL,
   DEFAULT_STARS_FROM,
-  leadOrder,
+  STARS_MODELS,
+  leadModels,
   pickModel,
   type StarsFrom,
 } from "../../force5/src/lead.js";
+import { blendHour } from "../../force5/src/windBlend.js";
 import {
   isOnWater,
   shoreFacing,
@@ -1012,13 +1015,23 @@ export interface HourWind {
    * spot page) may not.
    */
   confidence?: Agreement;
-  /** Which model the headline wind, gust and direction are, and so the stars. */
+  /**
+   * Which model the headline wind, gust and direction are, and so the stars:
+   * "blend" for a rider who rates from the blend of every model.
+   */
   lead: string;
   /**
    * The lead's id when it gave a gust this hour, else null. HARMONIE gives
    * none at the first hour of its run.
    */
   gust_lead: string | null;
+  /**
+   * The blend of every model that reaches the hour, each weighted by how
+   * good it is that far into its run (force5/src/windBlend.ts): context, as
+   * the site's Wind blend draws it, unless the stars come from it (`lead`).
+   * hourWind always gives it; an hour built elsewhere may not.
+   */
+  blend_kn?: number | null;
   by_model?: Record<string, ModelWind>;
 }
 
@@ -1084,15 +1097,56 @@ export function hourWind(
   perModel: boolean,
   from: StarsFrom = DEFAULT_STARS_FROM,
 ): HourWind | null {
-  const samples = lines.flatMap(({ run, points, gap }) => {
+  const samples = lines.flatMap(({ run, points, gap, resolutionKm }) => {
     const at = windAt(points, time, gap);
     const runTime = Date.parse(run.run_time);
     return at
-      ? [{ id: run.id, runTime, ...at, speed: Math.hypot(at.u, at.v) }]
+      ? [
+          {
+            id: run.id,
+            runTime,
+            resolutionKm,
+            ...at,
+            speed: Math.hypot(at.u, at.v),
+          },
+        ]
       : [];
   });
-  const leadId = pickModel(from, (id) => samples.some((s) => s.id === id));
-  const lead = samples.find((s) => s.id === leadId);
+  // The blend of every model the stars may come from, in their order
+  // (force5/src/windBlend.ts): the Wind blend the site draws, and the
+  // headline for a rider who picks it.
+  const blended = blendHour(
+    STARS_MODELS.flatMap((id) => {
+      const s = samples.find((sample) => sample.id === id);
+      return s
+        ? [
+            {
+              model: id,
+              speed: s.speed,
+              gust: s.gust,
+              u: s.u,
+              v: s.v,
+              leadHours: leadHours(s.runTime, time),
+              resolutionKm: s.resolutionKm,
+            },
+          ]
+        : [];
+    }),
+  );
+  const leadId =
+    from.model === BLEND_MODEL
+      ? blended && BLEND_MODEL
+      : pickModel(from, (id) => samples.some((s) => s.id === id));
+  const lead =
+    leadId === BLEND_MODEL
+      ? {
+          id: BLEND_MODEL,
+          speed: blended!.speed,
+          gust: blended!.gust,
+          u: blended!.u,
+          v: blended!.v,
+        }
+      : samples.find((s) => s.id === leadId);
   if (!lead) return null;
   const speeds = samples.map((s) => s.speed * KNOTS).sort((a, b) => a - b);
   const gusts = samples
@@ -1121,6 +1175,7 @@ export function hourWind(
     confidence: confidenceOf(agreement, samples.length),
     lead: lead.id,
     gust_lead: lead.gust === null ? null : lead.id,
+    blend_kn: blended ? round(blended.speed * KNOTS) : null,
   };
   const factor = gustFactor(hour.wind_kn, hour.gust_kn);
   hour.gust_factor = factor === null ? null : round(factor, 2);
@@ -2652,7 +2707,7 @@ export function forecastReach(
   runs: readonly ModelRun[],
   from: StarsFrom = DEFAULT_STARS_FROM,
 ): Reach | null {
-  const leads = leadOrder(from);
+  const leads = leadModels(from);
   return runs
     .filter((run) => leads.includes(run.id))
     .map((run) => ({ time: Date.parse(run.until), model: run.name }))

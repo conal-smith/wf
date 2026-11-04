@@ -15,7 +15,7 @@
  */
 import {
   DEFAULT_STARS_FROM,
-  leadOrder,
+  leadModels,
   type StarsFrom,
 } from "../../force5/src/lead";
 import { loadManifest } from "../../force5/src/manifests";
@@ -299,7 +299,7 @@ export async function pointForecast(
     readRuns(
       lat,
       lon,
-      leadOrder(from),
+      leadModels(from),
       Math.max(window.from, Math.floor(options.now / HOUR) * HOUR),
       window.to,
       options.signal,

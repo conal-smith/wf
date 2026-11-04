@@ -844,6 +844,46 @@ test("the stars come from one model, the rider's: the bar's hour and the lights 
   await expect.poll(() => barAndLightAgree(page)).toBe(true);
 });
 
+test("a rider on the blend has the lights rated from it, and the map draws HARMONIE", async ({
+  page,
+}) => {
+  test.slow();
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await openBar(page);
+  await backToIreland(page);
+  const hour = columnAt("2026-09-14T11:00:00Z");
+  await timeSlider(page).fill(String(hour));
+  await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
+    timeout: 30000,
+  });
+  const lightsBefore = await lightRatings(page);
+  await pickModel(page, "Blend");
+  // Every light rated again, from the blend of the models' own squares, and
+  // Brandon's light is the bar's hour.
+  await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
+    timeout: 30000,
+  });
+  await expect
+    .poll(() => lightRatings(page), { timeout: 30000 })
+    .not.toEqual(lightsBefore);
+  await expect
+    .poll(() => barAndLightAgree(page), { timeout: 30000 })
+    .toBe(true);
+  // The blend has no frames of its own: the map draws HARMONIE's, and the
+  // rider stays on the blend.
+  await expect(page.locator(".map-model")).toHaveText(/^HARMONIE\b/, {
+    timeout: 30000,
+  });
+  await openFromMenu(page, "Settings");
+  await expect(
+    settingsDialog(page)
+      .getByRole("group", { name: "Model", exact: true })
+      .getByRole("button", { name: "Blend" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  expect(errors).toEqual([]);
+});
+
 test("one model to pick and no fallback to set, and a blend of the rider's own that moves no star", async ({
   page,
 }) => {
@@ -865,7 +905,7 @@ test("one model to pick and no fallback to set, and a blend of the rider's own t
     panel
       .getByRole("group", { name: "Model", exact: true })
       .getByRole("button"),
-  ).toHaveText(["HARMONIE", "ICON-EU", "ECMWF", "GFS"]);
+  ).toHaveText(["HARMONIE", "ICON-EU", "ECMWF", "GFS", "Blend"]);
   // A blend of the rider's own (the spot page draws it): GFS and ICON-EU
   // left out.
   for (const id of ["gfs", "icon-eu"]) {

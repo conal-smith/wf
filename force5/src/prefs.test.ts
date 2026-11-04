@@ -77,6 +77,7 @@ describe("display preferences", () => {
         fakeStorage({ [PREFS_KEY]: JSON.stringify({ waveModel }) }),
       ).waveModel;
     expect(stored("mi-swan")).toBe("mi-swan");
+    expect(stored("blend")).toBe("blend");
     expect(stored("harmonie")).toBeNull();
     expect(stored("no-such-wave")).toBeNull();
     expect(stored(7)).toBeNull();

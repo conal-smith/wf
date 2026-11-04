@@ -22,11 +22,13 @@ import { onPageReturn, pageVisible } from "../force5/src/pageLife";
 import { shouldRevalidate } from "../force5/src/revalidate";
 import { spotSeries } from "../force5/src/series";
 import {
+  BLEND_MODEL,
   DEFAULT_STARS_FROM,
-  leadOrder,
+  leadModels,
   pickModel,
   type StarsFrom,
 } from "../force5/src/lead";
+import { placeConsensus } from "./ratings";
 import {
   loadSeaTemperature,
   seaTemperatureForSpot,
@@ -612,11 +614,12 @@ export function useBlend(
   from: StarsFrom = DEFAULT_STARS_FROM,
 ): Blend {
   const selectedKey = [...selected].sort().join(",");
-  const fromKey = leadOrder(from).join(",");
-  // The models the headline is read from, whether or not they are in the blend.
+  const fromKey = `${from.model}>${from.then}`;
+  // The models the headline is read from, whether or not they are in the blend:
+  // the rider's and ECMWF, or for the blend every model it blends.
   const heads = useMemo(
     () =>
-      leadOrder(from).flatMap((id) => {
+      leadModels(from).flatMap((id) => {
         const model = models.find((m) => m.id === id && m.wind !== null);
         return model ? [model.wind!] : [];
       }),
@@ -659,12 +662,20 @@ export function useBlend(
     const headManifests = heads.filter(
       (manifest) => spotSeries(manifest, spotId) !== null,
     );
-    const headline = blendInputs(
-      headManifests,
-      spotId,
-      headManifests.map((manifest) => manifest.model),
-      axis,
-    ).filter((line) => line.memberIndex === undefined);
+    // A rider on the blend has it as the headline, as the stars have it
+    // (`placeConsensus`): one line, its direction the blend's.
+    const blended =
+      from.model === BLEND_MODEL
+        ? placeConsensus(headManifests, [], spotId, axis, from)
+        : null;
+    const headline: BlendInput[] = blended
+      ? [{ model: BLEND_MODEL, speed: blended.median, gust: blended.gust }]
+      : blendInputs(
+          headManifests,
+          spotId,
+          headManifests.map((manifest) => manifest.model),
+          axis,
+        ).filter((line) => line.memberIndex === undefined);
     const headVectors = new Map(
       headManifests.map((manifest) => [
         manifest.model,
@@ -690,7 +701,9 @@ export function useBlend(
         leadOf,
         headline,
       ),
-      directions: axis.map((_, at) => {
+      directions: blended
+        ? blended.from
+        : axis.map((_, at) => {
         const model = pickModel(from, (id) => {
           const line = headline.find((l) => l.model === id);
           return Number.isFinite(line?.speed[at] ?? NaN);

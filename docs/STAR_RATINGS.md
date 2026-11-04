@@ -27,8 +27,23 @@ reaches has no stars, and no other model stands in. Where that model gives no
 gust, the hour has none. How far the other models agree is shown beside the
 stars, as context, and never takes a star off.
 
-The rule is `force5/src/lead.ts` (`starsFromAt`, `leadFor`, `pickModel`), shared
-by every surface that rates:
+**4 November 2026: the blend as a choice.** Beside the models, a rider may
+pick **Blend** (`BLEND_MODEL`). Each hour is then rated on the blend of every
+published deterministic wind model that reaches it (`STARS_MODELS`): the
+weighted mean of their speeds, of the gusts the ones that give one give, and of
+their wind vectors for the direction, each model weighted by how good the
+backtest found it that far into its run (`force5/src/weights.ts`
+`modelWeight`, `force5/src/windBlend.ts` `blendHour`). It reaches as far as any
+model, so it hands over to nothing. The map draws one model's frames, so for a
+rider on the blend it draws the default's, HARMONIE's. The default stays
+HARMONIE, then ECMWF, and the published blend of the lights
+(`src/spotBlend.ts`) stays the default's: a rider on the blend has their hours
+worked out from the models, as any other choice does. The forecast server
+gives the blend beside every hour's headline (`blend_kn`), which is what the
+spot page's Wind blend row draws.
+
+The rule is `force5/src/lead.ts` (`starsFromAt`, `leadFor`, `pickModel`,
+`leadModels`), shared by every surface that rates:
 
 | Surface                              | Where the hours come from                                                                                                                                 |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |

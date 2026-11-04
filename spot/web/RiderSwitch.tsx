@@ -14,8 +14,10 @@
 import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 import {
+  BLEND_MODEL,
+  DEFAULT_MODEL,
   FALLBACK_MODEL,
-  STARS_MODELS,
+  STARS_CHOICES,
   chosenModel,
   modelName,
 } from "../../force5/src/lead";
@@ -153,18 +155,29 @@ export function RiderSwitch({
             className={s.models()}
             value={model}
             onChange={(id) => onChange(withRiderModel(rider, id))}
-            options={STARS_MODELS.map((id) => ({
+            options={STARS_CHOICES.map((id) => ({
               value: id,
               label: modelName(id),
             }))}
           />
           <p className={s.note()}>
-            The wind and the stars are {modelName(model)}&rsquo;s own forecast
-            {model === FALLBACK_MODEL
-              ? ", "
-              : `, and ${modelName(FALLBACK_MODEL)}'s past the end of its run, `}
-            here and on the map. The other models are shown beside it, and never
-            change the stars.
+            {model === BLEND_MODEL ? (
+              <>
+                The wind and the stars are the blend of every model, each
+                weighted by how good it is that far ahead. The map draws{" "}
+                {modelName(DEFAULT_MODEL)}.
+              </>
+            ) : (
+              <>
+                The wind and the stars are {modelName(model)}&rsquo;s own
+                forecast
+                {model === FALLBACK_MODEL
+                  ? ", "
+                  : `, and ${modelName(FALLBACK_MODEL)}'s past the end of its run, `}
+                here and on the map. The other models are shown beside it, and
+                never change the stars.
+              </>
+            )}
           </p>
         </div>
       )}

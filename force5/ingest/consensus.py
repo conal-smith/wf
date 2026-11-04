@@ -6,7 +6,9 @@ arithmetic, so this is a line-by-line replica of it and nothing more. Since the
 ruling of 19 October 2026 the stars come from one model, never a blend of several:
 each hour is the first of two models that reaches it, its own wind, gust and
 bearing — HARMONIE, then ECMWF where HARMONIE's run ends (`STARS_FROM`), or the two
-a rider chooses — and nothing where neither does. The gust is that model's too, and
+a rider chooses — and nothing where neither does. Since the ruling of 4 November
+2026 a rider may choose the blend instead (`BLEND_MODEL`): each hour the weighted
+blend of every model that reaches it (force5/src/windBlend.ts, `blend_hour`). The gust is that model's too, and
 none where it gives none. Each model is put on the axis the TypeScript way: linear
 in u and v between its own steps, never across a gap wider than twice its typical
 step, and never past either end of its run. The models' agreement, which the site
@@ -29,6 +31,26 @@ from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 import math
 
+# force5/src/lead.ts `BLEND_MODEL`: the choice that is no model, but the blend of
+# every model in `STARS_MODELS` (force5/src/windBlend.ts `blendHour`). Its pair is
+# ("blend", "blend"): it reaches as far as any model, so hands over to nothing.
+BLEND_MODEL = "blend"
+# force5/src/lead.ts `STARS_MODELS`: every published deterministic wind model, in
+# catalogue order, the blend's members and the order it sums them in.
+STARS_MODELS = ("harmonie", "icon-eu", "ecmwf", "gfs")
+# force5/src/weights.ts `MODEL_WEIGHTS`: each judged model's weight on day 0, 1, 2
+# and 3 on of its run.
+MODEL_WEIGHTS = {
+    "harmonie": (4, 4, 4, 4),
+    "arome": (2, 1, 1, 1),
+    "icon-eu": (2, 1, 1, 1),
+    "gfs": (2, 2, 1, 1),
+    "gefs": (1, 1, 1, 1),
+    "ecmwf-ens": (1, 1, 1.5, 1.5),
+    "aifs": (0.5, 1, 1.5, 1.5),
+    "ecmwf": (0.5, 0.5, 0.5, 0.5),
+    "arpege": (0.5, 0.5, 0.5, 0.5),
+}
 # force5/src/lead.ts `DEFAULT_STARS_FROM`: the model each hour's stars come from
 # wherever it reaches the hour, and the one that takes over where its run ends.
 STARS_FROM = ("harmonie", "ecmwf")
@@ -156,6 +178,73 @@ def spot_series(manifest, spot):
     return None
 
 
+def blend_weight(resolution_km):
+    """weights.ts `blendWeight`: an unjudged model's weight by its grid."""
+    if not finite(resolution_km):
+        return 1
+    if resolution_km <= 3:
+        return 3
+    if resolution_km <= 8:
+        return 2
+    return 1
+
+
+def lead_day(lead_hours):
+    """weights.ts `leadDay`: 0 for the first 24 hours (or no lead), 3 from day 3."""
+    if not (finite(lead_hours) and lead_hours >= 24):
+        return 0
+    if lead_hours < 48:
+        return 1
+    if lead_hours < 72:
+        return 2
+    return 3
+
+
+def model_weight(model, lead_hours, resolution_km=None):
+    """weights.ts `modelWeight`."""
+    row = MODEL_WEIGHTS.get(model)
+    return row[lead_day(lead_hours)] if row else blend_weight(resolution_km)
+
+
+def blend_hour(members):
+    """windBlend.ts `blendHour`: weighted means of speed, gust (of the models that
+    give one) and the wind's vector, summed in the members' order. Each member is a
+    dict with model, speed, gust (None for none), u, v, lead_hours, resolution_km."""
+    if not members:
+        return None
+    weights = [max(0, model_weight(m["model"], m["lead_hours"], m.get("resolution_km")))
+               for m in members]
+    total = 0
+    for w in weights:
+        total += w
+
+    def weight_of(i):
+        return weights[i] if total > 0 else 1
+
+    def mean(key, only=None):
+        value = 0.0
+        weight = 0
+        for i, m in enumerate(members):
+            if only is not None and not only[i]:
+                continue
+            value += m[key] * weight_of(i)
+            weight += weight_of(i)
+        return value / weight if weight > 0 else None
+
+    gusty = [m["gust"] is not None and finite(m["gust"]) for m in members]
+    return {
+        "speed": mean("speed"),
+        "gust": mean("gust", gusty) if any(gusty) else None,
+        "u": mean("u"),
+        "v": mean("v"),
+    }
+
+
+def lead_models(stars_from):
+    """lead.ts `leadModels`: the models an hour is worked out from."""
+    return list(STARS_MODELS) if stars_from[0] == BLEND_MODEL else lead_order(stars_from)
+
+
 def lead_order(stars_from):
     """lead.ts `leadOrder`: the chosen model, then its fallback, once each."""
     model, then = stars_from
@@ -176,7 +265,7 @@ def place_consensus(manifests, blend_ids, spot, axis, stars_from=STARS_FROM):
     del blend_ids  # Only the agreement reads them, and it is not replicated.
     axis_times = [parse_ms(value) for value in axis]
     own = {}
-    for model in lead_order(stars_from):
+    for model in lead_models(stars_from):
         manifest = next((m for m in manifests if m.get("model") == model), None)
         mean = spot_series(manifest, spot) if manifest is not None else None
         if mean is None:
@@ -184,9 +273,28 @@ def place_consensus(manifests, blend_ids, spot, axis, stars_from=STARS_FROM):
         plan = plan_for([parse_ms(point["validTime"]) for point in mean], axis_times)
         speed, gust = line_on(mean, plan)
         u, v = vector_on(mean, plan)
-        own[model] = {"speed": speed, "gust": gust, "u": u, "v": v}
+        resolution = manifest.get("resolutionKm")
+        own[model] = {"speed": speed, "gust": gust, "u": u, "v": v,
+                      "run": parse_ms(manifest["runTime"]),
+                      "resolution_km": resolution if finite(resolution) else None}
     out = {"median": [], "gust": [], "from": [], "model": []}
+    blended = stars_from[0] == BLEND_MODEL
     for c in range(len(axis_times)):
+        if blended:
+            members = [{"model": model, "speed": line["speed"][c],
+                        "gust": line["gust"][c] if math.isfinite(line["gust"][c]) else None,
+                        "u": line["u"][c], "v": line["v"][c],
+                        "lead_hours": (axis_times[c] - line["run"]) / HOUR_MS,
+                        "resolution_km": line["resolution_km"]}
+                       for model, line in own.items() if math.isfinite(line["speed"][c])]
+            b = blend_hour(members)
+            out["model"].append(BLEND_MODEL if b else None)
+            out["median"].append(b["speed"] if b else None)
+            out["gust"].append(b["gust"] if b else None)
+            out["from"].append(direction(b["u"], b["v"]) if b and math.isfinite(b["u"])
+                               and math.isfinite(b["v"]) and math.hypot(b["u"], b["v"]) >= 0.1
+                               else None)
+            continue
         model = next((m for m in lead_order(stars_from)
                       if m in own and math.isfinite(own[m]["speed"][c])), None)
         out["model"].append(model)

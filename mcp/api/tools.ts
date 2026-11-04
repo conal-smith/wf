@@ -46,7 +46,7 @@ import {
 } from "./warnings.js";
 import {
   DEFAULT_STARS_FROM,
-  STARS_MODELS,
+  STARS_CHOICES,
   leadFor,
   type StarsFrom,
 } from "../../force5/src/lead.js";
@@ -335,10 +335,10 @@ export const listSpots = tool({
 /** The argument that chooses the model a forecast's headline is (force5/src/lead.ts). */
 const MODEL_ARGS = {
   model: z
-    .enum(STARS_MODELS as [string, ...string[]])
+    .enum(STARS_CHOICES as [string, ...string[]])
     .optional()
     .describe(
-      "The one model the wind, gust and direction come from, as a wingfoil.ie rider picks it (default harmonie). Past the end of its run ECMWF's take over, as on the site.",
+      "The one model the wind, gust and direction come from, as a wingfoil.ie rider picks it (default harmonie). Past the end of its run ECMWF's take over, as on the site. `blend` is the weighted blend of every model instead, to fifteen days.",
     ),
 };
 

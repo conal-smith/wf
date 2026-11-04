@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  BLEND_MODEL,
   DEFAULT_STARS_FROM,
+  STARS_CHOICES,
+  leadModels,
+  mapModelOf,
   FALLBACK_MODEL,
   STARS_MODELS,
   chosenModel,
@@ -55,6 +59,29 @@ describe("the one model the stars come from", () => {
       handovers(["harmonie", "harmonie", null, "ecmwf", "ecmwf", null]),
     ).toEqual([{ at: 3, from: "harmonie", to: "ecmwf" }]);
     expect(handovers(["gfs", "gfs"])).toEqual([]);
+  });
+});
+
+describe("the blend as a choice", () => {
+  it("is offered after the models, and hands over to nothing", () => {
+    expect(STARS_CHOICES).toEqual([...STARS_MODELS, "blend"]);
+    expect(modelName(BLEND_MODEL)).toBe("Blend");
+    expect(starsFromAt({ model: "blend" })).toEqual({
+      model: "blend",
+      then: "blend",
+    });
+    expect(leadText(starsFromAt({ model: "blend" }))).toBe("Blend");
+    // Worked out from every model it blends.
+    expect(leadModels(starsFromAt({ model: "blend" }))).toEqual(STARS_MODELS);
+    expect(leadModels(DEFAULT_STARS_FROM)).toEqual(["harmonie", "ecmwf"]);
+  });
+
+  it("is kept as a rider's choice, and has the map draw the default", () => {
+    expect(parseStarsChoice({ model: "blend" })).toEqual({ model: "blend" });
+    expect(withModel("blend")).toEqual({ model: "blend" });
+    expect(mapModelOf({ model: "blend" })).toBe("harmonie");
+    expect(mapModelOf({ model: "gfs" })).toBe("gfs");
+    expect(mapModelOf(undefined)).toBe("harmonie");
   });
 });
 
