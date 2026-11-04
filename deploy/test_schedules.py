@@ -157,7 +157,7 @@ class QueueTest(unittest.TestCase):
     # rest are generous guesses. Every gated slot is counted as running, as in June.
     MINUTES = {"harmonie": 4, "icon-eu": 6, "icon-eu-weather": 6, "ecmwf": 5, "gfs": 4,
                "gfs-wave": 3, "ecmwf-wave": 3, "gfs-weather": 3, "mi-swan": 1, "currents": 1, "tides": 1,
-               "sea-temperature": 1, "blend": 1, "wind-obs": 1, "warnings": 1,
+               "sea-temperature": 1, "blend": 1, "wave-blend": 1, "wind-obs": 1, "warnings": 1,
                "water-quality": 1, "forecast-archive": 2, "verify": 3}
     SWEEP_MINUTES = 2
     # Far inside the hour Home Compute lets a run queue (QUEUE_SECONDS).

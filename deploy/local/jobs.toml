@@ -172,9 +172,11 @@ timeout_seconds = 900       # which the one-job-at-a-time loop serialises.
 
 [[jobs]]
 id = "blend"
-models = ["blend"]
+models = ["blend", "wave-blend"]
 minutes = [5]               # Hourly, from whatever the wind jobs have published by
-timeout_seconds = 600       # then.
+timeout_seconds = 600       # then, and the wave blend from whatever the wave jobs have:
+                            # within the hour of any wave run landing, whichever
+                            # slot that model keeps, without a slot of its own.
 
 [[jobs]]
 id = "blend-after-harmonie"

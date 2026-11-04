@@ -43,6 +43,10 @@ export const WAVE_MATCH_HOURS = VARIABLE_MATCH_HOURS;
  * two wide and many spots are read from open water nearby. It earns its place
  * by reach: its run goes on to 360 h, so past GFS-Wave's 240 h the waves are
  * ECMWF's (`handedWaveSource`), as the wind is past the end of the others.
+ *
+ * It is the wave blend's member list too, in the order its partitions lead
+ * (`WAVE_BLEND_MODELS`, src/waveBlend.ts): a wave model added here joins the
+ * dock's handover and the blend at once.
  */
 export const WAVE_SOURCE_PREFERENCE: readonly string[] = [
   "mi-swan",

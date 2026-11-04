@@ -55,9 +55,10 @@ done
 # The cadence file baked into the image parses and names only registered models.
 docker run --rm --entrypoint python "$IMAGE" /app/force5/ingest/scheduler.py --list >/dev/null
 
-step "The blend job's bundle runs on the image's node"
+step "The blend jobs' bundles run on the image's node"
 docker run --rm --entrypoint sh "$IMAGE" -euc '
   test -f /app/force5/blend/dist/blend.mjs
+  test -f /app/force5/blend/dist/wave-blend.mjs
   node --version'
 
 step "Runs as the unprivileged worker"

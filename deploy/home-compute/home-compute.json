@@ -1198,7 +1198,7 @@
     },
     {
       "id": "blend",
-      "description": "Every spot's wind blend, for the map's stars",
+      "description": "Every spot's wind blend, for the map's stars + Every spot's wave blend, across the wave models",
       "schedule": {
         "at": {
           "minutes": [
@@ -1209,7 +1209,7 @@
       },
       "labels": {
         "application": "wingfoil",
-        "models": "blend"
+        "models": "blend,wave-blend"
       },
       "task": {
         "image": "${WINGFOIL_IMAGE}",
@@ -1244,7 +1244,8 @@
         ],
         "parameters": [
           "--models",
-          "blend"
+          "blend",
+          "wave-blend"
         ],
         "report": {
           "format": "json-lines",

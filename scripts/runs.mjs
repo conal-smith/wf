@@ -27,6 +27,7 @@ export const SPOT_KEYS = [
   "spotMembers",
   "spotCells",
   "spotBlend",
+  "spotWaveBlend",
 ];
 
 const pad = (value, width) => String(Math.abs(value)).padStart(width, "0");

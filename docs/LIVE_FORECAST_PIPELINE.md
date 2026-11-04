@@ -692,8 +692,9 @@ docker run --rm --env-file r2.env force5-forecast:latest --models currents $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models sea-temperature $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models tides $R2
 
-# Hourly, after the wind jobs: every spot's blend, read from what the bucket serves
-docker run --rm --env-file r2.env force5-forecast:latest --models blend $R2
+# Hourly, after the wind jobs: every spot's blend, read from what the bucket serves,
+# and its wave blend from the wave runs the bucket serves
+docker run --rm --env-file r2.env force5-forecast:latest --models blend wave-blend $R2
 
 # Verification (docs/VERIFICATION.md): observed wind hourly; the archive hourly after
 # the blend, before the sweep deletes what it copies; the scores once a day
@@ -934,6 +935,70 @@ pointer `weather/blend.json` (about 1 kB compressed) and a run directory beside 
   models, when the pointer is missing or malformed, when it is more than six hours
   old, or when none of the squares asked for can be read. The blend chart and the
   model list still fetch the manifests, but only once they are opened.
+
+### The wave blend: every spot's sea state, across the wave models
+
+The wave counterpart of the blend above: the `wave-blend` job works out each riding
+place's sea state from every wave model the site publishes and publishes it the same
+way, the pointer `weather/wave-blend.json` and a run directory beside it,
+`weather/wave-blend-RUN-HOURSh-v2-HASH8/spots/<square>.json`, one file per 2° spot
+square, each holding its places under `spotWaveBlend` (`src/waveBlend.ts`).
+
+- **Its members.** `WAVE_BLEND_MODELS` in `src/waveBlend.ts`, which is the dock's own
+  handover order, `WAVE_SOURCE_PREFERENCE` in `force5/src/waves.ts`, finest first: today
+  Irish Shelf SWAN (`mi-swan`, six days) then GFS-Wave (`gfs-wave`, ten days), with ECMWF
+  Wave (`ecmwf-wave`, fifteen days) next once the catalogue publishes it again. A wave
+  model joins the blend by being added to that list (one line), and is read only while
+  `force5/src/catalog.ts` neither retires nor plans it. A member with no pointer, or one
+  that will not validate, is left out and named, and the others still blend; with a
+  bucket, a pointer past its model's `maxAgeHours` is left out before its squares are
+  read (`blend_input_refused`), so a retired model's last run is never a member.
+- **What it holds, per place and time.** The times are every step any member publishes.
+  Each member reads a time from its nearest native step within 1.5 h
+  (`WAVE_MATCH_HOURS`), as the dock does; nothing is interpolated. Then:
+  - `height`: the median of the members' significant wave heights (`swh`), with `low`
+    and `high`, their range. Whole centimetres.
+  - `period`: the median of their peak periods (`pp1d`), tenths of a second. A member
+    with only a mean period does not vote on it.
+  - `from`: the direction the sea comes from (`mwd`, else `pwd`), as a vector mean of
+    the members' bearings each weighted by its own height, so 350° and 10° make 0°;
+    none where they point too many ways to have a mean (a resultant under a tenth of
+    the summed weights). Whole degrees.
+  - `fed`: which members fed the time, one bit per source (bit `i` for `sources[i]`),
+    and `count`, how many, one base-36 digit a time. As the short runs end the members
+    drop out: SWAN's six days, then GFS-Wave alone to its tenth.
+  - `lead` and `parts`: the swell partitions are never averaged, because the models
+    split the sea differently (SWAN publishes one swell height and a derived wind sea,
+    GFS-Wave a wind sea and its primary swell, ECMWF Wave period bands and no
+    partitions). Each time carries the partitions of the first member, in the handover
+    order, that fed it (`lead`, its place in `sources` in base 36, `-` for none):
+    `windsea`, `swell` (a model's whole swell as one height) and `swell1` to `swell3`,
+    each a height (cm), period (tenths of a second) and direction (degrees), null where
+    the lead model does not publish it. `WAVE_PARTITIONS` names the variables each is
+    read from.
+  - Each source in the pointer names its run, the times it publishes (`columns`), the
+    variables it was read for and the partitions it publishes.
+- **How it runs.** In the same hourly job as the blend (`models = ["blend",
+  "wave-blend"]` in `deploy/local/jobs.toml`, at :05), so a wave run is blended within
+  the hour of landing, whichever slot its model keeps, with no slot of its own to move
+  when a wave model is added. The worker runs the two one after the other and either
+  failing leaves the other published. `force5/ingest/fetch_wave_blend.py` reads the
+  wave pointers the bucket serves and their squares into a scratch directory and runs
+  `force5/blend/waves.ts`, bundled into the image beside the blend as
+  `force5/blend/dist/wave-blend.mjs`; `npm run wave-blend` does the same over
+  `public/weather` in a checkout. The worker validates it with
+  `validate_wave_blend_bundle` (the run directory's hash, the squares, every series'
+  length and range, the median inside its range, `count` the bits of `fed`, and `lead`
+  one of the members that fed the time) and publishes it as any run. Its `run` is the
+  hour it was worked out, and `maxAgeHours` is 3.
+- **Who reads it.** The site's reader is `useWaveBlend` (`src/useWaveBlend.ts`), with
+  `loadWaveBlend` and `waveBlendHours` for one place's hours; it treats a blend older
+  than six hours as none. No page draws it yet: the wave rows still read each model's
+  own run, handed over from one to the next (`handedWaveSource`). The forecast server
+  and the MCP read the models' own runs, as they do for the wind.
+- **Size.** Measured over a full-size synthetic run (GFS-Wave's ten days, SWAN's six,
+  every riding place): 177 times, about 1.6 MB across the ten squares before
+  compression, and a 148 MB peak for the Node process.
 
 ### Verification: what we forecast, against what blew
 
