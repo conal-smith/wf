@@ -203,6 +203,10 @@ const styles = tv({
     chipNow: "bg-pen text-ground",
     ro: "grid min-w-0 gap-px",
     roWide: "col-span-2",
+    // On a phone, where the stars take two cells, the sea's two follow the
+    // models' and the wing, the current, the rain and the launch fill in
+    // after, so no cell is left empty between them.
+    roLater: "max-wide:order-1",
     roLabel:
       "truncate font-body text-caption font-medium whitespace-nowrap text-ink-muted wide:text-body",
     // Where the wind at Now was measured: quiet, on the label's own line, so
@@ -213,17 +217,23 @@ const styles = tv({
     roValue:
       "block h-5 truncate font-body text-body leading-5 font-semibold whitespace-nowrap text-ink tabular-nums wide:h-6 wide:text-prose wide:leading-6",
     roMarks: "flex h-5 min-w-0 items-center gap-1.5 overflow-hidden wide:h-6",
-    // The band names in a column of their own beside the hours; on a phone
-    // they float over the hours' left edge instead, so the graph has the
-    // card's whole width.
-    gbox: "relative grid grid-cols-1 rounded-surface bg-sunken on-card py-1.5 wide:grid-cols-graph",
-    gl: "max-wide:pointer-events-none max-wide:absolute max-wide:inset-y-1.5 max-wide:left-0 max-wide:z-1 wide:relative",
+    // The band names in a column of their own beside the hours, narrower on
+    // a phone, so no name ever sits over an hour's figures.
+    gbox: "relative grid grid-cols-graph-narrow rounded-surface bg-sunken on-card py-1.5 wide:grid-cols-graph",
+    gl: "relative",
+    // A band's name, in a strip as tall as its band. On a phone, where the
+    // readout stays over the graph, the name keeps clear of the readout's
+    // foot (`top`, set to the readout's height) while any of its band is
+    // still in view, rather than going under it.
+    glBand: "absolute inset-x-0",
     glName: [
-      "absolute left-4 -translate-y-1/2 font-body text-caption font-medium whitespace-nowrap text-ink-muted",
-      "max-wide:left-1.5 max-wide:rounded-control max-wide:bg-sunken/85 max-wide:px-1 max-wide:text-eyebrow",
+      "block h-4 pl-2 font-body text-caption leading-4 font-medium whitespace-nowrap text-ink-muted wide:pl-4",
+      "max-wide:sticky",
     ],
     graph:
-      "relative overflow-x-auto overscroll-x-contain border-0 border-line wide:border-l",
+      "relative overflow-x-auto overscroll-x-contain border-0 border-l border-line",
+    // Where the readout's foot meets the graph scrolling under it.
+    toolsEdge: "pointer-events-none absolute inset-x-0 top-full h-px bg-line",
     sky: "pointer-events-none absolute left-0 flex items-center gap-1 font-body text-caption text-ink-2",
     // The key under the graph: its groups in a row, each a small heading
     // over its marks, every mark drawn at one size; two to a row on a phone.
@@ -1280,7 +1290,7 @@ const ROW = {
  */
 const LOWER = [
   ["rain", 34],
-  ["models", 72],
+  ["models", 52],
   ["gusts", 20],
   ["waves", 38],
   ["current", 38],
@@ -1364,6 +1374,43 @@ function Graph({
     () => onFocus(hover === null ? null : (rows[hover]?.time ?? null)),
     [hover, rows, onFocus],
   );
+  // On a phone the readout is held over the top of the graph as the page
+  // scrolls (`tools`). The band names are held clear of its foot, `held`
+  // being its height, and once the graph runs under it a line marks where.
+  const tools = useRef<HTMLDivElement>(null);
+  const gbox = useRef<HTMLDivElement>(null);
+  const [held, setHeld] = useState(0);
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const el = tools.current;
+    const box = gbox.current;
+    if (!el || !box) return;
+    let sticky = false;
+    const scrolled = () =>
+      setStuck(
+        sticky &&
+          box.getBoundingClientRect().top <
+            el.getBoundingClientRect().bottom - 0.5,
+      );
+    const measured = () => {
+      sticky = getComputedStyle(el).position === "sticky";
+      setHeld(sticky ? el.offsetHeight : 0);
+      scrolled();
+    };
+    measured();
+    const watch =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(measured);
+    watch?.observe(el);
+    window.addEventListener("scroll", scrolled, { passive: true });
+    window.addEventListener("resize", measured);
+    return () => {
+      watch?.disconnect();
+      window.removeEventListener("scroll", scrolled);
+      window.removeEventListener("resize", measured);
+    };
+  }, []);
   const lower = lowerBands(models.length > 0);
   const GH = lower.height;
   const start = days[0]?.midnight ?? now;
@@ -1597,7 +1644,8 @@ function Graph({
   const isNow = shownRow === rowAt(rows, now);
   return (
     <>
-      <div className={s.tools()}>
+      <div className={s.tools()} ref={tools}>
+        {stuck && <div className={s.toolsEdge()} aria-hidden="true" />}
         <Readout
           row={shownRow}
           isNow={isNow}
@@ -1620,25 +1668,42 @@ function Graph({
           measured={isNow ? nowMeasured : null}
         />
       </div>
-      <div className={s.gbox()}>
+      <div className={s.gbox()} ref={gbox}>
         <div className={s.gl()} style={{ height: GH }}>
           {(
             [
-              ...(rated ? [["Stars", ROW.stars[0] + 4] as const] : []),
-              ["Wind", ROW.wind[0] + 40],
-              ["Direction", ROW.dir[0] + 12],
-              ["Sea", ROW.sea[0] + 26],
-              ["Tide", ROW.tide[0] + 36],
-              ["Sky", ROW.sky[0] + 14],
+              ...(rated
+                ? [["Stars", ROW.stars[0] + 10, ROW.stars] as const]
+                : []),
+              ["Wind", ROW.wind[0] + 46, ROW.wind],
+              ["Direction", ROW.dir[0] + 18, ROW.dir],
+              ["Sea", ROW.sea[0] + 32, ROW.sea],
+              ["Tide", ROW.tide[0] + 42, ROW.tide],
+              ["Sky", ROW.sky[0] + 20, ROW.sky],
               ...LOWER.flatMap(([band]) => {
                 const at = lower.at[band];
-                return at ? [[LOWER_NAME[band], at[0] + at[1] / 2 - 6]] : [];
+                return at ? [[LOWER_NAME[band], at[0] + at[1] / 2, at]] : [];
               }),
-            ] as (readonly [string, number])[]
-          ).map(([name, y]) => (
-            <span key={name} className={s.glName()} style={{ top: y + 6 }}>
-              {name}
-            </span>
+            ] as (readonly [string, number, readonly [number, number]])[]
+          ).map(([name, middle, [y, h]]) => (
+            // The strip runs from where the name sits, beside the middle of
+            // its band, to the band's foot: as far as the name can be held.
+            <div
+              key={name}
+              className={s.glBand()}
+              style={{
+                top: middle - 8,
+                height: Math.max(16, y + h - (middle - 8)),
+              }}
+            >
+              <span
+                className={s.glName()}
+                style={{ top: held }}
+                data-band-name={name}
+              >
+                {name}
+              </span>
+            </div>
           ))}
         </div>
         <div
@@ -1654,7 +1719,7 @@ function Graph({
             viewBox={`0 0 ${W} ${GH}`}
             onPointerMove={phone ? undefined : onMove}
             onPointerLeave={phone ? undefined : onLeave}
-            className="block touch-pan-x"
+            className="block"
             data-graph-svg
           >
             <defs>
@@ -2317,7 +2382,8 @@ const LOWER_NAME: Record<LowerBand, string> = {
  *   reads (force5/src/rain.ts), so a wet hour of 0.2 mm shows and a downpour
  *   still fits; the figure every third hour it rains.
  * - Models: every model the rider blends (Settings), its own wind as its own
- *   line, in its own colour, on the wind band's scale.
+ *   line, in its own colour, on a scale from the tens either side of the
+ *   week's model winds, so the lines fill the band.
  * - Gusts: the gust factor every third hour, and behind every hour the
  *   stars' reading of its gust, as the dock tinted it (`gustReading`).
  * - Waves: where the sea runs, as the arrow points, and its period.
@@ -2416,10 +2482,23 @@ function LowerBands({
       {lower.models &&
         (() => {
           const [y, h] = lower.models;
-          const MY = (k: number) => y + h - (Math.min(k, 36) / 36) * h;
+          // On the tens either side of the week's model winds, so the lines
+          // fill the band rather than a strip of a scale from calm to 36 kn.
+          const kns = models.flatMap((m) =>
+            m.points.filter(seen).map((p) => p.kn),
+          );
+          const lo = kns.length ? Math.floor(Math.min(...kns) / 10) * 10 : 0;
+          const hi = Math.max(
+            lo + 10,
+            kns.length ? Math.ceil(Math.max(...kns) / 10) * 10 : 20,
+          );
+          const MY = (k: number) => y + h - ((k - lo) / (hi - lo)) * h;
           return (
-            <g data-band="models">
-              {[10, 20, 30].map((k) => (
+            <g data-band="models" data-scale={`${lo}-${hi}`}>
+              {Array.from(
+                { length: (hi - lo) / 10 + 1 },
+                (_, i) => lo + i * 10,
+              ).map((k) => (
                 <g key={k}>
                   <line
                     x1={0}
@@ -2678,7 +2757,9 @@ function Readout({
         </span>
       </div>
       {rated && (
-        <div className={s.ro()}>
+        // Two wide on a phone, where one cell has no room for the five
+        // stars and a warning's mark beside them.
+        <div className={s.ro({ className: "max-wide:col-span-2" })}>
           <span className={s.roLabel()}>Stars</span>
           {row?.rating ? (
             <span className={s.roMarks()}>
@@ -2764,7 +2845,7 @@ function Readout({
         </b>
       </div>
       {rated && (
-        <div className={s.ro()}>
+        <div className={s.ro({ className: s.roLater() })}>
           <span className={s.roLabel()}>Wing</span>
           <b className={s.roValue()}>
             {row?.rating
@@ -2788,7 +2869,10 @@ function Readout({
         </b>
       </div>
       {hasCurrent && (
-        <div className={s.ro({ className: s.roWide() })} data-readout-current>
+        <div
+          className={s.ro({ className: [s.roWide(), s.roLater()] })}
+          data-readout-current
+        >
           <span className={s.roLabel()}>Current</span>
           <b className={s.roValue()}>
             {current ? (
@@ -2807,7 +2891,7 @@ function Readout({
           </b>
         </div>
       )}
-      <div className={s.ro()} data-readout-rain>
+      <div className={s.ro({ className: s.roLater() })} data-readout-rain>
         <span className={s.roLabel()}>Rain</span>
         <b className={s.roValue()}>
           {rain === null
@@ -2818,7 +2902,7 @@ function Readout({
         </b>
       </div>
       {hasDepth && (
-        <div className={s.ro()}>
+        <div className={s.ro({ className: s.roLater() })}>
           <span className={s.roLabel()}>At the launch</span>
           <b
             className={s.roValue({
