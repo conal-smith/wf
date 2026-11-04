@@ -194,10 +194,10 @@ class ShippedScheduleTest(unittest.TestCase):
                                       "verify", "prune"])
         # The lagged HARMONIE ensemble ships disabled: it is heavy on Met Éireann's
         # bandwidth for a thin spread, so an operator enables it knowingly. The
-        # other six were retired on 10 October 2026.
+        # other five were retired on 10 October 2026 (ECMWF waves, retired with
+        # them, came back on 4 November).
         self.assertEqual([job["id"] for job in jobs if not job["enabled"]],
-                         ["harmonie-eps", "ecmwf-ens", "aifs", "gefs", "arpege", "arome",
-                          "ecmwf-wave"])
+                         ["harmonie-eps", "ecmwf-ens", "aifs", "gefs", "arpege", "arome"])
         for job in jobs:
             self.assertIsNotNone(scheduler.next_due(job, NOW), job["id"])
             for model in job["models"]:
@@ -252,6 +252,8 @@ class ShippedScheduleTest(unittest.TestCase):
             "icon-eu": ((0,), timedelta(hours=3, minutes=30)),
             "icon-eu-weather": ((0,), timedelta(hours=3, minutes=30)),
             "ecmwf": ((0, 12), timedelta(hours=7, minutes=35)),
+            # The wave stream is complete on open data with the wind control's.
+            "ecmwf-wave": ((0, 12), timedelta(hours=7, minutes=35)),
             "gfs": ((0, 6, 12, 18), timedelta(hours=4)),
             "gfs-wave": ((0, 6, 12, 18), timedelta(hours=3, minutes=50)),
             # The whole 384 h run, listed later than the wind's 240 h.

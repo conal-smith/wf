@@ -158,10 +158,11 @@ timeout_seconds = 1200      # that download nothing once 03:20 has published. ~1
 id = "ecmwf-wave"
 models = ["ecmwf-wave"]
 args = ["--ecmwf-source", "ecmwf"]
-hours = [8, 20]             # The 00/12 UTC wave stream, published ~8 h after the run.
-minutes = [45]              # ~715 MB with the period bands; the AWS mirror throttles.
-timeout_seconds = 3300
-enabled = false             # Retired on 10 October 2026.
+hours = [8, 10, 20, 22]     # The 00/12 UTC wave stream, complete with the wind at ~07:35
+minutes = [45]              # and ~19:35 UTC; 10:45 and 22:45 are retries that download
+timeout_seconds = 1200      # nothing once the slot before has published. ~330 MB a run
+                            # with the period bands, about 2.5 min on 1/4 vCPU (measured
+                            # 4 November 2026); Cloudflare stops a run at 1200 s.
 
 [[jobs]]
 id = "tides"

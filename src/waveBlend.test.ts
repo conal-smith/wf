@@ -316,9 +316,17 @@ describe("the partitions", () => {
 describe("the members", () => {
   it("are the dock's handover order, less what the catalogue does not publish", () => {
     expect(WAVE_BLEND_MODELS).toBe(WAVE_SOURCE_PREFERENCE);
-    // ECMWF Wave is retired in the catalogue until it is published again.
+    // All three wave models are published now ECMWF Wave is back.
     expect(
       waveBlendMembers(["gfs-wave", "ecmwf-wave", "mi-swan", "harmonie"]),
+    ).toEqual(["mi-swan", "gfs-wave", "ecmwf-wave"]);
+    // One the catalogue calls retired is left out until it is published again.
+    expect(
+      waveBlendMembers(
+        ["gfs-wave", "ecmwf-wave", "mi-swan"],
+        WAVE_SOURCE_PREFERENCE,
+        ["gfs-wave", "mi-swan"],
+      ),
     ).toEqual(["mi-swan", "gfs-wave"]);
     // The Met Office's 1.5 km model leads the members, as it leads the dock.
     expect(

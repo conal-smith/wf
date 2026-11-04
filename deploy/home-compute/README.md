@@ -164,6 +164,7 @@ repository's `.venv` and a scratch `FORCE5_WORK_DIR`, never with a bucket:
 | Job | Ceiling | Peak, MB | CPU s | How it was measured |
 | --- | --- | --- | --- | --- |
 | `gfs-wave` | 1 GB | 360 | 2.5 | a live run, local output only |
+| `ecmwf-wave` | 1 GB | 350 | 38 | three live 85-step runs in the worker image under `--cpus 0.25 --memory 1g`, local output only (4 November 2026): adapter 269-276, worker 48 without the S3 client; 154-157 s, 330 MB downloaded, 325 MB on disk. Its first Cloudflare run, publishing: 280 + 81 = 361 MB, 117 s |
 | `gfs-weather` | 1 GB | 355 | 7 | a live 384 h run, local output only (22 October 2026) |
 | `icon-eu` | 1 GB | 335 | 16 | 73 hourly frames decoded from cached GRIB (*) |
 | `ecmwf` | 1 GB | 315 | 4 | the whole cached 2026100700 run, 85 frames |
@@ -200,6 +201,7 @@ job killed for memory stops its model updating without saying why. After a chang
 that may make a job bigger, check the `resources` in its next events before lowering
 anything. The retired models were never measured and keep 4 GB, more than the
 recommended VM offers: measure one before enabling it, or Bacalhau leaves it queued.
+ECMWF waves, the one brought back so far, were measured first.
 
 ## Sizing the VM
 

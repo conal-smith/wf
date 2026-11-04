@@ -263,7 +263,6 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     staleAfterHours: 24,
     hue: { wind: "#4a5bc0", gust: "#c96f33" },
     mapCapable: true,
-    retired: true,
   },
 ];
 

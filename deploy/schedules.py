@@ -70,11 +70,12 @@ DESCRIPTIONS = {
 # silently stops updating. Every enabled job was measured on 11 October 2026
 # (deploy/home-compute/README.md, "What a job uses"): the peak resident memory
 # of the worker and its adapter together, which the worker now reports in each
-# event's `resources`, is 130-360 MB (MEASURED_PEAK_MB), so the ceilings are at
+# event's `resources`, is 130-390 MB (MEASURED_PEAK_MB), so the ceilings are at
 # least twice that and mostly three times. The VM's page cache is not counted against
 # a job: Linux reclaims it at the ceiling (the HARMONIE, ICON-EU and ECMWF
 # adapters each ran whole in the image under a 384 MB limit). Every job is
-# CPU-light, under 25 CPU seconds a run, and mostly waits on the network, so each
+# CPU-light, under 40 CPU seconds a run (ECMWF waves, which decode 850 GRIB
+# messages, are the most), and mostly waits on the network, so each
 # gets one CPU, which Bacalhau passes to Docker as the container's CPU limit.
 # Bacalhau is told it has one CPU (macmini.sh), so the jobs run one at a time:
 # the sweep asks for a whole CPU too, though it needs less, so it never runs
@@ -84,11 +85,12 @@ DESCRIPTIONS = {
 # model's files and the frames it publishes. The largest, measured from the
 # worker's cache on 18 October 2026, are ICON-EU 369 MB, ECMWF 242 MB, HARMONIE
 # 10 MB (it keeps only the 10 m wind and gust), GFS-Wave 5 MB, MI-SWAN 3 MB and
-# GFS 1.2 MB, so 2 GB is five times the largest. Every live job then fits
+# GFS 1.2 MB, so 2 GB is five times the largest. ECMWF waves, measured on
+# 4 November 2026, peaked at 325 MB on disk: 330 MB of GRIB, sampled each second. Every live job then fits
 # Cloudflare's `basic` container (1/4 vCPU, 1 GiB, 4 GB), whose memory and disk
 # are billed for the whole run; Home Compute's executor picks the smallest size
 # that fits.
-MODEL = {"cpu": "1", "memory": "1Gb", "disk": "2Gb"}       # Peaks 290-360 MB.
+MODEL = {"cpu": "1", "memory": "1Gb", "disk": "2Gb"}       # Peaks 290-390 MB.
 FORECAST = {"cpu": "1", "memory": "512Mb", "disk": "2Gb"}  # Peaks of about 225 MB.
 FEED = {"cpu": "1", "memory": "512Mb", "disk": "2Gb"}      # Peaks of 130-220 MB.
 # The retired adapters were never measured: they keep the 4 GB the worker was
@@ -98,12 +100,13 @@ UNMEASURED = {"cpu": "2", "memory": "4Gb", "disk": "12Gb"}
 ENSEMBLE = {"cpu": "2", "memory": "4Gb", "disk": "20Gb"}
 RESOURCES = {
     "harmonie": MODEL, "icon-eu": MODEL, "ecmwf": MODEL, "gfs-wave": MODEL,
+    "ecmwf-wave": MODEL,
     # About 430 MB a run held in memory a file at a time, four files at once.
     "met-office-wave": MODEL,
     "icon-eu-weather": FORECAST, "gfs": FORECAST,
     # Its whole 384 h run's series are in memory before they are written.
     "gfs-weather": MODEL,
-    "ecmwf-ens": ENSEMBLE, "ecmwf-wave": ENSEMBLE, "harmonie-eps": ENSEMBLE, "gefs": ENSEMBLE,
+    "ecmwf-ens": ENSEMBLE, "harmonie-eps": ENSEMBLE, "gefs": ENSEMBLE,
     "tides": FEED, "sea-temperature": FEED, "blend": FEED, "wave-blend": FEED, "wind-obs": FEED,
     "warnings": FEED, "water-quality": FEED,
     "mi-swan": FEED, "currents": FEED,
@@ -118,8 +121,12 @@ RESOURCES = {
 # GRIB, ECMWF its whole 85-frame run from cache, verification a 30-day archive.
 # Currents were measured on 22 October 2026 the same way: 168 MB for the adapter;
 # the bathing water notices on 27 October 2026: 80 MB, most of it pyproj.
+# ECMWF waves were measured on 4 November 2026 in the worker image itself, a live
+# 85-step run under Cloudflare's basic limits (1/4 vCPU, 1 GiB), three times: up to
+# 276 MB for the adapter and 48 MB for the worker without a bucket. Its first run on
+# Cloudflare itself, publishing to the bucket, peaked at 280 + 81 = 361 MB.
 MEASURED_PEAK_MB = {
-    "harmonie": 290, "icon-eu": 335, "ecmwf": 315, "gfs-wave": 360,
+    "harmonie": 290, "icon-eu": 335, "ecmwf": 315, "gfs-wave": 360, "ecmwf-wave": 365,
     "icon-eu-weather": 225, "gfs": 230, "verify": 225, "gfs-weather": 355,
     "mi-swan": 190, "currents": 240, "blend": 185, "forecast-archive": 140,
     "tides": 135, "sea-temperature": 135, "wind-obs": 135, "warnings": 135,

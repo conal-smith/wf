@@ -516,9 +516,15 @@ model the site reads, so the dock and the forecast server take it first for its
 
 ### ECMWF wave stream
 
-**Retired** (10 October 2026): the job ships
-disabled and the site does not fetch it. The adapter below is unchanged; see
-`deploy/local/README.md` to bring it back.
+Retired on 10 October 2026 to save downloads and **back on 4 November 2026**, once
+the jobs ran on Cloudflare Containers and the monthly download target was dropped.
+It is the only wave source that reaches 15 days: the dock, the spot page, the app
+and the forecast server hand the wave rows from MI SWAN to GFS-Wave past SWAN's six
+days and from GFS-Wave to this stream past GFS-Wave's 240 h (`handedWaveSource` in
+`force5/src/waves.ts`, `handedSource` in `mcp/api/forecast.ts`), as the wind goes on
+in ECMWF's past the end of the finer models. It publishes no swell or wind-sea
+partition, so past GFS-Wave's end only the whole sea's height, period and direction
+go on.
 
 `--models ecmwf-wave` runs `fetch_ecmwf_wave.py`, which imports the `wave` stream of the
 same open data — the WAM ocean wave model coupled to IFS — and publishes the
@@ -528,16 +534,31 @@ ten variables at native 0.25° on the shared 81 × 45 crop, not the wind control
 holds both `ecmwf` and `ecmwf-wave` to that ladder, whole or stopped early but never
 resampled, so a truncated or interpolated cadence cannot publish under either id.
 
-- **Bandwidth is the operational constraint.** There is no server-side subsetting, so a
-  full run transfers **700.3 MB** in 85 ranged reads (8.32–8.41 MB a step for ten
-  messages). A verified run of the live 12 UTC cycle on 16 September 2026 completed in
-  **61 seconds** with three readers against `--source ecmwf`, writing 85 frames of
-  182 KB (15 MB) and a 407 KB manifest. `--no-bands` drops the six period-band heights
-  for about 315 MB a run; the bands are the only swell information the stream has, so
-  drop them only under real bandwidth pressure.
+- **Bandwidth.** There is no server-side subsetting, so a full run transfers every
+  step's ten messages whole. On 16 September 2026 that was **700.3 MB** (8.3–8.4 MB a
+  step); ECMWF's files have since shrunk, and a live run of the 00 UTC cycle on
+  4 November 2026 transferred **330.2 MB** in 255 ranged reads (3.6–3.7 MB a step),
+  about **20 GB a month** at two runs a day. `--no-bands` drops the six period-band
+  heights for a little under half that; the bands are the only swell information the
+  stream has, so drop them only under real bandwidth pressure.
+- **It fits Cloudflare's `basic` container.** That 4 November run, in the worker
+  image under the `basic` limits (1/4 vCPU, 1 GiB, `docker run --cpus 0.25 --memory 1g`),
+  took **154–157 seconds** end to end over three runs (145–148 s downloading with three
+  readers against `--source ecmwf`, and about 38 CPU seconds, so at a quarter of a CPU
+  it is bound as much by the CPU as by the network). Its peak resident memory was
+  269–276 MB for the adapter and 48 MB for the worker without a bucket (about 350 MB
+  with the S3 client; the container's cgroup, page cache included, peaked at
+  600–610 MB). Its disk peaked at 325 MB, the GRIB it caches, and it published 3 MB:
+  149 spots' series in ten squares and the pointer, no frames. Its first run on Cloudflare
+  itself, the same cycle published to the bucket, took 117 s (124 container seconds,
+  105 s downloading, 30 CPU seconds) and peaked at 280 MB for the adapter and 81 MB
+  for the worker. Cloudflare stops a run at 1200 s, so the job's timeout is
+  1200 s, about eight times the measured run; its ceiling is the 1 GB and 2 GB disk
+  of `deploy/schedules.py`'s `MODEL` size.
 - **Schedule it twice daily.** `deploy/local/jobs.toml` runs it at 08 and 20 UTC + 45
-  minutes, about eight hours after each cycle, with a 24-hour registry age limit — the
-  same shape as the wind control. Every ECMWF adapter and the worker now default to
+  minutes, about eight hours after each cycle and alongside the wind control, with
+  retries at 10:45 and 22:45 that download nothing once the slot before has published,
+  and a 24-hour registry age limit — the same shape as the wind control. Every ECMWF adapter and the worker now default to
   the ECMWF-hosted source; the AWS mirror returned sustained `503 SlowDown` during
   development and remains available as `--ecmwf-source aws`.
 - **Coverage is the thing to communicate, not a fault to fix.** A 0.25° cell is about

@@ -85,7 +85,8 @@ class WhichModels(unittest.TestCase):
         self.assertFalse(flags["harmonie"]["retired"] or flags["harmonie"]["planned"])
         self.assertTrue(flags["harmonie-eps"]["planned"])
         retired = {model for model, flag in flags.items() if flag["retired"]}
-        self.assertTrue({"ecmwf-ens", "gefs", "arpege", "arome", "aifs", "ecmwf-wave"} <= retired)
+        self.assertTrue({"ecmwf-ens", "gefs", "arpege", "arome", "aifs"} <= retired)
+        self.assertNotIn("ecmwf-wave", retired)
 
     def test_the_checkout_gives_enabled_jobs_less_what_the_site_retired(self):
         live = dict(monitor.load_live_models())

@@ -1070,13 +1070,14 @@
     },
     {
       "id": "ecmwf-wave",
-      "enabled": false,
       "description": "ECMWF waves",
       "schedule": {
         "at": {
           "hours": [
             8,
-            20
+            10,
+            20,
+            22
           ],
           "minutes": [
             45
@@ -1104,16 +1105,16 @@
           "FORCE5_BROTLI_QUALITY"
         ],
         "resources": {
-          "cpu": "2",
-          "memory": "4Gb",
-          "disk": "20Gb"
+          "cpu": "1",
+          "memory": "1Gb",
+          "disk": "2Gb"
         },
         "network": {
           "type": "Full"
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 7500
+          "totalSeconds": 5400
         },
         "entrypoint": [
           "python",
